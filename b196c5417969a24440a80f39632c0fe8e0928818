@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d455ea2f_314811ec",
+        "filename": "src/vnet/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-13T08:26:30Z",
+      "side": 1,
+      "message": "Leads to \"Cannot find source file\", as cmake thinks the comma is part of the filename.",
+      "range": {
+        "startLine": 162,
+        "startChar": 13,
+        "endLine": 162,
+        "endChar": 14
+      },
+      "revId": "b196c5417969a24440a80f39632c0fe8e0928818",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
