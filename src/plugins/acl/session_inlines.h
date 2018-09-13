@@ -430,7 +430,7 @@ acl_fa_put_session (acl_main_t * am, u32 sw_if_index,
      as the caller must have dealt with the timers. */
   vec_validate (pw->fa_session_dels_by_sw_if_index, sw_if_index);
   clib_mem_set_heap (oldheap);
-  clib_smp_atomic_add (&pw->fa_session_dels_by_sw_if_index[sw_if_index], 1);
+  pw->fa_session_dels_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add (&am->fa_session_total_dels, 1);
 }
 
@@ -569,7 +569,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 
   vec_validate (pw->fa_session_adds_by_sw_if_index, sw_if_index);
   clib_mem_set_heap (oldheap);
-  clib_smp_atomic_add (&pw->fa_session_adds_by_sw_if_index[sw_if_index], 1);
+  pw->fa_session_adds_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add (&am->fa_session_total_adds, 1);
   return sess;
 }
