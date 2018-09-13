@@ -87,7 +87,16 @@ foreach(DIR ${SUBDIRS})
   add_subdirectory(${DIR})
 endforeach()
 
+##############################################################################
+# packaging
+##############################################################################
 include(cmake/pack.cmake)
+add_vpp_packaging(
+  NAME "vpp"
+  VENDOR "fd.io"
+  DESCRIPTION "Vector Packet Processor"
+)
+
 ##############################################################################
 # detect if we are inside git repo and add configure dependency
 ##############################################################################

@@ -14,7 +14,7 @@
 macro(add_vpp_plugin name)
   cmake_parse_arguments(PLUGIN
     ""
-    "LINK_FLAGS;COMPONENT"
+    "LINK_FLAGS;COMPONENT;DEV_COMPONENT"
     "SOURCES;API_FILES;MULTIARCH_SOURCES;LINK_LIBRARIES;INSTALL_HEADERS;API_TEST_SOURCES"
     ${ARGN}
   )
@@ -23,6 +23,14 @@ macro(add_vpp_plugin name)
   if(NOT PLUGIN_COMPONENT)
     set(PLUGIN_COMPONENT vpp-plugin-misc)
   endif()
+  if(NOT PLUGIN_DEV_COMPONENT)
+    if(NOT VPP_EXTERNAL_PROJECT)
+      set(PLUGIN_DEV_COMPONENT vpp-dev)
+    else()
+      set(PLUGIN_DEV_COMPONENT ${PLUGIN_COMPONENT}-dev)
+    endif()
+  endif()
+
   file(RELATIVE_PATH rpath ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
   foreach(f ${PLUGIN_API_FILES})
     get_filename_component(dir ${f} DIRECTORY)
@@ -32,7 +40,7 @@ macro(add_vpp_plugin name)
     install(
       FILES ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
       DESTINATION include/vpp_plugins/${name}/${dir}
-      COMPONENT vpp-dev
+      COMPONENT ${PLUGIN_DEV_COMPONENT}
     )
   endforeach()
   add_library(${plugin_name} SHARED ${PLUGIN_SOURCES} ${api_includes})
