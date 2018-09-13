@@ -62,6 +62,7 @@ typedef struct openssl_async_
   openssl_evt_t ***evt_pool;
   openssl_async_status_t *status;
   void (*polling) (void);
+  void (*polling_conf) (void);
   u8 start_polling;
   ENGINE *engine;
 
@@ -69,6 +70,7 @@ typedef struct openssl_async_
 
 void qat_polling ();
 void qat_pre_init ();
+void qat_polling_config ();
 void dasync_polling ();
 
 struct engine_polling
@@ -76,11 +78,12 @@ struct engine_polling
   char *engine;
   void (*polling) (void);
   void (*pre_init) (void);
+  void (*polling_conf) (void);
 };
 
 struct engine_polling engine_list[] = {
-  {"qat", qat_polling, qat_pre_init},
-  {"dasync", dasync_polling, NULL}
+  {"qat", qat_polling, qat_pre_init, qat_polling_config},
+  {"dasync", dasync_polling, NULL, NULL}
 };
 
 openssl_async_t openssl_async_main;
@@ -133,6 +136,7 @@ openssl_engine_register (char *engine_name, char *algorithm)
       if (!strcmp (engine_list[i].engine, engine_name))
 	{
 	  om->polling = engine_list[i].polling;
+	  om->polling_conf = engine_list[i].polling_conf;
 
 	  registered = i;
 	}
@@ -401,7 +405,7 @@ qat_polling_config ()
   int *config;
 
   config = &om->status[thread_index].poll_config;
-  if (*config)
+  if (PREDICT_TRUE (*config))
     return;
 
   ENGINE_ctrl_cmd (om->engine, "SET_INSTANCE_FOR_THREAD", thread_index,
@@ -421,7 +425,6 @@ qat_polling ()
 
   if (om->start_polling)
     {
-      qat_polling_config ();
       ENGINE_ctrl_cmd (om->engine, "POLL", 0, &poll_status, NULL, 0);
     }
 }
@@ -514,6 +517,8 @@ tls_async_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   u8 thread_index;
   openssl_async_t *om = &openssl_async_main;
 
+  if (om->polling_conf)
+    (*om->polling_conf) ();
   thread_index = vlib_get_thread_index ();
   if (pool_elts (om->evt_pool[thread_index]) > 0)
     {
