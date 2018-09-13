@@ -64,20 +64,20 @@ typedef struct
 
 /* I/G bit: individual (unicast)/group (broadcast/multicast). */
 always_inline uword
-ethernet_address_cast (const u8 * a)
+ethernet_address_cast (u8 * a)
 {
   return (a[0] >> 0) & 1;
 }
 
 always_inline int
-ethernet_address_is_broadcast (const u8 * a)
+ethernet_address_is_broadcast (u8 * a)
 {
   return clib_mem_unaligned (a, u32) == 0xffffffff &&
     clib_mem_unaligned (a + 4, u16) == 0xffff;
 }
 
 always_inline uword
-ethernet_address_is_locally_administered (const u8 * a)
+ethernet_address_is_locally_administered (u8 * a)
 {
   return (a[0] >> 1) & 1;
 }
