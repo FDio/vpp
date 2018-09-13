@@ -237,4 +237,6 @@ add_vpp_library(vom
 
   LINK_LIBRARIES ${VAPICLIENT_LIB} Threads::Threads boost_thread
     ${BOOST_SYSTEM_LIB} ${BOOST_FILESYSTEM_LIB} ${BOOST_ASIO_LIB} m rt
+
+  COMPONENT libvom
 )
