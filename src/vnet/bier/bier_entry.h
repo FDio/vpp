@@ -75,6 +75,9 @@ extern index_t bier_entry_create(index_t bti,
                                  bier_bp_t bp);
 extern void bier_entry_delete(index_t bei);
 
+extern void bier_entry_path_update (index_t bei,
+                                    const fib_route_path_t *rpaths);
+
 extern void bier_entry_path_add(index_t bei,
                                 const fib_route_path_t *brp);
 

@@ -115,11 +115,11 @@ vnet_bier_route_cmd (vlib_main_t * vm,
 
     if (add)
     {
-        bier_table_route_add(&bti, bp, brps);
+        bier_table_route_path_add(&bti, bp, brps);
     }
     else
     {
-        bier_table_route_remove(&bti, bp, brps);
+        bier_table_route_path_remove(&bti, bp, brps);
     }
 
 done:
@@ -149,11 +149,11 @@ show_bier_fib_command_fn (vlib_main_t * vm,
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
         if (unformat (input, "%d %d", &bti, &bp))
         {
-             flags = BIER_SHOW_DETAIL;
+            flags = BIER_SHOW_DETAIL;
         }
         else if (unformat (input, "%d", &bti))
         {
-              flags = BIER_SHOW_DETAIL;
+            flags = BIER_SHOW_DETAIL;
         }
         else
         {

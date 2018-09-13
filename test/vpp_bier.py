@@ -120,28 +120,31 @@ class VppBierRoute(VppObject):
         self.bp = bp
         self.paths = paths
 
+    def encode_path(self, p):
+        lstack = []
+        for l in p.nh_labels:
+            if type(l) == VppMplsLabel:
+                lstack.append(l.encode())
+            else:
+                lstack.append({'label': l, 'ttl': 255})
+        n_labels = len(lstack)
+        while (len(lstack) < 16):
+            lstack.append({})
+        return {'next_hop': p.nh_addr,
+                'weight': 1,
+                'afi': p.proto,
+                'sw_if_index': 0xffffffff,
+                'preference': 0,
+                'table_id': p.nh_table_id,
+                'next_hop_id': p.next_hop_id,
+                'is_udp_encap': p.is_udp_encap,
+                'n_labels': n_labels,
+                'label_stack': lstack}
+
     def encode_paths(self):
         br_paths = []
         for p in self.paths:
-            lstack = []
-            for l in p.nh_labels:
-                if type(l) == VppMplsLabel:
-                    lstack.append(l.encode())
-                else:
-                    lstack.append({'label': l, 'ttl': 255})
-            n_labels = len(lstack)
-            while (len(lstack) < 16):
-                lstack.append({})
-            br_paths.append({'next_hop': p.nh_addr,
-                             'weight': 1,
-                             'afi': p.proto,
-                             'sw_if_index': 0xffffffff,
-                             'preference': 0,
-                             'table_id': p.nh_table_id,
-                             'next_hop_id': p.next_hop_id,
-                             'is_udp_encap': p.is_udp_encap,
-                             'n_labels': n_labels,
-                             'label_stack': lstack})
+            br_paths.append(self.encode_path(p))
         return br_paths
 
     def add_vpp_config(self):
@@ -158,6 +161,42 @@ class VppBierRoute(VppObject):
             self.bp,
             self.encode_paths(),
             is_add=0)
+
+    def update_paths(self, paths):
+        self.paths = paths
+        self._test.vapi.bier_route_add_del(
+            self.tbl_id,
+            self.bp,
+            self.encode_paths(),
+            is_replace=1)
+
+    def add_path(self, path):
+        self._test.vapi.bier_route_add_del(
+            self.tbl_id,
+            self.bp,
+            [self.encode_path(path)],
+            is_add=1,
+            is_replace=0)
+        self.paths.append(path)
+        self._test.registry.register(self, self._test.logger)
+
+    def remove_path(self, path):
+        self._test.vapi.bier_route_add_del(
+            self.tbl_id,
+            self.bp,
+            [self.encode_path(path)],
+            is_add=0,
+            is_replace=0)
+        self.paths.remove(path)
+
+    def remove_all_paths(self):
+        self._test.vapi.bier_route_add_del(
+            self.tbl_id,
+            self.bp,
+            [],
+            is_add=0,
+            is_replace=1)
+        self.paths = []
 
     def __str__(self):
         return self.object_id()

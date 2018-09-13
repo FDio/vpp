@@ -93,12 +93,17 @@ extern index_t bier_table_add_or_lock(const bier_table_id_t *id,
                                       mpls_label_t ll);
 extern void bier_table_unlock(const bier_table_id_t *id);
 
-extern void bier_table_route_add(const bier_table_id_t *bti,
-                                 bier_bp_t bp,
-                                 fib_route_path_t *brp);
-extern void bier_table_route_remove(const bier_table_id_t *bti,
-                                    bier_bp_t bp,
-                                    fib_route_path_t *brp);
+extern void bier_table_route_path_add(const bier_table_id_t *bti,
+                                      bier_bp_t bp,
+                                      fib_route_path_t *brp);
+extern void bier_table_route_path_remove(const bier_table_id_t *bti,
+                                         bier_bp_t bp,
+                                         fib_route_path_t *brp);
+extern void bier_table_route_path_update(const bier_table_id_t *bti,
+                                         bier_bp_t bp,
+                                         fib_route_path_t *brp);
+extern void bier_table_route_delete(const bier_table_id_t *bti,
+                                    bier_bp_t b);
 
 extern void bier_table_show_all(vlib_main_t * vm,
                                 bier_show_flags_t flags);

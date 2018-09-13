@@ -21,7 +21,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_internal.h>
 #include <vnet/fib/fib_urpf_list.h>
-#include <vnet/bier/bier_hdr_inlines.h>
+#include <vnet/bier/bier_fwd.h>
 
 /*
  * distribution error tolerance for load-balancing
@@ -999,7 +999,7 @@ load_balance_inline (vlib_main_t * vm,
 	  {
 	      /* it's BIER */
 	      const bier_hdr_t *bh0 = vlib_buffer_get_current(b0);
-	      vnet_buffer(b0)->ip.flow_hash = bier_hdr_get_entropy(bh0);
+	      vnet_buffer(b0)->ip.flow_hash = bier_compute_flow_hash(bh0);
 	  }
 
 	  dpo0 = load_balance_get_bucket_i(lb0, 

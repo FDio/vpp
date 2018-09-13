@@ -72,6 +72,8 @@ define bier_table_details
     @param br_is_add - Is this a route add or delete
     @param br_is_replace - Are the paths specfied replacing those already
                            present or are they to be combined.
+			   is_replace = 1 and n_paths=0 implies delete the
+			   route and all paths;
     @param br_n_paths - The number of paths
     @param br_paths - The array of paths
 */

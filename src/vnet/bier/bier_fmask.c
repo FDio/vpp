@@ -165,14 +165,14 @@ bier_fmask_child_remove (fib_node_index_t bfmi,
 static void
 bier_fmask_init (bier_fmask_t *bfm,
                  const bier_fmask_id_t *fmid,
-                 const fib_route_path_t *rpaths)
+                 const fib_route_path_t *rpath)
 {
     const bier_table_id_t *btid;
+    fib_route_path_t *rpaths;
     mpls_label_t olabel;
 
-    ASSERT(1 == vec_len(rpaths));
     memset(bfm, 0, sizeof(*bfm));
-
+    
     bfm->bfm_id = clib_mem_alloc(sizeof(*bfm->bfm_id));
 
     fib_node_init(&bfm->bfm_node, FIB_NODE_TYPE_BIER_FMASK);
@@ -188,9 +188,9 @@ bier_fmask_init (bier_fmask_t *bfm,
 
     if (!(bfm->bfm_flags & BIER_FMASK_FLAG_DISP))
     {
-        if (NULL != rpaths->frp_label_stack)
+        if (NULL != rpath->frp_label_stack)
         {
-            olabel = rpaths->frp_label_stack[0].fml_value;
+            olabel = rpath->frp_label_stack[0].fml_value;
             vnet_mpls_uc_set_label(&bfm->bfm_label, olabel);
             vnet_mpls_uc_set_exp(&bfm->bfm_label, 0);
             vnet_mpls_uc_set_s(&bfm->bfm_label, 1);
@@ -220,13 +220,15 @@ bier_fmask_init (bier_fmask_t *bfm,
         bfm->bfm_label = clib_host_to_net_u32(bfm->bfm_label);
     }
 
+    rpaths = NULL;
+    vec_add1(rpaths, *rpath);
     bfm->bfm_pl = fib_path_list_create((FIB_PATH_LIST_FLAG_SHARED |
                                         FIB_PATH_LIST_FLAG_NO_URPF),
                                        rpaths);
     bfm->bfm_sibling = fib_path_list_child_add(bfm->bfm_pl,
                                                FIB_NODE_TYPE_BIER_FMASK,
                                                bier_fmask_get_index(bfm));
-
+    vec_free(rpaths);
     bier_fmask_stack(bfm);
 }
 
@@ -276,7 +278,7 @@ bier_fmask_lock (index_t bfmi)
 
 index_t
 bier_fmask_create_and_lock (const bier_fmask_id_t *fmid,
-                            const fib_route_path_t *rpaths)
+                            const fib_route_path_t *rpath)
 {
     bier_fmask_t *bfm;
     index_t bfmi;
@@ -287,7 +289,7 @@ bier_fmask_create_and_lock (const bier_fmask_id_t *fmid,
     vlib_validate_combined_counter (&(bier_fmask_counters), bfmi);
     vlib_zero_combined_counter (&(bier_fmask_counters), bfmi);
 
-    bier_fmask_init(bfm, fmid, rpaths);
+    bier_fmask_init(bfm, fmid, rpath);
 
     bier_fmask_lock(bfmi);
 

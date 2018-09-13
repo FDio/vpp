@@ -192,6 +192,9 @@ class VppRoutePath(object):
                 'n_labels': len(self.nh_labels),
                 'label_stack': self.encode_labels()}
 
+    def __eq__(self, other):
+        return self.nh_addr == other.nh_addr
+
 
 class VppMRoutePath(VppRoutePath):
 
