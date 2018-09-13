@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3d4c31ee_2474825e",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-13T13:22:55Z",
+      "side": 1,
+      "message": "refer",
+      "revId": "7cd54b8c5b7eb0eff4033574b5101c15fdff40db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
