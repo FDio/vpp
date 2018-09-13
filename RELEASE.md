@@ -12,6 +12,14 @@
 * @subpage release_notes_1609
 * @subpage release_notes_1606
 
+@page release_notes_18011 Release notes for VPP 18.07.1
+
+This is bug fix release.
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1801)
+
 @page release_notes_1807 Release notes for VPP 18.07
 
 More than 533 commits since the 18.04 release.
