@@ -202,6 +202,100 @@ class TestBier(VppTestCase):
         """BIER midpoint BSL:64"""
         self.bier_midpoint(BIERLength.BIER_LEN_64, 8, 64)
 
+    def test_bier_load_balance(self):
+        """BIER load-balance"""
+
+        #
+        # Add a BIER table for sub-domain 0, set 0, and BSL 256
+        #
+        bti = VppBierTableID(0, 0, BIERLength.BIER_LEN_64)
+        bt = VppBierTable(self, bti, 77)
+        bt.add_vpp_config()
+
+        #
+        # packets with varying entropy
+        #
+        pkts = []
+        for ii in range(257):
+            pkts.append((Ether(dst=self.pg0.local_mac,
+                               src=self.pg0.remote_mac) /
+                         MPLS(label=77, ttl=255) /
+                         BIER(length=BIERLength.BIER_LEN_64,
+                              entropy=ii,
+                              BitString=chr(255)*16) /
+                         IPv6(src=self.pg0.remote_ip6,
+                              dst=self.pg0.remote_ip6) /
+                         UDP(sport=1234, dport=1234) /
+                         Raw()))
+
+        #
+        # 4 next hops
+        #
+        nhs = [{'ip': "10.0.0.1", 'label': 201},
+               {'ip': "10.0.0.2", 'label': 202},
+               {'ip': "10.0.0.3", 'label': 203},
+               {'ip': "10.0.0.4", 'label': 204}]
+
+        for nh in nhs:
+            ipr = VppIpRoute(
+                self, nh['ip'], 32,
+                [VppRoutePath(self.pg1.remote_ip4,
+                              self.pg1.sw_if_index,
+                              labels=[VppMplsLabel(nh['label'])])])
+            ipr.add_vpp_config()
+
+        bier_route = VppBierRoute(
+            self, bti, 1,
+            [VppRoutePath(nhs[0]['ip'], 0xffffffff,
+                          labels=[VppMplsLabel(101)]),
+             VppRoutePath(nhs[1]['ip'], 0xffffffff,
+                          labels=[VppMplsLabel(101)])])
+        bier_route.add_vpp_config()
+
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1)
+
+        #
+        # we should have recieved a packet from each neighbor
+        #
+        for nh in nhs[:2]:
+            self.assertTrue(sum(p[MPLS].label == nh['label'] for p in rx))
+
+        #
+        # add the other paths
+        #
+        bier_route.update_paths(
+            [VppRoutePath(nhs[0]['ip'], 0xffffffff,
+                          labels=[VppMplsLabel(101)]),
+             VppRoutePath(nhs[1]['ip'], 0xffffffff,
+                          labels=[VppMplsLabel(101)]),
+             VppRoutePath(nhs[2]['ip'], 0xffffffff,
+                          labels=[VppMplsLabel(101)]),
+             VppRoutePath(nhs[3]['ip'], 0xffffffff,
+                          labels=[VppMplsLabel(101)])])
+
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1)
+        for nh in nhs:
+            self.assertTrue(sum(p[MPLS].label == nh['label'] for p in rx))
+
+        #
+        # remove first two paths
+        #
+        bier_route.remove_path(VppRoutePath(nhs[0]['ip'], 0xffffffff,
+                                            labels=[VppMplsLabel(101)]))
+        bier_route.remove_path(VppRoutePath(nhs[1]['ip'], 0xffffffff,
+                                            labels=[VppMplsLabel(101)]))
+
+        rx = self.send_and_expect(self.pg0, pkts, self.pg1)
+        for nh in nhs[2:]:
+            self.assertTrue(sum(p[MPLS].label == nh['label'] for p in rx))
+
+        #
+        # remove the last of the paths, deleteing the entry
+        #
+        bier_route.remove_all_paths()
+
+        self.send_and_assert_no_replies(self.pg0, pkts)
+
     def test_bier_head(self):
         """BIER head"""
 

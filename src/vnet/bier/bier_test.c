@@ -335,7 +335,7 @@ bier_test_mpls_spf (void)
     index_t bei_1;
 
     input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
-    bier_table_route_add(&bt_0_0_0_256, 1, input_paths_1_1_1_1);
+    bier_table_route_path_add(&bt_0_0_0_256, 1, input_paths_1_1_1_1);
     bei_1 = bier_table_lookup(bier_table_get(bti), 1);
 
     BIER_TEST((INDEX_INVALID != bei_1), "BP:1 present");
@@ -492,7 +492,7 @@ bier_test_mpls_spf (void)
     index_t bei_2;
 
     input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
-    bier_table_route_add(&bt_0_0_0_256, 2, input_paths_1_1_1_1);
+    bier_table_route_path_add(&bt_0_0_0_256, 2, input_paths_1_1_1_1);
     bei_2 = bier_table_lookup(bier_table_get(bti), 2);
 
     bier_entry_contribute_forwarding(bei_2, &dpo_bei);
@@ -541,7 +541,7 @@ bier_test_mpls_spf (void)
                                    1,
                                    out_lbl_101,
                                    FIB_ROUTE_PATH_FLAG_NONE);
-    bier_table_route_add(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
+    bier_table_route_path_update(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
     bei_3 = bier_table_lookup(bier_table_get(bti), 3);
 
     BIER_TEST((INDEX_INVALID != bei_3), "BP:3 present");
@@ -584,7 +584,7 @@ bier_test_mpls_spf (void)
      */
     paths_1_1_1_1[0] = path_1_1_1_1;
     input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
-    bier_table_route_add(&bt_0_0_0_256, 3, input_paths_1_1_1_1);
+    bier_table_route_path_add(&bt_0_0_0_256, 3, input_paths_1_1_1_1);
 
     BIER_TEST(!bier_test_validate_entry(bei_3, 2,
                                         &dpo_o_bfm_1_1_1_1,
@@ -653,7 +653,7 @@ bier_test_mpls_spf (void)
      * remove the original 1.1.1.2 fmask from BP:3
      */
     input_paths_1_1_1_2 = vec_dup(paths_1_1_1_2);
-    bier_table_route_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
+    bier_table_route_path_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
     bier_entry_contribute_forwarding(bei_3, &dpo_bei);
     BIER_TEST((dpo_bei.dpoi_index == bfmi_1_1_1_1),
               "BP:3 stacks on fmask 1.1.1.1");
@@ -672,13 +672,13 @@ bier_test_mpls_spf (void)
      * remove the routes added
      */
     input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
-    bier_table_route_remove(&bt_0_0_0_256, 2, input_paths_1_1_1_1);
+    bier_table_route_path_remove(&bt_0_0_0_256, 2, input_paths_1_1_1_1);
     input_paths_1_1_1_2 = vec_dup(paths_1_1_1_2);
-    bier_table_route_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
+    bier_table_route_path_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_2);
     input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
-    bier_table_route_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_1);
-    input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
-    bier_table_route_remove(&bt_0_0_0_256, 1, input_paths_1_1_1_1);
+    bier_table_route_path_remove(&bt_0_0_0_256, 3, input_paths_1_1_1_1);
+
+    bier_table_route_delete(&bt_0_0_0_256, 1);
 
     /*
      * delete the table
@@ -827,7 +827,7 @@ bier_test_mpls_disp (void)
     };
     vec_add1(paths_via_disp, path_via_disp);
 
-    bier_table_route_add(&bt_0_0_0_256, 3, paths_via_disp);
+    bier_table_route_path_add(&bt_0_0_0_256, 3, paths_via_disp);
 
     /*
      * the fmask should stack on the BIER disp table
@@ -890,7 +890,7 @@ bier_test_mpls_disp (void)
 
     bier_disp_table_entry_path_remove(bier_disp_tbl_id, src,
                                       BIER_HDR_PROTO_IPV4, rpaths);
-    bier_table_route_remove(&bt_0_0_0_256, 3, paths_via_disp);
+    bier_table_route_path_remove(&bt_0_0_0_256, 3, paths_via_disp);
 
     bier_disp_table_unlock_w_table_id(bier_disp_tbl_id);
 

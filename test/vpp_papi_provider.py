@@ -3147,7 +3147,8 @@ class VppPapiProvider(object):
                            bti,
                            bp,
                            paths,
-                           is_add=1):
+                           is_add=1,
+                           is_replace=0):
         """ BIER Route add/del """
         return self.api(
             self.papi.bier_route_add_del,
@@ -3157,7 +3158,8 @@ class VppPapiProvider(object):
              'br_bp': bp,
              'br_n_paths': len(paths),
              'br_paths': paths,
-             'br_is_add': is_add})
+             'br_is_add': is_add,
+             'br_is_replace': is_replace})
 
     def bier_route_dump(self, bti):
         return self.api(

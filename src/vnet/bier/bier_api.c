@@ -204,13 +204,24 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
         }
     }
 
-    if (mp->br_is_add)
+    if (mp->br_is_replace)
     {
-        bier_table_route_add(&bti, bp, brpaths);
+        if (0 == vec_len(brpaths))
+        {
+            bier_table_route_delete(&bti, bp);
+        }
+        else
+        {
+            bier_table_route_path_update(&bti, bp, brpaths);
+        }
+    }
+    else if (mp->br_is_add)
+    {
+        bier_table_route_path_add(&bti, bp, brpaths);
     }
     else
     {
-        bier_table_route_remove(&bti, bp, brpaths);
+        bier_table_route_path_remove(&bti, bp, brpaths);
     }
     vec_free(brpaths);
 
