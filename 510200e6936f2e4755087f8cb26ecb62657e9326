@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "af5f98ba_5c1caa30",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-13T21:05:15Z",
+      "side": 1,
+      "message": "You don\u0027t appear to have changed anything based on my comment on #1, and you haven\u0027t said why in your reply to the comment.\n\nYour response says \u0027here is the information you were looking for\u0027.  But I wasn\u0027t looking for information, I was making suggestions on how to change your patch to make it better.  The response to a change review comment really should be \u0027I will change this\u0027 or \u0027I will not change this for reasons\u0027.\n\n1. It makes logical sense to put the answering message after the requesting message.  Why don\u0027t you do this?\n\n2. All the information about what you should expect to find in the responses - one message per queue, per interface, for all (? or perhaps certain types of?) interfaces - is information that helps programmers use your API.  Document it, in comments, in the file, where they will find it when they go looking. They will not find your responses to my change review comments.",
+      "revId": "510200e6936f2e4755087f8cb26ecb62657e9326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55cbaf29_7560f7a3",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-13T21:05:15Z",
+      "side": 1,
+      "message": "From the API, I don\u0027t know what interface types are HARDWARE - it makes sense in the VPP code internals, but not to me as a caller.  What interface types are these, and do they include vhostuser interfaces (which have both assigned threads and potentially multiple queues)?",
+      "revId": "510200e6936f2e4755087f8cb26ecb62657e9326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
