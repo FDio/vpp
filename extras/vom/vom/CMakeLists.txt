@@ -228,12 +228,13 @@ list(APPEND VOM_HEADERS
   vxlan_tunnel.hpp
 )
 
-add_library(vom SHARED ${VOM_SOURCES})
-target_link_libraries(vom ${VAPICLIENT_LIB} Threads::Threads boost_thread
-  ${BOOST_SYSTEM_LIB} ${BOOST_FILESYSTEM_LIB} ${BOOST_ASIO_LIB} m rt)
 add_definitions(-Wall -Werror -std=gnu++11)
-install(TARGETS vom DESTINATION lib)
 
-foreach(file ${VOM_HEADERS})
-  install(FILES ${file} DESTINATION include/vom)
-endforeach()
+add_vpp_library(vom
+  SOURCES ${VOM_SOURCES}
+
+  INSTALL_HEADERS ${VOM_HEADERS}
+
+  LINK_LIBRARIES ${VAPICLIENT_LIB} Threads::Threads boost_thread
+    ${BOOST_SYSTEM_LIB} ${BOOST_FILESYSTEM_LIB} ${BOOST_ASIO_LIB} m rt
+)

@@ -22,6 +22,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
+find_package(VPP)
 find_package(Threads REQUIRED)
 
 add_subdirectory(vom)
