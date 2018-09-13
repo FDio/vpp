@@ -114,6 +114,7 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
 		      segments,
 		      ntohl (mp->sids.weight),
 		      mp->type, ntohl (mp->fib_table), mp->is_encap);
+  vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
 }
@@ -147,6 +148,7 @@ vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
 		      mp->operation,
 		      segments, ntohl (mp->sl_index),
 		      ntohl (mp->sids.weight));
+  vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_POLICY_MOD_REPLY);
 }
