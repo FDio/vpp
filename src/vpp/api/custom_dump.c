@@ -726,7 +726,7 @@ static void *vl_api_ip_add_del_route_t_print
   if (mp->is_add == 0)
     s = format (s, "del ");
 
-  if (mp->next_hop_sw_if_index)
+  if (mp->next_hop_sw_if_index != ~0)
     s = format (s, "sw_if_index %d ", ntohl (mp->next_hop_sw_if_index));
 
   if (mp->is_ipv6)
@@ -735,12 +735,18 @@ static void *vl_api_ip_add_del_route_t_print
   else
     s = format (s, "%U/%d ", format_ip4_address, mp->dst_address,
 		mp->dst_address_length);
+
+  if (mp->table_id != 0)
+    s = format (s, "vrf %d ", ntohl (mp->table_id));
+
   if (mp->is_local)
     s = format (s, "local ");
   else if (mp->is_drop)
     s = format (s, "drop ");
   else if (mp->is_classify)
     s = format (s, "classify %d", ntohl (mp->classify_table_index));
+  else if (mp->next_hop_via_label != htonl (MPLS_LABEL_INVALID))
+    s = format (s, "via via_label %d ", ntohl (mp->next_hop_via_label));
   else
     {
       if (mp->is_ipv6)
@@ -749,17 +755,99 @@ static void *vl_api_ip_add_del_route_t_print
 	s = format (s, "via %U ", format_ip4_address, mp->next_hop_address);
     }
 
-  if (mp->table_id != 0)
-    s = format (s, "vrf %d ", ntohl (mp->table_id));
-
   if (mp->next_hop_weight != 1)
-    s = format (s, "weight %d ", mp->next_hop_weight);
+    s = format (s, "weight %d ", (u32) mp->next_hop_weight);
 
   if (mp->is_multipath)
     s = format (s, "multipath ");
 
   if (mp->next_hop_table_id)
     s = format (s, "lookup-in-vrf %d ", ntohl (mp->next_hop_table_id));
+
+  if (mp->next_hop_n_out_labels)
+    {
+      for (u8 i = 0; i < mp->next_hop_n_out_labels; i++)
+	{
+	  s = format (s, "out-label %d ",
+		      ntohl (mp->next_hop_out_label_stack[i].label));
+	}
+    }
+
+  FINISH;
+}
+
+static void *vl_api_mpls_route_add_del_t_print
+  (vl_api_mpls_route_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: mpls_route_add_del ");
+
+  if (mp->mr_is_add)
+    s = format (s, "add ");
+  else
+    s = format (s, "del ");
+
+  s = format (s, "%d ", ntohl (mp->mr_label));
+
+  if (mp->mr_eos)
+    s = format (s, "eos ");
+  else
+    s = format (s, "non-eos ");
+
+
+  if (mp->mr_next_hop_proto == DPO_PROTO_IP4)
+    {
+      ip4_address_t ip4_null = {.as_u32 = 0, };
+      if (memcmp (mp->mr_next_hop, &ip4_null, sizeof (ip4_null)))
+	s = format (s, "via %U ", format_ip4_address, mp->mr_next_hop);
+      else
+	s = format (s, "via lookup-in-ip4-table %d ",
+		    ntohl (mp->mr_next_hop_table_id));
+    }
+  else if (mp->mr_next_hop_proto == DPO_PROTO_IP6)
+    {
+      ip6_address_t ip6_null = { {0}
+      };
+      if (memcmp (mp->mr_next_hop, &ip6_null, sizeof (ip6_null)))
+	s = format (s, "via %U ", format_ip6_address, mp->mr_next_hop);
+      else
+	s = format (s, "via lookup-in-ip6-table %d ",
+		    ntohl (mp->mr_next_hop_table_id));
+    }
+  else if (mp->mr_next_hop_proto == DPO_PROTO_ETHERNET)
+    {
+      s = format (s, "via l2-input-on ");
+    }
+  else if (mp->mr_next_hop_proto == DPO_PROTO_MPLS)
+    {
+      if (mp->mr_next_hop_via_label != htonl (MPLS_LABEL_INVALID))
+	s =
+	  format (s, "via via-label %d ", ntohl (mp->mr_next_hop_via_label));
+      else
+	s = format (s, "via next-hop-table %d ",
+		    ntohl (mp->mr_next_hop_table_id));
+    }
+  if (mp->mr_next_hop_sw_if_index != ~0)
+    s = format (s, "sw_if_index %d ", ntohl (mp->mr_next_hop_sw_if_index));
+
+  if (mp->mr_next_hop_weight != 1)
+    s = format (s, "weight %d ", (u32) mp->mr_next_hop_weight);
+
+  if (mp->mr_is_multipath)
+    s = format (s, "multipath ");
+
+  if (mp->mr_is_classify)
+    s = format (s, "classify %d", ntohl (mp->mr_classify_table_index));
+
+  if (mp->mr_next_hop_n_out_labels)
+    {
+      for (u8 i = 0; i < mp->mr_next_hop_n_out_labels; i++)
+	{
+	  s = format (s, "out-label %d ",
+		      ntohl (mp->mr_next_hop_out_label_stack[i].label));
+	}
+    }
 
   FINISH;
 }
@@ -770,12 +858,28 @@ static void *vl_api_ip_table_add_del_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: ip_table_add_del ");
-  if (!mp->is_add)
+  if (mp->is_add)
+    s = format (s, "add ");
+  else
     s = format (s, "del ");
   if (mp->is_ipv6)
     s = format (s, "ip6 ");
-  if (mp->table_id != 0)
-    s = format (s, "vrf %d ", ntohl (mp->table_id));
+  s = format (s, "table %d ", ntohl (mp->table_id));
+
+  FINISH;
+}
+
+static void *vl_api_mpls_table_add_del_t_print
+  (vl_api_mpls_table_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: mpls_table_add_del ");
+  if (mp->mt_is_add)
+    s = format (s, "add ");
+  else
+    s = format (s, "del ");
+  s = format (s, "table %d ", ntohl (mp->mt_table_id));
 
   FINISH;
 }
@@ -834,6 +938,42 @@ static void *vl_api_mpls_tunnel_add_del_t_print
 
   if (mp->mt_is_add == 0)
     s = format (s, "del ");
+
+  FINISH;
+}
+
+static void *vl_api_sr_mpls_policy_add_t_print
+  (vl_api_sr_mpls_policy_add_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sr_mpls_policy_add ");
+
+  s = format (s, "bsid %d ", ntohl (mp->bsid));
+
+  if (mp->weight != htonl ((u32) 1))
+    s = format (s, "%d ", ntohl (mp->weight));
+
+  if (mp->type)
+    s = format (s, "spray ");
+
+  if (mp->n_segments)
+    {
+      for (int i = 0; i < mp->n_segments; i++)
+	s = format (s, "next %d ", ntohl (mp->segments[i]));
+    }
+
+  FINISH;
+}
+
+static void *vl_api_sr_mpls_policy_del_t_print
+  (vl_api_sr_mpls_policy_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sr_mpls_policy_del ");
+
+  s = format (s, "bsid %d ", ntohl (mp->bsid));
 
   FINISH;
 }
@@ -3574,9 +3714,13 @@ _(TAP_DELETE_V2, tap_delete_v2)                                         \
 _(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)                   \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
+_(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                               \
+_(MPLS_TABLE_ADD_DEL, mpls_table_add_del)                               \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)		                \
+_(SR_MPLS_POLICY_ADD, sr_mpls_policy_add)		                \
+_(SR_MPLS_POLICY_DEL, sr_mpls_policy_del)		                \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \

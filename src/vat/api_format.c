@@ -5387,6 +5387,9 @@ _(sw_interface_ip6nd_ra_prefix_reply)                   \
 _(sw_interface_ip6nd_ra_config_reply)                   \
 _(set_arp_neighbor_limit_reply)                         \
 _(l2_patch_add_del_reply)                               \
+_(sr_mpls_policy_add_reply)                             \
+_(sr_mpls_policy_mod_reply)                             \
+_(sr_mpls_policy_del_reply)                             \
 _(sr_policy_add_reply)                                  \
 _(sr_policy_mod_reply)                                  \
 _(sr_policy_del_reply)                                  \
@@ -5613,6 +5616,9 @@ _(SW_INTERFACE_IP6ND_RA_CONFIG_REPLY,                                   \
   sw_interface_ip6nd_ra_config_reply)                                   \
 _(SET_ARP_NEIGHBOR_LIMIT_REPLY, set_arp_neighbor_limit_reply)           \
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
+_(SR_MPLS_POLICY_ADD_REPLY, sr_mpls_policy_add_reply)                   \
+_(SR_MPLS_POLICY_MOD_REPLY, sr_mpls_policy_mod_reply)                   \
+_(SR_MPLS_POLICY_DEL_REPLY, sr_mpls_policy_del_reply)                   \
 _(SR_POLICY_ADD_REPLY, sr_policy_add_reply)                             \
 _(SR_POLICY_MOD_REPLY, sr_policy_mod_reply)                             \
 _(SR_POLICY_DEL_REPLY, sr_policy_del_reply)                             \
@@ -8476,7 +8482,7 @@ api_ip_add_del_route (vat_main_t * vam)
   u32 classify_table_index = ~0;
   u8 is_classify = 0;
   u8 resolve_host = 0, resolve_attached = 0;
-  mpls_label_t *next_hop_out_label_stack = NULL;
+  vl_api_fib_mpls_label_t *next_hop_out_label_stack = NULL;
   mpls_label_t next_hop_out_label = MPLS_LABEL_INVALID;
   mpls_label_t next_hop_via_label = MPLS_LABEL_INVALID;
 
@@ -8555,8 +8561,15 @@ api_ip_add_del_route (vat_main_t * vam)
       else if (unformat (i, "next-hop-table %d", &next_hop_table_id))
 	;
       else if (unformat (i, "out-label %d", &next_hop_out_label))
-	vec_add1 (next_hop_out_label_stack, ntohl (next_hop_out_label));
-      else if (unformat (i, "via-label %d", &next_hop_via_label))
+	{
+	  vl_api_fib_mpls_label_t fib_label = {
+	    .label = ntohl (next_hop_out_label),
+	    .ttl = 64,
+	    .exp = 0,
+	  };
+	  vec_add1 (next_hop_out_label_stack, fib_label);
+	}
+      else if (unformat (i, "via via-label %d", &next_hop_via_label))
 	;
       else if (unformat (i, "random"))
 	random_add_del = 1;
@@ -8629,8 +8642,8 @@ api_ip_add_del_route (vat_main_t * vam)
   for (j = 0; j < count; j++)
     {
       /* Construct the API message */
-      M2 (IP_ADD_DEL_ROUTE, mp,
-	  sizeof (mpls_label_t) * vec_len (next_hop_out_label_stack));
+      M2 (IP_ADD_DEL_ROUTE, mp, sizeof (vl_api_fib_mpls_label_t) *
+	  vec_len (next_hop_out_label_stack));
 
       mp->next_hop_sw_if_index = ntohl (sw_if_index);
       mp->table_id = ntohl (vrf_id);
@@ -8655,7 +8668,8 @@ api_ip_add_del_route (vat_main_t * vam)
 	{
 	  memcpy (mp->next_hop_out_label_stack,
 		  next_hop_out_label_stack,
-		  vec_len (next_hop_out_label_stack) * sizeof (mpls_label_t));
+		  (vec_len (next_hop_out_label_stack) *
+		   sizeof (vl_api_fib_mpls_label_t)));
 	  vec_free (next_hop_out_label_stack);
 	}
 
@@ -8919,12 +8933,13 @@ api_mpls_route_add_del (vat_main_t * vam)
   u32 classify_table_index = ~0;
   u8 is_classify = 0;
   u8 resolve_host = 0, resolve_attached = 0;
+  u8 is_interface_rx = 0;
   mpls_label_t next_hop_via_label = MPLS_LABEL_INVALID;
   mpls_label_t next_hop_out_label = MPLS_LABEL_INVALID;
-  mpls_label_t *next_hop_out_label_stack = NULL;
+  vl_api_fib_mpls_label_t *next_hop_out_label_stack = NULL;
   mpls_label_t local_label = MPLS_LABEL_INVALID;
   u8 is_eos = 0;
-  dpo_proto_t next_hop_proto = DPO_PROTO_IP4;
+  dpo_proto_t next_hop_proto = DPO_PROTO_MPLS;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -8969,22 +8984,44 @@ api_mpls_route_add_del (vat_main_t * vam)
 	is_multipath = 1;
       else if (unformat (i, "count %d", &count))
 	;
-      else if (unformat (i, "lookup-in-ip4-table %d", &next_hop_table_id))
+      else if (unformat (i, "via lookup-in-ip4-table %d", &next_hop_table_id))
 	{
 	  next_hop_set = 1;
 	  next_hop_proto = DPO_PROTO_IP4;
 	}
-      else if (unformat (i, "lookup-in-ip6-table %d", &next_hop_table_id))
+      else if (unformat (i, "via lookup-in-ip6-table %d", &next_hop_table_id))
 	{
 	  next_hop_set = 1;
 	  next_hop_proto = DPO_PROTO_IP6;
 	}
-      else if (unformat (i, "next-hop-table %d", &next_hop_table_id))
-	;
-      else if (unformat (i, "via-label %d", &next_hop_via_label))
-	;
+      else
+	if (unformat
+	    (i, "via l2-input-on %U", api_unformat_sw_if_index, vam,
+	     &sw_if_index))
+	{
+	  next_hop_set = 1;
+	  next_hop_proto = DPO_PROTO_ETHERNET;
+	  is_interface_rx = 1;
+	}
+      else if (unformat (i, "via l2-input-on sw_if_index %d", &sw_if_index))
+	{
+	  next_hop_set = 1;
+	  next_hop_proto = DPO_PROTO_ETHERNET;
+	  is_interface_rx = 1;
+	}
+      else if (unformat (i, "via next-hop-table %d", &next_hop_table_id))
+	next_hop_set = 1;
+      else if (unformat (i, "via via-label %d", &next_hop_via_label))
+	next_hop_set = 1;
       else if (unformat (i, "out-label %d", &next_hop_out_label))
-	vec_add1 (next_hop_out_label_stack, ntohl (next_hop_out_label));
+	{
+	  vl_api_fib_mpls_label_t fib_label = {
+	    .label = ntohl (next_hop_out_label),
+	    .ttl = 64,
+	    .exp = 0,
+	  };
+	  vec_add1 (next_hop_out_label_stack, fib_label);
+	}
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -9015,8 +9052,8 @@ api_mpls_route_add_del (vat_main_t * vam)
   for (j = 0; j < count; j++)
     {
       /* Construct the API message */
-      M2 (MPLS_ROUTE_ADD_DEL, mp,
-	  sizeof (mpls_label_t) * vec_len (next_hop_out_label_stack));
+      M2 (MPLS_ROUTE_ADD_DEL, mp, sizeof (vl_api_fib_mpls_label_t) *
+	  vec_len (next_hop_out_label_stack));
 
       mp->mr_next_hop_sw_if_index = ntohl (sw_if_index);
       mp->mr_table_id = ntohl (table_id);
@@ -9027,6 +9064,7 @@ api_mpls_route_add_del (vat_main_t * vam)
       mp->mr_is_multipath = is_multipath;
       mp->mr_is_resolve_host = resolve_host;
       mp->mr_is_resolve_attached = resolve_attached;
+      mp->mr_is_interface_rx = is_interface_rx;
       mp->mr_next_hop_weight = next_hop_weight;
       mp->mr_next_hop_table_id = ntohl (next_hop_table_id);
       mp->mr_classify_table_index = ntohl (classify_table_index);
@@ -9039,7 +9077,8 @@ api_mpls_route_add_del (vat_main_t * vam)
 	{
 	  memcpy (mp->mr_next_hop_out_label_stack,
 		  next_hop_out_label_stack,
-		  vec_len (next_hop_out_label_stack) * sizeof (mpls_label_t));
+		  vec_len (next_hop_out_label_stack) *
+		  sizeof (vl_api_fib_mpls_label_t));
 	  vec_free (next_hop_out_label_stack);
 	}
 
@@ -9190,6 +9229,109 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
     clib_memcpy (mp->mb_address, &v4_address, sizeof (v4_address));
   else
     clib_memcpy (mp->mb_address, &v6_address, sizeof (v6_address));
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_sr_mpls_policy_add (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sr_mpls_policy_add_t *mp;
+  u32 bsid = 0;
+  u32 weight = 1;
+  u8 type = 0;
+  u8 n_segments = 0;
+  u32 sid;
+  u32 *segments = NULL;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "bsid %d", &bsid))
+	;
+      else if (unformat (i, "weight %d", &weight))
+	;
+      else if (unformat (i, "spray"))
+	type = 1;
+      else if (unformat (i, "next %d", &sid))
+	{
+	  n_segments += 1;
+	  vec_add1 (segments, htonl (sid));
+	}
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (bsid == 0)
+    {
+      errmsg ("bsid not set");
+      return -99;
+    }
+
+  if (n_segments == 0)
+    {
+      errmsg ("no sid in segment stack");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M2 (SR_MPLS_POLICY_ADD, mp, sizeof (u32) * n_segments);
+
+  mp->bsid = htonl (bsid);
+  mp->weight = htonl (weight);
+  mp->type = type;
+  mp->n_segments = n_segments;
+  memcpy (mp->segments, segments, sizeof (u32) * n_segments);
+  vec_free (segments);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_sr_mpls_policy_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sr_mpls_policy_del_t *mp;
+  u32 bsid = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "bsid %d", &bsid))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (bsid == 0)
+    {
+      errmsg ("bsid not set");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SR_MPLS_POLICY_DEL, mp);
+
+  mp->bsid = htonl (bsid);
 
   /* send it... */
   S (mp);
@@ -9452,6 +9594,7 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
     .as_u32 = 0,
   };
   ip6_address_t v6_next_hop_address = { {0} };
+  mpls_label_t next_hop_via_label = MPLS_LABEL_INVALID;
   mpls_label_t next_hop_out_label = MPLS_LABEL_INVALID, *labels = NULL;
   int ret;
 
@@ -9473,6 +9616,8 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
 	{
 	  next_hop_proto_is_ip4 = 0;
 	}
+      else if (unformat (i, "via-label %d", &next_hop_via_label))
+	;
       else if (unformat (i, "l2-only"))
 	l2_only = 1;
       else if (unformat (i, "next-hop-table %d", &next_hop_table_id))
@@ -9494,6 +9639,7 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
   mp->mt_l2_only = l2_only;
   mp->mt_next_hop_table_id = ntohl (next_hop_table_id);
   mp->mt_next_hop_proto_is_ip4 = next_hop_proto_is_ip4;
+  mp->mt_next_hop_via_label = ntohl (next_hop_via_label);
 
   mp->mt_next_hop_n_out_labels = vec_len (labels);
 
@@ -23352,9 +23498,9 @@ _(sw_interface_bond_dump, "")                                           \
 _(sw_interface_slave_dump,                                              \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(ip_table_add_del,                                                     \
-  "table-id <n> [ipv6]\n")                                              \
+  "table <n> [ipv6] [add | del]\n")                                     \
 _(ip_add_del_route,                                                     \
-  "<addr>/<mask> via <addr> [table-id <n>]\n"                           \
+  "<addr>/<mask> via <addr | via-label <n>> [table-id <n>]\n"           \
   "[<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"               \
   "[weight <n>] [drop] [local] [classify <n>] [del]\n"                  \
   "[multipath] [count <n>]")                                            \
@@ -23362,17 +23508,22 @@ _(ip_mroute_add_del,                                                    \
   "<src> <grp>/<mask> [table-id <n>]\n"                                 \
   "[<intfc> | sw_if_index <id>] [local] [del]")                         \
 _(mpls_table_add_del,                                                   \
-  "table-id <n>\n")                                                     \
+  "table <n> [add | del]\n")                                            \
 _(mpls_route_add_del,                                                   \
-  "<label> <eos> via <addr> [table-id <n>]\n"                           \
-  "[<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"               \
-  "[weight <n>] [drop] [local] [classify <n>] [del]\n"                  \
-  "[multipath] [count <n>]")                                            \
+  "<label> <eos> via <addr | next-hop-table <n> | via-label <n> |\n"    \
+  "lookup-ip4-table <n> | lookup-in-ip6-table <n> |\n"                  \
+  "l2-input-on <intfc> | l2-input-on sw_if_index <id>>\n"               \
+  "[<intfc> | sw_if_index <id>] [resolve-attempts <n>] [weight <n>]\n"  \
+  "[drop] [local] [classify <n>] [multipath] [count <n>] [del]")        \
 _(mpls_ip_bind_unbind,                                                  \
   "<label> <addr/len>")                                                 \
 _(mpls_tunnel_add_del,                                                  \
   " via <addr> [table-id <n>]\n"                                        \
   "sw_if_index <id>] [l2]  [del]")                                      \
+_(sr_mpls_policy_add,                                                   \
+  "bsid <id> [weight <n>] [spray] next <sid> [next <sid>]")             \
+_(sr_mpls_policy_del,                                                   \
+  "bsid <id>")                                                          \
 _(bier_table_add_del,                                                   \
   "<label> <sub-domain> <set> <bsl> [del]")                             \
 _(bier_route_add_del,                                                   \
