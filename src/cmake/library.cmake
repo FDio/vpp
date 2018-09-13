@@ -66,7 +66,7 @@ macro(add_vpp_library lib)
       install(
 	FILES ${file}
 	DESTINATION include/${lib}/${dir}
-	COMPONENT vpp-dev
+	COMPONENT ${ARG_COMPONENT}-dev
       )
     endforeach()
   endif()
