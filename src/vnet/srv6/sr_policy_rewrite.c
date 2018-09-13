@@ -886,6 +886,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_policy_add (&bsid, segments, weight,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
 			   SR_POLICY_TYPE_DEFAULT), fib_table, is_encap);
+      vec_free (segments);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -903,6 +904,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_policy_mod ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
 			  sr_policy_index, fib_table, operation, segments,
 			  sl_index, weight);
+      vec_free (segments);
     }
 
   switch (rv)

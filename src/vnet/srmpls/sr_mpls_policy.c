@@ -502,6 +502,7 @@ sr_mpls_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       rv = sr_mpls_policy_add (bsid, segments,
 			       (is_spray ? SR_POLICY_TYPE_SPRAY :
 				SR_POLICY_TYPE_DEFAULT), weight);
+      vec_free (segments);
     }
   else if (is_del)
     rv = sr_mpls_policy_del (bsid);
@@ -516,6 +517,7 @@ sr_mpls_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (operation == 3 && weight == (u32) ~ 0)
 	return clib_error_return (0, "No new weight for the SL specified");
       rv = sr_mpls_policy_mod (bsid, operation, segments, sl_index, weight);
+      vec_free (segments);
     }
   switch (rv)
     {

@@ -67,6 +67,7 @@ vl_api_sr_mpls_policy_add_t_handler (vl_api_sr_mpls_policy_add_t * mp)
   int rv = 0;
   rv = sr_mpls_policy_add (ntohl (mp->bsid),
 			   segments, mp->type, ntohl (mp->weight));
+  vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_ADD_REPLY);
 }
@@ -91,6 +92,7 @@ vl_api_sr_mpls_policy_mod_t_handler (vl_api_sr_mpls_policy_mod_t * mp)
   rv = sr_mpls_policy_mod (ntohl (mp->bsid),
 			   mp->operation, segments, ntohl (mp->sl_index),
 			   ntohl (mp->weight));
+  vec_free (segments);
 
   REPLY_MACRO (VL_API_SR_MPLS_POLICY_MOD_REPLY);
 }
