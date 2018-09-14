@@ -1341,7 +1341,7 @@ ip6_reass_walk_expired (vlib_main_t * vm,
 	      to_next += 1;
 	      n_left_to_next -= 1;
 	    }
-	  f->flags |= (trace_frame * VLIB_FRAME_TRACE);
+	  f->frame_flags |= (trace_frame * VLIB_FRAME_TRACE);
 	  vlib_put_frame_to_node (vm, rm->ip6_drop_idx, f);
 	}
 
@@ -1375,7 +1375,7 @@ ip6_reass_walk_expired (vlib_main_t * vm,
 	      to_next += 1;
 	      n_left_to_next -= 1;
 	    }
-	  f->flags |= (trace_frame * VLIB_FRAME_TRACE);
+	  f->frame_flags |= (trace_frame * VLIB_FRAME_TRACE);
 	  vlib_put_frame_to_node (vm, rm->ip6_icmp_error_idx, f);
 	}
 

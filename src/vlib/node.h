@@ -386,6 +386,9 @@ typedef struct vlib_node_t
 typedef struct vlib_frame_t
 {
   /* Frame flags. */
+  u16 frame_flags;
+
+  /* User flags. Used for sending hints to the next node. */
   u16 flags;
 
   /* Number of scalar bytes in arguments. */
