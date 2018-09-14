@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e9c8cb9c_6fae0ca7",
+        "filename": "RELEASE.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-14T10:09:51Z",
+      "side": 1,
+      "message": "18071",
+      "range": {
+        "startLine": 15,
+        "startChar": 20,
+        "endLine": 15,
+        "endChar": 25
+      },
+      "revId": "9f624cacf379c5349e66c12b91f0b4765f7ec22c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
