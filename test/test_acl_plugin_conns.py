@@ -259,7 +259,7 @@ class ACLPluginConnTestCase(VppTestCase):
         # Try to send the packet from the "forbidden" side - it must pass
         conn1.send_through(1, 'A')
         # ensure conn times out for real
-        for i in IterateWithSleep(self, 130, "Wait for timeout", 0.1):
+        for i in IterateWithSleep(self, 150, "Wait for timeout", 0.1):
             pass
         try:
             p2 = conn1.send_through(1).command()

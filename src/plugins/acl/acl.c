@@ -3900,6 +3900,8 @@ acl_plugin_show_sessions (acl_main_t * am,
 		       pw->interrupt_is_unwanted);
       vlib_cli_output (vm, "  interrupt generation: %d",
 		       pw->interrupt_generation);
+      vlib_cli_output (vm, "  received session change requests: %d",
+		       pw->total_session_change_requests);
     }
   vlib_cli_output (vm, "\n\nConn cleaner thread counters:");
 #define _(cnt, desc) vlib_cli_output(vm, "             %20lu: %s", am->cnt, desc);
@@ -4212,6 +4214,13 @@ acl_init (vlib_main_t * vm)
     for (wk = 0; wk < vec_len (am->per_worker_data); wk++)
       {
 	acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+	if (tm->n_vlib_mains > 1)
+	  {
+	    clib_spinlock_init (&pw->pending_session_change_request_lock);
+	  }
+	vec_alloc (pw->pending_session_change_requests,
+		   256 * tm->n_vlib_mains);
+	vec_alloc (pw->wip_session_change_requests, 256 * tm->n_vlib_mains);
 	vec_validate (pw->expired,
 		      ACL_N_TIMEOUTS *
 		      am->fa_max_deleted_sessions_per_interval);
