@@ -177,6 +177,8 @@ tls_notify_app_accept (tls_ctx_t * ctx)
     }
   ctx->c_s_index = app_session->session_index;
   ctx->app_session_handle = session_handle (app_session);
+  session_lookup_add_connection (&ctx->connection,
+				 session_handle (app_session));
   return app->cb_fns.session_accept_callback (app_session);
 }
 
@@ -216,6 +218,9 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
       TLS_DBG (1, "failed to notify app");
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
     }
+
+  session_lookup_add_connection (&ctx->connection,
+				 session_handle (app_session));
 
   return 0;
 
@@ -499,23 +504,21 @@ tls_connect (transport_endpoint_t * tep)
 void
 tls_disconnect (u32 ctx_handle, u32 thread_index)
 {
-  stream_session_t *tls_session, *app_session;
   tls_ctx_t *ctx;
 
   TLS_DBG (1, "Disconnecting %x", ctx_handle);
 
   ctx = tls_ctx_get (ctx_handle);
-  tls_session = session_get_from_handle (ctx->tls_session_handle);
-  stream_session_disconnect (tls_session);
 
-  app_session = session_get_from_handle_if_valid (ctx->app_session_handle);
-  if (app_session)
-    {
-      segment_manager_dealloc_fifos (app_session->svm_segment_index,
-				     app_session->server_rx_fifo,
-				     app_session->server_tx_fifo);
-      session_free (app_session);
-    }
+  vnet_disconnect_args_t a = {
+    .handle = ctx->tls_session_handle,
+    .app_index = tls_main.app_index,
+  };
+
+  if (vnet_disconnect_session (&a))
+    clib_warning ("disconnect returned");
+
+  stream_session_delete_notify (&ctx->connection);
   tls_ctx_free (ctx);
 }
 
@@ -575,13 +578,18 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 u32
 tls_stop_listen (u32 lctx_index)
 {
-  tls_main_t *tm = &tls_main;
-  tls_ctx_t *lctx;
   tls_engine_type_t engine_type;
+  tls_ctx_t *lctx;
 
   lctx = tls_listener_ctx_get (lctx_index);
-  /* TODO use unbind */
-  application_stop_listen (tm->app_index, 0, lctx->tls_session_handle);
+  vnet_unbind_args_t a = {
+    .handle = lctx->tls_session_handle,
+    .app_index = tls_main.app_index,
+    .wrk_map_index = 0		/* default wrk */
+  };
+  if (vnet_unbind (&a))
+    clib_warning ("unbind returned");
+
   engine_type = lctx->tls_ctx_engine;
   tls_vfts[engine_type].ctx_stop_listen (lctx);
 
