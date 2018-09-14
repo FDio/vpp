@@ -81,6 +81,15 @@ const char test_srv_key_rsa[] =
   "oEjPLVNtx8SOj/M4rhaPT3I=\r\n" "-----END PRIVATE KEY-----\r\n";
 const u32 test_srv_key_rsa_len = sizeof (test_srv_key_rsa);
 
+#define app_interface_check_thread_and_barrier(_fn, _arg)		\
+  if (PREDICT_FALSE (vlib_get_thread_index () != 0 ||			\
+                     (vlib_worker_threads[0].wait_at_barrier &&		\
+		      !vlib_worker_threads[0].wait_at_barrier[0])))	\
+    {									\
+      vlib_rpc_call_main_thread (_fn, (u8 *) _arg, sizeof(*_arg));	\
+      return 0;								\
+    }
+
 static u8
 session_endpoint_is_local (session_endpoint_t * sep)
 {
@@ -525,14 +534,15 @@ int
 vnet_application_detach (vnet_app_detach_args_t * a)
 {
   application_t *app;
-  app = application_get_if_valid (a->app_index);
 
+  app = application_get_if_valid (a->app_index);
   if (!app)
     {
       clib_warning ("app not attached");
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
+  app_interface_check_thread_and_barrier (vnet_application_detach, a);
   application_free (app);
   return 0;
 }
@@ -599,12 +609,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
       local_session_t *ls;
 
       /* Disconnect reply came to worker 1 not main thread */
-      if (vlib_get_thread_index () == 1)
-	{
-	  vlib_rpc_call_main_thread (vnet_disconnect_session, (u8 *) a,
-				     sizeof (*a));
-	  return 0;
-	}
+      app_interface_check_thread_and_barrier (vnet_disconnect_session, a);
 
       if (!(ls = application_get_local_session_from_handle (a->handle)))
 	return 0;
