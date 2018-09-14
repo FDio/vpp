@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4abafee0_6771a7f3",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-14T17:31:46Z",
+      "side": 1,
+      "message": "For the sake of the API definition (again, not usually VPP coders consuming it) you might want to be clear what you mean by a logical core.  I don\u0027t think that\u0027s a generally understood term.",
+      "revId": "316ae1dcb0eb74dfc1f7ced606f984a9c2dc4692",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
