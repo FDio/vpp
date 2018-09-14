@@ -397,16 +397,11 @@ bfd_unlock (bfd_main_t * bm)
   clib_spinlock_unlock_if_init (&bm->lock);
 }
 
-void oingo (void);
-
 static inline void
 bfd_lock_check (bfd_main_t * bm)
 {
   if (PREDICT_FALSE (bm->lock_recursion_count < 1))
-    {
-      clib_warning ("lock check failure");
-      oingo ();
-    }
+    clib_warning ("lock check failure");
 }
 
 u8 *bfd_input_format_trace (u8 * s, va_list * args);
