@@ -37,14 +37,6 @@
 #include <vnet/bfd/bfd_main.h>
 #include <vlib/log.h>
 
-u32 oingoes;
-
-void
-oingo (void)
-{
-  oingoes++;
-}
-
 static u64
 bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
 {
