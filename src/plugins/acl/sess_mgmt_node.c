@@ -30,25 +30,6 @@
 #include <plugins/acl/public_inlines.h>
 #include <plugins/acl/session_inlines.h>
 
-// #include <vppinfra/bihash_40_8.h>
-
-
-static u64
-fa_session_get_shortest_timeout (acl_main_t * am)
-{
-  int timeout_type;
-  u64 timeout = ~0LL;
-  for (timeout_type = ACL_TIMEOUT_UDP_IDLE;
-       timeout_type < ACL_N_USER_TIMEOUTS; timeout_type++)
-    {
-      if (timeout > am->session_timeout_sec[timeout_type])
-	{
-	  timeout = am->session_timeout_sec[timeout_type];
-	}
-    }
-  return timeout;
-}
-
 static u8 *
 format_ip6_session_bihash_kv (u8 * s, va_list * args)
 {
@@ -138,14 +119,9 @@ static u64
 fa_session_get_list_timeout (acl_main_t * am, fa_session_t * sess)
 {
   u64 timeout = am->vlib_main->clib_time.clocks_per_second / 1000;
-  /*
-   * we have the shortest possible timeout type in all the lists
-   * (see README-multicore for the rationale)
-   */
-  if (sess->link_list_id == ACL_TIMEOUT_PURGATORY)
-    timeout = fa_session_get_timeout (am, sess);
-  else
-    timeout *= fa_session_get_shortest_timeout (am);
+  timeout = fa_session_get_timeout (am, sess);
+  /* for all user lists, check them twice per timeout */
+  timeout >>= (sess->link_list_id != ACL_TIMEOUT_PURGATORY);
   return timeout;
 }
 
@@ -182,6 +158,25 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
   fa_full_session_id_t fsid;
   fsid.thread_index = thread_index;
   int total_expired = 0;
+
+  aclp_swap_wip_and_pending_session_change_requests (am, thread_index);
+  u64 *psr = NULL;
+
+  vec_foreach (psr, pw->wip_session_change_requests)
+  {
+    u32 op = *psr >> 32;
+    fsid.session_index = *psr & 0xffffffff;
+    if (op == 0)
+      {
+	int result = acl_fa_restart_timer_for_session (am, now, fsid);
+	if (result == 0)
+	  {
+	    clib_warning ("Bug: can not restart timer for my own session");
+	  }
+      }
+  }
+  _vec_len (pw->wip_session_change_requests) = 0;
+
 
   {
     u8 tt = 0;
@@ -240,6 +235,9 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
 	  clib_bitmap_get (pw->pending_clear_sw_if_index_bitmap, sw_if_index);
 	if (am->trace_sessions > 3)
 	  {
+	    elog_acl_maybe_trace_X2 (am,
+				     "acl_fa_check_idle_sessions: now %lu sess_timeout_time %lu",
+				     "i8i8", now, sess_timeout_time);
 	    elog_acl_maybe_trace_X4 (am,
 				     "acl_fa_check_idle_sessions: session %d sw_if_index %d timeout_passed %d clearing_interface %d",
 				     "i4i4i4i4", (u32) fsid.session_index,
@@ -360,6 +358,37 @@ send_one_worker_interrupt (vlib_main_t * vm, acl_main_t * am,
       CLIB_MEMORY_BARRIER ();
     }
 }
+
+void
+aclp_post_session_change_request (acl_main_t * am, u32 target_thread,
+				  u32 target_session, u32 request_type)
+{
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[target_thread];
+  clib_spinlock_lock_if_init (&pw->pending_session_change_request_lock);
+  vec_add1 (pw->pending_session_change_requests,
+	    (((u64) request_type) << 32) | target_session);
+  pw->total_session_change_requests++;
+  if (vec_len (pw->pending_session_change_requests) == 1)
+    {
+      /* ensure the requests get processed */
+      send_one_worker_interrupt (am->vlib_main, am, target_thread);
+    }
+  clib_spinlock_unlock_if_init (&pw->pending_session_change_request_lock);
+}
+
+void
+aclp_swap_wip_and_pending_session_change_requests (acl_main_t * am,
+						   u32 target_thread)
+{
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[target_thread];
+  u64 *tmp;
+  clib_spinlock_lock_if_init (&pw->pending_session_change_request_lock);
+  tmp = pw->pending_session_change_requests;
+  pw->pending_session_change_requests = pw->wip_session_change_requests;
+  pw->wip_session_change_requests = tmp;
+  clib_spinlock_unlock_if_init (&pw->pending_session_change_request_lock);
+}
+
 
 static int
 purgatory_has_connections (vlib_main_t * vm, acl_main_t * am,
@@ -581,11 +610,13 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		}
 	    }
 	}
+      am->fa_conn_list_earliest_expiry_time = next_expire;
 
       /* If no pending connections and no ACL applied then no point in timing out */
       if (!has_pending_conns && (0 == am->fa_total_enabled_count))
 	{
 	  am->fa_cleaner_cnt_wait_without_timeout++;
+	  am->fa_conn_cleaner_wakeup_time = ~0ULL;
 	  elog_acl_maybe_trace_X1 (am,
 				   "acl_conn_cleaner: now %lu entering wait without timeout",
 				   "i8", now);
@@ -595,6 +626,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       else
 	{
 	  f64 timeout = ((i64) next_expire - (i64) now) / cpu_cps;
+	  am->fa_conn_cleaner_wakeup_time = next_expire;
 	  if (timeout <= 0)
 	    {
 	      /* skip waiting altogether */
@@ -603,6 +635,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  else
 	    {
 	      am->fa_cleaner_cnt_wait_with_timeout++;
+
 	      elog_acl_maybe_trace_X2 (am,
 				       "acl_conn_cleaner: now %lu entering wait with timeout %.6f sec",
 				       "i8f8", now, timeout);
@@ -618,6 +651,9 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  break;
 	case ACL_FA_CLEANER_RESCHEDULE:
 	  /* Nothing to do. */
+	  elog_acl_maybe_trace_X1 (am,
+				   "acl_fa_session_cleaner_process: now %lu, received ACL_FA_CLEANER_RESCHEDULE",
+				   "i8", now);
 	  break;
 	case ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX:
 	  {

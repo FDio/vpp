@@ -245,6 +245,11 @@ typedef struct {
   u32 fa_cleaner_node_index;
   /* FA session timeouts, in seconds */
   u32 session_timeout_sec[ACL_N_TIMEOUTS];
+  /* when is the earliest expiry time across all the lists */
+  u64 fa_conn_list_earliest_expiry_time;
+  /* if the cleaner is sleeping, when is it supposed to wake up */
+  u64 fa_conn_cleaner_wakeup_time;
+
   /* total session adds/dels */
   u64 fa_session_total_adds;
   u64 fa_session_total_dels;
@@ -384,5 +389,7 @@ AH has a special treatment of its length, it is in 32-bit words, not 64-bit word
 extern acl_main_t acl_main;
 
 void *acl_plugin_set_heap();
+void aclp_post_session_change_request(acl_main_t *am, u32 target_thread, u32 target_session, u32 request_type);
+void aclp_swap_wip_and_pending_session_change_requests(acl_main_t *am, u32 target_thread);
 
 #endif

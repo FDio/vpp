@@ -178,6 +178,12 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id,
       /* set the head expiry time because it is the first element */
       pw->fa_conn_list_head_expiry_time[list_id] =
 	now + fa_session_get_timeout (am, sess);
+      if (am->fa_conn_list_earliest_expiry_time >
+	  pw->fa_conn_list_head_expiry_time[list_id])
+	{
+	  am->fa_conn_list_earliest_expiry_time =
+	    pw->fa_conn_list_head_expiry_time[list_id];
+	}
     }
 }
 
@@ -235,6 +241,16 @@ acl_fa_conn_list_delete_session (acl_main_t * am,
   return 1;
 }
 
+static void
+acl_reschedule_cleaner (acl_main_t * am)
+{
+  void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
+  vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
+			     ACL_FA_CLEANER_RESCHEDULE, ~0);
+  clib_mem_set_heap (oldheap);
+}
+
+
 always_inline int
 acl_fa_restart_timer_for_session (acl_main_t * am, u64 now,
 				  fa_full_session_id_t sess_id)
@@ -242,17 +258,21 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now,
   if (acl_fa_conn_list_delete_session (am, sess_id, now))
     {
       acl_fa_conn_list_add_session (am, sess_id, now);
+      if (am->fa_conn_cleaner_wakeup_time >
+	  am->fa_conn_list_earliest_expiry_time)
+	{
+	  acl_reschedule_cleaner (am);
+	}
       return 1;
     }
   else
     {
       /*
-       * Our thread does not own this connection, so we can not delete
-       * The session. To avoid the complicated signaling, we simply
-       * pick the list waiting time to be the shortest of the timeouts.
-       * This way we do not have to do anything special, and let
-       * the regular requeue check take care of everything.
+       * Our thread does not own this connection, so we can not requeue
+       * The session. So we post the signal to the owner.
        */
+      aclp_post_session_change_request (am, sess_id.thread_index,
+					sess_id.session_index, 0);
       return 0;
     }
 }
