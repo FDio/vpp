@@ -30,25 +30,6 @@
 #include <plugins/acl/public_inlines.h>
 #include <plugins/acl/session_inlines.h>
 
-// #include <vppinfra/bihash_40_8.h>
-
-
-static u64
-fa_session_get_shortest_timeout (acl_main_t * am)
-{
-  int timeout_type;
-  u64 timeout = ~0LL;
-  for (timeout_type = ACL_TIMEOUT_UDP_IDLE;
-       timeout_type < ACL_N_USER_TIMEOUTS; timeout_type++)
-    {
-      if (timeout > am->session_timeout_sec[timeout_type])
-	{
-	  timeout = am->session_timeout_sec[timeout_type];
-	}
-    }
-  return timeout;
-}
-
 static u8 *
 format_ip6_session_bihash_kv (u8 * s, va_list * args)
 {
@@ -138,14 +119,7 @@ static u64
 fa_session_get_list_timeout (acl_main_t * am, fa_session_t * sess)
 {
   u64 timeout = am->vlib_main->clib_time.clocks_per_second / 1000;
-  /*
-   * we have the shortest possible timeout type in all the lists
-   * (see README-multicore for the rationale)
-   */
-  if (sess->link_list_id == ACL_TIMEOUT_PURGATORY)
-    timeout = fa_session_get_timeout (am, sess);
-  else
-    timeout *= fa_session_get_shortest_timeout (am);
+  timeout = fa_session_get_timeout (am, sess);
   return timeout;
 }
 
@@ -182,6 +156,24 @@ acl_fa_check_idle_sessions (acl_main_t * am, u16 thread_index, u64 now)
   fa_full_session_id_t fsid;
   fsid.thread_index = thread_index;
   int total_expired = 0;
+
+  aclp_swap_wip_and_pending_session_change_requests (am, thread_index);
+  u64 *psr = NULL;
+  vec_foreach (psr, pw->wip_session_change_requests)
+  {
+    u32 op = *psr >> 32;
+    fsid.session_index = *psr & 0xffffffff;
+    if (op == 0)
+      {
+	int result = acl_fa_restart_timer_for_session (am, now, fsid);
+	if (result == 0)
+	  {
+	    clib_warning ("Bug: can not restart timer for my own session");
+	  }
+      }
+  }
+  _vec_len (pw->wip_session_change_requests) = 0;
+
 
   {
     u8 tt = 0;
@@ -360,6 +352,37 @@ send_one_worker_interrupt (vlib_main_t * vm, acl_main_t * am,
       CLIB_MEMORY_BARRIER ();
     }
 }
+
+void
+aclp_post_session_change_request (acl_main_t * am, u32 target_thread,
+				  u32 target_session, u32 request_type)
+{
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[target_thread];
+  clib_spinlock_lock_if_init (&pw->pending_session_change_request_lock);
+  vec_add1 (pw->pending_session_change_requests,
+	    (((u64) request_type) << 32) | target_session);
+  pw->total_session_change_requests++;
+  if (vec_len (pw->pending_session_change_requests) == 1)
+    {
+      /* ensure the requests get processed */
+      send_one_worker_interrupt (am->vlib_main, am, target_thread);
+    }
+  clib_spinlock_unlock_if_init (&pw->pending_session_change_request_lock);
+}
+
+void
+aclp_swap_wip_and_pending_session_change_requests (acl_main_t * am,
+						   u32 target_thread)
+{
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[target_thread];
+  u64 *tmp;
+  clib_spinlock_lock_if_init (&pw->pending_session_change_request_lock);
+  tmp = pw->pending_session_change_requests;
+  pw->pending_session_change_requests = pw->wip_session_change_requests;
+  pw->wip_session_change_requests = tmp;
+  clib_spinlock_unlock_if_init (&pw->pending_session_change_request_lock);
+}
+
 
 static int
 purgatory_has_connections (vlib_main_t * vm, acl_main_t * am,

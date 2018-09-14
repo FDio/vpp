@@ -384,5 +384,7 @@ AH has a special treatment of its length, it is in 32-bit words, not 64-bit word
 extern acl_main_t acl_main;
 
 void *acl_plugin_set_heap();
+void aclp_post_session_change_request(acl_main_t *am, u32 target_thread, u32 target_session, u32 request_type);
+void aclp_swap_wip_and_pending_session_change_requests(acl_main_t *am, u32 target_thread);
 
 #endif
