@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "196bb36f_36631473",
+        "filename": "src/plugins/vmxnet3/plugin.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-14T05:05:09Z",
+      "side": 1,
+      "message": "vmxnet3",
+      "range": {
+        "startLine": 25,
+        "startChar": 24,
+        "endLine": 25,
+        "endChar": 32
+      },
+      "revId": "3fd29d387bfd3903ae01eb67a4647d3ab802f52f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
