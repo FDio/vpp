@@ -247,12 +247,12 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now,
   else
     {
       /*
-       * Our thread does not own this connection, so we can not delete
-       * The session. To avoid the complicated signaling, we simply
-       * pick the list waiting time to be the shortest of the timeouts.
-       * This way we do not have to do anything special, and let
-       * the regular requeue check take care of everything.
+       * Our thread does not own this connection, so we can not requeue
+       * The session. So we post the signal to the owner.
        */
+      aclp_post_session_change_request (am, sess_id.thread_index,
+					sess_id.session_index,
+					ACL_FA_REQ_SESS_RESCHEDULE);
       return 0;
     }
 }

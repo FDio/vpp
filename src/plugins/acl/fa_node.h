@@ -145,6 +145,12 @@ CT_ASSERT_EQUAL(fa_5tuple_opaque_t_must_match_5tuple, sizeof(fa_5tuple_opaque_t)
 typedef struct {
   /* The pool of sessions managed by this worker */
   fa_session_t *fa_sessions_pool;
+  /* incoming session change requests from other workers */
+  clib_spinlock_t pending_session_change_request_lock;
+  u64 *pending_session_change_requests;
+  u64 *wip_session_change_requests;
+  u64 rcvd_session_change_requests;
+  u64 sent_session_change_requests;
   /* per-worker ACL_N_TIMEOUTS of conn lists */
   u32 *fa_conn_list_head;
   u32 *fa_conn_list_tail;
