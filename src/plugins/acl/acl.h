@@ -385,4 +385,12 @@ extern acl_main_t acl_main;
 
 void *acl_plugin_set_heap();
 
+typedef enum {
+  ACL_FA_REQ_SESS_RESCHEDULE = 0,
+  ACL_FA_N_REQ,
+} acl_fa_sess_req_t;
+
+void aclp_post_session_change_request(acl_main_t *am, u32 target_thread, u32 target_session, acl_fa_sess_req_t request_type);
+void aclp_swap_wip_and_pending_session_change_requests(acl_main_t *am, u32 target_thread);
+
 #endif
