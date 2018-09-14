@@ -12,7 +12,7 @@
 * @subpage release_notes_1609
 * @subpage release_notes_1606
 
-@page release_notes_18011 Release notes for VPP 18.07.1
+@page release_notes_18071 Release notes for VPP 18.07.1
 
 This is bug fix release.
 
