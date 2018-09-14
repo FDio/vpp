@@ -237,7 +237,7 @@ always_inline vlib_frame_t *
 vlib_get_frame (vlib_main_t * vm, uword frame_index)
 {
   vlib_frame_t *f = vlib_get_frame_no_check (vm, frame_index);
-  ASSERT (f->flags & VLIB_FRAME_IS_ALLOCATED);
+  ASSERT (f->frame_flags & VLIB_FRAME_IS_ALLOCATED);
   return f;
 }
 

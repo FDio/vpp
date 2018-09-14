@@ -1286,7 +1286,7 @@ ip4_reass_walk_expired (vlib_main_t * vm,
 	      n_left_to_next -= 1;
 	      IP4_REASS_DEBUG_BUFFER (bi, enqueue_drop_timeout_walk);
 	    }
-	  f->flags |= (trace_frame * VLIB_FRAME_TRACE);
+	  f->frame_flags |= (trace_frame * VLIB_FRAME_TRACE);
 	  vlib_put_frame_to_node (vm, rm->ip4_drop_idx, f);
 	}
 
