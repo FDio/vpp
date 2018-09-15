@@ -333,7 +333,7 @@ openssl_ctx_write (tls_ctx_t * ctx, stream_session_t * app_session)
 	}
     }
 
-  if (deq_now < deq_max)
+  if (wrote < deq_max)
     tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
 
 check_tls_fifo:
