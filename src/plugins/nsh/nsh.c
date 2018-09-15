@@ -2000,7 +2000,7 @@ nsh_input_map (vlib_main_t * vm,
 		      goto trace1;
 		    }
 		  vnet_buffer (b1)->sw_if_index[VLIB_RX] =
-		    map0->rx_sw_if_index;
+		    map1->rx_sw_if_index;
 		}
 
 	      /* Pop NSH header */
