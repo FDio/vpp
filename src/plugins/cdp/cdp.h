@@ -95,6 +95,7 @@ typedef struct
 
   /* top-level state */
   int enabled;
+  int cdp_protocol_registered;
 
   /* Packet templates for different encap types */
   vlib_packet_template_t packet_templates[CDP_N_PACKET_TEMPLATES];
