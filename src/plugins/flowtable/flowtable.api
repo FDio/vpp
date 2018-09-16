@@ -1,0 +1,60 @@
+/** \brief hook flowtable configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index
+    @param next_node_index - (optional) redirect packets to given node, or 0xff for default
+    @param enable_disable - 0/1 set to disable
+*/
+define flowtable_conf
+{
+    u32 client_index;
+    u32 context;
+    u32 flows_max;
+    u32 sw_if_index;
+    u32 next_node_index;
+    u8 enable_disable;
+};
+
+define flowtable_conf_reply
+{
+    u32 context;
+    i32 retval;
+};
+
+/** \brief send additional informations to the flowtable
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 0/1 ip version
+    @param ip_src - source ip address
+    @param ip_dst - destination ip address
+    @param ip_upper_proto - tcp or udp
+    @param port_src - source port
+    @param port_dst - destination port
+    @param lifetime - time to live (~0 for left untouched)
+    @param offloaded - offloading status
+    @param infos - external infos (opaque field)
+*/
+define flowtable_update
+{
+    u32 client_index;
+    u32 context;
+
+    /* used to compute flow key */
+    u8 is_ip4;
+    u8 ip_src[16];
+    u8 ip_dst[16];
+    u8 ip_upper_proto;
+    u16 port_src;
+    u16 port_dst;
+
+    /* additional flow informations */
+    u16 lifetime;
+    u8 offloaded;
+    u8 infos[16];
+};
+
+define flowtable_update_reply
+{
+    u32 context;
+    i32 retval;
+};
