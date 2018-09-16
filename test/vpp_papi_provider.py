@@ -3919,3 +3919,22 @@ class VppPapiProvider(object):
 
     def svs_dump(self):
         return self.api(self.papi.svs_dump, {})
+    
+    def flowtable_conf(
+            self,
+            flows_max,
+            sw_if_index=0xFFFFFFFF,
+            next_node_index=0xFFFFFFFF,
+            enable_disable=0):
+        """
+
+        :param flows_max:
+        :param sw_if_index:  (Default value = 0xFFFFFFFF)
+        :param next_node_index:  (Default value = 0xFFFFFFFF)
+        :param enable_disable:  (Default value = 0)
+
+        """
+        return self.api(self.papi.flowtable_conf,
+                        {'flows_max': flows_max,
+                         'sw_if_index': sw_if_index,
+                         'next_node_index': next_node_index,
