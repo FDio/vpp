@@ -31,13 +31,14 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  vmxnet3_create_if_args_t args = { 0 };
+  vmxnet3_create_if_args_t args;
   u32 tmp;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
+  memset (&args, 0, sizeof (args));
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "%U", unformat_vlib_pci_addr, &args.addr))
