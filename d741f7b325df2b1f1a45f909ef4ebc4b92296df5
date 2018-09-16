@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b7bc080e_c868df81",
+        "filename": "src/plugins/cdp/cdp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-09-16T18:13:25Z",
+      "side": 1,
+      "message": "Up front: this is a comment on the underlying code; I have no problems with the proposed change.\n\nThis doesn\u0027t look right.  If \u0027cur\u0027 points within the packet, but the t and l extend outside the packet (they\u0027re 4 bytes long, collectively), then you will write memory outside of the packet boundary (because t and l are updated in place).\n\nFurther, we\u0027re defensive about the start of the next TLV starting within the packet, but not that the current TLV (all of its length) exists inside the packet before we attempt to process the TLV with the handler.",
+      "revId": "d741f7b325df2b1f1a45f909ef4ebc4b92296df5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
