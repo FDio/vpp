@@ -276,13 +276,18 @@ cdp_packet_scan (cdp_main_t * cm, cdp_neighbor_t * n)
       tlv = (cdp_tlv_t *) cur;
       tlv->t = ntohs (tlv->t);
       tlv->l = ntohs (tlv->l);
-      if (tlv->t >= ARRAY_LEN (tlv_handlers))
-	return CDP_ERROR_BAD_TLV;
-      handler = &tlv_handlers[tlv->t];
-      fp = handler->process;
-      e = (*fp) (cm, n, tlv);
-      if (e)
-	return e;
+      /*
+       * Only process known TLVs. In practice, certain
+       * devices send tlv->t = 0xFF, perhaps as an EOF of sorts.
+       */
+      if (tlv->t < ARRAY_LEN (tlv_handlers))
+	{
+	  handler = &tlv_handlers[tlv->t];
+	  fp = handler->process;
+	  e = (*fp) (cm, n, tlv);
+	  if (e)
+	    return e;
+	}
       /* tlv length includes (t, l) */
       cur += tlv->l;
     }

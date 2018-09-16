@@ -132,25 +132,7 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   /* So we can send events to the cdp process */
   cm->cdp_process_node_index = cdp_process_node.index;
 
-  /* Dynamically register the cdp input node with the snap classifier */
-  snap_register_input_protocol (vm, "cdp-input", 0xC /* ieee_oui, Cisco */ ,
-				0x2000 /* protocol CDP */ ,
-				cdp_input_node.index);
-
-  snap_register_input_protocol (vm, "cdp-input", 0xC /* ieee_oui, Cisco */ ,
-				0x2004 /* protocol CDP */ ,
-				cdp_input_node.index);
-
-#if 0				/* retain for reference */
-  /* with the hdlc classifier */
-  hdlc_register_input_protocol (vm, HDLC_PROTOCOL_cdp, cdp_input_node.index);
-#endif
-
-  /* with ethernet input (for SRP) */
-  ethernet_register_input_type (vm, ETHERNET_TYPE_CDP /* CDP */ ,
-				cdp_input_node.index);
-
-  /* Start w/ cdp effectively disabled */
+  /* Start w/ cdp disabled */
   poll_time_remaining = 86400.0;
 
   while (1)
@@ -166,6 +148,34 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  break;
 
 	case CDP_EVENT_ENABLE:
+	  if (!cm->cdp_protocol_registered)
+	    {
+	      /*
+	       * Dynamically register the cdp input node
+	       * with the snap classifier
+	       */
+	      snap_register_input_protocol (vm, "cdp-input",
+					    0xC /* ieee_oui, Cisco */ ,
+					    0x2000 /* protocol CDP */ ,
+					    cdp_input_node.index);
+
+	      snap_register_input_protocol (vm, "cdp-input",
+					    0xC /* ieee_oui, Cisco */ ,
+					    0x2004 /* protocol CDP */ ,
+					    cdp_input_node.index);
+#if 0
+	      /*
+	       * Keep this code for reference...
+	       * Register with the hdlc classifier
+	       */
+	      hdlc_register_input_protocol (vm, HDLC_PROTOCOL_cdp,
+					    cdp_input_node.index);
+#endif
+	      /* with ethernet input (for SRP) */
+	      ethernet_register_input_type (vm, ETHERNET_TYPE_CDP /* CDP */ ,
+					    cdp_input_node.index);
+	      cm->cdp_protocol_registered = 1;
+	    }
 	  poll_time_remaining = 10.0;
 	  break;
 
