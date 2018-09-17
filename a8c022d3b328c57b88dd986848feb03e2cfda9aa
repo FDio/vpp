@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "11eb70c2_e20a072e",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T12:01:46Z",
+      "side": 1,
+      "message": "it is not about \"do not translate\" or something like this, but check for STN setup, see https://gerrit.fd.io/r/#/c/13530/ and  https://jira.fd.io/browse/VPP-1344 for more details",
+      "revId": "a8c022d3b328c57b88dd986848feb03e2cfda9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d86b4a6_2c1c11f7",
+        "filename": "src/plugins/nat/nat_reass.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T12:01:46Z",
+      "side": 1,
+      "message": "initialize values in nat_ip4_reass_find_or_create()",
+      "range": {
+        "startLine": 72,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 29
+      },
+      "revId": "a8c022d3b328c57b88dd986848feb03e2cfda9aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
