@@ -1531,7 +1531,8 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       hw_flags |= (xd->link.link_status ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
     }
 
-  if (hw_flags_chg || (xd->link.link_duplex != prev_link.link_duplex))
+  if (xd->link.link_status
+      && (hw_flags_chg || (xd->link.link_duplex != prev_link.link_duplex)))
     {
       hw_flags_chg = 1;
       switch (xd->link.link_duplex)
@@ -1546,7 +1547,8 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	  break;
 	}
     }
-  if (hw_flags_chg || (xd->link.link_speed != prev_link.link_speed))
+  if (xd->link.link_status
+      && (hw_flags_chg || (xd->link.link_speed != prev_link.link_speed)))
     {
       hw_flags_chg = 1;
       switch (xd->link.link_speed)
