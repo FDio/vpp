@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b5eae7f9_43400a9c",
+        "filename": "src/plugins/flowtable/flowtable_node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 878,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-17T08:32:06Z",
+      "side": 1,
+      "message": "we use suffix process for process nodes, not for internal nodes",
+      "range": {
+        "startLine": 878,
+        "startChar": 22,
+        "endLine": 878,
+        "endChar": 30
+      },
+      "revId": "cc77ef7b99603e7efad50c23a0feb1fb7fd8a68f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
