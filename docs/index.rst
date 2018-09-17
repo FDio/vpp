@@ -27,3 +27,5 @@ Finally it is useful both a software development kit or an appliance out of the 
    troubleshooting/index
    events/index
    reference/index
+   relatedprojects/index
+   archive/index
