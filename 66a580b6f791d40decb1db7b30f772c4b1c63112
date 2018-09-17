@@ -1,0 +1,118 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "017c9abd_d8372670",
+        "filename": "src/plugins/nat/in2out.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T05:28:25Z",
+      "side": 1,
+      "message": "line too long",
+      "revId": "66a580b6f791d40decb1db7b30f772c4b1c63112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "37f6fa7a_85d1d2c7",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T05:28:25Z",
+      "side": 1,
+      "message": "nat44-classify: fragment cached",
+      "revId": "66a580b6f791d40decb1db7b30f772c4b1c63112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "79b1e505_a102a704",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 568,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T05:28:25Z",
+      "side": 1,
+      "message": "What is the meaning of this condition?",
+      "revId": "66a580b6f791d40decb1db7b30f772c4b1c63112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "89f18cc5_cb4e09dd",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 598,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T05:28:25Z",
+      "side": 1,
+      "message": "What is the meaning of this condition?",
+      "revId": "66a580b6f791d40decb1db7b30f772c4b1c63112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e08e0988_b5ba96dd",
+        "filename": "test/test_nat.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 3870,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T05:28:25Z",
+      "side": 1,
+      "message": "in+out interface fragments in order",
+      "range": {
+        "startLine": 3870,
+        "startChar": 12,
+        "endLine": 3870,
+        "endChar": 27
+      },
+      "revId": "66a580b6f791d40decb1db7b30f772c4b1c63112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "65cf41c5_dbf819dd",
+        "filename": "test/test_nat.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 3909,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-09-17T05:28:25Z",
+      "side": 1,
+      "message": "in+out interface fragments out of order",
+      "range": {
+        "startLine": 3909,
+        "startChar": 12,
+        "endLine": 3909,
+        "endChar": 31
+      },
+      "revId": "66a580b6f791d40decb1db7b30f772c4b1c63112",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
