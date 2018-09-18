@@ -152,6 +152,14 @@ session_free (stream_session_t * s)
     memset (s, 0xFA, sizeof (*s));
 }
 
+static void
+session_free_w_fifos (stream_session_t * s)
+{
+  segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
+				 s->server_tx_fifo);
+  session_free (s);
+}
+
 int
 session_alloc_fifos (segment_manager_t * sm, stream_session_t * s)
 {
@@ -751,7 +759,7 @@ stream_session_disconnect_notify (transport_connection_t * tc)
   stream_session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
-  s->session_state = SESSION_STATE_CLOSING;
+  s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
     return;
@@ -773,10 +781,7 @@ stream_session_delete (stream_session_t * s)
   if ((rv = session_lookup_del_session (s)))
     clib_warning ("hash delete error, rv %d", rv);
 
-  /* Cleanup fifo segments */
-  segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
-				 s->server_tx_fifo);
-  session_free (s);
+  session_free_w_fifos (s);
 }
 
 /**
@@ -793,10 +798,30 @@ stream_session_delete_notify (transport_connection_t * tc)
   stream_session_t *s;
 
   /* App might've been removed already */
-  s = session_get_if_valid (tc->s_index, tc->thread_index);
-  if (!s)
+  if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
-  stream_session_delete (s);
+
+  /* Make sure we don't try to send anything more */
+  svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+
+  switch (s->session_state)
+    {
+    case SESSION_STATE_TRANSPORT_CLOSING:
+      /* If transport finishes or times out before we get a reply
+       * from the app, do the whole disconnect since we might still
+       * have lingering events */
+      stream_session_disconnect (s);
+      break;
+    case SESSION_STATE_CLOSING:
+      /* Cleanup lookup table. Transport needs to still be valid */
+      session_lookup_del_session (s);
+      break;
+    case SESSION_STATE_CLOSED:
+      stream_session_delete (s);
+      break;
+    }
+
+  s->session_state = SESSION_STATE_CLOSED;
 }
 
 /**
@@ -1050,11 +1075,9 @@ stream_session_disconnect (stream_session_t * s)
   s->session_state = SESSION_STATE_CLOSING;
 
   /* If we are in the handler thread, or being called with the worker barrier
-   * held (api/cli), just append a new event to pending disconnects vector. */
-  if ((thread_index == 0 && !vlib_get_current_process (vlib_get_main ()))
-      || thread_index == s->thread_index)
+   * held, just append a new event to pending disconnects vector. */
+  if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
     {
-      ASSERT (s->thread_index == thread_index || thread_index == 0);
       vec_add2 (smm->pending_disconnects[s->thread_index], evt, 1);
       memset (evt, 0, sizeof (*evt));
       evt->session_handle = session_handle (s);
@@ -1074,6 +1097,12 @@ stream_session_disconnect (stream_session_t * s)
 void
 stream_session_disconnect_transport (stream_session_t * s)
 {
+  /* If transport is already closed, just free the session */
+  if (s->session_state == SESSION_STATE_CLOSED)
+    {
+      session_free_w_fifos (s);
+      return;
+    }
   s->session_state = SESSION_STATE_CLOSED;
   tp_vfts[session_get_transport_proto (s)].close (s->connection_index,
 						  s->thread_index);
@@ -1097,9 +1126,7 @@ stream_session_cleanup (stream_session_t * s)
 						    s->thread_index);
   /* Since we called cleanup, no delete notification will come. So, make
    * sure the session is properly freed. */
-  segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
-				 s->server_tx_fifo);
-  session_free (s);
+  session_free_w_fifos (s);
 }
 
 transport_service_type_t

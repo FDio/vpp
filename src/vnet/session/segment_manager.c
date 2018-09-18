@@ -591,7 +591,9 @@ segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
       /* Remove segment manager if no sessions and detached from app */
       if (segment_manager_app_detached (sm)
 	  && !segment_manager_has_fifos (sm))
-	segment_manager_del (sm);
+	{
+	  segment_manager_del (sm);
+	}
     }
   else
     segment_manager_segment_reader_unlock (sm);

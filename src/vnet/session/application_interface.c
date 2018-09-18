@@ -82,9 +82,7 @@ const char test_srv_key_rsa[] =
 const u32 test_srv_key_rsa_len = sizeof (test_srv_key_rsa);
 
 #define app_interface_check_thread_and_barrier(_fn, _arg)		\
-  if (PREDICT_FALSE (vlib_get_thread_index () != 0 ||			\
-                     (vlib_worker_threads[0].wait_at_barrier &&		\
-		      !vlib_worker_threads[0].wait_at_barrier[0])))	\
+  if (PREDICT_FALSE (!vlib_thread_is_main_w_barrier ()))		\
     {									\
       vlib_rpc_call_main_thread (_fn, (u8 *) _arg, sizeof(*_arg));	\
       return 0;								\

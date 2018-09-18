@@ -561,6 +561,7 @@ int session_send_io_evt_to_thread_custom (svm_fifo_t * f, u32 thread_index,
 					  session_evt_type_t evt_type);
 void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 				     void *rpc_args);
+
 ssvm_private_t *session_manager_get_evt_q_segment (void);
 
 u8 *format_stream_session (u8 * s, va_list * args);
