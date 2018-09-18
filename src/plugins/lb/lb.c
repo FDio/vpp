@@ -766,8 +766,9 @@ lb_flush_vip_as (u32 vip_index, u32 as_index)
         lb_hash_bucket_t *b;
 
         lb_hash_foreach_entry(h, b, i) {
-          if ((b->vip[i] == vip_index)
-              || (b->value[i] == as_index))
+          if ((vip_index == ~0)
+              || ((b->vip[i] == vip_index) && (as_index == ~0))
+              || ((b->vip[i] == vip_index) && (b->value[i] == as_index)))
             {
               vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
               vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
@@ -775,18 +776,24 @@ lb_flush_vip_as (u32 vip_index, u32 as_index)
               b->value[i] = ~0;
             }
         }
+        if (vip_index == ~0)
+          {
+            lb_hash_free(h);
+            lbm->per_cpu[thread_index].sticky_ht = 0;
+          }
+      }
     }
-  }
 
   return 0;
 }
 
 int lb_vip_del_ass_withlock(u32 vip_index, ip46_address_t *addresses, u32 n,
-                            u32 *as_index)
+                            u8 flush)
 {
   lb_main_t *lbm = &lb_main;
   u32 now = (u32) vlib_time_now(vlib_get_main());
   u32 *ip = 0;
+  u32 as_index = 0;
 
   lb_vip_t *vip;
   if (!(vip = lb_vip_get_by_index(vip_index))) {
@@ -795,7 +802,7 @@ int lb_vip_del_ass_withlock(u32 vip_index, ip46_address_t *addresses, u32 n,
 
   u32 *indexes = NULL;
   while (n--) {
-    if (lb_as_find_index_vip(vip, &addresses[n], as_index)) {
+    if (lb_as_find_index_vip(vip, &addresses[n], &as_index)) {
       vec_free(indexes);
       return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
@@ -809,7 +816,7 @@ int lb_vip_del_ass_withlock(u32 vip_index, ip46_address_t *addresses, u32 n,
       }
     }
 
-    vec_add1(indexes, *as_index);
+    vec_add1(indexes, as_index);
 next:
   continue;
   }
@@ -821,6 +828,12 @@ next:
     vec_foreach(ip, indexes) {
       lbm->ass[*ip].flags &= ~LB_AS_FLAGS_USED;
       lbm->ass[*ip].last_used = now;
+
+      if(flush)
+        {
+          /* flush flow table for deleted ASs*/
+          lb_flush_vip_as(vip_index, *ip);
+        }
     }
 
     //Recompute flows
@@ -833,16 +846,9 @@ next:
 
 int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n, u8 flush)
 {
-  u32 as_index = 0;
   lb_get_writer_lock();
-  int ret = lb_vip_del_ass_withlock(vip_index, addresses, n, &as_index);
+  int ret = lb_vip_del_ass_withlock(vip_index, addresses, n, flush);
   lb_put_writer_lock();
-
-  if(flush)
-    {
-      /* flush flow table per as of per-port-vip */
-      ret = lb_flush_vip_as(vip_index, as_index);
-    }
 
   return ret;
 }
@@ -1203,12 +1209,13 @@ int lb_vip_del(u32 vip_index)
     ip46_address_t *ass = 0;
     lb_as_t *as;
     u32 *as_index;
+
     pool_foreach(as_index, vip->as_indexes, {
         as = &lbm->ass[*as_index];
         vec_add1(ass, as->address);
     });
     if (vec_len(ass))
-      lb_vip_del_ass_withlock(vip_index, ass, vec_len(ass), as_index);
+      lb_vip_del_ass_withlock(vip_index, ass, vec_len(ass), 0);
     vec_free(ass);
   }
 
