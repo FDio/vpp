@@ -75,3 +75,19 @@ autoreply define lb_add_del_as {
   u8 is_flush;
 };
 
+/** \brief Flush a given vip
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_prefix - IP address (IPv4 in lower order 32 bits).
+    @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).
+    @param protocol - tcp or udp.
+    @param port - destination port.
+*/
+autoreply define lb_flush_vip {
+  u32 client_index;
+  u32 context;
+  u8 ip_prefix[16];
+  u8 prefix_length;
+  u8 protocol;
+  u16 port;
+};

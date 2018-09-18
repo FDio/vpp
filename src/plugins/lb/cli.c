@@ -497,32 +497,13 @@ VLIB_CLI_COMMAND (lb_set_interface_nat6_command, static) = {
   .short_help = "lb set interface nat6 in <intfc> [del]",
 };
 
-int
-lb_flush_vip (u32 vip_index)
+static clib_error_t *
+lb_flowtable_flush_command_fn (vlib_main_t * vm,
+              unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 thread_index;
-  vlib_thread_main_t *tm = vlib_get_thread_main();
-  lb_main_t *lbm = &lb_main;
+  lb_flush_vip_as(~0, 0);
 
-  for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
-    lb_hash_t *h = lbm->per_cpu[thread_index].sticky_ht;
-    if (h != NULL) {
-        u32 i;
-        lb_hash_bucket_t *b;
-
-        lb_hash_foreach_entry(h, b, i) {
-          if (b->vip[i] == vip_index)
-            {
-              vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
-              vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
-              b->vip[i] = ~0;
-              b->value[i] = ~0;
-            }
-        }
-    }
-  }
-
-  return 0;
+  return NULL;
 }
 
 static clib_error_t *
@@ -574,7 +555,7 @@ lb_flush_vip_command_fn (vlib_main_t * vm,
     goto done;
   }
 
-  if ((ret = lb_flush_vip(vip_index)))
+  if ((ret = lb_flush_vip_as(vip_index, ~0)))
     {
       error = clib_error_return (0, "lb_flush_vip error %d", ret);
     }
@@ -596,36 +577,9 @@ VLIB_CLI_COMMAND (lb_flush_vip_command, static) =
 {
   .path = "lb flush vip",
   .short_help = "lb flush vip <prefix> "
-      "[protocol (tcp|udp) port <n>] exec []",
+      "[protocol (tcp|udp) port <n>]",
   .function = lb_flush_vip_command_fn,
 };
-
-static clib_error_t *
-lb_flowtable_flush_command_fn (vlib_main_t * vm,
-              unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  u32 thread_index;
-  vlib_thread_main_t *tm = vlib_get_thread_main();
-  lb_main_t *lbm = &lb_main;
-
-  for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
-    lb_hash_t *h = lbm->per_cpu[thread_index].sticky_ht;
-    if (h != NULL) {
-        u32 i;
-        lb_hash_bucket_t *b;
-
-        lb_hash_foreach_entry(h, b, i) {
-            vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
-            vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
-        }
-
-        lb_hash_free(h);
-        lbm->per_cpu[thread_index].sticky_ht = 0;
-    }
-  }
-
-  return NULL;
-}
 
 /*
  * flush all lb flowtables
