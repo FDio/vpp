@@ -127,6 +127,8 @@ class VPPStats:
     def dump(self, counters):
         stats = {}
         rv = self.api.stat_segment_dump(counters)
+        if rv == ffi.NULL:
+            return None
         rv_len = self.api.stat_segment_vec_len(rv)
         for i in range(rv_len):
             n = ffi.string(rv[i].name)
