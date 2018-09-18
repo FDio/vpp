@@ -125,5 +125,6 @@ pr("C flags" "${CMAKE_C_FLAGS}")
 pr("Linker flags" "${CMAKE_LINKER_FLAGS}")
 pr("Target processor" "${CMAKE_SYSTEM_PROCESSOR}")
 pr("Build type" "${CMAKE_BUILD_TYPE}")
+pr("Prefix path" "${CMAKE_PREFIX_PATH}")
 pr("Install prefix" "${CMAKE_INSTALL_PREFIX}")
 

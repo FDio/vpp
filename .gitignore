@@ -21,10 +21,10 @@
 /build-root/vapi_test/
 /build-root/vom_test/
 /build-config.mk
-/dpdk/*.tar.gz
-/dpdk/*.tar.xz
-/dpdk/vpp-dpdk*.deb
-/dpdk/vpp-dpdk*.changes
+/build/external/*.tar.gz
+/build/external/*.tar.xz
+/build/external/vpp-*.deb
+/build/external/vpp-*.changes
 /path_setup
 /tools/
 # start autotools ignore

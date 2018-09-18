@@ -334,7 +334,7 @@ fi
 
 if [ -n "$multi_host"] && [ ! -f "$dpdk_devbind" ] ; then
     echo "ERROR: Can't find dpdk-devbind.py!"
-    echo "       Run \"cd \$WS_ROOT; make dpdk-install-dev\" to install it."
+    echo "       Run \"cd \$WS_ROOT; make install-ext-deps\" to install it."
     echo
     env_test_failed="true"
 fi

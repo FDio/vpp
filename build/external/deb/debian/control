@@ -1,0 +1,13 @@
+Source: vpp-ext-deps
+Section: net
+Priority: extra
+Maintainer: vpp-dev@lists.fd.io
+Build-Depends: debhelper (>= 9), dkms
+Standards-Version: 3.9.4
+
+Package: vpp-ext-deps
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: VPP developer package containing dependencies
+Replaces: vpp-dpdk-dev
+Conflicts: vpp-dpdk-dev

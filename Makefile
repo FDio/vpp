@@ -173,6 +173,13 @@ endif
 .PHONY: test test-debug retest retest-debug test-doc test-wipe-doc test-help test-wipe
 .PHONY: test-cov test-wipe-cov
 
+define banner
+	@echo "========================================================================"
+	@echo " $(1)"
+	@echo "========================================================================"
+	@echo " "
+endef
+
 help:
 	@echo "Make Targets:"
 	@echo " install-dep         - install software dependencies"
@@ -201,7 +208,7 @@ help:
 	@echo " run-vat             - run vpp-api-test tool"
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
-	@echo " dpdk-install-dev    - install DPDK development packages"
+	@echo " install-ext-deps    - install external development dependencies"
 	@echo " ctags               - (re)generate ctags database"
 	@echo " gtags               - (re)generate gtags database"
 	@echo " cscope              - (re)generate cscope database"
@@ -486,7 +493,11 @@ pkg-srpm: dist
 	make -C extras/rpm srpm
 
 dpdk-install-dev:
-	make -C dpdk install-$(PKG)
+	$(call banner,"This command is deprecated. Please use 'make install-ext-libs'")
+	make -C build/external install-$(PKG)
+
+install-ext-deps:
+	make -C build/external install-$(PKG)
 
 ctags: ctags.files
 	@ctags --totals --tag-relative -L $<
@@ -526,14 +537,7 @@ doxygen:
 wipe-doxygen:
 	$(call make-doxy)
 
-define banner
-	@echo "========================================================================"
-	@echo " $(1)"
-	@echo "========================================================================"
-	@echo " "
-endef
-
-verify: install-dep $(BR)/.deps.ok dpdk-install-dev
+verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building sample-plugin")

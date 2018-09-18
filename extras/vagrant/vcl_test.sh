@@ -13,7 +13,7 @@ fi
 echo 'Building VCL test apps'
 cd $VPP_DIR
 $SUDOCMD perl -pi -e 's/noinst_PROGRAMS/bin_PROGRAMS/g' $VPP_DIR/src/vcl.am
-$SUDOCMD make dpdk-install-dev build-release
+$SUDOCMD make install-ext-deps build-release
 sudo sysctl -p$VPP_DIR/src/vpp/conf/80-vpp.conf
 sudo modprobe uio_pci_generic
 

@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+external_source = build
+
 ifneq (,$(findstring debug,$(TAG)))
 	DPDK_DEBUG=y
 else
@@ -42,8 +44,8 @@ ifneq ($(DPDK_MAKE_EXTRA_ARGS),)
 DPDK_MAKE_ARGS += DPDK_MAKE_EXTRA_ARGS="$(DPDK_MAKE_EXTRA_ARGS)"
 endif
 
-dpdk_configure = echo
+external_configure = echo
 
-dpdk_make_args = $(DPDK_MAKE_ARGS) ebuild-build
+external_make_args = $(DPDK_MAKE_ARGS) -C external ebuild-build
 
-dpdk_install =  make $(DPDK_MAKE_ARGS) ebuild-install
+external_install =  make $(DPDK_MAKE_ARGS) -C external ebuild-install
