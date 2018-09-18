@@ -127,6 +127,9 @@ class VPPStats:
     def dump(self, counters):
         stats = {}
         rv = self.api.stat_segment_dump(counters)
+        # Raise exception and retry
+        if rv == ffi.NULL:
+            raise IOError()
         rv_len = self.api.stat_segment_vec_len(rv)
         for i in range(rv_len):
             n = ffi.string(rv[i].name).decode()
@@ -135,16 +138,33 @@ class VPPStats:
         return stats
 
     def get_counter(self, name):
-        dir = self.ls(name)
-        return self.dump(dir).values()[0]
+        retries = 0
+        while True:
+            try:
+                dir = self.ls(name)
+                return self.dump(dir).values()[0]
+            except:
+                if retries > 10:
+                    return None
+                retries += 1
+                pass
 
     def disconnect(self):
         self.api.stat_segment_disconnect()
 
     def set_errors(self):
         '''Return all errors counters > 0'''
-        error_names = self.ls(['/err/'])
-        error_counters = self.dump(error_names)
+        retries = 0
+        while True:
+            try:
+                error_names = self.ls(['/err/'])
+                error_counters = self.dump(error_names)
+                break
+            except:
+                if retries > 10:
+                    return None
+                retries += 1
+                pass
         return {k: error_counters[k]
                 for k in error_counters.keys() if error_counters[k]}
 
