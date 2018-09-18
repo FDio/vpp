@@ -305,8 +305,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	  /* for IPSec-GRE tunnel next node is ipsec-gre-input */
 	  if (PREDICT_FALSE
-	      ((vnet_buffer (i_b0)->ipsec.flags) &
-	       IPSEC_FLAG_IPSEC_GRE_TUNNEL))
+	      ((vnet_buffer (i_b0)->
+		ipsec.flags & IPSEC_FLAG_IPSEC_GRE_TUNNEL)))
 	    next0 = AH_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
 
