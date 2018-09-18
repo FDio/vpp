@@ -28,6 +28,8 @@
 
 
 ipsec_main_t ipsec_main;
+ipsec_proto_main_t ipsec_proto_main;
+
 
 u32
 ipsec_get_sa_index_by_sa_id (u32 sa_id)
@@ -453,6 +455,13 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
+#if WITH_IPSEC_MB
+      int rv = sa_expand_keys_ipsec_mb (sa);
+      if (rv)
+	{
+	  return rv;
+	}
+#endif
       if (im->cb.add_del_sa_sess_cb)
 	{
 	  err = im->cb.add_del_sa_sess_cb (sa_index, 1);
@@ -555,8 +564,39 @@ ipsec_init (vlib_main_t * vm)
   im->sa_index_by_sa_id = hash_create (0, sizeof (uword));
   im->spd_index_by_sw_if_index = hash_create (0, sizeof (uword));
 
+#ifdef WITH_IPSEC_MB
+#define __set_funcs(arch)                                   \
+  im->funcs.init_mb_mgr = init_mb_mgr_##arch;               \
+  im->funcs.submit_job = submit_job_##arch;                 \
+  im->funcs.submit_job_nocheck = submit_job_nocheck_##arch; \
+  im->funcs.flush_job = flush_job_##arch;                   \
+  im->funcs.queue_size = queue_size_##arch;                 \
+  im->funcs.get_completed_job = get_completed_job_##arch;   \
+  im->funcs.get_next_job = get_next_job_##arch;
+
+  if (clib_cpu_supports_avx512f ())
+    {
+      __set_funcs (avx512);
+    }
+  else if (clib_cpu_supports_avx2 ())
+    {
+      __set_funcs (avx2);
+    }
+  else
+    {
+      __set_funcs (sse);
+    }
+  vec_validate (im->mb_mgr, tm->n_vlib_mains - 1);
+  MB_MGR **mgr;
+  vec_foreach (mgr, im->mb_mgr)
+  {
+    *mgr = alloc_mb_mgr (0);
+    im->funcs.init_mb_mgr (*mgr);
+  }
+#else
   vec_validate_aligned (im->empty_buffers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+#endif
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   ASSERT (node);
