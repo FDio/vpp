@@ -280,6 +280,9 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
   ipsec_sa_t *sa;
   u32 dev_instance;
   u32 slot;
+#if WITH_IPSEC_MB
+  int rv;
+#endif
 
   u64 key = (u64) args->remote_ip.as_u32 << 32 | (u64) args->remote_spi;
   p = hash_get (im->ipsec_if_pool_index_by_key, key);
@@ -333,6 +336,13 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 		       args->remote_crypto_key_len);
 	}
 
+#if WITH_IPSEC_MB
+      rv = sa_expand_keys_ipsec_mb (sa);
+      if (rv)
+	{
+	  return rv;
+	}
+#endif
       pool_get (im->sad, sa);
       memset (sa, 0, sizeof (*sa));
       t->output_sa_index = sa - im->sad;
@@ -360,6 +370,13 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 
       hash_set (im->ipsec_if_pool_index_by_key, key,
 		t - im->tunnel_interfaces);
+#if WITH_IPSEC_MB
+      rv = sa_expand_keys_ipsec_mb (sa);
+      if (rv)
+	{
+	  return rv;
+	}
+#endif
 
       hw_if_index = vnet_register_interface (vnm, ipsec_device_class.index,
 					     t - im->tunnel_interfaces,
