@@ -18,7 +18,7 @@ except ImportError:
     from distutils.core import setup, find_packages
 
 setup(name='vpp_papi',
-      version='1.6.1',
+      version='1.6.2',
       description='VPP Python binding',
       author='Ole Troan',
       author_email='ot@cisco.com',

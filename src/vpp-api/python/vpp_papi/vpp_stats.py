@@ -62,7 +62,7 @@ def make_string_vector(api, strings):
     if type(strings) is not list:
         strings = [strings]
     for s in strings:
-        vec = api.stat_segment_string_vector(vec, ffi.new("char []", s))
+        vec = api.stat_segment_string_vector(vec, ffi.new("char []", s.encode()))
     return vec
 
 
@@ -114,7 +114,7 @@ def stat_entry_to_python(api, e):
 class VPPStats:
     def __init__(self, socketname='/var/run/stats.sock'):
         self.api = ffi.dlopen('libvppapiclient.so')
-        rv = self.api.stat_segment_connect(socketname)
+        rv = self.api.stat_segment_connect(socketname.encode())
         if rv != 0:
             raise IOError()
 
@@ -129,7 +129,7 @@ class VPPStats:
         rv = self.api.stat_segment_dump(counters)
         rv_len = self.api.stat_segment_vec_len(rv)
         for i in range(rv_len):
-            n = ffi.string(rv[i].name)
+            n = ffi.string(rv[i].name).decode()
             e = stat_entry_to_python(self.api, rv[i])
             stats[n] = e
         return stats
