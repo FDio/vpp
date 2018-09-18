@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f217d6d0_42518e42",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-18T21:50:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "af5f98ba_5c1caa30",
+      "revId": "510200e6936f2e4755087f8cb26ecb62657e9326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "55cbaf29_7560f7a3",
         "filename": "src/vnet/interface.api",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2018-09-13T21:05:15Z",
       "side": 1,
       "message": "From the API, I don\u0027t know what interface types are HARDWARE - it makes sense in the VPP code internals, but not to me as a caller.  What interface types are these, and do they include vhostuser interfaces (which have both assigned threads and potentially multiple queues)?",
+      "revId": "510200e6936f2e4755087f8cb26ecb62657e9326",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6dc4569_8402f16a",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-18T21:50:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "55cbaf29_7560f7a3",
       "revId": "510200e6936f2e4755087f8cb26ecb62657e9326",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
