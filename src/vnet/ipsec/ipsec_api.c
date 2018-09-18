@@ -47,35 +47,37 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                                             \
-_(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                                 \
-_(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)             \
-_(IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry)                     \
-_(IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry)                     \
-_(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
-_(IPSEC_SA_DUMP, ipsec_sa_dump)                                         \
-_(IPSEC_SPDS_DUMP, ipsec_spds_dump)                                     \
-_(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
-_(IPSEC_SPD_INTERFACE_DUMP, ipsec_spd_interface_dump)			\
-_(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
-_(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)                     \
-_(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)                       \
-_(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                         \
-_(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)                       \
-_(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                           \
-_(IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts)                           \
-_(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key)                             \
-_(IKEV2_SET_RESPONDER, ikev2_set_responder)                             \
-_(IKEV2_SET_IKE_TRANSFORMS, ikev2_set_ike_transforms)                   \
-_(IKEV2_SET_ESP_TRANSFORMS, ikev2_set_esp_transforms)                   \
-_(IKEV2_SET_SA_LIFETIME, ikev2_set_sa_lifetime)                         \
-_(IKEV2_INITIATE_SA_INIT, ikev2_initiate_sa_init)                       \
-_(IKEV2_INITIATE_DEL_IKE_SA, ikev2_initiate_del_ike_sa)                 \
-_(IKEV2_INITIATE_DEL_CHILD_SA, ikev2_initiate_del_child_sa)             \
-_(IKEV2_INITIATE_REKEY_CHILD_SA, ikev2_initiate_rekey_child_sa)
+#define foreach_vpe_api_msg                                     \
+_(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                         \
+_(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)     \
+_(IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry)             \
+_(IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry)             \
+_(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                           \
+_(IPSEC_SA_DUMP, ipsec_sa_dump)                                 \
+_(IPSEC_SPDS_DUMP, ipsec_spds_dump)                             \
+_(IPSEC_SPD_DUMP, ipsec_spd_dump)                               \
+_(IPSEC_SPD_INTERFACE_DUMP, ipsec_spd_interface_dump)		\
+_(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)             \
+_(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)             \
+_(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)               \
+_(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                 \
+_(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)               \
+_(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                   \
+_(IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts)                   \
+_(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key)                     \
+_(IKEV2_SET_RESPONDER, ikev2_set_responder)                     \
+_(IKEV2_SET_IKE_TRANSFORMS, ikev2_set_ike_transforms)           \
+_(IKEV2_SET_ESP_TRANSFORMS, ikev2_set_esp_transforms)           \
+_(IKEV2_SET_SA_LIFETIME, ikev2_set_sa_lifetime)                 \
+_(IKEV2_INITIATE_SA_INIT, ikev2_initiate_sa_init)               \
+_(IKEV2_INITIATE_DEL_IKE_SA, ikev2_initiate_del_ike_sa)         \
+_(IKEV2_INITIATE_DEL_CHILD_SA, ikev2_initiate_del_child_sa)     \
+_(IKEV2_INITIATE_REKEY_CHILD_SA, ikev2_initiate_rekey_child_sa) \
+_(IPSEC_SELECT_BACKEND, ipsec_select_backend)                   \
+_(IPSEC_BACKEND_DUMP, ipsec_backend_dump)
 
-static void vl_api_ipsec_spd_add_del_t_handler
-  (vl_api_ipsec_spd_add_del_t * mp)
+static void
+vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
 {
 #if WITH_LIBSSL == 0
   clib_warning ("unimplemented");
@@ -91,7 +93,8 @@ static void vl_api_ipsec_spd_add_del_t_handler
 #endif
 }
 
-static void vl_api_ipsec_interface_add_del_spd_t_handler
+static void
+  vl_api_ipsec_interface_add_del_spd_t_handler
   (vl_api_ipsec_interface_add_del_spd_t * mp)
 {
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
@@ -116,8 +119,9 @@ static void vl_api_ipsec_interface_add_del_spd_t_handler
   REPLY_MACRO (VL_API_IPSEC_INTERFACE_ADD_DEL_SPD_REPLY);
 }
 
-static void vl_api_ipsec_spd_add_del_entry_t_handler
-  (vl_api_ipsec_spd_add_del_entry_t * mp)
+static void
+vl_api_ipsec_spd_add_del_entry_t_handler (vl_api_ipsec_spd_add_del_entry_t *
+					  mp)
 {
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_spd_add_del_entry_reply_t *rmp;
@@ -180,8 +184,9 @@ out:
   REPLY_MACRO (VL_API_IPSEC_SPD_ADD_DEL_ENTRY_REPLY);
 }
 
-static void vl_api_ipsec_sad_add_del_entry_t_handler
-  (vl_api_ipsec_sad_add_del_entry_t * mp)
+static void
+vl_api_ipsec_sad_add_del_entry_t_handler (vl_api_ipsec_sad_add_del_entry_t *
+					  mp)
 {
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_sad_add_del_entry_reply_t *rmp;
@@ -234,8 +239,17 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
     }
   sa.use_anti_replay = mp->use_anti_replay;
 
-  ASSERT (im->cb.check_support_cb);
-  clib_error_t *err = im->cb.check_support_cb (&sa);
+  ASSERT (im->ah_check_support_cb);
+  clib_error_t *err = im->ah_check_support_cb (&sa);
+  if (err)
+    {
+      clib_warning ("%s", err->what);
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+
+  ASSERT (im->esp_check_support_cb);
+  err = im->esp_check_support_cb (&sa);
   if (err)
     {
       clib_warning ("%s", err->what);
@@ -254,8 +268,8 @@ out:
 }
 
 static void
-send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
-			 u32 context)
+send_ipsec_spds_details (ipsec_spd_t * spd,
+			 vl_api_registration_t * reg, u32 context)
 {
   vl_api_ipsec_spds_details_t *mp;
 
@@ -282,18 +296,17 @@ vl_api_ipsec_spds_dump_t_handler (vl_api_ipsec_spds_dump_t * mp)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (spd, im->spds, ({
-    send_ipsec_spds_details (spd, reg, mp->context);
-  }));
-  /* *INDENT-ON* */
+  pool_foreach (spd, im->spds,
+                ({ send_ipsec_spds_details (spd, reg, mp->context); }));
+/* *INDENT-ON* */
 #else
   clib_warning ("unimplemented");
 #endif
 }
 
 static void
-send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
-			u32 context)
+send_ipsec_spd_details (ipsec_policy_t * p,
+			vl_api_registration_t * reg, u32 context)
 {
   vl_api_ipsec_spd_details_t *mp;
 
@@ -355,13 +368,11 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
   spd = pool_elt_at_index (im->spds, spd_index);
 
   /* *INDENT-OFF* */
-  pool_foreach (policy, spd->policies,
-  ({
-    if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == policy->sa_id)
-      send_ipsec_spd_details (policy, reg,
-                              mp->context);}
-    ));
-  /* *INDENT-ON* */
+  pool_foreach (policy, spd->policies, ({
+                  if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == policy->sa_id)
+                    send_ipsec_spd_details (policy, reg, mp->context);
+                }));
+/* *INDENT-ON* */
 #else
   clib_warning ("unimplemented");
 #endif
@@ -491,8 +502,8 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   REPLY_MACRO2 (VL_API_IPSEC_TUNNEL_IF_ADD_DEL_REPLY, (
 							{
 							rmp->sw_if_index =
-							htonl (sw_if_index);
-							}));
+							htonl
+							(sw_if_index);}));
 }
 
 static void
@@ -556,7 +567,6 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
-
 static void
 vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
 {
@@ -576,23 +586,22 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
 			   ~0);
 
   /* *INDENT-OFF* */
-  pool_foreach (t, im->tunnel_interfaces,
-  ({
-    vnet_hw_interface_t *hi;
-    u32 sw_if_index = ~0;
+  pool_foreach (t, im->tunnel_interfaces, ({
+                  vnet_hw_interface_t *hi;
+                  u32 sw_if_index = ~0;
 
-    hi = vnet_get_hw_interface (vnm, t->hw_if_index);
-    sw_if_index = hi->sw_if_index;
-    sa_index_to_tun_if_index[t->input_sa_index] = sw_if_index;
-    sa_index_to_tun_if_index[t->output_sa_index] = sw_if_index;
-  }));
+                  hi = vnet_get_hw_interface (vnm, t->hw_if_index);
+                  sw_if_index = hi->sw_if_index;
+                  sa_index_to_tun_if_index[t->input_sa_index] = sw_if_index;
+                  sa_index_to_tun_if_index[t->output_sa_index] = sw_if_index;
+                }));
 
-  pool_foreach (sa, im->sad,
-  ({
-    if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == sa->id)
-      send_ipsec_sa_details (sa, reg, mp->context,
-			     sa_index_to_tun_if_index[sa - im->sad]);
-  }));
+  pool_foreach (sa, im->sad, ({
+                  if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == sa->id)
+                    send_ipsec_sa_details (
+                        sa, reg, mp->context,
+                        sa_index_to_tun_if_index[sa - im->sad]);
+                }));
   /* *INDENT-ON* */
 
   vec_free (sa_index_to_tun_if_index);
@@ -600,7 +609,6 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
   clib_warning ("unimplemented");
 #endif
 }
-
 
 static void
 vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
@@ -656,7 +664,6 @@ out:
   REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_KEY_REPLY);
 }
 
-
 static void
 vl_api_ipsec_tunnel_if_set_sa_t_handler (vl_api_ipsec_tunnel_if_set_sa_t * mp)
 {
@@ -677,7 +684,6 @@ vl_api_ipsec_tunnel_if_set_sa_t_handler (vl_api_ipsec_tunnel_if_set_sa_t * mp)
 
   REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_SA_REPLY);
 }
-
 
 static void
 vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
@@ -701,8 +707,7 @@ vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
 }
 
 static void
-  vl_api_ikev2_profile_set_auth_t_handler
-  (vl_api_ikev2_profile_set_auth_t * mp)
+vl_api_ikev2_profile_set_auth_t_handler (vl_api_ikev2_profile_set_auth_t * mp)
 {
   vl_api_ikev2_profile_set_auth_reply_t *rmp;
   int rv = 0;
@@ -881,9 +886,9 @@ vl_api_ikev2_set_sa_lifetime_t_handler (vl_api_ikev2_set_sa_lifetime_t * mp)
 
   u8 *tmp = format (0, "%s", mp->name);
 
-  error =
-    ikev2_set_profile_sa_lifetime (vm, tmp, mp->lifetime, mp->lifetime_jitter,
-				   mp->handover, mp->lifetime_maxdata);
+  error = ikev2_set_profile_sa_lifetime (vm, tmp, mp->lifetime,
+					 mp->lifetime_jitter, mp->handover,
+					 mp->lifetime_maxdata);
   vec_free (tmp);
   if (error)
     rv = VNET_API_ERROR_UNSPECIFIED;
@@ -994,9 +999,102 @@ static void
 static void
 setup_message_id_table (api_main_t * am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_ipsec;
 #undef _
+}
+
+void
+dummy ()
+{
+}
+
+static void
+vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
+{
+  vl_api_registration_t *rp;
+  ipsec_main_t *im = &ipsec_main;
+  u32 context = mp->context;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  if (rp == 0)
+    {
+      clib_warning ("Client %d AWOL", mp->client_index);
+      return;
+    }
+
+  ipsec_ah_backend_t *ab;
+  ipsec_esp_backend_t *eb;
+  /* *INDENT-OFF* */
+  pool_foreach (ab, im->ah_backends, {
+    vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
+    clib_memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
+    mp->context = context;
+    snprintf ((char *)mp->name, sizeof (mp->name), "%.*s", vec_len (ab->name),
+              ab->name);
+    mp->protocol = IPSEC_PROTOCOL_AH;
+    mp->index = ab - im->ah_backends;
+    mp->active = mp->index == im->ah_current_backend ? 1 : 0;
+    dummy();
+    vl_api_send_msg (rp, (u8 *)mp);
+  });
+  pool_foreach (eb, im->esp_backends, {
+    vl_api_ipsec_backend_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
+    clib_memset (mp, 0, sizeof (*mp));
+    mp->_vl_msg_id = ntohs (VL_API_IPSEC_BACKEND_DETAILS);
+    mp->context = context;
+    snprintf ((char *)mp->name, sizeof (mp->name), "%.*s", vec_len (eb->name),
+              eb->name);
+    mp->protocol = IPSEC_PROTOCOL_ESP;
+    mp->index = eb - im->esp_backends;
+    mp->active = mp->index == im->esp_current_backend ? 1 : 0;
+    dummy();
+    vl_api_send_msg (rp, (u8 *)mp);
+  });
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vl_api_ipsec_select_backend_reply_t *rmp;
+  int rv = 0;
+  if (pool_elts (im->sad) > 0)
+    {
+      rv = VNET_API_ERROR_INSTANCE_IN_USE;
+      goto done;
+    }
+#if WITH_LIBSSL > 0
+  switch (mp->protocol)
+    {
+    case IPSEC_PROTOCOL_ESP:
+      if (pool_is_free_index (im->esp_backends, mp->index))
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  break;
+	}
+      ipsec_select_esp_backend (im, mp->index);
+      break;
+    case IPSEC_PROTOCOL_AH:
+      if (pool_is_free_index (im->ah_backends, mp->index))
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  break;
+	}
+      ipsec_select_ah_backend (im, mp->index);
+      break;
+    default:
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      break;
+    }
+#else
+  clib_warning ("unimplemented");	/* FIXME */
+#endif
+done:
+  REPLY_MACRO (VL_API_IPSEC_SELECT_BACKEND_REPLY);
 }
 
 static clib_error_t *
@@ -1004,13 +1102,10 @@ ipsec_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                    \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler, \
+                           vl_noop_handler, vl_api_##n##_t_endian, \
+                           vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 

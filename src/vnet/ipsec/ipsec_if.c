@@ -170,33 +170,55 @@ ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     {
-      ASSERT (im->cb.check_support_cb);
+      ASSERT (im->ah_check_support_cb);
+      ASSERT (im->esp_check_support_cb);
 
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
 
-      err = im->cb.check_support_cb (sa);
+      err = im->ah_check_support_cb (sa);
       if (err)
 	return err;
 
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->input_sa_index, 1);
-	  if (err)
-	    return err;
-	}
+      err = im->esp_check_support_cb (sa);
+      if (err)
+	return err;
+
+      ipsec_ah_backend_t *ab;
+      /* *INDENT-OFF* */
+      pool_foreach (ab, im->ah_backends, {
+        if (ab->add_del_sa_sess_cb)
+          ab->add_del_sa_sess_cb (t->input_sa_index, 1);
+      });
+      /* *INDENT-ON* */
+
+      ipsec_esp_backend_t *eb;
+      /* *INDENT-OFF* */
+      pool_foreach (eb, im->esp_backends, {
+        if (eb->add_del_sa_sess_cb)
+          eb->add_del_sa_sess_cb (t->input_sa_index, 1);
+      });
+      /* *INDENT-ON* */
 
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
 
-      err = im->cb.check_support_cb (sa);
+      err = im->ah_check_support_cb (sa);
       if (err)
 	return err;
 
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->output_sa_index, 1);
-	  if (err)
-	    return err;
-	}
+      err = im->esp_check_support_cb (sa);
+      if (err)
+	return err;
+
+      /* *INDENT-OFF* */
+      pool_foreach (ab, im->ah_backends, {
+        if (ab->add_del_sa_sess_cb)
+          ab->add_del_sa_sess_cb (t->output_sa_index, 1);
+      });
+      pool_foreach (eb, im->esp_backends, {
+        if (eb->add_del_sa_sess_cb)
+          eb->add_del_sa_sess_cb (t->output_sa_index, 1);
+      });
+      /* *INDENT-ON* */
 
       vnet_hw_interface_set_flags (vnm, hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
@@ -207,21 +229,32 @@ ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
 
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->input_sa_index, 0);
-	  if (err)
-	    return err;
-	}
+      ipsec_ah_backend_t *ab;
+      ipsec_esp_backend_t *eb;
+      /* *INDENT-OFF* */
+      pool_foreach (ab, im->ah_backends, {
+        if (ab->add_del_sa_sess_cb)
+          ab->add_del_sa_sess_cb (t->input_sa_index, 0);
+      });
+
+      pool_foreach (eb, im->esp_backends, {
+        if (eb->add_del_sa_sess_cb)
+          eb->add_del_sa_sess_cb (t->input_sa_index, 0);
+      });
+      /* *INDENT-ON* */
 
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
 
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->output_sa_index, 0);
-	  if (err)
-	    return err;
-	}
+      /* *INDENT-OFF* */
+      pool_foreach (ab, im->ah_backends, {
+        if (ab->add_del_sa_sess_cb)
+          ab->add_del_sa_sess_cb (t->output_sa_index, 0);
+      });
+      pool_foreach (eb, im->esp_backends, {
+        if (eb->add_del_sa_sess_cb)
+          eb->add_del_sa_sess_cb (t->output_sa_index, 0);
+      });
+      /* *INDENT-ON* */
     }
 
   return /* no error */ 0;
@@ -596,15 +629,18 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
   if (ipsec_get_sa_index_by_sa_id (old_sa->id) == old_sa_index)
     hash_unset (im->sa_index_by_sa_id, old_sa->id);
 
-  if (im->cb.add_del_sa_sess_cb)
-    {
-      clib_error_t *err;
-
-      err = im->cb.add_del_sa_sess_cb (old_sa_index, 0);
-      if (err)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
-    }
-
+  ipsec_ah_backend_t *ab;
+  ipsec_esp_backend_t *eb;
+  /* *INDENT-OFF* */
+  pool_foreach (ab, im->ah_backends, {
+    if (ab->add_del_sa_sess_cb)
+      ab->add_del_sa_sess_cb (old_sa_index, 0);
+  });
+  pool_foreach (eb, im->esp_backends, {
+    if (eb->add_del_sa_sess_cb)
+      eb->add_del_sa_sess_cb (old_sa_index, 0);
+  });
+  /* *INDENT-ON* */
   pool_put (im->sad, old_sa);
 
   return 0;

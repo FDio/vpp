@@ -12,16 +12,6 @@ class TemplateIpsecAh(TemplateIpsec):
     """
     Basic test for IPSEC using AH transport and Tunnel mode
 
-    Below 4 cases are covered as part of this test
-    1) ipsec ah v4 transport basic test  - IPv4 Transport mode
-     scenario using HMAC-SHA1-96 intergrity algo
-    2) ipsec ah v4 transport burst test
-     Above test for 257 pkts
-    3) ipsec ah 4o4 tunnel basic test    - IPv4 Tunnel mode
-     scenario using HMAC-SHA1-96 intergrity algo
-    4) ipsec ah 4o4 tunnel burst test
-     Above test for 257 pkts
-
     TRANSPORT MODE:
 
      ---   encrypt   ---
@@ -180,7 +170,14 @@ class TemplateIpsecAh(TemplateIpsec):
 
 class TestIpsecAh1(TemplateIpsecAh, IpsecTraTests, IpsecTunTests):
     """ Ipsec AH - TUN & TRA tests """
-    pass
+    tra4_encrypt_node_name = "ah4-encrypt"
+    tra4_decrypt_node_name = "ah4-decrypt"
+    tra6_encrypt_node_name = "ah6-encrypt"
+    tra6_decrypt_node_name = "ah6-decrypt"
+    tun4_encrypt_node_name = "ah4-encrypt"
+    tun4_decrypt_node_name = "ah4-decrypt"
+    tun6_encrypt_node_name = "ah6-encrypt"
+    tun6_decrypt_node_name = "ah6-decrypt"
 
 
 class TestIpsecAh2(TemplateIpsecAh, IpsecTcpTests):
