@@ -15,7 +15,6 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>
-#include <vnet/ipsec/ipsec.h>
 #include <vlib/node_funcs.h>
 #include <openssl/engine.h>
 #include <tlsopenssl/tls_openssl.h>
