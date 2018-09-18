@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9521c132_f7262957",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-18T07:23:29Z",
+      "side": 0,
+      "message": "I don\u0027t think we should remove the vip-wide flush command.\nBut please use the same function as the AS-specific one (checking if as index is ~0 for example).",
+      "range": {
+        "startLine": 529,
+        "startChar": 0,
+        "endLine": 531,
+        "endChar": 50
+      },
+      "revId": "58492a83722caf1c49977d73abf931418ce1f8f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "547f5733_89946a00",
+        "filename": "src/plugins/lb/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-18T07:23:29Z",
+      "side": 0,
+      "message": "It might be a good opportunity to remove that code redundancy too.\nthe vip_index argument to the flush function could be optional too. Setting it to ~0 would flush the whole flow table.",
+      "range": {
+        "startLine": 604,
+        "startChar": 0,
+        "endLine": 604,
+        "endChar": 29
+      },
+      "revId": "58492a83722caf1c49977d73abf931418ce1f8f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
