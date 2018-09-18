@@ -45,7 +45,6 @@ typedef enum
  _(REPLAY, "SA replayed packet")                    \
  _(NOT_IP, "Not IP packet (dropped)")
 
-
 typedef enum
 {
 #define _(sym,str) ESP_DECRYPT_ERROR_##sym,
@@ -383,9 +382,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 		}
 
 	      /* for IPSec-GRE tunnel next node is ipsec-gre-input */
-	      if (PREDICT_FALSE
-		  ((vnet_buffer (i_b0)->ipsec.flags) &
-		   IPSEC_FLAG_IPSEC_GRE_TUNNEL))
+	                   if (PREDICT_FALSE
+                 ((vnet_buffer (i_b0)->ipsec.flags) &
+                  IPSEC_FLAG_IPSEC_GRE_TUNNEL))
 		next0 = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
