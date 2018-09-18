@@ -607,6 +607,7 @@ int lb_vip_find_index(ip46_address_t *prefix, u8 plen, u8 protocol,
 
 int lb_vip_add_ass(u32 vip_index, ip46_address_t *addresses, u32 n);
 int lb_vip_del_ass(u32 vip_index, ip46_address_t *addresses, u32 n, u8 flush);
+int lb_flush_vip_as (u32 vip_index, u32 as_index);
 
 u32 lb_hash_time_now(vlib_main_t * vm);
 
