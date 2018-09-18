@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+DH_VERBOSE = 1
+PKG=vpp-ext-deps
+
+VERSION = $(shell dpkg-parsechangelog | sed -nr '/^Version:/s/Version: //p')
+BASE_VER = $(word 1, $(subst -, ,$(VERSION)))
+
+export DPDK_BUILD_DIR=$(CURDIR)/_build
+export DPDK_INSTALL_DIR=$(CURDIR)/debian/tmp/opt/vpp/external/$(shell uname -m)/
+
+MAKE_ARGS=-C ..
+
+include /usr/share/dpkg/default.mk
+
+%:
+	dh $@
+
+override_dh_clean:
+	make $(MAKE_ARGS) clean
+
+override_dh_auto_configure:
+	make $(MAKE_ARGS) config
+
+override_dh_install:
+	make $(MAKE_ARGS) install
+	dh_install -p$(PKG) --autodest /opt
+
