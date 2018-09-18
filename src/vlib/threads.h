@@ -445,6 +445,14 @@ vlib_get_worker_vlib_main (u32 worker_index)
   return vm;
 }
 
+static inline u8
+vlib_thread_is_main_w_barrier (void)
+{
+  return (!vlib_num_workers ()
+	  || ((vlib_get_thread_index () == 0
+	       && vlib_worker_threads->wait_at_barrier[0])));
+}
+
 static inline void
 vlib_put_frame_queue_elt (vlib_frame_queue_elt_t * hf)
 {
