@@ -410,6 +410,62 @@ ipsec_is_sa_used (u32 sa_index)
   return 0;
 }
 
+#if WITH_IPSEC_MB
+int
+sa_expand_keys_ipsec_mb (ipsec_sa_t * sa)
+{
+  if (sa->crypto_key_len > 0)
+    {
+      const keyexp_t keyexp_fn =
+	ipsec_proto_main.ipsec_proto_main_crypto_algs[sa->
+						      crypto_alg].keyexp_fn;
+      keyexp_fn (sa->crypto_key, sa->aes_enc_key_expanded,
+		 sa->aes_dec_key_expanded);
+    }
+  if (sa->integ_key_len > 0)
+    {
+      const u8 block_size =
+	ipsec_proto_main.ipsec_proto_main_integ_algs[sa->
+						     integ_alg].block_size;
+      const hash_fn_t hash_fn =
+	ipsec_proto_main.ipsec_proto_main_integ_algs[sa->integ_alg].hash_fn;
+      const hash_one_block_t hash_one_block_fn =
+	ipsec_proto_main.ipsec_proto_main_integ_algs[sa->
+						     integ_alg].hash_one_block_fn;
+      u8 buf[block_size];
+      u8 buf_key[block_size];
+      int i = 0;
+      u8 *key_ptr = sa->integ_key;
+      if (IPSEC_INTEG_ALG_MD5_96 == sa->integ_alg)
+	{
+	  if (sa->integ_key_len > block_size)
+	    {
+	      return VNET_API_ERROR_SYSCALL_ERROR_1;	// FIXME use correct value
+	    }
+	}
+      else if (sa->integ_key_len > block_size)
+	{
+	  hash_fn (sa->integ_key, sa->integ_key_len, buf_key);
+	  key_ptr = buf_key;
+	}
+      memset (buf, 0x36, sizeof (buf));
+      for (i = 0; i < sa->integ_key_len; i++)
+	{
+	  buf[i] ^= key_ptr[i];
+	}
+      hash_one_block_fn (buf, sa->ipad_hash);
+
+      memset (buf, 0x5c, sizeof (buf));
+      for (i = 0; i < sa->integ_key_len; i++)
+	{
+	  buf[i] ^= key_ptr[i];
+	}
+      hash_one_block_fn (buf, sa->opad_hash);
+    }
+  return 0;
+}
+#endif
+
 int
 ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 {
@@ -451,6 +507,13 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
+#if WITH_IPSEC_MB
+      int rv = sa_expand_keys_ipsec_mb (sa);
+      if (rv)
+	{
+	  return rv;
+	}
+#endif
       if (im->cb.add_del_sa_sess_cb)
 	{
 	  err = im->cb.add_del_sa_sess_cb (sa_index, 1);
@@ -553,8 +616,39 @@ ipsec_init (vlib_main_t * vm)
   im->sa_index_by_sa_id = hash_create (0, sizeof (uword));
   im->spd_index_by_sw_if_index = hash_create (0, sizeof (uword));
 
+#ifdef WITH_IPSEC_MB
+#define __set_funcs(arch)                                   \
+  im->funcs.init_mb_mgr = init_mb_mgr_##arch;               \
+  im->funcs.submit_job = submit_job_##arch;                 \
+  im->funcs.submit_job_nocheck = submit_job_nocheck_##arch; \
+  im->funcs.flush_job = flush_job_##arch;                   \
+  im->funcs.queue_size = queue_size_##arch;                 \
+  im->funcs.get_completed_job = get_completed_job_##arch;   \
+  im->funcs.get_next_job = get_next_job_##arch;
+
+  if (clib_cpu_supports_avx512f ())
+    {
+      __set_funcs (avx512);
+    }
+  else if (clib_cpu_supports_avx2 ())
+    {
+      __set_funcs (avx2);
+    }
+  else
+    {
+      __set_funcs (sse);
+    }
+  vec_validate (im->mb_mgr, tm->n_vlib_mains - 1);
+  MB_MGR **mgr;
+  vec_foreach (mgr, im->mb_mgr)
+  {
+    *mgr = alloc_mb_mgr (0);
+    im->funcs.init_mb_mgr (*mgr);
+  }
+#else
   vec_validate_aligned (im->empty_buffers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+#endif
 
   node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   ASSERT (node);

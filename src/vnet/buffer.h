@@ -250,6 +250,16 @@ typedef struct
     {
       u32 flags;
       u32 sad_index;
+#if WITH_IPSEC_MB
+      union
+      {
+	u8 tunnel_mode;
+	u8 transport_mode;
+      };
+      u8 is_ipv6;
+      u8 ttl;
+      u8 tos;
+#endif
     } ipsec;
 
     /* MAP */

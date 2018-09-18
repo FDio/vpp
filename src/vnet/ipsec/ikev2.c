@@ -22,7 +22,12 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
 #include <vnet/ipsec/ikev2_priv.h>
+#ifdef WITH_IPSEC_MB
+#include <intel-ipsec-mb.h>
+#else
 #include <openssl/sha.h>
+#endif
+
 
 ikev2_main_t ikev2_main;
 
@@ -3001,14 +3006,20 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 		 sizeof (tmpport));
     u32 tmpip = clib_host_to_net_u32 (if_ip->as_u32);
     clib_memcpy (&nat_detection_source[8 + 8], &tmpip, sizeof (tmpip));
+#ifdef WITH_IPSEC_MB
+#else
     SHA1 (nat_detection_source, sizeof (nat_detection_source),
 	  nat_detection_sha1);
+#endif
     ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP,
 			      nat_detection_sha1);
     tmpip = clib_host_to_net_u32 (p->responder.ip4.as_u32);
     clib_memcpy (&nat_detection_source[8 + 8], &tmpip, sizeof (tmpip));
+#ifdef WITH_IPSEC_MB
+#else
     SHA1 (nat_detection_source, sizeof (nat_detection_source),
 	  nat_detection_sha1);
+#endif
     ikev2_payload_add_notify (chain,
 			      IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP,
 			      nat_detection_sha1);
