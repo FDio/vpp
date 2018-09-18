@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "5d25a3f6_50378159",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-09-18T15:28:23Z",
+      "side": 1,
+      "message": "I think this is backwards compatible, since you are only adding.\nSo make this version 1.1.0 instead of 2.0.0.",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 25
+      },
+      "revId": "316ae1dcb0eb74dfc1f7ced606f984a9c2dc4692",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4abafee0_6771a7f3",
         "filename": "src/vpp/api/vpe.api",
         "patchSetId": 5
