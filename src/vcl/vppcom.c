@@ -1511,6 +1511,7 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
   svm_msg_q_msg_t msg;
   session_event_t *e;
   svm_msg_q_t *mq;
+  u8 is_ct;
 
   if (PREDICT_FALSE (!buf))
     return VPPCOM_EINVAL;
@@ -1518,9 +1519,6 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
   s = vcl_session_get_w_handle (wrk, session_handle);
   if (PREDICT_FALSE (!s))
     return VPPCOM_EBADFD;
-
-  tx_fifo = s->tx_fifo;
-  is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
 
   if (PREDICT_FALSE (s->is_vep))
     {
@@ -1531,18 +1529,20 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
       return VPPCOM_EBADFD;
     }
 
-  if (!(s->session_state & STATE_OPEN))
+  if (PREDICT_FALSE (!(s->session_state & STATE_OPEN)))
     {
       session_state_t state = s->session_state;
       rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
       VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: session is not open! "
-	    "state 0x%x (%s)",
-	    getpid (), s->vpp_handle, session_handle,
+	    "state 0x%x (%s)", getpid (), s->vpp_handle, session_handle,
 	    state, vppcom_session_state_str (state));
       return rv;
     }
 
-  mq = vcl_session_is_ct (s) ? s->our_evt_q : wrk->app_event_queue;
+  tx_fifo = s->tx_fifo;
+  is_ct = vcl_session_is_ct (s);
+  is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
+  mq = is_ct ? s->our_evt_q : wrk->app_event_queue;
   if (svm_fifo_is_full (tx_fifo))
     {
       if (is_nonblocking)
@@ -1551,15 +1551,15 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
 	}
       while (svm_fifo_is_full (tx_fifo))
 	{
+	  svm_fifo_set_want_tx_evt (tx_fifo, 1);
 	  svm_msg_q_lock (mq);
-	  while (svm_msg_q_is_empty (mq) && svm_msg_q_timedwait (mq, 10e-6))
-	    ;
+	  svm_msg_q_wait (mq);
+
 	  svm_msg_q_sub_w_lock (mq, &msg);
 	  e = svm_msg_q_msg_data (mq, &msg);
 	  svm_msg_q_unlock (mq);
 
-	  if (!vcl_is_tx_evt_for_session (e, s->session_index,
-					  s->our_evt_q != 0))
+	  if (!vcl_is_tx_evt_for_session (e, s->session_index, is_ct))
 	    vcl_handle_mq_event (wrk, e);
 	  svm_msg_q_free_msg (mq, &msg);
 	}
@@ -1576,17 +1576,9 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
 
   ASSERT (n_write > 0);
 
-  if (VPPCOM_DEBUG > 2)
-    {
-      if (n_write <= 0)
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "FIFO-FULL (%p)", getpid (), s->vpp_handle,
-		      session_handle, tx_fifo);
-      else
-	clib_warning ("VCL<%d>: vpp handle 0x%llx, sid %u: "
-		      "wrote %d bytes tx-fifo: (%p)", getpid (),
-		      s->vpp_handle, session_handle, n_write, tx_fifo);
-    }
+  VDBG (2, "VCL<%d>: vpp handle 0x%llx, sid %u: wrote %d bytes", getpid (),
+	s->vpp_handle, session_handle, n_write);
+
   return n_write;
 }
 
