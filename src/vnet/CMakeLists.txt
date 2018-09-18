@@ -1379,3 +1379,14 @@ if(VPP_BUILD_SESSION_ECHO_APPS)
 endif(VPP_BUILD_SESSION_ECHO_APPS)
 
 ##############################################################################
+
+# find_path(INTEL_IPSEC_MB_INCLUDE_DIR NAMES intel-ipsec-mb.h HINTS ${INTEL_IPSEC_MB_INCLUDE_DIR_HINT})
+# find_library(INTEL_IPSEC_MB_LIB NAMES libIPSec_MB.so HINTS ${INTEL_IPSEC_MB_LIB_DIR_HINT})
+# 
+# if(INTEL_IPSEC_MB_INCLUDE_DIR AND INTEL_IPSEC_MB_LIB)
+# 	message(STATUS "Intel IPSecMB found: ${INTEL_IPSEC_MB_INCLUDE_DIR}")
+# 	add_definitions(-DWITH_IPSEC_MB=1)
+# 	target_link_libraries(vnet "${INTEL_IPSEC_MB_LIB}")
+# else()
+# 	message(STATUS "Intel IPSecMB not found")
+# endif()

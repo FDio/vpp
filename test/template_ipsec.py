@@ -185,12 +185,20 @@ class IpsecTunTests(object):
             recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if,
                                              count=count)
             for recv_pkt in recv_pkts:
-                decrypt_pkt = vpp_tun_sa.decrypt(recv_pkt[IP])
-                if not decrypt_pkt.haslayer(IP):
-                    decrypt_pkt = IP(decrypt_pkt[Raw].load)
-                self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip4)
-                self.assert_equal(decrypt_pkt.dst, self.remote_tun_if_host)
-                self.assert_packet_checksums_valid(decrypt_pkt)
+                try:
+                    decrypt_pkt = vpp_tun_sa.decrypt(recv_pkt[IP])
+                    if not decrypt_pkt.haslayer(IP):
+                        decrypt_pkt = IP(decrypt_pkt[Raw].load)
+                    self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip4)
+                    self.assert_equal(decrypt_pkt.dst, self.remote_tun_if_host)
+                    self.assert_packet_checksums_valid(decrypt_pkt)
+                finally:
+                    self.logger.debug(ppp("Unexpected packet:", recv_pkt))
+                    try:
+                        self.logger.debug(
+                            ppp("Decrypted packet:", decrypt_pkt))
+                    except:
+                        pass
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))

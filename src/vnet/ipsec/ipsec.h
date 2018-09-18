@@ -117,6 +117,12 @@ typedef struct
   ipsec_crypto_alg_t crypto_alg;
   u8 crypto_key_len;
   u8 crypto_key[128];
+#ifdef WITH_IPSEC_MB
+  u8 aes_enc_key_expanded[16*15] __attribute__((aligned(16)));
+  u8 aes_dec_key_expanded[16*15] __attribute__((aligned(16)));
+  u8 ipad_hash[256] __attribute__((aligned(16)));
+  u8 opad_hash[256] __attribute__((aligned(16)));
+#endif
 
   ipsec_integ_alg_t integ_alg;
   u8 integ_key_len;
@@ -258,6 +264,268 @@ typedef struct
   clib_error_t *(*check_support_cb) (ipsec_sa_t * sa);
 } ipsec_main_callbacks_t;
 
+
+#ifdef WITH_IPSEC_MB
+#include <vppinfra/warnings.h>
+WARN_OFF (attributes);
+
+#ifdef always_inline
+#undef always_inline
+#define __need_redefine__
+#endif
+
+#include <intel-ipsec-mb.h>
+
+#ifdef __need_redefine__
+#if CLIB_DEBUG > 0
+#define always_inline static inline
+#else
+#define always_inline static inline __attribute__ ((__always_inline__))
+#endif
+#endif // __need_redefine__
+
+WARN_ON (attributes);
+#else
+#include <openssl/hmac.h>
+#include <openssl/rand.h>
+#include <openssl/evp.h>
+#endif
+
+#include <vppinfra/types.h>
+#include <vppinfra/cache.h>
+
+typedef struct
+{
+#ifdef WITH_IPSEC_MB
+  keyexp_t keyexp_fn;
+  JOB_CIPHER_MODE cipher_mode;
+  u8 key_len;
+#else
+  const EVP_CIPHER *type;
+#endif
+  u8 iv_size;
+  u8 block_size;
+} ipsec_proto_main_crypto_alg_t;
+
+typedef struct
+{
+#ifdef WITH_IPSEC_MB
+  hash_fn_t hash_fn;
+  hash_one_block_t hash_one_block_fn;
+  u8 block_size;
+  JOB_HASH_ALG hash_alg;
+#else
+  const EVP_MD *md;
+#endif
+  u8 trunc_size;
+} ipsec_proto_main_integ_alg_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+#ifdef WITH_IPSEC_MB
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_CIPHER_CTX *encrypt_ctx;
+#else
+  EVP_CIPHER_CTX encrypt_ctx;
+#endif
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+#ifdef WITH_IPSEC_MB
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_CIPHER_CTX *decrypt_ctx;
+#else
+  EVP_CIPHER_CTX decrypt_ctx;
+#endif
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+#ifdef WITH_IPSEC_MB
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
+  HMAC_CTX *hmac_ctx;
+#else
+  HMAC_CTX hmac_ctx;
+#endif
+  ipsec_crypto_alg_t last_encrypt_alg;
+  ipsec_crypto_alg_t last_decrypt_alg;
+  ipsec_integ_alg_t last_integ_alg;
+} ipsec_proto_main_per_thread_data_t;
+
+typedef struct
+{
+  ipsec_proto_main_crypto_alg_t *ipsec_proto_main_crypto_algs;
+  ipsec_proto_main_integ_alg_t *ipsec_proto_main_integ_algs;
+  ipsec_proto_main_per_thread_data_t *per_thread_data;
+} ipsec_proto_main_t;
+
+extern ipsec_proto_main_t ipsec_proto_main;
+
+always_inline void
+ipsec_proto_init ()
+{
+  ipsec_proto_main_t *em = &ipsec_proto_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  memset (em, 0, sizeof (em[0]));
+
+  vec_validate (em->ipsec_proto_main_crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
+  vec_validate (em->ipsec_proto_main_integ_algs, IPSEC_INTEG_N_ALG - 1);
+  ipsec_proto_main_integ_alg_t *i;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].block_size =
+    16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].block_size =
+    16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].block_size =
+    16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].block_size = 8;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].block_size = 8;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].iv_size = 16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].iv_size = 16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].iv_size = 16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].iv_size = 8;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].iv_size = 8;
+#ifdef WITH_IPSEC_MB
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].cipher_mode =
+    CBC;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].cipher_mode =
+    CBC;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].cipher_mode =
+    CBC;
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA1_96];
+  i->hash_alg = SHA1;
+  i->block_size = SHA1_BLOCK_SIZE;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_96];
+  i->hash_alg = SHA_256;
+  i->block_size = SHA_256_BLOCK_SIZE;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_128];
+  i->hash_alg = SHA_256;
+  i->block_size = SHA_256_BLOCK_SIZE;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
+  i->hash_alg = SHA_384;
+  i->block_size = SHA_384_BLOCK_SIZE;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
+  i->hash_alg = SHA_512;
+  i->block_size = SHA_512_BLOCK_SIZE;
+#define __set_funcs(arch)                                                    \
+  do{\
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].keyexp_fn = \
+      aes_keyexp_128_##arch;\
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].keyexp_fn = \
+      aes_keyexp_192_##arch;\
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].keyexp_fn = \
+      aes_keyexp_256_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA1_96].hash_fn = \
+      sha1_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_96].hash_fn = \
+      sha256_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_128].hash_fn = \
+      sha256_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_384_192].hash_fn = \
+      sha384_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_512_256].hash_fn = \
+      sha512_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA1_96].hash_one_block_fn = \
+      sha1_one_block_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_96].hash_one_block_fn = \
+      sha256_one_block_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_128].hash_one_block_fn = \
+      sha256_one_block_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_384_192].hash_one_block_fn = \
+      sha384_one_block_##arch;\
+  em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_512_256].hash_one_block_fn = \
+      sha512_one_block_##arch;\
+  }while(0);
+
+  if (clib_cpu_supports_avx512f ())
+    {
+      __set_funcs (avx512);
+    }
+  else if (clib_cpu_supports_avx2 ())
+    {
+      __set_funcs (avx2);
+    }
+  else
+    {
+      __set_funcs (sse);
+    }
+#undef __set_funcs
+#else
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].type =
+    EVP_aes_128_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].type =
+    EVP_aes_192_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].type =
+    EVP_aes_256_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].type =
+    EVP_des_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].type =
+    EVP_des_ede3_cbc ();
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA1_96];
+  i->md = EVP_sha1 ();
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_96];
+  i->md = EVP_sha256 ();
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_128];
+  i->md = EVP_sha256 ();
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
+  i->md = EVP_sha384 ();
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
+  i->md = EVP_sha512 ();
+#endif
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA1_96];
+  i->trunc_size = 12;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_96];
+  i->trunc_size = 12;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_128];
+  i->trunc_size = 16;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
+  i->trunc_size = 24;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
+  i->trunc_size = 32;
+
+  vec_validate_aligned (em->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  int thread_id;
+
+  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
+    {
+#ifdef WITH_IPSEC_MB
+      /* nothing to do here */
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
+      em->per_thread_data[thread_id].encrypt_ctx = EVP_CIPHER_CTX_new ();
+      em->per_thread_data[thread_id].decrypt_ctx = EVP_CIPHER_CTX_new ();
+      em->per_thread_data[thread_id].hmac_ctx = HMAC_CTX_new ();
+#else
+      EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].encrypt_ctx));
+      EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].decrypt_ctx));
+      HMAC_CTX_init (&(em->per_thread_data[thread_id].hmac_ctx));
+#endif
+    }
+}
+
+#ifdef WITH_IPSEC_MB
+typedef struct
+{
+  init_mb_mgr_t init_mb_mgr;
+  get_next_job_t get_next_job;
+  submit_job_t submit_job;
+  submit_job_t submit_job_nocheck;
+  get_completed_job_t get_completed_job;
+  queue_size_t queue_size;
+  flush_job_t flush_job;
+} funcs_t;
+#endif
+
 typedef struct
 {
   /* pool of tunnel instances */
@@ -268,7 +536,12 @@ typedef struct
   ipsec_tunnel_if_t *tunnel_interfaces;
   u32 *free_tunnel_if_indices;
 
+#ifdef WITH_IPSEC_MB
+  MB_MGR **mb_mgr;
+  funcs_t funcs;
+#else
   u32 **empty_buffers;
+#endif
 
   uword *tunnel_index_by_key;
 
@@ -348,10 +621,12 @@ int ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 			    u8 is_outbound);
 
 
+#ifdef WITH_IPSEC_MB
+int sa_expand_keys_ipsec_mb (ipsec_sa_t * sa);
+#else
 /*
  *  inline functions
  */
-
 always_inline void
 ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
 {
@@ -372,6 +647,7 @@ ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
       _vec_len (im->empty_buffers[thread_index]) = l + n_alloc;
     }
 }
+#endif
 
 static_always_inline u32
 get_next_output_feature_node_index (vlib_buffer_t * b,
