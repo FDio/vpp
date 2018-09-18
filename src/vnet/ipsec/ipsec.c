@@ -28,6 +28,8 @@
 
 
 ipsec_main_t ipsec_main;
+ipsec_proto_main_t ipsec_proto_main;
+
 
 u32
 ipsec_get_sa_index_by_sa_id (u32 sa_id)

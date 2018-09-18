@@ -22,8 +22,6 @@ def discover_tests(directory, callback):
         if not _f.startswith("test_") or not _f.endswith(".py"):
             continue
         name = "".join(f.split("/")[-1].split(".")[:-1])
-        if name in sys.modules:
-            raise Exception("Duplicate test module `%s' found!" % name)
         module = importlib.import_module(name)
         for name, cls in module.__dict__.items():
             if not isinstance(cls, type):

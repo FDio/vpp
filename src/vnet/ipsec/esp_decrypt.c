@@ -45,7 +45,6 @@ typedef enum
  _(REPLAY, "SA replayed packet")                    \
  _(NOT_IP, "Not IP packet (dropped)")
 
-
 typedef enum
 {
 #define _(sym,str) ESP_DECRYPT_ERROR_##sym,
