@@ -22,6 +22,30 @@
       "revId": "2566b26636c96446881940f7e4be1d9f7c977d30",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "420ed7f7_86639232",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 834,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2018-09-18T08:48:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7c719877_5e902854",
+      "range": {
+        "startLine": 834,
+        "startChar": 8,
+        "endLine": 834,
+        "endChar": 40
+      },
+      "revId": "2566b26636c96446881940f7e4be1d9f7c977d30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
