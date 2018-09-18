@@ -614,7 +614,7 @@ if __name__ == '__main__':
             else:
                 extra_shm = shm_free - min_req_shm
                 shm_max_processes += extra_shm / shm_per_process
-            concurrent_tests = max(cpu_count(), shm_max_processes)
+            concurrent_tests = min(cpu_count(), shm_max_processes)
             print('Found enough resources to run tests with %s cores'
                   % concurrent_tests)
     elif test_jobs.isdigit():
