@@ -1,0 +1,11 @@
+Source: vpp-dev-contrib
+Section: net
+Priority: extra
+Maintainer: vpp-dev@lists.fd.io
+Build-Depends: debhelper (>= 9), dkms
+Standards-Version: 3.9.4
+
+Package: vpp-dev-contrib
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: VPP developer package containing dependencies
