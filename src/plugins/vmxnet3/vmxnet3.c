@@ -77,6 +77,26 @@ vmxnet3_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   return 0;
 }
 
+static void
+vmxnet3_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+				 u32 node_index)
+{
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, hw->dev_instance);
+
+  /* Shut off redirection */
+  if (node_index == ~0)
+    {
+      vd->per_interface_next_index = node_index;
+      return;
+    }
+
+  vd->per_interface_next_index =
+    vlib_node_add_next (vlib_get_main (), vmxnet3_input_node.index,
+			node_index);
+}
+
 static char *vmxnet3_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_vmxnet3_tx_func_error
@@ -91,6 +111,7 @@ VNET_DEVICE_CLASS (vmxnet3_device_class,) =
   .format_device_name = format_vmxnet3_device_name,
   .admin_up_down_function = vmxnet3_interface_admin_up_down,
   .rx_mode_change_function = vmxnet3_interface_rx_mode_change,
+  .rx_redirect_to_node = vmxnet3_set_interface_next_node,
   .tx_function_n_errors = VMXNET3_TX_N_ERROR,
   .tx_function_error_strings = vmxnet3_tx_func_error_strings,
 };

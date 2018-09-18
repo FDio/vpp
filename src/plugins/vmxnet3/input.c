@@ -88,6 +88,8 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vmxnet3_rx_comp_ring *comp_ring;
   u16 rid;
   vlib_buffer_t *prev_b0 = 0, *hb = 0;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  u8 known_next = 0;
 
   rxq = vec_elt_at_index (vd->rxqs, qid);
   comp_ring = &rxq->rx_comp_ring;
@@ -123,12 +125,14 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b0 = vlib_get_buffer (vm, bi[0]);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = vd->sw_if_index;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+      vnet_buffer (b0)->feature_arc_index = 0;
       b0->current_length = rx_comp->len & VMXNET3_RXCL_LEN_MASK;
       b0->current_data = 0;
       b0->total_length_not_including_first_buffer = 0;
       b0->next_buffer = 0;
       b0->flags = 0;
       b0->error = 0;
+      b0->current_config_index = 0;
       ASSERT (b0->current_length != 0);
 
       if (rx_comp->index & VMXNET3_RXCI_SOP)
@@ -148,7 +152,6 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       */
 	      prev_b0 = 0;
 	    }
-
 	}
       else if (rx_comp->index & VMXNET3_RXCI_EOP)
 	{
@@ -190,7 +193,55 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (!prev_b0)
 	{
-	  next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+	  ethernet_header_t *e = (ethernet_header_t *) hb->data;
+
+	  if (PREDICT_FALSE (vd->per_interface_next_index != ~0))
+	    {
+	      next_index = vd->per_interface_next_index;
+	      known_next = 1;
+	    }
+
+	  if (PREDICT_FALSE
+	      (vnet_device_input_have_features (vd->sw_if_index)))
+	    {
+	      vnet_feature_start_device_input_x1 (vd->sw_if_index,
+						  &next_index, hb);
+	      known_next = 1;
+	    }
+
+	  if (PREDICT_FALSE (known_next))
+	    {
+	      next[0] = next_index;
+	    }
+	  else
+	    {
+	      if (ethernet_frame_is_tagged (e->type))
+		next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+	      else
+		{
+		  if (rx_comp->flags & VMXNET3_RXCF_IP4)
+		    {
+		      next[0] = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
+		      hb->flags |= VNET_BUFFER_F_IS_IP4;
+		      vlib_buffer_advance (hb,
+					   device_input_next_node_advance
+					   [next[0]]);
+		    }
+		  else if (rx_comp->flags & VMXNET3_RXCF_IP6)
+		    {
+		      next[0] = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+		      hb->flags |= VNET_BUFFER_F_IS_IP6;
+		      vlib_buffer_advance (hb,
+					   device_input_next_node_advance
+					   [next[0]]);
+		    }
+		  else
+		    {
+		      next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+		    }
+		}
+	    }
+
 	  n_rx_packets++;
 	  next++;
 	  hb = 0;
