@@ -96,6 +96,11 @@ class TemplateIpsec(VppTestCase):
     vpp_ah_protocol = 0
 
     @classmethod
+    def ipsec_select_backend(cls):
+        """ empty method to be overloaded when necessary """
+        pass
+
+    @classmethod
     def setUpClass(cls):
         super(TemplateIpsec, cls).setUpClass()
         cls.create_pg_interfaces(range(3))
@@ -106,6 +111,7 @@ class TemplateIpsec(VppTestCase):
             i.resolve_arp()
             i.config_ip6()
             i.resolve_ndp()
+        cls.ipsec_select_backend()
 
     def tearDown(self):
         super(TemplateIpsec, self).tearDown()
@@ -188,6 +194,7 @@ class IpsecTcpTests(object):
 class IpsecTraTests(object):
     def test_tra_basic(self, count=1):
         """ ipsec v4 transport basic test """
+        self.vapi.cli("clear errors")
         try:
             p = self.params[socket.AF_INET]
             vpp_tra_sa, scapy_tra_sa = self.configure_sa_tra(p)
@@ -208,12 +215,16 @@ class IpsecTraTests(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
+        self.assert_packet_counter_equal(self.tra4_encrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tra4_decrypt_node_name, count)
+
     def test_tra_burst(self):
         """ ipsec v4 transport burst test """
         self.test_tra_basic(count=257)
 
     def test_tra_basic6(self, count=1):
         """ ipsec v6 transport basic test """
+        self.vapi.cli("clear errors")
         try:
             p = self.params[socket.AF_INET6]
             vpp_tra_sa, scapy_tra_sa = self.configure_sa_tra(p)
@@ -234,6 +245,9 @@ class IpsecTraTests(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
+        self.assert_packet_counter_equal(self.tra6_encrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tra6_decrypt_node_name, count)
+
     def test_tra_burst6(self):
         """ ipsec v6 transport burst test """
         self.test_tra_basic6(count=257)
@@ -242,6 +256,7 @@ class IpsecTraTests(object):
 class IpsecTun4Tests(object):
     def test_tun_basic44(self, count=1):
         """ ipsec 4o4 tunnel basic test """
+        self.vapi.cli("clear errors")
         try:
             p = self.params[socket.AF_INET]
             vpp_tun_sa, scapy_tun_sa = self.configure_sa_tun(p)
@@ -277,6 +292,9 @@ class IpsecTun4Tests(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
+        self.assert_packet_counter_equal(self.tun4_encrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tun4_decrypt_node_name, count)
+
     def test_tun_burst44(self):
         """ ipsec 4o4 tunnel burst test """
         self.test_tun_basic44(count=257)
@@ -285,6 +303,7 @@ class IpsecTun4Tests(object):
 class IpsecTun6Tests(object):
     def test_tun_basic66(self, count=1):
         """ ipsec 6o6 tunnel basic test """
+        self.vapi.cli("clear errors")
         try:
             p = self.params[socket.AF_INET6]
             vpp_tun_sa, scapy_tun_sa = self.configure_sa_tun(p)
@@ -320,6 +339,9 @@ class IpsecTun6Tests(object):
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
+
+        self.assert_packet_counter_equal(self.tun6_encrypt_node_name, count)
+        self.assert_packet_counter_equal(self.tun6_decrypt_node_name, count)
 
     def test_tun_burst66(self):
         """ ipsec 6o6 tunnel burst test """

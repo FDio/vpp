@@ -176,16 +176,6 @@ class P2PEthernetIPV6(VppTestCase):
             count = len(packets)
         return dst_if.get_capture(count)
 
-    def verify_counters(self, counter_id, expected_value):
-        counters = self.vapi.cli("sh errors").split('\n')
-        counter_value = -1
-        for i in range(1, len(counters)-1):
-            results = counters[i].split()
-            if results[1] == counter_id:
-                counter_value = int(results[0])
-                break
-        self.assertEqual(counter_value, expected_value)
-
     def test_no_p2p_subif(self):
         """standard routing without p2p subinterfaces"""
         self.logger.info("FFP_TEST_START_0001")
@@ -224,7 +214,7 @@ class P2PEthernetIPV6(VppTestCase):
                                dst_ip="9001::100"))
 
         self.send_packets(self.pg0, self.pg1, self.packets)
-        self.verify_counters('p2p-ethernet-input', 1)
+        self.assert_packet_counter_equal('p2p-ethernet-input', 1)
 
         route_9001.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0002")
@@ -397,16 +387,6 @@ class P2PEthernetIPV4(VppTestCase):
             count = len(packets)
         return dst_if.get_capture(count)
 
-    def verify_counters(self, counter_id, expected_value):
-        counters = self.vapi.cli("sh errors").split('\n')
-        counter_value = -1
-        for i in range(1, len(counters)-1):
-            results = counters[i].split()
-            if results[1] == counter_id:
-                counter_value = int(results[0])
-                break
-        self.assertEqual(counter_value, expected_value)
-
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
         p2p = VppP2PSubint(self, parent_if, sub_id, mactobinary(remote_mac))
         p2p.admin_up()
@@ -436,7 +416,7 @@ class P2PEthernetIPV4(VppTestCase):
 
         self.send_packets(self.pg0, self.pg1, self.packets)
 
-        self.verify_counters('p2p-ethernet-input', 1)
+        self.assert_packet_counter_equal('p2p-ethernet-input', 1)
 
         route_9000.remove_vpp_config()
         self.logger.info("FFP_TEST_FINISH_0002")

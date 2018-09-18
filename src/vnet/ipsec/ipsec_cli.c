@@ -174,8 +174,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 
   if (is_add)
     {
-      ASSERT (im->cb.check_support_cb);
-      error = im->cb.check_support_cb (&sa);
+      ASSERT (im->ah_check_support_cb);
+      error = im->ah_check_support_cb (&sa);
+      if (error)
+	goto done;
+      ASSERT (im->esp_check_support_cb);
+      error = im->esp_check_support_cb (&sa);
       if (error)
 	goto done;
     }
