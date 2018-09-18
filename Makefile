@@ -486,7 +486,10 @@ pkg-srpm: dist
 	make -C extras/rpm srpm
 
 dpdk-install-dev:
-	make -C dpdk install-$(PKG)
+	make -C contrib install-$(PKG)
+
+install-dev-contrib:
+	make -C contrib install-$(PKG)
 
 ctags: ctags.files
 	@ctags --totals --tag-relative -L $<

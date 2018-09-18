@@ -28,7 +28,8 @@ DPDK_FAILSAFE_PMD     ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 18.08
-PKG_SUFFIX ?= vpp3
+PKG_VERSION ?= $(shell git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
+PKG_SUFFIX ?= $(shell git log --oneline $$(git describe --abbrev=0).. . | wc -l)
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
@@ -367,16 +368,17 @@ clean:
 # .deb packaging
 ##############################################################################
 
+DEB_VER := $(PKG_VERSION)
 DEB_ARCH=$(shell dpkg --print-architecture 2> /dev/null)
-DEV_DEB=vpp-dpdk-dev_$(DPDK_VERSION)-$(PKG_SUFFIX)_$(DEB_ARCH).deb
-INSTALLED_DEB_VER=$(shell dpkg-query --showformat='$${Version}' --show vpp-dpdk-dev 2> /dev/null)
+DEV_DEB=vpp-dev-contrib_$(DEB_VER)-$(PKG_SUFFIX)_$(DEB_ARCH).deb
+INSTALLED_VER=$(shell dpkg-query --showformat='$${Version}' --show vpp-dev-contrib 2> /dev/null)
 
 .PHONY: build-deb install-deb check-deb
 
 deb/debian/changelog: Makefile
-	@echo "vpp-dpdk ($(DPDK_VERSION)-$(PKG_SUFFIX)) unstable; urgency=low" > $@
+	@echo "vpp-dev-contrib ($(DEB_VER)-$(PKG_SUFFIX)) unstable; urgency=low" > $@
 	@echo "" >> $@
-	@echo "  * DPDK Release $(DPDK_VERSION)" >> $@
+	@echo "  * Version $(DEB_VER)" >> $@
 	@echo "" >> $@
 	@echo " -- VPP Dev <vpp-dev@lists.fd.io>  $(shell date -R)" >> $@
 
@@ -387,26 +389,26 @@ $(DEV_DEB): deb/debian/changelog
 build-deb: $(DEV_DEB)
 
 install-deb:
-ifneq ($(INSTALLED_DEB_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
 	@echo "=========================================================="
-	@echo " Out of date DPDK package installed."
-	@echo " Installed: $(INSTALLED_DEB_VER)"
-	@echo " Needed: $(DPDK_VERSION)-$(PKG_SUFFIX)"
+	@echo " Out of date contrib package installed."
+	@echo " Installed: $(INSTALLED_VER)"
+	@echo " Needed: $(DEB_VER)-$(PKG_SUFFIX)"
 	@echo "=========================================================="
 	@make $(DEV_DEB)
 	@sudo dpkg -i $(DEV_DEB)
 else
 	@echo "=========================================================="
-	@echo " Up-to-date DPDK package already installed"
+	@echo " Up-to-date contrib package already installed"
 	@echo "=========================================================="
 endif
 
 check-deb:
-ifneq ($(INSTALLED_DEB_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
 	@echo "=========================================================="
 	@echo " Outdated DPDK package detected:"
-	@echo "  Installed: vpp-dpdk-dev $(INSTALLED_DEB_VER)"
-	@echo "  Current:   vpp-dpdk-dev $(DPDK_VERSION)-$(PKG_SUFFIX)"
+	@echo "  Installed: vpp-dev-contrib $(INSTALLED_VER)"
+	@echo "  Current:   vpp-dev-contrib $(DEB_VER)-$(PKG_SUFFIX)"
 	@echo ""
 	@echo " Please upgrade by invoking 'make dpdk-install-dev'"
 	@echo " from the top level directory."
@@ -417,25 +419,26 @@ endif
 # .rpm packaging
 ##############################################################################
 
+RPM_VER := $(PKG_VERSION)
 RPM_ARCH=$(shell rpm --eval "%{_arch}" 2> /dev/null)
-DEV_RPM=vpp-dpdk-devel-$(DPDK_VERSION)-$(PKG_SUFFIX).$(RPM_ARCH).rpm
-INSTALLED_RPM_VER=$(shell rpm -q --queryformat '%{VERSION}-%{RELEASE}' vpp-dpdk-devel 2> /dev/null | grep -v "not inst")
+DEV_RPM=vpp-dev-contrib-$(RPM_VER)-$(PKG_SUFFIX).$(RPM_ARCH).rpm
+INSTALLED_RPM_VER=$(shell rpm -q --queryformat '%{VERSION}-%{RELEASE}' vpp-dev-contrib 2> /dev/null | grep -v "not inst")
 
 .PHONY: build-rpm install-rpm check-rpm
 
-$(DEV_RPM): Makefile rpm/vpp-dpdk.spec
+$(DEV_RPM): Makefile rpm/vpp-dev-contrib.spec
 	@rpmbuild -bb \
 	  --define "_topdir $(CURDIR)/rpm" \
-	  --define "_version $(DPDK_VERSION)" \
+	  --define "_version $(RPM_VER)" \
 	  --define "_release $(PKG_SUFFIX)" \
-	  $(CURDIR)/rpm/vpp-dpdk.spec
+	  $(CURDIR)/rpm/vpp-dev-contrib.spec
 	mv rpm/RPMS/$(RPM_ARCH)/*.rpm .
 	git clean -fdx rpm
 
 build-rpm: $(DEV_RPM)
 
 install-rpm:
-ifneq ($(INSTALLED_RPM_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+ifneq ($(INSTALLED_RPM_VER),$(PRM_VER)-$(PKG_SUFFIX))
 	@$(MAKE) $(DEV_RPM)
 	sudo rpm -Uih $(DEV_RPM)
 else
@@ -445,11 +448,11 @@ else
 endif
 
 check-rpm:
-ifneq ($(INSTALLED_RPM_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	@echo "=========================================================="
 	@echo " Outdated DPDK package detected:"
-	@echo "  Installed: vpp-dpdk-devel $(INSTALLED_RPM_VER)"
-	@echo "  Current:   vpp-dpdk-devel $(DPDK_VERSION)-$(PKG_SUFFIX)"
+	@echo "  Installed: vpp-dev-contrib $(INSTALLED_RPM_VER)"
+	@echo "  Current:   vpp-dev-contrib $(RPM_VER)-$(PKG_SUFFIX)"
 	@echo ""
 	@echo " Please upgrade by invoking 'make dpdk-install-dev'"
 	@echo " from the top level directory."
@@ -463,7 +466,7 @@ endif
 .PHONY: ebuild-build ebuild-install
 
 ebuild-build:
-ifeq ($(INSTALLED_DEB_VER)$(INSTALLED_RPM_VER),)
+ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	@echo "=========================================================="
 	@echo "Building DPDK from source. Consider installing development"
 	@echo "package by invoking 'make dpdk-install-dev' from the"
@@ -471,7 +474,7 @@ ifeq ($(INSTALLED_DEB_VER)$(INSTALLED_RPM_VER),)
 	@echo "=========================================================="
 	make config
 else
-ifneq ($(INSTALLED_DEB_VER),)
+ifneq ($(INSTALLED_VER),)
 	make check-deb
 endif
 ifneq ($(INSTALLED_RPM_VER),)
@@ -480,6 +483,6 @@ endif
 endif
 
 ebuild-install:
-ifeq ($(INSTALLED_DEB_VER)$(INSTALLED_RPM_VER),)
+ifeq ($(INSTALLED_VER)$(INSTALLED_RPM_VER),)
 	make install
 endif
