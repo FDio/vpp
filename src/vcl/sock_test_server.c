@@ -24,6 +24,7 @@
 #include <vcl/sock_test.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 
 #define SOCK_SERVER_USE_EPOLL 1
 #define VPPCOM_SESSION_ATTR_UNIT_TEST 0
@@ -828,6 +829,7 @@ main (int argc, char **argv)
 	  if (EPOLLIN & ssm->wait_events[i].events)
 #endif
 	    {
+	    read_again:
 	      rx_bytes = sock_test_read (client_fd, conn->buf,
 					 conn->buf_size, &conn->stats);
 	      if (rx_bytes > 0)
@@ -910,6 +912,8 @@ main (int argc, char **argv)
 			   (conn->cfg.test == SOCK_TEST_TYPE_BI))
 		    {
 		      stream_test_server (conn, rx_bytes);
+		      if (ioctl (conn->fd, FIONREAD))
+			goto read_again;
 		      continue;
 		    }
 

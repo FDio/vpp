@@ -19,9 +19,10 @@
 #include <vppinfra/elog.h>
 
 #define VCL_ELOG	0
+#define VCL_DBG_ON	1
 
 #define VDBG(_lvl, _fmt, _args...) 					\
-  if (vcm->debug > _lvl)						\
+  if (VCL_DBG_ON && vcm->debug > _lvl)					\
     clib_warning ("vcl<w%d>: " _fmt, __vcl_worker_index, ##_args)
 
 #define foreach_vcl_dbg_evt						\

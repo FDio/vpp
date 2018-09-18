@@ -707,6 +707,20 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   return SESSION_TX_OK;
 }
 
+u8
+session_tx_fifo_maybe_full (session_tx_context_t * ctx)
+{
+  svm_fifo_t *txf = ctx->s->server_tx_fifo;
+  /* If what we just sent and what's left sum up to more than what the fifo
+   * can hold, it may be that the app saw the fifo as full */
+  if (ctx->max_len_to_snd + svm_fifo_max_dequeue (txf) >= txf->nitems)
+    {
+//      clib_warning ("now");
+      return 1;
+    }
+  return 0;
+}
+
 int
 session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      session_event_t * e,
@@ -817,7 +831,7 @@ skip_dequeue:
     {
       stream_session_t *s;	/* $$$ prefetch 1 ahead maybe */
       session_event_t *e;
-      u8 is_full;
+      u8 want_tx_evt;
 
       e = &fifo_events[i];
       switch (e->event_type)
@@ -836,18 +850,19 @@ skip_dequeue:
 	      clib_warning ("It's dead, Jim!");
 	      continue;
 	    }
-	  is_full = svm_fifo_is_full (s->server_tx_fifo);
 
+	  want_tx_evt = svm_fifo_want_tx_evt (s->server_tx_fifo);
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
 	  rv = (smm->session_tx_fns[s->session_type]) (vm, node, e, s,
 						       &n_tx_packets);
 	  if (PREDICT_TRUE (rv == SESSION_TX_OK))
 	    {
-	      /* Notify app there's tx space if not polling */
-	      if (PREDICT_FALSE (is_full
-				 && !svm_fifo_has_event (s->server_tx_fifo)))
-		session_dequeue_notify (s);
+	      if (PREDICT_FALSE (want_tx_evt))
+		{
+		  svm_fifo_set_want_tx_evt (s->server_tx_fifo, 0);
+		  session_dequeue_notify (s);
+		}
 	    }
 	  else if (PREDICT_FALSE (rv == SESSION_TX_NO_BUFFERS))
 	    {
