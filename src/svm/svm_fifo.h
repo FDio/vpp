@@ -62,6 +62,7 @@ typedef struct _svm_fifo
   u32 segment_manager;
     CLIB_CACHE_LINE_ALIGN_MARK (end_shared);
   u32 head;
+  volatile u32 want_tx_evt;	/**< producer wants nudge */
     CLIB_CACHE_LINE_ALIGN_MARK (end_consumer);
 
   /* producer */
@@ -167,6 +168,18 @@ always_inline void
 svm_fifo_unset_event (svm_fifo_t * f)
 {
   __sync_lock_release (&f->has_event);
+}
+
+static inline void
+svm_fifo_set_want_tx_evt (svm_fifo_t * f, u8 want_evt)
+{
+  f->want_tx_evt = want_evt;
+}
+
+static inline u8
+svm_fifo_want_tx_evt (svm_fifo_t * f)
+{
+  return f->want_tx_evt;
 }
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);

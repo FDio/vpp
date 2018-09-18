@@ -341,28 +341,29 @@ class VCLThruHostStackTestCase(VCLTestCase):
     #      is fixed.
 
 
-class VCLThruHostStackExtendedATestCase(VCLTestCase):
-    """ VCL Thru Host Stack Extended Tests """
+class VCLThruHostStackNSessionBidirTestCase(VCLTestCase):
+    """ VCL Thru Host Stack NSession Bidir Tests """
 
     def setUp(self):
-        super(VCLThruHostStackExtendedATestCase, self).setUp()
+        super(VCLThruHostStackNSessionBidirTestCase, self).setUp()
 
         self.thru_host_stack_setup()
         if self.vppDebug:
             self.client_bi_dir_nsock_timeout = 120
-            self.client_bi_dir_nsock_test_args = ["-B", "-X",
+            self.client_bi_dir_nsock_test_args = ["-B", "-X", "-N 10000",
                                                   self.loop0.local_ip4,
                                                   self.server_port]
         else:
             self.client_bi_dir_nsock_timeout = 90
             self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
+                                                  "-N 1000",
                                                   self.loop0.local_ip4,
                                                   self.server_port]
 
     def tearDown(self):
         self.thru_host_stack_tear_down()
 
-        super(VCLThruHostStackExtendedATestCase, self).tearDown()
+        super(VCLThruHostStackNSessionBidirTestCase, self).tearDown()
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_vcl_thru_host_stack_bi_dir_nsock(self):
@@ -375,7 +376,7 @@ class VCLThruHostStackExtendedATestCase(VCLTestCase):
 
 
 class VCLThruHostStackExtendedBTestCase(VCLTestCase):
-    """ VCL Thru Host Stack Extended Tests """
+    """ VCL Thru Host Stack Extended B Tests """
 
     def setUp(self):
         super(VCLThruHostStackExtendedBTestCase, self).setUp()
@@ -383,12 +384,13 @@ class VCLThruHostStackExtendedBTestCase(VCLTestCase):
         self.thru_host_stack_setup()
         if self.vppDebug:
             self.client_bi_dir_nsock_timeout = 120
-            self.client_bi_dir_nsock_test_args = ["-B", "-X",
+            self.client_bi_dir_nsock_test_args = ["-B", "-X", "-N 1000",
                                                   self.loop0.local_ip4,
                                                   self.server_port]
         else:
             self.client_bi_dir_nsock_timeout = 60
             self.client_bi_dir_nsock_test_args = ["-I", "2", "-B", "-X",
+                                                  "-N 1000",
                                                   self.loop0.local_ip4,
                                                   self.server_port]
 
@@ -408,7 +410,7 @@ class VCLThruHostStackExtendedBTestCase(VCLTestCase):
 
 
 class VCLThruHostStackExtendedCTestCase(VCLTestCase):
-    """ VCL Thru Host Stack Extended Tests """
+    """ VCL Thru Host Stack Extended C Tests """
 
     def setUp(self):
         super(VCLThruHostStackExtendedCTestCase, self).setUp()
@@ -422,7 +424,7 @@ class VCLThruHostStackExtendedCTestCase(VCLTestCase):
             self.numSockets = "5"
 
         self.client_uni_dir_nsock_test_args = ["-I", self.numSockets,
-                                               "-U", "-X",
+                                               "-U", "-X", "-N 1000",
                                                self.loop0.local_ip4,
                                                self.server_port]
 
@@ -442,7 +444,7 @@ class VCLThruHostStackExtendedCTestCase(VCLTestCase):
 
 
 class VCLThruHostStackExtendedDTestCase(VCLTestCase):
-    """ VCL Thru Host Stack Extended Tests """
+    """ VCL Thru Host Stack Extended D Tests """
 
     def setUp(self):
         super(VCLThruHostStackExtendedDTestCase, self).setUp()
@@ -456,7 +458,7 @@ class VCLThruHostStackExtendedDTestCase(VCLTestCase):
             self.numSockets = "5"
 
         self.client_uni_dir_nsock_test_args = ["-I", self.numSockets,
-                                               "-U", "-X",
+                                               "-U", "-X", "-N 1000",
                                                self.loop0.local_ip4,
                                                self.server_port]
 
@@ -648,7 +650,7 @@ class VCLIpv6ThruHostStackTestCase(VCLTestCase):
 
 
 class VCLIpv6ThruHostStackExtendedATestCase(VCLTestCase):
-    """ VCL IPv6 Thru Host Stack Extended Tests """
+    """ VCL IPv6 Thru Host Stack Extended A Tests """
 
     def setUp(self):
         super(VCLIpv6ThruHostStackExtendedATestCase, self).setUp()
@@ -682,7 +684,7 @@ class VCLIpv6ThruHostStackExtendedATestCase(VCLTestCase):
 
 
 class VCLIpv6ThruHostStackExtendedBTestCase(VCLTestCase):
-    """ VCL IPv6 Thru Host Stack Extended Tests """
+    """ VCL IPv6 Thru Host Stack Extended B Tests """
 
     def setUp(self):
         super(VCLIpv6ThruHostStackExtendedBTestCase, self).setUp()
@@ -717,7 +719,7 @@ class VCLIpv6ThruHostStackExtendedBTestCase(VCLTestCase):
 
 
 class VCLIpv6ThruHostStackExtendedCTestCase(VCLTestCase):
-    """ VCL IPv6 Thru Host Stack Extended Tests """
+    """ VCL IPv6 Thru Host Stack Extended C Tests """
 
     def setUp(self):
         super(VCLIpv6ThruHostStackExtendedCTestCase, self).setUp()
@@ -753,7 +755,7 @@ class VCLIpv6ThruHostStackExtendedCTestCase(VCLTestCase):
 
 
 class VCLIpv6ThruHostStackExtendedDTestCase(VCLTestCase):
-    """ VCL IPv6 Thru Host Stack Extended Tests """
+    """ VCL IPv6 Thru Host Stack Extended D Tests """
 
     def setUp(self):
         super(VCLIpv6ThruHostStackExtendedDTestCase, self).setUp()
