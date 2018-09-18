@@ -817,7 +817,7 @@ skip_dequeue:
     {
       stream_session_t *s;	/* $$$ prefetch 1 ahead maybe */
       session_event_t *e;
-      u8 is_full;
+      u8 want_tx_evt;
 
       e = &fifo_events[i];
       switch (e->event_type)
@@ -836,18 +836,19 @@ skip_dequeue:
 	      clib_warning ("It's dead, Jim!");
 	      continue;
 	    }
-	  is_full = svm_fifo_is_full (s->server_tx_fifo);
 
+	  want_tx_evt = svm_fifo_want_tx_evt (s->server_tx_fifo);
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
 	  rv = (smm->session_tx_fns[s->session_type]) (vm, node, e, s,
 						       &n_tx_packets);
 	  if (PREDICT_TRUE (rv == SESSION_TX_OK))
 	    {
-	      /* Notify app there's tx space if not polling */
-	      if (PREDICT_FALSE (is_full
-				 && !svm_fifo_has_event (s->server_tx_fifo)))
-		session_dequeue_notify (s);
+	      if (PREDICT_FALSE (want_tx_evt))
+		{
+		  svm_fifo_set_want_tx_evt (s->server_tx_fifo, 0);
+		  session_dequeue_notify (s);
+		}
 	    }
 	  else if (PREDICT_FALSE (rv == SESSION_TX_NO_BUFFERS))
 	    {

@@ -125,9 +125,7 @@ static inline int
 vcl_test_write (int fd, uint8_t *buf, uint32_t nbytes,
                  sock_test_stats_t *stats, uint32_t verbose)
 {
-  int tx_bytes = 0;
-  int nbytes_left = nbytes;
-  int rv, errno_val;
+  int tx_bytes = 0, nbytes_left = nbytes, rv;
 
   do
     {
@@ -163,10 +161,7 @@ vcl_test_write (int fd, uint8_t *buf, uint32_t nbytes,
 
   if (tx_bytes < 0)
     {
-      errno_val = errno;
-      perror ("ERROR in sock_test_write()");
-      fprintf (stderr, "SOCK_TEST: ERROR: socket write failed "
-               "(errno = %d)!\n", errno_val);
+      vterr ("vpcom_session_write", -errno);
     }
   else if (stats)
     stats->tx_bytes += tx_bytes;
