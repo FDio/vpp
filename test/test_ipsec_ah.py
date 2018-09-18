@@ -180,7 +180,14 @@ class TemplateIpsecAh(TemplateIpsec):
 
 class TestIpsecAh1(TemplateIpsecAh, IpsecTraTests, IpsecTunTests):
     """ Ipsec AH - TUN & TRA tests """
-    pass
+    tra4_encrypt_node_name = "ah4-encrypt"
+    tra4_decrypt_node_name = "ah4-decrypt"
+    tra6_encrypt_node_name = "ah6-encrypt"
+    tra6_decrypt_node_name = "ah6-decrypt"
+    tun4_encrypt_node_name = "ah4-encrypt"
+    tun4_decrypt_node_name = "ah4-decrypt"
+    tun6_encrypt_node_name = "ah6-encrypt"
+    tun6_decrypt_node_name = "ah6-decrypt"
 
 
 class TestIpsecAh2(TemplateIpsecAh, IpsecTcpTests):
