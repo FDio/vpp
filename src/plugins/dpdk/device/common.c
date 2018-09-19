@@ -43,6 +43,8 @@ dpdk_device_setup (dpdk_device_t * xd)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
+  struct rte_eth_dev_info dev_info;
+  u64 bitmap;
   int rv;
   int j;
 
@@ -64,6 +66,24 @@ dpdk_device_setup (dpdk_device_t * xd)
 	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
       else
 	xd->port_conf.fdir_conf.mode = RTE_FDIR_MODE_NONE;
+    }
+
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
+
+  bitmap = xd->port_conf.txmode.offloads & ~dev_info.tx_offload_capa;
+  if (bitmap)
+    {
+      dpdk_log_warn ("unsupported tx offloads requested on port %u: %U",
+		     xd->port_id, format_dpdk_tx_offload_caps, bitmap);
+      xd->port_conf.txmode.offloads ^= bitmap;
+    }
+
+  bitmap = xd->port_conf.rxmode.offloads & ~dev_info.rx_offload_capa;
+  if (bitmap)
+    {
+      dpdk_log_warn ("unsupported rx offloads requested on port %u: %U",
+		     xd->port_id, format_dpdk_rx_offload_caps, bitmap);
+      xd->port_conf.rxmode.offloads ^= bitmap;
     }
 
   rv = rte_eth_dev_configure (xd->port_id, xd->rx_q_used,

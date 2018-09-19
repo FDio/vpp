@@ -46,17 +46,6 @@ dpdk_config_main_t dpdk_config_main;
 
 /* Port configuration, mildly modified Intel app values */
 
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-static struct rte_eth_conf port_conf_template = {
-  .rxmode = {
-	     .split_hdr_size = 0,
-	     },
-  .txmode = {
-	     .mq_mode = ETH_MQ_TX_NONE,
-	     },
-};
-#endif
-
 static dpdk_port_type_t
 port_type_from_speed_capa (struct rte_eth_dev_info *dev_info)
 {
@@ -285,7 +274,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (dev_info.device == 0)
 	{
-	  clib_warning ("DPDK bug: missing device info. Skipping  %s device",
+	  clib_warning ("DPDK bug: missing device info. Skipping %s device",
 			dev_info.driver_name);
 	  continue;
 	}
@@ -297,9 +286,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  pci_addr.bus = pci_dev->addr.bus;
 	  pci_addr.slot = pci_dev->addr.devid;
 	  pci_addr.function = pci_dev->addr.function;
-	  p =
-	    hash_get (dm->conf->device_config_index_by_pci_addr,
-		      pci_addr.as_u32);
+	  p = hash_get (dm->conf->device_config_index_by_pci_addr,
+			pci_addr.as_u32);
 	}
 
       if (p)
@@ -349,8 +337,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	  xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
-	  port_conf_template.rxmode.jumbo_frame = 0;
-	  port_conf_template.rxmode.enable_scatter = 0;
+	  xd->port_conf.rxmode.jumbo_frame = 0;
+	  xd->port_conf.rxmode.enable_scatter = 0;
 #else
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
 	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -361,8 +349,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOMULTSEGS;
-	  port_conf_template.rxmode.jumbo_frame = 1;
-	  port_conf_template.rxmode.enable_scatter = 1;
+	  xd->port_conf.rxmode.jumbo_frame = 1;
+	  xd->port_conf.rxmode.enable_scatter = 1;
 #else
 	  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -370,11 +358,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 #endif
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
-
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-      clib_memcpy (&xd->port_conf, &port_conf_template,
-		   sizeof (struct rte_eth_conf));
-#endif
 
       xd->tx_q_used = clib_min (dev_info.max_tx_queues, tm->n_vlib_mains);
 
