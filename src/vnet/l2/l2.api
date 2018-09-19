@@ -425,7 +425,7 @@ autoreply define sw_interface_set_l2_xconnect
     @param rx_sw_if_index - the interface
     @param bd_id - bridge domain id
     @param bvi - Setup interface as a bvi, bridge mode only
-    @param shg - Shared horizon group, for bridge mode only
+    @param shg - Split horizon group, for bridge mode only
     @param enable - Enable beige mode if not 0, else set to L3 mode
 */
 autoreply define sw_interface_set_l2_bridge
