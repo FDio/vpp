@@ -217,23 +217,6 @@ mfib_test_validate_rep_v (const replicate_t *rep,
     return (res);
 }
 
-static fib_forward_chain_type_t
-fib_forw_chain_type_from_fib_proto (fib_protocol_t proto)
-{
-    switch (proto)
-    {
-    case FIB_PROTOCOL_IP4:
-        return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
-    case FIB_PROTOCOL_IP6:
-        return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
-    default:
-        break;
-    }
-    ASSERT(0);
-    return (0);
-}
-
-
 static int
 mfib_test_entry (fib_node_index_t fei,
                  mfib_entry_flags_t eflags,
