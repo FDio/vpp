@@ -3824,3 +3824,44 @@ class VppPapiProvider(object):
 
     def pipe_dump(self):
         return self.api(self.papi.pipe_dump, {})
+
+    def memif_create(
+            self,
+            role,
+            mode,
+            rx_queues=None,
+            tx_queues=None,
+            _id=None,
+            socket_id=None,
+            secret=None,
+            ring_size=None,
+            buffer_size=None,
+            hw_addr=None):
+        return self.api(self.papi.memif_create,
+                        {'role': role,
+                         'mode': mode,
+                         'rx_queues': rx_queues,
+                         'tx_queues': tx_queues,
+                         'id': _id,
+                         'socket_id': socket_id,
+                         'secret': secret,
+                         'ring_size': ring_size,
+                         'buffer_size': buffer_size,
+                         'hw_addr': hw_addr})
+
+    def memif_delete(self, sw_if_index):
+        return self.api(self.papi.memif_delete, {'sw_if_index': sw_if_index})
+
+    def memif_dump(self):
+        return self.api(self.papi.memif_dump, {})
+
+    def memif_socket_filename_add_del(
+            self, is_add, socket_id, socket_filename):
+        return self.api(
+            self.papi.memif_socket_filename_add_del,
+            {'is_add': is_add,
+             'socket_id': socket_id,
+             'socket_filename': socket_filename})
+
+    def memif_socket_filename_dump(self):
+        return self.api(self.papi.memif_socket_filename_dump, {})
