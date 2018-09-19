@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "811ce07b_6dc4ebdf",
+        "filename": "src/plugins/dpdk/device/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-09-19T11:33:40Z",
+      "side": 1,
+      "message": "All the rest looks good to me but this one... why removing a define in favor of a magic number? Can we have back a \"#define _max_line_len 72\"?",
+      "revId": "d3bb92cf3eb39147fffef07bf94cbfbd700cbb53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
