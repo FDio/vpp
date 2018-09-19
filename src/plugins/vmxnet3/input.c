@@ -99,6 +99,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	 (rxq->rx_comp[comp_ring->next].flags & VMXNET3_RXCF_GEN))
     {
       vlib_buffer_t *b0;
+      u32 bi0;
 
       comp_idx = comp_ring->next;
       rx_comp = &rxq->rx_comp[comp_idx];
@@ -119,10 +120,10 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       desc_idx = rx_comp->index & VMXNET3_RXC_INDEX;
       ring->consume = desc_idx;
 
-      bi[0] = ring->bufs[desc_idx];
+      bi0 = ring->bufs[desc_idx];
       ring->bufs[desc_idx] = ~0;
 
-      b0 = vlib_get_buffer (vm, bi[0]);
+      b0 = vlib_get_buffer (vm, bi0);
       vnet_buffer (b0)->sw_if_index[VLIB_RX] = vd->sw_if_index;
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
       vnet_buffer (b0)->feature_arc_index = 0;
@@ -139,6 +140,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  /* start segment */
 	  hb = b0;
+	  bi[0] = bi0;
 	  if (!(rx_comp->index & VMXNET3_RXCI_EOP))
 	    {
 	      hb->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -158,7 +160,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* end of segment */
 	  if (prev_b0)
 	    {
-	      prev_b0->next_buffer = bi[0];
+	      prev_b0->next_buffer = bi0;
 	      prev_b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
 	      hb->total_length_not_including_first_buffer +=
 		b0->current_length;
@@ -168,10 +170,9 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      /* EOP without SOP, error */
 	      hb = 0;
-	      bi++;
 	      vlib_error_count (vm, node->node_index,
 				VMXNET3_INPUT_ERROR_RX_PACKET, 1);
-	      vlib_buffer_free_one (vm, bi[0]);
+	      vlib_buffer_free_one (vm, bi0);
 	      continue;
 	    }
 	}
@@ -179,7 +180,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  /* mid chain */
 	  b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
-	  prev_b0->next_buffer = bi[0];
+	  prev_b0->next_buffer = bi0;
 	  prev_b0 = b0;
 	  hb->total_length_not_including_first_buffer += b0->current_length;
 	}
@@ -188,7 +189,6 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ASSERT (0);
 	}
 
-      bi++;
       n_rx_bytes += b0->current_length;
 
       if (!prev_b0)
@@ -244,6 +244,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  n_rx_packets++;
 	  next++;
+	  bi++;
 	  hb = 0;
 	}
     }
