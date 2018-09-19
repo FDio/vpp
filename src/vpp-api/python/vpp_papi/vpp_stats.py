@@ -134,7 +134,8 @@ class VPPStats:
         for i in range(rv_len):
             n = ffi.string(rv[i].name).decode()
             e = stat_entry_to_python(self.api, rv[i])
-            stats[n] = e
+            if e != None:
+                stats[n] = e
         return stats
 
     def get_counter(self, name):
