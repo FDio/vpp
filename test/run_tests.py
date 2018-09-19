@@ -14,7 +14,8 @@ from multiprocessing import Process, Pipe, cpu_count
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
-    get_testcase_doc_name, get_test_description
+    get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
+    TEST_RUN
 from debug import spawn_gdb
 from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
     colorize
@@ -48,21 +49,75 @@ class StreamQueueManager(BaseManager):
     pass
 
 
-StreamQueueManager.register('Queue', StreamQueue)
+StreamQueueManager.register('StreamQueue', StreamQueue)
 
 
-def test_runner_wrapper(suite, keep_alive_pipe, result_pipe, stdouterr_queue,
-                        partial_result_queue, logger):
+class TestResult(dict):
+    def __init__(self, testcase_suite):
+        super(TestResult, self).__init__()
+        self[PASS] = []
+        self[FAIL] = []
+        self[ERROR] = []
+        self[SKIP] = []
+        self[TEST_RUN] = []
+        self.testcase_suite = testcase_suite
+        self.testcases = [testcase for testcase in testcase_suite]
+        self.testcases_by_id = {}
+
+    def was_successful(self):
+        return len(self[PASS] + self[SKIP]) \
+               == self.testcase_suite.countTestCases()
+
+    def no_tests_run(self):
+        return 0 == len(self[TEST_RUN])
+
+    def process_result(self, test_id, result):
+        self[result].append(test_id)
+        for testcase in self.testcases:
+            if testcase.id() == test_id:
+                self.testcases_by_id[test_id] = testcase
+                self.testcases.remove(testcase)
+                break
+
+    def suite_from_failed(self):
+        rerun_ids = set([])
+        for testcase in self.testcase_suite:
+            tc_id = testcase.id()
+            if tc_id not in self[PASS] and tc_id not in self[SKIP]:
+                rerun_ids.add(tc_id)
+        if len(rerun_ids) > 0:
+            return suite_from_failed(self.testcase_suite, rerun_ids)
+
+    def get_testcase_names(self, test_id):
+        return self._get_testcase_class(test_id), \
+               self._get_test_description(test_id)
+
+    def _get_test_description(self, test_id):
+        if test_id in self.testcases_by_id:
+            return get_test_description(descriptions,
+                                        self.testcases_by_id[test_id])
+        else:
+            return test_id
+
+    def _get_testcase_class(self, test_id):
+        if test_id in self.testcases_by_id:
+            return get_testcase_doc_name(self.testcases_by_id[test_id])
+        else:
+            return test_id
+
+
+def test_runner_wrapper(suite, keep_alive_pipe, stdouterr_queue,
+                        finished_pipe, result_pipe, logger):
     sys.stdout = stdouterr_queue
     sys.stderr = stdouterr_queue
     VppTestCase.logger = logger
     result = VppTestRunner(keep_alive_pipe=keep_alive_pipe,
                            descriptions=descriptions,
                            verbosity=verbose,
-                           results_pipe=partial_result_queue,
+                           result_pipe=result_pipe,
                            failfast=failfast).run(suite)
-    result_pipe.send(result)
-    result_pipe.close()
+    finished_pipe.send(result.wasSuccessful())
+    finished_pipe.close()
     keep_alive_pipe.close()
 
 
@@ -70,19 +125,20 @@ class TestCaseWrapper(object):
     def __init__(self, testcase_suite, manager):
         self.keep_alive_parent_end, self.keep_alive_child_end = Pipe(
             duplex=False)
+        self.finished_parent_end, self.finished_child_end = Pipe(duplex=False)
         self.result_parent_end, self.result_child_end = Pipe(duplex=False)
-        self.partial_result_parent_end, self.partial_result_child_end = Pipe(
-            duplex=False)
         self.testcase_suite = testcase_suite
-        self.stdouterr_queue = manager.Queue()
+        self.stdouterr_queue = manager.StreamQueue()
         self.logger = get_parallel_logger(self.stdouterr_queue)
         self.child = Process(target=test_runner_wrapper,
-                             args=(testcase_suite, self.keep_alive_child_end,
-                                   self.result_child_end, self.stdouterr_queue,
-                                   self.partial_result_child_end, self.logger)
+                             args=(testcase_suite,
+                                   self.keep_alive_child_end,
+                                   self.stdouterr_queue,
+                                   self.finished_child_end,
+                                   self.result_child_end,
+                                   self.logger)
                              )
         self.child.start()
-        self.pid = self.child.pid
         self.last_test_temp_dir = None
         self.last_test_vpp_binary = None
         self.last_test = None
@@ -90,16 +146,15 @@ class TestCaseWrapper(object):
         self.vpp_pid = None
         self.last_heard = time.time()
         self.core_detected_at = None
-        self.failed_tests = []
-        self.partial_result = None
+        self.result = TestResult(testcase_suite)
 
     def close_pipes(self):
         self.keep_alive_child_end.close()
+        self.finished_child_end.close()
         self.result_child_end.close()
-        self.partial_result_child_end.close()
         self.keep_alive_parent_end.close()
+        self.finished_parent_end.close()
         self.result_parent_end.close()
-        self.partial_result_parent_end.close()
 
 
 def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
@@ -154,33 +209,23 @@ def run_forked(testcase_suites):
     while len(wrapped_testcase_suites) > 0:
         finished_testcase_suites = set()
         for wrapped_testcase_suite in wrapped_testcase_suites:
-            readable = select.select(
-                [wrapped_testcase_suite.keep_alive_parent_end.fileno(),
-                 wrapped_testcase_suite.result_parent_end.fileno(),
-                 wrapped_testcase_suite.partial_result_parent_end.fileno()],
-                [], [], 1)[0]
-            if wrapped_testcase_suite.result_parent_end.fileno() in readable:
-                results.append(
-                    (wrapped_testcase_suite.testcase_suite,
-                     wrapped_testcase_suite.result_parent_end.recv()))
+            while wrapped_testcase_suite.result_parent_end.poll():
+                wrapped_testcase_suite.result.process_result(
+                    *wrapped_testcase_suite.result_parent_end.recv())
+                wrapped_testcase_suite.last_heard = time.time()
+
+            if wrapped_testcase_suite.finished_parent_end.poll():
+                wrapped_testcase_suite.finished_parent_end.recv()
+                results.append(wrapped_testcase_suite.result)
                 finished_testcase_suites.add(wrapped_testcase_suite)
                 continue
 
-            if wrapped_testcase_suite.partial_result_parent_end.fileno() \
-                    in readable:
-                while wrapped_testcase_suite.partial_result_parent_end.poll():
-                    wrapped_testcase_suite.partial_result = \
-                        wrapped_testcase_suite.partial_result_parent_end.recv()
-                    wrapped_testcase_suite.last_heard = time.time()
-
-            if wrapped_testcase_suite.keep_alive_parent_end.fileno() \
-                    in readable:
-                while wrapped_testcase_suite.keep_alive_parent_end.poll():
-                    wrapped_testcase_suite.last_test, \
-                        wrapped_testcase_suite.last_test_vpp_binary, \
-                        wrapped_testcase_suite.last_test_temp_dir, \
-                        wrapped_testcase_suite.vpp_pid = \
-                        wrapped_testcase_suite.keep_alive_parent_end.recv()
+            while wrapped_testcase_suite.keep_alive_parent_end.poll():
+                wrapped_testcase_suite.last_test, \
+                    wrapped_testcase_suite.last_test_vpp_binary, \
+                    wrapped_testcase_suite.last_test_temp_dir, \
+                    wrapped_testcase_suite.vpp_pid = \
+                    wrapped_testcase_suite.keep_alive_parent_end.recv()
                 wrapped_testcase_suite.last_heard = time.time()
 
             fail = False
@@ -276,8 +321,7 @@ def run_forked(testcase_suites):
                 except OSError:
                     # already dead
                     pass
-                results.append((wrapped_testcase_suite.testcase_suite,
-                                wrapped_testcase_suite.partial_result))
+                results.append(wrapped_testcase_suite.result)
                 finished_testcase_suites.add(wrapped_testcase_suite)
 
         for finished_testcase in finished_testcase_suites:
@@ -405,84 +449,45 @@ def suite_from_failed(suite, failed):
     return suite
 
 
-class NonPassedResults(dict):
+class AllResults(dict):
     def __init__(self):
-        super(NonPassedResults, self).__init__()
+        super(AllResults, self).__init__()
         self.all_testcases = 0
-        self.results_per_suite = {}
-        self.failures_id = 'failures'
-        self.errors_id = 'errors'
-        self.crashes_id = 'crashes'
-        self.skipped_id = 'skipped'
-        self.expectedFailures_id = 'expectedFailures'
-        self.unexpectedSuccesses_id = 'unexpectedSuccesses'
+        self.results_per_suite = []
+        self[PASS] = 0
+        self[FAIL] = 0
+        self[ERROR] = 0
+        self[SKIP] = 0
+        self[TEST_RUN] = 0
         self.rerun = []
-        self.passed = 0
-        self[self.failures_id] = 0
-        self[self.errors_id] = 0
-        self[self.skipped_id] = 0
-        self[self.expectedFailures_id] = 0
-        self[self.unexpectedSuccesses_id] = 0
+        self.testsuites_no_tests_run = []
 
-    def _add_result(self, test, result_id):
-        if isinstance(test, VppTestCase):
-            parts = test.id().split('.')
-            if len(parts) == 3:
-                tc_class = get_testcase_doc_name(test)
-                if tc_class not in self.results_per_suite:
-                    # failed, errored, skipped, expectedly failed,
-                    # unexpectedly passed
-                    self.results_per_suite[tc_class] = \
-                        {self.failures_id: [],
-                         self.errors_id: [],
-                         self.skipped_id: [],
-                         self.expectedFailures_id: [],
-                         self.unexpectedSuccesses_id: []}
-                self.results_per_suite[tc_class][result_id].append(test)
-                return True
-        return False
+    def add_results(self, result):
+        self.results_per_suite.append(result)
+        result_types = [PASS, FAIL, ERROR, SKIP, TEST_RUN]
+        for result_type in result_types:
+            self[result_type] += len(result[result_type])
 
-    def add_results(self, testcases, testcase_result_id):
-        for failed_testcase, _ in testcases:
-            if self._add_result(failed_testcase, testcase_result_id):
-                self[testcase_result_id] += 1
-
-    def add_result(self, testcase_suite, result):
+    def add_result(self, result):
         retval = 0
-        if result:
-            self.all_testcases += result.testsRun
-            self.passed += len(result.passed)
-            if not len(result.passed) + len(result.skipped) \
-                    == testcase_suite.countTestCases():
+        self.all_testcases += result.testcase_suite.countTestCases()
+        if not result.no_tests_run():
+            if not result.was_successful():
                 retval = 1
 
-            self.add_results(result.failures, self.failures_id)
-            self.add_results(result.errors, self.errors_id)
-            self.add_results(result.skipped, self.skipped_id)
-            self.add_results(result.expectedFailures,
-                             self.expectedFailures_id)
-            self.add_results(result.unexpectedSuccesses,
-                             self.unexpectedSuccesses_id)
+            self.add_results(result)
         else:
+            self.testsuites_no_tests_run.append(result.testcase_suite)
             retval = -1
 
         if retval != 0:
             if concurrent_tests == 1:
-                if result:
-                    rerun_ids = set([])
-                    skipped = [x.id() for (x, _) in result.skipped]
-                    for testcase in testcase_suite:
-                        tc_id = testcase.id()
-                        if tc_id not in result.passed and \
-                                tc_id not in skipped:
-                            rerun_ids.add(tc_id)
-                    if len(rerun_ids) > 0:
-                        self.rerun.append(suite_from_failed(testcase_suite,
-                                                            rerun_ids))
+                if not result.no_tests_run():
+                    self.rerun.append(result.suite_from_failed())
                 else:
-                    self.rerun.append(testcase_suite)
+                    self.rerun.append(result.testcase_suite)
             else:
-                self.rerun.append(testcase_suite)
+                self.rerun.append(result.testcase_suite)
 
         return retval
 
@@ -490,70 +495,85 @@ class NonPassedResults(dict):
         print('')
         print(double_line_delim)
         print('TEST RESULTS:')
-        print('        Executed tests: {}'.format(self.all_testcases))
-        print('          Passed tests: {}'.format(
-            colorize(str(self.passed), GREEN)))
-        if self[self.failures_id] > 0:
-            print('              Failures: {}'.format(
-                colorize(str(self[self.failures_id]), RED)))
-        if self[self.errors_id] > 0:
-            print('                Errors: {}'.format(
-                colorize(str(self[self.errors_id]), RED)))
-        if self[self.skipped_id] > 0:
-            print('         Skipped tests: {}'.format(
-                colorize(str(self[self.skipped_id]), YELLOW)))
-        if self[self.expectedFailures_id] > 0:
-            print('     Expected failures: {}'.format(
-                colorize(str(self[self.expectedFailures_id]), GREEN)))
-        if self[self.unexpectedSuccesses_id] > 0:
-            print('  Unexpected successes: {}'.format(
-                colorize(str(self[self.unexpectedSuccesses_id]), YELLOW)))
+        print('     Scheduled tests: {}'.format(self.all_testcases))
+        print('      Executed tests: {}'.format(self[TEST_RUN]))
+        print('        Passed tests: {}'.format(
+            colorize(str(self[PASS]), GREEN)))
+        if self[SKIP] > 0:
+            print('       Skipped tests: {}'.format(
+                colorize(str(self[SKIP]), YELLOW)))
+        if self.not_executed > 0:
+            print('  Not Executed tests: {}'.format(
+                colorize(str(self.not_executed), RED)))
+        if self[FAIL] > 0:
+            print('            Failures: {}'.format(
+                colorize(str(self[FAIL]), RED)))
+        if self[ERROR] > 0:
+            print('              Errors: {}'.format(
+                colorize(str(self[ERROR]), RED)))
 
         if self.all_failed > 0:
             print('FAILED TESTS:')
-            for testcase_class, suite_results in \
-                    self.results_per_suite.items():
-                failed_testcases = suite_results[
-                    self.failures_id]
-                errored_testcases = suite_results[
-                    self.errors_id]
-                if len(failed_testcases) or len(errored_testcases):
-                    print('  Testcase name: {}'.format(
-                        colorize(testcase_class, RED)))
-                    for failed_test in failed_testcases:
+            for result in self.results_per_suite:
+                failed_testcase_ids = result[FAIL]
+                errored_testcase_ids = result[ERROR]
+                old_testcase_name = None
+                if len(failed_testcase_ids) or len(errored_testcase_ids):
+                    for failed_test_id in failed_testcase_ids:
+                        new_testcase_name, test_name = \
+                            result.get_testcase_names(failed_test_id)
+                        if new_testcase_name != old_testcase_name:
+                            print('  Testcase name: {}'.format(
+                                colorize(new_testcase_name, RED)))
+                            old_testcase_name = new_testcase_name
                         print('     FAILED: {}'.format(
-                            colorize(get_test_description(
-                                descriptions, failed_test), RED)))
-                    for failed_test in errored_testcases:
+                            colorize(test_name, RED)))
+                    for failed_test_id in errored_testcase_ids:
+                        new_testcase_name, test_name = \
+                            result.get_testcase_names(failed_test_id)
+                        if new_testcase_name != old_testcase_name:
+                            print('  Testcase name: {}'.format(
+                                colorize(new_testcase_name, RED)))
+                            old_testcase_name = new_testcase_name
                         print('    ERRORED: {}'.format(
-                            colorize(get_test_description(
-                                descriptions, failed_test), RED)))
+                            colorize(test_name, RED)))
+        if len(self.testsuites_no_tests_run) > 0:
+            print('TESTCASES WHERE NO TESTS WERE SUCCESSFULLY EXECUTED:')
+            tc_classes = set([])
+            for testsuite in self.testsuites_no_tests_run:
+                for testcase in testsuite:
+                    tc_classes.add(get_testcase_doc_name(testcase))
+            for tc_class in tc_classes:
+                print('  {}'.format(colorize(tc_class, RED)))
 
         print(double_line_delim)
         print('')
 
     @property
+    def not_executed(self):
+        return self.all_testcases - self[TEST_RUN]
+
+    @property
     def all_failed(self):
-        return self[self.failures_id] + self[self.errors_id]
+        return self[FAIL] + self[ERROR]
 
 
 def parse_results(results):
     """
-    Prints the number of executed, passed, failed, errored, skipped,
-    expectedly failed and unexpectedly passed tests and details about
-    failed, errored, expectedly failed and unexpectedly passed tests.
+    Prints the number of scheduled, executed, not executed, passed, failed,
+    errored and skipped tests and details about failed and errored tests.
 
-    Also returns any suites where any test failed.
+    Also returns all suites where any test failed.
 
     :param results:
     :return:
     """
 
-    results_per_suite = NonPassedResults()
+    results_per_suite = AllResults()
     crashed = False
     failed = False
-    for testcase_suite, result in results:
-        result_code = results_per_suite.add_result(testcase_suite, result)
+    for result in results:
+        result_code = results_per_suite.add_result(result)
         if result_code == 1:
             failed = True
         elif result_code == -1:
