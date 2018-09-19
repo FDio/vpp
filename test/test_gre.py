@@ -230,6 +230,60 @@ class TestGRE(VppTestCase):
                 self.logger.error(ppp("Tx:", tx))
                 raise
 
+    def verify_tunneled_4o6(self, src_if, capture, sent,
+                            tunnel_src, tunnel_dst):
+
+        self.assertEqual(len(capture), len(sent))
+
+        for i in range(len(capture)):
+            try:
+                tx = sent[i]
+                rx = capture[i]
+
+                rx_ip = rx[IPv6]
+
+                self.assertEqual(rx_ip.src, tunnel_src)
+                self.assertEqual(rx_ip.dst, tunnel_dst)
+
+                rx_gre = GRE(str(rx_ip[IPv6].payload))
+                tx_ip = tx[IP]
+                rx_ip = rx_gre[IP]
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
+
+            except:
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
+                raise
+
+    def verify_tunneled_6o4(self, src_if, capture, sent,
+                            tunnel_src, tunnel_dst):
+
+        self.assertEqual(len(capture), len(sent))
+
+        for i in range(len(capture)):
+            try:
+                tx = sent[i]
+                rx = capture[i]
+
+                rx_ip = rx[IP]
+
+                self.assertEqual(rx_ip.src, tunnel_src)
+                self.assertEqual(rx_ip.dst, tunnel_dst)
+
+                rx_gre = GRE(str(rx_ip[IP].payload))
+                rx_ip = rx_gre[IPv6]
+                tx_ip = tx[IPv6]
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
+
+            except:
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
+                raise
+
     def verify_tunneled_l2o4(self, src_if, capture, sent,
                              tunnel_src, tunnel_dst):
         self.assertEqual(len(capture), len(sent))
@@ -503,10 +557,28 @@ class TestGRE(VppTestCase):
         self.verify_decapped_6o4(self.pg0, rx, tx)
 
         #
+        # Send v6 packets for v4 encap
+        #
+        route6_via_tun = VppIpRoute(
+            self, "2001::1", 128,
+            [VppRoutePath("::",
+                          gre_if.sw_if_index,
+                          proto=DpoProto.DPO_PROTO_IP6)],
+            is_ip6=1)
+        route6_via_tun.add_vpp_config()
+
+        tx = self.create_stream_ip6(self.pg0, "2001::2", "2001::1")
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+
+        self.verify_tunneled_6o4(self.pg0, rx, tx,
+                                 self.pg0.local_ip4, "1.1.1.2")
+
+        #
         # test case cleanup
         #
         route_tun_dst.remove_vpp_config()
         route_via_tun.remove_vpp_config()
+        route6_via_tun.remove_vpp_config()
         gre_if.remove_vpp_config()
 
         self.pg0.unconfig_ip6()
@@ -602,10 +674,25 @@ class TestGRE(VppTestCase):
         self.assertEqual(rx[0][IPv6].dst, self.pg1.remote_ip6)
 
         #
+        # Send v4 over v6
+        #
+        route4_via_tun = VppIpRoute(self, "1.1.1.1", 32,
+                                    [VppRoutePath("0.0.0.0",
+                                                  gre_if.sw_if_index)])
+        route4_via_tun.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.2", "1.1.1.1")
+        rx = self.send_and_expect(self.pg0, tx, self.pg2)
+
+        self.verify_tunneled_4o6(self.pg0, rx, tx,
+                                 self.pg2.local_ip6, "1002::1")
+
+        #
         # test case cleanup
         #
         route_tun_dst.remove_vpp_config()
         route_via_tun.remove_vpp_config()
+        route4_via_tun.remove_vpp_config()
         gre_if.remove_vpp_config()
 
         self.pg2.unconfig_ip6()

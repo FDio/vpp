@@ -339,6 +339,22 @@ fib_forw_chain_type_from_dpo_proto (dpo_proto_t proto)
     return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
 }
 
+fib_forward_chain_type_t
+fib_forw_chain_type_from_fib_proto (fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
+    case FIB_PROTOCOL_IP6:
+	return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
+    case FIB_PROTOCOL_MPLS:
+	return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
+    }
+    ASSERT(0);
+    return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
+}
+
 vnet_link_t
 fib_forw_chain_type_to_link_type (fib_forward_chain_type_t fct)
 {

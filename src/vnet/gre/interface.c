@@ -128,7 +128,9 @@ gre_tunnel_from_fib_node (fib_node_t * node)
 void
 gre_tunnel_stack (adj_index_t ai)
 {
+  fib_forward_chain_type_t fib_fwd;
   gre_main_t *gm = &gre_main;
+  dpo_id_t tmp = DPO_INVALID;
   ip_adjacency_t *adj;
   gre_tunnel_t *gt;
   u32 sw_if_index;
@@ -150,9 +152,7 @@ gre_tunnel_stack (adj_index_t ai)
       return;
     }
 
-  dpo_id_t tmp = DPO_INVALID;
-  fib_forward_chain_type_t fib_fwd = (FIB_PROTOCOL_IP6 == adj->ia_nh_proto) ?
-    FIB_FORW_CHAIN_TYPE_UNICAST_IP6 : FIB_FORW_CHAIN_TYPE_UNICAST_IP4;
+  fib_fwd = fib_forw_chain_type_from_fib_proto (gt->tunnel_dst.fp_proto);
 
   fib_entry_contribute_forwarding (gt->fib_entry_index, fib_fwd, &tmp);
   if (DPO_LOAD_BALANCE == tmp.dpoi_type)
