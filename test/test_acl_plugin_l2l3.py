@@ -40,8 +40,8 @@ from vpp_papi_provider import L2_PORT_TYPE
 import time
 
 
-class TestAclIpIrb(VppTestCase):
-    """IRB Test Case"""
+class TestACLpluginL2L3(VppTestCase):
+    """TestACLpluginL2L3 Test Case"""
 
     @classmethod
     def setUpClass(cls):
@@ -53,7 +53,7 @@ class TestAclIpIrb(VppTestCase):
         #. Loopback BVI interface has remote hosts, one half of hosts are
            behind pg0 second behind pg1.
         """
-        super(TestAclIpIrb, cls).setUpClass()
+        super(TestACLpluginL2L3, cls).setUpClass()
 
         cls.pg_if_packet_sizes = [64, 512, 1518, 9018]  # packet sizes
         cls.bd_id = 10
@@ -108,7 +108,7 @@ class TestAclIpIrb(VppTestCase):
         ``show l2fib verbose``,``show bridge-domain <bd_id> detail``,
         ``show ip arp``.
         """
-        super(TestAclIpIrb, self).tearDown()
+        super(TestACLpluginL2L3, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.cli("show l2patch"))
             self.logger.info(self.vapi.cli("show classify tables"))
