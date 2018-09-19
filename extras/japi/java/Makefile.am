@@ -185,6 +185,26 @@ jvpp-nat/io_fd_vpp_jvpp_nat_JVppNatImpl.h: $(jvpp_registry_ok) $(jvpp_nat_json_f
 endif
 
 #
+# NSH Plugin
+#
+if ENABLE_NSH_PLUGIN
+noinst_LTLIBRARIES += libjvpp_nsh.la
+libjvpp_nsh_la_SOURCES = jvpp-nsh/jvpp_nsh.c
+libjvpp_nsh_la_CPPFLAGS = -Ijvpp-nsh
+libjvpp_nsh_la_LIBADD = $(JVPP_LIBS)
+libjvpp_nsh_la_DEPENDENCIES = libjvpp_common.la
+
+BUILT_SOURCES += jvpp-nsh/io_fd_vpp_jvpp_nsh_JVppNshImpl.h
+JAR_FILES += jvpp-nsh-$(PACKAGE_VERSION).jar
+CLEANDIRS += jvpp-nsh/target
+
+jvpp_nsh_json_files = @top_builddir@/../vpp/plugins/nsh/nsh.api.json
+
+jvpp-nsh/io_fd_vpp_jvpp_nsh_JVppNshImpl.h: $(jvpp_registry_ok) $(jvpp_nsh_json_files)
+	$(call japigen,nsh,JVppNshImpl)
+endif
+
+#
 # iOAM Trace Plugin
 #
 if ENABLE_IOAM_PLUGIN
