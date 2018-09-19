@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1d5d3755_396381ee",
+        "filename": "src/vpp/stats/stats.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-19T12:39:09Z",
+      "side": 1,
+      "message": "Please wrap long lines.",
+      "range": {
+        "startLine": 3,
+        "startChar": 97,
+        "endLine": 3,
+        "endChar": 98
+      },
+      "revId": "2f459d728b5cbd6d5a945a440afd7ef110e82505",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
