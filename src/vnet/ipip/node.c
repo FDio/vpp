@@ -99,6 +99,14 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (is_ipv6)
 	    {
 	      ip60 = vlib_buffer_get_current (b0);
+	      /* Check for outer fragmentation */
+	      if (ip60->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+		{
+		  next0 = IPIP_INPUT_NEXT_DROP;
+		  b0->error = node->errors[IPIP_ERROR_FRAGMENTED_PACKET];
+		  goto drop;
+		}
+
 	      vlib_buffer_advance (b0, sizeof (*ip60));
 	      ip_set (&src0, &ip60->src_address, false);
 	      ip_set (&dst0, &ip60->dst_address, false);

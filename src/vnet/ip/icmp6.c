@@ -524,14 +524,24 @@ ip6_icmp_error (vlib_main_t * vm,
 		{
 		  b = vlib_get_buffer (vm, b->next_buffer);
 		  b->current_length = 0;
+		  // XXX: Buffer leak???
 		}
 	    }
 
 	  /* Add IP header and ICMPv6 header including a 4 byte data field */
-	  vlib_buffer_advance (p0,
-			       -sizeof (ip6_header_t) -
-			       sizeof (icmp46_header_t) - 4);
+	  int headroom = sizeof (ip6_header_t) + sizeof (icmp46_header_t) + 4;
 
+	  /* Verify that we're not falling off the edge */
+	  if (p0->current_data - headroom < -VLIB_BUFFER_PRE_DATA_SIZE)
+	    {
+	      next0 = IP6_ICMP_ERROR_NEXT_DROP;
+	      error0 = ICMP6_ERROR_DROP;
+	      goto error;
+	    }
+
+	  vlib_buffer_advance (p0, -headroom);
+	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;
+	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p0->current_length =
 	    p0->current_length > 1280 ? 1280 : p0->current_length;
 
@@ -561,6 +571,7 @@ ip6_icmp_error (vlib_main_t * vm,
 	    {
 	      next0 = IP6_ICMP_ERROR_NEXT_DROP;
 	      error0 = ICMP6_ERROR_DROP;
+	      goto error;
 	    }
 
 	  /* Fill icmp header fields */
@@ -573,11 +584,11 @@ ip6_icmp_error (vlib_main_t * vm,
 	    ip6_tcp_udp_icmp_compute_checksum (vm, p0, out_ip0,
 					       &bogus_length);
 
-
-
 	  /* Update error status */
 	  if (error0 == ICMP6_ERROR_NONE)
 	    error0 = icmp6_icmp_type_to_error (icmp0->type);
+
+	error:
 	  vlib_error_count (vm, node->node_index, error0, 1);
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
@@ -602,7 +613,7 @@ VLIB_REGISTER_NODE (ip6_icmp_error_node) = {
 
   .n_next_nodes = IP6_ICMP_ERROR_N_NEXT,
   .next_nodes = {
-    [IP6_ICMP_ERROR_NEXT_DROP] = "ip6-drop",
+    [IP6_ICMP_ERROR_NEXT_DROP] = "error-drop",
     [IP6_ICMP_ERROR_NEXT_LOOKUP] = "ip6-lookup",
   },
 
