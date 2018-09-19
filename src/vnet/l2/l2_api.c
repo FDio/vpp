@@ -142,9 +142,9 @@ send_l2fib_table_entry (vpe_api_main_t * am,
 
   clib_memcpy (mp->mac, l2fe_key->fields.mac, 6);
   mp->sw_if_index = ntohl (l2fe_res->fields.sw_if_index);
-  mp->static_mac = l2fib_entry_result_is_set_STATIC (l2fe_res);
-  mp->filter_mac = l2fib_entry_result_is_set_FILTER (l2fe_res);
-  mp->bvi_mac = l2fib_entry_result_is_set_BVI (l2fe_res);
+  mp->static_mac = (l2fib_entry_result_is_set_STATIC (l2fe_res) ? 1 : 0);
+  mp->filter_mac = (l2fib_entry_result_is_set_FILTER (l2fe_res) ? 1 : 0);
+  mp->bvi_mac = (l2fib_entry_result_is_set_BVI (l2fe_res) ? 1 : 0);
   mp->context = context;
 
   vl_api_send_msg (reg, (u8 *) mp);
