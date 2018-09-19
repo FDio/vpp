@@ -366,7 +366,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 #else
 	  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
+	  /* xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER; */
 #endif
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
