@@ -78,7 +78,7 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_nsh_JVppNshImpl_close0
 
     plugin_main->callbackClass = NULL;
     plugin_main->callbackObject = NULL;
-
+}
 
 /* Attach thread to JVM and cache class references when initiating JVPP ACL */
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
