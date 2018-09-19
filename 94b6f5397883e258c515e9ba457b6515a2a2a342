@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c451deba_1db72ac2",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-09-19T13:24:47Z",
+      "side": 1,
+      "message": "It is supposed to be port \u003d 0 to be consistent with the other functions.",
+      "range": {
+        "startLine": 257,
+        "startChar": 6,
+        "endLine": 257,
+        "endChar": 20
+      },
+      "revId": "94b6f5397883e258c515e9ba457b6515a2a2a342",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
