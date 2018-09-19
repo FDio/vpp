@@ -264,7 +264,6 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	    {
 	      //Send to fragmentation node if necessary
 	      vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
-	      vnet_buffer (p0)->ip_frag.header_offset = 0;
 	      vnet_buffer (p0)->ip_frag.next_index = IP4_FRAG_NEXT_IP4_LOOKUP;
 	      next0 = IP6_MAPT_ICMP_NEXT_IP4_FRAG;
 	    }
@@ -348,7 +347,6 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 		{
 		  //Send to fragmentation node if necessary
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
-		  vnet_buffer (p0)->ip_frag.header_offset = 0;
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP4_FRAG_NEXT_IP4_LOOKUP;
 		  next0 = IP6_MAPT_FRAGMENTED_NEXT_IP4_FRAG;
@@ -366,7 +364,6 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 		{
 		  //Send to fragmentation node if necessary
 		  vnet_buffer (p1)->ip_frag.mtu = vnet_buffer (p1)->map_t.mtu;
-		  vnet_buffer (p1)->ip_frag.header_offset = 0;
 		  vnet_buffer (p1)->ip_frag.next_index =
 		    IP4_FRAG_NEXT_IP4_LOOKUP;
 		  next1 = IP6_MAPT_FRAGMENTED_NEXT_IP4_FRAG;
@@ -405,7 +402,6 @@ ip6_map_t_fragmented (vlib_main_t * vm,
 		{
 		  //Send to fragmentation node if necessary
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
-		  vnet_buffer (p0)->ip_frag.header_offset = 0;
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP4_FRAG_NEXT_IP4_LOOKUP;
 		  next0 = IP6_MAPT_FRAGMENTED_NEXT_IP4_FRAG;
@@ -466,7 +462,6 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 		{
 		  //Send to fragmentation node if necessary
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
-		  vnet_buffer (p0)->ip_frag.header_offset = 0;
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP4_FRAG_NEXT_IP4_LOOKUP;
 		  next0 = IP6_MAPT_TCP_UDP_NEXT_IP4_FRAG;
@@ -484,7 +479,6 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 		{
 		  //Send to fragmentation node if necessary
 		  vnet_buffer (p1)->ip_frag.mtu = vnet_buffer (p1)->map_t.mtu;
-		  vnet_buffer (p1)->ip_frag.header_offset = 0;
 		  vnet_buffer (p1)->ip_frag.next_index =
 		    IP4_FRAG_NEXT_IP4_LOOKUP;
 		  next1 = IP6_MAPT_TCP_UDP_NEXT_IP4_FRAG;
@@ -523,7 +517,6 @@ ip6_map_t_tcp_udp (vlib_main_t * vm,
 		{
 		  //Send to fragmentation node if necessary
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
-		  vnet_buffer (p0)->ip_frag.header_offset = 0;
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP4_FRAG_NEXT_IP4_LOOKUP;
 		  next0 = IP6_MAPT_TCP_UDP_NEXT_IP4_FRAG;
