@@ -360,7 +360,7 @@ class TestMPLS(VppTestCase):
                 # ICMP sourced from the interface's address
                 self.assertEqual(rx_ip.src, src_if.local_ip6)
                 # hop-limit reset to 255 for IMCP packet
-                self.assertEqual(rx_ip.hlim, 254)
+                self.assertEqual(rx_ip.hlim, 255)
 
                 icmp = rx[ICMPv6TimeExceeded]
 

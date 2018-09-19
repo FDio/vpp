@@ -138,6 +138,10 @@ ipip6_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b,
   ip6_header_t *ip6;
   const ipip_tunnel_t *t = data;
 
+  /* Must set locally originated otherwise we're not allowed to
+     fragment the packet later */
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
   ip6 = vlib_buffer_get_current (b);
   ip6->payload_length =
     clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b) -

@@ -188,16 +188,16 @@ class TestMTU(VppTestCase):
         p_icmp6 = ICMPv6PacketTooBig(mtu=1280, cksum=0x4c7a)
         icmp6_reply = (IPv6(src=self.pg0.local_ip6,
                             dst=self.pg0.remote_ip6,
-                            hlim=254, plen=1240) /
+                            hlim=255, plen=1240) /
                        p_icmp6 / p_ip6 / p_payload)
         icmp6_reply[2].hlim -= 1
         n = icmp6_reply.__class__(str(icmp6_reply))
         s = str(icmp6_reply)
-        icmp6_reply = s[0:1280]
+        icmp6_reply_str = s[0:1280]
 
         rx = self.send_and_expect(self.pg0, p6*9, self.pg0)
         for p in rx:
-            self.validate_bytes(str(p[1]), icmp6_reply)
+            self.validate_bytes(str(p[1]), icmp6_reply_str)
 
         # Reset MTU
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index,

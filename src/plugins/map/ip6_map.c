@@ -308,7 +308,6 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		      (d0->mtu
 		       && (clib_host_to_net_u16 (ip40->length) > d0->mtu)))
 		    {
-		      vnet_buffer (p0)->ip_frag.header_offset = 0;
 		      vnet_buffer (p0)->ip_frag.flags = 0;
 		      vnet_buffer (p0)->ip_frag.next_index =
 			IP4_FRAG_NEXT_IP4_LOOKUP;
@@ -341,7 +340,6 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		      (d1->mtu
 		       && (clib_host_to_net_u16 (ip41->length) > d1->mtu)))
 		    {
-		      vnet_buffer (p1)->ip_frag.header_offset = 0;
 		      vnet_buffer (p1)->ip_frag.flags = 0;
 		      vnet_buffer (p1)->ip_frag.next_index =
 			IP4_FRAG_NEXT_IP4_LOOKUP;
@@ -495,7 +493,6 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		      (d0->mtu
 		       && (clib_host_to_net_u16 (ip40->length) > d0->mtu)))
 		    {
-		      vnet_buffer (p0)->ip_frag.header_offset = 0;
 		      vnet_buffer (p0)->ip_frag.flags = 0;
 		      vnet_buffer (p0)->ip_frag.next_index =
 			IP4_FRAG_NEXT_IP4_LOOKUP;
@@ -935,7 +932,6 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 	      (d0->mtu && (clib_host_to_net_u16 (ip40->length) > d0->mtu)
 	       && error0 == MAP_ERROR_NONE && !cached))
 	    {
-	      vnet_buffer (p0)->ip_frag.header_offset = 0;
 	      vnet_buffer (p0)->ip_frag.flags = 0;
 	      vnet_buffer (p0)->ip_frag.next_index = IP4_FRAG_NEXT_IP4_LOOKUP;
 	      vnet_buffer (p0)->ip_frag.mtu = d0->mtu;

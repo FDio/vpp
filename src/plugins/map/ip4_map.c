@@ -167,7 +167,8 @@ ip4_map_fragment (vlib_buffer_t * b, u16 mtu, bool df, u8 * error)
 
   if (mm->frag_inner)
     {
-      ip_frag_set_vnet_buffer (b, sizeof (ip6_header_t), mtu,
+      // TODO: Fix inner fragmentation after removed inner support from ip-frag.
+      ip_frag_set_vnet_buffer (b, /*sizeof (ip6_header_t), */ mtu,
 			       IP4_FRAG_NEXT_IP6_LOOKUP,
 			       IP_FRAG_FLAG_IP6_HEADER);
       return (IP4_MAP_NEXT_IP4_FRAGMENT);
@@ -183,7 +184,7 @@ ip4_map_fragment (vlib_buffer_t * b, u16 mtu, bool df, u8 * error)
 	  *error = MAP_ERROR_DF_SET;
 	  return (IP4_MAP_NEXT_ICMP_ERROR);
 	}
-      ip_frag_set_vnet_buffer (b, 0, mtu, IP6_FRAG_NEXT_IP6_LOOKUP,
+      ip_frag_set_vnet_buffer (b, mtu, IP6_FRAG_NEXT_IP6_LOOKUP,
 			       IP_FRAG_FLAG_IP6_HEADER);
       return (IP4_MAP_NEXT_IP6_FRAGMENT);
     }
@@ -621,7 +622,7 @@ ip4_map_reass (vlib_main_t * vm,
 	       && (clib_net_to_host_u16 (ip60->payload_length) +
 		   sizeof (*ip60) > d0->mtu)))
 	    {
-	      vnet_buffer (p0)->ip_frag.header_offset = sizeof (*ip60);
+	      // TODO: vnet_buffer (p0)->ip_frag.header_offset = sizeof (*ip60);
 	      vnet_buffer (p0)->ip_frag.next_index = IP4_FRAG_NEXT_IP6_LOOKUP;
 	      vnet_buffer (p0)->ip_frag.mtu = d0->mtu;
 	      vnet_buffer (p0)->ip_frag.flags = IP_FRAG_FLAG_IP6_HEADER;
