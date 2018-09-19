@@ -95,9 +95,9 @@ STATIC_ASSERT_SIZEOF (BVT (clib_bihash_bucket), sizeof (u64));
 typedef CLIB_PACKED (struct {
   /*
    * Backing store allocation. Since bihash manages its own
-   * freelists, we simple dole out memory at alloc_arena_next.
+   * freelists, we simple dole out memory starting from alloc_arena[alloc_arena_next].
    */
-  u64 alloc_arena_next;	/* Next VA to allocate, definitely NOT a constant */
+  u64 alloc_arena_next;	/* Next offset from alloc_arena to allocate, definitely NOT a constant */
   u64 alloc_arena_size;	/* Size of the arena */
   /* Two SVM pointers stored as 8-byte integers */
   u64 alloc_lock_as_u64;
