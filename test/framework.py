@@ -39,6 +39,13 @@ else:
     import subprocess
 
 
+PASS = 0
+FAIL = 1
+ERROR = 2
+SKIP = 3
+TEST_RUN = 4
+
+
 debug_framework = False
 if os.getenv('TEST_DEBUG', "0") == "1":
     debug_framework = True
@@ -961,7 +968,6 @@ class VppTestResult(unittest.TestResult):
         self.verbosity = verbosity
         self.result_string = None
         self.printer = TestCasePrinter()
-        self.passed = []
 
     def addSuccess(self, test):
         """
@@ -975,9 +981,10 @@ class VppTestResult(unittest.TestResult):
                               % (test.__class__.__name__,
                                  test._testMethodName,
                                  test._testMethodDoc))
-        self.passed.append(test.id())
         unittest.TestResult.addSuccess(self, test)
         self.result_string = colorize("OK", GREEN)
+
+        self.send_result_through_pipe(test, PASS)
 
     def addSkip(self, test, reason):
         """
@@ -995,6 +1002,8 @@ class VppTestResult(unittest.TestResult):
                                  reason))
         unittest.TestResult.addSkip(self, test, reason)
         self.result_string = colorize("SKIP", YELLOW)
+
+        self.send_result_through_pipe(test, SKIP)
 
     def symlink_failed(self, test):
         logger = None
@@ -1019,11 +1028,11 @@ class VppTestResult(unittest.TestResult):
                 if logger:
                     logger.error(e)
 
-    def send_results_through_pipe(self):
-        if hasattr(self, 'test_framework_results_pipe'):
-            pipe = self.test_framework_results_pipe
+    def send_result_through_pipe(self, test, result):
+        if hasattr(self, 'test_framework_result_pipe'):
+            pipe = self.test_framework_result_pipe
             if pipe:
-                pipe.send(self)
+                pipe.send((test.id(), result))
 
     def addFailure(self, test, err):
         """
@@ -1048,6 +1057,8 @@ class VppTestResult(unittest.TestResult):
         else:
             self.result_string = colorize("FAIL", RED) + ' [no temp dir]'
 
+        self.send_result_through_pipe(test, FAIL)
+
     def addError(self, test, err):
         """
         Record a test error result
@@ -1070,6 +1081,8 @@ class VppTestResult(unittest.TestResult):
             self.symlink_failed(test)
         else:
             self.result_string = colorize("ERROR", RED) + ' [no temp dir]'
+
+        self.send_result_through_pipe(test, ERROR)
 
     def getDescription(self, test):
         """
@@ -1111,7 +1124,8 @@ class VppTestResult(unittest.TestResult):
         else:
             self.stream.writeln("%-73s%s" % (self.getDescription(test),
                                              self.result_string))
-        self.send_results_through_pipe()
+
+        self.send_result_through_pipe(test, TEST_RUN)
 
     def printErrors(self):
         """
@@ -1148,7 +1162,7 @@ class VppTestRunner(unittest.TextTestRunner):
         return VppTestResult
 
     def __init__(self, keep_alive_pipe=None, descriptions=True, verbosity=1,
-                 results_pipe=None, failfast=False, buffer=False,
+                 result_pipe=None, failfast=False, buffer=False,
                  resultclass=None):
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
@@ -1158,7 +1172,7 @@ class VppTestRunner(unittest.TextTestRunner):
         reporter = KeepAliveReporter()
         reporter.pipe = keep_alive_pipe
 
-        VppTestResult.test_framework_results_pipe = results_pipe
+        VppTestResult.test_framework_result_pipe = result_pipe
 
     def run(self, test):
         """
