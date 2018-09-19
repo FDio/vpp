@@ -6,18 +6,18 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
-class TestTCP(VppTestCase):
+class TestBihash(VppTestCase):
     """ Bihash Test Cases """
 
     @classmethod
     def setUpClass(cls):
-        super(TestTCP, cls).setUpClass()
+        super(TestBihash, cls).setUpClass()
 
     def setUp(self):
-        super(TestTCP, self).setUp()
+        super(TestBihash, self).setUp()
 
     def tearDown(self):
-        super(TestTCP, self).tearDown()
+        super(TestBihash, self).tearDown()
 
     def test_bihash_unittest(self):
         """ Bihash Add/Del Test """

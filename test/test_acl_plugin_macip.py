@@ -144,7 +144,7 @@ class MethodHolder(VppTestCase):
             cls.subifs[3].remote_hosts = cls.loop0.remote_hosts[175:]
 
         except Exception:
-            super(TestMACIP, cls).tearDownClass()
+            super(MethodHolder, cls).tearDownClass()
             raise
 
     def setUp(self):
