@@ -1566,9 +1566,10 @@ ip6_mtu_check (vlib_buffer_t * b, u16 packet_bytes,
       if (is_locally_generated)
 	{
 	  /* IP fragmentation */
-	  ip_frag_set_vnet_buffer (b, 0, adj_packet_bytes,
+	  ip_frag_set_vnet_buffer (b, adj_packet_bytes,
 				   IP6_FRAG_NEXT_IP6_REWRITE, 0);
 	  *next = IP6_REWRITE_NEXT_FRAGMENT;
+	  *error = IP6_ERROR_MTU_EXCEEDED;
 	}
       else
 	{
