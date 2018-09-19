@@ -26,7 +26,7 @@ static inline void *BV (alloc_aligned) (BVT (clib_bihash) * h, uword nbytes)
   rv = alloc_arena_next (h);
   alloc_arena_next (h) += nbytes;
 
-  if (rv >= (alloc_arena (h) + alloc_arena_size (h)))
+  if (rv >= alloc_arena_size (h))
     os_out_of_memory ();
 
   return (void *) (uword) (rv + alloc_arena (h));
