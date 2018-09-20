@@ -404,7 +404,7 @@ static inline int BV (clib_bihash_add_del_inline)
    int (*is_stale_cb) (BVT (clib_bihash_kv) *, void *), void *arg)
 {
   u32 bucket_index;
-  BVT (clib_bihash_bucket) * b, tmp_b;
+  BVT (clib_bihash_bucket) * b, tmp_b, save_old_b;
   BVT (clib_bihash_value) * v, *new_v, *save_new_v, *working_copy;
   int i, limit;
   u64 hash, new_hash;
@@ -557,6 +557,9 @@ static inline int BV (clib_bihash_add_del_inline)
   BV (clib_bihash_alloc_lock) (h);
   BV (make_working_copy) (h, b);
 
+  /* save in case we rehash this bucket and need to free it later */
+  save_old_b.as_u64 = h->saved_bucket.as_u64;
+
   v = BV (clib_bihash_get_value) (h, h->saved_bucket.offset);
 
   old_log2_pages = h->saved_bucket.log2_pages;
@@ -627,6 +630,9 @@ expand_ok:
   tmp_b.lock = 0;
   CLIB_MEMORY_BARRIER ();
   b->as_u64 = tmp_b.as_u64;
+  /* free the old bucket */
+  v = BV (clib_bihash_get_value) (h, save_old_b.offset);
+  BV (value_free) (h, v, save_old_b.log2_pages);
   BV (clib_bihash_alloc_unlock) (h);
   return (0);
 }
