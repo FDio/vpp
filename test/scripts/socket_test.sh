@@ -3,8 +3,8 @@
 # socket_test.sh -- script to run socket tests.
 #
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-vpp_dir="$WS_ROOT/build-root/install-vpp-native/vpp/bin/"
-vpp_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/bin/"
+vpp_dir="$WS_ROOT/build-root/build-vpp-native/vpp/bin/"
+vpp_debug_dir="$WS_ROOT/build-root/build-vpp_debug-native/vpp/bin/"
 vpp_shm_dir="/dev/shm/"
 vpp_run_dir="/run/vpp"
 lib_dir="$WS_ROOT/build-root/install-vpp-native/vpp/lib/"
@@ -14,7 +14,7 @@ docker_vpp_dir="/vpp/"
 docker_app_dir="/vpp/"
 docker_lib_dir="/vpp-lib/"
 docker_os="ubuntu"
-vcl_ldpreload_lib="libvcl_ldpreload.so.0.0.0"
+vcl_ldpreload_lib="libvcl_ldpreload.so"
 user_gid="$(id -g)"
 vpp_app="vpp"
 sock_srvr_app="sock_test_server"
@@ -236,16 +236,16 @@ while ! [[ $run_test ]] && (( $# > 0 )) ; do
         "np" | "native-preload")
             run_test="native_preload" ;;
         "nv" | "native-vcl")
-            sock_srvr_app="bin/vcl_test_server"
-            sock_clnt_app="bin/vcl_test_client"
+            sock_srvr_app="vcl_test_server"
+            sock_clnt_app="vcl_test_client"
             run_test="native_vcl" ;;
         "dk" | "docker-kernel")
             run_test="docker_kernel" ;;
         "dp" | "docker-preload")
             run_test="docker_preload" ;;
         "dv" | "docker-vcl")
-            sock_srvr_app="bin/vcl_test_server"
-            sock_clnt_app="bin/vcl_test_client"
+            sock_srvr_app="vcl_test_server"
+            sock_clnt_app="vcl_test_client"
             run_test="docker_vcl" ;;
         *)
             echo "ERROR: Unknown option '$1'!" >&2
@@ -303,13 +303,13 @@ if [ ! -f $vpp_dir$vpp_app ] ; then
 fi
 
 if [ ! -f $vpp_dir$sock_srvr_app ] && [ ! $iperf3 -eq 1 ] ; then
-    echo "ERROR: Missing$title_dbg Socket Server Application!" >&2
+    echo "ERROR: Missing SERVER$title_dbg Socket Server Application!" >&2
     echo "       $vpp_dir$sock_srvr_app" >&2
     env_test_failed="true"
 fi
 
 if [ ! -f $vpp_dir$sock_clnt_app ] && [ ! $iperf3 -eq 1 ] ; then
-    echo "ERROR: Missing$title_dbg Socket Client Application!" >&2
+    echo "ERROR: Missing CLIENT$title_dbg Socket Client Application!" >&2
     echo "       $vpp_dir$sock_clnt_app" >&2
     env_test_failed="true"
 fi
@@ -519,6 +519,8 @@ EOF
     fi
     
     cat <<EOF >> $tmp_vpp_exec_file
+create tap id 0
+set int ip addr tap0 172.17.0.2/24
 show version
 show version verbose
 show cpu
