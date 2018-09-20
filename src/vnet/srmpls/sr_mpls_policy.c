@@ -159,6 +159,10 @@ sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t * segments,
   if (!sm->sr_policies_index_hash)
     sm->sr_policies_index_hash = hash_create (0, sizeof (mpls_label_t));
 
+  /* MPLS SR policies cannot be created unless the MPLS table is present */
+  if (~0 == fib_table_find (FIB_PROTOCOL_MPLS, MPLS_FIB_DEFAULT_TABLE_ID))
+    return (VNET_API_ERROR_NO_SUCH_TABLE);
+
   /* Search for existing keys (BSID) */
   p = hash_get (sm->sr_policies_index_hash, bsid);
   if (p)
@@ -169,6 +173,13 @@ sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t * segments,
   /* Add an SR policy object */
   pool_get (sm->sr_policies, sr_policy);
   memset (sr_policy, 0, sizeof (*sr_policy));
+
+  /* the first policy needs to lock the MPLS table so it doesn't
+   * disappear with policies in it */
+  if (1 == pool_elts (sm->sr_policies))
+    fib_table_find_or_create_and_lock (FIB_PROTOCOL_MPLS,
+				       MPLS_FIB_DEFAULT_TABLE_ID,
+				       FIB_SOURCE_SR);
   sr_policy->bsid = bsid;
   sr_policy->type = behavior;
   sr_policy->endpoint_type = 0;
@@ -260,6 +271,10 @@ sr_mpls_policy_del (mpls_label_t bsid)
   /* Remove SR policy entry */
   hash_unset (sm->sr_policies_index_hash, sr_policy->bsid);
   pool_put (sm->sr_policies, sr_policy);
+
+  if (0 == pool_elts (sm->sr_policies))
+    fib_table_unlock (MPLS_FIB_DEFAULT_TABLE_ID,
+		      FIB_PROTOCOL_MPLS, FIB_SOURCE_SR);
 
   return 0;
 }
@@ -545,6 +560,8 @@ sr_mpls_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
       return clib_error_return (0,
 				"Could not modify the segment list. "
 				"The given SL is not associated with such SR policy.");
+    case VNET_API_ERROR_NO_SUCH_TABLE:
+      return clib_error_return (0, "the Default MPLS table is not present");
     default:
       return clib_error_return (0, "BUG: sr policy returns %d", rv);
     }
