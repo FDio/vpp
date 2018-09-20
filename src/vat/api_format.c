@@ -8486,6 +8486,8 @@ api_ip_add_del_route (vat_main_t * vam)
   mpls_label_t next_hop_out_label = MPLS_LABEL_INVALID;
   mpls_label_t next_hop_via_label = MPLS_LABEL_INVALID;
 
+  memset (&v4_next_hop_address, 0, sizeof (ip4_address_t));
+  memset (&v6_next_hop_address, 0, sizeof (ip6_address_t));
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -8515,6 +8517,16 @@ api_ip_add_del_route (vat_main_t * vam)
 	}
       else if (is_ipv6 == 1 && unformat (i, "via %U", unformat_ip6_address,
 					 &v6_next_hop_address))
+	{
+	  next_hop_set = 1;
+	}
+      else
+	if (unformat
+	    (i, "via %U", api_unformat_sw_if_index, vam, &sw_if_index))
+	{
+	  next_hop_set = 1;
+	}
+      else if (unformat (i, "via sw_if_index %d", &sw_if_index))
 	{
 	  next_hop_set = 1;
 	}
@@ -23509,8 +23521,8 @@ _(sw_interface_slave_dump,                                              \
 _(ip_table_add_del,                                                     \
   "table <n> [ipv6] [add | del]\n")                                     \
 _(ip_add_del_route,                                                     \
-  "<addr>/<mask> via <addr | via-label <n>> [table-id <n>]\n"           \
-  "[<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"               \
+  "<addr>/<mask> via <<addr>|<intfc>|sw_if_index <id>|via-label <n>>\n" \
+  "[table-id <n>] [<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"\
   "[weight <n>] [drop] [local] [classify <n>] [del]\n"                  \
   "[multipath] [count <n>]")                                            \
 _(ip_mroute_add_del,                                                    \
