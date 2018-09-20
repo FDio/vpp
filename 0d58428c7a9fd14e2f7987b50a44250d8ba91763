@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b740009e_afacc729",
+        "filename": "src/vnet/ip/ip4_forward.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-20T09:53:43Z",
+      "side": 1,
+      "message": "please rename CLIB_CPU_PREFETCH into \"CPU_N_PREFETCHES\" and add into src/vppinfra/cache.h:\n\n#ifndef CPU_N_PREFETCHES\n#define CPU_N_PREFETCHES 16\n#endif \n\nSo you #if line becomes shorter....",
+      "range": {
+        "startLine": 73,
+        "startChar": 4,
+        "endLine": 73,
+        "endChar": 35
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
