@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2519e721_29871998",
+        "filename": "src/vcl/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-09-20T15:10:46Z",
+      "side": 0,
+      "message": "You need the test binaries packaged? If not, instead of finding them under build-root/install-vpp[_debug]-native/vpp/bin you can already find them under build-root/build-vpp[_debug]-native/vpp/bin",
+      "range": {
+        "startLine": 66,
+        "startChar": 9,
+        "endLine": 66,
+        "endChar": 19
+      },
+      "revId": "fe0aa7648703f63159be8362836b39d4727fbb0c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
