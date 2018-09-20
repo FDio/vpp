@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "45d46496_367b1314",
+        "filename": "test/remote_test.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-20T14:54:57Z",
+      "side": 1,
+      "message": "this is not needed, the method is inherited from parent..",
+      "revId": "95e74d2a828073c53d6729f65084bb9e50af5359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d316d2b3_faf00239",
+        "filename": "test/test_memif.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-20T14:54:57Z",
+      "side": 1,
+      "message": "is this sleep required? get_capture already has a timeout parameter",
+      "revId": "95e74d2a828073c53d6729f65084bb9e50af5359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ef613fca_7fa880c3",
+        "filename": "test/vpp_memif.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-09-20T14:54:57Z",
+      "side": 1,
+      "message": "could you please improve formatting of this and other similar places? This is a huge waste of vertical space. . also please start like this, if possible\n\ndef__init__(self, test, role ...\n\nnot\n\ndef __init__(\n        self, test, role, ...\n\nreadability counts.",
+      "revId": "95e74d2a828073c53d6729f65084bb9e50af5359",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
