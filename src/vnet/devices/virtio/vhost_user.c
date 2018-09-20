@@ -1777,8 +1777,9 @@ show_vhost_user_command_fn (vlib_main_t * vm,
     {
       hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
       vui = pool_elt_at_index (vum->vhost_user_interfaces, hi->dev_instance);
-      vlib_cli_output (vm, "Interface: %s (ifindex %d)",
-		       hi->name, hw_if_indices[i]);
+      vlib_cli_output (vm, "Interface: %U (ifindex %d)",
+		       format_vnet_hw_if_index_name, vnm, hw_if_indices[i],
+		       hw_if_indices[i]);
 
       vlib_cli_output (vm, "virtio_net_hdr_sz %d\n"
 		       " features mask (0x%llx): \n"
