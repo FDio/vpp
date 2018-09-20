@@ -3,8 +3,8 @@
 # socket_test.sh -- script to run socket tests.
 #
 script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-vpp_dir="$WS_ROOT/build-root/install-vpp-native/vpp/bin/"
-vpp_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/bin/"
+vpp_dir="$WS_ROOT/build-root/build-vpp-native/vpp/bin/"
+vpp_debug_dir="$WS_ROOT/build-root/build-vpp_debug-native/vpp/bin/"
 vpp_shm_dir="/dev/shm/"
 vpp_run_dir="/run/vpp"
 lib_dir="$WS_ROOT/build-root/install-vpp-native/vpp/lib/"
@@ -14,7 +14,7 @@ docker_vpp_dir="/vpp/"
 docker_app_dir="/vpp/"
 docker_lib_dir="/vpp-lib/"
 docker_os="ubuntu"
-vcl_ldpreload_lib="libvcl_ldpreload.so.0.0.0"
+vcl_ldpreload_lib="libvcl_ldpreload.so"
 user_gid="$(id -g)"
 vpp_app="vpp"
 sock_srvr_app="sock_test_server"
@@ -519,6 +519,8 @@ EOF
     fi
     
     cat <<EOF >> $tmp_vpp_exec_file
+create tap id 0
+set int ip addr tap0 172.17.0.2/24
 show version
 show version verbose
 show cpu
