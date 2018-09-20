@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e6d69347_f84a2b08",
+        "filename": "src/vnet/mpls/mpls_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-20T16:15:51Z",
+      "side": 1,
+      "message": "Why not tabs?",
+      "range": {
+        "startLine": 233,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 9
+      },
+      "revId": "008dbe109ce2714be69ffb6549a0c0198a07f7d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a2405ef5_36846595",
+        "filename": "src/vnet/mpls/mpls_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 246,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-20T16:15:51Z",
+      "side": 1,
+      "message": "Why not aligned?",
+      "range": {
+        "startLine": 246,
+        "startChar": 4,
+        "endLine": 246,
+        "endChar": 7
+      },
+      "revId": "008dbe109ce2714be69ffb6549a0c0198a07f7d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
