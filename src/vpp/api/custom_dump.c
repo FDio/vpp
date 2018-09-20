@@ -726,9 +726,6 @@ static void *vl_api_ip_add_del_route_t_print
   if (mp->is_add == 0)
     s = format (s, "del ");
 
-  if (mp->next_hop_sw_if_index != ~0)
-    s = format (s, "sw_if_index %d ", ntohl (mp->next_hop_sw_if_index));
-
   if (mp->is_ipv6)
     s = format (s, "%U/%d ", format_ip6_address, mp->dst_address,
 		mp->dst_address_length);
@@ -753,6 +750,9 @@ static void *vl_api_ip_add_del_route_t_print
 	s = format (s, "via %U ", format_ip6_address, mp->next_hop_address);
       else
 	s = format (s, "via %U ", format_ip4_address, mp->next_hop_address);
+      if (mp->next_hop_sw_if_index != ~0)
+	s = format (s, "sw_if_index %d ", ntohl (mp->next_hop_sw_if_index));
+
     }
 
   if (mp->next_hop_weight != 1)
