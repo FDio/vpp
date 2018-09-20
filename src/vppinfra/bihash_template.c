@@ -627,6 +627,9 @@ expand_ok:
   tmp_b.lock = 0;
   CLIB_MEMORY_BARRIER ();
   b->as_u64 = tmp_b.as_u64;
+  /* free the old bucket */
+  v = BV (clib_bihash_get_value) (h, h->saved_bucket.offset);
+  BV (value_free) (h, v, h->saved_bucket.log2_pages);
   BV (clib_bihash_alloc_unlock) (h);
   return (0);
 }
