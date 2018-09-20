@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "510c9fde_42153f0c",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-20T13:14:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d25a3f6_50378159",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 25
+      },
+      "revId": "316ae1dcb0eb74dfc1f7ced606f984a9c2dc4692",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4abafee0_6771a7f3",
         "filename": "src/vpp/api/vpe.api",
         "patchSetId": 5
@@ -36,6 +60,24 @@
       "writtenOn": "2018-09-14T17:31:46Z",
       "side": 1,
       "message": "For the sake of the API definition (again, not usually VPP coders consuming it) you might want to be clear what you mean by a logical core.  I don\u0027t think that\u0027s a generally understood term.",
+      "revId": "316ae1dcb0eb74dfc1f7ced606f984a9c2dc4692",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6897c495_c6fd6b16",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-20T13:14:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4abafee0_6771a7f3",
       "revId": "316ae1dcb0eb74dfc1f7ced606f984a9c2dc4692",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
