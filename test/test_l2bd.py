@@ -260,7 +260,8 @@ class TestL2bd(VppTestCase):
                 64B, 512B, 1518B, 9200B (ether_size)
                 burst of 2 pkts per interface
         """
-
+        import time
+        time.sleep(120)
         self.run_l2bd_test(self.sl_pkts_per_burst)
 
     def test_l2bd_dl(self):
