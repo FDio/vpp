@@ -162,7 +162,7 @@ class KeepAliveReporter(object):
             raise Exception("Internal error - pipe should only be set once.")
         self._pipe = pipe
 
-    def send_keep_alive(self, test):
+    def send_keep_alive(self, test, desc=None):
         """
         Write current test tmpdir & desc to keep-alive pipe to signal liveness
         """
@@ -171,11 +171,9 @@ class KeepAliveReporter(object):
             return
 
         if isclass(test):
-            desc = test.__name__
+            desc = '%s (%s)' % (desc, unittest.util.strclass(test))
         else:
-            desc = test.shortDescription()
-            if not desc:
-                desc = str(test)
+            desc = test.id()
 
         self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp.pid))
 
@@ -354,12 +352,17 @@ class VppTestCase(unittest.TestCase):
         """
         gc.collect()  # run garbage collection first
         random.seed()
+        print(double_line_delim)
+        print(colorize(getdoc(cls).splitlines()[0], GREEN))
+        print(double_line_delim)
         if not hasattr(cls, 'logger'):
             cls.logger = getLogger(cls.__name__)
         else:
             cls.logger.name = cls.__name__
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
+        VppTestResult.tempdir = cls.tempdir
+        VppTestResult.logger = cls.logger
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -383,7 +386,7 @@ class VppTestCase(unittest.TestCase):
         # doesn't get called and we might end with a zombie vpp
         try:
             cls.run_vpp()
-            cls.reporter.send_keep_alive(cls)
+            cls.reporter.send_keep_alive(cls, 'setUpClass')
             cls.vpp_stdout_deque = deque()
             cls.vpp_stderr_deque = deque()
             cls.pump_thread_stop_flag = Event()
@@ -494,11 +497,14 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """ Perform final cleanup after running all tests in this test-case """
+        cls.reporter.send_keep_alive(cls, 'tearDownClass')
         cls.quit()
         cls.file_handler.close()
         cls.reset_packet_infos()
         if debug_framework:
             debug_internal.on_tear_down_class(cls)
+        VppTestResult.tempdir = None
+        VppTestResult.logger = None
 
     def tearDown(self):
         """ Show various debug prints after each test """
@@ -923,22 +929,6 @@ def get_test_description(descriptions, test):
         return str(test)
 
 
-class TestCasePrinter(object):
-    _shared_state = {}
-
-    def __init__(self):
-        self.__dict__ = self._shared_state
-        if not hasattr(self, "_test_case_set"):
-            self._test_case_set = set()
-
-    def print_test_case_heading_if_first_time(self, case):
-        if case.__class__ not in self._test_case_set:
-            print(double_line_delim)
-            print(colorize(get_testcase_doc_name(case), GREEN))
-            print(double_line_delim)
-            self._test_case_set.add(case.__class__)
-
-
 class VppTestResult(unittest.TestResult):
     """
     @property result_string
@@ -954,6 +944,9 @@ class VppTestResult(unittest.TestResult):
      methods.
     """
 
+    tempdir = None
+    logger = None
+
     def __init__(self, stream, descriptions, verbosity):
         """
         :param stream File descriptor to store where to report test results.
@@ -967,7 +960,6 @@ class VppTestResult(unittest.TestResult):
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.result_string = None
-        self.printer = TestCasePrinter()
 
     def addSuccess(self, test):
         """
@@ -1101,7 +1093,6 @@ class VppTestResult(unittest.TestResult):
         :param test:
 
         """
-        self.printer.print_test_case_heading_if_first_time(test)
         unittest.TestResult.startTest(self, test)
         if self.verbosity > 0:
             self.stream.writeln(

@@ -3,13 +3,13 @@
 import sys
 import shutil
 import os
-import select
 import unittest
 import argparse
 import time
 import threading
 import signal
 import psutil
+import re
 from multiprocessing import Process, Pipe, cpu_count
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
@@ -53,31 +53,28 @@ StreamQueueManager.register('StreamQueue', StreamQueue)
 
 
 class TestResult(dict):
-    def __init__(self, testcase_suite):
+    def __init__(self, testcase_suite, testcases_by_id):
         super(TestResult, self).__init__()
         self[PASS] = []
         self[FAIL] = []
         self[ERROR] = []
         self[SKIP] = []
         self[TEST_RUN] = []
+        self.crashed = False
         self.testcase_suite = testcase_suite
         self.testcases = [testcase for testcase in testcase_suite]
-        self.testcases_by_id = {}
+        self.testcases_by_id = testcases_by_id
 
     def was_successful(self):
-        return len(self[PASS] + self[SKIP]) \
-               == self.testcase_suite.countTestCases()
+        return 0 == len(self[FAIL]) == len(self[ERROR]) \
+               and len(self[PASS] + self[SKIP]) \
+               == self.testcase_suite.countTestCases() == len(self[TEST_RUN])
 
     def no_tests_run(self):
         return 0 == len(self[TEST_RUN])
 
     def process_result(self, test_id, result):
         self[result].append(test_id)
-        for testcase in self.testcases:
-            if testcase.id() == test_id:
-                self.testcases_by_id[test_id] = testcase
-                self.testcases.remove(testcase)
-                break
 
     def suite_from_failed(self):
         rerun_ids = set([])
@@ -89,21 +86,33 @@ class TestResult(dict):
             return suite_from_failed(self.testcase_suite, rerun_ids)
 
     def get_testcase_names(self, test_id):
-        return self._get_testcase_class(test_id), \
-               self._get_test_description(test_id)
+        if re.match('.+\..+\..+', test_id):
+            test_name = self._get_test_description(test_id)
+            testcase_name = self._get_testcase_doc_name(test_id)
+        else:
+            # could be tearDownClass (test_ipsec_esp.TestIpsecEsp1)
+            setup_teardown_match = re.match(
+                '((tearDownClass)|(setUpClass)) \((.+\..+)\)', test_id)
+            if setup_teardown_match:
+                test_name, _, _, testcase_name = setup_teardown_match.groups()
+                if len(testcase_name.split('.')) == 2:
+                    for key in self.testcases_by_id.keys():
+                        if key.startswith(testcase_name):
+                            testcase_name = key
+                            break
+                testcase_name = self._get_testcase_doc_name(testcase_name)
+            else:
+                test_name = test_id
+                testcase_name = test_id
+
+        return testcase_name, test_name
 
     def _get_test_description(self, test_id):
-        if test_id in self.testcases_by_id:
-            return get_test_description(descriptions,
-                                        self.testcases_by_id[test_id])
-        else:
-            return test_id
+        return get_test_description(descriptions,
+                                    self.testcases_by_id[test_id])
 
-    def _get_testcase_class(self, test_id):
-        if test_id in self.testcases_by_id:
-            return get_testcase_doc_name(self.testcases_by_id[test_id])
-        else:
-            return test_id
+    def _get_testcase_doc_name(self, test_id):
+        return get_testcase_doc_name(self.testcases_by_id[test_id])
 
 
 def test_runner_wrapper(suite, keep_alive_pipe, stdouterr_queue,
@@ -141,12 +150,31 @@ class TestCaseWrapper(object):
         self.child.start()
         self.last_test_temp_dir = None
         self.last_test_vpp_binary = None
-        self.last_test = None
+        self._last_test = None
+        self.last_test_id = None
         self.result = None
         self.vpp_pid = None
         self.last_heard = time.time()
         self.core_detected_at = None
-        self.result = TestResult(testcase_suite)
+        self.testcases_by_id = {}
+        for testcase in self.testcase_suite:
+            self.testcases_by_id[testcase.id()] = testcase
+        self.result = TestResult(testcase_suite, self.testcases_by_id)
+
+    @property
+    def last_test(self):
+        return self._last_test
+
+    @last_test.setter
+    def last_test(self, test_id):
+        self.last_test_id = test_id
+        if test_id in self.testcases_by_id:
+            testcase = self.testcases_by_id[test_id]
+            self._last_test = testcase.shortDescription()
+            if not self._last_test:
+                self._last_test = str(testcase)
+        else:
+            self._last_test = test_id
 
     def close_pipes(self):
         self.keep_alive_child_end.close()
@@ -321,6 +349,9 @@ def run_forked(testcase_suites):
                 except OSError:
                     # already dead
                     pass
+                wrapped_testcase_suite.result.crashed = True
+                wrapped_testcase_suite.result.process_result(
+                    wrapped_testcase_suite.last_test_id, ERROR)
                 results.append(wrapped_testcase_suite.result)
                 finished_testcase_suites.add(wrapped_testcase_suite)
 
@@ -471,21 +502,18 @@ class AllResults(dict):
     def add_result(self, result):
         retval = 0
         self.all_testcases += result.testcase_suite.countTestCases()
-        if not result.no_tests_run():
-            if not result.was_successful():
-                retval = 1
+        self.add_results(result)
 
-            self.add_results(result)
-        else:
-            self.testsuites_no_tests_run.append(result.testcase_suite)
+        if result.crashed:
             retval = -1
+            if result.no_tests_run():
+                self.testsuites_no_tests_run.append(result.testcase_suite)
+        elif not result.was_successful():
+            retval = 1
 
         if retval != 0:
             if concurrent_tests == 1:
-                if not result.no_tests_run():
-                    self.rerun.append(result.suite_from_failed())
-                else:
-                    self.rerun.append(result.testcase_suite)
+                self.rerun.append(result.suite_from_failed())
             else:
                 self.rerun.append(result.testcase_suite)
 
