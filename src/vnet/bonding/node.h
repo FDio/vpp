@@ -282,8 +282,6 @@ typedef struct
 
   /* bond mode */
   u8 mode;
-
-  clib_spinlock_t lockp;
 } slave_if_t;
 
 typedef void (*lacp_enable_disable_func) (vlib_main_t * vm, bond_if_t * bif,
