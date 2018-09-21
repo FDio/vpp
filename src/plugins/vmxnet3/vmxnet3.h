@@ -18,6 +18,7 @@
 
 #define foreach_vmxnet3_tx_func_error	       \
   _(ERROR_PACKETS, "error packets") \
+  _(LINK_DOWN, "link down") \
   _(NO_FREE_SLOTS, "no free tx slots")
 
 typedef enum
@@ -472,6 +473,7 @@ typedef struct
 
   vmxnet3_dma *dma;
 
+  u32 link_speed;
 } vmxnet3_device_t;
 
 typedef struct
