@@ -520,6 +520,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 #endif
 	      break;
 
+	      /* Hyper-V/Azure */
+	    case VNET_DPDK_PMD_NETVSC:
+	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
+	      break;
+
 	    case VNET_DPDK_PMD_AF_PACKET:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_AF_PACKET;
 	      xd->af_packet_instance_num = af_packet_instance_num++;
