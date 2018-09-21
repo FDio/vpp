@@ -1,5 +1,5 @@
 %define _install_dir	/opt/vpp/external/%(uname -m)
-%define _make_args	-C ../.. DPDK_BUILD_DIR=%{_topdir}/tmp DPDK_INSTALL_DIR=%{buildroot}/%{_install_dir}
+%define _make_args	-C ../.. BUILD_DIR=%{_topdir}/tmp INSTALL_DIR=%{buildroot}/%{_install_dir}
 
 Name:		vpp-ext-deps
 Version:	%{_version}
