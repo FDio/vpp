@@ -405,6 +405,9 @@ format_dpdk_device_type (u8 * s, va_list * args)
       dev_type = "Cavium QLogic FastLinQ QL4xxxx";
       break;
 
+    case VNET_DPDK_PMD_NETVSC:
+      dev_type = "Microsoft Hyper-V/Azure" break;
+
     default:
     case VNET_DPDK_PMD_UNKNOWN:
       dev_type = "### UNKNOWN ###";

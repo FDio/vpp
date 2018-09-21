@@ -72,6 +72,7 @@ extern vlib_node_registration_t admin_up_down_process_node;
   _ ("net_i40e", I40E)            \
   _ ("net_i40e_vf", I40EVF)       \
   _ ("net_virtio", VIRTIO)        \
+  _ ("net_netvsc", NETVSC)        \
   _ ("net_enic", ENIC)            \
   _ ("net_vmxnet3", VMXNET3)      \
   _ ("AF_PACKET PMD", AF_PACKET)  \
