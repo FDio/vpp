@@ -3,9 +3,8 @@ import os
 import sys
 import traceback
 from log import RED, single_line_delim, double_line_delim
-from debug import spawn_gdb
 from subprocess import check_output, CalledProcessError
-from util import check_core_path
+from util import check_core_path, get_core_path
 
 
 class Hook(object):
@@ -60,27 +59,21 @@ class PollHook(Hook):
     """ Hook which checks if the vpp subprocess is alive """
 
     def __init__(self, testcase):
+        super(PollHook, self).__init__(testcase.logger)
         self.testcase = testcase
-        self.logger = testcase.logger
 
     def on_crash(self, core_path):
-        if self.testcase.debug_core:
-            # notify parent process that we're handling a core file
-            open('%s/_core_handled' % self.testcase.tempdir, 'a').close()
-            spawn_gdb(self.testcase.vpp_bin, core_path, self.logger)
-        else:
-            self.logger.error("Core file present, debug with: gdb %s %s" %
-                              (self.testcase.vpp_bin, core_path))
-            check_core_path(self.logger, core_path)
-            self.logger.error("Running `file %s':" % core_path)
-            try:
-                info = check_output(["file", core_path])
-                self.logger.error(info)
-            except CalledProcessError as e:
-                self.logger.error(
-                    "Could not run `file' utility on core-file, "
-                    "rc=%s" % e.returncode)
-                pass
+        self.logger.error("Core file present, debug with: gdb %s %s" %
+                          (self.testcase.vpp_bin, core_path))
+        check_core_path(self.logger, core_path)
+        self.logger.error("Running `file %s':" % core_path)
+        try:
+            info = check_output(["file", core_path])
+            self.logger.error(info)
+        except CalledProcessError as e:
+            self.logger.error(
+                "Could not run `file' utility on core-file, "
+                "rc=%s" % e.returncode)
 
     def poll_vpp(self):
         """
@@ -104,7 +97,7 @@ class PollHook(Hook):
             msg = "VPP subprocess died unexpectedly with returncode %d [%s]" %\
                 (self.testcase.vpp.returncode, s)
             self.logger.critical(msg)
-            core_path = self.testcase.tempdir + '/core'
+            core_path = get_core_path(self.testcase.tempdir)
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
             self.testcase.vpp_dead = True
