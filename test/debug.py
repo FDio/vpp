@@ -2,11 +2,12 @@
 
 import os
 import pexpect
+import sys
 
 gdb_path = '/usr/bin/gdb'
 
 
-def spawn_gdb(binary_path, core_path, logger):
+def spawn_gdb(binary_path, core_path):
     if os.path.isfile(gdb_path) and os.access(gdb_path, os.X_OK):
         # automatically attach gdb
         gdb_cmdline = "%s %s %s" % (gdb_path, binary_path, core_path)
@@ -19,5 +20,5 @@ def spawn_gdb(binary_path, core_path, logger):
         if gdb.isalive():
             raise Exception("GDB refused to die...")
     else:
-        logger.error("Debugger '%s' does not exist or is not an "
-                     "executable.." % gdb_path)
+        sys.stderr.write("Debugger '%s' does not exist or is not "
+                         "an executable..\n" % gdb_path)
