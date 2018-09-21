@@ -162,7 +162,7 @@ class KeepAliveReporter(object):
             raise Exception("Internal error - pipe should only be set once.")
         self._pipe = pipe
 
-    def send_keep_alive(self, test):
+    def send_keep_alive(self, test, desc=None):
         """
         Write current test tmpdir & desc to keep-alive pipe to signal liveness
         """
@@ -171,11 +171,9 @@ class KeepAliveReporter(object):
             return
 
         if isclass(test):
-            desc = test.__name__
+            desc = '%s (%s)' % (desc, unittest.util.strclass(test))
         else:
-            desc = test.shortDescription()
-            if not desc:
-                desc = str(test)
+            desc = test.id()
 
         self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp.pid))
 
@@ -354,12 +352,17 @@ class VppTestCase(unittest.TestCase):
         """
         gc.collect()  # run garbage collection first
         random.seed()
+        print(double_line_delim)
+        print(colorize(getdoc(cls).splitlines()[0], GREEN))
+        print(double_line_delim)
         if not hasattr(cls, 'logger'):
             cls.logger = getLogger(cls.__name__)
         else:
             cls.logger.name = cls.__name__
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
+        VppTestResult.tempdir = cls.tempdir
+        VppTestResult.logger = cls.logger
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -383,7 +386,7 @@ class VppTestCase(unittest.TestCase):
         # doesn't get called and we might end with a zombie vpp
         try:
             cls.run_vpp()
-            cls.reporter.send_keep_alive(cls)
+            cls.reporter.send_keep_alive(cls, 'setUpClass')
             cls.vpp_stdout_deque = deque()
             cls.vpp_stderr_deque = deque()
             cls.pump_thread_stop_flag = Event()
@@ -494,11 +497,14 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """ Perform final cleanup after running all tests in this test-case """
+        cls.reporter.send_keep_alive(cls, 'tearDownClass')
         cls.quit()
         cls.file_handler.close()
         cls.reset_packet_infos()
         if debug_framework:
             debug_internal.on_tear_down_class(cls)
+        VppTestResult.logger = None
+        VppTestResult.tempdir = None
 
     def tearDown(self):
         """ Show various debug prints after each test """
@@ -923,22 +929,6 @@ def get_test_description(descriptions, test):
         return str(test)
 
 
-class TestCasePrinter(object):
-    _shared_state = {}
-
-    def __init__(self):
-        self.__dict__ = self._shared_state
-        if not hasattr(self, "_test_case_set"):
-            self._test_case_set = set()
-
-    def print_test_case_heading_if_first_time(self, case):
-        if case.__class__ not in self._test_case_set:
-            print(double_line_delim)
-            print(colorize(get_testcase_doc_name(case), GREEN))
-            print(double_line_delim)
-            self._test_case_set.add(case.__class__)
-
-
 class VppTestResult(unittest.TestResult):
     """
     @property result_string
@@ -954,6 +944,9 @@ class VppTestResult(unittest.TestResult):
      methods.
     """
 
+    logger = None
+    tempdir = None
+
     def __init__(self, stream, descriptions, verbosity):
         """
         :param stream File descriptor to store where to report test results.
@@ -967,7 +960,6 @@ class VppTestResult(unittest.TestResult):
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.result_string = None
-        self.printer = TestCasePrinter()
 
     def addSuccess(self, test):
         """
@@ -976,8 +968,8 @@ class VppTestResult(unittest.TestResult):
         :param test:
 
         """
-        if hasattr(test, 'logger'):
-            test.logger.debug("--- addSuccess() %s.%s(%s) called"
+        if self.logger:
+            self.logger.debug("--- addSuccess() %s.%s(%s) called"
                               % (test.__class__.__name__,
                                  test._testMethodName,
                                  test._testMethodDoc))
@@ -994,8 +986,8 @@ class VppTestResult(unittest.TestResult):
         :param reason:
 
         """
-        if hasattr(test, 'logger'):
-            test.logger.debug("--- addSkip() %s.%s(%s) called, reason is %s"
+        if self.logger:
+            self.logger.debug("--- addSkip() %s.%s(%s) called, reason is %s"
                               % (test.__class__.__name__,
                                  test._testMethodName,
                                  test._testMethodDoc,
@@ -1005,34 +997,44 @@ class VppTestResult(unittest.TestResult):
 
         self.send_result_through_pipe(test, SKIP)
 
-    def symlink_failed(self, test):
-        logger = None
-        if hasattr(test, 'logger'):
-            logger = test.logger
-        if hasattr(test, 'tempdir'):
+    def symlink_failed(self):
+        if self.tempdir:
             try:
                 failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
                 link_path = os.path.join(failed_dir, '%s-FAILED' %
-                                         os.path.basename(test.tempdir))
-                if logger:
-                    logger.debug("creating a link to the failed test")
-                    logger.debug("os.symlink(%s, %s)" %
-                                 (test.tempdir, link_path))
+                                         os.path.basename(self.tempdir))
+                if self.logger:
+                    self.logger.debug("creating a link to the failed test")
+                    self.logger.debug("os.symlink(%s, %s)" %
+                                 (self.tempdir, link_path))
                 if os.path.exists(link_path):
-                    if logger:
-                        logger.debug('symlink already exists')
+                    if self.logger:
+                        self.logger.debug('symlink already exists')
                 else:
-                    os.symlink(test.tempdir, link_path)
+                    os.symlink(self.tempdir, link_path)
 
             except Exception as e:
-                if logger:
-                    logger.error(e)
+                if self.logger:
+                    self.logger.error(e)
 
     def send_result_through_pipe(self, test, result):
         if hasattr(self, 'test_framework_result_pipe'):
             pipe = self.test_framework_result_pipe
             if pipe:
                 pipe.send((test.id(), result))
+
+    def log_error(self, test, err, fn_name):
+        if self.logger:
+            if isinstance(test, unittest.suite._ErrorHolder):
+                test_name = test.description
+            else:
+                test_name = '%s.%s(%s)' % (test.__class__.__name__,
+                                           test._testMethodName,
+                                           test._testMethodDoc)
+            self.logger.debug("--- %s() %s called, err is %s"
+                              % (fn_name, test_name, err))
+            self.logger.debug("formatted exception is:\n%s" %
+                              "".join(format_exception(*err)))
 
     def addFailure(self, test, err):
         """
@@ -1042,18 +1044,13 @@ class VppTestResult(unittest.TestResult):
         :param err: error message
 
         """
-        if hasattr(test, 'logger'):
-            test.logger.debug("--- addFailure() %s.%s(%s) called, err is %s"
-                              % (test.__class__.__name__,
-                                 test._testMethodName,
-                                 test._testMethodDoc, err))
-            test.logger.debug("formatted exception is:\n%s" %
-                              "".join(format_exception(*err)))
+        self.log_error(test, err, 'addFailure')
+
         unittest.TestResult.addFailure(self, test, err)
-        if hasattr(test, 'tempdir'):
+        if self.tempdir:
             self.result_string = colorize("FAIL", RED) + \
-                ' [ temp dir used by test case: ' + test.tempdir + ' ]'
-            self.symlink_failed(test)
+                ' [ temp dir used by test case: ' + self.tempdir + ' ]'
+            self.symlink_failed()
         else:
             self.result_string = colorize("FAIL", RED) + ' [no temp dir]'
 
@@ -1067,18 +1064,12 @@ class VppTestResult(unittest.TestResult):
         :param err: error message
 
         """
-        if hasattr(test, 'logger'):
-            test.logger.debug("--- addError() %s.%s(%s) called, err is %s"
-                              % (test.__class__.__name__,
-                                 test._testMethodName,
-                                 test._testMethodDoc, err))
-            test.logger.debug("formatted exception is:\n%s" %
-                              "".join(format_exception(*err)))
+        self.log_error(test, err, 'addError')
         unittest.TestResult.addError(self, test, err)
-        if hasattr(test, 'tempdir'):
+        if self.tempdir:
             self.result_string = colorize("ERROR", RED) + \
-                ' [ temp dir used by test case: ' + test.tempdir + ' ]'
-            self.symlink_failed(test)
+                ' [ temp dir used by test case: ' + self.tempdir + ' ]'
+            self.symlink_failed()
         else:
             self.result_string = colorize("ERROR", RED) + ' [no temp dir]'
 
@@ -1101,7 +1092,6 @@ class VppTestResult(unittest.TestResult):
         :param test:
 
         """
-        self.printer.print_test_case_heading_if_first_time(test)
         unittest.TestResult.startTest(self, test)
         if self.verbosity > 0:
             self.stream.writeln(
