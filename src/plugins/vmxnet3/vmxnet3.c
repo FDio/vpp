@@ -185,6 +185,7 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
   shared->misc.num_tx_queues = vd->num_tx_queues;
   shared->misc.num_rx_queues = vd->num_rx_queues;
   shared->interrupt.num_intrs = vd->num_intrs;
+  shared->interrupt.event_intr_index = 1;
   shared->interrupt.control = VMXNET3_IC_DISABLE_ALL;
   shared->rx_filter.mode = VMXNET3_RXMODE_UCAST | VMXNET3_RXMODE_BCAST |
     VMXNET3_RXMODE_ALL_MULTI;
@@ -309,7 +310,7 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 
   vd->num_tx_queues = 1;
   vd->num_rx_queues = 1;
-  vd->num_intrs = 1;
+  vd->num_intrs = 2;
 
   /* Quiesce the device */
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
@@ -349,6 +350,18 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
     {
       error = clib_error_return (0, "unsupported upt version %u", ret);
       return error;
+    }
+
+  vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_GET_LINK);
+  ret = vmxnet3_reg_read (vd, 1, VMXNET3_REG_CMD);
+  if (ret & 1)
+    {
+      vd->flags |= VMXNET3_DEVICE_F_LINK_UP;
+      vd->link_speed = ret >> 16;
+    }
+  else
+    {
+      vd->flags &= ~VMXNET3_DEVICE_F_LINK_UP;
     }
 
   /* Get the mac address */
@@ -413,7 +426,7 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 }
 
 static void
-vmxnet3_irq_handler (vlib_pci_dev_handle_t h, u16 line)
+vmxnet3_irq_0_handler (vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
@@ -423,6 +436,31 @@ vmxnet3_irq_handler (vlib_pci_dev_handle_t h, u16 line)
 
   if (vec_len (vd->rxqs) > qid && vd->rxqs[qid].int_mode != 0)
     vnet_device_input_set_interrupt_pending (vnm, vd->hw_if_index, qid);
+}
+
+static void
+vmxnet3_irq_1_handler (vlib_pci_dev_handle_t h, u16 line)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
+  uword pd = vlib_pci_get_private_data (h);
+  vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, pd);
+  u32 ret;
+
+  vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_GET_LINK);
+  ret = vmxnet3_reg_read (vd, 1, VMXNET3_REG_CMD);
+  if (ret & 1)
+    {
+      vd->flags |= VMXNET3_DEVICE_F_LINK_UP;
+      vd->link_speed = ret >> 16;
+      vnet_hw_interface_set_flags (vnm, vd->hw_if_index,
+				   VNET_HW_INTERFACE_FLAG_LINK_UP);
+    }
+  else
+    {
+      vd->flags &= ~VMXNET3_DEVICE_F_LINK_UP;
+      vnet_hw_interface_set_flags (vnm, vd->hw_if_index, 0);
+    }
 }
 
 static u8
@@ -504,10 +542,14 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     goto error;
 
   if ((error = vlib_pci_register_msix_handler (h, 0, 1,
-					       &vmxnet3_irq_handler)))
+					       &vmxnet3_irq_0_handler)))
     goto error;
 
-  if ((error = vlib_pci_enable_msix_irq (h, 0, 1)))
+  if ((error = vlib_pci_register_msix_handler (h, 1, 1,
+					       &vmxnet3_irq_1_handler)))
+    goto error;
+
+  if ((error = vlib_pci_enable_msix_irq (h, 0, 2)))
     goto error;
 
   if ((error = vlib_pci_intr_enable (h)))
@@ -533,6 +575,11 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
 				    vmxnet3_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, vd->hw_if_index, 0, ~0);
+  if (vd->flags & VMXNET3_DEVICE_F_LINK_UP)
+    vnet_hw_interface_set_flags (vnm, vd->hw_if_index,
+				 VNET_HW_INTERFACE_FLAG_LINK_UP);
+  else
+    vnet_hw_interface_set_flags (vnm, vd->hw_if_index, 0);
   return;
 
 error:

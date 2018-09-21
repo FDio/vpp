@@ -115,8 +115,15 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
   u16 qid = thread_index;
   u16 n_retry = 5;
 
-  txq = vec_elt_at_index (vd->txqs, qid % vd->num_tx_queues);
+  if (PREDICT_FALSE (!(vd->flags & VMXNET3_DEVICE_F_LINK_UP)))
+    {
+      vlib_buffer_free (vm, buffers, n_left);
+      vlib_error_count (vm, node->node_index, VMXNET3_TX_ERROR_LINK_DOWN,
+			n_left);
+      return (0);
+    }
 
+  txq = vec_elt_at_index (vd->txqs, qid % vd->num_tx_queues);
   clib_spinlock_lock_if_init (&txq->lock);
 
 retry:
