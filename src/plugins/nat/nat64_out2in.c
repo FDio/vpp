@@ -898,10 +898,26 @@ VLIB_REGISTER_NODE (nat64_out2in_reass_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_reass_node,
 			      nat64_out2in_reass_node_fn);
 
+#define foreach_nat64_out2in_handoff_error                       \
+_(CONGESTION_DROP, "congestion drop")
+
+typedef enum
+{
+#define _(sym,str) NAT64_OUT2IN_HANDOFF_ERROR_##sym,
+  foreach_nat64_out2in_handoff_error
+#undef _
+    NAT64_OUT2IN_HANDOFF_N_ERROR,
+} nat64_out2in_handoff_error_t;
+
+static char *nat64_out2in_handoff_error_strings[] = {
+#define _(sym,string) string,
+  foreach_nat64_out2in_handoff_error
+#undef _
+};
+
 typedef struct
 {
   u32 next_worker_index;
-  u8 do_handoff;
 } nat64_out2in_handoff_trace_t;
 
 static u8 *
@@ -911,10 +927,9 @@ format_nat64_out2in_handoff_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nat64_out2in_handoff_trace_t *t =
     va_arg (*args, nat64_out2in_handoff_trace_t *);
-  char *m;
 
-  m = t->do_handoff ? "next worker" : "same worker";
-  s = format (s, "NAT64-OUT2IN-HANDOFF: %s %d", m, t->next_worker_index);
+  s =
+    format (s, "NAT64-OUT2IN-HANDOFF: next-worker %d", t->next_worker_index);
 
   return s;
 }
@@ -924,167 +939,49 @@ nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      vlib_frame_t * frame)
 {
   nat64_main_t *nm = &nat64_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 n_left_from, *from, *to_next = 0, *to_next_drop = 0;
-  static __thread vlib_frame_queue_elt_t **handoff_queue_elt_by_worker_index;
-  static __thread vlib_frame_queue_t **congested_handoff_queue_by_worker_index
-    = 0;
-  vlib_frame_queue_elt_t *hf = 0;
-  vlib_frame_queue_t *fq;
-  vlib_frame_t *f = 0, *d = 0;
-  int i;
-  u32 n_left_to_next_worker = 0, *to_next_worker = 0;
-  u32 next_worker_index = 0;
-  u32 current_worker_index = ~0;
-  u32 thread_index = vm->thread_index;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 n_enq, n_left_from, *from;
+  u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 fq_index;
-  u32 to_node_index;
-
-  fq_index = nm->fq_out2in_index;
-  to_node_index = nat64_out2in_node.index;
-
-  if (PREDICT_FALSE (handoff_queue_elt_by_worker_index == 0))
-    {
-      vec_validate (handoff_queue_elt_by_worker_index, tm->n_vlib_mains - 1);
-
-      vec_validate_init_empty (congested_handoff_queue_by_worker_index,
-			       tm->n_vlib_mains - 1,
-			       (vlib_frame_queue_t *) (~0));
-    }
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+
+  b = bufs;
+  ti = thread_indices;
+
+  fq_index = nm->fq_out2in_index;
 
   while (n_left_from > 0)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
       ip4_header_t *ip0;
-      u8 do_handoff;
 
-      bi0 = from[0];
-      from += 1;
-      n_left_from -= 1;
+      ip0 = vlib_buffer_get_current (b[0]);
+      ti[0] = nat64_get_worker_out2in (ip0);
 
-      b0 = vlib_get_buffer (vm, bi0);
-
-      ip0 = vlib_buffer_get_current (b0);
-
-      next_worker_index = nat64_get_worker_out2in (ip0);
-
-      if (PREDICT_FALSE (next_worker_index != thread_index))
-	{
-	  do_handoff = 1;
-
-	  if (next_worker_index != current_worker_index)
-	    {
-	      fq =
-		is_vlib_frame_queue_congested (fq_index, next_worker_index,
-					       30,
-					       congested_handoff_queue_by_worker_index);
-
-	      if (fq)
-		{
-		  /* if this is 1st frame */
-		  if (!d)
-		    {
-		      d = vlib_get_frame_to_node (vm, nm->error_node_index);
-		      to_next_drop = vlib_frame_vector_args (d);
-		    }
-
-		  to_next_drop[0] = bi0;
-		  to_next_drop += 1;
-		  d->n_vectors++;
-		  goto trace0;
-		}
-
-	      if (hf)
-		hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
-
-	      hf =
-		vlib_get_worker_handoff_queue_elt (fq_index,
-						   next_worker_index,
-						   handoff_queue_elt_by_worker_index);
-	      n_left_to_next_worker = VLIB_FRAME_SIZE - hf->n_vectors;
-	      to_next_worker = &hf->buffer_index[hf->n_vectors];
-	      current_worker_index = next_worker_index;
-	    }
-
-	  ASSERT (to_next_worker != 0);
-
-	  /* enqueue to correct worker thread */
-	  to_next_worker[0] = bi0;
-	  to_next_worker++;
-	  n_left_to_next_worker--;
-
-	  if (n_left_to_next_worker == 0)
-	    {
-	      hf->n_vectors = VLIB_FRAME_SIZE;
-	      vlib_put_frame_queue_elt (hf);
-	      current_worker_index = ~0;
-	      handoff_queue_elt_by_worker_index[next_worker_index] = 0;
-	      hf = 0;
-	    }
-	}
-      else
-	{
-	  do_handoff = 0;
-	  /* if this is 1st frame */
-	  if (!f)
-	    {
-	      f = vlib_get_frame_to_node (vm, to_node_index);
-	      to_next = vlib_frame_vector_args (f);
-	    }
-
-	  to_next[0] = bi0;
-	  to_next += 1;
-	  f->n_vectors++;
-	}
-
-    trace0:
       if (PREDICT_FALSE
 	  ((node->flags & VLIB_NODE_FLAG_TRACE)
-	   && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	   && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
 	  nat64_out2in_handoff_trace_t *t =
-	    vlib_add_trace (vm, node, b0, sizeof (*t));
-	  t->next_worker_index = next_worker_index;
-	  t->do_handoff = do_handoff;
+	    vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->next_worker_index = ti[0];
 	}
+
+      n_left_from -= 1;
+      ti += 1;
+      b += 1;
     }
 
-  if (f)
-    vlib_put_frame_to_node (vm, to_node_index, f);
+  n_enq =
+    vlib_buffer_enqueue_to_thread (vm, fq_index, from, thread_indices,
+				   frame->n_vectors, 1);
 
-  if (d)
-    vlib_put_frame_to_node (vm, nm->error_node_index, d);
-
-  if (hf)
-    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
-
-  /* Ship frames to the worker nodes */
-  for (i = 0; i < vec_len (handoff_queue_elt_by_worker_index); i++)
-    {
-      if (handoff_queue_elt_by_worker_index[i])
-	{
-	  hf = handoff_queue_elt_by_worker_index[i];
-	  /*
-	   * It works better to let the handoff node
-	   * rate-adapt, always ship the handoff queue element.
-	   */
-	  if (1 || hf->n_vectors == hf->last_n_vectors)
-	    {
-	      vlib_put_frame_queue_elt (hf);
-	      handoff_queue_elt_by_worker_index[i] = 0;
-	    }
-	  else
-	    hf->last_n_vectors = hf->n_vectors;
-	}
-      congested_handoff_queue_by_worker_index[i] =
-	(vlib_frame_queue_t *) (~0);
-    }
-  hf = 0;
-  current_worker_index = ~0;
+  if (n_enq < frame->n_vectors)
+    vlib_node_increment_counter (vm, node->node_index,
+				 NAT64_OUT2IN_HANDOFF_ERROR_CONGESTION_DROP,
+				 frame->n_vectors - n_enq);
   return frame->n_vectors;
 }
 
@@ -1095,6 +992,8 @@ VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_out2in_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(nat64_out2in_handoff_error_strings),
+  .error_strings = nat64_out2in_handoff_error_strings,
 
   .n_next_nodes = 1,
 

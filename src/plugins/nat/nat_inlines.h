@@ -19,6 +19,7 @@
 #ifndef __included_nat_inlines_h__
 #define __included_nat_inlines_h__
 
+#include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
 
 always_inline u32
@@ -375,6 +376,78 @@ mss_clamping (snat_main_t * sm, tcp_header_t * tcp, ip_csum_t * sum)
 	  return;
 	}
     }
+}
+
+/**
+ * @brief Check if packet should be translated
+ *
+ * Packets aimed at outside interface and external address with active session
+ * should be translated.
+ *
+ * @param sm            NAT main
+ * @param rt            NAT runtime data
+ * @param sw_if_index0  index of the inside interface
+ * @param ip0           IPv4 header
+ * @param proto0        NAT protocol
+ * @param rx_fib_index0 RX FIB index
+ *
+ * @returns 0 if packet should be translated otherwise 1
+ */
+static inline int
+snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
+			 u32 sw_if_index0, ip4_header_t * ip0, u32 proto0,
+			 u32 rx_fib_index0)
+{
+  if (sm->out2in_dpo)
+    return 0;
+
+  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  nat_outside_fib_t *outside_fib;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = 32,
+    .fp_addr = {
+		.ip4.as_u32 = ip0->dst_address.as_u32,
+		}
+    ,
+  };
+
+  /* Don't NAT packet aimed at the intfc address */
+  if (PREDICT_FALSE (is_interface_addr (sm, node, sw_if_index0,
+					ip0->dst_address.as_u32)))
+    return 1;
+
+  fei = fib_table_lookup (rx_fib_index0, &pfx);
+  if (FIB_NODE_INDEX_INVALID != fei)
+    {
+      u32 sw_if_index = fib_entry_get_resolving_interface (fei);
+      if (sw_if_index == ~0)
+	{
+	  vec_foreach (outside_fib, sm->outside_fibs)
+	  {
+	    fei = fib_table_lookup (outside_fib->fib_index, &pfx);
+	    if (FIB_NODE_INDEX_INVALID != fei)
+	      {
+		sw_if_index = fib_entry_get_resolving_interface (fei);
+		if (sw_if_index != ~0)
+		  break;
+	      }
+	  }
+	}
+      if (sw_if_index == ~0)
+	return 1;
+
+      snat_interface_t *i;
+      pool_foreach (i, sm->interfaces, (
+					 {
+					 /* NAT packet aimed at outside interface */
+					 if ((nat_interface_is_outside (i))
+					     && (sw_if_index ==
+						 i->sw_if_index)) return 0;}
+		    ));
+    }
+
+  return 1;
 }
 
 #endif /* __included_nat_inlines_h__ */

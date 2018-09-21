@@ -506,7 +506,6 @@ nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
   nat64_main_t *nm = &nat64_main;
   snat_main_t *sm = nm->sm;
   snat_session_key_t k;
-  u32 ai;
   u32 worker_index = 0;
   int rv;
 
@@ -516,7 +515,7 @@ nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
     worker_index = thread_index - sm->first_worker_index;
 
   rv =
-    sm->alloc_addr_and_port (nm->addr_pool, fib_index, thread_index, &k, &ai,
+    sm->alloc_addr_and_port (nm->addr_pool, fib_index, thread_index, &k,
 			     sm->port_per_thread, worker_index);
 
   if (!rv)

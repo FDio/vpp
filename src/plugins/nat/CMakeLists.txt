@@ -16,12 +16,19 @@ add_vpp_plugin(nat
   nat.c
   nat_api.c
   in2out.c
+  in2out_ed.c
   out2in.c
+  out2in_ed.c
   nat_ipfix_logging.c
   nat_det.c
+  nat_det_in2out.c
+  nat_det_out2in.c
   nat_reass.c
   nat_dpo.c
   nat44_cli.c
+  nat44_handoff.c
+  nat44_hairpinning.c
+  nat44_classify.c
   nat64.c
   nat64_cli.c
   nat64_in2out.c
@@ -39,6 +46,7 @@ add_vpp_plugin(nat
   nat66_in2out.c
   nat66_out2in.c
   nat_affinity.c
+  nat_format.c
 
   API_FILES
   nat.api
