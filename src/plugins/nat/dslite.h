@@ -46,7 +46,6 @@ typedef CLIB_PACKED (struct
   f64 last_heard;
   u64 total_bytes;
   u32 total_pkts;
-  u32 outside_address_index;
 }) dslite_session_t;
 /* *INDENT-ON* */
 

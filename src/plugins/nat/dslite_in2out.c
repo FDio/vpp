@@ -45,7 +45,6 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
   u32 oldest_index;
   dslite_session_t *s;
   snat_session_key_t out2in_key;
-  u32 address_index;
 
   out2in_key.protocol = in2out_key->proto;
   out2in_key.fib_index = 0;
@@ -104,17 +103,16 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
 			       &out2in_kv, 0);
       snat_free_outside_address_and_port (dm->addr_pool, thread_index,
 					  &s->out2in);
-      s->outside_address_index = ~0;
 
       if (snat_alloc_outside_address_and_port
 	  (dm->addr_pool, 0, thread_index, &out2in_key,
-	   &s->outside_address_index, dm->port_per_thread, thread_index))
+	   dm->port_per_thread, thread_index))
 	ASSERT (0);
     }
   else
     {
       if (snat_alloc_outside_address_and_port
-	  (dm->addr_pool, 0, thread_index, &out2in_key, &address_index,
+	  (dm->addr_pool, 0, thread_index, &out2in_key,
 	   dm->port_per_thread, thread_index))
 	{
 	  *error = DSLITE_ERROR_OUT_OF_PORTS;
@@ -122,7 +120,6 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
 	}
       pool_get (dm->per_thread_data[thread_index].sessions, s);
       memset (s, 0, sizeof (*s));
-      s->outside_address_index = address_index;
       b4->nsessions++;
 
       pool_get (dm->per_thread_data[thread_index].list_pool, elt);
