@@ -2,6 +2,7 @@
 
 import socket
 import sys
+import os.path
 from abc import abstractmethod, ABCMeta
 from cStringIO import StringIO
 from scapy.utils6 import in6_mactoifaceid
@@ -73,19 +74,32 @@ def ip6_normalize(ip6):
                             socket.inet_pton(socket.AF_INET6, ip6))
 
 
-def check_core_path(logger, core_path):
+def get_core_path(tempdir):
+    return "%s/%s" % (tempdir, get_core_pattern())
+
+
+def is_core_present(tempdir):
+    return os.path.isfile(get_core_path(tempdir))
+
+
+def get_core_pattern():
     with open("/proc/sys/kernel/core_pattern", "r") as f:
-        corefmt = f.read()
-        if corefmt.startswith("|"):
-            logger.error(
-                "WARNING: redirecting the core dump through a"
-                " filter may result in truncated dumps.")
-            logger.error(
-                "   You may want to check the filter settings"
-                " or uninstall it and edit the"
-                " /proc/sys/kernel/core_pattern accordingly.")
-            logger.error(
-                "   current core pattern is: %s" % corefmt)
+        corefmt = f.read().strip()
+    return corefmt
+
+
+def check_core_path(logger, core_path):
+    corefmt = get_core_pattern()
+    if corefmt.startswith("|"):
+        logger.error(
+            "WARNING: redirecting the core dump through a"
+            " filter may result in truncated dumps.")
+        logger.error(
+            "   You may want to check the filter settings"
+            " or uninstall it and edit the"
+            " /proc/sys/kernel/core_pattern accordingly.")
+        logger.error(
+            "   current core pattern is: %s" % corefmt)
 
 
 class NumericConstant(object):
