@@ -456,7 +456,6 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
     }
   pool_get (bm->neighbors, sif);
   memset (sif, 0, sizeof (*sif));
-  clib_spinlock_init (&sif->lockp);
   sw = pool_elt_at_index (im->sw_interfaces, args->slave);
   sif->port_enabled = sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP;
   sif->sw_if_index = sw->sw_if_index;

@@ -307,7 +307,7 @@ list(APPEND VNET_HEADERS
   bonding/node.h
 )
 
-list(APPEND VNET_MULTIARCH_SOURCES bonding/node.c)
+list(APPEND VNET_MULTIARCH_SOURCES bonding/node.c bonding/device.c)
 list(APPEND VNET_API_FILES bonding/bond.api)
 
 ##############################################################################
