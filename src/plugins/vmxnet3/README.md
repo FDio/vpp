@@ -34,7 +34,7 @@ echo Y | sudo tee /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
 
 3. Bind interface to vfio-pci
 ```
-dpdk-devbind.py --bind vfio-pci 0b:00.0
+sudo dpdk-devbind.py --bind vfio-pci 0b:00.0
 ```
 
 ### Interface Creation

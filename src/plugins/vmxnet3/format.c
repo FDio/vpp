@@ -62,6 +62,7 @@ format_vmxnet3_device (u8 * s, va_list * args)
   vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, 0);
 
   s = format (s, "flags: %U", format_vmxnet3_device_flags, vd);
+  s = format (s, "\n%Uspeed %u", format_white_space, indent, vd->link_speed);
   s = format (s, "\n%Urx queues %u, rx desc %u, tx queues %u, tx desc %u",
 	      format_white_space, indent,
 	      vd->num_rx_queues, rxq->size, vd->num_tx_queues, txq->size);

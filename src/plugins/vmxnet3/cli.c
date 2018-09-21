@@ -206,8 +206,9 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
     {
       hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
       vd = vec_elt_at_index (vmxm->devices, hi->dev_instance);
-      vlib_cli_output (vm, "Interface: %s (ifindex %d)",
-		       hi->name, hw_if_indices[i]);
+      vlib_cli_output (vm, "Interface: %U (ifindex %d)",
+		       format_vnet_hw_if_index_name, vnm, hw_if_indices[i],
+		       hw_if_indices[i]);
       vlib_cli_output (vm, "  Version: %u", vd->version);
       vlib_cli_output (vm, "  PCI Address: %U", format_vlib_pci_addr,
 		       &vd->pci_addr);
