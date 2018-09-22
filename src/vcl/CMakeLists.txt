@@ -19,7 +19,6 @@ add_vpp_library(vppcom
   vppcom.c
   vcl_bapi.c
   vcl_cfg.c
-  vcl_event.c
   vcl_private.c
 
   LINK_LIBRARIES
@@ -40,7 +39,6 @@ add_vpp_library(vcl_ldpreload
 
 add_vpp_headers(vcl
   ldp.h
-  vcl_event.h
   sock_test.h
   ldp_glibc_socket.h
   vcl_test.h
@@ -59,8 +57,6 @@ if(VPP_BUILD_VCL_TESTS)
     vcl_test_client
     sock_test_server
     sock_test_client
-    test_vcl_listener_server
-    test_vcl_listener_client
   )
     add_vpp_executable(${test} SOURCES ${test}.c LINK_LIBRARIES vppcom pthread
 		       NO_INSTALL)

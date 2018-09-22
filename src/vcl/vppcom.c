@@ -17,7 +17,6 @@
 #include <stdlib.h>
 #include <svm/svm_fifo_segment.h>
 #include <vcl/vppcom.h>
-#include <vcl/vcl_event.h>
 #include <vcl/vcl_debug.h>
 #include <vcl/vcl_private.h>
 

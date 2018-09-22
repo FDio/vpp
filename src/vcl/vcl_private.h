@@ -18,7 +18,6 @@
 
 #include <vnet/session/application_interface.h>
 #include <vcl/vppcom.h>
-#include <vcl/vcl_event.h>
 #include <vcl/vcl_debug.h>
 
 #if (CLIB_DEBUG > 0)
@@ -302,13 +301,6 @@ typedef struct vppcom_main_t_
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
 
-  /* Obsolete */
-
-  /* Event thread */
-  vce_event_thread_t event_thread;
-
-  /* IO thread */
-  vppcom_session_io_thread_t session_io_thread;
 } vppcom_main_t;
 
 extern vppcom_main_t *vcm;
