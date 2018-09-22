@@ -766,7 +766,8 @@ static void *vl_api_ip_add_del_route_t_print
 
   if (mp->next_hop_n_out_labels)
     {
-      for (u8 i = 0; i < mp->next_hop_n_out_labels; i++)
+      u8 i;
+      for (i = 0; i < mp->next_hop_n_out_labels; i++)
 	{
 	  s = format (s, "out-label %d ",
 		      ntohl (mp->next_hop_out_label_stack[i].label));
@@ -842,7 +843,8 @@ static void *vl_api_mpls_route_add_del_t_print
 
   if (mp->mr_next_hop_n_out_labels)
     {
-      for (u8 i = 0; i < mp->mr_next_hop_n_out_labels; i++)
+      u8 i;
+      for (i = 0; i < mp->mr_next_hop_n_out_labels; i++)
 	{
 	  s = format (s, "out-label %d ",
 		      ntohl (mp->mr_next_hop_out_label_stack[i].label));
@@ -959,7 +961,8 @@ static void *vl_api_sr_mpls_policy_add_t_print
 
   if (mp->n_segments)
     {
-      for (int i = 0; i < mp->n_segments; i++)
+      int i;
+      for (i = 0; i < mp->n_segments; i++)
 	s = format (s, "next %d ", ntohl (mp->segments[i]));
     }
 
