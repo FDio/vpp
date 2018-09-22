@@ -3346,7 +3346,7 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
 	  else if (csa->rekey_retries > 0)
 	    {
 	      csa->rekey_retries--;
-	      clib_warning ("Rekeing Child SA 0x%x, retries left %d",
+	      clib_warning ("Rekeying Child SA 0x%x, retries left %d",
 			    csa->i_proposals->spi, csa->rekey_retries);
 	      if (csa->rekey_retries == 0)
 		{
