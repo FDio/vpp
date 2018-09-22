@@ -286,13 +286,13 @@ typedef struct
   uword *ipsec_if_pool_index_by_key;
   uword *ipsec_if_real_dev_by_show_dev;
 
-  /* node indeces */
+  /* node indices */
   u32 error_drop_node_index;
   u32 esp_encrypt_node_index;
   u32 esp_decrypt_node_index;
   u32 ah_encrypt_node_index;
   u32 ah_decrypt_node_index;
-  /* next node indeces */
+  /* next node indices */
   u32 esp_encrypt_next_index;
   u32 esp_decrypt_next_index;
   u32 ah_encrypt_next_index;

@@ -727,7 +727,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       if (is_add)
-	error = clib_error_return (0, "External addres must be allocated.");
+	error = clib_error_return (0, "External address must be allocated.");
       else
 	error = clib_error_return (0, "Mapping not exist.");
       goto done;
@@ -811,7 +811,7 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
       goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       if (is_add)
-	error = clib_error_return (0, "External addres must be allocated.");
+	error = clib_error_return (0, "External address must be allocated.");
       else
 	error = clib_error_return (0, "Mapping not exist.");
       goto done;
@@ -925,7 +925,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
       goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       if (is_add)
-	error = clib_error_return (0, "External addres must be allocated.");
+	error = clib_error_return (0, "External address must be allocated.");
       else
 	error = clib_error_return (0, "Mapping not exist.");
       goto done;

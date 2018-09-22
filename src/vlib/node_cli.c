@@ -526,7 +526,7 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
   else
-    s = format (s, "\n    defult only");
+    s = format (s, "\n    default only");
   vlib_cli_output (vm, "  node function variants:%v\n", s);
   vec_reset_length (s);
 
@@ -604,7 +604,7 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
 
   if (!unformat (line_input, "%s", &variant))
     {
-      err = clib_error_return (0, "please specify node function variant");
+      err = clib_error_return (0, "please specify node functional variant");
       goto done;
     }
 
@@ -612,7 +612,7 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
 
   if (n->node_fn_registrations == 0)
     {
-      err = clib_error_return (0, "node doesn't have fnuctiona varinats");
+      err = clib_error_return (0, "node doesn't have functional variants");
       goto done;
     }
 
@@ -638,7 +638,7 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
       fnr = fnr->next_registration;
     }
 
-  err = clib_error_return (0, "node fnuction variant '%s' not found", variant);
+  err = clib_error_return (0, "node functional variant '%s' not found", variant);
 
 done:
   vec_free (variant);
