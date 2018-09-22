@@ -89,7 +89,7 @@ format_ipsec_gre_tx_trace (u8 * s, va_list * args)
  * - <code>vnet_buffer(b)->sw_if_index[VLIB_TX]</code>
  *     - Reset output sw_if_index.
  *
- * <em>Nexd Index:</em>
+ * <em>Next Index:</em>
  * - Dispatches the packet to the esp-encrypt node.
 */
 static uword

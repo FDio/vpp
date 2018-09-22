@@ -515,7 +515,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
                         format_ip4_address, &p->laddr.start.ip4,
                         format_ip4_address, &p->laddr.stop.ip4,
                         p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remte addr range %U - %U port range %u - %u",
+        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
                         format_ip4_address, &p->raddr.start.ip4,
                         format_ip4_address, &p->raddr.stop.ip4,
                         p->rport.start, p->rport.stop);
@@ -570,7 +570,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
                         format_ip4_address, &p->laddr.start.ip4,
                         format_ip4_address, &p->laddr.stop.ip4,
                         p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remte addr range %U - %U port range %u - %u",
+        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
                         format_ip4_address, &p->raddr.start.ip4,
                         format_ip4_address, &p->raddr.stop.ip4,
                         p->rport.start, p->rport.stop);
@@ -597,7 +597,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
                         format_ip4_address, &p->laddr.start.ip4,
                         format_ip4_address, &p->laddr.stop.ip4,
                         p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remte addr range %U - %U port range %u - %u",
+        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
                         format_ip4_address, &p->raddr.start.ip4,
                         format_ip4_address, &p->raddr.stop.ip4,
                         p->rport.start, p->rport.stop);

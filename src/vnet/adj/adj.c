@@ -524,7 +524,7 @@ adj_show (vlib_main_t * vm,
 
     if (summary)
     {
-        vlib_cli_output (vm, "Number of adjacenies: %d", pool_elts(adj_pool));
+        vlib_cli_output (vm, "Number of adjacencies: %d", pool_elts(adj_pool));
         vlib_cli_output (vm, "Per-adjacency counters: %s",
                          (adj_are_counters_enabled() ?
                           "enabled":

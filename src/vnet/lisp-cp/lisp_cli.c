@@ -834,7 +834,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
     }
 
   vlib_cli_output (vm, "%-35s%-20s%-30s%-20s%-s",
-		   "EID", "type", "locators", "ttl", "autoritative");
+		   "EID", "type", "locators", "ttl", "authoritative");
 
   if (print_all)
     {

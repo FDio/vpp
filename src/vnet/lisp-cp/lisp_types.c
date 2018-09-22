@@ -871,7 +871,7 @@ ip_address_copy (ip_address_t * dst, const ip_address_t * src)
 {
   if (IP4 == ip_addr_version (src))
     {
-      /* don't copy any garbe from the union */
+      /* don't copy any garbage from the union */
       memset (dst, 0, sizeof (*dst));
       dst->ip.v4 = src->ip.v4;
       dst->version = IP4;

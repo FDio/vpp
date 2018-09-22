@@ -3023,7 +3023,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     vec_free (sig_hash_algo);
 
 
-    /* Buffer update and bolierplate */
+    /* Buffer update and boilerplate */
     len += vec_len (chain->data);
     ike0->nextpayload = chain->first_payload_type;
     ike0->length = clib_host_to_net_u32 (len);
@@ -3346,7 +3346,7 @@ ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
 	  else if (csa->rekey_retries > 0)
 	    {
 	      csa->rekey_retries--;
-	      clib_warning ("Rekeing Child SA 0x%x, retries left %d",
+	      clib_warning ("Rekeying Child SA 0x%x, retries left %d",
 			    csa->i_proposals->spi, csa->rekey_retries);
 	      if (csa->rekey_retries == 0)
 		{

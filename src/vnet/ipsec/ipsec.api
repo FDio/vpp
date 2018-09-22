@@ -364,7 +364,7 @@ autoreply define ikev2_set_esp_transforms
 
     @param name - IKEv2 profile name
     @param lifetime - SA maximum life time in seconds (0 to disable)
-    @param lifetime_jitter - Jitter added to prevent simultaneounus rekeying
+    @param lifetime_jitter - Jitter added to prevent simultaneous rekeying
     @param handover - Hand over time
     @param lifetime_maxdata - SA maximum life time in bytes (0 to disable)
     

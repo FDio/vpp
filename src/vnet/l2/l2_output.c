@@ -480,7 +480,7 @@ typedef enum
  * this sw_if_index, l2-output will send packets for this sw_if_index to the
  * l2-output-bad-intf node which just setup the proper drop reason before
  * sending packets to the error-drop node to drop the packet. Then, stale L2FIB
- * entries for delted tunnels won't cause possible packet or memory corrpution.
+ * entries for deleted tunnels won't cause possible packet or memory corruption.
  */
 
 VLIB_NODE_FN (l2output_bad_intf_node) (vlib_main_t * vm,
