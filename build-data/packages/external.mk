@@ -29,6 +29,11 @@ ifneq ($(DPDK_MLX5_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX5_PMD=y
 endif
 
+DPDK_MLX5_PMD_DLOPEN_DEPS=$(strip $($(PLATFORM)_uses_dpdk_mlx5_dlopen_deps))
+ifneq ($(DPDK_MLX5_PMD_DLOPEN_DEPS),)
+DPDK_MAKE_ARGS += DPDK_MLX5_PMD_DLOPEN_DEPS=y
+endif
+
 DPDK_MLX4_PMD=$(strip $($(PLATFORM)_uses_dpdk_mlx4_pmd))
 ifneq ($(DPDK_MLX4_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX4_PMD=y

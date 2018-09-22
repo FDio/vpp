@@ -39,6 +39,9 @@ int main()
 #endif
 #ifdef RTE_LIBRTE_MLX5_PMD
   printf(\"RTE_LIBRTE_MLX5_PMD=%u\\n\", RTE_LIBRTE_MLX5_PMD);
+#ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
+  printf(\"RTE_LIBRTE_MLX5_DLOPEN_DEPS=%u\\n\", RTE_LIBRTE_MLX5_DLOPEN_DEPS);
+#endif
 #endif
   return 0;
 }
@@ -95,8 +98,13 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB)
     message(STATUS "DPDK depends on IPSec MB library")
   endif()
   if(DPDK_RTE_LIBRTE_MLX4_PMD OR DPDK_RTE_LIBRTE_MLX5_PMD)
-    set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lmnl")
-    message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
+    if (DPDK_RTE_LIBRTE_MLX5_DLOPEN_DEPS)
+      set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lmnl")
+      message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
+    else()
+      set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lmnl,-libverbs,-lmlx5")
+      message(STATUS "DPDK depends on libmnl, libibverbs, libmlx5 (Mellanox PMD requirement)")
+    endif()
   endif()
   set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lnuma")
   add_vpp_plugin(dpdk
