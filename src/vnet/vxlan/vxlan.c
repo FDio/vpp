@@ -513,8 +513,8 @@ int vnet_vxlan_add_del_tunnel
       else
 	{
 	  /* Multicast tunnel -
-	   * as the same mcast group can be used for mutiple mcast tunnels
-	   * with different VNIs, create the output fib adjecency only if
+	   * as the same mcast group can be used for multiple mcast tunnels
+	   * with different VNIs, create the output fib adjacency only if
 	   * it does not already exist
 	   */
 	  fib_protocol_t fp = fib_ip_proto (is_ip6);
@@ -830,7 +830,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
  * Example of how to create a VXLAN Tunnel with a known name, vxlan_tunnel42:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 instance 42}
  * Example of how to create a multicast VXLAN Tunnel with a known name, vxlan_tunnel23:
- * @cliexcmd{create vxlan tunnel src 10.0.3.1 group 239.1.1.1 GigabitEtherner0/8/0 instance 23}
+ * @cliexcmd{create vxlan tunnel src 10.0.3.1 group 239.1.1.1 GigabitEthernet0/8/0 instance 23}
  * Example of how to delete a VXLAN Tunnel:
  * @cliexcmd{create vxlan tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
  ?*/
@@ -996,7 +996,7 @@ set_ip4_vxlan_bypass (vlib_main_t * vm,
  *                                 ip4-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...
@@ -1053,7 +1053,7 @@ set_ip6_vxlan_bypass (vlib_main_t * vm,
  *                                 ip6-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...
@@ -1186,7 +1186,7 @@ vxlan_offload_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (vxlan_offload_command, static) = {
     .path = "set flow-offload vxlan",
     .short_help =
-    "set flow-offload vxlan hw <inerface-name> rx <tunnel-name> [del]",
+    "set flow-offload vxlan hw <interface-name> rx <tunnel-name> [del]",
     .function = vxlan_offload_command_fn,
 };
 /* *INDENT-ON* */

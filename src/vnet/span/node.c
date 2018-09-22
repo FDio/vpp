@@ -44,7 +44,7 @@ format_span_trace (u8 * s, va_list * args)
 }
 
 #define foreach_span_error                      \
-_(HITS, "SPAN incomming packets processed")
+_(HITS, "SPAN incoming packets processed")
 
 typedef enum
 {

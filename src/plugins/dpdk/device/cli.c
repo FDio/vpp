@@ -337,7 +337,7 @@ pcap_tx_trace_command_fn (vlib_main_t * vm,
  *   associated with a packet capture. If packet capture is in progress,
  *   '<em>status</em>' also will return the number of packets currently in
  *   the local buffer. All additional attributes entered on command line
- *   with '<em>status</em>' will be ingnored and not applied.
+ *   with '<em>status</em>' will be ignored and not applied.
  *
  * @cliexpar
  * Example of how to display the status of a tx packet capture when off:
@@ -571,7 +571,7 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * @cliexpar
  * @parblock
  *
- * Example of how to display how many DPDK buffer test command has allcoated:
+ * Example of how to display how many DPDK buffer test command has allocated:
  * @cliexstart{test dpdk buffer}
  * Currently 0 buffers allocated
  * @cliexend
@@ -1384,7 +1384,7 @@ done:
 }
 
 /*?
- * This command is used to set the packet fields required for classifiying the
+ * This command is used to set the packet fields required for classifying the
  * incoming packet. As a result of classification process, packet field
  * information will be mapped to 5 tuples (subport, pipe, traffic class, pipe,
  * color) and stored in packet mbuf.
@@ -2003,7 +2003,7 @@ show_dpdk_version_command_fn (vlib_main_t * vm,
  * the list of arguments passed to DPDK when started.
  *
  * @cliexpar
- * Example of how to display how many DPDK buffer test command has allcoated:
+ * Example of how to display how many DPDK buffer test command has allocated:
  * @cliexstart{show dpdk version}
  * DPDK Version:        DPDK 16.11.0
  * DPDK EAL init args:  -c 1 -n 4 --huge-dir /run/vpp/hugepages --file-prefix vpp -w 0000:00:08.0 -w 0000:00:09.0 --master-lcore 0 --socket-mem 256

@@ -727,7 +727,7 @@ VLIB_CLI_COMMAND (bd_arp_term_cli, static) = {
  * 6-byte MAC address directly in the hash table entry uword.
  *
  * @warning This only works for 64-bit processor with 8-byte uword;
- * which means this code *WILL NOT WORK* for a 32-bit prcessor with
+ * which means this code *WILL NOT WORK* for a 32-bit processor with
  * 4-byte uword.
  */
 u32
@@ -742,7 +742,7 @@ bd_add_del_ip_mac (u32 bd_index,
   ASSERT (sizeof (uword) == sizeof (u64));	/* make sure uword is 8 bytes */
   ASSERT (bd_is_valid (bd_cfg));
 
-  mac16[3] = 0;			/* Clear last 2 unsed bytes of the 8-byte MAC address */
+  mac16[3] = 0;			/* Clear last 2 unused bytes of the 8-byte MAC address */
   if (is_ip6)
     {
       ip6_address_t *ip6_addr_key;
@@ -751,7 +751,7 @@ bd_add_del_ip_mac (u32 bd_index,
       if (is_add)
 	{
 	  if (old_mac == 0)
-	    {			/* new entry - allocate and craete ip6 address key */
+	    {			/* new entry - allocate and create ip6 address key */
 	      ip6_addr_key = clib_mem_alloc (sizeof (ip6_address_t));
 	      clib_memcpy (ip6_addr_key, ip_addr, sizeof (ip6_address_t));
 	    }
@@ -760,7 +760,7 @@ bd_add_del_ip_mac (u32 bd_index,
 	      return 0;
 	    }
 	  else
-	    {			/* updat mac for ip6 address */
+	    {			/* update mac for ip6 address */
 	      hp = hash_get_pair (bd_cfg->mac_by_ip6, ip_addr);
 	      ip6_addr_key = (ip6_address_t *) hp->key;
 	    }

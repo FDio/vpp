@@ -445,7 +445,7 @@ ip_table_bind (fib_protocol_t fproto,
        * If the interface already has in IP address, then a change int
        * VRF is not allowed. The IP address applied must first be removed.
        * We do not do that automatically here, since VPP has no knowledge
-       * of whether thoses subnets are valid in the destination VRF.
+       * of whether those subnets are valid in the destination VRF.
        */
       /* *INDENT-OFF* */
       foreach_ip_interface_address (&ip6_main.lookup_main,
@@ -496,7 +496,7 @@ ip_table_bind (fib_protocol_t fproto,
        * If the interface already has in IP address, then a change int
        * VRF is not allowed. The IP address applied must first be removed.
        * We do not do that automatically here, since VPP has no knowledge
-       * of whether thoses subnets are valid in the destination VRF.
+       * of whether those subnets are valid in the destination VRF.
        */
       /* *INDENT-OFF* */
       foreach_ip_interface_address (&ip4_main.lookup_main,
@@ -1250,7 +1250,7 @@ static void
 /*
  * vpe_api_hookup
  * Add vpe's API message handlers to the table.
- * vlib has alread mapped shared memory and
+ * vlib has already mapped shared memory and
  * added the client registration handlers.
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */

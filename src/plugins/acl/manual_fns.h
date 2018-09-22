@@ -227,7 +227,7 @@ vl_api_acl_details_t_print (vl_api_acl_details_t * a, void *handle)
   u32 count = clib_net_to_host_u32 (a->count);
   if (count > 0x100000)
     {
-      s = format (s, "WARN: acl_defails count endianness wrong? Fixup to avoid long loop.\n");
+      s = format (s, "WARN: acl_details count endianness wrong? Fixup to avoid long loop.\n");
       count = a->count;
     }
 
@@ -256,7 +256,7 @@ vl_api_macip_acl_details_t_print (vl_api_macip_acl_details_t * a,
   u32 count = clib_net_to_host_u32 (a->count);
   if (count > 0x100000)
     {
-      s = format (s, "WARN: macip_acl_defails count endianness wrong? Fixup to avoid long loop.\n");
+      s = format (s, "WARN: macip_acl_details count endianness wrong? Fixup to avoid long loop.\n");
       count = a->count;
     }
 

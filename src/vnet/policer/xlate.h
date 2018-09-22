@@ -82,7 +82,7 @@ typedef enum
  *
  * element: action_type
  *      Action type (see sse2_qos_action_type_en).
- * elemtnt: dscp
+ * element: dscp
  *      DSCP value to set when action is SSE2_QOS_ACTION_MARK_AND_TRANSMIT.
  */
 typedef struct sse2_qos_pol_action_params_st_

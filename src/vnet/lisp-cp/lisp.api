@@ -276,7 +276,7 @@ define show_lisp_map_register_state_reply
     @param context - sender context, to match reply w/ request
     @param mode - new map-request mode. Supported values are:
       0 - destination only
-      1 - source/destaination
+      1 - source/destination
 */
 autoreply define lisp_map_request_mode
 {
@@ -594,7 +594,7 @@ define lisp_adjacencies_get
 
 /** \brief Shows relationship between vni and vrf/bd
     @param dp_table - VRF index or bridge domain index
-    @param vni - vitual network instance
+    @param vni - virtual network instance
   */
 define lisp_eid_table_map_details
 {

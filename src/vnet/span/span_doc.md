@@ -6,11 +6,11 @@ Everything that is not directly obvious should come here.
 
 ## Switched Port Analyzer (SPAN)
 Port mirroring is used on a network switch to send a copy of network packets seen on one switch port to a network monitoring connection on another switch port.
-Can be used by network engineers or administrators to measure performnce, analyze and debug data or diagnose errors on a network.
+Can be used by network engineers or administrators to measure performance, analyze and debug data or diagnose errors on a network.
 
 ### RX traffic node
-There is one static node to mirror incomming packets.
-* span-input: Creates a copy of incomming buffer due to incomming buffers can be reused internally.
+There is one static node to mirror incoming packets.
+* span-input: Creates a copy of incoming buffer due to incoming buffers can be reused internally.
 
 Chaining: dpdk-input -> span-input ->
 * original buffer is sent to ethernet-input for processing
@@ -26,7 +26,7 @@ SPAN supports the following CLI configuration commands:
 destination <if-name>: monitoring interface name
 disable: delete mirroring
 
-#### Enable/Disabl SPAN (API)
+#### Enable/Disable SPAN (API)
 SPAN supports the following API configuration command:
 	sw_interface_span_enable_disable src GigabitEthernet0/8/0 dst GigabitEthernet0/9/0
 	sw_interface_span_enable_disable src_sw_if_index 1 dst_sw_if_index 2

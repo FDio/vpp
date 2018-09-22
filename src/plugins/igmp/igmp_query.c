@@ -82,7 +82,7 @@ igmp_send_group_report_v3 (u32 obj, void *data)
   if (NULL == srcs)
     {
       /*
-       * there were no sources specified, so this is a group-sepcific query.
+       * there were no sources specified, so this is a group-specific query.
        * We should respond with all our sources
        */
       igmp_pkt_report_v3_add_group (&br, group,
@@ -92,7 +92,7 @@ igmp_send_group_report_v3 (u32 obj, void *data)
     {
       /*
        * the sources stored in the timer object are the combined set of sources
-       * to be quired. We need to respond only to those queried, not our full set.
+       * to be required. We need to respond only to those queried, not our full set.
        */
       ip46_address_t *intersect;
 

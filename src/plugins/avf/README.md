@@ -4,7 +4,7 @@
 This plugins provides native device support for intel Adaptive Virtual
 Function (AVF). AVF is driver specification for current and future
 Intel Virtual Function devices. AVF defines communication channel between
-Physical Funciton (PF) and VF.
+Physical Functions (PF) and VF.
 In essence, today this driver can be used only with 
 Intel XL710 / X710 / XXV710 adapters.
 
@@ -75,7 +75,7 @@ setup 0000:3b:00.0 00:11:22:33:44:00
 setup 0000:3b:00.1 00:11:22:33:44:01
 ```
 
-### Interface Cration
+### Interface Creation
 Interfaces can be dynamically created by using following CLI:
 ```
 create interface avf 0000:3b:02.0

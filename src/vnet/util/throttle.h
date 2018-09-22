@@ -21,7 +21,7 @@
 /**
  * @brief A throttle
  *  Used in the data plane to decide if a given hash should be throttled,
- *  i.e. that the hash has been seen alreay 'recently'. Recent is the time
+ *  i.e. that the hash has been seen already 'recently'. Recent is the time
  *  given in the throttle's initialisation.
  */
 typedef struct throttle_t_

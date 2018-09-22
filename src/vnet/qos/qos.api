@@ -34,7 +34,7 @@ enum qos_source
     The QoS bits from the packet at the specified input layer are copied
     into the packet. Recording should be used in conjunction with marking
     @param sw_if_index - The interface on which recording is enabled.
-    @param enable - enable=1 or disable the feautre
+    @param enable - enable=1 or disable the feature
     @param input_source - The input source/layer at which the QoS bits
                           are copied from the packet. See qos_source_t.
 */
@@ -86,7 +86,7 @@ autoreply define qos_egress_map_delete
     into the header of the 'output-source'. Marking should be used in
     conjunction with recording
     @param sw_if_index - The interface on which recording is enabled.
-    @param enable - enable=1 or disable the feautre
+    @param enable - enable=1 or disable the feature
     @param output_source - The output source/layer at which the QoS bits
                            are written into the packet. See qos_source_t.
     @param map_id - The ID of the MAP in which the translation from input

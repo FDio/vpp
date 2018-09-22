@@ -173,7 +173,7 @@ lldp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	{
 	  continue;
 	}
-      /* send packet(s) and schedule another timeut */
+      /* send packet(s) and schedule another timeout */
       const f64 now = vlib_time_now (lm->vlib_main);
       while (1)
 	{

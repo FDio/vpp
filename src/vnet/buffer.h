@@ -197,8 +197,8 @@ typedef struct
       /* Rewrite length */
       u32 save_rewrite_length;
       /*
-       * BIER - the nubmer of bytes in the header.
-       *  the len field inthe header is not authoritative. It's the
+       * BIER - the number of bytes in the header.
+       *  the len field in the header is not authoritative. It's the
        * value in the table that counts.
        */
       struct
@@ -335,7 +335,7 @@ typedef struct
 } vnet_buffer_opaque_t;
 
 /*
- * The opaque field of the vlib_buffer_t is intepreted as a
+ * The opaque field of the vlib_buffer_t is interpreted as a
  * vnet_buffer_opaque_t. Hence it should be big enough to accommodate one.
  */
 STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
@@ -390,7 +390,7 @@ typedef struct
 #define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
 
 /*
- * The opaque2 field of the vlib_buffer_t is intepreted as a
+ * The opaque2 field of the vlib_buffer_t is interpreted as a
  * vnet_buffer_opaque2_t. Hence it should be big enough to accommodate one.
  */
 STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=

@@ -46,8 +46,8 @@ enum
 };
 
 /* currently we are just copying bit positions from DPDK, but that
-   might change in future, in case we strart to be interested in something
-   stored in upper bytes. Curently we store only lower byte for perf reasons */
+   might change in future, in case we start to be interested in something
+   stored in upper bytes. Currently we store only lower byte for perf reasons */
 STATIC_ASSERT (1 << DPDK_RX_F_CKSUM_GOOD == PKT_RX_IP_CKSUM_GOOD, "");
 STATIC_ASSERT (1 << DPDK_RX_F_CKSUM_BAD == PKT_RX_IP_CKSUM_BAD, "");
 STATIC_ASSERT (1 << DPDK_RX_F_FDIR == PKT_RX_FDIR, "");
@@ -504,7 +504,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   else
     dpdk_set_next_from_etype (vm, node, ptd, n_rx_packets);
 
-  /* flow offload - process if rx flow offlaod enabled and at least one packet
+  /* flow offload - process if rx flow offload enabled and at least one packet
      is marked */
   if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
 		     (or_flags & (1 << DPDK_RX_F_FDIR))))

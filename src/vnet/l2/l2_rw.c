@@ -22,7 +22,7 @@
  * @brief Layer 2 Rewrite.
  *
  * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modfies the packet header.
+ * the provisioned mask and value, modifies the packet header.
  */
 
 
@@ -439,7 +439,7 @@ l2_rw_entry_cli_fn (vlib_main_t * vm,
 
 /*?
  * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modfies the packet header.
+ * the provisioned mask and value, modifies the packet header.
  *
  * @cliexpar
  * @todo This is incomplete. This needs a detailed description and a
@@ -511,7 +511,7 @@ l2_rw_interface_cli_fn (vlib_main_t * vm,
 
 /*?
  * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modfies the packet header.
+ * the provisioned mask and value, modifies the packet header.
  *
  * @cliexpar
  * @todo This is incomplete. This needs a detailed description and a
@@ -546,7 +546,7 @@ l2_rw_show_interfaces_cli_fn (vlib_main_t * vm,
 
 /*?
  * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modfies the packet header.
+ * the provisioned mask and value, modifies the packet header.
  *
  * @cliexpar
  * @todo This is incomplete. This needs a detailed description and a
@@ -580,7 +580,7 @@ l2_rw_show_entries_cli_fn (vlib_main_t * vm,
 
 /*?
  * Layer 2-Rewrite node uses classify tables to match packets. Then, using
- * the provisioned mask and value, modfies the packet header.
+ * the provisioned mask and value, modifies the packet header.
  *
  * @cliexpar
  * @todo This is incomplete. This needs a detailed description and a

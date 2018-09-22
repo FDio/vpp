@@ -135,7 +135,7 @@ autoreply define l2fib_add_del
   u8 bvi_mac;
 };
 
-/** \brief Register to recive L2 MAC events for leanred and aged MAC
+/** \brief Register to receive L2 MAC events for learned and aged MAC
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param learn_limit - MAC learn limit, 0 => default to 1000
@@ -173,7 +173,7 @@ typeonly define mac_entry
 /** \brief L2 MAC event for a list of learned or aged MACs
     @param client_index - opaque cookie to identify the sender
     @param pid - client pid registered to receive notification
-    @param n_macs - number of learned/aged MAC enntries
+    @param n_macs - number of learned/aged MAC entries
     @param mac - array of learned/aged MAC entries
 */
 define l2_macs_event
@@ -240,7 +240,7 @@ autoreply define bridge_domain_set_mac_age
     @param context - sender context, to match reply w/ request
     @param bd_id - the bridge domain to create
     @param flood - enable/disable bcast/mcast flooding in the bd
-    @param uu_flood - enable/disable uknown unicast flood in the bd
+    @param uu_flood - enable/disable unknown unicast flood in the bd
     @param forward - enable/disable forwarding on all interfaces in the bd
     @param learn - enable/disable learning on all interfaces in the bd
     @param arp_term - enable/disable arp termination in the bd
@@ -289,7 +289,7 @@ typeonly manual_print manual_endian define bridge_domain_sw_if
 /** \brief L2 bridge domain operational state response
     @param bd_id - the bridge domain id
     @param flood - bcast/mcast flooding state on all interfaces in the bd
-    @param uu_flood - uknown unicast flooding state on all interfaces in the bd
+    @param uu_flood - unknown unicast flooding state on all interfaces in the bd
     @param forward - forwarding state on all interfaces in the bd
     @param learn - learning state on all interfaces in the bd
     @param arp_term - arp termination state on all interfaces in the bd

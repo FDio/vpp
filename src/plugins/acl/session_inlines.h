@@ -70,7 +70,7 @@ acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
 always_inline int
 fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
 {
-  /* seen both SYNs and ACKs but not FINs means we are in establshed state */
+  /* seen both SYNs and ACKs but not FINs means we are in established state */
   u16 masked_flags =
     sess->tcp_flags_seen.as_u16 & ((TCP_FLAGS_RSTFINACKSYN << 8) +
 				   TCP_FLAGS_RSTFINACKSYN);

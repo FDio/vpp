@@ -32,7 +32,7 @@
 typedef u32 qos_egress_map_id_t;
 
 /**
- * For a given output source a table maps each value of every input sorce.
+ * For a given output source a table maps each value of every input source.
  */
 typedef struct qos_egress_map_t_
 {
@@ -55,7 +55,7 @@ extern u8 *format_qos_egress_map (u8 * s, va_list * args);
  * then the configuration is for the 'default' table.
  * If the table is ~0, this is a removal.
  * the egress mapping is applied. For example, is output is MPLS then
- * the QoS markings will occur for MPLS pakcets.
+ * the QoS markings will occur for MPLS packets.
  */
 extern void qos_egress_map_update (qos_egress_map_id_t tid,
 				   qos_source_t input_source,

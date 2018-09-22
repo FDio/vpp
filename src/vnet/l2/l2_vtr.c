@@ -177,7 +177,7 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   vtr_tag1 = clib_net_to_host_u16 (vtr_tag1);
   vtr_tag2 = clib_net_to_host_u16 (vtr_tag2);
 
-  /* Determine number of vlan tags with explictly configured values */
+  /* Determine number of vlan tags with explicitly configured values */
   cfg_tags = 0;
   if (hw_no_tags || si->sub.eth.flags.no_tags)
     {

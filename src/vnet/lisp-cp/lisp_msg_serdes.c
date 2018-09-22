@@ -119,7 +119,7 @@ nonce_build (u32 seed)
   struct timespec ts;
 
   /* Put nanosecond clock in lower 32-bits and put an XOR of the nanosecond
-   * clock with the seond clock in the upper 32-bits. */
+   * clock with the second clock in the upper 32-bits. */
   syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
   nonce_lower = ts.tv_nsec;
   nonce_upper = ts.tv_sec ^ clib_host_to_net_u32 (nonce_lower);

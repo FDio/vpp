@@ -969,7 +969,7 @@ done:
 
 /*?
  * Use this command put an interface into Layer 2 cross-connect mode.
- * Both interfaces must be in this mode for bi-directioal traffic. All
+ * Both interfaces must be in this mode for bi-directional traffic. All
  * packets received on one interface will be transmitted to the other.
  * To remove the Layer 2 cross-connect, put the interface in a different
  * mode, for example Layer 3 mode.
@@ -1122,11 +1122,11 @@ done:
 }
 
 /*?
- * Show the packet processing mode (Layer2 xcross-onnect, Layer 2 bridge,
+ * Show the packet processing mode (Layer2 cross-connect, Layer 2 bridge,
  * Layer 3 routed) of all interfaces and sub-interfaces, or limit the
  * output to just the provided list of interfaces and sub-interfaces.
  * The output shows the mode, the interface, and if the interface is
- * a member of a bridge, the bridge-domain-id and the split horizen group (shg).
+ * a member of a bridge, the bridge-domain-id and the split horizon group (shg).
  *
  * @cliexpar
  * Example of displaying the mode of all interfaces:
@@ -1141,7 +1141,7 @@ done:
  * l2 xconnect GigabitEthernet0/8/0.300 GigabitEthernet0/9/0.300
  * l2 xconnect GigabitEthernet0/9/0.300 GigabitEthernet0/8/0.300
  * @cliexend
- * Example of displaying the mode of a seleted list of interfaces:
+ * Example of displaying the mode of a selected list of interfaces:
  * @cliexstart{show mode GigabitEthernet0/8/0 GigabitEthernet0/8/0.200}
  * l3 GigabitEthernet0/8/0
  * l2 bridge GigabitEthernet0/8/0.200 bd_id 200 shg 0

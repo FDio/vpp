@@ -287,7 +287,7 @@ show_l2fib (vlib_main_t * vm,
 }
 
 /*?
- * This command dispays the MAC Address entries of the L2 FIB table.
+ * This command displays the MAC Address entries of the L2 FIB table.
  * Output can be filtered to just get the number of MAC Addresses or display
  * each MAC Address for all bridge domains or just a single bridge domain.
  *
@@ -389,7 +389,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
   /* set up key */
   key.raw = l2fib_make_key (mac, bd_index);
 
-  /* check if entry alread exist */
+  /* check if entry already exist */
   if (BV (clib_bihash_search) (&fm->mac_table, &kv, &kv))
     {
       /* decrement counter if overwriting a learned mac  */
@@ -1070,7 +1070,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		}
 
 	      if (event_only || l2fib_entry_result_is_set_AGE_NOT (&result))
-		continue;	/* skip aging - static_mac alsways age_not */
+		continue;	/* skip aging - static_mac always age_not */
 
 	      /* start aging processing */
 	      u32 bd_index = key.fields.bd_index;

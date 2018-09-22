@@ -88,7 +88,7 @@ igmp_src_alloc (u32 group_index, const igmp_key_t * skey, igmp_mode_t mode)
       igmp_group_t *group;
       /*
        * start a timer that determines whether the source is still
-       * active o nthe link
+       * active on the link
        */
       src->timers[IGMP_SRC_TIMER_EXP] =
 	igmp_timer_schedule (igmp_timer_type_get (IGMP_TIMER_SRC),

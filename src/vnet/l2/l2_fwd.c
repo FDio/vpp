@@ -515,9 +515,9 @@ done:
  * manage interfaces. It is enabled by default.
  *
  * @cliexpar
- * Example of how to enable fowarding:
+ * Example of how to enable forwarding:
  * @cliexcmd{set interface l2 forward GigabitEthernet0/8/0}
- * Example of how to disable fowarding:
+ * Example of how to disable forwarding:
  * @cliexcmd{set interface l2 forward GigabitEthernet0/8/0 disable}
 ?*/
 /* *INDENT-OFF* */

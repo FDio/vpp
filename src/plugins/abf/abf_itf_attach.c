@@ -184,7 +184,7 @@ abf_itf_attach (fib_protocol_t fproto,
     return (VNET_API_ERROR_ENTRY_ALREADY_EXISTS);
 
   /*
-   * construt a new attachemnt object
+   * construct a new attachment object
    */
   pool_get (abf_itf_attach_pool, aia);
 
@@ -210,7 +210,7 @@ abf_itf_attach (fib_protocol_t fproto,
   if (1 == vec_len (abf_per_itf[fproto][sw_if_index]))
     {
       /*
-       * when enabling the first ABF polciy on the interface
+       * when enabling the first ABF policy on the interface
        * we need to enable the interface input feature
        */
       vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
@@ -236,7 +236,7 @@ abf_itf_attach (fib_protocol_t fproto,
   abf_setup_acl_lc (fproto, sw_if_index);
 
   /*
-   * become a child of the ABF poilcy so we are notified when
+   * become a child of the ABF policy so we are notified when
    * its forwarding changes.
    */
   aia->aia_sibling = fib_node_child_add (abf_policy_fib_node_type,
@@ -253,7 +253,7 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
   u32 index;
 
   /*
-   * check this is a valid attahment
+   * check this is a valid attachment
    */
   aia = abf_itf_attach_db_find (policy_id, sw_if_index);
 
@@ -261,7 +261,7 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
     return (VNET_API_ERROR_ENTRY_ALREADY_EXISTS);
 
   /*
-   * first remove from the interface's vecotr
+   * first remove from the interface's vector
    */
   ASSERT (abf_per_itf[fproto]);
   ASSERT (abf_per_itf[fproto][sw_if_index]);
@@ -275,7 +275,7 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
   if (0 == vec_len (abf_per_itf[fproto][sw_if_index]))
     {
       /*
-       * when deleting the last ABF polciy on the interface
+       * when deleting the last ABF policy on the interface
        * we need to disable the interface input feature
        */
       vnet_feature_enable_disable ((FIB_PROTOCOL_IP4 == fproto ?
@@ -307,7 +307,7 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
 			 aia->aia_abf, aia->aia_sibling);
 
   /*
-   * remove the attahcment from the DB
+   * remove the attachment from the DB
    */
   abf_itf_attach_db_del (policy_id, sw_if_index);
 
@@ -331,7 +331,7 @@ format_abf_intf_attach (u8 * s, va_list * args)
   abf_policy_t *ap;
 
   ap = abf_policy_get (aia->aia_abf);
-  s = format (s, "abf-interface-attach: policy:%d prioity:%d",
+  s = format (s, "abf-interface-attach: policy:%d priority:%d",
 	      ap->ap_id, aia->aia_prio);
   s = format (s, "\n  %U", format_dpo_id, &aia->aia_dpo, 2);
 

@@ -122,7 +122,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
       hash = (u32) clib_xxhash (hash_key);
 
       /* if input node did not specify next index, then packet
-         should go to eternet-input */
+         should go to ethernet-input */
 
       if (PREDICT_TRUE (is_pow2 (vec_len (ihd0->workers))))
 	index0 = hash & (vec_len (ihd0->workers) - 1);

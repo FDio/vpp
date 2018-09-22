@@ -711,7 +711,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
 
   /* if the address is being applied to an interface that is not in
    * the same table/VRF as this tap, then ignore it.
-   * If we don't do this overlapping address spaces in the diferent tables
+   * If we don't do this overlapping address spaces in the different tables
    * breaks the linux host's routing tables */
   if (fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 					   sw_if_index) !=
@@ -796,7 +796,7 @@ struct in6_ifreq
  * @brief Add or Del tun/tap interface address.
  *
  * Both the v6 interface address API and the way ifconfig
- * displays subinterfaces differ from their v4 couterparts.
+ * displays subinterfaces differ from their v4 counterparts.
  * The code given here seems to work but YMMV.
  *
  * @param *im - ip6_main_t
@@ -827,7 +827,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
 
   /* if the address is being applied to an interface that is not in
    * the same table/VRF as this tap, then ignore it.
-   * If we don't do this overlapping address spaces in the diferent tables
+   * If we don't do this overlapping address spaces in the different tables
    * breaks the linux host's routing tables */
   if (fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
 					   sw_if_index) !=

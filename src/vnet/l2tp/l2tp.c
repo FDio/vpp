@@ -626,7 +626,7 @@ l2tpv3_interface_enable_disable (vnet_main_t * vnm,
   return 0;
 }
 
-/* Enable/disable L2TPv3 intercept on IP6 fowarding path */
+/* Enable/disable L2TPv3 intercept on IP6 forwarding path */
 static clib_error_t *
 set_ip6_l2tpv3 (vlib_main_t * vm,
 		unformat_input_t * input, vlib_cli_command_t * cmd)

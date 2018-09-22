@@ -46,7 +46,7 @@ typedef struct igmp_src_t_
   igmp_key_t *key;
 
   /**
-   * The liveness timer. Reset with each recieved report. on expiry
+   * The liveness timer. Reset with each received report. on expiry
    * the source is removed from the group.
    */
   u32 exp_timer;

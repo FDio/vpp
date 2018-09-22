@@ -893,7 +893,7 @@ add_del_sd (gid_dictionary_t * db, u32 vni, source_dest_t * key, u32 value,
 			  sd_src_mac (key), value, is_add);
 
     default:
-      clib_warning ("SD address type %d not supprted!", sd_dst_type (key));
+      clib_warning ("SD address type %d not supported!", sd_dst_type (key));
       break;
     }
 

@@ -58,7 +58,7 @@ typedef struct igmp_config_t_
   igmp_mode_t mode;
 
   /**
-   * Robustness variable (seciotn 5.1)
+   * Robustness variable (section 5.1)
    */
   u8 robustness_var;
 
@@ -68,7 +68,7 @@ typedef struct igmp_config_t_
   uword *igmp_group_by_key;
 
   /**
-   * A vector of scheduled query-respone timers
+   * A vector of scheduled query-response timers
    */
   igmp_timer_id_t timers[IGMP_CONFIG_N_TIMERS];
 } igmp_config_t;

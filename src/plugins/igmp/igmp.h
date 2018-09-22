@@ -52,7 +52,7 @@
 #define IGMP_SSM_DEFAULT        	(0x000000E8)
 #endif
 
-/** helper macro to get igmp mebership group from pointer plus offset */
+/** helper macro to get igmp membership group from pointer plus offset */
 #define group_ptr(p, l) ((igmp_membership_group_v3_t *)((u8*)(p) + (l)))
 #define group_cptr(p, l) ((const igmp_membership_group_v3_t *)((u8*)(p) + (l)))
 

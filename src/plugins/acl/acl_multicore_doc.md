@@ -93,7 +93,7 @@ of the existing connections was done in the datapath,
 by periodically calling the aging function.
 
 This decision to use the existing components,
-with its attrativeness, did bring a few limitations as well:
+with its attractiveness, did bring a few limitations as well:
 
 * L2 classifier is a simple mask-and-value match, with
 a fixed mask across the table. So, sanely supporting IPv6

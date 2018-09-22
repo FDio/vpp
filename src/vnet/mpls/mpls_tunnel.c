@@ -922,7 +922,7 @@ show_mpls_tunnel_command_fn (vlib_main_t * vm,
     else
     {
         if (pool_is_free_index(mpls_tunnel_pool, mti))
-            return clib_error_return (0, "Not atunnel index %d", mti);
+            return clib_error_return (0, "Not a tunnel index %d", mti);
 
         mt = pool_elt_at_index(mpls_tunnel_pool, mti);
 

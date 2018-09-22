@@ -8,7 +8,7 @@ However, some uses outside of pure traffic control have appeared, for example,
 ACL-based forwarding, etc. Also, improved algorithms of the ACL lookup
 could benefit of the more abstract representation, not coupled to the interfaces.
 
-This describes a way to accomodate these use cases by generalizing the ACL
+This describes a way to accommodate these use cases by generalizing the ACL
 lookups into "ACL lookup contexts", not tied to specific interfaces, usable
 by other portions of the code by utilizing the exports.h header file,
 which provides the necessary interface.
@@ -21,7 +21,7 @@ The first reason is the logical grouping of multiple ACLs.
 
 The interface matching code currently allows for matching multiple ACLs
 in a 'first-match' fashion. Some other use cases also fall into a similar
-pattern: they attemt to match a sequence of ACLs, and the first matched ACL
+pattern: they attempt to match a sequence of ACLs, and the first matched ACL
 determines what the outcome is, e.g. where to forward traffic. Thus,
 a match never happens on an ACL in isolation, but always on a group of
 ACLs.
@@ -79,7 +79,7 @@ in the "show acl lookup context" command.
 To set the vector of ACL numbers to be looked up within the context, use the function
 acl_plugin.set_acl_vec_for_context(lc_index, acl_list). The first parameter specifies the context
 that you have created, the second parameter is a vector of u32s, each u32 being the index of the ACL
-which we should be looking up within this context. The comand is idempotent, i.e.
+which we should be looking up within this context. The command is idempotent, i.e.
 it unapplies the previously applied list of ACLs, and then sets the new list of ACLs.
 
 Subsequent ACL updates for the already applied ACLs will cause the re-application

@@ -16,7 +16,7 @@
  */
 
 /**
- * QoS tyeps
+ * QoS types
  */
 
 #ifndef __QOS_TYPES_H__

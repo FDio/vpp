@@ -73,7 +73,7 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
       }
 
       /*
-       * Packets on the recirculation interface are subjet to src-EPG
+       * Packets on the recirculation interface are subject to src-EPG
        * classification. Recirc interfaces are L2-emulation mode.
        *   for internal EPGs this is via an LPM on all external subnets.
        *   for external EPGs this is via a port mapping.

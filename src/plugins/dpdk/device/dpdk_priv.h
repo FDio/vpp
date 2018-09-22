@@ -44,7 +44,7 @@ _(blacklist, b)                                 \
 _(mem-alloc-request, m)                         \
 _(force-ranks, r)
 
-/* These args are preceeded by "--" and followed by a single string */
+/* These args are preceded by "--" and followed by a single string */
 #define foreach_eal_double_hyphen_arg           \
 _(huge-dir)                                     \
 _(proc-type)                                    \

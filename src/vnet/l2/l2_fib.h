@@ -55,7 +55,7 @@ typedef struct
   /* delay between event scans, default to 100 msec */
   f64 event_scan_delay;
 
-  /* max macs in evet message, default to 100 entries */
+  /* max macs in event message, default to 100 entries */
   u32 max_macs_in_event;
 
   /* convenience variables */

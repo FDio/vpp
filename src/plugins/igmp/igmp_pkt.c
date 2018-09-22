@@ -99,7 +99,7 @@ igmp_pkt_build_ip_header (igmp_pkt_build_t * bk,
       break;
     }
 
-  /* add the router alert optnios */
+  /* add the router alert options */
   option = vlib_buffer_get_current (b);
   option[0] = 0x80 | 20;	// IP4_ROUTER_ALERT_OPTION;
   option[1] = 4;		// length

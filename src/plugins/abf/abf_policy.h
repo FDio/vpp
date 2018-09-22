@@ -22,9 +22,9 @@
 #define ABF_PLUGIN_VERSION_MINOR 0
 
 /**
- * An ACL based Forwading 'policy'.
+ * An ACL based Forwarding 'policy'.
  * This comprises the ACL index to match against and the forwarding
- * path to take if the match is successfull.
+ * path to take if the match is successful.
  *
  * ABF policies are then 'attached' to interfaces. An input feature
  * will run through the list of policies a match will divert the packet,

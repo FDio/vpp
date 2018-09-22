@@ -324,7 +324,7 @@ define show_one_map_register_state_reply
     @param context - sender context, to match reply w/ request
     @param mode - new map-request mode. Supported values are:
       0 - destination only
-      1 - source/destaination
+      1 - source/destination
 */
 autoreply define one_map_request_mode
 {
@@ -488,7 +488,7 @@ manual_print manual_endian define one_ndp_entries_get_reply
 /** \brief Set ONE transport protocol
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param protocol - supported vaules:
+    @param protocol - supported values:
       1: UDP based LISP (default)
       2: binary API
 */
@@ -803,7 +803,7 @@ define one_adjacencies_get
 
 /** \brief Shows relationship between vni and vrf/bd
     @param dp_table - VRF index or bridge domain index
-    @param vni - vitual network instance
+    @param vni - virtual network instance
   */
 define one_eid_table_map_details
 {

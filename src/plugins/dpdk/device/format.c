@@ -154,7 +154,7 @@
   _ (INNER_L3, IPV6_EXT_UNKNOWN, "Inner IPv6 packet with or without extension headers") \
   _ (INNER_L4, TCP, "Inner TCP packet")                                 \
   _ (INNER_L4, UDP, "Inner UDP packet")                                 \
-  _ (INNER_L4, FRAG, "Inner fagmented IP packet")                       \
+  _ (INNER_L4, FRAG, "Inner fragmented IP packet")                       \
   _ (INNER_L4, SCTP, "Inner SCTP (Stream Control Transmission Protocol) packet") \
   _ (INNER_L4, ICMP, "Inner ICMP packet")                               \
   _ (INNER_L4, NONFRAG, "Inner non-fragmented IP packet")
