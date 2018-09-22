@@ -101,7 +101,7 @@ qos_record_disable (u32 sw_if_index, qos_source_t input_source)
 }
 
 /*
- * Disable recording feautre for all protocols when the interface
+ * Disable recording feature for all protocols when the interface
  * is deleted
  */
 static clib_error_t *
@@ -544,7 +544,7 @@ qos_record_cli (vlib_main_t * vm,
 /*?
  * Enable QoS bit recording on an interface using the packet's input DSCP bits
  * Which input QoS bits to use are either; IP, MPLS or VLAN. If more than
- * one protocol is chosen (which is foolish) the higer layers override the
+ * one protocol is chosen (which is foolish) the higher layers override the
  * lower.
  *
  * @cliexpar

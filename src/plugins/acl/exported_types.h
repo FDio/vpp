@@ -51,7 +51,7 @@ typedef int (*acl_plugin_get_lookup_context_index_fn_t) (u32 acl_user_id, u32 va
 
 /*
  * Release the lookup context index and destroy
- * any asssociated data structures.
+ * any associated data structures.
  */
 
 typedef void (*acl_plugin_put_lookup_context_index_fn_t) (u32 lc_index);

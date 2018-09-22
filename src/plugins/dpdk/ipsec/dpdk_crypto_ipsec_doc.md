@@ -32,7 +32,7 @@ Additionally, on x86_64 platforms, DPDK is built with SW crypto support.
 
 VPP allocates crypto resources based on a best effort approach:
 * first allocate Hardware crypto resources, then Software.
-* if there are not enough crypto resources for all workers, the graph node is not modifed and the default VPP IPsec implementation based in OpenSSL is used. The following message is displayed:
+* if there are not enough crypto resources for all workers, the graph node is not modified and the default VPP IPsec implementation based in OpenSSL is used. The following message is displayed:
 
       0: dpdk_ipsec_init: not enough Cryptodevs, default to OpenSSL IPsec
 

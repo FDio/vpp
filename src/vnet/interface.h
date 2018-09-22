@@ -90,7 +90,7 @@ typedef enum
   VNET_FLOW_DEV_OP_RESET_COUNTER,
 } vnet_flow_dev_op_t;
 
-/* Interface flow opeations callback. */
+/* Interface flow operations callback. */
 typedef int (vnet_flow_dev_ops_function_t) (struct vnet_main_t * vnm,
 					    vnet_flow_dev_op_t op,
 					    u32 hw_if_index, u32 index,
@@ -429,7 +429,7 @@ typedef struct _vnet_hw_interface_class
 			u32 sw_if_index,
 			vnet_link_t link_type, const void *dst_hw_address);
 
-  /* Update an adjacecny added by FIB (as opposed to via the
+  /* Update an adjacency added by FIB (as opposed to via the
    * neighbour resolution protocol). */
   void (*update_adjacency) (struct vnet_main_t * vnm,
 			    u32 sw_if_index, u32 adj_index);
@@ -686,7 +686,7 @@ extern vnet_mtu_t vnet_link_to_mtu (vnet_link_t link);
 
 typedef enum vnet_sw_interface_flags_t_
 {
-  /* Interface is "up" meaning adminstratively up.
+  /* Interface is "up" meaning administratively up.
      Up in the sense of link state being up is maintained by hardware interface. */
   VNET_SW_INTERFACE_FLAG_ADMIN_UP = (1 << 0),
 

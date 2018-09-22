@@ -103,7 +103,7 @@ gbp_classify_inline (vlib_main_t * vm,
 	      if (is_l3)
 		{
 		  /*
-		   * Go straight to looukp, do not pass go, do not collect $200
+		   * Go straight to lookup, do not pass go, do not collect $200
 		   */
 		  next0 = 0;
 		}

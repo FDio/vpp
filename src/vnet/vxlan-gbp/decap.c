@@ -274,7 +274,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  u8 error0 = 0, error1 = 0;
 	  u8 flags0 = vxlan_gbp_get_flags (vxlan_gbp0);
 	  u8 flags1 = vxlan_gbp_get_flags (vxlan_gbp1);
-	  /* Validate VXLAN_GBP tunnel encap-fib index agaist packet */
+	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
 	  if (PREDICT_FALSE
 	      (t0 == 0 || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {
@@ -311,7 +311,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      pkts_decapsulated++;
 	    }
 
-	  /* Validate VXLAN_GBP tunnel encap-fib index agaist packet */
+	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
 	  if (PREDICT_FALSE
 	      (t1 == 0 || flags1 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {
@@ -415,7 +415,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  u32 next0;
 	  u8 error0 = 0;
 	  u8 flags0 = vxlan_gbp_get_flags (vxlan_gbp0);
-	  /* Validate VXLAN_GBP tunnel encap-fib index agaist packet */
+	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
 	  if (PREDICT_FALSE
 	      (t0 == 0 || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {

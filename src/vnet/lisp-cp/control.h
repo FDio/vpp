@@ -265,7 +265,7 @@ typedef struct
   /* enable/disable rloc-probing */
   u8 rloc_probing;
 
-  /* timing wheel for mappping timeouts */
+  /* timing wheel for mapping timeouts */
   timing_wheel_t wheel;
 
   /** Per thread pool of records shared with thread0 */

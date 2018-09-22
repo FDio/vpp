@@ -128,7 +128,7 @@
 #define SSE2_QOS_POL_DEF_BURST_BYTE    100
 
 /*
- * Minimum burst needs to be such that the largest packet size is accomodated
+ * Minimum burst needs to be such that the largest packet size is accommodated
  */
 // Do we need to get it from some lib?
 #define SSE2_QOS_POL_MIN_BURST_BYTE    9*1024
@@ -566,7 +566,7 @@ sse2_pol_convert_cfg_rates_to_hw (sse2_qos_pol_cfg_params_st * cfg,
  *   sse2_pol_get_bkt_max
  *
  * PARAMETERS
- *  rate_hw    - either the averate rate or peak rate
+ *  rate_hw    - either the average rate or peak rate
  *  bkt_max    - bit width in the current bucket or extended bucket
  *
  * RETURNS
@@ -605,7 +605,7 @@ sse2_pol_get_bkt_max (u64 rate_hw, u64 bkt_max)
  *   sse2_pol_get_bkt_value
  *
  * PARAMETERS
- *  rate_hw    - either the averate rate or peak rate
+ *  rate_hw    - either the average rate or peak rate
  *  byte_value - bytes for this token bucket
  *
  * RETURNS
@@ -973,7 +973,7 @@ compute_policer_params (u64 hz,	// CPU speed in clocks per second
   internal_cir_bytes_per_period = (double) cir_rate / period;
   internal_pir_bytes_per_period = (double) pir_rate / period;
 
-  // Scale if possible. Scaling helps rate accuracy, but is contrained
+  // Scale if possible. Scaling helps rate accuracy, but is constrained
   // by the scaled rates and limits fitting in 32-bits.
   // In addition, we need to insure the scaled rate is no larger than
   // 2^22 tokens per period. This allows the dataplane to ignore overflow

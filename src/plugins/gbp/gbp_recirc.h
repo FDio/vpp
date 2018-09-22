@@ -35,8 +35,8 @@ typedef struct gpb_recirc_t_
   u32 gr_fib_index[FIB_PROTOCOL_IP_MAX];
 
   /**
-   * Is the interface for packets post-NAT translatoin (i.e. ext)
-   * or pre-NAT ranslation (i.e. internal)
+   * Is the interface for packets post-NAT translation (i.e. ext)
+   * or pre-NAT translation (i.e. internal)
    */
   u8 gr_is_ext;
 

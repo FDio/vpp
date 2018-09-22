@@ -137,11 +137,11 @@ lldp_add_mgmt_addr (const lldp_intf_t * n, const vnet_hw_interface_t * hw,
     {
       /*
          If no management address is configured, the interface port's MAC
-         addressis sent in one TLV.
+         address is sent in one TLV.
        */
 
       lldp_build_mgmt_addr_tlv (t0p, 1,	/* address subtype: Ipv4 */
-				6,	/* address string lenth */
+				6,	/* address string length */
 				hw->hw_address,	/* address */
 				hw->hw_if_index,	/* if index */
 				vec_len (n->mgmt_oid),	/* OID length */
@@ -152,7 +152,7 @@ lldp_add_mgmt_addr (const lldp_intf_t * n, const vnet_hw_interface_t * hw,
   if (len_ip4)
     {
       lldp_build_mgmt_addr_tlv (t0p, 1,	/* address subtype: Ipv4 */
-				len_ip4,	/* address string lenth */
+				len_ip4,	/* address string length */
 				n->mgmt_ip4,	/* address */
 				hw->hw_if_index,	/* if index */
 				vec_len (n->mgmt_oid),	/* OID length */
@@ -162,7 +162,7 @@ lldp_add_mgmt_addr (const lldp_intf_t * n, const vnet_hw_interface_t * hw,
   if (len_ip6)
     {
       lldp_build_mgmt_addr_tlv (t0p, 2,	/* address subtype: Ipv6 */
-				len_ip6,	/* address string lenth */
+				len_ip6,	/* address string length */
 				n->mgmt_ip6,	/* address */
 				hw->hw_if_index,	/* if index */
 				vec_len (n->mgmt_oid),	/* OID length */

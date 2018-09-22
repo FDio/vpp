@@ -2,14 +2,14 @@
 
 The Quality-of-Service (QoS) scheduler performs egress-traffic management by
 prioritizing the transmission of the packets of different type services and
-subcribers based on the Service Level Agreements (SLAs). The QoS scheduler can
+subscribers based on the Service Level Agreements (SLAs). The QoS scheduler can
 be enabled on one or more NIC output interfaces depending upon the
 requirement.
 
 
 ## Overview
 
-The QoS schdeuler supports a number of scheduling and shaping levels which
+The QoS scheduler supports a number of scheduling and shaping levels which
 construct hierarchical-tree. The first level in the hierarchy is port (i.e.
 the physical interface) that constitutes the root node of the tree. The
 subsequent level is subport which represents the group of the
@@ -34,7 +34,7 @@ For more information on QoS Scheduler, please refer DPDK Programmer's Guide-
 http://dpdk.org/doc/guides/prog_guide/qos_framework.html
 
 
-### QoS Schdeuler Parameters
+### QoS Scheduler Parameters
 
 Following illustrates the default HQoS configuration for each 10GbE output
 port:
@@ -134,7 +134,7 @@ red {
 
 ### DPDK QoS Scheduler Integration in VPP
 
-The Hierarchical Quaity-of-Service (HQoS) scheduler object could be seen as
+The Hierarchical Quality-of-Service (HQoS) scheduler object could be seen as
 part of the logical NIC output interface. To enable HQoS on specific output
 interface, vpp startup.conf file has to be configured accordingly. The output
 interface that requires HQoS, should have "hqos" parameter specified in dpdk
@@ -213,7 +213,7 @@ be used.
 set dpdk interface hqos placement <interface> thread <n>
 ```
 
-The command below is used to set the packet fields required for classifiying
+The command below is used to set the packet fields required for classifying
 the incoming packet. As a result of classification process,     packet field
 information will be mapped to 5 tuples (subport, pipe, traffic class, pipe,
 color) and stored in packet mbuf.
@@ -223,7 +223,7 @@ set dpdk interface hqos pktfield <interface> id subport|pipe|tc offset <n>
     mask <hex-mask>
 ```
 
-The DSCP table entries used for idenfiying the traffic class and queue can be set using the command below;   
+The DSCP table entries used for identifying the traffic class and queue can be set using the command below;   
 
 ```  
 set dpdk interface hqos tctbl <interface> entry <map_val> tc <tc_id> queue <queue_id>
@@ -286,7 +286,7 @@ below command.
 
 ### QoS Scheduler Binary APIs
 
-This section explans the available binary APIs for configuring QoS scheduler
+This section explains the available binary APIs for configuring QoS scheduler
 parameters in run-time.
 
 The following API can be used to set the pipe profile of a pipe that belongs

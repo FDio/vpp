@@ -16,7 +16,7 @@
  */
 
 /**
- * QoS tyeps
+ * QoS types
  */
 
 #include <vnet/qos/qos_types.h>

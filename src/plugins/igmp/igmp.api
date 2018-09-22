@@ -79,7 +79,7 @@ autoreply define igmp_listen
 
 /**
  * @brief
- *   Used by a 'router' and 'host' to enable the recption of IGMP packets.
+ *   Used by a 'router' and 'host' to enable the reception of IGMP packets.
  *   For hosts this must be called once before igmp_listen.
  *
  *   @param client_index - opaque cookie to identify the sender

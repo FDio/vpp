@@ -578,7 +578,7 @@ activate_applied_ace_hash_entry(acl_main_t *am,
     ASSERT(last_index != ~0);
     applied_hash_ace_entry_t *last_pae = vec_elt_at_index((*applied_hash_aces), last_index);
     DBG("...advance to chained entry index: %d", last_index);
-    /* link ourseves in */
+    /* link ourselves in */
     last_pae->next_applied_entry_index = new_index;
     pae->prev_applied_entry_index = last_index;
     /* adjust the pointer to the new tail */
@@ -1207,7 +1207,7 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
    * should not be possible to delete, and the change adding this also adds
    * the safeguards to that respect, so this is not a problem.
    *
-   * The part to rememeber is that this routine is called in process of reapplication
+   * The part to remember is that this routine is called in process of reapplication
    * during the acl_add_replace() API call - the old acl ruleset is deleted, then
    * the new one is added, without the change in the applied ACLs - so this case
    * has to be handled.

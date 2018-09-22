@@ -393,7 +393,7 @@ VLIB_CLI_COMMAND (set_dpdk_crypto_placement, static) = {
 /* *INDENT-ON* */
 
 /*
- * The thread will not enqueue more operatios to the device but will poll
+ * The thread will not enqueue more operations to the device but will poll
  * from it until there are no more inflight operations.
 */
 static void
@@ -549,7 +549,7 @@ show_dpdk_crypto_pools_fn (vlib_main_t * vm,
  * This command is used to display the DPDK Crypto pools information.
  *
  * @cliexpar
- * Example of how to display the DPDK Cypto pools information:
+ * Example of how to display the DPDK Crypto pools information:
  * @cliexstart{show crypto device mapping}
  * vpp# show dpdk crypto pools
  * crypto_pool_numa1

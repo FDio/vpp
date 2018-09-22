@@ -492,7 +492,7 @@ format_policer_classify_trace (u8 * s, va_list * args)
 #define foreach_policer_classify_error                 \
 _(MISS, "Policer classify misses")                     \
 _(HIT, "Policer classify hits")                        \
-_(CHAIN_HIT, "Polcier classify hits after chain walk") \
+_(CHAIN_HIT, "Policer classify hits after chain walk") \
 _(DROP, "Policer classify action drop")
 
 typedef enum

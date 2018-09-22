@@ -425,7 +425,7 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	    }
 	}
 
-      /* Donot change state for slave link of bonded interfaces */
+      /* Do not change state for slave link of bonded interfaces */
       if (si->flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE)
 	{
 	  error = clib_error_return
@@ -1366,7 +1366,7 @@ vnet_interface_init (vlib_main_t * vm)
 	    vlib_node_fn_registration_t *fnr = c->tx_fn_registrations;
 	    int priority = -1;
 
-	    /* to avoid confusion, please remove ".tx_function" statiement
+	    /* to avoid confusion, please remove ".tx_function" statement
 	       from VNET_DEVICE_CLASS() if using function candidates */
 	    ASSERT (c->tx_function == 0);
 
@@ -1652,7 +1652,7 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
     case IP_LOOKUP_NEXT_ARP:
     case IP_LOOKUP_NEXT_BCAST:
       /*
-       * default rewirte in neighbour adj
+       * default rewrite in neighbour adj
        */
       adj_nbr_update_rewrite
 	(ai,

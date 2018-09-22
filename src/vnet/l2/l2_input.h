@@ -222,7 +222,7 @@ vnet_update_l2_len (vlib_buffer_t * b)
   u16 ethertype;
   u8 vlan_count = 0;
 
-  /* point at currrent l2 hdr */
+  /* point at current l2 hdr */
   eth = vlib_buffer_get_current (b);
 
   /*
@@ -253,7 +253,7 @@ vnet_update_l2_len (vlib_buffer_t * b)
  * Compute flow hash of an ethernet packet, use 5-tuple hash if L3 packet
  * is ip4 or ip6. Otherwise hash on smac/dmac/etype.
  * The vlib buffer current pointer is expected to be at ethernet header
- * and vnet l2.l2_len is exppected to be setup already.
+ * and vnet l2.l2_len is expected to be setup already.
  */
 static inline u32
 vnet_l2_compute_flow_hash (vlib_buffer_t * b)

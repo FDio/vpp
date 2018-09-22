@@ -109,7 +109,7 @@ typedef struct
   adj_index_t mcast_adj_index;
 
   /**
-   * The tunnel is a child of the FIB entry for its destintion. This is
+   * The tunnel is a child of the FIB entry for its destination. This is
    * so it receives updates when the forwarding information for that entry
    * changes.
    * The tunnels sibling index on the FIB entry's dependency list.

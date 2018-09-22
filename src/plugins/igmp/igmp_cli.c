@@ -137,7 +137,7 @@ igmp_listen_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  clib_error_return (0, "This igmp configuration already exists");
       else
 	error =
-	  clib_error_return (0, "This igmp configuration does not nexist");
+	  clib_error_return (0, "This igmp configuration does not exist");
     }
   else if (rv == -2)
     error =

@@ -193,7 +193,7 @@ typedef enum
 } ikev2_notify_msg_type_t;
 
 #define foreach_ikev2_transform_type       \
-  _(0, UNDEFINED, "undefinded") \
+  _(0, UNDEFINED, "undefined") \
   _(1, ENCR,  "encr")           \
   _(2, PRF,   "prf")            \
   _(3, INTEG, "integ")          \

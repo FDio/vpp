@@ -61,7 +61,7 @@ VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
   next = txq->next;
 
 retry:
-  /* release cosumed bufs */
+  /* release consumed bufs */
   if (txq->n_enqueued)
     {
       u16 first, slot, n_free = 0;

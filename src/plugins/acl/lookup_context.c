@@ -179,7 +179,7 @@ unapply_acl_vec(u32 lc_index, u32 *acls)
 
 /*
  * Release the lookup context index and destroy
- * any asssociated data structures.
+ * any associated data structures.
  */
 static void acl_plugin_put_lookup_context_index (u32 lc_index)
 {

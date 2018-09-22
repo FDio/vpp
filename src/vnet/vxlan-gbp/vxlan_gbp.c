@@ -506,8 +506,8 @@ int vnet_vxlan_gbp_tunnel_add_del
       else
 	{
 	  /* Multicast tunnel -
-	   * as the same mcast group can be used for mutiple mcast tunnels
-	   * with different VNIs, create the output fib adjecency only if
+	   * as the same mcast group can be used for multiple mcast tunnels
+	   * with different VNIs, create the output fib adjacency only if
 	   * it does not already exist
 	   */
 	  fib_protocol_t fp = fib_ip_proto (is_ip6);
@@ -820,7 +820,7 @@ vxlan_gbp_tunnel_add_del_command_fn (vlib_main_t * vm,
  * Example of how to create a VXLAN Tunnel with a known name, vxlan_gbp_tunnel42:
  * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 dst 10.0.3.3 instance 42}
  * Example of how to create a multicast VXLAN Tunnel with a known name, vxlan_gbp_tunnel23:
- * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 group 239.1.1.1 GigabitEtherner0/8/0 instance 23}
+ * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 group 239.1.1.1 GigabitEthernet0/8/0 instance 23}
  * Example of how to delete a VXLAN Tunnel:
  * @cliexcmd{create vxlan_gbp tunnel src 10.0.3.1 dst 10.0.3.3 vni 13 del}
  ?*/
@@ -986,7 +986,7 @@ set_ip4_vxlan_gbp_bypass (vlib_main_t * vm,
  *                                   ip4-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...
@@ -1043,7 +1043,7 @@ set_ip6_vxlan_gbp_bypass (vlib_main_t * vm,
  *                                   ip6-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...

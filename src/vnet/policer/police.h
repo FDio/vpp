@@ -39,7 +39,7 @@ typedef enum
 // The token_per_period computation takes into account the clock speed.
 //
 // The 32-bit bucket/limit supports about 850ms of burst on a 40GE port,
-// or 340ms on a 100GE port. If a larger burst is configued, then the
+// or 340ms on a 100GE port. If a larger burst is configured, then the
 // programmed value is simply capped at 2^32-1. If we needed to support
 // more than that, the bucket and limit fields could be expanded.
 //

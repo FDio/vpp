@@ -99,7 +99,7 @@ static char *l2_output_classify_error_strings[] = {
  * @em Uses:
  * - <code>(l2_output_classify_runtime_t *)
  *         rt->classify_table_index_by_sw_if_index</code>
- *	   Head of the per-interface, perprotocol classifier table chain
+ *	   Head of the per-interface, per-protocol classifier table chain
  * 	   for a specific interface. ~0 => send pkts to the next
  * 	   feature in the L2 feature chain.
  * - <code>vnet_buffer(b)->sw_if_index[VLIB_TX]</code>

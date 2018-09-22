@@ -754,7 +754,7 @@ dpdk_lib_init (dpdk_main_t * dm)
        * For cisco VIC vNIC, set default to VLAN strip enabled, unless
        * specified otherwise in the startup config.
        * For other NICs default to VLAN strip disabled, unless specified
-       * otherwis in the startup config.
+       * otherwise in the startup config.
        */
       if (xd->pmd == VNET_DPDK_PMD_ENIC)
 	{
@@ -1007,7 +1007,7 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 	   devconf->num_rx_queues)
     error =
       clib_error_return (0,
-			 "%U: number of worker threadds must be "
+			 "%U: number of worker threads must be "
 			 "equal to number of rx queues", format_vlib_pci_addr,
 			 &pci_addr);
 

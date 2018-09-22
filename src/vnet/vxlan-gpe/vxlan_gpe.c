@@ -631,8 +631,8 @@ int vnet_vxlan_gpe_add_del_tunnel
       else
 	{
 	  /* Multicast tunnel -
-	   * as the same mcast group can be used for mutiple mcast tunnels
-	   * with different VNIs, create the output fib adjecency only if
+	   * as the same mcast group can be used for multiple mcast tunnels
+	   * with different VNIs, create the output fib adjacency only if
 	   * it does not already exist
 	   */
 	  fib_protocol_t fp = fib_ip_proto (is_ip6);
@@ -972,7 +972,7 @@ done:
  * center or be separated geographically as long as they are reachable
  * through the underlay L3 network.
  *
- * You can refer to this kind of L2 overlay bridge domain as a VXLAN-GPE sengment.
+ * You can refer to this kind of L2 overlay bridge domain as a VXLAN-GPE segment.
  *
  * @cliexpar
  * Example of how to create a VXLAN-GPE Tunnel:
@@ -1130,7 +1130,7 @@ set_ip4_vxlan_gpe_bypass (vlib_main_t * vm,
  *                                 ip4-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...
@@ -1187,7 +1187,7 @@ set_ip6_vxlan_gpe_bypass (vlib_main_t * vm,
  *                                 ip6-lookup [2]
  * @cliexend
  *
- * Example of how to display the feature enabed on an interface:
+ * Example of how to display the feature enabled on an interface:
  * @cliexstart{show ip interface features GigabitEthernet2/0/0}
  * IP feature paths configured on GigabitEthernet2/0/0...
  * ...

@@ -21,7 +21,7 @@
 #include <vnet/fib/fib_node.h>
 
 /**
- * UDP encapsualtion.
+ * UDP encapsulation.
  * A representation of the encapsulation of packets in UDP-over-IP.
  * This is encapsulation only, there is no tunnel interface, hence
  * it is uni-directional. For decap register a handler with the UDP port
@@ -29,7 +29,7 @@
  */
 
 /**
- * Fixup behaviour. Actions performed on the encap in the data-plance
+ * Fixup behaviour. Actions performed on the encap in the data-plane
  */
 typedef enum udp_encap_fixup_flags_t_
 {
@@ -41,7 +41,7 @@ typedef enum udp_encap_fixup_flags_t_
 } udp_encap_fixup_flags_t;
 
 /**
- * The UDP encap represenation
+ * The UDP encap representation
  */
 typedef struct udp_encap_t_
 {
@@ -83,7 +83,7 @@ typedef struct udp_encap_t_
   fib_protocol_t ue_ip_proto;
 
   /**
-   * The seond cacheline contains control-plane data
+   * The second cacheline contains control-plane data
    */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 

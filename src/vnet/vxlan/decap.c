@@ -266,7 +266,7 @@ vxlan_input (vlib_main_t * vm,
       u32 len0 = vlib_buffer_length_in_chain (vm, b[0]);
       u32 len1 = vlib_buffer_length_in_chain (vm, b[1]);
 
-      /* Validate VXLAN tunnel encap-fib index agaist packet */
+      /* Validate VXLAN tunnel encap-fib index against packet */
       if (PREDICT_FALSE (error0 != 0))
 	{
 	  next[0] = VXLAN_INPUT_NEXT_DROP;
@@ -293,7 +293,7 @@ vxlan_input (vlib_main_t * vm,
 	    (rx_counter, thread_index, stats_t0->sw_if_index, 1, len0);
 	}
 
-      /* Validate VXLAN tunnel encap-fib index agaist packet */
+      /* Validate VXLAN tunnel encap-fib index against packet */
       if (PREDICT_FALSE (error1 != 0))
 	{
 	  next[1] = VXLAN_INPUT_NEXT_DROP;
@@ -371,7 +371,7 @@ vxlan_input (vlib_main_t * vm,
       error0 = t0 == 0 ? VXLAN_ERROR_NO_SUCH_TUNNEL : error0;
       uword len0 = vlib_buffer_length_in_chain (vm, b[0]);
 
-      /* Validate VXLAN tunnel encap-fib index agaist packet */
+      /* Validate VXLAN tunnel encap-fib index against packet */
       if (PREDICT_FALSE (error0 != 0))
 	{
 	  next[0] = VXLAN_INPUT_NEXT_DROP;

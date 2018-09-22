@@ -36,7 +36,7 @@ typedef void (*igmp_timer_function_t) (u32 obj, void *data);
 
 /**
  * @brief
- *  Scehdule a timer to expire in 'when' seconds
+ *  Schedule a timer to expire in 'when' seconds
  *
  */
 extern igmp_timer_id_t igmp_timer_schedule (f64 when,

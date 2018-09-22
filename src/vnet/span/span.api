@@ -19,7 +19,7 @@ option version = "1.0.0";
  /** \brief Enable/Disable span to mirror traffic from one interface to another
     @param client_index - opaque cookie to identify the sender
     @param context - sender context which was passed in the request
-    @param sw_if_index_from - interface to be mirorred
+    @param sw_if_index_from - interface to be mirrored
     @param sw_if_index_to - interface where the traffic is mirrored
     @param state - 0 = disabled, 1 = rx enabled, 2 = tx enabled, 3 tx & rx enabled
     @param is_l2 - 0 = mirror at hw device level, 1 = mirror at L2
@@ -46,7 +46,7 @@ define sw_interface_span_dump {
 
 /** \brief Reply to SPAN dump request
     @param context - sender context which was passed in the request
-    @param sw_if_index_from - mirorred interface
+    @param sw_if_index_from - mirrored interface
     @param sw_if_index_to - interface where the traffic is mirrored
     @param state - 0 = disabled, 1 = rx enabled, 2 = tx enabled, 3 tx & rx enabled
     @param is_l2 - 0 = mirrored at hw device level, 1 = mirrored at l2

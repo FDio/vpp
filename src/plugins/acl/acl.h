@@ -241,7 +241,7 @@ typedef struct {
   int fa_sessions_hash_is_initialized;
   clib_bihash_40_8_t fa_ip6_sessions_hash;
   clib_bihash_16_8_t fa_ip4_sessions_hash;
-  /* The process node which orcherstrates the cleanup */
+  /* The process node which orchestrates the cleanup */
   u32 fa_cleaner_node_index;
   /* FA session timeouts, in seconds */
   u32 session_timeout_sec[ACL_N_TIMEOUTS];

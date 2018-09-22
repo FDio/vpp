@@ -37,10 +37,10 @@ typedef enum gbp_endpoint_flags_t_
 
 /**
  * A Group Based Policy Endpoint.
- * This is typcially a VM or container. If the endpoint is local (i.e. on
- * the smae compute node as VPP) then there is one interface per-endpoint.
- * If the EP is remote,e.g. reachable onver a [vxlan] tunnel, then there
- * will be multiple EPs reachable over the tunnel and they can be distingusihed
+ * This is typically a VM or container. If the endpoint is local (i.e. on
+ * the same compute node as VPP) then there is one interface per-endpoint.
+ * If the EP is remote,e.g. reachable over a [vxlan] tunnel, then there
+ * will be multiple EPs reachable over the tunnel and they can be distinguished
  * via either their MAC or IP Address[es].
  */
 typedef struct gbp_endpoint_t_

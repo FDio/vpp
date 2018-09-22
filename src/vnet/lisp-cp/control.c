@@ -1303,7 +1303,7 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->eid);
   old_map = ((u32) ~ 0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
 
-  /* check if none of the locators match localy configured address */
+  /* check if none of the locators match locally configured address */
   vec_foreach (loc, rlocs)
   {
     ip_prefix_t *p = &gid_address_ippref (&loc->address);
@@ -1380,7 +1380,7 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
 /**
  * Removes a mapping. Does not program forwarding.
  *
- * @param eid end-host indetifier
+ * @param eid end-host identifier
  * @param res_map_index index of the removed mapping
  * @return return code
  */
@@ -3509,7 +3509,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      goto enqueue;
 	    }
 
-	  /* if we have remote mapping for destination already in map-chache
+	  /* if we have remote mapping for destination already in map-cache
 	     add forwarding tunnel directly. If not send a map-request */
 	  di = gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid, &dst,
 					 &src);
@@ -4167,7 +4167,7 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
 
   if (!ip_fib_get_first_egress_ip_for_dst (lcm, dst, &src))
     {
-      clib_warning ("can't find inteface address for %U", format_ip_address,
+      clib_warning ("can't find interface address for %U", format_ip_address,
 		    dst);
       return -1;
     }

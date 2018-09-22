@@ -21,12 +21,12 @@
 
 option version = "1.0.0";
 
-/** \brief Initialize a new tap interface with the given paramters 
+/** \brief Initialize a new tap interface with the given parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param use_random_mac - let the system generate a unique mac address
     @param tap_name - name to associate with the new interface
-    @param mac_address - mac addr to assign to the interface if use_radom not set
+    @param mac_address - mac addr to assign to the interface if use_random not set
 */
 define tap_connect
 {
@@ -58,13 +58,13 @@ define tap_connect_reply
   u32 sw_if_index;
 };
 
-/** \brief Modify a tap interface with the given paramters 
+/** \brief Modify a tap interface with the given parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface index of existing tap interface
     @param use_random_mac - let the system generate a unique mac address
     @param tap_name - name to associate with the new interface
-    @param mac_address - mac addr to assign to the interface if use_radom not set
+    @param mac_address - mac addr to assign to the interface if use_random not set
 */
 define tap_modify
 {

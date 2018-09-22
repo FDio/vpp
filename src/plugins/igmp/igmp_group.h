@@ -31,7 +31,7 @@ typedef enum igmp_group_timer_type_t_
    */
   IGMP_GROUP_TIMER_QUERY_REPLY,
   /**
-   * wait for response from a sent G/SG specfic query.
+   * wait for response from a sent G/SG specific query.
    * Sent when a host leaves a group
    */
   IGMP_GROUP_TIMER_QUERY_SENT,

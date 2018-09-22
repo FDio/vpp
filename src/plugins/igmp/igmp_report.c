@@ -101,7 +101,7 @@ igmp_handle_group_block (igmp_config_t * config,
     {
       igmp_src_t *src;
       /*
-       * sned a group+source specific query
+       * send a group+source specific query
        */
       igmp_pkt_build_query_init (&bq, config->sw_if_index);
       igmp_pkt_query_v3_add_group (&bq, group, srcs);

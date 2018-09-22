@@ -472,7 +472,7 @@ acl_del_list (u32 acl_list_index)
     return VNET_API_ERROR_ACL_IN_USE_INBOUND;
   if (acl_is_used_by (acl_list_index, am->output_sw_if_index_vec_by_acl))
     return VNET_API_ERROR_ACL_IN_USE_OUTBOUND;
-  /* lookup contexts cover other cases, not just inbound/oubound, so check that */
+  /* lookup contexts cover other cases, not just inbound/outbound, so check that */
   if (acl_is_used_by (acl_list_index, am->lc_index_vec_by_acl))
     return VNET_API_ERROR_ACL_IN_USE_BY_LOOKUP_CONTEXT;
 
@@ -2239,7 +2239,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   a->count = count;
   memcpy (a->tag, tag, sizeof (a->tag));
 
-  /* Create and populate the classifer tables */
+  /* Create and populate the classifier tables */
   macip_create_classify_tables (am, *acl_list_index);
   clib_mem_set_heap (oldheap);
   /* If the ACL was already applied somewhere, reapply the newly created tables */

@@ -814,14 +814,14 @@ done:
  * subinterfaces to handle a range of VLAN IDs.
  *
  * - <b>create sub-interfaces <interface> <subId> dot1q|dot1ad <vlanId>|any [exact-match]</b> -
- * Use this command to specify the outer VLAN ID, to either be explicited or to make the
+ * Use this command to specify the outer VLAN ID, to either be explicit or to make the
  * VLAN ID different from the '<em>subId</em>'.
  *
  * - <b>create sub-interfaces <interface> <subId> dot1q|dot1ad <vlanId>|any inner-dot1q
  * <vlanId>|any [exact-match]</b> - Use this command to specify the outer VLAN ID and
- * the innner VLAN ID.
+ * the inner VLAN ID.
  *
- * When '<em>dot1q</em>' or '<em>dot1ad</em>' is explictly entered, subinterfaces
+ * When '<em>dot1q</em>' or '<em>dot1ad</em>' is explicitly entered, subinterfaces
  * can be configured as either exact-match or non-exact match. Non-exact match is the CLI
  * default. If '<em>exact-match</em>' is specified, packets must have the same number of
  * VLAN tags as the configuration. For non-exact-match, packets must at least that number
@@ -964,7 +964,7 @@ set_unnumbered (vlib_main_t * vm,
   if (~0 == unnumbered_sw_if_index)
     return clib_error_return (0, "Specify the unnumbered interface");
   if (enable && ~0 == inherit_from_sw_if_index)
-    return clib_error_return (0, "When enabling unnumberered specify the"
+    return clib_error_return (0, "When enabling unnumbered specify the"
 			      " IP enabled interface that it uses");
 
   vnet_sw_interface_update_unnumbered (unnumbered_sw_if_index,

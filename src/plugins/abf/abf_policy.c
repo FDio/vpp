@@ -121,7 +121,7 @@ abf_policy_update (u32 policy_id,
     {
       /*
        * update an existing policy.
-       * - add the path to the path-list and swap our ancestory
+       * - add the path to the path-list and swap our ancestry
        * - backwalk to poke all attachments to update
        */
       fib_node_index_t old_pl;
@@ -190,7 +190,7 @@ abf_policy_delete (u32 policy_id, const fib_route_path_t * rpaths)
     {
       /*
        * update an existing policy.
-       * - add the path to the path-list and swap our ancestory
+       * - add the path to the path-list and swap our ancestry
        * - backwalk to poke all attachments to update
        */
       fib_node_index_t old_pl;
