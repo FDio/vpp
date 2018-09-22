@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cc46f573_c3fa8733",
+        "filename": "src/plugins/dpdk/device/format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-22T12:27:32Z",
+      "side": 1,
+      "message": "missing ;",
+      "range": {
+        "startLine": 409,
+        "startChar": 41,
+        "endLine": 409,
+        "endChar": 43
+      },
+      "revId": "bfdf34fea378032e02a64e569e9d0cb14b6dc7e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
