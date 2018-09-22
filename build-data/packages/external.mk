@@ -19,6 +19,11 @@ else
 	DPDK_DEBUG=n
 endif
 
+# Uncomment line below to enable Mellanox(mlx5) DPDK PMD driver
+# vpp_uses_dpdk_mlx5_pmd = yes
+# Uncomment line below to enable building Mellanox(mlx5) Glue Library
+# vpp_uses_dpdk_mlx5_dlopen_deps = yes
+
 DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 	BUILD_DIR=$(PACKAGE_BUILD_DIR) \
 	INSTALL_DIR=$(PACKAGE_INSTALL_DIR) \
@@ -27,6 +32,11 @@ DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 DPDK_MLX5_PMD=$(strip $($(PLATFORM)_uses_dpdk_mlx5_pmd))
 ifneq ($(DPDK_MLX5_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX5_PMD=y
+endif
+
+DPDK_MLX5_PMD_DLOPEN_DEPS=$(strip $($(PLATFORM)_uses_dpdk_mlx5_dlopen_deps))
+ifneq ($(DPDK_MLX5_PMD_DLOPEN_DEPS),)
+DPDK_MAKE_ARGS += DPDK_MLX5_PMD_DLOPEN_DEPS=y
 endif
 
 DPDK_MLX4_PMD=$(strip $($(PLATFORM)_uses_dpdk_mlx4_pmd))
