@@ -28,7 +28,7 @@ typedef enum
 } svm_fifo_segment_freelist_t;
 
 #define FIFO_SEGMENT_MIN_FIFO_SIZE 4096
-#define FIFO_SEGMENT_MAX_FIFO_SIZE (8<<20)	/* 8mb max fifo size */
+#define FIFO_SEGMENT_MAX_FIFO_SIZE (2 << 30)	/* 2GB max fifo size */
 #define FIFO_SEGMENT_ALLOC_CHUNK_SIZE 32	/* Allocation quantum */
 
 #define FIFO_SEGMENT_F_IS_PREALLOCATED	(1 << 0)
