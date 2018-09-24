@@ -850,8 +850,7 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
   else if (si->sub.eth.flags.default_sub)
     {
       subint = &main_intf->default_subint;
-      *flags = SUBINT_CONFIG_MATCH_0_TAG |
-	SUBINT_CONFIG_MATCH_1_TAG |
+      *flags = SUBINT_CONFIG_MATCH_1_TAG |
 	SUBINT_CONFIG_MATCH_2_TAG | SUBINT_CONFIG_MATCH_3_TAG;
     }
   else if ((si->sub.eth.flags.no_tags) || (si->sub.eth.raw_flags == 0))

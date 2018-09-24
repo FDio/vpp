@@ -529,13 +529,13 @@ eth_identify_subint (vnet_hw_interface_t * hi,
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
 
-  // check for untagged interface
-  subint = &main_intf->untagged_subint;
+  // check for default interface
+  subint = &main_intf->default_subint;
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
 
-  // check for default interface
-  subint = &main_intf->default_subint;
+  // check for untagged interface
+  subint = &main_intf->untagged_subint;
   if ((subint->flags & match_flags) == match_flags)
     goto matched;
 
