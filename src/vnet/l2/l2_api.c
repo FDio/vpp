@@ -688,6 +688,16 @@ static void
 			    L2_BD_PORT_TYPE_NORMAL, 0, 0);
     }
 
+  switch (rv)
+    {
+    case MODE_ERROR_ETH:
+      rv = VNET_API_ERROR_NON_ETHERNET;
+      break;
+    case MODE_ERROR_BVI_DEF:
+      rv = VNET_API_ERROR_BD_ALREADY_HAS_BVI;
+      break;
+    }
+
   BAD_RX_SW_IF_INDEX_LABEL;
   BAD_TX_SW_IF_INDEX_LABEL;
 
@@ -744,6 +754,16 @@ static void
   else
     {
       rv = set_int_l2_mode (vm, vnm, MODE_L3, rx_sw_if_index, 0, pt, 0, 0);
+    }
+
+  switch (rv)
+    {
+    case MODE_ERROR_ETH:
+      rv = VNET_API_ERROR_NON_ETHERNET;
+      break;
+    case MODE_ERROR_BVI_DEF:
+      rv = VNET_API_ERROR_BD_ALREADY_HAS_BVI;
+      break;
     }
 
   BAD_RX_SW_IF_INDEX_LABEL;
