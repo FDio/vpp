@@ -217,6 +217,9 @@ help:
 	@echo " doxygen             - (re)generate documentation"
 	@echo " bootstrap-doxygen   - setup Doxygen dependencies"
 	@echo " wipe-doxygen        - wipe all generated documentation"
+	@echo " docs                 - Build the Sphinx documentation"
+	@echo " docs-venv         - Build the virtual environment for the Sphinx docs"
+	@echo " docs-clean        - Remove the generated files from the Sphinx docs"
 	@echo " test-doc            - generate documentation for test framework"
 	@echo " test-wipe-doc       - wipe documentation for test framework"
 	@echo " test-cov            - generate code coverage report for test framework"
@@ -536,6 +539,22 @@ doxygen:
 
 wipe-doxygen:
 	$(call make-doxy)
+
+# Sphinx Documents
+export DOCS_DIR = $(WS_ROOT)/docs
+export VENV_DIR = $(WS_ROOT)/sphinx_venv
+export SPHINX_SCRIPTS_DIR = $(WS_ROOT)/docs/scripts
+
+.PHONY: docs-venv docs docs-clean
+
+docs-venv:
+	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh venv)
+
+docs: $(DOCS_DIR)
+	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh html)
+
+docs-clean:
+	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh clean)
 
 verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")
