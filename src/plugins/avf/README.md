@@ -79,7 +79,7 @@ setup 0000:3b:00.1 00:11:22:33:44:01
 Interfaces can be dynamically created by using following CLI:
 ```
 create interface avf 0000:3b:02.0
-set int state AVF0/3b/2/0 up
+set int state avf-0/3b/2/0 up
 ```
 
 ### Interface Deletion
