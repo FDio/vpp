@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c9c2f757_9790eb0c",
+        "filename": "src/vppinfra/heap.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-24T13:55:03Z",
+      "side": 0,
+      "message": "Seems to me matter of American versus British English.\n  https://writingexplained.org/sizable-or-sizeable-difference",
+      "range": {
+        "startLine": 153,
+        "startChar": 34,
+        "endLine": 153,
+        "endChar": 35
+      },
+      "revId": "9e3252b5cec76dddb9877e593c799ebe15cae0af",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

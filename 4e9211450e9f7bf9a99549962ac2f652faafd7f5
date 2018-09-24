@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3fe563e2_e988bd34",
+        "filename": "src/vpp/stats/stats.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-09-24T13:55:03Z",
+      "side": 1,
+      "message": "Having UK spelling here and US spelling in the next line is confusing. Not sure which one to prefer, though.\n\nBut it looks like we prefer American English (see the comment on \"sizeable\").",
+      "range": {
+        "startLine": 496,
+        "startChar": 48,
+        "endLine": 496,
+        "endChar": 50
+      },
+      "revId": "4e9211450e9f7bf9a99549962ac2f652faafd7f5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
