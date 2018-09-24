@@ -359,7 +359,7 @@ ixge_sfp_phy_init (ixge_device_t * xd)
   vlib_i2c_read_eeprom (ib, 0x50, 0, 128, (u8 *) & xd->sfp_eeprom);
 
   if (vlib_i2c_bus_timed_out (ib) || !sfp_eeprom_is_valid (&xd->sfp_eeprom))
-    xd->sfp_eeprom.id = SFP_ID_unknown;
+    xd->sfp_eeprom.id = SFP_ID_UNKNOWN;
   else
     {
       /* FIXME 5 => SR/LR eeprom ID. */
@@ -2364,7 +2364,7 @@ format_ixge_device (u8 * s, va_list * args)
   s = format (s, "\n%U", format_white_space, indent + 2);
   if (phy->mdio_address != ~0)
     s = format (s, "PHY address %d, id 0x%x", phy->mdio_address, phy->id);
-  else if (xd->sfp_eeprom.id == SFP_ID_sfp)
+  else if (xd->sfp_eeprom.id == SFP_ID_SFP)
     s = format (s, "SFP %U", format_sfp_eeprom, &xd->sfp_eeprom);
   else
     s = format (s, "PHY not found");

@@ -19,14 +19,34 @@
 #include <vppinfra/format.h>
 
 #define foreach_sfp_id				\
-  _ (unknown)					\
-  _ (gbic)					\
-  _ (on_motherboard)				\
-  _ (sfp)
+  _ (UNKNOWN, "unknown")			\
+  _ (GBIC, "GBIC")				\
+  _ (ON_MB, "on-motherboard")			\
+  _ (SFP, "SFP/SFP+/SFP28")			\
+  _ (300_PIN_XBI, "300-pin-XBI")		\
+  _ (XENPAK, "XENPAK")				\
+  _ (XFP, "XFP")				\
+  _ (XFF, "XFF")				\
+  _ (XFP_E, "XFP-E")				\
+  _ (XPAK, "XPAK")				\
+  _ (X2, "X2")					\
+  _ (DWDM_SFP, "DWDM-SFP")			\
+  _ (QSFP, "QSFP")				\
+  _ (QSFP_PLUS, "QSFP+")			\
+  _ (CXP, "CXP")				\
+  _ (SMM_HD_4X, "SMM-HD-4X")			\
+  _ (SMM_HD_8X, "SMM-HD-8X")			\
+  _ (QSFP28, "QSFP28")				\
+  _ (CXP2, "CXP2")				\
+  _ (SMM_HD_4X_FAN, "SMM-HD-4X-fanout")		\
+  _ (SMM_HD_8X_FAN, "SMM-HD-8X-fanout")		\
+  _ (CDFP, "CDFP")				\
+  _ (MQSFP, "microQSFP")			\
+  _ (QSFP_DD, "QSFP-DD")			\
 
 typedef enum
 {
-#define _(f) SFP_ID_##f,
+#define _(f,s) SFP_ID_##f,
   foreach_sfp_id
 #undef _
 } sfp_id_t;
@@ -40,21 +60,21 @@ typedef struct
   u8 encoding;
   u8 nominal_bit_rate_100mbits_per_sec;
   u8 reserved13;
-  u8 link_length[5];
-  u8 reserved19;
+  u8 length[5];
+  u8 device_tech;
   u8 vendor_name[16];
-  u8 reserved36;
+  u8 ext_module_codes;
   u8 vendor_oui[3];
   u8 vendor_part_number[16];
-  u8 vendor_revision[4];
+  u8 vendor_revision[2];
   /* 16 bit value network byte order. */
-  u8 laser_wavelength_in_nm[2];
-  u8 reserved62;
-  u8 checksum_0_to_62;
+  u8 wavelength_or_att[2];
+  u8 wavelength_tolerance_or_att[2];
+  u8 max_case_temp;
+  u8 cc_base;
 
-  u8 options[2];
-  u8 max_bit_rate_margin_percent;
-  u8 min_bit_rate_margin_percent;
+  u8 link_codes;
+  u8 options[3];
   u8 vendor_serial_number[16];
   u8 vendor_date_code[8];
   u8 reserved92[3];
@@ -73,13 +93,19 @@ sfp_eeprom_is_valid (sfp_eeprom_t * e)
   u8 sum = 0;
   for (i = 0; i < 63; i++)
     sum += ((u8 *) e)[i];
-  return sum == e->checksum_0_to_62;
+  return sum == e->cc_base;
 }
 
 /* _ (byte_index, bit_index, name) */
 #define foreach_sfp_compatibility		\
+  _ (0, 0, 40g_active_cable)			\
+  _ (0, 1, 40g_base_lr4)			\
+  _ (0, 2, 40g_base_sr4)			\
+  _ (0, 3, 40g_base_cr4)			\
   _ (0, 4, 10g_base_sr)				\
   _ (0, 5, 10g_base_lr)				\
+  _ (0, 5, 10g_base_lrm)			\
+  _ (1, 3, 40g_otn)				\
   _ (1, 2, oc48_long_reach)			\
   _ (1, 1, oc48_intermediate_reach)		\
   _ (1, 0, oc48_short_reach)			\

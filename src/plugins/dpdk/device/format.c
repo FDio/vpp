@@ -22,6 +22,7 @@
 #include <dlfcn.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/sfp.h>
 #include <dpdk/device/dpdk.h>
 
 #include <dpdk/device/dpdk_priv.h>
@@ -496,6 +497,30 @@ format_dpdk_device_errors (u8 * s, va_list * args)
   return s;
 }
 
+static u8 *
+format_dpdk_device_module_info (u8 * s, va_list * args)
+{
+  dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
+  struct rte_eth_dev_module_info mi = { 0 };
+  struct rte_dev_eeprom_info ei = { 0 };
+
+  if (rte_eth_dev_get_module_info (xd->port_id, &mi) != 0)
+    return format (s, "unknown");
+
+  ei.length = mi.eeprom_len;
+  ei.data = clib_mem_alloc (mi.eeprom_len);
+
+  if (rte_eth_dev_get_module_eeprom (xd->port_id, &ei) == 0)
+    {
+      s = format (s, "%U", format_sfp_eeprom, ei.data);
+    }
+  else
+    s = format (s, "eeprom read error");
+
+  clib_mem_free (ei.data);
+  return s;
+}
+
 static const char *
 ptr2sname (void *p)
 {
@@ -566,6 +591,9 @@ format_dpdk_device (u8 * s, va_list * args)
 		      pci->addr.bus, pci->addr.devid, pci->addr.function, s2);
 	  vec_free (s2);
 	}
+
+      s = format (s, "%Umodule: %U\n", format_white_space, indent + 2,
+		  format_dpdk_device_module_info, xd);
 
       s = format (s, "%Umax rx packet len: %d\n", format_white_space,
 		  indent + 2, di.max_rx_pktlen);
