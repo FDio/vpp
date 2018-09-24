@@ -348,6 +348,7 @@ fib_entry_src_adj_cover_change (fib_entry_src_t *src,
         res.bw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE;
     }
 
+    FIB_ENTRY_DBG(fib_entry, "adj-src-cover-changed");
     return (res);
 }
 
@@ -374,6 +375,8 @@ fib_entry_src_adj_cover_update (fib_entry_src_t *src,
     cover = fib_entry_get(src->u.adj.fesa_cover);
 
     res.install = (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover));
+
+    FIB_ENTRY_DBG(fib_entry, "adj-src-cover-updated");
 
     return (res);
 }

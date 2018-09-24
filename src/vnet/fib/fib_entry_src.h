@@ -23,24 +23,21 @@
 /**
  * Debug macro
  */
-#ifdef FIB_DEBUG
+extern vlib_log_class_t fib_entry_logger;
+
 #define FIB_ENTRY_DBG(_e, _fmt, _args...)		\
 {   		          				\
-    u8*__tmp = NULL;					\
-    __tmp = format(__tmp, "e:[%d:%U",			\
-		   fib_entry_get_index(_e),		\
-		   format_ip46_address,			\
-		   &_e->fe_prefix.fp_addr,		\
-		   IP46_TYPE_ANY);			\
-    __tmp = format(__tmp, "/%d]:",			\
-		   _e->fe_prefix.fp_len);		\
-    __tmp = format(__tmp, _fmt, ##_args);		\
-    clib_warning("%s", __tmp);				\
-    vec_free(__tmp);					\
+    vlib_log_debug(fib_entry_logger,                    \
+                   "[@%d:[%U]:%U:%U]: " _fmt,           \
+                   fib_entry_get_index(_e),		\
+                   format_fib_prefix,                   \
+                   &_e->fe_prefix,                      \
+                   format_fib_entry_flags,              \
+                    _e->fe_srcs[0].fes_entry_flags,     \
+                   format_fib_source,                   \
+                   _e->fe_srcs[0].fes_src,              \
+                   ##_args);                            \
 }
-#else
-#define FIB_ENTRY_DBG(_e, _fmt, _args...)
-#endif
 
 /**
  * Source initialisation Function 

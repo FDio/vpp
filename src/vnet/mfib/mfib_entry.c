@@ -22,31 +22,22 @@
 #include <vnet/dpo/replicate_dpo.h>
 
 /**
+ * the logger
+ */
+vlib_log_class_t mfib_entry_logger;
+
+/**
  * Debug macro
  */
-#ifdef MFIB_DEBUG
-#DEFIne MFIB_ENTRY_DBG(_e, _fmt, _args...)		\
+#define MFIB_ENTRY_DBG(_e, _fmt, _args...)		\
 {                                                       \
-    u8*__tmp = NULL;					\
-    __tmp = format(__tmp, "e:[%d:%U",                   \
+    vlib_log_debug(mfib_entry_logger,                   \
+                   "e:[%d:%U]: " _fmt,                  \
                    mfib_entry_get_index(_e),		\
-                   format_ip46_address,			\
-                   &_e->mfe_prefix.fp_grp_addr,		\
-                   IP46_TYPE_ANY);			\
-    __tmp = format(__tmp, "/%d,",			\
-                   _e->mfe_prefix.fp_len);		\
-    __tmp = format(__tmp, "%U]",                        \
-                   mfib_entry_get_index(_e),		\
-                   format_ip46_address,			\
-                   &_e->mfe_prefix.fp_src_addr,		\
-                   IP46_TYPE_ANY);			\
-    __tmp = format(__tmp, _fmt, ##_args);		\
-    clib_warning("%s", __tmp);				\
-    vec_free(__tmp);					\
+                   format_mfib_prefix,			\
+                   &_e->mfe_prefix,                     \
+                   ##_args);                            \
 }
-#else
-#define MFIB_ENTRY_DBG(_e, _fmt, _args...)
-#endif
 
 /**
  * MFIB extensions to each path
@@ -1207,6 +1198,7 @@ mfib_entry_module_init (void)
 {
     fib_node_register_type (FIB_NODE_TYPE_MFIB_ENTRY, &mfib_entry_vft);
     dpo_register(DPO_MFIB_ENTRY, &mfib_entry_dpo_vft, mfib_entry_nodes);
+    mfib_entry_logger = vlib_log_register_class("mfib", "entry");
 }
 
 void

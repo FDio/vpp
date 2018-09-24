@@ -286,6 +286,8 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_INTERPOSE = (1 << FIB_ENTRY_ATTRIBUTE_INTERPOSE),
 } __attribute__((packed)) fib_entry_flag_t;
 
+extern u8 * format_fib_entry_flags(u8 *s, va_list *args);
+
 /**
  * Flags for the source data
  */
@@ -336,6 +338,8 @@ typedef enum fib_entry_src_flag_t_ {
     FIB_ENTRY_SRC_FLAG_ACTIVE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE),
     FIB_ENTRY_SRC_FLAG_INHERITED = (1 << FIB_ENTRY_SRC_ATTRIBUTE_INHERITED),
 } __attribute__ ((packed)) fib_entry_src_flag_t;
+
+extern u8 * format_fib_entry_src_flags(u8 *s, va_list *args);
 
 /*
  * Keep the size of the flags field to 2 bytes, so it

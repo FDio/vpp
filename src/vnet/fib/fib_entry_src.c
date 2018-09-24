@@ -692,8 +692,7 @@ fib_entry_src_action_uninstall (fib_entry_t *fib_entry)
     /*
      * uninstall the forwarding chain from the forwarding tables
      */
-    FIB_ENTRY_DBG(fib_entry, "uninstall: %d",
-		  fib_entry->fe_adj_index);
+    FIB_ENTRY_DBG(fib_entry, "uninstall");
 
     if (dpo_id_is_valid(&fib_entry->fe_lb))
     {

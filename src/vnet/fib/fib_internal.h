@@ -19,11 +19,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/dpo.h>
 
-/**
- * Big train switch; FIB debugs on or off
- */
-#undef FIB_DEBUG
-
 extern void fib_prefix_from_mpls_label(mpls_label_t label,
                                        mpls_eos_bit_t eos,
 				       fib_prefix_t *prf);

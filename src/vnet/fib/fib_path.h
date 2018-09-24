@@ -127,6 +127,11 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_DEAG_SRC = (1 << FIB_PATH_CFG_ATTRIBUTE_DEAG_SRC),
 } __attribute__ ((packed)) fib_path_cfg_flags_t;
 
+typedef enum fib_path_format_flags_t_
+{
+    FIB_PATH_FORMAT_FLAGS_NONE = 0,
+    FIB_PATH_FORMAT_FLAGS_ONE_LINE = (1 << 0),
+} fib_format_path_flags_t;
 
 extern u8 *format_fib_path(u8 *s, va_list *args);
 

@@ -30,21 +30,19 @@ const f64 multipath_next_hop_error_tolerance = 0.1;
 
 static const char *load_balance_attr_names[] = LOAD_BALANCE_ATTR_NAMES;
 
-#undef LB_DEBUG
-#ifdef LB_DEBUG
+/**
+ * the logger
+ */
+vlib_log_class_t load_balance_logger;
+
 #define LB_DBG(_lb, _fmt, _args...)                                     \
 {                                                                       \
-    u8* _tmp =NULL;                                                     \
-    clib_warning("lb:[%s]:" _fmt,                                       \
-                 load_balance_format(load_balance_get_index((_lb)),     \
-                                     0, _tmp),                          \
-                 ##_args);                                              \
-    vec_free(_tmp);                                                     \
+    vlib_log_debug(load_balance_logger,                                 \
+                   "lb:[%U]:" _fmt,                                     \
+                   format_load_balance, load_balance_get_index(_lb),    \
+                   LOAD_BALANCE_FORMAT_NONE,                            \
+                   ##_args);                                            \
 }
-#else
-#define LB_DBG(_p, _fmt, _args...)
-#endif
-
 
 /**
  * Pool of all DPOs. It's not static so the DP can have fast access
@@ -180,6 +178,7 @@ format_load_balance (u8 * s, va_list * args)
 
     return (load_balance_format(lbi, flags, 0, s));
 }
+
 static u8*
 format_load_balance_dpo (u8 * s, va_list * args)
 {
@@ -188,7 +187,6 @@ format_load_balance_dpo (u8 * s, va_list * args)
 
     return (load_balance_format(lbi, LOAD_BALANCE_FORMAT_DETAIL, indent, s));
 }
-
 
 static load_balance_t *
 load_balance_create_i (u32 num_buckets,
@@ -946,6 +944,9 @@ load_balance_module_init (void)
      */
     lbi = load_balance_create(1, DPO_PROTO_IP4, 0);
     load_balance_set_bucket(lbi, 0, drop_dpo_get(DPO_PROTO_IP4));
+
+    load_balance_logger =
+        vlib_log_register_class("dpo", "load-balance");
 
     load_balance_map_module_init();
 }
