@@ -95,8 +95,9 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   comp_ring = &rxq->rx_comp_ring;
   bi = buffer_indices;
   next = nexts;
-  while (comp_ring->gen ==
-	 (rxq->rx_comp[comp_ring->next].flags & VMXNET3_RXCF_GEN))
+  while (PREDICT_TRUE (n_rx_packets < VLIB_FRAME_SIZE) &&
+	 (comp_ring->gen ==
+	  (rxq->rx_comp[comp_ring->next].flags & VMXNET3_RXCF_GEN)))
     {
       vlib_buffer_t *b0;
       u32 bi0;
