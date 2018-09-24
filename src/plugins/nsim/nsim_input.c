@@ -42,8 +42,6 @@ format_nsim_tx_trace (u8 * s, va_list * args)
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-vlib_node_registration_t nsim_node;
-
 #define foreach_nsim_tx_error                      \
 _(TX, "Packets transmitted")                    \
 _(DROPPED, "No buffer drops")

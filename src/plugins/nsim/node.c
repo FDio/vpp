@@ -45,9 +45,9 @@ format_nsim_trace (u8 * s, va_list * args)
 
   return s;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
 vlib_node_registration_t nsim_node;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_nsim_error                              \
 _(BUFFERED, "Packets buffered")                         \
