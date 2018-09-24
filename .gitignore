@@ -82,7 +82,7 @@ GTAGS
 /build-root/.doxygen-bootstrap.ok
 /build-root/.doxygen-siphon.dep
 /docs/_build
-/env
+/sphinx_venv
 !/docs/Makefile
 
 # indent backup files
