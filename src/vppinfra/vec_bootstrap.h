@@ -39,7 +39,7 @@
 #define included_clib_vec_bootstrap_h
 
 /** \file
-    Vector bootsrap header file
+    Vector bootstrap header file
 */
 
 /* Bootstrap include so that #include <vppinfra/mem.h> can include e.g.
@@ -47,7 +47,7 @@
 
 /** \brief vector header structure
 
-   Bookeeping header preceding vector elements in memory.
+   Bookkeeping header preceding vector elements in memory.
    User header information may preceed standard vec header.
    If you change u32 len -> u64 len, single vectors can
    exceed 2**32 elements. Clib heaps are vectors. */

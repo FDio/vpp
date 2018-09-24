@@ -36,7 +36,7 @@ typedef struct {
 ```
 
 #### Writer
-On the VPP side there is a single writer (controlled by a spinlock). When the writer starts it sets in_progress=1, continues with the update of the data-structues, and when done, bumps epoch++ and sets in_progress=0.
+On the VPP side there is a single writer (controlled by a spinlock). When the writer starts it sets in_progress=1, continues with the update of the data-structures, and when done, bumps epoch++ and sets in_progress=0.
 
 #### Readers
 If in_progress=1, there is no point continuing, so reader sits spinning on the in_progress flag until it is 0. Then it sets start_epoch = epoch and continues copying out the counter data it is interested in, while doing strict boundary checks on all offsets / pointers. When the reader is done, it checks if in_progress=1 or if epoch != start_epoch. If either of those are true is discards the data read.

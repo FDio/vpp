@@ -20,7 +20,7 @@
 typedef struct
 {
   /* Time of this element in units cpu clock ticks relative to time
-     base. 32 bits should be large enough for serveral kilo-seconds
+     base. 32 bits should be large enough for several kilo-seconds
      to elapse before we have to re-set time base. */
   u32 cpu_time_relative_to_base;
 

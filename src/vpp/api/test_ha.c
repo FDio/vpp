@@ -101,7 +101,7 @@ vlib_main_t **vlib_mains;
 void
 vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 {
-  clib_warning ("BUG: vlib_cli_output callled...");
+  clib_warning ("BUG: vlib_cli_output called...");
 }
 
 #define foreach_api_msg                         \

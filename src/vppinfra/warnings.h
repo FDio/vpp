@@ -33,12 +33,12 @@
 /*
  * Macros to toggle off/on warnings
  *
- * Start by silenging pragma warnings so that we can explicitely silence
+ * Start by silencing pragma warnings so that we can explicitly silence
  * a warning introduced on some compiler version and not get a warning on older
  * versions of that same compiler.
  *
- * gcc corresponding warnign is "Wpargma"
- * clang corresponding warnign is "Wunknown-warning-option"
+ * gcc corresponding warning is "Wpargma"
+ * clang corresponding warning is "Wunknown-warning-option"
  *
  * For example, Wtautological-compare is introduced in gcc-6 and this would
  * trigger a Wpargma warning on gcc-5.

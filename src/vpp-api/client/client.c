@@ -273,7 +273,7 @@ vac_rx_suspend (void)
       ep = vl_msg_api_alloc (sizeof (*ep));
       ep->_vl_msg_id = ntohs(VL_API_MEMCLNT_RX_THREAD_SUSPEND);
       vl_msg_api_send_shmem(am->vl_input_queue, (u8 *)&ep);
-      /* Wait for RX thread to tell us it has suspendend */
+      /* Wait for RX thread to tell us it has suspended */
       pthread_cond_wait(&pm->suspend_cv, &pm->queue_lock);
       rx_is_running = false;
     }

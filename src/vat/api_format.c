@@ -1355,7 +1355,7 @@ static void
 vl_api_l2_macs_event_t_handler (vl_api_l2_macs_event_t * mp)
 {
   u32 n_macs = ntohl (mp->n_macs);
-  errmsg ("L2MAC event recived with pid %d cl-idx %d for %d macs: \n",
+  errmsg ("L2MAC event received with pid %d cl-idx %d for %d macs: \n",
 	  ntohl (mp->pid), mp->client_index, n_macs);
   int i;
   for (i = 0; i < n_macs; i++)
@@ -9298,7 +9298,7 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
 
   if (!address_set)
     {
-      errmsg ("IP addres not set");
+      errmsg ("IP address not set");
       return -99;
     }
 
@@ -23849,7 +23849,7 @@ _(one_ndp_entries_get, "bd <bridge-domain>")                            \
 _(one_add_del_l2_arp_entry, "[del] mac <mac> bd <bd> ip4 <ip4>")        \
 _(one_l2_arp_bd_get, "")                                                \
 _(one_l2_arp_entries_get, "bd <bridge-domain>")                         \
-_(one_stats_enable_disable, "enable|disalbe")                           \
+_(one_stats_enable_disable, "enable|disable")                           \
 _(show_one_stats_enable_disable, "")                                    \
 _(one_eid_table_vni_dump, "")                                           \
 _(one_eid_table_map_dump, "l2|l3")                                      \

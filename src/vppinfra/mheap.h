@@ -80,7 +80,7 @@ uword mheap_bytes (void *v);
 
 void mheap_usage (void *v, clib_mem_usage_t * usage);
 
-/* Enable disable traceing. */
+/* Enable disable tracing. */
 void mheap_trace (void *v, int enable);
 
 /* Test routine. */

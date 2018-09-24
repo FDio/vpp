@@ -44,7 +44,7 @@
 /* External panic function. */
 void os_panic (void);
 
-/* External exit function analagous to unix exit. */
+/* External exit function analogous to unix exit. */
 void os_exit (int code);
 
 /* External function to print a line. */

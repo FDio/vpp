@@ -167,7 +167,7 @@ di (unformat_input_t * i)
 #endif
 
 /* Parse delimited vector string.  If string starts with { then string
-   is delimited by balenced parenthesis.  Other string is delimited by
+   is delimited by balanced parenthesis.  Other string is delimited by
    white space.  {} were chosen since they are special to the shell. */
 static uword
 unformat_string (unformat_input_t * input,
