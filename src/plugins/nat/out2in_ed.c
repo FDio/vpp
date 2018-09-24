@@ -137,7 +137,7 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
     {
       ed_key.l_addr = s->in2out.addr;
       ed_key.r_addr = s->ext_host_addr;
-      ed_key.fib_index = s->out2in.fib_index;
+      ed_key.fib_index = s->in2out.fib_index;
       if (snat_is_unk_proto_session (s))
 	{
 	  ed_key.proto = s->in2out.port;

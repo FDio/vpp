@@ -238,9 +238,6 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   snat_session_t *s0 = *p_s0;
   if (PREDICT_TRUE (next0 != NAT_IN2OUT_ED_NEXT_DROP && s0))
     {
-      /* Hairpinning */
-      if (vnet_buffer (b0)->sw_if_index[VLIB_TX] == ~0)
-	snat_icmp_hairpinning (sm, b0, ip0, icmp0, sm->endpoint_dependent);
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
