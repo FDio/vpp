@@ -118,12 +118,13 @@ tcp_initial_wnd_unscaled (tcp_connection_t * tc)
 u32
 tcp_initial_window_to_advertise (tcp_connection_t * tc)
 {
+  tcp_main_t *tm = &tcp_main;
   u32 max_fifo;
 
   /* Initial wnd for SYN. Fifos are not allocated yet.
    * Use some predefined value. For SYN-ACK we still want the
    * scale to be computed in the same way */
-  max_fifo = TCP_MAX_RX_FIFO_SIZE;
+  max_fifo = tm->max_rx_fifo ? tm->max_rx_fifo : TCP_MAX_RX_FIFO_SIZE;
 
   tc->rcv_wscale = tcp_window_compute_scale (max_fifo);
   tc->rcv_wnd = tcp_initial_wnd_unscaled (tc);
