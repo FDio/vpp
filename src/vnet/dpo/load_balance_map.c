@@ -68,18 +68,20 @@ typedef struct load_balance_map_path_t_ {
  */
 load_balance_map_t *load_balance_map_pool;
 
+/**
+ * the logger
+ */
+vlib_log_class_t load_balance_map_logger;
+
 /*
  * Debug macro
  */
-#ifdef FIB_DEBUG
-#define LOAD_BALANCE_MAP_DBG(_pl, _fmt, _args...)       \
-    {                                                   \
-        clib_warning("lbm: FIXME" _fmt,                 \
-                     ##_args);                          \
-    }
-#else
-#define LOAD_BALANCE_MAP_DBG(_pl, _fmt, _args...)
-#endif
+#define LOAD_BALANCE_MAP_DBG(_pl, _fmt, _args...)               \
+{                                                               \
+    vlib_log_debug(load_balance_map_logger,                     \
+                   "lbm:" _fmt,                                 \
+                   ##_args);                                    \
+}
 
 static index_t
 load_balance_map_get_index (load_balance_map_t *lbm)
@@ -411,6 +413,9 @@ load_balance_map_init (load_balance_map_t *lbm,
     load_balance_map_db_insert(lbm);
 
     load_balance_map_fill(lbm);
+
+    load_balance_map_logger =
+        vlib_log_register_class ("dpo", "load-balance-map");
 
     return (lbm);
 }

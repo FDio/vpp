@@ -156,6 +156,8 @@ typedef enum fib_node_bw_reason_flag_t_ {
 STATIC_ASSERT(sizeof(fib_node_bw_reason_flag_t) < 2,
 	      "BW Reason enum < 2 byte. Consequences for cover_upd_res_t");
 
+extern u8 *format_fib_node_bw_reason(u8 *s, va_list *args);
+
 /**
  * Flags on the walk
  */

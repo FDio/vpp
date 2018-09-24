@@ -409,22 +409,22 @@ static const char *fib_path_cfg_attribute_names[]  = FIB_PATH_CFG_ATTRIBUTES;
  */
 static fib_path_t *fib_path_pool;
 
+/**
+ * the logger
+ */
+vlib_log_class_t fib_path_logger;
+
 /*
  * Debug macro
  */
-#ifdef FIB_DEBUG
-#define FIB_PATH_DBG(_p, _fmt, _args...)			\
-{       		          				\
-    u8 *_tmp = NULL;						\
-    _tmp = fib_path_format(fib_path_get_index(_p), _tmp);	\
-    clib_warning("path:[%d:%U]:" _fmt,				\
-		 fib_path_get_index(_p), format_fib_path, _p, 0,\
-		 ##_args);					\
-    vec_free(_tmp);						\
+#define FIB_PATH_DBG(_p, _fmt, _args...)                                \
+{                                                                       \
+    vlib_log_debug (fib_path_logger,                                    \
+                    "[%U]: " _fmt,                                      \
+                    format_fib_path, fib_path_get_index(_p), 0,         \
+                    FIB_PATH_FORMAT_FLAGS_ONE_LINE,                     \
+                    ##_args);                                           \
 }
-#else
-#define FIB_PATH_DBG(_p, _fmt, _args...)
-#endif
 
 static fib_path_t *
 fib_path_get (fib_node_index_t index)
@@ -456,10 +456,21 @@ format_fib_path (u8 * s, va_list * args)
 {
     fib_node_index_t path_index = va_arg (*args, fib_node_index_t);
     u32 indent = va_arg (*args, u32);
+    fib_format_path_flags_t flags =  va_arg (*args, fib_format_path_flags_t);
     vnet_main_t * vnm = vnet_get_main();
     fib_path_oper_attribute_t oattr;
     fib_path_cfg_attribute_t cattr;
     fib_path_t *path;
+    const char *eol;
+
+    if (flags & FIB_PATH_FORMAT_FLAGS_ONE_LINE)
+    {
+        eol = "";
+    }
+    else
+    {
+        eol = "\n";
+    }
 
     path = fib_path_get(path_index);
 
@@ -486,7 +497,8 @@ format_fib_path (u8 * s, va_list * args)
 	    }
 	}
     }
-    s = format(s, "\n%U", format_white_space, indent+2);
+    if (!(flags & FIB_PATH_FORMAT_FLAGS_ONE_LINE))
+        s = format(s, "\n%U", format_white_space, indent+2);
 
     switch (path->fp_type)
     {
@@ -514,11 +526,11 @@ format_fib_path (u8 * s, va_list * args)
 	}
 	if (!dpo_id_is_valid(&path->fp_dpo))
 	{
-	    s = format(s, "\n%Uunresolved", format_white_space, indent+2);
+	    s = format(s, "%s%Uunresolved", eol, format_white_space, indent+2);
 	}
 	else
 	{
-	    s = format(s, "\n%U%U",
+	    s = format(s, "%s%U%U", eol,
 		       format_white_space, indent,
                        format_dpo_id,
 		       &path->fp_dpo, 13);
@@ -606,17 +618,6 @@ format_fib_path (u8 * s, va_list * args)
 	break;
     }
     return (s);
-}
-
-u8 *
-fib_path_format (fib_node_index_t pi, u8 *s)
-{
-    fib_path_t *path;
-
-    path = fib_path_get(pi);
-    ASSERT(NULL != path);
-
-    return (format (s, "%U", format_fib_path, path));
 }
 
 /*
@@ -965,6 +966,9 @@ fib_path_back_walk_notify (fib_node_t *node,
     fib_path_t *path;
 
     path = fib_path_from_fib_node(node);
+
+    FIB_PATH_DBG(path, "bw:%U",
+                 format_fib_node_bw_reason, ctx->fnbw_reason);
 
     switch (path->fp_type)
     {
@@ -2311,8 +2315,6 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
     ASSERT(path);
     ASSERT(FIB_FORW_CHAIN_TYPE_MPLS_EOS != fct);
 
-    FIB_PATH_DBG(path, "contribute");
-
     /*
      * The DPO stored in the path was created when the path was resolved.
      * This then represents the path's 'native' protocol; IP.
@@ -2667,6 +2669,7 @@ void
 fib_path_module_init (void)
 {
     fib_node_register_type (FIB_NODE_TYPE_PATH, &fib_path_vft);
+    fib_path_logger = vlib_log_register_class ("fib", "path");
 }
 
 static clib_error_t *
@@ -2685,7 +2688,8 @@ show_fib_path_command (vlib_main_t * vm,
 	if (!pool_is_free_index(fib_path_pool, pi))
 	{
 	    path = fib_path_get(pi);
-	    u8 *s = format(NULL, "%U", format_fib_path, pi, 1);
+	    u8 *s = format(NULL, "%U", format_fib_path, pi, 1,
+                           FIB_PATH_FORMAT_FLAGS_NONE);
 	    s = format(s, "children:");
 	    s = fib_node_children_format(path->fp_node.fn_children, s);
 	    vlib_cli_output (vm, "%s", s);
@@ -2701,7 +2705,8 @@ show_fib_path_command (vlib_main_t * vm,
 	vlib_cli_output (vm, "FIB Paths");
 	pool_foreach_index (pi, fib_path_pool,
 	({
-	    vlib_cli_output (vm, "%U", format_fib_path, pi, 0);
+	    vlib_cli_output (vm, "%U", format_fib_path, pi, 0,
+                             FIB_PATH_FORMAT_FLAGS_NONE);
 	}));
     }
 

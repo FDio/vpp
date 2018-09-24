@@ -19,21 +19,20 @@
 #include <vnet/adj/adj.h>
 #include <vnet/mpls/mpls_types.h>
 
-#undef REP_DEBUG
+/**
+ * the logger
+ */
+vlib_log_class_t replicate_logger;
 
-#ifdef REP_DEBUG
 #define REP_DBG(_rep, _fmt, _args...)                                   \
 {                                                                       \
-    u8* _tmp =NULL;                                                     \
-    clib_warning("rep:[%s]:" _fmt,                                      \
-                 replicate_format(replicate_get_index((_rep)),          \
-                                  0, _tmp),                             \
-                 ##_args);                                              \
-    vec_free(_tmp);                                                     \
+    vlib_log_debug(replicate_logger,                                    \
+                   "rep:[%U]:" _fmt,                                    \
+                   format_replicate,                                    \
+                   replicate_get_index(_rep),                           \
+                   REPLICATE_FORMAT_NONE,                               \
+                   ##_args);                                            \
 }
-#else
-#define REP_DBG(_p, _fmt, _args...)
-#endif
 
 #define foreach_replicate_dpo_error                       \
 _(BUFFER_ALLOCATION_FAILURE, "Buffer Allocation Failure")
@@ -580,6 +579,7 @@ void
 replicate_module_init (void)
 {
     dpo_register(DPO_REPLICATE, &rep_vft, replicate_nodes);
+    replicate_logger = vlib_log_register_class("dpo", "replicate");
 }
 
 static clib_error_t *

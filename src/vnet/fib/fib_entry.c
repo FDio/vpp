@@ -41,6 +41,11 @@ static const char *fib_src_attribute_names[] = FIB_ENTRY_SRC_ATTRIBUTES;
  */
 static fib_entry_t *fib_entry_pool;
 
+/**
+ * the logger
+ */
+vlib_log_class_t fib_entry_logger;
+
 fib_entry_t *
 fib_entry_get (fib_node_index_t index)
 {
@@ -101,11 +106,39 @@ format_fib_source (u8 * s, va_list * args)
 }
 
 u8 *
-format_fib_entry (u8 * s, va_list * args)
+format_fib_entry_flags (u8 *s, va_list *args)
+{
+    fib_entry_attribute_t attr;
+    fib_entry_flag_t flag = va_arg(*args, int);
+
+    FOR_EACH_FIB_ATTRIBUTE(attr) {
+        if ((1<<attr) & flag) {
+            s = format (s, "%s,", fib_attribute_names[attr]);
+        }
+    }
+
+    return (s);
+}
+
+u8 *
+format_fib_entry_src_flags (u8 *s, va_list *args)
 {
     fib_entry_src_attribute_t sattr;
+    fib_entry_src_flag_t flag = va_arg(*args, int);
+
+    FOR_EACH_FIB_SRC_ATTRIBUTE(sattr) {
+        if ((1<<sattr) & flag) {
+            s = format (s, "%s,", fib_src_attribute_names[sattr]);
+        }
+    }
+
+    return (s);
+}
+
+u8 *
+format_fib_entry (u8 * s, va_list * args)
+{
     fib_forward_chain_type_t fct;
-    fib_entry_attribute_t attr;
     fib_entry_t *fib_entry;
     fib_entry_src_t *src;
     fib_node_index_t fei;
@@ -129,20 +162,12 @@ format_fib_entry (u8 * s, va_list * args)
 	    s = format (s, "\n  %U", format_fib_source, source);
 	    s = format (s, " refs:%d", src->fes_ref_count);
 	    if (FIB_ENTRY_FLAG_NONE != src->fes_entry_flags) {
-		s = format(s, " entry-flags:");
-		FOR_EACH_FIB_ATTRIBUTE(attr) {
-		    if ((1<<attr) & src->fes_entry_flags) {
-			s = format (s, "%s,", fib_attribute_names[attr]);
-		    }
-		}
+		s = format(s, " entry-flags:%U",
+                           format_fib_entry_flags, src->fes_entry_flags);
 	    }
 	    if (FIB_ENTRY_SRC_FLAG_NONE != src->fes_flags) {
-		s = format(s, " src-flags:");
-		FOR_EACH_FIB_SRC_ATTRIBUTE(sattr) {
-		    if ((1<<sattr) & src->fes_flags) {
-			s = format (s, "%s,", fib_src_attribute_names[sattr]);
-		    }
-		}
+		s = format(s, " src-flags:%U",
+                           format_fib_entry_src_flags, src->fes_flags);
 	    }
             s = fib_entry_src_format(fib_entry, source, s);
 	    s = format (s, "\n");
@@ -315,6 +340,9 @@ fib_entry_back_walk_notify (fib_node_t *node,
      * ... and nothing is forced sync from now on.
      */
     ctx->fnbw_flags &= ~FIB_NODE_BW_FLAG_FORCE_SYNC;
+
+    FIB_ENTRY_DBG(fib_entry, "bw:%U",
+                  format_fib_node_bw_reason, ctx->fnbw_reason);
 
     /*
      * propagate the backwalk further if we haven't already reached the
@@ -601,8 +629,6 @@ fib_entry_alloc (u32 fib_index,
 
     *fib_entry_index = fib_entry_get_index(fib_entry);
 
-    FIB_ENTRY_DBG(fib_entry, "alloc");
-
     return (fib_entry);
 }
 
@@ -719,6 +745,8 @@ fib_entry_create (u32 fib_index,
 
     fib_entry_post_install_actions(fib_entry, source, FIB_ENTRY_FLAG_NONE);
 
+    FIB_ENTRY_DBG(fib_entry, "create");
+
     return (fib_entry_index);
 }
 
@@ -744,6 +772,8 @@ fib_entry_create_special (u32 fib_index,
     fib_entry_src_action_activate(fib_entry, source);
 
     fib_entry_post_install_actions(fib_entry, source, FIB_ENTRY_FLAG_NONE);
+
+    FIB_ENTRY_DBG(fib_entry, "create-special");
 
     return (fib_entry_index);
 }
@@ -850,6 +880,7 @@ fib_entry_special_add (fib_node_index_t fib_entry_index,
 
     fib_entry = fib_entry_src_action_add(fib_entry, source, flags, dpo);
     fib_entry_source_change(fib_entry, best_source, source);
+    FIB_ENTRY_DBG(fib_entry, "special-add:%U", format_fib_source, source);
 }
 
 void
@@ -866,6 +897,8 @@ fib_entry_special_update (fib_node_index_t fib_entry_index,
 
     fib_entry = fib_entry_src_action_update(fib_entry, source, flags, dpo);
     fib_entry_source_change(fib_entry, best_source, source);
+
+    FIB_ENTRY_DBG(fib_entry, "special-updated:%U", format_fib_source, source);
 }
 
 
@@ -890,6 +923,8 @@ fib_entry_path_add (fib_node_index_t fib_entry_index,
     fib_entry = fib_entry_src_action_path_add(fib_entry, source, flags, rpath);
 
     fib_entry_source_change(fib_entry, best_source, source);
+
+    FIB_ENTRY_DBG(fib_entry, "path add:%U", format_fib_source, source);
 }
 
 static fib_entry_src_flag_t
@@ -987,6 +1022,8 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
 
     sflag = fib_entry_src_action_path_remove(fib_entry, source, rpath);
 
+    FIB_ENTRY_DBG(fib_entry, "path remove:%U", format_fib_source, source);
+
     /*
      * if the path list for the source passed is invalid,
      * then we need to create a new one. else we are updating
@@ -1075,6 +1112,8 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
     bflags = fib_entry_src_get_flags(bsrc);
 
     sflag = fib_entry_src_action_remove_or_update_inherit(fib_entry, source);
+
+    FIB_ENTRY_DBG(fib_entry, "special remove:%U", format_fib_source, source);
 
     /*
      * if the path list for the source passed is invalid,
@@ -1206,6 +1245,7 @@ fib_entry_update (fib_node_index_t fib_entry_index,
                                                paths);
 
     fib_entry_source_change_w_flags(fib_entry, best_source, bflags, source);
+    FIB_ENTRY_DBG(fib_entry, "update");
 }
 
 
@@ -1279,6 +1319,7 @@ fib_entry_cover_changed (fib_node_index_t fib_entry_index)
 
 	fib_walk_sync(FIB_NODE_TYPE_ENTRY, fib_entry_index, &bw_ctx);
     }
+    FIB_ENTRY_DBG(fib_entry, "cover-changed");
 }
 
 /*
@@ -1352,6 +1393,7 @@ fib_entry_cover_updated (fib_node_index_t fib_entry_index)
 
 	fib_walk_sync(FIB_NODE_TYPE_ENTRY, fib_entry_index, &bw_ctx);
     }
+    FIB_ENTRY_DBG(fib_entry, "cover-updated");
 }
 
 int
@@ -1602,7 +1644,8 @@ fib_entry_unlock (fib_node_index_t fib_entry_index)
 void
 fib_entry_module_init (void)
 {
-    fib_node_register_type (FIB_NODE_TYPE_ENTRY, &fib_entry_vft);
+    fib_node_register_type(FIB_NODE_TYPE_ENTRY, &fib_entry_vft);
+    fib_entry_logger = vlib_log_register_class("fib", "entry");
 }
 
 void

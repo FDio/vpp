@@ -16,6 +16,8 @@
 #include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_node_list.h>
 
+vlib_log_class_t fib_walk_logger;
+
 /**
  * The flags on a walk
  */
@@ -183,6 +185,17 @@ typedef struct fib_walk_history_t_ {
     fib_node_bw_reason_flag_t fwh_reason[MAX_HISTORY_REASONS];
 } fib_walk_history_t;
 static fib_walk_history_t fib_walk_history[HISTORY_N_WALKS];
+
+static u8* format_fib_walk (u8* s, va_list *ap);
+
+#define FIB_WALK_DBG(_walk, _fmt, _args...)                     \
+{                                                               \
+    vlib_log_debug(fib_walk_logger,                             \
+                   "[%U]:" _fmt,                                \
+                   format_fib_walk,                             \
+                   fib_walk_get_index(_walk),                   \
+                   ##_args);                                    \
+}
 
 u8*
 format_fib_walk_priority (u8 *s, va_list *ap)
@@ -714,6 +727,9 @@ fib_walk_async (fib_node_type_t parent_type,
 					       fib_walk_get_index(fwalk));
 
     fwalk->fw_prio_sibling = fib_walk_prio_queue_enquue(prio, fwalk);
+
+    FIB_WALK_DBG(fwalk, "async-start: %U",
+                 format_fib_node_bw_reason, ctx->fnbw_reason);
 }
 
 /**
@@ -759,6 +775,8 @@ fib_walk_sync (fib_node_type_t parent_type,
 					       FIB_NODE_TYPE_WALK,
 					       fib_walk_get_index(fwalk));
     fwi = fib_walk_get_index(fwalk);
+    FIB_WALK_DBG(fwalk, "sync-start: %U",
+                 format_fib_node_bw_reason, ctx->fnbw_reason);
 
     while (1)
     {
@@ -812,6 +830,10 @@ fib_walk_sync (fib_node_type_t parent_type,
 		 * continue with it now, but let the stack unwind and along the
 		 * appropriate frame to read the depth count and bail.
 		 */
+                FIB_WALK_DBG(fwalk, "sync-stop: %U",
+                             format_fib_node_bw_reason,
+                             ctx->fnbw_reason);
+
 		fwalk = NULL;
 		break;
 	    }
@@ -827,6 +849,9 @@ fib_walk_sync (fib_node_type_t parent_type,
 
     if (NULL != fwalk)
     {
+        FIB_WALK_DBG(fwalk, "sync-stop: %U",
+                     format_fib_node_bw_reason,
+                     ctx->fnbw_reason);
 	fib_walk_destroy(fwi);
     }
 }
@@ -924,6 +949,7 @@ fib_walk_module_init (void)
     }
 
     fib_node_register_type(FIB_NODE_TYPE_WALK, &fib_walk_vft);
+    fib_walk_logger = vlib_log_register_class("fib", "walk");
 }
 
 static u8*
@@ -934,11 +960,25 @@ format_fib_walk (u8* s, va_list *ap)
 
     fwalk = fib_walk_get(fwi);
 
-    return (format(s, "  parent:{%s:%d} visits:%d flags:%d",
+    return (format(s, "[@%d] parent:{%s:%d} visits:%d flags:%d", fwi,
 		   fib_node_type_get_name(fwalk->fw_parent.fnp_type),
 		   fwalk->fw_parent.fnp_index,
 		   fwalk->fw_n_visits,
 		   fwalk->fw_flags));
+}
+
+u8 *
+format_fib_node_bw_reason (u8 *s, va_list *args)
+{
+    fib_node_bw_reason_flag_t flag = va_arg (*args, int);
+    fib_node_back_walk_reason_t reason;
+
+    FOR_EACH_FIB_NODE_BW_REASON(reason) {
+        if ((1<<reason) & flag)
+            s = format(s, "%s", fib_node_bw_reason_names[reason]);
+    }
+
+    return (s);
 }
 
 static clib_error_t *
@@ -1045,7 +1085,6 @@ fib_walk_show (vlib_main_t * vm,
     {
 	if (0 != fib_walk_history[ii].fwh_reason[0])
 	{
-            fib_node_back_walk_reason_t reason;
             u8 *s = NULL;
             u32 jj;
 
@@ -1064,11 +1103,8 @@ fib_walk_show (vlib_main_t * vm,
             jj = 0;
             while (0 != fib_walk_history[ii].fwh_reason[jj])
             {
-                FOR_EACH_FIB_NODE_BW_REASON(reason) {
-                    if ((1<<reason) & fib_walk_history[ii].fwh_reason[jj]) {
-                        s = format (s, "%s,", fib_node_bw_reason_names[reason]);
-                    }
-                }
+                s = format (s, "%U,", format_fib_node_bw_reason,
+                            fib_walk_history[ii].fwh_reason[jj]);
                 jj++;
             }
             vlib_cli_output(vm, "%v", s);
