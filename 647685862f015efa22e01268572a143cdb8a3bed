@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e752d557_21ecb9f8",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-24T19:31:35Z",
+      "side": 1,
+      "message": "trailing whitespace...",
+      "range": {
+        "startLine": 550,
+        "startChar": 12,
+        "endLine": 550,
+        "endChar": 13
+      },
+      "revId": "647685862f015efa22e01268572a143cdb8a3bed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "edff79e9_c7d96597",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 554,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-24T19:31:35Z",
+      "side": 1,
+      "message": "Do you really need 2 targets here?\n\nwhat about \"docs\" and \"docs-clean\"...",
+      "range": {
+        "startLine": 550,
+        "startChar": 0,
+        "endLine": 554,
+        "endChar": 45
+      },
+      "revId": "647685862f015efa22e01268572a143cdb8a3bed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
