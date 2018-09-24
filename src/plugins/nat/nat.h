@@ -933,7 +933,7 @@ snat_session_t *nat_session_alloc_or_recycle (snat_main_t * sm,
  * @return session data structure on success otherwise zero value
  */
 snat_session_t *nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u,
-				      u32 thread_index);
+				      u32 thread_index, f64 now);
 
 /**
  * @brief Set address and port assignment algorithm for MAP-E CE
