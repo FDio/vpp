@@ -315,7 +315,7 @@ slow_path_ed (snat_main_t * sm,
       return NAT_IN2OUT_ED_NEXT_DROP;
     }
 
-  s = nat_ed_session_alloc (sm, u, thread_index);
+  s = nat_ed_session_alloc (sm, u, thread_index, now);
   if (!s)
     {
       nat44_delete_user_with_no_session (sm, u, thread_index);
@@ -777,7 +777,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 	}
 
     create_ses:
-      s = nat_ed_session_alloc (sm, u, thread_index);
+      s = nat_ed_session_alloc (sm, u, thread_index, now);
       if (!s)
 	{
 	  nat44_delete_user_with_no_session (sm, u, thread_index);

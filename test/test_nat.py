@@ -5657,6 +5657,7 @@ class TestNAT44EndpointDependent(MethodHolder):
                                      src_address=self.pg2.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
+        self.vapi.nat_set_timeouts(udp=5)
 
         # get maximum number of translations per user
         nat44_config = self.vapi.nat_show_config()
@@ -5702,6 +5703,15 @@ class TestNAT44EndpointDependent(MethodHolder):
                     data,
                     nat44_config.max_translations_per_user,
                     self.pg0.remote_ip4n)
+
+        sleep(6)
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             UDP(sport=3001, dport=3002))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
 
     def tearDown(self):
         super(TestNAT44EndpointDependent, self).tearDown()
