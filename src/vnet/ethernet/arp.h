@@ -26,12 +26,16 @@ extern int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 
 extern int vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
 					   u32 sw_if_index,
-					   void *a_arg,
-					   int is_static,
+					   const
+					   ethernet_arp_ip4_over_ethernet_address_t
+					   * a, int is_static,
 					   int is_no_fib_entry);
 
 extern int vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
-					     u32 sw_if_index, void *a_arg);
+					     u32 sw_if_index,
+					     const
+					     ethernet_arp_ip4_over_ethernet_address_t
+					     * a);
 
 extern int vnet_proxy_arp_fib_reset (u32 fib_id);
 

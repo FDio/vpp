@@ -557,7 +557,7 @@ arp_adj_fib_add (ethernet_arp_ip4_entry_t * e, u32 fib_index)
   fib_table_lock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_ADJ);
 }
 
-void
+static void
 arp_adj_fib_remove (ethernet_arp_ip4_entry_t * e, u32 fib_index)
 {
   if (FIB_NODE_INDEX_INVALID != e->fib_entry_index)
@@ -609,7 +609,7 @@ force_reuse_arp_entry (void)
   arp_adj_fib_remove
     (e, ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index));
   adj_nbr_walk_nh4 (e->sw_if_index,
-		    &e->ip4_address, arp_mk_incomplete_walk, NULL);
+		    &e->ip4_address, arp_mk_incomplete_walk, e);
   return e;
 }
 
@@ -929,7 +929,8 @@ arp_unnumbered (vlib_buffer_t * p0,
 
 static u32
 arp_learn (vnet_main_t * vnm,
-	   ethernet_arp_main_t * am, u32 sw_if_index, void *addr)
+	   ethernet_arp_main_t * am, u32 sw_if_index,
+	   const ethernet_arp_ip4_over_ethernet_address_t * addr)
 {
   vnet_arp_set_ip4_over_ethernet (vnm, sw_if_index, addr, 0, 0);
   return (ETHERNET_ARP_ERROR_l3_src_address_learned);
@@ -1547,9 +1548,11 @@ ip4_set_arp_limit (u32 arp_limit)
  */
 int
 vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
-				  u32 sw_if_index, void *a_arg)
+				  u32 sw_if_index,
+				  const
+				  ethernet_arp_ip4_over_ethernet_address_t *
+				  a)
 {
-  ethernet_arp_ip4_over_ethernet_address_t *a = a_arg;
   vnet_arp_set_ip4_over_ethernet_rpc_args_t args;
 
   args.sw_if_index = sw_if_index;
@@ -1562,58 +1565,13 @@ vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
 }
 
 /**
- * @brief Internally generated event to flush the ARP cache on an
- * interface state change event.
- * A flush will remove dynamic ARP entries, and for statics remove the MAC
- * address from the corresponding adjacencies.
- */
-static int
-vnet_arp_flush_ip4_over_ethernet (vnet_main_t * vnm,
-				  u32 sw_if_index, void *a_arg)
-{
-  ethernet_arp_ip4_over_ethernet_address_t *a = a_arg;
-  vnet_arp_set_ip4_over_ethernet_rpc_args_t args;
-
-  args.sw_if_index = sw_if_index;
-  args.flags = ETHERNET_ARP_ARGS_FLUSH;
-  clib_memcpy (&args.a, a, sizeof (*a));
-
-  vl_api_rpc_call_main_thread (set_ip4_over_ethernet_rpc_callback,
-			       (u8 *) & args, sizeof (args));
-  return 0;
-}
-
-/**
- * @brief Internally generated event to populate the ARP cache on an
- * interface state change event.
- * For static entries this will re-source the adjacencies.
- *
- * @param sw_if_index The interface on which the ARP entires are acted
- */
-static int
-vnet_arp_populate_ip4_over_ethernet (vnet_main_t * vnm,
-				     u32 sw_if_index, void *a_arg)
-{
-  ethernet_arp_ip4_over_ethernet_address_t *a = a_arg;
-  vnet_arp_set_ip4_over_ethernet_rpc_args_t args;
-
-  args.sw_if_index = sw_if_index;
-  args.flags = ETHERNET_ARP_ARGS_POPULATE;
-  clib_memcpy (&args.a, a, sizeof (*a));
-
-  vl_api_rpc_call_main_thread (set_ip4_over_ethernet_rpc_callback,
-			       (u8 *) & args, sizeof (args));
-  return 0;
-}
-
-/**
  * @brief publish wildcard arp event
  * @param sw_if_index The interface on which the ARP entires are acted
  */
 static int
-vnet_arp_wc_publish (u32 sw_if_index, void *a_arg)
+vnet_arp_wc_publish (u32 sw_if_index,
+		     const ethernet_arp_ip4_over_ethernet_address_t * a)
 {
-  ethernet_arp_ip4_over_ethernet_address_t *a = a_arg;
   vnet_arp_set_ip4_over_ethernet_rpc_args_t args = {
     .flags = ETHERNET_ARP_ARGS_WC_PUB,
     .sw_if_index = sw_if_index,
@@ -1650,6 +1608,49 @@ wc_arp_set_publisher_node (uword node_index, uword event_type)
   ethernet_arp_main_t *am = &ethernet_arp_main;
   am->wc_ip4_arp_publisher_node = node_index;
   am->wc_ip4_arp_publisher_et = event_type;
+}
+
+static void
+arp_entry_free (ethernet_arp_interface_t * eai, ethernet_arp_ip4_entry_t * e);
+
+static int
+vnet_arp_flush_ip4_over_ethernet_internal (vnet_main_t * vnm,
+					   vnet_arp_set_ip4_over_ethernet_rpc_args_t
+					   * args)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_ip4_entry_t *e;
+  ethernet_arp_interface_t *eai;
+
+  if (vec_len (am->ethernet_arp_by_sw_if_index) <= args->sw_if_index)
+    return 0;
+
+  eai = &am->ethernet_arp_by_sw_if_index[args->sw_if_index];
+
+  e = arp_entry_find (eai, &args->a.ip4);
+
+  if (NULL != e)
+    {
+      adj_nbr_walk_nh4 (e->sw_if_index,
+			&e->ip4_address, arp_mk_incomplete_walk, e);
+
+      /*
+       * The difference between flush and unset, is that an unset
+       * means delete for static and dynamic entries. A flush
+       * means delete only for dynamic. Flushing is what the DP
+       * does in response to interface events. unset is only done
+       * by the control plane.
+       */
+      if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC)
+	{
+	  e->flags &= ~ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
+	}
+      else if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC)
+	{
+	  arp_entry_free (eai, e);
+	}
+    }
+  return (0);
 }
 
 /*
@@ -1698,14 +1699,17 @@ arp_add_del_interface_address (ip4_main_t * im,
 
       for (i = 0; i < vec_len (to_delete); i++)
 	{
-	  ethernet_arp_ip4_over_ethernet_address_t delme;
 	  e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
 
-	  clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
-	  delme.ip4.as_u32 = e->ip4_address.as_u32;
+	  vnet_arp_set_ip4_over_ethernet_rpc_args_t delme = {
+	    .a.ip4.as_u32 = e->ip4_address.as_u32,
+	    .sw_if_index = e->sw_if_index,
+	    .flags = ETHERNET_ARP_ARGS_FLUSH,
+	  };
+	  clib_memcpy (&delme.a.ethernet, e->ethernet_address, 6);
 
-	  vnet_arp_flush_ip4_over_ethernet (vnet_get_main (),
-					    e->sw_if_index, &delme);
+	  vnet_arp_flush_ip4_over_ethernet_internal (vnet_get_main (),
+						     &delme);
 	}
 
       vec_free (to_delete);
@@ -1833,52 +1837,13 @@ vnet_arp_unset_ip4_over_ethernet_internal (vnet_main_t * vnm,
   if (NULL != e)
     {
       adj_nbr_walk_nh4 (e->sw_if_index,
-			&e->ip4_address, arp_mk_incomplete_walk, NULL);
+			&e->ip4_address, arp_mk_incomplete_walk, e);
       arp_entry_free (eai, e);
     }
 
   return 0;
 }
 
-static int
-vnet_arp_flush_ip4_over_ethernet_internal (vnet_main_t * vnm,
-					   vnet_arp_set_ip4_over_ethernet_rpc_args_t
-					   * args)
-{
-  ethernet_arp_main_t *am = &ethernet_arp_main;
-  ethernet_arp_ip4_entry_t *e;
-  ethernet_arp_interface_t *eai;
-
-  if (vec_len (am->ethernet_arp_by_sw_if_index) <= args->sw_if_index)
-    return 0;
-
-  eai = &am->ethernet_arp_by_sw_if_index[args->sw_if_index];
-
-  e = arp_entry_find (eai, &args->a.ip4);
-
-  if (NULL != e)
-    {
-      adj_nbr_walk_nh4 (e->sw_if_index,
-			&e->ip4_address, arp_mk_incomplete_walk, e);
-
-      /*
-       * The difference between flush and unset, is that an unset
-       * means delete for static and dynamic entries. A flush
-       * means delete only for dynamic. Flushing is what the DP
-       * does in response to interface events. unset is only done
-       * by the control plane.
-       */
-      if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC)
-	{
-	  e->flags &= ~ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC;
-	}
-      else if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC)
-	{
-	  arp_entry_free (eai, e);
-	}
-    }
-  return (0);
-}
 
 static int
 vnet_arp_populate_ip4_over_ethernet_internal (vnet_main_t * vnm,
@@ -1930,36 +1895,40 @@ ethernet_arp_sw_interface_up_down (vnet_main_t * vnm,
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_arp_ip4_entry_t *e;
-  u32 i, *to_delete = 0;
+  u32 i, *to_update = 0;
 
   /* *INDENT-OFF* */
   pool_foreach (e, am->ip4_entry_pool,
   ({
     if (e->sw_if_index == sw_if_index)
-      vec_add1 (to_delete,
+      vec_add1 (to_update,
 		e - am->ip4_entry_pool);
   }));
   /* *INDENT-ON* */
 
-  for (i = 0; i < vec_len (to_delete); i++)
+  for (i = 0; i < vec_len (to_update); i++)
     {
-      ethernet_arp_ip4_over_ethernet_address_t delme;
-      e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
+      e = pool_elt_at_index (am->ip4_entry_pool, to_update[i]);
 
-      clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
-      delme.ip4.as_u32 = e->ip4_address.as_u32;
+      vnet_arp_set_ip4_over_ethernet_rpc_args_t update_me = {
+	.a.ip4.as_u32 = e->ip4_address.as_u32,
+	.sw_if_index = e->sw_if_index,
+      };
+
+      clib_memcpy (&update_me.a.ethernet, e->ethernet_address, 6);
 
       if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
 	{
-	  vnet_arp_populate_ip4_over_ethernet (vnm, e->sw_if_index, &delme);
+	  update_me.flags = ETHERNET_ARP_ARGS_POPULATE;
+	  vnet_arp_populate_ip4_over_ethernet_internal (vnm, &update_me);
 	}
       else
 	{
-	  vnet_arp_flush_ip4_over_ethernet (vnm, e->sw_if_index, &delme);
+	  update_me.flags = ETHERNET_ARP_ARGS_FLUSH;
+	  vnet_arp_flush_ip4_over_ethernet_internal (vnm, &update_me);
 	}
-
     }
-  vec_free (to_delete);
+  vec_free (to_update);
 
   return 0;
 }
@@ -1991,10 +1960,10 @@ increment_ip4_and_mac_address (ethernet_arp_ip4_over_ethernet_address_t * a)
 
 int
 vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
-				u32 sw_if_index, void *a_arg,
-				int is_static, int is_no_fib_entry)
+				u32 sw_if_index,
+				const ethernet_arp_ip4_over_ethernet_address_t
+				* a, int is_static, int is_no_fib_entry)
 {
-  ethernet_arp_ip4_over_ethernet_address_t *a = a_arg;
   vnet_arp_set_ip4_over_ethernet_rpc_args_t args;
 
   args.sw_if_index = sw_if_index;
