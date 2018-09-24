@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "266689bc_1cbfd9ba",
+        "filename": "src/vnet/bonding/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-09-24T21:00:00Z",
+      "side": 1,
+      "message": "b0, b1, b2, and b3 no longer exist.",
+      "range": {
+        "startLine": 469,
+        "startChar": 6,
+        "endLine": 469,
+        "endChar": 39
+      },
+      "revId": "a9acb4d207eca4d188a5f607ab440ee8fbac46d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
