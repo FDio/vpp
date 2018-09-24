@@ -663,6 +663,8 @@ static void
       rv = set_int_l2_mode (vm, vnm, MODE_L3, rx_sw_if_index, 0, 0, 0, 0);
     }
 
+  rv = (rv != 0) ? VNET_API_ERROR_INVALID_VALUE : rv;
+
   BAD_RX_SW_IF_INDEX_LABEL;
   BAD_TX_SW_IF_INDEX_LABEL;
 
@@ -697,6 +699,8 @@ static void
     {
       rv = set_int_l2_mode (vm, vnm, MODE_L3, rx_sw_if_index, 0, 0, 0, 0);
     }
+
+  rv = (rv != 0) ? VNET_API_ERROR_INVALID_VALUE : rv;
 
   BAD_RX_SW_IF_INDEX_LABEL;
   BAD_BD_ID_LABEL;
