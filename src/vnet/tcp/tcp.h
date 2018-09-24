@@ -32,7 +32,7 @@
 #define TCP_MAX_OPTION_SPACE 40
 
 #define TCP_DUPACK_THRESHOLD 	3
-#define TCP_MAX_RX_FIFO_SIZE 	4 << 20
+#define TCP_MAX_RX_FIFO_SIZE 	32 << 20
 #define TCP_MIN_RX_FIFO_SIZE	4 << 10
 #define TCP_IW_N_SEGMENTS 	10
 #define TCP_ALWAYS_ACK		1	/**< On/off delayed acks */
@@ -408,8 +408,19 @@ typedef struct _tcp_main
   /* Congestion control algorithms registered */
   tcp_cc_algorithm_t *cc_algos;
 
+  /** vlib buffer size */
+  u32 bytes_per_buffer;
+
+  /*
+   * Configuration
+   */
+
   /* Flag that indicates if stack is on or off */
   u8 is_enabled;
+
+  /** Max rx fifo size for a session. It is used in to compute the
+   *  rfc 7323 window scaling factor */
+  u32 max_rx_fifo;
 
   /** Number of preallocated connections */
   u32 preallocated_connections;
@@ -420,9 +431,6 @@ typedef struct _tcp_main
   u32 last_v4_address_rotor;
   u32 last_v6_address_rotor;
   ip6_address_t *ip6_src_addresses;
-
-  /** vlib buffer size */
-  u32 bytes_per_buffer;
 
   u8 punt_unknown4;
   u8 punt_unknown6;
