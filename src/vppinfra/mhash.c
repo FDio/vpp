@@ -263,7 +263,7 @@ typedef struct
 {
   u32 heap_handle;
 
-  /* Must conincide with vec_header. */
+  /* Must coincide with vec_header. */
   vec_header_t vec;
 } mhash_string_key_t;
 

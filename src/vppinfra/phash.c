@@ -556,7 +556,7 @@ augment (phash_main_t * pm, u32 b_root, u32 high_water)
 
 	  /* tb_parent with v has either one or zero collisions. */
 
-	  /* add childb to the queue of reachable things */
+	  /* add child b to the queue of reachable things */
 	  if (tb_child)
 	    tb_child->water_b = high_water;
 	  pm->tabq[tail].b_q = tb_child ? tb_child - pm->tabb : ~0;

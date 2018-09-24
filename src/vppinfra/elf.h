@@ -120,7 +120,7 @@
   _ (68HC12, 53)		/* Motorola M68HC12 */			\
   _ (MMA, 54)			/* Fujitsu MMA Multimedia Accel. */	\
   _ (PCP, 55)			/* Siemens PCP */			\
-  _ (NCPU, 56)			/* Sony nCPU embeeded RISC */		\
+  _ (NCPU, 56)			/* Sony nCPU embedded RISC */		\
   _ (NDR1, 57)			/* Denso NDR1 microprocessor */		\
   _ (STARCORE, 58)		/* Motorola Start*Core processor */	\
   _ (ME16, 59)			/* Toyota ME16 processor */		\

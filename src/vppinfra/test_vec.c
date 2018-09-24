@@ -124,7 +124,7 @@ uword g_call_stats[OP_MAX];
 
 
 /* A structure for both vector headers and vector elements might be useful to
-   uncover potential alignement issues. */
+   uncover potential alignment issues. */
 
 typedef struct
 {

@@ -736,7 +736,7 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
 
     /*
      * Move the earlier set of events later, to avoid creating
-     * events which preceed the Big Bang (aka have negative timestamps).
+     * events which precede the Big Bang (aka have negative timestamps).
      *
      * Not to any scale, we have something like the following picture:
      *

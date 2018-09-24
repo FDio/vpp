@@ -137,7 +137,7 @@ typedef struct
 
   format_function_t *format_elt;
 
-  /* Used for validattion/debugging. */
+  /* Used for validation/debugging. */
   uword *used_elt_bitmap;
 
   /* First and last element of doubly linked chain of elements. */
@@ -150,7 +150,7 @@ typedef struct
 
   u32 flags;
   /* Static heaps are made from external memory given to
-     us by user and are not re-sizeable vectors. */
+     us by user and are not re-sizable vectors. */
 #define HEAP_IS_STATIC (1)
 } heap_header_t;
 

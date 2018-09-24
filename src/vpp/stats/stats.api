@@ -177,7 +177,7 @@ autoreply define want_ip6_fib_stats
   u32 pid;
 };
 
-/** \brief Want IP4 muilticast FIB Stats, register for continuous stats
+/** \brief Want IP4 multicast FIB Stats, register for continuous stats
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable_disable - 1 = enable stats, 0 = disable
@@ -273,7 +273,7 @@ typeonly manual_print manual_endian define ip4_nbr_counter
 };
 
 /**
- * @brief Per-neighbour (i.e. per-adjacency) coutners
+ * @brief Per-neighbour (i.e. per-adjacency) counters
  * @param count The size of the array of counters
  * @param sw_if_index The interface the adjacency is on
  * @param begin Flag to indicate this is the first set of stats for this
@@ -494,7 +494,7 @@ autoreply define want_bier_neighbor_stats
 
 /** \brief Stat for one BIER neighbor object
     @param tbl_id - The BIER Table ID the neighbour belongs to.
-    @param path - The path describing the negihbor (this is the data
+    @param path - The path describing the neighbor (this is the data
                   given during a BIER route add)
     @param packets - number of packets sent
     @param bytes - number of bytes sent

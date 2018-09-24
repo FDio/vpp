@@ -102,7 +102,7 @@ show_vpe_version_command_fn (vlib_main_t * vm,
 }
 
 /*?
- * This commmand displays image version and command line arguments
+ * This command displays image version and command line arguments
  *
  * @cliexpar
  * How to display the image version string:

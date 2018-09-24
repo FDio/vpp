@@ -274,7 +274,7 @@ uword hash_bytes (void *v);
 /* Public macro to set (key, value) for pointer key */
 #define hash_set_mem(h,key,value) hash_set3 (h, pointer_to_uword (key), (value), 0)
 
-/* Public inline funcion allocate and copy key to use in hash for pointer key */
+/* Public inline function allocate and copy key to use in hash for pointer key */
 always_inline void
 hash_set_mem_alloc (uword ** h, void *key, uword v)
 {
@@ -290,7 +290,7 @@ hash_set_mem_alloc (uword ** h, void *key, uword v)
 /* Public macro to unset (key, value) for pointer key */
 #define hash_unset_mem(h,key)    ((h) = _hash_unset ((h), pointer_to_uword (key),0))
 
-/* Public inline funcion to unset pointer key and then free the key memory */
+/* Public inline function to unset pointer key and then free the key memory */
 always_inline void
 hash_unset_mem_free (uword ** h, void *key)
 {
@@ -311,7 +311,7 @@ extern void *_hash_free (void *v);
 
 clib_error_t *hash_validate (void *v);
 
-/* Public inline funcion to get the number of value bytes for a hash table */
+/* Public inline function to get the number of value bytes for a hash table */
 always_inline uword
 hash_value_bytes (hash_t * h)
 {
@@ -319,7 +319,7 @@ hash_value_bytes (hash_t * h)
   return (sizeof (p->value[0]) << h->log2_pair_size) - sizeof (p->key);
 }
 
-/* Public inline funcion to get log2(size of a (key,value) pair) */
+/* Public inline function to get log2(size of a (key,value) pair) */
 always_inline uword
 hash_pair_log2_bytes (hash_t * h)
 {
@@ -332,21 +332,21 @@ hash_pair_log2_bytes (hash_t * h)
   return log2_bytes;
 }
 
-/* Public inline funcion to get size of a (key,value) pair */
+/* Public inline function to get size of a (key,value) pair */
 always_inline uword
 hash_pair_bytes (hash_t * h)
 {
   return (uword) 1 << hash_pair_log2_bytes (h);
 }
 
-/* Public inline funcion to advance a pointer past one (key,value) pair */
+/* Public inline function to advance a pointer past one (key,value) pair */
 always_inline void *
 hash_forward1 (hash_t * h, void *v)
 {
   return (u8 *) v + hash_pair_bytes (h);
 }
 
-/* Public inline funcion to advance a pointer past N (key,value) pairs */
+/* Public inline function to advance a pointer past N (key,value) pairs */
 always_inline void *
 hash_forward (hash_t * h, void *v, uword n)
 {
@@ -438,7 +438,7 @@ do {                                                                        \
 
     calls body with each active hash pair
 */
-/* Iteratate over key/value pairs. */
+/* Iterate over key/value pairs. */
 #define hash_foreach(key_var,value_var,h,body)			\
 do {								\
   hash_pair_t * _r;						\

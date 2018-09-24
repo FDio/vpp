@@ -101,9 +101,9 @@ typedef struct
   u64 file_size_in_bytes;	/**< file size in bytes */
   u32 record_size_in_bytes;	/**< record size in bytes */
   u32 application_id;		/**< application identifier */
-  u8 application_major_version;	/**< applcation major version number */
-  u8 application_minor_version;	/**< applcation minor version number */
-  u8 application_patch_version;	/**< applcation patch version number */
+  u8 application_major_version;	/**< application major version number */
+  u8 application_minor_version;	/**< application minor version number */
+  u8 application_patch_version;	/**< application patch version number */
   u8 maplog_is_circular;	/**< single, circular log */
 } clib_maplog_init_args_t;
 

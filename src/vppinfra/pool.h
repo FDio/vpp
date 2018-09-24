@@ -493,7 +493,7 @@ do {									\
     }
 
 /**
- * @brief Remove all elemenets from a pool in a safe way
+ * @brief Remove all elements from a pool in a safe way
  *
  * @param VAR each element in the pool
  * @param POOL The pool to flush
