@@ -32,11 +32,7 @@ In the vpp root directory on your system, run:
 
 .. code-block:: console
 
-   $ python -m pip install --user virtualenv 
-   $ python -m virtualenv env
-   $ source env/bin/activate
-   $ pip install -r docs/etc/requirements.txt
-   $ cd docs
+   $ make docs-venv
 
 Which installs all the required applications into it's own, isolated, virtual environment, so as to not
 interfere with other builds that may use different versions of software.
@@ -44,12 +40,20 @@ interfere with other builds that may use different versions of software.
 Build the html files
 ======================
 
-Be sure you are in your vpp-docs/docs directory, since that is where Sphinx will look for your **conf.py**
-file, and build the **.rst** files into an **index.html** file: 
+Build the html **index.html** file: 
 
 .. code-block:: console
 
-   $ make html
+   $ make docs
+
+Clean the environment
+======================
+
+Delete all the generated files with the following:
+
+.. code-block:: console
+
+   $ make docs-clean
 
 View the results
 =================
