@@ -56,6 +56,8 @@
 #include "vom/arp_proxy_binding.hpp"
 #include "vom/arp_proxy_config_cmds.hpp"
 #include "vom/arp_proxy_binding_cmds.hpp"
+#include "vom/ip_punt_redirect.hpp"
+#include "vom/ip_punt_redirect_cmds.hpp"
 #include "vom/ip_unnumbered.hpp"
 #include "vom/ip_unnumbered_cmds.hpp"
 #include "vom/interface_ip6_nd.hpp"
@@ -376,6 +378,14 @@ public:
                     else if (typeid(*f_exp) == typeid(arp_proxy_config_cmds::unconfig_cmd))
                     {
                         rc = handle_derived<arp_proxy_config_cmds::unconfig_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(ip_punt_redirect_cmds::config_cmd))
+                    {
+                        rc = handle_derived<ip_punt_redirect_cmds::config_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(ip_punt_redirect_cmds::unconfig_cmd))
+                    {
+                        rc = handle_derived<ip_punt_redirect_cmds::unconfig_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(ip_unnumbered_cmds::config_cmd))
                     {
@@ -1327,6 +1337,58 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
     ADD_EXPECT(arp_proxy_config_cmds::unconfig_cmd(hw_ap_cfg, low, high));
 
     TRY_CHECK(OM::remove(kurt));
+}
+
+BOOST_AUTO_TEST_CASE(test_ip_punt_redirect) {
+    VppInit vi;
+    const std::string eliot = "EliotReed";
+    rc_t rc = rc_t::OK;
+
+    /*
+     * Interface 1 is the tx interface
+     */
+    std::string itf1_name = "tx-itf";
+    interface itf1(itf1_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+    HW::item<handle_t> hw_ifh(2, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
+    TRY_CHECK_RC(OM::write(eliot, itf1));
+
+    boost::asio::ip::address addr = boost::asio::ip::address::from_string("192.168.0.20");
+
+    /*
+     * Interface 2 is the rx interface
+     */
+    std::string itf2_name = "rx-itf";
+    interface itf2(itf2_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+
+    HW::item<handle_t> hw_ifh2(4, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
+    TRY_CHECK_RC(OM::write(eliot, itf2));
+
+    ip_punt_redirect *ip_punt = new ip_punt_redirect(itf2, itf1, addr);
+    HW::item<bool> hw_ip_cfg(true, rc_t::OK);
+    HW::item<bool> hw_ip_uncfg(false, rc_t::OK);
+    ADD_EXPECT(ip_punt_redirect_cmds::config_cmd(hw_ip_cfg, hw_ifh2.data(), hw_ifh.data(), addr));
+    TRY_CHECK_RC(OM::write(eliot, *ip_punt));
+
+    delete ip_punt;
+
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
+    STRICT_ORDER_OFF();
+    ADD_EXPECT(ip_punt_redirect_cmds::unconfig_cmd(hw_ip_uncfg, hw_ifh2.data(), hw_ifh.data(), addr));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
+
+    TRY_CHECK(OM::remove(eliot));
 }
 
 BOOST_AUTO_TEST_CASE(test_ip_unnumbered) {
