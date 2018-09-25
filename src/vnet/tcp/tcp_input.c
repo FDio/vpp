@@ -1441,7 +1441,7 @@ partial_ack:
    */
 
   /* XXX limit this only to first partial ack? */
-  tcp_retransmit_timer_force_update (tc);
+  tcp_retransmit_timer_update (tc);
 
   /* RFC6675: If the incoming ACK is a cumulative acknowledgment,
    * reset dupacks to 0. Also needed if in congestion recovery */
@@ -2459,6 +2459,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto drop;
 	    }
 
+	  new_tc0->tx_fifo_size =
+	    transport_tx_fifo_size (&new_tc0->connection);
 	  /* Update rtt with the syn-ack sample */
 	  tcp_estimate_initial_rtt (new_tc0);
 	  TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, new_tc0);
@@ -2478,8 +2480,10 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto drop;
 	    }
 
-	  tc0->rtt_ts = 0;
-	  tcp_init_snd_vars (tc0);
+	  new_tc0->tx_fifo_size =
+	    transport_tx_fifo_size (&new_tc0->connection);
+	  new_tc0->rtt_ts = 0;
+	  tcp_init_snd_vars (new_tc0);
 	  tcp_send_synack (new_tc0);
 	  error0 = TCP_ERROR_SYNS_RCVD;
 	  goto drop;
@@ -3090,6 +3094,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
+      child0->tx_fifo_size = transport_tx_fifo_size (&child0->connection);
       tcp_send_synack (child0);
       tcp_timer_set (child0, TCP_TIMER_ESTABLISH, TCP_SYN_RCVD_TIME);
 
