@@ -1,0 +1,30 @@
+From b47596e5d3db40b967b4d67207bb2d87db214f2e Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Tue, 25 Sep 2018 10:02:58 +0200
+Subject: [PATCH] net/i40e: fix 25G AOC and ACC cable detection on XXV710
+
+Fixes: 75d133dd3296 ("net/i40e: enable 25G device")
+Cc: stable@dpdk.org
+
+Signed-off-by: Damjan Marion <damarion@cisco.com>
+---
+ drivers/net/i40e/i40e_ethdev.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/i40e/i40e_ethdev.h b/drivers/net/i40e/i40e_ethdev.h
+index 3fffe5a55..b876933e5 100644
+--- a/drivers/net/i40e/i40e_ethdev.h
++++ b/drivers/net/i40e/i40e_ethdev.h
+@@ -1393,6 +1393,8 @@ i40e_calc_itr_interval(bool is_pf, bool is_multi_drv)
+ 	(((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_KR) || \
+ 	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_CR) || \
+ 	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_SR) || \
+-	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_LR))
++	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_LR) || \
++	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_AOC) || \
++	((phy_type) & I40E_CAP_PHY_TYPE_25GBASE_ACC))
+ 
+ #endif /* _I40E_ETHDEV_H_ */
+-- 
+2.17.1
+
