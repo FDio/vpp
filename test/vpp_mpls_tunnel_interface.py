@@ -33,9 +33,12 @@ class VppMPLSTunnelInterface(VppInterface):
                 l2_only=self.is_l2)
             sw_if_index = reply.sw_if_index
         self.set_sw_if_index(sw_if_index)
+        self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         for path in self.t_paths:
+            lstack = path.encode_labels()
+
             self.test.vapi.mpls_tunnel_add_del(
                 self.sw_if_index,
                 1,  # IPv4 next-hop
@@ -44,6 +47,19 @@ class VppMPLSTunnelInterface(VppInterface):
                 path.nh_table_id,
                 path.weight,
                 next_hop_via_label=path.nh_via_label,
-                next_hop_out_label_stack=path.nh_labels,
-                next_hop_n_out_labels=len(path.nh_labels),
+                next_hop_out_label_stack=lstack,
+                next_hop_n_out_labels=len(lstack),
                 is_add=0)
+
+    def query_vpp_config(self):
+        dump = self._test.vapi.mpls_tunnel_dump()
+        for t in dump:
+            if self.sw_if_index == t.mt_sw_if_index:
+                return True
+        return False
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return ("mpls-tunnel%d" % self.sw_if_index)

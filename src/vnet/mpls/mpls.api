@@ -88,7 +88,7 @@ define mpls_tunnel_dump
 manual_endian manual_print define mpls_tunnel_details
 {
   u32 context;
-  u8 mt_sw_if_index;
+  u32 mt_sw_if_index;
   u8 mt_tunnel_index;
   u8 mt_l2_only;
   u8 mt_is_multicast;
