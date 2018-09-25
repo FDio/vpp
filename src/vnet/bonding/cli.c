@@ -176,6 +176,9 @@ bond_delete_neighbor (vlib_main_t * vm, bond_if_t * bif, slave_if_t * sif)
 
   bond_disable_collecting_distributing (vm, sif);
 
+  vnet_feature_enable_disable ("device-input", "bond-input",
+			       sif_hw->hw_if_index, 0, 0, 0);
+
   /* Put back the old mac */
   vnet_hw_interface_change_mac_address (vnm, sif_hw->hw_if_index,
 					sif->persistent_hw_address);
