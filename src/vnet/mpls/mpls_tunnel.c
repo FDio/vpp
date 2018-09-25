@@ -165,9 +165,12 @@ mpls_tunnel_mk_lb (mpls_tunnel_t *mt,
 
     lb_proto = fib_forw_chain_type_to_dpo_proto(fct);
 
-    fib_path_list_walk(mt->mt_path_list,
-                       mpls_tunnel_collect_forwarding,
-                       &ctx);
+    if (FIB_NODE_INDEX_INVALID != mt->mt_path_list)
+    {
+        fib_path_list_walk(mt->mt_path_list,
+                           mpls_tunnel_collect_forwarding,
+                           &ctx);
+    }
 
     if (!dpo_id_is_valid(dpo_lb))
     {

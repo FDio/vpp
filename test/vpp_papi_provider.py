@@ -1345,6 +1345,9 @@ class VppPapiProvider(object):
              'mt_next_hop_via_label': next_hop_via_label,
              'mt_next_hop_out_label_stack': next_hop_out_label_stack})
 
+    def mpls_tunnel_dump(self):
+        return self.api(self.papi.mpls_tunnel_dump, {})
+
     def nat44_interface_add_del_feature(
             self,
             sw_if_index,
