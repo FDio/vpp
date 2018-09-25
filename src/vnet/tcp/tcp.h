@@ -30,6 +30,7 @@
 #define TCP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
 #define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
+#define TCP_CC_DATA_SZ 24
 
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_MAX_RX_FIFO_SIZE 	4 << 20
@@ -246,6 +247,7 @@ u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 typedef enum _tcp_cc_algorithm_type
 {
   TCP_CC_NEWRENO,
+  TCP_CC_CUBIC,
 } tcp_cc_algorithm_type_e;
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
@@ -311,6 +313,7 @@ typedef struct _tcp_connection
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   u32 snd_congestion;	/**< snd_una_max when congestion is detected */
   tcp_cc_algorithm_t *cc_algo;	/**< Congestion control algorithm */
+  u8 cc_data[TCP_CC_DATA_SZ];	/**< Congestion control algo private data */
 
   /* RTT and RTO */
   u32 rto;		/**< Retransmission timeout */
@@ -603,6 +606,19 @@ tcp_initial_cwnd (const tcp_connection_t * tc)
     return 4 * tc->snd_mss;
 }
 
+always_inline void
+tcp_cwnd_accumulate (const tcp_connection_t *tc, u32 bytes)
+{
+  tc->cwnd_acc_bytes += bytes;
+  if (tc->cwnd_acc_bytes >= tc->cwnd)
+    {
+      u32 inc = tc->cwnd_acc_bytes / tc->cwnd;
+      tc->cwnd_acc_bytes -= inc * tc->cwnd;
+      tc->cwnd += inc * tc->snd_mss;
+    }
+  tc->cwnd = clib_min (tc->cwnd, transport_tx_fifo_size (&tc->connection));
+}
+
 always_inline u32
 tcp_loss_wnd (const tcp_connection_t * tc)
 {
@@ -656,6 +672,12 @@ void tcp_fast_retransmit_sack (tcp_connection_t * tc);
 void tcp_fast_retransmit (tcp_connection_t * tc);
 void tcp_cc_init_congestion (tcp_connection_t * tc);
 void tcp_cc_fastrecovery_exit (tcp_connection_t * tc);
+
+static inline void *
+tcp_cc_data (tcp_connection_t *tc)
+{
+  return (void *)tc->cc_data;
+}
 
 fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 
