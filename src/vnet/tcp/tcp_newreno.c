@@ -44,8 +44,7 @@ newreno_rcv_ack (tcp_connection_t * tc)
 	  tc->cwnd_acc_bytes -= inc * tc->cwnd;
 	  tc->cwnd += inc * tc->snd_mss;
 	}
-      tc->cwnd = clib_min (tc->cwnd,
-			   transport_tx_fifo_size (&tc->connection));
+      tc->cwnd = clib_min (tc->cwnd, tc->tx_fifo_size);
     }
 }
 
