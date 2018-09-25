@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "e6cd365b_09af4edb",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-09-25T05:48:22Z",
+      "side": 1,
+      "message": "Yes chip specific suffix should be avoided, otherwise we will end up defining macros for every chip",
+      "parentUuid": "3487e5b1_09c57033",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 26
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2edc81fe_505e3a6a",
         "filename": "src/cmake/cpu.cmake",
         "patchSetId": 2
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "We do not need to decouple them. This is supposed to be all the flags required for that particular machine.",
       "parentUuid": "2edc81fe_505e3a6a",
+      "range": {
+        "startLine": 80,
+        "startChar": 25,
+        "endLine": 80,
+        "endChar": 72
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bdbb32c4_4ef2817e",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-09-25T05:48:22Z",
+      "side": 1,
+      "message": "With gcc-5 -march\u003darmv8.1-a+crc+crypto can be used but not -mtune\u003dthunderx2t99 hence it has to be decoupled",
+      "parentUuid": "0a0db827_faeb03a6",
       "range": {
         "startLine": 80,
         "startChar": 25,
