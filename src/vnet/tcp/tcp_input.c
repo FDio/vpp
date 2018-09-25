@@ -1084,9 +1084,17 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tcp_fastrecovery_1_smss_off (tc);
   tcp_fastrecovery_first_off (tc);
 
-  /* Update pacer because our cwnd changed. Also makes sure
-   * that we recompute the max burst size */
-  tcp_update_pacer (tc);
+  if (transport_connection_is_tx_paced (&tc->connection))
+    {
+      /* Update pacer because our cwnd changed. Also makes sure
+       * that we recompute the max burst size */
+      tcp_update_pacer (tc);
+    }
+  else
+    {
+      /* Force slow start otherwise */
+      tc->cwnd = 20 * tc->snd_mss;
+    }
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
