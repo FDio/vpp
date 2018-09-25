@@ -112,6 +112,8 @@ list(APPEND VOM_SOURCES
   interface_span_cmds.cpp
   interface_span.cpp
   interface_types.cpp
+  ip_punt_redirect_cmds.cpp
+  ip_punt_redirect.cpp
   ip_unnumbered_cmds.cpp
   ip_unnumbered.cpp
   l2_binding_cmds.cpp
@@ -202,6 +204,7 @@ list(APPEND VOM_HEADERS
   interface_cmds.hpp
   interface_ip6_nd.hpp
   interface_span.hpp
+  ip_punt_redirect.hpp
   ip_unnumbered.hpp
   l2_binding.hpp
   l2_xconnect.hpp
