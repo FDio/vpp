@@ -27,6 +27,11 @@
 #include <vnet/ip/ip6_packet.h>
 
 /**
+ * Special Value of the BIER RX interface
+ */
+#define BIER_RX_ITF (~0 - 1)
+
+/**
  * Mask and shift values for the fields incorporated
  * into the header's first word
  */
