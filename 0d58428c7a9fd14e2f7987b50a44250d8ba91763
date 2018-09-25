@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3487e5b1_09c57033",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-09-25T04:52:15Z",
+      "side": 1,
+      "message": "We do not need these definitions. The constants can be used directly in lines 76-91",
+      "parentUuid": "85739d51_11fc8983",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 26
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2edc81fe_505e3a6a",
         "filename": "src/cmake/cpu.cmake",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-09-24T13:44:50Z",
       "side": 1,
       "message": "Please decouple -march with -mtune? Check them separately as for ThunderX2 and Qualcom default -march value should be \"arm8.1-a+crc_crypto\" (provided gcc supports it)",
+      "range": {
+        "startLine": 80,
+        "startChar": 25,
+        "endLine": 80,
+        "endChar": 72
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a0db827_faeb03a6",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2018-09-25T04:52:15Z",
+      "side": 1,
+      "message": "We do not need to decouple them. This is supposed to be all the flags required for that particular machine.",
+      "parentUuid": "2edc81fe_505e3a6a",
       "range": {
         "startLine": 80,
         "startChar": 25,
