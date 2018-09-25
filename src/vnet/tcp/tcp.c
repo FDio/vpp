@@ -507,7 +507,7 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
 static void
 tcp_cc_init (tcp_connection_t * tc)
 {
-  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
   tc->cc_algo->init (tc);
 }
 
@@ -1063,6 +1063,12 @@ tcp_snd_space (tcp_connection_t * tc)
     }
 
   return 0;
+}
+
+u32
+tcp_snd_space_dbg (tcp_connection_t *tc)
+{
+  return tcp_snd_space (tc);
 }
 
 static u32
