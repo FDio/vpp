@@ -68,7 +68,7 @@ bier_imp_add_or_lock (const bier_table_id_t *bti,
     pool_get_aligned(bier_imp_pool, bi, CLIB_CACHE_LINE_BYTES);
 
     bi->bi_tbl = *bti;
-    btii = bier_table_add_or_lock(bti, MPLS_LABEL_INVALID);
+    btii = bier_table_lock(bti);
 
     /*
      * init the BIER header we will paint on in the data plane

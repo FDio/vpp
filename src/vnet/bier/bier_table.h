@@ -91,6 +91,7 @@ STATIC_ASSERT((sizeof(bier_table_t) <= 2*CLIB_CACHE_LINE_BYTES),
 
 extern index_t bier_table_add_or_lock(const bier_table_id_t *id,
                                       mpls_label_t ll);
+extern index_t bier_table_lock(const bier_table_id_t *id);
 extern void bier_table_unlock(const bier_table_id_t *id);
 
 extern void bier_table_route_path_add(const bier_table_id_t *bti,
