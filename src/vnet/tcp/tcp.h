@@ -246,6 +246,7 @@ u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 typedef enum _tcp_cc_algorithm_type
 {
   TCP_CC_NEWRENO,
+  TCP_CC_CUBIC,
 } tcp_cc_algorithm_type_e;
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
@@ -601,6 +602,19 @@ tcp_initial_cwnd (const tcp_connection_t * tc)
     return 3 * tc->snd_mss;
   else
     return 4 * tc->snd_mss;
+}
+
+always_inline void
+tcp_cwnd_accumulate (const tcp_connection_t *tc, u32 bytes)
+{
+  tc->cwnd_acc_bytes += bytes;
+  if (tc->cwnd_acc_bytes >= tc->cwnd)
+    {
+      u32 inc = tc->cwnd_acc_bytes / tc->cwnd;
+      tc->cwnd_acc_bytes -= inc * tc->cwnd;
+      tc->cwnd += inc * tc->snd_mss;
+    }
+  tc->cwnd = clib_min (tc->cwnd, transport_tx_fifo_size (&tc->connection));
 }
 
 always_inline u32
