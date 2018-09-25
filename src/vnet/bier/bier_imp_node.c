@@ -120,30 +120,39 @@ bier_imp_dpo_inline (vlib_main_t * vm,
             vlib_buffer_advance(b0, -(sizeof(bier_hdr_t) +
                                       bier_hdr_len_id_to_num_bytes(bimp0->bi_tbl.bti_hdr_len)));
             hdr0 = vlib_buffer_get_current(b0);
-            clib_memcpy(hdr0, &bimp0->bi_hdr,
-                        (sizeof(bier_hdr_t) +
-                         bier_hdr_len_id_to_num_bytes(bimp0->bi_tbl.bti_hdr_len)));
-            /*
-             * Fixup the entropy and protocol, both of which have a
-             * zero value post the paint job
-             */
-            hdr0->bh_oam_dscp_proto |=
-                clib_host_to_net_u16(bproto << BIER_HDR_PROTO_FIELD_SHIFT);
-            hdr0->bh_first_word |=
-                clib_host_to_net_u32((vnet_buffer(b0)->ip.flow_hash &
-                                      BIER_HDR_ENTROPY_FIELD_MASK) <<
-                                     BIER_HDR_ENTROPY_FIELD_SHIFT);
 
-            /*
-             * use TTL 64 for the post enacp MPLS label/BIFT-ID
-             * this we be decremeted in bier_output node.
-             */
-            vnet_buffer(b0)->mpls.ttl = 65;
+            /* RPF check */
+            if (PREDICT_FALSE(BIER_RX_ITF == vnet_buffer(b0)->ip.adj_index[VLIB_RX]))
+            {
+                next0 = 0;
+            }
+            else
+            {
+                clib_memcpy(hdr0, &bimp0->bi_hdr,
+                            (sizeof(bier_hdr_t) +
+                             bier_hdr_len_id_to_num_bytes(bimp0->bi_tbl.bti_hdr_len)));
+                /*
+                 * Fixup the entropy and protocol, both of which have a
+                 * zero value post the paint job
+                 */
+                hdr0->bh_oam_dscp_proto |=
+                    clib_host_to_net_u16(bproto << BIER_HDR_PROTO_FIELD_SHIFT);
+                hdr0->bh_first_word |=
+                    clib_host_to_net_u32((vnet_buffer(b0)->ip.flow_hash &
+                                          BIER_HDR_ENTROPY_FIELD_MASK) <<
+                                         BIER_HDR_ENTROPY_FIELD_SHIFT);
 
-            /* next node */
-            next0 = bimp0->bi_dpo[fproto].dpoi_next_node;
-            vnet_buffer(b0)->ip.adj_index[VLIB_TX] =
-                bimp0->bi_dpo[fproto].dpoi_index;
+                /*
+                 * use TTL 64 for the post enacp MPLS label/BIFT-ID
+                 * this we be decremeted in bier_output node.
+                 */
+                vnet_buffer(b0)->mpls.ttl = 65;
+
+                /* next node */
+                next0 = bimp0->bi_dpo[fproto].dpoi_next_node;
+                vnet_buffer(b0)->ip.adj_index[VLIB_TX] =
+                    bimp0->bi_dpo[fproto].dpoi_index;
+            }
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -194,7 +203,7 @@ VLIB_REGISTER_NODE (bier_imp_ip4_node) = {
     .format_trace = format_bier_imp_trace,
     .n_next_nodes = 1,
     .next_nodes = {
-        [0] = "error-drop",
+        [0] = "bier-drop",
     }
 };
 VLIB_NODE_FUNCTION_MULTIARCH (bier_imp_ip4_node, bier_imp_ip4)
