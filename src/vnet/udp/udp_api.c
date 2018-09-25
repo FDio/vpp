@@ -121,6 +121,7 @@ vl_api_udp_encap_add_t_handler (vl_api_udp_encap_add_t * mp, vlib_main_t * vm)
   index_t uei;
   int rv = 0;
 
+  uei = INDEX_INVALID;
   table_id = ntohl (mp->udp_encap.table_id);
 
   itype = ip_address_decode (&mp->udp_encap.src_ip, &src_ip);
