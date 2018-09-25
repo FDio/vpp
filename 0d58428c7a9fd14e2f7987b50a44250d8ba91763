@@ -188,6 +188,29 @@
       "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0009283e_8cdf4e73",
+        "filename": "src/vppinfra/cpu.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-25T08:27:59Z",
+      "side": 1,
+      "message": "Please use VPP way of doing this :)\nSee clock_frequency_from_proc_filesystem(), it does something similar.",
+      "range": {
+        "startLine": 190,
+        "startChar": 0,
+        "endLine": 206,
+        "endChar": 14
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
