@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "0f6e36db_41dfb78b",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 582,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-25T07:24:52Z",
+      "side": 1,
+      "message": "i\u0027m not exactly thrilled by the name \"NORMAL\u0027 but i do always advocate for the use of an enum instead of a number. enums are much more expressive to the reader.\ne.g.\n foo (TYPE_BVI, MODE_FAST, STATE_UP)\nis much more expressive than,\n foo (0, 0, 1)",
+      "parentUuid": "5480bf6c_1f6fa654",
+      "range": {
+        "startLine": 582,
+        "startChar": 9,
+        "endLine": 582,
+        "endChar": 31
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6bdecbca_b4d3ca27",
         "filename": "src/vnet/l2/l2_bd.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-09-06T20:37:00Z",
       "side": 1,
       "message": "We ideally should not have separate UU-flood and UU-fwd columns simultaneously since they are mutually exclusive.  What about just display an UU-forward column (with %\u003d11s format) whose value would be one of \"drop\", \"flood\" or uu-fwd interface name?",
+      "range": {
+        "startLine": 1008,
+        "startChar": 49,
+        "endLine": 1008,
+        "endChar": 50
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e328d842_e5f79821",
+        "filename": "src/vnet/l2/l2_bd.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1008,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-25T07:24:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6bdecbca_b4d3ca27",
       "range": {
         "startLine": 1008,
         "startChar": 49,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "b38178c7_17abb6d9",
+        "filename": "src/vnet/l2/l2_bd.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1042,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-25T07:24:52Z",
+      "side": 1,
+      "message": "00:17:55,730   BD-ID   Index   BSN  Age(min)  Learning  U-Forwrd   UU-Flood   Flooding  ARP-Term   BVI-Intf \n    1       1      0     off        on        on        pg8         on       off        N/A    \n\n           Interface           If-idx ISN  SHG  BVI  TxFlood        VLAN-Tag-Rewrite       \n              pg0                1     1    0    -      *                 none             \n              pg1                2     1    0    -      *                 none             \n              pg2                3     1    0    -      *                 none             \n              pg3                4     1    0    -      *                 none             \n              pg8                9     0    0    uu     -                 None",
+      "parentUuid": "fc63f647_8a677d99",
+      "range": {
+        "startLine": 1042,
+        "startChar": 7,
+        "endLine": 1042,
+        "endChar": 24
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "610c1275_de40b7ff",
         "filename": "src/vnet/l2/l2_fwd.c",
         "patchSetId": 1
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "c39537ae_1698c3b6",
+        "filename": "src/vnet/l2/l2_fwd.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-25T07:24:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "610c1275_de40b7ff",
+      "range": {
+        "startLine": 210,
+        "startChar": 24,
+        "endLine": 210,
+        "endChar": 38
+      },
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b6daeae2_7c8316e2",
         "filename": "src/vnet/l2/l2_input.c",
         "patchSetId": 1
@@ -105,6 +201,24 @@
       "writtenOn": "2018-09-06T20:37:00Z",
       "side": 1,
       "message": "Since we don\u0027t care about member_flags for UU_FWD port type, perhaps the original way to setup memeber.flags is fine without using the new member_fags variable here?",
+      "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e363cab0_0cea9ac3",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 711,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-25T07:24:52Z",
+      "side": 1,
+      "message": "we don\u0027t care about the member flags for uu_port, but we do need to set it correctly for bvi and non-bvi. that\u0027s the reason for the member_flags variable.",
+      "parentUuid": "b6daeae2_7c8316e2",
       "revId": "9f200926637ddf0fa683411790af94aa5bd20f55",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
