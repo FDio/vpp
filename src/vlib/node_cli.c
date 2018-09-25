@@ -459,26 +459,36 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
 	   vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
   u8 *s = 0, *s2 = 0;
   u32 i, node_index = ~0;
   char *type_str;
+  u8 valid_node_name = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
-	;
-      else if (unformat (line_input, "index %u", &node_index))
+      if (unformat (line_input, "index %u", &node_index))
 	;
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, line_input);
+	if (unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
+	valid_node_name = 1;
+      else if (!valid_node_name)
+	error = clib_error_return (0, "unknown node name: '%U'",
+				   format_unformat_error, line_input);
+      else
+	error = clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input);
     }
+
   unformat_free (line_input);
+
+  if (error)
+    return error;
 
   if (node_index >= vec_len (vm->node_main.nodes))
     return clib_error_return (0, "please specify valid node");
