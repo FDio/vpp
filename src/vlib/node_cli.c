@@ -464,16 +464,21 @@ show_node (vlib_main_t * vm, unformat_input_t * input,
   u8 *s = 0, *s2 = 0;
   u32 i, node_index = ~0;
   char *type_str;
+  u8 valid_node_name = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
+      if (unformat (line_input, "index %u", &node_index))
 	;
-      else if (unformat (line_input, "index %u", &node_index))
-	;
+      else
+	if (unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
+	valid_node_name = 1;
+      else if (!valid_node_name)
+	return clib_error_return (0, "unknown node name: '%U'",
+				  format_unformat_error, line_input);
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, line_input);
