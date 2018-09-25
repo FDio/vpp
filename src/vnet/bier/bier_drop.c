@@ -87,11 +87,10 @@ format_bier_drop_trace (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (bier_drop_node, static) =
 {
-    .function = bier_drop,.
-    name = "bier-drop",
+    .function = bier_drop,
+    .name = "bier-drop",
     .vector_size = sizeof (u32),
     .format_trace = format_bier_drop_trace,
     .n_next_nodes = 1,

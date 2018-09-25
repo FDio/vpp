@@ -72,6 +72,7 @@ bier_disp_dispatch_inline (vlib_main_t * vm,
             bdei0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             hdr0 = vlib_buffer_get_current(b0);
             bde0 = bier_disp_entry_get(bdei0);
+            vnet_buffer(b0)->ip.adj_index[VLIB_RX] = BIER_RX_ITF;
 
             /*
              * header is in network order - flip it, we are about to

@@ -329,6 +329,70 @@ bier_table_mk_ecmp (index_t bti)
     return (bt);
 }
 
+
+static index_t
+bier_table_create (const bier_table_id_t *btid,
+                   mpls_label_t local_label)
+{
+    /*
+     * add a new table
+     */
+    bier_table_t *bt;
+    index_t bti;
+    u32 key;
+
+    key = bier_table_mk_key(btid);
+
+    pool_get_aligned(bier_table_pool, bt, CLIB_CACHE_LINE_BYTES);
+    bier_table_init(bt, btid, local_label);
+
+    hash_set(bier_tables_by_key, key, bier_table_get_index(bt));
+    bti = bier_table_get_index(bt);
+
+    if (bier_table_is_main(bt))
+    {
+        bt = bier_table_mk_ecmp(bti);
+
+        /*
+         * add whichever mpls-fib or bift we need
+         */
+        if (local_label != MPLS_LABEL_INVALID)
+        {
+            bt->bt_ll = local_label;
+            bier_table_mk_lfib(bt);
+        }
+        else
+        {
+            bier_table_mk_bift(bt);
+        }
+    }
+
+    return (bti);
+}
+
+index_t
+bier_table_lock (const bier_table_id_t *btid)
+{
+    bier_table_t *bt;
+    index_t bti;
+
+    bt = bier_table_find(btid);
+
+    if (NULL == bt)
+    {
+        bti = bier_table_create(btid, MPLS_LABEL_INVALID);
+        bt = bier_table_get(bti);
+    }
+    else
+    {
+        bti = bier_table_get_index(bt);
+    }
+
+    bier_table_lock_i(bt);
+
+    return (bti);
+}
+
 index_t
 bier_table_add_or_lock (const bier_table_id_t *btid,
                         mpls_label_t local_label)
@@ -379,36 +443,8 @@ bier_table_add_or_lock (const bier_table_id_t *btid,
     }
     else
     {
-        /*
-         * add a new table
-         */
-        u32 key;
-
-        key = bier_table_mk_key(btid);
-
-        pool_get_aligned(bier_table_pool, bt, CLIB_CACHE_LINE_BYTES);
-        bier_table_init(bt, btid, local_label);
-
-        hash_set(bier_tables_by_key, key, bier_table_get_index(bt));
-        bti = bier_table_get_index(bt);
-
-        if (bier_table_is_main(bt))
-        {
-            bt = bier_table_mk_ecmp(bti);
-
-            /*
-             * add whichever mpls-fib or bift we need
-             */
-            if (local_label != MPLS_LABEL_INVALID)
-            {
-                bt->bt_ll = local_label;
-                bier_table_mk_lfib(bt);
-            }
-            else
-            {
-                bier_table_mk_bift(bt);
-            }
-        }
+        bti = bier_table_create(btid, local_label);
+        bt = bier_table_get(bti);
     }
 
     bier_table_lock_i(bt);
