@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f0db4ad3_a062d685",
+        "filename": "src/vnet/l2/l2_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 666,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-25T15:25:11Z",
+      "side": 1,
+      "message": "it would be better if you mapped this functions different return codes to different VNET_API_ERROR_XXX values rather than using only INVALID_VALUE",
+      "revId": "18b312c6c068b155bcb5dc490313afe2bc27dc6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
