@@ -21,7 +21,7 @@
 #define TCP_DEBUG (1)
 #define TCP_DEBUG_SM (0)
 #define TCP_DEBUG_CC (0)
-#define TCP_DEBUG_CC_STAT (0)
+#define TCP_DEBUG_CC_STAT (1)
 #define TCP_DEBUG_BUFFER_ALLOCATION (0)
 
 #define foreach_tcp_dbg_evt		\
@@ -830,7 +830,7 @@ if (_tc->c_cc_stat_tstamp + STATS_INTERVAL < tcp_time_now())		\
   DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->cwnd;						\
   ed->data[1] = tcp_flight_size (_tc);					\
-  ed->data[2] = tcp_snd_space (_tc);					\
+  ed->data[2] = tcp_snd_space_dbg (_tc);				\
   ed->data[3] = _tc->ssthresh;						\
   ed->data[4] = _tc->snd_wnd;						\
   TCP_EVT_CC_RTO_STAT_HANDLER (_tc);					\
