@@ -1708,7 +1708,7 @@ tcp_timer_persist_handler (u32 index)
 
   /* Problem already solved or worse */
   if (tc->state == TCP_STATE_CLOSED || tc->state > TCP_STATE_ESTABLISHED
-      || tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc))
+      || tc->snd_wnd > tc->snd_mss)
     return;
 
   available_bytes = session_tx_fifo_max_dequeue (&tc->connection);
