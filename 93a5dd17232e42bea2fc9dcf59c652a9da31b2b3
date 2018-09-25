@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b218c3c7_4712173e",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1182,
+      "author": {
+        "id": 1507
+      },
+      "writtenOn": "2018-09-25T11:49:30Z",
+      "side": 1,
+      "message": "Do we need to check if(c-\u003eregions[i] !\u003d NULL)",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "487b7a0d_3772660f",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1315,
+      "author": {
+        "id": 1507
+      },
+      "writtenOn": "2018-09-25T11:49:30Z",
+      "side": 1,
+      "message": "correct spelling \"proper\"",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "06a9acae_14ef6d47",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1431,
+      "author": {
+        "id": 1507
+      },
+      "writtenOn": "2018-09-25T11:49:30Z",
+      "side": 1,
+      "message": "memif_get_ring return address from region 0... and descriptors are pointing to region 1 is it intentional?",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1f898150_c6970b38",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 1507
+      },
+      "writtenOn": "2018-09-25T11:49:30Z",
+      "side": 1,
+      "message": "Are descriptors carved only for region 1? what is the memory allocated for region 0 used for?",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6f8f683d_ab852efe",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1532,
+      "author": {
+        "id": 1507
+      },
+      "writtenOn": "2018-09-25T11:49:30Z",
+      "side": 1,
+      "message": "Is region 0 always created... Is it not better to have user choose the number of regions and region_type(external/internal)in connection args?",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "72fd12a1_36bbbeb4",
+        "filename": "extras/libmemif/src/socket.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 1507
+      },
+      "writtenOn": "2018-09-25T11:49:30Z",
+      "side": 1,
+      "message": "once user register a function.. will both regions(0,1) be marked as external? Is this expected behavior?",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
