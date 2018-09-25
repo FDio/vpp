@@ -30,6 +30,7 @@
 #define TCP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
 #define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
+#define TCP_CC_DATA_SZ 20
 
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_MAX_RX_FIFO_SIZE 	32 << 20
@@ -249,6 +250,7 @@ u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 typedef enum _tcp_cc_algorithm_type
 {
   TCP_CC_NEWRENO,
+  TCP_CC_CUBIC,
 } tcp_cc_algorithm_type_e;
 
 typedef struct _tcp_cc_algorithm tcp_cc_algorithm_t;
@@ -262,6 +264,7 @@ typedef enum _tcp_cc_ack_t
 
 typedef struct _tcp_connection
 {
+  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
   transport_connection_t connection;  /**< Common transport data. First! */
 
   u8 state;			/**< TCP state as per tcp_state_t */
@@ -315,6 +318,7 @@ typedef struct _tcp_connection
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   u32 snd_congestion;	/**< snd_una_max when congestion is detected */
   tcp_cc_algorithm_t *cc_algo;	/**< Congestion control algorithm */
+  u8 cc_data[TCP_CC_DATA_SZ];	/**< Congestion control algo private data */
 
   /* RTT and RTO */
   u32 rto;		/**< Retransmission timeout */
@@ -648,6 +652,19 @@ tcp_initial_cwnd (const tcp_connection_t * tc)
     return 4 * tc->snd_mss;
 }
 
+always_inline void
+tcp_cwnd_accumulate (tcp_connection_t * tc, u32 wnd, u32 bytes)
+{
+  tc->cwnd_acc_bytes += bytes;
+  if (tc->cwnd_acc_bytes >= wnd)
+    {
+      u32 inc = tc->cwnd_acc_bytes / wnd;
+      tc->cwnd_acc_bytes -= inc * wnd;
+      tc->cwnd += inc * tc->snd_mss;
+      tc->cwnd = clib_min (tc->cwnd, transport_tx_fifo_size (&tc->connection));
+    }
+}
+
 always_inline u32
 tcp_loss_wnd (const tcp_connection_t * tc)
 {
@@ -869,6 +886,14 @@ void tcp_cc_algo_register (tcp_cc_algorithm_type_e type,
 			   const tcp_cc_algorithm_t * vft);
 
 tcp_cc_algorithm_t *tcp_cc_algo_get (tcp_cc_algorithm_type_e type);
+
+static inline void *
+tcp_cc_data (tcp_connection_t * tc)
+{
+  return (void *) tc->cc_data;
+}
+
+void newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type);
 
 /**
  * Push TCP header to buffer
