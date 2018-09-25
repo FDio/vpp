@@ -510,7 +510,7 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
 static void
 tcp_cc_init (tcp_connection_t * tc)
 {
-  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  tc->cc_algo = tcp_cc_algo_get (tcp_main.cc_algo);
   tc->cc_algo->init (tc);
 }
 
@@ -1425,10 +1425,26 @@ tcp_init (vlib_main_t * vm)
 
   tcp_api_reference ();
   tm->tx_pacing = 1;
+  tm->cc_algo = TCP_CC_NEWRENO;
   return 0;
 }
 
 VLIB_INIT_FUNCTION (tcp_init);
+
+uword
+unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
+{
+  uword *result = va_arg (*va, uword *);
+
+  if (unformat (input, "newreno"))
+    *result = TCP_CC_NEWRENO;
+  else if (unformat (input, "cubic"))
+    *result = TCP_CC_CUBIC;
+  else
+    return 0;
+
+  return 1;
+}
 
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
@@ -1451,6 +1467,9 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "no-tx-pacing"))
 	tm->tx_pacing = 0;
+      else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
+			 &tm->cc_algo))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
