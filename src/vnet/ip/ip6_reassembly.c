@@ -990,6 +990,7 @@ ip6_reassembly_inline (vlib_main_t * vm,
 	      n_left_to_next -= 1;
 	      if (is_feature && IP6_ERROR_NONE == error0)
 		{
+		  b0 = vlib_get_buffer (vm, bi0);
 		  vnet_feature_next (&next0, b0);
 		}
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
