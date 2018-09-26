@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "6de53f9d_34303c22",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-26T15:55:06Z",
+      "side": 1,
+      "message": "Why you dont use existing clib_sysfs_read ?",
+      "parentUuid": "9c6abcc9_90be40bf",
+      "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "97d06a28_4d287582",
         "filename": "src/vlib/threads.c",
         "patchSetId": 8
