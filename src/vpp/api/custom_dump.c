@@ -2610,7 +2610,7 @@ static void *vl_api_mpls_tunnel_dump_t_print
 
   s = format (0, "SCRIPT: mpls_tunnel_dump ");
 
-  s = format (s, "tunnel_index %d ", ntohl (mp->tunnel_index));
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
   FINISH;
 }

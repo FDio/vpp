@@ -70,17 +70,19 @@ define mpls_tunnel_add_del_reply
   u32 context;
   i32 retval;
   u32 sw_if_index;
+  u32 tunnel_index;
 };
 
 /** \brief Dump mpls eth tunnel table
     @param client_index - opaque cookie to identify the sender
-    @param tunnel_index - eth tunnel identifier or -1 in case of all tunnels
+    @param sw_if_index - sw_if_index of the MPLS tunnel
+                         (as returned from the create)
 */
 define mpls_tunnel_dump
 {
   u32 client_index;
   u32 context;
-  i32 tunnel_index;
+  u32 sw_if_index;
 };
 
 /** \brief mpls tunnel details
@@ -89,7 +91,7 @@ manual_endian manual_print define mpls_tunnel_details
 {
   u32 context;
   u32 mt_sw_if_index;
-  u8 mt_tunnel_index;
+  u32 mt_tunnel_index;
   u8 mt_l2_only;
   u8 mt_is_multicast;
   u32 mt_count;

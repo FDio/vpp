@@ -950,6 +950,19 @@ class TestMPLS(VppTestCase):
                                           VppMplsLabel(46, ttl=47),
                                           VppMplsLabel(33, ttl=47)])
 
+    def test_mpls_tunnel_many(self):
+        """ Multiple Tunnels """
+
+        for ii in range(10):
+            mpls_tun = VppMPLSTunnelInterface(
+                self,
+                [VppRoutePath(self.pg0.remote_ip4,
+                              self.pg0.sw_if_index,
+                              labels=[VppMplsLabel(44, ttl=32),
+                                      VppMplsLabel(46, MplsLspMode.UNIFORM)])])
+            mpls_tun.add_vpp_config()
+            mpls_tun.admin_up()
+
     def test_v4_exp_null(self):
         """ MPLS V4 Explicit NULL test """
 

@@ -20424,23 +20424,20 @@ api_mpls_tunnel_dump (vat_main_t * vam)
 {
   vl_api_mpls_tunnel_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
-  i32 index = -1;
+  u32 sw_if_index = ~0;
   int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (vam->input) != UNFORMAT_END_OF_INPUT)
     {
-      if (!unformat (vam->input, "tunnel_index %d", &index))
-	{
-	  index = -1;
-	  break;
-	}
+      if (unformat (vam->input, "sw_if_index %d", &sw_if_index))
+	;
     }
 
-  print (vam->ofp, "  tunnel_index %d", index);
+  print (vam->ofp, "  sw_if_index %d", sw_if_index);
 
   M (MPLS_TUNNEL_DUMP, mp);
-  mp->tunnel_index = htonl (index);
+  mp->sw_if_index = htonl (sw_if_index);
   S (mp);
 
   /* Use a control ping for synchronization */

@@ -32,6 +32,7 @@ class VppMPLSTunnelInterface(VppInterface):
                 is_multicast=self.is_multicast,
                 l2_only=self.is_l2)
             sw_if_index = reply.sw_if_index
+            self.tunnel_index = reply.tunnel_index
         self.set_sw_if_index(sw_if_index)
         self._test.registry.register(self, self._test.logger)
 
@@ -54,7 +55,8 @@ class VppMPLSTunnelInterface(VppInterface):
     def query_vpp_config(self):
         dump = self._test.vapi.mpls_tunnel_dump()
         for t in dump:
-            if self.sw_if_index == t.mt_sw_if_index:
+            if self.sw_if_index == t.mt_sw_if_index and \
+               self.tunnel_index == t.mt_tunnel_index:
                 return True
         return False
 
@@ -62,4 +64,5 @@ class VppMPLSTunnelInterface(VppInterface):
         return self.object_id()
 
     def object_id(self):
-        return ("mpls-tunnel%d" % self.sw_if_index)
+        return ("mpls-tunnel%d-%d" % (self.tunnel_index,
+                                      self.sw_if_index))

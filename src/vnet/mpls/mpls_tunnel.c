@@ -763,6 +763,18 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
     return (fib_path_list_get_n_paths(mt->mt_path_list));
 }
 
+int
+vnet_mpls_tunnel_get_index (u32 sw_if_index)
+{
+    mpls_tunnel_t *mt;
+
+    mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
+
+    if (NULL == mt)
+        return (~0);
+
+    return (mt - mpls_tunnel_pool);
+}
 
 static clib_error_t *
 vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
