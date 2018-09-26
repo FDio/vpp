@@ -56,7 +56,7 @@
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
 
-#include <vpp/stats/stats.h>
+#include <vnet/ip/format.h>
 
 #include <vpp/api/vpe_msg_enum.h>
 

@@ -26,7 +26,6 @@
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
 #include <vlibapi/api_helper_macros.h>
-#include <vpp/stats/stat_segment.h>
 
 typedef struct
 {
@@ -156,20 +155,6 @@ typedef struct
   vpe_client_stats_registration_t **regs_tmp;
   vpe_client_registration_t **clients_tmp;
 
-  /* statistics segment */
-  uword *directory_vector_by_name;
-  stat_segment_directory_entry_t *directory_vector;
-  clib_spinlock_t *stat_segment_lockp;
-  clib_socket_t *socket;
-  u8 *socket_name;
-  ssize_t memory_size;
-  u8 node_counters_enabled;
-  void *heap;
-  stat_segment_shared_header_t *shared_header;	/* pointer to shared memory segment */
-  int memfd;
-
-  u64 last_input_packets;
-
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -178,8 +163,6 @@ typedef struct
 } stats_main_t;
 
 extern stats_main_t stats_main;
-
-void do_stat_segment_updates (stats_main_t * sm);
 
 #endif /* __included_stats_h__ */
 

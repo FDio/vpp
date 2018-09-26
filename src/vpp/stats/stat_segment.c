@@ -14,9 +14,15 @@
  */
 
 #include <vppinfra/mem.h>
-#include <vpp/stats/stats.h>
+#include <vlib/vlib.h>
+#include <vlib/unix/unix.h>
+#include "stat_segment.h"
+#include <vnet/vnet.h>
+#include <vnet/devices/devices.h>	/* vnet_get_aggregate_rx_packets */
 #undef HAVE_MEMFD_CREATE
 #include <vppinfra/linux/syscall.h>
+
+stat_segment_main_t stat_segment_main;
 
 /*
  *  Used only by VPP writers
@@ -24,7 +30,7 @@
 void
 vlib_stat_segment_lock (void)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   clib_spinlock_lock (sm->stat_segment_lockp);
   sm->shared_header->in_progress = 1;
 }
@@ -32,7 +38,7 @@ vlib_stat_segment_lock (void)
 void
 vlib_stat_segment_unlock (void)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   sm->shared_header->epoch++;
   sm->shared_header->in_progress = 0;
   clib_spinlock_unlock (sm->stat_segment_lockp);
@@ -44,7 +50,7 @@ vlib_stat_segment_unlock (void)
 void *
 vlib_stats_push_heap (void)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
 
   ASSERT (sm && sm->shared_header);
   return clib_mem_set_heap (sm->heap);
@@ -54,7 +60,7 @@ vlib_stats_push_heap (void)
 static u32
 lookup_or_create_hash_index (void *oldheap, char *name, u32 next_vector_index)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   u32 index;
   hash_pair_t *hp;
 
@@ -76,7 +82,7 @@ void
 vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
 {
   vlib_simple_counter_main_t *cm = (vlib_simple_counter_main_t *) cm_arg;
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   char *stat_segment_name;
   stat_segment_directory_entry_t e = { 0 };
@@ -138,7 +144,7 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
 void
 vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   stat_segment_directory_entry_t e;
   hash_pair_t *hp;
@@ -163,7 +169,7 @@ vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
 static void
 stat_validate_counter_vector (stat_segment_directory_entry_t * ep, u32 max)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   counter_t **counters = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -185,7 +191,7 @@ stat_validate_counter_vector (stat_segment_directory_entry_t * ep, u32 max)
 void
 vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
 
   ASSERT (shared_header);
@@ -205,7 +211,7 @@ vlib_stats_pop_heap2 (u64 * error_vector, u32 thread_index, void *oldheap)
 clib_error_t *
 vlib_map_stat_segment_init (void)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header;
   stat_segment_directory_entry_t *ep;
 
@@ -329,7 +335,7 @@ show_stat_segment_command_fn (vlib_main_t * vm,
 			      unformat_input_t * input,
 			      vlib_cli_command_t * cmd)
 {
-  stats_main_t *sm = &stats_main;
+  stat_segment_main_t *sm = &stat_segment_main;
   counter_t *counter;
   hash_pair_t *p;
   stat_segment_directory_entry_t *show_data, *this;
@@ -383,7 +389,7 @@ VLIB_CLI_COMMAND (show_stat_segment_command, static) =
  */
 
 static inline void
-update_node_counters (stats_main_t * sm)
+update_node_counters (stat_segment_main_t * sm)
 {
   vlib_main_t *vm = vlib_mains[0];
   vlib_main_t **stat_vms = 0;
@@ -465,14 +471,8 @@ update_node_counters (stats_main_t * sm)
     }
 }
 
-/*
- * Called by stats_thread_fn, in stats.c, which runs in a
- * separate pthread, which won't halt the parade
- * in single-forwarding-core cases.
- */
-
-void
-do_stat_segment_updates (stats_main_t * sm)
+static void
+do_stat_segment_updates (stat_segment_main_t * sm)
 {
   vlib_main_t *vm = vlib_mains[0];
   f64 vector_rate;
@@ -518,15 +518,105 @@ do_stat_segment_updates (stats_main_t * sm)
   sm->directory_vector[STAT_COUNTER_HEARTBEAT].value++;
 }
 
+/*
+ * Accept connection on the socket and exchange the fd for the shared
+ * memory segment.
+ */
+static clib_error_t *
+stats_socket_accept_ready (clib_file_t * uf)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  clib_error_t *err;
+  clib_socket_t client = { 0 };
+
+  err = clib_socket_accept (sm->socket, &client);
+  if (err)
+    {
+      clib_error_report (err);
+      return err;
+    }
+
+  /* Send the fd across and close */
+  err = clib_socket_sendmsg (&client, 0, 0, &sm->memfd, 1);
+  if (err)
+    clib_error_report (err);
+  clib_socket_close (&client);
+
+  return 0;
+}
+
+static void
+stats_segment_socket_init (void)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  clib_error_t *error;
+  clib_socket_t *s = clib_mem_alloc (sizeof (clib_socket_t));
+
+  s->config = (char *) sm->socket_name;
+  s->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_SEQPACKET |
+    CLIB_SOCKET_F_ALLOW_GROUP_WRITE | CLIB_SOCKET_F_PASSCRED;
+  if ((error = clib_socket_init (s)))
+    {
+      clib_error_report (error);
+      return;
+    }
+
+  clib_file_t template = { 0 };
+  template.read_function = stats_socket_accept_ready;
+  template.file_descriptor = s->fd;
+  template.description =
+    format (0, "stats segment listener %s", STAT_SEGMENT_SOCKET_FILE);
+  clib_file_add (&file_main, &template);
+
+  sm->socket = s;
+}
+
+static uword
+stat_segment_collector_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+				vlib_frame_t * f)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+
+  /* Wait for Godot... */
+  f64 sleep_duration = 10;
+
+  while (1)
+    {
+      do_stat_segment_updates (sm);
+      vlib_process_suspend (vm, sleep_duration);
+    }
+  return 0;			/* or not */
+}
+
+static clib_error_t *
+statseg_init (vlib_main_t * vm)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  clib_error_t *error;
+
+  if ((error = vlib_call_init_function (vm, unix_input_init)))
+    return error;
+
+  if (sm->socket_name)
+    stats_segment_socket_init ();
+
+  return 0;
+}
+
 static clib_error_t *
 statseg_config (vlib_main_t * vm, unformat_input_t * input)
 {
-  stats_main_t *sm = &stats_main;
-  uword ms;
+  stat_segment_main_t *sm = &stat_segment_main;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "size %U", unformat_memory_size, &sm->memory_size))
+      if (unformat (input, "socket-name %s", &sm->socket_name))
+	;
+      else if (unformat (input, "default"))
+	sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
+      else
+	if (unformat
+	    (input, "size %U", unformat_memory_size, &sm->memory_size))
 	;
       else if (unformat (input, "per-node-counters on"))
 	sm->node_counters_enabled = 1;
@@ -540,7 +630,16 @@ statseg_config (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+VLIB_INIT_FUNCTION (statseg_init);
 VLIB_EARLY_CONFIG_FUNCTION (statseg_config, "statseg");
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (stat_segment_collector, static) =
+{
+.function = stat_segment_collector_process,.name =
+    "statseg-collector-process",.type = VLIB_NODE_TYPE_PROCESS,};
+
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

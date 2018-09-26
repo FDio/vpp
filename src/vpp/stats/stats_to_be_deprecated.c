@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vpp/stats/stats.h>
+#include "stats_to_be_deprecated.h"
 #include <signal.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
@@ -2338,60 +2338,6 @@ stats_set_poller_delay (u32 poller_delay_sec)
     }
 }
 
-/*
- * Accept connection on the socket and exchange the fd for the shared
- * memory segment.
- */
-static clib_error_t *
-stats_socket_accept_ready (clib_file_t * uf)
-{
-  stats_main_t *sm = &stats_main;
-  clib_error_t *err;
-  clib_socket_t client = { 0 };
-
-  err = clib_socket_accept (sm->socket, &client);
-  if (err)
-    {
-      clib_error_report (err);
-      return err;
-    }
-
-  /* Send the fd across and close */
-  err = clib_socket_sendmsg (&client, 0, 0, &sm->memfd, 1);
-  if (err)
-    clib_error_report (err);
-  clib_socket_close (&client);
-
-  return 0;
-}
-
-static void
-stats_segment_socket_init (void)
-{
-  stats_main_t *sm = &stats_main;
-  clib_error_t *error;
-  clib_socket_t *s = clib_mem_alloc (sizeof (clib_socket_t));
-
-  s->config = (char *) sm->socket_name;
-  s->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_SEQPACKET |
-    CLIB_SOCKET_F_ALLOW_GROUP_WRITE | CLIB_SOCKET_F_PASSCRED;
-  if ((error = clib_socket_init (s)))
-    {
-      clib_error_report (error);
-      return;
-    }
-
-  clib_file_t template = { 0 };
-  clib_file_main_t *fm = &file_main;
-  template.read_function = stats_socket_accept_ready;
-  template.file_descriptor = s->fd;
-  template.description =
-    format (0, "stats segment listener %s", STAT_SEGMENT_SOCKET_FILE);
-  clib_file_add (fm, &template);
-
-  sm->socket = s;
-}
-
 static clib_error_t *
 stats_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -2400,11 +2346,7 @@ stats_config (vlib_main_t * vm, unformat_input_t * input)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "socket-name %s", &sm->socket_name))
-	;
-      else if (unformat (input, "default"))
-	sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
-      else if (unformat (input, "interval %u", &sec))
+      if (unformat (input, "interval %u", &sec))
 	{
 	  int rv = stats_set_poller_delay (sec);
 	  if (rv)
@@ -2420,9 +2362,6 @@ stats_config (vlib_main_t * vm, unformat_input_t * input)
 				    format_unformat_error, input);
 	}
     }
-
-  if (sm->socket_name)
-    stats_segment_socket_init ();
 
   return 0;
 }
@@ -2481,9 +2420,6 @@ stats_thread_fn (void *arg)
     {
       ip46_fib_stats_delay (sm, sm->stats_poll_interval_in_seconds,
 			    0 /* nsec */ );
-
-      /* Always update stats segment data */
-      do_stat_segment_updates (sm);
 
       if (!(sm->enable_poller))
 	continue;

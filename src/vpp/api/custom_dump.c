@@ -40,7 +40,6 @@
 #include <vlibmemory/api.h>
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/qos/qos_types.h>
-#include <vpp/stats/stats.h>
 #include <vpp/oam/oam.h>
 
 #include <vnet/ethernet/ethernet.h>
