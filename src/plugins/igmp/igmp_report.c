@@ -32,15 +32,21 @@ igmp_group_mk_source_list (const igmp_membership_group_v3_t * r)
   n = clib_net_to_host_u16 (r->n_src_addresses);
 
   if (0 == n)
-    return (NULL);
-
-  vec_validate (srcs, n - 1);
-  s = r->src_addresses;
-
-  for (ii = 0; ii < n; ii++)
     {
-      srcs[ii].ip4 = *s;
-      s++;
+      /* a (*,G) join has no source address specified */
+      vec_validate (srcs, 0);
+      srcs[0].ip4.as_u32 = 0;
+    }
+  else
+    {
+      vec_validate (srcs, n - 1);
+      s = r->src_addresses;
+
+      for (ii = 0; ii < n; ii++)
+	{
+	  srcs[ii].ip4 = *s;
+	  s++;
+	}
     }
 
   return (srcs);
