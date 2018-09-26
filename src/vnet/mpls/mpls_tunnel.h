@@ -117,6 +117,11 @@ extern int vnet_mpls_tunnel_path_remove (u32 sw_if_index,
                                          fib_route_path_t *rpath);
 
 /**
+ * @vrief return the tunnel index from the sw_if_index
+ */
+extern int vnet_mpls_tunnel_get_index (u32 sw_if_index);
+
+/**
  * @brief Delete an MPLS tunnel
  */
 extern void vnet_mpls_tunnel_del (u32 sw_if_index);

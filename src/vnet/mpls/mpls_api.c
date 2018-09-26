@@ -311,12 +311,10 @@ mpls_table_create (u32 table_id, u8 is_api, const u8 * name)
 static void
 vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 {
+  u32 tunnel_sw_if_index, tunnel_index, next_hop_via_label;
   vl_api_mpls_tunnel_add_del_reply_t *rmp;
-  int rv = 0;
-  u32 tunnel_sw_if_index;
-  int ii;
   fib_route_path_t rpath, *rpaths = NULL;
-  u32 next_hop_via_label;
+  int ii, rv = 0;
 
   memset (&rpath, 0, sizeof (rpath));
 
@@ -370,9 +368,12 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 	tunnel_sw_if_index = vnet_mpls_tunnel_create (mp->mt_l2_only,
 						      mp->mt_is_multicast);
       vnet_mpls_tunnel_path_add (tunnel_sw_if_index, rpaths);
+
+      tunnel_index = vnet_mpls_tunnel_get_index (tunnel_sw_if_index);
     }
   else
     {
+      tunnel_index = vnet_mpls_tunnel_get_index (tunnel_sw_if_index);
       tunnel_sw_if_index = ntohl (mp->mt_sw_if_index);
       if (!vnet_mpls_tunnel_path_remove (tunnel_sw_if_index, rpaths))
 	vnet_mpls_tunnel_del (tunnel_sw_if_index);
@@ -386,6 +387,7 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   REPLY_MACRO2(VL_API_MPLS_TUNNEL_ADD_DEL_REPLY,
   ({
     rmp->sw_if_index = ntohl(tunnel_sw_if_index);
+    rmp->tunnel_index = ntohl(tunnel_index);
   }));
   /* *INDENT-ON* */
 }
@@ -410,7 +412,7 @@ static void
 typedef struct mpls_tunnel_send_walk_ctx_t_
 {
   vl_api_registration_t *reg;
-  u32 index;
+  u32 sw_if_index;
   u32 context;
 } mpls_tunnel_send_walk_ctx_t;
 
@@ -426,10 +428,11 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
 
   ctx = arg;
 
-  if (~0 != ctx->index && mti != ctx->index)
+  mt = mpls_tunnel_get (mti);
+
+  if (~0 != ctx->sw_if_index && mt->mt_sw_if_index != ctx->sw_if_index)
     return;
 
-  mt = mpls_tunnel_get (mti);
   n = fib_path_list_get_n_paths (mt->mt_path_list);
 
   mp = vl_msg_api_alloc (sizeof (*mp) + n * sizeof (vl_api_fib_path_t));
@@ -451,11 +454,6 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
     fp++;
   }
 
-  // FIXME
-  // memcpy (mp->mt_next_hop_out_labels,
-  //   mt->mt_label_stack, nlabels * sizeof (u32));
-
-
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 }
 
@@ -470,7 +468,7 @@ vl_api_mpls_tunnel_dump_t_handler (vl_api_mpls_tunnel_dump_t * mp)
 
   mpls_tunnel_send_walk_ctx_t ctx = {
     .reg = reg,
-    .index = ntohl (mp->tunnel_index),
+    .sw_if_index = ntohl (mp->sw_if_index),
     .context = mp->context,
   };
   mpls_tunnel_walk (send_mpls_tunnel_entry, &ctx);
