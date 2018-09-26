@@ -512,7 +512,8 @@ format_dpdk_device_module_info (u8 * s, va_list * args)
 
   if (rte_eth_dev_get_module_eeprom (xd->port_id, &ei) == 0)
     {
-      s = format (s, "%U", format_sfp_eeprom, ei.data);
+      s = format (s, "%U", format_sfp_eeprom, ei.data +
+		  (mi.type == RTE_ETH_MODULE_SFF_8436 ? 0x80 : 0));
     }
   else
     s = format (s, "eeprom read error");
