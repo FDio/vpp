@@ -20,7 +20,6 @@
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 
-#include <vpp/stats/stats.h>
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/ethernet/ethernet.h>
