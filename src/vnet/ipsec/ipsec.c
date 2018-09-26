@@ -78,6 +78,8 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
   vnet_feature_enable_disable ("ip6-output", "ipsec-output-ip6", sw_if_index,
 			       is_add, 0, 0);
 
+  config.spd_index = spd_index;
+
   /* enable IPsec on RX */
   vnet_feature_enable_disable ("ip4-unicast", "ipsec-input-ip4", sw_if_index,
 			       is_add, &config, sizeof (config));
