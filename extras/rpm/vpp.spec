@@ -297,7 +297,7 @@ do
            %{buildroot}/usr/lib/vpp_api_test_plugins/$file
 done
 
-for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/plugins -type f -name '*.api.json' -print )
+for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vpp/share/vpp/api/plugins -type f -name '*.api.json' -print )
 do
 	install -p -m 644 $file %{buildroot}/usr/share/vpp/api
 done
