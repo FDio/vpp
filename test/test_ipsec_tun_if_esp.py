@@ -2,7 +2,7 @@ import unittest
 import socket
 from scapy.layers.ipsec import ESP
 from framework import VppTestRunner
-from template_ipsec import TemplateIpsec, IpsecTunTests, IpsecTcpTests
+from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTcpTests
 from vpp_ipsec_tun_interface import VppIpsecTunInterface
 
 
@@ -17,20 +17,17 @@ class TemplateIpsecTunIfEsp(TemplateIpsec):
         cls.tun_if = cls.pg0
 
     def setUp(self):
-        self.ipsec_tun_if = VppIpsecTunInterface(self, self.pg0,
-                                                 self.vpp_tun_spi,
-                                                 self.scapy_tun_spi,
-                                                 self.crypt_algo_vpp_id,
-                                                 self.crypt_key,
-                                                 self.crypt_key,
-                                                 self.auth_algo_vpp_id,
-                                                 self.auth_key,
-                                                 self.auth_key)
-        self.ipsec_tun_if.add_vpp_config()
-        self.ipsec_tun_if.admin_up()
-        self.ipsec_tun_if.config_ip4()
-        src4 = socket.inet_pton(socket.AF_INET, self.remote_tun_if_host)
-        self.vapi.ip_add_del_route(src4, 32, self.ipsec_tun_if.remote_ip4n)
+        p = self.ipv4_params
+        tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
+                                      p.scapy_tun_spi, p.crypt_algo_vpp_id,
+                                      p.crypt_key, p.crypt_key,
+                                      p.auth_algo_vpp_id, p.auth_key,
+                                      p.auth_key)
+        tun_if.add_vpp_config()
+        tun_if.admin_up()
+        tun_if.config_ip4()
+        src4 = socket.inet_pton(socket.AF_INET, p.remote_tun_if_host)
+        self.vapi.ip_add_del_route(src4, 32, tun_if.remote_ip4n)
 
     def tearDown(self):
         if not self.vpp_dead:
@@ -38,7 +35,7 @@ class TemplateIpsecTunIfEsp(TemplateIpsec):
         super(TemplateIpsecTunIfEsp, self).tearDown()
 
 
-class TestIpsecTunIfEsp1(TemplateIpsecTunIfEsp, IpsecTunTests):
+class TestIpsecTunIfEsp1(TemplateIpsecTunIfEsp, IpsecTun4Tests):
     """ Ipsec ESP - TUN tests """
     pass
 

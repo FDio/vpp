@@ -348,13 +348,13 @@ VLIB_REGISTER_NODE (ipsec_input_ip4_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
-     static vlib_node_registration_t ipsec_input_ip6_node;
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn);
+static vlib_node_registration_t ipsec_input_ip6_node;
 
-     static uword
-       ipsec_input_ip6_node_fn (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * from_frame)
+static uword
+ipsec_input_ip6_node_fn (vlib_main_t * vm,
+			 vlib_node_runtime_t * node,
+			 vlib_frame_t * from_frame)
 {
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
@@ -379,6 +379,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 	  ip4_ipsec_config_t *c0;
 	  ipsec_spd_t *spd0;
 	  ipsec_policy_t *p0 = 0;
+	  ah_header_t *ah0;
 	  u32 header_size = sizeof (ip0[0]);
 
 	  bi0 = to_next[0] = from[0];
@@ -396,6 +397,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 
 	  ip0 = vlib_buffer_get_current (b0);
 	  esp0 = (esp_header_t *) ((u8 *) ip0 + header_size);
+	  ah0 = (ah_header_t *) ((u8 *) ip0 + header_size);
 
 	  if (PREDICT_TRUE (ip0->protocol == IP_PROTOCOL_IPSEC_ESP))
 	    {
@@ -423,6 +425,26 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = im->esp_decrypt_next_index;
 		  vlib_buffer_advance (b0, header_size);
+		  goto trace0;
+		}
+	    }
+	  else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
+	    {
+	      p0 = ipsec_input_ip6_protect_policy_match (spd0,
+							 &ip0->src_address,
+							 &ip0->dst_address,
+							 clib_net_to_host_u32
+							 (ah0->spi));
+
+	      if (PREDICT_TRUE (p0 != 0))
+		{
+		  p0->counter.packets++;
+		  p0->counter.bytes +=
+		    clib_net_to_host_u16 (ip0->payload_length);
+		  p0->counter.bytes += header_size;
+		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
+		  vnet_buffer (b0)->ipsec.flags = 0;
+		  next0 = im->ah_decrypt_next_index;
 		  goto trace0;
 		}
 	    }
