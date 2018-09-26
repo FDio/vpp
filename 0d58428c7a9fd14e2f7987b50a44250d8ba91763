@@ -73,6 +73,78 @@
     },
     {
       "key": {
+        "uuid": "86bd0503_0377785a",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-26T06:56:57Z",
+      "side": 1,
+      "message": "Will remove these lines.\nThanks.",
+      "parentUuid": "e6cd365b_09af4edb",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 26
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4be18eb0_8ca44526",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-26T06:56:57Z",
+      "side": 1,
+      "message": "Yes, I\u0027ll remove these lines and use constant numbers.\nThanks.",
+      "parentUuid": "85739d51_11fc8983",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 26
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "38177efb_933ba4e3",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-26T06:56:57Z",
+      "side": 1,
+      "message": "Yes, will remove these lines and use constant numbers directly.\nThanks.",
+      "parentUuid": "3487e5b1_09c57033",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 26
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2edc81fe_505e3a6a",
         "filename": "src/cmake/cpu.cmake",
         "patchSetId": 2
@@ -168,6 +240,54 @@
     },
     {
       "key": {
+        "uuid": "7a40fa69_6ce369b5",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-26T06:56:57Z",
+      "side": 1,
+      "message": "Hi Nitin,\nCentriq is using armv8.0 micro-architecture, while ThunderX2 is using armv8.1 micro-architecture. The reasonable way is to use their architecture and processor specific options. That\u0027s also the purpose of the code here.\nYour comments \"armv8.1 extension should be added regardless of any chip specific optimizations.\" is not correct.\n\nIf in the future there are new chips with newer micro-architecture, e.g., armv8.2, armv8.3, we will apply armv8.2+crc+crypto or armv8.3+crc+crypto for those chips only if those options bring benefits for the chips.\n\nThat\u0027s the purpose the multiarch support and dynamic function selection.\n\nThanks.",
+      "parentUuid": "0e9776fe_496e53a6",
+      "range": {
+        "startLine": 80,
+        "startChar": 25,
+        "endLine": 80,
+        "endChar": 72
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "793915db_78dae913",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-26T06:56:57Z",
+      "side": 1,
+      "message": "Centriq is using armv8-a+crc+crypto by default\nThunderX2 is using armv8.1-a+crc+crypto by default",
+      "parentUuid": "2edc81fe_505e3a6a",
+      "range": {
+        "startLine": 80,
+        "startChar": 25,
+        "endLine": 80,
+        "endChar": 72
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b740009e_afacc729",
         "filename": "src/vnet/ip/ip4_forward.h",
         "patchSetId": 2
@@ -191,6 +311,30 @@
     },
     {
       "key": {
+        "uuid": "5f06aee4_2de218d8",
+        "filename": "src/vnet/ip/ip4_forward.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-26T06:56:57Z",
+      "side": 1,
+      "message": "Yes, will do.\nThanks.",
+      "parentUuid": "b740009e_afacc729",
+      "range": {
+        "startLine": 73,
+        "startChar": 4,
+        "endLine": 73,
+        "endChar": 35
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0009283e_8cdf4e73",
         "filename": "src/vppinfra/cpu.h",
         "patchSetId": 2
@@ -202,6 +346,30 @@
       "writtenOn": "2018-09-25T08:27:59Z",
       "side": 1,
       "message": "Please use VPP way of doing this :)\nSee clock_frequency_from_proc_filesystem(), it does something similar.",
+      "range": {
+        "startLine": 190,
+        "startChar": 0,
+        "endLine": 206,
+        "endChar": 14
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1c88abef_ef1e9167",
+        "filename": "src/vppinfra/cpu.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-26T06:56:57Z",
+      "side": 1,
+      "message": "Yes, will rewrite this function with above example.\nThanks.",
+      "parentUuid": "0009283e_8cdf4e73",
       "range": {
         "startLine": 190,
         "startChar": 0,
