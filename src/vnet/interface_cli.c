@@ -1520,7 +1520,7 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
       }));
     if (vec_len (s) > 0)
       {
-        vlib_cli_output(vm, "Thread %u (%v):\n%v", index,
+        vlib_cli_output(vm, "Thread %u (%s):\n%v", index,
 			vlib_worker_threads[index].name, s);
         vec_reset_length (s);
       }
