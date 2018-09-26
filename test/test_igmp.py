@@ -629,6 +629,22 @@ class TestIgmp(VppTestCase):
         self.assertFalse(self.vapi.igmp_dump())
 
         #
+        # A (*,G) host report
+        #
+        p_j = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
+                  options=[IPOption(copy_flag=1, optclass="control",
+                                    option="router_alert")]) /
+               IGMPv3(type="Version 3 Membership Report") /
+               IGMPv3mr(numgrp=1) /
+               IGMPv3gr(rtype="Allow New Sources", maddr="239.1.1.2"))
+
+        self.send(self.pg0, p_j)
+
+        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+                                            "239.1.1.2", "0.0.0.0", 1))
+
+        #
         # disable router config
         #
         self.vapi.igmp_enable_disable(self.pg0.sw_if_index,
