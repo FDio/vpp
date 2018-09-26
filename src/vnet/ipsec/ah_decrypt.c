@@ -112,6 +112,10 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 	  u8 ip_hdr_size = 0;
 	  u8 tos = 0;
 	  u8 ttl = 0;
+	  u32 ip_version_traffic_class_and_flow_label = 0;
+	  u8 hop_limit = 0;
+	  u8 nexthdr = 0;
+	  u8 icv_padding_len = 0;
 
 
 	  i_bi0 = from[0];
@@ -125,11 +129,28 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 	  to_next[0] = i_bi0;
 	  to_next += 1;
 	  ih4 = vlib_buffer_get_current (i_b0);
-	  ip_hdr_size = ip4_header_bytes (ih4);
-	  ah0 = (ah_header_t *) ((u8 *) ih4 + ip_hdr_size);
-
+	  ih6 = vlib_buffer_get_current (i_b0);
 	  sa_index0 = vnet_buffer (i_b0)->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
+
+	  if ((ih4->ip_version_and_header_length & 0xF0) == 0x40)
+	    {
+	      ip_hdr_size = ip4_header_bytes (ih4);
+	      ah0 = (ah_header_t *) ((u8 *) ih4 + ip_hdr_size);
+	    }
+	  else if ((ih4->ip_version_and_header_length & 0xF0) == 0x60)
+	    {
+	      ip6_ext_header_t *prev = NULL;
+	      ip6_ext_header_find_t (ih6, prev, ah0, IP_PROTOCOL_IPSEC_AH);
+	      ip_hdr_size = sizeof (ip6_header_t);
+	      ASSERT ((u8 *) ah0 - (u8 *) ih6 == ip_hdr_size);
+	    }
+	  else
+	    {
+	      vlib_node_increment_counter (vm, ah_decrypt_node.index,
+					   AH_DECRYPT_ERROR_NOT_IP, 1);
+	      goto trace;
+	    }
 
 	  seq = clib_host_to_net_u32 (ah0->seq_no);
 	  /* anti-replay check */
@@ -164,9 +185,7 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 	      u8 digest[64];
 	      memset (sig, 0, sizeof (sig));
 	      memset (digest, 0, sizeof (digest));
-	      u8 *icv =
-		vlib_buffer_get_current (i_b0) + ip_hdr_size +
-		sizeof (ah_header_t);
+	      u8 *icv = ah0->auth_data;
 	      memcpy (digest, icv, icv_size);
 	      memset (icv, 0, icv_size);
 
@@ -178,7 +197,20 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 		  ih4->ttl = 0;
 		  ih4->checksum = 0;
 		  ih4->flags_and_fragment_offset = 0;
-		}		//TODO else part for IPv6
+		  icv_padding_len =
+		    ah_calc_icv_padding_len (icv_size, 0 /* is_ipv6 */ );
+		}
+	      else
+		{
+		  ip_version_traffic_class_and_flow_label =
+		    ih6->ip_version_traffic_class_and_flow_label;
+		  hop_limit = ih6->hop_limit;
+		  ih6->ip_version_traffic_class_and_flow_label = 0x60;
+		  ih6->hop_limit = 0;
+		  nexthdr = ah0->nexthdr;
+		  icv_padding_len =
+		    ah_calc_icv_padding_len (icv_size, 1 /* is_ipv6 */ );
+		}
 	      hmac_calc (sa0->integ_alg, sa0->integ_key, sa0->integ_key_len,
 			 (u8 *) ih4, i_b0->current_length, sig, sa0->use_esn,
 			 sa0->seq_hi);
@@ -204,9 +236,9 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 
 	    }
 
-
 	  vlib_buffer_advance (i_b0,
-			       ip_hdr_size + sizeof (ah_header_t) + icv_size);
+			       ip_hdr_size + sizeof (ah_header_t) + icv_size +
+			       icv_padding_len);
 	  i_b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
 	  /* transport mode */
@@ -251,15 +283,15 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE (transport_ip6))
 		{
-		  ih6 =
-		    (ip6_header_t *) (i_b0->data +
-				      sizeof (ethernet_header_t));
 		  vlib_buffer_advance (i_b0, -sizeof (ip6_header_t));
 		  oh6 = vlib_buffer_get_current (i_b0);
 		  memmove (oh6, ih6, sizeof (ip6_header_t));
 
 		  next0 = AH_DECRYPT_NEXT_IP6_INPUT;
-		  oh6->protocol = ah0->nexthdr;
+		  oh6->protocol = nexthdr;
+		  oh6->hop_limit = hop_limit;
+		  oh6->ip_version_traffic_class_and_flow_label =
+		    ip_version_traffic_class_and_flow_label;
 		  oh6->payload_length =
 		    clib_host_to_net_u16 (vlib_buffer_length_in_chain
 					  (vm, i_b0) - sizeof (ip6_header_t));

@@ -110,6 +110,8 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	  u8 transport_mode = 0;
 	  u8 tos = 0;
 	  u8 ttl = 0;
+	  u8 hop_limit = 0;
+	  u32 ip_version_traffic_class_and_flow_label = 0;
 
 	  i_bi0 = from[0];
 	  from += 1;
@@ -159,6 +161,8 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 
 	  icv_size =
 	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ipv6);
+	  adv -= padding_len;
 	  /*transport mode save the eth header before it is overwritten */
 	  if (PREDICT_FALSE (!sa0->is_tunnel))
 	    {
@@ -172,18 +176,18 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 
 	  vlib_buffer_advance (i_b0, adv - icv_size);
 
-	  /* is ipv6 */
 	  if (PREDICT_FALSE (is_ipv6))
-	    {
+	    {			/* is ipv6 */
 	      ih6_0 = (ip6_and_ah_header_t *) ih0;
 	      ip_hdr_size = sizeof (ip6_header_t);
 	      oh6_0 = vlib_buffer_get_current (i_b0);
 
+	      hop_limit = ih6_0->ip6.hop_limit;
+	      ip_version_traffic_class_and_flow_label =
+		ih6_0->ip6.ip_version_traffic_class_and_flow_label;
 	      if (PREDICT_TRUE (sa0->is_tunnel))
 		{
 		  next_hdr_type = IP_PROTOCOL_IPV6;
-		  oh6_0->ip6.ip_version_traffic_class_and_flow_label =
-		    ih6_0->ip6.ip_version_traffic_class_and_flow_label;
 		}
 	      else
 		{
@@ -192,12 +196,17 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 		}
 
 	      oh6_0->ip6.protocol = IP_PROTOCOL_IPSEC_AH;
-	      oh6_0->ip6.hop_limit = 254;
+	      oh6_0->ip6.hop_limit = 0;
+	      oh6_0->ip6.ip_version_traffic_class_and_flow_label = 0x60;
+	      oh6_0->ah.reserved = 0;
+	      oh6_0->ah.nexthdr = next_hdr_type;
 	      oh6_0->ah.spi = clib_net_to_host_u32 (sa0->spi);
 	      oh6_0->ah.seq_no = clib_net_to_host_u32 (sa0->seq);
 	      oh6_0->ip6.payload_length =
 		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, i_b0) -
 				      sizeof (ip6_header_t));
+	      oh6_0->ah.hdrlen =
+		(sizeof (ah_header_t) + icv_size + padding_len) / 4 - 2;
 	    }
 	  else
 	    {
@@ -227,9 +236,9 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->ah.seq_no = clib_net_to_host_u32 (sa0->seq);
 	      oh0->ip4.checksum = 0;
 	      oh0->ah.nexthdr = next_hdr_type;
-	      oh0->ah.hdrlen = 4;
+	      oh0->ah.hdrlen =
+		(sizeof (ah_header_t) + icv_size + padding_len) / 4 - 2;
 	    }
-
 
 
 	  if (PREDICT_TRUE
@@ -264,7 +273,8 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	  u8 sig[64];
 	  memset (sig, 0, sizeof (sig));
 	  u8 *digest =
-	    vlib_buffer_get_current (i_b0) + ip_hdr_size + icv_size;
+	    vlib_buffer_get_current (i_b0) + ip_hdr_size +
+	    sizeof (ah_header_t);
 	  memset (digest, 0, icv_size);
 
 	  unsigned size = hmac_calc (sa0->integ_alg, sa0->integ_key,
@@ -276,6 +286,9 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	  memcpy (digest, sig, size);
 	  if (PREDICT_FALSE (is_ipv6))
 	    {
+	      oh6_0->ip6.hop_limit = hop_limit;
+	      oh6_0->ip6.ip_version_traffic_class_and_flow_label =
+		ip_version_traffic_class_and_flow_label;
 	    }
 	  else
 	    {

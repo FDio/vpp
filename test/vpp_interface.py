@@ -24,6 +24,22 @@ class VppInterface(object):
         return self._local_mac
 
     @property
+    def local_addr(self):
+        return self._local_addr
+
+    @property
+    def remote_addr(self):
+        return self._remote_addr
+
+    @property
+    def local_addr_n(self):
+        return self._local_addr_n
+
+    @property
+    def remote_addr_n(self):
+        return self._remote_addr_n
+
+    @property
     def local_ip4(self):
         """Local IPv4 address on VPP interface (string)."""
         return self._local_ip4
@@ -65,7 +81,7 @@ class VppInterface(object):
 
     @property
     def local_ip6_ll(self):
-        """Local IPv6 linnk-local address on VPP interface (string)."""
+        """Local IPv6 link-local address on VPP interface (string)."""
         return self._local_ip6_ll
 
     @property
@@ -199,6 +215,15 @@ class VppInterface(object):
         self.local_ip6_prefix_len = 64
         self.has_ip6_config = False
         self.ip6_table_id = 0
+
+        self._local_addr = {socket.AF_INET: self.local_ip4,
+                            socket.AF_INET6: self.local_ip6}
+        self._local_addr_n = {socket.AF_INET: self.local_ip4n,
+                              socket.AF_INET6: self.local_ip6n}
+        self._remote_addr = {socket.AF_INET: self.remote_ip4,
+                             socket.AF_INET6: self.remote_ip6}
+        self._remote_addr_n = {socket.AF_INET: self.remote_ip4n,
+                               socket.AF_INET6: self.remote_ip6n}
 
         r = self.test.vapi.sw_interface_dump()
         for intf in r:

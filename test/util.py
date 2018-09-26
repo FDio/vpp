@@ -11,6 +11,7 @@ from scapy.packet import Raw
 from scapy.layers.inet import IP
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, IPv6ExtHdrRouting,\
     IPv6ExtHdrHopByHop
+from scapy.utils import hexdump
 from socket import AF_INET6
 
 
@@ -20,6 +21,8 @@ def ppp(headline, packet):
     old_stdout = sys.stdout
     sys.stdout = o
     print(headline)
+    hexdump(packet)
+    print("")
     packet.show()
     sys.stdout = old_stdout
     return o.getvalue()
