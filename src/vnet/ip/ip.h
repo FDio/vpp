@@ -162,7 +162,7 @@ ip_incremental_checksum_buffer (vlib_main_t * vm,
   void *h;
   u32 n;
 
-  n = clib_min (n_bytes_left, b->current_length);
+  n = clib_min (n_bytes_left, b->current_length - first_buffer_offset);
   h = vlib_buffer_get_current (b) + first_buffer_offset;
   sum = ip_incremental_checksum (sum, h, n);
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
