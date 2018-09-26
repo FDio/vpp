@@ -22,6 +22,30 @@
       "revId": "6934a86a764930f4619ebbcd8d09c954daafbbc9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d3b0b668_84f9cdc6",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2018-09-26T17:51:50Z",
+      "side": 1,
+      "message": "It\u0027s by default set as n/N in DPDK hence in VPP. \n\nHow should one trigger mlx5 compilation?\n\nThe way DPDK people do it is if somebody wants to compile MLX5 they explicitly set it in the config file.\n\nCONFIG_RTE_LIBRTE_MLX5_PMD\u003dn                                                                                                                                                                                   \nCONFIG_RTE_LIBRTE_MLX5_DEBUG\u003dn                                                                                                                                                                                 \nCONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS\u003dn\n\nPlease look at this file:\nconfig/common_base\n\nYou can also look at :\n\u003cVPP root\u003e/build-root/build-vpp-native/external/dpdk-18.08/build/.config\n\nDocumentation Link:\nhttps://doc.dpdk.org/guides/nics/mlx5.html\n\n\"Due to external dependencies, this driver is disabled by default. It must be enabled manually by setting CONFIG_RTE_LIBRTE_MLX5_PMD\u003dy and recompiling DPDK.\"\n\nThis config can be sent via VPP, again manually. The only way to detect it automatically is if VPP in build time resolves all the dependencies and intelligently sets it to yes or no(libraries and kernel modules).",
+      "parentUuid": "ffddc709_5c7be1ce",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 38
+      },
+      "revId": "6934a86a764930f4619ebbcd8d09c954daafbbc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
