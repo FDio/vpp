@@ -456,6 +456,15 @@ rm -rf /var/etcd/contiv-data
 rm -rf /var/bolt/bolt.db
 ```
 
+## Contiv-specific kubeadm installation on Aarch64
+Supplemental instructions apply when using Contiv-VPP for Aarch64. Most
+installation steps for Aarch64 are the same as that described earlier in this
+chapter, so you should firstly read it before you start the installation on
+Aarch64 platform.
+
+Use the [Aarch64-specific kubeadm install instructions][18] to manually install
+Kubernetes with Contiv-VPP networking on one or more bare-metals of Aarch64 platform.
+
 [1]: https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/
 [3]: https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#initializing-your-master
 [4]: https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#pod-network
@@ -470,3 +479,4 @@ rm -rf /var/bolt/bolt.db
 [15]: https://github.com/contiv/vpp/tree/master/docs/MULTI_NIC_SETUP.md
 [16]: https://github.com/contiv/vpp/tree/master/docs/SINGLE_NIC_SETUP.md#configuring-stn-in-contiv-vpp-k8s-deployment-files
 [17]: https://github.com/contiv/vpp/tree/master/k8s/README.md#setup-node-sh
+[18]: https://github.com/contiv/vpp/blob/master/docs/arm64/MANUAL_INSTALL_ARM64.md
