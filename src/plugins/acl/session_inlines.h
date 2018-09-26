@@ -16,10 +16,10 @@
 
 /* ICMPv4 invert type for stateful ACL */
 static const u8 icmp4_invmap[] = {
-  [ICMP4_echo_reply] = ICMP4_echo_request + 1,
-  [ICMP4_timestamp_reply] = ICMP4_timestamp_request + 1,
-  [ICMP4_information_reply] = ICMP4_information_request + 1,
-  [ICMP4_address_mask_reply] = ICMP4_address_mask_request + 1
+  [ICMP4_echo_request] = ICMP4_echo_reply + 1,
+  [ICMP4_timestamp_request] = ICMP4_timestamp_reply + 1,
+  [ICMP4_information_request] = ICMP4_information_reply + 1,
+  [ICMP4_address_mask_request] = ICMP4_address_mask_reply + 1
 };
 
 /* Supported ICMPv4 messages for session creation */
@@ -32,8 +32,8 @@ static const u8 icmp4_valid_new[] = {
 
 /* ICMPv6 invert type for stateful ACL */
 static const u8 icmp6_invmap[] = {
-  [ICMP6_echo_reply - 128] = ICMP6_echo_request + 1,
-  [ICMP6_node_information_response - 128] = ICMP6_node_information_request + 1
+  [ICMP6_echo_request - 128] = ICMP6_echo_reply + 1,
+  [ICMP6_node_information_request - 128] = ICMP6_node_information_response + 1
 };
 
 /* Supported ICMPv6 messages for session creation */
@@ -294,8 +294,8 @@ reverse_l4_u64_fastpath (u64 l4, int is_ip6)
   return l4o.as_u64;
 }
 
-always_inline u64
-reverse_l4_u64_slowpath (u64 l4, int is_ip6)
+always_inline int
+reverse_l4_u64_slowpath_valid (u64 l4, int is_ip6, u64 * out)
 {
   fa_session_l4_key_t l4i = {.as_u64 = l4 };
   fa_session_l4_key_t l4o;
@@ -324,39 +324,24 @@ reverse_l4_u64_slowpath (u64 l4, int is_ip6)
        * The other messages will be forwarded without creating a reverse session.
        */
 
-      if (type >= 0 && (type <= icmp_valid_new_size[is_ip6])
-	  && (icmp_valid_new[is_ip6][type])
-	  && (type <= icmp_invmap_size[is_ip6]) && icmp_invmap[is_ip6][type])
+      int valid_reverse_sess = (type >= 0
+				&& (type <= icmp_valid_new_size[is_ip6])
+				&& (icmp_valid_new[is_ip6][type])
+				&& (type <= icmp_invmap_size[is_ip6])
+				&& icmp_invmap[is_ip6][type]);
+      if (valid_reverse_sess)
 	{
-	  /*
-	   * we set the inverse direction and correct the port,
-	   * if it is okay to add the reverse session.
-	   * If not, then the same session will be added twice
-	   * to bihash, which is the same as adding just one session.
-	   */
 	  l4o.is_input = 1 - l4i.is_input;
 	  l4o.port[0] = icmp_invmap[is_ip6][type] - 1;
 	}
 
-      return l4o.as_u64;
+      *out = l4o.as_u64;
+      return valid_reverse_sess;
     }
   else
-    return reverse_l4_u64_fastpath (l4, is_ip6);
-}
+    *out = reverse_l4_u64_fastpath (l4, is_ip6);
 
-always_inline u64
-reverse_l4_u64 (u64 l4, int is_ip6)
-{
-  fa_session_l4_key_t l4i = {.as_u64 = l4 };
-
-  if (PREDICT_FALSE (l4i.is_slowpath))
-    {
-      return reverse_l4_u64_slowpath (l4, is_ip6);
-    }
-  else
-    {
-      return reverse_l4_u64_fastpath (l4, is_ip6);
-    }
+  return 1;
 }
 
 always_inline void
@@ -368,10 +353,18 @@ reverse_session_add_del_ip6 (acl_main_t * am,
   kv2.key[1] = pkv->key[3];
   kv2.key[2] = pkv->key[0];
   kv2.key[3] = pkv->key[1];
-  /* the last u64 needs special treatment (ports, etc.) */
-  kv2.key[4] = reverse_l4_u64 (pkv->key[4], 1);
+  /* the last u64 needs special treatment (ports, etc.) so we do it last */
   kv2.value = pkv->value;
-  clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash, &kv2, is_add);
+  if (PREDICT_FALSE (((fa_session_l4_key_t) pkv->key[4]).is_slowpath))
+    {
+      if (reverse_l4_u64_slowpath_valid (pkv->key[4], 1, &kv2.key[4]))
+	clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash, &kv2, is_add);
+    }
+  else
+    {
+      kv2.key[4] = reverse_l4_u64_fastpath (pkv->key[4], 1);
+      clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash, &kv2, is_add);
+    }
 }
 
 always_inline void
@@ -381,10 +374,18 @@ reverse_session_add_del_ip4 (acl_main_t * am,
   clib_bihash_kv_16_8_t kv2;
   kv2.key[0] =
     ((pkv->key[0] & 0xffffffff) << 32) | ((pkv->key[0] >> 32) & 0xffffffff);
-  /* the last u64 needs special treatment (ports, etc.) */
-  kv2.key[1] = reverse_l4_u64 (pkv->key[1], 0);
+  /* the last u64 needs special treatment (ports, etc.) so we do it last */
   kv2.value = pkv->value;
-  clib_bihash_add_del_16_8 (&am->fa_ip4_sessions_hash, &kv2, is_add);
+  if (PREDICT_FALSE (((fa_session_l4_key_t) pkv->key[1]).is_slowpath))
+    {
+      if (reverse_l4_u64_slowpath_valid (pkv->key[1], 0, &kv2.key[1]))
+	clib_bihash_add_del_16_8 (&am->fa_ip4_sessions_hash, &kv2, is_add);
+    }
+  else
+    {
+      kv2.key[1] = reverse_l4_u64_fastpath (pkv->key[1], 0);
+      clib_bihash_add_del_16_8 (&am->fa_ip4_sessions_hash, &kv2, is_add);
+    }
 }
 
 always_inline void
