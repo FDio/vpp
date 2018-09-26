@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6d391ff8_e6fc1503",
+        "filename": "src/vppinfra/cpu.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-26T13:34:21Z",
+      "side": 1,
+      "message": "It doesn\u0027t make sense that we parse /proc/cpuinfo each time constructor is called.\nPlease cache implid, partid result after first invocation.",
+      "range": {
+        "startLine": 186,
+        "startChar": 0,
+        "endLine": 212,
+        "endChar": 1
+      },
+      "revId": "3451826ae35120cc319f1a34c919d430a6f4c3ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
