@@ -242,6 +242,8 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
 				     (sm->vlib_main, b0));
+      /* Per-user LRU list maintenance */
+      nat44_session_update_lru (sm, s0, thread_index);
     }
   return next0;
 }
@@ -473,6 +475,8 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 	  /* Accounting */
 	  nat44_session_update_counters (s, now,
 					 vlib_buffer_length_in_chain (vm, b));
+	  /* Per-user LRU list maintenance */
+	  nat44_session_update_lru (sm, s, thread_index);
 	  return 1;
 	}
       else
@@ -815,6 +819,8 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 
   /* Accounting */
   nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b));
+  /* Per-user LRU list maintenance */
+  nat44_session_update_lru (sm, s, thread_index);
 
   /* Hairpinning */
   if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
@@ -1075,6 +1081,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 	  nat44_session_update_counters (s0, now,
 					 vlib_buffer_length_in_chain (vm,
 								      b0));
+	  /* Per-user LRU list maintenance */
+	  nat44_session_update_lru (sm, s0, thread_index);
 
 	trace00:
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -1274,6 +1282,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 	  nat44_session_update_counters (s1, now,
 					 vlib_buffer_length_in_chain (vm,
 								      b1));
+	  /* Per-user LRU list maintenance */
+	  nat44_session_update_lru (sm, s1, thread_index);
 
 	trace01:
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -1502,6 +1512,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 	  nat44_session_update_counters (s0, now,
 					 vlib_buffer_length_in_chain (vm,
 								      b0));
+	  /* Per-user LRU list maintenance */
+	  nat44_session_update_lru (sm, s0, thread_index);
 
 	trace0:
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -1927,6 +1939,8 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 	  nat44_session_update_counters (s0, now,
 					 vlib_buffer_length_in_chain (vm,
 								      b0));
+	  /* Per-user LRU list maintenance */
+	  nat44_session_update_lru (sm, s0, thread_index);
 
 	trace0:
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
