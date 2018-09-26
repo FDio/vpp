@@ -71,7 +71,7 @@ class VppPapiProvider(object):
 
     _zero, _negative = range(2)
 
-    def __init__(self, name, shm_prefix, test_class):
+    def __init__(self, name, shm_prefix, test_class, read_timeout):
         self.hook = Hook("vpp-papi-provider")
         self.name = name
         self.shm_prefix = shm_prefix
@@ -85,7 +85,8 @@ class VppPapiProvider(object):
             for filename in fnmatch.filter(filenames, '*.api.json'):
                 jsonfiles.append(os.path.join(root, filename))
 
-        self.vpp = VPP(jsonfiles, logger=test_class.logger, read_timeout=5)
+        self.vpp = VPP(jsonfiles, logger=test_class.logger,
+                       read_timeout=read_timeout)
         self._events = deque()
 
     def __enter__(self):
@@ -3312,6 +3313,7 @@ class VppPapiProvider(object):
                                 tunnel_src_address='',
                                 tunnel_dst_address='',
                                 is_tunnel=1,
+                                is_tunnel_ipv6=0,
                                 is_add=1,
                                 udp_encap=0):
         """ IPSEC SA add/del
@@ -3345,6 +3347,7 @@ class VppPapiProvider(object):
              'crypto_key': crypto_key,
              'is_add': is_add,
              'is_tunnel': is_tunnel,
+             'is_tunnel_ipv6': is_tunnel_ipv6,
              'udp_encap': udp_encap})
 
     def ipsec_spd_add_del_entry(self,
@@ -3363,6 +3366,7 @@ class VppPapiProvider(object):
                                 priority=100,
                                 is_outbound=1,
                                 is_add=1,
+                                is_ipv6=0,
                                 is_ip_any=0):
         """ IPSEC policy SPD add/del   -
                     Wrapper to configure ipsec SPD policy entries in VPP
@@ -3401,6 +3405,7 @@ class VppPapiProvider(object):
              'policy': policy,
              'priority': priority,
              'is_outbound': is_outbound,
+             'is_ipv6': is_ipv6,
              'is_ip_any': is_ip_any})
 
     def ipsec_tunnel_if_add_del(self, local_ip, remote_ip, local_spi,
