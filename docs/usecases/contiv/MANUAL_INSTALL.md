@@ -9,7 +9,7 @@ git clone https://github.com/contiv/vpp/<repository-name>
 ```
 **Note:** Replace *<repository-name>* with the name you want assigned to your cloned contiv repository.
 
-The cloned repository has important folders that contain content that are referenced in this Contiv documentation; those folders are noted below:
+The cloned repository has important folders that contain content that are referenced in this Contiv documentation, those folders are noted below:
 ```
 vpp-contiv2$ ls
 build       build-root  doxygen  gmod       LICENSE      Makefile   RELEASE.md   src
@@ -17,7 +17,7 @@ build-data  docs        extras   INFO.yaml  MAINTAINERS  README.md  sphinx_venv 
 ```
 ## Preparing Your Hosts
 
-### Host-specific Configurations
+### Host-Specific Configurations
 - **VmWare VMs**: the vmxnet3 driver is required on each interface that will
   be used by VPP. Please see [here][13] for instructions how to install the 
   vmxnet3 driver on VmWare Fusion.
@@ -456,6 +456,15 @@ rm -rf /var/etcd/contiv-data
 rm -rf /var/bolt/bolt.db
 ```
 
+## Contiv-specific kubeadm installation on Aarch64
+Supplemental instructions apply when using Contiv-VPP for Aarch64. Most
+installation steps for Aarch64 are the same as that described earlier in this
+chapter; so you should read the supplemental instructions first, before you start the installation  
+Aarch64 platform.
+
+Use the [Aarch64-specific kubeadm install instructions][18] to manually install
+Kubernetes with Contiv-VPP networking on one or more bare-metals of Aarch64 platform.
+
 [1]: https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/
 [3]: https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#initializing-your-master
 [4]: https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/#pod-network
@@ -470,3 +479,4 @@ rm -rf /var/bolt/bolt.db
 [15]: https://github.com/contiv/vpp/tree/master/docs/MULTI_NIC_SETUP.md
 [16]: https://github.com/contiv/vpp/tree/master/docs/SINGLE_NIC_SETUP.md#configuring-stn-in-contiv-vpp-k8s-deployment-files
 [17]: https://github.com/contiv/vpp/tree/master/k8s/README.md#setup-node-sh
+[18]: https://github.com/contiv/vpp/blob/master/docs/arm64/MANUAL_INSTALL_ARM64.md
