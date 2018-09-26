@@ -12,3 +12,4 @@ extensive list, but should give a sampling of the many features contained in FD.
    containers
    vhost/index.rst
    homegateway
+   contivVPP
