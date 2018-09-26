@@ -287,8 +287,7 @@ class VppTestCase(unittest.TestCase):
                            coredump_size, "}", "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}",
                            "cpu", "{", "main-core", str(cpu_core_number), "}",
-                           "statseg", "{", "socket-name",
-                           cls.tempdir + "/stats.sock", "}",
+                           "statseg", "{", "socket-name", cls.stats_sock, "}",
                            "plugins", "{", "plugin", "dpdk_plugin.so", "{",
                            "disable", "}", "plugin", "unittest_plugin.so",
                            "{", "enable", "}", "}", ]
@@ -347,6 +346,13 @@ class VppTestCase(unittest.TestCase):
         cls.wait_for_enter()
 
     @classmethod
+    def wait_for_stats_socket(cls):
+        deadline = time.time() + 3
+        while time.time() < deadline or cls.debug_gdb or cls.debug_gdbserver:
+            if os.path.exists(cls.stats_sock):
+                break
+
+    @classmethod
     def setUpClass(cls):
         """
         Perform class setup before running the testcase
@@ -360,6 +366,7 @@ class VppTestCase(unittest.TestCase):
             cls.logger.name = cls.__name__
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
+        cls.stats_sock = "%s/stats.sock" % cls.tempdir
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -391,14 +398,19 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread = Thread(target=pump_output, args=(cls,))
             cls.pump_thread.daemon = True
             cls.pump_thread.start()
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls)
+            if cls.debug_gdb or cls.debug_gdbserver:
+                read_timeout = 0
+            else:
+                read_timeout = 5
+            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls,
+                                       read_timeout)
             if cls.step:
                 hook = StepHook(cls)
             else:
                 hook = PollHook(cls)
             cls.vapi.register_hook(hook)
-            cls.sleep(0.1, "after vpp startup, before initial poll")
-            cls.statistics = VPPStats(socketname=cls.tempdir+'/stats.sock')
+            cls.wait_for_stats_socket()
+            cls.statistics = VPPStats(socketname=cls.stats_sock)
             try:
                 hook.poll_vpp()
             except VppDiedError:
@@ -459,7 +471,7 @@ class VppTestCase(unittest.TestCase):
             cls.vpp.poll()
             if cls.vpp.returncode is None:
                 cls.logger.debug("Sending TERM to vpp")
-                cls.vpp.terminate()
+                cls.vpp.kill()
                 cls.logger.debug("Waiting for vpp to die")
                 cls.vpp.communicate()
             del cls.vpp
