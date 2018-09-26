@@ -17,6 +17,8 @@
 #define included_stat_segment_h
 
 #include <stdatomic.h>
+#include <vlib/vlib.h>
+#include <vppinfra/socket.h>
 
 /* Default socket to exchange segment fd */
 #define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
@@ -93,5 +95,24 @@ stat_segment_pointer (void *start, uint64_t offset)
 {
   return ((char *) start + offset);
 }
+
+typedef struct
+{
+  /* statistics segment */
+  uword *directory_vector_by_name;
+  stat_segment_directory_entry_t *directory_vector;
+  clib_spinlock_t *stat_segment_lockp;
+  clib_socket_t *socket;
+  u8 *socket_name;
+  ssize_t memory_size;
+  u8 node_counters_enabled;
+  void *heap;
+  stat_segment_shared_header_t *shared_header;	/* pointer to shared memory segment */
+  int memfd;
+
+  u64 last_input_packets;
+} stat_segment_main_t;
+
+extern stat_segment_main_t stat_segment_main;
 
 #endif

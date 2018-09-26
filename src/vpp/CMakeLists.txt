@@ -56,7 +56,7 @@ set(VPP_SOURCES
   app/version.c
   oam/oam.c
   oam/oam_api.c
-  stats/stats.c
+  stats/stats_to_be_deprecated.c
   stats/stat_segment.c
   api/api.c
   api/json_format.c
