@@ -182,7 +182,7 @@ mkdir -p -m755 %{buildroot}%{_datadir}/vpp/api
 #
 mkdir -p -m755 %{buildroot}%{_datadir}/vpp/api
 install -p -m 644 %{_vpp_install_dir}/vpp/share/vpp/api/core/*.api.json %{buildroot}%{_datadir}/vpp/api
-install -p -m 644 %{_vpp_install_dir}/vpp/share/vpp/api/plugins/*.api.json %{buildroot}%{_datadir}/vpp/api
+
 #
 # configs
 #
@@ -197,7 +197,7 @@ install -p -m 644 %{_vpp_build_dir}/../src/vpp/conf/80-vpp.conf %{buildroot}%{_s
 mkdir -p -m755 %{buildroot}%{_libdir}
 mkdir -p -m755 %{buildroot}%{_sysconfdir}/bash_completion.d
 mkdir -p -m755 %{buildroot}%{_datadir}/vpp
-for file in $(find %{_vpp_install_dir}/*/lib* -type f -name '*.so.*.*.*' -print )
+for file in $(find %{_vpp_install_dir}/*/lib* -type f -name '*.so.*.*' -print )
 do
 	install -p -m 755 $file %{buildroot}%{_libdir}
 done
@@ -286,7 +286,7 @@ do
            %{buildroot}/%{_libdir}/vpp_api_test_plugins/$file
 done
 
-for file in $(find %{_vpp_install_dir}/plugins -type f -name '*.api.json' -print )
+for file in $(find %{_vpp_install_dir}/vpp/share/vpp/api/plugins -type f -name '*.api.json' -print )
 do
         install -p -m 644 $file %{buildroot}%{_datadir}/vpp/api
 done
