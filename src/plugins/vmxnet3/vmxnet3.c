@@ -274,6 +274,7 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
       if (txq->lock == 0)
 	clib_spinlock_init (&txq->lock);
       vd->flags |= VMXNET3_DEVICE_F_SHARED_TXQ_LOCK;
+      return 0;
     }
 
   vec_validate_aligned (vd->txqs, qid, CLIB_CACHE_LINE_BYTES);
@@ -623,15 +624,9 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
 	  vmxnet3_rx_ring *ring;
 
 	  ring = &rxq->rx_ring[rid];
-	  desc_idx = ring->consume;
-	  while (ring->fill)
-	    {
-	      desc_idx &= mask;
-	      bi = ring->bufs[desc_idx];
-	      vlib_buffer_free_no_next (vm, &bi, 1);
-	      ring->fill--;
-	      desc_idx++;
-	    }
+	  desc_idx = (ring->consume + 1) & mask;
+	  vlib_buffer_free_from_ring (vm, ring->bufs, desc_idx, rxq->size,
+				      ring->fill);
 	  vec_free (ring->bufs);
 	  vlib_physmem_free (vm, vmxm->physmem_region, rxq->rx_desc[rid]);
 	}
