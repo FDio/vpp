@@ -288,6 +288,30 @@
     },
     {
       "key": {
+        "uuid": "f59dc85d_6d2d2e4c",
+        "filename": "src/cmake/cpu.cmake",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-09-26T08:25:07Z",
+      "side": 1,
+      "message": "Hi Lijian,\nIMO armv8+ extensions will not decrease the performance and chip will be backward compatible to base armv8-a ISA. Extensions add new instructions/features to the ISA. Having said that I will discuss this with compiler team. For now you can ignore the extension comment.",
+      "parentUuid": "7a40fa69_6ce369b5",
+      "range": {
+        "startLine": 80,
+        "startChar": 25,
+        "endLine": 80,
+        "endChar": 72
+      },
+      "revId": "0d58428c7a9fd14e2f7987b50a44250d8ba91763",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b740009e_afacc729",
         "filename": "src/vnet/ip/ip4_forward.h",
         "patchSetId": 2
