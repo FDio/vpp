@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffddc709_5c7be1ce",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-09-26T15:52:36Z",
+      "side": 1,
+      "message": "not needed, cmake project needs to autodetect this from DPKD rte_config.h",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 38
+      },
+      "revId": "6934a86a764930f4619ebbcd8d09c954daafbbc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
