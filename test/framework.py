@@ -287,7 +287,7 @@ class VppTestCase(unittest.TestCase):
                            coredump_size, "}", "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}",
                            "cpu", "{", "main-core", str(cpu_core_number), "}",
-                           "stats", "{", "socket-name",
+                           "statseg", "{", "socket-name",
                            cls.tempdir + "/stats.sock", "}",
                            "plugins", "{", "plugin", "dpdk_plugin.so", "{",
                            "disable", "}", "plugin", "unittest_plugin.so",

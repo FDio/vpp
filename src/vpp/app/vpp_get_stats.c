@@ -19,7 +19,6 @@
 
 #include <vpp-api/client/stat_client.h>
 #include <vlib/vlib.h>
-#include <vpp/stats/stats.h>
 
 static int
 stat_poll_loop (u8 ** patterns)
