@@ -383,64 +383,25 @@ bond_load_balance_active_backup (vlib_main_t * vm,
   return 0;
 }
 
-static bond_load_balance_func_t bond_load_balance_table[] = {
-#define _(v,f,s, p) { bond_load_balance_##p },
-  foreach_bond_lb_algo
-#undef _
-};
-
-VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
-					  vlib_node_runtime_t * node,
-					  vlib_frame_t * frame)
+static_always_inline void
+bond_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		vlib_frame_t * frame, bond_if_t *bif,
+		uword slave_count, u32 lb_alg)
 {
-  vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
-  bond_main_t *bm = &bond_main;
-  bond_if_t *bif = pool_elt_at_index (bm->interfaces, rund->dev_instance);
-  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
-  u32 *from = vlib_frame_vector_args (frame);
-  ethernet_header_t *eth;
-  u32 port, n_left;
+  vnet_main_t *vnm = vnet_get_main ();
+  u16 thread_index = vm->thread_index;
   u32 sw_if_index, sw_if_index1, sw_if_index2, sw_if_index3;
+  u32 sif_if_index, sif_if_index1, sif_if_index2, sif_if_index3;
   bond_packet_trace_t *t0;
   uword n_trace = vlib_get_trace_count (vm, node);
-  u16 thread_index = vm->thread_index;
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 *to_next;
-  u32 sif_if_index, sif_if_index1, sif_if_index2, sif_if_index3;
+  u32 *to_next, port;
   vlib_frame_t *f;
-  uword slave_count;
+  ethernet_header_t *eth;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 *from = vlib_frame_vector_args (frame);
+  u32 n_left = frame->n_vectors;
 
-  if (PREDICT_FALSE (bif->admin_up == 0))
-    {
-      vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
-      vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
-				     VNET_INTERFACE_COUNTER_DROP,
-				     thread_index, bif->sw_if_index,
-				     frame->n_vectors);
-      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_IF_DOWN,
-			frame->n_vectors);
-      return frame->n_vectors;
-    }
-
-  n_left = frame->n_vectors;
   vlib_get_buffers (vm, from, bufs, n_left);
-
-  slave_count = vec_len (bif->active_slaves);
-  if (PREDICT_FALSE (slave_count == 0))
-    {
-      vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
-      vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
-				     VNET_INTERFACE_COUNTER_DROP,
-				     thread_index, bif->sw_if_index,
-				     frame->n_vectors);
-      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_NO_SLAVE,
-			frame->n_vectors);
-      return frame->n_vectors;
-    }
-
-  vec_validate_aligned (bif->per_thread_info[thread_index].frame, slave_count,
-			CLIB_CACHE_LINE_BYTES);
-
   b = bufs;
   while (n_left >= 4)
     {
@@ -475,22 +436,72 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 
       if (PREDICT_TRUE (slave_count > 1))
 	{
-	  port0 =
-	    (bond_load_balance_table[bif->lb]).load_balance (vm, node,
-							     bif, b[0],
-							     slave_count);
-	  port1 =
-	    (bond_load_balance_table[bif->lb]).load_balance (vm, node,
-							     bif, b[1],
-							     slave_count);
-	  port2 =
-	    (bond_load_balance_table[bif->lb]).load_balance (vm, node,
-							     bif, b[2],
-							     slave_count);
-	  port3 =
-	    (bond_load_balance_table[bif->lb]).load_balance (vm, node,
-							     bif, b[3],
-							     slave_count);
+	  if (lb_alg == BOND_LB_L2)
+	    {
+	      port0 = bond_load_balance_l2 (vm, node, bif, b[0], slave_count);
+	      port1 = bond_load_balance_l2 (vm, node, bif, b[1], slave_count);
+	      port2 = bond_load_balance_l2 (vm, node, bif, b[2], slave_count);
+	      port3 = bond_load_balance_l2 (vm, node, bif, b[3], slave_count);
+	    }
+	  else if (lb_alg == BOND_LB_L34)
+	    {
+	      port0 = bond_load_balance_l34 (vm, node, bif, b[0],
+					     slave_count);
+	      port1 = bond_load_balance_l34 (vm, node, bif, b[1],
+					     slave_count);
+	      port2 = bond_load_balance_l34 (vm, node, bif, b[2],
+					     slave_count);
+	      port3 = bond_load_balance_l34 (vm, node, bif, b[3],
+					     slave_count);
+	    }
+	  else if (lb_alg == BOND_LB_L23)
+	    {
+	      port0 = bond_load_balance_l23 (vm, node, bif, b[0],
+					     slave_count);
+	      port1 = bond_load_balance_l23 (vm, node, bif, b[1],
+					     slave_count);
+	      port2 = bond_load_balance_l23 (vm, node, bif, b[2],
+					     slave_count);
+	      port3 = bond_load_balance_l23 (vm, node, bif, b[3],
+					     slave_count);
+	    }
+	  else if (lb_alg == BOND_LB_RR)
+	    {
+	      port0 = bond_load_balance_round_robin (vm, node, bif, b[0],
+						     slave_count);
+	      port1 = bond_load_balance_round_robin (vm, node, bif, b[1],
+						     slave_count);
+	      port2 = bond_load_balance_round_robin (vm, node, bif, b[2],
+						     slave_count);
+	      port3 = bond_load_balance_round_robin (vm, node, bif, b[3],
+						     slave_count);
+	    }
+	  else if (lb_alg == BOND_LB_BC)
+	    {
+	      port0 = bond_load_balance_broadcast (vm, node, bif, b[0],
+						   slave_count);
+	      port1 = bond_load_balance_broadcast (vm, node, bif, b[1],
+						   slave_count);
+	      port2 = bond_load_balance_broadcast (vm, node, bif, b[2],
+						   slave_count);
+	      port3 = bond_load_balance_broadcast (vm, node, bif, b[3],
+						   slave_count);
+	    }
+	  else if (lb_alg == BOND_LB_AB)
+	    {
+	      port0 = bond_load_balance_active_backup (vm, node, bif, b[0],
+						       slave_count);
+	      port1 = bond_load_balance_active_backup (vm, node, bif, b[1],
+						       slave_count);
+	      port2 = bond_load_balance_active_backup (vm, node, bif, b[2],
+						       slave_count);
+	      port3 = bond_load_balance_active_backup (vm, node, bif, b[3],
+						       slave_count);
+	    }
+	  else
+	    {
+	      ASSERT (0);
+	    }
 	}
 
       sif_if_index = *vec_elt_at_index (bif->active_slaves, port0);
@@ -611,9 +622,41 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
       sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 
       if (PREDICT_TRUE (slave_count > 1))
-	port0 =
-	  (bond_load_balance_table[bif->lb]).load_balance (vm, node, bif,
-							   b[0], slave_count);
+	{
+	  if (bif->lb == BOND_LB_L2)
+	    {
+	      port0 = bond_load_balance_l2 (vm, node, bif, b[0], slave_count);
+	    }
+	  else if (bif->lb == BOND_LB_L34)
+	    {
+	      port0 = bond_load_balance_l34 (vm, node, bif, b[0],
+					     slave_count);
+	    }
+	  else if (bif->lb == BOND_LB_L23)
+	    {
+	      port0 = bond_load_balance_l23 (vm, node, bif, b[0],
+					     slave_count);
+	    }
+	  else if (bif->lb == BOND_LB_RR)
+	    {
+	      port0 = bond_load_balance_round_robin (vm, node, bif, b[0],
+						     slave_count);
+	    }
+	  else if (bif->lb == BOND_LB_BC)
+	    {
+	      port0 = bond_load_balance_broadcast (vm, node, bif, b[0],
+						   slave_count);
+	    }
+	  else if (bif->lb == BOND_LB_AB)
+	    {
+	      port0 = bond_load_balance_active_backup (vm, node, bif, b[0],
+						       slave_count);
+	    }
+	  else
+	    {
+	      ASSERT (0);
+	    }
+	}
       sif_if_index = *vec_elt_at_index (bif->active_slaves, port0);
       vnet_buffer (b[0])->sw_if_index[VLIB_TX] = sif_if_index;
       if (PREDICT_FALSE
@@ -656,6 +699,60 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters
 				 + VNET_INTERFACE_COUNTER_TX, thread_index,
 				 bif->sw_if_index, frame->n_vectors);
+}
+
+VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
+{
+  vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
+  bond_main_t *bm = &bond_main;
+  u16 thread_index = vm->thread_index;
+  bond_if_t *bif = pool_elt_at_index (bm->interfaces, rund->dev_instance);
+  uword slave_count;
+
+  if (PREDICT_FALSE (bif->admin_up == 0))
+    {
+      vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+      vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
+				     VNET_INTERFACE_COUNTER_DROP,
+				     thread_index, bif->sw_if_index,
+				     frame->n_vectors);
+      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_IF_DOWN,
+			frame->n_vectors);
+      return frame->n_vectors;
+    }
+
+  slave_count = vec_len (bif->active_slaves);
+  if (PREDICT_FALSE (slave_count == 0))
+    {
+      vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+      vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
+				     VNET_INTERFACE_COUNTER_DROP,
+				     thread_index, bif->sw_if_index,
+				     frame->n_vectors);
+      vlib_error_count (vm, node->node_index, BOND_TX_ERROR_NO_SLAVE,
+			frame->n_vectors);
+      return frame->n_vectors;
+    }
+
+  vec_validate_aligned (bif->per_thread_info[thread_index].frame, slave_count,
+			CLIB_CACHE_LINE_BYTES);
+
+  if (bif->lb == BOND_LB_L2)
+    bond_tx_inline (vm, node, frame, bif, slave_count, BOND_LB_L2);
+  else if (bif->lb == BOND_LB_L34)
+    bond_tx_inline (vm, node, frame, bif, slave_count, BOND_LB_L34);
+  else if (bif->lb == BOND_LB_L23)
+    bond_tx_inline (vm, node, frame, bif, slave_count, BOND_LB_L23);
+  else if (bif->lb == BOND_LB_RR)
+    bond_tx_inline (vm, node, frame, bif, slave_count, BOND_LB_RR);
+  else if (bif->lb == BOND_LB_BC)
+    bond_tx_inline (vm, node, frame, bif, slave_count, BOND_LB_BC);
+  else if (bif->lb == BOND_LB_AB)
+    bond_tx_inline (vm, node, frame, bif, slave_count, BOND_LB_AB);
+  else
+    ASSERT (0);
 
   return frame->n_vectors;
 }

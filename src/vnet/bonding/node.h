@@ -51,13 +51,13 @@ typedef enum
 /* configurable load-balances */
 #define foreach_bond_lb	  \
   _ (2, L23, "l23", l23)  \
-  _ (1, l34 , "l34", l34) \
+  _ (1, L34 , "l34", l34) \
   _ (0, L2, "l2", l2)
 
 /* load-balance functions implemented in bond-output */
 #define foreach_bond_lb_algo			 \
   _ (0, L2, "l2", l2)                            \
-  _ (1, l34 , "l34", l34)                        \
+  _ (1, L34 , "l34", l34)                        \
   _ (2, L23, "l23", l23)                         \
   _ (3, RR, "round-robin", round_robin)          \
   _ (4, BC, "broadcast", broadcast)              \
