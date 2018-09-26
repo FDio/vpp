@@ -632,9 +632,11 @@ icmp_in2out (snat_main_t * sm,
 
   if (PREDICT_TRUE (!ip4_is_fragment (ip0)))
     {
-      sum0 = ip_incremental_checksum (0, icmp0,
-				      ntohs (ip0->length) -
-				      ip4_header_bytes (ip0));
+      sum0 = ip_incremental_checksum_buffer (sm->vlib_main, b0, (u8 *) icmp0 -
+					     (u8 *)
+					     vlib_buffer_get_current (b0),
+					     ntohs (ip0->length) -
+					     ip4_header_bytes (ip0), 0);
       checksum0 = ~ip_csum_fold (sum0);
       if (PREDICT_FALSE (checksum0 != 0 && checksum0 != 0xffff))
 	{
