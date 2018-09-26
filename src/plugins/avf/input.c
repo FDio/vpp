@@ -70,7 +70,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       vlib_error_count (vm, node->node_index,
 			AVF_INPUT_ERROR_BUFFER_ALLOC, 1);
       if (n_alloc)
-	vlib_buffer_free (vm, rxq->bufs + slot, n_alloc);
+	vlib_buffer_free_from_ring (vm, rxq->bufs, slot, rxq->size, n_alloc);
       return;
     }
 
