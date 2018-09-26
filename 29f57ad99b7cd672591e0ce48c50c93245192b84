@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "63de57ca_1a0eaafa",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1337,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-26T13:51:30Z",
+      "side": 1,
+      "message": "It is unified information at one place. Good to know core and socket information for placement of queues if you already know the physical NIC sockets. After that information, Just place the NIC queues to threads on same socket for maximum performance without running any third party utility. Provide ease to users for configuration automation.",
+      "parentUuid": "01eaa17a_e1c31fb5",
+      "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4fe80a82_c3e631f4",
         "filename": "src/vlib/threads.c",
         "patchSetId": 8
@@ -30,6 +48,24 @@
       "writtenOn": "2018-09-25T22:05:08Z",
       "side": 1,
       "message": "The only sysfs-specific bit of this is the error message.",
+      "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9c6abcc9_90be40bf",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-26T13:51:30Z",
+      "side": 1,
+      "message": "I agree on this one. But I am just following the naming conventions. So easy to read the code by developers.",
+      "parentUuid": "4fe80a82_c3e631f4",
       "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "8810b311_9bf9445e",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 717,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-26T13:51:30Z",
+      "side": 1,
+      "message": "scope is local to this function and immutable!",
+      "parentUuid": "97d06a28_4d287582",
+      "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b783cd6f_7ccf5a94",
         "filename": "src/vlib/threads.c",
         "patchSetId": 8
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "7aec08d8_dcbcbd17",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 721,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-26T13:51:30Z",
+      "side": 1,
+      "message": "Yes. It is  because of format function which uses 0 character to make string \"null terminated string\".",
+      "parentUuid": "b783cd6f_7ccf5a94",
+      "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d2971d08_9664cc01",
         "filename": "src/vlib/threads.c",
         "patchSetId": 8
@@ -81,6 +153,24 @@
       "writtenOn": "2018-09-25T22:05:08Z",
       "side": 1,
       "message": "Per my other comment, I would return just the CPU ID and be done.  There\u0027s no reason for this API to be any more complex.",
+      "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8216ff4c_38869ecb",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-09-26T13:51:30Z",
+      "side": 1,
+      "message": "See my earlier comment on this.",
+      "parentUuid": "d2971d08_9664cc01",
       "revId": "29f57ad99b7cd672591e0ce48c50c93245192b84",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
