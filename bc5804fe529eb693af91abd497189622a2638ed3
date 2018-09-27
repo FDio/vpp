@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0f103a58_4f73f382",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 636,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-27T09:00:58Z",
+      "side": 1,
+      "message": "INDENT-OFF",
+      "revId": "bc5804fe529eb693af91abd497189622a2638ed3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
