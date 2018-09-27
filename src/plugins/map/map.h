@@ -532,19 +532,23 @@ int map_ip6_reass_conf_buffers(u32 buffers);
 
 static_always_inline void
 ip4_map_t_embedded_address (map_domain_t *d,
-                                ip6_address_t *ip6, const ip4_address_t *ip4)
+			    ip6_address_t *ip6, const ip4_address_t *ip4)
 {
-  ASSERT(d->ip6_src_len == 96); //No support for other lengths for now
+  ASSERT(d->ip6_src_len == 96 || d->ip6_src_len == 64); //No support for other lengths for now
+  u8 offset = d->ip6_src_len == 64 ? 9 : 12;
   ip6->as_u64[0] = d->ip6_src.as_u64[0];
-  ip6->as_u32[2] = d->ip6_src.as_u32[2];
-  ip6->as_u32[3] = ip4->as_u32;
+  ip6->as_u64[1] = d->ip6_src.as_u64[1];
+  clib_memcpy(&ip6->as_u8[offset], ip4, 4);
 }
 
 static_always_inline u32
 ip6_map_t_embedded_address (map_domain_t *d, ip6_address_t *addr)
 {
-  ASSERT(d->ip6_src_len == 96); //No support for other lengths for now
-  return addr->as_u32[3];
+  ASSERT(d->ip6_src_len == 64 || d->ip6_src_len == 96);
+  u32 x;
+  u8 offset = d->ip6_src_len == 64 ? 9 : 12;
+  clib_memcpy(&x, &addr->as_u8[offset], 4);
+  return x;
 }
 
 static inline void
