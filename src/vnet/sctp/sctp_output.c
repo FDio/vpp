@@ -1518,6 +1518,8 @@ sctp_data_retransmit (sctp_connection_t * sctp_conn)
   vlib_buffer_t *b = 0;
   u32 bi, n_bytes = 0;
 
+  u8 idx = sctp_data_subconn_select (sctp_conn);
+
   SCTP_DBG_OUTPUT
     ("SCTP_CONN = %p, IDX = %u, S_INDEX = %u, C_INDEX = %u, sctp_conn->[...].LCL_PORT = %u, sctp_conn->[...].RMT_PORT = %u",
      sctp_conn, idx, sctp_conn->sub_conn[idx].connection.s_index,
@@ -1529,8 +1531,6 @@ sctp_data_retransmit (sctp_connection_t * sctp_conn)
     {
       return;
     }
-
-  u8 idx = sctp_data_subconn_select (sctp_conn);
 
   n_bytes =
     sctp_prepare_data_retransmit (sctp_conn, idx, 0,
