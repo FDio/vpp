@@ -39,6 +39,8 @@ typedef struct
   /* iommu group pool index by group id  hash */
   uword *iommu_pool_index_by_group;
 
+  /* logging */
+  vlib_log_class_t log_default;
 } linux_vfio_main_t;
 
 extern linux_vfio_main_t vfio_main;
