@@ -1185,6 +1185,8 @@ memif_disconnect_internal (memif_connection_t * c)
 
   for (i = 0; i < c->regions_num; i++)
     {
+      if (&c->regions[i] == NULL)
+	continue;
       if (c->regions[i].is_external != 0)
 	{
 	  lm->del_external_region (c->regions[i].addr,
@@ -1318,7 +1320,7 @@ memif_connect1 (memif_connection_t * c)
 	      if (mr->is_external)
 		{
 		  if (lm->get_external_region_addr == NULL)
-		    return 99;	/* FIXME: propper error report */
+		    return 99;	/* FIXME: proper error report */
 		  mr->addr =
 		    lm->get_external_region_addr (mr->region_size, mr->fd,
 						  c->private_ctx);

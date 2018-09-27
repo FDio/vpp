@@ -506,7 +506,8 @@ memif_msg_receive_add_region (memif_connection_t * c, memif_msg_t * msg,
   c->regions[ar->index].region_size = ar->size;
   c->regions[ar->index].addr = NULL;
 
-  if (lm->get_external_region_addr)
+  /* region 0 is never external */
+  if (lm->get_external_region_addr && (ar->index != 0))
     c->regions[ar->index].is_external = 1;
 
   return MEMIF_ERR_SUCCESS;	/* 0 */
