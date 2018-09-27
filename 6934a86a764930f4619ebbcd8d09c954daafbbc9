@@ -70,6 +70,30 @@
       "revId": "6934a86a764930f4619ebbcd8d09c954daafbbc9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "625e4e10_e535b3cc",
+        "filename": "build-data/packages/external.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2018-09-27T15:29:57Z",
+      "side": 1,
+      "message": "fair enough. Removed this",
+      "parentUuid": "658d13e6_54148876",
+      "range": {
+        "startLine": 22,
+        "startChar": 0,
+        "endLine": 25,
+        "endChar": 38
+      },
+      "revId": "6934a86a764930f4619ebbcd8d09c954daafbbc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
