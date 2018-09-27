@@ -2282,8 +2282,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_opts_wscale (&new_tc0->rcv_opts))
 	    new_tc0->snd_wscale = new_tc0->rcv_opts.wscale;
 
-	  /* RFC1323: SYN and SYN-ACK wnd not scaled */
-	  new_tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window);
+	  new_tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window)
+	    << new_tc0->snd_wscale;
 	  new_tc0->snd_wl1 = seq0;
 	  new_tc0->snd_wl2 = ack0;
 
