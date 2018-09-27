@@ -209,6 +209,14 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
      */
     OM::commit(key, bd);
 
+    std::shared_ptr<interface> uu_fwd_itf =
+      interface::find(payload.uu_fwd_sw_if_index);
+    if (uu_fwd_itf) {
+      l2_binding l2(*uu_fwd_itf, bd,
+                    l2_binding::l2_port_type_t::L2_PORT_TYPE_UU_FWD);
+      OM::commit(key, l2);
+    }
+
     /**
      * For each interface in the BD construct an l2_binding
      */

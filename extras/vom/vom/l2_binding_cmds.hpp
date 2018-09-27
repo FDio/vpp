@@ -35,7 +35,10 @@ public:
   /**
    * Constructor
    */
-  bind_cmd(HW::item<bool>& item, const handle_t& itf, uint32_t bd, bool is_bvi);
+  bind_cmd(HW::item<bool>& item,
+           const handle_t& itf,
+           uint32_t bd,
+           const l2_binding::l2_port_type_t& port_type);
 
   /**
    * Issue the command to VPP/HW
@@ -63,9 +66,9 @@ private:
   uint32_t m_bd;
 
   /**
-   * Is it a BVI interface that is being bound
+   * What is the port type i.e. normal, bvi, uu-fwd that is being bound
    */
-  bool m_is_bvi;
+  const l2_binding::l2_port_type_t& m_port_type;
 };
 
 /**
@@ -81,7 +84,7 @@ public:
   unbind_cmd(HW::item<bool>& item,
              const handle_t& itf,
              uint32_t bd,
-             bool is_bvi);
+             const l2_binding::l2_port_type_t& port_type);
 
   /**
    * Issue the command to VPP/HW
@@ -109,9 +112,9 @@ private:
   uint32_t m_bd;
 
   /**
-   * Is it a BVI interface that is being bound
+   * What is the port type i.e. bvi, normal or uu-fwd that is being bound
    */
-  bool m_is_bvi;
+  const l2_binding::l2_port_type_t& m_port_type;
 };
 
 /**

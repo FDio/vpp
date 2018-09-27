@@ -56,10 +56,26 @@ public:
     l2_vtr_op_t(int v, const std::string s);
   };
 
+  struct l2_port_type_t : public enum_base<l2_port_type_t>
+  {
+    l2_port_type_t(const l2_port_type_t& l) = default;
+    ~l2_port_type_t() = default;
+
+    const static l2_port_type_t L2_PORT_TYPE_NORMAL;
+    const static l2_port_type_t L2_PORT_TYPE_BVI;
+    const static l2_port_type_t L2_PORT_TYPE_UU_FWD;
+
+  private:
+    l2_port_type_t(int v, const std::string s);
+  };
+
   /**
    * Construct a new object matching the desried state
    */
   l2_binding(const interface& itf, const bridge_domain& bd);
+  l2_binding(const interface& itf,
+             const bridge_domain& bd,
+             const l2_port_type_t& port_type);
 
   /**
    * Copy Constructor
@@ -186,6 +202,11 @@ private:
    * guarantee that this object will outlive the BD.
    */
   std::shared_ptr<bridge_domain> m_bd;
+
+  /**
+   * l2 port type i.e. normal, bvi or unknown unicast
+   */
+  l2_port_type_t m_port_type;
 
   /**
    * HW configuration for the binding. The bool representing the
