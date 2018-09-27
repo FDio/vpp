@@ -489,7 +489,7 @@ typedef struct _sctp_main
 
   u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
-  u32 *time_now;
+  u64 *time_now;
 
 	  /** per-worker tx buffer free lists */
   u32 **tx_buffers;
@@ -582,7 +582,7 @@ sctp_half_open_connection_del (sctp_connection_t * tc)
   clib_spinlock_unlock_if_init (&sctp_main->half_open_lock);
 }
 
-always_inline u32
+always_inline u64
 sctp_set_time_now (u32 thread_index)
 {
   sctp_main.time_now[thread_index] = clib_cpu_time_now ()
@@ -665,7 +665,7 @@ sctp_get_connection_from_transport (transport_connection_t * tconn)
   return (sctp_connection_t *) sub;
 }
 
-always_inline u32
+always_inline u64
 sctp_time_now (void)
 {
   return sctp_main.time_now[vlib_get_thread_index ()];
