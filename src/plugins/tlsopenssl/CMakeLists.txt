@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+include (CheckFunctionExists)
 if(OPENSSL_FOUND)
   include_directories(${OPENSSL_INCLUDE_DIR})
   add_vpp_plugin(tlsopenssl
@@ -21,5 +22,15 @@ if(OPENSSL_FOUND)
     LINK_LIBRARIES
     ${OPENSSL_LIBRARIES}
   )
+
+  set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
+  set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_LIBRARIES}")
+  check_function_exists(SSL_set_async_callback HAVE_OPENSSL_ASYNC)
+
+  if (HAVE_OPENSSL_ASYNC)
+    add_definitions(-DHAVE_OPENSSL_ASYNC)
+  endif()
+
+
 endif()
 
