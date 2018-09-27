@@ -112,11 +112,11 @@ typedef struct _sctp_sub_connection
   u32 ssthresh;	/**< Slow-start threshold (in bytes), which is used by the
       sender to distinguish slow-start and congestion avoidance phases. */
 
-  u32 rtt_ts;	/**< USED to hold the timestamp of when the packet has been sent */
+  u64 rtt_ts;	/**< USED to hold the timestamp of when the packet has been sent */
 
   u32 RTO; /**< The current retransmission timeout value. */
-  u32 SRTT; /**< The current smoothed round-trip time. */
-  f32 RTTVAR; /**< The current RTT variation. */
+  u64 SRTT; /**< The current smoothed round-trip time. */
+  f64 RTTVAR; /**< The current RTT variation. */
 
   u32 partially_acked_bytes; /**< The tracking method for increase of cwnd when in
   	  	  	  	  congestion avoidance mode (see Section 7.2.2).*/
@@ -134,10 +134,10 @@ typedef struct _sctp_sub_connection
   	  	  	  	  Every time the RTT calculation completes (i.e., the DATA chunk is SACK'd),
   	  	  	  	  clear this flag. */
 
-  u32 last_seen; /**< The time to which this destination was last sent a packet to.
+  u64 last_seen; /**< The time to which this destination was last sent a packet to.
   	  	  	  	  This can be used to determine if a HEARTBEAT is needed. */
 
-  u32 last_data_ts; /**< Used to hold the timestamp value of last time we sent a DATA chunk */
+  u64 last_data_ts; /**< Used to hold the timestamp value of last time we sent a DATA chunk */
 
   u8 unacknowledged_hb;	/**< Used to track how many unacknowledged heartbeats we had;
   	  	  	  	  If more than SCTP_PATH_MAX_RETRANS then connection is considered unreachable. */
@@ -489,7 +489,7 @@ typedef struct _sctp_main
 
   u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
-  u32 *time_now;
+  u64 *time_now;
 
 	  /** per-worker tx buffer free lists */
   u32 **tx_buffers;
@@ -582,7 +582,7 @@ sctp_half_open_connection_del (sctp_connection_t * tc)
   clib_spinlock_unlock_if_init (&sctp_main->half_open_lock);
 }
 
-always_inline u32
+always_inline u64
 sctp_set_time_now (u32 thread_index)
 {
   sctp_main.time_now[thread_index] = clib_cpu_time_now ()
@@ -665,7 +665,7 @@ sctp_get_connection_from_transport (transport_connection_t * tconn)
   return (sctp_connection_t *) sub;
 }
 
-always_inline u32
+always_inline u64
 sctp_time_now (void)
 {
   return sctp_main.time_now[vlib_get_thread_index ()];
@@ -677,11 +677,11 @@ always_inline void
 sctp_calculate_rto (sctp_connection_t * sctp_conn, u8 conn_idx)
 {
   /* See RFC4960, 6.3.1.  RTO Calculation */
-  u32 RTO = 0;
-  f32 RTTVAR = 0;
-  u32 now = sctp_time_now ();
-  u32 prev_ts = sctp_conn->sub_conn[conn_idx].rtt_ts;
-  u32 R = prev_ts - now;
+  u64 RTO = 0;
+  f64 RTTVAR = 0;
+  u64 now = sctp_time_now ();
+  u64 prev_ts = sctp_conn->sub_conn[conn_idx].rtt_ts;
+  u64 R = prev_ts - now;
 
   if (sctp_conn->sub_conn[conn_idx].RTO == 0)	// C1: Let's initialize our RTO
     {
