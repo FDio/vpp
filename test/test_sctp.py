@@ -68,7 +68,7 @@ class TestSCTP(VppTestCase):
             self.logger.critical(error)
             self.assertEqual(error.find("failed"), -1)
 
-        error = self.vapi.cli("test echo client mbytes 10" +
+        error = self.vapi.cli("test echo client mbytes 1" +
                               " appns 1" +
                               " fifo-size 4" +
                               " no-output test-bytes syn-timeout 3" +
