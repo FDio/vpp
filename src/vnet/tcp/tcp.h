@@ -658,6 +658,7 @@ tcp_is_lost_fin (tcp_connection_t * tc)
   return 0;
 }
 
+u32 tcp_snd_space (tcp_connection_t * tc);
 void tcp_retransmit_first_unacked (tcp_connection_t * tc);
 void tcp_fast_retransmit_no_sack (tcp_connection_t * tc);
 void tcp_fast_retransmit_sack (tcp_connection_t * tc);
