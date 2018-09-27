@@ -268,6 +268,37 @@ VLIB_CLI_COMMAND (show_frame_stats_cli, static) = {
 };
 /* *INDENT-ON* */
 
+#if VLIB_ELOG_MAIN_LOOP
+static f64 elog_vector_length_trigger = 256.0;
+
+static clib_error_t *test_elog_vector_length_trigger_command_fn
+  (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  f64 tmp;
+  elog_main_t *em = &vlib_global_main.elog_main;
+
+  if (unformat (input, "%f", &tmp))
+    elog_vector_length_trigger = tmp;
+
+  ELOG_TYPE_DECLARE (trigger) =
+  {
+  .format = "trigger-threshold: %d",.format_args = "i4",};
+
+  elog (em, &trigger, (u32) tmp);
+
+  vlib_cli_output (vm, "trigger event log when frame size > %f", tmp);
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_elog_vector_length_trigger, static) =
+{
+  .path = "test elog vector-length-trigger",
+  .short_help = "test elog vector-length-trigger <nn> [256 to disable]",
+  .function = test_elog_vector_length_trigger_command_fn,
+};
+/* *INDENT-ON* */
+#endif /* VLIB_ELOG_MAIN_LOOP */
+
 /* Change ownership of enqueue rights to given next node. */
 static void
 vlib_next_frame_change_ownership (vlib_main_t * vm,
@@ -1432,7 +1463,6 @@ vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
 }
 
-
 static_always_inline void
 vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
@@ -1616,6 +1646,21 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	    }
 	}
       vlib_increment_main_loop_counter (vm);
+
+      /*
+       * If we just took a vector size excursion,
+       * trigger the event logger
+       */
+      if (VLIB_ELOG_MAIN_LOOP &&
+	  vlib_last_vector_length_per_node (vm) > elog_vector_length_trigger)
+	{
+	  elog_main_t *em = &vlib_global_main.elog_main;
+	  ELOG_TYPE_DECLARE (trigger) =
+	  {
+	  .format = "VECTOR LENGTH TRIGGER: %d",.format_args = "i4",};
+	  elog (em, &trigger, (u32) vlib_last_vector_length_per_node (vm));
+	  elog_disable_trigger (em);
+	}
 
       /* Record time stamp in case there are no enabled nodes and above
          calls do not update time stamp. */

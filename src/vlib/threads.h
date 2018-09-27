@@ -410,7 +410,25 @@ vlib_worker_thread_barrier_check (void)
 {
   if (PREDICT_FALSE (*vlib_worker_threads->wait_at_barrier))
     {
+      u32 thread_index;
+      elog_main_t *em = 0;
       vlib_main_t *vm;
+      if (VLIB_ELOG_MAIN_LOOP)
+	{
+	  vlib_main_t *evm = &vlib_global_main;
+	  em = &evm->elog_main;
+	  thread_index = vlib_get_main ()->thread_index;
+
+	  ELOG_TYPE_DECLARE (ewait) =
+	  {
+	  .format = "barrier-wait: %d",.format_args = "i4",};
+
+	  elog_track (em, &ewait,
+		      (thread_index ?
+		       &vlib_worker_threads[thread_index].elog_track
+		       : &em->default_track), 0);
+	}
+
       clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, 1);
       if (CLIB_DEBUG > 0)
 	{
@@ -430,6 +448,17 @@ vlib_worker_thread_barrier_check (void)
 			       -1);
 	  while (*vlib_worker_threads->node_reforks_required)
 	    ;
+	}
+      if (VLIB_ELOG_MAIN_LOOP)
+	{
+	  ELOG_TYPE_DECLARE (erelease) =
+	  {
+	  .format = "barrier-release: %d",.format_args = "i4",};
+
+	  elog_track (em, &erelease,
+		      (thread_index ?
+		       &vlib_worker_threads[thread_index].elog_track
+		       : &em->default_track), 0);
 	}
     }
 }

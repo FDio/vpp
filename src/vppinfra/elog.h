@@ -244,8 +244,10 @@ elog_disable_after_events (elog_main_t * em, uword n)
 always_inline void
 elog_disable_trigger (elog_main_t * em)
 {
-  em->n_total_events_disable_limit =
-    em->n_total_events + vec_len (em->event_ring) / 2;
+  /* Only trigger once, or we keep moving the trigger point */
+  if (em->n_total_events_disable_limit == ~0)
+    em->n_total_events_disable_limit =
+      em->n_total_events + vec_len (em->event_ring) / 2;
 }
 
 /** @brief register an event type

@@ -53,7 +53,7 @@
 /* By default turn off node/error event logging.
    Override with -DVLIB_ELOG_MAIN_LOOP */
 #ifndef VLIB_ELOG_MAIN_LOOP
-#define VLIB_ELOG_MAIN_LOOP 0
+#define VLIB_ELOG_MAIN_LOOP 1
 #endif
 
 typedef struct vlib_main_t

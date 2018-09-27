@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-option(VPP_BUILD_G2 "Build g2 tool." OFF)
+option(VPP_BUILD_G2 "Build g2 tool." ON)
 if(VPP_BUILD_G2)
   find_package(GTK2 COMPONENTS gtk)
   if(GTK2_FOUND)
@@ -29,7 +29,6 @@ if(VPP_BUILD_G2)
       view1.c
 
       LINK_LIBRARIES vppinfra Threads::Threads m ${GTK2_LIBRARIES}
-      NO_INSTALL
     )
   endif()
 endif()

@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-option(VPP_BUILD_PERFTOOL "Build Perf tool" OFF)
+option(VPP_BUILD_PERFTOOL "Build Perf tool" ON)
 if (VPP_BUILD_PERFTOOL)
   add_vpp_library(cperf
     SOURCES
