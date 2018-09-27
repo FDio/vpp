@@ -22,6 +22,30 @@
       "revId": "3451826ae35120cc319f1a34c919d430a6f4c3ce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "47fd80f5_9ae83a36",
+        "filename": "src/vppinfra/cpu.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 1431
+      },
+      "writtenOn": "2018-09-27T01:49:30Z",
+      "side": 1,
+      "message": "ok. I\u0027ll use local static variable to cache these two values.\nThanks.",
+      "parentUuid": "6d391ff8_e6fc1503",
+      "range": {
+        "startLine": 186,
+        "startChar": 0,
+        "endLine": 212,
+        "endChar": 1
+      },
+      "revId": "3451826ae35120cc319f1a34c919d430a6f4c3ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
