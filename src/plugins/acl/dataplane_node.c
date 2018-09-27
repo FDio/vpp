@@ -66,6 +66,232 @@ typedef enum
 
 /* *INDENT-ON* */
 
+typedef struct
+{
+  u32 next_index;
+  u32 sw_if_index;
+  u16 ethertype;
+} nonip_in_out_trace_t;
+
+/* packet trace format function */
+static u8 *
+format_nonip_in_out_trace (u8 * s, u32 is_output, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nonip_in_out_trace_t *t = va_arg (*args, nonip_in_out_trace_t *);
+
+  s = format (s, "%s: sw_if_index %d next_index %x ethertype %x",
+	      is_output ? "OUT-ETHER-WHITELIST" : "IN-ETHER-WHITELIST",
+	      t->sw_if_index, t->next_index, t->ethertype);
+  return s;
+}
+
+static u8 *
+format_l2_nonip_in_trace (u8 * s, va_list * args)
+{
+  return format_nonip_in_out_trace (s, 0, args);
+}
+
+static u8 *
+format_l2_nonip_out_trace (u8 * s, va_list * args)
+{
+  return format_nonip_in_out_trace (s, 1, args);
+}
+
+#define foreach_nonip_in_error                    \
+_(DROP, "dropped inbound non-whitelisted non-ip packets") \
+_(PERMIT, "permitted inbound whitelisted non-ip packets") \
+
+
+#define foreach_nonip_out_error                    \
+_(DROP, "dropped outbound non-whitelisted non-ip packets") \
+_(PERMIT, "permitted outbound whitelisted non-ip packets") \
+
+
+/* *INDENT-OFF* */
+
+typedef enum
+{
+#define _(sym,str) FA_IN_NONIP_ERROR_##sym,
+  foreach_nonip_in_error
+#undef _
+    FA_IN_NONIP_N_ERROR,
+} l2_in_feat_arc_error_t;
+
+static char *fa_in_nonip_error_strings[] = {
+#define _(sym,string) string,
+  foreach_nonip_in_error
+#undef _
+};
+
+typedef enum
+{
+#define _(sym,str) FA_OUT_NONIP_ERROR_##sym,
+  foreach_nonip_out_error
+#undef _
+    FA_OUT_NONIP_N_ERROR,
+} l2_out_feat_arc_error_t;
+
+static char *fa_out_nonip_error_strings[] = {
+#define _(sym,string) string,
+  foreach_nonip_out_error
+#undef _
+};
+/* *INDENT-ON* */
+
+
+always_inline int
+is_permitted_ethertype (acl_main_t * am, int sw_if_index0, int is_output,
+			u16 ethertype)
+{
+  u16 **v = is_output
+    ? am->output_etype_whitelist_by_sw_if_index
+    : am->input_etype_whitelist_by_sw_if_index;
+  u16 *whitelist = vec_elt (v, sw_if_index0);
+  int i;
+
+  if (vec_len (whitelist) == 0)
+    return 1;
+
+  for (i = 0; i < vec_len (whitelist); i++)
+    if (whitelist[i] == ethertype)
+      return 1;
+  return 0;
+}
+
+#define get_u16(addr) ( *((u16 *)(addr)) )
+
+always_inline uword
+nonip_in_out_node_fn (vlib_main_t * vm,
+		      vlib_node_runtime_t * node, vlib_frame_t * frame,
+		      int is_output, vlib_node_registration_t * fa_node)
+{
+  acl_main_t *am = &acl_main;
+  u32 n_left, *from;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  vlib_node_runtime_t *error_node;
+
+  from = vlib_frame_vector_args (frame);
+  error_node = vlib_node_get_runtime (vm, fa_node->index);
+  vlib_get_buffers (vm, from, bufs, frame->n_vectors);
+  /* set the initial values for the current buffer the next pointers */
+  b = bufs;
+  next = nexts;
+
+  n_left = frame->n_vectors;
+  while (n_left > 0)
+    {
+      u32 next_index = 0;
+      u32 sw_if_index0 =
+	vnet_buffer (b[0])->sw_if_index[is_output ? VLIB_TX : VLIB_RX];
+      u16 ethertype = 0;
+
+      int error0 = 0;
+
+      ethernet_header_t *h0 = vlib_buffer_get_current (b[0]);
+      u8 *l3h0 = (u8 *) h0 + vnet_buffer (b[0])->l2.l2_len;
+      ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
+
+      if (is_permitted_ethertype (am, sw_if_index0, is_output, ethertype))
+	vnet_feature_next (&next_index, b[0]);
+
+      next[0] = next_index;
+
+      if (0 == next[0])
+	b[0]->error = error_node->errors[error0];
+
+      if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
+			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  nonip_in_out_trace_t *t =
+	    vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->ethertype = ethertype;
+	  t->next_index = next[0];
+	}
+      next[0] = next[0] < node->n_next_nodes ? next[0] : 0;
+
+      next++;
+      b++;
+      n_left--;
+    }
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
+
+  return frame->n_vectors;
+}
+
+vlib_node_registration_t acl_in_nonip_node;
+VLIB_NODE_FN (acl_in_nonip_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
+{
+  return nonip_in_out_node_fn (vm, node, frame, 0, &acl_in_nonip_node);
+}
+
+vlib_node_registration_t acl_out_nonip_node;
+VLIB_NODE_FN (acl_out_nonip_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
+{
+  return nonip_in_out_node_fn (vm, node, frame, 1, &acl_in_nonip_node);
+}
+
+
+/* *INDENT-OFF* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (acl_in_nonip_node, acl_in_nonip_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (acl_out_nonip_node, acl_out_nonip_node_fn)
+
+VLIB_REGISTER_NODE (acl_in_nonip_node) =
+{
+  .name = "acl-plugin-in-nonip-l2",
+  .vector_size = sizeof (u32),
+  .format_trace = format_l2_nonip_in_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (fa_in_nonip_error_strings),
+  .error_strings = fa_in_nonip_error_strings,
+  .n_next_nodes = ACL_FA_N_NEXT,
+  .next_nodes =
+  {
+    [ACL_FA_ERROR_DROP] = "error-drop",
+  }
+};
+
+VNET_FEATURE_INIT (acl_in_l2_nonip_fa_feature, static) =
+{
+  .arc_name = "l2-input-nonip",
+  .node_name = "acl-plugin-in-nonip-l2",
+  .runs_before = VNET_FEATURES ("l2-input-feat-arc-end"),
+};
+
+VLIB_REGISTER_NODE (acl_out_nonip_node) =
+{
+  .name = "acl-plugin-out-nonip-l2",
+  .vector_size = sizeof (u32),
+  .format_trace = format_l2_nonip_out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (fa_out_nonip_error_strings),
+  .error_strings = fa_out_nonip_error_strings,
+  .n_next_nodes = ACL_FA_N_NEXT,
+  .next_nodes =
+  {
+    [ACL_FA_ERROR_DROP] = "error-drop",
+  }
+};
+
+VNET_FEATURE_INIT (acl_out_l2_nonip_fa_feature, static) =
+{
+  .arc_name = "l2-output-nonip",
+  .node_name = "acl-plugin-out-nonip-l2",
+  .runs_before = VNET_FEATURES ("l2-output-feat-arc-end"),
+};
+
+/* *INDENT-ON* */
+
+
+
 always_inline u16
 get_current_policy_epoch (acl_main_t * am, int is_input, u32 sw_if_index0)
 {
@@ -82,7 +308,7 @@ get_current_policy_epoch (acl_main_t * am, int is_input, u32 sw_if_index0)
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
 		vlib_node_runtime_t * node, vlib_frame_t * frame, int is_ip6,
-		int is_input, int is_l2_path, u32 * l2_feat_next_node_index,
+		int is_input, int is_l2_path,
 		vlib_node_registration_t * acl_fa_node)
 {
   u32 n_left, *from;
@@ -278,10 +504,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 
       if (action > 0)
 	{
-	  if (is_l2_path)
-	    next0 = vnet_l2_feature_next (b[0], l2_feat_next_node_index, 0);
-	  else
-	    vnet_feature_next (&next0, b[0]);
+	  vnet_feature_next (&next0, b[0]);
 	}
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning
@@ -342,10 +565,7 @@ VLIB_NODE_FN (acl_in_l2_ip6_node) (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,
 				   vlib_frame_t * frame)
 {
-  acl_main_t *am = &acl_main;
-  return acl_fa_node_fn (vm, node, frame, 1, 1, 1,
-			 am->fa_acl_in_ip6_l2_node_feat_next_node_index,
-			 &acl_in_l2_ip6_node);
+  return acl_fa_node_fn (vm, node, frame, 1, 1, 1, &acl_in_l2_ip6_node);
 }
 
 vlib_node_registration_t acl_in_l2_ip4_node;
@@ -353,10 +573,7 @@ VLIB_NODE_FN (acl_in_l2_ip4_node) (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,
 				   vlib_frame_t * frame)
 {
-  acl_main_t *am = &acl_main;
-  return acl_fa_node_fn (vm, node, frame, 0, 1, 1,
-			 am->fa_acl_in_ip4_l2_node_feat_next_node_index,
-			 &acl_in_l2_ip4_node);
+  return acl_fa_node_fn (vm, node, frame, 0, 1, 1, &acl_in_l2_ip4_node);
 }
 
 vlib_node_registration_t acl_out_l2_ip6_node;
@@ -364,10 +581,7 @@ VLIB_NODE_FN (acl_out_l2_ip6_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  acl_main_t *am = &acl_main;
-  return acl_fa_node_fn (vm, node, frame, 1, 0, 1,
-			 am->fa_acl_out_ip6_l2_node_feat_next_node_index,
-			 &acl_out_l2_ip6_node);
+  return acl_fa_node_fn (vm, node, frame, 1, 0, 1, &acl_out_l2_ip6_node);
 }
 
 vlib_node_registration_t acl_out_l2_ip4_node;
@@ -375,10 +589,7 @@ VLIB_NODE_FN (acl_out_l2_ip4_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  acl_main_t *am = &acl_main;
-  return acl_fa_node_fn (vm, node, frame, 0, 0, 1,
-			 am->fa_acl_out_ip4_l2_node_feat_next_node_index,
-			 &acl_out_l2_ip4_node);
+  return acl_fa_node_fn (vm, node, frame, 0, 0, 1, &acl_out_l2_ip4_node);
 }
 
 /**** L3 processing path nodes ****/
@@ -388,7 +599,7 @@ VLIB_NODE_FN (acl_in_fa_ip6_node) (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,
 				   vlib_frame_t * frame)
 {
-  return acl_fa_node_fn (vm, node, frame, 1, 1, 0, 0, &acl_in_fa_ip6_node);
+  return acl_fa_node_fn (vm, node, frame, 1, 1, 0, &acl_in_fa_ip6_node);
 }
 
 vlib_node_registration_t acl_in_fa_ip4_node;
@@ -396,7 +607,7 @@ VLIB_NODE_FN (acl_in_fa_ip4_node) (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,
 				   vlib_frame_t * frame)
 {
-  return acl_fa_node_fn (vm, node, frame, 0, 1, 0, 0, &acl_in_fa_ip4_node);
+  return acl_fa_node_fn (vm, node, frame, 0, 1, 0, &acl_in_fa_ip4_node);
 }
 
 vlib_node_registration_t acl_out_fa_ip6_node;
@@ -404,7 +615,7 @@ VLIB_NODE_FN (acl_out_fa_ip6_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  return acl_fa_node_fn (vm, node, frame, 1, 0, 0, 0, &acl_out_fa_ip6_node);
+  return acl_fa_node_fn (vm, node, frame, 1, 0, 0, &acl_out_fa_ip6_node);
 }
 
 vlib_node_registration_t acl_out_fa_ip4_node;
@@ -412,7 +623,7 @@ VLIB_NODE_FN (acl_out_fa_ip4_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  return acl_fa_node_fn (vm, node, frame, 0, 0, 0, 0, &acl_out_fa_ip4_node);
+  return acl_fa_node_fn (vm, node, frame, 0, 0, 0, &acl_out_fa_ip4_node);
 }
 
 static u8 *
@@ -499,6 +710,13 @@ VLIB_REGISTER_NODE (acl_in_l2_ip6_node) =
   }
 };
 
+VNET_FEATURE_INIT (acl_in_l2_ip6_fa_feature, static) =
+{
+  .arc_name = "l2-input-ip6",
+  .node_name = "acl-plugin-in-ip6-l2",
+  .runs_before = VNET_FEATURES ("l2-input-feat-arc-end"),
+};
+
 VLIB_REGISTER_NODE (acl_in_l2_ip4_node) =
 {
   .name = "acl-plugin-in-ip4-l2",
@@ -513,6 +731,14 @@ VLIB_REGISTER_NODE (acl_in_l2_ip4_node) =
     [ACL_FA_ERROR_DROP] = "error-drop",
   }
 };
+
+VNET_FEATURE_INIT (acl_in_l2_ip4_fa_feature, static) =
+{
+  .arc_name = "l2-input-ip4",
+  .node_name = "acl-plugin-in-ip4-l2",
+  .runs_before = VNET_FEATURES ("l2-input-feat-arc-end"),
+};
+
 
 VLIB_REGISTER_NODE (acl_out_l2_ip6_node) =
 {
@@ -529,6 +755,14 @@ VLIB_REGISTER_NODE (acl_out_l2_ip6_node) =
   }
 };
 
+VNET_FEATURE_INIT (acl_out_l2_ip6_fa_feature, static) =
+{
+  .arc_name = "l2-output-ip6",
+  .node_name = "acl-plugin-out-ip6-l2",
+  .runs_before = VNET_FEATURES ("l2-output-feat-arc-end"),
+};
+
+
 VLIB_REGISTER_NODE (acl_out_l2_ip4_node) =
 {
   .name = "acl-plugin-out-ip4-l2",
@@ -542,6 +776,13 @@ VLIB_REGISTER_NODE (acl_out_l2_ip4_node) =
   {
     [ACL_FA_ERROR_DROP] = "error-drop",
   }
+};
+
+VNET_FEATURE_INIT (acl_out_l2_ip4_fa_feature, static) =
+{
+  .arc_name = "l2-output-ip4",
+  .node_name = "acl-plugin-out-ip4-l2",
+  .runs_before = VNET_FEATURES ("l2-output-feat-arc-end"),
 };
 
 

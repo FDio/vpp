@@ -117,6 +117,7 @@ l2input_bd_config (u32 bd_index)
  _(VPATH,         "vpath-input-l2")             \
  _(ACL,           "l2-input-acl")               \
  _(POLICER_CLAS,  "l2-policer-classify")	\
+ _(INPUT_FEAT_ARC, "l2-input-feat-arc")         \
  _(INPUT_CLASSIFY, "l2-input-classify")         \
  _(SPAN,          "span-l2-input")
 
