@@ -106,8 +106,9 @@ vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
   vum->show_dev_instance_by_real_dev_instance[hi->dev_instance] =
     new_dev_instance;
 
-  DBG_SOCK ("renumbered vhost-user interface dev_instance %d to %d",
-	    hi->dev_instance, new_dev_instance);
+  vlib_log_debug (vum->log_class,
+		  "renumbered vhost-user interface dev_instance %d to %d",
+		  hi->dev_instance, new_dev_instance);
 
   return 0;
 }
@@ -605,7 +606,8 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
     txvq->used->flags = 0;
   else
     {
-      clib_warning ("BUG: unhandled mode %d changed for if %d queue %d", mode,
+      vlib_log_err (vum->log_class,
+		    "BUG: unhandled mode %d changed for if %d queue %d", mode,
 		    hw_if_index, qid);
       return clib_error_return (0, "unsupported");
     }

@@ -19,6 +19,7 @@
 static_always_inline void *
 map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 {
+  vhost_user_main_t *vum = &vhost_user_main;
   int i = *hint;
   if (PREDICT_TRUE ((vui->regions[i].guest_phys_addr <= addr) &&
 		    ((vui->regions[i].guest_phys_addr +
@@ -134,7 +135,7 @@ vhost_map_guest_mem_done:
 	}
     }
 #endif
-  DBG_VQ ("failed to map guest mem addr %llx", addr);
+  vlib_log_err (vum->log_class, "failed to map guest mem addr %llx", addr);
   *hint = 0;
   return 0;
 }
@@ -162,6 +163,8 @@ static_always_inline void
 vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
 			      u64 addr, u64 len, u8 is_host_address)
 {
+  vhost_user_main_t *vum = &vhost_user_main;
+
   if (PREDICT_TRUE (vui->log_base_addr == 0
 		    || !(vui->features & (1 << FEAT_VHOST_F_LOG_ALL))))
     {
@@ -173,7 +176,8 @@ vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
     }
   if (PREDICT_FALSE ((addr + len - 1) / VHOST_LOG_PAGE / 8 >= vui->log_size))
     {
-      DBG_SOCK ("vhost_user_log_dirty_pages(): out of range\n");
+      vlib_log_err (vum->log_class,
+		    "vhost_user_log_dirty_pages(): out of range\n");
       return;
     }
 
