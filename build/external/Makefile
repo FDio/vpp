@@ -110,7 +110,7 @@ $(DEV_RPM): Makefile rpm/vpp-ext-deps.spec
 build-rpm: $(DEV_RPM)
 
 install-rpm:
-ifneq ($(INSTALLED_RPM_VER),$(PRM_VER)-$(PKG_SUFFIX))
+ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	@$(MAKE) $(DEV_RPM)
 	sudo rpm -Uih $(DEV_RPM)
 else
