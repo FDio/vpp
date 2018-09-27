@@ -713,7 +713,7 @@ typedef struct
   sctp_opt_params_hdr_t param_hdr;
 
   unsigned char mac[SHA1_OUTPUT_LENGTH];	/* RFC 2104 */
-  u32 creation_time;
+  u64 creation_time;
   u32 cookie_lifespan;
 
 } sctp_state_cookie_param_t;

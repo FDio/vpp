@@ -712,12 +712,12 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
 {
   sctp_connection_t *sctp_conn;
 
+  SCTP_DBG ("%s expired", sctp_timer_to_string (timer_id));
+
   sctp_conn = sctp_connection_get (conn_index, vlib_get_thread_index ());
   /* note: the connection may have already disappeared */
   if (PREDICT_FALSE (sctp_conn == 0))
     return;
-
-  SCTP_DBG ("%s expired", sctp_timer_to_string (timer_id));
 
   if (sctp_conn->sub_conn[conn_index].unacknowledged_hb >
       SCTP_PATH_MAX_RETRANS)
