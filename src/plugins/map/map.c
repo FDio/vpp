@@ -979,7 +979,7 @@ format_map_domain (u8 * s, va_list * args)
     ip6_prefix = d->ip6_prefix;
 
   s = format (s,
-	      "[%d] ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d ea_bits_len %d "
+	      "[%d] ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d ea-bits-len %d "
 	      "psid-offset %d psid-len %d mtu %d %s",
 	      d - mm->domains,
 	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
