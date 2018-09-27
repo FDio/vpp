@@ -1389,12 +1389,13 @@ static void vl_api_bridge_domain_details_t_handler
   u32 n_sw_ifs = ntohl (mp->n_sw_ifs);
   int i;
 
-  print (vam->ofp, "\n%-3s %-3s %-3s %-3s %-3s %-3s",
-	 " ID", "LRN", "FWD", "FLD", "BVI", "#IF");
+  print (vam->ofp, "\n%-3s %-3s %-3s %-3s %-3s %-6s %-3s",
+	 " ID", "LRN", "FWD", "FLD", "BVI", "UU-FWD", "#IF");
 
-  print (vam->ofp, "%3d %3d %3d %3d %3d %3d",
+  print (vam->ofp, "%3d %3d %3d %3d %3d %6d %3d",
 	 ntohl (mp->bd_id), mp->learn, mp->forward,
-	 mp->flood, ntohl (mp->bvi_sw_if_index), n_sw_ifs);
+	 mp->flood, ntohl (mp->bvi_sw_if_index),
+	 ntohl (mp->uu_fwd_sw_if_index), n_sw_ifs);
 
   if (n_sw_ifs)
     {

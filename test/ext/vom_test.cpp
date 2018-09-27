@@ -936,7 +936,10 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     l2_binding *l2itf = new l2_binding(itf1, bd1);
     HW::item<bool> hw_l2_bind(true, rc_t::OK);
 
-    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind, hw_ifh.data(), hw_bd.data(), false));
+    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind,
+                                         hw_ifh.data(),
+                                         hw_bd.data(),
+                                         l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     TRY_CHECK_RC(OM::write(franz, *l2itf));
 
     /*
@@ -959,7 +962,10 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     HW::item<l2_binding::l2_vtr_op_t> hw_set_vtr(l2_binding::l2_vtr_op_t::L2_VTR_POP_1, rc_t::OK);
     l2itf2->set(l2_binding::l2_vtr_op_t::L2_VTR_POP_1, 68);
 
-    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind, hw_ifh2.data(), hw_bd.data(), false));
+    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind,
+                                         hw_ifh2.data(),
+                                         hw_bd.data(),
+                                         l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     ADD_EXPECT(l2_binding_cmds::set_vtr_op_cmd(hw_set_vtr, hw_ifh2.data(), 68));
     TRY_CHECK_RC(OM::write(dante, *l2itf2));
 
@@ -983,7 +989,10 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     delete l2itf;
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
                                                   rc_t::OK);
-    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind, hw_ifh.data(), hw_bd.data(), false));
+    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind,
+                                           hw_ifh.data(),
+                                           hw_bd.data(),
+                                           l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::remove(franz));
@@ -996,7 +1005,10 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     STRICT_ORDER_OFF();
     ADD_EXPECT(bridge_domain_arp_entry_cmds::delete_cmd(hw_be1, bd1.id(), mac1, ip1));
     ADD_EXPECT(bridge_domain_entry_cmds::delete_cmd(hw_be1, mac1, bd1.id(), false));
-    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind, hw_ifh2.data(), hw_bd.data(), false));
+    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind,
+                                           hw_ifh2.data(),
+                                           hw_bd.data(),
+                                           l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
 
     ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
@@ -1027,7 +1039,10 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     TRY_CHECK_RC(OM::write(jkr, itf3));
 
     l2_binding *l2itf3 = new l2_binding(itf3, bd2);
-    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind, hw_ifh3.data(), hw_bd2.data(), true));
+    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind,
+                                         hw_ifh3.data(),
+                                         hw_bd2.data(),
+                                         l2_binding::l2_port_type_t::L2_PORT_TYPE_BVI));
     TRY_CHECK_RC(OM::write(jkr, *l2itf3));
 
     HW::item<bool> hw_be2(true, rc_t::OK);
@@ -1039,7 +1054,10 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     delete l2itf3;
     delete be2;
     STRICT_ORDER_OFF();
-    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind, hw_ifh3.data(), hw_bd2.data(), true));
+    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind,
+                                           hw_ifh3.data(),
+                                           hw_bd2.data(),
+                                           l2_binding::l2_port_type_t::L2_PORT_TYPE_BVI));
     ADD_EXPECT(bridge_domain_entry_cmds::delete_cmd(hw_be2, mac2, bd2.id(), true));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh3));
     ADD_EXPECT(interface_cmds::loopback_delete_cmd(hw_ifh3));
@@ -1143,14 +1161,20 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     l2_binding *l2itf = new l2_binding(vxt, bd1);
     HW::item<bool> hw_l2_bind(true, rc_t::OK);
 
-    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind, hw_vxt.data(), hw_bd.data(), false));
+    ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_bind,
+                                         hw_vxt.data(),
+                                         hw_bd.data(),
+                                         l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     TRY_CHECK_RC(OM::write(franz, *l2itf));
 
     // flush Franz's state
     delete l2itf;
     HW::item<handle_t> hw_vxtdel(3, rc_t::NOOP);
     STRICT_ORDER_OFF();
-    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind, hw_vxt.data(), hw_bd.data(), false));
+    ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind,
+                                           hw_vxt.data(),
+                                           hw_bd.data(),
+                                           l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
     ADD_EXPECT(vxlan_tunnel_cmds::delete_cmd(hw_vxtdel, ep));
     TRY_CHECK(OM::remove(franz));
@@ -1971,7 +1995,8 @@ BOOST_AUTO_TEST_CASE(test_pipes) {
 
     ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_1_bind,
                                          pipe1.east()->handle(),
-                                         hw_bd.data(), false));
+                                         hw_bd.data(),
+                                         l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     TRY_CHECK_RC(OM::write(gk, *l2_1));
 
     l2_binding *l2_2 = new l2_binding(*pipe1.west(), bd1);
@@ -1979,7 +2004,8 @@ BOOST_AUTO_TEST_CASE(test_pipes) {
 
     ADD_EXPECT(l2_binding_cmds::bind_cmd(hw_l2_2_bind,
                                          pipe1.west()->handle(),
-                                         hw_bd.data(), false));
+                                         hw_bd.data(),
+                                         l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     TRY_CHECK_RC(OM::write(gk, *l2_2));
 
     STRICT_ORDER_OFF();
@@ -1989,11 +2015,11 @@ BOOST_AUTO_TEST_CASE(test_pipes) {
     ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_1_bind,
                                            pipe1.east()->handle(),
                                            hw_bd.data(),
-                                           false));
+                                           l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_1_bind,
                                            pipe1.west()->handle(),
                                            hw_bd.data(),
-                                           false));
+                                           l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_hdl));
     ADD_EXPECT(pipe_cmds::delete_cmd(hw_hdl, hw_hdl_pair));
     ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
