@@ -62,6 +62,11 @@ typedef struct
   int default_syslog_log_level;
   int unthrottle_time;
   u32 indent;
+
+  /* time zero */
+  struct timeval time_zero_timeval;
+  f64 time_zero;
+
 } vlib_log_main_t;
 
 vlib_log_main_t log_main = {
@@ -276,6 +281,10 @@ static clib_error_t *
 vlib_log_init (vlib_main_t * vm)
 {
   vlib_log_main_t *lm = &log_main;
+
+  gettimeofday (&lm->time_zero_timeval, 0);
+  lm->time_zero = vlib_time_now (vm);
+
   vec_validate (lm->entries, lm->size);
   lm->log_class = vlib_log_register_class ("log", 0);
   u8 *tmp = format (NULL, "%U %-10U %-10U ", format_time_float, 0, (f64) 0,
@@ -297,12 +306,16 @@ show_log (vlib_main_t * vm,
   vlib_log_entry_t *e;
   int i = last_log_entry ();
   int count = lm->count;
+  f64 time_offset;
+
+  time_offset = (f64) lm->time_zero_timeval.tv_sec
+    + (((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
 
   while (count--)
     {
       e = vec_elt_at_index (lm->entries, i);
       vlib_cli_output (vm, "%U %-10U %-10U %v",
-		       format_time_float, 0, e->timestamp,
+		       format_time_float, 0, e->timestamp + time_offset,
 		       format_vlib_log_level, e->level,
 		       format_vlib_log_class, e->class, e->string);
       i = (i + 1) % lm->size;
