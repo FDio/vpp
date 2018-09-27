@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5580f446_7e6ac932",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1182,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-09-27T08:42:54Z",
+      "side": 1,
+      "message": "fixed in new change 15009",
+      "parentUuid": "b218c3c7_4712173e",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "487b7a0d_3772660f",
         "filename": "extras/libmemif/src/main.c",
         "patchSetId": 4
@@ -53,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "b51a749e_ae5b52b1",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1431,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-09-27T08:42:54Z",
+      "side": 1,
+      "message": "yes, region 0 holds rings (slave to master and master to slave), these rings holds descriptors, which describe buffers in region 1.",
+      "parentUuid": "06a9acae_14ef6d47",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1f898150_c6970b38",
         "filename": "extras/libmemif/src/main.c",
         "patchSetId": 4
@@ -64,6 +100,24 @@
       "writtenOn": "2018-09-25T11:49:30Z",
       "side": 1,
       "message": "Are descriptors carved only for region 1? what is the memory allocated for region 0 used for?",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f1e27dc8_91998a41",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-09-27T08:42:54Z",
+      "side": 1,
+      "message": "region 0 contains descriptors for buffers in region 1. region 1 is simply a buffer pool.",
+      "parentUuid": "1f898150_c6970b38",
       "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -87,6 +141,24 @@
     },
     {
       "key": {
+        "uuid": "b1576c85_126e6e66",
+        "filename": "extras/libmemif/src/main.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1532,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-09-27T08:42:54Z",
+      "side": 1,
+      "message": "do you have a specific use case for this? it should not be that difficult to implement (however change in memif protocol would be needed).",
+      "parentUuid": "6f8f683d_ab852efe",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "72fd12a1_36bbbeb4",
         "filename": "extras/libmemif/src/socket.c",
         "patchSetId": 4
@@ -98,6 +170,24 @@
       "writtenOn": "2018-09-25T11:49:30Z",
       "side": 1,
       "message": "once user register a function.. will both regions(0,1) be marked as external? Is this expected behavior?",
+      "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0d1d7835_849c844c",
+        "filename": "extras/libmemif/src/socket.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 510,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2018-09-27T08:42:54Z",
+      "side": 1,
+      "message": "indeed a bug. fixed in change 15009",
+      "parentUuid": "72fd12a1_36bbbeb4",
       "revId": "93a5dd17232e42bea2fc9dcf59c652a9da31b2b3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
