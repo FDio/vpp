@@ -55,7 +55,7 @@ map_main_t map_main;
 /*
  * This code supports MAP-T:
  *
- * With DMR prefix length equal to 96.
+ * With a DMR prefix length of 64 or 96 (RFC6052).
  *
  */
 
@@ -81,15 +81,9 @@ map_create_domain (ip4_address_t * ip4_prefix,
   /* Sanity check on the src prefix length */
   if (flags & MAP_DOMAIN_TRANSLATION)
     {
-      if (ip6_src_len != 96)
+      if (ip6_src_len != 96 && ip6_src_len != 64)
 	{
-	  clib_warning ("MAP-T only supports ip6_src_len = 96 for now.");
-	  return -1;
-	}
-      if ((flags & MAP_DOMAIN_RFC6052) && ip6_prefix_len != 96)
-	{
-	  clib_warning ("RFC6052 translation only supports ip6_prefix_len = "
-			"96 for now");
+	  clib_warning ("MAP-T only supports prefix lengths of 64 and 96.");
 	  return -1;
 	}
     }
@@ -2314,8 +2308,8 @@ map_init (vlib_main_t * vm)
   mm->frag_ignore_df = false;
 
   vec_validate (mm->domain_counters, MAP_N_DOMAIN_COUNTER - 1);
-  mm->domain_counters[MAP_DOMAIN_COUNTER_RX].name = "rx";
-  mm->domain_counters[MAP_DOMAIN_COUNTER_TX].name = "tx";
+  mm->domain_counters[MAP_DOMAIN_COUNTER_RX].name = "/map/rx";
+  mm->domain_counters[MAP_DOMAIN_COUNTER_TX].name = "/map/tx";
 
   vlib_validate_simple_counter (&mm->icmp_relayed, 0);
   vlib_zero_simple_counter (&mm->icmp_relayed, 0);
