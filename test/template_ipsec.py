@@ -198,8 +198,11 @@ class IpsecTraTests(object):
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for p in recv_pkts:
-                decrypted = vpp_tra_sa.decrypt(p[IP])
-                self.assert_packet_checksums_valid(decrypted)
+                try:
+                    decrypted = vpp_tra_sa.decrypt(p[IP])
+                    self.assert_packet_checksums_valid(decrypted)
+                finally:
+                    self.logger.debug(ppp("Unexpected packet:", p))
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
@@ -220,8 +223,11 @@ class IpsecTraTests(object):
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for p in recv_pkts:
-                decrypted = vpp_tra_sa.decrypt(p[IPv6])
-                self.assert_packet_checksums_valid(decrypted)
+                try:
+                    decrypted = vpp_tra_sa.decrypt(p[IPv6])
+                    self.assert_packet_checksums_valid(decrypted)
+                finally:
+                    self.logger.debug(ppp("Unexpected packet:", p))
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
