@@ -851,7 +851,7 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
 			 sctp_connection_t * sctp_conn, u8 idx,
 			 vlib_buffer_t * b0, u16 * next0)
 {
-  u32 now = sctp_time_now ();
+  u64 now = sctp_time_now ();
 
   sctp_cookie_echo_chunk_t *cookie_echo =
     (sctp_cookie_echo_chunk_t *) sctp_hdr;
@@ -864,10 +864,11 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
 
   sctp_calculate_rto (sctp_conn, idx);
 
-  u32 creation_time =
-    clib_net_to_host_u32 (cookie_echo->cookie.creation_time);
-  u32 cookie_lifespan =
+  u64 creation_time =
+    clib_net_to_host_u64 (cookie_echo->cookie.creation_time);
+  u64 cookie_lifespan =
     clib_net_to_host_u32 (cookie_echo->cookie.cookie_lifespan);
+
   if (now > creation_time + cookie_lifespan)
     {
       SCTP_DBG ("now (%u) > creation_time (%u) + cookie_lifespan (%u)",
@@ -1516,6 +1517,11 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sack_chunk->sctp_hdr.verification_tag)
     {
+      SCTP_ADV_DBG
+	("sctp_conn->local_tag != sack_chunk->sctp_hdr.verification_tag");
+
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
+
       return SCTP_ERROR_INVALID_TAG;
     }
 

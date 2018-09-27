@@ -779,7 +779,7 @@ sctp_prepare_initack_chunk_for_collision (sctp_connection_t * sctp_conn,
     clib_host_to_net_u16 (SCTP_STATE_COOKIE_TYPE);
   state_cookie_param->param_hdr.length =
     clib_host_to_net_u16 (sizeof (sctp_state_cookie_param_t));
-  state_cookie_param->creation_time = clib_host_to_net_u32 (sctp_time_now ());
+  state_cookie_param->creation_time = clib_host_to_net_u64 (sctp_time_now ());
   state_cookie_param->cookie_lifespan =
     clib_host_to_net_u32 (SCTP_VALID_COOKIE_LIFE);
 
@@ -919,7 +919,7 @@ sctp_prepare_initack_chunk (sctp_connection_t * sctp_conn, u8 idx,
     clib_host_to_net_u16 (SCTP_STATE_COOKIE_TYPE);
   state_cookie_param->param_hdr.length =
     clib_host_to_net_u16 (sizeof (sctp_state_cookie_param_t));
-  state_cookie_param->creation_time = clib_host_to_net_u32 (sctp_time_now ());
+  state_cookie_param->creation_time = clib_host_to_net_u64 (sctp_time_now ());
   state_cookie_param->cookie_lifespan =
     clib_host_to_net_u32 (SCTP_VALID_COOKIE_LIFE);
 
@@ -1239,7 +1239,7 @@ sctp_send_heartbeat (sctp_connection_t * sctp_conn)
   vlib_main_t *vm = vlib_get_main ();
 
   u8 i;
-  u32 now = sctp_time_now ();
+  u64 now = sctp_time_now ();
 
   for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
     {
