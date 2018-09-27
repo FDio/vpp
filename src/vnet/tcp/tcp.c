@@ -1017,8 +1017,8 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
  * @param tc tcp connection
  * @return number of bytes session is allowed to write
  */
-static u32
-tcp_snd_space (tcp_connection_t * tc)
+static inline u32
+tcp_snd_space_inline (tcp_connection_t * tc)
 {
   int snd_space, snt_limited;
 
@@ -1066,11 +1066,17 @@ tcp_snd_space (tcp_connection_t * tc)
   return 0;
 }
 
+u32
+tcp_snd_space (tcp_connection_t * tc)
+{
+  return tcp_snd_space_inline (tc);
+}
+
 static u32
 tcp_session_send_space (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-  return clib_min (tcp_snd_space (tc),
+  return clib_min (tcp_snd_space_inline (tc),
 		   tc->snd_wnd - (tc->snd_nxt - tc->snd_una));
 }
 
