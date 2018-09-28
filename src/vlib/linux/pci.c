@@ -101,6 +101,10 @@ typedef struct
   /* Device File descriptor */
   int fd;
 
+  /* read/write file descriptor for io bar */
+  int io_fd;
+  u64 io_offset;
+
   /* Minor device for uio device. */
   u32 uio_minor;
 
@@ -950,6 +954,176 @@ vlib_pci_read_write_config (vlib_pci_dev_handle_t h,
   return 0;
 }
 
+static int
+pci_addr_cmp (void *v1, void *v2)
+{
+  vlib_pci_addr_t *a1 = v1;
+  vlib_pci_addr_t *a2 = v2;
+
+  if (a1->domain > a2->domain)
+    return 1;
+  if (a1->domain < a2->domain)
+    return -1;
+  if (a1->bus > a2->bus)
+    return 1;
+  if (a1->bus < a2->bus)
+    return -1;
+  if (a1->slot > a2->slot)
+    return 1;
+  if (a1->slot < a2->slot)
+    return -1;
+  if (a1->function > a2->function)
+    return 1;
+  if (a1->function < a2->function)
+    return -1;
+  return 0;
+}
+
+clib_error_t *
+clib_sysfs_read_pci_ioports (char *file_name, vlib_pci_addr_t * pci_addr,
+			     u16 * start, u16 * end)
+{
+  u8 *s = 0;
+  FILE *fp;
+  size_t len = 0;
+  u16 _start = 0, _end = 0;
+  vlib_pci_addr_t pci_addr2;
+
+  fp = fopen (file_name, "r");
+  if (fp == NULL)
+    return clib_error_return_unix (0, "open `%s'", file_name);
+
+  while (getline (((char **) &s), &len, fp) != -1)
+    {
+      unformat_input_t _input, *input = &_input;
+      unformat_init_vector (input, s);
+      while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (input, "%x", &_start));
+	  else if (unformat (input, "-%x", &_end));
+	  else
+	    if (unformat (input, ": %U", unformat_vlib_pci_addr, &pci_addr2))
+	    ;
+	  else
+	    break;
+	}
+
+      if (_start)
+	{
+	  if (pci_addr_cmp (pci_addr, &pci_addr2) == 0)
+	    {
+	      break;
+	    }
+	}
+    }
+  free (s);
+  fclose (fp);
+  if (_start == 0)
+    return clib_error_return (0, "pci read ioport error");
+
+  *start = _start;
+  *end = _end;
+
+  return 0;
+}
+
+clib_error_t *
+vlib_pci_map_io_region (vlib_pci_dev_handle_t h, u32 bar, void **result)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  clib_error_t *error;
+  u16 start = 0, end = 0;
+
+  ASSERT (bar <= 5);
+
+  error = 0;
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
+    {
+      u8 *file_name = format (0, "/proc/ioports%c", 0);
+      error =
+	clib_sysfs_read_pci_ioports ((char *) file_name, &p->addr, &start,
+				     &end);
+
+      vec_free (file_name);
+      if (error)
+	goto err;
+
+      /* *INDENT-OFF* */
+      vec_validate_init_empty (p->regions, bar,
+                           (linux_pci_region_t) { .fd = -1});
+      /* *INDENT-ON* */
+      *(u16 *) result = start;
+      p->regions[bar].addr = *result;
+      p->regions[bar].size = end - start;
+    }
+  else
+    error = clib_error_return (error, "pci device type is not uio");
+
+err:
+  return error;
+}
+
+
+static clib_error_t *
+vlib_pci_region(vlib_pci_dev_handle_t h, u32 bar, int *fd, u64 *size, u64 *offset)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  clib_error_t *error = 0;
+  int _fd = -1;
+  u64 _size = 0, _offset = 0;
+
+  ASSERT (bar <= 5);
+
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
+    {
+      u8 *file_name;
+      struct stat stat_buf;
+      file_name = format (0, "%s/%U/resource%d%c", sysfs_pci_dev_path,
+                          format_vlib_pci_addr, &p->addr, bar, 0);
+
+      _fd = open ((char *) file_name, O_RDWR);
+      if (_fd < 0)
+        {
+          error = clib_error_return_unix (0, "open `%s'", file_name);
+          vec_free (file_name);
+          return error;
+        }
+
+      if (fstat (_fd, &stat_buf) < 0)
+        {
+          error = clib_error_return_unix (0, "fstat `%s'", file_name);
+          vec_free (file_name);
+          close (_fd);
+          return error;
+        }
+
+      vec_free (file_name);
+      _size = stat_buf.st_size;
+      _offset = 0;
+    }
+  else if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
+    {
+      struct vfio_region_info reg = { 0 };
+      reg.argsz = sizeof (struct vfio_region_info);
+      reg.index = bar;
+      if (ioctl (p->fd, VFIO_DEVICE_GET_REGION_INFO, &reg) < 0)
+        return clib_error_return_unix (0, "ioctl(VFIO_DEVICE_GET_INFO) "
+                                       "'%U'", format_vlib_pci_addr,
+                                       &p->addr);
+      _fd = p->fd;
+      _size = reg.size;
+      _offset = reg.offset;
+    }
+  else
+    ASSERT (0);
+
+  *fd = _fd;
+  *size = _size;
+  *offset = _offset;
+
+  return error;
+}
+
 static clib_error_t *
 vlib_pci_map_region_int (vlib_pci_dev_handle_t h,
 			 u32 bar, u8 * addr, void **result)
@@ -960,54 +1134,11 @@ vlib_pci_map_region_int (vlib_pci_dev_handle_t h,
   int flags = MAP_SHARED;
   u64 size = 0, offset = 0;
 
-  ASSERT (bar <= 5);
+  if ((error = vlib_pci_region(h, bar, &fd, &size, &offset)))
+    return error;
 
-  error = 0;
-
-  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
-    {
-      u8 *file_name;
-      struct stat stat_buf;
-      file_name = format (0, "%s/%U/resource%d%c", sysfs_pci_dev_path,
-			  format_vlib_pci_addr, &p->addr, bar, 0);
-
-      fd = open ((char *) file_name, O_RDWR);
-      if (fd < 0)
-	{
-	  error = clib_error_return_unix (0, "open `%s'", file_name);
-	  vec_free (file_name);
-	  return error;
-	}
-
-      if (fstat (fd, &stat_buf) < 0)
-	{
-	  error = clib_error_return_unix (0, "fstat `%s'", file_name);
-	  vec_free (file_name);
-	  close (fd);
-	  return error;
-	}
-
-      vec_free (file_name);
-      if (addr != 0)
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && addr != 0)
 	flags |= MAP_FIXED;
-      size = stat_buf.st_size;
-      offset = 0;
-    }
-  else if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
-    {
-      struct vfio_region_info reg = { 0 };
-      reg.argsz = sizeof (struct vfio_region_info);
-      reg.index = bar;
-      if (ioctl (p->fd, VFIO_DEVICE_GET_REGION_INFO, &reg) < 0)
-	return clib_error_return_unix (0, "ioctl(VFIO_DEVICE_GET_INFO) "
-				       "'%U'", format_vlib_pci_addr,
-				       &p->addr);
-      fd = p->fd;
-      size = reg.size;
-      offset = reg.offset;
-    }
-  else
-    ASSERT (0);
 
   *result = mmap (addr, size, PROT_READ | PROT_WRITE, flags, fd, offset);
   if (*result == (void *) -1)
@@ -1040,6 +1171,43 @@ vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h, u32 resource, u8 * addr,
 			   void **result)
 {
   return (vlib_pci_map_region_int (h, resource, addr, result));
+}
+
+clib_error_t *
+vlib_pci_io_region (vlib_pci_dev_handle_t h, u32 resource)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  clib_error_t *error = 0;
+  int fd = -1;
+  u64 size = 0, offset = 0;
+
+  if ((error = vlib_pci_region(h, resource, &fd, &size, &offset)))
+    return error;
+
+  p->io_fd = fd;
+  p->io_offset = offset;
+  return error;
+}
+
+clib_error_t *
+vlib_pci_read_write_io (vlib_pci_dev_handle_t h,
+                        vlib_read_or_write_t read_or_write,
+                        uword offset,
+                        void *data, u32 length)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  int n = 0;
+
+  if (read_or_write == VLIB_READ)
+    n = pread(p->io_fd, data, length, p->io_offset + offset);
+  else
+    n = pwrite(p->io_fd, data, length, p->io_offset + offset);
+
+  if (n != length)
+    return clib_error_return_unix (0, "%s",
+                                   read_or_write == VLIB_READ
+                                   ? "read" : "write");
+  return 0;
 }
 
 clib_error_t *
@@ -1210,31 +1378,6 @@ scan_pci_addr (void *arg, u8 * dev_dir_name, u8 * ignored)
     return err;
 
   vec_add1 (*addrv, addr);
-  return 0;
-}
-
-static int
-pci_addr_cmp (void *v1, void *v2)
-{
-  vlib_pci_addr_t *a1 = v1;
-  vlib_pci_addr_t *a2 = v2;
-
-  if (a1->domain > a2->domain)
-    return 1;
-  if (a1->domain < a2->domain)
-    return -1;
-  if (a1->bus > a2->bus)
-    return 1;
-  if (a1->bus < a2->bus)
-    return -1;
-  if (a1->slot > a2->slot)
-    return 1;
-  if (a1->slot < a2->slot)
-    return -1;
-  if (a1->function > a2->function)
-    return 1;
-  if (a1->function < a2->function)
-    return -1;
   return 0;
 }
 
