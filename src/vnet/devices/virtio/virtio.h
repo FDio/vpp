@@ -53,6 +53,7 @@
   _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
   _ (VIRTIO_F_VERSION_1, 32)
 
+
 #define foreach_virtio_if_flag		\
   _(0, ADMIN_UP, "admin-up")		\
   _(1, DELETING, "deleting")
@@ -67,9 +68,17 @@ typedef enum
 typedef enum
 {
   VIRTIO_IF_TYPE_TAP,
+  VIRTIO_IF_TYPE_PCI,
   VIRTIO_IF_N_TYPES,
 } virtio_if_type_t;
 
+
+typedef struct
+{
+  u8 mac[6];
+  u16 status;
+  u16 max_virtqueue_pairs;
+} virtio_net_config_t;
 
 typedef struct
 {
@@ -97,6 +106,19 @@ typedef struct
   u32 dev_instance;
   u32 hw_if_index;
   u32 sw_if_index;
+  u32 pci_dev_handle;
+  union
+  {
+    struct
+    {
+      u16 domain;
+      u8 bus;
+      u8 slot:5;
+      u8 function:3;
+    };
+    u32 as_u32;
+  } pci_addr;
+  u64 bar[2];
   u32 per_interface_next_index;
   int fd;
   int tap_fd;
@@ -105,8 +127,11 @@ typedef struct
   u64 features, remote_features;
 
   virtio_if_type_t type;
+  /* error */
+  clib_error_t *error;
   u16 tx_ring_sz;
   u16 rx_ring_sz;
+  u8 mac_addr[6];
   u8 *host_if_name;
   u8 *net_ns;
   u8 *host_bridge;
