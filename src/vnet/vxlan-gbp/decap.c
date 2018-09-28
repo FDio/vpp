@@ -16,8 +16,9 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
+
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
+#include <vnet/punt/punt.h>
 
 typedef struct
 {
@@ -309,7 +310,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      else
 		{
 		  error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
-		  next0 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		  next0 = VXLAN_GBP_INPUT_NEXT_PUNT;
+		  if (is_ip4)
+		    b0->punt_reason =
+		      vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4];
+		  else
+		    b0->punt_reason =
+		      vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6];
 		}
 	      b0->error = node->errors[error0];
 	    }
@@ -342,7 +349,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      else
 		{
 		  error1 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
-		  next1 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		  next1 = VXLAN_GBP_INPUT_NEXT_PUNT;
+		  if (is_ip4)
+		    b1->punt_reason =
+		      vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4];
+		  else
+		    b1->punt_reason =
+		      vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6];
 		}
 	      b1->error = node->errors[error1];
 	    }
@@ -444,7 +457,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      else
 		{
 		  error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
-		  next0 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		  next0 = VXLAN_GBP_INPUT_NEXT_PUNT;
+		  if (is_ip4)
+		    b0->punt_reason =
+		      vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4];
+		  else
+		    b0->punt_reason =
+		      vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6];
 		}
 	      b0->error = node->errors[error0];
 	    }
