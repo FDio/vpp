@@ -1359,8 +1359,6 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
 
   if (error)
     clib_error_report (error);
-
-  vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
 }
 
 /*
@@ -1471,6 +1469,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   vhost_user_create_ethernet (vnm, vm, vui, hwaddr);
   vhost_user_vui_init (vnm, vui, server_sock_fd, sock_filename,
 		       feature_mask, &sw_if_idx);
+  vnet_sw_interface_set_mtu (vnm, vui->sw_if_index, 9000);
 
   if (renumber)
     vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
