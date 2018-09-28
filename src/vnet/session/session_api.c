@@ -293,14 +293,13 @@ mq_send_local_session_disconnected_cb (u32 app_wrk_index,
   app_mq = app_wrk->event_queue;
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_mq);
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   mp = (session_disconnected_msg_t *) evt->data;
   mp->handle = application_local_session_handle (ls);
   mp->context = app->api_client_index;
-  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
 static void
@@ -439,7 +438,6 @@ mq_send_session_accepted_cb (stream_session_t * s)
   app_mq = app_wrk->event_queue;
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_mq);
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
@@ -508,7 +506,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
       mp->client_event_queue_address = ls->client_evt_q;
       mp->server_event_queue_address = ls->server_evt_q;
     }
-  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_mq, msg);
 
   return 0;
 }
@@ -527,14 +525,13 @@ mq_send_session_disconnected_cb (stream_session_t * s)
   app_mq = app_wrk->event_queue;
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_mq);
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   mp = (session_disconnected_msg_t *) evt->data;
   mp->handle = session_handle (s);
   mp->context = app->api_client_index;
-  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
 static void
@@ -549,13 +546,12 @@ mq_send_session_reset_cb (stream_session_t * s)
   app_mq = app->event_queue;
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_mq);
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_RESET;
   mp = (session_reset_msg_t *) evt->data;
   mp->handle = session_handle (s);
-  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
 static int
@@ -582,7 +578,6 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_mq);
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_CONNECTED;
@@ -634,7 +629,7 @@ done:
   mp->retval = is_fail ?
     clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT) : 0;
 
-  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_mq, msg);
   return 0;
 }
 
@@ -663,7 +658,6 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 
   svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
 				       SVM_Q_WAIT, msg);
-  svm_msg_q_unlock (app_mq);
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_BOUND;
@@ -700,7 +694,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 
 done:
   mp->retval = rv;
-  svm_msg_q_add (app_mq, msg, SVM_Q_WAIT);
+  svm_msg_q_add_and_unlock (app_mq, msg);
   return 0;
 }
 
