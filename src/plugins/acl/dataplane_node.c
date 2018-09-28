@@ -23,6 +23,7 @@
 
 #include <acl/acl.h>
 #include <vnet/ip/icmp46_packet.h>
+#include <vnet/punt/punt.h>
 
 #include <plugins/acl/fa_node.h>
 #include <plugins/acl/acl.h>
@@ -114,7 +115,7 @@ acl_fa_node_fn (vlib_main_t * vm,
   n_left = frame->n_vectors;
   while (n_left > 0)
     {
-      u32 next0 = 0;
+      acl_fa_next_t next0 = ACL_FA_ERROR_DROP;
       u8 action = 0;
       u32 sw_if_index0;
       u32 lc_index0 = ~0;
@@ -310,8 +311,13 @@ acl_fa_node_fn (vlib_main_t * vm,
 	}
 
       next0 = next0 < node->n_next_nodes ? next0 : 0;
-      if (0 == next0)
-	b[0]->error = error_node->errors[error0];
+      if (ACL_FA_ERROR_DROP == next0)
+	{
+	  b[0]->error = error_node->errors[error0];
+	  vnet_buffer (b[0])->punt.reason = (is_ip6 ?
+					     PUNT_REASON_IP6_ACL_DENY :
+					     PUNT_REASON_IP4_ACL_DENY);
+	}
       next[0] = next0;
 
       next++;
@@ -495,7 +501,7 @@ VLIB_REGISTER_NODE (acl_in_l2_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -510,7 +516,7 @@ VLIB_REGISTER_NODE (acl_in_l2_ip4_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -525,7 +531,7 @@ VLIB_REGISTER_NODE (acl_out_l2_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -540,7 +546,7 @@ VLIB_REGISTER_NODE (acl_out_l2_ip4_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -556,7 +562,7 @@ VLIB_REGISTER_NODE (acl_in_fa_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -578,7 +584,7 @@ VLIB_REGISTER_NODE (acl_in_fa_ip4_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -601,7 +607,7 @@ VLIB_REGISTER_NODE (acl_out_fa_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -624,7 +630,7 @@ VLIB_REGISTER_NODE (acl_out_fa_ip4_node) =
     /* edit / add dispositions here */
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 

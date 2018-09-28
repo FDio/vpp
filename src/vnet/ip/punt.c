@@ -821,7 +821,7 @@ VLIB_CLI_COMMAND (punt_command, static) = {
 /* *INDENT-ON* */
 
 clib_error_t *
-punt_init (vlib_main_t * vm)
+ip_punt_init (vlib_main_t * vm)
 {
   punt_main_t *pm = &punt_main;
 
@@ -839,7 +839,7 @@ punt_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (punt_init);
+VLIB_INIT_FUNCTION (ip_punt_init);
 
 static clib_error_t *
 punt_config (vlib_main_t * vm, unformat_input_t * input)
