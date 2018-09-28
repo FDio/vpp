@@ -25,6 +25,7 @@
 /build/external/*.tar.xz
 /build/external/vpp-*.deb
 /build/external/vpp-*.changes
+/build/external/downloads/
 /path_setup
 /tools/
 # start autotools ignore
