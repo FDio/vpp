@@ -300,9 +300,8 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      first_b0->error =
 		node->errors[AF_PACKET_INPUT_ERROR_PARTIAL_PKT];
 	    }
-	  else
+	  else if (apif->per_interface_next_index == ~0)
 	    {
-	      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 	      /* redirect if feature path enabled */
 	      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next0,
 						  first_b0);
