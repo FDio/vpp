@@ -50,8 +50,12 @@ static ip_neighbor_scan_config_t ip_neighbor_scan_conf;
 int
 ip_neighbor_add (const ip46_address_t * ip,
 		 u8 is_ip6,
-		 const u8 * mac, u32 sw_if_index, ip_neighbor_flags_t flags)
+		 const u8 * mac,
+		 u32 sw_if_index,
+		 ip_neighbor_flags_t flags, u32 * stats_index)
 {
+  fib_protocol_t fproto;
+  vnet_link_t linkt;
   int rv;
 
   /*
@@ -66,7 +70,8 @@ ip_neighbor_add (const ip46_address_t * ip,
 					   (flags & IP_NEIGHBOR_FLAG_STATIC),
 					   (flags &
 					    IP_NEIGHBOR_FLAG_NO_ADJ_FIB));
-
+      fproto = FIB_PROTOCOL_IP6;
+      linkt = VNET_LINK_IP6;
     }
   else
     {
@@ -82,7 +87,12 @@ ip_neighbor_add (const ip46_address_t * ip,
 					   (flags & IP_NEIGHBOR_FLAG_STATIC),
 					   (flags &
 					    IP_NEIGHBOR_FLAG_NO_ADJ_FIB));
+      fproto = FIB_PROTOCOL_IP4;
+      linkt = VNET_LINK_IP4;
     }
+
+  if (0 == rv && stats_index)
+    *stats_index = adj_nbr_find (fproto, linkt, ip, sw_if_index);
 
   return (rv);
 }

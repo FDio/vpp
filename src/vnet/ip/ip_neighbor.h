@@ -45,7 +45,8 @@ typedef enum ip_neighbor_flags_t_
 extern int ip_neighbor_add (const ip46_address_t * ip,
 			    u8 is_ip6,
 			    const u8 * mac,
-			    u32 sw_if_index, ip_neighbor_flags_t flags);
+			    u32 sw_if_index,
+			    ip_neighbor_flags_t flags, u32 * stats_index);
 
 extern int ip_neighbor_del (const ip46_address_t * ip,
 			    u8 is_ip6, u32 sw_if_index);

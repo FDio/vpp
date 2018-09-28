@@ -659,6 +659,7 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
   ip46_address_t ip = ip46_address_initializer;
   vl_api_ip_neighbor_add_del_reply_t *rmp;
   ip_neighbor_flags_t flags;
+  u32 stats_index = ~0;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -678,14 +679,20 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 
   if (mp->is_add)
     rv = ip_neighbor_add (&ip, mp->is_ipv6, mp->mac_address,
-			  ntohl (mp->sw_if_index), flags);
+			  ntohl (mp->sw_if_index), flags, &stats_index);
   else
     rv = ip_neighbor_del (&ip, mp->is_ipv6, ntohl (mp->sw_if_index));
 
   stats_dsunlock ();
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_IP_NEIGHBOR_ADD_DEL_REPLY);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IP_NEIGHBOR_ADD_DEL_REPLY,
+  ({
+    rmp->stats_index = htonl (stats_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 void
