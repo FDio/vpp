@@ -139,9 +139,15 @@ typedef CLIB_PACKED (struct
 
 typedef struct
 {
-  vlib_frame_t **frame;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 buffers[VLIB_FRAME_SIZE];
+  u32 n_buffers;
+} bond_per_port_queue_t;
 
-} bond_if_per_thread_t;
+typedef struct
+{
+  bond_per_port_queue_t *per_port_queue;
+} bond_per_thread_data_t;
 
 typedef struct
 {
@@ -175,7 +181,6 @@ typedef struct
   u8 hw_address[6];
 
   clib_spinlock_t lockp;
-  bond_if_per_thread_t *per_thread_info;
 } bond_if_t;
 
 typedef struct
@@ -292,7 +297,7 @@ typedef struct
   /* pool of bonding interfaces */
   bond_if_t *interfaces;
 
-  /* pool of lacp neighbors */
+  /* pool of slave interfaces */
   slave_if_t *neighbors;
 
   /* rapidly find a bond by vlib software interface index */
@@ -308,6 +313,8 @@ typedef struct
   lacp_enable_disable_func lacp_enable_disable;
 
   uword *slave_by_sw_if_index;
+
+  bond_per_thread_data_t *per_thread_data;
 } bond_main_t;
 
 /* bond packet trace capture */
