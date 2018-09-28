@@ -112,8 +112,9 @@ conn_pool_expand (vcl_test_server_worker_t * wrk, size_t expand_size)
 static inline vcl_test_server_conn_t *
 conn_pool_alloc (vcl_test_server_worker_t * wrk)
 {
-  int i;
+  int i, expand = 0;
 
+again:
   for (i = 0; i < wrk->conn_pool_size; i++)
     {
       if (!wrk->conn_pool[i].is_alloc)
@@ -124,6 +125,13 @@ conn_pool_alloc (vcl_test_server_worker_t * wrk)
 	}
     }
 
+  if (expand == 0)
+    {
+      conn_pool_expand (wrk, 2 * wrk->conn_pool_size);
+      expand = 1;
+      goto again;
+    }
+  vtwrn ("Failed to allocate connection even after expand");
   return 0;
 }
 
@@ -530,7 +538,7 @@ vts_conn_expect_config (vcl_test_server_conn_t * conn)
     return 1;
 
   return (conn->stats.rx_bytes < 128
-	  || conn->stats.rx_bytes > conn->cfg.total_bytes);
+	  || conn->stats.rx_bytes >= conn->cfg.total_bytes);
 }
 
 static sock_test_cfg_t *

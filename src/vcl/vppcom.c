@@ -2421,6 +2421,9 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
   session_event_t *e;
   int i;
 
+  if (vec_len (wrk->mq_msg_vector) && svm_msg_q_is_empty (mq))
+    goto handle_dequeued;
+
   svm_msg_q_lock (mq);
   if (svm_msg_q_is_empty (mq))
     {
@@ -2445,6 +2448,7 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
   vcl_mq_dequeue_batch (wrk, mq);
   svm_msg_q_unlock (mq);
 
+handle_dequeued:
   for (i = 0; i < vec_len (wrk->mq_msg_vector); i++)
     {
       msg = vec_elt_at_index (wrk->mq_msg_vector, i);
@@ -2457,7 +2461,6 @@ vcl_epoll_wait_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 	  break;
 	}
     }
-
   vec_delete (wrk->mq_msg_vector, i, 0);
 
   return *num_ev;
