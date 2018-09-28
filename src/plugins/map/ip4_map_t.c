@@ -736,6 +736,14 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip4_map_t_classify (p0, d0, ip40, ip4_len0, &map_port0, &error0,
 			      &next0);
 
+	  /* Verify that port is not among the well-known ports */
+	  if ((d0->psid_length > 0 && d0->psid_offset > 0)
+	      && (clib_net_to_host_u16 (map_port0) <
+		  (0x1 << (16 - d0->psid_offset))))
+	    {
+	      error0 = MAP_ERROR_SEC_CHECK;
+	    }
+
 	  //Add MAP-T pseudo header in front of the packet
 	  vlib_buffer_advance (p0, -sizeof (*pheader0));
 	  pheader0 = vlib_buffer_get_current (p0);
