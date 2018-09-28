@@ -23,6 +23,7 @@
 
 #include <acl/acl.h>
 #include <vnet/ip/icmp46_packet.h>
+#include <vnet/punt/punt.h>
 
 #include <plugins/acl/fa_node.h>
 #include <plugins/acl/acl.h>
@@ -747,6 +748,14 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 				  trace_bitmap);
 	    }
 
+	  if (ACL_FA_ERROR_DROP == next[0])
+	    {
+	      vnet_buffer (b[0])->punt.reason = (is_ip6 ?
+						 VNET_PUNT_REASON_IP6_ACL_DENY
+						 :
+						 VNET_PUNT_REASON_IP4_ACL_DENY);
+	    }
+
 	  next++;
 	  b++;
 	  fa_5tuple++;
@@ -966,7 +975,7 @@ VLIB_REGISTER_NODE (acl_in_l2_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -988,7 +997,7 @@ VLIB_REGISTER_NODE (acl_in_l2_ip4_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -1011,7 +1020,7 @@ VLIB_REGISTER_NODE (acl_out_l2_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -1034,7 +1043,7 @@ VLIB_REGISTER_NODE (acl_out_l2_ip4_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -1057,7 +1066,7 @@ VLIB_REGISTER_NODE (acl_in_fa_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -1079,7 +1088,7 @@ VLIB_REGISTER_NODE (acl_in_fa_ip4_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -1102,7 +1111,7 @@ VLIB_REGISTER_NODE (acl_out_fa_ip6_node) =
   .n_next_nodes = ACL_FA_N_NEXT,
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 
@@ -1125,7 +1134,7 @@ VLIB_REGISTER_NODE (acl_out_fa_ip4_node) =
     /* edit / add dispositions here */
   .next_nodes =
   {
-    [ACL_FA_ERROR_DROP] = "error-drop",
+    [ACL_FA_ERROR_DROP] = "punt-dispatch",
   }
 };
 

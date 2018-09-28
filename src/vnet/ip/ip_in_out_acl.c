@@ -15,6 +15,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/classify/in_out_acl.h>
+#include <vnet/punt/punt.h>
 
 typedef struct
 {
@@ -348,13 +349,31 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 		  hits++;
 
 		  if (is_ip4)
-		    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-		      (is_output ? IP4_ERROR_OUTACL_SESSION_DENY :
-		       IP4_ERROR_INACL_SESSION_DENY) : IP4_ERROR_NONE;
+		    {
+		      if (next0 == ACL_NEXT_INDEX_DENY)
+			{
+			  error0 = (is_output ?
+				    IP4_ERROR_OUTACL_SESSION_DENY :
+				    IP4_ERROR_INACL_SESSION_DENY);
+			  vnet_buffer (b0)->punt.reason =
+			    VNET_PUNT_REASON_IP4_ACL_DENY;
+			}
+		      else
+			error0 = IP4_ERROR_NONE;
+		    }
 		  else
-		    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-		      (is_output ? IP6_ERROR_OUTACL_SESSION_DENY :
-		       IP6_ERROR_INACL_SESSION_DENY) : IP6_ERROR_NONE;
+		    {
+		      if (next0 == ACL_NEXT_INDEX_DENY)
+			{
+			  error0 = (is_output ?
+				    IP6_ERROR_OUTACL_SESSION_DENY :
+				    IP6_ERROR_INACL_SESSION_DENY);
+			  vnet_buffer (b0)->punt.reason =
+			    VNET_PUNT_REASON_IP6_ACL_DENY;
+			}
+		      else
+			error0 = IP6_ERROR_NONE;
+		    }
 		  b0->error = error_node->errors[error0];
 
 		  if (!is_output)
@@ -513,7 +532,7 @@ VLIB_REGISTER_NODE (ip4_inacl_node) = {
 
   .n_next_nodes = ACL_NEXT_INDEX_N_NEXT,
   .next_nodes = {
-    [ACL_NEXT_INDEX_DENY] = "ip4-drop",
+    [ACL_NEXT_INDEX_DENY] = "punt-dispatch",
   },
 };
 
@@ -527,7 +546,7 @@ VLIB_REGISTER_NODE (ip4_outacl_node) = {
 
   .n_next_nodes = ACL_NEXT_INDEX_N_NEXT,
   .next_nodes = {
-    [ACL_NEXT_INDEX_DENY] = "ip4-drop",
+    [ACL_NEXT_INDEX_DENY] = "punt-dispatch",
   },
 };
 /* *INDENT-ON* */

@@ -1369,6 +1369,14 @@ list(APPEND VNET_HEADERS
 
 list(APPEND VNET_API_FILES syslog/syslog.api)
 
+# Punt infra
+##############################################################################
+list(APPEND VNET_SOURCES
+  punt/punt.c
+  punt/punt_node.c
+  punt/punt_test.c
+)
+
 ##############################################################################
 # VNET Library
 ##############################################################################
