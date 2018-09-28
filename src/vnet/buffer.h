@@ -353,6 +353,22 @@ typedef struct
       u32 flags;
     } snat;
 
+    struct
+    {
+      /*
+       * see vnet/punt/punt.h for types
+       * pad keeps the proto and reason at the end
+       * to overwrite as little as possible in the rest
+       * of this block
+       */
+      u32 pad[5];
+      /* the protocol of the packet, a description of the
+       * header type that current_data points to */
+      u8 proto;
+      /* the reason the packet once punted */
+      u16 reason;
+    } punt;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;
