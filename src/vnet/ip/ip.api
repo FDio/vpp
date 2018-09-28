@@ -120,12 +120,15 @@ define ip_neighbor_dump
 /** \brief IP neighboors dump response
     @param context - sender context which was passed in the request
     @param sw_if_index - The interface used to reach the neighbor
+    @param stats_index - An index in the stats segment that can be used to read
+                         the counters for this neighbour.
     @param is_static - [1|0] to indicate if neighbor is statically configured
     @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
 */
 define ip_neighbor_details {
     u32 context;
     u32 sw_if_index;
+    u32 stats_index;
     u8  is_static;
     u8  is_ipv6;
     u8  mac_address[6];
@@ -146,7 +149,7 @@ define ip_neighbor_details {
     @param mac_address - l2 address of the neighbor
     @param dst_address - ip4 or ip6 address of the neighbor
 */
-autoreply define ip_neighbor_add_del
+define ip_neighbor_add_del
 {
   u32 client_index;
   u32 context;
@@ -158,6 +161,13 @@ autoreply define ip_neighbor_add_del
   u8 is_no_adj_fib;
   u8 mac_address[6];
   u8 dst_address[16];
+};
+
+define ip_neighbor_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stats_index;
 };
 
 /** \brief Set the ip flow hash config for a fib request

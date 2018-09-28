@@ -46,7 +46,7 @@ class VppNeighbor(VppObject):
         self.nbr_addr_n = inet_pton(af, nbr_addr)
 
     def add_vpp_config(self):
-        self._test.vapi.ip_neighbor_add_del(
+        r = self._test.vapi.ip_neighbor_add_del(
             self.sw_if_index,
             self.mac_addr,
             self.nbr_addr_n,
@@ -54,6 +54,7 @@ class VppNeighbor(VppObject):
             is_ipv6=1 if AF_INET6 == self.af else 0,
             is_static=self.is_static,
             is_no_adj_fib=self.is_no_fib_entry)
+        self.stats_index = r.stats_index
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -77,3 +78,7 @@ class VppNeighbor(VppObject):
 
     def object_id(self):
         return ("%d:%s" % (self.sw_if_index, self.nbr_addr))
+
+    def get_stats(self):
+        c = self._test.statistics.get_counter("/net/adjacency")
+        return c[0][self.stats_index]
