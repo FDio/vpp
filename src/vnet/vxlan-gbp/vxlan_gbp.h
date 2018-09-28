@@ -132,7 +132,7 @@ typedef struct
 
 #define foreach_vxlan_gbp_input_next         \
   _(DROP, "error-drop")                      \
-  _(NO_TUNNEL, "error-punt")                 \
+  _(PUNT, "punt-dispatch")                   \
   _(L2_INPUT, "l2-input")                    \
   _(IP4_INPUT, "ip4-input")                  \
   _(IP6_INPUT, "ip6-input")
