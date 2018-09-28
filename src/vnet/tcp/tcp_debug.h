@@ -651,7 +651,11 @@ if (_av > 0) 								\
   ed->data[3] = tcp_bytes_out(_tc);					\
   ed->data[4] = tcp_flight_size (_tc);					\
 }
+#else
+#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)
+#endif
 
+#if TCP_DEBUG_CC > 1
 #define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)		\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -772,7 +776,6 @@ if (TCP_DEBUG_CC > 1)							\
 #define TCP_EVT_DUPACK_SENT_HANDLER(_tc, _btcp, ...)
 #define TCP_EVT_DUPACK_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_CC_PACK_HANDLER(_tc, ...)
-#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)
 #define TCP_EVT_CC_SCOREBOARD_HANDLER(_tc, ...)
 #define TCP_EVT_CC_SACKS_HANDLER(_tc, ...)
 #define TCP_EVT_CC_INPUT_HANDLER(_tc, _len, _written, ...)
