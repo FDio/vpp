@@ -22,7 +22,10 @@
 #include <vnet/fib/fib_node_list.h>
 
 /* Adjacency packet/byte counters indexed by adjacency index. */
-vlib_combined_counter_main_t adjacency_counters;
+vlib_combined_counter_main_t adjacency_counters = {
+    .name = "adjacency",
+    .stat_segment_name = "/net/adjacency",
+};
 
 /*
  * the single adj pool
@@ -64,7 +67,8 @@ adj_alloc (fib_protocol_t proto)
     /* Validate adjacency counters. */
     vlib_validate_combined_counter(&adjacency_counters,
                                    adj_get_index(adj));
-
+    vlib_zero_combined_counter(&adjacency_counters,
+                               adj_get_index(adj));
     fib_node_init(&adj->ia_node,
                   FIB_NODE_TYPE_ADJ);
 
