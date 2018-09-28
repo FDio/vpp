@@ -64,7 +64,9 @@
   _(16, L4_HDR_OFFSET_VALID, 0)				\
   _(17, FLOW_REPORT, "flow-report")			\
   _(18, IS_DVR, "dvr")                                  \
-  _(19, QOS_DATA_VALID, 0)
+  _(19, QOS_DATA_VALID, 0)                              \
+  _(20, GSO, "gso")                                     \
+  _(21, L4_HDR_PROTO_VALID, "l4-proto")                 \
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -114,7 +116,7 @@ typedef struct
   i16 l3_hdr_offset;
   i16 l4_hdr_offset;
   u8 feature_arc_index;
-  u8 dont_waste_me;
+  u8 l4_hdr_proto;
 
   union
   {
@@ -361,6 +363,9 @@ typedef struct
   u8 loop_counter;
   u8 __unused[1];
 
+  u16 gso_size;
+  u16 gso_unused;
+
   /* Group Based Policy */
   struct
   {
@@ -383,7 +388,7 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
-    u32 unused[10];
+    u32 unused[8];
   };
 } vnet_buffer_opaque2_t;
 

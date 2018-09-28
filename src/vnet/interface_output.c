@@ -47,6 +47,7 @@
 typedef struct
 {
   u32 sw_if_index;
+  u32 flags;
   u8 data[128 - sizeof (u32)];
 }
 interface_output_trace_t;
@@ -69,23 +70,32 @@ format_vnet_interface_output_trace (u8 * s, va_list * va)
 	  (vnm->interface_main.sw_interfaces, t->sw_if_index))
 	{
 	  /* the interface may have been deleted by the time the trace is printed */
-	  s = format (s, "sw_if_index: %d\n%U%U",
-		      t->sw_if_index,
-		      format_white_space, indent,
-		      node->format_buffer ? node->
-		      format_buffer : format_hex_bytes, t->data,
-		      sizeof (t->data));
+	  s = format (s, "sw_if_index: %d ", t->sw_if_index);
+#define _(bit, name, v) \
+          if (v && (t->flags & VNET_BUFFER_F_##name)) \
+            s = format (s, "%s ", v);
+	  foreach_vnet_buffer_flag
+#undef _
+	    s = format (s, "\n%U%U",
+			format_white_space, indent,
+			node->format_buffer ? node->format_buffer :
+			format_hex_bytes, t->data, sizeof (t->data));
 	}
       else
 	{
 	  si = vnet_get_sw_interface (vnm, t->sw_if_index);
-
-	  s = format (s, "%U\n%U%U",
-		      format_vnet_sw_interface_name, vnm, si,
-		      format_white_space, indent,
-		      node->format_buffer ? node->
-		      format_buffer : format_hex_bytes, t->data,
-		      sizeof (t->data));
+	  s =
+	    format (s, "%U ", format_vnet_sw_interface_name, vnm, si,
+		    t->flags);
+#define _(bit, name, v) \
+          if (v && (t->flags & VNET_BUFFER_F_##name)) \
+            s = format (s, "%s ", v);
+	  foreach_vnet_buffer_flag
+#undef _
+	    s = format (s, "\n%U%U",
+			format_white_space, indent,
+			node->format_buffer ? node->format_buffer :
+			format_hex_bytes, t->data, sizeof (t->data));
 	}
     }
   return s;
@@ -121,6 +131,7 @@ vnet_interface_output_trace (vlib_main_t * vm,
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  t0->flags = b0->flags;
 	  clib_memcpy (t0->data, vlib_buffer_get_current (b0),
 		       sizeof (t0->data));
 	}
@@ -128,6 +139,7 @@ vnet_interface_output_trace (vlib_main_t * vm,
 	{
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	  t1->flags = b1->flags;
 	  clib_memcpy (t1->data, vlib_buffer_get_current (b1),
 		       sizeof (t1->data));
 	}
@@ -149,6 +161,7 @@ vnet_interface_output_trace (vlib_main_t * vm,
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  t0->flags = b0->flags;
 	  clib_memcpy (t0->data, vlib_buffer_get_current (b0),
 		       sizeof (t0->data));
 	}

@@ -115,13 +115,23 @@ typedef struct
   u8 host_ip4_prefix_len;
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
+  int gso_enabled;
 
   int ifindex;
 } virtio_if_t;
 
 typedef struct
 {
+  u32 *buffers;
+  u32 *to_free;
+  u32 n_rx_bytes;
+  u32 padding[11];
+} virtio_per_thread_data_t;
+
+typedef struct
+{
   virtio_if_t *interfaces;
+  virtio_per_thread_data_t *per_thread_data;
 } virtio_main_t;
 
 extern virtio_main_t virtio_main;

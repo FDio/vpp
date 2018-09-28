@@ -113,7 +113,7 @@ class TestGsoExperimentTestCase(VppTestCase):
         cli = "set tap gso tap1 enable"
         self.logger.info(self.vapi.ppcli(cli))
         cli = "set tap gso tap2 enable"
-        # self.logger.info(self.vapi.ppcli(cli))
+        self.logger.info(self.vapi.ppcli(cli))
 
         cli = "set int state tap1 up"
         self.logger.info(self.vapi.ppcli(cli))
