@@ -186,33 +186,48 @@ clib_error_t *vlib_pci_read_write_config (vlib_main_t * vm,
 					  uword address, void *data,
 					  u32 n_bytes);
 
-#define _(t)								\
+/* io space read/write. */
+clib_error_t *vlib_pci_read_write_io (vlib_main_t * vm,
+				      vlib_pci_dev_handle_t handle,
+				      vlib_read_or_write_t read_or_write,
+				      uword address, void *data, u32 n_bytes);
+
+
+#define _(t, x)								\
 static inline clib_error_t *						\
-vlib_pci_read_config_##t (vlib_main_t *vm, vlib_pci_dev_handle_t h,	\
+vlib_pci_read_##x##_##t (vlib_main_t *vm, vlib_pci_dev_handle_t h,	\
 			  uword address, t * data)			\
 {									\
-  return vlib_pci_read_write_config (vm, h, VLIB_READ,address, data,	\
+  return vlib_pci_read_write_##x (vm, h, VLIB_READ,address, data,	\
 				     sizeof (data[0]));			\
 }
 
-_(u32);
-_(u16);
-_(u8);
+_(u32, config);
+_(u16, config);
+_(u8, config);
+
+_(u32, io);
+_(u16, io);
+_(u8, io);
 
 #undef _
 
-#define _(t)								\
+#define _(t, x)								\
 static inline clib_error_t *						\
-vlib_pci_write_config_##t (vlib_main_t *vm, vlib_pci_dev_handle_t h,	\
+vlib_pci_write_##x##_##t (vlib_main_t *vm, vlib_pci_dev_handle_t h,	\
 			   uword address, t * data)			\
 {									\
-  return vlib_pci_read_write_config (vm, h, VLIB_WRITE,			\
+  return vlib_pci_read_write_##x (vm, h, VLIB_WRITE,			\
 				   address, data, sizeof (data[0]));	\
 }
 
-_(u32);
-_(u16);
-_(u8);
+_(u32, config);
+_(u16, config);
+_(u8, config);
+
+_(u32, io);
+_(u16, io);
+_(u8, io);
 
 #undef _
 
@@ -278,6 +293,8 @@ clib_error_t *vlib_pci_map_region_fixed (vlib_main_t * vm,
 					 vlib_pci_dev_handle_t h,
 					 u32 resource, u8 * addr,
 					 void **result);
+clib_error_t *vlib_pci_io_region (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+				  u32 resource);
 clib_error_t *vlib_pci_register_intx_handler (vlib_main_t * vm,
 					      vlib_pci_dev_handle_t h,
 					      pci_intx_handler_function_t *

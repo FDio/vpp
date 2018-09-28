@@ -108,6 +108,10 @@ typedef struct
   /* Device File descriptor */
   int fd;
 
+  /* read/write file descriptor for io bar */
+  int io_fd;
+  u64 io_offset;
+
   /* Minor device for uio device. */
   u32 uio_minor;
 
@@ -1005,20 +1009,17 @@ vlib_pci_read_write_config (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 }
 
 static clib_error_t *
-vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
-			 u32 bar, u8 * addr, void **result)
+vlib_pci_region (vlib_main_t * vm, vlib_pci_dev_handle_t h, u32 bar, int *fd,
+		 u64 * size, u64 * offset)
 {
   linux_pci_device_t *p = linux_pci_get_device (h);
-  int fd = -1;
-  clib_error_t *error;
-  int flags = MAP_SHARED;
-  u64 size = 0, offset = 0;
+  clib_error_t *error = 0;
+  int _fd = -1;
+  u64 _size = 0, _offset = 0;
 
   ASSERT (bar <= 5);
 
   error = 0;
-
-  pci_log_debug (vm, p, "map region %u to va %p", bar, addr);
 
   if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
     {
@@ -1027,27 +1028,25 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
       file_name = format (0, "%s/%U/resource%d%c", sysfs_pci_dev_path,
 			  format_vlib_pci_addr, &p->addr, bar, 0);
 
-      fd = open ((char *) file_name, O_RDWR);
-      if (fd < 0)
+      _fd = open ((char *) file_name, O_RDWR);
+      if (_fd < 0)
 	{
 	  error = clib_error_return_unix (0, "open `%s'", file_name);
 	  vec_free (file_name);
 	  return error;
 	}
 
-      if (fstat (fd, &stat_buf) < 0)
+      if (fstat (_fd, &stat_buf) < 0)
 	{
 	  error = clib_error_return_unix (0, "fstat `%s'", file_name);
 	  vec_free (file_name);
-	  close (fd);
+	  close (_fd);
 	  return error;
 	}
 
       vec_free (file_name);
-      if (addr != 0)
-	flags |= MAP_FIXED;
-      size = stat_buf.st_size;
-      offset = 0;
+      _size = stat_buf.st_size;
+      _offset = 0;
     }
   else if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
     {
@@ -1058,9 +1057,9 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 	return clib_error_return_unix (0, "ioctl(VFIO_DEVICE_GET_INFO) "
 				       "'%U'", format_vlib_pci_addr,
 				       &p->addr);
-      fd = p->fd;
-      size = reg.size;
-      offset = reg.offset;
+      _fd = p->fd;
+      _size = reg.size;
+      _offset = reg.offset;
       pci_log_debug (vm, p, "%s region_info index:%u size:0x%lx offset:0x%lx "
 		     "flags: %s%s%s(0x%x)", __func__,
 		     reg.index, reg.size, reg.offset,
@@ -1071,6 +1070,31 @@ vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
     }
   else
     ASSERT (0);
+
+  *fd = _fd;
+  *size = _size;
+  *offset = _offset;
+
+  return error;
+}
+
+static clib_error_t *
+vlib_pci_map_region_int (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+			 u32 bar, u8 * addr, void **result)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  int fd = -1;
+  clib_error_t *error;
+  int flags = MAP_SHARED;
+  u64 size = 0, offset = 0;
+
+  pci_log_debug (vm, p, "map region %u to va %p", bar, addr);
+
+  if ((error = vlib_pci_region (vm, h, bar, &fd, &size, &offset)))
+    return error;
+
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && addr != 0)
+    flags |= MAP_FIXED;
 
   *result = mmap (addr, size, PROT_READ | PROT_WRITE, flags, fd, offset);
   if (*result == (void *) -1)
@@ -1104,6 +1128,42 @@ vlib_pci_map_region_fixed (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			   u32 resource, u8 * addr, void **result)
 {
   return (vlib_pci_map_region_int (vm, h, resource, addr, result));
+}
+
+clib_error_t *
+vlib_pci_io_region (vlib_main_t * vm, vlib_pci_dev_handle_t h, u32 resource)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  clib_error_t *error = 0;
+  int fd = -1;
+  u64 size = 0, offset = 0;
+
+  if ((error = vlib_pci_region (vm, h, resource, &fd, &size, &offset)))
+    return error;
+
+  p->io_fd = fd;
+  p->io_offset = offset;
+  return error;
+}
+
+clib_error_t *
+vlib_pci_read_write_io (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+			vlib_read_or_write_t read_or_write,
+			uword offset, void *data, u32 length)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  int n = 0;
+
+  if (read_or_write == VLIB_READ)
+    n = pread (p->io_fd, data, length, p->io_offset + offset);
+  else
+    n = pwrite (p->io_fd, data, length, p->io_offset + offset);
+
+  if (n != length)
+    return clib_error_return_unix (0, "%s",
+				   read_or_write == VLIB_READ
+				   ? "read" : "write");
+  return 0;
 }
 
 clib_error_t *
