@@ -950,6 +950,36 @@ vlib_pci_read_write_config (vlib_pci_dev_handle_t h,
   return 0;
 }
 
+clib_error_t *
+vlib_pci_map_io_region (vlib_pci_dev_handle_t h, u32 bar, void **result)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+  clib_error_t *error;
+  u16 start = 0, end = 0;
+
+  ASSERT (bar <= 5);
+
+  error = 0;
+  if (p->type == LINUX_PCI_DEVICE_TYPE_UIO)
+    {
+      u8 *file_name = format (0, "/proc/ioports%c", 0);
+      u8 *pci_addr = format (0, "%U%c", format_vlib_pci_addr, &p->addr, 0);
+      error =
+	clib_sysfs_read ((char *) file_name, "%04hx-%04hx : %s", &start, &end,
+			 (char *) pci_addr);
+
+      clib_warning ("start:%04hx - end:%04hx", start, end);
+      if (error)
+	goto err;
+      *(*(u16 **) result) = start;
+    }
+  else
+    error = clib_error_return (error, "pci device type is not uio");
+
+err:
+  return error;
+}
+
 static clib_error_t *
 vlib_pci_map_region_int (vlib_pci_dev_handle_t h,
 			 u32 bar, u8 * addr, void **result)
