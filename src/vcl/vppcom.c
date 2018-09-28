@@ -2559,7 +2559,6 @@ vppcom_epoll_wait (uint32_t vep_handle, struct epoll_event *events,
 	      break;
 	    }
 	}
-
       vec_delete (wrk->unhandled_evts_vector, i, 0);
     }
 
