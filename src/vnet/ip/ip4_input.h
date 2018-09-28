@@ -290,6 +290,9 @@ ip4_input_check_x1 (vlib_main_t * vm,
 
   check_ver_opt_csum (ip0, &error0, verify_checksum);
 
+  if (PREDICT_FALSE (ip0->ttl < 1))
+    error0 = IP4_ERROR_TIME_EXPIRED;
+
   /* Drop fragmentation offset 1 packets. */
   error0 = ip4_get_fragment_offset (ip0) == 1 ?
     IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
