@@ -139,8 +139,15 @@ typedef union
       * VLIB_BUFFER_NEXT_PRESENT flag is set. */
     u32 next_buffer;
 
-    /** Used by feature subgraph arcs to visit enabled feature nodes */
-    u32 current_config_index;
+    /** The following fields can be in a union because once a packet enters
+     * the punt path, it is no longer on a feature arc */
+    union
+    {
+      /** Used by feature subgraph arcs to visit enabled feature nodes */
+      u32 current_config_index;
+      /* the reason the packet once punted */
+      u32 punt_reason;
+    };
 
     /** Opaque data used by sub-graphs for their own purposes. */
     u32 opaque[10];
