@@ -23,6 +23,7 @@
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 #include <vlibmemory/api.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/punt/punt.h>
 
 /**
  * A reference to a VXLAN-GBP tunnel created as a child/dependent tunnel
@@ -67,6 +68,10 @@ index_t *gbp_vxlan_tunnel_db;
  */
 index_t *vxlan_tunnel_ref_db;
 
+/**
+ * handle registered with the ;unt infra
+ */
+static vnet_punt_hdl_t punt_hdl;
 
 static char *gbp_vxlan_tunnel_layer_strings[] = {
 #define _(n,s) [GBP_VXLAN_TUN_##n] = s,
@@ -865,27 +870,20 @@ VLIB_CLI_COMMAND (gbp_vxlan_show_node, static) = {
 static clib_error_t *
 gbp_vxlan_init (vlib_main_t * vm)
 {
-  u32 slot4;
-
-  /*
-   * insert ourselves into the VXLAN-GBP arc to collect the no-tunnel
-   * packets.
-   */
-  slot4 = vlib_node_add_next_with_slot (vm,
-					vxlan4_gbp_input_node.index,
-					gbp_vxlan4_input_node.index,
-					VXLAN_GBP_INPUT_NEXT_NO_TUNNEL);
-  ASSERT (slot4 == VXLAN_GBP_INPUT_NEXT_NO_TUNNEL);
-
-  /* slot6 = vlib_node_add_next_with_slot (vm, */
-  /*                                    vxlan6_gbp_input_node.index, */
-  /*                                    gbp_vxlan6_input_node.index, */
-  /*                                    VXLAN_GBP_INPUT_NEXT_NO_TUNNEL); */
-  /* ASSERT (slot6 == VXLAN_GBP_INPUT_NEXT_NO_TUNNEL); */
+  clib_error_t *error;
 
   gt_logger = vlib_log_register_class ("gbp", "tun");
 
-  return (NULL);
+  if ((error = vlib_call_init_function (vm, punt_init)))
+    return error;
+
+  punt_hdl = vnet_punt_client_register ("gbp-vxlan");
+
+  vnet_punt_register (punt_hdl,
+		      VNET_PUNT_REASON_VXLAN_GBP_V4_NO_SUCH_TUNNEL,
+		      "gbp-vxlan4");
+
+  return (error);
 }
 
 VLIB_INIT_FUNCTION (gbp_vxlan_init);

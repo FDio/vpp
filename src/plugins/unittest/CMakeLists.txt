@@ -17,6 +17,7 @@ add_vpp_plugin(unittest
   bihash_test.c
   fib_test.c
   mfib_test.c
+  punt_test.c
   session_test.c
   string_test.c
   tcp_test.c

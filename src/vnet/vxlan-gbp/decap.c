@@ -16,8 +16,9 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
+
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
+#include <vnet/punt/punt.h>
 
 vlib_node_registration_t vxlan4_gbp_input_node;
 vlib_node_registration_t vxlan6_gbp_input_node;
@@ -318,7 +319,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      else
 		{
 		  error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
-		  next0 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		  next0 = VXLAN_GBP_INPUT_NEXT_PUNT;
+		  if (is_ip4)
+		    vnet_buffer (b0)->punt.reason =
+		      VNET_PUNT_REASON_VXLAN_GBP_V4_NO_SUCH_TUNNEL;
+		  else
+		    vnet_buffer (b0)->punt.reason =
+		      VNET_PUNT_REASON_VXLAN_GBP_V6_NO_SUCH_TUNNEL;
 		}
 	      b0->error = node->errors[error0];
 	    }
@@ -352,7 +359,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      else
 		{
 		  error1 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
-		  next1 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		  next1 = VXLAN_GBP_INPUT_NEXT_PUNT;
+		  if (is_ip4)
+		    vnet_buffer (b1)->punt.reason =
+		      VNET_PUNT_REASON_VXLAN_GBP_V4_NO_SUCH_TUNNEL;
+		  else
+		    vnet_buffer (b1)->punt.reason =
+		      VNET_PUNT_REASON_VXLAN_GBP_V6_NO_SUCH_TUNNEL;
 		}
 	      b1->error = node->errors[error1];
 	    }
@@ -458,7 +471,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      else
 		{
 		  error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
-		  next0 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		  next0 = VXLAN_GBP_INPUT_NEXT_PUNT;
+		  if (is_ip4)
+		    vnet_buffer (b0)->punt.reason =
+		      VNET_PUNT_REASON_VXLAN_GBP_V4_NO_SUCH_TUNNEL;
+		  else
+		    vnet_buffer (b0)->punt.reason =
+		      VNET_PUNT_REASON_VXLAN_GBP_V6_NO_SUCH_TUNNEL;
 		}
 	      b0->error = node->errors[error0];
 	    }
