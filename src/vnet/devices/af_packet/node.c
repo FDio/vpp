@@ -302,7 +302,6 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 	      /* redirect if feature path enabled */
 	      vnet_feature_start_device_input_x1 (apif->sw_if_index, &next0,
 						  first_b0);
