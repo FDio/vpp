@@ -18,6 +18,8 @@
 #ifndef _VNET_DEVICES_VIRTIO_VIRTIO_H_
 #define _VNET_DEVICES_VIRTIO_VIRTIO_H_
 
+#include <vlib/pci/pci.h>
+
 #define foreach_virtio_net_features      \
   _ (VIRTIO_NET_F_CSUM, 0)	/* Host handles pkts w/ partial csum */ \
   _ (VIRTIO_NET_F_GUEST_CSUM, 1) /* Guest handles pkts w/ partial csum */ \
@@ -67,6 +69,7 @@ typedef enum
 typedef enum
 {
   VIRTIO_IF_TYPE_TAP,
+  VIRTIO_IF_TYPE_PCI,
   VIRTIO_IF_N_TYPES,
 } virtio_if_type_t;
 
@@ -97,6 +100,9 @@ typedef struct
   u32 dev_instance;
   u32 hw_if_index;
   u32 sw_if_index;
+  vlib_pci_dev_handle_t pci_dev_handle;
+  vlib_pci_addr_t pci_addr;
+  void *bar[2];
   u32 per_interface_next_index;
   int fd;
   int tap_fd;
@@ -105,8 +111,11 @@ typedef struct
   u64 features, remote_features;
 
   virtio_if_type_t type;
+  /* error */
+  clib_error_t *error;
   u16 tx_ring_sz;
   u16 rx_ring_sz;
+  u8 mac_addr[6];
   u8 *host_if_name;
   u8 *net_ns;
   u8 *host_bridge;

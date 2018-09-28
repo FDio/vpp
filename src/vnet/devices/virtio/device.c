@@ -59,6 +59,13 @@ format_virtio_device_name (u8 * s, va_list * args)
     {
       s = format (s, "tap%u", vif->id);
     }
+  else if (vif->type == VIRTIO_IF_TYPE_PCI)
+    {
+      s =
+	format (s, "virtio-pci-%x/%x/%x/%x", vif->pci_addr.domain,
+		vif->pci_addr.bus, vif->pci_addr.slot,
+		vif->pci_addr.function);
+    }
   else
     s = format (s, "virtio%lu", vif->dev_instance);
 

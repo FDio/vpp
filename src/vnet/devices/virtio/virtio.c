@@ -26,6 +26,7 @@
 #include <sys/eventfd.h>
 
 #include <vlib/vlib.h>
+#include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
