@@ -198,7 +198,6 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
   slave_if_t *sif;
   vnet_hw_interface_t *hw;
   u32 *sif_sw_if_index;
-  u32 thread_index;
   u32 **s_list = 0;
   u32 i;
 
@@ -232,12 +231,6 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   clib_bitmap_free (bif->port_number_bitmap);
   hash_unset (bm->bond_by_sw_if_index, bif->sw_if_index);
-  for (thread_index = 0; thread_index < vlib_get_thread_main ()->n_vlib_mains;
-       thread_index++)
-    {
-      vec_free (bif->per_thread_info[thread_index].frame);
-    }
-  vec_free (bif->per_thread_info);
   memset (bif, 0, sizeof (*bif));
   pool_put (bm->interfaces, bif);
 
@@ -310,9 +303,6 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   sw = vnet_get_hw_sw_interface (vnm, bif->hw_if_index);
   bif->sw_if_index = sw->sw_if_index;
   bif->group = bif->sw_if_index;
-  vec_validate_aligned (bif->per_thread_info,
-			vlib_get_thread_main ()->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
   if (vlib_get_thread_main ()->n_vlib_mains > 1)
     clib_spinlock_init (&bif->lockp);
 
@@ -431,6 +421,8 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_hw_interface_t *bif_hw, *sif_hw;
   vnet_sw_interface_t *sw;
+  u32 thread_index;
+  u32 sif_if_index;
 
   bif = bond_get_master_by_sw_if_index (args->group);
   if (!bif)
@@ -526,6 +518,20 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
     {
       bond_enable_collecting_distributing (vm, sif);
     }
+
+  vec_foreach_index (thread_index, bm->per_thread_data)
+  {
+    bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
+						    thread_index);
+
+    vec_validate_aligned (ptd->per_port_queue, sif->sw_if_index,
+			  CLIB_CACHE_LINE_BYTES);
+
+    vec_foreach_index (sif_if_index, ptd->per_port_queue)
+    {
+      ptd->per_port_queue[sif_if_index].n_buffers = 0;
+    }
+  }
 
   args->rv = vnet_feature_enable_disable ("device-input", "bond-input",
 					  sif_hw->hw_if_index, 1, 0, 0);
@@ -755,6 +761,9 @@ bond_cli_init (vlib_main_t * vm)
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
   vec_validate_aligned (bm->slave_by_sw_if_index, 1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (bm->per_thread_data,
+			vlib_get_thread_main ()->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }
