@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "75293056_2d9bb110",
+        "filename": "src/vnet/devices/virtio/vhost_user.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-09-28T08:06:13Z",
+      "side": 0,
+      "message": "you could just rewirte this macro to use:\n vlib_log_debug (vhost_user_main.logger, ##args)",
+      "revId": "258c2f6c6339d5261d3b4edc9197cbbf9157378e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
