@@ -28,7 +28,7 @@
  *
  * VXLAN GBP provides the features of vxlan and carry group policy id.
  */
-
+static vlib_punt_hdl_t punt_hdl;
 
 vxlan_gbp_main_t vxlan_gbp_main;
 
@@ -1144,9 +1144,13 @@ clib_error_t *
 vxlan_gbp_init (vlib_main_t * vm)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
+  clib_error_t *error;
 
   vxm->vnet_main = vnet_get_main ();
   vxm->vlib_main = vm;
+
+  if ((error = vlib_call_init_function (vm, punt_init)))
+    return (error);
 
   /* initialize the ip6 hash */
   clib_bihash_init_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, "vxlan4-gbp",
@@ -1162,7 +1166,16 @@ vxlan_gbp_init (vlib_main_t * vm)
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_GBP_TUNNEL, &vxlan_gbp_vft);
 
-  return 0;
+  punt_hdl = vlib_punt_client_register ("vxlan-gbp");
+
+  vlib_punt_reason_alloc (punt_hdl,
+			  "VXLAN-GBP-no-such-v4-tunnel",
+			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP4]);
+  vlib_punt_reason_alloc (punt_hdl,
+			  "VXLAN-GBP-no-such-v6-tunnel",
+			  &vxm->punt_no_such_tunnel[FIB_PROTOCOL_IP6]);
+
+  return (error);
 }
 
 VLIB_INIT_FUNCTION (vxlan_gbp_init);

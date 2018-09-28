@@ -63,6 +63,8 @@ add_vpp_library(vlib
   node_format.c
   pci/pci.c
   physmem.c
+  punt.c
+  punt_node.c
   threads.c
   threads_cli.c
   trace.c
@@ -77,6 +79,7 @@ add_vpp_library(vlib
 
   MULTIARCH_SOURCES
   drop.c
+  punt_node.c
 
   INSTALL_HEADERS
   buffer_funcs.h
@@ -102,6 +105,7 @@ add_vpp_library(vlib
   pci/pci.h
   physmem_funcs.h
   physmem.h
+  punt.h
   threads.h
   trace_funcs.h
   trace.h
