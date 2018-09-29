@@ -69,6 +69,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
     case FIFO_EVENT_BUILTIN_RX:
       evt->fifo = data;
       break;
+    case FIFO_EVENT_BUILTIN_TX:
     case FIFO_EVENT_DISCONNECT:
       evt->session_handle = session_handle ((stream_session_t *) data);
       break;
@@ -89,10 +90,10 @@ session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 }
 
 int
-session_send_io_evt_to_thread_custom (svm_fifo_t * f, u32 thread_index,
+session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 				      session_evt_type_t evt_type)
 {
-  return session_send_evt_to_thread (f, 0, thread_index, evt_type);
+  return session_send_evt_to_thread (data, 0, thread_index, evt_type);
 }
 
 int

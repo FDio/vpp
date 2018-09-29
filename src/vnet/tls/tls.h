@@ -116,7 +116,10 @@ typedef enum tls_engine_type_
 tls_main_t *vnet_tls_get_main (void);
 void tls_register_engine (const tls_engine_vft_t * vft,
 			  tls_engine_type_t type);
-int tls_add_vpp_q_evt (svm_fifo_t * f, u8 evt_type);
+int tls_add_vpp_q_rx_evt (stream_session_t * s);
+int tls_add_vpp_q_tx_evt (stream_session_t * s);
+int tls_add_vpp_q_builtin_tx_evt (stream_session_t * s);
+int tls_add_vpp_q_builtin_rx_evt (stream_session_t * s);
 int tls_notify_app_accept (tls_ctx_t * ctx);
 int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, stream_session_t * app_session);

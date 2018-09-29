@@ -38,6 +38,7 @@ typedef enum
   SESSION_IO_EVT_CT_TX,
   FIFO_EVENT_DISCONNECT,
   FIFO_EVENT_BUILTIN_RX,
+  FIFO_EVENT_BUILTIN_TX,
   FIFO_EVENT_RPC,
   SESSION_CTRL_EVT_BOUND,
   SESSION_CTRL_EVT_ACCEPTED,
@@ -557,7 +558,7 @@ void stream_session_disconnect_transport (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
 int session_send_io_evt_to_thread (svm_fifo_t * f,
 				   session_evt_type_t evt_type);
-int session_send_io_evt_to_thread_custom (svm_fifo_t * f, u32 thread_index,
+int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 					  session_evt_type_t evt_type);
 void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 				     void *rpc_args);

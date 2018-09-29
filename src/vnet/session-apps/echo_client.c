@@ -826,6 +826,7 @@ echo_clients_command_fn (vlib_main_t * vm,
 
 cleanup:
   ecm->run_test = 0;
+  vlib_process_wait_for_event_or_clock (vm, 10e-3);
   for (i = 0; i < vec_len (ecm->connection_index_by_thread); i++)
     {
       vec_reset_length (ecm->connection_index_by_thread[i]);
