@@ -1282,6 +1282,22 @@ list(APPEND VNET_HEADERS
 )
 
 ##############################################################################
+# Linux rtnetlink
+##############################################################################
+
+list(APPEND VNET_SOURCES
+  devices/rtnetlink/rtnl.c
+  devices/rtnetlink/netns.c
+  devices/rtnetlink/mapper.c
+)
+
+list(APPEND VNET_HEADERS
+  devices/rtnetlink/rtnl.h
+  devices/rtnetlink/netns.h
+  devices/rtnetlink/mapper.h
+)
+
+##############################################################################
 # Utilities
 ##############################################################################
 
