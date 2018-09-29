@@ -46,6 +46,30 @@
       "revId": "1cd661d57b9415c70b41cf2a8e3a99fa93c1596b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b74a0d8_a4b5d990",
+        "filename": "test/scripts/socket_test.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-09-29T16:13:59Z",
+      "side": 1,
+      "message": "I tested this patch and pushed a revision that fixes an issue caused by a previous commit (plus a little cleanup).\n\nPlease test the patch I made and let me know if it works in your environment.\n\nThanks,\n-daw-",
+      "parentUuid": "7ebf53ac_ce20cb35",
+      "range": {
+        "startLine": 523,
+        "startChar": 0,
+        "endLine": 523,
+        "endChar": 34
+      },
+      "revId": "1cd661d57b9415c70b41cf2a8e3a99fa93c1596b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
