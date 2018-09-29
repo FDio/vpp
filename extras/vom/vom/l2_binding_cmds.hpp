@@ -29,8 +29,7 @@ namespace l2_binding_cmds {
  * A functor class that binds L2 configuration to an interface
  */
 class bind_cmd
-  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_l2_bridge>
-{
+    : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_l2_bridge> {
 public:
   /**
    * Constructor
@@ -75,8 +74,7 @@ private:
  * A cmd class that Unbinds L2 configuration from an interface
  */
 class unbind_cmd
-  : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_l2_bridge>
-{
+    : public rpc_cmd<HW::item<bool>, vapi::Sw_interface_set_l2_bridge> {
 public:
   /**
    * Constructor
@@ -121,8 +119,7 @@ private:
  * A cmd class sets the VTR operation
  */
 class set_vtr_op_cmd : public rpc_cmd<HW::item<l2_binding::l2_vtr_op_t>,
-                                      vapi::L2_interface_vlan_tag_rewrite>
-{
+                                      vapi::L2_interface_vlan_tag_rewrite> {
 public:
   /**
    * Constructor

@@ -29,8 +29,8 @@ l2_binding::event_handler l2_binding::m_evh;
  * Make sure these are in sync with the smae enum in VPP
  */
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_DISABLED(
-  0,
-  "disabled");
+    0,
+    "disabled");
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_PUSH_1(1,
                                                                      "push-1");
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_PUSH_2(2,
@@ -38,47 +38,42 @@ const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_PUSH_2(2,
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_POP_1(3, "pop-1");
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_POP_2(4, "pop-2");
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_1_1(
-  5,
-  "translate-1-1");
+    5,
+    "translate-1-1");
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_1_2(
-  6,
-  "translate-1-2");
+    6,
+    "translate-1-2");
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_2_1(
-  7,
-  "translate-2-1");
+    7,
+    "translate-2-1");
 const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_2_2(
-  5,
-  "translate-2-2");
+    5,
+    "translate-2-2");
 
 l2_binding::l2_vtr_op_t::l2_vtr_op_t(int v, const std::string s)
-  : enum_base<l2_binding::l2_vtr_op_t>(v, s)
-{
-}
+    : enum_base<l2_binding::l2_vtr_op_t>(v, s) {}
 
 const l2_binding::l2_port_type_t
-  l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL(0, "normal");
+    l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL(0, "normal");
 const l2_binding::l2_port_type_t l2_binding::l2_port_type_t::L2_PORT_TYPE_BVI(
-  1,
-  "bvi");
+    1,
+    "bvi");
 const l2_binding::l2_port_type_t
-  l2_binding::l2_port_type_t::L2_PORT_TYPE_UU_FWD(2, "uu-fwd");
+    l2_binding::l2_port_type_t::L2_PORT_TYPE_UU_FWD(2, "uu-fwd");
 
 l2_binding::l2_port_type_t::l2_port_type_t(int v, const std::string s)
-  : enum_base<l2_binding::l2_port_type_t>(v, s)
-{
-}
+    : enum_base<l2_binding::l2_port_type_t>(v, s) {}
 
 /**
  * Construct a new object matching the desried state
  */
 l2_binding::l2_binding(const interface& itf, const bridge_domain& bd)
-  : m_itf(itf.singular())
-  , m_bd(bd.singular())
-  , m_port_type(l2_port_type_t::L2_PORT_TYPE_NORMAL)
-  , m_binding(0)
-  , m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET)
-  , m_vtr_op_tag(0)
-{
+    : m_itf(itf.singular()),
+      m_bd(bd.singular()),
+      m_port_type(l2_port_type_t::L2_PORT_TYPE_NORMAL),
+      m_binding(0),
+      m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET),
+      m_vtr_op_tag(0) {
   if (interface::type_t::BVI == m_itf->type())
     m_port_type = l2_port_type_t::L2_PORT_TYPE_BVI;
 }
@@ -89,47 +84,33 @@ l2_binding::l2_binding(const interface& itf, const bridge_domain& bd)
 l2_binding::l2_binding(const interface& itf,
                        const bridge_domain& bd,
                        const l2_port_type_t& port_type)
-  : m_itf(itf.singular())
-  , m_bd(bd.singular())
-  , m_port_type(port_type)
-  , m_binding(0)
-  , m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET)
-  , m_vtr_op_tag(0)
-{
-}
+    : m_itf(itf.singular()),
+      m_bd(bd.singular()),
+      m_port_type(port_type),
+      m_binding(0),
+      m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET),
+      m_vtr_op_tag(0) {}
 
 l2_binding::l2_binding(const l2_binding& o)
-  : m_itf(o.m_itf)
-  , m_bd(o.m_bd)
-  , m_port_type(o.m_port_type)
-  , m_binding(0)
-  , m_vtr_op(o.m_vtr_op)
-  , m_vtr_op_tag(o.m_vtr_op_tag)
-{
-}
+    : m_itf(o.m_itf),
+      m_bd(o.m_bd),
+      m_port_type(o.m_port_type),
+      m_binding(0),
+      m_vtr_op(o.m_vtr_op),
+      m_vtr_op_tag(o.m_vtr_op_tag) {}
 
-const l2_binding::key_t&
-l2_binding::key() const
-{
-  return (m_itf->key());
-}
+const l2_binding::key_t& l2_binding::key() const { return (m_itf->key()); }
 
-bool
-l2_binding::operator==(const l2_binding& l) const
-{
+bool l2_binding::operator==(const l2_binding& l) const {
   return ((*m_itf == *l.m_itf) && (*m_bd == *l.m_bd) &&
           (m_port_type == l.m_port_type));
 }
 
-std::shared_ptr<l2_binding>
-l2_binding::find(const key_t& key)
-{
+std::shared_ptr<l2_binding> l2_binding::find(const key_t& key) {
   return (m_db.find(key));
 }
 
-void
-l2_binding::sweep()
-{
+void l2_binding::sweep() {
   if (m_binding && handle_t::INVALID != m_itf->handle()) {
     HW::enqueue(new l2_binding_cmds::unbind_cmd(m_binding, m_itf->handle(),
                                                 m_bd->id(), m_port_type));
@@ -139,9 +120,7 @@ l2_binding::sweep()
   HW::write();
 }
 
-void
-l2_binding::replay()
-{
+void l2_binding::replay() {
   if (m_binding && handle_t::INVALID != m_itf->handle()) {
     HW::enqueue(new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(),
                                               m_bd->id(), m_port_type));
@@ -153,17 +132,14 @@ l2_binding::replay()
   }
 }
 
-l2_binding::~l2_binding()
-{
+l2_binding::~l2_binding() {
   sweep();
 
   // not in the DB anymore.
   m_db.release(m_itf->key(), this);
 }
 
-std::string
-l2_binding::to_string() const
-{
+std::string l2_binding::to_string() const {
   std::ostringstream s;
   s << "L2-binding:[" << m_itf->to_string() << " " << m_bd->to_string() << " "
     << m_port_type.to_string() << " " << m_binding.to_string() << "]";
@@ -171,18 +147,14 @@ l2_binding::to_string() const
   return (s.str());
 }
 
-void
-l2_binding::set(const l2_vtr_op_t& op, uint16_t tag)
-{
+void l2_binding::set(const l2_vtr_op_t& op, uint16_t tag) {
   assert(rc_t::UNSET == m_vtr_op.rc());
   m_vtr_op.set(rc_t::NOOP);
   m_vtr_op.update(op);
   m_vtr_op_tag = tag;
 }
 
-void
-l2_binding::update(const l2_binding& desired)
-{
+void l2_binding::update(const l2_binding& desired) {
   /*
    * the desired state is always that the interface should be created
    */
@@ -209,56 +181,35 @@ l2_binding::update(const l2_binding& desired)
   }
 }
 
-std::shared_ptr<l2_binding>
-l2_binding::find_or_add(const l2_binding& temp)
-{
+std::shared_ptr<l2_binding> l2_binding::find_or_add(const l2_binding& temp) {
   return (m_db.find_or_add(temp.m_itf->key(), temp));
 }
 
-std::shared_ptr<l2_binding>
-l2_binding::singular() const
-{
+std::shared_ptr<l2_binding> l2_binding::singular() const {
   return find_or_add(*this);
 }
 
-void
-l2_binding::dump(std::ostream& os)
-{
-  db_dump(m_db, os);
-}
+void l2_binding::dump(std::ostream& os) { db_dump(m_db, os); }
 
-l2_binding::event_handler::event_handler()
-{
+l2_binding::event_handler::event_handler() {
   OM::register_listener(this);
   inspect::register_handler({ "l2" }, "L2 bindings", this);
 }
 
-void
-l2_binding::event_handler::handle_replay()
-{
-  m_db.replay();
-}
+void l2_binding::event_handler::handle_replay() { m_db.replay(); }
 
-void
-l2_binding::event_handler::handle_populate(const client_db::key_t& key)
-{
+void l2_binding::event_handler::handle_populate(const client_db::key_t& key) {
   /**
    * This is done while populating the bridge-domain
    */
 }
 
-dependency_t
-l2_binding::event_handler::order() const
-{
+dependency_t l2_binding::event_handler::order() const {
   return (dependency_t::BINDING);
 }
 
-void
-l2_binding::event_handler::show(std::ostream& os)
-{
-  db_dump(m_db, os);
-}
-}
+void l2_binding::event_handler::show(std::ostream& os) { db_dump(m_db, os); }
+} // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

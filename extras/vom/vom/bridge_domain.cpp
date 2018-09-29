@@ -27,26 +27,20 @@ const bridge_domain::learning_mode_t bridge_domain::learning_mode_t::OFF(0,
                                                                          "off");
 
 bridge_domain::learning_mode_t::learning_mode_t(int v, const std::string& s)
-  : enum_base<bridge_domain::learning_mode_t>(v, s)
-{
-}
+    : enum_base<bridge_domain::learning_mode_t>(v, s) {}
 
 const bridge_domain::flood_mode_t bridge_domain::flood_mode_t::ON(1, "on");
 const bridge_domain::flood_mode_t bridge_domain::flood_mode_t::OFF(0, "off");
 
 bridge_domain::flood_mode_t::flood_mode_t(int v, const std::string& s)
-  : enum_base<bridge_domain::flood_mode_t>(v, s)
-{
-}
+    : enum_base<bridge_domain::flood_mode_t>(v, s) {}
 
 const bridge_domain::mac_age_mode_t bridge_domain::mac_age_mode_t::ON(1, "on");
 const bridge_domain::mac_age_mode_t bridge_domain::mac_age_mode_t::OFF(0,
                                                                        "off");
 
 bridge_domain::mac_age_mode_t::mac_age_mode_t(int v, const std::string& s)
-  : enum_base<bridge_domain::mac_age_mode_t>(v, s)
-{
-}
+    : enum_base<bridge_domain::mac_age_mode_t>(v, s) {}
 
 const bridge_domain::arp_term_mode_t bridge_domain::arp_term_mode_t::ON(1,
                                                                         "on");
@@ -54,9 +48,7 @@ const bridge_domain::arp_term_mode_t bridge_domain::arp_term_mode_t::OFF(0,
                                                                          "off");
 
 bridge_domain::arp_term_mode_t::arp_term_mode_t(int v, const std::string& s)
-  : enum_base<bridge_domain::arp_term_mode_t>(v, s)
-{
-}
+    : enum_base<bridge_domain::arp_term_mode_t>(v, s) {}
 
 /**
  * A DB of al the interfaces, key on the name
@@ -73,73 +65,52 @@ bridge_domain::bridge_domain(uint32_t id,
                              const arp_term_mode_t& amode,
                              const flood_mode_t& fmode,
                              const mac_age_mode_t& mmode)
-  : m_id(id)
-  , m_learning_mode(lmode)
-  , m_arp_term_mode(amode)
-  , m_flood_mode(fmode)
-  , m_mac_age_mode(mmode)
-{
-}
+    : m_id(id),
+      m_learning_mode(lmode),
+      m_arp_term_mode(amode),
+      m_flood_mode(fmode),
+      m_mac_age_mode(mmode) {}
 
 bridge_domain::bridge_domain(const bridge_domain& o)
-  : m_id(o.m_id)
-  , m_learning_mode(o.m_learning_mode)
-  , m_arp_term_mode(o.m_arp_term_mode)
-  , m_flood_mode(o.m_flood_mode)
-  , m_mac_age_mode(o.m_mac_age_mode)
-{
-}
+    : m_id(o.m_id),
+      m_learning_mode(o.m_learning_mode),
+      m_arp_term_mode(o.m_arp_term_mode),
+      m_flood_mode(o.m_flood_mode),
+      m_mac_age_mode(o.m_mac_age_mode) {}
 
-const bridge_domain::key_t&
-bridge_domain::key() const
-{
-  return (m_id.data());
-}
+const bridge_domain::key_t& bridge_domain::key() const { return (m_id.data()); }
 
-uint32_t
-bridge_domain::id() const
-{
-  return (m_id.data());
-}
+uint32_t bridge_domain::id() const { return (m_id.data()); }
 
-bool
-bridge_domain::operator==(const bridge_domain& b) const
-{
+bool bridge_domain::operator==(const bridge_domain& b) const {
   return ((m_learning_mode == b.m_learning_mode) &&
           (m_flood_mode == b.m_flood_mode) &&
           (m_mac_age_mode == b.m_mac_age_mode) &&
           (m_arp_term_mode == b.m_arp_term_mode) && id() == b.id());
 }
 
-void
-bridge_domain::sweep()
-{
+void bridge_domain::sweep() {
   if (rc_t::OK == m_id.rc()) {
     HW::enqueue(new bridge_domain_cmds::delete_cmd(m_id));
   }
   HW::write();
 }
 
-void
-bridge_domain::replay()
-{
+void bridge_domain::replay() {
   if (rc_t::OK == m_id.rc()) {
     HW::enqueue(new bridge_domain_cmds::create_cmd(
-      m_id, m_learning_mode, m_arp_term_mode, m_flood_mode, m_mac_age_mode));
+        m_id, m_learning_mode, m_arp_term_mode, m_flood_mode, m_mac_age_mode));
   }
 }
 
-bridge_domain::~bridge_domain()
-{
+bridge_domain::~bridge_domain() {
   sweep();
 
   // not in the DB anymore.
   m_db.release(m_id.data(), this);
 }
 
-std::string
-bridge_domain::to_string() const
-{
+std::string bridge_domain::to_string() const {
   std::ostringstream s;
   s << "bridge-domain:[" << m_id.to_string()
     << " learning-mode:" << m_learning_mode.to_string() << "]";
@@ -147,50 +118,38 @@ bridge_domain::to_string() const
   return (s.str());
 }
 
-std::shared_ptr<bridge_domain>
-bridge_domain::find(const key_t& key)
-{
+std::shared_ptr<bridge_domain> bridge_domain::find(const key_t& key) {
   return (m_db.find(key));
 }
 
-void
-bridge_domain::update(const bridge_domain& desired)
-{
+void bridge_domain::update(const bridge_domain& desired) {
   /*
    * the desired state is always that the interface should be created
    */
   if (rc_t::OK != m_id.rc()) {
     HW::enqueue(new bridge_domain_cmds::create_cmd(
-      m_id, m_learning_mode, m_arp_term_mode, m_flood_mode, m_mac_age_mode));
+        m_id, m_learning_mode, m_arp_term_mode, m_flood_mode, m_mac_age_mode));
   }
 }
 
-std::shared_ptr<bridge_domain>
-bridge_domain::find_or_add(const bridge_domain& temp)
-{
+std::shared_ptr<bridge_domain> bridge_domain::find_or_add(
+    const bridge_domain& temp) {
   return (m_db.find_or_add(temp.m_id.data(), temp));
 }
 
-std::shared_ptr<bridge_domain>
-bridge_domain::singular() const
-{
+std::shared_ptr<bridge_domain> bridge_domain::singular() const {
   return find_or_add(*this);
 }
 
-void
-bridge_domain::dump(std::ostream& os)
-{
-  db_dump(m_db, os);
-}
+void bridge_domain::dump(std::ostream& os) { db_dump(m_db, os); }
 
-void
-bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
-{
+void bridge_domain::event_handler::handle_populate(
+    const client_db::key_t& key) {
   /*
    * dump VPP Bridge domains
    */
   std::shared_ptr<bridge_domain_cmds::dump_cmd> cmd =
-    std::make_shared<bridge_domain_cmds::dump_cmd>();
+      std::make_shared<bridge_domain_cmds::dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();
@@ -210,7 +169,7 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
     OM::commit(key, bd);
 
     std::shared_ptr<interface> uu_fwd_itf =
-      interface::find(payload.uu_fwd_sw_if_index);
+        interface::find(payload.uu_fwd_sw_if_index);
     if (uu_fwd_itf) {
       l2_binding l2(*uu_fwd_itf, bd,
                     l2_binding::l2_port_type_t::L2_PORT_TYPE_UU_FWD);
@@ -222,7 +181,7 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
      */
     for (unsigned int ii = 0; ii < payload.n_sw_ifs; ii++) {
       std::shared_ptr<interface> itf =
-        interface::find(payload.sw_if_details[ii].sw_if_index);
+          interface::find(payload.sw_if_details[ii].sw_if_index);
       if (itf) {
         l2_binding l2(*itf, bd);
         OM::commit(key, l2);
@@ -231,30 +190,19 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
   }
 }
 
-bridge_domain::event_handler::event_handler()
-{
+bridge_domain::event_handler::event_handler() {
   OM::register_listener(this);
   inspect::register_handler({ "bd", "bridge" }, "Bridge Domains", this);
 }
 
-void
-bridge_domain::event_handler::handle_replay()
-{
-  m_db.replay();
-}
+void bridge_domain::event_handler::handle_replay() { m_db.replay(); }
 
-dependency_t
-bridge_domain::event_handler::order() const
-{
+dependency_t bridge_domain::event_handler::order() const {
   return (dependency_t::TABLE);
 }
 
-void
-bridge_domain::event_handler::show(std::ostream& os)
-{
-  db_dump(m_db, os);
-}
-}
+void bridge_domain::event_handler::show(std::ostream& os) { db_dump(m_db, os); }
+} // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

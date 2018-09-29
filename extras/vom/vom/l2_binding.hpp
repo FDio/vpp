@@ -29,16 +29,14 @@ namespace VOM {
  * A Clas representing the binding of an L2 interface to a bridge-domain
  * and the properties of that binding.
  */
-class l2_binding : public object_base
-{
+class l2_binding : public object_base {
 public:
   /**
    * Key type for an L2 binding in the singular DB
    */
   typedef interface::key_t key_t;
 
-  struct l2_vtr_op_t : public enum_base<l2_vtr_op_t>
-  {
+  struct l2_vtr_op_t : public enum_base<l2_vtr_op_t> {
     l2_vtr_op_t(const l2_vtr_op_t& l) = default;
     ~l2_vtr_op_t() = default;
 
@@ -56,8 +54,7 @@ public:
     l2_vtr_op_t(int v, const std::string s);
   };
 
-  struct l2_port_type_t : public enum_base<l2_port_type_t>
-  {
+  struct l2_port_type_t : public enum_base<l2_port_type_t> {
     l2_port_type_t(const l2_port_type_t& l) = default;
     ~l2_port_type_t() = default;
 
@@ -127,8 +124,7 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
-  {
+  class event_handler : public OM::listener, public inspect::command_handler {
   public:
     event_handler();
     virtual ~event_handler() = default;
@@ -229,7 +225,7 @@ private:
    */
   static singular_db<key_t, l2_binding> m_db;
 };
-};
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON
