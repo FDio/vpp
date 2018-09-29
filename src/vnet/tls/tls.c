@@ -191,7 +191,10 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   app_worker_t *app_wrk;
   application_t *app;
 
-  app_wrk = app_worker_get (ctx->parent_app_index);
+  app_wrk = app_worker_get_if_valid (ctx->parent_app_index);
+  if (!app_wrk)
+    goto failed;
+
   app = application_get (app_wrk->app_index);
   cb_fn = app->cb_fns.session_connected_callback;
 
@@ -404,19 +407,23 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   if (is_fail)
     {
-      int (*cb_fn) (u32, u32, stream_session_t *, u8);
+      int (*cb_fn) (u32, u32, stream_session_t *, u8), rv = 0;
       u32 wrk_index, api_context;
       app_worker_t *app_wrk;
       application_t *app;
 
       wrk_index = ho_ctx->parent_app_index;
-      api_context = ho_ctx->c_s_index;
+      app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_index);
+      if (app_wrk)
+	{
+	  api_context = ho_ctx->c_s_index;
+	  app = application_get (app_wrk->app_index);
+	  cb_fn = app->cb_fns.session_connected_callback;
+	  rv = cb_fn (wrk_index, api_context, 0, 1 /* failed */ );
+	}
       tls_ctx_half_open_reader_unlock ();
       tls_ctx_half_open_free (ho_ctx_index);
-      app_wrk = app_worker_get (ho_ctx->parent_app_index);
-      app = application_get (app_wrk->app_index);
-      cb_fn = app->cb_fns.session_connected_callback;
-      return cb_fn (wrk_index, api_context, 0, 1 /* failed */ );
+      return rv;
     }
 
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
