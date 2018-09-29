@@ -120,8 +120,9 @@ private:
 /**
  * A cmd class sets the VTR operation
  */
-class set_vtr_op_cmd : public rpc_cmd<HW::item<l2_binding::l2_vtr_op_t>,
-                                      vapi::L2_interface_vlan_tag_rewrite>
+class set_vtr_op_cmd
+  : public rpc_cmd<HW::item<l2_binding::l2_vtr_op_t>,
+                   vapi::L2_interface_vlan_tag_rewrite>
 {
 public:
   /**

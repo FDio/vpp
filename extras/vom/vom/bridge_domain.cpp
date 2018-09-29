@@ -28,16 +28,14 @@ const bridge_domain::learning_mode_t bridge_domain::learning_mode_t::OFF(0,
 
 bridge_domain::learning_mode_t::learning_mode_t(int v, const std::string& s)
   : enum_base<bridge_domain::learning_mode_t>(v, s)
-{
-}
+{}
 
 const bridge_domain::flood_mode_t bridge_domain::flood_mode_t::ON(1, "on");
 const bridge_domain::flood_mode_t bridge_domain::flood_mode_t::OFF(0, "off");
 
 bridge_domain::flood_mode_t::flood_mode_t(int v, const std::string& s)
   : enum_base<bridge_domain::flood_mode_t>(v, s)
-{
-}
+{}
 
 const bridge_domain::mac_age_mode_t bridge_domain::mac_age_mode_t::ON(1, "on");
 const bridge_domain::mac_age_mode_t bridge_domain::mac_age_mode_t::OFF(0,
@@ -45,8 +43,7 @@ const bridge_domain::mac_age_mode_t bridge_domain::mac_age_mode_t::OFF(0,
 
 bridge_domain::mac_age_mode_t::mac_age_mode_t(int v, const std::string& s)
   : enum_base<bridge_domain::mac_age_mode_t>(v, s)
-{
-}
+{}
 
 const bridge_domain::arp_term_mode_t bridge_domain::arp_term_mode_t::ON(1,
                                                                         "on");
@@ -55,8 +52,7 @@ const bridge_domain::arp_term_mode_t bridge_domain::arp_term_mode_t::OFF(0,
 
 bridge_domain::arp_term_mode_t::arp_term_mode_t(int v, const std::string& s)
   : enum_base<bridge_domain::arp_term_mode_t>(v, s)
-{
-}
+{}
 
 /**
  * A DB of al the interfaces, key on the name
@@ -78,8 +74,7 @@ bridge_domain::bridge_domain(uint32_t id,
   , m_arp_term_mode(amode)
   , m_flood_mode(fmode)
   , m_mac_age_mode(mmode)
-{
-}
+{}
 
 bridge_domain::bridge_domain(const bridge_domain& o)
   : m_id(o.m_id)
@@ -87,8 +82,7 @@ bridge_domain::bridge_domain(const bridge_domain& o)
   , m_arp_term_mode(o.m_arp_term_mode)
   , m_flood_mode(o.m_flood_mode)
   , m_mac_age_mode(o.m_mac_age_mode)
-{
-}
+{}
 
 const bridge_domain::key_t&
 bridge_domain::key() const
@@ -212,8 +206,8 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> uu_fwd_itf =
       interface::find(payload.uu_fwd_sw_if_index);
     if (uu_fwd_itf) {
-      l2_binding l2(*uu_fwd_itf, bd,
-                    l2_binding::l2_port_type_t::L2_PORT_TYPE_UU_FWD);
+      l2_binding l2(
+        *uu_fwd_itf, bd, l2_binding::l2_port_type_t::L2_PORT_TYPE_UU_FWD);
       OM::commit(key, l2);
     }
 
