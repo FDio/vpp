@@ -158,7 +158,7 @@ openssl_try_handshake_write (openssl_ctx_t * oc,
     return 0;
 
   svm_fifo_enqueue_nocopy (f, read);
-  tls_add_vpp_q_evt (f, FIFO_EVENT_APP_TX);
+  tls_add_vpp_q_tx_evt (tls_session);
 
   if (read < enq_max)
     {
@@ -318,7 +318,7 @@ openssl_ctx_write (tls_ctx_t * ctx, stream_session_t * app_session)
   wrote = SSL_write (oc->ssl, svm_fifo_head (f), to_write);
   if (wrote <= 0)
     {
-      tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+      tls_add_vpp_q_builtin_tx_evt (app_session);
       goto check_tls_fifo;
     }
   svm_fifo_dequeue_drop (app_session->server_tx_fifo, wrote);
@@ -334,7 +334,7 @@ openssl_ctx_write (tls_ctx_t * ctx, stream_session_t * app_session)
     }
 
   if (wrote < deq_max)
-    tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+    tls_add_vpp_q_builtin_tx_evt (app_session);
 
 check_tls_fifo:
 
@@ -346,7 +346,7 @@ check_tls_fifo:
   enq_max = svm_fifo_max_enqueue (f);
   if (!enq_max)
     {
-      tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+      tls_add_vpp_q_builtin_tx_evt (app_session);
       return wrote;
     }
 
@@ -354,12 +354,12 @@ check_tls_fifo:
   read = BIO_read (oc->rbio, svm_fifo_tail (f), deq_now);
   if (read <= 0)
     {
-      tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+      tls_add_vpp_q_builtin_tx_evt (app_session);
       return wrote;
     }
 
   svm_fifo_enqueue_nocopy (f, read);
-  tls_add_vpp_q_evt (f, FIFO_EVENT_APP_TX);
+  tls_add_vpp_q_tx_evt (tls_session);
 
   if (read < enq_max && BIO_ctrl_pending (oc->rbio) > 0)
     {
@@ -370,7 +370,7 @@ check_tls_fifo:
     }
 
   if (BIO_ctrl_pending (oc->rbio) > 0)
-    tls_add_vpp_q_evt (app_session->server_tx_fifo, FIFO_EVENT_APP_TX);
+    tls_add_vpp_q_builtin_tx_evt (app_session);
 
   return wrote;
 }
@@ -402,7 +402,7 @@ openssl_ctx_read (tls_ctx_t * ctx, stream_session_t * tls_session)
   wrote = BIO_write (oc->wbio, svm_fifo_head (f), to_read);
   if (wrote <= 0)
     {
-      tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+      tls_add_vpp_q_builtin_rx_evt (tls_session);
       goto check_app_fifo;
     }
   svm_fifo_dequeue_drop (f, wrote);
@@ -417,7 +417,7 @@ openssl_ctx_read (tls_ctx_t * ctx, stream_session_t * tls_session)
 	}
     }
   if (svm_fifo_max_dequeue (f))
-    tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+    tls_add_vpp_q_builtin_rx_evt (tls_session);
 
 check_app_fifo:
 
@@ -429,7 +429,7 @@ check_app_fifo:
   enq_max = svm_fifo_max_enqueue (f);
   if (!enq_max)
     {
-      tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+      tls_add_vpp_q_builtin_rx_evt (tls_session);
       return wrote;
     }
 
@@ -437,7 +437,7 @@ check_app_fifo:
   read = SSL_read (oc->ssl, svm_fifo_tail (f), deq_now);
   if (read <= 0)
     {
-      tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+      tls_add_vpp_q_builtin_rx_evt (tls_session);
       return wrote;
     }
   svm_fifo_enqueue_nocopy (f, read);
@@ -451,7 +451,7 @@ check_app_fifo:
 
   tls_notify_app_enqueue (ctx, app_session);
   if (BIO_ctrl_pending (oc->wbio) > 0)
-    tls_add_vpp_q_evt (tls_session->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+    tls_add_vpp_q_builtin_rx_evt (tls_session);
 
   return wrote;
 }

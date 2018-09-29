@@ -730,6 +730,8 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  stream_session_t * s, int *n_tx_pkts)
 {
   application_t *app;
+  if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
+    return 0;
   app = application_get (s->t_app_index);
   svm_fifo_unset_event (s->server_tx_fifo);
   return app->cb_fns.builtin_app_tx_callback (s);
@@ -878,12 +880,17 @@ skip_dequeue:
 	  break;
 	case FIFO_EVENT_BUILTIN_RX:
 	  s = session_event_get_session (e, thread_index);
-	  if (PREDICT_FALSE (!s))
+	  if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
 	    continue;
 	  svm_fifo_unset_event (s->server_rx_fifo);
 	  app_wrk = app_worker_get (s->app_wrk_index);
 	  app = application_get (app_wrk->app_index);
 	  app->cb_fns.builtin_app_rx_callback (s);
+	  break;
+	case FIFO_EVENT_BUILTIN_TX:
+	  s = session_get_from_handle_if_valid (e->session_handle);
+	  if (PREDICT_TRUE (s != 0))
+	    session_tx_fifo_dequeue_internal (vm, node, e, s, &n_tx_packets);
 	  break;
 	case FIFO_EVENT_RPC:
 	  fp = e->rpc_args.fp;

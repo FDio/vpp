@@ -39,10 +39,35 @@ tls_get_available_engine (void)
 }
 
 int
-tls_add_vpp_q_evt (svm_fifo_t * f, u8 evt_type)
+tls_add_vpp_q_rx_evt (stream_session_t * s)
 {
-  if (svm_fifo_set_event (f))
-    session_send_io_evt_to_thread (f, evt_type);
+  if (svm_fifo_set_event (s->server_rx_fifo))
+    session_send_io_evt_to_thread (s->server_rx_fifo, FIFO_EVENT_APP_RX);
+  return 0;
+}
+
+int
+tls_add_vpp_q_builtin_rx_evt (stream_session_t * s)
+{
+  if (svm_fifo_set_event (s->server_rx_fifo))
+    session_send_io_evt_to_thread (s->server_rx_fifo, FIFO_EVENT_BUILTIN_RX);
+  return 0;
+}
+
+int
+tls_add_vpp_q_tx_evt (stream_session_t * s)
+{
+  if (svm_fifo_set_event (s->server_tx_fifo))
+    session_send_io_evt_to_thread (s->server_tx_fifo, FIFO_EVENT_APP_TX);
+  return 0;
+}
+
+int
+tls_add_vpp_q_builtin_tx_evt (stream_session_t * s)
+{
+  if (svm_fifo_set_event (s->server_tx_fifo))
+    session_send_io_evt_to_thread_custom (s, s->thread_index,
+					  FIFO_EVENT_BUILTIN_TX);
   return 0;
 }
 
@@ -156,7 +181,13 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   tls_ctx_t *lctx;
   int rv;
 
-  app_wrk = app_worker_get (ctx->parent_app_index);
+  app_wrk = app_worker_get_if_valid (ctx->parent_app_index);
+  if (!app_wrk)
+    {
+      tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+      return -1;
+    }
+
   app = application_get (app_wrk->app_index);
   lctx = tls_listener_ctx_get (ctx->listener_ctx_index);
 
@@ -191,7 +222,13 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   app_worker_t *app_wrk;
   application_t *app;
 
-  app_wrk = app_worker_get (ctx->parent_app_index);
+  app_wrk = app_worker_get_if_valid (ctx->parent_app_index);
+  if (!app_wrk)
+    {
+      tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+      return -1;
+    }
+
   app = application_get (app_wrk->app_index);
   cb_fn = app->cb_fns.session_connected_callback;
 
@@ -404,19 +441,23 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   if (is_fail)
     {
-      int (*cb_fn) (u32, u32, stream_session_t *, u8);
+      int (*cb_fn) (u32, u32, stream_session_t *, u8), rv = 0;
       u32 wrk_index, api_context;
       app_worker_t *app_wrk;
       application_t *app;
 
       wrk_index = ho_ctx->parent_app_index;
-      api_context = ho_ctx->c_s_index;
+      app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_index);
+      if (app_wrk)
+	{
+	  api_context = ho_ctx->c_s_index;
+	  app = application_get (app_wrk->app_index);
+	  cb_fn = app->cb_fns.session_connected_callback;
+	  rv = cb_fn (wrk_index, api_context, 0, 1 /* failed */ );
+	}
       tls_ctx_half_open_reader_unlock ();
       tls_ctx_half_open_free (ho_ctx_index);
-      app_wrk = app_worker_get (ho_ctx->parent_app_index);
-      app = application_get (app_wrk->app_index);
-      cb_fn = app->cb_fns.session_connected_callback;
-      return cb_fn (wrk_index, api_context, 0, 1 /* failed */ );
+      return rv;
     }
 
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
@@ -644,7 +685,9 @@ format_tls_connection (u8 * s, va_list * args)
   s = format (s, "%-50U", format_tls_ctx, ctx, thread_index);
   if (verbose)
     {
-      s = format (s, "%-15s", "state");
+      stream_session_t *ts;
+      ts = session_get_from_handle (ctx->app_session_handle);
+      s = format (s, "state: %-7u", ts->session_state);
       if (verbose > 1)
 	s = format (s, "\n");
     }
