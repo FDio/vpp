@@ -53,6 +53,7 @@
 #include <vlib/pci/pci.h>
 #include <vlib/linux/vfio.h>
 
+#if 0
 static void *
 unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
 			    uword n_bytes, uword alignment)
@@ -238,17 +239,15 @@ unix_physmem_region_free (vlib_main_t * vm, vlib_physmem_region_index_t idx)
   vec_free (pr->name);
   pool_put (vpm->regions, pr);
 }
+#endif
 
 clib_error_t *
-unix_physmem_init (vlib_main_t * vm)
+vlib_physmem_init (vlib_main_t * vm)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
   clib_error_t *error = 0;
   u64 *pt = 0;
-
-  /* Avoid multiple calls. */
-  if (vm->os_physmem_alloc_aligned)
-    return error;
+  void *p;
 
   /* check if pagemap is accessible */
   pt = clib_mem_vm_get_paddr (&pt, min_log2 (sysconf (_SC_PAGESIZE)), 1);
@@ -259,10 +258,9 @@ unix_physmem_init (vlib_main_t * vm)
   if ((error = linux_vfio_init (vm)))
     return error;
 
-  vm->os_physmem_alloc_aligned = unix_physmem_alloc_aligned;
-  vm->os_physmem_free = unix_physmem_free;
-  vm->os_physmem_region_alloc = unix_physmem_region_alloc;
-  vm->os_physmem_region_free = unix_physmem_region_free;
+  p = clib_mem_alloc_aligned (sizeof (vlib_physmem_main_t),
+			      CLIB_CACHE_LINE_BYTES);
+  vpm->pmalloc_main = (clib_pmalloc_main_t *) p;
 
   return error;
 }
@@ -271,22 +269,10 @@ static clib_error_t *
 show_physmem (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
-  vlib_physmem_region_t *pr;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
 
-  /* *INDENT-OFF* */
-  pool_foreach (pr, vpm->regions, (
-    {
-      vlib_cli_output (vm, "index %u name '%s' page-size %uKB num-pages %d "
-		       "numa-node %u fd %d\n",
-		       pr->index, pr->name, (1 << (pr->log2_page_size -10)),
-		       pr->n_pages, pr->numa_node, pr->fd);
-      if (pr->heap)
-	vlib_cli_output (vm, "  %U", format_mheap, pr->heap, /* verbose */ 1);
-      else
-	vlib_cli_output (vm, "  no heap\n");
-    }));
-  /* *INDENT-ON* */
+  vlib_cli_output (vm, "  %U", format_pmalloc, vpm->pmalloc_main,
+		   /* verbose */ 1);
   return 0;
 }
 
