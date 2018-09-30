@@ -53,7 +53,8 @@
 vlib_pci_main_t pci_main;
 
 vlib_pci_device_info_t * __attribute__ ((weak))
-vlib_pci_get_device_info (vlib_pci_addr_t * addr, clib_error_t ** error)
+vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
+			  clib_error_t ** error)
 {
   if (error)
     *error = clib_error_return (0, "unsupported");
@@ -91,7 +92,7 @@ show_pci_fn (vlib_main_t * vm,
   vec_foreach (addr, addrs)
     {
       vlib_pci_device_info_t *d;
-      d = vlib_pci_get_device_info (addr, 0);
+      d = vlib_pci_get_device_info (vm, addr, 0);
 
       if (!d)
         continue;
@@ -250,7 +251,9 @@ VLIB_CLI_COMMAND (show_pci_command, static) = {
 clib_error_t *
 pci_bus_init (vlib_main_t * vm)
 {
-  return vlib_call_init_function (vm, pci_bus_init);
+  vlib_pci_main_t *pm = &pci_main;
+  pm->log_default = vlib_log_register_class ("pci", 0);
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (pci_bus_init);

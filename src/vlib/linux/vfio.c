@@ -34,38 +34,67 @@
 
 linux_vfio_main_t vfio_main;
 
-static int
-vfio_map_regions (vlib_main_t * vm, int fd)
+clib_error_t *
+vfio_map_physmem_page (vlib_main_t * vm, void *addr)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
   linux_vfio_main_t *lvm = &vfio_main;
-  vlib_physmem_region_t *pr;
   struct vfio_iommu_type1_dma_map dm = { 0 };
-  int i;
+  uword log2_page_size = vpm->pmalloc_main->log2_page_sz;
+  uword physmem_start = pointer_to_uword (vpm->pmalloc_main->start);
+
+  if (lvm->container_fd == -1)
+    return clib_error_return (0, "No cointainer fd");
+
+  u32 page_index = vlib_physmem_get_page_index (vm, addr);
+
+  if (clib_bitmap_get (lvm->physmem_pages_mapped, page_index))
+    {
+      vlib_log_debug (lvm->log_default, "map DMA va:%p page:%u already "
+		      "mapped", addr, page_index);
+      return 0;
+    }
 
   dm.argsz = sizeof (struct vfio_iommu_type1_dma_map);
   dm.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
+  dm.vaddr = physmem_start + (page_index << log2_page_size);
+  dm.size = 1ULL << log2_page_size;
+  dm.iova = dm.vaddr;
+  vlib_log_debug (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
+		  "size:0x%lx", page_index, dm.vaddr, dm.iova, dm.size);
+
+  if (ioctl (lvm->container_fd, VFIO_IOMMU_MAP_DMA, &dm) == -1)
+    {
+      vlib_log_err (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
+		    "size:0x%lx failed, error %s (errno %d)", page_index,
+		    dm.vaddr, dm.iova, dm.size, strerror (errno), errno);
+      return clib_error_return_unix (0, "physmem DMA map failed");
+    }
+
+  lvm->physmem_pages_mapped = clib_bitmap_set (lvm->physmem_pages_mapped,
+					       page_index, 1);
+  return 0;
+}
+
+static int
+vfio_map_regions (vlib_main_t * vm)
+{
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_map_t *map;
+  int i;
 
   /* *INDENT-OFF* */
-  pool_foreach (pr, vpm->regions,
+  pool_foreach (map, vpm->maps,
     {
-      vec_foreach_index (i, pr->page_table)
+      vec_foreach_index (i, map->page_table)
         {
-	  int rv;
-	  dm.vaddr = pointer_to_uword (pr->mem) + ((u64)i << pr->log2_page_size);
-	  dm.size = 1ull << pr->log2_page_size;
-	  dm.iova = dm.vaddr;
-	  vlib_log_debug (lvm->log_default, "map DMA va:0x%lx iova:%lx "
-			  "size:0x%lx", dm.vaddr, dm.iova, dm.size);
+          clib_error_t *err;
 
-	  if ((rv = ioctl (fd, VFIO_IOMMU_MAP_DMA, &dm)) &&
-	      errno != EINVAL)
+	  err = vfio_map_physmem_page (vm, map->start + (i << map->log2_page_size));
+	  if (err)
 	    {
-	      vlib_log_err (lvm->log_default, "map DMA va:0x%lx iova:%lx "
-			    "size:0x%lx failed, error %s (errno %d)",
-			    dm.vaddr, dm.iova, dm.size, strerror (errno),
-			    errno);
-	      return rv;
+	      clib_error_report (err);
+	      clib_error_free (err);
 	    }
         }
     });
@@ -79,7 +108,7 @@ linux_vfio_dma_map_regions (vlib_main_t * vm)
   linux_vfio_main_t *lvm = &vfio_main;
 
   if (lvm->container_fd != -1)
-    vfio_map_regions (vm, lvm->container_fd);
+    vfio_map_regions (vm);
 }
 
 static linux_pci_vfio_iommu_group_t *
@@ -102,6 +131,21 @@ open_vfio_iommu_group (int group, int is_noiommu)
   struct vfio_group_status group_status;
   u8 *s = 0;
   int fd;
+
+  if (lvm->container_fd == -1)
+    {
+      if ((fd = open ("/dev/vfio/vfio", O_RDWR)) == -1)
+	return clib_error_return_unix (0, "failed to open VFIO container");
+
+      if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
+	{
+	  close (fd);
+	  return clib_error_return_unix (0, "incompatible VFIO version");
+	}
+
+      lvm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
+      lvm->container_fd = fd;
+    }
 
   g = get_vfio_iommu_group (group);
   if (g)
@@ -165,7 +209,8 @@ error:
 }
 
 clib_error_t *
-linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
+linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
+				int *is_noiommu)
 {
   clib_error_t *err = 0;
   linux_pci_vfio_iommu_group_t *g;
@@ -173,8 +218,8 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
   int iommu_group;
   u8 *tmpstr;
   int fd;
-  int is_noiommu = 0;
 
+  *is_noiommu = 0;
   s = format (s, "/sys/bus/pci/devices/%U/iommu_group", format_vlib_pci_addr,
 	      addr);
   tmpstr = clib_sysfs_link_to_name ((char *) s);
@@ -191,20 +236,20 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
     }
   vec_reset_length (s);
 
-  s =
-    format (s, "/sys/bus/pci/devices/%U/iommu_group/name",
-	    format_vlib_pci_addr, addr);
+  s = format (s, "/sys/bus/pci/devices/%U/iommu_group/name",
+	      format_vlib_pci_addr, addr);
   err = clib_sysfs_read ((char *) s, "%s", &tmpstr);
   if (err == 0)
     {
       if (strncmp ((char *) tmpstr, "vfio-noiommu", 12) == 0)
-	is_noiommu = 1;
+	*is_noiommu = 1;
+
       vec_free (tmpstr);
     }
   else
     clib_error_free (err);
   vec_reset_length (s);
-  if ((err = open_vfio_iommu_group (iommu_group, is_noiommu)))
+  if ((err = open_vfio_iommu_group (iommu_group, *is_noiommu)))
     return err;
 
   g = get_vfio_iommu_group (iommu_group);
@@ -229,37 +274,10 @@ clib_error_t *
 linux_vfio_init (vlib_main_t * vm)
 {
   linux_vfio_main_t *lvm = &vfio_main;
-  int fd;
 
   lvm->log_default = vlib_log_register_class ("vfio", 0);
+  lvm->container_fd = -1;
 
-  fd = open ("/dev/vfio/vfio", O_RDWR);
-
-  /* check if iommu is available */
-  if (fd != -1)
-    {
-      if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
-	{
-	  close (fd);
-	  fd = -1;
-	}
-      else
-	{
-	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 1)
-	    {
-	      lvm->flags |= LINUX_VFIO_F_HAVE_IOMMU;
-	      vlib_log_info (lvm->log_default, "type 1 IOMMU mode supported");
-	    }
-	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_NOIOMMU_IOMMU) == 1)
-	    {
-	      lvm->flags |= LINUX_VFIO_F_HAVE_NOIOMMU;
-	      vlib_log_info (lvm->log_default, "NOIOMMU mode supported");
-	    }
-	}
-    }
-
-  lvm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
-  lvm->container_fd = fd;
   return 0;
 }
 
