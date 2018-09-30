@@ -139,19 +139,16 @@ vmxnet3_write_mac (vmxnet3_device_t * vd)
 static clib_error_t *
 vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
 {
-  vmxnet3_main_t *vmxm = &vmxnet3_main;
   vmxnet3_shared *shared;
   vmxnet3_queues *q;
   u64 shared_dma;
-  clib_error_t *error;
   u16 qid = 0, rid;
   vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
   vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, qid);
 
-  vd->dma = vlib_physmem_alloc_aligned (vm, vmxm->physmem_region, &error,
-					sizeof (*vd->dma), 512);
-  if (error)
-    return error;
+  vd->dma = vlib_physmem_alloc_aligned (vm, sizeof (*vd->dma), 512);
+  if (vd->dma == 0)
+    return vlib_physmem_last_error (vm);
 
   clib_memset (vd->dma, 0, sizeof (*vd->dma));
 
@@ -222,9 +219,7 @@ vmxnet3_disable_interrupt (vmxnet3_device_t * vd)
 static clib_error_t *
 vmxnet3_rxq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
 {
-  vmxnet3_main_t *vmxm = &vmxnet3_main;
   vmxnet3_rxq_t *rxq;
-  clib_error_t *error;
   u16 rid;
 
   vec_validate_aligned (vd->rxqs, qid, CLIB_CACHE_LINE_BYTES);
@@ -233,19 +228,19 @@ vmxnet3_rxq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   rxq->size = qsz;
   for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
     {
-      rxq->rx_desc[rid] =
-	vlib_physmem_alloc_aligned (vm, vmxm->physmem_region,
-				    &error, qsz * sizeof (*rxq->rx_desc[rid]),
-				    512);
-      if (error)
-	return error;
+      rxq->rx_desc[rid] = vlib_physmem_alloc_aligned
+	(vm, qsz * sizeof (*rxq->rx_desc[rid]), 512);
+
+      if (rxq->rx_desc[rid] == 0)
+	return vlib_physmem_last_error (vm);
+
       clib_memset (rxq->rx_desc[rid], 0, qsz * sizeof (*rxq->rx_desc[rid]));
     }
-  rxq->rx_comp = vlib_physmem_alloc_aligned (vm, vmxm->physmem_region, &error,
-					     qsz * sizeof (*rxq->rx_comp),
+  rxq->rx_comp = vlib_physmem_alloc_aligned (vm, qsz * sizeof (*rxq->rx_comp),
 					     512);
-  if (error)
-    return error;
+  if (rxq->rx_comp == 0)
+    return vlib_physmem_last_error (vm);
+
   clib_memset (rxq->rx_comp, 0, qsz * sizeof (*rxq->rx_comp));
   for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
     {
@@ -264,9 +259,7 @@ vmxnet3_rxq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
 static clib_error_t *
 vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
 {
-  vmxnet3_main_t *vmxm = &vmxnet3_main;
   vmxnet3_txq_t *txq;
-  clib_error_t *error;
 
   if (qid >= vd->num_tx_queues)
     {
@@ -282,17 +275,17 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   txq = vec_elt_at_index (vd->txqs, qid);
   clib_memset (txq, 0, sizeof (*txq));
   txq->size = qsz;
-  txq->tx_desc = vlib_physmem_alloc_aligned (vm, vmxm->physmem_region, &error,
-					     qsz * sizeof (*txq->tx_desc),
+  txq->tx_desc = vlib_physmem_alloc_aligned (vm, qsz * sizeof (*txq->tx_desc),
 					     512);
-  if (error)
-    return error;
-  clib_memset (txq->tx_desc, 0, qsz * sizeof (*txq->tx_desc));
-  txq->tx_comp = vlib_physmem_alloc_aligned (vm, vmxm->physmem_region, &error,
-					     qsz * sizeof (*txq->tx_comp),
+  if (txq->tx_desc == 0)
+    return vlib_physmem_last_error (vm);
+
+  memset (txq->tx_desc, 0, qsz * sizeof (*txq->tx_desc));
+  txq->tx_comp = vlib_physmem_alloc_aligned (vm, qsz * sizeof (*txq->tx_comp),
 					     512);
-  if (error)
-    return error;
+  if (txq->tx_comp == 0)
+    return vlib_physmem_last_error (vm);
+
   clib_memset (txq->tx_comp, 0, qsz * sizeof (*txq->tx_comp));
   vec_validate_aligned (txq->tx_ring.bufs, txq->size, CLIB_CACHE_LINE_BYTES);
   txq->tx_ring.gen = VMXNET3_TXF_GEN;
@@ -307,7 +300,6 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 {
   clib_error_t *error = 0;
   u32 ret, i;
-  vmxnet3_main_t *vmxm = &vmxnet3_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   vd->num_tx_queues = 1;
@@ -371,17 +363,6 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
   clib_memcpy (vd->mac_addr, &ret, 4);
   ret = vmxnet3_reg_read (vd, 1, VMXNET3_REG_MACH);
   clib_memcpy (vd->mac_addr + 4, &ret, 2);
-
-  if (vmxm->physmem_region_alloc == 0)
-    {
-      u32 flags = VLIB_PHYSMEM_F_INIT_MHEAP | VLIB_PHYSMEM_F_HUGETLB;
-      error =
-	vlib_physmem_region_alloc (vm, "vmxnet3 descriptors", 4 << 20, 0,
-				   flags, &vmxm->physmem_region);
-      if (error)
-	return error;
-      vmxm->physmem_region_alloc = 1;
-    }
 
   error = vmxnet3_rxq_init (vm, vd, 0, args->rxq_size);
   if (error)
@@ -629,9 +610,9 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
 	  vlib_buffer_free_from_ring (vm, ring->bufs, desc_idx, rxq->size,
 				      ring->fill);
 	  vec_free (ring->bufs);
-	  vlib_physmem_free (vm, vmxm->physmem_region, rxq->rx_desc[rid]);
+	  vlib_physmem_free (vm, rxq->rx_desc[rid]);
 	}
-      vlib_physmem_free (vm, vmxm->physmem_region, rxq->rx_comp);
+      vlib_physmem_free (vm, rxq->rx_comp);
     }
   /* *INDENT-ON* */
   vec_free (vd->rxqs);
@@ -654,13 +635,13 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
 	}
       clib_spinlock_free (&txq->lock);
       vec_free (txq->tx_ring.bufs);
-      vlib_physmem_free (vm, vmxm->physmem_region, txq->tx_desc);
-      vlib_physmem_free (vm, vmxm->physmem_region, txq->tx_comp);
+      vlib_physmem_free (vm, txq->tx_desc);
+      vlib_physmem_free (vm, txq->tx_comp);
     }
   /* *INDENT-ON* */
   vec_free (vd->txqs);
 
-  vlib_physmem_free (vm, vmxm->physmem_region, vd->dma);
+  vlib_physmem_free (vm, vd->dma);
 
   clib_error_free (vd->error);
   clib_memset (vd, 0, sizeof (*vd));

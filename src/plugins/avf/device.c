@@ -215,18 +215,23 @@ avf_cmd_rx_ctl_reg_write (vlib_main_t * vm, avf_device_t * ad, u32 reg,
 clib_error_t *
 avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
 {
-  avf_main_t *am = &avf_main;
+  clib_error_t *err;
   avf_rxq_t *rxq;
-  clib_error_t *error = 0;
   u32 n_alloc, i;
 
   vec_validate_aligned (ad->rxqs, qid, CLIB_CACHE_LINE_BYTES);
   rxq = vec_elt_at_index (ad->rxqs, qid);
   rxq->size = rxq_size;
   rxq->next = 0;
-  rxq->descs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
-					   rxq->size * sizeof (avf_rx_desc_t),
+  rxq->descs = vlib_physmem_alloc_aligned (vm, rxq->size *
+					   sizeof (avf_rx_desc_t),
 					   2 * CLIB_CACHE_LINE_BYTES);
+  if (rxq->descs == 0)
+    return vlib_physmem_last_error (vm);
+
+  if ((err = vlib_pci_map_dma (vm, ad->pci_dev_handle, (void *) rxq->descs)))
+    return err;
+
   clib_memset ((void *) rxq->descs, 0, rxq->size * sizeof (avf_rx_desc_t));
   vec_validate_aligned (rxq->bufs, rxq->size, CLIB_CACHE_LINE_BYTES);
   rxq->qrx_tail = ad->bar0 + AVF_QRX_TAIL (qid);
@@ -241,7 +246,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   for (i = 0; i < n_alloc; i++)
     {
       vlib_buffer_t *b = vlib_get_buffer (vm, rxq->bufs[i]);
-      if (ad->flags & AVF_DEVICE_F_IOVA)
+      if (ad->flags & AVF_DEVICE_F_VA_DMA)
 	d->qword[0] = vlib_buffer_get_va (b);
       else
 	d->qword[0] = vlib_buffer_get_pa (vm, b);
@@ -255,9 +260,8 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
 clib_error_t *
 avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 {
-  avf_main_t *am = &avf_main;
+  clib_error_t *err;
   avf_txq_t *txq;
-  clib_error_t *error = 0;
 
   if (qid >= ad->num_queue_pairs)
     {
@@ -273,9 +277,15 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   txq = vec_elt_at_index (ad->txqs, qid);
   txq->size = txq_size;
   txq->next = 0;
-  txq->descs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
-					   txq->size * sizeof (avf_tx_desc_t),
+  txq->descs = vlib_physmem_alloc_aligned (vm, txq->size *
+					   sizeof (avf_tx_desc_t),
 					   2 * CLIB_CACHE_LINE_BYTES);
+  if (txq->descs == 0)
+    return vlib_physmem_last_error (vm);
+
+  if ((err = vlib_pci_map_dma (vm, ad->pci_dev_handle, (void *) txq->descs)))
+    return err;
+
   vec_validate_aligned (txq->bufs, txq->size, CLIB_CACHE_LINE_BYTES);
   txq->qtx_tail = ad->bar0 + AVF_QTX_TAIL (qid);
 
@@ -305,10 +315,8 @@ avf_arq_slot_init (avf_device_t * ad, u16 slot)
 static inline uword
 avf_dma_addr (vlib_main_t * vm, avf_device_t * ad, void *p)
 {
-  avf_main_t *am = &avf_main;
-  return (ad->flags & AVF_DEVICE_F_IOVA) ?
-    pointer_to_uword (p) :
-    vlib_physmem_virtual_to_physical (vm, am->physmem_region, p);
+  return (ad->flags & AVF_DEVICE_F_VA_DMA) ?
+    pointer_to_uword (p) : vlib_physmem_get_pa (vm, p);
 }
 
 static void
@@ -1126,16 +1134,16 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
 
   vlib_pci_device_close (vm, ad->pci_dev_handle);
 
-  vlib_physmem_free (vm, am->physmem_region, ad->atq);
-  vlib_physmem_free (vm, am->physmem_region, ad->arq);
-  vlib_physmem_free (vm, am->physmem_region, ad->atq_bufs);
-  vlib_physmem_free (vm, am->physmem_region, ad->arq_bufs);
+  vlib_physmem_free (vm, ad->atq);
+  vlib_physmem_free (vm, ad->arq);
+  vlib_physmem_free (vm, ad->atq_bufs);
+  vlib_physmem_free (vm, ad->arq_bufs);
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, ad->rxqs)
     {
       avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
-      vlib_physmem_free (vm, am->physmem_region, (void *) rxq->descs);
+      vlib_physmem_free (vm, (void *) rxq->descs);
       if (rxq->n_enqueued)
 	vlib_buffer_free_from_ring (vm, rxq->bufs, rxq->next, rxq->size,
 				    rxq->n_enqueued);
@@ -1148,7 +1156,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
   vec_foreach_index (i, ad->txqs)
     {
       avf_txq_t *txq = vec_elt_at_index (ad->txqs, i);
-      vlib_physmem_free (vm, am->physmem_region, (void *) txq->descs);
+      vlib_physmem_free (vm, (void *) txq->descs);
       if (txq->n_enqueued)
 	{
 	  u16 first = (txq->next - txq->n_enqueued) & (txq->size -1);
@@ -1226,44 +1234,51 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
     goto error;
 
-  if (am->physmem_region_alloc == 0)
+  if (!(ad->atq = vlib_physmem_alloc (vm, sizeof (avf_aq_desc_t) *
+				      AVF_MBOX_LEN)))
     {
-      u32 flags = VLIB_PHYSMEM_F_INIT_MHEAP | VLIB_PHYSMEM_F_HUGETLB;
-      error = vlib_physmem_region_alloc (vm, "avf descriptors", 4 << 20, 0,
-					 flags, &am->physmem_region);
-      if (error)
-	goto error;
-      am->physmem_region_alloc = 1;
+      error = vlib_physmem_last_error (vm);
+      goto error;
     }
-  ad->atq = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
-					sizeof (avf_aq_desc_t) * AVF_MBOX_LEN,
-					64);
-  if (error)
+
+  if ((error = vlib_pci_map_dma (vm, h, ad->atq)))
     goto error;
 
-  ad->arq = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
-					sizeof (avf_aq_desc_t) * AVF_MBOX_LEN,
-					64);
-  if (error)
+  if (!(ad->arq = vlib_physmem_alloc (vm, sizeof (avf_aq_desc_t) *
+				      AVF_MBOX_LEN)))
+    {
+      error = vlib_physmem_last_error (vm);
+      goto error;
+    }
+
+  if ((error = vlib_pci_map_dma (vm, h, ad->arq)))
     goto error;
 
-  ad->atq_bufs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
-					     AVF_MBOX_BUF_SZ * AVF_MBOX_LEN,
-					     64);
-  if (error)
+  if (!(ad->atq_bufs = vlib_physmem_alloc (vm, AVF_MBOX_BUF_SZ *
+					   AVF_MBOX_LEN)))
+    {
+      error = vlib_physmem_last_error (vm);
+      goto error;
+    }
+
+  if ((error = vlib_pci_map_dma (vm, h, ad->atq_bufs)))
     goto error;
 
-  ad->arq_bufs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
-					     AVF_MBOX_BUF_SZ * AVF_MBOX_LEN,
-					     64);
-  if (error)
+  if (!(ad->arq_bufs = vlib_physmem_alloc (vm, AVF_MBOX_BUF_SZ *
+					   AVF_MBOX_LEN)))
+    {
+      error = vlib_physmem_last_error (vm);
+      goto error;
+    }
+
+  if ((error = vlib_pci_map_dma (vm, h, ad->arq_bufs)))
     goto error;
 
   if ((error = vlib_pci_intr_enable (vm, h)))
     goto error;
 
-  /* FIXME detect */
-  ad->flags |= AVF_DEVICE_F_IOVA;
+  if (vlib_pci_supports_virtual_addr_dma (vm, h))
+    ad->flags |= AVF_DEVICE_F_VA_DMA;
 
   if ((error = avf_device_init (vm, am, ad, args)))
     goto error;
