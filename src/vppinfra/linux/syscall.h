@@ -19,6 +19,12 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
+static inline int
+getcpu(unsigned *cpu, unsigned *node, void *tcache)
+{
+  return syscall (__NR_getcpu, cpu, node, tcache);
+}
+
 static inline long
 set_mempolicy (int mode, const unsigned long *nodemask, unsigned long maxnode)
 {
