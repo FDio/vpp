@@ -39,7 +39,6 @@ add_vpp_library(vlib
   i2c.c
   init.c
   linux/pci.c
-  linux/physmem.c
   linux/vfio.c
   log.c
   main.c
@@ -47,6 +46,7 @@ add_vpp_library(vlib
   node_cli.c
   node_format.c
   pci/pci.c
+  physmem.c
   threads.c
   threads_cli.c
   trace.c
