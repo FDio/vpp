@@ -172,8 +172,7 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 
 	  txd = &txq->tx_desc[desc_idx];
 	  txd->address =
-	    vlib_get_buffer_data_physical_address (vm,
-						   bi0) + b0->current_data;
+	    vlib_get_buffer_dma_addr (vm, bi0) + b0->current_data;
 
 	  txd->flags[0] = generation | b0->current_length;
 

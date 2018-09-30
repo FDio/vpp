@@ -302,7 +302,6 @@ memif_get_ring (memif_if_t * mif, memif_ring_type_t type, u16 ring_num)
 clib_error_t *
 memif_init_regions_and_queues (memif_if_t * mif)
 {
-  vlib_main_t *vm = vlib_get_main ();
   memif_ring_t *ring = NULL;
   int i, j;
   u64 buffer_offset;
@@ -334,6 +333,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
   r->fd = alloc.fd;
   r->shm = alloc.addr;
 
+#if 0
   if (mif->flags & MEMIF_IF_FLAG_ZERO_COPY)
     {
       vlib_buffer_pool_t *bp;
@@ -350,6 +350,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	}
       /* *INDENT-ON* */
     }
+#endif
 
   for (i = 0; i < mif->run.num_s2m_rings; i++)
     {

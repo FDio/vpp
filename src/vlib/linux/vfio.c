@@ -37,9 +37,9 @@ linux_vfio_main_t vfio_main;
 static int
 vfio_map_regions (vlib_main_t * vm, int fd)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_map_t *map;
   linux_vfio_main_t *lvm = &vfio_main;
-  vlib_physmem_region_t *pr;
   struct vfio_iommu_type1_dma_map dm = { 0 };
   int i;
 
@@ -47,13 +47,13 @@ vfio_map_regions (vlib_main_t * vm, int fd)
   dm.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
 
   /* *INDENT-OFF* */
-  pool_foreach (pr, vpm->regions,
+  pool_foreach (map, vpm->maps,
     {
-      vec_foreach_index (i, pr->page_table)
+      vec_foreach_index (i, map->page_table)
         {
 	  int rv;
-	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
-	  dm.size = 1 << pr->log2_page_size;
+	  dm.vaddr = pointer_to_uword (map->start) + (i << map->log2_page_size);
+	  dm.size = 1 << map->log2_page_size;
 	  dm.iova = dm.vaddr;
 	  vlib_log_debug (lvm->log_default, "map DMA va:0x%lx iova:%lx "
 			  "size:0x%lx", dm.vaddr, dm.iova, dm.size);

@@ -111,14 +111,10 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 	}
       else
 	{
-	  d[0]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
-	  d[1]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s1]);
-	  d[2]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s2]);
-	  d[3]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s3]);
+	  d[0]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s0]);
+	  d[1]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s1]);
+	  d[2]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s2]);
+	  d[3]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s3]);
 	}
 
       d[0]->qword[1] = 0;
@@ -140,8 +136,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 	  d[0]->qword[0] = pointer_to_uword (b->data);
 	}
       else
-	d[0]->qword[0] =
-	  vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
+	d[0]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s0]);
       d[0]->qword[1] = 0;
 
       /* next */
