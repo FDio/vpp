@@ -187,6 +187,12 @@ vlib_buffer_struct_is_sane (vlib_buffer_t * b)
   ASSERT (b->pre_data + VLIB_BUFFER_PRE_DATA_SIZE == b->data);
 }
 
+always_inline uword
+vlib_buffer_get_va (vlib_buffer_t * b)
+{
+  return pointer_to_uword (b->data);
+}
+
 /** \brief Get pointer to current data to process
 
     @param b - (vlib_buffer_t *) pointer to the buffer
@@ -199,6 +205,12 @@ vlib_buffer_get_current (vlib_buffer_t * b)
   /* Check bounds. */
   ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
   return b->data + b->current_data;
+}
+
+always_inline uword
+vlib_buffer_get_current_va (vlib_buffer_t * b)
+{
+  return vlib_buffer_get_va (b) + b->current_data;
 }
 
 /** \brief Advance current data pointer by the supplied (signed!) amount
@@ -400,16 +412,9 @@ typedef struct
   uword start;
   uword size;
   uword log2_page_size;
-  vlib_physmem_region_index_t physmem_region;
-
+  u32 physmem_map_index;
+  u32 buffer_size;
   u32 *buffers;
-
-  u16 buffer_size;
-  uword buffers_per_page;
-  uword n_elts;
-  uword n_used;
-  uword next_clear;
-  uword *bitmap;
   clib_spinlock_t lock;
 } vlib_buffer_pool_t;
 
@@ -454,9 +459,8 @@ vlib_buffer_pool_get (u8 buffer_pool_index)
   return vec_elt_at_index (bm->buffer_pools, buffer_pool_index);
 }
 
-u8 vlib_buffer_pool_create (struct vlib_main_t * vm,
-			    vlib_physmem_region_index_t region,
-			    u16 buffer_size);
+u8 vlib_buffer_register_physmem_map (struct vlib_main_t * vm,
+				     u32 physmem_map_index);
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
 

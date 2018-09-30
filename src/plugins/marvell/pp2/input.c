@@ -324,7 +324,8 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (i--)
 	{
 	  u32 bi = buffers[0];
-	  e->buff.addr = vlib_get_buffer_data_physical_address (vm, bi) - 64;
+	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+	  e->buff.addr = vlib_buffer_get_pa (vm, b) - 64;
 	  e->buff.cookie = bi;
 	  e->bpool = inq->bpool;
 	  e++;
