@@ -866,14 +866,12 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
 }
 
 u8
-vlib_buffer_pool_create (vlib_main_t * vm, vlib_physmem_region_index_t pri,
-			 u16 buffer_size)
+vlib_buffer_pool_create (vlib_main_t * vm, u16 buffer_size)
 {
   vlib_buffer_main_t *bm = &buffer_main;
-  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, pri);
   vlib_buffer_pool_t *p;
-  uword start = pointer_to_uword (pr->mem);
-  uword size = pr->size;
+  uword start = 0;		//pointer_to_uword (pr->mem);
+  uword size = 0;		//pr->size;
 
   if (bm->buffer_mem_size == 0)
     {
@@ -903,8 +901,9 @@ vlib_buffer_pool_create (vlib_main_t * vm, vlib_physmem_region_index_t pri,
   vec_add2 (bm->buffer_pools, p, 1);
   p->start = start;
   p->size = size;
-  p->physmem_region = pri;
+  return 0;
 
+#if 0
   if (buffer_size == 0)
     goto done;
 
@@ -917,6 +916,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, vlib_physmem_region_index_t pri,
 done:
   ASSERT (p - bm->buffer_pools < 256);
   return p - bm->buffer_pools;
+#endif
 }
 
 static u8 *
@@ -983,8 +983,7 @@ clib_error_t *
 vlib_buffer_main_init (struct vlib_main_t * vm)
 {
   vlib_buffer_main_t *bm = &buffer_main;
-  vlib_physmem_region_index_t pri;
-  clib_error_t *error;
+  clib_error_t *error = 0;
 
   if (vlib_buffer_callbacks)
     {
@@ -1003,24 +1002,8 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
     &vlib_buffer_delete_free_list_internal;
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 
-  /* allocate default region */
-  error = vlib_physmem_region_alloc (vm, "buffers",
-				     vlib_buffer_physmem_sz, 0,
-				     VLIB_PHYSMEM_F_SHARED |
-				     VLIB_PHYSMEM_F_HUGETLB, &pri);
-
-  if (error == 0)
-    goto done;
-
-  clib_error_free (error);
-
-  error = vlib_physmem_region_alloc (vm, "buffers",
-				     vlib_buffer_physmem_sz, 0,
-				     VLIB_PHYSMEM_F_SHARED, &pri);
-done:
-  if (error == 0)
-    vlib_buffer_pool_create (vm, pri, sizeof (vlib_buffer_t) +
-			     VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES);
+  vlib_buffer_pool_create (vm, sizeof (vlib_buffer_t) +
+			   VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES);
   return error;
 }
 

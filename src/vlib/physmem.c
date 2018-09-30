@@ -53,6 +53,7 @@
 #include <vlib/pci/pci.h>
 #include <vlib/linux/vfio.h>
 
+#if 0
 static void *
 unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
 			    uword n_bytes, uword alignment)
@@ -238,17 +239,62 @@ unix_physmem_region_free (vlib_main_t * vm, vlib_physmem_region_index_t idx)
   vec_free (pr->name);
   pool_put (vpm->regions, pr);
 }
+#endif
 
 clib_error_t *
-unix_physmem_init (vlib_main_t * vm)
+vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
+				u32 numa_node, u32 * map_index)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
+  clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_map_t *map;
+  clib_pmalloc_arena_t *a;
+  clib_error_t *error = 0;
+  void *va;
+  int i;
+
+  va = clib_pmalloc_create_shared_arena (pm, name, size, numa_node);
+
+  if (va == 0)
+    return clib_error_return (0, "%s", clib_pmalloc_last_error (pm));
+
+  a = clib_pmalloc_get_arena (pm, va);
+
+  pool_get (vpm->maps, map);
+  *map_index = map->index = map - vpm->maps;
+  map->start = va;
+  map->fd = a->fd;
+  map->n_pages = a->n_pages;
+  map->log2_page_size = a->log2_page_sz;
+
+  for (i = 0; i < a->n_pages; i++)
+    {
+      uword pa = clib_pmalloc_get_pa (pm, (u8 *) va + (i << a->log2_page_sz));
+
+      /* maybe iova */
+      if (pa == 0)
+	pa = pointer_to_uword (va);
+
+      vec_add1 (map->page_table, pa);
+    }
+
+  return error;
+}
+
+vlib_physmem_map_t *
+vlib_physmem_get_map (vlib_main_t * vm, u32 index)
+{
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  return pool_elt_at_index (vpm->maps, index);
+}
+
+clib_error_t *
+vlib_physmem_init (vlib_main_t * vm)
+{
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
   clib_error_t *error = 0;
   u64 *pt = 0;
-
-  /* Avoid multiple calls. */
-  if (vm->os_physmem_alloc_aligned)
-    return error;
+  void *p;
 
   /* check if pagemap is accessible */
   pt = clib_mem_vm_get_paddr (&pt, min_log2 (sysconf (_SC_PAGESIZE)), 1);
@@ -259,10 +305,11 @@ unix_physmem_init (vlib_main_t * vm)
   if ((error = linux_vfio_init (vm)))
     return error;
 
-  vm->os_physmem_alloc_aligned = unix_physmem_alloc_aligned;
-  vm->os_physmem_free = unix_physmem_free;
-  vm->os_physmem_region_alloc = unix_physmem_region_alloc;
-  vm->os_physmem_region_free = unix_physmem_region_free;
+  p = clib_mem_alloc_aligned (sizeof (clib_pmalloc_main_t),
+			      CLIB_CACHE_LINE_BYTES);
+  memset (p, 0, sizeof (clib_pmalloc_main_t));
+  vpm->pmalloc_main = (clib_pmalloc_main_t *) p;
+  clib_pmalloc_init (vpm->pmalloc_main, 0);
 
   return error;
 }
@@ -271,22 +318,10 @@ static clib_error_t *
 show_physmem (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
-  vlib_physmem_region_t *pr;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
 
-  /* *INDENT-OFF* */
-  pool_foreach (pr, vpm->regions, (
-    {
-      vlib_cli_output (vm, "index %u name '%s' page-size %uKB num-pages %d "
-		       "numa-node %u fd %d\n",
-		       pr->index, pr->name, (1 << (pr->log2_page_size -10)),
-		       pr->n_pages, pr->numa_node, pr->fd);
-      if (pr->heap)
-	vlib_cli_output (vm, "  %U", format_mheap, pr->heap, /* verbose */ 1);
-      else
-	vlib_cli_output (vm, "  no heap\n");
-    }));
-  /* *INDENT-ON* */
+  vlib_cli_output (vm, "  %U", format_pmalloc, vpm->pmalloc_main,
+		   /* verbose */ 1);
   return 0;
 }
 
