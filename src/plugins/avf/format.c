@@ -25,10 +25,11 @@
 u8 *
 format_avf_device_name (u8 * s, va_list * args)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u32 i = va_arg (*args, u32);
   avf_main_t *am = &avf_main;
   avf_device_t *ad = vec_elt_at_index (am->devices, i);
-  vlib_pci_addr_t *addr = vlib_pci_get_addr (ad->pci_dev_handle);
+  vlib_pci_addr_t *addr = vlib_pci_get_addr (vm, ad->pci_dev_handle);
 
   s = format (s, "avf-%x/%x/%x/%x",
 	      addr->domain, addr->bus, addr->slot, addr->function);

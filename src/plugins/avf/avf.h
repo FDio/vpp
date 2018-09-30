@@ -26,7 +26,7 @@
   _(0, INITIALIZED, "initialized") \
   _(1, ERROR, "error") \
   _(2, ADMIN_UP, "admin-up") \
-  _(3, IOVA, "iova") \
+  _(3, VA_DMA, "vaddr-dma") \
   _(4, LINK_UP, "link-up") \
   _(5, SHARED_TXQ_LOCK, "shared-txq-lock") \
   _(6, ELOG, "elog")
@@ -188,8 +188,6 @@ typedef struct
 
   avf_device_t *devices;
   avf_per_thread_data_t *per_thread_data;
-  vlib_physmem_region_index_t physmem_region;
-  int physmem_region_alloc;
 
   vlib_log_class_t log_class;
 
