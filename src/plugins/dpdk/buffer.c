@@ -393,19 +393,18 @@ dpdk_packet_template_init (vlib_main_t * vm,
 clib_error_t *
 dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 		  u32 num_elts, u32 pool_priv_size, u16 cache_size, u8 numa,
-		  struct rte_mempool **_mp, vlib_physmem_region_index_t * pri)
+		  struct rte_mempool **_mp, u32 * map_index)
 {
   struct rte_mempool *mp;
   enum rte_iova_mode iova_mode;
-  vlib_physmem_region_t *pr;
   dpdk_mempool_private_t priv;
+  vlib_physmem_map_t *pm;
   clib_error_t *error = 0;
   size_t min_chunk_size, align;
   int map_dma = 1;
   u32 size;
   i32 ret;
   uword i;
-
 
   mp = rte_mempool_create_empty ((char *) pool_name, num_elts, elt_size,
 				 512, pool_priv_size, numa, 0);
@@ -417,16 +416,13 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   size = rte_mempool_op_calc_mem_size_default (mp, num_elts, 21,
 					       &min_chunk_size, &align);
 
-  error = vlib_physmem_region_alloc (vm, (char *) pool_name, size, numa,
-				     VLIB_PHYSMEM_F_HUGETLB |
-				     VLIB_PHYSMEM_F_SHARED, pri);
-  if (error)
+  if ((error = vlib_physmem_shared_map_create (vm, (char *) pool_name, size,
+					       numa, map_index)))
     {
       rte_mempool_free (mp);
       return error;
     }
-
-  pr = vlib_physmem_get_region (vm, pri[0]);
+  pm = vlib_physmem_get_map (vm, *map_index);
 
   /* Call the mempool priv initializer */
   priv.mbp_priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
@@ -438,12 +434,12 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
     map_dma = 0;
 
   iova_mode = rte_eal_iova_mode ();
-  for (i = 0; i < pr->n_pages; i++)
+  for (i = 0; i < pm->n_pages; i++)
     {
-      size_t page_sz = 1ull << pr->log2_page_size;
-      char *va = ((char *) pr->mem) + i * page_sz;
+      size_t page_sz = 1ULL << pm->log2_page_size;
+      char *va = ((char *) pm->base) + i * page_sz;
       uword pa = iova_mode == RTE_IOVA_VA ?
-	pointer_to_uword (va) : pr->page_table[i];
+	pointer_to_uword (va) : pm->page_table[i];
       ret = rte_mempool_populate_iova (mp, va, pa, page_sz, 0, 0);
       if (ret < 0)
 	{
@@ -467,10 +463,10 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 {
   dpdk_main_t *dm = &dpdk_main;
   struct rte_mempool *rmp;
-  vlib_physmem_region_index_t pri;
   clib_error_t *error = 0;
   u8 *pool_name;
   u32 elt_size, i;
+  u32 map_index;
 
   vec_validate_aligned (dm->pktmbuf_pools, socket_id, CLIB_CACHE_LINE_BYTES);
 
@@ -484,10 +480,9 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
     VLIB_BUFFER_HDR_SIZE /* priv size */  +
     VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE;	/*data room size */
 
-  error =
-    dpdk_pool_create (vm, pool_name, elt_size, num_mbufs,
-		      sizeof (dpdk_mempool_private_t), 512, socket_id,
-		      &rmp, &pri);
+  error = dpdk_pool_create (vm, pool_name, elt_size, num_mbufs,
+			    sizeof (dpdk_mempool_private_t), 512, socket_id,
+			    &rmp, &map_index);
 
   vec_free (pool_name);
 
@@ -497,7 +492,8 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
       rte_mempool_obj_iter (rmp, rte_pktmbuf_init, 0);
 
       dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
-      privp->buffer_pool_index = vlib_buffer_pool_create (vm, pri, 0);
+      privp->buffer_pool_index =
+	vlib_buffer_register_physmem_map (vm, map_index);
 
       dm->pktmbuf_pools[socket_id] = rmp;
 

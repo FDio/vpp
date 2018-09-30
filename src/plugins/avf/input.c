@@ -48,7 +48,7 @@ static __clib_unused char *avf_input_error_strings[] = {
 #define AVF_INPUT_REFILL_TRESHOLD 32
 static_always_inline void
 avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
-		int use_iova)
+		int use_va_dma)
 {
   u16 n_refill, mask, n_alloc, slot;
   u32 s0, s1, s2, s3;
@@ -97,7 +97,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       d[1] = ((avf_rx_desc_t *) rxq->descs) + s1;
       d[2] = ((avf_rx_desc_t *) rxq->descs) + s2;
       d[3] = ((avf_rx_desc_t *) rxq->descs) + s3;
-      if (use_iova)
+      if (use_va_dma)
 	{
 	  vlib_buffer_t *b;
 	  b = vlib_get_buffer (vm, rxq->bufs[s0]);
@@ -111,14 +111,10 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 	}
       else
 	{
-	  d[0]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
-	  d[1]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s1]);
-	  d[2]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s2]);
-	  d[3]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s3]);
+	  d[0]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s0]);
+	  d[1]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s1]);
+	  d[2]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s2]);
+	  d[3]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s3]);
 	}
 
       d[0]->qword[1] = 0;
@@ -134,14 +130,13 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
     {
       s0 = slot;
       d[0] = ((avf_rx_desc_t *) rxq->descs) + s0;
-      if (use_iova)
+      if (use_va_dma)
 	{
 	  vlib_buffer_t *b = vlib_get_buffer (vm, rxq->bufs[s0]);
 	  d[0]->qword[0] = pointer_to_uword (b->data);
 	}
       else
-	d[0]->qword[0] =
-	  vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
+	d[0]->qword[0] = vlib_get_buffer_dma_addr (vm, rxq->bufs[s0]);
       d[0]->qword[1] = 0;
 
       /* next */
@@ -439,10 +434,10 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     goto done;
 
   /* refill rx ring */
-  if (ad->flags & AVF_DEVICE_F_IOVA)
-    avf_rxq_refill (vm, node, rxq, 1 /* use_iova */ );
+  if (ad->flags & AVF_DEVICE_F_VA_DMA)
+    avf_rxq_refill (vm, node, rxq, 1 /* use_va_dma */ );
   else
-    avf_rxq_refill (vm, node, rxq, 0 /* use_iova */ );
+    avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */ );
 
   vlib_get_buffers (vm, buffer_indices, bufs, n_rxv);
   n_rx_packets = n_rxv;
