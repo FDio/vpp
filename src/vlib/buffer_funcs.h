@@ -316,14 +316,11 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
 
 /* Return physical address of buffer->data start. */
 always_inline u64
-vlib_get_buffer_data_physical_address (vlib_main_t * vm, u32 buffer_index)
+vlib_get_buffer_dma_addr (vlib_main_t * vm, u32 buffer_index)
 {
-  vlib_buffer_main_t *bm = &buffer_main;
   vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
-  vlib_buffer_pool_t *pool = vec_elt_at_index (bm->buffer_pools,
-					       b->buffer_pool_index);
 
-  return vlib_physmem_virtual_to_physical (vm, pool->physmem_region, b->data);
+  return vlib_physmem_get_dma_addr (vm, b->data);
 }
 
 /** \brief Prefetch buffer metadata by buffer index
