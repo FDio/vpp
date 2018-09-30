@@ -1043,6 +1043,17 @@ vlib_pci_map_region_fixed (vlib_pci_dev_handle_t h, u32 resource, u8 * addr,
 }
 
 clib_error_t *
+vlib_pci_map_dma (vlib_main_t * vm, vlib_pci_dev_handle_t h, void *ptr)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+
+  if (p->type != LINUX_PCI_DEVICE_TYPE_VFIO)
+    return 0;
+
+  return vfio_map_physmem (vm, ptr);
+}
+
+clib_error_t *
 vlib_pci_device_open (vlib_pci_addr_t * addr,
 		      pci_device_id_t ids[], vlib_pci_dev_handle_t * handle)
 {

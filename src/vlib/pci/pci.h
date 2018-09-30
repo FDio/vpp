@@ -283,6 +283,8 @@ clib_error_t *vlib_pci_enable_msix_irq (vlib_pci_dev_handle_t h, u16 start,
 					u16 count);
 clib_error_t *vlib_pci_disable_msix_irq (vlib_pci_dev_handle_t h, u16 start,
 					 u16 count);
+clib_error_t *vlib_pci_map_dma (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+				void *ptr);
 
 unformat_function_t unformat_vlib_pci_addr;
 format_function_t format_vlib_pci_addr;
