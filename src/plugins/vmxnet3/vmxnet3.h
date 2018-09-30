@@ -493,8 +493,6 @@ typedef struct
 typedef struct
 {
   vmxnet3_device_t *devices;
-  vlib_physmem_region_index_t physmem_region;
-  u32 physmem_region_alloc;
   u16 msg_id_base;
 } vmxnet3_main_t;
 
@@ -546,10 +544,8 @@ vmxnet3_reg_read (vmxnet3_device_t * vd, u8 bar, u32 addr)
 static_always_inline uword
 vmxnet3_dma_addr (vlib_main_t * vm, vmxnet3_device_t * vd, void *p)
 {
-  vmxnet3_main_t *vmxm = &vmxnet3_main;
-
   return (vd->flags & VMXNET3_DEVICE_F_IOVA) ? pointer_to_uword (p) :
-    vlib_physmem_virtual_to_physical (vm, vmxm->physmem_region, p);
+    vlib_physmem_get_pa (vm, p);
 }
 
 static_always_inline void
