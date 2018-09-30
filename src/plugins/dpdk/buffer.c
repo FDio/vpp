@@ -394,7 +394,7 @@ dpdk_packet_template_init (vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 }
 
-static clib_error_t *
+static __clib_unused clib_error_t *
 scan_vfio_fd (void *arg, u8 * path_name, u8 * file_name)
 {
   dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
@@ -422,12 +422,11 @@ done:
 clib_error_t *
 dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 		  u32 num_elts, u32 pool_priv_size, u16 cache_size, u8 numa,
-		  struct rte_mempool ** _mp,
-		  vlib_physmem_region_index_t * pri)
+		  struct rte_mempool ** _mp)
 {
+#if 0
   dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   struct rte_mempool *mp;
-  vlib_physmem_region_t *pr;
   dpdk_mempool_private_t priv;
   clib_error_t *error = 0;
   size_t min_chunk_size, align;
@@ -446,6 +445,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   size = rte_mempool_op_calc_mem_size_default (mp, num_elts, 21,
 					       &min_chunk_size, &align);
 
+#if 0
   error = vlib_physmem_region_alloc (vm, (char *) pool_name, size, numa,
 				     VLIB_PHYSMEM_F_HUGETLB |
 				     VLIB_PHYSMEM_F_SHARED, pri);
@@ -504,6 +504,8 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 	clib_unix_warning ("ioctl(VFIO_IOMMU_MAP_DMA) pool '%s'", pool_name);
     }
 
+#endif
+#endif
   return 0;
 }
 
@@ -513,7 +515,6 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 {
   dpdk_main_t *dm = &dpdk_main;
   struct rte_mempool *rmp;
-  vlib_physmem_region_index_t pri;
   clib_error_t *error = 0;
   u8 *pool_name;
   u32 elt_size, i;
@@ -532,8 +533,7 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 
   error =
     dpdk_pool_create (vm, pool_name, elt_size, num_mbufs,
-		      sizeof (dpdk_mempool_private_t), 512, socket_id,
-		      &rmp, &pri);
+		      sizeof (dpdk_mempool_private_t), 512, socket_id, &rmp);
 
   vec_free (pool_name);
 
@@ -542,8 +542,8 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
       /* call the object initializers */
       rte_mempool_obj_iter (rmp, rte_pktmbuf_init, 0);
 
-      dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
-      privp->buffer_pool_index = vlib_buffer_pool_create (vm, pri, 0);
+      //dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
+      //privp->buffer_pool_index = vlib_buffer_pool_create (vm, 0);
 
       dm->pktmbuf_pools[socket_id] = rmp;
 

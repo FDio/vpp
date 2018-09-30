@@ -865,6 +865,7 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
   return copied;
 }
 
+#if 0
 u8
 vlib_buffer_pool_create (vlib_main_t * vm, vlib_physmem_region_index_t pri,
 			 u16 buffer_size)
@@ -918,6 +919,7 @@ done:
   ASSERT (p - bm->buffer_pools < 256);
   return p - bm->buffer_pools;
 }
+#endif
 
 static u8 *
 format_vlib_buffer_free_list (u8 * s, va_list * va)
@@ -983,8 +985,7 @@ clib_error_t *
 vlib_buffer_main_init (struct vlib_main_t * vm)
 {
   vlib_buffer_main_t *bm = &buffer_main;
-  vlib_physmem_region_index_t pri;
-  clib_error_t *error;
+  clib_error_t *error = 0;
 
   if (vlib_buffer_callbacks)
     {
@@ -1003,6 +1004,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
     &vlib_buffer_delete_free_list_internal;
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 
+#if 0
   /* allocate default region */
   error = vlib_physmem_region_alloc (vm, "buffers",
 				     vlib_buffer_physmem_sz, 0,
@@ -1021,6 +1023,7 @@ done:
   if (error == 0)
     vlib_buffer_pool_create (vm, pri, sizeof (vlib_buffer_t) +
 			     VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES);
+#endif
   return error;
 }
 

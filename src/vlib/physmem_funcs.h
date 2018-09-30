@@ -40,115 +40,41 @@
 #ifndef included_vlib_physmem_funcs_h
 #define included_vlib_physmem_funcs_h
 
-always_inline vlib_physmem_region_t *
-vlib_physmem_get_region (vlib_main_t * vm, u8 index)
-{
-  vlib_physmem_main_t *vpm = &physmem_main;
-  return pool_elt_at_index (vpm->regions, index);
-}
-
-always_inline u64
-vlib_physmem_offset_to_physical (vlib_main_t * vm,
-				 vlib_physmem_region_index_t idx, uword o)
-{
-  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
-  uword page_index = o >> pr->log2_page_size;
-  ASSERT (o < pr->size);
-  ASSERT (pr->page_table[page_index] != 0);
-  return (vec_elt (pr->page_table, page_index) + (o & pr->page_mask));
-}
-
-always_inline int
-vlib_physmem_is_virtual (vlib_main_t * vm, vlib_physmem_region_index_t idx,
-			 uword p)
-{
-  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
-  return p >= pointer_to_uword (pr->mem)
-    && p < (pointer_to_uword (pr->mem) + pr->size);
-}
-
-always_inline uword
-vlib_physmem_offset_of (vlib_main_t * vm, vlib_physmem_region_index_t idx,
-			void *p)
-{
-  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
-  uword a = pointer_to_uword (p);
-  uword o;
-
-  ASSERT (vlib_physmem_is_virtual (vm, idx, a));
-  o = a - pointer_to_uword (pr->mem);
-
-  /* Offset must fit in 32 bits. */
-  ASSERT ((uword) o == a - pointer_to_uword (pr->mem));
-
-  return o;
-}
-
 always_inline void *
-vlib_physmem_at_offset (vlib_main_t * vm, vlib_physmem_region_index_t idx,
-			uword offset)
+vlib_physmem_alloc_aligned (vlib_main_t * vm, uword n_bytes, uword alignment)
 {
-  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
-  ASSERT (offset < pr->size);
-  return uword_to_pointer (pointer_to_uword (pr->mem) + offset, void *);
-}
-
-always_inline void *
-vlib_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
-			    clib_error_t ** error,
-			    uword n_bytes, uword alignment)
-{
-  void *r = vm->os_physmem_alloc_aligned (vm, idx, n_bytes, alignment);
-  if (!r)
-    *error =
-      clib_error_return (0, "failed to allocate %wd bytes of I/O memory",
-			 n_bytes);
-  else
-    *error = 0;
-  return r;
+  return 0;
 }
 
 /* By default allocate I/O memory with cache line alignment. */
 always_inline void *
-vlib_physmem_alloc (vlib_main_t * vm, vlib_physmem_region_index_t idx,
-		    clib_error_t ** error, uword n_bytes)
+vlib_physmem_alloc (vlib_main_t * vm, uword n_bytes)
 {
-  return vlib_physmem_alloc_aligned (vm, idx, error, n_bytes,
-				     CLIB_CACHE_LINE_BYTES);
+  return vlib_physmem_alloc_aligned (vm, n_bytes, CLIB_CACHE_LINE_BYTES);
 }
 
 always_inline void
-vlib_physmem_free (vlib_main_t * vm, vlib_physmem_region_index_t idx,
-		   void *mem)
+vlib_physmem_free (vlib_main_t * vm, void *mem)
 {
-  if (mem)
-    vm->os_physmem_free (vm, idx, mem);
 }
 
 always_inline u64
-vlib_physmem_virtual_to_physical (vlib_main_t * vm,
-				  vlib_physmem_region_index_t idx, void *mem)
+vlib_physmem_virtual_to_physical (vlib_main_t * vm, void *mem)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
-  vlib_physmem_region_t *pr = pool_elt_at_index (vpm->regions, idx);
-  uword o = mem - pr->mem;
-  return vlib_physmem_offset_to_physical (vm, idx, o);
+  return 0;
 }
-
 
 always_inline clib_error_t *
 vlib_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
-			   u8 numa_node, u32 flags,
-			   vlib_physmem_region_index_t * idx)
+			   u8 numa_node, u32 flags)
 {
-  return vm->os_physmem_region_alloc (vm, name, size, numa_node, flags, idx);
+  return 0;
 }
 
-always_inline void
-vlib_physmem_region_free (struct vlib_main_t *vm,
-			  vlib_physmem_region_index_t idx)
+always_inline clib_error_t *
+vlib_physmem_last_error (struct vlib_main_t * vm)
 {
-  vm->os_physmem_region_free (vm, idx);
+  return clib_error_return (0, "unknown error");
 }
 
 #endif /* included_vlib_physmem_funcs_h */
