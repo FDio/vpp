@@ -1265,8 +1265,6 @@ typedef struct
 
   f64 time_last_stats_update;
 
-  vlib_physmem_region_index_t physmem_region;
-  int physmem_region_allocated;
 } ixge_main_t;
 
 extern ixge_main_t ixge_main;
