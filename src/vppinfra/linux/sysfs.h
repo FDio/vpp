@@ -25,15 +25,15 @@ clib_error_t *clib_sysfs_read (char *file_name, char *fmt, ...);
 u8 *clib_sysfs_link_to_name (char *link);
 
 clib_error_t *clib_sysfs_set_nr_hugepages (int numa_node,
-					   int page_size, int nr);
+					   int log2_page_size, int nr);
 clib_error_t *clib_sysfs_get_nr_hugepages (int numa_node,
-					   int page_size, int *v);
+					   int log2_page_size, int *v);
 clib_error_t *clib_sysfs_get_free_hugepages (int numa_node,
-					     int page_size, int *v);
+					     int log2_page_size, int *v);
 clib_error_t *clib_sysfs_get_surplus_hugepages (int numa_node,
-						int page_size, int *v);
+						int log2_page_size, int *v);
 clib_error_t *clib_sysfs_prealloc_hugepages (int numa_node,
-					     int page_size, int nr);
+					     int log2_page_size, int nr);
 
 #endif /* included_linux_sysfs_h */
 
