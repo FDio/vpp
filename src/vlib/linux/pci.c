@@ -951,6 +951,21 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
       linux_pci_vfio_unmask_intx (vm, p);
     }
 
+  if (p->supports_va_dma)
+    {
+      vlib_buffer_pool_t *bp;
+      /* *INDENT-OFF* */
+      vec_foreach (bp, buffer_main.buffer_pools)
+	{
+	  u32 i;
+	  vlib_physmem_map_t *pm;
+	  pm = vlib_physmem_get_map (vm, bp->physmem_map_index);
+	  for (i = 0; i < pm->n_pages; i++)
+	    vfio_map_physmem_page (vm, pm->base + (i << pm->log2_page_size));
+	}
+      /* *INDENT-ON* */
+    }
+
   if (r && r->init_function)
     err = r->init_function (lpm->vlib_main, p->handle);
 
@@ -1089,6 +1104,25 @@ vlib_pci_map_region_fixed (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			   u32 resource, u8 * addr, void **result)
 {
   return (vlib_pci_map_region_int (vm, h, resource, addr, result));
+}
+
+clib_error_t *
+vlib_pci_map_dma (vlib_main_t * vm, vlib_pci_dev_handle_t h, void *ptr)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+
+  if (!p->supports_va_dma)
+    return 0;
+
+  return vfio_map_physmem_page (vm, ptr);
+}
+
+int
+vlib_pci_supports_virtual_addr_dma (vlib_main_t * vm, vlib_pci_dev_handle_t h)
+{
+  linux_pci_device_t *p = linux_pci_get_device (h);
+
+  return p->supports_va_dma != 0;
 }
 
 clib_error_t *

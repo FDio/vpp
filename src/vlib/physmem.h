@@ -40,40 +40,26 @@
 #ifndef included_vlib_physmem_h
 #define included_vlib_physmem_h
 
-typedef u8 vlib_physmem_region_index_t;
+#include <vppinfra/pmalloc.h>
 
 typedef struct
 {
-  vlib_physmem_region_index_t index;
-  void *mem;
-  uword size;
+  int index;
   int fd;
-  u8 log2_page_size;
-  u16 n_pages;
-  u32 page_mask;
-
-  void *heap;
-  u32 flags;
-#define VLIB_PHYSMEM_F_INIT_MHEAP		(1 << 0)
-#define VLIB_PHYSMEM_F_HUGETLB			(1 << 1)
-#define VLIB_PHYSMEM_F_SHARED			(1 << 2)
-
-  u8 numa_node;
-  u64 *page_table;
-  u8 *name;
-} vlib_physmem_region_t;
-
-
+  void *base;
+  u32 n_pages;
+  uword *page_table;
+  u32 log2_page_size;
+} vlib_physmem_map_t;
 
 typedef struct
 {
   u32 flags;
 #define VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP	(1 << 0)
 #define VLIB_PHYSMEM_MAIN_F_HAVE_IOMMU		(1 << 1)
-  vlib_physmem_region_t *regions;
+  vlib_physmem_map_t *maps;
+  clib_pmalloc_main_t *pmalloc_main;
 } vlib_physmem_main_t;
-
-extern vlib_physmem_main_t physmem_main;
 
 #endif /* included_vlib_physmem_h */
 

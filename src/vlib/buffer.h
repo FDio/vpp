@@ -412,16 +412,9 @@ typedef struct
   uword start;
   uword size;
   uword log2_page_size;
-  vlib_physmem_region_index_t physmem_region;
-
+  u32 physmem_map_index;
+  u32 buffer_size;
   u32 *buffers;
-
-  u16 buffer_size;
-  uword buffers_per_page;
-  uword n_elts;
-  uword n_used;
-  uword next_clear;
-  uword *bitmap;
   clib_spinlock_t lock;
 } vlib_buffer_pool_t;
 
@@ -466,9 +459,8 @@ vlib_buffer_pool_get (u8 buffer_pool_index)
   return vec_elt_at_index (bm->buffer_pools, buffer_pool_index);
 }
 
-u8 vlib_buffer_pool_create (struct vlib_main_t * vm,
-			    vlib_physmem_region_index_t region,
-			    u16 buffer_size);
+u8 vlib_buffer_register_physmem_map (struct vlib_main_t * vm,
+				     u32 physmem_map_index);
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
 
