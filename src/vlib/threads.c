@@ -42,11 +42,6 @@ vlib_thread_main_t vlib_thread_main;
  * imapacts observed timings.
  */
 
-#ifdef BARRIER_TRACING
- /*
-  * Output of barrier tracing can be to syslog or elog as suits
-  */
-#ifdef BARRIER_TRACING_ELOG
 static u32
 elog_id_for_msg_name (const char *msg_name)
 {
@@ -69,24 +64,22 @@ elog_id_for_msg_name (const char *msg_name)
   return r;
 }
 
-  /*
-   * elog Barrier trace functions, which are nulled out if BARRIER_TRACING isn't
-   * defined
-   */
-
 static inline void
 barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
 {
+  if (!vlib_worker_threads->barrier_elog_enabled)
+    return;
+
     /* *INDENT-OFF* */
     ELOG_TYPE_DECLARE (e) =
       {
-        .format = "barrier <%d#%s(O:%dus:%dus)(%dus)",
-        .format_args = "i4T4i4i4i4",
+        .format = "bar-trace-%s-#%d",
+        .format_args = "T4i4",
       };
     /* *INDENT-ON* */
   struct
   {
-    u32 count, caller, t_entry, t_open, t_closed;
+    u32 caller, count, t_entry, t_open, t_closed;
   } *ed = 0;
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
@@ -100,57 +93,64 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
 static inline void
 barrier_trace_sync_rec (f64 t_entry)
 {
+  if (!vlib_worker_threads->barrier_elog_enabled)
+    return;
+
     /* *INDENT-OFF* */
     ELOG_TYPE_DECLARE (e) =
       {
-        .format = "barrier    <%d(%dus)%s",
-        .format_args = "i4i4T4",
+        .format = "bar-syncrec-%s-#%d",
+        .format_args = "T4i4",
       };
     /* *INDENT-ON* */
   struct
   {
-    u32 depth, t_entry, caller;
+    u32 caller, depth;
   } *ed = 0;
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->depth = (int) vlib_worker_threads[0].recursion_level - 1;
-  ed->t_entry = (int) (1000000.0 * t_entry);
   ed->caller = elog_id_for_msg_name (vlib_worker_threads[0].barrier_caller);
 }
 
 static inline void
 barrier_trace_release_rec (f64 t_entry)
 {
+  if (!vlib_worker_threads->barrier_elog_enabled)
+    return;
+
     /* *INDENT-OFF* */
     ELOG_TYPE_DECLARE (e) =
       {
-        .format = "barrier      (%dus)%d>",
-        .format_args = "i4i4",
+        .format = "bar-relrrec-#%d",
+        .format_args = "i4",
       };
     /* *INDENT-ON* */
   struct
   {
-    u32 t_entry, depth;
+    u32 depth;
   } *ed = 0;
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
-  ed->t_entry = (int) (1000000.0 * t_entry);
   ed->depth = (int) vlib_worker_threads[0].recursion_level;
 }
 
 static inline void
 barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
 {
+  if (!vlib_worker_threads->barrier_elog_enabled)
+    return;
+
     /* *INDENT-OFF* */
     ELOG_TYPE_DECLARE (e) =
       {
-        .format = "barrier   (%dus){%d}(C:%dus)#%d>",
+        .format = "bar-rel-#%d-e%d-u%d-t%d",
         .format_args = "i4i4i4i4",
       };
     /* *INDENT-ON* */
   struct
   {
-    u32 t_entry, t_update_main, t_closed_total, count;
+    u32 count, t_entry, t_update_main, t_closed_total;
   } *ed = 0;
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
@@ -162,94 +162,6 @@ barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
   /* Reset context for next trace */
   vlib_worker_threads[0].barrier_context = NULL;
 }
-#else
-char barrier_trace[65536];
-char *btp = barrier_trace;
-
-  /*
-   * syslog Barrier trace functions, which are nulled out if BARRIER_TRACING
-   * isn't defined
-   */
-
-
-static inline void
-barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
-{
-  btp += sprintf (btp, "<%u#%s",
-		  (unsigned int) vlib_worker_threads[0].barrier_sync_count,
-		  vlib_worker_threads[0].barrier_caller);
-
-  if (vlib_worker_threads[0].barrier_context)
-    {
-      btp += sprintf (btp, "[%s]", vlib_worker_threads[0].barrier_context);
-
-    }
-
-  btp += sprintf (btp, "(O:%dus:%dus)(%dus):",
-		  (int) (1000000.0 * t_entry),
-		  (int) (1000000.0 * t_open), (int) (1000000.0 * t_closed));
-
-}
-
-static inline void
-barrier_trace_sync_rec (f64 t_entry)
-{
-  btp += sprintf (btp, "<%u(%dus)%s:",
-		  (int) vlib_worker_threads[0].recursion_level - 1,
-		  (int) (1000000.0 * t_entry),
-		  vlib_worker_threads[0].barrier_caller);
-}
-
-static inline void
-barrier_trace_release_rec (f64 t_entry)
-{
-  btp += sprintf (btp, ":(%dus)%u>", (int) (1000000.0 * t_entry),
-		  (int) vlib_worker_threads[0].recursion_level);
-}
-
-static inline void
-barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
-{
-
-  btp += sprintf (btp, ":(%dus)", (int) (1000000.0 * t_entry));
-  if (t_update_main > 0)
-    {
-      btp += sprintf (btp, "{%dus}", (int) (1000000.0 * t_update_main));
-    }
-
-  btp += sprintf (btp, "(C:%dus)#%u>",
-		  (int) (1000000.0 * t_closed_total),
-		  (int) vlib_worker_threads[0].barrier_sync_count);
-
-  /* Dump buffer to syslog, and reset for next trace */
-  fformat (stderr, "BTRC %s\n", barrier_trace);
-  btp = barrier_trace;
-  vlib_worker_threads[0].barrier_context = NULL;
-}
-#endif
-#else
-
-  /* Null functions for default case where barrier tracing isn't used */
-static inline void
-barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
-{
-}
-
-static inline void
-barrier_trace_sync_rec (f64 t_entry)
-{
-}
-
-static inline void
-barrier_trace_release_rec (f64 t_entry)
-{
-}
-
-static inline void
-barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
-{
-}
-#endif
 
 uword
 os_get_nthreads (void)

@@ -229,6 +229,7 @@ VLIB_CLI_COMMAND (api_command, static) =
   .path = "binary-api",
   .short_help = "binary-api [help] <name> [<args>]",
   .function = api_command_fn,
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
