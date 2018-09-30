@@ -34,52 +34,46 @@
 
 linux_vfio_main_t vfio_main;
 
-static int
-vfio_map_regions (vlib_main_t * vm, int fd)
+clib_error_t *
+vfio_map_physmem_page (vlib_main_t * vm, void *addr)
 {
-  vlib_physmem_main_t *vpm = &physmem_main;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
   linux_vfio_main_t *lvm = &vfio_main;
-  vlib_physmem_region_t *pr;
   struct vfio_iommu_type1_dma_map dm = { 0 };
-  int i;
+  uword log2_page_size = vpm->pmalloc_main->log2_page_sz;
+  uword physmem_start = pointer_to_uword (vpm->pmalloc_main->base);
+
+  if (lvm->container_fd == -1)
+    return clib_error_return (0, "No cointainer fd");
+
+  u32 page_index = vlib_physmem_get_page_index (vm, addr);
+
+  if (clib_bitmap_get (lvm->physmem_pages_mapped, page_index))
+    {
+      vlib_log_debug (lvm->log_default, "map DMA va:%p page:%u already "
+		      "mapped", addr, page_index);
+      return 0;
+    }
 
   dm.argsz = sizeof (struct vfio_iommu_type1_dma_map);
   dm.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
+  dm.vaddr = physmem_start + (page_index << log2_page_size);
+  dm.size = 1ULL << log2_page_size;
+  dm.iova = dm.vaddr;
+  vlib_log_debug (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
+		  "size:0x%lx", page_index, dm.vaddr, dm.iova, dm.size);
 
-  /* *INDENT-OFF* */
-  pool_foreach (pr, vpm->regions,
+  if (ioctl (lvm->container_fd, VFIO_IOMMU_MAP_DMA, &dm) == -1)
     {
-      vec_foreach_index (i, pr->page_table)
-        {
-	  int rv;
-	  dm.vaddr = pointer_to_uword (pr->mem) + ((u64)i << pr->log2_page_size);
-	  dm.size = 1ull << pr->log2_page_size;
-	  dm.iova = dm.vaddr;
-	  vlib_log_debug (lvm->log_default, "map DMA va:0x%lx iova:%lx "
-			  "size:0x%lx", dm.vaddr, dm.iova, dm.size);
+      vlib_log_err (lvm->log_default, "map DMA page:%u va:0x%lx iova:%lx "
+		    "size:0x%lx failed, error %s (errno %d)", page_index,
+		    dm.vaddr, dm.iova, dm.size, strerror (errno), errno);
+      return clib_error_return_unix (0, "physmem DMA map failed");
+    }
 
-	  if ((rv = ioctl (fd, VFIO_IOMMU_MAP_DMA, &dm)) &&
-	      errno != EINVAL)
-	    {
-	      vlib_log_err (lvm->log_default, "map DMA va:0x%lx iova:%lx "
-			    "size:0x%lx failed, error %s (errno %d)",
-			    dm.vaddr, dm.iova, dm.size, strerror (errno),
-			    errno);
-	      return rv;
-	    }
-        }
-    });
-  /* *INDENT-ON* */
+  lvm->physmem_pages_mapped = clib_bitmap_set (lvm->physmem_pages_mapped,
+					       page_index, 1);
   return 0;
-}
-
-void
-linux_vfio_dma_map_regions (vlib_main_t * vm)
-{
-  linux_vfio_main_t *lvm = &vfio_main;
-
-  if (lvm->container_fd != -1)
-    vfio_map_regions (vm, lvm->container_fd);
 }
 
 static linux_pci_vfio_iommu_group_t *

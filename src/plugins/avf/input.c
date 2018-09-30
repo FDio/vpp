@@ -48,7 +48,7 @@ static __clib_unused char *avf_input_error_strings[] = {
 #define AVF_INPUT_REFILL_TRESHOLD 32
 static_always_inline void
 avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
-		int use_iova)
+		int use_va_dma)
 {
   u16 n_refill, mask, n_alloc, slot;
   u32 s0, s1, s2, s3;
@@ -103,7 +103,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       b[2] = vlib_get_buffer (vm, rxq->bufs[s2]);
       b[3] = vlib_get_buffer (vm, rxq->bufs[s3]);
 
-      if (use_iova)
+      if (use_va_dma)
 	{
 	  d[0]->qword[0] = vlib_buffer_get_va (b[0]);
 	  d[1]->qword[0] = vlib_buffer_get_va (b[1]);
@@ -132,7 +132,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       s0 = slot;
       d[0] = ((avf_rx_desc_t *) rxq->descs) + s0;
       b[0] = vlib_get_buffer (vm, rxq->bufs[s0]);
-      if (use_iova)
+      if (use_va_dma)
 	d[0]->qword[0] = vlib_buffer_get_va (b[0]);
       else
 	d[0]->qword[0] = vlib_buffer_get_pa (vm, b[0]);
@@ -433,10 +433,10 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     goto done;
 
   /* refill rx ring */
-  if (ad->flags & AVF_DEVICE_F_IOVA)
-    avf_rxq_refill (vm, node, rxq, 1 /* use_iova */ );
+  if (ad->flags & AVF_DEVICE_F_VA_DMA)
+    avf_rxq_refill (vm, node, rxq, 1 /* use_va_dma */ );
   else
-    avf_rxq_refill (vm, node, rxq, 0 /* use_iova */ );
+    avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */ );
 
   vlib_get_buffers (vm, buffer_indices, bufs, n_rxv);
   n_rx_packets = n_rxv;
