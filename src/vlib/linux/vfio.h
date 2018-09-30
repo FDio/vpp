@@ -36,6 +36,8 @@ typedef struct
   /* iommu group pool index by group id  hash */
   uword *iommu_pool_index_by_group;
 
+  clib_bitmap_t *physmem_pages_mapped;
+
   /* logging */
   vlib_log_class_t log_default;
 } linux_vfio_main_t;
@@ -43,7 +45,7 @@ typedef struct
 extern linux_vfio_main_t vfio_main;
 
 clib_error_t *linux_vfio_init (vlib_main_t * vm);
-void linux_vfio_dma_map_regions (vlib_main_t * vm);
+clib_error_t *vfio_map_physmem_page (vlib_main_t * vm, void *addr);
 clib_error_t *linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr,
 					      int *fd, int *is_noiommu);
 

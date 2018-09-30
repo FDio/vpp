@@ -340,12 +340,12 @@ memif_init_regions_and_queues (memif_if_t * mif)
       /* *INDENT-OFF* */
       vec_foreach (bp, buffer_main.buffer_pools)
 	{
-	  vlib_physmem_region_t *pr;
-	  pr = vlib_physmem_get_region (vm, bp->physmem_region);
+	  vlib_physmem_map_t *pm;
+	  pm = vlib_physmem_get_map (vm, bp->physmem_map_index);
 	  vec_add2_aligned (mif->regions, r, 1, CLIB_CACHE_LINE_BYTES);
-	  r->fd = pr->fd;
-	  r->region_size = pr->size;
-	  r->shm = pr->mem;
+	  r->fd = pm->fd;
+	  r->region_size = pm->n_pages << pm->log2_page_size;
+	  r->shm = pm->base;
 	  r->is_external = 1;
 	}
       /* *INDENT-ON* */

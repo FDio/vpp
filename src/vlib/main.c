@@ -1756,7 +1756,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   if (!vm->name)
     vm->name = "VLIB";
 
-  if ((error = unix_physmem_init (vm)))
+  if ((error = vlib_physmem_init (vm)))
     {
       clib_error_report (error);
       goto done;

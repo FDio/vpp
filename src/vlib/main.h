@@ -118,23 +118,8 @@ typedef struct vlib_main_t
   /* Pool of buffer free lists. */
   vlib_buffer_free_list_t *buffer_free_list_pool;
 
-  /* Allocate/free buffer memory for DMA transfers, descriptor rings, etc.
-     buffer memory is guaranteed to be cache-aligned. */
-
-  clib_error_t *(*os_physmem_region_alloc) (struct vlib_main_t * vm,
-					    char *name, u32 size,
-					    u8 numa_node, u32 flags,
-					    vlib_physmem_region_index_t *
-					    idx);
-
-  void (*os_physmem_region_free) (struct vlib_main_t * vm,
-				  vlib_physmem_region_index_t idx);
-
-  void *(*os_physmem_alloc_aligned) (struct vlib_main_t * vm,
-				     vlib_physmem_region_index_t idx,
-				     uword n_bytes, uword alignment);
-  void (*os_physmem_free) (struct vlib_main_t * vm,
-			   vlib_physmem_region_index_t idx, void *x);
+  /* physical memory main structure. */
+  vlib_physmem_main_t physmem_main;
 
   /* Node graph main structure. */
   vlib_node_main_t node_main;

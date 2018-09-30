@@ -118,7 +118,7 @@ retry:
       b2 = vlib_get_buffer (vm, bi2);
       b3 = vlib_get_buffer (vm, bi3);
 
-      if (ad->flags & AVF_DEVICE_F_IOVA)
+      if (ad->flags & AVF_DEVICE_F_VA_DMA)
 	{
 	  d0->qword[0] = vlib_buffer_get_current_va (b0);
 	  d1->qword[0] = vlib_buffer_get_current_va (b1);
@@ -151,7 +151,7 @@ retry:
       txq->bufs[next] = bi0;
       b0 = vlib_get_buffer (vm, bi0);
 
-      if (ad->flags & AVF_DEVICE_F_IOVA)
+      if (ad->flags & AVF_DEVICE_F_VA_DMA)
 	d0->qword[0] = vlib_buffer_get_current_va (b0);
       else
 	d0->qword[0] = vlib_buffer_get_current_pa (vm, b0);
