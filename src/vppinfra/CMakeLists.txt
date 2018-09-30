@@ -56,6 +56,7 @@ set(VPPINFRA_SRCS
   macros.c
   maplog.c
   mhash.c
+  pmalloc.c
   pool.c
   ptclosure.c
   random.c
@@ -135,6 +136,7 @@ set(VPPINFRA_HEADERS
   mheap.h
   os.h
   pipeline.h
+  pmalloc.h
   pool.h
   ptclosure.h
   random_buffer.h
@@ -208,7 +210,7 @@ add_vpp_library(vppinfra
 ##############################################################################
 # vppinfra headers
 ##############################################################################
-option(VPP_BUILD_VPPINFRA_TESTS "Build vppinfra tests." OFF)
+option(VPP_BUILD_VPPINFRA_TESTS "Build vppinfra tests." ON)
 if(VPP_BUILD_VPPINFRA_TESTS)
   foreach(test
     bihash_vec88
@@ -225,6 +227,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     longjmp
     macros
     maplog
+    pmalloc
     pool_iterate
     ptclosure
     random

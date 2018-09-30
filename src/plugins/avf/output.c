@@ -119,8 +119,7 @@ retry:
       b3 = vlib_get_buffer (vm, bi3);
 
 #if 0
-      d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
-	b0->current_data;
+      d->qword[0] = vlib_get_buffer_dma_addr (vm, bi0) + b0->current_data;
 #else
       d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
       d1->qword[0] = pointer_to_uword (b1->data) + b1->current_data;
@@ -147,8 +146,7 @@ retry:
       b0 = vlib_get_buffer (vm, bi0);
 
 #if 0
-      d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
-	b0->current_data;
+      d->qword[0] = vlib_get_buffer_dma_addr (vm, bi0) + b0->current_data;
 #else
       d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
 #endif
