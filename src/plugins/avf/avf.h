@@ -188,8 +188,6 @@ typedef struct
 
   avf_device_t *devices;
   avf_per_thread_data_t *per_thread_data;
-  vlib_physmem_region_index_t physmem_region;
-  int physmem_region_alloc;
 
   vlib_log_class_t log_class;
 
