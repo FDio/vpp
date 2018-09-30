@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b4ce4134_53357b1a",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2018-09-30T02:08:09Z",
+      "side": 1,
+      "message": "here we could not goto \"failed\" directly, as in current logic, there is a callback needs to be executed in application part.\n\nSince in our case, the app has been freed, so no need to run \"callback\" now.",
+      "revId": "8f2ebc7ef0eca7c4ff392b1d156cf7a98845ae52",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
