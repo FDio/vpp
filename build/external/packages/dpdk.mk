@@ -191,6 +191,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_BOND,y)
 	$(call set,RTE_LIBRTE_IP_FRAG,y)
 	$(call set,RTE_LIBRTE_PMD_QAT,y)
+	$(call set,RTE_LIBRTE_PMD_QAT_SYM,y)
 	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(AESNI))
 	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(AESNI))
 	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
