@@ -597,6 +597,7 @@ vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
 				     args);
 void vlib_rpc_call_main_thread (void *function, u8 * args, u32 size);
 
+u32 elog_global_id_for_msg_name (const char *msg_name);
 #endif /* included_vlib_threads_h */
 
 /*

@@ -40,6 +40,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/cpu.h>
+#include <vppinfra/elog.h>
 #include <unistd.h>
 #include <ctype.h>
 
@@ -583,6 +584,23 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
+		{
+                  /* *INDENT-OFF* */
+                  ELOG_TYPE_DECLARE (e) =
+                    {
+                      .format = "cli-cmd: %s",
+                      .format_args = "T4",
+                    };
+                  /* *INDENT-ON* */
+		  struct
+		  {
+		    u32 c;
+		  } *ed;
+		  ed = ELOG_DATA (&vm->elog_main, e);
+		  ed->c = elog_global_id_for_msg_name (c->path);
+		}
+
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_sync (vm);
 
@@ -590,6 +608,32 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_release (vm);
+
+	      if (PREDICT_FALSE (vm->elog_trace_cli_commands))
+		{
+                  /* *INDENT-OFF* */
+                  ELOG_TYPE_DECLARE (e) =
+                    {
+                      .format = "cli-cmd: %s %s",
+                      .format_args = "T4T4",
+                    };
+                  /* *INDENT-ON* */
+		  struct
+		  {
+		    u32 c, err;
+		  } *ed;
+		  ed = ELOG_DATA (&vm->elog_main, e);
+		  ed->c = elog_global_id_for_msg_name (c->path);
+		  if (c_error)
+		    {
+		      vec_add1 (c_error->what, 0);
+		      ed->err = elog_global_id_for_msg_name
+			((const char *) c_error->what);
+		      _vec_len (c_error->what) -= 1;
+		    }
+		  else
+		    ed->err = elog_global_id_for_msg_name ("OK");
+		}
 
 	      if (c_error)
 		{
@@ -1412,6 +1456,75 @@ VLIB_CLI_COMMAND (show_cli_command, static) = {
   .path = "show cli",
   .short_help = "Show cli commands",
   .function = show_cli_cmd_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+elog_trace_command_fn (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int enable = 1;
+  int api = 0, cli = 0, barrier = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    goto print_status;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "api"))
+	api = 1;
+      else if (unformat (line_input, "cli"))
+	cli = 1;
+      else if (unformat (line_input, "barrier"))
+	barrier = 1;
+      else if (unformat (line_input, "disable"))
+	enable = 0;
+      else if (unformat (line_input, "enable"))
+	enable = 1;
+      else
+	break;
+    }
+  unformat_free (line_input);
+
+  vm->elog_trace_api_messages = api ? enable : vm->elog_trace_api_messages;
+  vm->elog_trace_cli_commands = cli ? enable : vm->elog_trace_cli_commands;
+  vlib_worker_threads->barrier_elog_enabled =
+    barrier ? enable : vlib_worker_threads->barrier_elog_enabled;
+
+print_status:
+  vlib_cli_output (vm, "Current status:");
+
+  vlib_cli_output
+    (vm, "    Event log API message trace: %s\n    CLI command trace: %s",
+     vm->elog_trace_api_messages ? "on" : "off",
+     vm->elog_trace_cli_commands ? "on" : "off");
+  vlib_cli_output
+    (vm, "    Barrier sync trace: %s",
+     vlib_worker_threads->barrier_elog_enabled ? "on" : "off");
+
+  return 0;
+}
+
+/*?
+ * Control event logging of api, cli, and thread barrier events
+ * With no arguments, displays the current trace status.
+ * Name the event groups you wish to trace or stop tracing.
+ *
+ * @cliexpar
+ * @clistart
+ * elog trace api cli barrier
+ * elog trace api cli barrier disable
+ * elog trace
+ * @cliend
+ * @cliexcmd{elog trace [api][cli][barrier][disable]}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (elog_trace_command, static) =
+{
+  .path = "elog trace",
+  .short_help = "elog trace [api][cli][barrier][disable]",
+  .function = elog_trace_command_fn,
 };
 /* *INDENT-ON* */
 
