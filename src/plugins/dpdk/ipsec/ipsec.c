@@ -652,10 +652,6 @@ crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
 	return clib_error_return (0, error_str, dev, qp);
     }
 
-  error_str = "failed to start crypto device %u";
-  if (rte_cryptodev_start (dev))
-    return clib_error_return (0, error_str, dev);
-
   return 0;
 }
 
@@ -671,6 +667,7 @@ crypto_scan_devs (u32 n_mains)
   u32 i;
   u16 max_res_idx, res_idx, j;
   u8 drv_id;
+  u8 dev_conf_status[RTE_CRYPTO_MAX_DEVS] = { };
 
   vec_validate_init_empty (dcm->dev, rte_cryptodev_count () - 1,
 			   (crypto_dev_t) EMPTY_STRUCT);
@@ -703,6 +700,10 @@ crypto_scan_devs (u32 n_mains)
 	  clib_error_report (error);
 	  continue;
 	}
+      else
+	{
+	  dev_conf_status[i] = 1;
+	}
 
       max_res_idx = (dev->max_qp / 2) - 1;
 
@@ -725,6 +726,14 @@ crypto_scan_devs (u32 n_mains)
 	}
 
       crypto_parse_capabilities (dev, info.capabilities, n_mains);
+    }
+
+  for (i = 0; i < rte_cryptodev_count (); i++)
+    {
+      if (dev_conf_status[i] == 1)
+	{
+	  rte_cryptodev_start (i);
+	}
     }
 }
 

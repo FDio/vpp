@@ -44,6 +44,8 @@ typedef struct vlib_thread_registration_
   int use_pthreads;
   u32 first_index;
   uword *coremask;
+  u32 crypto_corecount;
+  uword *crypto_coremask;
 } vlib_thread_registration_t;
 
 /*

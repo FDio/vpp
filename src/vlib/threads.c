@@ -1255,6 +1255,24 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "scheduler-priority %u", &tm->sched_priority))
 	;
+      else if (unformat (input, "crypto-%s %U", &name, unformat_bitmap_list,
+			 &bitmap))
+	{
+	  p = hash_get_mem (tm->thread_registrations_by_name, name);
+	  if (p == 0)
+	    return clib_error_return (0, "no such thread type '%s'", name);
+
+	  if ((*bitmap & *tr->coremask) != 0)
+	    return clib_error_return (0,
+				      "crypto-bitmap:%d corelist-bitmap:%d, workers can not be same",
+				      *bitmap, *tr->coremask);
+
+	  tr = (vlib_thread_registration_t *) p[0];
+
+	  tr->crypto_coremask = bitmap;
+	  tr->crypto_corecount =
+	    clib_bitmap_count_set_bits (tr->crypto_coremask);
+	}
       else if (unformat (input, "%s %u", &name, &count))
 	{
 	  p = hash_get_mem (tm->thread_registrations_by_name, name);
