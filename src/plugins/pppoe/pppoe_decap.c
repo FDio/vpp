@@ -153,7 +153,7 @@ pppoe_input (vlib_main_t * vm,
 	  t0 = pool_elt_at_index (pem->sessions,
 				  result0.fields.session_index);
 
-	  /* Pop Eth and PPPPoE header */
+	  /* Pop Eth and PPPoE header */
 	  vlib_buffer_advance(b0, sizeof(*h0)+sizeof(*pppoe0));
 
 	  next0 = (ppp_proto0==PPP_PROTOCOL_ip4)?
@@ -223,7 +223,7 @@ pppoe_input (vlib_main_t * vm,
 	  t1 = pool_elt_at_index (pem->sessions,
 				  result1.fields.session_index);
 
-	  /* Pop Eth and PPPPoE header */
+	  /* Pop Eth and PPPoE header */
 	  vlib_buffer_advance(b1, sizeof(*h1)+sizeof(*pppoe1));
 
 	  next1 = (ppp_proto1==PPP_PROTOCOL_ip4)?
@@ -325,7 +325,7 @@ pppoe_input (vlib_main_t * vm,
 	  t0 = pool_elt_at_index (pem->sessions,
 				  result0.fields.session_index);
 
-	  /* Pop Eth and PPPPoE header */
+	  /* Pop Eth and PPPoE header */
 	  vlib_buffer_advance(b0, sizeof(*h0)+sizeof(*pppoe0));
 
 	  next0 = (ppp_proto0==PPP_PROTOCOL_ip4)?
