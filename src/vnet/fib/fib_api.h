@@ -73,4 +73,7 @@ struct _vl_api_fib_path;
 extern int fib_path_api_parse(const struct _vl_api_fib_path *in,
                               fib_route_path_t *out);
 
+extern fib_protocol_t fib_proto_from_api_address_family (int af);
+extern int fib_proto_to_api_address_family (fib_protocol_t fproto);
+
 #endif /* __FIB_API_H__ */

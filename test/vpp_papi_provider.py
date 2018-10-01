@@ -3865,3 +3865,32 @@ class VppPapiProvider(object):
 
     def memif_socket_filename_dump(self):
         return self.api(self.papi.memif_socket_filename_dump, {})
+
+    def svs_table_add_del(self, af, table_id, is_add=1):
+        return self.api(self.papi.svs_table_add_del,
+                        {
+                            'table_id': table_id,
+                            'is_add': is_add,
+                            'af': af,
+                        })
+
+    def svs_route_add_del(self, table_id, prefix, src_table_id, is_add=1):
+        return self.api(self.papi.svs_route_add_del,
+                        {
+                            'table_id': table_id,
+                            'source_table_id': src_table_id,
+                            'prefix': prefix,
+                            'is_add': is_add,
+                        })
+
+    def svs_enable_disable(self, af, table_id, sw_if_index, is_enable=1):
+        return self.api(self.papi.svs_enable_disable,
+                        {
+                            'af': af,
+                            'table_id': table_id,
+                            'sw_if_index': sw_if_index,
+                            'is_enable': is_enable,
+                        })
+
+    def svs_dump(self):
+        return self.api(self.papi.svs_dump, {})

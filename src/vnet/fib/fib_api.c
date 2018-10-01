@@ -266,3 +266,34 @@ fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
     }
 }
 
+fib_protocol_t
+fib_proto_from_api_address_family (int af)
+{
+    switch (clib_net_to_host_u32 (af))
+    {
+    case ADDRESS_IP4:
+        return (FIB_PROTOCOL_IP4);
+    case ADDRESS_IP6:
+        return (FIB_PROTOCOL_IP6);
+    }
+
+    ASSERT(0);
+    return (FIB_PROTOCOL_IP4);
+}
+
+int
+fib_proto_to_api_address_family (fib_protocol_t fproto)
+{
+    switch (fproto)
+    {
+    case FIB_PROTOCOL_IP4:
+        return (clib_net_to_host_u32 (ADDRESS_IP4));
+    case FIB_PROTOCOL_IP6:
+        return (clib_net_to_host_u32 (ADDRESS_IP6));
+    default:
+        break;
+    }
+
+    ASSERT(0);
+    return (clib_net_to_host_u32 (ADDRESS_IP4));
+}
