@@ -1347,10 +1347,14 @@ static void vl_api_show_threads_reply_t_handler_json
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
   vl_api_thread_data_t *td;
-  int i, count = ntohl (mp->count);
+  i32 retval = ntohl (mp->retval);
+  int i, count = 0;
+
+  if (retval >= 0)
+    count = ntohl (mp->count);
 
   vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_int (&node, "retval", retval);
   vat_json_object_add_uint (&node, "count", count);
 
   for (i = 0; i < count; i++)
@@ -1368,7 +1372,7 @@ static void vl_api_show_threads_reply_t_handler_json
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
 
-  vam->retval = ntohl (mp->retval);
+  vam->retval = retval;
   vam->result_ready = 1;
 }
 
