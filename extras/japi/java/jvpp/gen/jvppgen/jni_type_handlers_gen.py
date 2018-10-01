@@ -117,8 +117,8 @@ $json_definition
 static inline void _host_to_net_${c_name}(JNIEnv * env, jobject _host, vl_api_${c_name}_t * _net)
 {
     jclass enumClass = (*env)->FindClass(env, "${class_FQN}");
-    jfieldID valueFieldId = (*env)->GetStaticFieldID(env, enumClass, "value", "${jni_signature}");
-    ${jni_type} value = (*env)->GetStatic${jni_accessor}Field(env, enumClass, valueFieldId);
+    jmethodID getValueMethod = (*env)->GetMethodID(env, enumClass, "ordinal", "()I");
+    ${jni_type} value = (*env)->CallIntMethod(env, _host, getValueMethod);
     ${swap};
 }""")
 
