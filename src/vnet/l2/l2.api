@@ -449,7 +449,7 @@ enum l2_port_type
     @param context - sender context, to match reply w/ request
     @param rx_sw_if_index - the interface
     @param bd_id - bridge domain id
-    @param bvi - Setup interface as a bvi, bridge mode only
+    @param port_type - port_mode, see #l2_port_type
     @param shg - Split horizon group, for bridge mode only
     @param enable - Enable beige mode if not 0, else set to L3 mode
 */
