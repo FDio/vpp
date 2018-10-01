@@ -41,6 +41,7 @@
 #define included_vlib_buffer_funcs_h
 
 #include <vppinfra/hash.h>
+#include <vppinfra/fifo.h>
 
 /** \file
     vlib buffer access methods.

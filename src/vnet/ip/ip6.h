@@ -40,7 +40,6 @@
 #ifndef included_ip_ip6_h
 #define included_ip_ip6_h
 
-#include <vlib/mc.h>
 #include <vlib/buffer.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip6_packet.h>

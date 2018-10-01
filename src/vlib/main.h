@@ -148,9 +148,6 @@ typedef struct vlib_main_t
 			 struct vlib_node_runtime_t * node,
 			 vlib_frame_t * frame);
 
-  /* Multicast distribution.  Set to zero for MC disabled. */
-  mc_main_t *mc_main;
-
   /* Stream index to use for distribution when MC is enabled. */
   u32 mc_stream_index;
 
@@ -158,6 +155,10 @@ typedef struct vlib_main_t
 
   /* Event logger. */
   elog_main_t elog_main;
+
+  /* Event logger trace flags */
+  int elog_trace_api_messages;
+  int elog_trace_cli_commands;
 
   /* Node call and return event types. */
   elog_event_type_t *node_call_elog_event_types;
@@ -184,7 +185,6 @@ typedef struct vlib_main_t
   _vlib_init_function_list_elt_t *main_loop_exit_function_registrations;
   _vlib_init_function_list_elt_t *api_init_function_registrations;
   vlib_config_function_runtime_t *config_function_registrations;
-  mc_serialize_msg_t *mc_msg_registrations;	/* mc_main is a pointer... */
 
   /* control-plane API queue signal pending, length indication */
   volatile u32 queue_signal_pending;

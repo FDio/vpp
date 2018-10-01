@@ -532,29 +532,6 @@ VLIB_CLI_COMMAND (cmd_test_frame_queue_threshold,static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-test_threads_barrier_elog_command_fn (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
-{
-  if (unformat (input, "enable"))
-    vlib_worker_threads->barrier_elog_enabled = 1;
-  else if (unformat (input, "disable"))
-    vlib_worker_threads->barrier_elog_enabled = 0;
-  else
-    return clib_error_return (0, "please choose enable or disable");
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (test_elog_vector_length_trigger, static) =
-{
-  .path = "test threads barrier-elog",
-  .short_help = "test threads barrier-elog",
-  .function = test_threads_barrier_elog_command_fn,
-};
-/* *INDENT-ON* */
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

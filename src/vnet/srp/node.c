@@ -640,63 +640,6 @@ static void tx_ips_packet (srp_interface_t * si,
   vlib_put_frame_to_node (vm, hi->output_node_index, f);
 }
 
-static void serialize_srp_interface_state_msg (serialize_main_t * m, va_list * va)
-{
-  srp_interface_t * si = va_arg (*va, srp_interface_t *);
-  srp_main_t * sm = &srp_main;
-  int r;
-
-  ASSERT (! pool_is_free (sm->interface_pool, si));
-  serialize_integer (m, si - sm->interface_pool, sizeof (u32));
-  serialize_likely_small_unsigned_integer (m, si->current_ips_state);
-  for (r = 0; r < SRP_N_RING; r++)
-    {
-      srp_interface_ring_t * ir = &si->rings[r];
-      void * p;
-      serialize_likely_small_unsigned_integer (m, ir->rx_neighbor_address_valid);
-      if (ir->rx_neighbor_address_valid)
-	{
-	  p = serialize_get (m, sizeof (ir->rx_neighbor_address));
-	  clib_memcpy (p, ir->rx_neighbor_address, sizeof (ir->rx_neighbor_address));
-	}
-      serialize_likely_small_unsigned_integer (m, ir->waiting_to_restore);
-      if (ir->waiting_to_restore)
-	serialize (m, serialize_f64, ir->wait_to_restore_start_time);
-    }
-}
-
-static void unserialize_srp_interface_state_msg (serialize_main_t * m, va_list * va)
-{
-  CLIB_UNUSED (mc_main_t * mcm) = va_arg (*va, mc_main_t *);
-  srp_main_t * sm = &srp_main;
-  srp_interface_t * si;
-  u32 si_index, r;
-
-  unserialize_integer (m, &si_index, sizeof (u32));
-  si = pool_elt_at_index (sm->interface_pool, si_index);
-  si->current_ips_state = unserialize_likely_small_unsigned_integer (m);
-  for (r = 0; r < SRP_N_RING; r++)
-    {
-      srp_interface_ring_t * ir = &si->rings[r];
-      void * p;
-      ir->rx_neighbor_address_valid = unserialize_likely_small_unsigned_integer (m);
-      if (ir->rx_neighbor_address_valid)
-	{
-	  p = unserialize_get (m, sizeof (ir->rx_neighbor_address));
-	  clib_memcpy (ir->rx_neighbor_address, p, sizeof (ir->rx_neighbor_address));
-	}
-      ir->waiting_to_restore = unserialize_likely_small_unsigned_integer (m);
-      if (ir->waiting_to_restore)
-	unserialize (m, unserialize_f64, &ir->wait_to_restore_start_time);
-    }
-}
-
-MC_SERIALIZE_MSG (srp_interface_state_msg, static) = {
-  .name = "vnet_srp_interface_state",
-  .serialize = serialize_srp_interface_state_msg,
-  .unserialize = unserialize_srp_interface_state_msg,
-};
-
 static int requests_switch (srp_ips_request_type_t r)
 {
   static u8 t[16] = {
@@ -716,7 +659,6 @@ void srp_ips_rx_packet (u32 sw_if_index, srp_ips_header_t * h)
   srp_ring_type_t rx_ring;
   srp_interface_t * si = srp_get_interface (sw_if_index, &rx_ring);
   srp_interface_ring_t * ir = &si->rings[rx_ring];
-  int si_needs_broadcast = 0;
 
   /* FIXME trace. */
   if (0)
@@ -751,7 +693,6 @@ void srp_ips_rx_packet (u32 sw_if_index, srp_ips_header_t * h)
 	{
 	  srp_ips_header_t to_tx[2];
 
-	  si_needs_broadcast = 1;
 	  si->current_ips_state = SRP_IPS_STATE_wrapped;
 	  si->hw_wrap_function (si->rings[SRP_SIDE_A].hw_if_index, /* enable_wrap */ 1);
 	  si->hw_wrap_function (si->rings[SRP_SIDE_B].hw_if_index, /* enable_wrap */ 1);
@@ -775,7 +716,6 @@ void srp_ips_rx_packet (u32 sw_if_index, srp_ips_header_t * h)
 	  && h->request_type == SRP_IPS_REQUEST_idle
 	  && h->status == SRP_IPS_STATUS_idle)
 	{
-	  si_needs_broadcast = 1;
 	  si->current_ips_state = SRP_IPS_STATE_idle;
 	  si->hw_wrap_function (si->rings[SRP_SIDE_A].hw_if_index, /* enable_wrap */ 0);
 	  si->hw_wrap_function (si->rings[SRP_SIDE_B].hw_if_index, /* enable_wrap */ 0);
@@ -790,10 +730,8 @@ void srp_ips_rx_packet (u32 sw_if_index, srp_ips_header_t * h)
       abort ();
       break;
     }
-
  done:
-  if (vm->mc_main && si_needs_broadcast)
-    mc_serialize (vm->mc_main, &srp_interface_state_msg, si);
+  ;
 }
 
 /* Preform local IPS request on given interface. */
@@ -801,11 +739,9 @@ void srp_ips_local_request (u32 sw_if_index, srp_ips_request_type_t request)
 {
   vnet_main_t * vnm = vnet_get_main();
   srp_main_t * sm = &srp_main;
-  vlib_main_t * vm = sm->vlib_main;
   srp_ring_type_t rx_ring;
   srp_interface_t * si = srp_get_interface (sw_if_index, &rx_ring);
   srp_interface_ring_t * ir = &si->rings[rx_ring];
-  int si_needs_broadcast = 0;
 
   if (request == SRP_IPS_REQUEST_wait_to_restore)
     {
@@ -815,13 +751,11 @@ void srp_ips_local_request (u32 sw_if_index, srp_ips_request_type_t request)
 	{
 	  ir->wait_to_restore_start_time = vlib_time_now (sm->vlib_main);
 	  ir->waiting_to_restore = 1;
-	  si_needs_broadcast = 1;
 	}
     }
   else
     {
       /* FIXME handle local signal fail. */
-      si_needs_broadcast = ir->waiting_to_restore;
       ir->wait_to_restore_start_time = 0;
       ir->waiting_to_restore = 0;
     }
@@ -832,8 +766,6 @@ void srp_ips_local_request (u32 sw_if_index, srp_ips_request_type_t request)
 		  format_vnet_sw_if_index_name, vnm, sw_if_index,
 		  format_srp_ips_request_type, request);
 
-  if (vm->mc_main && si_needs_broadcast)
-    mc_serialize (vm->mc_main, &srp_interface_state_msg, si);
 }
 
 static void maybe_send_ips_message (srp_interface_t * si)

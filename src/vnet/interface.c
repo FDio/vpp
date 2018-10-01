@@ -102,52 +102,6 @@ unserialize_vec_vnet_sw_hw_interface_state (serialize_main_t * m,
     }
 }
 
-static void
-serialize_vnet_sw_hw_interface_set_flags (serialize_main_t * m, va_list * va)
-{
-  vnet_sw_hw_interface_state_t *s =
-    va_arg (*va, vnet_sw_hw_interface_state_t *);
-  serialize (m, serialize_vec_vnet_sw_hw_interface_state, s, 1);
-}
-
-static void
-unserialize_vnet_sw_interface_set_flags (serialize_main_t * m, va_list * va)
-{
-  CLIB_UNUSED (mc_main_t * mc) = va_arg (*va, mc_main_t *);
-  vnet_sw_hw_interface_state_t s;
-
-  unserialize (m, unserialize_vec_vnet_sw_hw_interface_state, &s, 1);
-
-  vnet_sw_interface_set_flags_helper
-    (vnet_get_main (), s.sw_hw_if_index, s.flags,
-     /* helper_flags no redistribution */ 0);
-}
-
-static void
-unserialize_vnet_hw_interface_set_flags (serialize_main_t * m, va_list * va)
-{
-  CLIB_UNUSED (mc_main_t * mc) = va_arg (*va, mc_main_t *);
-  vnet_sw_hw_interface_state_t s;
-
-  unserialize (m, unserialize_vec_vnet_sw_hw_interface_state, &s, 1);
-
-  vnet_hw_interface_set_flags_helper
-    (vnet_get_main (), s.sw_hw_if_index, s.flags,
-     /* helper_flags no redistribution */ 0);
-}
-
-MC_SERIALIZE_MSG (vnet_sw_interface_set_flags_msg, static) =
-{
-.name = "vnet_sw_interface_set_flags",.serialize =
-    serialize_vnet_sw_hw_interface_set_flags,.unserialize =
-    unserialize_vnet_sw_interface_set_flags,};
-
-MC_SERIALIZE_MSG (vnet_hw_interface_set_flags_msg, static) =
-{
-.name = "vnet_hw_interface_set_flags",.serialize =
-    serialize_vnet_sw_hw_interface_set_flags,.unserialize =
-    unserialize_vnet_hw_interface_set_flags,};
-
 void
 serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 {
@@ -311,9 +265,6 @@ vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_hw_interface_class_t *hw_class =
     vnet_get_hw_interface_class (vnm, hi->hw_class_index);
-  vnet_device_class_t *dev_class =
-    vnet_get_device_class (vnm, hi->dev_class_index);
-  vlib_main_t *vm = vnm->vlib_main;
   u32 mask;
   clib_error_t *error = 0;
   u32 is_create =
@@ -331,19 +282,6 @@ vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
   /* Already in the desired state? */
   if (!is_create && (hi->flags & mask) == flags)
     goto done;
-
-  /* Some interface classes do not redistribute (e.g. are local). */
-  if (!dev_class->redistribute)
-    helper_flags &= ~VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE;
-
-  if (vm->mc_main
-      && (helper_flags & VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE))
-    {
-      vnet_sw_hw_interface_state_t s;
-      s.sw_hw_if_index = hw_if_index;
-      s.flags = flags;
-      mc_serialize (vm->mc_main, &vnet_hw_interface_set_flags_msg, &s);
-    }
 
   if ((hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) !=
       (flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
@@ -373,7 +311,6 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 				    u32 flags, u32 helper_flags)
 {
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
-  vlib_main_t *vm = vnm->vlib_main;
   u32 mask;
   clib_error_t *error = 0;
   u32 is_create =
@@ -449,16 +386,6 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	  if (!dev_class->redistribute)
 	    helper_flags &=
 	      ~VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE;
-	}
-
-      if (vm->mc_main
-	  && (helper_flags &
-	      VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE))
-	{
-	  vnet_sw_hw_interface_state_t s;
-	  s.sw_hw_if_index = sw_if_index;
-	  s.flags = flags;
-	  mc_serialize (vm->mc_main, &vnet_sw_interface_set_flags_msg, &s);
 	}
 
       /* set the flags now before invoking the registered clients
@@ -1110,42 +1037,6 @@ vnet_sw_interface_walk (vnet_main_t * vnm,
   /* *INDENT-ON* */
 }
 
-static void
-serialize_vnet_hw_interface_set_class (serialize_main_t * m, va_list * va)
-{
-  u32 hw_if_index = va_arg (*va, u32);
-  char *hw_class_name = va_arg (*va, char *);
-  serialize_integer (m, hw_if_index, sizeof (hw_if_index));
-  serialize_cstring (m, hw_class_name);
-}
-
-static void
-unserialize_vnet_hw_interface_set_class (serialize_main_t * m, va_list * va)
-{
-  CLIB_UNUSED (mc_main_t * mc) = va_arg (*va, mc_main_t *);
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index;
-  char *hw_class_name;
-  uword *p;
-  clib_error_t *error;
-
-  unserialize_integer (m, &hw_if_index, sizeof (hw_if_index));
-  unserialize_cstring (m, &hw_class_name);
-  p =
-    hash_get (vnm->interface_main.hw_interface_class_by_name, hw_class_name);
-  ASSERT (p != 0);
-  error = vnet_hw_interface_set_class_helper (vnm, hw_if_index, p[0],
-					      /* redistribute */ 0);
-  if (error)
-    clib_error_report (error);
-}
-
-MC_SERIALIZE_MSG (vnet_hw_interface_set_class_msg, static) =
-{
-.name = "vnet_hw_interface_set_class",.serialize =
-    serialize_vnet_hw_interface_set_class,.unserialize =
-    unserialize_vnet_hw_interface_set_class,};
-
 void
 vnet_hw_interface_init_for_class (vnet_main_t * vnm, u32 hw_if_index,
 				  u32 hw_class_index, u32 hw_instance)
@@ -1197,13 +1088,6 @@ vnet_hw_interface_set_class_helper (vnet_main_t * vnm, u32 hw_if_index,
 				  "%v class cannot be changed from %s to %s",
 				  hi->name, old_class->name, new_class->name);
 
-      if (vnm->vlib_main->mc_main)
-	{
-	  mc_serialize (vnm->vlib_main->mc_main,
-			&vnet_hw_interface_set_class_msg, hw_if_index,
-			new_class->name);
-	  return 0;
-	}
     }
 
   if (old_class->hw_class_change)
@@ -1241,11 +1125,6 @@ vnet_hw_interface_rx_redirect_to_node_helper (vnet_main_t * vnm,
   vnet_device_class_t *dev_class = vnet_get_device_class
     (vnm, hi->dev_class_index);
 
-  if (redistribute)
-    {
-      /* $$$$ fixme someday maybe */
-      ASSERT (vnm->vlib_main->mc_main == 0);
-    }
   if (dev_class->rx_redirect_to_node)
     {
       dev_class->rx_redirect_to_node (vnm, hw_if_index, node_index);

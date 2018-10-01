@@ -43,7 +43,6 @@ add_vpp_library(vlib
   linux/vfio.c
   log.c
   main.c
-  mc.c
   node.c
   node_cli.c
   node_format.c
@@ -55,7 +54,6 @@ add_vpp_library(vlib
   unix/cli.c
   unix/input.c
   unix/main.c
-  unix/mc_socket.c
   unix/plugin.c
   unix/util.c
 
@@ -77,7 +75,6 @@ add_vpp_library(vlib
   linux/vfio.h
   log.h
   main.h
-  mc.h
   node_funcs.h
   node.h
   pci/pci_config.h

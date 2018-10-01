@@ -43,8 +43,8 @@ vlib_thread_main_t vlib_thread_main;
  * imapacts observed timings.
  */
 
-static u32
-elog_id_for_msg_name (const char *msg_name)
+u32
+elog_global_id_for_msg_name (const char *msg_name)
 {
   uword *p, r;
   static uword *h;
@@ -85,7 +85,8 @@ barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->count = (int) vlib_worker_threads[0].barrier_sync_count;
-  ed->caller = elog_id_for_msg_name (vlib_worker_threads[0].barrier_caller);
+  ed->caller = elog_global_id_for_msg_name
+    (vlib_worker_threads[0].barrier_caller);
   ed->t_entry = (int) (1000000.0 * t_entry);
   ed->t_open = (int) (1000000.0 * t_open);
   ed->t_closed = (int) (1000000.0 * t_closed);
@@ -111,7 +112,8 @@ barrier_trace_sync_rec (f64 t_entry)
 
   ed = ELOG_DATA (&vlib_global_main.elog_main, e);
   ed->depth = (int) vlib_worker_threads[0].recursion_level - 1;
-  ed->caller = elog_id_for_msg_name (vlib_worker_threads[0].barrier_caller);
+  ed->caller = elog_global_id_for_msg_name
+    (vlib_worker_threads[0].barrier_caller);
 }
 
 static inline void

@@ -56,7 +56,6 @@ struct vlib_main_t;
 #include <vlib/counter.h>
 #include <vlib/error.h>
 #include <vlib/init.h>
-#include <vlib/mc.h>
 #include <vlib/node.h>
 #include <vlib/trace.h>
 #include <vlib/log.h>
