@@ -14,7 +14,7 @@
 vppplugins_LTLIBRARIES += avf_plugin.la
 vppapitestplugins_LTLIBRARIES += avf_test_plugin.la
 
-avf_plugin_la_LIBADD =
+avf_plugin_la_DEPENDENCIES =
 avf_plugin_la_SOURCES = \
 	avf/cli.c			\
 	avf/device.c			\
@@ -51,7 +51,7 @@ libavf_plugin_avx2_la_CFLAGS =				\
 	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\
 	-DCLIB_MARCH_VARIANT=avx2
 noinst_LTLIBRARIES += libavf_plugin_avx2.la
-avf_plugin_la_LIBADD += libavf_plugin_avx2.la
+avf_plugin_la_DEPENDENCIES += libavf_plugin_avx2.la
 endif
 
 if CC_SUPPORTS_AVX512
@@ -63,7 +63,7 @@ libavf_plugin_avx512_la_CFLAGS =				\
 	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\
 	-DCLIB_MARCH_VARIANT=avx512
 noinst_LTLIBRARIES += libavf_plugin_avx512.la
-avf_plugin_la_LIBADD += libavf_plugin_avx512.la
+avf_plugin_la_DEPENDENCIES += libavf_plugin_avx512.la
 endif
 endif
 

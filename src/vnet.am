@@ -1294,7 +1294,7 @@ libvnet_avx2_la_CFLAGS =			\
 	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@		\
 	-DCLIB_MARCH_VARIANT=avx2
 noinst_LTLIBRARIES += libvnet_avx2.la
-libvnet_la_LIBADD += libvnet_avx2.la
+libvnet_la_DEPENDENCIES += libvnet_avx2.la
 endif
 
 if CC_SUPPORTS_AVX512
@@ -1306,7 +1306,7 @@ libvnet_avx512_la_CFLAGS =			\
 	$(AM_CFLAGS) @CPU_AVX512_FLAGS@		\
 	-DCLIB_MARCH_VARIANT=avx512
 noinst_LTLIBRARIES += libvnet_avx512.la
-libvnet_la_LIBADD += libvnet_avx512.la
+libvnet_la_DEPENDENCIES += libvnet_avx512.la
 endif
 endif
 
