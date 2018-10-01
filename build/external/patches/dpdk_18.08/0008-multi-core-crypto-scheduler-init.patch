@@ -1,0 +1,111 @@
+diff -ruN dpdk-18.08-org/drivers/crypto/scheduler/scheduler_multicore.c dpdk-18.08/drivers/crypto/scheduler/scheduler_multicore.c
+--- dpdk-18.08-org/drivers/crypto/scheduler/scheduler_multicore.c	2018-08-10 02:41:26.000000000 +0530
++++ dpdk-18.08/drivers/crypto/scheduler/scheduler_multicore.c	2018-09-26 07:45:03.695555174 +0530
+@@ -16,6 +16,8 @@
+ 
+ #define CRYPTO_OP_STATUS_BIT_COMPLETE	0x80
+ 
++extern int per_slave_buff_size;
++
+ /** multi-core scheduler context */
+ struct mc_scheduler_ctx {
+ 	uint32_t num_workers;             /**< Number of workers polling */
+@@ -353,9 +355,9 @@
+ 		mc_ctx->sched_enq_ring[i] = rte_ring_lookup(r_name);
+ 		if (!mc_ctx->sched_enq_ring[i]) {
+ 			mc_ctx->sched_enq_ring[i] = rte_ring_create(r_name,
+-						PER_SLAVE_BUFF_SIZE,
++						per_slave_buff_size,
+ 						rte_socket_id(),
+-						RING_F_SC_DEQ | RING_F_SP_ENQ);
++						RING_F_MC_DEQ | RING_F_MP_ENQ);
+ 			if (!mc_ctx->sched_enq_ring[i]) {
+ 				CR_SCHED_LOG(ERR, "Cannot create ring for worker %u",
+ 					   i);
+@@ -367,9 +369,9 @@
+ 		mc_ctx->sched_deq_ring[i] = rte_ring_lookup(r_name);
+ 		if (!mc_ctx->sched_deq_ring[i]) {
+ 			mc_ctx->sched_deq_ring[i] = rte_ring_create(r_name,
+-						PER_SLAVE_BUFF_SIZE,
++						per_slave_buff_size,
+ 						rte_socket_id(),
+-						RING_F_SC_DEQ | RING_F_SP_ENQ);
++						RING_F_MC_DEQ | RING_F_MP_ENQ);
+ 			if (!mc_ctx->sched_deq_ring[i]) {
+ 				CR_SCHED_LOG(ERR, "Cannot create ring for worker %u",
+ 					   i);
+diff -ruN dpdk-18.08-org/drivers/crypto/scheduler/scheduler_pmd.c dpdk-18.08/drivers/crypto/scheduler/scheduler_pmd.c
+--- dpdk-18.08-org/drivers/crypto/scheduler/scheduler_pmd.c	2018-08-10 02:41:26.000000000 +0530
++++ dpdk-18.08/drivers/crypto/scheduler/scheduler_pmd.c	2018-09-26 07:49:15.679567724 +0530
+@@ -14,6 +14,8 @@
+ #include "rte_cryptodev_scheduler.h"
+ #include "scheduler_pmd_private.h"
+ 
++int per_slave_buff_size = PER_SLAVE_BUFF_SIZE;
++
+ uint8_t cryptodev_driver_id;
+ 
+ struct scheduler_init_params {
+@@ -37,6 +39,7 @@
+ #define RTE_CRYPTODEV_VDEV_SOCKET_ID		("socket_id")
+ #define RTE_CRYPTODEV_VDEV_COREMASK		("coremask")
+ #define RTE_CRYPTODEV_VDEV_CORELIST		("corelist")
++#define RTE_CRYPTODEV_VDEV_SLAVE_BUFF_SIZE      ("slave_buff_size")
+ 
+ const char *scheduler_valid_params[] = {
+ 	RTE_CRYPTODEV_VDEV_NAME,
+@@ -47,7 +50,8 @@
+ 	RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
+ 	RTE_CRYPTODEV_VDEV_SOCKET_ID,
+ 	RTE_CRYPTODEV_VDEV_COREMASK,
+-	RTE_CRYPTODEV_VDEV_CORELIST
++	RTE_CRYPTODEV_VDEV_CORELIST,
++	RTE_CRYPTODEV_VDEV_SLAVE_BUFF_SIZE
+ };
+ 
+ struct scheduler_parse_map {
+@@ -517,6 +521,11 @@
+ 				&parse_ordering_arg, params);
+ 		if (ret < 0)
+ 			goto free_kvlist;
++
++       ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_SLAVE_BUFF_SIZE,
++               &parse_integer_arg, &per_slave_buff_size);
++       if (ret < 0)
++           goto free_kvlist;
+ 	}
+ 
+ free_kvlist:
+diff -ruN dpdk-18.08-org/drivers/crypto/scheduler/scheduler_pmd_ops.c dpdk-18.08/drivers/crypto/scheduler/scheduler_pmd_ops.c
+--- dpdk-18.08-org/drivers/crypto/scheduler/scheduler_pmd_ops.c	2018-08-10 02:41:26.000000000 +0530
++++ dpdk-18.08/drivers/crypto/scheduler/scheduler_pmd_ops.c	2018-09-26 07:50:25.479571200 +0530
+@@ -12,6 +12,8 @@
+ 
+ #include "scheduler_pmd_private.h"
+ 
++extern int per_slave_buff_size;
++
+ /** attaching the slaves predefined by scheduler's EAL options */
+ static int
+ scheduler_attach_init_slave(struct rte_cryptodev *dev)
+@@ -89,7 +91,7 @@
+ 	if (sched_ctx->reordering_enabled) {
+ 		char order_ring_name[RTE_CRYPTODEV_NAME_MAX_LEN];
+ 		uint32_t buff_size = rte_align32pow2(
+-			sched_ctx->nb_slaves * PER_SLAVE_BUFF_SIZE);
++			sched_ctx->nb_slaves * per_slave_buff_size);
+ 
+ 		if (qp_ctx->order_ring) {
+ 			rte_ring_free(qp_ctx->order_ring);
+diff -ruN dpdk-18.08-org/lib/librte_ring/rte_ring.h dpdk-18.08/lib/librte_ring/rte_ring.h
+--- dpdk-18.08-org/lib/librte_ring/rte_ring.h	2018-08-10 02:41:26.000000000 +0530
++++ dpdk-18.08/lib/librte_ring/rte_ring.h	2018-09-26 07:51:12.475573540 +0530
+@@ -107,6 +107,8 @@
+ 
+ #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
+ #define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
++#define RING_F_MP_ENQ 0x0000 /**< "multi-producer". */
++#define RING_F_MC_DEQ 0x0000 /**< "multi-consumer". */
+ /**
+  * Ring is to hold exactly requested number of entries.
+  * Without this flag set, the ring size requested must be a power of 2, and the

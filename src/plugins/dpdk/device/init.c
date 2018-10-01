@@ -1095,6 +1095,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 file_prefix = 0;
   u8 *socket_mem = 0;
   u8 *huge_dir_path = 0;
+  clib_bitmap_t *mc_workers = 0;
+  char str[256] = { };
+  char *token = NULL, *rval = NULL;
+#define MC_CORELIST_ARG "corelist="
 
   huge_dir_path =
     format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
@@ -1191,8 +1195,28 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	    vec_add1 (conf->eal_init_args, tmp);      \
 	    vec_add1 (s, 0);			      \
             if (!strncmp(#a, "vdev", 4))              \
-              if (strstr((char*)s, "af_packet"))      \
-                clib_warning ("af_packet obsoleted. Use CLI 'create host-interface'."); \
+              {                                                       \
+                if (strstr((char*)s, "af_packet"))                    \
+                  clib_warning ("af_packet obsoleted. Use CLI 'create host-interface'."); \
+                if (strstr((char*)s, "crypto_scheduler"))             \
+                  {                                                   \
+                    token = strstr((char*)s, MC_CORELIST_ARG);        \
+                    if(token)                                         \
+                      {                                               \
+                        token = token + sizeof(MC_CORELIST_ARG) - 1;  \
+                        strcpy(str, token);                           \
+                        token = strtok(str, "=");                     \
+                        while (isdigit(token[0]))                     \
+                          {                                           \
+                            mc_workers = clib_bitmap_set (mc_workers, strtoul(token, &rval, 10), 1);\
+                            token = rval;                             \
+                            if (token[0] == '\0')                     \
+                              break;                                  \
+                            token++;                                  \
+                          }                                           \
+                      }                                               \
+                  }                                                   \
+              }                                                       \
 	    vec_add1 (conf->eal_init_args, s);	      \
 	  }
 	foreach_eal_double_hyphen_arg
@@ -1354,6 +1378,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  tr = tm->registrations[i];
 	  coremask = clib_bitmap_or (coremask, tr->coremask);
+	  coremask = clib_bitmap_or (coremask, mc_workers);
 	}
 
       vec_insert (conf->eal_init_args, 2, 1);
@@ -1361,6 +1386,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       tmp = format (0, "%U%c", format_bitmap_hex, coremask, 0);
       conf->eal_init_args[2] = tmp;
       clib_bitmap_free (coremask);
+      clib_bitmap_free (mc_workers);
     }
 
   if (!conf->nchannels_set_manually)
