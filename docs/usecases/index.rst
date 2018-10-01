@@ -9,6 +9,7 @@ extensive list, but should give a sampling of the many features contained in FD.
 
 .. toctree::
   
+   contiv/index
    containers
    vhost/index.rst
    homegateway
