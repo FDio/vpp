@@ -1321,6 +1321,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  tr = tm->registrations[i];
 	  coremask = clib_bitmap_or (coremask, tr->coremask);
+	  coremask = clib_bitmap_or (coremask, tr->crypto_coremask);
 	}
 
       vec_insert (conf->eal_init_args, 2, 1);
