@@ -253,7 +253,7 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 is_up;
+  u32 is_ready;
   u32 admin_up;
   u32 unix_server_index;
   u32 clib_file_index;
