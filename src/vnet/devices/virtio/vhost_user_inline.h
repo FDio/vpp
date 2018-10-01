@@ -251,6 +251,12 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
   vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
 }
 
+static_always_inline u8
+vui_is_link_up (vhost_user_intf_t * vui)
+{
+  return vui->admin_up && vui->is_ready;
+}
+
 #endif
 
 /*

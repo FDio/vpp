@@ -248,7 +248,7 @@ VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
       goto done3;
     }
 
-  if (PREDICT_FALSE (!vui->is_up))
+  if (PREDICT_FALSE (!vui->is_ready))
     {
       error = VHOST_USER_TX_FUNC_ERROR_NOT_READY;
       goto done3;
@@ -621,11 +621,17 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui =
     pool_elt_at_index (vum->vhost_user_interfaces, hif->dev_instance);
-  u32 hw_flags = 0;
-  vui->admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
-  hw_flags = vui->admin_up ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0;
+  u8 link_old, link_new;
 
-  vnet_hw_interface_set_flags (vnm, vui->hw_if_index, hw_flags);
+  link_old = vui_is_link_up (vui);
+
+  vui->admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
+
+  link_new = vui_is_link_up (vui);
+
+  if (link_old != link_new)
+    vnet_hw_interface_set_flags (vnm, vui->hw_if_index, link_new ?
+				 VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
 
   return /* no error */ 0;
 }

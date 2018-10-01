@@ -236,15 +236,16 @@ static void
 vhost_user_update_iface_state (vhost_user_intf_t * vui)
 {
   /* if we have pointers to descriptor table, go up */
-  int is_up = vhost_user_intf_ready (vui);
-  if (is_up != vui->is_up)
+  int is_ready = vhost_user_intf_ready (vui);
+  if (is_ready != vui->is_ready)
     {
       DBG_SOCK ("interface %d %s", vui->sw_if_index,
-		is_up ? "ready" : "down");
-      vnet_hw_interface_set_flags (vnet_get_main (), vui->hw_if_index,
-				   is_up ? VNET_HW_INTERFACE_FLAG_LINK_UP :
-				   0);
-      vui->is_up = is_up;
+		is_ready ? "ready" : "down");
+      if (vui->admin_up)
+	vnet_hw_interface_set_flags (vnet_get_main (), vui->hw_if_index,
+				     is_ready ? VNET_HW_INTERFACE_FLAG_LINK_UP
+				     : 0);
+      vui->is_ready = is_ready;
     }
   vhost_user_rx_thread_placement ();
   vhost_user_tx_thread_placement (vui);
@@ -290,7 +291,7 @@ vhost_user_kickfd_read_ready (clib_file_t * uf)
   n = read (uf->file_descriptor, ((char *) &buff), 8);
   DBG_SOCK ("if %d KICK queue %d", uf->private_data >> 8, qid);
   if (!vui->vrings[qid].started ||
-      (vhost_user_intf_ready (vui) != vui->is_up))
+      (vhost_user_intf_ready (vui) != vui->is_ready))
     {
       vlib_worker_thread_barrier_sync (vlib_get_main ());
       vui->vrings[qid].started = 1;
@@ -364,7 +365,7 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
       vui->clib_file_index = ~0;
     }
 
-  vui->is_up = 0;
+  vui->is_ready = 0;
 
   for (q = 0; q < VHOST_VRING_MAX_N; q++)
     vhost_user_vring_close (vui, q);
@@ -505,7 +506,7 @@ vhost_user_socket_read (clib_file_t * uf)
 
       ASSERT (vui->virtio_net_hdr_sz < VLIB_BUFFER_PRE_DATA_SIZE);
       vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
-      vui->is_up = 0;
+      vui->is_ready = 0;
 
       /*for (q = 0; q < VHOST_VRING_MAX_N; q++)
          vhost_user_vring_close(&vui->vrings[q]); */
@@ -1395,7 +1396,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
   strncpy (vui->sock_filename, sock_filename,
 	   ARRAY_LEN (vui->sock_filename) - 1);
   vui->sock_errno = 0;
-  vui->is_up = 0;
+  vui->is_ready = 0;
   vui->feature_mask = feature_mask;
   vui->clib_file_index = ~0;
   vui->log_base_addr = 0;
