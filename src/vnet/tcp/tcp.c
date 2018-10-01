@@ -1192,6 +1192,10 @@ tcp_timer_waitclose_handler (u32 conn_index)
 	  clib_warning ("FIN was sent and still in CLOSE WAIT. Weird!");
 	}
 
+      /* Make sure we don't try to send unsent data */
+      tcp_connection_timers_reset (tc);
+      tcp_cong_recovery_off (tc);
+      tc->snd_una_max = tc->snd_nxt = tc->snd_una;
       tcp_send_fin (tc);
       tc->state = TCP_STATE_LAST_ACK;
 
