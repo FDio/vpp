@@ -85,7 +85,7 @@ pppoe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (pppoe_device_class,static) = {
-  .name = "PPPPOE",
+  .name = "PPPoE",
   .format_device_name = format_pppoe_name,
   .tx_function = dummy_interface_tx,
   .admin_up_down_function = pppoe_interface_admin_up_down,
@@ -228,7 +228,7 @@ pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 /* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (pppoe_hw_class) =
 {
-  .name = "PPPPOE",
+  .name = "PPPoE",
   .format_header = format_pppoe_header_with_length,
   .build_rewrite = pppoe_build_rewrite,
   .update_adjacency = pppoe_update_adj,
@@ -569,13 +569,13 @@ done:
 }
 
 /*?
- * Add or delete a PPPPOE Session.
+ * Add or delete a PPPoE Session.
  *
  * @cliexpar
- * Example of how to create a PPPPOE Session:
+ * Example of how to create a PPPoE Session:
  * @cliexcmd{create pppoe session client-ip 10.0.3.1 session-id 13
  *             client-mac 00:01:02:03:04:05 }
- * Example of how to delete a PPPPOE Session:
+ * Example of how to delete a PPPoE Session:
  * @cliexcmd{create pppoe session client-ip 10.0.3.1 session-id 13
  *             client-mac 00:01:02:03:04:05 del }
  ?*/
@@ -611,10 +611,10 @@ show_pppoe_session_command_fn (vlib_main_t * vm,
 /* *INDENT-ON* */
 
 /*?
- * Display all the PPPPOE Session entries.
+ * Display all the PPPoE Session entries.
  *
  * @cliexpar
- * Example of how to display the PPPPOE Session entries:
+ * Example of how to display the PPPoE Session entries:
  * @cliexstart{show pppoe session}
  * [0] client-ip 10.0.3.1 session_id 13 encap-if-index 0 decap-vrf-id 13 sw_if_index 5
  *     local-mac a0:b0:c0:d0:e0:f0 client-mac 00:01:02:03:04:05
