@@ -177,6 +177,8 @@ copy_data (stat_segment_directory_entry_t * ep)
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+      if (ep->offset == 0)
+	return result;
       simple_c = stat_segment_pointer (sm->shared_header, ep->offset);
       result.simple_counter_vec = vec_dup (simple_c);
       offset_vector =
@@ -190,6 +192,8 @@ copy_data (stat_segment_directory_entry_t * ep)
       break;
 
     case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
+      if (ep->offset == 0)
+	return result;
       combined_c = stat_segment_pointer (sm->shared_header, ep->offset);
       result.combined_counter_vec = vec_dup (combined_c);
       offset_vector =
