@@ -253,6 +253,7 @@ vmxnet3_rxq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
 
       ring = &rxq->rx_ring[rid];
       ring->gen = VMXNET3_RXF_GEN;
+      ring->rid = rid;
       vec_validate_aligned (ring->bufs, rxq->size, CLIB_CACHE_LINE_BYTES);
     }
   rxq->rx_comp_ring.gen = VMXNET3_RXCF_GEN;

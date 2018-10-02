@@ -25,6 +25,7 @@
 
 #define foreach_vmxnet3_input_error \
   _(BUFFER_ALLOC, "buffer alloc error") \
+  _(RX_PACKET_NO_SOP, "Rx packet error - no SOP") \
   _(RX_PACKET, "Rx packet error") \
   _(NO_BUFFER, "Rx no buffer error")
 
@@ -90,6 +91,8 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *prev_b0 = 0, *hb = 0;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u8 known_next = 0;
+  vmxnet3_rx_desc *rxd;
+  clib_error_t *error;
 
   rxq = vec_elt_at_index (vd->rxqs, qid);
   comp_ring = &rxq->rx_comp_ring;
@@ -120,6 +123,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vmxnet3_rx_comp_ring_advance_next (rxq);
       desc_idx = rx_comp->index & VMXNET3_RXC_INDEX;
       ring->consume = desc_idx;
+      rxd = &rxq->rx_desc[rid][desc_idx];
 
       bi0 = ring->bufs[desc_idx];
       ring->bufs[desc_idx] = ~0;
@@ -137,15 +141,30 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b0->current_config_index = 0;
       ASSERT (b0->current_length != 0);
 
+      if (PREDICT_FALSE ((rx_comp->index & VMXNET3_RXCI_EOP) &&
+			 (rx_comp->len & VMXNET3_RXCL_ERROR)))
+	{
+	  vlib_buffer_free_one (vm, bi0);
+	  vlib_error_count (vm, node->node_index,
+			    VMXNET3_INPUT_ERROR_RX_PACKET, 1);
+	  if (hb && vlib_get_buffer_index (vm, hb) != bi0)
+	    {
+	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, hb));
+	      hb = 0;
+	    }
+	  prev_b0 = 0;
+	  continue;
+	}
+
       if (rx_comp->index & VMXNET3_RXCI_SOP)
 	{
+	  ASSERT (!(rxd->flags & VMXNET3_RXF_BTYPE));
 	  /* start segment */
 	  hb = b0;
 	  bi[0] = bi0;
 	  if (!(rx_comp->index & VMXNET3_RXCI_EOP))
 	    {
 	      hb->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
-	      b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
 	      prev_b0 = b0;
 	    }
 	  else
@@ -161,8 +180,8 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* end of segment */
 	  if (prev_b0)
 	    {
-	      prev_b0->next_buffer = bi0;
 	      prev_b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	      prev_b0->next_buffer = bi0;
 	      hb->total_length_not_including_first_buffer +=
 		b0->current_length;
 	      prev_b0 = 0;	// Get next packet
@@ -170,17 +189,22 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    {
 	      /* EOP without SOP, error */
-	      hb = 0;
 	      vlib_error_count (vm, node->node_index,
-				VMXNET3_INPUT_ERROR_RX_PACKET, 1);
+				VMXNET3_INPUT_ERROR_RX_PACKET_NO_SOP, 1);
 	      vlib_buffer_free_one (vm, bi0);
+	      if (hb && vlib_get_buffer_index (vm, hb) != bi0)
+		{
+		  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, hb));
+		  hb = 0;
+		}
 	      continue;
 	    }
 	}
       else if (prev_b0)		// !sop && !eop
 	{
 	  /* mid chain */
-	  b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	  ASSERT (rxd->flags & VMXNET3_RXF_BTYPE);
+	  prev_b0->flags |= VLIB_BUFFER_NEXT_PRESENT;
 	  prev_b0->next_buffer = bi0;
 	  prev_b0 = b0;
 	  hb->total_length_not_including_first_buffer += b0->current_length;
@@ -278,27 +302,25 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (PREDICT_TRUE (n_rx_packets))
     {
-      clib_error_t *error;
-
       vlib_buffer_enqueue_to_next (vm, node, buffer_indices, nexts,
 				   n_rx_packets);
       vlib_increment_combined_counter
 	(vnm->interface_main.combined_sw_if_counters +
 	 VNET_INTERFACE_COUNTER_RX, thread_index,
 	 vd->hw_if_index, n_rx_packets, n_rx_bytes);
+    }
 
-      error = vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
-      if (PREDICT_FALSE (error != 0))
-	{
-	  vlib_error_count (vm, node->node_index,
-			    VMXNET3_INPUT_ERROR_BUFFER_ALLOC, 1);
-	}
-      error = vmxnet3_rxq_refill_ring1 (vm, vd, rxq);
-      if (PREDICT_FALSE (error != 0))
-	{
-	  vlib_error_count (vm, node->node_index,
-			    VMXNET3_INPUT_ERROR_BUFFER_ALLOC, 1);
-	}
+  error = vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
+  if (PREDICT_FALSE (error != 0))
+    {
+      vlib_error_count (vm, node->node_index,
+			VMXNET3_INPUT_ERROR_BUFFER_ALLOC, 1);
+    }
+  error = vmxnet3_rxq_refill_ring1 (vm, vd, rxq);
+  if (PREDICT_FALSE (error != 0))
+    {
+      vlib_error_count (vm, node->node_index,
+			VMXNET3_INPUT_ERROR_BUFFER_ALLOC, 1);
     }
 
   return n_rx_packets;
