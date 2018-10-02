@@ -353,18 +353,21 @@ show_log_config (vlib_main_t * vm,
   vlib_cli_output (vm, "%-22s %-14s %-14s %s",
 		   "Class/Subclass", "Level", "Syslog Level", "Rate Limit");
 
+
+  u8 *defstr = format (0, "default");
   vec_foreach (c, lm->classes)
   {
-    vlib_cli_output (vm, "%s", c->name);
+    vlib_cli_output (vm, "%v", c->name);
     vec_foreach (sc, c->subclasses)
     {
-      vlib_cli_output (vm, "  %-20s %-14U %-14U %d",
-		       sc->name ? (char *) sc->name : "default",
+      vlib_cli_output (vm, "  %-20v %-14U %-14U %d",
+		       sc->name ? sc->name : defstr,
 		       format_vlib_log_level, sc->level,
 		       format_vlib_log_level, sc->syslog_level,
 		       sc->rate_limit);
     }
   }
+  vec_free (defstr);
 
   return error;
 }
