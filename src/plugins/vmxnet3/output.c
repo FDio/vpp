@@ -106,14 +106,13 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
   u32 *buffers = vlib_frame_args (frame);
   u32 bi0;
   vlib_buffer_t *b0;
-  vmxnet3_tx_desc *txd;
+  vmxnet3_tx_desc *txd = 0;
   u32 desc_idx, generation, first_idx;
   u16 space_left;
   u16 n_left = frame->n_vectors;
   vmxnet3_txq_t *txq;
   u32 thread_index = vm->thread_index;
   u16 qid = thread_index;
-  u16 n_retry = 5;
 
   if (PREDICT_FALSE (!(vd->flags & VMXNET3_DEVICE_F_LINK_UP)))
     {
@@ -126,13 +125,37 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
   txq = vec_elt_at_index (vd->txqs, qid % vd->num_tx_queues);
   clib_spinlock_lock_if_init (&txq->lock);
 
-retry:
   vmxnet3_txq_release (vm, vd, txq);
 
   while (n_left)
     {
+      u16 space_needed = 1, i;
+      vlib_buffer_t *b;
+
       bi0 = buffers[0];
-      txd = 0;
+      b0 = vlib_get_buffer (vm, bi0);
+      b = b0;
+
+      space_left = vmxnet3_tx_ring_space_left (txq);
+      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  u32 next_buffer = b->next_buffer;
+
+	  b = vlib_get_buffer (vm, next_buffer);
+	  space_needed++;
+	}
+      if (PREDICT_FALSE (space_left < space_needed))
+	{
+	  vlib_buffer_free_one (vm, bi0);
+	  vlib_error_count (vm, node->node_index,
+			    VMXNET3_TX_ERROR_NO_FREE_SLOTS, 1);
+	  buffers++;
+	  n_left--;
+	  /*
+	   * Drop this packet. But we may have enough room for the next packet
+	   */
+	  continue;
+	}
 
       /*
        * Toggle the generation bit for SOP fragment to avoid device starts
@@ -140,16 +163,10 @@ retry:
        */
       generation = txq->tx_ring.gen ^ VMXNET3_TXF_GEN;
       first_idx = txq->tx_ring.produce;
-      while (1)
+      for (i = 0; i < space_needed; i++)
 	{
 	  b0 = vlib_get_buffer (vm, bi0);
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-
-	  space_left = vmxnet3_tx_ring_space_left (txq);
-	  if (PREDICT_FALSE (space_left == 0))
-	    {
-	      break;
-	    }
 
 	  desc_idx = txq->tx_ring.produce;
 
@@ -164,44 +181,24 @@ retry:
 	  txd->flags[0] = generation | b0->current_length;
 
 	  generation = txq->tx_ring.gen;
-	  if (b0->flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      txd->flags[1] = 0;
-	      bi0 = b0->next_buffer;
-	    }
-	  else
-	    break;
+
+	  txd->flags[1] = 0;
+	  bi0 = b0->next_buffer;
 	}
 
-      if (PREDICT_TRUE (txd != 0))
-	{
-	  txd->flags[1] = VMXNET3_TXF_CQ | VMXNET3_TXF_EOP;
-	  asm volatile ("":::"memory");
-	  /*
-	   * Now toggle back the generation bit for the first segment.
-	   * Device can start reading the packet
-	   */
-	  txq->tx_desc[first_idx].flags[0] ^= VMXNET3_TXF_GEN;
-	  vmxnet3_reg_write (vd, 0, VMXNET3_REG_TXPROD, txq->tx_ring.produce);
-	}
-
-      if (PREDICT_FALSE (space_left == 0))
-	{
-	  break;
-	}
+      txd->flags[1] = VMXNET3_TXF_CQ | VMXNET3_TXF_EOP;
+      asm volatile ("":::"memory");
+      /*
+       * Now toggle back the generation bit for the first segment.
+       * Device can start reading the packet
+       */
+      txq->tx_desc[first_idx].flags[0] ^= VMXNET3_TXF_GEN;
+      vmxnet3_reg_write (vd, 0, VMXNET3_REG_TXPROD, txq->tx_ring.produce);
 
       buffers++;
       n_left--;
     }
 
-  if (PREDICT_FALSE (n_left))
-    {
-      if (PREDICT_TRUE (n_retry--))
-	goto retry;
-      vlib_buffer_free (vm, buffers, n_left);
-      vlib_error_count (vm, node->node_index, VMXNET3_TX_ERROR_NO_FREE_SLOTS,
-			n_left);
-    }
   clib_spinlock_unlock_if_init (&txq->lock);
 
   return (frame->n_vectors - n_left);
