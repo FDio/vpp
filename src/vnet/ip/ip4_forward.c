@@ -1485,6 +1485,7 @@ enum ip_local_packet_type_e
 {
   IP_LOCAL_PACKET_TYPE_L4,
   IP_LOCAL_PACKET_TYPE_NAT,
+  IP_LOCAL_PACKET_TYPE_FRAG,
 };
 
 /**
@@ -1498,6 +1499,11 @@ ip4_local_classify (vlib_buffer_t * b, ip4_header_t * ip, u16 * next)
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
 
+  if (PREDICT_FALSE (ip4_is_fragment (ip)))
+    {
+      *next = IP_LOCAL_NEXT_REASSEMBLY;
+      return IP_LOCAL_PACKET_TYPE_FRAG;
+    }
   if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_IS_NATED))
     {
       *next = lm->local_next_by_ip_protocol[ip->protocol];
@@ -1644,6 +1650,7 @@ VLIB_REGISTER_NODE (ip4_local_node) =
     [IP_LOCAL_NEXT_PUNT] = "ip4-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
+    [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-reassembly",
   },
 };
 /* *INDENT-ON* */
