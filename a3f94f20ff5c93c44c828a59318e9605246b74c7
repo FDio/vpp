@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da26eb2e_7206fab5",
+        "filename": "src/vnet/devices/virtio/vhost_user_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-02T11:30:28Z",
+      "side": 1,
+      "message": "hi is of type vnet_hw_interface_t rather than the usual vhost_user_intf_t .",
+      "revId": "a3f94f20ff5c93c44c828a59318e9605246b74c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
