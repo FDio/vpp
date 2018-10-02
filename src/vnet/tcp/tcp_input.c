@@ -1401,7 +1401,9 @@ process_ack:
       if (!tcp_in_cong_recovery (tc))
 	return 0;
       *error = TCP_ERROR_ACK_DUP;
-      return vnet_buffer (b)->tcp.data_len ? 0 : -1;
+      if (vnet_buffer (b)->tcp.data_len || tcp_is_fin (th))
+	return 0;
+      return -1;
     }
 
   /*
