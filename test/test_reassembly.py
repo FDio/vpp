@@ -6,7 +6,7 @@ from framework import VppTestCase, VppTestRunner
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, UDP, ICMP
 from util import ppp, fragment_rfc791, fragment_rfc8200
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
     ICMPv6TimeExceeded
@@ -748,6 +748,123 @@ class TestIPv6Reassembly(VppTestCase):
         icmp = pkts[0]
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
+
+
+class TestIPv4ReassemblyLocalNode(VppTestCase):
+    """ IPv4 Reassembly for packets coming to ip4-local node """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4ReassemblyLocalNode, cls).setUpClass()
+
+        cls.create_pg_interfaces([0])
+        cls.src_dst_if = cls.pg0
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        cls.padding = " abcdefghijklmn"
+        cls.create_stream()
+        cls.create_fragments()
+
+    def setUp(self):
+        """ Test setup - force timeout on existing reassemblies """
+        super(TestIPv4ReassemblyLocalNode, self).setUp()
+        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10)
+        self.sleep(.25)
+        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10000)
+
+    def tearDown(self):
+        super(TestIPv4ReassemblyLocalNode, self).tearDown()
+        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+
+    @classmethod
+    def create_stream(cls, packet_count=test_packet_count):
+        """Create input packet stream for defined interface.
+
+        :param list packet_sizes: Required packet sizes.
+        """
+        for i in range(0, packet_count):
+            info = cls.create_packet_info(cls.src_dst_if, cls.src_dst_if)
+            payload = cls.info_to_payload(info)
+            p = (Ether(dst=cls.src_dst_if.local_mac,
+                       src=cls.src_dst_if.remote_mac) /
+                 IP(id=info.index, src=cls.src_dst_if.remote_ip4,
+                    dst=cls.src_dst_if.local_ip4) /
+                 ICMP(type='echo-request', id=1234) /
+                 Raw(payload))
+            cls.extend_packet(p, 1518, cls.padding)
+            info.data = p
+
+    @classmethod
+    def create_fragments(cls):
+        infos = cls._packet_infos
+        cls.pkt_infos = []
+        for index, info in infos.iteritems():
+            p = info.data
+            # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            fragments_300 = fragment_rfc791(p, 300)
+            cls.pkt_infos.append((index, fragments_300))
+        cls.fragments_300 = [x for (_, frags) in cls.pkt_infos for x in frags]
+        cls.logger.debug("Fragmented %s packets into %s 300-byte fragments" %
+                         (len(infos), len(cls.fragments_300)))
+
+    def verify_capture(self, capture):
+        """Verify captured packet stream.
+
+        :param list capture: Captured packet stream.
+        """
+        info = None
+        seen = set()
+        for packet in capture:
+            try:
+                self.logger.debug(ppp("Got packet:", packet))
+                ip = packet[IP]
+                icmp = packet[ICMP]
+                payload_info = self.payload_to_info(str(packet[Raw]))
+                packet_index = payload_info.index
+                if packet_index in seen:
+                    raise Exception(ppp("Duplicate packet received", packet))
+                seen.add(packet_index)
+                self.assertEqual(payload_info.dst, self.src_dst_if.sw_if_index)
+                info = self._packet_infos[packet_index]
+                self.assertTrue(info is not None)
+                self.assertEqual(packet_index, info.index)
+                saved_packet = info.data
+                self.assertEqual(ip.src, saved_packet[IP].dst)
+                self.assertEqual(ip.dst, saved_packet[IP].src)
+                self.assertEqual(icmp.type, 0)  # echo reply
+                self.assertEqual(icmp.id, saved_packet[ICMP].id)
+                self.assertEqual(icmp.payload, saved_packet[ICMP].payload)
+            except Exception:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+        for index in self._packet_infos:
+            self.assertTrue(index in seen or index in dropped_packet_indexes,
+                            "Packet with packet_index %d not received" % index)
+
+    def test_reassembly(self):
+        """ basic reassembly """
+
+        self.pg_enable_capture()
+        self.src_dst_if.add_stream(self.fragments_300)
+        self.pg_start()
+
+        packets = self.src_dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.src_dst_if.add_stream(self.fragments_300)
+        self.pg_start()
+
+        packets = self.src_dst_if.get_capture(len(self.pkt_infos))
+        self.verify_capture(packets)
 
 
 class TestFIFReassembly(VppTestCase):
