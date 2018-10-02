@@ -157,6 +157,7 @@ vlib_stats_register_error_index (u8 * name, u64 * em_vec, u64 index)
   e.name[vec_len (name)] = '\0';
   e.type = STAT_DIR_TYPE_ERROR_INDEX;
   e.offset = index;
+  e.offset_vector = 0;
   vec_add1 (sm->directory_vector, e);
 
   /* Warn clients to refresh any pointers they might be holding */

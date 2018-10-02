@@ -646,13 +646,14 @@ lb_nodeport_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
           entry0 = hash_get_mem(lbm->vip_index_by_nodeport, &(udp_0->dst_port));
 
           //Enqueue to next
-          vnet_buffer(p0)->ip.adj_index[VLIB_TX] = entry0[0];
+          vnet_buffer(p0)->ip.adj_index[VLIB_TX] = entry0 ? entry0[0]
+              : ADJ_INDEX_INVALID;
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
             {
               lb_nodeport_trace_t *tr = vlib_add_trace (vm, node, p0,
                                                         sizeof(*tr));
-              tr->vip_index = entry0[0];
+              tr->vip_index = entry0 ? entry0[0] : ADJ_INDEX_INVALID;
               tr->node_port = (u32) clib_net_to_host_u16 (udp_0->dst_port);
             }
 
