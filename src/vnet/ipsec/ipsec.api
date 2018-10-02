@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.0.0";
+option version = "2.0.0";
 
 /** \brief IPsec: Add/delete Security Policy Database
     @param client_index - opaque cookie to identify the sender
@@ -440,6 +440,26 @@ autoreply define ikev2_initiate_rekey_child_sa
 
   u32 ispi;
 };
+
+/** \brief Dump IPsec all SPD IDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipsec_spds_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump IPsec all SPD IDs response
+    @param client_index - opaque cookie to identify the sender
+    @param spd_id - SPD instance id (control plane allocated)
+    @param npolicies - number of policies in SPD
+*/
+ define ipsec_spds_details {
+  u32 context;
+  u32 spd_id;
+  u32 npolicies;
+}; 
 
 /** \brief Dump ipsec policy database data
     @param client_index - opaque cookie to identify the sender
