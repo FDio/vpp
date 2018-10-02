@@ -37,9 +37,15 @@ svs_table_add (fib_protocol_t fproto, u32 table_id)
 int
 svs_table_delete (fib_protocol_t fproto, u32 table_id)
 {
-  u32 fib_index;
+  u32 fib_index, ii;
 
   fib_index = fib_table_find (fproto, table_id);
+
+  vec_foreach_index (ii, svs_itf_db[fproto])
+  {
+    if (svs_itf_db[fproto][ii] == fib_index)
+      return VNET_API_ERROR_INSTANCE_IN_USE;
+  }
 
   if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
@@ -193,7 +199,7 @@ svs_disable (fib_protocol_t fproto, u32 table_id, u32 sw_if_index)
   if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  if (sw_if_index <= vec_len (svs_itf_db[fproto]))
+  if (sw_if_index >= vec_len (svs_itf_db[fproto]))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   svs_itf_db[fproto][sw_if_index] = ~0;

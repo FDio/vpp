@@ -101,11 +101,11 @@ vl_api_svs_table_add_del_t_handler (vl_api_svs_table_add_del_t * mp)
 
   if (mp->is_add)
     {
-      svs_table_add (fproto, ntohl (mp->table_id));
+      rv = svs_table_add (fproto, ntohl (mp->table_id));
     }
   else
     {
-      svs_table_delete (fproto, ntohl (mp->table_id));
+      rv = svs_table_delete (fproto, ntohl (mp->table_id));
     }
 
   REPLY_MACRO (VL_API_SVS_TABLE_ADD_DEL_REPLY + svs_base_msg_id);
@@ -122,9 +122,8 @@ vl_api_svs_route_add_del_t_handler (vl_api_svs_route_add_del_t * mp)
 
   if (mp->is_add)
     {
-      rv =
-	svs_route_add (ntohl (mp->table_id), &pfx,
-		       ntohl (mp->source_table_id));
+      rv = svs_route_add (ntohl (mp->table_id), &pfx,
+			  ntohl (mp->source_table_id));
     }
   else
     {
@@ -147,11 +146,12 @@ vl_api_svs_enable_disable_t_handler (vl_api_svs_enable_disable_t * mp)
 
   if (mp->is_enable)
     {
-      svs_enable (fproto, ntohl (mp->table_id), ntohl (mp->sw_if_index));
+      rv = svs_enable (fproto, ntohl (mp->table_id), ntohl (mp->sw_if_index));
     }
   else
     {
-      svs_disable (fproto, ntohl (mp->table_id), ntohl (mp->sw_if_index));
+      rv =
+	svs_disable (fproto, ntohl (mp->table_id), ntohl (mp->sw_if_index));
     }
 
   BAD_SW_IF_INDEX_LABEL;
