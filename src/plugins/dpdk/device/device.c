@@ -210,6 +210,7 @@ static_always_inline
 	}
       n_left -= n_sent;
       mb += n_sent;
+      n_retry--;
     }
   while (n_sent && n_left && (n_retry > 0));
 
