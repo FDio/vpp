@@ -355,7 +355,7 @@ show_log_config (vlib_main_t * vm,
 
   vec_foreach (c, lm->classes)
   {
-    vlib_cli_output (vm, "%s", c->name);
+    vlib_cli_output (vm, "%v", c->name);
     vec_foreach (sc, c->subclasses)
     {
       vlib_cli_output (vm, "  %-20s %-14U %-14U %d",
