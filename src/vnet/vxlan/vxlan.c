@@ -367,9 +367,8 @@ int vnet_vxlan_add_del_tunnel
   (vnet_vxlan_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
 {
   vxlan_main_t *vxm = &vxlan_main;
-  vxlan_tunnel_t *t = 0;
   vnet_main_t *vnm = vxm->vnet_main;
-  u64 *p;
+  vxlan_decap_info_t *p;
   u32 sw_if_index = ~0;
   vxlan4_tunnel_key_t key4;
   vxlan6_tunnel_key_t key6;
@@ -378,12 +377,15 @@ int vnet_vxlan_add_del_tunnel
   int not_found;
   if (!is_ip6)
     {
-      key4.key[0] = a->dst.ip4.as_u32;
+      /* ip4 mcast is indexed by mcast addr only */
+      key4.key[0] = ip46_address_is_multicast (&a->dst) ?
+	a->dst.ip4.as_u32 :
+	a->dst.ip4.as_u32 | (((u64) a->src.ip4.as_u32) << 32);
       key4.key[1] = (((u64) a->encap_fib_index) << 32)
 	| clib_host_to_net_u32 (a->vni << 8);
       not_found =
 	clib_bihash_search_inline_16_8 (&vxm->vxlan4_tunnel_by_key, &key4);
-      p = &key4.value;
+      p = (void *) &key4.value;
     }
   else
     {
@@ -393,7 +395,7 @@ int vnet_vxlan_add_del_tunnel
 	| clib_host_to_net_u32 (a->vni << 8);
       not_found =
 	clib_bihash_search_inline_24_8 (&vxm->vxlan6_tunnel_by_key, &key6);
-      p = &key6.value;
+      p = (void *) &key6.value;
     }
 
   if (not_found)
@@ -415,6 +417,7 @@ int vnet_vxlan_add_del_tunnel
       if (!vxlan_decap_next_is_valid (vxm, is_ip6, a->decap_next_index))
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
+      vxlan_tunnel_t *t;
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
       dev_instance = t - vxm->tunnels;
@@ -442,27 +445,6 @@ int vnet_vxlan_add_del_tunnel
       t->user_instance = user_instance;	/* name */
       t->flow_index = ~0;
 
-      /* copy the key */
-      int add_failed;
-      if (is_ip6)
-	{
-	  key6.value = (u64) dev_instance;
-	  add_failed = clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key,
-						 &key6, 1 /*add */ );
-	}
-      else
-	{
-	  key4.value = (u64) dev_instance;
-	  add_failed = clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key,
-						 &key4, 1 /*add */ );
-	}
-
-      if (add_failed)
-	{
-	  pool_put (vxm->tunnels, t);
-	  return VNET_API_ERROR_INVALID_REGISTRATION;
-	}
-
       t->hw_if_index = vnet_register_interface
 	(vnm, vxlan_device_class.index, dev_instance,
 	 vxlan_hw_class.index, dev_instance);
@@ -474,6 +456,34 @@ int vnet_vxlan_add_del_tunnel
       vnet_set_interface_output_node (vnm, t->hw_if_index, encap_index);
 
       t->sw_if_index = sw_if_index = hi->sw_if_index;
+
+      /* copy the key */
+      int add_failed;
+      if (is_ip6)
+	{
+	  key6.value = (u64) dev_instance;
+	  add_failed = clib_bihash_add_del_24_8 (&vxm->vxlan6_tunnel_by_key,
+						 &key6, 1 /*add */ );
+	}
+      else
+	{
+	  vxlan_decap_info_t di = {.sw_if_index = t->sw_if_index, };
+	  if (ip46_address_is_multicast (&t->dst))
+	    di.local_ip = t->src.ip4;
+	  else
+	    di.next_index = t->decap_next_index;
+	  key4.value = di.as_u64;
+	  add_failed = clib_bihash_add_del_16_8 (&vxm->vxlan4_tunnel_by_key,
+						 &key4, 1 /*add */ );
+	}
+
+      if (add_failed)
+	{
+	  vnet_delete_hw_interface (vnm, t->hw_if_index);
+	  hash_unset (vxm->instance_used, t->user_instance);
+	  pool_put (vxm->tunnels, t);
+	  return VNET_API_ERROR_INVALID_REGISTRATION;
+	}
 
       vec_validate_init_empty (vxm->tunnel_index_by_sw_if_index, sw_if_index,
 			       ~0);
@@ -589,8 +599,8 @@ int vnet_vxlan_add_del_tunnel
       if (!p)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      u32 instance = p[0];
-      t = pool_elt_at_index (vxm->tunnels, instance);
+      u32 instance = vxm->tunnel_index_by_sw_if_index[p->sw_if_index];
+      vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, instance);
 
       sw_if_index = t->sw_if_index;
       vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );

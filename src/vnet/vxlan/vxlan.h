@@ -59,6 +59,24 @@ typedef clib_bihash_kv_16_8_t vxlan4_tunnel_key_t;
 */
 typedef clib_bihash_kv_24_8_t vxlan6_tunnel_key_t;
 
+typedef union
+{
+  struct
+  {
+    u32 sw_if_index;		/* unicast - input interface / mcast - stats interface */
+    union
+    {
+      struct			/* unicast action */
+      {
+	u16 next_index;
+	u8 error;
+      };
+      ip4_address_t local_ip;	/* used as dst ip for mcast pkts to assign them to unicast tunnel */
+    };
+  };
+  u64 as_u64;
+} vxlan_decap_info_t;
+
 typedef struct
 {
   /* Required for pool_get_aligned */
