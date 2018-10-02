@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b714e829_3f1810a0",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1565,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-10-02T17:40:51Z",
+      "side": 1,
+      "message": "Is this really needed? Reassembly is confused by l3_hdr_offset being set? It\u0027d be good if we can avoid branches.",
+      "range": {
+        "startLine": 1565,
+        "startChar": 21,
+        "endLine": 1565,
+        "endChar": 34
+      },
+      "revId": "6942302895591d4cae0672ed8a5c96b5398f3740",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
