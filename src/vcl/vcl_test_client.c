@@ -400,7 +400,7 @@ vtc_worker_loop (void *arg)
     }
 exit:
   vtinf ("Worker %d done ...", wrk->wrk_index);
-  if (tsock->cfg.test != SOCK_TEST_TYPE_ECHO)
+  if (wrk->cfg.test != SOCK_TEST_TYPE_ECHO)
     vtc_accumulate_stats (wrk, ctrl);
   sleep (1);
   vtc_worker_sessions_exit (wrk);
