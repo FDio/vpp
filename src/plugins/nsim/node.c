@@ -125,7 +125,10 @@ nsim_inline (vlib_main_t * vm,
 		       ep->current_length);
 	}
       else			/* out of wheel space, drop pkt */
-	b[0]->error = no_buffer_error;
+	{
+	  b[0]->error = no_buffer_error;
+	  is_drop0 = 1;
+	}
 
       if (is_trace)
 	{
@@ -134,8 +137,7 @@ nsim_inline (vlib_main_t * vm,
 	      nsim_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->expires = expires;
 	      t->is_drop = is_drop0;
-	      if (is_drop0 == 0)
-		t->tx_sw_if_index = ep->tx_sw_if_index;
+	      t->tx_sw_if_index = (is_drop0 == 0) ? ep->tx_sw_if_index : 0;
 	    }
 	}
 

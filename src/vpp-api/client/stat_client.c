@@ -102,12 +102,14 @@ stat_segment_connect (char *socket_name)
   if (connect (sock, (struct sockaddr *) &un, sizeof (struct sockaddr_un)) <
       0)
     {
+      close (sock);
       perror ("connect");
       return -1;
     }
 
   if ((mfd = recv_fd (sock)) < 0)
     {
+      close (sock);
       fprintf (stderr, "Receiving file descriptor failed\n");
       return -1;
     }
@@ -119,12 +121,14 @@ stat_segment_connect (char *socket_name)
 
   if (fstat (mfd, &st) == -1)
     {
+      close (sock);
       perror ("mmap");
       return -1;
     }
   if ((memaddr =
        mmap (NULL, st.st_size, PROT_READ, MAP_SHARED, mfd, 0)) == MAP_FAILED)
     {
+      close (sock);
       perror ("mmap");
       return -1;
     }

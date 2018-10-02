@@ -908,6 +908,7 @@ u8 *CV (format_cuckoo) (u8 * s, va_list * args)
   uword free = 0;
   uword used = 0;
   uword use_count_total = 0;
+  float load_factor;
   CVT (clib_cuckoo_bucket) * b;
   /* *INDENT-OFF* */
   clib_cuckoo_foreach_bucket (b, h, {
@@ -935,8 +936,11 @@ u8 *CV (format_cuckoo) (u8 * s, va_list * args)
   s = format (s, "Used slots: %wu\n", used);
   s = format (s, "Use count total: %wu\n", use_count_total);
   s = format (s, "Free slots: %wu\n", free);
-  s =
-    format (s, "Load factor: %.2f\n", (float) (used) / (float) (free + used));
+  if (free + used != 0)
+    load_factor = ((float) used) / ((float) (free + used));
+  else
+    load_factor = 0.0;
+  s = format (s, "Load factor: %.2f\n", load_factor);
 #if CLIB_CUCKOO_DEBUG_COUNTERS
   s = format (s, "BFS attempts limited by max steps: %lld\n",
 	      h->steps_exceeded);
@@ -968,7 +972,10 @@ float CV (clib_cuckoo_calculate_load_factor) (CVT (clib_cuckoo) * h)
     }
   });
   /* *INDENT-ON* */
-  return (float) nonfree / (float) all;
+  if (all)
+    return (float) nonfree / (float) all;
+  else
+    return 0.0;
 }
 
 /** @endcond */
