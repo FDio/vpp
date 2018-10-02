@@ -1481,20 +1481,45 @@ ip4_local_check_src_x2 (vlib_buffer_t ** b, ip4_header_t ** ip,
     }
 }
 
+enum ip_local_packet_type_e
+{
+  IP_LOCAL_PACKET_TYPE_L4,
+  IP_LOCAL_PACKET_TYPE_NAT,
+};
+
+/**
+ * Determine packet type and next node.
+ *
+ * The expectation is that all packets that are not L4 will skip
+ * checksums and source checks.
+ */
+always_inline u8
+ip4_local_classify (vlib_buffer_t * b, ip4_header_t * ip, u16 * next)
+{
+  ip_lookup_main_t *lm = &ip4_main.lookup_main;
+
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_IS_NATED))
+    {
+      *next = lm->local_next_by_ip_protocol[ip->protocol];
+      return IP_LOCAL_PACKET_TYPE_NAT;
+    }
+
+  *next = lm->local_next_by_ip_protocol[ip->protocol];
+  return IP_LOCAL_PACKET_TYPE_L4;
+}
+
 static inline uword
 ip4_local_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_frame_t * frame, int head_of_feature_arc)
 {
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   u32 *from, n_left_from;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
   u16 nexts[VLIB_FRAME_SIZE], *next;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   ip4_header_t *ip[2];
-  u8 error[2];
+  u8 error[2], pt[2];
 
   ip4_local_last_check_t last_check = {
     .src = {.as_u32 = 0},
@@ -1514,7 +1539,7 @@ ip4_local_inline (vlib_main_t * vm,
 
   while (n_left_from >= 6)
     {
-      u32 is_nat, not_batch = 0;
+      u8 not_batch = 0;
 
       /* Prefetch next iteration. */
       {
@@ -1533,10 +1558,12 @@ ip4_local_inline (vlib_main_t * vm,
       vnet_buffer (b[0])->l3_hdr_offset = b[0]->current_data;
       vnet_buffer (b[1])->l3_hdr_offset = b[1]->current_data;
 
-      is_nat = b[0]->flags & VNET_BUFFER_F_IS_NATED;
-      not_batch |= is_nat ^ (b[1]->flags & VNET_BUFFER_F_IS_NATED);
+      pt[0] = ip4_local_classify (b[0], ip[0], &next[0]);
+      pt[1] = ip4_local_classify (b[1], ip[1], &next[1]);
 
-      if (head_of_feature_arc == 0 || (is_nat && not_batch == 0))
+      not_batch = pt[0] ^ pt[1];
+
+      if (head_of_feature_arc == 0 || (pt[0] && not_batch == 0))
 	goto skip_checks;
 
       if (PREDICT_TRUE (not_batch == 0))
@@ -1546,12 +1573,12 @@ ip4_local_inline (vlib_main_t * vm,
 	}
       else
 	{
-	  if (!(b[0]->flags & VNET_BUFFER_F_IS_NATED))
+	  if (!pt[0])
 	    {
 	      ip4_local_check_l4_csum (vm, b[0], ip[0], &error[0]);
 	      ip4_local_check_src (b[0], ip[0], &last_check, &error[0]);
 	    }
-	  if (!(b[1]->flags & VNET_BUFFER_F_IS_NATED))
+	  if (!pt[1])
 	    {
 	      ip4_local_check_l4_csum (vm, b[1], ip[1], &error[1]);
 	      ip4_local_check_src (b[1], ip[1], &last_check, &error[1]);
@@ -1560,8 +1587,6 @@ ip4_local_inline (vlib_main_t * vm,
 
     skip_checks:
 
-      next[0] = lm->local_next_by_ip_protocol[ip[0]->protocol];
-      next[1] = lm->local_next_by_ip_protocol[ip[1]->protocol];
       ip4_local_set_next_and_error (error_node, b[0], &next[0], error[0],
 				    head_of_feature_arc);
       ip4_local_set_next_and_error (error_node, b[1], &next[1], error[1],
@@ -1578,8 +1603,9 @@ ip4_local_inline (vlib_main_t * vm,
 
       ip[0] = vlib_buffer_get_current (b[0]);
       vnet_buffer (b[0])->l3_hdr_offset = b[0]->current_data;
+      pt[0] = ip4_local_classify (b[0], ip[0], &next[0]);
 
-      if (head_of_feature_arc == 0 || (b[0]->flags & VNET_BUFFER_F_IS_NATED))
+      if (head_of_feature_arc == 0 || pt[0])
 	goto skip_check;
 
       ip4_local_check_l4_csum (vm, b[0], ip[0], &error[0]);
@@ -1587,7 +1613,6 @@ ip4_local_inline (vlib_main_t * vm,
 
     skip_check:
 
-      next[0] = lm->local_next_by_ip_protocol[ip[0]->protocol];
       ip4_local_set_next_and_error (error_node, b[0], &next[0], error[0],
 				    head_of_feature_arc);
 
