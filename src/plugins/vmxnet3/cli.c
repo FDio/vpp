@@ -226,6 +226,8 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
 	vlib_cli_output (vm, "  Queue %u (RX)", qid);
 	vlib_cli_output (vm, "    RX completion next index %u",
 			 rxq->rx_comp_ring.next);
+	vlib_cli_output (vm, "    RX completion generation flag 0x%x",
+			 rxq->rx_comp_ring.gen);
 	for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
 	  {
 	    vmxnet3_rx_ring *ring = &rxq->rx_ring[rid];
@@ -266,6 +268,8 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
 	vlib_cli_output (vm, "  Queue %u (TX)", qid);
 	vlib_cli_output (vm, "    TX completion next index %u",
 			 txq->tx_comp_ring.next);
+	vlib_cli_output (vm, "    TX completion generation flag 0x%x",
+			 txq->tx_comp_ring.gen);
 	vlib_cli_output (vm, "    size %u consume %u produce %u",
 			 txq->size, txq->tx_ring.consume,
 			 txq->tx_ring.produce);
