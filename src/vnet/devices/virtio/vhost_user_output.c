@@ -100,14 +100,15 @@ vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
 {
   // FIXME: check if the new dev instance is already used
   vhost_user_main_t *vum = &vhost_user_main;
+
   vec_validate_init_empty (vum->show_dev_instance_by_real_dev_instance,
 			   hi->dev_instance, ~0);
 
   vum->show_dev_instance_by_real_dev_instance[hi->dev_instance] =
     new_dev_instance;
 
-  DBG_SOCK ("renumbered vhost-user interface dev_instance %d to %d",
-	    hi->dev_instance, new_dev_instance);
+  vu_log_debug (hi, "renumbered vhost-user interface dev_instance %d to %d",
+		hi->dev_instance, new_dev_instance);
 
   return 0;
 }

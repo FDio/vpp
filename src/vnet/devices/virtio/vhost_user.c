@@ -91,9 +91,9 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
 	    munmap (vui->region_mmap_addr[i] - vui->regions[i].mmap_offset,
 		    map_sz);
 
-	  DBG_SOCK
-	    ("unmap memory region %d addr 0x%lx len 0x%lx page_sz 0x%x", i,
-	     vui->region_mmap_addr[i], map_sz, page_sz);
+	  vu_log_debug (vui,
+			"unmap memory region %d addr 0x%lx len 0x%lx page_sz 0x%x",
+			i, vui->region_mmap_addr[i], map_sz, page_sz);
 
 	  vui->region_mmap_addr[i] = MAP_FAILED;
 
@@ -239,8 +239,8 @@ vhost_user_update_iface_state (vhost_user_intf_t * vui)
   int is_up = vhost_user_intf_ready (vui);
   if (is_up != vui->is_up)
     {
-      DBG_SOCK ("interface %d %s", vui->sw_if_index,
-		is_up ? "ready" : "down");
+      vu_log_debug (vui, "interface %d %s", vui->sw_if_index,
+		    is_up ? "ready" : "down");
       vnet_hw_interface_set_flags (vnet_get_main (), vui->hw_if_index,
 				   is_up ? VNET_HW_INTERFACE_FLAG_LINK_UP :
 				   0);
@@ -288,7 +288,7 @@ vhost_user_kickfd_read_ready (clib_file_t * uf)
   u32 qid = uf->private_data & 0xff;
 
   n = read (uf->file_descriptor, ((char *) &buff), 8);
-  DBG_SOCK ("if %d KICK queue %d", uf->private_data >> 8, qid);
+  vu_log_debug (vui, "if %d KICK queue %d", uf->private_data >> 8, qid);
   if (!vui->vrings[qid].started ||
       (vhost_user_intf_ready (vui) != vui->is_up))
     {
@@ -370,7 +370,7 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
     vhost_user_vring_close (vui, q);
 
   unmap_all_mem_regions (vui);
-  DBG_SOCK ("interface ifindex %d disconnected", vui->sw_if_index);
+  vu_log_debug (vui, "interface ifindex %d disconnected", vui->sw_if_index);
 }
 
 static clib_error_t *
@@ -417,19 +417,20 @@ vhost_user_socket_read (clib_file_t * uf)
     {
       if (n == -1)
 	{
-	  DBG_SOCK ("recvmsg returned error %d %s", errno, strerror (errno));
+	  vu_log_debug (vui, "recvmsg returned error %d %s", errno,
+			strerror (errno));
 	}
       else
 	{
-	  DBG_SOCK ("n (%d) != VHOST_USER_MSG_HDR_SZ (%d)",
-		    n, VHOST_USER_MSG_HDR_SZ);
+	  vu_log_debug (vui, "n (%d) != VHOST_USER_MSG_HDR_SZ (%d)",
+			n, VHOST_USER_MSG_HDR_SZ);
 	}
       goto close_socket;
     }
 
   if (mh.msg_flags & MSG_CTRUNC)
     {
-      DBG_SOCK ("MSG_CTRUNC is set");
+      vu_log_debug (vui, "MSG_CTRUNC is set");
       goto close_socket;
     }
 
@@ -447,7 +448,7 @@ vhost_user_socket_read (clib_file_t * uf)
   /* version 1, no reply bit set */
   if ((msg.flags & 7) != 1)
     {
-      DBG_SOCK ("malformed message received. closing socket");
+      vu_log_debug (vui, "malformed message received. closing socket");
       goto close_socket;
     }
 
@@ -458,12 +459,13 @@ vhost_user_socket_read (clib_file_t * uf)
 	    msg.size);
     if (rv < 0)
       {
-	DBG_SOCK ("read failed %s", strerror (errno));
+	vu_log_debug (vui, "read failed %s", strerror (errno));
 	goto close_socket;
       }
     else if (rv != msg.size)
       {
-	DBG_SOCK ("message too short (read %dB should be %dB)", rv, msg.size);
+	vu_log_debug (vui, "message too short (read %dB should be %dB)", rv,
+		      msg.size);
 	goto close_socket;
       }
   }
@@ -483,13 +485,15 @@ vhost_user_socket_read (clib_file_t * uf)
 	(1ULL << FEAT_VIRTIO_F_VERSION_1);
       msg.u64 &= vui->feature_mask;
       msg.size = sizeof (msg.u64);
-      DBG_SOCK ("if %d msg VHOST_USER_GET_FEATURES - reply 0x%016llx",
-		vui->hw_if_index, msg.u64);
+      vu_log_debug (vui,
+		    "if %d msg VHOST_USER_GET_FEATURES - reply 0x%016llx",
+		    vui->hw_if_index, msg.u64);
       break;
 
     case VHOST_USER_SET_FEATURES:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_FEATURES features 0x%016llx",
-		vui->hw_if_index, msg.u64);
+      vu_log_debug (vui,
+		    "if %d msg VHOST_USER_SET_FEATURES features 0x%016llx",
+		    vui->hw_if_index, msg.u64);
 
       vui->features = msg.u64;
 
@@ -513,22 +517,22 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_MEM_TABLE:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_MEM_TABLE nregions %d",
-		vui->hw_if_index, msg.memory.nregions);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_MEM_TABLE nregions %d",
+		    vui->hw_if_index, msg.memory.nregions);
 
       if ((msg.memory.nregions < 1) ||
 	  (msg.memory.nregions > VHOST_MEMORY_MAX_NREGIONS))
 	{
 
-	  DBG_SOCK ("number of mem regions must be between 1 and %i",
-		    VHOST_MEMORY_MAX_NREGIONS);
+	  vu_log_debug (vui, "number of mem regions must be between 1 and %i",
+			VHOST_MEMORY_MAX_NREGIONS);
 
 	  goto close_socket;
 	}
 
       if (msg.memory.nregions != number_of_fds)
 	{
-	  DBG_SOCK ("each memory region must have FD");
+	  vu_log_debug (vui, "each memory region must have FD");
 	  goto close_socket;
 	}
       unmap_all_mem_regions (vui);
@@ -550,8 +554,8 @@ vhost_user_socket_read (clib_file_t * uf)
 	  vui->region_guest_addr_hi[i] = vui->regions[i].guest_phys_addr +
 	    vui->regions[i].memory_size;
 
-	  DBG_SOCK
-	    ("map memory region %d addr 0 len 0x%lx fd %d mapped 0x%lx "
+	  vu_log_debug
+	    (vui, "map memory region %d addr 0 len 0x%lx fd %d mapped 0x%lx "
 	     "page_sz 0x%x", i, map_sz, fds[i], vui->region_mmap_addr[i],
 	     page_sz);
 
@@ -568,8 +572,8 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_NUM:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_NUM idx %d num %d",
-		vui->hw_if_index, msg.state.index, msg.state.num);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_VRING_NUM idx %d num %d",
+		    vui->hw_if_index, msg.state.index, msg.state.num);
 
       if ((msg.state.num > 32768) ||	/* maximum ring size is 32768 */
 	  (msg.state.num == 0) ||	/* it cannot be zero */
@@ -579,20 +583,20 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_ADDR:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_ADDR idx %d",
-		vui->hw_if_index, msg.state.index);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_VRING_ADDR idx %d",
+		    vui->hw_if_index, msg.state.index);
 
       if (msg.state.index >= VHOST_VRING_MAX_N)
 	{
-	  DBG_SOCK ("invalid vring index VHOST_USER_SET_VRING_ADDR:"
-		    " %d >= %d", msg.state.index, VHOST_VRING_MAX_N);
+	  vu_log_debug (vui, "invalid vring index VHOST_USER_SET_VRING_ADDR:"
+			" %d >= %d", msg.state.index, VHOST_VRING_MAX_N);
 	  goto close_socket;
 	}
 
       if (msg.size < sizeof (msg.addr))
 	{
-	  DBG_SOCK ("vhost message is too short (%d < %d)",
-		    msg.size, sizeof (msg.addr));
+	  vu_log_debug (vui, "vhost message is too short (%d < %d)",
+			msg.size, sizeof (msg.addr));
 	  goto close_socket;
 	}
 
@@ -607,8 +611,8 @@ vhost_user_socket_read (clib_file_t * uf)
 	  (vui->vrings[msg.state.index].used == NULL) ||
 	  (vui->vrings[msg.state.index].avail == NULL))
 	{
-	  DBG_SOCK ("failed to map user memory for hw_if_index %d",
-		    vui->hw_if_index);
+	  vu_log_debug (vui, "failed to map user memory for hw_if_index %d",
+			vui->hw_if_index);
 	  goto close_socket;
 	}
 
@@ -632,16 +636,17 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_OWNER:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_OWNER", vui->hw_if_index);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_OWNER", vui->hw_if_index);
       break;
 
     case VHOST_USER_RESET_OWNER:
-      DBG_SOCK ("if %d msg VHOST_USER_RESET_OWNER", vui->hw_if_index);
+      vu_log_debug (vui, "if %d msg VHOST_USER_RESET_OWNER",
+		    vui->hw_if_index);
       break;
 
     case VHOST_USER_SET_VRING_CALL:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_CALL %d",
-		vui->hw_if_index, msg.u64);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_VRING_CALL %d",
+		    vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
 
@@ -658,7 +663,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	{
 	  if (number_of_fds != 1)
 	    {
-	      DBG_SOCK ("More than one fd received !");
+	      vu_log_debug (vui, "More than one fd received !");
 	      goto close_socket;
 	    }
 
@@ -673,8 +678,8 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_KICK:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_KICK %d",
-		vui->hw_if_index, msg.u64);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_VRING_KICK %d",
+		    vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
 
@@ -690,7 +695,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	{
 	  if (number_of_fds != 1)
 	    {
-	      DBG_SOCK ("More than one fd received !");
+	      vu_log_debug (vui, "More than one fd received !");
 	      goto close_socket;
 	    }
 
@@ -711,8 +716,8 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_ERR:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_ERR %d",
-		vui->hw_if_index, msg.u64);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_VRING_ERR %d",
+		    vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
 
@@ -732,8 +737,8 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_BASE:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_BASE idx %d num %d",
-		vui->hw_if_index, msg.state.index, msg.state.num);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_VRING_BASE idx %d num %d",
+		    vui->hw_if_index, msg.state.index, msg.state.num);
 
       vui->vrings[msg.state.index].last_avail_idx = msg.state.num;
       break;
@@ -741,8 +746,8 @@ vhost_user_socket_read (clib_file_t * uf)
     case VHOST_USER_GET_VRING_BASE:
       if (msg.state.index >= VHOST_VRING_MAX_N)
 	{
-	  DBG_SOCK ("invalid vring index VHOST_USER_GET_VRING_BASE:"
-		    " %d >= %d", msg.state.index, VHOST_VRING_MAX_N);
+	  vu_log_debug (vui, "invalid vring index VHOST_USER_GET_VRING_BASE:"
+			" %d >= %d", msg.state.index, VHOST_VRING_MAX_N);
 	  goto close_socket;
 	}
 
@@ -756,23 +761,25 @@ vhost_user_socket_read (clib_file_t * uf)
 
       /* Spec says: Client must [...] stop ring upon receiving VHOST_USER_GET_VRING_BASE. */
       vhost_user_vring_close (vui, msg.state.index);
-      DBG_SOCK ("if %d msg VHOST_USER_GET_VRING_BASE idx %d num %d",
-		vui->hw_if_index, msg.state.index, msg.state.num);
+      vu_log_debug (vui, "if %d msg VHOST_USER_GET_VRING_BASE idx %d num %d",
+		    vui->hw_if_index, msg.state.index, msg.state.num);
       break;
 
     case VHOST_USER_NONE:
-      DBG_SOCK ("if %d msg VHOST_USER_NONE", vui->hw_if_index);
+      vu_log_debug (vui, "if %d msg VHOST_USER_NONE", vui->hw_if_index);
 
       break;
 
     case VHOST_USER_SET_LOG_BASE:
       {
-	DBG_SOCK ("if %d msg VHOST_USER_SET_LOG_BASE", vui->hw_if_index);
+	vu_log_debug (vui, "if %d msg VHOST_USER_SET_LOG_BASE",
+		      vui->hw_if_index);
 
 	if (msg.size != sizeof (msg.log))
 	  {
-	    DBG_SOCK
-	      ("invalid msg size for VHOST_USER_SET_LOG_BASE: %d instead of %d",
+	    vu_log_debug
+	      (vui,
+	       "invalid msg size for VHOST_USER_SET_LOG_BASE: %d instead of %d",
 	       msg.size, sizeof (msg.log));
 	    goto close_socket;
 	  }
@@ -780,8 +787,9 @@ vhost_user_socket_read (clib_file_t * uf)
 	if (!
 	    (vui->protocol_features & (1 << VHOST_USER_PROTOCOL_F_LOG_SHMFD)))
 	  {
-	    DBG_SOCK
-	      ("VHOST_USER_PROTOCOL_F_LOG_SHMFD not set but VHOST_USER_SET_LOG_BASE received");
+	    vu_log_debug
+	      (vui,
+	       "VHOST_USER_PROTOCOL_F_LOG_SHMFD not set but VHOST_USER_SET_LOG_BASE received");
 	    goto close_socket;
 	  }
 
@@ -794,8 +802,9 @@ vhost_user_socket_read (clib_file_t * uf)
 	vui->log_base_addr = mmap (0, map_sz, PROT_READ | PROT_WRITE,
 				   MAP_SHARED, fd, 0);
 
-	DBG_SOCK
-	  ("map log region addr 0 len 0x%lx off 0x%lx fd %d mapped 0x%lx",
+	vu_log_debug
+	  (vui,
+	   "map log region addr 0 len 0x%lx off 0x%lx fd %d mapped 0x%lx",
 	   map_sz, msg.log.offset, fd, vui->log_base_addr);
 
 	if (vui->log_base_addr == MAP_FAILED)
@@ -814,7 +823,7 @@ vhost_user_socket_read (clib_file_t * uf)
       }
 
     case VHOST_USER_SET_LOG_FD:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_LOG_FD", vui->hw_if_index);
+      vu_log_debug (vui, "if %d msg VHOST_USER_SET_LOG_FD", vui->hw_if_index);
 
       break;
 
@@ -823,14 +832,14 @@ vhost_user_socket_read (clib_file_t * uf)
       msg.u64 = (1 << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |
 	(1 << VHOST_USER_PROTOCOL_F_MQ);
       msg.size = sizeof (msg.u64);
-      DBG_SOCK
-	("if %d msg VHOST_USER_GET_PROTOCOL_FEATURES - reply 0x%016llx",
+      vu_log_debug
+	(vui, "if %d msg VHOST_USER_GET_PROTOCOL_FEATURES - reply 0x%016llx",
 	 vui->hw_if_index, msg.u64);
       break;
 
     case VHOST_USER_SET_PROTOCOL_FEATURES:
-      DBG_SOCK
-	("if %d msg VHOST_USER_SET_PROTOCOL_FEATURES features 0x%016llx",
+      vu_log_debug
+	(vui, "if %d msg VHOST_USER_SET_PROTOCOL_FEATURES features 0x%016llx",
 	 vui->hw_if_index, msg.u64);
 
       vui->protocol_features = msg.u64;
@@ -841,18 +850,19 @@ vhost_user_socket_read (clib_file_t * uf)
       msg.flags |= 4;
       msg.u64 = VHOST_VRING_MAX_N;
       msg.size = sizeof (msg.u64);
-      DBG_SOCK ("if %d msg VHOST_USER_GET_QUEUE_NUM - reply %d",
-		vui->hw_if_index, msg.u64);
+      vu_log_debug (vui, "if %d msg VHOST_USER_GET_QUEUE_NUM - reply %d",
+		    vui->hw_if_index, msg.u64);
       break;
 
     case VHOST_USER_SET_VRING_ENABLE:
-      DBG_SOCK ("if %d VHOST_USER_SET_VRING_ENABLE: %s queue %d",
-		vui->hw_if_index, msg.state.num ? "enable" : "disable",
-		msg.state.index);
+      vu_log_debug (vui, "if %d VHOST_USER_SET_VRING_ENABLE: %s queue %d",
+		    vui->hw_if_index, msg.state.num ? "enable" : "disable",
+		    msg.state.index);
       if (msg.state.index >= VHOST_VRING_MAX_N)
 	{
-	  DBG_SOCK ("invalid vring index VHOST_USER_SET_VRING_ENABLE:"
-		    " %d >= %d", msg.state.index, VHOST_VRING_MAX_N);
+	  vu_log_debug (vui,
+			"invalid vring index VHOST_USER_SET_VRING_ENABLE:"
+			" %d >= %d", msg.state.index, VHOST_VRING_MAX_N);
 	  goto close_socket;
 	}
 
@@ -860,8 +870,9 @@ vhost_user_socket_read (clib_file_t * uf)
       break;
 
     default:
-      DBG_SOCK ("unknown vhost-user message %d received. closing socket",
-		msg.request);
+      vu_log_debug (vui,
+		    "unknown vhost-user message %d received. closing socket",
+		    msg.request);
       goto close_socket;
     }
 
@@ -872,7 +883,7 @@ vhost_user_socket_read (clib_file_t * uf)
 	send (uf->file_descriptor, &msg, VHOST_USER_MSG_HDR_SZ + msg.size, 0);
       if (n != (msg.size + VHOST_USER_MSG_HDR_SZ))
 	{
-	  DBG_SOCK ("could not send message response");
+	  vu_log_debug (vui, "could not send message response");
 	  goto close_socket;
 	}
     }
@@ -896,7 +907,7 @@ vhost_user_socket_error (clib_file_t * uf)
   vhost_user_intf_t *vui =
     pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
-  DBG_SOCK ("socket error on if %d", vui->sw_if_index);
+  vu_log_debug (vui, "socket error on if %d", vui->sw_if_index);
   vlib_worker_thread_barrier_sync (vm);
   vhost_user_if_disconnect (vui);
   vhost_user_rx_thread_placement ();
@@ -925,13 +936,13 @@ vhost_user_socksvr_accept_ready (clib_file_t * uf)
 
   if (vui->clib_file_index != ~0)
     {
-      DBG_SOCK ("Close client socket for vhost interface %d, fd %d",
-		vui->sw_if_index, UNIX_GET_FD (vui->clib_file_index));
+      vu_log_debug (vui, "Close client socket for vhost interface %d, fd %d",
+		    vui->sw_if_index, UNIX_GET_FD (vui->clib_file_index));
       clib_file_del (&file_main, file_main.file_pool + vui->clib_file_index);
     }
 
-  DBG_SOCK ("New client socket for vhost interface %d, fd %d",
-	    vui->sw_if_index, client_fd);
+  vu_log_debug (vui, "New client socket for vhost interface %d, fd %d",
+		vui->sw_if_index, client_fd);
   template.read_function = vhost_user_socket_read;
   template.error_function = vhost_user_socket_error;
   template.file_descriptor = client_fd;
@@ -950,6 +961,8 @@ vhost_user_init (vlib_main_t * vm)
   error = vlib_call_init_function (vm, ip4_init);
   if (error)
     return error;
+
+  vum->log_default = vlib_log_register_class ("vhost-user", 0);
 
   vum->coalesce_frames = 32;
   vum->coalesce_time = 1e-3;
@@ -1158,7 +1171,7 @@ vhost_user_process (vlib_main_t * vm,
 
 		  if (retval)
 		    {
-		      DBG_SOCK ("getsockopt returned %d", retval);
+		      vu_log_debug (vui, "getsockopt returned %d", retval);
 		      vhost_user_if_disconnect (vui);
 		    }
 		}
@@ -1223,10 +1236,10 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
       hwif->dev_class_index != vhost_user_device_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  DBG_SOCK ("Deleting vhost-user interface %s (instance %d)",
-	    hwif->name, hwif->dev_instance);
-
   vui = pool_elt_at_index (vum->vhost_user_interfaces, hwif->dev_instance);
+
+  vu_log_debug (vui, "Deleting vhost-user interface %s (instance %d)",
+		hwif->name, hwif->dev_instance);
 
   vec_foreach (queue, vui->rx_queues)
   {
@@ -2147,63 +2160,6 @@ VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
 };
 /* *INDENT-ON* */
 
-clib_error_t *
-debug_vhost_user_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = NULL;
-  vhost_user_main_t *vum = &vhost_user_main;
-  u8 onoff = 0;
-  u8 input_found = 0;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "missing argument");
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (input_found)
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-
-      if (unformat (line_input, "on"))
-	{
-	  input_found = 1;
-	  onoff = 1;
-	}
-      else if (unformat (line_input, "off"))
-	{
-	  input_found = 1;
-	  onoff = 0;
-	}
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  vum->debug = onoff;
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (debug_vhost_user_command, static) = {
-    .path = "debug vhost-user",
-    .short_help = "debug vhost-user <on | off>",
-    .function = debug_vhost_user_command_fn,
-};
-/* *INDENT-ON* */
 
 static clib_error_t *
 vhost_user_config (vlib_main_t * vm, unformat_input_t * input)
@@ -2225,7 +2181,6 @@ vhost_user_config (vlib_main_t * vm, unformat_input_t * input)
 
   return 0;
 }
-
 
 /* vhost-user { ... } configuration. */
 VLIB_CONFIG_FUNCTION (vhost_user_config, "vhost-user");
