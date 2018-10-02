@@ -257,6 +257,13 @@ main (int argc, char **argv)
 	}
     }
 
+  if (vec_len (patterns) == 0)
+    {
+      fformat (stderr,
+	       "%s: usage [socket-name <name>] <patterns> ...\n", argv[0]);
+      exit (1);
+    }
+
   rv = stat_segment_connect ((char *) stat_segment_name);
   if (rv)
     {
@@ -280,7 +287,7 @@ main (int argc, char **argv)
 	}
       else
 	{
-	  struct sockaddr_in6 clientaddr;
+	  struct sockaddr_in6 clientaddr = { 0 };
 	  char address[INET6_ADDRSTRLEN];
 	  socklen_t addrlen;
 	  getpeername (conn_sock, (struct sockaddr *) &clientaddr, &addrlen);

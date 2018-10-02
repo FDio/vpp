@@ -192,6 +192,8 @@ reconnect:
 	  switch (res[i].type)
 	    {
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+	      if (res[i].simple_counter_vec == 0)
+		continue;
 	      for (k = 0; k < vec_len (res[i].simple_counter_vec) - 1; k++)
 		for (j = 0; j < vec_len (res[i].simple_counter_vec[k]); j++)
 		  fformat (stdout, "[%d @ %d]: %llu packets %s\n",
@@ -200,6 +202,8 @@ reconnect:
 	      break;
 
 	    case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
+	      if (res[i].simple_counter_vec == 0)
+		continue;
 	      for (k = 0; k < vec_len (res[i].combined_counter_vec); k++)
 		for (j = 0; j < vec_len (res[i].combined_counter_vec[k]); j++)
 		  fformat (stdout, "[%d @ %d]: %llu packets, %llu bytes %s\n",
