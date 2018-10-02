@@ -144,6 +144,39 @@ class TestL2Flood(VppTestCase):
 
         self.vapi.bridge_domain_add_del(1, is_add=0)
 
+    def test_flood_one(self):
+        """ L2 no-Flood Test """
+
+        #
+        # Create a single bridge Domain
+        #
+        self.vapi.bridge_domain_add_del(1)
+
+        #
+        # add 2 interfaces to the BD. this means a flood goes to only
+        # one member
+        #
+        for i in self.pg_interfaces[:2]:
+            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 0)
+
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                   src="00:00:de:ad:be:ef") /
+             IP(src="10.10.10.10", dst="1.1.1.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        #
+        # input on pg0 expect copies on pg1
+        #
+        self.send_and_expect(self.pg0, p*65, self.pg1)
+
+        #
+        # cleanup
+        #
+        for i in self.pg_interfaces[:2]:
+            self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, enable=0)
+        self.vapi.bridge_domain_add_del(1, is_add=0)
+
     def test_uu_fwd(self):
         """ UU Flood """
 
