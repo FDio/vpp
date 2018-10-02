@@ -2272,6 +2272,9 @@ class VppPapiProvider(object):
     def bfd_udp_del_echo_source(self):
         return self.api(self.papi.bfd_udp_del_echo_source, {})
 
+    def bfd_udp_get_echo_source(self):
+        return self.api(self.papi.bfd_udp_get_echo_source, {})
+
     def classify_add_del_table(
             self,
             is_add,

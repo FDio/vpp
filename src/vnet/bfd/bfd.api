@@ -37,6 +37,38 @@ autoreply define bfd_udp_del_echo_source
   u32 context;
 };
 
+/** \brief Get BFD echo source
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define bfd_udp_get_echo_source
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get BFD echo source reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - interface to use as echo source
+    @param is_set - non-zero if set
+    @param have_usable_ip4 - non-zero if have usable IPv4 address
+    @param ip4_addr - IPv4 address
+    @param have_usable_ip6 - non-zero if have usable IPv6 address
+    @param ip6_addr - IPv6 address
+*/
+define bfd_udp_get_echo_source_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+  u8 is_set;
+  u8 have_usable_ip4;
+  u8 ip4_addr[4];
+  u8 have_usable_ip6;
+  u8 ip6_addr[16];
+};
+
 /** \brief Add UDP BFD session on interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
