@@ -54,6 +54,7 @@ _(IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry)                     \
 _(IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry)                     \
 _(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
 _(IPSEC_SA_DUMP, ipsec_sa_dump)                                         \
+_(IPSEC_SPDS_DUMP, ipsec_spds_dump)                                     \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
 _(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)                     \
@@ -249,6 +250,44 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
 
 out:
   REPLY_MACRO (VL_API_IPSEC_SAD_ADD_DEL_ENTRY_REPLY);
+}
+
+static void
+send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
+			 u32 context)
+{
+  vl_api_ipsec_spds_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPDS_DETAILS);
+  mp->context = context;
+
+  mp->spd_id = htonl (spd->id);
+  mp->npolicies = htonl (pool_len (spd->policies));
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_ipsec_spds_dump_t_handler (vl_api_ipsec_spds_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_spd_t *spd;
+#if WITH_LIBSSL > 0
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (spd, im->spds, ({
+    send_ipsec_spds_details (spd, reg, mp->context);
+  }));
+  /* *INDENT-ON* */
+#else
+  clib_warning ("unimplemented");
+#endif
 }
 
 static void
