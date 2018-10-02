@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7bcc745c_94a2fa3d",
+        "filename": "src/plugins/lb/lb.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 651,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-10-02T12:47:59Z",
+      "side": 1,
+      "message": "Not needed",
+      "range": {
+        "startLine": 651,
+        "startChar": 6,
+        "endLine": 651,
+        "endChar": 30
+      },
+      "revId": "90e7d596c7568762cbb6bb0f37dcd722dd92bbe8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "89d69b89_1e136678",
+        "filename": "src/plugins/lb/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-10-02T12:47:59Z",
+      "side": 1,
+      "message": "I don\u0027t understand what you are doing here.\nFirst I don\u0027t really get why you do that only when old_as_index \u003d\u003d 0.\nSecond, I don\u0027t see where the VIP refcount is ever decremented.\nCan you clarify those two things ?",
+      "range": {
+        "startLine": 371,
+        "startChar": 14,
+        "endLine": 375,
+        "endChar": 17
+      },
+      "revId": "90e7d596c7568762cbb6bb0f37dcd722dd92bbe8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "792fa1dd_9aac7565",
+        "filename": "src/plugins/lb/util.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-10-02T12:47:59Z",
+      "side": 1,
+      "message": "Oops :-)",
+      "revId": "90e7d596c7568762cbb6bb0f37dcd722dd92bbe8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
