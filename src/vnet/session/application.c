@@ -557,13 +557,12 @@ app_worker_free (app_worker_t * app_wrk)
       && app_wrk->first_segment_manager != app_wrk->connects_seg_manager)
     {
       sm = segment_manager_get (app_wrk->first_segment_manager);
+      sm->first_is_protected = 0;
+      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
       /* .. and has no fifos, e.g. it might be used for redirected sessions,
        * remove it */
       if (!segment_manager_has_fifos (sm))
-	{
-	  sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
-	  segment_manager_del (sm);
-	}
+	segment_manager_del (sm);
     }
 
   /*
