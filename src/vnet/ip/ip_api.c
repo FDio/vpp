@@ -45,6 +45,7 @@
 #include <vnet/ip/ip4_reassembly.h>
 #include <vnet/ip/ip6_reassembly.h>
 #include <vnet/ethernet/arp.h>
+#include <vnet/ip/ip_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -102,6 +103,7 @@ _(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable )    \
 _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
   sw_interface_ip6_set_link_local_address)				\
 _(IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)               \
+_(IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                     \
 _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
@@ -1942,6 +1944,53 @@ static void
     }
 
   REPLY_MACRO (VL_API_IP_CONTAINER_PROXY_ADD_DEL_REPLY);
+}
+
+typedef struct ip_container_proxy_walk_ctx_t_
+{
+  vl_api_registration_t *reg;
+  u32 context;
+} ip_container_proxy_walk_ctx_t;
+
+static int
+ip_container_proxy_send_details (const fib_prefix_t * pfx, u32 sw_if_index,
+				 void *args)
+{
+  vl_api_ip_container_proxy_details_t *mp;
+  ip_container_proxy_walk_ctx_t *ctx = args;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return 1;
+
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP_CONTAINER_PROXY_DETAILS);
+  mp->context = ctx->context;
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  ip_prefix_encode (pfx, &mp->prefix);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return 1;
+}
+
+static void
+vl_api_ip_container_proxy_dump_t_handler (vl_api_ip_container_proxy_dump_t *
+					  mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ip_container_proxy_walk_ctx_t ctx = {
+    .context = mp->context,
+    .reg = reg,
+  };
+
+  ip_container_proxy_walk (ip_container_proxy_send_details, &ctx);
 }
 
 static void
