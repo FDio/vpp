@@ -1723,20 +1723,29 @@ application_local_session_cleanup (app_worker_t * client_wrk,
 {
   svm_fifo_segment_private_t *seg;
   segment_manager_t *sm;
+  application_t *server;
+  local_session_t * ll;
   uword client_key;
   u8 has_transport;
 
-  has_transport = session_has_transport ((stream_session_t *) ls);
-  client_key = application_client_local_connect_key (ls);
+  /* Retrieve listener transport type as it is the one that decides where
+   * the fifos are allocated */
+  server = application_get (server_wrk->app_index);
+  ll = application_get_local_listen_session (server, ls->listener_index);
+  has_transport = application_local_session_listener_has_transport (ls);
+
   if (!has_transport)
     sm = application_get_local_segment_manager_w_session (server_wrk, ls);
   else
     sm = app_worker_get_listen_segment_manager (server_wrk,
-						(stream_session_t *) ls);
+	                                        (stream_session_t *) ll);
 
   seg = segment_manager_get_segment (sm, ls->svm_segment_index);
   if (client_wrk)
-    hash_unset (client_wrk->local_connects, client_key);
+    {
+      client_key = application_client_local_connect_key (ls);
+      hash_unset (client_wrk->local_connects, client_key);
+    }
 
   if (!has_transport)
     {
