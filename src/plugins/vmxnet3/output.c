@@ -59,25 +59,22 @@ vmxnet3_txq_release (vlib_main_t * vm, vmxnet3_device_t * vd,
 		     vmxnet3_txq_t * txq)
 {
   vmxnet3_tx_comp *tx_comp;
-  u32 bi0;
   vmxnet3_tx_comp_ring *comp_ring;
-  u16 eop_idx, desc_idx;
 
   comp_ring = &txq->tx_comp_ring;
   tx_comp = &txq->tx_comp[comp_ring->next];
 
   while ((tx_comp->flags & VMXNET3_TXCF_GEN) == comp_ring->gen)
     {
-      eop_idx = tx_comp->index & VMXNET3_TXC_INDEX;
-      do
+      u16 eop_idx = tx_comp->index & VMXNET3_TXC_INDEX;
+      u32 bi0 = txq->tx_ring.bufs[txq->tx_ring.consume];
+
+      vlib_buffer_free_one (vm, bi0);
+      while (txq->tx_ring.consume != eop_idx)
 	{
-	  desc_idx = txq->tx_ring.consume;
-	  bi0 = txq->tx_ring.bufs[desc_idx];
-	  txq->tx_ring.bufs[desc_idx] = ~0;
-	  vlib_buffer_free_no_next (vm, &bi0, 1);
 	  vmxnet3_tx_ring_advance_consume (txq);
 	}
-      while (desc_idx != eop_idx);
+      vmxnet3_tx_ring_advance_consume (txq);
 
       vmxnet3_tx_comp_ring_advance_next (txq);
       tx_comp = &txq->tx_comp[comp_ring->next];
