@@ -25,8 +25,9 @@
 typedef struct
 {
   int socket_fd;
-  /* Temporarily disable the connection, so we can keep it around... */
-  int socket_enable;
+  int socket_enable;		/**< Can temporarily disable the connection
+				     but still can keep it around... */
+  u32 client_index;		/**< Client index allocated by VPP */
 
   clib_socket_t client_socket;
 

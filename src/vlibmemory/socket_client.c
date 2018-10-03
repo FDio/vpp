@@ -56,6 +56,7 @@ int
 vl_socket_client_read (int wait)
 {
   socket_client_main_t *scm = &socket_client_main;
+  u32 data_len = 0, msg_size;
   int n, current_rx_index;
   msgbuf_t *mbp = 0;
   f64 timeout;
@@ -68,10 +69,9 @@ vl_socket_client_read (int wait)
 
   while (1)
     {
-      current_rx_index = vec_len (scm->socket_rx_buffer);
-      while (vec_len (scm->socket_rx_buffer) <
-	     sizeof (*mbp) + 2 /* msg id */ )
+      while (vec_len (scm->socket_rx_buffer) < sizeof (*mbp))
 	{
+	  current_rx_index = vec_len (scm->socket_rx_buffer);
 	  vec_validate (scm->socket_rx_buffer, current_rx_index
 			+ scm->socket_buffer_size - 1);
 	  _vec_len (scm->socket_rx_buffer) = current_rx_index;
@@ -90,20 +90,35 @@ vl_socket_client_read (int wait)
 	clib_warning ("read %d bytes", n);
 #endif
 
-      if (mbp == 0)
-	mbp = (msgbuf_t *) (scm->socket_rx_buffer);
+      mbp = (msgbuf_t *) (scm->socket_rx_buffer);
+      data_len = ntohl (mbp->data_len);
+      current_rx_index = vec_len (scm->socket_rx_buffer);
+      vec_validate (scm->socket_rx_buffer, current_rx_index + data_len);
+      _vec_len (scm->socket_rx_buffer) = current_rx_index;
+      mbp = (msgbuf_t *) (scm->socket_rx_buffer);
+      msg_size = data_len + sizeof (*mbp);
 
-      if (vec_len (scm->socket_rx_buffer) >= ntohl (mbp->data_len)
-	  + sizeof (*mbp))
+      while (vec_len (scm->socket_rx_buffer) < msg_size)
+	{
+	  n = read (scm->socket_fd,
+		    scm->socket_rx_buffer + vec_len (scm->socket_rx_buffer),
+		    msg_size - vec_len (scm->socket_rx_buffer));
+	  if (n < 0 && errno != EAGAIN)
+	    {
+	      clib_unix_warning ("socket_read");
+	      return -1;
+	    }
+	  _vec_len (scm->socket_rx_buffer) += n;
+	}
+
+      if (vec_len (scm->socket_rx_buffer) >= data_len + sizeof (*mbp))
 	{
 	  vl_msg_api_socket_handler ((void *) (mbp->data));
 
-	  if (vec_len (scm->socket_rx_buffer) == ntohl (mbp->data_len)
-	      + sizeof (*mbp))
+	  if (vec_len (scm->socket_rx_buffer) == data_len + sizeof (*mbp))
 	    _vec_len (scm->socket_rx_buffer) = 0;
 	  else
-	    vec_delete (scm->socket_rx_buffer, ntohl (mbp->data_len)
-			+ sizeof (*mbp), 0);
+	    vec_delete (scm->socket_rx_buffer, data_len + sizeof (*mbp), 0);
 	  mbp = 0;
 
 	  /* Quit if we're out of data, and not expecting a ping reply */
@@ -111,7 +126,6 @@ vl_socket_client_read (int wait)
 	      && scm->control_pings_outstanding == 0)
 	    break;
 	}
-
       if (wait && clib_time_now (&scm->clib_time) >= timeout)
 	return -1;
     }
@@ -295,7 +309,10 @@ vl_api_sockclnt_create_reply_t_handler (vl_api_sockclnt_create_reply_t * mp)
 {
   socket_client_main_t *scm = &socket_client_main;
   if (!mp->response)
-    scm->socket_enable = 1;
+    {
+      scm->socket_enable = 1;
+      scm->client_index = clib_net_to_host_u32 (mp->index);
+    }
 }
 
 #define foreach_sock_client_api_msg             		\
@@ -366,19 +383,21 @@ vl_socket_client_connect (char *socket_path, char *client_name,
   mp->name[sizeof (mp->name) - 1] = 0;
   mp->context = 0xfeedface;
 
+  clib_time_init (&scm->clib_time);
+
   if (vl_socket_client_write () <= 0)
     return (-1);
 
-  if (vl_socket_client_read (1))
+  if (vl_socket_client_read (5))
     return (-1);
 
-  clib_time_init (&scm->clib_time);
   return (0);
 }
 
 int
 vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
 {
+  socket_client_main_t *scm = &socket_client_main;
   vl_api_sock_init_shm_t *mp;
   int rv, i;
   u64 *cfg;
@@ -387,7 +406,7 @@ vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
 				   vec_len (config) * sizeof (u64));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_SOCK_INIT_SHM);
-  mp->client_index = ~0;
+  mp->client_index = clib_host_to_net_u32 (scm->client_index);
   mp->requested_size = 64 << 20;
 
   if (config)

@@ -75,7 +75,8 @@ clib_error_t *vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds);
 clib_error_t *vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds,
 				       u32 wait);
 
-vl_api_registration_t *vl_socket_api_client_index_to_registration (u32 index);
+vl_api_registration_t *vl_socket_api_client_handle_to_registration (u32 idx);
+u8 vl_socket_api_registration_handle_is_valid (u32 reg_index);
 
 #endif /* SRC_VLIBMEMORY_SOCKET_API_H_ */
 
