@@ -121,14 +121,12 @@ stat_segment_connect (char *socket_name)
 
   if (fstat (mfd, &st) == -1)
     {
-      close (sock);
       perror ("mmap");
       return -1;
     }
   if ((memaddr =
        mmap (NULL, st.st_size, PROT_READ, MAP_SHARED, mfd, 0)) == MAP_FAILED)
     {
-      close (sock);
       perror ("mmap");
       return -1;
     }
