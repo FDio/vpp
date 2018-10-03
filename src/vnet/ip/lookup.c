@@ -1321,6 +1321,61 @@ ip_container_proxy_is_set (fib_prefix_t * pfx, u32 sw_if_index)
   return (l3p->l3p_sw_if_index == sw_if_index);
 }
 
+typedef struct ip_container_proxy_walk_ctx_t_
+{
+  ip_container_proxy_cb_t cb;
+  void *ctx;
+} ip_container_proxy_walk_ctx_t;
+
+static fib_table_walk_rc_t
+ip_container_proxy_fib_table_walk (fib_node_index_t fei, void *arg)
+{
+  ip_container_proxy_walk_ctx_t *ctx = arg;
+  const fib_prefix_t *pfx;
+  const dpo_id_t *dpo;
+  load_balance_t *lb;
+  l3_proxy_dpo_t *l3p;
+
+  pfx = fib_entry_get_prefix (fei);
+  if (fib_entry_is_sourced (fei, FIB_SOURCE_PROXY))
+    {
+      dpo = fib_entry_contribute_ip_forwarding (fei);
+      lb = load_balance_get (dpo->dpoi_index);
+      dpo = load_balance_get_bucket_i (lb, 0);
+      l3p = l3_proxy_dpo_get (dpo->dpoi_index);
+      ctx->cb (pfx, l3p->l3p_sw_if_index, ctx->ctx);
+    }
+
+  return FIB_TABLE_WALK_CONTINUE;
+}
+
+void
+ip_container_proxy_walk (ip_container_proxy_cb_t cb, void *ctx)
+{
+  fib_table_t *fib_table;
+  ip_container_proxy_walk_ctx_t wctx = {
+    .cb = cb,
+    .ctx = ctx,
+  };
+
+  /* *INDENT-OFF* */
+  pool_foreach (fib_table, ip4_main.fibs,
+  ({
+    fib_table_walk(fib_table->ft_index,
+                   FIB_PROTOCOL_IP4,
+                   ip_container_proxy_fib_table_walk,
+                   &wctx);
+  }));
+  pool_foreach (fib_table, ip6_main.fibs,
+  ({
+    fib_table_walk(fib_table->ft_index,
+                   FIB_PROTOCOL_IP6,
+                   ip_container_proxy_fib_table_walk,
+                   &wctx);
+  }));
+  /* *INDENT-ON* */
+}
+
 clib_error_t *
 ip_container_cmd (vlib_main_t * vm,
 		  unformat_input_t * main_input, vlib_cli_command_t * cmd)
