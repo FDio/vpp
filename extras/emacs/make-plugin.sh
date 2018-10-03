@@ -13,6 +13,17 @@
 ;;; See the License for the specific language governing permissions and
 ;;; limitations under the License.
 
-(load-file "./all-skel.el")
-(make-plugin)
-(save-some-buffers t)
+(setq start-dir default-directory)
+
+(if (string-match "/src/plugins" start-dir)
+    (progn (setq cd-args (concat start-dir "../../extras/emacs"))
+           (setq default-directory cd-args)      
+           (load-file "./all-skel.el")
+           (setq default-directory start-dir)
+           (make-plugin)
+           (save-some-buffers t)
+           (message "OK..."))
+  (message "Please run this script from .../src/plugins"))
+
+
+
