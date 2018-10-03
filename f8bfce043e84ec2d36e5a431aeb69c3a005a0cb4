@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46f38876_22749a29",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-03T23:43:22Z",
+      "side": 1,
+      "message": "Should we also set .error \u003d 0?  Or would the fields not assigned any value be initialized to 0 by default?",
+      "range": {
+        "startLine": 201,
+        "startChar": 51,
+        "endLine": 201,
+        "endChar": 67
+      },
+      "revId": "f8bfce043e84ec2d36e5a431aeb69c3a005a0cb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
