@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "470f8a97_a52f02f0",
+        "filename": "src/vlib/log.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-10-03T02:42:08Z",
+      "side": 1,
+      "message": "Isn\u0027t this affected as well? Can\u0027t those names be null terminated?",
+      "range": {
+        "startLine": 362,
+        "startChar": 29,
+        "endLine": 362,
+        "endChar": 37
+      },
+      "revId": "ca15aa5314bbef792fa1809e1136aff0d4b50b1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
