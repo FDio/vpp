@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c0f1ebab_50564ec5",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 665,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-03T07:02:27Z",
+      "side": 1,
+      "message": "use vl_api_prefix_t (from ip/ip_types.api)",
+      "revId": "a088ed89f93f2c4848b655a0d096dd88c9f4edad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b5acf174_ea5fcde3",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1966,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-03T07:02:27Z",
+      "side": 1,
+      "message": "ip_prefix_encode (from ip/ip_types_api.h)",
+      "revId": "a088ed89f93f2c4848b655a0d096dd88c9f4edad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c46829b2_e8f7cf76",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-03T07:02:27Z",
+      "side": 1,
+      "message": "if (fib_entry_is_sourced(fib_entry, FIB_SOURCE_PROXY))\n ....\n\nyou\u0027re interested in what added the prefix, rather than what each prefix is forwarding via. probably the same set of prefixes, but not necessarily.",
+      "revId": "a088ed89f93f2c4848b655a0d096dd88c9f4edad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
