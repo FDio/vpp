@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8e7afe39_b44cac8e",
+        "filename": "src/vlib/node_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 480,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-10-03T19:11:47Z",
+      "side": 1,
+      "message": "Memory leak: need to unformat_free(line_input)",
+      "revId": "5e585d75779d50ab84a59909f4467e980e2dfeca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e0248fb8_71d20543",
+        "filename": "src/vlib/node_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 483,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-10-03T19:11:47Z",
+      "side": 1,
+      "message": "Memory leak: same story",
+      "revId": "5e585d75779d50ab84a59909f4467e980e2dfeca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
