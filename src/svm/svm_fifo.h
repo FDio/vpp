@@ -169,7 +169,7 @@ svm_fifo_set_event (svm_fifo_t * f)
 always_inline void
 svm_fifo_unset_event (svm_fifo_t * f)
 {
-  __sync_lock_release (&f->has_event);
+  clib_atomic_release (&f->has_event);
 }
 
 static inline void

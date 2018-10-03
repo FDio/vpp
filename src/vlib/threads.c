@@ -516,7 +516,7 @@ vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
 
   ASSERT (fq);
 
-  new_tail = __sync_add_and_fetch (&fq->tail, 1);
+  new_tail = clib_atomic_add_fetch (&fq->tail, 1);
 
   /* Wait until a ring slot is available */
   while (new_tail >= fq->head + fq->nelts)
@@ -576,12 +576,12 @@ vlib_worker_thread_init (vlib_worker_thread_t * w)
     {
 
       /* Initial barrier sync, for both worker and i/o threads */
-      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, 1);
+      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
 
       while (*vlib_worker_threads->wait_at_barrier)
 	;
 
-      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, -1);
+      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
     }
 }
 
@@ -1310,22 +1310,6 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (cpu_config, "cpu");
 
-#if !defined (__x86_64__) && !defined (__i386__) && !defined (__aarch64__) && !defined (__powerpc64__) && !defined(__arm__)
-void
-__sync_fetch_and_add_8 (void)
-{
-  fformat (stderr, "%s called\n", __FUNCTION__);
-  abort ();
-}
-
-void
-__sync_add_and_fetch_8 (void)
-{
-  fformat (stderr, "%s called\n", __FUNCTION__);
-  abort ();
-}
-#endif
-
 void vnet_main_fixup (vlib_fork_fixup_t which) __attribute__ ((weak));
 void
 vnet_main_fixup (vlib_fork_fixup_t which)
@@ -1493,8 +1477,8 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
       /* Do per thread rebuilds in parallel */
       refork_needed = 1;
-      clib_smp_atomic_add (vlib_worker_threads->node_reforks_required,
-			   (vec_len (vlib_mains) - 1));
+      clib_atomic_fetch_add (vlib_worker_threads->node_reforks_required,
+			     (vec_len (vlib_mains) - 1));
       now = vlib_time_now (vm);
       t_update_main = now - vm->barrier_epoch;
     }
