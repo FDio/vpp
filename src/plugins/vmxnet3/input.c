@@ -90,7 +90,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 rid;
   vlib_buffer_t *prev_b0 = 0, *hb = 0;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  u8 known_next = 0;
+  u8 known_next = 0, got_packet = 0;
   vmxnet3_rx_desc *rxd;
   clib_error_t *error;
 
@@ -173,6 +173,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * Both start and end of packet is set. It is a complete packet
 	       */
 	      prev_b0 = 0;
+	      got_packet = 1;
 	    }
 	}
       else if (rx_comp->index & VMXNET3_RXCI_EOP)
@@ -184,7 +185,8 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      prev_b0->next_buffer = bi0;
 	      hb->total_length_not_including_first_buffer +=
 		b0->current_length;
-	      prev_b0 = 0;	// Get next packet
+	      prev_b0 = 0;
+	      got_packet = 1;
 	    }
 	  else
 	    {
@@ -216,7 +218,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       n_rx_bytes += b0->current_length;
 
-      if (!prev_b0)
+      if (got_packet)
 	{
 	  ethernet_header_t *e = (ethernet_header_t *) hb->data;
 
@@ -271,6 +273,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next++;
 	  bi++;
 	  hb = 0;
+	  got_packet = 0;
 	}
     }
 
