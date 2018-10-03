@@ -2144,8 +2144,10 @@ static void vl_api_mpls_tunnel_add_del_reply_t_handler
   else
     {
       vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
       vam->result_ready = 1;
     }
+  vam->regenerate_interface_table = 1;
 }
 
 static void vl_api_mpls_tunnel_add_del_reply_t_handler_json
@@ -8828,6 +8830,7 @@ api_ip_add_del_route (vat_main_t * vam)
       mp->is_resolve_host = resolve_host;
       mp->is_resolve_attached = resolve_attached;
       mp->next_hop_weight = next_hop_weight;
+      mp->next_hop_preference = 0;
       mp->dst_address_length = dst_address_length;
       mp->next_hop_table_id = ntohl (next_hop_table_id);
       mp->classify_table_index = ntohl (classify_table_index);
@@ -9235,6 +9238,7 @@ api_mpls_route_add_del (vat_main_t * vam)
       mp->mr_is_resolve_attached = resolve_attached;
       mp->mr_is_interface_rx = is_interface_rx;
       mp->mr_next_hop_weight = next_hop_weight;
+      mp->mr_next_hop_preference = 0;
       mp->mr_next_hop_table_id = ntohl (next_hop_table_id);
       mp->mr_classify_table_index = ntohl (classify_table_index);
       mp->mr_next_hop_via_label = ntohl (next_hop_via_label);
@@ -9763,18 +9767,21 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
     .as_u32 = 0,
   };
   ip6_address_t v6_next_hop_address = { {0} };
+  vl_api_fib_mpls_label_t *next_hop_out_label_stack = NULL;
   mpls_label_t next_hop_via_label = MPLS_LABEL_INVALID;
-  mpls_label_t next_hop_out_label = MPLS_LABEL_INVALID, *labels = NULL;
+  mpls_label_t next_hop_out_label = MPLS_LABEL_INVALID;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "add"))
 	is_add = 1;
+      else
+	if (unformat
+	    (i, "del %U", api_unformat_sw_if_index, vam, &sw_if_index))
+	is_add = 0;
       else if (unformat (i, "del sw_if_index %d", &sw_if_index))
 	is_add = 0;
-      else if (unformat (i, "sw_if_index %d", &next_hop_sw_if_index))
-	;
       else if (unformat (i, "via %U",
 			 unformat_ip4_address, &v4_next_hop_address))
 	{
@@ -9787,12 +9794,25 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
 	}
       else if (unformat (i, "via-label %d", &next_hop_via_label))
 	;
+      else
+	if (unformat
+	    (i, "%U", api_unformat_sw_if_index, vam, &next_hop_sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &next_hop_sw_if_index))
+	;
       else if (unformat (i, "l2-only"))
 	l2_only = 1;
       else if (unformat (i, "next-hop-table %d", &next_hop_table_id))
 	;
       else if (unformat (i, "out-label %d", &next_hop_out_label))
-	vec_add1 (labels, ntohl (next_hop_out_label));
+	{
+	  vl_api_fib_mpls_label_t fib_label = {
+	    .label = ntohl (next_hop_out_label),
+	    .ttl = 64,
+	    .exp = 0,
+	  };
+	  vec_add1 (next_hop_out_label_stack, fib_label);
+	}
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -9800,7 +9820,8 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
 	}
     }
 
-  M2 (MPLS_TUNNEL_ADD_DEL, mp, sizeof (mpls_label_t) * vec_len (labels));
+  M2 (MPLS_TUNNEL_ADD_DEL, mp, sizeof (vl_api_fib_mpls_label_t) *
+      vec_len (next_hop_out_label_stack));
 
   mp->mt_next_hop_sw_if_index = ntohl (next_hop_sw_if_index);
   mp->mt_sw_if_index = ntohl (sw_if_index);
@@ -9809,14 +9830,18 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
   mp->mt_next_hop_table_id = ntohl (next_hop_table_id);
   mp->mt_next_hop_proto_is_ip4 = next_hop_proto_is_ip4;
   mp->mt_next_hop_via_label = ntohl (next_hop_via_label);
+  mp->mt_next_hop_weight = 1;
+  mp->mt_next_hop_preference = 0;
 
-  mp->mt_next_hop_n_out_labels = vec_len (labels);
+  mp->mt_next_hop_n_out_labels = vec_len (next_hop_out_label_stack);
 
   if (0 != mp->mt_next_hop_n_out_labels)
     {
-      clib_memcpy (mp->mt_next_hop_out_label_stack, labels,
-		   sizeof (mpls_label_t) * mp->mt_next_hop_n_out_labels);
-      vec_free (labels);
+      clib_memcpy (mp->mt_next_hop_out_label_stack,
+		   next_hop_out_label_stack,
+		   (vec_len (next_hop_out_label_stack) *
+		    sizeof (vl_api_fib_mpls_label_t)));
+      vec_free (next_hop_out_label_stack);
     }
 
   if (next_hop_proto_is_ip4)
@@ -23679,8 +23704,8 @@ _(ip_table_add_del,                                                     \
 _(ip_add_del_route,                                                     \
   "<addr>/<mask> via <<addr>|<intfc>|sw_if_index <id>|via-label <n>>\n" \
   "[table-id <n>] [<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"\
-  "[weight <n>] [drop] [local] [classify <n>] [del]\n"                  \
-  "[multipath] [count <n>]")                                            \
+  "[weight <n>] [drop] [local] [classify <n>]  [out-label <n>]\n"       \
+  "[multipath] [count <n>] [del]")                                      \
 _(ip_mroute_add_del,                                                    \
   "<src> <grp>/<mask> [table-id <n>]\n"                                 \
   "[<intfc> | sw_if_index <id>] [local] [del]")                         \
@@ -23691,12 +23716,14 @@ _(mpls_route_add_del,                                                   \
   "lookup-ip4-table <n> | lookup-in-ip6-table <n> |\n"                  \
   "l2-input-on <intfc> | l2-input-on sw_if_index <id>>\n"               \
   "[<intfc> | sw_if_index <id>] [resolve-attempts <n>] [weight <n>]\n"  \
-  "[drop] [local] [classify <n>] [multipath] [count <n>] [del]")        \
+  "[drop] [local] [classify <n>] [out-label <n>] [multipath]\n"         \
+  "[count <n>] [del]")                                                  \
 _(mpls_ip_bind_unbind,                                                  \
   "<label> <addr/len>")                                                 \
 _(mpls_tunnel_add_del,                                                  \
-  " via <addr> [table-id <n>]\n"                                        \
-  "sw_if_index <id>] [l2]  [del]")                                      \
+  "[add | del <intfc | sw_if_index <id>>] via <addr | via-label <n>>\n" \
+  "[<intfc> | sw_if_index <id> | next-hop-table <id>]\n"                \
+  "[l2-only]  [out-label <n>]")                                         \
 _(sr_mpls_policy_add,                                                   \
   "bsid <id> [weight <n>] [spray] next <sid> [next <sid>]")             \
 _(sr_mpls_policy_del,                                                   \
