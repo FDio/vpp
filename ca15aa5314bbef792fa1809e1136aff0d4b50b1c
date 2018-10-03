@@ -22,6 +22,30 @@
       "revId": "ca15aa5314bbef792fa1809e1136aff0d4b50b1c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5fd84978_788a603c",
+        "filename": "src/vlib/log.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-10-03T06:57:41Z",
+      "side": 1,
+      "message": "Yeah, something like:\n\nu8 *default \u003d format (0, \"default\");\nvec_foreach (sc, c-\u003esubclasses)\n    {\n      vlib_cli_output (vm, \"  %-20v %-14U %-14U %d\",\n\t\t       sc-\u003ename ? sc-\u003ename : default,\n                       [snip]\n    }\nvec_free (default);",
+      "parentUuid": "470f8a97_a52f02f0",
+      "range": {
+        "startLine": 362,
+        "startChar": 29,
+        "endLine": 362,
+        "endChar": 37
+      },
+      "revId": "ca15aa5314bbef792fa1809e1136aff0d4b50b1c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
