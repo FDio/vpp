@@ -944,19 +944,34 @@ static void *vl_api_mpls_tunnel_add_del_t_print
 
   s = format (0, "SCRIPT: mpls_tunnel_add_del ");
 
-  if (mp->mt_next_hop_sw_if_index)
-    s = format (s, "sw_if_index %d ", ntohl (mp->mt_next_hop_sw_if_index));
+  if (mp->mt_is_add == 0)
+    s = format (s, "del sw_if_index %d ", ntohl (mp->mt_sw_if_index));
 
-  if (mp->mt_next_hop_proto_is_ip4)
-    s = format (s, "%U ", format_ip4_address, mp->mt_next_hop);
+  mpls_label_t label = ntohl (mp->mt_next_hop_via_label);
+  if (label != MPLS_LABEL_INVALID)
+    s = format (s, "via-label %d ", label);
+  else if (mp->mt_next_hop_proto_is_ip4)
+    s = format (s, "via %U ", format_ip4_address, mp->mt_next_hop);
   else
-    s = format (s, "%U ", format_ip6_address, mp->mt_next_hop);
+    s = format (s, "via %U ", format_ip6_address, mp->mt_next_hop);
+
+  if (mp->mt_next_hop_sw_if_index != ~0)
+    s = format (s, "sw_if_index %d ", ntohl (mp->mt_next_hop_sw_if_index));
+  else if (mp->mt_next_hop_table_id)
+    s = format (s, "next-hop-table %d ", ntohl (mp->mt_next_hop_table_id));
 
   if (mp->mt_l2_only)
     s = format (s, "l2-only ");
 
-  if (mp->mt_is_add == 0)
-    s = format (s, "del ");
+  if (mp->mt_next_hop_n_out_labels)
+    {
+      u8 i;
+      for (i = 0; i < mp->mt_next_hop_n_out_labels; i++)
+	{
+	  s = format (s, "out-label %d ",
+		      ntohl (mp->mt_next_hop_out_label_stack[i].label));
+	}
+    }
 
   FINISH;
 }

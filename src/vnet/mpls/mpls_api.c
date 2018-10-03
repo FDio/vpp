@@ -311,7 +311,7 @@ mpls_table_create (u32 table_id, u8 is_api, const u8 * name)
 static void
 vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 {
-  u32 tunnel_sw_if_index, tunnel_index, next_hop_via_label;
+  u32 tunnel_sw_if_index = ~0, tunnel_index = ~0, next_hop_via_label;
   vl_api_mpls_tunnel_add_del_reply_t *rmp;
   fib_route_path_t rpath, *rpaths = NULL;
   int ii, rv = 0;
@@ -333,7 +333,8 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 		   mp->mt_next_hop, sizeof (rpath.frp_addr.ip6));
     }
   rpath.frp_sw_if_index = ntohl (mp->mt_next_hop_sw_if_index);
-  rpath.frp_weight = 1;
+  rpath.frp_weight = mp->mt_next_hop_weight;
+  rpath.frp_preference = mp->mt_next_hop_preference;
 
   next_hop_via_label = ntohl (mp->mt_next_hop_via_label);
   if ((MPLS_LABEL_INVALID != next_hop_via_label) && (0 != next_hop_via_label))
@@ -341,6 +342,18 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
       rpath.frp_proto = DPO_PROTO_MPLS;
       rpath.frp_local_label = next_hop_via_label;
       rpath.frp_eos = MPLS_NON_EOS;
+    }
+
+  if (rpath.frp_sw_if_index == ~0)
+    {				/* recursive path, set fib index */
+      rpath.frp_fib_index =
+	fib_table_find (dpo_proto_to_fib (rpath.frp_proto),
+			ntohl (mp->mt_next_hop_table_id));
+      if (rpath.frp_fib_index == ~0)
+	{
+	  rv = VNET_API_ERROR_NO_SUCH_FIB;
+	  goto out;
+	}
     }
 
   if (mp->mt_is_add)
@@ -383,6 +396,7 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 
   stats_dsunlock ();
 
+out:
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MPLS_TUNNEL_ADD_DEL_REPLY,
   ({
