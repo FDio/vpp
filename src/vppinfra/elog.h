@@ -313,7 +313,7 @@ elog_event_data_inline (elog_main_t * em,
   ASSERT (is_pow2 (vec_len (em->event_ring)));
 
   if (em->lock)
-    ei = clib_smp_atomic_add (&em->n_total_events, 1);
+    ei = clib_atomic_fetch_add (&em->n_total_events, 1);
   else
     ei = em->n_total_events++;
 
