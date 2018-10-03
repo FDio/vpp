@@ -682,8 +682,8 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 	  vec_add1 (dir, '\0');
 	}
 
-      if (((stat (dir, &file_stat) == -1) || (!S_ISDIR (file_stat.st_mode)))
-	  && (idx != 0))
+      if (((dir == 0) || (stat (dir, &file_stat) == -1)
+	   || (!S_ISDIR (file_stat.st_mode))) && (idx != 0))
 	{
 	  vec_free (dir);
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
