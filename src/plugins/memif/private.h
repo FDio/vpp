@@ -30,21 +30,52 @@
 #define MEMIF_MAX_LOG2_RING_SIZE	14
 
 
+#define memif_log_debug(dev, f, ...) do {                               \
+  memif_if_t *_dev = (memif_if_t *) dev;                                \
+  if (_dev)                                                             \
+    vlib_log(VLIB_LOG_LEVEL_DEBUG, memif_main.log_class, "%U: " f,      \
+	     format_vnet_hw_if_index_name, vnet_get_main(),             \
+	     _dev->hw_if_index, ##__VA_ARGS__);                         \
+  else                                                                  \
+    vlib_log(VLIB_LOG_LEVEL_DEBUG, memif_main.log_class, f,             \
+             ##__VA_ARGS__);                                            \
+} while (0)
+
+#define memif_log_warn(dev, f, ...) do {                                \
+  memif_if_t *_dev = (memif_if_t *) dev;                                \
+  if (_dev)                                                             \
+    vlib_log(VLIB_LOG_LEVEL_WARNING, memif_main.log_class, "%U: " f,    \
+	     format_vnet_hw_if_index_name, vnet_get_main(),             \
+	     _dev->hw_if_index, ##__VA_ARGS__);                         \
+  else                                                                  \
+    vlib_log(VLIB_LOG_LEVEL_WARNING, memif_main.log_class, f,           \
+             ##__VA_ARGS__);                                            \
+} while (0)
+
+#define memif_log_err(dev, f, ...) do {                                 \
+  memif_if_t *_dev = (memif_if_t *) dev;                                \
+  if (_dev)                                                             \
+    vlib_log(VLIB_LOG_LEVEL_ERR, memif_main.log_class, "%U: " f,        \
+	     format_vnet_hw_if_index_name, vnet_get_main(),             \
+	     _dev->hw_if_index, ##__VA_ARGS__);                         \
+  else                                                                  \
+    vlib_log(VLIB_LOG_LEVEL_ERR, memif_main.log_class, f,               \
+             ##__VA_ARGS__);                                            \
+} while (0)
+
 #define memif_file_add(a, b) do {					\
   *a = clib_file_add (&file_main, b);					\
-  vlib_log_warn ((&memif_main)->log_class,				\
-		"clib_file_add fd %d private_data %u idx %u",		\
+  memif_log_warn (0, "clib_file_add fd %d private_data %u idx %u",	\
 		(b)->file_descriptor, (b)->private_data, *a);		\
 } while (0)
 
 #define memif_file_del(a) do {						\
-  vlib_log_warn ((&memif_main)->log_class,				\
-		"clib_file_del idx %u",a - file_main.file_pool);	\
+  memif_log_warn (0, "clib_file_del idx %u", a - file_main.file_pool);	\
   clib_file_del (&file_main, a);					\
 } while (0)
 
 #define memif_file_del_by_index(a) do {					\
-  vlib_log_warn ((&memif_main)->log_class, "clib_file_del idx %u", a);	\
+  memif_log_warn (0, "clib_file_del idx %u", a);			\
   clib_file_del_by_index (&file_main, a);				\
 } while (0)
 
@@ -276,6 +307,7 @@ clib_error_t *memif_slave_conn_fd_error (clib_file_t * uf);
 clib_error_t *memif_msg_send_disconnect (memif_if_t * mif,
 					 clib_error_t * err);
 u8 *format_memif_device_name (u8 * s, va_list * args);
+
 
 /*
  * fd.io coding-style-patch-verification: ON
