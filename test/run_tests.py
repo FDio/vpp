@@ -3,6 +3,7 @@
 import sys
 import shutil
 import os
+import fnmatch
 import select
 import unittest
 import argparse
@@ -425,8 +426,10 @@ class FilterByTestOption:
         self.filter_func_name = filter_func_name
 
     def __call__(self, file_name, class_name, func_name):
-        if self.filter_file_name and file_name != self.filter_file_name:
-            return False
+        if self.filter_file_name:
+            fn_match = fnmatch.fnmatch(file_name, self.filter_file_name)
+            if not fn_match:
+                return False
         if self.filter_class_name and class_name != self.filter_class_name:
             return False
         if self.filter_func_name and func_name != self.filter_func_name:
