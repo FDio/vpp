@@ -414,7 +414,7 @@ set_interface_features_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    goto done;
+    return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
