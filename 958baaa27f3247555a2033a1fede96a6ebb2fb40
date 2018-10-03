@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "87a20441_ecd686ed",
+        "filename": "src/vnet/feature/feature.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 419,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-10-03T02:32:17Z",
+      "side": 1,
+      "message": "Return 0 here instead of initializing line_input.",
+      "range": {
+        "startLine": 419,
+        "startChar": 4,
+        "endLine": 419,
+        "endChar": 13
+      },
+      "revId": "958baaa27f3247555a2033a1fede96a6ebb2fb40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
