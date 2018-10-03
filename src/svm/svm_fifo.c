@@ -513,7 +513,7 @@ CLIB_MARCH_FN (svm_fifo_enqueue_nowait, int, svm_fifo_t * f, u32 max_bytes,
 
   /* Atomically increase the queue length */
   ASSERT (cursize + total_copy_bytes <= nitems);
-  __sync_fetch_and_add (&f->cursize, total_copy_bytes);
+  clib_atomic_fetch_add (&f->cursize, total_copy_bytes);
 
   return (total_copy_bytes);
 }
@@ -659,7 +659,7 @@ CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 max_bytes,
 
   ASSERT (f->head <= nitems);
   ASSERT (cursize >= total_copy_bytes);
-  __sync_fetch_and_sub (&f->cursize, total_copy_bytes);
+  clib_atomic_fetch_sub (&f->cursize, total_copy_bytes);
 
   return (total_copy_bytes);
 }
@@ -757,7 +757,7 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes)
 
   ASSERT (f->head <= nitems);
   ASSERT (cursize >= total_drop_bytes);
-  __sync_fetch_and_sub (&f->cursize, total_drop_bytes);
+  clib_atomic_fetch_sub (&f->cursize, total_drop_bytes);
 
   return total_drop_bytes;
 }
@@ -766,7 +766,7 @@ void
 svm_fifo_dequeue_drop_all (svm_fifo_t * f)
 {
   f->head = f->tail;
-  __sync_fetch_and_sub (&f->cursize, f->cursize);
+  clib_atomic_fetch_sub (&f->cursize, f->cursize);
 }
 
 int
@@ -813,7 +813,7 @@ svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs)
       f->head = (f->head + fs[0].len) % f->nitems;
       total_drop_bytes = fs[0].len;
     }
-  __sync_fetch_and_sub (&f->cursize, total_drop_bytes);
+  clib_atomic_fetch_sub (&f->cursize, total_drop_bytes);
 }
 
 u32
