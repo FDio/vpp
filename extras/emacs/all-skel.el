@@ -23,7 +23,7 @@
 (load-file "./periodic-skel.el")
 (load-file "./pipe-skel.el")
 (load-file "./plugin-all-apih-skel.el")
-(load-file "./plugin-am-skel.el")
+(load-file "./plugin-cmake-skel.el")
 (load-file "./plugin-api-skel.el")
 (load-file "./plugin-h-skel.el")
 (load-file "./plugin-main-skel.el")

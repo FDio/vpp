@@ -74,7 +74,7 @@ nil
 #define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
-extern " plugin-name "_main_t " plugin-name "_main;
+" plugin-name "_main_t " plugin-name "_main;
 
 /* List of message types that this plugin understands */
 

@@ -75,9 +75,10 @@ static u8 * format_" plugin-name "_trace (u8 * s, va_list * args)
               format_mac_address, t->new_dst_mac);
   return s;
 }
-#endif /* CLIB_MARCH_VARIANT */
 
 vlib_node_registration_t " plugin-name "_node;
+
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_" plugin-name "_error \\
 _(SWAPPED, \"Mac swap packets processed\")

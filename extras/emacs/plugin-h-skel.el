@@ -62,10 +62,10 @@ typedef struct {
     ethernet_main_t * ethernet_main;
 } " plugin-name "_main_t;
 
-" plugin-name "_main_t " plugin-name "_main;
+extern " plugin-name "_main_t " plugin-name "_main;
 
-vlib_node_registration_t " plugin-name "_node;
-vlib_node_registration_t " plugin-name "_periodic_node;
+extern vlib_node_registration_t " plugin-name "_node;
+extern vlib_node_registration_t " plugin-name "_periodic_node;
 
 /* Periodic function events */
 #define " PLUGIN-NAME "_EVENT1 1
