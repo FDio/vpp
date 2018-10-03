@@ -414,7 +414,7 @@ vlib_worker_thread_barrier_check (void)
 	  ed->thread_index = thread_index;
 	}
 
-      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, 1);
+      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
       if (CLIB_DEBUG > 0)
 	{
 	  vm = vlib_get_main ();
@@ -424,7 +424,7 @@ vlib_worker_thread_barrier_check (void)
 	;
       if (CLIB_DEBUG > 0)
 	vm->parked_at_barrier = 0;
-      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, -1);
+      clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
 
       if (PREDICT_FALSE (*vlib_worker_threads->node_reforks_required))
 	{
@@ -450,8 +450,8 @@ vlib_worker_thread_barrier_check (void)
 	    }
 
 	  vlib_worker_thread_node_refork ();
-	  clib_smp_atomic_add (vlib_worker_threads->node_reforks_required,
-			       -1);
+	  clib_atomic_fetch_add (vlib_worker_threads->node_reforks_required,
+				 -1);
 	  while (*vlib_worker_threads->node_reforks_required)
 	    ;
 	}
@@ -519,7 +519,7 @@ vlib_get_frame_queue_elt (u32 frame_queue_index, u32 index)
   fq = fqm->vlib_frame_queues[index];
   ASSERT (fq);
 
-  new_tail = __sync_add_and_fetch (&fq->tail, 1);
+  new_tail = clib_atomic_add_fetch (&fq->tail, 1);
 
   /* Wait until a ring slot is available */
   while (new_tail >= fq->head_hint + fq->nelts)

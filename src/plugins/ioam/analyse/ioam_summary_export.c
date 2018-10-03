@@ -150,7 +150,7 @@ ioam_analyse_add_ipfix_record (flow_report_t * fr,
 			       ip6_address_t * src, ip6_address_t * dst,
 			       u16 src_port, u16 dst_port)
 {
-  while (__sync_lock_test_and_set (record->writer_lock, 1))
+  while (clib_atomic_test_and_set (record->writer_lock))
     ;
 
   int field_index = 0;
@@ -259,7 +259,7 @@ ioam_analyse_add_ipfix_record (flow_report_t * fr,
   *(record->chached_data_list) = *record;
   record->chached_data_list->chached_data_list = NULL;
 
-  *(record->writer_lock) = 0;
+  clib_atomic_release (record->writer_lock);
   return offset;
 }
 

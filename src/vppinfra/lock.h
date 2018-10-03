@@ -73,7 +73,7 @@ clib_spinlock_free (clib_spinlock_t * p)
 static_always_inline void
 clib_spinlock_lock (clib_spinlock_t * p)
 {
-  while (__sync_lock_test_and_set (&(*p)->lock, 1))
+  while (clib_atomic_test_and_set (&(*p)->lock))
     CLIB_PAUSE ();
   CLIB_LOCK_DBG (p);
 }
@@ -138,13 +138,13 @@ clib_rwlock_free (clib_rwlock_t * p)
 always_inline void
 clib_rwlock_reader_lock (clib_rwlock_t * p)
 {
-  while (__sync_lock_test_and_set (&(*p)->n_readers_lock, 1))
+  while (clib_atomic_test_and_set (&(*p)->n_readers_lock))
     CLIB_PAUSE ();
 
   (*p)->n_readers += 1;
   if ((*p)->n_readers == 1)
     {
-      while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
+      while (clib_atomic_test_and_set (&(*p)->writer_lock))
 	CLIB_PAUSE ();
     }
   CLIB_MEMORY_BARRIER ();
@@ -159,7 +159,7 @@ clib_rwlock_reader_unlock (clib_rwlock_t * p)
   ASSERT ((*p)->n_readers > 0);
   CLIB_LOCK_DBG_CLEAR (p);
 
-  while (__sync_lock_test_and_set (&(*p)->n_readers_lock, 1))
+  while (clib_atomic_test_and_set (&(*p)->n_readers_lock))
     CLIB_PAUSE ();
 
   (*p)->n_readers -= 1;
@@ -176,7 +176,7 @@ clib_rwlock_reader_unlock (clib_rwlock_t * p)
 always_inline void
 clib_rwlock_writer_lock (clib_rwlock_t * p)
 {
-  while (__sync_lock_test_and_set (&(*p)->writer_lock, 1))
+  while (clib_atomic_test_and_set (&(*p)->writer_lock))
     CLIB_PAUSE ();
   CLIB_LOCK_DBG (p);
 }
