@@ -324,11 +324,16 @@ clib_memset_u8 (void *p, u8 val, uword count)
 static_always_inline uword
 clib_count_equal_u64 (u64 * data, uword max_count)
 {
-  uword count = 0;
-  u64 first = data[0];
+  uword count;
+  u64 first;
 
+  if (max_count == 1)
+    return 1;
   if (data[0] != data[1])
     return 1;
+
+  count = 0;
+  first = data[0];
 
 #if defined(CLIB_HAVE_VEC256)
   u64x4 splat = u64x4_splat (first);
@@ -369,11 +374,16 @@ clib_count_equal_u64 (u64 * data, uword max_count)
 static_always_inline uword
 clib_count_equal_u32 (u32 * data, uword max_count)
 {
-  uword count = 0;
-  u32 first = data[0];
+  uword count;
+  u32 first;
 
+  if (max_count == 1)
+    return 1;
   if (data[0] != data[1])
     return 1;
+
+  count = 0;
+  first = data[0];
 
 #if defined(CLIB_HAVE_VEC256)
   u32x8 splat = u32x8_splat (first);
@@ -432,11 +442,16 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 static_always_inline uword
 clib_count_equal_u16 (u16 * data, uword max_count)
 {
-  uword count = 0;
-  u16 first = data[0];
+  uword count;
+  u16 first;
 
+  if (max_count == 1)
+    return 1;
   if (data[0] != data[1])
     return 1;
+
+  count = 0;
+  first = data[0];
 
 #if defined(CLIB_HAVE_VEC256)
   u16x16 splat = u16x16_splat (first);
@@ -495,11 +510,16 @@ clib_count_equal_u16 (u16 * data, uword max_count)
 static_always_inline uword
 clib_count_equal_u8 (u8 * data, uword max_count)
 {
-  uword count = 0;
-  u8 first = data[0];
+  uword count;
+  u8 first;
 
+  if (max_count == 1)
+    return 1;
   if (data[0] != data[1])
     return 1;
+
+  count = 0;
+  first = data[0];
 
 #if defined(CLIB_HAVE_VEC256)
   u8x32 splat = u8x32_splat (first);
