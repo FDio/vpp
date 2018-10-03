@@ -412,6 +412,8 @@ set_interface_features_command_fn (vlib_main_t * vm,
   u32 sw_if_index = ~0;
   u8 enable = 1;
 
+  memset (line_input, 0, sizeof (unformat_input_t));
+
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     goto done;
