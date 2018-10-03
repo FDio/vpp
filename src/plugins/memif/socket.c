@@ -408,7 +408,6 @@ memif_msg_receive_disconnect (memif_if_t * mif, memif_msg_t * msg)
 static clib_error_t *
 memif_msg_receive (memif_if_t ** mifp, clib_socket_t * sock, clib_file_t * uf)
 {
-  memif_main_t *mm = &memif_main;
   memif_msg_t msg = { 0 };
   clib_error_t *err = 0;
   int fd = -1;
@@ -426,7 +425,7 @@ memif_msg_receive (memif_if_t ** mifp, clib_socket_t * sock, clib_file_t * uf)
       goto error;
     }
 
-  vlib_log_debug (mm->log_class, "Message type %u received", msg.type);
+  memif_log_debug (mif, "Message type %u received", msg.type);
   /* process the message based on its type */
   switch (msg.type)
     {
@@ -499,7 +498,7 @@ memif_msg_receive (memif_if_t ** mifp, clib_socket_t * sock, clib_file_t * uf)
   return 0;
 
 error:
-  vlib_log_err (mm->log_class, "%U", format_clib_error, err);
+  memif_log_err (mif, "%U", format_clib_error, err);
   return err;
 }
 
@@ -639,8 +638,8 @@ memif_master_conn_fd_error (clib_file_t * uf)
 	}
     }
 
-  vlib_log_warn (mm->log_class, "Error on unknown file descriptor %d",
-		 uf->file_descriptor);
+  memif_log_warn (0, "Error on unknown file descriptor %d",
+		  uf->file_descriptor);
   memif_file_del (uf);
   return 0;
 }
@@ -683,7 +682,7 @@ memif_conn_fd_accept_ready (clib_file_t * uf)
   return 0;
 
 error:
-  vlib_log_err (mm->log_class, "%U", format_clib_error, err);
+  memif_log_err (0, "%U", format_clib_error, err);
   clib_mem_free (client);
   return err;
 }

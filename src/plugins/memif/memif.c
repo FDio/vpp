@@ -77,8 +77,8 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
   if (mif == 0)
     return;
 
-  vlib_log_debug (mm->log_class, "disconnect %u (%v)", mif->dev_instance,
-		  err ? err->what : 0);
+  memif_log_debug (mif, "disconnect %u (%v)", mif->dev_instance,
+		   err ? err->what : 0);
 
   if (err)
     {
@@ -108,7 +108,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       err = clib_socket_close (mif->sock);
       if (err)
 	{
-	  vlib_log_err (mm->log_class, "%U", format_clib_error, err);
+	  memif_log_err (mif, "%U", format_clib_error, err);
 	  clib_error_free (err);
 	}
       clib_mem_free (mif->sock);
@@ -123,7 +123,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 	  int rv;
 	  rv = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, i);
 	  if (rv)
-	    vlib_log_warn (mm->log_class,
+	    memif_log_warn (mif,
 			   "Unable to unassign interface %d, queue %d: rc=%d",
 			   mif->hw_if_index, i, rv);
 	  mq->ring = 0;
@@ -146,7 +146,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       if (mr->is_external)
 	continue;
       if ((rv = munmap (mr->shm, mr->region_size)))
-	clib_warning ("munmap failed, rv = %d", rv);
+	memif_log_err (mif, "munmap failed, rv = %d", rv);
       if (mr->fd > -1)
 	close (mr->fd);
     }
@@ -171,7 +171,7 @@ memif_int_fd_read_ready (clib_file_t * uf)
   size = read (uf->file_descriptor, &b, sizeof (b));
   if (size < 0)
     {
-      vlib_log_debug (mm->log_class, "Failed to read form socket");
+      memif_log_debug (mif, "Failed to read form socket");
       return 0;
     }
 
@@ -185,14 +185,13 @@ memif_int_fd_read_ready (clib_file_t * uf)
 clib_error_t *
 memif_connect (memif_if_t * mif)
 {
-  memif_main_t *mm = &memif_main;
   vnet_main_t *vnm = vnet_get_main ();
   clib_file_t template = { 0 };
   memif_region_t *mr;
   int i;
   clib_error_t *err = NULL;
 
-  vlib_log_debug (mm->log_class, "connect %u", mif->dev_instance);
+  memif_log_debug (mif, "connect %u", mif->dev_instance);
 
   vec_free (mif->local_disc_string);
   vec_free (mif->remote_disc_string);
@@ -258,8 +257,8 @@ memif_connect (memif_if_t * mif)
       rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
 					  VNET_HW_INTERFACE_RX_MODE_DEFAULT);
       if (rv)
-	clib_warning
-	  ("Warning: unable to set rx mode for interface %d queue %d: "
+	memif_log_err
+	  (mif, "Warning: unable to set rx mode for interface %d queue %d: "
 	   "rc=%d", mif->hw_if_index, i, rv);
       else
 	{
@@ -282,7 +281,7 @@ memif_connect (memif_if_t * mif)
   return 0;
 
 error:
-  vlib_log_err (mm->log_class, "%U", format_clib_error, err);
+  memif_log_err (mif, "%U", format_clib_error, err);
   return err;
 }
 
@@ -304,7 +303,6 @@ clib_error_t *
 memif_init_regions_and_queues (memif_if_t * mif)
 {
   vlib_main_t *vm = vlib_get_main ();
-  memif_main_t *mm = &memif_main;
   memif_ring_t *ring = NULL;
   int i, j;
   u64 buffer_offset;
@@ -446,7 +444,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
   return 0;
 
 error:
-  vlib_log_err (mm->log_class, "%U", format_clib_error, err);
+  memif_log_err (mif, "%U", format_clib_error, err);
   return err;
 }
 
@@ -749,7 +747,7 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
 	  err = clib_socket_close (msf->sock);
 	  if (err)
 	    {
-	      vlib_log_err (mm->log_class, "%U", format_clib_error, err);
+	      memif_log_err (mif, "%U", format_clib_error, err);
 	      clib_error_free (err);
 	    }
 	  clib_mem_free (msf->sock);
@@ -842,8 +840,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
       msf->dev_instance_by_fd = hash_create (0, sizeof (uword));
       msf->is_listener = (args->is_master != 0);
 
-      vlib_log_debug (mm->log_class, "initializing socket file %s",
-		      msf->filename);
+      memif_log_debug (0, "initializing socket file %s", msf->filename);
     }
 
   if (mm->per_thread_data == 0)
@@ -1006,7 +1003,7 @@ error:
   memif_delete_if (vm, mif);
   if (error)
     {
-      vlib_log_err (mm->log_class, "%U", format_clib_error, error);
+      memif_log_err (mif, "%U", format_clib_error, error);
       clib_error_free (error);
     }
   return ret;
@@ -1023,7 +1020,7 @@ memif_init (vlib_main_t * vm)
   memset (mm, 0, sizeof (memif_main_t));
 
   mm->log_class = vlib_log_register_class ("memif_plugin", 0);
-  vlib_log_debug (mm->log_class, "initialized");
+  memif_log_debug (0, "initialized");
 
   /* initialize binary API */
   memif_plugin_api_hookup (vm);
