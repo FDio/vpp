@@ -231,7 +231,7 @@ segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  stream_session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
 int app_worker_alloc_connects_segment_manager (app_worker_t * app);
-int app_worker_add_segment_notify (u32 app_wrk_index, ssvm_private_t * fs);
+int app_worker_add_segment_notify (u32 app_or_wrk, ssvm_private_t * fs);
 u32 app_worker_n_listeners (app_worker_t * app);
 stream_session_t *app_worker_first_listener (app_worker_t * app,
 					     u8 fib_proto,
@@ -245,7 +245,7 @@ clib_error_t *vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 int application_start_listen (application_t * app,
 			      session_endpoint_extended_t * tep,
 			      session_handle_t * handle);
-int application_stop_listen (u32 app_index, u32 app_wrk_index,
+int application_stop_listen (u32 app_index, u32 app_or_wrk,
 			     session_handle_t handle);
 
 application_t *application_alloc (void);
@@ -268,7 +268,7 @@ int application_is_builtin (application_t * app);
 int application_is_builtin_proxy (application_t * app);
 u32 application_session_table (application_t * app, u8 fib_proto);
 u32 application_local_session_table (application_t * app);
-u8 *application_name_from_index (u32 app_wrk_index);
+u8 *application_name_from_index (u32 app_or_wrk);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
 u8 application_use_mq_for_ctrl (application_t * app);
@@ -297,15 +297,15 @@ local_session_t
 int application_start_local_listen (application_t * server,
 				    session_endpoint_extended_t * sep,
 				    session_handle_t * handle);
-int application_stop_local_listen (u32 app_index, u32 app_wrk_index,
+int application_stop_local_listen (u32 app_index, u32 app_or_wrk,
 				   session_handle_t lh);
 int application_local_session_connect (app_worker_t * client,
 				       app_worker_t * server,
 				       local_session_t * ls, u32 opaque);
 int application_local_session_connect_notify (local_session_t * ls);
-int application_local_session_disconnect (u32 app_wrk_index,
+int application_local_session_disconnect (u32 app_or_wrk,
 					  local_session_t * ls);
-int application_local_session_disconnect_w_index (u32 app_wrk_index,
+int application_local_session_disconnect_w_index (u32 app_or_wrk,
 						  u32 ls_index);
 void app_worker_local_sessions_free (app_worker_t * app);
 
@@ -330,20 +330,20 @@ local_session_id (local_session_t * ls)
 }
 
 always_inline void
-local_session_parse_id (u32 ls_id, u32 * app_wrk_index, u32 * session_index)
+local_session_parse_id (u32 ls_id, u32 * app_or_wrk, u32 * session_index)
 {
-  *app_wrk_index = ls_id >> 16;
-  *session_index = ls_id & 0xFFF;
+  *app_or_wrk = ls_id >> 16;
+  *session_index = ls_id & 0xFF;
 }
 
 always_inline void
-local_session_parse_handle (session_handle_t handle, u32 * server_index,
+local_session_parse_handle (session_handle_t handle, u32 * app_or_wrk_index,
 			    u32 * session_index)
 {
   u32 bottom;
   ASSERT ((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX);
   bottom = (handle & 0xFFFFFFFF);
-  local_session_parse_id (bottom, server_index, session_index);
+  local_session_parse_id (bottom, app_or_wrk_index, session_index);
 }
 
 always_inline session_handle_t
@@ -377,7 +377,7 @@ application_local_session_listener_has_transport (local_session_t * ls)
   return (tp != TRANSPORT_PROTO_NONE);
 }
 
-void mq_send_local_session_disconnected_cb (u32 app_wrk_index,
+void mq_send_local_session_disconnected_cb (u32 app_or_wrk,
 					    local_session_t * ls);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
