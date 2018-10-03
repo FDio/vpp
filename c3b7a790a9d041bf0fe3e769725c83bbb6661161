@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ea9301e1_4930a87b",
+        "filename": "src/plugins/ioam/analyse/ioam_analyse.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-10-03T09:30:59Z",
+      "side": 1,
+      "message": "Need a clib_atomic_clear(data-\u003ewriter_lock) here.",
+      "revId": "c3b7a790a9d041bf0fe3e769725c83bbb6661161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4741f98e_b4b2d6f6",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-10-03T09:30:59Z",
+      "side": 1,
+      "message": "clib_atomic_clear() or release fence needed.",
+      "revId": "c3b7a790a9d041bf0fe3e769725c83bbb6661161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0134f517_d3928f21",
+        "filename": "src/vppinfra/atomics.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-10-03T09:30:59Z",
+      "side": 1,
+      "message": "I am missing clib_atomic_clear() or clib_atomic_release() that matches clib_atomic_test_and_set).\nGCC has __sync_lock_release() for this purpose.\n\nIf locks are implemented using clib_atomic_test_and_set(), the lock needs to be unlocked with at least release MO so that loads (that may be missing the cache) or stores do no escape out of the critical section.",
+      "revId": "c3b7a790a9d041bf0fe3e769725c83bbb6661161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "746b7b1e_1a6f833a",
+        "filename": "src/vppinfra/atomics.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-10-03T09:30:59Z",
+      "side": 1,
+      "message": "Why does clib_atomic_swap() have relaxed MO while all other clib_atomic_xxx() operations are sequentially consistent?",
+      "revId": "c3b7a790a9d041bf0fe3e769725c83bbb6661161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b23e275f_41a9d3ac",
+        "filename": "src/vppinfra/atomics.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-10-03T09:30:59Z",
+      "side": 1,
+      "message": "The macro names are becoming very looong.\nCan\u0027t we use clib_atomic_fetch_add_rlx()?\nWe can add clib_atomic_fetch_add_acq() and clib_atomic_fetch_add_rls() later.\nBut why not specify the memory ordering as a separate parameter? The API will become smaller.",
+      "revId": "c3b7a790a9d041bf0fe3e769725c83bbb6661161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
