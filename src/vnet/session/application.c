@@ -872,10 +872,10 @@ app_worker_get_connect_segment_manager (app_worker_t * app)
 
 segment_manager_t *
 app_worker_get_listen_segment_manager (app_worker_t * app,
-				       stream_session_t * s)
+				       stream_session_t * listener)
 {
   uword *smp;
-  smp = hash_get (app->listeners_table, listen_session_get_handle (s));
+  smp = hash_get (app->listeners_table, listen_session_get_handle (listener));
   ASSERT (smp != 0);
   return segment_manager_get (*smp);
 }
@@ -1721,21 +1721,28 @@ application_local_session_cleanup (app_worker_t * client_wrk,
 				   local_session_t * ls)
 {
   svm_fifo_segment_private_t *seg;
+  stream_session_t *listener;
   segment_manager_t *sm;
   uword client_key;
   u8 has_transport;
 
-  has_transport = session_has_transport ((stream_session_t *) ls);
-  client_key = application_client_local_connect_key (ls);
+  /* Retrieve listener transport type as it is the one that decides where
+   * the fifos are allocated */
+  has_transport = application_local_session_listener_has_transport (ls);
   if (!has_transport)
     sm = application_get_local_segment_manager_w_session (server_wrk, ls);
   else
-    sm = app_worker_get_listen_segment_manager (server_wrk,
-						(stream_session_t *) ls);
+    {
+      listener = listen_session_get (ls->listener_index);
+      sm = app_worker_get_listen_segment_manager (server_wrk, listener);
+    }
 
   seg = segment_manager_get_segment (sm, ls->svm_segment_index);
   if (client_wrk)
-    hash_unset (client_wrk->local_connects, client_key);
+    {
+      client_key = application_client_local_connect_key (ls);
+      hash_unset (client_wrk->local_connects, client_key);
+    }
 
   if (!has_transport)
     {
