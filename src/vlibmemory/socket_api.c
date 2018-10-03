@@ -47,6 +47,27 @@
 
 socket_main_t socket_main;
 
+#define SOCK_API_REG_HANDLE_BIT (1<<31)
+
+static u32
+sock_api_registration_handle (vl_api_registration_t * regp)
+{
+  ASSERT (regp->vl_api_registration_pool_index < SOCK_API_REG_HANDLE_BIT);
+  return regp->vl_api_registration_pool_index | SOCK_API_REG_HANDLE_BIT;
+}
+
+static u32
+socket_api_registration_handle_to_index (u32 reg_index)
+{
+  return (reg_index & ~SOCK_API_REG_HANDLE_BIT);
+}
+
+u8
+vl_socket_api_registration_handle_is_valid (u32 reg_handle)
+{
+  return ((reg_handle & SOCK_API_REG_HANDLE_BIT) != 0);
+}
+
 void
 vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
 {
@@ -75,17 +96,18 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
 }
 
 vl_api_registration_t *
-vl_socket_api_client_index_to_registration (u32 index)
+vl_socket_api_client_handle_to_registration (u32 handle)
 {
   socket_main_t *sm = &socket_main;
-  if (pool_is_free_index (sm->registration_pool, ntohl (index)))
+  u32 index = socket_api_registration_handle_to_index (handle);
+  if (pool_is_free_index (sm->registration_pool, index))
     {
 #if DEBUG > 2
-      clib_warning ("Invalid index %d\n", ntohl (index));
+      clib_warning ("Invalid index %d\n", index);
 #endif
       return 0;
     }
-  return pool_elt_at_index (sm->registration_pool, ntohl (index));
+  return pool_elt_at_index (sm->registration_pool, index);
 }
 
 void
@@ -419,7 +441,7 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   u32 size = sizeof (*rp) + (nmsg * sizeof (vl_api_message_table_entry_t));
   rp = vl_msg_api_alloc (size);
   rp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE_REPLY);
-  rp->index = htonl (regp->vl_api_registration_pool_index);
+  rp->index = htonl (sock_api_registration_handle (regp));
   rp->context = mp->context;
   rp->response = htonl (rv);
   rp->count = htons (nmsg);
