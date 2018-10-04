@@ -3902,3 +3902,11 @@ class VppPapiProvider(object):
 
     def svs_dump(self):
         return self.api(self.papi.svs_dump, {})
+
+    def tmc_enable_disable(self, sw_if_index, mss, is_enable=1):
+        return self.api(self.papi.tmc_enable_disable,
+                        {
+                            'sw_if_index': sw_if_index,
+                            'mss': mss,
+                            'is_enable': is_enable,
+                        })
