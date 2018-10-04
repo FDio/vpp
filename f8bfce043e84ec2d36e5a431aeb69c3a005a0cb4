@@ -22,6 +22,30 @@
       "revId": "f8bfce043e84ec2d36e5a431aeb69c3a005a0cb4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2cf91466_7e2b8c7b",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2018-10-04T07:38:59Z",
+      "side": 1,
+      "message": "these are implicitly set to zero\n\nfrom https://en.cppreference.com/w/c/language/struct_initialization \n\nAll members that are not initialized explicitly are initialized implicitly the same way as objects that have static storage duration.",
+      "parentUuid": "46f38876_22749a29",
+      "range": {
+        "startLine": 201,
+        "startChar": 51,
+        "endLine": 201,
+        "endChar": 67
+      },
+      "revId": "f8bfce043e84ec2d36e5a431aeb69c3a005a0cb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
