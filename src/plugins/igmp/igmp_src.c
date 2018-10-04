@@ -58,6 +58,8 @@ igmp_src_exp (u32 obj, void *dat)
 
       igmp_event (IGMP_FILTER_MODE_EXCLUDE,
 		  config->sw_if_index, src->key, group->key);
+
+      igmp_proxy_device_block_src (config, group, src);
     }
 
   igmp_group_src_remove (group, src);

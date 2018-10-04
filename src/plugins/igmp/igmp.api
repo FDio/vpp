@@ -99,6 +99,48 @@ autoreply define igmp_enable_disable
 };
 
 /**
+ * @brief
+ *  Add/del proxy device on specified VRF.
+ *  Interface must be IGMP enabled in HOST mode.
+ *
+ *   @param client_index - opaque cookie to identify the sender
+ *   @param context - sender context, to match reply w/ request
+ *   @param add - add (1) del (0)
+ *   @param vrf_id - VRF id
+ *   @param sw_if_index - upstream interface sw index
+ */
+autoreply define igmp_proxy_device_add_del
+{
+  u32 client_index;
+  u32 context;
+
+  u8 add;
+  u32 vrf_id;
+  u32 sw_if_index;
+};
+
+/**
+ * @brief
+ *  Add/del downstream interface to/from proxy device.
+ *  Interface must be IGMP enabled in ROUTER mode.
+ *
+ *   @param client_index - opaque cookie to identify the sender
+ *   @param context - sender context, to match reply w/ request
+ *   @param add - add (1) del (0)
+ *   @param vrf_id - VRF id
+ *   @param sw_if_index - downstream interface sw index
+ */
+autoreply define igmp_proxy_device_add_del_interface
+{
+  u32 client_index;
+  u32 context;
+
+  u8 add;
+  u32 vrf_id;
+  u32 sw_if_index;
+};
+
+/**
  * @brief dump (S,G)s from interface
  * @param client_index - opaque cookie to identify the sender
  * @param context - sender context, to match reply w/ request

@@ -28,6 +28,7 @@
 #include <igmp/igmp_timer.h>
 #include <igmp/igmp_group.h>
 #include <igmp/igmp_config.h>
+#include <igmp/igmp_proxy.h>
 
 /**
  * RFC 3376 Section 8.1
@@ -101,6 +102,16 @@ typedef struct igmp_main_t_
    * pool of sources
    */
   igmp_src_t *srcs;
+
+  /**
+   * per-vrf DB of proxy devices
+   */
+  u32 *igmp_proxy_device_by_vrf_id;
+
+  /**
+   * pool of proxy devices
+   */
+  igmp_proxy_device_t *proxy_devices;
 } igmp_main_t;
 
 extern igmp_main_t igmp_main;

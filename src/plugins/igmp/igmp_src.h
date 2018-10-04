@@ -65,6 +65,12 @@ typedef struct igmp_src_t_
    * Timers
    */
   u32 timers[IGMP_SRC_N_TIMERS];
+
+  /**
+   * Tells us which configurations
+   * have this source.
+   */
+  u8 *referance_by_config_index;
 } igmp_src_t;
 
 extern void igmp_src_free (igmp_src_t * src);

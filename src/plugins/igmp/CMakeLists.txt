@@ -26,6 +26,7 @@ add_vpp_plugin(igmp
   igmp_pkt.c
   igmp_ssm_range.c
   igmp_format.c
+  igmp_proxy.c
 
   API_FILES
   igmp.api
