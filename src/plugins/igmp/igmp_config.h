@@ -53,7 +53,7 @@ typedef struct igmp_config_t_
   adj_index_t adj_index;
 
   /**
-   * @param moe - host or router
+   * @param mode - host or router
    */
   igmp_mode_t mode;
 
@@ -71,6 +71,11 @@ typedef struct igmp_config_t_
    * A vector of scheduled query-response timers
    */
   igmp_timer_id_t timers[IGMP_CONFIG_N_TIMERS];
+
+  /**
+   * ID of a proxy device this configuration is on
+   */
+  u32 proxy_device_id;
 } igmp_config_t;
 
 #define FOR_EACH_GROUP(_group, _config, _body)                          \
