@@ -1298,6 +1298,8 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp,
 		   sizeof (pfx.fp_src_addr.ip4));
       memset (&nh.ip6, 0, sizeof (nh.ip6));
       clib_memcpy (&nh.ip4, mp->nh_address, sizeof (nh.ip4));
+      if (!ip46_address_is_zero (&pfx.fp_src_addr))
+	pfx.fp_len = 64;
     }
   else
     {
@@ -1306,6 +1308,8 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp,
       clib_memcpy (&pfx.fp_src_addr.ip6, mp->src_address,
 		   sizeof (pfx.fp_src_addr.ip6));
       clib_memcpy (&nh.ip6, mp->nh_address, sizeof (nh.ip6));
+      if (!ip46_address_is_zero (&pfx.fp_src_addr))
+	pfx.fp_len = 256;
     }
 
   mfib_entry_index = mroute_add_del_handler (mp->is_add,
