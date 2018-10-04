@@ -443,12 +443,32 @@ define ip_add_del_route_reply
 };
 
 /** \brief Add / del route request
+
+    Adds a route, consisting both of the MFIB entry to match packets
+    (which may already exist) and a path to send those packets down.
+    Routes can be entered repeatedly to add multiple paths.  Deletions are
+    per-path.
+
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - software index of the new vlan's parent interface
-    @param vrf_id - fib table /vrf associated with the route
-    @param next_hop_afi - Use dpo_proto_t
-    FIXME
+    @param table_id - fib table /vrf associated with the route
+    @param is_add - true if adding a route; false if deleting one
+    @param is_ipv6 - true iff all the addresses are v6
+    @param entry_flags - see fib_entry_flag_t
+    @param itf_flags - see mfib_entry_flags_t
+    @param next_hop_afi - see dpo_proto_t; the type of destination description
+    @param src_address - the source of the packet
+    @param grp_address - the group the packet is destined to
+    @param nh_address - the nexthop to forward the packet to
+    @param next_hop_sw_if_index - interface to emit packet on
+
+    BIER AFIs use the BIER imposition ID.  v4 and v6 AFIs use either the
+    interface or the nexthop address.
+
+    Note that if the route is source-specific (S is supplied, not all 0s),
+    the prefix match is treated as exact (prefixlen /32 or /128).
+
+    FIXME not complete yet
 */
 define ip_mroute_add_del
 {
