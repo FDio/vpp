@@ -506,6 +506,11 @@ M:	Hongjun Ni <hongjun.ni@intel.com>
 M:	Vengada <venggovi@cisco.com>
 F:	src/plugins/nsh/
 
+Plugin - TCP MSS Clamping
+I:	mss_clamp
+M:	Miklos Tirpak <miklos.tirpak@emnify.com>
+F:	src/plugins/mss_clamp/
+
 Plugin - Time-based MAC filter
 I:	mactime
 Y:	src/plugins/mactime/FEATURE.yaml
