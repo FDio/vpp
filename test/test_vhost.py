@@ -12,6 +12,13 @@ class TesVhostInterface(VppTestCase):
 
     """
 
+    def tearDown(self):
+        super(TesVhostInterface, self).tearDown()
+        if not self.vpp_dead:
+            if_dump = self.vapi.sw_interface_vhost_user_dump()
+            for ifc in if_dump:
+                self.vapi.delete_vhost_user_if(ifc.sw_if_index)
+
     def test_vhost(self):
         """ Vhost User add/delete interface test """
         self.logger.info("Vhost User add interfaces")
@@ -69,6 +76,41 @@ class TesVhostInterface(VppTestCase):
         # verify VirtualEthernet0/0/0 is not in the dump
         if_dump = self.vapi.sw_interface_vhost_user_dump()
         self.assertFalse(vhost_if1.is_interface_config_in_dump(if_dump))
+
+    def test_vhost_interface_state(self):
+        """ Vhost User interface states and events test """
+
+        self.vapi.want_interface_events()
+
+        # clear outstanding events
+        # (like delete interface events from other tests)
+        self.vapi.collect_events()
+
+        vhost_if = VppVhostInterface(self, sock_filename='/tmp/sock1')
+
+        # create vhost interface
+        vhost_if.add_vpp_config()
+        self.sleep(0.1)
+        events = self.vapi.collect_events()
+        # creating interface doesn't currently create events
+        self.assert_equal(len(events), 0, "number of events")
+
+        vhost_if.admin_up()
+        vhost_if.assert_interface_state(1, 0, expect_event=True)
+
+        vhost_if.admin_down()
+        vhost_if.assert_interface_state(0, 0, expect_event=True)
+
+        # delete vhost interface
+        vhost_if.remove_vpp_config()
+        event = self.vapi.wait_for_event(timeout=1)
+        self.assert_equal(event.sw_if_index, vhost_if.sw_if_index,
+                          "sw_if_index")
+        self.assert_equal(event.deleted, 1, "deleted flag")
+
+        # verify there are no more events
+        events = self.vapi.collect_events()
+        self.assert_equal(len(events), 0, "number of events")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

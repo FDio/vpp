@@ -426,10 +426,31 @@ class VppInterface(object):
         dump = self.test.vapi.sw_interface_dump()
         return self.is_interface_config_in_dump(dump)
 
-    def is_interface_config_in_dump(self, dump):
+    def get_interface_config_from_dump(self, dump):
         for i in dump:
             if i.interface_name.rstrip(' \t\r\n\0') == self.name and \
                i.sw_if_index == self.sw_if_index:
-                return True
+                return i
         else:
-            return False
+            return None
+
+    def is_interface_config_in_dump(self, dump):
+        return self.get_interface_config_from_dump(dump) is not None
+
+    def assert_interface_state(self, admin_up_down, link_up_down,
+                               expect_event=False):
+        if expect_event:
+            event = self.test.vapi.wait_for_event(timeout=1,
+                                                  name='sw_interface_event')
+            self.test.assert_equal(event.sw_if_index, self.sw_if_index,
+                                   "sw_if_index")
+            self.test.assert_equal(event.admin_up_down, admin_up_down,
+                                   "admin state")
+            self.test.assert_equal(event.link_up_down, link_up_down,
+                                   "link state")
+        dump = self.test.vapi.sw_interface_dump()
+        if_state = self.get_interface_config_from_dump(dump)
+        self.test.assert_equal(if_state.admin_up_down, admin_up_down,
+                               "admin state")
+        self.test.assert_equal(if_state.link_up_down, link_up_down,
+                               "link state")

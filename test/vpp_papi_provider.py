@@ -514,6 +514,11 @@ class VppPapiProvider(object):
                          'enable': enable,
                          'install_default_routes': install_default_routes})
 
+    def want_interface_events(self, enable_disable=1):
+        return self.api(self.papi.want_interface_events,
+                        {'enable_disable': enable_disable,
+                         'pid': os.getpid(), })
+
     def want_macs_learn_events(self, enable_disable=1, scan_delay=0,
                                max_macs_in_event=0, learn_limit=0):
         return self.api(self.papi.want_l2_macs_events,
