@@ -10,4 +10,4 @@ filter to apply (if desired). VLIB needs to load plug-ins very early.
 Once loaded, the plug-in DLL mechanism uses dlsym to find and verify a
 vlib\_plugin\_registration data structure in the newly-loaded plug-in.
 
-For more on plugins please refer to :ref:`sample_plugin`.
+For more on plugins please refer to :ref:`add_plugin`.

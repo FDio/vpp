@@ -34,5 +34,5 @@ The Developers section covers the following areas:
    binary_api_support
    buildsystem/index.rst
    eventviewer
-   sample_plugin
+   add_plugin
    fib20/index.rst
