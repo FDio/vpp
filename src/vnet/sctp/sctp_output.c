@@ -1378,8 +1378,6 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
   u16 bytes_to_add = sizeof (sctp_payload_data_chunk_t);
   u16 chunk_length = data_len + bytes_to_add - sizeof (sctp_header_t);
 
-  bytes_to_add += vnet_sctp_calculate_padding (bytes_to_add + data_len);
-
   sctp_payload_data_chunk_t *data_chunk =
     vlib_buffer_push_uninit (b, bytes_to_add);
 
