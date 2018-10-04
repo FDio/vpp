@@ -3637,6 +3637,18 @@ class VppPapiProvider(object):
                          'mode': host,
                          'sw_if_index': sw_if_index})
 
+    def igmp_proxy_device_add_del(self, vrf_id, sw_if_index, add):
+        """ Add/del IGMP proxy device """
+        return self.api(self.papi.igmp_proxy_device_add_del,
+                        {'vrf_id': vrf_id, 'sw_if_index': sw_if_index,
+                         'add': add})
+
+    def igmp_proxy_device_add_del_interface(self, vrf_id, sw_if_index, add):
+        """ Add/del interface to/from IGMP proxy device """
+        return self.api(self.papi.igmp_proxy_device_add_del_interface,
+                        {'vrf_id': vrf_id, 'sw_if_index': sw_if_index,
+                         'add': add})
+
     def igmp_listen(self, filter, sw_if_index, saddrs, gaddr):
         """ Listen for new (S,G) on specified interface
 
