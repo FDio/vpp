@@ -77,7 +77,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
     im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
   u32 pkts_encapsulated = 0;
   u32 thread_index = vlib_get_thread_index ();
-  u32 sw_if_index0 = 0, sw_if_index1 = 0;
+  u32 sw_if_index0 = ~0, sw_if_index1 = ~0;
   u32 next0 = 0, next1 = 0;
   vxlan_gbp_tunnel_t *t0 = NULL, *t1 = NULL;
   index_t dpoi_idx0 = INDEX_INVALID, dpoi_idx1 = INDEX_INVALID;
