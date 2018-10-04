@@ -1,0 +1,101 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+import "vnet/interface_types.api";
+
+enum mss_clamp_dir : u8 {
+    MSS_CLAMP_DIR_NONE = 0,
+    MSS_CLAMP_DIR_RX = 1,
+    MSS_CLAMP_DIR_TX = 2,
+    MSS_CLAMP_DIR_BOTH = 3,
+};
+
+/** \brief Enable/Disable TCP MSS Clamping feature on an interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index on which clamping will be applied
+    @param ipv4_mss - Maximum Segment Size for IPv4/TCP
+    @param ipv6_mss - Maximum Segment Size for IPv6/TCP
+    @param ipv4_direction - Direction clamping is enabled on (IPv4/TCP)
+    @param ipv6_direction - Direction clamping is enabled on (IPv6/TCP)
+ */
+autoreply define mss_clamp_enable_disable {
+    u32 client_index;
+    u32 context;
+    vl_api_interface_index_t sw_if_index;
+    u16 ipv4_mss;
+    u16 ipv6_mss;
+    vl_api_mss_clamp_dir_t ipv4_direction;
+    vl_api_mss_clamp_dir_t ipv6_direction;
+};
+
+
+/** \brief Get the list of configured mss values
+    @param client_index - opaque cookie to identify the sender
+*/
+service {
+  rpc mss_clamp_get returns mss_clamp_get_reply
+    stream mss_clamp_details;
+};
+
+/** \brief Get the TCP MSS Clamping feature settings 
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param cursor - cursor to continue when there is more to read
+    @param sw_if_index - interface index to filter the result,
+			 ~0 means no filter
+ */
+define mss_clamp_get {
+    u32 client_index;
+    u32 context;
+    u32 cursor;
+    vl_api_interface_index_t sw_if_index;
+};
+
+/** \brief Reply for get TCP MSS Clamping feature settings request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param cursor - cursor to continue when there is more to read
+ */
+define mss_clamp_get_reply {
+    u32 context;
+    i32 retval;
+    u32 cursor;
+};
+
+/** \brief Configured MSS values on an interface
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface index on which clamping is applied
+    @param ipv4_mss - Maximum Segment Size for IPv4/TCP
+    @param ipv6_mss - Maximum Segment Size for IPv6/TCP
+    @param ipv4_direction - Direction clamping is enabled on (IPv4/TCP)
+    @param ipv6_direction - Direction clamping is enabled on (IPv6/TCP)
+ */
+define mss_clamp_details {
+    u32 context;
+    vl_api_interface_index_t sw_if_index;
+    u16 ipv4_mss;
+    u16 ipv6_mss;
+    vl_api_mss_clamp_dir_t ipv4_direction;
+    vl_api_mss_clamp_dir_t ipv6_direction;
+};
+
+define mss_clamp_dump {
+  option deprecated="v21.01";
+  u32 client_index;
+  u32 context;
+};
