@@ -50,15 +50,17 @@
 
 #define IGMP_MSG_ID(_id) (_id + igmp_main.msg_id_base)
 
-#define foreach_igmp_plugin_api_msg                      \
-_(IGMP_LISTEN, igmp_listen)                              \
-_(IGMP_ENABLE_DISABLE, igmp_enable_disable)              \
-_(IGMP_DUMP, igmp_dump)                                  \
-_(IGMP_CLEAR_INTERFACE, igmp_clear_interface)            \
-_(IGMP_CLEAR_INTERFACE, igmp_clear_interface)            \
-_(IGMP_GROUP_PREFIX_SET, igmp_group_prefix_set)          \
-_(IGMP_GROUP_PREFIX_DUMP, igmp_group_prefix_dump)        \
-_(WANT_IGMP_EVENTS, want_igmp_events)                    \
+#define foreach_igmp_plugin_api_msg                                            \
+_(IGMP_LISTEN, igmp_listen)                                                    \
+_(IGMP_ENABLE_DISABLE, igmp_enable_disable)                                    \
+_(IGMP_PROXY_DEVICE_ADD_DEL, igmp_proxy_device_add_del)                        \
+_(IGMP_PROXY_DEVICE_ADD_DEL_INTERFACE, igmp_proxy_device_add_del_interface)    \
+_(IGMP_DUMP, igmp_dump)                                                        \
+_(IGMP_CLEAR_INTERFACE, igmp_clear_interface)                                  \
+_(IGMP_CLEAR_INTERFACE, igmp_clear_interface)                                  \
+_(IGMP_GROUP_PREFIX_SET, igmp_group_prefix_set)                                \
+_(IGMP_GROUP_PREFIX_DUMP, igmp_group_prefix_dump)                              \
+_(WANT_IGMP_EVENTS, want_igmp_events)                                          \
 
 static void
 vl_api_igmp_listen_t_handler (vl_api_igmp_listen_t * mp)
@@ -118,6 +120,43 @@ vl_api_igmp_enable_disable_t_handler (vl_api_igmp_enable_disable_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (IGMP_MSG_ID (VL_API_IGMP_ENABLE_DISABLE_REPLY));
+}
+
+static void
+vl_api_igmp_proxy_device_add_del_t_handler (vl_api_igmp_proxy_device_add_del_t
+					    * mp)
+{
+  vl_api_igmp_proxy_device_add_del_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv =
+    igmp_proxy_device_add_del (ntohl (mp->vrf_id), ntohl (mp->sw_if_index),
+			       mp->add);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (IGMP_MSG_ID (VL_API_IGMP_PROXY_DEVICE_ADD_DEL_REPLY));
+}
+
+static void
+  vl_api_igmp_proxy_device_add_del_interface_t_handler
+  (vl_api_igmp_proxy_device_add_del_interface_t * mp)
+{
+  vl_api_igmp_proxy_device_add_del_interface_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv =
+    igmp_proxy_device_add_del_interface (ntohl (mp->vrf_id),
+					 ntohl (mp->sw_if_index), mp->add);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (IGMP_MSG_ID
+	       (VL_API_IGMP_PROXY_DEVICE_ADD_DEL_INTERFACE_REPLY));
 }
 
 static void
