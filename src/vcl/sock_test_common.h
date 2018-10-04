@@ -253,7 +253,7 @@ sock_test_stats_dump (char * header, sock_test_stats_t * stats,
   if ((stats->stop.tv_nsec - stats->start.tv_nsec) < 0)
     {
       diff.tv_sec = stats->stop.tv_sec - stats->start.tv_sec - 1;
-      diff.tv_nsec = stats->stop.tv_nsec - stats->start.tv_nsec + 1000000000;
+      diff.tv_nsec = stats->stop.tv_nsec - stats->start.tv_nsec + 1e9;
     }
   else
     {
@@ -263,7 +263,7 @@ sock_test_stats_dump (char * header, sock_test_stats_t * stats,
   duration = (double) diff.tv_sec + (1e-9 * diff.tv_nsec);
 
   total_bytes = stats->tx_bytes + stats->rx_bytes;
-  rate = (double) total_bytes * 8 / duration / ONE_GIG;
+  rate = (double) total_bytes * 8 / duration / 1e9;
   printf ("\n%s: Streamed %lu bytes\n"
           "  in %lf seconds (%lf Gbps %s-duplex)!\n",
               header, total_bytes, duration, rate,
