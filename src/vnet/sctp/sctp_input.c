@@ -777,7 +777,9 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_data_chunk->sctp_hdr.verification_tag)
     {
-      return SCTP_ERROR_INVALID_TAG;
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
+      sctp_conn->sub_conn[idx].enqueue_state = SCTP_ERROR_INVALID_TAG;
+      return sctp_conn->sub_conn[idx].enqueue_state;
     }
 
   vnet_buffer (b)->sctp.sid = sctp_data_chunk->stream_id;
@@ -786,8 +788,27 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
   u32 tsn = clib_net_to_host_u32 (sctp_data_chunk->tsn);
 
   vlib_buffer_advance (b, vnet_buffer (b)->sctp.data_offset);
+  u32 chunk_len = vnet_sctp_get_chunk_length (&sctp_data_chunk->chunk_hdr) -
+    (sizeof (sctp_payload_data_chunk_t) - sizeof (sctp_header_t));
+
+  ASSERT (vnet_buffer (b)->sctp.data_len);
+  ASSERT (chunk_len);
+
+  /* Padding was added: see RFC 4096 section 3.3.1 */
+  if (vnet_buffer (b)->sctp.data_len > chunk_len)
+    {
+      /* Let's change the data_len to the right amount calculated here now.
+       * We cannot do that in the generic sctp46_input_dispatcher node since
+       * that is common to all CHUNKS handling.
+       */
+      vnet_buffer (b)->sctp.data_len = chunk_len;
+      /* We need to change b->current_length so that downstream calls to
+       * session_enqueue_stream_connection (called by sctp_session_enqueue_data)
+       * push the correct amount of data to be enqueued.
+       */
+      b->current_length = chunk_len;
+    }
   n_data_bytes = vnet_buffer (b)->sctp.data_len;
-  ASSERT (n_data_bytes);
 
   sctp_is_connection_gapping (sctp_conn, tsn, &is_gapping);
 
@@ -859,6 +880,7 @@ sctp_handle_cookie_echo (sctp_header_t * sctp_hdr,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hdr->verification_tag)
     {
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
       return SCTP_ERROR_INVALID_TAG;
     }
 
@@ -901,6 +923,7 @@ sctp_handle_cookie_ack (sctp_header_t * sctp_hdr,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hdr->verification_tag)
     {
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
       return SCTP_ERROR_INVALID_TAG;
     }
 
@@ -1181,6 +1204,7 @@ sctp_handle_shutdown (sctp_header_t * sctp_hdr,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hdr->verification_tag)
     {
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
       return SCTP_ERROR_INVALID_TAG;
     }
 
@@ -1221,6 +1245,7 @@ sctp_handle_shutdown_ack (sctp_header_t * sctp_hdr,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hdr->verification_tag)
     {
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
       return SCTP_ERROR_INVALID_TAG;
     }
 
@@ -1257,6 +1282,7 @@ sctp_handle_shutdown_complete (sctp_header_t * sctp_hdr,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hdr->verification_tag)
     {
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
       return SCTP_ERROR_INVALID_TAG;
     }
 
@@ -1517,11 +1543,7 @@ sctp_handle_sack (sctp_selective_ack_chunk_t * sack_chunk,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sack_chunk->sctp_hdr.verification_tag)
     {
-      SCTP_ADV_DBG
-	("sctp_conn->local_tag != sack_chunk->sctp_hdr.verification_tag");
-
       *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
-
       return SCTP_ERROR_INVALID_TAG;
     }
 
@@ -1560,6 +1582,7 @@ sctp_handle_heartbeat (sctp_hb_req_chunk_t * sctp_hb_chunk,
   /* Check that the LOCALLY generated tag is being used by the REMOTE peer as the verification tag */
   if (sctp_conn->local_tag != sctp_hb_chunk->sctp_hdr.verification_tag)
     {
+      *next0 = sctp_next_drop (sctp_conn->sub_conn[idx].c_is_ip4);
       return SCTP_ERROR_INVALID_TAG;
     }
 

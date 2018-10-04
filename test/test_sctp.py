@@ -72,6 +72,7 @@ class TestSCTP(VppTestCase):
                               " appns 1" +
                               " fifo-size 4" +
                               " no-output test-bytes syn-timeout 3" +
+                              " test-timeout 30" +
                               " uri " + uri)
         if error:
             self.logger.critical(error)
