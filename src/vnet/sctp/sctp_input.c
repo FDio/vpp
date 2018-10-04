@@ -787,7 +787,23 @@ sctp_handle_data (sctp_payload_data_chunk_t * sctp_data_chunk,
 
   vlib_buffer_advance (b, vnet_buffer (b)->sctp.data_offset);
   n_data_bytes = vnet_buffer (b)->sctp.data_len;
+  n_data_bytes = vnet_sctp_get_chunk_length(&sctp_data_chunk->chunk_hdr) -
+		  (sizeof(sctp_payload_data_chunk_t)-sizeof(sctp_header_t)); // This adds up to 16 bytes
+
   ASSERT (n_data_bytes);
+
+  if (vnet_buffer (b)->sctp.data_len != n_data_bytes) /* Padding was added: see RFC 4096 section 3.3.1 */
+  {
+	  /* Let's change the data_len to the right amount calculated here now.
+	   * We cannot do that in the generic sctp46_input_dispatcher node since
+	   * that is common to all CHUNKS handling.
+	   */
+	vnet_buffer (b)->sctp.data_len = n_data_bytes;
+	/* We need to change b->current_length so that downstream calls to session_enqueue_stream_connection
+	 * see the correct amount of data to be enqueued.
+	 */
+	b->current_length = n_data_bytes;
+  }
 
   sctp_is_connection_gapping (sctp_conn, tsn, &is_gapping);
 
