@@ -624,7 +624,6 @@ sctp_session_send_mss (transport_connection_t * trans_conn)
   update_smallest_pmtu_idx (sctp_conn);
 
   u8 idx = sctp_data_subconn_select (sctp_conn);
-
   return sctp_conn->sub_conn[idx].cwnd;
 }
 
