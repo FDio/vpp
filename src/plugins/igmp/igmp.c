@@ -381,6 +381,7 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
 	hash_create_mem (0, sizeof (igmp_key_t), sizeof (uword));
       config->robustness_var = IGMP_DEFAULT_ROBUSTNESS_VARIABLE;
       config->mode = mode;
+      config->proxy_device_id = ~0;
 
       for (ii = 0; ii < IGMP_CONFIG_N_TIMERS; ii++)
 	config->timers[ii] = IGMP_TIMER_ID_INVALID;
@@ -445,6 +446,18 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
       mfib_table_entry_path_remove (mfib_index,
 				    &mpfx_report,
 				    MFIB_SOURCE_IGMP, &via_itf_path);
+
+      /*
+       * remove interface from proxy device
+       * if this device is upstream, delete proxy device
+       */
+      if (config->mode == IGMP_MODE_ROUTER)
+	igmp_proxy_device_add_del_interface (config->proxy_device_id,
+					     config->sw_if_index, 0);
+      else if (config->mode == IGMP_MODE_HOST)
+	igmp_proxy_device_add_del (config->proxy_device_id,
+				   config->sw_if_index, 0);
+
       igmp_clear_config (config);
       im->igmp_config_by_sw_if_index[config->sw_if_index] = ~0;
       hash_free (config->igmp_group_by_key);

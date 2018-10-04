@@ -651,6 +651,93 @@ class TestIgmp(VppTestCase):
                                       0,
                                       IGMP_MODE.ROUTER)
 
+    def _create_igmpv3_pck(self, itf, rtype, maddr, srcaddrs):
+        p = (Ether(dst=itf.local_mac, src=itf.remote_mac) /
+             IP(src=itf.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
+                options=[IPOption(copy_flag=1, optclass="control",
+                                  option="router_alert")]) /
+             IGMPv3(type="Version 3 Membership Report") /
+             IGMPv3mr(numgrp=1) /
+             IGMPv3gr(rtype=rtype,
+                      maddr=maddr, srcaddrs=srcaddrs))
+        return p
+
+    def test_igmp_proxy_device(self):
+        """ IGMP proxy device """
+        self.pg2.admin_down()
+        self.pg2.unconfig_ip4()
+        self.pg2.set_table_ip4(0)
+        self.pg2.config_ip4()
+        self.pg2.admin_up()
+
+        self.vapi.cli('test igmp timers query 10 src 3 leave 1')
+
+        # enable IGMP
+        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 1, IGMP_MODE.HOST)
+        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 1,
+                                      IGMP_MODE.ROUTER)
+        self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 1,
+                                      IGMP_MODE.ROUTER)
+
+        # create IGMP proxy device
+        self.vapi.igmp_proxy_device_add_del(0, self.pg0.sw_if_index, 1)
+        self.vapi.igmp_proxy_device_add_del_interface(0,
+                                                      self.pg1.sw_if_index, 1)
+        self.vapi.igmp_proxy_device_add_del_interface(0,
+                                                      self.pg2.sw_if_index, 1)
+
+        # send join on pg1. join should be proxied by pg0
+        p_j = self._create_igmpv3_pck(self.pg1, "Allow New Sources",
+                                      "239.1.1.1", ["10.1.1.1", "10.1.1.2"])
+        self.send(self.pg1, p_j)
+
+        capture = self.pg0.get_capture(1, timeout=1)
+        self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
+                           ["10.1.1.1", "10.1.1.2"]), "Allow New Sources")])
+        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+
+        # send join on pg2. join should be proxied by pg0.
+        # the group should contain only 10.1.1.3 as
+        # 10.1.1.1 was already reported
+        p_j = self._create_igmpv3_pck(self.pg2, "Allow New Sources",
+                                      "239.1.1.1", ["10.1.1.1", "10.1.1.3"])
+        self.send(self.pg2, p_j)
+
+        capture = self.pg0.get_capture(1, timeout=1)
+        self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
+                           ["10.1.1.3"]), "Allow New Sources")])
+        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+
+        # send leave on pg2. leave for 10.1.1.3 should be proxyed
+        # as pg2 was the only interface interested in 10.1.1.3
+        p_l = self._create_igmpv3_pck(self.pg2, "Block Old Sources",
+                                      "239.1.1.1", ["10.1.1.3"])
+        self.send(self.pg2, p_l)
+
+        capture = self.pg0.get_capture(1, timeout=2)
+        self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
+                           ["10.1.1.3"]), "Block Old Sources")])
+        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+
+        # disable igmp on pg1 (also removes interface from proxy device)
+        # proxy leave for 10.1.1.2. pg2 is still interested in 10.1.1.1
+        self.pg_enable_capture(self.pg_interfaces)
+        self.vapi.igmp_enable_disable(self.pg1.sw_if_index, 0,
+                                      IGMP_MODE.ROUTER)
+
+        capture = self.pg0.get_capture(1, timeout=1)
+        self.verify_report(capture[0], [IgmpRecord(IgmpSG("239.1.1.1",
+                           ["10.1.1.2"]), "Block Old Sources")])
+        self.assertTrue(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+
+        # disable IGMP on pg0 and pg1.
+        #   disabling IGMP on pg0 (proxy device upstream interface)
+        #   removes this proxy device
+        self.vapi.igmp_enable_disable(self.pg0.sw_if_index, 0, IGMP_MODE.HOST)
+        self.vapi.igmp_enable_disable(self.pg2.sw_if_index, 0,
+                                      IGMP_MODE.ROUTER)
+        self.assertFalse(find_mroute(self, "239.1.1.1", "0.0.0.0", 32))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

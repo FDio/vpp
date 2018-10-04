@@ -209,6 +209,16 @@ format_igmp_key (u8 * s, va_list * args)
   return (s);
 }
 
+u8 *
+format_igmp_proxy_device_id (u8 * s, va_list * args)
+{
+  u32 id = va_arg (*args, u32);
+
+  s = (id == ~0) ? s : format (s, "proxy device: %u", id);
+
+  return (s);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
