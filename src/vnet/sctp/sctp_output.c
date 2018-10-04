@@ -1367,6 +1367,7 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 {
   u16 data_len =
     b->current_length + b->total_length_not_including_first_buffer;
+
   ASSERT (!b->total_length_not_including_first_buffer
 	  || (b->flags & VLIB_BUFFER_NEXT_PRESENT));
 
@@ -1374,6 +1375,13 @@ sctp_push_hdr_i (sctp_connection_t * sctp_conn, vlib_buffer_t * b,
 		       "b->current_data = %p "
 		       "data_len = %u",
 		       b->current_length, b->current_data, data_len);
+
+  u16 data_padding = vnet_sctp_calculate_padding (b->current_length);
+  if (data_padding > 0)
+    {
+      u8 *p_tail = vlib_buffer_put_uninit (b, data_padding);
+      clib_memset_u8 (p_tail, 0, data_padding);
+    }
 
   u16 bytes_to_add = sizeof (sctp_payload_data_chunk_t);
   u16 chunk_length = data_len + bytes_to_add - sizeof (sctp_header_t);
