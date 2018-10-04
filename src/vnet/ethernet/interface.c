@@ -342,6 +342,7 @@ ethernet_delete_interface (vnet_main_t * vnm, u32 hw_if_index)
 	  if (vlan_table->vlans[idx].qinqs)
 	    {
 	      pool_put_index (em->qinq_pool, vlan_table->vlans[idx].qinqs);
+	      vlan_table->vlans[idx].qinqs = 0;
 	    }
 	}
       pool_put_index (em->vlan_pool, main_intf->dot1q_vlans);
@@ -355,6 +356,7 @@ ethernet_delete_interface (vnet_main_t * vnm, u32 hw_if_index)
 	  if (vlan_table->vlans[idx].qinqs)
 	    {
 	      pool_put_index (em->qinq_pool, vlan_table->vlans[idx].qinqs);
+	      vlan_table->vlans[idx].qinqs = 0;
 	    }
 	}
       pool_put_index (em->vlan_pool, main_intf->dot1ad_vlans);
