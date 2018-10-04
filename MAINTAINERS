@@ -504,6 +504,11 @@ M:	Hongjun Ni <hongjun.ni@intel.com>
 M:	Vengada <venggovi@cisco.com>
 F:	src/plugins/nsh/
 
+Plugin - TCP MSS Clamping
+I:	tmc
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/plugins/tmc/
+
 Plugin - Time-based MAC filter
 I:	mactime
 Y:	src/plugins/mactime/FEATURE.yaml
