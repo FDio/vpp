@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd6c0ea0_b5c7b56b",
+        "filename": "test/run_tests.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-10-05T09:26:48Z",
+      "side": 1,
+      "message": "can we please add a message (to stdout)\n\n\"Vpp core detected while running `\u003ctestdoc\u003e` (\u003cTestCase\u003e.\u003ctestmethod\u003e)\"",
+      "revId": "d3f2f5795543511f6910f009765c2e41ea752aae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bcf5fa5c_c65b3e2a",
+        "filename": "test/util.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-10-05T09:26:48Z",
+      "side": 1,
+      "message": "can we change this to is_core_present() please",
+      "revId": "d3f2f5795543511f6910f009765c2e41ea752aae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
