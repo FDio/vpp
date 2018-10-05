@@ -1626,10 +1626,8 @@ application_local_session_connect (app_worker_t * client_wrk,
       segment_manager_segment_reader_unlock (sm);
       goto failed;
     }
-  ls->server_rx_fifo->master_session_index = ls->session_index;
-  ls->server_tx_fifo->master_session_index = ls->session_index;
-  ls->server_rx_fifo->master_thread_index = ~0;
-  ls->server_tx_fifo->master_thread_index = ~0;
+  ls->server_rx_fifo->ct_session_index = ls->session_index;
+  ls->server_tx_fifo->ct_session_index = ls->session_index;
   ls->svm_segment_index = seg_index;
   ls->listener_index = ll->session_index;
   ls->client_wrk_index = client_wrk->wrk_index;
@@ -1774,6 +1772,7 @@ application_local_session_disconnect (u32 app_index, local_session_t * ls)
   if (!app)
     return 0;
 
+  clib_warning ("app %u disconnecting %u", app_index, ls->session_index);
   client_wrk = app_worker_get_if_valid (ls->client_wrk_index);
   server_wrk = app_worker_get (ls->app_wrk_index);
 
