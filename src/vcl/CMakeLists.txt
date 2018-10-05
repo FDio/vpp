@@ -44,7 +44,6 @@ add_vpp_headers(vcl
   vcl_test.h
   vppcom.h
   ldp_socket_wrapper.h
-  sock_test_common.h
 )
 
 ##############################################################################
