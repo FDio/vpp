@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eefce179_7422d988",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_shmem.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T11:04:37Z",
+      "side": 1,
+      "message": "major \u003e 1 or major \u003d\u003d 1 and minor \u003e\u003d 8",
+      "range": {
+        "startLine": 65,
+        "startChar": 11,
+        "endLine": 65,
+        "endChar": 36
+      },
+      "revId": "94495f2a6a68ac2202b7715ce09620f1ba6fe673",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
