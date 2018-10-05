@@ -523,6 +523,11 @@ typedef struct fib_route_path_t_ {
              * The outgoing MPLS label Stack. NULL implies no label.
              */
             fib_mpls_label_t *frp_label_stack;
+
+            /**
+	     * Exclusive DPO
+	     */
+	    dpo_id_t dpo;
         };
         /**
          * A path that resolves via a BIER Table.
