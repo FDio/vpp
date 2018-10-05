@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fc5406dc_7a8111d2",
+        "filename": "src/plugins/nat/nat_reass.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-10-05T11:43:22Z",
+      "side": 1,
+      "message": "D\u0027oh! This can\u0027t be right...",
+      "revId": "519be80861d92050e609ef9f5a09b1f5478a285b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
