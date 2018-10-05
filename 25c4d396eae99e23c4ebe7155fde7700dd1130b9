@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "56714d94_5ae0925d",
+        "filename": "docs/usecases/contiv/BUG_REPORTS.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T14:55:31Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 18,
+        "startChar": 73,
+        "endLine": 18,
+        "endChar": 74
+      },
+      "revId": "25c4d396eae99e23c4ebe7155fde7700dd1130b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "317dcec9_7b873815",
+        "filename": "docs/usecases/contiv/CORE_FILES.md",
+        "patchSetId": 3
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T14:55:31Z",
+      "side": 1,
+      "message": "Please wrap long lines.",
+      "range": {
+        "startLine": 2,
+        "startChar": 83,
+        "endLine": 2,
+        "endChar": 89
+      },
+      "revId": "25c4d396eae99e23c4ebe7155fde7700dd1130b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
