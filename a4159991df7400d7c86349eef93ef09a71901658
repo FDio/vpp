@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d5bfae7b_487105f0",
+        "filename": "src/vnet/session/session_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 838,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-10-05T11:40:56Z",
+      "side": 1,
+      "message": "(:-)",
+      "revId": "a4159991df7400d7c86349eef93ef09a71901658",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
