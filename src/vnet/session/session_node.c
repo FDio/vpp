@@ -835,7 +835,7 @@ skip_dequeue:
 	  s = session_event_get_session (e, thread_index);
 	  if (PREDICT_FALSE (!s))
 	    {
-	      clib_warning ("It's dead, Jim!");
+	      clib_warning ("session was freed!");
 	      continue;
 	    }
 

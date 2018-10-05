@@ -366,11 +366,11 @@ segment_manager_del_sessions (segment_manager_t * sm)
      */
     while (fifo)
       {
-	if (fifo->master_thread_index == 255)
+	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
 	  {
 	    svm_fifo_t *next = fifo->next;
 	    application_local_session_disconnect_w_index (sm->app_wrk_index,
-	                                                  fifo->master_session_index);
+	                                                  fifo->ct_session_index);
 	    fifo = next;
 	    continue;
 	  }
