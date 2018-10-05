@@ -308,4 +308,19 @@ sock_test_stats_dump (char * header, sock_test_stats_t * stats,
   printf (SOCK_TEST_SEPARATOR_STRING);
 }
 
+static inline int
+vcl_comp_tspec (struct timespec *a, struct timespec *b)
+{
+  if (a->tv_sec < b->tv_sec)
+    return -1;
+  else if (a->tv_sec > b->tv_sec)
+    return 1;
+  else if (a->tv_nsec < b->tv_nsec)
+    return -1;
+  else if (a->tv_nsec > b->tv_nsec)
+    return 1;
+  else
+    return 0;
+}
+
 #endif /* __sock_test_common_h__ */
