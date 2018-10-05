@@ -51,8 +51,8 @@ typedef struct
   int fd;
   uint8_t *buf;
   uint32_t buf_size;
-  sock_test_cfg_t cfg;
-  sock_test_stats_t stats;
+  vcl_test_cfg_t cfg;
+  vcl_test_stats_t stats;
 #ifdef VCL_TEST
   vppcom_endpt_t endpt;
   uint8_t ip[16];
@@ -144,9 +144,9 @@ conn_pool_expand (size_t expand_size)
 	{
 	  sock_server_conn_t *conn = &conn_pool[i];
 	  memset (conn, 0, sizeof (*conn));
-	  sock_test_cfg_init (&conn->cfg);
-	  sock_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-			       &conn->buf, &conn->buf_size);
+	  vcl_test_cfg_init (&conn->cfg);
+	  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
+			      &conn->buf, &conn->buf_size);
 	  conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 	}
 
@@ -197,17 +197,17 @@ conn_pool_free (sock_server_conn_t * conn)
 }
 
 static inline void
-sync_config_and_reply (sock_server_conn_t * conn, sock_test_cfg_t * rx_cfg)
+sync_config_and_reply (sock_server_conn_t * conn, vcl_test_cfg_t * rx_cfg)
 {
   conn->cfg = *rx_cfg;
-  sock_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
-		       &conn->buf, &conn->buf_size);
+  vcl_test_buf_alloc (&conn->cfg, 1 /* is_rxbuf */ ,
+		      &conn->buf, &conn->buf_size);
   conn->cfg.txbuf_size = conn->cfg.rxbuf_size;
 
   if (conn->cfg.verbose)
     {
       printf ("\nSERVER (fd %d): Replying to cfg message!\n", conn->fd);
-      sock_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
     }
   (void) sock_test_write (conn->fd, (uint8_t *) & conn->cfg,
 			  sizeof (conn->cfg), NULL, conn->cfg.verbose);
@@ -215,11 +215,11 @@ sync_config_and_reply (sock_server_conn_t * conn, sock_test_cfg_t * rx_cfg)
 
 static void
 stream_test_server_start_stop (sock_server_conn_t * conn,
-			       sock_test_cfg_t * rx_cfg)
+			       vcl_test_cfg_t * rx_cfg)
 {
   sock_server_main_t *ssm = &sock_server_main;
   int client_fd = conn->fd;
-  sock_test_t test = rx_cfg->test;
+  vcl_test_t test = rx_cfg->test;
 
   if (rx_cfg->ctrl_handle == conn->fd)
     {
@@ -232,46 +232,46 @@ stream_test_server_start_stop (sock_server_conn_t * conn,
 
 	  if (tc->cfg.ctrl_handle == conn->fd)
 	    {
-	      sock_test_stats_accumulate (&conn->stats, &tc->stats);
+	      vcl_test_stats_accumulate (&conn->stats, &tc->stats);
 
 	      if (conn->cfg.verbose)
 		{
 		  static char buf[64];
 
 		  sprintf (buf, "SERVER (fd %d) RESULTS", tc->fd);
-		  sock_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
-					test == SOCK_TEST_TYPE_BI
-					/* show tx */ ,
-					conn->cfg.verbose);
+		  vcl_test_stats_dump (buf, &tc->stats, 1 /* show_rx */ ,
+				       test == VCL_TEST_TYPE_BI
+				       /* show tx */ ,
+				       conn->cfg.verbose);
 		}
 	    }
 	}
 
-      sock_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */ ,
-			    (test == SOCK_TEST_TYPE_BI) /* show_tx */ ,
-			    conn->cfg.verbose);
-      sock_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
+      vcl_test_stats_dump ("SERVER RESULTS", &conn->stats, 1 /* show_rx */ ,
+			   (test == VCL_TEST_TYPE_BI) /* show_tx */ ,
+			   conn->cfg.verbose);
+      vcl_test_cfg_dump (&conn->cfg, 0 /* is_client */ );
       if (conn->cfg.verbose)
 	{
 	  printf ("  sock server main\n"
-		  SOCK_TEST_SEPARATOR_STRING
+		  VCL_TEST_SEPARATOR_STRING
 		  "       buf:  %p\n"
 		  "  buf size:  %u (0x%08x)\n"
-		  SOCK_TEST_SEPARATOR_STRING,
+		  VCL_TEST_SEPARATOR_STRING,
 		  conn->buf, conn->buf_size, conn->buf_size);
 	}
 
       sync_config_and_reply (conn, rx_cfg);
       printf ("\nSERVER (fd %d): %s-directional Stream Test Complete!\n"
 	      SOCK_TEST_BANNER_STRING "\n", conn->fd,
-	      test == SOCK_TEST_TYPE_BI ? "Bi" : "Uni");
+	      test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
     }
   else
     {
       printf ("\n" SOCK_TEST_BANNER_STRING
 	      "SERVER (fd %d): %s-directional Stream Test!\n"
 	      "  Sending client the test cfg to start streaming data...\n",
-	      client_fd, test == SOCK_TEST_TYPE_BI ? "Bi" : "Uni");
+	      client_fd, test == VCL_TEST_TYPE_BI ? "Bi" : "Uni");
 
       rx_cfg->ctrl_handle = (rx_cfg->ctrl_handle == ~0) ? conn->fd :
 	rx_cfg->ctrl_handle;
@@ -289,9 +289,9 @@ static inline void
 stream_test_server (sock_server_conn_t * conn, int rx_bytes)
 {
   int client_fd = conn->fd;
-  sock_test_t test = conn->cfg.test;
+  vcl_test_t test = conn->cfg.test;
 
-  if (test == SOCK_TEST_TYPE_BI)
+  if (test == VCL_TEST_TYPE_BI)
     (void) sock_test_write (client_fd, conn->buf, rx_bytes, &conn->stats,
 			    conn->cfg.verbose);
 
@@ -461,13 +461,13 @@ main (int argc, char **argv)
   int client_fd, rv, main_rv = 0;
   int tx_bytes, rx_bytes, nbytes;
   sock_server_conn_t *conn;
-  sock_test_cfg_t *rx_cfg;
+  vcl_test_cfg_t *rx_cfg;
   uint32_t xtra = 0;
   uint64_t xtra_bytes = 0;
   struct sockaddr_storage servaddr;
   int errno_val;
   int c, v, i;
-  uint16_t port = SOCK_TEST_SERVER_PORT;
+  uint16_t port = VCL_TEST_SERVER_PORT;
 #if ! SOCK_SERVER_USE_EPOLL
   fd_set _rfdset, *rfdset = &_rfdset;
 #endif
@@ -834,14 +834,14 @@ main (int argc, char **argv)
 					 conn->buf_size, &conn->stats);
 	      if (rx_bytes > 0)
 		{
-		  rx_cfg = (sock_test_cfg_t *) conn->buf;
-		  if (rx_cfg->magic == SOCK_TEST_CFG_CTRL_MAGIC)
+		  rx_cfg = (vcl_test_cfg_t *) conn->buf;
+		  if (rx_cfg->magic == VCL_TEST_CFG_CTRL_MAGIC)
 		    {
 		      if (rx_cfg->verbose)
 			{
 			  printf ("SERVER (fd %d): Received a cfg message!\n",
 				  client_fd);
-			  sock_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+			  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
 			}
 
 		      if (rx_bytes != sizeof (*rx_cfg))
@@ -855,7 +855,7 @@ main (int argc, char **argv)
 			    {
 			      printf ("SERVER (fd %d): Replying to "
 				      "cfg message!\n", client_fd);
-			      sock_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+			      vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
 			    }
 			  sock_test_write (client_fd, (uint8_t *) & conn->cfg,
 					   sizeof (conn->cfg), NULL,
@@ -865,17 +865,17 @@ main (int argc, char **argv)
 
 		      switch (rx_cfg->test)
 			{
-			case SOCK_TEST_TYPE_NONE:
-			case SOCK_TEST_TYPE_ECHO:
+			case VCL_TEST_TYPE_NONE:
+			case VCL_TEST_TYPE_ECHO:
 			  sync_config_and_reply (conn, rx_cfg);
 			  break;
 
-			case SOCK_TEST_TYPE_BI:
-			case SOCK_TEST_TYPE_UNI:
+			case VCL_TEST_TYPE_BI:
+			case VCL_TEST_TYPE_UNI:
 			  stream_test_server_start_stop (conn, rx_cfg);
 			  break;
 
-			case SOCK_TEST_TYPE_EXIT:
+			case VCL_TEST_TYPE_EXIT:
 			  printf ("SERVER: Have a great day, "
 				  "connection %d!\n", client_fd);
 #ifdef VCL_TEST
@@ -902,14 +902,14 @@ main (int argc, char **argv)
 			default:
 			  fprintf (stderr,
 				   "SERVER: ERROR: Unknown test type!\n");
-			  sock_test_cfg_dump (rx_cfg, 0 /* is_client */ );
+			  vcl_test_cfg_dump (rx_cfg, 0 /* is_client */ );
 			  break;
 			}
 		      continue;
 		    }
 
-		  else if ((conn->cfg.test == SOCK_TEST_TYPE_UNI) ||
-			   (conn->cfg.test == SOCK_TEST_TYPE_BI))
+		  else if ((conn->cfg.test == VCL_TEST_TYPE_UNI) ||
+			   (conn->cfg.test == VCL_TEST_TYPE_BI))
 		    {
 		      stream_test_server (conn, rx_bytes);
 		      if (ioctl (conn->fd, FIONREAD))
