@@ -120,7 +120,7 @@ static int
 vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
-  sock_test_socket_t *tsock;
+  sock_test_socket_t *ts;
   uint32_t n_test_sessions;
   int i, rv;
 
@@ -148,21 +148,21 @@ vtc_connect_test_sessions (vcl_test_client_worker_t * wrk)
 
   for (i = 0; i < n_test_sessions; i++)
     {
-      tsock = &wrk->sessions[i];
-      tsock->fd = vppcom_session_create (vcm->proto, 1 /* is_nonblocking */ );
-      if (tsock->fd < 0)
+      ts = &wrk->sessions[i];
+      ts->fd = vppcom_session_create (vcm->proto, 1 /* is_nonblocking */ );
+      if (ts->fd < 0)
 	{
-	  vterr ("vppcom_session_create()", tsock->fd);
-	  return tsock->fd;
+	  vterr ("vppcom_session_create()", ts->fd);
+	  return ts->fd;
 	}
 
-      rv = vppcom_session_connect (tsock->fd, &vcm->server_endpt);
+      rv = vppcom_session_connect (ts->fd, &vcm->server_endpt);
       if (rv < 0)
 	{
 	  vterr ("vppcom_session_connect()", rv);
 	  return rv;
 	}
-      vtinf ("(fd %d): Test socket %d connected.", tsock->fd, i);
+      vtinf ("Test session %d (fd %d) connected.", i, ts->fd);
     }
   wrk->n_sessions = n_test_sessions;
 
@@ -177,7 +177,7 @@ vtc_worker_test_setup (vcl_test_client_worker_t * wrk)
   vcl_test_client_main_t *vcm = &vcl_client_main;
   sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_cfg_t *cfg = &wrk->cfg;
-  sock_test_socket_t *tsock;
+  sock_test_socket_t *ts;
   uint32_t sidx;
   int i, j;
 
@@ -186,25 +186,25 @@ vtc_worker_test_setup (vcl_test_client_worker_t * wrk)
 
   for (i = 0; i < cfg->num_test_sockets; i++)
     {
-      tsock = &wrk->sessions[i];
-      tsock->cfg = wrk->cfg;
-      sock_test_socket_buf_alloc (tsock);
+      ts = &wrk->sessions[i];
+      ts->cfg = wrk->cfg;
+      sock_test_socket_buf_alloc (ts);
 
       switch (cfg->test)
 	{
 	case SOCK_TEST_TYPE_ECHO:
-	  memcpy (tsock->txbuf, ctrl->txbuf, cfg->total_bytes);
+	  memcpy (ts->txbuf, ctrl->txbuf, cfg->total_bytes);
 	  break;
 	case SOCK_TEST_TYPE_UNI:
 	case SOCK_TEST_TYPE_BI:
-	  for (j = 0; j < tsock->txbuf_size; j++)
-	    tsock->txbuf[j] = j & 0xff;
+	  for (j = 0; j < ts->txbuf_size; j++)
+	    ts->txbuf[j] = j & 0xff;
 	  break;
 	}
 
-      FD_SET (vppcom_session_index (tsock->fd), &wrk->wr_fdset);
-      FD_SET (vppcom_session_index (tsock->fd), &wrk->rd_fdset);
-      sidx = vppcom_session_index (tsock->fd);
+      FD_SET (vppcom_session_index (ts->fd), &wrk->wr_fdset);
+      FD_SET (vppcom_session_index (ts->fd), &wrk->rd_fdset);
+      sidx = vppcom_session_index (ts->fd);
       wrk->max_fd_index = vtc_max (sidx, wrk->max_fd_index);
     }
   wrk->max_fd_index += 1;
@@ -218,13 +218,13 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
   vcl_test_client_main_t *vcm = &vcl_client_main;
   sock_test_socket_t *ctrl = &vcm->ctrl_socket;
   sock_test_cfg_t *cfg = &wrk->cfg;
-  sock_test_socket_t *tsock;
+  sock_test_socket_t *ts;
   uint32_t i, n;
   int rv, nbytes;
 
   __wrk_index = wrk->wrk_index;
 
-  vtinf ("Initializing worker ...");
+  vtinf ("Initializing worker %u ...", wrk->wrk_index);
 
   if (wrk->wrk_index)
     {
@@ -249,10 +249,10 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
 
   for (n = 0; n < cfg->num_test_sockets; n++)
     {
-      tsock = &wrk->sessions[n];
-      if (vtc_cfg_sync (tsock))
+      ts = &wrk->sessions[n];
+      if (vtc_cfg_sync (ts))
 	return -1;
-      memset (&tsock->stats, 0, sizeof (tsock->stats));
+      memset (&ts->stats, 0, sizeof (ts->stats));
     }
 
   return 0;
@@ -288,6 +288,8 @@ vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
 	}
 
       sock_test_stats_accumulate (&ctrl->stats, &tsock->stats);
+      if (vcl_comp_tspec (&ctrl->stats.stop, &tsock->stats.stop) < 0)
+	ctrl->stats.stop = tsock->stats.stop;
     }
 
   __sync_lock_release (&stats_lock);
@@ -298,21 +300,21 @@ vtc_worker_sessions_exit (vcl_test_client_worker_t * wrk)
 {
   vcl_test_client_main_t *vcm = &vcl_client_main;
   sock_test_socket_t *ctrl = &vcm->ctrl_socket;
-  sock_test_socket_t *tsock;
+  sock_test_socket_t *ts;
   int i, verbose = ctrl->cfg.verbose;
 
   for (i = 0; i < wrk->cfg.num_test_sockets; i++)
     {
-      tsock = &wrk->sessions[i];
-      tsock->cfg.test = SOCK_TEST_TYPE_EXIT;
+      ts = &wrk->sessions[i];
+      ts->cfg.test = SOCK_TEST_TYPE_EXIT;
 
       if (verbose)
 	{
-	  vtinf ("(fd %d): Sending exit cfg to server...", tsock->fd);
-	  sock_test_cfg_dump (&tsock->cfg, 1 /* is_client */ );
+	  vtinf ("(fd %d): Sending exit cfg to server...", ts->fd);
+	  sock_test_cfg_dump (&ts->cfg, 1 /* is_client */ );
 	}
-      (void) vcl_test_write (tsock->fd, (uint8_t *) & tsock->cfg,
-			     sizeof (tsock->cfg), &tsock->stats, verbose);
+      (void) vcl_test_write (ts->fd, (uint8_t *) & ts->cfg,
+			     sizeof (ts->cfg), &ts->stats, verbose);
     }
   wrk->n_sessions = 0;
 }
@@ -326,7 +328,7 @@ vtc_worker_loop (void *arg)
   uint32_t n_active_sessions, n_bytes;
   fd_set _wfdset, *wfdset = &_wfdset;
   fd_set _rfdset, *rfdset = &_rfdset;
-  sock_test_socket_t *tsock;
+  sock_test_socket_t *ts;
   int i, rv, check_rx = 0;
 
   rv = vtc_worker_init (wrk);
@@ -360,40 +362,39 @@ vtc_worker_loop (void *arg)
 
       for (i = 0; i < wrk->cfg.num_test_sockets; i++)
 	{
-	  tsock = &wrk->sessions[i];
-	  if (!((tsock->stats.stop.tv_sec == 0) &&
-		(tsock->stats.stop.tv_nsec == 0)))
+	  ts = &wrk->sessions[i];
+	  if (!((ts->stats.stop.tv_sec == 0) &&
+		(ts->stats.stop.tv_nsec == 0)))
 	    continue;
 
-	  if (FD_ISSET (vppcom_session_index (tsock->fd), rfdset)
-	      && tsock->stats.rx_bytes < tsock->cfg.total_bytes)
+	  if (FD_ISSET (vppcom_session_index (ts->fd), rfdset)
+	      && ts->stats.rx_bytes < ts->cfg.total_bytes)
 	    {
-	      (void) vcl_test_read (tsock->fd, (uint8_t *) tsock->rxbuf,
-				    tsock->rxbuf_size, &tsock->stats);
+	      (void) vcl_test_read (ts->fd, (uint8_t *) ts->rxbuf,
+				    ts->rxbuf_size, &ts->stats);
 	    }
 
-	  if (FD_ISSET (vppcom_session_index (tsock->fd), wfdset)
-	      && tsock->stats.tx_bytes < tsock->cfg.total_bytes)
+	  if (FD_ISSET (vppcom_session_index (ts->fd), wfdset)
+	      && ts->stats.tx_bytes < ts->cfg.total_bytes)
 	    {
-	      n_bytes = tsock->cfg.txbuf_size;
-	      if (tsock->cfg.test == SOCK_TEST_TYPE_ECHO)
+	      n_bytes = ts->cfg.txbuf_size;
+	      if (ts->cfg.test == SOCK_TEST_TYPE_ECHO)
 		n_bytes = strlen (ctrl->txbuf) + 1;
-	      rv = vcl_test_write (tsock->fd, (uint8_t *) tsock->txbuf,
-				   n_bytes, &tsock->stats,
-				   tsock->cfg.verbose);
+	      rv = vcl_test_write (ts->fd, (uint8_t *) ts->txbuf,
+				   n_bytes, &ts->stats,
+				   ts->cfg.verbose);
 	      if (rv < 0)
 		{
 		  vtwrn ("vppcom_test_write (%d) failed -- aborting test",
-			 tsock->fd);
+			 ts->fd);
 		  goto exit;
 		}
 	    }
 
-	  if ((!check_rx && tsock->stats.tx_bytes >= tsock->cfg.total_bytes)
-	      || (check_rx
-		  && tsock->stats.rx_bytes >= tsock->cfg.total_bytes))
+	  if ((!check_rx && ts->stats.tx_bytes >= ts->cfg.total_bytes)
+	      || (check_rx && ts->stats.rx_bytes >= ts->cfg.total_bytes))
 	    {
-	      clock_gettime (CLOCK_REALTIME, &tsock->stats.stop);
+	      clock_gettime (CLOCK_REALTIME, &ts->stats.stop);
 	      n_active_sessions--;
 	    }
 	}
@@ -402,7 +403,7 @@ exit:
   vtinf ("Worker %d done ...", wrk->wrk_index);
   if (wrk->cfg.test != SOCK_TEST_TYPE_ECHO)
     vtc_accumulate_stats (wrk, ctrl);
-  sleep (1);
+  sleep (VCL_TEST_DELAY_DISCONNECT);
   vtc_worker_sessions_exit (wrk);
   if (wrk->wrk_index)
     vt_atomic_add (&vcm->active_workers, -1);
@@ -445,9 +446,6 @@ vtc_print_stats (sock_test_socket_t * ctrl)
   else
     sprintf (buf, "%s-directional Stream",
 	     ctrl->cfg.test == SOCK_TEST_TYPE_BI ? "Bi" : "Uni");
-
-  vtinf ("(fd %d): %s Test Complete!\n"
-	 SOCK_TEST_BANNER_STRING, ctrl->fd, buf);
 }
 
 static void
@@ -484,7 +482,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
   int tx_bytes, rv;
   uint32_t i, n, sidx, n_conn, n_conn_per_wrk;
 
-  vtinf (SOCK_TEST_BANNER_STRING "%s-directional Stream Test!\n",
+  vtinf ("%s-directional Stream Test Starting!",
 	 ctrl->cfg.test == SOCK_TEST_TYPE_BI ? "Bi" : "Uni");
 
   cfg->total_bytes = cfg->num_writes * cfg->txbuf_size;
@@ -519,9 +517,7 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
   while (vcm->active_workers > 0)
     ;
 
-  clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
-
-  vtinf ("(fd %d): Sending config on ctrl socket for stats...\n", ctrl->fd);
+  vtinf ("Sending config on ctrl session (fd %d) for stats...", ctrl->fd);
   if (vtc_cfg_sync (ctrl))
     {
       vtwrn ("test cfg sync failed -- aborting!");
@@ -971,7 +967,6 @@ vtc_ctrl_session_exit (void)
     }
   (void) vcl_test_write (ctrl->fd, (uint8_t *) & ctrl->cfg,
 			 sizeof (ctrl->cfg), &ctrl->stats, verbose);
-  vtinf ("So long and thanks for all the fish!\n\n");
   sleep (1);
 }
 
@@ -1000,7 +995,7 @@ main (int argc, char **argv)
   rv = vppcom_session_connect (ctrl->fd, &vcm->server_endpt);
   if (rv)
     vtfail ("vppcom_session_connect()", rv);
-  vtinf ("(fd %d): Control socket connected.", ctrl->fd);
+  vtinf ("Control socket (fd %d) connected.", ctrl->fd);
 
   rv = vtc_cfg_sync (ctrl);
   if (rv)

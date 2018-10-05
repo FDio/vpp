@@ -23,6 +23,8 @@
 #include <vcl/vppcom.h>
 #include <vcl/sock_test_common.h>
 
+#define VCL_TEST_DELAY_DISCONNECT 	1
+
 #define vtfail(_fn, _rv)						\
 {									\
   errno = -_rv;								\

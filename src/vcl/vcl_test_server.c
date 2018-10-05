@@ -166,14 +166,12 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 		       sock_test_cfg_t * rx_cfg)
 {
   u8 is_bi = rx_cfg->test == SOCK_TEST_TYPE_BI;
-  int client_fd = conn->fd, i;
   vcl_test_server_conn_t *tc;
   char buf[64];
+  int i;
 
   if (rx_cfg->ctrl_handle == conn->fd)
     {
-      clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
-
       for (i = 0; i < wrk->conn_pool_size; i++)
 	{
 	  tc = &wrk->conn_pool[i];
@@ -181,7 +179,10 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 	    continue;
 
 	  sock_test_stats_accumulate (&conn->stats, &tc->stats);
-
+	  if (vcl_comp_tspec (&conn->stats.stop, &tc->stats.stop) < 0)
+	    conn->stats.stop = tc->stats.stop;
+	  /* Client delays sending of disconnect */
+	  conn->stats.stop.tv_sec -= VCL_TEST_DELAY_DISCONNECT;
 	  if (conn->cfg.verbose)
 	    {
 	      sprintf (buf, "SERVER (fd %d) RESULTS", tc->fd);
@@ -204,18 +205,20 @@ vts_server_start_stop (vcl_test_server_worker_t * wrk,
 	}
 
       sync_config_and_reply (conn, rx_cfg);
-      vtinf ("(fd %d): %s-directional Stream Test Complete!\n"
-	     SOCK_TEST_BANNER_STRING "\n", conn->fd, is_bi ? "Bi" : "Uni");
       memset (&conn->stats, 0, sizeof (conn->stats));
     }
   else
     {
-      vtinf (SOCK_TEST_BANNER_STRING "(fd %d): %s-directional Stream Test!\n"
-	     "  Sending client the test cfg to start streaming data...\n",
-	     client_fd, is_bi ? "Bi" : "Uni");
-
       if (rx_cfg->ctrl_handle == ~0)
-	rx_cfg->ctrl_handle = conn->fd;
+	{
+	  rx_cfg->ctrl_handle = conn->fd;
+	  vtinf ("Set control fd %d for test!", conn->fd);
+	}
+      else
+	{
+	  vtinf ("Starting %s-directional Stream Test (fd %d)!",
+		 is_bi ? "Bi" : "Uni", conn->fd);
+	}
 
       sync_config_and_reply (conn, rx_cfg);
 
@@ -278,11 +281,12 @@ vts_server_echo (vcl_test_server_conn_t * conn, int rx_bytes)
     vtinf ("(fd %d): TX (%d bytes) - '%s'", conn->fd, tx_bytes, conn->buf);
 }
 
-static inline void
+static void
 vts_new_client (vcl_test_server_worker_t * wrk)
 {
-  int client_fd;
   vcl_test_server_conn_t *conn;
+  struct epoll_event ev;
+  int rv, client_fd;
 
   conn = conn_pool_alloc (wrk);
   if (!conn)
@@ -297,28 +301,22 @@ vts_new_client (vcl_test_server_worker_t * wrk)
       vterr ("vppcom_session_accept()", client_fd);
       return;
     }
+  conn->fd = client_fd;
 
   vtinf ("Got a connection -- fd = %d (0x%08x)!", client_fd, client_fd);
 
-  conn->fd = client_fd;
-
-  {
-    struct epoll_event ev;
-    int rv;
-
-    ev.events = EPOLLIN;
-    ev.data.u64 = conn - wrk->conn_pool;
-    rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, client_fd, &ev);
-    if (rv < 0)
-      {
-	vterr ("vppcom_epoll_ctl()", rv);
-	return;
-      }
-    wrk->nfds++;
-  }
+  ev.events = EPOLLIN;
+  ev.data.u64 = conn - wrk->conn_pool;
+  rv = vppcom_epoll_ctl (wrk->epfd, EPOLL_CTL_ADD, client_fd, &ev);
+  if (rv < 0)
+    {
+      vterr ("vppcom_epoll_ctl()", rv);
+      return;
+    }
+  wrk->nfds++;
 }
 
-void
+static void
 print_usage_and_exit (void)
 {
   fprintf (stderr,
@@ -469,7 +467,8 @@ vts_handle_cfg (vcl_test_server_worker_t * wrk, sock_test_cfg_t * rx_cfg,
       break;
 
     case SOCK_TEST_TYPE_EXIT:
-      vtinf ("Have a great day conn %d (closing)!", conn->fd);
+      vtinf ("Session fd %d closing!", conn->fd);
+      clock_gettime (CLOCK_REALTIME, &conn->stats.stop);
       vppcom_session_close (conn->fd);
       conn_pool_free (conn);
       wrk->nfds--;
@@ -538,7 +537,7 @@ vts_conn_expect_config (vcl_test_server_conn_t * conn)
     return 1;
 
   return (conn->stats.rx_bytes < 128
-	  || conn->stats.rx_bytes >= conn->cfg.total_bytes);
+	  || conn->stats.rx_bytes > conn->cfg.total_bytes);
 }
 
 static sock_test_cfg_t *
@@ -552,7 +551,6 @@ vts_conn_read_config (vcl_test_server_conn_t * conn)
        * just simplifies things */
       vppcom_data_segment_copy (conn->buf, conn->ds,
 				sizeof (sock_test_cfg_t));
-      vppcom_session_free_segments (conn->fd, conn->ds);
     }
   return (sock_test_cfg_t *) conn->buf;
 }
@@ -581,7 +579,7 @@ vts_conn_has_ascii (vcl_test_server_conn_t * conn)
 static void *
 vts_worker_loop (void *arg)
 {
-  vcl_test_server_main_t *ssm = &sock_server_main;
+  vcl_test_server_main_t *vts = &sock_server_main;
   vcl_test_server_worker_t *wrk = arg;
   vcl_test_server_conn_t *conn;
   int i, rx_bytes, num_ev;
@@ -645,6 +643,8 @@ vts_worker_loop (void *arg)
 		  rx_cfg = vts_conn_read_config (conn);
 		  if (rx_cfg->magic == SOCK_TEST_CFG_CTRL_MAGIC)
 		    {
+		      if (vts->use_ds)
+			vppcom_session_free_segments (conn->fd, conn->ds);
 		      vts_handle_cfg (wrk, rx_cfg, conn, rx_bytes);
 		      if (!wrk->nfds)
 			{
@@ -681,13 +681,13 @@ vts_worker_loop (void *arg)
     }
 
 fail:
-  ssm->worker_fails -= 1;
+  vts->worker_fails -= 1;
 
 done:
   vppcom_session_close (wrk->listen_fd);
   if (wrk->conn_pool)
     free (wrk->conn_pool);
-  ssm->active_workers -= 1;
+  vts->active_workers -= 1;
   return 0;
 }
 
