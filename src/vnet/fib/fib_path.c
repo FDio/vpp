@@ -1323,6 +1323,11 @@ fib_path_create (fib_node_index_t pl_index,
 	path->fp_type = FIB_PATH_TYPE_DVR;
 	path->dvr.fp_interface = rpath->frp_sw_if_index;
     }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_EXCLUSIVE)
+    {
+	path->fp_type = FIB_PATH_TYPE_EXCLUSIVE;
+	dpo_copy(&path->exclusive.fp_ex_dpo, &rpath->dpo);
+    }
     else if (~0 != rpath->frp_sw_if_index)
     {
         if (ip46_address_is_zero(&rpath->frp_addr))
@@ -1574,9 +1579,11 @@ fib_path_cmp_i (const fib_path_t *path1,
 	case FIB_PATH_TYPE_DVR:
 	    res = (path1->dvr.fp_interface - path2->dvr.fp_interface);
 	    break;
+	case FIB_PATH_TYPE_EXCLUSIVE:
+	    res = dpo_cmp(&path1->exclusive.fp_ex_dpo, &path2->exclusive.fp_ex_dpo);
+	    break;
 	case FIB_PATH_TYPE_SPECIAL:
 	case FIB_PATH_TYPE_RECEIVE:
-	case FIB_PATH_TYPE_EXCLUSIVE:
 	    res = 0;
 	    break;
 	}
@@ -1711,9 +1718,11 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
 	case FIB_PATH_TYPE_DVR:
 	    res = (path->dvr.fp_interface - rpath->frp_sw_if_index);
 	    break;
+	case FIB_PATH_TYPE_EXCLUSIVE:
+	    res = dpo_cmp(&path->exclusive.fp_ex_dpo, &rpath->dpo);
+	    break;
 	case FIB_PATH_TYPE_SPECIAL:
 	case FIB_PATH_TYPE_RECEIVE:
-	case FIB_PATH_TYPE_EXCLUSIVE:
 	    res = 0;
 	    break;
 	}
