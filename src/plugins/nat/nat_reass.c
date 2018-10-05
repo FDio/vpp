@@ -272,7 +272,7 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
 	{
 	  clib_dlist_addhead (srm->ip4_reass_lru_list_pool,
 			      srm->ip4_reass_head_index, oldest_index);
-	  clib_warning ("no free resassembly slot");
+	  nat_log_warn ("no free resassembly slot");
 	  reass = 0;
 	  goto unlock;
 	}
@@ -481,7 +481,7 @@ nat_ip6_reass_find_or_create (ip6_address_t src, ip6_address_t dst,
 	{
 	  clib_dlist_addhead (srm->ip6_reass_lru_list_pool,
 			      srm->ip6_reass_head_index, oldest_index);
-	  clib_warning ("no free resassembly slot");
+	  nat_log_warn ("no free resassembly slot");
 	  reass = 0;
 	  goto unlock;
 	}
