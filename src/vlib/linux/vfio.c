@@ -35,7 +35,7 @@
 linux_vfio_main_t vfio_main;
 
 static int
-map_regions (vlib_main_t * vm, int fd)
+vfio_map_regions (vlib_main_t * vm, int fd)
 {
   vlib_physmem_main_t *vpm = &physmem_main;
   linux_vfio_main_t *lvm = &vfio_main;
@@ -58,7 +58,8 @@ map_regions (vlib_main_t * vm, int fd)
 	  vlib_log_debug (lvm->log_default, "map DMA va:0x%lx iova:%lx "
 			  "size:0x%lx", dm.vaddr, dm.iova, dm.size);
 
-	  if ((rv = ioctl (fd, VFIO_IOMMU_MAP_DMA, &dm)))
+	  if ((rv = ioctl (fd, VFIO_IOMMU_MAP_DMA, &dm)) &&
+	      errno != EINVAL)
 	    {
 	      vlib_log_err (lvm->log_default, "map DMA va:0x%lx iova:%lx "
 			    "size:0x%lx failed, error %s (errno %d)",
@@ -78,7 +79,7 @@ linux_vfio_dma_map_regions (vlib_main_t * vm)
   linux_vfio_main_t *lvm = &vfio_main;
 
   if (lvm->container_fd != -1)
-    map_regions (vm, lvm->container_fd);
+    vfio_map_regions (vm, lvm->container_fd);
 }
 
 static linux_pci_vfio_iommu_group_t *
