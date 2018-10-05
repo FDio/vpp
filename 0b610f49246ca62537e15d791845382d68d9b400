@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "481d6a98_b2370836",
+        "filename": "test/framework.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-10-05T09:38:52Z",
+      "side": 1,
+      "message": "Yes, will remove",
+      "parentUuid": "dd934cc4_64834503",
+      "revId": "0b610f49246ca62537e15d791845382d68d9b400",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "627b1add_f1520b75",
         "filename": "test/hook.py",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2018-10-05T09:26:48Z",
       "side": 1,
       "message": "this comment can be removed, yes?",
+      "revId": "0b610f49246ca62537e15d791845382d68d9b400",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf199644_a4f6a7a7",
+        "filename": "test/hook.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-10-05T09:38:52Z",
+      "side": 1,
+      "message": "Already removed in PS5",
+      "parentUuid": "627b1add_f1520b75",
       "revId": "0b610f49246ca62537e15d791845382d68d9b400",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
