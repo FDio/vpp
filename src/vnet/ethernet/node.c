@@ -557,10 +557,20 @@ ethernet_input_inline (vlib_main_t * vm,
 	  if (variant == ETHERNET_INPUT_VARIANT_NOT_L2)
 	    is_l20 = is_l21 = 0;
 
+	  if (!is_l20)
+	    vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
+	  if (!is_l21)
+	    vnet_buffer (b1)->l2.l2_len = sizeof (ethernet_header_t);
+
 	  determine_next_node (em, variant, is_l20, type0, b0, &error0,
 			       &next0);
 	  determine_next_node (em, variant, is_l21, type1, b1, &error1,
 			       &next1);
+	  /* L2 header on real Ethernet can't be zero */
+	  ASSERT (variant == ETHERNET_INPUT_VARIANT_NOT_L2
+		  || vnet_buffer (b0)->l2.l2_len > 0);
+	  ASSERT (variant == ETHERNET_INPUT_VARIANT_NOT_L2
+		  || vnet_buffer (b1)->l2.l2_len > 0);
 	  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset +
 	    vnet_buffer (b0)->l2.l2_len;
 	  vnet_buffer (b1)->l3_hdr_offset = vnet_buffer (b1)->l2_hdr_offset +
@@ -736,9 +746,15 @@ ethernet_input_inline (vlib_main_t * vm,
 
 	  if (variant == ETHERNET_INPUT_VARIANT_NOT_L2)
 	    is_l20 = 0;
+	  if (!is_l20)
+	    vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
+
 
 	  determine_next_node (em, variant, is_l20, type0, b0, &error0,
 			       &next0);
+	  /* L2 header on real Ethernet can't be zero */
+	  ASSERT (variant == ETHERNET_INPUT_VARIANT_NOT_L2
+		  || vnet_buffer (b0)->l2.l2_len > 0);
 	  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset +
 	    vnet_buffer (b0)->l2.l2_len;
 	  b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
