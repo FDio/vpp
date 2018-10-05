@@ -640,7 +640,7 @@ snat_ipfix_logging_nat44_ses (u8 nat_event, u32 src_ip, u32 nat_src_ip,
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -741,7 +741,7 @@ snat_ipfix_logging_addr_exhausted (u32 pool_id, int do_flush)
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -828,7 +828,7 @@ snat_ipfix_logging_max_entries_per_usr (u32 limit, u32 src_ip, int do_flush)
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -921,7 +921,7 @@ nat_ipfix_logging_max_ses (u32 limit, int do_flush)
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -1011,7 +1011,7 @@ nat_ipfix_logging_max_bib (u32 limit, int do_flush)
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -1101,7 +1101,7 @@ nat_ipfix_logging_max_frag_ip4 (u32 limit, u32 src, int do_flush)
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -1194,7 +1194,7 @@ nat_ipfix_logging_max_frag_ip6 (u32 limit, ip6_address_t * src, int do_flush)
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -1287,7 +1287,7 @@ nat_ipfix_logging_nat64_bibe (u8 nat_event, ip6_address_t * src_ip,
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -1391,7 +1391,7 @@ nat_ipfix_logging_nat64_ses (u8 nat_event, ip6_address_t * src_ip,
 
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	{
-	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  nat_log_err ("can't allocate buffer for NAT IPFIX event");
 	  return;
 	}
 
@@ -1942,7 +1942,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
     }
@@ -1954,7 +1954,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -1964,7 +1964,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -1974,7 +1974,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -1984,7 +1984,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -1994,7 +1994,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -2004,7 +2004,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -2014,7 +2014,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -2024,7 +2024,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
 	  return -1;
 	}
 
@@ -2036,7 +2036,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
           rv = vnet_flow_report_add_del (frm, &a, NULL);
           if (rv)
             {
-              clib_warning ("vnet_flow_report_add_del returned %d", rv);
+              nat_log_warn ("vnet_flow_report_add_del returned %d", rv);
               return -1;
             }
         }
