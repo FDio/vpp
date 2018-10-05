@@ -212,6 +212,7 @@ svm_fifo_create (u32 data_size_in_bytes)
   memset (f, 0, sizeof (*f));
   f->nitems = data_size_in_bytes;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
+  f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
   f->refcnt = 1;
   return (f);
 }

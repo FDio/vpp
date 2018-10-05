@@ -1626,10 +1626,8 @@ application_local_session_connect (app_worker_t * client_wrk,
       segment_manager_segment_reader_unlock (sm);
       goto failed;
     }
-  ls->server_rx_fifo->master_session_index = ls->session_index;
-  ls->server_tx_fifo->master_session_index = ls->session_index;
-  ls->server_rx_fifo->master_thread_index = ~0;
-  ls->server_tx_fifo->master_thread_index = ~0;
+  ls->server_rx_fifo->ct_session_index = ls->session_index;
+  ls->server_tx_fifo->ct_session_index = ls->session_index;
   ls->svm_segment_index = seg_index;
   ls->listener_index = ll->session_index;
   ls->client_wrk_index = client_wrk->wrk_index;
