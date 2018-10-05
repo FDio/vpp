@@ -20,16 +20,18 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <vcl/sock_test_common.h>
+#include <vcl/vcl_test.h>
 
 #define SOCK_TEST_AF_UNIX_FILENAME    "/tmp/ldp_server_af_unix_socket"
 #define SOCK_TEST_MIXED_EPOLL_DATA    "Hello, world! (over an AF_UNIX socket)"
 #define SOCK_TEST_AF_UNIX_ACCEPT_DATA 0xaf0000af
 #define SOCK_TEST_AF_UNIX_FD_MASK     0x00af0000
+#define SOCK_TEST_BANNER_STRING \
+  "============================================\n"
 
 static inline int
 sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
-                sock_test_stats_t *stats)
+                vcl_test_stats_t *stats)
 {
   int rx_bytes, errno_val;
   
@@ -66,7 +68,7 @@ sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
 
 static inline int
 sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
-                 sock_test_stats_t *stats, uint32_t verbose)
+                 vcl_test_stats_t *stats, uint32_t verbose)
 {
   int tx_bytes = 0;
   int nbytes_left = nbytes;
