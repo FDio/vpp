@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7ac48959_91fedac6",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-10-05T08:06:56Z",
+      "side": 1,
+      "message": "please rename this to assert_...",
+      "revId": "cb064622e907ac3ce434abe1a8876e792199865f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
