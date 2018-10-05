@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "27dec116_7aad9fec",
+        "filename": "docs/gettingstarted/developers/add_plugin.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T15:01:48Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 1
+      },
+      "revId": "f9faf2420c74fd38f96d1a78af3ec1dee9b85db1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
