@@ -260,6 +260,21 @@ vtc_worker_init (vcl_test_client_worker_t * wrk)
 
 static int stats_lock = 0;
 
+int
+vtc_comp_tspec (struct timespec *a, struct timespec *b)
+{
+  if (a->tv_sec < b->tv_sec)
+    return -1;
+  else if (a->tv_sec > b->tv_sec)
+    return 1;
+  else if (a->tv_nsec < b->tv_nsec)
+    return -1;
+  else if (a->tv_nsec > b->tv_nsec)
+    return 1;
+  else
+    return 0;
+}
+
 static void
 vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
 		      sock_test_socket_t * ctrl)
@@ -288,6 +303,8 @@ vtc_accumulate_stats (vcl_test_client_worker_t * wrk,
 	}
 
       sock_test_stats_accumulate (&ctrl->stats, &tsock->stats);
+      if (vtc_comp_tspec (&ctrl->stats.stop, &tsock->stats.stop) < 0)
+	ctrl->stats.stop = tsock->stats.stop;
     }
 
   __sync_lock_release (&stats_lock);
@@ -518,8 +535,6 @@ vtc_stream_client (vcl_test_client_main_t * vcm)
 
   while (vcm->active_workers > 0)
     ;
-
-  clock_gettime (CLOCK_REALTIME, &ctrl->stats.stop);
 
   vtinf ("(fd %d): Sending config on ctrl socket for stats...\n", ctrl->fd);
   if (vtc_cfg_sync (ctrl))
