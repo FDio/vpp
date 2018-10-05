@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "862773bc_995616a8",
+        "filename": "test/run_tests.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-10-05T09:38:52Z",
+      "side": 1,
+      "message": "There actually should be a check for the existence of the core and only then try to spawn gdb. I\u0027ll also add a message indicating which test produced the core.",
+      "parentUuid": "bd6c0ea0_b5c7b56b",
+      "revId": "d3f2f5795543511f6910f009765c2e41ea752aae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bcf5fa5c_c65b3e2a",
         "filename": "test/util.py",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2018-10-05T09:26:48Z",
       "side": 1,
       "message": "can we change this to is_core_present() please",
+      "revId": "d3f2f5795543511f6910f009765c2e41ea752aae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7657edc0_adea243d",
+        "filename": "test/util.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-10-05T09:38:52Z",
+      "side": 1,
+      "message": "Yea, that\u0027s a better name.",
+      "parentUuid": "bcf5fa5c_c65b3e2a",
       "revId": "d3f2f5795543511f6910f009765c2e41ea752aae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
