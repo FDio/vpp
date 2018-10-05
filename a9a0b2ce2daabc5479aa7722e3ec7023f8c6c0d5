@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "75a67f34_4c951069",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T10:22:09Z",
+      "side": 1,
+      "message": "Why not \"1.1.0\"?",
+      "range": {
+        "startLine": 16,
+        "startChar": 17,
+        "endLine": 16,
+        "endChar": 24
+      },
+      "revId": "a9a0b2ce2daabc5479aa7722e3ec7023f8c6c0d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b6557c05_e6461969",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T10:22:09Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 462,
+        "startChar": 2,
+        "endLine": 462,
+        "endChar": 3
+      },
+      "revId": "a9a0b2ce2daabc5479aa7722e3ec7023f8c6c0d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
