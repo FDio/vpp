@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2e4a4fc2_c1adba3c",
+        "filename": "extras/emacs/plugin-cmake-skel.el",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T12:00:32Z",
+      "side": 1,
+      "message": "Please do not introduce trailing newlines.",
+      "range": {
+        "startLine": 42,
+        "startChar": 8,
+        "endLine": 42,
+        "endChar": 9
+      },
+      "revId": "3f2e775e45e9c42819cd950a96135e83a00b8bbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e86272c1_1cf3dcca",
+        "filename": "extras/emacs/plugin-cmake-skel.el",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-05T12:00:32Z",
+      "side": 1,
+      "message": "Why is there no space here?",
+      "range": {
+        "startLine": 50,
+        "startChar": 14,
+        "endLine": 50,
+        "endChar": 16
+      },
+      "revId": "3f2e775e45e9c42819cd950a96135e83a00b8bbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
