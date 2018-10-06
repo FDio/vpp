@@ -1332,13 +1332,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   if (svm_fifo_is_empty (rx_fifo))
     svm_fifo_unset_event (rx_fifo);
 
-  if (is_ct && n_read + svm_fifo_max_dequeue (rx_fifo) == rx_fifo->nitems)
-    {
-      /* If the peer is not polling send notification */
-      if (!svm_fifo_has_event (s->rx_fifo))
-	app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo,
-				SESSION_IO_EVT_CT_RX, SVM_Q_WAIT);
-    }
+  if (is_ct && svm_fifo_want_tx_evt (rx_fifo))
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo, SESSION_IO_EVT_CT_RX,
+			    SVM_Q_WAIT);
 
   VDBG (2, "VCL<%d>: vpp handle 0x%llx, sid %u: read %d bytes from (%p)",
 	getpid (), s->vpp_handle, session_handle, n_read, rx_fifo);
