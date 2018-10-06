@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "f37ed3ae_dd67f2c4",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-06T16:58:14Z",
+      "side": 1,
+      "message": "We should move setting of l2_hdr_offset (and the VALID bit) before the if check (of the fast path) so be done for all packets. Otherwise, the packet going to the slow path would not have l2_hdr_offset done properly.",
+      "range": {
+        "startLine": 406,
+        "startChar": 25,
+        "endLine": 406,
+        "endChar": 38
+      },
+      "revId": "247f825620bc3cb70607b268b34dc41d6913c874",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e8919dcd_9df839f7",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 1
