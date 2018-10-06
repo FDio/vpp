@@ -82,7 +82,7 @@ format_l2_input_features (u8 * s, va_list * args)
   int i;
   for (i = L2INPUT_N_FEAT; i >= 0; i--)
     if (feature_bitmap & (1 << i))
-      s = format (s, "%10s (%s)\n", display_names[i], l2input_feat_names[i]);
+      s = format (s, "%17s (%s)\n", display_names[i], l2input_feat_names[i]);
   return s;
 }
 
