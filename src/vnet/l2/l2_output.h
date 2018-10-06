@@ -91,6 +91,7 @@ extern vlib_node_registration_t l2output_node;
  _(STP_BLOCKED,       "feature-bitmap-drop")        \
  _(LINESTATUS_DOWN,   "feature-bitmap-drop")        \
  _(OUTPUT_CLASSIFY,   "l2-output-classify")	    \
+ _(OUTPUT_FEAT_ARC,   "l2-output-feat-arc")	    \
  _(XCRW,	      "l2-xcrw")
 
 /* Feature bitmap positions */
