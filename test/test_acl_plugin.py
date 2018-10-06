@@ -154,6 +154,14 @@ class TestACLplugin(VppTestCase):
         """
         super(TestACLplugin, self).tearDown()
         if not self.vpp_dead:
+            cli = "show vlib graph l2-input-feat-arc"
+            self.logger.info(self.vapi.ppcli(cli))
+            cli = "show vlib graph l2-input-feat-arc-end"
+            self.logger.info(self.vapi.ppcli(cli))
+            cli = "show vlib graph l2-output-feat-arc"
+            self.logger.info(self.vapi.ppcli(cli))
+            cli = "show vlib graph l2-output-feat-arc-end"
+            self.logger.info(self.vapi.ppcli(cli))
             self.logger.info(self.vapi.ppcli("show l2fib verbose"))
             self.logger.info(self.vapi.ppcli("show acl-plugin acl"))
             self.logger.info(self.vapi.ppcli("show acl-plugin interface"))
