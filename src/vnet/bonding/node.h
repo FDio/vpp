@@ -32,7 +32,7 @@
 #endif
 
 #define BOND_MODULO_SHORTCUT(a) \
-  (((a) == 2) || ((a) == 4) || ((a) == 8) || ((a) == 16))
+  (is_pow2 (a))
 
 #define foreach_bond_mode	    \
   _ (1, ROUND_ROBIN, "round-robin") \

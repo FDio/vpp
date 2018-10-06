@@ -526,7 +526,7 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
     bond_per_thread_data_t *ptd = vec_elt_at_index (bm->per_thread_data,
 						    thread_index);
 
-    vec_validate_aligned (ptd->per_port_queue, sif->sw_if_index,
+    vec_validate_aligned (ptd->per_port_queue, vec_len (bif->slaves) - 1,
 			  CLIB_CACHE_LINE_BYTES);
 
     vec_foreach_index (sif_if_index, ptd->per_port_queue)

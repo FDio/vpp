@@ -176,6 +176,18 @@ u16x16_mask_last (u16x16 v, u8 n_last)
   return v & masks[16 - n_last];
 }
 
+static_always_inline f32x8
+f32x8_from_u32x8 (u32x8 v)
+{
+  return (f32x8) _mm256_cvtepi32_ps ((__m256i) v);
+}
+
+static_always_inline u32x8
+u32x8_from_f32x8 (f32x8 v)
+{
+  return (u32x8) _mm256_cvttps_epi32 ((__m256) v);
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
