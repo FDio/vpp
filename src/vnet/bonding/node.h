@@ -57,11 +57,15 @@ typedef enum
 /* load-balance functions implemented in bond-output */
 #define foreach_bond_lb_algo			 \
   _ (0, L2, "l2", l2)                            \
-  _ (1, L34 , "l34", l34)                        \
+  _ (1, L34, "l34", l34)                         \
   _ (2, L23, "l23", l23)                         \
   _ (3, RR, "round-robin", round_robin)          \
   _ (4, BC, "broadcast", broadcast)              \
-  _ (5, AB, "active-backup", active_backup)
+  _ (5, AB, "active-backup", active_backup)      \
+  _ (6, L2_SC, "l2-short-cut", l2_sc)            \
+  _ (7, L34_SC, "l34-short-cut", l34_sc)         \
+  _ (8, L23_SC, "l23-short-cut", l23_sc)         \
+  _ (9, RR_SC, "round-robin-short-cut", round_robin_sc)
 
 typedef enum
 {
