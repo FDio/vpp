@@ -251,19 +251,6 @@ typedef struct {
   /* how many sessions went into purgatory */
   u64 fa_session_total_deactivations;
 
-  /* L2 datapath glue */
-
-  /* next indices within L2 classifiers for ip4/ip6 fa L2 nodes */
-  u32 l2_input_classify_next_acl_ip4;
-  u32 l2_input_classify_next_acl_ip6;
-  u32 l2_output_classify_next_acl_ip4;
-  u32 l2_output_classify_next_acl_ip6;
-  /* next node indices for L2 dispatch */
-  u32 fa_acl_in_ip4_l2_node_feat_next_node_index[32];
-  u32 fa_acl_in_ip6_l2_node_feat_next_node_index[32];
-  u32 fa_acl_out_ip4_l2_node_feat_next_node_index[32];
-  u32 fa_acl_out_ip6_l2_node_feat_next_node_index[32];
-
   /* EH values that we can skip over */
   uword *fa_ipv6_known_eh_bitmap;
 
