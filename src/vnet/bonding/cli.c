@@ -274,6 +274,8 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
     bif->lb = BOND_LB_RR;
   else if (bif->mode == BOND_MODE_BROADCAST)
     bif->lb = BOND_LB_BC;
+  else if (bif->mode == BOND_MODE_ACTIVE_BACKUP)
+    bif->lb = BOND_LB_AB;
 
   bif->use_custom_mac = args->hw_addr_set;
   if (!args->hw_addr_set)
@@ -666,14 +668,14 @@ show_bond (vlib_main_t * vm)
   bond_main_t *bm = &bond_main;
   bond_if_t *bif;
 
-  vlib_cli_output (vm, "%-16s %-12s %-12s %-13s %-14s %s",
+  vlib_cli_output (vm, "%-16s %-12s %-13s %-13s %-14s %s",
 		   "interface name", "sw_if_index", "mode",
 		   "load balance", "active slaves", "slaves");
 
   /* *INDENT-OFF* */
   pool_foreach (bif, bm->interfaces,
   ({
-    vlib_cli_output (vm, "%-16U %-12d %-12U %-13U %-14u %u",
+    vlib_cli_output (vm, "%-16U %-12d %-13U %-13U %-14u %u",
 		     format_bond_interface_name, bif->dev_instance,
 		     bif->sw_if_index, format_bond_mode, bif->mode,
 		     format_bond_load_balance, bif->lb,
