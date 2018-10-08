@@ -63,6 +63,10 @@ typedef enum
 #include <nsh/nsh.api.h>
 #undef vl_msg_name_crc_list
 
+/*  Dummy Eth header */
+const char dummy_dst_address[6] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
+const char dummy_src_address[6] = { 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc };
+
 /*
  * A handy macro to set up a message reply.
  * Assumes that the following variables are available:
@@ -1742,6 +1746,9 @@ nsh_input_map (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 	  hdr0 = vlib_buffer_get_current (b0);
+	  hdr1 = vlib_buffer_get_current (b1);
+
+	  /* Process packet 0 */
 	  if (node_type == NSH_INPUT_TYPE)
 	    {
 	      nsp_nsi0 = hdr0->nsp_nsi;
@@ -1764,10 +1771,8 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      memset (&dummy_eth0.dst_address[0], 0x11223344, 4);
-	      memset (&dummy_eth0.dst_address[4], 0x5566, 2);
-	      memset (&dummy_eth0.src_address[0], 0x778899aa, 4);
-	      memset (&dummy_eth0.src_address[4], 0xbbcc, 2);
+	      clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
+	      clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
 	      dummy_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
@@ -1799,65 +1804,6 @@ nsh_input_map (vlib_main_t * vm,
 	      nsp_nsi0 = proxy0->nsp_nsi;
 	    }
 
-	  hdr1 = vlib_buffer_get_current (b1);
-	  if (node_type == NSH_INPUT_TYPE)
-	    {
-	      nsp_nsi1 = hdr1->nsp_nsi;
-	      header_len1 = (hdr1->length & NSH_LEN_MASK) * 4;
-	      ttl1 = (hdr1->ver_o_c & NSH_TTL_H4_MASK) << 2 |
-		(hdr1->length & NSH_TTL_L2_MASK) >> 6;
-	      ttl1 = ttl1 - 1;
-	      if (PREDICT_FALSE (ttl1 == 0))
-		{
-		  error1 = NSH_NODE_ERROR_INVALID_TTL;
-		  goto trace1;
-		}
-	    }
-	  else if (node_type == NSH_CLASSIFIER_TYPE)
-	    {
-	      nsp_nsi1 =
-		clib_host_to_net_u32 (vnet_buffer (b1)->
-				      l2_classify.opaque_index);
-	    }
-	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
-	    {
-	      /* Push dummy Eth header */
-	      memset (&dummy_eth1.dst_address[0], 0x11223344, 4);
-	      memset (&dummy_eth1.dst_address[4], 0x5566, 2);
-	      memset (&dummy_eth1.src_address[0], 0x778899aa, 4);
-	      memset (&dummy_eth1.src_address[4], 0xbbcc, 2);
-	      dummy_eth1.type = 0x0800;
-	      vlib_buffer_advance (b1, -(word) sizeof (ethernet_header_t));
-	      hdr1 = vlib_buffer_get_current (b1);
-	      clib_memcpy (hdr1, &dummy_eth1,
-			   (word) sizeof (ethernet_header_t));
-
-	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-	      nsp_nsi1 = nm->tunnel_index_by_sw_if_index[sw_if_index1];
-	    }
-	  else
-	    {
-	      memset (&key1, 0, sizeof (key1));
-	      key1.transport_type = NSH_NODE_NEXT_ENCAP_VXLAN4;
-	      key1.transport_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-
-	      p1 = hash_get_mem (nm->nsh_proxy_session_by_key, &key1);
-	      if (PREDICT_FALSE (p1 == 0))
-		{
-		  error1 = NSH_NODE_ERROR_NO_PROXY;
-		  goto trace1;
-		}
-
-	      proxy1 = pool_elt_at_index (nm->nsh_proxy_sessions, p1[0]);
-	      if (PREDICT_FALSE (proxy1 == 0))
-		{
-		  error1 = NSH_NODE_ERROR_NO_PROXY;
-		  goto trace1;
-		}
-	      nsp_nsi1 = proxy1->nsp_nsi;
-	    }
-
-	  /* Process packet 0 */
 	  entry0 = hash_get_mem (nm->nsh_mapping_by_key, &nsp_nsi0);
 	  if (PREDICT_FALSE (entry0 == 0))
 	    {
@@ -1956,7 +1902,8 @@ nsh_input_map (vlib_main_t * vm,
 
 	    }
 
-	trace0:b0->error = error0 ? node->errors[error0] : 0;
+	trace0:
+	  b0->error = error0 ? node->errors[error0] : 0;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -1967,6 +1914,61 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 
 	  /* Process packet 1 */
+	  if (node_type == NSH_INPUT_TYPE)
+	    {
+	      nsp_nsi1 = hdr1->nsp_nsi;
+	      header_len1 = (hdr1->length & NSH_LEN_MASK) * 4;
+	      ttl1 = (hdr1->ver_o_c & NSH_TTL_H4_MASK) << 2 |
+		(hdr1->length & NSH_TTL_L2_MASK) >> 6;
+	      ttl1 = ttl1 - 1;
+	      if (PREDICT_FALSE (ttl1 == 0))
+		{
+		  error1 = NSH_NODE_ERROR_INVALID_TTL;
+		  goto trace1;
+		}
+	    }
+	  else if (node_type == NSH_CLASSIFIER_TYPE)
+	    {
+	      nsp_nsi1 =
+		clib_host_to_net_u32 (vnet_buffer (b1)->
+				      l2_classify.opaque_index);
+	    }
+	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
+	    {
+	      /* Push dummy Eth header */
+	      clib_memcpy (dummy_eth1.dst_address, dummy_dst_address, 6);
+	      clib_memcpy (dummy_eth1.src_address, dummy_src_address, 6);
+	      dummy_eth1.type = 0x0800;
+	      vlib_buffer_advance (b1, -(word) sizeof (ethernet_header_t));
+	      hdr1 = vlib_buffer_get_current (b1);
+	      clib_memcpy (hdr1, &dummy_eth1,
+			   (word) sizeof (ethernet_header_t));
+
+	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	      nsp_nsi1 = nm->tunnel_index_by_sw_if_index[sw_if_index1];
+	    }
+	  else
+	    {
+	      memset (&key1, 0, sizeof (key1));
+	      key1.transport_type = NSH_NODE_NEXT_ENCAP_VXLAN4;
+	      key1.transport_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+
+	      p1 = hash_get_mem (nm->nsh_proxy_session_by_key, &key1);
+	      if (PREDICT_FALSE (p1 == 0))
+		{
+		  error1 = NSH_NODE_ERROR_NO_PROXY;
+		  goto trace1;
+		}
+
+	      proxy1 = pool_elt_at_index (nm->nsh_proxy_sessions, p1[0]);
+	      if (PREDICT_FALSE (proxy1 == 0))
+		{
+		  error1 = NSH_NODE_ERROR_NO_PROXY;
+		  goto trace1;
+		}
+	      nsp_nsi1 = proxy1->nsp_nsi;
+	    }
+
 	  entry1 = hash_get_mem (nm->nsh_mapping_by_key, &nsp_nsi1);
 	  if (PREDICT_FALSE (entry1 == 0))
 	    {
@@ -2065,7 +2067,8 @@ nsh_input_map (vlib_main_t * vm,
 
 	    }
 
-	trace1:b1->error = error1 ? node->errors[error1] : 0;
+	trace1:
+	  b1->error = error1 ? node->errors[error1] : 0;
 
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -2135,10 +2138,8 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      memset (&dummy_eth0.dst_address[0], 0x11223344, 4);
-	      memset (&dummy_eth0.dst_address[4], 0x5566, 2);
-	      memset (&dummy_eth0.src_address[0], 0x778899aa, 4);
-	      memset (&dummy_eth0.src_address[4], 0xbbcc, 2);
+	      clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
+	      clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
 	      dummy_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
