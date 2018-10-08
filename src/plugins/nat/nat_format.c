@@ -220,14 +220,14 @@ format_snat_static_mapping (u8 * s, va_list * args)
   snat_static_mapping_t *m = va_arg (*args, snat_static_mapping_t *);
   nat44_lb_addr_port_t *local;
 
-  if (m->addr_only)
+  if (is_addr_only_static_mapping (m))
     s = format (s, "local %U external %U vrf %d %s %s",
 		format_ip4_address, &m->local_addr,
 		format_ip4_address, &m->external_addr,
 		m->vrf_id,
 		m->twice_nat == TWICE_NAT ? "twice-nat" :
 		m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
-		m->out2in_only ? "out2in-only" : "");
+		is_out2in_only_static_mapping (m) ? "out2in-only" : "");
   else
     {
       if (vec_len (m->locals))
@@ -237,7 +237,7 @@ format_snat_static_mapping (u8 * s, va_list * args)
 		      format_ip4_address, &m->external_addr, m->external_port,
 		      m->twice_nat == TWICE_NAT ? "twice-nat" :
 		      m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
-		      m->out2in_only ? "out2in-only" : "");
+		      is_out2in_only_static_mapping (m) ? "out2in-only" : "");
 	  vec_foreach (local, m->locals)
 	    s = format (s, "\n  local %U:%d vrf %d probability %d\%",
 			format_ip4_address, &local->addr, local->port,
@@ -251,7 +251,7 @@ format_snat_static_mapping (u8 * s, va_list * args)
 		    m->vrf_id,
 		    m->twice_nat == TWICE_NAT ? "twice-nat" :
 		    m->twice_nat == TWICE_NAT_SELF ? "self-twice-nat" : "",
-		    m->out2in_only ? "out2in-only" : "");
+		    is_out2in_only_static_mapping (m) ? "out2in-only" : "");
     }
   return s;
 }

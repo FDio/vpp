@@ -718,7 +718,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
 
   rv = snat_add_static_mapping (l_addr, e_addr, (u16) l_port, (u16) e_port,
 				vrf_id, addr_only, sw_if_index, proto, is_add,
-				twice_nat, out2in_only, 0);
+				twice_nat, out2in_only, 0, 0);
 
   switch (rv)
     {
@@ -802,7 +802,7 @@ add_identity_mapping_command_fn (vlib_main_t * vm,
 
   rv = snat_add_static_mapping (addr, addr, (u16) port, (u16) port,
 				vrf_id, addr_only, sw_if_index, proto, is_add,
-				0, 0, 0);
+				0, 0, 0, 1);
 
   switch (rv)
     {

@@ -980,7 +980,7 @@ static void
   rv = snat_add_static_mapping (local_addr, external_addr, local_port,
 				external_port, vrf_id, mp->addr_only,
 				external_sw_if_index, proto, mp->is_add,
-				twice_nat, mp->out2in_only, tag);
+				twice_nat, mp->out2in_only, tag, 0);
 
   vec_free (tag);
 
@@ -1027,7 +1027,7 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id =
     ntohs (VL_API_NAT44_STATIC_MAPPING_DETAILS + sm->msg_id_base);
-  rmp->addr_only = m->addr_only;
+  rmp->addr_only = is_addr_only_static_mapping (m);
   clib_memcpy (rmp->local_ip_address, &(m->local_addr), 4);
   clib_memcpy (rmp->external_ip_address, &(m->external_addr), 4);
   rmp->external_sw_if_index = ~0;
@@ -1037,8 +1037,8 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
     rmp->twice_nat = 1;
   else if (m->twice_nat == TWICE_NAT_SELF)
     rmp->self_twice_nat = 1;
-  rmp->out2in_only = m->out2in_only;
-  if (m->addr_only == 0)
+  rmp->out2in_only = is_out2in_only_static_mapping (m);
+  if (rmp->addr_only == 0)
     {
       rmp->protocol = snat_proto_to_ip_proto (m->proto);
       rmp->external_port = htons (m->external_port);
@@ -1100,9 +1100,7 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      if (!vec_len (m->locals) &&
-          ((m->local_port != m->external_port)
-           || (m->local_addr.as_u32 != m->external_addr.as_u32)))
+      if (!is_identity_static_mapping(m) && !vec_len (m->locals))
         send_nat44_static_mapping_details (m, reg, mp->context);
   }));
   /* *INDENT-ON* */
@@ -1110,7 +1108,7 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   for (j = 0; j < vec_len (sm->to_resolve); j++)
     {
       rp = sm->to_resolve + j;
-      if (rp->l_addr.as_u32 != 0)
+      if (!rp->identity_nat)
 	send_nat44_static_map_resolve_details (rp, reg, mp->context);
     }
 }
@@ -1162,7 +1160,7 @@ static void
 
   rv =
     snat_add_static_mapping (addr, addr, port, port, vrf_id, mp->addr_only,
-			     sw_if_index, proto, mp->is_add, 0, 0, tag);
+			     sw_if_index, proto, mp->is_add, 0, 0, tag, 1);
 
   vec_free (tag);
 
@@ -1203,7 +1201,7 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m,
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id =
     ntohs (VL_API_NAT44_IDENTITY_MAPPING_DETAILS + sm->msg_id_base);
-  rmp->addr_only = m->addr_only;
+  rmp->addr_only = is_addr_only_static_mapping (m);
   clib_memcpy (rmp->ip_address, &(m->local_addr), 4);
   rmp->port = htons (m->local_port);
   rmp->sw_if_index = ~0;
@@ -1260,8 +1258,7 @@ static void
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      if (!vec_len (m->locals) && (m->local_port == m->external_port)
-          && (m->local_addr.as_u32 == m->external_addr.as_u32))
+      if (is_identity_static_mapping(m) && !vec_len (m->locals))
         send_nat44_identity_mapping_details (m, reg, mp->context);
   }));
   /* *INDENT-ON* */
@@ -1269,7 +1266,7 @@ static void
   for (j = 0; j < vec_len (sm->to_resolve); j++)
     {
       rp = sm->to_resolve + j;
-      if (rp->l_addr.as_u32 == 0)
+      if (rp->identity_nat)
 	send_nat44_identity_map_resolve_details (rp, reg, mp->context);
     }
 }
@@ -1656,7 +1653,7 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
     rmp->twice_nat = 1;
   else if (m->twice_nat == TWICE_NAT_SELF)
     rmp->self_twice_nat = 1;
-  rmp->out2in_only = m->out2in_only;
+  rmp->out2in_only = is_out2in_only_static_mapping (m);
   if (m->tag)
     strncpy ((char *) rmp->tag, (char *) m->tag, vec_len (m->tag));
 

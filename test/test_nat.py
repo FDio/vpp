@@ -1935,6 +1935,9 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n, 0)
+        self.assertEqual(len(sessions), 0)
+
     def test_multiple_inside_interfaces(self):
         """ NAT44 multiple non-overlapping address space inside interfaces """
 

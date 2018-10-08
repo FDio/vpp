@@ -179,6 +179,11 @@ typedef enum
 #define NAT_INTERFACE_FLAG_IS_INSIDE 1
 #define NAT_INTERFACE_FLAG_IS_OUTSIDE 2
 
+/* Static mapping flags */
+#define NAT_STATIC_MAPPING_FLAG_ADDR_ONLY    1
+#define NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY  2
+#define NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT 4
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
 {
@@ -321,12 +326,8 @@ typedef struct
   u16 local_port;
   /* external port */
   u16 external_port;
-  /* 1 = 1:1NAT, 0 = 1:1NAPT */
-  u8 addr_only;
   /* is twice-nat */
   twice_nat_type_t twice_nat;
-  /* 1 = rule match only out2in direction */
-  u8 out2in_only;
   /* local FIB table */
   u32 vrf_id;
   u32 fib_index;
@@ -342,6 +343,8 @@ typedef struct
   nat44_lb_addr_port_t *locals;
   /* affinity per service lis */
   u32 affinity_per_service_list_head_index;
+  /* flags */
+  u32 flags;
 } snat_static_mapping_t;
 
 typedef struct
@@ -358,9 +361,12 @@ typedef struct
   u32 sw_if_index;
   u32 vrf_id;
   snat_protocol_t proto;
+  u32 flags;
   int addr_only;
   int twice_nat;
   int is_add;
+  int out2in_only;
+  int identity_nat;
   u8 *tag;
 } snat_static_map_resolve_t;
 
@@ -642,6 +648,24 @@ unformat_function_t unformat_snat_protocol;
 */
 #define nat44_is_ses_closed(s) s->state == 0xf
 
+/** \brief Check if NAT static mapping is address only (1:1NAT).
+    @param sm NAT static mapping
+    @return 1 if 1:1NAT, 0 if 1:1NAPT
+*/
+#define is_addr_only_static_mapping(sm) (sm->flags & NAT_STATIC_MAPPING_FLAG_ADDR_ONLY)
+
+/** \brief Check if NAT static mapping match only out2in direction.
+    @param sm NAT static mapping
+    @return 1 if rule match only out2in direction
+*/
+#define is_out2in_only_static_mapping(sm) (sm->flags & NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY)
+
+/** \brief Check if NAT static mapping is identity NAT.
+    @param sm NAT static mapping
+    @return 1 if identity NAT
+*/
+#define is_identity_static_mapping(sm) (sm->flags & NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT)
+
 /* logging */
 #define nat_log_err(...) \
   vlib_log(VLIB_LOG_LEVEL_ERR, snat_main.log_class, __VA_ARGS__)
@@ -773,18 +797,19 @@ void nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add);
 /**
  * @brief Add/delete NAT44 static mapping
  *
- * @param l_addr      local IPv4 address
- * @param e_addr      external IPv4 address
- * @param l_port      local port number
- * @param e_port      external port number
- * @param vrf_id      local VRF ID
- * @param addr_only   1 = 1:1NAT, 0 = 1:1NAPT
- * @param sw_if_index use interface address as external IPv4 address
- * @param proto       L4 protocol
- * @param is_add      1 = add, 0 = delete
- * @param twice_nat   twice-nat mode
- * @param out2in_only if 1 rule match only out2in direction
- * @param tagi        opaque string tag
+ * @param l_addr       local IPv4 address
+ * @param e_addr       external IPv4 address
+ * @param l_port       local port number
+ * @param e_port       external port number
+ * @param vrf_id       local VRF ID
+ * @param addr_only    1 = 1:1NAT, 0 = 1:1NAPT
+ * @param sw_if_index  use interface address as external IPv4 address
+ * @param proto        L4 protocol
+ * @param is_add       1 = add, 0 = delete
+ * @param twice_nat    twice-nat mode
+ * @param out2in_only  if 1 rule match only out2in direction
+ * @param tag          opaque string tag
+ * @param identity_nat identity NAT
  *
  * @return 0 on success, non-zero value otherwise
  */
@@ -793,7 +818,7 @@ int snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 			     int addr_only, u32 sw_if_index,
 			     snat_protocol_t proto, int is_add,
 			     twice_nat_type_t twice_nat, u8 out2in_only,
-			     u8 * tag);
+			     u8 * tag, u8 identity_nat);
 
 /**
  * @brief Add/delete static mapping with load-balancing (multiple backends)
@@ -1009,7 +1034,8 @@ int snat_static_mapping_match (snat_main_t * sm,
 			       u8 * is_addr_only,
 			       twice_nat_type_t * twice_nat,
 			       lb_nat_type_t * lb,
-			       ip4_address_t * ext_host_addr);
+			       ip4_address_t * ext_host_addr,
+			       u8 * is_identity_nat);
 
 /**
  * @brief Add/del NAT address to FIB.

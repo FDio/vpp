@@ -471,7 +471,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
   clib_bihash_kv_16_8_t kv, value;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   snat_session_t *s = 0;
-  u8 dont_translate = 0, is_addr_only;
+  u8 dont_translate = 0, is_addr_only, identity_nat;
   snat_session_key_t e_key, l_key;
 
   icmp = (icmp46_header_t *) ip4_next_header (ip);
@@ -496,7 +496,7 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
       e_key.protocol = ip_proto_to_snat_proto (key.proto);
       e_key.fib_index = rx_fib_index;
       if (snat_static_mapping_match
-	  (sm, e_key, &l_key, 1, &is_addr_only, 0, 0, 0))
+	  (sm, e_key, &l_key, 1, &is_addr_only, 0, 0, 0, &identity_nat))
 	{
 	  if (!sm->forwarding_enabled)
 	    {
@@ -530,6 +530,12 @@ icmp_match_out2in_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 	{
 	  b->error = node->errors[NAT_OUT2IN_ED_ERROR_BAD_ICMP_TYPE];
 	  next = NAT44_ED_OUT2IN_NEXT_DROP;
+	  goto out;
+	}
+
+      if (PREDICT_FALSE (identity_nat))
+	{
+	  dont_translate = 1;
 	  goto out;
 	}
 
@@ -717,6 +723,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	  snat_session_key_t e_key0, l_key0, e_key1, l_key1;
 	  lb_nat_type_t lb_nat0, lb_nat1;
 	  twice_nat_type_t twice_nat0, twice_nat1;
+	  u8 identity_nat0, identity_nat1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -828,7 +835,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  e_key0.fib_index = rx_fib_index0;
 		  if (snat_static_mapping_match (sm, e_key0, &l_key0, 1, 0,
 						 &twice_nat0, &lb_nat0,
-						 &ip0->src_address))
+						 &ip0->src_address,
+						 &identity_nat0))
 		    {
 		      /*
 		       * Send DHCP packets to the ipv4 stack, or we won't
@@ -863,6 +871,9 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			}
 		      goto trace00;
 		    }
+
+		  if (PREDICT_FALSE (identity_nat0))
+		    goto trace00;
 
 		  /* Create session initiated by host from external network */
 		  s0 = create_session_for_static_mapping_ed (sm, b0, l_key0,
@@ -1046,7 +1057,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  e_key1.fib_index = rx_fib_index1;
 		  if (snat_static_mapping_match (sm, e_key1, &l_key1, 1, 0,
 						 &twice_nat1, &lb_nat1,
-						 &ip1->src_address))
+						 &ip1->src_address,
+						 &identity_nat1))
 		    {
 		      /*
 		       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1081,6 +1093,9 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			}
 		      goto trace01;
 		    }
+
+		  if (PREDICT_FALSE (identity_nat1))
+		    goto trace01;
 
 		  /* Create session initiated by host from external network */
 		  s1 = create_session_for_static_mapping_ed (sm, b1, l_key1,
@@ -1202,6 +1217,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	  snat_session_key_t e_key0, l_key0;
 	  lb_nat_type_t lb_nat0;
 	  twice_nat_type_t twice_nat0;
+	  u8 identity_nat0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -1297,7 +1313,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  e_key0.fib_index = rx_fib_index0;
 		  if (snat_static_mapping_match (sm, e_key0, &l_key0, 1, 0,
 						 &twice_nat0, &lb_nat0,
-						 &ip0->src_address))
+						 &ip0->src_address,
+						 &identity_nat0))
 		    {
 		      /*
 		       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1332,6 +1349,9 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 			}
 		      goto trace0;
 		    }
+
+		  if (PREDICT_FALSE (identity_nat0))
+		    goto trace0;
 
 		  /* Create session initiated by host from external network */
 		  s0 = create_session_for_static_mapping_ed (sm, b0, l_key0,
@@ -1554,6 +1574,7 @@ nat44_ed_out2in_reass_node_fn (vlib_main_t * vm,
 	  snat_session_key_t e_key0, l_key0;
 	  lb_nat_type_t lb0;
 	  twice_nat_type_t twice_nat0;
+	  u8 identity_nat0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -1634,7 +1655,8 @@ nat44_ed_out2in_reass_node_fn (vlib_main_t * vm,
 		  e_key0.protocol = proto0;
 		  e_key0.fib_index = rx_fib_index0;
 		  if (snat_static_mapping_match (sm, e_key0, &l_key0, 1, 0,
-						 &twice_nat0, &lb0, 0))
+						 &twice_nat0, &lb0, 0,
+						 &identity_nat0))
 		    {
 		      /*
 		       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1671,6 +1693,12 @@ nat44_ed_out2in_reass_node_fn (vlib_main_t * vm,
 			  nat_ip4_reass_get_frags (reass0,
 						   &fragments_to_loopback);
 			}
+		      goto trace0;
+		    }
+
+		  if (PREDICT_FALSE (identity_nat0))
+		    {
+		      reass0->flags |= NAT_REASS_FLAG_ED_DONT_TRANSLATE;
 		      goto trace0;
 		    }
 
