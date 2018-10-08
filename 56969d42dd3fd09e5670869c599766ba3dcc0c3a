@@ -45,6 +45,29 @@
       "revId": "56969d42dd3fd09e5670869c599766ba3dcc0c3a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d4941a73_194cb33d",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 428,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-08T18:49:19Z",
+      "side": 1,
+      "message": "setting up l2_len for b0 and b1 is still required here.",
+      "range": {
+        "startLine": 428,
+        "startChar": 16,
+        "endLine": 428,
+        "endChar": 23
+      },
+      "revId": "56969d42dd3fd09e5670869c599766ba3dcc0c3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
