@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "120439e0_9315d697",
+        "filename": "src/vpp/app/vpp_prometheus_export.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2018-10-08T10:50:03Z",
+      "side": 1,
+      "message": "need to close listenfd here?",
+      "range": {
+        "startLine": 199,
+        "startChar": 0,
+        "endLine": 199,
+        "endChar": 16
+      },
+      "revId": "23d87d281bea7796fbfde2f609c035b3b05e286f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
