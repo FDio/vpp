@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "041af9c2_182d239d",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-08T18:28:42Z",
+      "side": 1,
+      "message": "This should be replaced with setting of l3_hdr_offset, see next comment at line 291.",
+      "range": {
+        "startLine": 233,
+        "startChar": 59,
+        "endLine": 233,
+        "endChar": 76
+      },
+      "revId": "56969d42dd3fd09e5670869c599766ba3dcc0c3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "33d27495_508bdb43",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-08T18:28:42Z",
+      "side": 1,
+      "message": "This should be at the start of the function where current_data is always at L3 header. Thus we just need to do this:\nvnet_buffer (b0)-\u003el3_hdr_offset \u003d vnet_buffer (b0).current_data;",
+      "range": {
+        "startLine": 291,
+        "startChar": 36,
+        "endLine": 291,
+        "endChar": 47
+      },
+      "revId": "56969d42dd3fd09e5670869c599766ba3dcc0c3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
