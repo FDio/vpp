@@ -695,11 +695,15 @@ replicate_inline (vlib_main_t * vm,
                 next0 = dpo0->dpoi_next_node;
                 vnet_buffer (c0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
-                if (PREDICT_FALSE(c0->flags & VLIB_BUFFER_IS_TRACED))
+                if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
                 {
                     replicate_trace_t *t;
 
-                    vlib_trace_buffer (vm, node, next0, c0, 0);
+                    if (c0 != b0)
+                    {
+                        vlib_buffer_copy_trace_flag (vm, b0, ci0);
+                        VLIB_BUFFER_TRACE_TRAJECTORY_INIT (c0);
+                    }
                     t = vlib_add_trace (vm, node, c0, sizeof (*t));
                     t->rep_index = repi0;
                     t->dpo = *dpo0;
