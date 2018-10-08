@@ -715,6 +715,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  to_next += 1;
 	  n_left_to_next -= 1;
 	  error0 = MAP_ERROR_NONE;
+	  next0 = 0;
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip40 = vlib_buffer_get_current (p0);
