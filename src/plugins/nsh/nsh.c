@@ -63,6 +63,10 @@ typedef enum
 #include <nsh/nsh.api.h>
 #undef vl_msg_name_crc_list
 
+/*  Dummy Eth header */
+const char dummy_dst_address[6] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+const char dummy_src_address[6] = {0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc};
+
 /*
  * A handy macro to set up a message reply.
  * Assumes that the following variables are available:
@@ -1764,10 +1768,8 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      memset (&dummy_eth0.dst_address[0], 0x11223344, 4);
-	      memset (&dummy_eth0.dst_address[4], 0x5566, 2);
-	      memset (&dummy_eth0.src_address[0], 0x778899aa, 4);
-	      memset (&dummy_eth0.src_address[4], 0xbbcc, 2);
+	      clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
+	      clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
 	      dummy_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
@@ -1822,10 +1824,8 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      memset (&dummy_eth1.dst_address[0], 0x11223344, 4);
-	      memset (&dummy_eth1.dst_address[4], 0x5566, 2);
-	      memset (&dummy_eth1.src_address[0], 0x778899aa, 4);
-	      memset (&dummy_eth1.src_address[4], 0xbbcc, 2);
+          clib_memcpy (dummy_eth1.dst_address, dummy_dst_address, 6);
+          clib_memcpy (dummy_eth1.src_address, dummy_src_address, 6);
 	      dummy_eth1.type = 0x0800;
 	      vlib_buffer_advance (b1, -(word) sizeof (ethernet_header_t));
 	      hdr1 = vlib_buffer_get_current (b1);
@@ -2135,10 +2135,8 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      memset (&dummy_eth0.dst_address[0], 0x11223344, 4);
-	      memset (&dummy_eth0.dst_address[4], 0x5566, 2);
-	      memset (&dummy_eth0.src_address[0], 0x778899aa, 4);
-	      memset (&dummy_eth0.src_address[4], 0xbbcc, 2);
+          clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
+          clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
 	      dummy_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
