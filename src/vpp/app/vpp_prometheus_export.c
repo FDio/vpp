@@ -188,6 +188,7 @@ start_listen (u16 port)
   if (listenfd == -1)
     {
       perror ("Failed opening socket");
+      return -1;
     }
 
   int rv =
@@ -195,6 +196,7 @@ start_listen (u16 port)
   if (rv < 0)
     {
       perror ("Failed setsockopt");
+      return -1;
     }
 
   memset (&serveraddr, 0, sizeof (serveraddr));
@@ -312,6 +314,7 @@ main (int argc, char **argv)
     }
 
   stat_segment_disconnect ();
+  close(fd);
 
   exit (0);
 }
