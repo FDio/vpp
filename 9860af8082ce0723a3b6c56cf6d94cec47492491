@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "439a19fd_b64e5d9e",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-08T19:56:01Z",
+      "side": 1,
+      "message": "We should do this in the single loop path as well.",
+      "range": {
+        "startLine": 386,
+        "startChar": 16,
+        "endLine": 386,
+        "endChar": 49
+      },
+      "revId": "9860af8082ce0723a3b6c56cf6d94cec47492491",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
