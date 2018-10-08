@@ -640,9 +640,9 @@ fib_test_validate_lb (const dpo_id_t *dpo,
     res = 0;
     va_start(ap, n_buckets);
 
-    if (FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
-                   "Entry links to %U",
-                   format_dpo_type, dpo->dpoi_type))
+    if (!FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
+                    "Entry links to %U",
+                    format_dpo_type, dpo->dpoi_type))
     {
         lb = load_balance_get(dpo->dpoi_index);
 
@@ -650,7 +650,7 @@ fib_test_validate_lb (const dpo_id_t *dpo,
     }
     else
     {
-        res = 0;
+        res = 1;
     }
 
     va_end(ap);
@@ -10118,6 +10118,330 @@ fib_test_inherit (void)
     return (res);
 }
 
+static int
+fib_test_sticky (void)
+{
+    fib_route_path_t *r_paths = NULL;
+    test_main_t *tm = &test_main;
+    u32 ii, lb_count, pl_count;
+    dpo_id_t dpo = DPO_INVALID;
+    fib_node_index_t pl_index;
+    int res = 0;
+#define N_PATHS 16
+
+    fib_test_lb_bucket_t buckets[N_PATHS];
+    bfd_session_t bfds[N_PATHS] = {{0}};
+
+    lb_count = pool_elts(load_balance_pool);
+    pl_count = fib_path_list_pool_size();
+
+    for (ii = 0; ii < N_PATHS; ii++)
+    {
+        ip46_address_t nh = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02 + ii),
+        };
+        adj_index_t ai;
+
+        ai = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                 VNET_LINK_IP4,
+                                 &nh, tm->hw[0]->sw_if_index);
+
+        buckets[ii].type = FT_LB_ADJ;
+        buckets[ii].adj.adj = ai;
+
+        bfds[ii].udp.key.peer_addr = nh;
+        bfds[ii].udp.key.sw_if_index = tm->hw[0]->sw_if_index;
+        bfds[ii].hop_type = BFD_HOP_TYPE_SINGLE;
+        bfds[ii].local_state = BFD_STATE_init;
+        adj_bfd_notify(BFD_LISTEN_EVENT_CREATE, &bfds[ii]);
+        bfds[ii].local_state = BFD_STATE_up;
+        adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[ii]);
+    }
+
+    for (ii = 0; ii < N_PATHS; ii++)
+    {
+        fib_route_path_t r_path = {
+            .frp_proto = DPO_PROTO_IP4,
+            .frp_addr = {
+                .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02 + ii),
+            },
+            .frp_sw_if_index = tm->hw[0]->sw_if_index,
+            .frp_weight = 1,
+            .frp_fib_index = ~0,
+        };
+        vec_add1(r_paths, r_path);
+    };
+
+    pl_index = fib_path_list_create(FIB_PATH_LIST_FLAG_SHARED, r_paths);
+    fib_path_list_lock(pl_index);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[0],
+                                   &buckets[1],
+                                   &buckets[2],
+                                   &buckets[3],
+                                   &buckets[4],
+                                   &buckets[5],
+                                   &buckets[6],
+                                   &buckets[7],
+                                   &buckets[8],
+                                   &buckets[9],
+                                   &buckets[10],
+                                   &buckets[11],
+                                   &buckets[12],
+                                   &buckets[13],
+                                   &buckets[14],
+                                   &buckets[15]),
+             "Setup OK");
+
+    /* take down paths */
+    bfds[0].local_state = BFD_STATE_down;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[0]);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[2],
+                                   &buckets[3],
+                                   &buckets[4],
+                                   &buckets[5],
+                                   &buckets[6],
+                                   &buckets[7],
+                                   &buckets[8],
+                                   &buckets[9],
+                                   &buckets[10],
+                                   &buckets[11],
+                                   &buckets[12],
+                                   &buckets[13],
+                                   &buckets[14],
+                                   &buckets[15]),
+             "Failed at shut-down path 0");
+
+    bfds[7].local_state = BFD_STATE_down;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[7]);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[2],
+                                   &buckets[3],
+                                   &buckets[4],
+                                   &buckets[5],
+                                   &buckets[6],
+                                   &buckets[2],
+                                   &buckets[8],
+                                   &buckets[9],
+                                   &buckets[10],
+                                   &buckets[11],
+                                   &buckets[12],
+                                   &buckets[13],
+                                   &buckets[14],
+                                   &buckets[15]),
+             "Failed at shut-down path 7");
+
+    /* paths back up */
+    bfds[0].local_state = BFD_STATE_up;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[0]);
+    bfds[7].local_state = BFD_STATE_up;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[7]);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[0],
+                                   &buckets[1],
+                                   &buckets[2],
+                                   &buckets[3],
+                                   &buckets[4],
+                                   &buckets[5],
+                                   &buckets[6],
+                                   &buckets[7],
+                                   &buckets[8],
+                                   &buckets[9],
+                                   &buckets[10],
+                                   &buckets[11],
+                                   &buckets[12],
+                                   &buckets[13],
+                                   &buckets[14],
+                                   &buckets[15]),
+             "recovery OK");
+
+    fib_path_list_unlock(pl_index);
+
+    /*
+     * non-power of 2 number of buckets
+     */
+    fib_route_path_t *r_paths2 = NULL;
+
+    r_paths2 = vec_dup(r_paths);
+    _vec_len(r_paths2) = 3;
+
+    pl_index = fib_path_list_create(FIB_PATH_LIST_FLAG_SHARED, r_paths2);
+    fib_path_list_lock(pl_index);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2]),
+             "non-power of 2");
+
+    bfds[1].local_state = BFD_STATE_down;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+
+    /*
+     * path 1's buckets alternate between path 0 and 2
+     */
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[2],
+                                   &buckets[0],
+                                   &buckets[2],
+                                   &buckets[0],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2]),
+             "non-power of 2");
+    bfds[1].local_state = BFD_STATE_up;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+
+    fib_path_list_unlock(pl_index);
+
+    /*
+     * unequal cost
+     */
+    fib_route_path_t *r_paths3 = NULL;
+
+    r_paths3 = vec_dup(r_paths);
+    _vec_len(r_paths3) = 3;
+
+    r_paths3[0].frp_weight = 3;
+
+    pl_index = fib_path_list_create(FIB_PATH_LIST_FLAG_SHARED, r_paths3);
+    fib_path_list_lock(pl_index);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[1],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0]),
+             "UCMP");
+
+    bfds[1].local_state = BFD_STATE_down;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+
+    fib_path_list_contribute_forwarding(pl_index,
+                                        FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                        FIB_PATH_LIST_FWD_FLAG_STICKY,
+                                        &dpo);
+    /* No attempt to Un-equal distribute the down path's buckets */
+    FIB_TEST(!fib_test_validate_lb(&dpo,
+                                   16,
+                                   &buckets[2],
+                                   &buckets[0],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[2],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0],
+                                   &buckets[0]),
+             "UCMP");
+    bfds[1].local_state = BFD_STATE_up;
+    adj_bfd_notify(BFD_LISTEN_EVENT_UPDATE, &bfds[1]);
+
+    dpo_reset(&dpo);
+    fib_path_list_unlock(pl_index);
+
+    vec_free(r_paths);
+    vec_free(r_paths2);
+    vec_free(r_paths3);
+
+    FIB_TEST(lb_count == pool_elts(load_balance_pool), "no leaked LBs");
+    FIB_TEST(pl_count == fib_path_list_pool_size(), "no leaked PLs");
+
+    return 0;
+}
+
 static clib_error_t *
 fib_test (vlib_main_t * vm,
           unformat_input_t * input,
@@ -10174,6 +10498,10 @@ fib_test (vlib_main_t * vm,
     else if (unformat (input, "inherit"))
     {
         res += fib_test_inherit();
+    }
+    else if (unformat (input, "sticky"))
+    {
+        res += fib_test_sticky();
     }
     else
     {
