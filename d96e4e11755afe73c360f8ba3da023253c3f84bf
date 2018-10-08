@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8938a0a9_8f197ecb",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-08T20:20:41Z",
+      "side": 1,
+      "message": "We should advance by -(vnet_buffer (b0)-\u003el2.l2_len) here to be more efficient.",
+      "range": {
+        "startLine": 249,
+        "startChar": 32,
+        "endLine": 249,
+        "endChar": 59
+      },
+      "revId": "d96e4e11755afe73c360f8ba3da023253c3f84bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
