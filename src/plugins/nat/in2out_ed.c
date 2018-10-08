@@ -256,7 +256,7 @@ slow_path_ed (snat_main_t * sm,
 	      snat_session_t ** sessionp,
 	      vlib_node_runtime_t * node, u32 next, u32 thread_index, f64 now)
 {
-  snat_session_t *s;
+  snat_session_t *s = 0;
   snat_user_t *u;
   snat_session_key_t key0, key1;
   lb_nat_type_t lb = 0, is_sm = 0;
@@ -265,6 +265,7 @@ slow_path_ed (snat_main_t * sm,
   u32 proto = ip_proto_to_snat_proto (key->proto);
   nat_outside_fib_t *outside_fib;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  u8 identity_nat;
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP4,
     .fp_len = 32,
@@ -288,7 +289,8 @@ slow_path_ed (snat_main_t * sm,
   key0.fib_index = rx_fib_index;
   key1.fib_index = sm->outside_fib_index;
   /* First try to match static mapping by local address and port */
-  if (snat_static_mapping_match (sm, key0, &key1, 0, 0, 0, &lb, 0))
+  if (snat_static_mapping_match
+      (sm, key0, &key1, 0, 0, 0, &lb, 0, &identity_nat))
     {
       /* Try to create dynamic translation */
       if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index,
@@ -302,7 +304,15 @@ slow_path_ed (snat_main_t * sm,
 	}
     }
   else
-    is_sm = 1;
+    {
+      if (PREDICT_FALSE (identity_nat))
+	{
+	  *sessionp = s;
+	  return next;
+	}
+
+      is_sm = 1;
+    }
 
   u = nat_user_get_or_create (sm, &key->l_addr, rx_fib_index, thread_index);
   if (!u)
@@ -413,7 +423,7 @@ nat44_ed_not_translate (snat_main_t * sm, vlib_node_runtime_t * node,
       key0.protocol = proto;
       key0.fib_index = sm->outside_fib_index;
       /* or is static mappings */
-      if (!snat_static_mapping_match (sm, key0, &key1, 1, 0, 0, 0, 0))
+      if (!snat_static_mapping_match (sm, key0, &key1, 1, 0, 0, 0, 0, 0))
 	return 0;
     }
   else
@@ -607,6 +617,12 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 
       if (PREDICT_FALSE (next == NAT_IN2OUT_ED_NEXT_DROP))
 	goto out;
+
+      if (!s)
+	{
+	  dont_translate = 1;
+	  goto out;
+	}
     }
   else
     {
@@ -1011,6 +1027,9 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 
 		  if (PREDICT_FALSE (next0 == NAT_IN2OUT_ED_NEXT_DROP))
 		    goto trace00;
+
+		  if (PREDICT_FALSE (!s0))
+		    goto trace00;
 		}
 	      else
 		{
@@ -1211,6 +1230,9 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 				  next1, thread_index, now);
 
 		  if (PREDICT_FALSE (next1 == NAT_IN2OUT_ED_NEXT_DROP))
+		    goto trace01;
+
+		  if (PREDICT_FALSE (!s1))
 		    goto trace01;
 		}
 	      else
@@ -1441,6 +1463,9 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 				  next0, thread_index, now);
 
 		  if (PREDICT_FALSE (next0 == NAT_IN2OUT_ED_NEXT_DROP))
+		    goto trace0;
+
+		  if (PREDICT_FALSE (!s0))
 		    goto trace0;
 		}
 	      else
@@ -1838,6 +1863,12 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 
 		  if (PREDICT_FALSE (next0 == NAT_IN2OUT_ED_NEXT_DROP))
 		    goto trace0;
+
+		  if (PREDICT_FALSE (!s0))
+		    {
+		      reass0->flags |= NAT_REASS_FLAG_ED_DONT_TRANSLATE;
+		      goto trace0;
+		    }
 
 		  reass0->sess_index = s0 - per_thread_data->sessions;
 		}

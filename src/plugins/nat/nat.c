@@ -583,7 +583,9 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
 				       u16 e_port,
 				       u32 vrf_id,
 				       snat_protocol_t proto,
-				       int addr_only, int is_add, u8 * tag)
+				       int addr_only, int is_add, u8 * tag,
+				       int twice_nat, int out2in_only,
+				       int identity_nat)
 {
   snat_static_map_resolve_t *rp;
 
@@ -596,6 +598,9 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
   rp->proto = proto;
   rp->addr_only = addr_only;
   rp->is_add = is_add;
+  rp->twice_nat = twice_nat;
+  rp->out2in_only = out2in_only;
+  rp->identity_nat = identity_nat;
   rp->tag = vec_dup (tag);
 }
 
@@ -613,34 +618,12 @@ get_thread_idx_by_port (u16 e_port)
   return thread_idx;
 }
 
-/**
- * @brief Add static mapping.
- *
- * Create static mapping between local addr+port and external addr+port.
- *
- * @param l_addr Local IPv4 address.
- * @param e_addr External IPv4 address.
- * @param l_port Local port number.
- * @param e_port External port number.
- * @param vrf_id VRF ID.
- * @param addr_only If 0 address port and pair mapping, otherwise address only.
- * @param sw_if_index External port instead of specific IP address.
- * @param is_add If 0 delete static mapping, otherwise add.
- * @param twice_nat If value is TWICE_NAT then translate external host address
- *                  and port.
- *                  If value is TWICE_NAT_SELF then translate external host
- *                  address and port whenever external host address equals
- *                  local address of internal host.
- * @param out2in_only If 1 rule match only out2in direction
- * @param tag - opaque string tag
- *
- * @returns
- */
 int
 snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 			 u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
 			 u32 sw_if_index, snat_protocol_t proto, int is_add,
-			 twice_nat_type_t twice_nat, u8 out2in_only, u8 * tag)
+			 twice_nat_type_t twice_nat, u8 out2in_only, u8 * tag,
+			 u8 identity_nat)
 {
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
@@ -702,7 +685,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 
 	  snat_add_static_mapping_when_resolved
 	    (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
-	     addr_only, is_add, tag);
+	     addr_only, is_add, tag, twice_nat, out2in_only, identity_nat);
 
 	  /* DHCP resolution required? */
 	  if (first_int_addr == 0)
@@ -842,11 +825,15 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       m->tag = vec_dup (tag);
       m->local_addr = l_addr;
       m->external_addr = e_addr;
-      m->addr_only = addr_only;
       m->vrf_id = vrf_id;
       m->fib_index = fib_index;
       m->twice_nat = twice_nat;
-      m->out2in_only = out2in_only;
+      if (out2in_only)
+	m->flags |= NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY;
+      if (addr_only)
+	m->flags |= NAT_STATIC_MAPPING_FLAG_ADDR_ONLY;
+      if (identity_nat)
+	m->flags |= NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT;
       if (!addr_only)
 	{
 	  m->local_port = l_port;
@@ -1147,11 +1134,11 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       memset (m, 0, sizeof (*m));
       m->tag = vec_dup (tag);
       m->external_addr = e_addr;
-      m->addr_only = 0;
       m->external_port = e_port;
       m->proto = proto;
       m->twice_nat = twice_nat;
-      m->out2in_only = out2in_only;
+      if (out2in_only)
+	m->flags |= NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY;
       m->affinity = affinity;
 
       if (affinity)
@@ -1368,9 +1355,9 @@ snat_del_address (snat_main_t * sm, ip4_address_t addr, u8 delete_sm,
           if (m->external_addr.as_u32 == addr.as_u32)
             (void) snat_add_static_mapping (m->local_addr, m->external_addr,
                                             m->local_port, m->external_port,
-                                            m->vrf_id, m->addr_only, ~0,
+                                            m->vrf_id, is_addr_only_static_mapping(m), ~0,
                                             m->proto, 0, m->twice_nat,
-                                            m->out2in_only, m->tag);
+                                            is_out2in_only_static_mapping(m), m->tag, is_identity_static_mapping(m));
       }));
       /* *INDENT-ON* */
     }
@@ -1682,7 +1669,7 @@ fib:
 
   pool_foreach (m, sm->static_mappings,
   ({
-    if (!(m->addr_only) || (m->local_addr.as_u32 == m->external_addr.as_u32))
+    if (!(is_addr_only_static_mapping(m)) || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
     snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
@@ -1810,7 +1797,7 @@ fib:
 
   pool_foreach (m, sm->static_mappings,
   ({
-    if (!(m->addr_only)  || (m->local_addr.as_u32 == m->external_addr.as_u32))
+    if (!((is_addr_only_static_mapping(m)))  || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
     snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
@@ -2017,7 +2004,8 @@ snat_static_mapping_match (snat_main_t * sm,
 			   u8 by_external,
 			   u8 * is_addr_only,
 			   twice_nat_type_t * twice_nat,
-			   lb_nat_type_t * lb, ip4_address_t * ext_host_addr)
+			   lb_nat_type_t * lb, ip4_address_t * ext_host_addr,
+			   u8 * is_identity_nat)
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
@@ -2108,7 +2096,7 @@ snat_static_mapping_match (snat_main_t * sm,
 	  mapping->fib_index = m->fib_index;
 	  mapping->addr = m->local_addr;
 	  /* Address only mapping doesn't change port */
-	  mapping->port = m->addr_only ? match.port
+	  mapping->port = is_addr_only_static_mapping (m) ? match.port
 	    : clib_host_to_net_u16 (m->local_port);
 	}
       mapping->protocol = m->proto;
@@ -2117,17 +2105,20 @@ snat_static_mapping_match (snat_main_t * sm,
     {
       mapping->addr = m->external_addr;
       /* Address only mapping doesn't change port */
-      mapping->port = m->addr_only ? match.port
+      mapping->port = is_addr_only_static_mapping (m) ? match.port
 	: clib_host_to_net_u16 (m->external_port);
       mapping->fib_index = sm->outside_fib_index;
     }
 
 end:
   if (PREDICT_FALSE (is_addr_only != 0))
-    *is_addr_only = m->addr_only;
+    *is_addr_only = is_addr_only_static_mapping (m);
 
   if (PREDICT_FALSE (twice_nat != 0))
     *twice_nat = m->twice_nat;
+
+  if (PREDICT_FALSE (is_identity_nat != 0))
+    *is_identity_nat = is_identity_static_mapping (m);
 
   return 0;
 }
@@ -2919,7 +2910,8 @@ match:
 				rp->e_port,
 				rp->vrf_id,
 				rp->addr_only, ~0 /* sw_if_index */ ,
-				rp->proto, !is_delete, 0, 0, rp->tag);
+				rp->proto, !is_delete, rp->twice_nat,
+				rp->out2in_only, rp->tag, rp->identity_nat);
   if (rv)
     nat_log_notice ("snat_add_static_mapping returned %d", rv);
 }
@@ -2988,7 +2980,9 @@ match:
 					    rp->addr_only,
 					    ~0 /* sw_if_index */ ,
 					    rp->proto,
-					    rp->is_add, 0, 0, rp->tag);
+					    rp->is_add, rp->twice_nat,
+					    rp->out2in_only, rp->tag,
+					    rp->identity_nat);
 	      if (rv)
 		nat_log_notice ("snat_add_static_mapping returned %d", rv);
 	    }

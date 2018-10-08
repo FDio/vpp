@@ -309,6 +309,7 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
   u8 is_addr_only;
   u32 next0 = ~0;
   int err;
+  u8 identity_nat;
 
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -333,7 +334,7 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
       /* Try to match static mapping by external address and port,
          destination address and port in packet */
       if (snat_static_mapping_match
-	  (sm, key0, &sm0, 1, &is_addr_only, 0, 0, 0))
+	  (sm, key0, &sm0, 1, &is_addr_only, 0, 0, 0, &identity_nat))
 	{
 	  if (!sm->forwarding_enabled)
 	    {
@@ -364,6 +365,11 @@ icmp_match_out2in_slow (snat_main_t * sm, vlib_node_runtime_t * node,
 	  goto out;
 	}
 
+      if (PREDICT_FALSE (identity_nat))
+	{
+	  dont_translate = 1;
+	  goto out;
+	}
       /* Create session initiated by host from external network */
       s0 = create_session_for_static_mapping (sm, b0, sm0, key0,
 					      node, thread_index,
@@ -443,7 +449,8 @@ icmp_match_out2in_fast (snat_main_t * sm, vlib_node_runtime_t * node,
     }
   key0.fib_index = rx_fib_index0;
 
-  if (snat_static_mapping_match (sm, key0, &sm0, 1, &is_addr_only, 0, 0, 0))
+  if (snat_static_mapping_match
+      (sm, key0, &sm0, 1, &is_addr_only, 0, 0, 0, 0))
     {
       /* Don't NAT packet aimed at the intfc address */
       if (is_interface_addr (sm, node, sw_if_index0, ip0->dst_address.as_u32))
@@ -703,6 +710,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  u32 proto0, proto1;
 	  snat_session_t *s0 = 0, *s1 = 0;
 	  clib_bihash_kv_8_8_t kv0, kv1, value0, value1;
+	  u8 identity_nat0, identity_nat1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -793,7 +801,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	    {
 	      /* Try to match static mapping by external address and port,
 	         destination address and port in packet */
-	      if (snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0))
+	      if (snat_static_mapping_match
+		  (sm, key0, &sm0, 1, 0, 0, 0, 0, &identity_nat0))
 		{
 		  /*
 		   * Send DHCP packets to the ipv4 stack, or we won't
@@ -816,6 +825,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
 		    }
 		  goto trace0;
 		}
+
+	      if (PREDICT_FALSE (identity_nat0))
+		goto trace0;
 
 	      /* Create session initiated by host from external network */
 	      s0 = create_session_for_static_mapping (sm, b0, sm0, key0, node,
@@ -950,7 +962,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	    {
 	      /* Try to match static mapping by external address and port,
 	         destination address and port in packet */
-	      if (snat_static_mapping_match (sm, key1, &sm1, 1, 0, 0, 0, 0))
+	      if (snat_static_mapping_match
+		  (sm, key1, &sm1, 1, 0, 0, 0, 0, &identity_nat1))
 		{
 		  /*
 		   * Send DHCP packets to the ipv4 stack, or we won't
@@ -973,6 +986,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
 		    }
 		  goto trace1;
 		}
+
+	      if (PREDICT_FALSE (identity_nat1))
+		goto trace1;
 
 	      /* Create session initiated by host from external network */
 	      s1 = create_session_for_static_mapping (sm, b1, sm1, key1, node,
@@ -1069,6 +1085,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  u32 proto0;
 	  snat_session_t *s0 = 0;
 	  clib_bihash_kv_8_8_t kv0, value0;
+	  u8 identity_nat0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -1143,7 +1160,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	    {
 	      /* Try to match static mapping by external address and port,
 	         destination address and port in packet */
-	      if (snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0))
+	      if (snat_static_mapping_match
+		  (sm, key0, &sm0, 1, 0, 0, 0, 0, &identity_nat0))
 		{
 		  /*
 		   * Send DHCP packets to the ipv4 stack, or we won't
@@ -1166,6 +1184,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
 		    }
 		  goto trace00;
 		}
+
+	      if (PREDICT_FALSE (identity_nat0))
+		goto trace00;
 
 	      /* Create session initiated by host from external network */
 	      s0 = create_session_for_static_mapping (sm, b0, sm0, key0, node,
@@ -1320,6 +1341,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 	  snat_session_t *s0 = 0;
 	  u16 old_port0, new_port0;
 	  ip_csum_t sum0;
+	  u8 identity_nat0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -1377,7 +1399,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 		  /* Try to match static mapping by external address and port,
 		     destination address and port in packet */
 		  if (snat_static_mapping_match
-		      (sm, key0, &sm0, 1, 0, 0, 0, 0))
+		      (sm, key0, &sm0, 1, 0, 0, 0, 0, &identity_nat0))
 		    {
 		      /*
 		       * Send DHCP packets to the ipv4 stack, or we won't
@@ -1401,6 +1423,9 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 			}
 		      goto trace0;
 		    }
+
+		  if (PREDICT_FALSE (identity_nat0))
+		    goto trace0;
 
 		  /* Create session initiated by host from external network */
 		  s0 =
@@ -1663,7 +1688,7 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
 	  key0.port = udp0->dst_port;
 	  key0.fib_index = rx_fib_index0;
 
-	  if (snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0))
+	  if (snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0, 0))
 	    {
 	      b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
 	      goto trace00;

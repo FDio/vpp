@@ -114,7 +114,7 @@ snat_hairpinning (snat_main_t * sm,
   kv0.key = key0.as_u64;
 
   /* Check if destination is static mappings */
-  if (!snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0))
+  if (!snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0, 0))
     {
       new_dst_addr0 = sm0.addr.as_u32;
       new_dst_port0 = sm0.port;
@@ -444,7 +444,7 @@ nat44_reass_hairpinning (snat_main_t * sm,
   udp0 = ip4_next_header (ip0);
 
   /* Check if destination is static mappings */
-  if (!snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0))
+  if (!snat_static_mapping_match (sm, key0, &sm0, 1, 0, 0, 0, 0, 0))
     {
       new_dst_addr0 = sm0.addr.as_u32;
       new_dst_port0 = sm0.port;
