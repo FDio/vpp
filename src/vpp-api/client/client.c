@@ -33,6 +33,9 @@
 
 #include "vppapiclient.h"
 
+bool timeout_cancelled;
+bool timeout_in_progress;
+
 /*
  * Asynchronous mode:
  *  Client registers a callback. All messages are sent to the callback.
@@ -234,27 +237,31 @@ vac_timeout_thread_fn (void *arg)
   api_main_t *am = &api_main;
   struct timespec ts;
   struct timeval tv;
-  u16 timeout;
   int rv;
 
   while (pm->timeout_loop)
     {
       /* Wait for poke */
       pthread_mutex_lock(&pm->timeout_lock);
-      pthread_cond_wait (&pm->timeout_cv, &pm->timeout_lock);
-      timeout = read_timeout;
+      while (!timeout_in_progress)
+	pthread_cond_wait (&pm->timeout_cv, &pm->timeout_lock);
+
+      /* Starting timer */
       gettimeofday(&tv, NULL);
-      ts.tv_sec = tv.tv_sec + timeout;
+      ts.tv_sec = tv.tv_sec + read_timeout;
       ts.tv_nsec = 0;
-      rv = pthread_cond_timedwait (&pm->timeout_cancel_cv,
-				   &pm->timeout_lock, &ts);
-      pthread_mutex_unlock(&pm->timeout_lock);
-      if (rv == ETIMEDOUT && !timeout_thread_cancelled)
-	{
+
+      if (!timeout_cancelled) {
+	rv = pthread_cond_timedwait (&pm->timeout_cancel_cv,
+				     &pm->timeout_lock, &ts);
+	if (rv == ETIMEDOUT && !timeout_thread_cancelled) {
 	  ep = vl_msg_api_alloc (sizeof (*ep));
 	  ep->_vl_msg_id = ntohs(VL_API_MEMCLNT_READ_TIMEOUT);
 	  vl_msg_api_send_shmem(am->vl_input_queue, (u8 *)&ep);
 	}
+      }
+
+      pthread_mutex_unlock(&pm->timeout_lock);
     }
   pthread_exit(0);
 }
@@ -353,13 +360,14 @@ vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
 
   return (0);
 }
-
 static void
 set_timeout (unsigned short timeout)
 {
   vac_main_t *pm = &vac_main;
   pthread_mutex_lock(&pm->timeout_lock);
   read_timeout = timeout;
+  timeout_in_progress = true;
+  timeout_cancelled = false;
   pthread_cond_signal(&pm->timeout_cv);
   pthread_mutex_unlock(&pm->timeout_lock);
 }
@@ -369,6 +377,8 @@ unset_timeout (void)
 {
   vac_main_t *pm = &vac_main;
   pthread_mutex_lock(&pm->timeout_lock);
+  timeout_in_progress = false;
+  timeout_cancelled = true;
   pthread_cond_signal(&pm->timeout_cancel_cv);
   pthread_mutex_unlock(&pm->timeout_lock);
 }
@@ -453,7 +463,7 @@ vac_read (char **p, int *l, u16 timeout)
     switch (msg_id) {
     case VL_API_RX_THREAD_EXIT:
       vl_msg_api_free((void *) msg);
-      return -1;
+      goto error;
     case VL_API_MEMCLNT_RX_THREAD_SUSPEND:
       goto error;
     case VL_API_MEMCLNT_READ_TIMEOUT:
@@ -484,15 +494,19 @@ vac_read (char **p, int *l, u16 timeout)
     }
     *p = (char *)msg;
 
-    /* Let timeout notification thread know we're done */
-    unset_timeout();
 
   } else {
     fprintf(stderr, "Read failed with %d\n", rv);
   }
+  /* Let timeout notification thread know we're done */
+  if (timeout)
+    unset_timeout();
+
   return (rv);
 
  error:
+  if (timeout)
+    unset_timeout();
   vl_msg_api_free((void *) msg);
   /* Client might forget to resume RX thread on failure */
   vac_rx_resume ();
