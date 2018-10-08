@@ -618,7 +618,6 @@ memif_delete_socket_file (u32 sock_id)
 int
 memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 {
-  struct stat file_stat;
   char *dir = 0, *tmp;
   u32 idx = 0;
 
@@ -680,8 +679,9 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 	  vec_add1 (dir, '\0');
 	}
 
-      if (((dir == 0) || (stat (dir, &file_stat) == -1)
-	   || (!S_ISDIR (file_stat.st_mode))) && (idx != 0))
+      /* check dir existance and access rights for effective user/group IDs */
+      if (faccessat ( /* ignored */ -1, dir, F_OK | R_OK | W_OK, AT_EACCESS) <
+	  0)
 	{
 	  vec_free (dir);
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
