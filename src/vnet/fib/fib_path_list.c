@@ -340,6 +340,18 @@ fib_path_list_last_lock_gone (fib_node_t *node)
     fib_path_list_destroy(path_list);
 }
 
+static load_balance_flags_t
+fib_path_list_fwd_flags_2_load_balance (fib_path_list_fwd_flags_t pl_flags)
+{
+    load_balance_flags_t lb_flags = LOAD_BALANCE_FLAG_NONE;
+
+    if (pl_flags & FIB_PATH_LIST_FWD_FLAG_STICKY)
+    {
+        lb_flags |= LOAD_BALANCE_ATTR_STICKY;
+    }
+    return (lb_flags);
+}
+
 /*
  * fib_path_mk_lb
  *
@@ -349,7 +361,8 @@ fib_path_list_last_lock_gone (fib_node_t *node)
 static void
 fib_path_list_mk_lb (fib_path_list_t *path_list,
 		     fib_forward_chain_type_t fct,
-		     dpo_id_t *dpo)
+		     dpo_id_t *dpo,
+                     fib_path_list_fwd_flags_t flags)
 {
     load_balance_path_t *nhs;
     fib_node_index_t *path_index;
@@ -361,9 +374,12 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
      */
     vec_foreach (path_index, path_list->fpl_paths)
     {
-	nhs = fib_path_append_nh_for_multipath_hash(*path_index,
-                                                    fct,
-                                                    nhs);
+        if ((flags & FIB_PATH_LIST_FWD_FLAG_STICKY) ||
+            fib_path_is_resolved(*path_index))
+        {
+            nhs = fib_path_append_nh_for_multipath_hash(*path_index,
+                                                        fct, nhs);
+        }
     }
 
     /*
@@ -376,7 +392,8 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
             load_balance_create(vec_len(nhs),
                                 fib_forw_chain_type_to_dpo_proto(fct),
                                 0 /* FIXME FLOW HASH */));
-    load_balance_multipath_update(dpo, nhs, LOAD_BALANCE_FLAG_NONE);
+    load_balance_multipath_update(dpo, nhs,
+                                  fib_path_list_fwd_flags_2_load_balance(flags));
 
     FIB_PATH_LIST_DBG(path_list, "mk lb: %d", dpo->dpoi_index);
 
@@ -1144,7 +1161,7 @@ fib_path_list_contribute_forwarding (fib_node_index_t path_list_index,
 
     path_list = fib_path_list_get(path_list_index);
 
-    fib_path_list_mk_lb(path_list, fct, dpo);
+    fib_path_list_mk_lb(path_list, fct, dpo, flags);
 
     ASSERT(DPO_LOAD_BALANCE == dpo->dpoi_type);
 

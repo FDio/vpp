@@ -2521,15 +2521,20 @@ fib_path_append_nh_for_multipath_hash (fib_node_index_t path_index,
 
     ASSERT(path);
 
+    vec_add2(hash_key, mnh, 1);
+
+    mnh->path_weight = path->fp_weight;
+    mnh->path_index = path_index;
+
     if (fib_path_is_resolved(path_index))
     {
-	vec_add2(hash_key, mnh, 1);
-
-	mnh->path_weight = path->fp_weight;
-	mnh->path_index = path_index;
-	fib_path_contribute_forwarding(path_index, fct, &mnh->path_dpo);
+        fib_path_contribute_forwarding(path_index, fct, &mnh->path_dpo);
     }
-
+    else
+    {
+        dpo_copy(&mnh->path_dpo,
+                 drop_dpo_get(fib_forw_chain_type_to_dpo_proto(fct)));
+    }
     return (hash_key);
 }
 
