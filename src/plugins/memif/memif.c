@@ -680,8 +680,10 @@ memif_socket_filename_add_del (u8 is_add, u32 sock_id, u8 * sock_filename)
 	}
 
       /* check dir existance and access rights for effective user/group IDs */
-      if (faccessat ( /* ignored */ -1, dir, F_OK | R_OK | W_OK, AT_EACCESS) <
-	  0)
+      if ((dir == NULL)
+	  ||
+	  (faccessat ( /* ignored */ -1, dir, F_OK | R_OK | W_OK, AT_EACCESS)
+	   < 0))
 	{
 	  vec_free (dir);
 	  return VNET_API_ERROR_INVALID_ARGUMENT;
