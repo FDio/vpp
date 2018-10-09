@@ -145,7 +145,7 @@ u32x4_extend_to_u64x2 (u32x4 v)
 static_always_inline u64x2
 u32x4_extend_to_u64x2_high (u32x4 v)
 {
-  return vmovl_high_u32 (vrev64q_u32 (v));
+  return vmovl_high_u32 (v);
 }
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
