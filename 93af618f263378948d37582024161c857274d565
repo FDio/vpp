@@ -22,6 +22,29 @@
       "revId": "93af618f263378948d37582024161c857274d565",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ad3178d_57dcbd7c",
+        "filename": "test/test_l2_flood.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-09T18:08:56Z",
+      "side": 1,
+      "message": "Does this check make sure what\u0027s received on pg1 is the same packet buffer and not a copy of it?",
+      "range": {
+        "startLine": 171,
+        "startChar": 13,
+        "endLine": 171,
+        "endChar": 28
+      },
+      "revId": "93af618f263378948d37582024161c857274d565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
