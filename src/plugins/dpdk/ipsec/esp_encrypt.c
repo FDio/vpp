@@ -63,7 +63,8 @@ static char *esp_encrypt_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t dpdk_esp_encrypt_node;
+vlib_node_registration_t dpdk_esp4_encrypt_node;
+vlib_node_registration_t dpdk_esp6_encrypt_node;
 
 typedef struct
 {
@@ -105,10 +106,10 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
-			  vlib_node_runtime_t * node,
-			  vlib_frame_t * from_frame)
+always_inline uword
+dpdk_esp_encrypt_inline (vlib_main_t * vm,
+			 vlib_node_runtime_t * node,
+			 vlib_frame_t * from_frame, int is_ip6)
 {
   u32 n_left_from, *from, *to_next, next_index;
   ipsec_main_t *im = &ipsec_main;
@@ -131,8 +132,12 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
   ret = crypto_alloc_ops (numa, ops, n_left_from);
   if (ret)
     {
-      vlib_node_increment_counter (vm, dpdk_esp_encrypt_node.index,
-				   ESP_ENCRYPT_ERROR_DISCARD, 1);
+      if (is_ip6)
+	vlib_node_increment_counter (vm, dpdk_esp6_encrypt_node.index,
+				     ESP_ENCRYPT_ERROR_DISCARD, 1);
+      else
+	vlib_node_increment_counter (vm, dpdk_esp4_encrypt_node.index,
+				     ESP_ENCRYPT_ERROR_DISCARD, 1);
       /* Discard whole frame */
       return n_left_from;
     }
@@ -156,7 +161,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  ip4_and_udp_and_esp_header_t *ouh0 = 0;
 	  esp_header_t *esp0;
 	  esp_footer_t *f0;
-	  u8 is_ipv6, next_hdr_type;
+	  u8 next_hdr_type;
 	  u32 iv_size;
 	  u16 orig_sz;
 	  u8 trunc_size;
@@ -212,9 +217,14 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		{
 		  clib_warning ("unsupported SA by thread index %u",
 				thread_idx);
-		  vlib_node_increment_counter (vm,
-					       dpdk_esp_encrypt_node.index,
-					       ESP_ENCRYPT_ERROR_NOSUP, 1);
+		  if (is_ip6)
+		    vlib_node_increment_counter (vm,
+						 dpdk_esp6_encrypt_node.index,
+						 ESP_ENCRYPT_ERROR_NOSUP, 1);
+		  else
+		    vlib_node_increment_counter (vm,
+						 dpdk_esp4_encrypt_node.index,
+						 ESP_ENCRYPT_ERROR_NOSUP, 1);
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -226,9 +236,16 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      if (PREDICT_FALSE (error || !session))
 		{
 		  clib_warning ("failed to get crypto session");
-		  vlib_node_increment_counter (vm,
-					       dpdk_esp_encrypt_node.index,
-					       ESP_ENCRYPT_ERROR_SESSION, 1);
+		  if (is_ip6)
+		    vlib_node_increment_counter (vm,
+						 dpdk_esp6_encrypt_node.index,
+						 ESP_ENCRYPT_ERROR_SESSION,
+						 1);
+		  else
+		    vlib_node_increment_counter (vm,
+						 dpdk_esp4_encrypt_node.index,
+						 ESP_ENCRYPT_ERROR_SESSION,
+						 1);
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -242,8 +259,14 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	    {
 	      clib_warning ("sequence number counter has cycled SPI %u",
 			    sa0->spi);
-	      vlib_node_increment_counter (vm, dpdk_esp_encrypt_node.index,
-					   ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
+	      if (is_ip6)
+		vlib_node_increment_counter (vm,
+					     dpdk_esp6_encrypt_node.index,
+					     ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
+	      else
+		vlib_node_increment_counter (vm,
+					     dpdk_esp4_encrypt_node.index,
+					     ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      //TODO: rekey SA
 	      to_next[0] = bi0;
 	      to_next += 1;
@@ -264,19 +287,17 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 
 	  crypto_set_icb (icb, sa0->salt, sa0->seq, sa0->seq_hi);
 
-	  is_ipv6 = (ih0->ip4.ip_version_and_header_length & 0xF0) == 0x60;
-
 	  iv_size = cipher_alg->iv_len;
 	  trunc_size = auth_alg->trunc_size;
 
 	  /* if UDP encapsulation is used adjust the address of the IP header */
-	  if (sa0->udp_encap && !is_ipv6)
+	  if (sa0->udp_encap && !is_ip6)
 	    udp_encap_adv = sizeof (udp_header_t);
 
 	  if (sa0->is_tunnel)
 	    {
 	      rewrite_len = 0;
-	      if (!is_ipv6 && !sa0->is_tunnel_ip6)	/* ip4inip4 */
+	      if (!is_ip6 && !sa0->is_tunnel_ip6)	/* ip4inip4 */
 		{
 		  /* in tunnel mode send it back to FIB */
 		  priv->next = DPDK_CRYPTO_INPUT_NEXT_IP4_LOOKUP;
@@ -316,7 +337,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		  esp0->spi = clib_host_to_net_u32 (sa0->spi);
 		  esp0->seq = clib_host_to_net_u32 (sa0->seq);
 		}
-	      else if (is_ipv6 && sa0->is_tunnel_ip6)	/* ip6inip6 */
+	      else if (is_ip6 && sa0->is_tunnel_ip6)	/* ip6inip6 */
 		{
 		  /* in tunnel mode send it back to FIB */
 		  priv->next = DPDK_CRYPTO_INPUT_NEXT_IP6_LOOKUP;
@@ -348,9 +369,14 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		}
 	      else		/* unsupported ip4inip6, ip6inip4 */
 		{
-		  vlib_node_increment_counter (vm,
-					       dpdk_esp_encrypt_node.index,
-					       ESP_ENCRYPT_ERROR_NOSUP, 1);
+		  if (is_ip6)
+		    vlib_node_increment_counter (vm,
+						 dpdk_esp6_encrypt_node.index,
+						 ESP_ENCRYPT_ERROR_NOSUP, 1);
+		  else
+		    vlib_node_increment_counter (vm,
+						 dpdk_esp4_encrypt_node.index,
+						 ESP_ENCRYPT_ERROR_NOSUP, 1);
 		  to_next[0] = bi0;
 		  to_next += 1;
 		  n_left_to_next -= 1;
@@ -368,7 +394,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      u8 *dst = vlib_buffer_get_current (b0);
 	      oh0 = vlib_buffer_get_current (b0) + rewrite_len;
 
-	      if (is_ipv6)
+	      if (is_ip6)
 		{
 		  orig_sz -= sizeof (ip6_header_t);
 		  ih6_0 = (ip6_and_esp_header_t *) ih0;
@@ -424,7 +450,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  f0->pad_length = pad_bytes;
 	  f0->next_header = next_hdr_type;
 
-	  if (is_ipv6)
+	  if (is_ip6)
 	    {
 	      u16 len = b0->current_length - sizeof (ip6_header_t);
 	      oh6_0->ip6.payload_length =
@@ -517,22 +543,42 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, dpdk_esp_encrypt_node.index,
-			       ESP_ENCRYPT_ERROR_RX_PKTS,
-			       from_frame->n_vectors);
+  if (is_ip6)
+    {
+      vlib_node_increment_counter (vm, dpdk_esp6_encrypt_node.index,
+				   ESP_ENCRYPT_ERROR_RX_PKTS,
+				   from_frame->n_vectors);
 
-  crypto_enqueue_ops (vm, cwm, 1, dpdk_esp_encrypt_node.index,
-		      ESP_ENCRYPT_ERROR_ENQ_FAIL, numa);
+      crypto_enqueue_ops (vm, cwm, 1, dpdk_esp6_encrypt_node.index,
+			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa);
+    }
+  else
+    {
+      vlib_node_increment_counter (vm, dpdk_esp4_encrypt_node.index,
+				   ESP_ENCRYPT_ERROR_RX_PKTS,
+				   from_frame->n_vectors);
+
+      crypto_enqueue_ops (vm, cwm, 1, dpdk_esp4_encrypt_node.index,
+			  ESP_ENCRYPT_ERROR_ENQ_FAIL, numa);
+    }
 
   crypto_free_ops (numa, ops, cwm->ops + from_frame->n_vectors - ops);
 
   return from_frame->n_vectors;
 }
 
+static uword
+dpdk_esp4_encrypt_node_fn (vlib_main_t * vm,
+			   vlib_node_runtime_t * node,
+			   vlib_frame_t * from_frame)
+{
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ );
+}
+
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (dpdk_esp_encrypt_node) = {
-  .function = dpdk_esp_encrypt_node_fn,
-  .name = "dpdk-esp-encrypt",
+VLIB_REGISTER_NODE (dpdk_esp4_encrypt_node) = {
+  .function = dpdk_esp4_encrypt_node_fn,
+  .name = "dpdk4-esp-encrypt",
   .flags = VLIB_NODE_FLAG_IS_OUTPUT,
   .vector_size = sizeof (u32),
   .format_trace = format_esp_encrypt_trace,
@@ -546,7 +592,36 @@ VLIB_REGISTER_NODE (dpdk_esp_encrypt_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp_encrypt_node, dpdk_esp_encrypt_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp4_encrypt_node,
+			      dpdk_esp4_encrypt_node_fn);
+
+static uword
+dpdk_esp6_encrypt_node_fn (vlib_main_t * vm,
+			   vlib_node_runtime_t * node,
+			   vlib_frame_t * from_frame)
+{
+  return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ );
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (dpdk_esp6_encrypt_node) = {
+  .function = dpdk_esp6_encrypt_node_fn,
+  .name = "dpdk6-esp-encrypt",
+  .flags = VLIB_NODE_FLAG_IS_OUTPUT,
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_encrypt_trace,
+  .n_errors = ARRAY_LEN (esp_encrypt_error_strings),
+  .error_strings = esp_encrypt_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes =
+    {
+      [ESP_ENCRYPT_NEXT_DROP] = "error-drop",
+    }
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp6_encrypt_node,
+			      dpdk_esp6_encrypt_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *

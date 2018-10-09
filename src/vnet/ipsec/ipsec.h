@@ -20,11 +20,12 @@
 
 #define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
 
-
-#define foreach_ipsec_output_next                \
-_(DROP, "error-drop")                            \
-_(ESP_ENCRYPT, "esp-encrypt")                    \
-_(AH_ENCRYPT, "ah-encrypt")
+#define foreach_ipsec_output_next        \
+  _ (DROP, "error-drop")                 \
+  _ (ESP4_ENCRYPT, "esp4-encrypt") \
+  _ (AH4_ENCRYPT, "ah4-encrypt")   \
+  _ (ESP6_ENCRYPT, "esp6-encrypt") \
+  _ (AH6_ENCRYPT, "ah6-encrypt")
 
 #define _(v, s) IPSEC_OUTPUT_NEXT_##v,
 typedef enum
@@ -34,11 +35,12 @@ typedef enum
     IPSEC_OUTPUT_N_NEXT,
 } ipsec_output_next_t;
 
-
-#define foreach_ipsec_input_next                \
-_(DROP, "error-drop")                           \
-_(ESP_DECRYPT, "esp-decrypt")                   \
-_(AH_DECRYPT, "ah-decrypt")
+#define foreach_ipsec_input_next         \
+  _ (DROP, "error-drop")                 \
+  _ (ESP4_DECRYPT, "esp4-decrypt") \
+  _ (AH4_DECRYPT, "ah4-decrypt")   \
+  _ (ESP6_DECRYPT, "esp6-decrypt") \
+  _ (AH6_DECRYPT, "ah6-decrypt")
 
 #define _(v, s) IPSEC_INPUT_NEXT_##v,
 typedef enum
@@ -288,15 +290,23 @@ typedef struct
 
   /* node indices */
   u32 error_drop_node_index;
-  u32 esp_encrypt_node_index;
-  u32 esp_decrypt_node_index;
-  u32 ah_encrypt_node_index;
-  u32 ah_decrypt_node_index;
+  u32 esp4_encrypt_node_index;
+  u32 esp4_decrypt_node_index;
+  u32 ah4_encrypt_node_index;
+  u32 ah4_decrypt_node_index;
+  u32 esp6_encrypt_node_index;
+  u32 esp6_decrypt_node_index;
+  u32 ah6_encrypt_node_index;
+  u32 ah6_decrypt_node_index;
   /* next node indices */
-  u32 esp_encrypt_next_index;
-  u32 esp_decrypt_next_index;
-  u32 ah_encrypt_next_index;
-  u32 ah_decrypt_next_index;
+  u32 esp4_encrypt_next_index;
+  u32 esp4_decrypt_next_index;
+  u32 ah4_encrypt_next_index;
+  u32 ah4_decrypt_next_index;
+  u32 esp6_encrypt_next_index;
+  u32 esp6_decrypt_next_index;
+  u32 ah6_encrypt_next_index;
+  u32 ah6_decrypt_next_index;
 
   /* callbacks */
   ipsec_main_callbacks_t cb;
@@ -307,10 +317,14 @@ typedef struct
 
 extern ipsec_main_t ipsec_main;
 
-extern vlib_node_registration_t esp_encrypt_node;
-extern vlib_node_registration_t esp_decrypt_node;
-extern vlib_node_registration_t ah_encrypt_node;
-extern vlib_node_registration_t ah_decrypt_node;
+extern vlib_node_registration_t esp4_encrypt_node;
+extern vlib_node_registration_t esp4_decrypt_node;
+extern vlib_node_registration_t ah4_encrypt_node;
+extern vlib_node_registration_t ah4_decrypt_node;
+extern vlib_node_registration_t esp6_encrypt_node;
+extern vlib_node_registration_t esp6_decrypt_node;
+extern vlib_node_registration_t ah6_encrypt_node;
+extern vlib_node_registration_t ah6_decrypt_node;
 extern vlib_node_registration_t ipsec_if_input_node;
 
 
