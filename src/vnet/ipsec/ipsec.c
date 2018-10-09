@@ -562,26 +562,47 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (node);
   im->error_drop_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "esp-encrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "ip4-esp-encrypt");
   ASSERT (node);
-  im->esp_encrypt_node_index = node->index;
+  im->ip4_esp_encrypt_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "esp-decrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "ip4-esp-decrypt");
   ASSERT (node);
-  im->esp_decrypt_node_index = node->index;
+  im->ip4_esp_decrypt_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "ah-encrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "ip4-ah-encrypt");
   ASSERT (node);
-  im->ah_encrypt_node_index = node->index;
+  im->ip4_ah_encrypt_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "ah-decrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "ip4-ah-decrypt");
   ASSERT (node);
-  im->ah_decrypt_node_index = node->index;
+  im->ip4_ah_decrypt_node_index = node->index;
 
-  im->esp_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP_ENCRYPT;
-  im->esp_decrypt_next_index = IPSEC_INPUT_NEXT_ESP_DECRYPT;
-  im->ah_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH_ENCRYPT;
-  im->ah_decrypt_next_index = IPSEC_INPUT_NEXT_AH_DECRYPT;
+  im->ip4_esp_encrypt_next_index = IPSEC_OUTPUT_NEXT_IP4_ESP_ENCRYPT;
+  im->ip4_esp_decrypt_next_index = IPSEC_INPUT_NEXT_IP4_ESP_DECRYPT;
+  im->ip4_ah_encrypt_next_index = IPSEC_OUTPUT_NEXT_IP4_AH_ENCRYPT;
+  im->ip4_ah_decrypt_next_index = IPSEC_INPUT_NEXT_IP4_AH_DECRYPT;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-esp-encrypt");
+  ASSERT (node);
+  im->ip6_esp_encrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-esp-decrypt");
+  ASSERT (node);
+  im->ip6_esp_decrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-ah-encrypt");
+  ASSERT (node);
+  im->ip6_ah_encrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-ah-decrypt");
+  ASSERT (node);
+  im->ip6_ah_decrypt_node_index = node->index;
+
+  im->ip6_esp_encrypt_next_index = IPSEC_OUTPUT_NEXT_IP6_ESP_ENCRYPT;
+  im->ip6_esp_decrypt_next_index = IPSEC_INPUT_NEXT_IP6_ESP_DECRYPT;
+  im->ip6_ah_encrypt_next_index = IPSEC_OUTPUT_NEXT_IP6_AH_ENCRYPT;
+  im->ip6_ah_decrypt_next_index = IPSEC_INPUT_NEXT_IP6_AH_DECRYPT;
 
   im->cb.check_support_cb = ipsec_check_support;
 

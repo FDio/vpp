@@ -252,7 +252,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->esp_decrypt_next_index;
+		  next0 = im->ip4_esp_decrypt_next_index;
 		  vlib_buffer_advance (b0, ((u8 *) esp0 - (u8 *) ip0));
 		  goto trace0;
 		}
@@ -295,7 +295,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->ah_decrypt_next_index;
+		  next0 = im->ip4_ah_decrypt_next_index;
 		  goto trace1;
 		}
 	      /* FIXME bypass and discard */
@@ -423,7 +423,7 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += header_size;
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->esp_decrypt_next_index;
+		  next0 = im->ip6_esp_decrypt_next_index;
 		  vlib_buffer_advance (b0, header_size);
 		  goto trace0;
 		}
@@ -444,7 +444,7 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += header_size;
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->ah_decrypt_next_index;
+		  next0 = im->ip6_ah_decrypt_next_index;
 		  goto trace0;
 		}
 	    }
