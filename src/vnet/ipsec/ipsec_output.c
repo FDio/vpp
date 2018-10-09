@@ -281,9 +281,14 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      nc_protect++;
 	      sa = pool_elt_at_index (im->sad, p0->sa_index);
 	      if (sa->protocol == IPSEC_PROTOCOL_ESP)
-		next_node_index = im->esp_encrypt_node_index;
+		if (is_ipv6)
+		  next_node_index = im->ip6_esp_encrypt_node_index;
+		else
+		  next_node_index = im->ip4_esp_encrypt_node_index;
+	      else if (is_ipv6)
+		next_node_index = im->ip6_ah_encrypt_node_index;
 	      else
-		next_node_index = im->ah_encrypt_node_index;
+		next_node_index = im->ip4_ah_encrypt_node_index;
 	      vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 	      p0->counter.packets++;
 	      if (is_ipv6)
@@ -440,10 +445,12 @@ VLIB_REGISTER_NODE (ipsec_output_ip4_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_ip4_node, ipsec_output_ip4_node_fn)
-     static uword
-       ipsec_output_ip6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-				 vlib_frame_t * frame)
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_ip4_node,
+			      ipsec_output_ip4_node_fn);
+
+static uword
+ipsec_output_ip6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			  vlib_frame_t * frame)
 {
   return ipsec_output_inline (vm, node, frame, 1);
 }
@@ -468,7 +475,8 @@ VLIB_REGISTER_NODE (ipsec_output_ip6_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_ip6_node, ipsec_output_ip6_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_ip6_node,
+			      ipsec_output_ip6_node_fn);
 #else /* IPSEC > 1 */
 
 /* Dummy ipsec output node, in case when IPSec is disabled */
