@@ -1051,20 +1051,36 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   /* Add new next node and set it as default */
   vlib_node_t *node, *next_node;
 
-  next_node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp-encrypt");
+  next_node = vlib_get_node_by_name (vm, (u8 *) "ip4-dpdk-esp-encrypt");
   ASSERT (next_node);
   node = vlib_get_node_by_name (vm, (u8 *) "ipsec-output-ip4");
   ASSERT (node);
-  im->esp_encrypt_node_index = next_node->index;
-  im->esp_encrypt_next_index =
+  im->ip4_esp_encrypt_node_index = next_node->index;
+  im->ip4_esp_encrypt_next_index =
     vlib_node_add_next (vm, node->index, next_node->index);
 
-  next_node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp-decrypt");
+  next_node = vlib_get_node_by_name (vm, (u8 *) "ip4-dpdk-esp-decrypt");
   ASSERT (next_node);
   node = vlib_get_node_by_name (vm, (u8 *) "ipsec-input-ip4");
   ASSERT (node);
-  im->esp_decrypt_node_index = next_node->index;
-  im->esp_decrypt_next_index =
+  im->ip4_esp_decrypt_node_index = next_node->index;
+  im->ip4_esp_decrypt_next_index =
+    vlib_node_add_next (vm, node->index, next_node->index);
+
+  next_node = vlib_get_node_by_name (vm, (u8 *) "ip6-dpdk-esp-encrypt");
+  ASSERT (next_node);
+  node = vlib_get_node_by_name (vm, (u8 *) "ipsec-output-ip6");
+  ASSERT (node);
+  im->ip6_esp_encrypt_node_index = next_node->index;
+  im->ip6_esp_encrypt_next_index =
+    vlib_node_add_next (vm, node->index, next_node->index);
+
+  next_node = vlib_get_node_by_name (vm, (u8 *) "ip6-dpdk-esp-decrypt");
+  ASSERT (next_node);
+  node = vlib_get_node_by_name (vm, (u8 *) "ipsec-input-ip6");
+  ASSERT (node);
+  im->ip6_esp_decrypt_node_index = next_node->index;
+  im->ip6_esp_decrypt_next_index =
     vlib_node_add_next (vm, node->index, next_node->index);
 
   im->cb.check_support_cb = dpdk_ipsec_check_support;
