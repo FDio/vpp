@@ -129,9 +129,9 @@ ip6_addr_match_range (ip6_address_t * a, ip6_address_t * la,
 }
 
 always_inline ipsec_policy_t *
-ipsec_input_ip6_protect_policy_match (ipsec_spd_t * spd,
-				      ip6_address_t * sa,
-				      ip6_address_t * da, u32 spi)
+ipsec6_input_protect_policy_match (ipsec_spd_t * spd,
+				   ip6_address_t * sa,
+				   ip6_address_t * da, u32 spi)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *p;
@@ -168,12 +168,11 @@ ipsec_input_ip6_protect_policy_match (ipsec_spd_t * spd,
   return 0;
 }
 
-static vlib_node_registration_t ipsec_input_ip4_node;
+static vlib_node_registration_t ipsec4_input_node;
 
 static uword
-ipsec_input_ip4_node_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame)
+ipsec4_input_node_fn (vlib_main_t * vm,
+		      vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
@@ -252,7 +251,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->esp_decrypt_next_index;
+		  next0 = im->esp4_decrypt_next_index;
 		  vlib_buffer_advance (b0, ((u8 *) esp0 - (u8 *) ip0));
 		  goto trace0;
 		}
@@ -295,7 +294,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->ah_decrypt_next_index;
+		  next0 = im->ah4_decrypt_next_index;
 		  goto trace1;
 		}
 	      /* FIXME bypass and discard */
@@ -320,7 +319,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, ipsec_input_ip4_node.index,
+  vlib_node_increment_counter (vm, ipsec4_input_node.index,
 			       IPSEC_INPUT_ERROR_RX_PKTS,
 			       from_frame->n_vectors);
 
@@ -329,9 +328,9 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec_input_ip4_node,static) = {
-  .function = ipsec_input_ip4_node_fn,
-  .name = "ipsec-input-ip4",
+VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
+  .function = ipsec4_input_node_fn,
+  .name = "ipsec4-input",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -348,13 +347,13 @@ VLIB_REGISTER_NODE (ipsec_input_ip4_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn);
-static vlib_node_registration_t ipsec_input_ip6_node;
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec4_input_node, ipsec4_input_node_fn);
+
+static vlib_node_registration_t ipsec6_input_node;
 
 static uword
-ipsec_input_ip6_node_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * from_frame)
+ipsec6_input_node_fn (vlib_main_t * vm,
+		      vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
@@ -409,11 +408,11 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 		 clib_net_to_host_u16 (ip0->payload_length) + header_size,
 		 spd0->id);
 #endif
-	      p0 = ipsec_input_ip6_protect_policy_match (spd0,
-							 &ip0->src_address,
-							 &ip0->dst_address,
-							 clib_net_to_host_u32
-							 (esp0->spi));
+	      p0 = ipsec6_input_protect_policy_match (spd0,
+						      &ip0->src_address,
+						      &ip0->dst_address,
+						      clib_net_to_host_u32
+						      (esp0->spi));
 
 	      if (PREDICT_TRUE (p0 != 0))
 		{
@@ -423,18 +422,18 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += header_size;
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->esp_decrypt_next_index;
+		  next0 = im->esp6_decrypt_next_index;
 		  vlib_buffer_advance (b0, header_size);
 		  goto trace0;
 		}
 	    }
 	  else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
 	    {
-	      p0 = ipsec_input_ip6_protect_policy_match (spd0,
-							 &ip0->src_address,
-							 &ip0->dst_address,
-							 clib_net_to_host_u32
-							 (ah0->spi));
+	      p0 = ipsec6_input_protect_policy_match (spd0,
+						      &ip0->src_address,
+						      &ip0->dst_address,
+						      clib_net_to_host_u32
+						      (ah0->spi));
 
 	      if (PREDICT_TRUE (p0 != 0))
 		{
@@ -444,7 +443,7 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += header_size;
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = im->ah_decrypt_next_index;
+		  next0 = im->ah6_decrypt_next_index;
 		  goto trace0;
 		}
 	    }
@@ -468,7 +467,7 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, ipsec_input_ip6_node.index,
+  vlib_node_increment_counter (vm, ipsec6_input_node.index,
 			       IPSEC_INPUT_ERROR_RX_PKTS,
 			       from_frame->n_vectors);
 
@@ -477,9 +476,9 @@ ipsec_input_ip6_node_fn (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec_input_ip6_node,static) = {
-  .function = ipsec_input_ip6_node_fn,
-  .name = "ipsec-input-ip6",
+VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
+  .function = ipsec6_input_node_fn,
+  .name = "ipsec6-input",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -487,11 +486,11 @@ VLIB_REGISTER_NODE (ipsec_input_ip6_node,static) = {
   .n_errors = ARRAY_LEN(ipsec_input_error_strings),
   .error_strings = ipsec_input_error_strings,
 
-  .sibling_of = "ipsec-input-ip4",
+  .sibling_of = "ipsec4-input",
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip6_node, ipsec_input_ip6_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec6_input_node, ipsec6_input_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *

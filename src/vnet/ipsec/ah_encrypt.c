@@ -23,11 +23,12 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
 
-#define foreach_ah_encrypt_next                   \
-_(DROP, "error-drop")                              \
-_(IP4_LOOKUP, "ip4-lookup")                        \
-_(IP6_LOOKUP, "ip6-lookup")                        \
-_(INTERFACE_OUTPUT, "interface-output")
+#define foreach_ah_encrypt_next \
+  _ (DROP, "error-drop")            \
+  _ (IP4_LOOKUP, "ip4-lookup")      \
+  _ (IP6_LOOKUP, "ip6-lookup")      \
+  _ (INTERFACE_OUTPUT, "interface-output")
+
 
 #define _(v, s) AH_ENCRYPT_NEXT_##v,
 typedef enum
@@ -56,8 +57,6 @@ static char *ah_encrypt_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t ah_encrypt_node;
-
 typedef struct
 {
   u32 spi;
@@ -78,9 +77,10 @@ format_ah_encrypt_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-ah_encrypt_node_fn (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+always_inline uword
+ah_encrypt_inline (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * from_frame,
+		   int is_ip6)
 {
   u32 n_left_from, *from, *to_next = 0, next_index;
   int icv_size = 0;
@@ -104,10 +104,8 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	  ipsec_sa_t *sa0;
 	  ip4_and_ah_header_t *ih0, *oh0 = 0;
 	  ip6_and_ah_header_t *ih6_0, *oh6_0 = 0;
-	  u8 is_ipv6;
 	  u8 ip_hdr_size;
 	  u8 next_hdr_type;
-	  u8 transport_mode = 0;
 	  u8 tos = 0;
 	  u8 ttl = 0;
 	  u8 hop_limit = 0;
@@ -129,8 +127,12 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	    {
 	      clib_warning ("sequence number counter has cycled SPI %u",
 			    sa0->spi);
-	      vlib_node_increment_counter (vm, ah_encrypt_node.index,
-					   AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
+	      if (is_ip6)
+		vlib_node_increment_counter (vm, ah6_encrypt_node.index,
+					     AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
+	      else
+		vlib_node_increment_counter (vm, ah4_encrypt_node.index,
+					     AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      //TODO need to confirm if below is needed
 	      to_next[0] = i_bi0;
 	      to_next += 1;
@@ -145,14 +147,12 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	  ttl = ih0->ip4.ttl;
 	  tos = ih0->ip4.tos;
 
-	  is_ipv6 = (ih0->ip4.ip_version_and_header_length & 0xF0) == 0x60;
-	  /* is ipv6 */
 	  if (PREDICT_TRUE (sa0->is_tunnel))
 	    {
-	      if (PREDICT_TRUE (!is_ipv6))
-		adv = -sizeof (ip4_and_ah_header_t);
-	      else
+	      if (is_ip6)
 		adv = -sizeof (ip6_and_ah_header_t);
+	      else
+		adv = -sizeof (ip4_and_ah_header_t);
 	    }
 	  else
 	    {
@@ -161,9 +161,9 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 
 	  icv_size =
 	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
-	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ipv6);
+	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
 	  adv -= padding_len;
-	  /*transport mode save the eth header before it is overwritten */
+	  /* transport mode save the eth header before it is overwritten */
 	  if (PREDICT_FALSE (!sa0->is_tunnel))
 	    {
 	      ethernet_header_t *ieh0 = (ethernet_header_t *)
@@ -176,8 +176,8 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 
 	  vlib_buffer_advance (i_b0, adv - icv_size);
 
-	  if (PREDICT_FALSE (is_ipv6))
-	    {			/* is ipv6 */
+	  if (is_ip6)
+	    {
 	      ih6_0 = (ip6_and_ah_header_t *) ih0;
 	      ip_hdr_size = sizeof (ip6_header_t);
 	      oh6_0 = vlib_buffer_get_current (i_b0);
@@ -241,8 +241,7 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	    }
 
 
-	  if (PREDICT_TRUE
-	      (!is_ipv6 && sa0->is_tunnel && !sa0->is_tunnel_ip6))
+	  if (PREDICT_TRUE (!is_ip6 && sa0->is_tunnel && !sa0->is_tunnel_ip6))
 	    {
 	      oh0->ip4.src_address.as_u32 = sa0->tunnel_src_addr.ip4.as_u32;
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
@@ -250,7 +249,7 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	      next0 = AH_ENCRYPT_NEXT_IP4_LOOKUP;
 	      vnet_buffer (i_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
-	  else if (is_ipv6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
+	  else if (is_ip6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
 	    {
 	      oh6_0->ip6.src_address.as_u64[0] =
 		sa0->tunnel_src_addr.ip6.as_u64[0];
@@ -263,11 +262,6 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 
 	      next0 = AH_ENCRYPT_NEXT_IP6_LOOKUP;
 	      vnet_buffer (i_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	    }
-	  else
-	    {
-	      transport_mode = 1;
-	      next0 = AH_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	    }
 
 	  u8 sig[64];
@@ -284,7 +278,7 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 				     sa0->seq_hi);
 
 	  memcpy (digest, sig, size);
-	  if (PREDICT_FALSE (is_ipv6))
+	  if (is_ip6)
 	    {
 	      oh6_0->ip6.hop_limit = hop_limit;
 	      oh6_0->ip6.ip_version_traffic_class_and_flow_label =
@@ -297,8 +291,11 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->ip4.checksum = ip4_header_checksum (&oh0->ip4);
 	    }
 
-	  if (transport_mode)
-	    vlib_buffer_advance (i_b0, -sizeof (ethernet_header_t));
+	  if (!sa0->is_tunnel)
+	    {
+	      next0 = AH_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	      vlib_buffer_advance (i_b0, -sizeof (ethernet_header_t));
+	    }
 
 	trace:
 	  if (PREDICT_FALSE (i_b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -317,18 +314,29 @@ ah_encrypt_node_fn (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, ah_encrypt_node.index,
-			       AH_ENCRYPT_ERROR_RX_PKTS,
-			       from_frame->n_vectors);
+  if (is_ip6)
+    vlib_node_increment_counter (vm, ah6_encrypt_node.index,
+				 AH_ENCRYPT_ERROR_RX_PKTS,
+				 from_frame->n_vectors);
+  else
+    vlib_node_increment_counter (vm, ah4_encrypt_node.index,
+				 AH_ENCRYPT_ERROR_RX_PKTS,
+				 from_frame->n_vectors);
 
   return from_frame->n_vectors;
 }
 
+static uword
+ah4_encrypt_node_fn (vlib_main_t * vm,
+		     vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return ah_encrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
+}
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ah_encrypt_node) = {
-  .function = ah_encrypt_node_fn,
-  .name = "ah-encrypt",
+VLIB_REGISTER_NODE (ah4_encrypt_node) = {
+  .function = ah4_encrypt_node_fn,
+  .name = "ah4-encrypt",
   .vector_size = sizeof (u32),
   .format_trace = format_ah_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -345,7 +353,36 @@ VLIB_REGISTER_NODE (ah_encrypt_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ah_encrypt_node, ah_encrypt_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (ah4_encrypt_node, ah4_encrypt_node_fn);
+
+static uword
+ah6_encrypt_node_fn (vlib_main_t * vm,
+		     vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return ah_encrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ah6_encrypt_node) = {
+  .function = ah6_encrypt_node_fn,
+  .name = "ah6-encrypt",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ah_encrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(ah_encrypt_error_strings),
+  .error_strings = ah_encrypt_error_strings,
+
+  .n_next_nodes = AH_ENCRYPT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [AH_ENCRYPT_NEXT_##s] = n,
+    foreach_ah_encrypt_next
+#undef _
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (ah6_encrypt_node, ah6_encrypt_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *

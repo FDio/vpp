@@ -108,7 +108,7 @@ ipsec_if_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	  t0 = pool_elt_at_index (im->tunnel_interfaces, hi0->dev_instance);
 	  vnet_buffer (b0)->ipsec.sad_index = t0->output_sa_index;
-	  next0 = IPSEC_OUTPUT_NEXT_ESP_ENCRYPT;
+	  next0 = IPSEC_OUTPUT_NEXT_ESP4_ENCRYPT;
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -369,10 +369,10 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       hi = vnet_get_hw_interface (vnm, hw_if_index);
 
       slot = vlib_node_add_next_with_slot
-	(vnm->vlib_main, hi->tx_node_index, im->esp_encrypt_node_index,
-	 IPSEC_OUTPUT_NEXT_ESP_ENCRYPT);
+	(vnm->vlib_main, hi->tx_node_index, im->esp4_encrypt_node_index,
+	 IPSEC_OUTPUT_NEXT_ESP4_ENCRYPT);
 
-      ASSERT (slot == IPSEC_OUTPUT_NEXT_ESP_ENCRYPT);
+      ASSERT (slot == IPSEC_OUTPUT_NEXT_ESP4_ENCRYPT);
 
       t->hw_if_index = hw_if_index;
 

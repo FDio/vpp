@@ -179,7 +179,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 
 	      vlib_buffer_advance (b0, ip4_header_bytes (ip0));
-	      next0 = im->esp_decrypt_next_index;
+	      next0 = im->esp4_decrypt_next_index;
 	    }
 
 	trace:
@@ -231,7 +231,7 @@ VLIB_REGISTER_NODE (ipsec_if_input_node) = {
   .n_errors = ARRAY_LEN(ipsec_if_input_error_strings),
   .error_strings = ipsec_if_input_error_strings,
 
-  .sibling_of = "ipsec-input-ip4",
+  .sibling_of = "ipsec4-input",
 };
 /* *INDENT-ON* */
 

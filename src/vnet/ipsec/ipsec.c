@@ -73,17 +73,17 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 		sw_if_index, spd_id, spd_index);
 
   /* enable IPsec on TX */
-  vnet_feature_enable_disable ("ip4-output", "ipsec-output-ip4", sw_if_index,
+  vnet_feature_enable_disable ("ip4-output", "ipsec4-output", sw_if_index,
 			       is_add, 0, 0);
-  vnet_feature_enable_disable ("ip6-output", "ipsec-output-ip6", sw_if_index,
+  vnet_feature_enable_disable ("ip6-output", "ipsec6-output", sw_if_index,
 			       is_add, 0, 0);
 
   config.spd_index = spd_index;
 
   /* enable IPsec on RX */
-  vnet_feature_enable_disable ("ip4-unicast", "ipsec-input-ip4", sw_if_index,
+  vnet_feature_enable_disable ("ip4-unicast", "ipsec4-input", sw_if_index,
 			       is_add, &config, sizeof (config));
-  vnet_feature_enable_disable ("ip6-unicast", "ipsec-input-ip6", sw_if_index,
+  vnet_feature_enable_disable ("ip6-unicast", "ipsec6-input", sw_if_index,
 			       is_add, &config, sizeof (config));
 
   return 0;
@@ -562,26 +562,47 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (node);
   im->error_drop_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "esp-encrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt");
   ASSERT (node);
-  im->esp_encrypt_node_index = node->index;
+  im->esp4_encrypt_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "esp-decrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "esp4-decrypt");
   ASSERT (node);
-  im->esp_decrypt_node_index = node->index;
+  im->esp4_decrypt_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "ah-encrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "ah4-encrypt");
   ASSERT (node);
-  im->ah_encrypt_node_index = node->index;
+  im->ah4_encrypt_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "ah-decrypt");
+  node = vlib_get_node_by_name (vm, (u8 *) "ah4-decrypt");
   ASSERT (node);
-  im->ah_decrypt_node_index = node->index;
+  im->ah4_decrypt_node_index = node->index;
 
-  im->esp_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP_ENCRYPT;
-  im->esp_decrypt_next_index = IPSEC_INPUT_NEXT_ESP_DECRYPT;
-  im->ah_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH_ENCRYPT;
-  im->ah_decrypt_next_index = IPSEC_INPUT_NEXT_AH_DECRYPT;
+  im->esp4_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP4_ENCRYPT;
+  im->esp4_decrypt_next_index = IPSEC_INPUT_NEXT_ESP4_DECRYPT;
+  im->ah4_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH4_ENCRYPT;
+  im->ah4_decrypt_next_index = IPSEC_INPUT_NEXT_AH4_DECRYPT;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "esp6-encrypt");
+  ASSERT (node);
+  im->esp6_encrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "esp6-decrypt");
+  ASSERT (node);
+  im->esp6_decrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ah6-encrypt");
+  ASSERT (node);
+  im->ah6_encrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ah6-decrypt");
+  ASSERT (node);
+  im->ah6_decrypt_node_index = node->index;
+
+  im->esp6_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP6_ENCRYPT;
+  im->esp6_decrypt_next_index = IPSEC_INPUT_NEXT_ESP6_DECRYPT;
+  im->ah6_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH6_ENCRYPT;
+  im->ah6_decrypt_next_index = IPSEC_INPUT_NEXT_AH6_DECRYPT;
 
   im->cb.check_support_cb = ipsec_check_support;
 

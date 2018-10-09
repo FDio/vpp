@@ -753,13 +753,13 @@ VNET_FEATURE_INIT (ip4_policer_classify, static) =
 {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-policer-classify",
-  .runs_before = VNET_FEATURES ("ipsec-input-ip4"),
+  .runs_before = VNET_FEATURES ("ipsec4-input"),
 };
 
 VNET_FEATURE_INIT (ip4_ipsec, static) =
 {
   .arc_name = "ip4-unicast",
-  .node_name = "ipsec-input-ip4",
+  .node_name = "ipsec4-input",
   .runs_before = VNET_FEATURES ("vpath-input-ip4"),
 };
 
@@ -839,13 +839,13 @@ VNET_FEATURE_INIT (ip4_outacl, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "ip4-outacl",
-  .runs_before = VNET_FEATURES ("ipsec-output-ip4"),
+  .runs_before = VNET_FEATURES ("ipsec4-output"),
 };
 
 VNET_FEATURE_INIT (ip4_ipsec_output, static) =
 {
   .arc_name = "ip4-output",
-  .node_name = "ipsec-output-ip4",
+  .node_name = "ipsec4-output",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
