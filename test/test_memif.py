@@ -54,14 +54,14 @@ class TestMemif(VppTestCase):
         dump = self.vapi.memif_socket_filename_dump()
         self.assertTrue(
             self._check_socket_filename(
-                dump, 0, "/run/vpp/memif.sock"))
+                dump, 0, self.tempdir + "/memif.sock"))
 
         memif_sockets = []
         # existing path
         memif_sockets.append(
             VppSocketFilename(
-                self, 1, "/run/vpp/memif1.sock"))
-        # default path ("/run/vpp")
+                self, 1, self.tempdir + "/memif1.sock"))
+        # default path (test tempdir)
         memif_sockets.append(
             VppSocketFilename(
                 self,
@@ -91,7 +91,7 @@ class TestMemif(VppTestCase):
         dump = self.vapi.memif_socket_filename_dump()
         self.assertTrue(
             self._check_socket_filename(
-                dump, 0, "/run/vpp/memif.sock"))
+                dump, 0, self.tempdir + "/memif.sock"))
 
     def _create_delete_test_one_interface(self, memif):
         memif.add_vpp_config()
@@ -150,8 +150,8 @@ class TestMemif(VppTestCase):
         # existing path
         memif_sockets.append(
             VppSocketFilename(
-                self, 1, "/run/vpp/memif1.sock"))
-        # default path ("/run/vpp")
+                self, 1, self.tempdir + "/memif1.sock"))
+        # default path (test tempdir)
         memif_sockets.append(
             VppSocketFilename(
                 self,
@@ -178,18 +178,16 @@ class TestMemif(VppTestCase):
 
     def test_memif_connect(self):
         """ Memif connect """
-        memif = VppMemif(
-            self,
-            MEMIF_ROLE.SLAVE,
-            MEMIF_MODE.ETHERNET,
-            ring_size=1024,
-            buffer_size=2048)
-        remote_memif = VppMemif(
-            self.remote_test,
-            MEMIF_ROLE.MASTER,
-            MEMIF_MODE.ETHERNET,
-            ring_size=1024,
-            buffer_size=2048)
+        memif = VppMemif(self, MEMIF_ROLE.SLAVE,  MEMIF_MODE.ETHERNET,
+                         ring_size=1024, buffer_size=2048)
+
+        remote_socket = VppSocketFilename(self.remote_test, 1,
+                                          self.tempdir + "/memif.sock")
+        remote_socket.add_vpp_config()
+
+        remote_memif = VppMemif(self.remote_test, MEMIF_ROLE.MASTER,
+                                MEMIF_MODE.ETHERNET, socket_id=1,
+                                ring_size=1024, buffer_size=2048)
 
         self._connect_test_interface_pair(memif, remote_memif)
 
@@ -219,9 +217,14 @@ class TestMemif(VppTestCase):
 
     def test_memif_ping(self):
         """ Memif ping """
-        memif = VppMemif(self, MEMIF_ROLE.MASTER, MEMIF_MODE.ETHERNET)
-        remote_memif = VppMemif(self.remote_test, MEMIF_ROLE.SLAVE,
-                                MEMIF_MODE.ETHERNET)
+        memif = VppMemif(self, MEMIF_ROLE.SLAVE,  MEMIF_MODE.ETHERNET)
+
+        remote_socket = VppSocketFilename(self.remote_test, 1,
+                                          self.tempdir + "/memif.sock")
+        remote_socket.add_vpp_config()
+
+        remote_memif = VppMemif(self.remote_test, MEMIF_ROLE.MASTER,
+                                MEMIF_MODE.ETHERNET, socket_id=1)
 
         memif.add_vpp_config()
         memif.config_ip4()

@@ -284,13 +284,14 @@ class VppTestCase(unittest.TestCase):
 
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, "full-coredump",
-                           coredump_size, "}", "api-trace", "{", "on", "}",
-                           "api-segment", "{", "prefix", cls.shm_prefix, "}",
-                           "cpu", "{", "main-core", str(cpu_core_number), "}",
-                           "statseg", "{", "socket-name", cls.stats_sock, "}",
-                           "plugins", "{", "plugin", "dpdk_plugin.so", "{",
-                           "disable", "}", "plugin", "unittest_plugin.so",
-                           "{", "enable", "}", "}", ]
+                           coredump_size, "runtime-dir", cls.tempdir, "}",
+                           "api-trace", "{", "on", "}", "api-segment", "{",
+                           "prefix", cls.shm_prefix, "}", "cpu", "{",
+                           "main-core", str(cpu_core_number), "}", "statseg",
+                           "{", "socket-name", cls.stats_sock, "}", "plugins",
+                           "{", "plugin", "dpdk_plugin.so", "{", "disable",
+                           "}", "plugin", "unittest_plugin.so", "{", "enable",
+                           "}", "}", ]
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
