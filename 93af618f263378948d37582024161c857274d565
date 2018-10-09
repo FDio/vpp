@@ -25,6 +25,29 @@
     },
     {
       "key": {
+        "uuid": "ae2237cd_b6175e94",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-09T18:30:43Z",
+      "side": 1,
+      "message": "We then won\u0027t need to do this as the last member always use the original packet. The following path would use b0/bi0 as normal. Is there a problem with doing this?",
+      "range": {
+        "startLine": 283,
+        "startChar": 3,
+        "endLine": 283,
+        "endChar": 7
+      },
+      "revId": "93af618f263378948d37582024161c857274d565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1ad3178d_57dcbd7c",
         "filename": "test/test_l2_flood.py",
         "patchSetId": 2
