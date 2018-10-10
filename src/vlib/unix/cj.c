@@ -178,7 +178,7 @@ cj_dump_internal (u8 filter0_enable, u64 filter0,
     }
   /* dump from the beginning through the final tail */
   r = cjm->records;
-  for (i = 0; i <= cjm->tail; i++)
+  for (i = 0; i < index; i++)
     {
       if (filter0_enable && (r->data[0] != filter0))
 	goto skip2;
