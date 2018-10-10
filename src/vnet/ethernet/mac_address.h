@@ -49,6 +49,12 @@ mac_address_from_u64 (u64 u, mac_address_t * mac)
   ethernet_mac_address_from_u64 (u, mac->bytes);
 }
 
+static_always_inline void
+mac_address_copy (mac_address_t * dst, const mac_address_t * src)
+{
+  mac_address_from_bytes (dst, src->bytes);
+}
+
 extern u8 *format_mac_address_t (u8 * s, va_list * args);
 
 #endif

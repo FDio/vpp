@@ -855,10 +855,12 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
 static void
 vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
 {
+  ip46_address_t ip_addr = ip46_address_initializer;
   bd_main_t *bdm = &bd_main;
   vl_api_bd_ip_mac_add_del_reply_t *rmp;
   int rv = 0;
   u32 bd_id = ntohl (mp->bd_id);
+
   u32 bd_index;
   uword *p;
 
@@ -874,10 +876,15 @@ vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto out;
     }
-
   bd_index = p[0];
-  if (bd_add_del_ip_mac (bd_index, mp->ip_address,
-			 mp->mac_address, mp->is_ipv6, mp->is_add))
+
+  if (mp->is_ipv6)
+    clib_memcpy (&ip_addr.ip6, mp->ip_address, 16);
+  else
+    clib_memcpy (&ip_addr.ip4, mp->ip_address, 4);
+
+  if (bd_add_del_ip_mac (bd_index, &ip_addr, mp->mac_address,
+			 mp->is_ipv6, mp->is_add))
     rv = VNET_API_ERROR_UNSPECIFIED;
 
 out:

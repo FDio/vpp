@@ -107,6 +107,7 @@ ip_prefix_decode (const vl_api_prefix_t * in, fib_prefix_t * out)
       break;
     }
   out->fp_len = in->address_length;
+  out->___fp___pad = 0;
   ip_address_decode (&in->address, &out->fp_addr);
 }
 

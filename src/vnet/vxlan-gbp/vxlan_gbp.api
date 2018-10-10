@@ -23,7 +23,6 @@ import "vnet/ip/ip_types.api";
     @param dst - Destination IP address, can be multicast
     @param mcast_sw_if_index - Interface for multicast destination
     @param encap_table_id - Encap route table 
-    @param decap_next_index - Name of decap next graph node
     @param vni - The VXLAN Network Identifier, uint24
     @param sw_ifindex - Ignored in add message, set in details
 */
@@ -34,7 +33,6 @@ typedef vxlan_gbp_tunnel
   vl_api_address_t dst;
   u32 mcast_sw_if_index;
   u32 encap_table_id;
-  u32 decap_next_index;
   u32 vni;
   u32 sw_if_index;
 };

@@ -17,6 +17,8 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/dpo/drop_dpo.h>
+#include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
 #include <plugins/gbp/gbp.h>
 #include <plugins/gbp/gbp_policy_dpo.h>
@@ -49,7 +51,7 @@ gbp_policy_dpo_alloc (void)
 {
   gbp_policy_dpo_t *gpd;
 
-  pool_get (gbp_policy_dpo_pool, gpd);
+  pool_get_zero (gbp_policy_dpo_pool, gpd);
 
   return (gpd);
 }
@@ -110,19 +112,24 @@ gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
   dpo_id_t parent = DPO_INVALID;
 
   gpd = gbp_policy_dpo_alloc ();
-  clib_memset (gpd, 0, sizeof (*gpd));
 
   gpd->gpd_proto = dproto;
   gpd->gpd_sw_if_index = sw_if_index;
   gpd->gpd_epg = epg;
 
-  /*
-   * stack on the DVR DPO for the output interface
-   */
-  dvr_dpo_add_or_lock (sw_if_index, dproto, &parent);
+  if (~0 != sw_if_index)
+    {
+      /*
+       * stack on the DVR DPO for the output interface
+       */
+      dvr_dpo_add_or_lock (sw_if_index, dproto, &parent);
+    }
+  else
+    {
+      dpo_copy (&parent, drop_dpo_get (dproto));
+    }
 
   dpo_stack (gbp_policy_dpo_type, dproto, &gpd->gpd_dpo, &parent);
-
   dpo_set (dpo, gbp_policy_dpo_type, dproto, gbp_policy_dpo_get_index (gpd));
 }
 
@@ -144,11 +151,36 @@ format_gbp_policy_dpo (u8 * s, va_list * ap)
   return (s);
 }
 
+/**
+ * Interpose a policy DPO
+ */
+static void
+gbp_policy_dpo_interpose (const dpo_id_t * original,
+			  const dpo_id_t * parent, dpo_id_t * clone)
+{
+  gbp_policy_dpo_t *gpd, *gpd_clone;
+
+  gpd_clone = gbp_policy_dpo_alloc ();
+  gpd = gbp_policy_dpo_get (original->dpoi_index);
+
+  gpd_clone->gpd_proto = gpd->gpd_proto;
+  gpd_clone->gpd_epg = gpd->gpd_epg;
+  gpd_clone->gpd_sw_if_index = gpd->gpd_sw_if_index;
+
+  dpo_stack (gbp_policy_dpo_type,
+	     gpd_clone->gpd_proto, &gpd_clone->gpd_dpo, parent);
+
+  dpo_set (clone,
+	   gbp_policy_dpo_type,
+	   gpd_clone->gpd_proto, gbp_policy_dpo_get_index (gpd_clone));
+}
+
 const static dpo_vft_t gbp_policy_dpo_vft = {
   .dv_lock = gbp_policy_dpo_lock,
   .dv_unlock = gbp_policy_dpo_unlock,
   .dv_format = format_gbp_policy_dpo,
   .dv_get_urpf = gbp_policy_dpo_get_urpf,
+  .dv_mk_interpose = gbp_policy_dpo_interpose,
 };
 
 /**
@@ -195,6 +227,7 @@ typedef struct gbp_policy_dpo_trace_t_
   u32 src_epg;
   u32 dst_epg;
   u32 acl_index;
+  u32 a_bit;
 } gbp_policy_dpo_trace_t;
 
 typedef enum
@@ -241,9 +274,17 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  next0 = GBP_POLICY_DROP;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+
 	  gpd0 =
 	    gbp_policy_dpo_get_i (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = gpd0->gpd_dpo.dpoi_index;
+
+	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A)
+	    {
+	      next0 = gpd0->gpd_dpo.dpoi_next_node;
+	      key0.as_u32 = ~0;
+	      goto trace;
+	    }
 
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
 	  key0.gck_dst = gpd0->gpd_epg;
@@ -256,6 +297,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		   * intra-epg allowed
 		   */
 		  next0 = gpd0->gpd_dpo.dpoi_next_node;
+		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
 		}
 	      else
 		{
@@ -287,7 +329,10 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 						      &trace_bitmap0);
 
 		      if (action0 > 0)
-			next0 = gpd0->gpd_dpo.dpoi_next_node;
+			{
+			  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+			  next0 = gpd0->gpd_dpo.dpoi_next_node;
+			}
 		    }
 		}
 	    }
@@ -299,7 +344,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	       */
 	      next0 = gpd0->gpd_dpo.dpoi_next_node;
 	    }
-
+	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      gbp_policy_dpo_trace_t *tr;
@@ -308,6 +353,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	      tr->src_epg = key0.gck_src;
 	      tr->dst_epg = key0.gck_dst;
 	      tr->acl_index = value0.gc_acl_index;
+	      tr->a_bit = vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -325,8 +371,8 @@ format_gbp_policy_dpo_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_policy_dpo_trace_t *t = va_arg (*args, gbp_policy_dpo_trace_t *);
 
-  s = format (s, " src-epg:%d dst-epg:%d acl-index:%d",
-	      t->src_epg, t->dst_epg, t->acl_index);
+  s = format (s, " src-epg:%d dst-epg:%d acl-index:%d a-bit:%d",
+	      t->src_epg, t->dst_epg, t->acl_index, t->a_bit);
 
   return s;
 }

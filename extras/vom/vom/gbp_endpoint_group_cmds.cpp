@@ -44,12 +44,10 @@ create_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.is_add = 1;
   payload.epg.uplink_sw_if_index = m_itf.value();
   payload.epg.epg_id = m_epg_id;
   payload.epg.bd_id = m_bd_id;
-  payload.epg.ip4_table_id = m_rd_id;
-  payload.epg.ip6_table_id = m_rd_id;
+  payload.epg.rd_id = m_rd_id;
 
   VAPI_CALL(req.execute());
 
@@ -85,8 +83,7 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.is_add = 0;
-  payload.epg.epg_id = m_epg_id;
+  payload.epg_id = m_epg_id;
 
   VAPI_CALL(req.execute());
 

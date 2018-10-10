@@ -38,6 +38,10 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   l2_address_t l2_address(vd.l2_address, vd.l2_address_length);
   std::string tag = "";
 
+  if (interface::type_t::UNKNOWN == type) {
+    return sp;
+  }
+
   sp = interface::find(hdl);
   if (sp) {
     sp->set(state);
