@@ -192,9 +192,14 @@ class TestL2Flood(VppTestCase):
             self.vapi.sw_interface_set_l2_bridge(i.sw_if_index, 1, 0)
 
         #
-        # an unknown unicast packet
+        # an unknown unicast and braodcast packets
         #
         p_uu = (Ether(dst="00:00:00:c1:5c:00",
+                      src="00:00:de:ad:be:ef") /
+                IP(src="10.10.10.10", dst="1.1.1.1") /
+                UDP(sport=1234, dport=1234) /
+                Raw('\xa5' * 100))
+        p_bm = (Ether(dst="ff:ff:ff:ff:ff:ff",
                       src="00:00:de:ad:be:ef") /
                 IP(src="10.10.10.10", dst="1.1.1.1") /
                 UDP(sport=1234, dport=1234) /
@@ -204,6 +209,13 @@ class TestL2Flood(VppTestCase):
         # input on pg0, expected copies on pg1->4
         #
         self.pg0.add_stream(p_uu*65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        for i in self.pg_interfaces[1:4]:
+            rx0 = i.get_capture(65, timeout=1)
+
+        self.pg0.add_stream(p_bm*65)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -227,6 +239,13 @@ class TestL2Flood(VppTestCase):
 
         for i in self.pg_interfaces[0:4]:
             i.assert_nothing_captured(remark="UU not flooded")
+
+        self.pg0.add_stream(p_bm*65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        for i in self.pg_interfaces[1:4]:
+            rx0 = i.get_capture(65, timeout=1)
 
         #
         # remove the uu-fwd interface and expect UU to be flooded again
