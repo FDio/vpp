@@ -30,6 +30,11 @@ typedef struct gpb_recirc_t_
   epg_id_t gr_epg;
 
   /**
+   * The index of the EPG
+   */
+  index_t gr_epgi;
+
+  /**
    * FIB indices the EPG is mapped to
    */
   u32 gr_fib_index[FIB_PROTOCOL_IP_MAX];
@@ -43,6 +48,7 @@ typedef struct gpb_recirc_t_
   /**
    */
   u32 gr_sw_if_index;
+  u32 gr_itf;
 
   /**
    * The endpoint created to represent the reric interface
@@ -62,7 +68,7 @@ extern void gbp_recirc_walk (gbp_recirc_cb_t bgpe, void *ctx);
 extern gbp_recirc_t *gbp_recirc_pool;
 extern index_t *gbp_recirc_db;
 
-always_inline const gbp_recirc_t *
+always_inline gbp_recirc_t *
 gbp_recirc_get (u32 sw_if_index)
 {
   return (pool_elt_at_index (gbp_recirc_pool, gbp_recirc_db[sw_if_index]));

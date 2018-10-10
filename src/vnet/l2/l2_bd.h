@@ -20,6 +20,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/ip/ip6_packet.h>
 
 typedef enum l2_bd_port_type_t_
 {
@@ -198,7 +199,8 @@ bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
 }
 
 u32 bd_add_del_ip_mac (u32 bd_index,
-		       u8 * ip_addr, u8 * mac_addr, u8 is_ip6, u8 is_add);
+		       const ip46_address_t * ip_addr,
+		       const u8 * mac_addr, u8 is_ip6, u8 is_add);
 
 #endif
 
