@@ -689,7 +689,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    }
 		}
 	    }
-	    acl_log_err
+	    acl_log_info
 	      ("ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX bitmap: %U, clear_all: %u",
 	       format_bitmap_hex, clear_sw_if_index_bitmap, clear_all);
 	    vec_foreach (pw0, am->per_worker_data)
@@ -727,7 +727,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		      pw0->pending_clear_sw_if_index_bitmap =
 			clib_bitmap_dup (clear_sw_if_index_bitmap);
 		    }
-		  acl_log_err
+		  acl_log_info
 		    ("ACL_FA_CLEANER: thread %u, pending clear bitmap: %U",
 		     (am->per_worker_data - pw0), format_bitmap_hex,
 		     pw0->pending_clear_sw_if_index_bitmap);
@@ -738,8 +738,9 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    send_interrupts_to_workers (vm, am);
 
 	    /* now wait till they all complete */
-	    acl_log_err ("CLEANER mains len: %u per-worker len: %d",
-			 vec_len (vlib_mains), vec_len (am->per_worker_data));
+	    acl_log_info ("CLEANER mains len: %u per-worker len: %d",
+			  vec_len (vlib_mains),
+			  vec_len (am->per_worker_data));
 	    vec_foreach (pw0, am->per_worker_data)
 	    {
 	      CLIB_MEMORY_BARRIER ();
@@ -758,7 +759,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    }
 		}
 	    }
-	    acl_log_err ("ACL_FA_NODE_CLEAN: cleaning done");
+	    acl_log_info ("ACL_FA_NODE_CLEAN: cleaning done");
 	    clib_bitmap_free (clear_sw_if_index_bitmap);
 	  }
 	  am->fa_cleaner_cnt_delete_by_sw_index_ok++;
