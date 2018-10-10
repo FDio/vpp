@@ -356,7 +356,7 @@ clib_count_equal_u64 (u64 * data, uword max_count)
 #endif
   count += 2;
   data += 2;
-  while (count < max_count - 3 &&
+  while (count + 3 < max_count &&
 	 ((data[0] ^ first) | (data[1] ^ first) |
 	  (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
@@ -424,7 +424,7 @@ clib_count_equal_u32 (u32 * data, uword max_count)
 #endif
   count += 2;
   data += 2;
-  while (count < max_count - 3 &&
+  while (count + 3 < max_count &&
 	 ((data[0] ^ first) | (data[1] ^ first) |
 	  (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
@@ -492,7 +492,7 @@ clib_count_equal_u16 (u16 * data, uword max_count)
 #endif
   count += 2;
   data += 2;
-  while (count < max_count - 3 &&
+  while (count + 3 < max_count &&
 	 ((data[0] ^ first) | (data[1] ^ first) |
 	  (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
@@ -560,7 +560,7 @@ clib_count_equal_u8 (u8 * data, uword max_count)
 #endif
   count += 2;
   data += 2;
-  while (count < max_count - 3 &&
+  while (count + 3 < max_count &&
 	 ((data[0] ^ first) | (data[1] ^ first) |
 	  (data[2] ^ first) | (data[3] ^ first)) == 0)
     {
