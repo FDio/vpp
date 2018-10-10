@@ -679,6 +679,7 @@ list(APPEND VNET_SOURCES
   vxlan-gbp/encap.c
   vxlan-gbp/vxlan_gbp_api.c
   vxlan-gbp/vxlan_gbp.c
+  vxlan-gbp/vxlan_gbp_packet.c
 )
 
 list(APPEND VNET_HEADERS
