@@ -19,16 +19,96 @@ option version = "2.0.0";
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
 
+typedef gbp_bridge_domain
+{
+  u32 bd_id;
+  u32 bvi_sw_if_index;
+  u32 uu_fwd_sw_if_index;
+};
+
+autoreply define gbp_bridge_domain_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_gbp_bridge_domain_t bd;
+};
+autoreply define gbp_bridge_domain_del
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+};
+autoreply define gbp_bridge_domain_dump
+{
+  u32 client_index;
+  u32 context;
+};
+define gbp_bridge_domain_details
+{
+  u32 context;
+  vl_api_gbp_bridge_domain_t bd;
+};
+
+typedef gbp_route_domain
+{
+  u32 rd_id;
+  u32 ip4_table_id;
+  u32 ip6_table_id;
+  u32 ip4_uu_sw_if_index;
+  u32 ip6_uu_sw_if_index;
+};
+
+autoreply define gbp_route_domain_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_gbp_route_domain_t rd;
+};
+autoreply define gbp_route_domain_del
+{
+  u32 client_index;
+  u32 context;
+  u32 rd_id;
+};
+autoreply define gbp_route_domain_dump
+{
+  u32 client_index;
+  u32 context;
+};
+define gbp_route_domain_details
+{
+  u32 context;
+  vl_api_gbp_route_domain_t rd;
+};
+
 /** \brief Endpoint
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
 
+enum gbp_endpoint_flags
+{
+  NONE = 0,
+  BOUNCE = 0x1,
+  REMOTE = 0x2,
+  LEARNT = 0x4,
+  /* hey Ole WTF */
+  REMOTE_LEARNT = 0x6,
+};
+
+typedef gbp_endpoint_tun
+{
+  vl_api_address_t src;
+  vl_api_address_t dst;
+};
+
 typedef gbp_endpoint
 {
   u32 sw_if_index;
   u16 epg_id;
+  vl_api_gbp_endpoint_flags_t flags;
   vl_api_mac_address_t mac;
+  vl_api_gbp_endpoint_tun_t tun;
   u8 n_ips;
   vl_api_address_t ips[n_ips];
 };
@@ -63,6 +143,8 @@ define gbp_endpoint_dump
 define gbp_endpoint_details
 {
   u32 context;
+  f64 age;
+  u32 handle;
   vl_api_gbp_endpoint_t endpoint;
 };
 
@@ -70,17 +152,21 @@ typeonly define gbp_endpoint_group
 {
   u16 epg_id;
   u32 bd_id;
-  u32 ip4_table_id;
-  u32 ip6_table_id;
+  u32 rd_id;
   u32 uplink_sw_if_index;
 };
 
-autoreply define gbp_endpoint_group_add_del
+autoreply define gbp_endpoint_group_add
 {
   u32 client_index;
   u32 context;
-  u8  is_add;
   vl_api_gbp_endpoint_group_t epg;
+};
+autoreply define gbp_endpoint_group_del
+{
+  u32 client_index;
+  u32 context;
+  u16 epg_id;
 };
 
 define gbp_endpoint_group_dump
@@ -122,12 +208,19 @@ define gbp_recirc_details
   vl_api_gbp_recirc_t recirc;
 };
 
+enum gbp_subnet_type
+{
+  GBP_API_SUBNET_TRANSPORT,
+  GBP_API_SUBNET_STITCHED_INTERNAL,
+  GBP_API_SUBNET_STITCHED_EXTERNAL,
+};
+
 typeonly define gbp_subnet
 {
-  u32 table_id;
+  u32 rd_id;
   u32 sw_if_index;
   u16 epg_id;
-  u8  is_internal;
+  vl_api_gbp_subnet_type_t type;
   vl_api_prefix_t prefix;
 };
 
@@ -176,6 +269,70 @@ define gbp_contract_details
 {
   u32 context;
   vl_api_gbp_contract_t contract;
+};
+
+/**
+ * @brief Set the time throeshold after which an endpoint is
+          considered inative and is aged/reaped by the scanner
+ * @param threshold In seconds
+ */
+autoreply define gbp_endpoint_learn_set_inactive_threshold
+{
+  u32 client_index;
+  u32 context;
+  u32 threshold;
+};
+
+/**
+ * @brief Configure a 'base' tunnel from which learned tunnels
+ *        are permitted to derive
+ *        A base tunnel consists only of the VNI, any src,dst IP
+ *        pair is thus allowed.
+ */
+enum gbp_vxlan_tunnel_mode
+{
+  GBP_VXLAN_TUNNEL_MODE_L2,
+  GBP_VXLAN_TUNNEL_MODE_L3,
+};
+
+typedef gbp_vxlan_tunnel
+{
+  u32 vni;
+  vl_api_gbp_vxlan_tunnel_mode_t mode;
+  u32 bd_rd_id;
+};
+
+define gbp_vxlan_tunnel_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_gbp_vxlan_tunnel_t tunnel;
+};
+
+define gbp_vxlan_tunnel_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+autoreply define gbp_vxlan_tunnel_del
+{
+  u32 client_index;
+  u32 context;
+  u32 vni;
+};
+
+define gbp_vxlan_tunnel_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define gbp_vxlan_tunnel_details
+{
+  u32 context;
+  vl_api_gbp_vxlan_tunnel_t tunnel;
 };
 
 /*

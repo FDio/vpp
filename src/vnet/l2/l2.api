@@ -483,7 +483,6 @@ autoreply define bd_ip_mac_add_del
   u32 context;
   u32 bd_id;
   u8 is_add;
-  u8 is_ipv6;
   vl_api_address_t ip;
   vl_api_mac_address_t mac;
 };

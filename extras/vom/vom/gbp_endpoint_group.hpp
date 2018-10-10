@@ -20,8 +20,8 @@
 #include "vom/singular_db.hpp"
 #include "vom/types.hpp"
 
-#include "vom/bridge_domain.hpp"
-#include "vom/route_domain.hpp"
+#include "vom/gbp_bridge_domain.hpp"
+#include "vom/gbp_route_domain.hpp"
 
 namespace VOM {
 
@@ -46,8 +46,11 @@ public:
    */
   gbp_endpoint_group(epg_id_t epg_id,
                      const interface& itf,
-                     const route_domain& rd,
-                     const bridge_domain& bd);
+                     const gbp_route_domain& rd,
+                     const gbp_bridge_domain& bd);
+  gbp_endpoint_group(epg_id_t epg_id,
+                     const gbp_route_domain& rd,
+                     const gbp_bridge_domain& bd);
 
   /**
    * Copy Construct
@@ -179,12 +182,12 @@ private:
   /**
    * The route-domain the EPG uses
    */
-  std::shared_ptr<route_domain> m_rd;
+  std::shared_ptr<gbp_route_domain> m_rd;
 
   /**
    * The bridge-domain the EPG uses
    */
-  std::shared_ptr<bridge_domain> m_bd;
+  std::shared_ptr<gbp_bridge_domain> m_bd;
 
   /**
    * A map of all bridge_domains
