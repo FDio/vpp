@@ -46,6 +46,30 @@
       "revId": "71be0f2dcfdccd0ae5d2ee240943a29b02356d72",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8109593_1ccf6179",
+        "filename": "src/vnet/punt/punt.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-10-10T16:49:24Z",
+      "side": 1,
+      "message": "I think we should prefix with vnet_, same like we have vnet_feature_*, vnet_interface*.",
+      "parentUuid": "6bcfe751_67c2e14b",
+      "range": {
+        "startLine": 57,
+        "startChar": 11,
+        "endLine": 57,
+        "endChar": 31
+      },
+      "revId": "71be0f2dcfdccd0ae5d2ee240943a29b02356d72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
