@@ -27,6 +27,7 @@
   _(BUFFER_ALLOC, "buffer alloc error") \
   _(RX_PACKET_NO_SOP, "Rx packet error - no SOP") \
   _(RX_PACKET, "Rx packet error") \
+  _(RX_PACKET_EOP, "Rx packet error found on EOP") \
   _(NO_BUFFER, "Rx no buffer error")
 
 typedef enum
@@ -79,7 +80,6 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 n_rx_packets = 0, n_rx_bytes = 0;
   vmxnet3_rx_comp *rx_comp;
-  u32 comp_idx;
   u32 desc_idx;
   vmxnet3_rxq_t *rxq;
   u32 thread_index = vm->thread_index;
@@ -98,15 +98,13 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   comp_ring = &rxq->rx_comp_ring;
   bi = buffer_indices;
   next = nexts;
+  rx_comp = &rxq->rx_comp[comp_ring->next];
+
   while (PREDICT_TRUE (n_rx_packets < VLIB_FRAME_SIZE) &&
-	 (comp_ring->gen ==
-	  (rxq->rx_comp[comp_ring->next].flags & VMXNET3_RXCF_GEN)))
+	 (comp_ring->gen == (rx_comp->flags & VMXNET3_RXCF_GEN)))
     {
       vlib_buffer_t *b0;
       u32 bi0;
-
-      comp_idx = comp_ring->next;
-      rx_comp = &rxq->rx_comp[comp_idx];
 
       rid = vmxnet3_find_rid (vd, rx_comp);
       ring = &rxq->rx_ring[rid];
@@ -117,10 +115,15 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vlib_error_count (vm, node->node_index,
 			    VMXNET3_INPUT_ERROR_NO_BUFFER, 1);
+	  if (hb)
+	    {
+	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, hb));
+	      hb = 0;
+	    }
+	  prev_b0 = 0;
 	  break;
 	}
 
-      vmxnet3_rx_comp_ring_advance_next (rxq);
       desc_idx = rx_comp->index & VMXNET3_RXC_INDEX;
       ring->consume = desc_idx;
       rxd = &rxq->rx_desc[rid][desc_idx];
@@ -146,14 +149,14 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vlib_buffer_free_one (vm, bi0);
 	  vlib_error_count (vm, node->node_index,
-			    VMXNET3_INPUT_ERROR_RX_PACKET, 1);
+			    VMXNET3_INPUT_ERROR_RX_PACKET_EOP, 1);
 	  if (hb && vlib_get_buffer_index (vm, hb) != bi0)
 	    {
 	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, hb));
 	      hb = 0;
 	    }
 	  prev_b0 = 0;
-	  continue;
+	  goto next;
 	}
 
       if (rx_comp->index & VMXNET3_RXCI_SOP)
@@ -199,7 +202,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, hb));
 		  hb = 0;
 		}
-	      continue;
+	      goto next;
 	    }
 	}
       else if (prev_b0)		// !sop && !eop
@@ -213,7 +216,15 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  ASSERT (0);
+	  vlib_error_count (vm, node->node_index,
+			    VMXNET3_INPUT_ERROR_RX_PACKET, 1);
+	  vlib_buffer_free_one (vm, bi0);
+	  if (hb && vlib_get_buffer_index (vm, hb) != bi0)
+	    {
+	      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, hb));
+	      hb = 0;
+	    }
+	  goto next;
 	}
 
       n_rx_bytes += b0->current_length;
@@ -275,6 +286,10 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  hb = 0;
 	  got_packet = 0;
 	}
+
+    next:
+      vmxnet3_rx_comp_ring_advance_next (rxq);
+      rx_comp = &rxq->rx_comp[comp_ring->next];
     }
 
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
