@@ -612,7 +612,8 @@ l2output_intf_config (u32 sw_if_index)
 
 /** Enable (or disable) the feature in the bitmap for the given interface. */
 void
-l2output_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
+l2output_intf_bitmap_enable (u32 sw_if_index,
+			     l2output_feat_masks_t feature_bitmap, u32 enable)
 {
   l2output_main_t *mp = &l2output_main;
   l2_output_config_t *config;

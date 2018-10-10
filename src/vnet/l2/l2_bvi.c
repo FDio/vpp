@@ -31,6 +31,15 @@ l2bvi_register_input_type (vlib_main_t * vm,
   l2flood_register_input_type (vm, type, node_index);
 }
 
+/* Return the BVI's sw_if_index in the request BD. ~0 if it deosn't have one */
+u32
+l2bvi_get_sw_if_index (u32 bd_index)
+{
+  l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);;
+
+  return (bd_config->bvi_sw_if_index);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

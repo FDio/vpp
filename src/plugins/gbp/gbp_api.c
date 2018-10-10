@@ -25,6 +25,9 @@
 #include <vpp/app/version.h>
 
 #include <gbp/gbp.h>
+#include <gbp/gbp_learn.h>
+#include <gbp/gbp_itf.h>
+#include <gbp/gbp_vxlan.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -64,13 +67,48 @@
   _(GBP_RECIRC_ADD_DEL, gbp_recirc_add_del)                 \
   _(GBP_RECIRC_DUMP, gbp_recirc_dump)                       \
   _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
-  _(GBP_CONTRACT_DUMP, gbp_contract_dump)
+  _(GBP_CONTRACT_DUMP, gbp_contract_dump)                   \
+  _(GBP_ENDPOINT_LEARN_ENABLE_DISABLE, gbp_endpoint_learn_enable_disable) \
+  _(GBP_ENDPOINT_LEARN_SET_INACTIVE_THRESHOLD, gbp_endpoint_learn_set_inactive_threshold) \
+  _(GBP_VXLAN_TUNNEL_ADD_DEL, gbp_vxlan_tunnel_add_del)                 \
+  _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)
 
 gbp_main_t gbp_main;
 
 static u16 msg_id_base;
 
 #define GBP_MSG_BASE msg_id_base
+
+static gbp_endpoint_flags_t
+gbp_endpoint_flags_decode (vl_api_gbp_endpoint_flags_t v)
+{
+  gbp_endpoint_flags_t f = GBP_ENDPOINT_FLAG_NONE;
+
+  v = ntohl (v);
+
+  if (v & BOUNCE)
+    f |= GBP_ENDPOINT_FLAG_BOUNCE;
+  if (v & DYNAMIC)
+    f |= GBP_ENDPOINT_FLAG_DYNAMIC;
+
+  return (f);
+}
+
+static vl_api_gbp_endpoint_flags_t
+gbp_endpoint_flags_encode (gbp_endpoint_flags_t f)
+{
+  vl_api_gbp_endpoint_flags_t v = 0;
+
+
+  if (f & GBP_ENDPOINT_FLAG_BOUNCE)
+    v |= BOUNCE;
+  if (f & GBP_ENDPOINT_FLAG_DYNAMIC)
+    v |= DYNAMIC;
+
+  v = htonl (v);
+
+  return (v);
+}
 
 static void
 vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
@@ -99,7 +137,9 @@ vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
   mac_address_decode (&mp->endpoint.mac, &mac);
 
   rv = gbp_endpoint_update (sw_if_index, ips, &mac,
-			    ntohs (mp->endpoint.epg_id), &handle);
+			    ntohs (mp->endpoint.epg_id),
+			    gbp_endpoint_flags_decode (mp->endpoint.flags),
+			    &handle);
 
   vec_free (ips);
 
@@ -124,6 +164,37 @@ vl_api_gbp_endpoint_del_t_handler (vl_api_gbp_endpoint_del_t * mp)
   REPLY_MACRO (VL_API_GBP_ENDPOINT_DEL_REPLY + GBP_MSG_BASE);
 }
 
+static void
+  vl_api_gbp_endpoint_learn_enable_disable_t_handler
+  (vl_api_gbp_endpoint_learn_enable_disable_t * mp)
+{
+  vl_api_gbp_endpoint_learn_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  if (mp->enable)
+    gbp_learn_enable (ntohl (mp->sw_if_index), mp->is_l2);
+  else
+    gbp_learn_disable (ntohl (mp->sw_if_index), mp->is_l2);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_GBP_ENDPOINT_LEARN_ENABLE_DISABLE_REPLY + GBP_MSG_BASE);
+}
+
+static void
+  vl_api_gbp_endpoint_learn_set_inactive_threshold_t_handler
+  (vl_api_gbp_endpoint_learn_set_inactive_threshold_t * mp)
+{
+  vl_api_gbp_endpoint_learn_set_inactive_threshold_reply_t *rmp;
+  int rv = 0;
+
+  gbp_learn_set_inactive_threshold (ntohl (mp->threshold));
+
+  REPLY_MACRO (VL_API_GBP_ENDPOINT_LEARN_ENABLE_DISABLE_REPLY + GBP_MSG_BASE);
+}
+
 typedef struct gbp_walk_ctx_t_
 {
   vl_api_registration_t *reg;
@@ -131,25 +202,32 @@ typedef struct gbp_walk_ctx_t_
 } gbp_walk_ctx_t;
 
 static walk_rc_t
-gbp_endpoint_send_details (gbp_endpoint_t * gbpe, void *args)
+gbp_endpoint_send_details (index_t gbpei, void *args)
 {
   vl_api_gbp_endpoint_details_t *mp;
+  gbp_endpoint_t *gbpe;
   gbp_walk_ctx_t *ctx;
   u8 n_ips, ii;
 
   ctx = args;
+  gbpe = gbp_endpoint_get (gbpei);
+
   n_ips = vec_len (gbpe->ge_ips);
   mp = vl_msg_api_alloc (sizeof (*mp) + (sizeof (*mp->endpoint.ips) * n_ips));
   if (!mp)
     return 1;
 
+
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_GBP_ENDPOINT_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
-  mp->endpoint.sw_if_index = ntohl (gbpe->ge_sw_if_index);
+  mp->endpoint.sw_if_index = ntohl (gbp_itf_get_sw_if_index (gbpe->ge_itf));
   mp->endpoint.epg_id = ntohs (gbpe->ge_epg_id);
   mp->endpoint.n_ips = n_ips;
+  mp->endpoint.flags = gbp_endpoint_flags_encode (gbpe->ge_flags);
+  mp->handle = htonl (gbpei);
+  mp->age = vlib_time_now (vlib_get_main ()) - gbpe->ge_last_time;
   mac_address_encode (&gbpe->ge_mac, &mp->endpoint.mac);
 
   vec_foreach_index (ii, gbpe->ge_ips)
@@ -194,15 +272,15 @@ static void
 
   if (mp->is_add)
     {
-      rv = gbp_endpoint_group_add (ntohs (mp->epg.epg_id),
-				   ntohl (mp->epg.bd_id),
-				   ntohl (mp->epg.ip4_table_id),
-				   ntohl (mp->epg.ip6_table_id),
-				   uplink_sw_if_index);
+      rv = gbp_endpoint_group_add_and_lock (ntohs (mp->epg.epg_id),
+					    ntohl (mp->epg.bd_id),
+					    ntohl (mp->epg.ip4_table_id),
+					    ntohl (mp->epg.ip6_table_id),
+					    uplink_sw_if_index);
     }
   else
     {
-      gbp_endpoint_group_delete (ntohs (mp->epg.epg_id));
+      rv = gbp_endpoint_group_delete (ntohs (mp->epg.epg_id));
     }
 
   BAD_SW_IF_INDEX_LABEL;
@@ -275,7 +353,7 @@ vl_api_gbp_subnet_dump_t_handler (vl_api_gbp_subnet_dump_t * mp)
 }
 
 static int
-gbp_endpoint_group_send_details (gbp_endpoint_group_t * gepg, void *args)
+gbp_endpoint_group_send_details (gbp_endpoint_group_t * gg, void *args)
 {
   vl_api_gbp_endpoint_group_details_t *mp;
   gbp_walk_ctx_t *ctx;
@@ -289,11 +367,11 @@ gbp_endpoint_group_send_details (gbp_endpoint_group_t * gepg, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_ENDPOINT_GROUP_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
-  mp->epg.uplink_sw_if_index = ntohl (gepg->gepg_uplink_sw_if_index);
-  mp->epg.epg_id = ntohs (gepg->gepg_id);
-  mp->epg.bd_id = ntohl (gepg->gepg_bd);
-  mp->epg.ip4_table_id = ntohl (gepg->gepg_rd[FIB_PROTOCOL_IP4]);
-  mp->epg.ip6_table_id = ntohl (gepg->gepg_rd[FIB_PROTOCOL_IP6]);
+  mp->epg.uplink_sw_if_index = ntohl (gg->gg_uplink_sw_if_index);
+  mp->epg.epg_id = ntohs (gg->gg_id);
+  mp->epg.bd_id = ntohl (gg->gg_bd_id);
+  mp->epg.ip4_table_id = ntohl (gg->gg_rd[FIB_PROTOCOL_IP4]);
+  mp->epg.ip6_table_id = ntohl (gg->gg_rd[FIB_PROTOCOL_IP6]);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -437,6 +515,71 @@ vl_api_gbp_contract_dump_t_handler (vl_api_gbp_contract_dump_t * mp)
   };
 
   gbp_contract_walk (gbp_contract_send_details, &ctx);
+}
+
+static void
+vl_api_gbp_vxlan_tunnel_add_del_t_handler (vl_api_gbp_vxlan_tunnel_add_del_t *
+					   mp)
+{
+  vl_api_gbp_vxlan_tunnel_add_del_reply_t *rmp;
+  u32 sw_if_index;
+  int rv = 0;
+
+  if (mp->is_add)
+    rv = gbp_vxlan_tunnel_add (ntohl (mp->tunnel.vni),
+			       mp->tunnel.is_l2,
+			       ntohl (mp->tunnel.bd_id),
+			       ntohl (mp->tunnel.ip4_table_id),
+			       ntohl (mp->tunnel.ip6_table_id), &sw_if_index);
+  else
+    rv = gbp_vxlan_tunnel_del (ntohl (mp->tunnel.vni));
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_GBP_VXLAN_TUNNEL_ADD_DEL_REPLY + GBP_MSG_BASE,
+  ({
+    rmp->sw_if_index = htonl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static walk_rc_t
+gbp_vxlan_tunnel_send_details (gbp_vxlan_tunnel_t * gt, void *args)
+{
+  vl_api_gbp_vxlan_tunnel_details_t *mp;
+  gbp_walk_ctx_t *ctx;
+
+  ctx = args;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return 1;
+
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_GBP_VXLAN_TUNNEL_DETAILS + GBP_MSG_BASE);
+  mp->context = ctx->context;
+
+  mp->tunnel.vni = ntohl (gt->gt_vni);
+  // FIXME
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (1);
+}
+
+static void
+vl_api_gbp_vxlan_tunnel_dump_t_handler (vl_api_gbp_vxlan_tunnel_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  gbp_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  gbp_vxlan_walk (gbp_vxlan_tunnel_send_details, &ctx);
 }
 
 /*

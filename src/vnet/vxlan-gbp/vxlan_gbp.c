@@ -32,18 +32,6 @@
 
 vxlan_gbp_main_t vxlan_gbp_main;
 
-static u8 *
-format_decap_next (u8 * s, va_list * args)
-{
-  u32 next_index = va_arg (*args, u32);
-
-  if (next_index == VXLAN_GBP_INPUT_NEXT_DROP)
-    return format (s, "drop");
-  else
-    return format (s, "index %d", next_index);
-  return s;
-}
-
 u8 *
 format_vxlan_gbp_tunnel (u8 * s, va_list * args)
 {
@@ -58,9 +46,6 @@ format_vxlan_gbp_tunnel (u8 * s, va_list * args)
 	      t->vni, t->encap_fib_index, t->sw_if_index);
 
   s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
-
-  if (PREDICT_FALSE (t->decap_next_index != VXLAN_GBP_INPUT_NEXT_L2_INPUT))
-    s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
 
   if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
     s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
@@ -212,7 +197,6 @@ const static fib_node_vft_t vxlan_gbp_vft = {
 _(vni)                                          \
 _(mcast_sw_if_index)                            \
 _(encap_fib_index)                              \
-_(decap_next_index)                             \
 _(src)                                          \
 _(dst)
 
@@ -265,18 +249,6 @@ vxlan_gbp_rewrite (vxlan_gbp_tunnel_t * t, bool is_ip6)
   /* VXLAN header */
   vxlan_gbp_set_header (vxlan_gbp, t->vni);
   vnet_rewrite_set_data (*t, &h, len);
-}
-
-static bool
-vxlan_gbp_decap_next_is_valid (vxlan_gbp_main_t * vxm, u32 is_ip6,
-			       u32 decap_next_index)
-{
-  vlib_main_t *vm = vxm->vlib_main;
-  u32 input_idx = (!is_ip6) ?
-    vxlan4_gbp_input_node.index : vxlan6_gbp_input_node.index;
-  vlib_node_runtime_t *r = vlib_node_get_runtime (vm, input_idx);
-
-  return decap_next_index < r->n_next_nodes;
 }
 
 static uword
@@ -352,6 +324,48 @@ mcast_shared_remove (ip46_address_t * dst)
   hash_unset_mem_free (&vxlan_gbp_main.mcast_shared, dst);
 }
 
+static void
+vnet_vxlan_gbp_tunnel_del_i (u32 instance)
+{
+  vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
+  vxlan_gbp_tunnel_t *t = 0;
+  vnet_main_t *vnm = vxm->vnet_main;
+  u32 sw_if_index = ~0;
+  vxlan4_gbp_tunnel_key_t key4;
+  vxlan6_gbp_tunnel_key_t key6;
+
+  t = pool_elt_at_index (vxm->tunnels, instance);
+
+  sw_if_index = t->sw_if_index;
+  vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
+
+  vxm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
+
+  if (!ip46_address_is_ip4 (&t->src))
+    clib_bihash_add_del_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, &key4,
+			      0 /*del */ );
+  else
+    clib_bihash_add_del_24_8 (&vxm->vxlan6_gbp_tunnel_by_key, &key6,
+			      0 /*del */ );
+
+  if (!ip46_address_is_multicast (&t->dst))
+    {
+      vtep_addr_unref (&t->src);
+      fib_entry_child_remove (t->fib_entry_index, t->sibling_index);
+      fib_table_entry_delete_index (t->fib_entry_index, FIB_SOURCE_RR);
+    }
+  else if (vtep_addr_unref (&t->dst) == 0)
+    {
+      mcast_shared_remove (&t->dst);
+    }
+
+  vnet_delete_hw_interface (vnm, t->hw_if_index);
+  hash_unset (vxm->instance_used, t->user_instance);
+
+  fib_node_deinit (&t->node);
+  pool_put (vxm->tunnels, t);
+}
+
 int vnet_vxlan_gbp_tunnel_add_del
   (vnet_vxlan_gbp_tunnel_add_del_args_t * a, u32 * sw_if_indexp)
 {
@@ -399,12 +413,6 @@ int vnet_vxlan_gbp_tunnel_add_del
       /* adding a tunnel: tunnel must not already exist */
       if (p)
 	return VNET_API_ERROR_TUNNEL_EXIST;
-
-      /* if not set explicitly, default to l2 */
-      if (a->decap_next_index == ~0)
-	a->decap_next_index = VXLAN_GBP_INPUT_NEXT_L2_INPUT;
-      if (!vxlan_gbp_decap_next_is_valid (vxm, is_ip6, a->decap_next_index))
-	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
@@ -582,43 +590,28 @@ int vnet_vxlan_gbp_tunnel_add_del
       if (!p)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      u32 instance = p[0];
-      t = pool_elt_at_index (vxm->tunnels, instance);
-
-      sw_if_index = t->sw_if_index;
-      vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */ );
-
-      vxm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
-
-      if (!is_ip6)
-	clib_bihash_add_del_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, &key4,
-				  0 /*del */ );
-      else
-	clib_bihash_add_del_24_8 (&vxm->vxlan6_gbp_tunnel_by_key, &key6,
-				  0 /*del */ );
-
-      if (!ip46_address_is_multicast (&t->dst))
-	{
-	  vtep_addr_unref (&t->src);
-	  fib_entry_child_remove (t->fib_entry_index, t->sibling_index);
-	  fib_table_entry_delete_index (t->fib_entry_index, FIB_SOURCE_RR);
-	}
-      else if (vtep_addr_unref (&t->dst) == 0)
-	{
-	  mcast_shared_remove (&t->dst);
-	}
-
-      vnet_delete_hw_interface (vnm, t->hw_if_index);
-      hash_unset (vxm->instance_used, t->user_instance);
-
-      fib_node_deinit (&t->node);
-      pool_put (vxm->tunnels, t);
+      vnet_vxlan_gbp_tunnel_del_i (p[0]);
     }
 
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
   return 0;
+}
+
+int
+vnet_vxlan_gbp_tunnel_del (u32 sw_if_index)
+{
+  vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
+  u32 ti;
+
+  ti = vxm->tunnel_index_by_sw_if_index[sw_if_index];
+  if (~0 != ti)
+    vnet_vxlan_gbp_tunnel_del_i (ti);
+  else
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  return (0);
 }
 
 static uword

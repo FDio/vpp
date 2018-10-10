@@ -96,6 +96,7 @@ _ (0x08, A)
 
 typedef enum
 {
+  VXLAN_GBP_GPFLAGS_NONE = 0,
 #define _(n,f) VXLAN_GBP_GPFLAGS_##f = n,
   foreach_vxlan_gbp_gpflags
 #undef _

@@ -22,6 +22,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/feat_bitmap.h>
+#include <vnet/l2/l2_bvi.h>
 
 /**
  * Pool of GBP endpoint_groups
@@ -32,42 +33,91 @@ gbp_endpoint_group_t *gbp_endpoint_group_pool;
  * DB of endpoint_groups
  */
 gbp_endpoint_group_db_t gbp_endpoint_group_db;
+vlib_log_class_t gg_logger;
+
+#define GBP_EPG_DBG(...)                           \
+    vlib_log_notice (gg_logger, __VA_ARGS__);
 
 gbp_endpoint_group_t *
+gbp_endpoint_group_get (index_t i)
+{
+  return (pool_elt_at_index (gbp_endpoint_group_pool, i));
+}
+
+static void
+gbp_endpoint_group_lock (index_t i)
+{
+  gbp_endpoint_group_t *gg;
+
+  gg = gbp_endpoint_group_get (i);
+  gg->gg_locks++;
+}
+
+static index_t
 gbp_endpoint_group_find (epg_id_t epg_id)
 {
   uword *p;
 
-  p = hash_get (gbp_endpoint_group_db.gepg_hash, epg_id);
+  p = hash_get (gbp_endpoint_group_db.gg_hash, epg_id);
 
   if (NULL != p)
-    return (pool_elt_at_index (gbp_endpoint_group_pool, p[0]));
+    return p[0];
 
-  return (NULL);
+  return (INDEX_INVALID);
+}
+
+index_t
+gbp_endpoint_group_find_and_lock (epg_id_t epg_id)
+{
+  uword *p;
+
+  p = hash_get (gbp_endpoint_group_db.gg_hash, epg_id);
+
+  if (NULL != p)
+    {
+      gbp_endpoint_group_lock (p[0]);
+      return p[0];
+    }
+  return (INDEX_INVALID);
 }
 
 int
-gbp_endpoint_group_add (epg_id_t epg_id,
-			u32 bd_id,
-			u32 ip4_table_id,
-			u32 ip6_table_id, u32 uplink_sw_if_index)
+gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
+				 u32 bd_id,
+				 u32 ip4_table_id,
+				 u32 ip6_table_id, u32 uplink_sw_if_index)
 {
-  gbp_endpoint_group_t *gepg;
+  gbp_endpoint_group_t *gg;
+  index_t ggi;
 
-  gepg = gbp_endpoint_group_find (epg_id);
+  ggi = gbp_endpoint_group_find (epg_id);
 
-  if (NULL == gepg)
+  if (INDEX_INVALID == ggi)
     {
+      u32 bvi_sw_if_index, bd_index;
       fib_protocol_t fproto;
 
-      pool_get (gbp_endpoint_group_pool, gepg);
-      memset (gepg, 0, sizeof (*gepg));
+      bd_index = bd_find_index (&bd_main, bd_id);
 
-      gepg->gepg_id = epg_id;
-      gepg->gepg_bd = bd_id;
-      gepg->gepg_rd[FIB_PROTOCOL_IP4] = ip4_table_id;
-      gepg->gepg_rd[FIB_PROTOCOL_IP6] = ip6_table_id;
-      gepg->gepg_uplink_sw_if_index = uplink_sw_if_index;
+      if (~0 == bd_index)
+	return (VNET_API_ERROR_BD_NOT_MODIFIABLE);
+
+      bvi_sw_if_index = l2bvi_get_sw_if_index (bd_index);
+
+      if (~0 == bvi_sw_if_index)
+	return (VNET_API_ERROR_INVALID_INTERFACE);
+
+      pool_get (gbp_endpoint_group_pool, gg);
+      memset (gg, 0, sizeof (*gg));
+
+      gg->gg_id = epg_id;
+      gg->gg_bd_id = bd_id;
+      gg->gg_bd_index = bd_index;
+      gg->gg_rd[FIB_PROTOCOL_IP4] = ip4_table_id;
+      gg->gg_rd[FIB_PROTOCOL_IP6] = ip6_table_id;
+      gg->gg_uplink_sw_if_index = uplink_sw_if_index;
+      gg->gg_bvi_sw_if_index = bvi_sw_if_index;
+      gg->gg_locks = 1;
 
       /*
        * an egress DVR dpo for internal subnets to use when sending
@@ -75,63 +125,89 @@ gbp_endpoint_group_add (epg_id_t epg_id,
        */
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
-	gepg->gepg_fib_index[fproto] =
+	gg->gg_fib_index[fproto] =
 	  fib_table_find_or_create_and_lock (fproto,
-					     gepg->gepg_rd[fproto],
+					     gg->gg_rd[fproto],
 					     FIB_SOURCE_PLUGIN_HI);
 
-	if (~0 == gepg->gepg_fib_index[fproto])
+	if (~0 == gg->gg_fib_index[fproto])
 	  {
 	    return (VNET_API_ERROR_NO_SUCH_FIB);
 	  }
 
 	dvr_dpo_add_or_lock (uplink_sw_if_index,
-			     fib_proto_to_dpo (fproto),
-			     &gepg->gepg_dpo[fproto]);
+			     fib_proto_to_dpo (fproto), &gg->gg_dpo[fproto]);
       }
 
       /*
        * packets direct from the uplink have had policy applied
        */
-      l2input_intf_bitmap_enable (gepg->gepg_uplink_sw_if_index,
+      l2input_intf_bitmap_enable (gg->gg_uplink_sw_if_index,
 				  L2INPUT_FEAT_GBP_NULL_CLASSIFY, 1);
 
-      hash_set (gbp_endpoint_group_db.gepg_hash,
-		gepg->gepg_id, gepg - gbp_endpoint_group_pool);
+      hash_set (gbp_endpoint_group_db.gg_hash,
+		gg->gg_id, gg - gbp_endpoint_group_pool);
 
     }
+  else
+    {
+      gg = gbp_endpoint_group_get (ggi);
+      gg->gg_locks++;
+    }
+
+  GBP_EPG_DBG ("add: %U", format_gbp_endpoint_group, gg);
 
   return (0);
 }
 
 void
-gbp_endpoint_group_delete (epg_id_t epg_id)
+gbp_endpoint_group_unlock (index_t index)
 {
-  gbp_endpoint_group_t *gepg;
-  uword *p;
+  gbp_endpoint_group_t *gg;
 
-  p = hash_get (gbp_endpoint_group_db.gepg_hash, epg_id);
+  gg = gbp_endpoint_group_get (index);
 
-  if (NULL != p)
+  gg->gg_locks--;
+
+  if (0 == gg->gg_locks)
     {
       fib_protocol_t fproto;
 
-      gepg = pool_elt_at_index (gbp_endpoint_group_pool, p[0]);
+      gg = pool_elt_at_index (gbp_endpoint_group_pool, index);
 
-      l2input_intf_bitmap_enable (gepg->gepg_uplink_sw_if_index,
+      l2input_intf_bitmap_enable (gg->gg_uplink_sw_if_index,
 				  L2INPUT_FEAT_GBP_NULL_CLASSIFY, 0);
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
-	dpo_reset (&gepg->gepg_dpo[fproto]);
-	fib_table_unlock (gepg->gepg_fib_index[fproto],
+	dpo_reset (&gg->gg_dpo[fproto]);
+	fib_table_unlock (gg->gg_fib_index[fproto],
 			  fproto, FIB_SOURCE_PLUGIN_HI);
       }
 
-      hash_unset (gbp_endpoint_group_db.gepg_hash, epg_id);
+      hash_unset (gbp_endpoint_group_db.gg_hash, gg->gg_id);
 
-      pool_put (gbp_endpoint_group_pool, gepg);
+      pool_put (gbp_endpoint_group_pool, gg);
     }
+}
+
+int
+gbp_endpoint_group_delete (epg_id_t epg_id)
+{
+  index_t ggi;
+
+  ggi = gbp_endpoint_group_find (epg_id);
+
+  if (INDEX_INVALID != ggi)
+    {
+      GBP_EPG_DBG ("del: %U", format_gbp_endpoint_group,
+		   gbp_endpoint_group_get (ggi));
+      gbp_endpoint_group_unlock (ggi);
+
+      return (0);
+    }
+
+  return (VNET_API_ERROR_NO_SUCH_ENTRY);
 }
 
 void
@@ -190,8 +266,8 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
       if (~0 == rd_id)
 	return clib_error_return (0, "route-domain must be specified");
 
-      gbp_endpoint_group_add (epg_id, bd_id, rd_id, rd_id,
-			      uplink_sw_if_index);
+      gbp_endpoint_group_add_and_lock (epg_id, bd_id, rd_id, rd_id,
+				       uplink_sw_if_index);
     }
   else
     gbp_endpoint_group_delete (epg_id);
@@ -213,19 +289,33 @@ VLIB_CLI_COMMAND (gbp_endpoint_group_cli_node, static) = {
   .function = gbp_endpoint_group_cli,
 };
 
-static int
-gbp_endpoint_group_show_one (gbp_endpoint_group_t *gepg, void *ctx)
+u8 *
+format_gbp_endpoint_group (u8 * s, va_list * args)
 {
+  gbp_endpoint_group_t *gg = va_arg (*args, gbp_endpoint_group_t*);
   vnet_main_t *vnm = vnet_get_main ();
+
+  if (NULL != gg)
+    s = format (s, "%d, bd:%d, ip4:%d ip6:%d uplink:%U locks:%d",
+                gg->gg_id,
+                gg->gg_bd_id,
+                gg->gg_rd[FIB_PROTOCOL_IP4],
+                gg->gg_rd[FIB_PROTOCOL_IP6],
+                format_vnet_sw_if_index_name, vnm, gg->gg_uplink_sw_if_index,
+                gg->gg_locks);
+  else
+    s = format (s, "NULL");
+
+  return (s);
+}
+
+static int
+gbp_endpoint_group_show_one (gbp_endpoint_group_t *gg, void *ctx)
+{
   vlib_main_t *vm;
 
   vm = ctx;
-  vlib_cli_output (vm, "  %d, bd:%d, ip4:%d ip6:%d uplink:%U",
-                   gepg->gepg_id,
-                   gepg->gepg_bd,
-                   gepg->gepg_rd[FIB_PROTOCOL_IP4],
-                   gepg->gepg_rd[FIB_PROTOCOL_IP6],
-		   format_vnet_sw_if_index_name, vnm, gepg->gepg_uplink_sw_if_index);
+  vlib_cli_output (vm, "  %U",format_gbp_endpoint_group, gg);
 
   return (1);
 }
@@ -255,6 +345,16 @@ VLIB_CLI_COMMAND (gbp_endpoint_group_show_node, static) = {
   .function = gbp_endpoint_group_show,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+gbp_endpoint_group_init (vlib_main_t * vm)
+{
+  gg_logger = vlib_log_register_class ("gbp", "epg");
+
+  return (NULL);
+}
+
+VLIB_INIT_FUNCTION (gbp_endpoint_group_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
