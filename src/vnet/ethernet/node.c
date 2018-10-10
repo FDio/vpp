@@ -657,9 +657,9 @@ ethernet_input_inline (vlib_main_t * vm,
 		      (hi->hw_address != 0) &&
 		      !eth_mac_equal ((u8 *) e0, hi->hw_address))
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
+		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		  determine_next_node (em, variant, 0, type0, b0,
 				       &error0, &next0);
-		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
 		}
 	      goto ship_it0;
 	    }
