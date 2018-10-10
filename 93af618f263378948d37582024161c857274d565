@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "43391361_cd101798",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-10T07:28:52Z",
+      "side": 1,
+      "message": "the vlib_buffer_clone function will return the original packet as the first member of the clone set. so if we are cloning to n members, n_clones should be n and the number of copies made under the hood is n-1.\nif there is only one member to replicate to we can use the original instead.",
+      "parentUuid": "fd1c369d_8e6908f0",
+      "range": {
+        "startLine": 225,
+        "startChar": 9,
+        "endLine": 225,
+        "endChar": 17
+      },
+      "revId": "93af618f263378948d37582024161c857274d565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ae2237cd_b6175e94",
         "filename": "src/vnet/l2/l2_flood.c",
         "patchSetId": 2
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "15114875_29c0aa6e",
+        "filename": "src/vnet/l2/l2_flood.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-10T07:28:52Z",
+      "side": 1,
+      "message": "this \u0027fakes\u0027 up the variables for use below.",
+      "parentUuid": "ae2237cd_b6175e94",
+      "range": {
+        "startLine": 283,
+        "startChar": 3,
+        "endLine": 283,
+        "endChar": 7
+      },
+      "revId": "93af618f263378948d37582024161c857274d565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1ad3178d_57dcbd7c",
         "filename": "test/test_l2_flood.py",
         "patchSetId": 2
@@ -59,6 +107,30 @@
       "writtenOn": "2018-10-09T18:08:56Z",
       "side": 1,
       "message": "Does this check make sure what\u0027s received on pg1 is the same packet buffer and not a copy of it?",
+      "range": {
+        "startLine": 171,
+        "startChar": 13,
+        "endLine": 171,
+        "endChar": 28
+      },
+      "revId": "93af618f263378948d37582024161c857274d565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cef2319a_038183a1",
+        "filename": "test/test_l2_flood.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-10T07:28:52Z",
+      "side": 1,
+      "message": "no, that\u0027s not possible. Externally from VPP the original and a copy are identical",
+      "parentUuid": "1ad3178d_57dcbd7c",
       "range": {
         "startLine": 171,
         "startChar": 13,
