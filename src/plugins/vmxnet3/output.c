@@ -143,15 +143,22 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 	}
       if (PREDICT_FALSE (space_left < space_needed))
 	{
-	  vlib_buffer_free_one (vm, bi0);
-	  vlib_error_count (vm, node->node_index,
-			    VMXNET3_TX_ERROR_NO_FREE_SLOTS, 1);
-	  buffers++;
-	  n_left--;
-	  /*
-	   * Drop this packet. But we may have enough room for the next packet
-	   */
-	  continue;
+	  vmxnet3_txq_release (vm, vd, txq);
+	  space_left = vmxnet3_tx_ring_space_left (txq);
+
+	  if (PREDICT_FALSE (space_left < space_needed))
+	    {
+	      vlib_buffer_free_one (vm, bi0);
+	      vlib_error_count (vm, node->node_index,
+				VMXNET3_TX_ERROR_NO_FREE_SLOTS, 1);
+	      buffers++;
+	      n_left--;
+	      /*
+	       * Drop this packet. But we may have enough room for the next
+	       * packet
+	       */
+	      continue;
+	    }
 	}
 
       /*
