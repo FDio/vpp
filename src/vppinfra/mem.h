@@ -387,6 +387,7 @@ typedef struct
 } clib_mem_vm_alloc_t;
 
 clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
+void clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a);
 u64 clib_mem_vm_get_page_size (int fd);
 int clib_mem_vm_get_log2_page_size (int fd);
 u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);

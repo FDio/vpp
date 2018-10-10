@@ -132,7 +132,7 @@ check_hugetlb:
       goto error;
     }
   else
-    clib_mem_vm_free (alloc.addr, 1 << alloc.log2_page_size);
+    clib_mem_vm_ext_free (&alloc);
 
   goto done;
 

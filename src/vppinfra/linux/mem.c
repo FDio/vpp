@@ -252,6 +252,17 @@ done:
   return err;
 }
 
+void
+clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a)
+{
+  if (a != 0)
+    {
+      clib_mem_vm_free (a->addr, 1 << a->log2_page_size);
+      if (a->fd != -1)
+	close (a->fd);
+    }
+}
+
 u64 *
 clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages)
 {
