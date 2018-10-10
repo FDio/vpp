@@ -28,12 +28,30 @@
 /**
  * Flags for each endpoint
  */
+typedef enum gbp_endpoint_attr_t_
+{
+  GBP_ENDPOINT_ATTR_FIRST = 0,
+  GBP_ENDPOINT_ATTR_BOUNCE = GBP_ENDPOINT_ATTR_FIRST,
+  GBP_ENDPOINT_ATTR_REMOTE = 1,
+  GBP_ENDPOINT_ATTR_LEARNT = 2,
+  GBP_ENDPOINT_ATTR_LAST,
+} gbp_endpoint_attr_t;
+
 typedef enum gbp_endpoint_flags_t_
 {
   GBP_ENDPOINT_FLAG_NONE = 0,
-  GBP_ENDPOINT_FLAG_BOUNCE = (1 << 0),
-  GBP_ENDPOINT_FLAG_DYNAMIC = (1 << 1),
+  GBP_ENDPOINT_FLAG_BOUNCE = (1 << GBP_ENDPOINT_ATTR_BOUNCE),
+  GBP_ENDPOINT_FLAG_REMOTE = (1 << GBP_ENDPOINT_ATTR_REMOTE),
+  GBP_ENDPOINT_FLAG_LEARNT = (1 << GBP_ENDPOINT_ATTR_LEARNT),
 } gbp_endpoint_flags_t;
+
+#define GBP_ENDPOINT_ATTR_NAMES {                 \
+    [GBP_ENDPOINT_ATTR_BOUNCE] = "bounce",        \
+    [GBP_ENDPOINT_ATTR_REMOTE] = "remote",        \
+    [GBP_ENDPOINT_ATTR_LEARNT] = "learnt",        \
+}
+
+extern u8 *format_gbp_endpoint_flags (u8 * s, va_list * args);
 
 /**
  * A Group Based Policy Endpoint.
@@ -48,12 +66,13 @@ typedef struct gbp_endpoint_t_
   /**
    * The interface on which the EP is connected
    */
+  index_t ge_itf;
   u32 ge_sw_if_index;
 
   /**
    * A vector of ip addresses that below to the endpoint
    */
-  ip46_address_t *ge_ips;
+  const ip46_address_t *ge_ips;
 
   /**
    * MAC address of the endpoint
@@ -61,52 +80,74 @@ typedef struct gbp_endpoint_t_
   mac_address_t ge_mac;
 
   /**
-   * The endpoint's designated EPG
+   * Index of the Endpoint's Group
    */
-  epg_id_t ge_epg_id;
+  index_t ge_epg;
+
+  /**
+   * Endpoint Group's ID
+   */
+  index_t ge_epg_id;
 
   /**
    * Endpoint flags
    */
   gbp_endpoint_flags_t ge_flags;
+
+  /**
+   * The L3 adj, if created
+   */
+  index_t *ge_adjs;
+
+  /**
+   * The last time a packet from seen from this end point
+   */
+  f64 ge_last_time;
+
+  /**
+   * Tunnel info for remote endpoints
+   */
+  struct
+  {
+    u32 ge_parent_sw_if_index;
+    ip46_address_t ge_src;
+    ip46_address_t ge_dst;
+  } tun;
 } gbp_endpoint_t;
 
 extern u8 *format_gbp_endpoint (u8 * s, va_list * args);
 
 /**
- * Interface to source EPG DB - a per-interface vector
+ * GBP Endpoint Databases
  */
-typedef struct gbp_ep_by_itf_db_t_
-{
-  index_t *gte_vec;
-} gbp_ep_by_itf_db_t;
-
 typedef struct gbp_ep_by_ip_itf_db_t_
 {
-  clib_bihash_24_8_t gte_table;
-} gbp_ep_by_ip_itf_db_t;
-
-typedef struct gbp_ep_by_mac_itf_db_t_
-{
-  clib_bihash_16_8_t gte_table;
-} gbp_ep_by_mac_itf_db_t;
+  index_t *ged_by_sw_if_index;
+  clib_bihash_24_8_t ged_by_ip_rd;
+  clib_bihash_16_8_t ged_by_mac_bd;
+} gbp_ep_db_t;
 
 extern int gbp_endpoint_update (u32 sw_if_index,
 				const ip46_address_t * ip,
 				const mac_address_t * mac,
-				epg_id_t epg_id, u32 * handle);
-extern void gbp_endpoint_delete (u32 handle);
+				epg_id_t epg_id,
+				gbp_endpoint_flags_t flags,
+				const ip46_address_t * tun_src,
+				const ip46_address_t * tun_dst, u32 * handle);
+extern void gbp_endpoint_delete (index_t gbpei);
 
-typedef walk_rc_t (*gbp_endpoint_cb_t) (gbp_endpoint_t * gbpe, void *ctx);
+typedef walk_rc_t (*gbp_endpoint_cb_t) (index_t gbpei, void *ctx);
 extern void gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx);
+extern void gbp_endpoint_scan (vlib_main_t * vm);
+extern f64 gbp_endpoint_scan_threshold (void);
+extern int gbp_endpoint_is_remote (const gbp_endpoint_t * ge);
 
+extern void gbp_endpoint_flush (u32 sw_if_index);
 
 /**
  * DP functions and databases
  */
-extern gbp_ep_by_itf_db_t gbp_ep_by_itf_db;
-extern gbp_ep_by_mac_itf_db_t gbp_ep_by_mac_itf_db;
-extern gbp_ep_by_ip_itf_db_t gbp_ep_by_ip_itf_db;
+extern gbp_ep_db_t gbp_ep_db;
 extern gbp_endpoint_t *gbp_endpoint_pool;
 
 /**
@@ -118,11 +159,103 @@ gbp_endpoint_get (index_t gbpei)
   return (pool_elt_at_index (gbp_endpoint_pool, gbpei));
 }
 
-always_inline gbp_endpoint_t *
-gbp_endpoint_get_itf (u32 sw_if_index)
+static_always_inline void
+gbp_endpoint_mk_key_mac (const u8 * mac,
+			 u32 bd_index, clib_bihash_kv_16_8_t * key)
 {
-  return (gbp_endpoint_get (gbp_ep_by_itf_db.gte_vec[sw_if_index]));
+  key->key[0] = ethernet_mac_address_u64 (mac);
+  key->key[1] = bd_index;
 }
+
+static_always_inline gbp_endpoint_t *
+gbp_endpoint_find_mac (const u8 * mac, u32 bd_index)
+{
+  clib_bihash_kv_16_8_t key, value;
+  int rv;
+
+  gbp_endpoint_mk_key_mac (mac, bd_index, &key);
+
+  rv = clib_bihash_search_16_8 (&gbp_ep_db.ged_by_mac_bd, &key, &value);
+
+  if (0 != rv)
+    return NULL;
+
+  return (gbp_endpoint_get (value.value));
+}
+
+static_always_inline void
+gbp_endpoint_mk_key_ip (const ip46_address_t * ip,
+			u32 fib_index, clib_bihash_kv_24_8_t * key)
+{
+  key->key[0] = ip->as_u64[0];
+  key->key[1] = ip->as_u64[1];
+  key->key[2] = fib_index;
+}
+
+static_always_inline void
+gbp_endpoint_mk_key_ip4 (const ip4_address_t * ip,
+			 u32 fib_index, clib_bihash_kv_24_8_t * key)
+{
+  const ip46_address_t a = {
+    .ip4 = *ip,
+  };
+  gbp_endpoint_mk_key_ip (&a, fib_index, key);
+}
+
+static_always_inline gbp_endpoint_t *
+gbp_endpoint_find_ip4 (const ip4_address_t * ip, u32 fib_index)
+{
+  clib_bihash_kv_24_8_t key, value;
+  int rv;
+
+  gbp_endpoint_mk_key_ip4 (ip, fib_index, &key);
+
+  rv = clib_bihash_search_24_8 (&gbp_ep_db.ged_by_ip_rd, &key, &value);
+
+  if (0 != rv)
+    return NULL;
+
+  return (gbp_endpoint_get (value.value));
+}
+
+static_always_inline void
+gbp_endpoint_mk_key_ip6 (const ip6_address_t * ip,
+			 u32 fib_index, clib_bihash_kv_24_8_t * key)
+{
+  key->key[0] = ip->as_u64[0];
+  key->key[1] = ip->as_u64[1];
+  key->key[2] = fib_index;
+}
+
+static_always_inline gbp_endpoint_t *
+gbp_endpoint_find_ip6 (const ip6_address_t * ip, u32 fib_index)
+{
+  clib_bihash_kv_24_8_t key, value;
+  int rv;
+
+  gbp_endpoint_mk_key_ip6 (ip, fib_index, &key);
+
+  rv = clib_bihash_search_24_8 (&gbp_ep_db.ged_by_ip_rd, &key, &value);
+
+  if (0 != rv)
+    return NULL;
+
+  return (gbp_endpoint_get (value.value));
+}
+
+static_always_inline gbp_endpoint_t *
+gbp_endpoint_find_itf (u32 sw_if_index)
+{
+  index_t gei;
+
+  gei = gbp_ep_db.ged_by_sw_if_index[sw_if_index];
+
+  if (INDEX_INVALID != gei)
+    return (gbp_endpoint_get (gei));
+
+  return (NULL);
+}
+
 
 #endif
 

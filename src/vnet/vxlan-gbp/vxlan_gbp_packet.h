@@ -15,6 +15,8 @@
 #ifndef __included_vxlan_gbp_packet_h__
 #define __included_vxlan_gbp_packet_h__ 1
 
+#include <vlib/vlib.h>
+
 /*
  * From draft-smith-vxlan-group-policy-04.txt
  *
@@ -85,8 +87,17 @@ typedef struct
   u32 vni_reserved;
 } vxlan_gbp_header_t;
 
-#define VXLAN_GBP_FLAGS_G 0x80
-#define VXLAN_GBP_FLAGS_I 0x08
+#define foreach_vxlan_gbp_flags    \
+  _ (0x80, G)                      \
+  _ (0x08, I)
+
+typedef enum
+{
+  VXLAN_GBP_FLAGS_NONE = 0,
+#define _(n,f) VXLAN_GBP_FLAGS_##f = n,
+  foreach_vxlan_gbp_flags
+#undef _
+} __attribute__ ((packed)) vxlan_gbp_flags_t;
 
 #define foreach_vxlan_gbp_gpflags \
 _ (0x40, D)                       \
@@ -96,10 +107,11 @@ _ (0x08, A)
 
 typedef enum
 {
+  VXLAN_GBP_GPFLAGS_NONE = 0,
 #define _(n,f) VXLAN_GBP_GPFLAGS_##f = n,
   foreach_vxlan_gbp_gpflags
 #undef _
-} vxlan_gbp_gpflag_t;
+} __attribute__ ((packed)) vxlan_gbp_gpflags_t;
 
 static inline u32
 vxlan_gbp_get_vni (vxlan_gbp_header_t * h)
@@ -119,13 +131,13 @@ vxlan_gbp_get_sclass (vxlan_gbp_header_t * h)
   return sclass_host_byte_order;
 }
 
-static inline u8
+static inline vxlan_gbp_gpflags_t
 vxlan_gbp_get_gpflags (vxlan_gbp_header_t * h)
 {
   return h->gpflags;
 }
 
-static inline u8
+static inline vxlan_gbp_flags_t
 vxlan_gbp_get_flags (vxlan_gbp_header_t * h)
 {
   return h->flag_g_i;
@@ -138,6 +150,9 @@ vxlan_gbp_set_header (vxlan_gbp_header_t * h, u32 vni)
   h->flags_sclass_as_u32 = 0;
   h->flag_g_i = VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G;
 }
+
+extern u8 *format_vxlan_gbp_header_flags (u8 * s, va_list * args);
+extern u8 *format_vxlan_gbp_header_gpflags (u8 * s, va_list * args);
 
 #endif /* __included_vxlan_gbp_packet_h__ */
 
