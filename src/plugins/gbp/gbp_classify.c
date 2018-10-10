@@ -18,6 +18,8 @@
 #include <plugins/gbp/gbp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/feat_bitmap.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
 typedef enum gbp_src_classify_type_t_
 {
@@ -56,7 +58,7 @@ always_inline uword
 gbp_classify_inline (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
 		     vlib_frame_t * frame,
-		     gbp_src_classify_type_t type, u8 is_l3)
+		     gbp_src_classify_type_t type, dpo_proto_t dproto)
 {
   gbp_src_classify_main_t *gscm = &gbp_src_classify_main;
   u32 n_left_from, *from, *to_next;
@@ -75,7 +77,7 @@ gbp_classify_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 next0, bi0, src_epg, sw_if_index0;
-	  const gbp_endpoint_t *gep0;
+	  const gbp_endpoint_t *ge0;
 	  vlib_buffer_t *b0;
 
 	  bi0 = from[0];
@@ -88,6 +90,7 @@ gbp_classify_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  vnet_buffer2 (b0)->gbp.flags = VXLAN_GBP_GPFLAGS_NONE;
 
 	  if (GBP_SRC_CLASSIFY_NULL == type)
 	    {
@@ -98,10 +101,46 @@ gbp_classify_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      gep0 = gbp_endpoint_get_itf (sw_if_index0);
-	      src_epg = gep0->ge_epg_id;
-	      if (is_l3)
+	      if (DPO_PROTO_ETHERNET == dproto)
 		{
+		  const ethernet_header_t *h0;
+
+		  h0 = vlib_buffer_get_current (b0);
+		  next0 =
+		    vnet_l2_feature_next (b0, gscm->l2_input_feat_next[type],
+					  L2INPUT_FEAT_GBP_SRC_CLASSIFY);
+		  ge0 = gbp_endpoint_find_mac (h0->src_address,
+					       vnet_buffer (b0)->l2.bd_index);
+		}
+	      else if (DPO_PROTO_IP4 == dproto)
+		{
+		  const ip4_header_t *h0;
+
+		  h0 = vlib_buffer_get_current (b0);
+
+		  ge0 = gbp_endpoint_find_ip4
+		    (&h0->src_address,
+		     fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+							  sw_if_index0));
+
+
+		  /*
+		   * Go straight to looukp, do not pass go, do not collect $200
+		   */
+		  next0 = 0;
+		}
+	      else if (DPO_PROTO_IP6 == dproto)
+		{
+		  const ip6_header_t *h0;
+
+		  h0 = vlib_buffer_get_current (b0);
+
+		  ge0 = gbp_endpoint_find_ip6
+		    (&h0->src_address,
+		     fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
+							  sw_if_index0));
+
+
 		  /*
 		   * Go straight to lookup, do not pass go, do not collect $200
 		   */
@@ -109,10 +148,15 @@ gbp_classify_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  next0 =
-		    vnet_l2_feature_next (b0, gscm->l2_input_feat_next[type],
-					  L2INPUT_FEAT_GBP_SRC_CLASSIFY);
+		  ge0 = NULL;
+		  next0 = 0;
+		  ASSERT (0);
 		}
+
+	      if (PREDICT_TRUE (NULL != ge0))
+		src_epg = ge0->ge_epg_id;
+	      else
+		src_epg = EPG_INVALID;
 	    }
 
 	  vnet_buffer2 (b0)->gbp.src_epg = src_epg;
@@ -139,28 +183,32 @@ static uword
 gbp_src_classify (vlib_main_t * vm,
 		  vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return (gbp_classify_inline (vm, node, frame, GBP_SRC_CLASSIFY_PORT, 0));
+  return (gbp_classify_inline (vm, node, frame,
+			       GBP_SRC_CLASSIFY_PORT, DPO_PROTO_ETHERNET));
 }
 
 static uword
 gbp_null_classify (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return (gbp_classify_inline (vm, node, frame, GBP_SRC_CLASSIFY_NULL, 0));
+  return (gbp_classify_inline (vm, node, frame,
+			       GBP_SRC_CLASSIFY_NULL, DPO_PROTO_ETHERNET));
 }
 
 static uword
 gbp_ip4_src_classify (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return (gbp_classify_inline (vm, node, frame, 0, 1));
+  return (gbp_classify_inline (vm, node, frame,
+			       GBP_SRC_CLASSIFY_PORT, DPO_PROTO_IP4));
 }
 
 static uword
 gbp_ip6_src_classify (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return (gbp_classify_inline (vm, node, frame, 0, 1));
+  return (gbp_classify_inline (vm, node, frame,
+			       GBP_SRC_CLASSIFY_PORT, DPO_PROTO_IP6));
 }
 
 

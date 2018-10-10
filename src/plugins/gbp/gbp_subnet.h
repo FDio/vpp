@@ -18,16 +18,26 @@
 
 #include <plugins/gbp/gbp_types.h>
 
-extern int gbp_subnet_add_del (u32 table_id,
-			       const fib_prefix_t * pfx,
-			       u32 sw_if_index,
-			       epg_id_t epg, u8 is_add, u8 is_internal);
+typedef enum gbp_subnet_type_t_
+{
+  GBP_SUBNET_TRANSPORT,
+  GBP_SUBNET_STITCHED_INTERNAL,
+  GBP_SUBNET_STITCHED_EXTERNAL,
+} gbp_subnet_type_t;
 
+extern int gbp_subnet_add (u32 rd_id,
+			   const fib_prefix_t * pfx,
+			   gbp_subnet_type_t type,
+			   u32 sw_if_index, epg_id_t epg);
 
-typedef int (*gbp_subnet_cb_t) (u32 table_id,
-				const fib_prefix_t * pfx,
-				u32 sw_if_index,
-				epg_id_t epg, u8 is_internal, void *ctx);
+extern int gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx);
+
+typedef walk_rc_t (*gbp_subnet_cb_t) (u32 rd_id,
+				      const fib_prefix_t * pfx,
+				      gbp_subnet_type_t type,
+				      u32 sw_if_index,
+				      epg_id_t epg, void *ctx);
+
 extern void gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx);
 
 #endif

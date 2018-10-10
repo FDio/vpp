@@ -59,6 +59,14 @@ typedef clib_bihash_kv_16_8_t vxlan4_gbp_tunnel_key_t;
 */
 typedef clib_bihash_kv_24_8_t vxlan6_gbp_tunnel_key_t;
 
+typedef enum vxlan_gbp_tunnel_mode_t_
+{
+  VXLAN_GBP_TUNNEL_MODE_L2,
+  VXLAN_GBP_TUNNEL_MODE_L3,
+} vxlan_gbp_tunnel_mode_t;
+
+extern u8 *format_vxlan_gbp_tunnel_mode (u8 * s, va_list * args);
+
 typedef struct
 {
   /* Required for pool_get_aligned */
@@ -66,9 +74,6 @@ typedef struct
 
   /* FIB DPO for IP forwarding of VXLAN encap packet */
   dpo_id_t next_dpo;
-
-  /*  Group Policy ID */
-  u16 sclass;
 
   /* flags */
   u16 flags;
@@ -83,9 +88,6 @@ typedef struct
   /* mcast packet output intfc index (used only if dst is mcast) */
   u32 mcast_sw_if_index;
 
-  /* decap next index */
-  u32 decap_next_index;
-
   /* The FIB index for src/dst addresses */
   u32 encap_fib_index;
 
@@ -95,6 +97,12 @@ typedef struct
 
   /** Next node after VxLAN-GBP encap */
   uword encap_next_node;
+
+  /**
+   * Tunnel mode.
+   * L2 tunnels decap to L2 path, L3 tunnels to the L3 path
+   */
+  vxlan_gbp_tunnel_mode_t mode;
 
   /**
    * Linkage into the FIB object graph
@@ -122,9 +130,12 @@ typedef struct
     vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
 } vxlan_gbp_tunnel_t;
 
-#define foreach_vxlan_gbp_input_next        \
-_(DROP, "error-drop")                   \
-_(L2_INPUT, "l2-input")
+#define foreach_vxlan_gbp_input_next         \
+  _(DROP, "error-drop")                      \
+  _(NO_TUNNEL, "error-punt")                 \
+  _(L2_INPUT, "l2-input")                    \
+  _(IP4_INPUT, "ip4-input")                  \
+  _(IP6_INPUT, "ip6-input")
 
 typedef enum
 {
@@ -141,6 +152,13 @@ typedef enum
 #undef vxlan_gbp_error
   VXLAN_GBP_N_ERROR,
 } vxlan_gbp_input_error_t;
+
+/**
+ * Call back function packets that do not match a configured tunnel
+ */
+typedef vxlan_gbp_input_next_t (*vxlan_bgp_no_tunnel_t) (vlib_buffer_t * b,
+							 u32 thread_index,
+							 u8 is_ip6);
 
 typedef struct
 {
@@ -189,20 +207,22 @@ typedef struct
   u8 is_add;
   u8 is_ip6;
   u32 instance;
+  vxlan_gbp_tunnel_mode_t mode;
   ip46_address_t src, dst;
   u32 mcast_sw_if_index;
   u32 encap_fib_index;
-  u32 decap_next_index;
   u32 vni;
 } vnet_vxlan_gbp_tunnel_add_del_args_t;
 
 int vnet_vxlan_gbp_tunnel_add_del
   (vnet_vxlan_gbp_tunnel_add_del_args_t * a, u32 * sw_if_indexp);
+int vnet_vxlan_gbp_tunnel_del (u32 sw_if_indexp);
 
 void vnet_int_vxlan_gbp_bypass_mode (u32 sw_if_index, u8 is_ip6,
 				     u8 is_enable);
 
 u32 vnet_vxlan_gbp_get_tunnel_index (u32 sw_if_index);
+
 #endif /* included_vnet_vxlan_gbp_h */
 
 /*

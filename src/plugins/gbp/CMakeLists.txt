@@ -13,17 +13,23 @@
 
 add_vpp_plugin(gbp
   SOURCES
-  gbp_subnet.c
+  gbp_api.c
+  gbp_bridge_domain.c
+  gbp_classify.c
   gbp_contract.c
   gbp_endpoint.c
   gbp_endpoint_group.c
-  gbp_classify.c
-  gbp_recirc.c
-  gbp_policy.c
-  gbp_policy_dpo.c
   gbp_fwd.c
   gbp_fwd_dpo.c
-  gbp_api.c
+  gbp_itf.c
+  gbp_learn.c
+  gbp_policy.c
+  gbp_policy_dpo.c
+  gbp_recirc.c
+  gbp_route_domain.c
+  gbp_scanner.c
+  gbp_subnet.c
+  gbp_vxlan.c
 
   API_FILES
   gbp.api

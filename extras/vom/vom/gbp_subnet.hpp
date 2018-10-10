@@ -16,9 +16,11 @@
 #ifndef __VOM_GBP_SUBNET_H__
 #define __VOM_GBP_SUBNET_H__
 
+#include <ostream>
+
 #include "vom/gbp_endpoint_group.hpp"
 #include "vom/gbp_recirc.hpp"
-#include "vom/route.hpp"
+#include "vom/gbp_route_domain.hpp"
 #include "vom/singular_db.hpp"
 
 namespace VOM {
@@ -31,17 +33,41 @@ public:
   /**
    * The key for a GBP subnet; table and prefix
    */
-  typedef std::pair<route_domain::key_t, route::prefix_t> key_t;
+  typedef std::pair<gbp_route_domain::key_t, route::prefix_t> key_t;
+
+  struct type_t : public enum_base<type_t>
+  {
+    /**
+     * Internal subnet is reachable through the source EPG's
+     * uplink interface.
+     */
+    const static type_t STITCHED_INTERNAL;
+
+    /**
+     * External subnet requires NAT translation before egress.
+     */
+    const static type_t STITCHED_EXTERNAL;
+
+    /**
+     * A transport subnet, sent via the RD's UU-fwd interface
+     */
+    const static type_t TRANSPORT;
+
+  private:
+    type_t(int v, const std::string s);
+  };
 
   /**
-    * Construct an internal GBP subnet
-    */
-  gbp_subnet(const route_domain& rd, const route::prefix_t& prefix);
+  * Construct an internal GBP subnet
+  */
+  gbp_subnet(const gbp_route_domain& rd,
+             const route::prefix_t& prefix,
+             const type_t& type);
 
   /**
    * Construct an external GBP subnet
    */
-  gbp_subnet(const route_domain& rd,
+  gbp_subnet(const gbp_route_domain& rd,
              const route::prefix_t& prefix,
              const gbp_recirc& recirc,
              const gbp_endpoint_group& epg);
@@ -92,23 +118,6 @@ public:
   std::string to_string() const;
 
 private:
-  struct type_t : public enum_base<type_t>
-  {
-    /**
-     * Internal subnet is reachable through the source EPG's
-     * uplink interface.
-     */
-    const static type_t INTERNAL;
-
-    /**
-     * External subnet requires NAT translation before egress.
-     */
-    const static type_t EXTERNAL;
-
-  private:
-    type_t(int v, const std::string s);
-  };
-
   /**
    * Class definition for listeners to OM events
    */
@@ -177,7 +186,7 @@ private:
   /**
    * the route domain the prefix is in
    */
-  const std::shared_ptr<route_domain> m_rd;
+  const std::shared_ptr<gbp_route_domain> m_rd;
 
   /**
    * prefix to match
@@ -204,6 +213,8 @@ private:
    */
   static singular_db<key_t, gbp_subnet> m_db;
 };
+
+std::ostream& operator<<(std::ostream& os, const gbp_subnet::key_t& key);
 
 }; // namespace
 
