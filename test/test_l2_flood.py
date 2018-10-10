@@ -5,7 +5,7 @@ import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_papi_provider import L2_PORT_TYPE, BRIDGE_FLAGS
+from vpp_l2 import L2_PORT_TYPE, BRIDGE_FLAGS
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether

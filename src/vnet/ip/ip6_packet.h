@@ -181,6 +181,12 @@ ip46_address_is_multicast (const ip46_address_t * a)
     ip6_address_is_multicast (&a->ip6);
 }
 
+always_inline u32
+ip6_address_hash_to_u32 (const ip6_address_t * a)
+{
+  return (a->as_u32[0] ^ a->as_u32[1] ^ a->as_u32[2] ^ a->as_u32[3]);
+}
+
 always_inline void
 ip6_set_reserved_multicast_address (ip6_address_t * a,
 				    ip6_multicast_address_scope_t scope,

@@ -97,6 +97,7 @@ l2_to_bvi (vlib_main_t * vlib_main,
 void
 l2bvi_register_input_type (vlib_main_t * vm,
 			   ethernet_type_t type, u32 node_index);
+
 #endif
 
 /*
