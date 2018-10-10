@@ -37,6 +37,13 @@ mac_address_from_bytes (mac_address_t * mac, const u8 * bytes)
   clib_memcpy (mac->bytes, bytes, 6);
 }
 
+static_always_inline void
+mac_address_to_bytes (const mac_address_t * mac, u8 * bytes)
+{
+  /* zero out the last 2 bytes, then copy over only 6 */
+  clib_memcpy (bytes, mac->bytes, 6);
+}
+
 static_always_inline int
 mac_address_is_zero (const mac_address_t * mac)
 {
@@ -55,6 +62,12 @@ mac_address_from_u64 (u64 u, mac_address_t * mac)
   mac->as_u64 = u;
   mac->bytes[4] = 0;
   mac->bytes[5] = 0;
+}
+
+static_always_inline void
+mac_address_copy (mac_address_t * dst, const mac_address_t * src)
+{
+  mac_address_from_bytes (dst, src->bytes);
 }
 
 extern uword unformat_mac_address_t (unformat_input_t * input,

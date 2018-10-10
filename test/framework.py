@@ -929,7 +929,35 @@ class VppTestCase(unittest.TestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        rx = output.get_capture(len(pkts))
+        if isinstance(object, (list,)):
+            rx = []
+            for o in output:
+                rx.append(output.get_capture(len(pkts)))
+        else:
+            rx = output.get_capture(len(pkts))
+        return rx
+
+    def send_and_expect_only(self, input, pkts, output, timeout=None):
+        self.vapi.cli("clear trace")
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        if isinstance(object, (list,)):
+            outputs = output
+            rx = []
+            for o in outputs:
+                rx.append(output.get_capture(len(pkts)))
+        else:
+            rx = output.get_capture(len(pkts))
+            outputs = [output]
+        if not timeout:
+            timeout = 1
+        for i in self.pg_interfaces:
+            if i not in outputs:
+                i.get_capture(0, timeout=timeout)
+                i.assert_nothing_captured()
+                timeout = 0.1
+
         return rx
 
 

@@ -29,6 +29,7 @@ typedef struct
   u32 error;
   u32 vni;
   u16 sclass;
+  u8 flags;
 } vxlan_gbp_rx_trace_t;
 
 static u8 *
@@ -44,8 +45,10 @@ format_vxlan_gbp_rx_trace (u8 * s, va_list * args)
 		   t->vni);
   return format (s,
 		 "VXLAN_GBP decap from vxlan_gbp_tunnel%d vni %d sclass %d"
-		 " next %d error %d",
-		 t->tunnel_index, t->vni, t->sclass, t->next_index, t->error);
+		 " flags %U next %d error %d",
+		 t->tunnel_index, t->vni, t->sclass,
+		 format_vxlan_gbp_header_gpflags, t->flags,
+		 t->next_index, t->error);
 }
 
 always_inline u32
@@ -161,10 +164,34 @@ vxlan6_gbp_find_tunnel (vxlan_gbp_main_t * vxm, last_tunnel_cache6 * cache,
   return t0;
 }
 
+always_inline vxlan_gbp_input_next_t
+vxlan_gbp_tunnel_get_next (const vxlan_gbp_tunnel_t * t, vlib_buffer_t * b0)
+{
+  if (VXLAN_GBP_TUNNEL_MODE_L2 == t->mode)
+    return (VXLAN_GBP_INPUT_NEXT_L2_INPUT);
+  else
+    {
+      ethernet_header_t *e0;
+      u16 type0;
+
+      e0 = vlib_buffer_get_current (b0);
+      vlib_buffer_advance (b0, sizeof (*e0));
+      type0 = clib_net_to_host_u16 (e0->type);
+      switch (type0)
+	{
+	case ETHERNET_TYPE_IP4:
+	  return (VXLAN_GBP_INPUT_NEXT_IP4_INPUT);
+	case ETHERNET_TYPE_IP6:
+	  return (VXLAN_GBP_INPUT_NEXT_IP6_INPUT);
+	}
+    }
+  return (VXLAN_GBP_INPUT_NEXT_DROP);
+}
+
 always_inline uword
 vxlan_gbp_input (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame, u32 is_ip4)
+		 vlib_frame_t * from_frame, u8 is_ip4)
 {
   vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
   vnet_main_t *vnm = vxm->vnet_main;
@@ -239,10 +266,6 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      ip6_1 = cur1 - sizeof (udp_header_t) - sizeof (ip6_header_t);
 	    }
 
-	  /* pop vxlan_gbp */
-	  vlib_buffer_advance (b0, sizeof *vxlan_gbp0);
-	  vlib_buffer_advance (b1, sizeof *vxlan_gbp1);
-
 	  u32 fi0 = buf_fib_index (b0, is_ip4);
 	  u32 fi1 = buf_fib_index (b1, is_ip4);
 
@@ -270,16 +293,19 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  u32 len0 = vlib_buffer_length_in_chain (vm, b0);
 	  u32 len1 = vlib_buffer_length_in_chain (vm, b1);
 
-	  u32 next0, next1;
+	  vxlan_gbp_input_next_t next0, next1;
 	  u8 error0 = 0, error1 = 0;
 	  u8 flags0 = vxlan_gbp_get_flags (vxlan_gbp0);
 	  u8 flags1 = vxlan_gbp_get_flags (vxlan_gbp1);
+	  /* Required to make the l2 tag push / pop code work on l2 subifs */
+	  /* pop vxlan_gbp */
+	  vlib_buffer_advance (b0, sizeof *vxlan_gbp0);
+	  vlib_buffer_advance (b1, sizeof *vxlan_gbp1);
+
 	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
 	  if (PREDICT_FALSE
 	      (t0 == 0 || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {
-	      next0 = VXLAN_GBP_INPUT_NEXT_DROP;
-
 	      if (t0 != 0
 		  && flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
 		{
@@ -287,22 +313,18 @@ vxlan_gbp_input (vlib_main_t * vm,
 		  vlib_increment_combined_counter
 		    (drop_counter, thread_index, stats_t0->sw_if_index, 1,
 		     len0);
+		  next0 = VXLAN_GBP_INPUT_NEXT_DROP;
 		}
 	      else
-		error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
+		{
+		  error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
+		  next0 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		}
 	      b0->error = node->errors[error0];
 	    }
 	  else
 	    {
-	      next0 = t0->decap_next_index;
-	      vnet_buffer2 (b0)->gbp.flags =
-		vxlan_gbp_get_gpflags (vxlan_gbp0);
-	      vnet_buffer2 (b0)->gbp.src_epg =
-		vxlan_gbp_get_sclass (vxlan_gbp0);
-
-	      /* Required to make the l2 tag push / pop code work on l2 subifs */
-	      if (PREDICT_TRUE (next0 == VXLAN_GBP_INPUT_NEXT_L2_INPUT))
-		vnet_update_l2_len (b0);
+	      next0 = vxlan_gbp_tunnel_get_next (t0, b0);
 
 	      /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
@@ -311,12 +333,13 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      pkts_decapsulated++;
 	    }
 
-	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
+	  vnet_buffer2 (b0)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
+	  vnet_buffer2 (b0)->gbp.src_epg = vxlan_gbp_get_sclass (vxlan_gbp0);
+
+
 	  if (PREDICT_FALSE
 	      (t1 == 0 || flags1 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {
-	      next1 = VXLAN_GBP_INPUT_NEXT_DROP;
-
 	      if (t1 != 0
 		  && flags1 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
 		{
@@ -324,22 +347,18 @@ vxlan_gbp_input (vlib_main_t * vm,
 		  vlib_increment_combined_counter
 		    (drop_counter, thread_index, stats_t1->sw_if_index, 1,
 		     len1);
+		  next1 = VXLAN_GBP_INPUT_NEXT_DROP;
 		}
 	      else
-		error1 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
+		{
+		  error1 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
+		  next1 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		}
 	      b1->error = node->errors[error1];
 	    }
 	  else
 	    {
-	      next1 = t1->decap_next_index;
-	      vnet_buffer2 (b1)->gbp.flags =
-		vxlan_gbp_get_gpflags (vxlan_gbp1);
-	      vnet_buffer2 (b1)->gbp.src_epg =
-		vxlan_gbp_get_sclass (vxlan_gbp1);
-
-	      /* Required to make the l2 tag push / pop code work on l2 subifs */
-	      if (PREDICT_TRUE (next1 == VXLAN_GBP_INPUT_NEXT_L2_INPUT))
-		vnet_update_l2_len (b1);
+	      next1 = vxlan_gbp_tunnel_get_next (t1, b1);
 
 	      /* Set packet input sw_if_index to unicast VXLAN_GBP tunnel for learning */
 	      vnet_buffer (b1)->sw_if_index[VLIB_RX] = t1->sw_if_index;
@@ -348,6 +367,12 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      vlib_increment_combined_counter
 		(rx_counter, thread_index, stats_t1->sw_if_index, 1, len1);
 	    }
+
+	  vnet_buffer2 (b1)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp1);
+	  vnet_buffer2 (b1)->gbp.src_epg = vxlan_gbp_get_sclass (vxlan_gbp1);
+
+	  vnet_update_l2_len (b0);
+	  vnet_update_l2_len (b1);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -358,6 +383,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      tr->tunnel_index = t0 == 0 ? ~0 : t0 - vxm->tunnels;
 	      tr->vni = vxlan_gbp_get_vni (vxlan_gbp0);
 	      tr->sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
+	      tr->flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
 	    }
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -368,6 +394,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      tr->tunnel_index = t1 == 0 ? ~0 : t1 - vxm->tunnels;
 	      tr->vni = vxlan_gbp_get_vni (vxlan_gbp1);
 	      tr->sclass = vxlan_gbp_get_sclass (vxlan_gbp1);
+	      tr->flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -395,9 +422,6 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  else
 	    ip6_0 = cur0 - sizeof (udp_header_t) - sizeof (ip6_header_t);
 
-	  /* pop (ip, udp, vxlan_gbp) */
-	  vlib_buffer_advance (b0, sizeof (*vxlan_gbp0));
-
 	  u32 fi0 = buf_fib_index (b0, is_ip4);
 
 	  vxlan_gbp_tunnel_t *t0, *stats_t0 = 0;
@@ -412,15 +436,16 @@ vxlan_gbp_input (vlib_main_t * vm,
 
 	  uword len0 = vlib_buffer_length_in_chain (vm, b0);
 
-	  u32 next0;
+	  vxlan_gbp_input_next_t next0;
 	  u8 error0 = 0;
 	  u8 flags0 = vxlan_gbp_get_flags (vxlan_gbp0);
+
+	  /* pop (ip, udp, vxlan_gbp) */
+	  vlib_buffer_advance (b0, sizeof (*vxlan_gbp0));
 	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
 	  if (PREDICT_FALSE
 	      (t0 == 0 || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {
-	      next0 = VXLAN_GBP_INPUT_NEXT_DROP;
-
 	      if (t0 != 0
 		  && flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
 		{
@@ -428,24 +453,18 @@ vxlan_gbp_input (vlib_main_t * vm,
 		  vlib_increment_combined_counter
 		    (drop_counter, thread_index, stats_t0->sw_if_index, 1,
 		     len0);
+		  next0 = VXLAN_GBP_INPUT_NEXT_DROP;
 		}
 	      else
-		error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
+		{
+		  error0 = VXLAN_GBP_ERROR_NO_SUCH_TUNNEL;
+		  next0 = VXLAN_GBP_INPUT_NEXT_NO_TUNNEL;
+		}
 	      b0->error = node->errors[error0];
 	    }
 	  else
 	    {
-	      next0 = t0->decap_next_index;
-	      vnet_buffer2 (b0)->gbp.flags =
-		vxlan_gbp_get_gpflags (vxlan_gbp0);
-	      vnet_buffer2 (b0)->gbp.src_epg =
-		vxlan_gbp_get_sclass (vxlan_gbp0);
-
-
-	      /* Required to make the l2 tag push / pop code work on l2 subifs */
-	      if (PREDICT_TRUE (next0 == VXLAN_GBP_INPUT_NEXT_L2_INPUT))
-		vnet_update_l2_len (b0);
-
+	      next0 = vxlan_gbp_tunnel_get_next (t0, b0);
 	      /* Set packet input sw_if_index to unicast VXLAN_GBP tunnel for learning */
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
 	      pkts_decapsulated++;
@@ -453,6 +472,11 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      vlib_increment_combined_counter
 		(rx_counter, thread_index, stats_t0->sw_if_index, 1, len0);
 	    }
+	  vnet_buffer2 (b0)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
+	  vnet_buffer2 (b0)->gbp.src_epg = vxlan_gbp_get_sclass (vxlan_gbp0);
+
+	  /* Required to make the l2 tag push / pop code work on l2 subifs */
+	  vnet_update_l2_len (b0);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -463,6 +487,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      tr->tunnel_index = t0 == 0 ? ~0 : t0 - vxm->tunnels;
 	      tr->vni = vxlan_gbp_get_vni (vxlan_gbp0);
 	      tr->sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
+	      tr->flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

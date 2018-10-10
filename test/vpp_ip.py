@@ -120,6 +120,10 @@ class VppIpAddress():
         return self.addr.bytes
 
     @property
+    def bytes(self):
+        return self.addr.bytes
+
+    @property
     def address(self):
         return self.addr.address
 
@@ -169,8 +173,16 @@ class VppIpPrefix():
         return self.addr.address
 
     @property
+    def bytes(self):
+        return self.addr.bytes
+
+    @property
     def length(self):
         return self.len
+
+    @property
+    def is_ip6(self):
+        return self.addr.is_ip6
 
     def __str__(self):
         return "%s/%d" % (self.address, self.length)

@@ -22,13 +22,13 @@ namespace gbp_subnet_cmds {
 create_cmd::create_cmd(HW::item<bool>& item,
                        route::table_id_t rd,
                        const route::prefix_t& prefix,
-                       bool internal,
+                       const gbp_subnet::type_t& type,
                        const handle_t& itf,
                        epg_id_t epg_id)
   : rpc_cmd(item)
   , m_rd(rd)
   , m_prefix(prefix)
-  , m_internal(internal)
+  , m_type(type)
   , m_itf(itf)
   , m_epg_id(epg_id)
 {
@@ -38,8 +38,21 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_rd == other.m_rd) &&
-          (m_prefix == other.m_prefix) && (m_itf == other.m_itf) &&
-          (m_epg_id == other.m_epg_id));
+          (m_prefix == other.m_prefix) && (m_type == other.m_type) &&
+          (m_itf == other.m_itf) && (m_epg_id == other.m_epg_id));
+}
+
+static vapi_enum_gbp_subnet_type
+gbp_subnet_type_to_api(const gbp_subnet::type_t& type)
+{
+  if (gbp_subnet::type_t::STITCHED_INTERNAL == type)
+    return (GBP_API_SUBNET_STITCHED_INTERNAL);
+  if (gbp_subnet::type_t::STITCHED_EXTERNAL == type)
+    return (GBP_API_SUBNET_STITCHED_EXTERNAL);
+  if (gbp_subnet::type_t::TRANSPORT == type)
+    return (GBP_API_SUBNET_TRANSPORT);
+
+  return (GBP_API_SUBNET_STITCHED_INTERNAL);
 }
 
 rc_t
@@ -49,8 +62,8 @@ create_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
-  payload.subnet.is_internal = m_internal;
-  payload.subnet.table_id = m_rd;
+  payload.subnet.type = gbp_subnet_type_to_api(m_type);
+  payload.subnet.rd_id = m_rd;
   payload.subnet.sw_if_index = m_itf.value();
   payload.subnet.epg_id = m_epg_id;
   payload.subnet.prefix = to_api(m_prefix);
@@ -64,9 +77,9 @@ std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-subnet-create: " << m_hw_item.to_string()
-    << "internal:" << m_internal << ", " << m_rd << ":" << m_prefix.to_string()
-    << " itf:" << m_itf << " epg-id:" << m_epg_id;
+  s << "gbp-subnet-create: " << m_hw_item.to_string() << "type:" << m_type
+    << ", " << m_rd << ":" << m_prefix.to_string() << " itf:" << m_itf
+    << " epg-id:" << m_epg_id;
 
   return (s.str());
 }
@@ -93,12 +106,8 @@ delete_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
-  payload.subnet.table_id = m_rd;
+  payload.subnet.rd_id = m_rd;
   payload.subnet.prefix = to_api(m_prefix);
-
-  payload.subnet.is_internal = 0;
-  payload.subnet.sw_if_index = ~0;
-  payload.subnet.epg_id = ~0;
 
   VAPI_CALL(req.execute());
 

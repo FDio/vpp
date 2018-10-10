@@ -36,7 +36,7 @@ public:
   create_cmd(HW::item<bool>& item,
              route::table_id_t rd,
              const route::prefix_t& prefix,
-             bool internal,
+             const gbp_subnet::type_t& type,
              const handle_t& itf,
              epg_id_t epg_id);
 
@@ -58,7 +58,7 @@ public:
 private:
   const route::table_id_t m_rd;
   const route::prefix_t m_prefix;
-  const bool m_internal;
+  const gbp_subnet::type_t& m_type;
   const handle_t m_itf;
   const epg_id_t m_epg_id;
 };
