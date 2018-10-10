@@ -1153,7 +1153,7 @@ ip4_reass_init_function (vlib_main_t * vm)
   rm->vlib_main = vm;
   rm->vnet_main = vnet_get_main ();
 
-  vec_validate (rm->per_thread_data, vlib_num_workers () + 1);
+  vec_validate (rm->per_thread_data, vlib_num_workers ());
   ip4_reass_per_thread_t *rt;
   vec_foreach (rt, rm->per_thread_data)
   {
@@ -1214,7 +1214,7 @@ ip4_reass_walk_expired (vlib_main_t * vm,
 
       uword thread_index = 0;
       int index;
-      const uword nthreads = os_get_nthreads ();
+      const uword nthreads = vlib_num_workers () + 1;
       for (thread_index = 0; thread_index < nthreads; ++thread_index)
 	{
 	  ip4_reass_per_thread_t *rt = &rm->per_thread_data[thread_index];
@@ -1381,7 +1381,7 @@ show_ip4_reass (vlib_main_t * vm, unformat_input_t * input,
   u64 sum_buffers_n = 0;
   ip4_reass_t *reass;
   uword thread_index;
-  const uword nthreads = os_get_nthreads ();
+  const uword nthreads = vlib_num_workers () + 1;
   for (thread_index = 0; thread_index < nthreads; ++thread_index)
     {
       ip4_reass_per_thread_t *rt = &rm->per_thread_data[thread_index];
