@@ -92,7 +92,6 @@ static void vl_api_vxlan_gbp_tunnel_add_del_t_handler
     .instance = ntohl (mp->tunnel.instance),
     .mcast_sw_if_index = ntohl (mp->tunnel.mcast_sw_if_index),
     .encap_fib_index = fib_index,
-    .decap_next_index = ntohl (mp->tunnel.decap_next_index),
     .vni = ntohl (mp->tunnel.vni),
     .dst = dst,
     .src = src,
@@ -142,7 +141,6 @@ static void send_vxlan_gbp_tunnel_details
   rmp->tunnel.instance = htonl (t->user_instance);
   rmp->tunnel.mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->tunnel.vni = htonl (t->vni);
-  rmp->tunnel.decap_next_index = htonl (t->decap_next_index);
   rmp->tunnel.sw_if_index = htonl (t->sw_if_index);
   rmp->context = context;
 

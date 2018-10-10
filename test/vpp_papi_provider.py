@@ -18,6 +18,7 @@ except:
 
 if do_import:
     from vpp_papi import VPP
+    from vpp_l2 import L2_PORT_TYPE
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -41,21 +42,6 @@ class QOS_SOURCE:
     VLAN = 1
     MPLS = 2
     IP = 3
-
-
-class L2_PORT_TYPE:
-    NORMAL = 0
-    BVI = 1
-    UU_FWD = 2
-
-
-class BRIDGE_FLAGS:
-    NONE = 0
-    LEARN = 1
-    FWD = 2
-    FLOOD = 4
-    UU_FLOOD = 8
-    ARP_TERM = 16
 
 
 class UnexpectedApiReturnValueError(Exception):
@@ -257,6 +243,17 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index, 'is_ipv6': is_ipv6,
                          'vrf_id': table_id})
 
+    def sw_interface_get_table(self, sw_if_index, is_ipv6):
+        """ Get the IPvX Table-id for the Interface
+
+        :param sw_if_index:
+        :param is_ipv6:
+        :return table_id
+
+        """
+        return self.api(self.papi.sw_interface_get_table,
+                        {'sw_if_index': sw_if_index, 'is_ipv6': is_ipv6})
+
     def sw_interface_add_del_address(self, sw_if_index, addr, addr_len,
                                      is_ipv6=0, is_add=1, del_all=0):
         """
@@ -276,6 +273,11 @@ class VppPapiProvider(object):
                          'del_all': del_all,
                          'address_length': addr_len,
                          'address': addr})
+
+    def ip_address_dump(self, sw_if_index, is_ipv6=0):
+        return self.api(self.papi.ip_address_dump,
+                        {'sw_if_index': sw_if_index,
+                         'is_ipv6': is_ipv6})
 
     def sw_interface_set_unnumbered(self, sw_if_index, ip_sw_if_index,
                                     is_add=1):
@@ -481,6 +483,10 @@ class VppPapiProvider(object):
                          'ip_address': ip,
                          'mac_address': mac})
 
+    def bd_ip_mac_dump(self, bd_id):
+        return self.api(self.papi.bd_ip_mac_dump,
+                        {'bd_id': bd_id})
+
     def want_ip4_arp_events(self, enable_disable=1, address=0):
         return self.api(self.papi.want_ip4_arp_events,
                         {'enable_disable': enable_disable,
@@ -646,6 +652,11 @@ class VppPapiProvider(object):
         """Flush all L2 FIB.
         """
         return self.api(self.papi.l2fib_flush_all, {})
+
+    def l2_fib_table_dump(self, bd_id):
+        """ Dump the L2 FIB """
+        return self.api(self.papi.l2_fib_table_dump,
+                        {'bd_id': bd_id})
 
     def sw_interface_set_l2_bridge(self, sw_if_index, bd_id,
                                    shg=0, port_type=L2_PORT_TYPE.NORMAL,
@@ -2771,7 +2782,6 @@ class VppPapiProvider(object):
             is_add=1,
             is_ipv6=0,
             encap_table_id=0,
-            decap_next_index=0xFFFFFFFF,
             vni=0,
             instance=0xFFFFFFFF):
         """
@@ -2794,7 +2804,6 @@ class VppPapiProvider(object):
                              'dst': dst,
                              'mcast_sw_if_index': mcast_sw_if_index,
                              'encap_table_id': encap_table_id,
-                             'decap_next_index': decap_next_index,
                              'vni': vni,
                              'instance': instance}})
 
@@ -3565,6 +3574,38 @@ class VppPapiProvider(object):
     def gbp_contract_dump(self):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
+
+    def gbp_endpoint_learn_enable_disable(self, sw_if_index, is_l2, enable):
+        """ GBP Learn """
+        return self.api(self.papi.gbp_endpoint_learn_enable_disable,
+                        {'sw_if_index': sw_if_index,
+                         'is_l2': is_l2,
+                         'enable': enable})
+
+    def gbp_endpoint_learn_set_inactive_threshold(self, threshold):
+        """ GBP set inactive threshold """
+        return self.api(self.papi.gbp_endpoint_learn_set_inactive_threshold,
+                        {'threshold': threshold})
+
+    def gbp_vxlan_tunnel_add_del(self, vni, bd_id=0, is_l2=1,
+                                 ip4_table_id=0, ip6_table_id=0,
+                                 is_add=1):
+        """ GBP VXLAN tunnel add/del """
+        return self.api(self.papi.gbp_vxlan_tunnel_add_del,
+                        {
+                            'is_add': is_add,
+                            'tunnel': {
+                                'vni': vni,
+                                'is_l2': is_l2,
+                                'bd_id': bd_id,
+                                'ip4_table_id': ip4_table_id,
+                                'ip6_table_id': ip6_table_id
+                            }
+                        })
+
+    def gbp_vxlan_tunnel_dump(self):
+        """ GBP VXLAN tunnel add/del """
+        return self.api(self.papi.gbp_vxlan_tunnel_dump, {})
 
     def ipip_6rd_add_tunnel(self, ip6_table_id, ip6_prefix, ip6_prefix_len,
                             ip4_table_id, ip4_prefix, ip4_prefix_len, ip4_src,

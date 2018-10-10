@@ -15,6 +15,8 @@
 
 #include <plugins/gbp/gbp.h>
 
+#include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
+
 /**
  * Grouping of global data for the GBP source EPG classification feature
  */
@@ -23,7 +25,7 @@ typedef struct gbp_policy_main_t_
   /**
    * Next nodes for L2 output features
    */
-  u32 l2_output_feat_next[32];
+  u32 l2_output_feat_next[2][32];
 } gbp_policy_main_t;
 
 static gbp_policy_main_t gbp_policy_main;
@@ -59,14 +61,16 @@ typedef enum
 typedef struct gbp_policy_trace_t_
 {
   /* per-pkt trace data */
-  epg_id_t src_epg;
-  epg_id_t dst_epg;
+  u32 src_epg;
+  u32 dst_epg;
   u32 acl_index;
+  u32 allowed;
 } gbp_policy_trace_t;
 
 static uword
-gbp_policy (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * frame)
+gbp_policy_inline (vlib_main_t * vm,
+		   vlib_node_runtime_t * node,
+		   vlib_frame_t * frame, u8 is_port_based)
 {
   gbp_main_t *gm = &gbp_main;
   gbp_policy_main_t *gpm = &gbp_policy_main;
@@ -85,7 +89,8 @@ gbp_policy (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  const gbp_endpoint_t *gep0;
+	  const ethernet_header_t *h0;
+	  const gbp_endpoint_t *ge0;
 	  gbp_policy_next_t next0;
 	  gbp_contract_key_t key0;
 	  gbp_contract_value_t value0 = {
@@ -103,13 +108,39 @@ gbp_policy (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  h0 = vlib_buffer_get_current (b0);
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
+	  /*
+	   * If the A0bit is set then policy has already been applied
+	   * and we skip enforcement here.
+	   */
+	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A)
+	    {
+	      next0 = vnet_l2_feature_next (b0,
+					    gpm->l2_output_feat_next
+					    [is_port_based],
+					    (is_port_based ?
+					     L2OUTPUT_FEAT_GBP_POLICY_PORT :
+					     L2OUTPUT_FEAT_GBP_POLICY_MAC));
+	      key0.as_u32 = ~0;
+	      goto trace;
+	    }
 	  /*
 	   * determine the src and dst EPG
 	   */
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  gep0 = gbp_endpoint_get_itf (sw_if_index0);
-	  key0.gck_dst = gep0->ge_epg_id;
+	  if (is_port_based)
+	    ge0 = gbp_endpoint_find_itf (sw_if_index0);
+	  else
+	    ge0 = gbp_endpoint_find_mac (h0->dst_address,
+					 vnet_buffer (b0)->l2.bd_index);
+
+	  if (NULL != ge0)
+	    key0.gck_dst = ge0->ge_epg_id;
+	  else
+	    /* If you cannot determine the destination EP then drop */
+	    goto trace;
+
 	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
 
 	  if (EPG_INVALID != key0.gck_src)
@@ -119,8 +150,14 @@ gbp_policy (vlib_main_t * vm,
 		  /*
 		   * intra-epg allowed
 		   */
-		  next0 = vnet_l2_feature_next (b0, gpm->l2_output_feat_next,
-						L2OUTPUT_FEAT_GBP_POLICY);
+		  next0 =
+		    vnet_l2_feature_next (b0,
+					  gpm->l2_output_feat_next
+					  [is_port_based],
+					  (is_port_based ?
+					   L2OUTPUT_FEAT_GBP_POLICY_PORT :
+					   L2OUTPUT_FEAT_GBP_POLICY_MAC));
+		  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
 		}
 	      else
 		{
@@ -163,9 +200,19 @@ gbp_policy (vlib_main_t * vm,
 						      &trace_bitmap0);
 
 		      if (action0 > 0)
-			next0 =
-			  vnet_l2_feature_next (b0, gpm->l2_output_feat_next,
-						L2OUTPUT_FEAT_GBP_POLICY);
+			{
+			  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+
+			  next0 =
+			    vnet_l2_feature_next (b0,
+						  gpm->l2_output_feat_next
+						  [is_port_based],
+						  (is_port_based ?
+						   L2OUTPUT_FEAT_GBP_POLICY_PORT
+						   :
+						   L2OUTPUT_FEAT_GBP_POLICY_MAC));
+			  ;
+			}
 		    }
 		}
 	    }
@@ -175,10 +222,15 @@ gbp_policy (vlib_main_t * vm,
 	       * the src EPG is not set when the packet arrives on an EPG
 	       * uplink interface and we do not need to apply policy
 	       */
-	      next0 = vnet_l2_feature_next (b0, gpm->l2_output_feat_next,
-					    L2OUTPUT_FEAT_GBP_POLICY);
+	      next0 =
+		vnet_l2_feature_next (b0,
+				      gpm->l2_output_feat_next[is_port_based],
+				      (is_port_based ?
+				       L2OUTPUT_FEAT_GBP_POLICY_PORT :
+				       L2OUTPUT_FEAT_GBP_POLICY_MAC));
 	    }
 
+	trace:
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      gbp_policy_trace_t *t =
@@ -186,6 +238,7 @@ gbp_policy (vlib_main_t * vm,
 	      t->src_epg = key0.gck_src;
 	      t->dst_epg = key0.gck_dst;
 	      t->acl_index = value0.gc_acl_index;
+	      t->allowed = (next0 != GBP_POLICY_NEXT_DENY);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -200,6 +253,20 @@ gbp_policy (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static uword
+gbp_policy_port (vlib_main_t * vm,
+		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return (gbp_policy_inline (vm, node, frame, 1));
+}
+
+static uword
+gbp_policy_mac (vlib_main_t * vm,
+		vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return (gbp_policy_inline (vm, node, frame, 0));
+}
+
 /* packet trace format function */
 static u8 *
 format_gbp_policy_trace (u8 * s, va_list * args)
@@ -209,16 +276,16 @@ format_gbp_policy_trace (u8 * s, va_list * args)
   gbp_policy_trace_t *t = va_arg (*args, gbp_policy_trace_t *);
 
   s =
-    format (s, "src:%d, dst:%d, acl:%d", t->src_epg, t->dst_epg,
-	    t->acl_index);
+    format (s, "src:%d, dst:%d, acl:%d allowed:%d",
+	    t->src_epg, t->dst_epg, t->acl_index, t->allowed);
 
   return s;
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (gbp_policy_node) = {
-  .function = gbp_policy,
-  .name = "gbp-policy",
+VLIB_REGISTER_NODE (gbp_policy_port_node) = {
+  .function = gbp_policy_port,
+  .name = "gbp-policy-port",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_policy_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -233,7 +300,26 @@ VLIB_REGISTER_NODE (gbp_policy_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_policy_node, gbp_policy);
+VLIB_NODE_FUNCTION_MULTIARCH (gbp_policy_port_node, gbp_policy_port);
+
+VLIB_REGISTER_NODE (gbp_policy_mac_node) = {
+  .function = gbp_policy_mac,
+  .name = "gbp-policy-mac",
+  .vector_size = sizeof (u32),
+  .format_trace = format_gbp_policy_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(gbp_policy_error_strings),
+  .error_strings = gbp_policy_error_strings,
+
+  .n_next_nodes = GBP_POLICY_N_NEXT,
+
+  .next_nodes = {
+    [GBP_POLICY_NEXT_DENY] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (gbp_policy_mac_node, gbp_policy_mac);
 
 /* *INDENT-ON* */
 
@@ -245,10 +331,15 @@ gbp_policy_init (vlib_main_t * vm)
 
   /* Initialize the feature next-node indexes */
   feat_bitmap_init_next_nodes (vm,
-			       gbp_policy_node.index,
+			       gbp_policy_port_node.index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
-			       gpm->l2_output_feat_next);
+			       gpm->l2_output_feat_next[1]);
+  feat_bitmap_init_next_nodes (vm,
+			       gbp_policy_mac_node.index,
+			       L2OUTPUT_N_FEAT,
+			       l2output_get_feat_names (),
+			       gpm->l2_output_feat_next[0]);
 
   return error;
 }

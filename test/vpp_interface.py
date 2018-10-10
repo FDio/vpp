@@ -454,3 +454,6 @@ class VppInterface(object):
                                "admin state")
         self.test.assert_equal(if_state.link_up_down, link_up_down,
                                "link state")
+
+    def __str__(self):
+        return self.name

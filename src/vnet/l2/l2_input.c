@@ -177,7 +177,8 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
 
       /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
       feat_mask &= ~(L2INPUT_FEAT_FWD |
-		     L2INPUT_FEAT_UU_FLOOD | L2INPUT_FEAT_GBP_FWD);
+		     L2INPUT_FEAT_UU_FLOOD |
+		     L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD);
 
       /* Disable ARP-term for non-ARP and non-ICMP6 packet */
       if (ethertype != ETHERNET_TYPE_ARP &&
@@ -517,7 +518,8 @@ l2input_intf_config (u32 sw_if_index)
 
 /** Enable (or disable) the feature in the bitmap for the given interface. */
 u32
-l2input_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
+l2input_intf_bitmap_enable (u32 sw_if_index,
+			    l2input_feat_masks_t feature_bitmap, u32 enable)
 {
   l2_input_config_t *config = l2input_intf_config (sw_if_index);
 
