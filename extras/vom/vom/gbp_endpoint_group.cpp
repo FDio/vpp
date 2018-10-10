@@ -26,8 +26,8 @@ gbp_endpoint_group::event_handler gbp_endpoint_group::m_evh;
 
 gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
                                        const interface& itf,
-                                       const route_domain& rd,
-                                       const bridge_domain& bd)
+                                       const gbp_route_domain& rd,
+                                       const gbp_bridge_domain& bd)
   : m_hw(false)
   , m_epg_id(epg_id)
   , m_itf(itf.singular())
@@ -64,10 +64,10 @@ gbp_endpoint_group::id() const
 }
 
 bool
-gbp_endpoint_group::operator==(const gbp_endpoint_group& gbpe) const
+gbp_endpoint_group::operator==(const gbp_endpoint_group& gg) const
 {
-  return (key() == gbpe.key() && (m_itf == gbpe.m_itf) && (m_rd == gbpe.m_rd) &&
-          (m_bd == gbpe.m_bd));
+  return (key() == gg.key() && (m_itf == gg.m_itf) && (m_rd == gg.m_rd) &&
+          (m_bd == gg.m_bd));
 }
 
 void
@@ -84,7 +84,7 @@ gbp_endpoint_group::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_epg_id, m_bd->id(), m_rd->table_id(), m_itf->handle()));
+      m_hw, m_epg_id, m_bd->id(), m_rd->id(), m_itf->handle()));
   }
 }
 
@@ -104,7 +104,7 @@ gbp_endpoint_group::update(const gbp_endpoint_group& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_epg_id, m_bd->id(), m_rd->table_id(), m_itf->handle()));
+      m_hw, m_epg_id, m_bd->id(), m_rd->id(), m_itf->handle()));
   }
 }
 
@@ -159,12 +159,13 @@ gbp_endpoint_group::event_handler::handle_populate(const client_db::key_t& key)
 
     std::shared_ptr<interface> itf =
       interface::find(payload.epg.uplink_sw_if_index);
-    std::shared_ptr<route_domain> rd =
-      route_domain::find(payload.epg.ip4_table_id);
-    std::shared_ptr<bridge_domain> bd = bridge_domain::find(payload.epg.bd_id);
+    std::shared_ptr<gbp_route_domain> rd =
+      gbp_route_domain::find(payload.epg.rd_id);
+    std::shared_ptr<gbp_bridge_domain> bd =
+      gbp_bridge_domain::find(payload.epg.bd_id);
 
     VOM_LOG(log_level_t::DEBUG) << "data: [" << payload.epg.uplink_sw_if_index
-                                << ", " << payload.epg.ip4_table_id << ", "
+                                << ", " << payload.epg.rd_id << ", "
                                 << payload.epg.bd_id << "]";
 
     if (itf && bd && rd) {

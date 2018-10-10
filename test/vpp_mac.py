@@ -22,3 +22,18 @@ class VppMacAddress():
     @property
     def address(self):
         return self.addr.address
+
+    def __str__(self):
+        return self.address
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.address == other.addres
+        elif hasattr(other, "bytes"):
+            # vl_api_mac_addres_t
+            return self.bytes == other.bytes
+        else:
+            raise Exception("Comparing VppMacAddress:%s"
+                            "with unknown type: %s" %
+                            (self, other))
+        return False

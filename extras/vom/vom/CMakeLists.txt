@@ -66,16 +66,20 @@ endif()
 
 if(GBP_FILE)
   list(APPEND VOM_SOURCES
-    gbp_recirc_cmds.cpp
-    gbp_recirc.cpp
-    gbp_subnet_cmds.cpp
-    gbp_subnet.cpp
+    gbp_contract_cmds.cpp
+    gbp_contract.cpp
+    gbp_bridge_domain_cmds.cpp
+    gbp_bridge_domain.cpp
     gbp_endpoint_cmds.cpp
     gbp_endpoint.cpp
     gbp_endpoint_group_cmds.cpp
     gbp_endpoint_group.cpp
-    gbp_contract_cmds.cpp
-    gbp_contract.cpp
+    gbp_recirc_cmds.cpp
+    gbp_recirc.cpp
+    gbp_route_domain_cmds.cpp
+    gbp_route_domain.cpp
+    gbp_subnet_cmds.cpp
+    gbp_subnet.cpp
   )
 endif()
 

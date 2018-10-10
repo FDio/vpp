@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,29 +13,26 @@
  * limitations under the License.
  */
 
-#include "vom/gbp_endpoint_group_cmds.hpp"
+#include "vom/gbp_route_domain_cmds.hpp"
 
 namespace VOM {
-namespace gbp_endpoint_group_cmds {
+namespace gbp_route_domain_cmds {
 
-create_cmd::create_cmd(HW::item<bool>& item,
-                       epg_id_t epg_id,
-                       uint32_t bd_id,
-                       route::table_id_t rd_id,
-                       const handle_t& itf)
+create_cmd::create_cmd(HW::item<uint32_t>& item,
+                       const handle_t ip4_uu_fwd,
+                       const handle_t ip6_uu_fwd)
   : rpc_cmd(item)
-  , m_epg_id(epg_id)
-  , m_bd_id(bd_id)
-  , m_rd_id(rd_id)
-  , m_itf(itf)
+  , m_ip4_uu_fwd(ip4_uu_fwd)
+  , m_ip6_uu_fwd(ip6_uu_fwd)
 {
 }
 
 bool
 create_cmd::operator==(const create_cmd& other) const
 {
-  return ((m_itf == other.m_itf) && (m_bd_id == other.m_bd_id) &&
-          (m_rd_id == other.m_rd_id) && (m_epg_id == other.m_epg_id));
+  return ((m_hw_item.data() == other.m_hw_item.data()) &&
+          (m_ip4_uu_fwd == other.m_ip4_uu_fwd) &&
+          (m_ip6_uu_fwd == other.m_ip6_uu_fwd));
 }
 
 rc_t
@@ -44,10 +41,10 @@ create_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.epg.uplink_sw_if_index = m_itf.value();
-  payload.epg.epg_id = m_epg_id;
-  payload.epg.bd_id = m_bd_id;
-  payload.epg.rd_id = m_rd_id;
+
+  payload.rd.rd_id = m_hw_item.data();
+  payload.rd.ip4_uu_sw_if_index = m_ip4_uu_fwd.value();
+  payload.rd.ip6_uu_sw_if_index = m_ip6_uu_fwd.value();
 
   VAPI_CALL(req.execute());
 
@@ -58,23 +55,22 @@ std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-endpoint-group-create: " << m_hw_item.to_string()
-    << " epg-id:" << m_epg_id << " bd-id:" << m_bd_id << " rd-id:" << m_rd_id
-    << " itf:" << m_itf;
+  s << "gbp-route-domain: " << m_hw_item.to_string()
+    << " ip4-uu-fwd:" << m_ip4_uu_fwd.to_string()
+    << " ip6-uu-fwd:" << m_ip6_uu_fwd.to_string();
 
   return (s.str());
 }
 
-delete_cmd::delete_cmd(HW::item<bool>& item, epg_id_t epg_id)
+delete_cmd::delete_cmd(HW::item<uint32_t>& item)
   : rpc_cmd(item)
-  , m_epg_id(epg_id)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return (m_epg_id == other.m_epg_id);
+  return (m_hw_item.data() == other.m_hw_item.data());
 }
 
 rc_t
@@ -83,25 +79,24 @@ delete_cmd::issue(connection& con)
   msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
-  payload.epg_id = m_epg_id;
+
+  payload.rd_id = m_hw_item.data();
 
   VAPI_CALL(req.execute());
 
-  return (wait());
+  wait();
+  m_hw_item.set(rc_t::NOOP);
+
+  return rc_t::OK;
 }
 
 std::string
 delete_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-endpoint-group-delete: " << m_hw_item.to_string()
-    << " epg:" << m_epg_id;
+  s << "gbp-route-domain: " << m_hw_item.to_string();
 
   return (s.str());
-}
-
-dump_cmd::dump_cmd()
-{
 }
 
 bool
@@ -125,10 +120,10 @@ dump_cmd::issue(connection& con)
 std::string
 dump_cmd::to_string() const
 {
-  return ("gbp-endpoint-group-dump");
+  return ("gbp-route-domain-dump");
 }
 
-}; // namespace gbp_endpoint_group_cmds
+}; // namespace gbp_route_domain_cmds
 }; // namespace VOM
 
 /*

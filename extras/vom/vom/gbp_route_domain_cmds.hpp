@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,37 +13,34 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_GBP_ENDPOINT_GROUP_CMDS_H__
-#define __VOM_GBP_ENDPOINT_GROUP_CMDS_H__
+#ifndef __VOM_GBP_ROUTE_DOMAIN_CMDS_H__
+#define __VOM_GBP_ROUTE_DOMAIN_CMDS_H__
 
+#include "vom/gbp_route_domain.hpp"
 #include "vom/dump_cmd.hpp"
-#include "vom/gbp_endpoint_group.hpp"
+#include "vom/rpc_cmd.hpp"
 
 #include <vapi/gbp.api.vapi.hpp>
 
 namespace VOM {
-namespace gbp_endpoint_group_cmds {
-
+namespace gbp_route_domain_cmds {
 /**
-* A command class that creates or updates the GBP endpoint_group
-*/
-class create_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_endpoint_group_add>
+ * A command class that creates an Route-Domain
+ */
+class create_cmd : public rpc_cmd<HW::item<uint32_t>, vapi::Gbp_route_domain_add>
 {
 public:
   /**
    * Constructor
    */
-  create_cmd(HW::item<bool>& item,
-             epg_id_t epg_id,
-             uint32_t bd_id,
-             route::table_id_t rd_id,
-             const handle_t& itf);
+  create_cmd(HW::item<uint32_t>& item,
+             const handle_t ip4_uu_fwd,
+             const handle_t ip6_uu_fwd);
 
   /**
    * Issue the command to VPP/HW
    */
   rc_t issue(connection& con);
-
   /**
    * convert to string format for debug purposes
    */
@@ -55,28 +52,26 @@ public:
   bool operator==(const create_cmd& i) const;
 
 private:
-  const epg_id_t m_epg_id;
-  const uint32_t m_bd_id;
-  const route::table_id_t m_rd_id;
-  const handle_t m_itf;
+    const handle_t m_ip4_uu_fwd;
+    const handle_t m_ip6_uu_fwd;
 };
 
 /**
- * A cmd class that deletes a GBP endpoint_group
+ * A cmd class that Delete an Route-Domain
  */
-class delete_cmd : public rpc_cmd<HW::item<bool>, vapi::Gbp_endpoint_group_del>
+class delete_cmd
+  : public rpc_cmd<HW::item<uint32_t>, vapi::Gbp_route_domain_del>
 {
 public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item, epg_id_t epg_id);
+  delete_cmd(HW::item<uint32_t>& item);
 
   /**
    * Issue the command to VPP/HW
    */
   rc_t issue(connection& con);
-
   /**
    * convert to string format for debug purposes
    */
@@ -86,15 +81,12 @@ public:
    * Comparison operator - only used for UT
    */
   bool operator==(const delete_cmd& i) const;
-
-private:
-  const epg_id_t m_epg_id;
 };
 
 /**
- * A cmd class that Dumps all the GBP endpoint_groups
+ * A cmd class that Dumps all the route domains
  */
-class dump_cmd : public VOM::dump_cmd<vapi::Gbp_endpoint_group_dump>
+class dump_cmd : public VOM::dump_cmd<vapi::Gbp_route_domain_dump>
 {
 public:
   /**
@@ -123,8 +115,9 @@ private:
    */
   HW::item<bool> item;
 };
-}; // namespace gbp_enpoint_cms
-}; // namespace VOM
+
+}; // gbp_route_domain_cmds
+}; // VOM
 
 /*
  * fd.io coding-style-patch-verification: ON
