@@ -366,10 +366,15 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_enqueued = count_trailing_zeros (~bitmap) / 2;
 #else
       u16 x = 0;
-      x |= next_index ^ nexts[1];
-      x |= next_index ^ nexts[2];
-      x |= next_index ^ nexts[3];
-      n_enqueued = (x == 0) ? 4 : 1;
+      if (count + 3 < max)
+	{
+	  x |= next_index ^ nexts[1];
+	  x |= next_index ^ nexts[2];
+	  x |= next_index ^ nexts[3];
+	  n_enqueued = (x == 0) ? 4 : 1;
+	}
+      else
+	n_enqueued = 1;
 #endif
 
       if (PREDICT_FALSE (n_enqueued > max))
