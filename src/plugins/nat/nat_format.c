@@ -220,6 +220,23 @@ format_snat_static_mapping (u8 * s, va_list * args)
   snat_static_mapping_t *m = va_arg (*args, snat_static_mapping_t *);
   nat44_lb_addr_port_t *local;
 
+  if (is_identity_static_mapping (m))
+    {
+      if (is_addr_only_static_mapping (m))
+	s = format (s, "identity mapping %U",
+		    format_ip4_address, &m->local_addr);
+      else
+	s = format (s, "identity mapping %U:%d",
+		    format_ip4_address, &m->local_addr, m->local_port);
+
+      /* *INDENT-OFF* */
+      vec_foreach (local, m->locals)
+        s = format (s, " vrf %d", local->vrf_id);
+      /* *INDENT-ON* */
+
+      return s;
+    }
+
   if (is_addr_only_static_mapping (m))
     s = format (s, "local %U external %U vrf %d %s %s",
 		format_ip4_address, &m->local_addr,
@@ -230,7 +247,7 @@ format_snat_static_mapping (u8 * s, va_list * args)
 		is_out2in_only_static_mapping (m) ? "out2in-only" : "");
   else
     {
-      if (vec_len (m->locals))
+      if (is_lb_static_mapping (m))
 	{
 	  s = format (s, "%U external %U:%d %s %s",
 		      format_snat_protocol, m->proto,
