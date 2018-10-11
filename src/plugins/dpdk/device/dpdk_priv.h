@@ -49,7 +49,8 @@ _(force-ranks, r)
 _(huge-dir)                                     \
 _(proc-type)                                    \
 _(file-prefix)                                  \
-_(vdev)
+_(vdev)                                         \
+_(log-level)
 
 typedef struct
 {
