@@ -369,10 +369,10 @@ set_leaf (ip4_fib_mtrie_t * m,
 	  old_ply->n_non_empty_leafs -=
 	    ip4_fib_mtrie_leaf_is_non_empty (old_ply, dst_byte);
 
-	  new_leaf = ply_create (m, old_leaf,
-				 clib_max (old_ply->dst_address_bits_of_leaves
-					   [dst_byte], ply_base_len),
-				 ply_base_len);
+	  new_leaf =
+	    ply_create (m, old_leaf,
+			old_ply->dst_address_bits_of_leaves[dst_byte],
+			ply_base_len);
 	  new_ply = get_next_ply_for_leaf (m, new_leaf);
 
 	  /* Refetch since ply_create may move pool. */
@@ -492,10 +492,10 @@ set_root_leaf (ip4_fib_mtrie_t * m,
       if (ip4_fib_mtrie_leaf_is_terminal (old_leaf))
 	{
 	  /* There is a leaf occupying the slot. Replace it with a new ply */
-	  new_leaf = ply_create (m, old_leaf,
-				 clib_max (old_ply->dst_address_bits_of_leaves
-					   [dst_byte], ply_base_len),
-				 ply_base_len);
+	  new_leaf =
+	    ply_create (m, old_leaf,
+			old_ply->dst_address_bits_of_leaves[dst_byte],
+			ply_base_len);
 	  new_ply = get_next_ply_for_leaf (m, new_leaf);
 
 	  __sync_val_compare_and_swap (&old_ply->leaves[dst_byte], old_leaf,
@@ -551,9 +551,8 @@ unset_leaf (ip4_fib_mtrie_t * m,
 
 	  old_ply->leaves[i] =
 	    ip4_fib_mtrie_leaf_set_adj_index (a->cover_adj_index);
-	  old_ply->dst_address_bits_of_leaves[i] =
-	    clib_max (old_ply->dst_address_bits_base,
-		      a->cover_address_length);
+	  old_ply->dst_address_bits_of_leaves[i] = a->cover_address_length;
+
 
 	  old_ply->n_non_empty_leafs +=
 	    ip4_fib_mtrie_leaf_is_non_empty (old_ply, i);
