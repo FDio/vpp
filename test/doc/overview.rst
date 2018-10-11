@@ -5,6 +5,9 @@
 .. _virtualenv: http://docs.python-guide.org/en/latest/dev/virtualenvs/
 .. _scapy: http://www.secdev.org/projects/scapy/
 .. _logging: https://docs.python.org/2/library/logging.html
+.. _process: https://docs.python.org/2/library/multiprocessing.html#the-process-class
+.. _pipes: https://docs.python.org/2/library/multiprocessing.html#multiprocessing.Pipe
+.. _managed: https://docs.python.org/2/library/multiprocessing.html#managers
 
 .. |vtf| replace:: VPP Test Framework
 
@@ -69,6 +72,29 @@ To control the messages printed to console, specify the V= parameter.
    make test         # minimum verbosity
    make test V=1     # moderate verbosity
    make test V=2     # maximum verbosity
+
+Parallel test execution
+#######################
+
+|vtf| test suites can be run in parallel. Each test suite is executed
+in a separate process spawned by Python multiprocessing process_.
+
+The results from child test suites are sent to parent through pipes_, which are
+aggregated and summarized at the end of the run.
+
+Stdout, stderr and logs logged in child processes are redirected to individual
+parent managed_ queues. The data from these queues are then emitted to stdout
+of the parent process in the order the test suites have finished. In case there
+are no finished test suites (such as at the beginning of the run), the data
+from last started test suite are emitted in real time.
+
+To enable parallel test run, specify the number of parallel processes:
+
+.. code-block:: shell
+
+   make test TEST_JOBS=n       # at most n processes will be spawned
+   make test TEST_JOBS=auto    # chosen based on the number of cores
+                               # and the size of shared memory
 
 Test temporary directory and VPP life cycle
 ###########################################
@@ -214,7 +240,7 @@ packets, it should specify either None or a custom filtering function
 as the value to the 'filter_out_fn' argument.
 
 Common API flow for sending/receiving packets:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We will describe a simple scenario, where packets are sent from pg0 to pg1
 interface, assuming that the interfaces were created using
