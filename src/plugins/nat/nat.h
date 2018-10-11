@@ -183,6 +183,7 @@ typedef enum
 #define NAT_STATIC_MAPPING_FLAG_ADDR_ONLY    1
 #define NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY  2
 #define NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT 4
+#define NAT_STATIC_MAPPING_FLAG_LB           8
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct
@@ -665,6 +666,12 @@ unformat_function_t unformat_snat_protocol;
     @return 1 if identity NAT
 */
 #define is_identity_static_mapping(sm) (sm->flags & NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT)
+
+/** \brief Check if NAT static mapping is load-balancing.
+    @param sm NAT static mapping
+    @return 1 if load-balancing
+*/
+#define is_lb_static_mapping(sm) (sm->flags & NAT_STATIC_MAPPING_FLAG_LB)
 
 /* logging */
 #define nat_log_err(...) \
