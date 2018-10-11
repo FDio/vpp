@@ -385,6 +385,11 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  last_next_node_index = next_node_index;
 
 	  f = vlib_get_frame_to_node (vm, next_node_index);
+
+	  /* frame->frame_flags, copy it from node */
+	  /* Copy trace flag from next_frame and from runtime. */
+	  f->frame_flags |= node->flags & VLIB_NODE_FLAG_TRACE;
+
 	  to_next = vlib_frame_vector_args (f);
 	}
 
