@@ -20,7 +20,8 @@ MAKE_ARGS ?= -j
 BUILD_DIR        ?= $(CURDIR)/_build
 INSTALL_DIR      ?= $(CURDIR)/_install
 PKG_VERSION ?= $(shell git describe --abbrev=0 | cut -d- -f1 | cut -dv -f2)
-PKG_SUFFIX ?= $(shell git log --oneline $$(git describe --abbrev=0).. . | wc -l)
+#PKG_SUFFIX ?= $(shell git log --oneline $$(git describe --abbrev=0).. . | wc -l)
+PKG_SUFFIX ?= $(shell git describe --abbrev=0 | cut -f2- -d-)
 JOBS := $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo),\
 	$(shell grep -c ^processor /proc/cpuinfo), 2)
 
@@ -112,7 +113,7 @@ build-rpm: $(DEV_RPM)
 install-rpm:
 ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	@$(MAKE) $(DEV_RPM)
-	sudo rpm -Uih $(DEV_RPM)
+	sudo rpm -Uih --force $(DEV_RPM)
 else
 	@echo "=========================================================="
 	@echo " Up-to-date DPDK package already installed"
