@@ -1505,5 +1505,54 @@ class TestIPDirectedBroadcast(VppTestCase):
         self.pg1.unconfig_ip4()
 
 
+class TestIPLPM(VppTestCase):
+    """ IPv4 longest Prefix Match """
+
+    def setUp(self):
+        super(TestIPLPM, self).setUp()
+
+        self.create_pg_interfaces(range(4))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestIPLPM, self).tearDown()
+        for i in self.pg_interfaces:
+            i.admin_down()
+            i.unconfig_ip4()
+
+    def test_ip_lpm(self):
+        """ IP longest Prefix Match """
+
+        s_24 = VppIpRoute(self, "10.1.2.0", 24,
+                          [VppRoutePath(self.pg1.remote_ip4,
+                                        self.pg1.sw_if_index)])
+        s_24.add_vpp_config()
+        s_8 = VppIpRoute(self, "10.0.0.0", 8,
+                         [VppRoutePath(self.pg2.remote_ip4,
+                                       self.pg2.sw_if_index)])
+        s_8.add_vpp_config()
+
+        p_8 = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IP(src="1.1.1.1",
+                  dst="10.1.1.1") /
+               UDP(sport=1234, dport=1234) /
+               Raw('\xa5' * 2000))
+        p_24 = (Ether(src=self.pg0.remote_mac,
+                      dst=self.pg0.local_mac) /
+                IP(src="1.1.1.1",
+                   dst="10.1.2.1") /
+                UDP(sport=1234, dport=1234) /
+                Raw('\xa5' * 2000))
+
+        self.logger.info(self.vapi.cli("sh ip fib mtrie"))
+        rx = self.send_and_expect(self.pg0, p_8 * 65, self.pg2)
+        rx = self.send_and_expect(self.pg0, p_24 * 65, self.pg1)
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
