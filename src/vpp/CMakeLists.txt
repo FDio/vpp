@@ -82,6 +82,7 @@ add_vpp_executable(vpp
 add_vpp_headers(vpp
   api/vpe_msg_enum.h
   api/vpe_all_api_h.h
+  stats/stat_segment.h
 )
 
 ##############################################################################
