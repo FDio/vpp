@@ -369,10 +369,10 @@ set_leaf (ip4_fib_mtrie_t * m,
 	  old_ply->n_non_empty_leafs -=
 	    ip4_fib_mtrie_leaf_is_non_empty (old_ply, dst_byte);
 
-	  new_leaf = ply_create (m, old_leaf,
-				 clib_max (old_ply->dst_address_bits_of_leaves
-					   [dst_byte], ply_base_len),
-				 ply_base_len);
+	  new_leaf =
+	    ply_create (m, old_leaf,
+			old_ply->dst_address_bits_of_leaves[dst_byte],
+			ply_base_len);
 	  new_ply = get_next_ply_for_leaf (m, new_leaf);
 
 	  /* Refetch since ply_create may move pool. */
@@ -492,10 +492,10 @@ set_root_leaf (ip4_fib_mtrie_t * m,
       if (ip4_fib_mtrie_leaf_is_terminal (old_leaf))
 	{
 	  /* There is a leaf occupying the slot. Replace it with a new ply */
-	  new_leaf = ply_create (m, old_leaf,
-				 clib_max (old_ply->dst_address_bits_of_leaves
-					   [dst_byte], ply_base_len),
-				 ply_base_len);
+	  new_leaf =
+	    ply_create (m, old_leaf,
+			old_ply->dst_address_bits_of_leaves[dst_byte],
+			ply_base_len);
 	  new_ply = get_next_ply_for_leaf (m, new_leaf);
 
 	  __sync_val_compare_and_swap (&old_ply->leaves[dst_byte], old_leaf,
@@ -714,24 +714,23 @@ format_ip4_fib_mtrie_leaf (u8 * s, va_list * va)
   return s;
 }
 
-#define FORMAT_PLY(s, _p, _i, _base_address, _ply_max_len, _indent)     \
+#define FORMAT_PLY(s, _p, _a, _i, _base_address, _ply_max_len, _indent) \
 ({                                                                      \
   u32 a, ia_length;                                                     \
   ip4_address_t ia;                                                     \
   ip4_fib_mtrie_leaf_t _l = p->leaves[(_i)];                            \
                                                                         \
-  a = (_base_address) + ((_i) << (32 - (_ply_max_len)));                \
+  a = (_base_address) + ((_a) << (32 - (_ply_max_len)));                \
   ia.as_u32 = clib_host_to_net_u32 (a);                                 \
   ia_length = (_p)->dst_address_bits_of_leaves[(_i)];                   \
-  s = format (s, "\n%U%20U %U",                                         \
-              format_white_space, (_indent) + 2,                        \
+  s = format (s, "\n%U%U %U",                                           \
+              format_white_space, (_indent) + 4,                        \
               format_ip4_address_and_length, &ia, ia_length,            \
               format_ip4_fib_mtrie_leaf, _l);                           \
                                                                         \
   if (ip4_fib_mtrie_leaf_is_next_ply (_l))                              \
-    s = format (s, "\n%U%U",                                            \
-                format_white_space, (_indent) + 2,                      \
-                format_ip4_fib_mtrie_ply, m, a,                         \
+    s = format (s, "\n%U",                                              \
+                format_ip4_fib_mtrie_ply, m, a, (_indent) + 8,          \
                 ip4_fib_mtrie_leaf_get_next_ply_index (_l));            \
   s;                                                                    \
 })
@@ -741,21 +740,20 @@ format_ip4_fib_mtrie_ply (u8 * s, va_list * va)
 {
   ip4_fib_mtrie_t *m = va_arg (*va, ip4_fib_mtrie_t *);
   u32 base_address = va_arg (*va, u32);
+  u32 indent = va_arg (*va, u32);
   u32 ply_index = va_arg (*va, u32);
   ip4_fib_mtrie_8_ply_t *p;
-  u32 indent;
   int i;
 
   p = pool_elt_at_index (ip4_ply_pool, ply_index);
-  indent = format_get_indent (s);
-  s = format (s, "ply index %d, %d non-empty leaves", ply_index,
-	      p->n_non_empty_leafs);
+  s = format (s, "%Uply index %d, %d non-empty leaves",
+	      format_white_space, indent, ply_index, p->n_non_empty_leafs);
 
   for (i = 0; i < ARRAY_LEN (p->leaves); i++)
     {
       if (ip4_fib_mtrie_leaf_is_non_empty (p, i))
 	{
-	  s = FORMAT_PLY (s, p, i, base_address,
+	  s = FORMAT_PLY (s, p, i, i, base_address,
 			  p->dst_address_bits_base + 8, indent);
 	}
     }
@@ -791,7 +789,7 @@ format_ip4_fib_mtrie (u8 * s, va_list * va)
 
 	  if (p->dst_address_bits_of_leaves[slot] > 0)
 	    {
-	      s = FORMAT_PLY (s, p, slot, base_address, 16, 2);
+	      s = FORMAT_PLY (s, p, i, slot, base_address, 16, 0);
 	    }
 	}
     }
