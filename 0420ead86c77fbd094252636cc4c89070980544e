@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "14b47d5e_f42ecfaf",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 27
+      },
+      "lineNbr": 743,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2018-10-11T16:13:49Z",
+      "side": 1,
+      "message": "missing [events]",
+      "range": {
+        "startLine": 743,
+        "startChar": 27,
+        "endLine": 743,
+        "endChar": 34
+      },
+      "revId": "0420ead86c77fbd094252636cc4c89070980544e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
