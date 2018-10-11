@@ -1100,7 +1100,7 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      if (!is_identity_static_mapping(m) && !vec_len (m->locals))
+      if (!is_identity_static_mapping(m) && !is_lb_static_mapping (m))
         send_nat44_static_mapping_details (m, reg, mp->context);
   }));
   /* *INDENT-ON* */
@@ -1181,17 +1181,17 @@ static void *vl_api_nat44_add_del_identity_mapping_t_print
 
   if (mp->addr_only == 0)
     s =
-      format (s, "protocol %d port %d", mp->protocol,
+      format (s, " protocol %d port %d", mp->protocol,
 	      clib_net_to_host_u16 (mp->port));
 
   if (mp->vrf_id != ~0)
-    s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
+    s = format (s, " vrf %d", clib_net_to_host_u32 (mp->vrf_id));
 
   FINISH;
 }
 
 static void
-send_nat44_identity_mapping_details (snat_static_mapping_t * m,
+send_nat44_identity_mapping_details (snat_static_mapping_t * m, int index,
 				     vl_api_registration_t * reg, u32 context)
 {
   vl_api_nat44_identity_mapping_details_t *rmp;
@@ -1205,7 +1205,7 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m,
   clib_memcpy (rmp->ip_address, &(m->local_addr), 4);
   rmp->port = htons (m->local_port);
   rmp->sw_if_index = ~0;
-  rmp->vrf_id = htonl (m->vrf_id);
+  rmp->vrf_id = htonl (m->locals[index].vrf_id);
   rmp->protocol = snat_proto_to_ip_proto (m->proto);
   rmp->context = context;
   if (m->tag)
@@ -1258,8 +1258,11 @@ static void
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      if (is_identity_static_mapping(m) && !vec_len (m->locals))
-        send_nat44_identity_mapping_details (m, reg, mp->context);
+      if (is_identity_static_mapping(m) && !is_lb_static_mapping (m))
+        {
+          for (j = 0; j < vec_len (m->locals); j++)
+            send_nat44_identity_mapping_details (m, j, reg, mp->context);
+        }
   }));
   /* *INDENT-ON* */
 
@@ -1689,7 +1692,7 @@ static void
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      if (vec_len(m->locals))
+      if (is_lb_static_mapping(m))
         send_nat44_lb_static_mapping_details (m, reg, mp->context);
   }));
   /* *INDENT-ON* */
