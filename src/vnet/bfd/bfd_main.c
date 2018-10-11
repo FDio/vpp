@@ -1165,6 +1165,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    }
 	}
       now = clib_cpu_time_now ();
+      uword *session_index;
       switch (event_type)
 	{
 	case ~0:		/* no events => timeout */
@@ -1180,35 +1181,41 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	   * each event or timeout */
 	  break;
 	case BFD_EVENT_NEW_SESSION:
-	  bfd_lock (bm);
-	  if (!pool_is_free_index (bm->sessions, *event_data))
-	    {
-	      bfd_session_t *bs =
-		pool_elt_at_index (bm->sessions, *event_data);
-	      bfd_send_periodic (vm, rt, bm, bs, now);
-	      bfd_set_timer (bm, bs, now, 1);
-	    }
-	  else
-	    {
-	      BFD_DBG ("Ignoring event for non-existent session index %u",
-		       (u32) * event_data);
-	    }
-	  bfd_unlock (bm);
+	  vec_foreach (session_index, event_data)
+	  {
+	    bfd_lock (bm);
+	    if (!pool_is_free_index (bm->sessions, *session_index))
+	      {
+		bfd_session_t *bs =
+		  pool_elt_at_index (bm->sessions, *session_index);
+		bfd_send_periodic (vm, rt, bm, bs, now);
+		bfd_set_timer (bm, bs, now, 1);
+	      }
+	    else
+	      {
+		BFD_DBG ("Ignoring event for non-existent session index %u",
+			 (u32) * session_index);
+	      }
+	    bfd_unlock (bm);
+	  }
 	  break;
 	case BFD_EVENT_CONFIG_CHANGED:
-	  bfd_lock (bm);
-	  if (!pool_is_free_index (bm->sessions, *event_data))
-	    {
-	      bfd_session_t *bs =
-		pool_elt_at_index (bm->sessions, *event_data);
-	      bfd_on_config_change (vm, rt, bm, bs, now);
-	    }
-	  else
-	    {
-	      BFD_DBG ("Ignoring event for non-existent session index %u",
-		       (u32) * event_data);
-	    }
-	  bfd_unlock (bm);
+	  vec_foreach (session_index, event_data)
+	  {
+	    bfd_lock (bm);
+	    if (!pool_is_free_index (bm->sessions, *session_index))
+	      {
+		bfd_session_t *bs =
+		  pool_elt_at_index (bm->sessions, *session_index);
+		bfd_on_config_change (vm, rt, bm, bs, now);
+	      }
+	    else
+	      {
+		BFD_DBG ("Ignoring event for non-existent session index %u",
+			 (u32) * session_index);
+	      }
+	    bfd_unlock (bm);
+	  }
 	  break;
 	default:
 	  vlib_log_err (bm->log_class, "BUG: event type 0x%wx", event_type);
