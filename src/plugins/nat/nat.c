@@ -631,7 +631,6 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   clib_bihash_kv_8_8_t kv, value;
   snat_address_t *a = 0;
   u32 fib_index = ~0;
-  uword *p;
   snat_interface_t *interface;
   int i;
   snat_main_per_thread_data_t *tsm;
@@ -643,6 +642,8 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   u64 user_index;
   snat_session_t *s;
   snat_static_map_resolve_t *rp, *rp_match = 0;
+  nat44_lb_addr_port_t *local;
+  u8 find = 0;
 
   if (!sm->endpoint_dependent)
     {
@@ -732,19 +733,42 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   if (is_add)
     {
       if (m)
-	return VNET_API_ERROR_VALUE_EXIST;
+	{
+	  if (is_identity_static_mapping (m))
+	    {
+              /* *INDENT-OFF* */
+              vec_foreach (local, m->locals)
+                {
+                  if (local->vrf_id == vrf_id)
+                    return VNET_API_ERROR_VALUE_EXIST;
+                }
+              /* *INDENT-ON* */
+	      vec_add2 (m->locals, local, 1);
+	      local->vrf_id = vrf_id;
+	      local->fib_index =
+		fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
+						   FIB_SOURCE_PLUGIN_LOW);
+	      m_key.addr = m->local_addr;
+	      m_key.port = m->local_port;
+	      m_key.protocol = m->proto;
+	      m_key.fib_index = local->fib_index;
+	      kv.key = m_key.as_u64;
+	      kv.value = m - sm->static_mappings;
+	      clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1);
+	      return 0;
+	    }
+	  else
+	    return VNET_API_ERROR_VALUE_EXIST;
+	}
 
       if (twice_nat && addr_only)
 	return VNET_API_ERROR_UNSUPPORTED;
 
       /* Convert VRF id to FIB index */
       if (vrf_id != ~0)
-	{
-	  p = hash_get (sm->ip4_main->fib_index_by_table_id, vrf_id);
-	  if (!p)
-	    return VNET_API_ERROR_NO_SUCH_FIB;
-	  fib_index = p[0];
-	}
+	fib_index =
+	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
+					     FIB_SOURCE_PLUGIN_LOW);
       /* If not specified use inside VRF id from SNAT plugin startup config */
       else
 	{
@@ -752,7 +776,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  vrf_id = sm->inside_vrf_id;
 	}
 
-      if (!out2in_only)
+      if (!(out2in_only || identity_nat))
 	{
 	  m_key.addr = l_addr;
 	  m_key.port = addr_only ? 0 : l_port;
@@ -825,15 +849,23 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       m->tag = vec_dup (tag);
       m->local_addr = l_addr;
       m->external_addr = e_addr;
-      m->vrf_id = vrf_id;
-      m->fib_index = fib_index;
       m->twice_nat = twice_nat;
       if (out2in_only)
 	m->flags |= NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY;
       if (addr_only)
 	m->flags |= NAT_STATIC_MAPPING_FLAG_ADDR_ONLY;
       if (identity_nat)
-	m->flags |= NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT;
+	{
+	  m->flags |= NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT;
+	  vec_add2 (m->locals, local, 1);
+	  local->vrf_id = vrf_id;
+	  local->fib_index = fib_index;
+	}
+      else
+	{
+	  m->vrf_id = vrf_id;
+	  m->fib_index = fib_index;
+	}
       if (!addr_only)
 	{
 	  m->local_port = l_port;
@@ -855,7 +887,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       m_key.addr = m->local_addr;
       m_key.port = m->local_port;
       m_key.protocol = m->proto;
-      m_key.fib_index = m->fib_index;
+      m_key.fib_index = fib_index;
       kv.key = m_key.as_u64;
       kv.value = m - sm->static_mappings;
       if (!out2in_only)
@@ -920,6 +952,25 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	    return VNET_API_ERROR_NO_SUCH_ENTRY;
 	}
 
+      if (identity_nat)
+	{
+	  for (i = 0; i < vec_len (m->locals); i++)
+	    {
+	      if (m->locals[i].vrf_id == vrf_id)
+		{
+		  find = 1;
+		  break;
+		}
+	    }
+	  if (!find)
+	    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+	  fib_index = m->locals[i].fib_index;
+	  vec_del1 (m->locals, i);
+	}
+      else
+	fib_index = m->fib_index;
+
       /* Free external address port */
       if (!(addr_only || sm->static_mapping_only || out2in_only))
 	{
@@ -958,23 +1009,17 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       m_key.addr = m->local_addr;
       m_key.port = m->local_port;
       m_key.protocol = m->proto;
-      m_key.fib_index = m->fib_index;
+      m_key.fib_index = fib_index;
       kv.key = m_key.as_u64;
       if (!out2in_only)
 	clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 0);
-
-      m_key.addr = m->external_addr;
-      m_key.port = m->external_port;
-      m_key.fib_index = 0;
-      kv.key = m_key.as_u64;
-      clib_bihash_add_del_8_8 (&sm->static_mapping_by_external, &kv, 0);
 
       /* Delete session(s) for static mapping if exist */
       if (!(sm->static_mapping_only) ||
 	  (sm->static_mapping_only && sm->static_mapping_connection_tracking))
 	{
 	  u_key.addr = m->local_addr;
-	  u_key.fib_index = m->fib_index;
+	  u_key.fib_index = fib_index;
 	  kv.key = u_key.as_u64;
 	  if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
 	    {
@@ -1017,6 +1062,16 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 		}
 	    }
 	}
+
+      fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
+      if (vec_len (m->locals))
+	return 0;
+
+      m_key.addr = m->external_addr;
+      m_key.port = m->external_port;
+      m_key.fib_index = 0;
+      kv.key = m_key.as_u64;
+      clib_bihash_add_del_8_8 (&sm->static_mapping_by_external, &kv, 0);
 
       vec_free (m->tag);
       vec_free (m->workers);
@@ -1137,6 +1192,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       m->external_port = e_port;
       m->proto = proto;
       m->twice_nat = twice_nat;
+      m->flags |= NAT_STATIC_MAPPING_FLAG_LB;
       if (out2in_only)
 	m->flags |= NAT_STATIC_MAPPING_FLAG_OUT2IN_ONLY;
       m->affinity = affinity;
@@ -1204,6 +1260,9 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
     {
       if (!m)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      if (!is_lb_static_mapping (m))
+	return VNET_API_ERROR_INVALID_VALUE;
 
       /* Free external address port */
       if (!(sm->static_mapping_only || out2in_only))
@@ -2041,7 +2100,7 @@ snat_static_mapping_match (snat_main_t * sm,
 
   if (by_external)
     {
-      if (vec_len (m->locals))
+      if (is_lb_static_mapping (m))
 	{
 	  if (PREDICT_FALSE (lb != 0))
 	    *lb = m->affinity ? AFFINITY_LB_NAT : LB_NAT;
@@ -2612,7 +2671,7 @@ nat44_ed_get_worker_out2in_cb (ip4_header_t * ip, u32 rx_fib_index)
 	  (&sm->static_mapping_by_external, &kv, &value))
 	{
 	  m = pool_elt_at_index (sm->static_mappings, value.value);
-	  if (!vec_len (m->locals))
+	  if (!is_lb_static_mapping (m))
 	    return m->workers[0];
 
 	  hash = ip->src_address.as_u32 + (ip->src_address.as_u32 >> 8) +

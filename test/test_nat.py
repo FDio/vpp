@@ -1937,6 +1937,10 @@ class TestNAT44(MethodHolder):
 
         sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n, 0)
         self.assertEqual(len(sessions), 0)
+        self.vapi.nat44_add_del_identity_mapping(ip=self.pg0.remote_ip4n,
+                                                 vrf_id=1)
+        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        self.assertEqual(len(identity_mappings), 2)
 
     def test_multiple_inside_interfaces(self):
         """ NAT44 multiple non-overlapping address space inside interfaces """
