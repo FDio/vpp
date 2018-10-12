@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "62708baa_9173edac",
+        "filename": "Makefile",
+        "patchSetId": 27
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2018-10-12T07:07:55Z",
+      "side": 1,
+      "message": "On Ubuntu and Debian, pulling in libhyperscan-dev automatically gets you the libhyperscan{4,5} package, no need to add it.\n\nWould it make sense to add 18.10 or any ubuntu \u003e\u003d 18?\n\nSomething like:\n\n OS_MAJOR_VERSION_ID\u003d $(shell grep \u0027^VERSION_ID\u003d\u0027 /etc/os-release | cut -f2- -d\u003d | sed -e \u0027s/\\\"//g\u0027 | cut -f1 -d.)\n ifeq ($(shell if [ \"$(OS_ID)\" \u003d \"ubuntu\" ]; then test $(OS_MAJOR_VERSION_ID) -ge 18; echo $$?; fi),0)\n ...\n\nHyperscan is included since debian-9, so a test for debian \u003e\u003d 9 might make sense.",
+      "revId": "f4a87ba479110a4a8cdc3be16711f967068e63b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f7420fa0_907fb80c",
+        "filename": "src/plugins/dpi/dpi.h",
+        "patchSetId": 27
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 1178
+      },
+      "writtenOn": "2018-10-12T07:07:55Z",
+      "side": 1,
+      "message": "Macros like this can produce ugly side effects. Could you please use clib_min instead?",
+      "revId": "f4a87ba479110a4a8cdc3be16711f967068e63b0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
