@@ -422,6 +422,23 @@ static session_cb_vft_t session_cb_vft = {
 };
 
 static int
+mq_try_lock_and_alloc_msg (svm_msg_q_t * app_mq, svm_msg_q_msg_t * msg)
+{
+  int rv;
+  u8 try = 0;
+  while (try < 100)
+    {
+      rv = svm_msg_q_lock_and_alloc_msg_w_ring (app_mq,
+						SESSION_MQ_CTRL_EVT_RING,
+						SVM_Q_NOWAIT, msg);
+      if (!rv)
+	return 0;
+      try++;
+    }
+  return -1;
+}
+
+static int
 mq_send_session_accepted_cb (stream_session_t * s)
 {
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
@@ -436,8 +453,8 @@ mq_send_session_accepted_cb (stream_session_t * s)
 
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
-  svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
-				       SVM_Q_WAIT, msg);
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return -1;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
@@ -523,8 +540,8 @@ mq_send_session_disconnected_cb (stream_session_t * s)
 
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
-  svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
-				       SVM_Q_WAIT, msg);
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return;
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
@@ -544,8 +561,8 @@ mq_send_session_reset_cb (stream_session_t * s)
   session_event_t *evt;
 
   app_mq = app->event_queue;
-  svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
-				       SVM_Q_WAIT, msg);
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return;
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_RESET;
@@ -576,8 +593,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       return -1;
     }
 
-  svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
-				       SVM_Q_WAIT, msg);
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return -1;
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_CONNECTED;
@@ -656,8 +673,9 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
       return -1;
     }
 
-  svm_msg_q_lock_and_alloc_msg_w_ring (app_mq, SESSION_MQ_CTRL_EVT_RING,
-				       SVM_Q_WAIT, msg);
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return -1;
+
   evt = svm_msg_q_msg_data (app_mq, msg);
   memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_BOUND;
