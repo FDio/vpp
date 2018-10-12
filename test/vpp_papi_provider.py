@@ -514,11 +514,6 @@ class VppPapiProvider(object):
                          'enable': enable,
                          'install_default_routes': install_default_routes})
 
-    def want_interface_events(self, enable_disable=1):
-        return self.api(self.papi.want_interface_events,
-                        {'enable_disable': enable_disable,
-                         'pid': os.getpid(), })
-
     def want_macs_learn_events(self, enable_disable=1, scan_delay=0,
                                max_macs_in_event=0, learn_limit=0):
         return self.api(self.papi.want_l2_macs_events,
@@ -3907,3 +3902,11 @@ class VppPapiProvider(object):
 
     def svs_dump(self):
         return self.api(self.papi.svs_dump, {})
+
+    def tmc_enable_disable(self, sw_if_index, mss, is_enable=1):
+        return self.api(self.papi.tmc_enable_disable,
+                        {
+                            'sw_if_index': sw_if_index,
+                            'mss': mss,
+                            'is_enable': is_enable,
+                        })
