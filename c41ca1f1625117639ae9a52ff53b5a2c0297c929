@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c2e1e607_8c458780",
+        "filename": "src/plugins/igmp/igmp_proxy.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-12T13:42:14Z",
+      "side": 1,
+      "message": "lock/unlock the table\n  mfib_table_lock\nso it is not removed whilst there are IGMP routes in it",
+      "revId": "c41ca1f1625117639ae9a52ff53b5a2c0297c929",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
