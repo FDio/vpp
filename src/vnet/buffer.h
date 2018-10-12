@@ -64,7 +64,8 @@
   _(16, L4_HDR_OFFSET_VALID, 0)				\
   _(17, FLOW_REPORT, "flow-report")			\
   _(18, IS_DVR, "dvr")                                  \
-  _(19, QOS_DATA_VALID, 0)
+  _(19, QOS_DATA_VALID, 0)                              \
+  _(20, GSO, "gso")                                     \
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -368,6 +369,20 @@ typedef struct
     u16 src_epg;
   } gbp;
 
+
+  /**
+   * The L4 payload size set on input on GSO enabled interfaces
+   * when we receive a GSO packet (a chain of 2K buffers with the first one
+   * having GSO bit set), and needs to persist all the way to the interface-output,
+   * in case the egress interface is not GSO-enabled - then we need to perform
+   * the segmentation, and use this value to cut the payload appropriately.
+   */
+  u16 gso_size;
+
+  /* The union below has a u64 alignment, so this space is unused */
+  u16 __unused1[1];
+  u32 __unused2[1];
+
   union
   {
     struct
@@ -382,7 +397,7 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
-    u32 unused[10];
+    u32 unused[8];
   };
 } vnet_buffer_opaque2_t;
 
