@@ -2508,6 +2508,7 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
   u64 buf;
 
   vec_validate (wrk->mq_events, pool_elts (wrk->mq_evt_conns));
+again:
   n_mq_evts = epoll_wait (wrk->mqs_epfd, wrk->mq_events,
 			  vec_len (wrk->mq_events), wait_for_time);
   for (i = 0; i < n_mq_evts; i++)
@@ -2516,6 +2517,8 @@ vppcom_epoll_wait_eventfd (vcl_worker_t * wrk, struct epoll_event *events,
       n_read = read (mqc->mq_fd, &buf, sizeof (buf));
       vcl_epoll_wait_handle_mq (wrk, mqc->mq, events, maxevents, 0, &n_evts);
     }
+  if (!n_evts && n_mq_evts > 0)
+    goto again;
 
   return (int) n_evts;
 }
