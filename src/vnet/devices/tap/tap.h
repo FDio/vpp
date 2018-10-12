@@ -30,6 +30,7 @@ typedef struct
   u16 rx_ring_sz;
   u16 tx_ring_sz;
   u32 tap_flags;
+#define TAP_FLAG_GSO (1 << 0)
   u8 *host_namespace;
   u8 *host_if_name;
   u8 host_mac_addr[6];
@@ -78,6 +79,8 @@ typedef struct
 
 void tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args);
 int tap_delete_if (vlib_main_t * vm, u32 sw_if_index);
+int tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index,
+			    int enable_disable);
 int tap_dump_ifs (tap_interface_details_t ** out_tapids);
 
 #endif /* _VNET_DEVICES_VIRTIO_TAP_H_ */

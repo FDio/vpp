@@ -117,7 +117,7 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
 static_always_inline u16
 add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
-		    u16 mask)
+		    u16 mask, int do_gso)
 {
   u16 n_added = 0;
   int hdr_sz = vif->virtio_net_hdr_sz;
@@ -127,6 +127,25 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
   struct virtio_net_hdr_v1 *hdr = vlib_buffer_get_current (b) - hdr_sz;
 
   clib_memset (hdr, 0, hdr_sz);
+  if (do_gso && (b->flags & VNET_BUFFER_F_GSO))
+    {
+      if (b->flags & VNET_BUFFER_F_IS_IP4)
+	{
+	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
+	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x22;
+	  hdr->csum_offset = 0x10;
+	}
+      else
+	{
+	  hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
+	  hdr->gso_size = vnet_buffer2 (b)->gso_size;
+	  hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+	  hdr->csum_start = vnet_buffer (b)->l4_hdr_offset;	// 0x36;
+	  hdr->csum_offset = 0x10;
+	}
+    }
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
@@ -219,7 +238,8 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
 
 static_always_inline uword
 virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, virtio_if_t * vif)
+			    vlib_frame_t * frame, virtio_if_t * vif,
+			    int do_gso)
 {
   u8 qid = 0;
   u16 n_left = frame->n_vectors;
@@ -246,7 +266,8 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u16 n_added = 0;
       n_added =
-	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask);
+	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask,
+			    do_gso);
       if (!n_added)
 	break;
       avail += n_added;
@@ -286,7 +307,12 @@ virtio_interface_tx (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
   virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
 
-  return virtio_interface_tx_inline (vm, node, frame, vif);
+  vnet_main_t *vnm = vnet_get_main ();
+  if (vnm->interface_main.gso_interface_count > 0)
+    return virtio_interface_tx_inline (vm, node, frame, vif, 1 /* do_gso */ );
+  else
+    return virtio_interface_tx_inline (vm, node, frame, vif,
+				       0 /* no do_gso */ );
 }
 
 static void
