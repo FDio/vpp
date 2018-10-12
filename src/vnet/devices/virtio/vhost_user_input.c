@@ -641,8 +641,8 @@ VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
 
   vec_foreach (dq, rt->devices_and_queues)
   {
-    if (clib_smp_swap (&dq->interrupt_pending, 0) ||
-	(node->state == VLIB_NODE_STATE_POLLING))
+    if ((node->state == VLIB_NODE_STATE_POLLING) ||
+	clib_atomic_swap_acq_n (&dq->interrupt_pending, 0))
       {
 	vui =
 	  pool_elt_at_index (vum->vhost_user_interfaces, dq->dev_instance);
