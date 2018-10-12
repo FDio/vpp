@@ -184,7 +184,8 @@ VLIB_CLI_COMMAND (vmxnet3_test_command, static) = {
 /* *INDENT-ON* */
 
 static void
-show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
+show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
+	      u8 show_one_table, u32 which, u8 show_one_slot, u32 slot)
 {
   u32 i, desc_idx;
   vmxnet3_device_t *vd;
@@ -228,6 +229,8 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
 			 rxq->rx_comp_ring.next);
 	vlib_cli_output (vm, "    RX completion generation flag 0x%x",
 			 rxq->rx_comp_ring.gen);
+
+	/* RX descriptors tables */
 	for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
 	  {
 	    vmxnet3_rx_ring *ring = &rxq->rx_ring[rid];
@@ -248,16 +251,70 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
 		    vlib_cli_output (vm, "  %5u  0x%016llx  0x%08x",
 				     desc_idx, rxd->address, rxd->flags);
 		  }
+	      }
+	    else if (show_one_table)
+	      {
+		if (((which == VMXNET3_SHOW_RX_DESC0) && (rid == 0)) ||
+		    ((which == VMXNET3_SHOW_RX_DESC1) && (rid == 1)))
+		  {
+		    vlib_cli_output (vm, "RX descriptors table");
+		    vlib_cli_output (vm, "  %5s  %18s  %10s",
+				     "slot", "address", "flags");
+		    if (show_one_slot)
+		      {
+			rxd = &rxq->rx_desc[rid][slot];
+			vlib_cli_output (vm, "  %5u  0x%016llx  0x%08x",
+					 slot, rxd->address, rxd->flags);
+		      }
+		    else
+		      for (desc_idx = 0; desc_idx < rxq->size; desc_idx++)
+			{
+			  rxd = &rxq->rx_desc[rid][desc_idx];
+			  vlib_cli_output (vm, "  %5u  0x%016llx  0x%08x",
+					   desc_idx, rxd->address,
+					   rxd->flags);
+			}
+		  }
+	      }
+	  }
+
+	/* RX completion table */
+	if (show_descr)
+	  {
+	    vlib_cli_output (vm, "RX completion descriptors table");
+	    vlib_cli_output (vm, "  %5s  %10s  %10s  %10s  %10s",
+			     "slot", "index", "rss", "len", "flags");
+	    for (desc_idx = 0; desc_idx < rxq->size; desc_idx++)
+	      {
+		rx_comp = &rxq->rx_comp[desc_idx];
+		vlib_cli_output (vm, "  %5u  0x%08x  %10u  %10u  0x%08x",
+				 desc_idx, rx_comp->index, rx_comp->rss,
+				 rx_comp->len, rx_comp->flags);
+	      }
+	  }
+	else if (show_one_table)
+	  {
+	    if (which == VMXNET3_SHOW_RX_COMP)
+	      {
 		vlib_cli_output (vm, "RX completion descriptors table");
 		vlib_cli_output (vm, "  %5s  %10s  %10s  %10s  %10s",
 				 "slot", "index", "rss", "len", "flags");
-		for (desc_idx = 0; desc_idx < rxq->size; desc_idx++)
+		if (show_one_slot)
 		  {
-		    rx_comp = &rxq->rx_comp[desc_idx];
+		    rx_comp = &rxq->rx_comp[slot];
 		    vlib_cli_output (vm, "  %5u  0x%08x  %10u  %10u  0x%08x",
-				     desc_idx, rx_comp->index, rx_comp->rss,
+				     slot, rx_comp->index, rx_comp->rss,
 				     rx_comp->len, rx_comp->flags);
 		  }
+		else
+		  for (desc_idx = 0; desc_idx < rxq->size; desc_idx++)
+		    {
+		      rx_comp = &rxq->rx_comp[desc_idx];
+		      vlib_cli_output (vm,
+				       "  %5u  0x%08x  %10u  %10u  0x%08x",
+				       desc_idx, rx_comp->index, rx_comp->rss,
+				       rx_comp->len, rx_comp->flags);
+		    }
 	      }
 	  }
       }
@@ -285,6 +342,7 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
 				 desc_idx, txd->address, txd->flags[0],
 				 txd->flags[1]);
 	      }
+
 	    vlib_cli_output (vm, "TX completion descriptors table");
 	    vlib_cli_output (vm, "  %5s  %10s  %10s",
 			     "slot", "index", "flags");
@@ -293,6 +351,50 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr)
 		tx_comp = &txq->tx_comp[desc_idx];
 		vlib_cli_output (vm, "  %5u  0x%08x  0x%08x",
 				 desc_idx, tx_comp->index, tx_comp->flags);
+	      }
+	  }
+	else if (show_one_table)
+	  {
+	    if (which == VMXNET3_SHOW_TX_DESC)
+	      {
+		vlib_cli_output (vm, "TX descriptors table");
+		vlib_cli_output (vm, "  %5s  %18s  %10s  %10s",
+				 "slot", "address", "flags0", "flags1");
+		if (show_one_slot)
+		  {
+		    txd = &txq->tx_desc[slot];
+		    vlib_cli_output (vm, "  %5u  0x%016llx  0x%08x  0x%08x",
+				     slot, txd->address, txd->flags[0],
+				     txd->flags[1]);
+		  }
+		else
+		  for (desc_idx = 0; desc_idx < txq->size; desc_idx++)
+		    {
+		      txd = &txq->tx_desc[desc_idx];
+		      vlib_cli_output (vm, "  %5u  0x%016llx  0x%08x  0x%08x",
+				       desc_idx, txd->address, txd->flags[0],
+				       txd->flags[1]);
+		    }
+	      }
+	    else if (which == VMXNET3_SHOW_TX_COMP)
+	      {
+		vlib_cli_output (vm, "TX completion descriptors table");
+		vlib_cli_output (vm, "  %5s  %10s  %10s",
+				 "slot", "index", "flags");
+		if (show_one_slot)
+		  {
+		    tx_comp = &txq->tx_comp[slot];
+		    vlib_cli_output (vm, "  %5u  0x%08x  0x%08x",
+				     slot, tx_comp->index, tx_comp->flags);
+		  }
+		else
+		  for (desc_idx = 0; desc_idx < txq->size; desc_idx++)
+		    {
+		      tx_comp = &txq->tx_comp[desc_idx];
+		      vlib_cli_output (vm, "  %5u  0x%08x  0x%08x",
+				       desc_idx, tx_comp->index,
+				       tx_comp->flags);
+		    }
 	      }
 	  }
       }
@@ -308,8 +410,9 @@ show_vmxnet3_fn (vlib_main_t * vm, unformat_input_t * input,
   vmxnet3_device_t *vd;
   clib_error_t *error = 0;
   u32 hw_if_index, *hw_if_indices = 0;
-  vnet_hw_interface_t *hi;
-  u8 show_descr = 0;
+  vnet_hw_interface_t *hi = 0;
+  u8 show_descr = 0, show_one_table = 0, show_one_slot = 0;
+  u32 which = ~0, slot;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -325,8 +428,110 @@ show_vmxnet3_fn (vlib_main_t * vm, unformat_input_t * input,
 	    }
 	  vec_add1 (hw_if_indices, hw_if_index);
 	}
-      else if (unformat (input, "descriptors") || unformat (input, "desc"))
+      else if (unformat (input, "desc"))
 	show_descr = 1;
+      else if (hi)
+	{
+	  vmxnet3_device_t *vd =
+	    vec_elt_at_index (vmxm->devices, hi->dev_instance);
+
+	  if (unformat (input, "rx-comp"))
+	    {
+	      show_one_table = 1;
+	      which = VMXNET3_SHOW_RX_COMP;
+	      if (unformat (input, "%u", &slot))
+		{
+		  vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, 0);
+
+		  if (slot >= rxq->size)
+		    {
+		      error = clib_error_return (0,
+						 "slot size must be < rx queue "
+						 "size %u", rxq->size);
+		      goto done;
+		    }
+		  show_one_slot = 1;
+		}
+	    }
+	  else if (unformat (input, "rx-desc-0"))
+	    {
+	      show_one_table = 1;
+	      which = VMXNET3_SHOW_RX_DESC0;
+	      if (unformat (input, "%u", &slot))
+		{
+		  vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, 0);
+
+		  if (slot >= rxq->size)
+		    {
+		      error = clib_error_return (0,
+						 "slot size must be < rx queue "
+						 "size %u", rxq->size);
+		      goto done;
+		    }
+		  show_one_slot = 1;
+		}
+	    }
+	  else if (unformat (input, "rx-desc-1"))
+	    {
+	      show_one_table = 1;
+	      which = VMXNET3_SHOW_RX_DESC1;
+	      if (unformat (input, "%u", &slot))
+		{
+		  vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, 0);
+
+		  if (slot >= rxq->size)
+		    {
+		      error = clib_error_return (0,
+						 "slot size must be < rx queue "
+						 "size %u", rxq->size);
+		      goto done;
+		    }
+		  show_one_slot = 1;
+		}
+	    }
+	  else if (unformat (input, "tx-comp"))
+	    {
+	      show_one_table = 1;
+	      which = VMXNET3_SHOW_TX_COMP;
+	      if (unformat (input, "%u", &slot))
+		{
+		  vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, 0);
+
+		  if (slot >= txq->size)
+		    {
+		      error = clib_error_return (0,
+						 "slot size must be < tx queue "
+						 "size %u", txq->size);
+		      goto done;
+		    }
+		  show_one_slot = 1;
+		}
+	    }
+	  else if (unformat (input, "tx-desc"))
+	    {
+	      show_one_table = 1;
+	      which = VMXNET3_SHOW_TX_DESC;
+	      if (unformat (input, "%u", &slot))
+		{
+		  vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, 0);
+
+		  if (slot >= txq->size)
+		    {
+		      error = clib_error_return (0,
+						 "slot size must be < tx queue "
+						 "size %u", txq->size);
+		      goto done;
+		    }
+		  show_one_slot = 1;
+		}
+	    }
+	  else
+	    {
+	      error = clib_error_return (0, "unknown input `%U'",
+					 format_unformat_error, input);
+	      goto done;
+	    }
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -342,7 +547,8 @@ show_vmxnet3_fn (vlib_main_t * vm, unformat_input_t * input,
 	);
     }
 
-  show_vmxnet3 (vm, hw_if_indices, show_descr);
+  show_vmxnet3 (vm, hw_if_indices, show_descr, show_one_table, which,
+		show_one_slot, slot);
 
 done:
   vec_free (hw_if_indices);
@@ -352,7 +558,8 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vmxnet3_command, static) = {
   .path = "show vmxnet3",
-  .short_help = "show vmxnet3 [<interface>]",
+  .short_help = "show vmxnet3 [[<interface>] ([desc] | ([rx-comp] | "
+  "[rx-desc-0] | [rx-desc-1] | [tx-comp] | [tx-desc]) [<slot>])]",
   .function = show_vmxnet3_fn,
 };
 /* *INDENT-ON* */

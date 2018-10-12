@@ -43,6 +43,20 @@ enum
 #undef _
 };
 
+#define foreach_vmxnet3_show_entry \
+  _(RX_COMP, "rx comp") \
+  _(RX_DESC0, "rx desc 0") \
+  _(RX_DESC1, "rx desc 1") \
+  _(TX_COMP, "tx comp") \
+  _(TX_DESC, "tx desc")
+
+enum
+{
+#define _(a, b) VMXNET3_SHOW_##a,
+  foreach_vmxnet3_show_entry
+#undef _
+};
+
 /* BAR 0 */
 #define VMXNET3_REG_IMR     0x0000	/* Interrupt Mask Register */
 #define VMXNET3_REG_TXPROD  0x0600	/* Tx Producer Index */
@@ -396,8 +410,8 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u64 next;
   u32 gen;
+  u16 next;
 } vmxnet3_rx_comp_ring;
 
 typedef struct
@@ -423,8 +437,8 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u64 next;
   u32 gen;
+  u16 next;
 } vmxnet3_tx_comp_ring;
 
 typedef struct
