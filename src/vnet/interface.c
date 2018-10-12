@@ -1291,6 +1291,12 @@ vnet_interface_init (vlib_main_t * vm)
       }
   }
 
+  /* init per-thread data */
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vec_validate_aligned (im->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+
   if ((error = vlib_call_init_function (vm, vnet_interface_cli_init)))
     return error;
 

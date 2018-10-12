@@ -175,6 +175,18 @@ virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
   return 0;
 }
 
+static clib_error_t *
+virtio_init (vlib_main_t * vm)
+{
+  virtio_main_t *vim = &virtio_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vec_validate_aligned (vim->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (virtio_init);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
