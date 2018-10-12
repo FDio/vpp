@@ -345,6 +345,19 @@ dpdk_port_state_callback (dpdk_portid_t port_id,
   return dpdk_port_state_callback_inline (port_id, type, param);
 }
 
+/* If this device is PCI return pointer to info, otherwise NULL */
+struct rte_pci_device *
+dpdk_get_pci_device (const struct rte_eth_dev_info *info)
+{
+  const struct rte_bus *bus;
+
+  bus = rte_bus_find_by_device (info->device);
+  if (bus && !strcmp (bus->name, "pci"))
+    return RTE_DEV_TO_PCI (info->device);
+  else
+    return NULL;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

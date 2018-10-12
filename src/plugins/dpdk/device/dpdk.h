@@ -531,6 +531,9 @@ clib_error_t *dpdk_pool_create (vlib_main_t * vm, u8 * pool_name,
 clib_error_t *dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 				       unsigned socket_id);
 
+struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
+					    *info);
+
 #if CLI_DEBUG
 int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
 void dpdk_buffer_poison_trajectory_all (void);

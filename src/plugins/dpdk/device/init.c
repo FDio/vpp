@@ -278,7 +278,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 			dev_info.driver_name);
 	  continue;
 	}
-      pci_dev = RTE_DEV_TO_PCI (dev_info.device);
+
+      pci_dev = dpdk_get_pci_device (&dev_info);
 
       if (pci_dev)	/* bonded interface has no pci info */
 	{
