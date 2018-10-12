@@ -894,6 +894,7 @@ vnet_register_interface (vnet_main_t * vnm,
 	static char *e[] = {
 	  "interface is down",
 	  "interface is deleted",
+	  "no buffers to segment GSO",
 	};
 
 	r.n_errors = ARRAY_LEN (e);
@@ -1327,6 +1328,12 @@ vnet_interface_init (vlib_main_t * vm)
 	c = c->next_class_registration;
       }
   }
+
+  im->gso_interface_count = 0;
+  /* init per-thread data */
+  vec_validate_aligned (im->per_thread_data, vlib_num_workers (),
+			CLIB_CACHE_LINE_BYTES);
+
 
   if ((error = vlib_call_init_function (vm, vnet_interface_cli_init)))
     return error;
