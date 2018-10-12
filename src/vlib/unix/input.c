@@ -323,10 +323,7 @@ linux_epoll_input (vlib_main_t * vm,
 {
   u32 thread_index = vlib_get_thread_index ();
 
-  if (thread_index == 0)
-    return linux_epoll_input_inline (vm, node, frame, 0);
-  else
-    return linux_epoll_input_inline (vm, node, frame, thread_index);
+  return linux_epoll_input_inline (vm, node, frame, thread_index);
 }
 
 /* *INDENT-OFF* */
