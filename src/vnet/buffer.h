@@ -66,14 +66,14 @@
   _(17, FLOW_REPORT, "flow-report", 1)                  \
   _(18, IS_DVR, "dvr", 1)                               \
   _(19, QOS_DATA_VALID, "qos-data-valid", 0)            \
-  _(20, AVAIL1, "avail1", 1)                            \
-  _(21, AVAIL2, "avail2", 1)                            \
-  _(22, AVAIL3, "avail3", 1)                            \
-  _(23, AVAIL4, "avail4", 1)                            \
-  _(24, AVAIL5, "avail5", 1)                            \
-  _(25, AVAIL6, "avail6", 1)                            \
-  _(26, AVAIL7, "avail7", 1)                            \
-  _(27, AVAIL8, "avail8", 1)
+  _(20, GSO, "gso", 0)                                  \
+  _(21, AVAIL1, "avail1", 1)                            \
+  _(22, AVAIL2, "avail2", 1)                            \
+  _(23, AVAIL3, "avail3", 1)                            \
+  _(24, AVAIL4, "avail4", 1)                            \
+  _(25, AVAIL5, "avail5", 1)                            \
+  _(26, AVAIL6, "avail6", 1)                            \
+  _(27, AVAIL7, "avail7", 1)
 
 /*
  * Please allocate the FIRST available bit, redefine
@@ -396,6 +396,20 @@ typedef struct
     };
   } gbp;
 
+  /**
+   * The L4 payload size set on input on GSO enabled interfaces
+   * when we receive a GSO packet (a chain of buffers with the first one
+   * having GSO bit set), and needs to persist all the way to the interface-output,
+   * in case the egress interface is not GSO-enabled - then we need to perform
+   * the segmentation, and use this value to cut the payload appropriately.
+   */
+  u16 gso_size;
+  /* size of L4 prototol header */
+  u16 gso_l4_hdr_sz;
+
+  /* The union below has a u64 alignment, so this space is unused */
+  u32 __unused2[1];
+
   union
   {
     struct
@@ -410,7 +424,7 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
-    u32 unused[10];
+    u32 unused[8];
   };
 } vnet_buffer_opaque2_t;
 
@@ -423,6 +437,9 @@ typedef struct
 STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
 	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
 	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
+
+#define gso_mtu_sz(b) (vnet_buffer2(b)->gso_size + vnet_buffer2(b)->gso_l4_hdr_sz + vnet_buffer(b)->l4_hdr_offset)
+
 
 format_function_t format_vnet_buffer;
 

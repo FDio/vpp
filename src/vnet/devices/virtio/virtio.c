@@ -277,6 +277,7 @@ virtio_show (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr, u32 type)
 	    vlib_cli_output (vm, "  host-ns \"%s\"", vif->net_ns);
 	  vlib_cli_output (vm, "  fd %d", vif->fd);
 	  vlib_cli_output (vm, "  tap-fd %d", vif->tap_fd);
+	  vlib_cli_output (vm, "  gso-enabled %d", vif->gso_enabled);
 	}
       vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
 		       vif->mac_addr);
