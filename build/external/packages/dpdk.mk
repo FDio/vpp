@@ -182,12 +182,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_PCI_CONFIG,y)
 	$(call set,RTE_PCI_EXTENDED_TAG,"on")
 	$(call set,RTE_PCI_MAX_READ_REQUEST_SIZE,4096)
-	@# enable debug init for device drivers
-	$(call set,RTE_LIBRTE_I40E_DEBUG_INIT,$(DPDK_DEBUG))
-	$(call set,RTE_LIBRTE_IXGBE_DEBUG_INIT,$(DPDK_DEBUG))
-	$(call set,RTE_LIBRTE_E1000_DEBUG_INIT,$(DPDK_DEBUG))
-	$(call set,RTE_LIBRTE_VIRTIO_DEBUG_INIT,$(DPDK_DEBUG))
-	$(call set,RTE_LIBRTE_VMXNET3_DEBUG_INIT,$(DPDK_DEBUG))
 	$(call set,RTE_LIBRTE_PMD_BOND,y)
 	$(call set,RTE_LIBRTE_IP_FRAG,y)
 	$(call set,RTE_LIBRTE_PMD_QAT,y)
