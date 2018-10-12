@@ -534,6 +534,9 @@ typedef struct vnet_hw_interface_t
   /* tx checksum offload */
 #define VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD (1 << 17)
 
+  /* GSO */
+#define VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO (1 << 18)
+
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
   u8 *hw_address;
@@ -828,6 +831,14 @@ typedef struct
 
 typedef struct
 {
+  u32 *reusable_buffers;
+  u32 padding[14];
+} vnet_interface_per_thread_data_t;
+
+
+
+typedef struct
+{
   /* Hardware interfaces. */
   vnet_hw_interface_t *hw_interfaces;
 
@@ -863,6 +874,9 @@ typedef struct
   u32 pcap_sw_if_index;
   u32 pcap_pkts_to_capture;
   uword *pcap_drop_filter_hash;
+
+  /* per-thread data */
+  vnet_interface_per_thread_data_t *per_thread_data;
 
   /* feature_arc_index */
   u8 output_feature_arc_index;
