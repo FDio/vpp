@@ -1622,10 +1622,11 @@ ip6_mtu_check (vlib_buffer_t * b, u16 packet_bytes,
 }
 
 always_inline uword
-ip6_rewrite_inline (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame,
-		    int do_counters, int is_midchain, int is_mcast)
+ip6_rewrite_inline_with_gso (vlib_main_t * vm,
+			     vlib_node_runtime_t * node,
+			     vlib_frame_t * frame,
+			     int do_counters, int is_midchain, int is_mcast,
+			     int do_gso)
 {
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
@@ -1771,12 +1772,23 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  ip6_mtu_check (p0, clib_net_to_host_u16 (ip0->payload_length) +
-			 sizeof (ip6_header_t),
+	  u16 ip0_len =
+	    clib_net_to_host_u16 (ip0->payload_length) +
+	    sizeof (ip6_header_t);
+	  u16 ip1_len =
+	    clib_net_to_host_u16 (ip1->payload_length) +
+	    sizeof (ip6_header_t);
+	  if (do_gso && (p0->flags & VNET_BUFFER_F_GSO))
+	    ip0_len = gso_mtu_sz (p0);
+	  if (do_gso && (p1->flags & VNET_BUFFER_F_GSO))
+	    ip1_len = gso_mtu_sz (p1);
+
+
+
+	  ip6_mtu_check (p0, ip0_len,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated0, &next0, &error0);
-	  ip6_mtu_check (p1, clib_net_to_host_u16 (ip1->payload_length) +
-			 sizeof (ip6_header_t),
+	  ip6_mtu_check (p1, ip1_len,
 			 adj1[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated1, &next1, &error1);
 
@@ -1915,8 +1927,13 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  ip6_mtu_check (p0, clib_net_to_host_u16 (ip0->payload_length) +
-			 sizeof (ip6_header_t),
+	  u16 ip0_len =
+	    clib_net_to_host_u16 (ip0->payload_length) +
+	    sizeof (ip6_header_t);
+	  if (do_gso && (p0->flags & VNET_BUFFER_F_GSO))
+	    ip0_len = gso_mtu_sz (p0);
+
+	  ip6_mtu_check (p0, ip0_len,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated0, &next0, &error0);
 
@@ -1972,6 +1989,23 @@ ip6_rewrite_inline (vlib_main_t * vm,
     ip6_forward_next_trace (vm, node, frame, VLIB_TX);
 
   return frame->n_vectors;
+}
+
+always_inline uword
+ip6_rewrite_inline (vlib_main_t * vm,
+		    vlib_node_runtime_t * node,
+		    vlib_frame_t * frame,
+		    int do_counters, int is_midchain, int is_mcast)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  if (PREDICT_FALSE (vnm->interface_main.gso_interface_count > 0))
+    return ip6_rewrite_inline_with_gso (vm, node, frame, do_counters,
+					is_midchain, is_mcast,
+					1 /* do_gso */ );
+  else
+    return ip6_rewrite_inline_with_gso (vm, node, frame, do_counters,
+					is_midchain, is_mcast,
+					0 /* no do_gso */ );
 }
 
 VLIB_NODE_FN (ip6_rewrite_node) (vlib_main_t * vm,
