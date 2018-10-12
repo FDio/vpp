@@ -1766,12 +1766,19 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  ip6_mtu_check (p0, clib_net_to_host_u16 (ip0->payload_length) +
-			 sizeof (ip6_header_t),
+	  u16 ip0_len =
+	    (p0->flags & VNET_BUFFER_F_GSO) ? vnet_buffer2 (p0)->gso_size +
+	    sizeof (ip6_header_t) : clib_net_to_host_u16 (ip0->payload_length)
+	    + sizeof (ip6_header_t);
+	  u16 ip1_len =
+	    (p1->flags & VNET_BUFFER_F_GSO) ? vnet_buffer2 (p1)->gso_size +
+	    sizeof (ip6_header_t) : clib_net_to_host_u16 (ip1->payload_length)
+	    + sizeof (ip6_header_t);
+
+	  ip6_mtu_check (p0, ip0_len,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated0, &next0, &error0);
-	  ip6_mtu_check (p1, clib_net_to_host_u16 (ip1->payload_length) +
-			 sizeof (ip6_header_t),
+	  ip6_mtu_check (p1, ip1_len,
 			 adj1[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated1, &next1, &error1);
 
@@ -1910,8 +1917,11 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Check MTU of outgoing interface. */
-	  ip6_mtu_check (p0, clib_net_to_host_u16 (ip0->payload_length) +
-			 sizeof (ip6_header_t),
+	  u16 ip0_len =
+	    (p0->flags & VNET_BUFFER_F_GSO) ? vnet_buffer2 (p0)->gso_size +
+	    sizeof (ip6_header_t) : clib_net_to_host_u16 (ip0->payload_length)
+	    + sizeof (ip6_header_t);
+	  ip6_mtu_check (p0, ip0_len,
 			 adj0[0].rewrite_header.max_l3_packet_bytes,
 			 is_locally_originated0, &next0, &error0);
 
