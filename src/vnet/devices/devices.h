@@ -148,16 +148,20 @@ vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
   rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
   idx = hw->dq_runtime_index_by_queue[queue_id];
   dq = vec_elt_at_index (rt->devices_and_queues, idx);
-  dq->interrupt_pending = 1;
+
+  clib_atomic_store_rel_n (&(dq->interrupt_pending), 1);
 
   vlib_node_set_interrupt_pending (vm, hw->input_node_index);
 }
 
+/*
+ * Acquire RMW Access
+ * Paired with Release Store in vnet_device_input_set_interrupt_pending
+ */
 #define foreach_device_and_queue(var,vec)                       \
   for (var = (vec); var < vec_end (vec); var++)                 \
     if ((var->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)        \
-        || clib_smp_swap (&((var)->interrupt_pending), 0))
-
+        || clib_atomic_swap_acq_n (&((var)->interrupt_pending), 0))
 
 #endif /* included_vnet_vnet_device_h */
 
