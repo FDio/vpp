@@ -39,6 +39,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int ip_addr_set = 0;
 
   args.id = ~0;
+  args.tap_flags = 0;
 
   /* Get a line of input. */
   if (unformat_user (input, unformat_line_input, line_input))
@@ -75,6 +76,10 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    ;
 	  else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
 	    ;
+	  else if (unformat (line_input, "no-gso"))
+	    args.tap_flags &= ~TAP_FLAG_GSO;
+	  else if (unformat (line_input, "gso"))
+	    args.tap_flags |= TAP_FLAG_GSO;
 	  else if (unformat (line_input, "hw-addr %U",
 			     unformat_ethernet_address, args.mac_addr))
 	    args.mac_addr_set = 1;
@@ -109,7 +114,7 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>] "
     "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
     "[host-ip6-addr <ip6-addr>] [host-ip4-gw <ip4-addr>] "
-    "[host-ip6-gw <ip6-addr>] [host-if-name <name>]",
+    "[host-ip6-gw <ip6-addr>] [host-if-name <name>] [no-gso|gso]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -159,6 +164,59 @@ VLIB_CLI_COMMAND (tap_delete__command, static) =
   .path = "delete tap",
   .short_help = "delete tap {<interface> | sw_if_index <sw_idx>}",
   .function = tap_delete_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+tap_gso_command_fn (vlib_main_t * vm, unformat_input_t * input,
+		    vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index = ~0;
+  vnet_main_t *vnm = vnet_get_main ();
+  int enable = 1;
+  int rv;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Missing <interface>");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "enable"))
+	enable = 1;
+      else if (unformat (line_input, "disable"))
+	enable = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  unformat_free (line_input);
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0,
+			      "please specify interface name or sw_if_index");
+
+  rv = tap_gso_enable_disable (vm, sw_if_index, enable);
+  if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
+    return clib_error_return (0, "not a tap interface");
+  else if (rv != 0)
+    return clib_error_return (0, "error on configuring GSO on tap interface");
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (tap_gso__command, static) =
+{
+  .path = "set tap gso",
+  .short_help = "set tap gso {<interface> | sw_if_index <sw_idx>} <enable|disable>",
+  .function = tap_gso_command_fn,
 };
 /* *INDENT-ON* */
 
