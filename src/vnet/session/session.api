@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.2.0";
+option version = "1.2.1";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -135,7 +135,7 @@ define bind_uri {
   u32 accept_cookie;
   u8 uri[128];
 };
-
+/** *** Will be DEPRECATED. Use message queue instead. *** */
 define bind_uri_reply {
   u32 context;
   u64 handle;
@@ -180,6 +180,7 @@ autoreply define connect_uri {
 };
 
 /** \brief vpp->client, accept this session
+	*** Will be DEPRECATED. Use message queue instead. ***
     @param context - sender context, to match reply w/ request
     @param listener_handle - tells client which listener this pertains to
     @param handle - unique session identifier
@@ -208,6 +209,7 @@ define accept_session {
 };
 
 /** \brief client->vpp, reply to an accept message
+	*** Will be DEPRECATED. Use message queue instead. ***
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param session_index - session index from accept_session / connect_reply
@@ -233,6 +235,7 @@ define disconnect_session {
 };
 
 /** \brief bidirectional disconnect reply API
+	*** Will be DEPRECATED. Use message queue instead. ***
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
@@ -246,6 +249,7 @@ define disconnect_session_reply {
 };
 
 /** \brief vpp->client reset session API
+	*** Will be DEPRECATED. Use message queue instead. ***
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
@@ -258,6 +262,7 @@ define reset_session {
 };
 
 /** \brief client->vpp reset session reply
+	*** Will be DEPRECATED. Use message queue instead. ***
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param handle - session handle obtained via accept/connect
@@ -336,6 +341,7 @@ autoreply define connect_sock {
 };
 
 /** \brief Bind reply
+	*** Will be DEPRECATED. Use message queue instead. ***
     @param context - sender context, to match reply w/ request
     @param handle - bind handle
     @param retval - return code for the request
@@ -373,6 +379,7 @@ define connect_session {
 };
 
 /** \brief vpp/server->client, connect reply -- used for all connect_* messages
+	*** Will be DEPRECATED. Use message queue instead. ***
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param handle - connection handle
