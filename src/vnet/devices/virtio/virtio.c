@@ -175,6 +175,14 @@ virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
   return 0;
 }
 
+static clib_error_t *
+virtio_init (vlib_main_t * vm)
+{
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (virtio_init);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
