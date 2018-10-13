@@ -438,7 +438,7 @@ vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
 	    {
 	      if (stats)
 		stats->tx_eagain++;
-	      continue;
+	      break;
 	    }
 	  else
 	    break;

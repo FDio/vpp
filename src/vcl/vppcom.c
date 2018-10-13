@@ -2452,15 +2452,13 @@ handle_dequeued:
     {
       msg = vec_elt_at_index (wrk->mq_msg_vector, i);
       e = svm_msg_q_msg_data (mq, msg);
-      vcl_epoll_wait_handle_mq_event (wrk, e, events, num_ev);
+      if (*num_ev < maxevents)
+	vcl_epoll_wait_handle_mq_event (wrk, e, events, num_ev);
+      else
+	vec_add1 (wrk->unhandled_evts_vector, *e);
       svm_msg_q_free_msg (mq, msg);
-      if (*num_ev == maxevents)
-	{
-	  i += 1;
-	  break;
-	}
     }
-  vec_delete (wrk->mq_msg_vector, i, 0);
+  vec_reset_length (wrk->mq_msg_vector);
 
   return *num_ev;
 }
