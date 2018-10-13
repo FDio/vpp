@@ -153,6 +153,7 @@ typedef struct
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
+  u8 has_rx_evt;
   u32 attr;
   u32 wait_cont_idx;
   vppcom_epoll_t vep;
