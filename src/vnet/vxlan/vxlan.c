@@ -599,7 +599,8 @@ int vnet_vxlan_add_del_tunnel
       if (!p)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      u32 instance = vxm->tunnel_index_by_sw_if_index[p->sw_if_index];
+      u32 instance = is_ip6 ? key6.value :
+	vxm->tunnel_index_by_sw_if_index[p->sw_if_index];
       vxlan_tunnel_t *t = pool_elt_at_index (vxm->tunnels, instance);
 
       sw_if_index = t->sw_if_index;
