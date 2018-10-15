@@ -248,7 +248,7 @@ ssvm_master_init_memfd (ssvm_private_t * memfd)
   memfd->my_pid = getpid ();
   memfd->i_am_master = 1;
 
-  page_size = 1 << alloc.log2_page_size;
+  page_size = 1ull << alloc.log2_page_size;
   sh = memfd->sh;
   sh->master_pid = memfd->my_pid;
   sh->ssvm_size = memfd->ssvm_size;

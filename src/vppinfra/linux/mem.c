@@ -73,7 +73,8 @@ clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size)
   else
     bit_mask = 0;
 
-  *requested_va += (clib_cpu_time_now () & bit_mask) * (1 << log2_page_size);
+  *requested_va +=
+    (clib_cpu_time_now () & bit_mask) * (1ull << log2_page_size);
 }
 
 clib_error_t *
@@ -257,7 +258,7 @@ clib_mem_vm_ext_free (clib_mem_vm_alloc_t * a)
 {
   if (a != 0)
     {
-      clib_mem_vm_free (a->addr, 1 << a->log2_page_size);
+      clib_mem_vm_free (a->addr, 1ull << a->log2_page_size);
       if (a->fd != -1)
 	close (a->fd);
     }

@@ -465,7 +465,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 
   for (i = 0; i < pr->n_pages; i++)
     {
-      size_t page_size = 1 << pr->log2_page_size;
+      size_t page_size = 1ull << pr->log2_page_size;
       ret = rte_mempool_populate_iova (mp, ((char *) pr->mem) + i * page_size,
 				       pr->page_table[i], page_size, 0, 0);
       if (ret < 0)
@@ -493,8 +493,8 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
       /* *INDENT-OFF* */
       vec_foreach_index (i, pr->page_table)
 	{
-	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
-	  dm.size = 1 << pr->log2_page_size;
+	  dm.vaddr = pointer_to_uword (pr->mem) + ((u64)i << pr->log2_page_size);
+	  dm.size = 1ull << pr->log2_page_size;
 	  dm.iova = pr->page_table[i];
 	  if ((rv = ioctl (dbm->vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dm)))
 	    break;
