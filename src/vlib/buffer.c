@@ -910,7 +910,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, vlib_physmem_region_index_t pri,
 
   p->log2_page_size = pr->log2_page_size;
   p->buffer_size = buffer_size;
-  p->buffers_per_page = (1 << pr->log2_page_size) / p->buffer_size;
+  p->buffers_per_page = (1ull << pr->log2_page_size) / p->buffer_size;
   p->n_elts = p->buffers_per_page * pr->n_pages;
   p->n_used = 0;
   clib_spinlock_init (&p->lock);

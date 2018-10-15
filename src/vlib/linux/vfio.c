@@ -52,8 +52,8 @@ vfio_map_regions (vlib_main_t * vm, int fd)
       vec_foreach_index (i, pr->page_table)
         {
 	  int rv;
-	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
-	  dm.size = 1 << pr->log2_page_size;
+	  dm.vaddr = pointer_to_uword (pr->mem) + ((u64)i << pr->log2_page_size);
+	  dm.size = 1ull << pr->log2_page_size;
 	  dm.iova = dm.vaddr;
 	  vlib_log_debug (lvm->log_default, "map DMA va:0x%lx iova:%lx "
 			  "size:0x%lx", dm.vaddr, dm.iova, dm.size);
