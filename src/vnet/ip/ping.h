@@ -26,13 +26,18 @@ typedef enum
   PING_RESPONSE_IP4,
 } ping_response_type_t;
 
+#define foreach_ip46_ping_result                                      \
+  _ (OK, "OK")                                                        \
+  _ (ALLOC_FAIL, "packet allocation failed")                          \
+  _ (NO_INTERFACE, "no egress interface")                             \
+  _ (NO_TABLE, "no IPv6 Table for lookup")                            \
+  _ (NO_SRC_ADDRESS, "no source address for egress interface")        \
+
 typedef enum
 {
-  SEND_PING_OK = 0,
-  SEND_PING_ALLOC_FAIL,
-  SEND_PING_NO_INTERFACE,
-  SEND_PING_NO_TABLE,
-  SEND_PING_NO_SRC_ADDRESS,
+#define _(v, s) SEND_PING_##v,
+    foreach_ip46_ping_result
+#undef _
 } send_ip46_ping_result_t;
 
 /*

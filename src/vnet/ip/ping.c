@@ -46,6 +46,21 @@ format_icmp_echo_trace (u8 * s, va_list * va)
   return s;
 }
 
+static u8 *
+format_ip46_ping_result (u8 * s, va_list * args)
+{
+  send_ip46_ping_result_t res = va_arg (*args, send_ip46_ping_result_t);
+
+  switch (res)
+    {
+#define _(v, n) case SEND_PING_##v: s = format(s, "%s", n);
+      foreach_ip46_ping_result
+#undef _
+    }
+
+  return (s);
+}
+
 /*
  * If we can find the ping run by an ICMP ID, then we send the signal
  * to the CLI process referenced by that ping run, alongside with
@@ -582,25 +597,30 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
   hash_set (pm->ping_run_by_icmp_id, icmp_id, ping_run_index);
   for (i = 1; i <= ping_repeat; i++)
     {
+      send_ip46_ping_result_t res = SEND_PING_OK;
       f64 sleep_interval;
       f64 time_ping_sent = vlib_time_now (vm);
       /* Reset pr: running ping in other process could have changed pm->ping_runs */
       pr = vec_elt_at_index (pm->ping_runs, ping_run_index);
       pr->curr_seq = i;
-      if (pa6 &&
-	  (SEND_PING_OK ==
-	   send_ip6_ping (vm, ping_main.ip6_main, table_id, pa6, sw_if_index,
-			  i, icmp_id, data_len, ping_burst, verbose)))
+      if (pa6)
+	{
+	  res = send_ip6_ping (vm, ping_main.ip6_main, table_id,
+			       pa6, sw_if_index, i, icmp_id,
+			       data_len, ping_burst, verbose);
+	}
+      if (pa4)
+	{
+	  res = send_ip4_ping (vm, ping_main.ip4_main, table_id, pa4,
+			       sw_if_index, i, icmp_id, data_len,
+			       ping_burst, verbose);
+	}
+      if (SEND_PING_OK == res)
 	{
 	  n_requests += ping_burst;
 	}
-      if (pa4 &&
-	  (SEND_PING_OK ==
-	   send_ip4_ping (vm, ping_main.ip4_main, table_id, pa4, sw_if_index,
-			  i, icmp_id, data_len, ping_burst, verbose)))
-	{
-	  n_requests += ping_burst;
-	}
+      else
+	vlib_cli_output (vm, "Failed: %U", format_ip46_ping_result, res);
       while ((i <= ping_repeat)
 	     &&
 	     ((sleep_interval =
