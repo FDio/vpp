@@ -227,6 +227,14 @@ api_vmxnet3_dump (vat_main_t * vam)
   return ret;
 }
 
+static u8 *
+format_pci_addr (u8 * s, va_list * va)
+{
+  vlib_pci_addr_t *addr = va_arg (*va, vlib_pci_addr_t *);
+  return format (s, "%04x:%02x:%02x.%x", addr->domain, addr->bus,
+		 addr->slot, addr->function);
+}
+
 static void
 vl_api_vmxnet3_details_t_handler (vl_api_vmxnet3_details_t * mp)
 {
@@ -246,7 +254,7 @@ vl_api_vmxnet3_details_t_handler (vl_api_vmxnet3_details_t * mp)
 	   "   state %s\n",
 	   mp->if_name, ntohl (mp->sw_if_index), format_ethernet_address,
 	   mp->hw_addr, mp->version,
-	   format_vlib_pci_addr, &pci_addr,
+	   format_pci_addr, &pci_addr,
 	   ntohs (mp->rx_next),
 	   ntohs (mp->rx_qid),
 	   ntohs (mp->rx_qsize), ntohs (mp->rx_fill[0]),
