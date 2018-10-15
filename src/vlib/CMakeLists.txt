@@ -41,6 +41,7 @@ add_vpp_library(vlib
   linux/pci.c
   linux/physmem.c
   linux/vfio.c
+  linux/vmbus.c
   log.c
   main.c
   node.c
@@ -56,6 +57,7 @@ add_vpp_library(vlib
   unix/main.c
   unix/plugin.c
   unix/util.c
+  vmbus/vmbus.c
 
   INSTALL_HEADERS
   buffer_funcs.h
@@ -89,6 +91,7 @@ add_vpp_library(vlib
   unix/plugin.h
   unix/unix.h
   vlib.h
+  vmbus/vmbus.h
 
-  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS}
+  LINK_LIBRARIES vppinfra svm uuid ${CMAKE_DL_LIBS}
 )
