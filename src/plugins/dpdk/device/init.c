@@ -24,6 +24,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
 #include <vlib/pci/pci.h>
+#include <vlib/vmbus/vmbus.h>
 
 #include <rte_ring.h>
 
@@ -942,6 +943,27 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
   vlib_pci_free_device_info (d);
 }
 
+static void
+dpdk_bind_vmbus_devices_to_uio (dpdk_config_main_t * conf)
+{
+  clib_error_t *error;
+  vlib_vmbus_addr_t *addrs, *addr = 0;
+
+  addrs = vlib_vmbus_get_all_dev_addrs ();
+
+  /* *INDENT-OFF* */
+  vec_foreach (addr, addrs)
+    {
+      error = vlib_vmbus_bind_to_uio (addr);
+
+      if (error)
+	{
+	  clib_error_report (error);
+	}
+    }
+  /* *INDENT-ON* */
+}
+
 static clib_error_t *
 dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 		    unformat_input_t * input, u8 is_default)
@@ -1090,6 +1112,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   int ret, i;
   int num_whitelisted = 0;
   u8 no_pci = 0;
+  u8 no_vmbus = 0;
   u8 no_huge = 0;
   u8 huge_dir = 0;
   u8 file_prefix = 0;
@@ -1169,6 +1192,12 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  no_pci = 1;
 	  tmp = format (0, "--no-pci%c", 0);
+	  vec_add1 (conf->eal_init_args, tmp);
+	}
+      else if (unformat (input, "no-vmbus"))
+	{
+	  no_vmbus = 1;
+	  tmp = format (0, "--no-vmbus%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
 	}
 
@@ -1373,6 +1402,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   if (no_pci == 0 && geteuid () == 0)
     dpdk_bind_devices_to_uio (conf);
+
+  if (no_vmbus == 0 && geteuid () == 0)
+    dpdk_bind_vmbus_devices_to_uio (conf);
 
 #define _(x) \
     if (devconf->x == 0 && conf->default_devconf.x > 0) \
