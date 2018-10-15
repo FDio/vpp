@@ -26,6 +26,22 @@ install(
 )
 
 ##############################################################################
+# Find lib and include files
+##############################################################################
+message(STATUS "Looking for libuuid")
+find_path(UUID_INCLUDE_DIR NAMES uuid/uuid.h)
+find_library(UUID_LIB NAMES uuid)
+
+if(UUID_INCLUDE_DIR AND UUID_LIB)
+  include_directories(${UUID_INCLUDE_DIR})
+  set(VMBUS_SOURCE linux/vmbus.c)
+  set(VMBUS_LIBS uuid)
+  message(STATUS "Found uuid in ${UUID_INCLUDE_DIR}")
+else()
+  message(WARNING "-- libuuid not found - vmbus support disabled")
+endif()
+
+##############################################################################
 # vlib shared library
 ##############################################################################
 add_vpp_library(vlib
@@ -56,6 +72,8 @@ add_vpp_library(vlib
   unix/main.c
   unix/plugin.c
   unix/util.c
+  vmbus/vmbus.c
+  ${VMBUS_SOURCE}
 
   INSTALL_HEADERS
   buffer_funcs.h
@@ -89,6 +107,7 @@ add_vpp_library(vlib
   unix/plugin.h
   unix/unix.h
   vlib.h
+  vmbus/vmbus.h
 
-  LINK_LIBRARIES vppinfra svm ${CMAKE_DL_LIBS}
+  LINK_LIBRARIES vppinfra svm ${VMBUS_LIBS} ${CMAKE_DL_LIBS}
 )
