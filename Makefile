@@ -66,7 +66,7 @@ DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python-ply libmbedtls-dev
-DEB_DEPENDS += cmake ninja-build
+DEB_DEPENDS += cmake ninja-build uuid-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
@@ -89,6 +89,7 @@ RPM_DEPENDS += check check-devel
 RPM_DEPENDS += boost boost-devel
 RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
+RPM_DEPENDS += libuuid-devel
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
@@ -119,7 +120,7 @@ RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
 RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
-RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel
+RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
 
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
 RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
