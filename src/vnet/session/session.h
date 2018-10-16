@@ -195,7 +195,7 @@ struct _session_manager_main
   clib_rwlock_t *peekers_rw_locks;
 
   /** Per-proto, per-worker enqueue epoch counters */
-  u32 *current_enqueue_epoch[TRANSPORT_N_PROTO];
+  u64 *current_enqueue_epoch[TRANSPORT_N_PROTO];
 
   /** Per-proto, per-worker thread vector of sessions to enqueue */
   u32 **session_to_enqueue[TRANSPORT_N_PROTO];
@@ -308,6 +308,7 @@ stream_session_is_valid (u32 si, u8 thread_index)
 stream_session_t *session_alloc (u32 thread_index);
 int session_alloc_fifos (segment_manager_t * sm, stream_session_t * s);
 void session_free (stream_session_t * s);
+void session_free_w_fifos (stream_session_t * s);
 
 always_inline stream_session_t *
 session_get (u32 si, u32 thread_index)

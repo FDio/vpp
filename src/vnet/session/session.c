@@ -153,7 +153,7 @@ session_free (stream_session_t * s)
     memset (s, 0xFA, sizeof (*s));
 }
 
-static void
+void
 session_free_w_fifos (stream_session_t * s)
 {
   segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
@@ -197,7 +197,7 @@ session_alloc_for_connection (transport_connection_t * tc)
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
-  s->enqueue_epoch = ~0;
+  s->enqueue_epoch = (u64) ~ 0;
 
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
@@ -393,7 +393,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
        * by calling stream_server_flush_enqueue_events () */
       session_manager_main_t *smm = vnet_get_session_manager_main ();
       u32 thread_index = s->thread_index;
-      u32 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
+      u64 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
 
       if (s->enqueue_epoch != enqueue_epoch)
 	{
@@ -434,7 +434,7 @@ session_enqueue_dgram_connection (stream_session_t * s,
        * by calling stream_server_flush_enqueue_events () */
       session_manager_main_t *smm = vnet_get_session_manager_main ();
       u32 thread_index = s->thread_index;
-      u32 enqueue_epoch = smm->current_enqueue_epoch[proto][thread_index];
+      u64 enqueue_epoch = smm->current_enqueue_epoch[proto][thread_index];
 
       if (s->enqueue_epoch != enqueue_epoch)
 	{
