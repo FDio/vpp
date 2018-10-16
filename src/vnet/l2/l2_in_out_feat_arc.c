@@ -55,6 +55,10 @@ typedef struct
   u32 next_index;
   u32 feature_bitmap;
   u16 ethertype;
+  u16 l2_hdr_offset;
+  u16 l3_hdr_offset;
+  u16 l2_len;
+  u16 current_data;
   u8 arc_head;
 } l2_in_out_feat_arc_trace_t;
 
@@ -69,9 +73,9 @@ format_l2_in_out_feat_arc_trace (u8 * s, u32 is_output, va_list * args)
 
   s =
     format (s,
-	    "%s: head %d feature_bitmap %x ethertype %x sw_if_index %d, next_index %d",
+	    "%s: head %d feature_bitmap %x ethertype %x current_data %d l2_len %d l2_hdr_offset %d l3_hdr_offset %d sw_if_index %d, next_index %d",
 	    is_output ? "OUT-FEAT-ARC" : "IN-FEAT-ARC", t->arc_head,
-	    t->feature_bitmap, t->ethertype, t->sw_if_index, t->next_index);
+	    t->feature_bitmap, t->ethertype, t->current_data, t->l2_len, t->l2_hdr_offset, t->l3_hdr_offset, t->sw_if_index, t->next_index);
   return s;
 }
 
@@ -161,9 +165,16 @@ get_ethertype_xN (int vector_sz, int is_output, vlib_buffer_t ** b,
   int ii;
   for (ii = 0; ii < vector_sz; ii++)
     {
-      ethernet_header_t *h0 = vlib_buffer_get_current (b[ii]);
-      u8 *l3h0 = (u8 *) h0 + vnet_buffer (b[ii])->l2.l2_len;
-      out_ethertype[ii] = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
+      if (0 && b[ii]->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID) {
+        /* this or just a reference to b->data seems to be what had been used in the L2 classifier */
+        u8 *l3h0 = (u8 *) b[ii]->data + vnet_buffer (b[ii])->l3_hdr_offset;
+        out_ethertype[ii] = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
+      } else {
+        /* appears not all the nodes before us set l2.l2_len properly, so this might be a bit brittle */
+        ethernet_header_t *h0 = vlib_buffer_get_current (b[ii]);
+        u8 *l3h0 = (u8 *) h0 + vnet_buffer (b[ii])->l2.l2_len;
+        out_ethertype[ii] = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
+      }
     }
 }
 
@@ -235,6 +246,10 @@ maybe_trace_xN (int vector_sz, int arc_head, vlib_main_t * vm,
 	t->feature_bitmap = vnet_buffer (b[ii])->l2.feature_bitmap;
 	t->ethertype = arc_head ? ethertype[ii] : 0;
 	t->next_index = next[ii];
+        t->current_data = b[ii]->current_data;
+        t->l2_len = vnet_buffer (b[ii])->l2.l2_len;
+        t->l2_hdr_offset = vnet_buffer (b[ii])->l2_hdr_offset;
+        t->l3_hdr_offset = vnet_buffer (b[ii])->l3_hdr_offset;
       }
 }
 

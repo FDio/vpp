@@ -373,20 +373,11 @@ pipe_rx (vlib_main_t * vm,
 	  pipe_determine_next_node (&ethernet_main, is_l21, type1, b1,
 				    &next1);
 
+          /* Should we actually parse the vlan headers here ? */
 	  if (!is_l20)
 	    vlib_buffer_advance (b0, sizeof (ethernet_header_t));
-	  else
-	    {
-	      u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
-	      vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
-	    }
 	  if (!is_l21)
 	    vlib_buffer_advance (b1, sizeof (ethernet_header_t));
-	  else
-	    {
-	      u32 eth_start = vnet_buffer (b1)->l2_hdr_offset;
-	      vnet_buffer (b1)->l2.l2_len = b1->current_data - eth_start;
-	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -426,11 +417,6 @@ pipe_rx (vlib_main_t * vm,
 
 	  if (!is_l20)
 	    vlib_buffer_advance (b0, sizeof (ethernet_header_t));
-	  else
-	    {
-	      u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
-	      vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
-	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
