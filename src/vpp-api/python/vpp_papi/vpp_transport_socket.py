@@ -6,6 +6,7 @@ import struct
 import threading
 import select
 import multiprocessing
+import queue
 import logging
 
 
@@ -67,11 +68,10 @@ class VppTransport:
         try:
             self.socket.connect(self.server_address)
         except socket.error as msg:
-            logging.error(msg)
+            logging.error("{} on socket {}".format(msg, self.server_address))
             raise
 
         self.connected = True
-
         # Initialise sockclnt_create
         sockclnt_create = self.parent.messages['sockclnt_create']
         sockclnt_create_reply = self.parent.messages['sockclnt_create_reply']
@@ -173,4 +173,7 @@ class VppTransport:
     def read(self):
         if not self.connected:
             raise IOError(1, 'Not connected')
-        return self.q.get()
+        try:
+            return self.q.get(True, self.read_timeout)
+        except queue.Empty:
+            return None
