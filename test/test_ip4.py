@@ -1554,5 +1554,55 @@ class TestIPLPM(VppTestCase):
         rx = self.send_and_expect(self.pg0, p_24 * 65, self.pg1)
 
 
+class TestIPv4Frag(VppTestCase):
+    """ IPv4 fragmentation """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4Frag, cls).setUpClass()
+
+        cls.create_pg_interfaces([0, 1])
+        cls.src_if = cls.pg0
+        cls.dst_if = cls.pg1
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def test_frag_large_packets(self):
+        """ Fragmentation of large packets """
+
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IP(src=self.src_if.remote_ip4, dst=self.dst_if.remote_ip4) /
+             UDP(sport=1234, dport=5678) / Raw())
+        self.extend_packet(p, 6000, "abcde")
+        saved_payload = p[Raw].load
+
+        # Force fragmentation by setting MTU of output interface
+        # lower than packet size
+        self.vapi.sw_interface_set_mtu(self.dst_if.sw_if_index,
+                                       [5000, 0, 0, 0])
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(p)
+        self.pg_start()
+
+        # Expecting 3 fragments because size of created fragments currently
+        # cannot be larger then VPP buffer size (which is 2048)
+        packets = self.dst_if.get_capture(3)
+
+        # Assume VPP sends the fragments in order
+        payload = ''
+        for p in packets:
+            payload_offset = p.frag * 8
+            if payload_offset > 0:
+                payload_offset -= 8  # UDP header is not in payload
+            self.assert_equal(payload_offset, len(payload))
+            payload += p[Raw].load
+        self.assert_equal(payload, saved_payload, "payload")
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
