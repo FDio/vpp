@@ -86,7 +86,8 @@ extern vlib_node_registration_t admin_up_down_process_node;
   _ ("net_ena", ENA)              \
   _ ("net_failsafe", FAILSAFE)    \
   _ ("net_liovf", LIOVF_ETHER)    \
-  _ ("net_qede", QEDE)
+  _ ("net_qede", QEDE)		  \
+  _ ("net_netvsc", NETVSC)
 
 typedef enum
 {
@@ -116,6 +117,7 @@ typedef enum
   VNET_DPDK_PORT_TYPE_VIRTIO_USER,
   VNET_DPDK_PORT_TYPE_VHOST_ETHER,
   VNET_DPDK_PORT_TYPE_FAILSAFE,
+  VNET_DPDK_PORT_TYPE_NETVSC,
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 
