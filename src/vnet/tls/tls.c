@@ -119,17 +119,18 @@ tls_ctx_half_open_alloc (void)
     {
       clib_rwlock_writer_lock (&tm->half_open_rwlock);
       pool_get (tm->half_open_ctx_pool, ctx);
+      ctx_index = ctx - tm->half_open_ctx_pool;
       clib_rwlock_writer_unlock (&tm->half_open_rwlock);
     }
   else
     {
       /* reader lock assumption: only main thread will call pool_get */
-      clib_rwlock_reader_lock (&tm->half_open_rwlock);
+      clib_rwlock_writer_lock (&tm->half_open_rwlock);
       pool_get (tm->half_open_ctx_pool, ctx);
-      clib_rwlock_reader_unlock (&tm->half_open_rwlock);
+      ctx_index = ctx - tm->half_open_ctx_pool;
+      clib_rwlock_writer_unlock (&tm->half_open_rwlock);
     }
   memset (ctx, 0, sizeof (*ctx));
-  ctx_index = ctx - tm->half_open_ctx_pool;
   return ctx_index;
 }
 
@@ -254,6 +255,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
     {
       TLS_DBG (1, "failed to notify app");
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+      session_free_w_fifos (app_session);
+      return -1;
     }
 
   session_lookup_add_connection (&ctx->connection,
@@ -383,6 +386,8 @@ tls_session_disconnect_callback (stream_session_t * tls_session)
   app->cb_fns.session_disconnect_callback (app_session);
 }
 
+volatile int tls_connected = 0;
+volatile int tls_accepted = 0;
 int
 tls_session_accept_callback (stream_session_t * tls_session)
 {
@@ -390,6 +395,7 @@ tls_session_accept_callback (stream_session_t * tls_session)
   tls_ctx_t *lctx, *ctx;
   u32 ctx_handle;
 
+  __sync_fetch_and_add (&tls_accepted, 1);
   tls_listener = listen_session_get (tls_session->listener_index);
   lctx = tls_listener_ctx_get (tls_listener->opaque);
 
@@ -441,6 +447,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   if (is_fail)
     {
+      clib_warning ("failed?!");
       int (*cb_fn) (u32, u32, stream_session_t *, u8), rv = 0;
       u32 wrk_index, api_context;
       app_worker_t *app_wrk;
@@ -460,6 +467,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
       return rv;
     }
 
+  __sync_fetch_and_add (&tls_connected, 1);
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy (ctx, ho_ctx, sizeof (*ctx));

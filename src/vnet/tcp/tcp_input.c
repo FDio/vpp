@@ -1911,6 +1911,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * dangling reference. */
 	  is_fin = tcp_is_fin (th0);
 
+	  if (tcp_is_syn (th0))
+	    clib_warning ("here");
 	  /* SYNs, FINs and data consume sequence numbers */
 	  vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
 	    + tcp_is_syn (th0) + is_fin + vnet_buffer (b0)->tcp.data_len;

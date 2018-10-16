@@ -115,12 +115,18 @@ openssl_try_handshake_read (openssl_ctx_t * oc,
   f = tls_session->server_rx_fifo;
   deq_max = svm_fifo_max_dequeue (f);
   if (!deq_max)
-    return 0;
+    {
+      clib_warning ("nothing to dequeue");
+      return 0;
+    }
 
   deq_now = clib_min (svm_fifo_max_read_chunk (f), deq_max);
   wrote = BIO_write (oc->wbio, svm_fifo_head (f), deq_now);
   if (wrote <= 0)
-    return 0;
+    {
+      clib_warning ("failed to write");
+      return 0;
+    }
 
   svm_fifo_dequeue_drop (f, wrote);
   if (wrote < deq_max)
@@ -133,6 +139,8 @@ openssl_try_handshake_read (openssl_ctx_t * oc,
 	  wrote += rv;
 	}
     }
+  if (wrote < deq_max)
+    clib_warning ("failed to write everything");
   return wrote;
 }
 
@@ -209,6 +217,7 @@ vpp_ssl_async_retry_func (tls_ctx_t * ctx, openssl_resume_handler * handler)
 
 #endif
 
+volatile int tls_handshakes = 0;
 int
 openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
 {
@@ -218,6 +227,8 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
   int estatus;
   openssl_resume_handler *myself;
 #endif
+
+  tls_session->server_rx_fifo->has_event = 1;
 
   while (SSL_in_init (oc->ssl))
     {
@@ -263,6 +274,7 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
   if (SSL_in_init (oc->ssl))
     return 0;
 
+  __sync_fetch_and_add (&tls_handshakes, 1);
   /*
    * Handshake complete
    */

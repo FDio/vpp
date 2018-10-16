@@ -1078,7 +1078,15 @@ tcp_send_fin (tcp_connection_t * tc)
 
   tcp_retransmit_timer_force_update (tc);
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
-    return;
+    {
+      /* Out of buffers so program fin retransmit ASAP */
+      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+      tc->flags |= TCP_CONN_FINSNT;
+      tc->snd_una_max += 1;
+      tc->snd_nxt = tc->snd_una_max;
+      return;
+    }
+
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
   fin_snt = tc->flags & TCP_CONN_FINSNT;
