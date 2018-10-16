@@ -60,6 +60,13 @@ types['u64'] = BaseTypes('u64')
 types['f64'] = BaseTypes('f64')
 
 
+def vpp_get_type(name):
+    try:
+        return types[name]
+    except AttributeError:
+        return None
+
+
 class FixedList_u8():
     def __init__(self, name, field_type, num):
         self.name = name
@@ -199,6 +206,9 @@ class VPPEnumType():
 
     def __getattr__(self, name):
         return self.enum[name]
+
+    def __nonzero__(self):
+        return True
 
     def pack(self, data, kwargs=None):
         return types['u32'].pack(data, kwargs)
