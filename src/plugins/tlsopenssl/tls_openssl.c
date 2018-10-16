@@ -219,6 +219,8 @@ openssl_ctx_handshake_rx (tls_ctx_t * ctx, stream_session_t * tls_session)
   openssl_resume_handler *myself;
 #endif
 
+  tls_session->server_rx_fifo->has_event = 1;
+
   while (SSL_in_init (oc->ssl))
     {
       if (ctx->resume)
