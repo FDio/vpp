@@ -101,7 +101,8 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
   ip4 = (ip4_header_t *) vlib_buffer_get_current (from_b);
 
   rem = clib_net_to_host_u16 (ip4->length) - sizeof (ip4_header_t);
-  max = (mtu - sizeof (ip4_header_t)) & ~0x7;
+  max =
+    (clib_min (mtu, VLIB_BUFFER_DATA_SIZE) - sizeof (ip4_header_t)) & ~0x7;
 
   if (rem >
       (vlib_buffer_length_in_chain (vm, from_b) - sizeof (ip4_header_t)))
@@ -152,7 +153,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       ip4_header_t *to_ip4;
       u8 *to_data;
 
-      len = (rem > (mtu - sizeof (ip4_header_t)) ? max : rem);
+      len = (rem > max ? max : rem);
       if (len != rem)		/* Last fragment does not need to divisible by 8 */
 	len &= ~0x7;
       if ((to_b = frag_buffer_alloc (org_from_b, &to_bi)) == 0)
