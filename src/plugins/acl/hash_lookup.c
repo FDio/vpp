@@ -1487,6 +1487,8 @@ split_partition(acl_main_t *am, u32 first_index,
 	int i=0;
 	u64 collisions = vec_len(pae->colliding_rules);
 	for(i=0; i<collisions; i++){
+                /* reload the hash acl info as it might be a different ACL# */
+	        ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
 
 		DBG( "TM-collision: base_ace:%d (ace_mask:%d, first_collision_mask:%d)",
 				pae->ace_index, pae->mask_type_index, coll_mask_type_index);
