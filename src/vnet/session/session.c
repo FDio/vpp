@@ -153,7 +153,7 @@ session_free (stream_session_t * s)
     memset (s, 0xFA, sizeof (*s));
 }
 
-static void
+void
 session_free_w_fifos (stream_session_t * s)
 {
   segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
@@ -393,7 +393,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
        * by calling stream_server_flush_enqueue_events () */
       session_manager_main_t *smm = vnet_get_session_manager_main ();
       u32 thread_index = s->thread_index;
-      u32 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
+      u64 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
 
       if (s->enqueue_epoch != enqueue_epoch)
 	{

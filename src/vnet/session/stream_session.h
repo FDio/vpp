@@ -67,7 +67,7 @@ typedef struct _stream_session_t
   u8 thread_index;
 
   /** To avoid n**2 "one event per frame" check */
-  u8 enqueue_epoch;
+  u64 enqueue_epoch;
 
   /** svm segment index where fifos were allocated */
   u32 svm_segment_index;

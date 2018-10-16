@@ -119,6 +119,7 @@ tls_ctx_half_open_alloc (void)
     {
       clib_rwlock_writer_lock (&tm->half_open_rwlock);
       pool_get (tm->half_open_ctx_pool, ctx);
+      ctx_index = ctx - tm->half_open_ctx_pool;
       clib_rwlock_writer_unlock (&tm->half_open_rwlock);
     }
   else
@@ -126,10 +127,10 @@ tls_ctx_half_open_alloc (void)
       /* reader lock assumption: only main thread will call pool_get */
       clib_rwlock_reader_lock (&tm->half_open_rwlock);
       pool_get (tm->half_open_ctx_pool, ctx);
+      ctx_index = ctx - tm->half_open_ctx_pool;
       clib_rwlock_reader_unlock (&tm->half_open_rwlock);
     }
   memset (ctx, 0, sizeof (*ctx));
-  ctx_index = ctx - tm->half_open_ctx_pool;
   return ctx_index;
 }
 
@@ -254,6 +255,8 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
     {
       TLS_DBG (1, "failed to notify app");
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+      session_free_w_fifos (app_session);
+      return -1;
     }
 
   session_lookup_add_connection (&ctx->connection,
