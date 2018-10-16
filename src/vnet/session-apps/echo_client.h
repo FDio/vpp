@@ -105,6 +105,12 @@ typedef struct
   vlib_main_t *vlib_main;
 } echo_client_main_t;
 
+enum
+{
+  ECHO_CLIENTS_STARTING,
+  ECHO_CLIENTS_RUNNING,
+  ECHO_CLIENTS_EXITING
+} echo_clients_test_state_e;
 extern echo_client_main_t echo_client_main;
 
 vlib_node_registration_t echo_clients_node;
