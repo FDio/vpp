@@ -5,11 +5,7 @@
 
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
-
-
-class IpAddressFamily:
-    ADDRESS_IP4 = 0
-    ADDRESS_IP6 = 1
+from vpp_papi import VppEnum
 
 
 class DpoProto:
@@ -86,12 +82,12 @@ class VppIpAddress():
     def encode(self):
         if self.addr.version is 6:
             return {
-                'af': IpAddressFamily.ADDRESS_IP6,
+                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
                 'un': self.addr.encode()
             }
         else:
             return {
-                'af': IpAddressFamily.ADDRESS_IP4,
+                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
                 'un': self.addr.encode()
             }
 
@@ -101,10 +97,12 @@ class VppIpAddress():
         elif hasattr(other, "af") and hasattr(other, "un"):
             # a vp_api_address_t
             if 4 is self.version:
-                return other.af == IpAddressFamily.ADDRESS_IP4 and \
+                return other.af == \
+                    VppEnum.vl_api_address_family_t.ADDRESS_IP4 and \
                     other.un == self.addr
             else:
-                return other.af == IpAddressFamily.ADDRESS_IP6 and \
+                return other.af == \
+                    VppEnum.vl_api_address_family_t.ADDRESS_IP6 and \
                     other.un == self.addr
         else:
             raise Exception("Comparing VppIpAddress:%s with unknown type: %s" %
@@ -202,7 +200,7 @@ class VppIpMPrefix():
 
         if 6 is self.ip_saddr.version:
             prefix = {
-                'af': IpAddressFamily.ADDRESS_IP6,
+                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
                 'grp_address': {
                     'ip6': {
                         'address': self.ip_gaddr.packed
@@ -217,7 +215,7 @@ class VppIpMPrefix():
             }
         else:
             prefix = {
-                'af': IpAddressFamily.ADDRESS_IP4,
+                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
                 'grp_address': {
                     'ip4': {
                         'address': self.ip_gaddr.packed

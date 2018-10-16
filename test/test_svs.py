@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import IpAddressFamily, VppIpPrefix
+from vpp_ip import VppIpPrefix
 
 from vpp_ip_route import VppIpTable
 
@@ -9,6 +9,8 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6
+
+from vpp_papi import VppEnum
 
 
 class TestSVS(VppTestCase):
@@ -94,7 +96,8 @@ class TestSVS(VppTestCase):
         table_ids = [101, 102]
 
         for table_id in table_ids:
-            self.vapi.svs_table_add_del(IpAddressFamily.ADDRESS_IP4, table_id)
+            self.vapi.svs_table_add_del(
+                VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_id)
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
@@ -108,12 +111,12 @@ class TestSVS(VppTestCase):
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
         #
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP4,
-                                     table_ids[0],
-                                     self.pg0.sw_if_index)
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP4,
-                                     table_ids[1],
-                                     self.pg1.sw_if_index)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_ids[0],
+            self.pg0.sw_if_index)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP4, table_ids[1],
+            self.pg1.sw_if_index)
 
         #
         # now all the packets should be delivered out the respective interface
@@ -148,22 +151,24 @@ class TestSVS(VppTestCase):
 
         self.assertEqual(ss[0].table_id, table_ids[0])
         self.assertEqual(ss[0].sw_if_index, self.pg0.sw_if_index)
-        self.assertEqual(ss[0].af, IpAddressFamily.ADDRESS_IP4)
+        self.assertEqual(ss[0].af, VppEnum.vl_api_address_family_t.ADDRESS_IP4)
         self.assertEqual(ss[1].table_id, table_ids[1])
         self.assertEqual(ss[1].sw_if_index, self.pg1.sw_if_index)
-        self.assertEqual(ss[1].af, IpAddressFamily.ADDRESS_IP4)
+        self.assertEqual(ss[1].af, VppEnum.vl_api_address_family_t.ADDRESS_IP4)
 
         #
         # cleanup
         #
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP4,
-                                     table_ids[0],
-                                     self.pg0.sw_if_index,
-                                     is_enable=0)
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP4,
-                                     table_ids[1],
-                                     self.pg1.sw_if_index,
-                                     is_enable=0)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+            table_ids[0],
+            self.pg0.sw_if_index,
+            is_enable=0)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+            table_ids[1],
+            self.pg1.sw_if_index,
+            is_enable=0)
 
         for table_id in table_ids:
             for i in range(1, 4):
@@ -171,9 +176,10 @@ class TestSVS(VppTestCase):
                     table_id,
                     VppIpPrefix("%d.0.0.0" % i, 8).encode(),
                     0, is_add=0)
-            self.vapi.svs_table_add_del(IpAddressFamily.ADDRESS_IP4,
-                                        table_id,
-                                        is_add=0)
+            self.vapi.svs_table_add_del(
+                VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                table_id,
+                is_add=0)
 
     def test_svs6(self):
         """ Source VRF Select IP6 """
@@ -220,7 +226,8 @@ class TestSVS(VppTestCase):
         table_ids = [101, 102]
 
         for table_id in table_ids:
-            self.vapi.svs_table_add_del(IpAddressFamily.ADDRESS_IP6, table_id)
+            self.vapi.svs_table_add_del(
+                VppEnum.vl_api_address_family_t.ADDRESS_IP6, table_id)
 
             #
             # map X.0.0.0/8 to each SVS table for lookup in table X
@@ -234,12 +241,14 @@ class TestSVS(VppTestCase):
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
         #
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP6,
-                                     table_ids[0],
-                                     self.pg0.sw_if_index)
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP6,
-                                     table_ids[1],
-                                     self.pg1.sw_if_index)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_ids[0],
+            self.pg0.sw_if_index)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_ids[1],
+            self.pg1.sw_if_index)
 
         #
         # now all the packets should be delivered out the respective interface
@@ -274,31 +283,35 @@ class TestSVS(VppTestCase):
 
         self.assertEqual(ss[0].table_id, table_ids[0])
         self.assertEqual(ss[0].sw_if_index, self.pg0.sw_if_index)
-        self.assertEqual(ss[0].af, IpAddressFamily.ADDRESS_IP6)
+        self.assertEqual(ss[0].af, VppEnum.vl_api_address_family_t.ADDRESS_IP6)
         self.assertEqual(ss[1].table_id, table_ids[1])
         self.assertEqual(ss[1].sw_if_index, self.pg1.sw_if_index)
-        self.assertEqual(ss[1].af, IpAddressFamily.ADDRESS_IP6)
+        self.assertEqual(ss[1].af, VppEnum.vl_api_address_family_t.ADDRESS_IP6)
 
         #
         # cleanup
         #
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP6,
-                                     table_ids[0],
-                                     self.pg0.sw_if_index,
-                                     is_enable=0)
-        self.vapi.svs_enable_disable(IpAddressFamily.ADDRESS_IP6,
-                                     table_ids[1],
-                                     self.pg1.sw_if_index,
-                                     is_enable=0)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_ids[0],
+            self.pg0.sw_if_index,
+            is_enable=0)
+        self.vapi.svs_enable_disable(
+            VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+            table_ids[1],
+            self.pg1.sw_if_index,
+            is_enable=0)
         for table_id in table_ids:
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
                     table_id,
                     VppIpPrefix("2001:%d::" % i, 32).encode(),
                     0, is_add=0)
-            self.vapi.svs_table_add_del(IpAddressFamily.ADDRESS_IP6,
-                                        table_id,
-                                        is_add=0)
+            self.vapi.svs_table_add_del(
+                VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+                table_id,
+                is_add=0)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

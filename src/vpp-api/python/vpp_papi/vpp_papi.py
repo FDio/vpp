@@ -27,12 +27,25 @@ import fnmatch
 import weakref
 import atexit
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
-from . vpp_serializer import VPPMessage
+from . vpp_serializer import VPPMessage, vpp_get_type
 
 if sys.version[0] == '2':
     import Queue as queue
 else:
     import queue as queue
+
+
+class VppEnumType(type):
+    def __getattr__(cls, name):
+        t = vpp_get_type(name)
+        return t.enum
+
+
+# Python3
+# class VppEnum(metaclass=VppEnumType):
+#    pass
+class VppEnum:
+    __metaclass__ = VppEnumType
 
 
 def vpp_atexit(vpp_weakref):
@@ -94,21 +107,22 @@ class VPP():
             unresolved = {}
             for k, v in types.items():
                 t = v['data']
-                if v['type'] == 'enum':
-                    try:
-                        VPPEnumType(t[0], t[1:])
-                    except ValueError:
-                        unresolved[k] = v
-                elif v['type'] == 'union':
-                    try:
-                        VPPUnionType(t[0], t[1:])
-                    except ValueError:
-                        unresolved[k] = v
-                elif v['type'] == 'type':
-                    try:
-                        VPPType(t[0], t[1:])
-                    except ValueError:
-                        unresolved[k] = v
+                if not vpp_get_type(t[0]):
+                    if v['type'] == 'enum':
+                        try:
+                            VPPEnumType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
+                    elif v['type'] == 'union':
+                        try:
+                            VPPUnionType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
+                    elif v['type'] == 'type':
+                        try:
+                            VPPType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
             if len(unresolved) == 0:
                 break
             if i > 3:
@@ -199,6 +213,9 @@ class VPP():
                 self.context += 1
                 return self.context
     get_context = ContextId()
+
+    def get_type(self, name):
+        return vpp_get_type(name)
 
     @classmethod
     def find_api_dir(cls):
