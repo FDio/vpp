@@ -1580,7 +1580,6 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tc->connection.proto = TRANSPORT_PROTO_TCP;
   tc->connection.is_ip4 = 1;
   clib_memcpy (tc1, &tc->connection, sizeof (*tc1));
-  s1 = s;
 
   /*
    * Allocate fake session and connection 2
@@ -1607,6 +1606,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Confirm that connection lookup works
    */
 
+  s1 = pool_elt_at_index (smm->sessions[0], 0);
   session_lookup_add_connection (tc1, session_handle (s1));
   tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
 					 &tc1->rmt_ip.ip4,
