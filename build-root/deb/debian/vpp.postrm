@@ -15,6 +15,7 @@ done
 if [ -n "${removed}" ]; then
     echo "There are changes in PCI drivers, rescaning"
     echo 1 > /sys/bus/pci/rescan
+    sleep 1
 else
     echo "There weren't PCI devices binded"
 fi
