@@ -91,7 +91,7 @@ vxlan4_find_tunnel (vxlan_main_t * vxm, last_tunnel_cache4 * cache,
   };
 
   if (PREDICT_TRUE
-      (key4.key[0] == cache->key[0] || key4.key[1] == cache->key[1]))
+      (key4.key[0] == cache->key[0] && key4.key[1] == cache->key[1]))
     {
       /* cache hit */
       vxlan_decap_info_t di = {.as_u64 = cache->value };
