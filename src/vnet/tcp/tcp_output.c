@@ -1076,24 +1076,25 @@ tcp_send_fin (tcp_connection_t * tc)
   u32 bi;
   u8 fin_snt = 0;
 
-  tcp_retransmit_timer_force_update (tc);
+  fin_snt = tc->flags & TCP_CONN_FINSNT;
+  if (fin_snt)
+    tc->snd_nxt = tc->snd_una;
+
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     {
       /* Out of buffers so program fin retransmit ASAP */
       tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
-      tc->flags |= TCP_CONN_FINSNT;
-      tc->snd_una_max += 1;
-      tc->snd_nxt = tc->snd_una_max;
-      return;
+      goto post_enqueue;
     }
 
+  tcp_retransmit_timer_force_update (tc);
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
-  fin_snt = tc->flags & TCP_CONN_FINSNT;
-  if (fin_snt)
-    tc->snd_nxt = tc->snd_una;
   tcp_make_fin (tc, b);
   tcp_enqueue_to_output_now (vm, b, bi, tc->c_is_ip4);
+  TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
+
+post_enqueue:
   if (!fin_snt)
     {
       tc->flags |= TCP_CONN_FINSNT;
@@ -1106,7 +1107,6 @@ tcp_send_fin (tcp_connection_t * tc)
     {
       tc->snd_nxt = tc->snd_una_max;
     }
-  TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
 }
 
 always_inline u8
