@@ -8315,7 +8315,7 @@ api_tap_create_v2 (vat_main_t * vam)
     clib_memcpy (mp->host_bridge, host_bridge, vec_len (host_bridge));
   if (host_ip4_prefix_len)
     clib_memcpy (mp->host_ip4_addr, &host_ip4_addr, 4);
-  if (host_ip4_prefix_len)
+  if (host_ip6_prefix_len)
     clib_memcpy (mp->host_ip6_addr, &host_ip6_addr, 16);
   if (host_ip4_gw_set)
     clib_memcpy (mp->host_ip4_gw, &host_ip4_gw, 4);
