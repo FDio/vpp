@@ -352,16 +352,6 @@ echo_clients_init (vlib_main_t * vm)
   return 0;
 }
 
-static void
-echo_clients_session_disconnect (stream_session_t * s)
-{
-  echo_client_main_t *ecm = &echo_client_main;
-  vnet_disconnect_args_t _a, *a = &_a;
-  a->handle = session_handle (s);
-  a->app_index = ecm->app_index;
-  vnet_disconnect_session (a);
-}
-
 static int
 echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 					 stream_session_t * s, u8 is_fail)
@@ -377,6 +367,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   if (is_fail)
     {
       clib_warning ("connection %d failed!", api_context);
+      ecm->run_test = ECHO_CLIENTS_EXITING;
       signal_evt_to_cli (-1);
       return 0;
     }
@@ -452,6 +443,16 @@ echo_clients_session_disconnect_callback (stream_session_t * s)
   a->app_index = ecm->app_index;
   vnet_disconnect_session (a);
   return;
+}
+
+void
+echo_clients_session_disconnect (stream_session_t * s)
+{
+  echo_client_main_t *ecm = &echo_client_main;
+  vnet_disconnect_args_t _a, *a = &_a;
+  a->handle = session_handle (s);
+  a->app_index = ecm->app_index;
+  vnet_disconnect_session (a);
 }
 
 static int
