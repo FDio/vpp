@@ -19,7 +19,7 @@ void
 clib_timebase_init (clib_timebase_t * tb, i32 timezone_offset_in_hours,
 		    clib_timebase_daylight_time_t daylight_type)
 {
-  memset (tb, 0, sizeof (*tb));
+  clib_memset (tb, 0, sizeof (*tb));
 
   clib_time_init (&tb->clib_time);
   tb->time_zero = unix_time_now ();

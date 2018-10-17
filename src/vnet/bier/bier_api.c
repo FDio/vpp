@@ -123,7 +123,7 @@ send_bier_table_details (vl_api_registration_t * reg,
     mp = vl_msg_api_alloc(sizeof(*mp));
     if (!mp)
         return;
-    memset(mp, 0, sizeof(*mp));
+    clib_memset(mp, 0, sizeof(*mp));
     mp->_vl_msg_id = ntohs(VL_API_BIER_TABLE_DETAILS);
     mp->context = context;
 
@@ -254,7 +254,7 @@ send_bier_route_details (const bier_table_t *bt,
     if (!mp)
         return;
 
-    memset(mp, 0, m_size);
+    clib_memset(mp, 0, m_size);
     mp->_vl_msg_id = ntohs(VL_API_BIER_ROUTE_DETAILS);
     mp->context = ctx->context;
 
@@ -373,7 +373,7 @@ send_bier_imp_details (vl_api_registration_t * reg,
     mp = vl_msg_api_alloc(sizeof(*mp) + n_bytes);
     if (!mp)
         return;
-    memset(mp, 0, sizeof(*mp)+n_bytes);
+    clib_memset(mp, 0, sizeof(*mp)+n_bytes);
     mp->_vl_msg_id = ntohs(VL_API_BIER_IMP_DETAILS);
     mp->context = context;
 
@@ -440,7 +440,7 @@ send_bier_disp_table_details (vl_api_registration_t * reg,
     mp = vl_msg_api_alloc(sizeof(*mp));
     if (!mp)
         return;
-    memset(mp, 0, sizeof(*mp));
+    clib_memset(mp, 0, sizeof(*mp));
     mp->_vl_msg_id = ntohs(VL_API_BIER_DISP_TABLE_DETAILS);
     mp->context = context;
 
@@ -616,7 +616,7 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
             if (!mp)
                 return;
 
-            memset(mp, 0, m_size);
+            clib_memset(mp, 0, m_size);
             mp->_vl_msg_id = ntohs(VL_API_BIER_DISP_ENTRY_DETAILS);
             mp->context = ctx->context;
 

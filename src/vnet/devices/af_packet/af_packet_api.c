@@ -111,7 +111,7 @@ af_packet_send_details (vpe_api_main_t * am,
 {
   vl_api_af_packet_details_t *mp;
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_AF_PACKET_DETAILS);
   mp->sw_if_index = htonl (af_packet_if->sw_if_index);
   clib_memcpy (mp->host_if_name, af_packet_if->host_if_name,

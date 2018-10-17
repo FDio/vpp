@@ -85,7 +85,7 @@ sendmsg_helper (mc_socket_main_t * msm,
   struct msghdr h;
   word n_bytes, n_bytes_tx, n_retries;
 
-  memset (&h, 0, sizeof (h));
+  clib_memset (&h, 0, sizeof (h));
   h.msg_name = tx_addr;
   h.msg_namelen = sizeof (tx_addr[0]);
 
@@ -146,7 +146,7 @@ tx_ack (void *transport, mc_peer_id_t dest_peer_id, u32 buffer_index)
   vlib_main_t *vm = msm->mc_main.vlib_main;
   clib_error_t *error;
 
-  memset (&tx_addr, 0, sizeof (tx_addr));
+  clib_memset (&tx_addr, 0, sizeof (tx_addr));
   tx_addr.sin_family = AF_INET;
   tx_addr.sin_addr.s_addr = mc_socket_peer_id_get_address (dest_peer_id);
   tx_addr.sin_port = mc_socket_peer_id_get_port (dest_peer_id);
@@ -197,7 +197,7 @@ recvmsg_helper (mc_socket_main_t * msm,
   {
     struct msghdr h;
 
-    memset (&h, 0, sizeof (h));
+    clib_memset (&h, 0, sizeof (h));
     if (rx_addr)
       {
 	h.msg_name = rx_addr;
@@ -570,7 +570,7 @@ catchup_listen_read_ready (clib_file_t * uf)
   clib_file_t template = { 0 };
 
   pool_get (msm->catchups, c);
-  memset (c, 0, sizeof (c[0]));
+  clib_memset (c, 0, sizeof (c[0]));
 
   client_len = sizeof (client_addr);
 
@@ -632,7 +632,7 @@ find_and_bind_to_free_port (word sock, word port)
     {
       struct sockaddr_in a;
 
-      memset (&a, 0, sizeof (a));	/* Warnings be gone */
+      clib_memset (&a, 0, sizeof (a));	/* Warnings be gone */
 
       a.sin_family = PF_INET;
       a.sin_addr.s_addr = INADDR_ANY;
@@ -672,7 +672,7 @@ setup_mutlicast_socket (mc_socket_main_t * msm,
       0)
     return clib_error_return_unix (0, "%s setsockopt SO_REUSEADDR", type);
 
-  memset (&ms->tx_addr, 0, sizeof (ms->tx_addr));
+  clib_memset (&ms->tx_addr, 0, sizeof (ms->tx_addr));
   ms->tx_addr.sin_family = AF_INET;
   ms->tx_addr.sin_addr.s_addr =
     htonl (msm->multicast_tx_ip4_address_host_byte_order);
@@ -682,7 +682,7 @@ setup_mutlicast_socket (mc_socket_main_t * msm,
 	    sizeof (ms->tx_addr)) < 0)
     return clib_error_return_unix (0, "%s bind", type);
 
-  memset (&mcast_req, 0, sizeof (mcast_req));
+  clib_memset (&mcast_req, 0, sizeof (mcast_req));
   mcast_req.imr_multiaddr.s_addr =
     htonl (msm->multicast_tx_ip4_address_host_byte_order);
   mcast_req.imr_interface.s_addr = msm->if_ip4_address_net_byte_order;
@@ -852,7 +852,7 @@ catchup_request_fun (void *transport_main,
   int one = 1;
 
   pool_get (msm->catchups, c);
-  memset (c, 0, sizeof (*c));
+  clib_memset (c, 0, sizeof (*c));
 
   c->socket = socket (AF_INET, SOCK_STREAM, 0);
   if (c->socket < 0)
@@ -867,7 +867,7 @@ catchup_request_fun (void *transport_main,
       return 0;
     }
 
-  memset (&addr, 0, sizeof (addr));
+  clib_memset (&addr, 0, sizeof (addr));
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = mc_socket_peer_id_get_address (catchup_peer_id);
   addr.sin_port = mc_socket_peer_id_get_port (catchup_peer_id);

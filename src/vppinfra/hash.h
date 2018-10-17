@@ -496,7 +496,7 @@ hash_set_value_bytes (hash_t * h, uword value_bytes)
                      _format_pair,_format_pair_arg)          \
 ({							     \
   hash_t _h;						     \
-  memset (&_h, 0, sizeof (_h));				     \
+  clib_memset (&_h, 0, sizeof (_h));				     \
   _h.user = (_user);				             \
   _h.key_sum   = (hash_key_sum_function_t *) (_key_sum);     \
   _h.key_equal = (_key_equal);				     \

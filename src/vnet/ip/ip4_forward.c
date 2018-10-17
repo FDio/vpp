@@ -943,11 +943,11 @@ ip4_lookup_init (vlib_main_t * vm)
   {
     ethernet_arp_header_t h;
 
-    memset (&h, 0, sizeof (h));
+    clib_memset (&h, 0, sizeof (h));
 
     /* Set target ethernet address to all zeros. */
-    memset (h.ip4_over_ethernet[1].ethernet, 0,
-	    sizeof (h.ip4_over_ethernet[1].ethernet));
+    clib_memset (h.ip4_over_ethernet[1].ethernet, 0,
+		 sizeof (h.ip4_over_ethernet[1].ethernet));
 
 #define _16(f,v) h.f = clib_host_to_net_u16 (v);
 #define _8(f,v) h.f = v;

@@ -47,8 +47,8 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   locator_pair_t pair, *pairs = 0;
   int rv;
 
-  memset (leid, 0, sizeof (*leid));
-  memset (reid, 0, sizeof (*reid));
+  clib_memset (leid, 0, sizeof (*leid));
+  clib_memset (reid, 0, sizeof (*reid));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -145,7 +145,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 
   /* add fwd entry */
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
-  memset (a, 0, sizeof (a[0]));
+  clib_memset (a, 0, sizeof (a[0]));
 
   a->is_add = is_add;
   a->is_negative = is_negative;
@@ -503,7 +503,7 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  memset (&rpath, 0, sizeof (rpath));
+  clib_memset (&rpath, 0, sizeof (rpath));
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -621,7 +621,7 @@ lisp_gpe_init (vlib_main_t * vm)
 
   lgm->lisp_stats_index_by_key =
     hash_create_mem (0, sizeof (lisp_stats_key_t), sizeof (uword));
-  memset (&lgm->counters, 0, sizeof (lgm->counters));
+  clib_memset (&lgm->counters, 0, sizeof (lgm->counters));
   lgm->counters.name = "LISP counters";
 
   return 0;
@@ -646,7 +646,7 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
   if (!file_name)
     return clib_error_create ("no pcap file specified!");
 
-  memset (&pm, 0, sizeof (pm));
+  clib_memset (&pm, 0, sizeof (pm));
   pm.file_name = (char *) file_name;
   error = pcap_read (&pm);
   if (error)

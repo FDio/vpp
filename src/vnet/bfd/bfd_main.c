@@ -774,7 +774,7 @@ bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
   b->current_length += sizeof (*auth);
   pkt->pkt.head.length += sizeof (*auth);
   bfd_pkt_set_auth_present (&pkt->pkt);
-  memset (auth, 0, sizeof (*auth));
+  clib_memset (auth, 0, sizeof (*auth));
   auth->type_len.type = bs->auth.curr_key->auth_type;
   /*
    * only meticulous authentication types require incrementing seq number
@@ -860,7 +860,7 @@ bfd_init_control_frame (bfd_main_t * bm, bfd_session_t * bs,
   bfd_pkt_t *pkt = vlib_buffer_get_current (b);
   u32 bfd_length = 0;
   bfd_length = sizeof (bfd_pkt_t);
-  memset (pkt, 0, sizeof (*pkt));
+  clib_memset (pkt, 0, sizeof (*pkt));
   bfd_pkt_set_version (pkt, 1);
   bfd_pkt_set_diag_code (pkt, bs->local_diag);
   bfd_pkt_set_state (pkt, bs->local_state);
@@ -908,10 +908,10 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
       ASSERT (b->current_data == 0);
-      memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
+      clib_memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       bfd_echo_pkt_t *pkt = vlib_buffer_get_current (b);
-      memset (pkt, 0, sizeof (*pkt));
+      clib_memset (pkt, 0, sizeof (*pkt));
       pkt->discriminator = bs->local_discr;
       pkt->expire_time_clocks =
 	now + bs->echo_transmit_interval_clocks * bs->local_detect_mult;
@@ -982,7 +982,7 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
       ASSERT (b->current_data == 0);
-      memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
+      clib_memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       bfd_init_control_frame (bm, bs, b);
       switch (bs->poll_state)
@@ -1315,7 +1315,7 @@ bfd_main_init (vlib_main_t * vm)
   bm->random_seed = random_default_seed ();
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
-  memset (&bm->wheel, 0, sizeof (bm->wheel));
+  clib_memset (&bm->wheel, 0, sizeof (bm->wheel));
   bm->cpu_cps = vm->clib_time.clocks_per_second;
   BFD_DBG ("cps is %.2f", bm->cpu_cps);
   bm->default_desired_min_tx_clocks =
@@ -1343,7 +1343,7 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
   bfd_lock (bm);
 
   pool_get (bm->sessions, result);
-  memset (result, 0, sizeof (*result));
+  clib_memset (result, 0, sizeof (*result));
   result->bs_idx = result - bm->sessions;
   result->transport = t;
   const unsigned limit = 1000;
@@ -2207,7 +2207,7 @@ bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
 		auth_key - bm->auth_keys);
     }
   auth_key->auth_type = auth_type;
-  memset (auth_key->key, 0, sizeof (auth_key->key));
+  clib_memset (auth_key->key, 0, sizeof (auth_key->key));
   clib_memcpy (auth_key->key, key_data, key_len);
   return 0;
 #else
@@ -2238,7 +2238,7 @@ bfd_auth_del_key (u32 conf_key_id)
 	  return VNET_API_ERROR_BFD_EINUSE;
 	}
       hash_unset (bm->auth_key_by_conf_key_id, conf_key_id);
-      memset (auth_key, 0, sizeof (*auth_key));
+      clib_memset (auth_key, 0, sizeof (*auth_key));
       pool_put (bm->auth_keys, auth_key);
     }
   else

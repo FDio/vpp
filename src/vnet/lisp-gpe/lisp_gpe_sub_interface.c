@@ -51,7 +51,7 @@ lisp_gpe_sub_interface_db_find (const ip_address_t * lrloc, u32 vni)
 
   lisp_gpe_sub_interface_key_t key;
 
-  memset (&key, 0, sizeof (key));
+  clib_memset (&key, 0, sizeof (key));
   ip_address_copy (&key.local_rloc, lrloc);
   key.vni = vni;
   p = hash_get_mem (lisp_gpe_sub_interfaces, &key);
@@ -151,9 +151,9 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
 	return (INDEX_INVALID);
 
       pool_get (lisp_gpe_sub_interface_pool, l3s);
-      memset (l3s, 0, sizeof (*l3s));
+      clib_memset (l3s, 0, sizeof (*l3s));
       l3s->key = clib_mem_alloc (sizeof (*l3s->key));
-      memset (l3s->key, 0, sizeof (*l3s->key));
+      clib_memset (l3s->key, 0, sizeof (*l3s->key));
 
       ip_address_copy (&l3s->key->local_rloc, lrloc);
       l3s->key->vni = vni;

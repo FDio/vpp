@@ -139,7 +139,7 @@ session_alloc (u32 thread_index)
       pool_get_aligned (session_manager_main.sessions[thread_index], s,
 			CLIB_CACHE_LINE_BYTES);
     }
-  memset (s, 0, sizeof (*s));
+  clib_memset (s, 0, sizeof (*s));
   s->session_index = s - session_manager_main.sessions[thread_index];
   s->thread_index = thread_index;
   return s;
@@ -150,7 +150,7 @@ session_free (stream_session_t * s)
 {
   pool_put (session_manager_main.sessions[s->thread_index], s);
   if (CLIB_DEBUG)
-    memset (s, 0xFA, sizeof (*s));
+    clib_memset (s, 0xFA, sizeof (*s));
 }
 
 void
@@ -1087,7 +1087,7 @@ stream_session_disconnect (stream_session_t * s)
   if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
     {
       vec_add2 (smm->pending_disconnects[s->thread_index], evt, 1);
-      memset (evt, 0, sizeof (*evt));
+      clib_memset (evt, 0, sizeof (*evt));
       evt->session_handle = session_handle (s);
       evt->event_type = FIFO_EVENT_DISCONNECT;
     }
