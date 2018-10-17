@@ -271,7 +271,7 @@ lldp_template_init (vlib_main_t * vm)
   {
     ethernet_header_t h;
 
-    memset (&h, 0, sizeof (h));
+    clib_memset (&h, 0, sizeof (h));
 
     /*
      * Send to 01:80:C2:00:00:0E - propagation constrained to a single
@@ -280,8 +280,8 @@ lldp_template_init (vlib_main_t * vm)
     h.dst_address[0] = 0x01;
     h.dst_address[1] = 0x80;
     h.dst_address[2] = 0xC2;
-    /* h.dst_address[3] = 0x00; (memset) */
-    /* h.dst_address[4] = 0x00; (memset) */
+    /* h.dst_address[3] = 0x00; (clib_memset) */
+    /* h.dst_address[4] = 0x00; (clib_memset) */
     h.dst_address[5] = 0x0E;
 
     /* leave src address blank (fill in at send time) */

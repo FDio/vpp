@@ -983,7 +983,7 @@ elf_parse (elf_main_t * em, void *data, uword data_bytes)
 
   {
     char *save = em->file_name;
-    memset (em, 0, sizeof (em[0]));
+    clib_memset (em, 0, sizeof (em[0]));
     em->file_name = save;
   }
 
@@ -1435,7 +1435,7 @@ static void string_table_init (string_table_builder_t * b, u8 * old_table)
 static void
 string_table_init (string_table_builder_t * b, u8 * old_table)
 {
-  memset (b, 0, sizeof (b[0]));
+  clib_memset (b, 0, sizeof (b[0]));
   b->old_table = old_table;
   b->hash = hash_create_string (0, sizeof (uword));
 }

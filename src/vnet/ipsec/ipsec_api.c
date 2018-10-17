@@ -125,7 +125,7 @@ static void vl_api_ipsec_spd_add_del_entry_t_handler
 #if WITH_LIBSSL > 0
   ipsec_policy_t p;
 
-  memset (&p, 0, sizeof (p));
+  clib_memset (&p, 0, sizeof (p));
 
   p.id = ntohl (mp->spd_id);
   p.priority = ntohl (mp->priority);
@@ -189,7 +189,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
   ipsec_main_t *im = &ipsec_main;
   ipsec_sa_t sa;
 
-  memset (&sa, 0, sizeof (sa));
+  clib_memset (&sa, 0, sizeof (sa));
 
   sa.id = ntohl (mp->sad_id);
   sa.spi = ntohl (mp->spi);
@@ -259,7 +259,7 @@ send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
   vl_api_ipsec_spds_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPDS_DETAILS);
   mp->context = context;
 
@@ -297,7 +297,7 @@ send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
   vl_api_ipsec_spd_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPD_DETAILS);
   mp->context = context;
 
@@ -401,7 +401,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 #if WITH_LIBSSL > 0
   ipsec_add_del_tunnel_args_t tun;
 
-  memset (&tun, 0, sizeof (ipsec_add_del_tunnel_args_t));
+  clib_memset (&tun, 0, sizeof (ipsec_add_del_tunnel_args_t));
 
   tun.is_add = mp->is_add;
   tun.esn = mp->esn;
@@ -447,7 +447,7 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   vl_api_ipsec_sa_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IPSEC_SA_DETAILS);
   mp->context = context;
 

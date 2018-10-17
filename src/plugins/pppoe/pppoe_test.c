@@ -143,7 +143,7 @@ api_pppoe_add_del_session (vat_main_t * vam)
   int ret;
 
   /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
-  memset (&client_ip, 0, sizeof client_ip);
+  clib_memset (&client_ip, 0, sizeof client_ip);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {

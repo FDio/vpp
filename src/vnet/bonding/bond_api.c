@@ -59,7 +59,7 @@ bond_send_sw_interface_event_deleted (vpe_api_main_t * am,
   vl_api_sw_interface_event_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -104,7 +104,7 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
   unix_shared_memory_queue_t *q;
   bond_create_if_args_t _a, *ap = &_a;
 
-  memset (ap, 0, sizeof (*ap));
+  clib_memset (ap, 0, sizeof (*ap));
 
   if (mp->use_custom_mac)
     {
@@ -139,7 +139,7 @@ vl_api_bond_enslave_t_handler (vl_api_bond_enslave_t * mp)
   unix_shared_memory_queue_t *q;
   bond_enslave_args_t _a, *ap = &_a;
 
-  memset (ap, 0, sizeof (*ap));
+  clib_memset (ap, 0, sizeof (*ap));
 
   ap->group = ntohl (mp->bond_sw_if_index);
   ap->slave = ntohl (mp->sw_if_index);
@@ -168,7 +168,7 @@ vl_api_bond_detach_slave_t_handler (vl_api_bond_detach_slave_t * mp)
   unix_shared_memory_queue_t *q;
   bond_detach_slave_args_t _a, *ap = &_a;
 
-  memset (ap, 0, sizeof (*ap));
+  clib_memset (ap, 0, sizeof (*ap));
 
   ap->slave = ntohl (mp->sw_if_index);
   bond_detach_slave (vm, ap);
@@ -194,7 +194,7 @@ bond_send_sw_interface_details (vpe_api_main_t * am,
   vl_api_sw_interface_bond_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_BOND_DETAILS);
   mp->sw_if_index = htonl (bond_if->sw_if_index);
   clib_memcpy (mp->interface_name, bond_if->interface_name,
@@ -243,7 +243,7 @@ bond_send_sw_interface_slave_details (vpe_api_main_t * am,
   vl_api_sw_interface_slave_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_SLAVE_DETAILS);
   mp->sw_if_index = htonl (slave_if->sw_if_index);
   clib_memcpy (mp->interface_name, slave_if->interface_name,

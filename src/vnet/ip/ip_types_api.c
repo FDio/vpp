@@ -38,7 +38,7 @@ ip_address_union_decode (const vl_api_address_union_t * in,
   switch (clib_net_to_host_u32 (af))
     {
     case ADDRESS_IP4:
-      memset (out, 0, sizeof (*out));
+      clib_memset (out, 0, sizeof (*out));
       clib_memcpy (&out->ip4, &in->ip4, sizeof (out->ip4));
       type = IP46_TYPE_IP4;
       break;

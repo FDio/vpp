@@ -38,7 +38,7 @@ vnet_netlink_msg_init (vnet_netlink_msg_t * m, u16 type, u16 flags,
 {
   struct nlmsghdr *nh;
   u8 *p;
-  memset (m, 0, sizeof (vnet_netlink_msg_t));
+  clib_memset (m, 0, sizeof (vnet_netlink_msg_t));
   vec_add2 (m->data, p, NLMSG_SPACE (msg_len));
   ASSERT (m->data == p);
 

@@ -130,7 +130,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
 
   /* Get domain index */
   pool_get_aligned (mm->domains, d, CLIB_CACHE_LINE_BYTES);
-  memset (d, 0, sizeof (*d));
+  clib_memset (d, 0, sizeof (*d));
   *map_domain_index = d - mm->domains;
 
   /* Init domain struct */
@@ -316,7 +316,7 @@ map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
       d->rules = clib_mem_alloc_aligned (l, CLIB_CACHE_LINE_BYTES);
       if (!d->rules)
 	return -1;
-      memset (d->rules, 0, l);
+      clib_memset (d->rules, 0, l);
     }
 
   if (psid >= (0x1 << d->psid_length))
@@ -332,7 +332,7 @@ map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
     }
   else
     {
-      memset (&d->rules[psid], 0, sizeof (ip6_address_t));
+      clib_memset (&d->rules[psid], 0, sizeof (ip6_address_t));
     }
   return 0;
 }
@@ -745,8 +745,8 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
   clib_error_t *error = NULL;
   int is_del = 0;
 
-  memset (&ip4nh, 0, sizeof (ip4nh));
-  memset (&ip6nh, 0, sizeof (ip6nh));
+  clib_memset (&ip4nh, 0, sizeof (ip4nh));
+  clib_memset (&ip6nh, 0, sizeof (ip6nh));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -974,7 +974,7 @@ format_map_domain (u8 * s, va_list * args)
   ip6_address_t ip6_prefix;
 
   if (d->rules)
-    memset (&ip6_prefix, 0, sizeof (ip6_prefix));
+    clib_memset (&ip6_prefix, 0, sizeof (ip6_prefix));
   else
     ip6_prefix = d->ip6_prefix;
 
@@ -1210,8 +1210,8 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int which, i;
   vlib_counter_t v;
 
-  memset (total_pkts, 0, sizeof (total_pkts));
-  memset (total_bytes, 0, sizeof (total_bytes));
+  clib_memset (total_pkts, 0, sizeof (total_pkts));
+  clib_memset (total_bytes, 0, sizeof (total_bytes));
 
   map_domain_counter_lock (mm);
   vec_foreach (cm, mm->domain_counters)

@@ -375,7 +375,7 @@ igmp_enable_disable (u32 sw_if_index, u8 enable, igmp_mode_t mode)
       vec_validate_init_empty (im->igmp_config_by_sw_if_index,
 			       sw_if_index, ~0);
       pool_get (im->configs, config);
-      memset (config, 0, sizeof (igmp_config_t));
+      clib_memset (config, 0, sizeof (igmp_config_t));
       config->sw_if_index = sw_if_index;
       config->igmp_group_by_key =
 	hash_create_mem (0, sizeof (igmp_key_t), sizeof (uword));

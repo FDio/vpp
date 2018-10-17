@@ -183,11 +183,11 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 	    {
 	      u8 sig[64];
 	      u8 digest[64];
-	      memset (sig, 0, sizeof (sig));
-	      memset (digest, 0, sizeof (digest));
+	      clib_memset (sig, 0, sizeof (sig));
+	      clib_memset (digest, 0, sizeof (digest));
 	      u8 *icv = ah0->auth_data;
 	      memcpy (digest, icv, icv_size);
-	      memset (icv, 0, icv_size);
+	      clib_memset (icv, 0, icv_size);
 
 	      if ((ih4->ip_version_and_header_length & 0xF0) == 0x40)
 		{

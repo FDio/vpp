@@ -89,7 +89,7 @@ stat_segment_connect (char *socket_name)
   int mfd = -1;
   int sock;
 
-  memset (sm, 0, sizeof (*sm));
+  clib_memset (sm, 0, sizeof (*sm));
   if ((sock = socket (AF_UNIX, SOCK_SEQPACKET, 0)) < 0)
     {
       perror ("Couldn't open socket");

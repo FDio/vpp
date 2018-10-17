@@ -161,10 +161,10 @@ lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t * pair,
   if (NULL == lgt)
     {
       pool_get (lisp_gpe_tunnel_pool, lgt);
-      memset (lgt, 0, sizeof (*lgt));
+      clib_memset (lgt, 0, sizeof (*lgt));
 
       lgt->key = clib_mem_alloc (sizeof (*lgt->key));
-      memset (lgt->key, 0, sizeof (*lgt->key));
+      clib_memset (lgt->key, 0, sizeof (*lgt->key));
 
       lgt->key->rmt = pair->rmt_loc;
       lgt->key->lcl = pair->lcl_loc;

@@ -80,7 +80,7 @@ send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
   vl_api_l2_xconnect_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_L2_XCONNECT_DETAILS);
   mp->context = context;
   mp->rx_sw_if_index = htonl (rx_sw_if_index);
@@ -135,7 +135,7 @@ send_l2fib_table_entry (vpe_api_main_t * am,
   vl_api_l2_fib_table_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_L2_FIB_TABLE_DETAILS);
 
   mp->bd_id =
@@ -456,7 +456,7 @@ send_bridge_domain_details (l2input_main_t * l2im,
 
   mp = vl_msg_api_alloc (sizeof (*mp) +
 			 (n_sw_ifs * sizeof (vl_api_bridge_domain_sw_if_t)));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_BRIDGE_DOMAIN_DETAILS);
   mp->bd_id = ntohl (bd_config->bd_id);
   mp->flood = bd_feature_flood (bd_config);
@@ -781,7 +781,7 @@ send_bd_ip_mac_entry (vpe_api_main_t * am,
   vl_api_bd_ip_mac_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_BD_IP_MAC_DETAILS);
 
   mp->bd_id = ntohl (bd_id);

@@ -523,7 +523,7 @@ dhcp6_pd_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		sizeof (vl_api_dhcp6_pd_prefix_info_t);
 	      vl_api_dhcp6_pd_reply_event_t *event =
 		clib_mem_alloc (event_size);
-	      memset (event, 0, event_size);
+	      clib_memset (event, 0, event_size);
 
 	      event->sw_if_index = htonl (events[i].body.sw_if_index);
 	      event->server_index = htonl (events[i].body.server_index);

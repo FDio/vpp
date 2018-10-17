@@ -583,7 +583,7 @@ unformat_udp_header (unformat_input_t * input, va_list * args)
     udp = p;
   }
 
-  memset (udp, 0, sizeof (udp[0]));
+  clib_memset (udp, 0, sizeof (udp[0]));
   if (unformat (input, "src-port %d dst-port %d", &src_port, &dst_port))
     {
       udp->src_port = clib_host_to_net_u16 (src_port);
