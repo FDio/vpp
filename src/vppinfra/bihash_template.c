@@ -295,7 +295,8 @@ BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
 
   v = BV (clib_bihash_get_value) (h, b->offset);
 
-  clib_memcpy (working_copy, v, sizeof (*v) * (1 << b->log2_pages));
+  memcpy_s_inline (working_copy, sizeof (*v) * (1 << b->log2_pages),
+		   v, sizeof (*v) * (1 << b->log2_pages));
   working_bucket.as_u64 = b->as_u64;
   working_bucket.offset = BV (clib_bihash_get_offset) (h, working_copy);
   CLIB_MEMORY_BARRIER ();
@@ -338,8 +339,9 @@ BV (split_and_rehash)
 	  /* Empty slot */
 	  if (BV (clib_bihash_is_free) (&(new_v->kvp[j])))
 	    {
-	      clib_memcpy (&(new_v->kvp[j]), &(old_values->kvp[i]),
-			   sizeof (new_v->kvp[j]));
+	      memcpy_s_inline (&(new_v->kvp[j]),
+			       sizeof (new_v->kvp[j]),
+			       &(old_values->kvp[i]), sizeof (new_v->kvp[j]));
 	      goto doublebreak;
 	    }
 	}
@@ -383,8 +385,10 @@ BV (split_and_rehash_linear)
 	  if (BV (clib_bihash_is_free) (&(new_values->kvp[j])))
 	    {
 	      /* Copy the old value and move along */
-	      clib_memcpy (&(new_values->kvp[j]), &(old_values->kvp[i]),
-			   sizeof (new_values->kvp[j]));
+	      memcpy_s_inline (&(new_values->kvp[j]),
+			       sizeof (new_values->kvp[j]),
+			       &(old_values->kvp[i]),
+			       sizeof (new_values->kvp[j]));
 	      j++;
 	      goto doublebreak;
 	    }
@@ -472,7 +476,8 @@ static inline int BV (clib_bihash_add_del_inline)
 	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
 	    {
 	      CLIB_MEMORY_BARRIER ();	/* Add a delay */
-	      clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
+	      memcpy_s_inline (&(v->kvp[i]), sizeof (*add_v), add_v,
+			       sizeof (*add_v));
 	      BV (clib_bihash_unlock_bucket) (b);
 	      return (0);
 	    }
@@ -488,10 +493,12 @@ static inline int BV (clib_bihash_add_del_inline)
 	       * Copy the value first, so that if a reader manages
 	       * to match the new key, the value will be right...
 	       */
-	      clib_memcpy (&(v->kvp[i].value),
-			   &add_v->value, sizeof (add_v->value));
+	      memcpy_s_inline (&(v->kvp[i].value),
+			       sizeof (add_v->value),
+			       &add_v->value, sizeof (add_v->value));
 	      CLIB_MEMORY_BARRIER ();	/* Make sure the value has settled */
-	      clib_memcpy (&(v->kvp[i]), &add_v->key, sizeof (add_v->key));
+	      memcpy_s_inline (&(v->kvp[i]), sizeof (add_v->key),
+			       &add_v->key, sizeof (add_v->key));
 	      b->refcnt++;
 	      ASSERT (b->refcnt > 0);
 	      BV (clib_bihash_unlock_bucket) (b);
@@ -506,7 +513,8 @@ static inline int BV (clib_bihash_add_del_inline)
 	      if (is_stale_cb (&(v->kvp[i]), arg))
 		{
 		  CLIB_MEMORY_BARRIER ();
-		  clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
+		  memcpy_s_inline (&(v->kvp[i]), sizeof (*add_v),
+				   add_v, sizeof (*add_v));
 		  BV (clib_bihash_unlock_bucket) (b);
 		  return (0);
 		}
@@ -602,7 +610,8 @@ static inline int BV (clib_bihash_add_del_inline)
     {
       if (BV (clib_bihash_is_free) (&(new_v->kvp[i])))
 	{
-	  clib_memcpy (&(new_v->kvp[i]), add_v, sizeof (*add_v));
+	  memcpy_s_inline (&(new_v->kvp[i]),
+			   sizeof (*add_v), add_v, sizeof (*add_v));
 	  goto expand_ok;
 	}
     }

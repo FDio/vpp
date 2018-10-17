@@ -85,6 +85,20 @@ clib_memswap (void *_a, void *_b, uword bytes)
     }
 }
 
+void
+clib_c11_violation (const char *fn, int line, const char *s)
+{
+  _clib_error (CLIB_ERROR_WARNING, (char *) fn, line, (char *) s);
+}
+
+errno_t
+memcpy_s (void *__restrict__ dest, rsize_t dmax,
+	  const void *__restrict__ src, rsize_t n)
+{
+  return memcpy_s_inline (dest, dmax, src, n);
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
