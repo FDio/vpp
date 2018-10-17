@@ -94,7 +94,7 @@ _(SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY,                       \
 do {                                                            \
     vam->result_ready = 0;                                      \
     mp = vl_msg_api_alloc(sizeof(*mp));                         \
-    memset (mp, 0, sizeof (*mp));                               \
+    clib_memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);      \
     mp->client_index = vam->my_client_index;                    \
 } while(0);
@@ -103,7 +103,7 @@ do {                                                            \
 do {                                                            \
     vam->result_ready = 0;                                      \
     mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
-    memset (mp, 0, sizeof (*mp));                               \
+    clib_memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T + dm->msg_id_base);      \
     mp->client_index = vam->my_client_index;                    \
 } while(0);

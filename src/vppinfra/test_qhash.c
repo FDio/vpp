@@ -54,7 +54,7 @@ test_qhash_main (unformat_input_t * input)
   test_qhash_main_t _tm, *tm = &_tm;
   uword i, iter;
 
-  memset (tm, 0, sizeof (tm[0]));
+  clib_memset (tm, 0, sizeof (tm[0]));
   tm->n_iter = 10;
   tm->seed = 1;
   tm->n_keys = 10;

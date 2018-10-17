@@ -262,8 +262,9 @@ vapi_ctx_alloc (vapi_ctx_t * result)
     {
       goto fail;
     }
-  memset (ctx->vapi_msg_id_t_to_vl_msg_id, ~0,
-	  __vapi_metadata.count * sizeof (*ctx->vapi_msg_id_t_to_vl_msg_id));
+  clib_memset (ctx->vapi_msg_id_t_to_vl_msg_id, ~0,
+	       __vapi_metadata.count *
+	       sizeof (*ctx->vapi_msg_id_t_to_vl_msg_id));
   ctx->event_cbs = calloc (__vapi_metadata.count, sizeof (*ctx->event_cbs));
   if (!ctx->event_cbs)
     {
@@ -318,7 +319,7 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
       return VAPI_ENOMEM;
     }
   ctx->requests = tmp;
-  memset (ctx->requests, 0, size);
+  clib_memset (ctx->requests, 0, size);
   /* coverity[MISSING_LOCK] - 177211 requests_mutex is not needed here */
   ctx->requests_start = ctx->requests_count = 0;
   if (chroot_prefix)
@@ -651,8 +652,8 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
 							requests_start].callback_ctx,
 						       VAPI_ENORESP, true,
 						       NULL);
-	  memset (&ctx->requests[ctx->requests_start], 0,
-		  sizeof (ctx->requests[ctx->requests_start]));
+	  clib_memset (&ctx->requests[ctx->requests_start], 0,
+		       sizeof (ctx->requests[ctx->requests_start]));
 	  ++ctx->requests_start;
 	  --ctx->requests_count;
 	  if (ctx->requests_start == ctx->requests_size)
@@ -693,8 +694,8 @@ vapi_dispatch_response (vapi_ctx_t ctx, vapi_msg_id_t id,
 	}
       if (is_last)
 	{
-	  memset (&ctx->requests[ctx->requests_start], 0,
-		  sizeof (ctx->requests[ctx->requests_start]));
+	  clib_memset (&ctx->requests[ctx->requests_start], 0,
+		       sizeof (ctx->requests[ctx->requests_start]));
 	  ++ctx->requests_start;
 	  --ctx->requests_count;
 	  if (ctx->requests_start == ctx->requests_size)

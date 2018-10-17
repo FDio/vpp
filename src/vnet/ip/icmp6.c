@@ -786,24 +786,25 @@ icmp6_init (vlib_main_t * vm)
   foreach_icmp6_code;
 #undef _
 
-  memset (cm->input_next_index_by_type,
-	  ICMP_INPUT_NEXT_DROP, sizeof (cm->input_next_index_by_type));
-  memset (cm->max_valid_code_by_type, 0, sizeof (cm->max_valid_code_by_type));
+  clib_memset (cm->input_next_index_by_type,
+	       ICMP_INPUT_NEXT_DROP, sizeof (cm->input_next_index_by_type));
+  clib_memset (cm->max_valid_code_by_type, 0,
+	       sizeof (cm->max_valid_code_by_type));
 
 #define _(a,n,t) cm->max_valid_code_by_type[ICMP6_##a] = clib_max (cm->max_valid_code_by_type[ICMP6_##a], n);
   foreach_icmp6_code;
 #undef _
 
-  memset (cm->min_valid_hop_limit_by_type, 0,
-	  sizeof (cm->min_valid_hop_limit_by_type));
+  clib_memset (cm->min_valid_hop_limit_by_type, 0,
+	       sizeof (cm->min_valid_hop_limit_by_type));
   cm->min_valid_hop_limit_by_type[ICMP6_router_solicitation] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_router_advertisement] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_neighbor_solicitation] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_neighbor_advertisement] = 255;
   cm->min_valid_hop_limit_by_type[ICMP6_redirect] = 255;
 
-  memset (cm->min_valid_length_by_type, sizeof (icmp46_header_t),
-	  sizeof (cm->min_valid_length_by_type));
+  clib_memset (cm->min_valid_length_by_type, sizeof (icmp46_header_t),
+	       sizeof (cm->min_valid_length_by_type));
   cm->min_valid_length_by_type[ICMP6_router_solicitation] =
     sizeof (icmp6_neighbor_discovery_header_t);
   cm->min_valid_length_by_type[ICMP6_router_advertisement] =

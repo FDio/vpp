@@ -42,7 +42,7 @@ clib_maplog_init (clib_maplog_init_args_t * a)
   if (mm->flags & CLIB_MAPLOG_FLAG_INIT)
     return (-2);
 
-  memset (mm, 0, sizeof (*mm));
+  clib_memset (mm, 0, sizeof (*mm));
 
   record_size_in_cache_lines =
     (a->record_size_in_bytes + CLIB_CACHE_LINE_BYTES -
@@ -113,7 +113,7 @@ clib_maplog_init (clib_maplog_init_args_t * a)
       (void) close (fd);
     }
 
-  memset (h, 0, sizeof (*h));
+  clib_memset (h, 0, sizeof (*h));
   h->maplog_major_version = MAPLOG_MAJOR_VERSION;
   h->maplog_minor_version = MAPLOG_MINOR_VERSION;
   h->maplog_patch_version = MAPLOG_PATCH_VERSION;
@@ -321,7 +321,7 @@ clib_maplog_close (clib_maplog_main_t * mm)
 
   vec_free (mm->file_basename);
   vec_free (mm->header_filename);
-  memset (mm, 0, sizeof (*mm));
+  clib_memset (mm, 0, sizeof (*mm));
 }
 
 /**

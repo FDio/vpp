@@ -94,7 +94,7 @@ load_balance_alloc_i (void)
     load_balance_t *lb;
 
     pool_get_aligned(load_balance_pool, lb, CLIB_CACHE_LINE_BYTES);
-    memset(lb, 0, sizeof(*lb));
+    clib_memset(lb, 0, sizeof(*lb));
 
     lb->lb_map = INDEX_INVALID;
     lb->lb_urpf = INDEX_INVALID;

@@ -266,7 +266,7 @@ main (int argc, char **argv)
       exit (1);
     }
 
-  memset (&tm->send_data_addr, 0, sizeof (tm->send_data_addr));
+  clib_memset (&tm->send_data_addr, 0, sizeof (tm->send_data_addr));
   tm->send_data_addr.sin_family = AF_INET;
   tm->send_data_addr.sin_addr.s_addr = collector_ip.as_u32;
   tm->send_data_addr.sin_port = htons (collector_port);
@@ -281,7 +281,7 @@ main (int argc, char **argv)
 	break;
       /* Poll for stats */
       mp = vl_msg_api_alloc (sizeof (*mp));
-      memset (mp, 0, sizeof (*mp));
+      clib_memset (mp, 0, sizeof (*mp));
       mp->_vl_msg_id = ntohs (VL_API_VNET_GET_SUMMARY_STATS);
       mp->client_index = tm->my_client_index;
       vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);

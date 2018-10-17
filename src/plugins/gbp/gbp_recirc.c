@@ -46,7 +46,7 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
       fib_protocol_t fproto;
 
       pool_get (gbp_recirc_pool, gr);
-      memset (gr, 0, sizeof (*gr));
+      clib_memset (gr, 0, sizeof (*gr));
       gri = gr - gbp_recirc_pool;
 
       gr->gr_epg = epg_id;

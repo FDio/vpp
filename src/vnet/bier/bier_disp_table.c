@@ -75,7 +75,7 @@ bier_disp_table_add_or_lock (u32 table_id)
         /**
          * Set the result for each entry in the DB to be invalid
          */
-        memset(bdt->bdt_db, 0xff, sizeof(bdt->bdt_db));
+        clib_memset(bdt->bdt_db, 0xff, sizeof(bdt->bdt_db));
     }
     else
     {

@@ -212,7 +212,7 @@ vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
     return;
 
   rmp = vl_msg_api_alloc (msg_size);
-  memset (rmp, 0, msg_size);
+  clib_memset (rmp, 0, msg_size);
   rmp->_vl_msg_id =
     ntohs (VL_API_ACL_PLUGIN_GET_VERSION_REPLY + am->msg_id_base);
   rmp->context = mp->context;
@@ -390,7 +390,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   for (i = 0; i < count; i++)
     {
       r = vec_elt_at_index (acl_new_rules, i);
-      memset (r, 0, sizeof (*r));
+      clib_memset (r, 0, sizeof (*r));
       r->is_permit = rules[i].is_permit;
       r->is_ipv6 = rules[i].is_ipv6;
       if (r->is_ipv6)
@@ -418,7 +418,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
     {
       /* Get ACL index */
       pool_get_aligned (am->acls, a, CLIB_CACHE_LINE_BYTES);
-      memset (a, 0, sizeof (*a));
+      clib_memset (a, 0, sizeof (*a));
       /* Will return the newly allocated ACL index */
       *acl_list_index = a - am->acls;
     }
@@ -1105,7 +1105,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	 */
 	for (tags = 2; tags >= 0; tags--)
 	  {
-	    memset (mask, 0, sizeof (mask));
+	    clib_memset (mask, 0, sizeof (mask));
 	    /* source MAC address */
 	    memcpy (&mask[6], mt->mac_mask, 6);
 
@@ -1113,20 +1113,20 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	      {
 	      case 0:
 	      default:
-		memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+		clib_memset (&mask[12], 0xff, 2);	/* ethernet protocol */
 		l3_offset = 14;
 		last_tag_table = &mt->arp_table_index;
 		break;
 	      case 1:
-		memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-		memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+		clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		clib_memset (&mask[16], 0xff, 2);	/* ethernet protocol */
 		l3_offset = 18;
 		last_tag_table = &mt->arp_dot1q_table_index;
 		break;
 	      case 2:
-		memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-		memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
-		memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+		clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		clib_memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
+		clib_memset (&mask[20], 0xff, 2);	/* ethernet protocol */
 		l3_offset = 22;
 		last_tag_table = &mt->arp_dot1ad_table_index;
 		break;
@@ -1151,26 +1151,26 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	    if (mt->has_egress)
 	      {
 		/* egress ARP table */
-		memset (mask, 0, sizeof (mask));
+		clib_memset (mask, 0, sizeof (mask));
 
 		switch (tags)
 		  {
 		  case 0:
 		  default:
-		    memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+		    clib_memset (&mask[12], 0xff, 2);	/* ethernet protocol */
 		    l3_offset = 14;
 		    out_last_tag_table = &mt->out_arp_table_index;
 		    break;
 		  case 1:
-		    memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-		    memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+		    clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		    clib_memset (&mask[16], 0xff, 2);	/* ethernet protocol */
 		    l3_offset = 18;
 		    out_last_tag_table = &mt->out_arp_dot1q_table_index;
 		    break;
 		  case 2:
-		    memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-		    memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
-		    memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+		    clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		    clib_memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
+		    clib_memset (&mask[20], 0xff, 2);	/* ethernet protocol */
 		    l3_offset = 22;
 		    out_last_tag_table = &mt->out_arp_dot1ad_table_index;
 		    break;
@@ -1207,25 +1207,25 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
      */
     for (tags = 2; tags >= 0; tags--)
       {
-	memset (mask, 0, sizeof (mask));
+	clib_memset (mask, 0, sizeof (mask));
 	memcpy (&mask[6], mt->mac_mask, 6);
 	l3_src_offs = tags * 4 + get_l3_src_offset (is6);
 	switch (tags)
 	  {
 	  case 0:
 	  default:
-	    memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+	    clib_memset (&mask[12], 0xff, 2);	/* ethernet protocol */
 	    last_tag_table = &mt->table_index;
 	    break;
 	  case 1:
-	    memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-	    memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+	    clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+	    clib_memset (&mask[16], 0xff, 2);	/* ethernet protocol */
 	    last_tag_table = &mt->dot1q_table_index;
 	    break;
 	  case 2:
-	    memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-	    memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
-	    memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+	    clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+	    clib_memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
+	    clib_memset (&mask[20], 0xff, 2);	/* ethernet protocol */
 	    last_tag_table = &mt->dot1ad_table_index;
 	    break;
 	  }
@@ -1253,7 +1253,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
       {
 	for (tags = 2; tags >= 0; tags--)
 	  {
-	    memset (mask, 0, sizeof (mask));
+	    clib_memset (mask, 0, sizeof (mask));
 	    /* MAC destination */
 	    memcpy (&mask[0], mt->mac_mask, 6);
 	    l3_dst_offs = tags * 4 + get_l3_dst_offset (is6);
@@ -1261,18 +1261,18 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	      {
 	      case 0:
 	      default:
-		memset (&mask[12], 0xff, 2);	/* ethernet protocol */
+		clib_memset (&mask[12], 0xff, 2);	/* ethernet protocol */
 		out_last_tag_table = &mt->out_table_index;
 		break;
 	      case 1:
-		memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-		memset (&mask[16], 0xff, 2);	/* ethernet protocol */
+		clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		clib_memset (&mask[16], 0xff, 2);	/* ethernet protocol */
 		out_last_tag_table = &mt->out_dot1q_table_index;
 		break;
 	      case 2:
-		memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
-		memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
-		memset (&mask[20], 0xff, 2);	/* ethernet protocol */
+		clib_memset (&mask[12], 0xff, 2);	/* VLAN tag1 */
+		clib_memset (&mask[16], 0xff, 2);	/* VLAN tag2 */
+		clib_memset (&mask[20], 0xff, 2);	/* ethernet protocol */
 		out_last_tag_table = &mt->out_dot1ad_table_index;
 		break;
 	      }
@@ -1327,7 +1327,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 
       for (tags = 2; tags >= 0; tags--)
 	{
-	  memset (mask, 0, sizeof (mask));
+	  clib_memset (mask, 0, sizeof (mask));
 	  l3_src_offs = tags * 4 + get_l3_src_offset (is6);
 	  memcpy (&mask[6], a->rules[i].src_mac, 6);
 	  switch (tags)
@@ -1369,13 +1369,13 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  vnet_classify_add_del_session (cm, tag_table,
 					 mask, a->rules[i].is_permit ? ~0 : 0,
 					 i, 0, action, metadata, 1);
-	  memset (&mask[12], 0, sizeof (mask) - 12);
+	  clib_memset (&mask[12], 0, sizeof (mask) - 12);
 	}
 
       /* add ARP table entry too */
       if (!is6 && (mvec[match_type_index].arp_table_index != ~0))
 	{
-	  memset (mask, 0, sizeof (mask));
+	  clib_memset (mask, 0, sizeof (mask));
 	  memcpy (&mask[6], a->rules[i].src_mac, 6);
 
 	  for (tags = 2; tags >= 0; tags--)
@@ -1422,7 +1422,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  /* Add the egress entry with destination set */
 	  for (tags = 2; tags >= 0; tags--)
 	    {
-	      memset (mask, 0, sizeof (mask));
+	      clib_memset (mask, 0, sizeof (mask));
 	      l3_dst_offs = tags * 4 + get_l3_dst_offset (is6);
 	      /* src mac in the other direction becomes dst */
 	      memcpy (&mask[0], a->rules[i].src_mac, 6);
@@ -1468,7 +1468,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 					     mask,
 					     a->rules[i].is_permit ? ~0 : 0,
 					     i, 0, action, metadata, 1);
-	      // memset (&mask[12], 0, sizeof (mask) - 12);
+	      // clib_memset (&mask[12], 0, sizeof (mask) - 12);
 	    }
 
 	  /* add ARP table entry too */
@@ -1476,7 +1476,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	    {
 	      for (tags = 2; tags >= 0; tags--)
 		{
-		  memset (mask, 0, sizeof (mask));
+		  clib_memset (mask, 0, sizeof (mask));
 		  switch (tags)
 		    {
 		    case 0:
@@ -1644,7 +1644,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
     {
       /* Get ACL index */
       pool_get_aligned (am->macip_acls, a, CLIB_CACHE_LINE_BYTES);
-      memset (a, 0, sizeof (*a));
+      clib_memset (a, 0, sizeof (*a));
       /* Will return the newly allocated ACL index */
       *acl_list_index = a - am->macip_acls;
     }
@@ -1980,7 +1980,7 @@ send_acl_details (acl_main_t * am, vl_api_registration_t * reg,
   void *oldheap = acl_set_heap (am);
 
   mp = vl_msg_api_alloc (msg_size);
-  memset (mp, 0, msg_size);
+  clib_memset (mp, 0, msg_size);
   mp->_vl_msg_id = ntohs (VL_API_ACL_DETAILS + am->msg_id_base);
 
   /* fill in the message */
@@ -2066,7 +2066,7 @@ send_acl_interface_list_details (acl_main_t * am,
   msg_size += sizeof (mp->acls[0]) * count;
 
   mp = vl_msg_api_alloc (msg_size);
-  memset (mp, 0, msg_size);
+  clib_memset (mp, 0, msg_size);
   mp->_vl_msg_id =
     ntohs (VL_API_ACL_INTERFACE_LIST_DETAILS + am->msg_id_base);
 
@@ -2218,7 +2218,7 @@ send_macip_acl_details (acl_main_t * am, vl_api_registration_t * reg,
   int msg_size = sizeof (*mp) + (acl ? sizeof (mp->r[0]) * acl->count : 0);
 
   mp = vl_msg_api_alloc (msg_size);
-  memset (mp, 0, msg_size);
+  clib_memset (mp, 0, msg_size);
   mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_DETAILS + am->msg_id_base);
 
   /* fill in the message */
@@ -2308,7 +2308,7 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
     return;
 
   rmp = vl_msg_api_alloc (msg_size);
-  memset (rmp, 0, msg_size);
+  clib_memset (rmp, 0, msg_size);
   rmp->_vl_msg_id =
     ntohs (VL_API_MACIP_ACL_INTERFACE_GET_REPLY + am->msg_id_base);
   rmp->context = mp->context;
@@ -2332,7 +2332,7 @@ send_macip_acl_interface_list_details (acl_main_t * am,
   int msg_size = sizeof (*rmp) + sizeof (rmp->acls[0]);
 
   rmp = vl_msg_api_alloc (msg_size);
-  memset (rmp, 0, msg_size);
+  clib_memset (rmp, 0, msg_size);
   rmp->_vl_msg_id =
     ntohs (VL_API_MACIP_ACL_INTERFACE_LIST_DETAILS + am->msg_id_base);
 
@@ -2448,7 +2448,7 @@ send_acl_interface_etype_whitelist_details (acl_main_t * am,
   msg_size += sizeof (mp->whitelist[0]) * count;
 
   mp = vl_msg_api_alloc (msg_size);
-  memset (mp, 0, msg_size);
+  clib_memset (mp, 0, msg_size);
   mp->_vl_msg_id =
     ntohs (VL_API_ACL_INTERFACE_ETYPE_WHITELIST_DETAILS + am->msg_id_base);
 
@@ -3533,7 +3533,7 @@ acl_init (vlib_main_t * vm)
 {
   acl_main_t *am = &acl_main;
   clib_error_t *error = 0;
-  memset (am, 0, sizeof (*am));
+  clib_memset (am, 0, sizeof (*am));
   am->vlib_main = vm;
   am->vnet_main = vnet_get_main ();
   am->log_default = vlib_log_register_class ("acl_plugin", 0);

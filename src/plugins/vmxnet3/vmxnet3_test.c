@@ -104,7 +104,7 @@ api_vmxnet3_create (vat_main_t * vam)
   int ret;
   u32 x[4];
 
-  memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
+  clib_memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {

@@ -306,7 +306,7 @@ create_xcrw_interface (vlib_main_t * vm)
   u32 sw_if_index;
 
   /* mac address doesn't really matter */
-  memset (address, 0, sizeof (address));
+  clib_memset (address, 0, sizeof (address));
   address[2] = 0x12;
 
   /* can returns error iff phy != 0 */
@@ -352,7 +352,7 @@ vnet_configure_l2_xcrw (vlib_main_t * vm, vnet_main_t * vnm,
       vec_validate (xcm->adj_by_sw_if_index, t->l2_sw_if_index);
 
       a = vec_elt_at_index (xcm->adj_by_sw_if_index, t->l2_sw_if_index);
-      memset (a, 0, sizeof (*a));
+      clib_memset (a, 0, sizeof (*a));
 
       a->rewrite_header.sw_if_index = tx_fib_index;
 
@@ -382,7 +382,7 @@ vnet_configure_l2_xcrw (vlib_main_t * vm, vnet_main_t * vnm,
 
       a = vec_elt_at_index (xcm->adj_by_sw_if_index, t->l2_sw_if_index);
       /* Reset adj to drop traffic */
-      memset (a, 0, sizeof (*a));
+      clib_memset (a, 0, sizeof (*a));
 
       set_int_l2_mode (vm, vnm, MODE_L3, t->l2_sw_if_index, 0,
 		       L2_BD_PORT_TYPE_NORMAL, 0, 0);

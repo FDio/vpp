@@ -212,7 +212,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    {
 	      ip_hdr_size = sizeof (ip4_header_t);
 	      oh0 = vlib_buffer_get_current (i_b0);
-	      memset (oh0, 0, sizeof (ip4_and_ah_header_t));
+	      clib_memset (oh0, 0, sizeof (ip4_and_ah_header_t));
 
 	      if (PREDICT_TRUE (sa0->is_tunnel))
 		{
@@ -265,11 +265,11 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    }
 
 	  u8 sig[64];
-	  memset (sig, 0, sizeof (sig));
+	  clib_memset (sig, 0, sizeof (sig));
 	  u8 *digest =
 	    vlib_buffer_get_current (i_b0) + ip_hdr_size +
 	    sizeof (ah_header_t);
-	  memset (digest, 0, icv_size);
+	  clib_memset (digest, 0, icv_size);
 
 	  unsigned size = hmac_calc (sa0->integ_alg, sa0->integ_key,
 				     sa0->integ_key_len,

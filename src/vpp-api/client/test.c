@@ -55,7 +55,7 @@ volatile u16 result_msg_id;
 #define M_NOALLOC(T,t)                          \
   do {						\
     result_ready = 0;                           \
-    memset (mp, 0, sizeof (*mp));		\
+    clib_memset (mp, 0, sizeof (*mp));		\
     mp->_vl_msg_id = ntohs (VL_API_##T);	\
     mp->client_index = am->my_client_index;	\
   } while(0);

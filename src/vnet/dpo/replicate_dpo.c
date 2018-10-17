@@ -90,7 +90,7 @@ replicate_alloc_i (void)
     replicate_t *rep;
 
     pool_get_aligned(replicate_pool, rep, CLIB_CACHE_LINE_BYTES);
-    memset(rep, 0, sizeof(*rep));
+    clib_memset(rep, 0, sizeof(*rep));
 
     vlib_validate_combined_counter(&(replicate_main.repm_counters),
                                    replicate_get_index(rep));

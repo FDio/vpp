@@ -31,7 +31,7 @@ l3_proxy_dpo_alloc (void)
     l3_proxy_dpo_t *l3p;
 
     pool_get_aligned(l3_proxy_dpo_pool, l3p, CLIB_CACHE_LINE_BYTES);
-    memset(l3p, 0, sizeof(*l3p));
+    clib_memset(l3p, 0, sizeof(*l3p));
 
     return (l3p);
 }
