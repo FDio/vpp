@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d39c2f4c_0682e658",
+        "filename": "src/vnet/devices/pipe/pipe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-17T20:03:31Z",
+      "side": 1,
+      "message": "I am not familiar with how pipe-rx node is used. I wonder if this is correct. Which node prior to pipe-rx sets up the l2_hdr_offset and l2_len field here?  Is it one of the device-input node?  I am not sure they always set l2_hdr_offset, not to mention l2_len which is usually set by ethernet-input node only if interface is in L2 mode.",
+      "range": {
+        "startLine": 363,
+        "startChar": 39,
+        "endLine": 363,
+        "endChar": 50
+      },
+      "revId": "150fa46d97dff1f1837d51b1a0530be70ccb6bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e7037aa0_c364a53d",
+        "filename": "src/vnet/l2/l2_in_out_feat_arc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-17T20:03:31Z",
+      "side": 1,
+      "message": "Did you notice what path not set l2_len properly?  Is it the pipe-rx node?  Any packets that\u0027s sent to l2-input node is supposed to have it set properly or VLAN tag rewrite operation cannot work properly.",
+      "range": {
+        "startLine": 173,
+        "startChar": 37,
+        "endLine": 173,
+        "endChar": 43
+      },
+      "revId": "150fa46d97dff1f1837d51b1a0530be70ccb6bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
