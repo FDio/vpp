@@ -1559,13 +1559,14 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tcp_connection_t *tc;
   stream_session_t *s, *s1;
   u8 cmp = 0, is_filtered = 0;
+  u32 sidx;
 
   /*
    * Allocate fake session and connection 1
    */
   pool_get (smm->sessions[0], s);
   memset (s, 0, sizeof (*s));
-  s->session_index = s - smm->sessions[0];
+  s->session_index = sidx = s - smm->sessions[0];
 
   pool_get (tm->connections[0], tc);
   memset (tc, 0, sizeof (*tc));
@@ -1606,7 +1607,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Confirm that connection lookup works
    */
 
-  s1 = pool_elt_at_index (smm->sessions[0], 0);
+  s1 = pool_elt_at_index (smm->sessions[0], sidx);
   session_lookup_add_connection (tc1, session_handle (s1));
   tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
 					 &tc1->rmt_ip.ip4,

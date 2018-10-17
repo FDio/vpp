@@ -26,6 +26,18 @@ static tls_engine_vft_t *tls_vfts;
 
 void tls_disconnect (u32 ctx_handle, u32 thread_index);
 
+static void
+tls_disconnect_transport (tls_ctx_t * ctx)
+{
+  vnet_disconnect_args_t a = {
+    .handle = ctx->tls_session_handle,
+    .app_index = tls_main.app_index,
+  };
+
+  if (vnet_disconnect_session (&a))
+    clib_warning ("disconnect returned");
+}
+
 tls_engine_type_t
 tls_get_available_engine (void)
 {
@@ -91,6 +103,8 @@ tls_listener_ctx_alloc (void)
 void
 tls_listener_ctx_free (tls_ctx_t * ctx)
 {
+  if (CLIB_DEBUG)
+    memset (ctx, 0xfb, sizeof (*ctx));
   pool_put (tls_main.listener_ctx_pool, ctx);
 }
 
@@ -226,7 +240,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   app_wrk = app_worker_get_if_valid (ctx->parent_app_index);
   if (!app_wrk)
     {
-      tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
+      tls_disconnect_transport (ctx);
       return -1;
     }
 
@@ -249,16 +263,16 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
 
   ctx->app_session_handle = session_handle (app_session);
   ctx->c_s_index = app_session->session_index;
-  app_session->session_state = SESSION_STATE_READY;
+  app_session->session_state = SESSION_STATE_CONNECTING;
   if (cb_fn (ctx->parent_app_index, ctx->parent_app_api_context,
 	     app_session, 0 /* not failed */ ))
     {
       TLS_DBG (1, "failed to notify app");
       tls_disconnect (ctx->tls_ctx_handle, vlib_get_thread_index ());
-      session_free_w_fifos (app_session);
       return -1;
     }
 
+  app_session->session_state = SESSION_STATE_READY;
   session_lookup_add_connection (&ctx->connection,
 				 session_handle (app_session));
 
@@ -553,15 +567,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
   TLS_DBG (1, "Disconnecting %x", ctx_handle);
 
   ctx = tls_ctx_get (ctx_handle);
-
-  vnet_disconnect_args_t a = {
-    .handle = ctx->tls_session_handle,
-    .app_index = tls_main.app_index,
-  };
-
-  if (vnet_disconnect_session (&a))
-    clib_warning ("disconnect returned");
-
+  tls_disconnect_transport (ctx);
   stream_session_delete_notify (&ctx->connection);
   tls_ctx_free (ctx);
 }
