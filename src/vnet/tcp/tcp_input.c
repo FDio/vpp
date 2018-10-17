@@ -622,7 +622,7 @@ scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
 
   /* Poison the entry */
   if (CLIB_DEBUG > 0)
-    memset (hole, 0xfe, sizeof (*hole));
+    clib_memset (hole, 0xfe, sizeof (*hole));
 
   pool_put (sb->holes, hole);
 }
@@ -635,7 +635,7 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
   u32 hole_index;
 
   pool_get (sb->holes, hole);
-  memset (hole, 0, sizeof (*hole));
+  clib_memset (hole, 0, sizeof (*hole));
 
   hole->start = start;
   hole->end = end;

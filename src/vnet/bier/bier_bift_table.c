@@ -54,7 +54,7 @@ bier_bift_table_entry_add (bier_bift_id_t id,
          */
         bier_bift_table = clib_mem_alloc_aligned(sizeof(*bier_bift_table),
                                                  CLIB_CACHE_LINE_BYTES);
-        memset(bier_bift_table, 0, sizeof(*bier_bift_table));
+        clib_memset(bier_bift_table, 0, sizeof(*bier_bift_table));
 
         for (ii = 0; ii < BIER_BIFT_N_ENTRIES; ii++)
         {

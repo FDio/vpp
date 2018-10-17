@@ -69,7 +69,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
   ip6_sr_policy_t *sr_policy = 0;
   uword *p = 0;
 
-  memset (&key, 0, sizeof (sr_steering_key_t));
+  clib_memset (&key, 0, sizeof (sr_steering_key_t));
 
   /* Compute the steer policy key */
   if (traffic_type == SR_STEER_IPV4 || traffic_type == SR_STEER_IPV6)
@@ -245,7 +245,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 
   /* Create a new steering policy */
   pool_get (sm->steer_policies, steer_pl);
-  memset (steer_pl, 0, sizeof (*steer_pl));
+  clib_memset (steer_pl, 0, sizeof (*steer_pl));
 
   if (traffic_type == SR_STEER_IPV4 || traffic_type == SR_STEER_IPV6)
     {
@@ -379,7 +379,7 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   u8 sr_policy_set = 0;
 
-  memset (&prefix, 0, sizeof (ip46_address_t));
+  clib_memset (&prefix, 0, sizeof (ip46_address_t));
 
   int rv;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

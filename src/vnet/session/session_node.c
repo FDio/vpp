@@ -159,7 +159,7 @@ session_mq_disconnected_handler (void *data)
 				       SVM_Q_WAIT, msg);
   svm_msg_q_unlock (app_wrk->event_queue);
   evt = svm_msg_q_msg_data (app_wrk->event_queue, msg);
-  memset (evt, 0, sizeof (*evt));
+  clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   rmp = (session_disconnected_reply_msg_t *) evt->data;
   rmp->handle = mp->handle;

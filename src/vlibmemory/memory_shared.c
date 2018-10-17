@@ -518,7 +518,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
   struct timespec ts, tsrem;
   char *vpe_api_region_suffix = "-vpe-api";
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   if (strstr (region_name, vpe_api_region_suffix))
     {
@@ -590,7 +590,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
 		ts = tsrem;
 	    }
 	  /* Mutex buggered, "fix" it */
-	  memset (&q->mutex, 0, sizeof (q->mutex));
+	  clib_memset (&q->mutex, 0, sizeof (q->mutex));
 	  clib_warning ("forcibly release main input queue mutex");
 
 	mutex_ok:

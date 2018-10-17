@@ -79,7 +79,7 @@ test_maplog_main (unformat_input_t * input)
 	clib_warning ("unknown input '%U'", format_unformat_error, input);
     }
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->mm = mm;
   a->file_basename = "/tmp/maplog_test";
   a->file_size_in_bytes = 4096;
@@ -107,7 +107,7 @@ test_maplog_main (unformat_input_t * input)
     }
 
   if (noclose)
-    memset (mm, 0, sizeof (*mm));
+    clib_memset (mm, 0, sizeof (*mm));
   else
     clib_maplog_close (mm);
 

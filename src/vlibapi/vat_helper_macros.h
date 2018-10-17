@@ -28,7 +28,7 @@ do {                                                            \
       mp = vl_socket_client_msg_alloc (sizeof(*mp));		\
     else                                                        \
       mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));          \
-    memset (mp, 0, sizeof (*mp));                               \
+    clib_memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
     mp->client_index = vam->my_client_index;                    \
 } while(0);
@@ -42,7 +42,7 @@ do {                                                            \
       mp = vl_socket_client_msg_alloc (sizeof(*mp));		\
     else                                                        \
       mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));          \
-    memset (mp, 0, sizeof (*mp));                               \
+    clib_memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
     mp->client_index = vam->my_client_index;                    \
     if (scm)							\
@@ -57,7 +57,7 @@ do {                                                            \
       mp = vl_socket_client_msg_alloc (sizeof(*mp));		\
     else                                                        \
       mp = vl_msg_api_alloc_as_if_client(sizeof(*mp) + n);      \
-    memset (mp, 0, sizeof (*mp));                               \
+    clib_memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
     mp->client_index = vam->my_client_index;                    \
 } while(0);

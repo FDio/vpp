@@ -498,8 +498,8 @@ server_attach ()
   vnet_app_attach_args_t _a, *a = &_a;
   u32 segment_size = 128 << 20;
 
-  memset (a, 0, sizeof (*a));
-  memset (options, 0, sizeof (options));
+  clib_memset (a, 0, sizeof (*a));
+  clib_memset (options, 0, sizeof (options));
 
   if (hsm->private_segment_size)
     segment_size = hsm->private_segment_size;
@@ -522,13 +522,13 @@ server_attach ()
     }
   hsm->app_index = a->app_index;
 
-  memset (a_cert, 0, sizeof (*a_cert));
+  clib_memset (a_cert, 0, sizeof (*a_cert));
   a_cert->app_index = a->app_index;
   vec_validate (a_cert->cert, test_srv_crt_rsa_len);
   clib_memcpy (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
   vnet_app_add_tls_cert (a_cert);
 
-  memset (a_key, 0, sizeof (*a_key));
+  clib_memset (a_key, 0, sizeof (*a_key));
   a_key->app_index = a->app_index;
   vec_validate (a_key->key, test_srv_key_rsa_len);
   clib_memcpy (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
@@ -542,7 +542,7 @@ http_server_listen ()
 {
   http_server_main_t *hsm = &http_server_main;
   vnet_bind_args_t _a, *a = &_a;
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
   a->uri = "tcp://0.0.0.0/80";
   if (hsm->uri)

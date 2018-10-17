@@ -245,7 +245,7 @@ void
 vat_json_print (FILE * ofp, vat_json_node_t * node)
 {
   vat_print_ctx_t ctx;
-  memset (&ctx, 0, sizeof ctx);
+  clib_memset (&ctx, 0, sizeof ctx);
   ctx.indent = 0;
   ctx.ofp = ofp;
   fformat (ofp, "\n");

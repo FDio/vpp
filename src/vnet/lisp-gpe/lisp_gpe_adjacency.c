@@ -115,7 +115,7 @@ ip46_address_to_ip_address (const ip46_address_t * a, ip_address_t * b)
 {
   if (ip46_address_is_ip4 (a))
     {
-      memset (b, 0, sizeof (*b));
+      clib_memset (b, 0, sizeof (*b));
       ip_address_set (b, &a->ip4, IP4);
     }
   else
@@ -293,7 +293,7 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm, ip_adjacency_t * adj,
     return;
 
   lisp_stats_key_t key;
-  memset (&key, 0, sizeof (key));
+  clib_memset (&key, 0, sizeof (key));
   key.fwd_entry_index = feip[0];
   key.tunnel_index = ladj->tunnel_index;
 
@@ -395,7 +395,7 @@ lisp_gpe_adjacency_find_or_create_and_lock (const locator_pair_t * pair,
     {
 
       pool_get (lisp_adj_pool, ladj);
-      memset (ladj, 0, sizeof (*ladj));
+      clib_memset (ladj, 0, sizeof (*ladj));
       lai = (ladj - lisp_adj_pool);
 
       ip_address_copy (&ladj->remote_rloc, &pair->rmt_loc);

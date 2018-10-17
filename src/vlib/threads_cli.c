@@ -168,9 +168,9 @@ trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
       fqt = &fqm->frame_queue_traces[fqix];
       fqh = &fqm->frame_queue_histogram[fqix];
 
-      memset (fqt->n_vectors, 0xff, sizeof (fqt->n_vectors));
+      clib_memset (fqt->n_vectors, 0xff, sizeof (fqt->n_vectors));
       fqt->written = 0;
-      memset (fqh, 0, sizeof (*fqh));
+      clib_memset (fqh, 0, sizeof (*fqh));
       fqm->vlib_frame_queues[fqix]->trace = enable;
     }
 

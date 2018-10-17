@@ -126,7 +126,7 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
   else				/* create new SPD */
     {
       pool_get (im->spds, spd);
-      memset (spd, 0, sizeof (*spd));
+      clib_memset (spd, 0, sizeof (*spd));
       spd_index = spd - im->spds;
       spd->id = spd_id;
       hash_set (im->spd_index_by_spd_id, spd_id, spd_index);
@@ -546,7 +546,7 @@ ipsec_init (vlib_main_t * vm)
 
   ipsec_rand_seed ();
 
-  memset (im, 0, sizeof (im[0]));
+  clib_memset (im, 0, sizeof (im[0]));
 
   im->vnet_main = vnet_get_main ();
   im->vlib_main = vm;

@@ -63,8 +63,8 @@ create_fib_with_table_id (u32 table_id,
     pool_get(ip6_main.fibs, fib_table);
     pool_get_aligned(ip6_main.v6_fibs, v6_fib, CLIB_CACHE_LINE_BYTES);
 
-    memset(fib_table, 0, sizeof(*fib_table));
-    memset(v6_fib, 0, sizeof(*v6_fib));
+    clib_memset(fib_table, 0, sizeof(*fib_table));
+    clib_memset(v6_fib, 0, sizeof(*v6_fib));
 
     ASSERT((fib_table - ip6_main.fibs) ==
            (v6_fib - ip6_main.v6_fibs));
@@ -690,7 +690,7 @@ ip6_show_fib (vlib_main_t * vm,
 
 	    vlib_cli_output (vm, "%=20s%=16s", "Prefix length", "Count");
 
-	    memset (ca, 0, sizeof(*ca));
+	    clib_memset (ca, 0, sizeof(*ca));
 	    ca->fib_index = fib->index;
 
 	    BV(clib_bihash_foreach_key_value_pair)
