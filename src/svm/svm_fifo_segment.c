@@ -190,7 +190,7 @@ svm_fifo_segment_init (svm_fifo_segment_private_t * s)
   oldheap = ssvm_push_heap (sh);
 
   fsh = clib_mem_alloc (sizeof (*fsh));
-  memset (fsh, 0, sizeof (*fsh));
+  clib_memset (fsh, 0, sizeof (*fsh));
   s->h = sh->opaque[0] = fsh;
 
   ssvm_pop_heap (oldheap);
@@ -211,7 +211,7 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
 
   /* Allocate a fresh segment */
   pool_get (sm->segments, s);
-  memset (s, 0, sizeof (*s));
+  clib_memset (s, 0, sizeof (*s));
 
   s->ssvm.ssvm_size = a->segment_size;
   s->ssvm.i_am_master = 1;
@@ -247,7 +247,7 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
   u32 pagesize = clib_mem_get_page_size ();
 
   pool_get (sm->segments, s);
-  memset (s, 0, sizeof (*s));
+  clib_memset (s, 0, sizeof (*s));
 
   rnd_size = (a->segment_size + (pagesize - 1)) & ~pagesize;
 
@@ -278,7 +278,7 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
   sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
   s->ssvm.sh = sh;
 
-  memset (sh, 0, sizeof (*sh));
+  clib_memset (sh, 0, sizeof (*sh));
   sh->heap = heap;
 
   svm_fifo_segment_init (s);
@@ -299,7 +299,7 @@ svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
 
   /* Allocate a fresh segment */
   pool_get (sm->segments, s);
-  memset (s, 0, sizeof (*s));
+  clib_memset (s, 0, sizeof (*s));
 
   s->ssvm.ssvm_size = a->segment_size;
   s->ssvm.my_pid = getpid ();
@@ -329,7 +329,7 @@ svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
 
   ssvm_delete (&s->ssvm);
-  memset (s, 0xfe, sizeof (*s));
+  clib_memset (s, 0xfe, sizeof (*s));
   pool_put (sm->segments, s);
 }
 
@@ -387,7 +387,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 	{
 	  fsh->free_fifos[freelist_index] = f->next;
 	  /* (re)initialize the fifo, as in svm_fifo_create */
-	  memset (f, 0, sizeof (*f));
+	  clib_memset (f, 0, sizeof (*f));
 	  f->nitems = data_size_in_bytes;
 	  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
 	  f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;

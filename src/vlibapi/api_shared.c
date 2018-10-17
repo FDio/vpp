@@ -360,7 +360,7 @@ vl_msg_api_trace_configure (api_main_t * am, vl_api_trace_which_t which,
       vl_msg_api_trace_free (am, which);
     }
 
-  memset (tp, 0, sizeof (*tp));
+  clib_memset (tp, 0, sizeof (*tp));
 
   if (clib_arch_is_big_endian)
     {
@@ -709,7 +709,7 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
-  memset (c, 0, sizeof (*c));
+  clib_memset (c, 0, sizeof (*c));
 
   c->id = id;
   c->name = name;
@@ -730,7 +730,7 @@ vl_msg_api_clean_handlers (int msg_id)
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
-  memset (c, 0, sizeof (*c));
+  clib_memset (c, 0, sizeof (*c));
 
   c->id = msg_id;
   vl_msg_api_config (c);

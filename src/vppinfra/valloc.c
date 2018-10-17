@@ -68,7 +68,7 @@ clib_valloc_add_chunk (clib_valloc_main_t * vam,
   if (index == ~0 || template->baseva < ch->baseva)
     {
       pool_get (vam->chunks, new_ch);
-      memset (new_ch, 0, sizeof (*new_ch));
+      clib_memset (new_ch, 0, sizeof (*new_ch));
 
       if (index != ~0)
 	{
@@ -102,7 +102,7 @@ clib_valloc_add_chunk (clib_valloc_main_t * vam,
       index = ch - vam->chunks;
 
       pool_get (vam->chunks, new_ch);
-      memset (new_ch, 0, sizeof (*new_ch));
+      clib_memset (new_ch, 0, sizeof (*new_ch));
 
       ch = pool_elt_at_index (vam->chunks, index);
 
@@ -130,7 +130,7 @@ clib_valloc_init (clib_valloc_main_t * vam, clib_valloc_chunk_t * template,
 		  int need_lock)
 {
   ASSERT (template && template->baseva && template->size);
-  memset (vam, 0, sizeof (*vam));
+  clib_memset (vam, 0, sizeof (*vam));
   if (need_lock)
     clib_spinlock_init (&vam->lock);
 
@@ -180,7 +180,7 @@ clib_valloc_alloc (clib_valloc_main_t * vam, uword size,
 	  pool_get (vam->chunks, new_ch);
 	  /* ch might have just moved */
 	  ch = pool_elt_at_index (vam->chunks, index);
-	  memset (new_ch, 0, sizeof (*new_ch));
+	  clib_memset (new_ch, 0, sizeof (*new_ch));
 	  new_ch->next = new_ch->prev = ~0;
 	  new_ch->baseva = ch->baseva + size;
 	  new_ch->size = ch->size - size;
@@ -271,7 +271,7 @@ clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
 	      next_ch->prev = ch->prev;
 	    }
 	  ASSERT (ch - vam->chunks != vam->first_index);
-	  memset (ch, 0xfe, sizeof (*ch));
+	  clib_memset (ch, 0xfe, sizeof (*ch));
 	  pool_put (vam->chunks, ch);
 	  /* See about combining with next elt */
 	  ch = prev_ch;
@@ -295,7 +295,7 @@ clib_valloc_free (clib_valloc_main_t * vam, uword baseva)
 	      n2_ch->prev = ch - vam->chunks;
 	    }
 	  ASSERT (next_ch - vam->chunks != vam->first_index);
-	  memset (next_ch, 0xfe, sizeof (*ch));
+	  clib_memset (next_ch, 0xfe, sizeof (*ch));
 	  pool_put (vam->chunks, next_ch);
 	}
     }

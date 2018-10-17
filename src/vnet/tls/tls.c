@@ -96,7 +96,7 @@ tls_listener_ctx_alloc (void)
   tls_ctx_t *ctx;
 
   pool_get (tm->listener_ctx_pool, ctx);
-  memset (ctx, 0, sizeof (*ctx));
+  clib_memset (ctx, 0, sizeof (*ctx));
   return ctx - tm->listener_ctx_pool;
 }
 
@@ -144,7 +144,7 @@ tls_ctx_half_open_alloc (void)
       ctx_index = ctx - tm->half_open_ctx_pool;
       clib_rwlock_reader_unlock (&tm->half_open_rwlock);
     }
-  memset (ctx, 0, sizeof (*ctx));
+  clib_memset (ctx, 0, sizeof (*ctx));
   return ctx_index;
 }
 
@@ -598,7 +598,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
     }
 
   sep->transport_proto = TRANSPORT_PROTO_TCP;
-  memset (args, 0, sizeof (*args));
+  clib_memset (args, 0, sizeof (*args));
   args->app_index = tm->app_index;
   args->sep_ext = *sep;
   if (vnet_bind (args))
@@ -762,8 +762,8 @@ tls_init (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
-  memset (a, 0, sizeof (*a));
-  memset (options, 0, sizeof (options));
+  clib_memset (a, 0, sizeof (*a));
+  clib_memset (options, 0, sizeof (options));
 
   a->session_cb_vft = &tls_app_cb_vft;
   a->api_client_index = APP_INVALID_INDEX;

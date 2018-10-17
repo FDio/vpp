@@ -198,7 +198,7 @@ dhcp_proxy_server_add (fib_protocol_t proto,
 			       rx_fib_index, ~0);
 
       pool_get (dpm->dhcp_servers[proto], proxy);
-      memset (proxy, 0, sizeof (*proxy));
+      clib_memset (proxy, 0, sizeof (*proxy));
       new = 1;
 
       dpm->dhcp_server_index_by_rx_fib_index[proto][rx_fib_index] =

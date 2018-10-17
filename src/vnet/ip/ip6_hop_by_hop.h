@@ -214,7 +214,7 @@ ioam_flow_add (u8 encap, u8 * flow_name)
   u8 i;
 
   pool_get (hm->flows, flow);
-  memset (flow, 0, sizeof (flow_data_t));
+  clib_memset (flow, 0, sizeof (flow_data_t));
 
   index = flow - hm->flows;
   strncpy ((char *) flow->flow_name, (char *) flow_name, 31);

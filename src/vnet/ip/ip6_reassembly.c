@@ -402,7 +402,7 @@ ip6_reass_find_or_create (vlib_main_t * vm, vlib_node_runtime_t * node,
   else
     {
       pool_get (rt->pool, reass);
-      memset (reass, 0, sizeof (*reass));
+      clib_memset (reass, 0, sizeof (*reass));
       reass->id =
 	((u64) os_get_thread_index () * 1000000000) + rt->id_counter;
       ++rt->id_counter;
@@ -1149,7 +1149,7 @@ ip6_reass_set (u32 timeout_ms, u32 max_reassemblies,
   if (ip6_reass_main.max_reass_n > 0 && new_nbuckets > old_nbuckets)
     {
       clib_bihash_48_8_t new_hash;
-      memset (&new_hash, 0, sizeof (new_hash));
+      clib_memset (&new_hash, 0, sizeof (new_hash));
       ip6_rehash_cb_ctx ctx;
       ctx.failure = 0;
       ctx.new_hash = &new_hash;

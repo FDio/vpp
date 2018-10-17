@@ -59,7 +59,7 @@ adj_nbr_insert (fib_protocol_t nh_proto,
 	adj_nbr_tables[nh_proto][sw_if_index] =
 	    clib_mem_alloc_aligned(sizeof(BVT(clib_bihash)),
 				   CLIB_CACHE_LINE_BYTES);
-	memset(adj_nbr_tables[nh_proto][sw_if_index],
+	clib_memset(adj_nbr_tables[nh_proto][sw_if_index],
 	       0,
 	       sizeof(BVT(clib_bihash)));
 

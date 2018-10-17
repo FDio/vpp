@@ -141,7 +141,7 @@ unformat_srv6_am_localsid (unformat_input_t * input, va_list * args)
       ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
 
       /* Set to zero the memory */
-      memset (ls_mem, 0, sizeof *ls_mem);
+      clib_memset (ls_mem, 0, sizeof *ls_mem);
 
       /* Our brand-new car is ready */
       clib_memcpy (&ls_mem->nh_addr.ip6, &nh_addr.ip6,

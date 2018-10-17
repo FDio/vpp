@@ -80,7 +80,7 @@ vl_api_svs_plugin_get_version_t_handler (vl_api_svs_plugin_get_version_t * mp)
     }
 
   rmp = vl_msg_api_alloc (msg_size);
-  memset (rmp, 0, msg_size);
+  clib_memset (rmp, 0, msg_size);
   rmp->_vl_msg_id =
     ntohs (VL_API_SVS_PLUGIN_GET_VERSION_REPLY + svs_base_msg_id);
   rmp->context = mp->context;

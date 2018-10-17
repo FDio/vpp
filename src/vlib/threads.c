@@ -393,7 +393,7 @@ vlib_frame_queue_alloc (int nelts)
   vlib_frame_queue_t *fq;
 
   fq = clib_mem_alloc_aligned (sizeof (*fq), CLIB_CACHE_LINE_BYTES);
-  memset (fq, 0, sizeof (*fq));
+  clib_memset (fq, 0, sizeof (*fq));
   fq->nelts = nelts;
   fq->vector_threshold = 128;	// packets
   vec_validate_aligned (fq->elts, nelts - 1, CLIB_CACHE_LINE_BYTES);
@@ -775,8 +775,8 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->pending_rpc_requests = 0;
 	      vec_validate (vm_clone->pending_rpc_requests, 0);
 	      _vec_len (vm_clone->pending_rpc_requests) = 0;
-	      memset (&vm_clone->random_buffer, 0,
-		      sizeof (vm_clone->random_buffer));
+	      clib_memset (&vm_clone->random_buffer, 0,
+			   sizeof (vm_clone->random_buffer));
 
 	      nm = &vlib_mains[0]->node_main;
 	      nm_clone = &vm_clone->node_main;
@@ -812,9 +812,9 @@ start_workers (vlib_main_t * vm)
 		  clib_memcpy (n, nm->nodes[j], sizeof (*n));
 		  /* none of the copied nodes have enqueue rights given out */
 		  n->owner_node_index = VLIB_INVALID_NODE_INDEX;
-		  memset (&n->stats_total, 0, sizeof (n->stats_total));
-		  memset (&n->stats_last_clear, 0,
-			  sizeof (n->stats_last_clear));
+		  clib_memset (&n->stats_total, 0, sizeof (n->stats_total));
+		  clib_memset (&n->stats_last_clear, 0,
+			       sizeof (n->stats_last_clear));
 		  vec_add1 (nm_clone->nodes, n);
 		  n++;
 		}
@@ -1087,10 +1087,10 @@ vlib_worker_thread_node_refork (void)
       if (j >= vec_len (old_nodes_clone))
 	{
 	  /* new node, set to zero */
-	  memset (&new_n_clone->stats_total, 0,
-		  sizeof (new_n_clone->stats_total));
-	  memset (&new_n_clone->stats_last_clear, 0,
-		  sizeof (new_n_clone->stats_last_clear));
+	  clib_memset (&new_n_clone->stats_total, 0,
+		       sizeof (new_n_clone->stats_total));
+	  clib_memset (&new_n_clone->stats_last_clear, 0,
+		       sizeof (new_n_clone->stats_last_clear));
 	}
       else
 	{

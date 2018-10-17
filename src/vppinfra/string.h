@@ -35,6 +35,12 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+/** \file
+
+    Optimized string handling code, including c11-compliant
+    "safe C library" variants.
+*/
+
 #ifndef included_clib_string_h
 #define included_clib_string_h
 
@@ -72,11 +78,113 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #elif __SSSE3__
 #include <vppinfra/memcpy_sse3.h>
 #else
-#define clib_memcpy(a,b,c) memcpy(a,b,c)
+#define _clib_memcpy(a,b,c) memcpy(a,b,c)
 #endif
 #else /* __COVERITY__ */
-#define clib_memcpy(a,b,c) memcpy(a,b,c)
+#define _clib_memcpy(a,b,c) memcpy(a,b,c)
 #endif
+
+/* c-11 string manipulation variants */
+
+#ifndef EOK
+#define EOK 0
+#endif
+#ifndef EINVAL
+#define EINVAL 22
+#endif
+
+typedef int errno_t;
+typedef uword rsize_t;
+
+void clib_c11_violation (const char *s);
+errno_t memcpy_s (void *__restrict__ dest, rsize_t dmax,
+		  const void *__restrict__ src, rsize_t n);
+
+always_inline errno_t
+memcpy_s_inline (void *__restrict__ dest, rsize_t dmax,
+		 const void *__restrict__ src, rsize_t n)
+{
+  uword low, hi;
+  u8 bad;
+
+  /*
+   * call bogus if: src or dst NULL, trying to copy
+   * more data than we have space in dst, or src == dst.
+   * n == 0 isn't really "bad", so check first in the
+   * "wall-of-shame" department...
+   */
+  bad = (dest == 0) + (src == 0) + (n > dmax) + (dest == src) + (n == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      /* Not actually trying to copy anything is OK */
+      if (n == 0)
+	return EOK;
+      if (dest == NULL)
+	clib_c11_violation ("dest NULL");
+      if (src == NULL)
+	clib_c11_violation ("src NULL");
+      if (n > dmax)
+	clib_c11_violation ("n > dmax");
+      if (dest == src)
+	clib_c11_violation ("dest == src");
+      return EINVAL;
+    }
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (n - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  _clib_memcpy (dest, src, n);
+  return EOK;
+}
+
+/*
+ * Note: $$$ This macro is a crutch. Folks need to manually
+ * inspect every extant clib_memcpy(...) call and
+ * attempt to provide a real destination buffer size
+ * argument...
+ */
+#define clib_memcpy(d,s,n) memcpy_s_inline(d,n,s,n)
+
+errno_t memset_s (void *s, rsize_t smax, int c, rsize_t n);
+
+always_inline errno_t
+memset_s_inline (void *s, rsize_t smax, int c, rsize_t n)
+{
+  u8 bad;
+
+  bad = (s == 0) + (n > smax);
+
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s == 0)
+	clib_c11_violation ("s NULL");
+      if (n > smax)
+	clib_c11_violation ("n > smax");
+      return (EINVAL);
+    }
+  memset (s, c, n);
+  return (EOK);
+}
+
+/*
+ * This macro is not [so much of] a crutch.
+ * It's super-typical to write:
+ *
+ *   ep = pool_get (<pool>);
+ *   clib_memset(ep, 0, sizeof (*ep));
+ *
+ * The compiler should delete the not-so useful
+ * (n > smax) test. TBH the NULL pointer check isn't
+ * so useful in this case, but so be it.
+ */
+#define clib_memset(s,c,n) memset_s_inline(s,n,c,n)
 
 /*
  * Copy 64 bytes of data to 4 destinations
@@ -574,7 +682,6 @@ clib_count_equal_u8 (u8 * data, uword max_count)
     }
   return count;
 }
-
 
 #endif /* included_clib_string_h */
 

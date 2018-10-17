@@ -168,7 +168,7 @@ ip6_create_mfib_with_table_id (u32 table_id,
     };
 
     pool_get_aligned(ip6_main.mfibs, mfib_table, CLIB_CACHE_LINE_BYTES);
-    memset(mfib_table, 0, sizeof(*mfib_table));
+    clib_memset(mfib_table, 0, sizeof(*mfib_table));
 
     mfib_table->mft_proto = FIB_PROTOCOL_IP6;
     mfib_table->mft_index =
@@ -340,7 +340,7 @@ ip6_mfib_table_get_index_for_sw_if_index (u32 sw_if_index)
     if (_len <= 128)                                                \
     {                                                               \
         memcpy((_key)->mask+1, &ip6_main.fib_masks[_len], 16);      \
-        memset((_key)->mask+17, 0, 16);                             \
+        clib_memset((_key)->mask+17, 0, 16);                             \
     }                                                               \
     else                                                            \
     {                                                               \
@@ -434,7 +434,7 @@ ip6_mfib_table_entry_insert (ip6_mfib_t *mfib,
 {
     ip6_mfib_node_t *i6mn = clib_mem_alloc(sizeof(*i6mn));
 
-    memset(i6mn->i6mn_nodes, 0, sizeof(i6mn->i6mn_nodes));
+    clib_memset(i6mn->i6mn_nodes, 0, sizeof(i6mn->i6mn_nodes));
 
     IP6_MFIB_MK_KEY_MASK(grp, src, len, &i6mn->i6mn_key);
     i6mn->i6mn_entry = mfib_entry_index;
@@ -601,12 +601,12 @@ ip6_show_mfib (vlib_main_t * vm,
         }
         else if (unformat (input, "%U/%d", unformat_ip6_address, &grp, &mask))
         {
-            memset(&src, 0, sizeof(src));
+            clib_memset(&src, 0, sizeof(src));
             matching = 1;
         }
         else if (unformat (input, "%U", unformat_ip6_address, &grp))
         {
-            memset(&src, 0, sizeof(src));
+            clib_memset(&src, 0, sizeof(src));
             matching = 1;
             mask = 128;
         }

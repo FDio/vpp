@@ -449,7 +449,7 @@ vxlan_gpe_ioam_trace_init (vlib_main_t * vm)
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
-  memset (hm->counters, 0, sizeof (hm->counters));
+  clib_memset (hm->counters, 0, sizeof (hm->counters));
 
   if (vxlan_gpe_ioam_register_option
       (VXLAN_GPE_OPTION_TYPE_IOAM_TRACE,
