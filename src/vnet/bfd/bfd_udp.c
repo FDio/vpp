@@ -261,7 +261,7 @@ bfd_add_udp4_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
   ip4_udp_headers *headers = NULL;
   vlib_buffer_advance (b, -sizeof (*headers));
   headers = vlib_buffer_get_current (b);
-  memset (headers, 0, sizeof (*headers));
+  clib_memset (headers, 0, sizeof (*headers));
   headers->ip4.ip_version_and_header_length = 0x45;
   headers->ip4.ttl = 255;
   headers->ip4.protocol = IP_PROTOCOL_UDP;
@@ -316,7 +316,7 @@ bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
   ip6_udp_headers *headers = NULL;
   vlib_buffer_advance (b, -sizeof (*headers));
   headers = vlib_buffer_get_current (b);
-  memset (headers, 0, sizeof (*headers));
+  clib_memset (headers, 0, sizeof (*headers));
   headers->ip6.ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 (0x6 << 28);
   headers->ip6.hop_limit = 255;
@@ -448,7 +448,7 @@ bfd_udp_key_init (bfd_udp_key_t * key, u32 sw_if_index,
 		  const ip46_address_t * local_addr,
 		  const ip46_address_t * peer_addr)
 {
-  memset (key, 0, sizeof (*key));
+  clib_memset (key, 0, sizeof (*key));
   key->sw_if_index = sw_if_index;
   key->local_addr.as_u64[0] = local_addr->as_u64[0];
   key->local_addr.as_u64[1] = local_addr->as_u64[1];
@@ -476,7 +476,7 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
       return VNET_API_ERROR_BFD_EAGAIN;
     }
   bfd_udp_session_t *bus = &bs->udp;
-  memset (bus, 0, sizeof (*bus));
+  clib_memset (bus, 0, sizeof (*bus));
   bfd_udp_key_t *key = &bus->key;
   bfd_udp_key_init (key, sw_if_index, local_addr, peer_addr);
   const bfd_session_t *tmp = bfd_lookup_session (bum, key);
@@ -1002,7 +1002,7 @@ bfd_udp4_scan (vlib_main_t * vm, vlib_node_runtime_t * rt,
   else
     {
       bfd_udp_key_t key;
-      memset (&key, 0, sizeof (key));
+      clib_memset (&key, 0, sizeof (key));
       key.sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
       key.local_addr.ip4.as_u32 = ip4->dst_address.as_u32;
       key.peer_addr.ip4.as_u32 = ip4->src_address.as_u32;
@@ -1144,7 +1144,7 @@ bfd_udp6_scan (vlib_main_t * vm, vlib_node_runtime_t * rt,
   else
     {
       bfd_udp_key_t key;
-      memset (&key, 0, sizeof (key));
+      clib_memset (&key, 0, sizeof (key));
       key.sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
       key.local_addr.ip6.as_u64[0] = ip6->dst_address.as_u64[0];
       key.local_addr.ip6.as_u64[1] = ip6->dst_address.as_u64[1];
@@ -1239,7 +1239,7 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    {
 	      b0->current_data = 0;
 	      b0->current_length = 0;
-	      memset (vnet_buffer (b0), 0, sizeof (*vnet_buffer (b0)));
+	      clib_memset (vnet_buffer (b0), 0, sizeof (*vnet_buffer (b0)));
 	      bfd_init_final_control_frame (vm, b0, bfd_udp_main.bfd_main, bs,
 					    0);
 	      if (is_ipv6)

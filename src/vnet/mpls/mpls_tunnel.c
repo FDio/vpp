@@ -609,7 +609,7 @@ vnet_mpls_tunnel_create (u8 l2_only,
 
     vnm = vnet_get_main();
     pool_get(mpls_tunnel_pool, mt);
-    memset (mt, 0, sizeof (*mt));
+    clib_memset (mt, 0, sizeof (*mt));
     mti = mt - mpls_tunnel_pool;
     fib_node_init(&mt->mt_node, FIB_NODE_TYPE_MPLS_TUNNEL);
     mt->mt_path_list = FIB_NODE_INDEX_INVALID;
@@ -788,7 +788,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
     u32 sw_if_index = ~0, payload_proto;
     clib_error_t *error = NULL;
 
-    memset(&rpath, 0, sizeof(rpath));
+    clib_memset(&rpath, 0, sizeof(rpath));
     payload_proto = DPO_PROTO_MPLS;
 
     /* Get a line of input. */

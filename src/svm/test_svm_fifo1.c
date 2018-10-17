@@ -26,7 +26,7 @@ hello_world (int verbose)
   u8 *retrieved_data = 0;
   clib_error_t *error = 0;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
@@ -79,7 +79,7 @@ master (int verbose)
   u8 *retrieved_data = 0;
   int i;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
@@ -115,7 +115,7 @@ mempig (int verbose)
   int rv;
   int i;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
@@ -173,7 +173,7 @@ offset (int verbose)
   u32 *recovered_data = 0;
   int i;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
@@ -234,7 +234,7 @@ slave (int verbose)
   u8 *retrieved_data = 0;
   int i;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   a->segment_name = "fifo-test1";
 

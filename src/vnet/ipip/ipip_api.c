@@ -110,7 +110,7 @@ send_ipip_tunnel_details (ipip_tunnel_t * t,
   fib_table_t *ft;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_IPIP_TUNNEL_DETAILS);
   if (is_ipv6)
     {

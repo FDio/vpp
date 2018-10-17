@@ -270,7 +270,7 @@ punt_socket_register (bool is_ip4, u8 protocol, u16 port,
   punt_client_t *v = is_ip4 ? pm->clients_by_dst_port4 :
     pm->clients_by_dst_port6;
 
-  memset (&c, 0, sizeof (c));
+  clib_memset (&c, 0, sizeof (c));
   memcpy (c.caddr.sun_path, client_pathname, sizeof (c.caddr.sun_path));
   c.caddr.sun_family = AF_UNIX;
   c.port = port;
@@ -866,7 +866,7 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
       return clib_error_return (0, "socket error");
     }
 
-  memset (&addr, 0, sizeof (addr));
+  clib_memset (&addr, 0, sizeof (addr));
   addr.sun_family = AF_UNIX;
   if (*socket_path == '\0')
     {

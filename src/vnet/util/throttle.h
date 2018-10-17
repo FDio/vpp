@@ -42,7 +42,7 @@ throttle_seed (throttle_t * t, u32 thread_index, f64 time_now)
   if (time_now - t->last_seed_change_time[thread_index] > t->time)
     {
       (void) random_u32 (&t->seeds[thread_index]);
-      memset (t->bitmaps[thread_index], 0, THROTTLE_BITS / BITS (u8));
+      clib_memset (t->bitmaps[thread_index], 0, THROTTLE_BITS / BITS (u8));
 
       t->last_seed_change_time[thread_index] = time_now;
     }

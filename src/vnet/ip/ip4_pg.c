@@ -344,7 +344,7 @@ found:
 
 	/* See if header is all fixed and specified except for
 	   checksum field. */
-	memset (&cmp_mask, ~0, sizeof (cmp_mask));
+	clib_memset (&cmp_mask, ~0, sizeof (cmp_mask));
 	cmp_mask.checksum = 0;
 
 	pg_edit_group_get_fixed_packet_data (s, group_index,

@@ -328,7 +328,7 @@ cdp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   if (p == 0)
     {
       pool_get (cm->neighbors, n);
-      memset (n, 0, sizeof (*n));
+      clib_memset (n, 0, sizeof (*n));
       n->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       n->packet_template_index = (u8) ~ 0;
       hash_set (cm->neighbor_by_sw_if_index, n->sw_if_index,

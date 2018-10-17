@@ -542,7 +542,7 @@ fib_path_list_alloc (fib_node_index_t *path_list_index)
     fib_path_list_t *path_list;
 
     pool_get(fib_path_list_pool, path_list);
-    memset(path_list, 0, sizeof(*path_list));
+    clib_memset(path_list, 0, sizeof(*path_list));
 
     fib_node_init(&path_list->fpl_node,
 		  FIB_NODE_TYPE_PATH_LIST);

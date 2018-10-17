@@ -274,7 +274,7 @@ send_memif_details (vl_api_registration_t * reg,
   hwif = vnet_get_sup_hw_interface (vnm, swif->sw_if_index);
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_MEMIF_DETAILS + mm->msg_id_base);
   mp->context = context;
@@ -347,7 +347,7 @@ send_memif_socket_filename_details (vl_api_registration_t * reg,
   memif_main_t *mm = &memif_main;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_MEMIF_SOCKET_FILENAME_DETAILS
 			  + mm->msg_id_base);

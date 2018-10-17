@@ -175,7 +175,7 @@ bier_hdr_get_proto_id (const bier_hdr_t *bier_hdr)
 static inline void
 bier_hdr_clear (bier_hdr_t *bier_hdr)
 {
-    memset(&bier_hdr->bh_bit_string, 0,
+    clib_memset(&bier_hdr->bh_bit_string, 0,
            bier_hdr_len_id_to_num_buckets(
                bier_hdr_get_len_id(bier_hdr)));
 }

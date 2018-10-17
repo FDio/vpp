@@ -210,7 +210,7 @@ int write_event_defs(FILE *ofp)
     if (fwrite(&sh, sizeof(sh), 1, ofp) != 1)
         return(0);
 
-    memset(&edsh, 0, sizeof(edsh));
+    clib_memset(&edsh, 0, sizeof(edsh));
 
     strcpy(edsh.string_table_name, "FileStrtab");
     edsh.number_of_event_definitions = ntohl(vec_len(the_event_definitions));
@@ -274,7 +274,7 @@ int write_events(FILE *ofp, u64 clock_ticks_per_second)
     if (fwrite(&sh, sizeof(sh), 1, ofp) != 1)
         return(0);
     
-    memset(&eh, 0, sizeof(eh));
+    clib_memset(&eh, 0, sizeof(eh));
     strcpy(eh.string_table_name, "FileStrtab");
     eh.number_of_events = ntohl(number_of_events);
     eh.clock_ticks_per_second = ntohl(clock_ticks_per_second);
@@ -322,7 +322,7 @@ int write_track_defs(FILE *ofp)
     if (fwrite(&sh, sizeof(sh), 1, ofp) != 1)
         return(0);
 
-    memset(&tdsh, 0, sizeof(tdsh));
+    clib_memset(&tdsh, 0, sizeof(tdsh));
 
     strcpy(tdsh.string_table_name, "FileStrtab");
     tdsh.number_of_track_definitions = ntohl(vec_len(the_tracks));

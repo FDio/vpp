@@ -85,19 +85,19 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
   i = sizeof (struct vring_desc) * sz;
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->desc = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
-  memset (vring->desc, 0, i);
+  clib_memset (vring->desc, 0, i);
 
   i = sizeof (struct vring_avail) + sz * sizeof (vring->avail->ring[0]);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->avail = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
-  memset (vring->avail, 0, i);
+  clib_memset (vring->avail, 0, i);
   // tell kernel that we don't need interrupt
   vring->avail->flags = VIRTIO_RING_FLAG_MASK_INT;
 
   i = sizeof (struct vring_used) + sz * sizeof (struct vring_used_elem);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
   vring->used = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
-  memset (vring->used, 0, i);
+  clib_memset (vring->used, 0, i);
 
   ASSERT (vring->buffers == 0);
   vec_validate_aligned (vring->buffers, sz, CLIB_CACHE_LINE_BYTES);

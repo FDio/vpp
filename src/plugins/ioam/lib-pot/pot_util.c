@@ -50,7 +50,7 @@ static void pot_profile_init(pot_profile * new, u8 id)
 {
     if (new)
     {
-        memset(new, 0, sizeof(pot_profile));
+        clib_memset(new, 0, sizeof(pot_profile));
         new->id = id;
     }
 }
@@ -110,7 +110,7 @@ static void pot_profile_cleanup(pot_profile * profile)
 {
     u16 id = profile->id;
 
-    memset(profile, 0, sizeof(pot_profile));
+    clib_memset(profile, 0, sizeof(pot_profile));
     profile->id = id;           /* Restore id alone */
 }
 

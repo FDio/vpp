@@ -115,24 +115,24 @@ struct {								\
 always_inline void
 vnet_rewrite_clear_data_internal (vnet_rewrite_header_t * rw, int max_size)
 {
-  /* Sanity check values carefully for this memset operation */
+  /* Sanity check values carefully for this clib_memset operation */
   ASSERT ((max_size > 0) && (max_size < VLIB_BUFFER_PRE_DATA_SIZE));
 
   rw->data_bytes = 0;
-  memset (rw->data, 0xfe, max_size);
+  clib_memset (rw->data, 0xfe, max_size);
 }
 
 always_inline void
 vnet_rewrite_set_data_internal (vnet_rewrite_header_t * rw,
 				int max_size, void *data, int data_bytes)
 {
-  /* Sanity check values carefully for this memset operation */
+  /* Sanity check values carefully for this clib_memset operation */
   ASSERT ((max_size > 0) && (max_size < VLIB_BUFFER_PRE_DATA_SIZE));
   ASSERT ((data_bytes >= 0) && (data_bytes < max_size));
 
   rw->data_bytes = data_bytes;
   clib_memcpy (rw->data + max_size - data_bytes, data, data_bytes);
-  memset (rw->data, 0xfe, max_size - data_bytes);
+  clib_memset (rw->data, 0xfe, max_size - data_bytes);
 }
 
 #define vnet_rewrite_set_data(rw,data,data_bytes)		\

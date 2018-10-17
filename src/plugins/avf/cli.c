@@ -34,7 +34,7 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   avf_create_if_args_t args;
   u32 tmp;
 
-  memset (&args, 0, sizeof (avf_create_if_args_t));
+  clib_memset (&args, 0, sizeof (avf_create_if_args_t));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))

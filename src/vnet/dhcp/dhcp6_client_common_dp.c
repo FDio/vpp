@@ -192,7 +192,7 @@ dhcpv6_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    ntohs (ip0->payload_length) - dhcpv6_ip6_palyoad_offset -
 	    sizeof (*dhcpv60);
 
-	  memset (&report, 0, sizeof (report));
+	  clib_memset (&report, 0, sizeof (report));
 
 	  sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  if (sw_if_index >= vec_len (icm->client_state_by_sw_if_index))
