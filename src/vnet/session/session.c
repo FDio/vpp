@@ -814,18 +814,22 @@ stream_session_delete_notify (transport_connection_t * tc)
        * from the app, do the whole disconnect since we might still
        * have lingering events */
       stream_session_disconnect (s);
+      s->session_state = SESSION_STATE_CLOSED;
       break;
     case SESSION_STATE_CLOSING:
       /* Cleanup lookup table. Transport needs to still be valid */
       session_lookup_del_session (s);
+      s->session_state = SESSION_STATE_CLOSED;
       break;
     case SESSION_STATE_CLOSED:
     case SESSION_STATE_ACCEPTING:
       stream_session_delete (s);
       break;
+    default:
+      /* Assume connection was not yet added the lookup table */
+      session_free_w_fifos (s);
+      break;
     }
-
-  s->session_state = SESSION_STATE_CLOSED;
 }
 
 /**
