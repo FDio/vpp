@@ -55,7 +55,7 @@ main (int argc, char **argv)
     exit (EXIT_FAILURE);
   }
 
-  memset(&ifr, 0, sizeof(ifr));
+  clib_memset(&ifr, 0, sizeof(ifr));
   snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", interface);
 
   /* Bind socket to interface of this node. */

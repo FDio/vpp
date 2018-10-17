@@ -107,7 +107,7 @@ send_stn_rules_details (stn_rule_t * r, vl_api_registration_t * reg,
   vl_api_stn_rules_details_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id =
     clib_host_to_net_u16 (VL_API_STN_RULES_DETAILS + stn_main.msg_id_base);
 

@@ -60,7 +60,7 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   name = format (0, "%s", mp->name);
   vec_terminate_c_string (name);
 
-  memset (&cfg, 0, sizeof (cfg));
+  clib_memset (&cfg, 0, sizeof (cfg));
   cfg.rfc = mp->type;
   cfg.rnd_type = mp->round_type;
   cfg.rate_type = mp->rate_type;
@@ -101,7 +101,7 @@ send_policer_details (u8 * name,
   vl_api_policer_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_POLICER_DETAILS);
   mp->context = context;
   mp->cir = htonl (config->rb.kbps.cir_kbps);

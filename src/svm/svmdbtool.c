@@ -55,7 +55,7 @@ map_arg_setup (char *chroot_path)
   svmdbtool_main_t *sm = &svmdbtool_main;
   svmdb_map_args_t *ma = &sm->map_args;
 
-  memset (ma, 0, sizeof (*ma));
+  clib_memset (ma, 0, sizeof (*ma));
   ma->root_path = chroot_path;
   ma->size = sm->size;
   ma->uid = sm->uid;
@@ -269,7 +269,7 @@ test_reg (char *chroot_path, u8 * vbl)
 
   ma = map_arg_setup (chroot_path);
 
-  memset (&sa, 0, sizeof (sa));
+  clib_memset (&sa, 0, sizeof (sa));
   sa.sa_sigaction = sigaction_handler;
   sa.sa_flags = SA_SIGINFO;
   if (sigaction (SIGUSR2, &sa, 0) < 0)
@@ -278,7 +278,7 @@ test_reg (char *chroot_path, u8 * vbl)
       return;
     }
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   c = svmdb_map (ma);
 

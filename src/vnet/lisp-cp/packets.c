@@ -85,7 +85,7 @@ udp_ip6_checksum (ip6_header_t * ip6, udp_header_t * up, u32 len)
   } phu;
 
   /* pseudo-header */
-  memset (&phu, 0, sizeof (phu));
+  clib_memset (&phu, 0, sizeof (phu));
   phu.ph.ph_src = ip6->src_address;
   phu.ph.ph_dst = ip6->dst_address;
   phu.ph.ph_len = clib_host_to_net_u32 (len);
@@ -208,9 +208,9 @@ pkt_push_ecm_hdr (vlib_buffer_t * b)
   ecm_hdr_t *h;
   h = vlib_buffer_push_uninit (b, sizeof (h[0]));
 
-  memset (h, 0, sizeof (h[0]));
+  clib_memset (h, 0, sizeof (h[0]));
   h->type = LISP_ENCAP_CONTROL_TYPE;
-  memset (h->reserved2, 0, sizeof (h->reserved2));
+  clib_memset (h->reserved2, 0, sizeof (h->reserved2));
 
   return h;
 }

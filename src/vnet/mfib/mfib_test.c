@@ -342,7 +342,7 @@ mfib_test_i (fib_protocol_t PROTO,
     int res;
 
     mfib_prefix_t all_1s;
-    memset(&all_1s, 0xfd, sizeof(all_1s));
+    clib_memset(&all_1s, 0xfd, sizeof(all_1s));
 
     res = 0;
     n_entries = pool_elts(mfib_entry_pool);

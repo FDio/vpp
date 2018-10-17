@@ -214,7 +214,7 @@ vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
   mh.msg_control = ctl;
   mh.msg_controllen = sizeof (ctl);
 
-  memset (ctl, 0, sizeof (ctl));
+  clib_memset (ctl, 0, sizeof (ctl));
 
   if (wait != ~0)
     {
@@ -282,7 +282,7 @@ static void vl_api_sock_init_shm_reply_t_handler
       return;
     }
 
-  memset (memfd, 0, sizeof (*memfd));
+  clib_memset (memfd, 0, sizeof (*memfd));
   memfd->fd = my_fd;
 
   /* Note: this closes memfd.fd */
@@ -404,7 +404,7 @@ vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
 
   mp = vl_socket_client_msg_alloc (sizeof (*mp) +
 				   vec_len (config) * sizeof (u64));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_SOCK_INIT_SHM);
   mp->client_index = clib_host_to_net_u32 (scm->client_index);
   mp->requested_size = 64 << 20;
