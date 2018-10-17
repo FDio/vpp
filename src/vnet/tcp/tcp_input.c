@@ -2675,9 +2675,12 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      tc0->state = TCP_STATE_CLOSED;
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
-	      /* Delete the connection/session since the pipes should be
-	       * clear by now */
-	      tcp_connection_del (tc0);
+
+	      /* Don't free the connection from the data path since
+	       * we can't ensure that we have no packets already enqueued
+	       * to output. Rely instead on the waitclose timer */
+	      tcp_connection_timers_reset (tc0);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, 1);
 
 	      goto drop;
 
@@ -3489,6 +3492,7 @@ do {                                                       	\
   _(LAST_ACK, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
   _(LAST_ACK, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(LAST_ACK, TCP_FLAG_SYN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(TIME_WAIT, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(TIME_WAIT, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
