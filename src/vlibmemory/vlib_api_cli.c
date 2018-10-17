@@ -22,6 +22,7 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
 
 static clib_error_t *
 vl_api_show_histogram_command (vlib_main_t * vm,
@@ -510,6 +511,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
   if (which == REPLAY)
     am->replay_in_progress = 1;
+  vec_free (am->message_id_replay_deltas);
 
   for (; i <= last_index; i++)
     {
@@ -528,6 +530,10 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	{
 	  msg_id = msgid_vec[msg_id];
 	}
+      /* 
+      if (msg_id < vec_len (am->message_id_replay_deltas))
+         msg_id += vec_elt (am->message_id_replay_deltas, msg_id);
+*/
 
       cfgp = am->api_trace_cfg + msg_id;
       if (!cfgp)
@@ -574,6 +580,20 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       switch (which)
 	{
 	case CUSTOM_DUMP:
+	  if (msg_id == VL_API_TRACE_PLUGIN_MSG_IDS)
+	    {
+	      am->replay_in_progress = 1;
+	      void (*handler) (void *, vlib_main_t *);
+
+	      handler = (void *) am->msg_handlers[msg_id];
+
+	      if (!am->is_mp_safe[msg_id])
+		vl_msg_api_barrier_sync ();
+	      (*handler) (tmpbuf + sizeof (uword), vm);
+	      if (!am->is_mp_safe[msg_id])
+		vl_msg_api_barrier_release ();
+	      am->replay_in_progress = 0;
+	    }
 	case DUMP:
 	  if (msg_id < vec_len (am->msg_print_handlers) &&
 	      am->msg_print_handlers[msg_id])

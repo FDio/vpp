@@ -334,6 +334,9 @@ typedef struct
   /** Replay in progress? */
   int replay_in_progress;
 
+  /** Per-message message ID replay deltas */
+  int *message_id_replay_deltas;
+
   /** Dump (msg-name, crc) snapshot here at startup */
   u8 *save_msg_table_filename;
 

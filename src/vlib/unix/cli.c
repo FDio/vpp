@@ -3430,6 +3430,26 @@ unix_show_files (vlib_main_t * vm,
   return error;
 }
 
+
+void
+unix_cli_output_redraw_prompt (u8 * out)
+{
+  clib_file_main_t *fm = &file_main;
+  unix_main_t *um = &unix_main;
+  vlib_main_t *vm = um->vlib_main;
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf;
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+  clib_file_t *uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
+  unix_vlib_cli_output_raw (cf, uf, out, vec_len (out));
+  vlib_cli_output (vm, "");
+  unix_cli_cli_prompt (cf, uf);
+  if (cf->is_interactive)
+    unix_vlib_cli_output_raw (cf, uf, cf->current_command,
+			      vec_len (cf->current_command));
+}
+
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_unix_show_files, static) = {
   .path = "show unix files",

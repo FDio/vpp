@@ -647,6 +647,31 @@ vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
 		    mp->plugin_name, clib_net_to_host_u16 (mp->last_msg_id),
 		    rp->last_msg_id);
     }
+  if (rp->first_msg_id != clib_net_to_host_u16 (mp->first_msg_id))
+    {
+      if (rp->last_msg_id != clib_net_to_host_u16 (mp->last_msg_id))
+	{
+	  int message_range_gold = rp->last_msg_id - rp->first_msg_id;
+	  int message_range_seen =
+	    clib_net_to_host_u16 (mp->last_msg_id) -
+	    clib_net_to_host_u16 (mp->first_msg_id);
+	  if (message_range_gold == message_range_seen)
+	    {
+	      int delta =
+		rp->first_msg_id - clib_net_to_host_u16 (mp->first_msg_id);
+	      clib_warning
+		("INFO: shifting the recorded message ids of plugin '%s' by %d",
+		 mp->plugin_name, delta);
+	      u16 mid;
+	      for (mid = clib_net_to_host_u16 (mp->first_msg_id);
+		   mid <= clib_net_to_host_u16 (mp->last_msg_id); mid++)
+		{
+		  vec_validate (am->message_id_replay_deltas, mid);
+		  am->message_id_replay_deltas[mid] = delta;
+		}
+	    }
+	}
+    }
 }
 
 #define foreach_rpc_api_msg                     \
