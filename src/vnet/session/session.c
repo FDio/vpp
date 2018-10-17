@@ -820,6 +820,7 @@ stream_session_delete_notify (transport_connection_t * tc)
       session_lookup_del_session (s);
       break;
     case SESSION_STATE_CLOSED:
+    case SESSION_STATE_ACCEPTING:
       stream_session_delete (s);
       break;
     }

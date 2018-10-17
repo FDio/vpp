@@ -210,7 +210,8 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       /* Try to remove the half-open connection. If this is not the owning
        * thread, tc won't be removed. Retransmit or establish timers will
        * eventually expire and call again cleanup on the right thread. */
-      tcp_half_open_connection_cleanup (tc);
+      if (tcp_half_open_connection_cleanup (tc))
+	tc->flags |= TCP_CONN_HALF_OPEN_DONE;
     }
   else
     {
@@ -322,8 +323,10 @@ tcp_connection_close (tcp_connection_t * tc)
       tc->state = TCP_STATE_CLOSED;
       break;
     case TCP_STATE_SYN_RCVD:
+      tcp_connection_timers_reset (tc);
       tcp_send_fin (tc);
       tc->state = TCP_STATE_FIN_WAIT_1;
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       break;
     case TCP_STATE_ESTABLISHED:
       if (!session_tx_fifo_max_dequeue (&tc->connection))
