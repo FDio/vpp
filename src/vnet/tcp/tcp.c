@@ -939,9 +939,11 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   s = format (s, "sacked_bytes %u last_sacked_bytes %u lost_bytes %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes);
   s = format (s, " last_bytes_delivered %u high_sacked %u snd_una_adv %u\n",
-	      sb->last_bytes_delivered, sb->high_sacked, sb->snd_una_adv);
+	      sb->last_bytes_delivered, sb->high_sacked - tc->iss,
+	      sb->snd_una_adv);
   s = format (s, " cur_rxt_hole %u high_rxt %u rescue_rxt %u",
-	      sb->cur_rxt_hole, sb->high_rxt, sb->rescue_rxt);
+	      sb->cur_rxt_hole, sb->high_rxt - tc->iss,
+	      sb->rescue_rxt - tc->iss);
 
   hole = scoreboard_first_hole (sb);
   if (hole)

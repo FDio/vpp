@@ -135,7 +135,8 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
   data = (const u8 *) (th + 1);
 
   /* Zero out all flags but those set in SYN */
-  to->flags &= (TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_WSCALE);
+  to->flags &= (TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_WSCALE
+		| TCP_OPTS_FLAG_SACK);
 
   for (; opts_len > 0; opts_len -= opt_len, data += opt_len)
     {
