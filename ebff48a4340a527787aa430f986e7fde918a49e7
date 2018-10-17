@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "34c75d13_14b0a84a",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1412,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-17T11:01:50Z",
+      "side": 1,
+      "message": "08:10:49 /w/workspace/vpp-checkstyle-verify-1807/test/test_ip4.py:1413:1: E302 expected 2 blank lines, found 1\n08:10:49 class TestIPLPM(VppTestCase):\n08:10:49 ^",
+      "range": {
+        "startLine": 1412,
+        "startChar": 0,
+        "endLine": 1412,
+        "endChar": 0
+      },
+      "revId": "ebff48a4340a527787aa430f986e7fde918a49e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
