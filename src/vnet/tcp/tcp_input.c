@@ -667,38 +667,41 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 static void
 scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
 {
-  sack_scoreboard_hole_t *hole, *prev;
+  sack_scoreboard_hole_t *left, *right;
   u32 bytes = 0, blks = 0;
 
   sb->lost_bytes = 0;
   sb->sacked_bytes = 0;
-  hole = scoreboard_last_hole (sb);
-  if (!hole)
+  left = scoreboard_last_hole (sb);
+  if (!left)
     return;
 
-  if (seq_gt (sb->high_sacked, hole->end))
+  if (seq_gt (sb->high_sacked, left->end))
     {
-      bytes = sb->high_sacked - hole->end;
+      bytes = sb->high_sacked - left->end;
       blks = 1;
+      if (bytes > (TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
+	  && left->prev == TCP_INVALID_SACK_HOLE_INDEX)
+	sb->lost_bytes += scoreboard_hole_bytes (left);
     }
 
-  while ((prev = scoreboard_prev_hole (sb, hole))
+  right = left;
+  while ((left = scoreboard_prev_hole (sb, right))
 	 && (bytes < (TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
 	     && blks < TCP_DUPACK_THRESHOLD))
     {
-      bytes += hole->start - prev->end;
+      bytes += right->start - left->end;
       blks++;
-      hole = prev;
+      right = left;
     }
 
-  while (hole)
+  while (left)
     {
-      sb->lost_bytes += scoreboard_hole_bytes (hole);
-      hole->is_lost = 1;
-      prev = hole;
-      hole = scoreboard_prev_hole (sb, hole);
-      if (hole)
-	bytes += prev->start - hole->end;
+      bytes += right->start - left->end;
+      sb->lost_bytes += scoreboard_hole_bytes (left);
+      left->is_lost = 1;
+      right = left;
+      left = scoreboard_prev_hole (sb, left);
     }
   sb->sacked_bytes = bytes;
 }
@@ -815,7 +818,8 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (&tc->sack_sb);
-  return (!hole || seq_geq (hole->start, tc->snd_una));
+  return (!hole || (seq_geq (hole->start, tc->snd_una)
+		    && seq_lt (hole->end, tc->snd_una_max)));
 }
 
 void
@@ -972,6 +976,14 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    }
 	  hole = scoreboard_next_hole (sb, hole);
 	}
+    }
+
+  if (pool_elts (sb->holes) == 1)
+    {
+      hole = scoreboard_first_hole (sb);
+      if (hole->start == ack + sb->snd_una_adv
+	  && hole->end == tc->snd_una_max)
+	scoreboard_remove_hole (sb, hole);
     }
 
   scoreboard_update_bytes (tc, sb);
