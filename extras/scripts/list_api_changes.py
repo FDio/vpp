@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import os, fnmatch, subprocess
 
-starttag = 'v18.07-rc0'
-endtag = 'v18.07'
+starttag = 'v18.10-rc0'
+endtag = 'v18.10'
 emit_md = True
 apifiles = []
 
