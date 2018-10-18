@@ -234,9 +234,6 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_reply_node, static) =
 };
 /* *INDENT-ON* */
 
-char *ip6_lookup_next_nodes[] = IP6_LOOKUP_NEXT_NODES;
-char *ip4_lookup_next_nodes[] = IP4_LOOKUP_NEXT_NODES;
-
 /* Fill in the ICMP ECHO structure, return the safety-checked and possibly shrunk data_len */
 static u16
 init_icmp46_echo_request (icmp46_echo_request_t * icmp46_echo,
