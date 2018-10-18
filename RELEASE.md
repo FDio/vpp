@@ -1,5 +1,7 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_1810
+* @subpage release_notes_1807
 * @subpage release_notes_1804
 * @subpage release_notes_18012
 * @subpage release_notes_18011
@@ -11,6 +13,320 @@
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_1810 Release notes for VPP 18.10
+
+More than 632 commits since the 18.07 release.
+
+## Features
+
+### Infrastructure
+- DPDK 18.08 integration
+- New Stats infrastructure (interface, error, node performance counters)
+- Add configurable "Doug Lea malloc" support
+
+### VNET & Plugins
+- Load balancing: support per-port VIP and all-port VIP
+- Port NSH plugin to VPP
+- NAT
+  - Configurable port range
+  - Virtual Fragmentation Reassembly for endpoint-dependent mode
+  - Client-IP based session affinity for load-balancing
+  - TCP MSS clamping
+  - Session timeout
+  - Bug-fixing and performance optimizations
+
+### Host stack
+- Support for applications with multiple workers
+- Support for binds from multiple app workers to same ip:port
+- Switched to a message queue for io and control event notifications
+- Support for eventfd based notifications as alternative to mutext-condvar pair
+- VCL refactor to support async event notifications and multiple workers
+- TLS async support in client for HW accleration
+- Performance optimizations and bug-fixing
+- A number of binary APIs will be deprecated in favor of using the event
+  message queue. Details in the API section.
+
+## Known issues
+
+For the full list of issues please refer to fd.io [JIRA](https://jira.fd.io).
+
+## Issues fixed
+
+For the full list of fixed issues please refer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1810)
+
+## API changes
+
+Description of results:
+
+* _Definition changed_: indicates that the API file was modified between releases.
+* _Only in image_: indicates the API is new for this release.
+* _Only in file_: indicates the API has been removed in this release.
+
+                        Message Name                         Result
+api_versions_reply                                           definition changed
+app_cut_through_registration_add                             definition changed
+app_worker_add_del                                           definition changed
+application_attach_reply                                     definition changed
+bd_ip_mac_details                                            only in image
+bd_ip_mac_dump                                               only in image
+bfd_udp_get_echo_source                                      definition changed
+bier_imp_details                                             definition changed
+bier_route_details                                           definition changed
+bind_sock                                                    definition changed
+bridge_domain_details                                        definition changed
+bridge_flags                                                 definition changed
+classify_add_del_session                                     definition changed
+classify_add_del_table                                       definition changed
+connect_sock                                                 definition changed
+create_vhost_user_if                                         definition changed
+get_first_msg_id_reply                                       definition changed
+gpe_add_del_fwd_entry_reply                                  definition changed
+gpe_fwd_entry_path_details                                   definition changed
+ip6_fib_details                                              definition changed
+ip6nd_proxy_details                                          definition changed
+ip_add_del_route_reply                                       definition changed
+ip_address_details                                           definition changed
+ip_details                                                   definition changed
+ip_fib_details                                               definition changed
+ip_mfib_details                                              definition changed
+ip_mroute_add_del_reply                                      definition changed
+ip_neighbor_add_del_reply                                    definition changed
+ip_neighbor_details                                          definition changed
+ip_reassembly_get_reply                                      definition changed
+ip_unnumbered_details                                        definition changed
+ipip_6rd_add_tunnel                                          definition changed
+ipip_add_tunnel                                              definition changed
+ipsec_spds_details                                           only in image
+ipsec_spds_dump                                              only in image
+l2_interface_efp_filter                                      definition changed
+lisp_eid_table_vni_details                                   definition changed
+map_another_segment                                          definition changed
+mfib_signal_details                                          definition changed
+mpls_route_add_del_reply                                     definition changed
+mpls_tunnel_add_del                                          definition changed
+mpls_tunnel_add_del_reply                                    definition changed
+mpls_tunnel_details                                          definition changed
+mpls_tunnel_dump                                             definition changed
+one_eid_table_vni_details                                    definition changed
+qos_mark_enable_disable                                      definition changed
+qos_record_enable_disable                                    definition changed
+reset_session_reply                                          definition changed
+rpc_call                                                     definition changed
+show_threads                                                 definition changed
+sockclnt_create_reply                                        definition changed
+sockclnt_delete                                              definition changed
+sockclnt_delete_reply                                        definition changed
+sw_interface_rx_placement_details                            only in image
+sw_interface_rx_placement_dump                               only in image
+sw_interface_set_ip_directed_broadcast                       definition changed
+sw_interface_set_l2_bridge                                   definition changed
+sw_interface_set_rx_placement                                definition changed
+sw_interface_set_vxlan_gbp_bypass                            definition changed
+udp_encap_add                                                definition changed
+udp_encap_add_del_reply                                      only in file
+udp_encap_add_reply                                          only in image
+udp_encap_del                                                definition changed
+udp_encap_details                                            definition changed
+unbind_sock                                                  definition changed
+vxlan_gbp_tunnel_add_del                                     definition changed
+vxlan_gbp_tunnel_details                                     only in image
+vxlan_gbp_tunnel_dump                                        only in image
+Found 68 api message signature differences
+
+### Patches that changed API definitions
+
+| @c src/plugins/avf/avf.api ||
+| ------- | ------- |
+| [149d0e28](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=149d0e28) | avf: RSS support |
+| [4e6014fc](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=4e6014fc) | avf: api fix |
+
+| @c src/plugins/gbp/gbp.api ||
+| ------- | ------- |
+| [c0a93143](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c0a93143) | GBP Endpoint Updates |
+| [61b94c6b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=61b94c6b) | vxlan-gbp: Add support for vxlan gbp |
+
+| @c src/plugins/igmp/igmp.api ||
+| ------- | ------- |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+
+| @c src/plugins/lb/lb.api ||
+| ------- | ------- |
+| [6a4375e0](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6a4375e0) | LB: fix flush flow table issue |
+| [49ca2601](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=49ca2601) | Add flush flag on del as command |
+| [219cc90c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=219cc90c) | Support lb on both vip and per-port-vip case |
+
+| @c src/plugins/nat/nat.api ||
+| ------- | ------- |
+| [bb4e0225](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bb4e0225) | NAT: TCP MSS clamping |
+| [5d28c7af](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5d28c7af) | NAT: add support for configurable port range (VPP-1346) |
+| [ea5b5be4](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ea5b5be4) | NAT44: client-IP based session affinity for load-balancing (VPP-1297) |
+| [878c646a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=878c646a) | NAT44: add support for session timeout (VPP-1272) |
+| [69ce30d6](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=69ce30d6) | NAT: update nat_show_config_reply API (VPP-1403) |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+| [c6c0d2a0](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=c6c0d2a0) | NAT44: LB NAT - local backends in multiple VRFs (VPP-1345) |
+
+| @c src/plugins/vmxnet3/vmxnet3.api ||
+| ------- | ------- |
+| [df7f8e8c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=df7f8e8c) | vmxnet3 device driver |
+
+| @c src/plugins/nsh/nsh.api ||
+| ------- | ------- |
+| [d313f9e6](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d313f9e6) | Port NSH plugin to VPP |
+
+| @c src/plugins/nsim/nsim.api ||
+| ------- | ------- |
+| [9e3252b5](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9e3252b5) | Network delay simulator plugin |
+
+| @c src/plugins/svs/svs.api ||
+| ------- | ------- |
+| [d1e68ab7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d1e68ab7) | Source VRF Select |
+
+| @c src/vlibmemory/memclnt.api ||
+| ------- | ------- |
+| [94495f2a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=94495f2a) | PAPI: Use UNIX domain sockets instead of shared memory |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+| [75282457](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75282457) | Fix "Old Style VLA" build warnings |
+
+| @c src/vnet/interface.api ||
+| ------- | ------- |
+| [f0b42f48](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f0b42f48) | itf: dump interface rx-placement |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+| [54f7c51f](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=54f7c51f) | rx-placement: Add API call for interface rx-placement |
+| [1855b8e4](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1855b8e4) | IP directed broadcast |
+
+| @c src/vnet/bfd/bfd.api ||
+| ------- | ------- |
+| [2d3c7b9c](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=2d3c7b9c) | BFD: add get echo source API (VPP-1367) |
+
+| @c src/vnet/bier/bier.api ||
+| ------- | ------- |
+| [ef90ed08](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ef90ed08) | BIER API and load-balancing fixes |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+
+| @c src/vnet/classify/classify.api ||
+| ------- | ------- |
+| [34eb5d42](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=34eb5d42) | classify_add_del_session API: Use more descriptive docstring (VPP-1385) |
+| [75282457](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=75282457) | Fix "Old Style VLA" build warnings |
+
+| @c src/vnet/devices/pipe/pipe.api ||
+| ------- | ------- |
+| [208c29aa](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=208c29aa) | VOM: support for pipes |
+
+| @c src/vnet/devices/virtio/vhost_user.api ||
+| ------- | ------- |
+| [ee2e58f6](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ee2e58f6) | vhost-user: Add disable feature support in api |
+
+| @c src/vnet/ethernet/ethernet_types.api ||
+| ------- | ------- |
+| [de5b08fb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=de5b08fb) | Introduce a mac_address_t on the API and in VPP |
+
+| @c src/vnet/ip/ip_types.api ||
+| ------- | ------- |
+| [d0df49f2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d0df49f2) | Use IP address types on UDP encap API |
+
+| @c src/vnet/ip/ip.api ||
+| ------- | ------- |
+| [412ecd32](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=412ecd32) | Improve ip_mroute_add_del documentation |
+| [14260393](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=14260393) | Add adjacency counters to the stats segment |
+| [28c142e3](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=28c142e3) | mroute routers in the stats segment |
+| [008dbe10](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=008dbe10) | Route counters in the stats segment |
+| [de5b08fb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=de5b08fb) | Introduce a mac_address_t on the API and in VPP |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+| [b11f903a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b11f903a) | Fix context field position in API definition |
+
+| @c src/vnet/ipip/ipip.api ||
+| ------- | ------- |
+| [61502115](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=61502115) | IPIP and SIXRD tunnels create API needs table-IDs not fib-indexes |
+
+| @c src/vnet/ipsec/ipsec.api ||
+| ------- | ------- |
+| [a9a0b2ce](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=a9a0b2ce) | IPsec: add API for SPDs dump (VPP-1363) |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+
+| @c src/vnet/l2/l2.api ||
+| ------- | ------- |
+| [0a4e0063](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=0a4e0063) | Fix documentation about sw_interface_set_l2_bridge |
+| [b474380f](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b474380f) | L2 BD: introduce a BD interface on which to send UU packets |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+| [5c7c49d1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5c7c49d1) | Fix documentation for SHG in bridge domain |
+| [5d82d2f1](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5d82d2f1) | l2: arp termination dump |
+| [6b9b41c8](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6b9b41c8) | L2 EFP: byteswap sw_if_index, enable flag can be u8 on .api |
+
+| @c src/vnet/lisp-cp/lisp.api ||
+| ------- | ------- |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+
+| @c src/vnet/lisp-cp/one.api ||
+| ------- | ------- |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+
+| @c src/vnet/lisp-gpe/lisp_gpe.api ||
+| ------- | ------- |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+| [b11f903a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=b11f903a) | Fix context field position in API definition |
+
+| @c src/vnet/mpls/mpls.api ||
+| ------- | ------- |
+| [f5fa5ae2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=f5fa5ae2) | MPLS tunnel dump: use sw_if_index not tunnel_index |
+| [6a30b5f9](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6a30b5f9) | MPLS tunnel dump fix |
+| [008dbe10](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=008dbe10) | Route counters in the stats segment |
+| [7c922dc4](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=7c922dc4) | SR-MPLS: fixes and tests |
+
+| @c src/vnet/qos/qos.api ||
+| ------- | ------- |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+| [ed234e7f](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ed234e7f) | Enum type on the API for QoS sources |
+
+| @c src/vnet/session/session.api ||
+| ------- | ------- |
+| [ab2f6dbf](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ab2f6dbf) | session: support multiple worker binds |
+| [134a996a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=134a996a) | vcl: add support for multi-worker apps |
+| [1553197f](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=1553197f) | session: add support for multiple app workers |
+| [6bd197eb](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=6bd197eb) | Remove client_index field from replies in API |
+| [99368315](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=99368315) | vcl: support for eventfd mq signaling |
+
+| @c src/vnet/span/span.api ||
+| ------- | ------- |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+
+| @c src/vnet/udp/udp.api ||
+| ------- | ------- |
+| [9c0a3c42](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=9c0a3c42) | UDP-Encap: name counters for the stats segment |
+| [d0df49f2](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=d0df49f2) | Use IP address types on UDP encap API |
+
+| @c src/vnet/unix/tap.api ||
+| ------- | ------- |
+| [bdc0e6b7](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=bdc0e6b7) | Trivial: Clean up some typos. |
+
+| @c src/vnet/vxlan-gbp/vxlan_gbp.api ||
+| ------- | ------- |
+| [79a05f54](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=79a05f54) | VXLAN-GBP: use common types on the API |
+| [61b94c6b](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=61b94c6b) | vxlan-gbp: Add support for vxlan gbp |
+
+| @c src/vpp/api/vpe.api ||
+| ------- | ------- |
+| [5d64c786](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=5d64c786) | thread: Add show threads api |
+| [ec11b13a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ec11b13a) | Trivial: Cleanup some typos. |
+
+| @c src/vpp/stats/stats.api ||
+| ------- | ------- |
+| [ec11b13a](https://gerrit.fd.io/r/gitweb?p=vpp.git;a=commit;h=ec11b13a) | Trivial: Cleanup some typos. |
+
+### Notice of future API deprecation
+- bind_uri_reply
+- accept_session
+- accept_session_reply
+- disconnect_session_reply
+- reset_session
+- reset_session_reply
+- bind_sock_reply
+- connect_session_reply
+
 
 @page release_notes_1807 Release notes for VPP 18.07
 
