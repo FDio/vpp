@@ -185,7 +185,7 @@ pool_free_elts (void *v)
 
    First search free list.  If nothing is free extend vector of objects.
 */
-#define pool_get_aligned(P,E,A)                                         \
+#define _pool_get_aligned_internal(P,E,A,Z)                             \
 do {                                                                    \
   pool_header_t * _pool_var (p) = pool_header (P);                      \
   uword _pool_var (l);                                                  \
@@ -222,10 +222,21 @@ do {                                                                    \
 		       /* align */ (A));                                \
       E = vec_end (P) - 1;                                              \
     }									\
+  if (Z)                                                                \
+    memset(E, 0, sizeof(*E));						\
 } while (0)
+
+/** Allocate an object E from a pool P with alignment A */
+#define pool_get_aligned(P,E,A) _pool_get_aligned_internal(P,E,A,0)
+
+/** Allocate an object E from a pool P with alignment A and zero it */
+#define pool_get_aligned_zero(P,E,A) _pool_get_aligned_internal(P,E,A,1)
 
 /** Allocate an object E from a pool P (unspecified alignment). */
 #define pool_get(P,E) pool_get_aligned(P,E,0)
+
+/** Allocate an object E from a pool P and zero it */
+#define pool_get_zero(P,E) pool_get_aligned_zero(P,E,0)
 
 /** See if pool_get will expand the pool or not */
 #define pool_get_aligned_will_expand(P,YESNO,A)                         \
@@ -257,6 +268,7 @@ do {                                                                    \
     }                                                                   \
 } while (0)
 
+/** Tell the caller if pool get will expand the pool */
 #define pool_get_will_expand(P,YESNO) pool_get_aligned_will_expand(P,YESNO,0)
 
 /** Use free bitmap to query whether given element is free. */
