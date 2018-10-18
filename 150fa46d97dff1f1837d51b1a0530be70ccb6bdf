@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "dc306861_9b88981d",
+        "filename": "src/vnet/devices/pipe/pipe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-18T03:40:02Z",
+      "side": 1,
+      "message": "Seems we can assume current_data is at start of ethernet header. So we can set l2_hdr_offset to current_data. The next question is do we expect VLAN tags on the packets?  Assuming not, then l2_len can just be set to sizeof(ethernet_header_t) which is what the call to vlib_buffer_advance() at lines 377 and 379 anyway.  If there is possible VLAN tag, then we should parse the MAC header to get the real l2_len and adjust l3_hdr_offset and call vlib_buffer_advance() accordingly.",
+      "parentUuid": "dfedeba7_53cfe19b",
+      "range": {
+        "startLine": 363,
+        "startChar": 39,
+        "endLine": 363,
+        "endChar": 50
+      },
+      "revId": "150fa46d97dff1f1837d51b1a0530be70ccb6bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e7037aa0_c364a53d",
         "filename": "src/vnet/l2/l2_in_out_feat_arc.c",
         "patchSetId": 1
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "The only test that failed is the \"pipe\" test, this is how I have learned about the existence of this device. Git blame pointed to Neale, who said he copied the lines in question from ethernet-input... So, we can relatively safely assume the bug is in pipe device ?",
       "parentUuid": "e7037aa0_c364a53d",
+      "range": {
+        "startLine": 173,
+        "startChar": 37,
+        "endLine": 173,
+        "endChar": 43
+      },
+      "revId": "150fa46d97dff1f1837d51b1a0530be70ccb6bdf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "46cd2a26_f7a816cd",
+        "filename": "src/vnet/l2/l2_in_out_feat_arc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-18T03:40:02Z",
+      "side": 1,
+      "message": "Yes, I think so.  For now, l2_len must be correct if we are in l2-input feature path.",
+      "parentUuid": "a07287cf_264d0f4c",
       "range": {
         "startLine": 173,
         "startChar": 37,
