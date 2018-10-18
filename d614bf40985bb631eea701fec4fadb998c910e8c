@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ee9b709_e464876c",
+        "filename": "src/vnet/devices/pipe/pipe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 390,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-10-18T16:16:10Z",
+      "side": 1,
+      "message": "What\u0027s done here is optimized for L3 but added extra process for L2 in determine_next_node. I think a more balanced approach would be to always set l2_len above (it does not hurt L3 path as it is overlaid with L3 fields so will be overwritten) and do vlib_buffer_advance only in L3 mode, or do something like vlib_buffer_advance (b, is_l2? 0 : sizeof(ethernet_header_t))",
+      "range": {
+        "startLine": 390,
+        "startChar": 3,
+        "endLine": 390,
+        "endChar": 22
+      },
+      "revId": "d614bf40985bb631eea701fec4fadb998c910e8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
