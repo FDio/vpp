@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+set -x
+
 removed=
 
 # Unbind user-mode PCI drivers
