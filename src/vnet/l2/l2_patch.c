@@ -98,51 +98,70 @@ l2_patch_node_fn (vlib_main_t * vm,
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
-	  u32 next0, next1;
-	  u32 sw_if_index0, sw_if_index1;
+	  u32 bi0, bi1, bi2, bi3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  u32 next0, next1, next2, next3;
+	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_buffer_t *p4, *p5, *p6, *p7;
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+	    p4 = vlib_get_buffer (vm, from[4]);
+	    p5 = vlib_get_buffer (vm, from[5]);
+	    p6 = vlib_get_buffer (vm, from[6]);
+	    p7 = vlib_get_buffer (vm, from[7]);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-
-	    /* So stupid / simple, we don't need to prefetch data */
+	    vlib_prefetch_buffer_header (p4, LOAD);
+	    vlib_prefetch_buffer_header (p5, LOAD);
+	    vlib_prefetch_buffer_header (p6, LOAD);
+	    vlib_prefetch_buffer_header (p7, LOAD);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
 	  to_next[0] = bi0 = from[0];
 	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
+	  to_next[2] = bi2 = from[2];
+	  to_next[3] = bi3 = from[3];
+	  from += 4;
+	  to_next += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	  sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_RX];
+	  sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_RX];
 
 	  ASSERT (l2pm->tx_next_by_rx_sw_if_index[sw_if_index0] != ~0);
 	  ASSERT (l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index0] != ~0);
 	  ASSERT (l2pm->tx_next_by_rx_sw_if_index[sw_if_index1] != ~0);
 	  ASSERT (l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index1] != ~0);
+	  ASSERT (l2pm->tx_next_by_rx_sw_if_index[sw_if_index2] != ~0);
+	  ASSERT (l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index2] != ~0);
+	  ASSERT (l2pm->tx_next_by_rx_sw_if_index[sw_if_index3] != ~0);
+	  ASSERT (l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index3] != ~0);
 
 	  next0 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index0];
 	  next1 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index1];
+	  next2 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index2];
+	  next3 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index3];
+
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] =
 	    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index0];
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] =
 	    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index1];
+	  vnet_buffer (b2)->sw_if_index[VLIB_TX] =
+	    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index2];
+	  vnet_buffer (b3)->sw_if_index[VLIB_TX] =
+	    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index3];
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -162,12 +181,29 @@ l2_patch_node_fn (vlib_main_t * vm,
 		  t->tx_sw_if_index =
 		    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index1];
 		}
+	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2_patch_trace_t *t =
+		    vlib_add_trace (vm, node, b2, sizeof (*t));
+		  t->rx_sw_if_index = sw_if_index2;
+		  t->tx_sw_if_index =
+		    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index2];
+		}
+	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2_patch_trace_t *t =
+		    vlib_add_trace (vm, node, b3, sizeof (*t));
+		  t->rx_sw_if_index = sw_if_index3;
+		  t->tx_sw_if_index =
+		    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index3];
+		}
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+					   bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
