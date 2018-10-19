@@ -120,6 +120,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FR_1_SMSS, "Sent 1 SMSS")			\
   _(HALF_OPEN_DONE, "Half-open completed")	\
   _(FINPNDG, "FIN pending")			\
+  _(FRXT_PENDING, "Fast-retransmit pending")	\
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -379,9 +380,12 @@ typedef struct tcp_worker_ctx_
 						     output nodes */
   vlib_frame_t *ip_lookup_tx_frames[2];		/**< tx frames for ip 4/6
 						     lookup nodes */
+  u32 *pending_fast_rxt;
+
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   u8 cached_opts[40];				/**< cached 'on the wire'
 						     options for bursts */
+
 } tcp_worker_ctx_t;
 
 typedef struct _tcp_main

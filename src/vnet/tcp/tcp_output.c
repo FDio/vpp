@@ -1726,7 +1726,9 @@ tcp_fast_retransmit_sack (tcp_connection_t * tc)
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
   hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
-  while (hole && snd_space > 0 && n_segs++ < VLIB_FRAME_SIZE)
+//  u32 segs_rxt = tc->snd_rxt_bytes / tc->snd_mss;
+//  while (hole && snd_space > 0 && n_segs++ + segs_rxt <= 8)
+  while (hole && snd_space > 0 && n_segs++ <= VLIB_FRAME_SIZE/8)
     {
       hole = scoreboard_next_rxt_hole (sb, hole,
 				       tcp_fastrecovery_sent_1_smss (tc),
