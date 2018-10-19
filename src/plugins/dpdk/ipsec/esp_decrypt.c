@@ -379,8 +379,7 @@ trace:
   return from_frame->n_vectors;
 }
 
-static uword
-dpdk_esp4_decrypt_node_fn (vlib_main_t * vm,
+VLIB_NODE_FN(dpdk_esp4_decrypt_node) (vlib_main_t * vm,
 	     vlib_node_runtime_t * node,
 	     vlib_frame_t * from_frame)
 {
@@ -389,7 +388,6 @@ dpdk_esp4_decrypt_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
-  .function = dpdk_esp4_decrypt_node_fn,
   .name = "dpdk-esp4-decrypt",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
@@ -407,10 +405,7 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp4_decrypt_node, dpdk_esp4_decrypt_node_fn);
-
-static uword
-dpdk_esp6_decrypt_node_fn (vlib_main_t * vm,
+VLIB_NODE_FN(dpdk_esp6_decrypt_node) (vlib_main_t * vm,
 	     vlib_node_runtime_t * node,
 	     vlib_frame_t * from_frame)
 {
@@ -419,7 +414,6 @@ dpdk_esp6_decrypt_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp6_decrypt_node) = {
-  .function = dpdk_esp6_decrypt_node_fn,
   .name = "dpdk-esp6-decrypt",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
@@ -436,8 +430,6 @@ VLIB_REGISTER_NODE (dpdk_esp6_decrypt_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp6_decrypt_node, dpdk_esp6_decrypt_node_fn);
 
 /*
  * Decrypt Post Node
@@ -676,8 +668,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-dpdk_esp4_decrypt_post_node_fn (vlib_main_t * vm,
+VLIB_NODE_FN(dpdk_esp4_decrypt_post_node) (vlib_main_t * vm,
 	     vlib_node_runtime_t * node,
 	     vlib_frame_t * from_frame)
 {return dpdk_esp_decrypt_post_inline(vm, node, from_frame, 0/*is_ip6*/);}
@@ -702,10 +693,7 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_post_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp4_decrypt_post_node, dpdk_esp4_decrypt_post_node_fn);
-
-static uword
-dpdk_esp6_decrypt_post_node_fn (vlib_main_t * vm,
+VLIB_NODE_FN(dpdk_esp6_decrypt_post_node) (vlib_main_t * vm,
 	     vlib_node_runtime_t * node,
 	     vlib_frame_t * from_frame)
 {return dpdk_esp_decrypt_post_inline(vm, node, from_frame, 0/*is_ip6*/);}
@@ -729,5 +717,3 @@ VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp6_decrypt_post_node, dpdk_esp6_decrypt_post_node_fn);
