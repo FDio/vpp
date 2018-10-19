@@ -59,9 +59,9 @@ format_ipsec_if_input_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
@@ -222,7 +222,6 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec_if_input_node) = {
-  .function = ipsec_if_input_node_fn,
   .name = "ipsec-if-input",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_if_input_trace,
@@ -235,7 +234,6 @@ VLIB_REGISTER_NODE (ipsec_if_input_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_if_input_node, ipsec_if_input_node_fn)
 /*
  * fd.io coding-style-patch-verification: ON
  *

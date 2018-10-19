@@ -445,17 +445,15 @@ ah_encrypt_ipsecmb_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-ah4_encrypt_ipsecmb_node_fn (vlib_main_t * vm,
-			     vlib_node_runtime_t * node,
-			     vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah4_encrypt_ipsecmb_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * from_frame)
 {
   return ah_encrypt_ipsecmb_inline (vm, node, from_frame, 0 /*is_ip6 */ );
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah4_encrypt_ipsecmb_node) = {
-  .function = ah4_encrypt_ipsecmb_node_fn,
   .name = "ah4-encrypt-ipsecmb",
   .vector_size = sizeof (u32),
   .format_trace = format_ah_encrypt_trace,
@@ -473,20 +471,15 @@ VLIB_REGISTER_NODE (ah4_encrypt_ipsecmb_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ah4_encrypt_ipsecmb_node,
-			      ah4_encrypt_ipsecmb_node_fn);
-
-static uword
-ah6_encrypt_ipsecmb_node_fn (vlib_main_t * vm,
-			     vlib_node_runtime_t * node,
-			     vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah6_encrypt_ipsecmb_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * from_frame)
 {
   return ah_encrypt_ipsecmb_inline (vm, node, from_frame, 1 /*is_ip6 */ );
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah6_encrypt_ipsecmb_node) = {
-  .function = ah6_encrypt_ipsecmb_node_fn,
   .name = "ah6-encrypt-ipsecmb",
   .vector_size = sizeof (u32),
   .format_trace = format_ah_encrypt_trace,
@@ -503,9 +496,6 @@ VLIB_REGISTER_NODE (ah6_encrypt_ipsecmb_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ah6_encrypt_ipsecmb_node,
-			      ah6_encrypt_ipsecmb_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON
