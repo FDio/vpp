@@ -69,42 +69,6 @@
   _(ETH_RSS_GENEVE,             "geneve")      \
   _(ETH_RSS_NVGRE,              "nvgre")
 
-
-#define foreach_dpdk_rx_offload_caps                                    \
-  _(DEV_RX_OFFLOAD_VLAN_STRIP, "vlan-strip")                            \
-  _(DEV_RX_OFFLOAD_IPV4_CKSUM, "ipv4-cksum")                            \
-  _(DEV_RX_OFFLOAD_UDP_CKSUM , "udp-cksum")                             \
-  _(DEV_RX_OFFLOAD_TCP_CKSUM , "tcp-cksum")                             \
-  _(DEV_RX_OFFLOAD_TCP_LRO   , "rcp-lro")                               \
-  _(DEV_RX_OFFLOAD_QINQ_STRIP, "qinq-strip")                            \
-  _(DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM, "outer-ipv4-cksum")                \
-  _(DEV_RX_OFFLOAD_MACSEC_STRIP, "macsec-strip")                        \
-  _(DEV_RX_OFFLOAD_HEADER_SPLIT, "header-split")                        \
-  _(DEV_RX_OFFLOAD_VLAN_FILTER, "vlan-filter")                          \
-  _(DEV_RX_OFFLOAD_VLAN_EXTEND, "vlan-extend")                          \
-  _(DEV_RX_OFFLOAD_JUMBO_FRAME, "jumbo-frame")                          \
-  _(DEV_RX_OFFLOAD_CRC_STRIP, "crc-strip")                              \
-  _(DEV_RX_OFFLOAD_SCATTER, "scatter")                                  \
-  _(DEV_RX_OFFLOAD_TIMESTAMP, "timestamp")                              \
-  _(DEV_RX_OFFLOAD_SECURITY, "security")
-
-#define foreach_dpdk_tx_offload_caps                                    \
-  _(DEV_TX_OFFLOAD_VLAN_INSERT, "vlan-insert")                          \
-  _(DEV_TX_OFFLOAD_IPV4_CKSUM,  "ipv4-cksum")                           \
-  _(DEV_TX_OFFLOAD_UDP_CKSUM  , "udp-cksum")                            \
-  _(DEV_TX_OFFLOAD_TCP_CKSUM  , "tcp-cksum")                            \
-  _(DEV_TX_OFFLOAD_SCTP_CKSUM , "sctp-cksum")                           \
-  _(DEV_TX_OFFLOAD_TCP_TSO    , "tcp-tso")                              \
-  _(DEV_TX_OFFLOAD_UDP_TSO    , "udp-tso")                              \
-  _(DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, "outer-ipv4-cksum")                \
-  _(DEV_TX_OFFLOAD_QINQ_INSERT, "qinq-insert")                          \
-  _(DEV_TX_OFFLOAD_VXLAN_TNL_TSO, "vxlan-tnl-tso")                      \
-  _(DEV_TX_OFFLOAD_GRE_TNL_TSO, "gre-tnl-tso")                          \
-  _(DEV_TX_OFFLOAD_IPIP_TNL_TSO, "ipip-tnl-tso")                        \
-  _(DEV_TX_OFFLOAD_GENEVE_TNL_TSO, "geneve-tnl-tso")                    \
-  _(DEV_TX_OFFLOAD_MACSEC_INSERT, "macsec-insert")                      \
-  _(DEV_TX_OFFLOAD_MT_LOCKFREE, "mt-lockfree")                          \
-
 #define foreach_dpdk_pkt_rx_offload_flag                                \
   _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                  \
   _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                 \
@@ -458,16 +422,59 @@ format_dpdk_rss_hf_name (u8 * s, va_list * args)
   foreach_dpdk_rss_hf return s;
 }
 
+#undef _
+
+/* Convert to all lower case e.g "VLAN_STRIP" -> "vlan-strip"
+   Works for both vector names and null terminated c strings. */
+static u8 *
+format_offload (u8 * s, va_list * va)
+{
+  u8 *id = va_arg (*va, u8 *);
+  uword i, l;
+
+  l = ~0;
+  if (clib_mem_is_vec (id))
+    l = vec_len (id);
+
+  if (id)
+    for (i = 0; id[i] != 0 && i < l; i++)
+      {
+	u8 c = id[i];
+
+	if (c == '_')
+	  c = '-';
+	else
+	  c = tolower (c);
+	vec_add1 (s, c);
+      }
+
+  return s;
+}
+
+#define _(v, func)                                           \
+if (bitmap & v) {                                            \
+  if (format_get_indent (s) > 72)                            \
+    s = format(s,"\n%U", format_white_space, indent);        \
+  s = format(s, "%U ", format_offload, func (v));	     \
+}
+
 u8 *
 format_dpdk_rx_offload_caps (u8 * s, va_list * args)
 {
   u64 bitmap = va_arg (*args, u32);
   u32 indent = format_get_indent (s);
+  uword i;
 
   if (!bitmap)
     return format (s, "none");
 
-  foreach_dpdk_rx_offload_caps return s;
+  for (i = 0; i < 64; i++)
+    {
+      u64 mask = (u64) 1 << i;
+
+      _(mask, rte_eth_dev_rx_offload_name);
+    }
+  return s;
 }
 
 u8 *
@@ -475,10 +482,18 @@ format_dpdk_tx_offload_caps (u8 * s, va_list * args)
 {
   u64 bitmap = va_arg (*args, u32);
   u32 indent = format_get_indent (s);
+  uword i;
+
   if (!bitmap)
     return format (s, "none");
 
-  foreach_dpdk_tx_offload_caps return s;
+  for (i = 0; i < 64; i++)
+    {
+      u64 mask = (u64) 1 << i;
+
+      _(mask, rte_eth_dev_tx_offload_name);
+    }
+  return s;
 }
 
 #undef _
