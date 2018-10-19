@@ -749,7 +749,7 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
       /* Rule (3): if hole not lost */
       else if (seq_lt (hole->start, sb->high_sacked))
 	{
-	  *snd_limited = 1;
+	  *snd_limited = 0;
 	  sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
 	}
       /* Rule (4): if hole beyond high_sacked */
@@ -993,10 +993,10 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sb->last_sacked_bytes = sb->sacked_bytes
     - (old_sacked_bytes - sb->last_bytes_delivered);
   ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes || tcp_in_recovery (tc));
-  ASSERT (sb->sacked_bytes == 0
+  ASSERT (sb->sacked_bytes == 0 || tcp_in_recovery (tc)
 	  || sb->sacked_bytes < tc->snd_una_max - seq_max (tc->snd_una, ack));
   ASSERT (sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_una_max
-	  - seq_max (tc->snd_una, ack));
+	  - seq_max (tc->snd_una, ack) || tcp_in_recovery (tc));
   ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
 	  || sb->holes[sb->head].start == ack + sb->snd_una_adv);
   TCP_EVT_DBG (TCP_EVT_CC_SCOREBOARD, tc);
@@ -1052,7 +1052,12 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tcp_fastrecovery_on (tc);
   tc->snd_congestion = tc->snd_una_max;
   tc->cwnd_acc_bytes = 0;
+  tc->snd_rxt_bytes = 0;
+  tc->prev_ssthresh = tc->ssthresh;
+  tc->prev_cwnd = tc->cwnd;
   tc->cc_algo->congestion (tc);
+  clib_warning ("%u FAST new ssthresh %u snd_una %u snd_cong %u ", tc->c_c_index, tc->ssthresh,
+                tc->snd_una - tc->iss, tc->snd_congestion - tc->iss);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 4);
 }
 
@@ -1074,32 +1079,57 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tc->snd_rxt_bytes = 0;
   tc->rcv_dupacks = 0;
   tc->snd_nxt = tc->snd_una_max;
+  tc->snd_rxt_bytes = 0;
+
+  /* HACK: since we don't have an output pacer, force slow start */
+  tc->cwnd = 20 * tc->snd_mss;
+
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_1_smss_off (tc);
+  tcp_fastrecovery_first_off (tc);
+  clib_warning ("%u fr exit", tc->c_c_index);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
 static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
 {
+  clib_warning ("undo");
   tc->cwnd = tc->prev_cwnd;
   tc->ssthresh = tc->prev_ssthresh;
   tc->snd_nxt = tc->snd_una_max;
   tc->rcv_dupacks = 0;
   if (tcp_in_recovery (tc))
     tcp_cc_recovery_exit (tc);
+  else if (tcp_in_fastrecovery (tc))
+    tcp_cc_fastrecovery_exit (tc);
   ASSERT (tc->rto_boff == 0);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 5);
   /* TODO extend for fastrecovery */
 }
 
+static inline u8
+tcp_cc_is_spurious_timeout_rxt (tcp_connection_t * tc)
+{
+  return (tcp_in_recovery (tc) && tc->rto_boff == 1
+          && tc->snd_rxt_ts
+          && tcp_opts_tstamp (&tc->rcv_opts)
+          && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
+}
+
+static inline u8
+tcp_cc_is_spurious_fast_rxt (tcp_connection_t * tc)
+{
+  clib_warning ("%u spurious fast rxt test: %u", tc->c_c_index, tc->cwnd > tc->ssthresh + 3 * tc->snd_mss);
+  return (tcp_in_fastrecovery (tc)
+	  && tc->cwnd > tc->ssthresh + 3 * tc->snd_mss);
+}
+
 static u8
 tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 {
-  return (tcp_in_recovery (tc) && tc->rto_boff == 1
-	  && tc->snd_rxt_ts
-	  && tcp_opts_tstamp (&tc->rcv_opts)
-	  && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
+  return (tcp_cc_is_spurious_timeout_rxt (tc)
+	  || tcp_cc_is_spurious_fast_rxt (tc));
 }
 
 static int
@@ -1158,6 +1188,71 @@ tcp_should_fastrecover (tcp_connection_t * tc)
 	  || tcp_should_fastrecover_sack (tc));
 }
 
+void
+tcp_add_to_fastretransmit (tcp_connection_t *tc)
+{
+  tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[tc->c_thread_index];
+  if (!(tc->flags & TCP_CONN_FRXT_PENDING))
+    {
+      vec_add1 (wrk->pending_fast_rxt, tc->c_c_index);
+      tc->flags |= TCP_CONN_FRXT_PENDING;
+    }
+}
+
+void
+tcp_do_fastretransmits (u32 thread_index)
+{
+  tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[thread_index];
+  tcp_connection_t *tc;
+  int i;
+
+  if (vec_len (wrk->pending_fast_rxt))
+    {
+      vec_append (wrk->postponed_fast_rxt, wrk->pending_fast_rxt);
+      vec_reset_length (wrk->pending_fast_rxt);
+    }
+
+  for (i = 0; i < vec_len (wrk->postponed_fast_rxt); i++)
+    {
+      tc = tcp_connection_get (wrk->postponed_fast_rxt[i], thread_index);
+      tc->flags &= ~TCP_CONN_FRXT_PENDING;
+
+      if (!tcp_in_fastrecovery(tc))
+	continue;
+
+      if (tc->cwnd > tc->ssthresh + 3 * tc->snd_mss)
+	{
+	  /* The first segment MUST be retransmitted */
+	  tcp_retransmit_first_unacked (tc);
+
+	  /* Post retransmit update cwnd to ssthresh and account for the
+	   * three segments that have left the network and should've been
+	   * buffered at the receiver XXX */
+//	  tc->cwnd = tc->ssthresh + tc->rcv_dupacks * tc->snd_mss;
+	  u32 old_cwnd = tc->cwnd;
+	  tc->cwnd = tc->ssthresh + 3 * tc->snd_mss;
+	  clib_warning ("%u prev cwnd = %u new cwnd %u", tc->c_c_index, old_cwnd, tc->cwnd);
+	  ASSERT(tc->cwnd >= tc->snd_mss);
+
+	  /* If cwnd allows, send more data */
+	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+	    {
+	      scoreboard_init_high_rxt (&tc->sack_sb,
+		                        tc->snd_una + tc->snd_mss);
+	      tc->sack_sb.rescue_rxt = tc->snd_una - 1;
+	      tcp_fast_retransmit_sack (tc);
+	    }
+	  else
+	    {
+	      tcp_fast_retransmit_no_sack (tc);
+	    }
+	}
+      else
+	tcp_fast_retransmit (tc);
+    }
+  vec_reset_length (wrk->postponed_fast_rxt);
+}
+
 /**
  * One function to rule them all ... and in the darkness bind them
  */
@@ -1170,7 +1265,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
     {
       if (tc->bytes_acked)
 	goto partial_ack;
-      tcp_fast_retransmit (tc);
+      tcp_add_to_fastretransmit (tc);
       return;
     }
   /*
@@ -1206,38 +1301,31 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	   * 2) Echoed timestamp in the last non-dup ack does not equal the
 	   *    stored timestamp
 	   */
-	  if (seq_leq (tc->snd_una, tc->snd_congestion)
-	      && ((!(tc->cwnd > tc->snd_mss
-		     && tc->bytes_acked <= 4 * tc->snd_mss))
-		  || (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
+//	  if (seq_leq (tc->snd_una, tc->snd_congestion)
+//	      && ((!(tc->cwnd > tc->snd_mss
+//		     && tc->bytes_acked <= 4 * tc->snd_mss))
+//		  || (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
+//	    {
+//	      tc->rcv_dupacks = 0;
+//	      return;
+//	    }
+
+	  if (is_dack && tc->snd_una == tc->snd_congestion
+	      && timestamp_leq (tc->rcv_opts.tsecr, tc->tsecr_last_ack))
 	    {
 	      tc->rcv_dupacks = 0;
 	      return;
 	    }
 
+
 	  tcp_cc_init_congestion (tc);
 	  tc->cc_algo->rcv_cong_ack (tc, TCP_CC_DUPACK);
 
-	  /* The first segment MUST be retransmitted */
-	  tcp_retransmit_first_unacked (tc);
-
-	  /* Post retransmit update cwnd to ssthresh and account for the
-	   * three segments that have left the network and should've been
-	   * buffered at the receiver XXX */
-	  tc->cwnd = tc->ssthresh + tc->rcv_dupacks * tc->snd_mss;
-	  ASSERT (tc->cwnd >= tc->snd_mss);
-
-	  /* If cwnd allows, send more data */
 	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	    {
-	      scoreboard_init_high_rxt (&tc->sack_sb,
-					tc->snd_una + tc->snd_mss);
-	      tcp_fast_retransmit_sack (tc);
-	    }
-	  else
-	    {
-	      tcp_fast_retransmit_no_sack (tc);
-	    }
+	    tc->sack_sb.high_rxt = tc->snd_una;
+//	    scoreboard_init_high_rxt (&tc->sack_sb,
+//	                              tc->snd_una + tc->snd_mss);
+	  tcp_add_to_fastretransmit(tc);
 	  return;
 	}
       else if (!tc->bytes_acked
@@ -1300,24 +1388,26 @@ partial_ack:
     }
 
   /* Remove retransmitted bytes that have been delivered */
-  ASSERT (tc->bytes_acked + tc->sack_sb.snd_una_adv
-	  >= tc->sack_sb.last_bytes_delivered
-	  || (tc->flags & TCP_CONN_FINSNT));
-
-  if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
+      ASSERT (tc->bytes_acked + tc->sack_sb.snd_una_adv
+    	  >= tc->sack_sb.last_bytes_delivered
+    	  || (tc->flags & TCP_CONN_FINSNT));
+
       /* If we have sacks and we haven't gotten an ack beyond high_rxt,
        * remove sacked bytes delivered */
-      rxt_delivered = tc->bytes_acked + tc->sack_sb.snd_una_adv
-	- tc->sack_sb.last_bytes_delivered;
-      ASSERT (tc->snd_rxt_bytes >= rxt_delivered);
-      tc->snd_rxt_bytes -= rxt_delivered;
-    }
-  else
-    {
-      /* Either all retransmitted holes have been acked, or we're
-       * "in the blind" and retransmitting segment by segment */
-      tc->snd_rxt_bytes = 0;
+      if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
+	{
+	  rxt_delivered = tc->bytes_acked + tc->sack_sb.snd_una_adv
+	      - tc->sack_sb.last_bytes_delivered;
+	  ASSERT(tc->snd_rxt_bytes >= rxt_delivered);
+	  tc->snd_rxt_bytes -= rxt_delivered;
+	}
+      else
+	{
+	  /* Apparently all retransmitted holes have been acked */
+	  tc->snd_rxt_bytes = 0;
+	}
     }
 
   tc->cc_algo->rcv_cong_ack (tc, TCP_CC_PARTIALACK);
@@ -1325,7 +1415,7 @@ partial_ack:
   /*
    * Since this was a partial ack, try to retransmit some more data
    */
-  tcp_fast_retransmit (tc);
+  tcp_add_to_fastretransmit (tc);
 }
 
 /**
@@ -1984,6 +2074,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
+//  tcp_do_fastretransmits (thread_index);
   errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 						 thread_index);
   err_counters[TCP_ERROR_EVENT_FIFO_FULL] = errors;
