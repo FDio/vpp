@@ -505,10 +505,9 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-esp4_encrypt_ipsecmb_node_fn (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp4_encrypt_ipsecmb_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * from_frame)
 {
   return esp_encrypt_ipsecmb_inline (vm, node, from_frame, 0 /*is_ip6 */ );
 }
@@ -516,7 +515,6 @@ esp4_encrypt_ipsecmb_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp4_encrypt_ipsecmb_node) = {
   .name = "esp4-encrypt-ipsecmb",
-  .function = esp4_encrypt_ipsecmb_node_fn,
   .vector_size = sizeof (u32),
   .format_trace = format_esp_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -533,13 +531,9 @@ VLIB_REGISTER_NODE (esp4_encrypt_ipsecmb_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (esp4_encrypt_ipsecmb_node,
-			      esp4_encrypt_ipsecmb_node_fn);
-
-static uword
-esp6_encrypt_ipsecmb_node_fn (vlib_main_t * vm,
-			      vlib_node_runtime_t * node,
-			      vlib_frame_t * from_frame)
+VLIB_NODE_FN (esp6_encrypt_ipsecmb_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * from_frame)
 {
   return esp_encrypt_ipsecmb_inline (vm, node, from_frame, 1 /*is_ip6 */ );
 }
@@ -547,7 +541,6 @@ esp6_encrypt_ipsecmb_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp6_encrypt_ipsecmb_node) = {
   .name = "esp6-encrypt-ipsecmb",
-  .function = esp6_encrypt_ipsecmb_node_fn,
   .vector_size = sizeof (u32),
   .format_trace = format_esp_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -564,8 +557,6 @@ VLIB_REGISTER_NODE (esp6_encrypt_ipsecmb_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (esp6_encrypt_ipsecmb_node,
-			      esp6_encrypt_ipsecmb_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *

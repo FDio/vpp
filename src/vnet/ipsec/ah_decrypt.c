@@ -336,16 +336,15 @@ ah_decrypt_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-ah4_decrypt_node_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah4_decrypt_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return ah_decrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah4_decrypt_node) = {
-  .function = ah4_decrypt_node_fn,
   .name = "ah4-decrypt",
   .vector_size = sizeof (u32),
   .format_trace = format_ah_decrypt_trace,
@@ -363,18 +362,15 @@ VLIB_REGISTER_NODE (ah4_decrypt_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ah4_decrypt_node, ah4_decrypt_node_fn);
-
-static uword
-ah6_decrypt_node_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ah6_decrypt_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return ah_decrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ah6_decrypt_node) = {
-  .function = ah6_decrypt_node_fn,
   .name = "ah6-decrypt",
   .vector_size = sizeof (u32),
   .format_trace = format_ah_decrypt_trace,
@@ -392,7 +388,6 @@ VLIB_REGISTER_NODE (ah6_decrypt_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ah6_decrypt_node, ah6_decrypt_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *
