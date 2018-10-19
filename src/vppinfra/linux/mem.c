@@ -77,6 +77,55 @@ clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size)
     (clib_cpu_time_now () & bit_mask) * (1ull << log2_page_size);
 }
 
+#ifndef MFD_HUGETLB
+#define MFD_HUGETLB 0x0004U
+#endif
+
+clib_error_t *
+clib_mem_create_hugetlb_fd (char *name, int *fdp)
+{
+  clib_error_t *err = 0;
+  int fd = -1;
+  static int memfd_hugetlb_supported = 1;
+  char *mount_dir;
+  char template[] = "/tmp/hugepage_mount.XXXXXX";
+  u8 *filename;
+
+  if (memfd_hugetlb_supported)
+    {
+      if ((fd = memfd_create (name, MFD_HUGETLB)) != -1)
+	goto done;
+
+      /* avoid further tries if memfd MFD_HUGETLB is not supported */
+      if (errno == EINVAL && strnlen (name, 256) <= 249)
+	memfd_hugetlb_supported = 0;
+    }
+
+  mount_dir = mkdtemp (template);
+  if (mount_dir == 0)
+    return clib_error_return_unix (0, "mkdtemp \'%s\'", template);
+
+  if (mount ("none", (char *) mount_dir, "hugetlbfs", 0, NULL))
+    {
+      rmdir ((char *) mount_dir);
+      err = clib_error_return_unix (0, "mount hugetlb directory '%s'",
+				    mount_dir);
+    }
+
+  filename = format (0, "%s/%s%c", mount_dir, name, 0);
+  fd = open ((char *) filename, O_CREAT | O_RDWR, 0755);
+  umount2 ((char *) mount_dir, MNT_DETACH);
+  rmdir ((char *) mount_dir);
+
+  if (fd == -1)
+    err = clib_error_return_unix (0, "open");
+
+done:
+  if (fd != -1)
+    fdp[0] = fd;
+  return err;
+}
+
 clib_error_t *
 clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 {
@@ -119,32 +168,9 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
       /* if hugepages are needed we need to create mount point */
       if (a->flags & CLIB_MEM_VM_F_HUGETLB)
 	{
-	  char *mount_dir;
-	  char template[] = "/tmp/hugepage_mount.XXXXXX";
+	  if ((err = clib_mem_create_hugetlb_fd (a->name, &fd)))
+	    goto error;
 
-	  mount_dir = mkdtemp (template);
-	  if (mount_dir == 0)
-	    return clib_error_return_unix (0, "mkdtemp \'%s\'", template);
-
-	  if (mount ("none", (char *) mount_dir, "hugetlbfs", 0, NULL))
-	    {
-	      rmdir ((char *) mount_dir);
-	      err = clib_error_return_unix (0, "mount hugetlb directory '%s'",
-					    mount_dir);
-	      goto error;
-	    }
-
-	  filename = format (0, "%s/%s%c", mount_dir, a->name, 0);
-
-	  if ((fd = open ((char *) filename, O_CREAT | O_RDWR, 0755)) == -1)
-	    {
-	      umount2 ((char *) mount_dir, MNT_DETACH);
-	      rmdir ((char *) mount_dir);
-	      err = clib_error_return_unix (0, "open");
-	      goto error;
-	    }
-	  umount2 ((char *) mount_dir, MNT_DETACH);
-	  rmdir ((char *) mount_dir);
 	  mmap_flags |= MAP_LOCKED;
 	}
       else
