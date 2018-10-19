@@ -1409,7 +1409,10 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
 
   /* Cleanly recover cc (also clears up fast retransmit) */
   if (tcp_in_fastrecovery (tc))
-    tcp_cc_fastrecovery_exit (tc);
+    {
+      tcp_cc_fastrecovery_exit (tc);
+      scoreboard_clear (&tc->sack_sb);
+    }
 
   /* Start again from the beginning */
   tc->cc_algo->congestion (tc);
@@ -1417,6 +1420,8 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
   tc->snd_congestion = tc->snd_una_max;
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
+
+  clib_warning ("%u TIMEOUT ssthresh %u", tc->c_c_index, tc->ssthresh);
 
   tcp_recovery_on (tc);
 }
@@ -1487,6 +1492,11 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
 	tcp_rxt_timeout_cc (tc);
+      else
+	{/* TODO be less aggressive about this */
+	scoreboard_clear (&tc->sack_sb);
+	clib_warning ("second TIMEOUT?!?");
+	}
 
       /* If we've sent beyond snd_congestion, update it */
       if (seq_gt (tc->snd_una_max, tc->snd_congestion))
@@ -1498,9 +1508,6 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* Send one segment. Note that n_bytes may be zero due to buffer
        * shortfall */
       n_bytes = tcp_prepare_retransmit_segment (tc, 0, tc->snd_mss, &b);
-
-      /* TODO be less aggressive about this */
-      scoreboard_clear (&tc->sack_sb);
 
       if (n_bytes == 0)
 	{
@@ -1726,7 +1733,9 @@ tcp_fast_retransmit_sack (tcp_connection_t * tc)
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
   hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
-  while (hole && snd_space > 0 && n_segs++ < VLIB_FRAME_SIZE)
+//  u32 segs_rxt = tc->snd_rxt_bytes / tc->snd_mss;
+//  while (hole && snd_space > 0 && n_segs++ + segs_rxt <= 8)
+  while (hole && snd_space > 0 && n_segs++ <= VLIB_FRAME_SIZE/8)
     {
       hole = scoreboard_next_rxt_hole (sb, hole,
 				       tcp_fastrecovery_sent_1_smss (tc),

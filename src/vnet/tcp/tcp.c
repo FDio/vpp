@@ -1027,7 +1027,7 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 {
   int snd_space, snt_limited;
 
-  if (PREDICT_TRUE (tcp_in_cong_recovery (tc) == 0))
+  if (PREDICT_TRUE (!tcp_in_fastrecovery (tc)))
     {
       snd_space = tcp_available_output_snd_space (tc);
 
@@ -1047,15 +1047,15 @@ tcp_snd_space_inline (tcp_connection_t * tc)
       return tcp_round_snd_space (tc, snd_space);
     }
 
-  if (tcp_in_recovery (tc))
-    {
-      tc->snd_nxt = tc->snd_una_max;
-      snd_space = tcp_available_snd_wnd (tc) - tc->snd_rxt_bytes
-	- (tc->snd_una_max - tc->snd_congestion);
-      if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
-	return 0;
-      return tcp_round_snd_space (tc, snd_space);
-    }
+//  if (tcp_in_recovery (tc))
+//    {
+//      tc->snd_nxt = tc->snd_una_max;
+//      snd_space = tcp_available_snd_wnd (tc)
+//	- (tc->snd_una_max - tc->snd_congestion);
+//      if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
+//	return 0;
+//      return tcp_round_snd_space (tc, snd_space);
+//    }
 
   /* RFC 5681: When previously unsent data is available and the new value of
    * cwnd and the receiver's advertised window allow, a TCP SHOULD send 1*SMSS
