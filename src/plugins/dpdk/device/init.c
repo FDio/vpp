@@ -178,12 +178,12 @@ static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-  if (xd->port_conf.rxmode.hw_strip_crc)
+  return !!(xd->port_conf.rxmode.hw_strip_crc);
+#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
+  return !!(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP);
 #else
-  if (xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP)
+  return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
 #endif
-    return 1;
-  return 0;
 }
 
 static clib_error_t *
@@ -459,7 +459,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->port_conf.rxmode.hw_strip_crc = 1;
-#else
+#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
 	      break;
@@ -468,7 +468,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->port_conf.rxmode.hw_strip_crc = 1;
-#else
+#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
 	      break;
@@ -499,7 +499,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
 	      xd->port_conf.rxmode.hw_strip_crc = 1;
-#else
+#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
 	      break;

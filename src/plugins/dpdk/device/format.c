@@ -83,7 +83,6 @@
   _(DEV_RX_OFFLOAD_VLAN_FILTER, "vlan-filter")                          \
   _(DEV_RX_OFFLOAD_VLAN_EXTEND, "vlan-extend")                          \
   _(DEV_RX_OFFLOAD_JUMBO_FRAME, "jumbo-frame")                          \
-  _(DEV_RX_OFFLOAD_CRC_STRIP, "crc-strip")                              \
   _(DEV_RX_OFFLOAD_SCATTER, "scatter")                                  \
   _(DEV_RX_OFFLOAD_TIMESTAMP, "timestamp")                              \
   _(DEV_RX_OFFLOAD_SECURITY, "security")
@@ -467,7 +466,18 @@ format_dpdk_rx_offload_caps (u8 * s, va_list * args)
   if (!bitmap)
     return format (s, "none");
 
-  foreach_dpdk_rx_offload_caps return s;
+  /* *INDENT-OFF* */
+  foreach_dpdk_rx_offload_caps
+
+#ifdef DEV_RX_OFFLOAD_CRC_STRIP
+  _(DEV_RX_OFFLOAD_CRC_STRIP, "crc-strip")
+#endif
+#ifdef DEV_RX_OFFLOAD_CRC_KEEP
+  _(DEV_RX_OFFLOAD_CRC_KEEP, "crc-keep")
+#endif
+  /* *INDENT-ON* */
+
+  return s;
 }
 
 u8 *
