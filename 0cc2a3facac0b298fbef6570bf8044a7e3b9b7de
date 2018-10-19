@@ -22,6 +22,30 @@
       "revId": "0cc2a3facac0b298fbef6570bf8044a7e3b9b7de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b37b5a80_f587b83e",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-10-19T06:59:38Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1d4b4323_48f3a40c",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 33,
+        "endChar": 53
+      },
+      "revId": "0cc2a3facac0b298fbef6570bf8044a7e3b9b7de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
