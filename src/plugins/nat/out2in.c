@@ -775,17 +775,17 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
+	  if (PREDICT_FALSE (ip4_is_fragment (ip0)))
+	    {
+	      next0 = SNAT_OUT2IN_NEXT_REASS;
+	      goto trace0;
+	    }
+
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {
 	      next0 = icmp_out2in_slow_path
 		(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		 next0, now, thread_index, &s0);
-	      goto trace0;
-	    }
-
-	  if (PREDICT_FALSE (ip4_is_fragment (ip0)))
-	    {
-	      next0 = SNAT_OUT2IN_NEXT_REASS;
 	      goto trace0;
 	    }
 
@@ -936,17 +936,17 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	      goto trace1;
 	    }
 
+	  if (PREDICT_FALSE (ip4_is_fragment (ip1)))
+	    {
+	      next1 = SNAT_OUT2IN_NEXT_REASS;
+	      goto trace1;
+	    }
+
 	  if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
 	    {
 	      next1 = icmp_out2in_slow_path
 		(sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
 		 next1, now, thread_index, &s1);
-	      goto trace1;
-	    }
-
-	  if (PREDICT_FALSE (ip4_is_fragment (ip1)))
-	    {
-	      next1 = SNAT_OUT2IN_NEXT_REASS;
 	      goto trace1;
 	    }
 
@@ -1134,17 +1134,17 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	      goto trace00;
 	    }
 
+	  if (PREDICT_FALSE (ip4_is_fragment (ip0)))
+	    {
+	      next0 = SNAT_OUT2IN_NEXT_REASS;
+	      goto trace00;
+	    }
+
 	  if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
 	    {
 	      next0 = icmp_out2in_slow_path
 		(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		 next0, now, thread_index, &s0);
-	      goto trace00;
-	    }
-
-	  if (PREDICT_FALSE (ip4_is_fragment (ip0)))
-	    {
-	      next0 = SNAT_OUT2IN_NEXT_REASS;
 	      goto trace00;
 	    }
 
@@ -1336,6 +1336,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 	  nat_reass_ip4_t *reass0;
 	  udp_header_t *udp0;
 	  tcp_header_t *tcp0;
+	  icmp46_header_t *icmp0;
 	  snat_session_key_t key0, sm0;
 	  clib_bihash_kv_8_8_t kv0, value0;
 	  snat_session_t *s0 = 0;
@@ -1369,6 +1370,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 	  ip0 = (ip4_header_t *) vlib_buffer_get_current (b0);
 	  udp0 = ip4_next_header (ip0);
 	  tcp0 = (tcp_header_t *) udp0;
+	  icmp0 = (icmp46_header_t *) udp0;
 	  proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
 	  reass0 = nat_ip4_reass_find_or_create (ip0->src_address,
@@ -1387,6 +1389,26 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (ip4_is_first_fragment (ip0)))
 	    {
+	      if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
+		{
+		  next0 = icmp_out2in_slow_path
+		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
+		     next0, now, thread_index, &s0);
+
+		  if (PREDICT_TRUE (next0 != SNAT_OUT2IN_NEXT_DROP))
+		    {
+		      if (s0)
+			reass0->sess_index = s0 - per_thread_data->sessions;
+		      else
+			reass0->flags |= NAT_REASS_FLAG_ED_DONT_TRANSLATE;
+		      reass0->thread_index = thread_index;
+		      nat_ip4_reass_get_frags (reass0,
+					       &fragments_to_loopback);
+		    }
+
+		  goto trace0;
+		}
+
 	      key0.addr = ip0->dst_address;
 	      key0.port = udp0->dst_port;
 	      key0.protocol = proto0;

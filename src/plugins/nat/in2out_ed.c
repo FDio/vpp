@@ -1960,11 +1960,8 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 	    }
 
 	  /* Hairpinning */
-	  if (PREDICT_TRUE (proto0 != SNAT_PROTOCOL_ICMP))
-	    nat44_reass_hairpinning (sm, b0, ip0, s0->out2in.port,
-				     s0->ext_host_port, proto0, 1);
-	  else
-	    snat_icmp_hairpinning (sm, b0, ip0, icmp0, 1);
+	  nat44_reass_hairpinning (sm, b0, ip0, s0->out2in.port,
+				   s0->ext_host_port, proto0, 1);
 
 	  /* Accounting */
 	  nat44_session_update_counters (s0, now,

@@ -3335,86 +3335,36 @@ class TestNAT44(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
 
-        data = "A" * 4 + "B" * 16 + "C" * 3
-        self.tcp_port_in = random.randint(1025, 65535)
-
-        reass = self.vapi.nat_reass_dump()
-        reass_n_start = len(reass)
-
-        # in2out
-        pkts = self.create_stream_frag(self.pg0,
-                                       self.pg1.remote_ip4,
-                                       self.tcp_port_in,
-                                       20,
-                                       data)
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        frags = self.pg1.get_capture(len(pkts))
-        p = self.reass_frags_and_verify(frags,
-                                        self.nat_addr,
-                                        self.pg1.remote_ip4)
-        self.assertEqual(p[TCP].dport, 20)
-        self.assertNotEqual(p[TCP].sport, self.tcp_port_in)
-        self.tcp_port_out = p[TCP].sport
-        self.assertEqual(data, p[Raw].load)
-
-        # out2in
-        pkts = self.create_stream_frag(self.pg1,
-                                       self.nat_addr,
-                                       20,
-                                       self.tcp_port_out,
-                                       data)
-        self.pg1.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        frags = self.pg0.get_capture(len(pkts))
-        p = self.reass_frags_and_verify(frags,
-                                        self.pg1.remote_ip4,
-                                        self.pg0.remote_ip4)
-        self.assertEqual(p[TCP].sport, 20)
-        self.assertEqual(p[TCP].dport, self.tcp_port_in)
-        self.assertEqual(data, p[Raw].load)
-
-        reass = self.vapi.nat_reass_dump()
-        reass_n_end = len(reass)
-
-        self.assertEqual(reass_n_end - reass_n_start, 2)
+        self.frag_in_order(proto=IP_PROTOS.tcp)
+        self.frag_in_order(proto=IP_PROTOS.udp)
+        self.frag_in_order(proto=IP_PROTOS.icmp)
 
     def test_reass_hairpinning(self):
         """ NAT44 fragments hairpinning """
 
-        server = self.pg0.remote_hosts[1]
-        host_in_port = random.randint(1025, 65535)
-        server_in_port = random.randint(1025, 65535)
-        server_out_port = random.randint(1025, 65535)
-        data = "A" * 4 + "B" * 16 + "C" * 3
+        self.server = self.pg0.remote_hosts[1]
+        self.host_in_port = random.randint(1025, 65535)
+        self.server_in_port = random.randint(1025, 65535)
+        self.server_out_port = random.randint(1025, 65535)
 
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
         # add static mapping for server
-        self.nat44_add_static_mapping(server.ip4, self.nat_addr,
-                                      server_in_port, server_out_port,
+        self.nat44_add_static_mapping(self.server.ip4, self.nat_addr,
+                                      self.server_in_port,
+                                      self.server_out_port,
                                       proto=IP_PROTOS.tcp)
+        self.nat44_add_static_mapping(self.server.ip4, self.nat_addr,
+                                      self.server_in_port,
+                                      self.server_out_port,
+                                      proto=IP_PROTOS.udp)
+        self.nat44_add_static_mapping(self.server.ip4, self.nat_addr)
 
-        # send packet from host to server
-        pkts = self.create_stream_frag(self.pg0,
-                                       self.nat_addr,
-                                       host_in_port,
-                                       server_out_port,
-                                       data)
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        frags = self.pg0.get_capture(len(pkts))
-        p = self.reass_frags_and_verify(frags,
-                                        self.nat_addr,
-                                        server.ip4)
-        self.assertNotEqual(p[TCP].sport, host_in_port)
-        self.assertEqual(p[TCP].dport, server_in_port)
-        self.assertEqual(data, p[Raw].load)
+        self.reass_hairpinning(proto=IP_PROTOS.tcp)
+        self.reass_hairpinning(proto=IP_PROTOS.udp)
+        self.reass_hairpinning(proto=IP_PROTOS.icmp)
 
     def test_frag_out_of_order(self):
         """ NAT44 translate fragments arriving out of order """
@@ -3424,45 +3374,9 @@ class TestNAT44(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
 
-        data = "A" * 4 + "B" * 16 + "C" * 3
-        random.randint(1025, 65535)
-
-        # in2out
-        pkts = self.create_stream_frag(self.pg0,
-                                       self.pg1.remote_ip4,
-                                       self.tcp_port_in,
-                                       20,
-                                       data)
-        pkts.reverse()
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        frags = self.pg1.get_capture(len(pkts))
-        p = self.reass_frags_and_verify(frags,
-                                        self.nat_addr,
-                                        self.pg1.remote_ip4)
-        self.assertEqual(p[TCP].dport, 20)
-        self.assertNotEqual(p[TCP].sport, self.tcp_port_in)
-        self.tcp_port_out = p[TCP].sport
-        self.assertEqual(data, p[Raw].load)
-
-        # out2in
-        pkts = self.create_stream_frag(self.pg1,
-                                       self.nat_addr,
-                                       20,
-                                       self.tcp_port_out,
-                                       data)
-        pkts.reverse()
-        self.pg1.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        frags = self.pg0.get_capture(len(pkts))
-        p = self.reass_frags_and_verify(frags,
-                                        self.pg1.remote_ip4,
-                                        self.pg0.remote_ip4)
-        self.assertEqual(p[TCP].sport, 20)
-        self.assertEqual(p[TCP].dport, self.tcp_port_in)
-        self.assertEqual(data, p[Raw].load)
+        self.frag_out_of_order(proto=IP_PROTOS.tcp)
+        self.frag_out_of_order(proto=IP_PROTOS.udp)
+        self.frag_out_of_order(proto=IP_PROTOS.icmp)
 
     def test_port_restricted(self):
         """ Port restricted NAT44 (MAP-E CE) """
@@ -3971,8 +3885,7 @@ class TestNAT44EndpointDependent(MethodHolder):
                                       self.server_in_port,
                                       self.server_out_port,
                                       proto=IP_PROTOS.udp)
-        self.nat44_add_static_mapping(self.server.ip4, self.nat_addr,
-                                      proto=IP_PROTOS.icmp)
+        self.nat44_add_static_mapping(self.server.ip4, self.nat_addr)
 
         self.reass_hairpinning(proto=IP_PROTOS.tcp)
         self.reass_hairpinning(proto=IP_PROTOS.udp)

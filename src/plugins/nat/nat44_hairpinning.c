@@ -286,39 +286,6 @@ snat_icmp_hairpinning (snat_main_t * sm,
     }
   else
     {
-      if (!is_ed)
-	{
-	  icmp_echo_header_t *echo0 = (icmp_echo_header_t *) (icmp0 + 1);
-	  u16 icmp_id0 = echo0->identifier;
-	  key0.addr = ip0->dst_address;
-	  key0.port = icmp_id0;
-	  key0.protocol = SNAT_PROTOCOL_ICMP;
-	  key0.fib_index = sm->outside_fib_index;
-	  kv0.key = key0.as_u64;
-	  if (sm->num_workers > 1)
-	    ti =
-	      (clib_net_to_host_u16 (icmp_id0) - 1024) / sm->port_per_thread;
-	  else
-	    ti = sm->num_workers;
-	  int rv =
-	    clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
-				    &value0);
-	  if (!rv)
-	    {
-	      si = value0.value;
-	      s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
-	      new_dst_addr0 = s0->in2out.addr.as_u32;
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
-	      echo0->identifier = s0->in2out.port;
-	      sum0 = icmp0->checksum;
-	      sum0 = ip_csum_update (sum0, icmp_id0, s0->in2out.port,
-				     icmp_echo_header_t, identifier);
-	      icmp0->checksum = ip_csum_fold (sum0);
-	      goto change_addr;
-	    }
-	  ti = 0;
-	}
-
       key0.addr = ip0->dst_address;
       key0.port = 0;
       key0.protocol = 0;
@@ -327,7 +294,44 @@ snat_icmp_hairpinning (snat_main_t * sm,
 
       if (clib_bihash_search_8_8
 	  (&sm->static_mapping_by_external, &kv0, &value0))
-	return 1;
+	{
+	  if (!is_ed)
+	    {
+	      icmp_echo_header_t *echo0 = (icmp_echo_header_t *) (icmp0 + 1);
+	      u16 icmp_id0 = echo0->identifier;
+	      key0.addr = ip0->dst_address;
+	      key0.port = icmp_id0;
+	      key0.protocol = SNAT_PROTOCOL_ICMP;
+	      key0.fib_index = sm->outside_fib_index;
+	      kv0.key = key0.as_u64;
+	      if (sm->num_workers > 1)
+		ti =
+		  (clib_net_to_host_u16 (icmp_id0) -
+		   1024) / sm->port_per_thread;
+	      else
+		ti = sm->num_workers;
+	      int rv =
+		clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
+					&value0);
+	      if (!rv)
+		{
+		  si = value0.value;
+		  s0 =
+		    pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
+		  new_dst_addr0 = s0->in2out.addr.as_u32;
+		  vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+		    s0->in2out.fib_index;
+		  echo0->identifier = s0->in2out.port;
+		  sum0 = icmp0->checksum;
+		  sum0 = ip_csum_update (sum0, icmp_id0, s0->in2out.port,
+					 icmp_echo_header_t, identifier);
+		  icmp0->checksum = ip_csum_fold (sum0);
+		  goto change_addr;
+		}
+	    }
+
+	  return 1;
+	}
 
       m0 = pool_elt_at_index (sm->static_mappings, value0.value);
 
