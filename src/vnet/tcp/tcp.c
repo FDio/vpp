@@ -950,7 +950,8 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 
   hole = scoreboard_first_hole (sb);
   if (hole)
-    s = format (s, "\n head %u tail %u holes:\n", sb->head, sb->tail);
+    s = format (s, "\n head %u tail %u %u holes:\n", sb->head, sb->tail,
+		pool_elts (sb->holes));
 
   while (hole)
     {
@@ -1027,7 +1028,7 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 {
   int snd_space, snt_limited;
 
-  if (PREDICT_TRUE (tcp_in_cong_recovery (tc) == 0))
+  if (PREDICT_TRUE (!tcp_in_fastrecovery (tc)))
     {
       snd_space = tcp_available_output_snd_space (tc);
 
@@ -1044,16 +1045,6 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 	  snt_limited = tc->snd_nxt - tc->limited_transmit;
 	  snd_space = clib_max (2 * tc->snd_mss - snt_limited, 0);
 	}
-      return tcp_round_snd_space (tc, snd_space);
-    }
-
-  if (tcp_in_recovery (tc))
-    {
-      tc->snd_nxt = tc->snd_una_max;
-      snd_space = tcp_available_snd_wnd (tc) - tc->snd_rxt_bytes
-	- (tc->snd_una_max - tc->snd_congestion);
-      if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
-	return 0;
       return tcp_round_snd_space (tc, snd_space);
     }
 
@@ -1103,6 +1094,7 @@ tcp_update_time (f64 now, u8 thread_index)
   tw_timer_expire_timers_16t_2w_512sl (&tcp_main.
 				       wrk_ctx[thread_index].timer_wheel,
 				       now);
+  tcp_do_fastretransmits (thread_index);
   tcp_flush_frames_to_output (thread_index);
 }
 

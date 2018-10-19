@@ -120,6 +120,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FR_1_SMSS, "Sent 1 SMSS")			\
   _(HALF_OPEN_DONE, "Half-open completed")	\
   _(FINPNDG, "FIN pending")			\
+  _(FRXT_PENDING, "Fast-retransmit pending")	\
+  _(FRXT_FIRST, "Fast-retransmit first again")	\
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -345,6 +347,9 @@ struct _tcp_cc_algorithm
 #define tcp_fastrecovery_sent_1_smss(tc) ((tc)->flags & TCP_CONN_FR_1_SMSS)
 #define tcp_fastrecovery_1_smss_on(tc) ((tc)->flags |= TCP_CONN_FR_1_SMSS)
 #define tcp_fastrecovery_1_smss_off(tc) ((tc)->flags &= ~TCP_CONN_FR_1_SMSS)
+#define tcp_fastrecovery_first(tc) ((tc)->flags & TCP_CONN_FRXT_FIRST)
+#define tcp_fastrecovery_first_on(tc) ((tc)->flags |= TCP_CONN_FRXT_FIRST)
+#define tcp_fastrecovery_first_off(tc) ((tc)->flags &= ~TCP_CONN_FRXT_FIRST)
 
 #define tcp_in_cong_recovery(tc) ((tc)->flags & 		\
 	  (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
@@ -354,6 +359,7 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 {
   tc->flags &= ~(TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY);
   tcp_fastrecovery_1_smss_off (tc);
+  tcp_fastrecovery_first_off (tc);
 }
 
 typedef enum _tcp_error
@@ -379,9 +385,15 @@ typedef struct tcp_worker_ctx_
 						     output nodes */
   vlib_frame_t *ip_lookup_tx_frames[2];		/**< tx frames for ip 4/6
 						     lookup nodes */
+  u32 *pending_fast_rxt;			/**< vector of connections
+						     needing fast rxt */
+  u32 *ongoing_fast_rxt;			/**< vector of connections
+						     now doing fast rxt */
+
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   u8 cached_opts[40];				/**< cached 'on the wire'
 						     options for bursts */
+
 } tcp_worker_ctx_t;
 
 typedef struct _tcp_main
@@ -542,6 +554,8 @@ void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
 void tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4);
 void tcp_flush_frames_to_output (u8 thread_index);
+void tcp_program_fastretransmit (tcp_connection_t * tc);
+void tcp_do_fastretransmits (u32 thread_index);
 
 always_inline u32
 tcp_end_seq (tcp_header_t * th, u32 len)
@@ -659,10 +673,10 @@ tcp_is_lost_fin (tcp_connection_t * tc)
 }
 
 u32 tcp_snd_space (tcp_connection_t * tc);
-void tcp_retransmit_first_unacked (tcp_connection_t * tc);
-void tcp_fast_retransmit_no_sack (tcp_connection_t * tc);
-void tcp_fast_retransmit_sack (tcp_connection_t * tc);
-void tcp_fast_retransmit (tcp_connection_t * tc);
+int tcp_retransmit_first_unacked (tcp_connection_t * tc);
+int tcp_fast_retransmit_no_sack (tcp_connection_t * tc, u32 burst_size);
+int tcp_fast_retransmit_sack (tcp_connection_t * tc, u32 burst_size);
+int tcp_fast_retransmit (tcp_connection_t * tc, u32 burst_size);
 void tcp_cc_init_congestion (tcp_connection_t * tc);
 void tcp_cc_fastrecovery_exit (tcp_connection_t * tc);
 
