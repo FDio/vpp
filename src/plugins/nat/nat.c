@@ -2243,7 +2243,8 @@ nat_alloc_addr_and_port_mape (snat_address_t * addresses,
   snat_address_t *a = addresses;
   u16 m, ports, portnum, A, j;
   m = 16 - (sm->psid_offset + sm->psid_length);
-  ports = (1 << (16 - sm->psid_length)) - (1 << m);
+  ports = (1 << (16 - sm->psid_length)) -
+    ((sm->psid_offset == 0) ? 0 : (1 << m));
 
   if (!vec_len (addresses))
     goto exhausted;
@@ -2256,9 +2257,12 @@ nat_alloc_addr_and_port_mape (snat_address_t * addresses,
         { \
           while (1) \
             { \
-              A = snat_random_port(1, pow2_mask(sm->psid_offset)); \
+              if (sm->psid_offset > 1) \
+                A = snat_random_port(1, pow2_mask(sm->psid_offset)); \
+              else                                                 \
+                A = sm->psid_offset; \
               j = snat_random_port(0, pow2_mask(m)); \
-              portnum = A | (sm->psid << sm->psid_offset) | (j << (16 - m)); \
+              portnum = (A << (m + sm->psid_length)) | (sm->psid << m) | j; \
               if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                 continue; \
               clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \

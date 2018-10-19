@@ -3486,7 +3486,7 @@ class TestNAT44(MethodHolder):
             self.assertEqual(ip.src, self.nat_addr)
             self.assertEqual(tcp.dport, 22)
             self.assertNotEqual(tcp.sport, 4567)
-            self.assertEqual((tcp.sport >> 6) & 63, 10)
+            self.assertEqual((tcp.sport >> 4) & 63, 10)
             self.assert_packet_checksums_valid(p)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
