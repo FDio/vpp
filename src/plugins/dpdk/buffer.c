@@ -44,8 +44,6 @@
  */
 
 #include <unistd.h>
-#include <linux/vfio.h>
-#include <sys/ioctl.h>
 
 #include <rte_config.h>
 
@@ -64,7 +62,7 @@
 #include <rte_per_lcore.h>
 #include <rte_branch_prediction.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
+#include <rte_vfio.h>
 #include <rte_random.h>
 #include <rte_debug.h>
 #include <rte_ether.h>
@@ -76,8 +74,6 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vlib/pci/pci.h>
-#include <vlib/linux/vfio.h>
 #include <vnet/vnet.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
@@ -394,43 +390,18 @@ dpdk_packet_template_init (vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 }
 
-static clib_error_t *
-scan_vfio_fd (void *arg, u8 * path_name, u8 * file_name)
-{
-  dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
-  linux_vfio_main_t *lvm = &vfio_main;
-  const char fn[] = "/dev/vfio/vfio";
-  char buff[sizeof (fn)] = { 0 };
-  int fd;
-  u8 *path = format (0, "%v%c", path_name, 0);
-
-  if (readlink ((char *) path, buff, sizeof (fn)) + 1 != sizeof (fn))
-    goto done;
-
-  if (strncmp (fn, buff, sizeof (fn)))
-    goto done;
-
-  fd = atoi ((char *) file_name);
-  if (fd != lvm->container_fd)
-    dbm->vfio_container_fd = fd;
-
-done:
-  vec_free (path);
-  return 0;
-}
-
 clib_error_t *
 dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 		  u32 num_elts, u32 pool_priv_size, u16 cache_size, u8 numa,
-		  struct rte_mempool ** _mp,
-		  vlib_physmem_region_index_t * pri)
+		  struct rte_mempool **_mp, vlib_physmem_region_index_t * pri)
 {
-  dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   struct rte_mempool *mp;
+  enum rte_iova_mode iova_mode;
   vlib_physmem_region_t *pr;
   dpdk_mempool_private_t priv;
   clib_error_t *error = 0;
   size_t min_chunk_size, align;
+  int map_dma = 1;
   u32 size;
   i32 ret;
   uword i;
@@ -463,46 +434,29 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
   priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
   rte_pktmbuf_pool_init (mp, &priv);
 
+  if (rte_eth_dev_count_avail () == 0)
+    map_dma = 0;
+
+  iova_mode = rte_eal_iova_mode ();
   for (i = 0; i < pr->n_pages; i++)
     {
-      size_t page_size = 1ull << pr->log2_page_size;
-      ret = rte_mempool_populate_iova (mp, ((char *) pr->mem) + i * page_size,
-				       pr->page_table[i], page_size, 0, 0);
+      size_t page_sz = 1ull << pr->log2_page_size;
+      char *va = ((char *) pr->mem) + i * page_sz;
+      uword pa = iova_mode == RTE_IOVA_VA ?
+	pointer_to_uword (va) : pr->page_table[i];
+      ret = rte_mempool_populate_iova (mp, va, pa, page_sz, 0, 0);
       if (ret < 0)
 	{
 	  rte_mempool_free (mp);
 	  return clib_error_return (0, "failed to populate %s", pool_name);
 	}
+      /* -1 likely means there is no PCI devices assigned to vfio
+         container or noiommu mode is used  so we stop trying */
+      if (map_dma && rte_vfio_dma_map (pointer_to_uword (va), pa, page_sz))
+	map_dma = 0;
     }
 
   _mp[0] = mp;
-
-  /* DPDK currently doesn't provide API to map DMA memory for empty mempool
-     so we are using this hack, will be nice to have at least API to get
-     VFIO container FD */
-  if (dbm->vfio_container_fd == -1)
-    foreach_directory_file ("/proc/self/fd", scan_vfio_fd, 0, 0);
-
-  if (dbm->vfio_container_fd != -1)
-    {
-      struct vfio_iommu_type1_dma_map dm = { 0 };
-      int i, rv = 0;
-      dm.argsz = sizeof (struct vfio_iommu_type1_dma_map);
-      dm.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
-
-      /* *INDENT-OFF* */
-      vec_foreach_index (i, pr->page_table)
-	{
-	  dm.vaddr = pointer_to_uword (pr->mem) + ((u64)i << pr->log2_page_size);
-	  dm.size = 1ull << pr->log2_page_size;
-	  dm.iova = pr->page_table[i];
-	  if ((rv = ioctl (dbm->vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dm)))
-	    break;
-	}
-      /* *INDENT-ON* */
-      if (rv != 0 && errno != EINVAL)
-	clib_unix_warning ("ioctl(VFIO_IOMMU_MAP_DMA) pool '%s'", pool_name);
-    }
 
   return 0;
 }
