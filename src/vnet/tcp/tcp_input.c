@@ -680,29 +680,32 @@ scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
     {
       bytes = sb->high_sacked - left->end;
       blks = 1;
-      if (bytes > (TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
-	  && left->prev == TCP_INVALID_SACK_HOLE_INDEX)
-	sb->lost_bytes += scoreboard_hole_bytes (left);
     }
 
-  right = left;
-  while ((left = scoreboard_prev_hole (sb, right))
-	 && (bytes < (TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
-	     && blks < TCP_DUPACK_THRESHOLD))
+  while ((right = left)
+	 && bytes < (TCP_DUPACK_THRESHOLD - 1) * tc->snd_mss
+	 && blks < TCP_DUPACK_THRESHOLD
+	 /* left not updated if above conditions fail */
+	 && (left = scoreboard_prev_hole (sb, right)))
     {
       bytes += right->start - left->end;
       blks++;
-      right = left;
     }
 
-  while (left)
+  /* left is first lost */
+  if (left)
     {
-      bytes += right->start - left->end;
-      sb->lost_bytes += scoreboard_hole_bytes (left);
-      left->is_lost = 1;
-      right = left;
-      left = scoreboard_prev_hole (sb, left);
+      do
+	{
+	  sb->lost_bytes += scoreboard_hole_bytes (right);
+	  left->is_lost = 1;
+	  left = scoreboard_prev_hole (sb, right);
+	  if (left)
+	    bytes += right->start - left->end;
+	}
+      while ((right = left));
     }
+
   sb->sacked_bytes = bytes;
 }
 
