@@ -129,7 +129,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->last_sacked_bytes == 400),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
   TCP_TEST ((sb->high_sacked == 900), "high sacked %u", sb->high_sacked);
-  TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
   /*
    * Inject odd blocks
@@ -276,7 +276,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 		     "\n%U", format_tcp_scoreboard, sb, tc);
   TCP_TEST ((pool_elts (sb->holes) == 5),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
-  TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
   tcp_rcv_sacks (tc, 950);
 
@@ -368,7 +368,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	    sb->last_sacked_bytes);
   TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
-  TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((sb->lost_bytes == 300), "lost bytes %u", sb->lost_bytes);
 
   tc->snd_una = 100;
   tcp_rcv_sacks (tc, 200);
@@ -410,6 +410,32 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
 	    sb->last_bytes_delivered);
   TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+
+  /*
+   * Add [1200, 1500] and test that [1000, 1200] is lost (bytes condition)
+   * snd_una = 1000 and snd_una_max = 1600
+   */
+  tc->snd_una = 1000;
+  tc->snd_una_max = 1600;
+  vec_reset_length (tc->rcv_opts.sacks);
+  block.start = 1200;
+  block.end = 1500;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+  tcp_rcv_sacks (tc, 1000);
+  if (verbose)
+    vlib_cli_output (vm, "\nacked [1200, 1500] test first hole is lost:\n%U",
+		     format_tcp_scoreboard, sb, tc);
+  TCP_TEST ((pool_elts (sb->holes) == 2), "scoreboard has %d elements",
+	    pool_elts (sb->holes));
+  TCP_TEST ((sb->sacked_bytes == 300), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 300), "last sacked bytes %d",
+	    sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_bytes_delivered == 0), "last bytes delivered %d",
+	    sb->last_bytes_delivered);
+  TCP_TEST ((sb->lost_bytes == 200), "lost bytes %u", sb->lost_bytes);
+  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+
   return 0;
 }
 
