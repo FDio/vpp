@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f18e2a9_0997165d",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-10-21T05:35:38Z",
+      "side": 1,
+      "message": "Initiating the unix_input... is actually correct. \nIt forces a dependency. Stat segment cannot be initialized before unix_input.",
+      "revId": "eff5b29d7efc067e808e5df1af4cf1eaf1e69c2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
