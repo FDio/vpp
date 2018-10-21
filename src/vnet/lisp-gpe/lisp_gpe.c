@@ -193,10 +193,15 @@ clib_error_t *
 vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  vlib_main_t *vm = vlib_get_main ();
 
   if (a->is_en)
     {
       lgm->is_en = 1;
+      udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe,
+			     lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */ );
+      udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
+			     lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
     }
   else
     {
@@ -206,6 +211,8 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
       /* disable all l3 ifaces */
       lisp_gpe_tenant_flush ();
 
+      udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_gpe, 0 /* is_ip4 */ );
+      udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_gpe6, 1 /* is_ip4 */ );
       lgm->is_en = 0;
     }
 
@@ -611,11 +618,6 @@ lisp_gpe_init (vlib_main_t * vm)
 
   lgm->lisp_gpe_fwd_entries =
     hash_create_mem (0, sizeof (lisp_gpe_fwd_entry_key_t), sizeof (uword));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe,
-			 lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */ );
-  udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
-			 lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
 
   lgm->lisp_stats_index_by_key =
     hash_create_mem (0, sizeof (lisp_stats_key_t), sizeof (uword));
