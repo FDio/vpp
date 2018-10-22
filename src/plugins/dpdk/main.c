@@ -125,6 +125,7 @@ dpdk_early_init (vlib_main_t *vm)
 check_hugetlb:
   alloc.flags = CLIB_MEM_VM_F_SHARED | CLIB_MEM_VM_F_HUGETLB | CLIB_MEM_VM_F_HUGETLB_PREALLOC;
   alloc.size = 1;
+  alloc.name = "dpdk_early_init";
 
   if ((err = clib_mem_vm_ext_alloc (&alloc)))
     {
