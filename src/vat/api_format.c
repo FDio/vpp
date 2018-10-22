@@ -5458,7 +5458,6 @@ _(dhcp_proxy_set_vss_reply)                             \
 _(dhcp_client_config_reply)                             \
 _(set_ip_flow_hash_reply)                               \
 _(sw_interface_ip6_enable_disable_reply)                \
-_(sw_interface_ip6_set_link_local_address_reply)        \
 _(ip6nd_proxy_add_del_reply)                            \
 _(sw_interface_ip6nd_ra_prefix_reply)                   \
 _(sw_interface_ip6nd_ra_config_reply)                   \
@@ -5684,8 +5683,6 @@ _(DHCP_CLIENT_CONFIG_REPLY, dhcp_client_config_reply)                   \
 _(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                \
   sw_interface_ip6_enable_disable_reply)                                \
-_(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY,                        \
-  sw_interface_ip6_set_link_local_address_reply)                        \
 _(IP6ND_PROXY_ADD_DEL_REPLY, ip6nd_proxy_add_del_reply)                 \
 _(IP6ND_PROXY_DETAILS, ip6nd_proxy_details)                             \
 _(SW_INTERFACE_IP6ND_RA_PREFIX_REPLY,                                   \
@@ -10676,55 +10673,6 @@ api_sw_interface_ip6_enable_disable (vat_main_t * vam)
   mp->enable = enable;
 
   S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_ip6_set_link_local_address_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u8 v6_address_set = 0;
-  ip6_address_t v6address;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "%U", unformat_ip6_address, &v6address))
-	v6_address_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-  if (!v6_address_set)
-    {
-      errmsg ("no address set");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  clib_memcpy (mp->address, &v6address, sizeof (v6address));
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply, return good/bad news  */
   W (ret);
   return ret;
 }
@@ -23762,8 +23710,6 @@ _(set_ip_flow_hash,                                                     \
   "vrf <n> [src] [dst] [sport] [dport] [proto] [reverse] [ipv6]")       \
 _(sw_interface_ip6_enable_disable,                                      \
   "<intfc> | sw_if_index <id> enable | disable")                        \
-_(sw_interface_ip6_set_link_local_address,                              \
-  "<intfc> | sw_if_index <id> <ip6-address>/<mask-width>")              \
 _(ip6nd_proxy_add_del,                                                  \
   "<intfc> | sw_if_index <id> <ip6-address>")                           \
 _(ip6nd_proxy_dump, "")                                                 \
