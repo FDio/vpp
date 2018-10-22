@@ -402,6 +402,24 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
 #undef _
   },
 };
+
+VLIB_REGISTER_NODE (dummy_node) = {
+  .function = dpdk_esp4_decrypt_node_fn,
+  .name = "dummy-node",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_decrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
+  .error_strings = esp_decrypt_error_strings,
+
+  .n_next_nodes = ESP_DECRYPT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+    foreach_esp_decrypt_next
+#undef _
+  },
+};
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp4_decrypt_node, dpdk_esp4_decrypt_node_fn);
