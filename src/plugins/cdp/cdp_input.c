@@ -250,7 +250,7 @@ process_cdp_hdr (cdp_main_t * cm, cdp_neighbor_t * n, cdp_hdr_t * h)
 static int
 cdp_packet_scan (cdp_main_t * cm, cdp_neighbor_t * n)
 {
-  u8 *cur = n->last_rx_pkt;
+  u8 *end, *cur = n->last_rx_pkt;
   cdp_hdr_t *h;
   cdp_tlv_t *tlv;
   cdp_error_t e = CDP_ERROR_NONE;
@@ -269,13 +269,24 @@ cdp_packet_scan (cdp_main_t * cm, cdp_neighbor_t * n)
   if (e)
     return e;
 
-  cur = (u8 *) (h + 1);
+  // there are no tlvs
+  if (vec_len (n->last_rx_pkt) <= 0)
+    return CDP_ERROR_BAD_TLV;
 
-  while (cur < n->last_rx_pkt + vec_len (n->last_rx_pkt) - 1)
+  cur = (u8 *) (h + 1);
+  end = n->last_rx_pkt + vec_len (n->last_rx_pkt) - 1;
+
+  // look ahead 4 bytes (u16 tlv->t + u16 tlv->l)
+  while (cur + 3 <= end)
     {
       tlv = (cdp_tlv_t *) cur;
       tlv->t = ntohs (tlv->t);
       tlv->l = ntohs (tlv->l);
+
+      /* tlv length includes t, l and v */
+      cur += tlv->l;
+      if ((cur - 1) > end)
+	return CDP_ERROR_BAD_TLV;
       /*
        * Only process known TLVs. In practice, certain
        * devices send tlv->t = 0xFF, perhaps as an EOF of sorts.
@@ -288,9 +299,11 @@ cdp_packet_scan (cdp_main_t * cm, cdp_neighbor_t * n)
 	  if (e)
 	    return e;
 	}
-      /* tlv length includes (t, l) */
-      cur += tlv->l;
     }
+
+  // did not process all tlvs or none tlv processed
+  if ((cur - 1) != end)
+    return CDP_ERROR_BAD_TLV;
 
   return CDP_ERROR_NONE;
 }
