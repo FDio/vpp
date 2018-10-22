@@ -245,7 +245,10 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT_POST;
+	  if(is_ip6)
+	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT6_POST;
+	  else
+	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT4_POST;
 
 	  /* FIXME multi-seg */
 	  sa0->total_data_size += b0->current_length;
