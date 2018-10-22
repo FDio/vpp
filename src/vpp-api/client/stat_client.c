@@ -364,6 +364,12 @@ stat_segment_vec_len (void *vec)
   return vec_len (vec);
 }
 
+void
+stat_segment_vec_free (void *vec)
+{
+  vec_free (vec);
+}
+
 /* Create a vector from a string (or add to existing) */
 u8 **
 stat_segment_string_vector (u8 ** string_vector, char *string)
