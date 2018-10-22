@@ -213,6 +213,8 @@ vlib_node_add_next_with_slot (vlib_main_t * vm,
   node = vec_elt (nm->nodes, node_index);
   next = vec_elt (nm->nodes, next_node_index);
 
+  clib_warning("add_next: %v => %v", node->name, next->name);
+
   /* Runtime has to be initialized. */
   ASSERT (nm->flags & VLIB_NODE_MAIN_RUNTIME_STARTED);
 
