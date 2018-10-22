@@ -84,6 +84,7 @@ clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size)
 clib_error_t *
 clib_mem_create_hugetlb_fd (char *name, int *fdp)
 {
+  ASSERT (name != 0);
   clib_error_t *err = 0;
   int fd = -1;
   static int memfd_hugetlb_supported = 1;
