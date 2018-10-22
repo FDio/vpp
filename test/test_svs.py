@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import VppIpPrefix
-
 from vpp_ip_route import VppIpTable
 
 from scapy.packet import Raw
@@ -104,9 +102,7 @@ class TestSVS(VppTestCase):
             #
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id,
-                    VppIpPrefix("%d.0.0.0" % i, 8).encode(),
-                    i)
+                    table_id, "%d.0.0.0/8" % i, i)
 
         #
         # Enable SVS on pg0/pg1 using table 1001/1002
@@ -173,8 +169,7 @@ class TestSVS(VppTestCase):
         for table_id in table_ids:
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id,
-                    VppIpPrefix("%d.0.0.0" % i, 8).encode(),
+                    table_id, "%d.0.0.0/8" % i,
                     0, is_add=0)
             self.vapi.svs_table_add_del(
                 VppEnum.vl_api_address_family_t.ADDRESS_IP4,
@@ -234,8 +229,7 @@ class TestSVS(VppTestCase):
             #
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id,
-                    VppIpPrefix("2001:%d::" % i, 32).encode(),
+                    table_id, "2001:%d::/32" % i,
                     i)
 
         #
@@ -304,8 +298,7 @@ class TestSVS(VppTestCase):
         for table_id in table_ids:
             for i in range(1, 4):
                 self.vapi.svs_route_add_del(
-                    table_id,
-                    VppIpPrefix("2001:%d::" % i, 32).encode(),
+                    table_id, "2001:%d::/32" % i,
                     0, is_add=0)
             self.vapi.svs_table_add_del(
                 VppEnum.vl_api_address_family_t.ADDRESS_IP6,

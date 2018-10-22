@@ -28,6 +28,7 @@ import weakref
 import atexit
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
 from . vpp_serializer import VPPMessage, vpp_get_type
+from . vpp_format import VPPFormat
 
 if sys.version[0] == '2':
     import Queue as queue
