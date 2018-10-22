@@ -38,6 +38,7 @@ int stat_segment_connect (char *socket_name);
 void stat_segment_disconnect (void);
 uint8_t **stat_segment_string_vector (uint8_t ** string_vector, char *string);
 int stat_segment_vec_len (void *vec);
+void stat_segment_vec_free (void *vec);
 uint32_t *stat_segment_ls (uint8_t ** pattern);
 stat_segment_data_t *stat_segment_dump (uint32_t * counter_vec);
 stat_segment_data_t *stat_segment_dump_entry (uint32_t index);
