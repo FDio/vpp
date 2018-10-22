@@ -409,6 +409,36 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp4_decrypt_node, dpdk_esp4_decrypt_node_fn);
 
+static uword
+dpdk_esp6_decrypt_node_fn (vlib_main_t * vm,
+	     vlib_node_runtime_t * node,
+	     vlib_frame_t * from_frame)
+{
+  return dpdk_esp_decrypt_inline(vm, node, from_frame, 1 /*is_ip6*/);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (dpdk_esp6_decrypt_node) = {
+  .function = dpdk_esp6_decrypt_node_fn,
+  .name = "dpdk-esp6-decrypt",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_decrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
+  .error_strings = esp_decrypt_error_strings,
+
+  .n_next_nodes = ESP_DECRYPT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+    foreach_esp_decrypt_next
+#undef _
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp6_decrypt_node, dpdk_esp6_decrypt_node_fn);
+
 /*
  * Decrypt Post Node
  */
