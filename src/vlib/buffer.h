@@ -187,6 +187,12 @@ vlib_buffer_struct_is_sane (vlib_buffer_t * b)
   ASSERT (b->pre_data + VLIB_BUFFER_PRE_DATA_SIZE == b->data);
 }
 
+always_inline uword
+vlib_buffer_get_va (vlib_buffer_t * b)
+{
+  return pointer_to_uword (b->data);
+}
+
 /** \brief Get pointer to current data to process
 
     @param b - (vlib_buffer_t *) pointer to the buffer
@@ -199,6 +205,12 @@ vlib_buffer_get_current (vlib_buffer_t * b)
   /* Check bounds. */
   ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
   return b->data + b->current_data;
+}
+
+always_inline uword
+vlib_buffer_get_current_va (vlib_buffer_t * b)
+{
+  return vlib_buffer_get_va (b) + b->current_data;
 }
 
 /** \brief Advance current data pointer by the supplied (signed!) amount

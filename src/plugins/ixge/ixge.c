@@ -1097,10 +1097,8 @@ ixge_tx_no_wrap (ixge_main_t * xm,
       ASSERT (ixge_tx_descriptor_matches_template (xm, d + 0));
       ASSERT (ixge_tx_descriptor_matches_template (xm, d + 1));
 
-      d[0].buffer_address =
-	vlib_get_buffer_data_physical_address (vm, bi0) + b0->current_data;
-      d[1].buffer_address =
-	vlib_get_buffer_data_physical_address (vm, bi1) + b1->current_data;
+      d[0].buffer_address = vlib_buffer_get_pa (vm, b0);
+      d[1].buffer_address = vlib_buffer_get_pa (vm, b1);
 
       d[0].n_bytes_this_buffer = len0;
       d[1].n_bytes_this_buffer = len1;
@@ -1153,9 +1151,7 @@ ixge_tx_no_wrap (ixge_main_t * xm,
 
       ASSERT (ixge_tx_descriptor_matches_template (xm, d + 0));
 
-      d[0].buffer_address =
-	vlib_get_buffer_data_physical_address (vm, bi0) + b0->current_data;
-
+      d[0].buffer_address = vlib_buffer_get_pa (vm, b0);
       d[0].n_bytes_this_buffer = len0;
 
       d[0].status0 =
@@ -1425,6 +1421,7 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
       while (n_descriptors_left >= 4 && n_left_to_next >= 2)
 	{
 	  vlib_buffer_t *b0, *b1;
+	  vlib_buffer_t *f0, *f1;
 	  u32 bi0, fi0, len0, l3_offset0, s20, s00, flags0;
 	  u32 bi1, fi1, len1, l3_offset1, s21, s01, flags1;
 	  u8 is_eop0, error0, next0;
@@ -1510,10 +1507,10 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  n_packets += is_eop0 + is_eop1;
 
 	  /* Give new buffers to hardware. */
-	  d0.rx_to_hw.tail_address =
-	    vlib_get_buffer_data_physical_address (vm, fi0);
-	  d1.rx_to_hw.tail_address =
-	    vlib_get_buffer_data_physical_address (vm, fi1);
+	  f0 = vlib_get_buffer (vm, fi0);
+	  f1 = vlib_get_buffer (vm, fi1);
+	  d0.rx_to_hw.tail_address = vlib_buffer_get_pa (vm, f0);
+	  d1.rx_to_hw.tail_address = vlib_buffer_get_pa (vm, f1);
 	  d0.rx_to_hw.head_address = d[0].rx_to_hw.tail_address;
 	  d1.rx_to_hw.head_address = d[1].rx_to_hw.tail_address;
 	  d[0].as_u32x4 = d0.as_u32x4;
@@ -1655,6 +1652,7 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
       while (n_descriptors_left > 0 && n_left_to_next > 0)
 	{
 	  vlib_buffer_t *b0;
+	  vlib_buffer_t *f0;
 	  u32 bi0, fi0, len0, l3_offset0, s20, s00, flags0;
 	  u8 is_eop0, error0, next0;
 	  ixge_descriptor_t d0;
@@ -1708,8 +1706,8 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  n_packets += is_eop0;
 
 	  /* Give new buffer to hardware. */
-	  d0.rx_to_hw.tail_address =
-	    vlib_get_buffer_data_physical_address (vm, fi0);
+	  f0 = vlib_get_buffer (vm, fi0);
+	  d0.rx_to_hw.tail_address = vlib_buffer_get_pa (vm, f0);
 	  d0.rx_to_hw.head_address = d0.rx_to_hw.tail_address;
 	  d[0].as_u32x4 = d0.as_u32x4;
 
@@ -2510,9 +2508,8 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
       for (i = 0; i < n_alloc; i++)
 	{
 	  dq->descriptors[i].rx_to_hw.tail_address =
-	    vlib_get_buffer_data_physical_address (vm,
-						   dq->descriptor_buffer_indices
-						   [i]);
+	    vlib_buffer_get_pa
+	    (vm, vlib_get_buffer (vm, dq->descriptor_buffer_indices[i]));
 	}
     }
   else

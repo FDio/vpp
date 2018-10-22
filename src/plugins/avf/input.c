@@ -52,6 +52,7 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 {
   u16 n_refill, mask, n_alloc, slot;
   u32 s0, s1, s2, s3;
+  vlib_buffer_t *b[4];
   avf_rx_desc_t *d[4];
 
   n_refill = rxq->size - 1 - rxq->n_enqueued;
@@ -97,28 +98,24 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
       d[1] = ((avf_rx_desc_t *) rxq->descs) + s1;
       d[2] = ((avf_rx_desc_t *) rxq->descs) + s2;
       d[3] = ((avf_rx_desc_t *) rxq->descs) + s3;
+      b[0] = vlib_get_buffer (vm, rxq->bufs[s0]);
+      b[1] = vlib_get_buffer (vm, rxq->bufs[s1]);
+      b[2] = vlib_get_buffer (vm, rxq->bufs[s2]);
+      b[3] = vlib_get_buffer (vm, rxq->bufs[s3]);
+
       if (use_iova)
 	{
-	  vlib_buffer_t *b;
-	  b = vlib_get_buffer (vm, rxq->bufs[s0]);
-	  d[0]->qword[0] = pointer_to_uword (b->data);
-	  b = vlib_get_buffer (vm, rxq->bufs[s1]);
-	  d[1]->qword[0] = pointer_to_uword (b->data);
-	  b = vlib_get_buffer (vm, rxq->bufs[s2]);
-	  d[2]->qword[0] = pointer_to_uword (b->data);
-	  b = vlib_get_buffer (vm, rxq->bufs[s3]);
-	  d[3]->qword[0] = pointer_to_uword (b->data);
+	  d[0]->qword[0] = vlib_buffer_get_va (b[0]);
+	  d[1]->qword[0] = vlib_buffer_get_va (b[1]);
+	  d[2]->qword[0] = vlib_buffer_get_va (b[2]);
+	  d[3]->qword[0] = vlib_buffer_get_va (b[3]);
 	}
       else
 	{
-	  d[0]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
-	  d[1]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s1]);
-	  d[2]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s2]);
-	  d[3]->qword[0] =
-	    vlib_get_buffer_data_physical_address (vm, rxq->bufs[s3]);
+	  d[0]->qword[0] = vlib_buffer_get_pa (vm, b[0]);
+	  d[1]->qword[0] = vlib_buffer_get_pa (vm, b[1]);
+	  d[2]->qword[0] = vlib_buffer_get_pa (vm, b[2]);
+	  d[3]->qword[0] = vlib_buffer_get_pa (vm, b[3]);
 	}
 
       d[0]->qword[1] = 0;
@@ -134,14 +131,11 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
     {
       s0 = slot;
       d[0] = ((avf_rx_desc_t *) rxq->descs) + s0;
+      b[0] = vlib_get_buffer (vm, rxq->bufs[s0]);
       if (use_iova)
-	{
-	  vlib_buffer_t *b = vlib_get_buffer (vm, rxq->bufs[s0]);
-	  d[0]->qword[0] = pointer_to_uword (b->data);
-	}
+	d[0]->qword[0] = vlib_buffer_get_va (b[0]);
       else
-	d[0]->qword[0] =
-	  vlib_get_buffer_data_physical_address (vm, rxq->bufs[s0]);
+	d[0]->qword[0] = vlib_buffer_get_pa (vm, b[0]);
       d[0]->qword[1] = 0;
 
       /* next */

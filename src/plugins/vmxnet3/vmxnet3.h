@@ -590,9 +590,9 @@ vmxnet3_rxq_refill_ring0 (vlib_main_t * vm, vmxnet3_device_t * vd,
 
   while (n_alloc)
     {
+      vlib_buffer_t *b = vlib_get_buffer (vm, ring->bufs[ring->produce]);
       rxd = &rxq->rx_desc[0][ring->produce];
-      rxd->address =
-	vlib_get_buffer_data_physical_address (vm, ring->bufs[ring->produce]);
+      rxd->address = vlib_buffer_get_pa (vm, b);
       rxd->flags = ring->gen | VLIB_BUFFER_DATA_SIZE;
 
       vmxnet3_rx_ring_advance_produce (rxq, ring);
@@ -632,9 +632,9 @@ vmxnet3_rxq_refill_ring1 (vlib_main_t * vm, vmxnet3_device_t * vd,
 
   while (n_alloc)
     {
+      vlib_buffer_t *b = vlib_get_buffer (vm, ring->bufs[ring->produce]);
       rxd = &rxq->rx_desc[1][ring->produce];
-      rxd->address =
-	vlib_get_buffer_data_physical_address (vm, ring->bufs[ring->produce]);
+      rxd->address = vlib_buffer_get_pa (vm, b);
       rxd->flags = ring->gen | VLIB_BUFFER_DATA_SIZE | VMXNET3_RXF_BTYPE;
 
       vmxnet3_rx_ring_advance_produce (rxq, ring);

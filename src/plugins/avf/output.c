@@ -118,16 +118,21 @@ retry:
       b2 = vlib_get_buffer (vm, bi2);
       b3 = vlib_get_buffer (vm, bi3);
 
-#if 0
-      d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
-	b0->current_data;
-#else
-      d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
-      d1->qword[0] = pointer_to_uword (b1->data) + b1->current_data;
-      d2->qword[0] = pointer_to_uword (b2->data) + b2->current_data;
-      d3->qword[0] = pointer_to_uword (b3->data) + b3->current_data;
+      if (ad->flags & AVF_DEVICE_F_IOVA)
+	{
+	  d0->qword[0] = vlib_buffer_get_current_va (b0);
+	  d1->qword[0] = vlib_buffer_get_current_va (b1);
+	  d2->qword[0] = vlib_buffer_get_current_va (b2);
+	  d3->qword[0] = vlib_buffer_get_current_va (b3);
+	}
+      else
+	{
+	  d0->qword[0] = vlib_buffer_get_current_pa (vm, b0);
+	  d1->qword[0] = vlib_buffer_get_current_pa (vm, b1);
+	  d2->qword[0] = vlib_buffer_get_current_pa (vm, b2);
+	  d3->qword[0] = vlib_buffer_get_current_pa (vm, b3);
+	}
 
-#endif
       d0->qword[1] = ((u64) b0->current_length) << 34 | bits;
       d1->qword[1] = ((u64) b1->current_length) << 34 | bits;
       d2->qword[1] = ((u64) b2->current_length) << 34 | bits;
@@ -146,12 +151,11 @@ retry:
       txq->bufs[next] = bi0;
       b0 = vlib_get_buffer (vm, bi0);
 
-#if 0
-      d->qword[0] = vlib_get_buffer_data_physical_address (vm, bi0) +
-	b0->current_data;
-#else
-      d0->qword[0] = pointer_to_uword (b0->data) + b0->current_data;
-#endif
+      if (ad->flags & AVF_DEVICE_F_IOVA)
+	d0->qword[0] = vlib_buffer_get_current_va (b0);
+      else
+	d0->qword[0] = vlib_buffer_get_current_pa (vm, b0);
+
       d0->qword[1] = (((u64) b0->current_length) << 34) | bits;
 
       next = (next + 1) & mask;
