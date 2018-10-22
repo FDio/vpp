@@ -22,6 +22,30 @@
       "revId": "e68f6b47868302b373ee795360a2aa503c510e5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6871b60c_0b3cb392",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-10-22T17:07:53Z",
+      "side": 1,
+      "message": "If the kernel TAP driver has already enqueued some GSO packets in our direction, and we turn off the GSO, then we stop properly marking them on ingress, which will result in a few packet dropped due to invalid checksums by receiving host (non-gso packets), or due to MTU checks (gso packets).\n\nThe first condition is easily reproducible by just commenting out the next line. I could not reproduce the second condition, even repeatedly turning on/off the gso on the receiving interface of the iperf. \n\nGiven the constraint of not changing the datapath for the non-gso tap interfaces, one way to address this if we want zero drops is to turn off the \"gso_enabled\" flag on the interface a few milliseconds after sending IOCTLs - although that seems a bit too convoluted ?\n\nOr did you have something else in mind ?",
+      "parentUuid": "ebbb1628_bc19b7ef",
+      "range": {
+        "startLine": 479,
+        "startChar": 23,
+        "endLine": 479,
+        "endChar": 36
+      },
+      "revId": "e68f6b47868302b373ee795360a2aa503c510e5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
