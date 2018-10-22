@@ -22,6 +22,30 @@
       "revId": "a10614b4cd52d815070010466e9ef1166a67de7c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "893e3823_cb173a2e",
+        "filename": "extras/japi/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-10-22T09:45:44Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "90ee4ebb_590ad73c",
+      "range": {
+        "startLine": 16,
+        "startChar": 21,
+        "endLine": 16,
+        "endChar": 26
+      },
+      "revId": "a10614b4cd52d815070010466e9ef1166a67de7c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
