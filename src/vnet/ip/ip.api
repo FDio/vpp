@@ -356,20 +356,6 @@ autoreply define sw_interface_ip6_enable_disable
   u8 enable;			/* set to true if enable */
 };
 
-/** \brief IPv6 set link local address on interface request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface to set link local on
-    @param address[] - the new link local address
-*/
-autoreply define sw_interface_ip6_set_link_local_address
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 address[16];
-};
-
 /** \brief Add / del route request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

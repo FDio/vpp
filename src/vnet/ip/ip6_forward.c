@@ -201,12 +201,43 @@ ip6_add_del_interface_address (vlib_main_t * vm,
   clib_error_t *error;
   u32 if_address_index;
   ip6_address_fib_t ip6_af, *addr_fib = 0;
+  ip6_address_t ll_addr;
 
   /* local0 interface doesn't support IP addressing */
   if (sw_if_index == 0)
     {
       return
 	clib_error_create ("local0 interface doesn't support IP addressing");
+    }
+
+  if (ip6_address_is_link_local_unicast (address))
+    {
+      if (address_length != 128)
+	{
+	  vnm->api_errno = VNET_API_ERROR_ADDRESS_LENGTH_MISMATCH;
+	  return
+	    clib_error_create
+	    ("prefix length of link-local address must be 128");
+	}
+      if (!is_del)
+	{
+	  return ip6_neighbor_set_link_local_address (vm, sw_if_index,
+						      address);
+	}
+      else
+	{
+	  ll_addr = ip6_neighbor_get_link_local_address (sw_if_index);
+	  if (ip6_address_is_equal (&ll_addr, address))
+	    {
+	      vnm->api_errno = VNET_API_ERROR_ADDRESS_NOT_DELETABLE;
+	      return clib_error_create ("address not deletable");
+	    }
+	  else
+	    {
+	      vnm->api_errno = VNET_API_ERROR_ADDRESS_NOT_FOUND_FOR_INTERFACE;
+	      return clib_error_create ("address not found");
+	    }
+	}
     }
 
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
