@@ -35,7 +35,8 @@
   _(IP4_LOOKUP, "ip4-lookup")                   \
   _(IP6_LOOKUP, "ip6-lookup")                   \
   _(INTERFACE_OUTPUT, "interface-output")	\
-  _(DECRYPT_POST, "dpdk-esp-decrypt-post")
+  _(DECRYPT4_POST, "dpdk-esp4-decrypt-post")     \
+  _(DECRYPT6_POST, "dpdk-esp6-decrypt-post")
 
 typedef enum
 {

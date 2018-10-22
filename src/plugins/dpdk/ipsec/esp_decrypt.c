@@ -245,7 +245,10 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT_POST;
+	  if(is_ip6)
+	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT6_POST;
+	  else
+	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT4_POST;
 
 	  /* FIXME multi-seg */
 	  sa0->total_data_size += b0->current_length;
@@ -387,7 +390,7 @@ dpdk_esp4_decrypt_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp4_decrypt_node) = {
   .function = dpdk_esp4_decrypt_node_fn,
-  .name = "dpdk4-esp-decrypt",
+  .name = "dpdk-esp4-decrypt",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -652,7 +655,7 @@ dpdk_esp4_decrypt_post_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp4_decrypt_post_node) = {
   .function = dpdk_esp4_decrypt_post_node_fn,
-  .name = "dpdk4-esp-decrypt-post",
+  .name = "dpdk-esp4-decrypt-post",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_post_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -680,7 +683,7 @@ dpdk_esp6_decrypt_post_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
   .function = dpdk_esp6_decrypt_post_node_fn,
-  .name = "dpdk6-esp-decrypt-post",
+  .name = "dpdk-esp6-decrypt-post",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_post_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
