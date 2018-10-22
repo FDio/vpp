@@ -842,6 +842,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 static void
 dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 {
+  vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *pci_addr = 0;
   int num_whitelisted = vec_len (conf->dev_confs);
@@ -860,7 +861,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       vlib_pci_free_device_info (d);
       d = 0;
       }
-    d = vlib_pci_get_device_info (addr, &error);
+    d = vlib_pci_get_device_info (vm, addr, &error);
     if (error)
     {
       clib_error_report (error);
@@ -928,7 +929,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         continue;
       }
 
-    error = vlib_pci_bind_to_uio (addr, (char *) conf->uio_driver_name);
+    error = vlib_pci_bind_to_uio (vm, addr, (char *) conf->uio_driver_name);
 
     if (error)
       {
