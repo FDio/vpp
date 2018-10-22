@@ -25,9 +25,6 @@ typedef struct
 
 typedef struct
 {
-  u32 flags;
-#define LINUX_VFIO_F_HAVE_IOMMU		(1 << 0)
-#define LINUX_VFIO_F_HAVE_NOIOMMU	(1 << 1)
   int container_fd;
 
   /* VFIO */
@@ -48,7 +45,7 @@ extern linux_vfio_main_t vfio_main;
 clib_error_t *linux_vfio_init (vlib_main_t * vm);
 void linux_vfio_dma_map_regions (vlib_main_t * vm);
 clib_error_t *linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr,
-					      int *fd);
+					      int *fd, int *is_noiommu);
 
 
 #endif /* included_vlib_linux_vfio_h */

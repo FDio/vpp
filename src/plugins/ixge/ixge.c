@@ -2245,10 +2245,11 @@ CLIB_MULTIARCH_SELECT_FN (ixge_input)
 static u8 *
 format_ixge_device_name (u8 * s, va_list * args)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u32 i = va_arg (*args, u32);
   ixge_main_t *xm = &ixge_main;
   ixge_device_t *xd = vec_elt_at_index (xm->devices, i);
-  vlib_pci_addr_t *addr = vlib_pci_get_addr (xd->pci_dev_handle);
+  vlib_pci_addr_t *addr = vlib_pci_get_addr (vm, xd->pci_dev_handle);
   return format (s, "TenGigabitEthernet%x/%x/%x/%x",
 		 addr->domain, addr->bus, addr->slot, addr->function);
 }
@@ -2337,6 +2338,7 @@ format_ixge_device (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
+  vlib_main_t *vm = vlib_get_main ();
   ixge_main_t *xm = &ixge_main;
   ixge_device_t *xd = vec_elt_at_index (xm->devices, dev_instance);
   ixge_phy_t *phy = xd->phys + xd->phy_index;
@@ -2351,8 +2353,8 @@ format_ixge_device (u8 * s, va_list * args)
 
   {
 
-    vlib_pci_addr_t *addr = vlib_pci_get_addr (xd->pci_dev_handle);
-    vlib_pci_device_info_t *d = vlib_pci_get_device_info (addr, 0);
+    vlib_pci_addr_t *addr = vlib_pci_get_addr (vm, xd->pci_dev_handle);
+    vlib_pci_device_info_t *d = vlib_pci_get_device_info (vm, addr, 0);
 
     if (d)
       s = format (s, "\n%UPCIe %U", format_white_space, indent + 2,
@@ -2822,11 +2824,9 @@ VLIB_INIT_FUNCTION (ixge_init);
 
 
 static void
-ixge_pci_intr_handler (vlib_pci_dev_handle_t h)
+ixge_pci_intr_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h)
 {
-  ixge_main_t *xm = &ixge_main;
-  vlib_main_t *vm = xm->vlib_main;
-  uword private_data = vlib_pci_get_private_data (h);
+  uword private_data = vlib_pci_get_private_data (vm, h);
 
   vlib_node_set_interrupt_pending (vm, ixge_input_node.index);
 
@@ -2845,8 +2845,8 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   clib_error_t *error = 0;
   void *r;
   ixge_device_t *xd;
-  vlib_pci_addr_t *addr = vlib_pci_get_addr (h);
-  vlib_pci_device_info_t *d = vlib_pci_get_device_info (addr, 0);
+  vlib_pci_addr_t *addr = vlib_pci_get_addr (vm, h);
+  vlib_pci_device_info_t *d = vlib_pci_get_device_info (vm, addr, 0);
 
   /* Allocate physmem region for DMA buffers */
   if (xm->physmem_region_allocated == 0)
@@ -2859,7 +2859,7 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   if (error)
     return error;
 
-  error = vlib_pci_map_region (h, 0, &r);
+  error = vlib_pci_map_region (vm, h, 0, &r);
   if (error)
     return error;
 
@@ -2877,7 +2877,7 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   xd->pci_function = addr->function;
   xd->per_interface_next_index = ~0;
 
-  vlib_pci_set_private_data (h, xd->device_index);
+  vlib_pci_set_private_data (vm, h, xd->device_index);
 
   /* Chip found so enable node. */
   {
@@ -2895,12 +2895,12 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_dev_handle_t h)
       xm->process_node_index = ixge_process_node.index;
     }
 
-  error = vlib_pci_bus_master_enable (h);
+  error = vlib_pci_bus_master_enable (vm, h);
 
   if (error)
     return error;
 
-  return vlib_pci_intr_enable (h);
+  return vlib_pci_intr_enable (vm, h);
 }
 
 /* *INDENT-OFF* */

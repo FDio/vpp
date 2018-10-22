@@ -428,11 +428,11 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 }
 
 static void
-vmxnet3_irq_0_handler (vlib_pci_dev_handle_t h, u16 line)
+vmxnet3_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
-  uword pd = vlib_pci_get_private_data (h);
+  uword pd = vlib_pci_get_private_data (vm, h);
   vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, pd);
   u16 qid = line;
 
@@ -441,11 +441,11 @@ vmxnet3_irq_0_handler (vlib_pci_dev_handle_t h, u16 line)
 }
 
 static void
-vmxnet3_irq_1_handler (vlib_pci_dev_handle_t h, u16 line)
+vmxnet3_irq_1_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
-  uword pd = vlib_pci_get_private_data (h);
+  uword pd = vlib_pci_get_private_data (vm, h);
   vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, pd);
   u32 ret;
 
@@ -521,7 +521,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     vd->flags |= VMXNET3_DEVICE_F_ELOG;
 
   if ((error =
-       vlib_pci_device_open (&args->addr, vmxnet3_pci_device_ids, &h)))
+       vlib_pci_device_open (vm, &args->addr, vmxnet3_pci_device_ids, &h)))
     {
       pool_put (vmxm->devices, vd);
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
@@ -532,29 +532,29 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
     }
   vd->pci_dev_handle = h;
 
-  vlib_pci_set_private_data (h, vd->dev_instance);
+  vlib_pci_set_private_data (vm, h, vd->dev_instance);
 
-  if ((error = vlib_pci_bus_master_enable (h)))
+  if ((error = vlib_pci_bus_master_enable (vm, h)))
     goto error;
 
-  if ((error = vlib_pci_map_region (h, 0, (void **) &vd->bar[0])))
+  if ((error = vlib_pci_map_region (vm, h, 0, (void **) &vd->bar[0])))
     goto error;
 
-  if ((error = vlib_pci_map_region (h, 1, (void **) &vd->bar[1])))
+  if ((error = vlib_pci_map_region (vm, h, 1, (void **) &vd->bar[1])))
     goto error;
 
-  if ((error = vlib_pci_register_msix_handler (h, 0, 1,
+  if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
 					       &vmxnet3_irq_0_handler)))
     goto error;
 
-  if ((error = vlib_pci_register_msix_handler (h, 1, 1,
+  if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
 					       &vmxnet3_irq_1_handler)))
     goto error;
 
-  if ((error = vlib_pci_enable_msix_irq (h, 0, 2)))
+  if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
     goto error;
 
-  if ((error = vlib_pci_intr_enable (h)))
+  if ((error = vlib_pci_intr_enable (vm, h)))
     goto error;
 
   if ((error = vmxnet3_device_init (vm, vd, args)))
@@ -611,7 +611,7 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
       ethernet_delete_interface (vnm, vd->hw_if_index);
     }
 
-  vlib_pci_device_close (vd->pci_dev_handle);
+  vlib_pci_device_close (vm, vd->pci_dev_handle);
 
   /* *INDENT-OFF* */
   vec_foreach_index (i, vd->rxqs)

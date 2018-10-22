@@ -103,6 +103,21 @@ open_vfio_iommu_group (int group, int is_noiommu)
   u8 *s = 0;
   int fd;
 
+  if (lvm->container_fd == -1)
+    {
+      if ((fd = open ("/dev/vfio/vfio", O_RDWR)) == -1)
+	return clib_error_return_unix (0, "failed to open VFIO container");
+
+      if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
+	{
+	  close (fd);
+	  return clib_error_return_unix (0, "incompatible VFIO version");
+	}
+
+      lvm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
+      lvm->container_fd = fd;
+    }
+
   g = get_vfio_iommu_group (group);
   if (g)
     {
@@ -165,7 +180,8 @@ error:
 }
 
 clib_error_t *
-linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
+linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp,
+				int *is_noiommu)
 {
   clib_error_t *err = 0;
   linux_pci_vfio_iommu_group_t *g;
@@ -173,8 +189,8 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
   int iommu_group;
   u8 *tmpstr;
   int fd;
-  int is_noiommu = 0;
 
+  *is_noiommu = 0;
   s = format (s, "/sys/bus/pci/devices/%U/iommu_group", format_vlib_pci_addr,
 	      addr);
   tmpstr = clib_sysfs_link_to_name ((char *) s);
@@ -191,20 +207,20 @@ linux_vfio_group_get_device_fd (vlib_pci_addr_t * addr, int *fdp)
     }
   vec_reset_length (s);
 
-  s =
-    format (s, "/sys/bus/pci/devices/%U/iommu_group/name",
-	    format_vlib_pci_addr, addr);
+  s = format (s, "/sys/bus/pci/devices/%U/iommu_group/name",
+	      format_vlib_pci_addr, addr);
   err = clib_sysfs_read ((char *) s, "%s", &tmpstr);
   if (err == 0)
     {
       if (strncmp ((char *) tmpstr, "vfio-noiommu", 12) == 0)
-	is_noiommu = 1;
+	*is_noiommu = 1;
+
       vec_free (tmpstr);
     }
   else
     clib_error_free (err);
   vec_reset_length (s);
-  if ((err = open_vfio_iommu_group (iommu_group, is_noiommu)))
+  if ((err = open_vfio_iommu_group (iommu_group, *is_noiommu)))
     return err;
 
   g = get_vfio_iommu_group (iommu_group);
@@ -229,37 +245,10 @@ clib_error_t *
 linux_vfio_init (vlib_main_t * vm)
 {
   linux_vfio_main_t *lvm = &vfio_main;
-  int fd;
 
   lvm->log_default = vlib_log_register_class ("vfio", 0);
+  lvm->container_fd = -1;
 
-  fd = open ("/dev/vfio/vfio", O_RDWR);
-
-  /* check if iommu is available */
-  if (fd != -1)
-    {
-      if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
-	{
-	  close (fd);
-	  fd = -1;
-	}
-      else
-	{
-	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 1)
-	    {
-	      lvm->flags |= LINUX_VFIO_F_HAVE_IOMMU;
-	      vlib_log_info (lvm->log_default, "type 1 IOMMU mode supported");
-	    }
-	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_NOIOMMU_IOMMU) == 1)
-	    {
-	      lvm->flags |= LINUX_VFIO_F_HAVE_NOIOMMU;
-	      vlib_log_info (lvm->log_default, "NOIOMMU mode supported");
-	    }
-	}
-    }
-
-  lvm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
-  lvm->container_fd = fd;
   return 0;
 }
 
