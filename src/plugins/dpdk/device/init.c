@@ -1290,7 +1290,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
 	  vec_validate(mem_by_socket, c);
 
-	  e = clib_sysfs_prealloc_hugepages(c, 2 << 10, mem_by_socket[c] / 2);
+	  e = clib_sysfs_prealloc_hugepages(c, 0, mem_by_socket[c] / 2);
 	  if (e)
 	    clib_error_report (e);
       }));
