@@ -46,6 +46,11 @@ typedef struct
 
 extern ip6_address_t ip6_neighbor_get_link_local_address (u32 sw_if_index);
 
+extern clib_error_t *ip6_neighbor_set_link_local_address (vlib_main_t * vm,
+							  u32 sw_if_index,
+							  ip6_address_t *
+							  address);
+
 extern ip6_neighbor_t *ip6_neighbors_pool (void);
 
 extern ip6_neighbor_t *ip6_neighbors_entries (u32 sw_if_index);

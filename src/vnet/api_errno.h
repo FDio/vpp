@@ -53,7 +53,7 @@ _(INVALID_SRC_ADDRESS, -57, "Invalid src address")                      \
 _(INVALID_DST_ADDRESS, -58, "Invalid dst address")                      \
 _(ADDRESS_LENGTH_MISMATCH, -59, "Address length mismatch")              \
 _(ADDRESS_NOT_FOUND_FOR_INTERFACE, -60, "Address not found for interface") \
-_(ADDRESS_NOT_LINK_LOCAL, -61, "Address not link-local")                \
+_(ADDRESS_NOT_DELETABLE, -61, "Address not deletable")                  \
 _(IP6_NOT_ENABLED, -62, "ip6 not enabled")				\
 _(IN_PROGRESS, 10, "Operation in progress")				\
 _(NO_SUCH_NODE, -63, "No such graph node")				\

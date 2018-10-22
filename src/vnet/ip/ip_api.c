@@ -100,8 +100,6 @@ _(IP6ND_PROXY_ADD_DEL, ip6nd_proxy_add_del)                             \
 _(IP6ND_PROXY_DUMP, ip6nd_proxy_dump)                                   \
 _(IP6ND_SEND_ROUTER_SOLICITATION, ip6nd_send_router_solicitation)       \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable )    \
-_(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
-  sw_interface_ip6_set_link_local_address)				\
 _(IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del)               \
 _(IP_CONTAINER_PROXY_DUMP, ip_container_proxy_dump)                     \
 _(IOAM_ENABLE, ioam_enable)                                             \
@@ -1823,38 +1821,6 @@ static void
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY);
-}
-
-static void
-  vl_api_sw_interface_ip6_set_link_local_address_t_handler
-  (vl_api_sw_interface_ip6_set_link_local_address_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vl_api_sw_interface_ip6_set_link_local_address_reply_t *rmp;
-  int rv = 0;
-  clib_error_t *error;
-  vnet_main_t *vnm = vnet_get_main ();
-
-  vnm->api_errno = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  error = set_ip6_link_local_address (vm,
-				      ntohl (mp->sw_if_index),
-				      (ip6_address_t *) mp->address);
-  if (error)
-    {
-      clib_error_report (error);
-      rv = VNET_API_ERROR_UNSPECIFIED;
-    }
-  else
-    {
-      rv = vnm->api_errno;
-    }
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY);
 }
 
 void
