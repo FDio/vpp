@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ebbb1628_bc19b7ef",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-10-22T16:17:58Z",
+      "side": 1,
+      "message": "What happens if you turn off gso and there are still GSO packets on the ring?",
+      "range": {
+        "startLine": 479,
+        "startChar": 23,
+        "endLine": 479,
+        "endChar": 36
+      },
+      "revId": "e68f6b47868302b373ee795360a2aa503c510e5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
