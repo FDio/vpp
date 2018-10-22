@@ -62,7 +62,8 @@ def make_string_vector(api, strings):
     if type(strings) is not list:
         strings = [strings]
     for s in strings:
-        vec = api.stat_segment_string_vector(vec, ffi.new("char []", s.encode()))
+        vec = api.stat_segment_string_vector(vec, ffi.new("char []",
+                                                          s.encode()))
     return vec
 
 
@@ -134,7 +135,7 @@ class VPPStats:
         for i in range(rv_len):
             n = ffi.string(rv[i].name).decode()
             e = stat_entry_to_python(self.api, rv[i])
-            if e != None:
+            if e is not None:
                 stats[n] = e
         return stats
 
@@ -144,7 +145,7 @@ class VPPStats:
             try:
                 dir = self.ls(name)
                 return self.dump(dir).values()[0]
-            except:
+            except Exception as e:
                 if retries > 10:
                     return None
                 retries += 1
@@ -161,7 +162,7 @@ class VPPStats:
                 error_names = self.ls(['/err/'])
                 error_counters = self.dump(error_names)
                 break
-            except:
+            except Exception as e:
                 if retries > 10:
                     return None
                 retries += 1

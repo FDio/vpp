@@ -10,6 +10,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from vpp_ip import *
 from vpp_mac import *
 from vpp_papi_provider import L2_PORT_TYPE
+from vpp_papi.vpp_format import VPPFormat
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -162,7 +163,7 @@ class VppGbpSubnet(VppObject):
                  sw_if_index=None, epg=None):
         self._test = test
         self.table_id = table_id
-        self.prefix = VppIpPrefix(address, address_len)
+        self.prefix = "{}/{}".format(address, address_len)
         self.is_internal = is_internal
         self.sw_if_index = sw_if_index
         self.epg = epg
@@ -172,7 +173,7 @@ class VppGbpSubnet(VppObject):
             1,
             self.table_id,
             self.is_internal,
-            self.prefix.encode(),
+            self.prefix,
             sw_if_index=self.sw_if_index if self.sw_if_index else 0xffffffff,
             epg_id=self.epg if self.epg else 0xffff)
         self._test.registry.register(self, self._test.logger)
@@ -182,7 +183,7 @@ class VppGbpSubnet(VppObject):
             0,
             self.table_id,
             self.is_internal,
-            self.prefix.encode())
+            self.prefix)
 
     def __str__(self):
         return self.object_id()
@@ -195,7 +196,7 @@ class VppGbpSubnet(VppObject):
         ss = self._test.vapi.gbp_subnet_dump()
         for s in ss:
             if s.subnet.table_id == self.table_id and \
-               s.subnet.prefix == self.prefix:
+               VPPFormat.unformat(s.subnet.prefix) == self.prefix:
                 return True
         return False
 

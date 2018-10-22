@@ -17,6 +17,7 @@ import struct
 import collections
 from enum import IntEnum
 import logging
+from .vpp_format import VPPFormat
 
 #
 # Set log-level in application by doing e.g.:
@@ -46,6 +47,8 @@ class BaseTypes():
                      .format(type, base_types[type]))
 
     def pack(self, data, kwargs=None):
+        if not data:  # Default to zero if not specified
+            data = 0
         return self.packer.pack(data)
 
     def unpack(self, data, offset, result=None):
@@ -79,6 +82,8 @@ class FixedList_u8():
     def pack(self, list, kwargs):
         """Packs a fixed length bytestring. Left-pads with zeros
         if input data is too short."""
+        if not list:
+            return b'\x00' * self.size
         if len(list) > self.num:
             raise ValueError('Fixed list length error for "{}", got: {}'
                              ' expected: {}'
@@ -129,6 +134,8 @@ class VLAList():
         self.length_field = len_field_name
 
     def pack(self, list, kwargs=None):
+        if not list:
+            return b""
         if len(list) != kwargs[self.length_field]:
             raise ValueError('Variable length error, got: {} expected: {}'
                              .format(len(list), kwargs[self.length_field]))
@@ -213,7 +220,7 @@ class VPPEnumType():
         return True
 
     def pack(self, data, kwargs=None):
-        return types['u32'].pack(data, kwargs)
+        return types['u32'].pack(data)
 
     def unpack(self, data, offset=0, result=None):
         x, size = types['u32'].unpack(data, offset)
@@ -246,7 +253,11 @@ class VPPUnionType():
         self.tuple = collections.namedtuple(name, fields, rename=True)
         logger.debug('Adding union {}'.format(name))
 
+    # Union of variable length?
     def pack(self, data, kwargs=None):
+        if not data:
+            return b'\x00' * self.size
+
         for k, v in data.items():
             logger.debug("Key: {} Value: {}".format(k, v))
             b = self.packers[k].pack(v, kwargs)
@@ -319,14 +330,32 @@ class VPPType():
             kwargs = data
         b = bytes()
         for i, a in enumerate(self.fields):
-            if a not in data:
-                b += b'\x00' * self.packers[i].size
-                continue
+
+            # Try one of the format functions
+            if data and type(data) is not dict and a not in data:
+                raise ValueError("Invalid argument: {} expected {}.{}".
+                                 format(data, self.name, a))
+
+            # Defaulting to zero.
+            if not data or a not in data:  # Default to 0
+                arg = None
+                kwarg = None  # No default for VLA
+            else:
+                arg = data[a]
+                kwarg = kwargs[a] if a in kwargs else None
 
             if isinstance(self.packers[i], VPPType):
-                b += self.packers[i].pack(data[a], kwargs[a])
+                try:
+                    b += self.packers[i].pack(arg, kwarg)
+                except ValueError:
+                    # Invalid argument, can we convert it?
+                    arg = VPPFormat.format(self.packers[i].name, data[a])
+                    data[a] = arg
+                    kwarg = arg
+                    b += self.packers[i].pack(arg, kwarg)
             else:
-                b += self.packers[i].pack(data[a], kwargs)
+                b += self.packers[i].pack(arg, kwargs)
+
         return b
 
     def unpack(self, data, offset=0, result=None):
