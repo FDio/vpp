@@ -91,6 +91,8 @@ clib_mem_create_hugetlb_fd (char *name, int *fdp)
   char template[] = "/tmp/hugepage_mount.XXXXXX";
   u8 *filename;
 
+  ASSERT (name);
+
   if (memfd_hugetlb_supported)
     {
       if ((fd = memfd_create (name, MFD_HUGETLB)) != -1)
