@@ -240,14 +240,11 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   avf_rx_desc_t *d = rxq->descs;
   for (i = 0; i < n_alloc; i++)
     {
+      vlib_buffer_t *b = vlib_get_buffer (vm, rxq->bufs[i]);
       if (ad->flags & AVF_DEVICE_F_IOVA)
-	{
-	  vlib_buffer_t *b = vlib_get_buffer (vm, rxq->bufs[i]);
-	  d->qword[0] = pointer_to_uword (b->data);
-	}
+	d->qword[0] = vlib_buffer_get_va (b);
       else
-	d->qword[0] =
-	  vlib_get_buffer_data_physical_address (vm, rxq->bufs[i]);
+	d->qword[0] = vlib_buffer_get_pa (vm, b);
       d++;
     }
 
