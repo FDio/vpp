@@ -243,9 +243,10 @@ ip6_neighbor_get_link_local_address (u32 sw_if_index)
   static ip6_address_t empty_address = { {0} };
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   ip6_radv_t *radv_info;
-  u32 ri;
+  u32 ri = ~0;
 
-  ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];
+  if (vec_len (nm->if_radv_pool_index_by_sw_if_index) <= sw_if_index)
+    ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];
   if (ri == ~0)
     {
       clib_warning ("IPv6 is not enabled for sw_if_index %d", sw_if_index);
@@ -4445,21 +4446,19 @@ VLIB_CLI_COMMAND (ip6_nd_command, static) =
 /* *INDENT-ON* */
 
 clib_error_t *
-set_ip6_link_local_address (vlib_main_t * vm,
-			    u32 sw_if_index, ip6_address_t * address)
+ip6_neighbor_set_link_local_address (vlib_main_t * vm, u32 sw_if_index,
+				     ip6_address_t * address)
 {
   clib_error_t *error = 0;
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   u32 ri;
   ip6_radv_t *radv_info;
   vnet_main_t *vnm = vnet_get_main ();
+  ip6_ll_prefix_t pfx = { 0, };
 
   if (!ip6_address_is_link_local_unicast (address))
-    {
-      vnm->api_errno = VNET_API_ERROR_ADDRESS_NOT_LINK_LOCAL;
-      return (error = clib_error_return (0, "address not link-local",
-					 format_unformat_error));
-    }
+    return (error = clib_error_return (0, "address not link-local",
+				       format_unformat_error));
 
   /* call enable ipv6  */
   enable_ip6_interface (vm, sw_if_index);
@@ -4470,25 +4469,16 @@ set_ip6_link_local_address (vlib_main_t * vm,
     {
       radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
 
-      /* save if link local address (overwrite default) */
+      pfx.ilp_sw_if_index = sw_if_index;
 
-      /* delete the old one */
-      error = ip6_add_del_interface_address (vm, sw_if_index,
-					     &radv_info->link_local_address,
-					     128, 1 /* is_del */ );
+      pfx.ilp_addr = radv_info->link_local_address;
+      ip6_ll_table_entry_delete (&pfx);
 
-      if (!error)
-	{
-	  /* add the new one */
-	  error = ip6_add_del_interface_address (vm, sw_if_index,
-						 address, 128,
-						 0 /* is_del */ );
+      pfx.ilp_addr = *address;
+      ip6_ll_table_entry_update (&pfx, FIB_ROUTE_PATH_LOCAL);
 
-	  if (!error)
-	    {
-	      radv_info->link_local_address = *address;
-	    }
-	}
+      radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
+      radv_info->link_local_address = *address;
     }
   else
     {
@@ -4498,50 +4488,6 @@ set_ip6_link_local_address (vlib_main_t * vm,
     }
   return error;
 }
-
-clib_error_t *
-set_ip6_link_local_address_cmd (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  clib_error_t *error = 0;
-  u32 sw_if_index;
-  ip6_address_t ip6_addr;
-
-  if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
-    {
-      /* get the rest of the command */
-      while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (input, "%U", unformat_ip6_address, &ip6_addr))
-	    break;
-	  else
-	    return (unformat_parse_error (input));
-	}
-    }
-  error = set_ip6_link_local_address (vm, sw_if_index, &ip6_addr);
-  return error;
-}
-
-/*?
- * This command is used to assign an IPv6 Link-local address to an
- * interface. This command will enable IPv6 on an interface if it
- * is not already enabled. Use the '<em>show ip6 interface</em>' command
- * to display the assigned Link-local address.
- *
- * @cliexpar
- * Example of how to assign an IPv6 Link-local address to an interface:
- * @cliexcmd{set ip6 link-local address GigabitEthernet2/0/0 FE80::AB8}
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_ip6_link_local_address_command, static) =
-{
-  .path = "set ip6 link-local address",
-  .short_help = "set ip6 link-local address <interface> <ip6-address>",
-  .function = set_ip6_link_local_address_cmd,
-};
-/* *INDENT-ON* */
 
 /**
  * @brief callback when an interface address is added or deleted

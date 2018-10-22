@@ -1274,20 +1274,6 @@ static void *vl_api_set_ip_flow_hash_t_print
   FINISH;
 }
 
-static void *vl_api_sw_interface_ip6_set_link_local_address_t_print
-  (vl_api_sw_interface_ip6_set_link_local_address_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_ip6_set_link_local_address ");
-
-  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
-
-  s = format (s, "%U ", format_ip6_address, mp->address);
-
-  FINISH;
-}
-
 static void *vl_api_sw_interface_ip6nd_ra_prefix_t_print
   (vl_api_sw_interface_ip6nd_ra_prefix_t * mp, void *handle)
 {
@@ -3779,8 +3765,6 @@ _(RESET_FIB, reset_fib)                                                 \
 _(DHCP_PROXY_CONFIG, dhcp_proxy_config)                                 \
 _(DHCP_PROXY_SET_VSS, dhcp_proxy_set_vss)                               \
 _(SET_IP_FLOW_HASH, set_ip_flow_hash)                                   \
-_(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,                              \
-  sw_interface_ip6_set_link_local_address)                              \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)                       \
