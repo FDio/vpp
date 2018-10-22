@@ -97,7 +97,7 @@ clib_mem_create_hugetlb_fd (char *name, int *fdp)
 	goto done;
 
       /* avoid further tries if memfd MFD_HUGETLB is not supported */
-      if (errno == EINVAL && strnlen (name, 256) <= 249)
+      if (errno == EINVAL && (name == 0 || strnlen (name, 256) <= 249))
 	memfd_hugetlb_supported = 0;
     }
 
