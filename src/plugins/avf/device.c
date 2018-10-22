@@ -1036,11 +1036,10 @@ VLIB_REGISTER_NODE (avf_process_node, static)  = {
 /* *INDENT-ON* */
 
 static void
-avf_irq_0_handler (vlib_pci_dev_handle_t h, u16 line)
+avf_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 {
-  vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
-  uword pd = vlib_pci_get_private_data (h);
+  uword pd = vlib_pci_get_private_data (vm, h);
   avf_device_t *ad = pool_elt_at_index (am->devices, pd);
   u32 icr0;
 
@@ -1075,12 +1074,11 @@ avf_irq_0_handler (vlib_pci_dev_handle_t h, u16 line)
 }
 
 static void
-avf_irq_n_handler (vlib_pci_dev_handle_t h, u16 line)
+avf_irq_n_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
   avf_main_t *am = &avf_main;
-  uword pd = vlib_pci_get_private_data (h);
+  uword pd = vlib_pci_get_private_data (vm, h);
   avf_device_t *ad = pool_elt_at_index (am->devices, pd);
   u16 qid;
   int i;
@@ -1126,7 +1124,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
       ethernet_delete_interface (vnm, ad->hw_if_index);
     }
 
-  vlib_pci_device_close (ad->pci_dev_handle);
+  vlib_pci_device_close (vm, ad->pci_dev_handle);
 
   vlib_physmem_free (vm, am->physmem_region, ad->atq);
   vlib_physmem_free (vm, am->physmem_region, ad->arq);
@@ -1197,7 +1195,8 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if (args->enable_elog)
     ad->flags |= AVF_DEVICE_F_ELOG;
 
-  if ((error = vlib_pci_device_open (&args->addr, avf_pci_device_ids, &h)))
+  if ((error = vlib_pci_device_open (vm, &args->addr, avf_pci_device_ids,
+				     &h)))
     {
       pool_put (am->devices, ad);
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
@@ -1208,21 +1207,23 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
     }
   ad->pci_dev_handle = h;
 
-  vlib_pci_set_private_data (h, ad->dev_instance);
+  vlib_pci_set_private_data (vm, h, ad->dev_instance);
 
-  if ((error = vlib_pci_bus_master_enable (h)))
+  if ((error = vlib_pci_bus_master_enable (vm, h)))
     goto error;
 
-  if ((error = vlib_pci_map_region (h, 0, &ad->bar0)))
+  if ((error = vlib_pci_map_region (vm, h, 0, &ad->bar0)))
     goto error;
 
-  if ((error = vlib_pci_register_msix_handler (h, 0, 1, &avf_irq_0_handler)))
+  if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
+					       &avf_irq_0_handler)))
     goto error;
 
-  if ((error = vlib_pci_register_msix_handler (h, 1, 1, &avf_irq_n_handler)))
+  if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
+					       &avf_irq_n_handler)))
     goto error;
 
-  if ((error = vlib_pci_enable_msix_irq (h, 0, 2)))
+  if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
     goto error;
 
   if (am->physmem_region_alloc == 0)
@@ -1258,7 +1259,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if (error)
     goto error;
 
-  if ((error = vlib_pci_intr_enable (h)))
+  if ((error = vlib_pci_intr_enable (vm, h)))
     goto error;
 
   /* FIXME detect */
