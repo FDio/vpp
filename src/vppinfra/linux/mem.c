@@ -221,8 +221,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 
   if (a->flags & CLIB_MEM_VM_F_HUGETLB_PREALLOC)
     {
-      err = clib_sysfs_prealloc_hugepages (a->numa_node,
-					   1 << (log2_page_size - 10),
+      err = clib_sysfs_prealloc_hugepages (a->numa_node, log2_page_size,
 					   n_pages);
       if (err)
 	goto error;
