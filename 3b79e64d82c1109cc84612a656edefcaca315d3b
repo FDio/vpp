@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "531f4549_ec4fb7ef",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-22T11:44:02Z",
+      "side": 1,
+      "message": "encode() call the new format function instead?",
+      "revId": "3b79e64d82c1109cc84612a656edefcaca315d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "52a1ca4b_afc68e32",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-22T11:44:02Z",
+      "side": 1,
+      "message": "i prefered this the way it was. maybe instead change the VppIpPrefix object to use this new unformat.",
+      "revId": "3b79e64d82c1109cc84612a656edefcaca315d3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
