@@ -4489,8 +4489,6 @@ lisp_cp_init (vlib_main_t * vm)
   hash_set (lcm->table_id_by_vni, 0, 0);
   hash_set (lcm->vni_by_table_id, 0, 0);
 
-  lisp_cp_register_dst_port (vm);
-
   u64 now = clib_cpu_time_now ();
   timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
   lcm->nsh_map_index = ~0;
