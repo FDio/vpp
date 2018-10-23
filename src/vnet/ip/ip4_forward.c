@@ -1770,7 +1770,7 @@ ip4_arp_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
-	  u32 pi0, adj_index0, r0, sw_if_index0, drop0;
+	  u32 pi0, adj_index0, sw_if_index0, drop0;
 	  ip_adjacency_t *adj0;
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;
@@ -1786,20 +1786,17 @@ ip4_arp_inline (vlib_main_t * vm,
 	  sw_if_index0 = adj0->rewrite_header.sw_if_index;
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
-	  if (PREDICT_TRUE (is_glean))
-	    {
-	      /*
-	       * this is the Glean case, so we are ARPing for the
-	       * packet's destination
-	       */
-	      r0 = ip0->dst_address.data_u32;
-	    }
-	  else
-	    {
-	      r0 = adj0->sub_type.nbr.next_hop.ip4.data_u32;
-	    }
-
-	  drop0 = throttle_check (&im->arp_throttle, thread_index, r0, seed);
+	  /*
+	   * address to resolve - in the Glean case, we are ARPing for the
+	   * packet's destination
+	   */
+	  ip4_address_t resolve0 = is_glean ?
+	    ip0->dst_address : adj0->sub_type.nbr.next_hop.ip4;
+	  u8 *r = resolve0.as_u8;
+	  u32 hash0 = sw_if_index0 ^
+	    (r[0] << 3) ^ (r[1] << 2) ^ (r[2] << 1) ^ r[3];
+	  drop0 =
+	    throttle_check (&im->arp_throttle, thread_index, hash0, seed);
 
 	  from += 1;
 	  n_left_from -= 1;
@@ -1857,17 +1854,12 @@ ip4_arp_inline (vlib_main_t * vm,
 	      clib_memcpy (h0->ip4_over_ethernet[0].ethernet,
 			   hw_if0->hw_address,
 			   sizeof (h0->ip4_over_ethernet[0].ethernet));
-
+	      h0->ip4_over_ethernet[1].ip4 = resolve0;
 	      if (is_glean)
 		{
 		  /* The interface's source address is stashed in the Glean Adj */
 		  h0->ip4_over_ethernet[0].ip4 =
 		    adj0->sub_type.glean.receive_addr.ip4;
-
-		  /* Copy in destination address we are requesting. This is the
-		   * glean case, so it's the packet's destination.*/
-		  h0->ip4_over_ethernet[1].ip4.data_u32 =
-		    ip0->dst_address.data_u32;
 		}
 	      else
 		{
@@ -1882,11 +1874,6 @@ ip4_arp_inline (vlib_main_t * vm,
 		      vlib_buffer_free (vm, &bi0, 1);
 		      continue;
 		    }
-
-		  /* Copy in destination address we are requesting from the
-		     incomplete adj */
-		  h0->ip4_over_ethernet[1].ip4.data_u32 =
-		    adj0->sub_type.nbr.next_hop.ip4.as_u32;
 		}
 
 	      vlib_buffer_copy_trace_flag (vm, p0, bi0);
