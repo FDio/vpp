@@ -101,6 +101,9 @@ typedef struct
   /** enable / disable flag */
   int is_enabled;
 
+  /** udp port registration complete */
+  int udp_ports_registered;
+
   /** upstream name servers, e.g. 8.8.8.8 */
   ip4_address_t *ip4_name_servers;
   ip6_address_t *ip6_name_servers;
