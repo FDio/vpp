@@ -47,7 +47,11 @@
 #include <vlib/unix/unix.h>
 
 vlib_buffer_callbacks_t *vlib_buffer_callbacks = 0;
-static u32 vlib_buffer_physmem_sz = 32 << 20;
+
+/* when running unpriviledged we are limited by RLIMIT_MEMLOCK which is
+   typically set to 16MB so setting default size for buffer memory to 14MB
+   */
+static u32 vlib_buffer_physmem_sz = 14 << 20;
 
 vlib_buffer_main_t buffer_main;
 
