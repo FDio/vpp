@@ -163,7 +163,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 						 AH_DECRYPT_ERROR_REPLAY, 1);
 		  else
 		    vlib_node_increment_counter (vm,
-						 ah6_decrypt_node.index,
+						 ah4_decrypt_node.index,
 						 AH_DECRYPT_ERROR_REPLAY, 1);
 		  to_next[0] = i_bi0;
 		  to_next += 1;
