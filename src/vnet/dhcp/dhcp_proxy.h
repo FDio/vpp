@@ -146,9 +146,21 @@ typedef struct
 
   /* hash lookup specific vrf_id -> option 82 vss suboption  */
   u32 *vss_index_by_rx_fib_index[DHCP_N_PROTOS];
+
+  /* udp ports have been registered */
+  int udp_ports_registered;
+
+  /* convenience */
+  vlib_main_t *vlib_main;
+
 } dhcp_proxy_main_t;
 
 extern dhcp_proxy_main_t dhcp_proxy_main;
+
+/**
+ * @brief Register the dhcp client and server ports, if not already done
+ */
+void dhcp_maybe_register_udp_ports (void);
 
 /**
  * @brief Send the details of a proxy session to the API client during a dump
