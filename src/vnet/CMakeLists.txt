@@ -971,9 +971,13 @@ list(APPEND VNET_SOURCES
   devices/virtio/vhost_user_output.c
   devices/virtio/vhost_user_api.c
   devices/virtio/virtio.c
+  devices/virtio/virtio_api.c
+  devices/virtio/cli.c
+  devices/virtio/pci.c
 )
 
 list(APPEND VNET_HEADERS
+  devices/virtio/pci.h
   devices/virtio/virtio.h
   devices/virtio/vhost_user.h
 )
@@ -983,7 +987,10 @@ list(APPEND VNET_MULTIARCH_SOURCES
   devices/virtio/vhost_user_output.c
 )
 
-list(APPEND VNET_API_FILES devices/virtio/vhost_user.api)
+list(APPEND VNET_API_FILES
+  devices/virtio/vhost_user.api
+  devices/virtio/virtio.api
+)
 
 ##############################################################################
 # tap interface (with virtio backend)
