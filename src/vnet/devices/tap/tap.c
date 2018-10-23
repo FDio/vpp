@@ -347,6 +347,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
   vif->rx_ring_sz = args->rx_ring_sz != 0 ? args->rx_ring_sz : 256;
   vif->tx_ring_sz = args->tx_ring_sz != 0 ? args->tx_ring_sz : 256;
+  clib_memcpy (vif->mac_addr, args->mac_addr, 6);
+
   vif->host_if_name = args->host_if_name;
   args->host_if_name = 0;
   vif->net_ns = args->host_namespace;
@@ -361,9 +363,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   if (args->host_ip6_prefix_len)
     clib_memcpy (&vif->host_ip6_addr, &args->host_ip6_addr, 16);
 
+  vif->type = VIRTIO_IF_TYPE_TAP;
   args->error = ethernet_register_interface (vnm, virtio_device_class.index,
 					     vif->dev_instance,
-					     args->mac_addr,
+					     vif->mac_addr,
 					     &vif->hw_if_index,
 					     virtio_eth_flag_change);
   if (args->error)
@@ -384,7 +387,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, 0,
 				 VNET_HW_INTERFACE_RX_MODE_DEFAULT);
   vif->per_interface_next_index = ~0;
-  vif->type = VIRTIO_IF_TYPE_TAP;
   vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
   vnet_hw_interface_set_flags (vnm, vif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
