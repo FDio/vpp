@@ -39,7 +39,7 @@ vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
   clib_pmalloc_arena_t *a;
   clib_error_t *error = 0;
   void *va;
-  int i;
+  uword i;
 
   va = clib_pmalloc_create_shared_arena (pm, name, size, numa_node);
 
@@ -87,7 +87,7 @@ vlib_physmem_init (vlib_main_t * vm)
 
   /* check if pagemap is accessible */
   pt = clib_mem_vm_get_paddr (&pt, min_log2 (sysconf (_SC_PAGESIZE)), 1);
-  if (pt[0])
+  if (pt && pt[0])
     vpm->flags |= VLIB_PHYSMEM_MAIN_F_HAVE_PAGEMAP;
   vec_free (pt);
 
