@@ -70,6 +70,30 @@
       "revId": "e68f6b47868302b373ee795360a2aa503c510e5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bbf005d1_b5ba1df7",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-10-23T14:22:32Z",
+      "side": 1,
+      "message": "Like we discussed last week - I do not see a lot of sense of adding the flag to create interface - the only reason one would want it off is when something is broken, right ? So turning on/off is purely a debugging measure and should not require recreating the entire world - and allows us to:\n (1) not require any changes to existing users\n (2) transparently change the default for offload to \"on\" when it is deemed stable enough or provide a startup config option for doing so.\n (3) be able to dynamically turn it off during the debugging. \n (4) dynamically show the performance differences in progress of running the iperf session - which is great from the demo standpoint.\n\nThe adddition of a new parameter to create interface has none of the above benefits and has the drawback of creating the incompatibility for the clients due to a mismatch of the API. For something semantically meaningful it would be the right way but the \"acceleration\" is not it.\n\nAs for dropping a few packets - would we not drop more packets if we bring the interface down ? What is the exact concern that you have ? Accidental unforeseen effects elsewhere in the code when we receive the GSO packets and the GSO has been disabled ?",
+      "parentUuid": "6d3dcfca_19f3e2b4",
+      "range": {
+        "startLine": 479,
+        "startChar": 23,
+        "endLine": 479,
+        "endChar": 36
+      },
+      "revId": "e68f6b47868302b373ee795360a2aa503c510e5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
