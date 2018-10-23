@@ -172,29 +172,6 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int show_descr = 0;
   clib_error_t *error = 0;
   u32 hw_if_index, *hw_if_indices = 0;
-  virtio_vring_t *vring;
-  int i, j;
-  struct feat_struct
-  {
-    u8 bit;
-    char *str;
-  };
-  struct feat_struct *feat_entry;
-
-  static struct feat_struct feat_array[] = {
-#define _(s,b) { .str = #s, .bit = b, },
-    foreach_virtio_net_features
-#undef _
-    {.str = NULL}
-  };
-
-  struct feat_struct *flag_entry;
-  static struct feat_struct flags_array[] = {
-#define _(b,e,s) { .bit = b, .str = s, },
-    foreach_virtio_if_flag
-#undef _
-    {.str = NULL}
-  };
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -220,81 +197,8 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       /* *INDENT-ON* */
     }
 
-  for (hw_if_index = 0; hw_if_index < vec_len (hw_if_indices); hw_if_index++)
-    {
-      vnet_hw_interface_t *hi =
-	vnet_get_hw_interface (vnm, hw_if_indices[hw_if_index]);
-      vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
-      vlib_cli_output (vm, "interface %U", format_vnet_sw_if_index_name,
-		       vnm, vif->sw_if_index);
-      if (vif->host_if_name)
-	vlib_cli_output (vm, "  name \"%s\"", vif->host_if_name);
-      if (vif->net_ns)
-	vlib_cli_output (vm, "  host-ns \"%s\"", vif->net_ns);
-      vlib_cli_output (vm, "  flags 0x%x", vif->flags);
-      flag_entry = (struct feat_struct *) &flags_array;
-      while (flag_entry->str)
-	{
-	  if (vif->flags & (1ULL << flag_entry->bit))
-	    vlib_cli_output (vm, "    %s (%d)", flag_entry->str,
-			     flag_entry->bit);
-	  flag_entry++;
-	}
-      vlib_cli_output (vm, "  fd %d", vif->fd);
-      vlib_cli_output (vm, "  tap-fd %d", vif->tap_fd);
-      vlib_cli_output (vm, "  features 0x%lx", vif->features);
-      feat_entry = (struct feat_struct *) &feat_array;
-      while (feat_entry->str)
-	{
-	  if (vif->features & (1ULL << feat_entry->bit))
-	    vlib_cli_output (vm, "    %s (%d)", feat_entry->str,
-			     feat_entry->bit);
-	  feat_entry++;
-	}
-      vlib_cli_output (vm, "  remote-features 0x%lx", vif->remote_features);
-      feat_entry = (struct feat_struct *) &feat_array;
-      while (feat_entry->str)
-	{
-	  if (vif->remote_features & (1ULL << feat_entry->bit))
-	    vlib_cli_output (vm, "    %s (%d)", feat_entry->str,
-			     feat_entry->bit);
-	  feat_entry++;
-	}
-      vec_foreach_index (i, vif->vrings)
-      {
-	// RX = 0, TX = 1
-	vring = vec_elt_at_index (vif->vrings, i);
-	vlib_cli_output (vm, "  Virtqueue (%s)", (i & 1) ? "TX" : "RX");
-	vlib_cli_output (vm,
-			 "    qsz %d, last_used_idx %d, desc_next %d, desc_in_use %d",
-			 vring->size, vring->last_used_idx, vring->desc_next,
-			 vring->desc_in_use);
-	vlib_cli_output (vm,
-			 "    avail.flags 0x%x avail.idx %d used.flags 0x%x used.idx %d",
-			 vring->avail->flags, vring->avail->idx,
-			 vring->used->flags, vring->used->idx);
-	vlib_cli_output (vm, "    kickfd %d, callfd %d", vring->kick_fd,
-			 vring->call_fd);
-	if (show_descr)
-	  {
-	    vlib_cli_output (vm, "\n  descriptor table:\n");
-	    vlib_cli_output (vm,
-			     "   id          addr         len  flags  next      user_addr\n");
-	    vlib_cli_output (vm,
-			     "  ===== ================== ===== ====== ===== ==================\n");
-	    vring = vif->vrings;
-	    for (j = 0; j < vring->size; j++)
-	      {
-		struct vring_desc *desc = &vring->desc[j];
-		vlib_cli_output (vm,
-				 "  %-5d 0x%016lx %-5d 0x%04x %-5d 0x%016lx\n",
-				 j, desc->addr,
-				 desc->len,
-				 desc->flags, desc->next, desc->addr);
-	      }
-	  }
-      }
-    }
+  virtio_show (vm, hw_if_indices, show_descr, VIRTIO_IF_TYPE_TAP);
+
 done:
   vec_free (hw_if_indices);
   return error;
