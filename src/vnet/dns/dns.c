@@ -72,12 +72,30 @@ dns_enable_disable (dns_main_t * dm, int is_enable)
 {
   vlib_thread_main_t *tm = &vlib_thread_main;
   u32 n_vlib_mains = tm->n_vlib_mains;
+  vlib_main_t *vm = dm->vlib_main;
 
   if (is_enable)
     {
       if (vec_len (dm->ip4_name_servers) == 0
 	  && (vec_len (dm->ip6_name_servers) == 0))
 	return VNET_API_ERROR_NO_NAME_SERVERS;
+
+      if (dm->udp_ports_registered == 0)
+	{
+	  udp_register_dst_port (vm, UDP_DST_PORT_dns_reply,
+				 dns46_reply_node.index, 1 /* is_ip4 */ );
+
+	  udp_register_dst_port (vm, UDP_DST_PORT_dns_reply6,
+				 dns46_reply_node.index, 0 /* is_ip4 */ );
+
+	  udp_register_dst_port (vm, UDP_DST_PORT_dns,
+				 dns4_request_node.index, 1 /* is_ip4 */ );
+
+	  udp_register_dst_port (vm, UDP_DST_PORT_dns6,
+				 dns6_request_node.index, 0 /* is_ip4 */ );
+
+	  dm->udp_ports_registered = 1;
+	}
 
       if (dm->cache_entry_by_name == 0)
 	{
@@ -1597,17 +1615,6 @@ dns_init (vlib_main_t * vm)
   dm->max_ttl_in_seconds = 86400;
   dm->random_seed = 0xDEADDABE;
 
-  udp_register_dst_port (vm, UDP_DST_PORT_dns_reply, dns46_reply_node.index,
-			 1 /* is_ip4 */ );
-
-  udp_register_dst_port (vm, UDP_DST_PORT_dns_reply6, dns46_reply_node.index,
-			 0 /* is_ip4 */ );
-
-  udp_register_dst_port (vm, UDP_DST_PORT_dns, dns4_request_node.index,
-			 1 /* is_ip4 */ );
-
-  udp_register_dst_port (vm, UDP_DST_PORT_dns6, dns6_request_node.index,
-			 0 /* is_ip4 */ );
   return 0;
 }
 

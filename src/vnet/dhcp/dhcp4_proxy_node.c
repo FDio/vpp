@@ -736,6 +736,24 @@ VLIB_REGISTER_NODE (dhcp_proxy_to_client_node, static) = {
 };
 /* *INDENT-ON* */
 
+void
+dhcp_maybe_register_udp_ports (void)
+{
+  dhcp_proxy_main_t *dm = &dhcp_proxy_main;
+  vlib_main_t *vm = dm->vlib_main;
+
+  if (dm->udp_ports_registered)
+    return;
+
+  udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_client,
+			 dhcp_proxy_to_client_node.index, 1 /* is_ip4 */ );
+
+  udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_server,
+			 dhcp_proxy_to_server_node.index, 1 /* is_ip4 */ );
+
+  dm->udp_ports_registered = 1;
+}
+
 static clib_error_t *
 dhcp4_proxy_init (vlib_main_t * vm)
 {
@@ -744,12 +762,7 @@ dhcp4_proxy_init (vlib_main_t * vm)
 
   error_drop_node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   dm->error_drop_node_index = error_drop_node->index;
-
-  udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_client,
-			 dhcp_proxy_to_client_node.index, 1 /* is_ip4 */ );
-
-  udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_server,
-			 dhcp_proxy_to_server_node.index, 1 /* is_ip4 */ );
+  dm->vlib_main = vm;
 
   return 0;
 }
@@ -776,6 +789,8 @@ dhcp4_proxy_set_server (ip46_address_t * addr,
 
   if (ip46_address_is_zero (src_addr))
     return VNET_API_ERROR_INVALID_SRC_ADDRESS;
+
+  dhcp_maybe_register_udp_ports ();
 
   rx_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 						    rx_table_id,
