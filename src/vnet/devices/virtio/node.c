@@ -80,7 +80,8 @@ format_virtio_input_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
+virtio_refill_vring (vlib_main_t * vm, virtio_if_t * vif,
+		     virtio_vring_t * vring)
 {
   const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
   u16 used, next, avail, n_slots;
@@ -102,7 +103,10 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
     {
       struct vring_desc *d = &vring->desc[next];;
       vlib_buffer_t *b = vlib_get_buffer (vm, vring->buffers[next]);
-      d->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
+      d->addr =
+	((vif->type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
+									 b) :
+	 pointer_to_uword (vlib_buffer_get_current (b))) - hdr_sz;
       d->len = VLIB_BUFFER_DATA_SIZE + hdr_sz;
       d->flags = VRING_DESC_F_WRITE;
       vring->avail->ring[avail & mask] = next;
@@ -118,8 +122,13 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
 
   if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
     {
-      u64 b = 1;
-      CLIB_UNUSED (int r) = write (vring->kick_fd, &b, sizeof (b));
+      if (vif->type == VIRTIO_IF_TYPE_PCI)
+	legacy_notify_queue (vm, vif, vring->queue_id);
+      else
+	{
+	  u64 b = 1;
+	  CLIB_UNUSED (int r) = write (vring->kick_fd, &b, sizeof (b));
+	}
     }
 }
 
@@ -245,7 +254,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   n_rx_bytes);
 
 refill:
-  virtio_refill_vring (vm, vring);
+  virtio_refill_vring (vm, vif, vring);
 
   return n_rx_packets;
 }

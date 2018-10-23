@@ -53,6 +53,7 @@
   _ (VHOST_USER_F_PROTOCOL_FEATURES, 30) \
   _ (VIRTIO_F_VERSION_1, 32)
 
+
 #define foreach_virtio_if_flag		\
   _(0, ADMIN_UP, "admin-up")		\
   _(1, DELETING, "deleting")
@@ -67,9 +68,18 @@ typedef enum
 typedef enum
 {
   VIRTIO_IF_TYPE_TAP,
+  VIRTIO_IF_TYPE_PCI,
   VIRTIO_IF_N_TYPES,
 } virtio_if_type_t;
 
+
+typedef struct
+{
+  u8 mac[6];
+  u16 status;
+  u16 max_virtqueue_pairs;
+  u16 mtu;
+} virtio_net_config_t;
 
 typedef struct
 {
@@ -81,6 +91,7 @@ typedef struct
   int kick_fd;
   int call_fd;
   u16 size;
+  u16 queue_id;
 #define VIRTIO_RING_FLAG_MASK_INT 1
   u32 flags;
   u32 call_file_index;
@@ -97,16 +108,36 @@ typedef struct
   u32 dev_instance;
   u32 hw_if_index;
   u32 sw_if_index;
+  union
+  {
+    struct
+    {
+      u16 domain;
+      u8 bus;
+      u8 slot:5;
+      u8 function:3;
+    };
+    u32 as_u32;
+  } pci_addr;
+  u64 bar[2];
   u32 per_interface_next_index;
   int fd;
-  int tap_fd;
+  union
+  {
+    int tap_fd;
+    u32 pci_dev_handle;
+  };
   virtio_vring_t *vrings;
 
   u64 features, remote_features;
 
   virtio_if_type_t type;
+  /* error */
+  clib_error_t *error;
+  u16 max_queue_pairs;
   u16 tx_ring_sz;
   u16 rx_ring_sz;
+  u8 mac_addr[6];
   u8 *host_if_name;
   u8 *net_ns;
   u8 *host_bridge;
@@ -133,7 +164,9 @@ clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,
 clib_error_t *virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif,
 				 u32 idx);
 extern void virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring);
-
+extern void virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring);
+extern void legacy_notify_queue (vlib_main_t * vm, virtio_if_t * vd,
+				 u16 queue_id);
 format_function_t format_virtio_device_name;
 
 #endif /* _VNET_DEVICES_VIRTIO_VIRTIO_H_ */
