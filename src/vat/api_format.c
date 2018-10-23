@@ -1852,7 +1852,6 @@ vl_api_tap_create_v2_reply_t_handler (vl_api_tap_create_v2_reply_t * mp)
       vam->sw_if_index = ntohl (mp->sw_if_index);
       vam->result_ready = 1;
     }
-
 }
 
 static void vl_api_tap_create_v2_reply_t_handler_json
