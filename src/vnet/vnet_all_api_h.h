@@ -76,6 +76,7 @@
 #include <vnet/dhcp/dhcp6_ia_na_client_cp.api.h>
 #include <vnet/devices/pipe/pipe.api.h>
 #include <vnet/vxlan-gbp/vxlan_gbp.api.h>
+#include <vnet/devices/virtio/virtio.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
