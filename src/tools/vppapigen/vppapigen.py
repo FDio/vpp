@@ -136,8 +136,9 @@ class Typedef():
         self.name = name
         self.flags = flags
         self.block = block
-        self.crc = binascii.crc32(str(block)) & 0xffffffff
-        global_crc = binascii.crc32(str(block), global_crc)
+        s = str(block).encode()
+        self.crc = binascii.crc32(s) & 0xffffffff
+        global_crc = binascii.crc32(s, global_crc)
         self.manual_print = False
         self.manual_endian = False
         for f in flags:
@@ -173,8 +174,9 @@ class Define():
         self.name = name
         self.flags = flags
         self.block = block
-        self.crc = binascii.crc32(str(block)) & 0xffffffff
-        global_crc = binascii.crc32(str(block), global_crc)
+        s = str(block).encode()
+        self.crc = binascii.crc32(s) & 0xffffffff
+        global_crc = binascii.crc32(s, global_crc)
         self.dont_trace = False
         self.manual_print = False
         self.manual_endian = False
@@ -246,8 +248,9 @@ class Option():
     def __init__(self, option):
         global global_crc
         self.option = option
-        self.crc = binascii.crc32(str(option)) & 0xffffffff
-        global_crc = binascii.crc32(str(option), global_crc)
+        s = str(option).encode()
+        self.crc = binascii.crc32(s) & 0xffffffff
+        global_crc = binascii.crc32(s, global_crc)
 
     def __repr__(self):
         return str(self.option)
@@ -796,7 +799,7 @@ def main():
 
     try:
         plugin = imp.load_source(args.output_module, module_path)
-    except Exception, err:
+    except Exception as err:
         raise Exception('Error importing output plugin: {}, {}'
                         .format(module_path, err))
 
