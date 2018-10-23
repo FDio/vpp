@@ -1,6 +1,8 @@
-.. _vhostusercommands:
+.. vhost:
 
 .. toctree::
+
+.. note:: For a complete list of CLI Debug commands refer to the Debug CLI section of the `Source Code Documents <https://docs.fd.io/vpp/18.07/clicmd.html>`_ .
 
 .. _createvhostuser:
 
@@ -13,7 +15,7 @@ next free index.
 
 There are several parameters associated with a vHost interface:
 
--  **socket <socket-filename>** - Name of the linux socket used by
+-  **socket <*socket-filename*>** - Name of the linux socket used by
    hypervisor and VPP to manage the vHost interface. If in '*server*'
    mode, VPP will create the socket if it does not already exist. If in
    '*client*' mode, hypervisor will create the socket if it does not
@@ -227,10 +229,10 @@ previous example but will include the descriptor table for each queue. The outpu
      Virtqueue 1 (RX)
       qsz 256 last_avail_idx 0 last_used_idx 0
 
- 
+
 Debug Vhost-User
 ================
-Turn on/off debug for vhost
+Turn on/off debug for vhost.
 
 
 Summary/Usage
@@ -238,8 +240,8 @@ Summary/Usage
 
 .. code-block:: shell
 
-    debug vhost-user <on | off>.
- 
+    debug vhost-user <on | off>
+
 Delete Vhost-User
 ========================
 Delete a vHost User interface using the interface name or the software
@@ -252,7 +254,7 @@ Summary/Usage
 
 .. code-block:: shell
 
-    delete vhost-user {<interface> | sw_if_index <sw_idx>}.
+    delete vhost-user {<interface> | sw_if_index <sw_idx>}
 
 Examples
 --------
