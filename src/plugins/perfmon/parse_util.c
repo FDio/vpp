@@ -140,6 +140,9 @@ again:
 	      cp++;
 	      goto again;
 	    }
+	  else			/* should never happen... */
+	    cp++;
+	  goto again;
 
 	case STATE_READ_NAME:
 	  vec_validate (nvp, 0);
