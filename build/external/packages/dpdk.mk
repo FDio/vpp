@@ -196,6 +196,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
 	@# not needed
+	$(call set,RTE_ETHDEV_RXTX_CALLBACKS,n)
 	$(call set,RTE_LIBRTE_CFGFILE,n)
 	$(call set,RTE_LIBRTE_LPM,n)
 	$(call set,RTE_LIBRTE_ACL,n)
