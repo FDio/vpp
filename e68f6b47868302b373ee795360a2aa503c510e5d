@@ -46,6 +46,30 @@
       "revId": "e68f6b47868302b373ee795360a2aa503c510e5d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d3dcfca_19f3e2b4",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-10-23T13:11:07Z",
+      "side": 1,
+      "message": "Well, first to say I dont see a great use case of option to turn this on/off during runtime so I will be perfectly fine with having this as a a rgument to create api/cli.\n\nIf you want to continue with this approach, dropping few packets should not be acceptable, so i will allow turning it on/off only if interface is admin down....",
+      "parentUuid": "6871b60c_0b3cb392",
+      "range": {
+        "startLine": 479,
+        "startChar": 23,
+        "endLine": 479,
+        "endChar": 36
+      },
+      "revId": "e68f6b47868302b373ee795360a2aa503c510e5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
