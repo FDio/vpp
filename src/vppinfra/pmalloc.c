@@ -279,7 +279,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       goto error;
     }
 
-  memset (va, 0, n_pages << pm->log2_page_sz);
+  clib_memset (va, 0, n_pages << pm->log2_page_sz);
   sys_page_size = sysconf (_SC_PAGESIZE);
   pagemap_fd = open ((char *) "/proc/self/pagemap", O_RDONLY);
 
@@ -324,7 +324,8 @@ clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
 {
   clib_pmalloc_arena_t *a;
   clib_pmalloc_page_t *pp;
-  u32 n_pages = round_pow2 (size, 1 << pm->log2_page_sz) >> pm->log2_page_sz;
+  u32 n_pages = round_pow2 (size, 1ULL << pm->log2_page_sz) >>
+    pm->log2_page_sz;
 
   if (n_pages + vec_len (pm->pages) > pm->max_pages)
     return 0;

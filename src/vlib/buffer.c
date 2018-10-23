@@ -860,7 +860,7 @@ vlib_buffer_register_physmem_map (vlib_main_t * vm, u32 physmem_map_index)
   vlib_buffer_pool_t *p;
   vlib_physmem_map_t *m = vlib_physmem_get_map (vm, physmem_map_index);
   uword start = pointer_to_uword (m->base);
-  uword size = m->n_pages << m->log2_page_size;
+  uword size = (uword) m->n_pages << m->log2_page_size;
 
   if (bm->buffer_mem_size == 0)
     {
