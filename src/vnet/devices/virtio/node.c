@@ -80,9 +80,9 @@ format_virtio_input_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
+virtio_refill_vring (vlib_main_t * vm, virtio_if_t * vif,
+		     virtio_vring_t * vring, const int hdr_sz)
 {
-  const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
   u16 used, next, avail, n_slots;
   u16 sz = vring->size;
   u16 mask = sz - 1;
@@ -108,7 +108,18 @@ more:
     {
       struct vring_desc *d = &vring->desc[next];;
       vlib_buffer_t *b = vlib_get_buffer (vm, vring->buffers[next]);
-      d->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
+      /*
+       * current_data may not be initialized with 0 and may contain
+       * previous offset. Here we want to make sure, it should be 0
+       * initialized.
+       */
+      b->current_data = 0;
+      b->current_data -= hdr_sz;
+      memset (vlib_buffer_get_current (b), 0, hdr_sz);
+      d->addr =
+	((vif->type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
+									 b) :
+	 pointer_to_uword (vlib_buffer_get_current (b)));
       d->len = VLIB_BUFFER_DATA_SIZE + hdr_sz;
       d->flags = VRING_DESC_F_WRITE;
       vring->avail->ring[avail & mask] = next;
@@ -123,7 +134,12 @@ more:
   vring->desc_in_use = used;
 
   if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
-    virtio_kick (vring);
+    {
+      if (vif->type == VIRTIO_IF_TYPE_PCI)
+	virtio_pci_legacy_notify_queue (vm, vif, vring->queue_id);
+      else
+	virtio_kick (vring);
+    }
   goto more;
 }
 
@@ -136,7 +152,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   uword n_trace = vlib_get_trace_count (vm, node);
   virtio_vring_t *vring = vec_elt_at_index (vif->vrings, 0);
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
+  const int hdr_sz = vif->virtio_net_hdr_sz;
   u32 *to_next = 0;
   u32 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
@@ -159,17 +175,18 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left && n_left_to_next)
 	{
-	  u16 num_buffers;
+	  u16 num_buffers = 1;
 	  struct vring_used_elem *e = &vring->used->ring[last & mask];
 	  struct virtio_net_hdr_v1 *hdr;
 	  u16 slot = e->id;
 	  u16 len = e->len - hdr_sz;
 	  u32 bi0 = vring->buffers[slot];
 	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-	  hdr = vlib_buffer_get_current (b0) - hdr_sz;
-	  num_buffers = hdr->num_buffers;
+	  hdr = vlib_buffer_get_current (b0);
+	  if (hdr_sz == sizeof (struct virtio_net_hdr_v1))
+	    num_buffers = hdr->num_buffers;
 
-	  b0->current_data = 0;
+	  b0->current_data += hdr_sz;
 	  b0->current_length = len;
 	  b0->total_length_not_including_first_buffer = 0;
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -189,7 +206,6 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  cb = vlib_get_buffer (vm, cbi);
 
 		  /* current buffer */
-		  cb->current_data = -hdr_sz;
 		  cb->current_length = e->len;
 
 		  /* previous buffer */
@@ -253,7 +269,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   n_rx_bytes);
 
 refill:
-  virtio_refill_vring (vm, vring);
+  virtio_refill_vring (vm, vif, vring, hdr_sz);
 
   return n_rx_packets;
 }
