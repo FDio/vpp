@@ -1,15 +1,22 @@
-.. _intcommands:
-
-Interface Commands
-==================
+.. _interface:
 
 .. toctree::
+
+Basic Interface Commands
+=========================
+
+There are several commands that are associated to Basic Interface:
+
+* `Show Interface`_ 
+* `Clear Interfaces`_
+
+.. note:: For a complete list of CLI Debug commands refer to the Debug CLI section of the `Source Code Documents <https://docs.fd.io/vpp/18.07/clicmd.html>`_ .
 
 .. _showintcommand:
 
 Show Interface
-==============
-Shows software interface information including counters and features
+++++++++++++++++
+Shows software interface information including counters and features.
 
 Summary/Usage
 -------------
@@ -62,7 +69,7 @@ Example of how to display the interface placement:
         VirtualEthernet0/0/13 queue 3 (polling)
 
 Clear Interfaces
-================
++++++++++++++++++
 Clear the statistics for all interfaces (statistics associated with the
 '*show interface*' command).
 
@@ -80,86 +87,3 @@ Example of how to clear the statistics for all interfaces:
 .. code-block:: console
 
     vpp# clear interfaces
-
-Set Interface Mac Address
-=========================
-The '*set interface mac address* ' command allows to set MAC address of
-given interface. In case of NIC interfaces the one has to support MAC
-address change. A side effect of MAC address change are changes of MAC
-addresses in FIB tables (ipv4 and ipv6).
-
-
-Summary/Usage
--------------
-
-.. code-block:: shell
-
-    set interface mac address <interface> <mac-address>.
-
-Examples
---------
-
-Examples of how to change MAC Address of interface:
-
-.. code-block:: console
-
-    vpp# set interface mac address GigabitEthernet0/8/0 aa:bb:cc:dd:ee:01
-    vpp# set interface mac address host-vpp0 aa:bb:cc:dd:ee:02
-    vpp# set interface mac address tap-0 aa:bb:cc:dd:ee:03
-    vpp# set interface mac address pg0 aa:bb:cc:dd:ee:04
-
-Set Interface Mtu
-=================
-
-.. toctree::
-
-Summary/Usage
--------------
-
-.. code-block:: shell
-
-    set interface mtu [packet|ip4|ip6|mpls] <value> <interface>.
-
-Set Interface Promiscuous
-=========================
-
-Summary/Usage
--------------
-
-.. code-block:: shell
-
-    set interface promiscuous [on|off] <interface>.
-
-.. _setintstate:
-
-Set Interface State
-===================
-This command is used to change the admin state (up/down) of an
-interface.
-
-If an interface is down, the optional '*punt*' flag can also be set. The
-'*punt*' flag implies the interface is disabled for forwarding but punt
-all traffic to slow-path. Use the '*enable*' flag to clear '*punt*' flag
-(interface is still down).
-
-Summary/Usage
--------------
-
-.. code-block:: shell
-
-    set interface state <interface> [up|down|punt|enable].
-
-Examples
---------
-
-Example of how to configure the admin state of an interface to **up**:
-
-.. code-block:: console
-
-    vpp# set interface state GigabitEthernet2/0/0 up
-
-Example of how to configure the admin state of an interface to **down**:
-
-.. code-block:: console
-
-    vpp# set interface state GigabitEthernet2/0/0 down

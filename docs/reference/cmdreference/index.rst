@@ -1,12 +1,13 @@
 .. _cmdreference:
 
-Command Line Reference
-======================
 
-This is a reference guide for the vpp debug commands that are referenced in the within these documents. This is **NOT** a complete list. For a complete list refer to the Debug CLI section of the 
+Useful Debug CLI 
+==================
+
+This is a reference guide for the vpp debug commands that are referenced within these documents. This is **NOT** a complete list. For a complete list refer to the Debug CLI section of the 
 `Source Code Documents <https://docs.fd.io/vpp/18.07/clicmd.html>`_.
 
-The debug CLI can be executed from a su shell using the vppctl command.
+The debug CLI can be executed from an su shell using the vppctl command.
 
 .. code-block:: console
 
@@ -50,6 +51,11 @@ Commands can also be executed from the vppct shell.
     local0                            0        down      
 
 .. toctree::
+   :maxdepth: 3
 
    interface/index.rst
+   ip/index.rst
+   show/index.rst
+   trace/index.rst
    vhost/index.rst
+   
