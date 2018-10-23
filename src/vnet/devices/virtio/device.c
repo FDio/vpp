@@ -36,10 +36,10 @@ _(NO_TX_QUEUES, "no tx queues")
 
 typedef enum
 {
-#define _(f,s) TAP_TX_ERROR_##f,
+#define _(f,s) VIRTIO_TX_ERROR_##f,
   foreach_virtio_tx_func_error
 #undef _
-    TAP_TX_N_ERROR,
+    VIRTIO_TX_N_ERROR,
 } virtio_tx_func_error_t;
 
 static char *virtio_tx_func_error_strings[] = {
@@ -58,6 +58,13 @@ format_virtio_device_name (u8 * s, va_list * args)
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     {
       s = format (s, "tap%u", vif->id);
+    }
+  else if (vif->type == VIRTIO_IF_TYPE_PCI)
+    {
+      s =
+	format (s, "Virtiopci%x/%x/%x/%x", vif->pci_addr.domain,
+		vif->pci_addr.bus, vif->pci_addr.slot,
+		vif->pci_addr.function);
     }
   else
     s = format (s, "virtio%lu", vif->dev_instance);
@@ -104,13 +111,6 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
     {
       struct vring_used_elem *e = &vring->used->ring[last & mask];
       u16 slot = e->id;
-      struct vring_desc *d = &vring->desc[slot];
-
-      if (PREDICT_FALSE (d->flags & VRING_DESC_F_INDIRECT))
-	{
-	  d = uword_to_pointer (d->addr, struct vring_desc *);
-	  vec_free (d);
-	}
 
       vlib_buffer_free (vm, &vring->buffers[slot], 1);
       used--;
@@ -122,11 +122,12 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
 }
 
 static_always_inline u16
-add_buffer_to_slot (vlib_main_t * vm, virtio_vring_t * vring, u32 bi,
-		    u16 avail, u16 next, u16 mask)
+add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
+		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
+		    u16 mask)
 {
   u16 n_added = 0;
-  const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
+  int hdr_sz = vif->virtio_net_hdr_sz;
   struct vring_desc *d;
   d = &vring->desc[next];
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
@@ -136,31 +137,85 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_vring_t * vring, u32 bi,
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
-      d->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
+      d->addr =
+	((vif->type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
+									 b) :
+	 pointer_to_uword (vlib_buffer_get_current (b))) - hdr_sz;
       d->len = b->current_length + hdr_sz;
       d->flags = 0;
     }
   else
     {
-      struct vring_desc *id, *descs = 0;
+      /*
+       * We are using single vlib_buffer_t for indirect descriptor(s)
+       * chain. Single descriptor is 16 bytes and vlib_buffer_t
+       * has 2048 bytes space. So maximum long chain can have 128
+       * (=2048/16) indirect descriptors.
+       * It can easily support 65535 bytes of Jumbo frames with
+       * each data buffer size of 512 bytes minimum.
+       */
+      vlib_buffer_t *indirect_desc =
+	vlib_get_buffer (vm, vring->indirect_buffers[next]);
+      indirect_desc->current_data = 0;
 
-      /* first buffer in chain */
-      vec_add2_aligned (descs, id, 1, CLIB_CACHE_LINE_BYTES);
-      id->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
-      id->len = b->current_length + hdr_sz;
-
-      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+      struct vring_desc *id =
+	(struct vring_desc *) vlib_buffer_get_current (indirect_desc);
+      u32 count = 1;
+      if (vif->type == VIRTIO_IF_TYPE_PCI)
 	{
-	  id->flags = VRING_DESC_F_NEXT;
-	  id->next = vec_len (descs);
-	  vec_add2_aligned (descs, id, 1, CLIB_CACHE_LINE_BYTES);
-	  b = vlib_get_buffer (vm, b->next_buffer);
-	  id->addr = pointer_to_uword (vlib_buffer_get_current (b));
-	  id->len = b->current_length;
-	}
+	  d->addr = vlib_physmem_get_pa (vm, id);
+	  id->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
 
-      d->addr = pointer_to_uword (descs);
-      d->len = vec_len (descs) * sizeof (struct vring_desc);
+	  /*
+	   * If VIRTIO_F_ANY_LAYOUT is not negotiated, then virtio_net_hdr
+	   * should be presented in separate descriptor and data will start
+	   * from next descriptor.
+	   */
+	  if (PREDICT_TRUE
+	      (vif->features & VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)))
+	    id->len = b->current_length + hdr_sz;
+	  else
+	    {
+	      id->len = hdr_sz;
+	      id->flags = VRING_DESC_F_NEXT;
+	      id->next = count;
+	      count++;
+	      id++;
+	      id->addr = vlib_buffer_get_current_pa (vm, b);
+	      id->len = b->current_length;
+	    }
+	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      id->flags = VRING_DESC_F_NEXT;
+	      id->next = count;
+	      count++;
+	      id++;
+	      b = vlib_get_buffer (vm, b->next_buffer);
+	      id->addr = vlib_buffer_get_current_pa (vm, b);
+	      id->len = b->current_length;
+	    }
+	}
+      else			/* VIRTIO_IF_TYPE_TAP */
+	{
+	  d->addr = pointer_to_uword (id);
+	  /* first buffer in chain */
+	  id->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
+	  id->len = b->current_length + hdr_sz;
+
+	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      id->flags = VRING_DESC_F_NEXT;
+	      id->next = count;
+	      count++;
+	      id++;
+	      b = vlib_get_buffer (vm, b->next_buffer);
+	      id->addr = pointer_to_uword (vlib_buffer_get_current (b));
+	      id->len = b->current_length;
+	    }
+	}
+      id->flags = 0;
+      id->next = 0;
+      d->len = count * sizeof (struct vring_desc);
       d->flags = VRING_DESC_F_INDIRECT;
     }
   vring->buffers[next] = bi;
@@ -183,8 +238,9 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   clib_spinlock_lock_if_init (&vif->lockp);
 
-  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
-      vring->last_kick_avail_idx != vring->avail->idx)
+  if ((vif->type == VIRTIO_IF_TYPE_TAP) &&
+      (vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
+      (vring->last_kick_avail_idx != vring->avail->idx))
     virtio_kick (vring);
 
   /* free consumed buffers */
@@ -196,8 +252,11 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left && used < sz)
     {
-      u16 n_added;
-      n_added = add_buffer_to_slot (vm, vring, buffers[0], avail, next, mask);
+      u16 n_added = 0;
+      n_added =
+	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask);
+      if (!n_added)
+	break;
       avail += n_added;
       next = (next + n_added) & mask;
       used += n_added;
@@ -212,13 +271,17 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vring->desc_next = next;
       vring->desc_in_use = used;
       if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
-	virtio_kick (vring);
+	{
+	  if (vif->type == VIRTIO_IF_TYPE_PCI)
+	    virtio_pci_legacy_notify_queue (vm, vif, vring->queue_id);
+	  else
+	    virtio_kick (vring);
+	}
     }
-
 
   if (n_left)
     {
-      vlib_error_count (vm, node->node_index, TAP_TX_ERROR_NO_FREE_SLOTS,
+      vlib_error_count (vm, node->node_index, VIRTIO_TX_ERROR_NO_FREE_SLOTS,
 			n_left);
       vlib_buffer_free (vm, buffers, n_left);
     }
@@ -313,7 +376,7 @@ VNET_DEVICE_CLASS (virtio_device_class) = {
   .format_device_name = format_virtio_device_name,
   .format_device = format_virtio_device,
   .format_tx_trace = format_virtio_tx_trace,
-  .tx_function_n_errors = TAP_TX_N_ERROR,
+  .tx_function_n_errors = VIRTIO_TX_N_ERROR,
   .tx_function_error_strings = virtio_tx_func_error_strings,
   .rx_redirect_to_node = virtio_set_interface_next_node,
   .clear_counters = virtio_clear_hw_interface_counters,
