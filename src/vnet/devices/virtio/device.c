@@ -59,6 +59,13 @@ format_virtio_device_name (u8 * s, va_list * args)
     {
       s = format (s, "tap%u", vif->id);
     }
+  else if (vif->type == VIRTIO_IF_TYPE_PCI)
+    {
+      s =
+	format (s, "Virtiopci%x/%x/%x/%x", vif->pci_addr.domain,
+		vif->pci_addr.bus, vif->pci_addr.slot,
+		vif->pci_addr.function);
+    }
   else
     s = format (s, "virtio%lu", vif->dev_instance);
 
@@ -106,6 +113,11 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
       u16 slot = e->id;
       struct vring_desc *d = &vring->desc[slot];
 
+      /* free indirect desc chain here */
+      /* FIXME: when indirect descriptor support will be added
+       * get the physmem for indirect descriptor and free will also
+       * be physmem_free
+       */
       if (PREDICT_FALSE (d->flags & VRING_DESC_F_INDIRECT))
 	{
 	  d = uword_to_pointer (d->addr, struct vring_desc *);
@@ -122,8 +134,9 @@ virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
 }
 
 static_always_inline u16
-add_buffer_to_slot (vlib_main_t * vm, virtio_vring_t * vring, u32 bi,
-		    u16 avail, u16 next, u16 mask)
+add_buffer_to_slot (vlib_main_t * vm, virtio_if_t * vif,
+		    virtio_vring_t * vring, u32 bi, u16 avail, u16 next,
+		    u16 mask)
 {
   u16 n_added = 0;
   const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
@@ -136,7 +149,10 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_vring_t * vring, u32 bi,
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
-      d->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
+      d->addr =
+	((vif->type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
+									 b) :
+	 pointer_to_uword (vlib_buffer_get_current (b))) - hdr_sz;
       d->len = b->current_length + hdr_sz;
       d->flags = 0;
     }
@@ -144,6 +160,8 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_vring_t * vring, u32 bi,
     {
       struct vring_desc *id, *descs = 0;
 
+      // FIXME: Add support for indirect discriptors and accordingly
+      // update the addresses
       /* first buffer in chain */
       vec_add2_aligned (descs, id, 1, CLIB_CACHE_LINE_BYTES);
       id->addr = pointer_to_uword (vlib_buffer_get_current (b)) - hdr_sz;
@@ -194,7 +212,8 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left && used < sz)
     {
       u16 n_added;
-      n_added = add_buffer_to_slot (vm, vring, buffers[0], avail, next, mask);
+      n_added =
+	add_buffer_to_slot (vm, vif, vring, buffers[0], avail, next, mask);
       avail += n_added;
       next = (next + n_added) & mask;
       used += n_added;
@@ -210,11 +229,15 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vring->desc_in_use = used;
       if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
 	{
-	  u64 x = 1;
-	  CLIB_UNUSED (int r) = write (vring->kick_fd, &x, sizeof (x));
+	  if (vif->type == VIRTIO_IF_TYPE_PCI)
+	    legacy_notify_queue (vm, vif, vring->queue_id);
+	  else
+	    {
+	      u64 x = 1;
+	      CLIB_UNUSED (int r) = write (vring->kick_fd, &x, sizeof (x));
+	    }
 	}
     }
-
 
   if (n_left)
     {

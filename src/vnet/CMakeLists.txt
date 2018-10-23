@@ -960,9 +960,12 @@ list(APPEND VNET_SOURCES
   devices/virtio/vhost_user_output.c
   devices/virtio/vhost_user_api.c
   devices/virtio/virtio.c
+  devices/virtio/cli.c
+  devices/virtio/pci.c
 )
 
 list(APPEND VNET_HEADERS
+  devices/virtio/pci.h
   devices/virtio/virtio.h
   devices/virtio/vhost_user.h
 )
