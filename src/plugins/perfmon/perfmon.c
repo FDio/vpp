@@ -59,10 +59,13 @@ set_perfmon_json_path ()
 }
 
 #define foreach_cpuid_table                     \
-_(0x0306C3, haswell_core_v28.json)              \
-_(0x0306F2, haswell_core_v28.json)              \
-_(0x0406E3, skylake_core_v42.json)              \
-_(0x0506E3, skylake_core_v42.json)
+_(0x0106E5, NehalemEP_core_V2.json)     /* Intel(R) Xeon(R) CPU X3430  @ 2.40GHz     */        \
+_(0x0306C3, haswell_core_v28.json)      /* Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz   */        \
+_(0x0306F2, haswell_core_v28.json)      /* Intel(R) Xeon(R) CPU E5-2640 v3 @ 2.60GHz */        \
+_(0x040661, haswell_core_v28.json)      /* Intel(R) Core(TM) i7-4870HQ CPU @ 2.50GHz */        \
+_(0x0406D8, Silvermont_core_V14.json)   /* Intel(R) Atom(TM) CPU  C2758  @ 2.40GHz   */        \
+_(0x0406E3, skylake_core_v42.json)      /* Intel(R) Core(TM) i7-6500U CPU @ 2.50GHz  */        \
+_(0x0506E3, skylake_core_v42.json)	/* Intel(R) Core(TM) i5-6600 CPU @ 3.30GHz   */
 
 static inline u32
 get_cpuid (void)
