@@ -22,6 +22,30 @@
       "revId": "901d16cced85b2ff7353009ca325de310654eb6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ab3930d2_0e4bab31",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-10-23T18:48:18Z",
+      "side": 1,
+      "message": "At some point we should do getrlimit() + CAP_SYS_RESOURCE check, but this is emergency fix so we will merge it as it is ....",
+      "parentUuid": "cadc81be_fbf9e266",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 5
+      },
+      "revId": "901d16cced85b2ff7353009ca325de310654eb6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
