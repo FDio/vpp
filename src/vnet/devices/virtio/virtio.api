@@ -1,0 +1,96 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+/** \brief Initialize a new virtio pci interface with the given paramters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param pci_addr - pci address as unsigned 32bit integer:
+                      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function
+    @param use_random_mac - let the system generate a unique mac address
+    @param mac_address - mac addr to assign to the interface if use_radom not set
+    @param tx_ring_sz - the number of entries of TX ring
+    @param rx_ring_sz - the number of entries of RX ring
+    @param features - the virtio features which driver should negotiate with device
+*/
+define virtio_pci_create
+{
+  u32 client_index;
+  u32 context;
+  u32 pci_addr;
+  u8 use_random_mac;
+  u8 mac_address[6];
+  u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
+  u16 rx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
+  u64 features;
+};
+
+/** \brief Reply for virtio pci create reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index allocated for the new virtio pci interface
+*/
+define virtio_pci_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete virtio pci interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index of existing virtio pci interface
+*/
+autoreply define virtio_pci_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Dump virtio pci interfaces request */
+define sw_interface_virtio_pci_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for virtio pci interface dump request
+    @param sw_if_index - software index of virtio pci interface
+    @param pci_addr - pci address as unsigned 32bit integer:
+                      0-15 domain, 16-23 bus, 24-28 slot, 29-31 function
+    @param mac_addr - native virtio device mac address
+    @param tx_ring_sz - the number of entries of TX ring
+    @param rx_ring_sz - the number of entries of RX ring
+    @param features - the virtio features which driver have negotiated with device
+*/
+define sw_interface_virtio_pci_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u32 pci_addr;
+  u8 mac_addr[6];
+  u16 tx_ring_sz;
+  u16 rx_ring_sz;
+  u64 features;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
