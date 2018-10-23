@@ -26,6 +26,7 @@
 #include <sys/eventfd.h>
 
 #include <vlib/vlib.h>
+#include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
@@ -136,7 +137,7 @@ error:
   return err;
 }
 
-static_always_inline void
+inline void
 virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring)
 {
   u16 used = vring->desc_in_use;
