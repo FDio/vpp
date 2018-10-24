@@ -140,10 +140,24 @@ When you're done viewing or modifying a branch, get back to the master branch by
     $ git reset --hard origin/master
     $ git checkout master
 
-Resolving a Conflict
---------------------------------
+Patch Conflict Resolution
+-------------------------
 
-If a change has a conflict it should be resolved by entering:
+Two different patch conflict scenarios arise from time to
+time. Sometime after uploading a patch to https://gerrit.fd.io, the
+gerrit UI may show a patch status of "Merge Conflict."
+
+Or, you may attempt to upload a new patch-set via "git review," only to
+discover that the gerrit server won't allow the upload due to an upstream
+merge conflict.
+
+In both cases, it's [usually] fairly simple to fix the problem. You
+need to rebase the patch onto master/latest. Details vary from case to
+case.
+
+Here's how to rebase a patch previously uploaded to the Gerrit server
+which now has a merge conflict. In a fresh workspace cloned from
+master/latest, do the following:
 
 .. code-block:: console
 
@@ -154,5 +168,17 @@ If a change has a conflict it should be resolved by entering:
           $ git rebase --continue
     $ git review
 
+In the upload-failure case, use caution: carefully **save your work**
+before you do anything else! 
 
+Rebase your patch and try again. Please **do not** re-download ["git
+review -d"] the patch from the gerrit server...:
+
+.. code-block:: console
+
+    $ git rebase origin/master
+       while (conflicts)
+          <fix conflicts>
+          $ git rebase --continue
+    $ git review
 
