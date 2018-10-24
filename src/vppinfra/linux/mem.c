@@ -46,6 +46,41 @@
 #define F_SEAL_WRITE    0x0008	/* prevent writes */
 #endif
 
+
+uword
+clib_mem_get_page_size (void)
+{
+  return getpagesize ();
+}
+
+uword
+clib_mem_get_default_hugepage_size (void)
+{
+  unformat_input_t input;
+  static u32 size = 0;
+  int fd;
+
+  if (size)
+    goto done;
+
+  if ((fd = open ("/proc/meminfo", 0)) == -1)
+    return 0;
+
+  unformat_init_clib_file (&input, fd);
+
+  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (&input, "Hugepagesize:%_%u kB", &size))
+	;
+      else
+	unformat_skip_line (&input);
+    }
+  unformat_free (&input);
+  close (fd);
+done:
+  return 1024ULL * size;
+}
+
 u64
 clib_mem_vm_get_page_size (int fd)
 {
