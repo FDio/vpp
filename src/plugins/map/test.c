@@ -25,12 +25,13 @@ get_domain(ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 	   u8 ea_bits_len, u8 psid_offset,
 	   u8 psid_length, u16 mtu, u8 flags)
 {
-  map_domain_t * d = malloc(sizeof(*d));
   u8 suffix_len;
 
   /* EA bits must be within the first 64 bits */
   if (ea_bits_len > 0 && (ip6_prefix_len + ea_bits_len) > 64)
     return NULL;
+
+  map_domain_t * d = malloc(sizeof(*d));
 
   /* Init domain struct */
   d->ip4_prefix.as_u32 = ip4_prefix->as_u32;
