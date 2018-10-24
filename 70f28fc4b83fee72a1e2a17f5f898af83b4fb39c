@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "72f561dd_bd55abdc",
+        "filename": "docs/reference/cmdreference/index.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-24T18:37:00Z",
+      "side": 1,
+      "message": "I was expecting \"a su\" or perhaps \"a superuser\".",
+      "range": {
+        "startLine": 10,
+        "startChar": 35,
+        "endLine": 10,
+        "endChar": 40
+      },
+      "revId": "70f28fc4b83fee72a1e2a17f5f898af83b4fb39c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "faba69af_59f69fa8",
+        "filename": "docs/reference/cmdreference/interface/basic.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-24T18:37:00Z",
+      "side": 1,
+      "message": "Are there any rules on when to add an empty line after a subsection title (e.g. line 23)?",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 1
+      },
+      "revId": "70f28fc4b83fee72a1e2a17f5f898af83b4fb39c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "29db93d9_9282caf8",
+        "filename": "docs/reference/cmdreference/interface/create_interface.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-24T18:37:00Z",
+      "side": 1,
+      "message": "Please wrap long lines.",
+      "range": {
+        "startLine": 26,
+        "startChar": 87,
+        "endLine": 26,
+        "endChar": 91
+      },
+      "revId": "70f28fc4b83fee72a1e2a17f5f898af83b4fb39c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39c1d2fc_4a639112",
+        "filename": "docs/reference/cmdreference/interface/hardware.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-24T18:37:00Z",
+      "side": 1,
+      "message": "I prefer to use the same amount of characters as in the title.",
+      "range": {
+        "startLine": 77,
+        "startChar": 13,
+        "endLine": 77,
+        "endChar": 14
+      },
+      "revId": "70f28fc4b83fee72a1e2a17f5f898af83b4fb39c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
