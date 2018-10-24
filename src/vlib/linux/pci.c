@@ -1210,6 +1210,10 @@ vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
   p->handle = p - lpm->linux_pci_devices;
   p->addr.as_u32 = di->addr.as_u32;
   p->intx_irq.fd = -1;
+  /*
+   * pci io bar read/write fd
+   */
+  p->io_fd = -1;
 
   pci_log_debug (vm, p, "open vid:0x%04x did:0x%04x driver:%s iommu_group:%d",
 		 di->vendor_id, di->device_id, di->driver_name,
@@ -1253,6 +1257,8 @@ vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h)
       irq = &p->intx_irq;
       clib_file_del_by_index (&file_main, irq->clib_file_index);
       close (p->config_fd);
+      if (p->io_fd != -1)
+	close (p->io_fd);
     }
   else if (p->type == LINUX_PCI_DEVICE_TYPE_VFIO)
     {
