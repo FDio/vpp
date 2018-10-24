@@ -417,7 +417,7 @@ dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 					       &min_chunk_size, &align);
 
   if ((error = vlib_physmem_shared_map_create (vm, (char *) pool_name, size,
-					       numa, map_index)))
+					       0, numa, map_index)))
     {
       rte_mempool_free (mp);
       return error;

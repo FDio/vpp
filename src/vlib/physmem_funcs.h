@@ -42,8 +42,8 @@
 
 clib_error_t *vlib_physmem_init (vlib_main_t * vm);
 clib_error_t *vlib_physmem_shared_map_create (vlib_main_t * vm, char *name,
-					      uword size, u32 numa_node,
-					      u32 * map_index);
+					      uword size, u32 log2_page_sz,
+					      u32 numa_node, u32 * map_index);
 
 vlib_physmem_map_t *vlib_physmem_get_map (vlib_main_t * vm, u32 index);
 
