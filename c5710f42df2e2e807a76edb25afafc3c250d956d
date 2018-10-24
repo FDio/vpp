@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cbfb3771_7f7b912d",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-24T10:54:12Z",
+      "side": 1,
+      "message": "... assert not 0.",
+      "revId": "c5710f42df2e2e807a76edb25afafc3c250d956d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "303ec2c1_7e7d62ee",
+        "filename": "src/vnet/vxlan-gbp/vxlan_gbp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-24T10:54:12Z",
+      "side": 1,
+      "message": "u32 ...",
+      "revId": "c5710f42df2e2e807a76edb25afafc3c250d956d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
