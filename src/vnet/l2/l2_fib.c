@@ -54,6 +54,27 @@
 
 l2fib_main_t l2fib_main;
 
+u8 *
+format_l2fib_entry_result_flags (u8 * s, va_list * args)
+{
+  l2fib_entry_result_flags_t flags = va_arg (*args, int);
+
+  if (L2FIB_ENTRY_RESULT_FLAG_NONE == flags)
+    {
+      s = format (s, "none");
+    }
+  else
+    {
+#define _(a,v,t) {                              \
+      if (flags & L2FIB_ENTRY_RESULT_FLAG_##a)  \
+        s = format (s, "%s ", t);               \
+    }
+      foreach_l2fib_entry_result_attr
+#undef _
+    }
+  return (s);
+}
+
 static void
 incr_mac_address (u8 * mac)
 {
