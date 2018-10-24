@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "66758501_9e09ea84",
+        "filename": "RELEASE.md",
+        "patchSetId": 4
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-24T14:48:37Z",
+      "side": 1,
+      "message": "How is this list created? Should we also review versions?\nhttps://gerrit.fd.io/r/#/c/14492/3/src/plugins/avf/avf.api",
+      "range": {
+        "startLine": 137,
+        "startChar": 31,
+        "endLine": 137,
+        "endChar": 42
+      },
+      "revId": "3a9a6f72d18aa72e4038422a4c882927037441e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
