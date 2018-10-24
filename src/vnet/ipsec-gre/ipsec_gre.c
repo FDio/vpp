@@ -102,6 +102,9 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   ipsec_gre_tunnel_t *t = pool_elt_at_index (igm->tunnels, rd->dev_instance);
 
+  /* use an ethertype of 0x01 for l2-gre */
+  u16 l2_gre_protocol_ethertype = clib_net_to_host_u16 (0x01);
+
   /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);
 
@@ -127,7 +130,6 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  ip4_and_gre_union_t *h0, *h1;
 	  u32 bi0, next0, bi1, next1;
 	  __attribute__ ((unused)) u8 error0, error1;
-	  u16 gre_protocol0, gre_protocol1;
 
 	  /* Prefetch the next iteration */
 	  {
@@ -164,12 +166,6 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  ip0 = vlib_buffer_get_current (b0);
-	  gre_protocol0 = clib_net_to_host_u16 (0x01);
-
-	  ip1 = vlib_buffer_get_current (b1);
-	  gre_protocol1 = clib_net_to_host_u16 (0x01);
-
 	  vlib_buffer_advance (b0, -sizeof (*h0));
 	  vlib_buffer_advance (b1, -sizeof (*h1));
 
@@ -184,13 +180,13 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  h1->as_u64[2] = 0;
 
 	  ip0 = &h0->ip4_and_gre.ip4;
-	  h0->ip4_and_gre.gre.protocol = gre_protocol0;
+	  h0->ip4_and_gre.gre.protocol = l2_gre_protocol_ethertype;
 	  ip0->ip_version_and_header_length = 0x45;
 	  ip0->ttl = 254;
 	  ip0->protocol = IP_PROTOCOL_GRE;
 
 	  ip1 = &h1->ip4_and_gre.ip4;
-	  h1->ip4_and_gre.gre.protocol = gre_protocol1;
+	  h1->ip4_and_gre.gre.protocol = l2_gre_protocol_ethertype;
 	  ip1->ip_version_and_header_length = 0x45;
 	  ip1->ttl = 254;
 	  ip1->protocol = IP_PROTOCOL_GRE;
@@ -256,7 +252,6 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  ip4_and_gre_union_t *h0;
 	  u32 bi0, next0;
 	  __attribute__ ((unused)) u8 error0;
-	  u16 gre_protocol0;
 
 	  bi0 = to_next[0] = from[0];
 	  from += 1;
@@ -266,8 +261,6 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  gre_protocol0 = clib_net_to_host_u16 (0x01);
-
 	  vlib_buffer_advance (b0, -sizeof (*h0));
 
 	  h0 = vlib_buffer_get_current (b0);
@@ -276,7 +269,7 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  h0->as_u64[2] = 0;
 
 	  ip0 = &h0->ip4_and_gre.ip4;
-	  h0->ip4_and_gre.gre.protocol = gre_protocol0;
+	  h0->ip4_and_gre.gre.protocol = l2_gre_protocol_ethertype;
 	  ip0->ip_version_and_header_length = 0x45;
 	  ip0->ttl = 254;
 	  ip0->protocol = IP_PROTOCOL_GRE;
