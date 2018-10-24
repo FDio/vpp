@@ -223,7 +223,7 @@ do {                                                                    \
       E = vec_end (P) - 1;                                              \
     }									\
   if (Z)                                                                \
-    memset(E, 0, sizeof(*E));						\
+    clib_memset(E, 0, sizeof(*E));                                      \
 } while (0)
 
 /** Allocate an object E from a pool P with alignment A */
