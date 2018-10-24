@@ -117,44 +117,22 @@ example, a bunch of functions with names of the form
 shows up with a name of the form "xxx_inline.isra.1", it's quite likely
 that the inline was declared "static inline" instead of "always_inline".
 
-Add the required Makefile.am content
-------------------------------------
+Modify CMakeLists.txt
+---------------------
 
-If the component in question already sets a "multiversioning_sources"
-variable, simply add the indicated .c file to the list. If not, add
-the required boilerplate:
+If the component in question already lists "MULTIARCH_SOURCES", simply
+add the indicated .c file to the list.  Otherwise, add as shown
+below. Note that the added file "new_multiarch_node.c" should appear in
+*both* SOURCES and MULTIARCH_SOURCES:
 
 ::
 
-    if CPU_X86_64
-    sdp_multiversioning_sources =			\
-    	sdp/node.c				\
-    	sdp/sdp_slookup.c
+    add_vpp_plugin(myplugin
+      SOURCES
+      new_multiarch_node.c
+      ...  
 
-    if CC_SUPPORTS_AVX2
-    ###############################################################
-    # AVX2
-    ###############################################################
-    libsdp_plugin_avx2_la_SOURCES = $(sdp_multiversioning_sources)
-    libsdp_plugin_avx2_la_CFLAGS =					\
-    	$(AM_CFLAGS)  @CPU_AVX2_FLAGS@				\
-    	-DCLIB_MARCH_VARIANT=avx2
-    noinst_LTLIBRARIES += libsdp_plugin_avx2.la
-    sdp_plugin_la_LIBADD += libsdp_plugin_avx2.la
-    endif
-
-    if CC_SUPPORTS_AVX512
-    ###############################################################
-    # AVX512
-    ###############################################################
-    libsdp_plugin_avx512_la_SOURCES = $(sdp_multiversioning_sources)
-    libsdp_plugin_avx512_la_CFLAGS =				\
-    	$(AM_CFLAGS) @CPU_AVX512_FLAGS@				\
-    	-DCLIB_MARCH_VARIANT=avx512
-    noinst_LTLIBRARIES += libsdp_plugin_avx512.la
-    sdp_plugin_la_LIBADD += libsdp_plugin_avx512.la
-    endif
-    endif
-
-A certain amount of cut-paste-modify is currently required. Hopefully
-we'll manage to improve the scheme in the future.
+      MULTIARCH_SOURCES
+      new_ multiarch_node.c
+      ...
+     )
