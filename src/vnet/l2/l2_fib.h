@@ -129,6 +129,8 @@ typedef enum l2fib_entry_result_flags_t_
 
 STATIC_ASSERT_SIZEOF (l2fib_entry_result_flags_t, 1);
 
+extern u8 *format_l2fib_entry_result_flags (u8 * s, va_list * args);
+
 /*
  * The l2fib entry results
  */

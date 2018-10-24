@@ -65,6 +65,7 @@ typedef struct
   u8 dst[6];
   u32 sw_if_index;
   u16 bd_index;
+  l2fib_entry_result_t result;
 } l2fwd_trace_t;
 
 /* packet trace format function */
@@ -75,10 +76,13 @@ format_l2fwd_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2fwd_trace_t *t = va_arg (*args, l2fwd_trace_t *);
 
-  s = format (s, "l2-fwd:   sw_if_index %d dst %U src %U bd_index %d",
-	      t->sw_if_index,
-	      format_ethernet_address, t->dst,
-	      format_ethernet_address, t->src, t->bd_index);
+  s =
+    format (s,
+	    "l2-fwd:   sw_if_index %d dst %U src %U bd_index %d result [0x%llx, %d] %U",
+	    t->sw_if_index, format_ethernet_address, t->dst,
+	    format_ethernet_address, t->src, t->bd_index, t->result.raw,
+	    t->result.fields.sw_if_index, format_l2fib_entry_result_flags,
+	    t->result.fields.flags);
   return s;
 }
 
@@ -212,7 +216,8 @@ l2fwd_process (vlib_main_t * vm,
        * unless some other feature is inserted before uu_flood
        */
       if (vnet_buffer (b0)->l2.feature_bitmap &
-	  (L2INPUT_FEAT_UU_FLOOD | L2INPUT_FEAT_UU_FWD))
+	  (L2INPUT_FEAT_UU_FLOOD |
+	   L2INPUT_FEAT_UU_FWD | L2INPUT_FEAT_GBP_FWD))
 	{
 	  *next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
 					 L2INPUT_FEAT_FWD);
@@ -283,42 +288,6 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       h2 = vlib_buffer_get_current (b[2]);
       h3 = vlib_buffer_get_current (b[3]);
 
-      if (do_trace)
-	{
-	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      t->bd_index = vnet_buffer (b[0])->l2.bd_index;
-	      clib_memcpy (t->src, h0->src_address, 6);
-	      clib_memcpy (t->dst, h0->dst_address, 6);
-	    }
-	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[1], sizeof (*t));
-	      t->sw_if_index = sw_if_index1;
-	      t->bd_index = vnet_buffer (b[1])->l2.bd_index;
-	      clib_memcpy (t->src, h1->src_address, 6);
-	      clib_memcpy (t->dst, h1->dst_address, 6);
-	    }
-	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[2], sizeof (*t));
-	      t->sw_if_index = sw_if_index2;
-	      t->bd_index = vnet_buffer (b[2])->l2.bd_index;
-	      clib_memcpy (t->src, h2->src_address, 6);
-	      clib_memcpy (t->dst, h2->dst_address, 6);
-	    }
-	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
-	    {
-	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[3], sizeof (*t));
-	      t->sw_if_index = sw_if_index3;
-	      t->bd_index = vnet_buffer (b[3])->l2.bd_index;
-	      clib_memcpy (t->src, h3->src_address, 6);
-	      clib_memcpy (t->dst, h3->dst_address, 6);
-	    }
-	}
-
 #ifdef COUNTERS
       em->counters[node_counter_base_index + L2FWD_ERROR_L2FWD] += 4;
 #endif
@@ -353,6 +322,46 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* verify speculative enqueues, maybe switch current next frame */
       /* if next0==next1==next_index then nothing special needs to be done */
+      if (do_trace)
+	{
+	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
+	      t->sw_if_index = sw_if_index0;
+	      t->bd_index = vnet_buffer (b[0])->l2.bd_index;
+	      clib_memcpy (t->src, h0->src_address, 6);
+	      clib_memcpy (t->dst, h0->dst_address, 6);
+	      t->result = result0;
+	    }
+	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[1], sizeof (*t));
+	      t->sw_if_index = sw_if_index1;
+	      t->bd_index = vnet_buffer (b[1])->l2.bd_index;
+	      clib_memcpy (t->src, h1->src_address, 6);
+	      clib_memcpy (t->dst, h1->dst_address, 6);
+	      t->result = result1;
+	    }
+	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[2], sizeof (*t));
+	      t->sw_if_index = sw_if_index2;
+	      t->bd_index = vnet_buffer (b[2])->l2.bd_index;
+	      clib_memcpy (t->src, h2->src_address, 6);
+	      clib_memcpy (t->dst, h2->dst_address, 6);
+	      t->result = result2;
+	    }
+	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[3], sizeof (*t));
+	      t->sw_if_index = sw_if_index3;
+	      t->bd_index = vnet_buffer (b[3])->l2.bd_index;
+	      clib_memcpy (t->src, h3->src_address, 6);
+	      clib_memcpy (t->dst, h3->dst_address, 6);
+	      t->result = result3;
+	    }
+	}
+
       next += 4;
       b += 4;
       n_left -= 4;
@@ -370,15 +379,6 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       h0 = vlib_buffer_get_current (b[0]);
 
-      if (do_trace && PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  l2fwd_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
-	  t->sw_if_index = sw_if_index0;
-	  t->bd_index = vnet_buffer (b[0])->l2.bd_index;
-	  clib_memcpy (t->src, h0->src_address, 6);
-	  clib_memcpy (t->dst, h0->dst_address, 6);
-	}
-
       /* process 1 pkt */
 #ifdef COUNTERS
       em->counters[node_counter_base_index + L2FWD_ERROR_L2FWD] += 1;
@@ -387,6 +387,16 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      &bucket0,	/* not used */
 		      &result0);
       l2fwd_process (vm, node, msm, em, b[0], sw_if_index0, &result0, next);
+
+      if (do_trace && PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  l2fwd_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
+	  t->sw_if_index = sw_if_index0;
+	  t->bd_index = vnet_buffer (b[0])->l2.bd_index;
+	  clib_memcpy (t->src, h0->src_address, 6);
+	  clib_memcpy (t->dst, h0->dst_address, 6);
+	  t->result = result0;
+	}
 
       /* verify speculative enqueue, maybe switch current next frame */
       next += 1;
