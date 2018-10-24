@@ -212,7 +212,8 @@ fib_test_mk_intf (u32 ninterfaces)
 #define FIB_TEST_RPF(_cond, _comment, _args...)         \
     {                                                   \
         if (FIB_TEST_I(_cond, _comment, ##_args)) {     \
-            return (1);                                 \
+            res = 1;                                    \
+            goto cleanup;                               \
         }                                               \
     }
 
@@ -258,6 +259,7 @@ fib_test_urpf_is_equal (fib_node_index_t fei,
 
     dpo_reset(&dpo);
 
+cleanup:
     va_end(ap);
 
     return (res);
@@ -671,7 +673,6 @@ fib_test_validate_entry (fib_node_index_t fei,
     va_list ap;
     int res;
 
-    va_start(ap, n_buckets);
 
     res = 0;
     pfx = fib_entry_get_prefix(fei);
@@ -682,8 +683,10 @@ fib_test_validate_entry (fib_node_index_t fei,
     {
         const replicate_t *rep;
 
+        va_start(ap, n_buckets);
         rep = replicate_get(dpo.dpoi_index);
         res = fib_test_validate_rep_v(rep, n_buckets, &ap);
+        va_end (ap);
     }
     else
     {
@@ -694,8 +697,10 @@ fib_test_validate_entry (fib_node_index_t fei,
                     format_fib_prefix, pfx,
                     format_dpo_type, dpo.dpoi_type);
 
+        va_start(ap, n_buckets);
         lb = load_balance_get(dpo.dpoi_index);
         res = fib_test_validate_lb_v(lb, n_buckets, &ap);
+        va_end(ap);
 
         /*
          * ensure that the LB contributed by the entry is the
@@ -735,8 +740,6 @@ fib_test_validate_entry (fib_node_index_t fei,
     }
 
     dpo_reset(&dpo);
-
-    va_end(ap);
 
     return (res);
 }
