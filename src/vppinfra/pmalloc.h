@@ -60,14 +60,20 @@ typedef struct
 typedef struct
 {
   u8 *base;
-  uword log2_page_sz;
-  uword *va_pa_diffs;
+  u32 def_log2_page_sz;
+  u32 sys_log2_page_sz;
   u32 max_pages;
   clib_pmalloc_page_t *pages;
   uword *chunk_index_by_va;
   clib_pmalloc_arena_t *arenas;
   u32 *default_arena_for_numa_node;
 
+
+  /* VA to PA lookup table */
+  u32 lookup_log2_page_sz;
+  uword *lookup_table;
+
+  /* last error */
   clib_error_t *error;
 } clib_pmalloc_main_t;
 
@@ -81,7 +87,8 @@ void *clib_pmalloc_alloc_aligned (clib_pmalloc_main_t * pm, uword size,
 void clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va);
 
 void *clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
-					uword size, u32 numa_node);
+					uword size, u32 log2_page_sz,
+					u32 numa_node);
 
 void *clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t * pm, void *arena_va,
 				     uword size, uword align);
@@ -98,7 +105,7 @@ always_inline u32
 clib_pmalloc_get_page_index (clib_pmalloc_main_t * pm, void *va)
 {
   uword index = (pointer_to_uword (va) - pointer_to_uword (pm->base)) >>
-    pm->log2_page_sz;
+    pm->def_log2_page_sz;
 
   ASSERT (index < vec_len (pm->pages));
 
@@ -115,8 +122,9 @@ clib_pmalloc_get_arena (clib_pmalloc_main_t * pm, void *va)
 always_inline uword
 clib_pmalloc_get_pa (clib_pmalloc_main_t * pm, void *va)
 {
-  u32 index = clib_pmalloc_get_page_index (pm, va);
-  return pointer_to_uword (va) - pm->va_pa_diffs[index];
+  uword index = (pointer_to_uword (va) - pointer_to_uword (pm->base)) >>
+    pm->lookup_log2_page_sz;
+  return pointer_to_uword (va) - pm->lookup_table[index];
 }
 
 
