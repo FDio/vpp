@@ -352,6 +352,42 @@ mcast_shared_remove (ip46_address_t * dst)
   hash_unset_mem_free (&vxlan_gbp_main.mcast_shared, dst);
 }
 
+inline void
+vxlan_gbp_register_udp_ports (void)
+{
+  vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
+
+  if (vxm->udp_ports_registered == 0)
+    {
+      udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan_gbp,
+			     vxlan4_gbp_input_node.index, /* is_ip4 */ 1);
+      udp_register_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan6_gbp,
+			     vxlan6_gbp_input_node.index, /* is_ip4 */ 0);
+    }
+  /*
+   * Counts the number of vxlan_gbp tunnels
+   */
+  vxm->udp_ports_registered += 1;
+}
+
+inline void
+vxlan_gbp_unregister_udp_ports (void)
+{
+  vxlan_gbp_main_t *vxm = &vxlan_gbp_main;
+
+  ASSERT (vxm->udp_ports_registered != 0);
+
+  if (vxm->udp_ports_registered == 1)
+    {
+      udp_unregister_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan_gbp,
+			       /* is_ip4 */ 1);
+      udp_unregister_dst_port (vxm->vlib_main, UDP_DST_PORT_vxlan6_gbp,
+			       /* is_ip4 */ 0);
+    }
+
+  vxm->udp_ports_registered -= 1;
+}
+
 int vnet_vxlan_gbp_tunnel_add_del
   (vnet_vxlan_gbp_tunnel_add_del_args_t * a, u32 * sw_if_indexp)
 {
@@ -454,6 +490,8 @@ int vnet_vxlan_gbp_tunnel_add_del
 	  pool_put (vxm->tunnels, t);
 	  return VNET_API_ERROR_INVALID_REGISTRATION;
 	}
+
+      vxlan_gbp_register_udp_ports ();
 
       t->hw_if_index = vnet_register_interface
 	(vnm, vxlan_gbp_device_class.index, dev_instance,
@@ -608,6 +646,7 @@ int vnet_vxlan_gbp_tunnel_add_del
 	  mcast_shared_remove (&t->dst);
 	}
 
+      vxlan_gbp_unregister_udp_ports ();
       vnet_delete_hw_interface (vnm, t->hw_if_index);
       hash_unset (vxm->instance_used, t->user_instance);
 
@@ -1087,11 +1126,6 @@ vxlan_gbp_init (vlib_main_t * vm)
   vxm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
-
-  udp_register_dst_port (vm, UDP_DST_PORT_vxlan_gbp,
-			 vxlan4_gbp_input_node.index, /* is_ip4 */ 1);
-  udp_register_dst_port (vm, UDP_DST_PORT_vxlan6_gbp,
-			 vxlan6_gbp_input_node.index, /* is_ip4 */ 0);
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_GBP_TUNNEL, &vxlan_gbp_vft);
 
