@@ -49,6 +49,8 @@ mac_address_from_u64 (u64 u, mac_address_t * mac)
   ethernet_mac_address_from_u64 (u, mac->bytes);
 }
 
+extern uword unformat_mac_address_t (unformat_input_t * input,
+				     va_list * args);
 extern u8 *format_mac_address_t (u8 * s, va_list * args);
 
 #endif

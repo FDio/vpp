@@ -478,8 +478,8 @@ class VppPapiProvider(object):
                         {'bd_id': bd_id,
                          'is_add': is_add,
                          'is_ipv6': is_ipv6,
-                         'ip_address': ip,
-                         'mac_address': mac})
+                         'ip': ip,
+                         'mac': mac})
 
     def want_ip4_arp_events(self, enable_disable=1, address=0):
         return self.api(self.papi.want_ip4_arp_events,

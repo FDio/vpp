@@ -41,14 +41,6 @@ mac_address_encode (const mac_address_t * in, vl_api_mac_address_t * out)
   clib_memcpy (out->bytes, in->bytes, 6);
 }
 
-extern u8 *
-format_vl_api_mac_address (u8 * s, va_list * args)
-{
-  vl_api_mac_address_t *mac = va_arg (*args, vl_api_mac_address_t *);
-
-  return (format (s, "%U", format_mac_address, mac->bytes));
-}
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

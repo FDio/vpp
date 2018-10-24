@@ -28,6 +28,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   main.c
   plugin.c
   json_format.c
+  types.c
 
   LINK_LIBRARIES
   vlibmemoryclient
