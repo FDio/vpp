@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "51ad89ce_7c259141",
+        "filename": "docs/gettingstarted/developers/gitreview.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 172,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-24T18:27:26Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 172,
+        "startChar": 28,
+        "endLine": 172,
+        "endChar": 29
+      },
+      "revId": "8a6928938c468639232350bccb0e6c4364fff4c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
