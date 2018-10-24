@@ -15,20 +15,36 @@
 
 #include <vnet/ethernet/mac_address.h>
 
+/* *INDENT-OFF* */
 const mac_address_t ZERO_MAC_ADDRESS = {
   .bytes = {
-	    0, 0, 0, 0, 0, 0,
-	    },
+    0, 0, 0, 0, 0, 0,
+  },
 };
+/* *INDENT-ON* */
 
 u8 *
 format_mac_address_t (u8 * s, va_list * args)
 {
   const mac_address_t *mac = va_arg (*args, mac_address_t *);
 
-  return (format (s, "%U", format_mac_address, mac->bytes));
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
+		 mac->bytes[0], mac->bytes[1], mac->bytes[2],
+		 mac->bytes[3], mac->bytes[4], mac->bytes[5]);
 }
 
+uword
+unformat_mac_address_t (unformat_input_t * input, va_list * args)
+{
+  mac_address_t *mac = va_arg (*args, mac_address_t *);
+
+  if (!unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
+		 &mac->bytes[0], &mac->bytes[1], &mac->bytes[2],
+		 &mac->bytes[3], &mac->bytes[4], &mac->bytes[5]))
+    return 0;
+
+  return 1;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -16,6 +16,9 @@
 
 option version = "2.0.1";
 
+import "vnet/ip/ip_types.api";
+import "vnet/ethernet/ethernet_types.api";
+
 /** \brief Reply to l2_xconnect_dump 
     @param context - sender context which was passed in the request
     @param rx_sw_if_index - Receive interface index
@@ -481,8 +484,8 @@ autoreply define bd_ip_mac_add_del
   u32 bd_id;
   u8 is_add;
   u8 is_ipv6;
-  u8 ip_address[16];
-  u8 mac_address[6];
+  vl_api_address_t ip;
+  vl_api_mac_address_t mac;
 };
 
 /** \brief bridge domain IP to MAC entry details structure

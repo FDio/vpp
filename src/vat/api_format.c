@@ -53,6 +53,8 @@
 #include <vnet/bonding/node.h>
 #include <vnet/qos/qos_types.h>
 #include "vat/json_format.h"
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -7815,16 +7817,17 @@ api_bridge_flags (vat_main_t * vam)
 static int
 api_bd_ip_mac_add_del (vat_main_t * vam)
 {
+  ip46_address_t ip = ip46_address_initializer;
+  mac_address_t mac = ZERO_MAC_ADDRESS;
   unformat_input_t *i = vam->input;
   vl_api_bd_ip_mac_add_del_t *mp;
+  ip46_type_t type;
   u32 bd_id;
   u8 is_ipv6 = 0;
   u8 is_add = 1;
   u8 bd_id_set = 0;
   u8 ip_set = 0;
   u8 mac_set = 0;
-  ip4_address_t v4addr;
-  ip6_address_t v6addr;
   u8 macaddr[6];
   int ret;
 
@@ -7836,16 +7839,17 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
 	{
 	  bd_id_set++;
 	}
-      else if (unformat (i, "%U", unformat_ip4_address, &v4addr))
+      else if (unformat (i, "%U", unformat_ip4_address, &ip.ip4))
 	{
+	  type = IP46_TYPE_IP4;
 	  ip_set++;
 	}
-      else if (unformat (i, "%U", unformat_ip6_address, &v6addr))
+      else if (unformat (i, "%U", unformat_ip6_address, &ip.ip6))
 	{
+	  type = IP46_TYPE_IP6;
 	  ip_set++;
-	  is_ipv6++;
 	}
-      else if (unformat (i, "%U", unformat_ethernet_address, macaddr))
+      else if (unformat (i, "%U", unformat_mac_address_t, &mac))
 	{
 	  mac_set++;
 	}
@@ -7874,13 +7878,11 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
   M (BD_IP_MAC_ADD_DEL, mp);
 
   mp->bd_id = ntohl (bd_id);
-  mp->is_ipv6 = is_ipv6;
   mp->is_add = is_add;
-  if (is_ipv6)
-    clib_memcpy (mp->ip_address, &v6addr, sizeof (v6addr));
-  else
-    clib_memcpy (mp->ip_address, &v4addr, sizeof (v4addr));
-  clib_memcpy (mp->mac_address, macaddr, 6);
+
+  ip_address_encode (&ip, type, &mp->ip);
+  mac_address_encode (&mac, &mp->mac);
+
   S (mp);
   W (ret);
   return ret;
