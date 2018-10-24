@@ -1291,7 +1291,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  clib_error_t *e;
 	  uword n_pages;
 	  vec_validate(mem_by_socket, c);
-	  n_pages = round_pow2 (mem_by_socket[c], default_hugepage_sz);
+	  n_pages = round_pow2 ((uword) mem_by_socket[c]<<20,
+				default_hugepage_sz);
 	  n_pages /= default_hugepage_sz;
 
 	  if ((e = clib_sysfs_prealloc_hugepages(c, 0, n_pages)))
