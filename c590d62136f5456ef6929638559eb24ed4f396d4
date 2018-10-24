@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1b4645ca_b3b9a67e",
+        "filename": "src/plugins/map/test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-10-24T17:00:59Z",
+      "side": 1,
+      "message": "Why are we using malloc() here, instead of clib_mem_alloc()?",
+      "revId": "c590d62136f5456ef6929638559eb24ed4f396d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
