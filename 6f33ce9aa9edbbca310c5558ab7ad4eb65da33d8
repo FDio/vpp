@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "413fd186_2e358f89",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1793,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-24T07:24:01Z",
+      "side": 1,
+      "message": "in this file all stack variables are allocated at the top of the block.\n\nthis can be a const pointer not a copy.",
+      "revId": "6f33ce9aa9edbbca310c5558ab7ad4eb65da33d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9d5f0d4e_09c3de03",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1796,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-24T07:24:01Z",
+      "side": 1,
+      "message": "I can\u0027t judge the effectiveness of this hash algo. why did you choose it? did you consider use hash_mix3?",
+      "revId": "6f33ce9aa9edbbca310c5558ab7ad4eb65da33d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
