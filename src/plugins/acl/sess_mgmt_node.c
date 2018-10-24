@@ -30,44 +30,55 @@
 #include <plugins/acl/public_inlines.h>
 #include <plugins/acl/session_inlines.h>
 
-static u8 *
-format_ip6_session_bihash_kv (u8 * s, va_list * args)
-{
-  clib_bihash_kv_40_8_t *kv_40_8 = va_arg (*args, clib_bihash_kv_40_8_t *);
-  fa_5tuple_t a5t;
 
-  a5t.kv_40_8 = *kv_40_8;
+
+static_always_inline u8 *
+format_ip46_session_bihash_kv (u8 * s, va_list * args, int is_ip6)
+{
+  fa_5tuple_t a5t;
+  void *paddr0;
+  void *paddr1;
+  void *format_addr_func;
+
+  if (is_ip6)
+    {
+      clib_bihash_kv_40_8_t *kv_40_8 =
+	va_arg (*args, clib_bihash_kv_40_8_t *);
+      a5t.kv_40_8 = *kv_40_8;
+      paddr0 = &a5t.ip6_addr[0];
+      paddr1 = &a5t.ip6_addr[1];
+      format_addr_func = format_ip6_address;
+    }
+  else
+    {
+      clib_bihash_kv_16_8_t *kv_16_8 =
+	va_arg (*args, clib_bihash_kv_16_8_t *);
+      a5t.kv_16_8 = *kv_16_8;
+      paddr0 = &a5t.ip4_addr[0];
+      paddr1 = &a5t.ip4_addr[1];
+      format_addr_func = format_ip4_address;
+    }
+
   fa_full_session_id_t *sess = (fa_full_session_id_t *) & a5t.pkt;
 
-  return (format (s, "l3 %U -> %U"
-		  " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
-		  format_ip6_address, &a5t.ip6_addr[0],
-		  format_ip6_address, &a5t.ip6_addr[1],
-		  a5t.l4.lsb_of_sw_if_index,
-		  a5t.l4.proto, a5t.l4.is_input, a5t.l4.is_slowpath,
-		  a5t.l4.reserved0, a5t.l4.port[0], a5t.l4.port[1],
+  return (format (s, "l3 %U -> %U %U | sess id %d thread id %d epoch %04x",
+		  format_addr_func, paddr0,
+		  format_addr_func, paddr1,
+		  format_fa_session_l4_key, &a5t.l4,
 		  sess->session_index, sess->thread_index,
 		  sess->intf_policy_epoch));
 }
 
 static u8 *
+format_ip6_session_bihash_kv (u8 * s, va_list * args)
+{
+  return format_ip46_session_bihash_kv (s, args, 1);
+}
+
+static u8 *
 format_ip4_session_bihash_kv (u8 * s, va_list * args)
 {
-  clib_bihash_kv_16_8_t *kv_16_8 = va_arg (*args, clib_bihash_kv_16_8_t *);
-  fa_5tuple_t a5t;
-
-  a5t.kv_16_8 = *kv_16_8;
-  fa_full_session_id_t *sess = (fa_full_session_id_t *) & a5t.pkt;
-
-  return (format (s, "l3 %U -> %U"
-		  " l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_reserved0 %d port %d -> %d | sess id %d thread id %d epoch %04x",
-		  format_ip4_address, &a5t.ip4_addr[0],
-		  format_ip4_address, &a5t.ip4_addr[1],
-		  a5t.l4.lsb_of_sw_if_index,
-		  a5t.l4.proto, a5t.l4.is_input, a5t.l4.is_slowpath,
-		  a5t.l4.reserved0, a5t.l4.port[0], a5t.l4.port[1],
-		  sess->session_index, sess->thread_index,
-		  sess->intf_policy_epoch));
+  return format_ip46_session_bihash_kv (s, args, 0);
 }
 
 

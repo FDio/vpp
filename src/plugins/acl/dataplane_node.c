@@ -630,31 +630,38 @@ static u8 *
 format_fa_5tuple (u8 * s, va_list * args)
 {
   fa_5tuple_t *p5t = va_arg (*args, fa_5tuple_t *);
+  void *paddr0;
+  void *paddr1;
+  void *format_address_func;
+  void *ip_af;
+  void *ip_frag_txt =
+    p5t->pkt.is_nonfirst_fragment ? " non-initial fragment" : "";
 
   if (p5t->pkt.is_ip6)
-    return format (s, "lc_index %d (lsb16 of sw_if_index %d) l3 %s%s %U -> %U"
-		   " l4 proto %d l4_valid %d port %d -> %d tcp flags (%s) %02x rsvd %x",
-		   p5t->pkt.lc_index, p5t->l4.lsb_of_sw_if_index,
-		   "ip6",
-		   p5t->
-		   pkt.is_nonfirst_fragment ? " non-initial fragment" : "",
-		   format_ip6_address, &p5t->ip6_addr[0], format_ip6_address,
-		   &p5t->ip6_addr[1], p5t->l4.proto, p5t->pkt.l4_valid,
-		   p5t->l4.port[0], p5t->l4.port[1],
-		   p5t->pkt.tcp_flags_valid ? "valid" : "invalid",
-		   p5t->pkt.tcp_flags, p5t->pkt.flags_reserved);
+    {
+      ip_af = "ip6";
+      format_address_func = format_ip6_address;
+      paddr0 = &p5t->ip6_addr[0];
+      paddr1 = &p5t->ip6_addr[1];
+    }
   else
-    return format (s, "lc_index %d (lsb16 of sw_if_index %d) l3 %s%s %U -> %U"
-		   " l4 proto %d l4_valid %d port %d -> %d tcp flags (%s) %02x rsvd %x",
-		   p5t->pkt.lc_index, p5t->l4.lsb_of_sw_if_index,
-		   "ip4",
-		   p5t->
-		   pkt.is_nonfirst_fragment ? " non-initial fragment" : "",
-		   format_ip4_address, &p5t->ip4_addr[0], format_ip4_address,
-		   &p5t->ip4_addr[1], p5t->l4.proto, p5t->pkt.l4_valid,
-		   p5t->l4.port[0], p5t->l4.port[1],
-		   p5t->pkt.tcp_flags_valid ? "valid" : "invalid",
-		   p5t->pkt.tcp_flags, p5t->pkt.flags_reserved);
+    {
+      ip_af = "ip4";
+      format_address_func = format_ip4_address;
+      paddr0 = &p5t->ip4_addr[0];
+      paddr1 = &p5t->ip4_addr[1];
+    }
+
+  s =
+    format (s, "lc_index %d l3 %s%s ", p5t->pkt.lc_index, ip_af, ip_frag_txt);
+  s =
+    format (s, "%U -> %U ", format_address_func, paddr0, format_address_func,
+	    paddr1);
+  s = format (s, "%U ", format_fa_session_l4_key, &p5t->l4);
+  s = format (s, "tcp flags (%s) %02x rsvd %x",
+	      p5t->pkt.tcp_flags_valid ? "valid" : "invalid",
+	      p5t->pkt.tcp_flags, p5t->pkt.flags_reserved);
+  return s;
 }
 
 #ifndef CLIB_MARCH_VARIANT

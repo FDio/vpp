@@ -79,6 +79,17 @@ typedef union {
   };
 } fa_5tuple_t;
 
+static_always_inline u8 *
+format_fa_session_l4_key(u8 * s, va_list * args)
+{
+  fa_session_l4_key_t *l4 = va_arg (*args, fa_session_l4_key_t *);
+
+  return (format (s, "l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d reserved0 0x%02x port %d -> %d",
+                  l4->lsb_of_sw_if_index,
+                  l4->proto, l4->is_input, l4->is_slowpath,
+                  l4->reserved0, l4->port[0], l4->port[1]));
+}
+
 typedef struct {
   fa_5tuple_t info; /* (5+1)*8 = 48 bytes */
   u64 last_active_time;   /* +8 bytes = 56 */
