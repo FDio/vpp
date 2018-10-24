@@ -14,6 +14,7 @@
  */
 
 #include "vom/bridge_domain_arp_entry_cmds.hpp"
+#include "vom/api_types.hpp"
 
 namespace VOM {
 namespace bridge_domain_arp_entry_cmds {
@@ -44,8 +45,8 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_bd;
   payload.is_add = 1;
-  m_mac.to_bytes(payload.mac_address, 6);
-  to_bytes(m_ip_addr, &payload.is_ipv6, payload.ip_address);
+  payload.mac = to_api(m_mac);
+  payload.ip = to_api(m_ip_addr);
 
   VAPI_CALL(req.execute());
 
@@ -89,8 +90,8 @@ delete_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_bd;
   payload.is_add = 0;
-  m_mac.to_bytes(payload.mac_address, 6);
-  to_bytes(m_ip_addr, &payload.is_ipv6, payload.ip_address);
+  payload.mac = to_api(m_mac);
+  payload.ip = to_api(m_ip_addr);
 
   VAPI_CALL(req.execute());
 

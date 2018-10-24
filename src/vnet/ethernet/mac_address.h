@@ -20,7 +20,11 @@
 
 typedef struct mac_address_t_
 {
-  u8 bytes[6];
+  union
+  {
+    u8 bytes[6];
+    u64 as_u64;
+  };
 } mac_address_t;
 
 extern const mac_address_t ZERO_MAC_ADDRESS;
@@ -28,25 +32,29 @@ extern const mac_address_t ZERO_MAC_ADDRESS;
 static_always_inline void
 mac_address_from_bytes (mac_address_t * mac, const u8 * bytes)
 {
-  clib_memcpy (mac->bytes, bytes, sizeof (*mac));
+  /* zero out the last 2 bytes, then copy over only 6 */
+  mac->as_u64 = 0;
+  clib_memcpy (mac->bytes, bytes, 6);
 }
 
 static_always_inline int
 mac_address_is_zero (const mac_address_t * mac)
 {
-  return (ethernet_mac_address_is_zero (mac->bytes));
+  return (0 == mac->as_u64);
 }
 
 static_always_inline u64
 mac_address_as_u64 (const mac_address_t * mac)
 {
-  return (ethernet_mac_address_u64 (mac->bytes));
+  return (mac->as_u64);
 }
 
 static_always_inline void
 mac_address_from_u64 (u64 u, mac_address_t * mac)
 {
-  ethernet_mac_address_from_u64 (u, mac->bytes);
+  mac->as_u64 = u;
+  mac->bytes[4] = 0;
+  mac->bytes[5] = 0;
 }
 
 extern uword unformat_mac_address_t (unformat_input_t * input,
