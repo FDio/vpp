@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e26590c8_f61ef9ae",
+        "filename": "src/plugins/avf/avf.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-10-24T14:44:22Z",
+      "side": 1,
+      "message": "Bump the version?",
+      "range": {
+        "startLine": 18,
+        "startChar": 18,
+        "endLine": 18,
+        "endChar": 23
+      },
+      "revId": "149d0e2813c0777497f2e312a0e2a7eb0c07ac6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
