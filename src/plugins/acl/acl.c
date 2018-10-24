@@ -266,7 +266,7 @@ acl_print_acl_x (acl_vector_print_func_t vpr, vlib_main_t * vm,
   for (j = 0; j < am->acls[acl_index].count; j++)
     {
       r = &am->acls[acl_index].rules[j];
-      out0 = format (out0, "  %4d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
+      out0 = format (out0, "  %9d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
       out0 = format_acl_action (out0, r->is_permit);
       out0 = format (out0, " src %U/%d", format_ip46_address, &r->src,
 		     r->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
