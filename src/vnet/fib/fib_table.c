@@ -1148,7 +1148,6 @@ fib_table_create_and_lock (fib_protocol_t proto,
     fib_node_index_t fi;
     va_list ap;
 
-    va_start(ap, fmt);
 
     switch (proto)
     {
@@ -1166,6 +1165,8 @@ fib_table_create_and_lock (fib_protocol_t proto,
     }
 
     fib_table = fib_table_get(fi, proto);
+
+    va_start(ap, fmt);
 
     fib_table->ft_desc = va_format(fib_table->ft_desc, fmt, &ap);
 
