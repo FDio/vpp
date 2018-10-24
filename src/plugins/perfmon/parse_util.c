@@ -71,8 +71,11 @@ perfmon_parse_table (perfmon_main_t * pm, char *path, char *table_name)
       vlib_log_err (pm->log_class,
 		    "Failed to read CPU-specific counter table");
       vlib_log_err (pm->log_class,
-		    "Download from https://download.01.org/perfmon, "
-		    "and install as %s", json_filename);
+		    "Please install the vpp-dev package and then:");
+      vlib_log_err
+	(pm->log_class, "cd %s; sudo tar Jxf PerfmonTables.tar.xz", path);
+      vlib_log_err (pm->log_class, "and restart vpp.");
+
       vec_free (json_filename);
       clib_error_report (error);
       return ht;
