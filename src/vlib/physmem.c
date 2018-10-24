@@ -31,7 +31,8 @@
 
 clib_error_t *
 vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
-				u32 numa_node, u32 * map_index)
+				u32 log2_page_sz, u32 numa_node,
+				u32 * map_index)
 {
   clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
   vlib_physmem_main_t *vpm = &vm->physmem_main;
@@ -41,7 +42,8 @@ vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
   void *va;
   uword i;
 
-  va = clib_pmalloc_create_shared_arena (pm, name, size, numa_node);
+  va = clib_pmalloc_create_shared_arena (pm, name, size, log2_page_sz,
+					 numa_node);
 
   if (va == 0)
     return clib_error_return (0, "%U", format_clib_error,
@@ -53,12 +55,13 @@ vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
   *map_index = map->index = map - vpm->maps;
   map->base = va;
   map->fd = a->fd;
-  map->n_pages = a->n_pages;
-  map->log2_page_size = a->log2_page_sz;
+  map->n_pages = a->n_pages * a->subpages_per_page;
+  map->log2_page_size = a->log2_subpage_sz;
 
   for (i = 0; i < a->n_pages; i++)
     {
-      uword pa = clib_pmalloc_get_pa (pm, (u8 *) va + (i << a->log2_page_sz));
+      uword pa =
+	clib_pmalloc_get_pa (pm, (u8 *) va + (i << a->log2_subpage_sz));
 
       /* maybe iova */
       if (pa == 0)
