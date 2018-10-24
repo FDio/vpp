@@ -46,6 +46,7 @@
 #include <vnet/l2/l2_vtr.h>
 
 #include <vpp/api/vpe_msg_enum.h>
+#include <vpp/api/types.h>
 
 #include <vnet/bonding/node.h>
 
@@ -506,14 +507,8 @@ static void *vl_api_bd_ip_mac_add_del_t_print
   s = format (0, "SCRIPT: bd_ip_mac_add_del ");
   s = format (s, "bd_id %d ", ntohl (mp->bd_id));
 
-  if (mp->is_ipv6)
-    s = format (s, "%U ", format_ip6_address,
-		(ip6_address_t *) mp->ip_address);
-  else
-    s = format (s, "%U ", format_ip4_address,
-		(ip4_address_t *) mp->ip_address);
-
-  s = format (s, "%U ", format_ethernet_address, mp->mac_address);
+  s = format (s, "%U ", format_vl_api_address, &mp->ip);
+  s = format (s, "%U ", format_vl_api_mac_address, &mp->mac);
   if (mp->is_add == 0)
     s = format (s, "del ");
 

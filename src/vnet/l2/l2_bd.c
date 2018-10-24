@@ -733,36 +733,40 @@ VLIB_CLI_COMMAND (bd_arp_term_cli, static) = {
  */
 u32
 bd_add_del_ip_mac (u32 bd_index,
-		   u8 * ip_addr, u8 * mac_addr, u8 is_ip6, u8 is_add)
+		   ip46_type_t type,
+		   const ip46_address_t * ip,
+		   const mac_address_t * mac, u8 is_add)
 {
   l2_bridge_domain_t *bd_cfg = l2input_bd_config (bd_index);
-  u64 new_mac = *(u64 *) mac_addr;
+  u64 new_mac = mac_address_as_u64 (mac);
   u64 *old_mac;
-  u16 *mac16 = (u16 *) & new_mac;
 
-  ASSERT (sizeof (uword) == sizeof (u64));	/* make sure uword is 8 bytes */
+  /* make sure uword is 8 bytes */
+  ASSERT (sizeof (uword) == sizeof (u64));
   ASSERT (bd_is_valid (bd_cfg));
 
-  mac16[3] = 0;			/* Clear last 2 unused bytes of the 8-byte MAC address */
-  if (is_ip6)
+  if (IP46_TYPE_IP6 == type)
     {
       ip6_address_t *ip6_addr_key;
       hash_pair_t *hp;
-      old_mac = (u64 *) hash_get_mem (bd_cfg->mac_by_ip6, ip_addr);
+      old_mac = (u64 *) hash_get_mem (bd_cfg->mac_by_ip6, &ip->ip6);
       if (is_add)
 	{
-	  if (old_mac == 0)
-	    {			/* new entry - allocate and create ip6 address key */
+	  if (old_mac == NULL)
+	    {
+	      /* new entry - allocate and create ip6 address key */
 	      ip6_addr_key = clib_mem_alloc (sizeof (ip6_address_t));
-	      clib_memcpy (ip6_addr_key, ip_addr, sizeof (ip6_address_t));
+	      clib_memcpy (ip6_addr_key, &ip->ip6, sizeof (ip6_address_t));
 	    }
 	  else if (*old_mac == new_mac)
-	    {			/* same mac entry already exist for ip6 address */
+	    {
+	      /* same mac entry already exist for ip6 address */
 	      return 0;
 	    }
 	  else
-	    {			/* update mac for ip6 address */
-	      hp = hash_get_pair (bd_cfg->mac_by_ip6, ip_addr);
+	    {
+	      /* update mac for ip6 address */
+	      hp = hash_get_pair (bd_cfg->mac_by_ip6, &ip->ip6);
 	      ip6_addr_key = (ip6_address_t *) hp->key;
 	    }
 	  hash_set_mem (bd_cfg->mac_by_ip6, ip6_addr_key, new_mac);
@@ -771,9 +775,9 @@ bd_add_del_ip_mac (u32 bd_index,
 	{
 	  if (old_mac && (*old_mac == new_mac))
 	    {
-	      hp = hash_get_pair (bd_cfg->mac_by_ip6, ip_addr);
+	      hp = hash_get_pair (bd_cfg->mac_by_ip6, &ip->ip6);
 	      ip6_addr_key = (ip6_address_t *) hp->key;
-	      hash_unset_mem (bd_cfg->mac_by_ip6, ip_addr);
+	      hash_unset_mem (bd_cfg->mac_by_ip6, &ip->ip6);
 	      clib_mem_free (ip6_addr_key);
 	    }
 	  else
@@ -782,18 +786,18 @@ bd_add_del_ip_mac (u32 bd_index,
     }
   else
     {
-      ip4_address_t ip4_addr = *(ip4_address_t *) ip_addr;
-      old_mac = (u64 *) hash_get (bd_cfg->mac_by_ip4, ip4_addr.as_u32);
+      old_mac = (u64 *) hash_get (bd_cfg->mac_by_ip4, ip->ip4.as_u32);
       if (is_add)
 	{
 	  if (old_mac && (*old_mac == new_mac))
-	    return 0;		/* mac entry already exist */
-	  hash_set (bd_cfg->mac_by_ip4, ip4_addr.as_u32, new_mac);
+	    /* mac entry already exist */
+	    return 0;
+	  hash_set (bd_cfg->mac_by_ip4, ip->ip4.as_u32, new_mac);
 	}
       else
 	{
 	  if (old_mac && (*old_mac == new_mac))
-	    hash_unset (bd_cfg->mac_by_ip4, ip4_addr.as_u32);
+	    hash_unset (bd_cfg->mac_by_ip4, ip->ip4.as_u32);
 	  else
 	    return 1;
 	}
@@ -810,13 +814,13 @@ static clib_error_t *
 bd_arp_entry (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  ip46_address_t ip_addr = ip46_address_initializer;
+  ip46_type_t type = IP46_TYPE_IP4;
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
   u32 bd_index, bd_id;
+  mac_address_t mac;
   u8 is_add = 1;
-  u8 is_ip6 = 0;
-  u8 ip_addr[16];
-  u8 mac_addr[6];
   uword *p;
 
   if (!unformat (input, "%d", &bd_id))
@@ -837,13 +841,13 @@ bd_arp_entry (vlib_main_t * vm,
   else
     return clib_error_return (0, "No such bridge domain %d", bd_id);
 
-  if (unformat (input, "%U", unformat_ip4_address, ip_addr))
+  if (unformat (input, "%U", unformat_ip4_address, &ip_addr.ip4))
     {
-      is_ip6 = 0;
+      type = IP46_TYPE_IP4;
     }
-  else if (unformat (input, "%U", unformat_ip6_address, ip_addr))
+  else if (unformat (input, "%U", unformat_ip6_address, &ip_addr.ip6))
     {
-      is_ip6 = 1;
+      type = IP46_TYPE_IP6;
     }
   else
     {
@@ -852,7 +856,7 @@ bd_arp_entry (vlib_main_t * vm,
       goto done;
     }
 
-  if (!unformat (input, "%U", unformat_ethernet_address, mac_addr))
+  if (!unformat (input, "%U", unformat_mac_address_t, &mac))
     {
       error = clib_error_return (0, "expecting MAC address but got `%U'",
 				 format_unformat_error, input);
@@ -865,13 +869,12 @@ bd_arp_entry (vlib_main_t * vm,
     }
 
   /* set the bridge domain flagAdd IP-MAC entry into bridge domain */
-  if (bd_add_del_ip_mac (bd_index, ip_addr, mac_addr, is_ip6, is_add))
+  if (bd_add_del_ip_mac (bd_index, type, &ip_addr, &mac, is_add))
     {
       error = clib_error_return (0, "MAC %s for IP %U and MAC %U failed",
 				 is_add ? "add" : "del",
-				 is_ip6 ?
-				 format_ip4_address : format_ip6_address,
-				 ip_addr, format_ethernet_address, mac_addr);
+				 format_ip46_address, &ip_addr, IP46_TYPE_ANY,
+				 format_mac_address_t, &mac);
     }
 
 done:
