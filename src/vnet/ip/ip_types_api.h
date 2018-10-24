@@ -46,11 +46,6 @@ extern void ip_mprefix_decode (const struct _vl_api_mprefix *in,
 extern void ip_mprefix_encode (const mfib_prefix_t * in,
 			       struct _vl_api_mprefix *out);
 
-extern u8 *format_vl_api_address (u8 * s, va_list * args);
-extern u8 *format_vl_api_address_union (u8 * s, va_list * args);
-extern u8 *format_vl_api_prefix (u8 * s, va_list * args);
-extern u8 *format_vl_api_mprefix (u8 * s, va_list * args);
-
 #endif
 
 /*

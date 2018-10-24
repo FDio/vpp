@@ -210,10 +210,8 @@ class VppGbpEndpointGroup(VppObject):
         self._test = test
         self.uplink = uplink
         self.bvi = bvi
-        self.bvi_ip4 = bvi_ip4
-        self.bvi_ip4_n = inet_pton(AF_INET, bvi_ip4)
-        self.bvi_ip6 = bvi_ip6
-        self.bvi_ip6_n = inet_pton(AF_INET6, bvi_ip6)
+        self.bvi_ip4 = VppIpAddress(bvi_ip4)
+        self.bvi_ip6 = VppIpAddress(bvi_ip6)
         self.epg = epg
         self.bd = bd
         self.rd = rd
@@ -358,7 +356,7 @@ class TestGBP(VppTestCase):
         self.create_pg_interfaces(range(9))
         self.create_loopback_interfaces(9)
 
-        self.router_mac = "00:11:22:33:44:55"
+        self.router_mac = VppMacAddress("00:11:22:33:44:55")
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -366,7 +364,7 @@ class TestGBP(VppTestCase):
             i.admin_up()
             self.vapi.sw_interface_set_mac_address(
                 i.sw_if_index,
-                mactobinary(self.router_mac))
+                self.router_mac.bytes)
 
     def tearDown(self):
         for i in self.pg_interfaces:
@@ -448,7 +446,7 @@ class TestGBP(VppTestCase):
         rx = self.send_and_expect(src, tx, dst)
 
         for r in rx:
-            self.assertEqual(r[Ether].src, self.router_mac)
+            self.assertEqual(r[Ether].src, self.router_mac.address)
             self.assertEqual(r[Ether].dst, dst.remote_mac)
             self.assertEqual(r[IP].dst, dst_ip)
             self.assertEqual(r[IP].src, src_ip)
@@ -458,7 +456,7 @@ class TestGBP(VppTestCase):
         rx = self.send_and_expect(src, tx, dst)
 
         for r in rx:
-            self.assertEqual(r[Ether].src, self.router_mac)
+            self.assertEqual(r[Ether].src, self.router_mac.address)
             self.assertEqual(r[Ether].dst, dst.remote_mac)
             self.assertEqual(r[IPv6].dst, dst_ip)
             self.assertEqual(r[IPv6].src, src_ip)
@@ -558,10 +556,10 @@ class TestGBP(VppTestCase):
                                                   is_add=1)
 
             self.vapi.sw_interface_add_del_address(epg.bvi.sw_if_index,
-                                                   epg.bvi_ip4_n,
+                                                   epg.bvi_ip4.bytes,
                                                    32)
             self.vapi.sw_interface_add_del_address(epg.bvi.sw_if_index,
-                                                   epg.bvi_ip6_n,
+                                                   epg.bvi_ip6.bytes,
                                                    128,
                                                    is_ipv6=True)
 
@@ -573,13 +571,13 @@ class TestGBP(VppTestCase):
 
             # add the BD ARP termination entry for BVI IP
             self.vapi.bd_ip_mac_add_del(bd_id=epg.bd,
-                                        mac=mactobinary(self.router_mac),
-                                        ip=epg.bvi_ip4_n,
+                                        mac=self.router_mac.encode(),
+                                        ip=epg.bvi_ip4.encode(),
                                         is_ipv6=0,
                                         is_add=1)
             self.vapi.bd_ip_mac_add_del(bd_id=epg.bd,
-                                        mac=mactobinary(self.router_mac),
-                                        ip=epg.bvi_ip6_n,
+                                        mac=self.router_mac.encode(),
+                                        ip=epg.bvi_ip6.encode(),
                                         is_ipv6=1,
                                         is_add=1)
 
@@ -592,7 +590,7 @@ class TestGBP(VppTestCase):
                     port_type=L2_PORT_TYPE.BVI)
 
                 # BVI L2 FIB entry
-                self.vapi.l2fib_add_del(self.router_mac,
+                self.vapi.l2fib_add_del(self.router_mac.address,
                                         epg.bd,
                                         epg.bvi.sw_if_index,
                                         is_add=1, bvi_mac=1)
@@ -654,8 +652,8 @@ class TestGBP(VppTestCase):
 
                 # add the BD ARP termination entry
                 self.vapi.bd_ip_mac_add_del(bd_id=ep.epg.bd,
-                                            mac=ep.bin_mac,
-                                            ip=ip.bytes,
+                                            mac=ep.vmac.encode(),
+                                            ip=ip.encode(),
                                             is_ipv6=ip.is_ip6,
                                             is_add=1)
 
@@ -702,8 +700,8 @@ class TestGBP(VppTestCase):
             # add the BD ARP termination entry for floating IP
             for fip in ep.fips:
                 self.vapi.bd_ip_mac_add_del(bd_id=epg_nat.bd,
-                                            mac=ep.bin_mac,
-                                            ip=fip.bytes,
+                                            mac=ep.vmac.encode(),
+                                            ip=fip.encode(),
                                             is_ipv6=fip.is_ip6,
                                             is_add=1)
 
@@ -733,7 +731,7 @@ class TestGBP(VppTestCase):
                    ARP(op="who-has",
                        hwdst="ff:ff:ff:ff:ff:ff",
                        hwsrc=self.pg0.remote_mac,
-                       pdst=epgs[0].bvi_ip4,
+                       pdst=epgs[0].bvi_ip4.address,
                        psrc="10.0.0.88"))
 
         self.send_and_expect(self.pg0, [pkt_arp], self.pg0)
@@ -746,7 +744,7 @@ class TestGBP(VppTestCase):
                    ARP(op="who-has",
                        hwdst="ff:ff:ff:ff:ff:ff",
                        hwsrc=self.pg0.remote_mac,
-                       pdst=epgs[0].bvi_ip4,
+                       pdst=epgs[0].bvi_ip4.address,
                        psrc=eps[0].ip4.address))
 
         self.send_and_expect(self.pg0, [pkt_arp], self.pg0)
@@ -755,7 +753,7 @@ class TestGBP(VppTestCase):
         d = inet_ntop(AF_INET6, nsma)
         pkt_nd = (Ether(dst=in6_getnsmac(nsma)) /
                   IPv6(dst=d, src=eps[0].ip6.address) /
-                  ICMPv6ND_NS(tgt=epgs[0].bvi_ip6) /
+                  ICMPv6ND_NS(tgt=epgs[0].bvi_ip6.address) /
                   ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
         self.send_and_expect(self.pg0, [pkt_nd], self.pg0)
 
@@ -783,13 +781,13 @@ class TestGBP(VppTestCase):
         # packets to non-local L3 destinations dropped
         #
         pkt_intra_epg_220_ip4 = (Ether(src=self.pg0.remote_mac,
-                                       dst=self.router_mac) /
+                                       dst=self.router_mac.address) /
                                  IP(src=eps[0].ip4.address,
                                     dst="10.0.0.99") /
                                  UDP(sport=1234, dport=1234) /
                                  Raw('\xa5' * 100))
         pkt_inter_epg_222_ip4 = (Ether(src=self.pg0.remote_mac,
-                                       dst=self.router_mac) /
+                                       dst=self.router_mac.address) /
                                  IP(src=eps[0].ip4.address,
                                     dst="10.0.1.99") /
                                  UDP(sport=1234, dport=1234) /
@@ -798,7 +796,7 @@ class TestGBP(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, pkt_intra_epg_220_ip4 * 65)
 
         pkt_inter_epg_222_ip6 = (Ether(src=self.pg0.remote_mac,
-                                       dst=self.router_mac) /
+                                       dst=self.router_mac.address) /
                                  IPv6(src=eps[0].ip6.address,
                                       dst="2001:10::99") /
                                  UDP(sport=1234, dport=1234) /
@@ -913,7 +911,7 @@ class TestGBP(VppTestCase):
                                     UDP(sport=1234, dport=1234) /
                                     Raw('\xa5' * 100))
         pkt_inter_epg_220_to_222 = (Ether(src=self.pg0.remote_mac,
-                                          dst=self.router_mac) /
+                                          dst=self.router_mac.address) /
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[3].ip4.address) /
                                     UDP(sport=1234, dport=1234) /
@@ -971,7 +969,7 @@ class TestGBP(VppTestCase):
         self.send_and_expect_routed(self.pg0,
                                     pkt_inter_epg_220_to_222 * 65,
                                     self.pg3,
-                                    self.router_mac)
+                                    self.router_mac.address)
 
         #
         # remove both contracts, traffic stops in both directions
@@ -1034,7 +1032,7 @@ class TestGBP(VppTestCase):
         # From an EP to an outside addess: IN2OUT
         #
         pkt_inter_epg_220_to_global = (Ether(src=self.pg0.remote_mac,
-                                             dst=self.router_mac) /
+                                             dst=self.router_mac.address) /
                                        IP(src=eps[0].ip4.address,
                                           dst="1.1.1.1") /
                                        UDP(sport=1234, dport=1234) /
@@ -1061,7 +1059,7 @@ class TestGBP(VppTestCase):
                                     eps[0].fip4.address)
 
         pkt_inter_epg_220_to_global = (Ether(src=self.pg0.remote_mac,
-                                             dst=self.router_mac) /
+                                             dst=self.router_mac.address) /
                                        IPv6(src=eps[0].ip6.address,
                                             dst="6001::1") /
                                        UDP(sport=1234, dport=1234) /
@@ -1075,7 +1073,7 @@ class TestGBP(VppTestCase):
         #
         # From a global address to an EP: OUT2IN
         #
-        pkt_inter_epg_220_from_global = (Ether(src=self.router_mac,
+        pkt_inter_epg_220_from_global = (Ether(src=self.router_mac.address,
                                                dst=self.pg0.remote_mac) /
                                          IP(dst=eps[0].fip4.address,
                                             src="1.1.1.1") /
@@ -1093,7 +1091,7 @@ class TestGBP(VppTestCase):
                                       eps[0].itf,
                                       eps[0].ip4.address)
 
-        pkt_inter_epg_220_from_global = (Ether(src=self.router_mac,
+        pkt_inter_epg_220_from_global = (Ether(src=self.router_mac.address,
                                                dst=self.pg0.remote_mac) /
                                          IPv6(dst=eps[0].fip6.address,
                                               src="6001::1") /
@@ -1110,7 +1108,7 @@ class TestGBP(VppTestCase):
         #  IN2OUT2IN
         #
         pkt_intra_epg_220_global = (Ether(src=self.pg0.remote_mac,
-                                          dst=self.router_mac) /
+                                          dst=self.router_mac.address) /
                                     IP(src=eps[0].ip4.address,
                                        dst=eps[1].fip4.address) /
                                     UDP(sport=1234, dport=1234) /
@@ -1123,7 +1121,7 @@ class TestGBP(VppTestCase):
                                            eps[1].ip4.address)
 
         pkt_intra_epg_220_global = (Ether(src=self.pg0.remote_mac,
-                                          dst=self.router_mac) /
+                                          dst=self.router_mac.address) /
                                     IPv6(src=eps[0].ip6.address,
                                          dst=eps[1].fip6.address) /
                                     UDP(sport=1234, dport=1234) /
@@ -1153,11 +1151,11 @@ class TestGBP(VppTestCase):
         for epg in epgs:
             # IP config on the BVI interfaces
             self.vapi.sw_interface_add_del_address(epg.bvi.sw_if_index,
-                                                   epg.bvi_ip4_n,
+                                                   epg.bvi_ip4.bytes,
                                                    32,
                                                    is_add=0)
             self.vapi.sw_interface_add_del_address(epg.bvi.sw_if_index,
-                                                   epg.bvi_ip6_n,
+                                                   epg.bvi_ip6.bytes,
                                                    128,
                                                    is_add=0,
                                                    is_ipv6=True)

@@ -20,6 +20,8 @@ from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp, mactobinary
+from vpp_mac import VppMacAddress
+from vpp_ip import VppIpAddress
 
 
 class TestL2bdArpTerm(VppTestCase):
@@ -69,10 +71,10 @@ class TestL2bdArpTerm(VppTestCase):
 
     def add_del_arp_term_hosts(self, entries, bd_id=1, is_add=1, is_ipv6=0):
         for e in entries:
-            ip = e.ip4n if is_ipv6 == 0 else e.ip6n
+            ip = e.ip4 if is_ipv6 == 0 else e.ip6
             self.vapi.bd_ip_mac_add_del(bd_id=bd_id,
-                                        mac=e.bin_mac,
-                                        ip=ip,
+                                        mac=VppMacAddress(e.mac).encode(),
+                                        ip=VppIpAddress(ip).encode(),
                                         is_ipv6=is_ipv6,
                                         is_add=is_add)
 
@@ -271,6 +273,8 @@ class TestL2bdArpTerm(VppTestCase):
         macs = self.mac_list(range(1, 5))
         hosts = self.ip4_hosts(4, 1, macs)
         self.add_del_arp_term_hosts(hosts, is_add=1)
+
+        self.logger.error(self.vapi.cli("sh bridge 1 detail"))
         self.verify_arp(src_host, hosts, hosts)
         type(self).hosts = hosts
 

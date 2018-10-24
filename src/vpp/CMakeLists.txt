@@ -61,6 +61,7 @@ set(VPP_SOURCES
   api/api.c
   api/json_format.c
   api/custom_dump.c
+  api/types.c
 )
 
 if(VPP_API_TEST_BUILTIN)
@@ -68,6 +69,7 @@ if(VPP_API_TEST_BUILTIN)
     api/api_format.c
     api/api_main.c
     api/plugin.c
+    api/types.c
   )
   add_definitions(-DVPP_API_TEST_BUILTIN=1)
 endif()

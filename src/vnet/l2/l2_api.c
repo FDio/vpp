@@ -27,6 +27,8 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/l2/l2_learn.h>
 #include <vnet/l2/l2_bd.h>
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -855,12 +857,16 @@ vl_api_bd_ip_mac_dump_t_handler (vl_api_bd_ip_mac_dump_t * mp)
 static void
 vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
 {
-  bd_main_t *bdm = &bd_main;
+  ip46_address_t ip_addr = ip46_address_initializer;
   vl_api_bd_ip_mac_add_del_reply_t *rmp;
+  bd_main_t *bdm = &bd_main;
+  u32 bd_index, bd_id;
+  mac_address_t mac;
+  ip46_type_t type;
   int rv = 0;
-  u32 bd_id = ntohl (mp->bd_id);
-  u32 bd_index;
   uword *p;
+
+  bd_id = ntohl (mp->bd_id);
 
   if (bd_id == 0)
     {
@@ -874,10 +880,12 @@ vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto out;
     }
-
   bd_index = p[0];
-  if (bd_add_del_ip_mac (bd_index, mp->ip_address,
-			 mp->mac_address, mp->is_ipv6, mp->is_add))
+
+  type = ip_address_decode (&mp->ip, &ip_addr);
+  mac_address_decode (&mp->mac, &mac);
+
+  if (bd_add_del_ip_mac (bd_index, type, &ip_addr, &mac, mp->is_add))
     rv = VNET_API_ERROR_UNSPECIFIED;
 
 out:
