@@ -51,7 +51,8 @@ typedef struct
   int fd;
   u32 numa_node;
   u32 first_page_index;
-  u32 log2_page_sz;
+  u32 log2_subpage_sz;
+  u32 subpages_per_page;
   u32 n_pages;
   u8 *name;
   u32 *page_indices;
@@ -59,15 +60,42 @@ typedef struct
 
 typedef struct
 {
+  /* base VA address */
   u8 *base;
-  uword log2_page_sz;
-  uword *va_pa_diffs;
+
+  /* default page size - typically 2M */
+  u32 def_log2_page_sz;
+
+  /* system page size - typically 4K */
+  u32 sys_log2_page_sz;
+
+  /* maximum number of pages, limited by VA preallocation size */
   u32 max_pages;
+
+  /* vector of pages - each page have own alloc pool and it can be split
+     into subpages (i.e. 2M page build out of 512 4K pages) */
   clib_pmalloc_page_t *pages;
+
+  /* hash used to find chunk index out of VA, chunk index is defined
+     per page */
   uword *chunk_index_by_va;
+
+  /* alloc arenas are group of pages which share same attributes
+     shared arenas are represented by FD and they are not grovable
+     private arenas are growable */
   clib_pmalloc_arena_t *arenas;
+
+  /* vector of per numa node alloc arena indices
+     each numa node have own default privat alloc arena */
   u32 *default_arena_for_numa_node;
 
+  /* VA to PA lookup table */
+  uword *lookup_table;
+
+  /* lookup page size - equals to smalles subpage used */
+  u32 lookup_log2_page_sz;
+
+  /* last error */
   clib_error_t *error;
 } clib_pmalloc_main_t;
 
@@ -81,7 +109,8 @@ void *clib_pmalloc_alloc_aligned (clib_pmalloc_main_t * pm, uword size,
 void clib_pmalloc_free (clib_pmalloc_main_t * pm, void *va);
 
 void *clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
-					uword size, u32 numa_node);
+					uword size, u32 log2_page_sz,
+					u32 numa_node);
 
 void *clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t * pm, void *arena_va,
 				     uword size, uword align);
@@ -98,7 +127,7 @@ always_inline u32
 clib_pmalloc_get_page_index (clib_pmalloc_main_t * pm, void *va)
 {
   uword index = (pointer_to_uword (va) - pointer_to_uword (pm->base)) >>
-    pm->log2_page_sz;
+    pm->def_log2_page_sz;
 
   ASSERT (index < vec_len (pm->pages));
 
@@ -115,8 +144,9 @@ clib_pmalloc_get_arena (clib_pmalloc_main_t * pm, void *va)
 always_inline uword
 clib_pmalloc_get_pa (clib_pmalloc_main_t * pm, void *va)
 {
-  u32 index = clib_pmalloc_get_page_index (pm, va);
-  return pointer_to_uword (va) - pm->va_pa_diffs[index];
+  uword index = (pointer_to_uword (va) - pointer_to_uword (pm->base)) >>
+    pm->lookup_log2_page_sz;
+  return pointer_to_uword (va) - pm->lookup_table[index];
 }
 
 

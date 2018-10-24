@@ -82,7 +82,7 @@ done:
 }
 
 u64
-clib_mem_vm_get_page_size (int fd)
+clib_mem_get_fd_page_size (int fd)
 {
   struct stat st = { 0 };
   if (fstat (fd, &st) == -1)
@@ -91,9 +91,9 @@ clib_mem_vm_get_page_size (int fd)
 }
 
 int
-clib_mem_vm_get_log2_page_size (int fd)
+clib_mem_get_fd_log2_page_size (int fd)
 {
-  return min_log2 (clib_mem_vm_get_page_size (fd));
+  return min_log2 (clib_mem_get_fd_page_size (fd));
 }
 
 void
@@ -115,6 +115,26 @@ clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size)
 #ifndef MFD_HUGETLB
 #define MFD_HUGETLB 0x0004U
 #endif
+
+clib_error_t *
+clib_mem_create_fd (char *name, int *fdp)
+{
+  int fd;
+
+  ASSERT (name);
+
+  if ((fd = memfd_create (name, MFD_ALLOW_SEALING)) == -1)
+    return clib_error_return_unix (0, "memfd_create");
+
+  if ((fcntl (fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
+    {
+      close (fd);
+      return clib_error_return_unix (0, "fcntl (F_ADD_SEALS)");
+    }
+
+  *fdp = fd;
+  return 0;
+}
 
 clib_error_t *
 clib_mem_create_hugetlb_fd (char *name, int *fdp)
@@ -212,20 +232,11 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 	}
       else
 	{
-	  if ((fd = memfd_create (a->name, MFD_ALLOW_SEALING)) == -1)
-	    {
-	      err = clib_error_return_unix (0, "memfd_create");
-	      goto error;
-	    }
-
-	  if ((fcntl (fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
-	    {
-	      err = clib_error_return_unix (0, "fcntl (F_ADD_SEALS)");
-	      goto error;
-	    }
+	  if ((err = clib_mem_create_fd (a->name, &fd)))
+	    goto error;
 	}
 
-      log2_page_size = clib_mem_vm_get_log2_page_size (fd);
+      log2_page_size = clib_mem_get_fd_log2_page_size (fd);
       if (log2_page_size == 0)
 	{
 	  err = clib_error_return_unix (0, "cannot determine page size");

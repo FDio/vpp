@@ -55,6 +55,9 @@ static u32 vlib_buffer_physmem_sz = 14 << 20;
 
 vlib_buffer_main_t buffer_main;
 
+/* logging */
+static vlib_log_class_t buffer_log_default;
+
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
 				       vlib_buffer_t * b_first)
@@ -963,6 +966,9 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   clib_error_t *error;
   u32 physmem_map_index;
   u8 pool_index;
+  int log2_page_size = 0;
+
+  buffer_log_default = vlib_log_register_class ("buffer", 0);
 
   if (vlib_buffer_callbacks)
     {
@@ -981,10 +987,24 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
     &vlib_buffer_delete_free_list_internal;
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 
-  if ((error = vlib_physmem_shared_map_create (vm, "buffers",
-					       vlib_buffer_physmem_sz,
-					       CLIB_PMALLOC_NUMA_LOCAL,
-					       &physmem_map_index)))
+retry:
+  error = vlib_physmem_shared_map_create (vm, "buffers",
+					  vlib_buffer_physmem_sz,
+					  log2_page_size,
+					  CLIB_PMALLOC_NUMA_LOCAL,
+					  &physmem_map_index);
+
+  if (error && log2_page_size == 0)
+    {
+      vlib_log_warn (buffer_log_default, "%U", format_clib_error, error);
+      clib_error_free (error);
+      vlib_log_warn (buffer_log_default, "falling back to non-hugepage "
+		     "backed buffer pool");
+      log2_page_size = min_log2 (clib_mem_get_page_size ());
+      goto retry;
+    }
+
+  if (error)
     return error;
 
   pool_index = vlib_buffer_register_physmem_map (vm, physmem_map_index);

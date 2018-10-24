@@ -29,6 +29,7 @@ typedef struct
   u32 arena_pages;
   u32 arena_numa;
   u32 arena_items;
+  u32 arena_log2_pg_sz;
   int verbose;
   clib_pmalloc_main_t pmalloc_main;
 } test_main_t;
@@ -73,6 +74,7 @@ test_palloc (test_main_t * tm)
       fformat (stdout, "Allocate %d items from arena ...\n", tm->arena_items);
       arena = clib_pmalloc_create_shared_arena (pm, "test arena",
 						tm->arena_pages << 21,
+						tm->arena_log2_pg_sz,
 						tm->arena_numa);
       if (arena == 0)
 	clib_error ("Failed to alloc shared arena: %U", format_clib_error,
@@ -124,6 +126,8 @@ test_palloc_main (unformat_input_t * i)
       else if (unformat (i, "arena-numa %u", &tm->arena_numa))
 	;
       else if (unformat (i, "arena-items %u", &tm->arena_items))
+	;
+      else if (unformat (i, "arena-log2-page-size %u", &tm->arena_log2_pg_sz))
 	;
       else if (unformat (i, "verbose"))
 	tm->verbose = 1;
