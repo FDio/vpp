@@ -982,7 +982,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 
   if ((error = vlib_physmem_shared_map_create (vm, "buffers",
-					       vlib_buffer_physmem_sz,
+					       vlib_buffer_physmem_sz, 12,
 					       CLIB_PMALLOC_NUMA_LOCAL,
 					       &physmem_map_index)))
     return error;

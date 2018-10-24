@@ -40,7 +40,7 @@ vfio_map_physmem_page (vlib_main_t * vm, void *addr)
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   linux_vfio_main_t *lvm = &vfio_main;
   struct vfio_iommu_type1_dma_map dm = { 0 };
-  uword log2_page_size = vpm->pmalloc_main->log2_page_sz;
+  uword log2_page_size = vpm->pmalloc_main->def_log2_page_sz;
   uword physmem_start = pointer_to_uword (vpm->pmalloc_main->base);
 
   if (lvm->container_fd == -1)

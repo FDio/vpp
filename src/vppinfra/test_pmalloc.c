@@ -72,7 +72,7 @@ test_palloc (test_main_t * tm)
     {
       fformat (stdout, "Allocate %d items from arena ...\n", tm->arena_items);
       arena = clib_pmalloc_create_shared_arena (pm, "test arena",
-						tm->arena_pages << 21,
+						tm->arena_pages << 21, 0,
 						tm->arena_numa);
       if (arena == 0)
 	clib_error ("Failed to alloc shared arena: %U", format_clib_error,
