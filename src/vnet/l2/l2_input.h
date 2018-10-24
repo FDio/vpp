@@ -135,6 +135,7 @@ STATIC_ASSERT (L2INPUT_N_FEAT <= 32, "too many l2 input features");
 /* Feature bit masks */
 typedef enum
 {
+  L2INPUT_FEAT_NONE = 0,
 #define _(sym,str) L2INPUT_FEAT_##sym = (1<<L2INPUT_FEAT_##sym##_BIT),
   foreach_l2input_feat
 #undef _
@@ -194,7 +195,8 @@ l2_input_config_t *l2input_intf_config (u32 sw_if_index);
 
 /* Enable (or disable) the feature in the bitmap for the given interface */
 u32 l2input_intf_bitmap_enable (u32 sw_if_index,
-				u32 feature_bitmap, u32 enable);
+				l2input_feat_masks_t feature_bitmap,
+				u32 enable);
 
 /* Sets modifies flags from a bridge domain */
 u32 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value);

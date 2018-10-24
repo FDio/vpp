@@ -518,7 +518,8 @@ l2input_intf_config (u32 sw_if_index)
 
 /** Enable (or disable) the feature in the bitmap for the given interface. */
 u32
-l2input_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
+l2input_intf_bitmap_enable (u32 sw_if_index,
+			    l2input_feat_masks_t feature_bitmap, u32 enable)
 {
   l2_input_config_t *config = l2input_intf_config (sw_if_index);
 

@@ -108,6 +108,7 @@ STATIC_ASSERT (L2OUTPUT_N_FEAT <= 32, "too many l2 output features");
 /* Feature bit masks */
 typedef enum
 {
+  L2OUTPUT_FEAT_NONE = 0,
 #define _(sym,str) L2OUTPUT_FEAT_##sym = (1<<L2OUTPUT_FEAT_##sym##_BIT),
   foreach_l2output_feat
 #undef _
@@ -159,7 +160,8 @@ l2_output_config_t *l2output_intf_config (u32 sw_if_index);
 
 /** Enable (or disable) the feature in the bitmap for the given interface */
 void l2output_intf_bitmap_enable (u32 sw_if_index,
-				  u32 feature_bitmap, u32 enable);
+				  l2output_feat_masks_t feature_bitmap,
+				  u32 enable);
 
 #endif
 
