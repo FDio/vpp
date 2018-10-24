@@ -98,6 +98,7 @@ class VppTransport:
         return 0
 
     def disconnect(self):
+        rv = 0
         try:  # Might fail, if VPP closes socket before packet makes it out
             rv = self.parent.api.sockclnt_delete(index=self.socket_index)
         except IOError:
@@ -106,6 +107,7 @@ class VppTransport:
         self.socket.close()
         self.sque.put(True)  # Terminate listening thread
         self.message_thread.join()
+        return rv
 
     def suspend(self):
         pass

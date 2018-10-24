@@ -75,7 +75,7 @@ class VppTransport:
 
     def disconnect(self):
         self.connected = False
-        vpp_api.vac_disconnect()
+        return vpp_api.vac_disconnect()
 
     def suspend(self):
         vpp_api.vac_rx_suspend()
