@@ -114,33 +114,6 @@ clib_mem_init_thread_safe (void *memory, uword memory_size)
   return heap;
 }
 
-#ifdef CLIB_LINUX_KERNEL
-#include <asm/page.h>
-
-uword
-clib_mem_get_page_size (void)
-{
-  return PAGE_SIZE;
-}
-#endif
-
-#ifdef CLIB_UNIX
-uword
-clib_mem_get_page_size (void)
-{
-  return getpagesize ();
-}
-#endif
-
-/* Make a guess for standalone. */
-#ifdef CLIB_STANDALONE
-uword
-clib_mem_get_page_size (void)
-{
-  return 4096;
-}
-#endif
-
 u8 *
 format_clib_mem_usage (u8 * s, va_list * va)
 {

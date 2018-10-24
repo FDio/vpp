@@ -22,8 +22,6 @@
 #include <fcntl.h>
 #include <dirent.h>
 
-#define DEFAULT_HUGETLB_SIZE 2048
-
 clib_error_t *
 clib_sysfs_write (char *file_name, char *fmt, ...)
 {
@@ -121,8 +119,12 @@ clib_sysfs_set_nr_hugepages (int numa_node, int log2_page_size, int nr)
   clib_error_t *error = 0;
   struct stat sb;
   u8 *p = 0;
-  int page_size = log2_page_size ? 1ULL << (log2_page_size - 10) :
-    DEFAULT_HUGETLB_SIZE;
+  uword page_size;
+
+  if (log2_page_size == 0)
+    log2_page_size = min_log2 (clib_mem_get_default_hugepage_size ());
+
+  page_size = 1ULL << (log2_page_size - 10);
 
   p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
 
@@ -168,8 +170,14 @@ clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
   clib_error_t *error = 0;
   struct stat sb;
   u8 *p = 0;
-  int page_size = log2_page_size ? 1ULL << (log2_page_size - 10) :
-    DEFAULT_HUGETLB_SIZE;
+
+  uword page_size;
+
+  if (log2_page_size == 0)
+    log2_page_size = min_log2 (clib_mem_get_default_hugepage_size ());
+
+  page_size = 1ULL << (log2_page_size - 10);
+
 
   p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
 
@@ -232,8 +240,13 @@ clib_sysfs_prealloc_hugepages (int numa_node, int log2_page_size, int nr)
 {
   clib_error_t *error = 0;
   int n, needed;
-  int page_size = log2_page_size ? 1ULL << (log2_page_size - 10) :
-    DEFAULT_HUGETLB_SIZE;
+  uword page_size;
+
+  if (log2_page_size == 0)
+    log2_page_size = min_log2 (clib_mem_get_default_hugepage_size ());
+
+  page_size = 1ULL << (log2_page_size - 10);
+
   error = clib_sysfs_get_free_hugepages (numa_node, log2_page_size, &n);
   if (error)
     return error;

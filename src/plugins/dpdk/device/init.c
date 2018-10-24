@@ -1284,15 +1284,17 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  /* *INDENT-ON* */
 	}
 
+      uword default_hugepage_sz = clib_mem_get_default_hugepage_size ();
       /* *INDENT-OFF* */
       clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
         {
 	  clib_error_t *e;
-
+	  uword n_pages;
 	  vec_validate(mem_by_socket, c);
+	  n_pages = round_pow2 (mem_by_socket[c], default_hugepage_sz);
+	  n_pages /= default_hugepage_sz;
 
-	  e = clib_sysfs_prealloc_hugepages(c, 0, mem_by_socket[c] / 2);
-	  if (e)
+	  if ((e = clib_sysfs_prealloc_hugepages(c, 0, n_pages)))
 	    clib_error_report (e);
       }));
       /* *INDENT-ON* */

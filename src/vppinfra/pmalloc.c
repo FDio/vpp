@@ -55,26 +55,12 @@ pmalloc_validate_numa_node (u32 * numa_node)
 int
 clib_pmalloc_init (clib_pmalloc_main_t * pm, uword size)
 {
-  struct stat st;
   uword off, pagesize;
-  int fd;
 
   ASSERT (pm->error == 0);
 
-  pm->log2_page_sz = 21;
-  pm->error = clib_mem_create_hugetlb_fd ("detect_hugepage_size", &fd);
-
-  if (pm->error)
-    return -1;
-
-  if (fd != -1)
-    {
-      if (fstat (fd, &st) == -1)
-	pm->log2_page_sz = min_log2 (st.st_blksize);
-      close (fd);
-    }
-
-  pagesize = 1ULL << pm->log2_page_sz;
+  pagesize = clib_mem_get_default_hugepage_size ();
+  pm->log2_page_sz = min_log2 (pagesize);
 
   size = size ? size : ((u64) DEFAULT_RESERVED_MB) << 20;
   size = round_pow2 (size, pagesize);
