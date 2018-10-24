@@ -162,6 +162,9 @@ typedef struct
   /* Mapping from sw_if_index to tunnel index */
   u32 *tunnel_index_by_sw_if_index;
 
+  /* On demand udp port registration */
+  u32 udp_ports_registered;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -176,6 +179,8 @@ extern vlib_node_registration_t vxlan4_gbp_input_node;
 extern vlib_node_registration_t vxlan6_gbp_input_node;
 extern vlib_node_registration_t vxlan4_gbp_encap_node;
 extern vlib_node_registration_t vxlan6_gbp_encap_node;
+extern void vxlan_gbp_register_udp_ports (void);
+extern void vxlan_gbp_unregister_udp_ports (void);
 
 u8 *format_vxlan_gbp_encap_trace (u8 * s, va_list * args);
 
