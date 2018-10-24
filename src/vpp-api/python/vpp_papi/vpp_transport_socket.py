@@ -106,6 +106,7 @@ class VppTransport:
         self.socket.close()
         self.sque.put(True)  # Terminate listening thread
         self.message_thread.join()
+        return rv
 
     def suspend(self):
         pass
