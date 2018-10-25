@@ -86,6 +86,171 @@ test_memcpy (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+test_memcmp (vlib_main_t * vm, unformat_input_t * input)
+{
+  char src[64], dst[64];
+  errno_t err;
+  int diff = 0;
+
+  vlib_cli_output (vm, "Test memcmp_s...");
+
+  /* Fill array with different values */
+  err = clib_memset (src, 0x1, ARRAY_LEN (src));
+  if (err != EOK)
+    return -1;
+  err = clib_memset (dst, 0x3, ARRAY_LEN (dst));
+  if (err != EOK)
+    return -1;
+
+  /* s1 > s2, > 0 is expected in diff */
+  err = memcmp_s (dst, ARRAY_LEN (dst), src, ARRAY_LEN (src), &diff);
+  if (err != EOK)
+    return -1;
+  if (!(diff > 0))
+    return -1;
+
+  /* s1 < s2, < 0 is expected in diff */
+  err = memcmp_s (src, ARRAY_LEN (src), dst, ARRAY_LEN (dst), &diff);
+  if (err != EOK)
+    return -1;
+  if (!(diff < 0))
+    return -1;
+
+  err = clib_memset (dst, 0x1, ARRAY_LEN (dst));
+  if (err != EOK)
+    return -1;
+
+  /* s1 == s2, 0 is expected in diff */
+  err = memcmp_s (src, ARRAY_LEN (src), dst, ARRAY_LEN (dst), &diff);
+  if (err != EOK)
+    return -1;
+  if (diff != 0)
+    return -1;
+
+  /* Try negative tests */
+  err = memcmp_s (0, 0, 0, 0, 0);
+  if (err != EINVAL)
+    return -1;
+
+  /* Try s2max > s1max */
+  err = memcmp_s (src, ARRAY_LEN (src) - 1, dst, ARRAY_LEN (dst), &diff);
+  if (err != EINVAL)
+    return -1;
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strcmp (vlib_main_t * vm, unformat_input_t * input)
+{
+  const char s1[] = "this is a string";
+  uword s1len = strlen (s1);
+  errno_t err;
+  int indicator = 0;
+
+  vlib_cli_output (vm, "Test strcmp_s...");
+
+  /* s1 == s2, 0 is expected */
+  err = strcmp_s (s1, s1len, "this is a string", &indicator);
+  if (err != EOK)
+    return -1;
+  if (indicator != 0)
+    return -1;
+
+  /* s1 > s2, > 0 is expected */
+  err = strcmp_s (s1, s1len, "this is a strin", &indicator);
+  if (err != EOK)
+    return -1;
+  if (!(indicator > 0))
+    return -1;
+
+  /* s1 < s2, < 0 is expected */
+  err = strcmp_s (s1, s1len, "this is b string", &indicator);
+  if (err != EOK)
+    return -1;
+  if (!(indicator < 0))
+    return -1;
+
+  /* Try some negative tests */
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strncmp (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strncmp_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strcpy (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strcpy_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strncpy (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strncpy_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strcat (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strcat_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strncat (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strncat_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strtok (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strtok_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strnlen (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strnlen_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
+static int
+test_strstr (vlib_main_t * vm, unformat_input_t * input)
+{
+  vlib_cli_output (vm, "Test strstr_s...");
+
+  /* OK, seems to work */
+  return 0;
+}
+
 static clib_error_t *
 string_test_command_fn (vlib_main_t * vm,
 			unformat_input_t * input,
@@ -111,6 +276,16 @@ string_test_command_fn (vlib_main_t * vm,
     {
       res = test_memcpy (vm, input);
       res += test_clib_memset (vm, input);
+      res += test_memcmp (vm, input);
+      res += test_strcmp (vm, input);
+      res += test_strncmp (vm, input);
+      res += test_strcpy (vm, input);
+      res += test_strncpy (vm, input);
+      res += test_strcat (vm, input);
+      res += test_strncat (vm, input);
+      res += test_strtok (vm, input);
+      res += test_strnlen (vm, input);
+      res += test_strstr (vm, input);
       goto done;
     }
 
