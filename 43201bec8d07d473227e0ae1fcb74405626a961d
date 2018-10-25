@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f7b6be33_3cd5b9df",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 572,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-10-25T11:03:51Z",
+      "side": 1,
+      "message": "Is there a problem with 16.04?  \nIf not, can we do something like:\n\nSUPPORTED_TEST_PLATFORMS ?\u003d ubuntu-16.04 ubuntu-18.04\nifeq ($filter($(OS_ID)-$(OS_VERSION_ID),$(SUPPORTED_TEST_PLATFORMS)),)",
+      "range": {
+        "startLine": 572,
+        "startChar": 0,
+        "endLine": 572,
+        "endChar": 45
+      },
+      "revId": "43201bec8d07d473227e0ae1fcb74405626a961d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
