@@ -38,6 +38,11 @@ typedef union {
   };
 } fa_packet_info_t;
 
+typedef enum {
+  FA_SK_L4_FLAG_IS_INPUT    = (1 << 0),
+  FA_SK_L4_FLAG_IS_SLOWPATH = (1 << 1),
+} fa_session_l4_key_l4_flags_t;
+
 typedef union {
   u64 as_u64;
   struct {
@@ -45,15 +50,20 @@ typedef union {
     union {
       struct {
         u8 proto;
-        u8 is_input: 1;
-        u8 is_slowpath: 1;
-        u8 reserved0: 6;
+        u8 l4_flags;
         u16 lsb_of_sw_if_index;
       };
       u32 non_port_l4_data;
     };
   };
 } fa_session_l4_key_t;
+
+
+static_always_inline
+int is_session_l4_key_u64_slowpath(u64 l4key) {
+  fa_session_l4_key_t k = { .as_u64 = l4key };
+  return (k.l4_flags & FA_SK_L4_FLAG_IS_SLOWPATH) ? 1 : 0;
+}
 
 typedef union {
   struct {
@@ -83,11 +93,13 @@ static_always_inline u8 *
 format_fa_session_l4_key(u8 * s, va_list * args)
 {
   fa_session_l4_key_t *l4 = va_arg (*args, fa_session_l4_key_t *);
+  int is_input = (l4->l4_flags & FA_SK_L4_FLAG_IS_INPUT) ? 1 : 0;
+  int is_slowpath = (l4->l4_flags & FA_SK_L4_FLAG_IS_SLOWPATH) ? 1 : 0;
 
-  return (format (s, "l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d reserved0 0x%02x port %d -> %d",
+  return (format (s, "l4 lsb_of_sw_if_index %d proto %d l4_is_input %d l4_slow_path %d l4_flags 0x%02x port %d -> %d",
                   l4->lsb_of_sw_if_index,
-                  l4->proto, l4->is_input, l4->is_slowpath,
-                  l4->reserved0, l4->port[0], l4->port[1]));
+                  l4->proto, is_input, is_slowpath,
+                  l4->l4_flags, l4->port[0], l4->port[1]));
 }
 
 typedef struct {

@@ -58,6 +58,13 @@ offset_within_packet (vlib_buffer_t * b0, int offset)
   return (offset <= (b0->current_length - 8));
 }
 
+always_inline int
+offset_beyond_packet (vlib_buffer_t * b0, int offset)
+{
+  /* For the purposes of this code, "within" means we have at least 8 bytes after it */
+  return (offset > (b0->current_length - 8));
+}
+
 
 always_inline void
 acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
@@ -65,20 +72,19 @@ acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 {
   if (is_ip6)
     {
-      clib_memcpy (&p5tuple_pkt->ip6_addr,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip6_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->ip6_addr));
+      ip6_header_t *ip6 = vlib_buffer_get_current (b0) + l3_offset;
+      p5tuple_pkt->ip6_addr[0] = ip6->src_address;
+      p5tuple_pkt->ip6_addr[1] = ip6->dst_address;
     }
   else
     {
-      clib_memset(p5tuple_pkt->l3_zero_pad, 0, sizeof(p5tuple_pkt->l3_zero_pad));
-      clib_memcpy (&p5tuple_pkt->ip4_addr,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->ip4_addr));
+      int ii;
+      for(ii=0; ii<6; ii++) {
+        p5tuple_pkt->l3_zero_pad[ii] = 0;
+      }
+      ip4_header_t *ip4 = vlib_buffer_get_current (b0) + l3_offset;
+      p5tuple_pkt->ip4_addr[0] = ip4->src_address;
+      p5tuple_pkt->ip4_addr[1] = ip4->dst_address;
     }
 }
 
@@ -90,23 +96,19 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
   static u8 icmp_protos_v4v6[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
 
   int l4_offset;
-  u16 ports[2];
+  u16 ports[2] = { 0 };
   u8 proto;
 
-  fa_session_l4_key_t tmp_l4 = { .lsb_of_sw_if_index = sw_if_index0 & 0xffff };
+  u8 tmp_l4_flags = 0;
   fa_packet_info_t tmp_pkt = { .is_ip6 = is_ip6, .mask_type_index_lsb = ~0 };
 
   if (is_ip6)
     {
-      proto =
-	*(u8 *) get_ptr_to_offset (b0,
-				   offsetof (ip6_header_t,
-					     protocol) + l3_offset);
+      ip6_header_t *ip6 = vlib_buffer_get_current (b0) + l3_offset;
+      proto = ip6->protocol;
+
       l4_offset = l3_offset + sizeof (ip6_header_t);
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning ("ACL_FA_NODE_DBG: proto: %d, l4_offset: %d", proto,
-		    l4_offset);
-#endif
+
       /* IP6 EH handling is here, increment l4_offset if needs to, update the proto */
       int need_skip_eh = clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
       if (PREDICT_FALSE (need_skip_eh))
@@ -117,8 +119,7 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
 	      if (PREDICT_FALSE(ACL_EH_FRAGMENT == proto))
 	        {
 	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
-		  u16 frag_offset;
-		  clib_memcpy (&frag_offset, get_ptr_to_offset (b0, 2 + l4_offset), sizeof(frag_offset));
+		  u16 frag_offset = *(u16 *) get_ptr_to_offset (b0, 2 + l4_offset);
 		  frag_offset = clib_net_to_host_u16(frag_offset) >> 3;
 		  if (frag_offset)
 		    {
@@ -138,10 +139,6 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
 	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
 	          l4_offset += 8 * (1 + (u16) nwords);
                 }
-#ifdef FA_NODE_VERBOSE_DEBUG
-	      clib_warning ("ACL_FA_NODE_DBG: new proto: %d, new offset: %d",
-			    proto, l4_offset);
-#endif
 	      need_skip_eh =
 		clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
 	    }
@@ -149,21 +146,12 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
     }
   else
     {
-      proto =
-	*(u8 *) get_ptr_to_offset (b0,
-				   offsetof (ip4_header_t,
-					     protocol) + l3_offset);
-      l4_offset = l3_offset + sizeof (ip4_header_t);
-      u16 flags_and_fragment_offset;
-      clib_memcpy (&flags_and_fragment_offset,
-                   get_ptr_to_offset (b0,
-                                      offsetof (ip4_header_t,
-                                                flags_and_fragment_offset)) + l3_offset,
-                                                sizeof(flags_and_fragment_offset));
-      flags_and_fragment_offset = clib_net_to_host_u16 (flags_and_fragment_offset);
+      ip4_header_t *ip4 = vlib_buffer_get_current (b0) + l3_offset;
+      proto = ip4->protocol;
+      l4_offset = l3_offset + ip4_header_bytes(ip4);
 
       /* non-initial fragments have non-zero offset */
-      if ((PREDICT_FALSE(0xfff & flags_and_fragment_offset)))
+      if (PREDICT_FALSE(ip4_get_fragment_offset(ip4)))
         {
           tmp_pkt.is_nonfirst_fragment = 1;
           /* invalidate L4 offset so we don't try to find L4 info */
@@ -171,50 +159,47 @@ acl_fill_5tuple_l4_and_pkt_data (acl_main_t * am, u32 sw_if_index0, vlib_buffer_
         }
 
     }
-  tmp_l4.proto = proto;
-  tmp_l4.is_input = is_input;
+  tmp_l4_flags |= is_input ? FA_SK_L4_FLAG_IS_INPUT : 0;
 
   if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
     {
+      tcp_header_t *tcph = vlib_buffer_get_current (b0) + l4_offset;
+      udp_header_t *udph = vlib_buffer_get_current (b0) + l4_offset;
       tmp_pkt.l4_valid = 1;
-      if (icmp_protos_v4v6[is_ip6] == proto)
-	{
-	  /* type */
-	  tmp_l4.port[0] =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (icmp46_header_t,
-							     type));
-	  /* code */
-	  tmp_l4.port[1] =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (icmp46_header_t,
-							     code));
-          tmp_l4.is_slowpath = 1;
-	}
-      else if ((IP_PROTOCOL_TCP == proto) || (IP_PROTOCOL_UDP == proto))
-	{
-	  clib_memcpy (&ports,
-		       get_ptr_to_offset (b0,
-					  l4_offset + offsetof (tcp_header_t,
-								src_port)),
-		       sizeof (ports));
-	  tmp_l4.port[0] = clib_net_to_host_u16 (ports[0]);
-	  tmp_l4.port[1] = clib_net_to_host_u16 (ports[1]);
 
-	  tmp_pkt.tcp_flags =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (tcp_header_t,
-							     flags));
-	  tmp_pkt.tcp_flags_valid = (proto == IP_PROTOCOL_TCP);
-          tmp_l4.is_slowpath = 0;
+      if (PREDICT_FALSE(icmp_protos_v4v6[is_ip6] == proto))
+	{
+          icmp46_header_t *icmph = vlib_buffer_get_current (b0) + l4_offset;
+	  ports[0] = icmph->type;
+	  ports[1] = icmph->code;
+          /* ICMP needs special handling */
+          tmp_l4_flags |= FA_SK_L4_FLAG_IS_SLOWPATH;
 	}
+      else if (IP_PROTOCOL_TCP == proto)
+	{
+          ports[0] = clib_net_to_host_u16(tcph->src_port);
+          ports[1] = clib_net_to_host_u16(tcph->dst_port);
+	  tmp_pkt.tcp_flags = tcph->flags;
+	  tmp_pkt.tcp_flags_valid = 1;
+	}
+      else if (IP_PROTOCOL_UDP == proto)
+	{
+          ports[0] = clib_net_to_host_u16(udph->src_port);
+          ports[1] = clib_net_to_host_u16(udph->dst_port);
+        }
       else
         {
-          tmp_l4.is_slowpath = 1;
+          tmp_l4_flags |= FA_SK_L4_FLAG_IS_SLOWPATH;
         }
     }
 
   p5tuple_pkt->as_u64 = tmp_pkt.as_u64;
+
+  fa_session_l4_key_t tmp_l4 = { .port = { ports[0], ports[1] },
+                                 .proto = proto,
+                                 .l4_flags = tmp_l4_flags,
+                                 .lsb_of_sw_if_index = sw_if_index0 & 0xffff };
+
   p5tuple_l4->as_u64 = tmp_l4.as_u64;
 }
 
