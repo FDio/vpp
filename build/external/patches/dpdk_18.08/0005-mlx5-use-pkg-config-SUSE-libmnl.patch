@@ -1,0 +1,39 @@
+From c030dc71ff4069c5b5e5b7889a2926617075f6e3 Mon Sep 17 00:00:00 2001
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Thu, 25 Oct 2018 10:33:01 -0700
+Subject: [PATCH] mlx5: use pkg-config to handle SUSE libmnl
+
+SUSE decided to install the libmnl include file in a non-standard
+place: /usr/include/libmnl/libmnl/libmnl.h
+
+This was probably a mistake by the SUSE package maintainer,
+but hard to get fixed. Workaround the problem by pkg-config to find
+the necessary include directive for libmnl.
+
+Fixes: 20b71e92ef8e ("net/mlx5: lay groundwork for switch offloads")
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+---
+ drivers/net/mlx5/Makefile | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/mlx5/Makefile b/drivers/net/mlx5/Makefile
+index 1e9c0b42ac16..8497c98ef86e 100644
+--- a/drivers/net/mlx5/Makefile
++++ b/drivers/net/mlx5/Makefile
+@@ -51,6 +51,7 @@ CFLAGS += -D_DEFAULT_SOURCE
+ CFLAGS += -D_XOPEN_SOURCE=600
+ CFLAGS += $(WERROR_FLAGS)
+ CFLAGS += -Wno-strict-prototypes
++CFLAGS += $(shell pkg-config --cflags libmnl)
+ ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS),y)
+ CFLAGS += -DMLX5_GLUE='"$(LIB_GLUE)"'
+ CFLAGS += -DMLX5_GLUE_VERSION='"$(LIB_GLUE_VERSION)"'
+@@ -57,7 +58,7 @@ LDLIBS += -ldl
+ else
+ LDLIBS += -libverbs -lmlx5
+ endif
+-LDLIBS += -lmnl
++LDLIBS += $(shell pkg-config --libs libmnl)
+ LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+ LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
+ LDLIBS += -lrte_bus_pci
