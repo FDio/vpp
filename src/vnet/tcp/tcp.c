@@ -1803,12 +1803,15 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
   scoreboard_init (&dummy_tc->sack_sb);
   dummy_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
 
-#if TCP_SCOREBOARD_TRACE
+/* Since this is also accessible via decl. in tcp.h.
+ * Otherwise, it is gated earlier by cli parser.
+ */
+#if (!TCP_SCOREBOARD_TRACE)
+  s = format (0, "scoreboard tracing not enabled");
+  return s;
+#else
   trace = tc->sack_sb.trace;
   trace_len = vec_len (tc->sack_sb.trace);
-#else
-  trace = 0;
-  trace_len = 0;
 #endif
 
   for (i = 0; i < trace_len; i++)
