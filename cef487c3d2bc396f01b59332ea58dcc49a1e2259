@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a381a5c_dce63eda",
+        "filename": "src/plugins/acl/dataplane_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 901,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-10-25T10:13:02Z",
+      "side": 1,
+      "message": "VLIB_NODE_FUNCTION_MULTIARCH should be deprecated soon, why do you need it?",
+      "range": {
+        "startLine": 893,
+        "startChar": 0,
+        "endLine": 901,
+        "endChar": 74
+      },
+      "revId": "cef487c3d2bc396f01b59332ea58dcc49a1e2259",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
