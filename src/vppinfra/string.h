@@ -92,6 +92,12 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #ifndef EINVAL
 #define EINVAL 22
 #endif
+#ifndef ESRCH
+#define ESRCH 3
+#endif
+#ifndef EOVERFLOW
+#define EOVERFLOW 75
+#endif
 
 typedef int errno_t;
 typedef uword rsize_t;
@@ -681,6 +687,532 @@ clib_count_equal_u8 (u8 * data, uword max_count)
       count += 1;
     }
   return count;
+}
+
+errno_t memcmp_s (const void *s1, rsize_t s1max, const void *s2,
+		  rsize_t s2max, int *diff);
+
+always_inline errno_t
+memcmp_s_inline (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
+		 int *diff)
+{
+  u8 bad;
+
+  bad = (s1 == 0) + (s2 == 0) + (diff == 0) + (s2max > s1max) + (s2max == 0) +
+    (s1max == 0);
+
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s1 == NULL)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (diff == NULL)
+	clib_c11_violation ("diff NULL");
+      if (s2max > s1max)
+	clib_c11_violation ("s2max > s1max");
+      if (s2max == 0)
+	clib_c11_violation ("s2max 0");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      return EINVAL;
+    }
+
+  if (PREDICT_FALSE (s1 == s2))
+    {
+      *diff = 0;
+      return EOK;
+    }
+
+  *diff = memcmp (s1, s2, s2max);
+  return EOK;
+}
+
+size_t strnlen_s (const char *s, size_t maxsize);
+
+always_inline size_t
+strnlen_s_inline (const char *s, size_t maxsize)
+{
+  u8 bad;
+
+  bad = (s == 0) + (maxsize == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s == 0)
+	clib_c11_violation ("s NULL");
+      if (maxsize == 0)
+	clib_c11_violation ("maxsize 0");
+      return 0;
+    }
+  return strnlen (s, maxsize);
+}
+
+errno_t strcmp_s (const char *s1, rsize_t s1max, const char *s2,
+		  int *indicator);
+
+always_inline errno_t
+strcmp_s_inline (const char *s1, rsize_t s1max, const char *s2,
+		 int *indicator)
+{
+  u8 bad;
+
+  bad = (indicator == 0) + (s1 == 0) + (s2 == 0) + (s1max == 0) +
+    (s1 && s1max && s1[strnlen_s (s1, s1max)] != '\0');
+
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (indicator == NULL)
+	clib_c11_violation ("indicator NULL");
+      else
+	*indicator = -1;
+      if (s1 == NULL)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      if (s1 && s1max && s1[strnlen_s (s1, s1max)] != '\0')
+	clib_c11_violation ("s1 unterminated");
+      return EINVAL;
+    }
+
+  *indicator = strcmp (s1, s2);
+  return EOK;
+}
+
+errno_t strncmp_s (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
+		   int *indicator);
+
+always_inline errno_t
+strncmp_s_inline (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
+		  int *indicator)
+{
+  u8 bad;
+
+  bad = (s1 == 0) + (s2 == 0) + (indicator == 0) + (s1max == 0) +
+    (s1 && s1max && s1[strnlen_s (s1, s1max)] != '\0') +
+    (s1 && s1max && n > strnlen_s (s1, s1max));
+
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (indicator == NULL)
+	clib_c11_violation ("indicator NULL");
+      else
+	*indicator = -1;
+      if (s1 == NULL)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      if (s1 && s1max && s1[strnlen_s (s1, s1max)] != '\0')
+	clib_c11_violation ("s1 unterminated");
+      if (s1 && s1max && n > strnlen_s (s1, s1max))
+	clib_c11_violation ("n exceeds s1 length");
+      return EINVAL;
+    }
+
+  *indicator = strncmp (s1, s2, n);
+  return EOK;
+}
+
+errno_t strcpy_s (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src);
+
+always_inline errno_t
+strcpy_s_inline (char *__restrict__ dest, rsize_t dmax,
+		 const char *__restrict__ src)
+{
+  u8 bad;
+  uword low, hi;
+  size_t n;
+
+  bad = (dest == 0) + (dmax == 0) + (src == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  n = strnlen_s (src, dmax);
+  if (PREDICT_FALSE (n >= dmax))
+    {
+      clib_c11_violation ("not enough space for dest");
+      return (EINVAL);
+    }
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (n - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  _clib_memcpy (dest, src, n);
+  dest[n] = '\0';
+  return EOK;
+}
+
+errno_t
+strncpy_s (char *__restrict__ dest, rsize_t dmax,
+	   const char *__restrict__ src, rsize_t n);
+
+always_inline errno_t
+strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src, rsize_t n)
+{
+  u8 bad;
+  uword low, hi;
+  rsize_t m;
+  errno_t status = EOK;
+
+  bad = (dest == 0) + (dmax == 0) + (src == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  if (PREDICT_FALSE (n >= dmax))
+    {
+      /* Relax and use strnlen of src */
+      clib_c11_violation ("n >= dmax");
+      m = strnlen_s (src, dmax);
+      if (m >= dmax)
+	{
+	  /* Truncate, adjust copy length to fit dest */
+	  m = dmax - 1;
+	  status = EOVERFLOW;
+	}
+    }
+  else
+    m = n;
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (m - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  _clib_memcpy (dest, src, m);
+  dest[m] = '\0';
+  return status;
+}
+
+errno_t strcat_s (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src);
+
+always_inline errno_t
+strcat_s_inline (char *__restrict__ dest, rsize_t dmax,
+		 const char *__restrict__ src)
+{
+  u8 bad;
+  uword low, hi;
+  size_t m, n, dest_size;
+
+  bad = (dest == 0) + (dmax == 0) + (src == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  dest_size = strnlen_s (dest, dmax);
+  m = dmax - dest_size;
+  n = strnlen_s (src, m);
+  if (PREDICT_FALSE (n >= m))
+    {
+      clib_c11_violation ("not enough space for dest");
+      return EINVAL;
+    }
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (n - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  strcat (dest, src);
+  return EOK;
+}
+
+errno_t strncat_s (char *__restrict__ dest, rsize_t dmax,
+		   const char *__restrict__ src, rsize_t n);
+
+always_inline errno_t
+strncat_s_inline (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src, rsize_t n)
+{
+  u8 bad;
+  uword low, hi;
+  size_t m, dest_size, allowed_size;
+  errno_t status = EOK;
+
+  bad = (dest == 0) + (src == 0) + (dmax == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (n - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  dest_size = strnlen_s (dest, dmax);
+  allowed_size = dmax - dest_size;
+
+  if (PREDICT_FALSE (allowed_size == 0))
+    {
+      clib_c11_violation ("no space left in dest");
+      return (EINVAL);
+    }
+
+  if (PREDICT_FALSE (n >= allowed_size))
+    {
+      m = strnlen_s (src, allowed_size);
+      if (m >= allowed_size)
+	{
+	  m = allowed_size - 1;
+	  status = EOVERFLOW;
+	}
+    }
+  else
+    m = n;
+
+  strncat (dest, src, m);
+  return status;
+}
+
+char *strtok_s (char *__restrict__ s1, rsize_t * __restrict__ s1max,
+		const char *__restrict__ s2, char **__restrict__ ptr);
+
+always_inline char *
+strtok_s_inline (char *__restrict__ s1, rsize_t * __restrict__ s1max,
+		 const char *__restrict__ s2, char **__restrict__ ptr)
+{
+#define STRTOK_DELIM_MAX_LEN 16
+  u8 bad;
+  const char *pt;
+  char *ptoken;
+  uword dlen, slen;
+
+  bad = (s1max == 0) + (s2 == 0) + (ptr == 0) +
+    ((s1 == 0) && ptr && (*ptr == 0));
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == NULL)
+	clib_c11_violation ("s1max is NULL");
+      if (ptr == NULL)
+	clib_c11_violation ("ptr is NULL");
+      /* s1 == 0 and *ptr == null is no good */
+      if ((s1 == 0) && ptr && (*ptr == 0))
+	clib_c11_violation ("s1 and ptr contents are NULL");
+      return 0;
+    }
+
+  if (s1 == 0)
+    s1 = *ptr;
+
+  /*
+   * scan s1 for a delimiter
+   */
+  dlen = *s1max;
+  ptoken = 0;
+  while (*s1 != '\0' && !ptoken)
+    {
+      if (dlen == 0)
+	{
+	  *ptr = 0;
+	  clib_c11_violation ("s1 unterminated");
+	  return 0;
+	}
+
+      /*
+       * must scan the entire delimiter list
+       * ISO should have included a delimiter string limit!!
+       */
+      slen = STRTOK_DELIM_MAX_LEN;
+      pt = s2;
+      while (*pt != '\0')
+	{
+	  if (slen == 0)
+	    {
+	      *ptr = 0;
+	      clib_c11_violation ("s2 unterminated");
+	      return 0;
+	    }
+	  slen--;
+	  if (*s1 == *pt)
+	    {
+	      ptoken = 0;
+	      break;
+	    }
+	  else
+	    {
+	      pt++;
+	      ptoken = s1;
+	    }
+	}
+      s1++;
+      dlen--;
+    }
+
+  /*
+   * if the beginning of a token was not found, then no
+   * need to continue the scan.
+   */
+  if (ptoken == 0)
+    {
+      *s1max = dlen;
+      return (ptoken);
+    }
+
+  /*
+   * Now we need to locate the end of the token
+   */
+  while (*s1 != '\0')
+    {
+      if (dlen == 0)
+	{
+	  *ptr = 0;
+	  clib_c11_violation ("s1 unterminated");
+	  return 0;
+	}
+
+      slen = STRTOK_DELIM_MAX_LEN;
+      pt = s2;
+      while (*pt != '\0')
+	{
+	  if (slen == 0)
+	    {
+	      *ptr = 0;
+	      clib_c11_violation ("s2 unterminated");
+	      return 0;
+	    }
+	  slen--;
+	  if (*s1 == *pt)
+	    {
+	      /*
+	       * found a delimiter, set to null
+	       * and return context ptr to next char
+	       */
+	      *s1 = '\0';
+	      *ptr = (s1 + 1);	/* return pointer for next scan */
+	      *s1max = dlen - 1;	/* account for the nulled delimiter */
+	      return (ptoken);
+	    }
+	  else
+	    {
+	      /*
+	       * simply scanning through the delimiter string
+	       */
+	      pt++;
+	    }
+	}
+      s1++;
+      dlen--;
+    }
+
+  *ptr = s1;
+  *s1max = dlen;
+  return (ptoken);
+}
+
+errno_t strstr_s (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
+		  char **substring);
+
+always_inline errno_t
+strstr_s_inline (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
+		 char **substring)
+{
+  u8 bad;
+  size_t s1_size, s2_size;
+
+  bad =
+    (s1 == 0) + (s2 == 0) + (substring == 0) + (s1max == 0) + (s2max == 0) +
+    (s1 && s1max && (s1[strnlen_s (s1, s1max)] != '\0')) +
+    (s2 && s2max && (s2[strnlen_s (s2, s2max)] != '\0'));
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s1 == 0)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == 0)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      if (s2max == 0)
+	clib_c11_violation ("s2max 0");
+      if (substring == 0)
+	clib_c11_violation ("substring NULL");
+      if (s1 && s1max && (s1[strnlen_s (s1, s1max)] != '\0'))
+	clib_c11_violation ("s1 unterminated");
+      if (s2 && s2max && (s2[strnlen_s (s2, s1max)] != '\0'))
+	clib_c11_violation ("s2 unterminated");
+      return EINVAL;
+    }
+
+  /*
+   * s2 points to a string with zero length, or s2 equals s1, return s1
+   */
+  if (PREDICT_FALSE (*s2 == '\0' || s1 == s2))
+    {
+      *substring = s1;
+      return EOK;
+    }
+
+  /*
+   * s2_size > s1_size, it won't find match.
+   */
+  s1_size = strnlen_s (s1, s1max);
+  s2_size = strnlen_s (s2, s2max);
+  if (PREDICT_FALSE (s2_size > s1_size))
+    return ESRCH;
+
+  *substring = strstr (s1, s2);
+  if (*substring == 0)
+    return ESRCH;
+
+  return EOK;
 }
 
 #endif /* included_clib_string_h */
