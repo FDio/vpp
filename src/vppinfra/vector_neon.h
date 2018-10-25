@@ -23,17 +23,18 @@
 
 /* Converts all ones/zeros compare mask to bitmap. */
 always_inline u32
-u8x16_compare_byte_mask (u8x16 x)
+u8x16_compare_byte_mask (u8x16 v)
 {
-  uint8x16_t mask_shift =
-    { -7, -6, -5, -4, -3, -2, -1, 0, -7, -6, -5, -4, -3, -2, -1, 0 };
-  uint8x16_t mask_and = vdupq_n_u8 (0x80);
-  x = vandq_u8 (x, mask_and);
-  x = vshlq_u8 (x, vreinterpretq_s8_u8 (mask_shift));
-  x = vpaddq_u8 (x, x);
-  x = vpaddq_u8 (x, x);
-  x = vpaddq_u8 (x, x);
-  return vgetq_lane_u8 (x, 0) | (vgetq_lane_u8 (x, 1) << 8);
+  uint8x16_t mask = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
+    0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
+  };
+  /* v --> [0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0x00, ... ] */
+  uint8x16_t x = vandq_u8 (v, mask);
+  /* after v & mask,
+   * x --> [0x01, 0x00, 0x04, 0x08, 0x10, 0x00, 0x40, 0x00, ... ] */
+  uint64x2_t x64 = vpaddlq_u32 (vpaddlq_u16 (vpaddlq_u8 (x)));
+  /* after merge, x64 --> [0x5D, 0x.. ] */
+  return (u32) (vgetq_lane_u64 (x64, 0) + (vgetq_lane_u64 (x64, 1) << 8));
 }
 
 always_inline u32
@@ -147,6 +148,23 @@ u32x4_extend_to_u64x2_high (u32x4 v)
 {
   return vmovl_high_u32 (v);
 }
+
+/* Creates a mask made up of the MSB of each byte of the source vector */
+static_always_inline u16
+u8x16_msb_mask (u8x16 v)
+{
+  int8x16_t shift =
+    { -7, -6, -5, -4, -3, -2, -1, 0, -7, -6, -5, -4, -3, -2, -1, 0 };
+  /* v --> [0x80, 0x7F, 0xF0, 0xAF, 0xF0, 0x00, 0xF2, 0x00, ... ] */
+  uint8x16_t x = vshlq_u8 (vandq_u8 (v, vdupq_n_u8 (0x80)), shift);
+  /* after (v & 0x80) >> shift,
+   * x --> [0x01, 0x00, 0x04, 0x08, 0x10, 0x00, 0x40, 0x00, ... ] */
+  uint64x2_t x64 = vpaddlq_u32 (vpaddlq_u16 (vpaddlq_u8 (x)));
+  /* after merge, x64 --> [0x5D, 0x.. ] */
+  return (u16) (vgetq_lane_u64 (x64, 0) + (vgetq_lane_u64 (x64, 1) << 8));
+}
+
+#define CLIB_HAVE_VEC128_MSB_MASK
 
 #define CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
 #define CLIB_VEC128_SPLAT_DEFINED
