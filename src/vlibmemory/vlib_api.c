@@ -346,8 +346,7 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
       start_time = vlib_time_now (vm);
       while (1)
 	{
-	  if (vl_mem_api_handle_rpc (vm, node)
-	      || vl_mem_api_handle_msg_main (vm, node))
+	  if (vl_mem_api_handle_msg_main (vm, node))
 	    {
 	      vm->api_queue_nonempty = 0;
 	      VL_MEM_API_LOG_Q_LEN ("q-underflow: len %d", 0);
@@ -565,16 +564,36 @@ vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t * mp)
 void
 vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
-  vlib_main_t *vm_global = &vlib_global_main;
+  api_main_t *am = &api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+  svm_queue_t *q;
+  int i;
 
-  /* Our own RPCs are already pending */
-  if (vm == vm_global)
-    return;
+  /*
+   * Use the "normal" control-plane mechanism for the main thread.
+   * Well, almost. if the main input queue is full, we cannot
+   * block. Otherwise, we can expect a barrier sync timeout.
+   */
+  q = shmem_hdr->vl_input_queue;
 
-  clib_spinlock_lock_if_init (&vm_global->pending_rpc_lock);
-  vec_append (vm_global->pending_rpc_requests, vm->pending_rpc_requests);
-  vec_reset_length (vm->pending_rpc_requests);
-  clib_spinlock_unlock_if_init (&vm_global->pending_rpc_lock);
+  for (i = 0; i < vec_len (vm->pending_rpc_requests); i++)
+    {
+      while (pthread_mutex_trylock (&q->mutex))
+	vlib_worker_thread_barrier_check ();
+
+      while (PREDICT_FALSE (svm_queue_is_full (q)))
+	{
+	  pthread_mutex_unlock (&q->mutex);
+	  vlib_worker_thread_barrier_check ();
+	  while (pthread_mutex_trylock (&q->mutex))
+	    vlib_worker_thread_barrier_check ();
+	}
+
+      vl_msg_api_send_shmem_nolock (q, (u8 *) (vm->pending_rpc_requests + i));
+
+      pthread_mutex_unlock (&q->mutex);
+    }
+  _vec_len (vm->pending_rpc_requests) = 0;
 }
 
 always_inline void
@@ -582,7 +601,6 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
 				    u8 force_rpc)
 {
   vl_api_rpc_call_t *mp;
-  vlib_main_t *vm_global = &vlib_global_main;
   vlib_main_t *vm = vlib_get_main ();
 
   /* Main thread and not a forced RPC: call the function directly */
@@ -608,12 +626,7 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
   mp->function = pointer_to_uword (fp);
   mp->need_barrier_sync = 1;
 
-  /* Add to the pending vector. Thread 0 requires locking. */
-  if (vm == vm_global)
-    clib_spinlock_lock_if_init (&vm_global->pending_rpc_lock);
   vec_add1 (vm->pending_rpc_requests, (uword) mp);
-  if (vm == vm_global)
-    clib_spinlock_unlock_if_init (&vm_global->pending_rpc_lock);
 }
 
 /*

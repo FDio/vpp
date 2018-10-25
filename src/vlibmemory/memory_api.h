@@ -32,8 +32,6 @@ void vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm,
 int vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node);
 int vl_mem_api_handle_msg_private (vlib_main_t * vm,
 				   vlib_node_runtime_t * node, u32 reg_index);
-int vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node);
-
 vl_api_registration_t *vl_mem_api_client_index_to_registration (u32 handle);
 void vl_mem_api_enable_disable (vlib_main_t * vm, int yesno);
 u32 vl_api_memclnt_create_internal (char *, svm_queue_t *);
