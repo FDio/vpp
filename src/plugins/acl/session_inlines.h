@@ -290,7 +290,7 @@ reverse_l4_u64_fastpath (u64 l4, int is_ip6)
   l4o.port[0] = l4i.port[1];
 
   l4o.non_port_l4_data = l4i.non_port_l4_data;
-  l4o.is_input = 1 - l4i.is_input;
+  l4o.l4_flags = l4i.l4_flags ^ FA_SK_L4_FLAG_IS_INPUT;
   return l4o.as_u64;
 }
 
@@ -331,7 +331,7 @@ reverse_l4_u64_slowpath_valid (u64 l4, int is_ip6, u64 * out)
 				&& icmp_invmap[is_ip6][type]);
       if (valid_reverse_sess)
 	{
-	  l4o.is_input = 1 - l4i.is_input;
+	  l4o.l4_flags = l4i.l4_flags ^ FA_SK_L4_FLAG_IS_INPUT;
 	  l4o.port[0] = icmp_invmap[is_ip6][type] - 1;
 	}
 
@@ -355,7 +355,7 @@ reverse_session_add_del_ip6 (acl_main_t * am,
   kv2.key[3] = pkv->key[1];
   /* the last u64 needs special treatment (ports, etc.) so we do it last */
   kv2.value = pkv->value;
-  if (PREDICT_FALSE (((fa_session_l4_key_t) pkv->key[4]).is_slowpath))
+  if (PREDICT_FALSE (is_session_l4_key_u64_slowpath (pkv->key[4])))
     {
       if (reverse_l4_u64_slowpath_valid (pkv->key[4], 1, &kv2.key[4]))
 	clib_bihash_add_del_40_8 (&am->fa_ip6_sessions_hash, &kv2, is_add);
@@ -376,7 +376,7 @@ reverse_session_add_del_ip4 (acl_main_t * am,
     ((pkv->key[0] & 0xffffffff) << 32) | ((pkv->key[0] >> 32) & 0xffffffff);
   /* the last u64 needs special treatment (ports, etc.) so we do it last */
   kv2.value = pkv->value;
-  if (PREDICT_FALSE (((fa_session_l4_key_t) pkv->key[1]).is_slowpath))
+  if (PREDICT_FALSE (is_session_l4_key_u64_slowpath (pkv->key[1])))
     {
       if (reverse_l4_u64_slowpath_valid (pkv->key[1], 0, &kv2.key[1]))
 	clib_bihash_add_del_16_8 (&am->fa_ip4_sessions_hash, &kv2, is_add);
