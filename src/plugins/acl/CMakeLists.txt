@@ -19,6 +19,9 @@ add_vpp_plugin(acl
   sess_mgmt_node.c
   dataplane_node.c
 
+  MULTIARCH_SOURCES
+  dataplane_node.c
+
   API_FILES
   acl.api
 
