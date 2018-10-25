@@ -114,13 +114,21 @@ fa_session_get_timeout (acl_main_t * am, fa_session_t * sess)
   return timeout;
 }
 
+always_inline fa_session_t *
+get_session_ptr_no_check (acl_main_t * am, u16 thread_index,
+			  u32 session_index)
+{
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
+  return pool_elt_at_index (pw->fa_sessions_pool, session_index);
+}
 
 
 always_inline fa_session_t *
 get_session_ptr (acl_main_t * am, u16 thread_index, u32 session_index)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  if (session_index >= vec_len (pw->fa_sessions_pool))
+
+  if (PREDICT_FALSE (session_index >= vec_len (pw->fa_sessions_pool)))
     return 0;
 
   return pool_elt_at_index (pw->fa_sessions_pool, session_index);
@@ -265,17 +273,22 @@ is_ip6_5tuple (fa_5tuple_t * p5t)
 	  l3_zero_pad[4] | p5t->l3_zero_pad[5]) != 0;
 }
 
-
-
-
 always_inline u8
 acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
-		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple)
+		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple,
+		      u32 pkt_len)
 {
   sess->last_active_time = now;
-  if (pkt_5tuple->pkt.tcp_flags_valid)
+  sess->n_packets++;
+  sess->n_bytes += pkt_len;
+  u8 old_flags = sess->tcp_flags_seen.as_u8[is_input];
+  u8 new_flags = old_flags | pkt_5tuple->pkt.tcp_flags;
+
+  int flags_need_update = pkt_5tuple->pkt.tcp_flags_valid
+    && (old_flags != new_flags);
+  if (PREDICT_FALSE (flags_need_update))
     {
-      sess->tcp_flags_seen.as_u8[is_input] |= pkt_5tuple->pkt.tcp_flags;
+      sess->tcp_flags_seen.as_u8[is_input] = new_flags;
     }
   return 3;
 }
@@ -504,7 +517,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index,
 }
 
 
-always_inline fa_session_t *
+always_inline fa_full_session_id_t
 acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
 		    u32 sw_if_index, u64 now, fa_5tuple_t * p5tuple,
 		    u16 current_policy_epoch)
@@ -572,7 +585,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, int is_ip6,
   clib_mem_set_heap (oldheap);
   pw->fa_session_adds_by_sw_if_index[sw_if_index]++;
   clib_atomic_fetch_add (&am->fa_session_total_adds, 1);
-  return sess;
+  return f_sess_id;
 }
 
 always_inline int
@@ -596,6 +609,63 @@ acl_fa_find_session (acl_main_t * am, int is_ip6, u32 sw_if_index0,
     }
   return res;
 }
+
+always_inline u64
+acl_fa_make_session_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
+			  fa_5tuple_t * p5tuple)
+{
+  if (is_ip6)
+    return clib_bihash_hash_40_8 (&p5tuple->kv_40_8);
+  else
+    return clib_bihash_hash_16_8 (&p5tuple->kv_16_8);
+}
+
+always_inline void
+acl_fa_prefetch_session_bucket_for_hash (acl_main_t * am, int is_ip6,
+					 u64 hash)
+{
+  if (is_ip6)
+    clib_bihash_prefetch_bucket_40_8 (&am->fa_ip6_sessions_hash, hash);
+  else
+    clib_bihash_prefetch_bucket_16_8 (&am->fa_ip4_sessions_hash, hash);
+}
+
+always_inline void
+acl_fa_prefetch_session_data_for_hash (acl_main_t * am, int is_ip6, u64 hash)
+{
+  if (is_ip6)
+    clib_bihash_prefetch_data_40_8 (&am->fa_ip6_sessions_hash, hash);
+  else
+    clib_bihash_prefetch_data_16_8 (&am->fa_ip4_sessions_hash, hash);
+}
+
+always_inline int
+acl_fa_find_session_with_hash (acl_main_t * am, int is_ip6, u32 sw_if_index0,
+			       u64 hash, fa_5tuple_t * p5tuple,
+			       u64 * pvalue_sess)
+{
+  int res = 0;
+  if (is_ip6)
+    {
+      clib_bihash_kv_40_8_t kv_result;
+      kv_result.value = ~0ULL;
+      res = (clib_bihash_search_inline_2_with_hash_40_8
+	     (&am->fa_ip6_sessions_hash, hash, &p5tuple->kv_40_8,
+	      &kv_result) == 0);
+      *pvalue_sess = kv_result.value;
+    }
+  else
+    {
+      clib_bihash_kv_16_8_t kv_result;
+      kv_result.value = ~0ULL;
+      res = (clib_bihash_search_inline_2_with_hash_16_8
+	     (&am->fa_ip4_sessions_hash, hash, &p5tuple->kv_16_8,
+	      &kv_result) == 0);
+      *pvalue_sess = kv_result.value;
+    }
+  return res;
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON
