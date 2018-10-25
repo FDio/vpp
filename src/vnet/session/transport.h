@@ -20,9 +20,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/tcp/tcp_debug.h>
 
-/*
- * Protocol independent transport properties associated to a session
- */
 typedef struct _transport_stats
 {
   u64 tx_bytes;
@@ -36,6 +33,9 @@ typedef struct _spacer
   u64 last_update;
 } spacer_t;
 
+/*
+ * Protocol independent transport properties associated to a session
+ */
 typedef struct _transport_connection
 {
   /** Connection ID */
@@ -116,6 +116,10 @@ typedef enum _transport_proto
 
 u8 *format_transport_proto (u8 * s, va_list * args);
 u8 *format_transport_proto_short (u8 * s, va_list * args);
+u8 *format_transport_connection (u8 * s, va_list * args);
+u8 *format_transport_listen_connection (u8 * s, va_list * args);
+u8 *format_transport_half_open_connection (u8 * s, va_list * args);
+
 uword unformat_transport_proto (unformat_input_t * input, va_list * args);
 
 #define foreach_transport_connection_fields				\

@@ -16,7 +16,7 @@
 #include <vnet/session/session.h>
 
 u8 *
-format_stream_session_fifos (u8 * s, va_list * args)
+format_session_fifos (u8 * s, va_list * args)
 {
   stream_session_t *ss = va_arg (*args, stream_session_t *);
   int verbose = va_arg (*args, int);
@@ -58,36 +58,34 @@ format_stream_session (u8 * s, va_list * args)
 {
   stream_session_t *ss = va_arg (*args, stream_session_t *);
   int verbose = va_arg (*args, int);
-  transport_proto_vft_t *tp_vft;
+  u32 tp = session_get_transport_proto (ss);
   u8 *str = 0;
-  tp_vft = transport_protocol_get_vft (session_get_transport_proto (ss));
 
   if (verbose == 1 && ss->session_state >= SESSION_STATE_ACCEPTING)
-    str = format (0, "%-10u%-10u%-10lld",
+    str = format (0, "%-10u%-10u",
 		  svm_fifo_max_dequeue (ss->server_rx_fifo),
-		  svm_fifo_max_enqueue (ss->server_tx_fifo),
-		  session_get_index (ss));
+		  svm_fifo_max_dequeue (ss->server_tx_fifo));
 
   if (ss->session_state >= SESSION_STATE_ACCEPTING)
     {
-      s = format (s, "%U", tp_vft->format_connection, ss->connection_index,
-		  ss->thread_index, verbose);
+      s = format (s, "%U", format_transport_connection, tp,
+		  ss->connection_index, ss->thread_index, verbose);
       if (verbose == 1)
 	s = format (s, "%v", str);
       if (verbose > 1)
-	s = format (s, "%U", format_stream_session_fifos, ss, verbose);
+	s = format (s, "%U", format_session_fifos, ss, verbose);
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
-      s = format (s, "%-40U%v", tp_vft->format_listener, ss->connection_index,
-		  str);
+      s = format (s, "%-40U%v", format_transport_listen_connection,
+		  tp, ss->connection_index, str);
       if (verbose > 1)
-	s = format (s, "\n%U", format_stream_session_fifos, ss, verbose);
+	s = format (s, "\n%U", format_session_fifos, ss, verbose);
     }
   else if (ss->session_state == SESSION_STATE_CONNECTING)
     {
-      s = format (s, "%-40U%v", tp_vft->format_half_open,
-		  ss->connection_index, str);
+      s = format (s, "%-40U%v", format_transport_half_open_connection,
+		  tp, ss->connection_index, str);
     }
   else
     {
@@ -244,15 +242,15 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (do_listeners)
     {
       sst = session_type_from_proto_and_ip (transport_proto, 1);
-      vlib_cli_output (vm, "%-40s%-24s%-10s", "Listener", "App", "S-idx");
+      vlib_cli_output (vm, "%-40s%-24s", "Listener", "App");
       /* *INDENT-OFF* */
       pool_foreach (s, smm->sessions[0], ({
 	if (s->session_state != SESSION_STATE_LISTENING
 	    || s->session_type != sst)
 	  continue;
 	app_name = application_name_from_index (s->app_wrk_index);
-	vlib_cli_output (vm, "%U%-25v%-10u", format_stream_session, s, 1,
-			 app_name, s->session_index);
+	vlib_cli_output (vm, "%U%-25v%", format_stream_session, s, 1,
+			 app_name);
 	vec_free (app_name);
       }));
       /* *INDENT-ON* */
@@ -275,9 +273,8 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    {
 	      if (once_per_pool && verbose == 1)
 		{
-		  str = format (str, "%-50s%-15s%-10s%-10s%-10s",
-				"Connection", "State", "Rx-f", "Tx-f",
-				"S-idx");
+		  str = format (str, "%-50s%-15s%-10s%-10s",
+				"Connection", "State", "Rx-f", "Tx-f");
 		  vlib_cli_output (vm, "%v", str);
 		  vec_reset_length (str);
 		  once_per_pool = 0;
