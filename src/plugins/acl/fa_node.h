@@ -223,6 +223,15 @@ typedef struct {
    * Set to copy of a "generation" counter in main thread so we can sync the interrupts.
    */
   int interrupt_generation;
+   /*
+    * work in progress data for the pipelined node operation
+    */
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u32 sw_if_indices[VLIB_FRAME_SIZE];
+  fa_5tuple_t fa_5tuples[VLIB_FRAME_SIZE];
+  u64 hashes[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+
 } acl_fa_per_worker_data_t;
 
 
