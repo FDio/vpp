@@ -92,6 +92,23 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #ifndef EINVAL
 #define EINVAL 22
 #endif
+#ifndef ESRCH
+#define ESRCH 3
+#endif
+#ifndef EOVERFLOW
+#define EOVERFLOW 75
+#endif
+
+/*
+ * In order to provide smooth mapping from unsafe string API to the clib string
+ * macro, we often have to improvise s1max and s2max due to the additional
+ * arguments are required for implementing the safe API. This macro is used
+ * to provide the s1max/s2max. It is not perfect becuase the actual
+ * s1max/s2max may be greater than 4k and the mapping from the unsafe API to
+ * the macro would cause a regression. However, it is not terribly likely.
+ * So I bet against the odds.
+ */
+#define CLIB_STRING_MACRO_MAX 4096
 
 typedef int errno_t;
 typedef uword rsize_t;
@@ -691,6 +708,702 @@ clib_count_equal_u8 (u8 * data, uword max_count)
       count += 1;
     }
   return count;
+}
+
+/*
+ * This macro is to provide smooth mapping from memcmp to memcmp_s.
+ * memcmp has fewer parameters and fewer returns than memcmp_s.
+ * This macro is somewhat a crutch. When err != EOK is returned from memcmp_s,
+ * we return 0 and spit out a message in the console because there is
+ * no way to return the error code to the memcmp callers.
+ * This condition happens when s1 or s2 is null. Please note
+ * in the extant memcmp calls, if s1, s2, or both are null, memcmp returns 0
+ * anyway. So we are consistent in this case for the comparison return
+ * although we also spit out a C11 violation message in the console to
+ * warn that they pass null pointers for both s1 and s2.
+ * Applications are encouraged to use the cool C11 memcmp_s API to get the
+ * maximum benefit out of it.
+ */
+#define clib_memcmp(s1,s2,m1) \
+  ({ int __diff = 0;				       \
+    memcmp_s_inline (s1, m1, s2, m1, &__diff);	\
+    __diff; \
+  })
+
+errno_t memcmp_s (const void *s1, rsize_t s1max, const void *s2,
+		  rsize_t s2max, int *diff);
+
+always_inline errno_t
+memcmp_s_inline (const void *s1, rsize_t s1max, const void *s2, rsize_t s2max,
+		 int *diff)
+{
+  u8 bad;
+
+  bad = (s1 == 0) + (s2 == 0) + (diff == 0) + (s2max > s1max) + (s2max == 0) +
+    (s1max == 0);
+
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s1 == NULL)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (diff == NULL)
+	clib_c11_violation ("diff NULL");
+      if (s2max > s1max)
+	clib_c11_violation ("s2max > s1max");
+      if (s2max == 0)
+	clib_c11_violation ("s2max 0");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      return EINVAL;
+    }
+
+  if (PREDICT_FALSE (s1 == s2))
+    {
+      *diff = 0;
+      return EOK;
+    }
+
+  *diff = memcmp (s1, s2, s2max);
+  return EOK;
+}
+
+/*
+ * This macro is to provide smooth mapping from strnlen to strnlen_s
+ */
+#define clib_strnlen(s,m) strnlen_s_inline(s,m)
+
+size_t strnlen_s (const char *s, size_t maxsize);
+
+always_inline size_t
+strnlen_s_inline (const char *s, size_t maxsize)
+{
+  u8 bad;
+
+  bad = (s == 0) + (maxsize == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s == 0)
+	clib_c11_violation ("s NULL");
+      if (maxsize == 0)
+	clib_c11_violation ("maxsize 0");
+      return 0;
+    }
+  return strnlen (s, maxsize);
+}
+
+/*
+ * This macro is to provide smooth mapping from strcmp to strcmp_s.
+ * strcmp has fewer parameters and fewer returns than strcmp_s.
+ * This macro is somewhat a crutch. When err != EOK is returned from strcmp_s,
+ * we return 0 and spit out a message in the console because
+ * there is no way to return the error to the strcmp callers.
+ * This condition happens when s1 or s2 is null. Please note in the extant
+ * strcmp call, they would end up crashing if one of them is null.
+ * So the new behavior is no crash, but an error is displayed in the
+ * console which I think is more user friendly. If both s1 and s2 are null,
+ * strcmp returns 0. Obviously, strcmp did the pointers comparison prior
+ * to actually accessing the pointer contents. We are still consistent
+ * in this case for the comparison return although we also spit out a
+ * C11 violation message in the console to warn that they pass null pointers
+ * for both s1 and s2. The other problem is strcmp does not provide s1max,
+ * we use CLIB_STRING_MACRO_MAX and hopefully, s1 is null terminated.
+ * If not, we may be accessing memory beyonf what is intended.
+ * Applications are encouraged to use the cool C11 strcmp_s API to get the
+ * maximum benefit out of it.
+ */
+#define clib_strcmp(s1,s2) \
+  ({ int __indicator = 0; \
+    strcmp_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, &__indicator);	\
+    __indicator;			\
+  })
+
+errno_t strcmp_s (const char *s1, rsize_t s1max, const char *s2,
+		  int *indicator);
+
+always_inline errno_t
+strcmp_s_inline (const char *s1, rsize_t s1max, const char *s2,
+		 int *indicator)
+{
+  u8 bad;
+
+  bad = (indicator == 0) + (s1 == 0) + (s2 == 0) + (s1max == 0) +
+    (s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0');
+
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (indicator == NULL)
+	clib_c11_violation ("indicator NULL");
+      if (s1 == NULL)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      if (s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0')
+	clib_c11_violation ("s1 unterminated");
+      return EINVAL;
+    }
+
+  *indicator = strcmp (s1, s2);
+  return EOK;
+}
+
+/*
+ * This macro is to provide smooth mapping from strncmp to strncmp_s.
+ * strncmp has fewer parameters and fewer returns than strncmp_s. That said,
+ * this macro is somewhat a crutch. When we get err != EOK from strncmp_s,
+ * we return 0 and spit out a message in the console because there is no
+ * means to return the error to the strncmp caller.
+ * This condition happens when s1 or s2 is null. In the extant strncmp call,
+ * they would end up crashing if one of them is null. So the new behavior is
+ * no crash, but error is displayed in the console which is more
+ * user friendly. If s1 and s2 are null, strncmp returns 0. Obviously,
+ * strncmp did the pointers comparison prior to actually accessing the
+ * pointer contents. We are still consistent in this case for the comparison
+ * return although we also spit out a C11 violation message in the console to
+ * warn that they pass null pointers for both s1 and s2.
+ * Applications are encouraged to use the cool C11 strncmp_s API to get the
+ * maximum benefit out of it.
+ */
+#define clib_strncmp(s1,s2,n) \
+  ({ int __indicator = 0; \
+    strncmp_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, n, &__indicator);	\
+    __indicator;			\
+  })
+
+errno_t strncmp_s (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
+		   int *indicator);
+
+always_inline errno_t
+strncmp_s_inline (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
+		  int *indicator)
+{
+  u8 bad;
+  u8 s1_greater_s1max = (s1 && s1max && n > clib_strnlen (s1, s1max));
+
+  if (PREDICT_FALSE (s1_greater_s1max && indicator))
+    {
+      /*
+       * strcmp allows n > s1max. If indicator is non null, we can still
+       * do the compare without any harm and return EINVAL as well as the
+       * result in indicator.
+       */
+      clib_c11_violation ("n exceeds s1 length");
+      *indicator = strncmp (s1, s2, n);
+      return EINVAL;
+    }
+
+  bad = (s1 == 0) + (s2 == 0) + (indicator == 0) + (s1max == 0) +
+    (s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0') + s1_greater_s1max;
+
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (indicator == NULL)
+	clib_c11_violation ("indicator NULL");
+      if (s1 == NULL)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      if (s1 && s1max && s1[clib_strnlen (s1, s1max)] != '\0')
+	clib_c11_violation ("s1 unterminated");
+      if (s1_greater_s1max)
+	clib_c11_violation ("n exceeds s1 length");
+      return EINVAL;
+    }
+
+  *indicator = strncmp (s1, s2, n);
+  return EOK;
+}
+
+/*
+ * This macro is provided for smooth migration from strcpy. It is not perfect
+ * because we don't know the size of the destination buffer to pass to strcpy_s.
+ * We improvise dmax with CLIB_STRING_MACRO_MAX.
+ * Applications are encouraged to move to the C11 strcpy_s API.
+ */
+#define clib_strcpy(d,s) strcpy_s_inline(d,CLIB_STRING_MACRO_MAX,s)
+
+errno_t strcpy_s (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src);
+
+always_inline errno_t
+strcpy_s_inline (char *__restrict__ dest, rsize_t dmax,
+		 const char *__restrict__ src)
+{
+  u8 bad;
+  uword low, hi;
+  size_t n;
+
+  bad = (dest == 0) + (dmax == 0) + (src == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  n = clib_strnlen (src, dmax);
+  if (PREDICT_FALSE (n >= dmax))
+    {
+      clib_c11_violation ("not enough space for dest");
+      return (EINVAL);
+    }
+  /* Not actually trying to copy anything is OK */
+  if (PREDICT_FALSE (n == 0))
+    return EOK;
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (n - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  clib_memcpy_fast (dest, src, n);
+  dest[n] = '\0';
+  return EOK;
+}
+
+/*
+ * This macro is provided for smooth migration from strncpy. It is not perfect
+ * because we don't know the size of the destination buffer to pass to
+ * strncpy_s. We improvise dmax with CLIB_STRING_MACRO_MAX.
+ * Applications are encouraged to move to the C11 strncpy_s API and provide
+ * the correct dmax for better error checking.
+ */
+#define clib_strncpy(d,s,n) strncpy_s_inline(d,CLIB_STRING_MACRO_MAX,s,n)
+
+errno_t
+strncpy_s (char *__restrict__ dest, rsize_t dmax,
+	   const char *__restrict__ src, rsize_t n);
+
+always_inline errno_t
+strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src, rsize_t n)
+{
+  u8 bad;
+  uword low, hi;
+  rsize_t m;
+  errno_t status = EOK;
+
+  bad = (dest == 0) + (dmax == 0) + (src == 0) + (n == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      /* Not actually trying to copy anything is OK */
+      if (n == 0)
+	return EOK;
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  if (PREDICT_FALSE (n >= dmax))
+    {
+      /* Relax and use strnlen of src */
+      clib_c11_violation ("n >= dmax");
+      m = clib_strnlen (src, dmax);
+      if (m >= dmax)
+	{
+	  /* Truncate, adjust copy length to fit dest */
+	  m = dmax - 1;
+	  status = EOVERFLOW;
+	}
+    }
+  else
+    m = n;
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (m - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  clib_memcpy_fast (dest, src, m);
+  dest[m] = '\0';
+  return status;
+}
+
+/*
+ * This macro is to provide smooth migration from strcat to strcat_s.
+ * Because there is no dmax in strcat, we improvise it with
+ * CLIB_STRING_MACRO_MAX. Please note there may be a chance to overwrite dest
+ * with too many bytes from src.
+ * Applications are encouraged to use C11 API to provide the actual dmax
+ * for proper checking and protection.
+ */
+#define clib_strcat(d,s) strcat_s_inline(d,CLIB_STRING_MACRO_MAX,s)
+
+errno_t strcat_s (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src);
+
+always_inline errno_t
+strcat_s_inline (char *__restrict__ dest, rsize_t dmax,
+		 const char *__restrict__ src)
+{
+  u8 bad;
+  uword low, hi;
+  size_t m, n, dest_size;
+
+  bad = (dest == 0) + (dmax == 0) + (src == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  dest_size = clib_strnlen (dest, dmax);
+  m = dmax - dest_size;
+  n = clib_strnlen (src, m);
+  if (PREDICT_FALSE (n >= m))
+    {
+      clib_c11_violation ("not enough space for dest");
+      return EINVAL;
+    }
+
+  /* Not actually trying to concatenate anything is OK */
+  if (PREDICT_FALSE (n == 0))
+    return EOK;
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (n - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  clib_memcpy_fast (dest + dest_size, src, n);
+  dest[dest_size + n] = '\0';
+  return EOK;
+}
+
+/*
+ * This macro is to provide smooth migration from strncat to strncat_s.
+ * The unsafe strncat does not have s1max. We improvise it with
+ * CLIB_STRING_MACRO_MAX. Please note there may be a chance to overwrite
+ * dest with too many bytes from src.
+ * Applications are encouraged to move to C11 strncat_s which requires dmax
+ * from the caller and provides checking to safeguard the memory corruption.
+ */
+#define clib_strncat(d,s,n) strncat_s_inline(d,CLIB_STRING_MACRO_MAX,s,n)
+
+errno_t strncat_s (char *__restrict__ dest, rsize_t dmax,
+		   const char *__restrict__ src, rsize_t n);
+
+always_inline errno_t
+strncat_s_inline (char *__restrict__ dest, rsize_t dmax,
+		  const char *__restrict__ src, rsize_t n)
+{
+  u8 bad;
+  uword low, hi;
+  size_t m, dest_size, allowed_size;
+  errno_t status = EOK;
+
+  bad = (dest == 0) + (src == 0) + (dmax == 0) + (n == 0);
+  if (PREDICT_FALSE (bad != 0))
+    {
+      /* Not actually trying to concatenate anything is OK */
+      if (n == 0)
+	return EOK;
+      if (dest == 0)
+	clib_c11_violation ("dest NULL");
+      if (src == 0)
+	clib_c11_violation ("src NULL");
+      if (dmax == 0)
+	clib_c11_violation ("dmax 0");
+      return EINVAL;
+    }
+
+  /* Check for src/dst overlap, which is not allowed */
+  low = (uword) (src < dest ? src : dest);
+  hi = (uword) (src < dest ? dest : src);
+
+  if (PREDICT_FALSE (low + (n - 1) >= hi))
+    {
+      clib_c11_violation ("src/dest overlap");
+      return EINVAL;
+    }
+
+  dest_size = clib_strnlen (dest, dmax);
+  allowed_size = dmax - dest_size;
+
+  if (PREDICT_FALSE (allowed_size == 0))
+    {
+      clib_c11_violation ("no space left in dest");
+      return (EINVAL);
+    }
+
+  if (PREDICT_FALSE (n >= allowed_size))
+    {
+      /*
+       * unlike strcat_s, strncat_s will do the concatenation anyway when
+       * there is not enough space in dest. But it will do the truncation and
+       * null terminate dest
+       */
+      m = clib_strnlen (src, allowed_size);
+      if (m >= allowed_size)
+	{
+	  m = allowed_size - 1;
+	  status = EOVERFLOW;
+	}
+    }
+  else
+    m = clib_strnlen (src, n);
+
+  clib_memcpy_fast (dest + dest_size, src, m);
+  dest[dest_size + m] = '\0';
+  return status;
+}
+
+/*
+ * This macro is to provide smooth mapping from strtok_r to strtok_s.
+ * To map strtok to this macro, the caller would have to supply an additional
+ * argument. strtokr_s requires s1max which the unsafe API does not have. So
+ * we have to improvise it with CLIB_STRING_MACRO_MAX. Unlike strtok_s,
+ * this macro cannot catch unterminated s1 and s2.
+ * Applications are encouraged to use the cool C11 strtok_s API to avoid
+ * these problems.
+ */
+#define clib_strtok(s1,s2,p)		   \
+  ({ rsize_t __s1max = CLIB_STRING_MACRO_MAX;	\
+    strtok_s_inline (s1, &__s1max, s2, p);		\
+  })
+
+char *strtok_s (char *__restrict__ s1, rsize_t * __restrict__ s1max,
+		const char *__restrict__ s2, char **__restrict__ ptr);
+
+always_inline char *
+strtok_s_inline (char *__restrict__ s1, rsize_t * __restrict__ s1max,
+		 const char *__restrict__ s2, char **__restrict__ ptr)
+{
+#define STRTOK_DELIM_MAX_LEN 16
+  u8 bad;
+  const char *pt;
+  char *ptoken;
+  uword dlen, slen;
+
+  bad = (s1max == 0) + (s2 == 0) + (ptr == 0) +
+    ((s1 == 0) && ptr && (*ptr == 0));
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s2 == NULL)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == NULL)
+	clib_c11_violation ("s1max is NULL");
+      if (ptr == NULL)
+	clib_c11_violation ("ptr is NULL");
+      /* s1 == 0 and *ptr == null is no good */
+      if ((s1 == 0) && ptr && (*ptr == 0))
+	clib_c11_violation ("s1 and ptr contents are NULL");
+      return 0;
+    }
+
+  if (s1 == 0)
+    s1 = *ptr;
+
+  /*
+   * scan s1 for a delimiter
+   */
+  dlen = *s1max;
+  ptoken = 0;
+  while (*s1 != '\0' && !ptoken)
+    {
+      if (PREDICT_FALSE (dlen == 0))
+	{
+	  *ptr = 0;
+	  clib_c11_violation ("s1 unterminated");
+	  return 0;
+	}
+
+      /*
+       * must scan the entire delimiter list
+       * ISO should have included a delimiter string limit!!
+       */
+      slen = STRTOK_DELIM_MAX_LEN;
+      pt = s2;
+      while (*pt != '\0')
+	{
+	  if (PREDICT_FALSE (slen == 0))
+	    {
+	      *ptr = 0;
+	      clib_c11_violation ("s2 unterminated");
+	      return 0;
+	    }
+	  slen--;
+	  if (*s1 == *pt)
+	    {
+	      ptoken = 0;
+	      break;
+	    }
+	  else
+	    {
+	      pt++;
+	      ptoken = s1;
+	    }
+	}
+      s1++;
+      dlen--;
+    }
+
+  /*
+   * if the beginning of a token was not found, then no
+   * need to continue the scan.
+   */
+  if (ptoken == 0)
+    {
+      *s1max = dlen;
+      return (ptoken);
+    }
+
+  /*
+   * Now we need to locate the end of the token
+   */
+  while (*s1 != '\0')
+    {
+      if (dlen == 0)
+	{
+	  *ptr = 0;
+	  clib_c11_violation ("s1 unterminated");
+	  return 0;
+	}
+
+      slen = STRTOK_DELIM_MAX_LEN;
+      pt = s2;
+      while (*pt != '\0')
+	{
+	  if (slen == 0)
+	    {
+	      *ptr = 0;
+	      clib_c11_violation ("s2 unterminated");
+	      return 0;
+	    }
+	  slen--;
+	  if (*s1 == *pt)
+	    {
+	      /*
+	       * found a delimiter, set to null
+	       * and return context ptr to next char
+	       */
+	      *s1 = '\0';
+	      *ptr = (s1 + 1);	/* return pointer for next scan */
+	      *s1max = dlen - 1;	/* account for the nulled delimiter */
+	      return (ptoken);
+	    }
+	  else
+	    {
+	      /*
+	       * simply scanning through the delimiter string
+	       */
+	      pt++;
+	    }
+	}
+      s1++;
+      dlen--;
+    }
+
+  *ptr = s1;
+  *s1max = dlen;
+  return (ptoken);
+}
+
+/*
+ * This macro is to provide smooth mapping from strstr to strstr_s.
+ * strstr_s requires s1max and s2max which the unsafe API does not have. So
+ * we have to improvise them with CLIB_STRING_MACRO_MAX which may cause us
+ * to access memory beyond it is intended if s1 or s2 is unterminated.
+ * For the record, strstr crashes if s1 or s2 is unterminated. But this macro
+ * does not.
+ * Applications are encouraged to use the cool C11 strstr_s API to avoid
+ * this problem.
+ */
+#define clib_strstr(s1,s2) \
+  ({ char * __substring = 0; \
+    strstr_s_inline (s1, CLIB_STRING_MACRO_MAX, s2, CLIB_STRING_MACRO_MAX, \
+		     &__substring);		 \
+    __substring;				 \
+  })
+
+errno_t strstr_s (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
+		  char **substring);
+
+always_inline errno_t
+strstr_s_inline (char *s1, rsize_t s1max, const char *s2, rsize_t s2max,
+		 char **substring)
+{
+  u8 bad;
+  size_t s1_size, s2_size;
+
+  bad =
+    (s1 == 0) + (s2 == 0) + (substring == 0) + (s1max == 0) + (s2max == 0) +
+    (s1 && s1max && (s1[clib_strnlen (s1, s1max)] != '\0')) +
+    (s2 && s2max && (s2[clib_strnlen (s2, s2max)] != '\0'));
+  if (PREDICT_FALSE (bad != 0))
+    {
+      if (s1 == 0)
+	clib_c11_violation ("s1 NULL");
+      if (s2 == 0)
+	clib_c11_violation ("s2 NULL");
+      if (s1max == 0)
+	clib_c11_violation ("s1max 0");
+      if (s2max == 0)
+	clib_c11_violation ("s2max 0");
+      if (substring == 0)
+	clib_c11_violation ("substring NULL");
+      if (s1 && s1max && (s1[clib_strnlen (s1, s1max)] != '\0'))
+	clib_c11_violation ("s1 unterminated");
+      if (s2 && s2max && (s2[clib_strnlen (s2, s1max)] != '\0'))
+	clib_c11_violation ("s2 unterminated");
+      return EINVAL;
+    }
+
+  /*
+   * s2 points to a string with zero length, or s2 equals s1, return s1
+   */
+  if (PREDICT_FALSE (*s2 == '\0' || s1 == s2))
+    {
+      *substring = s1;
+      return EOK;
+    }
+
+  /*
+   * s2_size > s1_size, it won't find match.
+   */
+  s1_size = clib_strnlen (s1, s1max);
+  s2_size = clib_strnlen (s2, s2max);
+  if (PREDICT_FALSE (s2_size > s1_size))
+    return ESRCH;
+
+  *substring = strstr (s1, s2);
+  if (*substring == 0)
+    return ESRCH;
+
+  return EOK;
 }
 
 #endif /* included_clib_string_h */
