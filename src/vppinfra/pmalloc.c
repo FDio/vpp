@@ -62,6 +62,7 @@ int
 clib_pmalloc_init (clib_pmalloc_main_t * pm, uword size)
 {
   uword off, pagesize;
+  u64 *pt = 0;
 
   ASSERT (pm->error == 0);
 
@@ -69,6 +70,11 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword size)
   pm->def_log2_page_sz = min_log2 (pagesize);
   pm->sys_log2_page_sz = min_log2 (sysconf (_SC_PAGESIZE));
   pm->lookup_log2_page_sz = pm->def_log2_page_sz;
+
+  /* check if pagemap is accessible */
+  pt = clib_mem_vm_get_paddr (&pt, pm->sys_log2_page_sz, 1);
+  if (pt == 0 || pt[0] == 0)
+    pm->flags |= CLIB_PMALLOC_F_NO_PAGEMAP;
 
   size = size ? size : ((u64) DEFAULT_RESERVED_MB) << 20;
   size = round_pow2 (size, pagesize);
@@ -206,9 +212,19 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
   vec_validate_aligned (pm->lookup_table, vec_len (pm->pages) *
 			elts_per_page - 1, CLIB_CACHE_LINE_BYTES);
 
-  fd = open ((char *) "/proc/self/pagemap", O_RDONLY);
-
   p = first * elts_per_page;
+  if (pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP)
+    {
+      while (p < elts_per_page * count)
+	{
+	  pm->lookup_table[p] = pointer_to_uword (pm->base) +
+	    (p << pm->lookup_log2_page_sz);
+	  p++;
+	}
+      return;
+    }
+
+  fd = open ((char *) "/proc/self/pagemap", O_RDONLY);
   while (p < elts_per_page * count)
     {
       va = pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
@@ -273,10 +289,13 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       return 0;
     }
 
-  mmap_flags = MAP_FIXED | MAP_ANONYMOUS | MAP_LOCKED;
+  mmap_flags = MAP_FIXED | MAP_ANONYMOUS;
+
+  if ((pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP) == 0)
+    mmap_flags |= MAP_LOCKED;
 
   if (a->log2_subpage_sz != pm->sys_log2_page_sz)
-    mmap_flags |= MAP_HUGETLB;
+    mmap_flags |= MAP_HUGETLB | MAP_LOCKED;
 
   if (a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM)
     {
@@ -628,9 +647,10 @@ format_pmalloc (u8 * s, va_list * va)
   clib_pmalloc_arena_t *a;
 
   s = format (s, "used-pages %u reserved-pages %u default-page-size %U "
-	      "lookup-page-size %U", vec_len (pm->pages), pm->max_pages,
+	      "lookup-page-size %U%s", vec_len (pm->pages), pm->max_pages,
 	      format_log2_page_size, pm->def_log2_page_sz,
-	      format_log2_page_size, pm->lookup_log2_page_sz);
+	      format_log2_page_size, pm->lookup_log2_page_sz,
+	      pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP ? " no-pagemap" : "");
 
 
   if (verbose >= 2)
