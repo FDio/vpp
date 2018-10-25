@@ -152,13 +152,15 @@ u8 *
 format_ooo_list (u8 * s, va_list * args)
 {
   svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
+  u32 indent = va_arg (*args, u32);
   u32 ooo_segment_index = f->ooos_list_head;
   ooo_segment_t *seg;
 
   while (ooo_segment_index != OOO_SEGMENT_INVALID_INDEX)
     {
       seg = pool_elt_at_index (f->ooo_segments, ooo_segment_index);
-      s = format (s, "  %U\n", format_ooo_segment, f, seg);
+      s = format (s, "%U%U\n", format_white_space, indent, format_ooo_segment,
+		  f, seg);
       ooo_segment_index = seg->next;
     }
 
@@ -170,27 +172,30 @@ format_svm_fifo (u8 * s, va_list * args)
 {
   svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
   int verbose = va_arg (*args, int);
+  u32 indent;
 
   if (!s)
     return s;
 
+  indent = format_get_indent (s);
   s = format (s, "cursize %u nitems %u has_event %d\n",
 	      f->cursize, f->nitems, f->has_event);
-  s = format (s, " head %d tail %d segment manager %u\n", f->head, f->tail,
-	      f->segment_manager);
+  s = format (s, "%Uhead %d tail %d segment manager %u\n", format_white_space,
+	      indent, f->head, f->tail, f->segment_manager);
 
   if (verbose > 1)
-    s = format
-      (s, " vpp session %d thread %d app session %d thread %d\n",
-       f->master_session_index, f->master_thread_index,
-       f->client_session_index, f->client_thread_index);
+    s = format (s, "%Uvpp session %d thread %d app session %d thread %d\n",
+		format_white_space, indent, f->master_session_index,
+		f->master_thread_index, f->client_session_index,
+		f->client_thread_index);
 
   if (verbose)
     {
-      s = format (s, " ooo pool %d active elts newest %u\n",
-		  pool_elts (f->ooo_segments), f->ooos_newest);
+      s = format (s, "%Uooo pool %d active elts newest %u\n",
+		  format_white_space, indent, pool_elts (f->ooo_segments),
+		  f->ooos_newest);
       if (svm_fifo_has_ooo_data (f))
-	s = format (s, " %U", format_ooo_list, f, verbose);
+	s = format (s, " %U", format_ooo_list, f, indent, verbose);
     }
   return s;
 }

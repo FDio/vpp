@@ -89,7 +89,7 @@ extern transport_proto_vft_t *tp_vfts;
 #define transport_proto_foreach(VAR, BODY)			\
 do {								\
     for (VAR = 0; VAR < vec_len (tp_vfts); VAR++)		\
-      if (tp_vfts[VAR].push_header != 0)				\
+      if (tp_vfts[VAR].push_header != 0)			\
 	do { BODY; } while (0);					\
 } while (0)
 

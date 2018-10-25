@@ -737,7 +737,6 @@ format_tcp_timers (u8 * s, va_list * args)
     if (tc->timers[i] != TCP_TIMER_HANDLE_INVALID)
       last = i;
 
-  s = format (s, "[");
   for (i = 0; i < last; i++)
     {
       if (tc->timers[i] != TCP_TIMER_HANDLE_INVALID)
@@ -745,9 +744,7 @@ format_tcp_timers (u8 * s, va_list * args)
     }
 
   if (last >= 0)
-    s = format (s, "%s]", tcp_conn_timers[i]);
-  else
-    s = format (s, "]");
+    s = format (s, "%s", tcp_conn_timers[i]);
 
   return s;
 }
@@ -772,11 +769,30 @@ tcp_rcv_wnd_available (tcp_connection_t * tc)
 }
 
 static u8 *
+format_tcp_congestion (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "%U ", format_tcp_congestion_status, tc);
+  s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
+	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
+  s = format (s, "%Ucc space %u prev_ssthresh %u snd_congestion %u"
+	      " dupack %u\n", format_white_space, indent,
+	      tcp_available_cc_snd_space (tc), tc->prev_ssthresh,
+	      tc->snd_congestion - tc->iss, tc->rcv_dupacks);
+  s = format (s, "%Utsecr %u tsecr_last_ack %u limited_transmit %u\n",
+	      format_white_space, indent, tc->rcv_opts.tsecr,
+	      tc->tsecr_last_ack, tc->limited_transmit - tc->iss);
+  return s;
+}
+
+static u8 *
 format_tcp_vars (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  s = format (s, " flags: %U timers: %U\n", format_tcp_connection_flags, tc,
-	      format_tcp_timers, tc);
+  s = format (s, " index: %u flags: %U timers: %U\n", tc->c_c_index,
+	      format_tcp_connection_flags, tc, format_tcp_timers, tc);
   s = format (s, " snd_una %u snd_nxt %u snd_una_max %u",
 	      tc->snd_una - tc->iss, tc->snd_nxt - tc->iss,
 	      tc->snd_una_max - tc->iss);
@@ -786,30 +802,20 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->snd_wnd, tc->rcv_wnd, tc->rcv_wscale);
   s = format (s, "snd_wl1 %u snd_wl2 %u\n", tc->snd_wl1 - tc->irs,
 	      tc->snd_wl2 - tc->iss);
-  s = format (s, " flight size %u out space %u cc space %u rcv_wnd_av %u\n",
+  s = format (s, " flight size %u out space %u rcv_wnd_av %u\n",
 	      tcp_flight_size (tc), tcp_available_output_snd_space (tc),
-	      tcp_available_cc_snd_space (tc), tcp_rcv_wnd_available (tc));
-  s = format (s, " cong %U ", format_tcp_congestion_status, tc);
-  s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
-	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
-  s = format (s, " prev_ssthresh %u snd_congestion %u dupack %u",
-	      tc->prev_ssthresh, tc->snd_congestion - tc->iss,
-	      tc->rcv_dupacks);
-  s = format (s, " limited_transmit %u\n", tc->limited_transmit - tc->iss);
-  s = format (s, " tsecr %u tsecr_last_ack %u\n", tc->rcv_opts.tsecr,
-	      tc->tsecr_last_ack);
-  s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %2.5f ",
-	      tc->rto, tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
-  s = format (s, "rtt_seq %u\n", tc->rtt_seq);
+	      tcp_rcv_wnd_available (tc));
   s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
 	      tcp_time_now () - tc->tsval_recent_age);
+  s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %2.5f ",
+	      tc->rto, tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
+  s = format (s, "rtt_seq %u\n", tc->rtt_seq - tc->iss);
+  s = format (s, " cong:   %U", format_tcp_congestion, tc);
+
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
-      s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
+      s = format (s, " sboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
 		  tc);
-      if (transport_connection_is_tx_paced (&tc->connection))
-	s = format (s, " pacer: %U\n", format_transport_pacer,
-		    &tc->connection.pacer);
     }
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
@@ -825,15 +831,15 @@ format_tcp_connection_id (u8 * s, va_list * args)
     return s;
   if (tc->c_is_ip4)
     {
-      s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",
-		  format_ip4_address, &tc->c_lcl_ip4,
+      s = format (s, "[%d:%d][%s] %U:%d->%U:%d", tc->c_thread_index,
+		  tc->c_s_index, "T", format_ip4_address, &tc->c_lcl_ip4,
 		  clib_net_to_host_u16 (tc->c_lcl_port), format_ip4_address,
 		  &tc->c_rmt_ip4, clib_net_to_host_u16 (tc->c_rmt_port));
     }
   else
     {
-      s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",
-		  format_ip6_address, &tc->c_lcl_ip6,
+      s = format (s, "[%d:%d][%s] %U:%d->%U:%d", tc->c_thread_index,
+		  tc->c_s_index, "T", format_ip6_address, &tc->c_lcl_ip6,
 		  clib_net_to_host_u16 (tc->c_lcl_port), format_ip6_address,
 		  &tc->c_rmt_ip6, clib_net_to_host_u16 (tc->c_rmt_port));
     }
@@ -958,23 +964,26 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   sack_scoreboard_t *sb = va_arg (*args, sack_scoreboard_t *);
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   sack_scoreboard_hole_t *hole;
+  u32 indent = format_get_indent (s);
+
   s = format (s, "sacked_bytes %u last_sacked_bytes %u lost_bytes %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes);
-  s = format (s, " last_bytes_delivered %u high_sacked %u snd_una_adv %u\n",
-	      sb->last_bytes_delivered, sb->high_sacked - tc->iss,
-	      sb->snd_una_adv);
-  s = format (s, " cur_rxt_hole %u high_rxt %u rescue_rxt %u",
-	      sb->cur_rxt_hole, sb->high_rxt - tc->iss,
-	      sb->rescue_rxt - tc->iss);
+  s = format (s, "%Ulast_bytes_delivered %u high_sacked %u snd_una_adv %u\n",
+	      format_white_space, indent, sb->last_bytes_delivered,
+	      sb->high_sacked - tc->iss, sb->snd_una_adv);
+  s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u",
+	      format_white_space, indent, sb->cur_rxt_hole,
+	      sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
 
   hole = scoreboard_first_hole (sb);
   if (hole)
-    s = format (s, "\n head %u tail %u %u holes:\n", sb->head, sb->tail,
-		pool_elts (sb->holes));
+    s = format (s, "\n%Uhead %u tail %u %u holes:\n", format_white_space,
+		indent, sb->head, sb->tail, pool_elts (sb->holes));
 
   while (hole)
     {
-      s = format (s, "%U", format_tcp_sack_hole, hole, tc);
+      s = format (s, "%U%U", format_white_space, indent, format_tcp_sack_hole,
+		  hole, tc);
       hole = scoreboard_next_hole (sb, hole);
     }
 

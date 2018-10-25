@@ -93,6 +93,63 @@ format_transport_proto_short (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_transport_connection (u8 * s, va_list * args)
+{
+  u32 transport_proto = va_arg (*args, u32);
+  u32 conn_index = va_arg (*args, u32);
+  u32 thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
+  transport_proto_vft_t *tp_vft;
+  transport_connection_t *tc;
+  u32 indent;
+
+  tp_vft = transport_protocol_get_vft (transport_proto);
+  if (!tp_vft)
+    return s;
+
+  s = format (s, "%U", tp_vft->format_connection, conn_index, thread_index,
+	      verbose);
+  tc = tp_vft->get_connection (conn_index, thread_index);
+  if (tc && transport_connection_is_tx_paced (tc) && verbose > 1)
+    {
+      indent = format_get_indent (s) + 1;
+      s = format (s, "%Upacer: %U\n", format_white_space, indent,
+		  format_transport_pacer, &tc->pacer);
+    }
+  return s;
+}
+
+u8 *
+format_transport_listen_connection (u8 * s, va_list * args)
+{
+  u32 transport_proto = va_arg (*args, u32);
+  u32 listen_index = va_arg (*args, u32);
+  transport_proto_vft_t *tp_vft;
+
+  tp_vft = transport_protocol_get_vft (transport_proto);
+  if (!tp_vft)
+    return s;
+
+  s = format (s, "%U", tp_vft->format_listener, listen_index);
+  return s;
+}
+
+u8 *
+format_transport_half_open_connection (u8 * s, va_list * args)
+{
+  u32 transport_proto = va_arg (*args, u32);
+  u32 listen_index = va_arg (*args, u32);
+  transport_proto_vft_t *tp_vft;
+
+  tp_vft = transport_protocol_get_vft (transport_proto);
+  if (!tp_vft)
+    return s;
+
+  s = format (s, "%U", tp_vft->format_half_open, listen_index);
+  return s;
+}
+
 uword
 unformat_transport_proto (unformat_input_t * input, va_list * args)
 {
