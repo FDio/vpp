@@ -209,7 +209,6 @@ typedef struct vlib_main_t
 
   /* Vector of pending RPC requests */
   uword *pending_rpc_requests;
-  clib_spinlock_t pending_rpc_lock;
 
 } vlib_main_t;
 
