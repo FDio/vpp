@@ -60,6 +60,10 @@ typedef struct
 
 typedef struct
 {
+  /* flags */
+  u32 flags;
+#define CLIB_PMALLOC_F_NO_PAGEMAP (1 << 0)
+
   /* base VA address */
   u8 *base;
 
