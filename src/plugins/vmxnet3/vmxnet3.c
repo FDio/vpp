@@ -185,7 +185,7 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
   shared->interrupt.event_intr_index = 1;
   shared->interrupt.control = VMXNET3_IC_DISABLE_ALL;
   shared->rx_filter.mode = VMXNET3_RXMODE_UCAST | VMXNET3_RXMODE_BCAST |
-    VMXNET3_RXMODE_ALL_MULTI;
+    VMXNET3_RXMODE_ALL_MULTI | VMXNET3_RXMODE_PROMISC;
   shared_dma = vmxnet3_dma_addr (vm, vd, shared);
 
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_DSAL, shared_dma);
