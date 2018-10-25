@@ -1545,12 +1545,19 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
     esrc = fib_entry_src_find(fib_entry, source);
     if (NULL == esrc)
     {
+	const dpo_id_t *dpo;
+
+	if (flags == FIB_ENTRY_FLAG_EXCLUSIVE) {
+	    dpo = &rpath->dpo;
+	} else {
+	    dpo = drop_dpo_get(fib_entry_get_dpo_proto(fib_entry));
+	}
+
 	fib_entry =
             fib_entry_src_action_add(fib_entry,
                                      source,
                                      flags,
-                                     drop_dpo_get(
-                                         fib_entry_get_dpo_proto(fib_entry)));
+                                     dpo);
 	esrc = fib_entry_src_find(fib_entry, source);
     }
 
@@ -1606,11 +1613,18 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 
     if (NULL == esrc)
     {
+	const dpo_id_t *dpo;
+
+	if (flags == FIB_ENTRY_FLAG_EXCLUSIVE) {
+	    dpo = &rpaths->dpo;
+	} else {
+	    dpo = drop_dpo_get(fib_entry_get_dpo_proto(fib_entry));
+	}
+
         fib_entry = fib_entry_src_action_add(fib_entry,
 					     source,
 					     flags,
-                                             drop_dpo_get(
-                                                 fib_entry_get_dpo_proto(fib_entry)));
+                                             dpo);
 	esrc = fib_entry_src_find(fib_entry, source);
     }
     else
