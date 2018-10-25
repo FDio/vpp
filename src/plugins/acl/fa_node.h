@@ -118,7 +118,9 @@ typedef struct {
   u8 deleted;             /* +1 bytes = 18 */
   u8 is_ip6;              /* +1 bytes = 19 */
   u8 reserved1[5];        /* +5 bytes = 24 */
-  u64 reserved2[5];       /* +5*8 bytes = 64 */
+  u64 n_packets;          /* +8 bytes = 32 */
+  u64 n_bytes;            /* +8 bytes = 40 */
+  u64 reserved2[3];       /* +3*8 bytes = 64 */
 } fa_session_t;
 
 #define FA_POLICY_EPOCH_MASK 0x7fff
