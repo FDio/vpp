@@ -112,7 +112,7 @@ build-rpm: $(DEV_RPM)
 install-rpm:
 ifneq ($(INSTALLED_RPM_VER),$(RPM_VER)-$(PKG_SUFFIX))
 	@$(MAKE) $(DEV_RPM)
-	sudo rpm -Uih $(DEV_RPM)
+	sudo rpm -Uih --force $(DEV_RPM)
 else
 	@echo "=========================================================="
 	@echo " Up-to-date DPDK package already installed"
