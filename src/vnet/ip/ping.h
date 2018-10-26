@@ -32,6 +32,7 @@ typedef enum
   _ (NO_INTERFACE, "no egress interface")                             \
   _ (NO_TABLE, "no IPv6 Table for lookup")                            \
   _ (NO_SRC_ADDRESS, "no source address for egress interface")        \
+  _ (NO_BUFFERS, "could not allocate a new buffer")                   \
 
 typedef enum
 {
@@ -46,19 +47,17 @@ typedef enum
 typedef struct ping_run_t
 {
   u16 icmp_id;
-  u16 curr_seq;
   uword cli_process_id;
-  uword cli_thread_index;
 } ping_run_t;
 
 typedef struct ping_main_t
 {
   ip6_main_t *ip6_main;
   ip4_main_t *ip4_main;
-  ping_run_t *ping_runs;
-  /* hash table to find back the CLI process for a reply */
-  // uword *cli_proc_by_icmp_id;
-  ping_run_t *ping_run_by_icmp_id;
+  /* a vector of current ping runs. */
+  ping_run_t *active_ping_runs;
+  /* a lock held while add/remove/search on active_ping_runs */
+  clib_spinlock_t ping_run_check_lock;
 } ping_main_t;
 
 extern ping_main_t ping_main;
@@ -105,16 +104,9 @@ typedef struct
 
 typedef enum
 {
-  ICMP6_ECHO_REPLY_NEXT_DROP,
-  ICMP6_ECHO_REPLY_NEXT_PUNT,
-  ICMP6_ECHO_REPLY_N_NEXT,
-} icmp6_echo_reply_next_t;
-
-typedef enum
-{
-  ICMP4_ECHO_REPLY_NEXT_DROP,
-  ICMP4_ECHO_REPLY_NEXT_PUNT,
-  ICMP4_ECHO_REPLY_N_NEXT,
-} icmp4_echo_reply_next_t;
+  ICMP46_ECHO_REPLY_NEXT_DROP,
+  ICMP46_ECHO_REPLY_NEXT_PUNT,
+  ICMP46_ECHO_REPLY_N_NEXT,
+} icmp46_echo_reply_next_t;
 
 #endif /* included_vnet_ping_h */
