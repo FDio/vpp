@@ -90,6 +90,8 @@ function create () {
 		vfid=$(basename ${vf_path//virtfn/})
 		mac="${mac_prefix}:$(printf "%02x" ${vfid})"
 		sudo ip link set dev ${netdev} vf ${vfid} mac ${mac}
+		sudo ip link set dev ${netdev} vf ${vfid} trust on
+		sudo ip link set dev ${netdev} vf ${vfid} spoofchk off
 	done
 
 	[ $(cat ${path}/sriov_numvfs) -gt 0 ] && show_vfs ${path} ${netdev}
@@ -106,7 +108,7 @@ $0 show <dev>
 $0 remove-all <dev>
   Remove all virtual functions from device <dev>.
 
-$0 remove-all <dev> <num>
+$0 create <dev> <num>
   Create <num> virtual functions on device<dev>.
 __EOF__
 }
