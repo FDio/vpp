@@ -261,7 +261,7 @@ udp_send_space (transport_connection_t * t)
 }
 
 int
-udp_open_connection (transport_endpoint_t * rmt)
+udp_open_connection (transport_endpoint_cfg_t * rmt)
 {
   udp_main_t *um = vnet_get_udp_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -339,7 +339,7 @@ const static transport_proto_vft_t udp_proto = {
 
 
 int
-udpc_connection_open (transport_endpoint_t * rmt)
+udpc_connection_open (transport_endpoint_cfg_t * rmt)
 {
   udp_connection_t *uc;
   u32 uc_index;

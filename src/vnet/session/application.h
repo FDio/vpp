@@ -243,7 +243,7 @@ int app_worker_lock_and_send_event (app_worker_t * app, stream_session_t * s,
 clib_error_t *vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
 int application_start_listen (application_t * app,
-			      session_endpoint_extended_t * tep,
+			      session_endpoint_cfg_t * tep,
 			      session_handle_t * handle);
 int application_stop_listen (u32 app_index, u32 app_or_wrk,
 			     session_handle_t handle);
@@ -295,7 +295,7 @@ local_session_t *application_get_local_session_from_handle (session_handle_t
 local_session_t
   * application_get_local_listen_session_from_handle (session_handle_t lh);
 int application_start_local_listen (application_t * server,
-				    session_endpoint_extended_t * sep,
+				    session_endpoint_cfg_t * sep,
 				    session_handle_t * handle);
 int application_stop_local_listen (u32 app_index, u32 app_or_wrk,
 				   session_handle_t lh);
