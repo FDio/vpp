@@ -496,7 +496,7 @@ pkg-srpm: dist
 	make -C extras/rpm srpm
 
 dpdk-install-dev:
-	$(call banner,"This command is deprecated. Please use 'make install-ext-libs'")
+	$(call banner,"This command is deprecated. Please use 'make install-ext-deps'")
 	make -C build/external install-$(PKG)
 
 install-ext-deps:
