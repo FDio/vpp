@@ -1,0 +1,4 @@
+set int ip address VirtualFunctionEthernet61/2/0 192.168.123.222/24
+set int state VirtualFunctionEthernet61/2/0 up
+set logging class lina level debug syslog-level debug
+lina create-instance interface VirtualFunctionEthernet61/2/0 listener /tmp/lina.sock
