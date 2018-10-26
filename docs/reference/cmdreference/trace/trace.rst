@@ -5,7 +5,7 @@
 .. note:: For a complete list of CLI Debug commands refer to the Debug CLI section of the `Source Code Documents <https://docs.fd.io/vpp/18.07/clicmd.html>`_ .
 
 
-API Trace
+API Trace 
 ===========
 
 Summary/Usage
@@ -40,7 +40,7 @@ Declaration and implementation
 Show Trace
 ===========
 
-`Show Trace <../interface/show.html#show-trace>`_
+`Show Trace <../show/show.html#show-trace>`_
 
 Trace Add
 ===========

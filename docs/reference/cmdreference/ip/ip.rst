@@ -10,12 +10,15 @@ IP Route
 Summary/Usage
 --------------
 
-`ip route [add|del] [count <*n*>] <*dst-ip-addr*>/<*width*> [table <*table-id*>] via [next-hop-address] [next-hop-interface] [next-hop-table <*value*>] [weight <*value*>] [preference <*value*>] [udp-encap-id <*value*>] [ip4-lookup-in-table <*value*>] [ip6-lookup-in-table <*value*>] [mpls-lookup-in-table <*value*>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <*interface*>] [out-labels <*value value value*>]`
+`ip route [add|del] [count <*n*>] <*dst-ip-addr*>/<*width*> [table <*table-id*>] via [next-hop-address[next-hop-interface] [next-hop-table <*value*>] [weight <*value*>] [preference <*value*>] [udp-encap-id <*value*>] [ip4-lookup-in-table <*value*>] [ip6-lookup-in-table <*value*>] [mpls-lookup-in-table <*value*>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <*interface*>] [out-labels <*value value value*>]`
 
 Description
 ------------
 
-This command is used to add or delete IPv4 or IPv6 routes. All IP Addresses ('<*dst-ip-addr*>/<*width*>', '<*next-hop-ip-addr*>' and '<*adj-hop-ip-addr*>') can be IPv4 or IPv6, but all must be of the same form in a single command. To display the current set of routes, use the commands 'show ip fib' and 'show ip6 fib'.
+This command is used to add or delete IPv4 or IPv6 routes. All IP Addresses
+('<*dst-ip-addr*>/<*width*>', '<*next-hop-ip-addr*>' and '<*adj-hop-ip-addr*>') can be IPv4 or IPv6,
+but all must be of the same form in a single command. To display the current set of routes,
+use the commands 'show ip fib' and 'show ip6 fib'.
 
 Example Usage
 --------------
@@ -32,7 +35,8 @@ Example of how to delete a straight forward static route:
 
     vpp# ip route del 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0
 
-Mainly for route add/del performance testing, one can add or delete multiple routes by adding 'count N' to the previous item:
+Mainly for route add/del performance testing, one can add or delete multiple routes by adding
+'count N' to the previous item:
 
 .. code-block:: console
 
@@ -46,7 +50,8 @@ Add multiple routes for the same destination to create equal-cost multipath:
 
     vpp# ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0
 
-For unequal-cost multipath, specify the desired weights. This combination of weights results in 3/4 of the traffic following the second path, 1/4 following the first path:
+For unequal-cost multipath, specify the desired weights. This combination of weights
+results in 3/4 of the traffic following the second path, 1/4 following the first path:
 
 .. code-block:: console
 
@@ -78,7 +83,8 @@ ping {<*ip-addr*> | ipv4 <*ip4-addr*> | ipv6 <*ip6-addr*>} [ipv4 <*ip4-addr*> | 
 Description
 ------------
 
-This command sends an ICMP ECHO_REQUEST to network hosts. The address can be an IPv4 or IPv6 address (or both at the same time).
+This command sends an ICMP ECHO_REQUEST to network hosts. The address can be an IPv4 or IPv6
+address (or both at the same time).
 
 Example Usage
 --------------

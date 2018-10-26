@@ -41,7 +41,7 @@ Example of how to display the IPv4 ARP table:
     Proxy arps enabled for:
     Fib_index 0   6.0.0.1 - 6.0.0.11
 
-
+	
 Declaration and Implementation
 -------------------------------
 
@@ -62,8 +62,9 @@ Description
 
 This command displays the IPv4 FIB Tables (VRF Tables) and the route entries for each table.
 
-.. note::
-	This command will run for a long time when the FIB tables are comprised of millions of entries. For those senarios, consider displaying a single table or summary mode.
+.. note:: 
+	This command will run for a long time when the FIB tables are comprised of
+	millions of entries. For those senarios, consider displaying a single table or summary mode.
 
 Example Usage
 --------------
@@ -220,10 +221,10 @@ Declaration and Implementation
 
 **Implementation:** ip4_show_fib
 
-Show L2fib
+Show L2fib  
 ============
 
-Summary/Usage
+Summary/Usage 
 ------------------
 
 show l2fib [all] | [bd_id <*nn*> | bd_index <*nn*>] [learn | add] | [raw]
@@ -231,7 +232,9 @@ show l2fib [all] | [bd_id <*nn*> | bd_index <*nn*>] [learn | add] | [raw]
 Description
 ------------
 
-This command displays the MAC Address entries of the L2 FIB table. Output can be filtered to just get the number of MAC Addresses or display each MAC Address for all bridge domains or just a single bridge domain.
+This command displays the MAC Address entries of the L2 FIB table. 
+Output can be filtered to just get the number of MAC Addresses or display each 
+MAC Address for all bridge domains or just a single bridge domain.
 
 Example Usage
 --------------

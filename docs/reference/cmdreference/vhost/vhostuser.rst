@@ -62,8 +62,8 @@ Summary/Usage
 Examples
 --------
 
-    Example of how to create a vhost interface with VPP as the client
-    and all features enabled:
+Example of how to create a vhost interface with VPP as the client
+and all features enabled:
 
 .. code-block:: console
 

@@ -23,7 +23,10 @@ create host-interface name <*ifname*> [*hw-addr <*mac-addr*>]
 Description
 ------------
 
-Create a host interface that will attach to a linux AF_PACKET interface, one side of a veth pair. The veth pair must already exist. Once created, a new host interface will exist in VPP with the name 'host-<*ifname*>', where '<*ifname*>' is the name of the specified veth pair. Use the `show interface` command to display host interface details.
+Create a host interface that will attach to a linux AF_PACKET interface, one side of a veth pair.
+The veth pair must already exist. Once created, a new host interface will exist in VPP with the name
+'host-<*ifname*>', where '<*ifname*>' is the name of the specified veth pair.
+Use the `show interface` command to display host interface details.
 
 This command has the following optional parameters:
 
@@ -32,7 +35,7 @@ This command has the following optional parameters:
 Example Usage
 -------------
 
-    Example of how to create a host interface tied to one side of an existing linux veth pair named vpp1:
+Example of how to create a host interface tied to one side of an existing linux veth pair named vpp1:
 
 	.. code-block:: console
 
@@ -40,7 +43,7 @@ Example Usage
 
 		host-vpp1
 
-    Once the host interface is created, enable the interface using:
+Once the host interface is created, enable the interface using:
 
 	.. code-block:: console
 
@@ -84,7 +87,7 @@ Create a loopback interface. Optionally, a MAC Address can be provided. If not p
 
 Example Usage
 --------------
-    The following two command syntaxes are equivalent:
+The following two command syntaxes are equivalent:
 
 	.. code-block:: console
 
@@ -92,7 +95,7 @@ Example Usage
 
 		vpp# create loopback interface [mac <*mac-addr*>] [instance <*instance*>]
 
-    Example of how to create a loopback interface:
+Example of how to create a loopback interface:
 
 	.. code-block:: console
 
@@ -115,7 +118,7 @@ and *subId* (subinterface Id) parameters. If no additional VLAN ID is
 provide, the VLAN ID is assumed to be the *subId*. The VLAN ID and
 *subId* can be different, but this is not recommended.
 
-This command has several variations:
+This command has several variations: 
 
 -  **create sub-interfaces** <*interface*> <*subId*> - Create a subinterface
    to process packets with a given 802.1q VLAN ID (same value as the
@@ -219,4 +222,4 @@ When subinterfaces are created, they are in the down state. Example of how to en
 .. code-block:: console
 
     vpp# set interface GigabitEthernet2/0/0.7 up
-
+        

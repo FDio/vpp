@@ -7,7 +7,7 @@ Useful Debug CLI
 This is a reference guide for the vpp debug commands that are referenced within these documents. This is **NOT** a complete list. For a complete list refer to the Debug CLI section of the
 `Source Code Documents <https://docs.fd.io/vpp/18.07/clicmd.html>`_.
 
-The debug CLI can be executed from an su shell using the vppctl command.
+The debug CLI can be executed from a su (superuser) shell using the vppctl command.
 
 .. code-block:: console
 
@@ -31,11 +31,11 @@ Commands can also be executed from the vppct shell.
 .. code-block:: console
 
     # vppctl
-        _______    _        _   _____  ___
+
      __/ __/ _ \  (_)__    | | / / _ \/ _ \
      _/ _// // / / / _ \   | |/ / ___/ ___/
      /_/ /____(_)_/\___/   |___/_/  /_/
-
+    
     vpp# show interface
                   Name               Idx       State          Counter          Count
     TenGigabitEthernet86/0/0          1         up       rx packets               6569213
