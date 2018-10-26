@@ -275,8 +275,7 @@ unformat_ip6_address (unformat_input_t * input, va_list * args)
 uword
 unformat_uri (unformat_input_t * input, va_list * args)
 {
-  session_endpoint_extended_t *sep = va_arg (*args,
-					     session_endpoint_extended_t *);
+  session_endpoint_cfg_t *sep = va_arg (*args, session_endpoint_cfg_t *);
   u32 port;
   char *tmp;
 
@@ -606,7 +605,7 @@ session_connected_handler (session_connected_msg_t * mp)
 {
   udp_echo_main_t *utm = &udp_echo_main;
   unformat_input_t _input, *input = &_input;
-  session_endpoint_extended_t _sep, *sep = &_sep;
+  session_endpoint_cfg_t _sep, *sep = &_sep;
   app_session_t *session;
 
   ASSERT (utm->i_am_server == 0);

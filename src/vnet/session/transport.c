@@ -291,7 +291,7 @@ always_inline transport_endpoint_t *
 transport_endpoint_new (void)
 {
   transport_endpoint_t *tep;
-  pool_get (local_endpoints, tep);
+  pool_get_zero (local_endpoints, tep);
   return tep;
 }
 
@@ -312,6 +312,19 @@ transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
     }
 }
 
+static void
+transport_endpoint_mark_used (u8 proto, ip46_address_t * ip, u16 port)
+{
+  transport_endpoint_t *tep;
+  clib_spinlock_lock_if_init (&local_endpoints_lock);
+  tep = transport_endpoint_new ();
+  clib_memcpy (&tep->ip, ip, sizeof (*ip));
+  tep->port = port;
+  transport_endpoint_table_add (&local_endpoints_table, proto, tep,
+				tep - local_endpoints);
+  clib_spinlock_unlock_if_init (&local_endpoints_lock);
+}
+
 /**
  * Allocate local port and add if successful add entry to local endpoint
  * table to mark the pair as used.
@@ -319,10 +332,9 @@ transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port)
 int
 transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 {
-  transport_endpoint_t *tep;
-  u32 tei;
   u16 min = 1024, max = 65535;	/* XXX configurable ? */
   int tries, limit;
+  u32 tei;
 
   limit = max - min;
 
@@ -347,96 +359,123 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 				       port);
       if (tei == ENDPOINT_INVALID_INDEX)
 	{
-	  clib_spinlock_lock_if_init (&local_endpoints_lock);
-	  tep = transport_endpoint_new ();
-	  clib_memcpy (&tep->ip, ip, sizeof (*ip));
-	  tep->port = port;
-	  transport_endpoint_table_add (&local_endpoints_table, proto, tep,
-					tep - local_endpoints);
-	  clib_spinlock_unlock_if_init (&local_endpoints_lock);
-
-	  return tep->port;
+	  transport_endpoint_mark_used (proto, ip, port);
+	  return port;
 	}
     }
   return -1;
 }
 
-int
-transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
-				ip46_address_t * lcl_addr, u16 * lcl_port)
+static clib_error_t *
+transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
 {
-  fib_prefix_t prefix;
-  fib_node_index_t fei;
-  u32 sw_if_index;
-  int port;
-
-  /*
-   * Find the local address and allocate port
-   */
-
-  /* Find a FIB path to the destination */
-  clib_memcpy (&prefix.fp_addr, &rmt->ip, sizeof (rmt->ip));
-  prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
-  prefix.fp_len = rmt->is_ip4 ? 32 : 128;
-
-  ASSERT (rmt->fib_index != ENDPOINT_INVALID_INDEX);
-  fei = fib_table_lookup (rmt->fib_index, &prefix);
-
-  /* Couldn't find route to destination. Bail out. */
-  if (fei == FIB_NODE_INDEX_INVALID)
-    {
-      clib_warning ("no route to destination");
-      return -1;
-    }
-
-  sw_if_index = rmt->sw_if_index;
-  if (sw_if_index == ENDPOINT_INVALID_INDEX)
-    sw_if_index = fib_entry_get_resolving_interface (fei);
-
-  if (sw_if_index == ENDPOINT_INVALID_INDEX)
-    {
-      clib_warning ("no resolving interface for %U", format_ip46_address,
-		    &rmt->ip, (rmt->is_ip4 == 0) + 1);
-      return -1;
-    }
-
-  clib_memset (lcl_addr, 0, sizeof (*lcl_addr));
-
-  if (rmt->is_ip4)
+  if (is_ip4)
     {
       ip4_address_t *ip4;
       ip4 = ip_interface_get_first_ip (sw_if_index, 1);
       if (!ip4)
-	{
-	  clib_warning ("no routable ip4 address on %U",
-			format_vnet_sw_if_index_name, vnet_get_main (),
-			sw_if_index);
-	  return -1;
-	}
-      lcl_addr->ip4.as_u32 = ip4->as_u32;
+	return clib_error_return (0, "no routable ip4 address on %U",
+				  format_vnet_sw_if_index_name,
+				  vnet_get_main (), sw_if_index);
+      addr->ip4.as_u32 = ip4->as_u32;
     }
   else
     {
       ip6_address_t *ip6;
       ip6 = ip_interface_get_first_ip (sw_if_index, 0);
       if (ip6 == 0)
-	{
-	  clib_warning ("no routable ip6 addresses on %U",
-			format_vnet_sw_if_index_name, vnet_get_main (),
-			sw_if_index);
-	  return -1;
-	}
-      clib_memcpy (&lcl_addr->ip6, ip6, sizeof (*ip6));
+	return clib_error_return (0, "no routable ip6 addresses on %U",
+				  format_vnet_sw_if_index_name,
+				  vnet_get_main (), sw_if_index);
+      clib_memcpy (&addr->ip6, ip6, sizeof (*ip6));
+    }
+  return 0;
+}
+
+static clib_error_t *
+transport_find_local_ip_for_remote (u32 sw_if_index,
+				    transport_endpoint_t * rmt,
+				    ip46_address_t * lcl_addr)
+{
+  fib_node_index_t fei;
+  fib_prefix_t prefix;
+
+  if (sw_if_index == ENDPOINT_INVALID_INDEX)
+    {
+      /* Find a FIB path to the destination */
+      clib_memcpy (&prefix.fp_addr, &rmt->ip, sizeof (rmt->ip));
+      prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+      prefix.fp_len = rmt->is_ip4 ? 32 : 128;
+
+      ASSERT (rmt->fib_index != ENDPOINT_INVALID_INDEX);
+      fei = fib_table_lookup (rmt->fib_index, &prefix);
+
+      /* Couldn't find route to destination. Bail out. */
+      if (fei == FIB_NODE_INDEX_INVALID)
+	return clib_error_return (0, "no route to %U", format_ip46_address,
+				  &rmt->ip, (rmt->is_ip4 == 0) + 1);
+
+      sw_if_index = fib_entry_get_resolving_interface (fei);
+      if (sw_if_index == ENDPOINT_INVALID_INDEX)
+	return clib_error_return (0, "no resolving interface for %U",
+				  format_ip46_address, &rmt->ip,
+				  (rmt->is_ip4 == 0) + 1);
     }
 
-  /* Allocate source port */
-  port = transport_alloc_local_port (proto, lcl_addr);
-  if (port < 1)
+  clib_memset (lcl_addr, 0, sizeof (*lcl_addr));
+  return transport_get_interface_ip (sw_if_index, rmt->is_ip4, lcl_addr);
+}
+
+int
+transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
+				ip46_address_t * lcl_addr, u16 * lcl_port)
+{
+  transport_endpoint_t *rmt = (transport_endpoint_t *) rmt_cfg;
+  clib_error_t *error;
+  int port;
+  u32 tei;
+
+  /*
+   * Find the local address
+   */
+  if (ip_is_zero (&rmt_cfg->peer.ip, rmt_cfg->peer.is_ip4))
     {
-      clib_warning ("Failed to allocate src port");
-      return -1;
+      error = transport_find_local_ip_for_remote (rmt_cfg->peer.sw_if_index,
+						  rmt, lcl_addr);
+      if (error)
+	return -1;
     }
-  *lcl_port = port;
+  else
+    {
+      /* Assume session layer vetted this address */
+      clib_memcpy (lcl_addr, &rmt_cfg->peer.ip, sizeof (rmt_cfg->peer.ip));
+    }
+
+  /*
+   * Allocate source port
+   */
+  if (rmt_cfg->peer.port == 0)
+    {
+      port = transport_alloc_local_port (proto, lcl_addr);
+      if (port < 1)
+	{
+	  clib_warning ("Failed to allocate src port");
+	  return -1;
+	}
+      *lcl_port = port;
+    }
+  else
+    {
+      port = clib_net_to_host_u16 (rmt_cfg->peer.port);
+      tei = transport_endpoint_lookup (&local_endpoints_table, proto,
+				       lcl_addr, port);
+      if (tei != ENDPOINT_INVALID_INDEX)
+	return -1;
+
+      transport_endpoint_mark_used (proto, lcl_addr, port);
+      *lcl_port = port;
+    }
+
   return 0;
 }
 
