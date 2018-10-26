@@ -2843,9 +2843,6 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   vlib_pci_addr_t *addr = vlib_pci_get_addr (vm, h);
   vlib_pci_device_info_t *d = vlib_pci_get_device_info (vm, addr, 0);
 
-  if (error)
-    return error;
-
   error = vlib_pci_map_region (vm, h, 0, &r);
   if (error)
     return error;
