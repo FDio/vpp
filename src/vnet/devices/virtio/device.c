@@ -288,14 +288,12 @@ virtio_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   virtio_main_t *mm = &virtio_main;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
-  static clib_error_t *error = 0;
 
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
   else
     vif->flags &= ~VIRTIO_IF_FLAG_ADMIN_UP;
 
-  return error;
   return 0;
 }
 
