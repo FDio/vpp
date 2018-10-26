@@ -1,0 +1,2 @@
+set logging class lina level debug syslog-level debug
+lina create-instance listener /tmp/lina.sock
