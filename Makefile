@@ -556,6 +556,8 @@ docs: $(DOCS_DIR)
 docs-clean:
 	@($(SPHINX_SCRIPTS_DIR)/sphinx-make.sh clean)
 
+MAKE_VERIFY_TEST_GATE_OS ?= ubuntu-18.04
+
 verify: install-dep $(BR)/.deps.ok install-ext-deps
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
@@ -569,9 +571,12 @@ verify: install-dep $(BR)/.deps.ok install-ext-deps
 	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
-ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-18.04)
+
+ifeq ($(OS_ID)-$(OS_VERSION_ID),$(MAKE_VERIFY_TEST_GATE_OS))
 	$(call banner,"Running tests")
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
+else
+	$(call banner,"Skipping tests. Tests under 'make verify' supported on $(MAKE_VERIFY_TEST_GATE_OS)")
 endif
 
 
