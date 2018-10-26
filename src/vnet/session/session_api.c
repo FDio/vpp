@@ -1290,8 +1290,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->sep.ip = *ip46;
       a->sep.port = mp->port;
       a->sep.transport_proto = mp->proto;
-      a->sep.fib_index = mp->vrf;
-      a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+      a->sep.peer.fib_index = mp->vrf;
+      a->sep.peer.sw_if_index = ENDPOINT_INVALID_INDEX;
       if (mp->hostname_len)
 	{
 	  vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);

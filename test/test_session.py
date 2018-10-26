@@ -47,14 +47,6 @@ class TestSession(VppTestCase):
         super(TestSession, self).tearDown()
         self.vapi.session_enable_disable(is_enabled=1)
 
-    def test_session(self):
-        """ Session Unit Tests """
-        error = self.vapi.cli("test session all")
-
-        if error:
-            self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
-
     def test_segment_manager_alloc(self):
         """ Session Segment Manager Multiple Segment Allocation """
 
@@ -91,6 +83,25 @@ class TestSession(VppTestCase):
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
+
+class TestSessionUnitTests(VppTestCase):
+    """ Session Unit Tests Case """
+
+    def setUp(self):
+        super(TestSessionUnitTests, self).setUp()
+        self.vapi.session_enable_disable(is_enabled=1)
+
+    def test_session(self):
+        """ Session Unit Tests """
+        error = self.vapi.cli("test session all")
+
+        if error:
+            self.logger.critical(error)
+        self.assertEqual(error.find("failed"), -1)
+
+    def tearDown(self):
+        super(TestSessionUnitTests, self).tearDown()
+        self.vapi.session_enable_disable(is_enabled=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

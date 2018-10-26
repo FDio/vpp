@@ -45,12 +45,18 @@ dummy_session_reset_callback (stream_session_t * s)
   clib_warning ("called...");
 }
 
+volatile u32 connected_session_index = ~0;
+volatile u32 connected_session_thread = ~0;
 int
 dummy_session_connected_callback (u32 app_index, u32 api_context,
 				  stream_session_t * s, u8 is_fail)
 {
-  clib_warning ("called...");
-  return -1;
+  if (s)
+    {
+      connected_session_index = s->session_index;
+      connected_session_thread = s->thread_index;
+    }
+  return 0;
 }
 
 static u32 dummy_segment_count;
@@ -76,11 +82,15 @@ dummy_session_disconnect_callback (stream_session_t * s)
 }
 
 static u32 dummy_accept;
+volatile u32 accepted_session_index;
+volatile u32 accepted_session_thread;
 
 int
 dummy_session_accept_callback (stream_session_t * s)
 {
   dummy_accept = 1;
+  accepted_session_index = s->session_index;
+  accepted_session_thread = s->thread_index;
   s->session_state = SESSION_STATE_READY;
   return 0;
 }
@@ -119,7 +129,10 @@ session_create_lookpback (u32 table_id, u32 * sw_if_index,
     }
 
   if (table_id != 0)
-    ip_table_bind (FIB_PROTOCOL_IP4, *sw_if_index, table_id, 0);
+    {
+      ip_table_create (FIB_PROTOCOL_IP4, table_id, 0, 0);
+      ip_table_bind (FIB_PROTOCOL_IP4, *sw_if_index, table_id, 0);
+    }
 
   vnet_sw_interface_set_flags (vnet_get_main (), *sw_if_index,
 			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
@@ -204,6 +217,190 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
     .app_index = server_index,
   };
   vnet_application_detach (&detach_args);
+  return 0;
+}
+
+static void
+session_add_del_route_via_lookup_in_table (u32 in_table_id, u32 via_table_id,
+                                           ip4_address_t *ip, u8 mask,
+                                           u8 is_add)
+{
+  fib_route_path_t *rpaths = 0, *rpath;
+  u32 in_fib_index, via_fib_index;
+
+  fib_prefix_t prefix = {
+    .fp_addr.ip4.as_u32 = ip->as_u32,
+    .fp_len = mask,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+
+  via_fib_index = fib_table_find (FIB_PROTOCOL_IP4, via_table_id);
+  if (via_fib_index == ~0)
+    {
+      clib_warning ("couldn't resolve via table id to index");
+      return;
+    }
+  in_fib_index = fib_table_find (FIB_PROTOCOL_IP4, in_table_id);
+  if (in_fib_index == ~0)
+    {
+      clib_warning ("couldn't resolve in table id to index");
+      return;
+    }
+
+  vec_add2 (rpaths, rpath, 1);
+  clib_memset(rpath, 0, sizeof(*rpath));
+  rpath->frp_weight = 1;
+  rpath->frp_fib_index = via_fib_index;
+  rpath->frp_proto = DPO_PROTO_IP4;
+  rpath->frp_sw_if_index = ~0;
+  rpath->frp_flags |= FIB_ROUTE_PATH_DEAG;
+
+  if (is_add)
+    fib_table_entry_path_add2 (in_fib_index, &prefix, FIB_SOURCE_CLI,
+	                       FIB_ENTRY_FLAG_NONE, rpath);
+  else
+    fib_table_entry_path_remove2 (in_fib_index, &prefix, FIB_SOURCE_CLI,
+	                          rpath);
+  vec_free (rpaths);
+}
+
+static int
+session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
+{
+  session_endpoint_extended_t client_sep = SESSION_ENDPOINT_EXT_NULL;
+  u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
+  u16 dummy_server_port = 1234, dummy_client_port = 5678;
+  session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
+  u32 server_index, client_index, sw_if_index[2];
+  ip4_address_t intf_addr[3];
+  transport_connection_t *tc;
+  stream_session_t *s;
+  clib_error_t *error;
+  u8 *appns_id;
+
+  /*
+   * Create the loopbacks
+   */
+  intf_addr[0].as_u32 = clib_host_to_net_u32 (0x01010101),
+  session_create_lookpback (0, &sw_if_index[0], &intf_addr[0]);
+
+  intf_addr[1].as_u32 = clib_host_to_net_u32 (0x02020202),
+  session_create_lookpback (1, &sw_if_index[1], &intf_addr[1]);
+
+  session_add_del_route_via_lookup_in_table (0, 1, &intf_addr[1], 32,
+                                             1 /* is_add */);
+  session_add_del_route_via_lookup_in_table (1, 0, &intf_addr[0], 32,
+                                             1 /* is_add */);
+
+  /*
+   * Insert namespace
+   */
+  appns_id = format (0, "appns1");
+  vnet_app_namespace_add_del_args_t ns_args = {
+    .ns_id = appns_id,
+    .secret = dummy_secret,
+    .sw_if_index = sw_if_index[1],
+    .ip4_fib_id = 0,
+    .is_add = 1
+  };
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns insertion should succeed: %d",
+		clib_error_get_code (error));
+
+  /*
+   * Attach client/server
+   */
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &dummy_session_cbs,
+    .name = format (0, "session_test_client"),
+  };
+
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "client app attached");
+  client_index = attach_args.app_index;
+  vec_free (attach_args.name);
+
+  attach_args.name = format (0, "session_test_server");
+  attach_args.namespace_id = appns_id;
+  attach_args.options[APP_OPTIONS_NAMESPACE_SECRET] = dummy_secret;
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "server app attached: %U", format_clib_error,
+                error);
+  vec_free (attach_args.name);
+  server_index = attach_args.app_index;
+
+  server_sep.is_ip4 = 1;
+  server_sep.port = dummy_server_port;
+  vnet_bind_args_t bind_args = {
+    .sep = server_sep,
+    .app_index = server_index,
+  };
+  error = vnet_bind (&bind_args);
+  SESSION_TEST ((error == 0), "server bind should work");
+
+  /*
+   * Connect and force lcl ip
+   */
+  client_sep.is_ip4 = 1;
+  client_sep.ip.ip4.as_u32 = clib_host_to_net_u32 (0x02020202);
+  client_sep.port = dummy_server_port;
+  client_sep.peer.is_ip4 = 1;
+  client_sep.peer.ip.ip4.as_u32 = clib_host_to_net_u32 (0x01010101);
+  client_sep.peer.port = dummy_client_port;
+  client_sep.transport_proto = TRANSPORT_PROTO_TCP;
+
+  vnet_connect_args_t connect_args = {
+    .sep_ext = client_sep,
+    .app_index = client_index,
+  };
+
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error == 0), "connect should work");
+
+  /* wait for stuff to happen */
+  vlib_process_suspend (vm, 10e-3);
+
+  SESSION_TEST ((connected_session_index != ~0), "session should exist");
+  s = session_get (connected_session_index, connected_session_thread);
+  tc = session_get_transport (s);
+  SESSION_TEST ((tc != 0), "transport should exist");
+  SESSION_TEST ((memcmp (&tc->lcl_ip, &client_sep.peer.ip,
+                sizeof (tc->lcl_ip)) == 0), "ips should be equal");
+  SESSION_TEST ((tc->lcl_port == clib_host_to_net_u16 (dummy_client_port)),
+                "ports should be equal");
+
+  /* These sessions, because of the way they're established are pinned to
+   * main thread, even when we have workers and we avoid polling main thread,
+   * i.e., we can't cleanup pending disconnects, so force cleanup for both
+   */
+  stream_session_cleanup (s);
+  s = session_get (accepted_session_index, accepted_session_thread);
+  stream_session_cleanup (s);
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = server_index,
+  };
+  vnet_application_detach (&detach_args);
+  detach_args.app_index = client_index;
+  vnet_application_detach (&detach_args);
+
+  /* Allow the disconnects to finish before removing the routes. */
+  vlib_process_suspend (vm, 10e-3);
+
+  session_add_del_route_via_lookup_in_table (0, 1, &intf_addr[1], 32,
+                                             0 /* is_add */);
+  session_add_del_route_via_lookup_in_table (1, 0, &intf_addr[0], 32,
+                                             0 /* is_add */);
+
+  session_delete_loopback (sw_if_index[0]);
+  session_delete_loopback (sw_if_index[1]);
   return 0;
 }
 
@@ -1515,6 +1712,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_rules (vm, input);
       else if (unformat (input, "proxy"))
 	res = session_test_proxy (vm, input);
+      else if (unformat (input, "endpt-cfg"))
+	res = session_test_endpoint_cfg (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
@@ -1526,6 +1725,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_rules (vm, input)))
 	    goto done;
 	  if ((res = session_test_proxy (vm, input)))
+	    goto done;
+	  if ((res = session_test_endpoint_cfg (vm, input)))
 	    goto done;
 	}
       else

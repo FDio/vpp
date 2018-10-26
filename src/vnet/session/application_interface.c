@@ -138,10 +138,10 @@ api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
 
 static void
 session_endpoint_update_for_app (session_endpoint_extended_t * sep,
-				 application_t * app)
+				 application_t * app, u8 is_connect)
 {
   app_namespace_t *app_ns;
-  u32 ns_index;
+  u32 ns_index, fib_index;
 
   ns_index = app->ns_index;
 
@@ -156,15 +156,29 @@ session_endpoint_update_for_app (session_endpoint_extended_t * sep,
       ns_index = owner_app->ns_index;
     }
   app_ns = app_namespace_get (ns_index);
-  if (app_ns)
+  if (!app_ns)
+    return;
+
+  /* Ask transport and network to bind to/connect using local interface
+   * that "supports" app's namespace. This will fix our local connection
+   * endpoint.
+   */
+  fib_index = sep->is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+  sep->peer.fib_index = fib_index;
+  sep->fib_index = fib_index;
+
+  if (!is_connect)
     {
-      /* Ask transport and network to bind to/connect using local interface
-       * that "supports" app's namespace. This will fix our local connection
-       * endpoint.
-       */
       sep->sw_if_index = app_ns->sw_if_index;
-      sep->fib_index =
-	sep->is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+    }
+  else
+    {
+      if (app_ns->sw_if_index != APP_NAMESPACE_INVALID_INDEX
+	  && sep->peer.sw_if_index != ENDPOINT_INVALID_INDEX
+	  && sep->peer.sw_if_index != app_ns->sw_if_index)
+	clib_warning ("Local sw_if_index different from app ns sw_if_index");
+
+      sep->peer.sw_if_index = app_ns->sw_if_index;
     }
 }
 
@@ -185,7 +199,7 @@ vnet_bind_inline (vnet_bind_args_t * a)
   app_wrk = application_get_worker (app, a->wrk_map_index);
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
-  session_endpoint_update_for_app (&a->sep_ext, app);
+  session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */);
   if (!session_endpoint_in_ns (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
@@ -278,7 +292,7 @@ application_connect (vnet_connect_args_t * a)
     return VNET_API_ERROR_INVALID_VALUE;
 
   client = application_get (a->app_index);
-  session_endpoint_update_for_app (&a->sep_ext, client);
+  session_endpoint_update_for_app (&a->sep_ext, client, 1 /* is_connect */);
   client_wrk = application_get_worker (client, a->wrk_map_index);
 
   /*
