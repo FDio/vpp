@@ -39,7 +39,7 @@ typedef struct _vnet_bind_args_t
 {
   union
   {
-    session_endpoint_extended_t sep_ext;
+    session_endpoint_cfg_t sep_ext;
     session_endpoint_t sep;
     char *uri;
   };
@@ -71,7 +71,7 @@ typedef struct _vnet_connect_args
 {
   union
   {
-    session_endpoint_extended_t sep_ext;
+    session_endpoint_cfg_t sep_ext;
     session_endpoint_t sep;
     char *uri;
   };

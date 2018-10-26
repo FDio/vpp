@@ -620,7 +620,7 @@ tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
 }
 
 static int
-tcp_connection_open (transport_endpoint_t * rmt)
+tcp_session_open (transport_endpoint_cfg_t * rmt)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
@@ -664,12 +664,6 @@ tcp_connection_open (transport_endpoint_t * rmt)
   clib_spinlock_unlock_if_init (&tm->half_open_lock);
 
   return tc->c_c_index;
-}
-
-static int
-tcp_session_open (transport_endpoint_t * tep)
-{
-  return tcp_connection_open (tep);
 }
 
 const char *tcp_dbg_evt_str[] = {

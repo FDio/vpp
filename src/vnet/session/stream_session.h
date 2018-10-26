@@ -153,8 +153,8 @@ typedef struct local_session_
 } local_session_t;
 
 #define foreach_session_endpoint_fields				\
-    foreach_transport_connection_fields				\
-    _(u8, transport_proto)					\
+  foreach_transport_endpoint_cfg_fields				\
+  _(u8, transport_proto)					\
 
 typedef struct _session_endpoint
 {
@@ -163,7 +163,7 @@ typedef struct _session_endpoint
 #undef _
 } session_endpoint_t;
 
-typedef struct _session_endpoint_extended
+typedef struct _session_endpoint_cfg
 {
 #define _(type, name) type name;
   foreach_session_endpoint_fields
@@ -171,13 +171,22 @@ typedef struct _session_endpoint_extended
   u32 app_wrk_index;
   u32 opaque;
   u8 *hostname;
-} session_endpoint_extended_t;
+} session_endpoint_cfg_t;
 
 #define SESSION_IP46_ZERO			\
 {						\
     .ip6 = {					\
 	{ 0, 0, },				\
     },						\
+}
+
+#define TRANSPORT_ENDPOINT_NULL			\
+{						\
+  .sw_if_index = ENDPOINT_INVALID_INDEX,	\
+  .ip = SESSION_IP46_ZERO,			\
+  .fib_index = ENDPOINT_INVALID_INDEX,		\
+  .is_ip4 = 0,					\
+  .port = 0,					\
 }
 #define SESSION_ENDPOINT_NULL 			\
 {						\
@@ -186,6 +195,7 @@ typedef struct _session_endpoint_extended
   .fib_index = ENDPOINT_INVALID_INDEX,		\
   .is_ip4 = 0,					\
   .port = 0,					\
+  .peer = TRANSPORT_ENDPOINT_NULL,		\
   .transport_proto = 0,				\
 }
 #define SESSION_ENDPOINT_EXT_NULL 		\
@@ -195,6 +205,7 @@ typedef struct _session_endpoint_extended
   .fib_index = ENDPOINT_INVALID_INDEX,		\
   .is_ip4 = 0,					\
   .port = 0,					\
+  .peer = TRANSPORT_ENDPOINT_NULL,		\
   .transport_proto = 0,				\
   .app_wrk_index = ENDPOINT_INVALID_INDEX,	\
   .opaque = ENDPOINT_INVALID_INDEX,		\
@@ -202,6 +213,8 @@ typedef struct _session_endpoint_extended
 }
 
 #define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)
+#define session_endpoint_to_transport_cfg(_sep)		\
+  ((transport_endpoint_cfg_t *)_sep)
 
 always_inline u8
 session_endpoint_fib_proto (session_endpoint_t * sep)

@@ -137,11 +137,11 @@ api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
 }
 
 static void
-session_endpoint_update_for_app (session_endpoint_extended_t * sep,
-				 application_t * app)
+session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
+				 application_t * app, u8 is_connect)
 {
   app_namespace_t *app_ns;
-  u32 ns_index;
+  u32 ns_index, fib_index;
 
   ns_index = app->ns_index;
 
@@ -156,15 +156,29 @@ session_endpoint_update_for_app (session_endpoint_extended_t * sep,
       ns_index = owner_app->ns_index;
     }
   app_ns = app_namespace_get (ns_index);
-  if (app_ns)
+  if (!app_ns)
+    return;
+
+  /* Ask transport and network to bind to/connect using local interface
+   * that "supports" app's namespace. This will fix our local connection
+   * endpoint.
+   */
+  fib_index = sep->is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+  sep->peer.fib_index = fib_index;
+  sep->fib_index = fib_index;
+
+  if (!is_connect)
     {
-      /* Ask transport and network to bind to/connect using local interface
-       * that "supports" app's namespace. This will fix our local connection
-       * endpoint.
-       */
       sep->sw_if_index = app_ns->sw_if_index;
-      sep->fib_index =
-	sep->is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+    }
+  else
+    {
+      if (app_ns->sw_if_index != APP_NAMESPACE_INVALID_INDEX
+	  && sep->peer.sw_if_index != ENDPOINT_INVALID_INDEX
+	  && sep->peer.sw_if_index != app_ns->sw_if_index)
+	clib_warning ("Local sw_if_index different from app ns sw_if_index");
+
+      sep->peer.sw_if_index = app_ns->sw_if_index;
     }
 }
 
@@ -185,7 +199,7 @@ vnet_bind_inline (vnet_bind_args_t * a)
   app_wrk = application_get_worker (app, a->wrk_map_index);
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
-  session_endpoint_update_for_app (&a->sep_ext, app);
+  session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */ );
   if (!session_endpoint_in_ns (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
@@ -278,7 +292,7 @@ application_connect (vnet_connect_args_t * a)
     return VNET_API_ERROR_INVALID_VALUE;
 
   client = application_get (a->app_index);
-  session_endpoint_update_for_app (&a->sep_ext, client);
+  session_endpoint_update_for_app (&a->sep_ext, client, 1 /* is_connect */ );
   client_wrk = application_get_worker (client, a->wrk_map_index);
 
   /*
@@ -368,8 +382,7 @@ global_scope:
 uword
 unformat_vnet_uri (unformat_input_t * input, va_list * args)
 {
-  session_endpoint_extended_t *sep = va_arg (*args,
-					     session_endpoint_extended_t *);
+  session_endpoint_cfg_t *sep = va_arg (*args, session_endpoint_cfg_t *);
   u32 transport_proto = 0, port;
 
   if (unformat (input, "%U://%U/%d", unformat_transport_proto,
@@ -411,10 +424,10 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 }
 
 static u8 *cache_uri;
-static session_endpoint_extended_t *cache_sep;
+static session_endpoint_cfg_t *cache_sep;
 
 int
-parse_uri (char *uri, session_endpoint_extended_t * sep)
+parse_uri (char *uri, session_endpoint_cfg_t * sep)
 {
   unformat_input_t _input, *input = &_input;
 
@@ -548,7 +561,7 @@ vnet_application_detach (vnet_app_detach_args_t * a)
 int
 vnet_bind_uri (vnet_bind_args_t * a)
 {
-  session_endpoint_extended_t sep = SESSION_ENDPOINT_EXT_NULL;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_EXT_NULL;
   int rv;
 
   rv = parse_uri (a->uri, &sep);
@@ -562,7 +575,7 @@ vnet_bind_uri (vnet_bind_args_t * a)
 int
 vnet_unbind_uri (vnet_unbind_args_t * a)
 {
-  session_endpoint_extended_t sep = SESSION_ENDPOINT_EXT_NULL;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_EXT_NULL;
   stream_session_t *listener;
   u32 table_index;
   int rv;
@@ -585,7 +598,7 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 clib_error_t *
 vnet_connect_uri (vnet_connect_args_t * a)
 {
-  session_endpoint_extended_t sep = SESSION_ENDPOINT_EXT_NULL;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_EXT_NULL;
   int rv;
 
   /* Parse uri */
