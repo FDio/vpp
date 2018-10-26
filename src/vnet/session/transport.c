@@ -362,7 +362,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 }
 
 int
-transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
+transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
 				ip46_address_t * lcl_addr, u16 * lcl_port)
 {
   fib_prefix_t prefix;

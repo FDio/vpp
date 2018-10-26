@@ -511,7 +511,7 @@ static session_cb_vft_t tls_app_cb_vft = {
 /* *INDENT-ON* */
 
 int
-tls_connect (transport_endpoint_t * tep)
+tls_connect (transport_endpoint_cfg_t * tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
   session_endpoint_extended_t *sep;
