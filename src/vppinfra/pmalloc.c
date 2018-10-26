@@ -290,7 +290,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       return 0;
     }
 
-  mmap_flags = MAP_FIXED | MAP_ANONYMOUS;
+  mmap_flags = MAP_FIXED;
 
   if ((pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP) == 0)
     mmap_flags |= MAP_LOCKED;
@@ -307,10 +307,12 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 	pm->error = clib_mem_create_fd ((char *) a->name, &a->fd);
       if (a->fd == -1)
 	goto error;
+      if ((ftruncate (a->fd, size)) == -1)
+	goto error;
     }
   else
     {
-      mmap_flags |= MAP_PRIVATE;
+      mmap_flags |= MAP_PRIVATE | MAP_ANONYMOUS;
       a->fd = -1;
     }
 
