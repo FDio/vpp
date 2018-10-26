@@ -511,10 +511,10 @@ static session_cb_vft_t tls_app_cb_vft = {
 /* *INDENT-ON* */
 
 int
-tls_connect (transport_endpoint_t * tep)
+tls_connect (transport_endpoint_cfg_t * tep)
 {
   vnet_connect_args_t _cargs = { {}, }, *cargs = &_cargs;
-  session_endpoint_extended_t *sep;
+  session_endpoint_cfg_t *sep;
   tls_engine_type_t engine_type;
   tls_main_t *tm = &tls_main;
   app_worker_t *app_wrk;
@@ -523,7 +523,7 @@ tls_connect (transport_endpoint_t * tep)
   tls_ctx_t *ctx;
   u32 ctx_index;
 
-  sep = (session_endpoint_extended_t *) tep;
+  sep = (session_endpoint_cfg_t *) tep;
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
   engine_type = tls_get_engine_type (app->tls_engine);
@@ -579,7 +579,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   app_worker_t *app_wrk;
   tls_main_t *tm = &tls_main;
   session_handle_t tls_handle;
-  session_endpoint_extended_t *sep;
+  session_endpoint_cfg_t *sep;
   stream_session_t *tls_listener;
   stream_session_t *app_listener;
   tls_engine_type_t engine_type;
@@ -587,7 +587,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   tls_ctx_t *lctx;
   u32 lctx_index;
 
-  sep = (session_endpoint_extended_t *) tep;
+  sep = (session_endpoint_cfg_t *) tep;
   app_wrk = app_worker_get (sep->app_wrk_index);
   app = application_get (app_wrk->app_index);
   engine_type = tls_get_engine_type (app->tls_engine);
