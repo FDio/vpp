@@ -320,11 +320,11 @@ vnet_put_frame_to_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
 
 /* Change interface flags (e.g. up, down, enable, disable). */
 clib_error_t *vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
-					   u32 flags);
+					   vnet_hw_interface_flags_t flags);
 
 /* Change interface flags (e.g. up, down, enable, disable). */
 clib_error_t *vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
-					   u32 flags);
+					   vnet_sw_interface_flags_t flags);
 
 /* Change interface class. */
 clib_error_t *vnet_hw_interface_set_class (vnet_main_t * vnm, u32 hw_if_index,
