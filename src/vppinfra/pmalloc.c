@@ -101,7 +101,7 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword size)
       pm->base += off;
     }
 
-  munmap (pm->base + (pm->max_pages * pagesize), pagesize - off);
+  munmap (pm->base + ((uword) pm->max_pages * pagesize), pagesize - off);
   return 0;
 }
 
@@ -215,7 +215,7 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
   p = first * elts_per_page;
   if (pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP)
     {
-      while (p < elts_per_page * count)
+      while (p < (uword) elts_per_page * count)
 	{
 	  pm->lookup_table[p] = pointer_to_uword (pm->base) +
 	    (p << pm->lookup_log2_page_sz);
@@ -225,9 +225,10 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
     }
 
   fd = open ((char *) "/proc/self/pagemap", O_RDONLY);
-  while (p < elts_per_page * count)
+  while (p < (uword) elts_per_page * count)
     {
       va = pointer_to_uword (pm->base) + (p << pm->lookup_log2_page_sz);
+      pa = 0;
       seek = (va >> pm->sys_log2_page_sz) * sizeof (pa);
       if (fd != -1 && lseek (fd, seek, SEEK_SET) == seek &&
 	  read (fd, &pa, sizeof (pa)) == (sizeof (pa)) &&
