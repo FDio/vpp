@@ -715,7 +715,7 @@ app_worker_stop_listen (app_worker_t * app_wrk, session_handle_t handle)
  */
 int
 application_start_listen (application_t * app,
-			  session_endpoint_extended_t * sep_ext,
+			  session_endpoint_cfg_t * sep_ext,
 			  session_handle_t * res)
 {
   app_listener_t *app_listener;
@@ -1055,7 +1055,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 {
   app_namespace_t *app_ns = app_namespace_get (app->ns_index);
   u8 is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
-  session_endpoint_extended_t sep = SESSION_ENDPOINT_EXT_NULL;
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_EXT_NULL;
   transport_connection_t *tc;
   app_worker_t *app_wrk;
   stream_session_t *s;
@@ -1408,7 +1408,7 @@ application_local_listen_session_free (application_t * app,
 
 int
 application_start_local_listen (application_t * app,
-				session_endpoint_extended_t * sep_ext,
+				session_endpoint_cfg_t * sep_ext,
 				session_handle_t * handle)
 {
   app_listener_t *app_listener;
