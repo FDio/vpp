@@ -30,8 +30,9 @@ typedef enum
   _ (OK, "OK")                                                        \
   _ (ALLOC_FAIL, "packet allocation failed")                          \
   _ (NO_INTERFACE, "no egress interface")                             \
-  _ (NO_TABLE, "no IPv6 Table for lookup")                            \
+  _ (NO_TABLE, "no FIB table for lookup")                            \
   _ (NO_SRC_ADDRESS, "no source address for egress interface")        \
+  _ (NO_BUFFERS, "could not allocate a new buffer")                   \
 
 typedef enum
 {
@@ -46,19 +47,17 @@ typedef enum
 typedef struct ping_run_t
 {
   u16 icmp_id;
-  u16 curr_seq;
   uword cli_process_id;
-  uword cli_thread_index;
 } ping_run_t;
 
 typedef struct ping_main_t
 {
   ip6_main_t *ip6_main;
   ip4_main_t *ip4_main;
-  ping_run_t *ping_runs;
-  /* hash table to find back the CLI process for a reply */
-  // uword *cli_proc_by_icmp_id;
-  ping_run_t *ping_run_by_icmp_id;
+  /* a vector of current ping runs. */
+  ping_run_t *active_ping_runs;
+  /* a lock held while add/remove/search on active_ping_runs */
+  clib_spinlock_t ping_run_check_lock;
 } ping_main_t;
 
 extern ping_main_t ping_main;
@@ -66,55 +65,27 @@ extern ping_main_t ping_main;
 #define PING_DEFAULT_DATA_LEN 60
 #define PING_DEFAULT_INTERVAL 1.0
 
-#define PING_MAXIMUM_DATA_SIZE (VLIB_BUFFER_DATA_SIZE - sizeof(ip6_header_t) - sizeof(icmp46_header_t) - offsetof(icmp46_echo_request_t, data))
+#define PING_MAXIMUM_DATA_SIZE 32768
+
+#define PING_CLI_UNKNOWN_NODE (~0)
 
 /* *INDENT-OFF* */
 
 typedef CLIB_PACKED (struct {
   u16 id;
   u16 seq;
-  f64 time_sent;
+  u64 time_sent;
   u8 data[0];
 }) icmp46_echo_request_t;
-
-
-typedef CLIB_PACKED (struct {
-  ip6_header_t ip6;
-  icmp46_header_t icmp;
-  icmp46_echo_request_t icmp_echo;
-}) icmp6_echo_request_header_t;
-
-typedef CLIB_PACKED (struct {
-  ip4_header_t ip4;
-  icmp46_header_t icmp;
-  icmp46_echo_request_t icmp_echo;
-}) icmp4_echo_request_header_t;
 
 /* *INDENT-ON* */
 
 
-typedef struct
-{
-  u16 id;
-  u16 seq;
-  u8 bound;
-} icmp_echo_trace_t;
-
-
-
-
 typedef enum
 {
-  ICMP6_ECHO_REPLY_NEXT_DROP,
-  ICMP6_ECHO_REPLY_NEXT_PUNT,
-  ICMP6_ECHO_REPLY_N_NEXT,
-} icmp6_echo_reply_next_t;
-
-typedef enum
-{
-  ICMP4_ECHO_REPLY_NEXT_DROP,
-  ICMP4_ECHO_REPLY_NEXT_PUNT,
-  ICMP4_ECHO_REPLY_N_NEXT,
-} icmp4_echo_reply_next_t;
+  ICMP46_ECHO_REPLY_NEXT_DROP,
+  ICMP46_ECHO_REPLY_NEXT_PUNT,
+  ICMP46_ECHO_REPLY_N_NEXT,
+} icmp46_echo_reply_next_t;
 
 #endif /* included_vnet_ping_h */
