@@ -886,14 +886,14 @@ int
 session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
-  transport_endpoint_t *tep;
+  transport_endpoint_cfg_t *tep;
   segment_manager_t *sm;
   app_worker_t *app_wrk;
   stream_session_t *s;
   application_t *app;
   int rv;
 
-  tep = session_endpoint_to_transport (rmt);
+  tep = session_endpoint_to_transport_cfg (rmt);
   rv = tp_vfts[rmt->transport_proto].open (tep);
   if (rv < 0)
     {
@@ -924,11 +924,11 @@ int
 session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
-  transport_endpoint_t *tep;
+  transport_endpoint_cfg_t *tep;
   u64 handle;
   int rv;
 
-  tep = session_endpoint_to_transport (rmt);
+  tep = session_endpoint_to_transport_cfg (rmt);
   rv = tp_vfts[rmt->transport_proto].open (tep);
   if (rv < 0)
     {
@@ -962,7 +962,8 @@ session_open_app (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   sep->app_wrk_index = app_wrk_index;
   sep->opaque = opaque;
 
-  return tp_vfts[rmt->transport_proto].open ((transport_endpoint_t *) sep);
+  return tp_vfts[rmt->
+		 transport_proto].open ((transport_endpoint_cfg_t *) sep);
 }
 
 typedef int (*session_open_service_fn) (u32, session_endpoint_t *, u32);

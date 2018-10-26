@@ -122,19 +122,30 @@ u8 *format_transport_half_open_connection (u8 * s, va_list * args);
 
 uword unformat_transport_proto (unformat_input_t * input, va_list * args);
 
-#define foreach_transport_connection_fields				\
-  _(u32, sw_if_index) 	/**< interface endpoint is associated with  */	\
+#define foreach_transport_endpoint_fields				\
   _(ip46_address_t, ip) /**< ip address */				\
-  _(u32, fib_index)	/**< fib table endpoint is associated with */	\
-  _(u8, is_ip4)		/**< set if ip4 */				\
   _(u16, port)		/**< port in net order */			\
+  _(u8, is_ip4)		/**< set if ip4 */				\
+  _(u32, sw_if_index) 	/**< interface endpoint is associated with  */	\
+  _(u32, fib_index)	/**< fib table endpoint is associated with */	\
 
-typedef struct _transport_endpoint
+typedef struct transport_endpoint_
 {
 #define _(type, name) type name;
-  foreach_transport_connection_fields
+  foreach_transport_endpoint_fields
 #undef _
 } transport_endpoint_t;
+
+#define foreach_transport_endpoint_pair_fields				\
+  foreach_transport_endpoint_fields					\
+  _(transport_endpoint_t, peer)						\
+
+typedef struct transport_endpoint_pair_
+{
+#define _(type, name) type name;
+  foreach_transport_endpoint_pair_fields
+#undef _
+} transport_endpoint_cfg_t;
 
 typedef clib_bihash_24_8_t transport_endpoint_table_t;
 
@@ -153,7 +164,7 @@ transport_endpoint_fib_proto (transport_endpoint_t * tep)
 }
 
 int transport_alloc_local_port (u8 proto, ip46_address_t * ip);
-int transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
+int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
 				    ip46_address_t * lcl_addr,
 				    u16 * lcl_port);
 void transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port);
