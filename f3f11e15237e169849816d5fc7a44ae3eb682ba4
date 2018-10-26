@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ebc94582_6bd7412b",
+        "filename": "src/plugins/rtinject/rtinject_README.md",
+        "patchSetId": 6
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-10-26T07:06:18Z",
+      "side": 1,
+      "message": "Will probably need to be moved and corrected.",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 10,
+        "endChar": 43
+      },
+      "revId": "f3f11e15237e169849816d5fc7a44ae3eb682ba4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8dba9528_0c0a3d99",
+        "filename": "src/plugins/rtinject/rtinject_README.md",
+        "patchSetId": 6
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-10-26T07:06:18Z",
+      "side": 1,
+      "message": "Not accurate once in VPP tree.",
+      "range": {
+        "startLine": 15,
+        "startChar": 25,
+        "endLine": 16,
+        "endChar": 33
+      },
+      "revId": "f3f11e15237e169849816d5fc7a44ae3eb682ba4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b799d81_490fc99a",
+        "filename": "src/plugins/rtinject/rtinject_README.md",
+        "patchSetId": 6
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-10-26T07:06:18Z",
+      "side": 1,
+      "message": "This cam probably be removed.",
+      "range": {
+        "startLine": 17,
+        "startChar": 35,
+        "endLine": 18,
+        "endChar": 36
+      },
+      "revId": "f3f11e15237e169849816d5fc7a44ae3eb682ba4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "991259e5_ffea74b2",
+        "filename": "src/plugins/rtinject/rtinject_README.md",
+        "patchSetId": 6
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-10-26T07:06:18Z",
+      "side": 1,
+      "message": "Not accurate anymore",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 39,
+        "endChar": 39
+      },
+      "revId": "f3f11e15237e169849816d5fc7a44ae3eb682ba4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
