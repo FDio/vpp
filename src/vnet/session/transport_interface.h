@@ -47,7 +47,7 @@ typedef struct _transport_proto_vft
    */
   u32 (*bind) (u32 session_index, transport_endpoint_t * lcl);
   u32 (*unbind) (u32);
-  int (*open) (transport_endpoint_t * rmt);
+  int (*open) (transport_endpoint_cfg_t * rmt);
   void (*close) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
   clib_error_t *(*enable) (vlib_main_t * vm, u8 is_en);

@@ -362,7 +362,7 @@ transport_alloc_local_port (u8 proto, ip46_address_t * ip)
 }
 
 int
-transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
+transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
 				ip46_address_t * lcl_addr, u16 * lcl_port)
 {
   fib_prefix_t prefix;
@@ -379,8 +379,8 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
   prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = rmt->is_ip4 ? 32 : 128;
 
-  ASSERT (rmt->fib_index != ENDPOINT_INVALID_INDEX);
-  fei = fib_table_lookup (rmt->fib_index, &prefix);
+  ASSERT (rmt->peer.fib_index != ENDPOINT_INVALID_INDEX);
+  fei = fib_table_lookup (rmt->peer.fib_index, &prefix);
 
   /* Couldn't find route to destination. Bail out. */
   if (fei == FIB_NODE_INDEX_INVALID)
@@ -389,7 +389,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
       return -1;
     }
 
-  sw_if_index = rmt->sw_if_index;
+  sw_if_index = rmt->peer.sw_if_index;
   if (sw_if_index == ENDPOINT_INVALID_INDEX)
     sw_if_index = fib_entry_get_resolving_interface (fei);
 

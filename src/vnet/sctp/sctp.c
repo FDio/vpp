@@ -451,7 +451,7 @@ sctp_half_open_connection_new (u8 thread_index)
 }
 
 static inline int
-sctp_connection_open (transport_endpoint_t * rmt)
+sctp_connection_open (transport_endpoint_cfg_t * rmt)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
   sctp_connection_t *sctp_conn;
@@ -542,7 +542,7 @@ sctp_connection_cleanup (sctp_connection_t * sctp_conn)
 }
 
 int
-sctp_session_open (transport_endpoint_t * tep)
+sctp_session_open (transport_endpoint_cfg_t * tep)
 {
   return sctp_connection_open (tep);
 }
