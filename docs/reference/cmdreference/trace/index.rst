@@ -8,5 +8,5 @@ This section identifies the following types of trace commands:
 
 .. toctree::
    :maxdepth: 2
-
+   
    trace
