@@ -173,6 +173,8 @@ fib_entry_src_action_deinit (fib_entry_t *fib_entry,
 
     fib_path_ext_list_flush(&esrc->fes_path_exts);
     vec_del1(fib_entry->fe_srcs, index);
+    vec_sort_with_function(fib_entry->fe_srcs,
+			   fib_entry_src_cmp_for_sort);
 }
 
 fib_entry_src_cover_res_t
