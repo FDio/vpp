@@ -9,7 +9,7 @@ This section covers those commands that are related to setting an interface:
 * `Set Interface`_
 * `Set Interface IP Address`_
 * `Set Interface L2 Bridge`_
-* `Set Interface Mtu`_
+* `Set Interface MTU`_
 * `Set Interface Promiscuous`_
 * `Set Interface State`_
 
@@ -39,11 +39,13 @@ set interface ip address [del] <*interface*> <*ip-addr*>/<*mask*> | [all]
 Description
 -------------
 
-Add an IP Address to an interface or remove and IP Address from an interface. The IP Address can be an IPv4 or an IPv6 address. Interfaces may have multiple IPv4 and IPv6 addresses. There is no concept of primary vs. secondary interface addresses; they're just addresses.
+Add an IP Address to an interface or remove and IP Address from an interface. 
+The IP Address can be an IPv4 or an IPv6 address. Interfaces may have multiple IPv4 and IPv6
+addresses. There is no concept of primary vs. secondary interface addresses; they're just addresses.
 
 To display the addresses associated with a given interface, use the command **show interface address** <*interface*>.
 
-.. note::
+.. note:: 
 	The debug CLI does not enforce classful mask-width / addressing constraints.
 
 Example Usage
@@ -81,7 +83,7 @@ Declaration and Implementation
 **Implementation:** add_del_ip_address
 
 
-Set Interface L2 Bridge
+Set Interface L2 Bridge	
 +++++++++++++++++++++++++
 
 Summary/Usage
@@ -92,9 +94,13 @@ set interface l2 bridge <*interface*> <*bridge-domain-id*> [bvi|uu-fwd] [shg]
 Description
 -------------
 
-Use this command put an interface into Layer 2 bridge domain. If a bridge-domain with the provided bridge-domain-id does not exist, it will be created. Interfaces in a bridge-domain forward packets to other interfaces in the same bridge-domain based on destination mac address. To remove an interface from a the Layer 2 bridge domain, put the interface in a different mode, for example Layer 3 mode.
+Use this command put an interface into Layer 2 bridge domain. If a bridge-domain with the provided
+bridge-domain-id does not exist, it will be created. Interfaces in a bridge-domain forward packets
+to other interfaces in the same bridge-domain based on destination mac address. To remove an interface
+from a the Layer 2 bridge domain, put the interface in a different mode, for example Layer 3 mode.
 
-Optionally, an interface can be added to a Layer 2 bridge-domain as a Bridged Virtual Interface (bvi). Only one interface in a Layer 2 bridge-domain can be a bvi.
+Optionally, an interface can be added to a Layer 2 bridge-domain as a Bridged Virtual Interface (bvi).
+Only one interface in a Layer 2 bridge-domain can be a bvi.
 
 Optionally, a split-horizon group can also be specified. This defaults to 0 if not specified.
 
@@ -131,7 +137,7 @@ Declaration and Implementation
 
 **Implementation:** int_l2_bridge
 
-Set Interface Mtu
+Set Interface MTU
 ++++++++++++++++++
 
 Summary/Usage

@@ -3,8 +3,8 @@
 .. toctree::
 
 Hardware-Interfaces Commands
-=============================
-This section contains those interface commands that are related to hardware-interfaces:
+============================
+This section contains those interface commands that are related to hardware-interfaces: 
 
 
 * `Show Bridge-Domain`_
@@ -17,17 +17,18 @@ Show Bridge-Domain
 +++++++++++++++++++
 
 Summary/Usage
---------------
+-------------
 
 show bridge-domain [*bridge-domain-id* [detail|int|arp| *bd-tag* ]]
 
 Description
-------------
+-----------
 
-Show a summary of all the bridge-domain instances or detailed view of a single bridge-domain. Bridge-domains are created by adding an interface to a bridge using the **set interface l2 bridge** command.
+Show a summary of all the bridge-domain instances or detailed view of a single bridge-domain.
+Bridge-domains are created by adding an interface to a bridge using the **set interface l2 bridge** command.
 
 Example Usage
---------------
+-------------
 .. code-block:: console
 
     Example of displaying all bridge-domains:
@@ -50,7 +51,7 @@ Example Usage
      GigabitEthernet0/9/0.200      4     0    -               none
 
 Declaration and Implementation
--------------------------------
+------------------------------
 
 **Declaration:** bd_show_cli (src/vnet/l2/l2_bd.c line 1151)
 
@@ -69,19 +70,19 @@ following optional parameters:
 -  **detail**: Also display all remaining attributes and extended
    statistics.
 
-.. note::
+.. note:: 
 	To limit the output of the command to bonded interfaces and their
 	slave interfaces, use the '*bond*' optional parameter.
 
 Summary/Usage
---------------
+-------------
 
 .. code-block:: shell
 
     show hardware-interfaces [brief|verbose|detail] [bond] [<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]].
 
 Examples
----------
+--------
 Example of how to display default data for all interfaces:
 
 .. code-block:: console
@@ -111,7 +112,8 @@ Example of how to display default data for all interfaces:
     local0                             0    down  local0
       local
 
-Example of how to display *verbose* data for an interface by name and software index (where 2 is the software index):
+Example of how to display *verbose* data for an interface by name and software index
+(where 2 is the software index):
 
 .. code-block:: console
 
@@ -131,7 +133,7 @@ Example of how to display *verbose* data for an interface by name and software i
         cpu socket 0
 
 Clear Hardware-Interfaces
-+++++++++++++++++++++++++++
++++++++++++++++++++++++++
 
 Clear the extended statistics for all or a list of given interfaces
 (statistics associated with the **show hardware-interfaces** command).
@@ -143,7 +145,7 @@ Summary/Usage
 .. code-block:: shell
 
     clear hardware-interfaces [<interface> [<interface> [..]]] [<sw_idx> [<sw_idx> [..]]].
-
+                
 
 Examples
 --------
@@ -155,7 +157,8 @@ Example of how to clear the extended statistics for all interfaces:
 
         vpp# clear hardware-interfaces
 
-Example of how to clear the extended statistics for an interface by name and software index (where 2 is the software index):
+Example of how to clear the extended statistics for an interface by name and software index
+(where 2 is the software index): 
 
 .. code-block:: console
 
