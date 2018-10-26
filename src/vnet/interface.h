@@ -482,38 +482,40 @@ static void __vnet_rm_hw_interface_class_registration_##x (void)        \
 }                                                                       \
 __VA_ARGS__ vnet_hw_interface_class_t x
 
-/* Hardware-interface.  This corresponds to a physical wire
-   that packets flow over. */
-typedef struct vnet_hw_interface_t
+typedef enum vnet_hw_interface_flags_t_
 {
-  /* Interface name. */
-  u8 *name;
-
-  u32 flags;
   /* Hardware link state is up. */
-#define VNET_HW_INTERFACE_FLAG_LINK_UP		(1 << 0)
+  VNET_HW_INTERFACE_FLAG_LINK_UP = (1 << 0),
   /* Hardware duplex state */
-#define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT	1
-#define VNET_HW_INTERFACE_FLAG_HALF_DUPLEX	(1 << 1)
-#define VNET_HW_INTERFACE_FLAG_FULL_DUPLEX	(1 << 2)
+  VNET_HW_INTERFACE_FLAG_HALF_DUPLEX = (1 << 1),
+  VNET_HW_INTERFACE_FLAG_FULL_DUPLEX = (1 << 2),
+
+  /* Hardware link speed */
+  VNET_HW_INTERFACE_FLAG_SPEED_10M = (1 << 3),
+  VNET_HW_INTERFACE_FLAG_SPEED_100M = (1 << 4),
+  VNET_HW_INTERFACE_FLAG_SPEED_1G = (1 << 5),
+  VNET_HW_INTERFACE_FLAG_SPEED_2_5G = (1 << 6),
+  VNET_HW_INTERFACE_FLAG_SPEED_5G = (1 << 7),
+  VNET_HW_INTERFACE_FLAG_SPEED_10G = (1 << 8),
+  VNET_HW_INTERFACE_FLAG_SPEED_20G = (1 << 9),
+  VNET_HW_INTERFACE_FLAG_SPEED_25G = (1 << 10),
+  VNET_HW_INTERFACE_FLAG_SPEED_40G = (1 << 11),
+  VNET_HW_INTERFACE_FLAG_SPEED_50G = (1 << 12),
+  VNET_HW_INTERFACE_FLAG_SPEED_56G = (1 << 13),
+  VNET_HW_INTERFACE_FLAG_SPEED_100G = (1 << 14),
+
+  /* rx mode flags */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE = (1 << 16),
+
+  /* tx checksum offload */
+  VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD = (1 << 17),
+} vnet_hw_interface_flags_t;
+
+#define VNET_HW_INTERFACE_FLAG_DUPLEX_SHIFT 1
+#define VNET_HW_INTERFACE_FLAG_SPEED_SHIFT  3
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_MASK	\
   (VNET_HW_INTERFACE_FLAG_HALF_DUPLEX |		\
    VNET_HW_INTERFACE_FLAG_FULL_DUPLEX)
-
-  /* Hardware link speed */
-#define VNET_HW_INTERFACE_FLAG_SPEED_SHIFT	3
-#define VNET_HW_INTERFACE_FLAG_SPEED_10M	(1 << 3)
-#define VNET_HW_INTERFACE_FLAG_SPEED_100M	(1 << 4)
-#define VNET_HW_INTERFACE_FLAG_SPEED_1G		(1 << 5)
-#define VNET_HW_INTERFACE_FLAG_SPEED_2_5G	(1 << 6)
-#define VNET_HW_INTERFACE_FLAG_SPEED_5G		(1 << 7)
-#define VNET_HW_INTERFACE_FLAG_SPEED_10G	(1 << 8)
-#define VNET_HW_INTERFACE_FLAG_SPEED_20G	(1 << 9)
-#define VNET_HW_INTERFACE_FLAG_SPEED_25G	(1 << 10)
-#define VNET_HW_INTERFACE_FLAG_SPEED_40G	(1 << 11)
-#define VNET_HW_INTERFACE_FLAG_SPEED_50G	(1 << 12)
-#define VNET_HW_INTERFACE_FLAG_SPEED_56G	(1 << 13)
-#define VNET_HW_INTERFACE_FLAG_SPEED_100G	(1 << 14)
 #define VNET_HW_INTERFACE_FLAG_SPEED_MASK	\
   (VNET_HW_INTERFACE_FLAG_SPEED_10M |		\
    VNET_HW_INTERFACE_FLAG_SPEED_100M |		\
@@ -528,11 +530,15 @@ typedef struct vnet_hw_interface_t
    VNET_HW_INTERFACE_FLAG_SPEED_56G |		\
    VNET_HW_INTERFACE_FLAG_SPEED_100G)
 
-  /* rx mode flags */
-#define VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE (1 << 16)
+/* Hardware-interface.  This corresponds to a physical wire
+   that packets flow over. */
+typedef struct vnet_hw_interface_t
+{
+  /* Interface name. */
+  u8 *name;
 
-  /* tx checksum offload */
-#define VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD (1 << 17)
+  /* flags */
+  vnet_hw_interface_flags_t flags;
 
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
@@ -686,6 +692,7 @@ extern vnet_mtu_t vnet_link_to_mtu (vnet_link_t link);
 
 typedef enum vnet_sw_interface_flags_t_
 {
+  VNET_SW_INTERFACE_FLAG_ADMIN_NONE = 0,
   /* Interface is "up" meaning administratively up.
      Up in the sense of link state being up is maintained by hardware interface. */
   VNET_SW_INTERFACE_FLAG_ADMIN_UP = (1 << 0),
