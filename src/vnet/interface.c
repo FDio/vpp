@@ -44,18 +44,25 @@
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/l2/l2_input.h>
 
-#define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
-#define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
+typedef enum vnet_interface_helper_flags_t_
+{
+  VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE = (1 << 0),
+  VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE = (1 << 1),
+} vnet_interface_helper_flags_t;
 
 static clib_error_t *vnet_hw_interface_set_flags_helper (vnet_main_t * vnm,
 							 u32 hw_if_index,
-							 u32 flags,
-							 u32 helper_flags);
+							 vnet_hw_interface_flags_t
+							 flags,
+							 vnet_interface_helper_flags_t
+							 helper_flags);
 
 static clib_error_t *vnet_sw_interface_set_flags_helper (vnet_main_t * vnm,
 							 u32 sw_if_index,
-							 u32 flags,
-							 u32 helper_flags);
+							 vnet_sw_interface_flags_t
+							 flags,
+							 vnet_interface_helper_flags_t
+							 helper_flags);
 
 static clib_error_t *vnet_hw_interface_set_class_helper (vnet_main_t * vnm,
 							 u32 hw_if_index,
@@ -260,7 +267,9 @@ call_sw_interface_add_del_callbacks (vnet_main_t * vnm, u32 sw_if_index,
 
 static clib_error_t *
 vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
-				    u32 flags, u32 helper_flags)
+				    vnet_hw_interface_flags_t flags,
+				    vnet_interface_helper_flags_t
+				    helper_flags)
 {
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_hw_interface_class_t *hw_class =
@@ -308,7 +317,9 @@ done:
 
 static clib_error_t *
 vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
-				    u32 flags, u32 helper_flags)
+				    vnet_sw_interface_flags_t flags,
+				    vnet_interface_helper_flags_t
+				    helper_flags)
 {
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
   u32 mask;
@@ -466,7 +477,8 @@ done:
 }
 
 clib_error_t *
-vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
+			     vnet_hw_interface_flags_t flags)
 {
   return vnet_hw_interface_set_flags_helper
     (vnm, hw_if_index, flags,
@@ -474,7 +486,8 @@ vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 }
 
 clib_error_t *
-vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
+			     vnet_sw_interface_flags_t flags)
 {
   return vnet_sw_interface_set_flags_helper
     (vnm, sw_if_index, flags,
