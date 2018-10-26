@@ -886,14 +886,14 @@ int
 session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
-  transport_endpoint_t *tep;
+  transport_endpoint_cfg_t *tep;
   segment_manager_t *sm;
   app_worker_t *app_wrk;
   stream_session_t *s;
   application_t *app;
   int rv;
 
-  tep = session_endpoint_to_transport (rmt);
+  tep = session_endpoint_to_transport_cfg (rmt);
   rv = tp_vfts[rmt->transport_proto].open (tep);
   if (rv < 0)
     {
@@ -924,11 +924,11 @@ int
 session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
-  transport_endpoint_t *tep;
+  transport_endpoint_cfg_t *tep;
   u64 handle;
   int rv;
 
-  tep = session_endpoint_to_transport (rmt);
+  tep = session_endpoint_to_transport_cfg (rmt);
   rv = tp_vfts[rmt->transport_proto].open (tep);
   if (rv < 0)
     {
@@ -958,11 +958,13 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 int
 session_open_app (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
-  session_endpoint_extended_t *sep = (session_endpoint_extended_t *) rmt;
+  session_endpoint_cfg_t *sep = (session_endpoint_cfg_t *) rmt;
+  transport_endpoint_cfg_t *tep_cfg = session_endpoint_to_transport_cfg (sep);
+
   sep->app_wrk_index = app_wrk_index;
   sep->opaque = opaque;
 
-  return tp_vfts[rmt->transport_proto].open ((transport_endpoint_t *) sep);
+  return tp_vfts[rmt->transport_proto].open (tep_cfg);
 }
 
 typedef int (*session_open_service_fn) (u32, session_endpoint_t *, u32);
@@ -1004,7 +1006,7 @@ session_open (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
  * @param sep Local endpoint to be listened on.
  */
 int
-session_listen (stream_session_t * ls, session_endpoint_extended_t * sep)
+session_listen (stream_session_t * ls, session_endpoint_cfg_t * sep)
 {
   transport_connection_t *tc;
   transport_endpoint_t *tep;

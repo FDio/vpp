@@ -451,7 +451,7 @@ sctp_half_open_connection_new (u8 thread_index)
 }
 
 static inline int
-sctp_connection_open (transport_endpoint_t * rmt)
+sctp_connection_open (transport_endpoint_cfg_t * rmt)
 {
   sctp_main_t *tm = vnet_get_sctp_main ();
   sctp_connection_t *sctp_conn;
@@ -485,9 +485,9 @@ sctp_connection_open (transport_endpoint_t * rmt)
   clib_spinlock_lock_if_init (&tm->half_open_lock);
   sctp_conn = sctp_half_open_connection_new (thread_id);
   u32 mtu = rmt->is_ip4 ? vnet_sw_interface_get_mtu (vnet_get_main (),
-						     rmt->sw_if_index,
+						     rmt->peer.sw_if_index,
 						     VNET_MTU_IP4) :
-    vnet_sw_interface_get_mtu (vnet_get_main (), rmt->sw_if_index,
+    vnet_sw_interface_get_mtu (vnet_get_main (), rmt->peer.sw_if_index,
 			       VNET_MTU_IP6);
   sctp_conn->sub_conn[idx].PMTU = mtu;
 
@@ -542,7 +542,7 @@ sctp_connection_cleanup (sctp_connection_t * sctp_conn)
 }
 
 int
-sctp_session_open (transport_endpoint_t * tep)
+sctp_session_open (transport_endpoint_cfg_t * tep)
 {
   return sctp_connection_open (tep);
 }
