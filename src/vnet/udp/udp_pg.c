@@ -39,6 +39,7 @@
 
 #include <vnet/pg/pg.h>
 #include <vnet/ip/ip.h>		/* for unformat_udp_udp_port */
+#include <vnet/udp/udp.h>
 
 #define UDP_PG_EDIT_LENGTH (1 << 0)
 #define UDP_PG_EDIT_CHECKSUM (1 << 1)
@@ -191,17 +192,25 @@ unformat_pg_udp_header (unformat_input_t * input, va_list * args)
     u16 dst_port;
     tcp_udp_port_info_t *pi;
 
+    /* For the pg format of applications over UDP local */
+    udp_dst_port_info_t *pi2 = NULL;
+
     pi = 0;
     if (p->dst_port.type == PG_EDIT_FIXED)
       {
 	dst_port = pg_edit_get_value (&p->dst_port, PG_EDIT_LO);
 	pi = ip_get_tcp_udp_port_info (im, dst_port);
+	pi2 = udp_get_dst_port_info (&udp_main, dst_port, UDP_IP4);
+	if (!pi2)
+	  pi2 = udp_get_dst_port_info (&udp_main, dst_port, UDP_IP6);
       }
 
     if (pi && pi->unformat_pg_edit
 	&& unformat_user (input, pi->unformat_pg_edit, s))
       ;
-
+    else if (pi2 && pi2->unformat_pg_edit
+	     && unformat_user (input, pi2->unformat_pg_edit, s))
+      ;
     else if (!unformat_user (input, unformat_pg_payload, s))
       goto error;
 
