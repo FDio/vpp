@@ -567,9 +567,12 @@ VLIB_CLI_COMMAND (show_vmxnet3_command, static) = {
 clib_error_t *
 vmxnet3_cli_init (vlib_main_t * vm)
 {
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
+
   /* initialize binary API */
   vmxnet3_plugin_api_hookup (vm);
 
+  vmxm->log_default = vlib_log_register_class ("vmxnet3", 0);
   return 0;
 }
 
