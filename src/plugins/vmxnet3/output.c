@@ -195,7 +195,8 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
        * Device can start reading the packet
        */
       txq->tx_desc[first_idx].flags[0] ^= VMXNET3_TXF_GEN;
-      vmxnet3_reg_write (vd, 0, VMXNET3_REG_TXPROD, txq->tx_ring.produce);
+      vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_TXPROD,
+				txq->tx_ring.produce);
 
       buffers++;
       n_left--;

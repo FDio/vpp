@@ -311,7 +311,7 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
   ret = vmxnet3_reg_read (vd, 1, VMXNET3_REG_CMD);
   if (ret != 0)
     {
-      error = clib_error_return (0, "error on quisecing device rc (%u)", ret);
+      error = clib_error_return (0, "error on quiescing device rc (%u)", ret);
       return error;
     }
 
@@ -478,6 +478,9 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 	clib_error_return (error,
 			   "queue size must be <= 4096, >= 64, "
 			   "and multiples of 64");
+      vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
+		format_vlib_pci_addr, &args->addr,
+		"queue size must be <= 4096, >= 64, and multiples of 64");
       return;
     }
 
@@ -488,6 +491,8 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 	args->rv = VNET_API_ERROR_INVALID_VALUE;
 	args->error =
 	  clib_error_return (error, "PCI address in use");
+	vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
+		  format_vlib_pci_addr, &args->addr, "pci address in use");
 	return;
       }
   }));
@@ -509,37 +514,70 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
       args->error =
 	clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
 			   &args->addr);
+      vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
+		format_vlib_pci_addr, &args->addr,
+		"error encountered on pci device open");
       return;
     }
-  vd->pci_dev_handle = h;
 
+  /*
+   * Do not use vmxnet3_log_error prior to this line since the macro
+   * references vd->pci_dev_handle
+   */
+  vd->pci_dev_handle = h;
   vlib_pci_set_private_data (vm, h, vd->dev_instance);
 
   if ((error = vlib_pci_bus_master_enable (vm, h)))
-    goto error;
+    {
+      vmxnet3_log_error (vd, "error encountered on pci bus master enable");
+      goto error;
+    }
 
   if ((error = vlib_pci_map_region (vm, h, 0, (void **) &vd->bar[0])))
-    goto error;
+    {
+      vmxnet3_log_error (vd, "error encountered on pci map region for bar 0");
+      goto error;
+    }
 
   if ((error = vlib_pci_map_region (vm, h, 1, (void **) &vd->bar[1])))
-    goto error;
+    {
+      vmxnet3_log_error (vd, "error encountered on pci map region for bar 1");
+      goto error;
+    }
 
   if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
 					       &vmxnet3_irq_0_handler)))
-    goto error;
+    {
+      vmxnet3_log_error (vd,
+			 "error encountered on pci register msix handler 0");
+      goto error;
+    }
 
   if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
 					       &vmxnet3_irq_1_handler)))
-    goto error;
+    {
+      vmxnet3_log_error (vd,
+			 "error encountered on pci register msix handler 1");
+      goto error;
+    }
 
   if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
-    goto error;
+    {
+      vmxnet3_log_error (vd, "error encountered on pci enable msix irq");
+      goto error;
+    }
 
   if ((error = vlib_pci_intr_enable (vm, h)))
-    goto error;
+    {
+      vmxnet3_log_error (vd, "error encountered on pci interrupt enable");
+      goto error;
+    }
 
   if ((error = vmxnet3_device_init (vm, vd, args)))
-    goto error;
+    {
+      vmxnet3_log_error (vd, "error encountered on device init");
+      goto error;
+    }
 
   /* create interface */
   error = ethernet_register_interface (vnm, vmxnet3_device_class.index,
@@ -547,7 +585,11 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 				       &vd->hw_if_index, vmxnet3_flag_change);
 
   if (error)
-    goto error;
+    {
+      vmxnet3_log_error (vd,
+			 "error encountered on ethernet register interface");
+      goto error;
+    }
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, vd->hw_if_index);
   vd->sw_if_index = sw->sw_if_index;
