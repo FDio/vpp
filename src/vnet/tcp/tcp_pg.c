@@ -77,7 +77,11 @@ tcp_pg_edit_function (pg_main_t * pg,
       ASSERT (p0->current_data == 0);
       ip0 = (void *) (p0->data + ip_offset);
       tcp0 = (void *) (p0->data + tcp_offset);
-      tcp_len0 = clib_net_to_host_u16 (ip0->length) - sizeof (ip0[0]);
+      /* if IP length has been specified, then calculate the length based on buffer */
+      if (ip0->length == 0)
+	tcp_len0 = vlib_buffer_length_in_chain (vm, p0) - tcp_offset;
+      else
+	tcp_len0 = clib_net_to_host_u16 (ip0->length) - tcp_offset;
 
       /* Initialize checksum with header. */
       if (BITS (sum0) == 32)
