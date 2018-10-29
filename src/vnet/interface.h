@@ -484,6 +484,7 @@ __VA_ARGS__ vnet_hw_interface_class_t x
 
 typedef enum vnet_hw_interface_flags_t_
 {
+  VNET_HW_INTERFACE_FLAG_NONE,
   /* Hardware link state is up. */
   VNET_HW_INTERFACE_FLAG_LINK_UP = (1 << 0),
   /* Hardware duplex state */
@@ -692,7 +693,7 @@ extern vnet_mtu_t vnet_link_to_mtu (vnet_link_t link);
 
 typedef enum vnet_sw_interface_flags_t_
 {
-  VNET_SW_INTERFACE_FLAG_ADMIN_NONE = 0,
+  VNET_SW_INTERFACE_FLAG_NONE = 0,
   /* Interface is "up" meaning administratively up.
      Up in the sense of link state being up is maintained by hardware interface. */
   VNET_SW_INTERFACE_FLAG_ADMIN_UP = (1 << 0),
