@@ -170,9 +170,9 @@ ipsec6_input_protect_policy_match (ipsec_spd_t * spd,
 
 static vlib_node_registration_t ipsec4_input_node;
 
-static uword
-ipsec4_input_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * from_frame)
 {
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
@@ -329,7 +329,6 @@ ipsec4_input_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
-  .function = ipsec4_input_node_fn,
   .name = "ipsec4-input",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
@@ -347,13 +346,12 @@ VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec4_input_node, ipsec4_input_node_fn);
-
 static vlib_node_registration_t ipsec6_input_node;
 
-static uword
-ipsec6_input_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+
+VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * from_frame)
 {
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
@@ -477,7 +475,6 @@ ipsec6_input_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
-  .function = ipsec6_input_node_fn,
   .name = "ipsec6-input",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
@@ -490,7 +487,6 @@ VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec6_input_node, ipsec6_input_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *
