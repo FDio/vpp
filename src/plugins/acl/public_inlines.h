@@ -351,6 +351,8 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
           if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment &&
                      am->l4_match_nonfirst_fragment))
           {
+			  if(!r->is_permit)
+				  continue;
             /* non-initial fragment with frag match configured - match this rule */
             *trace_bitmap |= 0x80000000;
             *r_action = r->is_permit;
