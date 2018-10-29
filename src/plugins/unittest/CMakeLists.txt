@@ -13,8 +13,9 @@
 
 add_vpp_plugin(unittest
   SOURCES
-  unittest.c
-  tcp_test.c
   bihash_test.c
+  session_test.c
   string_test.c
+  tcp_test.c
+  unittest.c
 )

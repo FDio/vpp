@@ -1021,7 +1021,6 @@ list(APPEND VNET_SOURCES
   session/application_interface.c
   session/application_namespace.c
   session/segment_manager.c
-  session/session_test.c
   session/session_api.c
 )
 
