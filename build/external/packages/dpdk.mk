@@ -194,6 +194,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_MLX4_DLOPEN_DEPS,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_DLOPEN_DEPS,$(DPDK_MLX5_PMD_DLOPEN_DEPS))
 	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
+	$(call set,RTE_LIBRTE_GSO,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
 	@# not needed
 	$(call set,RTE_ETHDEV_RXTX_CALLBACKS,n)
@@ -214,7 +215,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_FLOW_CLASSIFY,n)
 	$(call set,RTE_LIBRTE_ACL,n)
 	$(call set,RTE_LIBRTE_GRO,n)
-	$(call set,RTE_LIBRTE_GSO,n)
 	$(call set,RTE_LIBRTE_KNI,n)
 	$(call set,RTE_LIBRTE_BPF,n)
 	$(call set,RTE_LIBRTE_RAWDEV,n)
