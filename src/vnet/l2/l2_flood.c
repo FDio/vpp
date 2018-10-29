@@ -60,7 +60,7 @@ typedef struct
 
   /* per-cpu vector of cloned packets */
   u32 **clones;
-  l2_flood_member_t ***members;
+  u32 **members;
 } l2flood_main_t;
 
 typedef struct
@@ -119,6 +119,13 @@ typedef enum
   L2FLOOD_N_NEXT,
 } l2flood_next_t;
 
+/* Find members that pass the reflection and SHG checks */
+static inline u8
+can_flood (u32 from, u8 in_shg, l2_flood_member_t * to)
+{
+  return to->sw_if_index != from && (!in_shg || (to->shg != in_shg));
+}
+
 /*
  * Perform flooding on one packet
  *
@@ -155,48 +162,44 @@ l2flood_node_fn (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u16 n_clones, n_cloned, clone0;
-	  l2_bridge_domain_t *bd_config;
-	  u32 sw_if_index0, bi0, ci0;
-	  l2_flood_member_t *member;
-	  vlib_buffer_t *b0, *c0;
-	  u16 next0;
-	  u8 in_shg;
-	  i32 mi;
-
 	  /* speculatively enqueue b0 to the current next frame */
-	  bi0 = from[0];
+	  u32 bi0 = from[0];
 	  from += 1;
 	  n_left_from -= 1;
-	  next0 = L2FLOOD_NEXT_L2_OUTPUT;
 
-	  b0 = vlib_get_buffer (vm, bi0);
+	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
+	  u8 in_shg = vnet_buffer (b0)->l2.shg;
+	  u32 sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  /* Get config for the bridge domain interface */
-	  bd_config = vec_elt_at_index (l2input_main.bd_configs,
-					vnet_buffer (b0)->l2.bd_index);
-	  in_shg = vnet_buffer (b0)->l2.shg;
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  l2_bridge_domain_t *bd_config =
+	    vec_elt_at_index (l2input_main.bd_configs,
+			      vnet_buffer (b0)->l2.bd_index);
+	  u16 n_flood = bd_config->flood_count;
 
-	  vec_validate (msm->members[thread_index],
-			vec_len (bd_config->members));
-
+	  vec_validate (msm->members[thread_index], n_flood);
 	  vec_reset_length (msm->members[thread_index]);
 
-	  /* Find first members that passes the reflection and SHG checks */
-	  for (mi = bd_config->flood_count - 1; mi >= 0; mi--)
+	  /* first member in the list is optionally BVI as BD members are ordered */
+	  if (n_flood > 0)
 	    {
-	      member = &bd_config->members[mi];
-	      if ((member->sw_if_index != sw_if_index0) &&
-		  (!in_shg || (member->shg != in_shg)))
-		{
-		  vec_add1 (msm->members[thread_index], member);
-		}
+	      l2_flood_member_t *m = &bd_config->members[0];
+	      if (can_flood (sw_if_index0, in_shg, m)
+		  && m->flags & L2_FLOOD_MEMBER_BVI)
+		vec_add1 (msm->members[thread_index], m->sw_if_index);
 	    }
+	  u16 n_bvi = vec_len (msm->members[thread_index]);
 
-	  n_clones = vec_len (msm->members[thread_index]);
+	  u16 mi;
+	  for (mi = n_bvi; mi < n_flood; mi++)
+	    {
+	      l2_flood_member_t *m = &bd_config->members[mi];
+	      if (can_flood (sw_if_index0, in_shg, m))
+		vec_add1 (msm->members[thread_index], m->sw_if_index);
+	    }
+	  u16 n_members = vec_len (msm->members[thread_index]);
 
-	  if (0 == n_clones)
+	  if (0 == n_members)
 	    {
 	      /* No members to flood to */
 	      to_next[0] = bi0;
@@ -209,119 +212,85 @@ l2flood_node_fn (vlib_main_t * vm,
 					       bi0, L2FLOOD_NEXT_DROP);
 	      continue;
 	    }
-	  else if (n_clones > 1)
-	    {
-	      vec_validate (msm->clones[thread_index], n_clones);
-	      vec_reset_length (msm->clones[thread_index]);
 
+	  vec_validate (msm->clones[thread_index], n_members);
+	  vec_reset_length (msm->clones[thread_index]);
+	  u16 n_cloned;
+	  if (n_members > 1)
+	    {
+	      u16 n_l2_clones = n_members - n_bvi;
 	      /*
 	       * the header offset needs to be large enough to incorporate
 	       * all the L3 headers that could be touched when doing BVI
-	       * processing. So take the current l2 length plus 2 * IPv6
-	       * headers (for tunnel encap)
+	       * processing. So prepare a full copy
 	       */
-	      n_cloned = vlib_buffer_clone (vm, bi0,
-					    msm->clones[thread_index],
-					    n_clones,
-					    (vnet_buffer (b0)->l2.l2_len +
-					     sizeof (udp_header_t) +
-					     2 * sizeof (ip6_header_t)));
-
-	      if (PREDICT_FALSE (n_cloned != n_clones))
+	      if (n_bvi)
 		{
-		  b0->error = node->errors[L2FLOOD_ERROR_REPL_FAIL];
+		  vlib_buffer_t *d = vlib_buffer_copy (vm, b0);
+		  if (d != 0)
+		    vec_add1 (msm->clones[thread_index],
+			      vlib_get_buffer_index (vm, d));
 		}
+	      n_bvi = vec_len (msm->clones[thread_index]);
 
-	      /*
-	       * for all but the last clone, these are not BVI bound
-	       */
-	      for (clone0 = 0; clone0 < n_cloned - 1; clone0++)
-		{
-		  member = msm->members[thread_index][clone0];
-		  ci0 = msm->clones[thread_index][clone0];
-		  c0 = vlib_get_buffer (vm, ci0);
-
-		  to_next[0] = ci0;
-		  to_next += 1;
-		  n_left_to_next -= 1;
-
-		  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
-				     (b0->flags & VLIB_BUFFER_IS_TRACED)))
-		    {
-		      ethernet_header_t *h0;
-		      l2flood_trace_t *t;
-
-		      if (c0 != b0)
-			vlib_buffer_copy_trace_flag (vm, b0, ci0);
-
-		      t = vlib_add_trace (vm, node, c0, sizeof (*t));
-		      h0 = vlib_buffer_get_current (c0);
-		      t->sw_if_index = sw_if_index0;
-		      t->bd_index = vnet_buffer (c0)->l2.bd_index;
-		      clib_memcpy (t->src, h0->src_address, 6);
-		      clib_memcpy (t->dst, h0->dst_address, 6);
-		    }
-
-		  /* Do normal L2 forwarding */
-		  vnet_buffer (c0)->sw_if_index[VLIB_TX] =
-		    member->sw_if_index;
-
-		  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-						   to_next, n_left_to_next,
-						   ci0, next0);
-		  if (PREDICT_FALSE (0 == n_left_to_next))
-		    {
-		      vlib_put_next_frame (vm, node, next_index,
-					   n_left_to_next);
-		      vlib_get_next_frame (vm, node, next_index, to_next,
-					   n_left_to_next);
-		    }
-		}
-	      member = msm->members[thread_index][clone0];
-	      ci0 = msm->clones[thread_index][clone0];
+	      /* copy some for L2 ACL */
+	      u16 l2_out_copy_len =
+		vnet_buffer (b0)->l2.l2_len + sizeof (ip6_header_t) +
+		TCP_HDR_LEN_MAX;
+	      _vec_len (msm->clones[thread_index]) +=
+		vlib_buffer_clone (vm, bi0,
+				   vec_end (msm->clones[thread_index]),
+				   n_l2_clones, l2_out_copy_len);
+	      n_cloned = vec_len (msm->clones[thread_index]);
+	      if (PREDICT_FALSE (n_cloned != n_members))
+		b0->error = node->errors[L2FLOOD_ERROR_REPL_FAIL];
 	    }
 	  else
 	    {
-	      /* one clone */
-	      ci0 = bi0;
-	      member = msm->members[thread_index][0];
+	      /* one clone - use the original */
+	      n_cloned = 1;
+	      vec_add1 (msm->clones[thread_index], bi0);
 	    }
 
-	  /*
-	   * the last clone that might go to a BVI
-	   */
-	  c0 = vlib_get_buffer (vm, ci0);
-
-	  to_next[0] = ci0;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-
+	  ASSERT (n_members >= n_cloned);
+	  u16 clone0;
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			     (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      ethernet_header_t *h0;
-	      l2flood_trace_t *t;
+	      for (clone0 = 0; clone0 < n_cloned; clone0++)
+		{
+		  u32 ci0 = msm->clones[thread_index][clone0];
+		  vlib_buffer_t *c0 = vlib_get_buffer (vm, ci0);
+		  ethernet_header_t *h0 = vlib_buffer_get_current (c0);
 
-	      if (c0 != b0)
-		vlib_buffer_copy_trace_flag (vm, b0, ci0);
+		  if (c0 != b0)
+		    vlib_buffer_copy_trace_flag (vm, b0, ci0);
 
-	      t = vlib_add_trace (vm, node, c0, sizeof (*t));
-	      h0 = vlib_buffer_get_current (c0);
-	      t->sw_if_index = sw_if_index0;
-	      t->bd_index = vnet_buffer (c0)->l2.bd_index;
-	      clib_memcpy (t->src, h0->src_address, 6);
-	      clib_memcpy (t->dst, h0->dst_address, 6);
+		  l2flood_trace_t *t =
+		    vlib_add_trace (vm, node, c0, sizeof (*t));
+		  t->sw_if_index = sw_if_index0;
+		  t->bd_index = vnet_buffer (c0)->l2.bd_index;
+		  clib_memcpy (t->src, h0->src_address, 6);
+		  clib_memcpy (t->dst, h0->dst_address, 6);
+		}
 	    }
-
-
-	  /* Forward packet to the current member */
-	  if (PREDICT_FALSE (member->flags & L2_FLOOD_MEMBER_BVI))
+	  /*
+	   * first clone goes to BVI
+	   */
+	  if (n_bvi)
 	    {
+	      u32 member = msm->members[thread_index][0];
+	      u32 ci0 = msm->clones[thread_index][0];
+	      vlib_buffer_t *c0 = vlib_get_buffer (vm, ci0);
+
+	      to_next[0] = ci0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+
 	      /* Do BVI processing */
-	      u32 rc;
-	      rc = l2_to_bvi (vm,
-			      msm->vnet_main,
-			      c0, member->sw_if_index, &msm->l3_next, &next0);
+	      u16 next0;
+	      u32 rc = l2_to_bvi (vm, msm->vnet_main, c0, member,
+				  &msm->l3_next, &next0);
 
 	      if (PREDICT_FALSE (rc != TO_BVI_ERR_OK))
 		{
@@ -335,21 +304,43 @@ l2flood_node_fn (vlib_main_t * vm,
 		    }
 		  next0 = L2FLOOD_NEXT_DROP;
 		}
+	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					       to_next, n_left_to_next,
+					       ci0, next0);
+	      if (PREDICT_FALSE (0 == n_left_to_next))
+		{
+		  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+		  vlib_get_next_frame (vm, node, next_index, to_next,
+				       n_left_to_next);
+		}
 	    }
-	  else
+	  /*
+	   * the rest go to l2-output
+	   * start from end of member list to handle the case where the BVI clone has failed
+	   * and we have more members than clones
+	   */
+	  for (clone0 = n_bvi, mi = n_members - 1; clone0 < n_cloned;
+	       clone0++, mi--)
 	    {
-	      /* Do normal L2 forwarding */
-	      vnet_buffer (c0)->sw_if_index[VLIB_TX] = member->sw_if_index;
-	    }
+	      u32 member = msm->members[thread_index][mi];
+	      u32 ci0 = msm->clones[thread_index][clone0];
+	      vlib_buffer_t *c0 = vlib_get_buffer (vm, ci0);
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   ci0, next0);
-	  if (PREDICT_FALSE (0 == n_left_to_next))
-	    {
-	      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-	      vlib_get_next_frame (vm, node, next_index,
-				   to_next, n_left_to_next);
+	      to_next[0] = ci0;
+	      to_next += 1;
+	      n_left_to_next -= 1;
+
+	      /* Do normal L2 forwarding */
+	      vnet_buffer (c0)->sw_if_index[VLIB_TX] = member;
+	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					       to_next, n_left_to_next,
+					       ci0, L2FLOOD_NEXT_L2_OUTPUT);
+	      if (PREDICT_FALSE (0 == n_left_to_next))
+		{
+		  vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+		  vlib_get_next_frame (vm, node, next_index, to_next,
+				       n_left_to_next);
+		}
 	    }
 	}
 
