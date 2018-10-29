@@ -419,16 +419,15 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-ipsec4_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame)
+VLIB_NODE_FN (ipsec4_output_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return ipsec_output_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec4_output_node,static) = {
-  .function = ipsec4_output_node_fn,
+VLIB_REGISTER_NODE (ipsec4_output_node) = {
   .name = "ipsec4-output",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_output_trace,
@@ -446,18 +445,15 @@ VLIB_REGISTER_NODE (ipsec4_output_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec4_output_node, ipsec4_output_node_fn);
-
-static uword
-ipsec6_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame)
+VLIB_NODE_FN (ipsec6_output_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return ipsec_output_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec6_output_node,static) = {
-  .function = ipsec6_output_node_fn,
+VLIB_REGISTER_NODE (ipsec6_output_node) = {
   .name = "ipsec6-output",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_output_trace,
@@ -475,7 +471,6 @@ VLIB_REGISTER_NODE (ipsec6_output_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec6_output_node, ipsec6_output_node_fn);
 #else /* IPSEC > 1 */
 
 /* Dummy ipsec output node, in case when IPSec is disabled */

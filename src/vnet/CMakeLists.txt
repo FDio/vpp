@@ -491,6 +491,13 @@ list(APPEND VNET_SOURCES
   ipsec/ipsec_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  ipsec/esp_encrypt.c
+  ipsec/esp_decrypt.c
+  ipsec/ah_decrypt.c
+  ipsec/ah_encrypt.c
+)
+
 list(APPEND VNET_API_FILES ipsec/ipsec.api)
 
 list(APPEND VNET_SOURCES

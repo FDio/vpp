@@ -567,10 +567,9 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-dpdk_esp4_encrypt_node_fn (vlib_main_t * vm,
-			   vlib_node_runtime_t * node,
-			   vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp4_encrypt_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * from_frame)
 {
   return dpdk_esp_encrypt_inline (vm, node, from_frame, 0 /*is_ip6 */ );
 }
@@ -592,13 +591,9 @@ VLIB_REGISTER_NODE (dpdk_esp4_encrypt_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp4_encrypt_node,
-			      dpdk_esp4_encrypt_node_fn);
-
-static uword
-dpdk_esp6_encrypt_node_fn (vlib_main_t * vm,
-			   vlib_node_runtime_t * node,
-			   vlib_frame_t * from_frame)
+VLIB_NODE_FN (dpdk_esp6_encrypt_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * from_frame)
 {
   return dpdk_esp_encrypt_inline (vm, node, from_frame, 1 /*is_ip6 */ );
 }
@@ -620,8 +615,6 @@ VLIB_REGISTER_NODE (dpdk_esp6_encrypt_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp6_encrypt_node,
-			      dpdk_esp6_encrypt_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *
