@@ -109,6 +109,17 @@ unserialize_vec_vnet_sw_hw_interface_state (serialize_main_t * m,
     }
 }
 
+static vnet_sw_interface_flags_t
+vnet_hw_interface_flags_to_sw (vnet_hw_interface_flags_t hwf)
+{
+  vnet_sw_interface_flags_t swf = VNET_SW_INTERFACE_FLAG_NONE;
+
+  if (hwf & VNET_HW_INTERFACE_FLAG_LINK_UP)
+    swf |= VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+
+  return (swf);
+}
+
 void
 serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 {
@@ -150,7 +161,7 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
       {
 	vec_add2 (sts, st, 1);
 	st->sw_hw_if_index = hif->hw_if_index;
-	st->flags = hif->flags;
+	st->flags = vnet_hw_interface_flags_to_sw(hif->flags);
       }
   }));
   /* *INDENT-ON* */
@@ -158,6 +169,17 @@ serialize_vnet_interface_state (serialize_main_t * m, va_list * va)
   vec_serialize (m, sts, serialize_vec_vnet_sw_hw_interface_state);
 
   vec_free (sts);
+}
+
+static vnet_hw_interface_flags_t
+vnet_sw_interface_flags_to_hw (vnet_sw_interface_flags_t swf)
+{
+  vnet_hw_interface_flags_t hwf = VNET_HW_INTERFACE_FLAG_NONE;
+
+  if (swf & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    hwf |= VNET_HW_INTERFACE_FLAG_LINK_UP;
+
+  return (hwf);
 }
 
 void
@@ -195,8 +217,11 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 
   vec_unserialize (m, &sts, unserialize_vec_vnet_sw_hw_interface_state);
   vec_foreach (st, sts)
-    vnet_hw_interface_set_flags_helper (vnm, st->sw_hw_if_index, st->flags,
-					/* no distribute */ 0);
+  {
+    vnet_hw_interface_set_flags_helper
+      (vnm, st->sw_hw_if_index, vnet_sw_interface_flags_to_hw (st->flags),
+       /* no distribute */ 0);
+  }
   vec_free (sts);
 }
 
