@@ -1354,6 +1354,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->tx_buffers, num_threads - 1);
   vec_validate (smm->pending_event_vector, num_threads - 1);
   vec_validate (smm->pending_disconnects, num_threads - 1);
+  vec_validate (smm->postponed_event_vector, num_threads - 1);
   vec_validate (smm->free_event_vector, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
   vec_validate (smm->peekers_rw_locks, num_threads - 1);
@@ -1377,6 +1378,8 @@ session_manager_main_enable (vlib_main_t * vm)
       _vec_len (smm->pending_event_vector[i]) = 0;
       vec_validate (smm->pending_disconnects[i], 0);
       _vec_len (smm->pending_disconnects[i]) = 0;
+      vec_validate (smm->postponed_event_vector[i], 0);
+      _vec_len (smm->postponed_event_vector[i]) = 0;
 
       smm->last_vlib_time[i] = vlib_time_now (vlib_mains[i]);
 

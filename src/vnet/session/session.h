@@ -209,6 +209,9 @@ struct _session_manager_main
   /** per-worker active event vectors */
   session_event_t **pending_event_vector;
 
+  /** per-worker postponed events */
+  session_event_t **postponed_event_vector;
+
   /** per-worker postponed disconnects */
   session_event_t **pending_disconnects;
 
