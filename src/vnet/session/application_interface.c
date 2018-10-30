@@ -125,10 +125,10 @@ api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
   *thread_index = handle & 0xFFFFFFFF;
   *session_index = handle >> 32;
 
-  if (*thread_index >= vec_len (smm->sessions))
+  if (*thread_index >= vec_len (smm->wrk))
     return VNET_API_ERROR_INVALID_VALUE;
 
-  pool = smm->sessions[*thread_index];
+  pool = smm->wrk[*thread_index].sessions;
 
   if (pool_is_free_index (pool, *session_index))
     return VNET_API_ERROR_INVALID_VALUE_2;

@@ -186,43 +186,52 @@ extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
 
 u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
 
-struct _session_manager_main
+typedef struct session_manager_worker_
 {
-  /** Per worker thread session pools */
-  stream_session_t **sessions;
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-  /** Per worker-thread session pool peekers rw locks */
-  clib_rwlock_t *peekers_rw_locks;
+  /** Worker session pool */
+  stream_session_t *sessions;
 
-  /** Per-proto, per-worker enqueue epoch counters */
-  u64 *current_enqueue_epoch[TRANSPORT_N_PROTO];
+  /** Peekers rw lock */
+  clib_rwlock_t peekers_rw_locks;
 
-  /** Per-proto, per-worker thread vector of sessions to enqueue */
-  u32 **session_to_enqueue[TRANSPORT_N_PROTO];
+  /** Per-proto enqueue epoch counters */
+  u64 current_enqueue_epoch[TRANSPORT_N_PROTO];
 
-  /** per-worker tx buffer free lists */
-  u32 **tx_buffers;
-
-  /** Per worker-thread vector of partially read events */
-  session_event_t **free_event_vector;
-
-  /** per-worker active event vectors */
-  session_event_t **pending_event_vector;
-
-  /** per-worker postponed disconnects */
-  session_event_t **pending_disconnects;
-
-  /** per-worker session context */
-  session_tx_context_t *ctx;
+  /** Per-proto vector of sessions to enqueue */
+  u32 *session_to_enqueue[TRANSPORT_N_PROTO];
 
   /** Our approximation of a "complete" dispatch loop period */
-  f64 *dispatch_period;
+  f64 dispatch_period;
 
   /** vlib_time_now last time around the track */
-  f64 *last_vlib_time;
+  f64 last_vlib_time;
 
-  /** vpp fifo event queue */
-  svm_msg_q_t **vpp_event_queues;
+  /** vpp event message queue for worker */
+  svm_msg_q_t *vpp_event_queue;
+
+  /** Vector of tx buffer free lists */
+  u32 *tx_buffers;
+
+  /** Vector of partially read events */
+  session_event_t *free_event_vector;
+
+  /** Vector of active event vectors */
+  session_event_t *pending_event_vector;
+
+  /** Vector of postponed disconnects */
+  session_event_t *pending_disconnects;
+
+  /** Context for session tx */
+  session_tx_context_t ctx;
+
+} session_manager_worker_t;
+
+struct _session_manager_main
+{
+  /** Worker contexts */
+  session_manager_worker_t *wrk;
 
   /** Event queues memfd segment initialized only if so configured */
   ssvm_private_t evt_qs_segment;
@@ -238,15 +247,15 @@ struct _session_manager_main
    * Trade memory for speed, for now */
   u32 *session_type_to_next;
 
+  /*
+   * Config parameters
+   */
+
   /** Session manager is enabled */
   u8 is_enabled;
 
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
-
-  /*
-   * Config parameters
-   */
 
   /** Session ssvm segment configs*/
   uword session_baseva;
@@ -297,11 +306,17 @@ vnet_get_session_manager_main ()
   return &session_manager_main;
 }
 
+always_inline session_manager_worker_t *
+session_manager_get_worker (u32 thread_index)
+{
+  return &session_manager_main.wrk[thread_index];
+}
+
 always_inline u8
 stream_session_is_valid (u32 si, u8 thread_index)
 {
   stream_session_t *s;
-  s = pool_elt_at_index (session_manager_main.sessions[thread_index], si);
+  s = pool_elt_at_index (session_manager_main.wrk[thread_index].sessions, si);
   if (s->thread_index != thread_index || s->session_index != si
       /* || s->server_rx_fifo->master_session_index != si
          || s->server_tx_fifo->master_session_index != si
@@ -320,20 +335,23 @@ always_inline stream_session_t *
 session_get (u32 si, u32 thread_index)
 {
   ASSERT (stream_session_is_valid (si, thread_index));
-  return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
+  return pool_elt_at_index (session_manager_main.wrk[thread_index].sessions,
+			    si);
 }
 
 always_inline stream_session_t *
 session_get_if_valid (u64 si, u32 thread_index)
 {
-  if (thread_index >= vec_len (session_manager_main.sessions))
+  if (thread_index >= vec_len (session_manager_main.wrk))
     return 0;
 
-  if (pool_is_free_index (session_manager_main.sessions[thread_index], si))
+  if (pool_is_free_index (session_manager_main.wrk[thread_index].sessions,
+			  si))
     return 0;
 
   ASSERT (stream_session_is_valid (si, thread_index));
-  return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
+  return pool_elt_at_index (session_manager_main.wrk[thread_index].sessions,
+			    si);
 }
 
 always_inline session_handle_t
@@ -368,7 +386,7 @@ session_get_from_handle (session_handle_t handle)
   session_manager_main_t *smm = &session_manager_main;
   u32 session_index, thread_index;
   session_parse_handle (handle, &session_index, &thread_index);
-  return pool_elt_at_index (smm->sessions[thread_index], session_index);
+  return pool_elt_at_index (smm->wrk[thread_index].sessions, session_index);
 }
 
 always_inline stream_session_t *
@@ -441,19 +459,19 @@ u8 session_tx_is_dgram (stream_session_t * s);
 always_inline void
 session_pool_add_peeker (u32 thread_index)
 {
-  session_manager_main_t *smm = &session_manager_main;
+  session_manager_worker_t *wrk = &session_manager_main.wrk[thread_index];
   if (thread_index == vlib_get_thread_index ())
     return;
-  clib_rwlock_reader_lock (&smm->peekers_rw_locks[thread_index]);
+  clib_rwlock_reader_lock (&wrk->peekers_rw_locks);
 }
 
 always_inline void
 session_pool_remove_peeker (u32 thread_index)
 {
-  session_manager_main_t *smm = &session_manager_main;
+  session_manager_worker_t *wrk = &session_manager_main.wrk[thread_index];
   if (thread_index == vlib_get_thread_index ())
     return;
-  clib_rwlock_reader_unlock (&smm->peekers_rw_locks[thread_index]);
+  clib_rwlock_reader_unlock (&wrk->peekers_rw_locks);
 }
 
 /**
@@ -464,18 +482,19 @@ session_pool_remove_peeker (u32 thread_index)
 always_inline stream_session_t *
 session_get_from_handle_safe (u64 handle)
 {
-  session_manager_main_t *smm = &session_manager_main;
   u32 thread_index = session_thread_from_handle (handle);
+  session_manager_worker_t *wrk = &session_manager_main.wrk[thread_index];
+
   if (thread_index == vlib_get_thread_index ())
     {
-      return pool_elt_at_index (smm->sessions[thread_index],
+      return pool_elt_at_index (wrk->sessions,
 				session_index_from_handle (handle));
     }
   else
     {
       session_pool_add_peeker (thread_index);
       /* Don't use pool_elt_at index. See @ref session_pool_add_peeker */
-      return smm->sessions[thread_index] + session_index_from_handle (handle);
+      return wrk->sessions + session_index_from_handle (handle);
     }
 }
 
@@ -503,19 +522,19 @@ transport_tx_fifo_size (transport_connection_t * tc)
 always_inline f64
 transport_dispatch_period (u32 thread_index)
 {
-  return session_manager_main.dispatch_period[thread_index];
+  return session_manager_main.wrk[thread_index].dispatch_period;
 }
 
 always_inline f64
 transport_time_now (u32 thread_index)
 {
-  return session_manager_main.last_vlib_time[thread_index];
+  return session_manager_main.wrk[thread_index].last_vlib_time;
 }
 
 always_inline u32
 session_get_index (stream_session_t * s)
 {
-  return (s - session_manager_main.sessions[s->thread_index]);
+  return (s - session_manager_main.wrk[s->thread_index].sessions);
 }
 
 always_inline stream_session_t *
@@ -531,7 +550,7 @@ session_clone_safe (u32 session_index, u32 thread_index)
    */
   session_pool_add_peeker (thread_index);
   new_s = session_alloc (current_thread_index);
-  old_s = session_manager_main.sessions[thread_index] + session_index;
+  old_s = session_manager_main.wrk[thread_index].sessions + session_index;
   clib_memcpy (new_s, old_s, sizeof (*new_s));
   session_pool_remove_peeker (thread_index);
   new_s->thread_index = current_thread_index;
@@ -607,7 +626,7 @@ clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 always_inline svm_msg_q_t *
 session_manager_get_vpp_event_queue (u32 thread_index)
 {
-  return session_manager_main.vpp_event_queues[thread_index];
+  return session_manager_main.wrk[thread_index].vpp_event_queue;
 }
 
 int session_manager_flush_enqueue_events (u8 proto, u32 thread_index);
