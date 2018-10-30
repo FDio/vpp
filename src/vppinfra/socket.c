@@ -278,7 +278,7 @@ default_socket_sendmsg (clib_socket_t * s, void *msg, int msglen,
 {
   struct msghdr mh = { 0 };
   struct iovec iov[1];
-  char ctl[CMSG_SPACE (sizeof (int)) * num_fds];
+  char ctl[CMSG_SPACE (sizeof (int) * num_fds)];
   int rv;
 
   iov[0].iov_base = msg;
