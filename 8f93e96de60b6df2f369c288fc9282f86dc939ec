@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8c9c88ef_246657cd",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-10-30T21:31:25Z",
+      "side": 1,
+      "message": "Linewrap ftw",
+      "revId": "8f93e96de60b6df2f369c288fc9282f86dc939ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
