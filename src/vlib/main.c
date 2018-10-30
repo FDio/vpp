@@ -1534,7 +1534,10 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       vlib_node_runtime_t *n;
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
-	vl_api_send_pending_rpc_requests (vm);
+	{
+	  if (!is_main)
+	    vl_api_send_pending_rpc_requests (vm);
+	}
 
       if (!is_main)
 	{

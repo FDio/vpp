@@ -103,6 +103,14 @@ memclnt_queue_callback (vlib_main_t * vm)
 	  break;
 	}
     }
+  if (vec_len (vm->pending_rpc_requests))
+    {
+      vm->queue_signal_pending = 1;
+      vm->api_queue_nonempty = 1;
+      vlib_process_signal_event (vm, vl_api_clnt_node.index,
+				 /* event_type */ QUEUE_SIGNAL_EVENT,
+				 /* event_data */ 0);
+    }
 }
 
 /*
@@ -701,6 +709,26 @@ vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node)
   api_main_t *am = &api_main;
   return void_mem_api_handle_msg_i (am, vm, node,
 				    am->shmem_hdr->vl_input_queue);
+}
+
+int
+vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
+{
+  api_main_t *am = &api_main;
+  int i;
+  uword *rpc_requests, mp;
+
+  clib_spinlock_lock_if_init (&vm->pending_rpc_lock);
+  rpc_requests = vm->pending_rpc_requests;
+
+  for (i = 0; i < vec_len (rpc_requests); i++)
+    {
+      mp = rpc_requests[i];
+      vl_msg_api_handler_with_vm_node (am, (void *) mp, vm, node);
+    }
+  vec_reset_length (vm->pending_rpc_requests);
+  clib_spinlock_unlock_if_init (&vm->pending_rpc_lock);
+  return 0;
 }
 
 int
