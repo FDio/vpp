@@ -344,7 +344,7 @@ clib_error_t *vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index,
 /* Change interface mac address*/
 clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t * vnm,
 						    u32 hw_if_index,
-						    u8 * mac_address);
+						    const u8 * mac_address);
 
 /* Change rx-mode */
 clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
