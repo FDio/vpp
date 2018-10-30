@@ -223,6 +223,9 @@ typedef struct session_manager_worker_
   /** Vector of postponed disconnects */
   session_event_t *pending_disconnects;
 
+  /** Vector of postponed events */
+  session_event_t *postponed_event_vector;
+
   /** Peekers rw lock */
   clib_rwlock_t peekers_rw_locks;
 

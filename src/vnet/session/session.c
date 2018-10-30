@@ -1362,6 +1362,8 @@ session_manager_main_enable (vlib_main_t * vm)
       _vec_len (wrk->pending_event_vector) = 0;
       vec_validate (wrk->pending_disconnects, 0);
       _vec_len (wrk->pending_disconnects) = 0;
+      vec_validate (wrk->postponed_event_vector, 0);
+      _vec_len (wrk->postponed_event_vector) = 0;
 
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
 
