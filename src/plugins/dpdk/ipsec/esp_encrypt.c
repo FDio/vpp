@@ -576,7 +576,6 @@ VLIB_NODE_FN (dpdk_esp4_encrypt_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp4_encrypt_node) = {
-  .function = dpdk_esp4_encrypt_node_fn,
   .name = "dpdk-esp4-encrypt",
   .flags = VLIB_NODE_FLAG_IS_OUTPUT,
   .vector_size = sizeof (u32),
@@ -600,7 +599,6 @@ VLIB_NODE_FN (dpdk_esp6_encrypt_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp6_encrypt_node) = {
-  .function = dpdk_esp6_encrypt_node_fn,
   .name = "dpdk-esp6-encrypt",
   .flags = VLIB_NODE_FLAG_IS_OUTPUT,
   .vector_size = sizeof (u32),

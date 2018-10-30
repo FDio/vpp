@@ -675,7 +675,6 @@ VLIB_NODE_FN(dpdk_esp4_decrypt_post_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp4_decrypt_post_node) = {
-  .function = dpdk_esp4_decrypt_post_node_fn,
   .name = "dpdk-esp4-decrypt-post",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_post_trace,
@@ -700,7 +699,6 @@ VLIB_NODE_FN(dpdk_esp6_decrypt_post_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
-  .function = dpdk_esp6_decrypt_post_node_fn,
   .name = "dpdk-esp6-decrypt-post",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_post_trace,
