@@ -195,6 +195,8 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
     adj->ia_link = link_type;
     adj->ia_nh_proto = nh_proto;
     adj->rewrite_header.sw_if_index = sw_if_index;
+    vnet_rewrite_update_mtu(vnet_get_main(), adj->ia_link,
+                            &adj->rewrite_header);
 
     adj_nbr_evaluate_feature (adj_get_index(adj));
     return (adj);
