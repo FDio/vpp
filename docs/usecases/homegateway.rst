@@ -77,9 +77,9 @@ vpp configuration::
   set int state GigabitEthernet0/14/0 up 
 
   comment { dhcp server and host-stack access }
-  tap connect lstack address 192.168.1.2/24
-  set int l2 bridge tapcli-0 1
-  set int state tapcli-0 up
+  create tap host-if-name lstack host-ip4-addr 192.168.1.2/24 host-ip4-gw 192.168.1.1 
+  set int l2 bridge tap0 1
+  set int state tap0 up
 
   comment { Configure NAT}
   nat44 add interface address GigabitEthernet3/0/0
@@ -96,13 +96,11 @@ vpp configuration::
   comment { bin dns_enable_disable }
   comment { see patch below, which adds these commands }
   service restart isc-dhcp-server
-  add default linux route via 192.168.1.1
  
 Patches
 -------
 
-You'll need this patch to add the "service restart" and "add default
-linux route" commands::
+You'll need this patch to add the "service restart" command::
 
   diff --git a/src/vpp/vnet/main.c b/src/vpp/vnet/main.c
   index 6e136e19..69189c93 100644
@@ -144,40 +142,7 @@ linux route" commands::
   +};
   +/* *INDENT-ON* */
   +
-  +static clib_error_t *
-  +add_default_linux_route_command_fn (vlib_main_t * vm,
-  +                                    unformat_input_t * input, 
-  +                                    vlib_cli_command_t * c)
-  +{
-  +  int rv __attribute__((unused));
-  +  ip4_address_t ip4_addr;
-  +  u8 *cmd;
-  +  
-  +  if (!unformat (input, "%U", unformat_ip4_address, &ip4_addr))
-  +    return clib_error_return (0, "default gateway address required...");
-  +
-  +  cmd = format (0, "/sbin/route add -net 0.0.0.0/0 gw %U",
-  +                format_ip4_address, &ip4_addr);
-  +  vec_add1 (cmd, 0);
-  +
-  +  rv = system (cmd);
-  +  
-  +  vlib_cli_output (vm, "%s", cmd);
-  +
-  +  vec_free(cmd);
-  +
-  +  return 0;
-  +}
-  +
-  +/* *INDENT-OFF* */
-  +VLIB_CLI_COMMAND (add_default_linux_route_command, static) = {
-  +  .path = "add default linux route via",
-  +  .short_help = "Adds default linux route: 0.0.0.0/0 via <addr>",
-  +  .function = add_default_linux_route_command_fn,
-  +};
-  +/* *INDENT-ON* */
-  +
-  + 
+
 
 Using the temporal mac filter plugin
 ------------------------------------

@@ -125,6 +125,127 @@ looking for similar tasks, and think about using the same coding
 pattern. It is not uncommon to recode a given graph node dispatch function
 several times during performance optimization.
 
+Creating Packets from Scratch
+-----------------------------
+
+At times, it's necessary to create packets from scratch and send
+them. Tasks like sending keepalives or actively opening connections
+come to mind. Its not difficult, but accurate buffer metadata setup is
+required.
+
+### Allocating Buffers
+
+Use vlib_buffer_alloc, which allocates a set of buffer indices. For
+low-performance applications, it's OK to allocate one buffer at a
+time. Note that vlib_buffer_alloc(...) does NOT initialize buffer
+metadata. See below.
+
+In high-performance cases, allocate a vector of buffer indices,
+and hand them out from the end of the vector; decrement _vec_len(..)
+as buffer indices are allocated. See tcp_alloc_tx_buffers(...) and
+tcp_get_free_buffer_index(...) for an example.
+
+### Buffer Initialization Example
+
+The following example shows the **main points**, but is not to be
+blindly cut-'n-pasted.
+
+```c                               
+  u32 bi0;
+  vlib_buffer_t *b0;
+  ip4_header_t *ip;
+  udp_header_t *udp;
+  vlib_buffer_free_list_t *fl;
+
+  /* Allocate a buffer */
+  if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+    return -1;
+
+  b0 = vlib_get_buffer (vm, bi0);
+
+  /* Initialize the buffer */
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_init_for_free_list (b0, fl);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+
+  /* At this point b0->current_data = 0, b0->current_length = 0 */
+
+  /* 
+   * Copy data into the buffer. This example ASSUMES that data will fit
+   * in a single buffer, and is e.g. an ip4 packet.
+   */
+  if (have_packet_rewrite)
+     {
+       clib_memcpy (b0->data, data, vec_len (data));
+       b0->current_length = vec_len (data);
+     }
+  else 
+     {
+       /* OR, build a udp-ip packet (for example) */
+       ip = vlib_buffer_get_current (b0);
+       udp = (udp_header_t *) (ip + 1);
+       data_dst = (u8 *) (udp + 1);
+
+       ip->ip_version_and_header_length = 0x45;
+       ip->ttl = 254;
+       ip->protocol = IP_PROTOCOL_UDP;
+       ip->length = clib_host_to_net_u16 (sizeof (*ip) + sizeof (*udp) +
+                  vec_len(udp_data));
+       ip->src_address.as_u32 = src_address->as_u32;
+       ip->dst_address.as_u32 = dst_address->as_u32;
+       udp->src_port = clib_host_to_net_u16 (src_port);
+       udp->dst_port = clib_host_to_net_u16 (dst_port);
+       udp->length = clib_host_to_net_u16 (vec_len (udp_data));
+       clib_memcpy (data_dst, udp_data, vec_len(udp_data));
+
+       if (compute_udp_checksum)
+         {
+           /* RFC 7011 section 10.3.2. */
+           udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
+           if (udp->checksum == 0)
+             udp->checksum = 0xffff;
+      }  
+      b0->current_length = vec_len (sizeof (*ip) + sizeof (*udp) +
+                                   vec_len (udp_data));
+
+    }
+  b0->flags |= (VLIB_BUFFER_TOTAL_LENGTH_VALID;
+
+  /* sw_if_index 0 is the "local" interface, which always exists */
+  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+
+  /* Use the default FIB index for tx lookup. Set non-zero to use another fib */
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = 0;
+
+```  
+
+If your use-case calls for large packet transmission, use
+vlib_buffer_chain_append_data_with_alloc(...) to create the requisite
+buffer chain.
+
+### Enqueueing packets for lookup and transmission
+
+The simplest way to send a set of packets is to use
+vlib_get_frame_to_node(...) to allocate fresh frame(s) to
+ip4_lookup_node or ip6_lookup_node, add the constructed buffer
+indices, and dispatch the frame using vlib_put_frame_to_node(...).
+
+```c
+    vlib_frame_t *f;
+    f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+    f->n_vectors = vec_len(buffer_indices_to_send);
+    to_next = vlib_frame_vector_args (f);
+
+    for (i = 0; i < vec_len (buffer_indices_to_send); i++)
+      to_next[i] = buffer_indices_to_send[i];
+
+    vlib_put_frame_to_node (vm, ip4_lookup_node_index, f); 
+``` 
+
+It is inefficient to allocate and schedule single packet frames.
+That's typical in case you need to send one packet per second, but
+should **not** occur in a for-loop!
+
 Packet tracer
 -------------
 
