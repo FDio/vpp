@@ -166,7 +166,8 @@ vnet_rewrite_for_tunnel (vnet_main_t * vnm,
   rw->sw_if_index = tx_sw_if_index;
   rw->next_index = vlib_node_add_next (vnm->vlib_main, rewrite_node_index,
 				       post_rewrite_node_index);
-  rw->max_l3_packet_bytes = (u16) ~ 0;	/* we can't know at this point */
+  /* we can't know at this point */
+  rw->max_l3_packet_bytes = (u16) ~ 0;
 
   ASSERT (rewrite_length < sizeof (adj->rewrite_data));
   /* Leave room for ethernet + VLAN tag */
