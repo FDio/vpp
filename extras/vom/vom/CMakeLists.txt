@@ -16,6 +16,7 @@ unset (ACL_FILE)
 unset (NAT_FILE)
 unset (L2E_FILE)
 unset (GBP_FILE)
+unset (IGMP_FILE)
 unset (VOM_SOURCES)
 unset (VOM_HEADERS)
 
@@ -33,6 +34,7 @@ find_file(ACL_FILE NAMES acl.api.vapi.hpp PATH_SUFFIXES vapi)
 find_file(NAT_FILE NAMES nat.api.vapi.hpp PATH_SUFFIXES vapi)
 find_file(L2E_FILE NAMES l2e.api.vapi.hpp PATH_SUFFIXES vapi)
 find_file(GBP_FILE NAMES gbp.api.vapi.hpp PATH_SUFFIXES vapi)
+find_file(IGMP_FILE NAMES igmp.api.vapi.hpp PATH_SUFFIXES vapi)
 
 if(ACL_FILE)
   list(APPEND VOM_SOURCES
@@ -76,6 +78,15 @@ if(GBP_FILE)
     gbp_endpoint_group.cpp
     gbp_contract_cmds.cpp
     gbp_contract.cpp
+  )
+endif()
+
+if (IGMP_FILE)
+  list(APPEND VOM_SOURCES
+    igmp_binding_cmds.cpp
+    igmp_binding.cpp
+    igmp_listen_cmds.cpp
+    igmp_listen.cpp
   )
 endif()
 
@@ -179,6 +190,13 @@ if(GBP_FILE)
     gbp_subnet.hpp
     gbp_recirc.hpp
     gbp_contract.hpp
+  )
+endif()
+
+if(IGMP_FILE)
+  list(APPEND VOM_HEADERS
+    igmp_binding.hpp
+    igmp_listen.hpp
   )
 endif()
 
