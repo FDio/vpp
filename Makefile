@@ -37,6 +37,7 @@ unix { 									\
 	gid $(shell id -g)						\
 	$(if $(wildcard startup.vpp),"exec startup.vpp",)		\
 }									\
+        cpu { main-core 0 corelist-workers 1-2 workers 2 }              \
 $(if $(DPDK_CONFIG), "dpdk { $(DPDK_CONFIG) }",)			\
 $(call disable_plugins,$(DISABLED_PLUGINS))				\
 "
