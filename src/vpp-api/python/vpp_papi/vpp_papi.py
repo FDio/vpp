@@ -139,7 +139,7 @@ class VPP():
                 self.logger.error('Not implemented error for {}'.format(m[0]))
 
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
-                 logger=logging.getLogger('vpp_papi'), loglevel='debug',
+                 logger=None, loglevel=None,
                  read_timeout=5, use_socket=False,
                  server_address='/run/vpp-api.sock'):
         """Create a VPP API object.
