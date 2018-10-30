@@ -764,8 +764,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_manager_main_t *smm = vnet_get_session_manager_main ();
   u32 thread_index = vm->thread_index, n_to_dequeue, n_events;
   session_manager_worker_t *wrk = &smm->wrk[thread_index];
-  session_event_t *pending_events, *e;
-  session_event_t *fifo_events;
+  session_event_t *e, *fifo_events;
   svm_msg_q_msg_t _msg, *msg = &_msg;
   f64 now = vlib_time_now (vm);
   int n_tx_packets = 0, i, rv;
@@ -782,55 +781,39 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_update_dispatch_period (wrk, now, thread_index);
   transport_update_time (now, thread_index);
 
-  /*
-   * Get vpp queue events that we can dequeue without blocking
-   */
-  mq = wrk->vpp_event_queue;
-  fifo_events = wrk->free_event_vector;
-  n_to_dequeue = svm_msg_q_size (mq);
-  pending_events = wrk->pending_event_vector;
-
-  if (!n_to_dequeue && !vec_len (pending_events)
-      && !vec_len (wrk->pending_disconnects))
-    return 0;
-
   SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 0);
 
-  /*
-   * If we didn't manage to process previous events try going
-   * over them again without dequeuing new ones.
-   * XXX: Handle senders to sessions that can't keep up
-   */
-  if (0 && vec_len (pending_events) >= 100)
-    {
-      clib_warning ("too many fifo events unsolved");
-      goto skip_dequeue;
-    }
-
-  /* See you in the next life, don't be late
-   * XXX: we may need priorities here */
-  if (svm_msg_q_try_lock (mq))
-    return 0;
-
-  for (i = 0; i < n_to_dequeue; i++)
-    {
-      vec_add2 (fifo_events, e, 1);
-      svm_msg_q_sub_w_lock (mq, msg);
-      clib_memcpy (e, svm_msg_q_msg_data (mq, msg), sizeof (*e));
-      svm_msg_q_free_msg (mq, msg);
-    }
-
-  svm_msg_q_unlock (mq);
-
-  vec_append (fifo_events, pending_events);
-  vec_append (fifo_events, wrk->pending_disconnects);
-
-  _vec_len (pending_events) = 0;
-  wrk->pending_event_vector = pending_events;
+  /* Make sure postponed events are handled first */
+  fifo_events = wrk->free_event_vector;
+  vec_append (fifo_events, wrk->postponed_event_vector);
   _vec_len (wrk->pending_disconnects) = 0;
 
-skip_dequeue:
+  /* Try to dequeue what is available. Don't wait for lock.
+   * XXX: we may need priorities here */
+  mq = wrk->vpp_event_queue;
+  n_to_dequeue = svm_msg_q_size (mq);
+  if (n_to_dequeue && svm_msg_q_try_lock (mq) == 0)
+    {
+      for (i = 0; i < n_to_dequeue; i++)
+	{
+	  vec_add2 (fifo_events, e, 1);
+	  svm_msg_q_sub_w_lock (mq, msg);
+	  clib_memcpy (e, svm_msg_q_msg_data (mq, msg), sizeof (*e));
+	  svm_msg_q_free_msg (mq, msg);
+	}
+      svm_msg_q_unlock (mq);
+    }
+
+  vec_append (fifo_events, wrk->pending_event_vector);
+  vec_append (fifo_events, wrk->pending_disconnects);
+
+  _vec_len (wrk->postponed_event_vector) = 0;
+  _vec_len (wrk->pending_event_vector) = 0;
+
   n_events = vec_len (fifo_events);
+  if (PREDICT_FALSE (!n_events))
+    return 0;
+
   for (i = 0; i < n_events; i++)
     {
       stream_session_t *s;	/* $$$ prefetch 1 ahead maybe */
@@ -844,7 +827,7 @@ skip_dequeue:
 	  /* Don't try to send more that one frame per dispatch cycle */
 	  if (n_tx_packets == VLIB_FRAME_SIZE)
 	    {
-	      vec_add1 (wrk->pending_event_vector, *e);
+	      vec_add1 (wrk->postponed_event_vector, *e);
 	      break;
 	    }
 

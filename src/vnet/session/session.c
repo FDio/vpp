@@ -1344,7 +1344,7 @@ session_manager_main_enable (vlib_main_t * vm)
   if (num_threads < 1)
     return clib_error_return (0, "n_thread_stacks not set");
 
-  /* configure per-thread ** vectors */
+  /* Allocate cache line aligned worker contexts */
   vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
 
   for (i = 0; i < TRANSPORT_N_PROTO; i++)
@@ -1356,12 +1356,14 @@ session_manager_main_enable (vlib_main_t * vm)
   for (i = 0; i < num_threads; i++)
     {
       wrk = &smm->wrk[i];
-      vec_validate (wrk->free_event_vector, 0);
+      vec_validate (wrk->free_event_vector, 128);
       _vec_len (wrk->free_event_vector) = 0;
-      vec_validate (wrk->pending_event_vector, 0);
+      vec_validate (wrk->pending_event_vector, 128);
       _vec_len (wrk->pending_event_vector) = 0;
-      vec_validate (wrk->pending_disconnects, 0);
+      vec_validate (wrk->pending_disconnects, 128);
       _vec_len (wrk->pending_disconnects) = 0;
+      vec_validate (wrk->postponed_event_vector, 128);
+      _vec_len (wrk->postponed_event_vector) = 0;
 
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
 
