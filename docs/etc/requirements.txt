@@ -24,7 +24,7 @@ pyparsing==2.2.0
 pytz==2018.4
 PyYAML==3.12
 recommonmark==0.4.0
-requests==2.18.4
+requests==2.20.0
 restructuredtext-lint==1.1.3
 singledispatch==3.4.0.3
 six==1.11.0
