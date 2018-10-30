@@ -244,7 +244,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
       sst = session_type_from_proto_and_ip (transport_proto, 1);
       vlib_cli_output (vm, "%-40s%-24s", "Listener", "App");
       /* *INDENT-OFF* */
-      pool_foreach (s, smm->sessions[0], ({
+      pool_foreach (s, smm->wrk[0].sessions, ({
 	if (s->session_state != SESSION_STATE_LISTENING
 	    || s->session_type != sst)
 	  continue;
@@ -257,10 +257,10 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
       return 0;
     }
 
-  for (i = 0; i < vec_len (smm->sessions); i++)
+  for (i = 0; i < vec_len (smm->wrk); i++)
     {
       u32 once_per_pool;
-      pool = smm->sessions[i];
+      pool = smm->wrk[0].sessions;
 
       once_per_pool = 1;
 
@@ -323,8 +323,9 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   session_manager_main_t *smm = &session_manager_main;
   u32 thread_index = 0, clear_all = 0;
+  session_manager_worker_t *wrk;
   u32 session_index = ~0;
-  stream_session_t **pool, *session;
+  stream_session_t *session;
 
   if (!smm->is_enabled)
     {
@@ -359,9 +360,9 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (clear_all)
     {
       /* *INDENT-OFF* */
-      vec_foreach (pool, smm->sessions)
+      vec_foreach (wrk, smm->wrk)
 	{
-	  pool_foreach(session, *pool, ({
+	  pool_foreach(session, wrk->sessions, ({
 	    clear_session (session);
 	  }));
 	};
