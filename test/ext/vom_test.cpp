@@ -56,6 +56,10 @@
 #include "vom/arp_proxy_binding.hpp"
 #include "vom/arp_proxy_config_cmds.hpp"
 #include "vom/arp_proxy_binding_cmds.hpp"
+#include "vom/igmp_binding.hpp"
+#include "vom/igmp_binding_cmds.hpp"
+#include "vom/igmp_listen.hpp"
+#include "vom/igmp_listen_cmds.hpp"
 #include "vom/ip_punt_redirect.hpp"
 #include "vom/ip_punt_redirect_cmds.hpp"
 #include "vom/ip_unnumbered.hpp"
@@ -378,6 +382,22 @@ public:
                     else if (typeid(*f_exp) == typeid(arp_proxy_config_cmds::unconfig_cmd))
                     {
                         rc = handle_derived<arp_proxy_config_cmds::unconfig_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(igmp_binding_cmds::bind_cmd))
+                    {
+                        rc = handle_derived<igmp_binding_cmds::bind_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(igmp_binding_cmds::unbind_cmd))
+                    {
+                        rc = handle_derived<igmp_binding_cmds::unbind_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(igmp_listen_cmds::listen_cmd))
+                    {
+                        rc = handle_derived<igmp_listen_cmds::listen_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(igmp_listen_cmds::unlisten_cmd))
+                    {
+                        rc = handle_derived<igmp_listen_cmds::unlisten_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(ip_punt_redirect_cmds::config_cmd))
                     {
@@ -1320,6 +1340,51 @@ BOOST_AUTO_TEST_CASE(test_acl) {
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(fyodor));
+}
+
+BOOST_AUTO_TEST_CASE(test_igmp) {
+    VppInit vi;
+    const std::string Isaiah = "IsaiahBerlin";
+    rc_t rc = rc_t::OK;
+
+    boost::asio::ip::address gaddr = boost::asio::ip::address::from_string("232.0.0.1");
+    boost::asio::ip::address saddr1 = boost::asio::ip::address::from_string("192.168.0.20");
+    boost::asio::ip::address saddr2 = boost::asio::ip::address::from_string("192.168.0.30");
+
+    std::string itf3_name = "host3";
+    interface itf3(itf3_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+    HW::item<handle_t> hw_ifh(2, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf3_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
+    TRY_CHECK_RC(OM::write(Isaiah, itf3));
+
+    igmp_binding *ib = new igmp_binding(itf3);
+    HW::item<bool> hw_binding(true, rc_t::OK);
+    ADD_EXPECT(igmp_binding_cmds::bind_cmd(hw_binding, hw_ifh.data()));
+    TRY_CHECK_RC(OM::write(Isaiah, *ib));
+
+    igmp_listen::src_addrs_t saddrs = {saddr1, saddr2};
+
+    igmp_listen *il = new igmp_listen(*ib, gaddr, saddrs);
+    HW::item<bool> hw_as_listen(true, rc_t::OK);
+    ADD_EXPECT(igmp_listen_cmds::listen_cmd(hw_as_listen, hw_ifh.data(), gaddr, saddrs));
+    TRY_CHECK_RC(OM::write(Isaiah, *il));
+
+    delete il;
+    delete ib;
+
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
+                                                  rc_t::OK);
+    STRICT_ORDER_OFF();
+    ADD_EXPECT(igmp_listen_cmds::unlisten_cmd(hw_as_listen, hw_ifh.data(), gaddr));
+    ADD_EXPECT(igmp_binding_cmds::unbind_cmd(hw_binding, hw_ifh.data()));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf3_name));
+
+    TRY_CHECK(OM::remove(Isaiah));
 }
 
 BOOST_AUTO_TEST_CASE(test_arp_proxy) {
