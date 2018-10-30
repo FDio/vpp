@@ -401,6 +401,8 @@ vl_api_clnt_process (vlib_main_t * vm, vlib_node_runtime_t * node,
       switch (event_type)
 	{
 	case QUEUE_SIGNAL_EVENT:
+	  /* Like i said, since we don't do anything with event data, it's benign - but just to illustrate what I was saying */
+	  ASSERT (vec_len (event_data) < 2);
 	  vm->queue_signal_pending = 0;
 	  VL_MEM_API_LOG_Q_LEN ("q-awake: len %d", q->cursize);
 

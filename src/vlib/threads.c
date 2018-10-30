@@ -1778,6 +1778,117 @@ vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
     clib_warning ("BUG: rpc_call_main_thread_cb_fn NULL!");
 }
 
+
+
+enum
+{
+  RANDOM_TEST_EVENT = 1234,
+};
+
+static vlib_node_registration_t just_a_worker_test_node;
+
+/* set from the "test rpc" cli... can run only one test at a time, of course */
+static uword cli_test_proc = ~0;
+
+static uword
+just_a_worker_test_process (vlib_main_t * vm,
+			    vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  vlib_process_signal_event_mt (vm, cli_test_proc, RANDOM_TEST_EVENT,
+				vlib_get_thread_index ());
+  return 0;
+}
+
+VLIB_REGISTER_NODE (just_a_worker_test_node, static) =
+{
+.function = just_a_worker_test_process,.name =
+    "worker-rpc-test-process",.type = VLIB_NODE_TYPE_INPUT,.state =
+    VLIB_NODE_STATE_INTERRUPT,};
+
+
+static void
+my_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
+{
+  vlib_main_t *vm = (void *) arg;
+  vlib_cli_output (vm, "%v", buffer);
+}
+
+
+u8 *
+run_cli (vlib_main_t * vm, u8 * cli)
+{
+  unformat_input_t input;
+  u8 *out_vec = 0;
+
+  unformat_init_string (&input, (void *) cli, vec_len (cli));
+  vlib_cli_input (vm, &input, my_cli_output, (uword) vm);
+  return out_vec;
+}
+
+
+static clib_error_t *
+test_rpc_cli (vlib_main_t * vm,
+	      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  int i;
+  int n_threads = vec_len (vlib_mains);
+  f64 sleep_interval = 30.0;
+
+  cli_test_proc = vlib_current_process (vm);
+
+  vlib_cli_output (vm, "Sending interupts to %d threads and an API request..",
+		   n_threads);
+  for (i = 0; i < n_threads; i++)
+    {
+      vlib_node_set_interrupt_pending (vlib_mains[i],
+				       just_a_worker_test_node.index);
+    }
+  u8 *cli = format (0, "binary-api show_version");
+  u8 *out = run_cli (vm, cli);
+  vlib_cli_output (vm, "binary api result: %v", out);
+  vlib_cli_output (vm, "Waiting to get %d events...", n_threads);
+
+  int n_remaining = n_threads;
+  while (n_remaining > 0)
+    {
+      uword event_type, *event_data = 0;
+      vlib_process_wait_for_event_or_clock (vm, sleep_interval);
+      event_type = vlib_process_get_events (vm, &event_data);
+      switch (event_type)
+	{
+	case ~0:
+	  vlib_cli_output (vm, "timeout...");
+	  break;
+	case RANDOM_TEST_EVENT:
+	  vlib_cli_output (vm, "Got RANDOM_TEST_EVENT");
+	  uword *ddd;
+	  vec_foreach (ddd, event_data)
+	  {
+	    vlib_cli_output (vm, "data: %d", *ddd);
+	    n_remaining--;
+	  }
+	  break;
+	default:
+	  vlib_cli_output (vm, "unknown event");
+	}
+    }
+
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_new_rpc, static) =
+{
+  .path = "test rpc",
+  .function = test_rpc_cli,
+  .short_help = "test rpc",
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+
+
 clib_error_t *
 threads_init (vlib_main_t * vm)
 {
