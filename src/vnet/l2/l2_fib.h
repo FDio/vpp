@@ -257,9 +257,8 @@ l2fib_make_key (const u8 * mac_address, u16 bd_index)
  * mac0 and bd_index0 are the keys. The entry is written to result0.
  * If the entry was not found, result0 is set to ~0.
  *
- * key0 and bucket0 return with the computed key and hash bucket,
- * convenient if the entry needs to be updated afterward.
- * If the cached_result was used, bucket0 is set to ~0.
+ * key0 return with the computed key, convenient if the entry needs,
+ * to be updated afterward.
  */
 
 static_always_inline void
@@ -268,12 +267,10 @@ l2fib_lookup_1 (BVT (clib_bihash) * mac_table,
 		l2fib_entry_result_t * cached_result,
 		u8 * mac0,
 		u16 bd_index0,
-		l2fib_entry_key_t * key0,
-		u32 * bucket0, l2fib_entry_result_t * result0)
+		l2fib_entry_key_t * key0, l2fib_entry_result_t * result0)
 {
   /* set up key */
   key0->raw = l2fib_make_key (mac0, bd_index0);
-  *bucket0 = ~0;
 
   if (key0->raw == cached_key->raw)
     {
@@ -318,8 +315,6 @@ l2fib_lookup_2 (BVT (clib_bihash) * mac_table,
 		u16 bd_index1,
 		l2fib_entry_key_t * key0,
 		l2fib_entry_key_t * key1,
-		u32 * bucket0,
-		u32 * bucket1,
 		l2fib_entry_result_t * result0,
 		l2fib_entry_result_t * result1)
 {
@@ -332,9 +327,6 @@ l2fib_lookup_2 (BVT (clib_bihash) * mac_table,
       /* Both hit in the one-entry cache */
       result0->raw = cached_result->raw;
       result1->raw = cached_result->raw;
-      *bucket0 = ~0;
-      *bucket1 = ~0;
-
     }
   else
     {
@@ -377,10 +369,6 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
 		l2fib_entry_key_t * key1,
 		l2fib_entry_key_t * key2,
 		l2fib_entry_key_t * key3,
-		u32 * bucket0,
-		u32 * bucket1,
-		u32 * bucket2,
-		u32 * bucket3,
 		l2fib_entry_result_t * result0,
 		l2fib_entry_result_t * result1,
 		l2fib_entry_result_t * result2,
@@ -400,11 +388,6 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
       result1->raw = cached_result->raw;
       result2->raw = cached_result->raw;
       result3->raw = cached_result->raw;
-      *bucket0 = ~0;
-      *bucket1 = ~0;
-      *bucket2 = ~0;
-      *bucket3 = ~0;
-
     }
   else
     {

@@ -269,7 +269,6 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       const ethernet_header_t *h0, *h1, *h2, *h3;
       l2fib_entry_key_t key0, key1, key2, key3;
       l2fib_entry_result_t result0, result1, result2, result3;
-      u32 bucket0, bucket1, bucket2, bucket3;
 
       /* Prefetch next iteration. */
       {
@@ -353,7 +352,6 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vnet_buffer (b[2])->l2.bd_index,
 		      vnet_buffer (b[3])->l2.bd_index,
 		      &key0, &key1, &key2, &key3,
-		      &bucket0, &bucket1, &bucket2, &bucket3,
 		      &result0, &result1, &result2, &result3);
 
       l2learn_process (node, msm, &em->counters[node_counter_base_index],
@@ -383,7 +381,6 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       ethernet_header_t *h0;
       l2fib_entry_key_t key0;
       l2fib_entry_result_t result0;
-      u32 bucket0;
 
       sw_if_index0 = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
 
@@ -405,7 +402,7 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       l2fib_lookup_1 (msm->mac_table, &cached_key, &cached_result,
 		      h0->src_address, vnet_buffer (b[0])->l2.bd_index,
-		      &key0, &bucket0, &result0);
+		      &key0, &result0);
 
       l2learn_process (node, msm, &em->counters[node_counter_base_index],
 		       b[0], sw_if_index0, &key0, &cached_key,
