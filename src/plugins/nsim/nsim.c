@@ -357,7 +357,7 @@ nsim_plugin_api_hookup (vlib_main_t * vm)
 static void
 setup_message_id_table (nsim_main_t * nsm, api_main_t * am)
 {
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n  #crc, id + nsm->msg_id_base);
+#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + nsm->msg_id_base);
   foreach_vl_msg_name_crc_nsim;
 #undef _
 }
