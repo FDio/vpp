@@ -20,6 +20,7 @@
 nil
 '(setq node-name (skeleton-read "Node Name: "))
 '(setq uc-node-name (upcase node-name))
+'(setq main-p (concat (substring plugin-name 0 1) "mp"))
 "
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
@@ -300,12 +301,12 @@ VLIB_REGISTER_NODE (" node-name "_node) = {
 
 clib_error_t *" node-name "_init (vlib_main_t *vm)
 {
-  " node-name "_main_t *msm = &" node-name "_main;
+  " node-name "_main_t *" main-p " = &" node-name "_main;
     
   /* $$$$$ Initialize " node-name "_main_t structure here. $$$$$ */
-  msm->vlib_main = vm;
-  msm->vnet_main = vnet_get_main();
-  msm->ethernet_main = ethernet_get_main(vm);
+  " main-p "->vlib_main = vm;
+  " main-p "->vnet_main = vnet_get_main();
+  " main-p "->ethernet_main = ethernet_get_main(vm);
 
   return 0;
 }

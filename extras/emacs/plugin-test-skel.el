@@ -22,6 +22,7 @@ nil
      (setq plugin-name (read-string "Plugin name: ")))
 '(setq PLUGIN-NAME (upcase plugin-name))
 '(setq capital-oh-en "ON")
+'(setq main-p (concat (substring plugin-name 0 1) "tmp"))
 "/*
  * " plugin-name ".c - skeleton vpp-api-test plug-in 
  *
@@ -159,10 +160,10 @@ _(" plugin-name "_enable_disable, \"<intfc> [disable]\")
 
 static void " plugin-name "_api_hookup (vat_main_t *vam)
 {
-    " plugin-name "_test_main_t * sm = &" plugin-name "_test_main;
+    " plugin-name "_test_main_t * " main-p " = &" plugin-name "_test_main;
     /* Hook up handlers for replies from the data plane plug-in */
 #define _(N,n)                                                  \\
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \\
+    vl_msg_api_set_handlers((VL_API_##N + " main-p "->msg_id_base),     \\
                            #n,                                  \\
                            vl_api_##n##_t_handler,              \\
                            vl_noop_handler,                     \\
@@ -185,16 +186,16 @@ static void " plugin-name "_api_hookup (vat_main_t *vam)
 
 clib_error_t * vat_plugin_register (vat_main_t *vam)
 {
-  " plugin-name "_test_main_t * sm = &" plugin-name "_test_main;
+  " plugin-name "_test_main_t * " main-p " = &" plugin-name "_test_main;
   u8 * name;
 
-  sm->vat_main = vam;
+  " main-p "->vat_main = vam;
 
   /* Ask the vpp engine for the first assigned message-id */
   name = format (0, \"" plugin-name "_%08x%c\", api_version, 0);
-  sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+  " main-p "->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
-  if (sm->msg_id_base != (u16) ~0)
+  if (" main-p "->msg_id_base != (u16) ~0)
     " plugin-name "_api_hookup (vam);
   
   vec_free(name);
