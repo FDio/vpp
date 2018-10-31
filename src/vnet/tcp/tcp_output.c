@@ -1170,9 +1170,9 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
 
   if (maybe_burst)
     {
-      clib_memcpy ((u8 *) (th + 1),
-		   tm->wrk_ctx[tc->c_thread_index].cached_opts,
-		   tc->snd_opts_len);
+      _clib_memcpy ((u8 *) (th + 1),
+		    tm->wrk_ctx[tc->c_thread_index].cached_opts,
+		    tc->snd_opts_len);
     }
   else
     {
