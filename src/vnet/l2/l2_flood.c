@@ -223,9 +223,7 @@ l2flood_node_fn (vlib_main_t * vm,
 	      n_cloned = vlib_buffer_clone (vm, bi0,
 					    msm->clones[thread_index],
 					    n_clones,
-					    (vnet_buffer (b0)->l2.l2_len +
-					     sizeof (udp_header_t) +
-					     2 * sizeof (ip6_header_t)));
+					    VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
 
 	      if (PREDICT_FALSE (n_cloned != n_clones))
 		{

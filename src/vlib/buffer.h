@@ -51,6 +51,11 @@
 #define VLIB_BUFFER_DATA_SIZE		(2048)
 #define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
 
+/* Minimum buffer chain segment size. Does not apply to last buffer in chain.
+   Dataplane code can safely asume that specified amount of data is not split
+   into 2 chained buffers */
+#define VLIB_BUFFER_MIN_CHAIN_SEG_SIZE	(128)
+
 typedef u8 vlib_buffer_free_list_index_t;
 
 /** \file

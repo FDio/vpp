@@ -213,26 +213,26 @@ bier_lookup (vlib_main_t * vm,
              * Create the number of clones we need based on the number
              * of fmasks we are sending to.
              */
-            u16 num_cloned, clone;
+            u16 n_cloned, clone;
             u32 n_clones;
 
             n_clones = vec_len(blm->blm_fmasks[thread_index]);
 
             if (PREDICT_TRUE(0 != n_clones))
             {
-                num_cloned = vlib_buffer_clone(vm, bi0,
-                                               blm->blm_clones[thread_index],
-                                               n_clones,
-                                               n_bytes + 8);
+                n_cloned = vlib_buffer_clone(vm, bi0,
+                                             blm->blm_clones[thread_index],
+                                             n_clones,
+					     VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
 
-                if (num_cloned != vec_len(blm->blm_fmasks[thread_index]))
+                if (n_cloned != vec_len(blm->blm_fmasks[thread_index]))
                 {
                     vlib_node_increment_counter
                         (vm, node->node_index,
                          BIER_LOOKUP_ERROR_BUFFER_ALLOCATION_FAILURE, 1);
                 }
 
-                for (clone = 0; clone < num_cloned; clone++)
+                for (clone = 0; clone < n_cloned; clone++)
                 {
                     vlib_buffer_t *c0;
                     u32 ci0;
