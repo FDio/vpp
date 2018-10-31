@@ -1,0 +1,24 @@
+diff --git a/scapy/contrib/cdp.py b/scapy/contrib/cdp.py
+index c8b7f106..7b1ff64d 100644
+--- a/scapy/contrib/cdp.py
++++ b/scapy/contrib/cdp.py
+@@ -102,7 +102,8 @@ def _CDPGuessPayloadClass(p, **kargs):
+ class CDPMsgGeneric(Packet):
+     name = "CDP Generic Message"
+     fields_desc = [ XShortEnumField("type", None, _cdp_tlv_types),
+-                    FieldLenField("len", None, "val", "!H"),
++                    FieldLenField("len", None, "val", "!H",
++                                  adjust=lambda pkt, x: x + 4),
+                     StrLenField("val", "", length_from=lambda x:x.len - 4) ]
+ 
+ 
+@@ -178,7 +179,8 @@ class CDPMsgAddr(CDPMsgGeneric):
+ class CDPMsgPortID(CDPMsgGeneric):
+     name = "Port ID"
+     fields_desc = [ XShortEnumField("type", 0x0003, _cdp_tlv_types),
+-                    FieldLenField("len", None, "iface", "!H"),
++                    FieldLenField("len", None, "iface", "!H",
++                                  adjust=lambda pkt, x: x + 4),
+                     StrLenField("iface", "Port 1", length_from=lambda x:x.len - 4) ]
+ 
+ 
