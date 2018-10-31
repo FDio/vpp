@@ -223,7 +223,7 @@ bier_lookup (vlib_main_t * vm,
                 num_cloned = vlib_buffer_clone(vm, bi0,
                                                blm->blm_clones[thread_index],
                                                n_clones,
-                                               n_bytes + 8);
+					       VLIB_BUFFER_CLONE_HEAD_SIZE);
 
                 if (num_cloned != vec_len(blm->blm_fmasks[thread_index]))
                 {
