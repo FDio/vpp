@@ -260,7 +260,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   for (i = 0; i < vec_len (smm->wrk); i++)
     {
       u32 once_per_pool;
-      pool = smm->wrk[0].sessions;
+      pool = smm->wrk[i].sessions;
 
       once_per_pool = 1;
 
