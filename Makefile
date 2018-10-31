@@ -296,8 +296,12 @@ endif
 	@sudo -E apt-get update
 	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
-	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+ifeq ($(OS_ID),rhel)
+	@sudo -E yum-config-manager --enable rhel-server-rhscl-7-rpms
+else ifeq ($(OS_ID),centos)
 	@sudo -E yum install $(CONFIRM) centos-release-scl-rh
+endif
+	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
 else ifeq ($(filter opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
@@ -310,7 +314,7 @@ else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
 else
-	$(error "This option currently works only on Ubuntu, Debian, Centos or openSUSE systems")
+	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE systems")
 endif
 
 define make
