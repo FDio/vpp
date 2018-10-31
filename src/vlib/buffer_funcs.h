@@ -58,10 +58,17 @@ always_inline vlib_buffer_t *
 vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
 {
   vlib_buffer_main_t *bm = &buffer_main;
+  vlib_buffer_t *b;
   uword offset = ((uword) buffer_index) << CLIB_LOG2_CACHE_LINE_BYTES;
   ASSERT (offset < bm->buffer_mem_size);
 
-  return uword_to_pointer (bm->buffer_mem_start + offset, void *);
+  b = uword_to_pointer (bm->buffer_mem_start + offset, void *);
+
+  /* in case of chained buffers make sure segment is not smaller than
+     VLIB_BUFFER_MIN_CHAIN_SEG_SIZE */
+  ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
+	  b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
+  return b;
 }
 
 /** \brief Translate array of buffer indices into buffer pointers with offset
