@@ -21,6 +21,7 @@ The Developers section covers the following areas:
    building
    running_vpp
    gdb_examples
+   add_plugin
    gitreview
    softwarearchitecture
    infrastructure
@@ -34,5 +35,4 @@ The Developers section covers the following areas:
    binary_api_support
    buildsystem/index.rst
    eventviewer
-   add_plugin
    fib20/index.rst
