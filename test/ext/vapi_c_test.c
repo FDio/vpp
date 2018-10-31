@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <setjmp.h>
 #include <check.h>
+#include <vppinfra/string.h>
 #include <vapi/vapi.h>
 #include <vapi/vpe.api.vapi.h>
 #include <vapi/interface.api.vapi.h>
