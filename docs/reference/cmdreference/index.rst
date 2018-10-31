@@ -13,6 +13,7 @@ The debug CLI can be executed from a su (superuser) shell using the vppctl comma
 
     # sudo bash
     # vppctl show interface
+
                   Name               Idx       State          Counter          Count
     TenGigabitEthernet86/0/0          1         up       rx packets               6569213
                                                          rx bytes              9928352943
@@ -32,10 +33,6 @@ Commands can also be executed from the vppct shell.
 
     # vppctl
 
-     __/ __/ _ \  (_)__    | | / / _ \/ _ \
-     _/ _// // / / / _ \   | |/ / ___/ ___/
-     /_/ /____(_)_/\___/   |___/_/  /_/
-    
     vpp# show interface
                   Name               Idx       State          Counter          Count
     TenGigabitEthernet86/0/0          1         up       rx packets               6569213

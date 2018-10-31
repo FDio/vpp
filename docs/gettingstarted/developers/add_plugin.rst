@@ -9,20 +9,20 @@ Overview
 ________
  
 This section shows how a VPP developer can create a new plugin, and
-add it to VPP.
+add it to VPP. We assume that we are starting from the VPP <top-of-workspace>.
 
 As an example, we will use the **make-plugin.sh** tool found in
-**.../extras/emacs**. make-plugin.sh is a simple wrapper for a comprehensive
+**./extras/emacs**. make-plugin.sh is a simple wrapper for a comprehensive
 plugin generator constructed from a set of emacs-lisp skeletons.
 
 Create your new plugin
 ----------------------
 
-Change directory to **.../src/plugins**, and run the plugin generator:
+Change directory to **./src/plugins**, and run the plugin generator:
 
 .. code-block:: console
     
-    $ cd .../src/plugins
+    $ cd ./src/plugins
     $ ../../extras/emacs/make-plugin.sh
     <snip>
     Loading /scratch/vpp-docs/extras/emacs/tunnel-c-skel.el (source)...
@@ -63,7 +63,7 @@ Here are the generated files. We'll go through them in a moment.
 
 .. code-block:: console
 
-    $ cd .../src/plugins/myplugin
+    $ cd ./myplugin
     $ ls
     CMakeLists.txt        myplugin.c           myplugin_periodic.c  setup.pg
     myplugin_all_api_h.h  myplugin.h           myplugin_test.c
@@ -191,11 +191,16 @@ instance of this data structure.
 
 You can enable or disable specific vpp plugins from the command
 line. By default, plugins are loaded. To change that behavior, set
-default_disabled in the vlib_plugin_macro:
+default_disabled in the macro VLIB_PLUGIN_REGISTER:
 
 .. code-block:: console
 
-  .default_disabled = 1
+    VLIB_PLUGIN_REGISTER () =
+      {
+        .version = VPP_BUILD_VER,
+        .default_disabled = 1
+        .description = "myplugin plugin description goes here",
+      };
 
 The boilerplate generator places the graph node dispatch function
 onto the "device-input" feature arc. This may or may not be useful.
@@ -273,3 +278,7 @@ vlib_plugin_get_symbol(...) API:
 
     void *p = vlib_get_plugin_symbol ("plugin_name", "symbol");
 
+More Examples
+-------------
+
+For more information you can read many example plugins in the directory "./src/plugins".
