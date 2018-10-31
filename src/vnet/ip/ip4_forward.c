@@ -1770,40 +1770,16 @@ ip4_arp_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next_drop > 0)
 	{
-	  u32 pi0, adj_index0, sw_if_index0, drop0;
+	  u32 pi0, bi0, adj_index0, sw_if_index0;
 	  ip_adjacency_t *adj0;
-	  vlib_buffer_t *p0;
-	  ip4_header_t *ip0;
+	  vlib_buffer_t *p0, *b0;
+	  ip4_address_t resolve0;
+	  ethernet_arp_header_t *h0;
+	  vnet_hw_interface_t *hw_if0;
 	  u64 r0;
 
 	  pi0 = from[0];
-
 	  p0 = vlib_get_buffer (vm, pi0);
-
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  adj0 = adj_get (adj_index0);
-	  ip0 = vlib_buffer_get_current (p0);
-
-	  sw_if_index0 = adj0->rewrite_header.sw_if_index;
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
-
-	  if (PREDICT_TRUE (is_glean))
-	    {
-	      /*
-	       * this is the Glean case, so we are ARPing for the
-	       * packet's destination
-	       */
-	      r0 = ip0->dst_address.data_u32;
-	    }
-	  else
-	    {
-	      r0 = adj0->sub_type.nbr.next_hop.ip4.data_u32;
-	    }
-	  /* combine the address and interface for the hash key */
-	  r0 = r0 << 32;
-	  r0 |= sw_if_index0;
-
-	  drop0 = throttle_check (&im->arp_throttle, thread_index, r0, seed);
 
 	  from += 1;
 	  n_left_from -= 1;
@@ -1811,19 +1787,41 @@ ip4_arp_inline (vlib_main_t * vm,
 	  to_next_drop += 1;
 	  n_left_to_next_drop -= 1;
 
-	  p0->error =
-	    node->errors[drop0 ? IP4_ARP_ERROR_DROP :
-			 IP4_ARP_ERROR_REQUEST_SENT];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  adj0 = adj_get (adj_index0);
+
+	  if (is_glean)
+	    {
+	      /* resolve the packet's destination */
+	      ip4_header_t *ip0 = vlib_buffer_get_current (p0);
+	      resolve0 = ip0->dst_address;
+	    }
+	  else
+	    {
+	      /* resolve the incomplete adj */
+	      resolve0 = adj0->sub_type.nbr.next_hop.ip4;
+	    }
+
+	  /* combine the address and interface for the hash key */
+	  sw_if_index0 = adj0->rewrite_header.sw_if_index;
+	  r0 = (u64) resolve0.data_u32 << 32;
+	  r0 |= sw_if_index0;
+
+	  if (throttle_check (&im->arp_throttle, thread_index, r0, seed))
+	    {
+	      p0->error = node->errors[IP4_ARP_ERROR_THROTTLED];
+	      continue;
+	    }
 
 	  /*
 	   * the adj has been updated to a rewrite but the node the DPO that got
 	   * us here hasn't - yet. no big deal. we'll drop while we wait.
 	   */
 	  if (IP_LOOKUP_NEXT_REWRITE == adj0->lookup_next_index)
-	    continue;
-
-	  if (drop0)
-	    continue;
+	    {
+	      p0->error = node->errors[IP4_ARP_ERROR_RESOLVED];
+	      continue;
+	    }
 
 	  /*
 	   * Can happen if the control-plane is programming tables
@@ -1833,77 +1831,61 @@ ip4_arp_inline (vlib_main_t * vm,
 	      || (!is_glean && adj0->lookup_next_index != IP_LOOKUP_NEXT_ARP))
 	    {
 	      p0->error = node->errors[IP4_ARP_ERROR_NON_ARP_ADJ];
+	      continue;
+	    }
+	  /* Send ARP request. */
+	  h0 =
+	    vlib_packet_template_get_packet (vm,
+					     &im->ip4_arp_request_packet_template,
+					     &bi0);
+
+	  /* Seems we're out of buffers */
+	  if (PREDICT_FALSE (!h0))
+	    {
+	      p0->error = node->errors[IP4_ARP_ERROR_NO_BUFFERS];
+	      continue;
+	    }
+
+	  /* Add rewrite/encap string for ARP packet. */
+	  vnet_rewrite_one_header (adj0[0], h0, sizeof (ethernet_header_t));
+
+	  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+
+	  /* Src ethernet address in ARP header. */
+	  clib_memcpy (h0->ip4_over_ethernet[0].ethernet,
+		       hw_if0->hw_address,
+		       sizeof (h0->ip4_over_ethernet[0].ethernet));
+	  if (is_glean)
+	    {
+	      /* The interface's source address is stashed in the Glean Adj */
+	      h0->ip4_over_ethernet[0].ip4 =
+		adj0->sub_type.glean.receive_addr.ip4;
 	    }
 	  else
-	    /* Send ARP request. */
 	    {
-	      u32 bi0 = 0;
-	      vlib_buffer_t *b0;
-	      ethernet_arp_header_t *h0;
-	      vnet_hw_interface_t *hw_if0;
-
-	      h0 =
-		vlib_packet_template_get_packet (vm,
-						 &im->ip4_arp_request_packet_template,
-						 &bi0);
-
-	      /* Seems we're out of buffers */
-	      if (PREDICT_FALSE (!h0))
-		continue;
-
-	      /* Add rewrite/encap string for ARP packet. */
-	      vnet_rewrite_one_header (adj0[0], h0,
-				       sizeof (ethernet_header_t));
-
-	      hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
-
-	      /* Src ethernet address in ARP header. */
-	      clib_memcpy (h0->ip4_over_ethernet[0].ethernet,
-			   hw_if0->hw_address,
-			   sizeof (h0->ip4_over_ethernet[0].ethernet));
-
-	      if (is_glean)
+	      /* Src IP address in ARP header. */
+	      if (ip4_src_address_for_packet (lm, sw_if_index0,
+					      &h0->ip4_over_ethernet[0].ip4))
 		{
-		  /* The interface's source address is stashed in the Glean Adj */
-		  h0->ip4_over_ethernet[0].ip4 =
-		    adj0->sub_type.glean.receive_addr.ip4;
-
-		  /* Copy in destination address we are requesting. This is the
-		   * glean case, so it's the packet's destination.*/
-		  h0->ip4_over_ethernet[1].ip4.data_u32 =
-		    ip0->dst_address.data_u32;
+		  /* No source address available */
+		  p0->error = node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
+		  vlib_buffer_free (vm, &bi0, 1);
+		  continue;
 		}
-	      else
-		{
-		  /* Src IP address in ARP header. */
-		  if (ip4_src_address_for_packet (lm, sw_if_index0,
-						  &h0->
-						  ip4_over_ethernet[0].ip4))
-		    {
-		      /* No source address available */
-		      p0->error =
-			node->errors[IP4_ARP_ERROR_NO_SOURCE_ADDRESS];
-		      vlib_buffer_free (vm, &bi0, 1);
-		      continue;
-		    }
-
-		  /* Copy in destination address we are requesting from the
-		     incomplete adj */
-		  h0->ip4_over_ethernet[1].ip4.data_u32 =
-		    adj0->sub_type.nbr.next_hop.ip4.as_u32;
-		}
-
-	      vlib_buffer_copy_trace_flag (vm, p0, bi0);
-	      b0 = vlib_get_buffer (vm, bi0);
-	      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
-
-	      vlib_buffer_advance (b0, -adj0->rewrite_header.data_bytes);
-
-	      vlib_set_next_frame_buffer (vm, node,
-					  adj0->rewrite_header.next_index,
-					  bi0);
 	    }
+	  h0->ip4_over_ethernet[1].ip4 = resolve0;
+
+	  p0->error = node->errors[IP4_ARP_ERROR_REQUEST_SENT];
+
+	  vlib_buffer_copy_trace_flag (vm, p0, bi0);
+	  b0 = vlib_get_buffer (vm, bi0);
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
+
+	  vlib_buffer_advance (b0, -adj0->rewrite_header.data_bytes);
+
+	  vlib_set_next_frame_buffer (vm, node,
+				      adj0->rewrite_header.next_index, bi0);
 	}
 
       vlib_put_next_frame (vm, node, IP4_ARP_NEXT_DROP, n_left_to_next_drop);
@@ -1925,11 +1907,11 @@ VLIB_NODE_FN (ip4_glean_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static char *ip4_arp_error_strings[] = {
-  [IP4_ARP_ERROR_DROP] = "address overflow drops",
+  [IP4_ARP_ERROR_THROTTLED] = "ARP requests throttled",
+  [IP4_ARP_ERROR_RESOLVED] = "ARP requests resolved",
+  [IP4_ARP_ERROR_NO_BUFFERS] = "ARP requests out of buffer",
   [IP4_ARP_ERROR_REQUEST_SENT] = "ARP requests sent",
   [IP4_ARP_ERROR_NON_ARP_ADJ] = "ARPs to non-ARP adjacencies",
-  [IP4_ARP_ERROR_REPLICATE_DROP] = "ARP replication completed",
-  [IP4_ARP_ERROR_REPLICATE_FAIL] = "ARP replication failed",
   [IP4_ARP_ERROR_NO_SOURCE_ADDRESS] = "no source address for ARP request",
 };
 
@@ -1963,10 +1945,12 @@ VLIB_REGISTER_NODE (ip4_glean_node) =
 /* *INDENT-ON* */
 
 #define foreach_notrace_ip4_arp_error           \
-_(DROP)                                         \
+_(THROTTLED)                                    \
+_(RESOLVED)                                     \
+_(NO_BUFFERS)                                   \
 _(REQUEST_SENT)                                 \
-_(REPLICATE_DROP)                               \
-_(REPLICATE_FAIL)
+_(NON_ARP_ADJ)                                  \
+_(NO_SOURCE_ADDRESS)
 
 static clib_error_t *
 arp_notrace_init (vlib_main_t * vm)
