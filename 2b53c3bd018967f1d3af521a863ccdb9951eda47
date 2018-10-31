@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7c04e428_aa5f33a4",
+        "filename": "test/cdp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-10-31T09:04:54Z",
+      "side": 1,
+      "message": "why not use the existing implementation in Scapy?",
+      "revId": "2b53c3bd018967f1d3af521a863ccdb9951eda47",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
