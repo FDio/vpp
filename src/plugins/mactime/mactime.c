@@ -339,7 +339,7 @@ mactime_plugin_api_hookup (vlib_main_t * vm)
 static void
 setup_message_id_table (mactime_main_t * mm, api_main_t * am)
 {
-#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n  #crc, id + mm->msg_id_base);
+#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + mm->msg_id_base);
   foreach_vl_msg_name_crc_mactime;
 #undef _
 }
