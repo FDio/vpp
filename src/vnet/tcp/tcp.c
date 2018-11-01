@@ -558,10 +558,11 @@ tcp_init_snd_vars (tcp_connection_t * tc)
 void
 tcp_enable_pacing (tcp_connection_t * tc)
 {
-  u32 max_burst, byte_rate;
-  max_burst = 16 * tc->snd_mss;
+  u32 initial_bucket, byte_rate;
+  initial_bucket = 16 * tc->snd_mss;
   byte_rate = 2 << 16;
-  transport_connection_tx_pacer_init (&tc->connection, byte_rate, max_burst);
+  transport_connection_tx_pacer_init (&tc->connection, byte_rate,
+                                      initial_bucket);
   tc->mrtt_us = (u32) ~ 0;
 }
 

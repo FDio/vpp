@@ -570,7 +570,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   ctx->tc = session_tx_get_transport (ctx, peek_data);
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
   ctx->snd_space =
-    transport_connection_max_tx_burst (ctx->tc, vm->clib_time.last_cpu_time);
+    transport_connection_snd_space (ctx->tc, vm->clib_time.last_cpu_time);
   if (ctx->snd_space == 0 || ctx->snd_mss == 0)
     {
       vec_add1 (wrk->pending_event_vector, *e);

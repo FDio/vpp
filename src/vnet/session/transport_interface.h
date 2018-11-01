@@ -111,7 +111,7 @@ void transport_enable_disable (vlib_main_t * vm, u8 is_en);
  */
 void transport_connection_tx_pacer_init (transport_connection_t * tc,
 					 u32 rate_bytes_per_sec,
-					 u32 burst_bytes);
+					 u32 initial_bucket);
 
 /**
  * Update tx pacer pacing rate
@@ -128,8 +128,11 @@ void transport_connection_tx_pacer_update (transport_connection_t * tc,
  * @param tc		transport connection
  * @param time_now	current cpu time as returned by @ref clib_cpu_time_now
  */
-u32 transport_connection_max_tx_burst (transport_connection_t * tc,
+u32 transport_connection_snd_space (transport_connection_t * tc,
 				       u64 time_now);
+
+u32
+transport_connection_max_tx_burst (transport_connection_t *tc, u64 time_now);
 
 /**
  * Initialize period for tx pacers
@@ -162,6 +165,9 @@ u8 *format_transport_pacer (u8 * s, va_list * args);
  */
 void transport_connection_update_tx_stats (transport_connection_t * tc,
 					   u32 bytes);
+
+void
+transport_connection_tx_pacer_update_bytes (transport_connection_t * tc, u32 bytes);
 
 #endif /* SRC_VNET_SESSION_TRANSPORT_INTERFACE_H_ */
 

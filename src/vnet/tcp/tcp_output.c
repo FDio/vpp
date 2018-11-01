@@ -1410,6 +1410,13 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
   /* Cleanly recover cc (also clears up fast retransmit) */
   if (tcp_in_fastrecovery (tc))
     {
+      vlib_main_t *vm = vlib_get_main ();
+      vlib_node_t *n = vlib_get_node_by_name (vm, format (0, "TenGigabitEthernet6/0/0-tx"));
+      u32 i = n->error_heap_index + 1;
+      clib_warning ("%u drop count %u", tc->c_c_index, vm->error_main.counters[i]);
+      clib_warning ("lost %u sacked %u rxt %u wnd %u pending: %u high_rxt %u", tc->sack_sb.lost_bytes,
+                    tc->sack_sb.sacked_bytes, tc->snd_rxt_bytes, tc->snd_una_max - tc->snd_una,
+                    tc->flags & TCP_CONN_FRXT_PENDING, tc->sack_sb.high_rxt - tc->snd_una);
       /* TODO be less aggressive about this */
       scoreboard_clear (&tc->sack_sb);
       tcp_cc_fastrecovery_exit (tc);
@@ -1452,10 +1459,10 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
     }
 
-  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
-
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
+      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+
       /* Lost FIN, retransmit and return */
       if (tcp_is_lost_fin (tc))
 	{
@@ -1536,6 +1543,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  return;
 	}
 
+      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+
       /* Try without increasing RTO a number of times. If this fails,
        * start growing RTO exponentially */
       tc->rto_boff += 1;
@@ -1562,6 +1571,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   /* Retransmit SYN-ACK */
   else if (tc->state == TCP_STATE_SYN_RCVD)
     {
+      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+
       tc->rto_boff += 1;
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
@@ -1693,7 +1704,7 @@ tcp_retransmit_first_unacked (tcp_connection_t * tc)
   old_snd_nxt = tc->snd_nxt;
   tc->snd_nxt = tc->snd_una;
 
-  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
 
   n_bytes = tcp_prepare_retransmit_segment (tc, 0, tc->snd_mss, &b);
   if (!n_bytes)

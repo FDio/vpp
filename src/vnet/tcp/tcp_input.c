@@ -1199,9 +1199,10 @@ void
 tcp_do_fastretransmits (u32 thread_index)
 {
   tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[thread_index];
-  u32 max_burst_size, burst_size, n_segs = 0;
+  u32 max_burst_size, burst_size, n_segs = 0, n_segs_now;
   tcp_connection_t *tc;
   int i;
+  vlib_main_t *vm = vlib_get_main ();
 
   if (vec_len (wrk->pending_fast_rxt) == 0)
     return;
@@ -1228,36 +1229,62 @@ tcp_do_fastretransmits (u32 thread_index)
 	}
 
       burst_size = clib_min (max_burst_size, VLIB_FRAME_SIZE - n_segs);
-
-      if (tc->cwnd > tc->ssthresh + 3 * tc->snd_mss)
+      u32 new_cwnd = tc->ssthresh + 3 * tc->snd_mss;
+      if (tc->cwnd > new_cwnd)
 	{
-	  /* The first segment MUST be retransmitted */
-	  if (tcp_retransmit_first_unacked (tc))
-	    {
-	      tcp_program_fastretransmit (tc);
-	      continue;
-	    }
-
 	  /* Post retransmit update cwnd to ssthresh and account for the
 	   * three segments that have left the network and should've been
 	   * buffered at the receiver XXX */
-	  tc->cwnd = tc->ssthresh + 3 * tc->snd_mss;
+	  tc->cwnd = new_cwnd;
+
+	  /* The first segment MUST be retransmitted */
+//	  if (tcp_retransmit_first_unacked (tc))
+//	    tcp_program_fastretransmit (tc);
+
+	  if (transport_connection_is_tx_paced (&tc->connection))
+	    {
+	      u32 byte_rate = (0.3 * tc->cwnd) / ((f64) TCP_TICK * tc->srtt);
+	      transport_connection_tx_pacer_init (&tc->connection, byte_rate, 0);
+	      clib_warning ("rate %u ssthresh %u cwnd %u srtt %u max-burst %u", byte_rate,
+	                    tc->ssthresh, tc->cwnd, tc->srtt,
+	                    tc->connection.pacer.max_burst_size/tc->snd_mss);
+	    }
 
 	  /* If cwnd allows, send more data */
 	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
 	    {
 	      scoreboard_init_high_rxt (&tc->sack_sb,
-					tc->snd_una + tc->snd_mss);
+					tc->snd_una);
 	      tc->sack_sb.rescue_rxt = tc->snd_una - 1;
-	      n_segs += tcp_fast_retransmit_sack (tc, burst_size);
+//	      n_segs_now = tcp_fast_retransmit_sack (tc, burst_size);
 	    }
-	  else
-	    {
-	      n_segs += tcp_fast_retransmit_no_sack (tc, burst_size);
-	    }
+//	  else
+//	    {
+//	      n_segs_now = tcp_fast_retransmit_no_sack (tc, burst_size);
+//	    }
+	  tcp_program_fastretransmit (tc);
+	  continue;
 	}
       else
-	n_segs += tcp_fast_retransmit (tc, burst_size);
+	{
+	  u32 burst_bytes, sent_bytes;
+	  burst_bytes = transport_connection_max_tx_burst (
+	      &tc->connection, vm->clib_time.last_cpu_time);
+	  burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
+	  if (!burst_size)
+	    {
+	      tcp_program_fastretransmit (tc);
+	      continue;
+	    }
+
+	  n_segs_now = tcp_fast_retransmit (tc, burst_size);
+	  sent_bytes = clib_min (n_segs_now * tc->snd_mss, burst_bytes);
+	  transport_connection_tx_pacer_update_bytes (&tc->connection,
+		                                      sent_bytes);
+	}
+
+      n_segs += n_segs_now;
+
     }
   vec_reset_length (wrk->ongoing_fast_rxt);
 }

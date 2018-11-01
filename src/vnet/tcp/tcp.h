@@ -160,7 +160,7 @@ enum
 };
 
 #define TCP_SCOREBOARD_TRACE (0)
-#define TCP_MAX_SACK_BLOCKS 32	/**< Max number of SACK blocks stored */
+#define TCP_MAX_SACK_BLOCKS 256	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 
 typedef struct _scoreboard_trace_elt
@@ -722,8 +722,8 @@ always_inline void
 tcp_cc_rcv_ack (tcp_connection_t * tc)
 {
   tc->cc_algo->rcv_ack (tc);
-  tcp_update_pacer (tc);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+  tcp_update_pacer (tc);
 }
 
 always_inline void
