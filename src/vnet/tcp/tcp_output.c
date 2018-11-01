@@ -1395,6 +1395,14 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
   /* Cleanly recover cc (also clears up fast retransmit) */
   if (tcp_in_fastrecovery (tc))
     {
+      vlib_main_t *vm = vlib_get_main ();
+      vlib_node_t *n = vlib_get_node_by_name (vm, format (0, "TenGigabitEthernet6/0/0-tx"));
+      u32 i = n->error_heap_index + 1;
+      clib_warning ("%u drop count %u", tc->c_c_index, vm->error_main.counters[i]);
+      clib_warning ("lost %u sacked %u rxt %u wnd %u pending: %u high_rxt %u", tc->sack_sb.lost_bytes,
+                    tc->sack_sb.sacked_bytes, tc->snd_rxt_bytes, tc->snd_una_max - tc->snd_una,
+                    tc->flags & TCP_CONN_FRXT_PENDING, tc->sack_sb.high_rxt - tc->snd_una);
+
       /* TODO be less aggressive about this */
       scoreboard_clear (&tc->sack_sb);
       tcp_cc_fastrecovery_exit (tc);
@@ -1406,6 +1414,8 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
   tc->snd_congestion = tc->snd_una_max;
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
+  u32 byte_rate = tc->cwnd / ((f64) TCP_TICK * tc->srtt);
+  transport_connection_tx_pacer_init (&tc->connection, byte_rate, 2 * tc->snd_mss);
 
   tcp_recovery_on (tc);
 }
