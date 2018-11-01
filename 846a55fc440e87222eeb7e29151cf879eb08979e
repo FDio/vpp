@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9c56536_dfb6563b",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1916,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-01T09:23:40Z",
+      "side": 1,
+      "message": "these replicate ones are not used. remove?",
+      "revId": "846a55fc440e87222eeb7e29151cf879eb08979e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
