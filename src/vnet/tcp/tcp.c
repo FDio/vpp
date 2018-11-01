@@ -558,10 +558,11 @@ tcp_init_snd_vars (tcp_connection_t * tc)
 void
 tcp_enable_pacing (tcp_connection_t * tc)
 {
-  u32 max_burst, byte_rate;
-  max_burst = 16 * tc->snd_mss;
+  u32 initial_bucket, byte_rate;
+  initial_bucket = 16 * tc->snd_mss;
   byte_rate = 2 << 16;
-  transport_connection_tx_pacer_init (&tc->connection, byte_rate, max_burst);
+  transport_connection_tx_pacer_init (&tc->connection, byte_rate,
+				      initial_bucket);
   tc->mrtt_us = (u32) ~ 0;
 }
 
@@ -1318,6 +1319,7 @@ tcp_main_enable (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (tm->connections, num_threads - 1);
+  vec_validate (tm->wrk_ctx, num_threads - 1);
 
   /*
    * Preallocate connections. Assume that thread 0 won't
@@ -1339,6 +1341,13 @@ tcp_main_enable (vlib_main_t * vm)
       if (preallocated_connections_per_thread)
 	pool_init_fixed (tm->connections[thread],
 			 preallocated_connections_per_thread);
+      vec_validate (tm->wrk_ctx[thread].pending_fast_rxt, 0);
+      vec_validate (tm->wrk_ctx[thread].ongoing_fast_rxt, 0);
+      vec_validate (tm->wrk_ctx[thread].postponed_fast_rxt, 0);
+      vec_reset_length (tm->wrk_ctx[thread].pending_fast_rxt);
+      vec_reset_length (tm->wrk_ctx[thread].ongoing_fast_rxt);
+      vec_reset_length (tm->wrk_ctx[thread].postponed_fast_rxt);
+      tm->wrk_ctx[thread].vm = vlib_mains[thread];
     }
 
   /*
@@ -1358,7 +1367,6 @@ tcp_main_enable (vlib_main_t * vm)
       clib_spinlock_init (&tm->half_open_lock);
     }
 
-  vec_validate (tm->wrk_ctx, num_threads - 1);
   tcp_initialize_timer_wheels (tm);
 
   tm->bytes_per_buffer = vlib_buffer_free_list_buffer_size

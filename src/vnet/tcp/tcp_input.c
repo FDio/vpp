@@ -1199,67 +1199,60 @@ void
 tcp_do_fastretransmits (u32 thread_index)
 {
   tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[thread_index];
-  u32 max_burst_size, burst_size, n_segs = 0;
+  u32 max_burst_size, burst_size, n_segs = 0, n_segs_now;
+  u32 *ongoing_fast_rxt, burst_bytes, sent_bytes;
   tcp_connection_t *tc;
+  u64 last_cpu_time;
   int i;
 
-  if (vec_len (wrk->pending_fast_rxt) == 0)
+  if (vec_len (wrk->pending_fast_rxt) == 0
+      && vec_len (wrk->postponed_fast_rxt) == 0)
     return;
 
-  vec_append (wrk->ongoing_fast_rxt, wrk->pending_fast_rxt);
-  vec_reset_length (wrk->pending_fast_rxt);
+  last_cpu_time = wrk->vm->clib_time.last_cpu_time;
+  ongoing_fast_rxt = wrk->ongoing_fast_rxt;
+  vec_append (ongoing_fast_rxt, wrk->postponed_fast_rxt);
+  vec_append (ongoing_fast_rxt, wrk->pending_fast_rxt);
+
+  _vec_len (wrk->postponed_fast_rxt) = 0;
+  _vec_len (wrk->pending_fast_rxt) = 0;
 
   max_burst_size = VLIB_FRAME_SIZE / vec_len (wrk->ongoing_fast_rxt);
   max_burst_size = clib_max (max_burst_size, 1);
 
-  for (i = 0; i < vec_len (wrk->ongoing_fast_rxt); i++)
+  for (i = 0; i < vec_len (ongoing_fast_rxt); i++)
     {
-      tc = tcp_connection_get (wrk->ongoing_fast_rxt[i], thread_index);
+      if (n_segs >= VLIB_FRAME_SIZE)
+	{
+	  vec_add1 (wrk->postponed_fast_rxt, ongoing_fast_rxt[i]);
+	  continue;
+	}
+
+      tc = tcp_connection_get (ongoing_fast_rxt[i], thread_index);
       tc->flags &= ~TCP_CONN_FRXT_PENDING;
 
       if (!tcp_in_fastrecovery (tc))
 	continue;
 
-      /* TODO tx pacer instead of this */
-      if (n_segs >= VLIB_FRAME_SIZE)
+      burst_size = clib_min (max_burst_size, VLIB_FRAME_SIZE - n_segs);
+      burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
+							 last_cpu_time);
+      burst_size = clib_min (burst_size, burst_bytes / tc->snd_mss);
+      if (!burst_size)
 	{
 	  tcp_program_fastretransmit (tc);
 	  continue;
 	}
 
-      burst_size = clib_min (max_burst_size, VLIB_FRAME_SIZE - n_segs);
+      n_segs_now = tcp_fast_retransmit (tc, burst_size);
+      sent_bytes = clib_min (n_segs_now * tc->snd_mss, burst_bytes);
+      transport_connection_tx_pacer_update_bytes (&tc->connection,
+						  sent_bytes);
 
-      if (tc->cwnd > tc->ssthresh + 3 * tc->snd_mss)
-	{
-	  /* The first segment MUST be retransmitted */
-	  if (tcp_retransmit_first_unacked (tc))
-	    {
-	      tcp_program_fastretransmit (tc);
-	      continue;
-	    }
-
-	  /* Post retransmit update cwnd to ssthresh and account for the
-	   * three segments that have left the network and should've been
-	   * buffered at the receiver XXX */
-	  tc->cwnd = tc->ssthresh + 3 * tc->snd_mss;
-
-	  /* If cwnd allows, send more data */
-	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	    {
-	      scoreboard_init_high_rxt (&tc->sack_sb,
-					tc->snd_una + tc->snd_mss);
-	      tc->sack_sb.rescue_rxt = tc->snd_una - 1;
-	      n_segs += tcp_fast_retransmit_sack (tc, burst_size);
-	    }
-	  else
-	    {
-	      n_segs += tcp_fast_retransmit_no_sack (tc, burst_size);
-	    }
-	}
-      else
-	n_segs += tcp_fast_retransmit (tc, burst_size);
+      n_segs += n_segs_now;
     }
-  vec_reset_length (wrk->ongoing_fast_rxt);
+  _vec_len (ongoing_fast_rxt) = 0;
+  wrk->ongoing_fast_rxt = ongoing_fast_rxt;
 }
 
 /**
@@ -1298,6 +1291,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	}
       else if (tcp_should_fastrecover (tc))
 	{
+	  u32 byte_rate;
 	  ASSERT (!tcp_in_fastrecovery (tc));
 
 	  /* Heuristic to catch potential late dupacks
@@ -1313,8 +1307,21 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	  tc->cc_algo->rcv_cong_ack (tc, TCP_CC_DUPACK);
 
 	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
-	    tc->sack_sb.high_rxt = tc->snd_una;
+	    {
+	      tc->cwnd = tc->ssthresh;
+	      scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
+	      tc->sack_sb.rescue_rxt = tc->snd_una - 1;
+	    }
+	  else
+	    {
+	      /* Post retransmit update cwnd to ssthresh and account for the
+	       * three segments that have left the network and should've been
+	       * buffered at the receiver XXX */
+	      tc->cwnd = tc->ssthresh + 3 * tc->snd_mss;
+	    }
 
+	  byte_rate = (0.3 * tc->cwnd) / ((f64) TCP_TICK * tc->srtt);
+	  transport_connection_tx_pacer_init (&tc->connection, byte_rate, 0);
 	  tcp_program_fastretransmit (tc);
 	  return;
 	}
