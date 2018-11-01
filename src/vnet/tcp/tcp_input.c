@@ -1196,11 +1196,10 @@ tcp_program_fastretransmit (tcp_connection_t * tc)
 }
 
 void
-tcp_do_fastretransmits (u32 thread_index)
+tcp_do_fastretransmits (tcp_worker_ctx_t *wrk)
 {
-  tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[thread_index];
+  u32 *ongoing_fast_rxt, burst_bytes, sent_bytes, thread_index;
   u32 max_burst_size, burst_size, n_segs = 0, n_segs_now;
-  u32 *ongoing_fast_rxt, burst_bytes, sent_bytes;
   tcp_connection_t *tc;
   u64 last_cpu_time;
   int i;
@@ -1209,6 +1208,7 @@ tcp_do_fastretransmits (u32 thread_index)
       && vec_len (wrk->postponed_fast_rxt) == 0)
     return;
 
+  thread_index = wrk->vm->thread_index;
   last_cpu_time = wrk->vm->clib_time.last_cpu_time;
   ongoing_fast_rxt = wrk->ongoing_fast_rxt;
   vec_append (ongoing_fast_rxt, wrk->postponed_fast_rxt);
@@ -1244,11 +1244,10 @@ tcp_do_fastretransmits (u32 thread_index)
 	  continue;
 	}
 
-      n_segs_now = tcp_fast_retransmit (tc, burst_size);
+      n_segs_now = tcp_fast_retransmit (wrk, tc, burst_size);
       sent_bytes = clib_min (n_segs_now * tc->snd_mss, burst_bytes);
       transport_connection_tx_pacer_update_bytes (&tc->connection,
 						  sent_bytes);
-
       n_segs += n_segs_now;
     }
   _vec_len (ongoing_fast_rxt) = 0;
@@ -2102,7 +2101,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						 thread_index);
   err_counters[TCP_ERROR_EVENT_FIFO_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
-  tcp_flush_frame_to_output (vm, thread_index, is_ip4);
+  tcp_flush_frame_to_output (tcp_get_worker (thread_index), is_ip4);
 
   return frame->n_vectors;
 }
@@ -3393,7 +3392,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
-  tcp_set_time_now (thread_index);
+  tcp_set_time_now (tcp_get_worker (thread_index));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
