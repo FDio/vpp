@@ -1406,7 +1406,7 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
   tc->snd_congestion = tc->snd_una_max;
   tc->rtt_ts = 0;
   tc->cwnd_acc_bytes = 0;
-
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 4 * tc->snd_mss);
   tcp_recovery_on (tc);
 }
 
