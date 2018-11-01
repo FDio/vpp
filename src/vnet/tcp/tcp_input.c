@@ -1085,10 +1085,6 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tcp_fastrecovery_1_smss_off (tc);
   tcp_fastrecovery_first_off (tc);
 
-  /* Update pacer because our cwnd changed. Also makes sure
-   * that we recompute the max burst size */
-  tcp_update_pacer (tc);
-
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
@@ -1290,7 +1286,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	}
       else if (tcp_should_fastrecover (tc))
 	{
-	  u32 byte_rate;
 	  ASSERT (!tcp_in_fastrecovery (tc));
 
 	  /* Heuristic to catch potential late dupacks
@@ -1319,8 +1314,9 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	      tc->cwnd = tc->ssthresh + 3 * tc->snd_mss;
 	    }
 
-	  byte_rate = (0.3 * tc->cwnd) / ((f64) TCP_TICK * tc->srtt);
-	  transport_connection_tx_pacer_init (&tc->connection, byte_rate, 0);
+	  tcp_connection_tx_pacer_reset (tc,
+	                                 clib_min (0.1 * tc->cwnd, 2 << 16),
+	                                 0 /* start bucket */);
 	  tcp_program_fastretransmit (tcp_get_worker (tc->c_thread_index),
 				      tc);
 	  return;

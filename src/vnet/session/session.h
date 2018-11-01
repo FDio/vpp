@@ -229,6 +229,8 @@ typedef struct session_manager_worker_
   /** Peekers rw lock */
   clib_rwlock_t peekers_rw_locks;
 
+  u32 prev_tx_packets;
+
 } session_manager_worker_t;
 
 struct _session_manager_main

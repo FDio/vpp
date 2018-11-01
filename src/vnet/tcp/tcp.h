@@ -735,14 +735,16 @@ void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
 void tcp_init_snd_vars (tcp_connection_t * tc);
 void tcp_connection_init_vars (tcp_connection_t * tc);
-void tcp_update_pacer (tcp_connection_t * tc);
+void tcp_connection_tx_pacer_update (tcp_connection_t * tc);
+void tcp_connection_tx_pacer_reset (tcp_connection_t *tc, u32 window,
+                                    u32 start_bucket);
 
 always_inline void
 tcp_cc_rcv_ack (tcp_connection_t * tc)
 {
   tc->cc_algo->rcv_ack (tc);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
-  tcp_update_pacer (tc);
+  tcp_connection_tx_pacer_update (tc);
 }
 
 always_inline void
