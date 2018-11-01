@@ -258,7 +258,7 @@ tcp_update_timestamp (tcp_connection_t * tc, u32 seq, u32 seq_end)
     {
       ASSERT (timestamp_leq (tc->tsval_recent, tc->rcv_opts.tsval));
       tc->tsval_recent = tc->rcv_opts.tsval;
-      tc->tsval_recent_age = tcp_time_now ();
+      tc->tsval_recent_age = tcp_time_now_w_thread (tc->c_thread_index);
     }
 }
 
@@ -308,7 +308,7 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
       /* If it just so happens that a segment updates tsval_recent for a
        * segment over 24 days old, invalidate tsval_recent. */
       if (timestamp_lt (tc0->tsval_recent_age + TCP_PAWS_IDLE,
-			tcp_time_now ()))
+			tcp_time_now_w_thread (tc0->c_thread_index)))
 	{
 	  /* Age isn't reset until we get a valid tsval (bsd inspired) */
 	  tc0->tsval_recent = 0;
@@ -470,7 +470,8 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
    * seq_lt (tc->snd_una, ack). This is a condition for calling update_rtt */
   else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
     {
-      mrtt = clib_max (tcp_time_now () - tc->rcv_opts.tsecr, 1);
+      u32 now = tcp_time_now_w_thread (tc->c_thread_index);
+      mrtt = clib_max (now - tc->rcv_opts.tsecr, 1);
     }
 
   /* Ignore dubious measurements */
@@ -1196,11 +1197,10 @@ tcp_program_fastretransmit (tcp_connection_t * tc)
 }
 
 void
-tcp_do_fastretransmits (u32 thread_index)
+tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
 {
-  tcp_worker_ctx_t *wrk = &tcp_main.wrk_ctx[thread_index];
+  u32 *ongoing_fast_rxt, burst_bytes, sent_bytes, thread_index;
   u32 max_burst_size, burst_size, n_segs = 0, n_segs_now;
-  u32 *ongoing_fast_rxt, burst_bytes, sent_bytes;
   tcp_connection_t *tc;
   u64 last_cpu_time;
   int i;
@@ -1209,6 +1209,7 @@ tcp_do_fastretransmits (u32 thread_index)
       && vec_len (wrk->postponed_fast_rxt) == 0)
     return;
 
+  thread_index = wrk->vm->thread_index;
   last_cpu_time = wrk->vm->clib_time.last_cpu_time;
   ongoing_fast_rxt = wrk->ongoing_fast_rxt;
   vec_append (ongoing_fast_rxt, wrk->postponed_fast_rxt);
@@ -1244,11 +1245,10 @@ tcp_do_fastretransmits (u32 thread_index)
 	  continue;
 	}
 
-      n_segs_now = tcp_fast_retransmit (tc, burst_size);
+      n_segs_now = tcp_fast_retransmit (wrk, tc, burst_size);
       sent_bytes = clib_min (n_segs_now * tc->snd_mss, burst_bytes);
       transport_connection_tx_pacer_update_bytes (&tc->connection,
 						  sent_bytes);
-
       n_segs += n_segs_now;
     }
   _vec_len (ongoing_fast_rxt) = 0;
@@ -2102,7 +2102,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						 thread_index);
   err_counters[TCP_ERROR_EVENT_FIFO_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
-  tcp_flush_frame_to_output (vm, thread_index, is_ip4);
+  tcp_flush_frame_to_output (tcp_get_worker (thread_index), is_ip4);
 
   return frame->n_vectors;
 }
@@ -3393,7 +3393,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
   u16 nexts[VLIB_FRAME_SIZE], *next;
 
-  tcp_set_time_now (thread_index);
+  tcp_set_time_now (tcp_get_worker (thread_index));
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

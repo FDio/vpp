@@ -470,6 +470,12 @@ vnet_get_tcp_main ()
   return &tcp_main;
 }
 
+always_inline tcp_worker_ctx_t *
+tcp_get_worker (u32 thread_index)
+{
+  return &tcp_main.wrk_ctx[thread_index];
+}
+
 always_inline tcp_header_t *
 tcp_buffer_hdr (vlib_buffer_t * b)
 {
@@ -559,10 +565,10 @@ void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
-void tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4);
-void tcp_flush_frames_to_output (u8 thread_index);
+void tcp_flush_frame_to_output (tcp_worker_ctx_t * wrk, u8 is_ip4);
+void tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk);
 void tcp_program_fastretransmit (tcp_connection_t * tc);
-void tcp_do_fastretransmits (u32 thread_index);
+void tcp_do_fastretransmits (tcp_worker_ctx_t * wrk);
 
 always_inline u32
 tcp_end_seq (tcp_header_t * th, u32 len)
@@ -680,10 +686,14 @@ tcp_is_lost_fin (tcp_connection_t * tc)
 }
 
 u32 tcp_snd_space (tcp_connection_t * tc);
-int tcp_retransmit_first_unacked (tcp_connection_t * tc);
-int tcp_fast_retransmit_no_sack (tcp_connection_t * tc, u32 burst_size);
-int tcp_fast_retransmit_sack (tcp_connection_t * tc, u32 burst_size);
-int tcp_fast_retransmit (tcp_connection_t * tc, u32 burst_size);
+int tcp_retransmit_first_unacked (tcp_worker_ctx_t * wrk,
+				  tcp_connection_t * tc);
+int tcp_fast_retransmit_no_sack (tcp_worker_ctx_t * wrk,
+				 tcp_connection_t * tc, u32 burst_size);
+int tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+			      u32 burst_size);
+int tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+			 u32 burst_size);
 void tcp_cc_init_congestion (tcp_connection_t * tc);
 void tcp_cc_fastrecovery_exit (tcp_connection_t * tc);
 
@@ -699,6 +709,12 @@ tcp_time_now (void)
   return tcp_main.wrk_ctx[vlib_get_thread_index ()].time_now;
 }
 
+always_inline u32
+tcp_time_now_w_thread (u32 thread_index)
+{
+  return tcp_main.wrk_ctx[thread_index].time_now;
+}
+
 always_inline f64
 tcp_time_now_us (u32 thread_index)
 {
@@ -706,11 +722,10 @@ tcp_time_now_us (u32 thread_index)
 }
 
 always_inline u32
-tcp_set_time_now (u32 thread_index)
+tcp_set_time_now (tcp_worker_ctx_t * wrk)
 {
-  tcp_main.wrk_ctx[thread_index].time_now = clib_cpu_time_now ()
-    * tcp_main.tstamp_ticks_per_clock;
-  return tcp_main.wrk_ctx[thread_index].time_now;
+  wrk->time_now = clib_cpu_time_now () * tcp_main.tstamp_ticks_per_clock;
+  return wrk->time_now;
 }
 
 u32 tcp_push_header (tcp_connection_t * tconn, vlib_buffer_t * b);
