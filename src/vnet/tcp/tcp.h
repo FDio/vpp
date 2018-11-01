@@ -160,7 +160,7 @@ enum
 };
 
 #define TCP_SCOREBOARD_TRACE (0)
-#define TCP_MAX_SACK_BLOCKS 32	/**< Max number of SACK blocks stored */
+#define TCP_MAX_SACK_BLOCKS 256	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 
 typedef struct _scoreboard_trace_elt
@@ -390,6 +390,9 @@ typedef struct tcp_worker_ctx_
 						     needing fast rxt */
   u32 *ongoing_fast_rxt;			/**< vector of connections
 						     now doing fast rxt */
+  u32 *postponed_fast_rxt;			/**< vector of connections
+						     that will do fast rxt */
+  vlib_main_t *vm;				/**< pointer to vm */
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   u8 cached_opts[40];				/**< cached 'on the wire'
@@ -722,8 +725,8 @@ always_inline void
 tcp_cc_rcv_ack (tcp_connection_t * tc)
 {
   tc->cc_algo->rcv_ack (tc);
-  tcp_update_pacer (tc);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
+  tcp_update_pacer (tc);
 }
 
 always_inline void

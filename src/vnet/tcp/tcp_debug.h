@@ -627,10 +627,8 @@ if (_av > 0) 								\
 
 #if TCP_DEBUG_CC
 
-#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)			\
+#define TCP_EVT_CC_EVT_PRINT(_tc, _sub_evt)				\
 {									\
-  if (_tc->snd_una != _tc->iss)						\
-    TCP_EVT_CC_STAT_PRINT (_tc);					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "cc: %s snd_space %u snd_una %u out %u flight %u",	\
@@ -638,8 +636,8 @@ if (_av > 0) 								\
     .n_enum_strings = 7,						\
     .enum_strings = {                                           	\
       "fast-rxt",	                                             	\
-      "rxt-timeout",                                                 	\
       "first-rxt",                                                 	\
+      "rxt-timeout",                                                 	\
       "recovered",							\
       "congestion",							\
       "undo",								\
@@ -653,8 +651,18 @@ if (_av > 0) 								\
   ed->data[3] = tcp_bytes_out(_tc);					\
   ed->data[4] = tcp_flight_size (_tc);					\
 }
+
+#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)			\
+{									\
+  if (_tc->snd_una != _tc->iss)						\
+    TCP_EVT_CC_STAT_PRINT (_tc);					\
+  if ((_sub_evt <= 1 && TCP_DEBUG_CC > 1)				\
+      || (_sub_evt > 1 && TCP_DEBUG_CC > 0))				\
+      TCP_EVT_CC_EVT_PRINT (_tc, _sub_evt);				\
+}
 #else
-#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)
+#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)			\
+
 #endif
 
 #if TCP_DEBUG_CC > 1
