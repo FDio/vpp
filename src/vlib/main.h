@@ -207,8 +207,10 @@ typedef struct vlib_main_t
   /* Earliest barrier can be closed again */
   f64 barrier_no_close_before;
 
-  /* Vector of pending RPC requests */
+  /* RPC requests, main thread only */
   uword *pending_rpc_requests;
+  uword *processing_rpc_requests;
+  clib_spinlock_t pending_rpc_lock;
 
 } vlib_main_t;
 
