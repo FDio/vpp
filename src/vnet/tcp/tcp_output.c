@@ -1452,10 +1452,10 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
     }
 
-  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
-
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
+      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+
       /* Lost FIN, retransmit and return */
       if (tcp_is_lost_fin (tc))
 	{
@@ -1536,6 +1536,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  return;
 	}
 
+      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+
       /* Try without increasing RTO a number of times. If this fails,
        * start growing RTO exponentially */
       tc->rto_boff += 1;
@@ -1562,6 +1564,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   /* Retransmit SYN-ACK */
   else if (tc->state == TCP_STATE_SYN_RCVD)
     {
+      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+
       tc->rto_boff += 1;
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
@@ -1693,7 +1697,7 @@ tcp_retransmit_first_unacked (tcp_connection_t * tc)
   old_snd_nxt = tc->snd_nxt;
   tc->snd_nxt = tc->snd_una;
 
-  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
 
   n_bytes = tcp_prepare_retransmit_segment (tc, 0, tc->snd_mss, &b);
   if (!n_bytes)
