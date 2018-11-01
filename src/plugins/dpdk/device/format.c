@@ -239,7 +239,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
   rte_eth_dev_info_get (i, &dev_info);
   pci_dev = dpdk_get_pci_device (&dev_info);
 
-  if (pci_dev)
+  if (pci_dev && dm->devices[i].port_type != VNET_DPDK_PORT_TYPE_FAILSAFE)
     ret = format (s, devname_format, device_name, pci_dev->addr.bus,
 		  pci_dev->addr.devid, pci_dev->addr.function);
   else
