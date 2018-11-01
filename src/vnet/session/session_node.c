@@ -751,10 +751,12 @@ static void
 session_update_dispatch_period (session_manager_worker_t * wrk, f64 now,
 				u32 thread_index)
 {
-  f64 sample, prev_period = wrk->dispatch_period, a = 0.8;
-
-  sample = now - wrk->last_vlib_time;
-  wrk->dispatch_period = a * sample + (1 - a) * prev_period;
+  if (wrk->last_tx_packets > 8)
+    {
+      f64 sample = now - wrk->last_vlib_time;
+      sample = (sample * wrk->last_tx_packets) / VLIB_FRAME_SIZE;
+      wrk->dispatch_period = (wrk->dispatch_period + sample) * 0.5;
+    }
   wrk->last_vlib_time = now;
 }
 
@@ -917,6 +919,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   _vec_len (fifo_events) = 0;
   wrk->free_event_vector = fifo_events;
+  wrk->last_tx_packets = n_tx_packets;
 
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
