@@ -1291,13 +1291,12 @@ tcp_initialize_timer_wheels (tcp_main_t * tm)
 static clib_error_t *
 tcp_main_enable (vlib_main_t * vm)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  clib_error_t *error = 0;
-  u32 num_threads;
-  int thread;
   tcp_connection_t *tc __attribute__ ((unused));
-  u32 preallocated_connections_per_thread;
+  u32 num_threads, prealloc_conn_per_wrk;
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  clib_error_t *error = 0;
+  int thread;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -1320,27 +1319,10 @@ tcp_main_enable (vlib_main_t * vm)
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (tm->connections, num_threads - 1);
   vec_validate (tm->wrk_ctx, num_threads - 1);
+  prealloc_conn_per_wrk = tm->preallocated_connections / vlib_num_workers ();
 
-  /*
-   * Preallocate connections. Assume that thread 0 won't
-   * use preallocated threads when running multi-core
-   */
-  if (num_threads == 1)
+  for (thread = 0; thread < num_threads; thread++)
     {
-      thread = 0;
-      preallocated_connections_per_thread = tm->preallocated_connections;
-    }
-  else
-    {
-      thread = 1;
-      preallocated_connections_per_thread =
-	tm->preallocated_connections / (num_threads - 1);
-    }
-  for (; thread < num_threads; thread++)
-    {
-      if (preallocated_connections_per_thread)
-	pool_init_fixed (tm->connections[thread],
-			 preallocated_connections_per_thread);
       vec_validate (tm->wrk_ctx[thread].pending_fast_rxt, 0);
       vec_validate (tm->wrk_ctx[thread].ongoing_fast_rxt, 0);
       vec_validate (tm->wrk_ctx[thread].postponed_fast_rxt, 0);
@@ -1348,6 +1330,13 @@ tcp_main_enable (vlib_main_t * vm)
       vec_reset_length (tm->wrk_ctx[thread].ongoing_fast_rxt);
       vec_reset_length (tm->wrk_ctx[thread].postponed_fast_rxt);
       tm->wrk_ctx[thread].vm = vlib_mains[thread];
+
+      /*
+       * Preallocate connections. Assume that thread 0 won't
+       * use preallocated threads when running multi-core
+       */
+      if ((thread > 0 || num_threads == 1) && prealloc_conn_per_wrk)
+	pool_init_fixed (tm->connections[thread], prealloc_conn_per_wrk);
     }
 
   /*

@@ -470,6 +470,12 @@ vnet_get_tcp_main ()
   return &tcp_main;
 }
 
+always_inline tcp_worker_ctx_t *
+tcp_get_worker (u32 thread_index)
+{
+  return &tcp_main.wrk_ctx[thread_index];
+}
+
 always_inline tcp_header_t *
 tcp_buffer_hdr (vlib_buffer_t * b)
 {
