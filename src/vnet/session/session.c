@@ -1366,6 +1366,7 @@ session_manager_main_enable (vlib_main_t * vm)
       _vec_len (wrk->postponed_event_vector) = 0;
 
       wrk->last_vlib_time = vlib_time_now (vlib_mains[i]);
+      wrk->dispatch_period = 500e-6;
 
       if (num_threads > 1)
 	clib_rwlock_init (&smm->wrk[i].peekers_rw_locks);

@@ -529,23 +529,32 @@ spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec)
 }
 
 void
-transport_connection_tx_pacer_init (transport_connection_t * tc,
-				    u32 rate_bytes_per_sec,
-				    u32 initial_bucket)
+transport_connection_tx_pacer_reset (transport_connection_t * tc,
+				     u32 rate_bytes_per_sec,
+				     u32 start_bucket, u64 time_now)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  u64 time_now = vm->clib_time.last_cpu_time;
   spacer_t *pacer = &tc->pacer;
   f64 dispatch_period;
   u32 burst_size;
 
-  tc->flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
   dispatch_period = transport_dispatch_period (tc->thread_index);
   burst_size = rate_bytes_per_sec * dispatch_period;
   spacer_update_max_burst_size (&tc->pacer, burst_size);
   spacer_set_pace_rate (&tc->pacer, rate_bytes_per_sec);
   pacer->last_update = time_now >> SPACER_CPU_TICKS_PER_PERIOD_SHIFT;
-  pacer->bucket = initial_bucket;
+  pacer->bucket = start_bucket;
+}
+
+void
+transport_connection_tx_pacer_init (transport_connection_t * tc,
+				    u32 rate_bytes_per_sec,
+				    u32 initial_bucket)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  tc->flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  transport_connection_tx_pacer_reset (tc, rate_bytes_per_sec,
+				       initial_bucket,
+				       vm->clib_time.last_cpu_time);
 }
 
 void
