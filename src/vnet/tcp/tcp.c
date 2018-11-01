@@ -1153,7 +1153,7 @@ const static transport_proto_vft_t tcp_proto = {
 /* *INDENT-ON* */
 
 void
-tcp_update_pacer (tcp_connection_t * tc)
+tcp_connection_tx_pacer_update (tcp_connection_t * tc)
 {
   f64 srtt;
 
@@ -1163,6 +1163,17 @@ tcp_update_pacer (tcp_connection_t * tc)
   srtt = clib_min ((f64) tc->srtt * TCP_TICK, tc->mrtt_us);
   transport_connection_tx_pacer_update (&tc->connection,
 					((f64) tc->cwnd) / srtt);
+}
+
+void
+tcp_connection_tx_pacer_reset (tcp_connection_t * tc, u32 window,
+			       u32 start_bucket)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  u32 byte_rate = window / ((f64) TCP_TICK * tc->srtt);
+  u64 last_time = wrk->vm->clib_time.last_cpu_time;
+  transport_connection_tx_pacer_reset (&tc->connection, byte_rate,
+				       start_bucket, last_time);
 }
 
 static void
