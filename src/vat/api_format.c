@@ -18,6 +18,7 @@
  */
 
 #include <vat/vat.h>
+#include <vpp/api/types.h>
 #include <vppinfra/socket.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -53,6 +54,8 @@
 #include <vnet/bonding/node.h>
 #include <vnet/qos/qos_types.h>
 #include "vat/json_format.h"
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
 
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -78,6 +81,14 @@
 
 #if VPP_API_TEST_BUILTIN == 0
 #include <netdb.h>
+
+/* *INDENT-OFF* */
+const mac_address_t ZERO_MAC_ADDRESS = {
+  .bytes = {
+    0, 0, 0, 0, 0, 0,
+  },
+};
+/* *INDENT-ON* */
 
 u32
 vl (void *p)
