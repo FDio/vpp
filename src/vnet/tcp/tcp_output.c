@@ -1696,6 +1696,10 @@ tcp_retransmit_first_unacked (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   return 0;
 }
 
+#define scoreboard_rescue_rxt_valid(_sb, _tc)			\
+    (seq_geq (_sb->rescue_rxt, _tc->snd_una) 			\
+	&& seq_leq (_sb->rescue_rxt, _tc->snd_congestion))
+
 /**
  * Do fast retransmit with SACKs
  */
@@ -1733,22 +1737,22 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 				       &can_rescue, &snd_limited);
       if (!hole)
 	{
-	  if (!can_rescue || !(seq_lt (sb->rescue_rxt, tc->snd_una)
-			       || seq_gt (sb->rescue_rxt,
-					  tc->snd_congestion)))
+	  if (!can_rescue || scoreboard_rescue_rxt_valid (sb, tc))
 	    {
 	      if (tcp_fastrecovery_first (tc))
 		break;
 
 	      /* We tend to lose the first segment. Try re-resending
 	       * it but only once and after we've tried everything */
-	      hole = scoreboard_first_hole (sb);
-	      if (hole && hole->start == tc->snd_una)
-		{
-		  tcp_retransmit_first_unacked (wrk, tc);
-		  tcp_fastrecovery_first_on (tc);
-		  n_segs += 1;
-		}
+//	      hole = scoreboard_first_hole (sb);
+//	      if (hole && hole->start == tc->snd_una)
+//		{
+//		  clib_warning ("happens: snd_una %u sng_cong %u\n%U", tc->snd_una - tc->iss,
+//		                tc->snd_congestion - tc->iss, format_tcp_scoreboard, sb, tc);
+//		  tcp_retransmit_first_unacked (wrk, tc);
+//		  tcp_fastrecovery_first_on (tc);
+//		  n_segs += 1;
+//		}
 	      break;
 	    }
 

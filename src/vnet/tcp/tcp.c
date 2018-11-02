@@ -972,13 +972,13 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 
   hole = scoreboard_first_hole (sb);
   if (hole)
-    s = format (s, "\n%Uhead %u tail %u %u holes:\n", format_white_space,
-		indent, sb->head, sb->tail, pool_elts (sb->holes));
+    s = format (s, "\n%Uhead %u tail %u %u holes:\n%U", format_white_space,
+		indent, sb->head, sb->tail, pool_elts (sb->holes),
+		format_white_space, indent);
 
   while (hole)
     {
-      s = format (s, "%U%U", format_white_space, indent, format_tcp_sack_hole,
-		  hole, tc);
+      s = format (s, "%U", format_tcp_sack_hole, hole, tc);
       hole = scoreboard_next_hole (sb, hole);
     }
 

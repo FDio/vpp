@@ -743,7 +743,7 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
   else
     {
       /* Rule (2): output takes care of transmitting new data */
-      if (!have_sent_1_smss)
+      if (0 && !have_sent_1_smss)
 	{
 	  hole = 0;
 	  sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
@@ -772,16 +772,17 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 }
 
 static void
-scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 seq)
+scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (sb);
   if (hole)
     {
-      seq = seq_gt (seq, hole->start) ? seq : hole->start;
+      snd_una = seq_gt (snd_una, hole->start) ? snd_una : hole->start;
       sb->cur_rxt_hole = sb->head;
     }
-  sb->high_rxt = seq;
+  sb->high_rxt = snd_una;
+  sb->rescue_rxt = snd_una - 1;
 }
 
 void
@@ -1084,7 +1085,7 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_1_smss_off (tc);
   tcp_fastrecovery_first_off (tc);
-
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
@@ -1306,7 +1307,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	    {
 	      tc->cwnd = tc->ssthresh;
 	      scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
-	      tc->sack_sb.rescue_rxt = tc->snd_una - 1;
 	    }
 	  else
 	    {
@@ -1422,6 +1422,7 @@ partial_ack:
 	{
 	  /* Apparently all retransmitted holes have been acked */
 	  tc->snd_rxt_bytes = 0;
+	  tc->sack_sb.high_rxt = tc->snd_una;
 	}
     }
   else
