@@ -1239,49 +1239,15 @@ tcp_timer_delack_handler (u32 index)
   tcp_send_ack (tc);
 }
 
-/**
- * Build a retransmit segment
- *
- * @return the number of bytes in the segment or 0 if there's nothing to
- *         retransmit
- */
-static u32
-tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
-				tcp_connection_t * tc, u32 offset,
-				u32 max_deq_bytes, vlib_buffer_t ** b)
+static int
+tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
+                     u32 offset, u32 max_deq_bytes, vlib_buffer_t ** b)
 {
   u32 bytes_per_buffer = vnet_get_tcp_main ()->bytes_per_buffer;
+  u32 bi, seg_size;
   vlib_main_t *vm = wrk->vm;
   int n_bytes = 0;
-  u32 start, bi, available_bytes, seg_size;
   u8 *data;
-
-  ASSERT (tc->state >= TCP_STATE_ESTABLISHED);
-  ASSERT (max_deq_bytes != 0);
-
-  /*
-   * Make sure we can retransmit something
-   */
-  available_bytes = session_tx_fifo_max_dequeue (&tc->connection);
-  ASSERT (available_bytes >= offset);
-  available_bytes -= offset;
-  if (!available_bytes)
-    return 0;
-  max_deq_bytes = clib_min (tc->snd_mss, max_deq_bytes);
-  max_deq_bytes = clib_min (available_bytes, max_deq_bytes);
-
-  /* Start is beyond snd_congestion */
-  start = tc->snd_una + offset;
-  if (seq_geq (start, tc->snd_congestion))
-    goto done;
-
-  /* Don't overshoot snd_congestion */
-  if (seq_gt (start + max_deq_bytes, tc->snd_congestion))
-    {
-      max_deq_bytes = tc->snd_congestion - start;
-      if (max_deq_bytes == 0)
-	goto done;
-    }
 
   seg_size = max_deq_bytes + MAX_HDRS_LEN;
 
@@ -1373,6 +1339,55 @@ tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
 
   ASSERT (n_bytes > 0);
   ASSERT (((*b)->current_data + (*b)->current_length) <= bytes_per_buffer);
+
+  return n_bytes;
+}
+
+/**
+ * Build a retransmit segment
+ *
+ * @return the number of bytes in the segment or 0 if there's nothing to
+ *         retransmit
+ */
+static u32
+tcp_prepare_retransmit_segment (tcp_worker_ctx_t * wrk,
+				tcp_connection_t * tc, u32 offset,
+				u32 max_deq_bytes, vlib_buffer_t ** b)
+{
+  u32 start, available_bytes;
+  int n_bytes = 0;
+
+  ASSERT (tc->state >= TCP_STATE_ESTABLISHED);
+  ASSERT (max_deq_bytes != 0);
+
+  /*
+   * Make sure we can retransmit something
+   */
+  available_bytes = session_tx_fifo_max_dequeue (&tc->connection);
+  ASSERT (available_bytes >= offset);
+  available_bytes -= offset;
+  if (!available_bytes)
+    return 0;
+
+  max_deq_bytes = clib_min (tc->snd_mss, max_deq_bytes);
+  max_deq_bytes = clib_min (available_bytes, max_deq_bytes);
+
+  /* Start is beyond snd_congestion */
+  start = tc->snd_una + offset;
+  if (seq_geq (start, tc->snd_congestion))
+    goto done;
+
+  /* Don't overshoot snd_congestion */
+  if (seq_gt (start + max_deq_bytes, tc->snd_congestion))
+    {
+      max_deq_bytes = tc->snd_congestion - start;
+      if (max_deq_bytes == 0)
+	goto done;
+    }
+
+  n_bytes = tcp_prepare_segment (wrk, tc, offset, max_deq_bytes, b);
+  if (!n_bytes)
+    return 0;
 
   if (tcp_in_fastrecovery (tc))
     tc->snd_rxt_bytes += n_bytes;
@@ -1696,6 +1711,34 @@ tcp_retransmit_first_unacked (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
   return 0;
 }
 
+int
+tcp_fast_retransmit_unsent (tcp_worker_ctx_t * wrk, tcp_connection_t *tc,
+                            u32 max_deq, u32 burst_size)
+{
+  u32 offset = 0, n_segs = 0, n_written, bi;
+  vlib_main_t *vm = wrk->vm;
+  vlib_buffer_t *b = 0;
+
+  tc->snd_nxt = tc->snd_una_max;
+  while (n_segs < burst_size)
+    {
+      n_written = tcp_prepare_segment (wrk, tc, offset, tc->snd_mss, &b);
+      if (!n_written)
+	return n_segs;
+
+      bi = vlib_get_buffer_index (vm, b);
+      tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+      offset += n_written;
+      n_segs += 1;
+    }
+
+  return n_segs;
+}
+
+#define scoreboard_rescue_rxt_valid(_sb, _tc)			\
+    (seq_geq (_sb->rescue_rxt, _tc->snd_una) 			\
+	&& seq_leq (_sb->rescue_rxt, _tc->snd_congestion))
+
 /**
  * Do fast retransmit with SACKs
  */
@@ -1714,41 +1757,51 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
   ASSERT (tcp_in_fastrecovery (tc));
 
-  old_snd_nxt = tc->snd_nxt;
-  sb = &tc->sack_sb;
   snd_space = tcp_available_cc_snd_space (tc);
-  hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
-
   if (snd_space < tc->snd_mss)
     {
       tcp_program_fastretransmit (wrk, tc);
-      goto done;
+      return 0;
     }
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
+  old_snd_nxt = tc->snd_nxt;
+  sb = &tc->sack_sb;
+  hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
+
+  int max_deq = session_tx_fifo_max_dequeue (&tc->connection);
+  max_deq -= tc->snd_una_max - tc->snd_una;
+  if (max_deq <= 0)
+    os_panic ();
+
   while (snd_space > 0 && n_segs < burst_size)
     {
-      hole = scoreboard_next_rxt_hole (sb, hole,
-				       tcp_fastrecovery_sent_1_smss (tc),
-				       &can_rescue, &snd_limited);
+      hole = scoreboard_next_rxt_hole (sb, hole, max_deq, &can_rescue,
+	                               &snd_limited);
       if (!hole)
 	{
-	  if (!can_rescue || !(seq_lt (sb->rescue_rxt, tc->snd_una)
-			       || seq_gt (sb->rescue_rxt,
-					  tc->snd_congestion)))
+	  if (max_deq)
+	    {
+	      n_segs += tcp_fast_retransmit_unsent (wrk, tc, max_deq,
+	                                            burst_size - n_segs);
+	      goto done;
+	    }
+	  if (!can_rescue || scoreboard_rescue_rxt_valid (sb, tc))
 	    {
 	      if (tcp_fastrecovery_first (tc))
 		break;
 
 	      /* We tend to lose the first segment. Try re-resending
 	       * it but only once and after we've tried everything */
-	      hole = scoreboard_first_hole (sb);
-	      if (hole && hole->start == tc->snd_una)
-		{
-		  tcp_retransmit_first_unacked (wrk, tc);
-		  tcp_fastrecovery_first_on (tc);
-		  n_segs += 1;
-		}
+//	      hole = scoreboard_first_hole (sb);
+//	      if (hole && hole->start == tc->snd_una)
+//		{
+//		  clib_warning ("happens: snd_una %u sng_cong %u\n%U", tc->snd_una - tc->iss,
+//		                tc->snd_congestion - tc->iss, format_tcp_scoreboard, sb, tc);
+//		  tcp_retransmit_first_unacked (wrk, tc);
+//		  tcp_fastrecovery_first_on (tc);
+//		  n_segs += 1;
+//		}
 	      break;
 	    }
 
@@ -1778,19 +1831,21 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       max_bytes = snd_limited ? clib_min (max_bytes, tc->snd_mss) : max_bytes;
       if (max_bytes == 0)
 	break;
+
       offset = sb->high_rxt - tc->snd_una;
       tc->snd_nxt = sb->high_rxt;
       n_written = tcp_prepare_retransmit_segment (wrk, tc, offset, max_bytes,
 						  &b);
+      ASSERT (n_written <= snd_space);
 
       /* Nothing left to retransmit */
       if (n_written == 0)
 	break;
 
       bi = vlib_get_buffer_index (vm, b);
-      sb->high_rxt += n_written;
       tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
-      ASSERT (n_written <= snd_space);
+
+      sb->high_rxt += n_written;
       snd_space -= n_written;
       n_segs += 1;
     }
