@@ -56,6 +56,7 @@ _(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
 _(IPSEC_SA_DUMP, ipsec_sa_dump)                                         \
 _(IPSEC_SPDS_DUMP, ipsec_spds_dump)                                     \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
+_(IPSEC_SPD_INTERFACE_DUMP, ipsec_spd_interface_dump)			\
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
 _(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)                     \
 _(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)                       \
@@ -361,6 +362,60 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
                               mp->context);}
     ));
   /* *INDENT-ON* */
+#else
+  clib_warning ("unimplemented");
+#endif
+}
+
+static void
+send_ipsec_spd_interface_details (vl_api_registration_t * reg, u32 spd_index,
+				  u32 sw_if_index, u32 context)
+{
+  vl_api_ipsec_spd_interface_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPD_INTERFACE_DETAILS);
+  mp->context = context;
+
+  mp->spd_index = htonl (spd_index);
+  mp->sw_if_index = htonl (sw_if_index);
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_ipsec_spd_interface_dump_t_handler (vl_api_ipsec_spd_interface_dump_t *
+					   mp)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vl_api_registration_t *reg;
+  u32 k, v, spd_index;
+
+#if WITH_LIBSSL > 0
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (mp->spd_index_valid)
+    {
+      spd_index = ntohl (mp->spd_index);
+      /* *INDENT-OFF* */
+      hash_foreach(k, v, im->spd_index_by_sw_if_index, ({
+        if (v == spd_index)
+          send_ipsec_spd_interface_details(reg, v, k, mp->context);
+      }));
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      /* *INDENT-OFF* */
+      hash_foreach(k, v, im->spd_index_by_sw_if_index, ({
+        send_ipsec_spd_interface_details(reg, v, k, mp->context);
+      }));
+      /* *INDENT-ON* */
+    }
+
 #else
   clib_warning ("unimplemented");
 #endif
