@@ -109,7 +109,7 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
   u16 n_left = frame->n_vectors;
   vmxnet3_txq_t *txq;
   u32 thread_index = vm->thread_index;
-  u16 qid = thread_index;
+  u16 qid = thread_index, produce;
 
   if (PREDICT_FALSE (!(vd->flags & VMXNET3_DEVICE_F_LINK_UP)))
     {
@@ -124,7 +124,8 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
 
   vmxnet3_txq_release (vm, vd, txq);
 
-  while (n_left)
+  produce = txq->tx_ring.produce;
+  while (PREDICT_TRUE (n_left))
     {
       u16 space_needed = 1, i;
       vlib_buffer_t *b;
@@ -195,12 +196,14 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
        * Device can start reading the packet
        */
       txq->tx_desc[first_idx].flags[0] ^= VMXNET3_TXF_GEN;
-      vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_TXPROD,
-				txq->tx_ring.produce);
 
       buffers++;
       n_left--;
     }
+
+  if (PREDICT_TRUE (produce != txq->tx_ring.produce))
+    vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_TXPROD,
+			      txq->tx_ring.produce);
 
   clib_spinlock_unlock_if_init (&txq->lock);
 

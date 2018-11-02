@@ -590,6 +590,7 @@ vmxnet3_rxq_refill_ring0 (vlib_main_t * vm, vmxnet3_device_t * vd,
   vmxnet3_rx_desc *rxd;
   u16 n_refill, n_alloc;
   vmxnet3_rx_ring *ring;
+  vmxnet3_queues *q;
 
   ring = &rxq->rx_ring[0];
   n_refill = rxq->size - ring->fill;
@@ -620,7 +621,9 @@ vmxnet3_rxq_refill_ring0 (vlib_main_t * vm, vmxnet3_device_t * vd,
       n_alloc--;
     }
 
-  vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_RXPROD, ring->produce);
+  q = &vd->dma->queues;
+  if (PREDICT_FALSE (q->rx.ctrl.update_prod))
+    vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_RXPROD, ring->produce);
 
   return 0;
 }
@@ -632,6 +635,7 @@ vmxnet3_rxq_refill_ring1 (vlib_main_t * vm, vmxnet3_device_t * vd,
   vmxnet3_rx_desc *rxd;
   u16 n_refill, n_alloc;
   vmxnet3_rx_ring *ring;
+  vmxnet3_queues *q;
 
   ring = &rxq->rx_ring[1];
   n_refill = rxq->size - ring->fill;
@@ -662,7 +666,9 @@ vmxnet3_rxq_refill_ring1 (vlib_main_t * vm, vmxnet3_device_t * vd,
       n_alloc--;
     }
 
-  vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_RXPROD2, ring->produce);
+  q = &vd->dma->queues;
+  if (PREDICT_FALSE (q->rx.ctrl.update_prod))
+    vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_RXPROD2, ring->produce);
 
   return 0;
 }
