@@ -789,7 +789,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Make sure postponed events are handled first */
   fifo_events = wrk->free_event_vector;
   vec_append (fifo_events, wrk->postponed_event_vector);
-  _vec_len (wrk->pending_disconnects) = 0;
+  _vec_len (wrk->postponed_event_vector) = 0;
 
   /* Try to dequeue what is available. Don't wait for lock.
    * XXX: we may need priorities here */
@@ -810,8 +810,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vec_append (fifo_events, wrk->pending_event_vector);
   vec_append (fifo_events, wrk->pending_disconnects);
 
-  _vec_len (wrk->postponed_event_vector) = 0;
   _vec_len (wrk->pending_event_vector) = 0;
+  _vec_len (wrk->pending_disconnects) = 0;
 
   n_events = vec_len (fifo_events);
   if (PREDICT_FALSE (!n_events))

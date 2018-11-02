@@ -972,13 +972,13 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 
   hole = scoreboard_first_hole (sb);
   if (hole)
-    s = format (s, "\n%Uhead %u tail %u %u holes:\n", format_white_space,
-		indent, sb->head, sb->tail, pool_elts (sb->holes));
+    s = format (s, "\n%Uhead %u tail %u %u holes:\n%U", format_white_space,
+		indent, sb->head, sb->tail, pool_elts (sb->holes),
+		format_white_space, indent);
 
   while (hole)
     {
-      s = format (s, "%U%U", format_white_space, indent, format_tcp_sack_hole,
-		  hole, tc);
+      s = format (s, "%U", format_tcp_sack_hole, hole, tc);
       hole = scoreboard_next_hole (sb, hole);
     }
 
@@ -1069,17 +1069,6 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 	  snd_space = clib_max (2 * tc->snd_mss - snt_limited, 0);
 	}
       return tcp_round_snd_space (tc, snd_space);
-    }
-
-  /* RFC 5681: When previously unsent data is available and the new value of
-   * cwnd and the receiver's advertised window allow, a TCP SHOULD send 1*SMSS
-   * bytes of previously unsent data. */
-  if (tcp_in_fastrecovery (tc) && !tcp_fastrecovery_sent_1_smss (tc))
-    {
-      if (tcp_available_cc_snd_space (tc) < tc->snd_mss)
-	return 0;
-      tcp_fastrecovery_1_smss_on (tc);
-      return tc->snd_mss;
     }
 
   return 0;

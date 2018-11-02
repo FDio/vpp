@@ -719,7 +719,7 @@ scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
 sack_scoreboard_hole_t *
 scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 			  sack_scoreboard_hole_t * start,
-			  u8 have_sent_1_smss,
+			  u8 have_unsent,
 			  u8 * can_rescue, u8 * snd_limited)
 {
   sack_scoreboard_hole_t *hole = 0;
@@ -742,11 +742,11 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
     }
   else
     {
-      /* Rule (2): output takes care of transmitting new data */
-      if (!have_sent_1_smss)
+      /* Rule (2): available unsent data */
+      if (have_unsent)
 	{
-	  hole = 0;
 	  sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
+	  return 0;
 	}
       /* Rule (3): if hole not lost */
       else if (seq_lt (hole->start, sb->high_sacked))
@@ -772,16 +772,17 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 }
 
 static void
-scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 seq)
+scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (sb);
   if (hole)
     {
-      seq = seq_gt (seq, hole->start) ? seq : hole->start;
+      snd_una = seq_gt (snd_una, hole->start) ? snd_una : hole->start;
       sb->cur_rxt_hole = sb->head;
     }
-  sb->high_rxt = seq;
+  sb->high_rxt = snd_una;
+  sb->rescue_rxt = snd_una - 1;
 }
 
 void
@@ -1084,7 +1085,7 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_1_smss_off (tc);
   tcp_fastrecovery_first_off (tc);
-
+  tcp_connection_tx_pacer_reset (tc, tc->cwnd, 0);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
@@ -1306,7 +1307,6 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	    {
 	      tc->cwnd = tc->ssthresh;
 	      scoreboard_init_high_rxt (&tc->sack_sb, tc->snd_una);
-	      tc->sack_sb.rescue_rxt = tc->snd_una - 1;
 	    }
 	  else
 	    {
@@ -1319,6 +1319,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	  pacer_wnd = clib_max (0.1 * tc->cwnd, 2 * tc->snd_mss);
 	  tcp_connection_tx_pacer_reset (tc, pacer_wnd,
 					 0 /* start bucket */ );
+	  clib_warning ("%U", format_transport_pacer, &tc->connection.pacer);
 	  tcp_program_fastretransmit (tcp_get_worker (tc->c_thread_index),
 				      tc);
 	  return;
@@ -1387,6 +1388,10 @@ partial_ack:
    * Legitimate ACK. 2) If PARTIAL ACK try to retransmit
    */
 
+  /* Update the pacing rate. For the first partial ack we move from
+   * the artificially constrained rate to the one after congestion */
+  tcp_connection_tx_pacer_update (tc);
+
   /* XXX limit this only to first partial ack? */
   tcp_retransmit_timer_force_update (tc);
 
@@ -1422,10 +1427,12 @@ partial_ack:
 	{
 	  /* Apparently all retransmitted holes have been acked */
 	  tc->snd_rxt_bytes = 0;
+	  tc->sack_sb.high_rxt = tc->snd_una;
 	}
     }
   else
     {
+      tcp_fastrecovery_first_on (tc);
       if (tc->snd_rxt_bytes > tc->bytes_acked)
 	tc->snd_rxt_bytes -= tc->bytes_acked;
       else
@@ -1473,7 +1480,7 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 	{
 	  tcp_make_ack (tc, b);
 	  *next = tcp_next_output (tc->c_is_ip4);
-	  *error = TCP_ERROR_ACK_INVALID;
+	  *error = TCP_ERROR_ACK_FUTURE;
 	  TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 0,
 		       vnet_buffer (b)->tcp.ack_number);
 	  return -1;
@@ -1483,7 +1490,6 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 		   vnet_buffer (b)->tcp.ack_number);
 
       tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
-      *error = TCP_ERROR_ACK_FUTURE;
     }
 
   /* If old ACK, probably it's an old dupack */

@@ -512,6 +512,8 @@ static inline void
 spacer_update_bucket (spacer_t * pacer, u32 bytes)
 {
   ASSERT (pacer->bucket >= bytes);
+  if (pacer->bucket < bytes)
+    os_panic ();
   pacer->bucket -= bytes;
 }
 

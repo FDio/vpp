@@ -1081,7 +1081,7 @@ stream_session_disconnect (stream_session_t * s)
    * held, just append a new event to pending disconnects vector. */
   if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
     {
-      wrk = session_manager_get_worker (thread_index);
+      wrk = session_manager_get_worker (s->thread_index);
       vec_add2 (wrk->pending_disconnects, evt, 1);
       clib_memset (evt, 0, sizeof (*evt));
       evt->session_handle = session_handle (s);
