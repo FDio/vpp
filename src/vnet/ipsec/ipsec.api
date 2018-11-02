@@ -455,7 +455,7 @@ define ipsec_spds_dump {
     @param spd_id - SPD instance id (control plane allocated)
     @param npolicies - number of policies in SPD
 */
- define ipsec_spds_details {
+define ipsec_spds_details {
   u32 context;
   u32 spd_id;
   u32 npolicies;
@@ -513,6 +513,31 @@ define ipsec_spd_details {
     u32 sa_id;
     u64 bytes;
     u64 packets;
+};
+
+/** \brief IPsec: Get SPD interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param spd_index - SPD index
+    @param spd_index_valid - if 1 spd_index is used to filter
+      spd_index's, if 0 no filtering is done
+*/
+define ipsec_spd_interface_dump {
+    u32 client_index;
+    u32 context;
+    u32 spd_index;
+    u8 spd_index_valid;
+};
+
+/** \brief IPsec: SPD interface response
+    @param context - sender context which was passed in the request
+    @param spd_index - SPD index
+    @param sw_if_index - index of the interface
+*/
+define ipsec_spd_interface_details {
+    u32 context;
+    u32 spd_index;
+    u32 sw_if_index;
 };
 
 /** \brief Add or delete IPsec tunnel interface
