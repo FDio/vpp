@@ -862,7 +862,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
     {
       flags = TCP_FLAG_RST;
       seq = pkt_th->ack_number;
-      ack = (tc && tc->state >= TCP_STATE_SYN_RCVD) ? tc->rcv_nxt : 0;
+      ack = (tc->state >= TCP_STATE_SYN_RCVD) ? tc->rcv_nxt : 0;
     }
   else
     {

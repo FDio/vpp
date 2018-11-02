@@ -1213,7 +1213,7 @@ tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
   _vec_len (wrk->postponed_fast_rxt) = 0;
   _vec_len (wrk->pending_fast_rxt) = 0;
 
-  max_burst_size = VLIB_FRAME_SIZE / vec_len (wrk->ongoing_fast_rxt);
+  max_burst_size = VLIB_FRAME_SIZE / vec_len (ongoing_fast_rxt);
   max_burst_size = clib_max (max_burst_size, 1);
 
   for (i = 0; i < vec_len (ongoing_fast_rxt); i++)
