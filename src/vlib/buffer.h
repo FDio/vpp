@@ -300,7 +300,7 @@ vlib_buffer_get_tail (vlib_buffer_t * b)
  * @return      pointer to beginning of uninitialized data
  */
 always_inline void *
-vlib_buffer_put_uninit (vlib_buffer_t * b, u8 size)
+vlib_buffer_put_uninit (vlib_buffer_t * b, u16 size)
 {
   void *p = vlib_buffer_get_tail (b);
   /* XXX make sure there's enough space */
