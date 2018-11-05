@@ -559,7 +559,6 @@ tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_reuse_buffer (vm, b);
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_ACK);
   TCP_EVT_DBG (TCP_EVT_ACK_SENT, tc);
-  vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
   tc->rcv_las = tc->rcv_nxt;
 }
 
@@ -631,7 +630,6 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_options_write ((u8 *) (th + 1), snd_opts);
 
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
-  vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
 
   /* Init retransmit timer. Use update instead of set because of
    * retransmissions */
@@ -1011,6 +1009,25 @@ tcp_send_syn (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_SYN_SENT, tc);
 }
 
+void
+tcp_send_synack (tcp_connection_t * tc)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  vlib_main_t *vm = wrk->vm;
+  vlib_buffer_t *b;
+  u32 bi;
+
+  /* Get buffer */
+  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+    return;
+  b = vlib_get_buffer (vm, bi);
+//  tcp_init_buffer (vm, b);
+
+  /* Fill in the ACK */
+  tcp_make_synack (tc, b);
+  tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+}
+
 /**
  * Flush tx frame populated by retransmits and timer pops
  */
@@ -1221,6 +1238,56 @@ tcp_send_ack (tcp_connection_t * tc)
   /* Fill in the ACK */
   tcp_make_ack (tc, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+}
+
+void
+tcp_program_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
+{
+  if (!(tc->flags & TCP_CONN_SNDACK))
+    {
+      vec_add1 (wrk->pending_acks, tc->c_c_index);
+      tc->flags |= TCP_CONN_SNDACK;
+    }
+}
+
+void
+tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
+{
+  if (!(tc->flags & TCP_CONN_SNDACK))
+    {
+      vec_add1 (wrk->pending_acks, tc->c_c_index);
+      tc->flags |= TCP_CONN_SNDACK;
+    }
+  if (tc->pending_dupacks < 255)
+    tc->pending_dupacks += 1;
+}
+
+void
+tcp_send_acks (tcp_worker_ctx_t * wrk)
+{
+  u32 thread_index, *pending_acks;
+  tcp_connection_t *tc;
+  int i, j, n_acks;
+
+  if (!vec_len (wrk->pending_acks))
+    return;
+
+  thread_index = wrk->vm->thread_index;
+  pending_acks = wrk->pending_acks;
+  for (i = 0; i < vec_len (pending_acks); i++)
+    {
+      tc = tcp_connection_get (pending_acks[i], thread_index);
+      tc->flags &= ~TCP_CONN_SNDACK;
+      n_acks = clib_max (1, tc->pending_dupacks);
+      /* If we're supposed to send dupacks but have no ooo data
+       * send only one ack */
+      if (tc->pending_dupacks && !vec_len (tc->snd_sacks))
+	n_acks = 1;
+      for (j = 0; j < n_acks; j++)
+	tcp_send_ack (tc);
+      tc->pending_dupacks = 0;
+    }
+  _vec_len (wrk->pending_acks) = 0;
 }
 
 /**
@@ -1944,13 +2011,6 @@ tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     return tcp_fast_retransmit_no_sack (wrk, tc, burst_size);
 }
 
-static u32
-tcp_session_has_ooo_data (tcp_connection_t * tc)
-{
-  stream_session_t *s = session_get (tc->c_s_index, tc->c_thread_index);
-  return svm_fifo_has_ooo_data (s->server_rx_fifo);
-}
-
 static void
 tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
 			      u16 * next0, u32 * error0)
@@ -2056,24 +2116,24 @@ tcp_output_handle_packet (tcp_connection_t * tc0, vlib_buffer_t * b0,
     }
 
   /* Filter out DUPACKs if there are no OOO segments left */
-  if (PREDICT_FALSE (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
-    {
-      /* N.B. Should not filter burst of dupacks. Two issues:
-       * 1) dupacks open cwnd on remote peer when congested
-       * 2) acks leaving should have the latest rcv_wnd since the
-       *    burst may have eaten up all of it, so only the old ones
-       *     could be filtered.
-       */
-      if (!tcp_session_has_ooo_data (tc0))
-	{
-	  *error0 = TCP_ERROR_FILTERED_DUPACKS;
-	  *next0 = TCP_OUTPUT_NEXT_DROP;
-	  return;
-	}
-    }
+//  if (PREDICT_FALSE (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
+//    {
+//      /* N.B. Should not filter burst of dupacks. Two issues:
+//       * 1) dupacks open cwnd on remote peer when congested
+//       * 2) acks leaving should have the latest rcv_wnd since the
+//       *    burst may have eaten up all of it, so only the old ones
+//       *     could be filtered.
+//       */
+//      if (!tcp_session_has_ooo_data (tc0))
+//      {
+//        *error0 = TCP_ERROR_FILTERED_DUPACKS;
+//        *next0 = TCP_OUTPUT_NEXT_DROP;
+//        return;
+//      }
+//    }
 
   /* Stop DELACK timer and fix flags */
-  tc0->flags &= ~(TCP_CONN_SNDACK);
+//  tc0->flags &= ~(TCP_CONN_SNDACK);
   if (!TCP_ALWAYS_ACK)
     tcp_timer_reset (tc0, TCP_TIMER_DELACK);
 }

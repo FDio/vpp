@@ -751,7 +751,7 @@ static void
 session_update_dispatch_period (session_manager_worker_t * wrk, f64 now,
 				u32 thread_index)
 {
-  if (wrk->last_tx_packets > 8)
+  if (wrk->last_tx_packets > 1)
     {
       f64 sample = now - wrk->last_vlib_time;
       sample = (sample * wrk->last_tx_packets) / VLIB_FRAME_SIZE;
