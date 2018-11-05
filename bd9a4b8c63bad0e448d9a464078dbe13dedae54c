@@ -22,6 +22,30 @@
       "revId": "bd9a4b8c63bad0e448d9a464078dbe13dedae54c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "37e8a0ef_515d8ad4",
+        "filename": "src/vnet/devices/virtio/vhost_user_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 266,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-11-05T15:37:30Z",
+      "side": 1,
+      "message": "No, we don\u0027t issue mmap in the data plane. This problem has to do with the original problem as reported in 14545. In SR-IOV environment, when the VM is reloaded, the driver or qmeu does not send us a disconnect and reconnect the socket. Instead, they just unmap the old maps and then send in the new maps. This was not done atomically -- it was done in two steps. We saw that RX accessing shared memory which was unmapped.\n\nSo the fix put in 14545 was to clear the used, avail, and desc pointers. It also added a check in the RX for the null pointer to prevent the crash. We miss the TX. And this is the fix for the TX.\n\nI didn\u0027t reset the interface state in 14545 to down. If we do, then we\u0027d need another trigger to bring the interface state back to up which does not happen in this case. So adding the null check in RX and TX was the safest fix to me.",
+      "parentUuid": "37abce2b_8b09102d",
+      "range": {
+        "startLine": 266,
+        "startChar": 14,
+        "endLine": 266,
+        "endChar": 48
+      },
+      "revId": "bd9a4b8c63bad0e448d9a464078dbe13dedae54c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
