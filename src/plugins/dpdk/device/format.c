@@ -152,6 +152,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
   char *devname_format;
   char *device_name;
   u32 i = va_arg (*args, u32);
+  dpdk_device_t *xd = vec_elt_at_index (dm->devices, i);
   struct rte_eth_dev_info dev_info;
   struct rte_pci_device *pci_dev;
   u8 *ret;
@@ -215,7 +216,6 @@ format_dpdk_device_name (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PORT_TYPE_AF_PACKET:
-      rte_eth_dev_info_get (i, &dev_info);
       return format (s, "af_packet%d", dm->devices[i].af_packet_instance_num);
 
     case VNET_DPDK_PORT_TYPE_VIRTIO_USER:
@@ -236,7 +236,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
       break;
     }
 
-  rte_eth_dev_info_get (i, &dev_info);
+  rte_eth_dev_info_get (xd->port_id, &dev_info);
   pci_dev = dpdk_get_pci_device (&dev_info);
 
   if (pci_dev && dm->devices[i].port_type != VNET_DPDK_PORT_TYPE_FAILSAFE)
