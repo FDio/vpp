@@ -116,8 +116,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data - CLIB_CACHE_LINE_BYTES, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p3->data - CLIB_CACHE_LINE_BYTES, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  u32 bi0 = to_next[0] = from[0];
