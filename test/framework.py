@@ -325,7 +325,10 @@ class VppTestCase(unittest.TestCase):
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
-        raw_input("Press ENTER to continue running the testcase...")
+        try:
+            raw_input("Press ENTER to continue running the testcase...")
+        except EOFError:
+            pass
 
     @classmethod
     def run_vpp(cls):
@@ -459,8 +462,11 @@ class VppTestCase(unittest.TestCase):
                 print(double_line_delim)
                 print("VPP or GDB server is still running")
                 print(single_line_delim)
-                raw_input("When done debugging, press ENTER to kill the "
-                          "process and finish running the testcase...")
+                try:
+                    raw_input("When done debugging, press ENTER to kill the "
+                              "process and finish running the testcase...")
+                except EOFError:
+                    pass
 
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, 'pump_thread_stop_flag'):
