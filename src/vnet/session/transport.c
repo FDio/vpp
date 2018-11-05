@@ -525,6 +525,7 @@ static inline void
 spacer_set_pace_rate (spacer_t * pacer, u64 rate_bytes_per_sec)
 {
   ASSERT (rate_bytes_per_sec != 0);
+  rate_bytes_per_sec = clib_min (rate_bytes_per_sec, 4.3e9);
   pacer->tokens_per_period = rate_bytes_per_sec / transport_pacer_period;
 }
 
