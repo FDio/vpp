@@ -1223,6 +1223,51 @@ tcp_send_ack (tcp_connection_t * tc)
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 }
 
+void
+tcp_program_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
+{
+  if (!(tc->flags & TCP_CONN_SNDACK))
+    {
+      vec_add1 (wrk->pending_acks, tc->c_c_index);
+      tc->flags |= TCP_CONN_SNDACK;
+    }
+}
+
+void
+tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
+{
+  if (!(tc->flags & TCP_CONN_SNDACK))
+    {
+      vec_add1 (wrk->pending_acks, tc->c_c_index);
+      tc->flags |= TCP_CONN_SNDACK;
+    }
+  if (tc->pending_dupacks < 255)
+    tc->pending_dupacks += 1;
+}
+
+void
+tcp_send_acks (tcp_worker_ctx_t * wrk)
+{
+  u32 thread_index, *pending_acks;
+  tcp_connection_t *tc;
+  int i, j;
+
+  if (!vec_len (wrk->pending_acks))
+    return;
+
+  thread_index = wrk->vm->thread_index;
+  pending_acks = wrk->pending_acks;
+  for (i = 0; i < vec_len (pending_acks); i++)
+    {
+      tc = tcp_connection_get (pending_acks[i], thread_index);
+      tc->flags &= ~TCP_CONN_SNDACK;
+      for (j = 0; j < clib_max (1, tc->pending_dupacks); j++)
+	tcp_send_ack (tc);
+      tc->pending_dupacks = 0;
+    }
+  _vec_len (wrk->pending_acks) = 0;
+}
+
 /**
  * Delayed ack timer handler
  *

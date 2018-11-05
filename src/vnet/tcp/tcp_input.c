@@ -1882,8 +1882,8 @@ in_order:
       goto done;
     }
 
-  *next0 = tcp_next_output (tc->c_is_ip4);
-  tcp_make_ack (tc, b);
+  *next0 = tcp_next_drop (tc->c_is_ip4);
+  tcp_program_ack (tcp_get_worker (tc->c_thread_index), tc);
 
 done:
   return error;
