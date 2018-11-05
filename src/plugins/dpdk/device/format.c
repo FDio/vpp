@@ -568,7 +568,7 @@ format_dpdk_device (u8 * s, va_list * args)
   rte_eth_dev_info_get (xd->port_id, &di);
 
   s = format (s, "%U\n%Ucarrier %U",
-	      format_dpdk_device_type, xd->port_id,
+	      format_dpdk_device_type, dev_instance,
 	      format_white_space, indent + 2, format_dpdk_link_status, xd);
   s = format (s, "%Uflags: %U\n",
 	      format_white_space, indent + 2, format_dpdk_device_flags, xd);
