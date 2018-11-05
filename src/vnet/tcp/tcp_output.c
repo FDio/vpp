@@ -1308,7 +1308,7 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	    }
 	}
 
-      tcp_get_free_buffer_index (wrk, &bi);
+      (void) tcp_get_free_buffer_index (wrk, &bi);
       ASSERT (bi != (u32) ~ 0);
       *b = vlib_get_buffer (vm, bi);
       data = tcp_init_buffer (vm, *b);
@@ -1908,7 +1908,7 @@ send_unsent:
 
   /* RFC 6582: Send a new segment if permitted by the new value of cwnd. */
   snd_space = tcp_available_cc_snd_space (tc);
-  if (snd_space < tc->snd_mss)
+  if (snd_space < tc->snd_mss || tc->snd_mss == 0)
     goto done;
 
   max_deq = session_tx_fifo_max_dequeue (&tc->connection);
