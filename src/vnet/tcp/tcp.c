@@ -1105,6 +1105,7 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_set_time_now (wrk);
   tw_timer_expire_timers_16t_2w_512sl (&wrk->timer_wheel, now);
   tcp_do_fastretransmits (wrk);
+  tcp_send_acks (wrk);
   tcp_flush_frames_to_output (wrk);
 }
 
