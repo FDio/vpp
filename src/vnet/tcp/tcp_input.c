@@ -1023,7 +1023,7 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       tc->snd_wl2 = ack;
       TCP_EVT_DBG (TCP_EVT_SND_WND, tc);
 
-      if (tc->snd_wnd < tc->snd_mss)
+      if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
 	{
 	  /* Set persist timer if not set and we just got 0 wnd */
 	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST)
@@ -1033,7 +1033,7 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       else
 	{
 	  tcp_persist_timer_reset (tc);
-	  if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
+	  if (PREDICT_FALSE (!tcp_in_recovery (tc) && tc->rto_boff > 0))
 	    {
 	      tc->rto_boff = 0;
 	      tcp_update_rto (tc);
