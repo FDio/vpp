@@ -944,9 +944,7 @@ vlib_buffer_chain_init (vlib_buffer_t * first)
 
 /* The provided next_bi buffer index is appended to the end of the packet. */
 always_inline vlib_buffer_t *
-vlib_buffer_chain_buffer (vlib_main_t * vm,
-			  vlib_buffer_t * first,
-			  vlib_buffer_t * last, u32 next_bi)
+vlib_buffer_chain_buffer (vlib_main_t * vm, vlib_buffer_t * last, u32 next_bi)
 {
   vlib_buffer_t *next_buffer = vlib_get_buffer (vm, next_bi);
   last->next_buffer = next_bi;
@@ -1267,6 +1265,70 @@ vlib_buffer_chain_compress (vlib_main_t * vm,
     }
   while ((first->current_length < want_first_size) &&
 	 (first->flags & VLIB_BUFFER_NEXT_PRESENT));
+}
+
+/**
+ * @brief linearize buffer chain - the first buffer is filled, if needed,
+ * buffers are allocated and filled, returns free space in last buffer or
+ * negative on failure
+ *
+ * @param[in] vm - vlib_main
+ * @param[in,out] first - first buffer in chain
+ * @param[in,out] discard_vector - vector of buffer indexes which were removed
+ * from the chain
+ */
+always_inline int
+vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * first,
+			     u32 ** discard_vector)
+{
+  vlib_buffer_t *b = first;
+  vlib_buffer_free_list_t *fl =
+    vlib_buffer_get_free_list (vm, vlib_buffer_get_free_list_index (b));
+  u32 buf_len = fl->n_data_bytes;
+
+  u32 len = vlib_buffer_length_in_chain (vm, b);
+  u32 free_len = buf_len - b->current_data - b->current_length;
+  int alloc_len = clib_max (len - free_len, 0);	//use the free len in the first buffer
+  int n_buffers = (alloc_len + buf_len - 1) / buf_len;
+  u32 new_buffers[n_buffers];
+
+  u32 n_alloc = vlib_buffer_alloc (vm, new_buffers, n_buffers);
+  if (n_alloc != n_buffers)
+    {
+      vlib_buffer_free_no_next (vm, new_buffers, n_alloc);
+      return -1;
+    }
+
+  vlib_buffer_t *s = b;
+  while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      vec_add1 (*discard_vector, s->next_buffer);
+      s = vlib_get_buffer (vm, s->next_buffer);
+      int d_free_len = buf_len - b->current_data - b->current_length;
+      ASSERT (d_free_len >= 0);
+      // chain buf and split write
+      u32 copy_len = clib_min (d_free_len, s->current_length);
+      u8 *d = vlib_buffer_put_uninit (b, copy_len);
+      clib_memcpy (d, vlib_buffer_get_current (s), copy_len);
+      int rest = s->current_length - copy_len;
+      if (rest > 0)
+	{
+	  //prev buf is full
+	  ASSERT (vlib_buffer_get_tail (b) == b->data + buf_len);
+	  ASSERT (n_buffers > 0);
+	  b = vlib_buffer_chain_buffer (vm, b, new_buffers[--n_buffers]);
+	  //make full use of the new buffers
+	  b->current_data = 0;
+	  d = vlib_buffer_put_uninit (b, rest);
+	  clib_memcpy (d, vlib_buffer_get_current (s) + copy_len, rest);
+	}
+    }
+  b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  if (b == first)		/* no buffers addeed */
+    b->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+  ASSERT (len == vlib_buffer_length_in_chain (vm, first));
+  ASSERT (n_buffers == 0);
+  return buf_len - b->current_data - b->current_length;
 }
 
 #endif /* included_vlib_buffer_funcs_h */
