@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43494e76_9bcff15c",
+        "filename": "test/test_cdp.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-05T15:15:34Z",
+      "side": 1,
+      "message": "do we need this?\n\nshow errors is done automagically in tearDown (though not via CLI, but using stats object)",
+      "revId": "7f025fd9ab539fe90cd1d6fbc3e0feef188d6e2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
