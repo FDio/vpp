@@ -300,7 +300,7 @@ typedef struct _tcp_connection
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
 
   u16 rcv_dupacks;	/**< Number of DUPACKs received */
-  u8 snt_dupacks;	/**< Number of DUPACKs sent in a burst */
+  u8 pending_dupacks;	/**< Number of DUPACKs to be sent */
 
   /* Congestion control */
   u32 cwnd;		/**< Congestion window */
@@ -395,6 +395,7 @@ typedef struct tcp_worker_ctx_
   u32 *postponed_fast_rxt;			/**< vector of connections
 						     that will do fast rxt */
   u32 *pending_deq_acked;
+  u32 *pending_acks;
   vlib_main_t *vm;				/**< pointer to vm */
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -564,6 +565,7 @@ void tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
 			   u8 is_ip4);
 void tcp_send_reset (tcp_connection_t * tc);
 void tcp_send_syn (tcp_connection_t * tc);
+void tcp_send_synack (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);
 void tcp_update_burst_snd_vars (tcp_connection_t * tc);
@@ -573,6 +575,10 @@ void tcp_flush_frames_to_output (tcp_worker_ctx_t * wrk);
 void tcp_program_fastretransmit (tcp_worker_ctx_t * wrk,
 				 tcp_connection_t * tc);
 void tcp_do_fastretransmits (tcp_worker_ctx_t * wrk);
+
+void tcp_program_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
+void tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc);
+void tcp_send_acks (tcp_worker_ctx_t * wrk);
 
 always_inline u32
 tcp_end_seq (tcp_header_t * th, u32 len)
@@ -748,14 +754,6 @@ tcp_cc_rcv_ack (tcp_connection_t * tc)
   tc->cc_algo->rcv_ack (tc);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
   tcp_connection_tx_pacer_update (tc);
-}
-
-always_inline void
-tcp_connection_force_ack (tcp_connection_t * tc, vlib_buffer_t * b)
-{
-  /* Reset flags, make sure ack is sent */
-  tc->flags = TCP_CONN_SNDACK;
-  vnet_buffer (b)->tcp.flags &= ~TCP_BUF_FLAG_DUPACK;
 }
 
 always_inline void
