@@ -93,8 +93,11 @@ format_text_tlv (u8 * s, va_list * va)
 
   s = format (s, "%s(%d): ", h->name, t->t);
 
-  for (i = 0; i < (t->l - sizeof (*t)); i++)
-    vec_add1 (s, t->v[i]);
+  if (t->l >= 4)
+    {
+      for (i = 0; i < (t->l - sizeof (*t)); i++)
+	vec_add1 (s, t->v[i]);
+    }
 
   vec_add1 (s, '\n');
   return s;
@@ -284,9 +287,14 @@ cdp_packet_scan (cdp_main_t * cm, cdp_neighbor_t * n)
       tlv->l = ntohs (tlv->l);
 
       /* tlv length includes t, l and v */
+
+      if (tlv->l < 4)
+	return CDP_ERROR_BAD_TLV;
+
       cur += tlv->l;
       if ((cur - 1) > end)
 	return CDP_ERROR_BAD_TLV;
+
       /*
        * Only process known TLVs. In practice, certain
        * devices send tlv->t = 0xFF, perhaps as an EOF of sorts.

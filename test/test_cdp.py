@@ -91,9 +91,15 @@ class TestCDP(VppTestCase):
         self.assert_equal(system, self.device_id,
                           "CDP received invalid device id")
 
-    def test_send_cdp_bad_packet(self):
+    def test_cdp_underflow_tlv(self):
+        self.send_bad_packet(3, ".")
+
+    def test_cdp_overflow_tlv(self):
+        self.send_bad_packet(8, ".")
+
+    def send_bad_packet(self, l, v):
         self.logger.info(self.vapi.cli("cdp enable"))
-        self.send_packet(self.create_bad_packet(8, "."))
+        self.send_packet(self.create_bad_packet(l, v))
 
         errors = list(self.show_errors())
         self.assertTrue(errors)
