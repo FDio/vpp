@@ -47,7 +47,8 @@ static clib_spinlock_t local_endpoints_lock;
  */
 static double transport_pacer_period;
 
-#define TRANSPORT_PACER_MIN_MSS 1460
+#define TRANSPORT_PACER_MIN_MSS 	1460
+#define TRANSPORT_PACER_MIN_BURST 	TRANSPORT_PACER_MIN_MSS
 
 u8 *
 format_transport_proto (u8 * s, va_list * args)
@@ -518,7 +519,8 @@ spacer_update_bucket (spacer_t * pacer, u32 bytes)
 static inline void
 spacer_update_max_burst_size (spacer_t * pacer, u32 max_burst_bytes)
 {
-  pacer->max_burst_size = clib_max (max_burst_bytes, TRANSPORT_PACER_MIN_MSS);
+  pacer->max_burst_size = clib_max (max_burst_bytes,
+				    TRANSPORT_PACER_MIN_BURST);
 }
 
 static inline void
@@ -561,9 +563,8 @@ void
 transport_connection_tx_pacer_update (transport_connection_t * tc,
 				      u64 bytes_per_sec)
 {
-  u32 burst_size;
-
-  burst_size = bytes_per_sec * transport_dispatch_period (tc->thread_index);
+  f64 dispatch_period = transport_dispatch_period (tc->thread_index);
+  u32 burst_size = 1.1 * bytes_per_sec * dispatch_period;
   spacer_set_pace_rate (&tc->pacer, bytes_per_sec);
   spacer_update_max_burst_size (&tc->pacer, burst_size);
 }
