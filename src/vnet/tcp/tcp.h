@@ -122,6 +122,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FINPNDG, "FIN pending")			\
   _(FRXT_PENDING, "Fast-retransmit pending")	\
   _(FRXT_FIRST, "Fast-retransmit first again")	\
+  _(DEQ_PENDING, "Pending dequeue acked")	\
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -308,6 +309,7 @@ typedef struct _tcp_connection
   u32 prev_ssthresh;	/**< ssthresh before congestion */
   u32 prev_cwnd;	/**< ssthresh before congestion */
   u32 bytes_acked;	/**< Bytes acknowledged by current segment */
+  u32 burst_acked;	/**< Bytes acknowledged in current burst */
   u32 snd_rxt_bytes;	/**< Retransmitted bytes */
   u32 snd_rxt_ts;	/**< Timestamp when first packet is retransmitted */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
@@ -392,6 +394,7 @@ typedef struct tcp_worker_ctx_
 						     now doing fast rxt */
   u32 *postponed_fast_rxt;			/**< vector of connections
 						     that will do fast rxt */
+  u32 *pending_deq_acked;
   vlib_main_t *vm;				/**< pointer to vm */
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
