@@ -1322,12 +1322,14 @@ tcp_main_enable (vlib_main_t * vm)
 
   for (thread = 0; thread < num_threads; thread++)
     {
-      vec_validate (tm->wrk_ctx[thread].pending_fast_rxt, 0);
-      vec_validate (tm->wrk_ctx[thread].ongoing_fast_rxt, 0);
-      vec_validate (tm->wrk_ctx[thread].postponed_fast_rxt, 0);
+      vec_validate (tm->wrk_ctx[thread].pending_fast_rxt, 255);
+      vec_validate (tm->wrk_ctx[thread].ongoing_fast_rxt, 255);
+      vec_validate (tm->wrk_ctx[thread].postponed_fast_rxt, 255);
+      vec_validate (tm->wrk_ctx[thread].pending_deq_acked, 255);
       vec_reset_length (tm->wrk_ctx[thread].pending_fast_rxt);
       vec_reset_length (tm->wrk_ctx[thread].ongoing_fast_rxt);
       vec_reset_length (tm->wrk_ctx[thread].postponed_fast_rxt);
+      vec_reset_length (tm->wrk_ctx[thread].pending_deq_acked);
       tm->wrk_ctx[thread].vm = vlib_mains[thread];
 
       /*

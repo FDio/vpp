@@ -494,23 +494,46 @@ done:
 }
 
 /**
- * Dequeue bytes that have been acked and while at it update RTT estimates.
+ * Dequeue bytes for connections that have received acks in last burst
  */
 static void
-tcp_dequeue_acked (tcp_connection_t * tc, u32 ack)
+tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 {
-  /* Dequeue the newly ACKed add SACKed bytes */
-  stream_session_dequeue_drop (&tc->connection,
-			       tc->bytes_acked + tc->sack_sb.snd_una_adv);
+  u32 thread_index = wrk->vm->thread_index;
+  u32 *pending_deq_acked;
+  tcp_connection_t *tc;
+  int i;
 
-  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+  if (!vec_len (wrk->pending_deq_acked))
+    return;
 
-  /* Update rtt and rto */
-  tcp_update_rtt (tc, ack);
+  pending_deq_acked = wrk->pending_deq_acked;
+  for (i = 0; i < vec_len (pending_deq_acked); i++)
+    {
+      tc = tcp_connection_get (pending_deq_acked[i], thread_index);
+      tc->flags &= ~TCP_CONN_DEQ_PENDING;
 
-  /* If everything has been acked, stop retransmit timer
-   * otherwise update. */
-  tcp_retransmit_timer_update (tc);
+      /* Dequeue the newly ACKed add SACKed bytes */
+      stream_session_dequeue_drop (&tc->connection, tc->burst_acked);
+      tc->burst_acked = 0;
+      tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+
+      /* If everything has been acked, stop retransmit timer
+       * otherwise update. */
+      tcp_retransmit_timer_update (tc);
+    }
+  _vec_len (wrk->pending_deq_acked) = 0;
+}
+
+static void
+tcp_program_dequeue (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
+{
+  if (!(tc->flags & TCP_CONN_DEQ_PENDING))
+    {
+      vec_add1 (wrk->pending_deq_acked, tc->c_c_index);
+      tc->flags |= TCP_CONN_DEQ_PENDING;
+    }
+  tc->burst_acked += tc->bytes_acked + tc->sack_sb.snd_una_adv;
 }
 
 /**
@@ -1023,7 +1046,7 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       tc->snd_wl2 = ack;
       TCP_EVT_DBG (TCP_EVT_SND_WND, tc);
 
-      if (tc->snd_wnd < tc->snd_mss)
+      if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
 	{
 	  /* Set persist timer if not set and we just got 0 wnd */
 	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST)
@@ -1033,7 +1056,7 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       else
 	{
 	  tcp_persist_timer_reset (tc);
-	  if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
+	  if (PREDICT_FALSE (!tcp_in_recovery (tc) && tc->rto_boff > 0))
 	    {
 	      tc->rto_boff = 0;
 	      tcp_update_rto (tc);
@@ -1452,7 +1475,7 @@ partial_ack:
  * Process incoming ACK
  */
 static int
-tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
+tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     tcp_header_t * th, u32 * next, u32 * error)
 {
   u32 prev_snd_wnd, prev_snd_una;
@@ -1522,7 +1545,10 @@ process_ack:
   tcp_validate_txf_size (tc, tc->bytes_acked);
 
   if (tc->bytes_acked)
-    tcp_dequeue_acked (tc, vnet_buffer (b)->tcp.ack_number);
+    {
+      tcp_program_dequeue (wrk, tc);
+      tcp_update_rtt (tc, vnet_buffer (b)->tcp.ack_number);
+    }
 
   TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc);
 
@@ -1992,6 +2018,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, int is_ip4)
 {
   u32 thread_index = vm->thread_index, errors = 0;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   u32 n_left_from, next_index, *from, *to_next;
   u16 err_counters[TCP_N_ERROR] = { 0 };
   u8 is_fin = 0;
@@ -2062,7 +2089,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* 5: check the ACK field  */
-	  if (PREDICT_FALSE (tcp_rcv_ack (tc0, b0, th0, &next0, &error0)))
+	  if (PREDICT_FALSE (tcp_rcv_ack (wrk, tc0, b0, th0, &next0,
+					  &error0)))
 	    {
 	      tcp_maybe_inc_err_counter (err_counters, error0);
 	      goto done;
@@ -2107,7 +2135,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						 thread_index);
   err_counters[TCP_ERROR_EVENT_FIFO_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
-  tcp_flush_frame_to_output (tcp_get_worker (thread_index), is_ip4);
+  tcp_handle_postponed_dequeues (wrk);
+  tcp_flush_frame_to_output (wrk, is_ip4);
 
   return frame->n_vectors;
 }
@@ -2588,6 +2617,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, next_index, *from, *to_next, n_fins = 0;
   u32 my_thread_index = vm->thread_index, errors = 0;
+  tcp_worker_ctx_t *wrk = tcp_get_worker (my_thread_index);
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -2705,7 +2735,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_ESTABLISHED:
 	      /* We can get packets in established state here because they
 	       * were enqueued before state change */
-	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
+	      if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &next0, &error0))
 		{
 		  tcp_maybe_inc_counter (rcv_process, error0, 1);
 		  goto drop;
@@ -2716,7 +2746,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* In addition to the processing for the ESTABLISHED state, if
 	       * our FIN is now acknowledged then enter FIN-WAIT-2 and
 	       * continue processing in that state. */
-	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
+	      if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &next0, &error0))
 		{
 		  tcp_maybe_inc_counter (rcv_process, error0, 1);
 		  goto drop;
@@ -2746,7 +2776,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* In addition to the processing for the ESTABLISHED state, if
 	       * the retransmission queue is empty, the user's CLOSE can be
 	       * acknowledged ("ok") but do not delete the TCB. */
-	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
+	      if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &next0, &error0))
 		{
 		  tcp_maybe_inc_counter (rcv_process, error0, 1);
 		  goto drop;
@@ -2754,7 +2784,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      break;
 	    case TCP_STATE_CLOSE_WAIT:
 	      /* Do the same processing as for the ESTABLISHED state. */
-	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
+	      if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &next0, &error0))
 		{
 		  tcp_maybe_inc_counter (rcv_process, error0, 1);
 		  goto drop;
@@ -2776,7 +2806,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* In addition to the processing for the ESTABLISHED state, if
 	       * the ACK acknowledges our FIN then enter the TIME-WAIT state,
 	       * otherwise ignore the segment. */
-	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
+	      if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &next0, &error0))
 		{
 		  tcp_maybe_inc_counter (rcv_process, error0, 1);
 		  goto drop;
@@ -2824,7 +2854,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * retransmission of the remote FIN. Acknowledge it, and restart
 	       * the 2 MSL timeout. */
 
-	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
+	      if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &next0, &error0))
 		{
 		  tcp_maybe_inc_counter (rcv_process, error0, 1);
 		  goto drop;
@@ -2937,6 +2967,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						 my_thread_index);
   tcp_inc_counter (rcv_process, TCP_ERROR_EVENT_FIFO_FULL, errors);
   tcp_inc_counter (rcv_process, TCP_ERROR_FIN_RCVD, n_fins);
+  tcp_handle_postponed_dequeues (wrk);
   return from_frame->n_vectors;
 }
 
