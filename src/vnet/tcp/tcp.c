@@ -1105,6 +1105,7 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_set_time_now (wrk);
   tw_timer_expire_timers_16t_2w_512sl (&wrk->timer_wheel, now);
   tcp_do_fastretransmits (wrk);
+  tcp_send_acks (wrk);
   tcp_flush_frames_to_output (wrk);
 }
 
@@ -1326,10 +1327,12 @@ tcp_main_enable (vlib_main_t * vm)
       vec_validate (tm->wrk_ctx[thread].ongoing_fast_rxt, 255);
       vec_validate (tm->wrk_ctx[thread].postponed_fast_rxt, 255);
       vec_validate (tm->wrk_ctx[thread].pending_deq_acked, 255);
+      vec_validate (tm->wrk_ctx[thread].pending_acks, 255);
       vec_reset_length (tm->wrk_ctx[thread].pending_fast_rxt);
       vec_reset_length (tm->wrk_ctx[thread].ongoing_fast_rxt);
       vec_reset_length (tm->wrk_ctx[thread].postponed_fast_rxt);
       vec_reset_length (tm->wrk_ctx[thread].pending_deq_acked);
+      vec_reset_length (tm->wrk_ctx[thread].pending_acks);
       tm->wrk_ctx[thread].vm = vlib_mains[thread];
 
       /*
@@ -1417,6 +1420,7 @@ tcp_init (vlib_main_t * vm)
 			       FIB_PROTOCOL_IP6, tcp6_output_node.index);
 
   tcp_api_reference ();
+  tm->tx_pacing = 1;
   return 0;
 }
 
@@ -1441,8 +1445,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "max-rx-fifo %U", unformat_memory_size,
 			 &tm->max_rx_fifo))
 	;
-      else if (unformat (input, "tx-pacing"))
-	tm->tx_pacing = 1;
+      else if (unformat (input, "no-tx-pacing"))
+	tm->tx_pacing = 0;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

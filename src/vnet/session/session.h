@@ -524,6 +524,13 @@ transport_tx_fifo_size (transport_connection_t * tc)
   return s->server_tx_fifo->nitems;
 }
 
+always_inline u8
+transport_rx_fifo_has_ooo_data (transport_connection_t * tc)
+{
+  stream_session_t *s = session_get (tc->c_index, tc->thread_index);
+  return svm_fifo_has_ooo_data (s->server_rx_fifo);
+}
+
 always_inline f64
 transport_dispatch_period (u32 thread_index)
 {
