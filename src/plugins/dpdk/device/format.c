@@ -162,7 +162,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
   else
     devname_format = "%s%x/%x/%x";
 
-  switch (dm->devices[i].port_type)
+  switch (xd->port_type)
     {
     case VNET_DPDK_PORT_TYPE_ETH_1G:
       device_name = "GigabitEthernet";
@@ -205,7 +205,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PORT_TYPE_ETH_BOND:
-      return format (s, "BondEthernet%d", dm->devices[i].bond_instance_num);
+      return format (s, "BondEthernet%d", xd->bond_instance_num);
 
     case VNET_DPDK_PORT_TYPE_ETH_SWITCH:
       device_name = "EthernetSwitch";
@@ -216,7 +216,7 @@ format_dpdk_device_name (u8 * s, va_list * args)
       break;
 
     case VNET_DPDK_PORT_TYPE_AF_PACKET:
-      return format (s, "af_packet%d", dm->devices[i].af_packet_instance_num);
+      return format (s, "af_packet%d", xd->af_packet_instance_num);
 
     case VNET_DPDK_PORT_TYPE_VIRTIO_USER:
       device_name = "VirtioUser";
@@ -239,14 +239,14 @@ format_dpdk_device_name (u8 * s, va_list * args)
   rte_eth_dev_info_get (xd->port_id, &dev_info);
   pci_dev = dpdk_get_pci_device (&dev_info);
 
-  if (pci_dev && dm->devices[i].port_type != VNET_DPDK_PORT_TYPE_FAILSAFE)
+  if (pci_dev && xd->port_type != VNET_DPDK_PORT_TYPE_FAILSAFE)
     ret = format (s, devname_format, device_name, pci_dev->addr.bus,
 		  pci_dev->addr.devid, pci_dev->addr.function);
   else
-    ret = format (s, "%s%d", device_name, dm->devices[i].port_id);
+    ret = format (s, "%s%d", device_name, xd->port_id);
 
-  if (dm->devices[i].interface_name_suffix)
-    return format (ret, "/%s", dm->devices[i].interface_name_suffix);
+  if (xd->interface_name_suffix)
+    return format (ret, "/%s", xd->interface_name_suffix);
   return ret;
 }
 
