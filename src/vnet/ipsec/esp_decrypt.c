@@ -43,7 +43,8 @@ typedef enum
  _(DECRYPTION_FAILED, "ESP decryption failed")      \
  _(INTEG_ERROR, "Integrity check failed")           \
  _(REPLAY, "SA replayed packet")                    \
- _(NOT_IP, "Not IP packet (dropped)")
+ _(NOT_IP, "Not IP packet (dropped)")               \
+ _(MALFORMED_PACKET, "Malformed packet")
 
 
 typedef enum
@@ -78,38 +79,6 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
 	      format_ipsec_crypto_alg, t->crypto_alg,
 	      format_ipsec_integ_alg, t->integ_alg);
   return s;
-}
-
-always_inline void
-esp_decrypt_cbc (ipsec_crypto_alg_t alg,
-		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
-{
-  ipsec_proto_main_t *em = &ipsec_proto_main;
-  u32 thread_index = vlib_get_thread_index ();
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *ctx = em->per_thread_data[thread_index].decrypt_ctx;
-#else
-  EVP_CIPHER_CTX *ctx = &(em->per_thread_data[thread_index].decrypt_ctx);
-#endif
-  const EVP_CIPHER *cipher = NULL;
-  int out_len;
-
-  ASSERT (alg < IPSEC_CRYPTO_N_ALG);
-
-  if (PREDICT_FALSE (em->ipsec_proto_main_crypto_algs[alg].type == 0))
-    return;
-
-  if (PREDICT_FALSE
-      (alg != em->per_thread_data[thread_index].last_decrypt_alg))
-    {
-      cipher = em->ipsec_proto_main_crypto_algs[alg].type;
-      em->per_thread_data[thread_index].last_decrypt_alg = alg;
-    }
-
-  EVP_DecryptInit_ex (ctx, cipher, NULL, key, iv);
-
-  EVP_DecryptUpdate (ctx, out, &out_len, in, in_len);
-  EVP_DecryptFinal_ex (ctx, out + out_len, &out_len);
 }
 
 always_inline uword
@@ -193,22 +162,104 @@ esp_decrypt_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  sa0->total_data_size += i_b0->current_length;
+	  sa0->total_data_size += vlib_buffer_length_in_chain (vm, i_b0);
+	  u32 last_i_bi0 = i_bi0;
+	  vlib_buffer_t *last_i_b0 = i_b0;
+	  vlib_buffer_t *second_last_i_b0 = NULL;
+	  int count = 0;
+	  while (last_i_b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      second_last_i_b0 = last_i_b0;
+	      last_i_bi0 = last_i_b0->next_buffer;
+	      last_i_b0 = vlib_get_buffer (vm, last_i_bi0);
+	      ++count;
+	    }
+
+	  if (2 * count + 1 > vec_len (empty_buffers))
+	    {
+	      ipsec_alloc_empty_buffers (vm, im);
+	      if (PREDICT_FALSE (2 * count + 1 > vec_len (empty_buffers)))
+		{
+		  vlib_node_increment_counter (vm, node->node_index,
+					       ESP_DECRYPT_ERROR_NO_BUFFER,
+					       1);
+		  o_bi0 = i_bi0;
+		  to_next[0] = o_bi0;
+		  to_next += 1;
+		  goto trace;
+		}
+	    }
 
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	    {
-	      u8 sig[64];
 	      int icv_size =
 		em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	      u8 sig[icv_size];
 	      clib_memset (sig, 0, sizeof (sig));
-	      u8 *icv =
-		vlib_buffer_get_current (i_b0) + i_b0->current_length -
-		icv_size;
-	      i_b0->current_length -= icv_size;
+	      u8 *icv;
+	      u8 _icv[icv_size];
+	      if (last_i_b0->current_length < icv_size)
+		{
+		  if (i_b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+		    {
+		      const int last_b_icv_fragment_offset =
+			icv_size - last_i_b0->current_length;
+		      const int last_b_icv_fragment_length =
+			last_i_b0->current_length;
+		      clib_memcpy_fast (_icv + last_b_icv_fragment_offset,
+					vlib_buffer_get_current (last_i_b0),
+					last_b_icv_fragment_length);
+		      clib_memcpy_fast (_icv,
+					vlib_buffer_get_current
+					(second_last_i_b0) +
+					second_last_i_b0->current_length -
+					last_b_icv_fragment_offset,
+					icv_size -
+					last_b_icv_fragment_length);
+		      icv = _icv;
+		      second_last_i_b0->current_length -=
+			icv_size - last_i_b0->current_length;
+		      last_i_b0->current_length = 0;
+		      i_b0->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+		    }
+		  else
+		    {
+		      vlib_node_increment_counter (vm, node->node_index,
+						   ESP_DECRYPT_ERROR_MALFORMED_PACKET,
+						   1);
+		      o_bi0 = i_bi0;
+		      to_next[0] = o_bi0;
+		      to_next += 1;
+		      goto trace;
+		    }
+		}
+	      else
+		{
+		  icv =
+		    vlib_buffer_get_current (last_i_b0) +
+		    last_i_b0->current_length - icv_size;
+		  last_i_b0->current_length -= icv_size;
+		  if (i_b0->flags & VLIB_BUFFER_NEXT_PRESENT)
+		    {
+		      i_b0->total_length_not_including_first_buffer -=
+			icv_size;
+		    }
+		}
 
-	      hmac_calc (sa0->integ_alg, sa0->integ_key, sa0->integ_key_len,
-			 (u8 *) esp0, i_b0->current_length, sig, sa0->use_esn,
-			 sa0->seq_hi);
+	      HMAC_CTX *ctx = hmac_calc_start (sa0->integ_alg, sa0->integ_key,
+					       sa0->integ_key_len);
+
+	      hmac_calc_update (ctx, (u8 *) esp0, i_b0->current_length);
+
+	      vlib_buffer_t *b = i_b0;
+	      while (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+		{
+		  b = vlib_get_buffer (vm, b->next_buffer);
+		  hmac_calc_update (ctx, vlib_buffer_get_current (b),
+				    b->current_length);
+		}
+
+	      hmac_calc_finalize (ctx, sig, sa0->use_esn, sa0->seq_hi);
 
 	      if (PREDICT_FALSE (memcmp (icv, sig, icv_size)))
 		{
@@ -249,16 +300,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      (sa0->crypto_alg >= IPSEC_CRYPTO_ALG_DES_CBC &&
 	       sa0->crypto_alg <= IPSEC_CRYPTO_ALG_3DES_CBC))
 	    {
-	      const int BLOCK_SIZE =
-		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].block_size;;
-	      const int IV_SIZE =
+	      const int iv_size =
 		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size;
 	      esp_footer_t *f0;
-	      u8 ip_hdr_size = 0;
-
-	      int blocks =
-		(i_b0->current_length - sizeof (esp_header_t) -
-		 IV_SIZE) / BLOCK_SIZE;
 
 	      o_b0->current_data = sizeof (ethernet_header_t);
 
@@ -272,7 +316,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 		      ih6 =
 			(ip6_header_t *) ((u8 *) esp0 -
 					  sizeof (ip6_header_t));
-		      ip_hdr_size = sizeof (ip6_header_t);
+		      o_b0->current_length += sizeof (*oh6);
 		      oh6 = vlib_buffer_get_current (o_b0);
 		    }
 		  else
@@ -291,22 +335,33 @@ esp_decrypt_inline (vlib_main_t * vm,
 					      sizeof (ip4_header_t));
 			}
 		      oh4 = vlib_buffer_get_current (o_b0);
-		      ip_hdr_size = sizeof (ip4_header_t);
+		      o_b0->current_length += sizeof (*oh4);
 		    }
 		}
 
-	      esp_decrypt_cbc (sa0->crypto_alg,
-			       esp0->data + IV_SIZE,
-			       (u8 *) vlib_buffer_get_current (o_b0) +
-			       ip_hdr_size, BLOCK_SIZE * blocks,
-			       sa0->crypto_key, esp0->data);
+	      vlib_buffer_t *last_ob;
+	      if (!esp_cipher_cbc
+		  (vm, sa0->crypto_alg, i_b0,
+		   (u8 *) esp0->data + iv_size -
+		   (u8 *) vlib_buffer_get_current (i_b0), o_b0,
+		   sa0->crypto_key, esp0->data, &last_ob, empty_buffers,
+		   0 /* is_encrypt */ ))
+		{
+		  vlib_node_increment_counter (vm, node->node_index,
+					       ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
+					       1);
+		  o_b0 = 0;
+		  goto trace;
+		}
 
-	      o_b0->current_length = (blocks * BLOCK_SIZE) - 2 + ip_hdr_size;
-	      o_b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	      f0 =
-		(esp_footer_t *) ((u8 *) vlib_buffer_get_current (o_b0) +
-				  o_b0->current_length);
-	      o_b0->current_length -= f0->pad_length;
+		(esp_footer_t *) ((u8 *) vlib_buffer_get_current (last_ob)
+				  + last_ob->current_length -
+				  sizeof (esp_footer_t));
+	      last_ob->current_length -=
+		f0->pad_length + sizeof (esp_footer_t);
+	      o_b0->total_length_not_including_first_buffer -=
+		f0->pad_length + sizeof (esp_footer_t);
 
 	      /* tunnel mode */
 	      if (PREDICT_TRUE (tunnel_mode))
