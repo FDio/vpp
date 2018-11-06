@@ -95,11 +95,6 @@ typedef struct
   EVP_CIPHER_CTX decrypt_ctx;
 #endif
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  HMAC_CTX *hmac_ctx;
-#else
-  HMAC_CTX hmac_ctx;
-#endif
   ipsec_crypto_alg_t last_encrypt_alg;
   ipsec_crypto_alg_t last_decrypt_alg;
   ipsec_integ_alg_t last_integ_alg;
@@ -114,6 +109,66 @@ typedef struct
 
 extern ipsec_proto_main_t ipsec_proto_main;
 
+typedef enum
+{
+  IPSEC_ERR_OK = 0,
+  IPSEC_ERR_CIPHERING_FAILED,
+  IPSEC_ERR_INTEG_ERROR,
+  IPSEC_ERR_SEQ_CYCLED,
+  IPSEC_ERR_REPLAY,
+  IPSEC_ERR_NOT_IP,
+  IPSEC_ERR_NO_BUF,
+  IPSEC_ERR_RND_GEN_FAILED,
+} ipsec_error_e;
+
+typedef struct
+{
+  u32 spi;
+  u32 seq;
+  u8 udp_encap;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+  ipsec_error_e error;
+  u32 data_len;
+  u32 crypto_len;
+  u32 hash_len;
+} ipsec_trace_t;
+
+u8 *format_ipsec_error (u8 * s, va_list * args);
+u8 *format_ipsec_trace (u8 * s, va_list * args);
+
+typedef struct
+{
+  /** buffer (chain), which this job works with */
+  vlib_buffer_t *b;
+  /** vector used for storing temp copy of packet data for buffer chains */
+  u8 *data;
+  /** source - might point to packet_data or (inside) vlib_buffer->data */
+  u8 *src;
+  /** data length of this job */
+  u32 data_len;
+  u32 msg_len_to_hash_in_bytes;
+  u32 hash_start_src_offset_in_bytes;
+  u32 icv_output_len_in_bytes;
+  /** where to put calculated integrity check value */
+  void *icv_dst;
+  /** vector used for storing incoming integrity check value for comparison */
+  u8 *icv;
+  u32 msg_len_to_cipher_in_bytes;
+  u32 cipher_start_src_offset_in_bytes;
+  u8 *cipher_dst;
+  void *iv;
+  u8 iv_len_in_bytes;
+  u32 next;
+  ipsec_sa_t *sa;
+  ipsec_error_e error;
+} ipsec_job_desc_t;
+
+typedef struct
+{
+  ipsec_job_desc_t jobs[VLIB_FRAME_SIZE];
+} ipsec_main_per_thread_data_t;
+
 typedef struct
 {
   /* pool of tunnel instances */
@@ -125,8 +180,6 @@ typedef struct
 
   /* pool of tunnel interfaces */
   ipsec_tunnel_if_t *tunnel_interfaces;
-
-  u32 **empty_buffers;
 
   uword *tunnel_index_by_key;
 
@@ -173,6 +226,8 @@ typedef struct
   u32 ah_default_backend;
   /* index of default esp backend */
   u32 esp_default_backend;
+  /* per-thread data */
+  ipsec_main_per_thread_data_t *per_thread_data;
 } ipsec_main_t;
 
 extern ipsec_main_t ipsec_main;
@@ -200,28 +255,6 @@ u8 *format_ipsec_replay_window (u8 * s, va_list * args);
 /*
  *  inline functions
  */
-
-always_inline void
-ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
-{
-  u32 thread_index = vm->thread_index;
-  uword l = vec_len (im->empty_buffers[thread_index]);
-  uword n_alloc = 0;
-
-  if (PREDICT_FALSE (l < VLIB_FRAME_SIZE))
-    {
-      if (!im->empty_buffers[thread_index])
-	{
-	  vec_alloc (im->empty_buffers[thread_index], 2 * VLIB_FRAME_SIZE);
-	}
-
-      n_alloc = vlib_buffer_alloc (vm, im->empty_buffers[thread_index] + l,
-				   2 * VLIB_FRAME_SIZE - l);
-
-      _vec_len (im->empty_buffers[thread_index]) = l + n_alloc;
-    }
-}
-
 static_always_inline u32
 get_next_output_feature_node_index (vlib_buffer_t * b,
 				    vlib_node_runtime_t * nr)
@@ -254,6 +287,28 @@ u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
+
+always_inline int
+hmac_calc (ipsec_integ_alg_t alg, u8 * key, int key_len,
+	   u8 * data, int data_len, u8 * signature, int signature_len)
+{
+  ipsec_proto_main_t *em = &ipsec_proto_main;
+
+  ASSERT (alg < IPSEC_INTEG_N_ALG);
+
+  if (PREDICT_FALSE (em->ipsec_proto_main_integ_algs[alg].md == 0))
+    return 1;
+
+  const EVP_MD *md = em->ipsec_proto_main_integ_algs[alg].md;
+
+  u8 tmp[EVP_MAX_MD_SIZE];
+  if (!HMAC (md, key, key_len, data, data_len, tmp, NULL))
+    {
+      return 0;
+    }
+  clib_memcpy_fast (signature, tmp, clib_min (sizeof (tmp), signature_len));
+  return 1;
+}
 #endif /* __IPSEC_H__ */
 
 /*
