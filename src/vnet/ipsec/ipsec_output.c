@@ -20,6 +20,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_io.h>
 
 #if WITH_LIBSSL > 0
 
