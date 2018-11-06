@@ -67,7 +67,7 @@ mrvl_pp2_interface_tx (vlib_main_t * vm,
     {
       u32 bi0 = buffers[0];
       vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-      u64 paddr = vlib_buffer_get_va (vm, b0);
+      u64 paddr = vlib_buffer_get_pa (vm, b0);
 
       pp2_ppio_outq_desc_reset (d);
       pp2_ppio_outq_desc_set_phys_addr (d, paddr + b0->current_data);
