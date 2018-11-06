@@ -43,7 +43,7 @@ format_mrvl_pp2_interface_name (u8 * s, va_list * args)
   mrvl_pp2_main_t *ppm = &mrvl_pp2_main;
   u32 dev_instance = va_arg (*args, u32);
   mrvl_pp2_if_t *ppif = pool_elt_at_index (ppm->interfaces, dev_instance);
-  return format (s, "mv-ppio%d/%d", ppif->ppio->pp2_id, ppif->ppio->port_id);
+  return format (s, "mv-ppio-%d/%d", ppif->ppio->pp2_id, ppif->ppio->port_id);
 }
 
 #define foreach_ppio_statistics_entry \

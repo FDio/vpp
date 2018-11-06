@@ -157,9 +157,12 @@ mrvl_pp2_delete_if (mrvl_pp2_if_t * ppif)
 	while (n_bufs--)
 	  {
 	    struct pp2_buff_inf binf;
-	    if (pp2_bpool_get_buff
-		(ppm->per_thread_data[0].hif, inq->bpool, &binf) == 0)
-	      vlib_buffer_free (vm, &binf.cookie, 1);
+	    if (pp2_bpool_get_buff (ppm->per_thread_data[0].hif, inq->bpool,
+				    &binf) == 0)
+	      {
+	         u32 bi = binf.cookie;
+	         vlib_buffer_free (vm, &bi, 1);
+	      }
 	  }
 	pp2_bpool_deinit (inq->bpool);
       }
@@ -212,8 +215,7 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
 	}
     }
 
-  pool_get (ppm->interfaces, ppif);
-  clib_memset (ppif, 0, sizeof (*ppif));
+  pool_get_zero (ppm->interfaces, ppif);
   ppif->dev_instance = ppif - ppm->interfaces;
   ppif->hw_if_index = ~0;
   vec_validate_aligned (ppif->inqs, n_inqs - 1, CLIB_CACHE_LINE_BYTES);
@@ -260,7 +262,7 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
   ppio_params.inqs_params.tcs_params[0].pkt_offset = 0;
   ppio_params.inqs_params.tcs_params[0].num_in_qs = n_inqs;
   ppio_params.inqs_params.tcs_params[0].inqs_params = &inq_params;
-  ppio_params.inqs_params.tcs_params[0].pools[0] = ppif->inqs[0].bpool;
+  ppio_params.inqs_params.tcs_params[0].pools[0][0] = ppif->inqs[0].bpool;
   ppio_params.outqs_params.num_outqs = n_outqs;
   for (i = 0; i < n_outqs; i++)
     {
