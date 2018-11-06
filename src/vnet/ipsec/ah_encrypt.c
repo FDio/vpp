@@ -267,13 +267,25 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    sizeof (ah_header_t);
 	  clib_memset (digest, 0, icv_size);
 
-	  unsigned size = hmac_calc (sa0->integ_alg, sa0->integ_key,
-				     sa0->integ_key_len,
-				     vlib_buffer_get_current (i_b0),
-				     i_b0->current_length, sig, sa0->use_esn,
-				     sa0->seq_hi);
+	  HMAC_CTX *ctx = hmac_calc_start (sa0->integ_alg, sa0->integ_key,
+					   sa0->integ_key_len);
 
-	  memcpy (digest, sig, size);
+	  hmac_calc_update (ctx, vlib_buffer_get_current (i_b0),
+			    i_b0->current_length);
+
+	  vlib_buffer_t *b = i_b0;
+	  while (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	    {
+	      b = vlib_get_buffer (vm, b->next_buffer);
+	      hmac_calc_update (ctx, vlib_buffer_get_current (b),
+				b->current_length);
+	    }
+
+	  const size_t sig_size =
+	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	  hmac_calc_finalize (ctx, sig, sa0->use_esn, sa0->seq_hi);
+
+	  memcpy (digest, sig, sig_size);
 	  if (is_ip6)
 	    {
 	      oh6_0->ip6.hop_limit = hop_limit;

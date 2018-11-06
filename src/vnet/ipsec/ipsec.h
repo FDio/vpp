@@ -518,6 +518,51 @@ u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
 
 int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
 int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
+
+always_inline HMAC_CTX *
+hmac_calc_start (ipsec_integ_alg_t alg, u8 * key, int key_len)
+{
+  ipsec_proto_main_t *em = &ipsec_proto_main;
+  u32 thread_index = vlib_get_thread_index ();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  HMAC_CTX *ctx = em->per_thread_data[thread_index].hmac_ctx;
+#else
+  HMAC_CTX *ctx = &(em->per_thread_data[thread_index].hmac_ctx);
+#endif
+  const EVP_MD *md = NULL;
+
+  ASSERT (alg < IPSEC_INTEG_N_ALG);
+
+  if (PREDICT_FALSE (em->ipsec_proto_main_integ_algs[alg].md == 0))
+    return 0;
+
+  if (PREDICT_FALSE (alg != em->per_thread_data[thread_index].last_integ_alg))
+    {
+      md = em->ipsec_proto_main_integ_algs[alg].md;
+      em->per_thread_data[thread_index].last_integ_alg = alg;
+    }
+
+  HMAC_Init_ex (ctx, key, key_len, md, NULL);
+
+  return ctx;
+}
+
+always_inline void
+hmac_calc_update (HMAC_CTX * ctx, u8 * data, int data_len)
+{
+  HMAC_Update (ctx, data, data_len);
+}
+
+always_inline void
+hmac_calc_finalize (HMAC_CTX * ctx, u8 * signature, u8 use_esn, u32 seq_hi)
+{
+  unsigned int len;
+
+  if (PREDICT_TRUE (use_esn))
+    HMAC_Update (ctx, (u8 *) & seq_hi, sizeof (seq_hi));
+  HMAC_Final (ctx, signature, &len);
+}
+
 #endif /* __IPSEC_H__ */
 
 /*
