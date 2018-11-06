@@ -9,7 +9,7 @@ vpp_shm_dir="/dev/shm/"
 vpp_run_dir="/run/vpp"
 lib_dir="$WS_ROOT/build-root/install-vpp-native/vpp/lib/"
 lib_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/lib/"
-dpdk_devbind="/usr/share/dpdk/usertools/dpdk-devbind.py"
+dpdk_devbind="$WS_ROOT/extras/vpp_config/scripts/dpdk-devbind.py"
 docker_vpp_dir="/vpp/"
 docker_app_dir="/vpp/"
 docker_lib_dir="/vpp-lib/"
@@ -270,9 +270,12 @@ if [ -z "$WS_ROOT" ] ; then
     exit 1
 fi
 
-if [[ "$(grep bin_PROGRAMS $WS_ROOT/src/vcl.am)" = "" ]] ; then
-    $WS_ROOT/extras/vagrant/vcl_test.sh $WS_ROOT $USER
-    (cd $WS_ROOT; make build)
+if [ ! -d $vpp_dir ] ; then
+    if [ -z "$title_dbg" ] ; then
+        (cd $WS_ROOT; make build-release)
+    else
+        (cd $WS_ROOT; make build)
+    fi
 fi
 
 if [ ! -d $vpp_dir ] ; then
