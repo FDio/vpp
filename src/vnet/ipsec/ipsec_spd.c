@@ -14,6 +14,7 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_io.h>
 
 int
 ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)

@@ -17,6 +17,7 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/udp/udp.h>
 
 typedef struct
 {
@@ -53,154 +54,7 @@ typedef CLIB_PACKED (struct {
 }) ip6_and_esp_header_t;
 /* *INDENT-ON* */
 
-#define ESP_WINDOW_SIZE		(64)
-#define ESP_SEQ_MAX 		(4294967295UL)
-
 u8 *format_esp_header (u8 * s, va_list * args);
-
-always_inline int
-esp_replay_check (ipsec_sa_t * sa, u32 seq)
-{
-  u32 diff;
-
-  if (PREDICT_TRUE (seq > sa->last_seq))
-    return 0;
-
-  diff = sa->last_seq - seq;
-
-  if (ESP_WINDOW_SIZE > diff)
-    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-  else
-    return 1;
-
-  return 0;
-}
-
-always_inline int
-esp_replay_check_esn (ipsec_sa_t * sa, u32 seq)
-{
-  u32 tl = sa->last_seq;
-  u32 th = sa->last_seq_hi;
-  u32 diff = tl - seq;
-
-  if (PREDICT_TRUE (tl >= (ESP_WINDOW_SIZE - 1)))
-    {
-      if (seq >= (tl - ESP_WINDOW_SIZE + 1))
-	{
-	  sa->seq_hi = th;
-	  if (seq <= tl)
-	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	  else
-	    return 0;
-	}
-      else
-	{
-	  sa->seq_hi = th + 1;
-	  return 0;
-	}
-    }
-  else
-    {
-      if (seq >= (tl - ESP_WINDOW_SIZE + 1))
-	{
-	  sa->seq_hi = th - 1;
-	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	}
-      else
-	{
-	  sa->seq_hi = th;
-	  if (seq <= tl)
-	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	  else
-	    return 0;
-	}
-    }
-
-  return 0;
-}
-
-/* TODO seq increment should be atomic to be accessed by multiple workers */
-always_inline void
-esp_replay_advance (ipsec_sa_t * sa, u32 seq)
-{
-  u32 pos;
-
-  if (seq > sa->last_seq)
-    {
-      pos = seq - sa->last_seq;
-      if (pos < ESP_WINDOW_SIZE)
-	sa->replay_window = ((sa->replay_window) << pos) | 1;
-      else
-	sa->replay_window = 1;
-      sa->last_seq = seq;
-    }
-  else
-    {
-      pos = sa->last_seq - seq;
-      sa->replay_window |= (1ULL << pos);
-    }
-}
-
-always_inline void
-esp_replay_advance_esn (ipsec_sa_t * sa, u32 seq)
-{
-  int wrap = sa->seq_hi - sa->last_seq_hi;
-  u32 pos;
-
-  if (wrap == 0 && seq > sa->last_seq)
-    {
-      pos = seq - sa->last_seq;
-      if (pos < ESP_WINDOW_SIZE)
-	sa->replay_window = ((sa->replay_window) << pos) | 1;
-      else
-	sa->replay_window = 1;
-      sa->last_seq = seq;
-    }
-  else if (wrap > 0)
-    {
-      pos = ~seq + sa->last_seq + 1;
-      if (pos < ESP_WINDOW_SIZE)
-	sa->replay_window = ((sa->replay_window) << pos) | 1;
-      else
-	sa->replay_window = 1;
-      sa->last_seq = seq;
-      sa->last_seq_hi = sa->seq_hi;
-    }
-  else if (wrap < 0)
-    {
-      pos = ~seq + sa->last_seq + 1;
-      sa->replay_window |= (1ULL << pos);
-    }
-  else
-    {
-      pos = sa->last_seq - seq;
-      sa->replay_window |= (1ULL << pos);
-    }
-}
-
-always_inline int
-esp_seq_advance (ipsec_sa_t * sa)
-{
-  if (PREDICT_TRUE (sa->use_esn))
-    {
-      if (PREDICT_FALSE (sa->seq == ESP_SEQ_MAX))
-	{
-	  if (PREDICT_FALSE
-	      (sa->use_anti_replay && sa->seq_hi == ESP_SEQ_MAX))
-	    return 1;
-	  sa->seq_hi++;
-	}
-      sa->seq++;
-    }
-  else
-    {
-      if (PREDICT_FALSE (sa->use_anti_replay && sa->seq == ESP_SEQ_MAX))
-	return 1;
-      sa->seq++;
-    }
-
-  return 0;
-}
 
 always_inline void
 ipsec_proto_init ()
@@ -267,52 +121,127 @@ ipsec_proto_init ()
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
       em->per_thread_data[thread_id].encrypt_ctx = EVP_CIPHER_CTX_new ();
       em->per_thread_data[thread_id].decrypt_ctx = EVP_CIPHER_CTX_new ();
-      em->per_thread_data[thread_id].hmac_ctx = HMAC_CTX_new ();
 #else
       EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].encrypt_ctx));
       EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].decrypt_ctx));
-      HMAC_CTX_init (&(em->per_thread_data[thread_id].hmac_ctx));
 #endif
     }
 }
 
-always_inline unsigned int
-hmac_calc (ipsec_integ_alg_t alg,
-	   u8 * key,
-	   int key_len,
-	   u8 * data, int data_len, u8 * signature, u8 use_esn, u32 seq_hi)
+always_inline int
+esp_cipher (ipsec_proto_main_t * em, ipsec_crypto_alg_t alg, u8 * src,
+	    u8 * dst, int len, u8 * key, u8 * iv, int is_encrypt)
 {
-  ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 thread_index = vlib_get_thread_index ();
+  EVP_CIPHER_CTX *ctx;
+  if (is_encrypt)
+    {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  HMAC_CTX *ctx = em->per_thread_data[thread_index].hmac_ctx;
+      ctx = em->per_thread_data[thread_index].encrypt_ctx;
 #else
-  HMAC_CTX *ctx = &(em->per_thread_data[thread_index].hmac_ctx);
+      ctx = &(em->per_thread_data[thread_index].encrypt_ctx);
 #endif
-  const EVP_MD *md = NULL;
-  unsigned int len;
+    }
+  else
+    {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      ctx = em->per_thread_data[thread_index].decrypt_ctx;
+#else
+      ctx = &(em->per_thread_data[thread_index].decrypt_ctx);
+#endif
+    }
+  const EVP_CIPHER *cipher = NULL;
+  int out_len;
 
-  ASSERT (alg < IPSEC_INTEG_N_ALG);
+  if (PREDICT_FALSE (em->ipsec_proto_main_crypto_algs[alg].type == 0))
+    {
+      return 0;
+    }
 
-  if (PREDICT_FALSE (em->ipsec_proto_main_integ_algs[alg].md == 0))
+  if (is_encrypt)
+    {
+      if (PREDICT_FALSE
+	  (alg != em->per_thread_data[thread_index].last_encrypt_alg))
+	{
+	  cipher = em->ipsec_proto_main_crypto_algs[alg].type;
+	  em->per_thread_data[thread_index].last_encrypt_alg = alg;
+	}
+    }
+  else
+    {
+      if (PREDICT_FALSE
+	  (alg != em->per_thread_data[thread_index].last_decrypt_alg))
+	{
+	  cipher = em->ipsec_proto_main_crypto_algs[alg].type;
+	  em->per_thread_data[thread_index].last_decrypt_alg = alg;
+	}
+    }
+  const int block_size = em->ipsec_proto_main_crypto_algs[alg].block_size;
+
+  int rv;
+  if (is_encrypt)
+    rv = EVP_EncryptInit_ex (ctx, cipher, NULL, key, iv);
+  else
+    rv = EVP_DecryptInit_ex (ctx, cipher, NULL, key, iv);
+  if (!rv)
     return 0;
 
-  if (PREDICT_FALSE (alg != em->per_thread_data[thread_index].last_integ_alg))
+  EVP_CIPHER_CTX_set_padding (ctx, 0);
+
+  static u8 *tmp = 0;
+  if ((dst >= src && dst < src + len) || (src >= dst && src < dst + len))
     {
-      md = em->ipsec_proto_main_integ_algs[alg].md;
-      em->per_thread_data[thread_index].last_integ_alg = alg;
+      /* sadly, openssl doesn't handle overlapping data */
+      vec_validate (tmp, len);
+      clib_memcpy_fast (tmp, src, len);
+      src = tmp;
     }
 
-  HMAC_Init_ex (ctx, key, key_len, md, NULL);
+  if (is_encrypt)
+    rv = EVP_EncryptUpdate (ctx, dst, &out_len, src, len);
+  else
+    rv = EVP_DecryptUpdate (ctx, dst, &out_len, src, len);
+  if (!rv)
+    return 0;
 
-  HMAC_Update (ctx, data, data_len);
+  u8 dummy[block_size + 1];
+  if (is_encrypt)
+    rv = EVP_EncryptFinal_ex (ctx, dummy, &out_len);
+  else
+    rv = EVP_DecryptFinal_ex (ctx, dummy, &out_len);
+  if (!rv)
+    return 0;
+  if (out_len != 0)
+    return 0;			/* this really shouldn't happen, because padding is disabled */
 
-  if (PREDICT_TRUE (use_esn))
-    HMAC_Update (ctx, (u8 *) & seq_hi, sizeof (seq_hi));
-  HMAC_Final (ctx, signature, &len);
-
-  return em->ipsec_proto_main_integ_algs[alg].trunc_size;
+  return 1;
 }
+
+void esp_encrypt_prepare_jobs (vlib_main_t * vm, u32 thread_index,
+			       ipsec_main_t * im, ipsec_proto_main_t * em,
+			       vlib_buffer_t ** b, ipsec_job_desc_t * job,
+			       u32 n_jobs, int is_ip6,
+			       int (*random_bytes) (u8 * dest, int len),
+			       u32 next_index_drop, u32 next_index_ip4_lookup,
+			       u32 next_index_ip6_lookup);
+
+void
+esp_encrypt_finish (vlib_main_t * vm, ipsec_main_t * im, u16 * next,
+		    ipsec_job_desc_t * job, u32 n_jobs, int thread_index,
+		    int is_ip6, u32 next_index_drop,
+		    u32 next_index_interface_output);
+
+void
+esp_decrypt_prepare_jobs (vlib_main_t * vm, u32 thread_index,
+			  ipsec_main_t * im, ipsec_proto_main_t * em,
+			  vlib_buffer_t ** b, ipsec_job_desc_t * job,
+			  u32 n_jobs, int is_ip6, u32 next_index_drop);
+
+void
+esp_decrypt_finish (vlib_main_t * vm, u16 * next, ipsec_job_desc_t * job,
+		    u32 n_jobs, int is_ip6, u32 next_index_drop,
+		    u32 next_index_ip4_input, u32 next_index_ip6_input,
+		    u32 next_index_gre_input);
 
 #endif /* __ESP_H__ */
 

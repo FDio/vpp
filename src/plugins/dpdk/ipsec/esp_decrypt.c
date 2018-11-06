@@ -20,6 +20,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_io.h>
 #include <vnet/ipsec/esp.h>
 #include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
@@ -241,9 +242,9 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	      seq = clib_net_to_host_u32 (esp0->seq);
 
 	      if (PREDICT_TRUE (sa0->use_esn))
-		rv = esp_replay_check_esn (sa0, seq);
+		rv = sa_replay_check_esn (sa0, seq);
 	      else
-		rv = esp_replay_check (sa0, seq);
+		rv = sa_replay_check (sa0, seq);
 
 	      if (PREDICT_FALSE (rv))
 		{
@@ -565,9 +566,9 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	      u32 seq;
 	      seq = clib_host_to_net_u32 (esp0->seq);
 	      if (PREDICT_TRUE (sa0->use_esn))
-		esp_replay_advance_esn (sa0, seq);
+		sa_replay_advance_esn (sa0, seq);
 	      else
-		esp_replay_advance (sa0, seq);
+		sa_replay_advance (sa0, seq);
 	    }
 
 	  /* if UDP encapsulation is used adjust the address of the IP header */

@@ -1217,6 +1217,13 @@ vlib_packet_template_free (vlib_main_t * vm, vlib_packet_template_t * t)
   vec_free (t->packet_data);
 }
 
+always_inline u32
+vlib_buffer_space_left_at_end (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  return b->data + vlib_buffer_get_default_data_size (vm) -
+    ((u8 *) vlib_buffer_get_current (b) + b->current_length);
+}
+
 /**
  * @brief compress buffer chain in a way where the first buffer is at least
  * VLIB_BUFFER_CLONE_HEAD_SIZE long
