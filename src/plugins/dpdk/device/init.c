@@ -888,7 +888,20 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       ;
     /* vmxnet3 */
     else if (d->vendor_id == 0x15ad && d->device_id == 0x07b0)
-      ;
+      {
+	/*
+	 * For vmxnet3 PCI, unless it is explicitly specified in the whitelist,
+	 * the default is to put it in the blacklist.
+	 */
+	if (devconf == 0)
+	  {
+	    pool_get (conf->dev_confs, devconf);
+	    hash_set (conf->device_config_index_by_pci_addr, addr->as_u32,
+		      devconf - conf->dev_confs);
+	    devconf->pci_addr.as_u32 = addr->as_u32;
+	    devconf->is_blacklisted = 1;
+	  }
+      }
     /* all Intel network devices */
     else if (d->vendor_id == 0x8086 && d->device_class == PCI_CLASS_NETWORK_ETHERNET)
       ;
