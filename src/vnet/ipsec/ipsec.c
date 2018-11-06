@@ -252,8 +252,7 @@ ipsec_init (vlib_main_t * vm)
   im->sa_index_by_sa_id = hash_create (0, sizeof (uword));
   im->spd_index_by_sw_if_index = hash_create (0, sizeof (uword));
 
-  vec_validate_aligned (im->empty_buffers, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
+  vec_validate (im->per_thread_data, tm->n_vlib_mains - 1);
 
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   ASSERT (node);
@@ -295,7 +294,120 @@ ipsec_init (vlib_main_t * vm)
   return 0;
 }
 
+u8 *
+format_ipsec_error (u8 * s, va_list * args)
+{
+  ipsec_error_e e = va_arg (*args, ipsec_error_e);
+
+  switch (e)
+    {
+    case IPSEC_ERR_OK:
+      s = format (s, "ok");
+      break;
+    case IPSEC_ERR_CIPHERING_FAILED:
+      s = format (s, "cipher-fail");
+      break;
+    case IPSEC_ERR_INTEG_ERROR:
+      s = format (s, "integ-error");
+      break;
+    case IPSEC_ERR_SEQ_CYCLED:
+      s = format (s, "seq-cycled");
+      break;
+    case IPSEC_ERR_REPLAY:
+      s = format (s, "replay");
+      break;
+    case IPSEC_ERR_NOT_IP:
+      s = format (s, "not-ip-packet");
+      break;
+    case IPSEC_ERR_NO_BUF:
+      s = format (s, "no-buffers");
+      break;
+    case IPSEC_ERR_RND_GEN_FAILED:
+      s = format (s, "random-gen-failed");
+      break;
+    default:
+      s = format (s, "unknown-err-%d", e);
+      break;
+    }
+  return s;
+}
+
 VLIB_INIT_FUNCTION (ipsec_init);
+
+always_inline void
+ipsec_process_jobs_inline (ipsec_proto_main_t * em, ipsec_job_desc_t * job,
+			   u32 n_jobs, u32 next_index_drop, int is_encrypt)
+{
+  while (n_jobs > 0)
+    {
+      if (IPSEC_ERR_OK != job->error)
+	{
+	  goto next;
+	}
+      if (!is_encrypt && job->msg_len_to_hash_in_bytes)
+	{			/* decrypt case - calc hash first */
+	  if (!hmac_calc
+	      (job->sa->integ_alg, job->sa->integ_key.data,
+	       job->sa->integ_key.len,
+	       job->src + job->hash_start_src_offset_in_bytes,
+	       job->msg_len_to_hash_in_bytes, job->icv_dst,
+	       job->icv_output_len_in_bytes))
+	    {
+	      job->next = next_index_drop;
+	      job->error = IPSEC_ERR_CIPHERING_FAILED;
+	    }
+	  if (memcmp (job->icv_dst, job->icv, job->icv_output_len_in_bytes))
+	    {
+	      job->next = next_index_drop;
+	      job->error = IPSEC_ERR_INTEG_ERROR;
+	      /* invalid icv, skip ciphering */
+	      goto next;
+	    }
+	}
+      if (job->msg_len_to_cipher_in_bytes)
+	{
+	  if (!esp_cipher
+	      (em, job->sa->crypto_alg,
+	       job->src + job->cipher_start_src_offset_in_bytes,
+	       job->cipher_dst, job->msg_len_to_cipher_in_bytes,
+	       job->sa->crypto_key.data, job->iv, is_encrypt))
+	    {
+	      job->next = next_index_drop;
+	      job->error = IPSEC_ERR_CIPHERING_FAILED;
+	      /* ciphering failed, skip (potential) hashing */
+	      goto next;
+	    }
+	}
+      if (is_encrypt && job->msg_len_to_hash_in_bytes)
+	{			/* encrypt case - calc hash after ciphering */
+	  if (!hmac_calc
+	      (job->sa->integ_alg, job->sa->integ_key.data,
+	       job->sa->integ_key.len,
+	       job->src + job->hash_start_src_offset_in_bytes,
+	       job->msg_len_to_hash_in_bytes, job->icv_dst,
+	       job->icv_output_len_in_bytes))
+	    {
+	      job->next = next_index_drop;
+	      job->error = IPSEC_ERR_CIPHERING_FAILED;
+	    }
+	}
+    next:
+      ++job;
+      --n_jobs;
+    }
+}
+
+void
+ipsec_process_jobs (ipsec_proto_main_t * em, ipsec_job_desc_t * job,
+		    u32 n_jobs, u32 next_index_drop, int is_encrypt)
+{
+  if (is_encrypt)
+    return ipsec_process_jobs_inline (em, job, n_jobs, next_index_drop,
+				      1 /*is_encrypt */ );
+  else
+    return ipsec_process_jobs_inline (em, job, n_jobs, next_index_drop,
+				      0 /*is_encrypt */ );
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

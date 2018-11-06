@@ -20,6 +20,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_io.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ipsec_io.h>
 

@@ -21,6 +21,7 @@
 #include <vnet/feature/feature.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_io.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
 #include <vnet/ipsec/ipsec_io.h>
