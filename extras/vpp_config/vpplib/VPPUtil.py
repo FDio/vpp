@@ -21,7 +21,7 @@ from collections import Counter
 
 # VPP_VERSION = '1707'
 # VPP_VERSION = '1710'
-VPP_VERSION = '1801'
+VPP_VERSION = '1804'
 
 
 class VPPUtil(object):
@@ -175,6 +175,9 @@ class VPPUtil(object):
         self._install_vpp_pkg_ubuntu(node, 'vpp-api-lua')
         self._install_vpp_pkg_ubuntu(node, 'vpp-dev')
         self._install_vpp_pkg_ubuntu(node, 'vpp-dbg')
+        self._install_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin')
+        self._install_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dbg')
+        self._install_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dev')
 
     def _install_vpp_centos(self, node, fdio_release=VPP_VERSION,
                             centos_version='centos7'):
@@ -233,12 +236,14 @@ class VPPUtil(object):
         self._install_vpp_pkg_centos(node, 'vpp-lib')
         self._install_vpp_pkg_centos(node, 'vpp')
         self._install_vpp_pkg_centos(node, 'vpp-plugins')
-        # jadfix Check with Ole
-        # self._install_vpp_pkg_centos(node, 'vpp-dpdk-devel')
         self._install_vpp_pkg_centos(node, 'vpp-api-python')
         self._install_vpp_pkg_centos(node, 'vpp-api-java')
         self._install_vpp_pkg_centos(node, 'vpp-api-lua')
         self._install_vpp_pkg_centos(node, 'vpp-devel')
+        self._install_vpp_pkg_centos(node, 'vpp-debuginfo')
+        self._install_vpp_pkg_centos(node, 'vpp-nsh-plugin')
+        self._install_vpp_pkg_centos(node, 'vpp-nsh-plugin-devel')
+        self._install_vpp_pkg_centos(node, 'vpp-selinux-policy')
 
     def install_vpp(self, node):
         """
@@ -302,6 +307,9 @@ class VPPUtil(object):
         if len(pkgs) > 0:
             if 'version' in pkgs[0]:
                 logging.info("Uninstall Ubuntu Packages")
+                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dev')
+                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dbg')
+                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-python')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-java')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-lua')
@@ -332,11 +340,14 @@ class VPPUtil(object):
         if len(pkgs) > 0:
             if 'version' in pkgs[0]:
                 logging.info("Uninstall CentOS Packages")
+                self._uninstall_vpp_pkg_centos(node, 'vpp-selinux-policy')
+                self._uninstall_vpp_pkg_centos(node, 'vpp-nsh-plugin-devel')
+                self._uninstall_vpp_pkg_centos(node, 'vpp-nsh-plugin')
+                self._uninstall_vpp_pkg_centos(node, 'vpp-debuginfo')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-api-python')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-api-java')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-api-lua')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-plugins')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-dpdk-devel')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-devel')
                 self._uninstall_vpp_pkg_centos(node, 'vpp')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-lib')
