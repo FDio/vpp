@@ -164,6 +164,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   l2/l2_fwd.c
   l2/l2_learn.c
   l2/l2_output.c
+  l2/l2_patch.c
 )
 
 list(APPEND VNET_HEADERS
