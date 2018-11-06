@@ -58,6 +58,29 @@ ah_calc_icv_padding_len (u8 icv_size, int is_ipv6)
   return (req_multiple - total_size % req_multiple) % req_multiple;
 }
 
+void
+ah_encrypt_prepare_jobs (vlib_main_t * vm, ipsec_main_t * im,
+			 ipsec_proto_main_t * em, vlib_buffer_t ** b,
+			 ipsec_job_desc_t * job, int n_jobs, int is_ip6,
+			 u32 next_index_drop, u32 next_index_ip4_lookup,
+			 u32 next_index_ip6_lookup,
+			 u32 next_index_interface_output);
+
+void
+ah_finish_encrypt (vlib_main_t * vm, ipsec_main_t * im, u16 * next,
+		   ipsec_job_desc_t * job, int n_jobs, int is_ip6);
+
+void
+ah_decrypt_prepare_jobs (vlib_main_t * vm, ipsec_main_t * im,
+			 ipsec_proto_main_t * em, vlib_buffer_t ** b,
+			 ipsec_job_desc_t * job, int n_jobs, int is_ip6,
+			 u32 next_index_drop);
+
+void
+ah_finish_decrypt (vlib_main_t * vm, u16 * next, ipsec_job_desc_t * job,
+		   int n_jobs, int is_ip6, u32 next_index_drop,
+		   u32 next_index_ip4_input, u32 next_index_ip6_input,
+		   u32 next_index_gre_input);
 #endif /* __AH_H__ */
 
 /*
