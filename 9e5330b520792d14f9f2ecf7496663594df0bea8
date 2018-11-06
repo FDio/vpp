@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2ebaa55c_19531168",
+        "filename": "extras/japi/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-06T14:16:26Z",
+      "side": 1,
+      "message": "Can you do same trick like in src/CMake... so we don\u0027t hardcode verison here.",
+      "range": {
+        "startLine": 16,
+        "startChar": 1,
+        "endLine": 16,
+        "endChar": 25
+      },
+      "revId": "9e5330b520792d14f9f2ecf7496663594df0bea8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
