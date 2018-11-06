@@ -29,3 +29,4 @@ Finally it is useful both a software development kit or an appliance out of the 
    reference/index
    relatedprojects/index
    archive/index
+   about.rst
