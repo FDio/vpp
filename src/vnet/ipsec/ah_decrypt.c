@@ -165,7 +165,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    }
 
 
-	  sa0->total_data_size += i_b0->current_length;
+	  sa0->total_data_size += vlib_buffer_length_in_chain (vm, i_b0);
 	  icv_size =
 	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
@@ -200,9 +200,20 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  icv_padding_len =
 		    ah_calc_icv_padding_len (icv_size, 0 /* is_ipv6 */ );
 		}
-	      hmac_calc (sa0->integ_alg, sa0->integ_key, sa0->integ_key_len,
-			 (u8 *) ih4, i_b0->current_length, sig, sa0->use_esn,
-			 sa0->seq_hi);
+	      HMAC_CTX *ctx = hmac_calc_start (sa0->integ_alg, sa0->integ_key,
+					       sa0->integ_key_len);
+
+	      hmac_calc_update (ctx, (u8 *) ih4, i_b0->current_length);
+
+	      vlib_buffer_t *b = i_b0;
+	      while (PREDICT_FALSE (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+		{
+		  b = vlib_get_buffer (vm, b->next_buffer);
+		  hmac_calc_update (ctx, vlib_buffer_get_current (b),
+				    b->current_length);
+		}
+
+	      hmac_calc_finalize (ctx, sig, sa0->use_esn, sa0->seq_hi);
 
 	      if (PREDICT_FALSE (memcmp (digest, sig, icv_size)))
 		{
@@ -225,7 +236,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  vlib_buffer_advance (i_b0,
 			       ip_hdr_size + sizeof (ah_header_t) + icv_size +
 			       icv_padding_len);
-	  i_b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
 	  if (PREDICT_TRUE (sa0->is_tunnel))
 	    {			/* tunnel mode */

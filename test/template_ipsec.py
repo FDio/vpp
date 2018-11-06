@@ -125,26 +125,34 @@ class TemplateIpsec(VppTestCase):
         if not self.vpp_dead:
             self.vapi.cli("show hardware")
 
-    def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1):
+    def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1, payload=None):
+        if payload is None:
+            payload = self.payload
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                sa.encrypt(IP(src=src, dst=dst) / ICMP() / self.payload)
+                sa.encrypt(IP(src=src, dst=dst) / ICMP() / payload)
                 for i in range(count)]
 
-    def gen_encrypt_pkts6(self, sa, sw_intf, src, dst, count=1):
+    def gen_encrypt_pkts6(self, sa, sw_intf, src, dst, count=1, payload=None):
+        if payload is None:
+            payload = self.payload
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 sa.encrypt(IPv6(src=src, dst=dst) /
-                           ICMPv6EchoRequest(id=0, seq=1, data=self.payload))
+                           ICMPv6EchoRequest(id=0, seq=1, data=payload))
                 for i in range(count)]
 
-    def gen_pkts(self, sw_intf, src, dst, count=1):
+    def gen_pkts(self, sw_intf, src, dst, count=1, payload=None):
+        if payload is None:
+            payload = self.payload
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
-                IP(src=src, dst=dst) / ICMP() / self.payload
+                IP(src=src, dst=dst) / ICMP() / payload
                 for i in range(count)]
 
-    def gen_pkts6(self, sw_intf, src, dst, count=1):
+    def gen_pkts6(self, sw_intf, src, dst, count=1, payload=None):
+        if payload is None:
+            payload = self.payload
         return [Ether(src=sw_intf.remote_mac, dst=sw_intf.local_mac) /
                 IPv6(src=src, dst=dst) /
-                ICMPv6EchoRequest(id=0, seq=1, data=self.payload)
+                ICMPv6EchoRequest(id=0, seq=1, data=payload)
                 for i in range(count)]
 
     def configure_sa_tun(self, params):
@@ -199,7 +207,7 @@ class IpsecTcpTests(object):
 
 class IpsecTraTests(object):
     def test_tra_anti_replay(self, count=1):
-        """ ipsec v4 transport anti-reply test """
+        """ ipsec v4 transport anti-replay test """
         p = self.params[socket.AF_INET]
 
         # fire in a packet with seq number 1
@@ -209,7 +217,7 @@ class IpsecTraTests(object):
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
                                       seq_num=1))
-        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+        self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # now move the window over to 235
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -218,7 +226,7 @@ class IpsecTraTests(object):
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
                                       seq_num=235))
-        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+        self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # the window size is 64 packets
         # in window are still accepted
@@ -228,7 +236,7 @@ class IpsecTraTests(object):
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
                                       seq_num=172))
-        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+        self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # out of window are dropped
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -269,7 +277,7 @@ class IpsecTraTests(object):
         p.scapy_tra_sa.seq_num = 351
         p.vpp_tra_sa.seq_num = 351
 
-    def test_tra_basic(self, count=1):
+    def test_tra_basic(self, count=1, payload=None):
         """ ipsec v4 transport basic test """
         self.vapi.cli("clear errors")
         try:
@@ -277,12 +285,14 @@ class IpsecTraTests(object):
             send_pkts = self.gen_encrypt_pkts(p.scapy_tra_sa, self.tra_if,
                                               src=self.tra_if.remote_ip4,
                                               dst=self.tra_if.local_ip4,
-                                              count=count)
+                                              count=count, payload=payload)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
                 try:
                     decrypted = p.vpp_tra_sa.decrypt(rx[IP])
+                    decrypted = decrypted.__class__(str(decrypted))
+                    self.assertIn(ICMP, decrypted)
                     self.assert_packet_checksums_valid(decrypted)
                 except:
                     self.logger.debug(ppp("Unexpected packet:", rx))
@@ -298,7 +308,15 @@ class IpsecTraTests(object):
         """ ipsec v4 transport burst test """
         self.test_tra_basic(count=257)
 
-    def test_tra_basic6(self, count=1):
+    def test_tra_large_basic(self):
+        """ ipsec v4 transport 8k packets basic test """
+        self.test_tra_basic(payload="X"*8000)
+
+    def test_tra_large_burst(self):
+        """ ipsec v4 transport 8k packets burst test """
+        self.test_tra_basic(count=257, payload="X"*8000)
+
+    def test_tra_basic6(self, count=1, payload=None):
         """ ipsec v6 transport basic test """
         self.vapi.cli("clear errors")
         try:
@@ -306,7 +324,7 @@ class IpsecTraTests(object):
             send_pkts = self.gen_encrypt_pkts6(p.scapy_tra_sa, self.tra_if,
                                                src=self.tra_if.remote_ip6,
                                                dst=self.tra_if.local_ip6,
-                                               count=count)
+                                               count=count, payload=payload)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
@@ -327,9 +345,17 @@ class IpsecTraTests(object):
         """ ipsec v6 transport burst test """
         self.test_tra_basic6(count=257)
 
+    def test_tra_large_basic6(self):
+        """ ipsec v6 transport 8k packets basic test """
+        self.test_tra_basic6(payload="X"*8000)
+
+    def test_tra_large_burst6(self):
+        """ ipsec v6 transport 8k packets burst test """
+        self.test_tra_basic6(count=257, payload="X"*8000)
+
 
 class IpsecTun4Tests(object):
-    def test_tun_basic44(self, count=1):
+    def test_tun_basic44(self, count=1, payload=None):
         """ ipsec 4o4 tunnel basic test """
         self.vapi.cli("clear errors")
         try:
@@ -338,28 +364,35 @@ class IpsecTun4Tests(object):
             send_pkts = self.gen_encrypt_pkts(scapy_tun_sa, self.tun_if,
                                               src=p.remote_tun_if_host,
                                               dst=self.pg1.remote_ip4,
-                                              count=count)
+                                              count=count, payload=payload)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
             for recv_pkt in recv_pkts:
                 self.assert_equal(recv_pkt[IP].src, p.remote_tun_if_host)
                 self.assert_equal(recv_pkt[IP].dst, self.pg1.remote_ip4)
                 self.assert_packet_checksums_valid(recv_pkt)
             send_pkts = self.gen_pkts(self.pg1, src=self.pg1.remote_ip4,
-                                      dst=p.remote_tun_if_host, count=count)
+                                      dst=p.remote_tun_if_host, count=count,
+                                      payload=payload)
             recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if)
             for recv_pkt in recv_pkts:
+                decrypt_pkt = None
                 try:
-                    decrypt_pkt = vpp_tun_sa.decrypt(recv_pkt[IP])
+                    # create a copy here because the decrypt method can corrupt
+                    # the original packet
+                    copy = recv_pkt[IP].__class__(str(recv_pkt[IP]))
+                    decrypt_pkt = vpp_tun_sa.decrypt(copy)
                     if not decrypt_pkt.haslayer(IP):
                         decrypt_pkt = IP(decrypt_pkt[Raw].load)
+                    self.logger.debug(ppp("After decrypt:", recv_pkt))
                     self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip4)
                     self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
                     self.assert_packet_checksums_valid(decrypt_pkt)
                 except:
                     self.logger.debug(ppp("Unexpected packet:", recv_pkt))
                     try:
-                        self.logger.debug(
-                            ppp("Decrypted packet:", decrypt_pkt))
+                        if decrypt_pkt:
+                            self.logger.debug(
+                                ppp("Decrypted packet:", decrypt_pkt))
                     except:
                         pass
                     raise
@@ -374,9 +407,17 @@ class IpsecTun4Tests(object):
         """ ipsec 4o4 tunnel burst test """
         self.test_tun_basic44(count=257)
 
+    def test_tun_large_basic44(self):
+        """ ipsec 4o4 tunnel 8K packets test """
+        self.test_tun_basic44(payload="X"*8000)
+
+    def test_tun_large_burst44(self):
+        """ ipsec 4o4 tunnel 8K packets burst test """
+        self.test_tun_basic44(count=257, payload="X"*8000)
+
 
 class IpsecTun6Tests(object):
-    def test_tun_basic66(self, count=1):
+    def test_tun_basic66(self, count=1, payload=None):
         """ ipsec 6o6 tunnel basic test """
         self.vapi.cli("clear errors")
         try:
@@ -385,7 +426,7 @@ class IpsecTun6Tests(object):
             send_pkts = self.gen_encrypt_pkts6(scapy_tun_sa, self.tun_if,
                                                src=p.remote_tun_if_host,
                                                dst=self.pg1.remote_ip6,
-                                               count=count)
+                                               count=count, payload=payload)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
             for recv_pkt in recv_pkts:
                 self.assert_equal(recv_pkt[IPv6].src, p.remote_tun_if_host)
@@ -421,6 +462,14 @@ class IpsecTun6Tests(object):
     def test_tun_burst66(self):
         """ ipsec 6o6 tunnel burst test """
         self.test_tun_basic66(count=257)
+
+    def test_tun_large_basic66(self):
+        """ ipsec 6o6 tunnel 8K packets test """
+        self.test_tun_basic66(payload="X"*8000)
+
+    def test_tun_large_burst66(self):
+        """ ipsec 6o6 tunnel 8K packets burst test """
+        self.test_tun_basic66(count=257, payload="X"*8000)
 
 
 class IpsecTunTests(IpsecTun4Tests, IpsecTun6Tests):
