@@ -629,7 +629,7 @@ class TestIgmp(VppTestCase):
         self.assertFalse(self.vapi.igmp_dump())
 
         #
-        # A (*,G) host report
+        # a TO_EX({}) / IN_EX({}) is treated like a (*,G) join
         #
         p_j = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
@@ -637,12 +637,77 @@ class TestIgmp(VppTestCase):
                                     option="router_alert")]) /
                IGMPv3(type="Version 3 Membership Report") /
                IGMPv3mr(numgrp=1) /
-               IGMPv3gr(rtype="Allow New Sources", maddr="239.1.1.2"))
+               IGMPv3gr(rtype="Change To Exclude Mode", maddr="239.1.1.2"))
 
         self.send(self.pg0, p_j)
 
         self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
                                             "239.1.1.2", "0.0.0.0", 1))
+
+        p_j = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
+                  options=[IPOption(copy_flag=1, optclass="control",
+                                    option="router_alert")]) /
+               IGMPv3(type="Version 3 Membership Report") /
+               IGMPv3mr(numgrp=1) /
+               IGMPv3gr(rtype="Mode Is Exclude", maddr="239.1.1.3"))
+
+        self.send(self.pg0, p_j)
+
+        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
+                                            "239.1.1.3", "0.0.0.0", 1))
+
+        #
+        # A 'allow sourcees' for {} should be ignored as it should
+        # never be sent.
+        #
+        p_j = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
+                  options=[IPOption(copy_flag=1, optclass="control",
+                                    option="router_alert")]) /
+               IGMPv3(type="Version 3 Membership Report") /
+               IGMPv3mr(numgrp=1) /
+               IGMPv3gr(rtype="Allow New Sources", maddr="239.1.1.4"))
+
+        self.send(self.pg0, p_j)
+
+        dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
+        self.assertTrue(find_igmp_state(dump, self.pg0,
+                                        "239.1.1.2", "0.0.0.0"))
+        self.assertTrue(find_igmp_state(dump, self.pg0,
+                                        "239.1.1.3", "0.0.0.0"))
+        self.assertFalse(find_igmp_state(dump, self.pg0,
+                                         "239.1.1.4", "0.0.0.0"))
+
+        #
+        # a TO_IN({}) and IS_IN({}) are treated like a (*,G) leave
+        #
+        self.vapi.cli("set logging class igmp level debug")
+        p_l = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
+                  options=[IPOption(copy_flag=1, optclass="control",
+                                    option="router_alert")]) /
+               IGMPv3(type="Version 3 Membership Report") /
+               IGMPv3mr(numgrp=1) /
+               IGMPv3gr(rtype="Change To Include Mode", maddr="239.1.1.2"))
+
+        self.send(self.pg0, p_l)
+        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
+                                            "239.1.1.2", "0.0.0.0", 0))
+
+        p_l = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
+                  options=[IPOption(copy_flag=1, optclass="control",
+                                    option="router_alert")]) /
+               IGMPv3(type="Version 3 Membership Report") /
+               IGMPv3mr(numgrp=1) /
+               IGMPv3gr(rtype="Mode Is Include", maddr="239.1.1.3"))
+
+        self.send(self.pg0, p_l)
+
+        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
+                                            "239.1.1.3", "0.0.0.0", 0))
+        self.assertFalse(self.vapi.igmp_dump(self.pg0.sw_if_index))
 
         #
         # disable router config
