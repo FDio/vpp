@@ -550,11 +550,9 @@ def autoconfig_main_menu():
     main_menu_text = '\nWhat would you like to do?\n\n\
 1) Show basic system information\n\
 2) Dry Run (Will save the configuration files in {}/vpp/vpp-config/dryrun for inspection)\n\
-       and user input in {}/vpp/vpp-config/configs/auto-config.yaml\n\
 3) Full configuration (WARNING: This will change the system configuration)\n\
 4) List/Install/Uninstall VPP.\n\
-5) Execute some basic tests.\n\
-9 or q) Quit'.format(rootdir, rootdir)
+q) Quit'.format(rootdir, rootdir)
 
     # 5) Dry Run from {}/vpp/vpp-config/auto-config.yaml (will not ask questions).\n\
     # 6) Install QEMU patch (Needed when running openstack).\n\
@@ -568,14 +566,12 @@ def autoconfig_main_menu():
         if len(answer) > 1:
             print "Please enter only 1 character."
             continue
-        if re.findall(r'[Qq1-79]', answer):
+        if re.findall(r'[Qq1-4]', answer):
             input_valid = True
             answer = answer[0].lower()
         else:
-            print "Please enter a character between 1 and 5 or 9."
+            print "Please enter a character between 1 and 4 or q."
 
-    if answer == '9':
-        answer = 'q'
     return answer
 
 
@@ -599,9 +595,7 @@ def autoconfig_main():
             autoconfig_apply()
         elif answer == '4':
             autoconfig_install()
-        elif answer == '5':
-            autoconfig_basic_test()
-        elif answer == '9' or answer == 'q':
+        elif answer == 'q':
             return
         else:
             autoconfig_not_implemented()
