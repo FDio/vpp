@@ -256,7 +256,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	      last_sa_index = sa_index0;
 	    }
 
-	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
+	  if (PREDICT_FALSE (sa_seq_advance (sa0)))
 	    {
 	      clib_warning ("sequence number counter has cycled SPI %u",
 			    sa0->spi);

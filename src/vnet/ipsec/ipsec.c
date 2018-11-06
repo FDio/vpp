@@ -244,6 +244,8 @@ ipsec_init (vlib_main_t * vm)
   vec_validate_aligned (im->empty_buffers, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
+  vec_validate (im->per_thread_data, tm->n_vlib_mains - 1);
+
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   ASSERT (node);
   im->error_drop_node_index = node->index;
@@ -286,6 +288,45 @@ ipsec_init (vlib_main_t * vm)
 
   return 0;
 }
+
+u8 *
+format_ipsec_error (u8 * s, va_list * args)
+{
+  ipsec_error_e e = va_arg (*args, ipsec_error_e);
+
+  switch (e)
+    {
+    case IPSEC_ERR_OK:
+      s = format (s, "ok");
+      break;
+    case IPSEC_ERR_CIPHERING_FAILED:
+      s = format (s, "cipher-fail");
+      break;
+    case IPSEC_ERR_INTEG_ERROR:
+      s = format (s, "integ-error");
+      break;
+    case IPSEC_ERR_SEQ_CYCLED:
+      s = format (s, "seq-cycled");
+      break;
+    case IPSEC_ERR_REPLAY:
+      s = format (s, "replay");
+      break;
+    case IPSEC_ERR_NOT_IP:
+      s = format (s, "not-ip-packet");
+      break;
+    case IPSEC_ERR_NO_BUF:
+      s = format (s, "no-buffers");
+      break;
+    case IPSEC_ERR_RND_GEN_FAILED:
+      s = format (s, "random-gen-failed");
+      break;
+    default:
+      s = format (s, "unknown-err-%d", e);
+      break;
+    }
+  return s;
+}
+
 
 VLIB_INIT_FUNCTION (ipsec_init);
 
