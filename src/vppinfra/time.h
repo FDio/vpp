@@ -56,6 +56,8 @@ typedef struct
      from clock cycles into seconds. */
   f64 seconds_per_clock;
 
+  f64 round_to_units;
+
   /* Time stamp of call to clib_time_init call. */
   u64 init_cpu_time;
 

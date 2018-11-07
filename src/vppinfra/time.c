@@ -198,7 +198,6 @@ clib_time_verify_frequency (clib_time_t * c)
   f64 dtr_max;
   u64 dtc = c->last_cpu_time - c->last_verify_cpu_time;
   f64 new_clocks_per_second, delta;
-  f64 round_units = 100e5;
 
   c->last_verify_cpu_time = c->last_cpu_time;
   c->last_verify_reference_time = now_reference;
@@ -218,12 +217,27 @@ clib_time_verify_frequency (clib_time_t * c)
       return;
     }
 
+  if (PREDICT_FALSE (c->round_to_units == 0.0))
+    {
+      f64 next_pow10, est_round_to_units;
+      /*
+       * Compute the first power of ten which is greater than
+       * 0.1% of the new clock rate. Save the result, and use it
+       * to round future results, so we don't end up calculating
+       * silly-looking clock rates.
+       */
+      est_round_to_units = ((f64) dtc / dtr) * 0.001;
+      next_pow10 = ceil (log10 (est_round_to_units));
+      c->round_to_units = pow (10.0, next_pow10);
+    }
+
   /*
    * Reject large frequency changes, another consequence of
    * system clock changes particularly with old kernels.
    */
   new_clocks_per_second =
-    flt_round_nearest ((f64) dtc / (dtr * round_units)) * round_units;
+    flt_round_nearest ((f64) dtc / (dtr * c->round_to_units))
+    * c->round_to_units;
 
   delta = new_clocks_per_second - c->clocks_per_second;
   if (delta < 0.0)
@@ -238,7 +252,8 @@ clib_time_verify_frequency (clib_time_t * c)
     }
 
   c->clocks_per_second =
-    flt_round_nearest ((f64) dtc / (dtr * round_units)) * round_units;
+    flt_round_nearest ((f64) dtc / (dtr * c->round_to_units))
+    * c->round_to_units;
   c->seconds_per_clock = 1 / c->clocks_per_second;
 
   /* Double time between verifies; max at 64 secs ~ 1 minute. */
