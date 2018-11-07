@@ -760,8 +760,8 @@ VLIB_REGISTER_NODE (gtpu4_input_node) = {
   .n_next_nodes = GTPU_INPUT_N_NEXT,
   .next_nodes = {
     [GTPU_INPUT_NEXT_DROP]             = "error-drop",
-    [GTPU_INPUT_NEXT_IP4_CLASSIFY]     = "upf-ip4-classify",
-    [GTPU_INPUT_NEXT_IP6_CLASSIFY]     = "upf-ip6-classify",
+    [GTPU_INPUT_NEXT_IP4_CLASSIFY]     = "upf-ip4-flow-process",
+    [GTPU_INPUT_NEXT_IP6_CLASSIFY]     = "upf-ip6-flow-process",
     [GTPU_INPUT_NEXT_ERROR_INDICATION] = "gtp-error-indication",
     [GTPU_INPUT_NEXT_ECHO_REQUEST]     = "upf-ip4-echo-request",
   },

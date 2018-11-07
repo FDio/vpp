@@ -3,6 +3,7 @@
 
 #include <features.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <sys/types.h>
 
 #include <vnet/ethernet/mac_address.h>

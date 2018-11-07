@@ -32,7 +32,7 @@
 #include <upf/upf.h>
 #include <upf/upf_pfcp.h>
 
-#if CLIB_DEBUG > 0
+#if (CLIB_DEBUG > 0)
 #define gtp_debug clib_warning
 #else
 #define gtp_debug(...)				\
@@ -40,8 +40,8 @@
 #endif
 
 /* Statistics (not all errors) */
-#define foreach_upf_classify_error    \
-_(CLASSIFY, "good packets classify")
+#define foreach_upf_classify_error		\
+  _(CLASSIFY, "good packets classify")
 
 static char * upf_classify_error_strings[] = {
 #define _(sym,string) string,
@@ -51,16 +51,22 @@ static char * upf_classify_error_strings[] = {
 
 typedef enum {
 #define _(sym,str) UPF_CLASSIFY_ERROR_##sym,
-    foreach_upf_classify_error
+  foreach_upf_classify_error
 #undef _
-    UPF_CLASSIFY_N_ERROR,
+  UPF_CLASSIFY_N_ERROR,
 } upf_classify_error_t;
+
+typedef enum {
+  UPF_CLASSIFY_NEXT_DROP,
+  UPF_CLASSIFY_NEXT_PROCESS,
+  UPF_CLASSIFY_N_NEXT,
+} upf_classify_next_t;
 
 typedef struct {
   u32 session_index;
   u64 cp_seid;
-  u32 pdr_id;
-  u32 far_id;
+  u32 pdr_idx;
+  u32 next_index;
   u8 packet_data[64 - 1 * sizeof (u32)];
 } upf_classify_trace_t;
 
@@ -72,21 +78,109 @@ u8 * format_upf_classify_trace (u8 * s, va_list * args)
     = va_arg (*args, upf_classify_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "upf_session%d cp-seid 0x%016" PRIx64 " pdr %d far %d\n%U%U",
-	      t->session_index, t->cp_seid, t->pdr_id, t->far_id,
+  s = format (s, "upf_session%d cp-seid 0x%016" PRIx64 " pdr %d, next_index = %d\n%U%U",
+	      t->session_index, t->cp_seid, t->pdr_idx, t->next_index,
 	      format_white_space, indent,
 	      format_ip4_header, t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
+always_inline u32
+upf_acl_classify(vlib_main_t * vm, vlib_buffer_t * b, flow_entry_t * flow,
+		 struct rules * active, u8 is_ip4)
+{
+  u32 next = UPF_CLASSIFY_NEXT_DROP;
+  struct rte_acl_ctx *acl;
+  uint32_t results[1];
+  const u8 *data[4];
+  u8 direction;
+  u8 * pl;
+
+  direction = vnet_buffer (b)->gtpu.src_intf == INTF_ACCESS ? UL_SDF : DL_SDF;
+  pl = vlib_buffer_get_current(b) + vnet_buffer (b)->gtpu.data_offset;
+
+  acl = is_ip4 ? active->sdf[direction].ip4 : active->sdf[direction].ip6;
+  if (acl == NULL)
+    {
+      gtpu_intf_tunnel_key_t key;
+      uword *p;
+
+      key.src_intf = vnet_buffer (b)->gtpu.src_intf;
+      key.teid = vnet_buffer (b)->gtpu.teid;
+
+      p = hash_get (active->wildcard_teid, key.as_u64);
+      if (PREDICT_TRUE (p != NULL))
+	{
+	  vnet_buffer (b)->gtpu.pdr_idx = p[0];
+	  next = UPF_CLASSIFY_NEXT_PROCESS;
+	}
+    }
+  else
+    {
+      u32 save, *teid;
+
+      data[0] = pl;
+
+      /* append TEID to data */
+      teid = (u32 *)(pl + (is_ip4 ? sizeof(ip4_header_t) : sizeof(ip6_header_t))
+		     + sizeof(udp_header_t));
+      save = *teid;
+      *teid = vnet_buffer (b)->gtpu.teid;
+
+      if (is_ip4)
+	{
+#if CLIB_DEBUG > 0
+	  ip4_header_t *ip4 = (ip4_header_t *)pl;
+#endif
+
+	  rte_acl_classify(acl, data, results, 1, 1);
+	  if (PREDICT_TRUE (results[0] != 0))
+	    {
+	      vnet_buffer (b)->gtpu.pdr_idx = results[0] - 1;
+	      next = UPF_CLASSIFY_NEXT_PROCESS;
+	    }
+
+	  gtp_debug("Ctx: %p, src: %U, dst %U, r: %d\n",
+		    acl,
+		    format_ip4_address, &ip4->src_address,
+		    format_ip4_address, &ip4->dst_address,
+		    results[0]);
+	}
+      else
+	{
+#if CLIB_DEBUG > 0
+	  ip6_header_t *ip6 = (ip6_header_t *)pl;
+#endif
+
+	  rte_acl_classify(acl, data, results, 1, 1);
+	  if (PREDICT_TRUE (results[0] != 0))
+	    {
+	      vnet_buffer (b)->gtpu.pdr_idx = results[0] - 1;
+	      next = UPF_CLASSIFY_NEXT_PROCESS;
+	    }
+
+	  gtp_debug("Ctx: %p, src: %U, dst %U, r: %d\n",
+		    acl,
+		    format_ip6_address, &ip6->src_address,
+		    format_ip6_address, &ip6->dst_address,
+		    results[0]);
+	}
+
+      *teid = save;
+    }
+
+  return next;
+}
+
 static uword
 upf_classify (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame, int is_ip4)
+	      vlib_frame_t * from_frame, int is_ip4)
 {
   u32 n_left_from, next_index, * from, * to_next;
   upf_main_t * gtm = &upf_main;
   vnet_main_t * vnm = gtm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
+  flowtable_main_t * fm = &flowtable_main;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -96,12 +190,9 @@ upf_classify (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 sw_if_index = 0;
   u32 next = 0;
   upf_session_t * sess = NULL;
+  struct rules *active;
   u32 sidx = 0;
   u32 len;
-  struct rules *active;
-  struct rte_acl_ctx *acl;
-  uint32_t results[1]; /* make classify by 4 categories. */
-  const u8 *data[4];
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
@@ -109,12 +200,10 @@ upf_classify (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left_from > 0)
     {
-      upf_pdr_t * pdr = NULL;
-      upf_far_t * far = NULL;
       u32 n_left_to_next;
       vlib_buffer_t * b;
-      u8 direction;
-      u8 * pl;
+      flow_entry_t * flow;
+      u8 flow_direction;
       u32 bi;
 
       vlib_get_next_frame (vm, node, next_index,
@@ -134,215 +223,26 @@ upf_classify (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Get next node index and adj index from tunnel next_dpo */
 	  sidx = vnet_buffer (b)->gtpu.session_index;
 	  sess = pool_elt_at_index (gtm->sessions, sidx);
-
-	  next = UPF_CLASSIFY_NEXT_DROP;
 	  active = sx_get_rules(sess, SX_ACTIVE);
-	  direction = vnet_buffer (b)->gtpu.src_intf == INTF_ACCESS ? UL_SDF : DL_SDF;
 
-	  pl = vlib_buffer_get_current(b) + vnet_buffer (b)->gtpu.data_offset;
+	  next = UPF_CLASSIFY_NEXT_PROCESS;
 
-	  acl = is_ip4 ? active->sdf[direction].ip4 : active->sdf[direction].ip6;
-	  if (acl == NULL)
+	  flow = pool_elt_at_index(fm->flows, vnet_buffer (b)->gtpu.flow_id);
+	  ASSERT(flow != NULL);
+
+	  flow_direction = vnet_buffer (b)->gtpu.src_intf == flow->src_intf ? FT_FORWARD : FT_REVERSE;
+	  vnet_buffer (b)->gtpu.pdr_idx = flow->pdr_id[flow_direction];
+
+	  if (vnet_buffer (b)->gtpu.pdr_idx == ~0)
+	    next = upf_acl_classify(vm, b, flow, active, is_ip4);
+	  else if (flow->stats[0].bytes > 4096 && flow->stats[1].bytes > 4096)
 	    {
-	      gtpu_intf_tunnel_key_t key;
-	      uword *p;
-
-	      key.src_intf = vnet_buffer (b)->gtpu.src_intf;
-	      key.teid = vnet_buffer (b)->gtpu.teid;
-
-	      p = hash_get (active->wildcard_teid, key.as_u64);
-
-
-	      if (PREDICT_TRUE (p != NULL))
-		{
-		  pdr = sx_get_pdr_by_id(active, p[0]);
-		  if (PREDICT_TRUE (pdr != NULL))
-		    {
-		      vnet_buffer (b)->gtpu.pdr_idx = pdr - active->pdr;
-		      far = sx_get_far_by_id(active, pdr->far_id);
-		    }
-		}
-	    }
-	  else
-	    {
-	      u32 save, *teid;
-
-	      data[0] = pl;
-
-	      /* append TEID to data */
-	      teid = (u32 *)(pl + (is_ip4 ? sizeof(ip4_header_t) : sizeof(ip6_header_t))
-			     + sizeof(udp_header_t));
-	      save = *teid;
-	      *teid = vnet_buffer (b)->gtpu.teid;
-
-	      if (is_ip4)
-		{
-#if CLIB_DEBUG > 0
-		  ip4_header_t *ip4 = (ip4_header_t *)pl;
-#endif
-
-		  rte_acl_classify(acl, data, results, 1, 1);
-		  gtp_debug("Ctx: %p, src: %U, dst %U, r: %d\n",
-			       acl,
-			       format_ip4_address, &ip4->src_address,
-			       format_ip4_address, &ip4->dst_address,
-			       results[0]);
-		  if (PREDICT_TRUE (results[0] != 0))
-		    {
-		      vnet_buffer (b)->gtpu.pdr_idx = results[0] - 1;
-
-		      /* TODO: this should be optimized */
-		      pdr = active->pdr + results[0] - 1;
-		      far = sx_get_far_by_id(active, pdr->far_id);
-		    }
-		}
-	      else
-		{
-#if CLIB_DEBUG > 0
-		  ip6_header_t *ip6 = (ip6_header_t *)pl;
-#endif
-
-		  rte_acl_classify(acl, data, results, 1, 1);
-		  gtp_debug("Ctx: %p, src: %U, dst %U, r: %d\n",
-			       acl,
-			       format_ip6_address, &ip6->src_address,
-			       format_ip6_address, &ip6->dst_address,
-			       results[0]);
-		  if (PREDICT_TRUE (results[0] != 0))
-		    {
-		      vnet_buffer (b)->gtpu.session_index = sidx;
-		      vnet_buffer (b)->gtpu.pdr_idx = results[0] - 1;
-
-		      /* TODO: this should be optimized */
-		      pdr = active->pdr + results[0] - 1;
-		      far = sx_get_far_by_id(active, pdr->far_id);
-		    }
-		}
-
-	      *teid = save;
+	      /* stop flow classification after 4k in each direction */
+	      flow->next[flow_direction] = FT_NEXT_PROCESS;
 	    }
 
-	  if (PREDICT_TRUE (pdr != 0))
-	    {
-	      /* Outer Header Removal */
-	      switch (pdr->outer_header_removal)
-		{
-		case 0:			/* GTP-U/UDP/IPv4 */
-		  if (PREDICT_FALSE ((vnet_buffer (b)->gtpu.flags & BUFFER_HDR_MASK) !=
-				     BUFFER_GTP_UDP_IP4))
-		    {
-		      next = UPF_CLASSIFY_NEXT_DROP;
-		      // error = UPF_CLASSIFY_ERROR_INVALID_OUTER_HEADER;
-		      goto trace;
-		    }
-		  vlib_buffer_advance (b, vnet_buffer (b)->gtpu.data_offset);
-		  break;
-
-		case 1:			/* GTP-U/UDP/IPv6 */
-		  if (PREDICT_FALSE ((vnet_buffer (b)->gtpu.flags & BUFFER_HDR_MASK) !=
-				     BUFFER_GTP_UDP_IP6))
-		    {
-		      next = UPF_CLASSIFY_NEXT_DROP;
-		      // error = UPF_CLASSIFY_ERROR_INVALID_OUTER_HEADER;
-		      goto trace;
-		    }
-		  vlib_buffer_advance (b, vnet_buffer (b)->gtpu.data_offset);
-		  break;
-
-		case 2:			/* UDP/IPv4 */
-		  if (PREDICT_FALSE ((vnet_buffer (b)->gtpu.flags & BUFFER_HDR_MASK) !=
-				     BUFFER_UDP_IP4))
-		    {
-		      next = UPF_CLASSIFY_NEXT_DROP;
-		      // error = UPF_CLASSIFY_ERROR_INVALID_OUTER_HEADER;
-		      goto trace;
-		    }
-		  vlib_buffer_advance (b, sizeof(ip4_header_t) + sizeof(udp_header_t));
-		  break;
-
-		case 3:			/* UDP/IPv6 */
-		  if (PREDICT_FALSE ((vnet_buffer (b)->gtpu.flags & BUFFER_HDR_MASK) !=
-				     BUFFER_UDP_IP6))
-		    {
-		      next = UPF_CLASSIFY_NEXT_DROP;
-		      // error = UPF_CLASSIFY_ERROR_INVALID_OUTER_HEADER;
-		      goto trace;
-		    }
-		  vlib_buffer_advance (b, sizeof(ip6_header_t) + sizeof(udp_header_t));
-		  break;
-		}
-
-	      if (PREDICT_TRUE (far->apply_action & FAR_FORWARD))
-		{
-		  if (far->forward.flags & FAR_F_OUTER_HEADER_CREATION)
-		    {
-		      if (far->forward.outer_header_creation.description
-			  & OUTER_HEADER_CREATION_GTP_IP4)
-			{
-			  next = UPF_CLASSIFY_NEXT_GTP_IP4_ENCAP;
-			}
-		      else if (far->forward.outer_header_creation.description
-			       & OUTER_HEADER_CREATION_GTP_IP6)
-			{
-			  next = UPF_CLASSIFY_NEXT_GTP_IP6_ENCAP;
-			}
-		      else if (far->forward.outer_header_creation.description
-			       & OUTER_HEADER_CREATION_UDP_IP4)
-			{
-			  next = UPF_CLASSIFY_NEXT_DROP;
-			  // error = UPF_CLASSIFY_ERROR_NOT_YET;
-			  goto trace;
-			}
-		      else if (far->forward.outer_header_creation.description
-			       & OUTER_HEADER_CREATION_UDP_IP6)
-			{
-			  next = UPF_CLASSIFY_NEXT_DROP;
-			  // error = UPF_CLASSIFY_ERROR_NOT_YET;
-			  goto trace;
-			}
-		    }
-		  else
-		    {
-		      if (is_ip4)
-			{
-			  b->flags &= ~(VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-					VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
-					VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
-			  vnet_buffer (b)->sw_if_index[VLIB_TX] =
-			    ip4_fib_table_get_index_for_sw_if_index(far->forward.dst_sw_if_index);
-			}
-		      else
-			{
-			  b->flags &= ~(VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
-					VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
-			  vnet_buffer (b)->sw_if_index[VLIB_TX] =
-			    ip6_fib_table_get_index_for_sw_if_index(far->forward.dst_sw_if_index);
-			}
-		      next = UPF_CLASSIFY_NEXT_IP_INPUT;
-		    }
-		}
-	      else if (far->apply_action & FAR_BUFFER)
-		{
-		  next = UPF_CLASSIFY_NEXT_DROP;
-		  // error = UPF_CLASSIFY_ERROR_NOT_YET;
-		}
-	      else
-		{
-		  next = UPF_CLASSIFY_NEXT_DROP;
-		}
-
-#define IS_DL(_pdr, _far)						\
-	  ((_pdr)->pdi.src_intf == SRC_INTF_CORE || (_far)->forward.dst_intf == DST_INTF_ACCESS)
-#define IS_UL(_pdr, _far)			\
-	  ((_pdr)->pdi.src_intf == SRC_INTF_ACCESS || (_far)->forward.dst_intf == DST_INTF_CORE)
-
-	      clib_warning("pdr: %d, far: %d\n", pdr->id, far->id);
-	      next = process_urrs(vm, sess, active, pdr, b,
-				  IS_DL(pdr, far), IS_UL(pdr, far), next);
-
-#undef IS_DL
-#undef IS_UL
-	    }
+	  if (vnet_buffer (b)->gtpu.pdr_idx != ~0)
+	    flow->pdr_id[flow_direction] = vnet_buffer (b)->gtpu.pdr_idx;
 
 	  len = vlib_buffer_length_in_chain (vm, b);
 	  stats_n_packets += 1;
@@ -366,15 +266,14 @@ upf_classify (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      stats_sw_if_index = sw_if_index;
 	    }
 
-	trace:
 	  if (PREDICT_FALSE(b->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      upf_classify_trace_t *tr =
 		vlib_add_trace (vm, node, b, sizeof (*tr));
 	      tr->session_index = sidx;
 	      tr->cp_seid = sess->cp_seid;
-	      tr->pdr_id = pdr ? pdr->id : ~0;
-	      tr->far_id = far ? far->id : ~0;
+	      tr->pdr_idx = vnet_buffer (b)->gtpu.pdr_idx;
+	      tr->next_index = next;
 	      clib_memcpy (tr->packet_data, vlib_buffer_get_current (b),
 			   sizeof (tr->packet_data));
 	    }
@@ -392,18 +291,18 @@ upf_classify (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 static uword
 upf_ip4_classify (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame)
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * from_frame)
 {
-	return upf_classify(vm, node, from_frame, /* is_ip4 */ 1);
+  return upf_classify(vm, node, from_frame, /* is_ip4 */ 1);
 }
 
 static uword
 upf_ip6_classify (vlib_main_t * vm,
-		    vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame)
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * from_frame)
 {
-	return upf_classify(vm, node, from_frame, /* is_ip4 */ 0);
+  return upf_classify(vm, node, from_frame, /* is_ip4 */ 0);
 }
 
 VLIB_REGISTER_NODE (upf_ip4_classify_node) = {
@@ -416,10 +315,8 @@ VLIB_REGISTER_NODE (upf_ip4_classify_node) = {
   .error_strings = upf_classify_error_strings,
   .n_next_nodes = UPF_CLASSIFY_N_NEXT,
   .next_nodes = {
-    [UPF_CLASSIFY_NEXT_DROP]          = "error-drop",
-    [UPF_CLASSIFY_NEXT_GTP_IP4_ENCAP] = "upf4-encap",
-    [UPF_CLASSIFY_NEXT_GTP_IP6_ENCAP] = "upf6-encap",
-    [UPF_CLASSIFY_NEXT_IP_INPUT]      = "ip4-input",
+    [UPF_CLASSIFY_NEXT_DROP]    = "error-drop",
+    [UPF_CLASSIFY_NEXT_PROCESS] = "upf-ip4-process",
   },
 };
 
@@ -435,10 +332,8 @@ VLIB_REGISTER_NODE (upf_ip6_classify_node) = {
   .error_strings = upf_classify_error_strings,
   .n_next_nodes = UPF_CLASSIFY_N_NEXT,
   .next_nodes = {
-    [UPF_CLASSIFY_NEXT_DROP]          = "error-drop",
-    [UPF_CLASSIFY_NEXT_GTP_IP4_ENCAP] = "upf4-encap",
-    [UPF_CLASSIFY_NEXT_GTP_IP6_ENCAP] = "upf6-encap",
-    [UPF_CLASSIFY_NEXT_IP_INPUT]      = "ip6-input",
+    [UPF_CLASSIFY_NEXT_DROP]    = "error-drop",
+    [UPF_CLASSIFY_NEXT_PROCESS] = "upf-ip6-process",
   },
 };
 

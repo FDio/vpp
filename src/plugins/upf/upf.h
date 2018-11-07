@@ -38,6 +38,8 @@
 #include <vnet/fib/fib_table.h>
 
 #include "pfcp.h"
+#include "flowtable.h"
+
 
 #define BUFFER_HAS_GTP_HDR  (1<<0)
 #define BUFFER_HAS_UDP_HDR  (1<<1)
@@ -378,6 +380,12 @@ typedef struct {
   struct rte_acl_ctx *ip6;
 } upf_acl_ctx_t;
 
+enum {
+  UL_SDF = 0,
+  DL_SDF,
+  MAX_SDF
+};
+
 typedef struct {
   /* Required for pool_get_aligned  */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -405,11 +413,10 @@ typedef struct {
     upf_far_t *far;
     upf_urr_t *urr;
     uint32_t flags;
-#define SX_SDF_IPV4    0x0001
-#define SX_SDF_IPV6    0x0002
-    upf_acl_ctx_t sdf[2];
-#define UL_SDF 0
-#define DL_SDF 1
+#define SX_SDF_IPV4    BIT(0)
+#define SX_SDF_IPV6    BIT(1)
+
+    upf_acl_ctx_t sdf[MAX_SDF];
 
     ip46_address_fib_t *vrf_ip;
     gtpu4_tunnel_key_t *v4_teid;
@@ -575,12 +582,12 @@ extern vlib_node_registration_t upf4_encap_node;
 extern vlib_node_registration_t upf6_encap_node;
 
 typedef enum {
-  UPF_CLASSIFY_NEXT_DROP,
-  UPF_CLASSIFY_NEXT_GTP_IP4_ENCAP,
-  UPF_CLASSIFY_NEXT_GTP_IP6_ENCAP,
-  UPF_CLASSIFY_NEXT_IP_INPUT,
-  UPF_CLASSIFY_N_NEXT,
-} upf_classify_next_t;
+  UPF_PROCESS_NEXT_DROP,
+  UPF_PROCESS_NEXT_GTP_IP4_ENCAP,
+  UPF_PROCESS_NEXT_GTP_IP6_ENCAP,
+  UPF_PROCESS_NEXT_IP_INPUT,
+  UPF_PROCESS_N_NEXT,
+} upf_process_next_t;
 
 int upf_enable_disable (upf_main_t * sm, u32 sw_if_index,
 			  int enable_disable);
