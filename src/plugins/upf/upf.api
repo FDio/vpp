@@ -21,3 +21,11 @@ define upf_enable_disable_reply {
     /* Return value, zero means all OK */
     i32 retval;
 };
+
+autoreply define upf_app_flow_timeout_set {
+  u32 client_index;
+  u32 context;
+
+  u8 type;
+  u16 default_value;
+};

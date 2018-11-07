@@ -116,12 +116,16 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB)
     gtpu_encap.c
     gtpu_decap.c
     upf_if_input.c
+    upf_flow_node.c
     upf_classify.c
+    upf_process.c
     pfcp.c
     upf_pfcp.c
     upf_pfcp_api.c
     upf_pfcp_input.c
     upf_pfcp_server.c
+    flowtable_init.c
+    flowtable.c
 
     API_FILES
     upf.api
@@ -134,6 +138,8 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB)
     upf_pfcp.h
     upf_pfcp_api.h
     upf_pfcp_server.h
+    flowtable.h
+    flowtable_tcp.h
 
     LINK_LIBRARIES
     ${URCU_LIBRARIES}
