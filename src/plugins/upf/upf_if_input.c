@@ -57,8 +57,8 @@ typedef enum
 
 #define foreach_upf_if_input_next		\
   _(DROP, "error-drop")				\
-  _(IP4_CLASSIFY, "upf-ip4-classify")		\
-  _(IP6_CLASSIFY, "upf-ip6-classify")
+  _(IP4_CLASSIFY, "upf-ip4-flow-process")		\
+  _(IP6_CLASSIFY, "upf-ip6-flow-process")
 
 typedef enum
 {
