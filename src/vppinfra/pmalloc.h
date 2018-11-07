@@ -120,6 +120,7 @@ void *clib_pmalloc_alloc_from_arena (clib_pmalloc_main_t * pm, void *arena_va,
 				     uword size, uword align);
 
 format_function_t format_pmalloc;
+format_function_t format_pmalloc_map;
 
 always_inline clib_error_t *
 clib_pmalloc_last_error (clib_pmalloc_main_t * pm)

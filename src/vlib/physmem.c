@@ -112,7 +112,7 @@ show_physmem (vlib_main_t * vm,
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   unformat_input_t _line_input, *line_input = &_line_input;
-  u32 verbose = 0;
+  u32 verbose = 0, map = 0;
 
   if (unformat_user (input, unformat_line_input, line_input))
     {
@@ -126,20 +126,26 @@ show_physmem (vlib_main_t * vm,
 	    verbose = 2;
 	  else if (unformat (line_input, "d"))
 	    verbose = 2;
+	  else if (unformat (line_input, "map"))
+	    map = 1;
 	  else
 	    break;
 	}
       unformat_free (line_input);
     }
 
-  vlib_cli_output (vm, "  %U", format_pmalloc, vpm->pmalloc_main, verbose);
+  if (map)
+    vlib_cli_output (vm, " %U", format_pmalloc_map, vpm->pmalloc_main);
+  else
+    vlib_cli_output (vm, " %U", format_pmalloc, vpm->pmalloc_main, verbose);
+
   return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_physmem_command, static) = {
   .path = "show physmem",
-  .short_help = "Show physical memory allocation",
+  .short_help = "show physmem [verbose | detail | map]",
   .function = show_physmem,
 };
 /* *INDENT-ON* */
