@@ -3615,14 +3615,16 @@ class VppPapiProvider(object):
         """ GBP Subnet Dump """
         return self.api(self.papi.gbp_subnet_dump, {})
 
-    def gbp_contract_add_del(self, is_add, src_epg, dst_epg, acl_index):
+    def gbp_contract_add_del(self, is_add, src_epg, dst_epg, acl_index, rules):
         """ GBP contract Add/Del """
         return self.api(self.papi.gbp_contract_add_del,
                         {'is_add': is_add,
                          'contract': {
                              'acl_index': acl_index,
                              'src_epg': src_epg,
-                             'dst_epg': dst_epg}})
+                             'dst_epg': dst_epg,
+                             'n_rules': len(rules),
+                             'rules': rules}})
 
     def gbp_contract_dump(self):
         """ GBP contract Dump """

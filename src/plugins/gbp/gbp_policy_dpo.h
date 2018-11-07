@@ -59,6 +59,26 @@ extern gbp_policy_dpo_t *gbp_policy_dpo_get (index_t index);
 
 extern dpo_type_t gbp_policy_dpo_get_type (void);
 
+always_inline dpo_proto_t
+ethertype_to_dpo_proto (u16 etype)
+{
+  etype = clib_net_to_host_u16 (etype);
+
+  switch (etype)
+    {
+    case ETHERNET_TYPE_IP4:
+      return (DPO_PROTO_IP4);
+    case ETHERNET_TYPE_IP6:
+      return (DPO_PROTO_IP6);
+    }
+
+  return (DPO_PROTO_NONE);
+}
+
+extern vlib_node_registration_t ip4_gbp_policy_dpo_node;
+extern vlib_node_registration_t ip6_gbp_policy_dpo_node;
+extern vlib_node_registration_t gbp_policy_port_node;
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

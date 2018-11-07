@@ -14,6 +14,7 @@
  */
 
 #include <plugins/gbp/gbp.h>
+#include <plugins/gbp/gbp_policy_dpo.h>
 
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
@@ -67,6 +68,28 @@ typedef struct gbp_policy_trace_t_
   u32 allowed;
 } gbp_policy_trace_t;
 
+always_inline gbp_policy_next_t
+gbp_policy_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0)
+{
+  const ethernet_header_t *eth0;
+  const dpo_id_t *dpo;
+  dpo_proto_t dproto;
+
+  eth0 = vlib_buffer_get_current (b0);
+  /* pop the ethernet header to prepare for L3 rewrite */
+  vlib_buffer_advance (b0, vnet_buffer (b0)->l2.l2_len);
+
+  dproto = ethertype_to_dpo_proto (eth0->type);
+  dpo = &gu->gu_dpo[GBP_POLICY_NODE_L2][dproto];
+
+  /* save the LB index for the next node and reset the IP flow hash
+   * so it's recalculated */
+  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+  vnet_buffer (b0)->ip.flow_hash = 0;
+
+  return (dpo->dpoi_next_node);
+}
+
 static uword
 gbp_policy_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
@@ -93,12 +116,12 @@ gbp_policy_inline (vlib_main_t * vm,
 	  const gbp_endpoint_t *ge0;
 	  gbp_policy_next_t next0;
 	  gbp_contract_key_t key0;
-	  gbp_contract_value_t value0 = {
-	    .as_u64 = ~0,
-	  };
+	  gbp_contract_t *gc0;
 	  u32 bi0, sw_if_index0;
 	  vlib_buffer_t *b0;
+	  index_t gci0;
 
+	  gc0 = NULL;
 	  next0 = GBP_POLICY_NEXT_DENY;
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -161,9 +184,9 @@ gbp_policy_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  value0.as_u64 = gbp_acl_lookup (&key0);
+		  gci0 = gbp_contract_find (&key0);
 
-		  if (~0 != value0.gc_lc_index)
+		  if (INDEX_INVALID != gci0)
 		    {
 		      fa_5tuple_opaque_t pkt_5tuple0;
 		      u8 action0 = 0;
@@ -173,6 +196,7 @@ gbp_policy_inline (vlib_main_t * vm,
 		      u16 ether_type0;
 		      u8 is_ip60 = 0;
 
+		      gc0 = gbp_contract_get (gci0);
 		      l2_len0 = vnet_buffer (b0)->l2.l2_len;
 		      h0 = vlib_buffer_get_current (b0);
 
@@ -185,14 +209,14 @@ gbp_policy_inline (vlib_main_t * vm,
 		       */
 		      acl_plugin_fill_5tuple_inline (gm->
 						     acl_plugin.p_acl_main,
-						     value0.gc_lc_index, b0,
+						     gc0->gc_lc_index, b0,
 						     is_ip60,
 						     /* is_input */ 0,
 						     /* is_l2_path */ 1,
 						     &pkt_5tuple0);
 		      acl_plugin_match_5tuple_inline (gm->
 						      acl_plugin.p_acl_main,
-						      value0.gc_lc_index,
+						      gc0->gc_lc_index,
 						      &pkt_5tuple0, is_ip60,
 						      &action0, &acl_pos_p0,
 						      &acl_match_p0,
@@ -201,17 +225,30 @@ gbp_policy_inline (vlib_main_t * vm,
 
 		      if (action0 > 0)
 			{
-			  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+			  gbp_rule_t *gu;
 
-			  next0 =
-			    vnet_l2_feature_next (b0,
-						  gpm->l2_output_feat_next
-						  [is_port_based],
-						  (is_port_based ?
-						   L2OUTPUT_FEAT_GBP_POLICY_PORT
-						   :
-						   L2OUTPUT_FEAT_GBP_POLICY_MAC));
-			  ;
+			  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
+			  gu = &gc0->gc_rules[rule_match_p0];
+
+			  switch (gu->gu_action)
+			    {
+			    case GBP_RULE_PERMIT:
+			      next0 = vnet_l2_feature_next
+				(b0,
+				 gpm->l2_output_feat_next
+				 [is_port_based],
+				 (is_port_based ?
+				  L2OUTPUT_FEAT_GBP_POLICY_PORT :
+				  L2OUTPUT_FEAT_GBP_POLICY_MAC));
+			      break;
+			    case GBP_RULE_DENY:
+			      ASSERT (0);
+			      next0 = 0;
+			      break;
+			    case GBP_RULE_REDIRECT:
+			      next0 = gbp_policy_redirect (gu, b0);
+			      break;
+			    }
 			}
 		    }
 		}
@@ -237,8 +274,8 @@ gbp_policy_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->src_epg = key0.gck_src;
 	      t->dst_epg = key0.gck_dst;
-	      t->acl_index = value0.gc_acl_index;
-	      t->allowed = (next0 != GBP_POLICY_NEXT_DENY);
+	      t->acl_index = (gc0 ? gc0->gc_acl_index : ~0),
+		t->allowed = (next0 != GBP_POLICY_NEXT_DENY);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -308,15 +345,7 @@ VLIB_REGISTER_NODE (gbp_policy_mac_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_policy_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(gbp_policy_error_strings),
-  .error_strings = gbp_policy_error_strings,
-
-  .n_next_nodes = GBP_POLICY_N_NEXT,
-
-  .next_nodes = {
-    [GBP_POLICY_NEXT_DENY] = "error-drop",
-  },
+  .sibling_of = "gbp-policy-port",
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (gbp_policy_mac_node, gbp_policy_mac);
