@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a439fe91_d9aa2cbc",
+        "filename": "src/vnet/dhcp/dhcp4_proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-07T12:45:05Z",
+      "side": 1,
+      "message": "this looks to me as a good candidate for universal function in src/vlib/buffer_funcs.h\nI.e.\n\nalways_inline int\nvlib_buffer_linearize (vlib_main_t *vm, vlib_buffer_t *b)\n{\n   /* function takes chain of buffers, and it creates new chain which is detached from other clones and optimized by size */\n}\n\ni.e.\n\nif you got following chain:\n\nb1[256]-b2[1792]-b3[300]\n\nresult should be:\n\nb1[2048]-b4[300]\n\nwhere b2 are b3 are shared buffers (b-\u003en_add_ref \u003e 0)\nb4 is newly allocated buffer to accommodate last 300 bytes of data....",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 104,
+        "endChar": 31
+      },
+      "revId": "f4c0e5c6a261bb6ca8ab108761ce230bdd607a26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2e30a94c_812407b2",
+        "filename": "src/vnet/dhcp/dhcp4_proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-07T12:45:05Z",
+      "side": 1,
+      "message": "use vlib_buffer_length_in_chain(...) as it addresses case where VLIB_BUFFER_TOTAL_LENGTH_VALID flag is not set...",
+      "range": {
+        "startLine": 113,
+        "startChar": 31,
+        "endLine": 113,
+        "endChar": 75
+      },
+      "revId": "f4c0e5c6a261bb6ca8ab108761ce230bdd607a26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "83160178_6f010588",
+        "filename": "src/vnet/dhcp/dhcp4_proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-07T12:45:05Z",
+      "side": 1,
+      "message": "Maybe I missed something, but if i get it right you are detaching head buffer from tail but you are not decrementing reference count/freeing on the tail buffers so this means buffer leak.",
+      "range": {
+        "startLine": 126,
+        "startChar": 2,
+        "endLine": 126,
+        "endChar": 40
+      },
+      "revId": "f4c0e5c6a261bb6ca8ab108761ce230bdd607a26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
