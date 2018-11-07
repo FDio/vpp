@@ -251,11 +251,46 @@ define gbp_subnet_details
   vl_api_gbp_subnet_t subnet;
 };
 
-typeonly define gbp_contract
+typedef gbp_next_hop
+{
+  vl_api_address_t ip;
+  vl_api_mac_address_t mac;
+  u32 bd_id;
+};
+
+enum gbp_hash_mode
+{
+  GBP_API_HASH_MODE_SRC_IP,
+  GBP_API_HASH_MODE_DST_IP,
+};
+
+typedef gbp_next_hop_set
+{
+  vl_api_gbp_hash_mode_t hash_mode;
+  u8 n_nhs;
+  vl_api_gbp_next_hop_t nhs[8];
+};
+
+enum gbp_rule_action
+{
+  GBP_API_RULE_PERMIT,
+  GBP_API_RULE_DENY,
+  GBP_API_RULE_REDIRECT,
+};
+
+typedef gbp_rule
+{
+  vl_api_gbp_rule_action_t action;
+  vl_api_gbp_next_hop_set_t nh_set;
+};
+
+typedef gbp_contract
 {
   u16 src_epg;
   u16 dst_epg;
   u32 acl_index;
+  u8  n_rules;
+  vl_api_gbp_rule_t rules[n_rules];
 };
 
 autoreply define gbp_contract_add_del

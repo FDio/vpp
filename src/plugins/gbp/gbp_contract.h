@@ -37,24 +37,63 @@ typedef struct gbp_contract_key_t_
   };
 } gbp_contract_key_t;
 
-/**
- * The value for an Contract
- */
-typedef struct gbp_contract_value_t_
+typedef struct gbp_next_hop_t_
 {
-  union
-  {
-    struct
-    {
-      /**
-       * lookup context and acl index
-       */
-      u32 gc_lc_index;
-      u32 gc_acl_index;
-    };
-    u64 as_u64;
-  };
-} gbp_contract_value_t;
+  ip46_address_t gnh_ip;
+  mac_address_t gnh_mac;
+  index_t gnh_bd;
+} gbp_next_hop_t;
+
+#define foreach_gbp_hash_mode   \
+  _(SRC_IP, "src-ip")           \
+  _(DST_IP, "dst-ip")
+
+typedef enum gbp_hash_mode_t_
+{
+#define _(v,s) GBP_HASH_MODE_##v,
+  foreach_gbp_hash_mode
+#undef _
+} gbp_hash_mode_t;
+
+#define foreach_gbp_rule_action   \
+  _(PERMIT,   "permit")           \
+  _(DENY,     "deny")             \
+  _(REDIRECT, "redirect")
+
+typedef enum gbp_rule_action_t_
+{
+#define _(v,s) GBP_RULE_##v,
+  foreach_gbp_rule_action
+#undef _
+} gbp_rule_action_t;
+
+#define foreach_gbp_policy_node   \
+  _(L2, "L2")                     \
+  _(IP4, "ip4")                   \
+  _(IP6, "ip6")
+
+typedef enum gbp_policy_node_t_
+{
+#define _(v,s) GBP_POLICY_NODE_##v,
+  foreach_gbp_policy_node
+#undef _
+} gbp_policy_node_t;
+#define GBP_POLICY_N_NODES (GBP_POLICY_NODE_IP6+1)
+
+#define FOR_EACH_GBP_POLICY_NODE(pnode)         \
+  for (pnode = GBP_POLICY_NODE_L2; pnode < GBP_POLICY_N_NODES; pnode++)
+
+typedef struct gbp_rule_t_
+{
+  gbp_rule_action_t gu_action;
+  gbp_hash_mode_t gu_hash_mode;
+  gbp_next_hop_t *gu_nhs;
+
+  /**
+   * DPO of the load-balance object used to redirect
+   */
+  dpo_id_t gu_dpo[GBP_POLICY_N_NODES][DPO_PROTO_NUM];
+} gbp_rule_t;
 
 /**
  * A Group Based Policy Contract.
@@ -67,10 +106,13 @@ typedef struct gbp_contract_t_
    */
   gbp_contract_key_t gc_key;
 
+  u32 gc_acl_index;
+  u32 gc_lc_index;
+
   /**
    * The ACL to apply for packets from the source to the destination EPG
    */
-  gbp_contract_value_t gc_value;
+  gbp_rule_t *gc_rules;
 } gbp_contract_t;
 
 /**
@@ -84,21 +126,23 @@ typedef struct gbp_contract_db_t_
   uword *gc_hash;
 } gbp_contract_db_t;
 
-extern void gbp_contract_update (epg_id_t src_epg,
-				 epg_id_t dst_epg, u32 acl_index);
-extern void gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg);
+extern int gbp_contract_update (epg_id_t src_epg,
+				epg_id_t dst_epg,
+				u32 acl_index, gbp_rule_t * rultes);
+extern int gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg);
 
 typedef int (*gbp_contract_cb_t) (gbp_contract_t * gbpe, void *ctx);
 extern void gbp_contract_walk (gbp_contract_cb_t bgpe, void *ctx);
 
+extern u8 *format_gbp_contract (u8 * s, va_list * args);
 
 /**
  * DP functions and databases
  */
 extern gbp_contract_db_t gbp_contract_db;
 
-always_inline u64
-gbp_acl_lookup (gbp_contract_key_t * key)
+always_inline index_t
+gbp_contract_find (gbp_contract_key_t * key)
 {
   uword *p;
 
@@ -107,7 +151,15 @@ gbp_acl_lookup (gbp_contract_key_t * key)
   if (NULL != p)
     return (p[0]);
 
-  return (~0);
+  return (INDEX_INVALID);
+}
+
+extern gbp_contract_t *gbp_contract_pool;
+
+always_inline gbp_contract_t *
+gbp_contract_get (index_t gci)
+{
+  return (pool_elt_at_index (gbp_contract_pool, gci));
 }
 
 #endif

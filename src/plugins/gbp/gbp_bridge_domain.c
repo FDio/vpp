@@ -96,6 +96,38 @@ gbp_bridge_domain_db_remove (gbp_bridge_domain_t * gb)
   gbp_bridge_domain_db.gbd_by_bd_index[gb->gb_bd_index] = INDEX_INVALID;
 }
 
+static u8 *
+format_gbp_bridge_domain_ptr (u8 * s, va_list * args)
+{
+  gbp_bridge_domain_t *gb = va_arg (*args, gbp_bridge_domain_t *);
+  vnet_main_t *vnm = vnet_get_main ();
+
+  if (NULL != gb)
+    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U locks:%d",
+		gb - gbp_bridge_domain_pool,
+		gb->gb_bd_id,
+		gb->gb_bd_index,
+		format_vnet_sw_if_index_name, vnm, gb->gb_bvi_sw_if_index,
+		format_vnet_sw_if_index_name, vnm, gb->gb_uu_fwd_sw_if_index,
+		gb->gb_locks);
+  else
+    s = format (s, "NULL");
+
+  return (s);
+}
+
+u8 *
+format_gbp_bridge_domain (u8 * s, va_list * args)
+{
+  index_t gbi = va_arg (*args, index_t);
+
+  s =
+    format (s, "%U", format_gbp_bridge_domain_ptr,
+	    gbp_bridge_domain_get (gbi));
+
+  return (s);
+}
+
 int
 gbp_bridge_domain_add_and_lock (u32 bd_id,
 				gbp_bridge_domain_flags_t flags,
@@ -158,7 +190,7 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       gb->gb_locks++;
     }
 
-  GBP_BD_DBG ("add: %U", format_gbp_bridge_domain, gb);
+  GBP_BD_DBG ("add: %U", format_gbp_bridge_domain_ptr, gb);
 
   return (0);
 }
@@ -174,7 +206,7 @@ gbp_bridge_domain_unlock (index_t index)
 
   if (0 == gb->gb_locks)
     {
-      GBP_BD_DBG ("destroy: %U", format_gbp_bridge_domain, gb);
+      GBP_BD_DBG ("destroy: %U", format_gbp_bridge_domain_ptr, gb);
 
       l2fib_del_entry (vnet_sw_interface_get_hw_address
 		       (vnet_get_main (), gb->gb_bvi_sw_if_index),
@@ -204,8 +236,7 @@ gbp_bridge_domain_delete (u32 bd_id)
 
   if (INDEX_INVALID != gbi)
     {
-      GBP_BD_DBG ("del: %U", format_gbp_bridge_domain,
-		  gbp_bridge_domain_get (gbi));
+      GBP_BD_DBG ("del: %U", format_gbp_bridge_domain, gbi);
       gbp_bridge_domain_unlock (gbi);
 
       return (0);
@@ -287,33 +318,13 @@ VLIB_CLI_COMMAND (gbp_bridge_domain_cli_node, static) = {
   .function = gbp_bridge_domain_cli,
 };
 
-u8 *
-format_gbp_bridge_domain (u8 * s, va_list * args)
-{
-  gbp_bridge_domain_t *gb = va_arg (*args, gbp_bridge_domain_t*);
-  vnet_main_t *vnm = vnet_get_main ();
-
-  if (NULL != gb)
-    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U locks:%d",
-                gb - gbp_bridge_domain_pool,
-                gb->gb_bd_id,
-                gb->gb_bd_index,
-                format_vnet_sw_if_index_name, vnm, gb->gb_bvi_sw_if_index,
-                format_vnet_sw_if_index_name, vnm, gb->gb_uu_fwd_sw_if_index,
-                gb->gb_locks);
-  else
-    s = format (s, "NULL");
-
-  return (s);
-}
-
 static int
 gbp_bridge_domain_show_one (gbp_bridge_domain_t *gb, void *ctx)
 {
   vlib_main_t *vm;
 
   vm = ctx;
-  vlib_cli_output (vm, "  %U",format_gbp_bridge_domain, gb);
+  vlib_cli_output (vm, "  %U", format_gbp_bridge_domain_ptr, gb);
 
   return (1);
 }
