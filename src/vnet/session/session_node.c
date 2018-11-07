@@ -99,7 +99,7 @@ session_mq_reset_reply_handler (void *data)
   s = session_get_if_valid (index, thread_index);
   if (!s)
     {
-      clib_warning ("Invalid session!");
+      SESSION_DBG ("Invalid session!");
       return;
     }
   app_wrk = app_worker_get (s->app_wrk_index);
@@ -751,7 +751,7 @@ static void
 session_update_dispatch_period (session_manager_worker_t * wrk, f64 now,
 				u32 thread_index)
 {
-  if (wrk->last_tx_packets > 1)
+  if (wrk->last_tx_packets)
     {
       f64 sample = now - wrk->last_vlib_time;
       wrk->dispatch_period = (wrk->dispatch_period + sample) * 0.5;

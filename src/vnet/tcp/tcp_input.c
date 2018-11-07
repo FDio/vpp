@@ -455,8 +455,11 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 
   if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
-      tc->mrtt_us = tcp_time_now_us (tc->c_thread_index) - tc->rtt_ts;
-      mrtt = clib_max ((u32) (tc->mrtt_us * THZ), 1);
+      f64 sample = tcp_time_now_us (tc->c_thread_index) - tc->rtt_ts;
+      tc->mrtt_us = tc->mrtt_us + (sample - tc->mrtt_us) * 0.125;
+      mrtt = clib_max ((u32) (sample * THZ), 1);
+      /* Allow measuring of a new RTT */
+      tc->rtt_ts = 0;
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window:
@@ -475,15 +478,33 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 
 done:
 
-  /* Allow measuring of a new RTT */
-  tc->rtt_ts = 0;
-
   /* If we got here something must've been ACKed so make sure boff is 0,
    * even if mrtt is not valid since we update the rto lower */
   tc->rto_boff = 0;
   tcp_update_rto (tc);
 
   return 0;
+}
+
+static void
+tcp_estimate_initial_rtt (tcp_connection_t * tc)
+{
+  u8 thread_index = vlib_num_workers ()? 1 : 0;
+  int mrtt;
+
+  if (tc->rtt_ts)
+    {
+      tc->mrtt_us = tcp_time_now_us (thread_index) - tc->rtt_ts;
+      mrtt = clib_max ((u32) (tc->mrtt_us * THZ), 1);
+      tc->rtt_ts = 0;
+    }
+  else
+    {
+      mrtt = tcp_time_now_w_thread (thread_index) - tc->rcv_opts.tsecr;
+      tc->mrtt_us = (f64) mrtt *TCP_TICK;
+    }
+  if (mrtt > 0 && mrtt < TCP_RTT_MAX)
+    tcp_estimate_rtt (tc, mrtt);
 }
 
 /**
@@ -514,6 +535,11 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       /* If everything has been acked, stop retransmit timer
        * otherwise update. */
       tcp_retransmit_timer_update (tc);
+
+      /* If not congested, update pacer based on our new
+       * cwnd estimate */
+      if (!tcp_in_fastrecovery (tc))
+	tcp_connection_tx_pacer_update (tc);
     }
   _vec_len (wrk->pending_deq_acked) = 0;
 }
@@ -1084,6 +1110,7 @@ tcp_cc_recovery_exit (tcp_connection_t * tc)
   tcp_update_rto (tc);
   tc->snd_rxt_ts = 0;
   tc->snd_nxt = tc->snd_una_max;
+  tc->rtt_ts = 0;
   tcp_recovery_off (tc);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
@@ -1096,6 +1123,7 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tc->rcv_dupacks = 0;
   tc->snd_nxt = tc->snd_una_max;
   tc->snd_rxt_bytes = 0;
+  tc->rtt_ts = 0;
 
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_1_smss_off (tc);
@@ -1381,6 +1409,10 @@ partial_ack:
    * Legitimate ACK. 1) See if we can exit recovery
    */
 
+  /* Update the pacing rate. For the first partial ack we move from
+   * the artificially constrained rate to the one after congestion */
+  tcp_connection_tx_pacer_update (tc);
+
   if (seq_geq (tc->snd_una, tc->snd_congestion))
     {
       tcp_retransmit_timer_update (tc);
@@ -1402,10 +1434,6 @@ partial_ack:
   /*
    * Legitimate ACK. 2) If PARTIAL ACK try to retransmit
    */
-
-  /* Update the pacing rate. For the first partial ack we move from
-   * the artificially constrained rate to the one after congestion */
-  tcp_connection_tx_pacer_update (tc);
 
   /* XXX limit this only to first partial ack? */
   tcp_retransmit_timer_force_update (tc);
@@ -2427,7 +2455,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Update rtt with the syn-ack sample */
-	  tcp_update_rtt (new_tc0, vnet_buffer (b0)->tcp.ack_number);
+	  tcp_estimate_initial_rtt (new_tc0);
 	  TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, new_tc0);
 	  error0 = TCP_ERROR_SYN_ACKS_RCVD;
 	}
@@ -2636,7 +2664,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Update rtt and rto */
-	  tcp_update_rtt (tc0, vnet_buffer (b0)->tcp.ack_number);
+	  tcp_estimate_initial_rtt (tc0);
 
 	  /* Switch state to ESTABLISHED */
 	  tc0->state = TCP_STATE_ESTABLISHED;
