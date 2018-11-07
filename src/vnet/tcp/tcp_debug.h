@@ -806,13 +806,14 @@ if (TCP_DEBUG_CC > 1)							\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "rcv_stat: rto %u srtt %u rttvar %u ",			\
-    .format_args = "i4i4i4",						\
+    .format = "rcv_stat: rto %u srtt %u mrtt-us %u rttvar %u",		\
+    .format_args = "i4i4i4i4",						\
   };									\
-  DECLARE_ETD(_tc, _e, 3);						\
+  DECLARE_ETD(_tc, _e, 4);						\
   ed->data[0] = _tc->rto;						\
   ed->data[1] = _tc->srtt;						\
-  ed->data[2] = _tc->rttvar;						\
+  ed->data[2] = (u32) (_tc->mrtt_us * 1e6);				\
+  ed->data[3] = _tc->rttvar;	 					\
 }
 
 #define TCP_EVT_CC_RTO_STAT_HANDLER(_tc, ...)				\
