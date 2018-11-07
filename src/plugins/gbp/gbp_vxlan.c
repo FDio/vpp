@@ -781,7 +781,7 @@ gbp_vxlan_tunnel_del (u32 vni)
       GBP_VXLAN_TUN_DBG ("del: %U", format_gbp_vxlan_tunnel,
 			 gt - gbp_vxlan_tunnel_pool);
 
-      gbp_endpoint_flush (gt->gt_sw_if_index);
+      gbp_endpoint_flush (GBP_ENDPOINT_SRC_DP, gt->gt_sw_if_index);
       ASSERT (0 == vec_len (gt->gt_tuns));
       vec_free (gt->gt_tuns);
 

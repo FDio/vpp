@@ -77,6 +77,7 @@ extern int gbp_bridge_domain_add_and_lock (u32 bd_id,
 extern void gbp_bridge_domain_unlock (index_t gbi);
 extern index_t gbp_bridge_domain_find_and_lock (u32 bd_id);
 extern int gbp_bridge_domain_delete (u32 bd_id);
+extern index_t gbp_bridge_domain_index (const gbp_bridge_domain_t *);
 
 typedef int (*gbp_bridge_domain_cb_t) (gbp_bridge_domain_t * gb, void *ctx);
 extern void gbp_bridge_domain_walk (gbp_bridge_domain_cb_t bgpe, void *ctx);

@@ -39,7 +39,7 @@ create_cmd::operator==(const create_cmd& other) const
 rc_t
 create_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), std::ref(*this));
+  msg_t req(con.ctx(), 1, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
@@ -82,7 +82,7 @@ delete_cmd::operator==(const delete_cmd& other) const
 rc_t
 delete_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), std::ref(*this));
+  msg_t req(con.ctx(), 1, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;

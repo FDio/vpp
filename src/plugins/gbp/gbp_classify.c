@@ -154,7 +154,7 @@ gbp_classify_inline (vlib_main_t * vm,
 		}
 
 	      if (PREDICT_TRUE (NULL != ge0))
-		src_epg = ge0->ge_epg_id;
+		src_epg = ge0->ge_fwd.gef_epg_id;
 	      else
 		src_epg = EPG_INVALID;
 	    }

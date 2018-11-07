@@ -66,11 +66,12 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
       fib_protocol_t fproto;
       index_t ggi;
 
-      ggi = gbp_endpoint_group_find_and_lock (epg_id);
+      ggi = gbp_endpoint_group_find (epg_id);
 
       if (INDEX_INVALID == ggi)
 	return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
+      gbp_endpoint_group_lock (ggi);
       pool_get (gbp_recirc_pool, gr);
       clib_memset (gr, 0, sizeof (*gr));
       gri = gr - gbp_recirc_pool;
@@ -119,10 +120,12 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
 	  mac_address_from_bytes (&mac,
 				  vnet_sw_interface_get_hw_address
 				  (vnet_get_main (), gr->gr_sw_if_index));
-	  gbp_endpoint_update (gr->gr_sw_if_index,
-			       NULL, &mac, gr->gr_epg,
-			       GBP_ENDPOINT_FLAG_NONE,
-			       NULL, NULL, &gr->gr_ep);
+	  gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
+					gr->gr_sw_if_index,
+					NULL, &mac, INDEX_INVALID,
+					INDEX_INVALID, gr->gr_epg,
+					GBP_ENDPOINT_FLAG_NONE,
+					NULL, NULL, &gr->gr_ep);
 	  vnet_feature_enable_disable ("ip4-unicast",
 				       "ip4-gbp-src-classify",
 				       gr->gr_sw_if_index, 1, 0, 0);
@@ -172,7 +175,7 @@ gbp_recirc_delete (u32 sw_if_index)
 
       if (gr->gr_is_ext)
 	{
-	  gbp_endpoint_delete (gr->gr_ep);
+	  gbp_endpoint_unlock (GBP_ENDPOINT_SRC_CP, gr->gr_ep);
 	  vnet_feature_enable_disable ("ip4-unicast",
 				       "ip4-gbp-src-classify",
 				       gr->gr_sw_if_index, 0, 0, 0);

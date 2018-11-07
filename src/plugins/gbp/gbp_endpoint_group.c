@@ -44,7 +44,7 @@ gbp_endpoint_group_get (index_t i)
   return (pool_elt_at_index (gbp_endpoint_group_pool, i));
 }
 
-static void
+void
 gbp_endpoint_group_lock (index_t i)
 {
   gbp_endpoint_group_t *gg;
@@ -63,21 +63,6 @@ gbp_endpoint_group_find (epg_id_t epg_id)
   if (NULL != p)
     return p[0];
 
-  return (INDEX_INVALID);
-}
-
-index_t
-gbp_endpoint_group_find_and_lock (epg_id_t epg_id)
-{
-  uword *p;
-
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg_id);
-
-  if (NULL != p)
-    {
-      gbp_endpoint_group_lock (p[0]);
-      return p[0];
-    }
   return (INDEX_INVALID);
 }
 
@@ -165,6 +150,9 @@ gbp_endpoint_group_unlock (index_t ggi)
 {
   gbp_endpoint_group_t *gg;
 
+  if (INDEX_INVALID == ggi)
+    return;
+
   gg = gbp_endpoint_group_get (ggi);
 
   gg->gg_locks--;
@@ -227,7 +215,7 @@ gbp_endpoint_group_get_bd_id (const gbp_endpoint_group_t * gg)
 }
 
 index_t
-gbp_endpoint_group_get_fib_index (gbp_endpoint_group_t * gg,
+gbp_endpoint_group_get_fib_index (const gbp_endpoint_group_t * gg,
 				  fib_protocol_t fproto)
 {
   const gbp_route_domain_t *grd;
@@ -235,16 +223,6 @@ gbp_endpoint_group_get_fib_index (gbp_endpoint_group_t * gg,
   grd = gbp_route_domain_get (gg->gg_rd);
 
   return (grd->grd_fib_index[fproto]);
-}
-
-u32
-gbp_endpoint_group_get_bvi (gbp_endpoint_group_t * gg)
-{
-  const gbp_bridge_domain_t *gb;
-
-  gb = gbp_bridge_domain_get (gg->gg_gbd);
-
-  return (gb->gb_bvi_sw_if_index);
 }
 
 void

@@ -156,16 +156,21 @@ vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
       ip_address_decode (&mp->endpoint.tun.src, &tun_src);
       ip_address_decode (&mp->endpoint.tun.dst, &tun_dst);
 
-      rv = gbp_endpoint_update (sw_if_index, ips, &mac,
-				ntohs (mp->endpoint.epg_id),
-				gef, &tun_src, &tun_dst, &handle);
+      rv = gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
+					 sw_if_index, ips, &mac,
+					 INDEX_INVALID, INDEX_INVALID,
+					 ntohs (mp->endpoint.epg_id),
+					 gef, &tun_src, &tun_dst, &handle);
     }
   else
     {
-      rv = gbp_endpoint_update (sw_if_index, ips, &mac,
-				ntohs (mp->endpoint.epg_id),
-				gef, NULL, NULL, &handle);
+      rv = gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
+					 sw_if_index, ips, &mac,
+					 INDEX_INVALID, INDEX_INVALID,
+					 ntohs (mp->endpoint.epg_id),
+					 gef, NULL, NULL, &handle);
     }
+  vec_free (ips);
   BAD_SW_IF_INDEX_LABEL;
 
   /* *INDENT-OFF* */
@@ -182,7 +187,7 @@ vl_api_gbp_endpoint_del_t_handler (vl_api_gbp_endpoint_del_t * mp)
   vl_api_gbp_endpoint_del_reply_t *rmp;
   int rv = 0;
 
-  gbp_endpoint_delete (ntohl (mp->handle));
+  gbp_endpoint_unlock (GBP_ENDPOINT_SRC_CP, ntohl (mp->handle));
 
   REPLY_MACRO (VL_API_GBP_ENDPOINT_DEL_REPLY + GBP_MSG_BASE);
 }
@@ -210,6 +215,8 @@ static walk_rc_t
 gbp_endpoint_send_details (index_t gei, void *args)
 {
   vl_api_gbp_endpoint_details_t *mp;
+  gbp_endpoint_loc_t *gel;
+  gbp_endpoint_fwd_t *gef;
   gbp_endpoint_t *ge;
   gbp_walk_ctx_t *ctx;
   u8 n_ips, ii;
@@ -217,7 +224,7 @@ gbp_endpoint_send_details (index_t gei, void *args)
   ctx = args;
   ge = gbp_endpoint_get (gei);
 
-  n_ips = vec_len (ge->ge_ips);
+  n_ips = vec_len (ge->ge_key.gek_ips);
   mp = vl_msg_api_alloc (sizeof (*mp) + (sizeof (*mp->endpoint.ips) * n_ips));
   if (!mp)
     return 1;
@@ -226,28 +233,32 @@ gbp_endpoint_send_details (index_t gei, void *args)
   mp->_vl_msg_id = ntohs (VL_API_GBP_ENDPOINT_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
+  gel = &ge->ge_locs[0];
+  gef = &ge->ge_fwd;
+
   if (gbp_endpoint_is_remote (ge))
     {
-      mp->endpoint.sw_if_index = ntohl (ge->tun.ge_parent_sw_if_index);
-      ip_address_encode (&ge->tun.ge_src, IP46_TYPE_ANY,
+      mp->endpoint.sw_if_index = ntohl (gel->tun.gel_parent_sw_if_index);
+      ip_address_encode (&gel->tun.gel_src, IP46_TYPE_ANY,
 			 &mp->endpoint.tun.src);
-      ip_address_encode (&ge->tun.ge_dst, IP46_TYPE_ANY,
+      ip_address_encode (&gel->tun.gel_dst, IP46_TYPE_ANY,
 			 &mp->endpoint.tun.dst);
     }
   else
     {
-      mp->endpoint.sw_if_index = ntohl (ge->ge_sw_if_index);
+      mp->endpoint.sw_if_index = ntohl (gef->gef_itf);
     }
-  mp->endpoint.epg_id = ntohs (ge->ge_epg_id);
+  mp->endpoint.epg_id = ntohs (ge->ge_fwd.gef_epg_id);
   mp->endpoint.n_ips = n_ips;
-  mp->endpoint.flags = gbp_endpoint_flags_encode (ge->ge_flags);
+  mp->endpoint.flags = gbp_endpoint_flags_encode (gef->gef_flags);
   mp->handle = htonl (gei);
   mp->age = vlib_time_now (vlib_get_main ()) - ge->ge_last_time;
-  mac_address_encode (&ge->ge_mac, &mp->endpoint.mac);
+  mac_address_encode (&ge->ge_key.gek_mac, &mp->endpoint.mac);
 
-  vec_foreach_index (ii, ge->ge_ips)
+  vec_foreach_index (ii, ge->ge_key.gek_ips)
   {
-    ip_address_encode (&ge->ge_ips[ii], IP46_TYPE_ANY, &mp->endpoint.ips[ii]);
+    ip_address_encode (&ge->ge_key.gek_ips[ii].fp_addr,
+		       IP46_TYPE_ANY, &mp->endpoint.ips[ii]);
   }
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
@@ -672,20 +683,186 @@ vl_api_gbp_recirc_dump_t_handler (vl_api_gbp_recirc_dump_t * mp)
   gbp_recirc_walk (gbp_recirc_send_details, &ctx);
 }
 
+static int
+gbp_contract_rule_action_deocde (vl_api_gbp_rule_action_t in,
+				 gbp_rule_action_t * out)
+{
+  in = clib_net_to_host_u32 (in);
+
+  switch (in)
+    {
+    case GBP_API_RULE_PERMIT:
+      *out = GBP_RULE_PERMIT;
+      return (0);
+    case GBP_API_RULE_DENY:
+      *out = GBP_RULE_DENY;
+      return (0);
+    case GBP_API_RULE_REDIRECT:
+      *out = GBP_RULE_REDIRECT;
+      return (0);
+    }
+
+  return (-1);
+}
+
+static int
+gbp_hash_mode_decode (vl_api_gbp_hash_mode_t in, gbp_hash_mode_t * out)
+{
+  in = clib_net_to_host_u32 (in);
+
+  switch (in)
+    {
+    case GBP_API_HASH_MODE_SRC_IP:
+      *out = GBP_HASH_MODE_SRC_IP;
+      return (0);
+    case GBP_API_HASH_MODE_DST_IP:
+      *out = GBP_HASH_MODE_DST_IP;
+      return (0);
+    }
+
+  return (-2);
+}
+
+static int
+gbp_next_hop_decode (const vl_api_gbp_next_hop_t * in, index_t * gnhi)
+{
+  ip46_address_t ip;
+  mac_address_t mac;
+  index_t grd, gbd;
+
+  gbd = gbp_bridge_domain_find_and_lock (ntohl (in->bd_id));
+
+  if (INDEX_INVALID == gbd)
+    return (VNET_API_ERROR_BD_NOT_MODIFIABLE);
+
+  grd = gbp_route_domain_find_and_lock (ntohl (in->rd_id));
+
+  if (INDEX_INVALID == grd)
+    return (VNET_API_ERROR_NO_SUCH_FIB);
+
+  ip_address_decode (&in->ip, &ip);
+  mac_address_decode (&in->mac, &mac);
+
+  *gnhi = gbp_next_hop_alloc (&ip, grd, &mac, gbd);
+
+  return (0);
+}
+
+static int
+gbp_next_hop_set_decode (const vl_api_gbp_next_hop_set_t * in,
+			 gbp_hash_mode_t * hash_mode, index_t ** out)
+{
+
+  index_t *gnhis = NULL;
+  int rv;
+  u8 ii;
+
+  rv = gbp_hash_mode_decode (in->hash_mode, hash_mode);
+
+  if (0 != rv)
+    return rv;
+
+  vec_validate (gnhis, in->n_nhs - 1);
+
+  for (ii = 0; ii < in->n_nhs; ii++)
+    {
+      rv = gbp_next_hop_decode (&in->nhs[ii], &gnhis[ii]);
+
+      if (0 != rv)
+	{
+	  vec_free (gnhis);
+	  break;
+	}
+    }
+
+  *out = gnhis;
+  return (rv);
+}
+
+static int
+gbp_contract_rule_decode (const vl_api_gbp_rule_t * in, index_t * gui)
+{
+  gbp_hash_mode_t hash_mode;
+  gbp_rule_action_t action;
+  index_t *nhs = NULL;
+  int rv;
+
+  rv = gbp_contract_rule_action_deocde (in->action, &action);
+
+  if (0 != rv)
+    return rv;
+
+  if (GBP_RULE_REDIRECT == action)
+    {
+      rv = gbp_next_hop_set_decode (&in->nh_set, &hash_mode, &nhs);
+
+      if (0 != rv)
+	return (rv);
+    }
+  else
+    {
+      hash_mode = GBP_HASH_MODE_SRC_IP;
+    }
+
+  *gui = gbp_rule_alloc (action, hash_mode, nhs);
+
+  return (rv);
+}
+
+static int
+gbp_contract_rules_decode (u8 n_rules,
+			   const vl_api_gbp_rule_t * rules, index_t ** out)
+{
+  index_t *guis = NULL;
+  int rv;
+  u8 ii;
+
+  if (0 == n_rules)
+    {
+      *out = NULL;
+      return (0);
+    }
+
+  vec_validate (guis, n_rules - 1);
+
+  for (ii = 0; ii < n_rules; ii++)
+    {
+      rv = gbp_contract_rule_decode (&rules[ii], &guis[ii]);
+
+      if (0 != rv)
+	{
+	  vec_free (guis);
+	  return (rv);
+	}
+    }
+
+  *out = guis;
+  return (rv);
+}
+
 static void
 vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 {
   vl_api_gbp_contract_add_del_reply_t *rmp;
+  index_t *rules;
   int rv = 0;
 
   if (mp->is_add)
-    gbp_contract_update (ntohs (mp->contract.src_epg),
-			 ntohs (mp->contract.dst_epg),
-			 ntohl (mp->contract.acl_index));
-  else
-    gbp_contract_delete (ntohs (mp->contract.src_epg),
-			 ntohs (mp->contract.dst_epg));
+    {
+      rv = gbp_contract_rules_decode (mp->contract.n_rules,
+				      mp->contract.rules, &rules);
+      if (0 != rv)
+	goto out;
 
+      rv = gbp_contract_update (ntohs (mp->contract.src_epg),
+				ntohs (mp->contract.dst_epg),
+				ntohl (mp->contract.acl_index), rules);
+    }
+  else
+    rv = gbp_contract_delete (ntohs (mp->contract.src_epg),
+			      ntohs (mp->contract.dst_epg));
+
+out:
   REPLY_MACRO (VL_API_GBP_CONTRACT_ADD_DEL_REPLY + GBP_MSG_BASE);
 }
 
@@ -706,7 +883,7 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
 
   mp->contract.src_epg = ntohs (gbpc->gc_key.gck_src);
   mp->contract.dst_epg = ntohs (gbpc->gc_key.gck_dst);
-  mp->contract.acl_index = ntohl (gbpc->gc_value.gc_acl_index);
+  // mp->contract.acl_index = ntohl (gbpc->gc_value.gc_acl_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 

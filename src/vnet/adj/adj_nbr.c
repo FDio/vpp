@@ -265,26 +265,24 @@ adj_nbr_add_or_lock_w_rewrite (fib_protocol_t nh_proto,
 			       u8 *rewrite)
 {
     adj_index_t adj_index;
-    ip_adjacency_t *adj;
 
     adj_index = adj_nbr_find(nh_proto, link_type, nh_addr, sw_if_index);
 
     if (ADJ_INDEX_INVALID == adj_index)
     {
-	adj = adj_nbr_alloc(nh_proto, link_type, nh_addr, sw_if_index);
+        ip_adjacency_t *adj;
+
+        adj = adj_nbr_alloc(nh_proto, link_type, nh_addr, sw_if_index);
 	adj->rewrite_header.sw_if_index = sw_if_index;
-    }
-    else
-    {
-        adj = adj_get(adj_index);
+        adj_index = adj_get_index(adj);
     }
 
-    adj_lock(adj_get_index(adj));
-    adj_nbr_update_rewrite(adj_get_index(adj),
+    adj_lock(adj_index);
+    adj_nbr_update_rewrite(adj_index,
 			   ADJ_NBR_REWRITE_FLAG_COMPLETE,
 			   rewrite);
 
-    return (adj_get_index(adj));
+    return (adj_index);
 }
 
 /**
