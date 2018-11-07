@@ -802,9 +802,10 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tcp_rcv_wnd_available (tc));
   s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
 	      tcp_time_now () - tc->tsval_recent_age);
-  s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %2.5f ",
-	      tc->rto, tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
-  s = format (s, "rtt_seq %u\n", tc->rtt_seq - tc->iss);
+  s = format (s, " rto %u rto_boff %u srtt %u us %.3f rttvar %u rtt_ts %x",
+	      tc->rto, tc->rto_boff, tc->srtt, tc->mrtt_us * 1000, tc->rttvar,
+	      tc->rtt_ts);
+  s = format (s, " rtt_seq %u\n", tc->rtt_seq - tc->iss);
   s = format (s, " cong:   %U", format_tcp_congestion, tc);
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
