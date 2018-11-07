@@ -753,7 +753,6 @@ tcp_cc_rcv_ack (tcp_connection_t * tc)
 {
   tc->cc_algo->rcv_ack (tc);
   tc->tsecr_last_ack = tc->rcv_opts.tsecr;
-  tcp_connection_tx_pacer_update (tc);
 }
 
 always_inline void
