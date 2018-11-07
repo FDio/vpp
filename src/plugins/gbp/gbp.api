@@ -19,9 +19,16 @@ option version = "2.0.0";
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
 
+enum gbp_bridge_domain_flags
+{
+  GBP_BD_API_FLAG_NONE = 0,
+  GBP_BD_API_FLAG_DO_NOT_LEARN = 1,
+};
+
 typedef gbp_bridge_domain
 {
   u32 bd_id;
+  vl_api_gbp_bridge_domain_flags_t flags;
   u32 bvi_sw_if_index;
   u32 uu_fwd_sw_if_index;
 };

@@ -3537,13 +3537,14 @@ class VppPapiProvider(object):
         """ GBP endpoint group Dump """
         return self.api(self.papi.gbp_endpoint_group_dump, {})
 
-    def gbp_bridge_domain_add(self, bd_id,
+    def gbp_bridge_domain_add(self, bd_id, flags,
                               bvi_sw_if_index,
                               uu_fwd_sw_if_index):
         """ GBP bridge-domain Add """
         return self.api(self.papi.gbp_bridge_domain_add,
                         {'bd':
                          {
+                             'flags': flags,
                              'bvi_sw_if_index': bvi_sw_if_index,
                              'uu_fwd_sw_if_index': uu_fwd_sw_if_index,
                              'bd_id': bd_id

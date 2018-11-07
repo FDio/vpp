@@ -236,6 +236,7 @@ gbp_learn_l2 (vlib_main_t * vm,
 	  ip4_address_t outer_src, outer_dst;
 	  u32 bi0, sw_if_index0, t0, epg0;
 	  const ethernet_header_t *eh0;
+	  gbp_bridge_domain_t *gb0;
 	  gbp_learn_next_t next0;
 	  gbp_endpoint_t *ge0;
 	  vlib_buffer_t *b0;
@@ -259,10 +260,12 @@ gbp_learn_l2 (vlib_main_t * vm,
 
 	  ge0 = gbp_endpoint_find_mac (eh0->src_address,
 				       vnet_buffer (b0)->l2.bd_index);
+	  gb0 =
+	    gbp_bridge_domain_get_by_bd_index (vnet_buffer (b0)->l2.bd_index);
 
-	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_D)
+	  if ((vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_D) ||
+	      (gb0->gb_flags & GBP_BD_FLAG_DO_NOT_LEARN))
 	    {
-	      ge0 = NULL;
 	      t0 = 1;
 	      goto trace;
 	    }

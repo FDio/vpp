@@ -10,6 +10,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
 from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
     VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port
 from vpp_vxlan_gbp_tunnel import *
+from vpp_sub_interface import VppDot1QSubint
 
 from vpp_ip import *
 from vpp_mac import *
@@ -17,7 +18,7 @@ from vpp_papi_provider import L2_PORT_TYPE
 from vpp_papi import VppEnum
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP
+from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS,  ICMPv6NDOptSrcLLAddr, \
     ICMPv6ND_NA
@@ -27,6 +28,7 @@ from scapy.layers.vxlan import VXLAN
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
 from util import mactobinary
+from vpp_papi_provider import L2_VTR_OP
 
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
@@ -287,15 +289,22 @@ class VppGbpBridgeDomain(VppObject):
     GBP Bridge Domain
     """
 
-    def __init__(self, test, bd, bvi, uu_flood=None):
+    def __init__(self, test, bd, bvi, uu_flood=None, learn=True):
         self._test = test
         self.bvi = bvi
         self.uu_flood = uu_flood
         self.bd = bd
 
+        e = VppEnum.vl_api_gbp_bridge_domain_flags_t
+        if (learn):
+            self.learn = e.GBP_BD_API_FLAG_NONE
+        else:
+            self.learn = e.GBP_BD_API_FLAG_DO_NOT_LEARN
+
     def add_vpp_config(self):
         self._test.vapi.gbp_bridge_domain_add(
             self.bd.bd_id,
+            self.learn,
             self.bvi.sw_if_index,
             self.uu_flood.sw_if_index if self.uu_flood else INDEX_INVALID)
         self._test.registry.register(self, self._test.logger)
@@ -1694,6 +1703,173 @@ class TestGBP(VppTestCase):
 
         self.logger.info(self.vapi.cli("sh int"))
         self.logger.info(self.vapi.cli("sh gbp vxlan"))
+
+    def test_gbp_learn_vlan_l2(self):
+        """ GBP L2 Endpoint w/ VLANs"""
+
+        learnt = [{'mac': '00:00:11:11:11:01',
+                   'ip': '10.0.0.1',
+                   'ip6': '2001:10::2'},
+                  {'mac': '00:00:11:11:11:02',
+                   'ip': '10.0.0.2',
+                   'ip6': '2001:10::3'}]
+
+        #
+        # lower the inactive threshold so these tests pass in a
+        # reasonable amount of time
+        #
+        self.vapi.gbp_endpoint_learn_set_inactive_threshold(1)
+
+        #
+        # IP tables
+        #
+        gt4 = VppIpTable(self, 1)
+        gt4.add_vpp_config()
+        gt6 = VppIpTable(self, 1, is_ip6=True)
+        gt6.add_vpp_config()
+
+        rd1 = VppGbpRouteDomain(self, 1, gt4, gt6)
+        rd1.add_vpp_config()
+
+        #
+        # Pg2 hosts the vxlan tunnel, hosts on pg2 to act as TEPs
+        #
+        self.pg2.config_ip4()
+        self.pg2.resolve_arp()
+        self.pg2.generate_remote_hosts(4)
+        self.pg2.configure_ipv4_neighbors()
+        self.pg3.config_ip4()
+        self.pg3.resolve_arp()
+
+        #
+        # The EP will be on a vlan sub-interface
+        #
+        vlan_11 = VppDot1QSubint(self, self.pg0, 11)
+        vlan_11.admin_up()
+        self.vapi.sw_interface_set_l2_tag_rewrite(vlan_11.sw_if_index,
+                                                  L2_VTR_OP.L2_POP_1,
+                                                  11)
+
+        bd_uu_fwd = VppVxlanGbpTunnel(self, self.pg3.local_ip4,
+                                      self.pg3.remote_ip4, 116)
+        bd_uu_fwd.add_vpp_config()
+
+        #
+        # a GBP bridge domain with a BVI and a UU-flood interface
+        # The BD is marked as do not learn, so no endpoints are ever
+        # learnt in this BD.
+        #
+        bd1 = VppBridgeDomain(self, 1)
+        bd1.add_vpp_config()
+        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, bd_uu_fwd,
+                                  learn=False)
+        gbd1.add_vpp_config()
+
+        self.logger.info(self.vapi.cli("sh bridge 1 detail"))
+        self.logger.info(self.vapi.cli("sh gbp bridge"))
+
+        # ... and has a /32 applied
+        ip_addr = VppIpInterfaceAddress(self, gbd1.bvi, "10.0.0.128", 32)
+        ip_addr.add_vpp_config()
+
+        #
+        # The Endpoint-group in which we are learning endpoints
+        #
+        epg_220 = VppGbpEndpointGroup(self, 220, rd1, gbd1,
+                                      None, self.loop0,
+                                      "10.0.0.128",
+                                      "2001:10::128")
+        epg_220.add_vpp_config()
+
+        #
+        # The VXLAN GBP tunnel is a bridge-port and has L2 endpoint
+        # leanring enabled
+        #
+        vx_tun_l2_1 = VppGbpVxlanTunnel(
+            self, 99, bd1.bd_id,
+            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L2)
+        vx_tun_l2_1.add_vpp_config()
+
+        #
+        # A static endpoint that the learnt endpoints are trying to
+        # talk to
+        #
+        ep = VppGbpEndpoint(self, vlan_11,
+                            epg_220, None,
+                            "10.0.0.127", "11.0.0.127",
+                            "2001:10::1", "3001::1")
+        ep.add_vpp_config()
+
+        self.assertTrue(find_route(self, ep.ip4.address, 32, table_id=1))
+
+        #
+        # Send to the static EP
+        #
+        for ii, l in enumerate(learnt):
+            # a packet with an sclass from a knwon EPG
+            # arriving on an unknown TEP
+            p = (Ether(src=self.pg2.remote_mac,
+                       dst=self.pg2.local_mac) /
+                 IP(src=self.pg2.remote_hosts[1].ip4,
+                    dst=self.pg2.local_ip4) /
+                 UDP(sport=1234, dport=48879) /
+                 VXLAN(vni=99, gpid=220, flags=0x88) /
+                 Ether(src=l['mac'], dst=ep.mac) /
+                 IP(src=l['ip'], dst=ep.ip4.address) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+
+            rxs = self.send_and_expect(self.pg2, [p], self.pg0)
+
+            #
+            # packet to EP has the EP's vlan tag
+            #
+            for rx in rxs:
+                self.assertEqual(rx[Dot1Q].vlan, 11)
+
+            #
+            # the EP is not learnt since the BD setting prevents it
+            # also no TEP too
+            #
+            self.assertFalse(find_gbp_endpoint(self,
+                                               vx_tun_l2_1.sw_if_index,
+                                               mac=l['mac']))
+            self.assertEqual(INDEX_INVALID,
+                             find_vxlan_gbp_tunnel(
+                                 self,
+                                 self.pg2.local_ip4,
+                                 self.pg2.remote_hosts[1].ip4,
+                                 99))
+
+        self.assertEqual(len(self.vapi.gbp_endpoint_dump()), 1)
+
+        #
+        # static to remotes
+        # we didn't learn the remotes so they are sent to the UU-fwd
+        #
+        for l in learnt:
+            p = (Ether(src=ep.mac, dst=l['mac']) /
+                 Dot1Q(vlan=11) /
+                 IP(dst=l['ip'], src=ep.ip4.address) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+
+            rxs = self.send_and_expect(self.pg0, p * 17, self.pg3)
+
+            for rx in rxs:
+                self.assertEqual(rx[IP].src, self.pg3.local_ip4)
+                self.assertEqual(rx[IP].dst, self.pg3.remote_ip4)
+                self.assertEqual(rx[UDP].dport, 48879)
+                # the UDP source port is a random value for hashing
+                self.assertEqual(rx[VXLAN].gpid, 220)
+                self.assertEqual(rx[VXLAN].vni, 116)
+                self.assertTrue(rx[VXLAN].flags.G)
+                self.assertTrue(rx[VXLAN].flags.Instance)
+                self.assertFalse(rx[VXLAN].gpflags.A)
+                self.assertFalse(rx[VXLAN].gpflags.D)
+
+        self.pg2.unconfig_ip4()
+        self.pg3.unconfig_ip4()
 
     def test_gbp_learn_l3(self):
         """ GBP L3 Endpoint Learning """
