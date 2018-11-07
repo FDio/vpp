@@ -32,6 +32,7 @@
 
 #include <upf/upf.h>
 #include <upf/upf_pfcp.h>
+#include <upf/upf_http_redirect_server.h>
 
 #if CLIB_DEBUG > 0
 #define gtp_debug clib_warning
@@ -219,6 +220,19 @@ upf_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  goto trace;
 			}
 		    }
+		  else if (far->forward.flags & FAR_F_REDIRECT_INFORMATION)
+		    {
+		      u32 fib_index = is_ip4 ?
+			ip4_fib_table_get_index_for_sw_if_index(far->forward.dst_sw_if_index) :
+			ip6_fib_table_get_index_for_sw_if_index(far->forward.dst_sw_if_index);
+
+		      vnet_buffer (b)->sw_if_index[VLIB_TX] = far->forward.dst_sw_if_index;
+		      vnet_buffer2 (b)->gtpu.session_index = sidx;
+		      vnet_buffer2 (b)->gtpu.far_index = (far - active->far) | 0x80000000;
+		      vnet_buffer2 (b)->connection_index =
+			upf_http_redirect_session(fib_index, 1);
+		      next = UPF_PROCESS_NEXT_IP_LOCAL;
+		    }
 		  else
 		    {
 		      if (is_ip4)
@@ -338,6 +352,7 @@ VLIB_REGISTER_NODE (upf_ip4_process_node) = {
     [UPF_PROCESS_NEXT_GTP_IP4_ENCAP] = "upf4-encap",
     [UPF_PROCESS_NEXT_GTP_IP6_ENCAP] = "upf6-encap",
     [UPF_PROCESS_NEXT_IP_INPUT]      = "ip4-input",
+    [UPF_PROCESS_NEXT_IP_LOCAL]      = "ip4-local",
   },
 };
 
@@ -357,6 +372,7 @@ VLIB_REGISTER_NODE (upf_ip6_process_node) = {
     [UPF_PROCESS_NEXT_GTP_IP4_ENCAP] = "upf4-encap",
     [UPF_PROCESS_NEXT_GTP_IP6_ENCAP] = "upf6-encap",
     [UPF_PROCESS_NEXT_IP_INPUT]      = "ip6-input",
+    [UPF_PROCESS_NEXT_IP_LOCAL]      = "ip6-local",
   },
 };
 

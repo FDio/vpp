@@ -3104,7 +3104,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Make sure connection wasn't just created */
 	  child0 = tcp_lookup_connection (lc0->c_fib_index, b0,
 					  my_thread_index, is_ip4);
-	  if (PREDICT_FALSE (child0->state != TCP_STATE_LISTEN))
+	  if (PREDICT_FALSE (child0 && child0->state != TCP_STATE_LISTEN))
 	    {
 	      error0 = TCP_ERROR_CREATE_EXISTS;
 	      goto drop;
@@ -3157,6 +3157,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    << child0->snd_wscale;
 	  child0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
 	  child0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
+
+	  clib_memcpy (&child0->connection.b2, vnet_buffer2(b0), sizeof(child0->connection.b2));
 
 	  tcp_connection_init_vars (child0);
 	  TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0, 1);
@@ -3391,6 +3393,12 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   vnet_buffer (b)->tcp.flags = 0;
 
   *error = is_filtered ? TCP_ERROR_FILTERED : *error;
+
+  /* no Session, UPF TCP redirect socket hack */
+  if (PREDICT_FALSE (0 == tc &&
+		     (vnet_buffer2 (b)->connection_index & 0x80000000) != 0))
+    tc = tp_vfts[TRANSPORT_PROTO_TCP].get_listener
+      (vnet_buffer2 (b)->connection_index & ~0x80000000);
 
   return tcp_get_connection_from_transport (tc);
 }

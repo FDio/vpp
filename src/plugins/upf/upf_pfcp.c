@@ -2332,6 +2332,9 @@ format_sx_session(u8 * s, va_list * args)
 		   "    Destination Interface: %u\n",
 		   format_network_instance, nwi ? nwi->name : NULL,
 		   far->forward.dst_intf);
+	if (far->forward.flags & FAR_F_REDIRECT_INFORMATION)
+	  s = format(s, "    Redirect Information: %U\n",
+		     format_redirect_information, &far->forward.redirect_information);
 	if (far->forward.flags & FAR_F_OUTER_HEADER_CREATION)
 	  s = format(s, "    Outer Header Creation: %U\n",
 		     format_outer_header_creation, &far->forward.outer_header_creation);

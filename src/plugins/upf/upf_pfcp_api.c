@@ -1134,7 +1134,16 @@ static int handle_create_far(upf_session_t *sess, pfcp_create_far_t *create_far,
 	    }
 	  create->forward.dst_intf = far->forwarding_parameters.destination_interface;
 
-	  //TODO: redirect_information
+	  if (ISSET_BIT(far->forwarding_parameters.grp.fields,
+			FORWARDING_PARAMETERS_REDIRECT_INFORMATION))
+	    {
+	      create->forward.flags |= FAR_F_REDIRECT_INFORMATION;
+	      cpy_redirect_information
+		(&create->forward.redirect_information,
+		 &far->forwarding_parameters.redirect_information);
+
+	    }
+
 	  if (ISSET_BIT(far->forwarding_parameters.grp.fields,
 			FORWARDING_PARAMETERS_OUTER_HEADER_CREATION))
 	    {
@@ -1227,7 +1236,16 @@ static int handle_update_far(upf_session_t *sess, pfcp_update_far_t *update_far,
 	    }
 	  update->forward.dst_intf = far->update_forwarding_parameters.destination_interface;
 
-	  //TODO: redirect_information
+	  if (ISSET_BIT(far->update_forwarding_parameters.grp.fields,
+			UPDATE_FORWARDING_PARAMETERS_REDIRECT_INFORMATION))
+	    {
+	      update->forward.flags |= FAR_F_REDIRECT_INFORMATION;
+	      free_redirect_information(&update->forward.redirect_information);
+	      cpy_redirect_information
+		(&update->forward.redirect_information,
+		 &far->update_forwarding_parameters.redirect_information);
+	    }
+
 	  if (ISSET_BIT(far->update_forwarding_parameters.grp.fields,
 			UPDATE_FORWARDING_PARAMETERS_OUTER_HEADER_CREATION))
 	    {

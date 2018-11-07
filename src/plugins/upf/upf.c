@@ -1102,6 +1102,9 @@ static clib_error_t * upf_init (vlib_main_t * vm)
     return clib_error_return (0, "rte_eal_init returned %d", ret);
   rte_log_set_global_level (RTE_LOG_DEBUG);
 
+  if ((error = vlib_call_init_function (vm, upf_http_redirect_server_main_init)))
+    return error;
+
   sm->pfcp_endpoint_index = hash_create_mem (0, sizeof (ip46_address_t), sizeof (uword));
 
   sm->nwi_index_by_name =
