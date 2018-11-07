@@ -32,6 +32,7 @@
 #include <upf/upf.h>
 #include <upf/upf_adf.h>
 #include <upf/upf_pfcp.h>
+#include <upf/upf_http_redirect_server.h>
 
 #if (CLIB_DEBUG > 0)
 #define gtp_debug clib_warning

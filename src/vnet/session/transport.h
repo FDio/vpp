@@ -71,6 +71,8 @@ typedef struct _transport_connection
   transport_stats_t stats;	/**< Transport connection stats */
   spacer_t pacer;		/**< Simple transport pacer */
 
+  vnet_buffer_opaque2_t b2;
+
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
   u32 cc_stat_tstamp;		/**< CC stats timestamp */
