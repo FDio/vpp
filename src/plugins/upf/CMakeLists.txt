@@ -92,8 +92,12 @@ message(STATUS "Looking for liburcu")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(URCU liburcu-qsbr)
 
-if(DPDK_INCLUDE_DIR AND DPDK_LIB AND URCU_FOUND)
+message(STATUS "Looking for hyperscan")
+pkg_check_modules(HS libhs)
+
+if(DPDK_INCLUDE_DIR AND DPDK_LIB AND URCU_FOUND AND HS_FOUND)
   include_directories (${URCU_INCLUDE_DIRS})
+  include_directories (${HS_INCLUDE_DIRS})
   include_directories (${DPDK_INCLUDE_DIR})
 
   message(STATUS "Found DPDK ${DPDK_VERSION} in ${DPDK_INCLUDE_DIR}")
@@ -124,6 +128,7 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB AND URCU_FOUND)
     upf_pfcp_api.c
     upf_pfcp_input.c
     upf_pfcp_server.c
+    upf_adf.c
     flowtable_init.c
     flowtable.c
 
@@ -138,19 +143,22 @@ if(DPDK_INCLUDE_DIR AND DPDK_LIB AND URCU_FOUND)
     upf_pfcp.h
     upf_pfcp_api.h
     upf_pfcp_server.h
+    upf_adf.h
     flowtable.h
     flowtable_tcp.h
 
     LINK_LIBRARIES
     ${URCU_LIBRARIES}
+    ${HS_LIBRARIES}
 
     LINK_FLAGS
     ${DPDK_LINK_FLAGS}
     ${URCU_LDFLAGS}
+    ${HS_LDFLAGS}
 
     API_TEST_SOURCES
     upf_test.c
   )
 else()
-  message(WARNING "Userspace RCU or DPDK not found - GTP UPF disabled")
+  message(WARNING "Userspace RCU, Hyperscan or DPDK not found - GTP UPF disabled")
 endif()
