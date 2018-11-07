@@ -93,12 +93,12 @@ gbp_policy_inline (vlib_main_t * vm,
 	  const gbp_endpoint_t *ge0;
 	  gbp_policy_next_t next0;
 	  gbp_contract_key_t key0;
-	  gbp_contract_value_t value0 = {
-	    .as_u64 = ~0,
-	  };
+	  gbp_contract_t *gc0;
 	  u32 bi0, sw_if_index0;
 	  vlib_buffer_t *b0;
+	  index_t gci0;
 
+	  gc0 = NULL;
 	  next0 = GBP_POLICY_NEXT_DENY;
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -161,9 +161,9 @@ gbp_policy_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  value0.as_u64 = gbp_acl_lookup (&key0);
+		  gci0 = gbp_contract_find (&key0);
 
-		  if (~0 != value0.gc_lc_index)
+		  if (INDEX_INVALID != gci0)
 		    {
 		      fa_5tuple_opaque_t pkt_5tuple0;
 		      u8 action0 = 0;
@@ -173,6 +173,7 @@ gbp_policy_inline (vlib_main_t * vm,
 		      u16 ether_type0;
 		      u8 is_ip60 = 0;
 
+		      gc0 = gbp_contract_get (gci0);
 		      l2_len0 = vnet_buffer (b0)->l2.l2_len;
 		      h0 = vlib_buffer_get_current (b0);
 
@@ -185,14 +186,14 @@ gbp_policy_inline (vlib_main_t * vm,
 		       */
 		      acl_plugin_fill_5tuple_inline (gm->
 						     acl_plugin.p_acl_main,
-						     value0.gc_lc_index, b0,
+						     gc0->gc_lc_index, b0,
 						     is_ip60,
 						     /* is_input */ 0,
 						     /* is_l2_path */ 1,
 						     &pkt_5tuple0);
 		      acl_plugin_match_5tuple_inline (gm->
 						      acl_plugin.p_acl_main,
-						      value0.gc_lc_index,
+						      gc0->gc_lc_index,
 						      &pkt_5tuple0, is_ip60,
 						      &action0, &acl_pos_p0,
 						      &acl_match_p0,
@@ -237,8 +238,8 @@ gbp_policy_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->src_epg = key0.gck_src;
 	      t->dst_epg = key0.gck_dst;
-	      t->acl_index = value0.gc_acl_index;
-	      t->allowed = (next0 != GBP_POLICY_NEXT_DENY);
+	      t->acl_index = (gc0 ? gc0->gc_acl_index : ~0),
+		t->allowed = (next0 != GBP_POLICY_NEXT_DENY);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
