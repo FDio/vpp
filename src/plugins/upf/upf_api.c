@@ -70,8 +70,9 @@ setup_message_id_table (upf_main_t * sm, api_main_t * am)
 #undef _
 }
 
-#define foreach_upf_plugin_api_msg		\
-_(UPF_ENABLE_DISABLE, upf_enable_disable)
+#define foreach_upf_plugin_api_msg        \
+_(UPF_ENABLE_DISABLE, upf_enable_disable) \
+_(UPF_APP_FLOW_TIMEOUT_SET, upf_app_flow_timeout_set)
 
 /* API message handler */
 static void vl_api_upf_enable_disable_t_handler
@@ -85,6 +86,19 @@ static void vl_api_upf_enable_disable_t_handler
 				      (int) (mp->enable_disable));
 
   REPLY_MACRO(VL_API_UPF_ENABLE_DISABLE_REPLY);
+}
+
+/* API message handler */
+static void vl_api_upf_app_flow_timeout_set_t_handler
+(vl_api_upf_app_flow_timeout_set_t * mp)
+{
+  int rv = 0;
+  vl_api_upf_app_flow_timeout_set_reply_t * rmp = NULL;
+  upf_main_t * sm = &upf_main;
+
+  //rv = upf_flow_timeout_update(mp->type, mp->default_value);
+
+  REPLY_MACRO(VL_API_UPF_APP_FLOW_TIMEOUT_SET_REPLY);
 }
 
 /* Set up the API message handling tables */
