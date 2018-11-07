@@ -1,0 +1,198 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2e850805_2cd7c146",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "How will this work if the buffer has (b-\u003eflags \u0026 VLIB_BUFFER_NEXT_PRESENT) and happens to be full 2K ? Even if the next buffer is not there - how do we guarantee that three is enough free space to keep the data here ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e46aa2fa_54475371",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "Having two identifiers in the same scope named \"is_ipv6\" and \"is_ip6\" is a loaded gun pointed at the foot with the trigger gently pulled... \n\nIf I understand right their semantics, may I suggest \"payload_is_ipv6\" and \"transport_is_ip6\" - will make things much easier to read. \n\n(edit: color me confused. I do not see the \"is_ip6\" being used much)",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c5027f18_0dc9b0ad",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "Allright, so I wanna do tunnel. I see IPv4 packet, I add IPv4 header + AH header. I see IPv6 packet, I add IPv6 header and AH header. Now, I wanna put IPv6 packet into IPv4 packet with  AH. How can I do that ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0fa380f0_17017428",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "A line or two of prose either on the .trunc_size raison d\u0027etre (in ispecmb.h) or here could come in handy.",
+      "range": {
+        "startLine": 230,
+        "startChar": 46,
+        "endLine": 230,
+        "endChar": 54
+      },
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ce616ac_b73cfda2",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "Why \"PREDICT_FALSE\" ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd8a6179_f1880e29",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "Color me thoroughly confused here. what I previously thought the constant \"is_ip6\" meant, is in sa0-\u003eis_tunnel_ip6 ? is it set if the SA is both in tunnel mode and the outer transport is IPv6 ? and the sa0-\u003eis_tunnel is set whenever the SA is tunnel regardless of the outer address family ?\n\nWhat about cases where \"is_ipv6 \u0026\u0026 sa0-\u003eis_tunnel \u0026\u0026 !sa0-\u003eis_tunnel_ip6\" and the other one ? It seems like the logic here would not work if we attempt to tunnel IPv4 inside IPv6 and vice versa ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a70c3091_7d142030",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "why do we move back in transport mode by the ethernet header size ? Not obvious for a casual reader.",
+      "range": {
+        "startLine": 354,
+        "startChar": 31,
+        "endLine": 354,
+        "endChar": 59
+      },
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ab3fdc0_29e26e5e",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "I am obviously missing something - I am reading this snippet as \"if the job submission was not successful, just give up and move to the next packet\" ?\n\nReading the code further - is this function actually returning a descriptor of a *different* job which was submitted earlier and is now completed ? A little bit of prose somewhere would help.",
+      "range": {
+        "startLine": 364,
+        "startChar": 0,
+        "endLine": 367,
+        "endChar": 6
+      },
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6157c0a0_7409f8e2",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "We will get to this line only if the buffer is already traced, so this line is a no-op.\n\nIs there some other intent that I am missing here ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "672f252f_d057ddd7",
+        "filename": "test/test_p2p_ethernet.py",
+        "patchSetId": 19
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-07T14:56:58Z",
+      "side": 1,
+      "message": "This type of change does not have much to do with IPSEC and would be much nicer in a separate commit, would keep the things clearer ...",
+      "range": {
+        "startLine": 217,
+        "startChar": 0,
+        "endLine": 217,
+        "endChar": 65
+      },
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
