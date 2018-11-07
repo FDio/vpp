@@ -1000,7 +1000,7 @@ tcp_send_syn (tcp_connection_t * tc)
   tcp_make_syn (tc, b);
 
   /* Measure RTT with this */
-  tc->rtt_ts = tcp_time_now ();
+  tc->rtt_ts = tcp_time_now_us (vlib_num_workers ()? 1 : 0);
   tc->rtt_seq = tc->snd_nxt;
   tc->rto_boff = 0;
 
