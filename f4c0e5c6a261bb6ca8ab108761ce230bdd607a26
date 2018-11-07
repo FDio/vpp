@@ -68,6 +68,30 @@
       "revId": "f4c0e5c6a261bb6ca8ab108761ce230bdd607a26",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2829bb3f_2d0be477",
+        "filename": "src/vnet/dhcp/dhcp4_proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2018-11-07T13:31:57Z",
+      "side": 1,
+      "message": "buffers are added to the discard vector - freed by the caller",
+      "parentUuid": "83160178_6f010588",
+      "range": {
+        "startLine": 126,
+        "startChar": 2,
+        "endLine": 126,
+        "endChar": 40
+      },
+      "revId": "f4c0e5c6a261bb6ca8ab108761ce230bdd607a26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
