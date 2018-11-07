@@ -126,6 +126,8 @@ show_physmem (vlib_main_t * vm,
 	    verbose = 2;
 	  else if (unformat (line_input, "d"))
 	    verbose = 2;
+	  else if (unformat (line_input, "map"))
+	    verbose = 3;
 	  else
 	    break;
 	}
@@ -139,7 +141,7 @@ show_physmem (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_physmem_command, static) = {
   .path = "show physmem",
-  .short_help = "Show physical memory allocation",
+  .short_help = "show physmem [verbose | detail | map]",
   .function = show_physmem,
 };
 /* *INDENT-ON* */

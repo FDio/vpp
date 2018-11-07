@@ -682,6 +682,35 @@ format_pmalloc (u8 * s, va_list * va)
     });
   /* *INDENT-ON* */
 
+  if (verbose >= 3)
+    {
+      u32 index, size = 0, combined = 0;
+      s =
+	format (s, "\n %16s %13s %8s", "virtual-addr", "physical-addr",
+		"size");
+      vec_foreach_index (index, pm->lookup_table)
+      {
+	uword *lookup_val, pa, va;
+	lookup_val = vec_elt_at_index (pm->lookup_table, index);
+	va = pointer_to_uword (pm->base) + (index << pm->lookup_log2_page_sz);
+	pa = va - *lookup_val;
+	if (pa != 0)
+	  s =
+	    format (s, "\n %16p %13p %8U", uword_to_pointer (va, u64),
+		    uword_to_pointer (pa, u64), format_log2_page_size,
+		    pm->lookup_log2_page_sz);
+	else
+	  {
+	    combined = 1;
+	    size += pm->lookup_log2_page_sz;
+	  }
+      }
+      if (combined)
+	s =
+	  format (s, "\n %16p %13p %8U", pm->base, 0, format_log2_page_size,
+		  size);
+    }
+
   return s;
 }
 
