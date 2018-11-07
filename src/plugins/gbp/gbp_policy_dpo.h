@@ -59,6 +59,10 @@ extern gbp_policy_dpo_t *gbp_policy_dpo_get (index_t index);
 
 extern dpo_type_t gbp_policy_dpo_get_type (void);
 
+extern vlib_node_registration_t ip4_gbp_policy_dpo_node;
+extern vlib_node_registration_t ip6_gbp_policy_dpo_node;
+extern vlib_node_registration_t gbp_policy_port_node;
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

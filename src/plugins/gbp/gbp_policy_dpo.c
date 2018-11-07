@@ -236,6 +236,23 @@ typedef enum
   GBP_POLICY_N_NEXT,
 } gbp_policy_next_t;
 
+always_inline u32
+gbp_rule_l3_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0, int is_ip6)
+{
+  gbp_policy_node_t pnode;
+  const dpo_id_t *dpo;
+  dpo_proto_t dproto;
+
+  pnode = (is_ip6 ? GBP_POLICY_NODE_IP6 : GBP_POLICY_NODE_IP4);
+  dproto = (is_ip6 ? DPO_PROTO_IP6 : DPO_PROTO_IP4);
+  dpo = &gu->gu_dpo[pnode][dproto];
+
+  /* The flow hash is still valid as this is a IP packet being switched */
+  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+
+  return (dpo->dpoi_next_node);
+}
+
 always_inline uword
 gbp_policy_dpo_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
@@ -243,6 +260,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 {
   gbp_main_t *gm = &gbp_main;
   u32 n_left_from, next_index, *from, *to_next;
+  gbp_rule_t *gu;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -260,10 +278,9 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  const gbp_policy_dpo_t *gpd0;
 	  u32 bi0, next0;
 	  gbp_contract_key_t key0;
-	  gbp_contract_value_t value0 = {
-	    .as_u64 = ~0,
-	  };
+	  gbp_contract_t *gc0;
 	  vlib_buffer_t *b0;
+	  index_t gci0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -275,6 +292,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
+	  gc0 = NULL;
 	  gpd0 =
 	    gbp_policy_dpo_get_i (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = gpd0->gpd_dpo.dpoi_index;
@@ -301,9 +319,9 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  value0.as_u64 = gbp_acl_lookup (&key0);
+		  gci0 = gbp_contract_find (&key0);
 
-		  if (~0 != value0.gc_lc_index)
+		  if (INDEX_INVALID != gci0)
 		    {
 		      fa_5tuple_opaque_t pkt_5tuple0;
 		      u8 action0 = 0;
@@ -312,16 +330,17 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 		      /*
 		       * tests against the ACL
 		       */
+		      gc0 = gbp_contract_get (gci0);
 		      acl_plugin_fill_5tuple_inline (gm->
 						     acl_plugin.p_acl_main,
-						     value0.gc_lc_index, b0,
+						     gc0->gc_lc_index, b0,
 						     is_ip6,
 						     /* is_input */ 1,
 						     /* is_l2_path */ 0,
 						     &pkt_5tuple0);
 		      acl_plugin_match_5tuple_inline (gm->
 						      acl_plugin.p_acl_main,
-						      value0.gc_lc_index,
+						      gc0->gc_lc_index,
 						      &pkt_5tuple0, is_ip6,
 						      &action0, &acl_pos_p0,
 						      &acl_match_p0,
@@ -330,8 +349,23 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 
 		      if (action0 > 0)
 			{
+
 			  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
-			  next0 = gpd0->gpd_dpo.dpoi_next_node;
+			  gu = gbp_rule_get (gc0->gc_rules[rule_match_p0]);
+
+			  switch (gu->gu_action)
+			    {
+			    case GBP_RULE_PERMIT:
+			      next0 = gpd0->gpd_dpo.dpoi_next_node;
+			      break;
+			    case GBP_RULE_DENY:
+			      ASSERT (0);
+			      next0 = 0;
+			      break;
+			    case GBP_RULE_REDIRECT:
+			      next0 = gbp_rule_l3_redirect (gu, b0, is_ip6);
+			      break;
+			    }
 			}
 		    }
 		}
@@ -352,7 +386,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->src_epg = key0.gck_src;
 	      tr->dst_epg = key0.gck_dst;
-	      tr->acl_index = value0.gc_acl_index;
+	      tr->acl_index = (gc0 ? gc0->gc_acl_index : ~0);
 	      tr->a_bit = vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A;
 	    }
 

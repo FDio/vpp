@@ -110,11 +110,14 @@ gbp_learn_l2_cp (const gbp_learn_l2_t * gl2)
    * flip the source and dst, since that's how it was received, this API
    * takes how it's sent
    */
-  gbp_endpoint_update (gl2->sw_if_index, ips,
-		       &gl2->mac, gl2->epg,
-		       (GBP_ENDPOINT_FLAG_LEARNT |
-			GBP_ENDPOINT_FLAG_REMOTE),
-		       &gl2->outer_dst, &gl2->outer_src, NULL);
+  gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_DP,
+				gl2->sw_if_index, ips,
+				&gl2->mac, INDEX_INVALID,
+				INDEX_INVALID, gl2->epg,
+				(GBP_ENDPOINT_FLAG_LEARNT |
+				 GBP_ENDPOINT_FLAG_REMOTE),
+				&gl2->outer_dst, &gl2->outer_src, NULL);
+  vec_free (ips);
 }
 
 static void
@@ -273,7 +276,7 @@ gbp_learn_l2 (vlib_main_t * vm,
 	  /*
 	   * check for new EP or a moved EP
 	   */
-	  if (NULL == ge0 || ge0->ge_sw_if_index != sw_if_index0)
+	  if (NULL == ge0 || ge0->ge_fwd.gef_itf != sw_if_index0)
 
 	    {
 	      /*
@@ -415,10 +418,13 @@ gbp_learn_l3_cp (const gbp_learn_l3_t * gl3)
 
   vec_add1 (ips, gl3->ip);
 
-  gbp_endpoint_update (gl3->sw_if_index, ips, NULL, gl3->epg,
-		       (GBP_ENDPOINT_FLAG_REMOTE |
-			GBP_ENDPOINT_FLAG_LEARNT),
-		       &gl3->outer_dst, &gl3->outer_src, NULL);
+  gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_DP,
+				gl3->sw_if_index, ips, NULL,
+				INDEX_INVALID, INDEX_INVALID, gl3->epg,
+				(GBP_ENDPOINT_FLAG_REMOTE |
+				 GBP_ENDPOINT_FLAG_LEARNT),
+				&gl3->outer_dst, &gl3->outer_src, NULL);
+  vec_free (ips);
 }
 
 static void

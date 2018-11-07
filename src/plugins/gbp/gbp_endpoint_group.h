@@ -74,16 +74,15 @@ extern int gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
 					    u32 bd_id,
 					    u32 rd_id,
 					    u32 uplink_sw_if_index);
-extern index_t gbp_endpoint_group_find_and_lock (epg_id_t epg_id);
 extern index_t gbp_endpoint_group_find (epg_id_t epg_id);
 extern int gbp_endpoint_group_delete (epg_id_t epg_id);
 extern void gbp_endpoint_group_unlock (index_t index);
+extern void gbp_endpoint_group_lock (index_t index);
 extern u32 gbp_endpoint_group_get_bd_id (const gbp_endpoint_group_t *);
 
 extern gbp_endpoint_group_t *gbp_endpoint_group_get (index_t i);
-extern index_t gbp_endpoint_group_get_fib_index (gbp_endpoint_group_t * gg,
-						 fib_protocol_t fproto);
-extern u32 gbp_endpoint_group_get_bvi (gbp_endpoint_group_t * gg);
+extern index_t gbp_endpoint_group_get_fib_index (const gbp_endpoint_group_t *
+						 gg, fib_protocol_t fproto);
 
 typedef int (*gbp_endpoint_group_cb_t) (gbp_endpoint_group_t * gbpe,
 					void *ctx);
