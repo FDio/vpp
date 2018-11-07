@@ -93,7 +93,7 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      while (n_left_from >= 6 && n_left_to_next >= 2)
 	{
 	  vlib_buffer_t *p0, *p1;
 	  ip6_header_t *ip0, *ip1;
@@ -103,16 +103,20 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_buffer_t *p2, *p3, *p4, *p5;
 
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
+	    p4 = vlib_get_buffer (vm, from[4]);
+	    p5 = vlib_get_buffer (vm, from[5]);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+	    vlib_prefetch_buffer_header (p4, LOAD);
+	    vlib_prefetch_buffer_header (p5, LOAD);
 
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p3->data, sizeof (ip1[0]), LOAD);
+	    CLIB_PREFETCH (vlib_buffer_get_current (p2),
+			   sizeof (ip6_header_t), LOAD);
+	    CLIB_PREFETCH (vlib_buffer_get_current (p3),
+			   sizeof (ip6_header_t), LOAD);
 	  }
 
 	  pi0 = from[0];
