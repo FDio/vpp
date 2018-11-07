@@ -672,20 +672,163 @@ vl_api_gbp_recirc_dump_t_handler (vl_api_gbp_recirc_dump_t * mp)
   gbp_recirc_walk (gbp_recirc_send_details, &ctx);
 }
 
+static int
+gbp_contract_rule_result_deocde (vl_api_gbp_rule_result_t in,
+				 gbp_rule_result_t * out)
+{
+  in = clib_net_to_host_u32 (in);
+
+  switch (in)
+    {
+    case CBP_API_RULE_PERMIT:
+      *out = CBP_RULE_PERMIT;
+      return (0);
+    case CBP_API_RULE_DENY:
+      *out = CBP_RULE_DENY;
+      return (0);
+    case CBP_API_RULE_REDIRECT:
+      *out = CBP_RULE_REDIRECT;
+      return (0);
+    }
+
+  return (-1);
+}
+
+static int
+gbp_hash_mode_decode (vl_api_gbp_hash_mode_t in, gbp_hash_mode_t * out)
+{
+  in = clib_net_to_host_u32 (in);
+
+  switch (in)
+    {
+    case GBP_API_HASH_MODE_SRC_IP:
+      *out = GBP_HASH_MODE_SRC_IP;
+      return (0);
+    case GBP_API_HASH_MODE_DST_IP:
+      *out = GBP_HASH_MODE_DST_IP;
+      return (0);
+    }
+
+  return (-1);
+}
+
+static int
+gbp_next_hop_decode (const vl_api_gbp_next_hop_t * in, gbp_next_hop_t * out)
+{
+  ip_address_decode (&in->ip, &out->gnh_ip);
+  mac_address_decode (&in->mac, &out->gnh_mac);
+  out->gnh_bd = gbp_bridge_domain_find_and_lock (ntohl (in->bd_id));
+
+  if (INDEX_INVALID == out->gnh_bd)
+    return (VNET_API_ERROR_BD_NOT_MODIFIABLE);
+
+  return (0);
+}
+
+static int
+gbp_next_hop_set_decode (const vl_api_gbp_next_hop_set_t * in,
+			 gbp_next_hop_set_t * out)
+{
+  int rv;
+  u8 ii;
+
+  rv = gbp_hash_mode_decode (in->hash_mode, &out->gnhs_hash_mode);
+
+  if (0 != rv)
+    return rv;
+
+  vec_validate (out->gnhs_nhs, in->n_nhs);
+
+  for (ii = 0; ii < in->n_nhs; ii++)
+    {
+      rv = gbp_next_hop_decode (&in->nhs[ii], &out->gnhs_nhs[ii]);
+
+      if (0 != rv)
+	{
+	  vec_free (out->gnhs_nhs);
+	  break;
+	}
+    }
+
+  return (rv);
+}
+
+static int
+gbp_contract_rule_decode (const vl_api_gbp_rule_t * in, gbp_rule_t * out)
+{
+  int rv;
+
+  rv = gbp_contract_rule_result_deocde (in->result, &out->gu_result);
+
+  if (0 != rv)
+    return rv;
+
+  if (CBP_RULE_REDIRECT == out->gu_result)
+    {
+      rv = gbp_next_hop_set_decode (&in->nh_set, &out->gu_nh_set);
+    }
+
+  return (rv);
+}
+
+static int
+gbp_contract_rules_decode (u8 n_rules,
+			   const vl_api_gbp_rule_t * rules, gbp_rule_t ** out)
+{
+  const vl_api_gbp_rule_t *rule;
+  gbp_rule_t *gus = NULL, *gu;
+  int rv;
+  u8 ii;
+
+  if (0 == n_rules)
+    {
+      *out = NULL;
+      return (0);
+    }
+
+  vec_validate (gus, n_rules - 1);
+
+  for (ii = 0; ii < n_rules; ii++)
+    {
+      gu = &gus[ii];
+      rule = &rules[ii];
+
+      rv = gbp_contract_rule_decode (rule, gu);
+
+      if (0 != rv)
+	{
+	  vec_free (gus);
+	  return (rv);
+	}
+    }
+
+  *out = gus;
+  return (rv);
+}
+
 static void
 vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
 {
   vl_api_gbp_contract_add_del_reply_t *rmp;
+  gbp_rule_t *rules;
   int rv = 0;
 
   if (mp->is_add)
-    gbp_contract_update (ntohs (mp->contract.src_epg),
-			 ntohs (mp->contract.dst_epg),
-			 ntohl (mp->contract.acl_index));
-  else
-    gbp_contract_delete (ntohs (mp->contract.src_epg),
-			 ntohs (mp->contract.dst_epg));
+    {
+      rv = gbp_contract_rules_decode (mp->contract.n_rules,
+				      mp->contract.rules, &rules);
+      if (0 != rv)
+	goto out;
 
+      rv = gbp_contract_update (ntohs (mp->contract.src_epg),
+				ntohs (mp->contract.dst_epg),
+				ntohl (mp->contract.acl_index), rules);
+    }
+  else
+    rv = gbp_contract_delete (ntohs (mp->contract.src_epg),
+			      ntohs (mp->contract.dst_epg));
+
+out:
   REPLY_MACRO (VL_API_GBP_CONTRACT_ADD_DEL_REPLY + GBP_MSG_BASE);
 }
 
@@ -706,7 +849,7 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
 
   mp->contract.src_epg = ntohs (gbpc->gc_key.gck_src);
   mp->contract.dst_epg = ntohs (gbpc->gc_key.gck_dst);
-  mp->contract.acl_index = ntohl (gbpc->gc_value.gc_acl_index);
+  // mp->contract.acl_index = ntohl (gbpc->gc_value.gc_acl_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
