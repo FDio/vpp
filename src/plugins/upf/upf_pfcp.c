@@ -39,6 +39,7 @@
 
 #include "pfcp.h"
 #include "upf.h"
+#include "upf_adf.h"
 #include "upf_pfcp.h"
 #include "upf_pfcp_api.h"
 
@@ -814,8 +815,10 @@ static int make_pending_pdr(upf_session_t *sx)
       pending->pdr = vec_dup(active->pdr);
       vec_foreach_index (i, active->pdr)
 	{
-	  vec_elt(pending->pdr, i).urr_ids =
-	    vec_dup(vec_elt(active->pdr, i).urr_ids);
+	  upf_pdr_t *pdr = vec_elt_at_index(pending->pdr, i);
+
+	  pdr->pdi.adr.db_id = upf_adf_get_adr_db(pdr->pdi.adr.application_id);
+	  pdr->urr_ids = vec_dup(vec_elt(active->pdr, i).urr_ids);
 	}
     }
 
@@ -878,7 +881,11 @@ static void sx_free_rules(upf_session_t *sx, int rule)
   upf_far_t *far;
 
   vec_foreach (pdr, rules->pdr)
+  {
+    upf_adf_put_adr_db(pdr->pdi.adr.db_id);
     vec_free(pdr->urr_ids);
+  }
+
   vec_free(rules->pdr);
   vec_foreach (far, rules->far)
     {
@@ -978,7 +985,7 @@ void sx_free_session(upf_session_t *sx)
   call_rcu(&si->rcu_head, rcu_free_sx_session_info);
 }
 
-#define sx_rule_vector_fns(t)						\
+#define sx_rule_vector_fns(t, REMOVE)					\
 upf_##t##_t * sx_get_##t##_by_id(struct rules *rules,			\
 				   typeof (((upf_##t##_t *)0)->id) t##_id) \
 {									\
@@ -1001,7 +1008,7 @@ upf_##t##_t *sx_get_##t(upf_session_t *sx, int rule,		\
   return vec_bsearch(&r, rules->t, sx_##t##_id_compare);		\
 }									\
 									\
-int sx_create_##t(upf_session_t *sx, upf_##t##_t *t)		\
+int sx_create_##t(upf_session_t *sx, upf_##t##_t *t)			\
 {									\
   struct rules *rules = sx_get_rules(sx, SX_PENDING);			\
 									\
@@ -1025,13 +1032,15 @@ int sx_delete_##t(upf_session_t *sx, u32 t##_id)			\
   if (!(p = vec_bsearch(&r, rules->t, sx_##t##_id_compare)))		\
     return -1;								\
 									\
+  do { REMOVE; } while (0);						\
+									\
   vec_del1(rules->t, p - rules->t);					\
   return 0;								\
 }
 
-sx_rule_vector_fns(pdr)
-sx_rule_vector_fns(far)
-sx_rule_vector_fns(urr)
+sx_rule_vector_fns(pdr, ({ upf_adf_put_adr_db(p->pdi.adr.db_id); }))
+sx_rule_vector_fns(far, ({}))
+sx_rule_vector_fns(urr, ({}))
 
 void sx_send_end_marker(upf_session_t *sx, u16 id)
 {
@@ -1754,6 +1763,9 @@ static int build_sx_rules(upf_session_t *sx)
 	pending->flags |= sdf_dst_address_type(&pdr->pdi.acl);
       }
 
+    if (pdr->pdi.fields & F_PDI_APPLICATION_ID)
+      pending->flags |= SX_ADR;
+
     if (pdr->pdi.fields & F_PDI_LOCAL_F_TEID)
       {
 	if (pdr->pdi.teid.flags & F_TEID_V4)
@@ -1773,6 +1785,9 @@ static int build_sx_rules(upf_session_t *sx)
     {
       int direction = (pdr->pdi.src_intf == SRC_INTF_ACCESS) ? UL_SDF : DL_SDF;
       upf_acl_ctx_t *ctx = &pending->sdf[direction];
+
+      if ((pdr->pdi.fields & F_PDI_APPLICATION_ID))
+	continue;
 
       if (!(pdr->pdi.fields & F_PDI_SDF_FILTER))
 	{
@@ -2282,6 +2297,12 @@ format_sx_session(u8 * s, va_list * args)
       s = format(s, "    SDF Filter:\n");
       s = format(s, "      %U\n", format_ipfilter, &pdr->pdi.acl);
     }
+    if (pdr->pdi.fields & F_PDI_APPLICATION_ID)
+      {
+	s = format(s, "  Application Id: %v [db:%u]\n",
+		   pool_elt_at_index (gtm->upf_apps, pdr->pdi.adr.application_id)->name,
+		   pdr->pdi.adr.db_id);
+      }
     s = format(s, "  Outer Header Removal: %s\n"
 	       "  FAR Id: %u\n"
 	       "  URR Ids: [",

@@ -33,6 +33,7 @@
 
 /* Action function shared between message handler and debug CLI */
 #include <upf/flowtable.h>
+#include <upf/upf_adf.h>
 
 int upf_enable_disable (upf_main_t * sm, u32 sw_if_index,
 			  int enable_disable)
@@ -1130,6 +1131,9 @@ static clib_error_t * upf_init (vlib_main_t * vm)
 			 gtpu6_input_node.index, /* is_ip4 */ 0);
 
   sm->fib_node_type = fib_node_register_new_type (&upf_vft);
+
+  sm->upf_app_by_name = hash_create_vec ( /* initial length */ 32,
+				      sizeof (u8), sizeof (uword));
 
   error = flowtable_init(vm);
   if (error)

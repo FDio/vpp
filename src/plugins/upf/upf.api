@@ -22,6 +22,40 @@ define upf_enable_disable_reply {
     i32 retval;
 };
 
+autoreply define upf_app_add_del {
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 is_add;
+};
+
+autoreply define upf_app_ip_rule_add_del {
+  u32 client_index;
+  u32 context;
+
+  u8 app[64];
+  u32 id;
+  u8 is_ipv6;
+  u8 src_ip_addr[16];
+  u8 src_ip_prefix_len;
+  u8 dst_ip_addr[16];
+  u8 dst_ip_prefix_len;
+  u8 is_add;
+};
+
+autoreply define upf_app_l7_rule_add_del {
+  u32 client_index;
+  u32 context;
+
+  u8 app[64];
+  u32 id;
+  u8 protocol;
+  u8 host[256];
+  u8 path[256];
+  u8 is_add;
+};
+
 autoreply define upf_app_flow_timeout_set {
   u32 client_index;
   u32 context;

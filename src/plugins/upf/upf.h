@@ -236,6 +236,11 @@ struct rte_acl_ctx {};
 #define INTF_LI		4
 #define INTF_NUM	(INTF_LI + 1)
 
+typedef struct {
+  u32 application_id;
+  u32 db_id;
+} adr_rule_t;
+
 /* Packet Detection Information */
 typedef struct {
   u8 src_intf;
@@ -256,6 +261,7 @@ typedef struct {
   pfcp_f_teid_t teid;
   pfcp_ue_ip_address_t ue_addr;
   acl_rule_t acl;
+  adr_rule_t adr;
 } upf_pdi_t;
 
 /* Packet Detection Rules */
@@ -415,6 +421,7 @@ typedef struct {
     uint32_t flags;
 #define SX_SDF_IPV4    BIT(0)
 #define SX_SDF_IPV6    BIT(1)
+#define SX_ADR         BIT(2)
 
     upf_acl_ctx_t sdf[MAX_SDF];
 
@@ -513,6 +520,28 @@ typedef struct {
   u32 heartbeat_handle;
 } upf_node_assoc_t;
 
+typedef u8 * regex_t;
+
+typedef struct {
+  u32 id;               /* bit 31 == 1 indicates PFD from CP */
+  regex_t host;
+  regex_t path;
+} upf_adr_t;
+
+typedef struct {
+  u8 * name;
+  uword * rules_by_id;   /* hash over rules id */
+  upf_adr_t * rules;     /* vector of rules definition */
+  u32 db_index;          /* index in ADR pool */
+} upf_adf_app_t;
+
+typedef struct {
+  regex_t host;
+  regex_t path;
+  ip46_address_t src_ip;
+  ip46_address_t dst_ip;
+} upf_rule_args_t;
+
 #define UPF_MAPPING_BUCKETS      1024
 #define UPF_MAPPING_MEMORY_SIZE  64 << 20
 
@@ -569,6 +598,11 @@ typedef struct {
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
   ethernet_main_t * ethernet_main;
+
+  /* adf apps hash */
+  uword* upf_app_by_name;
+  /* adf apps vector */
+  upf_adf_app_t *upf_apps;
 } upf_main_t;
 
 extern const fib_node_vft_t upf_vft;

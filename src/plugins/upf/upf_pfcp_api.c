@@ -39,6 +39,7 @@
 #include "upf_pfcp.h"
 #include "upf_pfcp_server.h"
 #include "upf_pfcp_api.h"
+#include "upf_adf.h"
 
 #if CLIB_DEBUG > 0
 #define gtp_debug clib_warning
@@ -792,6 +793,34 @@ static int handle_create_pdr(upf_session_t *sess, pfcp_create_pdr_t *create_pdr,
 	      break;
 	    }
 	}
+
+	if (ISSET_BIT(pdr->pdi.grp.fields, PDI_APPLICATION_ID))
+	  {
+	    uword *p = NULL;
+	    create->pdi.fields |= F_PDI_APPLICATION_ID;
+
+	    p = hash_get_mem (gtm->upf_app_by_name, pdr->pdi.application_id);
+	    if (!p)
+	      {
+		failed_rule_id->id = pdr->pdr_id;
+		r = -1;
+		fformat(stderr, "PDR: %d, application id %v has not been configured\n",
+			pdr->pdr_id, pdr->pdi.application_id);
+		break;
+	      }
+
+	    ASSERT(!pool_is_free_index (gtm->upf_apps, p[0]));
+	    create->pdi.adr.application_id = p[0];
+	    create->pdi.adr.db_id = upf_adf_get_adr_db(p[0]);
+
+#if CLIB_DEBUG > 0
+	      {
+		upf_adf_app_t *app = pool_elt_at_index (gtm->upf_apps, p[0]);
+		gtp_debug("app: %v, ADR DB id %u", app->name, create->pdi.adr.db_id);
+	      }
+#endif
+	  }
+
       create->outer_header_removal = OPT(pdr, CREATE_PDR_OUTER_HEADER_REMOVAL,
 					 outer_header_removal, ~0);
       create->far_id = OPT(pdr, CREATE_PDR_FAR_ID, far_id, ~0);
@@ -903,6 +932,35 @@ static int handle_update_pdr(upf_session_t *sess, pfcp_update_pdr_t *update_pdr,
 	      break;
 	    }
 	}
+
+      if (ISSET_BIT(pdr->pdi.grp.fields, PDI_APPLICATION_ID))
+	{
+	  uword *p = NULL;
+
+	  update->pdi.fields |= F_PDI_APPLICATION_ID;
+
+	  p = hash_get_mem (gtm->upf_app_by_name, pdr->pdi.application_id);
+	  if (!p)
+	    {
+	      failed_rule_id->id = pdr->pdr_id;
+	      r = -1;
+	      fformat(stderr, "PDR: %d, application id %v has not been configured\n",
+		      pdr->pdr_id, pdr->pdi.application_id);
+	      break;
+	    }
+
+	  ASSERT(!pool_is_free_index (gtm->upf_apps, p[0]));
+	  update->pdi.adr.application_id = p[0];
+	  update->pdi.adr.db_id =  upf_adf_get_adr_db(p[0]);
+
+#if CLIB_DEBUG > 0
+	  {
+	    upf_adf_app_t *app = pool_elt_at_index (gtm->upf_apps, p[0]);
+	    gtp_debug("app: %v, ADR DB id %u", app->name, update->pdi.adr.db_id);
+	  }
+#endif
+	}
+
       update->outer_header_removal = OPT(pdr, UPDATE_PDR_OUTER_HEADER_REMOVAL,
 					 outer_header_removal, ~0);
       update->far_id = OPT(pdr, UPDATE_PDR_FAR_ID, far_id, ~0);
