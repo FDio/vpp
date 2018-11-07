@@ -111,8 +111,10 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
-	    CLIB_PREFETCH (p3->data, sizeof (ip1[0]), LOAD);
+	    CLIB_PREFETCH (vlib_buffer_get_current (p2),
+			   sizeof (ip6_header_t), LOAD);
+	    CLIB_PREFETCH (vlib_buffer_get_current (p3),
+			   sizeof (ip6_header_t), LOAD);
 	  }
 
 	  pi0 = from[0];
