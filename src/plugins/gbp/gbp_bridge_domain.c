@@ -31,12 +31,7 @@ gbp_bridge_domain_t *gbp_bridge_domain_pool;
 /**
  * DB of bridge_domains
  */
-typedef struct gbp_bridge_domain_db_t
-{
-  uword *gbd_by_bd_id;
-} gbp_bridge_domain_db_t;
-
-static gbp_bridge_domain_db_t gbp_bridge_domain_db;
+gbp_bridge_domain_db_t gbp_bridge_domain_db;
 
 /**
  * logger
@@ -45,12 +40,6 @@ vlib_log_class_t gb_logger;
 
 #define GBP_BD_DBG(...)                           \
     vlib_log_debug (gb_logger, __VA_ARGS__);
-
-gbp_bridge_domain_t *
-gbp_bridge_domain_get (index_t i)
-{
-  return (pool_elt_at_index (gbp_bridge_domain_pool, i));
-}
 
 static void
 gbp_bridge_domain_lock (index_t i)
@@ -95,16 +84,21 @@ gbp_bridge_domain_db_add (gbp_bridge_domain_t * gb)
   index_t gbi = gb - gbp_bridge_domain_pool;
 
   hash_set (gbp_bridge_domain_db.gbd_by_bd_id, gb->gb_bd_id, gbi);
+  vec_validate_init_empty (gbp_bridge_domain_db.gbd_by_bd_index,
+			   gb->gb_bd_index, INDEX_INVALID);
+  gbp_bridge_domain_db.gbd_by_bd_index[gb->gb_bd_index] = gbi;
 }
 
 static void
 gbp_bridge_domain_db_remove (gbp_bridge_domain_t * gb)
 {
   hash_unset (gbp_bridge_domain_db.gbd_by_bd_id, gb->gb_bd_id);
+  gbp_bridge_domain_db.gbd_by_bd_index[gb->gb_bd_index] = INDEX_INVALID;
 }
 
 int
 gbp_bridge_domain_add_and_lock (u32 bd_id,
+				gbp_bridge_domain_flags_t flags,
 				u32 bvi_sw_if_index, u32 uu_fwd_sw_if_index)
 {
   gbp_bridge_domain_t *gb;
@@ -134,6 +128,7 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       gb->gb_uu_fwd_sw_if_index = uu_fwd_sw_if_index;
       gb->gb_bvi_sw_if_index = bvi_sw_if_index;
       gb->gb_locks = 1;
+      gb->gb_flags = flags;
 
       /*
        * Set the BVI and uu-flood interfaces into the BD
@@ -269,7 +264,7 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
       if (~0 == bvi_sw_if_index)
 	return clib_error_return (0, "interface must be specified");
 
-      gbp_bridge_domain_add_and_lock (bd_id,
+      gbp_bridge_domain_add_and_lock (bd_id, GBP_BD_FLAG_NONE,
 				      bvi_sw_if_index, uu_fwd_sw_if_index);
     }
   else

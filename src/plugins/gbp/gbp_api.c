@@ -299,6 +299,20 @@ static void
   REPLY_MACRO (VL_API_GBP_ENDPOINT_GROUP_DEL_REPLY + GBP_MSG_BASE);
 }
 
+static gbp_bridge_domain_flags_t
+gbp_bridge_domain_flags_from_api (vl_api_gbp_bridge_domain_flags_t a)
+{
+  gbp_bridge_domain_flags_t g;
+
+  g = GBP_BD_FLAG_NONE;
+  a = clib_net_to_host_u32 (a);
+
+  if (a & GBP_BD_API_FLAG_DO_NOT_LEARN)
+    g |= GBP_BD_FLAG_DO_NOT_LEARN;
+
+  return (g);
+}
+
 static void
 vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t * mp)
 {
@@ -306,6 +320,8 @@ vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t * mp)
   int rv = 0;
 
   rv = gbp_bridge_domain_add_and_lock (ntohl (mp->bd.bd_id),
+				       gbp_bridge_domain_flags_from_api
+				       (mp->bd.flags),
 				       ntohl (mp->bd.bvi_sw_if_index),
 				       ntohl (mp->bd.uu_fwd_sw_if_index));
 
