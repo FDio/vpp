@@ -62,6 +62,12 @@ vlib_log_class_t grd_logger;
 #define GBP_BD_DBG(...)                           \
     vlib_log_debug (grd_logger, __VA_ARGS__);
 
+index_t
+gbp_route_domain_index (const gbp_route_domain_t * grd)
+{
+  return (grd - gbp_route_domain_pool);
+}
+
 gbp_route_domain_t *
 gbp_route_domain_get (index_t i)
 {

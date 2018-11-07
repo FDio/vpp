@@ -62,6 +62,7 @@ extern int gbp_route_domain_add_and_lock (u32 rd_id,
 extern void gbp_route_domain_unlock (index_t grdi);
 extern index_t gbp_route_domain_find_and_lock (u32 rd_id);
 extern index_t gbp_route_domain_find (u32 rd_id);
+extern index_t gbp_route_domain_index (const gbp_route_domain_t *);
 
 extern int gbp_route_domain_delete (u32 rd_id);
 extern gbp_route_domain_t *gbp_route_domain_get (index_t i);
