@@ -290,7 +290,8 @@ typedef struct
 typedef struct
 {
   u16 flags;
-#define FAR_F_OUTER_HEADER_CREATION    BIT(1)
+#define FAR_F_REDIRECT_INFORMATION	BIT(0)
+#define FAR_F_OUTER_HEADER_CREATION	BIT(1)
 
   int dst_intf;
 #define DST_INTF_ACCESS		0
@@ -301,6 +302,7 @@ typedef struct
   u32 dst_sw_if_index;
   uword nwi;
 
+  pfcp_redirect_information_t redirect_information;
   pfcp_outer_header_creation_t outer_header_creation;
 
   u32 peer_idx;
@@ -655,6 +657,7 @@ typedef enum
   UPF_PROCESS_NEXT_GTP_IP4_ENCAP,
   UPF_PROCESS_NEXT_GTP_IP6_ENCAP,
   UPF_PROCESS_NEXT_IP_INPUT,
+  UPF_PROCESS_NEXT_IP_LOCAL,
   UPF_PROCESS_N_NEXT,
 } upf_process_next_t;
 
