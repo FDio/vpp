@@ -191,11 +191,14 @@ endif()
 
 if(GBP_FILE)
   list(APPEND VOM_HEADERS
+    gbp_contract.hpp
+    gbp_bridge_domain.hpp
     gbp_endpoint.hpp
     gbp_endpoint_group.hpp
-    gbp_subnet.hpp
     gbp_recirc.hpp
-    gbp_contract.hpp
+    gbp_route_domain.hpp
+    gbp_subnet.hpp
+    gbp_vxlan.hpp
   )
 endif()
 
