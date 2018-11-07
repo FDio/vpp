@@ -130,6 +130,7 @@ typedef enum
   _(USE_LOCAL_SCOPE, "App can use local session scope")		\
   _(USE_MQ_FOR_CTRL_MSGS, "Use message queue for ctr msgs")	\
   _(EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")		\
+  _(IS_MULTI_FIB, "Use endpoints FIB instead of apps")		\
 
 typedef enum _app_options
 {

@@ -143,6 +143,9 @@ session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
   app_namespace_t *app_ns;
   u32 ns_index, fib_index;
 
+  if (app->flags & APP_OPTIONS_FLAGS_IS_MULTI_FIB)
+    return;
+
   ns_index = app->ns_index;
 
   /* App is a transport proto, so fetch the calling app's ns */
