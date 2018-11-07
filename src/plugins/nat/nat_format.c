@@ -226,7 +226,8 @@ format_snat_static_mapping (u8 * s, va_list * args)
 	s = format (s, "identity mapping %U",
 		    format_ip4_address, &m->local_addr);
       else
-	s = format (s, "identity mapping %U:%d",
+	s = format (s, "identity mapping %U %U:%d",
+		    format_snat_protocol, m->proto,
 		    format_ip4_address, &m->local_addr, m->local_port);
 
       /* *INDENT-OFF* */
