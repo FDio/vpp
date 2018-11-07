@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "19a90c18_703bc188",
+        "filename": "src/vnet/session/transport.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-11-07T15:53:10Z",
+      "side": 1,
+      "message": "This is a generic \"class\", abusing it like this is not really an option. In other words, all transports (tcp, udp, sctp, tls and whatever else we\u0027ll implement) have to carry 64 additional bytes of data to support a hack?",
+      "range": {
+        "startLine": 74,
+        "startChar": 2,
+        "endLine": 74,
+        "endChar": 23
+      },
+      "revId": "e111e38a5992eed54d1fb7e471d49a57a10697a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1da7b151_504e3ef2",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3398,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-11-07T15:53:10Z",
+      "side": 1,
+      "message": "Who adds the listener index to the opaque2 and why does the packet still need to come to tcp_input?",
+      "range": {
+        "startLine": 3398,
+        "startChar": 0,
+        "endLine": 3398,
+        "endChar": 31
+      },
+      "revId": "e111e38a5992eed54d1fb7e471d49a57a10697a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
