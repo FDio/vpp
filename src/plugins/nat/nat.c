@@ -558,6 +558,10 @@ is_snat_address_used_in_static_mapping (snat_main_t * sm, ip4_address_t addr)
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
+      if (is_addr_only_static_mapping (m) ||
+          is_out2in_only_static_mapping (m) ||
+          is_identity_static_mapping (m))
+        continue;
       if (m->external_addr.as_u32 == addr.as_u32)
         return 1;
   }));
@@ -954,6 +958,9 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 
       if (identity_nat)
 	{
+	  if (vrf_id == ~0)
+	    vrf_id = sm->inside_vrf_id;
+
 	  for (i = 0; i < vec_len (m->locals); i++)
 	    {
 	      if (m->locals[i].vrf_id == vrf_id)
