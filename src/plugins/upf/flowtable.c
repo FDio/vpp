@@ -20,6 +20,8 @@
 #include <vppinfra/vec.h>
 #include <vnet/ip/ip4_packet.h>
 
+#include "upf.h"
+#include "upf_adf.h"
 #include "flowtable.h"
 #include "flowtable_tcp.h"
 
@@ -365,16 +367,27 @@ u8 * format_flow_key(u8 * s, va_list * args)
 u8 * format_flow(u8 * s, va_list * args)
 {
   flow_entry_t *flow = va_arg (*args, flow_entry_t *);
+  upf_main_t * sm = &upf_main;
+  u8 *app_name = NULL;
+
+  if (flow->application_id != ~0)
+    {
+      upf_adf_app_t *app = pool_elt_at_index (sm->upf_apps, flow->application_id);
+      app_name = format (0, "%v", app->name);
+    }
+  else
+    app_name = format (0, "%s", "None");
 
   return format(s, "%U, UL pkt %u, DL pkt %u, "
 		"Src Intf %u, Forward PDR %u, Reverse PDR %u, "
-		"lifetime %u",
+		"app %v, lifetime %u",
 		format_flow_key, &flow->key,
 		flow->stats[0].pkts,
 		flow->stats[1].pkts,
 		flow->src_intf,
 		flow->pdr_id[FT_FORWARD],
 		flow->pdr_id[FT_REVERSE],
+		app_name,
 		flow->lifetime);
 }
 
