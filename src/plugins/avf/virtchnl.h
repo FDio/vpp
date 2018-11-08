@@ -83,7 +83,12 @@
   _(26, SET_RSS_HENA)				\
   _(27, ENABLE_VLAN_STRIPPING)			\
   _(28, DISABLE_VLAN_STRIPPING)			\
-  _(29, REQUEST_QUEUES)
+  _(29, REQUEST_QUEUES)				\
+  _(30, ENABLE_CHANNELS)			\
+  _(31, DISABLE_CHANNELS)			\
+  _(32, ADD_CLOUD_FILTER)			\
+  _(33, DEL_CLOUD_FILTER)
+
 
 typedef enum
 {
@@ -96,32 +101,36 @@ typedef enum
 typedef enum
 {
   VIRTCHNL_STATUS_SUCCESS = 0,
-  VIRTCHNL_ERR_PARAM = -5,
+  VIRTCHNL_STATUS_ERR_PARAM = -5,
+  VIRTCHNL_STATUS_ERR_NO_MEMORY = -18,
   VIRTCHNL_STATUS_ERR_OPCODE_MISMATCH = -38,
   VIRTCHNL_STATUS_ERR_CQP_COMPL_ERROR = -39,
   VIRTCHNL_STATUS_ERR_INVALID_VF_ID = -40,
+  VIRTCHNL_STATUS_ERR_ADMIN_QUEUE_ERROR = -53,
   VIRTCHNL_STATUS_NOT_SUPPORTED = -64,
 } virtchnl_status_code_t;
 
 #define foreach_avf_vf_cap_flag \
-  _( 0, L2, "l2") \
-  _( 1, IWARP, "iwarp") \
-  _( 2, RSVD, "rsvd") \
-  _( 3, RSS_AQ, "rss-aq") \
-  _( 4, RSS_REG, "rss-reg") \
-  _( 5, WB_ON_ITR, "wb-on-itr") \
-  _( 6, REQ_QUEUES, "req-queues") \
-  _(16, VLAN, "vlan") \
-  _(17, RX_POLLING, "rx-polling") \
-  _(18, RSS_PCTYPE_V2, "rss-pctype-v2") \
-  _(19, RSS_PF, "rss-pf") \
-  _(20, ENCAP, "encap") \
-  _(21, ENCAP_CSUM, "encap-csum") \
-  _(22, RX_ENCAP_CSUM, "rx-encap-csum")
+  _( 0, OFFLOAD_L2, "l2") \
+  _( 1, OFFLOAD_IWARP, "iwarp") \
+  _( 2, OFFLOAD_RSVD, "rsvd") \
+  _( 3, OFFLOAD_RSS_AQ, "rss-aq") \
+  _( 4, OFFLOAD_RSS_REG, "rss-reg") \
+  _( 5, OFFLOAD_WB_ON_ITR, "wb-on-itr") \
+  _( 6, OFFLOAD_REQ_QUEUES, "req-queues") \
+  _( 7, CAP_ADV_LINK_SPEED, "adv-link-speed") \
+  _(16, OFFLOAD_VLAN, "vlan") \
+  _(17, OFFLOAD_RX_POLLING, "rx-polling") \
+  _(18, OFFLOAD_RSS_PCTYPE_V2, "rss-pctype-v2") \
+  _(19, OFFLOAD_RSS_PF, "rss-pf") \
+  _(20, OFFLOAD_ENCAP, "encap") \
+  _(21, OFFLOAD_ENCAP_CSUM, "encap-csum") \
+  _(22, OFFLOAD_RX_ENCAP_CSUM, "rx-encap-csum") \
+  _(23, OFFLOAD_ADQ, "offload-adq")
 
 typedef enum
 {
-#define _(a, b, c) VIRTCHNL_VF_OFFLOAD_##b = (1 << a),
+#define _(a, b, c) VIRTCHNL_VF_##b = (1 << a),
   foreach_avf_vf_cap_flag
 #undef _
 } avf_vf_cap_flag_t;
@@ -192,8 +201,13 @@ typedef struct
     struct
     {
       virtchnl_link_speed_t link_speed;
-      _Bool link_status;
+      u8 link_status;
     } link_event;
+    struct
+    {
+      u32 link_speed;
+      u8 link_status;
+    } link_event_adv;
   } event_data;
   int severity;
 } virtchnl_pf_event_t;
