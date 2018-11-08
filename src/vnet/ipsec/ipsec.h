@@ -142,7 +142,7 @@ typedef struct
   u32 last_seq_hi;
   u64 replay_window;
 
-  /*lifetime data */
+  /* lifetime data */
   u64 total_data_size;
 } ipsec_sa_t;
 
@@ -254,11 +254,42 @@ typedef struct
   u32 show_instance;
 } ipsec_tunnel_if_t;
 
+typedef void (*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
+typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
+
 typedef struct
 {
-  clib_error_t *(*add_del_sa_sess_cb) (u32 sa_index, u8 is_add);
-  clib_error_t *(*check_support_cb) (ipsec_sa_t * sa);
-} ipsec_main_callbacks_t;
+  u8 *name;
+  /* add/del callback */
+  add_del_sa_sess_cb_t add_del_sa_sess_cb;
+  /* check support function */
+  check_support_cb_t check_support_cb;
+  u32 ah4_encrypt_node_index;
+  u32 ah4_decrypt_node_index;
+  u32 ah4_encrypt_next_index;
+  u32 ah4_decrypt_next_index;
+  u32 ah6_encrypt_node_index;
+  u32 ah6_decrypt_node_index;
+  u32 ah6_encrypt_next_index;
+  u32 ah6_decrypt_next_index;
+} ipsec_ah_backend_t;
+
+typedef struct
+{
+  u8 *name;
+  /* add/del callback */
+  add_del_sa_sess_cb_t add_del_sa_sess_cb;
+  /* check support function */
+  check_support_cb_t check_support_cb;
+  u32 esp4_encrypt_node_index;
+  u32 esp4_decrypt_node_index;
+  u32 esp4_encrypt_next_index;
+  u32 esp4_decrypt_next_index;
+  u32 esp6_encrypt_node_index;
+  u32 esp6_decrypt_node_index;
+  u32 esp6_encrypt_next_index;
+  u32 esp6_decrypt_next_index;
+} ipsec_esp_backend_t;
 
 typedef struct
 {
@@ -307,9 +338,21 @@ typedef struct
   u32 esp6_decrypt_next_index;
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
+  check_support_cb_t ah_check_support_cb;
+  check_support_cb_t esp_check_support_cb;
 
-  /* callbacks */
-  ipsec_main_callbacks_t cb;
+  /* pool of ah backends */
+  ipsec_ah_backend_t *ah_backends;
+  /* pool of esp backends */
+  ipsec_esp_backend_t *esp_backends;
+  /* index of current ah backend */
+  u32 ah_current_backend;
+  /* index of current esp backend */
+  u32 esp_current_backend;
+  /* index of default ah backend */
+  u32 ah_default_backend;
+  /* index of default esp backend */
+  u32 esp_default_backend;
 
   /* helper for sort function */
   ipsec_spd_t *spd_to_sort;
@@ -399,6 +442,31 @@ get_next_output_feature_node_index (vlib_buffer_t * b,
   return node->next_nodes[next];
 }
 
+u32 ipsec_register_ah_backend (ipsec_main_t * im, const char *name,
+			       u32 ah4_encrypt_node_index,
+			       u32 ah4_encrypt_next_index,
+			       u32 ah4_decrypt_node_index,
+			       u32 ah4_decrypt_next_index,
+			       u32 ah6_encrypt_node_index,
+			       u32 ah6_decrypt_node_index,
+			       u32 ah6_encrypt_next_index,
+			       u32 ah6_decrypt_next_index,
+			       check_support_cb_t ah_check_support_cb,
+			       add_del_sa_sess_cb_t ah_add_del_sa_sess_cb);
+u32 ipsec_register_esp_backend (ipsec_main_t * im, const char *name,
+				u32 esp4_encrypt_node_index,
+				u32 esp4_encrypt_next_index,
+				u32 esp4_decrypt_node_index,
+				u32 esp4_decrypt_next_index,
+				u32 esp6_encrypt_node_index,
+				u32 esp6_encrypt_next_index,
+				u32 esp6_decrypt_node_index,
+				u32 esp6_decrypt_next_index,
+				check_support_cb_t esp_check_support_cb,
+				add_del_sa_sess_cb_t esp_add_del_sa_sess_cb);
+
+int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
+int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
 #endif /* __IPSEC_H__ */
 
 /*

@@ -96,6 +96,11 @@ class TemplateIpsec(VppTestCase):
     vpp_ah_protocol = 0
 
     @classmethod
+    def ipsec_select_backend(cls):
+        """ empty method to be overloaded when necessary """
+        pass
+
+    @classmethod
     def setUpClass(cls):
         super(TemplateIpsec, cls).setUpClass()
         cls.create_pg_interfaces(range(3))
@@ -106,6 +111,7 @@ class TemplateIpsec(VppTestCase):
             i.resolve_arp()
             i.config_ip6()
             i.resolve_ndp()
+        cls.ipsec_select_backend()
 
     def tearDown(self):
         super(TemplateIpsec, self).tearDown()
