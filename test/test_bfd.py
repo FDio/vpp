@@ -84,7 +84,7 @@ class BFDAPITestCase(VppTestCase):
         session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
         session.add_vpp_config()
 
-        with self.vapi.expect_negative_api_retval():
+        with self.vapi.assert_negative_api_retval():
             session.add_vpp_config()
 
         session.remove_vpp_config()

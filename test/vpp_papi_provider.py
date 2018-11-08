@@ -78,14 +78,23 @@ class VppPapiProvider(object):
     def __enter__(self):
         return self
 
-    def expect_negative_api_retval(self):
-        """ Expect API failure """
+    def assert_negative_api_retval(self):
+        """ Expect API failure - used with with, e.g.:
+            with self.vapi.assert_negative_api_retval():
+                self.vapi.<api call expected to fail>
+        """
         self._expect_stack.append(self._expect_api_retval)
         self._expect_api_retval = self._negative
         return self
 
-    def expect_zero_api_retval(self):
-        """ Expect API success """
+    def assert_zero_api_retval(self):
+        """ Expect API success - used with with, e.g.:
+            with self.vapi.assert_negative_api_retval():
+                self.vapi.<api call expected to succeed>
+
+            note: this is useful only inside another with block
+                  as success is the default expected value
+        """
         self._expect_stack.append(self._expect_api_retval)
         self._expect_api_retval = self._zero
         return self
