@@ -1416,9 +1416,8 @@ dispatch_suspended_process (vlib_main_t * vm,
   ASSERT (p->flags & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
 		      | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT));
 
-  pf =
-    pool_elt_at_index (nm->suspended_process_frames,
-		       p->suspended_process_frame_index);
+  pf = pool_elt_at_index (nm->suspended_process_frames,
+			  p->suspended_process_frame_index);
 
   node_runtime = &p->node_runtime;
   node = vlib_get_node (vm, node_runtime->node_index);
@@ -1454,8 +1453,9 @@ dispatch_suspended_process (vlib_main_t * vm,
   else
     {
       p->flags &= ~VLIB_PROCESS_IS_RUNNING;
+      pool_put_index (nm->suspended_process_frames,
+		      p->suspended_process_frame_index);
       p->suspended_process_frame_index = ~0;
-      pool_put (nm->suspended_process_frames, pf);
     }
 
   t = clib_cpu_time_now ();
