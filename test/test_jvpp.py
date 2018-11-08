@@ -99,7 +99,7 @@ class TestJVpp(VppTestCase):
                             "{0}-{1}.jar".format(jar_name, version))
 
     def jvpp_connection_test(self, api_jar_name, test_class_name, timeout):
-        install_dir = os.getenv('VPP_TEST_BUILD_DIR')
+        install_dir = os.getenv('VPP_BUILD_DIR')
         self.logger.info("Install directory : {0}".format(install_dir))
 
         version_reply = self.vapi.show_version()
