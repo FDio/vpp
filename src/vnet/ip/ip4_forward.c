@@ -123,9 +123,6 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next = node->cached_next_index;
 
-  if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
-
   while (n_left_from > 0)
     {
       vlib_get_next_frame (vm, node, next, to_next, n_left_to_next);
@@ -293,6 +290,9 @@ VLIB_NODE_FN (ip4_load_balance_node) (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next, n_left_to_next);
     }
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
   return frame->n_vectors;
 }
