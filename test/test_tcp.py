@@ -45,14 +45,6 @@ class TestTCP(VppTestCase):
         self.vapi.session_enable_disable(is_enabled=0)
         super(TestTCP, self).tearDown()
 
-    def test_tcp_unittest(self):
-        """ TCP Unit Tests """
-        error = self.vapi.cli("test tcp all")
-
-        if error:
-            self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
-
     def test_tcp_transfer(self):
         """ TCP echo client/server transfer """
 
@@ -86,6 +78,25 @@ class TestTCP(VppTestCase):
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
+
+
+class TestTCPUnitTests(VppTestCase):
+    "TCP Unit Tests"
+
+    def setUp(self):
+        super(TestTCPUnitTests, self).setUp()
+        self.vapi.session_enable_disable(is_enabled=1)
+
+    def tearDown(self):
+        super(TestTCPUnitTests, self).tearDown()
+
+    def test_tcp_unittest(self):
+        """ TCP Unit Tests """
+        error = self.vapi.cli("test tcp all")
+
+        if error:
+            self.logger.critical(error)
+        self.assertEqual(error.find("failed"), -1)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
