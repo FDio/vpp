@@ -146,7 +146,7 @@ ip4_fib_mtrie_leaf_set_next_ply_index (u32 i)
    */                                                                   \
   p->n_non_empty_leafs = (prefix_len > ply_base_len ?                   \
 			  ARRAY_LEN (p->leaves) : 0);                   \
-  clib_memset (p->dst_address_bits_of_leaves, prefix_len,                    \
+  memset (p->dst_address_bits_of_leaves, prefix_len,                    \
 	  sizeof (p->dst_address_bits_of_leaves));                      \
   p->dst_address_bits_base = ply_base_len;                              \
                                                                         \
@@ -165,8 +165,8 @@ static void
 ply_16_init (ip4_fib_mtrie_16_ply_t * p,
 	     ip4_fib_mtrie_leaf_t init, uword prefix_len)
 {
-  clib_memset (p->dst_address_bits_of_leaves, prefix_len,
-	       sizeof (p->dst_address_bits_of_leaves));
+  memset (p->dst_address_bits_of_leaves, prefix_len,
+	  sizeof (p->dst_address_bits_of_leaves));
   PLY_INIT_LEAVES (p);
 }
 

@@ -126,7 +126,7 @@ static void send_pppoe_session_details
   u8 is_ipv6 = !ip46_address_is_ip4 (&t->client_ip);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_PPPOE_SESSION_DETAILS);
   if (is_ipv6)
     {

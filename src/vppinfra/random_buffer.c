@@ -63,7 +63,7 @@ clib_random_buffer_init (clib_random_buffer_t * b, uword seed)
 {
   uword i, j;
 
-  clib_memset (b, 0, sizeof (b[0]));
+  memset (b, 0, sizeof (b[0]));
 
   /* Seed ISAAC. */
   for (i = 0; i < ARRAY_LEN (b->ctx); i++)

@@ -110,7 +110,7 @@ gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
   dpo_id_t parent = DPO_INVALID;
 
   gpd = gbp_policy_dpo_alloc ();
-  clib_memset (gpd, 0, sizeof (*gpd));
+  memset (gpd, 0, sizeof (*gpd));
 
   gpd->gpd_proto = dproto;
   gpd->gpd_sw_if_index = sw_if_index;

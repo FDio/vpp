@@ -222,7 +222,7 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 
   if (is_ipv4)
     {
-      clib_memset (&fib_prefix, 0, sizeof (fib_prefix_t));
+      memset (&fib_prefix, 0, sizeof (fib_prefix_t));
       fib_prefix.fp_len = 32;
       fib_prefix.fp_proto = FIB_PROTOCOL_IP4;
       fib_prefix.fp_addr = dst_addr;
@@ -303,7 +303,7 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
       vxlan_gpe_ioam_dest_tunnels_t *t1;
       fib_prefix_t key4, *key4_copy;
       hash_pair_t *hp;
-      clib_memset (&key4, 0, sizeof (key4));
+      memset (&key4, 0, sizeof (key4));
       key4.fp_proto = FIB_PROTOCOL_IP4;
       key4.fp_addr.ip4.as_u32 = fib_prefix.fp_addr.ip4.as_u32;
       t = hash_get_mem (hm->dst_by_ip4, &key4);
@@ -314,7 +314,7 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 	      return 0;
 	    }
 	  pool_get_aligned (hm->dst_tunnels, t1, CLIB_CACHE_LINE_BYTES);
-	  clib_memset (t1, 0, sizeof (*t1));
+	  memset (t1, 0, sizeof (*t1));
 	  t1->fp_proto = FIB_PROTOCOL_IP4;
 	  t1->dst_addr.ip4.as_u32 = fib_prefix.fp_addr.ip4.as_u32;
 	  key4_copy = clib_mem_alloc (sizeof (*key4_copy));

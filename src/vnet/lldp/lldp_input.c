@@ -231,7 +231,7 @@ lldp_create_intf (lldp_main_t * lm, u32 hw_if_index)
   if (p == 0)
     {
       pool_get (lm->intfs, n);
-      clib_memset (n, 0, sizeof (*n));
+      memset (n, 0, sizeof (*n));
       n->hw_if_index = hw_if_index;
       hash_set (lm->intf_by_hw_if_index, n->hw_if_index, n - lm->intfs);
     }

@@ -407,7 +407,7 @@ static void __attribute__ ((unused)) clear_and_free_obj (void *obj)
 {
   struct rte_mempool *mp = rte_mempool_from_obj (obj);
 
-  clib_memset (obj, 0, mp->elt_size);
+  memset (obj, 0, mp->elt_size);
 
   rte_mempool_put (mp, obj);
 }
@@ -1031,9 +1031,9 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       vec_validate_init_empty_aligned (cwm->ops, VLIB_FRAME_SIZE - 1, 0,
 				       CLIB_CACHE_LINE_BYTES);
-      clib_memset (cwm->cipher_resource_idx, ~0,
+      memset (cwm->cipher_resource_idx, ~0,
 	      IPSEC_CRYPTO_N_ALG * sizeof(*cwm->cipher_resource_idx));
-      clib_memset (cwm->auth_resource_idx, ~0,
+      memset (cwm->auth_resource_idx, ~0,
 	      IPSEC_INTEG_N_ALG * sizeof(*cwm->auth_resource_idx));
     }
   /* *INDENT-ON* */

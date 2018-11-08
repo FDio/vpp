@@ -40,7 +40,7 @@ mpls_label_dpo_alloc (void)
     mpls_label_dpo_t *mld;
 
     pool_get_aligned(mpls_label_dpo_pool, mld, CLIB_CACHE_LINE_BYTES);
-    clib_memset(mld, 0, sizeof(*mld));
+    memset(mld, 0, sizeof(*mld));
 
     dpo_reset(&mld->mld_dpo);
 

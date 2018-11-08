@@ -580,7 +580,7 @@ static void init_ips_packet (srp_interface_t * si,
 			     srp_ring_type_t tx_ring,
 			     srp_ips_header_t * i)
 {
-  clib_memset (i, 0, sizeof (i[0]));
+  memset (i, 0, sizeof (i[0]));
 
   i->srp.ttl = 1;
   i->srp.is_inner_ring = tx_ring;

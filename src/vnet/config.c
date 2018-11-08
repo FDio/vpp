@@ -167,7 +167,7 @@ vnet_config_init (vlib_main_t * vm,
   vlib_node_t *n;
   u32 i;
 
-  clib_memset (cm, 0, sizeof (cm[0]));
+  memset (cm, 0, sizeof (cm[0]));
 
   cm->config_string_hash =
     hash_create_vec (0,

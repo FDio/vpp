@@ -177,7 +177,7 @@ os_cpu_clock_frequency (void)
 void
 clib_time_init (clib_time_t * c)
 {
-  clib_memset (c, 0, sizeof (c[0]));
+  memset (c, 0, sizeof (c[0]));
   c->clocks_per_second = os_cpu_clock_frequency ();
   c->seconds_per_clock = 1 / c->clocks_per_second;
   c->log2_clocks_per_second = min_log2_u64 ((u64) c->clocks_per_second);

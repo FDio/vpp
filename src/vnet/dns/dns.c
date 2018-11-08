@@ -278,9 +278,9 @@ found_src_address:
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;	/* default VRF for now */
 
   ip = vlib_buffer_get_current (b);
-  clib_memset (ip, 0, sizeof (*ip));
+  memset (ip, 0, sizeof (*ip));
   udp = (udp_header_t *) (ip + 1);
-  clib_memset (udp, 0, sizeof (*udp));
+  memset (udp, 0, sizeof (*udp));
 
   dns_request = (u8 *) (udp + 1);
 
@@ -384,9 +384,9 @@ found_src_address:
     VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   ip = vlib_buffer_get_current (b);
-  clib_memset (ip, 0, sizeof (*ip));
+  memset (ip, 0, sizeof (*ip));
   udp = (udp_header_t *) (ip + 1);
-  clib_memset (udp, 0, sizeof (*udp));
+  memset (udp, 0, sizeof (*udp));
 
   dns_request = (u8 *) (udp + 1);
 
@@ -768,7 +768,7 @@ dns_add_static_entry (dns_main_t * dm, u8 * name, u8 * dns_reply_data)
     }
 
   pool_get (dm->entries, ep);
-  clib_memset (ep, 0, sizeof (*ep));
+  memset (ep, 0, sizeof (*ep));
 
   /* Note: consumes the name vector */
   ep->name = name;
@@ -887,7 +887,7 @@ re_resolve:
 
   /* add new hash table entry */
   pool_get (dm->entries, ep);
-  clib_memset (ep, 0, sizeof (*ep));
+  memset (ep, 0, sizeof (*ep));
 
   ep->name = format (0, "%s%c", name, 0);
   _vec_len (ep->name) = vec_len (ep->name) - 1;
@@ -1063,7 +1063,7 @@ found_last_request:
   /* Need to recompute ep post pool-get */
   ep = pool_elt_at_index (dm->entries, ep_index);
 
-  clib_memset (next_ep, 0, sizeof (*next_ep));
+  memset (next_ep, 0, sizeof (*next_ep));
   next_ep->name = vec_dup (cname);
   vec_add1 (next_ep->name, 0);
   _vec_len (next_ep->name) -= 1;
@@ -2592,7 +2592,7 @@ test_dns_fmt_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "%U", format_dns_reply, dns_reply_data, verbose);
 
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
 
   rv = vnet_dns_response_to_reply (dns_reply_data, rmp, 0 /* ttl-ptr */ );
 
@@ -2758,7 +2758,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
   if (pr->request_type == DNS_PEER_PENDING_NAME_TO_IP)
     {
       /* Quick and dirty way to dig up the A-record address. $$ FIXME */
-      clib_memset (rnr, 0, sizeof (*rnr));
+      memset (rnr, 0, sizeof (*rnr));
       if (vnet_dns_response_to_reply (ep->dns_response, rnr, &ttl))
 	{
 	  /* clib_warning ("response_to_reply failed..."); */
@@ -2772,7 +2772,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
     }
   else if (pr->request_type == DNS_PEER_PENDING_IP_TO_NAME)
     {
-      clib_memset (rir, 0, sizeof (*rir));
+      memset (rir, 0, sizeof (*rir));
       if (vnet_dns_response_to_name (ep->dns_response, rir, &ttl))
 	{
 	  /* clib_warning ("response_to_name failed..."); */
@@ -2859,7 +2859,7 @@ found_src_address:
   ip = vlib_buffer_get_current (b0);
   udp = (udp_header_t *) (ip + 1);
   dns_response = (u8 *) (udp + 1);
-  clib_memset (ip, 0, sizeof (*ip) + sizeof (*udp));
+  memset (ip, 0, sizeof (*ip) + sizeof (*udp));
 
   /*
    * Start with the variadic portion of the exercise.

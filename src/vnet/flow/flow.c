@@ -82,7 +82,7 @@ vnet_flow_del (vnet_main_t * vnm, u32 flow_index)
   /* *INDENT-ON* */
 
   hash_free (f->private_data);
-  clib_memset (f, 0, sizeof (*f));
+  memset (f, 0, sizeof (*f));
   pool_put (fm->global_flow_pool, f);
   return 0;
 }

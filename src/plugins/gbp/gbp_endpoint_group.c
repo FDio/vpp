@@ -61,7 +61,7 @@ gbp_endpoint_group_add (epg_id_t epg_id,
       fib_protocol_t fproto;
 
       pool_get (gbp_endpoint_group_pool, gepg);
-      clib_memset (gepg, 0, sizeof (*gepg));
+      memset (gepg, 0, sizeof (*gepg));
 
       gepg->gepg_id = epg_id;
       gepg->gepg_bd = bd_id;

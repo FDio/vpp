@@ -89,7 +89,7 @@ fheap_init (fheap_t * f, u32 n_nodes)
   fheap_node_t *save_nodes = f->nodes;
   u32 *save_root_list = f->root_list_by_rank;
 
-  clib_memset (f, 0, sizeof (f[0]));
+  memset (f, 0, sizeof (f[0]));
 
   f->nodes = save_nodes;
   f->root_list_by_rank = save_root_list;

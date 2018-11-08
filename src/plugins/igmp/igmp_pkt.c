@@ -73,7 +73,7 @@ igmp_pkt_build_ip_header (igmp_pkt_build_t * bk,
     return (NULL);
 
   ip4 = vlib_buffer_get_current (b);
-  clib_memset (ip4, 0, sizeof (ip4_header_t));
+  memset (ip4, 0, sizeof (ip4_header_t));
   ip4->ip_version_and_header_length = 0x46;
   ip4->ttl = 1;
   ip4->protocol = IP_PROTOCOL_IGMP;
@@ -402,7 +402,7 @@ igmp_pkt_report_v3_add_group (igmp_pkt_build_report_t * br,
 void
 igmp_pkt_build_report_init (igmp_pkt_build_report_t * br, u32 sw_if_index)
 {
-  clib_memset (br, 0, sizeof (*br));
+  memset (br, 0, sizeof (*br));
   br->base.sw_if_index = sw_if_index;
 }
 
@@ -525,7 +525,7 @@ igmp_pkt_query_v3_send (igmp_pkt_build_query_t * bq)
 void
 igmp_pkt_build_query_init (igmp_pkt_build_query_t * bq, u32 sw_if_index)
 {
-  clib_memset (bq, 0, sizeof (*bq));
+  memset (bq, 0, sizeof (*bq));
   bq->base.sw_if_index = sw_if_index;
 }
 

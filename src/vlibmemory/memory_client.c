@@ -209,7 +209,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   am->vl_input_queue = vl_input_queue;
 
   mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_create_t));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE);
   mp->ctx_quota = ctx_quota;
   mp->input_queue = (uword) vl_input_queue;
@@ -287,7 +287,7 @@ vl_client_disconnect (void)
   vl_input_queue = am->vl_input_queue;
 
   mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_delete_t));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_DELETE);
   mp->index = am->my_client_index;
   mp->handle = (uword) am->my_registration;
@@ -346,7 +346,7 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
   shmem_hdr = am->shmem_hdr;
 
   rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_MEMCLNT_KEEPALIVE_REPLY);
   rmp->context = mp->context;
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & rmp);
@@ -481,7 +481,7 @@ disconnect_from_vlib_internal (u8 do_unmap)
       if (do_unmap)
 	vl_client_api_unmap ();
     }
-  clib_memset (mm, 0, sizeof (*mm));
+  memset (mm, 0, sizeof (*mm));
 }
 
 void
@@ -520,7 +520,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   if (strlen (plugin_name) + 1 > sizeof (mp->name))
     return (rv);
 
-  clib_memset (&clib_time, 0, sizeof (clib_time));
+  memset (&clib_time, 0, sizeof (clib_time));
   clib_time_init (&clib_time);
 
   /* Push this plugin's first_msg_id_reply handler */
@@ -535,7 +535,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   if (!am->my_registration)
     {
       mp = vl_socket_client_msg_alloc (sizeof (*mp));
-      clib_memset (mp, 0, sizeof (*mp));
+      memset (mp, 0, sizeof (*mp));
       mp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID);
       mp->client_index = am->my_client_index;
       strncpy ((char *) mp->name, plugin_name, sizeof (mp->name) - 1);
@@ -560,7 +560,7 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   else
     {
       mp = vl_msg_api_alloc (sizeof (*mp));
-      clib_memset (mp, 0, sizeof (*mp));
+      memset (mp, 0, sizeof (*mp));
       mp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID);
       mp->client_index = am->my_client_index;
       strncpy ((char *) mp->name, plugin_name, sizeof (mp->name) - 1);

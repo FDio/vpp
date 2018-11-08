@@ -70,7 +70,7 @@ find_or_create_internal_label (ip46_address_t endpoint, u32 color)
   if (!color_table)
     {
       mhash_t color_t;
-      clib_memset (&color_t, 0, sizeof (mhash_t));
+      memset (&color_t, 0, sizeof (mhash_t));
       mhash_init (&color_t, sizeof (u32), sizeof (ip46_address_t));
       mhash_set_mem (&sm->sr_policies_c2e2eclabel_hash, &color,
 		     (uword *) & color_t, NULL);
@@ -391,7 +391,7 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
   mpls_sr_policy_t *sr_policy = 0;
   uword *p = 0;
 
-  clib_memset (&key, 0, sizeof (sr_mpls_steering_key_t));
+  memset (&key, 0, sizeof (sr_mpls_steering_key_t));
 
   if (traffic_type != SR_STEER_IPV4 && traffic_type != SR_STEER_IPV6)
     return -1;
@@ -438,7 +438,7 @@ sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
 
   /* Create a new steering policy */
   pool_get (sm->steer_policies, steer_pl);
-  clib_memset (steer_pl, 0, sizeof (*steer_pl));
+  memset (steer_pl, 0, sizeof (*steer_pl));
   clib_memcpy (&steer_pl->classify.prefix, prefix, sizeof (ip46_address_t));
   clib_memcpy (&steer_pl->next_hop, next_hop, sizeof (ip46_address_t));
   steer_pl->nh_type = nh_type;
@@ -553,7 +553,7 @@ sr_mpls_steering_policy_del (ip46_address_t * prefix, u32 mask_width,
   fib_prefix_t pfx = { 0 };
   uword *p = 0;
 
-  clib_memset (&key, 0, sizeof (sr_mpls_steering_key_t));
+  memset (&key, 0, sizeof (sr_mpls_steering_key_t));
 
   /* Compute the steer policy key */
   if (traffic_type != SR_STEER_IPV4 && traffic_type != SR_STEER_IPV6)
@@ -673,8 +673,8 @@ sr_mpls_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   u8 sr_policy_set = 0;
 
-  clib_memset (&prefix, 0, sizeof (ip46_address_t));
-  clib_memset (&nh, 0, sizeof (ip46_address_t));
+  memset (&prefix, 0, sizeof (ip46_address_t));
+  memset (&nh, 0, sizeof (ip46_address_t));
 
   int rv;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

@@ -861,7 +861,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
       if (unformat (line_input, "local %U:%u probability %u",
 		    unformat_ip4_address, &l_addr, &l_port, &probability))
 	{
-	  clib_memset (&local, 0, sizeof (local));
+	  memset (&local, 0, sizeof (local));
 	  local.addr = l_addr;
 	  local.port = (u16) l_port;
 	  local.probability = (u8) probability;
@@ -871,7 +871,7 @@ add_lb_static_mapping_command_fn (vlib_main_t * vm,
 			 unformat_ip4_address, &l_addr, &l_port, &vrf_id,
 			 &probability))
 	{
-	  clib_memset (&local, 0, sizeof (local));
+	  memset (&local, 0, sizeof (local));
 	  local.addr = l_addr;
 	  local.port = (u16) l_port;
 	  local.probability = (u8) probability;

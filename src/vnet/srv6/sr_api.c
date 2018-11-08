@@ -71,7 +71,7 @@ static void vl_api_sr_localsid_add_del_t_handler
 
   ip46_address_t prefix;
 
-  clib_memset (&prefix, 0, sizeof (ip46_address_t));
+  memset (&prefix, 0, sizeof (ip46_address_t));
   if ((mp->nh_addr4[0] | mp->nh_addr4[1] | mp->
        nh_addr4[2] | mp->nh_addr4[3]) != 0)
     memcpy (&prefix.ip4, mp->nh_addr4, sizeof (prefix.ip4));
@@ -210,7 +210,7 @@ static void send_sr_localsid_details
   vl_api_sr_localsids_details_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SR_LOCALSIDS_DETAILS);
   clib_memcpy (rmp->addr.addr, &t->localsid, sizeof (ip6_address_t));
   rmp->end_psp = t->end_psp;
@@ -261,10 +261,9 @@ static void send_sr_policies_details
   rmp = vl_msg_api_alloc (sizeof (*rmp) +
 			  vec_len (t->segments_lists) *
 			  sizeof (vl_api_srv6_sid_list_t));
-  clib_memset (rmp, 0,
-	       (sizeof (*rmp) +
-		vec_len (t->segments_lists) *
-		sizeof (vl_api_srv6_sid_list_t)));
+  memset (rmp, 0,
+	  (sizeof (*rmp) +
+	   vec_len (t->segments_lists) * sizeof (vl_api_srv6_sid_list_t)));
 
   rmp->_vl_msg_id = ntohs (VL_API_SR_POLICIES_DETAILS);
   clib_memcpy (rmp->bsid.addr, &t->bsid, sizeof (ip6_address_t));
@@ -314,7 +313,7 @@ static void send_sr_steering_pol_details
   ip6_sr_main_t *sm = &sr_main;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SR_STEERING_POL_DETAILS);
 
   //Get the SR policy BSID

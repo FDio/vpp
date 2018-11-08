@@ -25,7 +25,7 @@ app_listener_alloc (application_t * app)
 {
   app_listener_t *app_listener;
   pool_get (app->listeners, app_listener);
-  clib_memset (app_listener, 0, sizeof (*app_listener));
+  memset (app_listener, 0, sizeof (*app_listener));
   app_listener->al_index = app_listener - app->listeners;
   return app_listener;
 }
@@ -42,7 +42,7 @@ app_listener_free (application_t * app, app_listener_t * app_listener)
   clib_bitmap_free (app_listener->workers);
   pool_put (app->listeners, app_listener);
   if (CLIB_DEBUG)
-    clib_memset (app_listener, 0xfa, sizeof (*app_listener));
+    memset (app_listener, 0xfa, sizeof (*app_listener));
 }
 
 static app_listener_t *
@@ -50,7 +50,7 @@ app_local_listener_alloc (application_t * app)
 {
   app_listener_t *app_listener;
   pool_get (app->local_listeners, app_listener);
-  clib_memset (app_listener, 0, sizeof (*app_listener));
+  memset (app_listener, 0, sizeof (*app_listener));
   app_listener->al_index = app_listener - app->local_listeners;
   return app_listener;
 }
@@ -67,7 +67,7 @@ app_local_listener_free (application_t * app, app_listener_t * app_listener)
   clib_bitmap_free (app_listener->workers);
   pool_put (app->local_listeners, app_listener);
   if (CLIB_DEBUG)
-    clib_memset (app_listener, 0xfa, sizeof (*app_listener));
+    memset (app_listener, 0xfa, sizeof (*app_listener));
 }
 
 static app_worker_map_t *
@@ -75,7 +75,7 @@ app_worker_map_alloc (application_t * app)
 {
   app_worker_map_t *map;
   pool_get (app->worker_maps, map);
-  clib_memset (map, 0, sizeof (*map));
+  memset (map, 0, sizeof (*map));
   return map;
 }
 
@@ -234,7 +234,7 @@ application_alloc (void)
 {
   application_t *app;
   pool_get (app_main.app_pool, app);
-  clib_memset (app, 0, sizeof (*app));
+  memset (app, 0, sizeof (*app));
   app->app_index = app - app_main.app_pool;
   return app;
 }
@@ -484,7 +484,7 @@ app_worker_alloc (application_t * app)
 {
   app_worker_t *app_wrk;
   pool_get (app_main.workers, app_wrk);
-  clib_memset (app_wrk, 0, sizeof (*app_wrk));
+  memset (app_wrk, 0, sizeof (*app_wrk));
   app_wrk->wrk_index = app_wrk - app_main.workers;
   app_wrk->app_index = app->app_index;
   app_wrk->wrk_map_index = ~0;
@@ -572,7 +572,7 @@ app_worker_free (app_worker_t * app_wrk)
 
   pool_put (app_main.workers, app_wrk);
   if (CLIB_DEBUG)
-    clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
+    memset (app_wrk, 0xfe, sizeof (*app_wrk));
 }
 
 int
@@ -1347,7 +1347,7 @@ application_local_session_alloc (app_worker_t * app_wrk)
 {
   local_session_t *s;
   pool_get (app_wrk->local_sessions, s);
-  clib_memset (s, 0, sizeof (*s));
+  memset (s, 0, sizeof (*s));
   s->app_wrk_index = app_wrk->wrk_index;
   s->session_index = s - app_wrk->local_sessions;
   s->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
@@ -1359,7 +1359,7 @@ application_local_session_free (app_worker_t * app, local_session_t * s)
 {
   pool_put (app->local_sessions, s);
   if (CLIB_DEBUG)
-    clib_memset (s, 0xfc, sizeof (*s));
+    memset (s, 0xfc, sizeof (*s));
 }
 
 local_session_t *
@@ -1387,7 +1387,7 @@ application_local_listen_session_alloc (application_t * app)
 {
   local_session_t *ll;
   pool_get (app->local_listen_sessions, ll);
-  clib_memset (ll, 0, sizeof (*ll));
+  memset (ll, 0, sizeof (*ll));
   return ll;
 }
 
@@ -1403,7 +1403,7 @@ application_local_listen_session_free (application_t * app,
 {
   pool_put (app->local_listen_sessions, ll);
   if (CLIB_DEBUG)
-    clib_memset (ll, 0xfb, sizeof (*ll));
+    memset (ll, 0xfb, sizeof (*ll));
 }
 
 int

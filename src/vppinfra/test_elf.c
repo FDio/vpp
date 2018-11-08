@@ -72,7 +72,7 @@ elf_set_interpreter (elf_main_t * em, char *interp)
     return error;
 
   /* Put in new null terminated string. */
-  clib_memset (s->contents, 0, vec_len (s->contents));
+  memset (s->contents, 0, vec_len (s->contents));
   clib_memcpy (s->contents, interp, strlen (interp));
 
   return 0;
@@ -146,7 +146,7 @@ main (int argc, char *argv[])
   unformat_input_t i;
   clib_error_t *error = 0;
 
-  clib_memset (tm, 0, sizeof (tm[0]));
+  memset (tm, 0, sizeof (tm[0]));
 
   unformat_init_command_line (&i, argv);
   while (unformat_check_input (&i) != UNFORMAT_END_OF_INPUT)

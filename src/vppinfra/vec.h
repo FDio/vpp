@@ -423,7 +423,7 @@ do {									\
       vec_resize_ha ((V), 1 + (_v(i) - _v(l)), (H), (A));		\
       /* Must zero new space since user may have previously		\
 	 used e.g. _vec_len (v) -= 10 */				\
-      clib_memset ((V) + _v(l), 0, (1 + (_v(i) - _v(l))) * sizeof ((V)[0]));	\
+      memset ((V) + _v(l), 0, (1 + (_v(i) - _v(l))) * sizeof ((V)[0]));	\
     }									\
 } while (0)
 
@@ -661,7 +661,7 @@ do {							\
   memmove ((V) + _v(m) + _v(n),				\
 	   (V) + _v(m),					\
 	   (_v(l) - _v(m)) * sizeof ((V)[0]));		\
-  clib_memset  ((V) + _v(m), INIT, _v(n) * sizeof ((V)[0]));	\
+  memset  ((V) + _v(m), INIT, _v(n) * sizeof ((V)[0]));	\
 } while (0)
 
 /** \brief Insert N vector elements starting at element M,
@@ -794,7 +794,7 @@ do {								\
 	     (_v(l) - _v(n) - _v(m)) * sizeof ((V)[0]));	\
   /* Zero empty space at end (for future re-allocation). */	\
   if (_v(n) > 0)						\
-    clib_memset ((V) + _v(l) - _v(n), 0, _v(n) * sizeof ((V)[0]));	\
+    memset ((V) + _v(l) - _v(n), 0, _v(n) * sizeof ((V)[0]));	\
   _vec_len (V) -= _v(n);					\
 } while (0)
 
@@ -883,7 +883,7 @@ do {                                                                    \
 #define vec_zero(var)						\
 do {								\
   if (var)							\
-    clib_memset ((var), 0, vec_len (var) * sizeof ((var)[0]));	\
+    memset ((var), 0, vec_len (var) * sizeof ((var)[0]));	\
 } while (0)
 
 /** \brief Set all vector elements to given value. Null-pointer tolerant.

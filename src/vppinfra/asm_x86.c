@@ -1500,7 +1500,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 
   /* Preserve global parse flags. */
   parse_flags = p->flags & (X86_INSN_PARSE_32_BIT | X86_INSN_PARSE_64_BIT);
-  clib_memset (p, 0, sizeof (p[0]));
+  memset (p, 0, sizeof (p[0]));
   p->flags = parse_flags;
 
   /* 64 implies 32 bit parsing. */

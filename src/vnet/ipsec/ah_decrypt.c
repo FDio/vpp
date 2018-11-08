@@ -179,11 +179,11 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    {
 	      u8 sig[64];
 	      u8 digest[64];
-	      clib_memset (sig, 0, sizeof (sig));
-	      clib_memset (digest, 0, sizeof (digest));
+	      memset (sig, 0, sizeof (sig));
+	      memset (digest, 0, sizeof (digest));
 	      u8 *icv = ah0->auth_data;
 	      memcpy (digest, icv, icv_size);
-	      clib_memset (icv, 0, icv_size);
+	      memset (icv, 0, icv_size);
 
 	      if (is_ip6)
 		{

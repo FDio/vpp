@@ -47,7 +47,7 @@ ip_main_init (vlib_main_t * vm)
   ip_main_t *im = &ip_main;
   clib_error_t *error = 0;
 
-  clib_memset (im, 0, sizeof (im[0]));
+  memset (im, 0, sizeof (im[0]));
 
   {
     ip_protocol_info_t *pi;

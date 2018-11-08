@@ -485,7 +485,7 @@ ipip_add_tunnel (ipip_transport_t transport,
     return VNET_API_ERROR_IF_ALREADY_EXISTS;
 
   pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-  clib_memset (t, 0, sizeof (*t));
+  memset (t, 0, sizeof (*t));
 
   /* Reconcile the real dev_instance and a possible requested instance */
   u32 t_idx = t - gm->tunnels;	/* tunnel index (or instance) */
@@ -590,7 +590,7 @@ ipip_init (vlib_main_t * vm)
 {
   ipip_main_t *gm = &ipip_main;
 
-  clib_memset (gm, 0, sizeof (gm[0]));
+  memset (gm, 0, sizeof (gm[0]));
   gm->vlib_main = vm;
   gm->vnet_main = vnet_get_main ();
   gm->tunnel_by_key =

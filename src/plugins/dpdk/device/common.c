@@ -214,7 +214,7 @@ dpdk_device_stop (dpdk_device_t * xd)
 
   rte_eth_allmulticast_disable (xd->port_id);
   rte_eth_dev_stop (xd->port_id);
-  clib_memset (&xd->link, 0, sizeof (struct rte_eth_link));
+  memset (&xd->link, 0, sizeof (struct rte_eth_link));
 
   /* For bonded interface, stop slave links */
   if (xd->pmd == VNET_DPDK_PMD_BOND)

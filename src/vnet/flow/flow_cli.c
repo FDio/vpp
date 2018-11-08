@@ -278,7 +278,7 @@ test_flow (vlib_main_t * vm, unformat_input_t * input,
   int rv;
   u8 prot;
 
-  clib_memset (&flow, 0, sizeof (vnet_flow_t));
+  memset (&flow, 0, sizeof (vnet_flow_t));
   flow.index = ~0;
   flow.actions = 0;
   flow.ip4_n_tuple.protocol = ~0;

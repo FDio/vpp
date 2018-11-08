@@ -194,7 +194,7 @@ send_sw_interface_details (vpe_api_main_t * am,
     vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
 
   vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_DETAILS);
   mp->sw_if_index = ntohl (swif->sw_if_index);
   mp->sup_sw_if_index = ntohl (swif->sup_sw_if_index);
@@ -268,7 +268,7 @@ send_sw_interface_details (vpe_api_main_t * am,
   u16 outer_tag = 0;
   u16 b_vlanid = 0;
   u32 i_sid = 0;
-  clib_memset (&eth_hdr, 0, sizeof (eth_hdr));
+  memset (&eth_hdr, 0, sizeof (eth_hdr));
 
   if (!l2pbb_get (am->vlib_main, am->vnet_main, swif->sw_if_index,
 		  &vtr_op, &outer_tag, &eth_hdr, &b_vlanid, &i_sid))
@@ -556,7 +556,7 @@ send_sw_interface_get_table_reply (vl_api_registration_t * reg,
   vl_api_sw_interface_get_table_reply_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_GET_TABLE_REPLY);
   mp->context = context;
   mp->retval = htonl (retval);
@@ -719,7 +719,7 @@ send_sw_interface_event (vpe_api_main_t * am,
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm,
 						       swif->sw_if_index);
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
   mp->sw_if_index = ntohl (swif->sw_if_index);
   mp->client_index = reg->client_index;
@@ -967,7 +967,7 @@ send_interface_rx_placement_details (vpe_api_main_t * am,
 {
   vl_api_sw_interface_rx_placement_details_t *mp;
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_RX_PLACEMENT_DETAILS);
   mp->sw_if_index = htonl (sw_if_index);
@@ -1127,7 +1127,7 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
       goto out;
     }
 
-  clib_memset (&template, 0, sizeof (template));
+  memset (&template, 0, sizeof (template));
   template.type = VNET_SW_INTERFACE_TYPE_SUB;
   template.sup_sw_if_index = hi->sw_if_index;
   template.sub.id = id;
@@ -1207,7 +1207,7 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
       goto out;
     }
 
-  clib_memset (&template, 0, sizeof (template));
+  memset (&template, 0, sizeof (template));
   template.type = VNET_SW_INTERFACE_TYPE_SUB;
   template.sup_sw_if_index = sw_if_index;
   template.sub.id = sub_id;

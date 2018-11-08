@@ -29,7 +29,7 @@ mpls_disp_dpo_alloc (void)
     mpls_disp_dpo_t *mdd;
 
     pool_get_aligned(mpls_disp_dpo_pool, mdd, CLIB_CACHE_LINE_BYTES);
-    clib_memset(mdd, 0, sizeof(*mdd));
+    memset(mdd, 0, sizeof(*mdd));
 
     dpo_reset(&mdd->mdd_dpo);
 

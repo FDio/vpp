@@ -302,7 +302,7 @@ application_send_attach (udp_echo_main_t * utm)
 {
   vl_api_application_attach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
   bmp->client_index = utm->my_client_index;
@@ -325,7 +325,7 @@ application_detach (udp_echo_main_t * utm)
 {
   vl_api_application_detach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
   bmp->client_index = utm->my_client_index;
@@ -508,7 +508,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
 
   pool_get (utm->sessions, session);
-  clib_memset (session, 0, sizeof (*session));
+  memset (session, 0, sizeof (*session));
   session_index = session - utm->sessions;
   session->session_index = session_index;
 
@@ -687,7 +687,7 @@ session_bound_handler (session_bound_msg_t * mp)
   tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
 
   pool_get (utm->sessions, session);
-  clib_memset (session, 0, sizeof (*session));
+  memset (session, 0, sizeof (*session));
   session_index = session - utm->sessions;
 
   rx_fifo->client_session_index = session_index;
@@ -730,7 +730,7 @@ udp_client_send_connect (udp_echo_main_t * utm)
 {
   vl_api_connect_uri_t *cmp;
   cmp = vl_msg_api_alloc (sizeof (*cmp));
-  clib_memset (cmp, 0, sizeof (*cmp));
+  memset (cmp, 0, sizeof (*cmp));
 
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_URI);
   cmp->client_index = utm->my_client_index;
@@ -894,7 +894,7 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
   tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
 
   pool_get (utm->sessions, session);
-  clib_memset (session, 0, sizeof (*session));
+  memset (session, 0, sizeof (*session));
   session_index = session - utm->sessions;
 
   rx_fifo->client_session_index = session_index;
@@ -919,7 +919,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   u8 *seg_name;
   int rv;
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
   /* Attach to the segment vpp created */
@@ -1154,7 +1154,7 @@ server_unbind (udp_echo_main_t * utm)
   vl_api_unbind_uri_t *ump;
 
   ump = vl_msg_api_alloc (sizeof (*ump));
-  clib_memset (ump, 0, sizeof (*ump));
+  memset (ump, 0, sizeof (*ump));
 
   ump->_vl_msg_id = ntohs (VL_API_UNBIND_URI);
   ump->client_index = utm->my_client_index;
@@ -1168,7 +1168,7 @@ server_bind (udp_echo_main_t * utm)
   vl_api_bind_uri_t *bmp;
 
   bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_BIND_URI);
   bmp->client_index = utm->my_client_index;
@@ -1303,7 +1303,7 @@ main (int argc, char **argv)
   for (i = 0; i < 200000; i++)
     {
       pool_get (utm->sessions, session);
-      clib_memset (session, 0, sizeof (*session));
+      memset (session, 0, sizeof (*session));
     }
   for (i = 0; i < 200000; i++)
     pool_put_index (utm->sessions, i);

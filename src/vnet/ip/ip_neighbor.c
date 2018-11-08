@@ -312,7 +312,7 @@ ip_neighbor_scan_cli (vlib_main_t * vm, unformat_input_t * input,
   u32 interval = 0, time = 0, update = 0, delay = 0, stale = 0;
   ip_neighbor_scan_arg_t arg;
 
-  clib_memset (&arg, 0, sizeof (arg));
+  memset (&arg, 0, sizeof (arg));
   arg.mode = IP_SCAN_V46_NEIGHBORS;
 
   /* Get a line of input. */

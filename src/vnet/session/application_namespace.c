@@ -54,7 +54,7 @@ app_namespace_alloc (u8 * ns_id)
 {
   app_namespace_t *app_ns;
   pool_get (app_namespace_pool, app_ns);
-  clib_memset (app_ns, 0, sizeof (*app_ns));
+  memset (app_ns, 0, sizeof (*app_ns));
   app_ns->ns_id = vec_dup (ns_id);
   hash_set_mem (app_namespace_lookup_table, app_ns->ns_id,
 		app_ns - app_namespace_pool);

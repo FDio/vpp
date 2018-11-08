@@ -2728,7 +2728,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
     }
 
   pool_get (cm->cli_file_pool, cf);
-  clib_memset (cf, 0, sizeof (*cf));
+  memset (cf, 0, sizeof (*cf));
 
   template.read_function = unix_cli_read_ready;
   template.write_function = unix_cli_write_ready;
@@ -2918,7 +2918,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       if (isatty (STDIN_FILENO) && um->cli_line_mode == 0)
 	{
 	  /* Capture terminal resize events */
-	  clib_memset (&sa, 0, sizeof (sa));
+	  memset (&sa, 0, sizeof (sa));
 	  sa.sa_handler = unix_cli_resize_interrupt;
 	  if (sigaction (SIGWINCH, &sa, 0) < 0)
 	    clib_panic ("sigaction");

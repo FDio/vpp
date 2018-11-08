@@ -57,7 +57,7 @@ fib_urpf_list_alloc_and_lock (void)
     fib_urpf_list_t *urpf;
 
     pool_get(fib_urpf_list_pool, urpf);
-    clib_memset(urpf, 0, sizeof(*urpf));
+    memset(urpf, 0, sizeof(*urpf));
 
     urpf->furpf_locks++;
 

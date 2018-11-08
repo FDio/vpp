@@ -213,7 +213,7 @@ unformat_ip4_header (unformat_input_t * input, va_list * args)
     ip = p;
   }
 
-  clib_memset (ip, 0, sizeof (ip[0]));
+  memset (ip, 0, sizeof (ip[0]));
   ip->ip_version_and_header_length = IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS;
 
   if (!unformat (input, "%U: %U -> %U",

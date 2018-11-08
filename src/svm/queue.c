@@ -37,15 +37,15 @@ svm_queue_init (void *base, int nels, int elsize)
   pthread_condattr_t cattr;
 
   q = (svm_queue_t *) base;
-  clib_memset (q, 0, sizeof (*q));
+  memset (q, 0, sizeof (*q));
 
   q->elsize = elsize;
   q->maxsize = nels;
   q->producer_evtfd = -1;
   q->consumer_evtfd = -1;
 
-  clib_memset (&attr, 0, sizeof (attr));
-  clib_memset (&cattr, 0, sizeof (cattr));
+  memset (&attr, 0, sizeof (attr));
+  memset (&cattr, 0, sizeof (cattr));
 
   if (pthread_mutexattr_init (&attr))
     clib_unix_warning ("mutexattr_init");
@@ -75,7 +75,7 @@ svm_queue_alloc_and_init (int nels, int elsize, int consumer_pid)
 
   q = clib_mem_alloc_aligned (sizeof (svm_queue_t)
 			      + nels * elsize, CLIB_CACHE_LINE_BYTES);
-  clib_memset (q, 0, sizeof (*q));
+  memset (q, 0, sizeof (*q));
   q = svm_queue_init (q, nels, elsize);
   q->consumer_pid = consumer_pid;
 

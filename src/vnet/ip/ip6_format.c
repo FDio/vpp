@@ -235,8 +235,8 @@ unformat_ip6_address_and_mask (unformat_input_t * input, va_list * args)
   ip6_address_and_mask_t *am = va_arg (*args, ip6_address_and_mask_t *);
   ip6_address_t addr, mask;
 
-  clib_memset (&addr, 0, sizeof (ip6_address_t));
-  clib_memset (&mask, 0, sizeof (ip6_address_t));
+  memset (&addr, 0, sizeof (ip6_address_t));
+  memset (&mask, 0, sizeof (ip6_address_t));
 
   if (unformat (input, "any"))
     ;
@@ -323,7 +323,7 @@ unformat_ip6_header (unformat_input_t * input, va_list * args)
     ip = p;
   }
 
-  clib_memset (ip, 0, sizeof (ip[0]));
+  memset (ip, 0, sizeof (ip[0]));
   ip->ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 (6 << 28);
 

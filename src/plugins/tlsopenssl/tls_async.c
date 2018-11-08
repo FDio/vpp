@@ -240,7 +240,7 @@ openssl_evt_alloc (void)
   if (!(*evt))
     *evt = clib_mem_alloc (sizeof (openssl_evt_t));
 
-  clib_memset (*evt, 0, sizeof (openssl_evt_t));
+  memset (*evt, 0, sizeof (openssl_evt_t));
   (*evt)->event_index = evt - tm->evt_pool[thread_index];
   return ((*evt)->event_index);
 }

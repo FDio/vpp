@@ -65,7 +65,7 @@ vl_api_vmxnet3_create_t_handler (vl_api_vmxnet3_create_t * mp)
   vmxnet3_create_if_args_t args;
   int rv;
 
-  clib_memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
+  memset (&args, 0, sizeof (vmxnet3_create_if_args_t));
 
   args.enable_elog = ntohl (mp->enable_elog);
   args.addr.as_u32 = ntohl (mp->pci_addr);
@@ -125,7 +125,7 @@ send_vmxnet3_details (vl_api_registration_t * reg, vmxnet3_device_t * vd,
   hwif = vnet_get_sup_hw_interface (vnm, swif->sw_if_index);
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = htons (VL_API_VMXNET3_DETAILS + vmxm->msg_id_base);
   mp->context = context;

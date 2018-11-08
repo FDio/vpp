@@ -78,7 +78,7 @@ igmp_src_alloc (u32 group_index, const igmp_key_t * skey, igmp_mode_t mode)
   IGMP_DBG ("new-src: (%U)", format_igmp_key, skey);
 
   pool_get (im->srcs, src);
-  clib_memset (src, 0, sizeof (igmp_src_t));
+  memset (src, 0, sizeof (igmp_src_t));
   src->mode = mode;
   src->key = clib_mem_alloc (sizeof (*skey));
   src->group = group_index;

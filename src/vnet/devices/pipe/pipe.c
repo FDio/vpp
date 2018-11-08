@@ -527,7 +527,7 @@ pipe_create_sub_interface (vnet_hw_interface_t * hi,
 {
   vnet_sw_interface_t template;
 
-  clib_memset (&template, 0, sizeof (template));
+  memset (&template, 0, sizeof (template));
   template.type = VNET_SW_INTERFACE_TYPE_PIPE;
   template.flood_class = VNET_FLOOD_CLASS_NORMAL;
   template.sup_sw_if_index = hi->sw_if_index;
@@ -557,7 +557,7 @@ vnet_create_pipe_interface (u8 is_specified,
 
   ASSERT (parent_sw_if_index);
 
-  clib_memset (address, 0, sizeof (address));
+  memset (address, 0, sizeof (address));
 
   /*
    * Allocate a pipe instance.  Either select one dynamically

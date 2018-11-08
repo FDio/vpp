@@ -146,7 +146,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 
   /* Create a new localsid registry */
   pool_get (sm->localsids, ls);
-  clib_memset (ls, 0, sizeof (*ls));
+  memset (ls, 0, sizeof (*ls));
 
   clib_memcpy (&ls->localsid, localsid_addr, sizeof (ip6_address_t));
   ls->end_psp = end_psp;
@@ -276,7 +276,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   int rv;
 
-  clib_memset (&resulting_address, 0, sizeof (ip6_address_t));
+  memset (&resulting_address, 0, sizeof (ip6_address_t));
   ip46_address_reset (&next_hop);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1549,7 +1549,7 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 		    plugin - sm->plugin_functions);
     }
 
-  clib_memset (plugin, 0, sizeof (*plugin));
+  memset (plugin, 0, sizeof (*plugin));
 
   plugin->sr_localsid_function_number = (plugin - sm->plugin_functions);
   plugin->sr_localsid_function_number += SR_BEHAVIOR_LAST;

@@ -199,8 +199,8 @@ vlib_register_errors (vlib_main_t * vm,
 		 em->counters_last_clear + n->error_heap_index,
 		 n_errors * sizeof (em->counters[0]));
   else
-    clib_memset (em->counters + n->error_heap_index,
-		 0, n_errors * sizeof (em->counters[0]));
+    memset (em->counters + n->error_heap_index,
+	    0, n_errors * sizeof (em->counters[0]));
 
   /* Register counter indices in the stat segment directory */
   {
@@ -223,7 +223,7 @@ vlib_register_errors (vlib_main_t * vm,
     elog_event_type_t t;
     uword i;
 
-    clib_memset (&t, 0, sizeof (t));
+    memset (&t, 0, sizeof (t));
     for (i = 0; i < n_errors; i++)
       {
 	t.format = (char *) format (0, "%v %s: %%d",

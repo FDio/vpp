@@ -685,7 +685,7 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
       hi0 = vnet_get_sup_hw_interface (vnm, original_sw_if_index);
       ei0 = pool_elt_at_index (em->interfaces, hi0->hw_instance);
       clib_memcpy (mac0->src_address, ei0->address, sizeof (ei0->address));
-      clib_memset (mac0->dst_address, 0xff, sizeof (mac0->dst_address));
+      memset (mac0->dst_address, 0xff, sizeof (mac0->dst_address));
       mac0->type = (si0->type == VNET_SW_INTERFACE_TYPE_SUB) ?
 	clib_net_to_host_u16 (0x8100) : clib_net_to_host_u16 (0x0800);
 
@@ -818,8 +818,8 @@ dhcp4_proxy_set_command_fn (vlib_main_t * vm,
   int is_del = 0;
   int set_src = 0, set_server = 0;
 
-  clib_memset (&server_addr, 0, sizeof (server_addr));
-  clib_memset (&src_addr, 0, sizeof (src_addr));
+  memset (&server_addr, 0, sizeof (server_addr));
+  memset (&src_addr, 0, sizeof (src_addr));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

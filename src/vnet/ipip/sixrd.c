@@ -297,7 +297,7 @@ sixrd_add_tunnel (ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 
   /* Get tunnel index */
   pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-  clib_memset (t, 0, sizeof (*t));
+  memset (t, 0, sizeof (*t));
   u32 t_idx = t - gm->tunnels;	/* tunnel index (or instance) */
 
   /* Init tunnel struct */

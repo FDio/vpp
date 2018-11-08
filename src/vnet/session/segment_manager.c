@@ -82,7 +82,7 @@ segment_manager_del_segment (segment_manager_t * sm,
   ssvm_delete (&fs->ssvm);
 
   if (CLIB_DEBUG)
-    clib_memset (fs, 0xfb, sizeof (*fs));
+    memset (fs, 0xfb, sizeof (*fs));
   pool_put (sm->segments, fs);
 }
 
@@ -182,7 +182,7 @@ segment_manager_add_segment (segment_manager_t * sm, u32 segment_size)
     {
       pool_get (sm->segments, seg);
     }
-  clib_memset (seg, 0, sizeof (*seg));
+  memset (seg, 0, sizeof (*seg));
 
   /*
    * Initialize ssvm segment and svm fifo private header
@@ -238,7 +238,7 @@ segment_manager_new ()
   segment_manager_main_t *smm = &segment_manager_main;
   segment_manager_t *sm;
   pool_get (smm->segment_managers, sm);
-  clib_memset (sm, 0, sizeof (*sm));
+  memset (sm, 0, sizeof (*sm));
   clib_rwlock_init (&sm->segments_rwlock);
   return sm;
 }
@@ -419,7 +419,7 @@ segment_manager_del (segment_manager_t * sm)
 
   clib_rwlock_free (&sm->segments_rwlock);
   if (CLIB_DEBUG)
-    clib_memset (sm, 0xfe, sizeof (*sm));
+    memset (sm, 0xfe, sizeof (*sm));
   pool_put (smm->segment_managers, sm);
 }
 

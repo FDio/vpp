@@ -32,7 +32,7 @@ session_table_alloc (void)
 {
   session_table_t *slt;
   pool_get_aligned (lookup_tables, slt, CLIB_CACHE_LINE_BYTES);
-  clib_memset (slt, 0, sizeof (*slt));
+  memset (slt, 0, sizeof (*slt));
   return slt;
 }
 

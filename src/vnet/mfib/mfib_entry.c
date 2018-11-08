@@ -403,7 +403,7 @@ mfib_entry_alloc (u32 fib_index,
 
     /*
      * Some of the members require non-default initialisation
-     * so we also init those that don't and thus save on the call to clib_memset.
+     * so we also init those that don't and thus save on the call to memset.
      */
     mfib_entry->mfe_flags = 0;
     mfib_entry->mfe_fib_index = fib_index;

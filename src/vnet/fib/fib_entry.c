@@ -601,7 +601,7 @@ fib_entry_alloc (u32 fib_index,
     fib_prefix_t *fep;
 
     pool_get(fib_entry_pool, fib_entry);
-    clib_memset(fib_entry, 0, sizeof(*fib_entry));
+    memset(fib_entry, 0, sizeof(*fib_entry));
 
     fib_node_init(&fib_entry->fe_node,
 		  FIB_NODE_TYPE_ENTRY);

@@ -179,9 +179,9 @@ vxlan_gbp_input (vlib_main_t * vm,
   u32 thread_index = vlib_get_thread_index ();
 
   if (is_ip4)
-    clib_memset (&last4, 0xff, sizeof last4);
+    memset (&last4, 0xff, sizeof last4);
   else
-    clib_memset (&last6, 0xff, sizeof last6);
+    memset (&last6, 0xff, sizeof last6);
 
   u32 next_index = node->cached_next_index;
 

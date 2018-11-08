@@ -1929,7 +1929,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
 
   silm->enabled = e;
 
-  clib_memset (&a, 0, sizeof (a));
+  memset (&a, 0, sizeof (a));
   a.is_add = enable;
   a.domain_id = domain_id ? domain_id : 1;
   a.src_port = src_port ? src_port : UDP_DST_PORT_ipfix;

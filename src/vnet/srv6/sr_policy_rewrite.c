@@ -301,7 +301,7 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
   ip6_sr_sl_t *segment_list;
 
   pool_get (sm->sid_lists, segment_list);
-  clib_memset (segment_list, 0, sizeof (*segment_list));
+  memset (segment_list, 0, sizeof (*segment_list));
 
   vec_add1 (sr_policy->segments_lists, segment_list - sm->sid_lists);
 
@@ -588,7 +588,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 
   /* Add an SR policy object */
   pool_get (sm->sr_policies, sr_policy);
-  clib_memset (sr_policy, 0, sizeof (*sr_policy));
+  memset (sr_policy, 0, sizeof (*sr_policy));
   clib_memcpy (&sr_policy->bsid, bsid, sizeof (ip6_address_t));
   sr_policy->type = behavior;
   sr_policy->fib_table = (fib_table != (u32) ~ 0 ? fib_table : 0);	//Is default FIB 0 ?

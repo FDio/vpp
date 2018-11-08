@@ -121,7 +121,7 @@ _clib_fifo_resize (void *v_old, uword n_new_elts, uword elt_bytes)
 
   /* Zero empty space. */
   n_zero_bytes = (n_new_elts - n_old_elts) * elt_bytes;
-  clib_memset (v_new + n_copy_bytes, 0, n_zero_bytes);
+  memset (v_new + n_copy_bytes, 0, n_zero_bytes);
 
   clib_fifo_free (v_old);
 

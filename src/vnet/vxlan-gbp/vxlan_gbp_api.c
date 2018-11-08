@@ -131,7 +131,7 @@ static void send_vxlan_gbp_tunnel_details
 		       IP46_TYPE_IP4 : IP46_TYPE_IP6);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_GBP_TUNNEL_DETAILS);
 
   ip_address_encode (&t->src, itype, &rmp->tunnel.src);

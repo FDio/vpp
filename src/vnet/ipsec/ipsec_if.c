@@ -291,7 +291,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 	return VNET_API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (im->tunnel_interfaces, t, CLIB_CACHE_LINE_BYTES);
-      clib_memset (t, 0, sizeof (*t));
+      memset (t, 0, sizeof (*t));
 
       dev_instance = t - im->tunnel_interfaces;
       if (args->renumber)
@@ -309,7 +309,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 		dev_instance);
 
       pool_get (im->sad, sa);
-      clib_memset (sa, 0, sizeof (*sa));
+      memset (sa, 0, sizeof (*sa));
       t->input_sa_index = sa - im->sad;
       sa->spi = args->remote_spi;
       sa->tunnel_src_addr.ip4.as_u32 = args->remote_ip.as_u32;
@@ -334,7 +334,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 	}
 
       pool_get (im->sad, sa);
-      clib_memset (sa, 0, sizeof (*sa));
+      memset (sa, 0, sizeof (*sa));
       t->output_sa_index = sa - im->sad;
       sa->spi = args->local_spi;
       sa->tunnel_src_addr.ip4.as_u32 = args->local_ip.as_u32;
@@ -456,7 +456,7 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
 	return VNET_API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (im->tunnel_interfaces, t, CLIB_CACHE_LINE_BYTES);
-      clib_memset (t, 0, sizeof (*t));
+      memset (t, 0, sizeof (*t));
 
       t->input_sa_index = isa;
       t->output_sa_index = osa;

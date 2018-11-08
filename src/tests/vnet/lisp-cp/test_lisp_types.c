@@ -133,7 +133,7 @@ test_gid_write_nsh (void)
   clib_error_t * error = 0;
 
   u8 * b = clib_mem_alloc(500);
-  clib_memset(b, 0, 500);
+  memset(b, 0, 500);
 
   gid_address_t g =
     {
@@ -168,8 +168,8 @@ test_gid_parse_nsh ()
   gid_address_t _gid_addr, * gid_addr = &_gid_addr;
   gid_address_t _gid_addr_copy, * copy = &_gid_addr_copy;
 
-  clib_memset (gid_addr, 0, sizeof (gid_addr[0]));
-  clib_memset (copy, 0, sizeof (copy[0]));
+  memset (gid_addr, 0, sizeof (gid_addr[0]));
+  memset (copy, 0, sizeof (copy[0]));
 
   u8 data[] =
     {
@@ -201,8 +201,8 @@ static clib_error_t * test_gid_parse_lcaf ()
   gid_address_t _gid_addr, * gid_addr = &_gid_addr;
   gid_address_t _gid_addr_copy, * gid_addr_copy = &_gid_addr_copy;
 
-  clib_memset (gid_addr, 0, sizeof (gid_addr[0]));
-  clib_memset (gid_addr_copy, 0, sizeof (gid_addr_copy[0]));
+  memset (gid_addr, 0, sizeof (gid_addr[0]));
+  memset (gid_addr_copy, 0, sizeof (gid_addr_copy[0]));
 
   u8 data[] =
     {
@@ -241,8 +241,8 @@ static clib_error_t * test_gid_parse_lcaf_complex ()
   gid_address_t _gid_addr, * gid_addr = &_gid_addr;
   gid_address_t _gid_addr_copy, * gid_addr_copy = &_gid_addr_copy;
 
-  clib_memset (gid_addr, 0, sizeof (gid_addr[0]));
-  clib_memset (gid_addr_copy, 0, sizeof (gid_addr_copy[0]));
+  memset (gid_addr, 0, sizeof (gid_addr[0]));
+  memset (gid_addr_copy, 0, sizeof (gid_addr_copy[0]));
 
   u8 data[] =
     {
@@ -335,7 +335,7 @@ static clib_error_t * test_write_mac_in_lcaf (void)
   clib_error_t * error = 0;
 
   u8 * b = clib_mem_alloc(500);
-  clib_memset(b, 0, 500);
+  memset(b, 0, 500);
 
   gid_address_t g =
     {
@@ -373,7 +373,7 @@ static clib_error_t * test_mac_address_write (void)
   clib_error_t * error = 0;
 
   u8 * b = clib_mem_alloc(500);
-  clib_memset(b, 0, 500);
+  memset(b, 0, 500);
 
   gid_address_t g =
     {
@@ -401,7 +401,7 @@ test_src_dst_with_vni_serdes (void)
 {
   clib_error_t * error = 0;
   u8 * b = clib_mem_alloc (500);
-  clib_memset (b, 0, 500);
+  memset (b, 0, 500);
 
   fid_address_t src =
     {
@@ -472,7 +472,7 @@ test_src_dst_with_vni_serdes (void)
   _assert (0 == memcmp (expected_data, b, sizeof (expected_data)));
 
   gid_address_t p;
-  clib_memset (&p, 0, sizeof (p));
+  memset (&p, 0, sizeof (p));
   _assert (write_len == gid_address_parse (b, &p));
   _assert (0 == gid_address_cmp (&g, &p));
 done:
@@ -512,7 +512,7 @@ test_src_dst_serdes (void)
   clib_error_t * error = 0;
 
   u8 * b = clib_mem_alloc (500);
-  clib_memset (b, 0, 500);
+  memset (b, 0, 500);
 
   fid_address_t src =
     {
@@ -564,7 +564,7 @@ test_src_dst_serdes (void)
   _assert (0 == memcmp (expected_data, b, sizeof (expected_data)));
 
   gid_address_t p;
-  clib_memset (&p, 0, sizeof (p));
+  memset (&p, 0, sizeof (p));
   _assert (write_len == gid_address_parse (b, &p));
   _assert (0 == gid_address_cmp (&g, &p));
 done:
@@ -578,7 +578,7 @@ static clib_error_t * test_gid_address_write (void)
   ip_prefix_t ippref_data, * ippref = &ippref_data;
 
   u8 * b = clib_mem_alloc(500);
-  clib_memset(b, 0, 500);
+  memset(b, 0, 500);
 
   ip_prefix_version (ippref) = IP4;
   ip_prefix_len (ippref) = 9;

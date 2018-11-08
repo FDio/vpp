@@ -40,7 +40,7 @@ openssl_ctx_alloc (void)
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (openssl_ctx_t));
 
-  clib_memset (*ctx, 0, sizeof (openssl_ctx_t));
+  memset (*ctx, 0, sizeof (openssl_ctx_t));
   (*ctx)->ctx.c_thread_index = thread_index;
   (*ctx)->ctx.tls_ctx_engine = TLS_ENGINE_OPENSSL;
   (*ctx)->ctx.app_session_handle = SESSION_INVALID_HANDLE;
@@ -87,7 +87,7 @@ openssl_listen_ctx_alloc (void)
 
   pool_get (om->lctx_pool, lctx);
 
-  clib_memset (lctx, 0, sizeof (openssl_listen_ctx_t));
+  memset (lctx, 0, sizeof (openssl_listen_ctx_t));
   lctx->openssl_lctx_index = lctx - om->lctx_pool;
   return lctx->openssl_lctx_index;
 }

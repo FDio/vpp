@@ -539,10 +539,10 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	{
 	  sa->i_dh_data = vec_new (u8, t->key_len);
 	  x_off = len - BN_num_bytes (x);
-	  clib_memset (sa->i_dh_data, 0, x_off);
+	  memset (sa->i_dh_data, 0, x_off);
 	  BN_bn2bin (x, sa->i_dh_data + x_off);
 	  y_off = t->key_len - BN_num_bytes (y);
-	  clib_memset (sa->i_dh_data + len, 0, y_off - len);
+	  memset (sa->i_dh_data + len, 0, y_off - len);
 	  BN_bn2bin (y, sa->i_dh_data + y_off);
 
 	  const BIGNUM *prv = EC_KEY_get0_private_key (ec);
@@ -554,10 +554,10 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	{
 	  sa->r_dh_data = vec_new (u8, t->key_len);
 	  x_off = len - BN_num_bytes (x);
-	  clib_memset (sa->r_dh_data, 0, x_off);
+	  memset (sa->r_dh_data, 0, x_off);
 	  BN_bn2bin (x, sa->r_dh_data + x_off);
 	  y_off = t->key_len - BN_num_bytes (y);
-	  clib_memset (sa->r_dh_data + len, 0, y_off - len);
+	  memset (sa->r_dh_data + len, 0, y_off - len);
 	  BN_bn2bin (y, sa->r_dh_data + y_off);
 
 	  x = BN_bin2bn (sa->i_dh_data, len, x);
@@ -569,10 +569,10 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 	  EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y,
 					       bn_ctx);
 	  x_off = len - BN_num_bytes (x);
-	  clib_memset (sa->dh_shared_key, 0, x_off);
+	  memset (sa->dh_shared_key, 0, x_off);
 	  BN_bn2bin (x, sa->dh_shared_key + x_off);
 	  y_off = t->key_len - BN_num_bytes (y);
-	  clib_memset (sa->dh_shared_key + len, 0, y_off - len);
+	  memset (sa->dh_shared_key + len, 0, y_off - len);
 	  BN_bn2bin (y, sa->dh_shared_key + y_off);
 	}
 
@@ -658,10 +658,10 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y, bn_ctx);
       sa->dh_shared_key = vec_new (u8, t->key_len);
       x_off = len - BN_num_bytes (x);
-      clib_memset (sa->dh_shared_key, 0, x_off);
+      memset (sa->dh_shared_key, 0, x_off);
       BN_bn2bin (x, sa->dh_shared_key + x_off);
       y_off = t->key_len - BN_num_bytes (y);
-      clib_memset (sa->dh_shared_key + len, 0, y_off - len);
+      memset (sa->dh_shared_key + len, 0, y_off - len);
       BN_bn2bin (y, sa->dh_shared_key + y_off);
 
       EC_KEY_free (ec);

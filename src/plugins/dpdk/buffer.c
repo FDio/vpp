@@ -140,7 +140,7 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
   vec_free (f->name);
   vec_free (f->buffers);
   /* Poison it. */
-  clib_memset (f, 0xab, sizeof (f[0]));
+  memset (f, 0xab, sizeof (f[0]));
 }
 
 /* Add buffer free list. */
@@ -209,7 +209,7 @@ CLIB_MULTIARCH_FN (dpdk_buffer_fill_free_list) (vlib_main_t * vm,
   if (rte_mempool_get_bulk (rmp, (void *) d->mbuf_alloc_list, n_alloc) < 0)
     return 0;
 
-  clib_memset (&bt, 0, sizeof (vlib_buffer_t));
+  memset (&bt, 0, sizeof (vlib_buffer_t));
   vlib_buffer_init_for_free_list (&bt, fl);
   bt.buffer_pool_index = privp->buffer_pool_index;
 
@@ -383,7 +383,7 @@ dpdk_packet_template_init (vlib_main_t * vm,
   vlib_packet_template_t *t = (vlib_packet_template_t *) vt;
 
   vlib_worker_thread_barrier_sync (vm);
-  clib_memset (t, 0, sizeof (t[0]));
+  memset (t, 0, sizeof (t[0]));
 
   vec_add (t->packet_data, packet_data, n_packet_data_bytes);
 

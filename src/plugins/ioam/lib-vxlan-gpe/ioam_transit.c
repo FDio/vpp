@@ -120,7 +120,7 @@ vxlan_gpe_transit_ioam (vlib_main_t * vm,
 		      uword *t = NULL;
 		      vxlan_gpe_ioam_main_t *hm = &vxlan_gpe_ioam_main;
 		      fib_prefix_t key4;
-		      clib_memset (&key4, 0, sizeof (key4));
+		      memset (&key4, 0, sizeof (key4));
 		      key4.fp_proto = FIB_PROTOCOL_IP4;
 		      key4.fp_addr.ip4.as_u32 = ip0->dst_address.as_u32;
 		      t = hash_get_mem (hm->dst_by_ip4, &key4);

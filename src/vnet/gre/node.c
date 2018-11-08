@@ -82,11 +82,11 @@ gre_input (vlib_main_t * vm,
   vnet_interface_main_t *im = &gm->vnet_main->interface_main;
 
   if (!is_ipv6)
-    clib_memset (&cached_tunnel_key.gtk_v4, 0xff,
-		 sizeof (cached_tunnel_key.gtk_v4));
+    memset (&cached_tunnel_key.gtk_v4, 0xff,
+	    sizeof (cached_tunnel_key.gtk_v4));
   else
-    clib_memset (&cached_tunnel_key.gtk_v6, 0xff,
-		 sizeof (cached_tunnel_key.gtk_v6));
+    memset (&cached_tunnel_key.gtk_v6, 0xff,
+	    sizeof (cached_tunnel_key.gtk_v6));
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;

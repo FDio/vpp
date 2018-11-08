@@ -874,7 +874,7 @@ vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t * ap)
   if ((dev_net_tun_fd = open ("/dev/net/tun", O_RDWR)) < 0)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
-  clib_memset (&ifr, 0, sizeof (ifr));
+  memset (&ifr, 0, sizeof (ifr));
   strncpy (ifr.ifr_name, (char *) ap->intfc_name, sizeof (ifr.ifr_name) - 1);
   ifr.ifr_flags = flags;
   if (ioctl (dev_net_tun_fd, TUNSETIFF, (void *) &ifr) < 0)
@@ -895,7 +895,7 @@ vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t * ap)
     struct ifreq ifr;
     struct sockaddr_ll sll;
 
-    clib_memset (&ifr, 0, sizeof (ifr));
+    memset (&ifr, 0, sizeof (ifr));
     strncpy (ifr.ifr_name, (char *) ap->intfc_name,
 	     sizeof (ifr.ifr_name) - 1);
     if (ioctl (dev_tap_fd, SIOCGIFINDEX, &ifr) < 0)
@@ -905,7 +905,7 @@ vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t * ap)
       }
 
     /* Bind the provisioning socket to the interface. */
-    clib_memset (&sll, 0, sizeof (sll));
+    memset (&sll, 0, sizeof (sll));
     sll.sll_family = AF_PACKET;
     sll.sll_ifindex = ifr.ifr_ifindex;
     sll.sll_protocol = htons (ETH_P_ALL);
@@ -954,7 +954,7 @@ vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t * ap)
       /* ip4: mask defaults to /24 */
       u32 mask = clib_host_to_net_u32 (0xFFFFFF00);
 
-      clib_memset (&sin, 0, sizeof (sin));
+      memset (&sin, 0, sizeof (sin));
       sin.sin_family = AF_INET;
       /* sin.sin_port = 0; */
       sin.sin_addr.s_addr = ap->ip4_address->as_u32;
@@ -998,7 +998,7 @@ vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t * ap)
 	  goto error;
 	}
 
-      clib_memset (&ifr2, 0, sizeof (ifr));
+      memset (&ifr2, 0, sizeof (ifr));
       strncpy (ifr2.ifr_name, (char *) ap->intfc_name,
 	       sizeof (ifr2.ifr_name) - 1);
       if (ioctl (sockfd6, SIOCGIFINDEX, &ifr2) < 0)
@@ -1316,7 +1316,7 @@ tap_modify_command_fn (vlib_main_t * vm,
     user_hwaddr = 1;
 
 
-  clib_memset (ap, 0, sizeof (*ap));
+  memset (ap, 0, sizeof (*ap));
   ap->orig_sw_if_index = sw_if_index;
   ap->intfc_name = intfc_name;
   ap->sw_if_indexp = &new_sw_if_index;
@@ -1418,7 +1418,7 @@ tap_connect_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  clib_memset (ap, 0, sizeof (*ap));
+  memset (ap, 0, sizeof (*ap));
 
   ap->intfc_name = intfc_name;
   ap->hwaddr_arg = hwaddr_arg;

@@ -572,7 +572,7 @@ unserialize_heap (serialize_main_t * m, va_list * va)
       return;
     }
 
-  clib_memset (&h, 0, sizeof (h));
+  memset (&h, 0, sizeof (h));
 #define _(f) unserialize_integer (m, &h.f, sizeof (h.f));
   foreach_serialize_heap_header_integer;
 #undef _
@@ -882,7 +882,7 @@ unserialize_close (serialize_main_t * m)
 void
 serialize_open_data (serialize_main_t * m, u8 * data, uword n_data_bytes)
 {
-  clib_memset (m, 0, sizeof (m[0]));
+  memset (m, 0, sizeof (m[0]));
   m->stream.buffer = data;
   m->stream.n_buffer_bytes = n_data_bytes;
 }
@@ -908,7 +908,7 @@ serialize_vector_write (serialize_main_header_t * m, serialize_stream_t * s)
 void
 serialize_open_vector (serialize_main_t * m, u8 * vector)
 {
-  clib_memset (m, 0, sizeof (m[0]));
+  memset (m, 0, sizeof (m[0]));
   m->header.data_function = serialize_vector_write;
   m->stream.buffer = vector;
   m->stream.current_buffer_index = 0;
@@ -926,7 +926,7 @@ serialize_close_vector (serialize_main_t * m)
   if (s->buffer)
     _vec_len (s->buffer) = s->current_buffer_index;
   result = s->buffer;
-  clib_memset (m, 0, sizeof (m[0]));
+  memset (m, 0, sizeof (m[0]));
   return result;
 }
 
@@ -1192,7 +1192,7 @@ static void
 serialize_open_clib_file_descriptor_helper (serialize_main_t * m, int fd,
 					    uword is_read)
 {
-  clib_memset (m, 0, sizeof (m[0]));
+  memset (m, 0, sizeof (m[0]));
   vec_resize (m->stream.buffer, 4096);
 
   if (!is_read)

@@ -440,7 +440,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
     vnet_main_t *vnm;
 
     vnm = vnet_get_main ();
-    clib_memset(rpath, 0, sizeof(*rpath));
+    memset(rpath, 0, sizeof(*rpath));
     rpath->frp_weight = 1;
     rpath->frp_sw_if_index = ~0;
 

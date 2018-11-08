@@ -184,7 +184,7 @@ free_elt_vector (timing_wheel_t * w, timing_wheel_elt_t * ev)
 {
   /* Poison free elements so we never use them by mistake. */
   if (CLIB_DEBUG > 0)
-    clib_memset (ev, ~0, vec_len (ev) * sizeof (ev[0]));
+    memset (ev, ~0, vec_len (ev) * sizeof (ev[0]));
   _vec_len (ev) = 0;
   vec_add1 (w->free_elt_vectors, ev);
 }

@@ -578,7 +578,7 @@ sctp_half_open_connection_del (sctp_connection_t * tc)
   pool_put_index (sctp_main->half_open_connections,
 		  tc->sub_conn[SCTP_PRIMARY_PATH_IDX].c_c_index);
   if (CLIB_DEBUG)
-    clib_memset (tc, 0xFA, sizeof (*tc));
+    memset (tc, 0xFA, sizeof (*tc));
   clib_spinlock_unlock_if_init (&sctp_main->half_open_lock);
 }
 

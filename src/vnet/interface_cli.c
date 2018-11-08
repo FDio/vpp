@@ -687,7 +687,7 @@ create_sub_interfaces (vlib_main_t * vm,
       goto done;
     }
 
-  clib_memset (&template, 0, sizeof (template));
+  memset (&template, 0, sizeof (template));
   template.sub.eth.raw_flags = 0;
 
   if (unformat (input, "%d default", &id_min))

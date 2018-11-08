@@ -903,7 +903,7 @@ protocol_port_range_dpo_alloc (void)
   protocol_port_range_dpo_t *ppr_dpo;
 
   pool_get_aligned (ppr_dpo_pool, ppr_dpo, CLIB_CACHE_LINE_BYTES);
-  clib_memset (ppr_dpo, 0, sizeof (*ppr_dpo));
+  memset (ppr_dpo, 0, sizeof (*ppr_dpo));
 
   ppr_dpo->n_free_ranges = N_PORT_RANGES_PER_DPO;
 

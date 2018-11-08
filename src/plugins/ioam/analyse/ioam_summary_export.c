@@ -288,7 +288,7 @@ ioam_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 
   stream = &frm->streams[fr->stream_index];
 
-  clib_memset (&temp, 0, sizeof (ip6_address_t));
+  memset (&temp, 0, sizeof (ip6_address_t));
 
   aggregated_data = ioam_analyser_main.aggregated_data;
   data_len = vec_len (aggregated_data);
@@ -402,7 +402,7 @@ ioam_flow_create (u8 del)
   flow_report_main_t *frm = &flow_report_main;
   u16 template_id;
 
-  clib_memset (&args, 0, sizeof (args));
+  memset (&args, 0, sizeof (args));
   args.rewrite_callback = ioam_template_rewrite;
   args.flow_data_callback = ioam_send_flows;
   del ? (args.is_add = 0) : (args.is_add = 1);

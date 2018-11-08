@@ -138,7 +138,7 @@ ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
       else
 	{
 	  seqno_rx->lost_packets += diff - 1;
-	  clib_memset (bitmap->array, 0, bitmap->array_size * sizeof (u64));
+	  memset (bitmap->array, 0, bitmap->array_size * sizeof (u64));
 	}
       BIT_SET (bitmap->array, seqno & bitmap->mask);
       bitmap->highest = seqno;
@@ -151,7 +151,7 @@ ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
     {
       if (seqno_check_wraparound (bitmap->highest, seqno))
 	{
-	  clib_memset (bitmap->array, 0, bitmap->array_size * sizeof (u64));
+	  memset (bitmap->array, 0, bitmap->array_size * sizeof (u64));
 	  BIT_SET (bitmap->array, seqno & bitmap->mask);
 	  bitmap->highest = seqno;
 	  return;
@@ -162,8 +162,7 @@ ioam_analyze_seqno (seqno_rx_info * seqno_rx, u64 seqno)
 	  if (peer_dead_count > 25)
 	    {
 	      peer_dead_count = 0;
-	      clib_memset (bitmap->array, 0,
-			   bitmap->array_size * sizeof (u64));
+	      memset (bitmap->array, 0, bitmap->array_size * sizeof (u64));
 	      BIT_SET (bitmap->array, seqno & bitmap->mask);
 	      bitmap->highest = seqno;
 	    }

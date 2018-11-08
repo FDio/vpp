@@ -39,7 +39,7 @@ ip4_create_mfib_with_table_id (u32 table_id,
     mfib_table_t *mfib_table;
 
     pool_get_aligned(ip4_main.mfibs, mfib_table, CLIB_CACHE_LINE_BYTES);
-    clib_memset(mfib_table, 0, sizeof(*mfib_table));
+    memset(mfib_table, 0, sizeof(*mfib_table));
 
     mfib_table->mft_proto = FIB_PROTOCOL_IP4;
     mfib_table->mft_index =
@@ -425,12 +425,12 @@ ip4_show_mfib (vlib_main_t * vm,
         }
         else if (unformat (input, "%U/%d", unformat_ip4_address, &grp, &mask))
         {
-            clib_memset(&src, 0, sizeof(src));
+            memset(&src, 0, sizeof(src));
             matching = 1;
         }
         else if (unformat (input, "%U", unformat_ip4_address, &grp))
         {
-            clib_memset(&src, 0, sizeof(src));
+            memset(&src, 0, sizeof(src));
             matching = 1;
             mask = 32;
         }

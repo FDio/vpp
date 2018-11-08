@@ -444,7 +444,7 @@ typedef struct
 always_inline void
 vlib_next_frame_init (vlib_next_frame_t * nf)
 {
-  clib_memset (nf, 0, sizeof (nf[0]));
+  memset (nf, 0, sizeof (nf[0]));
   nf->frame_index = ~0;
   nf->node_runtime_index = ~0;
 }

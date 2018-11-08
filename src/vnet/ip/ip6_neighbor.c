@@ -2653,7 +2653,7 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  nm->if_radv_pool_index_by_sw_if_index[sw_if_index] = ri;
 
 	  /* initialize default values (most of which are zero) */
-	  clib_memset (a, 0, sizeof (a[0]));
+	  memset (a, 0, sizeof (a[0]));
 
 	  a->sw_if_index = sw_if_index;
 	  a->max_radv_interval = DEF_MAX_RADV_INTERVAL;
@@ -2780,7 +2780,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
   ip0 = (ip6_header_t *) & rp0->ip;
   rh0 = (icmp6_multicast_listener_report_header_t *) & rp0->report_hdr;
 
-  clib_memset (rp0, 0x0, sizeof (icmp6_multicast_listener_report_packet_t));
+  memset (rp0, 0x0, sizeof (icmp6_multicast_listener_report_packet_t));
 
   ip0->ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 (0x6 << 28);
@@ -2968,7 +2968,7 @@ ip6_neighbor_process_timer_event (vlib_main_t * vm,
 
         h0 =  vlib_buffer_get_current (b0);
 
-        clib_memset (h0, 0, sizeof (icmp6_router_solicitation_header_t));
+        memset (h0, 0, sizeof (icmp6_router_solicitation_header_t));
 
         h0->ip.ip_version_traffic_class_and_flow_label = clib_host_to_net_u32 (0x6 << 28);
         h0->ip.payload_length = clib_host_to_net_u16 (sizeof (icmp6_router_solicitation_header_t)
@@ -3176,8 +3176,8 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
   if (time_now - im->nd_throttle_last_seed_change_time[thread_index] > 1e-3)
     {
       (void) random_u64 (&im->nd_throttle_seeds[thread_index]);
-      clib_memset (im->nd_throttle_bitmaps[thread_index], 0,
-		   ND_THROTTLE_BITS / BITS (u8));
+      memset (im->nd_throttle_bitmaps[thread_index], 0,
+	      ND_THROTTLE_BITS / BITS (u8));
 
       im->nd_throttle_last_seed_change_time[thread_index] = time_now;
     }
@@ -3571,7 +3571,7 @@ ip6_neighbor_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
 	  mhash_set (&radv_info->address_to_prefix_index, prefix_addr, pi,
 		     /* old_value */ 0);
 
-	  clib_memset (prefix, 0x0, sizeof (ip6_radv_prefix_t));
+	  memset (prefix, 0x0, sizeof (ip6_radv_prefix_t));
 
 	  prefix->prefix_len = prefix_len;
 	  clib_memcpy (&prefix->prefix, prefix_addr, sizeof (ip6_address_t));
@@ -4677,7 +4677,7 @@ ip6_neighbor_init (vlib_main_t * vm)
 
   /* add call backs */
   ip6_add_del_interface_address_callback_t cb;
-  clib_memset (&cb, 0x0, sizeof (ip6_add_del_interface_address_callback_t));
+  memset (&cb, 0x0, sizeof (ip6_add_del_interface_address_callback_t));
 
   /* when an interface address changes... */
   cb.function = ip6_neighbor_add_del_interface_address;

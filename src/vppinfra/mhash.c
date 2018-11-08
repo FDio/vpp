@@ -202,7 +202,7 @@ mhash_init (mhash_t * h, uword n_value_bytes, uword n_key_bytes)
   vec_free (h->key_tmps);
   hash_free (h->hash);
 
-  clib_memset (h, 0, sizeof (h[0]));
+  memset (h, 0, sizeof (h[0]));
   h->n_key_bytes = n_key_bytes;
 
 #if 0

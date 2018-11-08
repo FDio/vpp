@@ -260,8 +260,8 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 			       -2 * (sizeof (*ip6) - sizeof (*ip4)) -
 			       sizeof (*inner_frag));
 	  ip6 = vlib_buffer_get_current (p);
-	  memmove (u8_ptr_add (ip6, sizeof (*ip6) - sizeof (*ip4)), ip4,
-                   20 + 8);
+	  clib_memcpy (u8_ptr_add (ip6, sizeof (*ip6) - sizeof (*ip4)), ip4,
+		       20 + 8);
 	  ip4 =
 	    (ip4_header_t *) u8_ptr_add (ip6, sizeof (*ip6) - sizeof (*ip4));
 	  icmp = (icmp46_header_t *) (ip4 + 1);
@@ -286,8 +286,8 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 	{
 	  vlib_buffer_advance (p, -2 * (sizeof (*ip6) - sizeof (*ip4)));
 	  ip6 = vlib_buffer_get_current (p);
-	  memmove (u8_ptr_add (ip6, sizeof (*ip6) - sizeof (*ip4)), ip4,
-                   20 + 8);
+	  clib_memcpy (u8_ptr_add (ip6, sizeof (*ip6) - sizeof (*ip4)), ip4,
+		       20 + 8);
 	  ip4 =
 	    (ip4_header_t *) u8_ptr_add (ip6, sizeof (*ip6) - sizeof (*ip4));
 	  icmp = (icmp46_header_t *) u8_ptr_add (ip4, sizeof (*ip4));

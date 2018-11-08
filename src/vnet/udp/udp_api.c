@@ -51,7 +51,7 @@ send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
   vl_api_udp_encap_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_UDP_ENCAP_DETAILS);
   mp->context = context;
 

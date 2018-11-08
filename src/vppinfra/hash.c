@@ -43,13 +43,13 @@
 always_inline void
 zero_pair (hash_t * h, hash_pair_t * p)
 {
-  clib_memset (p, 0, hash_pair_bytes (h));
+  memset (p, 0, hash_pair_bytes (h));
 }
 
 always_inline void
 init_pair (hash_t * h, hash_pair_t * p)
 {
-  clib_memset (p->value, ~0, hash_value_bytes (h));
+  memset (p->value, ~0, hash_value_bytes (h));
 }
 
 always_inline hash_pair_union_t *
@@ -624,7 +624,7 @@ hash_next (void *v, hash_next_t * hn)
 	{
 	  /* Restore flags. */
 	  h->flags = hn->f;
-	  clib_memset (hn, 0, sizeof (hn[0]));
+	  memset (hn, 0, sizeof (hn[0]));
 	  return 0;
 	}
 

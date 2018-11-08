@@ -336,7 +336,7 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
       return -1;
     }
 
-  clib_memset (lcl_addr, 0, sizeof (*lcl_addr));
+  memset (lcl_addr, 0, sizeof (*lcl_addr));
 
   if (rmt->is_ip4)
     {

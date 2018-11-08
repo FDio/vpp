@@ -413,7 +413,7 @@ main (int argc, char *argv[])
   unformat_input_t i;
   clib_error_t *error;
   test_main_t *tm = &test_main;
-  clib_memset (&test_main, 0, sizeof (test_main));
+  memset (&test_main, 0, sizeof (test_main));
 
   clib_mem_init (0, 3ULL << 30);
 

@@ -870,7 +870,7 @@ do_combined_per_interface_counters (stats_main_t * sm)
 	      continue;
 	    }
 	  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + sizeof (*vp));
-	  clib_memset (mp, 0, sizeof (*mp));
+	  memset (mp, 0, sizeof (*mp));
 
 	  mp->_vl_msg_id =
 	    ntohs (VL_API_VNET_PER_INTERFACE_COMBINED_COUNTERS);
@@ -1070,7 +1070,7 @@ do_simple_per_interface_counters (stats_main_t * sm)
 	    }
 
 	  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + sizeof (*vp));
-	  clib_memset (mp, 0, sizeof (*mp));
+	  memset (mp, 0, sizeof (*mp));
 	  mp->_vl_msg_id = ntohs (VL_API_VNET_PER_INTERFACE_SIMPLE_COUNTERS);
 
 	  /*
@@ -3046,8 +3046,8 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
   rmp->context = mp->context;
   rmp->retval = 0;
 
-  clib_memset (total_pkts, 0, sizeof (total_pkts));
-  clib_memset (total_bytes, 0, sizeof (total_bytes));
+  memset (total_pkts, 0, sizeof (total_pkts));
+  memset (total_bytes, 0, sizeof (total_bytes));
 
   vnet_interface_counter_lock (im);
 
@@ -3128,7 +3128,7 @@ stats_init (vlib_main_t * vm)
   sm->data_structure_lock =
     clib_mem_alloc_aligned (sizeof (data_structure_lock_t),
 			    CLIB_CACHE_LINE_BYTES);
-  clib_memset (sm->data_structure_lock, 0, sizeof (*sm->data_structure_lock));
+  memset (sm->data_structure_lock, 0, sizeof (*sm->data_structure_lock));
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \

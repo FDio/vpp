@@ -605,7 +605,7 @@ perfect (phash_main_t * pm)
 
   /* clear any state from previous attempts */
   if (vec_bytes (pm->tabh))
-    clib_memset (pm->tabh, ~0, vec_bytes (pm->tabh));
+    memset (pm->tabh, ~0, vec_bytes (pm->tabh));
 
   vec_validate (pm->tabb_sort, vec_len (pm->tabb) - 1);
   for (i = 0; i < vec_len (pm->tabb_sort); i++)

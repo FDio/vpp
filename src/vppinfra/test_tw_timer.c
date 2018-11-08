@@ -246,7 +246,7 @@ test2_single (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       do
 	{
@@ -293,7 +293,7 @@ test2_single (tw_timer_test_main_t * tm)
       for (j = 0; j < tm->ntimers / 4; j++)
 	{
 	  pool_get (tm->test_elts, e);
-	  clib_memset (e, 0, sizeof (*e));
+	  memset (e, 0, sizeof (*e));
 
 	  do
 	    {
@@ -384,7 +384,7 @@ test2_double (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       do
 	{
@@ -430,7 +430,7 @@ test2_double (tw_timer_test_main_t * tm)
       for (j = 0; j < tm->ntimers / 4; j++)
 	{
 	  pool_get (tm->test_elts, e);
-	  clib_memset (e, 0, sizeof (*e));
+	  memset (e, 0, sizeof (*e));
 
 	  do
 	    {
@@ -528,7 +528,7 @@ test2_double_updates (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       expiration_time = get_expiration_time (tm);
       max_expiration_time = clib_max (expiration_time, max_expiration_time);
@@ -635,7 +635,7 @@ test2_triple (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       do
 	{
@@ -681,7 +681,7 @@ test2_triple (tw_timer_test_main_t * tm)
       for (j = 0; j < tm->ntimers / 4; j++)
 	{
 	  pool_get (tm->test_elts, e);
-	  clib_memset (e, 0, sizeof (*e));
+	  memset (e, 0, sizeof (*e));
 
 	  do
 	    {
@@ -775,7 +775,7 @@ test2_triple_ov (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       do
 	{
@@ -822,7 +822,7 @@ test2_triple_ov (tw_timer_test_main_t * tm)
       for (j = 0; j < tm->ntimers / 4; j++)
 	{
 	  pool_get (tm->test_elts, e);
-	  clib_memset (e, 0, sizeof (*e));
+	  memset (e, 0, sizeof (*e));
 
 	  do
 	    {
@@ -916,7 +916,7 @@ test1_single (tw_timer_test_main_t * tm)
       expected_to_expire = timer_arg + offset;
 
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
       e->expected_to_expire = expected_to_expire;
       e->stop_timer_handle = tw_timer_start_2t_1w_2048sl
 	(&tm->single_wheel, e - tm->test_elts, 1 /* timer id */ ,
@@ -973,7 +973,7 @@ test1_double (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       e->expected_to_expire = i + offset + 1;
       e->stop_timer_handle = tw_timer_start_16t_2w_512sl
@@ -1039,7 +1039,7 @@ test3_triple_double (tw_timer_test_main_t * tm)
 
   /* Prime the pump */
   pool_get (tm->test_elts, e);
-  clib_memset (e, 0, sizeof (*e));
+  memset (e, 0, sizeof (*e));
 
   /* 1 glacier ring tick from now */
   expiration_time = TW_SLOTS_PER_RING * TW_SLOTS_PER_RING;
@@ -1117,7 +1117,7 @@ test4_double_double (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       expiration_time = 512;
 
@@ -1203,7 +1203,7 @@ test5_double (tw_timer_test_main_t * tm)
   for (i = 0; i < tm->ntimers; i++)
     {
       pool_get (tm->test_elts, e);
-      clib_memset (e, 0, sizeof (*e));
+      memset (e, 0, sizeof (*e));
 
       expiration_time = i + 1;
 
@@ -1260,7 +1260,7 @@ timer_test_command_fn (tw_timer_test_main_t * tm, unformat_input_t * input)
   int is_test5 = 0;
   int overflow = 0;
 
-  clib_memset (tm, 0, sizeof (*tm));
+  memset (tm, 0, sizeof (*tm));
   /* Default values */
   tm->ntimers = 100000;
   tm->seed = 0xDEADDABEB00BFACE;

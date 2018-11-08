@@ -73,7 +73,7 @@ qos_egress_map_find_or_create (qos_egress_map_id_t mid)
       pool_get_aligned (qem_pool, qem, CLIB_CACHE_LINE_BYTES);
       qemi = qem - qem_pool;
 
-      clib_memset (qem, 0, sizeof (*qem));
+      memset (qem, 0, sizeof (*qem));
       hash_set (qem_db, mid, qemi);
     }
 

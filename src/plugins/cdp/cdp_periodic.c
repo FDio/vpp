@@ -408,11 +408,11 @@ cdp_periodic_init (vlib_main_t * vm)
   {
     ethernet_llc_snap_and_cdp_header_t h;
 
-    clib_memset (&h, 0, sizeof (h));
+    memset (&h, 0, sizeof (h));
 
     /* Send to 01:00:0c:cc:cc */
     h.ethernet.dst_address[0] = 0x01;
-    /* h.ethernet.dst_address[1] = 0x00; (clib_memset) */
+    /* h.ethernet.dst_address[1] = 0x00; (memset) */
     h.ethernet.dst_address[2] = 0x0C;
     h.ethernet.dst_address[3] = 0xCC;
     h.ethernet.dst_address[4] = 0xCC;
@@ -427,8 +427,8 @@ cdp_periodic_init (vlib_main_t * vm)
     h.llc.control = 0x03;	/* UI (no extended control bytes) */
 
     /* SNAP */
-    /* h.snap.oui[0] = 0x00; (clib_memset) */
-    /* h.snap.oui[1] = 0x00; (clib_memset) */
+    /* h.snap.oui[0] = 0x00; (memset) */
+    /* h.snap.oui[1] = 0x00; (memset) */
     h.snap.oui[2] = 0x0C;	/* Cisco = 0x00000C */
     h.snap.protocol = htons (0x2000);	/* CDP = 0x2000 */
 
@@ -450,10 +450,10 @@ cdp_periodic_init (vlib_main_t * vm)
   {
     hdlc_and_cdp_header_t h;
 
-    clib_memset (&h, 0, sizeof (h));
+    memset (&h, 0, sizeof (h));
 
     h.hdlc.address = 0x0f;
-    /* h.hdlc.control = 0; (clib_memset) */
+    /* h.hdlc.control = 0; (memset) */
     h.hdlc.protocol = htons (0x2000);	/* CDP = 0x2000 */
 
     /* CDP */
@@ -472,11 +472,11 @@ cdp_periodic_init (vlib_main_t * vm)
   {
     srp_and_cdp_header_t h;
 
-    clib_memset (&h, 0, sizeof (h));
+    memset (&h, 0, sizeof (h));
 
     /* Send to 01:00:0c:cc:cc */
     h.ethernet.dst_address[0] = 0x01;
-    /* h.ethernet.dst_address[1] = 0x00; (clib_memset) */
+    /* h.ethernet.dst_address[1] = 0x00; (memset) */
     h.ethernet.dst_address[2] = 0x0C;
     h.ethernet.dst_address[3] = 0xCC;
     h.ethernet.dst_address[4] = 0xCC;

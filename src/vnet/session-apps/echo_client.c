@@ -387,7 +387,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   pool_get (ecm->sessions, session);
   clib_spinlock_unlock_if_init (&ecm->sessions_lock);
 
-  clib_memset (session, 0, sizeof (*session));
+  memset (session, 0, sizeof (*session));
   session_index = session - ecm->sessions;
   session->bytes_to_send = ecm->bytes_to_send;
   session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
@@ -507,8 +507,8 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   u64 options[16];
   clib_error_t *error = 0;
 
-  clib_memset (a, 0, sizeof (*a));
-  clib_memset (options, 0, sizeof (options));
+  memset (a, 0, sizeof (*a));
+  memset (options, 0, sizeof (options));
 
   a->api_client_index = ecm->my_client_index;
   a->session_cb_vft = &echo_clients;
@@ -588,7 +588,7 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
   clib_error_t *error = 0;
   int i;
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   for (i = 0; i < n_clients; i++)
     {
       a->uri = (char *) ecm->connect_uri;

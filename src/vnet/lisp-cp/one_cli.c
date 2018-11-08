@@ -144,8 +144,8 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 *key = 0;
   u32 key_id = 0;
 
-  clib_memset (&eid, 0, sizeof (eid));
-  clib_memset (a, 0, sizeof (*a));
+  memset (&eid, 0, sizeof (eid));
+  memset (a, 0, sizeof (*a));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -290,9 +290,9 @@ lisp_add_del_ndp_entry_command_fn (vlib_main_t * vm,
   u32 hw_addr_set = 0, ip_set = 0, is_add = 1;
   gid_address_t _g, *g = &_g;
 
-  clib_memset (&ip6, 0, sizeof (ip6));
-  clib_memset (hw_addr, 0, sizeof (hw_addr));
-  clib_memset (g, 0, sizeof (*g));
+  memset (&ip6, 0, sizeof (ip6));
+  memset (hw_addr, 0, sizeof (hw_addr));
+  memset (g, 0, sizeof (*g));
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -354,9 +354,9 @@ lisp_add_del_l2_arp_entry_command_fn (vlib_main_t * vm,
   u32 hw_addr_set = 0, ip_set = 0, is_add = 1;
   gid_address_t _arp, *arp = &_arp;
 
-  clib_memset (&ip4, 0, sizeof (ip4));
-  clib_memset (hw_addr, 0, sizeof (hw_addr));
-  clib_memset (arp, 0, sizeof (*arp));
+  memset (&ip4, 0, sizeof (ip4));
+  memset (hw_addr, 0, sizeof (hw_addr));
+  memset (arp, 0, sizeof (*arp));
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -503,8 +503,8 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  clib_memset (&eid, 0, sizeof (eid));
-  clib_memset (&rloc, 0, sizeof (rloc));
+  memset (&eid, 0, sizeof (eid));
+  memset (&rloc, 0, sizeof (rloc));
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -577,7 +577,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   if (!is_add)
     {
       vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
-      clib_memset (a, 0, sizeof (a[0]));
+      memset (a, 0, sizeof (a[0]));
       gid_address_copy (&a->reid, &eid);
       if (vnet_lisp_add_del_adjacency (a))
 	{
@@ -591,7 +591,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
   if (is_add)
     {
       vnet_lisp_add_del_mapping_args_t _map_args, *map_args = &_map_args;
-      clib_memset (map_args, 0, sizeof (map_args[0]));
+      memset (map_args, 0, sizeof (map_args[0]));
       gid_address_copy (&map_args->eid, &eid);
       map_args->action = action;
       map_args->is_static = 1;
@@ -645,8 +645,8 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  clib_memset (&reid, 0, sizeof (reid));
-  clib_memset (&leid, 0, sizeof (leid));
+  memset (&reid, 0, sizeof (reid));
+  memset (&leid, 0, sizeof (leid));
 
   leid_ippref = &gid_address_ippref (&leid);
   reid_ippref = &gid_address_ippref (&reid);
@@ -706,7 +706,7 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (a, 0, sizeof (a[0]));
   gid_address_copy (&a->leid, &leid);
   gid_address_copy (&a->reid, &reid);
   a->is_add = is_add;
@@ -1127,7 +1127,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
   u8 filter = 0;
   clib_error_t *error = NULL;
 
-  clib_memset (&eid, 0, sizeof (eid));
+  memset (&eid, 0, sizeof (eid));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1700,8 +1700,8 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
   u32 ls_index = 0;
   int rv = 0;
 
-  clib_memset (&locator, 0, sizeof (locator));
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (&locator, 0, sizeof (locator));
+  memset (a, 0, sizeof (a[0]));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1774,8 +1774,8 @@ lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
   vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
   u32 ls_index = 0;
 
-  clib_memset (&locator, 0, sizeof (locator));
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (&locator, 0, sizeof (locator));
+  memset (a, 0, sizeof (a[0]));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))

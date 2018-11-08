@@ -50,7 +50,7 @@ adj_poison (ip_adjacency_t * adj)
 {
     if (CLIB_DEBUG > 0)
     {
-	clib_memset (adj, 0xfe, sizeof (adj[0]));
+	memset (adj, 0xfe, sizeof (adj[0]));
     }
 }
 
@@ -80,7 +80,7 @@ adj_alloc (fib_protocol_t proto)
     adj->ia_delegates = NULL;
 
     /* lest it become a midchain in the future */
-    clib_memset(&adj->sub_type.midchain.next_dpo, 0,
+    memset(&adj->sub_type.midchain.next_dpo, 0,
            sizeof(adj->sub_type.midchain.next_dpo));
 
     return (adj);

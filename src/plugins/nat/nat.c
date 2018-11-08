@@ -293,7 +293,7 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
     {
       /* no, make a new one */
       pool_get (tsm->users, u);
-      clib_memset (u, 0, sizeof (*u));
+      memset (u, 0, sizeof (*u));
       u->addr.as_u32 = addr->as_u32;
       u->fib_index = fib_index;
 
@@ -368,7 +368,7 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
   else
     {
       pool_get (tsm->sessions, s);
-      clib_memset (s, 0, sizeof (*s));
+      memset (s, 0, sizeof (*s));
 
       /* Create list elts */
       pool_get (tsm->list_pool, per_user_translation_list_elt);
@@ -440,7 +440,7 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
   else
     {
       pool_get (tsm->sessions, s);
-      clib_memset (s, 0, sizeof (*s));
+      memset (s, 0, sizeof (*s));
 
       /* Create list elts */
       pool_get (tsm->list_pool, per_user_translation_list_elt);
@@ -845,7 +845,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	}
 
       pool_get (sm->static_mappings, m);
-      clib_memset (m, 0, sizeof (*m));
+      memset (m, 0, sizeof (*m));
       m->tag = vec_dup (tag);
       m->local_addr = l_addr;
       m->external_addr = e_addr;
@@ -1186,7 +1186,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	}
 
       pool_get (sm->static_mappings, m);
-      clib_memset (m, 0, sizeof (*m));
+      memset (m, 0, sizeof (*m));
       m->tag = vec_dup (tag);
       m->external_addr = e_addr;
       m->external_port = e_port;

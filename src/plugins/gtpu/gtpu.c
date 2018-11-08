@@ -397,7 +397,7 @@ int vnet_gtpu_add_del_tunnel
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (gtm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-      clib_memset (t, 0, sizeof (*t));
+      memset (t, 0, sizeof (*t));
 
       /* copy from arg structure */
 #define _(x) t->x = a->x;
@@ -672,8 +672,8 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
   clib_error_t *error = NULL;
 
   /* Cant "universally zero init" (={0}) due to GCC bug 53119 */
-  clib_memset (&src, 0, sizeof src);
-  clib_memset (&dst, 0, sizeof dst);
+  memset (&src, 0, sizeof src);
+  memset (&dst, 0, sizeof dst);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -796,7 +796,7 @@ gtpu_add_del_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
 
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;

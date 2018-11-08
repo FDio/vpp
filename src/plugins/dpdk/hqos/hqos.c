@@ -268,10 +268,10 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
   /* Allocate the per-thread device data array */
   vec_validate_aligned (xd->hqos_wt, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-  clib_memset (xd->hqos_wt, 0, tm->n_vlib_mains * sizeof (xd->hqos_wt[0]));
+  memset (xd->hqos_wt, 0, tm->n_vlib_mains * sizeof (xd->hqos_wt[0]));
 
   vec_validate_aligned (xd->hqos_ht, 0, CLIB_CACHE_LINE_BYTES);
-  clib_memset (xd->hqos_ht, 0, sizeof (xd->hqos_ht[0]));
+  memset (xd->hqos_ht, 0, sizeof (xd->hqos_ht[0]));
 
   /* Allocate space for one SWQ per worker thread in the I/O TX thread data structure */
   vec_validate (xd->hqos_ht->swq, worker_thread_count);

@@ -1488,7 +1488,7 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
       return 1;
     }
 
-  clib_memset (&a, 0, sizeof (a));
+  memset (&a, 0, sizeof (a));
   a.is_add = 1;
   if (sa->is_initiator)
     {
@@ -1832,7 +1832,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user)
 	  ikev2_sa_proposal_t *proposals = (ikev2_sa_proposal_t *) user;
 	  ikev2_notify_t notify;
 	  u8 *data = vec_new (u8, 4);
-	  clib_memset (&notify, 0, sizeof (notify));
+	  memset (&notify, 0, sizeof (notify));
 	  notify.protocol_id = IKEV2_PROTOCOL_ESP;
 	  notify.spi = sa->childs[0].i_proposals->spi;
 	  *(u32 *) data = clib_host_to_net_u32 (notify.spi);
@@ -2116,7 +2116,7 @@ ikev2_node_fn (vlib_main_t * vm,
 	  if (ike0->exchange == IKEV2_EXCHANGE_SA_INIT)
 	    {
 	      sa0 = &sa;
-	      clib_memset (sa0, 0, sizeof (*sa0));
+	      memset (sa0, 0, sizeof (*sa0));
 
 	      if (ike0->flags & IKEV2_HDR_FLAG_INITIATOR)
 		{
@@ -2691,7 +2691,7 @@ ikev2_add_del_profile (vlib_main_t * vm, u8 * name, int is_add)
 	return clib_error_return (0, "policy %v already exists", name);
 
       pool_get (km->profiles, p);
-      clib_memset (p, 0, sizeof (*p));
+      memset (p, 0, sizeof (*p));
       p->name = vec_dup (name);
       p->responder.sw_if_index = ~0;
       uword index = p - km->profiles;
@@ -2956,7 +2956,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 
     /* Prepare the SA and the IKE payload */
     ikev2_sa_t sa;
-    clib_memset (&sa, 0, sizeof (ikev2_sa_t));
+    memset (&sa, 0, sizeof (ikev2_sa_t));
     ikev2_payload_chain_t *chain = 0;
     ikev2_payload_new_chain (chain);
 
@@ -3296,7 +3296,7 @@ ikev2_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int thread_id;
 
-  clib_memset (km, 0, sizeof (ikev2_main_t));
+  memset (km, 0, sizeof (ikev2_main_t));
   km->vnet_main = vnet_get_main ();
   km->vlib_main = vm;
 

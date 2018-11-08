@@ -395,7 +395,7 @@ int vnet_geneve_add_del_tunnel
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-      clib_memset (t, 0, sizeof (*t));
+      memset (t, 0, sizeof (*t));
 
       /* copy from arg structure */
 #define _(x) t->x = a->x;
@@ -670,8 +670,8 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
   clib_error_t *error = NULL;
 
   /* Cant "universally zero init" (={0}) due to GCC bug 53119 */
-  clib_memset (&local, 0, sizeof local);
-  clib_memset (&remote, 0, sizeof remote);
+  memset (&local, 0, sizeof local);
+  memset (&remote, 0, sizeof remote);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -807,7 +807,7 @@ geneve_add_del_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
 
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;

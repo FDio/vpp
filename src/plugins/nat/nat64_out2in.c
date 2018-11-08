@@ -134,9 +134,9 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
 
-  clib_memset (&saddr, 0, sizeof (saddr));
+  memset (&saddr, 0, sizeof (saddr));
   saddr.ip4.as_u32 = ip4->src_address.as_u32;
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ip4->dst_address.as_u32;
 
   ste =
@@ -202,9 +202,9 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
 
-  clib_memset (&saddr, 0, sizeof (saddr));
+  memset (&saddr, 0, sizeof (saddr));
   saddr.ip4.as_u32 = ip4->src_address.as_u32;
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ip4->dst_address.as_u32;
 
   if (icmp->type == ICMP6_echo_request || icmp->type == ICMP6_echo_reply)
@@ -276,9 +276,9 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   fib_index =
     fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
 
-  clib_memset (&saddr, 0, sizeof (saddr));
+  memset (&saddr, 0, sizeof (saddr));
   saddr.ip4.as_u32 = ip4->src_address.as_u32;
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ip4->dst_address.as_u32;
 
   if (proto == IP_PROTOCOL_ICMP6)
@@ -368,9 +368,9 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
 
-  clib_memset (&saddr, 0, sizeof (saddr));
+  memset (&saddr, 0, sizeof (saddr));
   saddr.ip4.as_u32 = ip4->src_address.as_u32;
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ip4->dst_address.as_u32;
 
   ste =
@@ -738,9 +738,9 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ctx0.first_frag = 1;
 
-	      clib_memset (&saddr0, 0, sizeof (saddr0));
+	      memset (&saddr0, 0, sizeof (saddr0));
 	      saddr0.ip4.as_u32 = ip40->src_address.as_u32;
-	      clib_memset (&daddr0, 0, sizeof (daddr0));
+	      memset (&daddr0, 0, sizeof (daddr0));
 	      daddr0.ip4.as_u32 = ip40->dst_address.as_u32;
 
 	      ste0 =

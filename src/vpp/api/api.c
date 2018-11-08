@@ -292,7 +292,7 @@ vl_api_show_threads_t_handler (vl_api_show_threads_t * mp)
     return;
 
   rmp = vl_msg_api_alloc (msg_size);
-  clib_memset (rmp, 0, msg_size);
+  memset (rmp, 0, msg_size);
   rmp->_vl_msg_id = htons (VL_API_SHOW_THREADS_REPLY);
   rmp->context = mp->context;
   rmp->count = htonl (count);

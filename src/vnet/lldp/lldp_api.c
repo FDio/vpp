@@ -74,7 +74,7 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
   u8 *port_desc = 0, *mgmt_ip4 = 0, *mgmt_ip6 = 0, *mgmt_oid = 0;
   u8 no_data[256];
 
-  clib_memset (no_data, 0, 256);
+  memset (no_data, 0, 256);
 
   if (memcmp (mp->port_desc, no_data, strlen ((char *) mp->port_desc)) != 0)
     {

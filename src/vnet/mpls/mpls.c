@@ -228,7 +228,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
   eos = MPLS_EOS;
   is_del = 0;
   local_label = MPLS_LABEL_INVALID;
-  clib_memset(&pfx, 0, sizeof(pfx));
+  memset(&pfx, 0, sizeof(pfx));
   payload_proto = DPO_PROTO_MPLS;
 
    /* Get a line of input. */

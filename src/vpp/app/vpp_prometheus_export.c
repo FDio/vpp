@@ -200,7 +200,7 @@ start_listen (u16 port)
       return -1;
     }
 
-  clib_memset (&serveraddr, 0, sizeof (serveraddr));
+  memset (&serveraddr, 0, sizeof (serveraddr));
   serveraddr.sin6_family = AF_INET6;
   serveraddr.sin6_port = htons (port);
   serveraddr.sin6_addr = in6addr_any;

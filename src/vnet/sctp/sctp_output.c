@@ -1847,7 +1847,7 @@ sctp46_output_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  clib_memset (&t0->sctp_header, 0, sizeof (t0->sctp_header));
+		  memset (&t0->sctp_header, 0, sizeof (t0->sctp_header));
 		}
 	      clib_memcpy (&t0->sctp_connection, sctp_conn,
 			   sizeof (t0->sctp_connection));

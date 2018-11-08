@@ -273,7 +273,7 @@ int vnet_pppoe_add_del_session
 
   cached_key.raw = ~0;
   cached_result.raw = ~0;	/* warning be gone */
-  clib_memset (&pfx, 0, sizeof (pfx));
+  memset (&pfx, 0, sizeof (pfx));
 
   if (!is_ip6)
     {
@@ -320,7 +320,7 @@ int vnet_pppoe_add_del_session
 	return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (pem->sessions, t, CLIB_CACHE_LINE_BYTES);
-      clib_memset (t, 0, sizeof (*t));
+      memset (t, 0, sizeof (*t));
 
       clib_memcpy (t->local_mac, hi->hw_address, 6);
 
@@ -455,7 +455,7 @@ pppoe_add_del_session_command_fn (vlib_main_t * vm,
   clib_error_t *error = NULL;
 
   /* Cant "universally zero init" (={0}) due to GCC bug 53119 */
-  clib_memset (&client_ip, 0, sizeof client_ip);
+  memset (&client_ip, 0, sizeof client_ip);
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -527,7 +527,7 @@ pppoe_add_del_session_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
 
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;

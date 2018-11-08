@@ -354,7 +354,7 @@ unformat_srv6_ad_localsid (unformat_input_t * input, va_list * args)
 
   /* Allocate and initialize memory block for local SID parameters */
   ls_mem = clib_mem_alloc_aligned_at_offset (sizeof *ls_mem, 0, 0, 1);
-  clib_memset (ls_mem, 0, sizeof *ls_mem);
+  memset (ls_mem, 0, sizeof *ls_mem);
   *plugin_mem_p = ls_mem;
 
   /* Set local SID parameters */

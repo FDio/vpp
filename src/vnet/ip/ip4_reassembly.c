@@ -368,7 +368,7 @@ ip4_reass_find_or_create (vlib_main_t * vm, ip4_reass_main_t * rm,
   else
     {
       pool_get (rt->pool, reass);
-      clib_memset (reass, 0, sizeof (*reass));
+      memset (reass, 0, sizeof (*reass));
       reass->id =
 	((u64) os_get_thread_index () * 1000000000) + rt->id_counter;
       ++rt->id_counter;
@@ -1109,7 +1109,7 @@ ip4_reass_set (u32 timeout_ms, u32 max_reassemblies,
   if (ip4_reass_main.max_reass_n > 0 && new_nbuckets > old_nbuckets)
     {
       clib_bihash_16_8_t new_hash;
-      clib_memset (&new_hash, 0, sizeof (new_hash));
+      memset (&new_hash, 0, sizeof (new_hash));
       ip4_rehash_cb_ctx ctx;
       ctx.failure = 0;
       ctx.new_hash = &new_hash;

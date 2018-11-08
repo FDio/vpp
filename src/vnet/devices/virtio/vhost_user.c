@@ -307,7 +307,7 @@ static_always_inline void
 vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
 {
   vhost_user_vring_t *vring = &vui->vrings[qid];
-  clib_memset (vring, 0, sizeof (*vring));
+  memset (vring, 0, sizeof (*vring));
   vring->kickfd_idx = ~0;
   vring->callfd_idx = ~0;
   vring->errfd = -1;
@@ -394,8 +394,8 @@ vhost_user_socket_read (clib_file_t * uf)
 
   char control[CMSG_SPACE (VHOST_MEMORY_MAX_NREGIONS * sizeof (int))];
 
-  clib_memset (&mh, 0, sizeof (mh));
-  clib_memset (control, 0, sizeof (control));
+  memset (&mh, 0, sizeof (mh));
+  memset (control, 0, sizeof (control));
 
   for (i = 0; i < VHOST_MEMORY_MAX_NREGIONS; i++)
     fds[i] = -1;
@@ -1419,7 +1419,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
     {
       vui->vring_locks[q] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
 						    CLIB_CACHE_LINE_BYTES);
-      clib_memset ((void *) vui->vring_locks[q], 0, CLIB_CACHE_LINE_BYTES);
+      memset ((void *) vui->vring_locks[q], 0, CLIB_CACHE_LINE_BYTES);
     }
 
   vec_validate (vui->per_cpu_tx_qid,

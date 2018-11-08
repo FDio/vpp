@@ -148,7 +148,7 @@ dhcp_send_details (fib_protocol_t proto,
   mp = vl_msg_api_alloc (n);
   if (!mp)
     return;
-  clib_memset (mp, 0, n);
+  memset (mp, 0, n);
   mp->_vl_msg_id = ntohs (VL_API_DHCP_PROXY_DETAILS);
   mp->context = context;
   mp->count = count;
@@ -324,7 +324,7 @@ send_dhcp_client_entry (const dhcp_client_t * client, void *arg)
   ctx = arg;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = ntohs (VL_API_DHCP_CLIENT_DETAILS);
   mp->context = ctx->context;

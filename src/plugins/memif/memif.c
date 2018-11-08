@@ -460,7 +460,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   clib_error_t *err;
 
   sock = clib_mem_alloc (sizeof (clib_socket_t));
-  clib_memset (sock, 0, sizeof (clib_socket_t));
+  memset (sock, 0, sizeof (clib_socket_t));
 
   while (1)
     {
@@ -511,7 +511,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 	  if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
 	    {
-              clib_memset (sock, 0, sizeof(clib_socket_t));
+              memset (sock, 0, sizeof(clib_socket_t));
 	      sock->config = (char *) msf->filename;
               sock->flags = CLIB_SOCKET_F_IS_CLIENT| CLIB_SOCKET_F_SEQPACKET;
 
@@ -576,7 +576,7 @@ memif_add_socket_file (u32 sock_id, u8 * socket_filename)
     }
 
   pool_get (mm->socket_files, msf);
-  clib_memset (msf, 0, sizeof (memif_socket_file_t));
+  memset (msf, 0, sizeof (memif_socket_file_t));
 
   msf->filename = socket_filename;
   msf->socket_id = sock_id;
@@ -756,7 +756,7 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
 	}
     }
 
-  clib_memset (mif, 0, sizeof (*mif));
+  memset (mif, 0, sizeof (*mif));
   pool_put (mm->interfaces, mif);
 
   if (pool_elts (mm->interfaces) == 0)
@@ -875,7 +875,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
     }
 
   pool_get (mm->interfaces, mif);
-  clib_memset (mif, 0, sizeof (*mif));
+  memset (mif, 0, sizeof (*mif));
   mif->dev_instance = mif - mm->interfaces;
   mif->socket_file_index = msf - mm->socket_files;
   mif->id = args->id;
@@ -944,7 +944,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
       ASSERT (msf->sock == 0);
       msf->sock = s;
 
-      clib_memset (s, 0, sizeof (clib_socket_t));
+      memset (s, 0, sizeof (clib_socket_t));
       s->config = (char *) msf->filename;
       s->flags = CLIB_SOCKET_F_IS_SERVER |
 	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
@@ -1019,7 +1019,7 @@ memif_init (vlib_main_t * vm)
 {
   memif_main_t *mm = &memif_main;
 
-  clib_memset (mm, 0, sizeof (memif_main_t));
+  memset (mm, 0, sizeof (memif_main_t));
 
   mm->log_class = vlib_log_register_class ("memif_plugin", 0);
   memif_log_debug (0, "initialized");

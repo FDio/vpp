@@ -1257,7 +1257,7 @@ dhcp6_pd_client_enable_disable (u32 sw_if_index, const u8 * prefix_group,
 
       vec_free (prefix_list);
 
-      clib_memset (client_state, 0, sizeof (*client_state));
+      memset (client_state, 0, sizeof (*client_state));
     }
 
   return 0;

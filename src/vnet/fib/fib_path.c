@@ -1256,7 +1256,7 @@ fib_path_create (fib_node_index_t pl_index,
     fib_path_t *path;
 
     pool_get(fib_path_pool, path);
-    clib_memset(path, 0, sizeof(*path));
+    memset(path, 0, sizeof(*path));
 
     fib_node_init(&path->fp_node,
 		  FIB_NODE_TYPE_PATH);
@@ -1397,7 +1397,7 @@ fib_path_create_special (fib_node_index_t pl_index,
     fib_path_t *path;
 
     pool_get(fib_path_pool, path);
-    clib_memset(path, 0, sizeof(*path));
+    memset(path, 0, sizeof(*path));
 
     fib_node_init(&path->fp_node,
 		  FIB_NODE_TYPE_PATH);
@@ -1456,7 +1456,7 @@ fib_path_copy (fib_node_index_t path_index,
     path->fp_oper_flags     = FIB_PATH_OPER_FLAG_NONE;
     path->fp_pl_index  = path_list_index;
     path->fp_via_fib   = FIB_NODE_INDEX_INVALID;
-    clib_memset(&path->fp_dpo, 0, sizeof(path->fp_dpo));
+    memset(&path->fp_dpo, 0, sizeof(path->fp_dpo));
     dpo_reset(&path->fp_dpo);
 
     return (fib_path_get_index(path));

@@ -242,7 +242,7 @@ ip6_hop_by_hop_ioam_pot_init (vlib_main_t * vm)
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main();
-  clib_memset(hm->counters, 0, sizeof(hm->counters));
+  memset(hm->counters, 0, sizeof(hm->counters));
   
   if (ip6_hbh_register_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT, ip6_hbh_ioam_proof_of_transit_handler,
 			      ip6_hbh_ioam_proof_of_transit_trace_handler) < 0)

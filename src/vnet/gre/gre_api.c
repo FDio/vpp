@@ -63,7 +63,7 @@ static void vl_api_gre_add_del_tunnel_t_handler
       rv = VNET_API_ERROR_SAME_SRC_DST;
       goto out;
     }
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
 
   a->is_add = mp->is_add;
   a->tunnel_type = mp->tunnel_type;
@@ -103,7 +103,7 @@ static void send_gre_tunnel_details
   fib_table_t *ft;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_GRE_TUNNEL_DETAILS);
   if (!is_ipv6)
     {

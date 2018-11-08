@@ -72,7 +72,7 @@ snat_det_add_map (snat_main_t * sm, ip4_address_t * in_addr, u8 in_plen,
   if (is_add)
     {
       pool_get (sm->det_maps, det_map);
-      clib_memset (det_map, 0, sizeof (*det_map));
+      memset (det_map, 0, sizeof (*det_map));
       det_map->in_addr.as_u32 = in_cmp.as_u32;
       det_map->in_plen = in_plen;
       det_map->out_addr.as_u32 = out_cmp.as_u32;

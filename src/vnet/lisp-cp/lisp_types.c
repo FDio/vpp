@@ -165,7 +165,7 @@ unformat_ip_address (unformat_input_t * input, va_list * args)
 {
   ip_address_t *a = va_arg (*args, ip_address_t *);
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   if (unformat (input, "%U", unformat_ip4_address, &ip_addr_v4 (a)))
     ip_addr_version (a) = IP4;
   else if (unformat_user (input, unformat_ip6_address, &ip_addr_v6 (a)))
@@ -339,9 +339,9 @@ unformat_gid_address (unformat_input_t * input, va_list * args)
   fid_address_t sim1, sim2;
   nsh_t nsh;
 
-  clib_memset (&ippref, 0, sizeof (ippref));
-  clib_memset (&sim1, 0, sizeof (sim1));
-  clib_memset (&sim2, 0, sizeof (sim2));
+  memset (&ippref, 0, sizeof (ippref));
+  memset (&sim1, 0, sizeof (sim1));
+  memset (&sim2, 0, sizeof (sim2));
 
   if (unformat (input, "%U|%U", unformat_fid_address, &sim1,
 		unformat_fid_address, &sim2))
@@ -844,7 +844,7 @@ gid_address_free (gid_address_t * a)
 void
 gid_address_from_ip (gid_address_t * g, ip_address_t * ip)
 {
-  clib_memset (g, 0, sizeof (g[0]));
+  memset (g, 0, sizeof (g[0]));
   ip_address_set (&gid_address_ip (g), ip, ip_addr_version (ip));
   gid_address_ippref_len (g) = 32;
 }
@@ -872,7 +872,7 @@ ip_address_copy (ip_address_t * dst, const ip_address_t * src)
   if (IP4 == ip_addr_version (src))
     {
       /* don't copy any garbage from the union */
-      clib_memset (dst, 0, sizeof (*dst));
+      memset (dst, 0, sizeof (*dst));
       dst->ip.v4 = src->ip.v4;
       dst->version = IP4;
     }
@@ -941,7 +941,7 @@ ip_prefix_normalize_ip6 (ip6_address_t * ip6, u8 preflen)
 
   ASSERT (ip6);
 
-  clib_memset (mask_6, 0, sizeof (mask_6));
+  memset (mask_6, 0, sizeof (mask_6));
 
   if (128 <= preflen)
     {
@@ -1178,7 +1178,7 @@ lcaf_write (u8 * p, void *a)
 
   *(u16 *) p = clib_host_to_net_u16 (LISP_AFI_LCAF);
   size += sizeof (u16);
-  clib_memset (h, 0, sizeof (h[0]));
+  memset (h, 0, sizeof (h[0]));
   LCAF_TYPE (h) = type;
   u16 lcaf_len = (*lcaf_body_length_fcts[type]) (lcaf);
   LCAF_LENGTH (h) = clib_host_to_net_u16 (lcaf_len);
@@ -1243,7 +1243,7 @@ sd_write (u8 * p, void *a)
 
   *(u16 *) p = clib_host_to_net_u16 (LISP_AFI_LCAF);
   size += sizeof (u16);
-  clib_memset (h, 0, sizeof (h[0]));
+  memset (h, 0, sizeof (h[0]));
   LCAF_TYPE (h) = LCAF_SOURCE_DEST;
   u16 lcaf_len = sizeof (lcaf_src_dst_hdr_t)
     + fid_addr_size_to_write (&sd_src (sd))
@@ -1253,7 +1253,7 @@ sd_write (u8 * p, void *a)
   clib_memcpy (p + size, h, sizeof (h[0]));
   size += sizeof (h[0]);
 
-  clib_memset (&sd_hdr, 0, sizeof (sd_hdr));
+  memset (&sd_hdr, 0, sizeof (sd_hdr));
   LCAF_SD_SRC_ML (&sd_hdr) = fid_address_length (&sd_src (sd));
   LCAF_SD_DST_ML (&sd_hdr) = fid_address_length (&sd_dst (sd));
   clib_memcpy (p + size, &sd_hdr, sizeof (sd_hdr));
@@ -1282,8 +1282,8 @@ nsh_write (u8 * p, void *a)
 
   ASSERT (gid_address_type (g) == GID_ADDR_NSH);
 
-  clib_memset (&lcaf, 0, sizeof (lcaf));
-  clib_memset (&spi, 0, sizeof (spi));
+  memset (&lcaf, 0, sizeof (lcaf));
+  memset (&spi, 0, sizeof (spi));
 
   LCAF_TYPE (&lcaf) = LCAF_NSH;
   LCAF_LENGTH (&lcaf) = clib_host_to_net_u16 (sizeof (lcaf_spi_hdr_t));
@@ -1314,7 +1314,7 @@ vni_write (u8 * p, void *a)
   /* put lcaf header */
   *(u16 *) p = clib_host_to_net_u16 (LISP_AFI_LCAF);
   size += sizeof (u16);
-  clib_memset (h, 0, sizeof (h[0]));
+  memset (h, 0, sizeof (h[0]));
   LCAF_TYPE (h) = LCAF_INSTANCE_ID;
   u16 lcaf_len = sizeof (u32)	/* Instance ID size */
     + gid_address_size_to_put_no_vni (g);
@@ -1726,7 +1726,7 @@ locator_free (locator_t * l)
 void
 build_src_dst (gid_address_t * sd, gid_address_t * src, gid_address_t * dst)
 {
-  clib_memset (sd, 0, sizeof (*sd));
+  memset (sd, 0, sizeof (*sd));
   gid_address_type (sd) = GID_ADDR_SRC_DST;
   gid_address_vni (sd) = gid_address_vni (dst);
   gid_address_vni_mask (sd) = gid_address_vni_mask (dst);

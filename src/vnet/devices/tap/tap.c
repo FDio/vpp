@@ -115,7 +115,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       return;
     }
 
-  clib_memset (&ifr, 0, sizeof (ifr));
+  memset (&ifr, 0, sizeof (ifr));
   pool_get (vim->interfaces, vif);
   vif->dev_instance = vif - vim->interfaces;
   vif->tap_fd = -1;
@@ -317,7 +317,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   /* Set vhost memory table */
   i = sizeof (struct vhost_memory) + sizeof (struct vhost_memory_region);
   vhost_mem = clib_mem_alloc (i);
-  clib_memset (vhost_mem, 0, i);
+  memset (vhost_mem, 0, i);
   vhost_mem->nregions = 1;
   vhost_mem->regions[0].memory_size = (1ULL << 47) - 4096;
   _IOCTL (vif->fd, VHOST_SET_MEM_TABLE, vhost_mem);
@@ -405,7 +405,7 @@ error:
     close (vif->fd);
   vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
   vec_free (vif->vrings);
-  clib_memset (vif, 0, sizeof (virtio_if_t));
+  memset (vif, 0, sizeof (virtio_if_t));
   pool_put (vim->interfaces, vif);
 
 done:
@@ -449,7 +449,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   tm->tap_ids = clib_bitmap_set (tm->tap_ids, vif->id, 0);
   clib_spinlock_free (&vif->lockp);
-  clib_memset (vif, 0, sizeof (*vif));
+  memset (vif, 0, sizeof (*vif));
   pool_put (mm->interfaces, vif);
 
   return 0;
@@ -468,7 +468,7 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   /* *INDENT-OFF* */
   pool_foreach (vif, mm->interfaces,
     vec_add2(r_tapids, tapid, 1);
-    clib_memset (tapid, 0, sizeof (*tapid));
+    memset (tapid, 0, sizeof (*tapid));
     tapid->id = vif->id;
     tapid->sw_if_index = vif->sw_if_index;
     hi = vnet_get_hw_interface (vnm, vif->hw_if_index);

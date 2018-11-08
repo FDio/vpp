@@ -145,7 +145,7 @@ dpdk_device_lock_init (dpdk_device_t * xd)
     {
       xd->lockp[q] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
 					     CLIB_CACHE_LINE_BYTES);
-      clib_memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
+      memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
     }
 }
 
@@ -1518,7 +1518,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
     return;
 
   xd->time_last_link_update = now ? now : xd->time_last_link_update;
-  clib_memset (&xd->link, 0, sizeof (xd->link));
+  memset (&xd->link, 0, sizeof (xd->link));
   rte_eth_link_get_nowait (xd->port_id, &xd->link);
 
   if (LINK_STATE_ELOGS)

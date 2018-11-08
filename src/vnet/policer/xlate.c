@@ -798,7 +798,7 @@ sse2_pol_convert_cfg_to_hw_params (sse2_qos_pol_cfg_params_st * cfg,
   /*
    * clear the hw_params
    */
-  clib_memset (hw, 0, sizeof (sse2_qos_pol_hw_params_st));
+  memset (hw, 0, sizeof (sse2_qos_pol_hw_params_st));
 
   hw->allow_negative = SSE2_QOS_POL_ALLOW_NEGATIVE;
 
@@ -1174,8 +1174,8 @@ sse2_pol_logical_2_physical (sse2_qos_pol_cfg_params_st * cfg,
   int rc;
   sse2_qos_pol_cfg_params_st kbps_cfg;
 
-  clib_memset (phys, 0, sizeof (policer_read_response_type_st));
-  clib_memset (&kbps_cfg, 0, sizeof (sse2_qos_pol_cfg_params_st));
+  memset (phys, 0, sizeof (policer_read_response_type_st));
+  memset (&kbps_cfg, 0, sizeof (sse2_qos_pol_cfg_params_st));
 
   if (!cfg)
     {
@@ -1279,7 +1279,7 @@ static void
 sse2_qos_convert_pol_bucket_to_hw_fmt (policer_read_response_type_st * bkt,
 				       sse2_qos_pol_hw_params_st * hw_fmt)
 {
-  clib_memset (hw_fmt, 0, sizeof (sse2_qos_pol_hw_params_st));
+  memset (hw_fmt, 0, sizeof (sse2_qos_pol_hw_params_st));
 #if !defined (INTERNAL_SS) && !defined (X86)
   hw_fmt->rfc = (u8) bkt->rfc;
   hw_fmt->allow_negative = (u8) bkt->an;
@@ -1436,8 +1436,8 @@ sse2_pol_physical_2_logical (policer_read_response_type_st * phys,
   sse2_qos_pol_hw_params_st pol_hw;
   sse2_qos_pol_cfg_params_st kbps_cfg;
 
-  clib_memset (&pol_hw, 0, sizeof (sse2_qos_pol_hw_params_st));
-  clib_memset (&kbps_cfg, 0, sizeof (sse2_qos_pol_cfg_params_st));
+  memset (&pol_hw, 0, sizeof (sse2_qos_pol_hw_params_st));
+  memset (&kbps_cfg, 0, sizeof (sse2_qos_pol_cfg_params_st));
 
   if (!phys)
     {

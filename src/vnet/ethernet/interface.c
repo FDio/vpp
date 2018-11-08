@@ -152,7 +152,7 @@ ethernet_build_rewrite (vnet_main_t * vnm,
       if (dst_address)
 	clib_memcpy (h->dst_address, dst_address, sizeof (h->dst_address));
       else
-	clib_memset (h->dst_address, ~0, sizeof (h->dst_address));	/* broadcast */
+	memset (h->dst_address, ~0, sizeof (h->dst_address));	/* broadcast */
     }
 
   if (PREDICT_FALSE (!is_p2p) && sub_sw->sub.eth.flags.one_tag)
@@ -750,7 +750,7 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
 
   *sw_if_indexp = (u32) ~ 0;
 
-  clib_memset (address, 0, sizeof (address));
+  memset (address, 0, sizeof (address));
 
   /*
    * Allocate a loopback instance.  Either select on dynamically
@@ -822,7 +822,7 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
   u8 is_specified = 0;
   u32 user_instance = 0;
 
-  clib_memset (mac_address, 0, sizeof (mac_address));
+  memset (mac_address, 0, sizeof (mac_address));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

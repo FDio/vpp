@@ -98,7 +98,7 @@ mpls_fib_create_with_table_id (u32 table_id,
     ASSERT((fib_table - mpls_main.fibs) ==
            (mf - mpls_main.mpls_fibs));
 
-    clib_memset(fib_table, 0, sizeof(*fib_table));
+    memset(fib_table, 0, sizeof(*fib_table));
 
     fib_table->ft_proto = FIB_PROTOCOL_MPLS;
     fib_table->ft_index = (fib_table - mpls_main.fibs);

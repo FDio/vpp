@@ -445,7 +445,7 @@ session_rules_table_add_del (session_rules_table_t * srt,
 	    {
 	      mma_rule_16_t _rule;
 	      rule = &_rule;
-	      clib_memset (rule, 0, sizeof (*rule));
+	      memset (rule, 0, sizeof (*rule));
 	      session_rules_table_init_rule_16 (rule, &args->lcl,
 						args->lcl_port, &args->rmt,
 						args->rmt_port);
@@ -499,7 +499,7 @@ session_rules_table_add_del (session_rules_table_t * srt,
 	    {
 	      mma_rule_40_t _rule;
 	      rule = &_rule;
-	      clib_memset (rule, 0, sizeof (*rule));
+	      memset (rule, 0, sizeof (*rule));
 	      session_rules_table_init_rule_40 (rule, &args->lcl,
 						args->lcl_port, &args->rmt,
 						args->rmt_port);
@@ -522,7 +522,7 @@ session_rules_table_init (session_rules_table_t * srt)
   mma_rule_40_t *rule6;
   fib_prefix_t null_prefix;
 
-  clib_memset (&null_prefix, 0, sizeof (null_prefix));
+  memset (&null_prefix, 0, sizeof (null_prefix));
 
   srt4 = &srt->session_rules_tables_16;
   rule4 = session_rules_table_alloc_rule_16 (srt4, &null_prefix, 0,

@@ -281,7 +281,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a,
     return VNET_API_ERROR_IF_ALREADY_EXISTS;
 
   pool_get_aligned (gm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-  clib_memset (t, 0, sizeof (*t));
+  memset (t, 0, sizeof (*t));
 
   /* Reconcile the real dev_instance and a possible requested instance */
   u32 t_idx = t - gm->tunnels;	/* tunnel index (or instance) */
@@ -606,7 +606,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->outer_fib_id = outer_fib_id;
   a->tunnel_type = t_type;

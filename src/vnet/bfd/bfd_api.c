@@ -67,9 +67,9 @@ pub_sub_handler (bfd_events, BFD_EVENTS);
 
 #define BFD_UDP_API_PARAM_COMMON_CODE                                         \
   ip46_address_t local_addr;                                                  \
-  clib_memset (&local_addr, 0, sizeof (local_addr));                               \
+  memset (&local_addr, 0, sizeof (local_addr));                               \
   ip46_address_t peer_addr;                                                   \
-  clib_memset (&peer_addr, 0, sizeof (peer_addr));                                 \
+  memset (&peer_addr, 0, sizeof (peer_addr));                                 \
   if (mp->is_ipv6)                                                            \
     {                                                                         \
       clib_memcpy (&local_addr.ip6, mp->local_addr, sizeof (local_addr.ip6)); \
@@ -151,7 +151,7 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
     }
 
   vl_api_bfd_udp_session_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_BFD_UDP_SESSION_DETAILS);
   mp->context = context;
   mp->state = bs->local_state;
@@ -286,7 +286,7 @@ vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
   /* *INDENT-OFF* */
   pool_foreach (key, bfd_main.auth_keys, ({
     rmp = vl_msg_api_alloc (sizeof (*rmp));
-    clib_memset (rmp, 0, sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
     rmp->_vl_msg_id = ntohs (VL_API_BFD_AUTH_KEYS_DETAILS);
     rmp->context = mp->context;
     rmp->conf_key_id = clib_host_to_net_u32 (key->conf_key_id);

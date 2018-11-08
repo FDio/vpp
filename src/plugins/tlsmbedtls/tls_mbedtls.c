@@ -55,7 +55,7 @@ mbedtls_calloc_fn (size_t n, size_t size)
 {
   void *ptr;
   ptr = clib_mem_alloc (n * size);
-  clib_memset (ptr, 0, sizeof (*ptr));
+  memset (ptr, 0, sizeof (*ptr));
   return ptr;
 }
 
@@ -78,7 +78,7 @@ mbedtls_ctx_alloc (void)
   if (!(*ctx))
     *ctx = clib_mem_alloc (sizeof (mbedtls_ctx_t));
 
-  clib_memset (*ctx, 0, sizeof (mbedtls_ctx_t));
+  memset (*ctx, 0, sizeof (mbedtls_ctx_t));
   (*ctx)->ctx.c_thread_index = thread_index;
   (*ctx)->ctx.tls_ctx_engine = TLS_ENGINE_MBEDTLS;
   (*ctx)->mbedtls_ctx_index = ctx - tm->ctx_pool[thread_index];

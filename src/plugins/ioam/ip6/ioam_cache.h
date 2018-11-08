@@ -299,7 +299,7 @@ ioam_cache_entry_free (ioam_cache_entry_t * entry)
   if (entry)
     {
       vec_free (entry->ioam_rewrite_string);
-      clib_memset (entry, 0, sizeof (*entry));
+      memset (entry, 0, sizeof (*entry));
       pool_put (cm->ioam_rewrite_pool, entry);
     }
 }
@@ -371,7 +371,7 @@ ioam_cache_add (vlib_buffer_t * b0,
   ioam_e2e_id_option_t *e2e = 0;
 
   pool_get_aligned (cm->ioam_rewrite_pool, entry, CLIB_CACHE_LINE_BYTES);
-  clib_memset (entry, 0, sizeof (*entry));
+  memset (entry, 0, sizeof (*entry));
   pool_index = entry - cm->ioam_rewrite_pool;
 
   clib_memcpy (entry->dst_address.as_u64, ip0->dst_address.as_u64,
@@ -437,7 +437,7 @@ ioam_cache_sr_rewrite_template_create (void)
   /* This nodes address and the original dest will be
    * filled when the packet is processed */
   vec_add2 (segments, this_seg, 1);
-  clib_memset (this_seg, 0xfe, sizeof (ip6_address_t));
+  memset (this_seg, 0xfe, sizeof (ip6_address_t));
   cm->sr_rewrite_template = ip6_sr_compute_rewrite_string_insert (segments);
   vec_free (segments);
 }
@@ -540,7 +540,7 @@ ioam_cache_ts_table_init (vlib_main_t * vm)
     {
       pool_alloc_aligned (cm->ioam_ts_pool[i],
 			  MAX_CACHE_TS_ENTRIES, CLIB_CACHE_LINE_BYTES);
-      clib_memset (&cm->ts_stats[i], 0, sizeof (ioam_cache_ts_pool_stats_t));
+      memset (&cm->ts_stats[i], 0, sizeof (ioam_cache_ts_pool_stats_t));
       tw_timer_wheel_init_16t_2w_512sl (&cm->timer_wheels[i],
 					expired_cache_ts_timer_callback,
 					IOAM_CACHE_TS_TICK
@@ -592,7 +592,7 @@ ioam_cache_ts_entry_free (u32 thread_id,
 	}
       pool_put (cm->ioam_ts_pool[thread_id], entry);
       cm->ts_stats[thread_id].inuse--;
-      clib_memset (entry, 0, sizeof (*entry));
+      memset (entry, 0, sizeof (*entry));
     }
 }
 
@@ -654,7 +654,7 @@ ioam_cache_ts_add (ip6_header_t * ip0,
 
   pool_get_aligned (cm->ioam_ts_pool[thread_id], entry,
 		    CLIB_CACHE_LINE_BYTES);
-  clib_memset (entry, 0, sizeof (*entry));
+  memset (entry, 0, sizeof (*entry));
   *pool_index = entry - cm->ioam_ts_pool[thread_id];
 
   clib_memcpy (entry->dst_address.as_u64, ip0->dst_address.as_u64,

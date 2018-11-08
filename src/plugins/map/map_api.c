@@ -120,7 +120,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   /* *INDENT-OFF* */
   pool_foreach(d, mm->domains,
   ({
-    /* Make sure every field is initiated (or don't skip the clib_memset()) */
+    /* Make sure every field is initiated (or don't skip the memset()) */
     rmp = vl_msg_api_alloc (sizeof (*rmp));
     rmp->_vl_msg_id = htons(VL_API_MAP_DOMAIN_DETAILS + mm->msg_id_base);
     rmp->context = mp->context;
@@ -175,7 +175,7 @@ vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
 	  continue;
 	}
       rmp = vl_msg_api_alloc (sizeof (*rmp));
-      clib_memset (rmp, 0, sizeof (*rmp));
+      memset (rmp, 0, sizeof (*rmp));
       rmp->_vl_msg_id = ntohs (VL_API_MAP_RULE_DETAILS + mm->msg_id_base);
       rmp->psid = htons (i);
       clib_memcpy (rmp->ip6_dst, &dst, sizeof (rmp->ip6_dst));
@@ -211,8 +211,8 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
       goto out;
     }
 
-  clib_memset (total_pkts, 0, sizeof (total_pkts));
-  clib_memset (total_bytes, 0, sizeof (total_bytes));
+  memset (total_pkts, 0, sizeof (total_pkts));
+  memset (total_bytes, 0, sizeof (total_bytes));
 
   map_domain_counter_lock (mm);
   vec_foreach (cm, mm->domain_counters)

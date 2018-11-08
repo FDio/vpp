@@ -69,7 +69,7 @@ setup_signal_handlers (void)
 
   for (i = 1; i < 32; i++)
     {
-      clib_memset (&sa, 0, sizeof (sa));
+      memset (&sa, 0, sizeof (sa));
       sa.sa_sigaction = (void *) unix_signal_handler;
       sa.sa_flags = SA_SIGINFO;
 
@@ -177,7 +177,7 @@ main (int argc, char **argv)
 
   setup_signal_handlers ();
 
-  clib_memset (ma, 0, sizeof (*ma));
+  memset (ma, 0, sizeof (*ma));
   ma->root_path = chroot_path;
   ma->uid = uid;
   ma->gid = gid;

@@ -245,7 +245,7 @@ vhash_init (vhash_t * h, u32 log2_n_keys, u32 n_key_u32, u32 * hash_seeds)
   uword i, j, m;
   vhash_search_bucket_t *b;
 
-  clib_memset (h, 0, sizeof (h[0]));
+  memset (h, 0, sizeof (h[0]));
 
   /* Must have at least 4 keys (e.g. one search bucket). */
   log2_n_keys = clib_max (log2_n_keys, 2);

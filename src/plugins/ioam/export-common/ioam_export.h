@@ -187,7 +187,7 @@ ioam_export_thread_buffer_init (ioam_export_main_t * em, vlib_main_t * vm)
     {
       eb = 0;
       pool_get_aligned (em->buffer_pool, eb, CLIB_CACHE_LINE_BYTES);
-      clib_memset (eb, 0, sizeof (*eb));
+      memset (eb, 0, sizeof (*eb));
       em->buffer_per_thread[i] = eb - em->buffer_pool;
       if (ioam_export_init_buffer (em, vm, eb) != 1)
 	{
@@ -196,7 +196,7 @@ ioam_export_thread_buffer_init (ioam_export_main_t * em, vlib_main_t * vm)
 	}
       em->lockp[i] = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
 					     CLIB_CACHE_LINE_BYTES);
-      clib_memset ((void *) em->lockp[i], 0, CLIB_CACHE_LINE_BYTES);
+      memset ((void *) em->lockp[i], 0, CLIB_CACHE_LINE_BYTES);
     }
   return (1);
 }
@@ -412,7 +412,7 @@ ioam_export_process_common (ioam_export_main_t * em, vlib_main_t * vm,
 	    {
 	      pool_get_aligned (em->buffer_pool, new_eb,
 				CLIB_CACHE_LINE_BYTES);
-	      clib_memset (new_eb, 0, sizeof (*new_eb));
+	      memset (new_eb, 0, sizeof (*new_eb));
 	      if (ioam_export_init_buffer (em, vm, new_eb) == 1)
 		{
 		  new_pool_index = new_eb - em->buffer_pool;

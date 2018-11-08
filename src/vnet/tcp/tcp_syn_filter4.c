@@ -101,7 +101,7 @@ syn_filter4_node_fn (vlib_main_t * vm,
 
   if (now > rt->next_reset)
     {
-      clib_memset (rt->syn_counts, 0, vec_len (rt->syn_counts));
+      memset (rt->syn_counts, 0, vec_len (rt->syn_counts));
       rt->next_reset = now + rt->reset_interval;
     }
 

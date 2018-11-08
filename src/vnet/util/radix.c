@@ -74,7 +74,7 @@ rm_alloc (void)
 {
     struct radix_mask *rm = clib_mem_alloc(sizeof(struct radix_mask));
 
-    clib_memset(rm, 0, sizeof(*rm));
+    memset(rm, 0, sizeof(*rm));
 
     return (rm);
 }
@@ -88,7 +88,7 @@ rm_free (struct radix_mask *rm)
 #define R_Malloc(p, t, n)                               \
 {                                                       \
     p = (t) clib_mem_alloc((unsigned int)(n));          \
-    clib_memset(p, 0, n);                                    \
+    memset(p, 0, n);                                    \
 }
 #define Free(p) clib_mem_free((p))
 #define log(a,b, c...)
@@ -518,7 +518,7 @@ rn_addmask(
 		return mask_rnhead->rnh_nodes;
 	}
 	if (m0 < last_zeroed)
-		clib_memset(addmask_key + m0, 0, last_zeroed - m0);
+		memset(addmask_key + m0, 0, last_zeroed - m0);
 	*addmask_key = last_zeroed = mlen;
 	x = rn_search(addmask_key, rn_masktop);
 	if (memcmp(addmask_key, x->rn_key, mlen) != 0)
@@ -528,7 +528,7 @@ rn_addmask(
 	R_Malloc(x, struct radix_node *, max_keylen + 2 * sizeof (*x));
 	if ((saved_x = x) == NULL)
 		return NULL;
-	clib_memset(x, 0, max_keylen + 2 * sizeof (*x));
+	memset(x, 0, max_keylen + 2 * sizeof (*x));
 	cp = netmask = (void *)(x + 2);
 	memmove(x + 2, addmask_key, mlen);
 	x = rn_insert(cp, mask_rnhead, &maskduplicated, x);
@@ -586,7 +586,7 @@ rn_new_radix_mask(
 		log(LOG_ERR, "Mask for route not entered\n");
 		return NULL;
 	}
-	clib_memset(m, 0, sizeof(*m));
+	memset(m, 0, sizeof(*m));
 	m->rm_b = tt->rn_b;
 	m->rm_flags = tt->rn_flags;
 	if (tt->rn_flags & RNF_NORMAL)
@@ -1063,7 +1063,7 @@ rn_inithead0(struct radix_node_head *rnh, int off)
 	struct radix_node *tt;
 	struct radix_node *ttt;
 
-	clib_memset(rnh, 0, sizeof(*rnh));
+	memset(rnh, 0, sizeof(*rnh));
 	t = rn_newpair(rn_zeros, off, rnh->rnh_nodes);
 	ttt = rnh->rnh_nodes + 2;
 	t->rn_r = ttt;
@@ -1090,7 +1090,7 @@ rn_module_init (vlib_main_t * vm)
 	if (rn_zeros == NULL)
             return (clib_error_return (0, "RN Zeros..."));
 
-	clib_memset(rn_zeros, 0, 3 * max_keylen);
+	memset(rn_zeros, 0, 3 * max_keylen);
 	rn_ones = cp = rn_zeros + max_keylen;
 	addmask_key = cplim = rn_ones + max_keylen;
 	while (cp < cplim)

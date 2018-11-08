@@ -109,7 +109,7 @@ igmp_group_alloc (igmp_config_t * config,
 
   IGMP_DBG ("new-group: %U", format_igmp_key, gkey);
   pool_get (im->groups, group);
-  clib_memset (group, 0, sizeof (igmp_group_t));
+  memset (group, 0, sizeof (igmp_group_t));
   group->key = clib_mem_alloc (sizeof (igmp_key_t));
   clib_memcpy (group->key, gkey, sizeof (igmp_key_t));
   group->igmp_src_by_key[IGMP_FILTER_MODE_INCLUDE] =

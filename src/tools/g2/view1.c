@@ -1636,7 +1636,7 @@ static void init_track_colors(void)
     if (s_color != NULL ) {
         gdk_colormap_free_colors(gtk_widget_get_colormap(da), 
                                  s_color, g_npids);
-        clib_memset(s_color, 0, sizeof(GdkColor) * g_npids);
+        memset(s_color, 0, sizeof(GdkColor) * g_npids);
     } else {
         /*
          * First time through: allocate the array to hold the GCs.

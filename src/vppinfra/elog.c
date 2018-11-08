@@ -469,7 +469,7 @@ elog_alloc (elog_main_t * em, u32 n_events)
 void
 elog_init (elog_main_t * em, u32 n_events)
 {
-  clib_memset (em, 0, sizeof (em[0]));
+  memset (em, 0, sizeof (em[0]));
 
   em->lock = 0;
 
@@ -636,7 +636,7 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
   elog_track_t newt;
   int i;
 
-  clib_memset (&newt, 0, sizeof (newt));
+  memset (&newt, 0, sizeof (newt));
 
   /* Acquire src and dst events */
   elog_get_events (src);

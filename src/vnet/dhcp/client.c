@@ -422,7 +422,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   dhcp = (dhcp_header_t *) (udp + 1);
 
   /* $$$ optimize, maybe */
-  clib_memset (ip, 0, sizeof (*ip) + sizeof (*udp) + sizeof (*dhcp));
+  memset (ip, 0, sizeof (*ip) + sizeof (*udp) + sizeof (*dhcp));
 
   ip->ip_version_and_header_length = 0x45;
   ip->ttl = 128;
@@ -908,7 +908,7 @@ dhcp_client_add_del (dhcp_client_add_del_args_t * a)
   if (a->is_add)
     {
       pool_get (dcm->clients, c);
-      clib_memset (c, 0, sizeof (*c));
+      memset (c, 0, sizeof (*c));
       c->state = DHCP_DISCOVER;
       c->sw_if_index = a->sw_if_index;
       c->client_index = a->client_index;
@@ -984,7 +984,7 @@ dhcp_client_config (u32 is_add,
   dhcp_client_add_del_args_t _a, *a = &_a;
   int rv;
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->sw_if_index = sw_if_index;
   a->client_index = client_index;
@@ -1106,7 +1106,7 @@ dhcp_client_set_command_fn (vlib_main_t * vm,
   if (sw_if_index_set == 0)
     return clib_error_return (0, "interface not specified");
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->sw_if_index = sw_if_index;
   a->hostname = hostname;

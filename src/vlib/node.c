@@ -290,7 +290,7 @@ node_elog_init (vlib_main_t * vm, uword ni)
 {
   elog_event_type_t t;
 
-  clib_memset (&t, 0, sizeof (t));
+  memset (&t, 0, sizeof (t));
 
   /* 2 event types for this node: one when node function is called.
      One when it returns. */
@@ -347,7 +347,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   ASSERT (r->function != 0);
 
   n = clib_mem_alloc_no_fail (sizeof (n[0]));
-  clib_memset (n, 0, sizeof (n[0]));
+  memset (n, 0, sizeof (n[0]));
   n->index = vec_len (nm->nodes);
   n->node_fn_registrations = r->node_fn_registrations;
 
@@ -451,7 +451,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 	  clib_panic ("failed to allocate process stack (%d bytes)",
 		      1 << log2_n_stack_bytes);
 
-	clib_memset (p, 0, sizeof (p[0]));
+	memset (p, 0, sizeof (p[0]));
 	p->log2_n_stack_bytes = log2_n_stack_bytes;
 
 	/* Process node's runtime index is really index into process

@@ -1242,7 +1242,7 @@ l2fib_init (vlib_main_t * vm)
 			 L2FIB_NUM_BUCKETS, L2FIB_MEMORY_SIZE);
 
   /* verify the key constructor is good, since it is endian-sensitive */
-  clib_memset (test_mac, 0, sizeof (test_mac));
+  memset (test_mac, 0, sizeof (test_mac));
   test_mac[0] = 0x11;
   test_key.raw = 0;
   test_key.raw = l2fib_make_key ((u8 *) & test_mac, 0x1234);

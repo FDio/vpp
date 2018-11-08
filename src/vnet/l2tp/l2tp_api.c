@@ -65,7 +65,7 @@ send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
 		    format_vnet_sw_interface_name, lm->vnet_main, si);
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_IF_L2TPV3_TUNNEL_DETAILS);
   strncpy ((char *) mp->interface_name,
 	   (char *) if_name, ARRAY_LEN (mp->interface_name) - 1);

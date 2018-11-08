@@ -28,7 +28,7 @@ classify_dpo_alloc (void)
     classify_dpo_t *cd;
 
     pool_get_aligned(classify_dpo_pool, cd, CLIB_CACHE_LINE_BYTES);
-    clib_memset(cd, 0, sizeof(*cd));
+    memset(cd, 0, sizeof(*cd));
 
     return (cd);
 }

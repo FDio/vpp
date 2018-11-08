@@ -52,7 +52,7 @@
 #endif
 
 #include <vppinfra/os.h>
-#include <vppinfra/string.h>	/* memcpy, clib_memset */
+#include <vppinfra/string.h>	/* memcpy, memset */
 #include <vppinfra/valgrind.h>
 
 #define CLIB_MAX_MHEAPS 256

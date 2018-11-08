@@ -168,7 +168,7 @@ clib_socket_free (clib_socket_t * s)
   vec_free (s->rx_buffer);
   if (clib_mem_is_heap_object (s->config))
     vec_free (s->config);
-  clib_memset (s, 0, sizeof (s[0]));
+  memset (s, 0, sizeof (s[0]));
 }
 
 always_inline clib_error_t *

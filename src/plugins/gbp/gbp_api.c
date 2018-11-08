@@ -143,7 +143,7 @@ gbp_endpoint_send_details (gbp_endpoint_t * gbpe, void *args)
   if (!mp)
     return 1;
 
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_GBP_ENDPOINT_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
@@ -242,7 +242,7 @@ gbp_subnet_send_details (u32 table_id,
   if (!mp)
     return 1;
 
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_GBP_SUBNET_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
@@ -285,7 +285,7 @@ gbp_endpoint_group_send_details (gbp_endpoint_group_t * gepg, void *args)
   if (!mp)
     return 1;
 
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_GBP_ENDPOINT_GROUP_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
@@ -351,7 +351,7 @@ gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
   if (!mp)
     return 1;
 
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_GBP_RECIRC_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 
@@ -409,7 +409,7 @@ gbp_contract_send_details (gbp_contract_t * gbpc, void *args)
   if (!mp)
     return 1;
 
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_GBP_CONTRACT_DETAILS + GBP_MSG_BASE);
   mp->context = ctx->context;
 

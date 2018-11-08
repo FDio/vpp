@@ -287,8 +287,8 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   u64 options[APP_OPTIONS_N_OPTIONS];
   u32 segment_size = 512 << 20;
 
-  clib_memset (a, 0, sizeof (*a));
-  clib_memset (options, 0, sizeof (options));
+  memset (a, 0, sizeof (*a));
+  memset (options, 0, sizeof (options));
 
   if (esm->no_echo)
     echo_server_session_cb_vft.builtin_app_rx_callback =
@@ -327,13 +327,13 @@ echo_server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
     }
   esm->app_index = a->app_index;
 
-  clib_memset (a_cert, 0, sizeof (*a_cert));
+  memset (a_cert, 0, sizeof (*a_cert));
   a_cert->app_index = a->app_index;
   vec_validate (a_cert->cert, test_srv_crt_rsa_len);
   clib_memcpy (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
   vnet_app_add_tls_cert (a_cert);
 
-  clib_memset (a_key, 0, sizeof (*a_key));
+  memset (a_key, 0, sizeof (*a_key));
   a_key->app_index = a->app_index;
   vec_validate (a_key->key, test_srv_key_rsa_len);
   clib_memcpy (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
@@ -359,7 +359,7 @@ echo_server_listen ()
 {
   echo_server_main_t *esm = &echo_server_main;
   vnet_bind_args_t _a, *a = &_a;
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->app_index = esm->app_index;
   a->uri = esm->server_uri;
   return vnet_bind_uri (a);

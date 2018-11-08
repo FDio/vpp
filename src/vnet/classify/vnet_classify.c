@@ -128,7 +128,7 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
   nbuckets = 1 << (max_log2 (nbuckets));
 
   pool_get_aligned (cm->tables, t, CLIB_CACHE_LINE_BYTES);
-  clib_memset (t, 0, sizeof (*t));
+  memset (t, 0, sizeof (*t));
 
   vec_validate_aligned (t->mask, match_n_vectors - 1, sizeof (u32x4));
   clib_memcpy (t->mask, mask, match_n_vectors * sizeof (u32x4));
@@ -211,7 +211,7 @@ vnet_classify_entry_alloc (vnet_classify_table_t * t, u32 log2_pages)
 initialize:
   ASSERT (rv);
 
-  clib_memset (rv, 0xff, required_length);
+  memset (rv, 0xff, required_length);
   return rv;
 }
 
@@ -536,8 +536,8 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 	      (v->key, add_v->key, t->match_n_vectors * sizeof (u32x4)))
 	    {
 	      vnet_classify_entry_release_resource (v);
-	      clib_memset (v, 0xff, sizeof (vnet_classify_entry_t) +
-			   t->match_n_vectors * sizeof (u32x4));
+	      memset (v, 0xff, sizeof (vnet_classify_entry_t) +
+		      t->match_n_vectors * sizeof (u32x4));
 	      v->flags |= VNET_CLASSIFY_ENTRY_FREE;
 
 	      CLIB_MEMORY_BARRIER ();
@@ -845,7 +845,7 @@ unformat_tcp_mask (unformat_input_t * input, va_list * args)
 
   tcp = (tcp_header_t *) mask;
 
-#define _(a) if (a) clib_memset (&tcp->a, 0xff, sizeof (tcp->a));
+#define _(a) if (a) memset (&tcp->a, 0xff, sizeof (tcp->a));
   foreach_tcp_proto_field;
 #undef _
 
@@ -886,7 +886,7 @@ unformat_udp_mask (unformat_input_t * input, va_list * args)
 
   udp = (udp_header_t *) mask;
 
-#define _(a) if (a) clib_memset (&udp->a, 0xff, sizeof (udp->a));
+#define _(a) if (a) memset (&udp->a, 0xff, sizeof (udp->a));
   foreach_udp_proto_field;
 #undef _
 
@@ -981,7 +981,7 @@ unformat_ip4_mask (unformat_input_t * input, va_list * args)
 
   ip = (ip4_header_t *) mask;
 
-#define _(a) if (a) clib_memset (&ip->a, 0xff, sizeof (ip->a));
+#define _(a) if (a) memset (&ip->a, 0xff, sizeof (ip->a));
   foreach_ip4_proto_field;
 #undef _
 
@@ -1053,7 +1053,7 @@ unformat_ip6_mask (unformat_input_t * input, va_list * args)
 
   ip = (ip6_header_t *) mask;
 
-#define _(a) if (a) clib_memset (&ip->a, 0xff, sizeof (ip->a));
+#define _(a) if (a) memset (&ip->a, 0xff, sizeof (ip->a));
   foreach_ip6_proto_field;
 #undef _
 
@@ -1149,10 +1149,10 @@ unformat_l2_mask (unformat_input_t * input, va_list * args)
   vec_validate (mask, len - 1);
 
   if (dst)
-    clib_memset (mask, 0xff, 6);
+    memset (mask, 0xff, 6);
 
   if (src)
-    clib_memset (mask + 6, 0xff, 6);
+    memset (mask + 6, 0xff, 6);
 
   if (tag2 || dot1ad)
     {
@@ -2501,7 +2501,7 @@ test_classify_churn (test_classify_main_t * tm)
   data = (classify_data_or_mask_t *) dp;
 
   /* Mask on src address */
-  clib_memset (&mask->ip.src_address, 0xff, 4);
+  memset (&mask->ip.src_address, 0xff, 4);
 
   tmp = clib_host_to_net_u32 (tm->src.as_u32);
 

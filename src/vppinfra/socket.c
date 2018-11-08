@@ -73,7 +73,7 @@ find_free_port (word sock)
     {
       struct sockaddr_in a;
 
-      clib_memset (&a, 0, sizeof (a));	/* Warnings be gone */
+      memset (&a, 0, sizeof (a));	/* Warnings be gone */
 
       a.sin_family = PF_INET;
       a.sin_addr.s_addr = INADDR_ANY;
@@ -289,7 +289,7 @@ default_socket_sendmsg (clib_socket_t * s, void *msg, int msglen,
   if (num_fds > 0)
     {
       struct cmsghdr *cmsg;
-      clib_memset (&ctl, 0, sizeof (ctl));
+      memset (&ctl, 0, sizeof (ctl));
       mh.msg_control = ctl;
       mh.msg_controllen = sizeof (ctl);
       cmsg = CMSG_FIRSTHDR (&mh);
@@ -328,7 +328,7 @@ default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
   mh.msg_control = ctl;
   mh.msg_controllen = sizeof (ctl);
 
-  clib_memset (ctl, 0, sizeof (ctl));
+  memset (ctl, 0, sizeof (ctl));
 
   /* receive the incoming message */
   size = recvmsg (s->fd, &mh, 0);
@@ -525,7 +525,7 @@ clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
   clib_error_t *err = 0;
   socklen_t len = 0;
 
-  clib_memset (client, 0, sizeof (client[0]));
+  memset (client, 0, sizeof (client[0]));
 
   /* Accept the new socket connection. */
   client->fd = accept (server->fd, 0, 0);

@@ -445,9 +445,9 @@ unk_proto_st_walk (nat64_db_st_entry_t * ste, void *arg)
       if (ip46_address_is_equal (&bibe->in_addr, &ctx->src_addr)
 	  && bibe->fib_index == ctx->fib_index)
 	{
-	  clib_memset (&saddr, 0, sizeof (saddr));
+	  memset (&saddr, 0, sizeof (saddr));
 	  saddr.ip4.as_u32 = bibe->out_addr.as_u32;
-	  clib_memset (&daddr, 0, sizeof (daddr));
+	  memset (&daddr, 0, sizeof (daddr));
 	  nat64_extract_ip4 (&ctx->dst_addr, &daddr.ip4, ctx->fib_index);
 
 	  if (nat64_db_st_entry_find
@@ -518,7 +518,7 @@ nat64_in2out_unk_proto_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 	    nat64_db_st_walk (db, IP_PROTOCOL_UDP, unk_proto_st_walk, &ctx);
 
 	  /* Verify if out address is not already in use for protocol */
-	  clib_memset (&addr, 0, sizeof (addr));
+	  memset (&addr, 0, sizeof (addr));
 	  addr.ip4.as_u32 = ctx.out_addr.as_u32;
 	  if (nat64_db_bib_entry_find (db, &addr, 0, proto, 0, 0))
 	    ctx.out_addr.as_u32 = 0;
@@ -646,7 +646,7 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   sport = udp->src_port = bibe->out_port;
   nat64_compose_ip6 (&ip6->src_address, &bibe->out_addr, fib_index);
 
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ste->out_r_addr.as_u32;
 
   bibe = 0;
@@ -746,8 +746,8 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   dport = udp->dst_port = bibe->out_port;
   nat64_compose_ip6 (&inner_ip6->dst_address, &bibe->out_addr, fib_index);
 
-  clib_memset (&saddr, 0, sizeof (saddr));
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&saddr, 0, sizeof (saddr));
+  memset (&daddr, 0, sizeof (daddr));
   saddr.ip4.as_u32 = ste->out_r_addr.as_u32;
   daddr.ip4.as_u32 = bibe->out_addr.as_u32;
 
@@ -859,7 +859,7 @@ nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 	    nat64_db_st_walk (db, IP_PROTOCOL_UDP, unk_proto_st_walk, &ctx);
 
 	  /* Verify if out address is not already in use for protocol */
-	  clib_memset (&addr, 0, sizeof (addr));
+	  memset (&addr, 0, sizeof (addr));
 	  addr.ip4.as_u32 = ctx.out_addr.as_u32;
 	  if (nat64_db_bib_entry_find (db, &addr, 0, proto, 0, 0))
 	    ctx.out_addr.as_u32 = 0;
@@ -896,7 +896,7 @@ nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 
   nat64_compose_ip6 (&ip6->src_address, &bibe->out_addr, fib_index);
 
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ste->out_r_addr.as_u32;
 
   bibe = 0;
@@ -1279,7 +1279,7 @@ nat64_in2out_frag_hairpinning (vlib_buffer_t * b, ip6_header_t * ip6,
 
   nat64_compose_ip6 (&ip6->src_address, &bibe->out_addr, bibe->fib_index);
 
-  clib_memset (&daddr, 0, sizeof (daddr));
+  memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ste->out_r_addr.as_u32;
 
   bibe = 0;

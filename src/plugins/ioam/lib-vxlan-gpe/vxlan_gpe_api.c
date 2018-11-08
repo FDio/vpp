@@ -249,7 +249,7 @@ static void vl_api_vxlan_gpe_ioam_transit_enable_t_handler
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   ip46_address_t dst_addr;
 
-  clib_memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
+  memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
   if (!mp->is_ipv6)
     {
       clib_memcpy (&dst_addr.ip4, &mp->dst_addr, sizeof (dst_addr.ip4));
@@ -271,7 +271,7 @@ static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
   vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
   ip46_address_t dst_addr;
 
-  clib_memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
+  memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
   if (!mp->is_ipv6)
     {
       clib_memcpy (&dst_addr.ip4, &mp->dst_addr, sizeof (dst_addr.ip4));

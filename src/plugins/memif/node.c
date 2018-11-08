@@ -750,7 +750,7 @@ refill:
     goto done;
 
   memif_desc_t *dt = &ptd->desc_template;
-  clib_memset (dt, 0, sizeof (memif_desc_t));
+  memset (dt, 0, sizeof (memif_desc_t));
   dt->length = buffer_length;
 
   n_alloc = vlib_buffer_alloc_to_ring (vm, mq->buffers, head & mask,

@@ -1181,11 +1181,11 @@ fib_walk_clear (vlib_main_t * vm,
 		unformat_input_t * input,
 		vlib_cli_command_t * cmd)
 {
-    clib_memset(fib_walk_hist_vists_per_walk, 0, sizeof(fib_walk_hist_vists_per_walk));
-    clib_memset(fib_walk_history, 0, sizeof(fib_walk_history));
-    clib_memset(fib_walk_work_time_taken, 0, sizeof(fib_walk_work_time_taken));
-    clib_memset(fib_walk_work_nodes_visited, 0, sizeof(fib_walk_work_nodes_visited));
-    clib_memset(fib_walk_sleep_lengths, 0, sizeof(fib_walk_sleep_lengths));
+    memset(fib_walk_hist_vists_per_walk, 0, sizeof(fib_walk_hist_vists_per_walk));
+    memset(fib_walk_history, 0, sizeof(fib_walk_history));
+    memset(fib_walk_work_time_taken, 0, sizeof(fib_walk_work_time_taken));
+    memset(fib_walk_work_nodes_visited, 0, sizeof(fib_walk_work_nodes_visited));
+    memset(fib_walk_sleep_lengths, 0, sizeof(fib_walk_sleep_lengths));
 
     return (NULL);
 }

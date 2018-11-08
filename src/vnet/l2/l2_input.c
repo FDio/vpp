@@ -649,7 +649,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
       /* Clear L2 output config */
       out_config = l2output_intf_config (sw_if_index);
-      clib_memset (out_config, 0, sizeof (l2_output_config_t));
+      memset (out_config, 0, sizeof (l2_output_config_t));
 
       /* Make sure any L2-output packet to this interface now in L3 mode is
        * dropped. This may happen if L2 FIB MAC entry is stale */

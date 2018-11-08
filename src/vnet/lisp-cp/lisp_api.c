@@ -102,7 +102,7 @@ unformat_lisp_locs (vl_api_remote_locator_t * rmt_locs, u32 rloc_num)
     {
       /* remote locators */
       r = &rmt_locs[i];
-      clib_memset (&loc, 0, sizeof (loc));
+      memset (&loc, 0, sizeof (loc));
       gid_address_ip_set (&loc.address, &r->addr, r->is_ip4 ? IP4 : IP6);
 
       loc.priority = r->priority;
@@ -126,7 +126,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   u8 *locator_name = NULL;
   int i;
 
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (a, 0, sizeof (a[0]));
 
   mp->locator_set_name[sizeof (mp->locator_set_name) - 1] = 0;
   locator_name = format (0, "%s", mp->locator_set_name);
@@ -137,7 +137,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
   a->local = 1;
   locator_num = clib_net_to_host_u32 (mp->locator_num);
 
-  clib_memset (&locator, 0, sizeof (locator));
+  memset (&locator, 0, sizeof (locator));
   for (i = 0; i < locator_num; i++)
     {
       ls_loc = &mp->locators[i];
@@ -175,8 +175,8 @@ vl_api_lisp_add_del_locator_t_handler (vl_api_lisp_add_del_locator_t * mp)
   u32 ls_index = ~0;
   u8 *locator_name = NULL;
 
-  clib_memset (&locator, 0, sizeof (locator));
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (&locator, 0, sizeof (locator));
+  memset (a, 0, sizeof (a[0]));
 
   locator.sw_if_index = ntohl (mp->sw_if_index);
   locator.priority = mp->priority;
@@ -244,8 +244,8 @@ vl_api_lisp_add_del_local_eid_t_handler (vl_api_lisp_add_del_local_eid_t * mp)
   u32 locator_set_index = ~0, map_index = ~0;
   vnet_lisp_add_del_mapping_args_t _a, *a = &_a;
   u8 *name = NULL, *key = NULL;
-  clib_memset (a, 0, sizeof (a[0]));
-  clib_memset (eid, 0, sizeof (eid[0]));
+  memset (a, 0, sizeof (a[0]));
+  memset (eid, 0, sizeof (eid[0]));
 
   rv = unformat_lisp_eid_api (eid, clib_net_to_host_u32 (mp->vni),
 			      mp->eid_type, mp->eid, mp->prefix_len);
@@ -303,7 +303,7 @@ vl_api_lisp_add_del_map_server_t_handler (vl_api_lisp_add_del_map_server_t
   int rv = 0;
   ip_address_t addr;
 
-  clib_memset (&addr, 0, sizeof (addr));
+  memset (&addr, 0, sizeof (addr));
 
   ip_address_set (&addr, mp->ip_address, mp->is_ipv6 ? IP6 : IP4);
   rv = vnet_lisp_add_del_map_server (&addr, mp->is_add);
@@ -319,7 +319,7 @@ vl_api_lisp_add_del_map_resolver_t_handler (vl_api_lisp_add_del_map_resolver_t
   int rv = 0;
   vnet_lisp_add_del_map_resolver_args_t _a, *a = &_a;
 
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (a, 0, sizeof (a[0]));
 
   a->is_add = mp->is_add;
   ip_address_set (&a->address, mp->ip_address, mp->is_ipv6 ? IP6 : IP4);
@@ -429,7 +429,7 @@ vl_api_show_lisp_use_petr_t_handler (vl_api_show_lisp_use_petr_t * mp)
   u8 status = 0;
   gid_address_t addr;
 
-  clib_memset (&addr, 0, sizeof (addr));
+  memset (&addr, 0, sizeof (addr));
   status = lcm->flags & LISP_FLAG_USE_PETR;
   if (status)
     {
@@ -501,7 +501,7 @@ static void
   gid_address_t _eid, *eid = &_eid;
   u32 rloc_num = clib_net_to_host_u32 (mp->rloc_num);
 
-  clib_memset (eid, 0, sizeof (eid[0]));
+  memset (eid, 0, sizeof (eid[0]));
 
   rv = unformat_lisp_eid_api (eid, clib_net_to_host_u32 (mp->vni),
 			      mp->eid_type, mp->eid, mp->eid_len);
@@ -513,7 +513,7 @@ static void
   if (!mp->is_add)
     {
       vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
-      clib_memset (a, 0, sizeof (*a));
+      memset (a, 0, sizeof (*a));
       gid_address_copy (&a->reid, eid);
       a->is_add = 0;
       rv = vnet_lisp_add_del_adjacency (a);
@@ -528,7 +528,7 @@ static void
   if (mp->is_add)
     {
       vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
-      clib_memset (m_args, 0, sizeof (m_args[0]));
+      memset (m_args, 0, sizeof (m_args[0]));
       gid_address_copy (&m_args->eid, eid);
       m_args->action = mp->action;
       m_args->is_static = 1;
@@ -557,7 +557,7 @@ vl_api_lisp_add_del_adjacency_t_handler (vl_api_lisp_add_del_adjacency_t * mp)
   vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
 
   int rv = 0;
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (a, 0, sizeof (a[0]));
 
   rv = unformat_lisp_eid_api (&a->leid, clib_net_to_host_u32 (mp->vni),
 			      mp->eid_type, mp->leid, mp->leid_len);
@@ -582,7 +582,7 @@ send_lisp_locator_details (lisp_cp_main_t * lcm,
   vl_api_lisp_locator_details_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_LOCATOR_DETAILS);
   rmp->context = context;
 
@@ -655,7 +655,7 @@ send_lisp_locator_set_details (lisp_cp_main_t * lcm,
   u8 *str = 0;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_LOCATOR_SET_DETAILS);
   rmp->context = context;
 
@@ -795,7 +795,7 @@ send_lisp_eid_table_details (mapping_t * mapit,
   mac = gid_address_mac (gid);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_EID_TABLE_DETAILS);
 
   ls = pool_elt_at_index (lcm->locator_set_pool, mapit->locator_set_index);
@@ -864,7 +864,7 @@ vl_api_lisp_eid_table_dump_t_handler (vl_api_lisp_eid_table_dump_t * mp)
 
   if (mp->eid_set)
     {
-      clib_memset (eid, 0, sizeof (*eid));
+      memset (eid, 0, sizeof (*eid));
 
       unformat_lisp_eid_api (eid, clib_net_to_host_u32 (mp->vni),
 			     mp->eid_type, mp->eid, mp->prefix_length);
@@ -896,7 +896,7 @@ send_lisp_map_server_details (ip_address_t * ip, vl_api_registration_t * reg,
   vl_api_lisp_map_server_details_t *rmp = NULL;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_MAP_SERVER_DETAILS);
 
   switch (ip_addr_version (ip))
@@ -945,7 +945,7 @@ send_lisp_map_resolver_details (ip_address_t * ip,
   vl_api_lisp_map_resolver_details_t *rmp = NULL;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_MAP_RESOLVER_DETAILS);
 
   switch (ip_addr_version (ip))
@@ -994,7 +994,7 @@ send_eid_table_map_pair (hash_pair_t * p, vl_api_registration_t * reg,
   vl_api_lisp_eid_table_map_details_t *rmp = NULL;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_EID_TABLE_MAP_DETAILS);
 
   rmp->vni = clib_host_to_net_u32 (p->key);
@@ -1039,7 +1039,7 @@ send_eid_table_vni (u32 vni, vl_api_registration_t * reg, u32 context)
   vl_api_lisp_eid_table_vni_details_t *rmp = 0;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_LISP_EID_TABLE_VNI_DETAILS);
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (vni);
@@ -1056,7 +1056,7 @@ lisp_adjacency_copy (vl_api_lisp_adjacency_t * dst, lisp_adjacency_t * adjs)
   for (i = 0; i < n; i++)
     {
       adj = vec_elt_at_index (adjs, i);
-      clib_memset (&a, 0, sizeof (a));
+      memset (&a, 0, sizeof (a));
 
       switch (gid_address_type (&adj->reid))
 	{

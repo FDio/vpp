@@ -374,7 +374,7 @@ ipsec_gre_init (vlib_main_t * vm)
   ipsec_gre_main_t *igm = &ipsec_gre_main;
   clib_error_t *error;
 
-  clib_memset (igm, 0, sizeof (igm[0]));
+  memset (igm, 0, sizeof (igm[0]));
   igm->vlib_main = vm;
   igm->vnet_main = vnet_get_main ();
 

@@ -742,7 +742,7 @@ bier_test_mpls_imp (void)
      */
     bier_bit_string_t bbs_256;
     u8 buckets[BIER_HDR_BUCKETS_256];
-    clib_memset(buckets, 0x5, BIER_HDR_BUCKETS_256);
+    memset(buckets, 0x5, BIER_HDR_BUCKETS_256);
 
     res = 0;
     bier_bit_string_init(&bbs_256, BIER_HDR_LEN_256, buckets);

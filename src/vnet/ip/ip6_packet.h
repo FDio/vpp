@@ -280,7 +280,7 @@ ip6_address_mask_from_width (ip6_address_t * a, u32 width)
 {
   int i, byte, bit, bitnum;
   ASSERT (width <= 128);
-  clib_memset (a, 0, sizeof (a[0]));
+  memset (a, 0, sizeof (a[0]));
   for (i = 0; i < width; i++)
     {
       bitnum = (7 - (i & 7));

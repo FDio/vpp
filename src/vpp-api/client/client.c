@@ -115,7 +115,7 @@ static void
 init (void)
 {
   vac_main_t *pm = &vac_main;
-  clib_memset(pm, 0, sizeof(*pm));
+  memset(pm, 0, sizeof(*pm));
   pthread_mutex_init(&pm->queue_lock, NULL);
   pthread_cond_init(&pm->suspend_cv, NULL);
   pthread_cond_init(&pm->resume_cv, NULL);
@@ -137,7 +137,7 @@ cleanup (void)
   pthread_cond_destroy(&pm->timeout_cv);
   pthread_cond_destroy(&pm->timeout_cancel_cv);
   pthread_cond_destroy(&pm->terminate_cv);
-  clib_memset(pm, 0, sizeof(*pm));
+  memset(pm, 0, sizeof(*pm));
 }
 
 /*
@@ -215,7 +215,7 @@ vac_rx_thread_fn (void *arg)
         case VL_API_MEMCLNT_KEEPALIVE:
           mp = (void *)msg;
           rmp = vl_msg_api_alloc (sizeof (*rmp));
-          clib_memset (rmp, 0, sizeof (*rmp));
+          memset (rmp, 0, sizeof (*rmp));
           rmp->_vl_msg_id = ntohs(VL_API_MEMCLNT_KEEPALIVE_REPLY);
           rmp->context = mp->context;
           shmem_hdr = am->shmem_hdr;
@@ -472,7 +472,7 @@ vac_read (char **p, int *l, u16 timeout)
       /* Handle an alive-check ping from vpp. */
       mp = (void *)msg;
       rmp = vl_msg_api_alloc (sizeof (*rmp));
-      clib_memset (rmp, 0, sizeof (*rmp));
+      memset (rmp, 0, sizeof (*rmp));
       rmp->_vl_msg_id = ntohs(VL_API_MEMCLNT_KEEPALIVE_REPLY);
       rmp->context = mp->context;
       shmem_hdr = am->shmem_hdr;

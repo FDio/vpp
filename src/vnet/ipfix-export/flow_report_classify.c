@@ -408,7 +408,7 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
   if (fcm->src_port == 0)
     clib_error_return (0, "call 'set ipfix classify stream' first");
 
-  clib_memset (&args, 0, sizeof (args));
+  memset (&args, 0, sizeof (args));
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

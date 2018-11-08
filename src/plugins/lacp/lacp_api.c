@@ -99,7 +99,7 @@ lacp_send_sw_interface_details (vl_api_registration_t * reg,
   vl_api_sw_interface_lacp_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_LACP_DETAILS + lm->msg_id_base);
   mp->sw_if_index = htonl (lacp_if->sw_if_index);
 

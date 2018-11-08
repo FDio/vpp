@@ -26,7 +26,7 @@ static int
 trace_profile_cleanup (trace_profile * profile)
 {
 
-  clib_memset (profile, 0, sizeof (trace_profile));
+  memset (profile, 0, sizeof (trace_profile));
   profile->trace_tsp = TSP_MICROSECONDS;	/* Micro seconds */
   ip6_trace_profile_cleanup ();	/* lib-trace_TODO: Remove this once IOAM-IPv6 transport is a plugin */
   return 0;

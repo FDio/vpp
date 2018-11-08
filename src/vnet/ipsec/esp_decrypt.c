@@ -213,7 +213,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      u8 sig[64];
 	      int icv_size =
 		em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
-	      clib_memset (sig, 0, sizeof (sig));
+	      memset (sig, 0, sizeof (sig));
 	      u8 *icv =
 		vlib_buffer_get_current (i_b0) + i_b0->current_length -
 		icv_size;

@@ -59,7 +59,7 @@ vec_resize_allocate_memory (void *v,
       new = clib_mem_alloc_aligned_at_offset (data_bytes, data_align, header_bytes, 1	/* yes, call os_out_of_memory */
 	);
       data_bytes = clib_mem_size (new);
-      clib_memset (new, 0, data_bytes);
+      memset (new, 0, data_bytes);
       v = new + header_bytes;
       _vec_len (v) = length_increment;
       return v;
@@ -100,7 +100,7 @@ vec_resize_allocate_memory (void *v,
   v = new;
 
   /* Zero new memory. */
-  clib_memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
+  memset (v + old_alloc_bytes, 0, new_alloc_bytes - old_alloc_bytes);
 
   return v + header_bytes;
 }

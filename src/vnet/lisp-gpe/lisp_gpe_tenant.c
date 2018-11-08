@@ -48,7 +48,7 @@ lisp_gpe_tenant_find_or_create_i (u32 vni)
   if (NULL == lt)
     {
       pool_get (lisp_gpe_tenant_pool, lt);
-      clib_memset (lt, 0, sizeof (*lt));
+      memset (lt, 0, sizeof (*lt));
 
       lt->lt_vni = vni;
       lt->lt_table_id = ~0;

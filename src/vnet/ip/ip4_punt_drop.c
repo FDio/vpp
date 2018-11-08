@@ -445,7 +445,7 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
 	;
       else if (unformat (line_input, "via %U",
 			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
-	clib_memset (&nh, 0, sizeof (nh));
+	memset (&nh, 0, sizeof (nh));
       else
 	{
 	  error = unformat_parse_error (line_input);

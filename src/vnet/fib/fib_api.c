@@ -49,7 +49,7 @@ fib_path_api_parse (const vl_api_fib_path_t *in,
 
     path_flags = FIB_ROUTE_PATH_FLAG_NONE;
     next_hop_via_label = ntohl (in->via_label);
-    clib_memset(out, 0, sizeof(*out));
+    memset(out, 0, sizeof(*out));
     out->frp_sw_if_index = ~0;
 
     out->frp_proto = in->afi;
@@ -207,7 +207,7 @@ void
 fib_api_path_encode (const fib_route_path_encode_t * api_rpath,
                      vl_api_fib_path_t *out)
 {
-    clib_memset (out, 0, sizeof (*out));
+    memset (out, 0, sizeof (*out));
     switch (api_rpath->dpo.dpoi_type)
     {
     case DPO_RECEIVE:

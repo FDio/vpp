@@ -199,7 +199,7 @@ mactime_send_create_entry_message (u8 * mac_address)
   am = &api_main;
   shmem_hdr = am->shmem_hdr;
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MACTIME_ADD_DEL_RANGE + mm->msg_id_base);
   name = format (0, "mac-%U", format_mac_address, mac_address);
 
@@ -227,7 +227,7 @@ static void vl_api_mactime_add_del_range_t_handler
 
   feature_init (mm);
 
-  clib_memset (&kv, 0, sizeof (kv));
+  memset (&kv, 0, sizeof (kv));
   memcpy (&kv.key, mp->mac_address, sizeof (mp->mac_address));
 
   /* See if we have a lookup table entry for this src mac address */
@@ -241,7 +241,7 @@ static void vl_api_mactime_add_del_range_t_handler
       if (found == 0)
 	{
 	  pool_get (mm->devices, dp);
-	  clib_memset (dp, 0, sizeof (*dp));
+	  memset (dp, 0, sizeof (*dp));
 	  vlib_validate_combined_counter (&mm->allow_counters,
 					  dp - mm->devices);
 	  vlib_zero_combined_counter (&mm->allow_counters, dp - mm->devices);

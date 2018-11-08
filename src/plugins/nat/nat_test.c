@@ -707,7 +707,7 @@ static int api_nat44_user_session_dump(vat_main_t * vam)
 
   /* Use a control ping for synchronization */
   M(NAT_CONTROL_PING, mp_ping);
-  clib_memset(mp->ip_address, 0, 16);
+  memset(mp->ip_address, 0, 16);
   clib_memcpy(mp->ip_address, &addr, 4);
   mp->vrf_id = htonl(vrf_id);
   S(mp_ping);

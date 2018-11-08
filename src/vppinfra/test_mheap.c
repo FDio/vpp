@@ -154,7 +154,7 @@ test_mheap_main (unformat_input_t * input)
 
   vec_resize (objects, n_objects);
   if (vec_bytes (objects) > 0)	/* stupid warning be gone */
-    clib_memset (objects, ~0, vec_bytes (objects));
+    memset (objects, ~0, vec_bytes (objects));
   objects_used = 0;
 
   /* Allocate initial heap. */

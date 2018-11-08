@@ -109,7 +109,7 @@ svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose)
 #endif
 
   dummy_fifo = svm_fifo_create (f->nitems);
-  clib_memset (f->data, 0xFF, f->nitems);
+  memset (f->data, 0xFF, f->nitems);
 
   vec_validate (data, f->nitems);
   for (i = 0; i < vec_len (data); i++)
@@ -209,7 +209,7 @@ svm_fifo_create (u32 data_size_in_bytes)
   if (f == 0)
     return 0;
 
-  clib_memset (f, 0, sizeof (*f));
+  memset (f, 0, sizeof (*f));
   f->nitems = data_size_in_bytes;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
   f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
@@ -480,7 +480,7 @@ CLIB_MARCH_FN (svm_fifo_enqueue_nowait, int, svm_fifo_t * f, u32 max_bytes,
       first_copy_bytes = ((nitems - f->tail) < total_copy_bytes)
 	? (nitems - f->tail) : total_copy_bytes;
 
-      _clib_memcpy (&f->data[f->tail], copy_from_here, first_copy_bytes);
+      clib_memcpy (&f->data[f->tail], copy_from_here, first_copy_bytes);
       f->tail += first_copy_bytes;
       f->tail = (f->tail == nitems) ? 0 : f->tail;
 
@@ -488,8 +488,8 @@ CLIB_MARCH_FN (svm_fifo_enqueue_nowait, int, svm_fifo_t * f, u32 max_bytes,
       second_copy_bytes = total_copy_bytes - first_copy_bytes;
       if (second_copy_bytes)
 	{
-	  _clib_memcpy (&f->data[f->tail], copy_from_here + first_copy_bytes,
-			second_copy_bytes);
+	  clib_memcpy (&f->data[f->tail], copy_from_here + first_copy_bytes,
+		       second_copy_bytes);
 	  f->tail += second_copy_bytes;
 	  f->tail = (f->tail == nitems) ? 0 : f->tail;
 	}
@@ -566,8 +566,7 @@ CLIB_MARCH_FN (svm_fifo_enqueue_with_offset, int, svm_fifo_t * f,
   first_copy_bytes = ((nitems - normalized_offset) < total_copy_bytes)
     ? (nitems - normalized_offset) : total_copy_bytes;
 
-  _clib_memcpy (&f->data[normalized_offset], copy_from_here,
-		first_copy_bytes);
+  clib_memcpy (&f->data[normalized_offset], copy_from_here, first_copy_bytes);
 
   /* Number of bytes in second copy segment, if any */
   second_copy_bytes = total_copy_bytes - first_copy_bytes;
@@ -578,8 +577,8 @@ CLIB_MARCH_FN (svm_fifo_enqueue_with_offset, int, svm_fifo_t * f,
 
       ASSERT (normalized_offset == 0);
 
-      _clib_memcpy (&f->data[normalized_offset],
-		    copy_from_here + first_copy_bytes, second_copy_bytes);
+      clib_memcpy (&f->data[normalized_offset],
+		   copy_from_here + first_copy_bytes, second_copy_bytes);
     }
 
   return (0);
@@ -603,11 +602,11 @@ svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len)
   first_chunk = f->nitems - f->head;
   ASSERT (len <= f->nitems);
   if (len <= first_chunk)
-    _clib_memcpy (&f->data[f->head], data, len);
+    clib_memcpy (&f->data[f->head], data, len);
   else
     {
-      _clib_memcpy (&f->data[f->head], data, first_chunk);
-      _clib_memcpy (&f->data[0], data + first_chunk, len - first_chunk);
+      clib_memcpy (&f->data[f->head], data, first_chunk);
+      clib_memcpy (&f->data[0], data + first_chunk, len - first_chunk);
     }
 }
 #endif
@@ -633,7 +632,7 @@ CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 max_bytes,
       /* Number of bytes in first copy segment */
       first_copy_bytes = ((nitems - f->head) < total_copy_bytes)
 	? (nitems - f->head) : total_copy_bytes;
-      _clib_memcpy (copy_here, &f->data[f->head], first_copy_bytes);
+      clib_memcpy (copy_here, &f->data[f->head], first_copy_bytes);
       f->head += first_copy_bytes;
       f->head = (f->head == nitems) ? 0 : f->head;
 
@@ -641,8 +640,8 @@ CLIB_MARCH_FN (svm_fifo_dequeue_nowait, int, svm_fifo_t * f, u32 max_bytes,
       second_copy_bytes = total_copy_bytes - first_copy_bytes;
       if (second_copy_bytes)
 	{
-	  _clib_memcpy (copy_here + first_copy_bytes,
-			&f->data[f->head], second_copy_bytes);
+	  clib_memcpy (copy_here + first_copy_bytes,
+		       &f->data[f->head], second_copy_bytes);
 	  f->head += second_copy_bytes;
 	  f->head = (f->head == nitems) ? 0 : f->head;
 	}
@@ -700,14 +699,14 @@ CLIB_MARCH_FN (svm_fifo_peek, int, svm_fifo_t * f, u32 relative_offset,
       first_copy_bytes =
 	((nitems - real_head) < total_copy_bytes) ?
 	(nitems - real_head) : total_copy_bytes;
-      _clib_memcpy (copy_here, &f->data[real_head], first_copy_bytes);
+      clib_memcpy (copy_here, &f->data[real_head], first_copy_bytes);
 
       /* Number of bytes in second copy segment, if any */
       second_copy_bytes = total_copy_bytes - first_copy_bytes;
       if (second_copy_bytes)
 	{
-	  _clib_memcpy (copy_here + first_copy_bytes, &f->data[0],
-			second_copy_bytes);
+	  clib_memcpy (copy_here + first_copy_bytes, &f->data[0],
+		       second_copy_bytes);
 	}
     }
   return total_copy_bytes;

@@ -36,7 +36,7 @@ typedef struct
 static inline int
 clib_bihash_is_free_16_8 (clib_bihash_kv_16_8_t * v)
 {
-  /* Free values are clib_memset to 0xff, check a bit... */
+  /* Free values are memset to 0xff, check a bit... */
   if (v->key[0] == ~0ULL && v->value == ~0ULL)
     return 1;
   return 0;

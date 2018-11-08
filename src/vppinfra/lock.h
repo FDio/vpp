@@ -57,7 +57,7 @@ static inline void
 clib_spinlock_init (clib_spinlock_t * p)
 {
   *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
-  clib_memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
+  memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
 }
 
 static inline void
@@ -122,7 +122,7 @@ always_inline void
 clib_rwlock_init (clib_rwlock_t * p)
 {
   *p = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
-  clib_memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
+  memset ((void *) *p, 0, CLIB_CACHE_LINE_BYTES);
 }
 
 always_inline void

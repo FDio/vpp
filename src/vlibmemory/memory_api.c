@@ -127,7 +127,7 @@ vl_api_memclnt_create_internal (char *name, svm_queue_t * q)
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
 
   regp = *regpp;
-  clib_memset (regp, 0, sizeof (*regp));
+  memset (regp, 0, sizeof (*regp));
   regp->registration_type = REGISTRATION_TYPE_SHMEM;
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
   regp->vlib_rp = svm;
@@ -194,7 +194,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
 
   regp = *regpp;
-  clib_memset (regp, 0, sizeof (*regp));
+  memset (regp, 0, sizeof (*regp));
   regp->registration_type = REGISTRATION_TYPE_SHMEM;
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
   regp->vlib_rp = svm;
@@ -346,7 +346,7 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 	  oldheap = svm_push_data_heap (svm);
 	  vec_free (regp->name);
 	  /* Poison the old registration */
-	  clib_memset (regp, 0xF1, sizeof (*regp));
+	  memset (regp, 0xF1, sizeof (*regp));
 	  clib_mem_free (regp);
 	  pthread_mutex_unlock (&svm->mutex);
 	  svm_pop_heap (oldheap);
@@ -400,7 +400,7 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
   shmem_hdr = am->shmem_hdr;
 
   rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_MEMCLNT_KEEPALIVE_REPLY);
   rmp->context = mp->context;
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & rmp);
@@ -425,7 +425,7 @@ vl_mem_api_init (const char *region_name)
   vl_shmem_hdr_t *shm;
   vlib_main_t *vm = vlib_get_main ();
 
-  clib_memset (c, 0, sizeof (*c));
+  memset (c, 0, sizeof (*c));
 
   if ((rv = vl_map_shmem (region_name, 1 /* is_vlib */ )) < 0)
     return rv;
@@ -513,7 +513,7 @@ send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
   am->shmem_hdr = regp->shmem_hdr;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MEMCLNT_KEEPALIVE);
   mp->context = mp->client_index =
     vl_msg_api_handle_from_index_and_epoch
@@ -658,7 +658,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 	      else
 		{
 		  /* Poison the old registration */
-		  clib_memset (*regpp, 0xF3, sizeof (**regpp));
+		  memset (*regpp, 0xF3, sizeof (**regpp));
 		  clib_mem_free (*regpp);
 		}
 	      /* no dangling references, please */
@@ -899,7 +899,7 @@ vlibmemory_init (vlib_main_t * vm)
   svm_map_region_args_t _a, *a = &_a;
   clib_error_t *error;
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->root_path = am->root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
   a->baseva = (am->global_baseva != 0) ?

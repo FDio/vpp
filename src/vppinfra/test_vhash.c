@@ -471,7 +471,7 @@ test_vhash_main (unformat_input_t * input)
   vhash_t *vh = &tm->vhash;
   uword i, j;
 
-  clib_memset (tm, 0, sizeof (tm[0]));
+  memset (tm, 0, sizeof (tm[0]));
   tm->n_iter = 100;
   tm->seed = 1;
   tm->n_keys = 1;

@@ -430,7 +430,7 @@ ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
-  clib_memset (hm->counters, 0, sizeof (hm->counters));
+  memset (hm->counters, 0, sizeof (hm->counters));
 
 
   if (ip6_hbh_register_option

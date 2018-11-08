@@ -535,7 +535,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       /* Copy the buffer (from the read-only mmap'ed file) */
       vec_validate (tmpbuf, size - 1 + sizeof (uword));
       clib_memcpy (tmpbuf + sizeof (uword), msg, size);
-      clib_memset (tmpbuf, 0xf, sizeof (uword));
+      memset (tmpbuf, 0xf, sizeof (uword));
 
       /*
        * Endian swap if needed. All msg data is supposed to be

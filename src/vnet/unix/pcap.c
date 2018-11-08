@@ -113,7 +113,7 @@ pcap_write (pcap_main_t * pm)
       clib_spinlock_init (&pm->lock);
 
       /* Write file header. */
-      clib_memset (&fh, 0, sizeof (fh));
+      memset (&fh, 0, sizeof (fh));
       fh.magic = 0xa1b2c3d4;
       fh.major_version = 2;
       fh.minor_version = 4;

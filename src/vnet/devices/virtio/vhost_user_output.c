@@ -155,7 +155,7 @@ vhost_user_tx_trace (vhost_trace_t * t,
   vring_desc_t *hdr_desc = 0;
   u32 hint = 0;
 
-  clib_memset (t, 0, sizeof (*t));
+  memset (t, 0, sizeof (*t));
   t->device_index = vui - vum->vhost_user_interfaces;
   t->qid = qid;
 

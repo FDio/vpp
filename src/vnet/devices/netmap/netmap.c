@@ -80,7 +80,7 @@ close_netmap_if (netmap_main_t * nm, netmap_if_t * nif)
   vec_free (nif->host_if_name);
   vec_free (nif->req);
 
-  clib_memset (nif, 0, sizeof (*nif));
+  memset (nif, 0, sizeof (*nif));
   pool_put (nm->interfaces, nif);
 }
 
@@ -280,7 +280,7 @@ netmap_init (vlib_main_t * vm)
   vlib_thread_registration_t *tr;
   uword *p;
 
-  clib_memset (nm, 0, sizeof (netmap_main_t));
+  memset (nm, 0, sizeof (netmap_main_t));
 
   nm->input_cpu_first_index = 0;
   nm->input_cpu_count = 1;

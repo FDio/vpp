@@ -597,7 +597,7 @@ gre_init (vlib_main_t * vm)
   ip_main_t *im = &ip_main;
   ip_protocol_info_t *pi;
 
-  clib_memset (gm, 0, sizeof (gm[0]));
+  memset (gm, 0, sizeof (gm[0]));
   gm->vlib_main = vm;
   gm->vnet_main = vnet_get_main ();
 

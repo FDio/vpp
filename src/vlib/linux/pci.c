@@ -180,7 +180,7 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   int fd;
 
   di = clib_mem_alloc (sizeof (vlib_pci_device_info_t));
-  clib_memset (di, 0, sizeof (vlib_pci_device_info_t));
+  memset (di, 0, sizeof (vlib_pci_device_info_t));
   di->addr.as_u32 = addr->as_u32;
 
   u8 *dev_dir_name = format (0, "%s/%U", sysfs_pci_dev_path,
@@ -212,7 +212,7 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   {
     static pci_config_header_t all_ones;
     if (all_ones.vendor_id == 0)
-      clib_memset (&all_ones, ~0, sizeof (all_ones));
+      memset (&all_ones, ~0, sizeof (all_ones));
 
     if (!memcmp (&di->config0.header, &all_ones, sizeof (all_ones)))
       {
@@ -451,8 +451,8 @@ vlib_pci_bind_to_uio (vlib_main_t * vm, vlib_pci_addr_t * addr,
       if (e->d_name[0] == '.')	/* skip . and .. */
 	continue;
 
-      clib_memset (&ifr, 0, sizeof ifr);
-      clib_memset (&drvinfo, 0, sizeof drvinfo);
+      memset (&ifr, 0, sizeof ifr);
+      memset (&drvinfo, 0, sizeof drvinfo);
       ifr.ifr_data = (char *) &drvinfo;
       strncpy (ifr.ifr_name, e->d_name, sizeof (ifr.ifr_name));
       ifr.ifr_name[ARRAY_LEN (ifr.ifr_name) - 1] = '\0';
@@ -469,7 +469,7 @@ vlib_pci_bind_to_uio (vlib_main_t * vm, vlib_pci_addr_t * addr,
       if (strcmp ((char *) s, drvinfo.bus_info))
 	continue;
 
-      clib_memset (&ifr, 0, sizeof (ifr));
+      memset (&ifr, 0, sizeof (ifr));
       strncpy (ifr.ifr_name, e->d_name, sizeof (ifr.ifr_name));
       ifr.ifr_name[ARRAY_LEN (ifr.ifr_name) - 1] = '\0';
       if (ioctl (fd, SIOCGIFFLAGS, &ifr) < 0)
@@ -1138,7 +1138,7 @@ error:
   if (err)
     {
       pci_log_err (vm, p, "%U", format_clib_error, err);
-      clib_memset (p, 0, sizeof (linux_pci_device_t));
+      memset (p, 0, sizeof (linux_pci_device_t));
       pool_put (lpm->linux_pci_devices, p);
     }
 
@@ -1205,7 +1205,7 @@ vlib_pci_device_close (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   vec_free (p->regions);
 
   close (p->fd);
-  clib_memset (p, 0, sizeof (linux_pci_device_t));
+  memset (p, 0, sizeof (linux_pci_device_t));
   pool_put (lpm->linux_pci_devices, p);
 }
 
@@ -1244,7 +1244,7 @@ init_device_from_registered (vlib_main_t * vm, vlib_pci_device_info_t * di)
     }
 
   /* No driver, close the PCI config-space FD */
-  clib_memset (p, 0, sizeof (linux_pci_device_t));
+  memset (p, 0, sizeof (linux_pci_device_t));
   pool_put (lpm->linux_pci_devices, p);
 }
 

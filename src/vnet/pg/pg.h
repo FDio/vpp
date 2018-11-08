@@ -287,7 +287,7 @@ pg_free_edit_group (pg_stream_t * s)
   pg_edit_group_t *g = pg_stream_get_group (s, i);
 
   pg_edit_group_free (g);
-  clib_memset (g, 0, sizeof (g[0]));
+  memset (g, 0, sizeof (g[0]));
   _vec_len (s->edit_groups) = i;
 }
 

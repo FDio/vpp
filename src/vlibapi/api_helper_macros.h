@@ -94,7 +94,7 @@ do {                                                                    \
         if (!rmp)                                                       \
           return;                                                       \
                                                                         \
-        clib_memset (rmp, 0, sizeof (*rmp));                                 \
+        memset (rmp, 0, sizeof (*rmp));                                 \
         rv = VNET_API_ERROR_TABLE_TOO_BIG;                              \
         is_error = 1;                                                   \
       }                                                                 \

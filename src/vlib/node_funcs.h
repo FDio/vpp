@@ -1015,7 +1015,7 @@ vlib_signal_one_time_waiting_process (vlib_main_t * vm,
 {
   vlib_process_signal_one_time_event (vm, p->node_index, p->one_time_event,
 				      /* data */ ~0);
-  clib_memset (p, ~0, sizeof (p[0]));
+  memset (p, ~0, sizeof (p[0]));
 }
 
 always_inline void

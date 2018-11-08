@@ -65,7 +65,7 @@ restart_main_fn (unformat_input_t * i)
   /*
    * Step 1: look up the current VPP pid in the shared-memory database
    */
-  clib_memset (ma, 0, sizeof (*ma));
+  memset (ma, 0, sizeof (*ma));
   ma->root_path = (char *) chroot_path;
 
   svmdb_client = svmdb_map (ma);

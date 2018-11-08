@@ -83,7 +83,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 	return tcp_test_scoreboard_replay (vm, input);
     }
 
-  clib_memset (tc, 0, sizeof (*tc));
+  memset (tc, 0, sizeof (*tc));
 
   tc->snd_una = 0;
   tc->snd_una_max = 1000;
@@ -458,7 +458,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  clib_memset (tc, 0, sizeof (*tc));
+  memset (tc, 0, sizeof (*tc));
 
   /*
    * Add odd sack block pairs
@@ -740,7 +740,7 @@ fifo_prepare (u32 fifo_size)
   f = svm_fifo_create (fifo_size);
 
   /* Paint fifo data vector with -1's */
-  clib_memset (f->data, 0xFF, fifo_size);
+  memset (f->data, 0xFF, fifo_size);
 
   return f;
 }
@@ -1647,11 +1647,11 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Allocate fake session and connection 1
    */
   pool_get (smm->sessions[0], s);
-  clib_memset (s, 0, sizeof (*s));
+  memset (s, 0, sizeof (*s));
   s->session_index = sidx = s - smm->sessions[0];
 
   pool_get (tm->connections[0], tc);
-  clib_memset (tc, 0, sizeof (*tc));
+  memset (tc, 0, sizeof (*tc));
   tc->connection.c_index = tc - tm->connections[0];
   tc->connection.s_index = s->session_index;
   s->connection_index = tc->connection.c_index;
@@ -1668,11 +1668,11 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Allocate fake session and connection 2
    */
   pool_get (session_manager_main.sessions[0], s);
-  clib_memset (s, 0, sizeof (*s));
+  memset (s, 0, sizeof (*s));
   s->session_index = s - smm->sessions[0];
 
   pool_get (tm->connections[0], tc);
-  clib_memset (tc, 0, sizeof (*tc));
+  memset (tc, 0, sizeof (*tc));
   tc->connection.c_index = tc - tm->connections[0];
   tc->connection.s_index = s->session_index;
   s->connection_index = tc->connection.c_index;
@@ -1769,7 +1769,7 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
       remote_port = clib_host_to_net_u16 (11234);
 
       pool_get (tm->connections[0], tc0);
-      clib_memset (tc0, 0, sizeof (*tc0));
+      memset (tc0, 0, sizeof (*tc0));
 
       tc0->state = TCP_STATE_ESTABLISHED;
       tc0->rcv_las = 1;

@@ -766,9 +766,8 @@ icmp4_init (vlib_main_t * vm)
   foreach_icmp4_code;
 #undef _
 
-  clib_memset (cm->ip4_input_next_index_by_type,
-	       ICMP_INPUT_NEXT_ERROR,
-	       sizeof (cm->ip4_input_next_index_by_type));
+  memset (cm->ip4_input_next_index_by_type,
+	  ICMP_INPUT_NEXT_ERROR, sizeof (cm->ip4_input_next_index_by_type));
 
   ip4_icmp_register_type (vm, ICMP4_echo_request,
 			  ip4_icmp_echo_request_node.index);

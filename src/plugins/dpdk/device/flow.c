@@ -179,7 +179,7 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
 	.vni_reserved = clib_host_to_net_u32 (((u32) - 1) << 8)
       };
 
-      clib_memset (raw, 0, sizeof raw);
+      memset (raw, 0, sizeof raw);
       raw[0].item.relative = 1;
       raw[0].item.length = vxlan_hdr_sz;
 
@@ -258,12 +258,12 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 	{
 	  /* make sure no action is taken for in-flight (marked) packets */
 	  fle = pool_elt_at_index (xd->flow_lookup_entries, fe->mark);
-	  clib_memset (fle, -1, sizeof (*fle));
+	  memset (fle, -1, sizeof (*fle));
 	  vec_add1 (xd->parked_lookup_indexes, fe->mark);
 	  xd->parked_loop_count = dm->vlib_main->main_loop_count;
 	}
 
-      clib_memset (fe, 0, sizeof (*fe));
+      memset (fe, 0, sizeof (*fe));
       pool_put (xd->flow_entries, fe);
 
       goto disable_rx_offload;
@@ -294,7 +294,7 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
       fe->mark = fle - xd->flow_lookup_entries;
 
       /* install entry in the lookup table */
-      clib_memset (fle, -1, sizeof (*fle));
+      memset (fle, -1, sizeof (*fle));
       if (flow->actions & VNET_FLOW_ACTION_MARK)
 	fle->flow_id = flow->mark_flow_id;
       if (flow->actions & VNET_FLOW_ACTION_REDIRECT_TO_NODE)
@@ -329,11 +329,11 @@ dpdk_flow_ops_fn (vnet_main_t * vnm, vnet_flow_dev_op_t op, u32 dev_instance,
 done:
   if (rv)
     {
-      clib_memset (fe, 0, sizeof (*fe));
+      memset (fe, 0, sizeof (*fe));
       pool_put (xd->flow_entries, fe);
       if (fle)
 	{
-	  clib_memset (fle, -1, sizeof (*fle));
+	  memset (fle, -1, sizeof (*fle));
 	  pool_put (xd->flow_lookup_entries, fle);
 	}
     }

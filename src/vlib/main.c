@@ -143,7 +143,7 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
 
   /* Poison frame when debugging. */
   if (CLIB_DEBUG > 0)
-    clib_memset (f, 0xfe, n);
+    memset (f, 0xfe, n);
 
   /* Insert magic number. */
   {

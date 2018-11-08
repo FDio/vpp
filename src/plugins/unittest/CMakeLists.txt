@@ -16,5 +16,4 @@ add_vpp_plugin(unittest
   unittest.c
   tcp_test.c
   bihash_test.c
-  string_test.c
 )

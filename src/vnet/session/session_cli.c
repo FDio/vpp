@@ -109,8 +109,8 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
   u8 *is_ip4 = va_arg (*args, u8 *);
   u8 tuple_is_set = 0;
 
-  clib_memset (lcl, 0, sizeof (*lcl));
-  clib_memset (rmt, 0, sizeof (*rmt));
+  memset (lcl, 0, sizeof (*lcl));
+  memset (rmt, 0, sizeof (*rmt));
 
   if (unformat (input, "tcp"))
     {

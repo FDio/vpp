@@ -259,7 +259,7 @@ ipsec_proto_init ()
   ipsec_proto_main_t *em = &ipsec_proto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
-  clib_memset (em, 0, sizeof (em[0]));
+  memset (em, 0, sizeof (em[0]));
 
   vec_validate (em->ipsec_proto_main_crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
   em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].type =

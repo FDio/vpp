@@ -284,7 +284,7 @@ application_send_attach (echo_main_t * em)
   vl_api_application_tls_key_add_t *key_mp;
 
   bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
   bmp->client_index = em->my_client_index;
@@ -301,7 +301,7 @@ application_send_attach (echo_main_t * em)
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 
   cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + test_srv_crt_rsa_len);
-  clib_memset (cert_mp, 0, sizeof (*cert_mp));
+  memset (cert_mp, 0, sizeof (*cert_mp));
   cert_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_CERT_ADD);
   cert_mp->client_index = em->my_client_index;
   cert_mp->context = ntohl (0xfeedface);
@@ -310,7 +310,7 @@ application_send_attach (echo_main_t * em)
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & cert_mp);
 
   key_mp = vl_msg_api_alloc (sizeof (*key_mp) + test_srv_key_rsa_len);
-  clib_memset (key_mp, 0, sizeof (*key_mp) + test_srv_key_rsa_len);
+  memset (key_mp, 0, sizeof (*key_mp) + test_srv_key_rsa_len);
   key_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_KEY_ADD);
   key_mp->client_index = em->my_client_index;
   key_mp->context = ntohl (0xfeedface);
@@ -336,7 +336,7 @@ application_detach (echo_main_t * em)
 {
   vl_api_application_detach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
   bmp->client_index = em->my_client_index;
@@ -352,7 +352,7 @@ ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
   svm_fifo_segment_create_args_t _a, *a = &_a;
   int rv;
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->segment_name = (char *) name;
   a->segment_type = type;
 
@@ -517,7 +517,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   svm_fifo_segment_create_args_t _a, *a = &_a;
   int rv;
 
-  clib_memset (a, 0, sizeof (*a));
+  memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
   /* Attach to the segment vpp created */
@@ -703,7 +703,7 @@ client_send_connect (echo_main_t * em)
 {
   vl_api_connect_uri_t *cmp;
   cmp = vl_msg_api_alloc (sizeof (*cmp));
-  clib_memset (cmp, 0, sizeof (*cmp));
+  memset (cmp, 0, sizeof (*cmp));
 
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_URI);
   cmp->client_index = em->my_client_index;
@@ -717,7 +717,7 @@ client_send_disconnect (echo_main_t * em, session_t * s)
 {
   vl_api_disconnect_session_t *dmp;
   dmp = vl_msg_api_alloc (sizeof (*dmp));
-  clib_memset (dmp, 0, sizeof (*dmp));
+  memset (dmp, 0, sizeof (*dmp));
   dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
   dmp->client_index = em->my_client_index;
   dmp->handle = s->vpp_session_handle;
@@ -729,7 +729,7 @@ client_disconnect (echo_main_t * em, session_t * s)
 {
   client_send_disconnect (em, s);
   pool_put (em->sessions, s);
-  clib_memset (s, 0xfe, sizeof (*s));
+  memset (s, 0xfe, sizeof (*s));
   return 0;
 }
 
@@ -816,7 +816,7 @@ session_connected_handler (session_connected_msg_t * mp)
    */
 
   pool_get (em->sessions, session);
-  clib_memset (session, 0, sizeof (*session));
+  memset (session, 0, sizeof (*session));
   session_index = session - em->sessions;
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
@@ -1232,7 +1232,7 @@ server_send_listen (echo_main_t * em)
 {
   vl_api_bind_uri_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
-  clib_memset (bmp, 0, sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_BIND_URI);
   bmp->client_index = em->my_client_index;
@@ -1259,7 +1259,7 @@ server_send_unbind (echo_main_t * em)
   vl_api_unbind_uri_t *ump;
 
   ump = vl_msg_api_alloc (sizeof (*ump));
-  clib_memset (ump, 0, sizeof (*ump));
+  memset (ump, 0, sizeof (*ump));
 
   ump->_vl_msg_id = ntohs (VL_API_UNBIND_URI);
   ump->client_index = em->my_client_index;
@@ -1289,7 +1289,7 @@ server_run (echo_main_t * em)
   for (i = 0; i < 200000; i++)
     {
       pool_get (em->sessions, session);
-      clib_memset (session, 0, sizeof (*session));
+      memset (session, 0, sizeof (*session));
     }
   for (i = 0; i < 200000; i++)
     pool_put_index (em->sessions, i);
@@ -1395,7 +1395,7 @@ main (int argc, char **argv)
 
   clib_mem_init_thread_safe (0, 256 << 20);
 
-  clib_memset (em, 0, sizeof (*em));
+  memset (em, 0, sizeof (*em));
   em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
   em->my_pid = getpid ();
   em->configured_segment_size = 1 << 20;

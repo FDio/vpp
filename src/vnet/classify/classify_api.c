@@ -213,7 +213,7 @@ send_policer_classify_details (u32 sw_if_index,
   vl_api_policer_classify_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_POLICER_CLASSIFY_DETAILS);
   mp->context = context;
   mp->sw_if_index = htonl (sw_if_index);
@@ -395,7 +395,7 @@ send_classify_session_details (vl_api_registration_t * reg,
   vl_api_classify_session_details_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_CLASSIFY_SESSION_DETAILS);
   rmp->context = context;
   rmp->table_id = ntohl (table_id);
@@ -489,7 +489,7 @@ send_flow_classify_details (u32 sw_if_index,
   vl_api_flow_classify_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_FLOW_CLASSIFY_DETAILS);
   mp->context = context;
   mp->sw_if_index = htonl (sw_if_index);

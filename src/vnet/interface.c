@@ -718,7 +718,7 @@ vnet_register_interface (vnet_main_t * vnm,
   char *tx_node_name = NULL, *output_node_name = NULL;
 
   pool_get (im->hw_interfaces, hw);
-  clib_memset (hw, 0, sizeof (*hw));
+  memset (hw, 0, sizeof (*hw));
 
   hw_index = hw - im->hw_interfaces;
   hw->hw_if_index = hw_index;
@@ -831,7 +831,7 @@ vnet_register_interface (vnet_main_t * vnm,
 	.is_deleted = 0,
       };
 
-      clib_memset (&r, 0, sizeof (r));
+      memset (&r, 0, sizeof (r));
       r.type = VLIB_NODE_TYPE_INTERNAL;
       r.runtime_data = &rt;
       r.runtime_data_bytes = sizeof (rt);

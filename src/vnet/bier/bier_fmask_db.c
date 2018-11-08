@@ -60,7 +60,7 @@ bier_fmask_db_mk_key (index_t bti,
      * Depending on what the ID is there may be padding.
      * This key will be memcmp'd in the mhash, so make sure it's all 0
      */
-    clib_memset(key, 0, sizeof(*key));
+    memset(key, 0, sizeof(*key));
 
     /*
      * Pick the attributes from the path that make the FMask unique

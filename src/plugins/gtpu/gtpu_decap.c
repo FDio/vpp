@@ -87,7 +87,7 @@ gtpu_input (vlib_main_t * vm,
   if (is_ip4)
     last_key4.as_u64 = ~0;
   else
-    clib_memset (&last_key6, 0xff, sizeof (last_key6));
+    memset (&last_key6, 0xff, sizeof (last_key6));
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;

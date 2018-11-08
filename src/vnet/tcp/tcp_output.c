@@ -599,7 +599,7 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
   initial_wnd = tcp_initial_window_to_advertise (tc);
 
   /* Make and write options */
-  clib_memset (&snd_opts, 0, sizeof (snd_opts));
+  memset (&snd_opts, 0, sizeof (snd_opts));
   tcp_opts_len = tcp_make_syn_options (&snd_opts, tc->rcv_wscale);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
@@ -622,7 +622,7 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_header_t *th;
   u16 initial_wnd;
 
-  clib_memset (snd_opts, 0, sizeof (*snd_opts));
+  memset (snd_opts, 0, sizeof (*snd_opts));
   tcp_reuse_buffer (vm, b);
 
   initial_wnd = tcp_initial_window_to_advertise (tc);

@@ -128,7 +128,7 @@ send_ip_neighbor_details (u32 sw_if_index,
   vl_api_ip_neighbor_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_DETAILS);
   mp->context = context;
   mp->sw_if_index = htonl (sw_if_index);
@@ -204,7 +204,7 @@ send_ip_fib_details (vpe_api_main_t * am,
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
   if (!mp)
     return;
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_FIB_DETAILS);
   mp->context = context;
 
@@ -303,7 +303,7 @@ send_ip6_fib_details (vpe_api_main_t * am,
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
   if (!mp)
     return;
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP6_FIB_DETAILS);
   mp->context = context;
 
@@ -418,7 +418,7 @@ send_ip_mfib_details (vl_api_registration_t * reg,
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
   if (!mp)
     return;
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_MFIB_DETAILS);
   mp->context = context;
 
@@ -512,7 +512,7 @@ send_ip6_mfib_details (vpe_api_main_t * am,
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
   if (!mp)
     return;
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP6_MFIB_DETAILS);
   mp->context = context;
 
@@ -622,7 +622,7 @@ vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t * mp,
     {
       ip46_address_t nh;
 
-      clib_memset (&nh, 0, sizeof (nh));
+      memset (&nh, 0, sizeof (nh));
 
       if (mp->is_ip6)
 	{
@@ -998,7 +998,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
   clib_memcpy (&pfx.fp_addr.ip4, mp->dst_address, sizeof (pfx.fp_addr.ip4));
 
   ip46_address_t nh;
-  clib_memset (&nh, 0, sizeof (nh));
+  memset (&nh, 0, sizeof (nh));
   memcpy (&nh.ip4, mp->next_hop_address, sizeof (nh.ip4));
 
   n_labels = mp->next_hop_n_out_labels;
@@ -1072,7 +1072,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp,
   clib_memcpy (&pfx.fp_addr.ip6, mp->dst_address, sizeof (pfx.fp_addr.ip6));
 
   ip46_address_t nh;
-  clib_memset (&nh, 0, sizeof (nh));
+  memset (&nh, 0, sizeof (nh));
   memcpy (&nh.ip6, mp->next_hop_address, sizeof (nh.ip6));
 
   n_labels = mp->next_hop_n_out_labels;
@@ -1298,7 +1298,7 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp,
 		   sizeof (pfx.fp_grp_addr.ip4));
       clib_memcpy (&pfx.fp_src_addr.ip4, mp->src_address,
 		   sizeof (pfx.fp_src_addr.ip4));
-      clib_memset (&nh.ip6, 0, sizeof (nh.ip6));
+      memset (&nh.ip6, 0, sizeof (nh.ip6));
       clib_memcpy (&nh.ip4, mp->nh_address, sizeof (nh.ip4));
       if (!ip46_address_is_zero (&pfx.fp_src_addr))
 	pfx.fp_len = 64;
@@ -1361,7 +1361,7 @@ send_ip_details (vpe_api_main_t * am,
   vl_api_ip_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_DETAILS);
 
   mp->sw_if_index = ntohl (sw_if_index);
@@ -1380,7 +1380,7 @@ send_ip_address_details (vpe_api_main_t * am,
   vl_api_ip_address_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_ADDRESS_DETAILS);
 
   if (is_ipv6)
@@ -1463,7 +1463,7 @@ send_ip_unnumbered_details (vpe_api_main_t * am,
   vl_api_ip_unnumbered_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_UNNUMBERED_DETAILS);
 
   mp->context = context;
@@ -1682,7 +1682,7 @@ send_ip6nd_proxy_details (vl_api_registration_t * reg,
   vl_api_ip6nd_proxy_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP6ND_PROXY_DETAILS);
   mp->context = context;
   mp->sw_if_index = htonl (sw_if_index);
@@ -1868,7 +1868,7 @@ vl_mfib_signal_send_one (vl_api_registration_t * reg,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
 
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MFIB_SIGNAL_DETAILS);
   mp->context = context;
 
@@ -1932,7 +1932,7 @@ static void
   int rv = 0;
   clib_error_t *error;
 
-  clib_memset (&args, 0, sizeof (args));
+  memset (&args, 0, sizeof (args));
   ip_set (&args.prefix.fp_addr, mp->ip, mp->is_ip4);
   args.prefix.fp_len = mp->plen ? mp->plen : (mp->is_ip4 ? 32 : 128);
   args.sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
@@ -1963,7 +1963,7 @@ ip_container_proxy_send_details (const fib_prefix_t * pfx, u32 sw_if_index,
   if (!mp)
     return 1;
 
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_CONTAINER_PROXY_DETAILS);
   mp->context = ctx->context;
 
@@ -2416,7 +2416,7 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      if (reg && vl_api_can_send_msg (vl_reg))
 	        {
 	          vl_api_ip4_arp_event_t * event = vl_msg_api_alloc (sizeof *event);
-	          clib_memset (event, 0, sizeof *event);
+	          memset (event, 0, sizeof *event);
 	          event->_vl_msg_id = htons (VL_API_IP4_ARP_EVENT);
 	          event->client_index = reg->client_index;
 	          event->pid = reg->client_pid;
@@ -2455,7 +2455,7 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	        if (vl_reg && vl_api_can_send_msg (vl_reg))
 	          {
 	            vl_api_ip6_nd_event_t * event = vl_msg_api_alloc (sizeof *event);
-	            clib_memset (event, 0, sizeof *event);
+	            memset (event, 0, sizeof *event);
 	            event->_vl_msg_id = htons (VL_API_IP6_ND_EVENT);
 	            event->client_index = reg->client_index;
 	            event->pid = reg->client_pid;
@@ -2493,7 +2493,7 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		      sizeof (vl_api_ip6_ra_prefix_info_t);
 		    vl_api_ip6_ra_event_t *event =
 		      vl_msg_api_alloc (event_size);
-		    clib_memset (event, 0, event_size);
+		    memset (event, 0, event_size);
 		    event->_vl_msg_id = htons (VL_API_IP6_RA_EVENT);
 		    event->client_index = reg->client_index;
 		    event->pid = reg->client_pid;
@@ -2641,7 +2641,7 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 	  pool_put (am->arp_events, event);
 	  goto reply;
 	}
-      clib_memset (event, 0, sizeof (*event));
+      memset (event, 0, sizeof (*event));
 
       /* Python API expects events to have no context */
       event->_vl_msg_id = htons (VL_API_IP4_ARP_EVENT);
@@ -2779,7 +2779,7 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
 	  pool_put (am->nd_events, event);
 	  goto reply;
 	}
-      clib_memset (event, 0, sizeof (*event));
+      memset (event, 0, sizeof (*event));
 
       event->_vl_msg_id = ntohs (VL_API_IP6_ND_EVENT);
       event->client_index = mp->client_index;
@@ -2959,7 +2959,7 @@ send_proxy_arp_details (const ip4_address_t * lo_addr,
   ctx = data;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_PROXY_ARP_DETAILS);
   mp->context = ctx->context;
   mp->proxy.vrf_id = htonl (fib_index);
@@ -3002,7 +3002,7 @@ send_proxy_arp_intfc_details (vnet_main_t * vnm,
   ctx = data;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_PROXY_ARP_INTFC_DETAILS);
   mp->context = ctx->context;
   mp->sw_if_index = htonl (si->sw_if_index);
@@ -3303,7 +3303,7 @@ vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
     return;
 
   vl_api_ip_reassembly_get_reply_t *rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memset (rmp, 0, sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_IP_REASSEMBLY_GET_REPLY);
   rmp->context = mp->context;
   rmp->retval = 0;

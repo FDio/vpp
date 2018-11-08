@@ -381,9 +381,9 @@ l2_rw_mod_entry (u32 * index,
   skip -= e->skip_n_vectors * sizeof (u32x4);
   e->rewrite_n_vectors = (skip + len - 1) / sizeof (u32x4) + 1;
   vec_alloc_aligned (e->mask, e->rewrite_n_vectors, sizeof (u32x4));
-  clib_memset (e->mask, 0, e->rewrite_n_vectors * sizeof (u32x4));
+  memset (e->mask, 0, e->rewrite_n_vectors * sizeof (u32x4));
   vec_alloc_aligned (e->value, e->rewrite_n_vectors, sizeof (u32x4));
-  clib_memset (e->value, 0, e->rewrite_n_vectors * sizeof (u32x4));
+  memset (e->value, 0, e->rewrite_n_vectors * sizeof (u32x4));
 
   clib_memcpy (((u8 *) e->value) + skip, value, len);
   clib_memcpy (((u8 *) e->mask) + skip, mask, len);

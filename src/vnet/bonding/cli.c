@@ -91,7 +91,7 @@ bond_dump_ifs (bond_interface_details_t ** out_bondifs)
   /* *INDENT-OFF* */
   pool_foreach (bif, bm->interfaces,
     vec_add2(r_bondifs, bondif, 1);
-    clib_memset (bondif, 0, sizeof (*bondif));
+    memset (bondif, 0, sizeof (*bondif));
     bondif->sw_if_index = bif->sw_if_index;
     hi = vnet_get_hw_interface (vnm, bif->hw_if_index);
     clib_memcpy(bondif->interface_name, hi->name,
@@ -129,7 +129,7 @@ bond_dump_slave_ifs (slave_interface_details_t ** out_slaveifs,
   vec_foreach (sw_if_index, bif->slaves)
   {
     vec_add2 (r_slaveifs, slaveif, 1);
-    clib_memset (slaveif, 0, sizeof (*slaveif));
+    memset (slaveif, 0, sizeof (*slaveif));
     sif = bond_get_slave_by_sw_if_index (*sw_if_index);
     if (sif)
       {
@@ -231,7 +231,7 @@ bond_delete_if (vlib_main_t * vm, u32 sw_if_index)
 
   clib_bitmap_free (bif->port_number_bitmap);
   hash_unset (bm->bond_by_sw_if_index, bif->sw_if_index);
-  clib_memset (bif, 0, sizeof (*bif));
+  memset (bif, 0, sizeof (*bif));
   pool_put (bm->interfaces, bif);
 
   return 0;
@@ -264,7 +264,7 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
       return;
     }
   pool_get (bm->interfaces, bif);
-  clib_memset (bif, 0, sizeof (*bif));
+  memset (bif, 0, sizeof (*bif));
   bif->dev_instance = bif - bm->interfaces;
   bif->lb = args->lb;
   bif->mode = args->mode;
@@ -449,7 +449,7 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
       return;
     }
   pool_get (bm->neighbors, sif);
-  clib_memset (sif, 0, sizeof (*sif));
+  memset (sif, 0, sizeof (*sif));
   sw = pool_elt_at_index (im->sw_interfaces, args->slave);
   sif->port_enabled = sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP;
   sif->sw_if_index = sw->sw_if_index;

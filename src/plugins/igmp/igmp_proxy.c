@@ -106,7 +106,7 @@ igmp_proxy_device_add_del (u32 vrf_id, u32 sw_if_index, u8 add)
       pool_get (im->proxy_devices, proxy_device);
       im->igmp_proxy_device_by_vrf_id[vrf_id] =
 	proxy_device - im->proxy_devices;
-      clib_memset (proxy_device, 0, sizeof (igmp_proxy_device_t));
+      memset (proxy_device, 0, sizeof (igmp_proxy_device_t));
       proxy_device->vrf_id = vrf_id;
       proxy_device->upstream_if = sw_if_index;
       config->proxy_device_id = vrf_id;

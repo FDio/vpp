@@ -165,7 +165,7 @@ nat66_static_mapping_add_del (ip6_address_t * l_addr, ip6_address_t * e_addr,
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
 						     FIB_SOURCE_PLUGIN_HI);
       pool_get (nm->sm, sm);
-      clib_memset (sm, 0, sizeof (*sm));
+      memset (sm, 0, sizeof (*sm));
       sm->l_addr.as_u64[0] = l_addr->as_u64[0];
       sm->l_addr.as_u64[1] = l_addr->as_u64[1];
       sm->e_addr.as_u64[0] = e_addr->as_u64[0];

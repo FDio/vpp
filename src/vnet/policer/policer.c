@@ -434,7 +434,7 @@ configure_policer_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  clib_memset (&c, 0, sizeof (c));
+  memset (&c, 0, sizeof (c));
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {

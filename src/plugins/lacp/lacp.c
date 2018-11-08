@@ -216,7 +216,7 @@ lacp_periodic_init (vlib_main_t * vm)
 
   /* Create the ethernet lacp packet template */
 
-  clib_memset (&h, 0, sizeof (h));
+  memset (&h, 0, sizeof (h));
 
   memcpy (h.ethernet.dst_address, dst, sizeof (h.ethernet.dst_address));
 
@@ -253,7 +253,7 @@ lacp_periodic_init (vlib_main_t * vm)
 
   /* Create the ethernet marker protocol packet template */
 
-  clib_memset (&m, 0, sizeof (m));
+  memset (&m, 0, sizeof (m));
 
   memcpy (m.ethernet.dst_address, dst, sizeof (m.ethernet.dst_address));
 
