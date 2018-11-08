@@ -525,6 +525,7 @@ class VppTestCase(unittest.TestCase):
             debug_internal.on_tear_down_class(cls)
 
     def tearDown(self):
+        # type: () -> object
         """ Show various debug prints after each test """
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
