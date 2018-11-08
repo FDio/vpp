@@ -77,7 +77,7 @@ class VppPapiProvider(object):
         self._expect_stack = []
         jsonfiles = []
 
-        install_dir = os.getenv('VPP_TEST_INSTALL_PATH')
+        install_dir = os.getenv('VPP_INSTALL_PATH')
         for root, dirnames, filenames in os.walk(install_dir):
             for filename in fnmatch.filter(filenames, '*.api.json'):
                 jsonfiles.append(os.path.join(root, filename))
