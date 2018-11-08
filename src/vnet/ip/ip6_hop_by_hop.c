@@ -809,9 +809,9 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
   hm->unix_time_0 = (u32) time (0);	/* Store starting time */
   hm->vlib_time_0 = vlib_time_now (vm);
   hm->ioam_flag = IOAM_HBYH_MOD;
-  memset (hm->add_options, 0, sizeof (hm->add_options));
-  memset (hm->pop_options, 0, sizeof (hm->pop_options));
-  memset (hm->options_size, 0, sizeof (hm->options_size));
+  clib_memset (hm->add_options, 0, sizeof (hm->add_options));
+  clib_memset (hm->pop_options, 0, sizeof (hm->pop_options));
+  clib_memset (hm->options_size, 0, sizeof (hm->options_size));
 
   vnet_classify_register_unformat_opaque_index_fn (unformat_opaque_ioam);
 

@@ -229,7 +229,7 @@ hdlc_init (vlib_main_t * vm)
 {
   hdlc_main_t *pm = &hdlc_main;
 
-  memset (pm, 0, sizeof (pm[0]));
+  clib_memset (pm, 0, sizeof (pm[0]));
   pm->vlib_main = vm;
 
   pm->protocol_info_by_name = hash_create_string (0, sizeof (uword));

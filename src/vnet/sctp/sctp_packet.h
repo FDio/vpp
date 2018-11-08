@@ -951,7 +951,7 @@ vnet_sctp_set_hostname_address (sctp_hostname_param_t * h, char *hostname)
 {
   h->param_hdr.length = FQDN_MAX_LENGTH;
   h->param_hdr.type = clib_host_to_net_u16 (SCTP_HOSTNAME_ADDRESS_TYPE);
-  memset (h->hostname, '0', FQDN_MAX_LENGTH);
+  clib_memset (h->hostname, '0', FQDN_MAX_LENGTH);
   memcpy (h->hostname, hostname, FQDN_MAX_LENGTH);
 }
 

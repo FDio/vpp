@@ -231,7 +231,7 @@ udp_ping_flow_create (u8 del)
   flow_report_main_t *frm = &flow_report_main;
   u16 template_id;
 
-  memset (&args, 0, sizeof (args));
+  clib_memset (&args, 0, sizeof (args));
   args.rewrite_callback = udp_ping_template_rewrite;
   args.flow_data_callback = udp_ping_send_flows;
   del ? (args.is_add = 0) : (args.is_add = 1);

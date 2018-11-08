@@ -101,7 +101,7 @@ vhost_user_rx_trace (vhost_trace_t * t,
   virtio_net_hdr_mrg_rxbuf_t *hdr;
   u32 hint = 0;
 
-  memset (t, 0, sizeof (*t));
+  clib_memset (t, 0, sizeof (*t));
   t->device_index = vui - vum->vhost_user_interfaces;
   t->qid = qid;
 

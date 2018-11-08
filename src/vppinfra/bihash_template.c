@@ -203,7 +203,7 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h)
     (void) close (h->memfd);
 #endif
   clib_mem_vm_free ((void *) (uword) (alloc_arena (h)), alloc_arena_size (h));
-  memset (h, 0, sizeof (*h));
+  clib_memset (h, 0, sizeof (*h));
 }
 
 static
@@ -234,7 +234,7 @@ initialize:
    * if we replace (1<<log2_pages) with vec_len(rv).
    * No clue.
    */
-  memset (rv, 0xff, sizeof (*rv) * (1 << log2_pages));
+  clib_memset (rv, 0xff, sizeof (*rv) * (1 << log2_pages));
   return rv;
 }
 
@@ -247,7 +247,7 @@ BV (value_free) (BVT (clib_bihash) * h, BVT (clib_bihash_value) * v,
   ASSERT (vec_len (h->freelists) > log2_pages);
 
   if (CLIB_DEBUG > 0)
-    memset (v, 0xFE, sizeof (*v) * (1 << log2_pages));
+    clib_memset (v, 0xFE, sizeof (*v) * (1 << log2_pages));
 
   v->next_free_as_u64 = (u64) h->freelists[log2_pages];
   h->freelists[log2_pages] = (u64) BV (clib_bihash_get_offset) (h, v);
@@ -295,7 +295,7 @@ BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
 
   v = BV (clib_bihash_get_value) (h, b->offset);
 
-  clib_memcpy (working_copy, v, sizeof (*v) * (1 << b->log2_pages));
+  _clib_memcpy (working_copy, v, sizeof (*v) * (1 << b->log2_pages));
   working_bucket.as_u64 = b->as_u64;
   working_bucket.offset = BV (clib_bihash_get_offset) (h, working_copy);
   CLIB_MEMORY_BARRIER ();
@@ -338,8 +338,8 @@ BV (split_and_rehash)
 	  /* Empty slot */
 	  if (BV (clib_bihash_is_free) (&(new_v->kvp[j])))
 	    {
-	      clib_memcpy (&(new_v->kvp[j]), &(old_values->kvp[i]),
-			   sizeof (new_v->kvp[j]));
+	      _clib_memcpy (&(new_v->kvp[j]), &(old_values->kvp[i]),
+			    sizeof (new_v->kvp[j]));
 	      goto doublebreak;
 	    }
 	}
@@ -383,8 +383,8 @@ BV (split_and_rehash_linear)
 	  if (BV (clib_bihash_is_free) (&(new_values->kvp[j])))
 	    {
 	      /* Copy the old value and move along */
-	      clib_memcpy (&(new_values->kvp[j]), &(old_values->kvp[i]),
-			   sizeof (new_values->kvp[j]));
+	      _clib_memcpy (&(new_values->kvp[j]), &(old_values->kvp[i]),
+			    sizeof (new_values->kvp[j]));
 	      j++;
 	      goto doublebreak;
 	    }
@@ -472,7 +472,7 @@ static inline int BV (clib_bihash_add_del_inline)
 	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
 	    {
 	      CLIB_MEMORY_BARRIER ();	/* Add a delay */
-	      clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
+	      _clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
 	      BV (clib_bihash_unlock_bucket) (b);
 	      return (0);
 	    }
@@ -488,10 +488,10 @@ static inline int BV (clib_bihash_add_del_inline)
 	       * Copy the value first, so that if a reader manages
 	       * to match the new key, the value will be right...
 	       */
-	      clib_memcpy (&(v->kvp[i].value),
-			   &add_v->value, sizeof (add_v->value));
+	      _clib_memcpy (&(v->kvp[i].value),
+			    &add_v->value, sizeof (add_v->value));
 	      CLIB_MEMORY_BARRIER ();	/* Make sure the value has settled */
-	      clib_memcpy (&(v->kvp[i]), &add_v->key, sizeof (add_v->key));
+	      _clib_memcpy (&(v->kvp[i]), &add_v->key, sizeof (add_v->key));
 	      b->refcnt++;
 	      ASSERT (b->refcnt > 0);
 	      BV (clib_bihash_unlock_bucket) (b);
@@ -506,7 +506,7 @@ static inline int BV (clib_bihash_add_del_inline)
 	      if (is_stale_cb (&(v->kvp[i]), arg))
 		{
 		  CLIB_MEMORY_BARRIER ();
-		  clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
+		  _clib_memcpy (&(v->kvp[i]), add_v, sizeof (*add_v));
 		  BV (clib_bihash_unlock_bucket) (b);
 		  return (0);
 		}
@@ -521,7 +521,7 @@ static inline int BV (clib_bihash_add_del_inline)
 	  /* Found the key? Kill it... */
 	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
 	    {
-	      memset (&(v->kvp[i]), 0xff, sizeof (*(add_v)));
+	      clib_memset (&(v->kvp[i]), 0xff, sizeof (*(add_v)));
 	      /* Is the bucket empty? */
 	      if (PREDICT_TRUE (b->refcnt > 1))
 		{
@@ -602,7 +602,7 @@ static inline int BV (clib_bihash_add_del_inline)
     {
       if (BV (clib_bihash_is_free) (&(new_v->kvp[i])))
 	{
-	  clib_memcpy (&(new_v->kvp[i]), add_v, sizeof (*add_v));
+	  _clib_memcpy (&(new_v->kvp[i]), add_v, sizeof (*add_v));
 	  goto expand_ok;
 	}
     }

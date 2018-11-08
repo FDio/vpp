@@ -260,7 +260,7 @@ heap_create_from_memory (void *memory, uword max_len, uword elt_bytes)
     return 0;
 
   h = memory;
-  memset (h, 0, sizeof (h[0]));
+  clib_memset (h, 0, sizeof (h[0]));
   h->max_len = max_len;
   h->elt_bytes = elt_bytes;
   h->flags = HEAP_IS_STATIC;

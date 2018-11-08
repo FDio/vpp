@@ -54,7 +54,7 @@ clib_slist_init (clib_slist_t * sp, f64 branching_factor,
 		 format_function_t format_user_element)
 {
   clib_slist_elt_t *head;
-  memset (sp, 0, sizeof (sp[0]));
+  clib_memset (sp, 0, sizeof (sp[0]));
   sp->branching_factor = branching_factor;
   sp->format_user_element = format_user_element;
   sp->compare = compare;
@@ -88,7 +88,7 @@ slist_search_internal (clib_slist_t * sp, void *key, int need_full_path)
    * Initial negotiating position, only the head_elt is
    * lighter than the supplied key
    */
-  memset (sp->path, 0, vec_len (head_elt->n.nexts) * sizeof (u32));
+  clib_memset (sp->path, 0, vec_len (head_elt->n.nexts) * sizeof (u32));
 
   /* Walk the fastest lane first */
   level = vec_len (head_elt->n.nexts) - 1;

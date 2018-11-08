@@ -145,7 +145,7 @@ test_serialize_main (unformat_input_t * input)
   serialize_main_t *um = &tm->unserialize_main;
   uword i;
 
-  memset (tm, 0, sizeof (tm[0]));
+  clib_memset (tm, 0, sizeof (tm[0]));
   tm->n_iter = 100;
   tm->seed = 1;
   tm->max_len = 128;

@@ -698,7 +698,7 @@ format_heap (u8 * s, va_list * va)
   heap_header_t *h = heap_header (v);
   heap_header_t zero;
 
-  memset (&zero, 0, sizeof (zero));
+  clib_memset (&zero, 0, sizeof (zero));
 
   if (!v)
     h = &zero;

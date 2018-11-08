@@ -143,7 +143,7 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
     return;
 
   rmp = vl_msg_api_alloc (msg_size);
-  memset (rmp, 0, msg_size);
+  clib_memset (rmp, 0, msg_size);
   rmp->_vl_msg_id = ntohs (VL_API_API_VERSIONS_REPLY);
 
   /* fill in the message */
@@ -178,7 +178,7 @@ vlib_api_init (void)
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
-  memset (c, 0, sizeof (*c));
+  clib_memset (c, 0, sizeof (*c));
 
 #define _(N,n) do {                                             \
     c->id = VL_API_##N;                                         \
@@ -213,7 +213,7 @@ send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
   svm_queue_t *q;
 
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_TRACE_PLUGIN_MSG_IDS);
   strncpy ((char *) mp->plugin_name, (char *) name,
@@ -620,7 +620,7 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
   /* Otherwise, actually do an RPC */
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + data_length);
 
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   clib_memcpy (mp->data, data, data_length);
   mp->_vl_msg_id = ntohs (VL_API_RPC_CALL);
   mp->function = pointer_to_uword (fp);

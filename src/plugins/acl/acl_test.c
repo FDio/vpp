@@ -313,7 +313,7 @@ static int api_acl_plugin_get_version (vat_main_t * vam)
 
     vam->result_ready = 0;
     mp = vl_msg_api_alloc_as_if_client(msg_size);
-    memset (mp, 0, msg_size);
+    clib_memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_ACL_PLUGIN_GET_VERSION + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
 
@@ -334,7 +334,7 @@ static int api_macip_acl_interface_get (vat_main_t * vam)
 
     vam->result_ready = 0;
     mp = vl_msg_api_alloc_as_if_client(msg_size);
-    memset (mp, 0, msg_size);
+    clib_memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_INTERFACE_GET + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
 
@@ -519,7 +519,7 @@ static int api_acl_add_replace (vat_main_t * vam)
     msg_size += n_rules*sizeof(rules[0]);
 
     mp = vl_msg_api_alloc_as_if_client(msg_size);
-    memset (mp, 0, msg_size);
+    clib_memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_ACL_ADD_REPLACE + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
     if ((n_rules > 0) && rules)
@@ -693,7 +693,7 @@ api_acl_add_replace_from_file (vat_main_t * vam)
     msg_size += n_rules*sizeof(rules[0]);
 
     mp = vl_msg_api_alloc_as_if_client(msg_size);
-    memset (mp, 0, msg_size);
+    clib_memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_ACL_ADD_REPLACE + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
     if (n_rules > 0)
@@ -1257,7 +1257,7 @@ static int api_macip_acl_add (vat_main_t * vam)
     msg_size += n_rules*sizeof(rules[0]);
 
     mp = vl_msg_api_alloc_as_if_client(msg_size);
-    memset (mp, 0, msg_size);
+    clib_memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
     if ((n_rules > 0) && rules)
@@ -1409,7 +1409,7 @@ static int api_macip_acl_add_replace (vat_main_t * vam)
     msg_size += n_rules*sizeof(rules[0]);
 
     mp = vl_msg_api_alloc_as_if_client(msg_size);
-    memset (mp, 0, msg_size);
+    clib_memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD_REPLACE + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
     if ((n_rules > 0) && rules)

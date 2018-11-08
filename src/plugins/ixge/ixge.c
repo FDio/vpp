@@ -2496,8 +2496,8 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
   if (error)
     return error;
 
-  memset (dq->descriptors, 0,
-	  dq->n_descriptors * sizeof (dq->descriptors[0]));
+  clib_memset (dq->descriptors, 0,
+	       dq->n_descriptors * sizeof (dq->descriptors[0]));
   vec_resize (dq->descriptor_buffer_indices, dq->n_descriptors);
 
   if (rt == VLIB_RX)
@@ -2723,7 +2723,7 @@ ixge_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   vec_foreach (xd, xm->devices)
   {
     ixge_update_counters (xd);
-    memset (xd->counters, 0, sizeof (xd->counters));
+    clib_memset (xd->counters, 0, sizeof (xd->counters));
   }
 
   timeout = 30.0;
@@ -2798,10 +2798,10 @@ ixge_init (vlib_main_t * vm)
   clib_error_t *error;
 
   xm->vlib_main = vm;
-  memset (&xm->tx_descriptor_template, 0,
-	  sizeof (xm->tx_descriptor_template));
-  memset (&xm->tx_descriptor_template_mask, 0,
-	  sizeof (xm->tx_descriptor_template_mask));
+  clib_memset (&xm->tx_descriptor_template, 0,
+	       sizeof (xm->tx_descriptor_template));
+  clib_memset (&xm->tx_descriptor_template_mask, 0,
+	       sizeof (xm->tx_descriptor_template_mask));
   xm->tx_descriptor_template.status0 =
     (IXGE_TX_DESCRIPTOR_STATUS0_ADVANCED |
      IXGE_TX_DESCRIPTOR_STATUS0_IS_ADVANCED |

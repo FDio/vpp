@@ -676,7 +676,7 @@ next:
       {
         /* Add SNAT static mapping */
         pool_get (lbm->snat_mappings, m);
-        memset (m, 0, sizeof (*m));
+        clib_memset (m, 0, sizeof (*m));
         if (lb_vip_is_nat4_port(vip)) {
             lb_snat4_key_t m_key4;
             clib_bihash_kv_8_8_t kv4;

@@ -202,7 +202,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
     return (rv);
 
   ip46_address_t nh;
-  memset (&nh, 0, sizeof (nh));
+  clib_memset (&nh, 0, sizeof (nh));
 
   if (DPO_PROTO_IP4 == mp->mr_next_hop_proto)
     memcpy (&nh.ip4, mp->mr_next_hop, sizeof (nh.ip4));
@@ -316,7 +316,7 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   fib_route_path_t rpath, *rpaths = NULL;
   int ii, rv = 0;
 
-  memset (&rpath, 0, sizeof (rpath));
+  clib_memset (&rpath, 0, sizeof (rpath));
 
   stats_dslock_with_hint (1 /* release hint */ , 5 /* tag */ );
 
@@ -450,7 +450,7 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   n = fib_path_list_get_n_paths (mt->mt_path_list);
 
   mp = vl_msg_api_alloc (sizeof (*mp) + n * sizeof (vl_api_fib_path_t));
-  memset (mp, 0, sizeof (*mp) + n * sizeof (vl_api_fib_path_t));
+  clib_memset (mp, 0, sizeof (*mp) + n * sizeof (vl_api_fib_path_t));
 
   mp->_vl_msg_id = ntohs (VL_API_MPLS_TUNNEL_DETAILS);
   mp->context = ctx->context;
@@ -504,7 +504,7 @@ send_mpls_fib_details (vpe_api_main_t * am,
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
   if (!mp)
     return;
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_MPLS_FIB_DETAILS);
   mp->context = context;
 

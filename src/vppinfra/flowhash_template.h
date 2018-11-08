@@ -374,7 +374,7 @@ FVT(flowhash) *FV(flowhash_alloc)(u32 fixed_entries, u32 collision_buckets)
 
   /* Fill free elements list */
   int i;
-  memset(h->entries, 0, sizeof(h->entries[0]) * entries);
+  clib_memset(h->entries, 0, sizeof(h->entries[0]) * entries);
   for (i = 1; i <= collision_buckets; i++)
     {
       h->free_buckets_indices[-i] =

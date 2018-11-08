@@ -495,7 +495,7 @@ svm_region_init_mapped_region (svm_map_region_args_t * a, svm_region_t * rp)
   ASSERT (rp);
   int rv;
 
-  memset (rp, 0, sizeof (*rp));
+  clib_memset (rp, 0, sizeof (*rp));
 
   if (pthread_mutexattr_init (&attr))
     clib_unix_warning ("mutexattr_init");
@@ -866,7 +866,7 @@ svm_region_init (void)
 {
   svm_map_region_args_t _a, *a = &_a;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->root_path = 0;
   a->name = SVM_GLOBAL_REGION_NAME;
   a->baseva = svm_get_global_region_base_va ();
@@ -883,7 +883,7 @@ svm_region_init_chroot (const char *root_path)
 {
   svm_map_region_args_t _a, *a = &_a;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->root_path = root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
   a->baseva = svm_get_global_region_base_va ();
@@ -900,7 +900,7 @@ svm_region_init_chroot_uid_gid (const char *root_path, int uid, int gid)
 {
   svm_map_region_args_t _a, *a = &_a;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->root_path = root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
   a->baseva = svm_get_global_region_base_va ();

@@ -301,7 +301,7 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 user_id, u32 timer_id,
   ASSERT (interval);
 
   pool_get (tw->timers, t);
-  memset (t, 0xff, sizeof (*t));
+  clib_memset (t, 0xff, sizeof (*t));
 
   t->user_handle = TW (make_internal_timer_handle) (user_id, timer_id);
 
@@ -411,7 +411,7 @@ TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
   int ring, slot;
   tw_timer_wheel_slot_t *ts;
   TWT (tw_timer) * t;
-  memset (tw, 0, sizeof (*tw));
+  clib_memset (tw, 0, sizeof (*tw));
   tw->expired_timer_callback = expired_timer_callback;
   tw->max_expirations = max_expirations;
   if (timer_interval_in_seconds == 0.0)
@@ -432,7 +432,7 @@ TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
 	{
 	  ts = &tw->w[ring][slot];
 	  pool_get (tw->timers, t);
-	  memset (t, 0xff, sizeof (*t));
+	  clib_memset (t, 0xff, sizeof (*t));
 	  t->next = t->prev = t - tw->timers;
 	  ts->head_index = t - tw->timers;
 	}
@@ -441,7 +441,7 @@ TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
 #if TW_OVERFLOW_VECTOR > 0
   ts = &tw->overflow;
   pool_get (tw->timers, t);
-  memset (t, 0xff, sizeof (*t));
+  clib_memset (t, 0xff, sizeof (*t));
   t->next = t->prev = t - tw->timers;
   ts->head_index = t - tw->timers;
 #endif
@@ -490,7 +490,7 @@ void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw)
   pool_put (tw->timers, head);
 #endif
 
-  memset (tw, 0, sizeof (*tw));
+  clib_memset (tw, 0, sizeof (*tw));
 }
 
 /**

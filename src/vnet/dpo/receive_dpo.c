@@ -31,7 +31,7 @@ receive_dpo_alloc (void)
     receive_dpo_t *rd;
 
     pool_get_aligned(receive_dpo_pool, rd, CLIB_CACHE_LINE_BYTES);
-    memset(rd, 0, sizeof(*rd));
+    clib_memset(rd, 0, sizeof(*rd));
 
     return (rd);
 }

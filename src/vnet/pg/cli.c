@@ -92,7 +92,7 @@ pg_capture (pg_capture_args_t * a)
 
   pi = pool_elt_at_index (pg->interfaces, a->dev_instance);
   vec_free (pi->pcap_file_name);
-  memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
+  clib_memset (&pi->pcap_main, 0, sizeof (pi->pcap_main));
 
   if (a->is_enabled == 0)
     return 0;
@@ -224,7 +224,7 @@ pg_pcap_read (pg_stream_t * s, char *file_name)
 #else
   pcap_main_t pm;
   clib_error_t *error;
-  memset (&pm, 0, sizeof (pm));
+  clib_memset (&pm, 0, sizeof (pm));
   pm.file_name = file_name;
   error = pcap_read (&pm);
   s->replay_packet_templates = pm.packets_read;

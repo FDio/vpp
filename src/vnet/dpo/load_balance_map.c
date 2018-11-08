@@ -389,7 +389,7 @@ load_balance_map_alloc (const load_balance_path_t *paths)
     u32 ii;
 
     pool_get_aligned(load_balance_map_pool, lbm, CLIB_CACHE_LINE_BYTES);
-    memset(lbm, 0, sizeof(*lbm));
+    clib_memset(lbm, 0, sizeof(*lbm));
 
     vec_validate(lbm->lbm_paths, vec_len(paths)-1);
 

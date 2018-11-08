@@ -61,7 +61,7 @@ _qhash_resize (void *v, uword length, uword elt_bytes)
 				    CLIB_CACHE_LINE_BYTES);
   vec_resize (h->hash_key_valid_bitmap,
 	      1 << (l - QHASH_LOG2_KEYS_PER_BUCKET));
-  memset (v, ~0, elt_bytes << l);
+  clib_memset (v, ~0, elt_bytes << l);
 
   return v;
 }
@@ -123,7 +123,8 @@ qhash_get_multiple (void *v,
 
   if (!v)
     {
-      memset (result_indices, ~0, sizeof (result_indices[0]) * n_search_keys);
+      clib_memset (result_indices, ~0,
+		   sizeof (result_indices[0]) * n_search_keys);
       return;
     }
 
@@ -417,7 +418,7 @@ qhash_set_overflow (void *v, uword elt_bytes,
 	  uword dl = round_pow2 (1 + i - l, 8);
 	  v = _vec_resize (v, dl, (l + dl) * elt_bytes, sizeof (h[0]),
 			   /* align */ sizeof (uword));
-	  memset (v + l * elt_bytes, ~0, dl * elt_bytes);
+	  clib_memset (v + l * elt_bytes, ~0, dl * elt_bytes);
 	}
     }
 

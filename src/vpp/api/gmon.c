@@ -172,7 +172,7 @@ gmon_init (vlib_main_t * vm)
 
   gm->vlib_main = vm;
 
-  memset (ma, 0, sizeof (*ma));
+  clib_memset (ma, 0, sizeof (*ma));
   ma->root_path = am->root_path;
   ma->uid = am->api_uid;
   ma->gid = am->api_gid;

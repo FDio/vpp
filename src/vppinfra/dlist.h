@@ -36,7 +36,7 @@ static inline void
 clib_dlist_init (dlist_elt_t * pool, u32 index)
 {
   dlist_elt_t *head = pool_elt_at_index (pool, index);
-  memset (head, 0xFF, sizeof (*head));
+  clib_memset (head, 0xFF, sizeof (*head));
 }
 
 static inline void

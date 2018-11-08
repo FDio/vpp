@@ -935,7 +935,7 @@ mheap_alloc_with_flags (void *memory, uword memory_size, uword flags)
     clib_mem_vm_map (h, sizeof (h[0]));
 
   /* Zero vector header: both heap header and vector length. */
-  memset (h, 0, sizeof (h[0]));
+  clib_memset (h, 0, sizeof (h[0]));
   _vec_len (v) = 0;
 
   h->vm_alloc_offset_from_header = (void *) h - memory;
@@ -953,8 +953,8 @@ mheap_alloc_with_flags (void *memory, uword memory_size, uword flags)
 	      (clib_address_t) v, h->max_size);
 
   /* Initialize free list heads to empty. */
-  memset (h->first_free_elt_uoffset_by_bin, 0xFF,
-	  sizeof (h->first_free_elt_uoffset_by_bin));
+  clib_memset (h->first_free_elt_uoffset_by_bin, 0xFF,
+	       sizeof (h->first_free_elt_uoffset_by_bin));
 
   return v;
 }
@@ -1236,7 +1236,7 @@ format_mheap (u8 * s, va_list * va)
       mheap_elt_t *e;
       uword i, n_hist;
 
-      memset (hist, 0, sizeof (hist));
+      clib_memset (hist, 0, sizeof (hist));
 
       n_hist = 0;
       for (e = v;
@@ -1536,7 +1536,7 @@ mheap_get_trace (void *v, uword offset, uword size)
   mheap_trace_t trace;
 
   /* Spurious Coverity warnings be gone. */
-  memset (&trace, 0, sizeof (trace));
+  clib_memset (&trace, 0, sizeof (trace));
 
   n_callers = clib_backtrace (trace.callers, ARRAY_LEN (trace.callers),
 			      /* Skip mheap_get_aligned's frame */ 1);
@@ -1630,7 +1630,7 @@ mheap_put_trace (void *v, uword offset, uword size)
     {
       hash_unset_mem (tm->trace_by_callers, t->callers);
       vec_add1 (tm->trace_free_list, trace_index);
-      memset (t, 0, sizeof (t[0]));
+      clib_memset (t, 0, sizeof (t[0]));
     }
 }
 

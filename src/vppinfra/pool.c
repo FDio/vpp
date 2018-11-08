@@ -107,7 +107,8 @@ _pool_init_fixed (void **pool_ptr, u32 elt_size, u32 max_elts)
 
   /* Set the entire free bitmap */
   clib_bitmap_alloc (fh->free_bitmap, max_elts);
-  memset (fh->free_bitmap, 0xff, vec_len (fh->free_bitmap) * sizeof (uword));
+  clib_memset (fh->free_bitmap, 0xff,
+	       vec_len (fh->free_bitmap) * sizeof (uword));
 
   /* Clear any extraneous set bits */
   set_bits = vec_len (fh->free_bitmap) * BITS (uword);

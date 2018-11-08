@@ -536,7 +536,7 @@ static void *vl_api_tap_connect_t_print
   u8 *s;
   u8 null_mac[6];
 
-  memset (null_mac, 0, sizeof (null_mac));
+  clib_memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: tap_connect ");
   s = format (s, "tapname %s ", mp->tap_name);
@@ -561,7 +561,7 @@ static void *vl_api_tap_modify_t_print
   u8 *s;
   u8 null_mac[6];
 
-  memset (null_mac, 0, sizeof (null_mac));
+  clib_memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: tap_modify ");
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
@@ -602,7 +602,7 @@ static void *vl_api_tap_create_v2_t_print
   u8 *s;
   u8 null_mac[6];
 
-  memset (null_mac, 0, sizeof (null_mac));
+  clib_memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: tap_create_v2 ");
   s = format (s, "id %u ", ntohl (mp->id));
@@ -662,7 +662,7 @@ static void *vl_api_bond_create_t_print
   u8 *s;
   u8 null_mac[6];
 
-  memset (null_mac, 0, sizeof (null_mac));
+  clib_memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: bond_create ");
   if (memcmp (mp->mac_address, null_mac, 6))
@@ -1036,7 +1036,7 @@ static void *vl_api_ip_neighbor_add_del_t_print
   u8 *s;
   u8 null_mac[6];
 
-  memset (null_mac, 0, sizeof (null_mac));
+  clib_memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: ip_neighbor_add_del ");
 
@@ -3601,7 +3601,7 @@ static void *vl_api_sw_interface_set_lldp_t_print
   u8 *s;
   u8 null_data[256];
 
-  memset (null_data, 0, sizeof (null_data));
+  clib_memset (null_data, 0, sizeof (null_data));
 
   s = format (0, "SCRIPT: sw_interface_set_lldp ");
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));

@@ -69,7 +69,7 @@ static clib_error_t * test_lisp_msg_push_ecm ()
   int lp = 0x15, rp = 0x14;
 
   b = clib_mem_alloc (buff_len);
-  memset((u8 *)b, 0, buff_len);
+  clib_memset((u8 *)b, 0, buff_len);
   b->current_length = buff_len;
   b->current_data = sizeof(udp_header_t) + sizeof(ip4_header_t) +
     sizeof(ecm_hdr_t) + 1;
@@ -91,7 +91,7 @@ static clib_error_t * test_lisp_msg_push_ecm ()
 
   ip4_header_t * ih = (ip4_header_t *) (lh + 1);
   /* clear ip checksum */
-  memset((u8 *)ih + 10, 0, 2);
+  clib_memset((u8 *)ih + 10, 0, 2);
 
   u8 expected_ip4_hdr[] = {
     0x45,                   /* version; IHL */
@@ -109,7 +109,7 @@ static clib_error_t * test_lisp_msg_push_ecm ()
 
   udp_header_t * uh = (udp_header_t *) (ih + 1);
   /* clear udp checksum */
-  memset((u8 *)uh + 6, 0, 2);
+  clib_memset((u8 *)uh + 6, 0, 2);
 
   u8 expected_udp_hdr[] = {
     0x00, 0x15, /* src port */
@@ -134,7 +134,7 @@ static clib_error_t * test_lisp_msg_parse_mapping_record ()
   u32 buff_len = 500;
 
   b = clib_mem_alloc (buff_len);
-  memset((u8 *)b, 0, buff_len);
+  clib_memset((u8 *)b, 0, buff_len);
 
   u8 map_reply_records[] = {
     /* 1. record */
@@ -184,8 +184,8 @@ build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   u8 rloc_probe_set = 0;
   u64 nonce = 0;
   map_request_hdr_t * h = 0;
-  memset (deid, 0, sizeof (deid[0]));
-  memset (seid, 0, sizeof (seid[0]));
+  clib_memset (deid, 0, sizeof (deid[0]));
+  clib_memset (seid, 0, sizeof (seid[0]));
 
   gid_address_type (seid) = GID_ADDR_IP_PREFIX;
   ip_address_t * ip_addr = &gid_address_ip (seid);
@@ -208,7 +208,7 @@ static void
 generate_rlocs (gid_address_t **rlocs, u32 * count)
 {
   gid_address_t gid_addr_data, * gid_addr = &gid_addr_data;
-  memset (gid_addr, 0, sizeof (gid_addr[0]));
+  clib_memset (gid_addr, 0, sizeof (gid_addr[0]));
   ip_address_t * addr = &gid_address_ip (gid_addr);
 
   gid_address_type (gid_addr) = GID_ADDR_IP_PREFIX;
@@ -237,7 +237,7 @@ static clib_error_t * test_lisp_msg_parse ()
   u32 rloc_count_parse = 0;
 
   u8 * data = clib_mem_alloc(500);
-  memset(data, 0, 500);
+  clib_memset(data, 0, 500);
   b = (vlib_buffer_t *) data;
 
   generate_rlocs (&rlocs_decode, &rloc_count_parse);
@@ -297,12 +297,12 @@ static clib_error_t * test_lisp_msg_put_mreq_with_lcaf ()
   vec_add1 (rlocs, g);
 
   u8 * data = clib_mem_alloc (500);
-  memset (data, 0, 500);
+  clib_memset (data, 0, 500);
 
   h = build_map_request (lcm, (vlib_buffer_t *) data, rlocs);
 
   /* clear Nonce to simplify comparison */
-  memset ((u8 *)h + 4, 0, 8);
+  clib_memset ((u8 *)h + 4, 0, 8);
 
   u8 expected_data[] =
     {
@@ -346,13 +346,13 @@ static clib_error_t * test_lisp_msg_put_mreq ()
   u32 rloc_count = 0;
 
   u8 * data = clib_mem_alloc(500);
-  memset(data, 0, 500);
+  clib_memset(data, 0, 500);
 
   generate_rlocs (&rlocs, &rloc_count);
   h = build_map_request (lcm, (vlib_buffer_t *) data, rlocs);
 
   /* clear Nonce to simplify comparison */
-  memset((u8 *)h + 4, 0, 8);
+  clib_memset((u8 *)h + 4, 0, 8);
 
   print_map_request(h);
 
@@ -441,7 +441,7 @@ test_lisp_map_register ()
   mapping_t * records = build_test_map_records ();
 
   u8 * data = clib_mem_alloc(500);
-  memset(data, 0, 500);
+  clib_memset(data, 0, 500);
   b = (vlib_buffer_t *) data;
 
   lisp_msg_put_map_register (b, records, 1 /* want map notify */,
@@ -450,10 +450,10 @@ test_lisp_map_register ()
   free_test_map_records (records);
 
   /* clear Nonce to simplify comparison */
-  memset((u8 *)b->data + 4, 0, 8);
+  clib_memset((u8 *)b->data + 4, 0, 8);
 
   /* clear authentication data */
-  memset ((u8 *)b->data + 16, 0, 20);
+  clib_memset ((u8 *)b->data + 16, 0, 20);
 
   u8 expected_data[] = {
     0x30, 0x00, 0x01, 0x01, /* type; rsvd; want notify; REC count */
@@ -492,7 +492,7 @@ create_buffer (u8 * data, u32 data_len)
   vlib_buffer_t *b;
 
   u8 *buf_data = clib_mem_alloc(500);
-  memset (buf_data, 0, 500);
+  clib_memset (buf_data, 0, 500);
   b = (vlib_buffer_t *)buf_data;
 
   u8 * p = vlib_buffer_put_uninit (b, data_len);
@@ -545,7 +545,7 @@ test_lisp_parse_lcaf ()
   u32 buff_len = 500;
 
   b = clib_mem_alloc (buff_len);
-  memset ((u8 *)b, 0, buff_len);
+  clib_memset ((u8 *)b, 0, buff_len);
 
   u8 map_reply_records[] =
     {

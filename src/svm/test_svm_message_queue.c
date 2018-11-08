@@ -35,7 +35,7 @@ test1 (int verbose)
   void *oldheap;
   int i;
 
-  memset (ssvm, 0, sizeof (*ssvm));
+  clib_memset (ssvm, 0, sizeof (*ssvm));
 
   ssvm->ssvm_size = 1 << 20;
   ssvm->i_am_master = 1;

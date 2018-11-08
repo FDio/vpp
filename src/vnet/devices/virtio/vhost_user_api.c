@@ -58,7 +58,7 @@ send_sw_interface_event_deleted (vpe_api_main_t * am,
   vl_api_sw_interface_event_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -165,7 +165,7 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
   vl_api_sw_interface_vhost_user_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
   mp->sw_if_index = ntohl (vui->sw_if_index);
   mp->virtio_net_hdr_sz = ntohl (vui->virtio_net_hdr_sz);

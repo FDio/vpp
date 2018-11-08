@@ -158,7 +158,7 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
     return;;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_IPFIX_EXPORTER_DETAILS);
   rmp->context = mp->context;
   memcpy (rmp->collector_address, frm->ipfix_collector.data,
@@ -219,7 +219,7 @@ static void
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_IPFIX_CLASSIFY_STREAM_DETAILS);
   rmp->context = mp->context;
   rmp->domain_id = htonl (fcm->domain_id);
@@ -255,7 +255,7 @@ static void
       goto out;
     }
 
-  memset (&args, 0, sizeof (args));
+  clib_memset (&args, 0, sizeof (args));
 
   table = 0;
   int i;
@@ -316,7 +316,7 @@ send_ipfix_classify_table_details (u32 table_index,
   ipfix_classify_table_t *table = &fcm->tables[table_index];
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IPFIX_CLASSIFY_TABLE_DETAILS);
   mp->context = context;
   mp->table_id = htonl (table->classify_table_index);

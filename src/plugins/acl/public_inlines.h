@@ -73,7 +73,7 @@ acl_fill_5tuple_l3_data (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
     }
   else
     {
-      memset(p5tuple_pkt->l3_zero_pad, 0, sizeof(p5tuple_pkt->l3_zero_pad));
+      clib_memset(p5tuple_pkt->l3_zero_pad, 0, sizeof(p5tuple_pkt->l3_zero_pad));
       clib_memcpy (&p5tuple_pkt->ip4_addr,
 		   get_ptr_to_offset (b0,
 				      offsetof (ip4_header_t,

@@ -180,7 +180,7 @@ void CV (clib_cuckoo_init) (CVT (clib_cuckoo) * h, const char *name,
   CVT (clib_cuckoo_bucket) * bucket;
   /* *INDENT-OFF* */
   clib_cuckoo_foreach_bucket (
-      bucket, h, { memset (bucket->elts, 0xff, sizeof (bucket->elts)); });
+      bucket, h, { clib_memset (bucket->elts, 0xff, sizeof (bucket->elts)); });
   /* *INDENT-ON* */
   h->name = name;
   h->garbage_callback = garbage_callback;
@@ -189,7 +189,7 @@ void CV (clib_cuckoo_init) (CVT (clib_cuckoo) * h, const char *name,
 
 void CV (clib_cuckoo_free) (CVT (clib_cuckoo) * h)
 {
-  memset (h, 0, sizeof (*h));
+  clib_memset (h, 0, sizeof (*h));
 }
 
 static clib_cuckoo_bucket_aux_t
@@ -227,7 +227,7 @@ static clib_cuckoo_path_t *CV (clib_cuckoo_path_get) (CVT (clib_cuckoo) * h)
 {
   clib_cuckoo_path_t *path;
   pool_get (h->paths, path);
-  memset (path, 0, sizeof (*path));
+  clib_memset (path, 0, sizeof (*path));
 #if CLIB_CUCKOO_DEBUG_PATH_DETAIL
   CLIB_CUCKOO_DBG ("Get path @%lu", (long unsigned) (path - h->paths));
 #endif
@@ -531,10 +531,10 @@ static void CV (clib_cuckoo_bucket_tidy) (CVT (clib_cuckoo_bucket) * b)
 static void CV (clib_cuckoo_free_locked_elt) (CVT (clib_cuckoo_kv) * elt)
 {
   /*
-   * FIXME - improve performance by getting rid of this memset - make all
+   * FIXME - improve performance by getting rid of this clib_memset - make all
    * functions in this file not rely on clib_cuckoo_kv_is_free but instead
    * take use_count into account */
-  memset (elt, 0xff, sizeof (*elt));
+  clib_memset (elt, 0xff, sizeof (*elt));
 }
 
 static void CV (clib_cuckoo_free_elt_in_bucket) (CVT (clib_cuckoo_bucket) * b,
@@ -736,7 +736,7 @@ static void CV (clib_cuckoo_rehash) (CVT (clib_cuckoo) * h)
   CVT (clib_cuckoo_bucket) * bucket;
   for (bucket = new + old_nbuckets; bucket < vec_end (new); ++bucket)
     {
-      memset (bucket->elts, 0xff, sizeof (bucket->elts));
+      clib_memset (bucket->elts, 0xff, sizeof (bucket->elts));
     }
   /*
    * this for loop manipulates the new (unseen) memory, so no locks

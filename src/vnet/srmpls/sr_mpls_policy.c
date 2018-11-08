@@ -64,7 +64,7 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
   u32 ii;
 
   pool_get (sm->sid_lists, segment_list);
-  memset (segment_list, 0, sizeof (*segment_list));
+  clib_memset (segment_list, 0, sizeof (*segment_list));
 
   vec_add1 (sr_policy->segments_lists, segment_list - sm->sid_lists);
 
@@ -172,7 +172,7 @@ sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t * segments,
     }
   /* Add an SR policy object */
   pool_get (sm->sr_policies, sr_policy);
-  memset (sr_policy, 0, sizeof (*sr_policy));
+  clib_memset (sr_policy, 0, sizeof (*sr_policy));
 
   /* the first policy needs to lock the MPLS table so it doesn't
    * disappear with policies in it */
@@ -840,7 +840,7 @@ cli_sr_mpls_policy_ec_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 endpoint_type = 0;
   char clear = 0, color_set = 0, bsid_set = 0;
 
-  memset (&endpoint, 0, sizeof (ip46_address_t));
+  clib_memset (&endpoint, 0, sizeof (ip46_address_t));
 
   int rv;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)

@@ -157,7 +157,7 @@ nat64_get_worker_out2in (ip4_header_t * ip)
       ip46_address_t daddr;
       nat64_db_bib_entry_t *bibe;
 
-      memset (&daddr, 0, sizeof (daddr));
+      clib_memset (&daddr, 0, sizeof (daddr));
       daddr.ip4.as_u32 = ip->dst_address.as_u32;
 
       /* *INDENT-OFF* */
@@ -687,7 +687,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	      foreach_snat_protocol
 #undef _
 	    default:
-	      memset (&addr, 0, sizeof (addr));
+	      clib_memset (&addr, 0, sizeof (addr));
 	      addr.ip4.as_u32 = out_addr->as_u32;
 	      if (nat64_db_bib_entry_find (db, &addr, 0, proto, fib_index, 0))
 		return VNET_API_ERROR_INVALID_VALUE;

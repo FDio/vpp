@@ -64,7 +64,7 @@ clib_cuckoo_kv_is_free_8_8 (const clib_cuckoo_kv_8_8_t * v)
 always_inline void
 clib_cuckoo_kv_set_free_8_8 (clib_cuckoo_kv_8_8_t * v)
 {
-  memset (v, 0xff, sizeof (*v));
+  clib_memset (v, 0xff, sizeof (*v));
 }
 
 /** Format a clib_cuckoo_kv_8_8_t instance

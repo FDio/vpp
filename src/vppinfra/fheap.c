@@ -167,7 +167,7 @@ fheap_add (fheap_t * f, u32 ni, u32 key)
 
   n = vec_elt_at_index (f->nodes, ni);
 
-  memset (n, 0, sizeof (n[0]));
+  clib_memset (n, 0, sizeof (n[0]));
   n->parent = n->first_child = n->next_sibling = n->prev_sibling = ~0;
   n->key = key;
 

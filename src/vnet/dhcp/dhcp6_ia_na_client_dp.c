@@ -516,7 +516,7 @@ dhcp6_reply_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		vec_len (events[i].addresses) *
 		sizeof (vl_api_dhcp6_address_info_t);
 	      vl_api_dhcp6_reply_event_t *event = clib_mem_alloc (event_size);
-	      memset (event, 0, event_size);
+	      clib_memset (event, 0, event_size);
 
 	      event->sw_if_index = htonl (events[i].body.sw_if_index);
 	      event->server_index = htonl (events[i].body.server_index);

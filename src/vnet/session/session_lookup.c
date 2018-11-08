@@ -460,7 +460,7 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 	return kv4.value;
       if (use_rules)
 	{
-	  memset (&lcl4, 0, sizeof (lcl4));
+	  clib_memset (&lcl4, 0, sizeof (lcl4));
 	  srt = &st->session_rules[sep->transport_proto];
 	  ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
 					    sep->port);
@@ -481,7 +481,7 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
 
       if (use_rules)
 	{
-	  memset (&lcl6, 0, sizeof (lcl6));
+	  clib_memset (&lcl6, 0, sizeof (lcl6));
 	  srt = &st->session_rules[sep->transport_proto];
 	  ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
 					    sep->port);
@@ -529,7 +529,7 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
       /*
        * Check if endpoint has special rules associated
        */
-      memset (&lcl4, 0, sizeof (lcl4));
+      clib_memset (&lcl4, 0, sizeof (lcl4));
       srt = &st->session_rules[sep->transport_proto];
       ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
 					sep->port);
@@ -574,7 +574,7 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
       session_kv6_t kv6;
       ip6_address_t lcl6;
 
-      memset (&lcl6, 0, sizeof (lcl6));
+      clib_memset (&lcl6, 0, sizeof (lcl6));
       srt = &st->session_rules[sep->transport_proto];
       ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
 					sep->port);
@@ -1267,7 +1267,7 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
     }
   if (args->scope & SESSION_RULE_SCOPE_LOCAL)
     {
-      memset (&args->table_args.lcl, 0, sizeof (args->table_args.lcl));
+      clib_memset (&args->table_args.lcl, 0, sizeof (args->table_args.lcl));
       args->table_args.lcl.fp_proto = args->table_args.rmt.fp_proto;
       args->table_args.lcl_port = 0;
       st = app_namespace_get_local_table (app_ns);
@@ -1383,8 +1383,8 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
   app_namespace_t *app_ns;
   clib_error_t *error;
 
-  memset (&lcl_ip, 0, sizeof (lcl_ip));
-  memset (&rmt_ip, 0, sizeof (rmt_ip));
+  clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
+  clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
@@ -1530,8 +1530,8 @@ show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
   session_table_t *st;
   u8 *ns_id = 0, fib_proto;
 
-  memset (&lcl_ip, 0, sizeof (lcl_ip));
-  memset (&rmt_ip, 0, sizeof (rmt_ip));
+  clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
+  clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "%U", unformat_transport_proto, &transport_proto))

@@ -377,7 +377,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 
   pool_get_aligned (vm->buffer_free_list_pool, f, CLIB_CACHE_LINE_BYTES);
 
-  memset (f, 0, sizeof (f[0]));
+  clib_memset (f, 0, sizeof (f[0]));
   f->index = f - vm->buffer_free_list_pool;
   f->n_data_bytes = vlib_buffer_round_size (n_data_bytes);
   f->min_n_buffers_each_alloc = VLIB_FRAME_SIZE;
@@ -439,7 +439,7 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
   vec_free (f->buffers);
 
   /* Poison it. */
-  memset (f, 0xab, sizeof (f[0]));
+  clib_memset (f, 0xab, sizeof (f[0]));
 }
 
 /* Add buffer free list. */
@@ -544,7 +544,7 @@ vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
       if (CLIB_DEBUG > 0)
 	vlib_buffer_set_known_state (bi[0], VLIB_BUFFER_KNOWN_FREE);
 
-      memset (b, 0, sizeof (vlib_buffer_t));
+      clib_memset (b, 0, sizeof (vlib_buffer_t));
       vlib_buffer_init_for_free_list (b, fl);
 
       if (fl->buffer_init_function)
@@ -709,7 +709,7 @@ vlib_packet_template_init (vlib_main_t * vm,
 
   vlib_worker_thread_barrier_sync (vm);
 
-  memset (t, 0, sizeof (t[0]));
+  clib_memset (t, 0, sizeof (t[0]));
 
   vec_add (t->packet_data, packet_data, n_packet_data_bytes);
   t->min_n_buffers_each_alloc = min_n_buffers_each_alloc;

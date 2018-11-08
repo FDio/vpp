@@ -213,7 +213,7 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
     }
 
   pool_get (ppm->interfaces, ppif);
-  memset (ppif, 0, sizeof (*ppif));
+  clib_memset (ppif, 0, sizeof (*ppif));
   ppif->dev_instance = ppif - ppm->interfaces;
   ppif->hw_if_index = ~0;
   vec_validate_aligned (ppif->inqs, n_inqs - 1, CLIB_CACHE_LINE_BYTES);

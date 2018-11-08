@@ -325,7 +325,7 @@ local_set_variable_nolock (svmdb_client_t * client,
     {
       svmdb_value_t *newvalue;
       pool_get (shm->values, newvalue);
-      memset (newvalue, 0, sizeof (*newvalue));
+      clib_memset (newvalue, 0, sizeof (*newvalue));
       newvalue->elsize = elsize;
       vec_alloc (newvalue->value, vec_len (val) * elsize);
       clib_memcpy (newvalue->value, val, vec_len (val) * elsize);
@@ -651,7 +651,7 @@ svmdb_local_find_or_add_vec_variable (svmdb_client_t * client,
       h = shm->namespaces[SVMDB_NAMESPACE_VEC];
 
       pool_get (shm->values, newvalue);
-      memset (newvalue, 0, sizeof (*newvalue));
+      clib_memset (newvalue, 0, sizeof (*newvalue));
       newvalue->elsize = 1;
       vec_alloc (newvalue->value, nbytes);
       _vec_len (newvalue->value) = nbytes;

@@ -180,7 +180,7 @@ main (int argc, char *argv[])
   if (is_interactive)
     {
       /* Capture terminal resize events */
-      memset (&sa, 0, sizeof (struct sigaction));
+      clib_memset (&sa, 0, sizeof (struct sigaction));
       sa.sa_handler = signal_handler_winch;
       if (sigaction (SIGWINCH, &sa, 0) < 0)
 	{

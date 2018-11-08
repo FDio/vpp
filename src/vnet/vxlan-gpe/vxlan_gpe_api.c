@@ -112,7 +112,7 @@ static void
       rv = VNET_API_ERROR_SAME_SRC_DST;
       goto out;
     }
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   a->is_add = mp->is_add;
   a->is_ip6 = mp->is_ipv6;
@@ -152,7 +152,7 @@ static void send_vxlan_gpe_tunnel_details
   u8 is_ipv6 = !(t->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_GPE_TUNNEL_DETAILS);
   if (is_ipv6)
     {

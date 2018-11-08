@@ -102,7 +102,7 @@ graph_del_node (graph_t * g, u32 src)
 
   index = src_node - g->nodes;
   pool_put (g->nodes, src_node);
-  memset (src_node, ~0, sizeof (src_node[0]));
+  clib_memset (src_node, ~0, sizeof (src_node[0]));
 
   return index;
 }

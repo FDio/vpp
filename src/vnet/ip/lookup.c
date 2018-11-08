@@ -137,7 +137,7 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
       u32 hi;			/* head index */
 
       pool_get (lm->if_address_pool, a);
-      memset (a, ~0, sizeof (a[0]));
+      clib_memset (a, ~0, sizeof (a[0]));
       ai = a - lm->if_address_pool;
 
       hi = pi = lm->if_address_pool_index_by_sw_if_index[sw_if_index];
@@ -336,7 +336,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
   is_del = 0;
   table_id = 0;
   count = 1;
-  memset (&pfx, 0, sizeof (pfx));
+  clib_memset (&pfx, 0, sizeof (pfx));
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -344,7 +344,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      memset (&rpath, 0, sizeof (rpath));
+      clib_memset (&rpath, 0, sizeof (rpath));
 
       if (unformat (line_input, "table %d", &table_id))
 	;
@@ -819,8 +819,8 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
   vnm = vnet_get_main ();
   is_del = 0;
   table_id = 0;
-  memset (&pfx, 0, sizeof (pfx));
-  memset (&rpath, 0, sizeof (rpath));
+  clib_memset (&pfx, 0, sizeof (pfx));
+  clib_memset (&rpath, 0, sizeof (rpath));
   rpath.frp_sw_if_index = ~0;
 
   /* Get a line of input. */
@@ -859,27 +859,27 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 			 unformat_ip4_address,
 			 &pfx.fp_grp_addr.ip4, &pfx.fp_len))
 	{
-	  memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
+	  clib_memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	}
       else if (unformat (line_input, "%U/%d",
 			 unformat_ip6_address,
 			 &pfx.fp_grp_addr.ip6, &pfx.fp_len))
 	{
-	  memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
+	  clib_memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	}
       else if (unformat (line_input, "%U",
 			 unformat_ip4_address, &pfx.fp_grp_addr.ip4))
 	{
-	  memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
+	  clib_memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  pfx.fp_len = 32;
 	}
       else if (unformat (line_input, "%U",
 			 unformat_ip6_address, &pfx.fp_grp_addr.ip6))
 	{
-	  memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
+	  clib_memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
 	}
@@ -901,12 +901,12 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 			 unformat_vnet_sw_interface, vnm,
 			 &rpath.frp_sw_if_index))
 	{
-	  memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
+	  clib_memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
 	  rpath.frp_weight = 1;
 	}
       else if (unformat (line_input, "via local"))
 	{
-	  memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
+	  clib_memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
 	  rpath.frp_sw_if_index = ~0;
 	  rpath.frp_weight = 1;
 	  rpath.frp_flags |= FIB_ROUTE_PATH_LOCAL;
@@ -1389,7 +1389,7 @@ ip_container_cmd (vlib_main_t * vm,
   vnm = vnet_get_main ();
   is_del = 0;
   sw_if_index = ~0;
-  memset (&pfx, 0, sizeof (pfx));
+  clib_memset (&pfx, 0, sizeof (pfx));
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))

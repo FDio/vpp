@@ -190,7 +190,7 @@ svm_map_region_nolock (svm_map_region_args_t * a)
     {
       clib_warning ("rp->mutex LOCKED by pid %d, tag %d, cleared...",
 		    rp->mutex_owner_pid, rp->mutex_owner_tag);
-      memset (&rp->mutex, 0, sizeof (rp->mutex));
+      clib_memset (&rp->mutex, 0, sizeof (rp->mutex));
 
     }
   else
@@ -339,7 +339,7 @@ subregion_repair (char *chroot_path)
 
   for (i = 0; i < vec_len (svm_names); i++)
     {
-      memset (&a, 0, sizeof (a));
+      clib_memset (&a, 0, sizeof (a));
       a.root_path = chroot_path;
       a.name = (char *) svm_names[i];
       fformat (stdout, "Checking %s region...\n", a.name);
@@ -422,7 +422,7 @@ repair (char *chroot_path, int crash_root_region)
     {
       clib_warning ("root_rp->mutex LOCKED by pid %d, tag %d, cleared...",
 		    root_rp->mutex_owner_pid, root_rp->mutex_owner_tag);
-      memset (&root_rp->mutex, 0, sizeof (root_rp->mutex));
+      clib_memset (&root_rp->mutex, 0, sizeof (root_rp->mutex));
       goto out;
     }
   else

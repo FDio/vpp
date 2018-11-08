@@ -132,7 +132,7 @@ timer_interrupt (int signum)
 	{
 	  /* Set timer for to go off in future. */
 	  struct itimerval itv;
-	  memset (&itv, 0, sizeof (itv));
+	  clib_memset (&itv, 0, sizeof (itv));
 	  f64_to_tv (dt, &itv.it_value);
 	  if (setitimer (ITIMER_REAL, &itv, 0) < 0)
 	    clib_unix_error ("sititmer");
@@ -146,7 +146,7 @@ timer_block (sigset_t * save)
 {
   sigset_t block_timer;
 
-  memset (&block_timer, 0, sizeof (block_timer));
+  clib_memset (&block_timer, 0, sizeof (block_timer));
   sigaddset (&block_timer, TIMER_SIGNAL);
   sigprocmask (SIG_BLOCK, &block_timer, save);
 }
@@ -175,7 +175,7 @@ timer_call (timer_func_t * func, any arg, f64 dt)
       /* Initialize time_resolution before first call to timer_interrupt */
       time_resolution = 0.75 / (f64) HZ;
 
-      memset (&sa, 0, sizeof (sa));
+      clib_memset (&sa, 0, sizeof (sa));
       sa.sa_handler = timer_interrupt;
 
       if (sigaction (TIMER_SIGNAL, &sa, 0) < 0)

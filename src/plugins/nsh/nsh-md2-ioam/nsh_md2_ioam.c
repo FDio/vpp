@@ -100,12 +100,12 @@ nsh_md2_ioam_enable_disable_for_dest (vlib_main_t * vm,
 
   if (is_ipv4)
     {
-      memset (&fib_prefix, 0, sizeof (fib_prefix_t));
+      clib_memset (&fib_prefix, 0, sizeof (fib_prefix_t));
       fib_prefix.fp_len = 32;
       fib_prefix.fp_proto = FIB_PROTOCOL_IP4;
 #define  TRANSIT_UNIT_TEST_HACK 1
 #ifdef TRANSIT_UNIT_TEST_HACK
-      memset(&dst_addr, 0, sizeof(dst_addr));
+      clib_memset(&dst_addr, 0, sizeof(dst_addr));
       dst_addr.ip4.as_u32 = clib_net_to_host_u32(0x14020102);
 #endif
       fib_prefix.fp_addr = dst_addr;
@@ -226,7 +226,7 @@ u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
       nsh_md2_ioam_dest_tunnels_t *t1;
       fib_prefix_t key4, *key4_copy;
       hash_pair_t *hp;
-      memset (&key4, 0, sizeof (key4));
+      clib_memset (&key4, 0, sizeof (key4));
       key4.fp_proto = FIB_PROTOCOL_IP4;
       key4.fp_addr.ip4.as_u32 = fib_prefix.fp_addr.ip4.as_u32;
       t = hash_get_mem (hm->dst_by_ip4, &key4);
@@ -237,11 +237,11 @@ u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
 	      return 0;
 	    }
 	  pool_get_aligned (hm->dst_tunnels, t1, CLIB_CACHE_LINE_BYTES);
-	  memset (t1, 0, sizeof (*t1));
+	  clib_memset (t1, 0, sizeof (*t1));
 	  t1->fp_proto = FIB_PROTOCOL_IP4;
 	  t1->dst_addr.ip4.as_u32 = fib_prefix.fp_addr.ip4.as_u32;
 	  key4_copy = clib_mem_alloc (sizeof (*key4_copy));
-          memset(key4_copy, 0, sizeof(*key4_copy));
+          clib_memset(key4_copy, 0, sizeof(*key4_copy));
 	  clib_memcpy (key4_copy, &key4, sizeof (*key4_copy));
 	  hash_set_mem (hm->dst_by_ip4, key4_copy, t1 - hm->dst_tunnels);
 	  /*

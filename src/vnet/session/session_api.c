@@ -107,7 +107,7 @@ send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
     }
 
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
   mp->segment_size = sp->ssvm_size;
   mp->fd_flags = fd_flags;
@@ -136,7 +136,7 @@ send_del_segment_callback (u32 api_client_index, const ssvm_private_t * fs)
     }
 
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_UNMAP_SEGMENT);
   strncpy ((char *) mp->segment_name, (char *) fs->name,
 	   sizeof (mp->segment_name) - 1);
@@ -164,7 +164,7 @@ send_app_cut_through_registration_add (u32 api_client_index,
     }
 
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id =
     clib_host_to_net_u16 (VL_API_APP_CUT_THROUGH_REGISTRATION_ADD);
 
@@ -215,7 +215,7 @@ send_session_accept_callback (stream_session_t * s)
     }
 
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
   mp->context = server_wrk->wrk_index;
@@ -295,7 +295,7 @@ send_session_disconnect_callback (stream_session_t * s)
     }
 
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_DISCONNECT_SESSION);
   mp->handle = session_handle (s);
   mp->context = app->api_client_index;
@@ -319,7 +319,7 @@ send_session_reset_callback (stream_session_t * s)
     }
 
   mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_RESET_SESSION);
   mp->handle = session_handle (s);
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
@@ -433,7 +433,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
     return -1;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
-  memset (evt, 0, sizeof (*evt));
+  clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_ACCEPTED;
   mp = (session_accepted_msg_t *) evt->data;
   mp->context = app->app_index;
@@ -519,7 +519,7 @@ mq_send_session_disconnected_cb (stream_session_t * s)
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return;
   evt = svm_msg_q_msg_data (app_mq, msg);
-  memset (evt, 0, sizeof (*evt));
+  clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   mp = (session_disconnected_msg_t *) evt->data;
   mp->handle = session_handle (s);
@@ -543,7 +543,7 @@ mq_send_local_session_disconnected_cb (u32 app_wrk_index,
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return;
   evt = svm_msg_q_msg_data (app_mq, msg);
-  memset (evt, 0, sizeof (*evt));
+  clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   mp = (session_disconnected_msg_t *) evt->data;
   mp->handle = application_local_session_handle (ls);
@@ -564,7 +564,7 @@ mq_send_session_reset_cb (stream_session_t * s)
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return;
   evt = svm_msg_q_msg_data (app_mq, msg);
-  memset (evt, 0, sizeof (*evt));
+  clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_RESET;
   mp = (session_reset_msg_t *) evt->data;
   mp->handle = session_handle (s);
@@ -596,7 +596,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return -1;
   evt = svm_msg_q_msg_data (app_mq, msg);
-  memset (evt, 0, sizeof (*evt));
+  clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_CONNECTED;
   mp = (session_connected_msg_t *) evt->data;
   mp->context = api_context;
@@ -677,7 +677,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     return -1;
 
   evt = svm_msg_q_msg_data (app_mq, msg);
-  memset (evt, 0, sizeof (*evt));
+  clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_BOUND;
   mp = (session_bound_msg_t *) evt->data;
   mp->context = api_context;
@@ -761,7 +761,7 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 		 sizeof (mp->options),
 		 "Out of options, fix api message definition");
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->api_client_index = mp->client_index;
   a->options = mp->options;
 
@@ -883,7 +883,7 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
-      memset (a, 0, sizeof (*a));
+      clib_memset (a, 0, sizeof (*a));
       a->uri = (char *) mp->uri;
       a->app_index = app->app_index;
       rv = vnet_bind_uri (a);
@@ -976,7 +976,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
-      memset (a, 0, sizeof (*a));
+      clib_memset (a, 0, sizeof (*a));
       a->uri = (char *) mp->uri;
       a->api_context = mp->context;
       a->app_index = app->app_index;
@@ -1180,7 +1180,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
     }
 
   ip46 = (ip46_address_t *) mp->ip;
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->sep.is_ip4 = mp->is_ip4;
   a->sep.ip = *ip46;
   a->sep.port = mp->port;
@@ -1283,7 +1283,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       svm_queue_t *client_q;
       ip46_address_t *ip46 = (ip46_address_t *) mp->ip;
 
-      memset (a, 0, sizeof (*a));
+      clib_memset (a, 0, sizeof (*a));
       client_q = vl_api_client_index_to_input_queue (mp->client_index);
       mp->client_queue_address = pointer_to_uword (client_q);
       a->sep.is_ip4 = mp->is_ip4;
@@ -1474,7 +1474,7 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   u8 fib_proto;
   int rv = 0;
 
-  memset (&args, 0, sizeof (args));
+  clib_memset (&args, 0, sizeof (args));
   fib_proto = mp->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
 
   table_args->lcl.fp_len = mp->lcl_plen;
@@ -1491,8 +1491,8 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   args.scope = mp->scope;
   args.transport_proto = mp->transport_proto;
 
-  memset (&table_args->lcl.fp_addr, 0, sizeof (table_args->lcl.fp_addr));
-  memset (&table_args->rmt.fp_addr, 0, sizeof (table_args->rmt.fp_addr));
+  clib_memset (&table_args->lcl.fp_addr, 0, sizeof (table_args->lcl.fp_addr));
+  clib_memset (&table_args->rmt.fp_addr, 0, sizeof (table_args->rmt.fp_addr));
   ip_set (&table_args->lcl.fp_addr, mp->lcl_ip, mp->is_ip4);
   ip_set (&table_args->rmt.fp_addr, mp->rmt_ip, mp->is_ip4);
   error = vnet_session_rule_add_del (&args);
@@ -1517,7 +1517,7 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
     (session_mask_or_match_4_t *) & rule->mask;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SESSION_RULES_DETAILS);
   rmp->context = context;
 
@@ -1554,7 +1554,7 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
     (session_mask_or_match_6_t *) & rule->mask;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SESSION_RULES_DETAILS);
   rmp->context = context;
 
@@ -1662,7 +1662,7 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
       goto done;
     }
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->app_index = app->app_index;
   cert_len = clib_net_to_host_u16 (mp->cert_len);
   if (cert_len > 10000)
@@ -1702,7 +1702,7 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
       goto done;
     }
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->app_index = app->app_index;
   key_len = clib_net_to_host_u16 (mp->key_len);
   if (key_len > 10000)

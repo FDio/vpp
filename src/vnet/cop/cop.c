@@ -27,7 +27,7 @@ cop_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   int address_family;
   u32 ci, default_next;
 
-  memset (data, 0, sizeof(*data));
+  clib_memset (data, 0, sizeof(*data));
 
   /* 
    * Ignore local interface, pg interfaces. $$$ need a #define for the

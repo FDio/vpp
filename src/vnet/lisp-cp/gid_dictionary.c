@@ -305,7 +305,7 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
       if (!src)
 	{
 	  ip_prefix_t sp;
-	  memset (&sp, 0, sizeof (sp));
+	  clib_memset (&sp, 0, sizeof (sp));
 	  return ip4_lookup_exact_match (sfib4, 0, &sp);
 	}
       else
@@ -322,7 +322,7 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
       if (!src)
 	{
 	  ip_prefix_t sp;
-	  memset (&sp, 0, sizeof (sp));
+	  clib_memset (&sp, 0, sizeof (sp));
 	  ip_prefix_version (&sp) = IP6;
 	  return ip6_lookup_exact_match (sfib6, 0, &sp);
 	}
@@ -557,8 +557,8 @@ ip4_lookup_init (gid_ip4_table_t * db)
 {
   uword i;
 
-  memset (db->ip4_prefix_len_refcount, 0,
-	  sizeof (db->ip4_prefix_len_refcount));
+  clib_memset (db->ip4_prefix_len_refcount, 0,
+	       sizeof (db->ip4_prefix_len_refcount));
 
   for (i = 0; i < ARRAY_LEN (db->ip4_fib_masks); i++)
     {
@@ -606,7 +606,7 @@ add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  else
 	    {
 	      ip_prefix_t sp;
-	      memset (&sp, 0, sizeof (sp));
+	      clib_memset (&sp, 0, sizeof (sp));
 	      add_del_ip4_key (sfib, 0 /* vni */ , &sp, val, is_add);
 	    }
 	}
@@ -622,7 +622,7 @@ add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  else
 	    {
 	      ip_prefix_t sp;
-	      memset (&sp, 0, sizeof (sp));
+	      clib_memset (&sp, 0, sizeof (sp));
 	      old_val =
 		add_del_ip4_key (sfib, 0 /* vni */ , &sp, val, is_add);
 	    }
@@ -638,7 +638,7 @@ add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  else
 	    {
 	      ip_prefix_t sp;
-	      memset (&sp, 0, sizeof (sp));
+	      clib_memset (&sp, 0, sizeof (sp));
 	      old_val = add_del_ip4_key (sfib, 0, &sp, 0, is_add);
 	    }
 
@@ -755,8 +755,8 @@ ip6_lookup_init (gid_ip6_table_t * db)
 {
   uword i;
 
-  memset (db->ip6_prefix_len_refcount, 0,
-	  sizeof (db->ip6_prefix_len_refcount));
+  clib_memset (db->ip6_prefix_len_refcount, 0,
+	       sizeof (db->ip6_prefix_len_refcount));
 
   for (i = 0; i < ARRAY_LEN (db->ip6_fib_masks); i++)
     {
@@ -809,7 +809,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  else
 	    {
 	      ip_prefix_t sp;
-	      memset (&sp, 0, sizeof (sp));
+	      clib_memset (&sp, 0, sizeof (sp));
 	      ip_prefix_version (&sp) = IP6;
 	      add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
 	    }
@@ -826,7 +826,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  else
 	    {
 	      ip_prefix_t sp;
-	      memset (&sp, 0, sizeof (sp));
+	      clib_memset (&sp, 0, sizeof (sp));
 	      ip_prefix_version (&sp) = IP6;
 	      old_val =
 		add_del_ip6_key (sfib, 0 /* vni */ , &sp, val, is_add);
@@ -843,7 +843,7 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	  else
 	    {
 	      ip_prefix_t sp;
-	      memset (&sp, 0, sizeof (sp));
+	      clib_memset (&sp, 0, sizeof (sp));
 	      ip_prefix_version (&sp) = IP6;
 	      old_val = add_del_ip6_key (sfib, 0, &sp, 0, is_add);
 	    }

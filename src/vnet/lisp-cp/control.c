@@ -149,7 +149,7 @@ ip_address_to_fib_prefix (const ip_address_t * addr, fib_prefix_t * prefix)
     {
       prefix->fp_len = 32;
       prefix->fp_proto = FIB_PROTOCOL_IP4;
-      memset (&prefix->fp_addr.pad, 0, sizeof (prefix->fp_addr.pad));
+      clib_memset (&prefix->fp_addr.pad, 0, sizeof (prefix->fp_addr.pad));
       memcpy (&prefix->fp_addr.ip4, &addr->ip, sizeof (prefix->fp_addr.ip4));
     }
   else
@@ -272,7 +272,7 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 dst_map_index)
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
   fwd_entry_t *fe = 0;
   uword *feip = 0;
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   feip = hash_get (lcm->fwd_entry_by_mapping_index, dst_map_index);
   if (!feip)
@@ -377,7 +377,7 @@ get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
 							      lcl_addr))
 		    continue;
 
-		  memset (&pair, 0, sizeof (pair));
+		  clib_memset (&pair, 0, sizeof (pair));
 		  ip_address_copy (&pair.rmt_loc,
 				   &gid_address_ip (&rmt->address));
 		  ip_address_copy (&pair.lcl_loc, lcl_addr);
@@ -446,7 +446,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   u8 type, is_src_dst = 0;
   int rv;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   /* remove entry if it already exists */
   feip = hash_get (lcm->fwd_entry_by_mapping_index, dst_map_index);
@@ -574,7 +574,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   if (!rmts_stored_idxp)
     {
       pool_get (lcm->lcl_to_rmt_adjacencies, rmts);
-      memset (rmts, 0, sizeof (*rmts));
+      clib_memset (rmts, 0, sizeof (*rmts));
       rmts_idx = rmts - lcm->lcl_to_rmt_adjacencies;
       hash_set (lcm->lcl_to_rmt_adjs_by_lcl_idx, src_map_index, rmts_idx);
     }
@@ -606,7 +606,7 @@ dp_add_fwd_entry_from_mt (u32 si, u32 di)
 {
   fwd_entry_mt_arg_t a;
 
-  memset (&a, 0, sizeof (a));
+  clib_memset (&a, 0, sizeof (a));
   a.si = si;
   a.di = di;
 
@@ -699,7 +699,7 @@ vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add)
 	  return -1;
 	}
 
-      memset (ms, 0, sizeof (*ms));
+      clib_memset (ms, 0, sizeof (*ms));
       ip_address_copy (&ms->address, addr);
       vec_add1 (lcm->map_servers, ms[0]);
 
@@ -1213,7 +1213,7 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
   gid_address_t *e;
   remove_mapping_args_t a;
 
-  memset (&a, 0, sizeof (a));
+  clib_memset (&a, 0, sizeof (a));
 
   /* do this only in src/dst mode ... */
   if (MR_MODE_SRC_DST != lcm->map_request_mode)
@@ -1234,7 +1234,7 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
   {
     vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
 
-    memset (adj_args, 0, sizeof (adj_args[0]));
+    clib_memset (adj_args, 0, sizeof (adj_args[0]));
     gid_address_copy (&adj_args->reid, e);
     adj_args->is_add = 0;
     if (vnet_lisp_add_del_adjacency (adj_args))
@@ -1297,7 +1297,7 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
   if (is_updated)
     is_updated[0] = 0;
 
-  memset (ls_args, 0, sizeof (ls_args[0]));
+  clib_memset (ls_args, 0, sizeof (ls_args[0]));
 
   ls_args->locators = rlocs;
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->eid);
@@ -1393,8 +1393,8 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
   mapping_t *old_map;
   u32 mi;
 
-  memset (ls_args, 0, sizeof (ls_args[0]));
-  memset (m_args, 0, sizeof (m_args[0]));
+  clib_memset (ls_args, 0, sizeof (ls_args[0]));
+  clib_memset (m_args, 0, sizeof (m_args[0]));
   if (res_map_index)
     res_map_index[0] = ~0;
 
@@ -1604,7 +1604,7 @@ vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
 	  locator_set_index = p[0];
 
 	  pool_get (lcm->mapping_pool, m);
-	  memset (m, 0, sizeof *m);
+	  clib_memset (m, 0, sizeof *m);
 	  m->locator_set_index = locator_set_index;
 	  m->local = 1;
 	  m->nsh_set = 1;
@@ -1709,12 +1709,12 @@ vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
       return VNET_API_ERROR_LISP_DISABLED;
     }
 
-  memset (ls_args, 0, sizeof (*ls_args));
+  clib_memset (ls_args, 0, sizeof (*ls_args));
 
   if (is_add)
     {
       /* Create dummy petr locator-set */
-      memset (&loc, 0, sizeof (loc));
+      clib_memset (&loc, 0, sizeof (loc));
       gid_address_from_ip (&loc.address, ip);
       loc.priority = 1;
       loc.state = loc.weight = 1;
@@ -1848,7 +1848,7 @@ update_adjacencies_by_map_index (lisp_cp_main_t * lcm,
   uword *fei = 0, *rmts_idxp = 0;
   u32 **rmts = 0, *remote_idxp = 0, *rmts_copy = 0;
   vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   map = pool_elt_at_index (lcm->mapping_pool, mapping_index);
 
@@ -2089,7 +2089,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
       else
 	{
 	  pool_get (lcm->locator_set_pool, ls);
-	  memset (ls, 0, sizeof (*ls));
+	  clib_memset (ls, 0, sizeof (*ls));
 	  ls_index = ls - lcm->locator_set_pool;
 
 	  if (a->local)
@@ -2348,7 +2348,7 @@ vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a)
 	  return -1;
 	}
 
-      memset (mr, 0, sizeof (*mr));
+      clib_memset (mr, 0, sizeof (*mr));
       ip_address_copy (&mr->address, &a->address);
       vec_add1 (lcm->map_resolvers, *mr);
 
@@ -2511,7 +2511,7 @@ build_itr_rloc_list (lisp_cp_main_t * lcm, locator_set_t * loc_set)
   ip_prefix_t *ippref = &gid_address_ippref (gid);
   ip_address_t *rloc = &ip_prefix_addr (ippref);
 
-  memset (gid, 0, sizeof (gid[0]));
+  clib_memset (gid, 0, sizeof (gid[0]));
   gid_address_type (gid) = GID_ADDR_IP_PREFIX;
   for (i = 0; i < vec_len (loc_set->locator_indices); i++)
     {
@@ -2611,7 +2611,7 @@ build_encapsulated_map_request (lisp_cp_main_t * lcm,
       && GID_ADDR_SRC_DST != gid_address_type (deid))
     {
       gid_address_t sd;
-      memset (&sd, 0, sizeof (sd));
+      clib_memset (&sd, 0, sizeof (sd));
       build_src_dst (&sd, seid, deid);
       lisp_msg_put_mreq (lcm, b, seid, &sd, rlocs, is_smr_invoked,
 			 0 /* rloc probe */ , nonce_res);
@@ -3010,7 +3010,7 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
     map_registers_sent++;
 
     pool_get (lcm->pending_map_registers_pool, pmr);
-    memset (pmr, 0, sizeof (*pmr));
+    clib_memset (pmr, 0, sizeof (*pmr));
     pmr->time_to_expire = PENDING_MREG_EXPIRATION_TIME;
     hash_set (lcm->map_register_messages_by_nonce, nonce,
 	      pmr - lcm->pending_map_registers_pool);
@@ -3178,7 +3178,7 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
     {
       /* add map-request to pending requests table */
       pool_get (lcm->pending_map_requests_pool, pmr);
-      memset (pmr, 0, sizeof (*pmr));
+      clib_memset (pmr, 0, sizeof (*pmr));
       gid_address_copy (&pmr->src, seid);
       gid_address_copy (&pmr->dst, deid);
       clib_fifo_add1 (pmr->nonces, nonce);
@@ -3274,8 +3274,8 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   u32 vni = 0;
   icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *opt;
 
-  memset (src, 0, sizeof (*src));
-  memset (dst, 0, sizeof (*dst));
+  clib_memset (src, 0, sizeof (*src));
+  clib_memset (dst, 0, sizeof (*dst));
 
   gid_address_type (dst) = GID_ADDR_NO_ADDRESS;
   gid_address_type (src) = GID_ADDR_NO_ADDRESS;
@@ -3314,8 +3314,8 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 	  if (clib_net_to_host_u16 (ah->opcode)
 	      != ETHERNET_ARP_OPCODE_request)
 	    {
-	      memset (&gid_address_arp_ndp_ip (dst), 0,
-		      sizeof (ip_address_t));
+	      clib_memset (&gid_address_arp_ndp_ip (dst), 0,
+			   sizeof (ip_address_t));
 	      ip_addr_version (&gid_address_arp_ndp_ip (dst)) = IP4;
 	      gid_address_arp_ndp_bd (dst) = ~0;
 	      return;
@@ -3346,8 +3346,8 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 			   ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address)
 			  || (opt->header.n_data_u64s != 1))
 			{
-			  memset (&gid_address_arp_ndp_ip (dst), 0,
-				  sizeof (ip_address_t));
+			  clib_memset (&gid_address_arp_ndp_ip (dst), 0,
+				       sizeof (ip_address_t));
 			  ip_addr_version (&gid_address_arp_ndp_ip (dst)) =
 			    IP6;
 			  gid_address_arp_ndp_bd (dst) = ~0;
@@ -3556,7 +3556,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, b0,
 							   sizeof (*tr));
 
-	      memset (tr, 0, sizeof (*tr));
+	      clib_memset (tr, 0, sizeof (*tr));
 	      gid_address_copy (&tr->dst_eid, &dst);
 	      ip_address_copy (&tr->map_resolver_ip,
 			       &lcm->active_map_resolver);
@@ -3727,7 +3727,7 @@ remove_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
 {
   mapping_t *m;
   vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
-  memset (adj_args, 0, sizeof (adj_args[0]));
+  clib_memset (adj_args, 0, sizeof (adj_args[0]));
 
   m = pool_elt_at_index (lcm->mapping_pool, mi);
 
@@ -3778,7 +3778,7 @@ process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
 
   fe = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->rmt_eid = fe->reid;
   if (fe->is_src_dst)
     a->lcl_eid = fe->leid;
@@ -3797,7 +3797,7 @@ process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
 	    {
 	      /* mapping is in use, re-fetch */
 	      map_request_args_t mr_args;
-	      memset (&mr_args, 0, sizeof (mr_args));
+	      clib_memset (&mr_args, 0, sizeof (mr_args));
 	      mr_args.seid = fe->leid;
 	      mr_args.deid = fe->reid;
 
@@ -3861,7 +3861,7 @@ process_map_reply (map_records_arg_t * a)
   vec_foreach (m, a->mappings)
   {
     vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
-    memset (m_args, 0, sizeof (m_args[0]));
+    clib_memset (m_args, 0, sizeof (m_args[0]));
     gid_address_copy (&m_args->eid, &m->eid);
     m_args->action = m->action;
     m_args->authoritative = m->authoritative;
@@ -3878,7 +3878,7 @@ process_map_reply (map_records_arg_t * a)
       {
 	/* try to program forwarding only if mapping saved or updated */
 	vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
-	memset (adj_args, 0, sizeof (adj_args[0]));
+	clib_memset (adj_args, 0, sizeof (adj_args[0]));
 
 	gid_address_copy (&adj_args->leid, &pmr->src);
 	gid_address_copy (&adj_args->reid, &m->eid);
@@ -3929,7 +3929,7 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
   clib_memcpy (auth_data, MNOTIFY_DATA (h), auth_data_len);
 
   /* clear auth data */
-  memset (MNOTIFY_DATA (h), 0, auth_data_len);
+  clib_memset (MNOTIFY_DATA (h), 0, auth_data_len);
 
   /* get hash of the message */
   unsigned char *code = HMAC (get_encrypt_fcn (key_id), key, vec_len (key),
@@ -4022,7 +4022,7 @@ parse_map_records (vlib_buffer_t * b, map_records_arg_t * a, u8 count)
   mapping_t m;
   locator_t *loc;
 
-  memset (&m, 0, sizeof (m));
+  clib_memset (&m, 0, sizeof (m));
 
   /* parse record eid */
   for (i = 0; i < count; i++)
@@ -4077,10 +4077,10 @@ parse_map_notify (vlib_buffer_t * b)
   map_records_arg_t *a;
 
   a = map_record_args_get ();
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   mnotif_hdr = vlib_buffer_get_current (b);
   vlib_buffer_pull (b, sizeof (*mnotif_hdr));
-  memset (&deid, 0, sizeof (deid));
+  clib_memset (&deid, 0, sizeof (deid));
 
   a->nonce = MNOTIFY_NONCE (mnotif_hdr);
   key_id = clib_net_to_host_u16 (MNOTIFY_KEY_ID (mnotif_hdr));
@@ -4163,7 +4163,7 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
 
   vec_add1 (records, m[0]);
   add_locators (lcm, &records[0], m->locator_set_index, probed_loc);
-  memset (&src, 0, sizeof (src));
+  clib_memset (&src, 0, sizeof (src));
 
   if (!ip_fib_get_first_egress_ip_for_dst (lcm, dst, &src))
     {
@@ -4244,7 +4244,7 @@ process_map_request (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* parse eid records and send SMR-invoked map-requests */
   for (i = 0; i < MREQ_REC_COUNT (mreq_hdr); i++)
     {
-      memset (&dst, 0, sizeof (dst));
+      clib_memset (&dst, 0, sizeof (dst));
       len = lisp_msg_parse_eid_rec (b, &dst);
       if (len == ~0)
 	{
@@ -4266,7 +4266,7 @@ process_map_request (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto done;
 	    }
 	  rloc_probe_recv++;
-	  memset (&m, 0, sizeof (m));
+	  clib_memset (&m, 0, sizeof (m));
 	  u32 mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
 
 	  // TODO: select best locator; for now use the first one
@@ -4302,7 +4302,7 @@ parse_map_reply (vlib_buffer_t * b)
   map_records_arg_t *a;
 
   a = map_record_args_get ();
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   locator_t *locators;
 
@@ -4318,7 +4318,7 @@ parse_map_reply (vlib_buffer_t * b)
 
   for (i = 0; i < MREP_REC_COUNT (mrep_hdr); i++)
     {
-      memset (&m, 0, sizeof (m));
+      clib_memset (&m, 0, sizeof (m));
       locators = 0;
       h = vlib_buffer_get_current (b);
 
@@ -4473,8 +4473,9 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->flags = 0;
   lcm->pitr_map_index = ~0;
   lcm->petr_map_index = ~0;
-  memset (&lcm->active_map_resolver, 0, sizeof (lcm->active_map_resolver));
-  memset (&lcm->active_map_server, 0, sizeof (lcm->active_map_server));
+  clib_memset (&lcm->active_map_resolver, 0,
+	       sizeof (lcm->active_map_resolver));
+  clib_memset (&lcm->active_map_server, 0, sizeof (lcm->active_map_server));
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
   lcm->do_map_resolver_election = 1;
@@ -4512,8 +4513,8 @@ lisp_stats_api_fill (lisp_cp_main_t * lcm, lisp_gpe_main_t * lgm,
   const lisp_gpe_tunnel_t *lgt;
   fwd_entry_t *fe;
 
-  memset (stat, 0, sizeof (*stat));
-  memset (&fwd_key, 0, sizeof (fwd_key));
+  clib_memset (stat, 0, sizeof (*stat));
+  clib_memset (&fwd_key, 0, sizeof (fwd_key));
 
   fe = pool_elt_at_index (lcm->fwd_entry_pool, key->fwd_entry_index);
   ASSERT (fe != 0);

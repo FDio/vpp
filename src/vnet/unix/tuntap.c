@@ -445,7 +445,7 @@ tuntap_exit (vlib_main_t * vm)
   if (sfd < 0)
     clib_unix_warning ("provisioning socket");
 
-  memset (&ifr, 0, sizeof (ifr));
+  clib_memset (&ifr, 0, sizeof (ifr));
   strncpy (ifr.ifr_name, tm->tun_name, sizeof (ifr.ifr_name) - 1);
 
   /* get flags, modify to bring down interface... */
@@ -535,7 +535,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
       goto done;
     }
 
-  memset (&ifr, 0, sizeof (ifr));
+  clib_memset (&ifr, 0, sizeof (ifr));
   strncpy (ifr.ifr_name, tm->tun_name, sizeof (ifr.ifr_name) - 1);
   ifr.ifr_flags = flags;
   if (ioctl (tm->dev_net_tun_fd, TUNSETIFF, (void *) &ifr) < 0)
@@ -563,7 +563,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
     struct ifreq ifr;
     struct sockaddr_ll sll;
 
-    memset (&ifr, 0, sizeof (ifr));
+    clib_memset (&ifr, 0, sizeof (ifr));
     strncpy (ifr.ifr_name, tm->tun_name, sizeof (ifr.ifr_name) - 1);
     if (ioctl (tm->dev_tap_fd, SIOCGIFINDEX, &ifr) < 0)
       {
@@ -572,7 +572,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
       }
 
     /* Bind the provisioning socket to the interface. */
-    memset (&sll, 0, sizeof (sll));
+    clib_memset (&sll, 0, sizeof (sll));
     sll.sll_family = AF_PACKET;
     sll.sll_ifindex = ifr.ifr_ifindex;
     sll.sll_protocol = htons (ETH_P_ALL);
@@ -719,7 +719,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
     return;
 
   /** See if we already know about this subif */
-  memset (&subif_addr, 0, sizeof (subif_addr));
+  clib_memset (&subif_addr, 0, sizeof (subif_addr));
   subif_addr.sw_if_index = sw_if_index;
   clib_memcpy (&subif_addr.addr, address, sizeof (*address));
 
@@ -735,7 +735,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
     }
 
   /* Use subif pool index to select alias device. */
-  memset (&ifr, 0, sizeof (ifr));
+  clib_memset (&ifr, 0, sizeof (ifr));
   snprintf (ifr.ifr_name, sizeof (ifr.ifr_name),
 	    "%s:%d", tm->tun_name, (int) (ap - tm->subifs));
 
@@ -835,7 +835,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
     return;
 
   /* See if we already know about this subif */
-  memset (&subif_addr, 0, sizeof (subif_addr));
+  clib_memset (&subif_addr, 0, sizeof (subif_addr));
   subif_addr.sw_if_index = sw_if_index;
   subif_addr.is_v6 = 1;
   clib_memcpy (&subif_addr.addr, address, sizeof (*address));
@@ -852,8 +852,8 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
     }
 
   /* Use subif pool index to select alias device. */
-  memset (&ifr, 0, sizeof (ifr));
-  memset (&ifr6, 0, sizeof (ifr6));
+  clib_memset (&ifr, 0, sizeof (ifr));
+  clib_memset (&ifr6, 0, sizeof (ifr6));
   snprintf (ifr.ifr_name, sizeof (ifr.ifr_name),
 	    "%s:%d", tm->tun_name, (int) (ap - tm->subifs));
 

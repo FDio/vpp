@@ -79,7 +79,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   u8 *ck = 0, *ik = 0;
   clib_error_t *error = NULL;
 
-  memset (&sa, 0, sizeof (sa));
+  clib_memset (&sa, 0, sizeof (sa));
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -262,7 +262,7 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
   u32 tmp, tmp2;
   clib_error_t *error = NULL;
 
-  memset (&p, 0, sizeof (p));
+  clib_memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
   p.laddr.stop.ip4.as_u32 = p.raddr.stop.ip4.as_u32 = (u32) ~ 0;
   p.laddr.stop.ip6.as_u64[0] = p.laddr.stop.ip6.as_u64[1] = (u64) ~ 0;
@@ -394,7 +394,7 @@ set_ipsec_sa_key_command_fn (vlib_main_t * vm,
   u8 *ck = 0, *ik = 0;
   clib_error_t *error = NULL;
 
-  memset (&sa, 0, sizeof (sa));
+  clib_memset (&sa, 0, sizeof (sa));
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -746,7 +746,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   u32 num_m_args = 0;
   clib_error_t *error = NULL;
 
-  memset (&a, 0, sizeof (a));
+  clib_memset (&a, 0, sizeof (a));
   a.is_add = 1;
 
   /* Get a line of input. */

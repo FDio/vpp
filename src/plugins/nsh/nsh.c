@@ -154,7 +154,7 @@ nsh_md2_register_option (u16 class,
 
   pool_get_aligned (nm->nsh_option_mappings, nsh_option,
 		    CLIB_CACHE_LINE_BYTES);
-  memset (nsh_option, 0, sizeof (*nsh_option));
+  clib_memset (nsh_option, 0, sizeof (*nsh_option));
   nsh_option->option_id = nsh_option - nm->nsh_option_mappings;
 
   key_copy = clib_mem_alloc (sizeof (*key_copy));
@@ -527,7 +527,7 @@ nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp)
 	return -1;		//TODO API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (nm->nsh_mappings, map, CLIB_CACHE_LINE_BYTES);
-      memset (map, 0, sizeof (*map));
+      clib_memset (map, 0, sizeof (*map));
 
       /* copy from arg structure */
       map->nsp_nsi = a->map.nsp_nsi;
@@ -614,7 +614,7 @@ nsh_add_del_proxy_session (nsh_add_del_map_args_t * a)
   hash_pair_t *hp;
   u32 nsp = 0, nsi = 0;
 
-  memset (&key, 0, sizeof (key));
+  clib_memset (&key, 0, sizeof (key));
   key.transport_type = a->map.next_node;
   key.transport_index = a->map.sw_if_index;
 
@@ -627,7 +627,7 @@ nsh_add_del_proxy_session (nsh_add_del_map_args_t * a)
 	return -1;		//TODO API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (nm->nsh_proxy_sessions, proxy, CLIB_CACHE_LINE_BYTES);
-      memset (proxy, 0, sizeof (*proxy));
+      clib_memset (proxy, 0, sizeof (*proxy));
 
       /* Nsi needs to minus 1 within NSH-Proxy */
       nsp = (a->map.nsp_nsi >> NSH_NSP_SHIFT) & NSH_NSP_MASK;
@@ -783,7 +783,7 @@ nsh_add_del_map_command_fn (vlib_main_t * vm,
     return clib_error_return (0,
 			      "must specific action: [encap-gre-intf <nn> | encap-vxlan-gpe-intf <nn> | encap-lisp-gpe-intf <nn> | encap-none <tx_sw_if_index> <rx_sw_if_index>]");
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
 
   /* set args structure */
   a->is_add = is_add;
@@ -933,7 +933,7 @@ nsh_header_rewrite (nsh_entry_t * nsh_entry)
       len = MAX_NSH_HEADER_LEN;
     }
   vec_validate_aligned (rw, len - 1, CLIB_CACHE_LINE_BYTES);
-  memset (rw, 0, len);
+  clib_memset (rw, 0, len);
 
   nsh_base = (nsh_base_header_t *) rw;
   nsh_base->ver_o_c = nsh_entry->nsh_base.ver_o_c;
@@ -1033,7 +1033,7 @@ nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp)
 	return -1;		// TODO VNET_API_ERROR_INVALID_VALUE;
 
       pool_get_aligned (nm->nsh_entries, nsh_entry, CLIB_CACHE_LINE_BYTES);
-      memset (nsh_entry, 0, sizeof (*nsh_entry));
+      clib_memset (nsh_entry, 0, sizeof (*nsh_entry));
 
       /* copy from arg structure */
 #define _(x) nsh_entry->nsh_base.x = a->nsh_entry.nsh_base.x;
@@ -1185,7 +1185,7 @@ nsh_add_del_entry_command_fn (vlib_main_t * vm,
 
   nsp_nsi = (nsp << 8) | nsi;
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->is_add = is_add;
 
   if (md_type == 1)
@@ -1318,7 +1318,7 @@ static void send_nsh_entry_details
   nsh_main_t *nm = &nsh_main;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
 
   rmp->_vl_msg_id = ntohs ((VL_API_NSH_ENTRY_DETAILS) + nm->msg_id_base);
   rmp->ver_o_c = t->nsh_base.ver_o_c;
@@ -1391,7 +1391,7 @@ static void send_nsh_map_details
   nsh_main_t *nm = &nsh_main;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
 
   rmp->_vl_msg_id = ntohs ((VL_API_NSH_MAP_DETAILS) + nm->msg_id_base);
   rmp->nsp_nsi = htonl (t->nsp_nsi);
@@ -1784,7 +1784,7 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      memset (&key0, 0, sizeof (key0));
+	      clib_memset (&key0, 0, sizeof (key0));
 	      key0.transport_type = NSH_NODE_NEXT_ENCAP_VXLAN4;
 	      key0.transport_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
@@ -1949,7 +1949,7 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      memset (&key1, 0, sizeof (key1));
+	      clib_memset (&key1, 0, sizeof (key1));
 	      key1.transport_type = NSH_NODE_NEXT_ENCAP_VXLAN4;
 	      key1.transport_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
@@ -2151,7 +2151,7 @@ nsh_input_map (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      memset (&key0, 0, sizeof (key0));
+	      clib_memset (&key0, 0, sizeof (key0));
 	      key0.transport_type = NSH_NODE_NEXT_ENCAP_VXLAN4;
 	      key0.transport_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 

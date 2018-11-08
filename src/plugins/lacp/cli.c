@@ -33,7 +33,7 @@ lacp_dump_ifs (lacp_interface_details_t ** out_lacpifs)
     if ((sif->port_enabled == 0) || (sif->lacp_enabled == 0))
       continue;
     vec_add2(r_lacpifs, lacpif, 1);
-    memset (lacpif, 0, sizeof (*lacpif));
+    clib_memset (lacpif, 0, sizeof (*lacpif));
     lacpif->sw_if_index = sif->sw_if_index;
     hi = vnet_get_hw_interface (vnm, sif->hw_if_index);
     clib_memcpy(lacpif->interface_name, hi->name,

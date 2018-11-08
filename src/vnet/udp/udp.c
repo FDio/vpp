@@ -45,7 +45,7 @@ udp_connection_alloc (u32 thread_index)
       pool_get_aligned (um->connections[thread_index], uc,
 			CLIB_CACHE_LINE_BYTES);
     }
-  memset (uc, 0, sizeof (*uc));
+  clib_memset (uc, 0, sizeof (*uc));
   uc->c_c_index = uc - um->connections[thread_index];
   uc->c_thread_index = thread_index;
   uc->c_proto = TRANSPORT_PROTO_UDP;
@@ -58,7 +58,7 @@ udp_connection_free (udp_connection_t * uc)
 {
   pool_put (udp_main.connections[uc->c_thread_index], uc);
   if (CLIB_DEBUG)
-    memset (uc, 0xFA, sizeof (*uc));
+    clib_memset (uc, 0xFA, sizeof (*uc));
 }
 
 u32
@@ -76,7 +76,7 @@ udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
     return -1;
 
   pool_get (um->listener_pool, listener);
-  memset (listener, 0, sizeof (udp_connection_t));
+  clib_memset (listener, 0, sizeof (udp_connection_t));
 
   listener->c_lcl_port = lcl->port;
   listener->c_c_index = listener - um->listener_pool;

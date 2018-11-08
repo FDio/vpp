@@ -919,7 +919,7 @@ typedef struct
 always_inline void
 elf_main_init (elf_main_t * em)
 {
-  memset (em, 0, sizeof (em[0]));
+  clib_memset (em, 0, sizeof (em[0]));
 }
 
 always_inline void

@@ -95,7 +95,7 @@ main (int argc, char *argv[])
 
   vec_resize (objects, 1000);
   if (vec_bytes (objects) > 0)	/* stupid warning be gone */
-    memset (objects, ~0, vec_bytes (objects));
+    clib_memset (objects, ~0, vec_bytes (objects));
   vec_resize (handles, vec_len (objects));
 
   objects_used = 0;

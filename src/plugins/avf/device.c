@@ -227,7 +227,7 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   rxq->descs = vlib_physmem_alloc_aligned (vm, am->physmem_region, &error,
 					   rxq->size * sizeof (avf_rx_desc_t),
 					   2 * CLIB_CACHE_LINE_BYTES);
-  memset ((void *) rxq->descs, 0, rxq->size * sizeof (avf_rx_desc_t));
+  clib_memset ((void *) rxq->descs, 0, rxq->size * sizeof (avf_rx_desc_t));
   vec_validate_aligned (rxq->bufs, rxq->size, CLIB_CACHE_LINE_BYTES);
   rxq->qrx_tail = ad->bar0 + AVF_QRX_TAIL (qid);
 
@@ -295,7 +295,7 @@ avf_arq_slot_init (avf_device_t * ad, u16 slot)
   avf_aq_desc_t *d;
   u64 pa = ad->arq_bufs_pa + slot * AVF_MBOX_BUF_SZ;
   d = &ad->arq[slot];
-  memset (d, 0, sizeof (avf_aq_desc_t));
+  clib_memset (d, 0, sizeof (avf_aq_desc_t));
   d->flags = AVF_AQ_F_BUF;
   d->datalen = AVF_MBOX_BUF_SZ;
   d->addr_hi = (u32) (pa >> 32);
@@ -318,7 +318,7 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
   int i;
 
   /* VF MailBox Transmit */
-  memset (ad->atq, 0, sizeof (avf_aq_desc_t) * AVF_MBOX_LEN);
+  clib_memset (ad->atq, 0, sizeof (avf_aq_desc_t) * AVF_MBOX_LEN);
   ad->atq_bufs_pa = avf_dma_addr (vm, ad, ad->atq_bufs);
 
   pa = avf_dma_addr (vm, ad, ad->atq);
@@ -329,7 +329,7 @@ avf_adminq_init (vlib_main_t * vm, avf_device_t * ad)
   avf_reg_write (ad, AVF_ATQBAH, (u32) (pa >> 32));	/* Base Address High */
 
   /* VF MailBox Receive */
-  memset (ad->arq, 0, sizeof (avf_aq_desc_t) * AVF_MBOX_LEN);
+  clib_memset (ad->arq, 0, sizeof (avf_aq_desc_t) * AVF_MBOX_LEN);
   ad->arq_bufs_pa = avf_dma_addr (vm, ad, ad->arq_bufs);
 
   for (i = 0; i < AVF_MBOX_LEN; i++)
@@ -498,7 +498,7 @@ avf_op_config_rss_lut (vlib_main_t * vm, avf_device_t * ad)
   u8 msg[msg_len];
   virtchnl_rss_lut_t *rl;
 
-  memset (msg, 0, msg_len);
+  clib_memset (msg, 0, msg_len);
   rl = (virtchnl_rss_lut_t *) msg;
   rl->vsi_id = ad->vsi_id;
   rl->lut_entries = ad->rss_lut_size;
@@ -517,7 +517,7 @@ avf_op_config_rss_key (vlib_main_t * vm, avf_device_t * ad)
   u8 msg[msg_len];
   virtchnl_rss_key_t *rk;
 
-  memset (msg, 0, msg_len);
+  clib_memset (msg, 0, msg_len);
   rk = (virtchnl_rss_key_t *) msg;
   rk->vsi_id = ad->vsi_id;
   rk->key_len = ad->rss_key_size;
@@ -558,7 +558,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
   u8 msg[msg_len];
   virtchnl_vsi_queue_config_info_t *ci;
 
-  memset (msg, 0, msg_len);
+  clib_memset (msg, 0, msg_len);
   ci = (virtchnl_vsi_queue_config_info_t *) msg;
   ci->vsi_id = ad->vsi_id;
   ci->num_queue_pairs = n_qp;
@@ -603,7 +603,7 @@ avf_op_config_irq_map (vlib_main_t * vm, avf_device_t * ad)
   u8 msg[msg_len];
   virtchnl_irq_map_info_t *imi;
 
-  memset (msg, 0, msg_len);
+  clib_memset (msg, 0, msg_len);
   imi = (virtchnl_irq_map_info_t *) msg;
   imi->num_vectors = count;
 
@@ -624,7 +624,7 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
   virtchnl_ether_addr_list_t *al;
   int i;
 
-  memset (msg, 0, msg_len);
+  clib_memset (msg, 0, msg_len);
   al = (virtchnl_ether_addr_list_t *) msg;
   al->vsi_id = ad->vsi_id;
   al->num_elements = count;
@@ -1161,7 +1161,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
   vec_free (ad->txqs);
 
   clib_error_free (ad->error);
-  memset (ad, 0, sizeof (*ad));
+  clib_memset (ad, 0, sizeof (*ad));
   pool_put (am->devices, ad);
 }
 

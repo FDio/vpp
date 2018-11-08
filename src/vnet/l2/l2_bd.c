@@ -1298,7 +1298,7 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->is_add = is_add;
   a->bd_id = bd_id;
   a->flood = (u8) flood;

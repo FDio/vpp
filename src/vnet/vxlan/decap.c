@@ -204,9 +204,9 @@ vxlan_input (vlib_main_t * vm,
   u32 thread_index = vlib_get_thread_index ();
 
   if (is_ip4)
-    memset (&last4, 0xff, sizeof last4);
+    clib_memset (&last4, 0xff, sizeof last4);
   else
-    memset (&last6, 0xff, sizeof last6);
+    clib_memset (&last6, 0xff, sizeof last6);
 
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left_from = from_frame->n_vectors;

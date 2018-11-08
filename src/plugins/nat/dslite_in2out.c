@@ -56,7 +56,7 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
       (&dm->per_thread_data[thread_index].b4_hash, &b4_kv, &b4_value))
     {
       pool_get (dm->per_thread_data[thread_index].b4s, b4);
-      memset (b4, 0, sizeof (*b4));
+      clib_memset (b4, 0, sizeof (*b4));
       b4->addr.as_u64[0] = in2out_key->softwire_id.as_u64[0];
       b4->addr.as_u64[1] = in2out_key->softwire_id.as_u64[1];
 
@@ -119,7 +119,7 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
 	  return DSLITE_IN2OUT_NEXT_DROP;
 	}
       pool_get (dm->per_thread_data[thread_index].sessions, s);
-      memset (s, 0, sizeof (*s));
+      clib_memset (s, 0, sizeof (*s));
       b4->nsessions++;
 
       pool_get (dm->per_thread_data[thread_index].list_pool, elt);

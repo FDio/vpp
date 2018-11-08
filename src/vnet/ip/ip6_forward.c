@@ -2514,8 +2514,8 @@ static clib_error_t *
 ip6_hop_by_hop_init (vlib_main_t * vm)
 {
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
-  memset (hm->options, 0, sizeof (hm->options));
-  memset (hm->trace, 0, sizeof (hm->trace));
+  clib_memset (hm->options, 0, sizeof (hm->options));
+  clib_memset (hm->trace, 0, sizeof (hm->trace));
   hm->next_override = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
   return (0);
 }
@@ -2649,7 +2649,7 @@ ip6_lookup_init (vlib_main_t * vm)
   {
     icmp6_neighbor_solicitation_header_t p;
 
-    memset (&p, 0, sizeof (p));
+    clib_memset (&p, 0, sizeof (p));
 
     p.ip.ip_version_traffic_class_and_flow_label =
       clib_host_to_net_u32 (0x6 << 28);

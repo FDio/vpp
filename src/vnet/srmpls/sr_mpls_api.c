@@ -112,7 +112,7 @@ static void vl_api_sr_mpls_steering_add_del_t_handler
 {
   vl_api_sr_mpls_steering_add_del_reply_t *rmp;
   ip46_address_t prefix;
-  memset (&prefix, 0, sizeof (ip46_address_t));
+  clib_memset (&prefix, 0, sizeof (ip46_address_t));
   if (mp->traffic_type == SR_STEER_IPV4)
     memcpy (&prefix.ip4, mp->prefix_addr, sizeof (prefix.ip4));
   else
@@ -146,7 +146,7 @@ static void vl_api_sr_mpls_policy_assign_endpoint_color_t_handler
   int rv = 0;
 
   ip46_address_t endpoint;
-  memset (&endpoint, 0, sizeof (ip46_address_t));
+  clib_memset (&endpoint, 0, sizeof (ip46_address_t));
   if (mp->endpoint_type == SR_STEER_IPV4)
     memcpy (&endpoint.ip4, mp->endpoint, sizeof (endpoint.ip4));
   else

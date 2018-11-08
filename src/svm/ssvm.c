@@ -381,7 +381,7 @@ ssvm_master_init_private (ssvm_private_t * ssvm)
   sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
   ssvm->sh = sh;
 
-  memset (sh, 0, sizeof (*sh));
+  clib_memset (sh, 0, sizeof (*sh));
   sh->heap = heap;
   sh->type = SSVM_SEGMENT_PRIVATE;
 

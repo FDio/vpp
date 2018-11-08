@@ -1157,7 +1157,7 @@ pcap_drop_trace_command_fn (vlib_main_t * vm,
 	      if (im->pcap_filename == 0)
 		im->pcap_filename = format (0, "/tmp/drop.pcap%c", 0);
 
-	      memset (&im->pcap_main, 0, sizeof (im->pcap_main));
+	      clib_memset (&im->pcap_main, 0, sizeof (im->pcap_main));
 	      im->pcap_main.file_name = (char *) im->pcap_filename;
 	      im->pcap_main.n_packets_to_capture = 100;
 	      if (im->pcap_pkts_to_capture)

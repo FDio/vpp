@@ -110,7 +110,7 @@ session_create_lookpback (u32 table_id, u32 * sw_if_index,
 {
   u8 intf_mac[6];
 
-  memset (intf_mac, 0, sizeof (intf_mac));
+  clib_memset (intf_mac, 0, sizeof (intf_mac));
 
   if (vnet_create_loopback_interface (sw_if_index, intf_mac, 0, 0))
     {
@@ -150,7 +150,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   u32 server_index;
 
-  memset (options, 0, sizeof (options));
+  clib_memset (options, 0, sizeof (options));
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
@@ -230,7 +230,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   server_sep.port = dummy_port;
   client_sep.is_ip4 = 1;
   client_sep.port = dummy_port;
-  memset (options, 0, sizeof (options));
+  clib_memset (options, 0, sizeof (options));
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   vnet_app_attach_args_t attach_args = {
@@ -559,7 +559,7 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  memset (srt, 0, sizeof (*srt));
+  clib_memset (srt, 0, sizeof (*srt));
   session_rules_table_init (srt);
 
   ip4_address_t lcl_ip = {
@@ -839,7 +839,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   server_sep.is_ip4 = 1;
   server_sep.port = dummy_port;
-  memset (options, 0, sizeof (options));
+  clib_memset (options, 0, sizeof (options));
 
   vnet_app_attach_args_t attach_args = {
     .api_client_index = ~0,
@@ -1424,7 +1424,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   app_ns = app_namespace_get_default ();
   app_ns->sw_if_index = sw_if_index;
 
-  memset (options, 0, sizeof (options));
+  clib_memset (options, 0, sizeof (options));
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_PROXY;

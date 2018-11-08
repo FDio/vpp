@@ -168,7 +168,7 @@ phash_main_free (phash_main_t * pm)
   phash_main_free_working_memory (pm);
   vec_free (pm->tab);
   vec_free (pm->keys);
-  memset (pm, 0, sizeof (pm[0]));
+  clib_memset (pm, 0, sizeof (pm[0]));
 }
 
 /* Slow hash computation for general keys. */

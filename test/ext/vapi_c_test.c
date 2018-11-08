@@ -603,13 +603,13 @@ START_TEST (test_loopbacks_1)
   printf ("--- Create/delete loopbacks using blocking API ---\n");
   const size_t num_ifs = 5;
   u8 mac_addresses[num_ifs][6];
-  memset (&mac_addresses, 0, sizeof (mac_addresses));
+  clib_memset (&mac_addresses, 0, sizeof (mac_addresses));
   u32 sw_if_indexes[num_ifs];
-  memset (&sw_if_indexes, 0xff, sizeof (sw_if_indexes));
+  clib_memset (&sw_if_indexes, 0xff, sizeof (sw_if_indexes));
   test_create_loopback_ctx_t clcs[num_ifs];
-  memset (&clcs, 0, sizeof (clcs));
+  clib_memset (&clcs, 0, sizeof (clcs));
   test_delete_loopback_ctx_t dlcs[num_ifs];
-  memset (&dlcs, 0, sizeof (dlcs));
+  clib_memset (&dlcs, 0, sizeof (dlcs));
   int i;
   for (i = 0; i < num_ifs; ++i)
     {
@@ -643,11 +643,11 @@ START_TEST (test_loopbacks_1)
   for (i = 0; i < attempts; ++i)
     {
       dctx.last_called = false;
-      memset (&seen, 0, sizeof (seen));
+      clib_memset (&seen, 0, sizeof (seen));
       dump = vapi_alloc_sw_interface_dump (ctx);
       dump->payload.name_filter_valid = 0;
-      memset (dump->payload.name_filter, 0,
-	      sizeof (dump->payload.name_filter));
+      clib_memset (dump->payload.name_filter, 0,
+		   sizeof (dump->payload.name_filter));
       while (VAPI_EAGAIN ==
 	     (rv =
 	      vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb,
@@ -660,7 +660,7 @@ START_TEST (test_loopbacks_1)
 	  ck_assert_int_eq (true, seen[j]);
 	}
     }
-  memset (&seen, 0, sizeof (seen));
+  clib_memset (&seen, 0, sizeof (seen));
   for (i = 0; i < num_ifs; ++i)
     {
       vapi_msg_delete_loopback *dl = vapi_alloc_delete_loopback (ctx);
@@ -675,10 +675,11 @@ START_TEST (test_loopbacks_1)
       printf ("Deleted loopback with sw_if_index %u\n", sw_if_indexes[i]);
     }
   dctx.last_called = false;
-  memset (&seen, 0, sizeof (seen));
+  clib_memset (&seen, 0, sizeof (seen));
   dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  memset (dump->payload.name_filter, 0, sizeof (dump->payload.name_filter));
+  clib_memset (dump->payload.name_filter, 0,
+	       sizeof (dump->payload.name_filter));
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -721,7 +722,7 @@ START_TEST (test_show_version_4)
   vapi_error_e rv;
   const size_t num_req = 5;
   int contexts[num_req];
-  memset (contexts, 0, sizeof (contexts));
+  clib_memset (contexts, 0, sizeof (contexts));
   int i;
   for (i = 0; i < num_req; ++i)
     {
@@ -744,7 +745,7 @@ START_TEST (test_show_version_4)
     {
       ck_assert_int_eq (1, contexts[i]);
     }
-  memset (contexts, 0, sizeof (contexts));
+  clib_memset (contexts, 0, sizeof (contexts));
   rv = vapi_dispatch (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   for (i = 0; i < num_req; ++i)
@@ -761,13 +762,13 @@ START_TEST (test_loopbacks_2)
   vapi_error_e rv;
   const size_t num_ifs = 5;
   u8 mac_addresses[num_ifs][6];
-  memset (&mac_addresses, 0, sizeof (mac_addresses));
+  clib_memset (&mac_addresses, 0, sizeof (mac_addresses));
   u32 sw_if_indexes[num_ifs];
-  memset (&sw_if_indexes, 0xff, sizeof (sw_if_indexes));
+  clib_memset (&sw_if_indexes, 0xff, sizeof (sw_if_indexes));
   test_create_loopback_ctx_t clcs[num_ifs];
-  memset (&clcs, 0, sizeof (clcs));
+  clib_memset (&clcs, 0, sizeof (clcs));
   test_delete_loopback_ctx_t dlcs[num_ifs];
-  memset (&dlcs, 0, sizeof (dlcs));
+  clib_memset (&dlcs, 0, sizeof (dlcs));
   int i;
   for (i = 0; i < num_ifs; ++i)
     {
@@ -798,11 +799,12 @@ START_TEST (test_loopbacks_2)
 	      sw_if_indexes[i]);
     }
   bool seen[num_ifs];
-  memset (&seen, 0, sizeof (seen));
+  clib_memset (&seen, 0, sizeof (seen));
   sw_interface_dump_ctx dctx = { false, num_ifs, sw_if_indexes, seen, 0 };
   vapi_msg_sw_interface_dump *dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  memset (dump->payload.name_filter, 0, sizeof (dump->payload.name_filter));
+  clib_memset (dump->payload.name_filter, 0,
+	       sizeof (dump->payload.name_filter));
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -811,7 +813,7 @@ START_TEST (test_loopbacks_2)
     {
       ck_assert_int_eq (false, seen[i]);
     }
-  memset (&seen, 0, sizeof (seen));
+  clib_memset (&seen, 0, sizeof (seen));
   ck_assert_int_eq (false, dctx.last_called);
   rv = vapi_dispatch (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
@@ -819,7 +821,7 @@ START_TEST (test_loopbacks_2)
     {
       ck_assert_int_eq (true, seen[i]);
     }
-  memset (&seen, 0, sizeof (seen));
+  clib_memset (&seen, 0, sizeof (seen));
   ck_assert_int_eq (true, dctx.last_called);
   for (i = 0; i < num_ifs; ++i)
     {
@@ -838,11 +840,12 @@ START_TEST (test_loopbacks_2)
       ck_assert_int_eq (1, dlcs[i].called);
       printf ("Deleted loopback with sw_if_index %u\n", sw_if_indexes[i]);
     }
-  memset (&seen, 0, sizeof (seen));
+  clib_memset (&seen, 0, sizeof (seen));
   dctx.last_called = false;
   dump = vapi_alloc_sw_interface_dump (ctx);
   dump->payload.name_filter_valid = 0;
-  memset (dump->payload.name_filter, 0, sizeof (dump->payload.name_filter));
+  clib_memset (dump->payload.name_filter, 0,
+	       sizeof (dump->payload.name_filter));
   while (VAPI_EAGAIN ==
 	 (rv =
 	  vapi_sw_interface_dump (ctx, dump, sw_interface_dump_cb, &dctx)))
@@ -853,7 +856,7 @@ START_TEST (test_loopbacks_2)
     {
       ck_assert_int_eq (false, seen[i]);
     }
-  memset (&seen, 0, sizeof (seen));
+  clib_memset (&seen, 0, sizeof (seen));
   ck_assert_int_eq (true, dctx.last_called);
 }
 

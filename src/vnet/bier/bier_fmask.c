@@ -54,7 +54,7 @@ bier_fmask_bits_init (bier_fmask_bits_t *bits,
 {
     bits->bfmb_refs = clib_mem_alloc(sizeof(bits->bfmb_refs[0]) *
                                      bier_hdr_len_id_to_num_bits(hlid));
-    memset(bits->bfmb_refs,
+    clib_memset(bits->bfmb_refs,
            0,
            (sizeof(bits->bfmb_refs[0]) *
             bier_hdr_len_id_to_num_bits(hlid)));
@@ -70,7 +70,7 @@ bier_fmask_bits_init (bier_fmask_bits_t *bits,
             sizeof(bits->bfmb_input_reset_string.bbs_buckets[0]) *
             bier_hdr_len_id_to_num_buckets(hlid),
             CLIB_CACHE_LINE_BYTES);
-    memset(bits->bfmb_input_reset_string.bbs_buckets,
+    clib_memset(bits->bfmb_input_reset_string.bbs_buckets,
            0,
            sizeof(bits->bfmb_input_reset_string.bbs_buckets[0]) *
            bier_hdr_len_id_to_num_buckets(hlid));
@@ -171,7 +171,7 @@ bier_fmask_init (bier_fmask_t *bfm,
     fib_route_path_t *rpaths;
     mpls_label_t olabel;
 
-    memset(bfm, 0, sizeof(*bfm));
+    clib_memset(bfm, 0, sizeof(*bfm));
     
     bfm->bfm_id = clib_mem_alloc(sizeof(*bfm->bfm_id));
 
@@ -411,7 +411,7 @@ bier_fmask_encode (index_t bfmi,
     bfm = bier_fmask_get(bfmi);
     *btid = *bier_table_get_id(bfm->bfm_id->bfmi_bti);
 
-    memset(rpath, 0, sizeof(*rpath));
+    clib_memset(rpath, 0, sizeof(*rpath));
 
     rpath->rpath.frp_sw_if_index = ~0;
 

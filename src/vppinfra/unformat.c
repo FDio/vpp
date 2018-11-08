@@ -335,7 +335,7 @@ unformat_token (unformat_input_t * input, va_list * va)
   if (!token_chars)
     token_chars = (u8 *) "a-zA-Z0-9_";
 
-  memset (map, 0, sizeof (map));
+  clib_memset (map, 0, sizeof (map));
   for (s = token_chars; *s;)
     {
       /* Parse range. */
@@ -576,9 +576,9 @@ unformat_float (unformat_input_t * input, va_list * va)
   uword signs[2], sign_index = 0;
   uword n_input = 0;
 
-  memset (values, 0, sizeof (values));
-  memset (n_digits, 0, sizeof (n_digits));
-  memset (signs, 0, sizeof (signs));
+  clib_memset (values, 0, sizeof (values));
+  clib_memset (n_digits, 0, sizeof (n_digits));
+  clib_memset (signs, 0, sizeof (signs));
 
   while ((c = unformat_get_input (input)) != UNFORMAT_END_OF_INPUT)
     {

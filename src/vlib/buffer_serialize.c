@@ -170,7 +170,7 @@ serialize_open_vlib_helper (serialize_main_t * m,
   /* Initialize serialize main but save overflow buffer for re-use between calls. */
   {
     u8 *save = m->stream.overflow_buffer;
-    memset (m, 0, sizeof (m[0]));
+    clib_memset (m, 0, sizeof (m[0]));
     m->stream.overflow_buffer = save;
     if (save)
       _vec_len (save) = 0;

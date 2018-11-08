@@ -247,8 +247,8 @@ api_gtpu_add_del_tunnel (vat_main_t * vam)
   int ret;
 
   /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
-  memset (&src, 0, sizeof src);
-  memset (&dst, 0, sizeof dst);
+  clib_memset (&src, 0, sizeof src);
+  clib_memset (&dst, 0, sizeof dst);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {

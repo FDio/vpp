@@ -241,7 +241,7 @@ vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
   vxlan_header_t *vxlan;
   /* Fixed portion of the (outer) ip header */
 
-  memset (&h, 0, sizeof (h));
+  clib_memset (&h, 0, sizeof (h));
   if (!is_ip6)
     {
       ip4_header_t *ip = &h.h4.ip4;
@@ -419,7 +419,7 @@ int vnet_vxlan_add_del_tunnel
 
       vxlan_tunnel_t *t;
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
-      memset (t, 0, sizeof (*t));
+      clib_memset (t, 0, sizeof (*t));
       dev_instance = t - vxm->tunnels;
 
       /* copy from arg structure */

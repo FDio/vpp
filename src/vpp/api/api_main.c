@@ -92,7 +92,7 @@ maybe_register_api_client (vat_main_t * vam)
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
 
   regp = *regpp;
-  memset (regp, 0, sizeof (*regp));
+  clib_memset (regp, 0, sizeof (*regp));
   regp->registration_type = REGISTRATION_TYPE_SHMEM;
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
   regp->vlib_rp = svm;

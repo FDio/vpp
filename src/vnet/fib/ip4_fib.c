@@ -109,7 +109,7 @@ ip4_create_fib_with_table_id (u32 table_id,
     void *old_heap;
 
     pool_get(ip4_main.fibs, fib_table);
-    memset(fib_table, 0, sizeof(*fib_table));
+    clib_memset(fib_table, 0, sizeof(*fib_table));
 
     old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
     pool_get_aligned(ip4_main.v4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);

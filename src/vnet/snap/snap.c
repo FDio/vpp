@@ -180,7 +180,7 @@ snap_init (vlib_main_t * vm)
 {
   snap_main_t *sm = &snap_main;
 
-  memset (sm, 0, sizeof (sm[0]));
+  clib_memset (sm, 0, sizeof (sm[0]));
   sm->vlib_main = vm;
 
   mhash_init (&sm->protocol_hash, sizeof (uword),

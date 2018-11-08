@@ -107,7 +107,7 @@ fib_entry_ae_add_or_lock (fib_node_index_t connected)
         fed = fib_entry_delegate_find_or_add(entry,
                                              FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
 	pool_get(fib_ae_export_pool, export);
-	memset(export, 0, sizeof(*export));
+	clib_memset(export, 0, sizeof(*export));
 
 	fed->fd_index = (export - fib_ae_export_pool);
 	export->faee_ei = connected;

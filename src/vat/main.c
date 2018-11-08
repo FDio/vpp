@@ -253,7 +253,7 @@ setup_signal_handlers (void)
 
   for (i = 1; i < 32; i++)
     {
-      memset (&sa, 0, sizeof (sa));
+      clib_memset (&sa, 0, sizeof (sa));
       sa.sa_sigaction = (void *) signal_handler;
       sa.sa_flags = SA_SIGINFO;
 

@@ -334,7 +334,7 @@ create_l2tpv3_ipv6_tunnel (l2t_main_t * lm,
     return VNET_API_ERROR_INVALID_VALUE;
 
   pool_get (lm->sessions, s);
-  memset (s, 0, sizeof (*s));
+  clib_memset (s, 0, sizeof (*s));
   clib_memcpy (&s->our_address, our_address, sizeof (s->our_address));
   clib_memcpy (&s->client_address, client_address,
 	       sizeof (s->client_address));

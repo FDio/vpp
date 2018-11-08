@@ -74,7 +74,7 @@ unformat_gpe_loc_pairs (void *locs, u32 rloc_num)
     {
       /* local locator */
       r = &((vl_api_gpe_locator_t *) locs)[i];
-      memset (&pair, 0, sizeof (pair));
+      clib_memset (&pair, 0, sizeof (pair));
       ip_address_set (&pair.lcl_loc, &r->addr, r->is_ip4 ? IP4 : IP6);
 
       pair.weight = r->weight;
@@ -174,7 +174,7 @@ static void
   vec_foreach (path, lfe->paths)
   {
     rmp = vl_msg_api_alloc (sizeof (*rmp));
-    memset (rmp, 0, sizeof (*rmp));
+    clib_memset (rmp, 0, sizeof (*rmp));
     const lisp_gpe_tunnel_t *lgt;
 
     rmp->_vl_msg_id =
@@ -200,7 +200,7 @@ gpe_fwd_entries_copy (vl_api_gpe_fwd_entry_t * dst,
 
   vec_foreach (e, src)
   {
-    memset (&dst[i], 0, sizeof (*dst));
+    clib_memset (&dst[i], 0, sizeof (*dst));
     dst[i].dp_table = e->dp_table;
     dst[i].fwd_entry_index = e->fwd_entry_index;
     dst[i].vni = e->vni;
@@ -332,7 +332,7 @@ vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t * mp)
   int rv = 0;
 
   gpe_add_del_fwd_entry_t_net_to_host (mp);
-  memset (a, 0, sizeof (a[0]));
+  clib_memset (a, 0, sizeof (a[0]));
 
   rv = unformat_lisp_eid_api (&a->rmt_eid, mp->vni, mp->eid_type,
 			      mp->rmt_eid, mp->rmt_len);
@@ -447,7 +447,7 @@ static void
   vnet_gpe_native_fwd_rpath_args_t _a, *a = &_a;
   int rv = 0;
 
-  memset (a, 0, sizeof (a[0]));
+  clib_memset (a, 0, sizeof (a[0]));
 
   if (mp->is_ip4)
     clib_memcpy (&a->rpath.frp_addr.ip4, mp->nh_addr, sizeof (ip4_address_t));
@@ -483,7 +483,7 @@ gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
 
   vec_foreach (e, src)
   {
-    memset (&dst[i], 0, sizeof (*dst));
+    clib_memset (&dst[i], 0, sizeof (*dst));
     table = fib_table_get (e->frp_fib_index, dpo_proto_to_fib (e->frp_proto));
     dst[i].fib_index = table->ft_table_id;
     dst[i].nh_sw_if_index = e->frp_sw_if_index;

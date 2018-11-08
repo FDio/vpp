@@ -143,7 +143,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
     }
 
   /* bind before rx ring is cfged so we don't receive packets from other interfaces */
-  memset (&sll, 0, sizeof (sll));
+  clib_memset (&sll, 0, sizeof (sll));
   sll.sll_family = PF_PACKET;
   sll.sll_protocol = htons (ETH_P_ALL);
   sll.sll_ifindex = host_if_index;
@@ -350,7 +350,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
 
   if (error)
     {
-      memset (apif, 0, sizeof (*apif));
+      clib_memset (apif, 0, sizeof (*apif));
       pool_put (apm->interfaces, apif);
       vlib_log_err (apm->log_class, "Unable to register interface: %U",
 		    format_clib_error, error);
@@ -502,7 +502,7 @@ af_packet_init (vlib_main_t * vm)
   af_packet_main_t *apm = &af_packet_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
-  memset (apm, 0, sizeof (af_packet_main_t));
+  clib_memset (apm, 0, sizeof (af_packet_main_t));
 
   mhash_init_vec_string (&apm->if_index_by_host_if_name, sizeof (uword));
 

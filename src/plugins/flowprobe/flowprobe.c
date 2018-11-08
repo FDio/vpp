@@ -1113,9 +1113,9 @@ flowprobe_init (vlib_main_t * vm)
   fm->vlib_time_0 = vlib_time_now (vm);
   fm->nanosecond_time_0 = unix_time_now_nsec ();
 
-  memset (fm->template_reports, 0, sizeof (fm->template_reports));
-  memset (fm->template_size, 0, sizeof (fm->template_size));
-  memset (fm->template_per_flow, 0, sizeof (fm->template_per_flow));
+  clib_memset (fm->template_reports, 0, sizeof (fm->template_reports));
+  clib_memset (fm->template_size, 0, sizeof (fm->template_size));
+  clib_memset (fm->template_per_flow, 0, sizeof (fm->template_per_flow));
 
   /* Decide how many worker threads we have */
   num_threads = 1 /* main thread */  + tm->n_threads;

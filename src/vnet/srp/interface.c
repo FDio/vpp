@@ -72,7 +72,7 @@ srp_build_rewrite (vnet_main_t * vnm,
   if (dst_address)
     clib_memcpy (h->ethernet.dst_address, dst_address, sizeof (h->ethernet.dst_address));
   else
-    memset (h->ethernet.dst_address, ~0, sizeof (h->ethernet.dst_address)); /* broadcast */
+    clib_memset (h->ethernet.dst_address, ~0, sizeof (h->ethernet.dst_address)); /* broadcast */
 
   h->ethernet.type = clib_host_to_net_u16 (type);
 
@@ -128,7 +128,7 @@ static void srp_register_interface_helper (u32 * hw_if_indices_by_side, u32 redi
   else
     {
       pool_get (sm->interface_pool, si);
-      memset (si, 0, sizeof (si[0]));
+      clib_memset (si, 0, sizeof (si[0]));
     }
   for (s = 0; s < SRP_N_SIDE; s++)
     {
@@ -330,7 +330,7 @@ create_simulated_srp_interfaces (vlib_main_t * vm,
 
   if (! unformat_user (input, unformat_ethernet_address, &address))
     {
-      memset (address, 0, sizeof (address));
+      clib_memset (address, 0, sizeof (address));
       address[0] = 0xde;
       address[1] = 0xad;
       address[5] = instance;

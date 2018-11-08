@@ -381,7 +381,7 @@ ioam_cache_init (vlib_main_t * vm)
 
   name = format (0, "ioam_cache_%08x%c", api_version, 0);
 
-  memset (&ioam_cache_main, 0, sizeof (ioam_cache_main));
+  clib_memset (&ioam_cache_main, 0, sizeof (ioam_cache_main));
   /* Ask for a correctly-sized block of API message decode slots */
   em->msg_id_base = vl_msg_api_get_msg_ids
     ((char *) name, VL_MSG_FIRST_AVAILABLE);

@@ -97,7 +97,7 @@ cj_config (vlib_main_t * vm, unformat_input_t * input)
 
   cjm->num_records = max_pow2 (cjm->num_records);
   vec_validate (cjm->records, cjm->num_records - 1);
-  memset (cjm->records, 0xff, cjm->num_records * sizeof (cj_record_t));
+  clib_memset (cjm->records, 0xff, cjm->num_records * sizeof (cj_record_t));
   cjm->tail = ~0;
   cjm->enable = enable;
 

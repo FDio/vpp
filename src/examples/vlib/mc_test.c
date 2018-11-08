@@ -164,7 +164,7 @@ mc_test_process (vlib_main_t * vm,
   int i;
   char *intfcs[] = { "eth1", "eth0", "ce" };
 
-  memset (&config, 0, sizeof (config));
+  clib_memset (&config, 0, sizeof (config));
   config.name = "test";
   config.window_size = tm->window_size;
   config.rx_buffer = test_rx_callback;

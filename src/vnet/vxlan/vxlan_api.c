@@ -180,7 +180,7 @@ static void send_vxlan_tunnel_details
   u8 is_ipv6 = !ip46_address_is_ip4 (&t->dst);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_TUNNEL_DETAILS);
   if (is_ipv6)
     {

@@ -219,7 +219,7 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
   goto done;
 
 error:
-  memset (pr, 0, sizeof (*pr));
+  clib_memset (pr, 0, sizeof (*pr));
   pool_put (vpm->regions, pr);
 
 done:

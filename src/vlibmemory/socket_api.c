@@ -381,7 +381,7 @@ socksvr_file_add (clib_file_main_t * fm, int fd)
   clib_file_t template = { 0 };
 
   pool_get (socket_main.registration_pool, rp);
-  memset (rp, 0, sizeof (*rp));
+  clib_memset (rp, 0, sizeof (*rp));
 
   template.read_function = vl_socket_read_ready;
   template.write_function = vl_socket_write_ready;
@@ -506,7 +506,7 @@ vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds)
   mh.msg_iov = iov;
   mh.msg_iovlen = 1;
 
-  memset (&ctl, 0, sizeof (ctl));
+  clib_memset (&ctl, 0, sizeof (ctl));
   mh.msg_control = ctl;
   mh.msg_controllen = sizeof (ctl);
   cmsg = CMSG_FIRSTHDR (&mh);
@@ -609,7 +609,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
    * Set up a memfd segment of the requested size wherein the
    * shmem data structures will be initialized
    */
-  memset (memfd, 0, sizeof (*memfd));
+  clib_memset (memfd, 0, sizeof (*memfd));
   memfd->ssvm_size = mp->requested_size;
   memfd->requested_va = 0ULL;
   memfd->i_am_master = 1;
@@ -624,7 +624,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   /*
    * Create a plausible svm_region in the memfd backed segment
    */
-  memset (a, 0, sizeof (*a));
+  clib_memset (a, 0, sizeof (*a));
   a->baseva = memfd->sh->ssvm_va + MMAP_PAGESIZE;
   a->size = memfd->ssvm_size - MMAP_PAGESIZE;
   /* $$$$ might want a different config parameter */
@@ -729,7 +729,7 @@ vl_sock_api_init (vlib_main_t * vm)
     return error;
 
   pool_get (sm->registration_pool, rp);
-  memset (rp, 0, sizeof (*rp));
+  clib_memset (rp, 0, sizeof (*rp));
 
   rp->registration_type = REGISTRATION_TYPE_SOCKET_LISTEN;
 

@@ -304,7 +304,7 @@ ip6_ll_show_fib (vlib_main_t * vm,
 
 	vlib_cli_output (vm, "%=20s%=16s", "Prefix length", "Count");
 
-	memset (ca, 0, sizeof (*ca));
+	clib_memset (ca, 0, sizeof (*ca));
 	ca->fib_index = fib_index;
 
 	BV (clib_bihash_foreach_key_value_pair)

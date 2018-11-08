@@ -153,7 +153,7 @@ unformat_init (unformat_input_t * i,
 	       uword (*fill_buffer) (unformat_input_t *),
 	       void *fill_buffer_arg)
 {
-  memset (i, 0, sizeof (i[0]));
+  clib_memset (i, 0, sizeof (i[0]));
   i->fill_buffer = fill_buffer;
   i->fill_buffer_arg = fill_buffer_arg;
 }
@@ -163,7 +163,7 @@ unformat_free (unformat_input_t * i)
 {
   vec_free (i->buffer);
   vec_free (i->buffer_marks);
-  memset (i, 0, sizeof (i[0]));
+  clib_memset (i, 0, sizeof (i[0]));
 }
 
 always_inline uword

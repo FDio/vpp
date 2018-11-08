@@ -77,7 +77,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
   void *iface_ip;
 
   pool_get (tm->listener_pool, listener);
-  memset (listener, 0, sizeof (*listener));
+  clib_memset (listener, 0, sizeof (*listener));
 
   listener->c_c_index = listener - tm->listener_pool;
   listener->c_lcl_port = lcl->port;
@@ -121,7 +121,7 @@ tcp_connection_unbind (u32 listener_index)
 
   /* Poison the entry */
   if (CLIB_DEBUG > 0)
-    memset (tc, 0xFA, sizeof (*tc));
+    clib_memset (tc, 0xFA, sizeof (*tc));
 
   pool_put_index (tm->listener_pool, listener_index);
 }
@@ -153,7 +153,7 @@ tcp_half_open_connection_del (tcp_connection_t * tc)
   clib_spinlock_lock_if_init (&tm->half_open_lock);
   pool_put_index (tm->half_open_connections, tc->c_c_index);
   if (CLIB_DEBUG)
-    memset (tc, 0xFA, sizeof (*tc));
+    clib_memset (tc, 0xFA, sizeof (*tc));
   clib_spinlock_unlock_if_init (&tm->half_open_lock);
 }
 
@@ -185,7 +185,7 @@ tcp_half_open_connection_new (void)
   tcp_connection_t *tc = 0;
   ASSERT (vlib_get_thread_index () == 0);
   pool_get (tm->half_open_connections, tc);
-  memset (tc, 0, sizeof (*tc));
+  clib_memset (tc, 0, sizeof (*tc));
   tc->c_c_index = tc - tm->half_open_connections;
   return tc;
 }
@@ -225,7 +225,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
       /* Poison the entry */
       if (CLIB_DEBUG > 0)
-	memset (tc, 0xFA, sizeof (*tc));
+	clib_memset (tc, 0xFA, sizeof (*tc));
       pool_put (tm->connections[thread_index], tc);
     }
 }
@@ -252,7 +252,7 @@ tcp_connection_new (u8 thread_index)
   tcp_connection_t *tc;
 
   pool_get (tm->connections[thread_index], tc);
-  memset (tc, 0, sizeof (*tc));
+  clib_memset (tc, 0, sizeof (*tc));
   tc->c_c_index = tc - tm->connections[thread_index];
   tc->c_thread_index = thread_index;
   return tc;
@@ -435,7 +435,7 @@ tcp_connection_select_lb_bucket (tcp_connection_t * tc, const dpo_id_t * dpo,
   if (tc->c_is_ip4)
     {
       ip4_tcp_hdr_t hdr;
-      memset (&hdr, 0, sizeof (hdr));
+      clib_memset (&hdr, 0, sizeof (hdr));
       hdr.ip.protocol = IP_PROTOCOL_TCP;
       hdr.ip.address_pair.src.as_u32 = tc->c_lcl_ip.ip4.as_u32;
       hdr.ip.address_pair.dst.as_u32 = tc->c_rmt_ip.ip4.as_u32;
@@ -446,7 +446,7 @@ tcp_connection_select_lb_bucket (tcp_connection_t * tc, const dpo_id_t * dpo,
   else
     {
       ip6_tcp_hdr_t hdr;
-      memset (&hdr, 0, sizeof (hdr));
+      clib_memset (&hdr, 0, sizeof (hdr));
       hdr.ip.protocol = IP_PROTOCOL_TCP;
       clib_memcpy (&hdr.ip.src_address, &tc->c_lcl_ip.ip6,
 		   sizeof (ip6_address_t));
@@ -1453,7 +1453,7 @@ tcp_configure_v4_source_address_range (vlib_main_t * vm,
 			      ip4_address_t * hi_addr, u32 fib_index,
 			      int is_del);
 
-  memset (&prefix, 0, sizeof (prefix));
+  clib_memset (&prefix, 0, sizeof (prefix));
 
   fib_index = fib_table_find (FIB_PROTOCOL_IP4, table_id);
 
@@ -1538,7 +1538,7 @@ tcp_configure_v6_source_address_range (vlib_main_t * vm,
   fib_node_index_t fei;
   u32 sw_if_index;
 
-  memset (&prefix, 0, sizeof (prefix));
+  clib_memset (&prefix, 0, sizeof (prefix));
 
   fib_index = fib_table_find (FIB_PROTOCOL_IP6, table_id);
 
@@ -1763,7 +1763,7 @@ tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
   if (!tc)
     return s;
 
-  memset (dummy_tc, 0, sizeof (*dummy_tc));
+  clib_memset (dummy_tc, 0, sizeof (*dummy_tc));
   tcp_connection_timers_init (dummy_tc);
   scoreboard_init (&dummy_tc->sack_sb);
   dummy_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;

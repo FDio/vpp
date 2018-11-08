@@ -29,7 +29,7 @@ init_oam_packet_template (oam_main_t * om, oam_target_t * t)
   vec_validate (t->template, 0);
 
   h = t->template;
-  memset (h, 0, sizeof (*h));
+  clib_memset (h, 0, sizeof (*h));
 
   h->ip4.src_address.as_u32 = t->src_address.as_u32;
   h->ip4.dst_address.as_u32 = t->dst_address.as_u32;
@@ -83,7 +83,7 @@ vpe_oam_add_del_target (ip4_address_t * src_address,
 	return VNET_API_ERROR_INVALID_REGISTRATION;	/* already there... */
 
       pool_get (om->targets, t);
-      memset (t, 0, sizeof (*t));
+      clib_memset (t, 0, sizeof (*t));
       t->src_address.as_u32 = src_address->as_u32;
       t->dst_address.as_u32 = dst_address->as_u32;
       t->fib_id = fib_id;
