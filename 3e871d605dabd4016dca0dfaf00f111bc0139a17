@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b3345923_60a4d193",
+        "filename": "test/sanity_run_vpp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-11-08T12:10:17Z",
+      "side": 1,
+      "message": "I would prefer \"whether\" here",
+      "range": {
+        "startLine": 11,
+        "startChar": 34,
+        "endLine": 11,
+        "endChar": 36
+      },
+      "revId": "3e871d605dabd4016dca0dfaf00f111bc0139a17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
