@@ -78,6 +78,24 @@ format_vnet_hw_interface_rx_mode (u8 * s, va_list * args)
 }
 
 u8 *
+format_vnet_hw_interface_link_speed (u8 * s, va_list * args)
+{
+  u32 link_speed = va_arg (*args, u32);
+
+  if (link_speed == 0)
+    return format (s, "unknown");
+
+  if (link_speed >= 1000000)
+    return format (s, "%f Gbps", (f64) link_speed / 1000000);
+
+  if (link_speed >= 1000)
+    return format (s, "%f Mbps", (f64) link_speed / 1000);
+
+  return format (s, "%u Kbps", link_speed);
+}
+
+
+u8 *
 format_vnet_hw_interface (u8 * s, va_list * args)
 {
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
@@ -114,6 +132,9 @@ format_vnet_hw_interface (u8 * s, va_list * args)
     s = format (s, "%U", dev_class->format_device_name, hi->dev_instance);
   else
     s = format (s, "%s%d", dev_class->name, hi->dev_instance);
+
+  s = format (s, "\n%ULink speed: %U", format_white_space, indent + 2,
+	      format_vnet_hw_interface_link_speed, hi->link_speed);
 
   if (verbose)
     {
