@@ -235,7 +235,9 @@ gbp_endpoint_alloc (epg_id_t epg_id,
 	case GBP_VXLAN_TEMPLATE_TUNNEL:
 	  ge->tun.ge_parent_sw_if_index = sw_if_index;
 	  ge->ge_sw_if_index =
-	    gbp_vxlan_tunnel_clone_and_lock (sw_if_index, tun_src, tun_dst);
+	    gbp_vxlan_tunnel_clone_and_lock (sw_if_index,
+					     &ge->tun.ge_src,
+					     &ge->tun.ge_dst);
 	  break;
 	case VXLAN_GBP_TUNNEL:
 	  ge->tun.ge_parent_sw_if_index =
@@ -354,9 +356,9 @@ gbp_endpoint_update (u32 sw_if_index,
 				       tun_src, tun_dst);
 	      ge->ge_itf = gbp_itf_add_and_lock (sw_if_index, ~0);
 	    }
-	  else
-	    /* L2 EP with IPs */
-	    gei = gbp_endpoint_index (ge);
+	  /* else
+	   *   L2 EP with IPs
+	   */
 	}
       else
 	{
