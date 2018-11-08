@@ -99,7 +99,7 @@ autoreply define want_interface_events
     @param pid - the interface's l2 address
     @param interface_name - name of the interface
     @param link_duplex - 1 if half duplex, 2 if full duplex
-    @param link_speed - 1 = 10M, 2 = 100M, 4 = 1G, 8 = 10G, 16 = 40G, 32 = 100G
+    @param link_speed - value in kbps
     @param link_MTU - max. transmission unit
     @param sub_if_id - A number 0-N to uniquely identify this subif on super if
     @param sub_dot1ad - 0 = dot1q, 1 = dot1ad
@@ -144,8 +144,8 @@ define sw_interface_details
   /* 1 = half duplex, 2 = full duplex */
   u8 link_duplex;
 
-  /* 1 = 10M, 2 = 100M, 4 = 1G, 8 = 10G, 16 = 40G, 32 = 100G */
-  u8 link_speed;
+  /* link speed in kbps */
+  u32 link_speed;
 
   /* MTU */
   u16 link_mtu;

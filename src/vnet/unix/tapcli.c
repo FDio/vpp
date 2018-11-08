@@ -746,13 +746,11 @@ tapcli_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
   uword is_admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
   u32 hw_flags;
-  u32 speed_duplex = VNET_HW_INTERFACE_FLAG_FULL_DUPLEX
-    | VNET_HW_INTERFACE_FLAG_SPEED_1G;
 
   if (is_admin_up)
-    hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP | speed_duplex;
+    hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
   else
-    hw_flags = speed_duplex;
+    hw_flags = 0;
 
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
   return 0;
