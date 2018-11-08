@@ -476,7 +476,7 @@ dpdk_crypto_session_disposal (crypto_session_disposal_t * v, u64 ts)
   return 0;
 }
 
-static clib_error_t *
+static void
 add_del_sa_session (u32 sa_index, u8 is_add)
 {
   ipsec_main_t *im = &ipsec_main;
@@ -503,7 +503,7 @@ add_del_sa_session (u32 sa_index, u8 is_add)
 	  sa->salt = random_u32 (&seed);
 	}
 #endif
-      return 0;
+      return;
     }
 
   /* *INDENT-OFF* */
@@ -536,7 +536,7 @@ add_del_sa_session (u32 sa_index, u8 is_add)
     }
   /* *INDENT-ON* */
 
-  return 0;
+  return;
 }
 
 static clib_error_t *
@@ -1052,36 +1052,44 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   ASSERT (next_node);
   node = vlib_get_node_by_name (vm, (u8 *) "ipsec4-output");
   ASSERT (node);
-  im->esp4_encrypt_node_index = next_node->index;
-  im->esp4_encrypt_next_index =
+  u32 esp4_encrypt_node_index = next_node->index;
+  u32 esp4_encrypt_next_index =
     vlib_node_add_next (vm, node->index, next_node->index);
 
   next_node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp4-decrypt");
   ASSERT (next_node);
   node = vlib_get_node_by_name (vm, (u8 *) "ipsec4-input");
   ASSERT (node);
-  im->esp4_decrypt_node_index = next_node->index;
-  im->esp4_decrypt_next_index =
+  u32 esp4_decrypt_node_index = next_node->index;
+  u32 esp4_decrypt_next_index =
     vlib_node_add_next (vm, node->index, next_node->index);
 
   next_node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp6-encrypt");
   ASSERT (next_node);
   node = vlib_get_node_by_name (vm, (u8 *) "ipsec6-output");
   ASSERT (node);
-  im->esp6_encrypt_node_index = next_node->index;
-  im->esp6_encrypt_next_index =
+  u32 esp6_encrypt_node_index = next_node->index;
+  u32 esp6_encrypt_next_index =
     vlib_node_add_next (vm, node->index, next_node->index);
 
   next_node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp6-decrypt");
   ASSERT (next_node);
   node = vlib_get_node_by_name (vm, (u8 *) "ipsec6-input");
   ASSERT (node);
-  im->esp6_decrypt_node_index = next_node->index;
-  im->esp6_decrypt_next_index =
+  u32 esp6_decrypt_node_index = next_node->index;
+  u32 esp6_decrypt_next_index =
     vlib_node_add_next (vm, node->index, next_node->index);
 
-  im->cb.check_support_cb = dpdk_ipsec_check_support;
-  im->cb.add_del_sa_sess_cb = add_del_sa_session;
+  ipsec_register_esp_backend (im, "dpdk backend",
+			      esp4_encrypt_node_index,
+			      esp4_encrypt_next_index,
+			      esp4_decrypt_node_index,
+			      esp4_decrypt_next_index,
+			      esp6_encrypt_node_index,
+			      esp6_encrypt_next_index,
+			      esp6_decrypt_node_index,
+			      esp6_decrypt_next_index,
+			      dpdk_ipsec_check_support, add_del_sa_session);
 
   node = vlib_get_node_by_name (vm, (u8 *) "dpdk-crypto-input");
   ASSERT (node);

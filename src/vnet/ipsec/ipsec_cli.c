@@ -174,8 +174,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 
   if (is_add)
     {
-      ASSERT (im->cb.check_support_cb);
-      error = im->cb.check_support_cb (&sa);
+      ASSERT (im->ah_check_support_cb);
+      error = im->ah_check_support_cb (&sa);
+      if (error)
+	goto done;
+      ASSERT (im->esp_check_support_cb);
+      error = im->esp_check_support_cb (&sa);
       if (error)
 	goto done;
     }
@@ -702,9 +706,121 @@ show_ipsec_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_ipsec_command, static) = {
     .path = "show ipsec",
-    .short_help = "show ipsec",
+    .short_help = "show ipsec [backends]",
     .function = show_ipsec_command_fn,
 };
+/* *INDENT-ON* */
+
+static clib_error_t *
+ipsec_show_backends_command_fn (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  vlib_cli_output (vm, "IPsec AH backends available:");
+  u8 *s = format (NULL, "%=25s %=25s %=10s\n", "Name", "Index", "Active");
+  ipsec_ah_backend_t *ab;
+  /* *INDENT-OFF* */
+  pool_foreach (ab, im->ah_backends, {
+    s = format (s, "%=25s %=25u %=10s\n", ab->name, ab - im->ah_backends,
+                ab - im->ah_backends == im->ah_current_backend ? "yes" : "no");
+  });
+  /* *INDENT-ON* */
+  vlib_cli_output (vm, "%v", s);
+  _vec_len (s) = 0;
+  vlib_cli_output (vm, "IPsec ESP backends available:");
+  s = format (s, "%=25s %=25s %=10s\n", "Name", "Index", "Active");
+  ipsec_esp_backend_t *eb;
+  /* *INDENT-OFF* */
+  pool_foreach (eb, im->esp_backends, {
+    s = format (s, "%=25s %=25u %=10s\n", eb->name, eb - im->esp_backends,
+                eb - im->esp_backends == im->esp_current_backend ? "yes"
+                                                                 : "no");
+  });
+  /* *INDENT-ON* */
+  vlib_cli_output (vm, "%v", s);
+
+  vec_free (s);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_show_backends_command, static) = {
+    .path = "ipsec show backends",
+    .short_help = "ipsec show backends",
+    .function = ipsec_show_backends_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ipsec_select_backend_command_fn (vlib_main_t * vm,
+				 unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  u32 backend_index;
+  ipsec_main_t *im = &ipsec_main;
+
+  if (pool_elts (im->sad) > 0)
+    {
+      return clib_error_return (0,
+				"Cannot change IPsec backend, while %u SA entries are configured",
+				pool_elts (im->sad));
+    }
+
+  unformat_input_t _line_input, *line_input = &_line_input;
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  if (unformat (line_input, "ah"))
+    {
+      if (unformat (line_input, "%u", &backend_index))
+	{
+	  if (ipsec_select_ah_backend (im, backend_index) < 0)
+	    {
+	      return clib_error_return (0, "Invalid AH backend index `%u'",
+					backend_index);
+	    }
+	}
+      else
+	{
+	  return clib_error_return (0, "Invalid backend index `%U'",
+				    format_unformat_error, line_input);
+	}
+    }
+  else if (unformat (line_input, "esp"))
+    {
+      if (unformat (line_input, "%u", &backend_index))
+	{
+	  if (ipsec_select_esp_backend (im, backend_index) < 0)
+	    {
+	      return clib_error_return (0, "Invalid ESP backend index `%u'",
+					backend_index);
+	    }
+	}
+      else
+	{
+	  return clib_error_return (0, "Invalid backend index `%U'",
+				    format_unformat_error, line_input);
+	}
+    }
+  else
+    {
+      return clib_error_return (0, "Unknown input `%U'",
+				format_unformat_error, line_input);
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_select_backend_command, static) = {
+    .path = "ipsec select backend",
+    .short_help = "ipsec select backend <ah|esp> <backend index>",
+    .function = ipsec_select_backend_command_fn,
+};
+
 /* *INDENT-ON* */
 
 static clib_error_t *

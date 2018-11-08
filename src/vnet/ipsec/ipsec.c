@@ -412,6 +412,33 @@ ipsec_is_sa_used (u32 sa_index)
   return 0;
 }
 
+void
+ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
+			      u32 sa_index, int is_add)
+{
+  ipsec_ah_backend_t *ahb;
+  ipsec_esp_backend_t *espb;
+  switch (sa->protocol)
+    {
+    case IPSEC_PROTOCOL_AH:
+      /* *INDENT-OFF* */
+      pool_foreach (ahb, im->ah_backends, {
+        if (ahb->add_del_sa_sess_cb)
+          ahb->add_del_sa_sess_cb (sa_index, is_add);
+      });
+      /* *INDENT-ON* */
+      break;
+    case IPSEC_PROTOCOL_ESP:
+      /* *INDENT-OFF* */
+      pool_foreach (espb, im->esp_backends, {
+        if (espb->add_del_sa_sess_cb)
+          espb->add_del_sa_sess_cb (sa_index, is_add);
+      });
+      /* *INDENT-ON* */
+      break;
+    }
+}
+
 int
 ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 {
@@ -419,7 +446,6 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
   ipsec_sa_t *sa = 0;
   uword *p;
   u32 sa_index;
-  clib_error_t *err;
 
   clib_warning ("id %u spi %u", new_sa->id, new_sa->spi);
 
@@ -439,12 +465,7 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 	  return VNET_API_ERROR_SYSCALL_ERROR_1;	/* sa used in policy */
 	}
       hash_unset (im->sa_index_by_sa_id, sa->id);
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (sa_index, 0);
-	  if (err)
-	    return VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
+      ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
       pool_put (im->sad, sa);
     }
   else				/* create new SA */
@@ -453,12 +474,7 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (sa_index, 1);
-	  if (err)
-	    return VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
+      ipsec_call_add_del_callbacks (im, sa, sa_index, 1);
     }
   return 0;
 }
@@ -470,7 +486,6 @@ ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
   uword *p;
   u32 sa_index;
   ipsec_sa_t *sa = 0;
-  clib_error_t *err;
 
   p = hash_get (im->sa_index_by_sa_id, sa_update->id);
   if (!p)
@@ -497,12 +512,7 @@ ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
 
   if (0 < sa_update->crypto_key_len || 0 < sa_update->integ_key_len)
     {
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (sa_index, 0);
-	  if (err)
-	    return VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
+      ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
     }
 
   return 0;
@@ -536,6 +546,108 @@ ipsec_check_support (ipsec_sa_t * sa)
   return 0;
 }
 
+u32
+ipsec_register_ah_backend (ipsec_main_t * im, const char *name,
+			   u32 ah4_encrypt_node_index,
+			   u32 ah4_encrypt_next_index,
+			   u32 ah4_decrypt_node_index,
+			   u32 ah4_decrypt_next_index,
+			   u32 ah6_encrypt_node_index,
+			   u32 ah6_decrypt_node_index,
+			   u32 ah6_encrypt_next_index,
+			   u32 ah6_decrypt_next_index,
+			   check_support_cb_t ah_check_support_cb,
+			   add_del_sa_sess_cb_t ah_add_del_sa_sess_cb)
+{
+  ipsec_ah_backend_t *b;
+  pool_get (im->ah_backends, b);
+  b->name = format (NULL, "%s", name);
+  b->check_support_cb = ah_check_support_cb;
+  b->ah4_encrypt_node_index = ah4_encrypt_node_index;
+  b->ah4_encrypt_next_index = ah4_encrypt_next_index;
+  b->ah4_decrypt_node_index = ah4_decrypt_node_index;
+  b->ah4_decrypt_next_index = ah4_decrypt_next_index;
+  b->ah6_encrypt_node_index = ah6_encrypt_node_index;
+  b->ah6_decrypt_node_index = ah6_decrypt_node_index;
+  b->ah6_encrypt_next_index = ah6_encrypt_next_index;
+  b->ah6_decrypt_next_index = ah6_decrypt_next_index;
+  b->add_del_sa_sess_cb = ah_add_del_sa_sess_cb;
+  return b - im->ah_backends;
+}
+
+u32
+ipsec_register_esp_backend (ipsec_main_t * im, const char *name,
+			    u32 esp4_encrypt_node_index,
+			    u32 esp4_encrypt_next_index,
+			    u32 esp4_decrypt_node_index,
+			    u32 esp4_decrypt_next_index,
+			    u32 esp6_encrypt_node_index,
+			    u32 esp6_encrypt_next_index,
+			    u32 esp6_decrypt_node_index,
+			    u32 esp6_decrypt_next_index,
+			    check_support_cb_t esp_check_support_cb,
+			    add_del_sa_sess_cb_t esp_add_del_sa_sess_cb)
+{
+  ipsec_esp_backend_t *b;
+  pool_get (im->esp_backends, b);
+  b->name = format (NULL, "%s", name);
+  b->check_support_cb = esp_check_support_cb;
+  b->esp4_encrypt_node_index = esp4_encrypt_node_index;
+  b->esp4_encrypt_next_index = esp4_encrypt_next_index;
+  b->esp4_decrypt_node_index = esp4_decrypt_node_index;
+  b->esp4_decrypt_next_index = esp4_decrypt_next_index;
+  b->esp6_encrypt_node_index = esp6_encrypt_node_index;
+  b->esp6_encrypt_next_index = esp6_encrypt_next_index;
+  b->esp6_decrypt_node_index = esp6_decrypt_node_index;
+  b->esp6_decrypt_next_index = esp6_decrypt_next_index;
+  b->add_del_sa_sess_cb = esp_add_del_sa_sess_cb;
+  return b - im->esp_backends;
+}
+
+int
+ipsec_select_ah_backend (ipsec_main_t * im, u32 backend_idx)
+{
+  if (pool_elts (im->sad) > 0
+      || pool_is_free_index (im->ah_backends, backend_idx))
+    {
+      return -1;
+    }
+  ipsec_ah_backend_t *b = pool_elt_at_index (im->ah_backends, backend_idx);
+  im->ah_current_backend = backend_idx;
+  im->ah4_encrypt_node_index = b->ah4_encrypt_node_index;
+  im->ah4_decrypt_node_index = b->ah4_decrypt_node_index;
+  im->ah4_encrypt_next_index = b->ah4_encrypt_next_index;
+  im->ah4_decrypt_next_index = b->ah4_decrypt_next_index;
+  im->ah6_encrypt_node_index = b->ah6_encrypt_node_index;
+  im->ah6_decrypt_node_index = b->ah6_decrypt_node_index;
+  im->ah6_encrypt_next_index = b->ah6_encrypt_next_index;
+  im->ah6_decrypt_next_index = b->ah6_decrypt_next_index;
+  im->ah_check_support_cb = b->check_support_cb;
+  return 0;
+}
+
+int
+ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
+{
+  if (pool_elts (im->sad) > 0
+      || pool_is_free_index (im->esp_backends, backend_idx))
+    {
+      return -1;
+    }
+  ipsec_esp_backend_t *b = pool_elt_at_index (im->esp_backends, backend_idx);
+  im->esp_current_backend = backend_idx;
+  im->esp4_encrypt_node_index = b->esp4_encrypt_node_index;
+  im->esp4_decrypt_node_index = b->esp4_decrypt_node_index;
+  im->esp4_encrypt_next_index = b->esp4_encrypt_next_index;
+  im->esp4_decrypt_next_index = b->esp4_decrypt_next_index;
+  im->esp6_encrypt_node_index = b->esp6_encrypt_node_index;
+  im->esp6_decrypt_node_index = b->esp6_decrypt_node_index;
+  im->esp6_encrypt_next_index = b->esp6_encrypt_next_index;
+  im->esp6_decrypt_next_index = b->esp6_decrypt_next_index;
+  im->esp_check_support_cb = b->check_support_cb;
+  return 0;
+}
+
 static clib_error_t *
 ipsec_init (vlib_main_t * vm)
 {
@@ -564,47 +676,78 @@ ipsec_init (vlib_main_t * vm)
 
   node = vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt");
   ASSERT (node);
-  im->esp4_encrypt_node_index = node->index;
+  u32 esp4_encrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "esp4-decrypt");
   ASSERT (node);
-  im->esp4_decrypt_node_index = node->index;
+  u32 esp4_decrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "ah4-encrypt");
   ASSERT (node);
-  im->ah4_encrypt_node_index = node->index;
+  u32 ah4_encrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "ah4-decrypt");
   ASSERT (node);
-  im->ah4_decrypt_node_index = node->index;
+  u32 ah4_decrypt_node_index = node->index;
 
-  im->esp4_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP4_ENCRYPT;
-  im->esp4_decrypt_next_index = IPSEC_INPUT_NEXT_ESP4_DECRYPT;
-  im->ah4_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH4_ENCRYPT;
-  im->ah4_decrypt_next_index = IPSEC_INPUT_NEXT_AH4_DECRYPT;
+  u32 esp4_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP4_ENCRYPT;
+  u32 esp4_decrypt_next_index = IPSEC_INPUT_NEXT_ESP4_DECRYPT;
+  u32 ah4_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH4_ENCRYPT;
+  u32 ah4_decrypt_next_index = IPSEC_INPUT_NEXT_AH4_DECRYPT;
 
   node = vlib_get_node_by_name (vm, (u8 *) "esp6-encrypt");
   ASSERT (node);
-  im->esp6_encrypt_node_index = node->index;
+  u32 esp6_encrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "esp6-decrypt");
   ASSERT (node);
-  im->esp6_decrypt_node_index = node->index;
+  u32 esp6_decrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "ah6-encrypt");
   ASSERT (node);
-  im->ah6_encrypt_node_index = node->index;
+  u32 ah6_encrypt_node_index = node->index;
 
   node = vlib_get_node_by_name (vm, (u8 *) "ah6-decrypt");
   ASSERT (node);
-  im->ah6_decrypt_node_index = node->index;
+  u32 ah6_decrypt_node_index = node->index;
 
-  im->esp6_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP6_ENCRYPT;
-  im->esp6_decrypt_next_index = IPSEC_INPUT_NEXT_ESP6_DECRYPT;
-  im->ah6_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH6_ENCRYPT;
-  im->ah6_decrypt_next_index = IPSEC_INPUT_NEXT_AH6_DECRYPT;
+  u32 esp6_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP6_ENCRYPT;
+  u32 esp6_decrypt_next_index = IPSEC_INPUT_NEXT_ESP6_DECRYPT;
+  u32 ah6_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH6_ENCRYPT;
+  u32 ah6_decrypt_next_index = IPSEC_INPUT_NEXT_AH6_DECRYPT;
 
-  im->cb.check_support_cb = ipsec_check_support;
+  u32 idx = ipsec_register_ah_backend (im, "default openssl backend",
+				       ah4_encrypt_node_index,
+				       ah4_encrypt_next_index,
+				       ah4_decrypt_node_index,
+				       ah4_decrypt_next_index,
+				       ah6_encrypt_node_index,
+				       ah6_decrypt_node_index,
+				       ah6_encrypt_next_index,
+				       ah6_decrypt_next_index,
+				       ipsec_check_support,
+				       NULL);
+
+  im->ah_default_backend = idx;
+  int rv = ipsec_select_ah_backend (im, idx);
+  ASSERT (0 == rv);
+  (void) (rv);			// avoid warning
+
+  idx = ipsec_register_esp_backend (im, "default openssl backend",
+				    esp4_encrypt_node_index,
+				    esp4_encrypt_next_index,
+				    esp4_decrypt_node_index,
+				    esp4_decrypt_next_index,
+				    esp6_encrypt_node_index,
+				    esp6_encrypt_next_index,
+				    esp6_decrypt_node_index,
+				    esp6_decrypt_next_index,
+				    ipsec_check_support, NULL);
+  im->esp_default_backend = idx;
+
+  rv = ipsec_select_esp_backend (im, idx);
+  ASSERT (0 == rv);
+  (void) (rv);			// avoid warning
 
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
     return error;
