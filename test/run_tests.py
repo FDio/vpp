@@ -68,8 +68,8 @@ class TestResult(dict):
 
     def was_successful(self):
         return 0 == len(self[FAIL]) == len(self[ERROR]) \
-               and len(self[PASS] + self[SKIP]) \
-               == self.testcase_suite.countTestCases() == len(self[TEST_RUN])
+            and len(self[PASS] + self[SKIP]) \
+            == self.testcase_suite.countTestCases() == len(self[TEST_RUN])
 
     def no_tests_run(self):
         return 0 == len(self[TEST_RUN])
@@ -231,7 +231,7 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
     if last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
         lttd = os.path.basename(last_test_temp_dir)
-        failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
+        failed_dir = os.getenv('FAILED_DIR')
         link_path = '%s%s-FAILED' % (failed_dir, lttd)
         if not os.path.exists(link_path):
             logger.error("Creating a link to the failed test: %s -> %s" %
@@ -755,10 +755,11 @@ if __name__ == '__main__':
 
     filter_cb = FilterByTestOption(filter_file, filter_class, filter_func)
 
+    ignore_path = os.getenv("VENV_PATH", None)
     cb = SplitToSuitesCallback(filter_cb)
     for d in args.dir:
         print("Adding tests from directory tree %s" % d)
-        discover_tests(d, cb)
+        discover_tests(d, cb, ignore_path)
 
     # suites are not hashable, need to use list
     suites = []
