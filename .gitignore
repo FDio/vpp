@@ -17,9 +17,9 @@
 /build-root/rpmbuild/
 /build-root/test-doc/
 /build-root/test-cov/
-/build-root/python/
-/build-root/vapi_test/
-/build-root/vom_test/
+/test/run/
+/test/build/
+/test/coverage/
 /build-config.mk
 /build/external/*.tar.gz
 /build/external/*.tar.xz

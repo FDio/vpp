@@ -33,7 +33,7 @@ class VCLTestCase(VppTestCase):
     """ VCL Test Class """
 
     def __init__(self, methodName):
-        var = "VPP_TEST_BUILD_DIR"
+        var = "VPP_BUILD_DIR"
         self.build_dir = os.getenv(var, None)
         if self.build_dir is None:
             raise Exception("Environment variable `%s' not set" % var)

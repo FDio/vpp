@@ -14,11 +14,11 @@ class VAPITestCase(VppTestCase):
 
     def test_vapi_c(self):
         """ run C VAPI tests """
-        var = "BR"
+        var = "TEST_DIR"
         built_root = os.getenv(var, None)
         self.assertIsNotNone(built_root,
                              "Environment variable `%s' not set" % var)
-        executable = "%s/vapi_test/vapi_c_test" % built_root
+        executable = "%s/build/vapi_test/vapi_c_test" % built_root
         worker = Worker(
             [executable, "vapi client", self.shm_prefix], self.logger)
         worker.start()
@@ -44,11 +44,11 @@ class VAPITestCase(VppTestCase):
     @unittest.skipIf(running_on_centos(), "Centos's gcc can't compile our C++")
     def test_vapi_cpp(self):
         """ run C++ VAPI tests """
-        var = "BR"
+        var = "TEST_DIR"
         built_root = os.getenv(var, None)
         self.assertIsNotNone(built_root,
                              "Environment variable `%s' not set" % var)
-        executable = "%s/vapi_test/vapi_cpp_test" % built_root
+        executable = "%s/build/vapi_test/vapi_cpp_test" % built_root
         worker = Worker(
             [executable, "vapi client", self.shm_prefix], self.logger)
         worker.start()
