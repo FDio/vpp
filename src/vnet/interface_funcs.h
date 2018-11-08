@@ -325,6 +325,14 @@ vnet_put_frame_to_sw_interface (vnet_main_t * vnm, u32 sw_if_index,
   return vlib_put_frame_to_node (vlib_get_main (), hw->output_node_index, f);
 }
 
+always_inline void
+vnet_hw_interface_set_link_speed (vnet_main_t * vnm, u32 hw_if_index,
+				  u32 link_speed)
+{
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  hw->link_speed = link_speed;
+}
+
 /* Change interface flags (e.g. up, down, enable, disable). */
 clib_error_t *vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
 					   vnet_hw_interface_flags_t flags);

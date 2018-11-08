@@ -899,6 +899,7 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 	  int link_up = e->event_data.link_event.link_status;
 	  virtchnl_link_speed_t speed = e->event_data.link_event.link_speed;
 	  u32 flags = 0;
+	  u32 kbps = 0;
 
 	  if (link_up && (ad->flags & AVF_DEVICE_F_LINK_UP) == 0)
 	    {
@@ -906,16 +907,17 @@ avf_process_one_device (vlib_main_t * vm, avf_device_t * ad, int is_irq)
 	      flags |= (VNET_HW_INTERFACE_FLAG_FULL_DUPLEX |
 			VNET_HW_INTERFACE_FLAG_LINK_UP);
 	      if (speed == VIRTCHNL_LINK_SPEED_40GB)
-		flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
+		kbps = 40000000;
 	      else if (speed == VIRTCHNL_LINK_SPEED_25GB)
-		flags |= VNET_HW_INTERFACE_FLAG_SPEED_25G;
+		kbps = 25000000;
 	      else if (speed == VIRTCHNL_LINK_SPEED_10GB)
-		flags |= VNET_HW_INTERFACE_FLAG_SPEED_10G;
+		kbps = 10000000;
 	      else if (speed == VIRTCHNL_LINK_SPEED_1GB)
-		flags |= VNET_HW_INTERFACE_FLAG_SPEED_1G;
+		kbps = 1000000;
 	      else if (speed == VIRTCHNL_LINK_SPEED_100MB)
-		flags |= VNET_HW_INTERFACE_FLAG_SPEED_100M;
+		kbps = 100000;
 	      vnet_hw_interface_set_flags (vnm, ad->hw_if_index, flags);
+	      vnet_hw_interface_set_link_speed (vnm, ad->hw_if_index, kbps);
 	      ad->link_speed = speed;
 	    }
 	  else if (!link_up && (ad->flags & AVF_DEVICE_F_LINK_UP) != 0)
