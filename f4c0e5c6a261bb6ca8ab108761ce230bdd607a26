@@ -48,6 +48,29 @@
     },
     {
       "key": {
+        "uuid": "59d25987_d2f0f26a",
+        "filename": "src/vnet/dhcp/dhcp4_proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2018-11-08T15:18:04Z",
+      "side": 1,
+      "message": "Perhaps an ASSERT before this line to make sure current_length does fit in the buffer?",
+      "range": {
+        "startLine": 123,
+        "startChar": 22,
+        "endLine": 123,
+        "endChar": 45
+      },
+      "revId": "f4c0e5c6a261bb6ca8ab108761ce230bdd607a26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "83160178_6f010588",
         "filename": "src/vnet/dhcp/dhcp4_proxy_node.c",
         "patchSetId": 2
