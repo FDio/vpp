@@ -715,8 +715,6 @@ typedef struct
   /* this swif is unnumbered, use addresses on unnumbered_sw_if_index... */
   u32 unnumbered_sw_if_index;
 
-  u32 link_speed;
-
   /* VNET_SW_INTERFACE_TYPE_HARDWARE. */
   u32 hw_if_index;
 
