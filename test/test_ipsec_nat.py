@@ -14,7 +14,7 @@ from vpp_ip import DpoProto
 from vpp_papi import VppEnum
 
 
-class IPSecNATTestCase(TemplateIpsec):
+class TemplateIPSecNAT(TemplateIpsec):
     """ IPSec/NAT
     TUNNEL MODE:
 
@@ -37,7 +37,7 @@ class IPSecNATTestCase(TemplateIpsec):
     icmp_id_out = 6305
 
     def setUp(self):
-        super(IPSecNATTestCase, self).setUp()
+        super(TemplateIPSecNAT, self).setUp()
         self.tun_if = self.pg0
 
         self.tun_spd = VppIpsecSpd(self, self.tun_spd_id)
@@ -55,9 +55,6 @@ class IPSecNATTestCase(TemplateIpsec):
                                  0xffffffff,
                                  proto=d)],
                    is_ip6=p.is_ipv6).add_vpp_config()
-
-    def tearDown(self):
-        super(IPSecNATTestCase, self).tearDown()
 
     def create_stream_plain(self, src_mac, dst_mac, src_ip, dst_ip):
         return [
@@ -260,3 +257,8 @@ class IPSecNATTestCase(TemplateIpsec):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_plain(capture)
+
+
+class IPSecNAT(TemplateIPSecNAT):
+    """ IPSec/NAT """
+    pass
