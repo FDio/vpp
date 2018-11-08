@@ -291,9 +291,9 @@ gbp_route_domain_cli (vlib_main_t * vm,
       else if (unformat (input, "ip6-uu %U", unformat_vnet_sw_interface,
 			 vnm, &ip6_uu_sw_if_index))
 	;
-      else if (unformat (input, "ip4-table-id %d", ip4_table_id))
+      else if (unformat (input, "ip4-table-id %d", &ip4_table_id))
 	;
-      else if (unformat (input, "ip6-table-id %d", ip6_table_id))
+      else if (unformat (input, "ip6-table-id %d", &ip6_table_id))
 	;
       else if (unformat (input, "add"))
 	add = 1;
