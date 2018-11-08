@@ -20,8 +20,8 @@
 
 #define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
 
-#define foreach_ipsec_output_next        \
-  _ (DROP, "error-drop")                 \
+#define foreach_ipsec_output_next  \
+  _ (DROP, "error-drop")           \
   _ (ESP4_ENCRYPT, "esp4-encrypt") \
   _ (AH4_ENCRYPT, "ah4-encrypt")   \
   _ (ESP6_ENCRYPT, "esp6-encrypt") \
@@ -35,8 +35,8 @@ typedef enum
     IPSEC_OUTPUT_N_NEXT,
 } ipsec_output_next_t;
 
-#define foreach_ipsec_input_next         \
-  _ (DROP, "error-drop")                 \
+#define foreach_ipsec_input_next   \
+  _ (DROP, "error-drop")           \
   _ (ESP4_DECRYPT, "esp4-decrypt") \
   _ (AH4_DECRYPT, "ah4-decrypt")   \
   _ (ESP6_DECRYPT, "esp6-decrypt") \
@@ -50,55 +50,54 @@ typedef enum
     IPSEC_INPUT_N_NEXT,
 } ipsec_input_next_t;
 
-
 #define foreach_ipsec_policy_action \
-  _(0, BYPASS,  "bypass")          \
-  _(1, DISCARD, "discard")         \
-  _(2, RESOLVE, "resolve")         \
-  _(3, PROTECT, "protect")
+  _ (0, BYPASS, "bypass")           \
+  _ (1, DISCARD, "discard")         \
+  _ (2, RESOLVE, "resolve")         \
+  _ (3, PROTECT, "protect")
 
 typedef enum
 {
-#define _(v,f,s) IPSEC_POLICY_ACTION_##f = v,
+#define _(v, f, s) IPSEC_POLICY_ACTION_##f = v,
   foreach_ipsec_policy_action
 #undef _
     IPSEC_POLICY_N_ACTION,
 } ipsec_policy_action_t;
 
-#define foreach_ipsec_crypto_alg \
-  _(0, NONE,  "none")               \
-  _(1, AES_CBC_128, "aes-cbc-128")  \
-  _(2, AES_CBC_192, "aes-cbc-192")  \
-  _(3, AES_CBC_256, "aes-cbc-256")  \
-  _(4, AES_CTR_128, "aes-ctr-128")  \
-  _(5, AES_CTR_192, "aes-ctr-192")  \
-  _(6, AES_CTR_256, "aes-ctr-256")  \
-  _(7, AES_GCM_128, "aes-gcm-128")  \
-  _(8, AES_GCM_192, "aes-gcm-192")  \
-  _(9, AES_GCM_256, "aes-gcm-256")  \
-  _(10, DES_CBC, "des-cbc")         \
-  _(11, 3DES_CBC, "3des-cbc")
+#define foreach_ipsec_crypto_alg    \
+  _ (0, NONE, "none")               \
+  _ (1, AES_CBC_128, "aes-cbc-128") \
+  _ (2, AES_CBC_192, "aes-cbc-192") \
+  _ (3, AES_CBC_256, "aes-cbc-256") \
+  _ (4, AES_CTR_128, "aes-ctr-128") \
+  _ (5, AES_CTR_192, "aes-ctr-192") \
+  _ (6, AES_CTR_256, "aes-ctr-256") \
+  _ (7, AES_GCM_128, "aes-gcm-128") \
+  _ (8, AES_GCM_192, "aes-gcm-192") \
+  _ (9, AES_GCM_256, "aes-gcm-256") \
+  _ (10, DES_CBC, "des-cbc")        \
+  _ (11, 3DES_CBC, "3des-cbc")
 
 typedef enum
 {
-#define _(v,f,s) IPSEC_CRYPTO_ALG_##f = v,
+#define _(v, f, s) IPSEC_CRYPTO_ALG_##f = v,
   foreach_ipsec_crypto_alg
 #undef _
     IPSEC_CRYPTO_N_ALG,
 } ipsec_crypto_alg_t;
 
-#define foreach_ipsec_integ_alg \
-  _(0, NONE,  "none")                                                     \
-  _(1, MD5_96, "md5-96")           /* RFC2403 */                          \
-  _(2, SHA1_96, "sha1-96")         /* RFC2404 */                          \
-  _(3, SHA_256_96, "sha-256-96")   /* draft-ietf-ipsec-ciph-sha-256-00 */ \
-  _(4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
-  _(5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
-  _(6, SHA_512_256, "sha-512-256")	/* RFC4868 */
+#define foreach_ipsec_integ_alg                                            \
+  _ (0, NONE, "none")                                                      \
+  _ (1, MD5_96, "md5-96")           /* RFC2403 */                          \
+  _ (2, SHA1_96, "sha1-96")         /* RFC2404 */                          \
+  _ (3, SHA_256_96, "sha-256-96")   /* draft-ietf-ipsec-ciph-sha-256-00 */ \
+  _ (4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
+  _ (5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
+  _ (6, SHA_512_256, "sha-512-256")	/* RFC4868 */
 
 typedef enum
 {
-#define _(v,f,s) IPSEC_INTEG_ALG_##f = v,
+#define _(v, f, s) IPSEC_INTEG_ALG_##f = v,
   foreach_ipsec_integ_alg
 #undef _
     IPSEC_INTEG_N_ALG,
@@ -142,7 +141,7 @@ typedef struct
   u32 last_seq_hi;
   u64 replay_window;
 
-  /*lifetime data */
+  /* lifetime data */
   u64 total_data_size;
 } ipsec_sa_t;
 
@@ -254,11 +253,42 @@ typedef struct
   u32 show_instance;
 } ipsec_tunnel_if_t;
 
+typedef clib_error_t *(*add_del_sa_sess_cb_t) (u32 sa_index, u8 is_add);
+typedef clib_error_t *(*check_support_cb_t) (ipsec_sa_t * sa);
+
 typedef struct
 {
-  clib_error_t *(*add_del_sa_sess_cb) (u32 sa_index, u8 is_add);
-  clib_error_t *(*check_support_cb) (ipsec_sa_t * sa);
-} ipsec_main_callbacks_t;
+  u8 *name;
+  /* add/del callback */
+  add_del_sa_sess_cb_t add_del_sa_sess_cb;
+  /* check support function */
+  check_support_cb_t check_support_cb;
+  u32 ah4_encrypt_node_index;
+  u32 ah4_decrypt_node_index;
+  u32 ah4_encrypt_next_index;
+  u32 ah4_decrypt_next_index;
+  u32 ah6_encrypt_node_index;
+  u32 ah6_decrypt_node_index;
+  u32 ah6_encrypt_next_index;
+  u32 ah6_decrypt_next_index;
+} ipsec_ah_backend_t;
+
+typedef struct
+{
+  u8 *name;
+  /* add/del callback */
+  add_del_sa_sess_cb_t add_del_sa_sess_cb;
+  /* check support function */
+  check_support_cb_t check_support_cb;
+  u32 esp4_encrypt_node_index;
+  u32 esp4_decrypt_node_index;
+  u32 esp4_encrypt_next_index;
+  u32 esp4_decrypt_next_index;
+  u32 esp6_encrypt_node_index;
+  u32 esp6_decrypt_node_index;
+  u32 esp6_encrypt_next_index;
+  u32 esp6_decrypt_next_index;
+} ipsec_esp_backend_t;
 
 typedef struct
 {
@@ -308,14 +338,28 @@ typedef struct
   u32 ah6_encrypt_next_index;
   u32 ah6_decrypt_next_index;
 
-  /* callbacks */
-  ipsec_main_callbacks_t cb;
+  /* pool of ah backends */
+  ipsec_ah_backend_t *ah_backends;
+  /* pool of esp backends */
+  ipsec_esp_backend_t *esp_backends;
+  /* index of current ah backend */
+  u32 ah_current_backend;
+  /* index of current esp backend */
+  u32 esp_current_backend;
+  /* index of default ah backend */
+  u32 ah_default_backend;
+  /* index of default esp backend */
+  u32 esp_default_backend;
 
   /* helper for sort function */
   ipsec_spd_t *spd_to_sort;
 } ipsec_main_t;
 
 extern ipsec_main_t ipsec_main;
+
+void ipsec_add_del_sa_sess_cb (ipsec_main_t * im, u32 sa_index, u8 is_add);
+
+clib_error_t *ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa);
 
 extern vlib_node_registration_t esp4_encrypt_node;
 extern vlib_node_registration_t esp4_decrypt_node;
@@ -326,7 +370,6 @@ extern vlib_node_registration_t esp6_decrypt_node;
 extern vlib_node_registration_t ah6_encrypt_node;
 extern vlib_node_registration_t ah6_decrypt_node;
 extern vlib_node_registration_t ipsec_if_input_node;
-
 
 /*
  * functions
@@ -360,7 +403,6 @@ int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 			     ipsec_if_set_key_type_t type, u8 alg, u8 * key);
 int ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 			    u8 is_outbound);
-
 
 /*
  *  inline functions
@@ -399,6 +441,34 @@ get_next_output_feature_node_index (vlib_buffer_t * b,
   return node->next_nodes[next];
 }
 
+u32 ipsec_register_ah_backend (vlib_main_t * vm, ipsec_main_t * im,
+			       const char *name,
+			       const char *ah4_encrypt_node_name,
+			       u32 ah4_encrypt_next_index,
+			       const char *ah4_decrypt_node_name,
+			       u32 ah4_decrypt_next_index,
+			       const char *ah6_encrypt_node_name,
+			       u32 ah6_encrypt_next_index,
+			       const char *ah6_decrypt_node_name,
+			       u32 ah6_decrypt_next_index,
+			       check_support_cb_t ah_check_support_cb,
+			       add_del_sa_sess_cb_t ah_add_del_sa_sess_cb);
+
+u32 ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
+				const char *name,
+				const char *esp4_encrypt_node_name,
+				u32 esp4_encrypt_next_index,
+				const char *esp4_decrypt_node_name,
+				u32 esp4_decrypt_next_index,
+				const char *esp6_encrypt_node_name,
+				u32 esp6_encrypt_next_index,
+				const char *esp6_decrypt_node_name,
+				u32 esp6_decrypt_next_index,
+				check_support_cb_t esp_check_support_cb,
+				add_del_sa_sess_cb_t esp_add_del_sa_sess_cb);
+
+int ipsec_select_ah_backend (ipsec_main_t * im, u32 ah_backend_idx);
+int ipsec_select_esp_backend (ipsec_main_t * im, u32 esp_backend_idx);
 #endif /* __IPSEC_H__ */
 
 /*

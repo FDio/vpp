@@ -703,6 +703,42 @@ autoreply define ipsec_tunnel_if_set_sa {
   u8 is_outbound;
 };
 
+/** \brief Dump IPsec backends
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipsec_backend_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IPsec backend details
+    @param name - name of the backend
+    @param protocol - IPsec protocol (value from ipsec_protocol_t)
+    @param index - backend index
+    @param active - set to 1 if the backend is active, otherwise 0
+*/
+define ipsec_backend_details {
+  u32 context;
+  u8 name[128];
+  u8 protocol;
+  u8 index;
+  u8 active;
+};
+
+/** \brief Select IPsec backend
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param protocol - IPsec protocol (value from ipsec_protocol_t)
+    @param index - backend index
+*/
+autoreply define ipsec_select_backend {
+  u32 client_index;
+  u32 context;
+  u8 protocol;
+  u8 index;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

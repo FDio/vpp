@@ -37,7 +37,8 @@ class TemplateIpsecTunIfEsp(TemplateIpsec):
 
 class TestIpsecTunIfEsp1(TemplateIpsecTunIfEsp, IpsecTun4Tests):
     """ Ipsec ESP - TUN tests """
-    pass
+    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_decrypt_node_name = "esp4-decrypt"
 
 
 class TestIpsecTunIfEsp2(TemplateIpsecTunIfEsp, IpsecTcpTests):
