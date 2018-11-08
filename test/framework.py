@@ -264,8 +264,8 @@ class VppTestCase(unittest.TestCase):
         c = os.getenv("CACHE_OUTPUT", "1")
         cls.cache_vpp_output = False if c.lower() in ("n", "no", "0") else True
         cls.set_debug_flags(d)
-        cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
-        cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
+        cls.vpp_bin = os.getenv('VPP_BIN', "vpp")
+        cls.plugin_path = os.getenv('VPP_PLUGIN_PATH')
         cls.extern_plugin_path = os.getenv('EXTERN_PLUGINS')
         plugin_path = None
         if cls.plugin_path is not None:
@@ -1070,7 +1070,7 @@ class VppTestResult(unittest.TestResult):
     def symlink_failed(self):
         if self.current_test_case_info:
             try:
-                failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
+                failed_dir = os.getenv('FAILED_DIR')
                 link_path = os.path.join(
                     failed_dir,
                     '%s-FAILED' %

@@ -3,10 +3,10 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SRC_DOC_DIR = $(WS_ROOT)/test/doc
+SRC_DOC_DIR = $(TEST_DIR)/doc
 SPHINXBUILD = sphinx-build
 PAPER         =
-BUILD_DOC_ROOT = $(BR)/test-doc
+BUILD_DOC_ROOT = $(TEST_DIR)/doc
 BUILD_DOC_DIR = $(BUILD_DOC_ROOT)/build
 API_DOC_GEN_DIR = $(BUILD_DOC_ROOT)/apidoc
 
@@ -16,7 +16,7 @@ PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILD_DOC_DIR)/.sphinx-cache $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(API_DOC_GEN_DIR) -c $(SRC_DOC_DIR)
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
-IN_VENV:=$(shell if pip -V | grep "virtualenv" 2>&1 > /dev/null; then echo 1; else echo 0; fi)
+IN_VENV:=$(shell if pip -V | grep "venv" 2>&1 > /dev/null; then echo 1; else echo 0; fi)
 
 .PHONY: verify-virtualenv
 verify-virtualenv:
