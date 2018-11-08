@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "ac6d2808_65f04678",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "moved this to vnet_buffer",
+      "parentUuid": "2e850805_2cd7c146",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e46aa2fa_54475371",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 19
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "0c1f0a13_23f953d1",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "this should\u0027ve been changed to is_ip6 as well ... fixed",
+      "parentUuid": "e46aa2fa_54475371",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c5027f18_0dc9b0ad",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 19
@@ -47,6 +83,24 @@
       "writtenOn": "2018-11-07T14:56:58Z",
       "side": 1,
       "message": "Allright, so I wanna do tunnel. I see IPv4 packet, I add IPv4 header + AH header. I see IPv6 packet, I add IPv6 header and AH header. Now, I wanna put IPv6 packet into IPv4 packet with  AH. How can I do that ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f8b0bdb6_b0288848",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "existing code doesn\u0027t do that and ipsecmb is 1:1 feature wise",
+      "parentUuid": "c5027f18_0dc9b0ad",
       "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -76,6 +130,30 @@
     },
     {
       "key": {
+        "uuid": "c21e2404_8fe515f2",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "renamed",
+      "parentUuid": "0fa380f0_17017428",
+      "range": {
+        "startLine": 230,
+        "startChar": 46,
+        "endLine": 230,
+        "endChar": 54
+      },
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1ce616ac_b73cfda2",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 19
@@ -87,6 +165,24 @@
       "writtenOn": "2018-11-07T14:56:58Z",
       "side": 1,
       "message": "Why \"PREDICT_FALSE\" ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "55457205_207ed858",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "copied from original code - removed",
+      "parentUuid": "1ce616ac_b73cfda2",
       "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -110,6 +206,24 @@
     },
     {
       "key": {
+        "uuid": "540584e8_351e4e7f",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "mixing 4/6 is not supported as explained earlier",
+      "parentUuid": "fd8a6179_f1880e29",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a70c3091_7d142030",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 19
@@ -121,6 +235,30 @@
       "writtenOn": "2018-11-07T14:56:58Z",
       "side": 1,
       "message": "why do we move back in transport mode by the ethernet header size ? Not obvious for a casual reader.",
+      "range": {
+        "startLine": 354,
+        "startChar": 31,
+        "endLine": 354,
+        "endChar": 59
+      },
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "abdc49c4_2abbd259",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "added comment",
+      "parentUuid": "a70c3091_7d142030",
       "range": {
         "startLine": 354,
         "startChar": 31,
@@ -156,6 +294,30 @@
     },
     {
       "key": {
+        "uuid": "b0a68fa5_8a8d0736",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "yes, sometimes it does. logic is that one should know the api if he\u0027s to meddle with the code.. no?",
+      "parentUuid": "5ab3fdc0_29e26e5e",
+      "range": {
+        "startLine": 364,
+        "startChar": 0,
+        "endLine": 367,
+        "endChar": 6
+      },
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6157c0a0_7409f8e2",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 19
@@ -167,6 +329,24 @@
       "writtenOn": "2018-11-07T14:56:58Z",
       "side": 1,
       "message": "We will get to this line only if the buffer is already traced, so this line is a no-op.\n\nIs there some other intent that I am missing here ?",
+      "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2cb15daa_1f587695",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-08T13:06:03Z",
+      "side": 1,
+      "message": "copy paste error, removed",
+      "parentUuid": "6157c0a0_7409f8e2",
       "revId": "b00c2f4356296f01da6774354d9b2e788c6d959e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
