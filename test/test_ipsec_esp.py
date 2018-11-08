@@ -174,7 +174,14 @@ class TemplateIpsecEsp(TemplateIpsec):
 
 class TestIpsecEsp1(TemplateIpsecEsp, IpsecTraTests, IpsecTunTests):
     """ Ipsec ESP - TUN & TRA tests """
-    pass
+    tra4_encrypt_node_name = "esp4-encrypt"
+    tra4_decrypt_node_name = "esp4-decrypt"
+    tra6_encrypt_node_name = "esp6-encrypt"
+    tra6_decrypt_node_name = "esp6-decrypt"
+    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_decrypt_node_name = "esp4-decrypt"
+    tun6_encrypt_node_name = "esp6-encrypt"
+    tun6_decrypt_node_name = "esp6-decrypt"
 
 
 class TestIpsecEsp2(TemplateIpsecEsp, IpsecTcpTests):

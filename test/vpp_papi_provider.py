@@ -3452,6 +3452,13 @@ class VppPapiProvider(object):
              'show_instance': show_instance
              })
 
+    def ipsec_select_backend(self, protocol, index):
+        return self.api(self.papi.ipsec_select_backend,
+                        {'protocol': protocol, 'index': index})
+
+    def ipsec_backend_dump(self):
+        return self.api(self.papi.ipsec_backend_dump, {})
+
     def app_namespace_add(self,
                           namespace_id,
                           ip4_fib_id=0,
