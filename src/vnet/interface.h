@@ -491,20 +491,6 @@ typedef enum vnet_hw_interface_flags_t_
   VNET_HW_INTERFACE_FLAG_HALF_DUPLEX = (1 << 1),
   VNET_HW_INTERFACE_FLAG_FULL_DUPLEX = (1 << 2),
 
-  /* Hardware link speed */
-  VNET_HW_INTERFACE_FLAG_SPEED_10M = (1 << 3),
-  VNET_HW_INTERFACE_FLAG_SPEED_100M = (1 << 4),
-  VNET_HW_INTERFACE_FLAG_SPEED_1G = (1 << 5),
-  VNET_HW_INTERFACE_FLAG_SPEED_2_5G = (1 << 6),
-  VNET_HW_INTERFACE_FLAG_SPEED_5G = (1 << 7),
-  VNET_HW_INTERFACE_FLAG_SPEED_10G = (1 << 8),
-  VNET_HW_INTERFACE_FLAG_SPEED_20G = (1 << 9),
-  VNET_HW_INTERFACE_FLAG_SPEED_25G = (1 << 10),
-  VNET_HW_INTERFACE_FLAG_SPEED_40G = (1 << 11),
-  VNET_HW_INTERFACE_FLAG_SPEED_50G = (1 << 12),
-  VNET_HW_INTERFACE_FLAG_SPEED_56G = (1 << 13),
-  VNET_HW_INTERFACE_FLAG_SPEED_100G = (1 << 14),
-
   /* rx mode flags */
   VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE = (1 << 16),
 
@@ -517,19 +503,6 @@ typedef enum vnet_hw_interface_flags_t_
 #define VNET_HW_INTERFACE_FLAG_DUPLEX_MASK	\
   (VNET_HW_INTERFACE_FLAG_HALF_DUPLEX |		\
    VNET_HW_INTERFACE_FLAG_FULL_DUPLEX)
-#define VNET_HW_INTERFACE_FLAG_SPEED_MASK	\
-  (VNET_HW_INTERFACE_FLAG_SPEED_10M |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_100M |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_1G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_2_5G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_5G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_10G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_20G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_25G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_40G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_50G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_56G |		\
-   VNET_HW_INTERFACE_FLAG_SPEED_100G)
 
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
@@ -540,6 +513,10 @@ typedef struct vnet_hw_interface_t
 
   /* flags */
   vnet_hw_interface_flags_t flags;
+
+
+  /* link speed in kbps */
+  u32 link_speed;
 
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */

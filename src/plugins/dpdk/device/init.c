@@ -1584,54 +1584,10 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	  break;
 	}
     }
-  if (hw_flags_chg || (xd->link.link_speed != prev_link.link_speed))
-    {
-      hw_flags_chg = 1;
-      switch (xd->link.link_speed)
-	{
-	case ETH_SPEED_NUM_10M:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10M;
-	  break;
-	case ETH_SPEED_NUM_100M:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100M;
-	  break;
-	case ETH_SPEED_NUM_1G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_1G;
-	  break;
-	case ETH_SPEED_NUM_2_5G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_2_5G;
-	  break;
-	case ETH_SPEED_NUM_5G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_5G;
-	  break;
-	case ETH_SPEED_NUM_10G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10G;
-	  break;
-	case ETH_SPEED_NUM_20G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_20G;
-	  break;
-	case ETH_SPEED_NUM_25G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_25G;
-	  break;
-	case ETH_SPEED_NUM_40G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
-	  break;
-	case ETH_SPEED_NUM_50G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_50G;
-	  break;
-	case ETH_SPEED_NUM_56G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_56G;
-	  break;
-	case ETH_SPEED_NUM_100G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100G;
-	  break;
-	case 0:
-	  break;
-	default:
-	  dpdk_log_warn ("unknown link speed %d", xd->link.link_speed);
-	  break;
-	}
-    }
+  if (xd->link.link_speed != prev_link.link_speed)
+    vnet_hw_interface_set_link_speed (vnm, xd->hw_if_index,
+				      xd->link.link_speed * 1000);
+
   if (hw_flags_chg)
     {
       if (LINK_STATE_ELOGS)

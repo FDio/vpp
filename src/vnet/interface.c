@@ -305,8 +305,7 @@ vnet_hw_interface_set_flags_helper (vnet_main_t * vnm, u32 hw_if_index,
     (helper_flags & VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE) != 0;
 
   mask =
-    (VNET_HW_INTERFACE_FLAG_LINK_UP | VNET_HW_INTERFACE_FLAG_DUPLEX_MASK |
-     VNET_HW_INTERFACE_FLAG_SPEED_MASK);
+    (VNET_HW_INTERFACE_FLAG_LINK_UP | VNET_HW_INTERFACE_FLAG_DUPLEX_MASK);
   flags &= mask;
 
   /* Call hardware interface add/del callbacks. */

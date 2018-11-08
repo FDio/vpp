@@ -398,8 +398,8 @@ format_dpdk_link_status (u8 * s, va_list * args)
 
       s = format (s, "%s duplex ", (l->link_duplex == ETH_LINK_FULL_DUPLEX) ?
 		  "full" : "half");
-      s = format (s, "speed %u mtu %d %s\n", l->link_speed,
-		  hi->max_packet_bytes, promisc ? " promisc" : "");
+      s = format (s, "mtu %d %s\n", hi->max_packet_bytes, promisc ?
+		  " promisc" : "");
     }
   else
     s = format (s, "\n");
