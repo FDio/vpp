@@ -170,33 +170,21 @@ ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
   if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
     {
-      ASSERT (im->cb.check_support_cb);
-
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
 
-      err = im->cb.check_support_cb (sa);
+      err = ipsec_check_support_cb (im, sa);
       if (err)
 	return err;
 
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->input_sa_index, 1);
-	  if (err)
-	    return err;
-	}
+      ipsec_add_del_sa_sess_cb (im, t->input_sa_index, 1);
 
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
 
-      err = im->cb.check_support_cb (sa);
+      err = ipsec_check_support_cb (im, sa);
       if (err)
 	return err;
 
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->output_sa_index, 1);
-	  if (err)
-	    return err;
-	}
+      ipsec_add_del_sa_sess_cb (im, t->output_sa_index, 1);
 
       vnet_hw_interface_set_flags (vnm, hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
@@ -204,24 +192,10 @@ ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   else
     {
       vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */ );
-
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
-
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->input_sa_index, 0);
-	  if (err)
-	    return err;
-	}
-
+      ipsec_add_del_sa_sess_cb (im, t->input_sa_index, 0);
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
-
-      if (im->cb.add_del_sa_sess_cb)
-	{
-	  err = im->cb.add_del_sa_sess_cb (t->output_sa_index, 0);
-	  if (err)
-	    return err;
-	}
+      ipsec_add_del_sa_sess_cb (im, t->output_sa_index, 0);
     }
 
   return /* no error */ 0;
@@ -596,15 +570,7 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
   if (ipsec_get_sa_index_by_sa_id (old_sa->id) == old_sa_index)
     hash_unset (im->sa_index_by_sa_id, old_sa->id);
 
-  if (im->cb.add_del_sa_sess_cb)
-    {
-      clib_error_t *err;
-
-      err = im->cb.add_del_sa_sess_cb (old_sa_index, 0);
-      if (err)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
-    }
-
+  ipsec_add_del_sa_sess_cb(im, old_sa_index, 0);
   pool_put (im->sad, old_sa);
 
   return 0;
