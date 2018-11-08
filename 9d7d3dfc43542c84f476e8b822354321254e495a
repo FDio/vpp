@@ -1,0 +1,84 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5fd0a10a_052f2d30",
+        "filename": "src/vlib/physmem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-08T11:27:21Z",
+      "side": 1,
+      "message": "u32 map \u003d 0;",
+      "revId": "9d7d3dfc43542c84f476e8b822354321254e495a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fcc2ce98_e8b7dea5",
+        "filename": "src/vlib/physmem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-08T11:27:21Z",
+      "side": 1,
+      "message": "map \u003d 1;",
+      "range": {
+        "startLine": 130,
+        "startChar": 5,
+        "endLine": 130,
+        "endChar": 17
+      },
+      "revId": "9d7d3dfc43542c84f476e8b822354321254e495a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a77c57f_9c8aa9f1",
+        "filename": "src/vlib/physmem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-08T11:27:21Z",
+      "side": 1,
+      "message": "if (map)\n  vlib_cli_output (vm, \"  %U\" , format_pmalloc_map, vpm-\u003epmalloc_main);\nelse",
+      "revId": "9d7d3dfc43542c84f476e8b822354321254e495a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5118d534_89eb3097",
+        "filename": "src/vppinfra/pmalloc.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 685,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-08T11:27:21Z",
+      "side": 1,
+      "message": "can you create separate format function instead?\nformat_pmalloc_map",
+      "range": {
+        "startLine": 685,
+        "startChar": 0,
+        "endLine": 685,
+        "endChar": 19
+      },
+      "revId": "9d7d3dfc43542c84f476e8b822354321254e495a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
