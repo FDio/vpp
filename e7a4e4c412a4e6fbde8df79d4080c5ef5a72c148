@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1e22253f_8194772c",
+        "filename": "src/vpp/vnet/main.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-08T09:26:09Z",
+      "side": 1,
+      "message": "Update or move the comment.",
+      "range": {
+        "startLine": 30,
+        "startChar": 21,
+        "endLine": 30,
+        "endChar": 41
+      },
+      "revId": "e7a4e4c412a4e6fbde8df79d4080c5ef5a72c148",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
