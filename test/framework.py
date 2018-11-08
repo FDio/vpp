@@ -183,6 +183,8 @@ class VppTestCase(unittest.TestCase):
     classes. It provides methods to create and run test case.
     """
 
+    extra_vpp_plugin_config = []
+
     @property
     def packet_infos(self):
         """List of packet infos"""
@@ -297,7 +299,7 @@ class VppTestCase(unittest.TestCase):
                            "{", "socket-name", cls.stats_sock, "}", "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
-                           "}", "}", ]
+                           "}"] + cls.extra_vpp_plugin_config + ["}", ]
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
         cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
