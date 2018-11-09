@@ -1131,7 +1131,6 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tc->rtt_ts = 0;
 
   tcp_fastrecovery_off (tc);
-  tcp_fastrecovery_1_smss_off (tc);
   tcp_fastrecovery_first_off (tc);
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
@@ -1598,6 +1597,54 @@ process_ack:
   tcp_cc_update (tc, b);
   *error = TCP_ERROR_ACK_OK;
   return 0;
+}
+
+static void
+tcp_program_disconnect (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
+{
+  if (!tcp_disconnect_pending (tc))
+    {
+      vec_add1 (wrk->pending_disconnects, tc->c_c_index);
+      tcp_disconnect_pending_on (tc);
+    }
+}
+
+static void
+tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
+{
+  u32 thread_index, *pending_disconnects;
+  tcp_connection_t *tc;
+  int i;
+
+  if (!vec_len (wrk->pending_disconnects))
+    return;
+
+  thread_index = wrk->vm->thread_index;
+  pending_disconnects = wrk->pending_disconnects;
+  for (i = 0; i < vec_len (pending_disconnects); i++)
+    {
+      tc = tcp_connection_get (pending_disconnects[i], thread_index);
+      tcp_disconnect_pending_off (tc);
+      stream_session_disconnect_notify (&tc->connection);
+    }
+  _vec_len (wrk->pending_disconnects) = 0;
+}
+
+static void
+tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
+	     u32 * error)
+{
+  /* Enter CLOSE-WAIT and notify session. To avoid lingering
+   * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
+  /* Account for the FIN if nothing else was received */
+  if (vnet_buffer (b)->tcp.data_len == 0)
+    tc->rcv_nxt += 1;
+  tcp_program_ack (wrk, tc);
+  tc->state = TCP_STATE_CLOSE_WAIT;
+  tcp_program_disconnect (wrk, tc);
+  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+  TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc);
+  *error = TCP_ERROR_FIN_RCVD;
 }
 
 static u8
@@ -2099,19 +2146,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* 8: check the FIN bit */
       if (PREDICT_FALSE (is_fin))
-	{
-	  /* Enter CLOSE-WAIT and notify session. To avoid lingering
-	   * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
-	  /* Account for the FIN if nothing else was received */
-	  if (vnet_buffer (b0)->tcp.data_len == 0)
-	    tc0->rcv_nxt += 1;
-	  tcp_program_ack (wrk, tc0);
-	  tc0->state = TCP_STATE_CLOSE_WAIT;
-	  stream_session_disconnect_notify (&tc0->connection);
-	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
-	  TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
-	  error0 = TCP_ERROR_FIN_RCVD;
-	}
+	tcp_rcv_fin (wrk, tc0, b0, &error0);
 
     done:
       tcp_inc_err_counter (err_counters, error0, 1);
@@ -2122,6 +2157,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   err_counters[TCP_ERROR_EVENT_FIFO_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
   tcp_handle_postponed_dequeues (wrk);
+  tcp_handle_disconnects (wrk);
   vlib_buffer_free (vm, first_buffer, frame->n_vectors);
 
   return frame->n_vectors;

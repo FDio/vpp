@@ -118,7 +118,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(SENT_RCV_WND0, "Sent 0 rcv_wnd")     	\
   _(RECOVERY, "Recovery")                    	\
   _(FAST_RECOVERY, "Fast Recovery")		\
-  _(FR_1_SMSS, "Sent 1 SMSS")			\
+  _(DCNT_PENDING, "Disconnect pending")		\
   _(HALF_OPEN_DONE, "Half-open completed")	\
   _(FINPNDG, "FIN pending")			\
   _(FRXT_PENDING, "Fast-retransmit pending")	\
@@ -352,9 +352,9 @@ struct _tcp_cc_algorithm
 #define tcp_in_fastrecovery(tc) ((tc)->flags & TCP_CONN_FAST_RECOVERY)
 #define tcp_in_recovery(tc) ((tc)->flags & (TCP_CONN_RECOVERY))
 #define tcp_in_slowstart(tc) (tc->cwnd < tc->ssthresh)
-#define tcp_fastrecovery_sent_1_smss(tc) ((tc)->flags & TCP_CONN_FR_1_SMSS)
-#define tcp_fastrecovery_1_smss_on(tc) ((tc)->flags |= TCP_CONN_FR_1_SMSS)
-#define tcp_fastrecovery_1_smss_off(tc) ((tc)->flags &= ~TCP_CONN_FR_1_SMSS)
+#define tcp_disconnect_pending(tc) ((tc)->flags & TCP_CONN_DCNT_PENDING)
+#define tcp_disconnect_pending_on(tc) ((tc)->flags |= TCP_CONN_DCNT_PENDING)
+#define tcp_disconnect_pending_off(tc) ((tc)->flags &= ~TCP_CONN_DCNT_PENDING)
 #define tcp_fastrecovery_first(tc) ((tc)->flags & TCP_CONN_FRXT_FIRST)
 #define tcp_fastrecovery_first_on(tc) ((tc)->flags |= TCP_CONN_FRXT_FIRST)
 #define tcp_fastrecovery_first_off(tc) ((tc)->flags &= ~TCP_CONN_FRXT_FIRST)
@@ -366,7 +366,6 @@ always_inline void
 tcp_cong_recovery_off (tcp_connection_t * tc)
 {
   tc->flags &= ~(TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY);
-  tcp_fastrecovery_1_smss_off (tc);
   tcp_fastrecovery_first_off (tc);
 }
 
@@ -386,26 +385,46 @@ typedef struct _tcp_lookup_dispatch
 typedef struct tcp_worker_ctx_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 time_now;					/**< worker time */
-  tw_timer_wheel_16t_2w_512sl_t timer_wheel;	/**< worker timer wheel */
-  u32 *tx_buffers;				/**< tx buffer free list */
-  vlib_frame_t *tx_frames[2];			/**< tx frames for tcp 4/6
-						     output nodes */
-  vlib_frame_t *ip_lookup_tx_frames[2];		/**< tx frames for ip 4/6
-						     lookup nodes */
-  u32 *pending_fast_rxt;			/**< vector of connections
-						     needing fast rxt */
-  u32 *ongoing_fast_rxt;			/**< vector of connections
-						     now doing fast rxt */
-  u32 *postponed_fast_rxt;			/**< vector of connections
-						     that will do fast rxt */
+  /** worker time */
+  u32 time_now;
+
+  /** worker timer wheel */
+  tw_timer_wheel_16t_2w_512sl_t timer_wheel;
+
+  /** tx buffer free list */
+  u32 *tx_buffers;
+
+  /** tx frames for tcp 4/6 output nodes */
+  vlib_frame_t *tx_frames[2];
+
+  /** tx frames for ip 4/6 lookup nodes */
+  vlib_frame_t *ip_lookup_tx_frames[2];
+
+  /** vector of connections needing fast rxt */
+  u32 *pending_fast_rxt;
+
+  /** vector of connections now doing fast rxt */
+  u32 *ongoing_fast_rxt;
+
+  /** vector of connections that will do fast rxt */
+  u32 *postponed_fast_rxt;
+
+  /** vector of pending ack dequeues */
   u32 *pending_deq_acked;
+
+  /** vector of pending acks */
   u32 *pending_acks;
-  vlib_main_t *vm;				/**< pointer to vm */
+
+  /** vector of pending disconnect notifications */
+  u32 *pending_disconnects;
+
+  /** convenience pointer to this thread's vlib main */
+  vlib_main_t *vm;
 
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  u8 cached_opts[40];				/**< cached 'on the wire'
-						     options for bursts */
+
+  /** cached 'on the wire' options for bursts */
+  u8 cached_opts[40];
 
 } tcp_worker_ctx_t;
 
