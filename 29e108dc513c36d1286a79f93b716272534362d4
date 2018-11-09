@@ -1,0 +1,280 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b47e47af_85bae2b0",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 750,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "if you were to factor out this ESP and AH into two functions with signatures:\n\nint register_foo_backend_by_node_names(u8 *foo4_encrypt_node_name, u8 *foo4_decrypt_node_name, u8 *foo6_encrypt_node_name, u8* foo6_decrypt_node_name); (returning the backend index)\n\nand move there the logic from ipsecmb.c:\n\n...\n  next_node \u003d vlib_get_node_by_name (vm, (u8 *) \"esp4-encrypt-ipsecmb\");\n  ASSERT (next_node);\n  node \u003d vlib_get_node_by_name (vm, (u8 *) \"ipsec4-output\");\n  ASSERT (node);\n  u32 esp4_encrypt_node_index \u003d next_node-\u003eindex;\n  u32 esp4_encrypt_next_index \u003d\n    vlib_node_add_next (vm, node-\u003eindex, next_node-\u003eindex);\n...\n\nthen you could call that initialization function from here and from ipsecmb.c, not only that would unify the \"standard\" and \"ipsecmb\" backend handling (they look like special-case here - why ?) but also make the ipsecmb plumbing smaller by about 70-80LOC.",
+      "range": {
+        "startLine": 676,
+        "startChar": 0,
+        "endLine": 750,
+        "endChar": 33
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d665d216_9418dfca",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "This to me appears to be adding an SA on all backends - active and inactive - why ? Should it not be just the active backend ? (especially given we disallow the switching of the backends with active SAs).\n\nAnd regardless, given a number of very repetetive code below, feels like splitting this \"add an SA with t-\u003e{in|out}put_sa_index to esp and ah backends\" could be a good idea...\n\nWith that the lines 171-260 from this chunk becomes just this:\n\nis_up \u003d (flags \u0026 VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;\n\nerr \u003d ipsec_active_esp_ah_add_del_sa_sess(t-\u003einput_sa_index, is_up);\nif (err) return err;\nerr \u003d ipsec_active_esp_ah_add_del_sa_sess(t-\u003eoutput_sa_index, is_up);\nif (err) return err;\n\nThere is no point in passing the constants to callbacks since we can\u0027t inline them.",
+      "range": {
+        "startLine": 188,
+        "startChar": 6,
+        "endLine": 188,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c552bd3c_c2ba5b8e",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 196,
+        "startChar": 6,
+        "endLine": 196,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "737aeeac_60e68e25",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 213,
+        "startChar": 6,
+        "endLine": 213,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a00a8eeb_faa9a836",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 217,
+        "startChar": 6,
+        "endLine": 217,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ef8a59e8_5d15cb02",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 235,
+        "startChar": 6,
+        "endLine": 235,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "053ea06b_8b2419a8",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 240,
+        "startChar": 6,
+        "endLine": 240,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4672b259_e45e105e",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 249,
+        "startChar": 6,
+        "endLine": 249,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e0011b54_3a3b67bd",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 253,
+        "startChar": 6,
+        "endLine": 253,
+        "endChar": 18
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0819ed8c_f256ade6",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 635,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above. With factoring out the \"add/remove the SA with a given index from two backends\", this piece can become a one-liner.",
+      "range": {
+        "startLine": 635,
+        "startChar": 2,
+        "endLine": 635,
+        "endChar": 14
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "be692444_45205a27",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 639,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 639,
+        "startChar": 2,
+        "endLine": 639,
+        "endChar": 14
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7802d37b_63419154",
+        "filename": "test/test_ipsec_ah.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-09T10:34:41Z",
+      "side": 1,
+      "message": "The edits to this file should be also in this set, it seems: https://gerrit.fd.io/r/#/c/14909/23/test/template_ipsec.py",
+      "range": {
+        "startLine": 173,
+        "startChar": 4,
+        "endLine": 173,
+        "endChar": 27
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
