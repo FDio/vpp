@@ -169,7 +169,8 @@ typedef struct
   _( 8, BOND_SLAVE_UP, "bond-slave-up") \
   _( 9, TX_OFFLOAD, "tx-offload") \
   _(10, INTEL_PHDR_CKSUM, "intel-phdr-cksum") \
-  _(11, RX_FLOW_OFFLOAD, "rx-flow-offload")
+  _(11, RX_FLOW_OFFLOAD, "rx-flow-offload") \
+  _(12, RX_IP4_CKSUM, "rx-ip4-cksum")
 
 enum
 {

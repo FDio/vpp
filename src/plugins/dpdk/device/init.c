@@ -363,6 +363,12 @@ dpdk_lib_init (dpdk_main_t * dm)
       clib_memcpy (&xd->tx_conf, &dev_info.default_txconf,
 		   sizeof (struct rte_eth_txconf));
 
+      if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_IPV4_CKSUM)
+	{
+	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_IPV4_CKSUM;
+	  xd->flags |= DPDK_DEVICE_FLAG_RX_IP4_CKSUM;
+	}
+
       if (dm->conf->no_multi_seg)
 	{
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
