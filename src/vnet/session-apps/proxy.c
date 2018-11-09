@@ -34,6 +34,7 @@ proxy_cb_fn (void *data, u32 data_len)
   proxy_connect_args_t *pa = (proxy_connect_args_t *) data;
   vnet_connect_args_t a;
 
+  memset (&a, 0, sizeof (a));
   a.api_context = pa->api_context;
   a.app_index = pa->app_index;
   a.uri = pa->uri;
