@@ -120,7 +120,7 @@ def test_runner_wrapper(suite, keep_alive_pipe, stdouterr_queue,
                         finished_pipe, result_pipe, logger):
     sys.stdout = stdouterr_queue
     sys.stderr = stdouterr_queue
-    VppTestCase.logger = logger
+    VppTestCase.parallel_handler = logger.handlers[0]
     result = VppTestRunner(keep_alive_pipe=keep_alive_pipe,
                            descriptions=descriptions,
                            verbosity=verbose,

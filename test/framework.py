@@ -25,7 +25,7 @@ from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
 from vpp_papi.vpp_stats import VPPStats
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
-    getLogger, colorize
+    get_logger, colorize
 from vpp_object import VppObjectRegistry
 from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
@@ -369,10 +369,9 @@ class VppTestCase(unittest.TestCase):
         gc.collect()  # run garbage collection first
         random.seed()
         cls.print_header(cls)
-        if not hasattr(cls, 'logger'):
-            cls.logger = getLogger(cls.__name__)
-        else:
-            cls.logger.name = cls.__name__
+        cls.logger = get_logger(cls.__name__)
+        if hasattr(cls, 'parallel_handler'):
+            cls.logger.addHandler(cls.parallel_handler)
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
