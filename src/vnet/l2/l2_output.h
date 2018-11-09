@@ -141,7 +141,7 @@ typedef enum
 /* Return an array of strings containing graph node names of each feature */
 char **l2output_get_feat_names (void);
 
-/* arg0 - u32 feature_bitmap */
+/* arg0 - u32 feature_bitmap, arg1 - u32 verbose */
 u8 *format_l2_output_features (u8 * s, va_list * args);
 
 /**

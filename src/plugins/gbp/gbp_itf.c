@@ -196,8 +196,8 @@ format_gbp_itf (u8 * s, va_list * args)
 
   s = format (s, "%U locks:%d input-feats:%U output-feats:%U",
 	      format_vnet_sw_if_index_name, vnet_get_main (),
-	      gi->gi_sw_if_index, gi->gi_locks, format_l2_input_features,
-	      gi->gi_l2_input_fb, format_l2_output_features,
+	      gi->gi_sw_if_index, gi->gi_locks, format_l2_input_features, 0,
+	      gi->gi_l2_input_fb, format_l2_output_features, 0,
 	      gi->gi_l2_output_fb);
 
   return (s);
