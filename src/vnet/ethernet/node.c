@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -289,6 +289,199 @@ determine_next_node (ethernet_main_t * em,
     }
 }
 
+typedef enum
+{
+  ETYPE_ID_UNKNOWN = 0,
+  ETYPE_ID_IP4,
+  ETYPE_ID_IP6,
+  ETYPE_ID_MPLS,
+  ETYPE_N_IDS,
+} etype_id_t;
+
+#ifdef __AVX512F__
+#include <iacaMarks.h>
+#include "/home/damarion/cisco/vpp-sandbox/include/tscmarks.h"
+static_always_inline u16
+get_etype (vlib_buffer_t * b)
+{
+  ethernet_header_t *e = vlib_buffer_get_current (b);
+  return e->type;
+}
+
+static_always_inline void
+etypes_to_ids (u16 * etype_ids, u32 num)
+{
+  u32 i = 0;
+  u16x8 etypes;
+  while (i < num)
+    {
+      u16x8 r = { 0 };
+      etypes = u16x8_load_unaligned (etype_ids);
+      r += (etypes == u16x8_splat (clib_host_to_net_u16(ETHERNET_TYPE_IP4)))& u16x8_splat (ETYPE_ID_IP4);
+      r += (etypes == u16x8_splat (clib_host_to_net_u16(ETHERNET_TYPE_IP6))) & u16x8_splat (ETYPE_ID_IP6);
+      r += (etypes == u16x8_splat (clib_host_to_net_u16(ETHERNET_TYPE_MPLS))) & u16x8_splat (ETYPE_ID_MPLS);
+      u16x8_store_unaligned (r, etype_ids);
+      etype_ids += 8;
+      i += 8;
+    }
+}
+
+static_always_inline void
+update_metadata (vlib_main_t * vm, u32 * from, u32 n_left, u16 advance)
+{
+  while (n_left >= 8)
+    {
+      vlib_buffer_t *b[8];
+      //vlib_buffer_t **ph = b + 4;
+      vlib_get_buffers (vm, from, b, 8);
+      b[0]->current_config_index += advance;
+      vnet_buffer (b[0])->feature_arc_index -= advance;
+      //vlib_prefetch_buffer_header (ph[0], LOAD);
+      b[1]->current_config_index += advance;
+      vnet_buffer (b[1])->feature_arc_index -= advance;
+      //vlib_prefetch_buffer_header (ph[1], LOAD);
+      b[2]->current_config_index += advance;
+      vnet_buffer (b[2])->feature_arc_index += advance;
+      //vlib_prefetch_buffer_header (ph[2], LOAD);
+      b[3]->current_config_index += advance;
+      vnet_buffer (b[3])->feature_arc_index += advance;
+      //vlib_prefetch_buffer_header (ph[3], LOAD);
+
+      b[4]->current_config_index += advance;
+      vnet_buffer (b[4])->feature_arc_index -= advance;
+      //vlib_prefetch_buffer_header (ph[4], LOAD);
+      b[5]->current_config_index += advance;
+      vnet_buffer (b[5])->feature_arc_index -= advance;
+      //vlib_prefetch_buffer_header (ph[5], LOAD);
+      b[6]->current_config_index += advance;
+      vnet_buffer (b[6])->feature_arc_index += advance;
+      //vlib_prefetch_buffer_header (ph[6], LOAD);
+      b[7]->current_config_index += advance;
+      vnet_buffer (b[7])->feature_arc_index += advance;
+      //vlib_prefetch_buffer_header (ph[7], LOAD);
+      n_left -= 8;
+      from += 8;
+    }
+  while (n_left)
+    {
+      vlib_buffer_t *b[1];
+      b[0]->current_config_index += advance;
+      vnet_buffer (b[0])->feature_arc_index += advance;
+
+      n_left -= 1;
+      from += 1;
+    }
+}
+
+u16 etypes[VLIB_FRAME_SIZE];
+u32 tbl[ETYPE_N_IDS][VLIB_FRAME_SIZE];
+u16 n_id[ETYPE_N_IDS];
+
+static_always_inline void
+foo (vlib_main_t * vm, u32 * from, u32 n_from)
+{
+  vlib_buffer_t *buffers[VLIB_FRAME_SIZE + 20], **b = buffers;
+  u16 *etype = etypes;
+  u32 n_left = n_from;
+  u32 *bi = from;
+
+  tsc_mark ("get_etypes");
+
+  while (n_left >= 16)
+    {
+      vlib_get_buffers (vm, bi, buffers, 16);
+      vlib_buffer_t **ph = b + 12, **pd = b + 8;
+      vlib_prefetch_buffer_header (ph[0], LOAD);
+      vlib_prefetch_buffer_data (pd[0], LOAD);
+      etype[0] = get_etype (b[0]);
+
+      vlib_prefetch_buffer_header (ph[1], LOAD);
+      vlib_prefetch_buffer_data (pd[1], LOAD);
+      etype[1] = get_etype (b[1]);
+
+      vlib_prefetch_buffer_header (ph[2], LOAD);
+      vlib_prefetch_buffer_data (pd[2], LOAD);
+      etype[2] = get_etype (b[2]);
+
+      vlib_prefetch_buffer_header (ph[3], LOAD);
+      vlib_prefetch_buffer_data (pd[3], LOAD);
+      etype[3] = get_etype (b[3]);
+
+      /* next */
+      n_left -= 4;
+      etype += 4;
+      bi += 4;
+    }
+  while (n_left)
+    {
+      b[0] = vlib_get_buffer (vm, bi[0]);
+      etype[0] = get_etype (b[0]);
+
+      /* next */
+      n_left -= 1;
+      etype += 1;
+      bi += 1;
+    }
+  tsc_mark ("etypes_to_ids");
+
+  etypes_to_ids (etypes, n_from);
+  tsc_mark ("tbl");
+
+  n_left = n_from;
+  etype = etypes;
+  memset (n_id, 0, sizeof (n_id));
+  while (n_left)
+    {
+      u16 x, y;
+      x = etype[0];
+      y = n_id[x];
+
+      if (n_left >= 16 &&
+	  u16x16_is_all_equal (u16x16_load_unaligned (etype), etype[0]))
+	{
+	  u32x8_store_unaligned (u32x8_load_unaligned (from), &tbl[x][y]);
+	  u32x8_store_unaligned (u32x8_load_unaligned (from + 8),
+				 &tbl[x][y + 8]);
+	  n_id[x] += 16;
+
+	  /* next */
+	  etype += 16;
+	  from += 16;
+	  n_left -= 16;
+	}
+      else if (n_left >= 8 &&
+	       u16x8_is_all_equal (u16x8_load_unaligned (etype), etype[0]))
+	{
+	  u32x8_store_unaligned (u32x8_load_unaligned (from), &tbl[x][y]);
+
+	  n_id[x] += 8;
+
+	  /* next */
+	  etype += 8;
+	  from += 8;
+	  n_left -= 8;
+	  continue;
+	}
+      else
+	{
+	  tbl[x][y] = from[0];
+	  n_id[x]++;
+
+	  /* next */
+	  etype += 1;
+	  from += 1;
+	  n_left -= 1;
+	}
+    }
+  tsc_mark ("update");
+
+  update_metadata (vm, tbl[ETYPE_ID_IP4], n_id[ETYPE_ID_IP4], 14);
+
+  tsc_mark ("xxx");
+  tsc_print (3, n_from);
+}
+#endif
+
 static_always_inline uword
 ethernet_input_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
@@ -305,6 +498,8 @@ ethernet_input_inline (vlib_main_t * vm,
   u32 cached_is_l2 = 0;		/* shut up gcc */
   vnet_hw_interface_t *hi = NULL;	/* used for main interface only */
 
+  //clib_warning ("flags %x vectors %u", from_frame->flags, from_frame->n_vectors);
+
   if (variant != ETHERNET_INPUT_VARIANT_ETHERNET)
     error_node = vlib_node_get_runtime (vm, ethernet_input_node.index);
   else
@@ -312,6 +507,11 @@ ethernet_input_inline (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+
+#ifdef __AVX512F__
+  if (from_frame->flags)
+    foo (vm, from, n_left_from);
+#endif
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     vlib_trace_frame_buffers_only (vm, node,
