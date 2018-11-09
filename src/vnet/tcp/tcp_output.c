@@ -1201,8 +1201,7 @@ tcp_push_header (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, /* compute opts */ 0,
 		  /* burst */ 1);
   tc->snd_una_max = tc->snd_nxt;
-  ASSERT (seq_leq (tc->snd_una_max, tc->snd_una + tc->snd_wnd
-		   + tcp_fastrecovery_sent_1_smss (tc) * tc->snd_mss));
+  ASSERT (seq_leq (tc->snd_una_max, tc->snd_una + tc->snd_wnd));
   tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
   /* If not tracking an ACK, start tracking */
   if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
