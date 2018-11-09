@@ -305,6 +305,8 @@ ethernet_input_inline (vlib_main_t * vm,
   u32 cached_is_l2 = 0;		/* shut up gcc */
   vnet_hw_interface_t *hi = NULL;	/* used for main interface only */
 
+  //clib_warning ("flags %x vectors %u", from_frame->flags, from_frame->n_vectors);
+
   if (variant != ETHERNET_INPUT_VARIANT_ETHERNET)
     error_node = vlib_node_get_runtime (vm, ethernet_input_node.index);
   else

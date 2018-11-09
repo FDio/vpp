@@ -157,6 +157,7 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
   f->n_vectors = 0;
   f->scalar_size = scalar_size;
   f->vector_size = vector_size;
+  f->flags = 0;
 
   fs->n_alloc_frames += 1;
 
