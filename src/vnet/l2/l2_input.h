@@ -152,7 +152,7 @@ STATIC_ASSERT ((u64) L2INPUT_VALID_MASK == (1ull << L2INPUT_N_FEAT) - 1, "");
 /** Return an array of strings containing graph node names of each feature */
 char **l2input_get_feat_names (void);
 
-/* arg0 - u32 feature_bitmap */
+/* arg0 - u32 feature_bitmap, arg1 - u32 verbose */
 u8 *format_l2_input_features (u8 * s, va_list * args);
 
 static_always_inline u8

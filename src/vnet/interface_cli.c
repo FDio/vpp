@@ -326,14 +326,15 @@ show_sw_interfaces (vlib_main_t * vm,
       /* intf input features are masked by bridge domain */
       if (l2_input->bridge)
 	fb &= l2input_bd_config (l2_input->bd_index)->feature_bitmap;
-      vlib_cli_output (vm, "\nl2-input:\n%U", format_l2_input_features, fb);
+      vlib_cli_output (vm, "\nl2-input:\n%U", format_l2_input_features, fb,
+		       1);
 
       l2_output_config_t *l2_output = l2output_intf_config (sw_if_index);
       vlib_cli_output (vm, "\nl2-output:");
       if (l2_output->out_vtr_flag)
 	vlib_cli_output (vm, "%10s (%s)", "VTR", "--internal--");
       vlib_cli_output (vm, "%U", format_l2_output_features,
-		       l2_output->feature_bitmap);
+		       l2_output->feature_bitmap, 1);
       return 0;
     }
   if (show_tag)

@@ -71,6 +71,7 @@ format_l2_input_features (u8 * s, va_list * args)
 #undef _
   };
   u32 feature_bitmap = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
 
   if (feature_bitmap == 0)
     {
@@ -81,8 +82,16 @@ format_l2_input_features (u8 * s, va_list * args)
   feature_bitmap &= ~L2INPUT_FEAT_DROP;	/* Not a feature */
   int i;
   for (i = L2INPUT_N_FEAT; i >= 0; i--)
-    if (feature_bitmap & (1 << i))
-      s = format (s, "%17s (%s)\n", display_names[i], l2input_feat_names[i]);
+    {
+      if (feature_bitmap & (1 << i))
+	{
+	  if (verbose)
+	    s = format (s, "%17s (%s)\n",
+			display_names[i], l2input_feat_names[i]);
+	  else
+	    s = format (s, "%s ", l2input_feat_names[i]);
+	}
+    }
   return s;
 }
 
