@@ -140,20 +140,6 @@ dpdk_prefetch_buffer_x4 (struct rte_mbuf *mb[])
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
-static_always_inline void
-dpdk_prefetch_buffer_data_x4 (struct rte_mbuf *mb[])
-{
-  vlib_buffer_t *b;
-  b = vlib_buffer_from_rte_mbuf (mb[0]);
-  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
-  b = vlib_buffer_from_rte_mbuf (mb[1]);
-  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
-  b = vlib_buffer_from_rte_mbuf (mb[2]);
-  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
-  b = vlib_buffer_from_rte_mbuf (mb[3]);
-  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
-}
-
 /** \brief Main DPDK input node
     @node dpdk-input
 
@@ -219,13 +205,11 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
   uword n_bytes = 0;
   i16 off;
   u8 *flags, or_flags = 0;
-  u16 *next;
 
   fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   mb = ptd->mbufs;
   flags = ptd->flags;
-  next = ptd->next;
 
   while (n_left >= 8)
     {
@@ -245,42 +229,25 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       or_flags |= dpdk_ol_flags_extract (mb, flags, 4);
       flags += 4;
 
-      /* we temporary store relative offset of ethertype into next[x]
-         so we can prefetch and get it faster later */
-
-      off = mb[0]->data_off;
-      next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
-      off -= RTE_PKTMBUF_HEADROOM;
+      off = mb[0]->data_off - RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[0])->l2_hdr_offset = off;
       b[0]->current_data = off;
+      n_bytes += b[0]->current_length = mb[0]->data_len;
 
-      off = mb[1]->data_off;
-      next[1] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
-      off -= RTE_PKTMBUF_HEADROOM;
+      off = mb[1]->data_off - RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[1])->l2_hdr_offset = off;
       b[1]->current_data = off;
+      n_bytes += b[1]->current_length = mb[1]->data_len;
 
-      off = mb[2]->data_off;
-      next[2] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
-      off -= RTE_PKTMBUF_HEADROOM;
+      off = mb[2]->data_off - RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[2])->l2_hdr_offset = off;
       b[2]->current_data = off;
+      n_bytes += b[2]->current_length = mb[2]->data_len;
 
-      off = mb[3]->data_off;
-      next[3] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
-      off -= RTE_PKTMBUF_HEADROOM;
+      off = mb[3]->data_off - RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[3])->l2_hdr_offset = off;
       b[3]->current_data = off;
-
-      b[0]->current_length = mb[0]->data_len;
-      b[1]->current_length = mb[1]->data_len;
-      b[2]->current_length = mb[2]->data_len;
-      b[3]->current_length = mb[3]->data_len;
-
-      n_bytes += mb[0]->data_len;
-      n_bytes += mb[1]->data_len;
-      n_bytes += mb[2]->data_len;
-      n_bytes += mb[3]->data_len;
+      n_bytes += b[3]->current_length = mb[3]->data_len;
 
       if (maybe_multiseg)
 	{
@@ -298,7 +265,6 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       /* next */
       mb += 4;
       n_left -= 4;
-      next += 4;
     }
 
   while (n_left)
@@ -308,13 +274,11 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       or_flags |= dpdk_ol_flags_extract (mb, flags, 1);
       flags += 1;
 
-      off = mb[0]->data_off;
-      next[0] = off + STRUCT_OFFSET_OF (ethernet_header_t, type);
-      off -= RTE_PKTMBUF_HEADROOM;
+      off = mb[0]->data_off - RTE_PKTMBUF_HEADROOM;
       vnet_buffer (b[0])->l2_hdr_offset = off;
       b[0]->current_data = off;
-      b[0]->current_length = mb[0]->data_len;
-      n_bytes += mb[0]->data_len;
+      n_bytes += b[0]->current_length = mb[0]->data_len;
+
       if (maybe_multiseg)
 	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
@@ -322,77 +286,10 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       /* next */
       mb += 1;
       n_left -= 1;
-      next += 1;
     }
 
   *or_flagsp = or_flags;
   return n_bytes;
-}
-
-static_always_inline void
-dpdk_set_next_from_etype (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  dpdk_per_thread_data_t * ptd, uword n_rx_packets)
-{
-  vlib_buffer_t *b[4];
-  i16 adv[4];
-  u16 etype[4];
-  struct rte_mbuf **mb = ptd->mbufs;
-  u8 *flags = ptd->flags;
-  u16 *next = ptd->next;
-  u32 n_left = n_rx_packets;
-
-  while (n_left >= 12)
-    {
-      dpdk_prefetch_buffer_data_x4 (mb + 8);
-      dpdk_prefetch_buffer_x4 (mb + 8);
-
-      b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
-      b[1] = vlib_buffer_from_rte_mbuf (mb[1]);
-      b[2] = vlib_buffer_from_rte_mbuf (mb[2]);
-      b[3] = vlib_buffer_from_rte_mbuf (mb[3]);
-      etype[0] = *(u16 *) ((u8 *) mb[0] + next[0] + sizeof (vlib_buffer_t));
-      etype[1] = *(u16 *) ((u8 *) mb[1] + next[1] + sizeof (vlib_buffer_t));
-      etype[2] = *(u16 *) ((u8 *) mb[2] + next[2] + sizeof (vlib_buffer_t));
-      etype[3] = *(u16 *) ((u8 *) mb[3] + next[3] + sizeof (vlib_buffer_t));
-      next[0] = dpdk_rx_next (node, etype[0], flags[0]);
-      next[1] = dpdk_rx_next (node, etype[1], flags[1]);
-      next[2] = dpdk_rx_next (node, etype[2], flags[2]);
-      next[3] = dpdk_rx_next (node, etype[3], flags[3]);
-      adv[0] = device_input_next_node_advance[next[0]];
-      adv[1] = device_input_next_node_advance[next[1]];
-      adv[2] = device_input_next_node_advance[next[2]];
-      adv[3] = device_input_next_node_advance[next[3]];
-      b[0]->current_data += adv[0];
-      b[1]->current_data += adv[1];
-      b[2]->current_data += adv[2];
-      b[3]->current_data += adv[3];
-      b[0]->current_length -= adv[0];
-      b[1]->current_length -= adv[1];
-      b[2]->current_length -= adv[2];
-      b[3]->current_length -= adv[3];
-
-      /* next */
-      next += 4;
-      mb += 4;
-      n_left -= 4;
-      flags += 4;
-    }
-
-  while (n_left)
-    {
-      b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
-      next[0] = *(u16 *) ((u8 *) mb[0] + next[0] + sizeof (vlib_buffer_t));
-      next[0] = dpdk_rx_next (node, next[0], flags[0]);
-      adv[0] = device_input_next_node_advance[next[0]];
-      b[0]->current_data += adv[0];
-      b[0]->current_length -= adv[0];
-
-      /* next */
-      next += 1;
-      mb += 1;
-      n_left -= 1;
-      flags += 1;
-    }
 }
 
 static_always_inline void
@@ -439,7 +336,6 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   struct rte_mbuf **mb;
   vlib_buffer_t *b0;
-  int known_next = 0;
   u16 *next;
   u8 or_flags;
   u32 n;
@@ -472,65 +368,83 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   /* as DPDK is allocating empty buffers from mempool provided before interface
      start for each queue, it is safe to store this in the template */
   bt->buffer_pool_index = xd->buffer_pool_for_queue[queue_id];
+  vnet_buffer (bt)->feature_arc_index = 0;
+  bt->current_config_index = 0;
 
   /* receive burst of packets from DPDK PMD */
   if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
-    {
-      known_next = 1;
-      next_index = xd->per_interface_next_index;
-    }
+    next_index = xd->per_interface_next_index;
 
   /* as all packets belong to the same interface feature arc lookup
      can be don once and result stored in the buffer template */
   if (PREDICT_FALSE (vnet_device_input_have_features (xd->sw_if_index)))
-    {
-      vnet_feature_start_device_input_x1 (xd->sw_if_index, &next_index, bt);
-      known_next = 1;
-    }
+    vnet_feature_start_device_input_x1 (xd->sw_if_index, &next_index, bt);
 
   if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 1, &or_flags);
   else
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 0, &or_flags);
 
-  if (PREDICT_FALSE (known_next))
+  if (PREDICT_FALSE (or_flags & ((1 << DPDK_RX_F_FDIR) |
+				 (1 << DPDK_RX_F_CKSUM_BAD))))
     {
+      /* some packets will need to go do different next nodes */
       for (n = 0; n < n_rx_packets; n++)
 	ptd->next[n] = next_index;
 
-      vnet_buffer (bt)->feature_arc_index = 0;
-      bt->current_config_index = 0;
+      /* flow offload - process if rx flow offload enabled and at least one
+         packet is marked */
+      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
+			 (or_flags & (1 << DPDK_RX_F_FDIR))))
+	dpdk_process_flow_offload (xd, ptd, n_rx_packets);
+
+      /* is at least one packet marked as ip4 checksum bad? */
+      if (PREDICT_FALSE (or_flags & (1 << DPDK_RX_F_CKSUM_BAD)))
+	for (n = 0; n < n_rx_packets; n++)
+	  {
+	    if ((ptd->flags[n] & (1 << DPDK_RX_F_CKSUM_BAD)) == 0)
+	      continue;
+	    if (ptd->next[n] != VNET_DEVICE_INPUT_NEXT_IP4_INPUT)
+	      continue;
+
+	    b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
+	    b0->error = node->errors[DPDK_ERROR_IP_CHECKSUM_ERROR];
+	    ptd->next[n] = VNET_DEVICE_INPUT_NEXT_DROP;
+	  }
+
+      /* enqueue buffers to the next node */
+      vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs,
+					   ptd->buffers, n_rx_packets,
+					   sizeof (struct rte_mbuf));
+
+      vlib_buffer_enqueue_to_next (vm, node, ptd->buffers, ptd->next,
+				   n_rx_packets);
     }
   else
-    dpdk_set_next_from_etype (vm, node, ptd, n_rx_packets);
+    {
+      u32 *to_next, n_left_to_next;
 
-  /* flow offload - process if rx flow offload enabled and at least one packet
-     is marked */
-  if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
-		     (or_flags & (1 << DPDK_RX_F_FDIR))))
-    dpdk_process_flow_offload (xd, ptd, n_rx_packets);
+      vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
+      vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs, to_next,
+					   n_rx_packets,
+					   sizeof (struct rte_mbuf));
 
-  /* is at least one packet marked as ip4 checksum bad? */
-  if (PREDICT_FALSE (or_flags & (1 << DPDK_RX_F_CKSUM_BAD)))
-    for (n = 0; n < n_rx_packets; n++)
-      {
-	if ((ptd->flags[n] & (1 << DPDK_RX_F_CKSUM_BAD)) == 0)
-	  continue;
-	if (ptd->next[n] != VNET_DEVICE_INPUT_NEXT_IP4_INPUT)
-	  continue;
+#define ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX (1 << 0)
+#define ETH_INPUT_FRAME_F_IP4_CKSUM_OK (1 << 1)
 
-	b0 = vlib_buffer_from_rte_mbuf (ptd->mbufs[n]);
-	b0->error = node->errors[DPDK_ERROR_IP_CHECKSUM_ERROR];
-	ptd->next[n] = VNET_DEVICE_INPUT_NEXT_DROP;
-      }
-
-  /* enqueue buffers to the next node */
-  vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs, ptd->buffers,
-				       n_rx_packets,
-				       sizeof (struct rte_mbuf));
-
-  vlib_buffer_enqueue_to_next (vm, node, ptd->buffers, ptd->next,
-			       n_rx_packets);
+      if (PREDICT_TRUE (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT))
+	{
+	  vlib_next_frame_t *nf;
+	  vlib_frame_t *f;
+	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+	  f = vlib_get_frame (vm, nf->frame_index);
+	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+	  if (xd->flags & DPDK_DEVICE_FLAG_RX_IP4_CKSUM)
+	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
+	}
+      n_left_to_next -= n_rx_packets;
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
 
   /* packet trace if enabled */
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
