@@ -64,6 +64,4 @@ Issues fixed
 For the full list of fixed issues please refer to:
 
 * fd.io `JIRA <https://jira.fd.io/>`_
-* git `commit log <https://git.fd.io/vpp/log/?h=stable/1804>`_
-
-
+* git `commit log <https://git.fd.io/vpp/log/?h=stable/1710>`_

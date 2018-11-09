@@ -2,106 +2,28 @@
 
 .. toctree::
 
-Setup the fd.io Repository - Centos 7
+Setup the FD.io Repository - Centos 7
 =====================================
 
 Update the OS
 -------------
 
 Before starting the repository setup, it is a good idea to first update and upgrade
-the OS; run the following command to update the OS:
+the OS; run the following commands to update the OS and get some packages.
 
 .. code-block:: console
 
     $ sudo yum update
+    $ sudo yum install pygpgme yum-utils
 
 
-Point to the Repository
------------------------
+Package Cloud Repository
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-For CentOS based systems, there are two respositories to pull VPP binaries from:
-
-* CentOS NFV SIG Repository
-* Nexus Repository
-
-
-CentOS NFV SIG Repository
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-VPP is not in the official CentOS 7 distro; however, CentOS has Special
-Interest Groups (SIG), which are smaller groups within the CentOS community that
-focus on a small set of issues. The CentOS NFV (Network Function Virtualization)
-SIG was created to provide a CentOS-based stack that will serve as a platform
-
-To install released packages from the CentOS NFV SIG Repository on an updated
-Centos 7 system, first, install the CentOS NFV SIG FIDO repo file by running the
-following command:
-
-.. code-block:: console
-
-    $ sudo yum install centos-release-fdio
-
-then **'Install VPP RPMs'**, as described below.
-
-This will install the latest VPP version from the repository. To install an
-older version, once the CentOS NFV SIG FDIO repo file has been installed, list
-the stored versions:
-
-.. code-block:: console
-
-    $ sudo yum --showduplicates list vpp* | expand
-    Loaded plugins: fastestmirror
-    Loading mirror speeds from cached hostfile
-     * base: repos-va.psychz.net
-     * epel: download-ib01.fedoraproject.org
-     * extras: mirror.siena.edu
-     * updates: repo1.ash.innoscale.net
-    Available Packages
-    vpp.x86_64                                17.10-1                    centos-fdio
-    vpp.x86_64                                18.01.1-1                  centos-fdio
-    vpp.x86_64                                18.01.2-1                  centos-fdio
-    vpp.x86_64                                18.04-1                    centos-fdio
-    vpp-api-java.x86_64                       17.10-1                    centos-fdio
-    vpp-api-java.x86_64                       18.01.1-1                  centos-fdio
-    vpp-api-java.x86_64                       18.01.2-1                  centos-fdio
-    vpp-api-java.x86_64                       18.04-1                    centos-fdio
-    vpp-api-lua.x86_64                        17.10-1                    centos-fdio
-    vpp-api-lua.x86_64                        18.01.1-1                  centos-fdio
-    vpp-api-lua.x86_64                        18.01.2-1                  centos-fdio
-    vpp-api-lua.x86_64                        18.04-1                    centos-fdio
-    vpp-api-python.x86_64                     17.10-1                    centos-fdio
-    vpp-api-python.x86_64                     18.01.1-1                  centos-fdio
-    vpp-api-python.x86_64                     18.01.2-1                  centos-fdio
-    vpp-api-python.x86_64                     18.04-1                    centos-fdio
-    vpp-devel.x86_64                          17.10-1                    centos-fdio
-    vpp-devel.x86_64                          18.01.1-1                  centos-fdio
-    vpp-devel.x86_64                          18.01.2-1                  centos-fdio
-    vpp-devel.x86_64                          18.04-1                    centos-fdio
-    vpp-lib.x86_64                            17.10-1                    centos-fdio
-    vpp-lib.x86_64                            18.01.1-1                  centos-fdio
-    vpp-lib.x86_64                            18.01.2-1                  centos-fdio
-    vpp-lib.x86_64                            18.04-1                    centos-fdio
-    vpp-plugins.x86_64                        17.10-1                    centos-fdio
-    vpp-plugins.x86_64                        18.01.1-1                  centos-fdio
-    vpp-plugins.x86_64                        18.01.2-1                  centos-fdio
-    vpp-plugins.x86_64                        18.04-1                    centos-fdio
-    vpp-selinux-policy.x86_64                 18.04-1                    centos-fdio
-
-Then install a particular version:
-
-.. code-block:: console
-
-    $ sudo yum install vpp-17.10-1.x86_64
-
-
-Nexus Repository
-^^^^^^^^^^^^^^^^
-
-Build artifacts are also posted to a FD.io Nexus Repository. This includes
-official point releases, as well as nightly builds. To use any of these build
-artifacts, create a file *'/etc/yum.repos.d/fdio-release.repo'* with the
-content that points to the version needed. Below are some common examples of
-the content needed:
+Build artifacts are also posted to a packagecloud.io Repository. This includes
+official point releases. To use any of these build artifacts, create a file
+*'/etc/yum.repos.d/fdio-release.repo'* with the content that points to the
+version needed. Below are some common examples of the content needed:
 
 
 VPP Latest Release
@@ -113,11 +35,33 @@ To allow *'yum'* access to the official VPP releases, create the file
 .. code-block:: console
 
    $ cat /etc/yum.repos.d/fdio-release.repo
-   [fdio-release]
-   name=fd.io release branch latest merge
-   baseurl=https://nexus.fd.io/content/repositories/fd.io.centos7/
-   enabled=1
+   [fdio_release]
+   name=fdio_release
+   baseurl=https://packagecloud.io/fdio/release/el/7/$basearch
+   repo_gpgcheck=1
    gpgcheck=0
+   enabled=1
+   gpgkey=https://packagecloud.io/fdio/release/gpgkey
+   sslverify=1
+   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+   metadata_expire=300
+
+   [fdio_release-source]
+   name=fdio_release-source
+   baseurl=https://packagecloud.io/fdio/release/el/7/SRPMS
+   repo_gpgcheck=1
+   gpgcheck=0
+   enabled=1
+   gpgkey=https://packagecloud.io/fdio/release/gpgkey
+   sslverify=1
+   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+   metadata_expire=300
+
+Update your local yum cache.
+
+.. code-block:: console
+
+   $ sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_release'
 
 The *'yum install vpp'* command will install the most recent release. To
 install older releases, run the following command to get the list of releases
@@ -126,10 +70,6 @@ provided.
 .. code-block:: console
 
    $ sudo yum --showduplicates list vpp* | expand
-
-Then choose the release to install. See **'CentOS NFV SIG Repository'** for
-sample *'yum --showduplicates list'* output and an example of installing a
-particular version of the RPMs.
 
 VPP Stable Branch
 """""""""""""""""""
@@ -140,14 +80,36 @@ the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content.
 .. code-block:: console
 
    $ cat /etc/yum.repos.d/fdio-release.repo
-   [fdio-stable-1804]
-   name=fd.io stable/1804 branch latest merge
-   baseurl=https://nexus.fd.io/content/repositories/fd.io.stable.1804.centos7/
-   enabled=1
+   [fdio_1810]
+   name=fdio_1810
+   baseurl=https://packagecloud.io/fdio/1810/el/7/$basearch
+   repo_gpgcheck=1
    gpgcheck=0
+   enabled=1
+   gpgkey=https://packagecloud.io/fdio/1810/gpgkey
+   sslverify=1
+   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+   metadata_expire=300
 
-For other stable branches, replace the *'1804'* from the above content with the
+   [fdio_1810-source]
+   name=fdio_1810-source
+   baseurl=https://packagecloud.io/fdio/1810/el/7/SRPMS
+   repo_gpgcheck=1
+   gpgcheck=0
+   enabled=1
+   gpgkey=https://packagecloud.io/fdio/1810/gpgkey
+   sslverify=1
+   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+   metadata_expire=300
+
+For other stable branches, replace the *'1810'* from the above content with the
 desired release. Examples: 1606, 1609, 1701, 1704, 1707, 1710, 1804, 1807
+
+Update your local yum cache.
+
+.. code-block:: console
+
+   $ sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_1810'
 
 The *'yum install vpp'* command will install the most recent build on the
 branch, not the latest offical release. Run the following command to get the
@@ -156,10 +118,6 @@ list of images produce by the branch:
 .. code-block:: console
 
    $ sudo yum --showduplicates list vpp* | expand
-
-Then choose the image to install. See **'CentOS NFV SIG Repository'** for
-sample *'yum --showduplicates list'* output and an example of installing a
-particular version of the RPMs.
 
 
 VPP Master Branch
@@ -171,11 +129,33 @@ the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content.
 .. code-block:: console
 
    $ cat /etc/yum.repos.d/fdio-release.repo
-   [fdio-master]
-   name=fd.io master branch latest merge
-   baseurl=https://nexus.fd.io/content/repositories/fd.io.master.centos7/
-   enabled=1
+   [fdio_master]
+   name=fdio_master
+   baseurl=https://packagecloud.io/fdio/master/el/7/$basearch
+   repo_gpgcheck=1
    gpgcheck=0
+   enabled=1
+   gpgkey=https://packagecloud.io/fdio/master/gpgkey
+   sslverify=1
+   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+   metadata_expire=300
+
+   [fdio_master-source]
+   name=fdio_master-source
+   baseurl=https://packagecloud.io/fdio/master/el/7/SRPMS
+   repo_gpgcheck=1
+   gpgcheck=0
+   enabled=1
+   gpgkey=https://packagecloud.io/fdio/master/gpgkey
+   sslverify=1
+   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+   metadata_expire=300
+
+Update your local yum cache.
+
+.. code-block:: console
+
+   $ sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_master'
 
 The *'yum install vpp'* command will install the most recent build on the
 branch. Run the following command to get the list of images produce by the
@@ -184,11 +164,6 @@ branch.
 .. code-block:: console
 
    $ sudo yum --showduplicates list vpp* | expand
-
-Then choose the image to install. See **'CentOS NFV SIG Repository'** for
-sample *'yum --showduplicates list'* output and an example of installing a
-particular version of the RPMs.
-
 
 Install VPP RPMs
 ================
