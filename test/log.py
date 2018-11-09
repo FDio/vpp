@@ -50,7 +50,7 @@ scapy_logger = logging.getLogger("scapy.runtime")
 scapy_logger.setLevel(logging.ERROR)
 
 
-def getLogger(name):
+def get_logger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     return logger
