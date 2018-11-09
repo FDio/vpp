@@ -337,7 +337,7 @@ typedef enum
 } gbp_vxlan_input_error_t;
 
 static char *gbp_vxlan_error_strings[] = {
-#define _(n,s) s
+#define _(n,s) s,
   foreach_gbp_vxlan_error
 #undef _
 };
