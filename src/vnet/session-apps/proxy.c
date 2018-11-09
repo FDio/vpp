@@ -32,7 +32,7 @@ static void
 proxy_cb_fn (void *data, u32 data_len)
 {
   proxy_connect_args_t *pa = (proxy_connect_args_t *) data;
-  vnet_connect_args_t a;
+  vnet_connect_args_t a = {0};
 
   a.api_context = pa->api_context;
   a.app_index = pa->app_index;
