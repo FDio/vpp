@@ -65,6 +65,24 @@
     },
     {
       "key": {
+        "uuid": "dd58da7d_52996e3e",
+        "filename": "src/vnet/ip/ip6_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-11-09T02:30:19Z",
+      "side": 1,
+      "message": "Ok",
+      "parentUuid": "26aa521f_bfa807bd",
+      "revId": "7583bc093ff7736a8e7728697158909456df0013",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8062059b_04ee987a",
         "filename": "src/vnet/ip/ip6_input.c",
         "patchSetId": 1
@@ -76,6 +94,30 @@
       "writtenOn": "2018-11-08T15:19:01Z",
       "side": 1,
       "message": "4",
+      "range": {
+        "startLine": 114,
+        "startChar": 46,
+        "endLine": 114,
+        "endChar": 47
+      },
+      "revId": "7583bc093ff7736a8e7728697158909456df0013",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4975c79f_e7edfdc1",
+        "filename": "src/vnet/ip/ip6_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2018-11-09T02:30:19Z",
+      "side": 1,
+      "message": "if I understand right, header prefetching should be advanced to 5,6, payload should keep 2, 3. right?",
+      "parentUuid": "8062059b_04ee987a",
       "range": {
         "startLine": 114,
         "startChar": 46,
