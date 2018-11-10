@@ -405,7 +405,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
   u32 new_tx_sw_if_index = ~0;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
   b = bufs;

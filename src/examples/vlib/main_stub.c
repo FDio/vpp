@@ -50,7 +50,7 @@ static u8 *
 format_my_node_frame (u8 * s, va_list * va)
 {
   vlib_frame_t *f = va_arg (*va, vlib_frame_t *);
-  my_frame_t *g = vlib_frame_args (f);
+  my_frame_t *g = vlib_frame_scalar_args (f);
   int i;
 
   s = format (s, "scalar %d, vector { ", g->scalar);
@@ -82,7 +82,7 @@ my_func (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
     {
       vlib_frame_t *next = vlib_get_next_frame (vm, rt, /* next index */ 0);
       n_left = VLIB_FRAME_SIZE - next->n_vectors;
-      y = vlib_frame_args (next);
+      y = vlib_frame_scalar_args (next);
       y->scalar = serial++;
     }
   else

@@ -271,9 +271,6 @@ vlib_frame_vector_args (vlib_frame_t * f)
 
 /** \brief Get pointer to frame scalar data.
 
- @warning This is almost certainly not the function you wish to call.
- See @ref vlib_frame_vector_args instead.
-
  @param f vlib_frame_t pointer
 
  @return arbitrary node scalar data
@@ -281,7 +278,7 @@ vlib_frame_vector_args (vlib_frame_t * f)
  @sa vlib_frame_vector_args
 */
 always_inline void *
-vlib_frame_args (vlib_frame_t * f)
+vlib_frame_scalar_args (vlib_frame_t * f)
 {
   return vlib_frame_vector_args (f) - f->scalar_size;
 }

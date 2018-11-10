@@ -170,7 +170,7 @@ static tapcli_main_t tapcli_main;
 static uword
 tapcli_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
   tapcli_main_t *tm = &tapcli_main;
   tapcli_interface_t *ti;
@@ -603,7 +603,7 @@ static void
 tapcli_nopunt_frame (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
   vlib_buffer_free (vm, buffers, n_packets);
   vlib_frame_free (vm, node, frame);

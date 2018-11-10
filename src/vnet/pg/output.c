@@ -47,7 +47,7 @@ uword
 pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   pg_main_t *pg = &pg_main;
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_buffers = frame->n_vectors;
   uword n_left = n_buffers;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -80,7 +80,7 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     pcap_write (&pif->pcap_main);
 
 
-  vlib_buffer_free (vm, vlib_frame_args (frame), n_buffers);
+  vlib_buffer_free (vm, vlib_frame_vector_args (frame), n_buffers);
   if (PREDICT_FALSE (pif->lockp != 0))
     clib_atomic_release (pif->lockp);
 

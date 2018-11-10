@@ -52,7 +52,7 @@ units to convert buffer indices to buffer pointers:
      u16 nexts[VLIB_FRAME_SIZE], *next;
 
      n_left_from = frame->n_vectors;
-     from = vlib_frame_args (frame);
+     from = vlib_frame_vector_args (frame);
 
      /* 
       * Convert up to VLIB_FRAME_SIZE indices in "from" to 

@@ -81,7 +81,7 @@ af_packet_interface_tx (vlib_main_t * vm,
 			vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   af_packet_main_t *apm = &af_packet_main;
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   u32 n_sent = 0;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -168,7 +168,7 @@ af_packet_interface_tx (vlib_main_t * vm,
     vlib_error_count (vm, node->node_index, AF_PACKET_TX_ERROR_TXRING_OVERRUN,
 		      n_left);
 
-  vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+  vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
   return frame->n_vectors;
 }
 

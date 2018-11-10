@@ -281,7 +281,7 @@ simulated_srp_interface_tx (vlib_main_t * vm,
   vlib_buffer_t * b;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
 
   while (n_left_from > 0)
     {

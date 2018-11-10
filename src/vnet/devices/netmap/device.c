@@ -98,7 +98,7 @@ netmap_interface_tx (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   netmap_main_t *nm = &netmap_main;
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   f64 const time_constant = 1e3;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -169,7 +169,7 @@ netmap_interface_tx (vlib_main_t * vm,
 		       frame->n_vectors ? NETMAP_TX_ERROR_PENDING_MSGS :
 		       NETMAP_TX_ERROR_NO_FREE_SLOTS), n_left);
 
-  vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+  vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
   return frame->n_vectors;
 }
 

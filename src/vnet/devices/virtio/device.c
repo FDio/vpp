@@ -180,7 +180,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 used, next, avail;
   u16 sz = vring->size;
   u16 mask = sz - 1;
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
 
   clib_spinlock_lock_if_init (&vif->lockp);
 
