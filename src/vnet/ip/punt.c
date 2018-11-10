@@ -312,7 +312,7 @@ udp46_punt_socket_inline (vlib_main_t * vm,
 			  vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, bool is_ip4)
 {
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
   struct iovec *iovecs = 0;
   punt_main_t *pm = &punt_main;

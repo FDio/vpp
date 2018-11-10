@@ -99,7 +99,7 @@ vnet_interface_output_trace (vlib_main_t * vm,
   u32 n_left, *from;
 
   n_left = n_buffers;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
 
   while (n_left >= 4)
     {
@@ -222,7 +222,7 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     vnet_interface_output_trace (vm, node, frame, n_buffers);
 
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
 
   if (rt->is_deleted)
     return vlib_error_drop_buffers (vm, node, from,
@@ -475,7 +475,7 @@ vnet_per_buffer_interface_output (vlib_main_t * vm,
 
   n_left_from = frame->n_vectors;
 
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
   next_index = node->cached_next_index;
 
   while (n_left_from > 0)
@@ -669,7 +669,7 @@ static u8 *
 validate_error_frame (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * f)
 {
-  u32 *buffers = vlib_frame_args (f);
+  u32 *buffers = vlib_frame_vector_args (f);
   vlib_buffer_t *b;
   u8 *msg = 0;
   uword i;
@@ -719,7 +719,7 @@ process_drop_punt (vlib_main_t * vm,
   static vlib_error_t memory[VNET_ERROR_N_DISPOSITION];
   static char memory_init[VNET_ERROR_N_DISPOSITION];
 
-  buffers = vlib_frame_args (frame);
+  buffers = vlib_frame_vector_args (frame);
   first_buffer = buffers;
 
   {

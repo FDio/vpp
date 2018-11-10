@@ -658,7 +658,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
 
   if (PREDICT_FALSE (bif->admin_up == 0))
     {
-      vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+      vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
       vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
 				     VNET_INTERFACE_COUNTER_DROP,
 				     thread_index, bif->sw_if_index,
@@ -671,7 +671,7 @@ VNET_DEVICE_CLASS_TX_FN (bond_dev_class) (vlib_main_t * vm,
   n_slaves = vec_len (bif->active_slaves);
   if (PREDICT_FALSE (n_slaves == 0))
     {
-      vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+      vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
       vlib_increment_simple_counter (vnet_main.interface_main.sw_if_counters +
 				     VNET_INTERFACE_COUNTER_DROP,
 				     thread_index, bif->sw_if_index,

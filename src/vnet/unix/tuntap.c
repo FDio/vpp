@@ -146,7 +146,7 @@ static tuntap_main_t tuntap_main = {
 static uword
 tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
   tuntap_main_t *tm = &tuntap_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -934,7 +934,7 @@ static void
 tuntap_nopunt_frame (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_packets = frame->n_vectors;
   vlib_buffer_free (vm, buffers, n_packets);
   vlib_frame_free (vm, node, frame);
@@ -980,7 +980,7 @@ tuntap_intfc_tx (vlib_main_t * vm,
 		 vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   tuntap_main_t *tm = &tuntap_main;
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   uword n_buffers = frame->n_vectors;
 
   /* Normal interface transmit happens only on the normal interface... */

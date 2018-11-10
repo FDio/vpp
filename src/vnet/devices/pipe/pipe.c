@@ -140,7 +140,7 @@ pipe_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   pipe_t *pipe;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
 
   while (n_left_from > 0)
     {

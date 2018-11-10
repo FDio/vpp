@@ -45,7 +45,7 @@ VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
   u8 qid = thread_index;
   avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
   avf_tx_desc_t *d0, *d1, *d2, *d3;
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   u32 bi0, bi1, bi2, bi3;
   u16 n_left, n_left_to_send, n_in_batch;
   vlib_buffer_t *b0, *b1, *b2, *b3;

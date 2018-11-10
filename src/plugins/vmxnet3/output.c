@@ -100,7 +100,7 @@ VNET_DEVICE_CLASS_TX_FN (vmxnet3_device_class) (vlib_main_t * vm,
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, rd->dev_instance);
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   u32 bi0;
   vlib_buffer_t *b0;
   vmxnet3_tx_desc *txd = 0;

@@ -464,7 +464,7 @@ api_rx_from_node (vlib_main_t * vm,
 
   vec_validate (long_msg, 4095);
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
 
   while (n_left_from > 0)
     {
@@ -498,7 +498,7 @@ api_rx_from_node (vlib_main_t * vm,
     }
 
   /* Free what we've been given. */
-  vlib_buffer_free (vm, vlib_frame_args (frame), n_packets);
+  vlib_buffer_free (vm, vlib_frame_vector_args (frame), n_packets);
 
   return n_packets;
 }

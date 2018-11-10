@@ -114,7 +114,7 @@ static uword
 misc_drop_buffers (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return vlib_error_drop_buffers (vm, node, vlib_frame_args (frame),
+  return vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame),
 				  /* buffer stride */ 1,
 				  frame->n_vectors,
 				  /* next */ 0,

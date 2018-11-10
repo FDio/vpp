@@ -230,7 +230,7 @@ VNET_DEVICE_CLASS_TX_FN (vhost_user_device_class) (vlib_main_t * vm,
 						   vlib_node_runtime_t *
 						   node, vlib_frame_t * frame)
 {
-  u32 *buffers = vlib_frame_args (frame);
+  u32 *buffers = vlib_frame_vector_args (frame);
   u32 n_left = frame->n_vectors;
   vhost_user_main_t *vum = &vhost_user_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -555,7 +555,7 @@ done3:
 	 thread_index, vui->sw_if_index, n_left);
     }
 
-  vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
+  vlib_buffer_free (vm, vlib_frame_vector_args (frame), frame->n_vectors);
   return frame->n_vectors;
 }
 

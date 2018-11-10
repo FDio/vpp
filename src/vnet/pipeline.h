@@ -92,7 +92,7 @@ dispatch_pipeline (vlib_main_t * vm,
   AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   for (pi = 0; pi < NSTAGES - 1; pi++)
@@ -134,7 +134,7 @@ dispatch_pipeline (vlib_main_t * vm,
   AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   for (pi = 0; pi < NSTAGES - 1; pi++)
@@ -181,7 +181,7 @@ dispatch_pipeline (vlib_main_t * vm,
   AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   for (pi = 0; pi < NSTAGES - 1; pi++)
@@ -233,7 +233,7 @@ dispatch_pipeline (vlib_main_t * vm,
   AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   for (pi = 0; pi < NSTAGES - 1; pi++)
@@ -290,7 +290,7 @@ dispatch_pipeline (vlib_main_t * vm,
   AUX_DATA_DECL;
 
   n_left_from = frame->n_vectors;
-  from = vlib_frame_args (frame);
+  from = vlib_frame_vector_args (frame);
   vlib_get_buffers (vm, from, bufs, n_left_from);
 
   for (pi = 0; pi < NSTAGES - 1; pi++)
