@@ -359,6 +359,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       pp->n_free_blocks = 1 << (pm->def_log2_page_sz - PMALLOC_LOG2_BLOCK_SZ);
       pp->index = pp - pm->pages;
       pp->arena_index = a->index;
+      pp->pa = (uword) va + (1 << pm->def_log2_page_sz) * i;
       vec_add1 (a->page_indices, pp->index);
       a->n_pages++;
     }
@@ -428,7 +429,7 @@ clib_pmalloc_create_shared_arena (clib_pmalloc_main_t * pm, char *name,
       return 0;
     }
 
-  return pm->base + (pp->index << pm->def_log2_page_sz);
+  return pm->base + ((uword) pp->index << pm->def_log2_page_sz);
 }
 
 static inline void *
