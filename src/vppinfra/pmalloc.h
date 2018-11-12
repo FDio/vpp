@@ -36,7 +36,7 @@ typedef struct
 {
   u32 index;
   u32 arena_index;
-  uword pa;
+  uword va;
   clib_pmalloc_chunk_t *chunks;
   u32 first_chunk_index;
   u32 n_free_chunks;
