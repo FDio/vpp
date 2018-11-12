@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b50222a4_d8730b03",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-12T15:04:26Z",
+      "side": 0,
+      "message": "I notice we get rid of the error propagation logic. Are we saying we are 100% sure none of the callbacks will ever fail ? (I have missed to ask this during the first code review)",
+      "range": {
+        "startLine": 443,
+        "startChar": 1,
+        "endLine": 447,
+        "endChar": 2
+      },
+      "revId": "7040075ef16ba6dd85b49905929caa4e8ac4194f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

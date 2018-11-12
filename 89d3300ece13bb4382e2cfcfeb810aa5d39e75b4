@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a2c2a075_d6b117ae",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-12T15:04:26Z",
+      "side": 1,
+      "message": "It is still unclear why we call the callbacks for *all* the backends as opposed to only the active one... (I mentioned it  in the previous review but did not see the reply).",
+      "range": {
+        "startLine": 415,
+        "startChar": 0,
+        "endLine": 440,
+        "endChar": 1
+      },
+      "revId": "89d3300ece13bb4382e2cfcfeb810aa5d39e75b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
