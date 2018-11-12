@@ -145,7 +145,7 @@ esp_encrypt_inline (vlib_main_t * vm,
 	vlib_node_increment_counter (vm, esp4_encrypt_node.index,
 				     ESP_ENCRYPT_ERROR_NO_BUFFER,
 				     n_left_from);
-      clib_warning ("no enough empty buffers. discarding frame");
+      clib_warning ("not enough empty buffers. discarding frame");
       goto free_buffers_and_exit;
     }
 
