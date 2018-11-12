@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a81ebc19_9f3388f4",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 1281,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-12T12:57:24Z",
+      "side": 1,
+      "message": "Please make this function to take just first 2 parameters. If there are buffer leftovers just free them.",
+      "range": {
+        "startLine": 1281,
+        "startChar": 0,
+        "endLine": 1281,
+        "endChar": 27
+      },
+      "revId": "f47cd6e73f6ded57e91d049099d0ea7267dfe83f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "be914e3b_c0c8753c",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 845,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-12T12:57:24Z",
+      "side": 0,
+      "message": "If this is a bug, it should be separate commit",
+      "range": {
+        "startLine": 845,
+        "startChar": 45,
+        "endLine": 845,
+        "endChar": 53
+      },
+      "revId": "b98750980683b08281f86f868ca96559b6a982d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
