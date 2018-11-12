@@ -944,9 +944,7 @@ vlib_buffer_chain_init (vlib_buffer_t * first)
 
 /* The provided next_bi buffer index is appended to the end of the packet. */
 always_inline vlib_buffer_t *
-vlib_buffer_chain_buffer (vlib_main_t * vm,
-			  vlib_buffer_t * first,
-			  vlib_buffer_t * last, u32 next_bi)
+vlib_buffer_chain_buffer (vlib_main_t * vm, vlib_buffer_t * last, u32 next_bi)
 {
   vlib_buffer_t *next_buffer = vlib_get_buffer (vm, next_bi);
   last->next_buffer = next_bi;
