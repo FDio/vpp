@@ -134,6 +134,7 @@ set(VPPINFRA_HEADERS
   mhash.h
   mheap_bootstrap.h
   mheap.h
+  murmur3.h
   os.h
   pipeline.h
   pmalloc.h
