@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a837f1f6_fde99d1f",
+        "filename": "docs/featuresbyrelease/vpp18.04.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-12T18:14:24Z",
+      "side": 1,
+      "message": "1804",
+      "range": {
+        "startLine": 76,
+        "startChar": 55,
+        "endLine": 76,
+        "endChar": 59
+      },
+      "revId": "569a278597bd1af58a4fa9a5f4341cafc99a382b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "345284b4_3ab7db3c",
+        "filename": "docs/gettingstarted/installing/ubuntu.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-12T18:14:24Z",
+      "side": 1,
+      "message": "Should we start recommending bionic instead?",
+      "range": {
+        "startLine": 55,
+        "startChar": 62,
+        "endLine": 55,
+        "endChar": 68
+      },
+      "revId": "569a278597bd1af58a4fa9a5f4341cafc99a382b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "286963ff_02554932",
+        "filename": "docs/gettingstarted/installing/ubuntu.rst",
+        "patchSetId": 2
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-12T18:14:24Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 90,
+        "endChar": 2
+      },
+      "revId": "569a278597bd1af58a4fa9a5f4341cafc99a382b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
