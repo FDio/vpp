@@ -17,10 +17,7 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/ipsec/ipsec.h>
-
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/evp.h>
+#include <vnet/ipsec/ipsec.h>
 
 typedef struct
 {
@@ -56,53 +53,6 @@ typedef CLIB_PACKED (struct {
   esp_header_t esp;
 }) ip6_and_esp_header_t;
 /* *INDENT-ON* */
-
-typedef struct
-{
-  const EVP_CIPHER *type;
-  u8 iv_size;
-  u8 block_size;
-} ipsec_proto_main_crypto_alg_t;
-
-typedef struct
-{
-  const EVP_MD *md;
-  u8 trunc_size;
-} ipsec_proto_main_integ_alg_t;
-
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *encrypt_ctx;
-#else
-  EVP_CIPHER_CTX encrypt_ctx;
-#endif
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *decrypt_ctx;
-#else
-  EVP_CIPHER_CTX decrypt_ctx;
-#endif
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  HMAC_CTX *hmac_ctx;
-#else
-  HMAC_CTX hmac_ctx;
-#endif
-  ipsec_crypto_alg_t last_encrypt_alg;
-  ipsec_crypto_alg_t last_decrypt_alg;
-  ipsec_integ_alg_t last_integ_alg;
-} ipsec_proto_main_per_thread_data_t;
-
-typedef struct
-{
-  ipsec_proto_main_crypto_alg_t *ipsec_proto_main_crypto_algs;
-  ipsec_proto_main_integ_alg_t *ipsec_proto_main_integ_algs;
-  ipsec_proto_main_per_thread_data_t *per_thread_data;
-} ipsec_proto_main_t;
-
-extern ipsec_proto_main_t ipsec_proto_main;
 
 #define ESP_WINDOW_SIZE		(64)
 #define ESP_SEQ_MAX 		(4294967295UL)
