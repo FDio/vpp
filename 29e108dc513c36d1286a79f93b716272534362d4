@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "f7a01998_6a43cb0d",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 750,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-12T14:37:24Z",
+      "side": 1,
+      "message": "\"ipsec4-output\" is the node for the IPv4 encrypt node, which is \"always\" there, regardless of which backend is used. So yes you will need to look it up in the initialization function - but the code will look identical for the ipsecmb and dpdk backends. So the dpdk init code size will increase but the ipsecmb init code will be eliminated.",
+      "parentUuid": "e111a13d_82458a66",
+      "range": {
+        "startLine": 676,
+        "startChar": 0,
+        "endLine": 750,
+        "endChar": 33
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d665d216_9418dfca",
         "filename": "src/vnet/ipsec/ipsec_if.c",
         "patchSetId": 2
@@ -554,6 +578,30 @@
       "side": 1,
       "message": "no, these are tied to the packet counters and those are required by ipsecmb not by the original tests.",
       "parentUuid": "7802d37b_63419154",
+      "range": {
+        "startLine": 173,
+        "startChar": 4,
+        "endLine": 173,
+        "endChar": 27
+      },
+      "revId": "29e108dc513c36d1286a79f93b716272534362d4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c79b14d7_9e1f1599",
+        "filename": "test/test_ipsec_ah.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-12T14:37:24Z",
+      "side": 1,
+      "message": "stupid question - why are the tests different between the two engines ? I would have thought the exact same thing would be tested, just with two different engines being switched ? (so it would still make sense to add the packet counters here as part of \"those tests which are testing the same thing for both engines\" ?",
+      "parentUuid": "cff8f3ce_c1eaf4e5",
       "range": {
         "startLine": 173,
         "startChar": 4,
