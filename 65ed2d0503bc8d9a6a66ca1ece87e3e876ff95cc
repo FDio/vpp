@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46960323_02ff94e2",
+        "filename": "docs/scripts/sphinx-make.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-12T13:50:11Z",
+      "side": 1,
+      "message": "Can we use something more standardized, for example `date -u --rfc-3339\u003dseconds`?",
+      "range": {
+        "startLine": 12,
+        "startChar": 7,
+        "endLine": 12,
+        "endChar": 20
+      },
+      "revId": "65ed2d0503bc8d9a6a66ca1ece87e3e876ff95cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
