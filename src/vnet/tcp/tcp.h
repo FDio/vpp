@@ -30,7 +30,7 @@
 #define TCP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
 #define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
-#define TCP_CC_DATA_SZ 20
+#define TCP_CC_DATA_SZ 24
 
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_MAX_RX_FIFO_SIZE 	32 << 20
@@ -338,6 +338,8 @@ typedef struct _tcp_connection
 
 struct _tcp_cc_algorithm
 {
+  const char *name;
+    uword (*unformat_cfg) (unformat_input_t * input);
   void (*rcv_ack) (tcp_connection_t * tc);
   void (*rcv_cong_ack) (tcp_connection_t * tc, tcp_cc_ack_t ack);
   void (*congestion) (tcp_connection_t * tc);
@@ -485,7 +487,9 @@ typedef struct _tcp_main
   /** fault-injection */
   f64 buffer_fail_fraction;
 
-  u8 cc_algo;
+  /** Default congestion control algorithm type */
+  tcp_cc_algorithm_type_e cc_algo;
+
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
