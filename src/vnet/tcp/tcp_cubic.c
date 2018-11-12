@@ -20,6 +20,15 @@
 #define cubic_c		0.4
 #define west_const 	(3 * (1 - beta_cubic) / (1 + beta_cubic))
 
+typedef struct cubic_cfg_
+{
+  u8 fast_convergence;
+} cubic_cfg_t;
+
+static cubic_cfg_t cubic_cfg = {
+    .fast_convergence = 1,
+};
+
 typedef struct cubic_data_
 {
   /** time period (in seconds) needed to increase the current window
@@ -29,8 +38,11 @@ typedef struct cubic_data_
   /** time (in sec) since the start of current congestion avoidance */
   f64 t_start;
 
-  /** Inflection point of the cubic function */
+  /** Inflection point of the cubic function (in snd_mss segments) */
   u32 w_max;
+
+  /** last W_max used for fast convergence */
+  u32 last_w_max;
 
 } __clib_packed cubic_data_t;
 
@@ -84,9 +96,21 @@ static void
 cubic_congestion (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
+  u32 w_max;
 
-  cd->w_max = tc->cwnd / tc->snd_mss;
-  tc->ssthresh = clib_max (tc->cwnd * beta_cubic, 2 * tc->snd_mss);
+  w_max = tc->cwnd / tc->snd_mss;
+  if (w_max < cd->last_w_max)
+    {
+      cd->last_w_max = w_max;
+      w_max = w_max * ((1.0 + beta_cubic) / 2.0);
+    }
+  else
+    {
+      cd->last_w_max = w_max;
+    }
+
+  cd->w_max = w_max;
+  tc->ssthresh = clib_max (w_max * beta_cubic, 2) * tc->snd_mss;
 }
 
 static void
@@ -120,7 +144,7 @@ cubic_rcv_ack (tcp_connection_t * tc)
   rtt_sec = clib_min (tc->mrtt_us, (f64) tc->srtt * TCP_TICK);
 
   w_cubic = W_cubic (cd, t + rtt_sec) * tc->snd_mss;
-  w_aimd = W_est (cd, t, rtt_sec) * tc->snd_mss;
+  w_aimd = (u64) W_est (cd, t, rtt_sec) * tc->snd_mss;
   if (w_cubic < w_aimd)
     {
       tcp_cwnd_accumulate (tc, tc->cwnd, tc->bytes_acked);
@@ -161,16 +185,38 @@ cubic_conn_init (tcp_connection_t * tc)
   tc->ssthresh = tc->snd_wnd;
   tc->cwnd = tcp_initial_cwnd (tc);
   cd->w_max = 0;
+  cd->last_w_max = 0;
   cd->K = 0;
   cd->t_start = cubic_time (tc->c_thread_index);
 }
 
+static uword
+cubic_unformat_config (unformat_input_t *input)
+{
+  if (!input)
+    return 0;
+
+  unformat_skip_white_space (input);
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "no-fast-convergence"))
+	cubic_cfg.fast_convergence = 0;
+      else
+	return 0;
+    }
+  clib_warning ("fast convergence %u", cubic_cfg.fast_convergence);
+  return 1;
+}
+
 const static tcp_cc_algorithm_t tcp_cubic = {
+  .name = "cubic",
+  .unformat_cfg = cubic_unformat_config,
   .congestion = cubic_congestion,
   .recovered = cubic_recovered,
   .rcv_ack = cubic_rcv_ack,
   .rcv_cong_ack = newreno_rcv_cong_ack,
-  .init = cubic_conn_init
+  .init = cubic_conn_init,
 };
 
 clib_error_t *

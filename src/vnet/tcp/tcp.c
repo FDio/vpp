@@ -1448,6 +1448,29 @@ unformat_tcp_cc_algo (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+uword
+unformat_tcp_cc_algo_cfg (unformat_input_t * input, va_list *va)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_cc_algorithm_t *cc_alg;
+  unformat_input_t sub_input;
+  int found = 0;
+
+  vec_foreach (cc_alg, tm->cc_algos)
+  {
+      if (!unformat (input, cc_alg->name))
+	continue;
+
+      if (cc_alg->unformat_cfg
+	  && unformat (input, "%U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  if (cc_alg->unformat_cfg (&sub_input))
+	    found = 1;
+	}
+  }
+  return found;
+}
+
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -1471,6 +1494,8 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tm->tx_pacing = 0;
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,
 			 &tm->cc_algo))
+	;
+      else if (unformat (input, "%U", unformat_tcp_cc_algo_cfg))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
