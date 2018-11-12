@@ -842,7 +842,7 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
 	      vlib_buffer_alloc_from_free_list (vm, &l->next_buffer, 1,
 						free_list_index))
 	    return copied;
-	  *last = l = vlib_buffer_chain_buffer (vm, first, l, l->next_buffer);
+	  *last = l = vlib_buffer_chain_buffer (vm, l, l->next_buffer);
 	  max = n_buffer_bytes - l->current_length - l->current_data;
 	}
 
