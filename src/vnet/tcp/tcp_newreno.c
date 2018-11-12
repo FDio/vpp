@@ -79,6 +79,7 @@ newreno_conn_init (tcp_connection_t * tc)
 }
 
 const static tcp_cc_algorithm_t tcp_newreno = {
+  .name = "newreno",
   .congestion = newreno_congestion,
   .recovered = newreno_recovered,
   .rcv_ack = newreno_rcv_ack,
