@@ -359,7 +359,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
       pp->n_free_blocks = 1 << (pm->def_log2_page_sz - PMALLOC_LOG2_BLOCK_SZ);
       pp->index = pp - pm->pages;
       pp->arena_index = a->index;
-      pp->pa = (uword) va + (1 << pm->def_log2_page_sz) * i;
+      pp->va = (uword) va + (1 << pm->def_log2_page_sz) * i;
       vec_add1 (a->page_indices, pp->index);
       a->n_pages++;
     }
@@ -608,7 +608,7 @@ format_pmalloc_page (u8 * s, va_list * va)
   int verbose = va_arg (*va, int);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "page %u: phys-addr %p ", pp->index, pp->pa);
+  s = format (s, "page %u: virt-addr %p ", pp->index, pp->va);
 
   if (pp->chunks == 0)
     return s;
@@ -699,7 +699,9 @@ format_pmalloc_map (u8 * s, va_list * va)
   {
     uword *lookup_val, pa, va;
     lookup_val = vec_elt_at_index (pm->lookup_table, index);
-    va = pointer_to_uword (pm->base) + (index << pm->lookup_log2_page_sz);
+    va =
+      pointer_to_uword (pm->base) +
+      ((uword) index << pm->lookup_log2_page_sz);
     pa = va - *lookup_val;
     s =
       format (s, "\n %16p %13p %8U", uword_to_pointer (va, u64),
