@@ -132,6 +132,11 @@ class Service():
 
 class Typedef():
     def __init__(self, name, flags, block):
+        # Check if this includes a block statement or not
+        if isinstance(block, Field) or isinstance(block, Array):
+            self.alias = True
+        else:
+            self.alias = False
         global global_crc
         self.name = name
         self.flags = flags
@@ -456,6 +461,10 @@ class VPPAPIParser(object):
     def p_typedef(self, p):
         '''typedef : TYPEDEF ID '{' block_statements_opt '}' ';' '''
         p[0] = Typedef(p[2], [], p[4])
+
+    def p_typedef_alias(self, p):
+        '''typedef : TYPEDEF declaration '''
+        p[0] = Typedef(p[2].fieldname, [], p[2])
 
     def p_block_statements_opt(self, p):
         '''block_statements_opt : block_statements '''

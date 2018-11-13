@@ -31,6 +31,15 @@ def walk_defs(s):
     for t in s:
         d = []
         d.append(t.name)
+        if t.__class__.__name__ == 'Typedef' and t.alias:
+            if t.block.type == 'Field':
+                f = [t.block.fieldtype]
+                d.append(f)
+            else:
+                f = [t.block.fieldtype, t.block.length]
+                d.append(f)
+            r.append(d)
+            continue
         for b in t.block:
             f = []
             if b.type == 'Field':

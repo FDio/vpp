@@ -79,7 +79,7 @@ class FixedList_u8():
         self.packer = BaseTypes(field_type, num)
         self.size = self.packer.size
 
-    def pack(self, list, kwargs):
+    def pack(self, list, kwargs = None):
         """Packs a fixed length bytestring. Left-pads with zeros
         if input data is too short."""
         if not list:
@@ -371,6 +371,40 @@ class VPPType():
             total += size
         t = self.tuple._make(result)
         return t, total
+
+# A typedef is really just a pointer to something that exists already.
+# Or an array of something that exists already.
+#
+class VPPType_alias():
+    # Set everything up to be able to pack / unpack
+    def __init__(self, name, msgdef):
+        self.name = f_name = name
+        f_type = msgdef[0]
+
+        if len(msgdef) == 2:
+            if f_type == 'u8':
+                p = FixedList_u8(f_name, f_type, msgdef[1])
+                self.packer = p
+                size = p.size
+            else:
+                p = FixedList(f_name, f_type, msgdef[1])
+                self.packers = p
+                size = p.size
+        else:
+            self.packer = types[f_type]
+            size = types[f_type].size
+
+        self.size = size
+        types[name] = self
+        logger.debug('Adding type {}'.format(name))
+
+    def pack(self, data, kwargs=None):
+        if not data:  # Default to zero if not specified
+            data = 0
+        return self.packer.pack(data)
+
+    def unpack(self, data, offset=0, result=None):
+        return self.packer.unpack(data, offset)[0], self.packer.size
 
 
 class VPPMessage(VPPType):

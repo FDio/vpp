@@ -109,6 +109,14 @@ def typedefs(objs, filename):
     for o in objs:
         tname = o.__class__.__name__
         output += duplicate_wrapper_head(o.name)
+        if tname == 'Typedef' and o.alias:
+            if o.block.type == 'Field':
+                output += 'typedef %s vl_api_%s_t;\n' % (o.block.fieldtype, o.name)
+            else:
+                output +=  'typedef %s vl_api_%s_t[%s];\n' % (o.block.fieldtype, o.name, o.block.length)
+            output += duplicate_wrapper_tail()
+            continue
+
         if tname == 'Enum':
             output += "typedef enum {\n"
             for b in o.block:
@@ -168,6 +176,8 @@ def printfun(objs):
     for t in objs:
         if t.__class__.__name__ == 'Enum':
             continue
+        if t.__class__.__name__ == 'Typedef' and t.alias:
+            continue
         if t.manual_print:
             output += "/***** manual: vl_api_%s_t_print  *****/\n\n" % t.name
             continue
@@ -221,6 +231,8 @@ def endianfun(objs):
 
     for t in objs:
         if t.__class__.__name__ == 'Enum':
+            continue
+        if t.__class__.__name__ == 'Typedef' and t.alias:
             continue
         if t.manual_endian:
             output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % t.name

@@ -2,7 +2,7 @@
 
 import unittest
 from vpp_papi.vpp_serializer import VPPType, VPPEnumType
-from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage
+from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage, VPPType_alias
 from vpp_papi.vpp_format import VPPFormat
 from socket import inet_pton, AF_INET, AF_INET6
 import logging
@@ -10,6 +10,23 @@ import sys
 
 
 class TestAddType(unittest.TestCase):
+
+    def test_typealias(self):
+        alias = VPPType_alias('interface_index', ['u32'])
+        msg = VPPType('foo', [['interface_index', 'sw_if_index']])
+
+        b = msg.pack({'sw_if_index': 1234})
+        nt, size = msg.unpack(b)
+        self.assertEqual(len(b), size)
+        self.assertEqual(nt.sw_if_index, 1234)
+
+        alias = VPPType_alias('address', ['u8', 4])
+        msg = VPPType('foo', [['address', 'addr']])
+        b = msg.pack({'addr': b'\xab\xac\xad\xae'})
+        nt, size = msg.unpack(b)
+        self.assertEqual(len(b), size)
+        self.assertEqual(nt.addr, b'\xab\xac\xad\xae')
+
 
     def test_union(self):
         un = VPPUnionType('test_union',
