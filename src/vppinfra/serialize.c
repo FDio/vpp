@@ -170,7 +170,7 @@ serialize_cstring (serialize_main_t * m, char *s)
   if (len > 0)
     {
       p = serialize_get (m, len);
-      clib_memcpy (p, s, len);
+      clib_memcpy_fast (p, s, len);
     }
 }
 
@@ -191,7 +191,7 @@ unserialize_cstring (serialize_main_t * m, char **s)
     {
       r = vec_new (char, len + 1);
       p = unserialize_get (m, len);
-      clib_memcpy (r, p, len);
+      clib_memcpy_fast (r, p, len);
 
       /* Null terminate. */
       r[len] = 0;
@@ -206,7 +206,7 @@ serialize_vec_8 (serialize_main_t * m, va_list * va)
   u8 *s = va_arg (*va, u8 *);
   u32 n = va_arg (*va, u32);
   u8 *p = serialize_get (m, n * sizeof (u8));
-  clib_memcpy (p, s, n * sizeof (u8));
+  clib_memcpy_fast (p, s, n * sizeof (u8));
 }
 
 void
@@ -215,7 +215,7 @@ unserialize_vec_8 (serialize_main_t * m, va_list * va)
   u8 *s = va_arg (*va, u8 *);
   u32 n = va_arg (*va, u32);
   u8 *p = unserialize_get (m, n);
-  clib_memcpy (s, p, n);
+  clib_memcpy_fast (s, p, n);
 }
 
 #define _(n_bits)							\
@@ -627,7 +627,7 @@ serialize_magic (serialize_main_t * m, void *magic, u32 magic_bytes)
   void *p;
   serialize_integer (m, magic_bytes, sizeof (magic_bytes));
   p = serialize_get (m, magic_bytes);
-  clib_memcpy (p, magic, magic_bytes);
+  clib_memcpy_fast (p, magic, magic_bytes);
 }
 
 void
@@ -710,7 +710,7 @@ serialize_write_not_inline (serialize_main_header_t * m,
       if (n_left_o > 0 && n_left_b > 0)
 	{
 	  uword n = clib_min (n_left_b, n_left_o);
-	  clib_memcpy (s->buffer + cur_bi, s->overflow_buffer, n);
+	  clib_memcpy_fast (s->buffer + cur_bi, s->overflow_buffer, n);
 	  cur_bi += n;
 	  n_left_b -= n;
 	  n_left_o -= n;

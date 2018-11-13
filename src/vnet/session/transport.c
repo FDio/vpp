@@ -319,7 +319,7 @@ transport_endpoint_mark_used (u8 proto, ip46_address_t * ip, u16 port)
   transport_endpoint_t *tep;
   clib_spinlock_lock_if_init (&local_endpoints_lock);
   tep = transport_endpoint_new ();
-  clib_memcpy (&tep->ip, ip, sizeof (*ip));
+  clib_memcpy_fast (&tep->ip, ip, sizeof (*ip));
   tep->port = port;
   transport_endpoint_table_add (&local_endpoints_table, proto, tep,
 				tep - local_endpoints);
@@ -388,7 +388,7 @@ transport_get_interface_ip (u32 sw_if_index, u8 is_ip4, ip46_address_t * addr)
 	return clib_error_return (0, "no routable ip6 addresses on %U",
 				  format_vnet_sw_if_index_name,
 				  vnet_get_main (), sw_if_index);
-      clib_memcpy (&addr->ip6, ip6, sizeof (*ip6));
+      clib_memcpy_fast (&addr->ip6, ip6, sizeof (*ip6));
     }
   return 0;
 }
@@ -404,7 +404,7 @@ transport_find_local_ip_for_remote (u32 sw_if_index,
   if (sw_if_index == ENDPOINT_INVALID_INDEX)
     {
       /* Find a FIB path to the destination */
-      clib_memcpy (&prefix.fp_addr, &rmt->ip, sizeof (rmt->ip));
+      clib_memcpy_fast (&prefix.fp_addr, &rmt->ip, sizeof (rmt->ip));
       prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
       prefix.fp_len = rmt->is_ip4 ? 32 : 128;
 
@@ -449,7 +449,8 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
   else
     {
       /* Assume session layer vetted this address */
-      clib_memcpy (lcl_addr, &rmt_cfg->peer.ip, sizeof (rmt_cfg->peer.ip));
+      clib_memcpy_fast (lcl_addr, &rmt_cfg->peer.ip,
+			sizeof (rmt_cfg->peer.ip));
     }
 
   /*

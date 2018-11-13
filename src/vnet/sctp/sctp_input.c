@@ -245,15 +245,15 @@ sctp_set_rx_trace_data (sctp_rx_trace_t * rx_trace,
 {
   if (sctp_conn)
     {
-      clib_memcpy (&rx_trace->sctp_connection, sctp_conn,
-		   sizeof (rx_trace->sctp_connection));
+      clib_memcpy_fast (&rx_trace->sctp_connection, sctp_conn,
+			sizeof (rx_trace->sctp_connection));
     }
   else
     {
       sctp_hdr = sctp_buffer_hdr (b0);
     }
-  clib_memcpy (&rx_trace->sctp_header, sctp_hdr,
-	       sizeof (rx_trace->sctp_header));
+  clib_memcpy_fast (&rx_trace->sctp_header, sctp_hdr,
+		    sizeof (rx_trace->sctp_header));
 }
 
 always_inline u16
@@ -398,8 +398,8 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 	      {
 		sctp_ipv4_addr_param_t *ipv4 =
 		  (sctp_ipv4_addr_param_t *) opt_params_hdr;
-		clib_memcpy (&ip4_addr, &ipv4->address,
-			     sizeof (ip4_address_t));
+		clib_memcpy_fast (&ip4_addr, &ipv4->address,
+				  sizeof (ip4_address_t));
 
 		if (sctp_sub_connection_add_ip4 (vlib_get_main (),
 						 &sctp_conn->sub_conn
@@ -415,8 +415,8 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 	      {
 		sctp_ipv6_addr_param_t *ipv6 =
 		  (sctp_ipv6_addr_param_t *) opt_params_hdr;
-		clib_memcpy (&ip6_addr, &ipv6->address,
-			     sizeof (ip6_address_t));
+		clib_memcpy_fast (&ip6_addr, &ipv6->address,
+				  sizeof (ip6_address_t));
 
 		if (sctp_sub_connection_add_ip6 (vlib_get_main (),
 						 &sctp_conn->sub_conn
@@ -440,8 +440,8 @@ sctp_handle_init (sctp_header_t * sctp_hdr,
 	      {
 		sctp_hostname_param_t *hostname_addr =
 		  (sctp_hostname_param_t *) opt_params_hdr;
-		clib_memcpy (hostname, hostname_addr->hostname,
-			     FQDN_MAX_LENGTH);
+		clib_memcpy_fast (hostname, hostname_addr->hostname,
+				  FQDN_MAX_LENGTH);
 		break;
 	      }
 	    case SCTP_SUPPORTED_ADDRESS_TYPES:
@@ -568,8 +568,9 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 		sctp_state_cookie_param_t *state_cookie_param =
 		  (sctp_state_cookie_param_t *) opt_params_hdr;
 
-		clib_memcpy (&(sctp_conn->cookie_param), state_cookie_param,
-			     sizeof (sctp_state_cookie_param_t));
+		clib_memcpy_fast (&(sctp_conn->cookie_param),
+				  state_cookie_param,
+				  sizeof (sctp_state_cookie_param_t));
 
 		break;
 	      }
@@ -577,8 +578,8 @@ sctp_handle_init_ack (sctp_header_t * sctp_hdr,
 	      {
 		sctp_hostname_param_t *hostname_addr =
 		  (sctp_hostname_param_t *) opt_params_hdr;
-		clib_memcpy (hostname, hostname_addr->hostname,
-			     FQDN_MAX_LENGTH);
+		clib_memcpy_fast (hostname, hostname_addr->hostname,
+				  FQDN_MAX_LENGTH);
 		break;
 	      }
 	    case SCTP_UNRECOGNIZED_TYPE:
@@ -1035,8 +1036,8 @@ sctp46_rcv_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (error0 == SCTP_ERROR_NONE)
 		{
 		  pool_get (tm->connections[my_thread_index], new_sctp_conn);
-		  clib_memcpy (new_sctp_conn, sctp_conn,
-			       sizeof (*new_sctp_conn));
+		  clib_memcpy_fast (new_sctp_conn, sctp_conn,
+				    sizeof (*new_sctp_conn));
 		  new_sctp_conn->sub_conn[idx].c_c_index =
 		    new_sctp_conn - tm->connections[my_thread_index];
 		  new_sctp_conn->sub_conn[idx].c_thread_index =
@@ -1447,12 +1448,12 @@ sctp46_shutdown_phase_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*sctp_trace));
 
 	      if (sctp_hdr != NULL)
-		clib_memcpy (&sctp_trace->sctp_header, sctp_hdr,
-			     sizeof (sctp_trace->sctp_header));
+		clib_memcpy_fast (&sctp_trace->sctp_header, sctp_hdr,
+				  sizeof (sctp_trace->sctp_header));
 
 	      if (sctp_conn != NULL)
-		clib_memcpy (&sctp_trace->sctp_connection, sctp_conn,
-			     sizeof (sctp_trace->sctp_connection));
+		clib_memcpy_fast (&sctp_trace->sctp_connection, sctp_conn,
+				  sizeof (sctp_trace->sctp_connection));
 	    }
 
 	  b0->error = node->errors[error0];
@@ -1718,12 +1719,14 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      clib_memcpy (&child_conn->
-			   sub_conn[SCTP_PRIMARY_PATH_IDX].c_lcl_ip6,
-			   &ip6_hdr->dst_address, sizeof (ip6_address_t));
-	      clib_memcpy (&child_conn->
-			   sub_conn[SCTP_PRIMARY_PATH_IDX].c_rmt_ip6,
-			   &ip6_hdr->src_address, sizeof (ip6_address_t));
+	      clib_memcpy_fast (&child_conn->
+				sub_conn[SCTP_PRIMARY_PATH_IDX].c_lcl_ip6,
+				&ip6_hdr->dst_address,
+				sizeof (ip6_address_t));
+	      clib_memcpy_fast (&child_conn->
+				sub_conn[SCTP_PRIMARY_PATH_IDX].c_rmt_ip6,
+				&ip6_hdr->src_address,
+				sizeof (ip6_address_t));
 	    }
 
 	  sctp_full_hdr_t *full_hdr = (sctp_full_hdr_t *) sctp_hdr;
@@ -1795,10 +1798,10 @@ sctp46_listen_process_inline (vlib_main_t * vm,
 	    {
 	      sctp_rx_trace_t *t0 =
 		vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      clib_memcpy (&t0->sctp_header, sctp_hdr,
-			   sizeof (t0->sctp_header));
-	      clib_memcpy (&t0->sctp_connection, sctp_listener,
-			   sizeof (t0->sctp_connection));
+	      clib_memcpy_fast (&t0->sctp_header, sctp_hdr,
+				sizeof (t0->sctp_header));
+	      clib_memcpy_fast (&t0->sctp_connection, sctp_listener,
+				sizeof (t0->sctp_connection));
 	    }
 
 	  b0->error = node->errors[error0];

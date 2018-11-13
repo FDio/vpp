@@ -1091,7 +1091,7 @@ init_replay_buffers_inline (vlib_main_t * vm,
 
       b0->current_length = n0;
 
-      clib_memcpy (b0->data, d0 + data_offset, n0);
+      clib_memcpy_fast (b0->data, d0 + data_offset, n0);
       i = i + 1 == l ? 0 : i + 1;
     }
 }
@@ -1148,8 +1148,8 @@ init_buffers_inline (vlib_main_t * vm,
 
       if (set_data)
 	{
-	  clib_memcpy (b0->data, data, n_data);
-	  clib_memcpy (b1->data, data, n_data);
+	  clib_memcpy_fast (b0->data, data, n_data);
+	  clib_memcpy_fast (b1->data, data, n_data);
 	}
       else
 	{
@@ -1173,7 +1173,7 @@ init_buffers_inline (vlib_main_t * vm,
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
       if (set_data)
-	clib_memcpy (b0->data, data, n_data);
+	clib_memcpy_fast (b0->data, data, n_data);
       else
 	ASSERT (validate_buffer_data2 (b0, s, data_offset, n_data));
     }
@@ -1424,13 +1424,15 @@ pg_input_trace (pg_main_t * pg,
       t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       t1->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
-      clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
-      clib_memcpy (&t1->buffer, b1, sizeof (b1[0]) - sizeof (b1->pre_data));
+      clib_memcpy_fast (&t0->buffer, b0,
+			sizeof (b0[0]) - sizeof (b0->pre_data));
+      clib_memcpy_fast (&t1->buffer, b1,
+			sizeof (b1[0]) - sizeof (b1->pre_data));
 
-      clib_memcpy (t0->buffer.pre_data, b0->data,
-		   sizeof (t0->buffer.pre_data));
-      clib_memcpy (t1->buffer.pre_data, b1->data,
-		   sizeof (t1->buffer.pre_data));
+      clib_memcpy_fast (t0->buffer.pre_data, b0->data,
+			sizeof (t0->buffer.pre_data));
+      clib_memcpy_fast (t1->buffer.pre_data, b1->data,
+			sizeof (t1->buffer.pre_data));
     }
 
   while (n_left >= 1)
@@ -1451,9 +1453,10 @@ pg_input_trace (pg_main_t * pg,
       t0->stream_index = stream_index;
       t0->packet_length = vlib_buffer_length_in_chain (vm, b0);
       t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
-      clib_memcpy (t0->buffer.pre_data, b0->data,
-		   sizeof (t0->buffer.pre_data));
+      clib_memcpy_fast (&t0->buffer, b0,
+			sizeof (b0[0]) - sizeof (b0->pre_data));
+      clib_memcpy_fast (t0->buffer.pre_data, b0->data,
+			sizeof (t0->buffer.pre_data));
     }
 }
 

@@ -306,10 +306,10 @@ srv6_am_rewrite_fn (vlib_main_t * vm,
 	    {
 	      srv6_am_rewrite_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof *tr);
-	      clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			   sizeof tr->src.as_u8);
-	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			   sizeof tr->dst.as_u8);
+	      clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
+				sizeof tr->src.as_u8);
+	      clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
+				sizeof tr->dst.as_u8);
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

@@ -584,8 +584,8 @@ sctp_prepare_cookie_echo_chunk (sctp_connection_t * sctp_conn, u8 idx,
   cookie_echo_chunk->sctp_hdr.verification_tag = sctp_conn->remote_tag;
   vnet_sctp_set_chunk_type (&cookie_echo_chunk->chunk_hdr, COOKIE_ECHO);
   vnet_sctp_set_chunk_length (&cookie_echo_chunk->chunk_hdr, chunk_len);
-  clib_memcpy (&(cookie_echo_chunk->cookie), &sctp_conn->cookie_param,
-	       sizeof (sctp_state_cookie_param_t));
+  clib_memcpy_fast (&(cookie_echo_chunk->cookie), &sctp_conn->cookie_param,
+		    sizeof (sctp_state_cookie_param_t));
 
   vnet_buffer (b)->sctp.connection_index =
     sctp_conn->sub_conn[idx].connection.c_index;
@@ -1850,15 +1850,15 @@ sctp46_output_inline (vlib_main_t * vm,
 	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 	      if (th0)
 		{
-		  clib_memcpy (&t0->sctp_header, th0,
-			       sizeof (t0->sctp_header));
+		  clib_memcpy_fast (&t0->sctp_header, th0,
+				    sizeof (t0->sctp_header));
 		}
 	      else
 		{
 		  clib_memset (&t0->sctp_header, 0, sizeof (t0->sctp_header));
 		}
-	      clib_memcpy (&t0->sctp_connection, sctp_conn,
-			   sizeof (t0->sctp_connection));
+	      clib_memcpy_fast (&t0->sctp_connection, sctp_conn,
+				sizeof (t0->sctp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

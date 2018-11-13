@@ -143,8 +143,8 @@ netmap_interface_tx (vlib_main_t * vm,
 	      b0 = vlib_get_buffer (vm, bi);
 	      len = b0->current_length;
 	      /* memcpy */
-	      clib_memcpy ((u8 *) NETMAP_BUF (ring, slot->buf_idx) + offset,
-			   vlib_buffer_get_current (b0), len);
+	      clib_memcpy_fast ((u8 *) NETMAP_BUF (ring, slot->buf_idx) +
+				offset, vlib_buffer_get_current (b0), len);
 	      offset += len;
 	    }
 	  while ((bi = b0->next_buffer));

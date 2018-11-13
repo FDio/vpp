@@ -205,8 +205,8 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 	  CLIB_PREFETCH ((void *) cpy[2].src, 64, LOAD);
 	  CLIB_PREFETCH ((void *) cpy[3].src, 64, LOAD);
 
-	  clib_memcpy (dst0, (void *) cpy[0].src, cpy[0].len);
-	  clib_memcpy (dst1, (void *) cpy[1].src, cpy[1].len);
+	  clib_memcpy_fast (dst0, (void *) cpy[0].src, cpy[0].len);
+	  clib_memcpy_fast (dst1, (void *) cpy[1].src, cpy[1].len);
 
 	  vhost_user_log_dirty_pages_2 (vui, cpy[0].dst, cpy[0].len, 1);
 	  vhost_user_log_dirty_pages_2 (vui, cpy[1].dst, cpy[1].len, 1);
@@ -218,7 +218,7 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
     {
       if (PREDICT_FALSE (!(dst0 = map_guest_mem (vui, cpy->dst, map_hint))))
 	return 1;
-      clib_memcpy (dst0, (void *) cpy->src, cpy->len);
+      clib_memcpy_fast (dst0, (void *) cpy->src, cpy->len);
       vhost_user_log_dirty_pages_2 (vui, cpy->dst, cpy->len, 1);
       copy_len -= 1;
       cpy += 1;

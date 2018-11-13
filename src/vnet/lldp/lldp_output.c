@@ -27,7 +27,7 @@ lldp_build_mgmt_addr_tlv (u8 ** t0p, u8 subtype, u8 addr_len, u8 * addr,
   lldp_tlv_set_code (t, LLDP_TLV_NAME (mgmt_addr));
   t->v[0] = addr_len + 1;	/* address string length */
   t->v[1] = subtype;		/* address subtype */
-  clib_memcpy (&(t->v[2]), addr, addr_len);	/* address */
+  clib_memcpy_fast (&(t->v[2]), addr, addr_len);	/* address */
   t->v[addr_len + 2] = 2;	/* interface numbering subtype: ifIndex */
   t->v[addr_len + 3] = (if_index >> 24) & 0xFF;	/* interface number */
   t->v[addr_len + 4] = (if_index >> 16) & 0xFF;
@@ -36,7 +36,7 @@ lldp_build_mgmt_addr_tlv (u8 ** t0p, u8 subtype, u8 addr_len, u8 * addr,
   t->v[addr_len + 7] = oid_len;	/* OID string length */
 
   if (oid_len > 0)
-    clib_memcpy ((u8 *) & (t->v[addr_len + 8]), oid, oid_len);
+    clib_memcpy_fast ((u8 *) & (t->v[addr_len + 8]), oid, oid_len);
 
   lldp_tlv_set_length (t, addr_len + oid_len + 8);
   *t0p += STRUCT_SIZE_OF (lldp_tlv_t, head) + addr_len + oid_len + 8;
@@ -51,7 +51,7 @@ lldp_add_chassis_id (const vnet_hw_interface_t * hw, u8 ** t0p)
   t->subtype = LLDP_CHASS_ID_SUBTYPE_NAME (mac_addr);
 
   const size_t addr_len = 6;
-  clib_memcpy (&t->id, hw->hw_address, addr_len);
+  clib_memcpy_fast (&t->id, hw->hw_address, addr_len);
   const size_t len =
     STRUCT_SIZE_OF (lldp_chassis_id_tlv_t, subtype) + addr_len;
   lldp_tlv_set_length ((lldp_tlv_t *) t, len);
@@ -67,7 +67,7 @@ lldp_add_port_id (const vnet_hw_interface_t * hw, u8 ** t0p)
   t->subtype = LLDP_PORT_ID_SUBTYPE_NAME (intf_name);
 
   const size_t name_len = vec_len (hw->name);
-  clib_memcpy (&t->id, hw->name, name_len);
+  clib_memcpy_fast (&t->id, hw->name, name_len);
   const size_t len = STRUCT_SIZE_OF (lldp_port_id_tlv_t, subtype) + name_len;
   lldp_tlv_set_length ((lldp_tlv_t *) t, len);
   *t0p += STRUCT_SIZE_OF (lldp_tlv_t, head) + len;
@@ -107,7 +107,7 @@ lldp_add_port_desc (const lldp_main_t * lm, lldp_intf_t * n, u8 ** t0p)
       lldp_tlv_t *t = (lldp_tlv_t *) * t0p;
       lldp_tlv_set_code (t, LLDP_TLV_NAME (port_desc));
       lldp_tlv_set_length (t, len);
-      clib_memcpy (t->v, n->port_desc, len);
+      clib_memcpy_fast (t->v, n->port_desc, len);
       *t0p += STRUCT_SIZE_OF (lldp_tlv_t, head) + len;
     }
 }
@@ -121,7 +121,7 @@ lldp_add_sys_name (const lldp_main_t * lm, u8 ** t0p)
       lldp_tlv_t *t = (lldp_tlv_t *) * t0p;
       lldp_tlv_set_code (t, LLDP_TLV_NAME (sys_name));
       lldp_tlv_set_length (t, len);
-      clib_memcpy (t->v, lm->sys_name, len);
+      clib_memcpy_fast (t->v, lm->sys_name, len);
       *t0p += STRUCT_SIZE_OF (lldp_tlv_t, head) + len;
     }
 }
@@ -220,7 +220,8 @@ lldp_send_ethernet (lldp_main_t * lm, lldp_intf_t * n, int shutdown)
   /* Add the interface's ethernet source address */
   hw = vnet_get_hw_interface (vnm, n->hw_if_index);
 
-  clib_memcpy (h0->src_address, hw->hw_address, vec_len (hw->hw_address));
+  clib_memcpy_fast (h0->src_address, hw->hw_address,
+		    vec_len (hw->hw_address));
 
   u8 *data = ((u8 *) h0) + sizeof (*h0);
   t0 = data;

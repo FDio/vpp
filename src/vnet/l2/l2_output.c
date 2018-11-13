@@ -426,9 +426,9 @@ VLIB_NODE_FN (l2output_node) (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b[0])->sw_if_index[VLIB_TX];
 	      h = vlib_buffer_get_current (b[0]);
-	      clib_memcpy (t->src, h->src_address, 6);
-	      clib_memcpy (t->dst, h->dst_address, 6);
-	      clib_memcpy (t->raw, &h->type, sizeof (t->raw));
+	      clib_memcpy_fast (t->src, h->src_address, 6);
+	      clib_memcpy_fast (t->dst, h->dst_address, 6);
+	      clib_memcpy_fast (t->raw, &h->type, sizeof (t->raw));
 	    }
 	  /* next */
 	  n_left--;

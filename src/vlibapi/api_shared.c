@@ -104,7 +104,7 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
   length = clib_net_to_host_u32 (header->data_len);
 
   vec_validate (msg_copy, length - 1);
-  clib_memcpy (msg_copy, msg, length);
+  clib_memcpy_fast (msg_copy, msg, length);
   *this_trace = msg_copy;
 }
 

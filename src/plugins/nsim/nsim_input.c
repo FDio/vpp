@@ -154,7 +154,7 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->current_length = ep->current_length;
 
 	  /* Copy data from the ring */
-	  clib_memcpy (b0->data, ep->data, ep->current_length);
+	  clib_memcpy_fast (b0->data, ep->data, ep->current_length);
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ep->tx_sw_if_index;
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =

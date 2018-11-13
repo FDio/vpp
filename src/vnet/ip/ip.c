@@ -70,7 +70,7 @@ ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4)
       prefix.fp_proto = FIB_PROTOCOL_IP6;
     }
 
-  clib_memcpy (&prefix.fp_addr, ip46_address, sizeof (ip46_address_t));
+  clib_memcpy_fast (&prefix.fp_addr, ip46_address, sizeof (ip46_address_t));
   fei = fib_table_lookup (fib_index, &prefix);
   flags = fib_entry_get_flags (fei);
 
@@ -83,7 +83,7 @@ ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4)
   if (is_ip4)
     dst->ip4.as_u32 = src->ip4.as_u32;
   else
-    clib_memcpy (&dst->ip6, &src->ip6, sizeof (ip6_address_t));
+    clib_memcpy_fast (&dst->ip6, &src->ip6, sizeof (ip6_address_t));
 }
 
 void
@@ -92,7 +92,8 @@ ip_set (ip46_address_t * dst, void *src, u8 is_ip4)
   if (is_ip4)
     dst->ip4.as_u32 = ((ip4_address_t *) src)->as_u32;
   else
-    clib_memcpy (&dst->ip6, (ip6_address_t *) src, sizeof (ip6_address_t));
+    clib_memcpy_fast (&dst->ip6, (ip6_address_t *) src,
+		      sizeof (ip6_address_t));
 }
 
 u8

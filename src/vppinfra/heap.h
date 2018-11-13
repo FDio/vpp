@@ -204,7 +204,7 @@ _heap_dup (void *v_old, uword v_bytes)
 		 HEAP_DATA_ALIGN);
   h_new = heap_header (v_new);
   heap_dup_header (h_old, h_new);
-  clib_memcpy (v_new, v_old, v_bytes);
+  clib_memcpy_fast (v_new, v_old, v_bytes);
   return v_new;
 }
 

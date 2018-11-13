@@ -174,10 +174,9 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  u32 bytes_to_copy =
 		    data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
 		  b0->current_data = 0;
-		  clib_memcpy (vlib_buffer_get_current (b0),
-			       (u8 *) NETMAP_BUF (ring,
-						  slot->buf_idx) + offset,
-			       bytes_to_copy);
+		  clib_memcpy_fast (vlib_buffer_get_current (b0),
+				    (u8 *) NETMAP_BUF (ring, slot->buf_idx) +
+				    offset, bytes_to_copy);
 
 		  /* fill buffer header */
 		  b0->current_length = bytes_to_copy;

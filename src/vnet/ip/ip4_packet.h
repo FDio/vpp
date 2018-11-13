@@ -67,7 +67,8 @@ always_inline void
 ip4_addr_fib_init (ip4_address_fib_t * addr_fib,
 		   const ip4_address_t * address, u32 fib_index)
 {
-  clib_memcpy (&addr_fib->ip4_addr, address, sizeof (addr_fib->ip4_addr));
+  clib_memcpy_fast (&addr_fib->ip4_addr, address,
+		    sizeof (addr_fib->ip4_addr));
   addr_fib->fib_index = fib_index;
 }
 

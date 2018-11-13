@@ -232,7 +232,7 @@ clib_mem_realloc (void *p, uword new_size, uword old_size)
 	copy_size = old_size;
       else
 	copy_size = new_size;
-      clib_memcpy (q, p, copy_size);
+      clib_memcpy_fast (q, p, copy_size);
       clib_mem_free (p);
     }
   return q;

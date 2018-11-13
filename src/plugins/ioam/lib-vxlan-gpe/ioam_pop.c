@@ -203,7 +203,7 @@ trace00:
 		   option_data) ? trace_len : ARRAY_LEN (t->fmt_trace.
 							 option_data);
       t->fmt_trace.trace_len = trace_len;
-      clib_memcpy (&(t->fmt_trace.option_data), gpe_ioam0, trace_len);
+      clib_memcpy_fast (&(t->fmt_trace.option_data), gpe_ioam0, trace_len);
     }
 
   /* Remove the iOAM header inside the VxLAN-GPE header */

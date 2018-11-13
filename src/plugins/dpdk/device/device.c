@@ -80,12 +80,13 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm, vlib_node_runtime_t * node,
   t0->queue_index = queue_id;
   t0->device_index = xd->device_index;
   t0->buffer_index = vlib_get_buffer_index (vm, buffer);
-  clib_memcpy (&t0->mb, mb, sizeof (t0->mb));
-  clib_memcpy (&t0->buffer, buffer,
-	       sizeof (buffer[0]) - sizeof (buffer->pre_data));
-  clib_memcpy (t0->buffer.pre_data, buffer->data + buffer->current_data,
-	       sizeof (t0->buffer.pre_data));
-  clib_memcpy (&t0->data, mb->buf_addr + mb->data_off, sizeof (t0->data));
+  clib_memcpy_fast (&t0->mb, mb, sizeof (t0->mb));
+  clib_memcpy_fast (&t0->buffer, buffer,
+		    sizeof (buffer[0]) - sizeof (buffer->pre_data));
+  clib_memcpy_fast (t0->buffer.pre_data, buffer->data + buffer->current_data,
+		    sizeof (t0->buffer.pre_data));
+  clib_memcpy_fast (&t0->data, mb->buf_addr + mb->data_off,
+		    sizeof (t0->data));
 }
 
 static_always_inline void
@@ -430,10 +431,10 @@ dpdk_clear_hw_interface_counters (u32 instance)
    */
   dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
 
-  clib_memcpy (&xd->last_cleared_stats, &xd->stats, sizeof (xd->stats));
-  clib_memcpy (xd->last_cleared_xstats, xd->xstats,
-	       vec_len (xd->last_cleared_xstats) *
-	       sizeof (xd->last_cleared_xstats[0]));
+  clib_memcpy_fast (&xd->last_cleared_stats, &xd->stats, sizeof (xd->stats));
+  clib_memcpy_fast (xd->last_cleared_xstats, xd->xstats,
+		    vec_len (xd->last_cleared_xstats) *
+		    sizeof (xd->last_cleared_xstats[0]));
 
 }
 

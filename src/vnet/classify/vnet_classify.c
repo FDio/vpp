@@ -131,7 +131,7 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
   clib_memset (t, 0, sizeof (*t));
 
   vec_validate_aligned (t->mask, match_n_vectors - 1, sizeof (u32x4));
-  clib_memcpy (t->mask, mask, match_n_vectors * sizeof (u32x4));
+  clib_memcpy_fast (t->mask, mask, match_n_vectors * sizeof (u32x4));
 
   t->next_table_index = ~0;
   t->nbuckets = nbuckets;
@@ -273,7 +273,7 @@ static inline void make_working_copy
 
   v = vnet_classify_get_entry (t, b->offset);
 
-  clib_memcpy (working_copy, v, required_length);
+  clib_memcpy_fast (working_copy, v, required_length);
 
   working_bucket.as_u64 = b->as_u64;
   working_bucket.offset = vnet_classify_get_offset (t, working_copy);
@@ -317,8 +317,8 @@ split_and_rehash (vnet_classify_table_t * t,
 
 	      if (vnet_classify_entry_is_free (new_v))
 		{
-		  clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t)
-			       + (t->match_n_vectors * sizeof (u32x4)));
+		  clib_memcpy_fast (new_v, v, sizeof (vnet_classify_entry_t)
+				    + (t->match_n_vectors * sizeof (u32x4)));
 		  new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 		  goto doublebreak;
 		}
@@ -361,8 +361,8 @@ split_and_rehash_linear (vnet_classify_table_t * t,
 		  clib_warning ("BUG: linear rehash new entry not free!");
 		  continue;
 		}
-	      clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t)
-			   + (t->match_n_vectors * sizeof (u32x4)));
+	      clib_memcpy_fast (new_v, v, sizeof (vnet_classify_entry_t)
+				+ (t->match_n_vectors * sizeof (u32x4)));
 	      new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 	      j++;
 	      goto doublebreak;
@@ -457,8 +457,8 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 	}
 
       v = vnet_classify_entry_alloc (t, 0 /* new_log2_pages */ );
-      clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
-		   t->match_n_vectors * sizeof (u32x4));
+      clib_memcpy_fast (v, add_v, sizeof (vnet_classify_entry_t) +
+			t->match_n_vectors * sizeof (u32x4));
       v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
       vnet_classify_entry_claim_resource (v);
 
@@ -496,8 +496,8 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 	  if (!memcmp
 	      (v->key, add_v->key, t->match_n_vectors * sizeof (u32x4)))
 	    {
-	      clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
-			   t->match_n_vectors * sizeof (u32x4));
+	      clib_memcpy_fast (v, add_v, sizeof (vnet_classify_entry_t) +
+				t->match_n_vectors * sizeof (u32x4));
 	      v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 	      vnet_classify_entry_claim_resource (v);
 
@@ -513,8 +513,8 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 
 	  if (vnet_classify_entry_is_free (v))
 	    {
-	      clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
-			   t->match_n_vectors * sizeof (u32x4));
+	      clib_memcpy_fast (v, add_v, sizeof (vnet_classify_entry_t) +
+				t->match_n_vectors * sizeof (u32x4));
 	      v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 	      vnet_classify_entry_claim_resource (v);
 
@@ -609,8 +609,8 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 
       if (vnet_classify_entry_is_free (new_v))
 	{
-	  clib_memcpy (new_v, add_v, sizeof (vnet_classify_entry_t) +
-		       t->match_n_vectors * sizeof (u32x4));
+	  clib_memcpy_fast (new_v, add_v, sizeof (vnet_classify_entry_t) +
+			    t->match_n_vectors * sizeof (u32x4));
 	  new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
 	  vnet_classify_entry_claim_resource (new_v);
 
@@ -1885,10 +1885,10 @@ unformat_ip6_match (unformat_input_t * input, va_list * args)
   ip = (ip6_header_t *) match;
 
   if (src)
-    clib_memcpy (&ip->src_address, &src_val, sizeof (ip->src_address));
+    clib_memcpy_fast (&ip->src_address, &src_val, sizeof (ip->src_address));
 
   if (dst)
-    clib_memcpy (&ip->dst_address, &dst_val, sizeof (ip->dst_address));
+    clib_memcpy_fast (&ip->dst_address, &dst_val, sizeof (ip->dst_address));
 
   if (proto)
     ip->protocol = proto_val;
@@ -2012,10 +2012,10 @@ unformat_l2_match (unformat_input_t * input, va_list * args)
   vec_validate_aligned (match, len - 1, sizeof (u32x4));
 
   if (dst)
-    clib_memcpy (match, dst_val, 6);
+    clib_memcpy_fast (match, dst_val, 6);
 
   if (src)
-    clib_memcpy (match + 6, src_val, 6);
+    clib_memcpy_fast (match + 6, src_val, 6);
 
   if (tag2)
     {
@@ -2188,8 +2188,8 @@ vnet_classify_add_del_session (vnet_classify_main_t * cm,
     e->metadata = 0;
 
   /* Copy key data, honoring skip_n_vectors */
-  clib_memcpy (&e->key, match + t->skip_n_vectors * sizeof (u32x4),
-	       t->match_n_vectors * sizeof (u32x4));
+  clib_memcpy_fast (&e->key, match + t->skip_n_vectors * sizeof (u32x4),
+		    t->match_n_vectors * sizeof (u32x4));
 
   /* Clear don't-care bits; likely when dynamically creating sessions */
   for (i = 0; i < t->match_n_vectors; i++)

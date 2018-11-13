@@ -344,17 +344,17 @@ ip6_add_from_cache_hbh_node_fn (vlib_main_t * vm,
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  srh0 = (ip6_sr_header_t *) ((u8 *) hbh0 + rewrite_len);
 	  /* $$$ tune, rewrite_len is a multiple of 8 */
-	  clib_memcpy (hbh0, rewrite, rewrite_len);
-	  clib_memcpy (srh0, cm->sr_rewrite_template, sr_rewrite_len);
+	  clib_memcpy_fast (hbh0, rewrite, rewrite_len);
+	  clib_memcpy_fast (srh0, cm->sr_rewrite_template, sr_rewrite_len);
 	  /* Copy dst address into the DA slot in the segment list */
-	  clib_memcpy (srh0->segments, ip0->dst_address.as_u64,
-		       sizeof (ip6_address_t));
+	  clib_memcpy_fast (srh0->segments, ip0->dst_address.as_u64,
+			    sizeof (ip6_address_t));
 	  /* Rewrite the ip6 dst address with the first hop */
-	  clib_memcpy (ip0->dst_address.as_u64, entry->next_hop.as_u64,
-		       sizeof (ip6_address_t));
-	  clib_memcpy (&srh0->segments[1],
-		       (u8 *) hbh0 + entry->my_address_offset,
-		       sizeof (ip6_address_t));
+	  clib_memcpy_fast (ip0->dst_address.as_u64, entry->next_hop.as_u64,
+			    sizeof (ip6_address_t));
+	  clib_memcpy_fast (&srh0->segments[1],
+			    (u8 *) hbh0 + entry->my_address_offset,
+			    sizeof (ip6_address_t));
 	  ioam_cache_entry_free (entry);
 
 	  /* Patch the protocol chain, insert the h-b-h (type 0) header */

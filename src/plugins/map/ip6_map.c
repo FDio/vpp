@@ -583,7 +583,7 @@ ip6_map_ip6_reass_prepare (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (ip6_frag_hdr_offset (frag0))
 	{
 	  //Not first fragment, add the IPv4 header
-	  clib_memcpy (ip40, &r->ip4_header, 20);
+	  clib_memcpy_fast (ip40, &r->ip4_header, 20);
 	}
 
 #ifdef MAP_IP6_REASS_COUNT_BYTES
@@ -594,8 +594,8 @@ ip6_map_ip6_reass_prepare (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (ip6_frag_hdr_more (frag0))
 	{
 	  //Not last fragment, we copy end of next
-	  clib_memcpy (u8_ptr_add (ip60, p0->current_length),
-		       r->fragments[i].next_data, 20);
+	  clib_memcpy_fast (u8_ptr_add (ip60, p0->current_length),
+			    r->fragments[i].next_data, 20);
 	  p0->current_length += 20;
 	  ip60->payload_length = u16_net_add (ip60->payload_length, 20);
 	}
@@ -976,17 +976,16 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 	      u32 len = vec_len (fragments_to_loopback);
 	      if (len <= VLIB_FRAME_SIZE)
 		{
-		  clib_memcpy (from, fragments_to_loopback,
-			       sizeof (u32) * len);
+		  clib_memcpy_fast (from, fragments_to_loopback,
+				    sizeof (u32) * len);
 		  n_left_from = len;
 		  vec_reset_length (fragments_to_loopback);
 		}
 	      else
 		{
-		  clib_memcpy (from,
-			       fragments_to_loopback + (len -
-							VLIB_FRAME_SIZE),
-			       sizeof (u32) * VLIB_FRAME_SIZE);
+		  clib_memcpy_fast (from, fragments_to_loopback +
+				    (len - VLIB_FRAME_SIZE),
+				    sizeof (u32) * VLIB_FRAME_SIZE);
 		  n_left_from = VLIB_FRAME_SIZE;
 		  _vec_len (fragments_to_loopback) = len - VLIB_FRAME_SIZE;
 		}

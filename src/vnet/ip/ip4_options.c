@@ -94,7 +94,7 @@ VLIB_NODE_FN (ip4_options_node) (vlib_main_t * vm,
 	      ip4_options_trace_t *t =
 		vlib_add_trace (vm, node, b, sizeof (*t));
 
-	      clib_memcpy (t->option, options, 4);
+	      clib_memcpy_fast (t->option, options, 4);
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi, next);

@@ -78,10 +78,10 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #elif __SSSE3__
 #include <vppinfra/memcpy_sse3.h>
 #else
-#define _clib_memcpy(a,b,c) memcpy(a,b,c)
+#define clib_memcpy_fast(a,b,c) memcpy(a,b,c)
 #endif
 #else /* __COVERITY__ */
-#define _clib_memcpy(a,b,c) memcpy(a,b,c)
+#define clib_memcpy_fast(a,b,c) memcpy(a,b,c)
 #endif
 
 /* c-11 string manipulation variants */
@@ -140,7 +140,7 @@ memcpy_s_inline (void *__restrict__ dest, rsize_t dmax,
       return EINVAL;
     }
 
-  _clib_memcpy (dest, src, n);
+  clib_memcpy_fast (dest, src, n);
   return EOK;
 }
 
@@ -247,10 +247,10 @@ clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
   _mm_storeu_si128 ((__m128i *) (d3 + 3 * 16), r3);
 
 #else
-  clib_memcpy (d0, s, 64);
-  clib_memcpy (d1, s, 64);
-  clib_memcpy (d2, s, 64);
-  clib_memcpy (d3, s, 64);
+  clib_memcpy_fast (d0, s, 64);
+  clib_memcpy_fast (d1, s, 64);
+  clib_memcpy_fast (d2, s, 64);
+  clib_memcpy_fast (d3, s, 64);
 #endif
 }
 

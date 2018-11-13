@@ -87,7 +87,7 @@ lldp_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length
 	    : sizeof (t0->data);
 	  t0->len = len;
-	  clib_memcpy (t0->data, vlib_buffer_get_current (b0), len);
+	  clib_memcpy_fast (t0->data, vlib_buffer_get_current (b0), len);
 	}
       /* push this pkt to the next graph node, always error-drop */
       vlib_set_next_frame_buffer (vm, node, next0, bi0);

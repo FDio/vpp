@@ -128,7 +128,7 @@ bier_imp_dpo_inline (vlib_main_t * vm,
             }
             else
             {
-                clib_memcpy(hdr0, &bimp0->bi_hdr,
+                clib_memcpy_fast(hdr0, &bimp0->bi_hdr,
                             (sizeof(bier_hdr_t) +
                              bier_hdr_len_id_to_num_bytes(bimp0->bi_tbl.bti_hdr_len)));
                 /*

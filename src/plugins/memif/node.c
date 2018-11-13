@@ -303,14 +303,14 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b2 = vlib_get_buffer (vm, ptd->buffers[co[2].buffer_vec_index]);
       b3 = vlib_get_buffer (vm, ptd->buffers[co[3].buffer_vec_index]);
 
-      clib_memcpy (b0->data + co[0].buffer_offset, co[0].data,
-		   co[0].data_len);
-      clib_memcpy (b1->data + co[1].buffer_offset, co[1].data,
-		   co[1].data_len);
-      clib_memcpy (b2->data + co[2].buffer_offset, co[2].data,
-		   co[2].data_len);
-      clib_memcpy (b3->data + co[3].buffer_offset, co[3].data,
-		   co[3].data_len);
+      clib_memcpy_fast (b0->data + co[0].buffer_offset, co[0].data,
+			co[0].data_len);
+      clib_memcpy_fast (b1->data + co[1].buffer_offset, co[1].data,
+			co[1].data_len);
+      clib_memcpy_fast (b2->data + co[2].buffer_offset, co[2].data,
+			co[2].data_len);
+      clib_memcpy_fast (b3->data + co[3].buffer_offset, co[3].data,
+			co[3].data_len);
 
       co += 4;
       n_left -= 4;
@@ -318,8 +318,8 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   while (n_left)
     {
       b0 = vlib_get_buffer (vm, ptd->buffers[co[0].buffer_vec_index]);
-      clib_memcpy (b0->data + co[0].buffer_offset, co[0].data,
-		   co[0].data_len);
+      clib_memcpy_fast (b0->data + co[0].buffer_offset, co[0].data,
+			co[0].data_len);
       co += 1;
       n_left -= 1;
     }
@@ -424,7 +424,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       fbvi[0] = po[0].first_buffer_vec_index;
       bi[0] = ptd->buffers[fbvi[0]];
       b0 = vlib_get_buffer (vm, bi[0]);
-      clib_memcpy (b0, bt, 64);
+      clib_memcpy_fast (b0, bt, 64);
       b0->current_length = po->packet_len;
       n_rx_bytes += b0->current_length;
 
@@ -783,10 +783,10 @@ refill:
       d2 = &ring->desc[s2];
       d3 = &ring->desc[s3];
 
-      clib_memcpy (d0, dt, sizeof (memif_desc_t));
-      clib_memcpy (d1, dt, sizeof (memif_desc_t));
-      clib_memcpy (d2, dt, sizeof (memif_desc_t));
-      clib_memcpy (d3, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d0, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d1, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d2, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d3, dt, sizeof (memif_desc_t));
 
       b0 = vlib_get_buffer (vm, mq->buffers[s0]);
       b1 = vlib_get_buffer (vm, mq->buffers[s1]);
@@ -813,7 +813,7 @@ refill:
     {
       s0 = head++ & mask;
       d0 = &ring->desc[s0];
-      clib_memcpy (d0, dt, sizeof (memif_desc_t));
+      clib_memcpy_fast (d0, dt, sizeof (memif_desc_t));
       b0 = vlib_get_buffer (vm, mq->buffers[s0]);
       d0->region = b0->buffer_pool_index + 1;
       d0->offset =

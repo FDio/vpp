@@ -1807,7 +1807,7 @@ map_ip6_reass_add_fragment (map_ip6_reass_t * r, u32 pi,
       if (!prev_f)
 	return -1;
 
-      clib_memcpy (prev_f->next_data, data_start, copied_len);
+      clib_memcpy_fast (prev_f->next_data, data_start, copied_len);
       prev_f->next_data_len = copied_len;
       prev_f->next_data_offset = data_offset;
     }
@@ -1817,7 +1817,7 @@ map_ip6_reass_add_fragment (map_ip6_reass_t * r, u32 pi,
 	return -1;
 
       if (r->ip4_header.ip_version_and_header_length == 0)
-	clib_memcpy (&r->ip4_header, data_start, sizeof (ip4_header_t));
+	clib_memcpy_fast (&r->ip4_header, data_start, sizeof (ip4_header_t));
     }
 
   if (data_len > 20)

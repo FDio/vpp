@@ -338,7 +338,7 @@ gbp_learn_l2 (vlib_main_t * vm,
 	    {
 	      gbp_learn_l2_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      clib_memcpy (t->mac.bytes, eh0->src_address, 6);
+	      clib_memcpy_fast (t->mac.bytes, eh0->src_address, 6);
 	      t->new = (NULL == ge0);
 	      t->throttled = t0;
 	      t->sw_if_index = sw_if_index0;

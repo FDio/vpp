@@ -166,7 +166,7 @@ dns46_reply_node_fn (vlib_main_t * vm,
 
 	  /* Save the reply */
 	  vec_validate (resp0, vlib_buffer_length_in_chain (vm, b0) - 1);
-	  clib_memcpy (resp0, d0, vlib_buffer_length_in_chain (vm, b0));
+	  clib_memcpy_fast (resp0, d0, vlib_buffer_length_in_chain (vm, b0));
 
 	  /*
 	   * Deal with everything in process ctx on the main thread
