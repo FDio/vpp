@@ -35,7 +35,6 @@ option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
 
 set(VPP_API_FILES
   api/vpe.api
-  stats/stats.api
   oam/oam.api
 )
 
@@ -56,7 +55,6 @@ set(VPP_SOURCES
   app/version.c
   oam/oam.c
   oam/oam_api.c
-  stats/stats_to_be_deprecated.c
   stats/stat_segment.c
   api/api.c
   api/json_format.c
@@ -107,13 +105,6 @@ add_vpp_executable(vpp_get_metrics
 ##############################################################################
 # stats binaries
 ##############################################################################
-add_vpp_executable(summary_stats_client
-  SOURCES api/summary_stats_client.c
-  LINK_LIBRARIES vppinfra svm vlibmemoryclient
-  DEPENDS api_headers
-  NO_INSTALL
-)
-
 add_vpp_executable(vpp_get_stats
   SOURCES app/vpp_get_stats.c
   LINK_LIBRARIES vppapiclient vppinfra

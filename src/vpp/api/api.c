@@ -102,9 +102,6 @@ memclnt_delete_callback (u32 client_index)
   vpe_api_main_t *vam = &vpe_api_main;
   vpe_client_registration_t *rp;
   uword *p;
-  int stats_memclnt_delete_callback (u32 client_index);
-
-  stats_memclnt_delete_callback (client_index);
 
 #define _(a)                                                    \
     p = hash_get (vam->a##_registration_hash, client_index);    \
