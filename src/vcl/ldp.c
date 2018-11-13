@@ -132,6 +132,12 @@ ldp_sid_from_fd (int fd)
 	  INVALID_SESSION_ID);
 }
 
+static void
+ldp_fork_child_cb (void)
+{
+  vppcom_app_fork_child_handler ();
+}
+
 static inline int
 ldp_init (void)
 {
@@ -222,6 +228,7 @@ ldp_init (void)
     }
 
   clib_time_init (&ldp->clib_time);
+  pthread_atfork (NULL, NULL, ldp_fork_child_cb);
   LDBG (0, "LDP<%d>: LDP initialization: done!", getpid ());
 
   return 0;
@@ -852,7 +859,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_validate (ldp->rd_bitmap, minbits);
       clib_memcpy_fast (ldp->rd_bitmap, readfds,
 			vec_len (ldp->rd_bitmap) * sizeof (clib_bitmap_t));
-      FD_ZERO (readfds);
+      memset (readfds, 0, nfds/8 + nfds % 8 ? 1 : 0);
 
       /* *INDENT-OFF* */
       clib_bitmap_foreach (fd, ldp->rd_bitmap,
@@ -886,7 +893,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_validate (ldp->wr_bitmap, minbits);
       clib_memcpy_fast (ldp->wr_bitmap, writefds,
 			vec_len (ldp->wr_bitmap) * sizeof (clib_bitmap_t));
-      FD_ZERO (writefds);
+      memset (writefds, 0, nfds/8 + nfds % 8 ? 1: 0);
 
       /* *INDENT-OFF* */
       clib_bitmap_foreach (fd, ldp->wr_bitmap,
@@ -920,7 +927,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_validate (ldp->ex_bitmap, minbits);
       clib_memcpy_fast (ldp->ex_bitmap, exceptfds,
 			vec_len (ldp->ex_bitmap) * sizeof (clib_bitmap_t));
-      FD_ZERO (exceptfds);
+      memset (exceptfds, 0, nfds/8 + nfds % 8 ? 1: 0);
 
       /* *INDENT-OFF* */
       clib_bitmap_foreach (fd, ldp->ex_bitmap,
