@@ -51,6 +51,8 @@ extern f64 igmp_timer_get_expiry_time (igmp_timer_id_t t);
 extern void *igmp_timer_get_data (igmp_timer_id_t t);
 extern void igmp_timer_set_data (igmp_timer_id_t t, void *data);
 
+extern u8 *format_igmp_timer_id (u8 * s, va_list * args);
+
 /**
  * IGMP timer types and their values
  *  QUERY - the general query timer

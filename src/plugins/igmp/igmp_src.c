@@ -143,6 +143,19 @@ igmp_src_index (igmp_src_t * src)
   return (src - igmp_main.srcs);
 }
 
+u8 *
+format_igmp_src (u8 * s, va_list * args)
+{
+  igmp_src_t *src = va_arg (*args, igmp_src_t *);
+  u32 indent = va_arg (*args, u32);
+
+  s = format (s, "%U%U %U",
+	      format_white_space, indent,
+	      format_igmp_key, src->key,
+	      format_igmp_timer_id, src->timers[IGMP_SRC_TIMER_EXP]);
+
+  return (s);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
