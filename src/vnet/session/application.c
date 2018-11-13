@@ -189,6 +189,19 @@ application_name_from_index (u32 app_index)
 }
 
 static void
+application_api_table_add (u32 app_index, u32 api_client_index)
+{
+  hash_set (app_main.app_by_api_client_index, api_client_index,
+	    app_index);
+}
+
+static void
+application_api_table_del (u32 api_client_index)
+{
+  hash_unset (app_main.app_by_api_client_index, api_client_index);
+}
+
+static void
 application_table_add (application_t * app)
 {
   if (app->api_client_index != APP_INVALID_INDEX)
@@ -213,7 +226,7 @@ application_lookup (u32 api_client_index)
   uword *p;
   p = hash_get (app_main.app_by_api_client_index, api_client_index);
   if (p)
-    return application_get (p[0]);
+    return application_get_if_valid (p[0]);
 
   return 0;
 }
@@ -440,6 +453,47 @@ application_free (application_t * app)
   pool_put (app_main.app_pool, app);
 }
 
+void
+application_detach_process (application_t *app, u32 api_client_index)
+{
+  vnet_app_worker_add_del_args_t _args = {0}, *args = &_args;
+  app_worker_map_t *wrk_map;
+  u32 *wrks = 0, *wrk_index;
+  app_worker_t *app_wrk;
+
+  if (api_client_index == ~0)
+    application_free (app);
+
+  APP_DBG ("Detaching for app %v index %u api client index %u", app->name,
+	   app->app_index, app->api_client_index);
+
+  /* *INDENT-OFF* */
+  pool_foreach (wrk_map, app->worker_maps, ({
+    app_wrk = app_worker_get (wrk_map->wrk_index);
+    if (app_wrk->api_index == api_client_index)
+      vec_add1 (wrks, app_wrk->wrk_index);
+  }));
+  /* *INDENT-ON* */
+
+  if (!vec_len (wrks))
+    {
+      clib_warning ("no workers for app %u api_index %u", app->app_index,
+                    api_client_index);
+      return;
+    }
+
+  args->app_index = app->app_index;
+  args->api_index = api_client_index;
+  vec_foreach (wrk_index, wrks)
+  {
+    app_wrk = app_worker_get (wrk_index[0]);
+    args->wrk_index = wrk_index[0];
+    args->is_add = 0;
+    vnet_app_worker_add_del (args);
+  }
+  vec_free (wrks);
+}
+
 app_worker_t *
 application_get_worker (application_t * app, u32 wrk_map_index)
 {
@@ -454,6 +508,12 @@ app_worker_t *
 application_get_default_worker (application_t * app)
 {
   return application_get_worker (app, 0);
+}
+
+u32
+application_n_workers (application_t *app)
+{
+  return pool_elts (app->worker_maps);
 }
 
 app_worker_t *
@@ -609,6 +669,7 @@ app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk)
   app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
   app_wrk->app_is_builtin = application_is_builtin (app);
+  app_wrk->api_index = app->api_client_index;
 
   /*
    * Segment manager for local sessions
@@ -899,6 +960,15 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
     {
       if ((rv = app_worker_alloc_and_init (app, &app_wrk)))
 	return clib_error_return_code (0, rv, 0, "app wrk init: %d", rv);
+
+      /* Map worker api index to the app */
+      if (a->api_index != app->api_client_index
+	  && app->api_client_index != APP_INVALID_INDEX)
+	{
+	  app_wrk->api_index = a->api_index;
+	  application_api_table_add (app->app_index, a->api_index);
+	}
+
       sm = segment_manager_get (app_wrk->first_segment_manager);
       fs = segment_manager_get_segment_w_lock (sm, 0);
       a->segment = &fs->ssvm;
@@ -914,11 +984,15 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 				       "App %u does not have worker %u",
 				       app->app_index, a->wrk_index);
       app_wrk = app_worker_get (wrk_map->wrk_index);
-      app_worker_map_free (app, wrk_map);
       if (!app_wrk)
 	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
 				       "No worker %u", a->wrk_index);
+      if (app->api_client_index != app_wrk->api_index)
+	application_api_table_del (app_wrk->api_index);
       app_worker_free (app_wrk);
+      app_worker_map_free (app, wrk_map);
+      if (application_n_workers (app) == 0)
+	application_free (app);
     }
   return 0;
 }

@@ -215,6 +215,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
+    .api_client_index = ~0,
   };
   vnet_application_detach (&detach_args);
   return 0;
@@ -385,6 +386,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
+    .api_client_index = ~0,
   };
   vnet_application_detach (&detach_args);
   detach_args.app_index = client_index;
@@ -455,6 +457,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_app_detach_args_t detach_args = {
     .app_index = 0,
+    .api_client_index = ~0,
   };
 
   ip4_address_t intf_addr = {
@@ -1554,6 +1557,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   vec_free (args.table_args.tag);
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
+    .api_client_index = ~0,
   };
   vnet_application_detach (&detach_args);
 
@@ -1669,6 +1673,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
 
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
+    .api_client_index = ~0,
   };
   vnet_application_detach (&detach_args);
 
