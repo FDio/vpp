@@ -205,10 +205,12 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   session_manager_main_t *smm = &session_manager_main;
-  u8 *str = 0, one_session = 0, do_listeners = 0, sst, *app_name;
-  int verbose = 0, i;
+  u8 *str = 0, one_session = 0, do_listeners = 0, sst;
   stream_session_t *pool, *s;
   u32 transport_proto = ~0;
+  app_worker_t *app_wrk;
+  int verbose = 0, i;
+  const u8 *app_name;
 
   if (!smm->is_enabled)
     {
@@ -248,10 +250,10 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	if (s->session_state != SESSION_STATE_LISTENING
 	    || s->session_type != sst)
 	  continue;
-	app_name = application_name_from_index (s->app_wrk_index);
+	app_wrk = app_worker_get (s->app_wrk_index);
+	app_name = application_name_from_index (app_wrk->app_index);
 	vlib_cli_output (vm, "%U%-25v%", format_stream_session, s, 1,
 			 app_name);
-	vec_free (app_name);
       }));
       /* *INDENT-ON* */
       return 0;
