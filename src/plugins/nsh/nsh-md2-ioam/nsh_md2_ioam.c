@@ -242,7 +242,7 @@ u32 fib_path_get_resolving_interface (fib_node_index_t path_index);
 	  t1->dst_addr.ip4.as_u32 = fib_prefix.fp_addr.ip4.as_u32;
 	  key4_copy = clib_mem_alloc (sizeof (*key4_copy));
           clib_memset(key4_copy, 0, sizeof(*key4_copy));
-	  clib_memcpy (key4_copy, &key4, sizeof (*key4_copy));
+	  clib_memcpy_fast (key4_copy, &key4, sizeof (*key4_copy));
 	  hash_set_mem (hm->dst_by_ip4, key4_copy, t1 - hm->dst_tunnels);
 	  /*
 	   * Attach to the FIB entry for the VxLAN-GPE destination

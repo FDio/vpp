@@ -448,10 +448,10 @@ tcp_connection_select_lb_bucket (tcp_connection_t * tc, const dpo_id_t * dpo,
       ip6_tcp_hdr_t hdr;
       clib_memset (&hdr, 0, sizeof (hdr));
       hdr.ip.protocol = IP_PROTOCOL_TCP;
-      clib_memcpy (&hdr.ip.src_address, &tc->c_lcl_ip.ip6,
-		   sizeof (ip6_address_t));
-      clib_memcpy (&hdr.ip.dst_address, &tc->c_rmt_ip.ip6,
-		   sizeof (ip6_address_t));
+      clib_memcpy_fast (&hdr.ip.src_address, &tc->c_lcl_ip.ip6,
+			sizeof (ip6_address_t));
+      clib_memcpy_fast (&hdr.ip.dst_address, &tc->c_rmt_ip.ip6,
+			sizeof (ip6_address_t));
       hdr.tcp.src_port = tc->c_lcl_port;
       hdr.tcp.dst_port = tc->c_rmt_port;
       hash = ip6_compute_flow_hash (&hdr.ip, lb->lb_hash_config);
@@ -466,7 +466,7 @@ tcp_lookup_rmt_in_fib (tcp_connection_t * tc)
   fib_prefix_t prefix;
   u32 fib_index;
 
-  clib_memcpy (&prefix.fp_addr, &tc->c_rmt_ip, sizeof (prefix.fp_addr));
+  clib_memcpy_fast (&prefix.fp_addr, &tc->c_rmt_ip, sizeof (prefix.fp_addr));
   prefix.fp_proto = tc->c_is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = tc->c_is_ip4 ? 32 : 128;
   fib_index = fib_table_find (prefix.fp_proto, tc->c_fib_index);
@@ -607,8 +607,8 @@ tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
       index = tm->last_v6_address_rotor++;
       if (tm->last_v6_address_rotor >= vec_len (tm->ip6_src_addresses))
 	tm->last_v6_address_rotor = 0;
-      clib_memcpy (&lcl_addr->ip6, &tm->ip6_src_addresses[index],
-		   sizeof (ip6_address_t));
+      clib_memcpy_fast (&lcl_addr->ip6, &tm->ip6_src_addresses[index],
+			sizeof (ip6_address_t));
     }
   port = transport_alloc_local_port (TRANSPORT_PROTO_TCP, lcl_addr);
   if (port < 1)

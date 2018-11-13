@@ -106,7 +106,7 @@ avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
   int n_retry = 5;
 
   d = &ad->atq[ad->atq_next_slot];
-  clib_memcpy (d, dt, sizeof (avf_aq_desc_t));
+  clib_memcpy_fast (d, dt, sizeof (avf_aq_desc_t));
   d->flags |= AVF_AQ_F_RD | AVF_AQ_F_SI;
   if (len)
     d->datalen = len;
@@ -116,13 +116,13 @@ avf_aq_desc_enq (vlib_main_t * vm, avf_device_t * ad, avf_aq_desc_t * dt,
       pa = ad->atq_bufs_pa + ad->atq_next_slot * AVF_MBOX_BUF_SZ;
       d->addr_hi = (u32) (pa >> 32);
       d->addr_lo = (u32) pa;
-      clib_memcpy (ad->atq_bufs + ad->atq_next_slot * AVF_MBOX_BUF_SZ, data,
-		   len);
+      clib_memcpy_fast (ad->atq_bufs + ad->atq_next_slot * AVF_MBOX_BUF_SZ,
+			data, len);
       d->flags |= AVF_AQ_F_BUF;
     }
 
   if (ad->flags & AVF_DEVICE_F_ELOG)
-    clib_memcpy (&dc, d, sizeof (avf_aq_desc_t));
+    clib_memcpy_fast (&dc, d, sizeof (avf_aq_desc_t));
 
   CLIB_MEMORY_BARRIER ();
   vlib_log_debug (am->log_class, "%U", format_hexdump, data, len);
@@ -144,7 +144,7 @@ retry:
       goto retry;
     }
 
-  clib_memcpy (dt, d, sizeof (avf_aq_desc_t));
+  clib_memcpy_fast (dt, d, sizeof (avf_aq_desc_t));
   if (d->flags & AVF_AQ_F_ERR)
     return clib_error_return (0, "adminq enqueue error [opcode 0x%x, retval "
 			      "%d]", d->opcode, d->retval);
@@ -398,7 +398,7 @@ retry:
 	return clib_error_return (0, "event message error");
 
       vec_add2 (ad->events, e, 1);
-      clib_memcpy (e, buf, sizeof (virtchnl_pf_event_t));
+      clib_memcpy_fast (e, buf, sizeof (virtchnl_pf_event_t));
       avf_arq_slot_init (ad, ad->arq_next_slot);
       ad->arq_next_slot++;
       n_retry = 5;
@@ -425,7 +425,7 @@ retry:
   if (d->flags & AVF_AQ_F_BUF)
     {
       void *buf = ad->arq_bufs + ad->arq_next_slot * AVF_MBOX_BUF_SZ;
-      clib_memcpy (out, buf, out_len);
+      clib_memcpy_fast (out, buf, out_len);
     }
 
   avf_arq_slot_init (ad, ad->arq_next_slot);
@@ -637,7 +637,7 @@ avf_op_add_eth_addr (vlib_main_t * vm, avf_device_t * ad, u8 count, u8 * macs)
   al->vsi_id = ad->vsi_id;
   al->num_elements = count;
   for (i = 0; i < count; i++)
-    clib_memcpy (&al->list[i].addr, macs + i * 6, 6);
+    clib_memcpy_fast (&al->list[i].addr, macs + i * 6, 6);
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ADD_ETH_ADDR, msg, msg_len, 0,
 			 0);
 }
@@ -788,7 +788,7 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   ad->rss_key_size = res.rss_key_size;
   ad->rss_lut_size = res.rss_lut_size;
 
-  clib_memcpy (ad->hwaddr, res.vsi_res[0].default_mac_addr, 6);
+  clib_memcpy_fast (ad->hwaddr, res.vsi_res[0].default_mac_addr, 6);
 
   /*
    * Disable VLAN stripping

@@ -38,7 +38,7 @@ mac_address_decode (const vl_api_mac_address_t * in, mac_address_t * out)
 void
 mac_address_encode (const mac_address_t * in, vl_api_mac_address_t * out)
 {
-  clib_memcpy (out->bytes, in->bytes, 6);
+  clib_memcpy_fast (out->bytes, in->bytes, 6);
 }
 
 /*

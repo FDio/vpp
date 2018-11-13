@@ -371,7 +371,7 @@ mss_clamping (snat_main_t * sm, tcp_header_t * tcp, ip_csum_t * sum)
 	      *sum =
 		ip_csum_update (*sum, mss, sm->mss_value_net, ip4_header_t,
 				length);
-	      clib_memcpy (data + 2, &sm->mss_value_net, 2);
+	      clib_memcpy_fast (data + 2, &sm->mss_value_net, 2);
 	    }
 	  return;
 	}

@@ -310,7 +310,8 @@ ip6_sr_compute_rewrite_string_insert (ip6_address_t * sl)
   addrp = srh->segments + vec_len (sl);
   vec_foreach (this_address, sl)
   {
-    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+    clib_memcpy_fast (addrp->as_u8, this_address->as_u8,
+		      sizeof (ip6_address_t));
     addrp--;
   }
   return rs;

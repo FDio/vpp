@@ -584,7 +584,7 @@ vfio_set_irqs (vlib_main_t * vm, linux_pci_device_t * p, u32 index, u32 start,
   if (efds)
     {
       flags |= VFIO_IRQ_SET_DATA_EVENTFD;
-      clib_memcpy (&irq_set->data, efds, data_len);
+      clib_memcpy_fast (&irq_set->data, efds, data_len);
     }
   else
     flags |= VFIO_IRQ_SET_DATA_NONE;

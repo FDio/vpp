@@ -311,7 +311,8 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
   session->session_state = STATE_ACCEPT;
   session->transport.rmt_port = mp->port;
   session->transport.is_ip4 = mp->is_ip4;
-  clib_memcpy (&session->transport.rmt_ip, mp->ip, sizeof (ip46_address_t));
+  clib_memcpy_fast (&session->transport.rmt_ip, mp->ip,
+		    sizeof (ip46_address_t));
 
   vcl_session_table_add_vpp_handle (wrk, mp->handle, session->session_index);
   session->transport.lcl_port = listen_session->transport.lcl_port;
@@ -389,8 +390,8 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   session->tx_fifo = tx_fifo;
   session->vpp_handle = mp->handle;
   session->transport.is_ip4 = mp->is_ip4;
-  clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
-	       sizeof (session->transport.lcl_ip));
+  clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
+		    sizeof (session->transport.lcl_ip));
   session->transport.lcl_port = mp->lcl_port;
   session->session_state = STATE_CONNECT;
 
@@ -454,8 +455,8 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
 
   session->vpp_handle = mp->handle;
   session->transport.is_ip4 = mp->lcl_is_ip4;
-  clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
-	       sizeof (ip46_address_t));
+  clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
+		    sizeof (ip46_address_t));
   session->transport.lcl_port = mp->lcl_port;
   vcl_session_table_add_listener (wrk, mp->handle, sid);
   session->session_state = STATE_LISTEN;
@@ -942,11 +943,11 @@ vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep)
 
   session->transport.is_ip4 = ep->is_ip4;
   if (ep->is_ip4)
-    clib_memcpy (&session->transport.lcl_ip.ip4, ep->ip,
-		 sizeof (ip4_address_t));
+    clib_memcpy_fast (&session->transport.lcl_ip.ip4, ep->ip,
+		      sizeof (ip4_address_t));
   else
-    clib_memcpy (&session->transport.lcl_ip.ip6, ep->ip,
-		 sizeof (ip6_address_t));
+    clib_memcpy_fast (&session->transport.lcl_ip.ip6, ep->ip,
+		      sizeof (ip6_address_t));
   session->transport.lcl_port = ep->port;
 
   VDBG (0, "VCL<%d>: sid %u: binding to local %s address %U port %u, "
@@ -1091,7 +1092,7 @@ vppcom_session_accept (uint32_t listen_session_handle, vppcom_endpt_t * ep,
 	  svm_msg_q_free_msg (wrk->app_event_queue, &msg);
 	  continue;
 	}
-      clib_memcpy (&accepted_msg, e->data, sizeof (accepted_msg));
+      clib_memcpy_fast (&accepted_msg, e->data, sizeof (accepted_msg));
       svm_msg_q_free_msg (wrk->app_event_queue, &msg);
       break;
     }
@@ -1118,11 +1119,11 @@ handle:
       ep->is_ip4 = client_session->transport.is_ip4;
       ep->port = client_session->transport.rmt_port;
       if (client_session->transport.is_ip4)
-	clib_memcpy (ep->ip, &client_session->transport.rmt_ip.ip4,
-		     sizeof (ip4_address_t));
+	clib_memcpy_fast (ep->ip, &client_session->transport.rmt_ip.ip4,
+			  sizeof (ip4_address_t));
       else
-	clib_memcpy (ep->ip, &client_session->transport.rmt_ip.ip6,
-		     sizeof (ip6_address_t));
+	clib_memcpy_fast (ep->ip, &client_session->transport.rmt_ip.ip6,
+			  sizeof (ip6_address_t));
     }
 
   if (accepted_msg.server_event_queue_address)
@@ -1191,11 +1192,11 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 
   session->transport.is_ip4 = server_ep->is_ip4;
   if (session->transport.is_ip4)
-    clib_memcpy (&session->transport.rmt_ip.ip4, server_ep->ip,
-		 sizeof (ip4_address_t));
+    clib_memcpy_fast (&session->transport.rmt_ip.ip4, server_ep->ip,
+		      sizeof (ip4_address_t));
   else
-    clib_memcpy (&session->transport.rmt_ip.ip6, server_ep->ip,
-		 sizeof (ip6_address_t));
+    clib_memcpy_fast (&session->transport.rmt_ip.ip6, server_ep->ip,
+		      sizeof (ip6_address_t));
   session->transport.rmt_port = server_ep->port;
 
   VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: connecting to server %s %U "
@@ -1481,11 +1482,11 @@ int
 vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds, u32 max_bytes)
 {
   u32 first_copy = clib_min (ds[0].len, max_bytes);
-  clib_memcpy (buf, ds[0].data, first_copy);
+  clib_memcpy_fast (buf, ds[0].data, first_copy);
   if (first_copy < max_bytes)
     {
-      clib_memcpy (buf + first_copy, ds[1].data,
-		   clib_min (ds[1].len, max_bytes - first_copy));
+      clib_memcpy_fast (buf + first_copy, ds[1].data,
+			clib_min (ds[1].len, max_bytes - first_copy));
     }
   return 0;
 }
@@ -1908,23 +1909,23 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
   if (n_bits && read_map)
     {
       clib_bitmap_validate (wrk->rd_bitmap, minbits);
-      clib_memcpy (wrk->rd_bitmap, read_map,
-		   vec_len (wrk->rd_bitmap) * sizeof (clib_bitmap_t));
+      clib_memcpy_fast (wrk->rd_bitmap, read_map,
+			vec_len (wrk->rd_bitmap) * sizeof (clib_bitmap_t));
       memset (read_map, 0, vec_len (wrk->rd_bitmap) * sizeof (clib_bitmap_t));
     }
   if (n_bits && write_map)
     {
       clib_bitmap_validate (wrk->wr_bitmap, minbits);
-      clib_memcpy (wrk->wr_bitmap, write_map,
-		   vec_len (wrk->wr_bitmap) * sizeof (clib_bitmap_t));
+      clib_memcpy_fast (wrk->wr_bitmap, write_map,
+			vec_len (wrk->wr_bitmap) * sizeof (clib_bitmap_t));
       memset (write_map, 0,
 	      vec_len (wrk->wr_bitmap) * sizeof (clib_bitmap_t));
     }
   if (n_bits && except_map)
     {
       clib_bitmap_validate (wrk->ex_bitmap, minbits);
-      clib_memcpy (wrk->ex_bitmap, except_map,
-		   vec_len (wrk->ex_bitmap) * sizeof (clib_bitmap_t));
+      clib_memcpy_fast (wrk->ex_bitmap, except_map,
+			vec_len (wrk->ex_bitmap) * sizeof (clib_bitmap_t));
       memset (except_map, 0,
 	      vec_len (wrk->ex_bitmap) * sizeof (clib_bitmap_t));
     }
@@ -2646,11 +2647,11 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  ep->is_ip4 = session->transport.is_ip4;
 	  ep->port = session->transport.rmt_port;
 	  if (session->transport.is_ip4)
-	    clib_memcpy (ep->ip, &session->transport.rmt_ip.ip4,
-			 sizeof (ip4_address_t));
+	    clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip4,
+			      sizeof (ip4_address_t));
 	  else
-	    clib_memcpy (ep->ip, &session->transport.rmt_ip.ip6,
-			 sizeof (ip6_address_t));
+	    clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip6,
+			      sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
 	  VDBG (1, "VCL<%d>: VPPCOM_ATTR_GET_PEER_ADDR: sid %u, is_ip4 = %u, "
 		"addr = %U, port %u", getpid (),
@@ -2670,11 +2671,11 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
 	  ep->is_ip4 = session->transport.is_ip4;
 	  ep->port = session->transport.lcl_port;
 	  if (session->transport.is_ip4)
-	    clib_memcpy (ep->ip, &session->transport.lcl_ip.ip4,
-			 sizeof (ip4_address_t));
+	    clib_memcpy_fast (ep->ip, &session->transport.lcl_ip.ip4,
+			      sizeof (ip4_address_t));
 	  else
-	    clib_memcpy (ep->ip, &session->transport.lcl_ip.ip6,
-			 sizeof (ip6_address_t));
+	    clib_memcpy_fast (ep->ip, &session->transport.lcl_ip.ip6,
+			      sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
 	  VDBG (1, "VCL<%d>: VPPCOM_ATTR_GET_LCL_ADDR: sid %u, is_ip4 = %u,"
 		" addr = %U port %d", getpid (),
@@ -3146,11 +3147,11 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
   if (ep)
     {
       if (session->transport.is_ip4)
-	clib_memcpy (ep->ip, &session->transport.rmt_ip.ip4,
-		     sizeof (ip4_address_t));
+	clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip4,
+			  sizeof (ip4_address_t));
       else
-	clib_memcpy (ep->ip, &session->transport.rmt_ip.ip6,
-		     sizeof (ip6_address_t));
+	clib_memcpy_fast (ep->ip, &session->transport.rmt_ip.ip6,
+			  sizeof (ip6_address_t));
     }
 
   return rv;

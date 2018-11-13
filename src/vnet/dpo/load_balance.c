@@ -383,7 +383,7 @@ ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
     }
     else
     {
-        clib_memcpy (nhs, raw_next_hops, n_nhs * sizeof (raw_next_hops[0]));
+        clib_memcpy_fast (nhs, raw_next_hops, n_nhs * sizeof (raw_next_hops[0]));
         qsort (nhs, n_nhs, sizeof (nhs[0]), (void *) next_hop_sort_by_weight);
     }
 

@@ -289,7 +289,7 @@ simulated_srp_interface_tx (vlib_main_t * vm,
 
       n_copy = clib_min (n_left_from, n_left_to_next);
 
-      clib_memcpy (to_next, from, n_copy * sizeof (from[0]));
+      clib_memcpy_fast (to_next, from, n_copy * sizeof (from[0]));
       n_left_to_next -= n_copy;
       n_left_from -= n_copy;
       for (i = 0; i < n_copy; i++)

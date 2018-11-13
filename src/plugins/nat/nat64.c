@@ -1018,7 +1018,7 @@ nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
 
   if (prefix)
     {
-      clib_memcpy (ip6, &p->prefix, sizeof (ip6_address_t));
+      clib_memcpy_fast (ip6, &p->prefix, sizeof (ip6_address_t));
       switch (p->plen)
 	{
 	case 32:
@@ -1058,7 +1058,7 @@ nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
     }
   else
     {
-      clib_memcpy (ip6, well_known_prefix, sizeof (ip6_address_t));
+      clib_memcpy_fast (ip6, well_known_prefix, sizeof (ip6_address_t));
       ip6->as_u32[3] = ip4->as_u32;
     }
 }

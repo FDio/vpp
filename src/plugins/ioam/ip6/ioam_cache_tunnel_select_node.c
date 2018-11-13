@@ -415,7 +415,7 @@ ip6_reset_ts_hbh_node_fn (vlib_main_t * vm,
 
 	      hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	      /* $$$ tune, rewrite_length is a multiple of 8 */
-	      clib_memcpy (hbh0, rewrite, rewrite_length);
+	      clib_memcpy_fast (hbh0, rewrite, rewrite_length);
 	      e2e =
 		(ioam_e2e_cache_option_t *) ((u8 *) hbh0 +
 					     cm->rewrite_pool_index_offset);
@@ -475,7 +475,7 @@ ip6_reset_ts_hbh_node_fn (vlib_main_t * vm,
 
 	      hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
 	      /* $$$ tune, rewrite_length is a multiple of 8 */
-	      clib_memcpy (hbh1, rewrite, rewrite_length);
+	      clib_memcpy_fast (hbh1, rewrite, rewrite_length);
 	      e2e =
 		(ioam_e2e_cache_option_t *) ((u8 *) hbh1 +
 					     cm->rewrite_pool_index_offset);
@@ -581,7 +581,7 @@ ip6_reset_ts_hbh_node_fn (vlib_main_t * vm,
 
 	      hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	      /* $$$ tune, rewrite_length is a multiple of 8 */
-	      clib_memcpy (hbh0, rewrite, rewrite_length);
+	      clib_memcpy_fast (hbh0, rewrite, rewrite_length);
 	      e2e =
 		(ioam_e2e_cache_option_t *) ((u8 *) hbh0 +
 					     cm->rewrite_pool_index_offset);

@@ -121,8 +121,8 @@ nsim_inline (vlib_main_t * vm,
 	    ? nsm->sw_if_index1 : nsm->sw_if_index0;
 	  ep->current_length = vlib_buffer_length_in_chain (vm, b[0]);
 	  ASSERT (ep->current_length <= WHEEL_ENTRY_DATA_SIZE);
-	  clib_memcpy (ep->data, vlib_buffer_get_current (b[0]),
-		       ep->current_length);
+	  clib_memcpy_fast (ep->data, vlib_buffer_get_current (b[0]),
+			    ep->current_length);
 	}
       else			/* out of wheel space, drop pkt */
 	{

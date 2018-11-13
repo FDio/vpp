@@ -366,8 +366,8 @@ l2input_node_inline (vlib_main_t * vm,
 		  l2input_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
 		  t->sw_if_index = sw_if_index0;
-		  clib_memcpy (t->src, h0->src_address, 6);
-		  clib_memcpy (t->dst, h0->dst_address, 6);
+		  clib_memcpy_fast (t->src, h0->src_address, 6);
+		  clib_memcpy_fast (t->dst, h0->dst_address, 6);
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -375,8 +375,8 @@ l2input_node_inline (vlib_main_t * vm,
 		  l2input_trace_t *t =
 		    vlib_add_trace (vm, node, b1, sizeof (*t));
 		  t->sw_if_index = sw_if_index1;
-		  clib_memcpy (t->src, h1->src_address, 6);
-		  clib_memcpy (t->dst, h1->dst_address, 6);
+		  clib_memcpy_fast (t->src, h1->src_address, 6);
+		  clib_memcpy_fast (t->dst, h1->dst_address, 6);
 		}
 	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -384,8 +384,8 @@ l2input_node_inline (vlib_main_t * vm,
 		  l2input_trace_t *t =
 		    vlib_add_trace (vm, node, b2, sizeof (*t));
 		  t->sw_if_index = sw_if_index2;
-		  clib_memcpy (t->src, h2->src_address, 6);
-		  clib_memcpy (t->dst, h2->dst_address, 6);
+		  clib_memcpy_fast (t->src, h2->src_address, 6);
+		  clib_memcpy_fast (t->dst, h2->dst_address, 6);
 		}
 	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -393,8 +393,8 @@ l2input_node_inline (vlib_main_t * vm,
 		  l2input_trace_t *t =
 		    vlib_add_trace (vm, node, b3, sizeof (*t));
 		  t->sw_if_index = sw_if_index3;
-		  clib_memcpy (t->src, h3->src_address, 6);
-		  clib_memcpy (t->dst, h3->dst_address, 6);
+		  clib_memcpy_fast (t->src, h3->src_address, 6);
+		  clib_memcpy_fast (t->dst, h3->dst_address, 6);
 		}
 	    }
 
@@ -434,8 +434,8 @@ l2input_node_inline (vlib_main_t * vm,
 	      l2input_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->sw_if_index = sw_if_index0;
-	      clib_memcpy (t->src, h0->src_address, 6);
-	      clib_memcpy (t->dst, h0->dst_address, 6);
+	      clib_memcpy_fast (t->src, h0->src_address, 6);
+	      clib_memcpy_fast (t->dst, h0->dst_address, 6);
 	    }
 
 	  classify_and_dispatch (msm, b0, &next0);

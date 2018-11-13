@@ -171,7 +171,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 		 sizeof (ethernet_header_t));
 	      ethernet_header_t *oeh0 =
 		(ethernet_header_t *) ((u8 *) ieh0 + (adv - icv_size));
-	      clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
+	      clib_memcpy_fast (oeh0, ieh0, sizeof (ethernet_header_t));
 	    }
 
 	  vlib_buffer_advance (i_b0, adv - icv_size);

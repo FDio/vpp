@@ -672,8 +672,8 @@ vlib_packet_template_buffer_init (vlib_main_t * vm,
     {
       vlib_buffer_t *b = vlib_get_buffer (vm, buffers[i]);
       ASSERT (b->current_length == vec_len (t->packet_data));
-      clib_memcpy (vlib_buffer_get_current (b), t->packet_data,
-		   b->current_length);
+      clib_memcpy_fast (vlib_buffer_get_current (b), t->packet_data,
+			b->current_length);
     }
 }
 
@@ -738,8 +738,8 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
   *bi_result = bi;
 
   b = vlib_get_buffer (vm, bi);
-  clib_memcpy (vlib_buffer_get_current (b),
-	       t->packet_data, vec_len (t->packet_data));
+  clib_memcpy_fast (vlib_buffer_get_current (b),
+		    t->packet_data, vec_len (t->packet_data));
   b->current_length = vec_len (t->packet_data);
 
   return b->data;
@@ -796,7 +796,8 @@ vlib_buffer_add_data (vlib_main_t * vm,
       n_left_this_buffer =
 	n_buffer_bytes - (b->current_data + b->current_length);
       n = clib_min (n_left_this_buffer, n_left);
-      clib_memcpy (vlib_buffer_get_current (b) + b->current_length, d, n);
+      clib_memcpy_fast (vlib_buffer_get_current (b) + b->current_length, d,
+			n);
       b->current_length += n;
       n_left -= n;
       if (n_left == 0)
@@ -847,8 +848,8 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
 	}
 
       u16 len = (data_len > max) ? max : data_len;
-      clib_memcpy (vlib_buffer_get_current (l) + l->current_length,
-		   data + copied, len);
+      clib_memcpy_fast (vlib_buffer_get_current (l) + l->current_length,
+			data + copied, len);
       vlib_buffer_chain_increase_length (first, l, len);
       data_len -= len;
       copied += len;
@@ -974,8 +975,8 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
     {
       /* external plugin has registered own buffer callbacks
          so we just copy them  and quit */
-      clib_memcpy (&bm->cb, vlib_buffer_callbacks,
-		   sizeof (vlib_buffer_callbacks_t));
+      clib_memcpy_fast (&bm->cb, vlib_buffer_callbacks,
+			sizeof (vlib_buffer_callbacks_t));
       bm->callbacks_registered = 1;
       return 0;
     }

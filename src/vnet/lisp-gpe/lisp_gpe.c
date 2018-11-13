@@ -669,7 +669,7 @@ lisp_gpe_test_send_nsh_packet (u8 * file_name)
 
   vnet_buffer (b)->sw_if_index[VLIB_TX] = hi->sw_if_index;
   u8 *p = vlib_buffer_put_uninit (b, vec_len (pm.packets_read[0]));
-  clib_memcpy (p, pm.packets_read[0], vec_len (pm.packets_read[0]));
+  clib_memcpy_fast (p, pm.packets_read[0], vec_len (pm.packets_read[0]));
   vlib_buffer_pull (b, sizeof (ethernet_header_t));
 
   vlib_node_t *n = vlib_get_node_by_name (lgm->vlib_main,
