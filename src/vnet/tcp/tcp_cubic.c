@@ -69,10 +69,12 @@ W_cubic (cubic_data_t * cd, f64 t)
  * RFC 8312 Eq. 2
  */
 static inline f64
-K_cubic (cubic_data_t * cd)
+K_cubic (cubic_data_t * cd, u32 wnd)
 {
-  /* K = cubic_root(W_max*(1-beta_cubic)/C) */
-  return pow (cd->w_max * (1 - beta_cubic) / cubic_c, 1 / 3.0);
+  /* K = cubic_root(W_max*(1-beta_cubic)/C)
+   * Because the current window may be less than W_max * beta_cubic because
+   * of fast convergence, we pass it as parameter */
+  return pow ((f64) (cd->w_max - wnd) / cubic_c, 1 / 3.0);
 }
 
 /**
@@ -108,8 +110,23 @@ cubic_recovered (tcp_connection_t * tc)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   cd->t_start = cubic_time (tc->c_thread_index);
-  cd->K = K_cubic (cd);
   tc->cwnd = tc->ssthresh;
+  cd->K = K_cubic (cd, tc->cwnd / tc->snd_mss);
+}
+
+static void
+cubic_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes_acked)
+{
+  /* We just updated the threshold and don't know how large the previous
+   * one was. Still, optimistically increase cwnd by one segment and
+   * clear the accumulated bytes. */
+  if (tc->cwnd_acc_bytes > thresh)
+    {
+      tc->cwnd += tc->snd_mss;
+      tc->cwnd_acc_bytes = 0;
+    }
+
+  tcp_cwnd_accumulate (tc, thresh, tc->bytes_acked);
 }
 
 static void
@@ -137,7 +154,7 @@ cubic_rcv_ack (tcp_connection_t * tc)
   w_aimd = (u64) W_est (cd, t, rtt_sec) * tc->snd_mss;
   if (w_cubic < w_aimd)
     {
-      tcp_cwnd_accumulate (tc, tc->cwnd, tc->bytes_acked);
+      cubic_cwnd_accumulate (tc, tc->cwnd, tc->bytes_acked);
     }
   else
     {
@@ -155,16 +172,15 @@ cubic_rcv_ack (tcp_connection_t * tc)
 	   */
 	  thresh = (tc->snd_mss * tc->cwnd) / (w_cubic - tc->cwnd);
 
-	  /* Make sure we don't increase cwnd more often than every
-	   * 2 segments */
-	  thresh = clib_max (thresh, 2 * tc->snd_mss);
+	  /* Make sure we don't increase cwnd more often than every segment */
+	  thresh = clib_max (thresh, tc->snd_mss);
 	}
       else
 	{
 	  /* Practically we can't increment so just inflate threshold */
 	  thresh = 50 * tc->cwnd;
 	}
-      tcp_cwnd_accumulate (tc, thresh, tc->bytes_acked);
+      cubic_cwnd_accumulate (tc, thresh, tc->bytes_acked);
     }
 }
 
