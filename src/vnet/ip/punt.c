@@ -368,7 +368,7 @@ udp46_punt_socket_inline (vlib_main_t * vm,
 	  c = punt_client_get (is_ip4, port);
 	  udp_punt_trace_t *t;
 	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
-	  clib_memcpy (&t->client, c, sizeof (t->client));
+	  _clib_memcpy (&t->client, c, sizeof (t->client));
 	}
 
       /* Re-set iovecs if present. */
@@ -401,7 +401,7 @@ udp46_punt_socket_inline (vlib_main_t * vm,
 		    }
 		  udp_punt_trace_t *t;
 		  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
-		  clib_memcpy (&t->client, c, sizeof (t->client));
+		  _clib_memcpy (&t->client, c, sizeof (t->client));
 		  t->is_midchain = 1;
 		}
 

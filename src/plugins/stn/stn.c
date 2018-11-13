@@ -141,9 +141,9 @@ stn_ip46_punt_fn (vlib_main_t * vm,
 	      vlib_buffer_advance(p0, -sizeof(*eth));
 	      eth = (ethernet_header_t *) vlib_buffer_get_current(p0);
 	      if (is_ipv4)
-		clib_memcpy(eth, &stn_ip4_ethernet_header, sizeof(*eth));
+		_clib_memcpy(eth, &stn_ip4_ethernet_header, sizeof(*eth));
 	      else
-		clib_memcpy(eth, &stn_ip6_ethernet_header, sizeof(*eth));
+		_clib_memcpy(eth, &stn_ip6_ethernet_header, sizeof(*eth));
 	    }
           else
           {
@@ -261,12 +261,12 @@ stn_init (vlib_main_t * vm)
   clib_bihash_init_16_8(&stn->rule_by_address_table, "stn addresses",
 			1024, 1<<20);
 
-  clib_memcpy(stn_ip4_ethernet_header.dst_address, stn_hw_addr_dst, 6);
-  clib_memcpy(stn_ip4_ethernet_header.src_address, stn_hw_addr_local, 6);
+  _clib_memcpy(stn_ip4_ethernet_header.dst_address, stn_hw_addr_dst, 6);
+  _clib_memcpy(stn_ip4_ethernet_header.src_address, stn_hw_addr_local, 6);
   stn_ip4_ethernet_header.type = clib_host_to_net_u16(ETHERNET_TYPE_IP4);
 
-  clib_memcpy(stn_ip6_ethernet_header.dst_address, stn_hw_addr_dst, 6);
-  clib_memcpy(stn_ip6_ethernet_header.src_address, stn_hw_addr_local, 6);
+  _clib_memcpy(stn_ip6_ethernet_header.dst_address, stn_hw_addr_dst, 6);
+  _clib_memcpy(stn_ip6_ethernet_header.src_address, stn_hw_addr_local, 6);
   stn_ip6_ethernet_header.type = clib_host_to_net_u16(ETHERNET_TYPE_IP6);
 
   return stn_api_init (vm, stn);

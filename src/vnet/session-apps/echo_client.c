@@ -86,10 +86,10 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 
 	  hdr.data_length = rv;
 	  hdr.data_offset = 0;
-	  clib_memcpy (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
+	  _clib_memcpy (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
 	  hdr.is_ip4 = at->is_ip4;
 	  hdr.rmt_port = at->rmt_port;
-	  clib_memcpy (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
+	  _clib_memcpy (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
 	  hdr.lcl_port = at->lcl_port;
 	  svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
 	  svm_fifo_enqueue_nocopy (f, rv);
@@ -221,10 +221,10 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       ASSERT (nconnections_this_batch > 0);
       vec_validate (connections_this_batch, nconnections_this_batch - 1);
-      clib_memcpy (connections_this_batch,
-		   connection_indices + vec_len (connection_indices)
-		   - nconnections_this_batch,
-		   nconnections_this_batch * sizeof (u32));
+      _clib_memcpy (connections_this_batch,
+		    connection_indices + vec_len (connection_indices)
+		    - nconnections_this_batch,
+		    nconnections_this_batch * sizeof (u32));
       _vec_len (connection_indices) -= nconnections_this_batch;
     }
 
@@ -402,8 +402,8 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
     {
       transport_connection_t *tc;
       tc = session_get_transport (s);
-      clib_memcpy (&session->data.transport, tc,
-		   sizeof (session->data.transport));
+      _clib_memcpy (&session->data.transport, tc,
+		    sizeof (session->data.transport));
       session->data.is_dgram = 1;
     }
 

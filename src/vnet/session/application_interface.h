@@ -397,10 +397,10 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   actual_write = clib_min (len, max_enqueue);
   hdr.data_length = actual_write;
   hdr.data_offset = 0;
-  clib_memcpy (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
+  _clib_memcpy (&hdr.rmt_ip, &at->rmt_ip, sizeof (ip46_address_t));
   hdr.is_ip4 = at->is_ip4;
   hdr.rmt_port = at->rmt_port;
-  clib_memcpy (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
+  _clib_memcpy (&hdr.lcl_ip, &at->lcl_ip, sizeof (ip46_address_t));
   hdr.lcl_port = at->lcl_port;
   rv = svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
   ASSERT (rv == sizeof (hdr));

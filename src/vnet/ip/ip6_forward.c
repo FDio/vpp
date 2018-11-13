@@ -883,9 +883,9 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
-	  clib_memcpy (t0->packet_data,
-		       vlib_buffer_get_current (b0),
-		       sizeof (t0->packet_data));
+	  _clib_memcpy (t0->packet_data,
+			vlib_buffer_get_current (b0),
+			sizeof (t0->packet_data));
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
@@ -898,9 +898,9 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b1)->sw_if_index[VLIB_RX]);
 
-	  clib_memcpy (t1->packet_data,
-		       vlib_buffer_get_current (b1),
-		       sizeof (t1->packet_data));
+	  _clib_memcpy (t1->packet_data,
+			vlib_buffer_get_current (b1),
+			sizeof (t1->packet_data));
 	}
       from += 2;
       n_left -= 2;
@@ -927,9 +927,9 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
-	  clib_memcpy (t0->packet_data,
-		       vlib_buffer_get_current (b0),
-		       sizeof (t0->packet_data));
+	  _clib_memcpy (t0->packet_data,
+			vlib_buffer_get_current (b0),
+			sizeof (t0->packet_data));
 	}
       from += 1;
       n_left -= 1;
@@ -1530,8 +1530,8 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index,
 				sw_if_index);
     }
 
-  clib_memcpy (h->link_layer_option.ethernet_address, hi->hw_address,
-	       vec_len (hi->hw_address));
+  _clib_memcpy (h->link_layer_option.ethernet_address, hi->hw_address,
+		vec_len (hi->hw_address));
 
   h->neighbor.icmp.checksum =
     ip6_tcp_udp_icmp_compute_checksum (vm, 0, &h->ip, &bogus_length);
@@ -2415,7 +2415,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
 		    ARRAY_LEN (t->option_data) ? trace_len :
 		    ARRAY_LEN (t->option_data);
 		  t->trace_len = trace_len;
-		  clib_memcpy (t->option_data, hbh0, trace_len);
+		  _clib_memcpy (t->option_data, hbh0, trace_len);
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -2429,7 +2429,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
 		    ARRAY_LEN (t->option_data) ? trace_len :
 		    ARRAY_LEN (t->option_data);
 		  t->trace_len = trace_len;
-		  clib_memcpy (t->option_data, hbh1, trace_len);
+		  _clib_memcpy (t->option_data, hbh1, trace_len);
 		}
 
 	    }
@@ -2510,7 +2510,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
 		ARRAY_LEN (t->option_data) ? trace_len :
 		ARRAY_LEN (t->option_data);
 	      t->trace_len = trace_len;
-	      clib_memcpy (t->option_data, hbh0, trace_len);
+	      _clib_memcpy (t->option_data, hbh0, trace_len);
 	    }
 
 	  b0->error = error_node->errors[error0];

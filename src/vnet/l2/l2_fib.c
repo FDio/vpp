@@ -83,7 +83,7 @@ incr_mac_address (u8 * mac)
   tmp += 1 << 16;		/* skip unused (least significant) octets */
   tmp = clib_host_to_net_u64 (tmp);
 
-  clib_memcpy (mac, &tmp, 6);
+  _clib_memcpy (mac, &tmp, 6);
 }
 
 /** Format sw_if_index. If the value is ~0, use the text "N/A" */
@@ -584,7 +584,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
     return clib_error_return (0,
 			      "noop: pick at least one of (add,del,check)");
 
-  clib_memcpy (save_mac, mac, 6);
+  _clib_memcpy (save_mac, mac, 6);
 
   if (is_add)
     {
@@ -601,7 +601,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
       BVT (clib_bihash_kv) kv;
       l2fib_main_t *mp = &l2fib_main;
 
-      clib_memcpy (mac, save_mac, 6);
+      _clib_memcpy (mac, save_mac, 6);
 
       for (i = 0; i < count; i++)
 	{
@@ -617,7 +617,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
 
   if (is_del)
     {
-      clib_memcpy (mac, save_mac, 6);
+      _clib_memcpy (mac, save_mac, 6);
 
       for (i = 0; i < count; i++)
 	{
@@ -1071,8 +1071,8 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		  if (l2fib_entry_result_is_set_LRN_EVT (&result))
 		    {
 		      /* copy mac entry to event msg */
-		      clib_memcpy (mp->mac[evt_idx].mac_addr, key.fields.mac,
-				   6);
+		      _clib_memcpy (mp->mac[evt_idx].mac_addr, key.fields.mac,
+				    6);
 		      mp->mac[evt_idx].action =
 			l2fib_entry_result_is_set_LRN_MOV (&result) ?
 			MAC_EVENT_ACTION_MOVE : MAC_EVENT_ACTION_ADD;
@@ -1116,7 +1116,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	      if (client)
 		{
 		  /* copy mac entry to event msg */
-		  clib_memcpy (mp->mac[evt_idx].mac_addr, key.fields.mac, 6);
+		  _clib_memcpy (mp->mac[evt_idx].mac_addr, key.fields.mac, 6);
 		  mp->mac[evt_idx].action = MAC_EVENT_ACTION_DELETE;
 		  mp->mac[evt_idx].sw_if_index =
 		    htonl (result.fields.sw_if_index);

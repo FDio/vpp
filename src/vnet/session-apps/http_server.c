@@ -132,7 +132,7 @@ http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 
   offset = vec_len (output_vec);
   vec_validate (output_vec, offset + buffer_bytes - 1);
-  clib_memcpy (output_vec + offset, buffer, buffer_bytes);
+  _clib_memcpy (output_vec + offset, buffer, buffer_bytes);
 
   *output_vecp = output_vec;
 }
@@ -525,13 +525,13 @@ server_attach ()
   clib_memset (a_cert, 0, sizeof (*a_cert));
   a_cert->app_index = a->app_index;
   vec_validate (a_cert->cert, test_srv_crt_rsa_len);
-  clib_memcpy (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  _clib_memcpy (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
   vnet_app_add_tls_cert (a_cert);
 
   clib_memset (a_key, 0, sizeof (*a_key));
   a_key->app_index = a->app_index;
   vec_validate (a_key->key, test_srv_key_rsa_len);
-  clib_memcpy (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  _clib_memcpy (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
   vnet_app_add_tls_key (a_key);
 
   return 0;

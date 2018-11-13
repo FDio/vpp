@@ -166,7 +166,7 @@ end_ad_processing (vlib_buffer_t * b0,
     {
       vec_validate (ls0_mem->rewrite, total_size - 1);
     }
-  clib_memcpy (ls0_mem->rewrite, ip0, total_size);
+  _clib_memcpy (ls0_mem->rewrite, ip0, total_size);
   ls0_mem->rw_len = total_size;
 
   /* Remove IP header and extensions */
@@ -349,8 +349,8 @@ srv6_ad2_rewrite_fn (vlib_main_t * vm,
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
 		      (ls0_mem->rw_len + b0->current_data));
 
-	      clib_memcpy (((u8 *) en0) - ls0_mem->rw_len,
-			   ls0_mem->rewrite, ls0_mem->rw_len);
+	      _clib_memcpy (((u8 *) en0) - ls0_mem->rw_len,
+			    ls0_mem->rewrite, ls0_mem->rw_len);
 	      vlib_buffer_advance (b0, -(word) ls0_mem->rw_len);
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -373,10 +373,10 @@ srv6_ad2_rewrite_fn (vlib_main_t * vm,
 		}
 	      else
 		{
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			       sizeof tr->src.as_u8);
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			       sizeof tr->dst.as_u8);
+		  _clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+				sizeof tr->src.as_u8);
+		  _clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+				sizeof tr->dst.as_u8);
 		}
 	    }
 
@@ -484,8 +484,8 @@ srv6_ad4_rewrite_fn (vlib_main_t * vm,
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
 		      (ls0_mem->rw_len + b0->current_data));
 
-	      clib_memcpy (((u8 *) ip0_encap) - ls0_mem->rw_len,
-			   ls0_mem->rewrite, ls0_mem->rw_len);
+	      _clib_memcpy (((u8 *) ip0_encap) - ls0_mem->rw_len,
+			    ls0_mem->rewrite, ls0_mem->rw_len);
 	      vlib_buffer_advance (b0, -(word) ls0_mem->rw_len);
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -516,10 +516,10 @@ srv6_ad4_rewrite_fn (vlib_main_t * vm,
 		}
 	      else
 		{
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			       sizeof tr->src.as_u8);
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			       sizeof tr->dst.as_u8);
+		  _clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+				sizeof tr->src.as_u8);
+		  _clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+				sizeof tr->dst.as_u8);
 		}
 	    }
 
@@ -626,8 +626,8 @@ srv6_ad6_rewrite_fn (vlib_main_t * vm,
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
 		      (ls0_mem->rw_len + b0->current_data));
 
-	      clib_memcpy (((u8 *) ip0_encap) - ls0_mem->rw_len,
-			   ls0_mem->rewrite, ls0_mem->rw_len);
+	      _clib_memcpy (((u8 *) ip0_encap) - ls0_mem->rw_len,
+			    ls0_mem->rewrite, ls0_mem->rw_len);
 	      vlib_buffer_advance (b0, -(word) ls0_mem->rw_len);
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -654,10 +654,10 @@ srv6_ad6_rewrite_fn (vlib_main_t * vm,
 		}
 	      else
 		{
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			       sizeof tr->src.as_u8);
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			       sizeof tr->dst.as_u8);
+		  _clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
+				sizeof tr->src.as_u8);
+		  _clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
+				sizeof tr->dst.as_u8);
 		}
 	    }
 

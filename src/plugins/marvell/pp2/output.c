@@ -101,10 +101,10 @@ mrvl_pp2_interface_tx (vlib_main_t * vm,
       buffers = vlib_frame_vector_args (frame);
       u16 n_copy = clib_min (outq->size - slot, n_sent);
 
-      clib_memcpy (outq->buffers + slot, buffers, n_copy * sizeof (u32));
+      _clib_memcpy (outq->buffers + slot, buffers, n_copy * sizeof (u32));
       if (PREDICT_FALSE (n_copy < n_sent))
-	clib_memcpy (outq->buffers, buffers + n_copy,
-		     (n_sent - n_copy) * sizeof (u32));
+	_clib_memcpy (outq->buffers, buffers + n_copy,
+		      (n_sent - n_copy) * sizeof (u32));
 
       outq->head += n_sent;
     }

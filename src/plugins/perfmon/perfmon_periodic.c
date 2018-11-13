@@ -271,7 +271,7 @@ scrape_and_clear_counters (perfmon_main_t * pm)
 	{
 	  n = nm->nodes[i];
 	  nodes[i] = clib_mem_alloc (sizeof (*n));
-	  clib_memcpy (nodes[i], n, sizeof (*n));
+	  _clib_memcpy (nodes[i], n, sizeof (*n));
 	  n->stats_total.perf_counter_ticks = 0;
 	  n->stats_total.perf_counter_vectors = 0;
 	  n->stats_last_clear.perf_counter_ticks = 0;

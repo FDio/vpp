@@ -316,7 +316,7 @@ esp_encrypt_inline (vlib_main_t * vm,
 					   vlib_buffer_get_current (i_b0) -
 					   sizeof (ethernet_header_t));
 		  oeh0 = (ethernet_header_t *) o_b0->data;
-		  clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
+		  _clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
 		  next0 = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 		  vnet_buffer (o_b0)->sw_if_index[VLIB_TX] =
 		    vnet_buffer (i_b0)->sw_if_index[VLIB_TX];
@@ -359,10 +359,10 @@ esp_encrypt_inline (vlib_main_t * vm,
 		    ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size];
 	      RAND_bytes (iv, sizeof (iv));
 
-	      clib_memcpy ((u8 *) vlib_buffer_get_current (o_b0) +
-			   ip_udp_hdr_size + sizeof (esp_header_t), iv,
-			   em->ipsec_proto_main_crypto_algs[sa0->
-							    crypto_alg].iv_size);
+	      _clib_memcpy ((u8 *) vlib_buffer_get_current (o_b0) +
+			    ip_udp_hdr_size + sizeof (esp_header_t), iv,
+			    em->ipsec_proto_main_crypto_algs[sa0->
+							     crypto_alg].iv_size);
 
 	      esp_encrypt_cbc (vm, sa0->crypto_alg,
 			       (u8 *) vlib_buffer_get_current (i_b0),

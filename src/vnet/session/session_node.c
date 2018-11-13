@@ -800,7 +800,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vec_add2 (fifo_events, e, 1);
 	  svm_msg_q_sub_w_lock (mq, msg);
-	  clib_memcpy (e, svm_msg_q_msg_data (mq, msg), sizeof (*e));
+	  _clib_memcpy (e, svm_msg_q_msg_data (mq, msg), sizeof (*e));
 	  svm_msg_q_free_msg (mq, msg);
 	}
       svm_msg_q_unlock (mq);
@@ -961,7 +961,7 @@ dump_thread_0_event_queue (void)
     {
       msg = (svm_msg_q_msg_t *) (&mq->q->data[0] + mq->q->elsize * index);
       ring = svm_msg_q_ring (mq, msg->ring_index);
-      clib_memcpy (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
+      _clib_memcpy (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
 
       switch (e->event_type)
 	{
@@ -1053,7 +1053,7 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
     {
       msg = (svm_msg_q_msg_t *) (&mq->q->data[0] + mq->q->elsize * index);
       ring = svm_msg_q_ring (mq, msg->ring_index);
-      clib_memcpy (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
+      _clib_memcpy (e, svm_msg_q_msg_data (mq, msg), ring->elsize);
       found = session_node_cmp_event (e, f);
       if (found)
 	return 1;
@@ -1069,7 +1069,7 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
     found = session_node_cmp_event (evt, f);
     if (found)
       {
-	clib_memcpy (e, evt, sizeof (*evt));
+	_clib_memcpy (e, evt, sizeof (*evt));
 	break;
       }
   }

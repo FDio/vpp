@@ -105,7 +105,7 @@ nsh_md2_ioam_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
   if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
     {
       nsh_transit_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-      clib_memcpy (&(tr->trace_data), nsh_hdr, (nsh_hdr->length * 4));
+      _clib_memcpy (&(tr->trace_data), nsh_hdr, (nsh_hdr->length * 4));
     }
   return;
 }

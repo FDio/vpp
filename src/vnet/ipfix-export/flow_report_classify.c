@@ -226,7 +226,7 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 
 		  u32 copy_len = sizeof (ip4_header_t) +
 		    sizeof (udp_header_t) + sizeof (ipfix_message_header_t);
-		  clib_memcpy (b0->data, fr->rewrite, copy_len);
+		  _clib_memcpy (b0->data, fr->rewrite, copy_len);
 		  b0->current_data = 0;
 		  b0->current_length = copy_len;
 		  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -261,7 +261,7 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 #define _(field,mask,item,length)                                       \
               if (clib_bitmap_get (fr->fields_to_send, field_index))    \
                 {                                                       \
-                  clib_memcpy (b0->data + next_offset, &field,          \
+                  _clib_memcpy (b0->data + next_offset, &field,          \
                           length);                                      \
                   next_offset += length;                                \
                 }                                                       \
@@ -272,8 +272,8 @@ ipfix_classify_send_flows (flow_report_main_t * frm,
 	      /* Add packetTotalCount manually */
 	      {
 		u64 packets = clib_host_to_net_u64 (v->hits);
-		clib_memcpy (b0->data + next_offset, &packets,
-			     sizeof (packets));
+		_clib_memcpy (b0->data + next_offset, &packets,
+			      sizeof (packets));
 		next_offset += sizeof (packets);
 	      }
 	      records_this_buffer++;

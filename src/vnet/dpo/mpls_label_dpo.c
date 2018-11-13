@@ -287,7 +287,7 @@ mpls_label_paint (vlib_buffer_t * b0,
     }
     else
     {
-        clib_memcpy(hdr0, mld0->mld_hdr, mld0->mld_n_hdr_bytes);
+        _clib_memcpy(hdr0, mld0->mld_hdr, mld0->mld_n_hdr_bytes);
         hdr0 = hdr0 + (mld0->mld_n_labels - 1);
     }
 
@@ -1218,7 +1218,7 @@ mpls_label_interpose (const dpo_id_t *original,
     mld = mpls_label_dpo_get(original->dpoi_index);
 
     mld_clone->mld_locks = 0;
-    clib_memcpy(&mld_clone->mld_hdr,
+    _clib_memcpy(&mld_clone->mld_hdr,
                 &mld->mld_hdr,
                 sizeof(mld_clone->mld_hdr));
     mld_clone->mld_payload_proto = mld->mld_payload_proto;

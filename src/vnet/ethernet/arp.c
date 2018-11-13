@@ -358,8 +358,8 @@ arp_nbr_probe (ip_adjacency_t * adj)
 
   hi = vnet_get_sup_hw_interface (vnm, adj->rewrite_header.sw_if_index);
 
-  clib_memcpy (h->ip4_over_ethernet[0].ethernet,
-	       hi->hw_address, sizeof (h->ip4_over_ethernet[0].ethernet));
+  _clib_memcpy (h->ip4_over_ethernet[0].ethernet,
+		hi->hw_address, sizeof (h->ip4_over_ethernet[0].ethernet));
 
   h->ip4_over_ethernet[0].ip4 = src[0];
   h->ip4_over_ethernet[1].ip4 = adj->sub_type.nbr.next_hop.ip4;
@@ -674,8 +674,8 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
       e->sw_if_index = sw_if_index;
       e->ip4_address = a->ip4;
       e->fib_entry_index = FIB_NODE_INDEX_INVALID;
-      clib_memcpy (e->ethernet_address,
-		   a->ethernet, sizeof (e->ethernet_address));
+      _clib_memcpy (e->ethernet_address,
+		    a->ethernet, sizeof (e->ethernet_address));
 
       if (!is_no_fib_entry)
 	{
@@ -702,8 +702,8 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	}
 
       /* Update ethernet address. */
-      clib_memcpy (e->ethernet_address, a->ethernet,
-		   sizeof (e->ethernet_address));
+      _clib_memcpy (e->ethernet_address, a->ethernet,
+		    sizeof (e->ethernet_address));
     }
 
   /* Update time stamp and flags. */
@@ -1238,8 +1238,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 
-	  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet,
-		       hw_if0->hw_address, 6);
+	  _clib_memcpy (arp0->ip4_over_ethernet[0].ethernet,
+			hw_if0->hw_address, 6);
 	  clib_mem_unaligned (&arp0->ip4_over_ethernet[0].ip4.data_u32, u32) =
 	    if_addr0->data_u32;
 
@@ -1249,7 +1249,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* the rx nd tx ethernet headers wil overlap in the case
 	   * when we received a tagged VLAN=0 packet, but we are sending
 	   * back untagged */
-	  clib_memcpy (eth_tx, rewrite0, vec_len (rewrite0));
+	  _clib_memcpy (eth_tx, rewrite0, vec_len (rewrite0));
 	  vec_free (rewrite0);
 
 	  if (NULL == pa)
@@ -1557,7 +1557,7 @@ vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,
 
   args.sw_if_index = sw_if_index;
   args.flags = ETHERNET_ARP_ARGS_REMOVE;
-  clib_memcpy (&args.a, a, sizeof (*a));
+  _clib_memcpy (&args.a, a, sizeof (*a));
 
   vl_api_rpc_call_main_thread (set_ip4_over_ethernet_rpc_callback,
 			       (u8 *) & args, sizeof (args));
@@ -1706,7 +1706,7 @@ arp_add_del_interface_address (ip4_main_t * im,
 	    .sw_if_index = e->sw_if_index,
 	    .flags = ETHERNET_ARP_ARGS_FLUSH,
 	  };
-	  clib_memcpy (&delme.a.ethernet, e->ethernet_address, 6);
+	  _clib_memcpy (&delme.a.ethernet, e->ethernet_address, 6);
 
 	  vnet_arp_flush_ip4_over_ethernet_internal (vnet_get_main (),
 						     &delme);
@@ -1915,7 +1915,7 @@ ethernet_arp_sw_interface_up_down (vnet_main_t * vnm,
 	.sw_if_index = e->sw_if_index,
       };
 
-      clib_memcpy (&update_me.a.ethernet, e->ethernet_address, 6);
+      _clib_memcpy (&update_me.a.ethernet, e->ethernet_address, 6);
 
       if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
 	{
@@ -1970,7 +1970,7 @@ vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
   args.is_static = is_static;
   args.is_no_fib_entry = is_no_fib_entry;
   args.flags = 0;
-  clib_memcpy (&args.a, a, sizeof (*a));
+  _clib_memcpy (&args.a, a, sizeof (*a));
 
   vl_api_rpc_call_main_thread (set_ip4_over_ethernet_rpc_callback,
 			       (u8 *) & args, sizeof (args));
@@ -2344,7 +2344,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	    {
 	      u8 *t0 = vlib_add_trace (vm, node, p0,
 				       sizeof (ethernet_arp_input_trace_t));
-	      clib_memcpy (t0, l3h0, sizeof (ethernet_arp_input_trace_t));
+	      _clib_memcpy (t0, l3h0, sizeof (ethernet_arp_input_trace_t));
 	    }
 
 	  error0 = 0;
@@ -2410,9 +2410,9 @@ arp_term_l2bd (vlib_main_t * vm,
 	  arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
 	  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
 	  arp0->ip4_over_ethernet[0].ip4.as_u32 = ip0;
-	  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet, macp0, 6);
-	  clib_memcpy (eth0->dst_address, eth0->src_address, 6);
-	  clib_memcpy (eth0->src_address, macp0, 6);
+	  _clib_memcpy (arp0->ip4_over_ethernet[0].ethernet, macp0, 6);
+	  _clib_memcpy (eth0->dst_address, eth0->src_address, 6);
+	  _clib_memcpy (eth0->src_address, macp0, 6);
 	  n_replies_sent += 1;
 
 	output_response:
@@ -2577,10 +2577,10 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
       if (!h)
 	return;
 
-      clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
-		   sizeof (h->ip4_over_ethernet[0].ethernet));
-      clib_memcpy (h->ip4_over_ethernet[1].ethernet, hi->hw_address,
-		   sizeof (h->ip4_over_ethernet[1].ethernet));
+      _clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
+		    sizeof (h->ip4_over_ethernet[0].ethernet));
+      _clib_memcpy (h->ip4_over_ethernet[1].ethernet, hi->hw_address,
+		    sizeof (h->ip4_over_ethernet[1].ethernet));
       h->ip4_over_ethernet[0].ip4 = ip4_addr[0];
       h->ip4_over_ethernet[1].ip4 = ip4_addr[0];
 
@@ -2592,7 +2592,7 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
       rewrite_len = vec_len (rewrite);
       vlib_buffer_advance (b, -rewrite_len);
       ethernet_header_t *e = vlib_buffer_get_current (b);
-      clib_memcpy (e->dst_address, rewrite, rewrite_len);
+      _clib_memcpy (e->dst_address, rewrite, rewrite_len);
       vec_free (rewrite);
 
       /* Send GARP packet out the specified interface */

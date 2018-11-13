@@ -258,14 +258,14 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vnet_buffer (bt)->feature_arc_index;
 	}
 
-      clib_memcpy (vnet_buffer (b[0])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy (vnet_buffer (b[1])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy (vnet_buffer (b[2])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy (vnet_buffer (b[3])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
+      _clib_memcpy (vnet_buffer (b[0])->sw_if_index,
+		    vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
+      _clib_memcpy (vnet_buffer (b[1])->sw_if_index,
+		    vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
+      _clib_memcpy (vnet_buffer (b[2])->sw_if_index,
+		    vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
+      _clib_memcpy (vnet_buffer (b[3])->sw_if_index,
+		    vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
@@ -295,8 +295,8 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vnet_buffer (bt)->feature_arc_index;
 	}
 
-      clib_memcpy (vnet_buffer (b[0])->sw_if_index,
-		   vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
+      _clib_memcpy (vnet_buffer (b[0])->sw_if_index,
+		    vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
@@ -392,7 +392,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       u64x4_store_unaligned (v, ptd->rx_vector + n_rxv);
       maybe_error |= !u64x4_is_all_zero (err4);
 
-      clib_memcpy (bi, rxq->bufs + rxq->next, 4 * sizeof (u32));
+      _clib_memcpy (bi, rxq->bufs + rxq->next, 4 * sizeof (u32));
 
       /* next */
       rxq->next = (rxq->next + 4) & mask;
@@ -486,7 +486,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	  tr->next_index = next[0];
 	  tr->hw_if_index = ad->hw_if_index;
-	  clib_memcpy (&tr->rxve, rxve, sizeof (avf_rx_vector_entry_t));
+	  _clib_memcpy (&tr->rxve, rxve, sizeof (avf_rx_vector_entry_t));
 
 	  /* next */
 	  n_trace--;

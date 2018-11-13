@@ -166,7 +166,7 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       if (tm->is_ether && (!tm->have_normal_interface))
 	{
 	  vlib_buffer_reset (b);
-	  clib_memcpy (vlib_buffer_get_current (b), tm->ether_dst_mac, 6);
+	  _clib_memcpy (vlib_buffer_get_current (b), tm->ether_dst_mac, 6);
 	}
 
       /* Re-set iovecs if present. */
@@ -626,7 +626,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
 	  goto done;
 	}
       else
-	clib_memcpy (tm->ether_dst_mac, ifr.ifr_hwaddr.sa_data, 6);
+	_clib_memcpy (tm->ether_dst_mac, ifr.ifr_hwaddr.sa_data, 6);
     }
 
   if (have_normal_interface)
@@ -721,7 +721,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
   /** See if we already know about this subif */
   clib_memset (&subif_addr, 0, sizeof (subif_addr));
   subif_addr.sw_if_index = sw_if_index;
-  clib_memcpy (&subif_addr.addr, address, sizeof (*address));
+  _clib_memcpy (&subif_addr.addr, address, sizeof (*address));
 
   p = mhash_get (&tm->subif_mhash, &subif_addr);
 
@@ -753,7 +753,7 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
 
       /* Set ipv4 address, netmask. */
       sin->sin_family = AF_INET;
-      clib_memcpy (&sin->sin_addr.s_addr, address, 4);
+      _clib_memcpy (&sin->sin_addr.s_addr, address, 4);
       if (ioctl (tm->dev_tap_fd, SIOCSIFADDR, &ifr) < 0)
 	clib_unix_warning ("ioctl SIOCSIFADDR");
 
@@ -838,7 +838,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
   clib_memset (&subif_addr, 0, sizeof (subif_addr));
   subif_addr.sw_if_index = sw_if_index;
   subif_addr.is_v6 = 1;
-  clib_memcpy (&subif_addr.addr, address, sizeof (*address));
+  _clib_memcpy (&subif_addr.addr, address, sizeof (*address));
 
   p = mhash_get (&tm->subif_mhash, &subif_addr);
 
@@ -874,7 +874,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
 
       ifr6.ifr6_ifindex = ifr.ifr_ifindex;
       ifr6.ifr6_prefixlen = address_length;
-      clib_memcpy (&ifr6.ifr6_addr, address, 16);
+      _clib_memcpy (&ifr6.ifr6_addr, address, 16);
 
       if (ioctl (sockfd, SIOCSIFADDR, &ifr6) < 0)
 	clib_unix_warning ("set address");
@@ -893,7 +893,7 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
 
       ifr6.ifr6_ifindex = ifr.ifr_ifindex;
       ifr6.ifr6_prefixlen = address_length;
-      clib_memcpy (&ifr6.ifr6_addr, address, 16);
+      _clib_memcpy (&ifr6.ifr6_addr, address, 16);
 
       if (ioctl (sockfd, SIOCDIFADDR, &ifr6) < 0)
 	clib_unix_warning ("del address");

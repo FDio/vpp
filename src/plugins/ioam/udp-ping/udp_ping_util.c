@@ -266,7 +266,7 @@ udp_ping_send_ip6_pak (vlib_main_t * vm, ip46_udp_ping_flow * flow)
       int bogus;
       b0 = vlib_get_buffer (vm, buffers[i]);
       stats = flow->udp_data.stats + i;
-      clib_memcpy (b0->data, stats->ping_rewrite, stats->rewrite_len);
+      _clib_memcpy (b0->data, stats->ping_rewrite, stats->rewrite_len);
       b0->current_data = 0;
       b0->current_length = stats->rewrite_len;
       b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;

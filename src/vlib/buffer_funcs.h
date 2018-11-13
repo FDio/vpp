@@ -304,7 +304,7 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
     {
       b = vlib_get_buffer (vm, buffer_index);
       l = b->current_length;
-      clib_memcpy (contents + content_len, b->data + b->current_data, l);
+      _clib_memcpy (contents + content_len, b->data + b->current_data, l);
       content_len += l;
       if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
 	break;
@@ -470,7 +470,7 @@ vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
       /* following code is intentionaly duplicated to allow compiler
          to optimize fast path when n_buffers is constant value */
       src = fl->buffers + len - n_buffers;
-      clib_memcpy (buffers, src, n_buffers * sizeof (u32));
+      _clib_memcpy (buffers, src, n_buffers * sizeof (u32));
       _vec_len (fl->buffers) -= n_buffers;
 
       /* Verify that buffers are known free. */
@@ -481,7 +481,7 @@ vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
     }
 
   src = fl->buffers + len - n_buffers;
-  clib_memcpy (buffers, src, n_buffers * sizeof (u32));
+  _clib_memcpy (buffers, src, n_buffers * sizeof (u32));
   _vec_len (fl->buffers) -= n_buffers;
 
   /* Verify that buffers are known free. */
@@ -758,10 +758,10 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   d->flags = s->flags & flag_mask;
   d->total_length_not_including_first_buffer =
     s->total_length_not_including_first_buffer;
-  clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
-  clib_memcpy (d->opaque2, s->opaque2, sizeof (s->opaque2));
-  clib_memcpy (vlib_buffer_get_current (d),
-	       vlib_buffer_get_current (s), s->current_length);
+  _clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
+  _clib_memcpy (d->opaque2, s->opaque2, sizeof (s->opaque2));
+  _clib_memcpy (vlib_buffer_get_current (d),
+		vlib_buffer_get_current (s), s->current_length);
 
   /* next segments */
   for (i = 1; i < n_buffers; i++)
@@ -773,8 +773,8 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
       d = vlib_get_buffer (vm, new_buffers[i]);
       d->current_data = s->current_data;
       d->current_length = s->current_length;
-      clib_memcpy (vlib_buffer_get_current (d),
-		   vlib_buffer_get_current (s), s->current_length);
+      _clib_memcpy (vlib_buffer_get_current (d),
+		    vlib_buffer_get_current (s), s->current_length);
       d->flags = s->flags & flag_mask;
     }
 
@@ -846,10 +846,10 @@ vlib_buffer_clone_256 (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
 	}
       d->flags = s->flags | VLIB_BUFFER_NEXT_PRESENT;
       d->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
-      clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
-      clib_memcpy (d->opaque2, s->opaque2, sizeof (s->opaque2));
-      clib_memcpy (vlib_buffer_get_current (d), vlib_buffer_get_current (s),
-		   head_end_offset);
+      _clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
+      _clib_memcpy (d->opaque2, s->opaque2, sizeof (s->opaque2));
+      _clib_memcpy (vlib_buffer_get_current (d), vlib_buffer_get_current (s),
+		    head_end_offset);
       d->next_buffer = src_buffer;
     }
   vlib_buffer_advance (s, head_end_offset);
@@ -982,8 +982,8 @@ vlib_buffer_chain_append_data (vlib_main_t * vm,
   u16 len = clib_min (data_len,
 		      n_buffer_bytes - last->current_length -
 		      last->current_data);
-  clib_memcpy (vlib_buffer_get_current (last) + last->current_length, data,
-	       len);
+  _clib_memcpy (vlib_buffer_get_current (last) + last->current_length, data,
+		len);
   vlib_buffer_chain_increase_length (first, last, len);
   return len;
 }
@@ -1088,10 +1088,10 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == vlib_buffer_get_free_list_index (src));
 
-  clib_memcpy (STRUCT_MARK_PTR (dst, template_start),
-	       STRUCT_MARK_PTR (src, template_start),
-	       STRUCT_OFFSET_OF (vlib_buffer_t, template_end) -
-	       STRUCT_OFFSET_OF (vlib_buffer_t, template_start));
+  _clib_memcpy (STRUCT_MARK_PTR (dst, template_start),
+		STRUCT_MARK_PTR (src, template_start),
+		STRUCT_OFFSET_OF (vlib_buffer_t, template_end) -
+		STRUCT_OFFSET_OF (vlib_buffer_t, template_start));
 
   /* Not in the first 16 octets. */
   dst->n_add_refs = src->n_add_refs;
@@ -1240,9 +1240,9 @@ vlib_buffer_chain_compress (vlib_main_t * vm,
       vlib_buffer_t *second = vlib_get_buffer (vm, first->next_buffer);
       u32 need = want_first_size - first->current_length;
       u32 amount_to_copy = clib_min (need, second->current_length);
-      clib_memcpy (((u8 *) vlib_buffer_get_current (first)) +
-		   first->current_length,
-		   vlib_buffer_get_current (second), amount_to_copy);
+      _clib_memcpy (((u8 *) vlib_buffer_get_current (first)) +
+		    first->current_length,
+		    vlib_buffer_get_current (second), amount_to_copy);
       first->current_length += amount_to_copy;
       vlib_buffer_advance (second, amount_to_copy);
       if (first->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)

@@ -282,8 +282,8 @@ vl_socket_read_ready (clib_file_t * uf)
 	    {
 	      ASSERT (vec_len (rp->unprocessed_input) == 0);
 	      vec_validate (rp->unprocessed_input, vec_len (msg_buffer) - 1);
-	      clib_memcpy (rp->unprocessed_input, msg_buffer,
-			   vec_len (msg_buffer));
+	      _clib_memcpy (rp->unprocessed_input, msg_buffer,
+			    vec_len (msg_buffer));
 	      _vec_len (rp->unprocessed_input) = vec_len (msg_buffer);
 	    }
 	  _vec_len (socket_main.input_buffer) = save_input_buffer_length;
@@ -513,7 +513,7 @@ vl_sock_api_send_fd_msg (int socket_fd, int fds[], int n_fds)
   cmsg->cmsg_len = CMSG_LEN (sizeof (int) * n_fds);
   cmsg->cmsg_level = SOL_SOCKET;
   cmsg->cmsg_type = SCM_RIGHTS;
-  clib_memcpy (CMSG_DATA (cmsg), fds, sizeof (int) * n_fds);
+  _clib_memcpy (CMSG_DATA (cmsg), fds, sizeof (int) * n_fds);
 
   rv = sendmsg (socket_fd, &mh, 0);
   if (rv < 0)

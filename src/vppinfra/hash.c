@@ -376,7 +376,7 @@ set_indirect_is_user (void *v, uword i, hash_pair_union_t * p, uword key)
       log2_bytes = 1 + hash_pair_log2_bytes (h);
       q = clib_mem_alloc (1ULL << log2_bytes);
     }
-  clib_memcpy (q, &p->direct, hash_pair_bytes (h));
+  _clib_memcpy (q, &p->direct, hash_pair_bytes (h));
 
   pi->pairs = q;
   if (h->log2_pair_size > 0)
@@ -457,8 +457,8 @@ unset_indirect (void *v, uword i, hash_pair_t * q)
 
       if (len == 2)
 	{
-	  clib_memcpy (p, q == r ? hash_forward1 (h, r) : r,
-		       hash_pair_bytes (h));
+	  _clib_memcpy (p, q == r ? hash_forward1 (h, r) : r,
+			hash_pair_bytes (h));
 	  set_is_user (v, i, 1);
 	}
       else
@@ -473,7 +473,7 @@ unset_indirect (void *v, uword i, hash_pair_t * q)
     {
       /* If deleting a pair we need to keep non-null pairs together. */
       if (q < e)
-	clib_memcpy (q, e, hash_pair_bytes (h));
+	_clib_memcpy (q, e, hash_pair_bytes (h));
       else
 	zero_pair (h, q);
       if (is_vec)
@@ -514,8 +514,8 @@ lookup (void *v, uword key, enum lookup_opcode op,
 	    {
 	      set_is_user (v, i, 0);
 	      if (old_value)
-		clib_memcpy (old_value, p->direct.value,
-			     hash_value_bytes (h));
+		_clib_memcpy (old_value, p->direct.value,
+			      hash_value_bytes (h));
 	      zero_pair (h, &p->direct);
 	    }
 	}
@@ -548,8 +548,8 @@ lookup (void *v, uword key, enum lookup_opcode op,
 	  if (found_key && op == UNSET)
 	    {
 	      if (old_value)
-		clib_memcpy (old_value, &p->direct.value,
-			     hash_value_bytes (h));
+		_clib_memcpy (old_value, &p->direct.value,
+			      hash_value_bytes (h));
 
 	      unset_indirect (v, i, &p->direct);
 
@@ -564,8 +564,8 @@ lookup (void *v, uword key, enum lookup_opcode op,
     {
       /* Save away old value for caller. */
       if (old_value && found_key)
-	clib_memcpy (old_value, &p->direct.value, hash_value_bytes (h));
-      clib_memcpy (&p->direct.value, new_value, hash_value_bytes (h));
+	_clib_memcpy (old_value, &p->direct.value, hash_value_bytes (h));
+      _clib_memcpy (&p->direct.value, new_value, hash_value_bytes (h));
     }
 
   if (op == SET)

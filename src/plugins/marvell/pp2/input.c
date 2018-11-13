@@ -65,7 +65,7 @@ mrvl_pp2_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node, u32 next0,
   tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
   tr->next_index = next0;
   tr->hw_if_index = ppif->hw_if_index;
-  clib_memcpy (&tr->desc, d, sizeof (struct pp2_ppio_desc));
+  _clib_memcpy (&tr->desc, d, sizeof (struct pp2_ppio_desc));
 }
 
 static_always_inline u16
@@ -225,10 +225,10 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = next1 = ppif->per_interface_next_index;
 	    }
 
-	  clib_memcpy (vnet_buffer (b0)->sw_if_index, sw_if_index,
-		       sizeof (sw_if_index));
-	  clib_memcpy (vnet_buffer (b1)->sw_if_index, sw_if_index,
-		       sizeof (sw_if_index));
+	  _clib_memcpy (vnet_buffer (b0)->sw_if_index, sw_if_index,
+			sizeof (sw_if_index));
+	  _clib_memcpy (vnet_buffer (b1)->sw_if_index, sw_if_index,
+			sizeof (sw_if_index));
 
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
@@ -271,8 +271,8 @@ mrvl_pp2_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = ppif->per_interface_next_index;
 	    }
 
-	  clib_memcpy (vnet_buffer (b0)->sw_if_index, sw_if_index,
-		       sizeof (sw_if_index));
+	  _clib_memcpy (vnet_buffer (b0)->sw_if_index, sw_if_index,
+			sizeof (sw_if_index));
 
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 

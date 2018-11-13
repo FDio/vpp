@@ -745,8 +745,8 @@ done:
 	  f = vnet_get_frame_to_sw_interface (vnm, sw_if_index);
 	  f->n_vectors = ptd->per_port_queue[p].n_buffers;
 	  to_next = vlib_frame_vector_args (f);
-	  clib_memcpy (to_next, ptd->per_port_queue[p].buffers,
-		       f->n_vectors * sizeof (u32));
+	  _clib_memcpy (to_next, ptd->per_port_queue[p].buffers,
+			f->n_vectors * sizeof (u32));
 	  vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
 	  ptd->per_port_queue[p].n_buffers = 0;
 	}

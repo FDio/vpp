@@ -304,7 +304,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
   while (n_left)
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
-      clib_memcpy (b[0], &ptd->buffer_template, 64);
+      _clib_memcpy (b[0], &ptd->buffer_template, 64);
       or_flags |= dpdk_ol_flags_extract (mb, flags, 1);
       flags += 1;
 
@@ -549,12 +549,12 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	  t0->device_index = xd->device_index;
 	  t0->buffer_index = vlib_get_buffer_index (vm, b0);
 
-	  clib_memcpy (&t0->mb, mb[0], sizeof t0->mb);
-	  clib_memcpy (&t0->buffer, b0, sizeof b0[0] - sizeof b0->pre_data);
-	  clib_memcpy (t0->buffer.pre_data, b0->data,
-		       sizeof t0->buffer.pre_data);
-	  clib_memcpy (&t0->data, mb[0]->buf_addr + mb[0]->data_off,
-		       sizeof t0->data);
+	  _clib_memcpy (&t0->mb, mb[0], sizeof t0->mb);
+	  _clib_memcpy (&t0->buffer, b0, sizeof b0[0] - sizeof b0->pre_data);
+	  _clib_memcpy (t0->buffer.pre_data, b0->data,
+			sizeof t0->buffer.pre_data);
+	  _clib_memcpy (&t0->data, mb[0]->buf_addr + mb[0]->data_off,
+			sizeof t0->data);
 	  n_trace--;
 	  n_left--;
 	  buffers++;

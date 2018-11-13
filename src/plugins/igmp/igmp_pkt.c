@@ -92,8 +92,8 @@ igmp_pkt_build_ip_header (igmp_pkt_build_t * bk,
       break;
     case IGMP_MSG_QUERY:
       if (group != NULL)
-	clib_memcpy (&ip4->dst_address, &group->key->ip4,
-		     sizeof (ip4_address_t));
+	_clib_memcpy (&ip4->dst_address, &group->key->ip4,
+		      sizeof (ip4_address_t));
       else
 	ip4->dst_address.as_u32 = IGMP_GENERAL_QUERY_ADDRESS;
       break;

@@ -162,8 +162,8 @@ vhost_user_input_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
 	  CLIB_PREFETCH (src2, 64, LOAD);
 	  CLIB_PREFETCH (src3, 64, LOAD);
 
-	  clib_memcpy ((void *) cpy[0].dst, src0, cpy[0].len);
-	  clib_memcpy ((void *) cpy[1].dst, src1, cpy[1].len);
+	  _clib_memcpy ((void *) cpy[0].dst, src0, cpy[0].len);
+	  _clib_memcpy ((void *) cpy[1].dst, src1, cpy[1].len);
 	  copy_len -= 2;
 	  cpy += 2;
 	}
@@ -172,7 +172,7 @@ vhost_user_input_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
     {
       if (PREDICT_FALSE (!(src0 = map_guest_mem (vui, cpy->src, map_hint))))
 	return 1;
-      clib_memcpy ((void *) cpy->dst, src0, cpy->len);
+      _clib_memcpy ((void *) cpy->dst, src0, cpy->len);
       copy_len -= 1;
       cpy += 1;
     }

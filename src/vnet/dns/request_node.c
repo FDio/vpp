@@ -236,11 +236,11 @@ dns46_request_inline (vlib_main_t * vm,
 	  t0->id = d0->id;
 	  t0->name = name0;
 	  if (is_ip6)
-	    clib_memcpy (t0->dst_address, ip60->src_address.as_u8,
-			 sizeof (ip6_address_t));
+	    _clib_memcpy (t0->dst_address, ip60->src_address.as_u8,
+			  sizeof (ip6_address_t));
 	  else
-	    clib_memcpy (t0->dst_address, ip40->src_address.as_u8,
-			 sizeof (ip4_address_t));
+	    _clib_memcpy (t0->dst_address, ip40->src_address.as_u8,
+			  sizeof (ip4_address_t));
 
 	  vnet_dns_resolve_name (dm, name0, t0, &ep0);
 

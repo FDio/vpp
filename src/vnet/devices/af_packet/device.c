@@ -119,9 +119,9 @@ af_packet_interface_tx (vlib_main_t * vm,
 	{
 	  b0 = vlib_get_buffer (vm, bi);
 	  len = b0->current_length;
-	  clib_memcpy ((u8 *) tph +
-		       TPACKET_ALIGN (sizeof (struct tpacket2_hdr)) + offset,
-		       vlib_buffer_get_current (b0), len);
+	  _clib_memcpy ((u8 *) tph +
+			TPACKET_ALIGN (sizeof (struct tpacket2_hdr)) + offset,
+			vlib_buffer_get_current (b0), len);
 	  offset += len;
 	}
       while ((bi =

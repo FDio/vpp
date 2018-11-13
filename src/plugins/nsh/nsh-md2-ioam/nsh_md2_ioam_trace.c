@@ -308,7 +308,8 @@ nsh_md2_ioam_trace_swap_handler (vlib_buffer_t * b,
 				 nsh_tlv_header_t * new_opt)
 {
 
-  clib_memcpy (new_opt, old_opt, new_opt->length + sizeof (nsh_tlv_header_t));
+  _clib_memcpy (new_opt, old_opt,
+		new_opt->length + sizeof (nsh_tlv_header_t));
   return nsh_md2_ioam_trace_data_list_handler (b, new_opt);
 }
 

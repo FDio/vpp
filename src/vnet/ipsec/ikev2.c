@@ -161,7 +161,7 @@ ikev2_select_proposal (ikev2_sa_proposal_t * proposals,
 	{
 	  bitmap |= 1 << transform->type;
 	  vec_add2 (rv->transforms, new_t, 1);
-	  clib_memcpy (new_t, transform, sizeof (*new_t));
+	  _clib_memcpy (new_t, transform, sizeof (*new_t));
 	  new_t->attrs = vec_dup (transform->attrs);
 	}
     }
@@ -469,37 +469,37 @@ ikev2_calc_keys (ikev2_sa_t * sa)
 
   /* SK_d */
   sa->sk_d = vec_new (u8, tr_prf->key_trunc);
-  clib_memcpy (sa->sk_d, keymat + pos, tr_prf->key_trunc);
+  _clib_memcpy (sa->sk_d, keymat + pos, tr_prf->key_trunc);
   pos += tr_prf->key_trunc;
 
   /* SK_ai */
   sa->sk_ai = vec_new (u8, tr_integ->key_len);
-  clib_memcpy (sa->sk_ai, keymat + pos, tr_integ->key_len);
+  _clib_memcpy (sa->sk_ai, keymat + pos, tr_integ->key_len);
   pos += tr_integ->key_len;
 
   /* SK_ar */
   sa->sk_ar = vec_new (u8, tr_integ->key_len);
-  clib_memcpy (sa->sk_ar, keymat + pos, tr_integ->key_len);
+  _clib_memcpy (sa->sk_ar, keymat + pos, tr_integ->key_len);
   pos += tr_integ->key_len;
 
   /* SK_ei */
   sa->sk_ei = vec_new (u8, tr_encr->key_len);
-  clib_memcpy (sa->sk_ei, keymat + pos, tr_encr->key_len);
+  _clib_memcpy (sa->sk_ei, keymat + pos, tr_encr->key_len);
   pos += tr_encr->key_len;
 
   /* SK_er */
   sa->sk_er = vec_new (u8, tr_encr->key_len);
-  clib_memcpy (sa->sk_er, keymat + pos, tr_encr->key_len);
+  _clib_memcpy (sa->sk_er, keymat + pos, tr_encr->key_len);
   pos += tr_encr->key_len;
 
   /* SK_pi */
   sa->sk_pi = vec_new (u8, tr_prf->key_len);
-  clib_memcpy (sa->sk_pi, keymat + pos, tr_prf->key_len);
+  _clib_memcpy (sa->sk_pi, keymat + pos, tr_prf->key_len);
   pos += tr_prf->key_len;
 
   /* SK_pr */
   sa->sk_pr = vec_new (u8, tr_prf->key_len);
-  clib_memcpy (sa->sk_pr, keymat + pos, tr_prf->key_len);
+  _clib_memcpy (sa->sk_pr, keymat + pos, tr_prf->key_len);
   pos += tr_prf->key_len;
 
   vec_free (keymat);
@@ -529,22 +529,22 @@ ikev2_calc_child_keys (ikev2_sa_t * sa, ikev2_child_sa_t * child)
 
   /* SK_ei */
   child->sk_ei = vec_new (u8, ctr_encr->key_len);
-  clib_memcpy (child->sk_ei, keymat + pos, ctr_encr->key_len);
+  _clib_memcpy (child->sk_ei, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
 
   /* SK_ai */
   child->sk_ai = vec_new (u8, ctr_integ->key_len);
-  clib_memcpy (child->sk_ai, keymat + pos, ctr_integ->key_len);
+  _clib_memcpy (child->sk_ai, keymat + pos, ctr_integ->key_len);
   pos += ctr_integ->key_len;
 
   /* SK_er */
   child->sk_er = vec_new (u8, ctr_encr->key_len);
-  clib_memcpy (child->sk_er, keymat + pos, ctr_encr->key_len);
+  _clib_memcpy (child->sk_er, keymat + pos, ctr_encr->key_len);
   pos += ctr_encr->key_len;
 
   /* SK_ar */
   child->sk_ar = vec_new (u8, ctr_integ->key_len);
-  clib_memcpy (child->sk_ar, keymat + pos, ctr_integ->key_len);
+  _clib_memcpy (child->sk_ar, keymat + pos, ctr_integ->key_len);
   pos += ctr_integ->key_len;
 
   ASSERT (pos == len);
@@ -1106,7 +1106,7 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	}
       else if (payload == IKEV2_PAYLOAD_NONCE)
 	{
-	  clib_memcpy (nonce, ikep->payload, plen - sizeof (*ikep));
+	  _clib_memcpy (nonce, ikep->payload, plen - sizeof (*ikep));
 	}
       else if (payload == IKEV2_PAYLOAD_TSI)
 	{
@@ -1596,15 +1596,15 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 
   a.integ_alg = integ_type;
   a.local_integ_key_len = vec_len (loc_ikey);
-  clib_memcpy (a.local_integ_key, loc_ikey, a.local_integ_key_len);
+  _clib_memcpy (a.local_integ_key, loc_ikey, a.local_integ_key_len);
   a.remote_integ_key_len = vec_len (rem_ikey);
-  clib_memcpy (a.remote_integ_key, rem_ikey, a.remote_integ_key_len);
+  _clib_memcpy (a.remote_integ_key, rem_ikey, a.remote_integ_key_len);
 
   a.crypto_alg = encr_type;
   a.local_crypto_key_len = vec_len (loc_ckey);
-  clib_memcpy (a.local_crypto_key, loc_ckey, a.local_crypto_key_len);
+  _clib_memcpy (a.local_crypto_key, loc_ckey, a.local_crypto_key_len);
   a.remote_crypto_key_len = vec_len (rem_ckey);
-  clib_memcpy (a.remote_crypto_key, rem_ckey, a.remote_crypto_key_len);
+  _clib_memcpy (a.remote_crypto_key, rem_ckey, a.remote_crypto_key_len);
 
   if (sa->profile && sa->profile->lifetime)
     {
@@ -1898,7 +1898,7 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user)
       tlen += vec_len (chain->data);
       ike->nextpayload = chain->first_payload_type;
       ike->length = clib_host_to_net_u32 (tlen);
-      clib_memcpy (ike->payload, chain->data, vec_len (chain->data));
+      _clib_memcpy (ike->payload, chain->data, vec_len (chain->data));
 
       /* store whole IKE payload - needed for PSK auth */
       vec_free (sa->last_sa_init_res_packet_data);
@@ -1930,8 +1930,8 @@ ikev2_generate_message (ikev2_sa_t * sa, ike_header_t * ike, void *user)
 	ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ai : sa->sk_ar,
 			   (u8 *) ike, tlen - tr_integ->key_trunc);
 
-      clib_memcpy (ike->payload + tlen - tr_integ->key_trunc - sizeof (*ike),
-		   integ, tr_integ->key_trunc);
+      _clib_memcpy (ike->payload + tlen - tr_integ->key_trunc - sizeof (*ike),
+		    integ, tr_integ->key_trunc);
 
       /* store whole IKE payload - needed for retransmit */
       vec_free (sa->last_res_packet_data);
@@ -1986,7 +1986,7 @@ ikev2_retransmit_sa_init (ike_header_t * ike,
                       ike->flags = tmp->flags;
                       ike->msgid = tmp->msgid;
                       ike->length = tmp->length;
-                      clib_memcpy(ike->payload, tmp->payload,
+                      _clib_memcpy(ike->payload, tmp->payload,
                              clib_net_to_host_u32(tmp->length) - sizeof(*ike));
                       clib_warning("IKE_SA_INIT retransmit from %U to %U",
                                    format_ip4_address, &raddr,
@@ -2038,8 +2038,8 @@ ikev2_retransmit_resp (ikev2_sa_t * sa, ike_header_t * ike)
       ike->flags = tmp->flags;
       ike->msgid = tmp->msgid;
       ike->length = tmp->length;
-      clib_memcpy (ike->payload, tmp->payload,
-		   clib_net_to_host_u32 (tmp->length) - sizeof (*ike));
+      _clib_memcpy (ike->payload, tmp->payload,
+		    clib_net_to_host_u32 (tmp->length) - sizeof (*ike));
       clib_warning ("IKE msgid %u retransmit from %U to %U",
 		    msg_id,
 		    format_ip4_address, &sa->raddr,
@@ -2165,7 +2165,7 @@ ikev2_node_fn (vlib_main_t * vm,
 			  /* add SA to the pool */
 			  pool_get (km->per_thread_data[thread_index].sas,
 				    sa0);
-			  clib_memcpy (sa0, &sa, sizeof (*sa0));
+			  _clib_memcpy (sa0, &sa, sizeof (*sa0));
 			  hash_set (km->
 				    per_thread_data[thread_index].sa_by_rspi,
 				    sa0->rspi,
@@ -2202,7 +2202,7 @@ ikev2_node_fn (vlib_main_t * vm,
 		    {
 		      /* add SA to the pool */
 		      pool_get (km->per_thread_data[thread_index].sas, sa0);
-		      clib_memcpy (sa0, &sa, sizeof (*sa0));
+		      _clib_memcpy (sa0, &sa, sizeof (*sa0));
 		      hash_set (km->per_thread_data[thread_index].sa_by_rspi,
 				sa0->rspi,
 				sa0 - km->per_thread_data[thread_index].sas);
@@ -2993,20 +2993,20 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     u8 *nat_detection_sha1 = vec_new (u8, 20);
 
     u64 tmpspi = clib_host_to_net_u64 (sa.ispi);
-    clib_memcpy (&nat_detection_source[0], &tmpspi, sizeof (tmpspi));
+    _clib_memcpy (&nat_detection_source[0], &tmpspi, sizeof (tmpspi));
     tmpspi = clib_host_to_net_u64 (sa.rspi);
-    clib_memcpy (&nat_detection_source[8], &tmpspi, sizeof (tmpspi));
+    _clib_memcpy (&nat_detection_source[8], &tmpspi, sizeof (tmpspi));
     u16 tmpport = clib_host_to_net_u16 (500);
-    clib_memcpy (&nat_detection_source[8 + 8 + 4], &tmpport,
-		 sizeof (tmpport));
+    _clib_memcpy (&nat_detection_source[8 + 8 + 4], &tmpport,
+		  sizeof (tmpport));
     u32 tmpip = clib_host_to_net_u32 (if_ip->as_u32);
-    clib_memcpy (&nat_detection_source[8 + 8], &tmpip, sizeof (tmpip));
+    _clib_memcpy (&nat_detection_source[8 + 8], &tmpip, sizeof (tmpip));
     SHA1 (nat_detection_source, sizeof (nat_detection_source),
 	  nat_detection_sha1);
     ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_NAT_DETECTION_SOURCE_IP,
 			      nat_detection_sha1);
     tmpip = clib_host_to_net_u32 (p->responder.ip4.as_u32);
-    clib_memcpy (&nat_detection_source[8 + 8], &tmpip, sizeof (tmpip));
+    _clib_memcpy (&nat_detection_source[8 + 8], &tmpip, sizeof (tmpip));
     SHA1 (nat_detection_source, sizeof (nat_detection_source),
 	  nat_detection_sha1);
     ikev2_payload_add_notify (chain,
@@ -3016,7 +3016,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 
     u8 *sig_hash_algo = vec_new (u8, 8);
     u64 tmpsig = clib_host_to_net_u64 (0x0001000200030004);
-    clib_memcpy (sig_hash_algo, &tmpsig, sizeof (tmpsig));
+    _clib_memcpy (sig_hash_algo, &tmpsig, sizeof (tmpsig));
     ikev2_payload_add_notify (chain,
 			      IKEV2_NOTIFY_MSG_SIGNATURE_HASH_ALGORITHMS,
 			      sig_hash_algo);
@@ -3027,7 +3027,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     len += vec_len (chain->data);
     ike0->nextpayload = chain->first_payload_type;
     ike0->length = clib_host_to_net_u32 (len);
-    clib_memcpy (ike0->payload, chain->data, vec_len (chain->data));
+    _clib_memcpy (ike0->payload, chain->data, vec_len (chain->data));
     ikev2_payload_destroy_chain (chain);
 
     ike0->version = IKE_VERSION_2;
@@ -3048,7 +3048,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.i_auth.hex = p->auth.hex;
     sa.i_auth.data = vec_dup (p->auth.data);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    clib_memcpy (sa.i_auth.key, p->auth.key, EVP_PKEY_size (p->auth.key));
+    _clib_memcpy (sa.i_auth.key, p->auth.key, EVP_PKEY_size (p->auth.key));
 #else
     sa.i_auth.key = vec_dup (p->auth.key);
 #endif
@@ -3058,7 +3058,7 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     /* add SA to the pool */
     ikev2_sa_t *sa0 = 0;
     pool_get (km->sais, sa0);
-    clib_memcpy (sa0, &sa, sizeof (*sa0));
+    _clib_memcpy (sa0, &sa, sizeof (*sa0));
     hash_set (km->sa_by_ispi, sa0->ispi, sa0 - km->sais);
 
     ikev2_send_ike (vm, if_ip, &p->responder.ip4, bi0, len);

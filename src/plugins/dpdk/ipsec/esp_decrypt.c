@@ -304,7 +304,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    mb0->buf_physaddr + digest - ((u8 *) mb0->buf_addr);
 
 	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
-	    clib_memcpy(icb, iv, 16);
+              _clib_memcpy(icb, iv, 16);
 	  else /* CTR/GCM */
 	    {
 	      u32 *_iv = (u32 *) iv;
@@ -316,7 +316,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
             {
               aad = priv->aad;
 	      u32 * _aad = (u32 *) aad;
-              clib_memcpy (aad, esp0, 8);
+              _clib_memcpy (aad, esp0, 8);
 
 	      /* _aad[3] should always be 0 */
               if (PREDICT_FALSE (sa0->use_esn))
@@ -330,7 +330,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
               if (sa0->use_esn)
                 {
-                  clib_memcpy (priv->icv, digest, trunc_size);
+                  _clib_memcpy (priv->icv, digest, trunc_size);
 		  u32 *_digest = (u32 *) digest;
                   _digest[0] = clib_host_to_net_u32 (sa0->seq_hi);
 		  auth_len += sizeof(sa0->seq_hi);
@@ -349,7 +349,7 @@ trace:
 	      esp_decrypt_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->crypto_alg = sa0->crypto_alg;
 	      tr->integ_alg = sa0->integ_alg;
-	      clib_memcpy (tr->packet_data, vlib_buffer_get_current (b0),
+	      _clib_memcpy (tr->packet_data, vlib_buffer_get_current (b0),
 			   sizeof (esp_header_t));
 	    }
 	}
@@ -647,7 +647,7 @@ dpdk_esp_decrypt_post_inline (vlib_main_t * vm,
 	      tr->crypto_alg = sa0->crypto_alg;
 	      tr->integ_alg = sa0->integ_alg;
 	      ih4 = vlib_buffer_get_current (b0);
-	      clib_memcpy (tr->packet_data, ih4, sizeof (ip6_header_t));
+	      _clib_memcpy (tr->packet_data, ih4, sizeof (ip6_header_t));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

@@ -1072,9 +1072,9 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
 
-	  clib_memcpy (t0->packet_data,
-		       vlib_buffer_get_current (b0),
-		       sizeof (t0->packet_data));
+	  _clib_memcpy (t0->packet_data,
+			vlib_buffer_get_current (b0),
+			sizeof (t0->packet_data));
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
@@ -1086,8 +1086,8 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	     (u32) ~ 0) ? vnet_buffer (b1)->sw_if_index[VLIB_TX] :
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b1)->sw_if_index[VLIB_RX]);
-	  clib_memcpy (t1->packet_data, vlib_buffer_get_current (b1),
-		       sizeof (t1->packet_data));
+	  _clib_memcpy (t1->packet_data, vlib_buffer_get_current (b1),
+			sizeof (t1->packet_data));
 	}
       from += 2;
       n_left -= 2;
@@ -1113,8 +1113,8 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
 	    vec_elt (im->fib_index_by_sw_if_index,
 		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-	  clib_memcpy (t0->packet_data, vlib_buffer_get_current (b0),
-		       sizeof (t0->packet_data));
+	  _clib_memcpy (t0->packet_data, vlib_buffer_get_current (b0),
+			sizeof (t0->packet_data));
 	}
       from += 1;
       n_left -= 1;
@@ -1852,9 +1852,9 @@ ip4_arp_inline (vlib_main_t * vm,
 	  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
 	  /* Src ethernet address in ARP header. */
-	  clib_memcpy (h0->ip4_over_ethernet[0].ethernet,
-		       hw_if0->hw_address,
-		       sizeof (h0->ip4_over_ethernet[0].ethernet));
+	  _clib_memcpy (h0->ip4_over_ethernet[0].ethernet,
+			hw_if0->hw_address,
+			sizeof (h0->ip4_over_ethernet[0].ethernet));
 	  if (is_glean)
 	    {
 	      /* The interface's source address is stashed in the Glean Adj */
@@ -2027,8 +2027,8 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index,
 				sw_if_index);
     }
 
-  clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
-	       sizeof (h->ip4_over_ethernet[0].ethernet));
+  _clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
+		sizeof (h->ip4_over_ethernet[0].ethernet));
 
   h->ip4_over_ethernet[0].ip4 = src[0];
   h->ip4_over_ethernet[1].ip4 = dst[0];

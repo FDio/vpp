@@ -373,7 +373,7 @@ icmp6_to_icmp (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx,
 
       //Move up icmp header
       ip4 = (ip4_header_t *) u8_ptr_add (inner_l4, -2 * sizeof (*ip4) - 8);
-      clib_memcpy (u8_ptr_add (inner_l4, -sizeof (*ip4) - 8), icmp, 8);
+      _clib_memcpy (u8_ptr_add (inner_l4, -sizeof (*ip4) - 8), icmp, 8);
       icmp = (icmp46_header_t *) u8_ptr_add (inner_l4, -sizeof (*ip4) - 8);
     }
   else

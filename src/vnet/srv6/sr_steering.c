@@ -249,8 +249,8 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 
   if (traffic_type == SR_STEER_IPV4 || traffic_type == SR_STEER_IPV6)
     {
-      clib_memcpy (&steer_pl->classify.l3.prefix, prefix,
-		   sizeof (ip46_address_t));
+      _clib_memcpy (&steer_pl->classify.l3.prefix, prefix,
+		    sizeof (ip46_address_t));
       steer_pl->classify.l3.mask_width = mask_width;
       steer_pl->classify.l3.fib_table =
 	(table_id != (u32) ~ 0 ? table_id : 0);

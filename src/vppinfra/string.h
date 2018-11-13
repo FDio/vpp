@@ -247,10 +247,10 @@ clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
   _mm_storeu_si128 ((__m128i *) (d3 + 3 * 16), r3);
 
 #else
-  clib_memcpy (d0, s, 64);
-  clib_memcpy (d1, s, 64);
-  clib_memcpy (d2, s, 64);
-  clib_memcpy (d3, s, 64);
+  _clib_memcpy (d0, s, 64);
+  _clib_memcpy (d1, s, 64);
+  _clib_memcpy (d2, s, 64);
+  _clib_memcpy (d3, s, 64);
 #endif
 }
 

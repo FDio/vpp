@@ -47,7 +47,7 @@ vnet_flow_add (vnet_main_t * vnm, vnet_flow_t * flow, u32 * flow_index)
 
   pool_get (fm->global_flow_pool, f);
   *flow_index = f - fm->global_flow_pool;
-  clib_memcpy (f, flow, sizeof (vnet_flow_t));
+  _clib_memcpy (f, flow, sizeof (vnet_flow_t));
   f->private_data = 0;
   f->index = *flow_index;
   return 0;

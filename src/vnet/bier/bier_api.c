@@ -505,13 +505,13 @@ vl_api_bier_disp_entry_add_del_t_handler (vl_api_bier_disp_entry_add_del_t * mp)
 
         if (0 == mp->bde_paths[ii].afi)
         {
-            clib_memcpy (&brp->frp_addr.ip4,
+            _clib_memcpy (&brp->frp_addr.ip4,
                          mp->bde_paths[ii].next_hop,
                          sizeof (brp->frp_addr.ip4));
         }
         else
         {
-            clib_memcpy (&brp->frp_addr.ip6,
+            _clib_memcpy (&brp->frp_addr.ip6,
                          mp->bde_paths[ii].next_hop,
                          sizeof (brp->frp_addr.ip6));
         }

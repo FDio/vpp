@@ -309,7 +309,7 @@ srp_topology_packet (vlib_main_t * vm, u32 sw_if_index, u8 ** contents)
     return SRP_ERROR_TOPOLOGY_BAD_LENGTH;
 
   /* Fill in our source MAC address. */
-  clib_memcpy (t->ethernet.src_address, hi->hw_address, vec_len (hi->hw_address));
+  _clib_memcpy (t->ethernet.src_address, hi->hw_address, vec_len (hi->hw_address));
 
   /* Make space for our MAC binding. */
   vec_resize (*contents, sizeof (srp_topology_mac_binding_t));
@@ -321,7 +321,7 @@ srp_topology_packet (vlib_main_t * vm, u32 sw_if_index, u8 ** contents)
   mb->flags =
     ((t->srp.is_inner_ring ? SRP_TOPOLOGY_MAC_BINDING_FLAG_IS_INNER_RING : 0)
      | (/* is wrapped FIXME */ 0));
-  clib_memcpy (mb->address, hi->hw_address, vec_len (hi->hw_address));
+  _clib_memcpy (mb->address, hi->hw_address, vec_len (hi->hw_address));
 
   t->control.checksum
     = ~ip_csum_fold (ip_incremental_checksum (0, &t->control,
@@ -588,7 +588,7 @@ static void init_ips_packet (srp_interface_t * si,
   i->srp.mode = SRP_MODE_control_locally_buffered_for_host;
   srp_header_compute_parity (&i->srp);
 
-  clib_memcpy (&i->ethernet.src_address, &si->my_address, sizeof (si->my_address));
+  _clib_memcpy (&i->ethernet.src_address, &si->my_address, sizeof (si->my_address));
   i->ethernet.type = clib_host_to_net_u16 (ETHERNET_TYPE_SRP_CONTROL);
 
   /* Checksum will be filled in later. */
@@ -596,7 +596,7 @@ static void init_ips_packet (srp_interface_t * si,
   i->control.type = SRP_CONTROL_PACKET_TYPE_ips;
   i->control.ttl = 255;
 
-  clib_memcpy (&i->originator_address, &si->my_address, sizeof (si->my_address));
+  _clib_memcpy (&i->originator_address, &si->my_address, sizeof (si->my_address));
 }
 
 static void tx_ips_packet (srp_interface_t * si,
@@ -680,7 +680,7 @@ void srp_ips_rx_packet (u32 sw_if_index, srp_ips_header_t * h)
 	  ASSERT (0);
 	}
       ir->rx_neighbor_address_valid = 1;
-      clib_memcpy (ir->rx_neighbor_address, h->originator_address, sizeof (ir->rx_neighbor_address));
+      _clib_memcpy (ir->rx_neighbor_address, h->originator_address, sizeof (ir->rx_neighbor_address));
     }
 
   switch (si->current_ips_state)

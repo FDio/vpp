@@ -72,13 +72,13 @@ pub_sub_handler (bfd_events, BFD_EVENTS);
   clib_memset (&peer_addr, 0, sizeof (peer_addr));                                 \
   if (mp->is_ipv6)                                                            \
     {                                                                         \
-      clib_memcpy (&local_addr.ip6, mp->local_addr, sizeof (local_addr.ip6)); \
-      clib_memcpy (&peer_addr.ip6, mp->peer_addr, sizeof (peer_addr.ip6));    \
+      _clib_memcpy (&local_addr.ip6, mp->local_addr, sizeof (local_addr.ip6)); \
+      _clib_memcpy (&peer_addr.ip6, mp->peer_addr, sizeof (peer_addr.ip6));    \
     }                                                                         \
   else                                                                        \
     {                                                                         \
-      clib_memcpy (&local_addr.ip4, mp->local_addr, sizeof (local_addr.ip4)); \
-      clib_memcpy (&peer_addr.ip4, mp->peer_addr, sizeof (peer_addr.ip4));    \
+      _clib_memcpy (&local_addr.ip4, mp->local_addr, sizeof (local_addr.ip4)); \
+      _clib_memcpy (&peer_addr.ip4, mp->peer_addr, sizeof (peer_addr.ip4));    \
     }
 
 #define BFD_UDP_API_PARAM_FROM_MP(mp) \
@@ -176,16 +176,16 @@ send_bfd_udp_session_details (vl_api_registration_t * reg, u32 context,
     }
   if (mp->is_ipv6)
     {
-      clib_memcpy (mp->local_addr, &key->local_addr,
-		   sizeof (key->local_addr));
-      clib_memcpy (mp->peer_addr, &key->peer_addr, sizeof (key->peer_addr));
+      _clib_memcpy (mp->local_addr, &key->local_addr,
+		    sizeof (key->local_addr));
+      _clib_memcpy (mp->peer_addr, &key->peer_addr, sizeof (key->peer_addr));
     }
   else
     {
-      clib_memcpy (mp->local_addr, key->local_addr.ip4.data,
-		   sizeof (key->local_addr.ip4.data));
-      clib_memcpy (mp->peer_addr, key->peer_addr.ip4.data,
-		   sizeof (key->peer_addr.ip4.data));
+      _clib_memcpy (mp->local_addr, key->local_addr.ip4.data,
+		    sizeof (key->local_addr.ip4.data));
+      _clib_memcpy (mp->peer_addr, key->peer_addr.ip4.data,
+		    sizeof (key->peer_addr.ip4.data));
     }
 
   mp->required_min_rx =
@@ -387,7 +387,7 @@ vl_api_bfd_udp_get_echo_source_t_handler (vl_api_bfd_udp_get_echo_source_t *
         if (have_usable_ip4)
           {
             rmp->have_usable_ip4 = 1;
-            clib_memcpy (rmp->ip4_addr, &ip4, sizeof (ip4));
+            _clib_memcpy (rmp->ip4_addr, &ip4, sizeof (ip4));
           }
         else
           {
@@ -396,7 +396,7 @@ vl_api_bfd_udp_get_echo_source_t_handler (vl_api_bfd_udp_get_echo_source_t *
         if (have_usable_ip6)
           {
             rmp->have_usable_ip6 = 1;
-            clib_memcpy (rmp->ip6_addr, &ip6, sizeof (ip6));
+            _clib_memcpy (rmp->ip6_addr, &ip6, sizeof (ip6));
           }
         else
           {

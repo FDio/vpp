@@ -239,14 +239,14 @@ no_free_slots:
       b2 = vlib_get_buffer (vm, ptd->buffers[co[2].buffer_vec_index]);
       b3 = vlib_get_buffer (vm, ptd->buffers[co[3].buffer_vec_index]);
 
-      clib_memcpy (co[0].data, b0->data + co[0].buffer_offset,
-		   co[0].data_len);
-      clib_memcpy (co[1].data, b1->data + co[1].buffer_offset,
-		   co[1].data_len);
-      clib_memcpy (co[2].data, b2->data + co[2].buffer_offset,
-		   co[2].data_len);
-      clib_memcpy (co[3].data, b3->data + co[3].buffer_offset,
-		   co[3].data_len);
+      _clib_memcpy (co[0].data, b0->data + co[0].buffer_offset,
+		    co[0].data_len);
+      _clib_memcpy (co[1].data, b1->data + co[1].buffer_offset,
+		    co[1].data_len);
+      _clib_memcpy (co[2].data, b2->data + co[2].buffer_offset,
+		    co[2].data_len);
+      _clib_memcpy (co[3].data, b3->data + co[3].buffer_offset,
+		    co[3].data_len);
 
       co += 4;
       n_copy_op -= 4;
@@ -254,8 +254,8 @@ no_free_slots:
   while (n_copy_op)
     {
       b0 = vlib_get_buffer (vm, ptd->buffers[co[0].buffer_vec_index]);
-      clib_memcpy (co[0].data, b0->data + co[0].buffer_offset,
-		   co[0].data_len);
+      _clib_memcpy (co[0].data, b0->data + co[0].buffer_offset,
+		    co[0].data_len);
       co += 1;
       n_copy_op -= 1;
     }

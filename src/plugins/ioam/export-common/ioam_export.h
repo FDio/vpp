@@ -117,7 +117,7 @@ ioam_export_get_my_buffer (ioam_export_main_t * em, u32 thread_id)
 inline static int
 ioam_export_buffer_add_header (ioam_export_main_t * em, vlib_buffer_t * b0)
 {
-  clib_memcpy (b0->data, em->record_header, vec_len (em->record_header));
+  _clib_memcpy (b0->data, em->record_header, vec_len (em->record_header));
   b0->current_data = 0;
   b0->current_length = vec_len (em->record_header);
   b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;

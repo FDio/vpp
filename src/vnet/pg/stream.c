@@ -205,7 +205,7 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id)
 
       rnd = (u32) (now * 1e6);
       rnd = random_u32 (&rnd);
-      clib_memcpy (hw_addr + 2, &rnd, sizeof (rnd));
+      _clib_memcpy (hw_addr + 2, &rnd, sizeof (rnd));
       hw_addr[0] = 2;
       hw_addr[1] = 0xfe;
 
@@ -333,10 +333,10 @@ pg_edit_group_get_fixed_packet_data (pg_stream_t * s,
 
   vec_foreach (e, g->edits) do_edit (s, g, e, /* want_commit */ 0);
 
-  clib_memcpy (packet_data, g->fixed_packet_data,
-	       vec_len (g->fixed_packet_data));
-  clib_memcpy (packet_data_mask, g->fixed_packet_data_mask,
-	       vec_len (g->fixed_packet_data_mask));
+  _clib_memcpy (packet_data, g->fixed_packet_data,
+		vec_len (g->fixed_packet_data));
+  _clib_memcpy (packet_data_mask, g->fixed_packet_data_mask,
+		vec_len (g->fixed_packet_data_mask));
 }
 
 static void

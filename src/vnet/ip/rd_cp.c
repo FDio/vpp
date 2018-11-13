@@ -227,7 +227,7 @@ get_interface_mac_address (u32 sw_if_index, u8 mac[])
       return 1;
     }
 
-  clib_memcpy (mac, eth_if->address, 6);
+  _clib_memcpy (mac, eth_if->address, 6);
 
   return 0;
 }

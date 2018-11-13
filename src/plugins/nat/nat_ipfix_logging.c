@@ -674,28 +674,28 @@ snat_ipfix_logging_nat44_ses (u8 nat_event, u32 src_ip, u32 nat_src_ip,
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, &src_ip, sizeof (src_ip));
+      _clib_memcpy (b0->data + offset, &src_ip, sizeof (src_ip));
       offset += sizeof (src_ip);
 
-      clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
+      _clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
       offset += sizeof (nat_src_ip);
 
-      clib_memcpy (b0->data + offset, &proto, sizeof (proto));
+      _clib_memcpy (b0->data + offset, &proto, sizeof (proto));
       offset += sizeof (proto);
 
-      clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
+      _clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
       offset += sizeof (src_port);
 
-      clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
+      _clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
       offset += sizeof (nat_src_port);
 
-      clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
+      _clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
 
       b0->current_length += NAT44_SESSION_CREATE_LEN;
@@ -775,13 +775,13 @@ snat_ipfix_logging_addr_exhausted (u32 pool_id, int do_flush)
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, &pool_id, sizeof (pool_id));
+      _clib_memcpy (b0->data + offset, &pool_id, sizeof (pool_id));
       offset += sizeof (pool_id);
 
       b0->current_length += NAT_ADDRESSES_EXHAUTED_LEN;
@@ -862,19 +862,19 @@ snat_ipfix_logging_max_entries_per_usr (u32 limit, u32 src_ip, int do_flush)
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      _clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
-      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      _clib_memcpy (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
-      clib_memcpy (b0->data + offset, &src_ip, sizeof (src_ip));
+      _clib_memcpy (b0->data + offset, &src_ip, sizeof (src_ip));
       offset += sizeof (src_ip);
 
       b0->current_length += MAX_ENTRIES_PER_USER_LEN;
@@ -955,16 +955,16 @@ nat_ipfix_logging_max_ses (u32 limit, int do_flush)
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      _clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
-      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      _clib_memcpy (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
       b0->current_length += MAX_SESSIONS_LEN;
@@ -1045,16 +1045,16 @@ nat_ipfix_logging_max_bib (u32 limit, int do_flush)
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      _clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
-      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      _clib_memcpy (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
       b0->current_length += MAX_BIBS_LEN;
@@ -1135,19 +1135,19 @@ nat_ipfix_logging_max_frag_ip4 (u32 limit, u32 src, int do_flush)
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      _clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
-      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      _clib_memcpy (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
-      clib_memcpy (b0->data + offset, &src, sizeof (src));
+      _clib_memcpy (b0->data + offset, &src, sizeof (src));
       offset += sizeof (src);
 
       b0->current_length += MAX_FRAGMENTS_IP4_LEN;
@@ -1228,19 +1228,19 @@ nat_ipfix_logging_max_frag_ip6 (u32 limit, ip6_address_t * src, int do_flush)
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      _clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
-      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      _clib_memcpy (b0->data + offset, &limit, sizeof (limit));
       offset += sizeof (limit);
 
-      clib_memcpy (b0->data + offset, src, sizeof (ip6_address_t));
+      _clib_memcpy (b0->data + offset, src, sizeof (ip6_address_t));
       offset += sizeof (ip6_address_t);
 
       b0->current_length += MAX_FRAGMENTS_IP6_LEN;
@@ -1321,28 +1321,28 @@ nat_ipfix_logging_nat64_bibe (u8 nat_event, ip6_address_t * src_ip,
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, src_ip, sizeof (ip6_address_t));
+      _clib_memcpy (b0->data + offset, src_ip, sizeof (ip6_address_t));
       offset += sizeof (ip6_address_t);
 
-      clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
+      _clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
       offset += sizeof (nat_src_ip);
 
-      clib_memcpy (b0->data + offset, &proto, sizeof (proto));
+      _clib_memcpy (b0->data + offset, &proto, sizeof (proto));
       offset += sizeof (proto);
 
-      clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
+      _clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
       offset += sizeof (src_port);
 
-      clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
+      _clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
       offset += sizeof (nat_src_port);
 
-      clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
+      _clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
 
       b0->current_length += NAT64_BIB_LEN;
@@ -1425,40 +1425,40 @@ nat_ipfix_logging_nat64_ses (u8 nat_event, ip6_address_t * src_ip,
   if (PREDICT_TRUE (do_flush == 0))
     {
       u64 time_stamp = clib_host_to_net_u64 (now);
-      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      _clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
       offset += sizeof (time_stamp);
 
-      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      _clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
       offset += sizeof (nat_event);
 
-      clib_memcpy (b0->data + offset, src_ip, sizeof (ip6_address_t));
+      _clib_memcpy (b0->data + offset, src_ip, sizeof (ip6_address_t));
       offset += sizeof (ip6_address_t);
 
-      clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
+      _clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
       offset += sizeof (nat_src_ip);
 
-      clib_memcpy (b0->data + offset, &proto, sizeof (proto));
+      _clib_memcpy (b0->data + offset, &proto, sizeof (proto));
       offset += sizeof (proto);
 
-      clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
+      _clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
       offset += sizeof (src_port);
 
-      clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
+      _clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
       offset += sizeof (nat_src_port);
 
-      clib_memcpy (b0->data + offset, dst_ip, sizeof (ip6_address_t));
+      _clib_memcpy (b0->data + offset, dst_ip, sizeof (ip6_address_t));
       offset += sizeof (ip6_address_t);
 
-      clib_memcpy (b0->data + offset, &nat_dst_ip, sizeof (nat_dst_ip));
+      _clib_memcpy (b0->data + offset, &nat_dst_ip, sizeof (nat_dst_ip));
       offset += sizeof (nat_dst_ip);
 
-      clib_memcpy (b0->data + offset, &dst_port, sizeof (dst_port));
+      _clib_memcpy (b0->data + offset, &dst_port, sizeof (dst_port));
       offset += sizeof (dst_port);
 
-      clib_memcpy (b0->data + offset, &nat_dst_port, sizeof (nat_dst_port));
+      _clib_memcpy (b0->data + offset, &nat_dst_port, sizeof (nat_dst_port));
       offset += sizeof (nat_dst_port);
 
-      clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
+      _clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
       offset += sizeof (vrf_id);
 
       b0->current_length += NAT64_SES_LEN;

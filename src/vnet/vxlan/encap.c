@@ -186,8 +186,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  /* vnet_rewrite_two_header writes only in (uword) 8 bytes chunks
            * and discards the first 4 bytes of the (36 bytes ip4 underlay)  rewrite
            * use memcpy as a workaround */
-          clib_memcpy(underlay0, t0->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
-          clib_memcpy(underlay1, t1->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
+          _clib_memcpy(underlay0, t0->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
+          _clib_memcpy(underlay1, t1->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
 
           ip4_header_t * ip4_0, * ip4_1;
 	  qos_bits_t ip4_0_tos = 0, ip4_1_tos = 0;
@@ -359,7 +359,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  /* vnet_rewrite_one_header writes only in (uword) 8 bytes chunks
            * and discards the first 4 bytes of the (36 bytes ip4 underlay)  rewrite
            * use memcpy as a workaround */
-          clib_memcpy(underlay0, t0->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
+          _clib_memcpy(underlay0, t0->rewrite_header.data + rw_hdr_offset, underlay_hdr_len);
 
  	  u32 len0 = vlib_buffer_length_in_chain (vm, b0);
           u16 payload_l0 = clib_host_to_net_u16 (len0 - l3_len);

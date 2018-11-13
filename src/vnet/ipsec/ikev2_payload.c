@@ -205,7 +205,7 @@ ikev2_payload_add_sa (ikev2_payload_chain_t * c,
 	clib_host_to_net_u16 (sizeof (*tr) + vec_len (t->attrs));
 
       if (vec_len (t->attrs) > 0)
-	clib_memcpy (tr->attributes, t->attrs, vec_len (t->attrs));
+	_clib_memcpy (tr->attributes, t->attrs, vec_len (t->attrs));
 
       DBG_PLD
 	("transform type %U transform_id %u last_or_more %u attr_size %u%s%U",

@@ -215,7 +215,7 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
       *data++ = TCP_OPTION_MSS;
       *data++ = TCP_OPTION_LEN_MSS;
       buf = clib_host_to_net_u16 (opts->mss);
-      clib_memcpy (data, &buf, sizeof (opts->mss));
+      _clib_memcpy (data, &buf, sizeof (opts->mss));
       data += sizeof (opts->mss);
       opts_len += TCP_OPTION_LEN_MSS;
     }
@@ -240,10 +240,10 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
       *data++ = TCP_OPTION_TIMESTAMP;
       *data++ = TCP_OPTION_LEN_TIMESTAMP;
       buf = clib_host_to_net_u32 (opts->tsval);
-      clib_memcpy (data, &buf, sizeof (opts->tsval));
+      _clib_memcpy (data, &buf, sizeof (opts->tsval));
       data += sizeof (opts->tsval);
       buf = clib_host_to_net_u32 (opts->tsecr);
-      clib_memcpy (data, &buf, sizeof (opts->tsecr));
+      _clib_memcpy (data, &buf, sizeof (opts->tsecr));
       data += sizeof (opts->tsecr);
       opts_len += TCP_OPTION_LEN_TIMESTAMP;
     }
@@ -261,10 +261,10 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
 	  for (i = 0; i < n_sack_blocks; i++)
 	    {
 	      buf = clib_host_to_net_u32 (opts->sacks[i].start);
-	      clib_memcpy (data, &buf, seq_len);
+	      _clib_memcpy (data, &buf, seq_len);
 	      data += seq_len;
 	      buf = clib_host_to_net_u32 (opts->sacks[i].end);
-	      clib_memcpy (data, &buf, seq_len);
+	      _clib_memcpy (data, &buf, seq_len);
 	      data += seq_len;
 	    }
 	  opts_len += 2 + n_sack_blocks * TCP_OPTION_LEN_SACK_BLOCK;
@@ -764,8 +764,8 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
     {
       ih6 = vlib_buffer_get_current (b0);
       ASSERT ((ih6->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60);
-      clib_memcpy (&src_ip60, &ih6->src_address, sizeof (ip6_address_t));
-      clib_memcpy (&dst_ip60, &ih6->dst_address, sizeof (ip6_address_t));
+      _clib_memcpy (&src_ip60, &ih6->src_address, sizeof (ip6_address_t));
+      _clib_memcpy (&dst_ip60, &ih6->dst_address, sizeof (ip6_address_t));
     }
 
   src_port = th0->src_port;
@@ -1175,9 +1175,9 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
 
   if (maybe_burst)
     {
-      clib_memcpy ((u8 *) (th + 1),
-		   tm->wrk_ctx[tc->c_thread_index].cached_opts,
-		   tc->snd_opts_len);
+      _clib_memcpy ((u8 *) (th + 1),
+		    tm->wrk_ctx[tc->c_thread_index].cached_opts,
+		    tc->snd_opts_len);
     }
   else
     {
@@ -2058,8 +2058,8 @@ tcp46_output_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
       tc = tcp_connection_get (vnet_buffer (b)->tcp.connection_index,
 			       vm->thread_index);
       t = vlib_add_trace (vm, node, b, sizeof (*t));
-      clib_memcpy (&t->tcp_header, th, sizeof (t->tcp_header));
-      clib_memcpy (&t->tcp_connection, tc, sizeof (t->tcp_connection));
+      _clib_memcpy (&t->tcp_header, th, sizeof (t->tcp_header));
+      _clib_memcpy (&t->tcp_connection, tc, sizeof (t->tcp_connection));
     }
 }
 
@@ -2322,7 +2322,7 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      else
 		th0 = ip6_next_header ((ip6_header_t *) th0);
 	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+	      _clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

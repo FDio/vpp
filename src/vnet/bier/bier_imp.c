@@ -80,7 +80,7 @@ bier_imp_add_or_lock (const bier_table_id_t *bti,
                   0, // entropy
                   sender);
     bier_hdr_hton(&bi->bi_hdr);
-    clib_memcpy(&bi->bi_bits, bs->bbs_buckets, bs->bbs_len);
+    _clib_memcpy(&bi->bi_bits, bs->bbs_buckets, bs->bbs_len);
 
     bier_imp_lock_i(bi);
 

@@ -1771,13 +1771,13 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
-	      clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
+	      _clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
+	      _clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
 	      dummy_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (hdr0, &dummy_eth0,
-			   (word) sizeof (ethernet_header_t));
+	      _clib_memcpy (hdr0, &dummy_eth0,
+			    (word) sizeof (ethernet_header_t));
 
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	      nsp_nsi0 = nm->tunnel_index_by_sw_if_index[sw_if_index0];
@@ -1880,7 +1880,7 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Push new NSH header */
 	      vlib_buffer_advance (b0, -(word) encap_hdr_len0);
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
+	      _clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
 
 	      goto trace0;
 	    }
@@ -1892,7 +1892,7 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Push new NSH header */
 	      vlib_buffer_advance (b0, -(word) encap_hdr_len0);
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
+	      _clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
 
 	      /* Manipulate MD2 */
 	      if (PREDICT_FALSE (nsh_entry0->nsh_base.md_type == 2))
@@ -1909,8 +1909,8 @@ nsh_input_map (vlib_main_t * vm,
 	    {
 	      nsh_input_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (&(tr->trace_data), hdr0,
-			   ((hdr0->length & NSH_LEN_MASK) * 4));
+	      _clib_memcpy (&(tr->trace_data), hdr0,
+			    ((hdr0->length & NSH_LEN_MASK) * 4));
 	    }
 
 	  /* Process packet 1 */
@@ -1936,13 +1936,13 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      clib_memcpy (dummy_eth1.dst_address, dummy_dst_address, 6);
-	      clib_memcpy (dummy_eth1.src_address, dummy_src_address, 6);
+	      _clib_memcpy (dummy_eth1.dst_address, dummy_dst_address, 6);
+	      _clib_memcpy (dummy_eth1.src_address, dummy_src_address, 6);
 	      dummy_eth1.type = 0x0800;
 	      vlib_buffer_advance (b1, -(word) sizeof (ethernet_header_t));
 	      hdr1 = vlib_buffer_get_current (b1);
-	      clib_memcpy (hdr1, &dummy_eth1,
-			   (word) sizeof (ethernet_header_t));
+	      _clib_memcpy (hdr1, &dummy_eth1,
+			    (word) sizeof (ethernet_header_t));
 
 	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
 	      nsp_nsi1 = nm->tunnel_index_by_sw_if_index[sw_if_index1];
@@ -2045,7 +2045,7 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Push new NSH header */
 	      vlib_buffer_advance (b1, -(word) encap_hdr_len1);
 	      hdr1 = vlib_buffer_get_current (b1);
-	      clib_memcpy (hdr1, encap_hdr1, (word) encap_hdr_len1);
+	      _clib_memcpy (hdr1, encap_hdr1, (word) encap_hdr_len1);
 
 	      goto trace1;
 	    }
@@ -2057,7 +2057,7 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Push new NSH header */
 	      vlib_buffer_advance (b1, -(word) encap_hdr_len1);
 	      hdr1 = vlib_buffer_get_current (b1);
-	      clib_memcpy (hdr1, encap_hdr1, (word) encap_hdr_len1);
+	      _clib_memcpy (hdr1, encap_hdr1, (word) encap_hdr_len1);
 
 	      /* Manipulate MD2 */
 	      if (PREDICT_FALSE (nsh_entry1->nsh_base.md_type == 2))
@@ -2074,8 +2074,8 @@ nsh_input_map (vlib_main_t * vm,
 	    {
 	      nsh_input_trace_t *tr =
 		vlib_add_trace (vm, node, b1, sizeof (*tr));
-	      clib_memcpy (&(tr->trace_data), hdr1,
-			   ((hdr1->length & NSH_LEN_MASK) * 4));
+	      _clib_memcpy (&(tr->trace_data), hdr1,
+			    ((hdr1->length & NSH_LEN_MASK) * 4));
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
@@ -2138,13 +2138,13 @@ nsh_input_map (vlib_main_t * vm,
 	  else if (node_type == NSH_AWARE_VNF_PROXY_TYPE)
 	    {
 	      /* Push dummy Eth header */
-	      clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
-	      clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
+	      _clib_memcpy (dummy_eth0.dst_address, dummy_dst_address, 6);
+	      _clib_memcpy (dummy_eth0.src_address, dummy_src_address, 6);
 	      dummy_eth0.type = 0x0800;
 	      vlib_buffer_advance (b0, -(word) sizeof (ethernet_header_t));
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (hdr0, &dummy_eth0,
-			   (word) sizeof (ethernet_header_t));
+	      _clib_memcpy (hdr0, &dummy_eth0,
+			    (word) sizeof (ethernet_header_t));
 
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	      nsp_nsi0 = nm->tunnel_index_by_sw_if_index[sw_if_index0];
@@ -2250,7 +2250,7 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Push new NSH header */
 	      vlib_buffer_advance (b0, -(word) encap_hdr_len0);
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
+	      _clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
 
 	      goto trace00;
 	    }
@@ -2262,7 +2262,7 @@ nsh_input_map (vlib_main_t * vm,
 	      /* Push new NSH header */
 	      vlib_buffer_advance (b0, -(word) encap_hdr_len0);
 	      hdr0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
+	      _clib_memcpy (hdr0, encap_hdr0, (word) encap_hdr_len0);
 	      /* Manipulate MD2 */
 	      if (PREDICT_FALSE (nsh_entry0->nsh_base.md_type == 2))
 		{
@@ -2277,8 +2277,8 @@ nsh_input_map (vlib_main_t * vm,
 	    {
 	      nsh_input_trace_t *tr =
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      clib_memcpy (&(tr->trace_data[0]), hdr0,
-			   ((hdr0->length & NSH_LEN_MASK) * 4));
+	      _clib_memcpy (&(tr->trace_data[0]), hdr0,
+			    ((hdr0->length & NSH_LEN_MASK) * 4));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

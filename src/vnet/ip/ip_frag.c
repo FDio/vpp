@@ -165,7 +165,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       frag_set_sw_if_index (to_b, org_from_b);
 
       /* Copy ip4 header */
-      clib_memcpy (to_b->data, org_from_packet, sizeof (ip4_header_t));
+      _clib_memcpy (to_b->data, org_from_packet, sizeof (ip4_header_t));
       to_ip4 = vlib_buffer_get_current (to_b);
       to_data = (void *) (to_ip4 + 1);
 
@@ -178,7 +178,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
 	  /* Figure out how many bytes we can safely copy */
 	  bytes_to_copy = left_in_to_buffer <= left_in_from_buffer ?
 	    left_in_to_buffer : left_in_from_buffer;
-	  clib_memcpy (to_data + to_ptr, from_data + ptr, bytes_to_copy);
+	  _clib_memcpy (to_data + to_ptr, from_data + ptr, bytes_to_copy);
 	  left_in_to_buffer -= bytes_to_copy;
 	  ptr += bytes_to_copy;
 	  left_in_from_buffer -= bytes_to_copy;
@@ -441,7 +441,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
       frag_set_sw_if_index (to_b, org_from_b);
 
       /* Copy ip6 header */
-      clib_memcpy (to_b->data, ip6, sizeof (ip6_header_t));
+      _clib_memcpy (to_b->data, ip6, sizeof (ip6_header_t));
       to_ip6 = vlib_buffer_get_current (to_b);
       to_frag_hdr = (ip6_frag_hdr_t *) (to_ip6 + 1);
       to_data = (void *) (to_frag_hdr + 1);
@@ -455,7 +455,7 @@ ip6_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
 	  /* Figure out how many bytes we can safely copy */
 	  bytes_to_copy = left_in_to_buffer <= left_in_from_buffer ?
 	    left_in_to_buffer : left_in_from_buffer;
-	  clib_memcpy (to_data + to_ptr, from_data + ptr, bytes_to_copy);
+	  _clib_memcpy (to_data + to_ptr, from_data + ptr, bytes_to_copy);
 	  left_in_to_buffer -= bytes_to_copy;
 	  ptr += bytes_to_copy;
 	  left_in_from_buffer -= bytes_to_copy;

@@ -1662,7 +1662,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tc->connection.rmt_port = 53764;
   tc->connection.proto = TRANSPORT_PROTO_TCP;
   tc->connection.is_ip4 = 1;
-  clib_memcpy (tc1, &tc->connection, sizeof (*tc1));
+  _clib_memcpy (tc1, &tc->connection, sizeof (*tc1));
 
   /*
    * Allocate fake session and connection 2
@@ -1683,7 +1683,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tc->connection.rmt_port = 53764;
   tc->connection.proto = TRANSPORT_PROTO_TCP;
   tc->connection.is_ip4 = 1;
-  clib_memcpy (tc2, &tc->connection, sizeof (*tc2));
+  _clib_memcpy (tc2, &tc->connection, sizeof (*tc2));
 
   /*
    * Confirm that connection lookup works

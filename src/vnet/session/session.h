@@ -563,7 +563,7 @@ session_clone_safe (u32 session_index, u32 thread_index)
   session_pool_add_peeker (thread_index);
   new_s = session_alloc (current_thread_index);
   old_s = session_manager_main.wrk[thread_index].sessions + session_index;
-  clib_memcpy (new_s, old_s, sizeof (*new_s));
+  _clib_memcpy (new_s, old_s, sizeof (*new_s));
   session_pool_remove_peeker (thread_index);
   new_s->thread_index = current_thread_index;
   new_s->session_index = session_get_index (new_s);

@@ -374,10 +374,10 @@ ioam_cache_add (vlib_buffer_t * b0,
   clib_memset (entry, 0, sizeof (*entry));
   pool_index = entry - cm->ioam_rewrite_pool;
 
-  clib_memcpy (entry->dst_address.as_u64, ip0->dst_address.as_u64,
-	       sizeof (ip6_address_t));
-  clib_memcpy (entry->src_address.as_u64, ip0->src_address.as_u64,
-	       sizeof (ip6_address_t));
+  _clib_memcpy (entry->dst_address.as_u64, ip0->dst_address.as_u64,
+		sizeof (ip6_address_t));
+  _clib_memcpy (entry->src_address.as_u64, ip0->src_address.as_u64,
+		sizeof (ip6_address_t));
   entry->src_port = src_port;
   entry->dst_port = dst_port;
   entry->seq_no = seq_no;
@@ -395,7 +395,7 @@ ioam_cache_add (vlib_buffer_t * b0,
     }
   e2e_id_offset = (u8 *) e2e - (u8 *) hbh0;
   /* setup e2e id option to insert v6 address of the node caching it */
-  clib_memcpy (entry->ioam_rewrite_string, hbh0, rewrite_len);
+  _clib_memcpy (entry->ioam_rewrite_string, hbh0, rewrite_len);
   hbh0 = (ip6_hop_by_hop_header_t *) entry->ioam_rewrite_string;
 
   /* suffix rewrite string with e2e ID option */
@@ -657,10 +657,10 @@ ioam_cache_ts_add (ip6_header_t * ip0,
   clib_memset (entry, 0, sizeof (*entry));
   *pool_index = entry - cm->ioam_ts_pool[thread_id];
 
-  clib_memcpy (entry->dst_address.as_u64, ip0->dst_address.as_u64,
-	       sizeof (ip6_address_t));
-  clib_memcpy (entry->src_address.as_u64, ip0->src_address.as_u64,
-	       sizeof (ip6_address_t));
+  _clib_memcpy (entry->dst_address.as_u64, ip0->dst_address.as_u64,
+		sizeof (ip6_address_t));
+  _clib_memcpy (entry->src_address.as_u64, ip0->src_address.as_u64,
+		sizeof (ip6_address_t));
   entry->src_port = src_port;
   entry->dst_port = dst_port;
   entry->seq_no = seq_no;
