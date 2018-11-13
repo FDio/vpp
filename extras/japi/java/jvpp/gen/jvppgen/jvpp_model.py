@@ -320,6 +320,7 @@ class JVppModel(object):
         types = {}
         self._messages = []
         self._services = {}
+        self._aliases = {}
         for file_name in json_api_files:
             with open(file_name) as f:
                 j = json.load(f)
@@ -328,6 +329,8 @@ class JVppModel(object):
                 types.update({d[0]: {'type': 'union', 'data': d} for d in j['unions']})
                 self._messages.extend(j['messages'])
                 self._services.update(j['services'])
+                self._aliases.update(j['aliases'])
+
         self._parse_types(types)
 
     def _parse_types(self, types):
@@ -481,6 +484,10 @@ class JVppModel(object):
 
     def _parse_field(self, field, fields):
         type_name = _extract_type_name(field[0])
+        if type_name in self._aliases and type_name not in self._types_by_name:
+            aliased_type = self._types_by_name.get(self._aliases.get(type_name).get("type"))
+            self._types_by_name[type_name] = aliased_type
+
         if type_name in self._types_by_name:
             if len(field) > 2:
                 # Array field

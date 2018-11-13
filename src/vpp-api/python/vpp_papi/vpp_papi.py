@@ -27,7 +27,7 @@ import fnmatch
 import weakref
 import atexit
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
-from . vpp_serializer import VPPMessage, vpp_get_type
+from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
 from . vpp_format import VPPFormat
 
 if sys.version[0] == '2':
@@ -102,13 +102,15 @@ class VPP(object):
         for t in api['types']:
             t[0] = 'vl_api_' + t[0] + '_t'
             types[t[0]] = {'type': 'type', 'data': t}
+        for t, v in api['aliases'].items():
+            types['vl_api_' + t + '_t'] = {'type': 'alias', 'data': v}
 
         i = 0
         while True:
             unresolved = {}
             for k, v in types.items():
                 t = v['data']
-                if not vpp_get_type(t[0]):
+                if not vpp_get_type(k):
                     if v['type'] == 'enum':
                         try:
                             VPPEnumType(t[0], t[1:])
@@ -122,6 +124,11 @@ class VPP(object):
                     elif v['type'] == 'type':
                         try:
                             VPPType(t[0], t[1:])
+                        except ValueError:
+                            unresolved[k] = v
+                    elif v['type'] == 'alias':
+                        try:
+                            VPPTypeAlias(k, t)
                         except ValueError:
                             unresolved[k] = v
             if len(unresolved) == 0:
