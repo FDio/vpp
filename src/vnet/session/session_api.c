@@ -856,6 +856,7 @@ vl_api_application_detach_t_handler (vl_api_application_detach_t * mp)
   if (app)
     {
       a->app_index = app->app_index;
+      a->api_client_index = mp->client_index;
       rv = vnet_application_detach (a);
     }
 
@@ -1359,6 +1360,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   vnet_app_worker_add_del_args_t args = {
     .app_index = app->app_index,
     .wrk_index = clib_net_to_host_u32 (mp->wrk_index),
+    .api_index = mp->client_index,
     .is_add = mp->is_add
   };
   error = vnet_app_worker_add_del (&args);
@@ -1732,6 +1734,7 @@ application_reaper_cb (u32 client_index)
   if (app)
     {
       a->app_index = app->app_index;
+      a->api_client_index = client_index;
       vnet_application_detach (a);
     }
   return 0;
