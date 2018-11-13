@@ -22,6 +22,7 @@
 static vppcom_main_t _vppcom_main = {
   .debug = VPPCOM_DEBUG_INIT,
   .is_init = 0,
+  .main_api_client_index = ~0,
   .my_client_index = ~0
 };
 
@@ -170,6 +171,7 @@ vppcom_cfg_heapsize (char *conf_fname)
 	      goto defaulted;
 	    }
 	}
+      free (argv[i]);
     }
 
 defaulted:
@@ -231,8 +233,7 @@ vppcom_cfg_read_file (char *conf_fname)
 
   if (fstat (fd, &s) < 0)
     {
-      VCFG_DBG (0,
-		"VCL<%d>: failed to stat `%s', using default configuration",
+      VCFG_DBG (0, "VCL<%d>: failed to stat `%s' using default configuration",
 		getpid (), conf_fname);
       goto file_done;
     }
@@ -254,17 +255,19 @@ vppcom_cfg_read_file (char *conf_fname)
       if (unformat (line_input, "vcl {"))
 	{
 	  vc_cfg_input = 1;
+	  unformat_free (line_input);
 	  continue;
 	}
 
       if (vc_cfg_input)
 	{
-	  if (unformat (line_input, "heapsize %lu", &vcl_cfg->heapsize))
+	  if (unformat (line_input, "heapsize %U", unformat_memory_size,
+	                &vcl_cfg->heapsize))
 	    {
 	      VCFG_DBG (0, "VCL<%d>: configured heapsize %lu", getpid (),
 			vcl_cfg->heapsize);
 	    }
-	  if (unformat (line_input, "max-workers %u", &vcl_cfg->max_workers))
+	  else if (unformat (line_input, "max-workers %u", &vcl_cfg->max_workers))
 	    {
 	      VCFG_DBG (0, "VCL<%d>: configured max-workers %u", getpid (),
 			vcl_cfg->max_workers);
@@ -490,6 +493,7 @@ vppcom_cfg_read_file (char *conf_fname)
 	      vc_cfg_input = 0;
 	      VCFG_DBG (0, "VCL<%d>: completed parsing vppcom config!",
 			getpid ());
+	      unformat_free (line_input);
 	      goto input_done;
 	    }
 	  else
@@ -501,6 +505,7 @@ vppcom_cfg_read_file (char *conf_fname)
 				&line_input->buffer[line_input->index]);
 		}
 	    }
+	  unformat_free (line_input);
 	}
     }
 

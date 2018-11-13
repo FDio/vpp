@@ -224,6 +224,7 @@ vppcom_retval_str (int retval)
 /* TBD: make these constructor/destructor function */
 extern int vppcom_app_create (char *app_name);
 extern void vppcom_app_destroy (void);
+extern void vppcom_app_fork_child_handler (void);
 
 extern int vppcom_session_create (uint8_t proto, uint8_t is_nonblocking);
 extern int vppcom_session_close (uint32_t session_handle);
