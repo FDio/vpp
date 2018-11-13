@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2018 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -49,7 +49,9 @@
 #define foreach_ethernet_input_next		\
   _ (PUNT, "error-punt")			\
   _ (DROP, "error-drop")			\
-  _ (LLC, "llc-input")
+  _ (LLC, "llc-input")				\
+  _ (IP4_INPUT, "ip4-input")			\
+  _ (IP4_INPUT_NCS, "ip4-input-no-checksum")
 
 typedef enum
 {
@@ -289,16 +291,228 @@ determine_next_node (ethernet_main_t * em,
     }
 }
 
-static_always_inline uword
+typedef enum
+{
+  ETYPE_ID_UNKNOWN = 0,
+  ETYPE_ID_IP4,
+  ETYPE_ID_IP6,
+  ETYPE_ID_MPLS,
+  ETYPE_N_IDS,
+} etype_id_t;
+
+#ifdef __AVX512F__
+//#if 0
+#include <iacaMarks.h>
+#include "/home/damarion/cisco/vpp-sandbox/include/tscmarks.h"
+
+static_always_inline void
+etypes_to_ids (u16 * etype_ids, int n_left)
+{
+  u16x8 etypes;
+  u16x8 etype8_ip4 = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_IP4));
+  u16x8 etype8_ip6 = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_IP6));
+  u16x8 etype8_mpls = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_MPLS));
+  u16x8 id8_ip4 = u16x8_splat (ETYPE_ID_IP4);
+  u16x8 id8_ip6 = u16x8_splat (ETYPE_ID_IP6);
+  u16x8 id8_mpls = u16x8_splat (ETYPE_ID_MPLS);
+
+  while (n_left > 0)
+    {
+      u16x8 r = { 0 };
+      etypes = u16x8_load_unaligned (etype_ids);
+      r += (etypes == etype8_ip4) & id8_ip4;
+      r += (etypes == etype8_ip6) & id8_ip6;
+      r += (etypes == etype8_mpls) & id8_mpls;
+      u16x8_store_unaligned (r, etype_ids);
+      etype_ids += 8;
+      n_left -= 8;
+    }
+}
+
+static_always_inline void
+eth_input_pass2_one (vlib_buffer_t * b, u16 advance)
+{
+  vlib_buffer_advance (b, advance);
+  vnet_buffer (b)->l3_hdr_offset = b->current_data;
+  b->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+}
+
+static_always_inline void
+eth_input_pass2 (vlib_main_t * vm, u32 * from, u32 n_left, u16 advance)
+{
+  while (n_left >= 8)
+    {
+      vlib_buffer_t *b[8];
+      //vlib_buffer_t **ph = b + 4;
+      vlib_get_buffers (vm, from, b, 8);
+      eth_input_pass2_one (b[0], advance);
+      //vlib_prefetch_buffer_header (ph[0], LOAD);
+      eth_input_pass2_one (b[1], advance);
+      //vlib_prefetch_buffer_header (ph[1], LOAD);
+      eth_input_pass2_one (b[2], advance);
+      //vlib_prefetch_buffer_header (ph[2], LOAD);
+      eth_input_pass2_one (b[3], advance);
+      //vlib_prefetch_buffer_header (ph[3], LOAD);
+
+      eth_input_pass2_one (b[4], advance);
+      //vlib_prefetch_buffer_header (ph[4], LOAD);
+      eth_input_pass2_one (b[5], advance);
+      //vlib_prefetch_buffer_header (ph[5], LOAD);
+      eth_input_pass2_one (b[6], advance);
+      //vlib_prefetch_buffer_header (ph[6], LOAD);
+      eth_input_pass2_one (b[7], advance);
+      //vlib_prefetch_buffer_header (ph[7], LOAD);
+      n_left -= 8;
+      from += 8;
+    }
+  while (n_left)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, from[0]);
+      eth_input_pass2_one (b, advance);
+
+      n_left -= 1;
+      from += 1;
+    }
+}
+
+typedef struct
+{
+  u16 etypes[VLIB_FRAME_SIZE];
+  u32 tbl[ETYPE_N_IDS][VLIB_FRAME_SIZE];
+  u16 n_id[ETYPE_N_IDS];
+} eth_input_data_t;
+
+static_always_inline void
+eth_input_pass1_one (vlib_buffer_t ** b, u16 * etype, int do_prefetch)
+{
+  ethernet_header_t *e = vlib_buffer_get_current (b[0]);
+  etype[0] = e->type;
+  if (do_prefetch)
+    {
+      vlib_prefetch_buffer_header (b[12], LOAD);
+      vlib_prefetch_buffer_data (b[8], LOAD);
+    }
+  vnet_buffer (b[0])->l2_hdr_offset = b[0]->current_data;
+  b[0]->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID;
+}
+
+static_always_inline void
+eth_input_pass1 (vlib_main_t * vm, u32 * from, u16 * etype, u32 n_left)
+{
+  vlib_buffer_t *b[16];
+
+  while (n_left >= 16)
+    {
+      vlib_get_buffers (vm, from, b, 4);
+      vlib_get_buffers (vm, from + 8, b + 8, 8);
+
+      eth_input_pass1_one (b + 0, etype + 0, /* do_prefetch */ 1);
+      eth_input_pass1_one (b + 1, etype + 1, /* do_prefetch */ 1);
+      eth_input_pass1_one (b + 2, etype + 2, /* do_prefetch */ 1);
+      eth_input_pass1_one (b + 3, etype + 3, /* do_prefetch */ 1);
+
+      /* next */
+      n_left -= 4;
+      etype += 4;
+      from += 4;
+    }
+  while (n_left >= 4)
+    {
+      vlib_get_buffers (vm, from, b, 4);
+      eth_input_pass1_one (b + 0, etype + 0, /* do_prefetch */ 0);
+      eth_input_pass1_one (b + 1, etype + 1, /* do_prefetch */ 0);
+      eth_input_pass1_one (b + 2, etype + 2, /* do_prefetch */ 0);
+      eth_input_pass1_one (b + 3, etype + 3, /* do_prefetch */ 0);
+
+      /* next */
+      n_left -= 4;
+      etype += 4;
+      from += 4;
+    }
+  while (n_left)
+    {
+      vlib_get_buffers (vm, from, b, 1);
+      eth_input_pass1_one (b + 0, etype + 0, /* do_prefetch */ 0);
+
+      /* next */
+      n_left -= 1;
+      etype += 1;
+      from += 1;
+    }
+}
+
+static_always_inline void
+foo (vlib_main_t * vm, u32 * from, u32 n_left, eth_input_data_t * d)
+{
+  u16 *etype = d->etypes;
+  memset (d->n_id, 0, sizeof (d->n_id));
+  while (n_left)
+    {
+      u16 x, y;
+      x = etype[0];
+      y = d->n_id[x];
+
+      if (n_left >= 16 &&
+	  u16x16_is_all_equal (u16x16_load_unaligned (etype), etype[0]))
+	{
+	  u32x8_store_unaligned (u32x8_load_unaligned (from), &d->tbl[x][y]);
+	  u32x8_store_unaligned (u32x8_load_unaligned (from + 8),
+				 &d->tbl[x][y + 8]);
+	  d->n_id[x] += 16;
+
+	  /* next */
+	  etype += 16;
+	  from += 16;
+	  n_left -= 16;
+	}
+      else if (n_left >= 8 &&
+	       u16x8_is_all_equal (u16x8_load_unaligned (etype), etype[0]))
+	{
+	  u32x8_store_unaligned (u32x8_load_unaligned (from), &d->tbl[x][y]);
+
+	  d->n_id[x] += 8;
+
+	  /* next */
+	  etype += 8;
+	  from += 8;
+	  n_left -= 8;
+	  continue;
+	}
+      else
+	{
+	  d->tbl[x][y] = from[0];
+	  d->n_id[x]++;
+
+	  /* next */
+	  etype += 1;
+	  from += 1;
+	  n_left -= 1;
+	}
+    }
+}
+#endif
+
+
+static_always_inline void
+ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
+		      u32 * from, u32 n_packets)
+{
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    vlib_trace_frame_buffers_only (vm, node, from, n_packets,
+				   sizeof (from[0]),
+				   sizeof (ethernet_input_trace_t));
+}
+
+static_always_inline void
 ethernet_input_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
-		       vlib_frame_t * from_frame,
+		       u32 * from, u32 n_packets,
 		       ethernet_input_variant_t variant)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ethernet_main_t *em = &ethernet_main;
   vlib_node_runtime_t *error_node;
-  u32 n_left_from, next_index, *from, *to_next;
+  u32 n_left_from, next_index, *to_next;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u32 thread_index = vm->thread_index;
   u32 cached_sw_if_index = ~0;
@@ -310,15 +524,7 @@ ethernet_input_inline (vlib_main_t * vm,
   else
     error_node = node;
 
-  from = vlib_frame_vector_args (from_frame);
-  n_left_from = from_frame->n_vectors;
-
-  if (node->flags & VLIB_NODE_FLAG_TRACE)
-    vlib_trace_frame_buffers_only (vm, node,
-				   from,
-				   n_left_from,
-				   sizeof (from[0]),
-				   sizeof (ethernet_input_trace_t));
+  n_left_from = n_packets;
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
@@ -764,32 +970,100 @@ ethernet_input_inline (vlib_main_t * vm,
 	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
       node->runtime_data[0] = stats_sw_if_index;
     }
-
-  return from_frame->n_vectors;
 }
 
 VLIB_NODE_FN (ethernet_input_node) (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * from_frame)
 {
-  return ethernet_input_inline (vm, node, from_frame,
-				ETHERNET_INPUT_VARIANT_ETHERNET);
+  u32 *from = vlib_frame_vector_args (from_frame);
+  u32 n_packets = from_frame->n_vectors;
+
+  ethernet_input_trace (vm, node, from, n_packets);
+
+  vnet_main_t *vnm = vnet_get_main ();
+
+  if (from_frame->flags & ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX)
+    {
+      ethernet_input_frame_t *ef = vlib_frame_scalar_args (from_frame);
+      vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, ef->hw_if_index);
+
+      if (hi->l2_if_count)
+	{
+	  ethernet_input_inline (vm, node, from, n_packets,
+				 ETHERNET_INPUT_VARIANT_ETHERNET);
+	  return n_packets;
+	}
+
+#ifdef __AVX512F__
+      ethernet_main_t *em = &ethernet_main;
+      eth_input_data_t data, *d = &data;
+      tsc_mark ("eth_input_pass1_ones");
+      eth_input_pass1 (vm, from, d->etypes, n_packets);
+      tsc_mark ("etypes_to_ids");
+      etypes_to_ids (d->etypes, n_packets);
+      tsc_mark ("tbl");
+      foo (vm, from, n_packets, d);
+      tsc_mark ("update");
+      if (d->n_id[ETYPE_ID_IP4])
+	{
+	  u32 next_index = em->l3_next.input_next_ip4;
+	  if (next_index == ETHERNET_INPUT_NEXT_IP4_INPUT &&
+	      from_frame->flags & ETH_INPUT_FRAME_F_IP4_CKSUM_OK)
+	    next_index = ETHERNET_INPUT_NEXT_IP4_INPUT_NCS;
+
+	  eth_input_pass2 (vm, d->tbl[ETYPE_ID_IP4],
+			   d->n_id[ETYPE_ID_IP4], sizeof (ethernet_header_t));
+	  vlib_buffer_enqueue_to_single_next (vm, node, d->tbl[ETYPE_ID_IP4],
+					      next_index,
+					      d->n_id[ETYPE_ID_IP4]);
+	}
+      if (d->n_id[ETYPE_ID_IP6])
+	{
+	  eth_input_pass2 (vm, d->tbl[ETYPE_ID_IP6],
+			   d->n_id[ETYPE_ID_IP6], sizeof (ethernet_header_t));
+	  vlib_buffer_enqueue_to_single_next (vm, node, d->tbl[ETYPE_ID_IP6],
+					      em->l3_next.input_next_ip6,
+					      d->n_id[ETYPE_ID_IP6]);
+	}
+      if (d->n_id[ETYPE_ID_UNKNOWN])
+	{
+	  ethernet_input_inline (vm, node, d->tbl[ETYPE_ID_UNKNOWN],
+				 d->n_id[ETYPE_ID_UNKNOWN],
+				 ETHERNET_INPUT_VARIANT_ETHERNET);
+	}
+      tsc_mark (0);
+      tsc_print (3, n_packets);
+      return n_packets;
+#endif
+    }
+  ethernet_input_inline (vm, node, from, n_packets,
+			 ETHERNET_INPUT_VARIANT_ETHERNET);
+  return n_packets;
 }
 
 VLIB_NODE_FN (ethernet_input_type_node) (vlib_main_t * vm,
 					 vlib_node_runtime_t * node,
 					 vlib_frame_t * from_frame)
 {
-  return ethernet_input_inline (vm, node, from_frame,
-				ETHERNET_INPUT_VARIANT_ETHERNET_TYPE);
+  u32 *from = vlib_frame_vector_args (from_frame);
+  u32 n_packets = from_frame->n_vectors;
+  ethernet_input_trace (vm, node, from, n_packets);
+  ethernet_input_inline (vm, node, from, n_packets,
+			 ETHERNET_INPUT_VARIANT_ETHERNET_TYPE);
+  return n_packets;
 }
 
 VLIB_NODE_FN (ethernet_input_not_l2_node) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
 					   vlib_frame_t * from_frame)
 {
-  return ethernet_input_inline (vm, node, from_frame,
-				ETHERNET_INPUT_VARIANT_NOT_L2);
+  u32 *from = vlib_frame_vector_args (from_frame);
+  u32 n_packets = from_frame->n_vectors;
+  ethernet_input_trace (vm, node, from, n_packets);
+  ethernet_input_inline (vm, node, from, n_packets,
+			 ETHERNET_INPUT_VARIANT_NOT_L2);
+  return n_packets;
 }
 
 
@@ -1159,6 +1433,7 @@ VLIB_REGISTER_NODE (ethernet_input_node) = {
   .name = "ethernet-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (ethernet_input_frame_t),
   .n_errors = ETHERNET_N_ERROR,
   .error_strings = ethernet_error_strings,
   .n_next_nodes = ETHERNET_INPUT_N_NEXT,
