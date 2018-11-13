@@ -33,6 +33,7 @@ typedef struct _vnet_app_attach_args_t
 typedef struct _vnet_app_detach_args_t
 {
   u32 app_index;
+  u32 api_client_index;
 } vnet_app_detach_args_t;
 
 typedef struct _vnet_bind_args_t
