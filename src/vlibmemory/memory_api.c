@@ -665,6 +665,10 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 		}
 	      else
 		{
+		  /* freeing memory allocated by vl_api_memclnt_create_t_handler */
+		  unix_shared_memory_queue_free((*regpp)->vl_input_queue);
+		  vec_free((*regpp)->name);
+
 		  /* Poison the old registration */
 		  clib_memset (*regpp, 0xF3, sizeof (**regpp));
 		  clib_mem_free (*regpp);
