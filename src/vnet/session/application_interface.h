@@ -33,6 +33,7 @@ typedef struct _vnet_app_attach_args_t
 typedef struct _vnet_app_detach_args_t
 {
   u32 app_index;
+  u32 api_client_index;
 } vnet_app_detach_args_t;
 
 typedef struct _vnet_bind_args_t
@@ -87,6 +88,13 @@ typedef struct _vnet_disconnect_args_t
   session_handle_t handle;
   u32 app_index;
 } vnet_disconnect_args_t;
+
+typedef struct vnet_app_worker_own_session_args_
+{
+  u32 app_index;
+  u32 wrk_map_index;
+  session_handle_t session_handle;
+} vnet_app_worker_own_session_args_t;
 
 typedef struct _vnet_application_add_tls_cert_args_t
 {
@@ -175,6 +183,9 @@ clib_error_t *vnet_connect (vnet_connect_args_t * a);
 clib_error_t *vnet_unbind (vnet_unbind_args_t * a);
 int vnet_application_detach (vnet_app_detach_args_t * a);
 int vnet_disconnect_session (vnet_disconnect_args_t * a);
+
+clib_error_t *vnet_app_worker_own_session (vnet_app_worker_own_session_args_t
+					   * a);
 
 clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
 clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
