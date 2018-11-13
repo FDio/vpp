@@ -17,6 +17,10 @@ def remove_magic(what):
     return what
 
 
+def apply_magic(what):
+    return "%s%s%s" % (magic_prefix, what, magic_suffix)
+
+
 class Field(object):
 
     def __init__(self, field_name, field_type, array_len=None,
@@ -219,6 +223,15 @@ class Message(object):
              self.crc)
 
 
+class Alias(Type):
+    def __init__(self, name, base_type):
+        super(Alias, self).__init__(name)
+        self.type = base_type
+
+    def __str__(self):
+        return "Alias(%s => %s)" % (self.name, self.type)
+
+
 class StructType (Type, Struct):
 
     def __init__(self, definition, json_parser, field_class, logger):
@@ -290,11 +303,12 @@ class JsonParser(object):
     def __init__(self, logger, files, simple_type_class=SimpleType,
                  enum_class=Enum, union_class=Union,
                  struct_type_class=StructType, field_class=Field,
-                 message_class=Message):
+                 message_class=Message, alias_class=Alias):
         self.services = {}
         self.messages = {}
         self.enums = {}
         self.unions = {}
+        self.aliases = {}
         self.types = {
             x: simple_type_class(x) for x in [
                 'i8', 'i16', 'i32', 'i64',
@@ -311,12 +325,14 @@ class JsonParser(object):
         self.struct_type_class = struct_type_class
         self.field_class = field_class
         self.message_class = message_class
+        self.alias_class = alias_class
 
         self.exceptions = []
         self.json_files = []
         self.types_by_json = {}
         self.enums_by_json = {}
         self.unions_by_json = {}
+        self.aliases_by_json = {}
         self.messages_by_json = {}
         self.logger = logger
         for f in files:
@@ -329,6 +345,7 @@ class JsonParser(object):
         self.types_by_json[path] = []
         self.enums_by_json[path] = []
         self.unions_by_json[path] = []
+        self.aliases_by_json[path] = []
         self.messages_by_json[path] = {}
         with open(path) as f:
             j = json.load(f)
@@ -369,6 +386,14 @@ class JsonParser(object):
                     self.unions[union.name] = union
                     self.logger.debug("Parsed union: %s" % union)
                     self.unions_by_json[path].append(union)
+                for name, body in j['aliases'].iteritems():
+                    if name in self.aliases:
+                        progress = progress + 1
+                        continue
+                    alias = self.alias_class(name, body['type'])
+                    self.aliases[name] = alias
+                    self.logger.debug("Parsed alias: %s" % alias)
+                    self.aliases_by_json[path].append(alias)
                 for t in j['types']:
                     if t[0] in self.types:
                         progress = progress + 1
@@ -429,12 +454,16 @@ class JsonParser(object):
             return self.enums[name]
         elif name in self.unions:
             return self.unions[name]
+        elif name in self.aliases:
+            return self.aliases[name]
         elif mundane_name in self.types:
             return self.types[mundane_name]
         elif mundane_name in self.enums:
             return self.enums[mundane_name]
         elif mundane_name in self.unions:
             return self.unions[mundane_name]
+        elif mundane_name in self.aliases:
+            return self.aliases[mundane_name]
         raise ParseError(
             "Could not find type, enum or union by magic name `%s' nor by "
             "mundane name `%s'" % (name, mundane_name))

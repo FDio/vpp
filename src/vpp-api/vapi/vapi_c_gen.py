@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from vapi_json_parser import Field, Struct, Enum, Union, Message, JsonParser,\
-    SimpleType, StructType
+    SimpleType, StructType, Alias, apply_magic
 
 
 class CField(Field):
@@ -579,6 +579,31 @@ class CMessage (Message):
         ])
 
 
+class CAlias(Alias):
+    def get_c_name(self):
+        return apply_magic(self.name)
+
+    def needs_byte_swap(self):
+        try:
+            return self.type.needs_byte_swap()
+        except AttributeError:
+            pass
+        return False
+
+    def has_vla(self):
+        try:
+            return self.type.has_vla()
+        except AttributeError:
+            pass
+        return False
+
+    def get_c_def(self):
+        try:
+            return "typedef %s %s;" % (self.type.get_c_name(),
+                                       self.get_c_name())
+        except AttributeError:
+            return "typedef %s %s;" % (self.type, self.get_c_name())
+
 vapi_send_with_control_ping = """
 static inline vapi_error_e
 vapi_send_with_control_ping (vapi_ctx_t ctx, void *msg, u32 context)
@@ -609,7 +634,8 @@ def emit_definition(parser, json_file, emitted, o):
         if (o not in parser.enums_by_json[json_file] and
                 o not in parser.types_by_json[json_file] and
                 o not in parser.unions_by_json[json_file] and
-                o.name not in parser.messages_by_json[json_file]):
+                o.name not in parser.messages_by_json[json_file] and
+                o not in parser.aliases_by_json[json_file]):
             return
         guard = "defined_%s" % o.get_c_name()
         print("#ifndef %s" % guard)
@@ -690,6 +716,8 @@ def gen_json_unified_header(parser, logger, j, io, name):
     emitted = []
     for e in parser.enums_by_json[j]:
         emit_definition(parser, j, emitted, e)
+    for a in parser.aliases_by_json[j]:
+        emit_definition(parser, j, emitted, a)
     for u in parser.unions_by_json[j]:
         emit_definition(parser, j, emitted, u)
     for t in parser.types_by_json[j]:
@@ -765,7 +793,8 @@ if __name__ == '__main__':
                             union_class=CUnion,
                             struct_type_class=CStructType,
                             field_class=CField,
-                            message_class=CMessage)
+                            message_class=CMessage,
+                            alias_class=CAlias)
 
     # not using the model of having separate generated header and code files
     # with generated symbols present in shared library (per discussion with
