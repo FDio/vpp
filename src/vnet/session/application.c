@@ -189,6 +189,19 @@ application_name_from_index (u32 app_index)
 }
 
 static void
+application_api_table_add (u32 app_index, u32 api_client_index)
+{
+  hash_set (app_main.app_by_api_client_index, api_client_index,
+	    app_index);
+}
+
+static void
+application_api_table_del (u32 api_client_index)
+{
+  hash_unset (app_main.app_by_api_client_index, api_client_index);
+}
+
+static void
 application_table_add (application_t * app)
 {
   if (app->api_client_index != APP_INVALID_INDEX)
@@ -213,7 +226,7 @@ application_lookup (u32 api_client_index)
   uword *p;
   p = hash_get (app_main.app_by_api_client_index, api_client_index);
   if (p)
-    return application_get (p[0]);
+    return application_get_if_valid (p[0]);
 
   return 0;
 }
@@ -456,6 +469,12 @@ application_get_default_worker (application_t * app)
   return application_get_worker (app, 0);
 }
 
+u32
+application_n_workers (application_t *app)
+{
+  return pool_elts (app->worker_maps);
+}
+
 app_worker_t *
 application_listener_select_worker (stream_session_t * ls, u8 is_local)
 {
@@ -609,6 +628,7 @@ app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk)
   app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
   app_wrk->app_is_builtin = application_is_builtin (app);
+  app_wrk->api_index = app->api_client_index;
 
   /*
    * Segment manager for local sessions
@@ -899,6 +919,15 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
     {
       if ((rv = app_worker_alloc_and_init (app, &app_wrk)))
 	return clib_error_return_code (0, rv, 0, "app wrk init: %d", rv);
+
+      /* Add api index to  */
+      if (a->api_index != app->api_client_index
+	  && app->api_client_index != APP_INVALID_INDEX)
+	{
+	  app_wrk->api_index = a->api_index;
+	  application_api_table_add (app->app_index, a->api_index);
+	}
+
       sm = segment_manager_get (app_wrk->first_segment_manager);
       fs = segment_manager_get_segment_w_lock (sm, 0);
       a->segment = &fs->ssvm;
@@ -918,7 +947,16 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       if (!app_wrk)
 	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
 				       "No worker %u", a->wrk_index);
+      if (app->api_client_index != app_wrk->api_index)
+	application_api_table_del (app_wrk->api_index);
       app_worker_free (app_wrk);
+      if (application_n_workers (app) == 0)
+	{
+	  vnet_app_detach_args_t args = {
+	      .app_index = app->app_index,
+	  };
+	  vnet_application_detach (&args);
+	}
     }
   return 0;
 }

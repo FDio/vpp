@@ -474,6 +474,14 @@ define app_worker_add_del_reply
   u8 is_add;
 };
 
+autoreply define app_worker_own_session 
+{
+  u32 client_index;
+  u32 context;
+  u32 wrk_index;
+  u64 session_handle;
+};
+
 /** \brief enable/disable session layer
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
