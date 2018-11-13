@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fcec0b66_c52ce816",
+        "filename": "src/vlibmemory/memory_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 669,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-11-13T18:30:17Z",
+      "side": 1,
+      "message": "svm_queue_free",
+      "range": {
+        "startLine": 669,
+        "startChar": 4,
+        "endLine": 669,
+        "endChar": 33
+      },
+      "revId": "98e16b7c6e01b91cea391cfd28b5e3fe625e9cb8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
