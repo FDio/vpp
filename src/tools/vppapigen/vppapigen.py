@@ -151,6 +151,25 @@ class Typedef():
         return self.name + str(self.flags) + str(self.block)
 
 
+class Using():
+    def __init__(self, name, alias):
+        global global_crc
+        self.name = name
+
+        if isinstance(alias, Array):
+            a = { 'type': alias.fieldtype,
+                  'length': alias.length }
+        else:
+            a = { 'type': alias.fieldtype }
+        self.alias = a
+        self.crc = binascii.crc32(str(alias)) & 0xffffffff
+        global_crc = binascii.crc32(str(alias), global_crc)
+        global_type_add(name)
+
+    def __repr__(self):
+        return self.name + str(self.alias)
+
+
 class Union():
     def __init__(self, name, block):
         self.type = 'Union'
@@ -457,6 +476,10 @@ class VPPAPIParser(object):
         '''typedef : TYPEDEF ID '{' block_statements_opt '}' ';' '''
         p[0] = Typedef(p[2], [], p[4])
 
+    def p_typedef_alias(self, p):
+        '''typedef : TYPEDEF declaration '''
+        p[0] = Using(p[2].fieldname, p[2])
+
     def p_block_statements_opt(self, p):
         '''block_statements_opt : block_statements '''
         p[0] = p[1]
@@ -594,6 +617,7 @@ class VPPAPI(object):
         s['Service'] = []
         s['types'] = []
         s['Import'] = []
+        s['Alias'] = {}
         for o in objs:
             tname = o.__class__.__name__
             if isinstance(o, Define):
@@ -608,6 +632,8 @@ class VPPAPI(object):
                         s['Service'].append(o2)
             elif isinstance(o, Enum) or isinstance(o, Typedef) or isinstance(o, Union):
                 s['types'].append(o)
+            elif isinstance(o, Using):
+                s['Alias'][o.name] = o.alias
             else:
                 if tname not in s:
                     raise ValueError('Unknown class type: {} {}'.format(tname, o))
@@ -686,7 +712,8 @@ class VPPAPI(object):
             if in_import and not (isinstance(o, Enum) or
                                   isinstance(o, Union) or
                                   isinstance(o, Typedef) or
-                                  isinstance(o, Import)):
+                                  isinstance(o, Import) or
+                                  isinstance(o, Using)):
                 continue
             if isinstance(o, Import):
                 self.process_imports(o.result, True, result)
