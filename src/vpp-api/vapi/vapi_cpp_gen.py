@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from vapi_c_gen import CField, CEnum, CStruct, CSimpleType, CStructType,\
-    CMessage, json_to_c_header_name
+    CMessage, json_to_c_header_name, CAlias
 from vapi_json_parser import JsonParser
 
 
@@ -18,6 +18,10 @@ class CppStruct(CStruct):
 
 
 class CppEnum(CEnum):
+    pass
+
+
+class CppAlias(CAlias):
     pass
 
 
@@ -251,7 +255,8 @@ if __name__ == '__main__':
                             struct_type_class=CppStructType,
                             field_class=CppField,
                             enum_class=CppEnum,
-                            message_class=CppMessage)
+                            message_class=CppMessage,
+                            alias_class=CppAlias)
 
     gen_cpp_headers(jsonparser, logger, args.prefix, args.gen_h_prefix,
                     args.remove_path)

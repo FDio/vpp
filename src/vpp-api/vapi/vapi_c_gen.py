@@ -5,15 +5,18 @@ import os
 import sys
 import logging
 from vapi_json_parser import Field, Struct, Enum, Union, Message, JsonParser,\
-    SimpleType, StructType
+    SimpleType, StructType, Alias
 
 
 class CField(Field):
+    def get_c_name(self):
+        return self.name
+
     def get_c_def(self):
         if self.len is not None:
-            return "%s %s[%d]" % (self.type.get_c_name(), self.name, self.len)
+            return "%s %s[%d];" % (self.type.get_c_name(), self.name, self.len)
         else:
-            return "%s %s" % (self.type.get_c_name(), self.name)
+            return "%s %s;" % (self.type.get_c_name(), self.name)
 
     def get_swap_to_be_code(self, struct, var):
         if self.len is not None:
@@ -95,12 +98,26 @@ class CField(Field):
         return result
 
 
+class CAlias(CField):
+    def get_c_name(self):
+        return self.name
+
+    def get_c_def(self):
+        return "typedef %s" % super(CAlias, self).get_c_def()
+        # if self.len is not None:
+        #     return "typedef %s %s[%d];" % (self.type.get_c_name(), self.name, self.len)
+        # else:
+        #     return "typedef %s %s;" % (self.type.get_c_name(), self.name)
+
+    # def needs_byte_swap
+
+
 class CStruct(Struct):
     def get_c_def(self):
         return "\n".join([
-            "typedef struct __attribute__((__packed__)) {\n%s;" % (
-                ";\n".join(["  %s" % x.get_c_def()
-                            for x in self.fields])),
+            "typedef struct __attribute__((__packed__)) {\n%s" % (
+                "\n".join(["  %s" % x.get_c_def()
+                           for x in self.fields])),
             "} %s;" % self.get_c_name()])
 
     def get_vla_assign_code(self, prefix, path):
@@ -156,7 +173,7 @@ class CSimpleType (SimpleType):
         try:
             self.get_swap_to_host_func_name()
             return True
-        except:
+        except KeyError:
             pass
         return False
 
@@ -335,8 +352,8 @@ class CMessage (Message):
         if self.has_payload():
             return "\n".join([
                 "typedef struct __attribute__ ((__packed__)) {",
-                "%s; " %
-                ";\n".join(self.payload_members),
+                "%s " %
+                "\n".join(self.payload_members),
                 "} %s;" % self.get_payload_struct_name(),
                 "",
                 "typedef struct __attribute__ ((__packed__)) {",
@@ -609,7 +626,8 @@ def emit_definition(parser, json_file, emitted, o):
         if (o not in parser.enums_by_json[json_file] and
                 o not in parser.types_by_json[json_file] and
                 o not in parser.unions_by_json[json_file] and
-                o.name not in parser.messages_by_json[json_file]):
+                o.name not in parser.messages_by_json[json_file] and
+                o not in parser.aliases_by_json[json_file]):
             return
         guard = "defined_%s" % o.get_c_name()
         print("#ifndef %s" % guard)
@@ -690,6 +708,8 @@ def gen_json_unified_header(parser, logger, j, io, name):
     emitted = []
     for e in parser.enums_by_json[j]:
         emit_definition(parser, j, emitted, e)
+    for a in parser.aliases_by_json[j]:
+        emit_definition(parser, j, emitted, a)
     for u in parser.unions_by_json[j]:
         emit_definition(parser, j, emitted, u)
     for t in parser.types_by_json[j]:
@@ -765,7 +785,8 @@ if __name__ == '__main__':
                             union_class=CUnion,
                             struct_type_class=CStructType,
                             field_class=CField,
-                            message_class=CMessage)
+                            message_class=CMessage,
+                            alias_class=CAlias)
 
     # not using the model of having separate generated header and code files
     # with generated symbols present in shared library (per discussion with

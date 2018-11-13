@@ -79,7 +79,7 @@ class FixedList_u8(object):
         self.packer = BaseTypes(field_type, num)
         self.size = self.packer.size
 
-    def pack(self, list, kwargs):
+    def pack(self, list, kwargs = None):
         """Packs a fixed length bytestring. Left-pads with zeros
         if input data is too short."""
         if not list:
@@ -275,6 +275,18 @@ class VPPUnionType(object):
                 maxsize = size
             r.append(x)
         return self.tuple._make(r), maxsize
+
+
+def VPPTypeAlias(name, msgdef):
+    t = vpp_get_type(msgdef['type'])
+    if not t:
+        raise ValueError()
+    if 'length' in msgdef:
+        if msgdef['length'] == 0:
+            raise ValueError()
+        types[name] = FixedList(name, msgdef['type'], msgdef['length'])
+    else:
+        types[name] = t
 
 
 class VPPType(object):

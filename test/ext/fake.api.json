@@ -43,5 +43,7 @@
             {"crc" : "0xcafebafe"}
         ]
     ],
+    "aliases" : {
+    },
 "vl_api_version" :"0x224c7aad"
 }
