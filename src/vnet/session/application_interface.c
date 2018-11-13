@@ -675,6 +675,54 @@ vnet_connect (vnet_connect_args_t * a)
   return 0;
 }
 
+clib_error_t *
+vnet_app_worker_own_session (vnet_app_worker_own_session_args_t *a)
+{
+  app_worker_t *old_wrk, *new_wrk;
+  clib_error_t *error = 0;
+  segment_manager_t *sm;
+  stream_session_t *s;
+  application_t *app;
+
+  if (session_handle_is_local (a->session_handle))
+    return clib_error_return_code (0, VNET_API_ERROR_UNSUPPORTED, 0,
+                                   "not supported for now");
+
+  app = application_get (a->app_index);
+  if (!app)
+    return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
+                                   "app invalid");
+
+  s = session_get_from_handle_if_valid (a->session_handle);
+  if (!s)
+    return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
+                                   "handle invalid");
+
+  if (s->session_state == SESSION_STATE_LISTENING)
+    return clib_error_return_code (0, VNET_API_ERROR_UNSUPPORTED, 0,
+                                   "listeners not supported for now");
+
+
+  old_wrk = app_worker_get (s->app_wrk_index);
+  if (old_wrk->app_index != a->app_index)
+    return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
+	                           "app doesn't match");
+
+  new_wrk = application_get_worker (app, a->wrk_map_index);
+  if (old_wrk->wrk_index == new_wrk->wrk_index)
+    return 0;
+
+  s->app_wrk_index = new_wrk->wrk_index;
+  s->svm_segment_index = new_wrk->connects_seg_manager;
+  sm = segment_manager_get (new_wrk->connects_seg_manager);
+  segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
+				 s->server_tx_fifo);
+  if (session_alloc_fifos (sm, s))
+    return clib_error_return_code (0, -1, 0, "failed to alloc fifos");
+
+  return error;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

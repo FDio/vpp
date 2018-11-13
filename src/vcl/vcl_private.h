@@ -272,14 +272,25 @@ typedef struct vppcom_main_t_
   u32 debug;
   pthread_t main_cpu;
 
-  /** VPP binary api input queue */
-  svm_queue_t *vl_input_queue;
+  /** Main process pid */
+  pid_t main_pid;
+
+  /** Current pid, may be different from main_pid if forked child */
+  pid_t current_pid;
+
+  /** Main process api client index. It's used by vpp to identify the app */
+  u32 main_api_client_index;
 
   /** API client handle */
   u32 my_client_index;
 
+  /** VPP binary api input queue */
+  svm_queue_t *vl_input_queue;
+
   /** State of the connection, shared between msg RX thread and main thread */
   volatile app_state_t app_state;
+
+  u8 *app_name;
 
   /** VCL configuration */
   vppcom_cfg_t cfg;

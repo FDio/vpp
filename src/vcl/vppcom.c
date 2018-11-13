@@ -704,6 +704,8 @@ vppcom_app_create (char *app_name)
       vcl_cfg = &vcm->cfg;
 
       vcm->main_cpu = pthread_self ();
+      vcm->main_pid = vcm->current_pid = getpid ();
+      vcm->app_name = format (0, "%s", app_name);
       vppcom_init_error_string_table ();
       svm_fifo_segment_main_init (vcl_cfg->segment_baseva,
 				  20 /* timeout in secs */ );
@@ -721,31 +723,28 @@ vppcom_app_create (char *app_name)
       rv = vppcom_connect_to_vpp (app_name);
       if (rv)
 	{
-	  clib_warning ("VCL<%d>: ERROR: couldn't connect to VPP!",
-			getpid ());
+	  VERR ("couldn't connect to VPP!");
 	  return rv;
 	}
-
-      VDBG (0, "VCL<%d>: sending session enable", getpid ());
+      vcm->main_api_client_index = vcm->my_client_index;
+      VDBG (0, "sending session enable");
       rv = vppcom_app_session_enable ();
       if (rv)
 	{
-	  clib_warning ("VCL<%d>: ERROR: vppcom_app_session_enable() "
-			"failed!", getpid ());
+	  VERR ("vppcom_app_session_enable() failed!");
 	  return rv;
 	}
 
-      VDBG (0, "VCL<%d>: sending app attach", getpid ());
+      VDBG (0, "sending app attach");
       rv = vppcom_app_attach ();
       if (rv)
 	{
-	  clib_warning ("VCL<%d>: ERROR: vppcom_app_attach() failed!",
-			getpid ());
+	  VERR ("vppcom_app_attach() failed!");
 	  return rv;
 	}
 
-      VDBG (0, "VCL<%d>: app_name '%s', my_client_index %d (0x%x)",
-	    getpid (), app_name, vcm->my_client_index, vcm->my_client_index);
+      VDBG (0, "app_name '%s', my_client_index %d (0x%x)",
+	    app_name, vcm->my_client_index, vcm->my_client_index);
     }
 
   return VPPCOM_OK;
@@ -760,8 +759,8 @@ vppcom_app_destroy (void)
   if (vcm->my_client_index == ~0)
     return;
 
-  VDBG (0, "VCL<%d>: detaching from VPP, my_client_index %d (0x%x)",
-	getpid (), vcm->my_client_index, vcm->my_client_index);
+  VDBG (0, "detaching from VPP, my_client_index %d (0x%x)",
+	vcm->my_client_index, vcm->my_client_index);
   vcl_evt (VCL_EVT_DETACH, vcm);
 
   vppcom_app_send_detach ();
@@ -770,13 +769,59 @@ vppcom_app_destroy (void)
   rv = vcl_wait_for_app_state_change (STATE_APP_ENABLED);
   vcm->cfg.app_timeout = orig_app_timeout;
   if (PREDICT_FALSE (rv))
-    VDBG (0, "VCL<%d>: application detach timed out! returning %d (%s)",
-	  getpid (), rv, vppcom_retval_str (rv));
+    VDBG (0, "application detach timed out! returning %d (%s)",
+	  rv, vppcom_retval_str (rv));
 
   vcl_elog_stop (vcm);
   vl_client_disconnect_from_vlib ();
+  vec_free (vcm->app_name);
   vcm->my_client_index = ~0;
   vcm->app_state = STATE_APP_START;
+}
+
+static void
+vcl_cleanup_bapi (void)
+{
+  api_main_t *am = &api_main;
+
+  am->my_client_index = ~0;
+  am->my_registration = 0;
+  am->vl_input_queue = 0;
+  am->msg_index_by_name_and_crc = 0;
+
+  vl_client_api_unmap ();
+}
+
+void
+vppcom_app_fork_child_handler (void)
+{
+  u8 *child_name;
+  int rv;
+
+  vcm->current_pid = getpid ();
+  vcl_set_worker_index (0);
+
+  VDBG (0, "initializing forked child");
+  child_name = format (0, "%v-child-%u%c", vcm->app_name, getpid (), 0);
+
+  vcl_cleanup_bapi ();
+  vppcom_api_hookup ();
+  rv = vppcom_connect_to_vpp ((char *)child_name);
+  vec_free (child_name);
+  if (rv)
+    {
+      VERR ("couldn't connect to VPP!");
+      return;
+    }
+
+  vcm->app_state = STATE_APP_ADDING_WORKER;
+  vcl_send_app_worker_add_del (1 /* is_add */ );
+  if (vcl_wait_for_app_state_change (STATE_APP_READY))
+    {
+      VERR ("failed to add worker to vpp");
+      return;
+    }
+  VDBG (0, "forked child main worker initialized");
 }
 
 int
@@ -798,7 +843,7 @@ vppcom_session_create (u8 proto, u8 is_nonblocking)
   vcl_evt (VCL_EVT_CREATE, session, session_type, session->session_state,
 	   is_nonblocking, session_index);
 
-  VDBG (0, "VCL<%d>: sid %u", getpid (), session->session_index);
+  VDBG (0, "created sid %u", session->session_index);
 
   return vcl_session_handle (session);
 }

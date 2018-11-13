@@ -148,12 +148,12 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 		    format_api_error, ntohl (mp->retval));
       goto failed;
     }
-  wrk_index = clib_net_to_host_u32 (mp->wrk_index);
-  if (mp->context != wrk_index)
+  wrk_index = mp->context;
+  if (clib_net_to_host_u32 (mp->wrk_index) != wrk_index)
     {
       clib_warning ("VCL<%d>: wrk numbering doesn't match ours: %u, vpp: %u",
 		    getpid (), mp->context, wrk_index);
-      goto failed;
+//      goto failed;
     }
   if (!mp->is_add)
     return;
@@ -432,7 +432,7 @@ vcl_send_app_worker_add_del (u8 is_add)
 
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
   mp->client_index = vcm->my_client_index;
-  mp->app_api_index = clib_host_to_net_u32 (vcm->my_client_index);
+  mp->app_api_index = clib_host_to_net_u32 (vcm->main_api_client_index);
   mp->context = wrk_index;
   mp->is_add = is_add;
   if (!is_add)
@@ -556,15 +556,13 @@ vppcom_connect_to_vpp (char *app_name)
       if (vl_socket_client_connect ((char *) vcl_cfg->vpp_api_socket_name,
 				    app_name, 0 /* default rx/tx buffer */ ))
 	{
-	  clib_warning ("VCL<%d>: app (%s) socket connect failed!",
-			getpid (), app_name);
+	  VERR ("app (%s) socket connect failed!", app_name);
 	  return VPPCOM_ECONNREFUSED;
 	}
 
       if (vl_socket_client_init_shm (0))
 	{
-	  clib_warning ("VCL<%d>: app (%s) init shm failed!",
-			getpid (), app_name);
+	  VERR ("app (%s) init shm failed!", app_name);
 	  return VPPCOM_ECONNREFUSED;
 	}
     }
@@ -573,14 +571,13 @@ vppcom_connect_to_vpp (char *app_name)
       if (!vcl_cfg->vpp_api_filename)
 	vcl_cfg->vpp_api_filename = format (0, "/vpe-api%c", 0);
 
-      VDBG (0, "VCL<%d>: app (%s) connecting to VPP api (%s)...", getpid (),
+      VDBG (0, "app (%s) connecting to VPP api (%s)...",
 	    app_name, vcl_cfg->vpp_api_filename);
 
       if (vl_client_connect_to_vlib ((char *) vcl_cfg->vpp_api_filename,
 				     app_name, vcm->cfg.vpp_api_q_length) < 0)
 	{
-	  clib_warning ("VCL<%d>: app (%s) connect failed!", getpid (),
-			app_name);
+	  VERR ("app (%s) connect failed!", app_name);
 	  return VPPCOM_ECONNREFUSED;
 	}
 
@@ -590,8 +587,7 @@ vppcom_connect_to_vpp (char *app_name)
   vcm->my_client_index = (u32) am->my_client_index;
   vcm->app_state = STATE_APP_CONN_VPP;
 
-  VDBG (0, "VCL<%d>: app (%s) is connected to VPP!", getpid (), app_name);
-
+  VDBG (0, "app (%s) is connected to VPP!", app_name);
   vcl_evt (VCL_EVT_INIT, vcm);
   return VPPCOM_OK;
 }
