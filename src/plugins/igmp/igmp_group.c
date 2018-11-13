@@ -280,6 +280,46 @@ igmp_group_get (u32 index)
   return (pool_elt_at_index (igmp_main.groups, index));
 }
 
+u8 *
+format_igmp_group_timer_type (u8 * s, va_list * args)
+{
+  igmp_group_timer_type_t type = va_arg (*args, igmp_group_timer_type_t);
+
+  switch (type)
+    {
+#define _(v,t) case IGMP_GROUP_TIMER_##v: return (format (s, "%s", t));
+      foreach_igmp_group_timer
+#undef _
+    }
+  return (s);
+}
+
+u8 *
+format_igmp_group (u8 * s, va_list * args)
+{
+  igmp_group_t *group = va_arg (*args, igmp_group_t *);
+  u32 indent = va_arg (*args, u32);
+  igmp_src_t *src;
+  u32 ii;
+
+  s = format (s, "%U%U",
+	      format_white_space, indent, format_igmp_key, group->key);
+
+  for (ii = 0; ii < IGMP_GROUP_N_TIMERS; ii++)
+    s = format (s, "\n%U  %U:%U", format_white_space, indent,
+		format_igmp_group_timer_type, ii,
+		format_igmp_timer_id, group->timers[ii]);
+
+  /* *INDENT-OFF* */
+  FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
+  ({
+    s = format (s, "\n%U", format_igmp_src, src, indent+4);
+  }));
+  /* *INDENT-ON* */
+
+  return (s);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

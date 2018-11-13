@@ -353,26 +353,12 @@ igmp_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   clib_error_t *error = NULL;
   igmp_main_t *im = &igmp_main;
-  vnet_main_t *vnm = vnet_get_main ();
   igmp_config_t *config;
-  igmp_group_t *group;
-  igmp_src_t *src;
 
   /* *INDENT-OFF* */
   pool_foreach (config, im->configs,
     ({
-      vlib_cli_output (vm, "interface: %U mode: %U %U",
-                       format_vnet_sw_if_index_name, vnm, config->sw_if_index,
-                       format_igmp_mode, config->mode, format_igmp_proxy_device_id, config->proxy_device_id);
-
-      FOR_EACH_GROUP (group, config,
-        ({
-          vlib_cli_output (vm, "\t%U", format_igmp_key, group->key);
-          FOR_EACH_SRC (src, group, IGMP_FILTER_MODE_INCLUDE,
-          ({
-              vlib_cli_output (vm, "\t\t%U", format_igmp_key, src->key);
-            }));
-        }));
+      vlib_cli_output (vm, "%U", format_igmp_config, config);
     }));
   /* *INDENT-ON* */
 

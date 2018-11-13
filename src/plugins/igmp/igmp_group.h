@@ -22,31 +22,32 @@
 #include <igmp/igmp_src.h>
 
 /**
+ * QUERY_REPLY = Timer running to reply to a G/SG specific query
+ * QUERY_SENT  = wait for response from a sent G/SG specific query.
+ *               Sent when a host leaves a group
+ * RESEND_REPORT = Timer running to resend report
+ * FILTER_MODE_CHANGE = to check if the group can swap to
+ *                      INCLUDE mode (section 6.2.2)
+ */
+#define foreach_igmp_group_timer                \
+  _(QUERY_REPLY, "query-reply")                 \
+  _(QUERY_SENT,  "query-sent")                  \
+  _(RESEND_REPORT, "resend-report")             \
+  _(FILTER_MODE_CHANGE, "filter-mode-change")
+
+/**
  * Types of timers maintained for each group
  */
 typedef enum igmp_group_timer_type_t_
 {
-  /**
-   * Timer running to reply to a G/SG specific query
-   */
-  IGMP_GROUP_TIMER_QUERY_REPLY,
-  /**
-   * wait for response from a sent G/SG specific query.
-   * Sent when a host leaves a group
-   */
-  IGMP_GROUP_TIMER_QUERY_SENT,
-  /**
-   * Timer running to resend report
-   */
-  IGMP_GROUP_TIMER_RESEND_REPORT,
-  /**
-   * filter-mode change timer, to check if the group can swap to
-   * INCLUDE mode (section 6.2.2)
-   */
-  IGMP_GROUP_TIMER_FILTER_MODE_CHANGE,
+#define _(v,s) IGMP_GROUP_TIMER_##v,
+  foreach_igmp_group_timer
+#undef _
 } igmp_group_timer_type_t;
 
 #define IGMP_GROUP_N_TIMERS (IGMP_GROUP_TIMER_FILTER_MODE_CHANGE + 1)
+
+extern u8 *format_igmp_group_timer_type (u8 * s, va_list * args);
 
 /**
  * @brief IGMP group
@@ -114,6 +115,8 @@ extern igmp_src_t *igmp_group_src_update (igmp_group_t * group,
 					  igmp_mode_t mode);
 
 extern void igmp_group_src_remove (igmp_group_t * group, igmp_src_t * src);
+extern u8 *format_igmp_group (u8 * s, va_list * args);
+
 
 extern ip46_address_t *igmp_group_present_minus_new (igmp_group_t * group,
 						     igmp_filter_mode_t mode,

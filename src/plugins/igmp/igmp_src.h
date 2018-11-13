@@ -82,6 +82,7 @@ extern u32 igmp_src_index (igmp_src_t * src);
 
 extern void igmp_src_refresh (igmp_src_t * src);
 extern void igmp_src_blocked (igmp_src_t * src);
+extern u8 *format_igmp_src (u8 * s, va_list * args);
 
 #endif
 

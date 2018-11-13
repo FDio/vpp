@@ -232,6 +232,28 @@ igmp_timer_retire (igmp_timer_id_t * tid)
 			     IGMP_PROCESS_EVENT_UPDATE_TIMER, 0);
 }
 
+u8 *
+format_igmp_timer_id (u8 * s, va_list * args)
+{
+  igmp_timer_id_t tid = va_arg (*args, igmp_timer_id_t);
+  igmp_timer_t *timer;
+
+  if (IGMP_TIMER_ID_INVALID == tid)
+    {
+      s = format (s, "not-running");
+    }
+  else
+    {
+      timer = pool_elt_at_index (timer_pool, tid);
+
+      s =
+	format (s, "[expires-in:%f]",
+		timer->exp_time - vlib_time_now (vlib_get_main ()));
+    }
+
+  return (s);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

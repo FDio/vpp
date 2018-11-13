@@ -87,6 +87,54 @@ igmp_group_lookup (igmp_config_t * config, const igmp_key_t * key)
   return group;
 }
 
+u8 *
+format_igmp_config_timer_type (u8 * s, va_list * args)
+{
+  igmp_config_timer_type_t type = va_arg (*args, igmp_config_timer_type_t);
+
+  switch (type)
+    {
+#define _(v,t) case IGMP_CONFIG_TIMER_##v: return (format (s, "%s", t));
+      foreach_igmp_config_timer_type
+#undef _
+    }
+  return (s);
+}
+
+
+u8 *
+format_igmp_config (u8 * s, va_list * args)
+{
+  igmp_config_t *config;
+  igmp_group_t *group;
+  vnet_main_t *vnm;
+  u32 ii;
+
+  config = va_arg (*args, igmp_config_t *);
+  vnm = vnet_get_main ();
+
+  s = format (s, "interface: %U mode: %U %U",
+	      format_vnet_sw_if_index_name, vnm, config->sw_if_index,
+	      format_igmp_mode, config->mode,
+	      format_igmp_proxy_device_id, config->proxy_device_id);
+
+  for (ii = 0; ii < IGMP_CONFIG_N_TIMERS; ii++)
+    {
+      s = format (s, "\n  %U:%U",
+		  format_igmp_config_timer_type, ii,
+		  format_igmp_timer_id, config->timers[ii]);
+    }
+
+  /* *INDENT-OFF* */
+  FOR_EACH_GROUP (group, config,
+    ({
+      s = format (s, "\n%U", format_igmp_group, group, 4);
+    }));
+  /* *INDENT-ON* */
+
+  return (s);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
