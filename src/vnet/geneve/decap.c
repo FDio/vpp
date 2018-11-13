@@ -286,7 +286,7 @@ geneve_input (vlib_main_t * vm,
 		      next0 = GENEVE_INPUT_NEXT_DROP;
 		      goto trace0;
 		    }
-		  clib_memcpy (&last_key6, &key6_0, sizeof (key6_0));
+		  clib_memcpy_fast (&last_key6, &key6_0, sizeof (key6_0));
 		  tunnel_index0 = last_tunnel_index = p0[0];
 		}
 	      else
@@ -455,7 +455,7 @@ geneve_input (vlib_main_t * vm,
 		      goto trace1;
 		    }
 
-		  clib_memcpy (&last_key6, &key6_1, sizeof (key6_1));
+		  clib_memcpy_fast (&last_key6, &key6_1, sizeof (key6_1));
 		  tunnel_index1 = last_tunnel_index = p1[0];
 		}
 	      else
@@ -690,7 +690,7 @@ geneve_input (vlib_main_t * vm,
 		      next0 = GENEVE_INPUT_NEXT_DROP;
 		      goto trace00;
 		    }
-		  clib_memcpy (&last_key6, &key6_0, sizeof (key6_0));
+		  clib_memcpy_fast (&last_key6, &key6_0, sizeof (key6_0));
 		  tunnel_index0 = last_tunnel_index = p0[0];
 		}
 	      else

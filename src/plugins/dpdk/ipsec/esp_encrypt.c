@@ -444,7 +444,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 
 	  /* The extra pad bytes would be overwritten by the digest */
 	  if (pad_bytes)
-	    clib_memcpy (padding, pad_data, 16);
+	    clib_memcpy_fast (padding, pad_data, 16);
 
 	  f0 = (esp_footer_t *) (padding + pad_bytes);
 	  f0->pad_length = pad_bytes;
@@ -538,7 +538,7 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	      u8 *p = vlib_buffer_get_current (b0);
 	      if (!sa0->is_tunnel)
 		p += vnet_buffer (b0)->ip.save_rewrite_length;
-	      clib_memcpy (tr->packet_data, p, sizeof (tr->packet_data));
+	      clib_memcpy_fast (tr->packet_data, p, sizeof (tr->packet_data));
 	    }
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);

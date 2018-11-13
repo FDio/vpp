@@ -248,9 +248,9 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  if (PREDICT_TRUE (offset == 0))
 		    {
-		      clib_memcpy (vlib_buffer_get_current (b0),
-				   (u8 *) tph + tph->tp_mac,
-				   sizeof (ethernet_header_t));
+		      clib_memcpy_fast (vlib_buffer_get_current (b0),
+					(u8 *) tph + tph->tp_mac,
+					sizeof (ethernet_header_t));
 		      ethernet_header_t *eth = vlib_buffer_get_current (b0);
 		      ethernet_vlan_header_t *vlan =
 			(ethernet_vlan_header_t *) (eth + 1);
@@ -262,10 +262,10 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      bytes_copied = sizeof (ethernet_header_t);
 		    }
 		}
-	      clib_memcpy (((u8 *) vlib_buffer_get_current (b0)) +
-			   bytes_copied + vlan_len,
-			   (u8 *) tph + tph->tp_mac + offset + bytes_copied,
-			   (bytes_to_copy - bytes_copied));
+	      clib_memcpy_fast (((u8 *) vlib_buffer_get_current (b0)) +
+				bytes_copied + vlan_len,
+				(u8 *) tph + tph->tp_mac + offset +
+				bytes_copied, (bytes_to_copy - bytes_copied));
 
 	      /* fill buffer header */
 	      b0->current_length = bytes_to_copy + vlan_len;
@@ -319,7 +319,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
 	      tr->next_index = next0;
 	      tr->hw_if_index = apif->hw_if_index;
-	      clib_memcpy (&tr->tph, tph, sizeof (struct tpacket2_hdr));
+	      clib_memcpy_fast (&tr->tph, tph, sizeof (struct tpacket2_hdr));
 	    }
 
 	  /* enque and take next packet */

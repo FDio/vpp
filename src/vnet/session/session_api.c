@@ -241,7 +241,7 @@ send_session_accept_callback (stream_session_t * s)
       tc = tp_vft->get_connection (s->connection_index, s->thread_index);
       mp->port = tc->rmt_port;
       mp->is_ip4 = tc->is_ip4;
-      clib_memcpy (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+      clib_memcpy_fast (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
     }
   else
     {
@@ -364,7 +364,7 @@ send_session_connected_callback (u32 app_wrk_index, u32 api_context,
       vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
       mp->handle = session_handle (s);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
-      clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+      clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
       mp->is_ip4 = tc->is_ip4;
       mp->lcl_port = tc->lcl_port;
       mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
@@ -459,7 +459,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
       tc = tp_vft->get_connection (s->connection_index, s->thread_index);
       mp->port = tc->rmt_port;
       mp->is_ip4 = tc->is_ip4;
-      clib_memcpy (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
+      clib_memcpy_fast (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
     }
   else
     {
@@ -616,7 +616,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       vpp_mq = session_manager_get_vpp_event_queue (s->thread_index);
       mp->handle = session_handle (s);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
-      clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+      clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
       mp->is_ip4 = tc->is_ip4;
       mp->lcl_port = tc->lcl_port;
       mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
@@ -692,7 +692,7 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
       tc = listen_session_get_transport (ls);
       mp->lcl_port = tc->lcl_port;
       mp->lcl_is_ip4 = tc->is_ip4;
-      clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+      clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
     }
   else
     {
@@ -779,7 +779,8 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   if (mp->namespace_id_len)
     {
       vec_validate (a->namespace_id, mp->namespace_id_len - 1);
-      clib_memcpy (a->namespace_id, mp->namespace_id, mp->namespace_id_len);
+      clib_memcpy_fast (a->namespace_id, mp->namespace_id,
+			mp->namespace_id_len);
     }
 
   if ((error = vnet_application_attach (a)))
@@ -906,7 +907,7 @@ done:
               tc = listen_session_get_transport (s);
               rmp->lcl_is_ip4 = tc->is_ip4;
               rmp->lcl_port = tc->lcl_port;
-              clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof(tc->lcl_ip));
+              clib_memcpy_fast (rmp->lcl_ip, &tc->lcl_ip, sizeof(tc->lcl_ip));
               if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
                 {
                   rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
@@ -1208,7 +1209,7 @@ done:
 	  {
 	    s = listen_session_get_from_handle (a->handle);
 	    tc = listen_session_get_transport (s);
-            clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+            clib_memcpy_fast (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
             if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
               {
         	rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
@@ -1295,7 +1296,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       if (mp->hostname_len)
 	{
 	  vec_validate (a->sep_ext.hostname, mp->hostname_len - 1);
-	  clib_memcpy (a->sep_ext.hostname, mp->hostname, mp->hostname_len);
+	  clib_memcpy_fast (a->sep_ext.hostname, mp->hostname,
+			    mp->hostname_len);
 	}
       a->api_context = mp->context;
       a->app_index = app->app_index;
@@ -1429,7 +1431,7 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
     }
 
   vec_validate (ns_id, mp->namespace_id_len - 1);
-  clib_memcpy (ns_id, mp->namespace_id, mp->namespace_id_len);
+  clib_memcpy_fast (ns_id, mp->namespace_id, mp->namespace_id_len);
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,
     .secret = clib_net_to_host_u64 (mp->secret),
@@ -1522,8 +1524,8 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
   rmp->context = context;
 
   rmp->is_ip4 = 1;
-  clib_memcpy (rmp->lcl_ip, &match->lcl_ip, sizeof (match->lcl_ip));
-  clib_memcpy (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
+  clib_memcpy_fast (rmp->lcl_ip, &match->lcl_ip, sizeof (match->lcl_ip));
+  clib_memcpy_fast (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
   rmp->lcl_plen = ip4_mask_to_preflen (&mask->lcl_ip);
   rmp->rmt_plen = ip4_mask_to_preflen (&mask->rmt_ip);
   rmp->lcl_port = match->lcl_port;
@@ -1535,7 +1537,7 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
   rmp->appns_index = clib_host_to_net_u32 (appns_index);
   if (tag)
     {
-      clib_memcpy (rmp->tag, tag, vec_len (tag));
+      clib_memcpy_fast (rmp->tag, tag, vec_len (tag));
       rmp->tag[vec_len (tag)] = 0;
     }
 
@@ -1559,8 +1561,8 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
   rmp->context = context;
 
   rmp->is_ip4 = 0;
-  clib_memcpy (rmp->lcl_ip, &match->lcl_ip, sizeof (match->lcl_ip));
-  clib_memcpy (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
+  clib_memcpy_fast (rmp->lcl_ip, &match->lcl_ip, sizeof (match->lcl_ip));
+  clib_memcpy_fast (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
   rmp->lcl_plen = ip6_mask_to_preflen (&mask->lcl_ip);
   rmp->rmt_plen = ip6_mask_to_preflen (&mask->rmt_ip);
   rmp->lcl_port = match->lcl_port;
@@ -1572,7 +1574,7 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
   rmp->appns_index = clib_host_to_net_u32 (appns_index);
   if (tag)
     {
-      clib_memcpy (rmp->tag, tag, vec_len (tag));
+      clib_memcpy_fast (rmp->tag, tag, vec_len (tag));
       rmp->tag[vec_len (tag)] = 0;
     }
 
@@ -1671,7 +1673,7 @@ vl_api_application_tls_cert_add_t_handler (vl_api_application_tls_cert_add_t *
       goto done;
     }
   vec_validate (a->cert, cert_len);
-  clib_memcpy (a->cert, mp->cert, cert_len);
+  clib_memcpy_fast (a->cert, mp->cert, cert_len);
   if ((error = vnet_app_add_tls_cert (a)))
     {
       rv = clib_error_get_code (error);
@@ -1711,7 +1713,7 @@ vl_api_application_tls_key_add_t_handler (vl_api_application_tls_key_add_t *
       goto done;
     }
   vec_validate (a->key, key_len);
-  clib_memcpy (a->key, mp->key, key_len);
+  clib_memcpy_fast (a->key, mp->key, key_len);
   if ((error = vnet_app_add_tls_key (a)))
     {
       rv = clib_error_get_code (error);

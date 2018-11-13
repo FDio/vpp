@@ -75,14 +75,14 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, n_buffer_data_bytes_in_trace);
-	  clib_memcpy (t0, b0->data + b0->current_data,
-		       n_buffer_data_bytes_in_trace);
+	  clib_memcpy_fast (t0, b0->data + b0->current_data,
+			    n_buffer_data_bytes_in_trace);
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t1 = vlib_add_trace (vm, node, b1, n_buffer_data_bytes_in_trace);
-	  clib_memcpy (t1, b1->data + b1->current_data,
-		       n_buffer_data_bytes_in_trace);
+	  clib_memcpy_fast (t1, b1->data + b1->current_data,
+			    n_buffer_data_bytes_in_trace);
 	}
       from += 2;
       n_left -= 2;
@@ -101,8 +101,8 @@ vlib_trace_frame_buffers_only (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, n_buffer_data_bytes_in_trace);
-	  clib_memcpy (t0, b0->data + b0->current_data,
-		       n_buffer_data_bytes_in_trace);
+	  clib_memcpy_fast (t0, b0->data + b0->current_data,
+			    n_buffer_data_bytes_in_trace);
 	}
       from += 1;
       n_left -= 1;

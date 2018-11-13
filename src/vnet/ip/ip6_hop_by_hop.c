@@ -321,8 +321,8 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
 	  /* $$$ tune, rewrite_length is a multiple of 8 */
-	  clib_memcpy (hbh0, rewrite, rewrite_length);
-	  clib_memcpy (hbh1, rewrite, rewrite_length);
+	  clib_memcpy_fast (hbh0, rewrite, rewrite_length);
+	  clib_memcpy_fast (hbh1, rewrite, rewrite_length);
 	  /* Patch the protocol chain, insert the h-b-h (type 0) header */
 	  hbh0->protocol = ip0->protocol;
 	  hbh1->protocol = ip1->protocol;
@@ -399,7 +399,7 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  /* $$$ tune, rewrite_length is a multiple of 8 */
-	  clib_memcpy (hbh0, rewrite, rewrite_length);
+	  clib_memcpy_fast (hbh0, rewrite, rewrite_length);
 	  /* Patch the protocol chain, insert the h-b-h (type 0) header */
 	  hbh0->protocol = ip0->protocol;
 	  ip0->protocol = 0;

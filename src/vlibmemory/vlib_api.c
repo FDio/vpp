@@ -601,7 +601,7 @@ vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + data_length);
 
   clib_memset (mp, 0, sizeof (*mp));
-  clib_memcpy (mp->data, data, data_length);
+  clib_memcpy_fast (mp->data, data, data_length);
   mp->_vl_msg_id = ntohs (VL_API_RPC_CALL);
   mp->function = pointer_to_uword (fp);
   mp->need_barrier_sync = 1;

@@ -383,7 +383,7 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 #ifdef CLIB_HAVE_VEC512
       if (n_enqueued >= 32)
 	{
-	  clib_memcpy (to_next, buffers, 32 * sizeof (u32));
+	  clib_memcpy_fast (to_next, buffers, 32 * sizeof (u32));
 	  nexts += 32;
 	  to_next += 32;
 	  buffers += 32;
@@ -397,7 +397,7 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 #ifdef CLIB_HAVE_VEC256
       if (n_enqueued >= 16)
 	{
-	  clib_memcpy (to_next, buffers, 16 * sizeof (u32));
+	  clib_memcpy_fast (to_next, buffers, 16 * sizeof (u32));
 	  nexts += 16;
 	  to_next += 16;
 	  buffers += 16;
@@ -411,7 +411,7 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 #ifdef CLIB_HAVE_VEC128
       if (n_enqueued >= 8)
 	{
-	  clib_memcpy (to_next, buffers, 8 * sizeof (u32));
+	  clib_memcpy_fast (to_next, buffers, 8 * sizeof (u32));
 	  nexts += 8;
 	  to_next += 8;
 	  buffers += 8;
@@ -424,7 +424,7 @@ vlib_buffer_enqueue_to_next (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (n_enqueued >= 4)
 	{
-	  clib_memcpy (to_next, buffers, 4 * sizeof (u32));
+	  clib_memcpy_fast (to_next, buffers, 4 * sizeof (u32));
 	  nexts += 4;
 	  to_next += 4;
 	  buffers += 4;

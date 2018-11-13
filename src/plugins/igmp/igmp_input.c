@@ -203,8 +203,8 @@ igmp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	      tr->next_index = next;
 	      tr->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-	      clib_memcpy (tr->packet_data, vlib_buffer_get_current (b),
-			   sizeof (tr->packet_data));
+	      clib_memcpy_fast (tr->packet_data, vlib_buffer_get_current (b),
+				sizeof (tr->packet_data));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -280,8 +280,8 @@ igmp_parse_query (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	      tr->next_index = next;
 	      tr->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-	      clib_memcpy (tr->packet_data, vlib_buffer_get_current (b),
-			   sizeof (tr->packet_data));
+	      clib_memcpy_fast (tr->packet_data, vlib_buffer_get_current (b),
+				sizeof (tr->packet_data));
 	    }
 	  len = igmp_membership_query_v3_length (igmp);
 
@@ -387,8 +387,8 @@ igmp_parse_report (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	      tr->next_index = next;
 	      tr->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-	      clib_memcpy (tr->packet_data, vlib_buffer_get_current (b),
-			   sizeof (tr->packet_data));
+	      clib_memcpy_fast (tr->packet_data, vlib_buffer_get_current (b),
+				sizeof (tr->packet_data));
 	    }
 
 	  /*

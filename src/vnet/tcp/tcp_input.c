@@ -1990,13 +1990,14 @@ tcp_set_rx_trace_data (tcp_rx_trace_t * t0, tcp_connection_t * tc0,
 {
   if (tc0)
     {
-      clib_memcpy (&t0->tcp_connection, tc0, sizeof (t0->tcp_connection));
+      clib_memcpy_fast (&t0->tcp_connection, tc0,
+			sizeof (t0->tcp_connection));
     }
   else
     {
       th0 = tcp_buffer_hdr (b0);
     }
-  clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+  clib_memcpy_fast (&t0->tcp_header, th0, sizeof (t0->tcp_header));
 }
 
 static void
@@ -2443,7 +2444,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* Valid SYN or SYN-ACK. Move connection from half-open pool to
        * current thread pool. */
       pool_get (tm->connections[my_thread_index], new_tc0);
-      clib_memcpy (new_tc0, tc0, sizeof (*new_tc0));
+      clib_memcpy_fast (new_tc0, tc0, sizeof (*new_tc0));
       new_tc0->c_c_index = new_tc0 - tm->connections[my_thread_index];
       new_tc0->c_thread_index = my_thread_index;
       new_tc0->rcv_nxt = vnet_buffer (b0)->tcp.seq_end;
@@ -2544,8 +2545,9 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED) && tcp0 != 0))
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
-	  clib_memcpy (&t0->tcp_connection, tc0, sizeof (t0->tcp_connection));
+	  clib_memcpy_fast (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
+	  clib_memcpy_fast (&t0->tcp_connection, tc0,
+			    sizeof (t0->tcp_connection));
 	}
     }
 
@@ -3085,10 +3087,10 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       else
 	{
-	  clib_memcpy (&child0->c_lcl_ip6, &ip60->dst_address,
-		       sizeof (ip6_address_t));
-	  clib_memcpy (&child0->c_rmt_ip6, &ip60->src_address,
-		       sizeof (ip6_address_t));
+	  clib_memcpy_fast (&child0->c_lcl_ip6, &ip60->dst_address,
+			    sizeof (ip6_address_t));
+	  clib_memcpy_fast (&child0->c_rmt_ip6, &ip60->src_address,
+			    sizeof (ip6_address_t));
 	}
 
       if (tcp_options_parse (th0, &child0->rcv_opts))
@@ -3139,8 +3141,9 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	  clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
-	  clib_memcpy (&t0->tcp_connection, lc0, sizeof (t0->tcp_connection));
+	  clib_memcpy_fast (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+	  clib_memcpy_fast (&t0->tcp_connection, lc0,
+			    sizeof (t0->tcp_connection));
 	}
 
       n_syns += (error0 == TCP_ERROR_NONE);

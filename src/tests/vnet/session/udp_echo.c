@@ -539,8 +539,8 @@ session_accepted_handler (session_accepted_msg_t * mp)
       tx_fifo->client_session_index = session_index;
       session->rx_fifo = rx_fifo;
       session->tx_fifo = tx_fifo;
-      clib_memcpy (&session->transport.rmt_ip, mp->ip,
-		   sizeof (ip46_address_t));
+      clib_memcpy_fast (&session->transport.rmt_ip, mp->ip,
+			sizeof (ip46_address_t));
       session->transport.is_ip4 = mp->is_ip4;
       session->transport.rmt_port = mp->port;
     }
@@ -645,8 +645,8 @@ session_connected_handler (session_connected_msg_t * mp)
 
       session->rx_fifo->client_session_index = session->session_index;
       session->tx_fifo->client_session_index = session->session_index;
-      clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
-		   sizeof (ip46_address_t));
+      clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
+			sizeof (ip46_address_t));
       session->transport.is_ip4 = mp->is_ip4;
       session->transport.lcl_port = mp->lcl_port;
 
@@ -659,8 +659,8 @@ session_connected_handler (session_connected_msg_t * mp)
 	  return;
 	}
       unformat_free (input);
-      clib_memcpy (&session->transport.rmt_ip, &sep->ip,
-		   sizeof (ip46_address_t));
+      clib_memcpy_fast (&session->transport.rmt_ip, &sep->ip,
+			sizeof (ip46_address_t));
       session->transport.rmt_port = sep->port;
       session->is_dgram = !utm->is_connected;
     }
@@ -693,8 +693,8 @@ session_bound_handler (session_bound_msg_t * mp)
   tx_fifo->client_session_index = session_index;
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
-  clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
-	       sizeof (ip46_address_t));
+  clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
+		    sizeof (ip46_address_t));
   session->transport.is_ip4 = mp->lcl_is_ip4;
   session->transport.lcl_port = mp->lcl_port;
   session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
@@ -900,8 +900,8 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
   tx_fifo->client_session_index = session_index;
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
-  clib_memcpy (&session->transport.lcl_ip, mp->lcl_ip,
-	       sizeof (ip46_address_t));
+  clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
+		    sizeof (ip46_address_t));
   session->transport.is_ip4 = mp->lcl_is_ip4;
   session->transport.lcl_port = mp->lcl_port;
   session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);

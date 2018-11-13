@@ -157,7 +157,7 @@ pppoe_cp_dispatch (vlib_main_t * vm,
               /* set src mac address */
               si = vnet_get_sw_interface(vnm, tx_sw_if_index0);
               hi = vnet_get_hw_interface (vnm, si->hw_if_index);
-              clib_memcpy (vlib_buffer_get_current (b0)+6, hi->hw_address, 6);
+              clib_memcpy_fast (vlib_buffer_get_current (b0)+6, hi->hw_address, 6);
             }
           else
             {

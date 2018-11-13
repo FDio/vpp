@@ -356,7 +356,8 @@ default_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
 #endif
 	  if (cmsg->cmsg_type == SCM_RIGHTS)
 	    {
-	      clib_memcpy (fds, CMSG_DATA (cmsg), num_fds * sizeof (int));
+	      clib_memcpy_fast (fds, CMSG_DATA (cmsg),
+				num_fds * sizeof (int));
 	    }
 	}
       cmsg = CMSG_NXTHDR (&mh, cmsg);

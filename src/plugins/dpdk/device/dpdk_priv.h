@@ -97,7 +97,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
     return;
 
   xd->time_last_stats_update = now ? now : xd->time_last_stats_update;
-  clib_memcpy (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));
+  clib_memcpy_fast (&xd->last_stats, &xd->stats, sizeof (xd->last_stats));
   rte_eth_stats_get (xd->port_id, &xd->stats);
 
   /* maybe bump interface rx no buffer counter */

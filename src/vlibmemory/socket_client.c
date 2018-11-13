@@ -246,7 +246,7 @@ vl_sock_api_recv_fd_msg (int socket_fd, int fds[], int n_fds, u32 wait)
 	    }
 	  else if (cmsg->cmsg_type == SCM_RIGHTS)
 	    {
-	      clib_memcpy (fds, CMSG_DATA (cmsg), sizeof (int) * n_fds);
+	      clib_memcpy_fast (fds, CMSG_DATA (cmsg), sizeof (int) * n_fds);
 	    }
 	}
       cmsg = CMSG_NXTHDR (&mh, cmsg);

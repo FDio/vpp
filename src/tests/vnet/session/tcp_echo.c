@@ -306,7 +306,7 @@ application_send_attach (echo_main_t * em)
   cert_mp->client_index = em->my_client_index;
   cert_mp->context = ntohl (0xfeedface);
   cert_mp->cert_len = clib_host_to_net_u16 (test_srv_crt_rsa_len);
-  clib_memcpy (cert_mp->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  clib_memcpy_fast (cert_mp->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & cert_mp);
 
   key_mp = vl_msg_api_alloc (sizeof (*key_mp) + test_srv_key_rsa_len);
@@ -315,7 +315,7 @@ application_send_attach (echo_main_t * em)
   key_mp->client_index = em->my_client_index;
   key_mp->context = ntohl (0xfeedface);
   key_mp->key_len = clib_host_to_net_u16 (test_srv_key_rsa_len);
-  clib_memcpy (key_mp->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  clib_memcpy_fast (key_mp->key, test_srv_key_rsa, test_srv_key_rsa_len);
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & key_mp);
 }
 

@@ -1650,12 +1650,12 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 							  te->n_data_elts,
 							  te->n_data_elt_bytes);
 		      if (te->n_data_bytes < sizeof (te->inline_event_data))
-			clib_memcpy (data, te->inline_event_data,
-				     te->n_data_bytes);
+			clib_memcpy_fast (data, te->inline_event_data,
+					  te->n_data_bytes);
 		      else
 			{
-			  clib_memcpy (data, te->event_data_as_vector,
-				       te->n_data_bytes);
+			  clib_memcpy_fast (data, te->event_data_as_vector,
+					    te->n_data_bytes);
 			  vec_free (te->event_data_as_vector);
 			}
 		      pool_put (nm->signal_timed_event_data_pool, te);

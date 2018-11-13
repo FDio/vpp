@@ -330,17 +330,17 @@ bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
 	{
 	  return rv;
 	}
-      clib_memcpy (&headers->ip6.dst_address, &key->local_addr.ip6,
-		   sizeof (headers->ip6.dst_address));
+      clib_memcpy_fast (&headers->ip6.dst_address, &key->local_addr.ip6,
+			sizeof (headers->ip6.dst_address));
 
       headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd_echo6);
     }
   else
     {
-      clib_memcpy (&headers->ip6.src_address, &key->local_addr.ip6,
-		   sizeof (headers->ip6.src_address));
-      clib_memcpy (&headers->ip6.dst_address, &key->peer_addr.ip6,
-		   sizeof (headers->ip6.dst_address));
+      clib_memcpy_fast (&headers->ip6.src_address, &key->local_addr.ip6,
+			sizeof (headers->ip6.src_address));
+      clib_memcpy_fast (&headers->ip6.dst_address, &key->peer_addr.ip6,
+			sizeof (headers->ip6.dst_address));
       headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd6);
     }
 
@@ -1211,7 +1211,7 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length
 	    : sizeof (t0->data);
 	  t0->len = len;
-	  clib_memcpy (t0->data, vlib_buffer_get_current (b0), len);
+	  clib_memcpy_fast (t0->data, vlib_buffer_get_current (b0), len);
 	}
 
       /* scan this bfd pkt. error0 is the counter index to bmp */
@@ -1369,7 +1369,7 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  len = (b0->current_length < sizeof (t0->data)) ? b0->current_length
 	    : sizeof (t0->data);
 	  t0->len = len;
-	  clib_memcpy (t0->data, vlib_buffer_get_current (b0), len);
+	  clib_memcpy_fast (t0->data, vlib_buffer_get_current (b0), len);
 	}
 
       bfd_lock (bm);

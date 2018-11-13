@@ -401,7 +401,7 @@ vppcom_app_send_attach (void)
   if (nsid_len)
     {
       bmp->namespace_id_len = nsid_len;
-      clib_memcpy (bmp->namespace_id, vcm->cfg.namespace_id, nsid_len);
+      clib_memcpy_fast (bmp->namespace_id, vcm->cfg.namespace_id, nsid_len);
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = vcm->cfg.namespace_secret;
     }
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
@@ -453,10 +453,10 @@ vppcom_send_connect_sock (vcl_session_t * session)
   cmp->context = session->session_index;
   cmp->wrk_index = vcl_get_worker_index ();
   cmp->is_ip4 = session->transport.is_ip4;
-  clib_memcpy (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
+  clib_memcpy_fast (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
   cmp->port = session->transport.rmt_port;
   cmp->proto = session->session_type;
-  clib_memcpy (cmp->options, session->options, sizeof (cmp->options));
+  clib_memcpy_fast (cmp->options, session->options, sizeof (cmp->options));
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & cmp);
 }
 
@@ -490,10 +490,10 @@ vppcom_send_bind_sock (vcl_session_t * session)
   bmp->context = session->session_index;
   bmp->wrk_index = vcl_get_worker_index ();
   bmp->is_ip4 = session->transport.is_ip4;
-  clib_memcpy (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
+  clib_memcpy_fast (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
   bmp->port = session->transport.lcl_port;
   bmp->proto = session->session_type;
-  clib_memcpy (bmp->options, session->options, sizeof (bmp->options));
+  clib_memcpy_fast (bmp->options, session->options, sizeof (bmp->options));
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
 }
 

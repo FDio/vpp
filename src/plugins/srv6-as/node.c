@@ -316,8 +316,8 @@ srv6_as2_rewrite_fn (vlib_main_t * vm,
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
 		      (vec_len (ls0_mem->rewrite) + b0->current_data));
 
-	      clib_memcpy (((u8 *) en0) - vec_len (ls0_mem->rewrite),
-			   ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
+	      clib_memcpy_fast (((u8 *) en0) - vec_len (ls0_mem->rewrite),
+				ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
 	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -340,10 +340,10 @@ srv6_as2_rewrite_fn (vlib_main_t * vm,
 		}
 	      else
 		{
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			       sizeof tr->src.as_u8);
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			       sizeof tr->dst.as_u8);
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
+				    sizeof tr->src.as_u8);
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
+				    sizeof tr->dst.as_u8);
 		}
 	    }
 
@@ -451,8 +451,9 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
 		      (vec_len (ls0_mem->rewrite) + b0->current_data));
 
-	      clib_memcpy (((u8 *) ip0_encap) - vec_len (ls0_mem->rewrite),
-			   ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
+	      clib_memcpy_fast (((u8 *) ip0_encap) -
+				vec_len (ls0_mem->rewrite), ls0_mem->rewrite,
+				vec_len (ls0_mem->rewrite));
 	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -483,10 +484,10 @@ srv6_as4_rewrite_fn (vlib_main_t * vm,
 		}
 	      else
 		{
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			       sizeof tr->src.as_u8);
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			       sizeof tr->dst.as_u8);
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
+				    sizeof tr->src.as_u8);
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
+				    sizeof tr->dst.as_u8);
 		}
 	    }
 
@@ -593,8 +594,9 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 	      ASSERT (VLIB_BUFFER_PRE_DATA_SIZE >=
 		      (vec_len (ls0_mem->rewrite) + b0->current_data));
 
-	      clib_memcpy (((u8 *) ip0_encap) - vec_len (ls0_mem->rewrite),
-			   ls0_mem->rewrite, vec_len (ls0_mem->rewrite));
+	      clib_memcpy_fast (((u8 *) ip0_encap) -
+				vec_len (ls0_mem->rewrite), ls0_mem->rewrite,
+				vec_len (ls0_mem->rewrite));
 	      vlib_buffer_advance (b0, -(word) vec_len (ls0_mem->rewrite));
 
 	      ip0 = vlib_buffer_get_current (b0);
@@ -621,10 +623,10 @@ srv6_as6_rewrite_fn (vlib_main_t * vm,
 		}
 	      else
 		{
-		  clib_memcpy (tr->src.as_u8, ip0->src_address.as_u8,
-			       sizeof tr->src.as_u8);
-		  clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
-			       sizeof tr->dst.as_u8);
+		  clib_memcpy_fast (tr->src.as_u8, ip0->src_address.as_u8,
+				    sizeof tr->src.as_u8);
+		  clib_memcpy_fast (tr->dst.as_u8, ip0->dst_address.as_u8,
+				    sizeof tr->dst.as_u8);
 		}
 	    }
 

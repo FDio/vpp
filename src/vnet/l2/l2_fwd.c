@@ -324,8 +324,8 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
 	      t->bd_index = vnet_buffer (b[0])->l2.bd_index;
-	      clib_memcpy (t->src, h0->src_address, 6);
-	      clib_memcpy (t->dst, h0->dst_address, 6);
+	      clib_memcpy_fast (t->src, h0->src_address, 6);
+	      clib_memcpy_fast (t->dst, h0->dst_address, 6);
 	      t->result = result0;
 	    }
 	  if (b[1]->flags & VLIB_BUFFER_IS_TRACED)
@@ -333,8 +333,8 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[1], sizeof (*t));
 	      t->sw_if_index = sw_if_index1;
 	      t->bd_index = vnet_buffer (b[1])->l2.bd_index;
-	      clib_memcpy (t->src, h1->src_address, 6);
-	      clib_memcpy (t->dst, h1->dst_address, 6);
+	      clib_memcpy_fast (t->src, h1->src_address, 6);
+	      clib_memcpy_fast (t->dst, h1->dst_address, 6);
 	      t->result = result1;
 	    }
 	  if (b[2]->flags & VLIB_BUFFER_IS_TRACED)
@@ -342,8 +342,8 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[2], sizeof (*t));
 	      t->sw_if_index = sw_if_index2;
 	      t->bd_index = vnet_buffer (b[2])->l2.bd_index;
-	      clib_memcpy (t->src, h2->src_address, 6);
-	      clib_memcpy (t->dst, h2->dst_address, 6);
+	      clib_memcpy_fast (t->src, h2->src_address, 6);
+	      clib_memcpy_fast (t->dst, h2->dst_address, 6);
 	      t->result = result2;
 	    }
 	  if (b[3]->flags & VLIB_BUFFER_IS_TRACED)
@@ -351,8 +351,8 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b[3], sizeof (*t));
 	      t->sw_if_index = sw_if_index3;
 	      t->bd_index = vnet_buffer (b[3])->l2.bd_index;
-	      clib_memcpy (t->src, h3->src_address, 6);
-	      clib_memcpy (t->dst, h3->dst_address, 6);
+	      clib_memcpy_fast (t->src, h3->src_address, 6);
+	      clib_memcpy_fast (t->dst, h3->dst_address, 6);
 	      t->result = result3;
 	    }
 	}
@@ -387,8 +387,8 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  l2fwd_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	  t->sw_if_index = sw_if_index0;
 	  t->bd_index = vnet_buffer (b[0])->l2.bd_index;
-	  clib_memcpy (t->src, h0->src_address, 6);
-	  clib_memcpy (t->dst, h0->dst_address, 6);
+	  clib_memcpy_fast (t->src, h0->src_address, 6);
+	  clib_memcpy_fast (t->dst, h0->dst_address, 6);
 	  t->result = result0;
 	}
 

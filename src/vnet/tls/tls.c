@@ -479,7 +479,7 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 
   ctx_handle = tls_ctx_alloc (ho_ctx->tls_ctx_engine);
   ctx = tls_ctx_get (ctx_handle);
-  clib_memcpy (ctx, ho_ctx, sizeof (*ctx));
+  clib_memcpy_fast (ctx, ho_ctx, sizeof (*ctx));
   tls_ctx_half_open_reader_unlock ();
   tls_ctx_half_open_free (ho_ctx_index);
 
@@ -548,7 +548,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   app_worker_alloc_connects_segment_manager (app_wrk);
   ctx->tls_ctx_engine = engine_type;
 
-  clib_memcpy (&cargs->sep, sep, sizeof (session_endpoint_t));
+  clib_memcpy_fast (&cargs->sep, sep, sizeof (session_endpoint_t));
   cargs->sep.transport_proto = TRANSPORT_PROTO_TCP;
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_index;

@@ -850,8 +850,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_validate (ldp->sid_rd_bitmap, minbits);
       clib_bitmap_validate (ldp->libc_rd_bitmap, minbits);
       clib_bitmap_validate (ldp->rd_bitmap, minbits);
-      clib_memcpy (ldp->rd_bitmap, readfds,
-		   vec_len (ldp->rd_bitmap) * sizeof (clib_bitmap_t));
+      clib_memcpy_fast (ldp->rd_bitmap, readfds,
+			vec_len (ldp->rd_bitmap) * sizeof (clib_bitmap_t));
       FD_ZERO (readfds);
 
       /* *INDENT-OFF* */
@@ -884,8 +884,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_validate (ldp->sid_wr_bitmap, minbits);
       clib_bitmap_validate (ldp->libc_wr_bitmap, minbits);
       clib_bitmap_validate (ldp->wr_bitmap, minbits);
-      clib_memcpy (ldp->wr_bitmap, writefds,
-		   vec_len (ldp->wr_bitmap) * sizeof (clib_bitmap_t));
+      clib_memcpy_fast (ldp->wr_bitmap, writefds,
+			vec_len (ldp->wr_bitmap) * sizeof (clib_bitmap_t));
       FD_ZERO (writefds);
 
       /* *INDENT-OFF* */
@@ -918,8 +918,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_validate (ldp->sid_ex_bitmap, minbits);
       clib_bitmap_validate (ldp->libc_ex_bitmap, minbits);
       clib_bitmap_validate (ldp->ex_bitmap, minbits);
-      clib_memcpy (ldp->ex_bitmap, exceptfds,
-		   vec_len (ldp->ex_bitmap) * sizeof (clib_bitmap_t));
+      clib_memcpy_fast (ldp->ex_bitmap, exceptfds,
+			vec_len (ldp->ex_bitmap) * sizeof (clib_bitmap_t));
       FD_ZERO (exceptfds);
 
       /* *INDENT-OFF* */
@@ -964,17 +964,17 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	      func_str = "vppcom_select";
 
 	      if (readfds)
-		clib_memcpy (ldp->rd_bitmap, ldp->sid_rd_bitmap,
-			     vec_len (ldp->rd_bitmap) *
-			     sizeof (clib_bitmap_t));
+		clib_memcpy_fast (ldp->rd_bitmap, ldp->sid_rd_bitmap,
+				  vec_len (ldp->rd_bitmap) *
+				  sizeof (clib_bitmap_t));
 	      if (writefds)
-		clib_memcpy (ldp->wr_bitmap, ldp->sid_wr_bitmap,
-			     vec_len (ldp->wr_bitmap) *
-			     sizeof (clib_bitmap_t));
+		clib_memcpy_fast (ldp->wr_bitmap, ldp->sid_wr_bitmap,
+				  vec_len (ldp->wr_bitmap) *
+				  sizeof (clib_bitmap_t));
 	      if (exceptfds)
-		clib_memcpy (ldp->ex_bitmap, ldp->sid_ex_bitmap,
-			     vec_len (ldp->ex_bitmap) *
-			     sizeof (clib_bitmap_t));
+		clib_memcpy_fast (ldp->ex_bitmap, ldp->sid_ex_bitmap,
+				  vec_len (ldp->ex_bitmap) *
+				  sizeof (clib_bitmap_t));
 
 	      rv = vppcom_select (sid_bits,
 				  readfds ? ldp->rd_bitmap : NULL,
@@ -1049,14 +1049,17 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	  func_str = "libc_pselect";
 
 	  if (readfds)
-	    clib_memcpy (readfds, ldp->libc_rd_bitmap,
-			 vec_len (ldp->rd_bitmap) * sizeof (clib_bitmap_t));
+	    clib_memcpy_fast (readfds, ldp->libc_rd_bitmap,
+			      vec_len (ldp->rd_bitmap) *
+			      sizeof (clib_bitmap_t));
 	  if (writefds)
-	    clib_memcpy (writefds, ldp->libc_wr_bitmap,
-			 vec_len (ldp->wr_bitmap) * sizeof (clib_bitmap_t));
+	    clib_memcpy_fast (writefds, ldp->libc_wr_bitmap,
+			      vec_len (ldp->wr_bitmap) *
+			      sizeof (clib_bitmap_t));
 	  if (exceptfds)
-	    clib_memcpy (exceptfds, ldp->libc_ex_bitmap,
-			 vec_len (ldp->ex_bitmap) * sizeof (clib_bitmap_t));
+	    clib_memcpy_fast (exceptfds, ldp->libc_ex_bitmap,
+			      vec_len (ldp->ex_bitmap) *
+			      sizeof (clib_bitmap_t));
 	  tspec.tv_sec = tspec.tv_nsec = 0;
 	  rv = libc_pselect (libc_bits,
 			     readfds ? readfds : NULL,

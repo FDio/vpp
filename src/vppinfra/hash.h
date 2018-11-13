@@ -280,7 +280,7 @@ hash_set_mem_alloc (uword ** h, void *key, uword v)
 {
   size_t ksz = hash_header (*h)->user;
   void *copy = clib_mem_alloc (ksz);
-  clib_memcpy (copy, key, ksz);
+  clib_memcpy_fast (copy, key, ksz);
   hash_set_mem (*h, copy, v);
 }
 

@@ -280,7 +280,7 @@ assign_mask_type_index(acl_main_t *am, fa_5tuple_t *mask)
   if(~0 == mask_type_index) {
     pool_get_aligned (am->ace_mask_type_pool, mte, CLIB_CACHE_LINE_BYTES);
     mask_type_index = mte - am->ace_mask_type_pool;
-    clib_memcpy(&mte->mask, mask, sizeof(mte->mask));
+    clib_memcpy_fast(&mte->mask, mask, sizeof(mte->mask));
     mte->refcount = 0;
 
     /*
@@ -1500,8 +1500,8 @@ split_partition(acl_main_t *am, u32 first_index,
 		if(pae->mask_type_index != coll_mask_type_index) continue;
 		/* Computing min_mask and max_mask for colliding rules */
 		if(i==0){
-			clib_memcpy(min_tuple, mask, sizeof(fa_5tuple_t));
-			clib_memcpy(max_tuple, mask, sizeof(fa_5tuple_t));
+                        clib_memcpy_fast(min_tuple, mask, sizeof(fa_5tuple_t));
+			clib_memcpy_fast(max_tuple, mask, sizeof(fa_5tuple_t));
 		}else{
 			int j;
 			for(j=0; j<2; j++){

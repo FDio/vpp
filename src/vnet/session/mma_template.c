@@ -238,7 +238,7 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
 	  if (i != 0)
 	    {
 	      vec_add2 (next_indices, new_elts, i);
-	      clib_memcpy (new_elts, rp->next_indices, i * sizeof (u32));
+	      clib_memcpy_fast (new_elts, rp->next_indices, i * sizeof (u32));
 	    }
 	  if (vec_len (child->next_indices))
 	    vec_append (next_indices, child->next_indices);
@@ -246,8 +246,8 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
 	  if (left_to_add)
 	    {
 	      vec_add2 (next_indices, new_elts, left_to_add);
-	      clib_memcpy (new_elts, &rp->next_indices[i + 1],
-			   left_to_add * sizeof (u32));
+	      clib_memcpy_fast (new_elts, &rp->next_indices[i + 1],
+				left_to_add * sizeof (u32));
 	    }
 	  RT (mma_rule_free) (srt, child);
 	  vec_free (rp->next_indices);

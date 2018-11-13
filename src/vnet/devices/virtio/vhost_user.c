@@ -443,7 +443,7 @@ vhost_user_socket_read (clib_file_t * uf)
        VHOST_MEMORY_MAX_NREGIONS * sizeof (int)))
     {
       number_of_fds = (cmsg->cmsg_len - CMSG_LEN (0)) / sizeof (int);
-      clib_memcpy (fds, CMSG_DATA (cmsg), number_of_fds * sizeof (int));
+      clib_memcpy_fast (fds, CMSG_DATA (cmsg), number_of_fds * sizeof (int));
     }
 
   /* version 1, no reply bit set */
@@ -537,8 +537,8 @@ vhost_user_socket_read (clib_file_t * uf)
       unmap_all_mem_regions (vui);
       for (i = 0; i < msg.memory.nregions; i++)
 	{
-	  clib_memcpy (&(vui->regions[i]), &msg.memory.regions[i],
-		       sizeof (vhost_user_memory_region_t));
+	  clib_memcpy_fast (&(vui->regions[i]), &msg.memory.regions[i],
+			    sizeof (vhost_user_memory_region_t));
 
 	  long page_sz = get_huge_page_size (fds[i]);
 

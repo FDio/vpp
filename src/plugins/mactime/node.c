@@ -142,9 +142,9 @@ mactime_node_inline (vlib_main_t * vm,
 	  en0 = vlib_buffer_get_current (b0);
 	  kv.key = 0;
 	  if (is_tx)
-	    clib_memcpy (&kv.key, en0->dst_address, 6);
+	    clib_memcpy_fast (&kv.key, en0->dst_address, 6);
 	  else
-	    clib_memcpy (&kv.key, en0->src_address, 6);
+	    clib_memcpy_fast (&kv.key, en0->src_address, 6);
 
 	  /* Lookup the src/dst mac address */
 	  if (clib_bihash_search_8_8 (lut, &kv, &kv) < 0)
@@ -242,15 +242,16 @@ mactime_node_inline (vlib_main_t * vm,
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      mactime_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      clib_memcpy (t->src_mac, en0->src_address, sizeof (t->src_mac));
+	      clib_memcpy_fast (t->src_mac, en0->src_address,
+				sizeof (t->src_mac));
 
 	      t->next_index = next0;
 	      t->device_index = device_index0;
 
 	      if (dp)
 		{
-		  clib_memcpy (t->device_name, dp->device_name,
-			       ARRAY_LEN (t->device_name));
+		  clib_memcpy_fast (t->device_name, dp->device_name,
+				    ARRAY_LEN (t->device_name));
 		  t->device_name[ARRAY_LEN (t->device_name) - 1] = 0;
 		}
 	    }

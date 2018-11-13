@@ -84,10 +84,10 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
   if (f->type == VNET_FLOW_TYPE_IP6_N_TUPLE)
     {
       vnet_flow_ip6_n_tuple_t *t6 = &f->ip6_n_tuple;
-      clib_memcpy (ip6[0].hdr.src_addr, &t6->src_addr.addr, 16);
-      clib_memcpy (ip6[1].hdr.src_addr, &t6->src_addr.mask, 16);
-      clib_memcpy (ip6[0].hdr.dst_addr, &t6->dst_addr.addr, 16);
-      clib_memcpy (ip6[1].hdr.dst_addr, &t6->dst_addr.mask, 16);
+      clib_memcpy_fast (ip6[0].hdr.src_addr, &t6->src_addr.addr, 16);
+      clib_memcpy_fast (ip6[1].hdr.src_addr, &t6->src_addr.mask, 16);
+      clib_memcpy_fast (ip6[0].hdr.dst_addr, &t6->dst_addr.addr, 16);
+      clib_memcpy_fast (ip6[1].hdr.dst_addr, &t6->dst_addr.mask, 16);
       item->type = RTE_FLOW_ITEM_TYPE_IPV6;
       item->spec = ip6;
       item->mask = ip6 + 1;
@@ -183,9 +183,9 @@ dpdk_flow_add (dpdk_device_t * xd, vnet_flow_t * f, dpdk_flow_entry_t * fe)
       raw[0].item.relative = 1;
       raw[0].item.length = vxlan_hdr_sz;
 
-      clib_memcpy (raw[0].val + raw_sz, &spec_hdr, vxlan_hdr_sz);
+      clib_memcpy_fast (raw[0].val + raw_sz, &spec_hdr, vxlan_hdr_sz);
       raw[0].item.pattern = raw[0].val + raw_sz;
-      clib_memcpy (raw[1].val + raw_sz, &mask_hdr, vxlan_hdr_sz);
+      clib_memcpy_fast (raw[1].val + raw_sz, &mask_hdr, vxlan_hdr_sz);
       raw[1].item.pattern = raw[1].val + raw_sz;
 
       vec_add2 (items, item, 1);
