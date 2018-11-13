@@ -61,6 +61,7 @@ Update your local yum cache.
 
 .. code-block:: console
 
+   $ sudo yum clean all
    $ sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_release'
 
 The *'yum install vpp'* command will install the most recent release. To
@@ -109,6 +110,7 @@ Update your local yum cache.
 
 .. code-block:: console
 
+   $ sudo yum clean all
    $ sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_1810'
 
 The *'yum install vpp'* command will install the most recent build on the
@@ -155,6 +157,7 @@ Update your local yum cache.
 
 .. code-block:: console
 
+   $ sudo yum clean all
    $ sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_master'
 
 The *'yum install vpp'* command will install the most recent build on the
@@ -163,6 +166,7 @@ branch.
 
 .. code-block:: console
 
+   $ sudo yum clean all
    $ sudo yum --showduplicates list vpp* | expand
 
 Install VPP RPMs
