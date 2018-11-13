@@ -16,12 +16,13 @@ import logging
 import re
 import subprocess
 import platform
+import requests
 
 from collections import Counter
 
 # VPP_VERSION = '1707'
 # VPP_VERSION = '1710'
-VPP_VERSION = '1804'
+VPP_VERSION = '1810'
 
 
 class VPPUtil(object):
@@ -131,24 +132,23 @@ class VPPUtil(object):
         # Backup the sources list
         self._autoconfig_backup_file(sfile)
 
-        # Remove the current file
-        cmd = 'rm {}'.format(sfile)
-        (ret, stdout, stderr) = self.exec_command(cmd)
-        if ret != 0:
-            logging.debug('{} failed on node {} {}'.format(
-                cmd,
-                node['host'],
-                stderr))
-
-        reps = 'deb [trusted=yes] https://nexus.fd.io/content/'
+        reps = 'deb [trusted=yes] https://packagecloud.io/fdio/'
         # When using a stable branch
-        # reps += 'repositories/fd.io.stable.{}.ubuntu.{}.main/ ./\n'.format(fdio_release, ubuntu_version)
+        # reps += '{}/ubuntu {} main ./\n'.format(fdio_release, ubuntu_version)
         # When using release
-        reps += 'repositories/fd.io.ubuntu.{}.main/ ./\n'.format(ubuntu_version)
+        reps += 'release/ubuntu {} main ./\n'.format(ubuntu_version)
         # When using master
-        # reps += 'repositories/fd.io.master.ubuntu.{}.main/ ./\n'.format(ubuntu_version)
+        # reps += 'master/ubuntu {} main/ ./\n'.format(ubuntu_version)
 
-        cmd = 'echo "{0}" | sudo tee {1}'.format(reps, sfile)
+        with open(sfile, 'w') as sfd:
+            sfd.write(reps)
+            sfd.close()
+
+        # Add the key
+        key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format('release'))
+        # cmd = 'curl -L https://packagecloud.io/fdio/{}/gpgkey | apt-key add -'.format(fdio_release)
+        # cmd = 'curl -L https://packagecloud.io/fdio/{}/gpgkey | apt-key add -'.format('mastert')
+        cmd = 'echo "{}" | apt-key add -'.format(key.content)
         (ret, stdout, stderr) = self.exec_command(cmd)
         if ret != 0:
             raise RuntimeError('{} failed on node {} {}'.format(
@@ -168,16 +168,11 @@ class VPPUtil(object):
         self._install_vpp_pkg_ubuntu(node, 'vpp-lib')
         self._install_vpp_pkg_ubuntu(node, 'vpp')
         self._install_vpp_pkg_ubuntu(node, 'vpp-plugins')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-dpdk-dkms')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-dpdk-dev')
         self._install_vpp_pkg_ubuntu(node, 'vpp-api-python')
         self._install_vpp_pkg_ubuntu(node, 'vpp-api-java')
         self._install_vpp_pkg_ubuntu(node, 'vpp-api-lua')
         self._install_vpp_pkg_ubuntu(node, 'vpp-dev')
         self._install_vpp_pkg_ubuntu(node, 'vpp-dbg')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dbg')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dev')
 
     def _install_vpp_centos(self, node, fdio_release=VPP_VERSION,
                             centos_version='centos7'):
@@ -191,6 +186,23 @@ class VPPUtil(object):
         :type fdio_release: string
         :type centos_version: string
         """
+
+        # Be sure the correct system packages are installed
+        cmd = 'yum -y update'
+        (ret, stdout, stderr) = self.exec_command(cmd)
+        if ret != 0:
+            logging.debug('{} failed on node {} {}'.format(
+                cmd,
+                node['host'],
+                stderr))
+
+        cmd = 'yum -y install pygpgme yum-utils'
+        (ret, stdout, stderr) = self.exec_command(cmd)
+        if ret != 0:
+            logging.debug('{} failed on node {} {}'.format(
+                cmd,
+                node['host'],
+                stderr))
 
         # Modify the sources list
         sfile = '/etc/yum.repos.d/fdio-release.repo'
@@ -207,32 +219,57 @@ class VPPUtil(object):
                 node['host'],
                 stderr))
 
-        # Latest
-        # reps = '[fdio-master]\n'
-        # reps += 'name=fd.io master branch latest merge\n'
-        # reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.master.{}/\n'.format(centos_version)
-        # reps = '[fdio-stable-{}]\n'.format(fdio_release)
-        # reps += 'name=fd.io stable/{} branch latest merge\n'.format(fdio_release)
-        # When using stable
-        # reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.stable.{}.{}/\n'.\
-        #     format(fdio_release, centos_version)
-        # When using release
-        reps = '[fdio-release]\n'
-        reps += 'name=fd.io release branch latest merge\n'
-        reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.{}/\n'.format(centos_version)
-        reps += 'enabled=1\n'
-        reps += 'gpgcheck=0'
+        # Set the branch
+        bname = 'release'
+        # bname = '1810'
+        # bname = 'master'
 
-        cmd = 'echo "{0}" | sudo tee {1}'.format(reps, sfile)
+        # Get the file contents
+        reps = '[fdio_{}]\n'.format(bname)
+        reps += 'name=fdio_{}\n'.format(bname)
+        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/$basearch\n'.format(bname)
+        reps += 'repo_gpgcheck=1\n'
+        reps += 'gpgcheck=0\n'
+        reps += 'enabled=1\n'
+        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(bname)
+        reps += 'sslverify=1\n'
+        reps += 'sslcacert=/etc/pki/tls/certs/ca-bundle.crt\n'
+        reps += 'metadata_expire=300\n'
+        reps += '\n'
+        reps += '[fdio_{}-source]\n'.format(bname)
+        reps += 'name=fdio_release-{}\n'.format(bname)
+        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/SRPMS\n'.format(bname)
+        reps += 'repo_gpgcheck=1\n'
+        reps += 'gpgcheck=0\n'
+        reps += 'enabled=1\n'
+        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(bname)
+        reps += 'sslverify =1\n'
+        reps += 'sslcacert=/etc/pki/tls/certs/ca-bundle.crt\n'
+        reps += 'metadata_expire=300\n'
+
+        with open(sfile, 'w') as sfd:
+            sfd.write(reps)
+            sfd.close()
+
+        # Update the fdio repo
+        cmd = 'yum clean all'
         (ret, stdout, stderr) = self.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} failed on node {} {}'.format(
+            logging.debug('{} failed on node {} {}'.format(
+                cmd,
+                node['host'],
+                stderr))
+
+        cmd = "yum -q makecache -y --disablerepo='*' --enablerepo='fdio_{}'".format(bname)
+        (ret, stdout, stderr) = self.exec_command(cmd)
+        if ret != 0:
+            logging.debug('{} failed on node {} {}'.format(
                 cmd,
                 node['host'],
                 stderr))
 
         # Install the packages
- 
+        self._install_vpp_pkg_centos(node, 'vpp-selinux-policy')
         self._install_vpp_pkg_centos(node, 'vpp-lib')
         self._install_vpp_pkg_centos(node, 'vpp')
         self._install_vpp_pkg_centos(node, 'vpp-plugins')
@@ -241,9 +278,6 @@ class VPPUtil(object):
         self._install_vpp_pkg_centos(node, 'vpp-api-lua')
         self._install_vpp_pkg_centos(node, 'vpp-devel')
         self._install_vpp_pkg_centos(node, 'vpp-debuginfo')
-        self._install_vpp_pkg_centos(node, 'vpp-nsh-plugin')
-        self._install_vpp_pkg_centos(node, 'vpp-nsh-plugin-devel')
-        self._install_vpp_pkg_centos(node, 'vpp-selinux-policy')
 
     def install_vpp(self, node):
         """
@@ -307,17 +341,12 @@ class VPPUtil(object):
         if len(pkgs) > 0:
             if 'version' in pkgs[0]:
                 logging.info("Uninstall Ubuntu Packages")
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dev')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin-dbg')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-nsh-plugin')
+                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dbg')
+                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dev')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-python')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-java')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-lua')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-plugins')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dpdk-dev')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dpdk-dkms')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dev')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dbg')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp')
                 self._uninstall_vpp_pkg_ubuntu(node, 'vpp-lib')
             else:
@@ -340,17 +369,15 @@ class VPPUtil(object):
         if len(pkgs) > 0:
             if 'version' in pkgs[0]:
                 logging.info("Uninstall CentOS Packages")
-                self._uninstall_vpp_pkg_centos(node, 'vpp-selinux-policy')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-nsh-plugin-devel')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-nsh-plugin')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-debuginfo')
+                self._install_vpp_pkg_centos(node, 'vpp-debuginfo')
+                self._uninstall_vpp_pkg_centos(node, 'vpp-devel')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-api-python')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-api-java')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-api-lua')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-plugins')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-devel')
                 self._uninstall_vpp_pkg_centos(node, 'vpp')
                 self._uninstall_vpp_pkg_centos(node, 'vpp-lib')
+                self._uninstall_vpp_pkg_centos(node, 'vpp-selinux-policy')
             else:
                 logging.info("Uninstall locally installed CentOS Packages")
                 for pkg in pkgs:
@@ -684,7 +711,7 @@ class VPPUtil(object):
         cmd = 'service vpp stop'
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.
+            logging.debug('{} failed on node {} {} {}'.
                                format(cmd, node['host'],
                                       stdout, stderr))
 
