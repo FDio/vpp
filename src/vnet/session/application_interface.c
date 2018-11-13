@@ -554,7 +554,7 @@ vnet_application_detach (vnet_app_detach_args_t * a)
     }
 
   app_interface_check_thread_and_barrier (vnet_application_detach, a);
-  application_free (app);
+  application_detach_process (app, a->api_client_index);
   return 0;
 }
 
