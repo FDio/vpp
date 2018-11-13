@@ -526,6 +526,18 @@ vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & rmp);
 }
 
+void
+vcl_send_app_worker_own_session (u64 vpp_handle)
+{
+  vl_api_app_worker_own_session_t *mp;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_OWN_SESSION);
+  mp->client_index = vcm->my_client_index;
+  mp->wrk_index = vcl_get_worker_index ();
+  mp->session_handle = vpp_handle;
+}
+
 u32
 vcl_max_nsid_len (void)
 {

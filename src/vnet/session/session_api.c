@@ -59,6 +59,7 @@ _(SESSION_RULES_DUMP, session_rules_dump)				\
 _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
 _(APP_WORKER_ADD_DEL, app_worker_add_del)				\
+_(APP_WORKER_OWN_SESSION, app_worker_own_session)			\
 
 static int
 session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
@@ -1406,6 +1407,43 @@ done:
 
   if (n_fds)
     session_send_fds (reg, fds, n_fds);
+}
+
+static void
+vl_api_app_worker_own_session_t_handler (vl_api_app_worker_own_session_t * mp)
+{
+  vl_api_app_worker_own_session_reply_t *rmp;
+  clib_error_t *error;
+  application_t *app;
+  int rv = 0;
+
+  if (!session_manager_is_enabled ())
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    {
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      goto done;
+    }
+
+  vnet_app_worker_own_session_args_t args = {
+    .app_index = app->app_index,
+    .wrk_map_index = clib_net_to_host_u32 (mp->wrk_index),
+    .session_handle = clib_net_to_host_u64 (mp->session_handle),
+  };
+
+  if ((error = vnet_app_worker_own_session (&args)))
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+
+done:
+  REPLY_MACRO (VL_API_APP_WORKER_OWN_SESSION_REPLY);
 }
 
 static void

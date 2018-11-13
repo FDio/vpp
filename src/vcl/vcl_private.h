@@ -494,6 +494,7 @@ void vppcom_send_unbind_sock (u64 vpp_handle);
 void vppcom_api_hookup (void);
 void vppcom_send_accept_session_reply (u64 vpp_handle, u32 context, int rv);
 void vcl_send_app_worker_add_del (u8 is_add);
+void vcl_send_app_worker_own_session (u64 vpp_handle);
 
 u32 vcl_max_nsid_len (void);
 
