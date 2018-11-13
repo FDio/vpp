@@ -1302,9 +1302,10 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
   clib_bihash_kv_16_8_t *kvp = va_arg (*args, clib_bihash_kv_16_8_t *);
   u32 is_local = va_arg (*args, u32), app_wrk_index, session_index;
   v4_connection_key_t *key = (v4_connection_key_t *) kvp->key;
-  u8 *app_name, *str = 0;
   stream_session_t *session;
   app_worker_t *app_wrk;
+  const u8 *app_name;
+  u8 *str = 0;
 
   if (!is_local)
     {
@@ -1327,7 +1328,6 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 		    clib_net_to_host_u16 (key->src_port));
       s = format (s, "%-30v%-30v", str, app_name);
     }
-  vec_free (app_name);
   return s;
 }
 
