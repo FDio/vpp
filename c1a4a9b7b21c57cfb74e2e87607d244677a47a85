@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "71a59d2f_c567e2b7",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c0c2cf19_ca3cf743",
+      "range": {
+        "startLine": 86,
+        "startChar": 2,
+        "endLine": 86,
+        "endChar": 19
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e448ce6f_2e461609",
         "filename": "src/plugins/ipsecmb/ah_decrypt.c",
         "patchSetId": 23
@@ -59,6 +83,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "why checking both ? looking at the control plane code \"is_tunnel_ip6\" means \"is_tunnel and is_ip6\" - when it is set the is_tunnel is also always set. And why PREDICT_TRUE ?",
+      "range": {
+        "startLine": 96,
+        "startChar": 20,
+        "endLine": 96,
+        "endChar": 56
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "719bd693_0ca0dee3",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "because for ipv4 case, is_tunnel_ip6 won\u0027t be set and the code still needs to execute\n\nPREDICIT_TRUE is taken over from the original code, which seems to be tuned for tunnel performance, I can drop it ...\n\ndo you want me to drop all PREDICT_* stuff in this file?",
+      "parentUuid": "e448ce6f_2e461609",
       "range": {
         "startLine": 96,
         "startChar": 20,
@@ -94,6 +142,30 @@
     },
     {
       "key": {
+        "uuid": "dc4beb4a_dd0d3c35",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "ESP has integrity check built-in so mixing it doesn\u0027t make  much sense no?\n\nBut the real reason is because the original code doesn\u0027t support it and the request was to be 1:1 feature-wise",
+      "parentUuid": "d3e05031_1aae33f1",
+      "range": {
+        "startLine": 100,
+        "startChar": 10,
+        "endLine": 100,
+        "endChar": 60
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d72f16ed_1a9eb66e",
         "filename": "src/plugins/ipsecmb/ah_decrypt.c",
         "patchSetId": 23
@@ -105,6 +177,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "Would getting rid of conditional and using node-\u003enode_index here justwork(tm) ? you can pass that index via the callers of this, who conveniently can also delete a few LOC by doing the same trick.",
+      "range": {
+        "startLine": 107,
+        "startChar": 0,
+        "endLine": 114,
+        "endChar": 9
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1387f8d4_1b815cee",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d72f16ed_1a9eb66e",
       "range": {
         "startLine": 107,
         "startChar": 0,
@@ -140,6 +236,30 @@
     },
     {
       "key": {
+        "uuid": "4934a4d7_3ca6696c",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "31e6c1eb_b73f17bd",
+      "range": {
+        "startLine": 165,
+        "startChar": 15,
+        "endLine": 165,
+        "endChar": 45
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "64a43421_d28051d6",
         "filename": "src/plugins/ipsecmb/ah_decrypt.c",
         "patchSetId": 23
@@ -151,6 +271,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "not a biggie, but you could probably pass the node index and get rid of the (even if optimized away) conditional, making it easier to read.",
+      "range": {
+        "startLine": 212,
+        "startChar": 0,
+        "endLine": 217,
+        "endChar": 42
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b2734b4_ec24cd9d",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "64a43421_d28051d6",
       "range": {
         "startLine": 212,
         "startChar": 0,
@@ -186,6 +330,30 @@
     },
     {
       "key": {
+        "uuid": "5a93509f_ffe5ca65",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8affb574_d839d03e",
+      "range": {
+        "startLine": 89,
+        "startChar": 1,
+        "endLine": 97,
+        "endChar": 2
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c083f85a_cc810f3c",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 23
@@ -197,6 +365,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "same as above.",
+      "range": {
+        "startLine": 105,
+        "startChar": 0,
+        "endLine": 113,
+        "endChar": 2
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "351c062e_7a75408d",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c083f85a_cc810f3c",
       "range": {
         "startLine": 105,
         "startChar": 0,
@@ -232,6 +424,30 @@
     },
     {
       "key": {
+        "uuid": "a226ce32_66026ea5",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "18ef10a4_47ea0496",
+      "range": {
+        "startLine": 221,
+        "startChar": 0,
+        "endLine": 222,
+        "endChar": 22
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9c876564_ae96d8da",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 23
@@ -243,6 +459,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "ETHERNET: this is what makes our life in ah_finish_encrypt miserable and why it causes headscratching for the innocent observers... Move this piece to below ah_finish_encrypt() call, since the IPSec engine already has the pointer to the data in the buffer, so we can do the buffer advance just before actually filling in the ethernet bufer.. then the ah_finish_encrypt will have a stable current pointer thus avoiding the cascade of conditionals there.",
+      "range": {
+        "startLine": 333,
+        "startChar": 3,
+        "endLine": 337,
+        "endChar": 6
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "38f838f5_654b108b",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9c876564_ae96d8da",
       "range": {
         "startLine": 333,
         "startChar": 3,
@@ -272,6 +512,24 @@
     },
     {
       "key": {
+        "uuid": "3afadc94_e0a03a92",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6e26fb6f_f849d9a6",
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6108729e_568115da",
         "filename": "src/plugins/ipsecmb/ah_encrypt.c",
         "patchSetId": 23
@@ -283,6 +541,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "ETHERNET: and of course here as well.\nwhich arguably makes some sense to stick that code into ah_finish_encrypt to avoid making too much copypasta.. but I leave it up to you.",
+      "range": {
+        "startLine": 396,
+        "startChar": 7,
+        "endLine": 396,
+        "endChar": 24
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4736bb89_76cd4aed",
+        "filename": "src/plugins/ipsecmb/ah_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 396,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6108729e_568115da",
       "range": {
         "startLine": 396,
         "startChar": 7,
@@ -318,6 +600,30 @@
     },
     {
       "key": {
+        "uuid": "b187afbd_56f75826",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "71de4f1c_16f38cba",
+      "range": {
+        "startLine": 102,
+        "startChar": 0,
+        "endLine": 110,
+        "endChar": 34
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e86561df_175158af",
         "filename": "src/plugins/ipsecmb/esp_decrypt.c",
         "patchSetId": 23
@@ -329,6 +635,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "why do we need this ? (i.e. who do we expect to hold the references ? I don\u0027t see this code incrementing it, and I don\u0027t see it in the other IPSEC engine...",
+      "range": {
+        "startLine": 258,
+        "startChar": 3,
+        "endLine": 263,
+        "endChar": 6
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3633e451_3b8f57fa",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "that would be another feature like port mirroring - I don\u0027t know how that works, but Damjan mentioned that this might be \u003e0 and in that case the code can\u0027t modify the original buffer in place",
+      "parentUuid": "e86561df_175158af",
       "range": {
         "startLine": 258,
         "startChar": 3,
@@ -364,6 +694,30 @@
     },
     {
       "key": {
+        "uuid": "94256bf6_734a3733",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3c7aac02_ab1cecdd",
+      "range": {
+        "startLine": 306,
+        "startChar": 0,
+        "endLine": 315,
+        "endChar": 0
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6fa66572_a4ce2eab",
         "filename": "src/plugins/ipsecmb/esp_decrypt.c",
         "patchSetId": 23
@@ -375,6 +729,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "pass around the node index and get rid of conditional and global vars.",
+      "range": {
+        "startLine": 327,
+        "startChar": 5,
+        "endLine": 336,
+        "endChar": 11
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dc2cd122_c5107fe8",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6fa66572_a4ce2eab",
       "range": {
         "startLine": 327,
         "startChar": 5,
@@ -410,6 +788,30 @@
     },
     {
       "key": {
+        "uuid": "588dd2ac_7a1cd4ec",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "well we need to step back because the ip header is already consumed (as in the current pointer is past it)\n\ndo you have a better idea? this is how the original code does it. ..",
+      "parentUuid": "6aec7f90_858ad29b",
+      "range": {
+        "startLine": 307,
+        "startChar": 0,
+        "endLine": 344,
+        "endChar": 3
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "84f7962b_8570c945",
         "filename": "src/plugins/ipsecmb/esp_decrypt.c",
         "patchSetId": 23
@@ -421,6 +823,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "Use node-\u003enode_index here and conditional (and global vars) be gone :)",
+      "range": {
+        "startLine": 438,
+        "startChar": 0,
+        "endLine": 446,
+        "endChar": 28
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a6421496_74ae5666",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 446,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "84f7962b_8570c945",
       "range": {
         "startLine": 438,
         "startChar": 0,
@@ -456,6 +882,30 @@
     },
     {
       "key": {
+        "uuid": "4e410a75_9319e93a",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ecec12f_540d1c28",
+      "range": {
+        "startLine": 73,
+        "startChar": 20,
+        "endLine": 73,
+        "endChar": 24
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "74ab670a_778696dd",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -467,6 +917,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "ouch. 4K(oops) VLA(oops) on the stack just like that ? I\u0027d say this should sit in the per-worker data somewhere. Especially given its purpose in life below.",
+      "range": {
+        "startLine": 103,
+        "startChar": 6,
+        "endLine": 103,
+        "endChar": 31
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0d078450_e27b8eba",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "74ab670a_778696dd",
       "range": {
         "startLine": 103,
         "startChar": 6,
@@ -502,6 +976,30 @@
     },
     {
       "key": {
+        "uuid": "f347154c_865eac01",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3f89263c_a69ac414",
+      "range": {
+        "startLine": 107,
+        "startChar": 35,
+        "endLine": 107,
+        "endChar": 46
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5ca766ff_52c4c8f3",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -513,6 +1011,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "bytes_read may be 3. block size is 16... So then you copy 3 random and 13 non-random bytes from whatever was there in the buffer.. maybe okayish elsewhere but not in IPSEC...",
+      "range": {
+        "startLine": 110,
+        "startChar": 38,
+        "endLine": 110,
+        "endChar": 48
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6ad2e662_1a238228",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5ca766ff_52c4c8f3",
       "range": {
         "startLine": 110,
         "startChar": 38,
@@ -548,6 +1070,30 @@
     },
     {
       "key": {
+        "uuid": "7cc8ffff_ec5f86ec",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "edd90a56_2fa31caf",
+      "range": {
+        "startLine": 151,
+        "startChar": 1,
+        "endLine": 162,
+        "endChar": 5
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "eaa3497a_97a8cf95",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -559,6 +1105,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "use node-\u003enode_index and get rid of conditional and global variables.",
+      "range": {
+        "startLine": 242,
+        "startChar": 0,
+        "endLine": 249,
+        "endChar": 43
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "91f4c4bc_9e8c128a",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eaa3497a_97a8cf95",
       "range": {
         "startLine": 242,
         "startChar": 0,
@@ -594,6 +1164,30 @@
     },
     {
       "key": {
+        "uuid": "6c8e3178_07d8163f",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "other code like port mirroring?",
+      "parentUuid": "1d23f385_c4a0c2b4",
+      "range": {
+        "startLine": 258,
+        "startChar": 0,
+        "endLine": 263,
+        "endChar": 6
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "57468f86_2f5e2931",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -605,6 +1199,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "this should be \"ASSERT(sa0-\u003eis_tunnel_ip6); if (sa0-\u003eis_tunnel)\"",
+      "range": {
+        "startLine": 272,
+        "startChar": 10,
+        "endLine": 272,
+        "endChar": 48
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "84e6be93_31639ccb",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "57468f86_2f5e2931",
       "range": {
         "startLine": 272,
         "startChar": 10,
@@ -640,6 +1258,30 @@
     },
     {
       "key": {
+        "uuid": "fccc0bd0_c5c8f5e2",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "this is required for transport mode to work... if the sw_if_index is ! ~0, it means there is a valid ethernet header which we need to save\nfor tunnel mode, the packet goes via ip lookup, which handles forging the ethernet header down the chain",
+      "parentUuid": "02d7c44f_4ed45603",
+      "range": {
+        "startLine": 296,
+        "startChar": 4,
+        "endLine": 296,
+        "endChar": 53
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "46e6c812_1569d254",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -651,6 +1293,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "ETHERNET: this should go below... search for next \"ETHERNET\"...",
+      "range": {
+        "startLine": 304,
+        "startChar": 8,
+        "endLine": 305,
+        "endChar": 62
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a3979893_63985ab3",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "46e6c812_1569d254",
       "range": {
         "startLine": 304,
         "startChar": 8,
@@ -686,6 +1352,30 @@
     },
     {
       "key": {
+        "uuid": "8cba195d_ca5733c8",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eba00ec0_7525c96f",
+      "range": {
+        "startLine": 347,
+        "startChar": 0,
+        "endLine": 347,
+        "endChar": 53
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e5468606_e41405d2",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -697,6 +1387,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "next0 \u003d ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;\n\t\t      vlib_buffer_advance (b0, -sizeof (ethernet_header_t)); \n\nthese should go into an address-family independent conditional below the finalize, when refactored.",
+      "range": {
+        "startLine": 356,
+        "startChar": 0,
+        "endLine": 357,
+        "endChar": 62
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "09d5d2a7_0e2c6741",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e5468606_e41405d2",
       "range": {
         "startLine": 356,
         "startChar": 0,
@@ -732,6 +1446,30 @@
     },
     {
       "key": {
+        "uuid": "466b4ce9_1e4c69cb",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d89ab27e_301c0224",
+      "range": {
+        "startLine": 269,
+        "startChar": 0,
+        "endLine": 385,
+        "endChar": 6
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e5796195_77ec9089",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -743,6 +1481,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "Let\u0027s do some math.. based on line 392 the \n\njob-\u003esrc should be set to \n\n(u8 *) vlib_buffer_get_current (b0)  -\n\t    (sizeof (esp_header_t) + iv_size) + (u8 *) (esp + 1) + iv_size - (u8 *) vlib_buffer_get_current (b0);\n\nwhich after simplification gives:\n\n(u8 *) (esp + 1) + iv_size - (sizeof (esp_header_t) + iv_size)\n\nwhich then after further simplification gives:\n\n(u8 *) (esp + 1)  - (sizeof (esp_header_t))\n\nwhich after further simplifcation gives.... \n\n(u8 *) esp ? \n\nWhat I am missing here as to why not just use that ?",
+      "range": {
+        "startLine": 424,
+        "startChar": 0,
+        "endLine": 425,
+        "endChar": 39
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0ebaed80_dbdc925c",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e5796195_77ec9089",
       "range": {
         "startLine": 424,
         "startChar": 0,
@@ -772,6 +1534,24 @@
     },
     {
       "key": {
+        "uuid": "0066a694_fde3fd72",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "14142066_2ab953be",
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f7f5ccc1_717fd83f",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -789,6 +1569,24 @@
     },
     {
       "key": {
+        "uuid": "d3023a21_bfd962b0",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 503,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f7f5ccc1_717fd83f",
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1fe522b4_10b2ee7f",
         "filename": "src/plugins/ipsecmb/esp_encrypt.c",
         "patchSetId": 23
@@ -800,6 +1598,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "use node-\u003enode_index and remove global vars....",
+      "range": {
+        "startLine": 528,
+        "startChar": 0,
+        "endLine": 535,
+        "endChar": 28
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30949438_132c1d26",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 535,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1fe522b4_10b2ee7f",
       "range": {
         "startLine": 528,
         "startChar": 0,
@@ -835,6 +1657,30 @@
     },
     {
       "key": {
+        "uuid": "c5f4b65d_8065a00e",
+        "filename": "src/plugins/ipsecmb/ipsecmb.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "it doesn\u0027t seem so, see my other comment in the backend split change.\n\nalso, init function is not working here, because it gets invoked before ipec_init, which sets up ipsec_main.\n\nthat\u0027s probably the reason why dpdk plugin goes the same way (code here is mostly copy-paste from dpdk plugin)",
+      "parentUuid": "4f54aac6_37504de1",
+      "range": {
+        "startLine": 279,
+        "startChar": 0,
+        "endLine": 377,
+        "endChar": 1
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f8a39726_2f1f6c68",
         "filename": "src/plugins/ipsecmb/ipsecmb.h",
         "patchSetId": 23
@@ -846,6 +1692,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "seems like you are using these just for the counters...\nusing the node-\u003enode_index rather global_var.index you can get rid of these here since they won\u0027t be needed...",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 83,
+        "endChar": 57
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f8424a59_b78e5afe",
+        "filename": "src/plugins/ipsecmb/ipsecmb.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f8a39726_2f1f6c68",
       "range": {
         "startLine": 75,
         "startChar": 0,
@@ -881,6 +1751,30 @@
     },
     {
       "key": {
+        "uuid": "c724245e_045c1115",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 256,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "698a5ba3_85e50089",
+      "range": {
+        "startLine": 255,
+        "startChar": 0,
+        "endLine": 256,
+        "endChar": 19
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "aae52176_049bbb69",
         "filename": "src/vnet/ipsec/esp_encrypt.c",
         "patchSetId": 23
@@ -892,6 +1786,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "probably okay, though would have been nicer to have had it separately - you did have one-liner change in tests yesterday, this is not much different imo.",
+      "range": {
+        "startLine": 148,
+        "startChar": 17,
+        "endLine": 148,
+        "endChar": 29
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "791de2dd_96abb713",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "aae52176_049bbb69",
       "range": {
         "startLine": 148,
         "startChar": 17,
@@ -927,6 +1845,30 @@
     },
     {
       "key": {
+        "uuid": "9bb22f1f_40c707f2",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d611b35f_496463e6",
+      "range": {
+        "startLine": 294,
+        "startChar": 1,
+        "endLine": 299,
+        "endChar": 27
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7f3112e5_9fc0d219",
         "filename": "src/vnet/ipsec/ipsec.h",
         "patchSetId": 23
@@ -938,6 +1880,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "see my comment on vnet/ipsec/esp.h - this move is a refactoring that does not appear to be ipsecmb-specific, so is best split out.",
+      "range": {
+        "startLine": 301,
+        "startChar": 0,
+        "endLine": 308,
+        "endChar": 2
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a96f9f17_70a46060",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7f3112e5_9fc0d219",
       "range": {
         "startLine": 301,
         "startChar": 0,
@@ -973,6 +1939,30 @@
     },
     {
       "key": {
+        "uuid": "815efbdc_4e9235b1",
+        "filename": "test/framework.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "no, this is part of ipsecmb as that is the first change which requires this feature.",
+      "parentUuid": "179d6ee6_04cacbef",
+      "range": {
+        "startLine": 186,
+        "startChar": 4,
+        "endLine": 186,
+        "endChar": 27
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "55993b73_72176009",
         "filename": "test/template_ipsec.py",
         "patchSetId": 23
@@ -996,6 +1986,30 @@
     },
     {
       "key": {
+        "uuid": "c096fd01_1aab427e",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "no they don\u0027t\nipsecmb needs to verify counters as a way to make sure that packets pass through ipsecmb plugin and its nodes\noriginal tests dont really need this",
+      "parentUuid": "55993b73_72176009",
+      "range": {
+        "startLine": 218,
+        "startChar": 13,
+        "endLine": 218,
+        "endChar": 40
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "65dd383e_35c50d9f",
         "filename": "test/test_ipsec_nat.py",
         "patchSetId": 23
@@ -1007,6 +2021,30 @@
       "writtenOn": "2018-11-09T13:21:32Z",
       "side": 1,
       "message": "This would have gone reasonably well with the chunk of code which enabled pluggable engines.. (or with other \"test infra refactoring\" patches yesterday), but I guess can stay here unless Damjan has other optinion.",
+      "range": {
+        "startLine": 12,
+        "startChar": 6,
+        "endLine": 12,
+        "endChar": 22
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "66b02707_e3c8cee1",
+        "filename": "test/test_ipsec_nat.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T12:53:06Z",
+      "side": 1,
+      "message": "no\n\nthis change is required by test_ipsecmb_nat.py so that that file can consist of a few lines and reuse all the logic here. the rename is required so that the generic framework doesn\u0027t pick this twice.",
+      "parentUuid": "65dd383e_35c50d9f",
       "range": {
         "startLine": 12,
         "startChar": 6,
