@@ -18,6 +18,7 @@
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <vnet/session/session_rules_table.h>
+#include <vnet/tcp/tcp.h>
 
 #define SESSION_TEST_I(_cond, _comment, _args...)		\
 ({								\
@@ -268,10 +269,10 @@ static int
 session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 {
   session_endpoint_cfg_t client_sep = SESSION_ENDPOINT_CFG_NULL;
+  u32 server_index, client_index, sw_if_index[2], tries = 0;
   u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
   u16 dummy_server_port = 1234, dummy_client_port = 5678;
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
-  u32 server_index, client_index, sw_if_index[2];
   ip4_address_t intf_addr[3];
   transport_connection_t *tc;
   stream_session_t *s;
@@ -361,13 +362,20 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
     .app_index = client_index,
   };
 
+  connected_session_index = connected_session_thread = ~0;
+  accepted_session_index = accepted_session_thread = ~0;
   error = vnet_connect (&connect_args);
   SESSION_TEST ((error == 0), "connect should work");
 
   /* wait for stuff to happen */
-  vlib_process_suspend (vm, 10e-3);
-
+  while ((connected_session_index == ~0
+	  || vec_len (tcp_main.wrk_ctx[0].pending_acks)) && ++tries < 100)
+    vlib_process_suspend (vm, 100e-3);
+  clib_warning ("waited %.1f seconds for connections", tries / 10.0);
   SESSION_TEST ((connected_session_index != ~0), "session should exist");
+  SESSION_TEST ((connected_session_thread != ~0), "thread should exist");
+  SESSION_TEST ((accepted_session_index != ~0), "session should exist");
+  SESSION_TEST ((accepted_session_thread != ~0), "thread should exist");
   s = session_get (connected_session_index, connected_session_thread);
   tc = session_get_transport (s);
   SESSION_TEST ((tc != 0), "transport should exist");

@@ -132,6 +132,12 @@ ldp_sid_from_fd (int fd)
 	  INVALID_SESSION_ID);
 }
 
+static void
+ldp_fork_child_cb (void)
+{
+  vppcom_app_fork_child_handler ();
+}
+
 static inline int
 ldp_init (void)
 {
@@ -222,6 +228,7 @@ ldp_init (void)
     }
 
   clib_time_init (&ldp->clib_time);
+  pthread_atfork (NULL, NULL, ldp_fork_child_cb);
   LDBG (0, "LDP<%d>: LDP initialization: done!", getpid ());
 
   return 0;

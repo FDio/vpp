@@ -271,6 +271,8 @@ typedef struct vppcom_main_t_
   u8 is_init;
   u32 debug;
   pthread_t main_cpu;
+  pid_t main_pid;
+  pid_t current_pid;
 
   /** VPP binary api input queue */
   svm_queue_t *vl_input_queue;
@@ -280,6 +282,8 @@ typedef struct vppcom_main_t_
 
   /** State of the connection, shared between msg RX thread and main thread */
   volatile app_state_t app_state;
+
+  u8 *app_name;
 
   /** VCL configuration */
   vppcom_cfg_t cfg;

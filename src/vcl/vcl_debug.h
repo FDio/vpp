@@ -23,7 +23,16 @@
 
 #define VDBG(_lvl, _fmt, _args...) 					\
   if (VCL_DBG_ON && vcm->debug > _lvl)					\
-    clib_warning ("vcl<w%d>: " _fmt, __vcl_worker_index, ##_args)
+    clib_warning ("vcl<%d:%d>: " _fmt, vcm->current_pid, 		\
+		  __vcl_worker_index, ##_args)
+
+#define VWRN(_fmt, _args...)						\
+clib_warning ("vcl<%d:%d>: " _fmt, vcm->current_pid, 			\
+		__vcl_worker_index, ##_args)
+
+#define VERR(_fmt, _args...)						\
+  clib_warning ("vcl<%d:%d>: ERROR " _fmt, vcm->current_pid, 		\
+		__vcl_worker_index, ##_args)
 
 #define foreach_vcl_dbg_evt						\
   _(INIT, "vcl init track")						\
