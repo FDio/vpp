@@ -144,7 +144,7 @@ typedef struct _vcl_poll
   uint32_t fds_ndx;
   uint32_t sid;
   short events;
-  short *revents;
+  short revents;
 } vcl_poll_t;
 
 typedef struct vppcom_data_segment_
