@@ -188,6 +188,31 @@ u32x8_from_f32x8 (f32x8 v)
   return (u32x8) _mm256_cvttps_epi32 ((__m256) v);
 }
 
+#define u16x16_blend(v1, v2, mask) \
+  (u16x16) _mm256_blend_epi16 ((__m256i) (v1), (__m256i) (v2), mask)
+
+static_always_inline u64x4
+u64x4_gather (void *p0, void *p1, void *p2, void *p3)
+{
+  u64x4 r = { *(u64 *) p0, *(u64 *) p1, *(u64 *) p2, *(u64 *) p3};
+  return r;
+}
+
+static_always_inline void
+u64x4_scater (u64x4 r, void *p0, void *p1, void *p2, void *p3)
+{
+  *(u64 *) p0 = r[0];
+  *(u64 *) p1 = r[1];
+  *(u64 *) p2 = r[2];
+  *(u64 *) p3 = r[3];
+}
+
+static_always_inline void
+u32x8_scater_one (u32x8 r, int index, void *p)
+{
+  *(u32 *) p = r[index];
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
