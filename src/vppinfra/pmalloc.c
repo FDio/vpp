@@ -212,7 +212,7 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t * pm, u32 first, u32 count)
   vec_validate_aligned (pm->lookup_table, vec_len (pm->pages) *
 			elts_per_page - 1, CLIB_CACHE_LINE_BYTES);
 
-  p = first * elts_per_page;
+  p = (uword) first *elts_per_page;
   if (pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP)
     {
       while (p < (uword) elts_per_page * count)
