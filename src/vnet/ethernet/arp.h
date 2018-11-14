@@ -49,6 +49,7 @@ typedef walk_rc_t (proxy_arp_walk_t) (const ip4_address_t * lo_addr,
 
 extern void proxy_arp_walk (proxy_arp_walk_t cb, void *data);
 
+void vnet_arp_delete_sw_interface (u32 sw_if_index);
 #endif
 
 /*

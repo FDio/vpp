@@ -2607,6 +2607,24 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
 }
 
 /*
+ * Remove any arp entries asociated with the specificed interface
+ */
+void
+vnet_arp_delete_sw_interface (u32 sw_if_index)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_ip4_entry_t *e;
+  /* *INDENT-OFF* */
+  pool_foreach (e, am->ip4_entry_pool, ({
+    if (sw_if_index != ~0 && e->sw_if_index != sw_if_index)
+      continue;
+    ethernet_arp_ip4_over_ethernet_address_t a = { .ip4 = e->ip4_address };
+	  vnet_arp_unset_ip4_over_ethernet (vnet_get_main (), e->sw_if_index, &a);
+  }));
+  /* *INDENT-ON* */
+}
+
+/*
  * fd.io coding-style-patch-verification: ON
  *
  * Local Variables:

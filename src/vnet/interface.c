@@ -43,6 +43,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/ethernet/arp.h>
 
 typedef enum vnet_interface_helper_flags_t_
 {
@@ -1656,6 +1657,20 @@ VLIB_CLI_COMMAND (collect_detailed_interface_stats_command, static) = {
   .function = collect_detailed_interface_stats_cli,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+{
+  if (!is_add)
+    {
+      /* Remove arp entries of deleted interface */
+      vnet_arp_delete_sw_interface (sw_if_index);
+    }
+
+  return (NULL);
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (sw_interface_add_del);
 
 /*
  * fd.io coding-style-patch-verification: ON
