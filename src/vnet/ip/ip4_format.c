@@ -178,6 +178,9 @@ format_ip4_header (u8 * s, va_list * args)
 	_(CONGESTION);
 #undef _
       }
+    /* Fragment packet but not the first. */
+    if (o != 0)
+      return s;
   }
 
   /* Recurse into next protocol layer. */
