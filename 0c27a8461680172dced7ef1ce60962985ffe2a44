@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a2ab6c67_e08d0776",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2613,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-14T10:08:09Z",
+      "side": 1,
+      "message": "... hook this function into VNET_SW_INTERFACE_ADD_DEL_FUNCTION()",
+      "revId": "0c27a8461680172dced7ef1ce60962985ffe2a44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ac8e7117_f3a63108",
+        "filename": "src/vnet/ethernet/arp.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-14T10:08:09Z",
+      "side": 1,
+      "message": "you don\u0027t need this...",
+      "revId": "0c27a8461680172dced7ef1ce60962985ffe2a44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "49e813f7_e9f7f57c",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1662,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-14T10:08:09Z",
+      "side": 1,
+      "message": "... nor this ...",
+      "revId": "0c27a8461680172dced7ef1ce60962985ffe2a44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
