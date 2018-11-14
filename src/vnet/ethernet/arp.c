@@ -251,14 +251,12 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
 {
   vnet_main_t *vnm = va_arg (*va, vnet_main_t *);
   ethernet_arp_ip4_entry_t *e = va_arg (*va, ethernet_arp_ip4_entry_t *);
-  vnet_sw_interface_t *si;
+  vnet_sw_interface_t *si = va_arg (*va, vnet_sw_interface_t *);
   u8 *flags = 0;
 
   if (!e)
     return format (s, "%=12s%=16s%=6s%=20s%=24s", "Time", "IP4",
 		   "Flags", "Ethernet", "Interface");
-
-  si = vnet_get_sw_interface (vnm, e->sw_if_index);
 
   if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC)
     flags = format (flags, "S");
@@ -1414,6 +1412,7 @@ show_ip4_arp (vlib_main_t * vm,
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_arp_ip4_entry_t *e, *es;
   ethernet_proxy_arp_t *pa;
+  vnet_sw_interface_t *si;
   clib_error_t *error = 0;
   u32 sw_if_index;
 
@@ -1427,7 +1426,11 @@ show_ip4_arp (vlib_main_t * vm,
       vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, 0);
       vec_foreach (e, es)
       {
-	vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, e);
+        si = vnet_get_sw_interface_safe (vnm, e->sw_if_index);
+        if (NULL != si)
+        {
+          vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, e, si);
+        }
       }
       vec_free (es);
     }
@@ -2606,6 +2609,23 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
     }
 }
 
+/*
+ * Remove any arp entries asociated with the specificed interface
+ */
+void
+vnet_arp_delete_sw_interface (u32 sw_if_index)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_ip4_entry_t *e;
+  /* *INDENT-OFF* */
+  pool_foreach (e, am->ip4_entry_pool, ({
+    if (sw_if_index != ~0 && e->sw_if_index != sw_if_index)
+      continue;
+    ethernet_arp_ip4_over_ethernet_address_t a = { .ip4 = e->ip4_address };
+	  vnet_arp_unset_ip4_over_ethernet (vnet_get_main (), e->sw_if_index, &a);
+  }));
+  /* *INDENT-ON* */
+}
 /*
  * fd.io coding-style-patch-verification: ON
  *

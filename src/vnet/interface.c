@@ -43,6 +43,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/ethernet/arp.h>
 
 typedef enum vnet_interface_helper_flags_t_
 {
@@ -606,6 +607,9 @@ vnet_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *sw =
     pool_elt_at_index (im->sw_interfaces, sw_if_index);
+
+  /* Remove arp entries of deleted interface */
+  vnet_arp_delete_sw_interface (sw_if_index);
 
   /* Check if the interface has config and is removed from L2 BD or XConnect */
   vlib_main_t *vm = vlib_get_main ();
