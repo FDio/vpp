@@ -65,6 +65,8 @@ typedef struct
   clib_bitmap_t *libc_wr_bitmap;
   clib_bitmap_t *libc_ex_bitmap;
   vcl_poll_t *vcl_poll;
+  struct pollfd *libc_poll;
+  u16 *libc_poll_idxs;
   u8 select_vcl;
   u8 epoll_wait_vcl;
   u8 vcl_needs_real_epoll;	/*< vcl needs next epoll_create to
@@ -245,10 +247,8 @@ close (int fd)
 	{
 	  func_str = "libc_close";
 
-	  if (LDP_DEBUG > 0)
-	    clib_warning
-	      ("LDP<%d>: fd %d (0x%x): calling %s(): epfd %u (0x%x)",
-	       getpid (), fd, fd, func_str, epfd, epfd);
+	  LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): epfd %u (0x%x)",
+		getpid (), fd, fd, func_str, epfd, epfd);
 
 	  rv = libc_close (epfd);
 	  if (rv < 0)
@@ -269,9 +269,8 @@ close (int fd)
 
       func_str = "vppcom_session_close";
 
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x)",
-		      getpid (), fd, fd, func_str, sid, sid);
+      LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x)",
+	    getpid (), fd, fd, func_str, sid, sid);
 
       rv = vppcom_session_close (sid);
       if (rv != VPPCOM_OK)
@@ -284,9 +283,8 @@ close (int fd)
     {
       func_str = "libc_close";
 
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s()",
-		      getpid (), fd, fd, func_str);
+      LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s()", getpid (), fd, fd,
+	    func_str);
 
       rv = libc_close (fd);
     }
@@ -2913,11 +2911,8 @@ shutdown (int fd, int how)
 
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = __func__;
-
-      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
-      errno = ENOSYS;
-      rv = -1;
+      func_str = "vppcom_session_close[TODO]";
+      rv = close (fd);
     }
   else
     {
@@ -3253,65 +3248,61 @@ int
 poll (struct pollfd *fds, nfds_t nfds, int timeout)
 {
   const char *func_str = __func__;
-  int rv, i, n_libc_fds, n_revents;
+  int rv, i, n_revents;
   u32 sid;
   vcl_poll_t *vp;
   double wait_for_time;
 
-  if (LDP_DEBUG > 3)
-    clib_warning ("LDP<%d>: fds %p, nfds %d, timeout %d",
-		  getpid (), fds, nfds, timeout);
+  LDBG (3, "LDP<%d>: fds %p, nfds %d, timeout %d", getpid (), fds, nfds,
+	timeout);
 
   if (timeout >= 0)
     wait_for_time = (f64) timeout / 1000;
   else
     wait_for_time = -1;
 
-  n_libc_fds = 0;
   for (i = 0; i < nfds; i++)
     {
-      if (fds[i].fd >= 0)
-	{
-	  if (LDP_DEBUG > 3)
-	    clib_warning ("LDP<%d>: fds[%d].fd %d (0x%0x), .events = 0x%x, "
-			  ".revents = 0x%x", getpid (), i, fds[i].fd,
-			  fds[i].fd, fds[i].events, fds[i].revents);
+      if (fds[i].fd < 0)
+	continue;
 
-	  sid = ldp_sid_from_fd (fds[i].fd);
-	  if (sid != INVALID_SESSION_ID)
-	    {
-	      fds[i].fd = -fds[i].fd;
-	      vec_add2 (ldp->vcl_poll, vp, 1);
-	      vp->fds_ndx = i;
-	      vp->sid = sid;
-	      vp->events = fds[i].events;
+      LDBG (3, "LDP<%d>: fds[%d] fd %d (0x%0x) events = 0x%x revents = 0x%x",
+	    getpid (), i, fds[i].fd, fds[i].fd, fds[i].events,
+	    fds[i].revents);
+
+      sid = ldp_sid_from_fd (fds[i].fd);
+      if (sid != INVALID_SESSION_ID)
+	{
+	  fds[i].fd = -fds[i].fd;
+	  vec_add2 (ldp->vcl_poll, vp, 1);
+	  vp->fds_ndx = i;
+	  vp->sid = sid;
+	  vp->events = fds[i].events;
 #ifdef __USE_XOPEN2K
-	      if (fds[i].events & POLLRDNORM)
-		vp->events |= POLLIN;
-	      if (fds[i].events & POLLWRNORM)
-		vp->events |= POLLOUT;
+	  if (fds[i].events & POLLRDNORM)
+	    vp->events |= POLLIN;
+	  if (fds[i].events & POLLWRNORM)
+	    vp->events |= POLLOUT;
 #endif
-	      vp->revents = &fds[i].revents;
-	    }
-	  else
-	    n_libc_fds++;
+	  vp->revents = &fds[i].revents;
+	}
+      else
+	{
+	  vec_add1 (ldp->libc_poll, fds[i]);
+	  vec_add1 (ldp->libc_poll_idxs, i);
 	}
     }
 
-  n_revents = 0;
   do
     {
       if (vec_len (ldp->vcl_poll))
 	{
 	  func_str = "vppcom_poll";
 
-	  if (LDP_DEBUG > 3)
-	    clib_warning ("LDP<%d>: calling %s(): "
-			  "vcl_poll %p, n_sids %u (0x%x): "
-			  "n_libc_fds %u",
-			  getpid (), func_str, ldp->vcl_poll,
-			  vec_len (ldp->vcl_poll), vec_len (ldp->vcl_poll),
-			  n_libc_fds);
+	  LDBG (3, "LDP<%d>: calling %s(): vcl_poll %p, n_sids %u (0x%x): "
+		"n_libc_fds %u", getpid (), func_str, ldp->vcl_poll,
+		vec_len (ldp->vcl_poll), vec_len (ldp->vcl_poll),
+		vec_len (ldp->libc_poll));
 
 	  rv = vppcom_poll (ldp->vcl_poll, vec_len (ldp->vcl_poll), 0);
 	  if (rv < 0)
@@ -3324,15 +3315,14 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	    n_revents += rv;
 	}
 
-      if (n_libc_fds)
+      if (vec_len (ldp->libc_poll))
 	{
 	  func_str = "libc_poll";
 
-	  if (LDP_DEBUG > 3)
-	    clib_warning ("LDP<%d>: calling %s(): fds %p, nfds %u: n_sids %u",
-			  getpid (), fds, nfds, vec_len (ldp->vcl_poll));
+	  LDBG (3, "LDP<%d>: calling %s(): fds %p, nfds %u: n_sids %u",
+		getpid (), fds, nfds, vec_len (ldp->vcl_poll));
 
-	  rv = libc_poll (fds, nfds, 0);
+	  rv = libc_poll (ldp->libc_poll, vec_len (ldp->libc_poll), 0);
 	  if (rv < 0)
 	    goto done;
 	  else
@@ -3364,6 +3354,13 @@ done:
   }
   vec_reset_length (ldp->vcl_poll);
 
+  for (i = 0; i < vec_len (ldp->libc_poll); i++)
+    {
+      fds[ldp->libc_poll_idxs[i]].revents = ldp->libc_poll[i].revents;
+    }
+  vec_reset_length (ldp->libc_poll_idxs);
+  vec_reset_length (ldp->libc_poll);
+
   if (LDP_DEBUG > 3)
     {
       if (rv < 0)
@@ -3379,7 +3376,7 @@ done:
 	{
 	  clib_warning ("LDP<%d>: returning %d (0x%x): n_sids %u, "
 			"n_libc_fds %d", getpid (), rv, rv,
-			vec_len (ldp->vcl_poll), n_libc_fds);
+			vec_len (ldp->vcl_poll), vec_len (ldp->libc_poll));
 
 	  for (i = 0; i < nfds; i++)
 	    {

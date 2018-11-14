@@ -3185,6 +3185,8 @@ vppcom_poll (vcl_poll_t * vp, uint32_t n_sids, double wait_for_time)
   vcl_worker_t *wrk = vcl_worker_get_current ();
   f64 timeout = clib_time_now (&wrk->clib_time) + wait_for_time;
   u32 i, keep_trying = 1;
+  svm_msg_q_msg_t msg;
+  session_event_t *e;
   int rv, num_ev = 0;
 
   VDBG (3, "VCL<%d>: vp %p, nsids %u, wait_for_time %f",
@@ -3197,13 +3199,26 @@ vppcom_poll (vcl_poll_t * vp, uint32_t n_sids, double wait_for_time)
     {
       vcl_session_t *session;
 
+      /* Dequeue all events and drop all unhandled io events */
+      while (svm_msg_q_sub (wrk->app_event_queue, &msg, SVM_Q_NOWAIT, 0) == 0)
+	{
+	  e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
+	  vcl_handle_mq_event (wrk, e);
+	  svm_msg_q_free_msg (wrk->app_event_queue, &msg);
+	}
+      vec_reset_length (wrk->unhandled_evts_vector);
+
       for (i = 0; i < n_sids; i++)
 	{
 	  ASSERT (vp[i].revents);
 
 	  session = vcl_session_get (wrk, vp[i].sid);
 	  if (!session)
-	    continue;
+	    {
+	      *vp[i].revents = POLLHUP;
+	      num_ev++;
+	      continue;
+	    }
 
 	  if (*vp[i].revents)
 	    *vp[i].revents = 0;
