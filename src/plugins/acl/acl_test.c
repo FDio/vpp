@@ -652,7 +652,6 @@ api_acl_add_replace_from_file (vat_main_t * vam)
 	    rules[rule_idx].proto = proto;
 
       }
-    rules[rule_idx].is_permit = is_permit;
 
     if (append_default_permit) {
 	rule_idx++;
