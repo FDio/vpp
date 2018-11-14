@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "057bd8b9_a71ba1e4",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1429,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-14T08:37:14Z",
+      "side": 1,
+      "message": "i don\u0027t see why you need this change.",
+      "revId": "d31ec9e7186daadf5cb253bdf724dc0341073ad1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "59cddc95_93e5b960",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2616,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-14T08:37:14Z",
+      "side": 1,
+      "message": "... instead make this a call back function hooked into VNET_SW_INTERFACE_ADD_DEL_FUNCTION(...)",
+      "revId": "d31ec9e7186daadf5cb253bdf724dc0341073ad1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f51ffe8c_2802ab26",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 612,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-14T08:37:14Z",
+      "side": 1,
+      "message": "... not like this",
+      "revId": "d31ec9e7186daadf5cb253bdf724dc0341073ad1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
