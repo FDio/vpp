@@ -368,6 +368,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   vlib_process_suspend (vm, 10e-3);
 
   SESSION_TEST ((connected_session_index != ~0), "session should exist");
+  SESSION_TEST ((connected_session_thread != ~0), "thread should exist");
   s = session_get (connected_session_index, connected_session_thread);
   tc = session_get_transport (s);
   SESSION_TEST ((tc != 0), "transport should exist");
