@@ -120,7 +120,7 @@ clock_frequency_from_proc_filesystem (void)
 static f64
 clock_frequency_from_sys_filesystem (void)
 {
-  f64 cpu_freq;
+  f64 cpu_freq = 0.0;
   int fd;
   unformat_input_t input;
 
@@ -131,7 +131,7 @@ clock_frequency_from_sys_filesystem (void)
     goto done;
 
   unformat_init_clib_file (&input, fd);
-  unformat (&input, "%f", &cpu_freq);
+  (void) unformat (&input, "%f", &cpu_freq);
   cpu_freq *= 1e3;		/* measured in kHz */
   unformat_free (&input);
   close (fd);
