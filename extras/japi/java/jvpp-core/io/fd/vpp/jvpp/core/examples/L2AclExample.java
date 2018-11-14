@@ -34,7 +34,6 @@ import io.fd.vpp.jvpp.core.dto.ClassifyTableInfoReply;
 import io.fd.vpp.jvpp.core.dto.InputAclSetInterface;
 import io.fd.vpp.jvpp.core.dto.InputAclSetInterfaceReply;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
-import javax.xml.bind.DatatypeConverter;
 
 /**
  * <p>Tests L2 ACL creation and read.<br> Equivalent to the following vppctl commands:<br>
@@ -50,6 +49,8 @@ import javax.xml.bind.DatatypeConverter;
 public class L2AclExample {
 
     private static final int LOCAL0_IFACE_ID = 0;
+    private static final char[] hexArray = "0123456789ABCDEF".toCharArray();
+
 
     private static ClassifyAddDelTable createClassifyTable() {
         ClassifyAddDelTable request = new ClassifyAddDelTable();
@@ -65,6 +66,16 @@ public class L2AclExample {
             new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
                 (byte) 0xff, (byte) 0xff, 0x00, 0x00, 0x00, 0x00};
         return request;
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
     }
 
     private static ClassifyTableInfo createClassifyTableInfoRequest(final int tableId) {
@@ -120,7 +131,7 @@ public class L2AclExample {
     private static void print(final ClassifyTableInfoReply reply) {
         System.out.println(reply);
         if (reply != null) {
-            System.out.println("Mask hex: " + DatatypeConverter.printHexBinary(reply.mask));
+            System.out.println("Mask hex: " + bytesToHex(reply.mask));
         }
     }
 
@@ -132,7 +143,7 @@ public class L2AclExample {
         System.out.println(reply);
         reply.classifySessionDetails.forEach(detail -> {
             System.out.println(detail);
-            System.out.println("Match hex: " + DatatypeConverter.printHexBinary(detail.match));
+            System.out.println("Match hex: " + bytesToHex(detail.match));
         });
     }
 
