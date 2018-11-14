@@ -185,6 +185,8 @@ typedef struct
 */
 
 #define vlib_prefetch_buffer_header(b,type) CLIB_PREFETCH (b, 64, type)
+#define vlib_prefetch_buffer_data(b,type) \
+  CLIB_PREFETCH (vlib_buffer_get_current(b), CLIB_CACHE_LINE_BYTES, type)
 
 always_inline void
 vlib_buffer_struct_is_sane (vlib_buffer_t * b)
