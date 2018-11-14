@@ -40,6 +40,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/vnet.h>
+#include <vnet/ethernet/ethernet.h>
 #include <vnet/feature/feature.h>
 #include <vnet/devices/devices.h>
 
@@ -1496,7 +1497,24 @@ pg_generate_packets (vlib_node_runtime_t * node,
     {
       u32 *head, *start, *end;
 
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left);
+      if (PREDICT_TRUE (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT))
+	{
+	  vlib_next_frame_t *nf;
+	  vlib_frame_t *f;
+	  ethernet_input_frame_t *ef;
+	  pg_interface_t *pi;
+	  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left);
+	  nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+	  f = vlib_get_frame (vm, nf->frame_index);
+	  f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+	  ef = vlib_frame_scalar_args (f);
+	  pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
+	  ef->sw_if_index = pi->sw_if_index;
+	  ef->hw_if_index = pi->hw_if_index;
+	}
+      else
+	vlib_get_next_frame (vm, node, next_index, to_next, n_left);
 
       n_this_frame = n_packets_to_generate;
       if (n_this_frame > n_left)
