@@ -188,6 +188,9 @@ u32x8_from_f32x8 (f32x8 v)
   return (u32x8) _mm256_cvttps_epi32 ((__m256) v);
 }
 
+#define u16x16_blend(v1, v2, mask) \
+  (u16x16) _mm256_blend_epi16 ((__m256i) (v1), (__m256i) (v2), mask)
+
 #endif /* included_vector_avx2_h */
 
 /*
