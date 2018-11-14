@@ -143,6 +143,30 @@
     },
     {
       "key": {
+        "uuid": "6364adaa_812115c4",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T21:10:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ca35b081_ab70ef60",
+      "range": {
+        "startLine": 96,
+        "startChar": 20,
+        "endLine": 96,
+        "endChar": 56
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d3e05031_1aae33f1",
         "filename": "src/plugins/ipsecmb/ah_decrypt.c",
         "patchSetId": 23
@@ -202,6 +226,30 @@
       "side": 1,
       "message": "Makes sense about the 1:1 compatibility. As for \"why use both at all\" - AH provides integrity check on entire packet in both tunnel and transport mode, while ESP provides integrity check from ESP header to ESP auth in both modes (the original IP header/New IP header doesn\u0027t come in the coverage of integrity check ). https://tools.ietf.org/html/rfc4302#section-3.1.2 for the money bit on AH :)",
       "parentUuid": "dc4beb4a_dd0d3c35",
+      "range": {
+        "startLine": 100,
+        "startChar": 10,
+        "endLine": 100,
+        "endChar": 60
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e08b6648_89a664b0",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T21:10:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c7213a81_d09d82a9",
       "range": {
         "startLine": 100,
         "startChar": 10,
@@ -896,6 +944,30 @@
       "side": 1,
       "message": "I think normally the ethernet node sets the vnet_buffer (b0)-\u003el3_hdr_offset and the flag VNET_BUFFER_F_L3_HDR_OFFSET_VALID - so it sounds like we could check that that bit is set and just use the l3_hdr_offset directly, and drop the frame with an error otherwise.",
       "parentUuid": "588dd2ac_7a1cd4ec",
+      "range": {
+        "startLine": 307,
+        "startChar": 0,
+        "endLine": 344,
+        "endChar": 3
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "02ffcfc6_63fe74a3",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T21:10:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c09e415d_502f3309",
       "range": {
         "startLine": 307,
         "startChar": 0,
@@ -1801,6 +1873,30 @@
     },
     {
       "key": {
+        "uuid": "515f6e20_f4ed398d",
+        "filename": "src/plugins/ipsecmb/ipsecmb.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T21:10:24Z",
+      "side": 1,
+      "message": "nope, doing it in init results in a failure on my end",
+      "parentUuid": "b8363428_6c3a6a7c",
+      "range": {
+        "startLine": 279,
+        "startChar": 0,
+        "endLine": 377,
+        "endChar": 1
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f8a39726_2f1f6c68",
         "filename": "src/plugins/ipsecmb/ipsecmb.h",
         "patchSetId": 23
@@ -2119,6 +2215,30 @@
       "side": 1,
       "message": "This is the first change which *uses* this feature. It does not have to *introduce* it. But I am on the fence with this one since this is such a tiny change.",
       "parentUuid": "815efbdc_4e9235b1",
+      "range": {
+        "startLine": 186,
+        "startChar": 4,
+        "endLine": 186,
+        "endChar": 27
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "507472cc_535a723e",
+        "filename": "test/framework.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-14T21:10:24Z",
+      "side": 1,
+      "message": "I, on the other hand prefer to bundle introduction with usage. Otherwise, from the perspective of a random reader, which looks at commit, which only does the introduction, the code is untested and not proven to work at all. no?",
+      "parentUuid": "bbef9477_808f7a98",
       "range": {
         "startLine": 186,
         "startChar": 4,
