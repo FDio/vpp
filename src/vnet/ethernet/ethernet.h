@@ -45,6 +45,20 @@
 #include <vnet/pg/pg.h>
 #include <vnet/feature/feature.h>
 
+/* ethernet-input frame flags and scalar data */
+
+/* all packets in frame share same sw_if_index */
+#define ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX (1 << 0)
+
+/* all ip4 packets in frame have correct ip4 checksum */
+#define ETH_INPUT_FRAME_F_IP4_CKSUM_OK (1 << 1)
+
+typedef struct
+{
+  u32 sw_if_index;
+  u32 hw_if_index;
+} ethernet_input_frame_t;
+
 always_inline u64
 ethernet_mac_address_u64 (const u8 * a)
 {
@@ -154,6 +168,7 @@ typedef u32 (ethernet_flag_change_function_t)
 /* Ethernet interface instance. */
 typedef struct ethernet_interface
 {
+  u32 flags;
 
   /* Accept all packets (promiscuous mode). */
 #define ETHERNET_INTERFACE_FLAG_ACCEPT_ALL (1 << 0)

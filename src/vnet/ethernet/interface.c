@@ -379,6 +379,7 @@ ethernet_set_flags (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   ASSERT (hi->hw_class_index == ethernet_hw_interface_class.index);
 
   ei = pool_elt_at_index (em->interfaces, hi->hw_instance);
+  ei->flags = flags;
   if (ei->flag_change)
     return ei->flag_change (vnm, hi, flags);
   return (u32) ~ 0;
