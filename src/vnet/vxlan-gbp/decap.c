@@ -394,7 +394,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      tr->tunnel_index = t1 == 0 ? ~0 : t1 - vxm->tunnels;
 	      tr->vni = vxlan_gbp_get_vni (vxlan_gbp1);
 	      tr->sclass = vxlan_gbp_get_sclass (vxlan_gbp1);
-	      tr->flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
+	      tr->flags = vxlan_gbp_get_gpflags (vxlan_gbp1);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
