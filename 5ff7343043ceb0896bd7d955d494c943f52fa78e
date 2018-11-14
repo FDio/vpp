@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1285ec3e_2e7b7931",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "if there is an error, it would originate here ?",
+      "range": {
+        "startLine": 426,
+        "startChar": 1,
+        "endLine": 426,
+        "endChar": 43
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "001bd365_1f23959e",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "same as above..",
+      "range": {
+        "startLine": 431,
+        "startChar": 1,
+        "endLine": 431,
+        "endChar": 43
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e1700cf9_9df36e0a",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 558,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "can an error occur here ?",
+      "range": {
+        "startLine": 558,
+        "startChar": 4,
+        "endLine": 558,
+        "endChar": 26
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd1489f7_047d3be5",
+        "filename": "src/vnet/ipsec/ipsec.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 562,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "same as above",
+      "range": {
+        "startLine": 562,
+        "startChar": 4,
+        "endLine": 562,
+        "endChar": 27
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "acbbb459_46a48935",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "if we support the cipher but e.g. run out of hardware resources when adding stuff related to an SA - what happens ?",
+      "range": {
+        "startLine": 179,
+        "startChar": 6,
+        "endLine": 179,
+        "endChar": 30
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eca1b93a_abffc4dd",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "same as above",
+      "range": {
+        "startLine": 187,
+        "startChar": 6,
+        "endLine": 187,
+        "endChar": 30
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "537f30a7_fb49d7f2",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "if the foo_check_support_cb returned error or the ipsec_add_del_sa_sess_cb went belly up - will will we get here ? what if we have a hardware accelerated crypto whose microcode has crashed in the meantime so we do not have the SA ? (asking to understand whether we need to have the error propagaion here ?)",
+      "range": {
+        "startLine": 196,
+        "startChar": 6,
+        "endLine": 196,
+        "endChar": 30
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "25221b28_2cd6405c",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "same as above",
+      "range": {
+        "startLine": 198,
+        "startChar": 6,
+        "endLine": 198,
+        "endChar": 30
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9160485a_77841dbe",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:30:57Z",
+      "side": 1,
+      "message": "same as above.",
+      "range": {
+        "startLine": 573,
+        "startChar": 2,
+        "endLine": 573,
+        "endChar": 26
+      },
+      "revId": "5ff7343043ceb0896bd7d955d494c943f52fa78e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
