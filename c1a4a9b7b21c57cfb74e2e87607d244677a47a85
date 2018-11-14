@@ -119,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "ca35b081_ab70ef60",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:20:28Z",
+      "side": 1,
+      "message": "For any case when is_tunnel_ip6 set, the is_tunnel is also set (as far as I can see), so that it actually either shortcuts on the is_tunnel check, or the overall condition is false because both variables are false.",
+      "parentUuid": "719bd693_0ca0dee3",
+      "range": {
+        "startLine": 96,
+        "startChar": 20,
+        "endLine": 96,
+        "endChar": 56
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d3e05031_1aae33f1",
         "filename": "src/plugins/ipsecmb/ah_decrypt.c",
         "patchSetId": 23
@@ -154,6 +178,30 @@
       "side": 1,
       "message": "ESP has integrity check built-in so mixing it doesn\u0027t make  much sense no?\n\nBut the real reason is because the original code doesn\u0027t support it and the request was to be 1:1 feature-wise",
       "parentUuid": "d3e05031_1aae33f1",
+      "range": {
+        "startLine": 100,
+        "startChar": 10,
+        "endLine": 100,
+        "endChar": 60
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c7213a81_d09d82a9",
+        "filename": "src/plugins/ipsecmb/ah_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:20:28Z",
+      "side": 1,
+      "message": "Makes sense about the 1:1 compatibility. As for \"why use both at all\" - AH provides integrity check on entire packet in both tunnel and transport mode, while ESP provides integrity check from ESP header to ESP auth in both modes (the original IP header/New IP header doesn\u0027t come in the coverage of integrity check ). https://tools.ietf.org/html/rfc4302#section-3.1.2 for the money bit on AH :)",
+      "parentUuid": "dc4beb4a_dd0d3c35",
       "range": {
         "startLine": 100,
         "startChar": 10,
@@ -671,6 +719,30 @@
     },
     {
       "key": {
+        "uuid": "f63b7422_906d85ca",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:20:28Z",
+      "side": 1,
+      "message": "oh okay! Thanks for clarifying!",
+      "parentUuid": "3633e451_3b8f57fa",
+      "range": {
+        "startLine": 258,
+        "startChar": 3,
+        "endLine": 263,
+        "endChar": 6
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3c7aac02_ab1cecdd",
         "filename": "src/plugins/ipsecmb/esp_decrypt.c",
         "patchSetId": 23
@@ -800,6 +872,30 @@
       "side": 1,
       "message": "well we need to step back because the ip header is already consumed (as in the current pointer is past it)\n\ndo you have a better idea? this is how the original code does it. ..",
       "parentUuid": "6aec7f90_858ad29b",
+      "range": {
+        "startLine": 307,
+        "startChar": 0,
+        "endLine": 344,
+        "endChar": 3
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c09e415d_502f3309",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:20:28Z",
+      "side": 1,
+      "message": "I think normally the ethernet node sets the vnet_buffer (b0)-\u003el3_hdr_offset and the flag VNET_BUFFER_F_L3_HDR_OFFSET_VALID - so it sounds like we could check that that bit is set and just use the l3_hdr_offset directly, and drop the frame with an error otherwise.",
+      "parentUuid": "588dd2ac_7a1cd4ec",
       "range": {
         "startLine": 307,
         "startChar": 0,
@@ -1681,6 +1777,30 @@
     },
     {
       "key": {
+        "uuid": "b8363428_6c3a6a7c",
+        "filename": "src/plugins/ipsecmb/ipsecmb.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:20:28Z",
+      "side": 1,
+      "message": "I have tried the build with the latest (#8) plugin infra change + the 25th version of the ipsecmb patch - it all seems to initialize just fine ? (wonder maybe this comment originally is from before we had a discussion yesterday?)",
+      "parentUuid": "c5f4b65d_8065a00e",
+      "range": {
+        "startLine": 279,
+        "startChar": 0,
+        "endLine": 377,
+        "endChar": 1
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f8a39726_2f1f6c68",
         "filename": "src/plugins/ipsecmb/ipsecmb.h",
         "patchSetId": 23
@@ -1916,6 +2036,30 @@
     },
     {
       "key": {
+        "uuid": "dcbafd96_bdf77e78",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 23
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:20:28Z",
+      "side": 1,
+      "message": "Where ?",
+      "parentUuid": "a96f9f17_70a46060",
+      "range": {
+        "startLine": 301,
+        "startChar": 0,
+        "endLine": 308,
+        "endChar": 2
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "179d6ee6_04cacbef",
         "filename": "test/framework.py",
         "patchSetId": 23
@@ -1951,6 +2095,30 @@
       "side": 1,
       "message": "no, this is part of ipsecmb as that is the first change which requires this feature.",
       "parentUuid": "179d6ee6_04cacbef",
+      "range": {
+        "startLine": 186,
+        "startChar": 4,
+        "endLine": 186,
+        "endChar": 27
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bbef9477_808f7a98",
+        "filename": "test/framework.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-14T15:20:28Z",
+      "side": 1,
+      "message": "This is the first change which *uses* this feature. It does not have to *introduce* it. But I am on the fence with this one since this is such a tiny change.",
+      "parentUuid": "815efbdc_4e9235b1",
       "range": {
         "startLine": 186,
         "startChar": 4,
