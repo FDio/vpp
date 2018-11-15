@@ -573,6 +573,19 @@ stats_segment_socket_init (void)
   sm->socket = s;
 }
 
+static clib_error_t *
+stats_segment_socket_exit (vlib_main_t * vm)
+{
+  /*
+   * cleanup the listener socket on exit.
+   */
+  stat_segment_main_t *sm = &stat_segment_main;
+  unlink (sm->socket_name);
+  return 0;
+}
+
+VLIB_MAIN_LOOP_EXIT_FUNCTION (stats_segment_socket_exit);
+
 static uword
 stat_segment_collector_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 				vlib_frame_t * f)
@@ -610,6 +623,9 @@ static clib_error_t *
 statseg_config (vlib_main_t * vm, unformat_input_t * input)
 {
   stat_segment_main_t *sm = &stat_segment_main;
+
+  /* set default socket file name when statseg config stanza is empty. */
+  sm->socket_name = format (0, "%s", STAT_SEGMENT_SOCKET_FILE);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
