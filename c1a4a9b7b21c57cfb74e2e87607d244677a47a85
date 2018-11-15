@@ -1897,6 +1897,30 @@
     },
     {
       "key": {
+        "uuid": "70bf03cf_b7ee6c0f",
+        "filename": "src/plugins/ipsecmb/ipsecmb.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-15T12:46:50Z",
+      "side": 1,
+      "message": "Oh, I think your statement was about the second part of my first comment and my question was about the first part :)\n\nI suppose having a small one-shot process is okay. I would need to defer to Damjan on this. One other option which I saw to work is to push this into VLIB_CONFIG_OPTION... but I don\u0027t know which one is more \"proper\", so maybe let\u0027s leave it as is.",
+      "parentUuid": "515f6e20_f4ed398d",
+      "range": {
+        "startLine": 279,
+        "startChar": 0,
+        "endLine": 377,
+        "endChar": 1
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f8a39726_2f1f6c68",
         "filename": "src/plugins/ipsecmb/ipsecmb.h",
         "patchSetId": 23
@@ -2251,6 +2275,30 @@
     },
     {
       "key": {
+        "uuid": "cb3b7a6f_6acfad01",
+        "filename": "test/framework.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-15T12:46:50Z",
+      "side": 1,
+      "message": "My view of the user-visible commits: they should focus helping reader build the abstraction black boxes which they can later refer to. Ideally one black box per commit. Take the pluggable engine infra: half a thousand lines of code that boil down to two functions. Of course the 3 lines added to the python code is not that much of a \"box\" at all - that\u0027s why I don\u0027t have a strong opinion here, I think it is fine to leave as is.",
+      "parentUuid": "507472cc_535a723e",
+      "range": {
+        "startLine": 186,
+        "startChar": 4,
+        "endLine": 186,
+        "endChar": 27
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "55993b73_72176009",
         "filename": "test/template_ipsec.py",
         "patchSetId": 23
@@ -2298,6 +2346,30 @@
     },
     {
       "key": {
+        "uuid": "c47b7188_d648608c",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-15T12:46:50Z",
+      "side": 1,
+      "message": "Makes sense, thanks!",
+      "parentUuid": "c096fd01_1aab427e",
+      "range": {
+        "startLine": 218,
+        "startChar": 13,
+        "endLine": 218,
+        "endChar": 40
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "65dd383e_35c50d9f",
         "filename": "test/test_ipsec_nat.py",
         "patchSetId": 23
@@ -2333,6 +2405,30 @@
       "side": 1,
       "message": "no\n\nthis change is required by test_ipsecmb_nat.py so that that file can consist of a few lines and reuse all the logic here. the rename is required so that the generic framework doesn\u0027t pick this twice.",
       "parentUuid": "65dd383e_35c50d9f",
+      "range": {
+        "startLine": 12,
+        "startChar": 6,
+        "endLine": 12,
+        "endChar": 22
+      },
+      "revId": "c1a4a9b7b21c57cfb74e2e87607d244677a47a85",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "312e8c01_67cc5b7f",
+        "filename": "test/test_ipsec_nat.py",
+        "patchSetId": 23
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-11-15T12:46:50Z",
+      "side": 1,
+      "message": "Thanks for clarification!",
+      "parentUuid": "66b02707_e3c8cee1",
       "range": {
         "startLine": 12,
         "startChar": 6,
