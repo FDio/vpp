@@ -207,9 +207,9 @@ static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
 #if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-  return ! !(xd->port_conf.rxmode.hw_strip_crc);
+  return !!(xd->port_conf.rxmode.hw_strip_crc);
 #elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-  return ! !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP);
+  return !!(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP);
 #else
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
 #endif
@@ -506,6 +506,19 @@ dpdk_lib_init (dpdk_main_t * dm)
 #elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
+
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
+		  xd->tx_conf.txq_flags &= ~(ETH_TXQ_FLAGS_NOXSUMUDP |
+				                     ETH_TXQ_FLAGS_NOXSUMTCP);
+#else
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+#endif
+		  xd->flags |=
+		    DPDK_DEVICE_FLAG_TX_OFFLOAD;
+		}
 	      break;
 
 	    case VNET_DPDK_PMD_ENA:
@@ -1546,11 +1559,11 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
   if (LINK_STATE_ELOGS)
     {
       vlib_main_t *vm = vlib_get_main ();
-      ELOG_TYPE_DECLARE (e) =
-      {
-      .format =
+      ELOG_TYPE_DECLARE (e) = {
+	.format =
 	  "update-link-state: sw_if_index %d, admin_up %d,"
-	  "old link_state %d new link_state %d",.format_args = "i4i1i1i1",};
+	  "old link_state %d new link_state %d",.format_args = "i4i1i1i1",
+      };
 
       struct
       {
@@ -1600,11 +1613,11 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	{
 	  vlib_main_t *vm = vlib_get_main ();
 
-	  ELOG_TYPE_DECLARE (e) =
-	  {
-	  .format =
+	  ELOG_TYPE_DECLARE (e) = {
+	    .format =
 	      "update-link-state: sw_if_index %d, new flags %d",.format_args
-	      = "i4i4",};
+	      = "i4i4",
+	  };
 
 	  struct
 	  {
