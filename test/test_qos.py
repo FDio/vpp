@@ -278,12 +278,22 @@ class TestQOS(VppTestCase):
         #
         # 255 QoS for all input values
         #
-        output = [chr(255)] * 256
-        os = ''.join(output)
-        rows = [{'outputs': os},
-                {'outputs': os},
-                {'outputs': os},
-                {'outputs': os}]
+        from_ext = 7
+        from_ip = 6
+        from_mpls = 5
+        from_vlan = 4
+        output = [chr(from_ext)] * 256
+        os1 = ''.join(output)
+        output = [chr(from_vlan)] * 256
+        os2 = ''.join(output)
+        output = [chr(from_mpls)] * 256
+        os3 = ''.join(output)
+        output = [chr(from_ip)] * 256
+        os4 = ''.join(output)
+        rows = [{'outputs': os1},
+                {'outputs': os2},
+                {'outputs': os3},
+                {'outputs': os4}]
 
         self.vapi.qos_egress_map_update(1, rows)
 
@@ -336,20 +346,20 @@ class TestQOS(VppTestCase):
         # and the label and EOS bit have not been corrupted
         #
         for p in rx:
-            self.assertEqual(p[MPLS].cos, 7)
+            self.assertEqual(p[MPLS].cos, from_ip)
             self.assertEqual(p[MPLS].label, 32)
             self.assertEqual(p[MPLS].s, 1)
         rx = self.send_and_expect(self.pg0, p_3 * 65, self.pg1)
         for p in rx:
-            self.assertEqual(p[MPLS].cos, 7)
+            self.assertEqual(p[MPLS].cos, from_ip)
             self.assertEqual(p[MPLS].label, 63)
             self.assertEqual(p[MPLS].s, 0)
             h = p[MPLS].payload
-            self.assertEqual(h[MPLS].cos, 7)
+            self.assertEqual(h[MPLS].cos, from_ip)
             self.assertEqual(h[MPLS].label, 33)
             self.assertEqual(h[MPLS].s, 0)
             h = h[MPLS].payload
-            self.assertEqual(h[MPLS].cos, 7)
+            self.assertEqual(h[MPLS].cos, from_ip)
             self.assertEqual(h[MPLS].label, 34)
             self.assertEqual(h[MPLS].s, 1)
 
@@ -366,7 +376,7 @@ class TestQOS(VppTestCase):
                                           1)
 
         #
-        # MPLS x-connect - COS is preserved
+        # MPLS x-connect - COS according to pg1 map
         #
         route_32_eos = VppMplsRoute(self, 32, 1,
                                     [VppRoutePath(self.pg1.remote_ip4,
@@ -382,7 +392,7 @@ class TestQOS(VppTestCase):
 
         rx = self.send_and_expect(self.pg0, p_m1 * 65, self.pg1)
         for p in rx:
-            self.assertEqual(p[MPLS].cos, 7)
+            self.assertEqual(p[MPLS].cos, from_mpls)
             self.assertEqual(p[MPLS].label, 33)
             self.assertEqual(p[MPLS].s, 1)
 
@@ -409,7 +419,7 @@ class TestQOS(VppTestCase):
         rx = self.send_and_expect(self.pg0, p_m2 * 65, self.pg1)
 
         for p in rx:
-            self.assertEqual(p[IP].tos, 255)
+            self.assertEqual(p[IP].tos, from_mpls)
 
         #
         # cleanup
