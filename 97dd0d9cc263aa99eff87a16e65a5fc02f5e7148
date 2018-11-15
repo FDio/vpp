@@ -22,6 +22,30 @@
       "revId": "97dd0d9cc263aa99eff87a16e65a5fc02f5e7148",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c73fd433_c1b65f57",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-15T20:31:43Z",
+      "side": 1,
+      "message": "Without the sleep, the loop polls count: 665284 times in 3 sec. With the sleep, it polls count: 4 times in 3 sec. \n\nNew patch set with your suggestions forthcoming.",
+      "parentUuid": "0cd79438_091483a4",
+      "range": {
+        "startLine": 359,
+        "startChar": 8,
+        "endLine": 367,
+        "endChar": 31
+      },
+      "revId": "97dd0d9cc263aa99eff87a16e65a5fc02f5e7148",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
