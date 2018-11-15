@@ -162,14 +162,13 @@ sanity: verify-no-running-vpp
 
 .PHONY: ext
 ext:
-	make -C ext
+	@if [ "$(EXTENDED_TESTS)" = "yes" ]; then\
+		make -C ext;\
+	fi
 
 test-dep: verify-python-path $(PAPI_INSTALL_DONE)
 
-test: verify-python-path $(PAPI_INSTALL_DONE) sanity reset
-	$(call retest-func)
-
-test-ext: verify-python-path $(PAPI_INSTALL_DONE) ext sanity reset
+test: verify-python-path $(PAPI_INSTALL_DONE) ext sanity reset
 	$(call retest-func)
 
 retest: verify-python-path sanity reset
