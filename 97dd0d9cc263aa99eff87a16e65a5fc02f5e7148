@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0cd79438_091483a4",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-15T20:08:33Z",
+      "side": 1,
+      "message": "testing the ok variable in the while loop is useless as it\u0027\u0027\u0027 lever be true\n\nhow does this help and with what? it looks to me that the same result would be by setting deadline 3.8s in the future instead of 3s",
+      "range": {
+        "startLine": 359,
+        "startChar": 8,
+        "endLine": 367,
+        "endChar": 31
+      },
+      "revId": "97dd0d9cc263aa99eff87a16e65a5fc02f5e7148",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
