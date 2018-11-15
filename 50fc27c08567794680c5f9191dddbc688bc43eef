@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "852a5f87_b7bfea48",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "only write this variable once ...",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6408667a_dd3fd42d",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "singlie_next \u003d 0;",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b3a3bc7_e6b64538",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 413,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "l2 and l3",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "10217e32_1829a9d3",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "we\u0027re fetching each buffer twice. maybe fetch say 12 upfront then  fetch ahead in this loop?",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "51b417ae_91c637c1",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "here you are assuming the presence of CLIB_HAVE_VEC128 ....",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2f403dac_82e2a21c",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "would it save to define network order versions of these constants?",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a7ae24be_b2de7f9d",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 591,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": ".... whereas here you check for it.",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1d574ca0_697d9063",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1110,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "is it worth trying to remove this check? maybe by notifying the drivers of the interface L2 or L3 mode state so it can select the correct ethernet-input node variant?",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf650677_0beea1c7",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1141,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T09:20:22Z",
+      "side": 1,
+      "message": "if (... MPLS...)",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
