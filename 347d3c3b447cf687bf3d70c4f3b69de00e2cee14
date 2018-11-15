@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "119c2cc6_aca65f16",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2621,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T07:20:40Z",
+      "side": 1,
+      "message": "sw_if_index !\u003d ~0 check looks like it can come out of the loop.",
+      "revId": "347d3c3b447cf687bf3d70c4f3b69de00e2cee14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "97af9d51_4cfafe21",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2624,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-15T07:20:40Z",
+      "side": 1,
+      "message": "this function will always be invoked from the main thread, so you need not use this RPC wrapper, go straight for the _internal version instead.",
+      "revId": "347d3c3b447cf687bf3d70c4f3b69de00e2cee14",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
