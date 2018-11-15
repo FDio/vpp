@@ -70,6 +70,24 @@
     },
     {
       "key": {
+        "uuid": "25bdc2f3_a635e4d2",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 473,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-15T12:47:33Z",
+      "side": 1,
+      "message": "I was playing with this a lot, this is optimal one i found...",
+      "parentUuid": "10217e32_1829a9d3",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "51b417ae_91c637c1",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 5
@@ -87,6 +105,24 @@
     },
     {
       "key": {
+        "uuid": "c216acd3_65d5c374",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-15T12:47:33Z",
+      "side": 1,
+      "message": "Yep, looking for volunteer ot write scalar version :)",
+      "parentUuid": "51b417ae_91c637c1",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2f403dac_82e2a21c",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 5
@@ -98,6 +134,24 @@
       "writtenOn": "2018-11-15T09:20:22Z",
       "side": 1,
       "message": "would it save to define network order versions of these constants?",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "23a046b8_75d6a00b",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-15T12:47:33Z",
+      "side": 1,
+      "message": "no, this is pre-calculated by compiler,  even splat operation is precalculated so\nat the end this results in single vector load operation from data segment.",
+      "parentUuid": "2f403dac_82e2a21c",
       "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -138,6 +192,24 @@
     },
     {
       "key": {
+        "uuid": "5ea56350_5acbcb9c",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1110,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-15T12:47:33Z",
+      "side": 1,
+      "message": "it happens once per frame, and idea is that driver should really not have awareness of interface config. driver job should really be just to fetch packets from external source and ship them to ethernet-input node.",
+      "parentUuid": "1d574ca0_697d9063",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cf650677_0beea1c7",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 5
@@ -149,6 +221,24 @@
       "writtenOn": "2018-11-15T09:20:22Z",
       "side": 1,
       "message": "if (... MPLS...)",
+      "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5760dc57_2a7ae5dd",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1141,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-15T12:47:33Z",
+      "side": 1,
+      "message": "intentionally excluded to annoy MPLS lovers :)",
+      "parentUuid": "cf650677_0beea1c7",
       "revId": "50fc27c08567794680c5f9191dddbc688bc43eef",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
