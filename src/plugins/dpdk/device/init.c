@@ -506,6 +506,19 @@ dpdk_lib_init (dpdk_main_t * dm)
 #elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
+
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
+		  xd->tx_conf.txq_flags &= ~(ETH_TXQ_FLAGS_NOXSUMUDP |
+				                     ETH_TXQ_FLAGS_NOXSUMTCP);
+#else
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+#endif
+		  xd->flags |=
+		    DPDK_DEVICE_FLAG_TX_OFFLOAD;
+		}
 	      break;
 
 	    case VNET_DPDK_PMD_ENA:
