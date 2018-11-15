@@ -356,9 +356,15 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def wait_for_stats_socket(cls):
         deadline = time.time() + 3
-        while time.time() < deadline or cls.debug_gdb or cls.debug_gdbserver:
+        ok = False
+        while ((time.time() < deadline) or not ok) or \
+                cls.debug_gdb or cls.debug_gdbserver:
             if os.path.exists(cls.stats_sock):
+                ok = True
                 break
+            time.sleep(0.8)
+        if not ok:
+            cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
 
     @classmethod
     def setUpClass(cls):
