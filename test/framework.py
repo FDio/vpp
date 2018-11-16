@@ -1018,7 +1018,7 @@ class VppTestResult(unittest.TestResult):
     core_crash_test_cases_info = set()
     current_test_case_info = None
 
-    def __init__(self, stream, descriptions, verbosity):
+    def __init__(self, stream, descriptions, verbosity, runner):
         """
         :param stream File descriptor to store where to report test results.
             Set to the standard error stream by default.
@@ -1031,6 +1031,7 @@ class VppTestResult(unittest.TestResult):
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.result_string = None
+        self.runner = runner
 
     def addSuccess(self, test):
         """
@@ -1214,9 +1215,16 @@ class VppTestResult(unittest.TestResult):
         """
         Print errors from running the test case
         """
-        self.stream.writeln()
-        self.printErrorList('ERROR', self.errors)
-        self.printErrorList('FAIL', self.failures)
+        if len(self.errors) > 0 or len(self.failures) > 0:
+            self.stream.writeln()
+            self.printErrorList('ERROR', self.errors)
+            self.printErrorList('FAIL', self.failures)
+
+        # ^^ that is the last output from unittest before summary
+        if not self.runner.print_summary:
+            devnull = unittest.runner._WritelnDecorator(open(os.devnull, 'w'))
+            self.stream = devnull
+            self.runner.stream = devnull
 
     def printErrorList(self, flavour, errors):
         """
@@ -1246,7 +1254,7 @@ class VppTestRunner(unittest.TextTestRunner):
 
     def __init__(self, keep_alive_pipe=None, descriptions=True, verbosity=1,
                  result_pipe=None, failfast=False, buffer=False,
-                 resultclass=None):
+                 resultclass=None, print_summary=True):
 
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
@@ -1256,7 +1264,16 @@ class VppTestRunner(unittest.TextTestRunner):
         reporter = KeepAliveReporter()
         reporter.pipe = keep_alive_pipe
 
-        VppTestResult.test_framework_result_pipe = result_pipe
+        self.orig_stream = self.stream
+        self.resultclass.test_framework_result_pipe = result_pipe
+
+        self.print_summary = print_summary
+
+    def _makeResult(self):
+        return self.resultclass(self.stream,
+                                self.descriptions,
+                                self.verbosity,
+                                self)
 
     def run(self, test):
         """
@@ -1268,6 +1285,9 @@ class VppTestRunner(unittest.TextTestRunner):
         faulthandler.enable()  # emit stack trace to stderr if killed by signal
 
         result = super(VppTestRunner, self).run(test)
+        if not self.print_summary:
+            self.stream = self.orig_stream
+            result.stream = self.orig_stream
         return result
 
 
