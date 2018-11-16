@@ -23,9 +23,16 @@ typedef struct mac_address_t_
   union
   {
     u8 bytes[6];
-    u64 as_u64;
+    struct
+    {
+      u32 first_4;
+      u16 last_2;
+    } __clib_packed u;
   };
 } mac_address_t;
+
+STATIC_ASSERT ((sizeof (mac_address_t) == 6),
+	       "MAC address must represent the on wire format");
 
 extern const mac_address_t ZERO_MAC_ADDRESS;
 
@@ -33,7 +40,6 @@ static_always_inline void
 mac_address_from_bytes (mac_address_t * mac, const u8 * bytes)
 {
   /* zero out the last 2 bytes, then copy over only 6 */
-  mac->as_u64 = 0;
   clib_memcpy (mac->bytes, bytes, 6);
 }
 
@@ -47,21 +53,23 @@ mac_address_to_bytes (const mac_address_t * mac, u8 * bytes)
 static_always_inline int
 mac_address_is_zero (const mac_address_t * mac)
 {
-  return (0 == mac->as_u64);
+  return (0 == mac->u.first_4 && 0 == mac->u.last_2);
 }
 
 static_always_inline u64
 mac_address_as_u64 (const mac_address_t * mac)
 {
-  return (mac->as_u64);
+  u64 *as_u64;
+
+  as_u64 = (u64 *) mac->bytes;
+
+  return (*as_u64);
 }
 
 static_always_inline void
 mac_address_from_u64 (u64 u, mac_address_t * mac)
 {
-  mac->as_u64 = u;
-  mac->bytes[4] = 0;
-  mac->bytes[5] = 0;
+  clib_memcpy (mac->bytes, &u, 6);
 }
 
 static_always_inline void
