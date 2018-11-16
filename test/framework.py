@@ -1214,9 +1214,10 @@ class VppTestResult(unittest.TestResult):
         """
         Print errors from running the test case
         """
-        self.stream.writeln()
-        self.printErrorList('ERROR', self.errors)
-        self.printErrorList('FAIL', self.failures)
+        if len(self.errors) > 0 or len(self.failures) > 0:
+            self.stream.writeln()
+            self.printErrorList('ERROR', self.errors)
+            self.printErrorList('FAIL', self.failures)
 
     def printErrorList(self, flavour, errors):
         """
@@ -1246,7 +1247,7 @@ class VppTestRunner(unittest.TextTestRunner):
 
     def __init__(self, keep_alive_pipe=None, descriptions=True, verbosity=1,
                  result_pipe=None, failfast=False, buffer=False,
-                 resultclass=None):
+                 resultclass=None, print_summary=True):
 
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
@@ -1258,6 +1259,8 @@ class VppTestRunner(unittest.TextTestRunner):
 
         VppTestResult.test_framework_result_pipe = result_pipe
 
+        self.print_summary = print_summary
+
     def run(self, test):
         """
         Run the tests
@@ -1267,8 +1270,66 @@ class VppTestRunner(unittest.TextTestRunner):
         """
         faulthandler.enable()  # emit stack trace to stderr if killed by signal
 
-        result = super(VppTestRunner, self).run(test)
+        result = self._makeResult()
+        unittest.signals.registerResult(result)
+        result.failfast = self.failfast
+        result.buffer = self.buffer
+        startTime = time.time()
+        startTestRun = getattr(result, 'startTestRun', None)
+        if startTestRun is not None:
+            startTestRun()
+        try:
+            test(result)
+        finally:
+            stopTestRun = getattr(result, 'stopTestRun', None)
+            if stopTestRun is not None:
+                stopTestRun()
+        stopTime = time.time()
+        timeTaken = stopTime - startTime
+        result.printErrors()
+        run = result.testsRun
+        if self.print_summary:
+            if hasattr(result, 'separator2'):
+                self.stream.writeln(result.separator2)
+            self.stream.writeln("Ran %d test%s in %.3fs" %
+                                (run, run != 1 and "s" or "", timeTaken))
+            self.stream.writeln()
+
+        expectedFails = unexpectedSuccesses = skipped = 0
+        try:
+            results = map(len, (result.expectedFailures,
+                                result.unexpectedSuccesses,
+                                result.skipped))
+        except AttributeError:
+            pass
+        else:
+            expectedFails, unexpectedSuccesses, skipped = results
+
+        infos = []
+        if not result.wasSuccessful():
+            if self.print_summary:
+                self.stream.write("FAILED")
+            failed, errored = map(len, (result.failures, result.errors))
+            if failed:
+                infos.append("failures=%d" % failed)
+            if errored:
+                infos.append("errors=%d" % errored)
+        else:
+            if self.print_summary:
+                self.stream.write("OK")
+        if skipped:
+            infos.append("skipped=%d" % skipped)
+        if expectedFails:
+            infos.append("expected failures=%d" % expectedFails)
+        if unexpectedSuccesses:
+            infos.append("unexpected successes=%d" % unexpectedSuccesses)
+        if self.print_summary:
+            if infos:
+                self.stream.writeln(" (%s)" % (", ".join(infos),))
+            else:
+                self.stream.write("\n")
         return result
+
 
 
 class Worker(Thread):

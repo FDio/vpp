@@ -125,7 +125,8 @@ def test_runner_wrapper(suite, keep_alive_pipe, stdouterr_queue,
                            descriptions=descriptions,
                            verbosity=verbose,
                            result_pipe=result_pipe,
-                           failfast=failfast).run(suite)
+                           failfast=failfast,
+                           print_summary=False).run(suite)
     finished_pipe.send(result.wasSuccessful())
     finished_pipe.close()
     keep_alive_pipe.close()
@@ -234,12 +235,8 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
         failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
         link_path = '%s%s-FAILED' % (failed_dir, lttd)
         if not os.path.exists(link_path):
-            logger.error("Creating a link to the failed test: %s -> %s" %
-                         (link_path, lttd))
             os.symlink(last_test_temp_dir, link_path)
-        else:
-            logger.error("Link to the failed test already exists: %s -> %s" %
-                         (link_path, lttd))
+        logger.error("Symlink to failed tests: %s -> %s" % (link_path, lttd))
 
         # Report core existence
         core_path = get_core_path(last_test_temp_dir)
@@ -575,10 +572,7 @@ class AllResults(dict):
             retval = 1
 
         if retval != 0:
-            if concurrent_tests == 1:
-                self.rerun.append(result.suite_from_failed())
-            else:
-                self.rerun.append(result.testcase_suite)
+            self.rerun.append(result.testcase_suite)
 
         return retval
 
@@ -767,13 +761,6 @@ if __name__ == '__main__':
         tests_amount += testcase_suite.countTestCases()
         suites.append(testcase_suite)
 
-    if concurrent_tests == 1:
-        new_suite = unittest.TestSuite()
-        for suite in suites:
-            new_suite.addTests(suite)
-
-        suites = [new_suite]
-
     print("%s out of %s tests match specified filters" % (
         tests_amount, tests_amount + cb.filtered.countTestCases()))
 
@@ -786,8 +773,9 @@ if __name__ == '__main__':
 
     if run_interactive:
         # don't fork if requiring interactive terminal
-        result = VppTestRunner(verbosity=verbose, failfast=failfast)\
-            .run(suites[0])
+        result = VppTestRunner(verbosity=verbose,
+                               failfast=failfast,
+                               print_summary=True).run(suites[0])
         was_successful = result.wasSuccessful()
         if not was_successful:
             for test_case_info in result.failed_test_cases_info:
