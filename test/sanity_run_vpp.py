@@ -8,7 +8,7 @@ from framework import VppTestCase, KeepAliveReporter
 
 
 class SanityTestCase(VppTestCase):
-    """ Sanity test case - verify if VPP is able to start """
+    """ Sanity test case - verify thether VPP is able to start """
     pass
 
 if __name__ == '__main__':
@@ -28,5 +28,10 @@ if __name__ == '__main__':
             pass
     x.close()
     y.close()
+
+    if rc == 0:
+        print('Sanity test case passed\n')
+    else:
+        print('Sanity test case failed\n')
 
     exit(rc)
