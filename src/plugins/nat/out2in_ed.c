@@ -39,7 +39,8 @@ _(NO_TRANSLATION, "No translation")                     \
 _(MAX_SESSIONS_EXCEEDED, "Maximum sessions exceeded")   \
 _(DROP_FRAGMENT, "Drop fragment")                       \
 _(MAX_REASS, "Maximum reassemblies exceeded")           \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")
+_(MAX_FRAG, "Maximum fragments per reassembly exceeded")\
+_(NON_SYN, "non-SYN packet try to create session")
 
 typedef enum
 {
@@ -875,6 +876,13 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  if (PREDICT_FALSE (identity_nat0))
 		    goto trace00;
 
+		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
+		    {
+		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
+		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      goto trace00;
+		    }
+
 		  /* Create session initiated by host from external network */
 		  s0 = create_session_for_static_mapping_ed (sm, b0, l_key0,
 							     e_key0, node,
@@ -1096,6 +1104,13 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 		  if (PREDICT_FALSE (identity_nat1))
 		    goto trace01;
+
+		  if ((proto1 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp1))
+		    {
+		      b1->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
+		      next1 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      goto trace01;
+		    }
 
 		  /* Create session initiated by host from external network */
 		  s1 = create_session_for_static_mapping_ed (sm, b1, l_key1,
@@ -1352,6 +1367,13 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 		  if (PREDICT_FALSE (identity_nat0))
 		    goto trace0;
+
+		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
+		    {
+		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
+		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
+		      goto trace0;
+		    }
 
 		  /* Create session initiated by host from external network */
 		  s0 = create_session_for_static_mapping_ed (sm, b0, l_key0,
@@ -1699,6 +1721,13 @@ nat44_ed_out2in_reass_node_fn (vlib_main_t * vm,
 		  if (PREDICT_FALSE (identity_nat0))
 		    {
 		      reass0->flags |= NAT_REASS_FLAG_ED_DONT_TRANSLATE;
+		      goto trace0;
+		    }
+
+		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
+		    {
+		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_NON_SYN];
+		      next0 = NAT44_ED_OUT2IN_NEXT_DROP;
 		      goto trace0;
 		    }
 

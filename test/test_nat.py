@@ -4838,6 +4838,88 @@ class TestNAT44EndpointDependent(MethodHolder):
         adresses = self.vapi.nat44_address_dump()
         self.assertEqual(0, len(adresses))
 
+    def test_tcp_close(self):
+        """ Close TCP session from inside network - output feature """
+        self.vapi.nat44_forwarding_enable_disable(1)
+        self.nat44_add_address(self.pg1.local_ip4)
+        twice_nat_addr = '10.0.1.3'
+        service_ip = '192.168.16.150'
+        self.nat44_add_address(twice_nat_addr, twice_nat=1)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index,
+                                                  is_inside=0)
+        self.vapi.nat44_interface_add_del_output_feature(self.pg1.sw_if_index,
+                                                         is_inside=0)
+        self.nat44_add_static_mapping(self.pg0.remote_ip4,
+                                      service_ip,
+                                      80,
+                                      80,
+                                      proto=IP_PROTOS.tcp,
+                                      out2in_only=1,
+                                      twice_nat=1)
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n, 0)
+        start_sessnum = len(sessions)
+
+        # SYN packet out->in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=service_ip) /
+             TCP(sport=33898, dport=80, flags="S"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        tcp_port = p[TCP].sport
+
+        # SYN + ACK packet in->out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=twice_nat_addr) /
+             TCP(sport=80, dport=tcp_port, flags="SA"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # ACK packet out->in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=service_ip) /
+             TCP(sport=33898, dport=80, flags="A"))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
+
+        # FIN packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=twice_nat_addr) /
+             TCP(sport=80, dport=tcp_port, flags="FA", seq=100, ack=300))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # FIN+ACK packet out -> in
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=service_ip) /
+             TCP(sport=33898, dport=80, flags="FA", seq=300, ack=101))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(1)
+
+        # ACK packet in -> out
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=twice_nat_addr) /
+             TCP(sport=80, dport=tcp_port, flags="A", seq=101, ack=301))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n,
+                                                     0)
+        self.assertEqual(len(sessions) - start_sessnum, 0)
+
     def test_tcp_session_close_in(self):
         """ Close TCP session from inside network """
         self.tcp_port_out = 10505

@@ -174,6 +174,7 @@ typedef enum
 #define SNAT_SESSION_FLAG_ENDPOINT_DEPENDENT   16
 #define SNAT_SESSION_FLAG_FWD_BYPASS           32
 #define SNAT_SESSION_FLAG_AFFINITY             64
+#define SNAT_SESSION_FLAG_OUTPUT_FEATURE       128
 
 /* NAT interface flags */
 #define NAT_INTERFACE_FLAG_IS_INSIDE 1
@@ -672,6 +673,12 @@ unformat_function_t unformat_snat_protocol;
     @return 1 if load-balancing
 */
 #define is_lb_static_mapping(sm) (sm->flags & NAT_STATIC_MAPPING_FLAG_LB)
+
+/** \brief Check if client initiating TCP connection (received SYN from client)
+    @param t TCP header
+    @return 1 if client initiating TCP connection
+*/
+#define tcp_is_init(t) ((t->flags & TCP_FLAG_SYN) && !(t->flags & TCP_FLAG_ACK))
 
 /* logging */
 #define nat_log_err(...) \

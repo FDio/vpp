@@ -215,7 +215,8 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
       if (clib_net_to_host_u32 (tcp->ack_number) > ses->o2i_fin_seq)
 	ses->state |= NAT44_SES_O2I_FIN_ACK;
     }
-  if (nat44_is_ses_closed (ses))
+  if (nat44_is_ses_closed (ses)
+      && !(ses->flags & SNAT_SESSION_FLAG_OUTPUT_FEATURE))
     {
       nat_log_debug ("TCP close connection %U", format_snat_session,
 		     &sm->per_thread_data[thread_index], ses);
