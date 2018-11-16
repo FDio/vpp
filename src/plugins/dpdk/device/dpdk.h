@@ -44,7 +44,7 @@
 #include <rte_bus_pci.h>
 #include <rte_flow.h>
 
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #include <vnet/devices/devices.h>
 
 #if CLIB_DEBUG > 0

@@ -14,7 +14,7 @@
  */
 #include <cdp/cdp.h>
 #include <vppinfra/hash.h>
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #include <vnet/srp/srp.h>
 #include <vnet/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>

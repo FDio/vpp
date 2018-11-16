@@ -19,7 +19,7 @@
  * @brief Functions to convert PCAP file format to VPP PG (Packet Generator)
  *
  */
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #include <vnet/ethernet/packet.h>
 #include <stdio.h>
 

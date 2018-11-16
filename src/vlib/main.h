@@ -47,6 +47,7 @@
 #include <vppinfra/random_buffer.h>
 #include <vppinfra/time.h>
 #include <vppinfra/pmc.h>
+#include <vppinfra/pcap.h>
 
 #include <pthread.h>
 
@@ -129,6 +130,10 @@ typedef struct vlib_main_t
 
   /* Packet trace buffer. */
   vlib_trace_main_t trace_main;
+
+  /* Pcap dispatch trace main */
+  pcap_main_t dispatch_pcap_main;
+  uword dispatch_pcap_enable;
 
   /* Error handling. */
   vlib_error_main_t error_main;

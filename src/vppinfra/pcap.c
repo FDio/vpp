@@ -37,8 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/unix/pcap.h>
 #include <sys/fcntl.h>
+#include <vppinfra/pcap.h>
 
 /**
  * @file
@@ -47,7 +47,7 @@
  * Usage:
  *
  * <code><pre>
- * \#include <vnet/unix/pcap.h>
+ * \#include <vppinfra/pcap.h>
  *
  * static pcap_main_t pcap = {
  *  .file_name = "/tmp/ip4",

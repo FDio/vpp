@@ -19,7 +19,7 @@
  * @brief Functions to convert PCAP file format to a u8 ** initializer
  *
  */
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #include <vnet/ethernet/packet.h>
 #include <stdio.h>
 

@@ -42,7 +42,7 @@
 
 #include <vppinfra/types.h>
 
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #include <vnet/buffer.h>
 #include <vnet/config.h>
 #include <vnet/interface.h>
