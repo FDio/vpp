@@ -633,6 +633,8 @@ autoreply define ip_punt_police
     @param context - sender context, to match reply w/ request
     @param is_add - 1 to add neighbor, 0 to delete
     @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+    @param rx_sw_if_index - specify the original RX interface of traffic
+                            that should be redirected. ~0 means any interface.
     @param tx_sw_if_index - the TX interface to which traffic shoulde be
                             redirected.
     @param nh - The next-hop to redirect the traffic to.
