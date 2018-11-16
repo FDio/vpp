@@ -37,7 +37,8 @@ _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(MAX_SESSIONS_EXCEEDED, "Maximum sessions exceeded")   \
 _(DROP_FRAGMENT, "Drop fragment")                       \
 _(MAX_REASS, "Maximum reassemblies exceeded")           \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")
+_(MAX_FRAG, "Maximum fragments per reassembly exceeded")\
+_(NON_SYN, "non-SYN packet try to create session")
 
 typedef enum
 {
@@ -513,7 +514,19 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
   make_ed_kv (&kv, &ip->src_address, &ip->dst_address, proto, tx_fib_index,
 	      src_port, dst_port);
   if (!clib_bihash_search_16_8 (&tsm->out2in_ed, &kv, &value))
-    return 1;
+    {
+      s = pool_elt_at_index (tsm->sessions, value.value);
+      if (nat44_is_ses_closed (s))
+	{
+	  nat_log_debug ("TCP close connection %U", format_snat_session,
+			 &sm->per_thread_data[thread_index], s);
+	  nat_free_session_data (sm, s, thread_index);
+	  nat44_delete_session (sm, s, thread_index);
+	}
+      else
+	s->flags |= SNAT_SESSION_FLAG_OUTPUT_FEATURE;
+      return 1;
+    }
 
   /* dst NAT check */
   make_ed_kv (&kv, &ip->dst_address, &ip->src_address, proto, rx_fib_index,
@@ -1021,6 +1034,13 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 			goto trace00;
 		    }
 
+		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
+		    {
+		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
+		      next0 = NAT_IN2OUT_ED_NEXT_DROP;
+		      goto trace00;
+		    }
+
 		  next0 =
 		    slow_path_ed (sm, b0, rx_fib_index0, &kv0, &s0, node,
 				  next0, thread_index, now);
@@ -1223,6 +1243,13 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 								 rx_fib_index1,
 								 thread_index)))
 			goto trace01;
+		    }
+
+		  if ((proto1 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp1))
+		    {
+		      b1->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
+		      next1 = NAT_IN2OUT_ED_NEXT_DROP;
+		      goto trace01;
 		    }
 
 		  next1 =
@@ -1456,6 +1483,13 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 								 rx_fib_index0,
 								 thread_index)))
 			goto trace0;
+		    }
+
+		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
+		    {
+		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
+		      next0 = NAT_IN2OUT_ED_NEXT_DROP;
+		      goto trace0;
 		    }
 
 		  next0 =
@@ -1856,6 +1890,13 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 						   &fragments_to_loopback);
 			  goto trace0;
 			}
+		    }
+
+		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
+		    {
+		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
+		      next0 = NAT_IN2OUT_ED_NEXT_DROP;
+		      goto trace0;
 		    }
 
 		  next0 = slow_path_ed (sm, b0, rx_fib_index0, &kv0,
