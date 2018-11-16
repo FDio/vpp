@@ -414,10 +414,10 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
 		       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  ip46_address_t nh = ip46_address_initializer;
   clib_error_t *error = 0;
   u32 rx_sw_if_index = 0;
   u32 tx_sw_if_index = 0;
-  ip46_address_t nh;
   vnet_main_t *vnm;
   u8 is_add;
 
