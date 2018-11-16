@@ -17,7 +17,7 @@
 #define included_vnet_flow_flow_h
 
 #include <vppinfra/clib.h>
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #include <vnet/l3_types.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>

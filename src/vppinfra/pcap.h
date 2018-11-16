@@ -40,26 +40,63 @@
  * @file
  * @brief PCAP utility definitions
  */
-#ifndef included_vnet_pcap_h
-#define included_vnet_pcap_h
+#ifndef included_vppinfra_pcap_h
+#define included_vppinfra_pcap_h
 
-#include <vlib/vlib.h>
+#include <vppinfra/types.h>
+#include <vppinfra/cache.h>
+#include <vppinfra/mem.h>
+#include <vppinfra/lock.h>
 
 /**
  * @brief Packet types supported by PCAP
+ *
+ * These codes end up in the pcap file header.
+ * If you decide to build a wireshark dissector,
+ * you'll need to know that these codes are mapped
+ * through the pcap_to_wtap_map[] array in .../wiretap/pcap-common.c.
+ *
+ * For example:
+ *
+ *   { 160,		WTAP_ENCAP_USER13 },
+ *
+ * A file with (vpp) packet type PCAP_PACKET_TYPE_user13
+ * aka 160, will need a top-level dissector registered to
+ * deal with WTAP_ENCAP_USER13 [=58].
+ *
+ * Something like so:
+ *
+ * dissector_add_uint("wtap_encap", WTAP_ENCAP_USER13, vpp_dissector_handle);
  *
  * null 0
  * ethernet 1
  * ppp 9
  * ip 12
  * hdlc 104
+ * user0 147 ... user15 162
  */
 #define foreach_vnet_pcap_packet_type           \
   _ (null, 0)					\
   _ (ethernet, 1)				\
   _ (ppp, 9)					\
   _ (ip, 12)					\
-  _ (hdlc, 104)
+  _ (hdlc, 104)                                 \
+  _ (user0,    147)                             \
+  _ (user1,    148)                             \
+  _ (user2,    149)                             \
+  _ (user3,    150)                             \
+  _ (user4,    151)                             \
+  _ (user5,    152)                             \
+  _ (user6,    153)                             \
+  _ (user7,    154)                             \
+  _ (user8,    155)                             \
+  _ (user9,    156)                             \
+  _ (user10,   157)                             \
+  _ (user11,   158)                             \
+  _ (user12,   159)                             \
+  _ (user13,   160)                             \
+  _ (user14,   161)                             \
+  _ (user15,   162)
 
 typedef enum
 {
@@ -161,79 +198,7 @@ typedef struct
   u32 min_packet_bytes, max_packet_bytes;
 } pcap_main_t;
 
-/** Write out data to output file. */
-clib_error_t *pcap_write (pcap_main_t * pm);
-
-/** Read data from file. */
-clib_error_t *pcap_read (pcap_main_t * pm);
-
-/**
- * @brief Add packet
- *
- * @param *pm - pcap_main_t
- * @param time_now - f64
- * @param n_bytes_in_trace - u32
- * @param n_bytes_in_packet - u32
- *
- * @return Packet Data
- *
- */
-static inline void *
-pcap_add_packet (pcap_main_t * pm,
-		 f64 time_now, u32 n_bytes_in_trace, u32 n_bytes_in_packet)
-{
-  pcap_packet_header_t *h;
-  u8 *d;
-
-  vec_add2 (pm->pcap_data, d, sizeof (h[0]) + n_bytes_in_trace);
-  h = (void *) (d);
-  h->time_in_sec = time_now;
-  h->time_in_usec = 1e6 * (time_now - h->time_in_sec);
-  h->n_packet_bytes_stored_in_file = n_bytes_in_trace;
-  h->n_bytes_in_packet = n_bytes_in_packet;
-  pm->n_packets_captured++;
-  return h->data;
-}
-
-/**
- * @brief Add buffer (vlib_buffer_t) to the trace
- *
- * @param *pm - pcap_main_t
- * @param *vm - vlib_main_t
- * @param buffer_index - u32
- * @param n_bytes_in_trace - u32
- *
- */
-static inline void
-pcap_add_buffer (pcap_main_t * pm,
-		 vlib_main_t * vm, u32 buffer_index, u32 n_bytes_in_trace)
-{
-  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
-  u32 n = vlib_buffer_length_in_chain (vm, b);
-  i32 n_left = clib_min (n_bytes_in_trace, n);
-  f64 time_now = vlib_time_now (vm);
-  void *d;
-
-  if (PREDICT_TRUE (pm->n_packets_captured < pm->n_packets_to_capture))
-    {
-      clib_spinlock_lock_if_init (&pm->lock);
-      d = pcap_add_packet (pm, time_now, n_left, n);
-      while (1)
-	{
-	  u32 copy_length = clib_min ((u32) n_left, b->current_length);
-	  clib_memcpy_fast (d, b->data + b->current_data, copy_length);
-	  n_left -= b->current_length;
-	  if (n_left <= 0)
-	    break;
-	  d += b->current_length;
-	  ASSERT (b->flags & VLIB_BUFFER_NEXT_PRESENT);
-	  b = vlib_get_buffer (vm, b->next_buffer);
-	}
-      clib_spinlock_unlock_if_init (&pm->lock);
-    }
-}
-
-#endif /* included_vnet_pcap_h */
+#endif /* included_vppinfra_pcap_h */
 
 /*
  * fd.io coding-style-patch-verification: ON

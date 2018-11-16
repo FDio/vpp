@@ -43,7 +43,7 @@
 #include <vnet/pg/pg.h>
 
 #ifdef CLIB_UNIX
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #endif
 
 /* Root of all packet generator cli commands. */

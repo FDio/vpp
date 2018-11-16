@@ -43,7 +43,7 @@
 #include <vlib/vlib.h>		/* for VLIB_N_RX_TX */
 #include <vnet/pg/edit.h>
 #include <vppinfra/fifo.h>	/* for buffer_fifo */
-#include <vnet/unix/pcap.h>
+#include <vppinfra/pcap.h>
 #include <vnet/interface.h>
 
 extern vnet_device_class_t pg_dev_class;
