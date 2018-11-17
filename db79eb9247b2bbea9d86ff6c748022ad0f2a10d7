@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe57a2b6_02640dd0",
+        "filename": "src/vnet/ethernet/mac_address.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-17T10:25:29Z",
+      "side": 1,
+      "message": "__clib_packed",
+      "range": {
+        "startLine": 30,
+        "startChar": 6,
+        "endLine": 30,
+        "endChar": 30
+      },
+      "revId": "db79eb9247b2bbea9d86ff6c748022ad0f2a10d7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
