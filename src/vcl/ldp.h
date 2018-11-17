@@ -31,7 +31,7 @@
 #define LDP_ENV_APP_NAME  "LDP_APP_NAME"
 #define LDP_ENV_SID_BIT   "LDP_SID_BIT"
 
-#define LDP_SID_BIT_MIN   9
+#define LDP_SID_BIT_MIN   5
 #define LDP_SID_BIT_MAX   30
 
 #define LDP_APP_NAME_MAX  256
