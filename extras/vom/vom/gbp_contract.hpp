@@ -18,6 +18,7 @@
 
 #include "vom/acl_list.hpp"
 #include "vom/gbp_endpoint.hpp"
+#include "vom/gbp_rule.hpp"
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
 #include "vom/types.hpp"
@@ -30,6 +31,11 @@ namespace VOM {
 class gbp_contract : public object_base
 {
 public:
+  /**
+   * set of gbp rules
+   */
+  typedef std::set<gbp_rule> gbp_rules_t;
+
   /**
    * The key for a contract is the pari of EPG-IDs
    */
@@ -86,6 +92,11 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
+
+  /**
+   * Set gbp_rules in case of Redirect Contract
+   */
+  void set_gbp_rules(const gbp_rules_t& gbp_rules);
 
 private:
   /**
@@ -167,6 +178,11 @@ private:
    * The ACL applied to traffic between the gourps
    */
   std::shared_ptr<ACL::l3_list> m_acl;
+
+  /**
+   * The gbp rules applied to traffic between the gourps
+   */
+  gbp_rules_t m_gbp_rules;
 
   /**
    * A map of all bridge_domains

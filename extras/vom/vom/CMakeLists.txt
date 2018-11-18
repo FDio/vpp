@@ -80,6 +80,7 @@ if(GBP_FILE)
     gbp_recirc.cpp
     gbp_route_domain_cmds.cpp
     gbp_route_domain.cpp
+    gbp_rule.cpp
     gbp_subnet_cmds.cpp
     gbp_subnet.cpp
     gbp_vxlan.cpp
@@ -197,6 +198,7 @@ if(GBP_FILE)
     gbp_endpoint_group.hpp
     gbp_recirc.hpp
     gbp_route_domain.hpp
+    gbp_rule.hpp
     gbp_subnet.hpp
     gbp_vxlan.hpp
   )

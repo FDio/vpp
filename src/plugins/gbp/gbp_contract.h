@@ -52,7 +52,8 @@ typedef struct gbp_next_hop_t_
 
 #define foreach_gbp_hash_mode   \
   _(SRC_IP, "src-ip")           \
-  _(DST_IP, "dst-ip")
+  _(DST_IP, "dst-ip")		\
+  _(SYMMETRIC, "symmetric")
 
 typedef enum gbp_hash_mode_t_
 {

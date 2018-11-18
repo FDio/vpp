@@ -263,6 +263,7 @@ enum gbp_hash_mode
 {
   GBP_API_HASH_MODE_SRC_IP,
   GBP_API_HASH_MODE_DST_IP,
+  GBP_API_HASH_MODE_SYMMETRIC,
 };
 
 typedef gbp_next_hop_set

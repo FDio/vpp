@@ -718,6 +718,9 @@ gbp_hash_mode_decode (vl_api_gbp_hash_mode_t in, gbp_hash_mode_t * out)
     case GBP_API_HASH_MODE_DST_IP:
       *out = GBP_HASH_MODE_DST_IP;
       return (0);
+    case GBP_API_HASH_MODE_SYMMETRIC:
+      *out = GBP_HASH_MODE_SYMMETRIC;
+      return (0);
     }
 
   return (-2);
