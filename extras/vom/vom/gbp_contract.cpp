@@ -30,16 +30,14 @@ gbp_contract::gbp_contract(epg_id_t src_epg_id,
   , m_src_epg_id(src_epg_id)
   , m_dst_epg_id(dst_epg_id)
   , m_acl(acl.singular())
-{
-}
+{}
 
 gbp_contract::gbp_contract(const gbp_contract& gbpc)
   : m_hw(gbpc.m_hw)
   , m_src_epg_id(gbpc.m_src_epg_id)
   , m_dst_epg_id(gbpc.m_dst_epg_id)
   , m_acl(gbpc.m_acl)
-{
-}
+{}
 
 gbp_contract::~gbp_contract()
 {
@@ -91,11 +89,17 @@ gbp_contract::to_string() const
 }
 
 void
+gbp_contract::set_gbp_rules(gbp_contract::gbp_rules_t& gbp_rules) const
+{
+  m_gbp_rules = gbp_rules;
+}
+
+void
 gbp_contract::update(const gbp_contract& r)
 {
   /*
- * create the table if it is not yet created
- */
+   * create the table if it is not yet created
+   */
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_contract_cmds::create_cmd(
       m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle()));
@@ -154,8 +158,8 @@ gbp_contract::event_handler::handle_populate(const client_db::key_t& key)
       ACL::l3_list::find(payload.contract.acl_index);
 
     if (acl) {
-      gbp_contract gbpc(payload.contract.src_epg, payload.contract.dst_epg,
-                        *acl);
+      gbp_contract gbpc(
+        payload.contract.src_epg, payload.contract.dst_epg, *acl);
       OM::commit(key, gbpc);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpc.to_string();
