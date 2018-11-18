@@ -202,14 +202,10 @@ VLIB_NODE_FN (bond_input_node) (vlib_main_t * vm,
       /* Prefetch next iteration */
       if (PREDICT_TRUE (n_left >= 16))
 	{
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[8]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[9]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[10]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[11]),
-			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  vlib_prefetch_buffer_data (b[8], LOAD);
+	  vlib_prefetch_buffer_data (b[9], LOAD);
+	  vlib_prefetch_buffer_data (b[10], LOAD);
+	  vlib_prefetch_buffer_data (b[11], LOAD);
 
 	  vlib_prefetch_buffer_header (b[12], LOAD);
 	  vlib_prefetch_buffer_header (b[13], LOAD);

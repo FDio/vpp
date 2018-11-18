@@ -164,7 +164,6 @@ l2_rw_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next, next_index;
   vnet_classify_main_t *vcm = &vnet_classify_main;
   f64 now = vlib_time_now (vlib_get_main ());
-  u32 prefetch_size = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -177,7 +176,7 @@ l2_rw_node_fn (vlib_main_t * vm,
       /* get space to enqueue frame to graph node "next_index" */
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      while (n_left_from >= 6 && n_left_to_next >= 2)
 	{
 	  u32 bi0, next0, sw_if_index0, rwe_index0;
 	  u32 bi1, next1, sw_if_index1, rwe_index1;
@@ -190,14 +189,16 @@ l2_rw_node_fn (vlib_main_t * vm,
 	  l2_rw_entry_t *rwe0, *rwe1;
 
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_buffer_t *p2, *p3, *p4, *p5;
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
+	    p4 = vlib_get_buffer (vm, from[4]);
+	    p5 = vlib_get_buffer (vm, from[5]);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
-	    CLIB_PREFETCH (vlib_buffer_get_current (p2), prefetch_size, LOAD);
-	    CLIB_PREFETCH (vlib_buffer_get_current (p3), prefetch_size, LOAD);
+	    vlib_prefetch_buffer_header (p4, LOAD);
+	    vlib_prefetch_buffer_header (p5, LOAD);
+	    vlib_prefetch_buffer_data (p2, LOAD);
+	    vlib_prefetch_buffer_data (p3, LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -220,8 +221,6 @@ l2_rw_node_fn (vlib_main_t * vm,
 	  config1 = l2_rw_get_config (sw_if_index1);	/*TODO: check sw_if_index0 value */
 	  t0 = pool_elt_at_index (vcm->tables, config0->table_index);
 	  t1 = pool_elt_at_index (vcm->tables, config1->table_index);
-	  prefetch_size =
-	    (t1->skip_n_vectors + t1->match_n_vectors) * sizeof (u32x4);
 
 	  hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
 	  hash1 = vnet_classify_hash_packet (t1, (u8 *) h1);

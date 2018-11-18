@@ -163,14 +163,10 @@ ip4_input_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[10], LOAD);
 	  vlib_prefetch_buffer_header (b[11], LOAD);
 
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[4]),
-			 sizeof (ip4_header_t), LOAD);
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[5]),
-			 sizeof (ip4_header_t), LOAD);
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[6]),
-			 sizeof (ip4_header_t), LOAD);
-	  CLIB_PREFETCH (vlib_buffer_get_current (b[7]),
-			 sizeof (ip4_header_t), LOAD);
+	  vlib_prefetch_buffer_data (b[4], LOAD);
+	  vlib_prefetch_buffer_data (b[5], LOAD);
+	  vlib_prefetch_buffer_data (b[6], LOAD);
+	  vlib_prefetch_buffer_data (b[7], LOAD);
 	}
 
       vnet_buffer (b[0])->ip.adj_index[VLIB_RX] = ~0;
