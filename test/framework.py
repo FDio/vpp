@@ -151,6 +151,7 @@ class KeepAliveReporter(object):
 
     def __init__(self):
         self.__dict__ = self._shared_state
+        self._pipe = None
 
     @property
     def pipe(self):
@@ -158,7 +159,7 @@ class KeepAliveReporter(object):
 
     @pipe.setter
     def pipe(self, pipe):
-        if hasattr(self, '_pipe'):
+        if self._pipe is not None:
             raise Exception("Internal error - pipe should only be set once.")
         self._pipe = pipe
 
