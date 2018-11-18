@@ -709,6 +709,14 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
   if (am->tx_trace && am->tx_trace->enabled)
     vl_msg_api_trace (am, am->tx_trace, (void *) trace[0]);
 
+  /*
+   * Announce a probable binary API client bug:
+   * some client's input queue is stuffed.
+   * The situation may be recoverable, or not.
+   */
+  if (PREDICT_FALSE
+      (am->vl_clients /* vpp side */  && (q->cursize == q->maxsize)))
+    clib_warning ("WARNING: client input queue at %llx is stuffed...", q);
   (void) svm_queue_add (q, elem, 0 /* nowait */ );
 }
 
