@@ -107,6 +107,9 @@ comma_split (u8 * s, u8 ** a, u8 ** b)
  * @param first_reg first element in
  *        [an __attribute__((constructor)) function built, or
  *        otherwise created] singly-linked list of feature registrations
+ * @param first_const first element in
+ *        [an __attribute__((constructor)) function built, or
+ *        otherwise created] singly-linked list of bulk order constraints
  * @param [out] in_feature_nodes returned vector of
  *        topologically-sorted feature node names, for use in
  *        show commands
@@ -120,12 +123,14 @@ vnet_feature_arc_init (vlib_main_t * vm,
 		       char **feature_start_nodes,
 		       int num_feature_start_nodes,
 		       vnet_feature_registration_t * first_reg,
-		       char ***in_feature_nodes)
+		       vnet_feature_constraint_registration_t *
+		       first_const_set, char ***in_feature_nodes)
 {
   uword *index_by_name;
   uword *reg_by_index;
   u8 **node_names = 0;
   u8 *node_name;
+  char *prev_name;
   char **these_constraints;
   char *this_constraint_c;
   u8 **constraints = 0;
@@ -139,6 +144,7 @@ vnet_feature_arc_init (vlib_main_t * vm,
   int n_features;
   u32 *result = 0;
   vnet_feature_registration_t *this_reg = 0;
+  vnet_feature_constraint_registration_t *this_const_set = 0;
   char **feature_nodes = 0;
   hash_pair_t *hp;
   u8 **keys_to_delete = 0;
@@ -181,6 +187,44 @@ vnet_feature_arc_init (vlib_main_t * vm,
 	}
 
       this_reg = this_reg->next_in_arc;
+    }
+
+  /* pass 2, collect bulk "a then b then c then d" constraints */
+  this_const_set = first_const_set;
+  while (this_const_set)
+    {
+      these_constraints = this_const_set->node_names;
+
+      prev_name = 0;
+      /* Across the list of constraints */
+      while (these_constraints && these_constraints[0])
+	{
+	  this_constraint_c = these_constraints[0];
+	  p = hash_get_mem (index_by_name, this_constraint_c);
+	  if (p == 0)
+	    {
+	      clib_warning
+		("bulk constraint feature node '%s' not found for arc '%s'",
+		 this_constraint_c);
+	      these_constraints++;
+	      continue;
+	    }
+
+	  if (prev_name == 0)
+	    {
+	      prev_name = this_constraint_c;
+	      these_constraints++;
+	      continue;
+	    }
+
+	  constraint_tuple = format (0, "%s,%s%c", prev_name,
+				     this_constraint_c, 0);
+	  vec_add1 (constraints, constraint_tuple);
+	  prev_name = this_constraint_c;
+	  these_constraints++;
+	}
+
+      this_const_set = this_const_set->next_in_arc;
     }
 
   n_features = vec_len (node_names);
@@ -252,7 +296,9 @@ again:
 
   /* see if we got a partial order... */
   if (vec_len (result) != n_features)
-    return clib_error_return (0, "%d feature_init_cast no partial order!");
+    return clib_error_return
+      (0, "Arc '%s': failed to find a suitable feature order!",
+       first_reg->arc_name);
 
   /*
    * We win.

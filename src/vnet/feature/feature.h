@@ -60,6 +60,21 @@ typedef struct _vnet_feature_registration
   vnet_feature_enable_disable_function_t *enable_disable_cb;
 } vnet_feature_registration_t;
 
+/** constraint registration object */
+typedef struct _vnet_feature_constraint_registration
+{
+  /** next constraint set in list of all registrations*/
+  struct _vnet_feature_constraint_registration *next, *next_in_arc;
+  /** Feature arc name */
+  char *arc_name;
+
+  /** Feature arc index, assigned by init function */
+  u8 feature_arc_index;
+
+  /** Node names, to run in the specified order */
+  char **node_names;
+} vnet_feature_constraint_registration_t;
+
 typedef struct vnet_feature_config_main_t_
 {
   vnet_config_main_t config_main;
@@ -75,6 +90,8 @@ typedef struct
   /** feature path configuration lists */
   vnet_feature_registration_t *next_feature;
   vnet_feature_registration_t **next_feature_by_arc;
+  vnet_feature_constraint_registration_t *next_constraint;
+  vnet_feature_constraint_registration_t **next_constraint_by_arc;
   uword **next_feature_by_name;
 
   /** feature config main objects */
@@ -139,6 +156,28 @@ static void __vnet_rm_feature_registration_##x (void)		\
   VLIB_REMOVE_FROM_LINKED_LIST (fm->next_feature, r, next);	\
 }								\
 __VA_ARGS__ vnet_feature_registration_t vnet_feat_##x
+
+#define VNET_FEATURE_ARC_ORDER(x,...)                                   \
+  __VA_ARGS__ vnet_feature_constraint_registration_t 			\
+vnet_feature_constraint_##x;                                            \
+static void __vnet_add_constraint_registration_##x (void)		\
+  __attribute__((__constructor__)) ;                                    \
+static void __vnet_add_constraint_registration_##x (void)		\
+{                                                                       \
+  vnet_feature_main_t * fm = &feature_main;                             \
+  vnet_feature_constraint_##x.next = fm->next_constraint;               \
+  fm->next_constraint = & vnet_feature_constraint_##x;                  \
+}                                                                       \
+static void __vnet_rm_constraint_registration_##x (void)		\
+  __attribute__((__destructor__)) ;                                     \
+static void __vnet_rm_constraint_registration_##x (void)		\
+{                                                                       \
+  vnet_feature_main_t * fm = &feature_main;                             \
+  vnet_feature_constraint_registration_t *r = &vnet_feature_constraint_##x; \
+  VLIB_REMOVE_FROM_LINKED_LIST (fm->next_constraint, r, next);          \
+}                                                                       \
+__VA_ARGS__ vnet_feature_constraint_registration_t vnet_feature_constraint_##x
+
 #else
 #define VNET_FEATURE_ARC_INIT(x,...)				\
 extern vnet_feature_arc_registration_t __clib_unused vnet_feat_arc_##x; \
@@ -146,6 +185,14 @@ static vnet_feature_arc_registration_t __clib_unused __clib_unused_vnet_feat_arc
 #define VNET_FEATURE_INIT(x,...)				\
 extern vnet_feature_registration_t __clib_unused vnet_feat_##x; \
 static vnet_feature_registration_t __clib_unused __clib_unused_vnet_feat_##x
+
+#define VNET_FEATURE_ARC_ORDER(x,...)                           \
+extern vnet_feature_constraint_registration_t                   \
+__clib_unused vnet_feature_constraint_##x;                      \
+static vnet_feature_constraint_registration_t __clib_unused 	\
+__clib_unused_vnet_feature_constraint_##x
+
+
 #endif
 
 void
@@ -385,12 +432,14 @@ vnet_feature_start_device_input_x4 (u32 sw_if_index,
 
 #define VNET_FEATURES(...)  (char*[]) { __VA_ARGS__, 0}
 
-clib_error_t *vnet_feature_arc_init (vlib_main_t * vm,
-				     vnet_config_main_t * vcm,
-				     char **feature_start_nodes,
-				     int num_feature_start_nodes,
-				     vnet_feature_registration_t *
-				     first_reg, char ***feature_nodes);
+clib_error_t *vnet_feature_arc_init
+  (vlib_main_t * vm,
+   vnet_config_main_t * vcm,
+   char **feature_start_nodes,
+   int num_feature_start_nodes,
+   vnet_feature_registration_t * first_reg,
+   vnet_feature_constraint_registration_t * first_const_set,
+   char ***in_feature_nodes);
 
 void vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index,
 				   int verbose);
