@@ -1,0 +1,119 @@
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+import "vnet/ip/ip_types.api";
+
+enum syslog_severity
+{
+  SYSLOG_API_SEVERITY_EMERG = 0,
+  SYSLOG_API_SEVERITY_ALERT = 1,
+  SYSLOG_API_SEVERITY_CRIT = 2,
+  SYSLOG_API_SEVERITY_ERR = 3,
+  SYSLOG_API_SEVERITY_WARN = 4,
+  SYSLOG_API_SEVERITY_NOTICE = 5,
+  SYSLOG_API_SEVERITY_INFO = 6,
+  SYSLOG_API_SEVERITY_DBG = 7,
+};
+
+/** \brief Set syslog sender configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param src_address - IPv4 address of syslog sender (source)
+    @param collector_address - IPv4 address of syslog collector (destination)
+    @param collector_port - UDP port of syslog colector (destination)
+    @param vrf_id - VRF/FIB table ID
+    @param max_msg_size - maximum message length
+*/
+autoreply define syslog_set_sender
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t src_address;
+  vl_api_ip4_address_t collector_address;
+  u16 collector_port;
+  u32 vrf_id;
+  u32 max_msg_size;
+};
+
+/** \brief Get syslog sender configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define syslog_get_sender
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get syslog sender configuration reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param src_address - IPv4 address of syslog sender (source)
+    @param collector_address - IPv4 address of syslog collector (destination)
+    @param collector_port - UDP port of syslog colector (destination)
+    @param vrf_id - VRF/FIB table ID
+    @param max_msg_size - maximum message length
+*/
+define syslog_get_sender_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t src_address;
+  vl_api_ip4_address_t collector_address;
+  u16 collector_port;
+  u32 vrf_id;
+  u32 max_msg_size;
+};
+
+/** \brief Set syslog filter
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param severity - severity filter (specified severity and greater match)
+*/
+autoreply define syslog_set_filter
+{
+  u32 client_index;
+  u32 context;
+  vl_api_syslog_severity_t severity;
+ };
+
+/** \brief Get syslog filter
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define syslog_get_filter
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get syslog filter reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param severity - severity filter (specified severity and greater match)
+*/
+define syslog_get_filter_reply
+{
+  u32 context;
+  i32 retval;
+  vl_api_syslog_severity_t severity;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

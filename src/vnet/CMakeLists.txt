@@ -1355,6 +1355,23 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES bier/bier.api)
 
 ##############################################################################
+# SYSLOG
+##############################################################################
+
+list (APPEND VNET_SOURCES
+  syslog/syslog_api.c
+  syslog/syslog_udp.c
+  syslog/syslog.c
+)
+
+list(APPEND VNET_HEADERS
+  syslog/syslog_udp.h
+  syslog/syslog.h
+)
+
+list(APPEND VNET_API_FILES syslog/syslog.api)
+
+##############################################################################
 # VNET Library
 ##############################################################################
 
