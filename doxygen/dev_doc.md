@@ -11,3 +11,4 @@ Programming notes for developers.
 - @subpage acl_multicore
 - @subpage acl_lookup_context
 - @subpage libmemif_doc
+- @subpage syslog_doc

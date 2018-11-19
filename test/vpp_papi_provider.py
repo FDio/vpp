@@ -44,6 +44,17 @@ class QOS_SOURCE:
     IP = 3
 
 
+class SYSLOG_SEVERITY:
+    EMERG = 0
+    ALERT = 1
+    CRIT = 2
+    ERR = 3
+    WARN = 4
+    NOTICE = 5
+    INFO = 6
+    DBG = 7
+
+
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
     pass
@@ -4026,3 +4037,42 @@ class VppPapiProvider(object):
 
     def svs_dump(self):
         return self.api(self.papi.svs_dump, {})
+
+    def syslog_set_sender(
+            self,
+            collector,
+            src,
+            collector_port=514,
+            vrf_id=0,
+            max_msg_size=480):
+        """Set syslog sender configuration
+
+        :param collector: colector IP address
+        :param src: source IP address
+        :param collector_port: collector UDP port (Default value = 514)
+        :param vrf_id: VRF id (Default value = 0)
+        :param max_msg_size: maximum message length (Default value = 480)
+        """
+        return self.api(self.papi.syslog_set_sender,
+                        {'collector_address': {
+                             'address': collector},
+                         'src_address': {
+                             'address': src},
+                         'collector_port': collector_port,
+                         'vrf_id': vrf_id,
+                         'max_msg_size': max_msg_size})
+
+    def syslog_get_sender(self):
+        """Return syslog sender configuration"""
+        return self.api(self.papi.syslog_get_sender, {})
+
+    def syslog_set_filter(self, severity):
+        """Set syslog filter parameters
+
+        :param severity: severity filter (specified severity and greater match)
+        """
+        return self.api(self.papi.syslog_set_filter, {'severity': severity})
+
+    def syslog_get_filter(self):
+        """Return syslog filter parameters"""
+        return self.api(self.papi.syslog_get_filter, {})
