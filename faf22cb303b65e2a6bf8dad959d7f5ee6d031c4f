@@ -22,6 +22,30 @@
       "revId": "faf22cb303b65e2a6bf8dad959d7f5ee6d031c4f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a9978e66_07307ecd",
+        "filename": "src/vnet/ethernet/mac_address.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-19T10:16:34Z",
+      "side": 1,
+      "message": "they will be garbage, but the caller should ignore them. i\u0027ll write a version that is better.",
+      "parentUuid": "bcc5e10c_7490f655",
+      "range": {
+        "startLine": 66,
+        "startChar": 10,
+        "endLine": 66,
+        "endChar": 17
+      },
+      "revId": "faf22cb303b65e2a6bf8dad959d7f5ee6d031c4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
