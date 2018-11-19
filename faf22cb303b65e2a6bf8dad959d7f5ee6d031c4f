@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bcc5e10c_7490f655",
+        "filename": "src/vnet/ethernet/mac_address.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-19T09:39:17Z",
+      "side": 1,
+      "message": "Is this safe?\nIn other words, how do we know the top/last 2 bytes of the results are zero, and not some garbage that happened to lie after the 6 bytes of mac?",
+      "range": {
+        "startLine": 66,
+        "startChar": 10,
+        "endLine": 66,
+        "endChar": 17
+      },
+      "revId": "faf22cb303b65e2a6bf8dad959d7f5ee6d031c4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
