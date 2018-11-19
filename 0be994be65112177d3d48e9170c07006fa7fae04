@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "71cf84d9_10445279",
+        "filename": "extras/vom/vom/gbp_rule.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-19T16:40:51Z",
+      "side": 1,
+      "message": "you don\u0027t need to return u32 as a reference. there is no cost to a copy.",
+      "revId": "0be994be65112177d3d48e9170c07006fa7fae04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
