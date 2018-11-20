@@ -73,8 +73,8 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
     @param offset - (i32) offset applied to each pointer
 */
 static_always_inline void
-vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
-			      i32 offset)
+vlib_get_buffers_with_offset_inline (vlib_main_t * vm, u32 * bi, void **b,
+				     int count, i32 offset)
 {
 #ifdef CLIB_HAVE_VEC256
   u64x4 off = u64x4_splat (buffer_main.buffer_mem_start + offset);
@@ -129,6 +129,22 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
     }
 }
 
+/** \brief Translate buffer index into buffer pointer, with a hint to a compiler to unroll the loop
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffer_index - (u32) buffer index
+    @return - (vlib_buffer_t *) buffer pointer
+*/
+static_always_inline void
+vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
+			      i32 offset)
+{
+  if (count == VLIB_FRAME_SIZE)
+    vlib_get_buffers_with_offset_inline (vm, bi, b, VLIB_FRAME_SIZE, offset);
+  else
+    vlib_get_buffers_with_offset_inline (vm, bi, b, count, offset);
+}
+
 /** \brief Translate array of buffer indices into buffer pointers
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
@@ -170,8 +186,8 @@ vlib_get_buffer_index (vlib_main_t * vm, void *p)
     @param offset - (i32) offset applied to each pointer
 */
 static_always_inline void
-vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
-				     uword count, i32 offset)
+vlib_get_buffer_indices_with_offset_inline (vlib_main_t * vm, void **b,
+					    u32 * bi, uword count, i32 offset)
 {
 #ifdef CLIB_HAVE_VEC256
   u32x8 mask = { 0, 2, 4, 6, 1, 3, 5, 7 };
@@ -221,6 +237,25 @@ vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
       b += 1;
       count -= 1;
     }
+}
+
+/** \brief Translate array of buffer pointers into buffer indices with offset, hint to unroll the loop
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param b - (void **) array of buffer pointers
+    @param bi - (u32 *) array to store buffer indices
+    @param count - (uword) number of elements
+    @param offset - (i32) offset applied to each pointer
+*/
+static_always_inline void
+vlib_get_buffer_indices_with_offset (vlib_main_t * vm, void **b, u32 * bi,
+				     uword count, i32 offset)
+{
+  if (count == VLIB_FRAME_SIZE)
+    vlib_get_buffer_indices_with_offset_inline (vm, b, bi, VLIB_FRAME_SIZE,
+						offset);
+  else
+    vlib_get_buffer_indices_with_offset_inline (vm, b, bi, count, offset);
 }
 
 /** \brief Translate array of buffer pointers into buffer indices
