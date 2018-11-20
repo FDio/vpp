@@ -102,7 +102,7 @@ typedef struct app_worker_
   uword *local_connects;
 
   /** API index for the worker. Needed for multi-process apps */
-  u32 api_index;
+  u32 api_client_index;
 
   u8 app_is_builtin;
 } app_worker_t;
@@ -123,10 +123,6 @@ typedef struct application_
 {
   /** App index in app pool */
   u32 app_index;
-
-  /** Binary API connection index of app process that created the app,
-   *  ~0 if internal */
-  u32 api_client_index;
 
   /** Flags */
   u32 flags;
@@ -214,7 +210,7 @@ typedef struct _vnet_app_worker_add_del_args
 {
   u32 app_index;		/**< App for which a new worker is requested */
   u32 wrk_index;		/**< Index to delete or return value if add */
-  u32 api_index;		/**< Binary API client index */
+  u32 api_client_index;		/**< Binary API client index */
   ssvm_private_t *segment;	/**< First segment in segment manager */
   svm_msg_q_t *evt_q;		/**< Worker message queue */
   u8 is_add;			/**< Flag set if addition */
@@ -261,13 +257,10 @@ application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
 application_t *application_lookup_name (const u8 * name);
-u32 application_index (application_t * app);
 app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
 app_worker_t *application_get_default_worker (application_t * app);
 app_worker_t *application_listener_select_worker (stream_session_t * ls,
 						  u8 is_local);
-
-int application_api_queue_is_full (application_t * app);
 
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);

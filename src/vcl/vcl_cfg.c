@@ -22,7 +22,7 @@
 static vppcom_main_t _vppcom_main = {
   .debug = VPPCOM_DEBUG_INIT,
   .is_init = 0,
-  .main_api_client_index = ~0,
+  .app_index = ~0,
   .my_client_index = ~0
 };
 

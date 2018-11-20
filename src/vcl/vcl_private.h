@@ -282,8 +282,8 @@ typedef struct vppcom_main_t_
   /** Current pid, may be different from main_pid if forked child */
   pid_t current_pid;
 
-  /** Main process api client index. It's used by vpp to identify the app */
-  u32 main_api_client_index;
+  /** App's index in vpp. It's used by vpp to identify the app */
+  u32 app_index;
 
   /** API client handle */
   u32 my_client_index;
