@@ -549,7 +549,7 @@ def autoconfig_main_menu():
 
     main_menu_text = '\nWhat would you like to do?\n\n\
 1) Show basic system information\n\
-2) Dry Run (Will save the configuration files in {}/vpp/vpp-config/dryrun for inspection)\n\
+2) Dry Run (Saves the configuration files in {}/vpp/vpp-config/dryrun.\n\
 3) Full configuration (WARNING: This will change the system configuration)\n\
 4) List/Install/Uninstall VPP.\n\
 q) Quit'.format(rootdir, rootdir)
