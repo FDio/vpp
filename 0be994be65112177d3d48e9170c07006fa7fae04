@@ -16,6 +16,24 @@
       "revId": "0be994be65112177d3d48e9170c07006fa7fae04",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "13e43ad0_b16a3824",
+        "filename": "extras/vom/vom/gbp_rule.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-20T09:05:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "71cf84d9_10445279",
+      "revId": "0be994be65112177d3d48e9170c07006fa7fae04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
