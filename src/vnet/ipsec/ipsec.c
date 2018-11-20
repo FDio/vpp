@@ -195,14 +195,12 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 	  if (policy->is_ipv6)
 	    {
 	      vec_add1 (spd->ipv6_outbound_policies, policy_index);
-	      clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
 	      vec_sort_with_function (spd->ipv6_outbound_policies,
 				      ipsec_spd_entry_sort);
 	    }
 	  else
 	    {
 	      vec_add1 (spd->ipv4_outbound_policies, policy_index);
-	      clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
 	      vec_sort_with_function (spd->ipv4_outbound_policies,
 				      ipsec_spd_entry_sort);
 	    }
@@ -215,7 +213,6 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 		{
 		  vec_add1 (spd->ipv6_inbound_protect_policy_indices,
 			    policy_index);
-		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
 		  vec_sort_with_function
 		    (spd->ipv6_inbound_protect_policy_indices,
 		     ipsec_spd_entry_sort);
@@ -225,7 +222,6 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 		  vec_add1
 		    (spd->ipv6_inbound_policy_discard_and_bypass_indices,
 		     policy_index);
-		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
 		  vec_sort_with_function
 		    (spd->ipv6_inbound_policy_discard_and_bypass_indices,
 		     ipsec_spd_entry_sort);
@@ -237,7 +233,6 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 		{
 		  vec_add1 (spd->ipv4_inbound_protect_policy_indices,
 			    policy_index);
-		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
 		  vec_sort_with_function
 		    (spd->ipv4_inbound_protect_policy_indices,
 		     ipsec_spd_entry_sort);
@@ -247,7 +242,6 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 		  vec_add1
 		    (spd->ipv4_inbound_policy_discard_and_bypass_indices,
 		     policy_index);
-		  clib_memcpy (vp, policy, sizeof (ipsec_policy_t));
 		  vec_sort_with_function
 		    (spd->ipv4_inbound_policy_discard_and_bypass_indices,
 		     ipsec_spd_entry_sort);
