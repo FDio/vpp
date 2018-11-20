@@ -405,15 +405,30 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, i16 adv, u32 flags, int is_l3)
   u32x8_scatter_one ((u32x8) r, 4, &vnet_buffer (b[2])->l2_hdr_offset);
   u32x8_scatter_one ((u32x8) r, 6, &vnet_buffer (b[3])->l2_hdr_offset);
 
-  ASSERT (b[0]->current_data == vnet_buffer (b[0])->l3_hdr_offset);
-  ASSERT (b[1]->current_data == vnet_buffer (b[1])->l3_hdr_offset);
-  ASSERT (b[2]->current_data == vnet_buffer (b[2])->l3_hdr_offset);
-  ASSERT (b[3]->current_data == vnet_buffer (b[3])->l3_hdr_offset);
+  if (is_l3)
+    {
+      ASSERT (b[0]->current_data == vnet_buffer (b[0])->l3_hdr_offset);
+      ASSERT (b[1]->current_data == vnet_buffer (b[1])->l3_hdr_offset);
+      ASSERT (b[2]->current_data == vnet_buffer (b[2])->l3_hdr_offset);
+      ASSERT (b[3]->current_data == vnet_buffer (b[3])->l3_hdr_offset);
 
-  ASSERT (b[0]->current_data - vnet_buffer (b[0])->l2_hdr_offset == adv);
-  ASSERT (b[1]->current_data - vnet_buffer (b[1])->l2_hdr_offset == adv);
-  ASSERT (b[2]->current_data - vnet_buffer (b[2])->l2_hdr_offset == adv);
-  ASSERT (b[3]->current_data - vnet_buffer (b[3])->l2_hdr_offset == adv);
+      ASSERT (b[0]->current_data - vnet_buffer (b[0])->l2_hdr_offset == adv);
+      ASSERT (b[1]->current_data - vnet_buffer (b[1])->l2_hdr_offset == adv);
+      ASSERT (b[2]->current_data - vnet_buffer (b[2])->l2_hdr_offset == adv);
+      ASSERT (b[3]->current_data - vnet_buffer (b[3])->l2_hdr_offset == adv);
+    }
+  else
+    {
+      ASSERT (b[0]->current_data == vnet_buffer (b[0])->l2_hdr_offset);
+      ASSERT (b[1]->current_data == vnet_buffer (b[1])->l2_hdr_offset);
+      ASSERT (b[2]->current_data == vnet_buffer (b[2])->l2_hdr_offset);
+      ASSERT (b[3]->current_data == vnet_buffer (b[3])->l2_hdr_offset);
+
+      ASSERT (b[0]->current_data - vnet_buffer (b[0])->l3_hdr_offset == -adv);
+      ASSERT (b[1]->current_data - vnet_buffer (b[1])->l3_hdr_offset == -adv);
+      ASSERT (b[2]->current_data - vnet_buffer (b[2])->l3_hdr_offset == -adv);
+      ASSERT (b[3]->current_data - vnet_buffer (b[3])->l3_hdr_offset == -adv);
+    }
 
 #else
   vnet_buffer (b[0])->l2_hdr_offset = b[0]->current_data;
