@@ -648,6 +648,49 @@ _(i32x4, i64x2, epi32_epi64)
 #undef _
 /* *INDENT-ON* */
 
+static_always_inline u64x2
+u64x2_gather (void *p0, void *p1)
+{
+  u64x2 r = { *(u64 *) p0, *(u64 *) p1 };
+  return r;
+}
+
+static_always_inline u32x4
+u32x4_gather (void *p0, void *p1, void *p2, void *p3, void *p4)
+{
+  u32x4 r = { *(u32 *) p0, *(u32 *) p1, *(u32 *) p2, *(u32 *) p3 };
+  return r;
+}
+
+
+static_always_inline void
+u64x2_scater (u64x2 r, void *p0, void *p1)
+{
+  *(u64 *) p0 = r[0];
+  *(u64 *) p1 = r[1];
+}
+
+static_always_inline void
+u32x4_scater (u32x4 r, void *p0, void *p1, void *p2, void *p3)
+{
+  *(u32 *) p0 = r[0];
+  *(u32 *) p1 = r[1];
+  *(u32 *) p2 = r[2];
+  *(u32 *) p3 = r[3];
+}
+
+static_always_inline void
+u64x2_scater_one (u64x2 r, int index, void *p)
+{
+  *(u64 *) p = r[index];
+}
+
+static_always_inline void
+u32x4_scater_one (u32x4 r, int index, void *p)
+{
+  *(u32 *) p = r[index];
+}
+
 
 #endif /* included_vector_sse2_h */
 

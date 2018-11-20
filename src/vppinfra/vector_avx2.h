@@ -188,6 +188,65 @@ u32x8_from_f32x8 (f32x8 v)
   return (u32x8) _mm256_cvttps_epi32 ((__m256) v);
 }
 
+#define u16x16_blend(v1, v2, mask) \
+  (u16x16) _mm256_blend_epi16 ((__m256i) (v1), (__m256i) (v2), mask)
+
+static_always_inline u64x4
+u64x4_gather (void *p0, void *p1, void *p2, void *p3)
+{
+  u64x4 r = {
+    *(u64 *) p0, *(u64 *) p1, *(u64 *) p2, *(u64 *) p3
+  };
+  return r;
+}
+
+static_always_inline u32x8
+u32x8_gather (void *p0, void *p1, void *p2, void *p3, void *p4, void *p5,
+	      void *p6, void *p7)
+{
+  u32x8 r = {
+    *(u32 *) p0, *(u32 *) p1, *(u32 *) p2, *(u32 *) p3,
+    *(u32 *) p4, *(u32 *) p5, *(u32 *) p6, *(u32 *) p7,
+  };
+  return r;
+}
+
+
+static_always_inline void
+u64x4_scater (u64x4 r, void *p0, void *p1, void *p2, void *p3)
+{
+  *(u64 *) p0 = r[0];
+  *(u64 *) p1 = r[1];
+  *(u64 *) p2 = r[2];
+  *(u64 *) p3 = r[3];
+}
+
+static_always_inline void
+u32x8_scater (u32x8 r, void *p0, void *p1, void *p2, void *p3, void *p4,
+	      void *p5, void *p6, void *p7)
+{
+  *(u32 *) p0 = r[0];
+  *(u32 *) p1 = r[1];
+  *(u32 *) p2 = r[2];
+  *(u32 *) p3 = r[3];
+  *(u32 *) p4 = r[4];
+  *(u32 *) p5 = r[5];
+  *(u32 *) p6 = r[6];
+  *(u32 *) p7 = r[7];
+}
+
+static_always_inline void
+u64x4_scater_one (u64x4 r, int index, void *p)
+{
+  *(u64 *) p = r[index];
+}
+
+static_always_inline void
+u32x8_scater_one (u32x8 r, int index, void *p)
+{
+  *(u32 *) p = r[index];
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
