@@ -256,7 +256,7 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 map_hint = 0;
-  u16 thread_index = vm->thread_index;
+  vhost_cpu_t *cpu = &vum->cpus[vm->thread_index];
   u16 copy_len = 0;
 
   /* The descriptor table is not ready yet */
@@ -338,34 +338,31 @@ vhost_user_if_input (vlib_main_t * vm,
    * processing cost really comes from the memory copy.
    * The assumption is that big packets will fit in 40 buffers.
    */
-  if (PREDICT_FALSE (vum->cpus[thread_index].rx_buffers_len < n_left + 1 ||
-		     vum->cpus[thread_index].rx_buffers_len < 40))
+  if (PREDICT_FALSE (cpu->rx_buffers_len < n_left + 1 ||
+		     cpu->rx_buffers_len < 40))
     {
-      u32 curr_len = vum->cpus[thread_index].rx_buffers_len;
-      vum->cpus[thread_index].rx_buffers_len +=
-	vlib_buffer_alloc_from_free_list (vm,
-					  vum->cpus[thread_index].rx_buffers +
-					  curr_len,
+      u32 curr_len = cpu->rx_buffers_len;
+      cpu->rx_buffers_len +=
+	vlib_buffer_alloc_from_free_list (vm, cpu->rx_buffers + curr_len,
 					  VHOST_USER_RX_BUFFERS_N - curr_len,
 					  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
       if (PREDICT_FALSE
-	  (vum->cpus[thread_index].rx_buffers_len <
-	   VHOST_USER_RX_BUFFER_STARVATION))
+	  (cpu->rx_buffers_len < VHOST_USER_RX_BUFFER_STARVATION))
 	{
 	  /* In case of buffer starvation, discard some packets from the queue
 	   * and log the event.
 	   * We keep doing best effort for the remaining packets. */
-	  u32 flush = (n_left + 1 > vum->cpus[thread_index].rx_buffers_len) ?
-	    n_left + 1 - vum->cpus[thread_index].rx_buffers_len : 1;
+	  u32 flush = (n_left + 1 > cpu->rx_buffers_len) ?
+	    n_left + 1 - cpu->rx_buffers_len : 1;
 	  flush = vhost_user_rx_discard_packet (vm, vui, txvq, flush);
 
 	  n_left -= flush;
 	  vlib_increment_simple_counter (vnet_main.
 					 interface_main.sw_if_counters +
 					 VNET_INTERFACE_COUNTER_DROP,
-					 vlib_get_thread_index (),
-					 vui->sw_if_index, flush);
+					 vm->thread_index, vui->sw_if_index,
+					 flush);
 
 	  vlib_error_count (vm, vhost_user_input_node.index,
 			    VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER, flush);
@@ -384,7 +381,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  u32 desc_data_offset;
 	  vring_desc_t *desc_table = txvq->desc;
 
-	  if (PREDICT_FALSE (vum->cpus[thread_index].rx_buffers_len <= 1))
+	  if (PREDICT_FALSE (cpu->rx_buffers_len <= 1))
 	    {
 	      /* Not enough rx_buffers
 	       * Note: We yeld on 1 so we don't need to do an additional
@@ -396,19 +393,15 @@ vhost_user_if_input (vlib_main_t * vm,
 
 	  desc_current =
 	    txvq->avail->ring[txvq->last_avail_idx & txvq->qsz_mask];
-	  vum->cpus[thread_index].rx_buffers_len--;
-	  bi_current = (vum->cpus[thread_index].rx_buffers)
-	    [vum->cpus[thread_index].rx_buffers_len];
+	  cpu->rx_buffers_len--;
+	  bi_current = cpu->rx_buffers[cpu->rx_buffers_len];
 	  b_head = b_current = vlib_get_buffer (vm, bi_current);
 	  to_next[0] = bi_current;	//We do that now so we can forget about bi_current
 	  to_next++;
 	  n_left_to_next--;
 
-	  vlib_prefetch_buffer_with_index (vm,
-					   (vum->
-					    cpus[thread_index].rx_buffers)
-					   [vum->cpus[thread_index].
-					    rx_buffers_len - 1], LOAD);
+	  vlib_prefetch_buffer_with_index
+	    (vm, cpu->rx_buffers[cpu->rx_buffers_len - 1], LOAD);
 
 	  /* Just preset the used descriptor id and length for later */
 	  txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].id =
@@ -483,8 +476,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	      if (PREDICT_FALSE
 		  (b_current->current_length == VLIB_BUFFER_DATA_SIZE))
 		{
-		  if (PREDICT_FALSE
-		      (vum->cpus[thread_index].rx_buffers_len == 0))
+		  if (PREDICT_FALSE (cpu->rx_buffers_len == 0))
 		    {
 		      /* Cancel speculation */
 		      to_next--;
@@ -497,19 +489,14 @@ vhost_user_if_input (vlib_main_t * vm,
 		       * not an issue as they would still be valid. Useless,
 		       * but valid.
 		       */
-		      vhost_user_input_rewind_buffers (vm,
-						       &vum->cpus
-						       [thread_index],
-						       b_head);
+		      vhost_user_input_rewind_buffers (vm, cpu, b_head);
 		      n_left = 0;
 		      goto stop;
 		    }
 
 		  /* Get next output */
-		  vum->cpus[thread_index].rx_buffers_len--;
-		  u32 bi_next =
-		    (vum->cpus[thread_index].rx_buffers)[vum->cpus
-							 [thread_index].rx_buffers_len];
+		  cpu->rx_buffers_len--;
+		  u32 bi_next = cpu->rx_buffers[cpu->rx_buffers_len];
 		  b_current->next_buffer = bi_next;
 		  b_current->flags |= VLIB_BUFFER_NEXT_PRESENT;
 		  bi_current = bi_next;
@@ -517,7 +504,7 @@ vhost_user_if_input (vlib_main_t * vm,
 		}
 
 	      /* Prepare a copy order executed later for the data */
-	      vhost_copy_t *cpy = &vum->cpus[thread_index].copy[copy_len];
+	      vhost_copy_t *cpy = &cpu->copy[copy_len];
 	      copy_len++;
 	      u32 desc_data_l =
 		desc_table[desc_current].len - desc_data_offset;
@@ -574,9 +561,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	   */
 	  if (PREDICT_FALSE (copy_len >= VHOST_USER_RX_COPY_THRESHOLD))
 	    {
-	      if (PREDICT_FALSE
-		  (vhost_user_input_copy (vui, vum->cpus[thread_index].copy,
-					  copy_len, &map_hint)))
+	      if (PREDICT_FALSE (vhost_user_input_copy (vui, cpu->copy,
+							copy_len, &map_hint)))
 		{
 		  vlib_error_count (vm, node->node_index,
 				    VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
@@ -594,9 +580,8 @@ vhost_user_if_input (vlib_main_t * vm,
     }
 
   /* Do the memory copies */
-  if (PREDICT_FALSE
-      (vhost_user_input_copy (vui, vum->cpus[thread_index].copy,
-			      copy_len, &map_hint)))
+  if (PREDICT_FALSE (vhost_user_input_copy (vui, cpu->copy, copy_len,
+					    &map_hint)))
     {
       vlib_error_count (vm, node->node_index,
 			VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
@@ -620,10 +605,10 @@ vhost_user_if_input (vlib_main_t * vm,
   /* increase rx counters */
   vlib_increment_combined_counter
     (vnet_main.interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX,
-     vlib_get_thread_index (), vui->sw_if_index, n_rx_packets, n_rx_bytes);
+     + VNET_INTERFACE_COUNTER_RX, vm->thread_index, vui->sw_if_index,
+     n_rx_packets, n_rx_bytes);
 
-  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+  vnet_device_increment_rx_packets (vm->thread_index, n_rx_packets);
 
   return n_rx_packets;
 }
