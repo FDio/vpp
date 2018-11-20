@@ -1443,6 +1443,12 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 			    node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
 			  next0 = SNAT_OUT2IN_NEXT_DROP;
 			}
+		      else
+			{
+			  reass0->flags |= NAT_REASS_FLAG_ED_DONT_TRANSLATE;
+			  nat_ip4_reass_get_frags (reass0,
+						   &fragments_to_loopback);
+			}
 		      goto trace0;
 		    }
 
@@ -1474,6 +1480,8 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 	    }
 	  else
 	    {
+	      if (reass0->flags & NAT_REASS_FLAG_ED_DONT_TRANSLATE)
+		goto trace0;
 	      if (PREDICT_FALSE (reass0->sess_index == (u32) ~ 0))
 		{
 		  if (nat_ip4_reass_add_fragment
