@@ -102,7 +102,7 @@ typedef struct app_worker_
   uword *local_connects;
 
   /** API index for the worker. Needed for multi-process apps */
-  u32 api_index;
+  u32 api_client_index;
 
   u8 app_is_builtin;
 } app_worker_t;
@@ -261,13 +261,10 @@ application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
 application_t *application_lookup_name (const u8 * name);
-u32 application_index (application_t * app);
 app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
 app_worker_t *application_get_default_worker (application_t * app);
 app_worker_t *application_listener_select_worker (stream_session_t * ls,
 						  u8 is_local);
-
-int application_api_queue_is_full (application_t * app);
 
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);

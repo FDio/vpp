@@ -207,10 +207,10 @@ send_session_accept_callback (stream_session_t * s)
   application_t *server;
 
   server = application_get (server_wrk->app_index);
-  reg = vl_mem_api_client_index_to_registration (server->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (server_wrk->api_client_index);
   if (!reg)
     {
-      clib_warning ("no registration: %u", server->api_client_index);
+      clib_warning ("no registration: %u", server_wrk->api_client_index);
       return -1;
     }
 
@@ -287,10 +287,10 @@ send_session_disconnect_callback (stream_session_t * s)
   application_t *app;
 
   app = application_get (app_wrk->app_index);
-  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (app_wrk->api_client_index);
   if (!reg)
     {
-      clib_warning ("no registration: %u", app->api_client_index);
+      clib_warning ("no registration: %u", app_wrk->api_client_index);
       return;
     }
 
@@ -820,6 +820,7 @@ done:
     if (!rv)
       {
 	segp = a->segment;
+	rmp->app_index = clib_host_to_net_u32 (a->app_index);
 	rmp->segment_name_length = 0;
 	rmp->segment_size = segp->ssvm_size;
 	if (vec_len (segp->name))
@@ -1350,7 +1351,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   if (!reg)
     return;
 
-  app = application_lookup (clib_net_to_host_u32 (mp->app_api_index));
+  app = application_get_if_valid (clib_net_to_host_u32 (mp->app_index));
   if (!app)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;

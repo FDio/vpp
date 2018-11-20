@@ -496,11 +496,21 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   app_worker_t *app_wrk;
   segment_manager_t *sm;
   u32 app_ns_index = 0;
+  u8 *app_name = 0;
   u64 secret;
   int rv;
 
   if (a->api_client_index != APP_INVALID_INDEX)
-    app = application_lookup (a->api_client_index);
+    {
+      app = application_lookup (a->api_client_index);
+      if (!app)
+	{
+	  vl_api_registration_t *regp;
+	  regp = vl_api_client_index_to_registration (a->api_client_index);
+	  app_name = format (0, "%s%c", regp->name, 0);
+	  a->name = app_name;
+	}
+    }
   else if (a->name)
     app = application_lookup_name (a->name);
   else
@@ -534,7 +544,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
   a->segment = &fs->ssvm;
 
   segment_manager_segment_reader_unlock (sm);
-
+  vec_free (app_name);
   return 0;
 }
 

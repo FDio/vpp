@@ -97,26 +97,9 @@ app_worker_map_get (application_t * app, u32 map_index)
   return pool_elt_at_index (app->worker_maps, map_index);
 }
 
-static u8 *
-app_get_name_from_reg_index (application_t * app)
-{
-  u8 *app_name;
-
-  vl_api_registration_t *regp;
-  regp = vl_api_client_index_to_registration (app->api_client_index);
-  if (!regp)
-    app_name = format (0, "builtin-%d%c", app->app_index, 0);
-  else
-    app_name = format (0, "%s%c", regp->name, 0);
-
-  return app_name;
-}
-
 static const u8 *
 app_get_name (application_t * app)
 {
-  if (!app->name)
-    app->name = app_get_name_from_reg_index (app);
   return app->name;
 }
 
@@ -155,24 +138,6 @@ application_local_listener_session_endpoint (local_session_t * ll,
   sep->is_ip4 = ll->listener_session_type & 1;
 }
 
-int
-application_api_queue_is_full (application_t * app)
-{
-  svm_queue_t *q;
-
-  /* builtin servers are always OK */
-  if (app->api_client_index == ~0)
-    return 0;
-
-  q = vl_api_client_index_to_input_queue (app->api_client_index);
-  if (!q)
-    return 1;
-
-  if (q->cursize == q->maxsize)
-    return 1;
-  return 0;
-}
-
 /**
  * Returns app name for app-index
  */
@@ -188,7 +153,8 @@ application_name_from_index (u32 app_index)
 static void
 application_api_table_add (u32 app_index, u32 api_client_index)
 {
-  hash_set (app_main.app_by_api_client_index, api_client_index, app_index);
+  if (api_client_index != APP_INVALID_INDEX)
+    hash_set (app_main.app_by_api_client_index, api_client_index, app_index);
 }
 
 static void
@@ -198,22 +164,15 @@ application_api_table_del (u32 api_client_index)
 }
 
 static void
-application_table_add (application_t * app)
+application_name_table_add (application_t *app)
 {
-  if (app->api_client_index != APP_INVALID_INDEX)
-    hash_set (app_main.app_by_api_client_index, app->api_client_index,
-	      app->app_index);
-  else if (app->name)
-    hash_set_mem (app_main.app_by_name, app->name, app->app_index);
+  hash_set_mem (app_main.app_by_name, app->name, app->app_index);
 }
 
 static void
-application_table_del (application_t * app)
+application_name_table_del (application_t *app)
 {
-  if (app->api_client_index != APP_INVALID_INDEX)
-    hash_unset (app_main.app_by_api_client_index, app->api_client_index);
-  else if (app->name)
-    hash_unset_mem (app_main.app_by_name, app->name);
+  hash_unset_mem (app_main.app_by_name, app->name);
 }
 
 application_t *
@@ -263,12 +222,6 @@ application_get_if_valid (u32 app_index)
     return 0;
 
   return pool_elt_at_index (app_main.app_pool, app_index);
-}
-
-u32
-application_index (application_t * app)
-{
-  return app - app_main.app_pool;
 }
 
 static void
@@ -384,8 +337,12 @@ application_alloc_and_init (app_init_args_t * a)
   props->segment_type = seg_type;
 
   /* Add app to lookup by api_client_index table */
-  application_table_add (app);
-  a->app_index = application_index (app);
+  if (!application_is_builtin (app))
+    application_api_table_add (app->app_index, a->api_client_index);
+  else
+    application_name_table_add (app);
+
+  a->app_index = app->app_index;
 
   APP_DBG ("New app name: %v api index: %u index %u", app->name,
 	   app->api_client_index, app->app_index);
@@ -442,7 +399,8 @@ application_free (application_t * app)
   /*
    * Cleanup remaining state
    */
-  application_table_del (app);
+  if (application_is_builtin (app))
+    application_name_table_del (app);
   vec_free (app->name);
   vec_free (app->tls_cert);
   vec_free (app->tls_key);
@@ -469,7 +427,7 @@ application_detach_process (application_t * app, u32 api_client_index)
   /* *INDENT-OFF* */
   pool_foreach (wrk_map, app->worker_maps, ({
     app_wrk = app_worker_get (wrk_map->wrk_index);
-    if (app_wrk->api_index == api_client_index)
+    if (app_wrk->api_client_index == api_client_index)
       vec_add1 (wrks, app_wrk->wrk_index);
   }));
   /* *INDENT-ON* */
@@ -668,7 +626,7 @@ app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk)
   app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
   app_wrk->app_is_builtin = application_is_builtin (app);
-  app_wrk->api_index = app->api_client_index;
+  app_wrk->api_client_index = app->api_client_index;
 
   /*
    * Segment manager for local sessions
@@ -962,12 +920,8 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 	return clib_error_return_code (0, rv, 0, "app wrk init: %d", rv);
 
       /* Map worker api index to the app */
-      if (a->api_index != app->api_client_index
-	  && app->api_client_index != APP_INVALID_INDEX)
-	{
-	  app_wrk->api_index = a->api_index;
-	  application_api_table_add (app->app_index, a->api_index);
-	}
+      app_wrk->api_client_index = a->api_index;
+      application_api_table_add (app->app_index, a->api_index);
 
       sm = segment_manager_get (app_wrk->first_segment_manager);
       fs = segment_manager_get_segment_w_lock (sm, 0);
@@ -987,8 +941,7 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       if (!app_wrk)
 	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
 				       "No worker %u", a->wrk_index);
-      if (app->api_client_index != app_wrk->api_index)
-	application_api_table_del (app_wrk->api_index);
+      application_api_table_del (app_wrk->api_client_index);
       app_worker_free (app_wrk);
       app_worker_map_free (app, wrk_map);
       if (application_n_workers (app) == 0)
