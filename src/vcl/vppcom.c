@@ -773,7 +773,6 @@ vppcom_app_create (char *app_name)
 	  VERR ("couldn't connect to VPP!");
 	  return rv;
 	}
-      vcm->main_api_client_index = vcm->my_client_index;
       VDBG (0, "sending session enable");
       rv = vppcom_app_session_enable ();
       if (rv)

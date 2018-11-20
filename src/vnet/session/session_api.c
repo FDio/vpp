@@ -207,10 +207,10 @@ send_session_accept_callback (stream_session_t * s)
   application_t *server;
 
   server = application_get (server_wrk->app_index);
-  reg = vl_mem_api_client_index_to_registration (server->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (server_wrk->api_client_index);
   if (!reg)
     {
-      clib_warning ("no registration: %u", server->api_client_index);
+      clib_warning ("no registration: %u", server_wrk->api_client_index);
       return -1;
     }
 
@@ -284,13 +284,11 @@ send_session_disconnect_callback (stream_session_t * s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   vl_api_disconnect_session_t *mp;
   vl_api_registration_t *reg;
-  application_t *app;
 
-  app = application_get (app_wrk->app_index);
-  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (app_wrk->api_client_index);
   if (!reg)
     {
-      clib_warning ("no registration: %u", app->api_client_index);
+      clib_warning ("no registration: %u", app_wrk->api_client_index);
       return;
     }
 
@@ -298,7 +296,7 @@ send_session_disconnect_callback (stream_session_t * s)
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_DISCONNECT_SESSION);
   mp->handle = session_handle (s);
-  mp->context = app->api_client_index;
+  mp->context = app_wrk->api_client_index;
   vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 }
 
@@ -308,13 +306,11 @@ send_session_reset_callback (stream_session_t * s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   vl_api_registration_t *reg;
   vl_api_reset_session_t *mp;
-  application_t *app;
 
-  app = application_get (app_wrk->app_index);
-  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (app_wrk->api_client_index);
   if (!reg)
     {
-      clib_warning ("no registration: %u", app->api_client_index);
+      clib_warning ("no registration: %u", app_wrk->api_client_index);
       return;
     }
 
@@ -334,14 +330,12 @@ send_session_connected_callback (u32 app_wrk_index, u32 api_context,
   vl_api_registration_t *reg;
   svm_msg_q_t *vpp_queue;
   app_worker_t *app_wrk;
-  application_t *app;
 
   app_wrk = app_worker_get (app_wrk_index);
-  app = application_get (app_wrk->app_index);
-  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (app_wrk->api_client_index);
   if (!reg)
     {
-      clib_warning ("no registration: %u", app->api_client_index);
+      clib_warning ("no registration: %u", app_wrk->api_client_index);
       return -1;
     }
 
@@ -467,7 +461,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
       local_session_t *ll;
       u8 main_thread = vlib_num_workers ()? 1 : 0;
 
-      send_app_cut_through_registration_add (app->api_client_index,
+      send_app_cut_through_registration_add (app_wrk->api_client_index,
 					     app_wrk->wrk_map_index,
 					     ls->server_evt_q,
 					     ls->client_evt_q);
@@ -512,9 +506,7 @@ mq_send_session_disconnected_cb (stream_session_t * s)
   session_disconnected_msg_t *mp;
   svm_msg_q_t *app_mq;
   session_event_t *evt;
-  application_t *app;
 
-  app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return;
@@ -523,7 +515,7 @@ mq_send_session_disconnected_cb (stream_session_t * s)
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   mp = (session_disconnected_msg_t *) evt->data;
   mp->handle = session_handle (s);
-  mp->context = app->api_client_index;
+  mp->context = app_wrk->api_client_index;
   svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
@@ -536,9 +528,7 @@ mq_send_local_session_disconnected_cb (u32 app_wrk_index,
   session_disconnected_msg_t *mp;
   svm_msg_q_t *app_mq;
   session_event_t *evt;
-  application_t *app;
 
-  app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
     return;
@@ -547,7 +537,7 @@ mq_send_local_session_disconnected_cb (u32 app_wrk_index,
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   mp = (session_disconnected_msg_t *) evt->data;
   mp->handle = application_local_session_handle (ls);
-  mp->context = app->api_client_index;
+  mp->context = app_wrk->api_client_index;
   svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
@@ -581,15 +571,13 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   transport_connection_t *tc;
   app_worker_t *app_wrk;
   session_event_t *evt;
-  application_t *app;
 
   app_wrk = app_worker_get (app_wrk_index);
-  app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
   if (!app_mq)
     {
-      clib_warning ("app %u with api index: %u not attached", app->app_index,
-		    app->api_client_index);
+      clib_warning ("app %u with api index: %u not attached",
+                    app_wrk->app_index, app_wrk->api_client_index);
       return -1;
     }
 
@@ -627,7 +615,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       local_session_t *ls = (local_session_t *) s;
       u8 main_thread = vlib_num_workers ()? 1 : 0;
 
-      send_app_cut_through_registration_add (app->api_client_index,
+      send_app_cut_through_registration_add (app_wrk->api_client_index,
 					     app_wrk->wrk_map_index,
 					     ls->client_evt_q,
 					     ls->server_evt_q);
@@ -668,8 +656,8 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   app_mq = app_wrk->event_queue;
   if (!app_mq)
     {
-      clib_warning ("app %u with api index: %u not attached", app->app_index,
-		    app->api_client_index);
+      clib_warning ("app %u with api index: %u not attached",
+                    app_wrk->app_index, app_wrk->api_client_index);
       return -1;
     }
 
@@ -820,6 +808,7 @@ done:
     if (!rv)
       {
 	segp = a->segment;
+	rmp->app_index = clib_host_to_net_u32 (a->app_index);
 	rmp->segment_name_length = 0;
 	rmp->segment_size = segp->ssvm_size;
 	if (vec_len (segp->name))
@@ -1350,7 +1339,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   if (!reg)
     return;
 
-  app = application_lookup (clib_net_to_host_u32 (mp->app_api_index));
+  app = application_get_if_valid (clib_net_to_host_u32 (mp->app_index));
   if (!app)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
@@ -1360,7 +1349,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   vnet_app_worker_add_del_args_t args = {
     .app_index = app->app_index,
     .wrk_index = clib_net_to_host_u32 (mp->wrk_index),
-    .api_index = mp->client_index,
+    .api_client_index = mp->client_index,
     .is_add = mp->is_add
   };
   error = vnet_app_worker_add_del (&args);

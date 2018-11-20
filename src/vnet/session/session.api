@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.2.1";
+option version = "1.3.0";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -44,6 +44,7 @@ option version = "1.2.1";
     @param segment_size - size of first shm segment
     @param segment_name_length - length of segment name 
     @param segment_name - name of segment client needs to attach to
+    @param app_index - index of the newly created app
 */
 define application_attach_reply {
     u32 context;
@@ -54,6 +55,7 @@ define application_attach_reply {
     u32 segment_size;
     u8 segment_name_length;
     u8 segment_name[128];
+    u32 app_index;
 };
 
 /** \brief Application add TLS certificate
@@ -437,7 +439,7 @@ autoreply define app_cut_through_registration_add
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
-    @param app_api_index - explicit client api index
+    @param app_index - application index
     @param wrk_index - worker index, if a delete
     @param is_add - set if an add
 */
@@ -445,7 +447,7 @@ define app_worker_add_del
 {
   u32 client_index;
   u32 context;
-  u32 app_api_index;
+  u32 app_index;
   u32 wrk_index;
   u8 is_add;
 };
