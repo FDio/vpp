@@ -131,7 +131,7 @@ clear_trace_buffer (void)
   /* *INDENT-ON* */
 }
 
-static u8 *
+u8 *
 format_vlib_trace (u8 * s, va_list * va)
 {
   vlib_main_t *vm = va_arg (*va, vlib_main_t *);
