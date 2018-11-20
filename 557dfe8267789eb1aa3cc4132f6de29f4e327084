@@ -22,6 +22,30 @@
       "revId": "557dfe8267789eb1aa3cc4132f6de29f4e327084",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "88a5f13e_42eec3f0",
+        "filename": "test/run_tests.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-11-20T13:25:36Z",
+      "side": 1,
+      "message": "There could be multiple failed tests in the directory. Maybe I could change this to failed testcase diretory?",
+      "parentUuid": "afd9a1ff_7c2f3da9",
+      "range": {
+        "startLine": 239,
+        "startChar": 40,
+        "endLine": 239,
+        "endChar": 45
+      },
+      "revId": "557dfe8267789eb1aa3cc4132f6de29f4e327084",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
