@@ -384,6 +384,7 @@ vlib_get_next_frame_internal (vlib_main_t * vm,
     {
       nf->flags &= ~VLIB_FRAME_PENDING;
       f->n_vectors = 0;
+      f->flags = 0;
     }
 
   /* Allocate new frame if current one is already full. */
