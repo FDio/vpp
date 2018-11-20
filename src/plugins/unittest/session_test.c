@@ -419,7 +419,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
   u32 server_index, server_st_index, server_local_st_index;
   u32 dummy_port = 1234, client_index, server_wrk_index;
-  u32 dummy_api_context = 4321, dummy_client_api_index = 1234;
+  u32 dummy_api_context = 4321, dummy_client_api_index = ~0;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   session_endpoint_t client_sep = SESSION_ENDPOINT_NULL;
@@ -1493,7 +1493,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   app_ns = app_namespace_get_from_id (ns_id);
 
   attach_args.namespace_id = ns_id;
-  attach_args.api_client_index = dummy_server_api_index - 1;
+  attach_args.api_client_index = dummy_server_api_index;
   error = vnet_application_attach (&attach_args);
   SESSION_TEST ((error == 0), "server2 attached");
   server_index2 = attach_args.app_index;

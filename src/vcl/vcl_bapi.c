@@ -131,6 +131,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 	return;
     }
 
+  vcm->app_index = clib_net_to_host_u32 (mp->app_index);
   vcm->app_state = STATE_APP_ATTACHED;
 }
 
@@ -429,7 +430,7 @@ vcl_send_app_worker_add_del (u8 is_add)
 
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
   mp->client_index = vcm->my_client_index;
-  mp->app_api_index = clib_host_to_net_u32 (vcm->main_api_client_index);
+  mp->app_index = clib_host_to_net_u32 (vcm->app_index);
   mp->context = wrk_index;
   mp->is_add = is_add;
   if (!is_add)
