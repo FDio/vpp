@@ -89,6 +89,8 @@ typedef struct
   int verbose;
 } vlib_trace_main_t;
 
+format_function_t format_vlib_trace;
+
 #endif /* included_vlib_trace_h */
 
 /*

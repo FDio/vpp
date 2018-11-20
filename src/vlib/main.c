@@ -953,12 +953,15 @@ dispatch_pcap_trace (vlib_main_t * vm,
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **bufp, *b;
   u8 name_tlv[64];
   pcap_main_t *pm = &vm->dispatch_pcap_main;
+  vlib_trace_main_t *tm = &vm->trace_main;
   u32 capture_size;
   vlib_node_t *n;
+  u8 *packet_trace = 0;
   i32 n_left;
   f64 time_now = vlib_time_now (vm);
   u32 *from;
   u32 name_length;
+  u16 trace_length;
   u8 *d;
 
   /* Input nodes don't have frames yet */
@@ -985,11 +988,24 @@ dispatch_pcap_trace (vlib_main_t * vm,
 	{
 	  b = bufp[i];
 
+	  vec_reset_length (packet_trace);
+
+	  /* Is this packet traced? */
+	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      vlib_trace_header_t **h
+		= pool_elt_at_index (tm->trace_buffer_pool, b->trace_index);
+
+	      packet_trace = format (packet_trace, "%U%c",
+				     format_vlib_trace, vm, h[0], 0);
+	    }
+
 	  /* Figure out how many bytes we're capturing */
-	  capture_size = (sizeof (vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE) + vlib_buffer_length_in_chain (vm, b) + sizeof (u32) + +(name_length + 2);	/* +2: count plus NULL byte */
+	  capture_size = (sizeof (vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE) + vlib_buffer_length_in_chain (vm, b) + sizeof (u32) + (name_length + 2)	/* +2: name count plus NULL byte */
+	    + (vec_len (packet_trace) + 2);	/* +2: trace count */
 
 	  clib_spinlock_lock_if_init (&pm->lock);
-	  n_left = clib_min (capture_size, 512);
+	  n_left = clib_min (capture_size, 16384);
 	  d = pcap_add_packet (pm, time_now, n_left, capture_size);
 
 	  /* Copy the buffer index */
@@ -1004,8 +1020,22 @@ dispatch_pcap_trace (vlib_main_t * vm,
 	  clib_memcpy_fast (d, b, sizeof (*b) - VLIB_BUFFER_PRE_DATA_SIZE);
 	  d += sizeof (*b) - VLIB_BUFFER_PRE_DATA_SIZE;
 
-	  n_left = clib_min (vlib_buffer_length_in_chain (vm, b),
-			     512 - (sizeof (*b) - VLIB_BUFFER_PRE_DATA_SIZE));
+	  trace_length = vec_len (packet_trace);
+	  /* Copy the trace data length (may be zero) */
+	  clib_memcpy_fast (d, &trace_length, sizeof (trace_length));
+	  d += 2;
+
+	  /* Copy packet trace data (if any) */
+	  if (vec_len (packet_trace))
+	    clib_memcpy_fast (d, packet_trace, vec_len (packet_trace));
+
+	  d += vec_len (packet_trace);
+
+	  n_left = clib_min
+	    (vlib_buffer_length_in_chain (vm, b),
+	     16384 -
+	     ((sizeof (*b) - VLIB_BUFFER_PRE_DATA_SIZE) +
+	      (trace_length + 2)));
 	  /* Copy the packet data */
 	  while (1)
 	    {
@@ -1021,6 +1051,7 @@ dispatch_pcap_trace (vlib_main_t * vm,
 	  clib_spinlock_unlock_if_init (&pm->lock);
 	}
     }
+  vec_free (packet_trace);
 }
 
 static_always_inline u64
@@ -1991,6 +2022,9 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
   int enabled = 0;
   int errorFlag = 0;
   clib_error_t *error = 0;
+  u32 node_index, add;
+  vlib_trace_main_t *tm;
+  vlib_trace_node_t *tn;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2087,6 +2121,27 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	    }
 	  break;
 	}
+      else if (unformat (line_input, "buffer-trace %U %d",
+			 unformat_vlib_node, vm, &node_index, &add))
+	{
+	  if (vnet_trace_dummy == 0)
+	    vec_validate_aligned (vnet_trace_dummy, 2048,
+				  CLIB_CACHE_LINE_BYTES);
+	  vlib_cli_output (vm, "Buffer tracing of %d pkts from %U enabled...",
+			   add, format_vlib_node_name, vm, node_index);
+
+          /* *INDENT-OFF* */
+          foreach_vlib_main ((
+            {
+              tm = &this_vlib_main->trace_main;
+              tm->verbose = 0;  /* not sure this ever did anything... */
+              vec_validate (tm->nodes, node_index);
+              tn = tm->nodes + node_index;
+              tn->limit += add;
+              tm->trace_enable = 1;
+            }));
+          /* *INDENT-ON* */
+	}
 
       else
 	{
@@ -2174,7 +2229,11 @@ pcap_dispatch_trace_command_fn (vlib_main_t * vm,
  * @cliexend
  * Example of how to start a dispatch trace capture:
  * @cliexstart{pcap dispatch trace on max 35 file dispatchTrace.pcap}
- * pcap dispatc capture on...
+ * pcap dispatch capture on...
+ * @cliexend
+ * Example of how to start a dispatch trace capture with buffer tracing
+ * @cliexstart{pcap dispatch trace on max 10000 file dispatchTrace.pcap buffer-trace dpdk-input 1000}
+ * pcap dispatch capture on...
  * @cliexend
  * Example of how to display the status of a tx packet capture in progress:
  * @cliexstart{pcap tx trace status}
@@ -2191,7 +2250,8 @@ pcap_dispatch_trace_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (pcap_dispatch_trace_command, static) = {
     .path = "pcap dispatch trace",
     .short_help =
-    "pcap dispatch trace [on|off] [max <nn>] [file <name>] [status]",
+    "pcap dispatch trace [on|off] [max <nn>] [file <name>] [status]\n"
+    "              [buffer-trace <input-node-name> <nn>]",
     .function = pcap_dispatch_trace_command_fn,
 };
 /* *INDENT-ON* */
