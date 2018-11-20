@@ -3339,6 +3339,32 @@ class TestNAT44(MethodHolder):
         self.frag_in_order(proto=IP_PROTOS.udp)
         self.frag_in_order(proto=IP_PROTOS.icmp)
 
+    def test_frag_forwarding(self):
+        """ NAT44 forwarding fragment test """
+        self.vapi.nat44_add_interface_addr(self.pg1.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+        self.vapi.nat44_forwarding_enable_disable(1)
+
+        data = "A" * 16 + "B" * 16 + "C" * 3
+        pkts = self.create_stream_frag(self.pg1,
+                                       self.pg0.remote_ip4,
+                                       4789,
+                                       4789,
+                                       data,
+                                       proto=IP_PROTOS.udp)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        frags = self.pg0.get_capture(len(pkts))
+        p = self.reass_frags_and_verify(frags,
+                                        self.pg1.remote_ip4,
+                                        self.pg0.remote_ip4)
+        self.assertEqual(p[UDP].sport, 4789)
+        self.assertEqual(p[UDP].dport, 4789)
+        self.assertEqual(data, p[Raw].load)
+
     def test_reass_hairpinning(self):
         """ NAT44 fragments hairpinning """
 
