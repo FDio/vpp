@@ -138,7 +138,9 @@ class VPPUtil(object):
         # When using release
         reps += 'release/ubuntu {} main ./\n'.format(ubuntu_version)
         # When using master
-        # reps += 'master/ubuntu {} main/ ./\n'.format(ubuntu_version)
+        # reps += 'master/ubuntu {} main ./\n'.format(ubuntu_version)
+        # When using 1807
+        # reps += '1807/ubuntu {} main ./\n'.format(ubuntu_version)
 
         with open(sfile, 'w') as sfd:
             sfd.write(reps)
@@ -146,8 +148,8 @@ class VPPUtil(object):
 
         # Add the key
         key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format('release'))
-        # cmd = 'curl -L https://packagecloud.io/fdio/{}/gpgkey | apt-key add -'.format(fdio_release)
-        # cmd = 'curl -L https://packagecloud.io/fdio/{}/gpgkey | apt-key add -'.format('mastert')
+        # key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format('master'))
+        # key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format('1807'))
         cmd = 'echo "{}" | apt-key add -'.format(key.content)
         (ret, stdout, stderr) = self.exec_command(cmd)
         if ret != 0:
@@ -541,19 +543,25 @@ class VPPUtil(object):
                 interfaces[name]['carrier'] = spl[1]
 
             # Socket
-            rfall = re.findall(r'cpu socket', line)
+            rfall = re.findall(r'numa \d+', line)
             if rfall:
-                spl = line.split('cpu socket ')
-                interfaces[name]['cpu socket'] = spl[1]
+                spl = rfall[0].split()
+                interfaces[name]['numa'] = rfall[0].split()[1]
 
             # Queues and Descriptors
-            rfall = re.findall(r'rx queues', line)
+            rfall = re.findall(r'rx\: queues \d+', line)
             if rfall:
-                spl = line.split(',')
-                interfaces[name]['rx queues'] = spl[0].lstrip(' ').split(' ')[2]
-                interfaces[name]['rx descs'] = spl[1].split(' ')[3]
-                interfaces[name]['tx queues'] = spl[2].split(' ')[3]
-                interfaces[name]['tx descs'] = spl[3].split(' ')[3]
+                interfaces[name]['rx queues'] = rfall[0].split()[2]
+                rdesc = re.findall(r'desc \d+', line)
+                if rdesc:
+                    interfaces[name]['rx descs'] = rdesc[0].split()[1]
+
+            rfall = re.findall(r'tx\: queues \d+', line)
+            if rfall:
+                interfaces[name]['tx queues'] = rfall[0].split()[2]
+                rdesc = re.findall(r'desc \d+', line)
+                if rdesc:
+                    interfaces[name]['tx descs'] = rdesc[0].split()[1]
 
         return interfaces
 

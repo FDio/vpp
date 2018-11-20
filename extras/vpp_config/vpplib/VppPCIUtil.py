@@ -14,6 +14,7 @@
 """VPP PCI Utility libraries"""
 
 import re
+import logging
 
 from vpplib.VPPUtil import VPPUtil
 
@@ -318,6 +319,7 @@ class VppPCIUtil(object):
         :type node: dict
         :type driver: string
         :type device_id: string
+        :returns ret: Command return code
         """
 
         rootdir = node['rootdir']
@@ -325,5 +327,9 @@ class VppPCIUtil(object):
         cmd = dpdk_script + ' -b ' + driver + ' ' + device_id
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.format(
+            logging.error('{} failed on node {}'.format(
                 cmd, node['host'], stdout, stderr))
+            logging.error('{} {}'.format(
+                stdout, stderr))
+
+        return ret

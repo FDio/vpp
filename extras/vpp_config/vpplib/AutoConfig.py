@@ -1048,10 +1048,11 @@ class AutoConfig(object):
                     if answer == 'y':
                         if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
                             driver = device['unused'][0]
-                            VppPCIUtil.bind_vpp_device(node, driver, dvid)
-                        else:
-                            logging.debug('Could not bind device {}'.format(dvid))
-                        vppd[dvid] = device
+                            ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                            if ret:
+                                logging.debug('Could not bind device {}'.format(dvid))
+                            else:
+                                vppd[dvid] = device
                 for dit in vppd.items():
                     dvid = dit[0]
                     device = dit[1]
@@ -1081,11 +1082,12 @@ class AutoConfig(object):
                     if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
                         driver = device['unused'][0]
                         logging.debug('Binding device {} to driver {}'.format(dvid, driver))
-                        VppPCIUtil.bind_vpp_device(node, driver, dvid)
-                    else:
-                        logging.debug('Could not bind device {}'.format(dvid))
-                    dpdk_devices[dvid] = device
-                    del other_devices[dvid]
+                        ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                        if ret:
+                            logging.debug('Could not bind device {}'.format(dvid))
+                        else:
+                            dpdk_devices[dvid] = device
+                            del other_devices[dvid]
 
     def update_interfaces_config(self):
         """
@@ -1162,11 +1164,12 @@ class AutoConfig(object):
                         if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
                             driver = device['unused'][0]
                             logging.debug('Binding device {} to driver {}'.format(dvid, driver))
-                            VppPCIUtil.bind_vpp_device(node, driver, dvid)
-                        else:
-                            logging.debug('Could not bind device {}'.format(dvid))
-                        dpdk_devices[dvid] = device
-                        del kernel_devices[dvid]
+                            ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                            if ret:
+                                logging.debug('Could not bind device {}'.format(dvid))
+                            else:
+                                dpdk_devices[dvid] = device
+                                del kernel_devices[dvid]
 
             dlen = len(dpdk_devices)
             if dlen > 0:
@@ -1191,11 +1194,12 @@ class AutoConfig(object):
                         if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
                             driver = device['unused'][0]
                             logging.debug('Binding device {} to driver {}'.format(dvid, driver))
-                            VppPCIUtil.bind_vpp_device(node, driver, dvid)
-                        else:
-                            logging.debug('Could not bind device {}'.format(dvid))
-                        kernel_devices[dvid] = device
-                        del dpdk_devices[dvid]
+                            ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                            if ret:
+                                logging.debug('Could not bind device {}'.format(dvid))
+                            else:
+                                kernel_devices[dvid] = device
+                                del dpdk_devices[dvid]
 
             interfaces = {}
             for dit in dpdk_devices.items():
@@ -1386,6 +1390,14 @@ class AutoConfig(object):
         else:
             print ("\nNo devices bound to DPDK drivers")
 
+        other_devs = vpp.get_other_devices()
+        if len(other_devs):
+            print ("\nDevices not bound to Kernel or DPDK drivers:")
+            vpp.show_vpp_devices(other_devs, show_interfaces=True,
+                                 show_header=False)
+        else:
+            print ("\nNo devices not bound to Kernel or DPDK drivers")
+
         vpputl = VPPUtil()
         interfaces = vpputl.get_hardware(node)
         if interfaces == {}:
@@ -1397,17 +1409,17 @@ class AutoConfig(object):
             print ("None")
             return
 
-        print "{:30} {:6} {:4} {:7} {:4} {:7}". \
-            format('Name', 'Socket', 'RXQs',
+        print "{:30} {:4} {:4} {:7} {:4} {:7}". \
+            format('Name', 'Numa', 'RXQs',
                    'RXDescs', 'TXQs', 'TXDescs')
         for intf in sorted(interfaces.items()):
             name = intf[0]
             value = intf[1]
             if name == 'local0':
                 continue
-            socket = rx_qs = rx_ds = tx_qs = tx_ds = ''
-            if 'cpu socket' in value:
-                socket = int(value['cpu socket'])
+            numa = rx_qs = rx_ds = tx_qs = tx_ds = ''
+            if 'numa' in value:
+                numa = int(value['numa'])
             if 'rx queues' in value:
                 rx_qs = int(value['rx queues'])
             if 'rx descs' in value:
@@ -1417,8 +1429,8 @@ class AutoConfig(object):
             if 'tx descs' in value:
                 tx_ds = int(value['tx descs'])
 
-            print ("{:30} {:>6} {:>4} {:>7} {:>4} {:>7}".
-                   format(name, socket, rx_qs, rx_ds, tx_qs, tx_ds))
+            print ("{:30} {:>4} {:>4} {:>7} {:>4} {:>7}".
+                   format(name, numa, rx_qs, rx_ds, tx_qs, tx_ds))
 
     @staticmethod
     def hugepage_info(node):
