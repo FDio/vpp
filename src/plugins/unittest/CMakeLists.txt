@@ -17,5 +17,6 @@ add_vpp_plugin(unittest
   session_test.c
   string_test.c
   tcp_test.c
+  alloc_test.c
   unittest.c
 )
