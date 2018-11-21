@@ -269,6 +269,11 @@ public:
   void set(const std::string& tag);
 
   /**
+   * Get interface stats
+   */
+  void get_stats_print();
+
+  /**
    * Comparison operator - only used for UT
    */
   virtual bool operator==(const interface& i) const;
@@ -466,8 +471,12 @@ public:
   /**
    * Enable stats for this interface
    */
-  void enable_stats(stat_listener& el,
-                    const stats_type_t& st = stats_type_t::NORMAL);
+  void enable_stats(void);
+
+  /**
+   * Disable stats for this interface
+   */
+  void disable_stats(void);
 
 protected:
   /**
@@ -561,7 +570,12 @@ private:
   /**
    * enable the interface stats in the singular instance
    */
-  void enable_stats_i(stat_listener& el, const stats_type_t& st);
+  void enable_stats_i(void);
+
+  /**
+   * disable the interface stats in the singular instance
+   */
+  void disable_stats_i(void);
 
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.

@@ -23,6 +23,7 @@
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
+#include "vom/stat_reader.hpp"
 #include "vom/tap_interface_cmds.hpp"
 
 namespace VOM {
@@ -419,24 +420,27 @@ interface::set(const std::string& tag)
 }
 
 void
-interface::enable_stats_i(interface::stat_listener& el, const stats_type_t& st)
+interface::enable_stats_i()
 {
-  if (!m_stats) {
-    if (stats_type_t::DETAILED == st) {
-      m_stats_type = st;
-      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
-        m_stats_type, handle_i(), true));
-    }
-    m_stats.reset(new interface_cmds::stats_enable_cmd(el, handle_i()));
-    HW::enqueue(m_stats);
-    HW::write();
-  }
+  stat_reader::register_stat_indexes(handle_i().value());
 }
 
 void
-interface::enable_stats(interface::stat_listener& el, const stats_type_t& st)
+interface::enable_stats()
 {
-  singular()->enable_stats_i(el, st);
+  singular()->enable_stats_i();
+}
+
+void
+interface::disable_stats_i()
+{
+  stat_reader::unregister_stat_indexes(handle_i().value());
+}
+
+void
+interface::disable_stats()
+{
+  singular()->disable_stats_i();
 }
 
 std::shared_ptr<interface>
