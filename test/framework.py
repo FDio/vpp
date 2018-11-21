@@ -379,6 +379,7 @@ class VppTestCase(unittest.TestCase):
         cls.logger = get_logger(cls.__name__)
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
+            cls.logger.propagate = False
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
