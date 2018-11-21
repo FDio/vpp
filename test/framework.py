@@ -119,7 +119,7 @@ def pump_output(testclass):
                 split = read.splitlines(True)
                 if len(stderr_fragment) > 0:
                     split[0] = "%s%s" % (stderr_fragment, split[0])
-                if len(split) > 0 and split[-1].endswith("\n"):
+                if len(split) > 0 and split[-1].endswith(b"\n"):
                     limit = None
                 else:
                     limit = -1
@@ -473,7 +473,7 @@ class VppTestCase(unittest.TestCase):
         if hasattr(cls, 'pump_thread_stop_flag'):
             cls.pump_thread_stop_flag.set()
         if hasattr(cls, 'pump_thread_wakeup_pipe'):
-            os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
+            os.write(cls.pump_thread_wakeup_pipe[1], b'ding dong wake up')
         if hasattr(cls, 'pump_thread'):
             cls.logger.debug("Waiting for pump thread to stop")
             cls.pump_thread.join()
@@ -514,7 +514,7 @@ class VppTestCase(unittest.TestCase):
             stderr_log(single_line_delim)
             stderr_log('VPP output to stderr while running %s:', cls.__name__)
             stderr_log(single_line_delim)
-            vpp_output = "".join(cls.vpp_stderr_deque)
+            vpp_output = "".join(str(cls.vpp_stderr_deque))
             with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
                 f.write(vpp_output)
             stderr_log('\n%s', vpp_output)

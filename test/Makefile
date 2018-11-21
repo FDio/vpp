@@ -73,7 +73,7 @@ PYTHON_EXTRA_DEPENDS=
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) psutil faulthandler six scapy==2.4.0 pexpect cryptography subprocess32 cffi git+https://github.com/vpp-dev/py-lispnetworking
+PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) psutil six scapy==2.4.0 pexpect cryptography subprocess32 cffi git+https://github.com/vpp-dev/py-lispnetworking
 SCAPY_SOURCE=$(shell find $(PYTHON_VENV_PATH) -name site-packages)
 BUILD_COV_DIR=$(BR)/test-cov
 
@@ -85,7 +85,7 @@ PAPI_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/papi-install.done
 PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
 
 ifeq ($(PYTHON),)
-PYTHON_INTERP=python2.7
+PYTHON_INTERP=python3
 else
 PYTHON_INTERP=$(PYTHON)
 endif

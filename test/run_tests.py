@@ -11,7 +11,7 @@ import threading
 import signal
 import psutil
 import re
-from multiprocessing import Process, Pipe, cpu_count
+from multiprocessing import Process, Pipe, cpu_count, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
@@ -138,7 +138,7 @@ class TestCaseWrapper(object):
         self.finished_parent_end, self.finished_child_end = Pipe(duplex=False)
         self.result_parent_end, self.result_child_end = Pipe(duplex=False)
         self.testcase_suite = testcase_suite
-        self.stdouterr_queue = manager.StreamQueue()
+        self.stdouterr_queue = manager.StreamQueue(ctx=get_context())
         self.logger = get_parallel_logger(self.stdouterr_queue)
         self.child = Process(target=test_runner_wrapper,
                              args=(testcase_suite,
