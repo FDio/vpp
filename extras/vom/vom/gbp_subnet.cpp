@@ -62,6 +62,18 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
 {
 }
 
+gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
+                       const route::prefix_t& prefix,
+                       const gbp_endpoint_group& epg)
+  : m_hw(false)
+  , m_rd(rd.singular())
+  , m_prefix(prefix)
+  , m_type(type_t::L3_OUT)
+  , m_recirc(nullptr)
+  , m_epg(epg.singular())
+{
+}
+
 gbp_subnet::gbp_subnet(const gbp_subnet& o)
   : m_hw(o.m_hw)
   , m_rd(o.m_rd)
@@ -211,6 +223,15 @@ gbp_subnet::event_handler::handle_populate(const client_db::key_t& key)
         }
         case GBP_API_SUBNET_STITCHED_INTERNAL: {
           gbp_subnet gs(*rd, pfx, type_t::STITCHED_INTERNAL);
+          OM::commit(key, gs);
+          VOM_LOG(log_level_t::DEBUG) << "read: " << gs.to_string();
+          break;
+        }
+        case GBP_API_SUBNET_L3_OUT: {
+          std::shared_ptr<gbp_endpoint_group> epg =
+            gbp_endpoint_group::find(payload.subnet.epg_id);
+
+          gbp_subnet gs(*rd, pfx, *epg);
           OM::commit(key, gs);
           VOM_LOG(log_level_t::DEBUG) << "read: " << gs.to_string();
           break;

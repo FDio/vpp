@@ -21,6 +21,8 @@
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
 
+#include <vlib/unix/plugin.h>
+
 /**
  * Pool of GBP recircs
  */
@@ -35,6 +37,12 @@ index_t *gbp_recirc_db;
  * logger
  */
 vlib_log_class_t gr_logger;
+
+/**
+ * L2 Emulation enable/disable symbols
+ */
+static void (*l2e_enable) (u32 sw_if_index);
+static void (*l2e_disable) (u32 sw_if_index);
 
 #define GBP_RECIRC_DBG(...)                           \
     vlib_log_debug (gr_logger, __VA_ARGS__);
@@ -72,8 +80,7 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
 	return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
       gbp_endpoint_group_lock (ggi);
-      pool_get (gbp_recirc_pool, gr);
-      clib_memset (gr, 0, sizeof (*gr));
+      pool_get_zero (gbp_recirc_pool, gr);
       gri = gr - gbp_recirc_pool;
 
       gr->gr_epg = epg_id;
@@ -94,7 +101,7 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
       gg = gbp_endpoint_group_get (gr->gr_epgi);
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {
-	gr->gr_fib_index[fproto] =
+	gr->gr_fib_index[fib_proto_to_dpo (fproto)] =
 	  gbp_endpoint_group_get_fib_index (gg, fproto);
       }
 
@@ -102,6 +109,11 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
        * bind to the bridge-domain of the EPG
        */
       gr->gr_itf = gbp_itf_add_and_lock (gr->gr_sw_if_index, gg->gg_bd_index);
+
+      /*
+       * set the interface into L2 emulation mode
+       */
+      l2e_enable (gr->gr_sw_if_index);
 
       /*
        * Packets on the recirculation interface are subject to src-EPG
@@ -195,6 +207,7 @@ gbp_recirc_delete (u32 sw_if_index)
 
       ip4_sw_interface_enable_disable (gr->gr_sw_if_index, 0);
       ip6_sw_interface_enable_disable (gr->gr_sw_if_index, 0);
+      l2e_disable (gr->gr_sw_if_index);
 
       gbp_itf_unlock (gr->gr_itf);
 
@@ -218,12 +231,12 @@ gbp_recirc_walk (gbp_recirc_cb_t cb, void *ctx)
   /* *INDENT-ON* */
 }
 
-static int
+static walk_rc_t
 gbp_recirc_show_one (gbp_recirc_t * gr, void *ctx)
 {
   vlib_cli_output (ctx, "  %U", format_gbp_recirc, gr);
 
-  return (1);
+  return (WALK_CONTINUE);
 }
 
 static clib_error_t *
@@ -255,6 +268,11 @@ static clib_error_t *
 gbp_recirc_init (vlib_main_t * vm)
 {
   gr_logger = vlib_log_register_class ("gbp", "recirc");
+
+  l2e_enable =
+    vlib_get_plugin_symbol ("l2e_plugin.so", "l2_emulation_enable");
+  l2e_disable =
+    vlib_get_plugin_symbol ("l2e_plugin.so", "l2_emulation_disable");
 
   return (NULL);
 }

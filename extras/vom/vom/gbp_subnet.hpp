@@ -53,6 +53,11 @@ public:
      */
     const static type_t TRANSPORT;
 
+    /**
+     * A transport subnet, sent via the RD's UU-fwd interface
+     */
+    const static type_t L3_OUT;
+
   private:
     type_t(int v, const std::string s);
   };
@@ -65,11 +70,18 @@ public:
              const type_t& type);
 
   /**
-   * Construct an external GBP subnet
+   * Construct an stitched external GBP subnet
    */
   gbp_subnet(const gbp_route_domain& rd,
              const route::prefix_t& prefix,
              const gbp_recirc& recirc,
+             const gbp_endpoint_group& epg);
+
+  /**
+   * Construct an l3-out GBP subnet
+   */
+  gbp_subnet(const gbp_route_domain& rd,
+             const route::prefix_t& prefix,
              const gbp_endpoint_group& epg);
 
   /**
