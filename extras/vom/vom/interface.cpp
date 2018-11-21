@@ -23,6 +23,7 @@
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
+#include "vom/stat_reader.hpp"
 #include "vom/tap_interface_cmds.hpp"
 
 namespace VOM {
@@ -416,6 +417,12 @@ void
 interface::set(const std::string& tag)
 {
   m_tag = tag;
+}
+
+void
+interface::get_stats_print()
+{
+  stat_reader::get_stats(handle_i().value());
 }
 
 void
