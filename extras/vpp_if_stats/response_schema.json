@@ -1,0 +1,253 @@
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Root Schema",
+  "required": [
+    "vpp_details",
+    "interfaces"
+  ],
+  "properties": {
+    "vpp_details": {
+      "$id": "#/properties/vpp_details",
+      "type": "object",
+      "title": "The Vpp_details Schema",
+      "required": [
+        "program",
+        "version",
+        "build_date",
+        "build_directory"
+      ],
+      "properties": {
+        "program": {
+          "$id": "#/properties/vpp_details/properties/program",
+          "type": "string",
+          "title": "The Program Schema",
+          "default": "",
+          "examples": [
+            "vpe"
+          ],
+          "pattern": "^(.*)$"
+        },
+        "version": {
+          "$id": "#/properties/vpp_details/properties/version",
+          "type": "string",
+          "title": "The Version Schema",
+          "default": "",
+          "examples": [
+            "18.10-release"
+          ],
+          "pattern": "^(.*)$"
+        },
+        "build_date": {
+          "$id": "#/properties/vpp_details/properties/build_date",
+          "type": "string",
+          "title": "The Build_date Schema",
+          "default": "",
+          "examples": [
+            "Tue Oct 23 07:03:38 UTC 2018"
+          ],
+          "pattern": "^(.*)$"
+        },
+        "build_directory": {
+          "$id": "#/properties/vpp_details/properties/build_directory",
+          "type": "string",
+          "title": "The Build_directory Schema",
+          "default": "",
+          "examples": [
+            "/w/workspace/vpp-merge-1810-centos7"
+          ],
+          "pattern": "^(.*)$"
+        }
+      }
+    },
+    "interfaces": {
+      "$id": "#/properties/interfaces",
+      "type": "array",
+      "title": "The Interfaces Schema",
+      "items": {
+        "$id": "#/properties/interfaces/items",
+        "type": "object",
+        "title": "The Items Schema",
+        "required": [
+          "if_index",
+          "if_name",
+          "if_tag",
+          "if_mac",
+          "if_admin_state",
+          "if_link_state",
+          "if_link_mtu",
+          "if_sub_dot1ad",
+          "if_sub_id",
+          "if_tx_bytes",
+          "if_tx_packets",
+          "if_tx_errors",
+          "if_rx_bytes",
+          "if_rx_packets",
+          "if_rx_errors",
+          "if_drops",
+          "if_punts"
+        ],
+        "properties": {
+          "if_index": {
+            "$id": "#/properties/interfaces/items/properties/if_index",
+            "type": "integer",
+            "title": "The If_index Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_name": {
+            "$id": "#/properties/interfaces/items/properties/if_name",
+            "type": "string",
+            "title": "The If_name Schema",
+            "default": "",
+            "examples": [
+              "local0"
+            ],
+            "pattern": "^(.*)$"
+          },
+          "if_tag": {
+            "$id": "#/properties/interfaces/items/properties/if_tag",
+            "type": "string",
+            "title": "The If_tag Schema",
+            "default": "",
+            "examples": [
+              ""
+            ],
+            "pattern": "^(.*)$"
+          },
+          "if_mac": {
+            "$id": "#/properties/interfaces/items/properties/if_mac",
+            "type": "string",
+            "title": "The If_mac Schema",
+            "default": "",
+            "examples": [
+              ""
+            ],
+            "pattern": "^(.*)$"
+          },
+          "if_admin_state": {
+            "$id": "#/properties/interfaces/items/properties/if_admin_state",
+            "type": "integer",
+            "title": "The If_admin_state Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_link_state": {
+            "$id": "#/properties/interfaces/items/properties/if_link_state",
+            "type": "integer",
+            "title": "The If_link_state Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_link_mtu": {
+            "$id": "#/properties/interfaces/items/properties/if_link_mtu",
+            "type": "integer",
+            "title": "The If_link_mtu Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_sub_dot1ad": {
+            "$id": "#/properties/interfaces/items/properties/if_sub_dot1ad",
+            "type": "integer",
+            "title": "The If_sub_dot1ad Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_sub_id": {
+            "$id": "#/properties/interfaces/items/properties/if_sub_id",
+            "type": "integer",
+            "title": "The If_sub_id Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_tx_bytes": {
+            "$id": "#/properties/interfaces/items/properties/if_tx_bytes",
+            "type": "integer",
+            "title": "The If_tx_bytes Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_tx_packets": {
+            "$id": "#/properties/interfaces/items/properties/if_tx_packets",
+            "type": "integer",
+            "title": "The If_tx_packets Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_tx_errors": {
+            "$id": "#/properties/interfaces/items/properties/if_tx_errors",
+            "type": "integer",
+            "title": "The If_tx_errors Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_rx_bytes": {
+            "$id": "#/properties/interfaces/items/properties/if_rx_bytes",
+            "type": "integer",
+            "title": "The If_rx_bytes Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_rx_packets": {
+            "$id": "#/properties/interfaces/items/properties/if_rx_packets",
+            "type": "integer",
+            "title": "The If_rx_packets Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_rx_errors": {
+            "$id": "#/properties/interfaces/items/properties/if_rx_errors",
+            "type": "integer",
+            "title": "The If_rx_errors Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_drops": {
+            "$id": "#/properties/interfaces/items/properties/if_drops",
+            "type": "integer",
+            "title": "The If_drops Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          },
+          "if_punts": {
+            "$id": "#/properties/interfaces/items/properties/if_punts",
+            "type": "integer",
+            "title": "The If_punts Schema",
+            "default": 0,
+            "examples": [
+              0
+            ]
+          }
+        }
+      }
+    }
+  }
+}
