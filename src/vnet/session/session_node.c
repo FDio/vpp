@@ -863,7 +863,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	case FIFO_EVENT_DISCONNECT:
 	  /* Make sure stream disconnects run after the pending list is
 	   * drained */
-	  s = session_get_from_handle (e->session_handle);
+	  s = session_get_from_handle_if_valid (e->session_handle);
+	  if (!s)
+	    continue;
+
 	  if (!e->postponed)
 	    {
 	      e->postponed = 1;

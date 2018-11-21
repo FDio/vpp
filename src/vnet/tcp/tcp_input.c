@@ -527,6 +527,9 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
   for (i = 0; i < vec_len (pending_deq_acked); i++)
     {
       tc = tcp_connection_get (pending_deq_acked[i], thread_index);
+      if (PREDICT_FALSE (!tc))
+	continue;
+
       tc->flags &= ~TCP_CONN_DEQ_PENDING;
 
       if (PREDICT_FALSE (!tc->burst_acked))
