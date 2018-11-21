@@ -2,7 +2,7 @@
 // Source: git.fd.io/govpp.git/api (Interfaces: Channel)
 
 // Package mock_api is a generated GoMock package.
-package vppifstats
+package main
 
 import (
 	api "git.fd.io/govpp.git/api"

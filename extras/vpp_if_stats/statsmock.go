@@ -2,7 +2,7 @@
 // Source: git.fd.io/govpp.git/adapter (interfaces: StatsAPI)
 
 // Package mock_adapter is a generated GoMock package.
-package vppifstats
+package main
 
 import (
 	adapter "git.fd.io/govpp.git/adapter"

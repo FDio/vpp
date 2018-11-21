@@ -1,18 +1,20 @@
-package vppifstats
+package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"git.fd.io/govpp.git/examples/bin_api/vpe"
 )
 
-type JsonVppDetails struct {
+type jsonVppDetails struct {
 	Program        string `json:"program"`
 	Version        string `json:"version"`
 	BuildDate      string `json:"build_date"`
 	BuildDirectory string `json:"build_directory"`
 }
 
-type JsonVppInterface struct {
+type jsonVppInterface struct {
 	Index      uint32 `json:"if_index"`
 	Name       string `json:"if_name"`
 	Tag        string `json:"if_tag"`
@@ -33,30 +35,30 @@ type JsonVppInterface struct {
 	Punts     uint64 `json:"if_punts"`
 }
 
-type JsonVppPayload struct {
-	*JsonVppDetails `json:"vpp_details"`
-	Interfaces      map[uint32]*JsonVppInterface `json:"if_details"`
+type jsonVppPayload struct {
+	*jsonVppDetails `json:"vpp_details"`
+	Interfaces      []*jsonVppInterface `json:"interfaces"`
 }
 
-func BytesToString(b []byte) string {
+func bytesToString(b []byte) string {
 	return string(bytes.Split(b, []byte{0})[0])
 }
 
-func ToJsonVppDetails(svReply *vpe.ShowVersionReply) *JsonVppDetails {
-	return &JsonVppDetails{
-		Program:        BytesToString(svReply.Program),
-		Version:        BytesToString(svReply.Version),
-		BuildDate:      BytesToString(svReply.BuildDate),
-		BuildDirectory: BytesToString(svReply.BuildDirectory),
+func toJSONVppDetails(svReply *vpe.ShowVersionReply) *jsonVppDetails {
+	return &jsonVppDetails{
+		Program:        bytesToString(svReply.Program),
+		Version:        bytesToString(svReply.Version),
+		BuildDate:      bytesToString(svReply.BuildDate),
+		BuildDirectory: bytesToString(svReply.BuildDirectory),
 	}
 }
 
-func ToJsonVppInterface(vppIf *VppInterface) *JsonVppInterface {
-	return &JsonVppInterface{
+func toJSONVppInterface(vppIf *vppInterface) *jsonVppInterface {
+	return &jsonVppInterface{
 		Index:      vppIf.SwIfIndex,
-		Name:       BytesToString(vppIf.InterfaceName),
-		Tag:        BytesToString(vppIf.Tag),
-		MacAddress: ParseMacAddress(vppIf.L2Address, vppIf.L2AddressLength),
+		Name:       bytesToString(vppIf.InterfaceName),
+		Tag:        bytesToString(vppIf.Tag),
+		MacAddress: parseMacAddress(vppIf.L2Address, vppIf.L2AddressLength),
 		AdminState: vppIf.AdminUpDown,
 		LinkState:  vppIf.LinkUpDown,
 		LinkMTU:    vppIf.LinkMtu,
@@ -73,10 +75,19 @@ func ToJsonVppInterface(vppIf *VppInterface) *JsonVppInterface {
 	}
 }
 
-func ToJsonVppPayload(svReply *vpe.ShowVersionReply, vppIfs map[uint32]*VppInterface) *JsonVppPayload {
-	p := &JsonVppPayload{JsonVppDetails: ToJsonVppDetails(svReply), Interfaces: make(map[uint32]*JsonVppInterface)}
+func toJSONVppPayload(svReply *vpe.ShowVersionReply, vppIfs []*vppInterface) *jsonVppPayload {
+	p := &jsonVppPayload{jsonVppDetails: toJSONVppDetails(svReply), Interfaces: make([]*jsonVppInterface, len(vppIfs))}
 	for index, vppIf := range vppIfs {
-		p.Interfaces[index] = ToJsonVppInterface(vppIf)
+		p.Interfaces[index] = toJSONVppInterface(vppIf)
 	}
 	return p
+}
+
+func dumpToJSONString(v *vppConnector) (string, error) {
+	payload := toJSONVppPayload(&v.VppDetails, v.Interfaces)
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to dump to json: %v", err)
+	}
+	return string(jsonBytes), nil
 }
