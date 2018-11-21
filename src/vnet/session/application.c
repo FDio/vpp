@@ -443,7 +443,7 @@ application_detach_process (application_t * app, u32 api_client_index)
   vec_foreach (wrk_index, wrks)
   {
     app_wrk = app_worker_get (wrk_index[0]);
-    args->wrk_index = app_wrk->wrk_map_index;
+    args->wrk_map_index = app_wrk->wrk_map_index;
     args->is_add = 0;
     vnet_app_worker_add_del (args);
   }
@@ -926,19 +926,19 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       a->segment = &fs->ssvm;
       segment_manager_segment_reader_unlock (sm);
       a->evt_q = app_wrk->event_queue;
-      a->wrk_index = app_wrk->wrk_map_index;
+      a->wrk_map_index = app_wrk->wrk_map_index;
     }
   else
     {
-      wrk_map = app_worker_map_get (app, a->wrk_index);
+      wrk_map = app_worker_map_get (app, a->wrk_map_index);
       if (!wrk_map)
 	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
 				       "App %u does not have worker %u",
-				       app->app_index, a->wrk_index);
+				       app->app_index, a->wrk_map_index);
       app_wrk = app_worker_get (wrk_map->wrk_index);
       if (!app_wrk)
 	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
-				       "No worker %u", a->wrk_index);
+				       "No worker %u", a->wrk_map_index);
       application_api_table_del (app_wrk->api_client_index);
       app_worker_free (app_wrk);
       app_worker_map_free (app, wrk_map);
@@ -2216,19 +2216,31 @@ application_format_local_connects (application_t * app, int verbose)
 }
 
 u8 *
+format_application_worker (u8 * s, va_list * args)
+{
+  app_worker_t *app_wrk = va_arg (*args, app_worker_t *);
+  u32 indent = 1;
+
+  s = format (s, "%U wrk-index %u app-index %u map-index %u "
+	      "api-client-index %d\n", format_white_space, indent,
+	      app_wrk->wrk_index, app_wrk->app_index, app_wrk->wrk_map_index,
+	      app_wrk->api_client_index);
+  return s;
+}
+
+u8 *
 format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
   segment_manager_properties_t *props;
   const u8 *app_ns_name, *app_name;
+  app_worker_map_t *wrk_map;
+  app_worker_t *app_wrk;
 
   if (app == 0)
     {
-      if (verbose)
-	s = format (s, "%-10s%-20s%-15s%-15s%-15s%-15s", "Index", "Name",
-		    "Namespace", "Add seg size", "Rx-f size", "Tx-f size");
-      else
+      if (!verbose)
 	s = format (s, "%-10s%-20s%-40s", "Index", "Name", "Namespace");
       return s;
     }
@@ -2236,14 +2248,27 @@ format_application (u8 * s, va_list * args)
   app_name = app_get_name (app);
   app_ns_name = app_namespace_id_from_index (app->ns_index);
   props = application_segment_manager_properties (app);
-  if (verbose)
-    s = format (s, "%-10u%-20s%-15u%-15U%-15U%-15U", app->app_index,
-		app_name, app->ns_index,
-		format_memory_size, props->add_segment_size,
-		format_memory_size, props->rx_fifo_size, format_memory_size,
-		props->tx_fifo_size);
-  else
-    s = format (s, "%-10u%-20s%-40s", app->app_index, app_name, app_ns_name);
+  if (!verbose)
+    {
+      s = format (s, "%-10u%-20s%-40s", app->app_index, app_name,
+		  app_ns_name);
+      return s;
+    }
+
+  s = format (s, "app-name %s app-index %u ns-index %u seg-size %U\n",
+	      app_name, app->app_index, app->ns_index,
+	      format_memory_size, props->add_segment_size);
+  s = format (s, "rx-fifo-size %U tx-fifo-size %U workers:\n",
+	      format_memory_size, props->rx_fifo_size,
+	      format_memory_size, props->tx_fifo_size);
+
+  /* *INDENT-OFF* */
+  pool_foreach (wrk_map, app->worker_maps, ({
+      app_wrk = app_worker_get (wrk_map->wrk_index);
+      s = format (s, "%U", format_application_worker, app_wrk);
+  }));
+  /* *INDENT-ON* */
+
   return s;
 }
 
@@ -2318,6 +2343,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   int do_server = 0, do_client = 0, do_local = 0;
   application_t *app;
+  u32 app_index = ~0;
   int verbose = 0;
 
   session_cli_return_if_not_enabled ();
@@ -2330,25 +2356,44 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	do_client = 1;
       else if (unformat (input, "local"))
 	do_local = 1;
+      else if (unformat (input, "%u", &app_index))
+	;
       else if (unformat (input, "verbose"))
 	verbose = 1;
       else
-	break;
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
     }
 
   if (do_server)
-    application_format_all_listeners (vm, do_local, verbose);
+    {
+      application_format_all_listeners (vm, do_local, verbose);
+      return 0;
+    }
 
   if (do_client)
-    application_format_all_clients (vm, do_local, verbose);
+    {
+      application_format_all_clients (vm, do_local, verbose);
+      return 0;
+    }
+
+  if (app_index != ~0)
+    {
+      app = application_get (app_index);
+      if (!app)
+	return clib_error_return (0, "No app with index %u", app_index);
+
+      vlib_cli_output (vm, "%U", format_application, app, /* verbose */ 1);
+      return 0;
+    }
 
   /* Print app related info */
   if (!do_server && !do_client)
     {
-      vlib_cli_output (vm, "%U", format_application, 0, verbose);
+      vlib_cli_output (vm, "%U", format_application, 0, 0);
       /* *INDENT-OFF* */
       pool_foreach (app, app_main.app_pool, ({
-	vlib_cli_output (vm, "%U", format_application, app, verbose);
+	vlib_cli_output (vm, "%U", format_application, app, 0);
       }));
       /* *INDENT-ON* */
     }
