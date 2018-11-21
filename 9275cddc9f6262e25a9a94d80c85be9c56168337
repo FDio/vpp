@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "88b57877_8f3357e7",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-21T12:40:33Z",
+      "side": 1,
+      "message": "why the literals ;)",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ddcfae8_31b461da",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-21T12:40:33Z",
+      "side": 1,
+      "message": "isn\u0027t this check done in: gbp_hash_mode_decode().",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0e72a8fd_91193099",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-21T12:40:33Z",
+      "side": 1,
+      "message": "why the stack variable?",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c69ef43_437ffb1e",
+        "filename": "src/plugins/gbp/gbp_contract.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-21T12:40:33Z",
+      "side": 1,
+      "message": "why add numerical values here?",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
