@@ -4,7 +4,10 @@ import socket
 import sys
 import os.path
 from abc import abstractmethod, ABCMeta
-from cStringIO import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 from scapy.utils6 import in6_mactoifaceid
 
 from scapy.layers.l2 import Ether

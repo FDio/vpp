@@ -176,19 +176,19 @@ class MethodHolder(VppTestCase):
         acls = self.vapi.macip_acl_dump()
         if self.DEBUG:
             for acl in acls:
-                print "ACL #"+str(acl.acl_index)
+                print("ACL #"+str(acl.acl_index))
                 for r in acl.r:
                     rule = "ACTION"
                     if r.is_permit == 1:
                         rule = "PERMIT"
                     elif r.is_permit == 0:
                         rule = "DENY  "
-                    print "    IP6" if r.is_ipv6 else "    IP4", \
-                          rule, \
-                          r.src_mac.encode('hex'), \
-                          r.src_mac_mask.encode('hex'),\
-                          unpack('<16B', r.src_ip_addr), \
-                          r.src_ip_prefix_len
+                    print("    IP6" if r.is_ipv6 else "    IP4",
+                          rule,
+                          r.src_mac.encode('hex'),
+                          r.src_mac_mask.encode('hex'),
+                          unpack('<16B', r.src_ip_addr),
+                          r.src_ip_prefix_len)
         return acls
 
     def create_rules(self, mac_type=EXACT_MAC, ip_type=EXACT_IP,

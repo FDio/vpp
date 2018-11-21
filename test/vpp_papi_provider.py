@@ -210,7 +210,7 @@ class VppPapiProvider(object):
         """
         self.hook.before_cli(cli)
         cli += '\n'
-        r = self.papi.cli_inband(length=len(cli), cmd=cli)
+        r = self.papi.cli_inband(length=len(cli), cmd=cli.encode('utf-8'))
         self.hook.after_cli(cli)
         if hasattr(r, 'reply'):
             return r.reply.decode().rstrip('\x00')

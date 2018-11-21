@@ -11,7 +11,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
-import StringIO
+from io import StringIO
 
 
 def reassemble(listoffragments):

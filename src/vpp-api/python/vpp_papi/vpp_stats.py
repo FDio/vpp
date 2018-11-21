@@ -183,7 +183,11 @@ class VPPStats:
         while True:
             try:
                 dir = self.ls(name)
-                return self.dump(dir).values()[0]
+                cnt = self.dump(dir)
+                if len(cnt) > 1:
+                    raise IOError()
+                k, v = next(iter(cnt.items()))
+                return v
             except Exception as e:
                 if retries > 10:
                     return None

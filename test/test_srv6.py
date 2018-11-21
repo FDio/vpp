@@ -2144,7 +2144,7 @@ class TestSRv6(VppTestCase):
                 compare_func(txed_packet, packet)
 
             except:
-                print packet.command()
+                print(packet.command())
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 

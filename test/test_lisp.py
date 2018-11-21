@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import unittest
-
+'''
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, Ether
 from py_lispnetworking.lisp import LISP_GPE_Header
@@ -164,3 +164,4 @@ class TestLisp(VppTestCase):
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
+'''
