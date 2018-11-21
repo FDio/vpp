@@ -1255,8 +1255,7 @@ class VppTestRunner(unittest.TextTestRunner):
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
                                             verbosity, failfast, buffer,
                                             resultclass)
-        reporter = KeepAliveReporter()
-        reporter.pipe = keep_alive_pipe
+        KeepAliveReporter.pipe = keep_alive_pipe
 
         VppTestResult.test_framework_result_pipe = result_pipe
 
