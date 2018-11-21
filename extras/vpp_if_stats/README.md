@@ -1,6 +1,6 @@
 # VPP interface stats client
 
-This is a source code and a binary of a 'thin client' to collect, 
+This is Go source code and a binary of a 'thin client' to collect, 
 aggregate and expose VPP interface stats through VPP stats socket API. 
 It also provides some information about the installed VPP version.
 
@@ -22,7 +22,7 @@ go get git.fd.io/govpp.git
 go build
 ``` 
 
-## Using (pre-built linux 64bit binary included)
+## Using (post-build if arch is for example a linux 64bit)
 
 ```bash
 ./bin/vpp_if_stats_linux_amd64
