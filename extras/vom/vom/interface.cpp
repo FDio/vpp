@@ -23,6 +23,7 @@
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
+#include "vom/stat_reader.hpp"
 #include "vom/tap_interface_cmds.hpp"
 
 namespace VOM {
@@ -175,13 +176,8 @@ interface::sweep()
       new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
   }
 
-  if (m_stats) {
-    if (stats_type_t::DETAILED == m_stats_type) {
-      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
-        m_stats_type, handle_i(), false));
-    }
-    HW::enqueue(new interface_cmds::stats_disable_cmd(m_hdl.data()));
-    m_stats.reset();
+  if (m_listener) {
+    disable_stats();
   }
 
   // If the interface is up, bring it down
@@ -209,16 +205,8 @@ interface::replay()
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
 
-  if (m_stats) {
-    if (stats_type_t::DETAILED == m_stats_type) {
-      m_stats_type.set(rc_t::NOOP);
-      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
-        m_stats_type, handle_i(), true));
-    }
-    stat_listener& listener = m_stats->listener();
-    listener.status().set(rc_t::NOOP);
-    m_stats.reset(new interface_cmds::stats_enable_cmd(listener, handle_i()));
-    HW::enqueue(m_stats);
+  if (m_listener) {
+    enable_stats(m_listener, m_stats_type.data());
   }
 
   if (m_table_id && (m_table_id.data() != route::DEFAULT_TABLE)) {
@@ -424,24 +412,99 @@ interface::set(const std::string& tag)
 }
 
 void
-interface::enable_stats_i(interface::stat_listener& el, const stats_type_t& st)
+interface::set(counter_t count, const std::string& stat_type)
 {
-  if (!m_stats) {
+  if ("rx" == stat_type)
+    m_stats.m_rx = count;
+  else if ("tx" == stat_type)
+    m_stats.m_tx = count;
+  else if ("rx-unicast" == stat_type)
+    m_stats.m_rx_unicast = count;
+  else if ("tx-unicast" == stat_type)
+    m_stats.m_tx_unicast = count;
+  else if ("rx-multicast" == stat_type)
+    m_stats.m_rx_multicast = count;
+  else if ("tx-multicast" == stat_type)
+    m_stats.m_tx_multicast = count;
+  else if ("rx-broadcast" == stat_type)
+    m_stats.m_rx_broadcast = count;
+  else if ("tx-broadcast" == stat_type)
+    m_stats.m_rx_broadcast = count;
+}
+
+const interface::stats_t&
+interface::get_stats(void) const
+{
+  return m_stats;
+}
+
+void
+interface::publish_stats()
+{
+  m_listener->handle_interface_stat(*this);
+}
+
+std::ostream&
+operator<<(std::ostream& os, const interface::stats_t& stats)
+{
+  os << "["
+     << "rx [packets " << stats.m_rx.packets << ", bytes " << stats.m_rx.bytes
+     << "]"
+     << " rx-unicast [packets " << stats.m_rx_unicast.packets << ", bytes "
+     << stats.m_rx_unicast.bytes << "]"
+     << " rx-multicast [packets " << stats.m_rx_multicast.packets << ", bytes "
+     << stats.m_rx_multicast.bytes << "]"
+     << " rx-broadcast [packets " << stats.m_rx_broadcast.packets << ", bytes "
+     << stats.m_rx_broadcast.bytes << "]"
+     << " tx [packets " << stats.m_tx.packets << ", bytes " << stats.m_tx.bytes
+     << "]"
+     << " tx-unicast [packets " << stats.m_tx_unicast.packets << ", bytes "
+     << stats.m_tx_unicast.bytes << "]"
+     << " tx-multicast [packets " << stats.m_tx_multicast.packets << ", bytes "
+     << stats.m_tx_multicast.bytes << "]"
+     << " tx-broadcast [packets " << stats.m_tx_broadcast.packets << ", bytes "
+     << stats.m_tx_broadcast.bytes << "]]" << std::endl;
+
+  return (os);
+}
+
+void
+interface::enable_stats_i(interface::stat_listener* el, const stats_type_t& st)
+{
+  if (el != NULL) {
     if (stats_type_t::DETAILED == st) {
-      m_stats_type = st;
+      m_stats_type.set(rc_t::NOOP);
       HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
         m_stats_type, handle_i(), true));
     }
-    m_stats.reset(new interface_cmds::stats_enable_cmd(el, handle_i()));
-    HW::enqueue(m_stats);
-    HW::write();
+    stat_reader::registers(*this);
+    m_listener = el;
   }
 }
 
 void
-interface::enable_stats(interface::stat_listener& el, const stats_type_t& st)
+interface::enable_stats(interface::stat_listener* el, const stats_type_t& st)
 {
   singular()->enable_stats_i(el, st);
+}
+
+void
+interface::disable_stats_i()
+{
+  if (m_listener != NULL) {
+    if (stats_type_t::DETAILED == m_stats_type) {
+      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
+        m_stats_type, handle_i(), false));
+    }
+    stat_reader::unregisters(*this);
+    m_listener = NULL;
+  }
+}
+
+void
+interface::disable_stats()
+{
+  singular()->disable_stats_i();
 }
 
 std::shared_ptr<interface>

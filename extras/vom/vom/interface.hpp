@@ -25,15 +25,16 @@
 #include "vom/route_domain.hpp"
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
+#include "vom/stat_client.hpp"
 
 namespace VOM {
 /**
  * Forward declaration of the stats and events command
  */
 namespace interface_cmds {
-class stats_enable_cmd;
 class events_cmd;
 };
+class stat_reader;
 
 /**
  * A representation of an interface in VPP
@@ -185,6 +186,21 @@ public:
   };
 
   /**
+   * stats_t:
+   */
+  struct stats_t
+  {
+    counter_t m_rx;
+    counter_t m_tx;
+    counter_t m_rx_unicast;
+    counter_t m_tx_unicast;
+    counter_t m_rx_multicast;
+    counter_t m_tx_multicast;
+    counter_t m_rx_broadcast;
+    counter_t m_tx_broadcast;
+  };
+
+  /**
    * Construct a new object matching the desried state
    */
   interface(const std::string& name,
@@ -267,6 +283,11 @@ public:
    * Set the tag to the interface
    */
   void set(const std::string& tag);
+
+  /**
+   * Get the interface stats
+   */
+  const stats_t& get_stats(void) const;
 
   /**
    * Comparison operator - only used for UT
@@ -441,12 +462,13 @@ public:
      */
     stat_listener();
 
+    virtual ~stat_listener() = default;
+
     /**
      * Virtual function called on the listener when the command has data
      * ready to process
      */
-    virtual void handle_interface_stat(
-      interface_cmds::stats_enable_cmd* cmd) = 0;
+    virtual void handle_interface_stat(const interface&) = 0;
 
     /**
      * Return the HW::item representing the status
@@ -478,8 +500,13 @@ public:
   /**
    * Enable stats for this interface
    */
-  void enable_stats(stat_listener& el,
+  void enable_stats(stat_listener* el,
                     const stats_type_t& st = stats_type_t::NORMAL);
+
+  /**
+   * Disable stats for this interface
+   */
+  void disable_stats();
 
   /**
    * Enable the reception of events of all interfaces
@@ -499,7 +526,6 @@ protected:
   void set(const handle_t& handle);
   friend class interface_factory;
   friend class pipe;
-
   /**
    * The SW interface handle VPP has asigned to the interface
    */
@@ -581,9 +607,29 @@ private:
   static event_handler m_evh;
 
   /**
+   * friend with stat_reader
+   */
+  friend stat_reader;
+
+  /**
+   * publish stats
+   */
+  void publish_stats();
+
+  /**
+   * Set the interface stat
+   */
+  void set(counter_t count, const std::string& stat_type);
+
+  /**
    * enable the interface stats in the singular instance
    */
-  void enable_stats_i(stat_listener& el, const stats_type_t& st);
+  void enable_stats_i(stat_listener* el, const stats_type_t& st);
+
+  /**
+   * disable the interface stats in the singular instance
+   */
+  void disable_stats_i();
 
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
@@ -623,11 +669,6 @@ private:
   std::shared_ptr<route_domain> m_rd;
 
   /**
-   * shared pointer to the stats object for this interface.
-   */
-  std::shared_ptr<interface_cmds::stats_enable_cmd> m_stats;
-
-  /**
    * The state of the interface
    */
   HW::item<admin_state_t> m_state;
@@ -646,6 +687,16 @@ private:
    * The state of the detailed stats collection
    */
   HW::item<stats_type_t> m_stats_type;
+
+  /**
+   * Interface stats
+   */
+  stats_t m_stats;
+
+  /**
+   * reference to stat listener
+   */
+  stat_listener* m_listener;
 
   /**
    * Operational state of the interface
@@ -683,6 +734,11 @@ private:
 
   static std::shared_ptr<interface_cmds::events_cmd> m_events_cmd;
 };
+
+/**
+ *  stream insertion operator for interface stats
+ */
+std::ostream& operator<<(std::ostream& os, const interface::stats_t& stats);
 };
 /*
  * fd.io coding-style-patch-verification: ON
