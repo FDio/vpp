@@ -200,6 +200,10 @@ always_inline int
 nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
 				 tcp_header_t * tcp, u32 thread_index)
 {
+  if ((ses->state == 0) && (tcp->flags & TCP_FLAG_RST))
+    ses->state = NAT44_SES_RST;
+  if ((ses->state == NAT44_SES_RST) && !(tcp->flags & TCP_FLAG_RST))
+    ses->state = 0;
   if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
       (ses->state & NAT44_SES_O2I_SYN))
     ses->state = 0;
@@ -231,6 +235,10 @@ always_inline int
 nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
 				 tcp_header_t * tcp, u32 thread_index)
 {
+  if ((ses->state == 0) && (tcp->flags & TCP_FLAG_RST))
+    ses->state = NAT44_SES_RST;
+  if ((ses->state == NAT44_SES_RST) && !(tcp->flags & TCP_FLAG_RST))
+    ses->state = 0;
   if ((tcp->flags & TCP_FLAG_ACK) && (ses->state & NAT44_SES_I2O_SYN) &&
       (ses->state & NAT44_SES_O2I_SYN))
     ses->state = 0;

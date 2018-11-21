@@ -165,6 +165,7 @@ typedef enum
 #define NAT44_SES_O2I_FIN_ACK 8
 #define NAT44_SES_I2O_SYN 16
 #define NAT44_SES_O2I_SYN 32
+#define NAT44_SES_RST     64
 
 /* Session flags */
 #define SNAT_SESSION_FLAG_STATIC_MAPPING       1
