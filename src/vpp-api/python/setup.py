@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #
 # Copyright (c) 2016 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import os
+import subprocess
 import sys
 
 try:
@@ -20,16 +24,35 @@ except ImportError:
 
 requirements = ['cffi >= 1.6']
 
-setup(
-    name='vpp_papi',
-    version='1.6.2',
-    description='VPP Python binding',
-    author='Ole Troan',
-    author_email='ot@cisco.com',
-    url='https://wiki.fd.io/view/VPP/Python_API',
-    license='Apache-2.0',
-    test_suite='vpp_papi.tests',
-    install_requires=requirements,
-    packages=find_packages(),
-    long_description='''VPP Python language binding.''',
-    zip_safe=True)
+
+def get_pep404_version_from_git():
+    version = subprocess.check_output(["git", "describe"])[1:].strip()
+    # v19.01-rc0-289-g391d328 -> 19.1rc0.dev289+g391d328
+
+    count = version.count(b"-")
+    if count == 3:
+        version = b'+'.join(version.rsplit(b'-', 1))
+        count -= 1
+    if count == 2:
+        version = b'.dev'.join(version.rsplit(b'-', 1))
+        count -= 1
+    if count == 1:
+        version = version.replace(b'-', b'')
+
+    version = version.replace(b'.0', b'.').decode('utf-8')
+
+    return version
+
+
+setup(name='vpp_papi',
+      version=get_pep404_version_from_git(),
+      description='VPP Python binding',
+      author='Ole Troan',
+      author_email='ot@cisco.com',
+      url='https://wiki.fd.io/view/VPP/Python_API',
+      license='Apache-2.0',
+      test_suite='vpp_papi.tests',
+      install_requires=requirements,
+      packages=find_packages(),
+      long_description='''VPP Python language binding.''',
+      zip_safe=True)
