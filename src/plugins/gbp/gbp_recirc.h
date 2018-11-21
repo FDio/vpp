@@ -20,7 +20,10 @@
 #include <vnet/fib/fib_types.h>
 
 /**
- * An Endpoint Group representation
+ * A GBP recirculation interface representation
+ *  Thes interfaces join Bridge domains that are internal to those that are
+ * NAT external, so the packets can be NAT translated and then undergo the
+ * whole policy process again.
  */
 typedef struct gpb_recirc_t_
 {
@@ -37,7 +40,7 @@ typedef struct gpb_recirc_t_
   /**
    * FIB indices the EPG is mapped to
    */
-  u32 gr_fib_index[FIB_PROTOCOL_IP_MAX];
+  u32 gr_fib_index[DPO_PROTO_NUM];
 
   /**
    * Is the interface for packets post-NAT translation (i.e. ext)
@@ -59,7 +62,7 @@ typedef struct gpb_recirc_t_
 extern int gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext);
 extern void gbp_recirc_delete (u32 sw_if_index);
 
-typedef int (*gbp_recirc_cb_t) (gbp_recirc_t * gbpe, void *ctx);
+typedef walk_rc_t (*gbp_recirc_cb_t) (gbp_recirc_t * gbpe, void *ctx);
 extern void gbp_recirc_walk (gbp_recirc_cb_t bgpe, void *ctx);
 
 /**
