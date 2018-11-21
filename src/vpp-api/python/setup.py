@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # Copyright (c) 2016 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,13 +13,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
+
 try:
     from setuptools import setup, find_packages
 except ImportError:
     from distutils.core import setup, find_packages
 
+
+def get_pep404_version_from_git():
+    version = subprocess.check_output(["git", "describe"])[1:].strip()
+    # v19.01-rc0-289-g391d328 -> 19.1rc0.dev289+g391d328
+
+    count = version.count("-")
+    if count == 3:
+        version = '+'.join(version.rsplit('-', 1))
+        count -= 1
+    if count == 2:
+        version = '.dev'.join(version.rsplit('-', 1))
+        count -= 1
+    if count == 1:
+        version = version.replace('-', '')
+
+    version = version.replace('.0', '.')
+
+    return version
+
+
 setup(name='vpp_papi',
-      version='1.6.2',
+      version=get_pep404_version_from_git(),
       description='VPP Python binding',
       author='Ole Troan',
       author_email='ot@cisco.com',
