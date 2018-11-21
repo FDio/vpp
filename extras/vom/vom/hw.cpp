@@ -170,6 +170,11 @@ HW::cmd_q::write()
  * The single Command Queue
  */
 HW::cmd_q* HW::m_cmdQ;
+
+/*
+ * single stat reader
+ */
+stat_reader* HW::m_statReader;
 HW::item<bool> HW::m_poll_state;
 
 /**
@@ -179,6 +184,17 @@ void
 HW::init(HW::cmd_q* f)
 {
   m_cmdQ = f;
+  m_statReader = new stat_reader();
+}
+
+/**
+ * Initialse the connection to VPP
+ */
+void
+HW::init(HW::cmd_q* f, stat_reader* s)
+{
+  m_cmdQ = f;
+  m_statReader = s;
 }
 
 /**
@@ -188,6 +204,7 @@ void
 HW::init()
 {
   m_cmdQ = new cmd_q();
+  m_statReader = new stat_reader();
 }
 
 void
@@ -211,12 +228,13 @@ HW::enqueue(std::queue<cmd*>& cmds)
 bool
 HW::connect()
 {
-  return m_cmdQ->connect();
+  return (m_cmdQ->connect() && m_statReader->connect());
 }
 
 void
 HW::disconnect()
 {
+  m_statReader->disconnect();
   m_cmdQ->disconnect();
 }
 
@@ -247,6 +265,12 @@ HW::poll()
   HW::write();
 
   return (m_poll_state);
+}
+
+void
+HW::read()
+{
+  m_statReader->read();
 }
 
 template <>
