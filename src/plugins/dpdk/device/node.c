@@ -341,7 +341,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   else
     n_rx_bytes = dpdk_process_rx_burst (vm, ptd, n_rx_packets, 0, &or_flags);
 
-  if (PREDICT_FALSE (or_flags & (1 << PKT_RX_FDIR)))
+  if (PREDICT_FALSE (or_flags & PKT_RX_FDIR))
     {
       /* some packets will need to go to different next nodes */
       for (n = 0; n < n_rx_packets; n++)
@@ -350,7 +350,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       /* flow offload - process if rx flow offload enabled and at least one
          packet is marked */
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_RX_FLOW_OFFLOAD) &&
-			 (or_flags & (1 << PKT_RX_FDIR))))
+			 (or_flags & PKT_RX_FDIR)))
 	dpdk_process_flow_offload (xd, ptd, n_rx_packets);
 
       /* enqueue buffers to the next node */
@@ -387,7 +387,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	     marked as ip4 checksum bad we can notify ethernet input so it
 	     can send pacets to ip4-input-no-checksum node */
 	  if (xd->flags & DPDK_DEVICE_FLAG_RX_IP4_CKSUM &&
-	      (or_flags & (1 << PKT_RX_IP_CKSUM_BAD)) == 0)
+	      (or_flags & PKT_RX_IP_CKSUM_BAD) == 0)
 	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
 	}
       n_left_to_next -= n_rx_packets;
