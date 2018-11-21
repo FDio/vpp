@@ -269,6 +269,11 @@ public:
   void set(const std::string& tag);
 
   /**
+   * Get interface stats
+   */
+  void get_stats_print();
+
+  /**
    * Comparison operator - only used for UT
    */
   virtual bool operator==(const interface& i) const;
@@ -276,15 +281,14 @@ public:
   /**
    * A base class for interface Create commands
    */
-  template <typename MSG>
+  template<typename MSG>
   class create_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
   {
   public:
     create_cmd(HW::item<handle_t>& item, const std::string& name)
       : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name(name)
-    {
-    }
+    {}
 
     /**
      * Destructor
@@ -343,21 +347,19 @@ public:
   /**
    * Base class for intterface Delete commands
    */
-  template <typename MSG>
+  template<typename MSG>
   class delete_cmd : public rpc_cmd<HW::item<handle_t>, MSG>
   {
   public:
     delete_cmd(HW::item<handle_t>& item, const std::string& name)
       : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name(name)
-    {
-    }
+    {}
 
     delete_cmd(HW::item<handle_t>& item)
       : rpc_cmd<HW::item<handle_t>, MSG>(item)
       , m_name()
-    {
-    }
+    {}
 
     /**
      * Destructor
@@ -529,7 +531,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();
@@ -649,14 +653,14 @@ private:
    * Create commands are firends so they can add interfaces to the
    * handle store.
    */
-  template <typename MSG>
+  template<typename MSG>
   friend class create_cmd;
 
   /**
    * Create commands are firends so they can remove interfaces from the
    * handle store.
    */
-  template <typename MSG>
+  template<typename MSG>
   friend class delete_cmd;
 };
 };

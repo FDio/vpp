@@ -23,6 +23,7 @@
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
+#include "vom/stat_class.hpp"
 #include "vom/tap_interface_cmds.hpp"
 
 namespace VOM {
@@ -54,8 +55,7 @@ interface::interface(const std::string& name,
   , m_stats_type(stats_type_t::NORMAL)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
-{
-}
+{}
 
 interface::interface(const std::string& name,
                      interface::type_t itf_type,
@@ -72,8 +72,7 @@ interface::interface(const std::string& name,
   , m_stats_type(stats_type_t::NORMAL)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
-{
-}
+{}
 
 interface::interface(const interface& o)
   : m_hdl(o.m_hdl)
@@ -86,8 +85,7 @@ interface::interface(const interface& o)
   , m_stats_type(o.m_stats_type)
   , m_oper(o.m_oper)
   , m_tag(o.m_tag)
-{
-}
+{}
 
 bool
 interface::operator==(const interface& i) const
@@ -100,8 +98,7 @@ interface::operator==(const interface& i) const
 
 interface::event_listener::event_listener()
   : m_status(rc_t::NOOP)
-{
-}
+{}
 
 HW::item<bool>&
 interface::event_listener::status()
@@ -111,8 +108,7 @@ interface::event_listener::status()
 
 interface::stat_listener::stat_listener()
   : m_status(rc_t::NOOP)
-{
-}
+{}
 
 HW::item<bool>&
 interface::stat_listener::status()
@@ -419,6 +415,12 @@ interface::set(const std::string& tag)
 }
 
 void
+interface::get_stats_print()
+{
+  stat_class::get_stats(handle_i().value());
+}
+
+void
 interface::enable_stats_i(interface::stat_listener& el, const stats_type_t& st)
 {
   if (!m_stats) {
@@ -582,8 +584,8 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
       for (auto& l3_record : *dcmd) {
         auto& payload = l3_record.get_payload();
-        const route::prefix_t pfx(payload.is_ipv6, payload.ip,
-                                  payload.prefix_length);
+        const route::prefix_t pfx(
+          payload.is_ipv6, payload.ip, payload.prefix_length);
 
         VOM_LOG(log_level_t::DEBUG) << "dump: " << pfx.to_string();
 
