@@ -3475,7 +3475,7 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
   uword main_heap_size;
   uword hash_heap_size;
   u32 hash_lookup_hash_buckets;
-  u32 hash_lookup_hash_memory;
+  uword hash_lookup_hash_memory;
   u32 reclassify_sessions;
   u32 use_tuple_merge;
   u32 tuple_merge_split_threshold;
@@ -3500,13 +3500,23 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
 	if (unformat
 	    (input, "hash lookup heap size %U", unformat_memory_size,
 	     &hash_heap_size))
-	am->hash_lookup_mheap_size = hash_heap_size;
+	{
+	  am->hash_lookup_mheap_size = hash_heap_size;
+	  clib_warning ("Set the heap size to %d",
+			am->hash_lookup_mheap_size);
+	}
       else if (unformat (input, "hash lookup hash buckets %d",
 			 &hash_lookup_hash_buckets))
 	am->hash_lookup_hash_buckets = hash_lookup_hash_buckets;
-      else if (unformat (input, "hash lookup hash memory %d",
-			 &hash_lookup_hash_memory))
-	am->hash_lookup_hash_memory = hash_lookup_hash_memory;
+      else
+	if (unformat
+	    (input, "hash lookup hash memory %U", unformat_memory_size,
+	     &hash_lookup_hash_memory))
+	{
+	  am->hash_lookup_hash_memory = hash_lookup_hash_memory;
+	  clib_warning ("Set the hash memory to %d",
+			am->hash_lookup_hash_memory);
+	}
       else if (unformat (input, "use tuple merge %d", &use_tuple_merge))
 	am->use_tuple_merge = use_tuple_merge;
       else
