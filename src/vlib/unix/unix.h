@@ -103,6 +103,10 @@ typedef struct
   struct termios tio_stdin;
   int tio_isset;
 
+  /* Store original flags to restore before exit */
+  int fcntl_saved_flags;
+  int fcntl_saved_flags_isset;
+
   u32 poll_sleep_usec;
 
 } unix_main_t;

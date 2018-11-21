@@ -2908,6 +2908,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       if ((flags = fcntl (STDIN_FILENO, F_GETFL, 0)) < 0)
 	flags = 0;
       (void) fcntl (STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+      um->fcntl_saved_flags = flags;
+      um->fcntl_saved_flags_isset = 1;
 
       cf_index = unix_cli_file_add (cm, "stdin", STDIN_FILENO);
       cf = pool_elt_at_index (cm->cli_file_pool, cf_index);
@@ -3046,6 +3048,9 @@ unix_cli_exit (vlib_main_t * vm)
   /* If stdin is a tty and we saved the tty state, reset the tty state */
   if (isatty (STDIN_FILENO) && um->tio_isset)
     tcsetattr (STDIN_FILENO, TCSAFLUSH, &um->tio_stdin);
+
+  if (um->fcntl_saved_flags_isset)
+    (void) fcntl (STDIN_FILENO, F_SETFL, um->fcntl_saved_flags);
 
   return 0;
 }
