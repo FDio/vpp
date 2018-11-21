@@ -158,9 +158,9 @@ format_gbp_rule_action (u8 * s, va_list * args)
 static u8 *
 format_gbp_hash_mode (u8 * s, va_list * args)
 {
-  gbp_hash_mode_t action = va_arg (*args, gbp_hash_mode_t);
+  gbp_hash_mode_t hash_mode = va_arg (*args, gbp_hash_mode_t);
 
-  switch (action)
+  switch (hash_mode)
     {
 #define _(v,a) case GBP_HASH_MODE_##v: return (format (s, "%s", a));
       foreach_gbp_hash_mode
@@ -261,12 +261,35 @@ gbp_contract_mk_adj (gbp_next_hop_t * gnh, fib_protocol_t fproto)
   adj_unlock (old_ai);
 }
 
+static flow_hash_config_t
+gbp_contract_mk_lb_hp(gbp_hash_mode_t gu_hash_mode)
+{
+  flow_hash_config_t gbp_flow_hash_config = 0;
+  switch(gu_hash_mode)
+  {
+   case GBP_HASH_MODE_SRC_IP:
+     gbp_flow_hash_config = IP_FLOW_HASH_SRC_ADDR;
+     break;
+   case GBP_HASH_MODE_DST_IP:
+     gbp_flow_hash_config = IP_FLOW_HASH_DST_ADDR;
+     break;
+   case GBP_HASH_MODE_SYMMETRIC:
+   default:
+     gbp_flow_hash_config = IP_FLOW_HASH_SRC_ADDR | IP_FLOW_HASH_DST_ADDR |
+       IP_FLOW_HASH_PROTO | IP_FLOW_HASH_SYMMETRIC;
+     break;
+  }
+
+  return gbp_flow_hash_config;
+}
+
 static void
 gbp_contract_mk_lb (index_t gui, fib_protocol_t fproto)
 {
   load_balance_path_t *paths = NULL;
   gbp_policy_node_t pnode;
   gbp_next_hop_t *gnh;
+  gbp_hash_mode_t ghm;
   dpo_proto_t dproto;
   gbp_rule_t *gu;
   u32 ii;
@@ -307,14 +330,14 @@ gbp_contract_mk_lb (index_t gui, fib_protocol_t fproto)
 	       dproto, gnh->gnh_ai[fproto]);
     }
 
-    // FIXME get algo and sticky bit from contract LB algo
+    ghm = gu->gu_hash_mode;
     if (!dpo_id_is_valid (&gu->gu_dpo[pnode][fproto]))
       {
 	dpo_id_t dpo = DPO_INVALID;
 
 	dpo_set (&dpo, DPO_LOAD_BALANCE, dproto,
 		 load_balance_create (vec_len (paths),
-				      dproto, IP_FLOW_HASH_DEFAULT));
+				      dproto, gbp_contract_mk_lb_hp(ghm)));
 	dpo_stack_from_node (policy_nodes[pnode],
 			     &gu->gu_dpo[pnode][fproto], &dpo);
 	dpo_reset (&dpo);
