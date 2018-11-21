@@ -131,7 +131,7 @@ class RemoteClass(Process):
                isinstance(val, RemoteClassAttr):
                 mutable_args[i] = val.get_remote_value()
         args = tuple(mutable_args)
-        for key, val in kwargs.iteritems():
+        for key, val in kwargs.items():
             if isinstance(val, RemoteClass) or \
                isinstance(val, RemoteClassAttr):
                 kwargs[key] = val.get_remote_value()
@@ -145,7 +145,7 @@ class RemoteClass(Process):
         timeout = self._timeout
         # adjust timeout specifically for the .sleep method
         if path.split('.')[-1] == 'sleep':
-            if args and isinstance(args[0], (long, int)):
+            if args and isinstance(args[0], int):
                 timeout += args[0]
             elif 'timeout' in kwargs:
                 timeout += kwargs['timeout']

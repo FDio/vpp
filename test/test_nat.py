@@ -3,7 +3,7 @@
 import socket
 import unittest
 import struct
-import StringIO
+from io import StringIO
 import random
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests

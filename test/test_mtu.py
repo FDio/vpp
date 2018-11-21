@@ -15,7 +15,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from socket import AF_INET, AF_INET6, inet_pton
-import StringIO
+from io import StringIO
 
 """ Test_mtu is a subclass of VPPTestCase classes.
     MTU tests.
@@ -39,11 +39,12 @@ def reassemble(listoffragments):
 
 class TestMTU(VppTestCase):
     """ MTU Test Case """
+    maxDiff = None
 
     @classmethod
     def setUpClass(cls):
         super(TestMTU, cls).setUpClass()
-        cls.create_pg_interfaces(range(2))
+        cls.create_pg_interfaces(list(range(2)))
         cls.interfaces = list(cls.pg_interfaces)
 
     def setUp(cls):
@@ -65,7 +66,7 @@ class TestMTU(VppTestCase):
                 i.admin_down()
 
     def validate(self, rx, expected):
-        self.assertEqual(rx, expected.__class__(str(expected)))
+        self.assertEqual(rx, expected.__class__(expected))
 
     def validate_bytes(self, rx, expected):
         self.assertEqual(rx, expected)
@@ -111,13 +112,13 @@ class TestMTU(VppTestCase):
                           ttl=254, len=576, id=0) /
                        p_icmp4 / p_ip4 / p_payload)
         icmp4_reply[1].ttl -= 1
-        n = icmp4_reply.__class__(str(icmp4_reply))
+        n = icmp4_reply.__class__(icmp4_reply)
         s = str(icmp4_reply)
         icmp4_reply = s[0:576]
         rx = self.send_and_expect(self.pg0, p4*11, self.pg0)
         for p in rx:
-            # p.show2()
-            # n.show2()
+            p.show2()
+            n.show2()
             self.validate_bytes(str(p[1]), icmp4_reply)
 
         # Now with DF off. Expect fragments.
@@ -191,7 +192,7 @@ class TestMTU(VppTestCase):
                             hlim=255, plen=1240) /
                        p_icmp6 / p_ip6 / p_payload)
         icmp6_reply[2].hlim -= 1
-        n = icmp6_reply.__class__(str(icmp6_reply))
+        n = icmp6_reply.__class__(icmp6_reply)
         s = str(icmp6_reply)
         icmp6_reply_str = s[0:1280]
 

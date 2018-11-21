@@ -23,7 +23,7 @@ INVALID_INDEX = 0xffffffff
 class VppIpAddressUnion():
     def __init__(self, addr):
         self.addr = addr
-        self.ip_addr = ip_address(unicode(self.addr))
+        self.ip_addr = ip_address(str(self.addr))
 
     def encode(self):
         if self.version is 6:
@@ -205,8 +205,8 @@ class VppIpMPrefix():
         self.saddr = saddr
         self.gaddr = gaddr
         self.len = len
-        self.ip_saddr = ip_address(unicode(self.saddr))
-        self.ip_gaddr = ip_address(unicode(self.gaddr))
+        self.ip_saddr = ip_address(str(self.saddr))
+        self.ip_gaddr = ip_address(str(self.gaddr))
 
     def encode(self):
 

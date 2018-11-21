@@ -77,7 +77,7 @@ class TestIPv4Reassembly(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in infos.iteritems():
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
             fragments_400 = fragment_rfc791(p, 400)
@@ -256,7 +256,7 @@ class TestIPv4Reassembly(VppTestCase):
                 # received by vpp after reassembly is finished, otherwise
                 # new reassemblies will be started and packet generator will
                 # freak out when it detects unfreed buffers
-                zipped = zip(frags_300, frags_200)
+                zipped = list(zip(frags_300, frags_200))
                 for i, j in zipped[:-1]:
                     fragments.extend(i)
                     fragments.extend(j)
@@ -414,7 +414,7 @@ class TestIPv6Reassembly(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in infos.iteritems():
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
             fragments_400 = fragment_rfc8200(p, info.index, 400)
@@ -584,7 +584,7 @@ class TestIPv6Reassembly(VppTestCase):
                 # received by vpp after reassembly is finished, otherwise
                 # new reassemblies will be started and packet generator will
                 # freak out when it detects unfreed buffers
-                zipped = zip(frags_400, frags_300)
+                zipped = list(zip(frags_400, frags_300))
                 for i, j in zipped[:-1]:
                     fragments.extend(i)
                     fragments.extend(j)
@@ -805,7 +805,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
     def create_fragments(cls):
         infos = cls._packet_infos
         cls.pkt_infos = []
-        for index, info in infos.iteritems():
+        for index, info in infos.items():
             p = info.data
             # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
             fragments_300 = fragment_rfc791(p, 300)
@@ -984,7 +984,7 @@ class TestFIFReassembly(VppTestCase):
             self.extend_packet(p, size, self.padding)
             info.data = p[IP]  # use only IP part, without ethernet header
 
-        fragments = [x for _, p in self._packet_infos.iteritems()
+        fragments = [x for _, p in self._packet_infos.items()
                      for x in fragment_rfc791(p.data, 400)]
 
         encapped_fragments = \
@@ -1050,7 +1050,7 @@ class TestFIFReassembly(VppTestCase):
             self.extend_packet(p, size, self.padding)
             info.data = p[IPv6]  # use only IPv6 part, without ethernet header
 
-        fragments = [x for _, i in self._packet_infos.iteritems()
+        fragments = [x for _, i in self._packet_infos.items()
                      for x in fragment_rfc8200(
                          i.data, i.index, 400)]
 

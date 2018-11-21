@@ -8,9 +8,8 @@ from scapy.layers.inet import IP, UDP
 from util import ip4_range
 
 
-class BridgeDomain(object):
+class BridgeDomain(object, metaclass=ABCMeta):
     """ Bridge domain abstraction """
-    __metaclass__ = ABCMeta
 
     @property
     def frame_request(self):

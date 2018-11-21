@@ -165,7 +165,7 @@ class TestGtpu(BridgeDomain, VppTestCase):
                 teid=teid,
                 is_add=is_add)
             if r.sw_if_index == 0xffffffff:
-                raise "bad sw_if_index"
+                raise Exception("bad sw_if_index")
 
     @classmethod
     def add_shared_mcast_dst_load(cls):

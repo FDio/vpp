@@ -79,10 +79,10 @@ class TestECMP(VppTestCase):
         :return: Random IPv4 or IPv6 address from required range.
         """
         try:
-            ip_addr = IPv4Address(unicode(ip_addr_start))
+            ip_addr = IPv4Address(str(ip_addr_start))
             ip_max_len = 32
         except (AttributeError, AddressValueError):
-            ip_addr = IPv6Address(unicode(ip_addr_start))
+            ip_addr = IPv6Address(str(ip_addr_start))
             ip_max_len = 128
 
         return str(ip_addr +

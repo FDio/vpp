@@ -3,9 +3,8 @@
 from abc import ABCMeta, abstractmethod
 
 
-class VppObject(object):
+class VppObject(object, metaclass=ABCMeta):
     """ Abstract vpp object """
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def add_vpp_config(self):

@@ -5,9 +5,7 @@ from vpp_papi_provider import L2_VTR_OP
 from vpp_interface import VppInterface
 
 
-class VppSubInterface(VppPGInterface):
-    __metaclass__ = ABCMeta
-
+class VppSubInterface(VppPGInterface, metaclass=ABCMeta):
     @property
     def parent(self):
         """Parent interface for this sub-interface"""

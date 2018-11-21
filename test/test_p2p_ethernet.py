@@ -82,7 +82,7 @@ class P2PEthernetAPI(VppTestCase):
                                                    mactobinary(macs[i-1]),
                                                    i)
             except Exception:
-                print "Failed to create subif %d %s" % (i, macs[i-1])
+                print("Failed to create subif %d %s" % (i, macs[i-1]))
                 raise
 
         intfs = self.vapi.cli("show interface").split("\n")

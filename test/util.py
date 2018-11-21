@@ -4,7 +4,10 @@ import socket
 import sys
 import os.path
 from abc import abstractmethod, ABCMeta
-from cStringIO import StringIO
+try:
+    from io import StringIO
+except ImportError:
+    from io import StringIO
 from scapy.utils6 import in6_mactoifaceid
 
 from scapy.layers.l2 import Ether
@@ -43,7 +46,7 @@ def ppc(headline, capture, limit=10):
         tail = "\nPrint limit reached, %s out of %s packets printed" % (
             limit, len(capture))
     body = "".join([ppp("Packet #%s:" % count, p)
-                    for count, p in zip(range(0, limit), capture)])
+                    for count, p in zip(list(range(0, limit)), capture)])
     return "%s\n%s%s" % (headline, body, tail)
 
 
@@ -102,9 +105,7 @@ def check_core_path(logger, core_path):
             "   current core pattern is: %s" % corefmt)
 
 
-class NumericConstant(object):
-    __metaclass__ = ABCMeta
-
+class NumericConstant(object, metaclass=ABCMeta):
     desc_dict = {}
 
     @abstractmethod

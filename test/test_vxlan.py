@@ -11,7 +11,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
-import StringIO
+from io import StringIO
 
 
 def reassemble(listoffragments):
@@ -128,7 +128,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
                 vni=vni,
                 is_add=is_add)
             if r.sw_if_index == 0xffffffff:
-                raise "bad sw_if_index"
+                raise Exception("bad sw_if_index")
 
     @classmethod
     def add_shared_mcast_dst_load(cls):

@@ -11,7 +11,7 @@ import threading
 import signal
 import psutil
 import re
-from multiprocessing import Process, Pipe, cpu_count
+from multiprocessing import Process, Pipe, cpu_count, get_context
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
@@ -134,7 +134,7 @@ class TestCaseWrapper(object):
         self.finished_parent_end, self.finished_child_end = Pipe(duplex=False)
         self.result_parent_end, self.result_child_end = Pipe(duplex=False)
         self.testcase_suite = testcase_suite
-        self.stdouterr_queue = manager.StreamQueue()
+        self.stdouterr_queue = manager.StreamQueue(ctx=get_context())
         self.logger = get_parallel_logger(self.stdouterr_queue)
         self.child = Process(target=test_runner_wrapper,
                              args=(testcase_suite,
@@ -607,6 +607,8 @@ class AllResults(dict):
                 old_testcase_name = None
                 if len(failed_testcase_ids) or len(errored_testcase_ids):
                     for failed_test_id in failed_testcase_ids:
+                        print('FAILED TEST ID', failed_test_id,
+                              type(failed_test_id))
                         new_testcase_name, test_name = \
                             result.get_testcase_names(failed_test_id)
                         if new_testcase_name != old_testcase_name:

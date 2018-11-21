@@ -3,9 +3,8 @@ from vpp_pg_interface import is_ipv6_misc
 from vpp_interface import VppInterface
 
 
-class VppTunnelInterface(VppInterface):
+class VppTunnelInterface(VppInterface, metaclass=ABCMeta):
     """ VPP tunnel interface abstration """
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def __init__(self, test, parent_if):

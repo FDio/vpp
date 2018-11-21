@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """ BFD tests """
 
-from __future__ import division
+
 import unittest
 import hashlib
 import binascii

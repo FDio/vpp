@@ -106,8 +106,8 @@ class TestCDP(VppTestCase):
 
         expected_errors = False
         for count, node, reason in errors:
-            if (node == u'cdp-input' and
-                    reason == u'cdp packets with bad TLVs' and
+            if (node == 'cdp-input' and
+                    reason == 'cdp packets with bad TLVs' and
                     int(count) >= 1):
 
                 expected_errors = True

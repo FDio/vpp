@@ -66,7 +66,7 @@ class VppPapiProvider(object):
     @property hook: hook object providing before and after api/cli hooks
     """
 
-    _zero, _negative = range(2)
+    _zero, _negative = list(range(2))
 
     def __init__(self, name, shm_prefix, test_class, read_timeout):
         self.hook = Hook("vpp-papi-provider")
@@ -210,7 +210,7 @@ class VppPapiProvider(object):
         """
         self.hook.before_cli(cli)
         cli += '\n'
-        r = self.papi.cli_inband(length=len(cli), cmd=cli)
+        r = self.papi.cli_inband(length=len(cli), cmd=cli.encode('utf-8'))
         self.hook.after_cli(cli)
         if hasattr(r, 'reply'):
             return r.reply.decode().rstrip('\x00')

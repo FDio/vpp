@@ -750,7 +750,7 @@ class TestSRv6(VppTestCase):
         :param compare_func: function to compare in and out packet
         """
         self.logger.info("Verifying capture on interface %s using function %s"
-                         % (dst_if.name, compare_func.func_name))
+                         % (dst_if.name, compare_func.__name__))
 
         last_info = dict()
         for i in self.pg_interfaces:
@@ -793,7 +793,7 @@ class TestSRv6(VppTestCase):
                 compare_func(txed_packet, packet)
 
             except:
-                print packet.command()
+                print(packet.command())
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 

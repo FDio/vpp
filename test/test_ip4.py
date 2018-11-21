@@ -133,11 +133,11 @@ class TestIPv4(VppTestCase):
                     UDP(sport=1234, dport=1234))
 
         pkts = [self.modify_packet(src_if, i, pkt_tmpl)
-                for i in xrange(self.pg_if_packet_sizes[0],
-                                self.pg_if_packet_sizes[1], 10)]
+                for i in range(self.pg_if_packet_sizes[0],
+                               self.pg_if_packet_sizes[1], 10)]
         pkts_b = [self.modify_packet(src_if, i, pkt_tmpl)
-                  for i in xrange(self.pg_if_packet_sizes[1] + hdr_ext,
-                                  self.pg_if_packet_sizes[2] + hdr_ext, 50)]
+                  for i in range(self.pg_if_packet_sizes[1] + hdr_ext,
+                                 self.pg_if_packet_sizes[2] + hdr_ext, 50)]
         pkts.extend(pkts_b)
 
         return pkts

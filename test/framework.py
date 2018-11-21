@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+
 import gc
 import sys
 import os
@@ -119,7 +119,7 @@ def pump_output(testclass):
                 split = read.splitlines(True)
                 if len(stderr_fragment) > 0:
                     split[0] = "%s%s" % (stderr_fragment, split[0])
-                if len(split) > 0 and split[-1].endswith("\n"):
+                if len(split) > 0 and split[-1].endswith(b"\n"):
                     limit = None
                 else:
                     limit = -1
@@ -327,7 +327,7 @@ class VppTestCase(unittest.TestCase):
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
-        raw_input("Press ENTER to continue running the testcase...")
+        input("Press ENTER to continue running the testcase...")
 
     @classmethod
     def run_vpp(cls):
@@ -466,14 +466,14 @@ class VppTestCase(unittest.TestCase):
                 print(double_line_delim)
                 print("VPP or GDB server is still running")
                 print(single_line_delim)
-                raw_input("When done debugging, press ENTER to kill the "
-                          "process and finish running the testcase...")
+                input("When done debugging, press ENTER to kill the "
+                      "process and finish running the testcase...")
 
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, 'pump_thread_stop_flag'):
             cls.pump_thread_stop_flag.set()
         if hasattr(cls, 'pump_thread_wakeup_pipe'):
-            os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
+            os.write(cls.pump_thread_wakeup_pipe[1], b'ding dong wake up')
         if hasattr(cls, 'pump_thread'):
             cls.logger.debug("Waiting for pump thread to stop")
             cls.pump_thread.join()
@@ -514,7 +514,7 @@ class VppTestCase(unittest.TestCase):
             stderr_log(single_line_delim)
             stderr_log('VPP output to stderr while running %s:', cls.__name__)
             stderr_log(single_line_delim)
-            vpp_output = "".join(cls.vpp_stderr_deque)
+            vpp_output = "".join(str(cls.vpp_stderr_deque))
             with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
                 f.write(vpp_output)
             stderr_log('\n%s', vpp_output)
@@ -654,7 +654,7 @@ class VppTestCase(unittest.TestCase):
         return result
 
     @staticmethod
-    def extend_packet(packet, size, padding=' '):
+    def extend_packet(packet, size, padding=b' '):
         """
         Extend packet to given size by padding with spaces or custom padding
         NOTE: Currently works only when Raw layer is present.
@@ -667,7 +667,7 @@ class VppTestCase(unittest.TestCase):
         packet_len = len(packet) + 4
         extend = size - packet_len
         if extend > 0:
-            num = (extend / len(padding)) + 1
+            num = int((extend / len(padding)) + 1)
             packet[Raw].load += (padding * num)[:extend]
 
     @classmethod
@@ -947,7 +947,7 @@ class VppTestCase(unittest.TestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        if isinstance(object, (list,)):
+        if isinstance(object, list):
             rx = []
             for o in output:
                 rx.append(output.get_capture(len(pkts)))
@@ -960,7 +960,7 @@ class VppTestCase(unittest.TestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        if isinstance(object, (list,)):
+        if isinstance(object, list):
             outputs = output
             rx = []
             for o in outputs:
