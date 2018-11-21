@@ -14,9 +14,6 @@
  */
 
 #include <vnet/dpo/dvr_dpo.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
@@ -27,31 +24,19 @@
 /**
  * DPO pool
  */
-static gbp_policy_dpo_t *gbp_policy_dpo_pool;
+gbp_policy_dpo_t *gbp_policy_dpo_pool;
 
 /**
  * DPO type registered for these GBP FWD
  */
-static dpo_type_t gbp_policy_dpo_type;
-
-static inline gbp_policy_dpo_t *
-gbp_policy_dpo_get_i (index_t index)
-{
-  return (pool_elt_at_index (gbp_policy_dpo_pool, index));
-}
-
-gbp_policy_dpo_t *
-gbp_policy_dpo_get (index_t index)
-{
-  return (gbp_policy_dpo_get_i (index));
-}
+dpo_type_t gbp_policy_dpo_type;
 
 static gbp_policy_dpo_t *
 gbp_policy_dpo_alloc (void)
 {
   gbp_policy_dpo_t *gpd;
 
-  pool_get_zero (gbp_policy_dpo_pool, gpd);
+  pool_get_aligned_zero (gbp_policy_dpo_pool, gpd, CLIB_CACHE_LINE_BYTES);
 
   return (gpd);
 }
@@ -61,7 +46,7 @@ gbp_policy_dpo_get_from_dpo (const dpo_id_t * dpo)
 {
   ASSERT (gbp_policy_dpo_type == dpo->dpoi_type);
 
-  return (gbp_policy_dpo_get_i (dpo->dpoi_index));
+  return (gbp_policy_dpo_get (dpo->dpoi_index));
 }
 
 static inline index_t
@@ -138,7 +123,7 @@ format_gbp_policy_dpo (u8 * s, va_list * ap)
 {
   index_t index = va_arg (*ap, index_t);
   u32 indent = va_arg (*ap, u32);
-  gbp_policy_dpo_t *gpd = gbp_policy_dpo_get_i (index);
+  gbp_policy_dpo_t *gpd = gbp_policy_dpo_get (index);
   vnet_main_t *vnm = vnet_get_main ();
 
   s = format (s, "gbp-policy-dpo: %U, epg:%d out:%U",
@@ -293,8 +278,7 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  gc0 = NULL;
-	  gpd0 =
-	    gbp_policy_dpo_get_i (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
+	  gpd0 = gbp_policy_dpo_get (vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = gpd0->gpd_dpo.dpoi_index;
 
 	  if (vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_A)
@@ -451,191 +435,6 @@ VLIB_REGISTER_NODE (ip6_gbp_policy_dpo_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_gbp_policy_dpo_node, ip4_gbp_policy_dpo)
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_policy_dpo_node, ip6_gbp_policy_dpo)
-/* *INDENT-ON* */
-
- /**
- * per-packet trace data
- */
-typedef struct gbp_classify_trace_t_
-{
-  /* per-pkt trace data */
-  epg_id_t src_epg;
-} gbp_classify_trace_t;
-
-typedef enum gbp_lpm_classify_next_t_
-{
-  GPB_LPM_CLASSIFY_DROP,
-} gbp_lpm_classify_next_t;
-
-/*
- * Determine the SRC EPG from a LPM
- */
-always_inline uword
-gbp_lpm_classify_inline (vlib_main_t * vm,
-			 vlib_node_runtime_t * node,
-			 vlib_frame_t * frame, fib_protocol_t fproto)
-{
-  u32 n_left_from, *from, *to_next;
-  u32 next_index;
-
-  next_index = 0;
-  n_left_from = frame->n_vectors;
-  from = vlib_frame_vector_args (frame);
-
-  while (n_left_from > 0)
-    {
-      u32 n_left_to_next;
-
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  u32 bi0, sw_if_index0, fib_index0, lbi0;
-	  gbp_lpm_classify_next_t next0;
-	  const gbp_policy_dpo_t *gpd0;
-	  const gbp_recirc_t *gr0;
-	  const dpo_id_t *dpo0;
-	  load_balance_t *lb0;
-	  ip4_header_t *ip4_0;
-	  ip6_header_t *ip6_0;
-	  vlib_buffer_t *b0;
-	  epg_id_t src_epg0;
-
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
-	  next0 = GPB_LPM_CLASSIFY_DROP;
-
-	  b0 = vlib_get_buffer (vm, bi0);
-
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  gr0 = gbp_recirc_get (sw_if_index0);
-	  fib_index0 = gr0->gr_fib_index[fproto];
-
-	  if (FIB_PROTOCOL_IP4 == fproto)
-	    {
-	      ip4_0 = vlib_buffer_get_current (b0);
-	      lbi0 = ip4_fib_forwarding_lookup (fib_index0,
-						&ip4_0->src_address);
-	    }
-	  else
-	    {
-	      ip6_0 = vlib_buffer_get_current (b0);
-	      lbi0 = ip6_fib_table_fwding_lookup (&ip6_main, fib_index0,
-						  &ip6_0->src_address);
-	    }
-
-	  lb0 = load_balance_get (lbi0);
-	  dpo0 = load_balance_get_bucket_i (lb0, 0);
-
-	  if (gbp_policy_dpo_type == dpo0->dpoi_type)
-	    {
-	      gpd0 = gbp_policy_dpo_get_i (dpo0->dpoi_index);
-	      src_epg0 = gpd0->gpd_epg;
-	      vnet_feature_next (&next0, b0);
-	    }
-	  else
-	    {
-	      /* could not classify => drop */
-	      src_epg0 = 0;
-	    }
-
-	  vnet_buffer2 (b0)->gbp.src_epg = src_epg0;
-
-	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
-	    {
-	      gbp_classify_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->src_epg = src_epg0;
-	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, next0);
-	}
-
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-    }
-
-  return frame->n_vectors;
-}
-
-static uword
-gbp_ip4_lpm_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return (gbp_lpm_classify_inline (vm, node, frame, FIB_PROTOCOL_IP4));
-}
-
-static uword
-gbp_ip6_lpm_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return (gbp_lpm_classify_inline (vm, node, frame, FIB_PROTOCOL_IP6));
-}
-
- /* packet trace format function */
-static u8 *
-format_gbp_classify_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  gbp_classify_trace_t *t = va_arg (*args, gbp_classify_trace_t *);
-
-  s = format (s, "src-epg:%d", t->src_epg);
-
-  return s;
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (gbp_ip4_lpm_classify_node) = {
-  .function = gbp_ip4_lpm_classify,
-  .name = "ip4-gbp-lpm-classify",
-  .vector_size = sizeof (u32),
-  .format_trace = format_gbp_classify_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = 0,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [GPB_LPM_CLASSIFY_DROP] = "ip4-drop"
-  },
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip4_lpm_classify_node, gbp_ip4_lpm_classify);
-
-VLIB_REGISTER_NODE (gbp_ip6_lpm_classify_node) = {
-  .function = gbp_ip6_lpm_classify,
-  .name = "ip6-gbp-lpm-classify",
-  .vector_size = sizeof (u32),
-  .format_trace = format_gbp_classify_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = 0,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [GPB_LPM_CLASSIFY_DROP] = "ip6-drop"
-  },
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip6_lpm_classify_node, gbp_ip6_lpm_classify);
-
-VNET_FEATURE_INIT (gbp_ip4_lpm_classify_feat_node, static) =
-{
-  .arc_name = "ip4-unicast",
-  .node_name = "ip4-gbp-lpm-classify",
-  .runs_before = VNET_FEATURES ("nat44-out2in"),
-};
-VNET_FEATURE_INIT (gbp_ip6_lpm_classify_feat_node, static) =
-{
-  .arc_name = "ip6-unicast",
-  .node_name = "ip6-gbp-lpm-classify",
-  .runs_before = VNET_FEATURES ("nat66-out2in"),
-};
-
 /* *INDENT-ON* */
 
 /*

@@ -92,7 +92,19 @@ format_gbp_endpoint_flags (u8 * s, va_list * args)
 int
 gbp_endpoint_is_remote (const gbp_endpoint_t * ge)
 {
-  return (ge->ge_fwd.gef_flags & GBP_ENDPOINT_FLAG_REMOTE);
+  return (! !(ge->ge_fwd.gef_flags & GBP_ENDPOINT_FLAG_REMOTE));
+}
+
+int
+gbp_endpoint_is_local (const gbp_endpoint_t * ge)
+{
+  return (!(ge->ge_fwd.gef_flags & GBP_ENDPOINT_FLAG_REMOTE));
+}
+
+int
+gbp_endpoint_is_external (const gbp_endpoint_t * ge)
+{
+  return (! !(ge->ge_fwd.gef_flags & GBP_ENDPOINT_FLAG_EXTERNAL));
 }
 
 static void
@@ -625,8 +637,12 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
     {
       gbp_itf_set_l2_input_feature (gef->gef_itf, gei, L2INPUT_FEAT_GBP_FWD);
 
-      if (gbp_endpoint_is_remote (ge))
+      if (gbp_endpoint_is_remote (ge) || gbp_endpoint_is_external (ge))
 	{
+	  /*
+	   * bridged packets to external endpoints should be classifed
+	   * based on the EP's/BD's EPG
+	   */
 	  gbp_itf_set_l2_output_feature (gef->gef_itf, gei,
 					 L2OUTPUT_FEAT_GBP_POLICY_MAC);
 	}
@@ -711,6 +727,12 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 					ip_sw_if_index, rewrite);
     vec_add1 (gef->gef_adjs, ai);
 
+    /*
+     * if the endpoint is external then routed packet to it must be
+     * classifed to the BD's EPG. but this will happen anyway with
+     * the GBP_MAC classification.
+     */
+
     if (NULL != gg)
       {
 	if (gbp_endpoint_is_remote (ge))
@@ -728,6 +750,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 					     FIB_SOURCE_PLUGIN_HI,
 					     FIB_ENTRY_FLAG_INTERPOSE,
 					     &policy_dpo);
+	    dpo_reset (&policy_dpo);
 	  }
 
 	/*
@@ -735,7 +758,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	 * that if this EP has moved from some other place in the
 	 * 'fabric', upstream devices are informed
 	 */
-	if (!gbp_endpoint_is_remote (ge) && ~0 != gg->gg_uplink_sw_if_index)
+	if (gbp_endpoint_is_local (ge) && ~0 != gg->gg_uplink_sw_if_index)
 	  {
 	    gbp_endpoint_add_itf (gef->gef_itf, gei);
 	    if (FIB_PROTOCOL_IP4 == pfx->fp_proto)
@@ -750,13 +773,14 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
       }
   }
 
-  if (!gbp_endpoint_is_remote (ge))
+  if (gbp_endpoint_is_local (ge) && !gbp_endpoint_is_external (ge))
     {
       /*
        * non-remote endpoints (i.e. those not arriving on iVXLAN
        * tunnels) need to be classifed based on the the input interface.
        * We enable the GBP-FWD feature only if the group has an uplink
        * interface (on which the GBP-FWD feature would send UU traffic).
+       * External endpoints get classified based on an LPM match
        */
       l2input_feat_masks_t feats = L2INPUT_FEAT_GBP_SRC_CLASSIFY;
 

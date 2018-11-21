@@ -95,12 +95,13 @@ define gbp_route_domain_details
 
 enum gbp_endpoint_flags
 {
-  NONE = 0,
-  BOUNCE = 0x1,
-  REMOTE = 0x2,
-  LEARNT = 0x4,
+  GBP_API_ENDPOINT_FLAG_NONE = 0,
+  GBP_API_ENDPOINT_FLAG_BOUNCE = 0x1,
+  GBP_API_ENDPOINT_FLAG_REMOTE = 0x2,
+  GBP_API_ENDPOINT_FLAG_LEARNT = 0x4,
   /* hey Ole WTF */
-  REMOTE_LEARNT = 0x6,
+  GBP_API_ENDPOINT_FLAG_REMOTE_LEARNT = 0x6,
+  GBP_API_ENDPOINT_FLAG_EXTERNAL = 0x8,
 };
 
 typedef gbp_endpoint_tun
@@ -220,6 +221,7 @@ enum gbp_subnet_type
   GBP_API_SUBNET_TRANSPORT,
   GBP_API_SUBNET_STITCHED_INTERNAL,
   GBP_API_SUBNET_STITCHED_EXTERNAL,
+  GBP_API_SUBNET_L3_OUT,
 };
 
 typeonly define gbp_subnet
@@ -377,6 +379,33 @@ define gbp_vxlan_tunnel_details
 {
   u32 context;
   vl_api_gbp_vxlan_tunnel_t tunnel;
+};
+
+typeonly define gbp_ext_itf
+{
+  u32 sw_if_index;
+  u32 bd_id;
+  u32 rd_id;
+};
+
+autoreply define gbp_ext_itf_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8  is_add;
+  vl_api_gbp_ext_itf_t ext_itf;
+};
+
+define gbp_ext_itf_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define gbp_ext_itf_details
+{
+  u32 context;
+  vl_api_gbp_ext_itf_t ext_itf;
 };
 
 /*

@@ -3621,6 +3621,19 @@ class VppPapiProvider(object):
         """ GBP recirc Dump """
         return self.api(self.papi.gbp_recirc_dump, {})
 
+    def gbp_ext_itf_add_del(self, is_add, sw_if_index, bd_id, rd_id):
+        """ GBP recirc Add/Del """
+        return self.api(self.papi.gbp_ext_itf_add_del,
+                        {'is_add': is_add,
+                         'ext_itf': {
+                             'sw_if_index': sw_if_index,
+                             'bd_id': bd_id,
+                             'rd_id': rd_id}})
+
+    def gbp_ext_itf_dump(self):
+        """ GBP recirc Dump """
+        return self.api(self.papi.gbp_ext_itf_dump, {})
+
     def gbp_subnet_add_del(self, is_add, rd_id,
                            prefix, type,
                            sw_if_index=0xffffffff,

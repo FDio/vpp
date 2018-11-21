@@ -30,6 +30,7 @@
 #include <gbp/gbp_vxlan.h>
 #include <gbp/gbp_bridge_domain.h>
 #include <gbp/gbp_route_domain.h>
+#include <gbp/gbp_ext_itf.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -75,6 +76,8 @@
   _(GBP_ROUTE_DOMAIN_DUMP, gbp_route_domain_dump)           \
   _(GBP_RECIRC_ADD_DEL, gbp_recirc_add_del)                 \
   _(GBP_RECIRC_DUMP, gbp_recirc_dump)                       \
+  _(GBP_EXT_ITF_ADD_DEL, gbp_ext_itf_add_del)               \
+  _(GBP_EXT_ITF_DUMP, gbp_ext_itf_dump)                     \
   _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
   _(GBP_CONTRACT_DUMP, gbp_contract_dump)                   \
   _(GBP_ENDPOINT_LEARN_SET_INACTIVE_THRESHOLD, gbp_endpoint_learn_set_inactive_threshold) \
@@ -95,12 +98,14 @@ gbp_endpoint_flags_decode (vl_api_gbp_endpoint_flags_t v)
 
   v = ntohl (v);
 
-  if (v & BOUNCE)
+  if (v & GBP_API_ENDPOINT_FLAG_BOUNCE)
     f |= GBP_ENDPOINT_FLAG_BOUNCE;
-  if (v & REMOTE)
+  if (v & GBP_API_ENDPOINT_FLAG_REMOTE)
     f |= GBP_ENDPOINT_FLAG_REMOTE;
-  if (v & LEARNT)
+  if (v & GBP_API_ENDPOINT_FLAG_LEARNT)
     f |= GBP_ENDPOINT_FLAG_LEARNT;
+  if (v & GBP_API_ENDPOINT_FLAG_EXTERNAL)
+    f |= GBP_ENDPOINT_FLAG_EXTERNAL;
 
   return (f);
 }
@@ -112,11 +117,13 @@ gbp_endpoint_flags_encode (gbp_endpoint_flags_t f)
 
 
   if (f & GBP_ENDPOINT_FLAG_BOUNCE)
-    v |= BOUNCE;
+    v |= GBP_API_ENDPOINT_FLAG_BOUNCE;
   if (f & GBP_ENDPOINT_FLAG_REMOTE)
-    v |= REMOTE;
+    v |= GBP_API_ENDPOINT_FLAG_REMOTE;
   if (f & GBP_ENDPOINT_FLAG_LEARNT)
-    v |= LEARNT;
+    v |= GBP_API_ENDPOINT_FLAG_LEARNT;
+  if (f & GBP_ENDPOINT_FLAG_EXTERNAL)
+    v |= GBP_API_ENDPOINT_FLAG_EXTERNAL;
 
   v = htonl (v);
 
@@ -386,6 +393,9 @@ gub_subnet_type_from_api (vl_api_gbp_subnet_type_t a, gbp_subnet_type_t * t)
     case GBP_API_SUBNET_TRANSPORT:
       *t = GBP_SUBNET_TRANSPORT;
       return (0);
+    case GBP_API_SUBNET_L3_OUT:
+      *t = GBP_SUBNET_L3_OUT;
+      return (0);
     case GBP_API_SUBNET_STITCHED_INTERNAL:
       *t = GBP_SUBNET_STITCHED_INTERNAL;
       return (0);
@@ -439,6 +449,8 @@ gub_subnet_type_to_api (gbp_subnet_type_t t)
       break;
     case GBP_SUBNET_STITCHED_EXTERNAL:
       a = GBP_API_SUBNET_STITCHED_EXTERNAL;
+    case GBP_SUBNET_L3_OUT:
+      a = GBP_API_SUBNET_L3_OUT;
       break;
     }
 
@@ -642,7 +654,7 @@ vl_api_gbp_recirc_add_del_t_handler (vl_api_gbp_recirc_add_del_t * mp)
   REPLY_MACRO (VL_API_GBP_RECIRC_ADD_DEL_REPLY + GBP_MSG_BASE);
 }
 
-static int
+static walk_rc_t
 gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
 {
   vl_api_gbp_recirc_details_t *mp;
@@ -651,7 +663,7 @@ gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
   ctx = args;
   mp = vl_msg_api_alloc (sizeof (*mp));
   if (!mp)
-    return 1;
+    return (WALK_STOP);
 
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_GBP_RECIRC_DETAILS + GBP_MSG_BASE);
@@ -663,7 +675,7 @@ gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
-  return (1);
+  return (WALK_CONTINUE);
 }
 
 static void
@@ -681,6 +693,70 @@ vl_api_gbp_recirc_dump_t_handler (vl_api_gbp_recirc_dump_t * mp)
   };
 
   gbp_recirc_walk (gbp_recirc_send_details, &ctx);
+}
+
+static void
+vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t * mp)
+{
+  vl_api_gbp_ext_itf_add_del_reply_t *rmp;
+  u32 sw_if_index;
+  int rv = 0;
+
+  sw_if_index = ntohl (mp->ext_itf.sw_if_index);
+  if (!vnet_sw_if_index_is_api_valid (sw_if_index))
+    goto bad_sw_if_index;
+
+  if (mp->is_add)
+    rv = gbp_ext_itf_add (sw_if_index,
+			  ntohl (mp->ext_itf.bd_id),
+			  ntohl (mp->ext_itf.rd_id));
+  else
+    rv = gbp_ext_itf_delete (sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_GBP_EXT_ITF_ADD_DEL_REPLY + GBP_MSG_BASE);
+}
+
+static walk_rc_t
+gbp_ext_itf_send_details (gbp_ext_itf_t * gx, void *args)
+{
+  vl_api_gbp_ext_itf_details_t *mp;
+  gbp_walk_ctx_t *ctx;
+
+  ctx = args;
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return (WALK_STOP);
+
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_GBP_EXT_ITF_DETAILS + GBP_MSG_BASE);
+  mp->context = ctx->context;
+
+  mp->ext_itf.bd_id = ntohl (gbp_bridge_domain_get_bd_id (gx->gx_bd));
+  mp->ext_itf.rd_id = ntohl (gbp_route_domain_get_rd_id (gx->gx_rd));
+  mp->ext_itf.sw_if_index = ntohl (gx->gx_itf);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+vl_api_gbp_ext_itf_dump_t_handler (vl_api_gbp_ext_itf_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  gbp_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  gbp_ext_itf_walk (gbp_ext_itf_send_details, &ctx);
 }
 
 static int
