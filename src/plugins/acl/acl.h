@@ -142,7 +142,7 @@ typedef struct {
   hash_acl_info_t *hash_acl_infos; /* corresponding hash matching housekeeping info */
   clib_bihash_48_8_t acl_lookup_hash; /* ACL lookup hash table. */
   u32 hash_lookup_hash_buckets;
-  u32 hash_lookup_hash_memory;
+  uword hash_lookup_hash_memory;
 
   /* mheap to hold all the miscellaneous allocations related to hash-based lookups */
   void *hash_lookup_mheap;

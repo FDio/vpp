@@ -603,6 +603,17 @@ hash_acl_set_heap(acl_main_t *am)
     am->hash_lookup_mheap = mheap_alloc_with_lock (0 /* use VM */ , 
                                                    am->hash_lookup_mheap_size,
                                                    1 /* locked */);
+#if USE_DLMALLOC != 0
+    /*
+     * DLMALLOC is being "helpful" in that it ignores the heap size parameter
+     * by default and tries to allocate the larger amount of memory.
+     *
+     * Pin the heap so this does not happen and if we run out of memory
+     * in this heap, we will bail out with "out of memory", rather than
+     * an obscure error sometime later.
+     */
+    mspace_disable_expand(am->hash_lookup_mheap);
+#endif
     if (0 == am->hash_lookup_mheap) {
         clib_error("ACL plugin failed to allocate lookup heap of %U bytes", 
                    format_memory_size, am->hash_lookup_mheap_size);
@@ -736,6 +747,12 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
 
 
   vec_validate(am->hash_applied_mask_info_vec_by_lc_index, lc_index);
+
+  /* since we know (in case of no split) how much we expand, preallocate that space */
+  int old_vec_len = vec_len(*applied_hash_aces);
+  vec_validate((*applied_hash_aces), old_vec_len + vec_len(ha->rules) - 1);
+  _vec_len((*applied_hash_aces)) = old_vec_len;
+
   /* add the rules from the ACL to the hash table for lookup and append to the vector*/
   for(i=0; i < vec_len(ha->rules); i++) {
     /*
@@ -1171,6 +1188,11 @@ void hash_acl_add(acl_main_t *am, int acl_index)
 
   /* walk the newly added ACL entries and ensure that for each of them there
      is a mask type, increment a reference count for that mask type */
+
+  /* avoid small requests by preallocating the entire vector before running the additions */
+  vec_validate(ha->rules, a->count-1);
+  vec_reset_length(ha->rules);
+
   for(i=0; i < a->count; i++) {
     hash_ace_info_t ace_info;
     fa_5tuple_t mask;
