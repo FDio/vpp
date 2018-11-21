@@ -5675,6 +5675,57 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.assertLess(nsessions, 2 * max_sessions)
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_session_rst_timeout(self):
+        """ NAT44 session RST timeouts """
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+        self.vapi.nat_set_timeouts(tcp_transitory=5)
+
+        nat44_config = self.vapi.nat_show_config()
+
+        self.initiate_tcp_session(self.pg0, self.pg1)
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=self.tcp_port_in, dport=self.tcp_external_port,
+                 flags="R"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        pkts_num = nat44_config.max_translations_per_user - 1
+        pkts = []
+        for i in range(0, pkts_num):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 UDP(sport=1025 + i, dport=53))
+            pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(pkts_num)
+
+        sleep(6)
+
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=self.tcp_port_in + 1, dport=self.tcp_external_port + 1,
+                 flags="S"))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        nsessions = 0
+        users = self.vapi.nat44_user_dump()
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0].ip_address, self.pg0.remote_ip4n)
+        self.assertEqual(users[0].nsessions,
+                         nat44_config.max_translations_per_user)
+
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_session_limit_per_user(self):
         """ Maximum sessions per user limit """
         self.nat44_add_address(self.nat_addr)
