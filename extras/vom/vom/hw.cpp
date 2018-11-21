@@ -22,6 +22,7 @@ HW::cmd_q::cmd_q()
   : m_enabled(true)
   , m_connected(false)
   , m_conn()
+  , m_sc()
 {
 }
 
