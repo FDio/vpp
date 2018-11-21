@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+unset (VPPAPICLIENT_LIB)
 unset (VAPICLIENT_LIB)
 unset (ACL_FILE)
 unset (NAT_FILE)
@@ -20,13 +21,20 @@ unset (IGMP_FILE)
 unset (VOM_SOURCES)
 unset (VOM_HEADERS)
 
+find_library(VPPAPICLIENT_LIB NAMES vppapiclient REQUIRED)
+find_path(VPPAPICLIENT_INCLUDE_DIR NAMES vpp-api/client/vppapiclient.h)
 find_library(VAPICLIENT_LIB NAMES vapiclient REQUIRED)
 find_path(VAPICLIENT_INCLUDE_DIR NAMES vapi/vapi.hpp)
 
+
+if(NOT VPPAPICLIENT_INCLUDE_DIR OR NOT VPPAPICLIENT_LIB)
+  message(FATAL_ERROR "Cannot find vppapiclient library and/or headers")
+endif()
 if(NOT VAPICLIENT_INCLUDE_DIR OR NOT VAPICLIENT_LIB)
   message(FATAL_ERROR "Cannot find vapiclient library and/or headers")
 endif()
 
+include_directories(${VPPAPICLIENT_INCLUDE_DIR})
 include_directories(${VAPICLIENT_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
@@ -160,6 +168,7 @@ list(APPEND VOM_SOURCES
   route_cmds.cpp
   route_domain.cpp
   route_domain_cmds.cpp
+  stat_reader.cpp
   sub_interface_cmds.cpp
   sub_interface.cpp
   tap_interface.cpp
@@ -256,6 +265,8 @@ list(APPEND VOM_HEADERS
   rpc_cmd.hpp
   singular_db.hpp
   singular_db_funcs.hpp
+  stat_client.hpp
+  stat_reader.hpp
   sub_interface.hpp
   tap_interface.hpp
   types.hpp
@@ -270,8 +281,16 @@ add_vpp_library(vom
 
   INSTALL_HEADERS ${VOM_HEADERS}
 
-  LINK_LIBRARIES ${VAPICLIENT_LIB} Threads::Threads boost_thread
-    ${BOOST_SYSTEM_LIB} ${BOOST_FILESYSTEM_LIB} ${BOOST_ASIO_LIB} m rt
+  LINK_LIBRARIES ${VPPAPICLIENT_LIB} ${VAPICLIENT_LIB} Threads::Threads
+    m rt
 
   COMPONENT libvom
 )
+
+if (Boost_FOUND)
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    add_definitions(-stdlib=libstdc++)
+  endif()
+  add_executable(vom_stats_test test_stats.cpp)
+  target_link_libraries(vom_stats_test vom ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} stdc++)
+endif()
