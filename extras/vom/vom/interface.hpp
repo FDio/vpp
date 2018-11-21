@@ -269,6 +269,11 @@ public:
   void set(const std::string& tag);
 
   /**
+   * Get interface stats
+   */
+  void get_stats_print();
+
+  /**
    * Comparison operator - only used for UT
    */
   virtual bool operator==(const interface& i) const;
