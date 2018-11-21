@@ -50,8 +50,8 @@ typedef struct gbp_next_hop_t_
   index_t gnh_ai[FIB_PROTOCOL_IP_MAX];
 } gbp_next_hop_t;
 
-#define foreach_gbp_hash_mode   \
-  _(SRC_IP, "src-ip")           \
+#define foreach_gbp_hash_mode	\
+  _(SRC_IP, "src-ip")		\
   _(DST_IP, "dst-ip")		\
   _(SYMMETRIC, "symmetric")
 

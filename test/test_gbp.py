@@ -380,11 +380,10 @@ class VppGbpContractNextHop():
 
 
 class VppGbpContractRule():
-    def __init__(self, action, nhs=[]):
+    def __init__(self, action, hash_mode, nhs=[]):
         self.action = action
+        self.hash_mode = hash_mode
         self.nhs = nhs
-        e = VppEnum.vl_api_gbp_hash_mode_t
-        self.hash_mode = e.GBP_API_HASH_MODE_SRC_IP
 
     def encode(self):
         nhs = []
@@ -2575,16 +2574,16 @@ class TestGBP(VppTestCase):
                IP(src=ep1.ip4.address, dst=ep3.ip4.address) /
                UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100)),
-              (Ether(src=ep1.mac, dst=ep3.mac) /
-               IP(src=ep1.ip4.address, dst=ep3.ip4.address) /
-               UDP(sport=1234, dport=1235) /
+              (Ether(src=ep3.mac, dst=ep1.mac) /
+               IP(src=ep3.ip4.address, dst=ep1.ip4.address) /
+               UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=ep3.mac) /
                IPv6(src=ep1.ip6.address, dst=ep3.ip6.address) /
                UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100)),
-              (Ether(src=ep1.mac, dst=ep3.mac) /
-               IPv6(src=ep1.ip6.address, dst=ep3.ip6.address) /
+              (Ether(src=ep3.mac, dst=ep1.mac) /
+               IPv6(src=ep3.ip6.address, dst=ep1.ip6.address) /
                UDP(sport=1234, dport=1230) /
                Raw('\xa5' * 100))]
 
@@ -2601,41 +2600,64 @@ class TestGBP(VppTestCase):
         rule6 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
         acl_index = acl.add_vpp_config([rule4, rule6])
 
+        #
+        # test the src-ip hash mode
+        #
         c1 = VppGbpContract(
             self, 220, 222, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                 [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
                                        sep1.ip4, sep1.epg.rd),
                  VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
                                        sep2.ip4, sep2.epg.rd)]),
              VppGbpContractRule(
                  VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
                  [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
                                         sep3.ip6, sep3.epg.rd),
                   VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
                                         sep4.ip6, sep4.epg.rd)])])
         c1.add_vpp_config()
 
+        c2 = VppGbpContract(
+            self, 222, 220, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                       sep1.ip4, sep1.epg.rd),
+                 VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
+                                       sep2.ip4, sep2.epg.rd)]),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SRC_IP,
+                 [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
+                                        sep3.ip6, sep3.epg.rd),
+                  VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
+                                        sep4.ip6, sep4.epg.rd)])])
+        c2.add_vpp_config()
+
         #
         # send again with the contract preset, now packets arrive
         # at SEP1 or SEP2 depending on the hashing
         #
-        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep2.itf)
-
-        for rx in rxs:
-            self.assertEqual(rx[Ether].src, routed_src_mac)
-            self.assertEqual(rx[Ether].dst, sep2.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, ep3.ip4.address)
-
-        rxs = self.send_and_expect(self.pg0, p4[1] * 17, sep1.itf)
+        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep1.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep1.mac)
             self.assertEqual(rx[IP].src, ep1.ip4.address)
             self.assertEqual(rx[IP].dst, ep3.ip4.address)
+
+        rxs = self.send_and_expect(self.pg2, p4[1] * 17, sep2.itf)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, routed_src_mac)
+            self.assertEqual(rx[Ether].dst, sep2.mac)
+            self.assertEqual(rx[IP].src, ep3.ip4.address)
+            self.assertEqual(rx[IP].dst, ep1.ip4.address)
 
         rxs = self.send_and_expect(self.pg0, p6[0] * 17, self.pg7)
 
@@ -2658,13 +2680,13 @@ class TestGBP(VppTestCase):
             self.assertEqual(inner[IPv6].src, ep1.ip6.address)
             self.assertEqual(inner[IPv6].dst, ep3.ip6.address)
 
-        rxs = self.send_and_expect(self.pg0, p6[1] * 17, sep3.itf)
+        rxs = self.send_and_expect(self.pg2, p6[1] * 17, sep3.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
             self.assertEqual(rx[Ether].dst, sep3.mac)
-            self.assertEqual(rx[IPv6].src, ep1.ip6.address)
-            self.assertEqual(rx[IPv6].dst, ep3.ip6.address)
+            self.assertEqual(rx[IPv6].src, ep3.ip6.address)
+            self.assertEqual(rx[IPv6].dst, ep1.ip6.address)
 
         #
         # programme the unknown EP
@@ -2705,6 +2727,68 @@ class TestGBP(VppTestCase):
             self.assertEqual(inner[IPv6].src, ep1.ip6.address)
             self.assertEqual(inner[IPv6].dst, ep3.ip6.address)
 
+        c1.remove_vpp_config()
+        c2.remove_vpp_config()
+
+        #
+        # test the symmetric hash mode
+        #
+        c1 = VppGbpContract(
+            self, 220, 222, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                       sep1.ip4, sep1.epg.rd),
+                 VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
+                                       sep2.ip4, sep2.epg.rd)]),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                 [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
+                                        sep3.ip6, sep3.epg.rd),
+                  VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
+                                        sep4.ip6, sep4.epg.rd)])])
+        c1.add_vpp_config()
+
+        c2 = VppGbpContract(
+            self, 222, 220, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                       sep1.ip4, sep1.epg.rd),
+                 VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
+                                       sep2.ip4, sep2.epg.rd)]),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                 [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
+                                        sep3.ip6, sep3.epg.rd),
+                  VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
+                                        sep4.ip6, sep4.epg.rd)])])
+        c2.add_vpp_config()
+
+        #
+        # send again with the contract preset, now packets arrive
+        # at SEP1 for both directions
+        #
+        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep1.itf)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, routed_src_mac)
+            self.assertEqual(rx[Ether].dst, sep1.mac)
+            self.assertEqual(rx[IP].src, ep1.ip4.address)
+            self.assertEqual(rx[IP].dst, ep3.ip4.address)
+
+        rxs = self.send_and_expect(self.pg2, p4[1] * 17, sep1.itf)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, routed_src_mac)
+            self.assertEqual(rx[Ether].dst, sep1.mac)
+            self.assertEqual(rx[IP].src, ep3.ip4.address)
+            self.assertEqual(rx[IP].dst, ep1.ip4.address)
+
         #
         # programme the unknown EP for the L3 tests
         #
@@ -2718,40 +2802,42 @@ class TestGBP(VppTestCase):
                IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
                UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100)),
-              (Ether(src=ep1.mac, dst=self.router_mac.address) /
-               IP(src=ep1.ip4.address, dst=ep2.ip4.address) /
-               UDP(sport=1234, dport=1235) /
+              (Ether(src=ep2.mac, dst=self.router_mac.address) /
+               IP(src=ep2.ip4.address, dst=ep1.ip4.address) /
+               UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=self.router_mac.address) /
                IPv6(src=ep1.ip6.address, dst=ep2.ip6.address) /
                UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100)),
-              (Ether(src=ep1.mac, dst=self.router_mac.address) /
-               IPv6(src=ep1.ip6.address, dst=ep2.ip6.address) /
-               UDP(sport=1234, dport=1230) /
+              (Ether(src=ep2.mac, dst=self.router_mac.address) /
+               IPv6(src=ep2.ip6.address, dst=ep1.ip6.address) /
+               UDP(sport=1234, dport=1234) /
                Raw('\xa5' * 100))]
 
-        c2 = VppGbpContract(
-            self, 220, 221, acl_index,
-            [VppGbpContractRule(
-                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
-                [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
-                                       sep1.ip4, sep1.epg.rd),
-                 VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
-                                       sep2.ip4, sep2.epg.rd)]),
-             VppGbpContractRule(
+        c3 = VppGbpContract(
+             self, 220, 221, acl_index,
+             [VppGbpContractRule(
                  VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
-                 [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
-                                        sep3.ip6, sep3.epg.rd),
-                  VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
-                                        sep4.ip6, sep4.epg.rd)])])
-        c2.add_vpp_config()
+                 VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                 [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                        sep1.ip4, sep1.epg.rd),
+                  VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
+                                        sep2.ip4, sep2.epg.rd)]),
+              VppGbpContractRule(
+                  VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                  VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_SYMMETRIC,
+                  [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
+                                         sep3.ip6, sep3.epg.rd),
+                   VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
+                                         sep4.ip6, sep4.epg.rd)])])
+        c3.add_vpp_config()
 
-        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep2.itf)
+        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep1.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
-            self.assertEqual(rx[Ether].dst, sep2.mac)
+            self.assertEqual(rx[Ether].dst, sep1.mac)
             self.assertEqual(rx[IP].src, ep1.ip4.address)
             self.assertEqual(rx[IP].dst, ep2.ip4.address)
 
@@ -2763,7 +2849,7 @@ class TestGBP(VppTestCase):
             VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L3)
         vx_tun_l3.add_vpp_config()
 
-        c3 = VppGbpContract(
+        c4 = VppGbpContract(
             self, 221, 220, acl_index,
             [VppGbpContractRule(
                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
@@ -2771,7 +2857,7 @@ class TestGBP(VppTestCase):
              VppGbpContractRule(
                  VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
                  [])])
-        c3.add_vpp_config()
+        c4.add_vpp_config()
 
         p = (Ether(src=self.pg7.remote_mac,
                    dst=self.pg7.local_mac) /
@@ -2815,29 +2901,13 @@ class TestGBP(VppTestCase):
         p4 = [(Ether(src=ep1.mac, dst=self.router_mac.address) /
                IP(src=ep1.ip4.address, dst="10.0.0.88") /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
-              (Ether(src=ep1.mac, dst=self.router_mac.address) /
-               IP(src=ep1.ip4.address, dst="10.0.0.88") /
-               UDP(sport=1234, dport=1235) /
                Raw('\xa5' * 100))]
         p6 = [(Ether(src=ep1.mac, dst=self.router_mac.address) /
                IPv6(src=ep1.ip6.address, dst="2001:10::88") /
                UDP(sport=1234, dport=1234) /
-               Raw('\xa5' * 100)),
-              (Ether(src=ep1.mac, dst=self.router_mac.address) /
-               IPv6(src=ep1.ip6.address, dst="2001:10::88") /
-               UDP(sport=1234, dport=123) /
                Raw('\xa5' * 100))]
 
-        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep2.itf)
-
-        for rx in rxs:
-            self.assertEqual(rx[Ether].src, routed_src_mac)
-            self.assertEqual(rx[Ether].dst, sep2.mac)
-            self.assertEqual(rx[IP].src, ep1.ip4.address)
-            self.assertEqual(rx[IP].dst, "10.0.0.88")
-
-        rxs = self.send_and_expect(self.pg0, p4[1] * 17, sep1.itf)
+        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep1.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
@@ -2853,7 +2923,36 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[IPv6].src, ep1.ip6.address)
             self.assertEqual(rx[IPv6].dst, "2001:10::88")
 
-        rxs = self.send_and_expect(self.pg0, p6[1] * 17, sep3.itf)
+        #
+        # test the dst-ip hash mode
+        #
+        c5 = VppGbpContract(
+            self, 220, 221, acl_index,
+            [VppGbpContractRule(
+                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_DST_IP,
+                [VppGbpContractNextHop(sep1.vmac, sep1.epg.bd,
+                                       sep1.ip4, sep1.epg.rd),
+                 VppGbpContractNextHop(sep2.vmac, sep2.epg.bd,
+                                       sep2.ip4, sep2.epg.rd)]),
+             VppGbpContractRule(
+                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_REDIRECT,
+                VppEnum.vl_api_gbp_hash_mode_t.GBP_API_HASH_MODE_DST_IP,
+                 [VppGbpContractNextHop(sep3.vmac, sep3.epg.bd,
+                                        sep3.ip6, sep3.epg.rd),
+                  VppGbpContractNextHop(sep4.vmac, sep4.epg.bd,
+                                        sep4.ip6, sep4.epg.rd)])])
+        c5.add_vpp_config()
+
+        rxs = self.send_and_expect(self.pg0, p4[0] * 17, sep1.itf)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, routed_src_mac)
+            self.assertEqual(rx[Ether].dst, sep1.mac)
+            self.assertEqual(rx[IP].src, ep1.ip4.address)
+            self.assertEqual(rx[IP].dst, "10.0.0.88")
+
+        rxs = self.send_and_expect(self.pg0, p6[0] * 17, sep3.itf)
 
         for rx in rxs:
             self.assertEqual(rx[Ether].src, routed_src_mac)
