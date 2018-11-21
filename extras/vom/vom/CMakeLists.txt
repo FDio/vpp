@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+unset (VPPAPICLIENT_LIB)
 unset (VAPICLIENT_LIB)
 unset (ACL_FILE)
 unset (NAT_FILE)
@@ -20,13 +21,20 @@ unset (IGMP_FILE)
 unset (VOM_SOURCES)
 unset (VOM_HEADERS)
 
+find_library(VPPAPICLIENT_LIB NAMES vppapiclient REQUIRED)
+find_path(VPPAPICLIENT_INCLUDE_DIR NAMES vpp-api/client/vppapiclient.h)
 find_library(VAPICLIENT_LIB NAMES vapiclient REQUIRED)
 find_path(VAPICLIENT_INCLUDE_DIR NAMES vapi/vapi.hpp)
 
+
+if(NOT VPPAPICLIENT_INCLUDE_DIR OR NOT VPPAPICLIENT_LIB)
+  message(FATAL_ERROR "Cannot find vppapiclient library and/or headers")
+endif()
 if(NOT VAPICLIENT_INCLUDE_DIR OR NOT VAPICLIENT_LIB)
   message(FATAL_ERROR "Cannot find vapiclient library and/or headers")
 endif()
 
+include_directories(${VPPAPICLIENT_INCLUDE_DIR})
 include_directories(${VAPICLIENT_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
@@ -99,6 +107,7 @@ endif()
 
 list(APPEND VOM_SOURCES
   types.cpp
+  timer.cpp
   api_types.cpp
   arp_proxy_binding_cmds.cpp
   arp_proxy_binding.cpp
@@ -256,6 +265,7 @@ list(APPEND VOM_HEADERS
   sub_interface.hpp
   tap_interface.hpp
   types.hpp
+  timer.hpp
   api_types.hpp
   vxlan_tunnel.hpp
 )
@@ -267,7 +277,7 @@ add_vpp_library(vom
 
   INSTALL_HEADERS ${VOM_HEADERS}
 
-  LINK_LIBRARIES ${VAPICLIENT_LIB} Threads::Threads boost_thread
+  LINK_LIBRARIES ${VPPAPICLIENT_LIB} ${VAPICLIENT_LIB} Threads::Threads boost_thread
     ${BOOST_SYSTEM_LIB} ${BOOST_FILESYSTEM_LIB} ${BOOST_ASIO_LIB} m rt
 
   COMPONENT libvom
