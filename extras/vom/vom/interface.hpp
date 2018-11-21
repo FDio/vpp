@@ -269,6 +269,28 @@ public:
   void set(const std::string& tag);
 
   /**
+   * Set the interface stat
+   */
+  void set(counter_t count, const std::string& stat_type);
+
+  /**
+   * Get the interface stats
+   */
+  counter_t get_stat_rx(void);
+  counter_t get_stat_rx_unicast(void);
+  counter_t get_stat_rx_multicast(void);
+  counter_t get_stat_rx_broadcast(void);
+  counter_t get_stat_tx(void);
+  counter_t get_stat_tx_unicast(void);
+  counter_t get_stat_tx_multicast(void);
+  counter_t get_stat_tx_broadcast(void);
+
+  /**
+   * Get interface stats
+   */
+  std::string get_stats_print(void);
+
+  /**
    * Comparison operator - only used for UT
    */
   virtual bool operator==(const interface& i) const;
@@ -466,8 +488,12 @@ public:
   /**
    * Enable stats for this interface
    */
-  void enable_stats(stat_listener& el,
-                    const stats_type_t& st = stats_type_t::NORMAL);
+  void enable_stats(void);
+
+  /**
+   * Disable stats for this interface
+   */
+  void disable_stats(void);
 
 protected:
   /**
@@ -561,7 +587,12 @@ private:
   /**
    * enable the interface stats in the singular instance
    */
-  void enable_stats_i(stat_listener& el, const stats_type_t& st);
+  void enable_stats_i(void);
+
+  /**
+   * disable the interface stats in the singular instance
+   */
+  void disable_stats_i(void);
 
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
@@ -624,6 +655,18 @@ private:
    * The state of the detailed stats collection
    */
   HW::item<stats_type_t> m_stats_type;
+
+  /**
+   * Interface stats counter
+   */
+  counter_t m_rx;
+  counter_t m_tx;
+  counter_t m_rx_unicast;
+  counter_t m_tx_unicast;
+  counter_t m_rx_multicast;
+  counter_t m_tx_multicast;
+  counter_t m_rx_broadcast;
+  counter_t m_tx_broadcast;
 
   /**
    * Operational state of the interface
