@@ -32,8 +32,9 @@ typedef enum gbp_endpoint_attr_t_
 {
   GBP_ENDPOINT_ATTR_FIRST = 0,
   GBP_ENDPOINT_ATTR_BOUNCE = GBP_ENDPOINT_ATTR_FIRST,
-  GBP_ENDPOINT_ATTR_REMOTE = 1,
-  GBP_ENDPOINT_ATTR_LEARNT = 2,
+  GBP_ENDPOINT_ATTR_REMOTE,
+  GBP_ENDPOINT_ATTR_LEARNT,
+  GBP_ENDPOINT_ATTR_EXTERNAL,
   GBP_ENDPOINT_ATTR_LAST,
 } gbp_endpoint_attr_t;
 
@@ -43,12 +44,14 @@ typedef enum gbp_endpoint_flags_t_
   GBP_ENDPOINT_FLAG_BOUNCE = (1 << GBP_ENDPOINT_ATTR_BOUNCE),
   GBP_ENDPOINT_FLAG_REMOTE = (1 << GBP_ENDPOINT_ATTR_REMOTE),
   GBP_ENDPOINT_FLAG_LEARNT = (1 << GBP_ENDPOINT_ATTR_LEARNT),
+  GBP_ENDPOINT_FLAG_EXTERNAL = (1 << GBP_ENDPOINT_ATTR_EXTERNAL),
 } gbp_endpoint_flags_t;
 
 #define GBP_ENDPOINT_ATTR_NAMES {                 \
     [GBP_ENDPOINT_ATTR_BOUNCE] = "bounce",        \
     [GBP_ENDPOINT_ATTR_REMOTE] = "remote",        \
     [GBP_ENDPOINT_ATTR_LEARNT] = "learnt",        \
+    [GBP_ENDPOINT_ATTR_EXTERNAL] = "external",    \
 }
 
 extern u8 *format_gbp_endpoint_flags (u8 * s, va_list * args);
@@ -235,6 +238,8 @@ extern void gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx);
 extern void gbp_endpoint_scan (vlib_main_t * vm);
 extern f64 gbp_endpoint_scan_threshold (void);
 extern int gbp_endpoint_is_remote (const gbp_endpoint_t * ge);
+extern int gbp_endpoint_is_local (const gbp_endpoint_t * ge);
+extern int gbp_endpoint_is_external (const gbp_endpoint_t * ge);
 extern int gbp_endpoint_is_learnt (const gbp_endpoint_t * ge);
 
 
