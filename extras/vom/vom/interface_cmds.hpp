@@ -25,7 +25,6 @@
 
 #include <vapi/af_packet.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
-#include <vapi/stats.api.vapi.hpp>
 #include <vapi/tap.api.vapi.hpp>
 #include <vapi/vhost_user.api.vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
@@ -404,101 +403,6 @@ private:
    * The listeners to notify when data/events arrive
    */
   interface::event_listener& m_listener;
-};
-
-/**
- * A command class represents our desire to recieve interface stats
- */
-class stats_enable_cmd
-  : public event_cmd<vapi::Want_per_interface_combined_stats,
-                     vapi::Vnet_per_interface_combined_counters>
-{
-public:
-  /**
-   * Constructor taking the listner to notify
-   */
-  stats_enable_cmd(interface::stat_listener& el, const handle_t& handle);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-
-  /**
-   * Retires the command - unsubscribe from the stats.
-   */
-  void retire(connection& con);
-
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-
-  /**
-   * (re)set status
-   */
-  void set(const rc_t& rc);
-
-  /**
-   * get listener
-   */
-  interface::stat_listener& listener() const;
-
-  /**
-   * Comparison operator - only used for UT
-   */
-  bool operator==(const stats_enable_cmd& i) const;
-
-  /**
-   * Called when it's time to poke the listeners
-   */
-  void notify();
-
-private:
-  /**
-   * The listeners to notify when data/stats arrive
-   */
-  interface::stat_listener& m_listener;
-
-  /**
-   * The interface on which we are enabling states
-   */
-  const handle_t& m_swifindex;
-};
-
-/**
- * A command class represents our desire to recieve interface stats
- */
-class stats_disable_cmd
-  : public rpc_cmd<HW::item<bool>, vapi::Want_per_interface_combined_stats>
-{
-public:
-  /**
-   * Constructor taking the listner to notify
-   */
-  stats_disable_cmd(const handle_t& handle);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-
-  /**
-   * Comparison operator - only used for UT
-   */
-  bool operator==(const stats_disable_cmd& i) const;
-
-private:
-  HW::item<bool> m_res;
-  /**
-   * The interface on which we are disabling states
-   */
-  handle_t m_swifindex;
 };
 
 /**

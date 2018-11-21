@@ -95,7 +95,7 @@ public:
 class MockListener : public interface::event_listener,
                      public interface::stat_listener
 {
-    void handle_interface_stat(interface_cmds::stats_enable_cmd *cmd)
+    void handle_interface_stat(const interface& itf)
     {
     }
     void handle_interface_event(std::vector<VOM::interface::event> events)

@@ -29,6 +29,7 @@
 
 namespace VOM {
 
+class stat_reader;
 class cmd;
 class HW
 {
@@ -287,6 +288,12 @@ public:
   static void init(cmd_q* f);
 
   /**
+   * Initialise the HW connection to VPP - the UT version passing
+   * a mock Q.
+   */
+  static void init(cmd_q* f, stat_reader* s);
+
+  /**
    * Initialise the HW
    */
   static void init();
@@ -326,11 +333,21 @@ public:
    */
   static bool poll();
 
+  /**
+   * read stats from stat segment
+   */
+  static void read_stats();
+
 private:
   /**
    * The command Q toward HW
    */
   static cmd_q* m_cmdQ;
+
+  /**
+   * The stat reader toward HW
+   */
+  static stat_reader* m_statReader;
 
   /**
    * HW::item representing the connection state as determined by polling
