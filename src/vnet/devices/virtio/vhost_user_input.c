@@ -249,6 +249,7 @@ vhost_user_if_input (vlib_main_t * vm,
 		     vnet_hw_interface_rx_mode mode)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
+  vnet_feature_main_t *fm = &feature_main;
   u16 n_rx_packets = 0;
   u32 n_rx_bytes = 0;
   u16 n_left;
@@ -258,6 +259,8 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 map_hint = 0;
   vhost_cpu_t *cpu = &vum->cpus[vm->thread_index];
   u16 copy_len = 0;
+  u8 feature_arc_idx = fm->device_input_feature_arc_index;
+  u32 current_config_index = ~(u32) 0;
 
   /* The descriptor table is not ready yet */
   if (PREDICT_FALSE (txvq->avail == 0))
@@ -367,6 +370,16 @@ vhost_user_if_input (vlib_main_t * vm,
 	  vlib_error_count (vm, vhost_user_input_node.index,
 			    VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER, flush);
 	}
+    }
+
+  if (PREDICT_FALSE (vnet_have_features (feature_arc_idx, vui->sw_if_index)))
+    {
+      vnet_feature_config_main_t *cm;
+      cm = &fm->feature_config_mains[feature_arc_idx];
+      current_config_index = vec_elt (cm->config_index_by_sw_if_index,
+				      vui->sw_if_index);
+      vnet_get_config_data (&cm->config_main, &current_config_index,
+			    &next_index, 0);
     }
 
   while (n_left > 0)
@@ -539,18 +552,11 @@ vhost_user_if_input (vlib_main_t * vm,
 	  vnet_buffer (b_head)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  b_head->error = 0;
 
-	  {
-	    u32 next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-
-	    /* redirect if feature path enabled */
-	    vnet_feature_start_device_input_x1 (vui->sw_if_index, &next0,
-						b_head);
-
-	    u32 bi = to_next[-1];	//Cannot use to_next[-1] in the macro
-	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					     to_next, n_left_to_next,
-					     bi, next0);
-	  }
+	  if (current_config_index != ~(u32) 0)
+	    {
+	      b_head->current_config_index = current_config_index;
+	      vnet_buffer (b_head)->feature_arc_index = feature_arc_idx;
+	    }
 
 	  n_left--;
 
