@@ -219,8 +219,8 @@ class VppTestCase(unittest.TestCase):
         else:
             raise Exception("Unrecognized DEBUG option: '%s'" % d)
 
-    @classmethod
-    def get_least_used_cpu(self):
+    @staticmethod
+    def get_least_used_cpu():
         cpu_usage_list = [set(range(psutil.cpu_count()))]
         vpp_processes = [p for p in psutil.process_iter(attrs=['pid', 'name'])
                          if 'vpp_main' == p.info['name']]
@@ -248,7 +248,7 @@ class VppTestCase(unittest.TestCase):
 
         return random.choice(tuple(min_usage_set))
 
-    @staticmethod
+    @classmethod
     def print_header(cls):
         if not hasattr(cls, '_header_printed'):
             print(double_line_delim)
@@ -375,7 +375,7 @@ class VppTestCase(unittest.TestCase):
         """
         gc.collect()  # run garbage collection first
         random.seed()
-        cls.print_header(cls)
+        cls.print_header()
         cls.logger = get_logger(cls.__name__)
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
@@ -1184,7 +1184,7 @@ class VppTestResult(unittest.TestResult):
         :param test:
 
         """
-        test.print_header(test.__class__)
+        test.print_header()
 
         unittest.TestResult.startTest(self, test)
         if self.verbosity > 0:
