@@ -23,6 +23,7 @@
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
+#include "vom/stat_reader.hpp"
 #include "vom/tap_interface_cmds.hpp"
 
 namespace VOM {
@@ -419,24 +420,118 @@ interface::set(const std::string& tag)
 }
 
 void
-interface::enable_stats_i(interface::stat_listener& el, const stats_type_t& st)
+interface::set(counter_t count, const std::string& stat_type)
 {
-  if (!m_stats) {
-    if (stats_type_t::DETAILED == st) {
-      m_stats_type = st;
-      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
-        m_stats_type, handle_i(), true));
-    }
-    m_stats.reset(new interface_cmds::stats_enable_cmd(el, handle_i()));
-    HW::enqueue(m_stats);
-    HW::write();
-  }
+  if ("rx" == stat_type)
+    m_rx = count;
+  else if ("tx" == stat_type)
+    m_tx = count;
+  else if ("rx-unicast" == stat_type)
+    m_rx_unicast = count;
+  else if ("tx-unicast" == stat_type)
+    m_tx_unicast = count;
+  else if ("rx-multicast" == stat_type)
+    m_rx_multicast = count;
+  else if ("tx-multicast" == stat_type)
+    m_tx_multicast = count;
+  else if ("rx-broadcast" == stat_type)
+    m_rx_broadcast = count;
+  else if ("tx-broadcast" == stat_type)
+    m_rx_broadcast = count;
+}
+
+counter_t
+interface::get_stat_rx(void)
+{
+  return m_rx;
+}
+
+counter_t
+interface::get_stat_rx_unicast(void)
+{
+  return m_rx_unicast;
+}
+counter_t
+interface::get_stat_rx_multicast(void)
+{
+  return m_rx_multicast;
+}
+
+counter_t
+interface::get_stat_rx_broadcast(void)
+{
+  return m_rx_broadcast;
+}
+
+counter_t
+interface::get_stat_tx(void)
+{
+  return m_tx;
+}
+
+counter_t
+interface::get_stat_tx_unicast(void)
+{
+  return m_tx_unicast;
+}
+
+counter_t
+interface::get_stat_tx_multicast(void)
+{
+  return m_tx_multicast;
+}
+
+counter_t
+interface::get_stat_tx_broadcast(void)
+{
+  return m_tx_broadcast;
+}
+
+std::string
+interface::get_stats_print(void)
+{
+  std::ostringstream s;
+  s << m_name << " :["
+    << "rx [packets " << m_rx.packets << ", bytes " << m_rx.bytes << "]"
+    << " rx-unicast [packets " << m_rx_unicast.packets << ", bytes "
+    << m_rx_unicast.bytes << "]"
+    << " rx-multicast [packets " << m_rx_multicast.packets << ", bytes "
+    << m_rx_multicast.bytes << "]"
+    << " rx-broadcast [packets " << m_rx_broadcast.packets << ", bytes "
+    << m_rx_broadcast.bytes << "]"
+    << " tx [packets " << m_tx.packets << ", bytes " << m_tx.bytes << "]"
+    << " tx-unicast [packets " << m_tx_unicast.packets << ", bytes "
+    << m_tx_unicast.bytes << "]"
+    << " tx-multicast [packets " << m_tx_multicast.packets << ", bytes "
+    << m_tx_multicast.bytes << "]"
+    << " tx-broadcast [packets " << m_tx_broadcast.packets << ", bytes "
+    << m_tx_broadcast.bytes << "]]" << std::endl;
+
+  return s.str();
 }
 
 void
-interface::enable_stats(interface::stat_listener& el, const stats_type_t& st)
+interface::enable_stats_i()
 {
-  singular()->enable_stats_i(el, st);
+  stat_reader::register_stat_indexes(handle_i().value());
+}
+
+void
+interface::enable_stats()
+{
+  singular()->enable_stats_i();
+}
+
+void
+interface::disable_stats_i()
+{
+  stat_reader::unregister_stat_indexes(handle_i().value());
+}
+
+void
+interface::disable_stats()
+{
+  singular()->disable_stats_i();
 }
 
 std::shared_ptr<interface>
