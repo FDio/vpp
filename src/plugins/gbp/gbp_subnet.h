@@ -23,11 +23,13 @@ typedef enum gbp_subnet_type_t_
   GBP_SUBNET_TRANSPORT,
   GBP_SUBNET_STITCHED_INTERNAL,
   GBP_SUBNET_STITCHED_EXTERNAL,
+  GBP_SUBNET_L3_OUT,
 } gbp_subnet_type_t;
 
 extern int gbp_subnet_add (u32 rd_id,
 			   const fib_prefix_t * pfx,
 			   gbp_subnet_type_t type,
+			   const ip46_address_t * nh,
 			   u32 sw_if_index, epg_id_t epg);
 
 extern int gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx);
@@ -35,6 +37,7 @@ extern int gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx);
 typedef walk_rc_t (*gbp_subnet_cb_t) (u32 rd_id,
 				      const fib_prefix_t * pfx,
 				      gbp_subnet_type_t type,
+				      const ip46_address_t * nh,
 				      u32 sw_if_index,
 				      epg_id_t epg, void *ctx);
 

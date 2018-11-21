@@ -231,6 +231,16 @@ gbp_route_domain_unlock (index_t index)
     }
 }
 
+u32
+gbp_route_domain_get_rd_id (index_t grdi)
+{
+  gbp_route_domain_t *grd;
+
+  grd = gbp_route_domain_get (grdi);
+
+  return (grd->grd_id);
+}
+
 int
 gbp_route_domain_delete (u32 rd_id)
 {
