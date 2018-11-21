@@ -3470,12 +3470,12 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
 {
   acl_main_t *am = &acl_main;
   u32 conn_table_hash_buckets;
-  u32 conn_table_hash_memory_size;
+  uword conn_table_hash_memory_size;
   u32 conn_table_max_entries;
   uword main_heap_size;
   uword hash_heap_size;
   u32 hash_lookup_hash_buckets;
-  u32 hash_lookup_hash_memory;
+  uword hash_lookup_hash_memory;
   u32 reclassify_sessions;
   u32 use_tuple_merge;
   u32 tuple_merge_split_threshold;
@@ -3485,8 +3485,10 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
       if (unformat
 	  (input, "connection hash buckets %d", &conn_table_hash_buckets))
 	am->fa_conn_table_hash_num_buckets = conn_table_hash_buckets;
-      else if (unformat (input, "connection hash memory %d",
-			 &conn_table_hash_memory_size))
+      else
+	if (unformat
+	    (input, "connection hash memory %U", unformat_memory_size,
+	     &conn_table_hash_memory_size))
 	am->fa_conn_table_hash_memory_size = conn_table_hash_memory_size;
       else if (unformat (input, "connection count max %d",
 			 &conn_table_max_entries))
@@ -3504,8 +3506,10 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "hash lookup hash buckets %d",
 			 &hash_lookup_hash_buckets))
 	am->hash_lookup_hash_buckets = hash_lookup_hash_buckets;
-      else if (unformat (input, "hash lookup hash memory %d",
-			 &hash_lookup_hash_memory))
+      else
+	if (unformat
+	    (input, "hash lookup hash memory %U", unformat_memory_size,
+	     &hash_lookup_hash_memory))
 	am->hash_lookup_hash_memory = hash_lookup_hash_memory;
       else if (unformat (input, "use tuple merge %d", &use_tuple_merge))
 	am->use_tuple_merge = use_tuple_merge;
