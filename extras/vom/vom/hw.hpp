@@ -25,6 +25,7 @@
 
 #include "vom/cmd.hpp"
 #include "vom/connection.hpp"
+#include "vom/stat_class.hpp"
 #include "vom/types.hpp"
 
 namespace VOM {
@@ -278,6 +279,11 @@ public:
      * The connection to VPP
      */
     connection m_conn;
+
+    /**
+     * The stat class
+     */
+    stat_class m_sc;
   };
 
   /**

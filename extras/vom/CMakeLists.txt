@@ -24,6 +24,7 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 
 find_package(VPP)
 find_package(Threads REQUIRED)
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 
 add_subdirectory(vom)
 
