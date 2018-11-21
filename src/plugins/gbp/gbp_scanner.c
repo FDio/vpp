@@ -19,7 +19,15 @@
 #include <plugins/gbp/gbp_endpoint.h>
 #include <plugins/gbp/gbp_vxlan.h>
 
+/**
+ * Scanner logger
+ */
 vlib_log_class_t gs_logger;
+
+/**
+ * Scanner state
+ */
+static bool gs_enabled;
 
 #define GBP_SCANNER_DBG(...)                                      \
     vlib_log_debug (gs_logger, __VA_ARGS__);
@@ -28,13 +36,13 @@ static uword
 gbp_scanner (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   uword event_type, *event_data = 0;
-  bool enabled = 0, do_scan = 0;
+  bool do_scan = 0;
 
   while (1)
     {
       do_scan = 0;
 
-      if (enabled)
+      if (gs_enabled)
 	{
 	  /* scan every 'inactive threshold' seconds */
 	  vlib_process_wait_for_event_or_clock (vm,
@@ -55,11 +63,14 @@ gbp_scanner (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	  break;
 
 	case GBP_ENDPOINT_SCAN_START:
-	  enabled = 1;
+	  gs_enabled = 1;
 	  break;
 
 	case GBP_ENDPOINT_SCAN_STOP:
-	  enabled = 0;
+	  gs_enabled = 0;
+	  break;
+
+	case GBP_ENDPOINT_SCAN_SET_TIME:
 	  break;
 
 	default:
@@ -84,6 +95,30 @@ VLIB_REGISTER_NODE (gbp_scanner_node) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+gbp_scanner_cli (vlib_main_t * vm,
+		 unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vlib_cli_output (vm, "GBP-scanner: enabled:%d interval:%f",
+		   gs_enabled, gbp_endpoint_scan_threshold ());
+
+  return (NULL);
+}
+
+/*?
+ * Show GBP scanner
+ *
+ * @cliexpar
+ * @cliexstart{show gbp scanner}
+ * @cliexend
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (gbp_scanner_cli_node, static) = {
+  .path = "show gbp scanner",
+  .short_help = "show gbp scanner",
+  .function = gbp_scanner_cli,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 gbp_scanner_init (vlib_main_t * vm)

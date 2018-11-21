@@ -25,6 +25,8 @@
  */
 typedef struct gbp_policy_dpo_t_
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /**
    * The protocol of packets using this DPO
    */
@@ -46,7 +48,7 @@ typedef struct gbp_policy_dpo_t_
   u16 gpd_locks;
 
   /**
-   * Stacked DPO on DVR of output interface
+   * Stacked DPO on DVR/ADJ of output interface
    */
   dpo_id_t gpd_dpo;
 } gbp_policy_dpo_t;
@@ -55,13 +57,23 @@ extern void gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
 					epg_id_t epg,
 					u32 sw_if_index, dpo_id_t * dpo);
 
-extern gbp_policy_dpo_t *gbp_policy_dpo_get (index_t index);
-
 extern dpo_type_t gbp_policy_dpo_get_type (void);
 
 extern vlib_node_registration_t ip4_gbp_policy_dpo_node;
 extern vlib_node_registration_t ip6_gbp_policy_dpo_node;
 extern vlib_node_registration_t gbp_policy_port_node;
+
+/**
+ * Types exposed for the Data-plane
+ */
+extern dpo_type_t gbp_policy_dpo_type;
+extern gbp_policy_dpo_t *gbp_policy_dpo_pool;
+
+always_inline gbp_policy_dpo_t *
+gbp_policy_dpo_get (index_t index)
+{
+  return (pool_elt_at_index (gbp_policy_dpo_pool, index));
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

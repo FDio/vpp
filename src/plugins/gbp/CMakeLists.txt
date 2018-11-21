@@ -19,6 +19,7 @@ add_vpp_plugin(gbp
   gbp_contract.c
   gbp_endpoint.c
   gbp_endpoint_group.c
+  gbp_ext_itf.c
   gbp_fwd.c
   gbp_fwd_dpo.c
   gbp_itf.c

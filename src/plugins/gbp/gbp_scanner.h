@@ -22,8 +22,7 @@ typedef enum gbp_scan_event_t_
 {
   GBP_ENDPOINT_SCAN_START,
   GBP_ENDPOINT_SCAN_STOP,
-  GBP_VXLAN_SCAN_START,
-  GBP_VXLAN_SCAN_STOP,
+  GBP_ENDPOINT_SCAN_SET_TIME,
 } gbp_scan_event_t;
 
 extern vlib_node_registration_t gbp_scanner_node;
