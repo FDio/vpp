@@ -209,7 +209,7 @@ typedef struct app_init_args_
 typedef struct _vnet_app_worker_add_del_args
 {
   u32 app_index;		/**< App for which a new worker is requested */
-  u32 wrk_index;		/**< Index to delete or return value if add */
+  u32 wrk_map_index;		/**< Index to delete or return value if add */
   u32 api_client_index;		/**< Binary API client index */
   ssvm_private_t *segment;	/**< First segment in segment manager */
   svm_msg_q_t *evt_q;		/**< Worker message queue */

@@ -1349,7 +1349,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
 
   vnet_app_worker_add_del_args_t args = {
     .app_index = app->app_index,
-    .wrk_index = clib_net_to_host_u32 (mp->wrk_index),
+    .wrk_map_index = clib_net_to_host_u32 (mp->wrk_index),
     .api_client_index = mp->client_index,
     .is_add = mp->is_add
   };
@@ -1382,7 +1382,7 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
 done:
   REPLY_MACRO2 (VL_API_APP_WORKER_ADD_DEL_REPLY, ({
     rmp->is_add = mp->is_add;
-    rmp->wrk_index = clib_host_to_net_u32 (args.wrk_index);
+    rmp->wrk_index = clib_host_to_net_u32 (args.wrk_map_index);
     if (!rv && mp->is_add)
       {
 	if (vec_len (args.segment->name))
