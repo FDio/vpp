@@ -50,14 +50,14 @@ typedef struct gbp_next_hop_t_
   index_t gnh_ai[FIB_PROTOCOL_IP_MAX];
 } gbp_next_hop_t;
 
-#define foreach_gbp_hash_mode   \
-  _(SRC_IP, "src-ip")           \
-  _(DST_IP, "dst-ip")		\
-  _(SYMMETRIC, "symmetric")
+#define foreach_gbp_hash_mode	\
+  _(SRC_IP, "src-ip", 1)	\
+  _(DST_IP, "dst-ip", 2)	\
+  _(SYMMETRIC, "symmetric", 3)
 
 typedef enum gbp_hash_mode_t_
 {
-#define _(v,s) GBP_HASH_MODE_##v,
+#define _(v,s,b) GBP_HASH_MODE_##v = b,
   foreach_gbp_hash_mode
 #undef _
 } gbp_hash_mode_t;
