@@ -66,6 +66,7 @@ extern index_t gbp_route_domain_index (const gbp_route_domain_t *);
 
 extern int gbp_route_domain_delete (u32 rd_id);
 extern gbp_route_domain_t *gbp_route_domain_get (index_t i);
+extern u32 gbp_route_domain_get_rd_id (index_t i);
 
 typedef int (*gbp_route_domain_cb_t) (gbp_route_domain_t * gb, void *ctx);
 extern void gbp_route_domain_walk (gbp_route_domain_cb_t bgpe, void *ctx);

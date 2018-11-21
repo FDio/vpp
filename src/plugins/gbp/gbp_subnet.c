@@ -46,7 +46,13 @@ typedef struct gbp_subnet_t_
       epg_id_t gs_epg;
       u32 gs_sw_if_index;
     } gs_stitched_external;
+    struct
+    {
+      epg_id_t gs_epg;
+    } gs_l3_out;
   };
+
+  fib_node_index_t gs_fei;
 } gbp_subnet_t;
 
 /**
@@ -102,7 +108,7 @@ gbp_subnet_db_del (gbp_subnet_t * gs)
 
 
 static int
-gbp_subnet_transport_add (const gbp_subnet_t * gs)
+gbp_subnet_transport_add (gbp_subnet_t * gs)
 {
   dpo_id_t gfd = DPO_INVALID;
   gbp_route_domain_t *grd;
@@ -111,14 +117,15 @@ gbp_subnet_transport_add (const gbp_subnet_t * gs)
   fproto = gs->gs_key->gsk_pfx.fp_proto;
   grd = gbp_route_domain_get (gs->gs_rd);
 
-  fib_table_entry_update_one_path (gs->gs_key->gsk_fib_index,
-				   &gs->gs_key->gsk_pfx,
-				   FIB_SOURCE_PLUGIN_HI,
-				   FIB_ENTRY_FLAG_NONE,
-				   fib_proto_to_dpo (fproto),
-				   &ADJ_BCAST_ADDR,
-				   grd->grd_uu_sw_if_index[fproto],
-				   ~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+  gs->gs_fei = fib_table_entry_update_one_path (gs->gs_key->gsk_fib_index,
+						&gs->gs_key->gsk_pfx,
+						FIB_SOURCE_PLUGIN_HI,
+						FIB_ENTRY_FLAG_NONE,
+						fib_proto_to_dpo (fproto),
+						&ADJ_BCAST_ADDR,
+						grd->grd_uu_sw_if_index
+						[fproto], ~0, 1, NULL,
+						FIB_ROUTE_PATH_FLAG_NONE);
 
   dpo_reset (&gfd);
 
@@ -126,17 +133,18 @@ gbp_subnet_transport_add (const gbp_subnet_t * gs)
 }
 
 static int
-gbp_subnet_internal_add (const gbp_subnet_t * gs)
+gbp_subnet_internal_add (gbp_subnet_t * gs)
 {
   dpo_id_t gfd = DPO_INVALID;
 
   gbp_fwd_dpo_add_or_lock (fib_proto_to_dpo (gs->gs_key->gsk_pfx.fp_proto),
 			   &gfd);
 
-  fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
-				      &gs->gs_key->gsk_pfx,
-				      FIB_SOURCE_PLUGIN_HI,
-				      FIB_ENTRY_FLAG_EXCLUSIVE, &gfd);
+  gs->gs_fei = fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
+						   &gs->gs_key->gsk_pfx,
+						   FIB_SOURCE_PLUGIN_HI,
+						   FIB_ENTRY_FLAG_EXCLUSIVE,
+						   &gfd);
 
   dpo_reset (&gfd);
 
@@ -155,12 +163,35 @@ gbp_subnet_external_add (gbp_subnet_t * gs, u32 sw_if_index, epg_id_t epg)
 			      gs->gs_stitched_external.gs_epg,
 			      gs->gs_stitched_external.gs_sw_if_index, &gpd);
 
-  fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
-				      &gs->gs_key->gsk_pfx,
-				      FIB_SOURCE_PLUGIN_HI,
-				      (FIB_ENTRY_FLAG_EXCLUSIVE |
-				       FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
-				      &gpd);
+  gs->gs_fei = fib_table_entry_special_dpo_update (gs->gs_key->gsk_fib_index,
+						   &gs->gs_key->gsk_pfx,
+						   FIB_SOURCE_PLUGIN_HI,
+						   (FIB_ENTRY_FLAG_EXCLUSIVE |
+						    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
+						   &gpd);
+
+  dpo_reset (&gpd);
+
+  return (0);
+}
+
+static int
+gbp_subnet_l3_out_add (gbp_subnet_t * gs,
+		       const ip46_address_t * nh,
+		       u32 sw_if_index, epg_id_t epg)
+{
+  dpo_id_t gpd = DPO_INVALID;
+
+  gs->gs_l3_out.gs_epg = epg;
+
+  gbp_policy_dpo_add_or_lock (fib_proto_to_dpo (gs->gs_key->gsk_pfx.fp_proto),
+			      gs->gs_l3_out.gs_epg, ~0, &gpd);
+
+  gs->gs_fei = fib_table_entry_special_dpo_add (gs->gs_key->gsk_fib_index,
+						&gs->gs_key->gsk_pfx,
+						FIB_SOURCE_SPECIAL,
+						FIB_ENTRY_FLAG_INTERPOSE,
+						&gpd);
 
   dpo_reset (&gpd);
 
@@ -190,7 +221,10 @@ gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx)
 
   gs = pool_elt_at_index (gbp_subnet_pool, gsi);
 
-  fib_table_entry_delete (fib_index, pfx, FIB_SOURCE_PLUGIN_HI);
+  if (GBP_SUBNET_L3_OUT == gs->gs_type)
+    fib_table_entry_delete (fib_index, pfx, FIB_SOURCE_SPECIAL);
+  else
+    fib_table_entry_delete (fib_index, pfx, FIB_SOURCE_PLUGIN_HI);
 
   gbp_subnet_db_del (gs);
   gbp_route_domain_unlock (gs->gs_rd);
@@ -203,7 +237,8 @@ gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx)
 int
 gbp_subnet_add (u32 rd_id,
 		const fib_prefix_t * pfx,
-		gbp_subnet_type_t type, u32 sw_if_index, epg_id_t epg)
+		gbp_subnet_type_t type,
+		const ip46_address_t * nh, u32 sw_if_index, epg_id_t epg)
 {
   gbp_route_domain_t *grd;
   index_t grdi, gsi;
@@ -243,6 +278,9 @@ gbp_subnet_add (u32 rd_id,
     case GBP_SUBNET_TRANSPORT:
       rv = gbp_subnet_transport_add (gs);
       break;
+    case GBP_SUBNET_L3_OUT:
+      rv = gbp_subnet_l3_out_add (gs, nh, sw_if_index, epg);
+      break;
     }
 
   return (rv);
@@ -251,6 +289,7 @@ gbp_subnet_add (u32 rd_id,
 void
 gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx)
 {
+  ip46_address_t nh = ip46_address_initializer;
   gbp_route_domain_t *grd;
   gbp_subnet_t *gs;
   u32 sw_if_index;
@@ -274,10 +313,13 @@ gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx)
         sw_if_index = gs->gs_stitched_external.gs_sw_if_index;
         epg = gs->gs_stitched_external.gs_epg;
         break;
+      case GBP_SUBNET_L3_OUT:
+        epg = gs->gs_l3_out.gs_epg;
+        break;
       }
 
     if (WALK_STOP == cb (grd->grd_id, &gs->gs_key->gsk_pfx,
-                         gs->gs_type, epg, sw_if_index, ctx))
+                         gs->gs_type, &nh, sw_if_index, epg, ctx))
       break;
   }));
   /* *INDENT-ON* */
@@ -302,6 +344,8 @@ format_gbp_subnet_type (u8 * s, va_list * args)
       return (format (s, "stitched-external"));
     case GBP_SUBNET_TRANSPORT:
       return (format (s, "transport"));
+    case GBP_SUBNET_L3_OUT:
+      return (format (s, "l3-out"));
     }
 
   return (format (s, "unknown"));
@@ -334,20 +378,17 @@ format_gbp_subnet (u8 * s, va_list * args)
 		  format_vnet_sw_if_index_name,
 		  vnet_get_main (), gs->gs_stitched_external.gs_sw_if_index);
       break;
+    case GBP_SUBNET_L3_OUT:
+      s = format (s, " {epg:%d}", gs->gs_l3_out.gs_epg);
+      break;
     }
 
   switch (flags)
     {
     case GBP_SUBNET_SHOW_DETAILS:
       {
-	fib_node_index_t fei;
-
-	fei = fib_table_lookup_exact_match (gs->gs_key->gsk_fib_index,
-					    &gs->gs_key->gsk_pfx);
-
-	s =
-	  format (s, "\n  %U", format_fib_entry, fei,
-		  FIB_ENTRY_FORMAT_DETAIL);
+	s = format (s, "\n  %U", format_fib_entry, gs->gs_fei,
+		    FIB_ENTRY_FORMAT_DETAIL);
       }
     case GBP_SUBNET_SHOW_BRIEF:
       break;

@@ -56,6 +56,16 @@ gbp_bridge_domain_lock (index_t i)
   gb->gb_locks++;
 }
 
+u32
+gbp_bridge_domain_get_bd_id (index_t gbdi)
+{
+  gbp_bridge_domain_t *gb;
+
+  gb = gbp_bridge_domain_get (gbdi);
+
+  return (gb->gb_bd_id);
+}
+
 static index_t
 gbp_bridge_domain_find (u32 bd_id)
 {
