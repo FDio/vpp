@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "7adb2069_895cae50",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-21T13:11:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "88b57877_8f3357e7",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5ddcfae8_31b461da",
         "filename": "src/plugins/gbp/gbp_contract.c",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2018-11-21T12:40:33Z",
       "side": 1,
       "message": "isn\u0027t this check done in: gbp_hash_mode_decode().",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e57b3f63_5bcc1d68",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-21T13:11:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5ddcfae8_31b461da",
       "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "5346bb6d_b4a24f79",
+        "filename": "src/plugins/gbp/gbp_contract.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-21T13:11:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0e72a8fd_91193099",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8c69ef43_437ffb1e",
         "filename": "src/plugins/gbp/gbp_contract.h",
         "patchSetId": 2
@@ -64,6 +118,24 @@
       "writtenOn": "2018-11-21T12:40:33Z",
       "side": 1,
       "message": "why add numerical values here?",
+      "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "65b3a89c_441b8e94",
+        "filename": "src/plugins/gbp/gbp_contract.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-21T13:11:52Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8c69ef43_437ffb1e",
       "revId": "9275cddc9f6262e25a9a94d80c85be9c56168337",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
