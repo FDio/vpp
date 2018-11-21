@@ -481,6 +481,19 @@ app_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
   return 0;
 }
 
+static u8 *
+app_name_from_api_index (u32 api_client_index)
+{
+  vl_api_registration_t *regp;
+  regp = vl_api_client_index_to_registration (api_client_index);
+  if (regp)
+    return format (0, "%s%c", regp->name, 0);
+
+  clib_warning ("api client index %u does not have an api registration!",
+		api_client_index);
+  return format (0, "unknown%c", 0);
+}
+
 /**
  * Attach application to vpp
  *
@@ -505,9 +518,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
       app = application_lookup (a->api_client_index);
       if (!app)
 	{
-	  vl_api_registration_t *regp;
-	  regp = vl_api_client_index_to_registration (a->api_client_index);
-	  app_name = format (0, "%s%c", regp->name, 0);
+	  app_name = app_name_from_api_index (a->api_client_index);
 	  a->name = app_name;
 	}
     }
