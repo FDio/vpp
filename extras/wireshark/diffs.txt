@@ -1,0 +1,12 @@
+diff --git a/epan/dissectors/CMakeLists.txt b/epan/dissectors/CMakeLists.txt
+index 6fe8356f4e..6294ab5504 100644
+--- a/epan/dissectors/CMakeLists.txt
++++ b/epan/dissectors/CMakeLists.txt
+@@ -1812,6 +1812,7 @@ set(DISSECTOR_SRC
+ 	${CMAKE_CURRENT_SOURCE_DIR}/packet-vnc.c
+ 	${CMAKE_CURRENT_SOURCE_DIR}/packet-vntag.c
+ 	${CMAKE_CURRENT_SOURCE_DIR}/packet-vp8.c
++	${CMAKE_CURRENT_SOURCE_DIR}/packet-vpp.c
+ 	${CMAKE_CURRENT_SOURCE_DIR}/packet-vrrp.c
+ 	${CMAKE_CURRENT_SOURCE_DIR}/packet-vrt.c
+ 	${CMAKE_CURRENT_SOURCE_DIR}/packet-vsip.c
