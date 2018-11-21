@@ -1,0 +1,9 @@
+telegraf:
+  image: glinton/scratch
+  volumes:
+    - ./:/conf
+    - ../../../../telegraf:/telegraf
+  entrypoint:
+    - /telegraf
+    - --config
+    - /conf/telegraf.conf
