@@ -224,7 +224,7 @@ out:
 /*
  * In case of overflow, we need to rewind the array of allocated buffers.
  */
-static __clib_unused void
+static_always_inline void
 vhost_user_input_rewind_buffers (vlib_main_t * vm,
 				 vhost_cpu_t * cpu, vlib_buffer_t * b_head)
 {
@@ -243,7 +243,7 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
   cpu->rx_buffers_len++;
 }
 
-static __clib_unused u32
+static_always_inline u32
 vhost_user_if_input (vlib_main_t * vm,
 		     vhost_user_main_t * vum,
 		     vhost_user_intf_t * vui,
