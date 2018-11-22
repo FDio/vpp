@@ -983,6 +983,14 @@ def get_testcase_doc_name(test):
     return getdoc(test.__class__).splitlines()[0]
 
 
+def get_test_description(descriptions, test):
+    short_description = test.shortDescription()
+    if descriptions and short_description:
+        return short_description
+    else:
+        return str(test)
+
+
 class TestCaseInfo(object):
     def __init__(self, logger, tempdir, vpp_pid, vpp_bin_path):
         self.logger = logger
@@ -1167,12 +1175,7 @@ class VppTestResult(unittest.TestResult):
         :returns: test description
 
         """
-        # TODO: if none print warning not raise exception
-        short_description = test.shortDescription()
-        if self.descriptions and short_description:
-            return short_description
-        else:
-            return str(test)
+        return get_test_description(self.descriptions, test)
 
     def startTest(self, test):
         """

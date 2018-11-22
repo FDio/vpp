@@ -15,7 +15,7 @@ from multiprocessing import Process, Pipe, cpu_count
 from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
-    get_testcase_doc_name, PASS, FAIL, ERROR, SKIP, \
+    get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
     TEST_RUN
 from debug import spawn_gdb
 from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
@@ -88,7 +88,7 @@ class TestResult(dict):
 
     def get_testcase_names(self, test_id):
         if re.match(r'.+\..+\..+', test_id):
-            test_name = test_id.getDescription()
+            test_name = self._get_test_description(test_id)
             testcase_name = self._get_testcase_doc_name(test_id)
         else:
             # could be tearDownClass (test_ipsec_esp.TestIpsecEsp1)
@@ -107,6 +107,10 @@ class TestResult(dict):
                 testcase_name = test_id
 
         return testcase_name, test_name
+
+    def _get_test_description(self, test_id):
+        return get_test_description(descriptions,
+                                    self.testcases_by_id[test_id])
 
     def _get_testcase_doc_name(self, test_id):
         return get_testcase_doc_name(self.testcases_by_id[test_id])
