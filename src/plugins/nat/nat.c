@@ -397,64 +397,67 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
   u32 oldest_index;
   u64 sess_timeout_time;
 
-  if ((u->nsessions + u->nstaticsessions) >= sm->max_translations_per_user)
+  if (PREDICT_FALSE (!(u->nsessions) && !(u->nstaticsessions)))
+    goto alloc_new;
+
+  oldest_index =
+    clib_dlist_remove_head (tsm->list_pool,
+			    u->sessions_per_user_list_head_index);
+  oldest_elt = pool_elt_at_index (tsm->list_pool, oldest_index);
+  s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
+  sess_timeout_time = s->last_heard + (f64) nat44_session_get_timeout (sm, s);
+  if (now >= sess_timeout_time)
     {
-      oldest_index =
-	clib_dlist_remove_head (tsm->list_pool,
-				u->sessions_per_user_list_head_index);
-      oldest_elt = pool_elt_at_index (tsm->list_pool, oldest_index);
-      s = pool_elt_at_index (tsm->sessions, oldest_elt->value);
-      sess_timeout_time =
-	s->last_heard + (f64) nat44_session_get_timeout (sm, s);
-      if (now >= sess_timeout_time)
-	{
-	  clib_dlist_addtail (tsm->list_pool,
-			      u->sessions_per_user_list_head_index,
-			      oldest_index);
-	  nat_free_session_data (sm, s, thread_index);
-	  if (snat_is_session_static (s))
-	    u->nstaticsessions--;
-	  else
-	    u->nsessions--;
-	  s->flags = 0;
-	  s->total_bytes = 0;
-	  s->total_pkts = 0;
-	  s->state = 0;
-	  s->ext_host_addr.as_u32 = 0;
-	  s->ext_host_port = 0;
-	  s->ext_host_nat_addr.as_u32 = 0;
-	  s->ext_host_nat_port = 0;
-	}
+      clib_dlist_addtail (tsm->list_pool,
+			  u->sessions_per_user_list_head_index, oldest_index);
+      nat_free_session_data (sm, s, thread_index);
+      if (snat_is_session_static (s))
+	u->nstaticsessions--;
       else
+	u->nsessions--;
+      s->flags = 0;
+      s->total_bytes = 0;
+      s->total_pkts = 0;
+      s->state = 0;
+      s->ext_host_addr.as_u32 = 0;
+      s->ext_host_port = 0;
+      s->ext_host_nat_addr.as_u32 = 0;
+      s->ext_host_nat_port = 0;
+    }
+  else
+    {
+      clib_dlist_addhead (tsm->list_pool,
+			  u->sessions_per_user_list_head_index, oldest_index);
+      if ((u->nsessions + u->nstaticsessions) >=
+	  sm->max_translations_per_user)
 	{
-	  clib_dlist_addhead (tsm->list_pool,
-			      u->sessions_per_user_list_head_index,
-			      oldest_index);
 	  nat_log_warn ("max translations per user %U", format_ip4_address,
 			&u->addr);
 	  snat_ipfix_logging_max_entries_per_user
 	    (sm->max_translations_per_user, u->addr.as_u32);
 	  return 0;
 	}
+      else
+	{
+	alloc_new:
+	  pool_get (tsm->sessions, s);
+	  clib_memset (s, 0, sizeof (*s));
+
+	  /* Create list elts */
+	  pool_get (tsm->list_pool, per_user_translation_list_elt);
+	  clib_dlist_init (tsm->list_pool,
+			   per_user_translation_list_elt - tsm->list_pool);
+
+	  per_user_translation_list_elt->value = s - tsm->sessions;
+	  s->per_user_index = per_user_translation_list_elt - tsm->list_pool;
+	  s->per_user_list_head_index = u->sessions_per_user_list_head_index;
+
+	  clib_dlist_addtail (tsm->list_pool,
+			      s->per_user_list_head_index,
+			      per_user_translation_list_elt - tsm->list_pool);
+	}
     }
-  else
-    {
-      pool_get (tsm->sessions, s);
-      clib_memset (s, 0, sizeof (*s));
 
-      /* Create list elts */
-      pool_get (tsm->list_pool, per_user_translation_list_elt);
-      clib_dlist_init (tsm->list_pool,
-		       per_user_translation_list_elt - tsm->list_pool);
-
-      per_user_translation_list_elt->value = s - tsm->sessions;
-      s->per_user_index = per_user_translation_list_elt - tsm->list_pool;
-      s->per_user_list_head_index = u->sessions_per_user_list_head_index;
-
-      clib_dlist_addtail (tsm->list_pool,
-			  s->per_user_list_head_index,
-			  per_user_translation_list_elt - tsm->list_pool);
-    }
   return s;
 }
 
