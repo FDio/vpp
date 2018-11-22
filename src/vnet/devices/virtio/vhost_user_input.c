@@ -631,8 +631,8 @@ VLIB_NODE_FN (vhost_user_input_node) (vlib_main_t * vm,
       {
 	vui =
 	  pool_elt_at_index (vum->vhost_user_interfaces, dq->dev_instance);
-	n_rx_packets = vhost_user_if_input (vm, vum, vui, dq->queue_id, node,
-					    dq->mode);
+	n_rx_packets += vhost_user_if_input (vm, vum, vui, dq->queue_id, node,
+					     dq->mode);
       }
   }
 
