@@ -446,38 +446,50 @@ class SplitToSuitesCallback:
             self.filtered.addTest(test_method)
 
 
-test_option = "TEST"
+whitelist_option = "TEST"
+blacklist_option = "TEST_BLACKLIST"
 
 
-def parse_test_option():
-    f = os.getenv(test_option, None)
-    filter_file_name = None
-    filter_class_name = None
-    filter_func_name = None
-    if f:
-        if '.' in f:
-            parts = f.split('.')
-            if len(parts) > 3:
-                raise Exception("Unrecognized %s option: %s" %
-                                (test_option, f))
-            if len(parts) > 2:
-                if parts[2] not in ('*', ''):
-                    filter_func_name = parts[2]
-            if parts[1] not in ('*', ''):
-                filter_class_name = parts[1]
-            if parts[0] not in ('*', ''):
-                if parts[0].startswith('test_'):
-                    filter_file_name = parts[0]
-                else:
-                    filter_file_name = 'test_%s' % parts[0]
-        else:
-            if f.startswith('test_'):
-                filter_file_name = f
-            else:
-                filter_file_name = 'test_%s' % f
-    if filter_file_name:
+def _parse_filter_option(filter_option):
+    filter_value = os.getenv(filter_option, None)
+    processed_filters = []
+    if filter_value:
+        filters = filter_value.split(',')
+        for f in filters:
+            processed_filters.append(_parse_filter(f, filter_option))
+    return processed_filters
+
+
+def _parse_filter(f, option):
+    filter_file_name = '*'
+    filter_class_name = '*'
+    filter_func_name = '*'
+
+    parts = f.split('.')
+    if len(parts) > 3:
+        raise Exception("Unrecognized value %s from option: %s" %
+                        (f, option))
+    if len(parts) == 3:
+        if parts[2] != '':
+            filter_func_name = parts[2]
+    if len(parts) > 1:
+        if parts[1] != '':
+            filter_class_name = parts[1]
+    if parts[0] != '':
+        filter_file_name = parts[0]
+
+    if not filter_file_name.startswith('test_'):
+        filter_file_name = 'test_%s' % filter_file_name
+    if not filter_file_name.endswith('.py'):
         filter_file_name = '%s.py' % filter_file_name
+
     return filter_file_name, filter_class_name, filter_func_name
+
+
+def parse_filter_options():
+    whitelist_filters = _parse_filter_option(whitelist_option)
+    blacklist_filters = _parse_filter_option(blacklist_option)
+    return whitelist_filters, blacklist_filters
 
 
 def filter_tests(tests, filter_cb):
@@ -504,22 +516,56 @@ def filter_tests(tests, filter_cb):
     return result
 
 
+class Filter(object):
+    def __init__(self, filter_list):
+        self.filter = {}
+        for file_wildcard, class_wildcard, func_wildcard in filter_list:
+            self._construct_entry(self.filter, file_wildcard, class_wildcard,
+                                  func_wildcard)
+
+    @staticmethod
+    def _construct_entry(merge_with, *args):
+        name = args[0]
+        if name in merge_with:
+            if len(args) > 1:
+                Filter._construct_entry(merge_with[name], *args[1:])
+        else:
+            if len(args) > 2:
+                merge_with[name] = dict()
+                Filter._construct_entry(merge_with[name], *args[1:])
+            elif len(args) == 2:
+                merge_with[name] = set()
+                Filter._construct_entry(merge_with[name], *args[1:])
+            else:
+                merge_with.add(name)
+
+    def __call__(self, *args):
+        return self._in_filter(self.filter, *args)
+
+    @staticmethod
+    def _in_filter(search_in, *args):
+        name = args[0]
+        found = False
+        for key in search_in:
+            if fnmatch.fnmatch(name, key):
+                if len(args) > 1:
+                    found = Filter._in_filter(search_in[key], *args[1:]) \
+                            or found
+                else:
+                    found = True
+        return found
+
+
 class FilterByTestOption:
-    def __init__(self, filter_file_name, filter_class_name, filter_func_name):
-        self.filter_file_name = filter_file_name
-        self.filter_class_name = filter_class_name
-        self.filter_func_name = filter_func_name
+    def __init__(self, whitelist_filters, blacklist_filters):
+        if not whitelist_filters:
+            whitelist_filters = [('*', '*', '*')]
+        self.whitelist = Filter(whitelist_filters)
+        self.blacklist = Filter(blacklist_filters)
 
     def __call__(self, file_name, class_name, func_name):
-        if self.filter_file_name:
-            fn_match = fnmatch.fnmatch(file_name, self.filter_file_name)
-            if not fn_match:
-                return False
-        if self.filter_class_name and class_name != self.filter_class_name:
-            return False
-        if self.filter_func_name and func_name != self.filter_func_name:
-            return False
-        return True
+        return self.whitelist(file_name, class_name, func_name) and \
+               not self.blacklist(file_name, class_name, func_name)
 
 
 class FilterByClassList:
@@ -744,12 +790,24 @@ if __name__ == '__main__':
     descriptions = True
 
     print("Running tests using custom test runner")  # debug message
-    filter_file, filter_class, filter_func = parse_test_option()
+    whitelist_filters, blacklist_filters = parse_filter_options()
 
-    print("Active filters: file=%s, class=%s, function=%s" % (
-        filter_file, filter_class, filter_func))
+    filter_active = False
+    if len(whitelist_filters):
+        print("Active whitelist filters:")
+        for f in whitelist_filters:
+            print("  file=%s, class=%s, function=%s" % f)
+        filter_active = True
 
-    filter_cb = FilterByTestOption(filter_file, filter_class, filter_func)
+    if len(blacklist_filters):
+        print("Active blacklist filters:")
+        for f in blacklist_filters:
+            print("  file=%s, class=%s, function=%s" % f)
+        filter_active = True
+
+    if not filter_active:
+        print("No filters are active, running all tests")
+    filter_cb = FilterByTestOption(whitelist_filters, blacklist_filters)
 
     cb = SplitToSuitesCallback(filter_cb)
     for d in args.dir:
