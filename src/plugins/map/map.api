@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-option version = "1.1.0";
+option version = "2.1.0";
+
+import "vnet/ip/ip_types.api";
 
 /** \brief Add MAP domains
     @param client_index - opaque cookie to identify the sender
@@ -21,25 +23,18 @@ option version = "1.1.0";
     @param ip6_prefix - Rule IPv6 prefix
     @param ip4_prefix - Rule IPv4 prefix
     @param ip6_src - MAP domain IPv6 BR address / Tunnel source
-    @param ip6_prefix_len - Rule IPv6 prefix length
-    @param ip4_prefix_len - Rule IPv4 prefix length
     @param ea_bits_len - Embedded Address bits length
     @param psid_offset - Port Set Identifider (PSID) offset
     @param psid_length - PSID length
-    @param is_translation - MAP-E / MAP-T
-    @param is_rfc6052 - rfc6052 translation
     @param mtu - MTU
 */
 define map_add_domain
 {
   u32 client_index;
   u32 context;
-  u8 ip6_prefix[16];
-  u8 ip4_prefix[4];
-  u8 ip6_src[16];
-  u8 ip6_prefix_len;
-  u8 ip4_prefix_len;
-  u8 ip6_src_prefix_len;
+  vl_api_ip6_prefix_t ip6_prefix;
+  vl_api_ip4_prefix_t ip4_prefix;
+  vl_api_ip6_prefix_t ip6_src;
   u8 ea_bits_len;
   u8 psid_offset;
   u8 psid_length;
@@ -87,7 +82,7 @@ autoreply define map_add_del_rule
   u32 context;
   u32 index;
   u8 is_add;
-  u8 ip6_dst[16];
+  vl_api_ip6_address_t ip6_dst;
   u16 psid;
 };
 
@@ -105,12 +100,9 @@ define map_domain_details
 {
   u32 context;
   u32 domain_index;
-  u8 ip6_prefix[16];
-  u8 ip4_prefix[4];
-  u8 ip6_src[16];
-  u8 ip6_prefix_len;
-  u8 ip4_prefix_len;
-  u8 ip6_src_len;
+  vl_api_ip6_prefix_t ip6_prefix;
+  vl_api_ip4_prefix_t ip4_prefix;
+  vl_api_ip6_prefix_t ip6_src;
   u8 ea_bits_len;
   u8 psid_offset;
   u8 psid_length;
@@ -129,7 +121,7 @@ define map_rule_dump
 define map_rule_details
 {
   u32 context;
-  u8 ip6_dst[16];
+  vl_api_ip6_address_t ip6_dst;
   u16 psid;
 };
 

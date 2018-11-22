@@ -4,7 +4,7 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from vpp_ip import *
 from vpp_ip_route import VppIpRoute, VppRoutePath
 
 from scapy.layers.l2 import Ether, Raw
@@ -76,17 +76,10 @@ class TestMAP(VppTestCase):
         #
         # Add a domain that maps from pg0 to pg1
         #
-        map_dst = socket.inet_pton(socket.AF_INET6, map_br_pfx)
-        map_src = "3001::1"
-        map_src_n = socket.inet_pton(socket.AF_INET6, map_src)
-        client_pfx = socket.inet_pton(socket.AF_INET, "192.168.0.0")
-
-        self.vapi.map_add_domain(map_dst,
-                                 map_br_pfx_len,
-                                 map_src_n,
-                                 128,
-                                 client_pfx,
-                                 16)
+        map_dst = VppIp6Prefix(map_br_pfx, map_br_pfx_len).encode()
+        map_src = VppIp6Prefix("3000::1", 128).encode()
+        client_pfx = VppIp4Prefix("192.168.0.0", 16).encode()
+        self.vapi.map_add_domain(map_dst, map_src, client_pfx)
 
         #
         # Fire in a v4 packet that will be encapped to the BR
@@ -96,14 +89,14 @@ class TestMAP(VppTestCase):
               UDP(sport=20000, dport=10000) /
               Raw('\xa5' * 100))
 
-        self.send_and_assert_encapped(v4, map_src, "2001::c0a8:0:0")
+        self.send_and_assert_encapped(v4, "3000::1", "2001::c0a8:0:0")
 
         #
         # Fire in a V6 encapped packet.
         #  expect a decapped packet on the inside ip4 link
         #
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-             IPv6(dst=map_src, src="2001::1") /
+             IPv6(dst='3000::1', src="2001::1") /
              IP(dst=self.pg0.remote_ip4, src='192.168.1.1') /
              UDP(sport=20000, dport=10000) /
              Raw('\xa5' * 100))
@@ -140,7 +133,7 @@ class TestMAP(VppTestCase):
             is_ip6=1)
         pre_res_route.add_vpp_config()
 
-        self.send_and_assert_encapped(v4, map_src,
+        self.send_and_assert_encapped(v4, "3000::1",
                                       "2001::c0a8:0:0",
                                       dmac=self.pg1.remote_hosts[2].mac)
 
@@ -152,7 +145,7 @@ class TestMAP(VppTestCase):
                                            proto=DpoProto.DPO_PROTO_IP6)])
         pre_res_route.add_vpp_config()
 
-        self.send_and_assert_encapped(v4, map_src,
+        self.send_and_assert_encapped(v4, "3000::1",
                                       "2001::c0a8:0:0",
                                       dmac=self.pg1.remote_hosts[3].mac)
 
@@ -175,12 +168,10 @@ class TestMAP(VppTestCase):
         #
         # Add a domain that maps from pg0 to pg1
         #
-        map_dst = socket.inet_pton(socket.AF_INET6, "2001:db8::")
-        map_src = socket.inet_pton(socket.AF_INET6, "1234:5678:90ab:cdef::")
-        ip4_pfx = socket.inet_pton(socket.AF_INET, "192.168.0.0")
-
-        self.vapi.map_add_domain(map_dst, 32, map_src, 64, ip4_pfx,
-                                 24, 16, 6, 4, 1)
+        map_dst = VppIp6Prefix("2001:db8::", 32).encode()
+        map_src = VppIp6Prefix("1234:5678:90ab:cdef::", 64).encode()
+        ip4_pfx = VppIp4Prefix("192.168.0.0", 24).encode()
+        self.vapi.map_add_domain(map_dst, map_src, ip4_pfx, 16, 6, 4, 1)
 
         # Enable MAP-T on interfaces.
 
