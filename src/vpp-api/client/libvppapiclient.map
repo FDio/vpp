@@ -1,5 +1,5 @@
 
-VPPAPICLIENT_18.10 {
+VPPAPICLIENT_19.01 {
 	global:
 	vac_read;
 	vac_write;
@@ -13,11 +13,18 @@ VPPAPICLIENT_18.10 {
 	vac_free;
 	vac_msg_table_size;
 	api_main;
+	stat_client_get;
+	stat_client_free;
+	stat_segment_connect_r;
 	stat_segment_connect;
+	stat_segment_disconnect_r;
 	stat_segment_disconnect;
+	stat_segment_ls_r;
 	stat_segment_ls;
+	stat_segment_dump_r;
 	stat_segment_dump;
 	stat_segment_data_free;
+	stat_segment_heartbeat_r;
 	stat_segment_heartbeat;
 	stat_segment_string_vector;
 	stat_segment_vec_len;

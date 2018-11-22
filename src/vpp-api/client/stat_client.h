@@ -23,6 +23,14 @@
 
 typedef struct
 {
+  uint64_t current_epoch;
+  stat_segment_shared_header_t *shared_header;
+  stat_segment_directory_entry_t *directory_vector;
+  ssize_t memory_size;
+} stat_client_main_t;
+
+typedef struct
+{
   char *name;
   stat_directory_type_t type;
   union
@@ -34,16 +42,26 @@ typedef struct
   };
 } stat_segment_data_t;
 
+stat_client_main_t *stat_client_get (void);
+void stat_client_free (stat_client_main_t * sm);
+int stat_segment_connect_r (char *socket_name, stat_client_main_t * sm);
 int stat_segment_connect (char *socket_name);
+void stat_segment_disconnect_r (stat_client_main_t * sm);
 void stat_segment_disconnect (void);
 uint8_t **stat_segment_string_vector (uint8_t ** string_vector, char *string);
 int stat_segment_vec_len (void *vec);
 void stat_segment_vec_free (void *vec);
+uint32_t *stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm);
 uint32_t *stat_segment_ls (uint8_t ** pattern);
+stat_segment_data_t *stat_segment_dump_r (uint32_t * stats,
+					  stat_client_main_t * sm);
 stat_segment_data_t *stat_segment_dump (uint32_t * counter_vec);
+stat_segment_data_t *stat_segment_dump_entry_r (uint32_t index,
+						stat_client_main_t * sm);
 stat_segment_data_t *stat_segment_dump_entry (uint32_t index);
-void stat_segment_data_free (stat_segment_data_t * res);
 
+void stat_segment_data_free (stat_segment_data_t * res);
+double stat_segment_heartbeat_r (stat_client_main_t * sm);
 double stat_segment_heartbeat (void);
 
 char *stat_segment_index_to_name (uint32_t index);
