@@ -101,8 +101,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
   /* How many, and which bits to grab from the IPv4 DA */
   if (ip4_prefix_len + ea_bits_len < 32)
     {
-      if (!(flags & MAP_DOMAIN_TRANSLATION))
-	flags |= MAP_DOMAIN_PREFIX;
+      flags |= MAP_DOMAIN_PREFIX;
       suffix_shift = 32 - ip4_prefix_len - ea_bits_len;
       suffix_len = ea_bits_len;
     }
@@ -119,12 +118,6 @@ map_create_domain (ip4_address_t * ip4_prefix,
       clib_warning
 	("Embedded Address bits must be within the first 64 bits of "
 	 "the IPv6 prefix");
-      return -1;
-    }
-
-  if (mm->is_ce && !(flags & MAP_DOMAIN_TRANSLATION))
-    {
-      clib_warning ("MAP-E CE is not supported yet");
       return -1;
     }
 
@@ -159,23 +152,11 @@ map_create_domain (ip4_address_t * ip4_prefix,
     map_dpo_create (DPO_PROTO_IP4, *map_domain_index, &dpo_v4);
 
   /* Create ip4 route */
-  u8 ip4_pfx_len;
-  ip4_address_t ip4_pfx;
-  if (mm->is_ce)
-    {
-      ip4_pfx_len = 0;
-      ip4_pfx.as_u32 = 0;
-    }
-  else
-    {
-      ip4_pfx_len = d->ip4_prefix_len;
-      ip4_pfx = d->ip4_prefix;
-    }
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP4,
-    .fp_len = ip4_pfx_len,
+    .fp_len = d->ip4_prefix_len,
     .fp_addr = {
-		.ip4 = ip4_pfx,
+		.ip4 = d->ip4_prefix,
 		}
     ,
   };
@@ -201,22 +182,10 @@ map_create_domain (ip4_address_t * ip4_prefix,
    * already exists and is MAP sourced, it is now MAP source n+1 times
    * and will need to be removed n+1 times.
    */
-  u8 ip6_pfx_len;
-  ip6_address_t ip6_pfx;
-  if (mm->is_ce)
-    {
-      ip6_pfx_len = d->ip6_prefix_len;
-      ip6_pfx = d->ip6_prefix;
-    }
-  else
-    {
-      ip6_pfx_len = d->ip6_src_len;
-      ip6_pfx = d->ip6_src;
-    }
   fib_prefix_t pfx6 = {
     .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = ip6_pfx_len,
-    .fp_addr.ip6 = ip6_pfx,
+    .fp_len = d->ip6_src_len,
+    .fp_addr.ip6 = d->ip6_src,
   };
 
   fib_table_entry_special_dpo_add (0, &pfx6,
@@ -2172,7 +2141,7 @@ VLIB_CLI_COMMAND(map_add_domain_command, static) = {
   .path = "map add domain",
   .short_help = "map add domain ip4-pfx <ip4-pfx> ip6-pfx <ip6-pfx> "
       "ip6-src <ip6-pfx> ea-bits-len <n> psid-offset <n> psid-len <n> "
-      "[map-t] [map-ce] [mtu <mtu>]",
+      "[map-t] [mtu <mtu>]",
   .function = map_add_domain_command_fn,
 };
 
@@ -2248,28 +2217,6 @@ VLIB_PLUGIN_REGISTER() = {
 
 /* *INDENT-ON* */
 
-static clib_error_t *
-map_config (vlib_main_t * vm, unformat_input_t * input)
-{
-  map_main_t *mm = &map_main;
-  u8 is_ce = false;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "customer edge"))
-	is_ce = true;
-      else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, input);
-    }
-
-  mm->is_ce = is_ce;
-
-  return 0;
-}
-
-VLIB_CONFIG_FUNCTION (map_config, "map");
-
 /*
  * map_init
  */
@@ -2300,8 +2247,6 @@ map_init (vlib_main_t * vm)
 
   /* ICMP6 Type 1, Code 5 for security check failure */
   mm->icmp6_enabled = false;
-
-  mm->is_ce = false;
 
   /* Inner or outer fragmentation */
   mm->frag_inner = false;

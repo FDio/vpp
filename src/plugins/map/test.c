@@ -48,8 +48,7 @@ get_domain(ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
   /* How many, and which bits to grab from the IPv4 DA */
   if (ip4_prefix_len + ea_bits_len < 32)
     {
-      if (!(flags & MAP_DOMAIN_TRANSLATION))
-        d->flags |= MAP_DOMAIN_PREFIX;
+      d->flags |= MAP_DOMAIN_PREFIX;
       d->suffix_shift = 32 - ip4_prefix_len - ea_bits_len;
       suffix_len = ea_bits_len;
     }

@@ -247,8 +247,6 @@ typedef struct {
   bool sec_check_frag;		/* Inbound security check for (subsequent) fragments */
   bool icmp6_enabled;		/* Send destination unreachable for security check failure */
 
-  bool is_ce;                   /* If this MAP node is a Customer Edge router*/
-
   /* ICMPv6 -> ICMPv4 relay parameters */
   ip4_address_t icmp4_src_address;
   vlib_simple_counter_main_t icmp_relayed;
