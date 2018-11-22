@@ -255,7 +255,8 @@ slow_path_ed (snat_main_t * sm,
 	      u32 rx_fib_index,
 	      clib_bihash_kv_16_8_t * kv,
 	      snat_session_t ** sessionp,
-	      vlib_node_runtime_t * node, u32 next, u32 thread_index, f64 now)
+	      vlib_node_runtime_t * node, u32 next, u32 thread_index, f64 now,
+	      tcp_header_t * tcp)
 {
   snat_session_t *s = 0;
   snat_user_t *u;
@@ -313,6 +314,15 @@ slow_path_ed (snat_main_t * sm,
 	}
 
       is_sm = 1;
+    }
+
+  if (proto == SNAT_PROTOCOL_TCP)
+    {
+      if (!tcp_is_init (tcp))
+	{
+	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
+	  return NAT_IN2OUT_ED_NEXT_DROP;
+	}
     }
 
   u = nat_user_get_or_create (sm, &key->l_addr, rx_fib_index, thread_index);
@@ -626,7 +636,7 @@ icmp_match_in2out_ed (snat_main_t * sm, vlib_node_runtime_t * node,
 	}
 
       next = slow_path_ed (sm, b, rx_fib_index, &kv, &s, node, next,
-			   thread_index, vlib_time_now (sm->vlib_main));
+			   thread_index, vlib_time_now (sm->vlib_main), 0);
 
       if (PREDICT_FALSE (next == NAT_IN2OUT_ED_NEXT_DROP))
 	goto out;
@@ -1034,16 +1044,9 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 			goto trace00;
 		    }
 
-		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
-		    {
-		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
-		      next0 = NAT_IN2OUT_ED_NEXT_DROP;
-		      goto trace00;
-		    }
-
 		  next0 =
 		    slow_path_ed (sm, b0, rx_fib_index0, &kv0, &s0, node,
-				  next0, thread_index, now);
+				  next0, thread_index, now, tcp0);
 
 		  if (PREDICT_FALSE (next0 == NAT_IN2OUT_ED_NEXT_DROP))
 		    goto trace00;
@@ -1245,16 +1248,9 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 			goto trace01;
 		    }
 
-		  if ((proto1 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp1))
-		    {
-		      b1->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
-		      next1 = NAT_IN2OUT_ED_NEXT_DROP;
-		      goto trace01;
-		    }
-
 		  next1 =
 		    slow_path_ed (sm, b1, rx_fib_index1, &kv1, &s1, node,
-				  next1, thread_index, now);
+				  next1, thread_index, now, tcp1);
 
 		  if (PREDICT_FALSE (next1 == NAT_IN2OUT_ED_NEXT_DROP))
 		    goto trace01;
@@ -1485,16 +1481,9 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 			goto trace0;
 		    }
 
-		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
-		    {
-		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
-		      next0 = NAT_IN2OUT_ED_NEXT_DROP;
-		      goto trace0;
-		    }
-
 		  next0 =
 		    slow_path_ed (sm, b0, rx_fib_index0, &kv0, &s0, node,
-				  next0, thread_index, now);
+				  next0, thread_index, now, tcp0);
 
 		  if (PREDICT_FALSE (next0 == NAT_IN2OUT_ED_NEXT_DROP))
 		    goto trace0;
@@ -1892,15 +1881,9 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 			}
 		    }
 
-		  if ((proto0 == SNAT_PROTOCOL_TCP) && !tcp_is_init (tcp0))
-		    {
-		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_NON_SYN];
-		      next0 = NAT_IN2OUT_ED_NEXT_DROP;
-		      goto trace0;
-		    }
-
 		  next0 = slow_path_ed (sm, b0, rx_fib_index0, &kv0,
-					&s0, node, next0, thread_index, now);
+					&s0, node, next0, thread_index, now,
+					tcp0);
 
 		  if (PREDICT_FALSE (next0 == NAT_IN2OUT_ED_NEXT_DROP))
 		    goto trace0;
