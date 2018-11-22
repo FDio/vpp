@@ -92,10 +92,10 @@ static __clib_unused char *vhost_user_input_func_error_strings[] = {
 static_always_inline void
 vhost_user_rx_trace (vhost_trace_t * t,
 		     vhost_user_intf_t * vui, u16 qid,
-		     vlib_buffer_t * b, vhost_user_vring_t * txvq)
+		     vlib_buffer_t * b, vhost_user_vring_t * txvq,
+		     u16 last_avail_idx)
 {
   vhost_user_main_t *vum = &vhost_user_main;
-  u32 last_avail_idx = txvq->last_avail_idx;
   u32 desc_current = txvq->avail->ring[last_avail_idx & txvq->qsz_mask];
   vring_desc_t *hdr_desc = 0;
   virtio_net_hdr_mrg_rxbuf_t *hdr;
@@ -195,24 +195,26 @@ vhost_user_rx_discard_packet (vlib_main_t * vm,
    */
   u32 discarded_packets = 0;
   u32 avail_idx = txvq->avail->idx;
+  u16 mask = txvq->qsz_mask;
+  u16 last_avail_idx = txvq->last_avail_idx;
+  u16 last_used_idx = txvq->last_used_idx;
   while (discarded_packets != discard_max)
     {
       if (avail_idx == txvq->last_avail_idx)
 	goto out;
 
-      u16 desc_chain_head =
-	txvq->avail->ring[txvq->last_avail_idx & txvq->qsz_mask];
-      txvq->last_avail_idx++;
-      txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].id =
-	desc_chain_head;
-      txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].len = 0;
-      vhost_user_log_dirty_ring (vui, txvq,
-				 ring[txvq->last_used_idx & txvq->qsz_mask]);
-      txvq->last_used_idx++;
+      u16 desc_chain_head = txvq->avail->ring[last_avail_idx & mask];
+      last_avail_idx++;
+      txvq->used->ring[last_used_idx & mask].id = desc_chain_head;
+      txvq->used->ring[last_used_idx & mask].len = 0;
+      vhost_user_log_dirty_ring (vui, txvq, ring[last_used_idx & mask]);
+      last_used_idx++;
       discarded_packets++;
     }
 
 out:
+  txvq->last_avail_idx = last_avail_idx;
+  txvq->last_used_idx = last_used_idx;
   CLIB_MEMORY_BARRIER ();
   txvq->used->idx = txvq->last_used_idx;
   vhost_user_log_dirty_ring (vui, txvq, idx);
@@ -261,10 +263,11 @@ vhost_user_if_input (vlib_main_t * vm,
   u16 copy_len = 0;
   u8 feature_arc_idx = fm->device_input_feature_arc_index;
   u32 current_config_index = ~(u32) 0;
+  u16 mask = txvq->qsz_mask;
 
   /* The descriptor table is not ready yet */
   if (PREDICT_FALSE (txvq->avail == 0))
-    return 0;
+    goto done;
 
   {
     /* do we have pending interrupts ? */
@@ -299,13 +302,13 @@ vhost_user_if_input (vlib_main_t * vm,
     }
 
   if (PREDICT_FALSE (txvq->avail->flags & 0xFFFE))
-    return 0;
+    goto done;
 
   n_left = (u16) (txvq->avail->idx - txvq->last_avail_idx);
 
   /* nothing to do */
   if (PREDICT_FALSE (n_left == 0))
-    return 0;
+    goto done;
 
   if (PREDICT_FALSE (!vui->admin_up || !(txvq->enabled)))
     {
@@ -318,10 +321,10 @@ vhost_user_if_input (vlib_main_t * vm,
        */
       vhost_user_rx_discard_packet (vm, vui, txvq,
 				    VHOST_USER_DOWN_DISCARD_COUNT);
-      return 0;
+      goto done;
     }
 
-  if (PREDICT_FALSE (n_left == (txvq->qsz_mask + 1)))
+  if (PREDICT_FALSE (n_left == (mask + 1)))
     {
       /*
        * Informational error logging when VPP is not
@@ -382,6 +385,9 @@ vhost_user_if_input (vlib_main_t * vm,
 			    &next_index, 0);
     }
 
+  u16 last_avail_idx = txvq->last_avail_idx;
+  u16 last_used_idx = txvq->last_used_idx;
+
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
   if (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT)
@@ -417,7 +423,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  break;
 	}
 
-      desc_current = txvq->avail->ring[txvq->last_avail_idx & txvq->qsz_mask];
+      desc_current = txvq->avail->ring[last_avail_idx & mask];
       cpu->rx_buffers_len--;
       bi_current = cpu->rx_buffers[cpu->rx_buffers_len];
       b_head = b_current = vlib_get_buffer (vm, bi_current);
@@ -429,11 +435,9 @@ vhost_user_if_input (vlib_main_t * vm,
 	(vm, cpu->rx_buffers[cpu->rx_buffers_len - 1], LOAD);
 
       /* Just preset the used descriptor id and length for later */
-      txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].id =
-	desc_current;
-      txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].len = 0;
-      vhost_user_log_dirty_ring (vui, txvq,
-				 ring[txvq->last_used_idx & txvq->qsz_mask]);
+      txvq->used->ring[last_used_idx & mask].id = desc_current;
+      txvq->used->ring[last_used_idx & mask].len = 0;
+      vhost_user_log_dirty_ring (vui, txvq, ring[last_used_idx & mask]);
 
       /* The buffer should already be initialized */
       b_head->total_length_not_including_first_buffer = 0;
@@ -446,7 +450,7 @@ vhost_user_if_input (vlib_main_t * vm,
 			     /* follow_chain */ 0);
 	  vhost_trace_t *t0 =
 	    vlib_add_trace (vm, node, b_head, sizeof (t0[0]));
-	  vhost_user_rx_trace (t0, vui, qid, b_head, txvq);
+	  vhost_user_rx_trace (t0, vui, qid, b_head, txvq, last_avail_idx);
 	  n_trace--;
 	  vlib_set_trace_count (vm, node, n_trace);
 	}
@@ -552,8 +556,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	b_head->current_length;
 
       /* consume the descriptor and return it as used */
-      txvq->last_avail_idx++;
-      txvq->last_used_idx++;
+      last_avail_idx++;
+      last_used_idx++;
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b_head);
 
@@ -586,12 +590,15 @@ vhost_user_if_input (vlib_main_t * vm,
 
 	  /* give buffers back to driver */
 	  CLIB_MEMORY_BARRIER ();
-	  txvq->used->idx = txvq->last_used_idx;
+	  txvq->used->idx = last_used_idx;
 	  vhost_user_log_dirty_ring (vui, txvq, idx);
 	}
     }
 stop:
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+
+  txvq->last_used_idx = last_used_idx;
+  txvq->last_avail_idx = last_avail_idx;
 
   /* Do the memory copies */
   if (PREDICT_FALSE (vhost_user_input_copy (vui, cpu->copy, copy_len,
@@ -624,6 +631,7 @@ stop:
 
   vnet_device_increment_rx_packets (vm->thread_index, n_rx_packets);
 
+done:
   return n_rx_packets;
 }
 
