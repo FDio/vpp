@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "6e57df3c_ad05d383",
+        "filename": "test/discover_tests.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-23T13:43:41Z",
+      "side": 1,
+      "message": "while this could be a good idea, it doesn\u0027t belong to this change\n\na.) nobody uses -i yet so no point introducing it here\nb.) environment variables vs parameters probably need an overhaul anyway",
+      "parentUuid": "5f2726f4_a38d57eb",
+      "range": {
+        "startLine": 55,
+        "startChar": 4,
+        "endLine": 55,
+        "endChar": 44
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "816b6c76_6ae4a496",
         "filename": "test/doc/Makefile",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-11-23T13:10:26Z",
       "side": 1,
       "message": "python -c \"import sys; sys.exit(getattr(sys, \u0027base_prefix\u0027, sys.prefix) \u003d\u003d sys.prefix)\" is often used.",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 88
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dc9e3744_70b60bf6",
+        "filename": "test/doc/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-23T13:43:41Z",
+      "side": 1,
+      "message": "I just tried it and got True from\n\ngetattr(sys, \u0027base_prefix\u0027, sys.prefix) \u003d\u003d sys.prefix\n\nin both virtual environment and outside.",
+      "parentUuid": "816b6c76_6ae4a496",
       "range": {
         "startLine": 19,
         "startChar": 0,
@@ -220,6 +268,30 @@
       "writtenOn": "2018-11-23T13:10:26Z",
       "side": 1,
       "message": "Move to class variable",
+      "range": {
+        "startLine": 80,
+        "startChar": 32,
+        "endLine": 80,
+        "endChar": 50
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dcf2a545_6fb2b480",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-23T13:43:41Z",
+      "side": 1,
+      "message": "what is the advantage of that? I don\u0027t see any, since the variable is only used here. Moving the variable from 2 lines away from the single point of usage to a page away only makes reading the code harder. Also applies to other places where you suggest change like this.\n\nReadability counts.",
+      "parentUuid": "3270a08f_74bdbee4",
       "range": {
         "startLine": 80,
         "startChar": 32,
