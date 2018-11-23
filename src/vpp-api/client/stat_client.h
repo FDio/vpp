@@ -18,16 +18,22 @@
 #define included_stat_client_h
 
 #include <stdint.h>
-#include <vpp/stats/stat_segment.h>
+#include <unistd.h>
 #include <vlib/counter_types.h>
 
-typedef struct
+typedef enum
 {
-  uint64_t current_epoch;
-  stat_segment_shared_header_t *shared_header;
-  stat_segment_directory_entry_t *directory_vector;
-  ssize_t memory_size;
-} stat_client_main_t;
+  STAT_DIR_TYPE_ILLEGAL = 0,
+  STAT_DIR_TYPE_SCALAR_INDEX,
+  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
+  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
+  STAT_DIR_TYPE_ERROR_INDEX,
+} stat_directory_type_t;
+
+/* Default socket to exchange segment fd */
+#define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
+
+typedef struct stat_client_main_t stat_client_main_t;
 
 typedef struct
 {

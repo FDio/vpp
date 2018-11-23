@@ -30,7 +30,15 @@
 #include <vppinfra/lock.h>
 #include "stat_client.h"
 #include <stdatomic.h>
+#include <vpp/stats/stat_segment.h>
 
+struct stat_client_main_t
+{
+  uint64_t current_epoch;
+  stat_segment_shared_header_t *shared_header;
+  stat_segment_directory_entry_t *directory_vector;
+  ssize_t memory_size;
+};
 
 stat_client_main_t stat_client_main;
 

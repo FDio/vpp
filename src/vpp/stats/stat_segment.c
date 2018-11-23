@@ -21,7 +21,7 @@
 #include <vnet/devices/devices.h>	/* vnet_get_aggregate_rx_packets */
 #undef HAVE_MEMFD_CREATE
 #include <vppinfra/linux/syscall.h>
-
+#include <vpp-api/client/stat_client.h>
 stat_segment_main_t stat_segment_main;
 
 /*
