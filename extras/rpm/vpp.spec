@@ -392,7 +392,7 @@ fi
 /usr/share/java/*
 
 %files api-python
-%defattr(644,root,root)
+%defattr(644,root,root,755)
 %{python2_sitelib}/vpp_*
 
 %files selinux-policy
