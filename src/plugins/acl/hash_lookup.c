@@ -603,6 +603,10 @@ hash_acl_set_heap(acl_main_t *am)
     am->hash_lookup_mheap = mheap_alloc_with_lock (0 /* use VM */ , 
                                                    am->hash_lookup_mheap_size,
                                                    1 /* locked */);
+    if (0 == am->hash_lookup_mheap) {
+        clib_error("ACL plugin failed to allocate lookup heap of %U bytes", 
+                   format_memory_size, am->hash_lookup_mheap_size);
+    }
 #if USE_DLMALLOC != 0
     /*
      * DLMALLOC is being "helpful" in that it ignores the heap size parameter
@@ -614,10 +618,6 @@ hash_acl_set_heap(acl_main_t *am)
      */
     mspace_disable_expand(am->hash_lookup_mheap);
 #endif
-    if (0 == am->hash_lookup_mheap) {
-        clib_error("ACL plugin failed to allocate lookup heap of %U bytes", 
-                   format_memory_size, am->hash_lookup_mheap_size);
-    }
   }
   void *oldheap = clib_mem_set_heap(am->hash_lookup_mheap);
   return oldheap;
@@ -749,9 +749,11 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
   vec_validate(am->hash_applied_mask_info_vec_by_lc_index, lc_index);
 
   /* since we know (in case of no split) how much we expand, preallocate that space */
-  int old_vec_len = vec_len(*applied_hash_aces);
-  vec_validate((*applied_hash_aces), old_vec_len + vec_len(ha->rules) - 1);
-  _vec_len((*applied_hash_aces)) = old_vec_len;
+  if (vec_len(ha->rules) > 0) {
+    int old_vec_len = vec_len(*applied_hash_aces);
+    vec_validate((*applied_hash_aces), old_vec_len + vec_len(ha->rules) - 1);
+    _vec_len((*applied_hash_aces)) = old_vec_len;
+  }
 
   /* add the rules from the ACL to the hash table for lookup and append to the vector*/
   for(i=0; i < vec_len(ha->rules); i++) {
@@ -1190,8 +1192,10 @@ void hash_acl_add(acl_main_t *am, int acl_index)
      is a mask type, increment a reference count for that mask type */
 
   /* avoid small requests by preallocating the entire vector before running the additions */
-  vec_validate(ha->rules, a->count-1);
-  vec_reset_length(ha->rules);
+  if (a->count > 0) {
+    vec_validate(ha->rules, a->count-1);
+    vec_reset_length(ha->rules);
+  }
 
   for(i=0; i < a->count; i++) {
     hash_ace_info_t ace_info;
