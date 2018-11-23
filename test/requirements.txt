@@ -1,0 +1,12 @@
+cffi                                    # MIT
+cryptography!=2.0                       # BSD/Apache-2.0
+faulthandler; python_version < '3.3' #  # BSD License (2 clause)
+flake8                                  # MIT
+ipaddress; python_version < '3.3'       # PSF
+pexpect                                 # ISC
+psutil                                  # BSD
+pycodestyle                             # MIT (Expat license)       https://pypi.org/project/pycodestyle/
+scapy==2.4.0; python_version >= '2.7' or python_version >= '3.4'    # GPL2  https://github.com/secdev/scapy/blob/master/LICENSE
+six                                     # MIT
+subprocess32                            # PSF
+syslog_rfc5424_parser                   # ISC
