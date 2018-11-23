@@ -215,7 +215,7 @@ vhost_user_rx_discard_packet (vlib_main_t * vm,
 out:
   txvq->last_avail_idx = last_avail_idx;
   txvq->last_used_idx = last_used_idx;
-  CLIB_MEMORY_BARRIER ();
+  CLIB_MEMORY_STORE_BARRIER ();
   txvq->used->idx = txvq->last_used_idx;
   vhost_user_log_dirty_ring (vui, txvq, idx);
   return discarded_packets;
@@ -589,7 +589,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  copy_len = 0;
 
 	  /* give buffers back to driver */
-	  CLIB_MEMORY_BARRIER ();
+	  CLIB_MEMORY_STORE_BARRIER ();
 	  txvq->used->idx = last_used_idx;
 	  vhost_user_log_dirty_ring (vui, txvq, idx);
 	}
@@ -609,7 +609,7 @@ stop:
     }
 
   /* give buffers back to driver */
-  CLIB_MEMORY_BARRIER ();
+  CLIB_MEMORY_STORE_BARRIER ();
   txvq->used->idx = txvq->last_used_idx;
   vhost_user_log_dirty_ring (vui, txvq, idx);
 
