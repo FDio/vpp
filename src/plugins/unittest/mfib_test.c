@@ -543,7 +543,8 @@ mfib_test_i (fib_protocol_t PROTO,
     mfei = mfib_table_lookup(fib_index,
                              pfx_star_g_1);
     MFIB_TEST(mfei == mfei_g_1,
-              "%U found via LP match",
+              "[e:%d a:%d] %U found via LP match",
+              mfei, mfei_g_1,
               format_mfib_prefix, pfx_star_g_1);
 
     MFIB_TEST(!mfib_test_entry(mfei,
@@ -929,7 +930,7 @@ mfib_test_i (fib_protocol_t PROTO,
         /*
          * Find the (*,G/m)
          */
-        MFIB_TEST((mfei_g_m == ip6_mfib_table_lookup2(
+        MFIB_TEST((mfei_g_m == ip6_mfib_table_fwd_lookup(
                        ip6_mfib_get(fib_index),
                        &src,
                        &pfx_star_g_slash_m->fp_grp_addr.ip6)),
@@ -940,7 +941,7 @@ mfib_test_i (fib_protocol_t PROTO,
         ip6_address_t tmp = pfx_star_g_slash_m->fp_grp_addr.ip6;
         tmp.as_u8[15] = 0xff;
 
-        MFIB_TEST((mfei_g_m == ip6_mfib_table_lookup2(
+        MFIB_TEST((mfei_g_m == ip6_mfib_table_fwd_lookup(
                        ip6_mfib_get(fib_index),
                        &pfx_s_g->fp_src_addr.ip6,
                        &tmp)),
@@ -951,9 +952,9 @@ mfib_test_i (fib_protocol_t PROTO,
         /*
          * Find the (S,G).
          */
-        mfei = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index),
-                                      &pfx_s_g->fp_src_addr.ip6,
-                                      &pfx_s_g->fp_grp_addr.ip6);
+        mfei = ip6_mfib_table_fwd_lookup(ip6_mfib_get(fib_index),
+                                         &pfx_s_g->fp_src_addr.ip6,
+                                         &pfx_s_g->fp_grp_addr.ip6);
         MFIB_TEST((mfei_s_g == mfei),
                   "%U found via DP LPM: %d",
                   format_mfib_prefix, pfx_s_g, mfei);
@@ -961,21 +962,21 @@ mfib_test_i (fib_protocol_t PROTO,
         /*
          * Find the 3 (*,G) s
          */
-        mfei = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index),
-                                      &src,
-                                      &pfx_star_g_1->fp_grp_addr.ip6);
+        mfei = ip6_mfib_table_fwd_lookup(ip6_mfib_get(fib_index),
+                                         &src,
+                                         &pfx_star_g_1->fp_grp_addr.ip6);
         MFIB_TEST((mfei_g_1 == mfei),
                   "%U found via DP LPM: %d",
                   format_mfib_prefix, pfx_star_g_1, mfei);
-        mfei = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index),
-                                      &src,
-                                      &pfx_star_g_2->fp_grp_addr.ip6);
+        mfei = ip6_mfib_table_fwd_lookup(ip6_mfib_get(fib_index),
+                                         &src,
+                                         &pfx_star_g_2->fp_grp_addr.ip6);
         MFIB_TEST((mfei_g_2 == mfei),
                   "%U found via DP LPM: %d",
                   format_mfib_prefix, pfx_star_g_2, mfei);
-        mfei = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index),
-                                      &src,
-                                      &pfx_star_g_3->fp_grp_addr.ip6);
+        mfei = ip6_mfib_table_fwd_lookup(ip6_mfib_get(fib_index),
+                                         &src,
+                                         &pfx_star_g_3->fp_grp_addr.ip6);
         MFIB_TEST((mfei_g_3 == mfei),
                   "%U found via DP LPM: %d",
                   format_mfib_prefix, pfx_star_g_3, mfei);

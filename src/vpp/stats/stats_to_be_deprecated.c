@@ -2005,7 +2005,7 @@ do_ip6_fib_counters (stats_main_t * sm)
   u32 items_this_message;
   vl_api_ip6_fib_counter_t *ctrp = 0;
   u32 start_at_fib_index = 0;
-  BVT (clib_bihash) * h = &im6->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash;
+  clib_bihash_24_8_t *h = &im6->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash;
   add_routes_in_fib_arg_t _a, *a = &_a;
   int i;
 
@@ -2049,7 +2049,7 @@ again:
       if (clib_setjmp (&sm->jmp_buf, 0) == 0)
 	{
 	  start_at_fib_index = fib - im6->fibs;
-	  BV (clib_bihash_foreach_key_value_pair) (h, add_routes_in_fib, a);
+	  clib_bihash_foreach_key_value_pair_24_8 (h, add_routes_in_fib, a);
 	}
       else
 	{

@@ -69,9 +69,9 @@ ip6_fib_table_fwding_lookup (ip6_main_t * im,
                              const ip6_address_t * dst)
 {
     ip6_fib_table_instance_t *table;
+    clib_bihash_kv_24_8_t kv, value;
     int i, len;
     int rv;
-    BVT(clib_bihash_kv) kv, value;
     u64 fib;
 
     table = &ip6_main.ip6_table[IP6_FIB_TABLE_FWDING];
@@ -92,7 +92,7 @@ ip6_fib_table_fwding_lookup (ip6_main_t * im,
 	kv.key[1] &= mask->as_u64[1];
 	kv.key[2] = fib | dst_address_length;
 
-	rv = BV(clib_bihash_search_inline_2)(&table->ip6_hash, &kv, &value);
+	rv = clib_bihash_search_inline_2_24_8(&table->ip6_hash, &kv, &value);
 	if (rv == 0)
 	    return value.value;
     }

@@ -3,6 +3,7 @@
 import socket
 import unittest
 
+from parameterized import parameterized
 import scapy.layers.inet6 as inet6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \
@@ -2163,7 +2164,7 @@ class TestIPDeag(VppTestCase):
 
 
 class TestIP6Input(VppTestCase):
-    """ IPv6 Input Exceptions """
+    """ IPv6 Input Exception Test Cases """
 
     def setUp(self):
         super(TestIP6Input, self).setUp()
@@ -2181,25 +2182,10 @@ class TestIP6Input(VppTestCase):
             i.unconfig_ip6()
             i.admin_down()
 
-    def test_ip_input(self):
-        """ IP6 Input Exceptions """
-
+    def test_ip_input_icmp_reply(self):
+        """ IP6 Input Exception - Return ICMP (3,0) """
         #
-        # bad version - this is dropped
-        #
-        p_version = (Ether(src=self.pg0.remote_mac,
-                           dst=self.pg0.local_mac) /
-                     IPv6(src=self.pg0.remote_ip6,
-                          dst=self.pg1.remote_ip6,
-                          version=3) /
-                     inet6.UDP(sport=1234, dport=1234) /
-                     Raw('\xa5' * 100))
-
-        self.send_and_assert_no_replies(self.pg0, p_version * 65,
-                                        "funky version")
-
-        #
-        # hop limit - IMCP replies
+        # hop limit - ICMP replies
         #
         p_version = (Ether(src=self.pg0.remote_mac,
                            dst=self.pg0.local_mac) /
@@ -2212,9 +2198,45 @@ class TestIP6Input(VppTestCase):
         rx = self.send_and_expect(self.pg0, p_version * 65, self.pg0)
         rx = rx[0]
         icmp = rx[ICMPv6TimeExceeded]
-        self.assertEqual(icmp.type, 3)
+
         # 0: "hop limit exceeded in transit",
-        self.assertEqual(icmp.code, 0)
+        self.assertEqual((icmp.type, icmp.code), (3, 0))
+
+    icmpv6_data = '\x0a' * 18
+    all_0s = "::"
+    all_1s = "FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF"
+
+    @parameterized.expand([
+        # Name, src, dst, l4proto, msg, timeout
+        ("src='iface',   dst='iface'", None, None,
+         inet6.UDP(sport=1234, dport=1234), "funky version", None),
+        ("src='All 0's', dst='iface'", all_0s, None,
+         ICMPv6EchoRequest(id=0xb, seq=5, data=icmpv6_data), None, 0.1),
+        ("src='iface',   dst='All 0's'", None, all_0s,
+         ICMPv6EchoRequest(id=0xb, seq=5, data=icmpv6_data), None, 0.1),
+        ("src='All 1's', dst='iface'", all_1s, None,
+         ICMPv6EchoRequest(id=0xb, seq=5, data=icmpv6_data), None, 0.1),
+        ("src='iface',   dst='All 1's'", None, all_1s,
+         ICMPv6EchoRequest(id=0xb, seq=5, data=icmpv6_data), None, 0.1),
+        ("src='All 1's', dst='All 1's'", all_1s, all_1s,
+         ICMPv6EchoRequest(id=0xb, seq=5, data=icmpv6_data), None, 0.1),
+
+    ])
+    def test_ip_input_no_replies(self, name, src, dst, l4, msg, timeout):
+
+        self._testMethodDoc = 'IPv6 Input Exception - %s' % name
+
+        p_version = (Ether(src=self.pg0.remote_mac,
+                           dst=self.pg0.local_mac) /
+                     IPv6(src=src or self.pg0.remote_ip6,
+                          dst=dst or self.pg1.remote_ip6,
+                          version=3) /
+                     l4 /
+                     Raw('\xa5' * 100))
+
+        self.send_and_assert_no_replies(self.pg0, p_version * 65,
+                                        remark=msg or "",
+                                        timeout=timeout)
 
 
 if __name__ == '__main__':
