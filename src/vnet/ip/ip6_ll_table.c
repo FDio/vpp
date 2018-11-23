@@ -298,7 +298,7 @@ ip6_ll_show_fib (vlib_main_t * vm,
     /* Show summary? */
     if (!verbose)
       {
-	BVT (clib_bihash) * h =
+	clib_bihash_24_8_t *h =
 	  &im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash;
 	int len;
 
@@ -307,7 +307,7 @@ ip6_ll_show_fib (vlib_main_t * vm,
 	clib_memset (ca, 0, sizeof (*ca));
 	ca->fib_index = fib_index;
 
-	BV (clib_bihash_foreach_key_value_pair)
+	clib_bihash_foreach_key_value_pair_24_8
 	  (h, count_routes_in_fib_at_prefix_length, ca);
 
 	for (len = 128; len >= 0; len--)
