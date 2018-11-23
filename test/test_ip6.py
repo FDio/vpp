@@ -2216,6 +2216,57 @@ class TestIP6Input(VppTestCase):
         # 0: "hop limit exceeded in transit",
         self.assertEqual(icmp.code, 0)
 
+        #
+        # all 0s source/dst
+        #
+        icmpv6_data = '\x0a' * 18
+        p_0 = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IPv6(src="::", dst=self.pg0.local_ip6) /
+               ICMPv6EchoRequest(id=0xb, seq=5,
+                                 data=icmpv6_data))
+        self.send_and_assert_no_replies(self.pg0, p_0 * 65,
+                                        timeout=0.1)
+
+        p_0 = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IPv6(src=self.pg0.remote_ip6, dst="::") /
+               ICMPv6EchoRequest(id=0xb, seq=5,
+                                 data=icmpv6_data))
+        self.send_and_assert_no_replies(self.pg0, p_0 * 65,
+                                        timeout=0.1)
+
+        #
+        # all 1s source/dst
+        #
+        icmpv6_data = '\x0a' * 18
+        p_1 = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IPv6(src="FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF",
+                    dst=self.pg0.local_ip6) /
+               ICMPv6EchoRequest(id=0xb, seq=5,
+                                 data=icmpv6_data))
+        self.send_and_assert_no_replies(self.pg0, p_1 * 65,
+                                        timeout=0.1)
+
+        p_1 = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IPv6(src=self.pg0.remote_ip6,
+                    dst="FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF") /
+               ICMPv6EchoRequest(id=0xb, seq=5,
+                                 data=icmpv6_data))
+        self.send_and_assert_no_replies(self.pg0, p_1 * 65,
+                                        timeout=0.1)
+
+        p_1 = (Ether(src=self.pg0.remote_mac,
+                     dst=self.pg0.local_mac) /
+               IPv6(src="FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF",
+                    dst="FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF") /
+               ICMPv6EchoRequest(id=0xb, seq=5,
+                                 data=icmpv6_data))
+        self.send_and_assert_no_replies(self.pg0, p_1 * 65,
+                                        timeout=0.1)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

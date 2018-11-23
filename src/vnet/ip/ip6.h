@@ -78,17 +78,14 @@ typedef struct
 
 typedef struct ip6_mfib_t
 {
+  /* Hash table for each prefix length mapping. */
+  mhash_t fib_entry_by_dst_address[257];
+
   /* Table ID (hash key) for this FIB. */
   u32 table_id;
 
   /* Index into FIB vector. */
   u32 index;
-
-  /*
-   *  Pointer to the top of a radix tree.
-   * This cannot be realloc'd, hence it cannot be inlined with this table
-   */
-  struct radix_node_head *rhead;
 } ip6_mfib_t;
 
 struct ip6_main_t;
