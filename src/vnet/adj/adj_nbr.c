@@ -18,6 +18,8 @@
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/fib/fib_walk.h>
 
+#include <vppinfra/bihash_24_8.h>
+
 /*
  * Vector Hash tables of neighbour (traditional) adjacencies
  *  Key: interface(for the vector index), address (and its proto),
