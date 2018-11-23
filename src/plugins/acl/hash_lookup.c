@@ -603,6 +603,10 @@ hash_acl_set_heap(acl_main_t *am)
     am->hash_lookup_mheap = mheap_alloc_with_lock (0 /* use VM */ , 
                                                    am->hash_lookup_mheap_size,
                                                    1 /* locked */);
+    if (0 == am->hash_lookup_mheap) {
+        clib_error("ACL plugin failed to allocate lookup heap of %U bytes", 
+                   format_memory_size, am->hash_lookup_mheap_size);
+    }
 #if USE_DLMALLOC != 0
     /*
      * DLMALLOC is being "helpful" in that it ignores the heap size parameter
@@ -614,10 +618,6 @@ hash_acl_set_heap(acl_main_t *am)
      */
     mspace_disable_expand(am->hash_lookup_mheap);
 #endif
-    if (0 == am->hash_lookup_mheap) {
-        clib_error("ACL plugin failed to allocate lookup heap of %U bytes", 
-                   format_memory_size, am->hash_lookup_mheap_size);
-    }
   }
   void *oldheap = clib_mem_set_heap(am->hash_lookup_mheap);
   return oldheap;
