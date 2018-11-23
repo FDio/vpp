@@ -1,0 +1,234 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f2726f4_a38d57eb",
+        "filename": "test/discover_tests.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "parser.add_argument(\"-i\", \"--ignore\", action\u003d\u0027append\u0027, type\u003dstr, default \u003d os.getenv(\"VENV_PATH\", \"\"))",
+      "range": {
+        "startLine": 55,
+        "startChar": 4,
+        "endLine": 55,
+        "endChar": 44
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "816b6c76_6ae4a496",
+        "filename": "test/doc/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "python -c \"import sys; sys.exit(getattr(sys, \u0027base_prefix\u0027, sys.prefix) \u003d\u003d sys.prefix)\" is often used.",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 88
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d860b210_40f65ca0",
+        "filename": "test/test_vapi.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "Make class variable",
+      "range": {
+        "startLine": 17,
+        "startChar": 8,
+        "endLine": 17,
+        "endChar": 24
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4cc897dc_71982fd7",
+        "filename": "test/test_vapi.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "move to class variable",
+      "range": {
+        "startLine": 21,
+        "startChar": 21,
+        "endLine": 21,
+        "endChar": 53
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "385948ef_1c1ce9ca",
+        "filename": "test/test_vapi.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "Move to class variable",
+      "range": {
+        "startLine": 47,
+        "startChar": 8,
+        "endLine": 47,
+        "endChar": 24
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d91a5a6b_ae2bc15a",
+        "filename": "test/test_vapi.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "Move to class variable",
+      "range": {
+        "startLine": 51,
+        "startChar": 25,
+        "endLine": 51,
+        "endChar": 54
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "50935514_03716e6c",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "Move to class variable",
+      "range": {
+        "startLine": 36,
+        "startChar": 8,
+        "endLine": 36,
+        "endChar": 29
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bcdb8a70_90e19ab7",
+        "filename": "test/test_vom.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "Move to class variable",
+      "range": {
+        "startLine": 17,
+        "startChar": 8,
+        "endLine": 17,
+        "endChar": 24
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4228026f_5e785447",
+        "filename": "test/test_vom.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "Move to class variable",
+      "range": {
+        "startLine": 21,
+        "startChar": 25,
+        "endLine": 21,
+        "endChar": 49
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3270a08f_74bdbee4",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T13:10:26Z",
+      "side": 1,
+      "message": "Move to class variable",
+      "range": {
+        "startLine": 80,
+        "startChar": 32,
+        "endLine": 80,
+        "endChar": 50
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
