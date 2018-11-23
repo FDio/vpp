@@ -19,18 +19,7 @@
 #include <stdatomic.h>
 #include <vlib/vlib.h>
 #include <vppinfra/socket.h>
-
-/* Default socket to exchange segment fd */
-#define STAT_SEGMENT_SOCKET_FILE "/run/vpp/stats.sock"
-
-typedef enum
-{
-  STAT_DIR_TYPE_ILLEGAL = 0,
-  STAT_DIR_TYPE_SCALAR_INDEX,
-  STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
-  STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
-  STAT_DIR_TYPE_ERROR_INDEX,
-} stat_directory_type_t;
+#include <vpp-api/client/stat_client.h>
 
 typedef enum
 {
