@@ -165,9 +165,10 @@ mfib_forward_lookup (vlib_main_t * vm,
                 fib_index0 = vec_elt (ip6_main.mfib_index_by_sw_if_index,
                                       vnet_buffer(p0)->sw_if_index[VLIB_RX]);
                 ip0 = vlib_buffer_get_current (p0);
-                mfei0 = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index0),
-                                               &ip0->src_address,
-                                               &ip0->dst_address);
+                mfei0 = ip6_mfib_table_lookup(ip6_mfib_get(fib_index0),
+                                              &ip0->src_address,
+                                              &ip0->dst_address,
+                                              256);
             }
 
             vnet_buffer (p0)->ip.adj_index[VLIB_TX] = mfei0;

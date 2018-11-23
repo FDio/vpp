@@ -1305,9 +1305,10 @@ lookup_dpo_ip_dst_mcast_inline (vlib_main_t * vm,
                 ip6_header_t * ip0;
 
                 ip0 = vlib_buffer_get_current (b0);
-                mfei0 = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index0),
-                                               &ip0->src_address,
-                                               &ip0->dst_address);
+                mfei0 = ip6_mfib_table_lookup(ip6_mfib_get(fib_index0),
+                                              &ip0->src_address,
+                                              &ip0->dst_address,
+                                              256);
                 if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
                 {
                     lookup_trace_t *tr = vlib_add_trace (vm, node,

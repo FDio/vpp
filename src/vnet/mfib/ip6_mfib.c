@@ -20,31 +20,13 @@
 #include <vnet/fib/ip6_fib.h>
 
 /**
- * The number of bytes in an address/ask key in the radix tree
- * First byte is the length in bytes.
- */
-#define IP6_MFIB_KEY_LEN 33
-
-/**
  * Key and mask for radix
  */
 typedef struct ip6_mfib_key_t_
 {
-    u8 key[IP6_MFIB_KEY_LEN];
-    u8 mask[IP6_MFIB_KEY_LEN];
+    u64 dst[2];
+    u64 src[2];
 } ip6_mfib_key_t;
-
-/**
- * An object that is inserted into the radix tree.
- * Since it's in the tree and has pointers, it cannot realloc and so cannot
- * come from a vlib pool.
- */
-typedef struct ip6_mfib_node_t_
-{
-    struct radix_node i6mn_nodes[2];
-    ip6_mfib_key_t i6mn_key;
-    index_t i6mn_entry;
-} ip6_mfib_node_t;
 
 static const mfib_prefix_t all_zeros = {
     /* (*,*) */
@@ -166,6 +148,7 @@ ip6_create_mfib_with_table_id (u32 table_id,
         .frp_weight = 0,
         .frp_flags = FIB_ROUTE_PATH_LOCAL,
     };
+    u16 mask_len;
 
     pool_get_aligned(ip6_main.mfibs, mfib_table, CLIB_CACHE_LINE_BYTES);
     clib_memset(mfib_table, 0, sizeof(*mfib_table));
@@ -183,12 +166,14 @@ ip6_create_mfib_with_table_id (u32 table_id,
         mfib_table->v6.table_id =
             table_id;
 
-    mfib_table_lock(mfib_table->mft_index, FIB_PROTOCOL_IP6, src);
+    for (mask_len = 0; mask_len < 257; mask_len++)
+    {
+        mhash_init(&mfib_table->v6.fib_entry_by_dst_address[mask_len],
+                   sizeof(word),
+                   sizeof(ip6_mfib_key_t));
+    }
 
-    mfib_table->v6.rhead =
-        clib_mem_alloc_aligned (sizeof(*mfib_table->v6.rhead),
-                                CLIB_CACHE_LINE_BYTES);
-    rn_inithead0(mfib_table->v6.rhead, 8);
+    mfib_table_lock(mfib_table->mft_index, FIB_PROTOCOL_IP6, src);
 
     /*
      * add the special entries into the new FIB
@@ -230,6 +215,7 @@ ip6_mfib_table_destroy (ip6_mfib_t *mfib)
         .frp_weight = 0,
         .frp_flags = FIB_ROUTE_PATH_LOCAL,
     };
+    u16 mask_len;
 
     /*
      * remove all the specials we added when the table was created.
@@ -251,8 +237,12 @@ ip6_mfib_table_destroy (ip6_mfib_t *mfib)
     ASSERT(0 == mfib_table->mft_total_route_counts);
     ASSERT(~0 != mfib_table->mft_table_id);
 
+    for (mask_len = 0; mask_len < 257; mask_len++)
+    {
+        mhash_free(&mfib_table->v6.fib_entry_by_dst_address[mask_len]);
+    }
+
     hash_unset (ip6_main.mfib_index_by_table_id, mfib_table->mft_table_id);
-    clib_mem_free(mfib_table->v6.rhead);
     pool_put(ip6_main.mfibs, mfib_table);
 }
 
@@ -325,29 +315,26 @@ ip6_mfib_table_get_index_for_sw_if_index (u32 sw_if_index)
     return (ip6_main.mfib_index_by_sw_if_index[sw_if_index]);
 }
 
-#define IP6_MFIB_MK_KEY(_grp, _src, _key)                           \
-{                                                                   \
-    (_key)->key[0] = 33;                                            \
-    memcpy((_key)->key+1, _grp, 16);                                \
-    memcpy((_key)->key+17, _src, 16);                               \
-}
+#define IPV6_MFIB_GRP_LEN(_len)\
+    (_len > 128 ? 128 : _len)
 
-#define IP6_MFIB_MK_KEY_MASK(_grp, _src, _len, _key)                \
-{                                                                   \
-    IP6_MFIB_MK_KEY(_grp, _src, _key);                              \
-                                                                    \
-    (_key)->mask[0] = 33;                                           \
-    if (_len <= 128)                                                \
-    {                                                               \
-        memcpy((_key)->mask+1, &ip6_main.fib_masks[_len], 16);      \
-        clib_memset((_key)->mask+17, 0, 16);                             \
-    }                                                               \
-    else                                                            \
-    {                                                               \
-        ASSERT(_len == 256);                                        \
-        memcpy((_key)->mask+1, &ip6_main.fib_masks[128], 16);       \
-        memcpy((_key)->mask+17, &ip6_main.fib_masks[128], 16);      \
-    }                                                               \
+#define IP6_MFIB_MK_KEY(_grp, _src, _len, _key)                         \
+{                                                                       \
+    _key.dst[0] = (_grp->as_u64[0] &                                    \
+                   ip6_main.fib_masks[IPV6_MFIB_GRP_LEN(_len)].as_u64[0]); \
+    _key.dst[1] = (_grp->as_u64[1] &                                    \
+                   ip6_main.fib_masks[IPV6_MFIB_GRP_LEN(_len)].as_u64[1]); \
+    _key.src[0] = _src->as_u64[0];                                      \
+    _key.src[1] = _src->as_u64[1];                                     \
+}
+#define IP6_MFIB_MK_GRP_KEY(_grp, _len, _key)                           \
+{                                                                       \
+    _key.dst[0]  = (_grp->as_u64[0] &                                   \
+                    ip6_main.fib_masks[IPV6_MFIB_GRP_LEN(_len)].as_u64[0]); \
+    _key.dst[1]  = (_grp->as_u64[1] &                                   \
+                    ip6_main.fib_masks[IPV6_MFIB_GRP_LEN(_len)].as_u64[1]); \
+    _key.src[0] = 0;                                                    \
+    _key.src[1] = 0;                                                    \
 }
 
 /*
@@ -361,20 +348,17 @@ ip6_mfib_table_lookup_exact_match (const ip6_mfib_t *mfib,
                                    const ip6_address_t *src,
                                    u32 len)
 {
-    ip6_mfib_node_t *i6mn;
     ip6_mfib_key_t key;
+    uword *result;
 
-    IP6_MFIB_MK_KEY_MASK(grp, src, len, &key);
+    IP6_MFIB_MK_KEY(grp, src, len, key);
 
-    i6mn = (ip6_mfib_node_t*) rn_lookup(key.key, key.mask,
-                                        (struct radix_node_head *)mfib->rhead);
+    result = mhash_get((mhash_t*)&mfib->fib_entry_by_dst_address[len], &key);
 
-    if (NULL == i6mn)
-    {
-        return (INDEX_INVALID);
+    if (NULL != result) {
+        return (result[0]);
     }
-
-    return (i6mn->i6mn_entry);
+    return (FIB_NODE_INDEX_INVALID);
 }
 
 /*
@@ -388,41 +372,34 @@ ip6_mfib_table_lookup (const ip6_mfib_t *mfib,
                        const ip6_address_t *grp,
                        u32 len)
 {
-    ip6_mfib_node_t *i6mn;
+    uword * result;
     ip6_mfib_key_t key;
+    i32 mask_len;
 
-    IP6_MFIB_MK_KEY_MASK(grp, src, len, &key);
+    mask_len = len;
 
-    i6mn = (ip6_mfib_node_t*) rn_search_m(key.key,
-                                          mfib->rhead->rnh_treetop,
-                                          key.mask);
+    if (PREDICT_TRUE(256 == mask_len))
+    {
+        IP6_MFIB_MK_KEY(grp, src, mask_len, key);
 
-    ASSERT(NULL != i6mn);
+        result = mhash_get ((mhash_t*)&mfib->fib_entry_by_dst_address[mask_len],  &key);
 
-    return (i6mn->i6mn_entry);
-}
+        if (NULL != result) {
+            return (result[0]);
+        }
+    }
 
-/*
- * ip6_fib_table_lookup
- *
- * Longest prefix match no mask
- */
-fib_node_index_t
-ip6_mfib_table_lookup2 (const ip6_mfib_t *mfib,
-                        const ip6_address_t *src,
-                        const ip6_address_t *grp)
-{
-    ip6_mfib_node_t *i6mn;
-    ip6_mfib_key_t key;
+    for (mask_len = (len == 256 ? 128 : len); mask_len >= 0; mask_len--)
+    {
+        IP6_MFIB_MK_GRP_KEY(grp, mask_len, key);
 
-    IP6_MFIB_MK_KEY(grp, src, &key);
+        result = mhash_get ((mhash_t*)&mfib->fib_entry_by_dst_address[mask_len], &key);
 
-    i6mn = (ip6_mfib_node_t*) rn_match(key.key,
-                                       (struct radix_node_head *)mfib->rhead); // const cast
-
-    ASSERT(NULL != i6mn);
-
-    return (i6mn->i6mn_entry);
+        if (NULL != result) {
+            return (result[0]);
+        }
+    }
+    return (FIB_NODE_INDEX_INVALID);
 }
 
 void
@@ -432,17 +409,21 @@ ip6_mfib_table_entry_insert (ip6_mfib_t *mfib,
                              u32 len,
                              fib_node_index_t mfib_entry_index)
 {
-    ip6_mfib_node_t *i6mn = clib_mem_alloc(sizeof(*i6mn));
+    ip6_mfib_key_t key;
+    uword *result;
 
-    clib_memset(i6mn->i6mn_nodes, 0, sizeof(i6mn->i6mn_nodes));
+    IP6_MFIB_MK_KEY(grp, src, len, key);
+    result = mhash_get (&mfib->fib_entry_by_dst_address[len], &key);
 
-    IP6_MFIB_MK_KEY_MASK(grp, src, len, &i6mn->i6mn_key);
-    i6mn->i6mn_entry = mfib_entry_index;
+    if (NULL == result) {
+        /*
+         * adding a new entry
+         */
+        uword old;
 
-    if (NULL == rn_addroute(i6mn->i6mn_key.key,
-                            i6mn->i6mn_key.mask,
-                            mfib->rhead,
-                            i6mn->i6mn_nodes))
+        mhash_set(&mfib->fib_entry_by_dst_address[len], &key, mfib_entry_index, &old);
+    }
+    else
     {
         ASSERT(0);
     }
@@ -454,14 +435,24 @@ ip6_mfib_table_entry_remove (ip6_mfib_t *mfib,
                              const ip6_address_t *src,
                              u32 len)
 {
-    ip6_mfib_node_t *i6mn;
     ip6_mfib_key_t key;
+    uword *result;
 
-    IP6_MFIB_MK_KEY_MASK(grp, src, len, &key);
+    IP6_MFIB_MK_KEY(grp, src, len, key);
+    result = mhash_get (&mfib->fib_entry_by_dst_address[len], &key);
 
-    i6mn = (ip6_mfib_node_t*) rn_delete(key.key, key.mask, mfib->rhead);
+    if (NULL == result)
+    {
+        /*
+         * removing a non-existant entry. i'll allow it.
+         */
+    }
+    else
+    {
+        uword old;
 
-    clib_mem_free(i6mn);
+        mhash_unset(&mfib->fib_entry_by_dst_address[len], &key, &old);
+    }
 }
 
 static clib_error_t *
@@ -536,39 +527,23 @@ ip6_mfib_table_show_all (ip6_mfib_t *mfib,
     vec_free(ctx.entries);
 }
 
-typedef struct ip6_mfib_radix_walk_ctx_t_
-{
-    mfib_table_walk_fn_t user_fn;
-    void *user_ctx;
-} ip6_mfib_radix_walk_ctx_t;
-
-static int
-ip6_mfib_table_radix_walk (struct radix_node *rn,
-                           void *arg)
-{
-    ip6_mfib_radix_walk_ctx_t *ctx = arg;
-    ip6_mfib_node_t *i6mn;
-
-    i6mn = (ip6_mfib_node_t*) rn;
-
-    ctx->user_fn(i6mn->i6mn_entry, ctx->user_ctx);
-
-    return (0);
-}
-
 void
 ip6_mfib_table_walk (ip6_mfib_t *mfib,
                      mfib_table_walk_fn_t fn,
                      void *ctx)
 {
-    ip6_mfib_radix_walk_ctx_t rn_ctx = {
-        .user_fn = fn,
-        .user_ctx = ctx,
-    };
+    int i;
 
-    rn_walktree(mfib->rhead,
-                ip6_mfib_table_radix_walk,
-                &rn_ctx);
+    for (i = 0; i < ARRAY_LEN (mfib->fib_entry_by_dst_address); i++)
+    {
+        CLIB_UNUSED(hash_pair_t *p);
+        uword *mfei;
+
+        mhash_foreach (p, mfei, &mfib->fib_entry_by_dst_address[i],
+        ({
+            fn(*mfei, ctx);
+        }));
+    }
 }
 
 static clib_error_t *

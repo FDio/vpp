@@ -210,7 +210,7 @@ ip4_mfib_table_lookup (const ip4_mfib_t *mfib,
         }
     }
 
-    for (mask_len = 32; mask_len >= 0; mask_len--)
+    for (mask_len = (len == 64 ? 32 : len); mask_len >= 0; mask_len--)
     {
         hash = mfib->fib_entry_by_dst_address[mask_len];
         IP4_MFIB_MK_GRP_KEY(grp, mask_len, key);
