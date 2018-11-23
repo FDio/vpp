@@ -1,13 +1,31 @@
 #!/usr/bin/env python
 import unittest
 
-from scapy.packet import Raw
+from scapy.fields import BitField, ByteField, FlagsField, IntField
+from scapy.packet import bind_layers, Packet, Raw
 from scapy.layers.inet import IP, UDP, Ether
-from py_lispnetworking.lisp import LISP_GPE_Header
+from scapy.layers.inet6 import IPv6
 
-from util import ppp, ForeignAddressFactory
 from framework import VppTestCase, VppTestRunner
 from lisp import *
+from util import ppp, ForeignAddressFactory
+
+# From py_lispnetworking.lisp.py:  # GNU General Public License v2.0
+
+
+class LISP_GPE_Header(Packet):
+    name = "LISP GPE Header"
+    fields_desc = [
+        FlagsField("gpe_flags", None, 6, ["N", "L", "E", "V", "I", "P"]),
+        BitField("reserved", 0, 18),
+        ByteField("next_proto", 0),
+        IntField("iid", 0),
+    ]
+bind_layers(UDP, LISP_GPE_Header, dport=4341)
+bind_layers(UDP, LISP_GPE_Header, sport=4341)
+bind_layers(LISP_GPE_Header, IP, next_proto=1)
+bind_layers(LISP_GPE_Header, IPv6, next_proto=2)
+bind_layers(LISP_GPE_Header, Ether, next_proto=3)
 
 
 class Driver(object):
