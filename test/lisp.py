@@ -1,4 +1,5 @@
 from random import randint
+import socket
 from socket import AF_INET, AF_INET6
 from scapy.all import *
 from scapy.packet import *
@@ -292,7 +293,8 @@ class VppLispAdjacency(VppObject):
                 reid_len=self._reid.prefix_length, vni=self._vni)
         self._test.registry.register(self, self.test.logger)
 
-    def eid_equal(self, eid, eid_type, eid_data, prefix_len):
+    @staticmethod
+    def eid_equal(eid, eid_type, eid_data, prefix_len):
         if eid.eid_type != eid_type:
             return False
 
