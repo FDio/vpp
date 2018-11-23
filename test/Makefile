@@ -73,7 +73,7 @@ PYTHON_EXTRA_DEPENDS=
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) psutil faulthandler six scapy==2.4.0 pexpect cryptography subprocess32 cffi syslog-rfc5424-parser git+https://github.com/vpp-dev/py-lispnetworking
+PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
 SCAPY_SOURCE=$(shell find $(PYTHON_VENV_PATH) -name site-packages)
 BUILD_COV_DIR=$(BR)/test-cov
 
@@ -97,7 +97,7 @@ $(GET_PIP_SCRIPT):
 $(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
 	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python $(GET_PIP_SCRIPT)"
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python -m pip install $(PYTHON_DEPENDS)"
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -204,7 +204,7 @@ wipe: reset
 
 doc: verify-python-path $(PIP_PATCH_DONE)
 	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install sphinx sphinx-rtd-theme"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python -m pip install sphinx sphinx-rtd-theme"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
 .PHONY: wipe-doc
@@ -233,7 +233,7 @@ wipe-cov: wipe
 .PHONY: checkstyle
 checkstyle: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pycodestyle"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python -m pip install pycodestyle"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
