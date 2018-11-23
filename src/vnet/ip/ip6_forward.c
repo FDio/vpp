@@ -2658,11 +2658,14 @@ ip6_lookup_init (vlib_main_t * vm)
   if (im->lookup_table_size == 0)
     im->lookup_table_size = IP6_FIB_DEFAULT_HASH_MEMORY_SIZE;
 
-  BV (clib_bihash_init) (&(im->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash),
+  clib_bihash_init_24_8 (&(im->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash),
 			 "ip6 FIB fwding table",
 			 im->lookup_table_nbuckets, im->lookup_table_size);
-  BV (clib_bihash_init) (&im->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
+  clib_bihash_init_24_8 (&im->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
 			 "ip6 FIB non-fwding table",
+			 im->lookup_table_nbuckets, im->lookup_table_size);
+  clib_bihash_init_40_8 (&im->ip6_mtable.ip6_mhash,
+			 "ip6 mFIB table",
 			 im->lookup_table_nbuckets, im->lookup_table_size);
 
   /* Create FIB with index 0 and table id of 0. */

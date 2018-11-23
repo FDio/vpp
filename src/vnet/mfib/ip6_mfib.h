@@ -34,6 +34,9 @@ extern fib_node_index_t ip6_mfib_table_lookup(const ip6_mfib_t *fib,
                                               const ip6_address_t *src,
                                               const ip6_address_t *grp,
                                               u32 len);
+extern fib_node_index_t ip6_mfib_table_fwd_lookup(const ip6_mfib_t *fib,
+                                                  const ip6_address_t *src,
+                                                  const ip6_address_t *grp);
 extern fib_node_index_t ip6_mfib_table_lookup_exact_match(const ip6_mfib_t *fib,
                                                           const ip6_address_t *grp,
                                                           const ip6_address_t *src,

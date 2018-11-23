@@ -47,6 +47,7 @@
 #include <vnet/ip/lookup.h>
 #include <stdbool.h>
 #include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_40_8.h>
 #include <vppinfra/bihash_template.h>
 #include <vnet/util/radix.h>
 #include <vnet/util/throttle.h>
@@ -78,17 +79,14 @@ typedef struct
 
 typedef struct ip6_mfib_t
 {
+  /* required for pool_get_aligned. */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
   /* Table ID (hash key) for this FIB. */
   u32 table_id;
 
   /* Index into FIB vector. */
   u32 index;
-
-  /*
-   *  Pointer to the top of a radix tree.
-   * This cannot be realloc'd, hence it cannot be inlined with this table
-   */
-  struct radix_node_head *rhead;
 } ip6_mfib_t;
 
 struct ip6_main_t;
@@ -143,7 +141,7 @@ typedef enum ip6_fib_table_instance_type_t_
 typedef struct ip6_fib_table_instance_t_
 {
   /* The hash table */
-  BVT (clib_bihash) ip6_hash;
+  clib_bihash_24_8_t ip6_hash;
 
   /* bitmap / refcounts / vector of mask widths to search */
   uword *non_empty_dst_address_length_bitmap;
@@ -151,12 +149,31 @@ typedef struct ip6_fib_table_instance_t_
   i32 dst_address_length_refcounts[129];
 } ip6_fib_table_instance_t;
 
+/**
+ * A represenation of a single IP6 mfib table
+ */
+typedef struct ip6_mfib_table_instance_t_
+{
+  /* The hash table */
+  clib_bihash_40_8_t ip6_mhash;
+
+  /* bitmap / refcounts / vector of mask widths to search */
+  uword *non_empty_dst_address_length_bitmap;
+  u16 *prefix_lengths_in_search_order;
+  i32 dst_address_length_refcounts[257];
+} ip6_mfib_table_instance_t;
+
 typedef struct ip6_main_t
 {
   /**
    * The two FIB tables; fwding and non-fwding
    */
   ip6_fib_table_instance_t ip6_table[IP6_FIB_NUM_TABLES];
+
+  /**
+   * the single MFIB table
+   */
+  ip6_mfib_table_instance_t ip6_mtable;
 
   ip_lookup_main_t lookup_main;
 
