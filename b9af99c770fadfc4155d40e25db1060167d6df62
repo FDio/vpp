@@ -301,6 +301,30 @@
       "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "73e1f5eb_60444576",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-23T14:23:22Z",
+      "side": 1,
+      "message": "Is cls.ENV_INSTALL_PATH that much less readable than \u0027VPP_INSTALL_PATH\u0027?  It conflates the implementation detail from abstracting the functionality.\n\nThe other suggestions were based on the observation that this change set brought to light is that the code is using same constant over and over and that leads to a great opportunity to refactor and  consolidate.\n\nWhat do you think?",
+      "parentUuid": "dcf2a545_6fb2b480",
+      "range": {
+        "startLine": 80,
+        "startChar": 32,
+        "endLine": 80,
+        "endChar": 50
+      },
+      "revId": "b9af99c770fadfc4155d40e25db1060167d6df62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
