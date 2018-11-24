@@ -88,20 +88,39 @@ static dissector_handle_t vpp_dissector_handle;
 static dissector_handle_t vpp_opaque_dissector_handle;
 static dissector_handle_t vpp_trace_dissector_handle;
 
-static dissector_handle_t eth_dissector_handle;
-static dissector_handle_t ip4_dissector_handle;
-static dissector_handle_t ip6_dissector_handle;
-static dissector_handle_t udp_dissector_handle;
+static dissector_table_t vpp_subdissector_table;
 
-#define foreach_node_to_dissector_handle                        \
-_("ip6-lookup", "ipv6", ip6_dissector_handle)                   \
-_("ip4-input-no-checksum", "ip", ip4_dissector_handle)          \
-_("ip4-lookup", "ip", ip4_dissector_handle)                     \
-_("ip4-local", "ip", ip4_dissector_handle)                      \
-_("ip4-udp-lookup", "ip", udp_dissector_handle)                 \
-_("ip4-icmp-error", "ip", ip4_dissector_handle)                 \
-_("ip4-glean", "ip", ip4_dissector_handle)                      \
-_("ethernet-input", "eth_maybefcs", eth_dissector_handle)
+/* List of next dissector names that we know about */
+#define foreach_next_dissector                  \
+_(eth_maybefcs)                                 \
+_(ip)                                           \
+_(ipv6)                                         \
+_(udp)
+
+#define _(a) static dissector_handle_t a##_dissector_handle;
+foreach_next_dissector;
+#undef _
+
+/* 
+ * node-name, next dissector name pairs
+ * 
+ * Unfortunately, -Werror=c++-compat causes
+ * the node names "ipX-not-enabled" to throw a shoe if
+ * not explicitly quoted. Never mind that the first macro 
+ * arg is [only] used as a string (#xxx). 
+ */
+
+#define foreach_node_to_dissector_pair          \
+_("ip6-lookup", ipv6)                           \
+_("ip4-input", ip)                              \
+_("ip4-not-enabled", ip)                        \
+_("ip4-input-no-checksum", ip)                  \
+_("ip4-lookup", ip)                             \
+_("ip4-local", ip)                              \
+_("ip4-udp-lookup", udp)                        \
+_("ip4-icmp-error", ip)                         \
+_("ip4-glean", ip)                              \
+_("ethernet-input", eth_maybefcs)
 
 static void
 add_multi_line_string_to_tree(proto_tree *tree, tvbuff_t *tvb, gint start,
@@ -610,7 +629,7 @@ dissect_vpp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
     guint8 name_length;
     guint8 *name;
     guint16 trace_length;
-    int i, found;
+    int i;
     static const int *buffer_flags[] = {
         &hf_vpp_buffer_flag_non_default_freelist,
         &hf_vpp_buffer_flag_traced,
@@ -730,19 +749,15 @@ dissect_vpp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
 
     eth_tvb = tvb_new_subset_remaining (tvb, offset);
     
-    found = 0;
-
-#define _(a,b,c)                                        \
-     {                                                  \
-        if (!strcmp (name, a)) {                        \
-            call_dissector (c, eth_tvb, pinfo, tree);   \
-            found = 1;                                  \
-        }                                               \
-      }
-    foreach_node_to_dissector_handle;
-#undef _
-    if (found == 0)
-        call_dissector (eth_dissector_handle, eth_tvb, pinfo, tree);
+    /* 
+     * Delegate the rest of the packet dissection to the per-node
+     * next dissector in the foreach_node_to_dissector_pair list
+     *
+     * Failing that, pretend its an ethernet packet
+     */ 
+    if (!dissector_try_string (vpp_subdissector_table, name, eth_tvb,
+                               pinfo, tree, NULL))
+        call_dissector (eth_maybefcs_dissector_handle, eth_tvb, pinfo, tree);
 
     g_free (name);
     return tvb_captured_length(tvb);
@@ -958,8 +973,14 @@ proto_register_vpp(void)
   proto_register_subtree_array (ett_trace, array_length(ett_trace));
   register_dissector("vppTrace", dissect_vpp_trace, proto_vpp_trace);
   
-#define _(a,b,c) c = find_dissector(b);
-  foreach_node_to_dissector_handle;
+  vpp_subdissector_table = register_dissector_table 
+      ("vpp", "VPP per-node next dissector table", proto_vpp,
+       FT_STRING, BASE_NONE);
+
+#define _(n,d)                                                  \
+  d##_dissector_handle = find_dissector(#d);                    \
+  dissector_add_string ("vpp", n, d##_dissector_handle);
+  foreach_node_to_dissector_pair;
 #undef _
 }
 
