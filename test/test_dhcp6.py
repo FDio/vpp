@@ -61,8 +61,8 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
 
-        self.assertTrue(packet.haslayer(IPv6))
-        self.assertTrue(packet[IPv6].haslayer(DHCP6_Solicit))
+        self.assertTrue(bool(packet.haslayer(IPv6)))
+        self.assertTrue(bool(packet[IPv6].haslayer(DHCP6_Solicit)))
 
         client_duid = packet[DHCP6OptClientId].duid
         trid = packet[DHCP6_Solicit].trid
@@ -137,8 +137,8 @@ class TestDHCPv6DataPlane(VppTestCase):
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]
 
-        self.assertTrue(packet.haslayer(IPv6))
-        self.assertTrue(packet[IPv6].haslayer(DHCP6_Solicit))
+        self.assertTrue(bool(packet.haslayer(IPv6)))
+        self.assertTrue(bool(packet[IPv6].haslayer(DHCP6_Solicit)))
 
         client_duid = packet[DHCP6OptClientId].duid
         trid = packet[DHCP6_Solicit].trid
@@ -256,7 +256,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
 
     def validate_packet(self, packet, msg_type, is_resend=False):
         try:
-            self.assertTrue(packet.haslayer(msg_type))
+            self.assertTrue(bool(packet.haslayer(msg_type)))
             client_duid = packet[DHCP6OptClientId].duid
             if self.client_duid is None:
                 self.client_duid = client_duid
@@ -508,7 +508,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
 
     def validate_packet(self, packet, msg_type, is_resend=False):
         try:
-            self.assertTrue(packet.haslayer(msg_type))
+            self.assertTrue(bool(packet.haslayer(msg_type)))
             client_duid = packet[DHCP6OptClientId].duid
             if self.client_duid is None:
                 self.client_duid = client_duid

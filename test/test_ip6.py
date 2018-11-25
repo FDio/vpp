@@ -15,16 +15,11 @@ from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet6 import IPv6, UDP, TCP, ICMPv6ND_NS, ICMPv6ND_RS, \
-    ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation, \
-    ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
-    ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
-    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply
+import scapy.layers.inet6
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
 from scapy.contrib.mpls import MPLS
-
 
 AF_INET6 = socket.AF_INET6
 
@@ -47,13 +42,13 @@ class TestIPv6ND(VppTestCase):
         self.assertEqual(rx[Ether].src, intf.local_mac)
 
         # the rx'd RA should be addressed to the sender's source
-        self.assertTrue(rx.haslayer(ICMPv6ND_RA))
-        self.assertEqual(in6_ptop(rx[IPv6].dst),
+        self.assertTrue(rx.haslayer(scapy.layers.inet6.ICMPv6ND_RA))
+        self.assertEqual(in6_ptop(rx[scapy.layers.inet6.IPv6].dst),
                          in6_ptop(dst_ip))
 
         # and come from the router's link local
-        self.assertTrue(in6_islladdr(rx[IPv6].src))
-        self.assertEqual(in6_ptop(rx[IPv6].src),
+        self.assertTrue(in6_islladdr(rx[scapy.layers.inet6.IPv6].src))
+        self.assertEqual(in6_ptop(rx[scapy.layers.inet6.IPv6].src),
                          in6_ptop(mk_ll_addr(intf.local_mac)))
 
     def validate_na(self, intf, rx, dst_ip=None, tgt_ip=None):
@@ -69,15 +64,16 @@ class TestIPv6ND(VppTestCase):
         self.assertEqual(rx[Ether].src, intf.local_mac)
 
         # the rx'd NA should be addressed to the sender's source
-        self.assertTrue(rx.haslayer(ICMPv6ND_NA))
-        self.assertEqual(in6_ptop(rx[IPv6].dst),
+        self.assertTrue(rx.haslayer(scapy.layers.inet6.ICMPv6ND_NA))
+        self.assertEqual(in6_ptop(rx[scapy.layers.inet6.IPv6].dst),
                          in6_ptop(dst_ip))
 
         # and come from the target address
-        self.assertEqual(in6_ptop(rx[IPv6].src), in6_ptop(tgt_ip))
+        self.assertEqual(
+            in6_ptop(rx[scapy.layers.inet6.IPv6].src), in6_ptop(tgt_ip))
 
         # Dest link-layer options should have the router's MAC
-        dll = rx[ICMPv6NDOptDstLLAddr]
+        dll = rx[scapy.layers.inet6.ICMPv6NDOptDstLLAddr]
         self.assertEqual(dll.lladdr, intf.local_mac)
 
     def validate_ns(self, intf, rx, tgt_ip):
@@ -92,17 +88,19 @@ class TestIPv6ND(VppTestCase):
 
         # the rx'd NS should be addressed to an mcast address
         # derived from the target address
-        self.assertEqual(in6_ptop(rx[IPv6].dst), in6_ptop(dst_ip))
+        self.assertEqual(
+            in6_ptop(rx[scapy.layers.inet6.IPv6].dst), in6_ptop(dst_ip))
 
         # expect the tgt IP in the NS header
-        ns = rx[ICMPv6ND_NS]
+        ns = rx[scapy.layers.inet6.ICMPv6ND_NS]
         self.assertEqual(in6_ptop(ns.tgt), in6_ptop(tgt_ip))
 
         # packet is from the router's local address
-        self.assertEqual(in6_ptop(rx[IPv6].src), intf.local_ip6)
+        self.assertEqual(
+            in6_ptop(rx[scapy.layers.inet6.IPv6].src), intf.local_ip6)
 
         # Src link-layer options should have the router's MAC
-        sll = rx[ICMPv6NDOptSrcLLAddr]
+        sll = rx[scapy.layers.inet6.ICMPv6NDOptSrcLLAddr]
         self.assertEqual(sll.lladdr, intf.local_mac)
 
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
@@ -144,7 +142,7 @@ class TestIPv6ND(VppTestCase):
         self.assertEqual(ether.dst, dmac)
         self.assertEqual(ether.src, smac)
 
-        ip = rx[IPv6]
+        ip = rx[scapy.layers.inet6.IPv6]
         self.assertEqual(ip.src, sip)
         self.assertEqual(ip.dst, dip)
 
@@ -261,8 +259,8 @@ class TestIPv6(TestIPv6ND):
         dst_if = self.flows[src_if][dst_if_idx]
         info = self.create_packet_info(src_if, dst_if)
         payload = self.info_to_payload(info)
-        p = pkt/Raw(payload)
-        p[IPv6].dst = dst_if.remote_ip6
+        p = pkt / Raw(payload)
+        p[scapy.layers.inet6.IPv6].dst = dst_if.remote_ip6
         info.data = p.copy()
         if isinstance(src_if, VppSubInterface):
             p = src_if.add_dot1_layer(p)
@@ -277,8 +275,8 @@ class TestIPv6(TestIPv6ND):
         """
         hdr_ext = 4 if isinstance(src_if, VppSubInterface) else 0
         pkt_tmpl = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                    IPv6(src=src_if.remote_ip6) /
-                    UDP(sport=1234, dport=1234))
+                    scapy.layers.inet6.IPv6(src=src_if.remote_ip6) /
+                    scapy.layers.inet6.UDP(sport=1234, dport=1234))
 
         pkts = [self.modify_packet(src_if, i, pkt_tmpl)
                 for i in xrange(self.pg_if_packet_sizes[0],
@@ -311,8 +309,8 @@ class TestIPv6(TestIPv6ND):
                 packet = dst_if.remove_dot1_layer(packet)
             self.assertTrue(Dot1Q not in packet)
             try:
-                ip = packet[IPv6]
-                udp = packet[UDP]
+                ip = packet[scapy.layers.inet6.IPv6]
+                udp = packet[scapy.layers.inet6.UDP]
                 payload_info = self.payload_to_info(str(packet[Raw]))
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
@@ -327,10 +325,14 @@ class TestIPv6(TestIPv6ND):
                 self.assertEqual(packet_index, next_info.index)
                 saved_packet = next_info.data
                 # Check standard fields
-                self.assertEqual(ip.src, saved_packet[IPv6].src)
-                self.assertEqual(ip.dst, saved_packet[IPv6].dst)
-                self.assertEqual(udp.sport, saved_packet[UDP].sport)
-                self.assertEqual(udp.dport, saved_packet[UDP].dport)
+                self.assertEqual(
+                    ip.src, saved_packet[scapy.layers.inet6.IPv6].src)
+                self.assertEqual(
+                    ip.dst, saved_packet[scapy.layers.inet6.IPv6].dst)
+                self.assertEqual(
+                    udp.sport, saved_packet[scapy.layers.inet6.UDP].sport)
+                self.assertEqual(
+                    udp.dport, saved_packet[scapy.layers.inet6.UDP].dport)
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
@@ -383,9 +385,10 @@ class TestIPv6(TestIPv6ND):
         d = inet_ntop(AF_INET6, nsma)
 
         p = (Ether(dst=in6_getnsmac(nsma)) /
-             IPv6(dst=d, src="2002::2") /
-             ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
-             ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+             scapy.layers.inet6.IPv6(dst=d, src="2002::2") /
+             scapy.layers.inet6.ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
+             scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                 lladdr=self.pg0.remote_mac))
         pkts = [p]
 
         self.send_and_assert_no_replies(
@@ -401,9 +404,10 @@ class TestIPv6(TestIPv6ND):
             d = inet_ntop(AF_INET6, nsma)
 
             p = (Ether(dst=in6_getnsmac(nsma)) /
-                 IPv6(dst=d, src=self.pg0.remote_ip6) /
-                 ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
-                 ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+                 scapy.layers.inet6.IPv6(dst=d, src=self.pg0.remote_ip6) /
+                 scapy.layers.inet6.ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
+                 scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                     lladdr=self.pg0.remote_mac))
             pkts = [p]
 
             self.send_and_assert_no_replies(
@@ -417,9 +421,10 @@ class TestIPv6(TestIPv6ND):
         d = inet_ntop(AF_INET6, nsma)
 
         p = (Ether(dst=in6_getnsmac(nsma)) /
-             IPv6(dst=d, src=self.pg0.remote_ip6) /
-             ICMPv6ND_NS(tgt="fd::ffff") /
-             ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+             scapy.layers.inet6.IPv6(dst=d, src=self.pg0.remote_ip6) /
+             scapy.layers.inet6.ICMPv6ND_NS(tgt="fd::ffff") /
+             scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                 lladdr=self.pg0.remote_mac))
         pkts = [p]
 
         self.send_and_assert_no_replies(self.pg0, pkts,
@@ -454,9 +459,11 @@ class TestIPv6(TestIPv6ND):
         # address
         #
         p = (Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac) /
-             IPv6(dst=d, src=self.pg0._remote_hosts[2].ip6_ll) /
-             ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
-             ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+             scapy.layers.inet6.IPv6(
+                 dst=d, src=self.pg0._remote_hosts[2].ip6_ll) /
+             scapy.layers.inet6.ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
+             scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                 lladdr=self.pg0.remote_mac))
 
         self.send_and_expect_na(self.pg0, p,
                                 "NS from link-local",
@@ -480,9 +487,11 @@ class TestIPv6(TestIPv6ND):
         # An NS to the router's own Link-local
         #
         p = (Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac) /
-             IPv6(dst=d, src=self.pg0._remote_hosts[3].ip6_ll) /
-             ICMPv6ND_NS(tgt=self.pg0.local_ip6_ll) /
-             ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+             scapy.layers.inet6.IPv6(
+                 dst=d, src=self.pg0._remote_hosts[3].ip6_ll) /
+             scapy.layers.inet6.ICMPv6ND_NS(tgt=self.pg0.local_ip6_ll) /
+             scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                 lladdr=self.pg0.remote_mac))
 
         self.send_and_expect_na(self.pg0, p,
                                 "NS to/from link-local",
@@ -531,9 +540,9 @@ class TestIPv6(TestIPv6ND):
         #
         p = (Ether(dst=self.pg0.local_mac,
                    src=self.pg0.remote_mac) /
-             IPv6(src=self.pg0.remote_ip6,
-                  dst=self.pg1.remote_hosts[1].ip6) /
-             UDP(sport=1234, dport=1234) /
+             scapy.layers.inet6.IPv6(src=self.pg0.remote_ip6,
+                                     dst=self.pg1.remote_hosts[1].ip6) /
+             scapy.layers.inet6.UDP(sport=1234, dport=1234) /
              Raw())
 
         self.pg0.add_stream(p)
@@ -585,42 +594,45 @@ class TestIPv6(TestIPv6ND):
         self.assertEqual(rx[Ether].src, intf.local_mac)
 
         # the rx'd RA should be addressed to the sender's source
-        self.assertTrue(rx.haslayer(ICMPv6ND_RA))
-        self.assertEqual(in6_ptop(rx[IPv6].dst),
+        self.assertTrue(rx.haslayer(scapy.layers.inet6.ICMPv6ND_RA))
+        self.assertEqual(in6_ptop(rx[scapy.layers.inet6.IPv6].dst),
                          in6_ptop(dst_ip))
 
         # and come from the router's link local
-        self.assertTrue(in6_islladdr(rx[IPv6].src))
-        self.assertEqual(in6_ptop(rx[IPv6].src),
+        self.assertTrue(in6_islladdr(rx[scapy.layers.inet6.IPv6].src))
+        self.assertEqual(in6_ptop(rx[scapy.layers.inet6.IPv6].src),
                          in6_ptop(mk_ll_addr(intf.local_mac)))
 
         # it should contain the links MTU
-        ra = rx[ICMPv6ND_RA]
-        self.assertEqual(ra[ICMPv6NDOptMTU].mtu, mtu)
+        ra = rx[scapy.layers.inet6.ICMPv6ND_RA]
+        self.assertEqual(ra[scapy.layers.inet6.ICMPv6NDOptMTU].mtu, mtu)
 
         # it should contain the source's link layer address option
-        sll = ra[ICMPv6NDOptSrcLLAddr]
+        sll = ra[scapy.layers.inet6.ICMPv6NDOptSrcLLAddr]
         self.assertEqual(sll.lladdr, intf.local_mac)
 
         if not pi_opt:
             # the RA should not contain prefix information
-            self.assertFalse(ra.haslayer(ICMPv6NDOptPrefixInfo))
+            self.assertFalse(ra.haslayer(
+                scapy.layers.inet6.ICMPv6NDOptPrefixInfo))
         else:
-            raos = rx.getlayer(ICMPv6NDOptPrefixInfo, 1)
+            raos = rx.getlayer(scapy.layers.inet6.ICMPv6NDOptPrefixInfo, 1)
 
             # the options are nested in the scapy packet in way that i cannot
             # decipher how to decode. this 1st layer of option always returns
             # nested classes, so a direct obj1=obj2 comparison always fails.
             # however, the getlayer(.., 2) does give one instnace.
             # so we cheat here and construct a new opt instnace for comparison
-            rd = ICMPv6NDOptPrefixInfo(prefixlen=raos.prefixlen,
-                                       prefix=raos.prefix,
-                                       L=raos.L,
-                                       A=raos.A)
+            rd = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+                prefixlen=raos.prefixlen,
+                prefix=raos.prefix,
+                L=raos.L,
+                A=raos.A)
             if type(pi_opt) is list:
                 for ii in range(len(pi_opt)):
                     self.assertEqual(pi_opt[ii], rd)
-                    rd = rx.getlayer(ICMPv6NDOptPrefixInfo, ii+2)
+                    rd = rx.getlayer(
+                        scapy.layers.inet6.ICMPv6NDOptPrefixInfo, ii + 2)
             else:
                 self.assertEqual(pi_opt, raos)
 
@@ -657,8 +669,9 @@ class TestIPv6(TestIPv6ND):
         #  - expect an RA in return
         #
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
-             ICMPv6ND_RS())
+             scapy.layers.inet6.IPv6(
+                 dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
+             scapy.layers.inet6.ICMPv6ND_RS())
         pkts = [p]
         self.send_and_expect_ra(self.pg0, pkts, "Genuine RS")
 
@@ -680,8 +693,9 @@ class TestIPv6(TestIPv6ND):
         #
         self.pg0.ip6_ra_config(send_unicast=1)
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(dst=self.pg0.local_ip6, src="2002::ffff") /
-             ICMPv6ND_RS())
+             scapy.layers.inet6.IPv6(dst=self.pg0.local_ip6,
+                                     src="2002::ffff") /
+             scapy.layers.inet6.ICMPv6ND_RS())
         pkts = [p]
         self.send_and_assert_no_replies(self.pg0, pkts,
                                         "RS from non-link source")
@@ -692,8 +706,8 @@ class TestIPv6(TestIPv6ND):
         self.pg0.ip6_ra_config(send_unicast=1)
         ll = mk_ll_addr(self.pg0.remote_mac)
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(dst=self.pg0.local_ip6, src=ll) /
-             ICMPv6ND_RS())
+             scapy.layers.inet6.IPv6(dst=self.pg0.local_ip6, src=ll) /
+             scapy.layers.inet6.ICMPv6ND_RS())
         pkts = [p]
         self.send_and_expect_ra(self.pg0, pkts,
                                 "RS sourced from link-local",
@@ -706,8 +720,8 @@ class TestIPv6(TestIPv6ND):
         dmac = in6_getnsmac(inet_pton(AF_INET6, "ff02::2"))
         ll = mk_ll_addr(self.pg0.remote_mac)
         p = (Ether(dst=dmac, src=self.pg0.remote_mac) /
-             IPv6(dst="ff02::2", src=ll) /
-             ICMPv6ND_RS())
+             scapy.layers.inet6.IPv6(dst="ff02::2", src=ll) /
+             scapy.layers.inet6.ICMPv6ND_RS())
         pkts = [p]
         self.send_and_expect_ra(self.pg0, pkts,
                                 "RS sourced from link-local",
@@ -723,8 +737,8 @@ class TestIPv6(TestIPv6ND):
         #
         self.pg0.ip6_ra_config(send_unicast=1, suppress=1)
         p = (Ether(dst=dmac, src=self.pg0.remote_mac) /
-             IPv6(dst="ff02::2", src="::") /
-             ICMPv6ND_RS())
+             scapy.layers.inet6.IPv6(dst="ff02::2", src="::") /
+             scapy.layers.inet6.ICMPv6ND_RS())
         pkts = [p]
         self.send_and_expect_ra(self.pg0, pkts,
                                 "RS sourced from unspecified",
@@ -740,16 +754,17 @@ class TestIPv6(TestIPv6ND):
         #
         # RAs should now contain the prefix information option
         #
-        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
-                                    prefix=self.pg0.local_ip6,
-                                    L=1,
-                                    A=1)
+        opt = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg0.local_ip6_prefix_len,
+            prefix=self.pg0.local_ip6,
+            L=1,
+            A=1)
 
         self.pg0.ip6_ra_config(send_unicast=1)
         ll = mk_ll_addr(self.pg0.remote_mac)
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(dst=self.pg0.local_ip6, src=ll) /
-             ICMPv6ND_RS())
+             scapy.layers.inet6.IPv6(dst=self.pg0.local_ip6, src=ll) /
+             scapy.layers.inet6.ICMPv6ND_RS())
         self.send_and_expect_ra(self.pg0, p,
                                 "RA with prefix-info",
                                 dst_ip=ll,
@@ -763,10 +778,11 @@ class TestIPv6(TestIPv6ND):
                                self.pg0.local_ip6_prefix_len,
                                off_link=1)
 
-        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
-                                    prefix=self.pg0.local_ip6,
-                                    L=0,
-                                    A=1)
+        opt = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg0.local_ip6_prefix_len,
+            prefix=self.pg0.local_ip6,
+            L=0,
+            A=1)
 
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, p,
@@ -783,10 +799,11 @@ class TestIPv6(TestIPv6ND):
                                off_link=1,
                                no_autoconfig=1)
 
-        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
-                                    prefix=self.pg0.local_ip6,
-                                    L=0,
-                                    A=0)
+        opt = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg0.local_ip6_prefix_len,
+            prefix=self.pg0.local_ip6,
+            L=0,
+            A=0)
 
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, p,
@@ -801,10 +818,11 @@ class TestIPv6(TestIPv6ND):
         self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
                                self.pg0.local_ip6_prefix_len)
 
-        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
-                                    prefix=self.pg0.local_ip6,
-                                    L=1,
-                                    A=1)
+        opt = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg0.local_ip6_prefix_len,
+            prefix=self.pg0.local_ip6,
+            L=1,
+            A=1)
 
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, p,
@@ -821,10 +839,11 @@ class TestIPv6(TestIPv6ND):
                                off_link=1,
                                no_autoconfig=1)
 
-        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
-                                    prefix=self.pg0.local_ip6,
-                                    L=0,
-                                    A=0)
+        opt = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg0.local_ip6_prefix_len,
+            prefix=self.pg0.local_ip6,
+            L=0,
+            A=0)
 
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, p,
@@ -840,10 +859,11 @@ class TestIPv6(TestIPv6ND):
                                self.pg0.local_ip6_prefix_len,
                                use_default=1)
 
-        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
-                                    prefix=self.pg0.local_ip6,
-                                    L=1,
-                                    A=1)
+        opt = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg0.local_ip6_prefix_len,
+            prefix=self.pg0.local_ip6,
+            L=1,
+            A=1)
 
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, p,
@@ -859,20 +879,22 @@ class TestIPv6(TestIPv6ND):
                                off_link=1,
                                no_autoconfig=1)
 
-        opt = [ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
-                                     prefix=self.pg0.local_ip6,
-                                     L=1,
-                                     A=1),
-               ICMPv6NDOptPrefixInfo(prefixlen=self.pg1.local_ip6_prefix_len,
-                                     prefix=self.pg1.local_ip6,
-                                     L=0,
-                                     A=0)]
+        opt = [scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg0.local_ip6_prefix_len,
+            prefix=self.pg0.local_ip6,
+            L=1,
+            A=1),
+            scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+                prefixlen=self.pg1.local_ip6_prefix_len,
+                prefix=self.pg1.local_ip6,
+                L=0,
+                A=0)]
 
         self.pg0.ip6_ra_config(send_unicast=1)
         ll = mk_ll_addr(self.pg0.remote_mac)
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(dst=self.pg0.local_ip6, src=ll) /
-             ICMPv6ND_RS())
+             scapy.layers.inet6.IPv6(dst=self.pg0.local_ip6, src=ll) /
+             scapy.layers.inet6.ICMPv6ND_RS())
         self.send_and_expect_ra(self.pg0, p,
                                 "RA with multiple Prefix infos",
                                 dst_ip=ll,
@@ -886,10 +908,11 @@ class TestIPv6(TestIPv6ND):
                                self.pg0.local_ip6_prefix_len,
                                is_no=1)
 
-        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg1.local_ip6_prefix_len,
-                                    prefix=self.pg1.local_ip6,
-                                    L=0,
-                                    A=0)
+        opt = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
+            prefixlen=self.pg1.local_ip6_prefix_len,
+            prefix=self.pg1.local_ip6,
+            L=0,
+            A=0)
 
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, p,
@@ -950,10 +973,12 @@ class TestICMPv6Echo(VppTestCase):
         icmpv6_data = '\x0a' * 18
         p_echo_request = (Ether(src=self.pg0.remote_mac,
                                 dst=self.pg0.local_mac) /
-                          IPv6(src=self.pg0.remote_ip6,
-                               dst=self.pg0.local_ip6) /
-                          ICMPv6EchoRequest(id=icmpv6_id, seq=icmpv6_seq,
-                                            data=icmpv6_data))
+                          scapy.layers.inet6.IPv6(src=self.pg0.remote_ip6,
+                                                  dst=self.pg0.local_ip6) /
+                          scapy.layers.inet6.ICMPv6EchoRequest(
+                              id=icmpv6_id,
+                              seq=icmpv6_seq,
+                              data=icmpv6_data))
 
         self.pg0.add_stream(p_echo_request)
         self.pg_enable_capture(self.pg_interfaces)
@@ -962,8 +987,8 @@ class TestICMPv6Echo(VppTestCase):
         rx = self.pg0.get_capture(1)
         rx = rx[0]
         ether = rx[Ether]
-        ipv6 = rx[IPv6]
-        icmpv6 = rx[ICMPv6EchoReply]
+        ipv6 = rx[scapy.layers.inet6.IPv6]
+        icmpv6 = rx[scapy.layers.inet6.ICMPv6EchoReply]
 
         self.assertEqual(ether.src, self.pg0.local_mac)
         self.assertEqual(ether.dst, self.pg0.remote_mac)
@@ -971,7 +996,8 @@ class TestICMPv6Echo(VppTestCase):
         self.assertEqual(ipv6.src, self.pg0.local_ip6)
         self.assertEqual(ipv6.dst, self.pg0.remote_ip6)
 
-        self.assertEqual(icmp6types[icmpv6.type], "Echo Reply")
+        self.assertEqual(
+            scapy.layers.inet6.icmp6types[icmpv6.type], "Echo Reply")
         self.assertEqual(icmpv6.id, icmpv6_id)
         self.assertEqual(icmpv6.seq, icmpv6_seq)
         self.assertEqual(icmpv6.data, icmpv6_data)
@@ -1014,17 +1040,21 @@ class TestIPv6RD(TestIPv6ND):
         rx_list = self.pg1.get_capture(count, timeout=3)
         self.assertEqual(len(rx_list), count)
         for packet in rx_list:
-            self.assertTrue(packet.haslayer(IPv6))
-            self.assertTrue(packet[IPv6].haslayer(ICMPv6ND_RS))
-            dst = ip6_normalize(packet[IPv6].dst)
+            self.assertTrue(bool(packet.haslayer(scapy.layers.inet6.IPv6)))
+            self.assertTrue(bool(packet[scapy.layers.inet6.IPv6].haslayer(
+                scapy.layers.inet6.ICMPv6ND_RS)))
+            dst = ip6_normalize(packet[scapy.layers.inet6.IPv6].dst)
             dst2 = ip6_normalize("ff02::2")
             self.assert_equal(dst, dst2)
-            src = ip6_normalize(packet[IPv6].src)
+            src = ip6_normalize(packet[scapy.layers.inet6.IPv6].src)
             src2 = ip6_normalize(self.pg1.local_ip6_ll)
             self.assert_equal(src, src2)
-            self.assertTrue(packet[ICMPv6ND_RS].haslayer(ICMPv6NDOptSrcLLAddr))
-            self.assert_equal(packet[ICMPv6NDOptSrcLLAddr].lladdr,
-                              self.pg1.local_mac)
+            self.assertTrue(
+                bool(packet[scapy.layers.inet6.ICMPv6ND_RS].haslayer(
+                    scapy.layers.inet6.ICMPv6NDOptSrcLLAddr)))
+            self.assert_equal(
+                packet[scapy.layers.inet6.ICMPv6NDOptSrcLLAddr].lladdr,
+                self.pg1.local_mac)
 
     def verify_prefix_info(self, reported_prefix, prefix_option):
         prefix = socket.inet_pton(socket.AF_INET6,
@@ -1046,7 +1076,7 @@ class TestIPv6RD(TestIPv6ND):
 
         self.vapi.want_ip6_ra_events()
 
-        prefix_info_1 = ICMPv6NDOptPrefixInfo(
+        prefix_info_1 = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
             prefix="1::2",
             prefixlen=50,
             validlifetime=200,
@@ -1055,7 +1085,7 @@ class TestIPv6RD(TestIPv6ND):
             A=1,
         )
 
-        prefix_info_2 = ICMPv6NDOptPrefixInfo(
+        prefix_info_2 = scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
             prefix="7::4",
             prefixlen=20,
             validlifetime=70,
@@ -1065,9 +1095,9 @@ class TestIPv6RD(TestIPv6ND):
         )
 
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
-             IPv6(dst=self.pg1.local_ip6_ll,
-                  src=mk_ll_addr(self.pg1.remote_mac)) /
-             ICMPv6ND_RA() /
+             scapy.layers.inet6.IPv6(dst=self.pg1.local_ip6_ll,
+                                     src=mk_ll_addr(self.pg1.remote_mac)) /
+             scapy.layers.inet6.ICMPv6ND_RA() /
              prefix_info_1 /
              prefix_info_2)
         self.pg1.add_stream([p])
@@ -1116,11 +1146,11 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         src_ip = pg.remote_ip6_ll
         dst_ip = pg.local_ip6
         if routerlifetime is not None:
-            ra = ICMPv6ND_RA(routerlifetime=routerlifetime)
+            ra = scapy.layers.inet6.ICMPv6ND_RA(routerlifetime=routerlifetime)
         else:
-            ra = ICMPv6ND_RA()
+            ra = scapy.layers.inet6.ICMPv6ND_RA()
         p = (Ether(dst=pg.local_mac, src=pg.remote_mac) /
-             IPv6(dst=dst_ip, src=src_ip) / ra)
+             scapy.layers.inet6.IPv6(dst=dst_ip, src=src_ip) / ra)
         return p
 
     @staticmethod
@@ -1160,14 +1190,15 @@ class TestIPv6RDControlPlane(TestIPv6ND):
         self.sleep(0.1)
 
         # send RA
-        packet = (self.create_ra_packet(self.pg0) / ICMPv6NDOptPrefixInfo(
+        packet = (self.create_ra_packet(
+            self.pg0) / scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
             prefix="1::",
             prefixlen=64,
             validlifetime=2,
             preferredlifetime=2,
             L=1,
             A=1,
-        ) / ICMPv6NDOptPrefixInfo(
+        ) / scapy.layers.inet6.ICMPv6NDOptPrefixInfo(
             prefix="7::",
             prefixlen=20,
             validlifetime=1500,
@@ -1300,9 +1331,11 @@ class IPv6NDProxyTest(TestIPv6ND):
         # on the link that has the prefix configured
         #
         ns_pg1 = (Ether(dst=in6_getnsmac(nsma), src=self.pg1.remote_mac) /
-                  IPv6(dst=d, src=self.pg0._remote_hosts[2].ip6) /
-                  ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
-                  ICMPv6NDOptSrcLLAddr(lladdr=self.pg0._remote_hosts[2].mac))
+                  scapy.layers.inet6.IPv6(dst=d,
+                                          src=self.pg0._remote_hosts[2].ip6) /
+                  scapy.layers.inet6.ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
+                  scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                      lladdr=self.pg0._remote_hosts[2].mac))
 
         self.send_and_assert_no_replies(self.pg1, ns_pg1, "Off link NS")
 
@@ -1333,9 +1366,9 @@ class IPv6NDProxyTest(TestIPv6ND):
         # ... and we can route traffic to it
         #
         t = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(dst=self.pg0._remote_hosts[2].ip6,
-                  src=self.pg0.remote_ip6) /
-             UDP(sport=10000, dport=20000) /
+             scapy.layers.inet6.IPv6(dst=self.pg0._remote_hosts[2].ip6,
+                                     src=self.pg0.remote_ip6) /
+             scapy.layers.inet6.UDP(sport=10000, dport=20000) /
              Raw('\xa5' * 100))
 
         self.pg0.add_stream(t)
@@ -1347,16 +1380,20 @@ class IPv6NDProxyTest(TestIPv6ND):
         self.assertEqual(rx[Ether].dst, self.pg0._remote_hosts[2].mac)
         self.assertEqual(rx[Ether].src, self.pg1.local_mac)
 
-        self.assertEqual(rx[IPv6].src, t[IPv6].src)
-        self.assertEqual(rx[IPv6].dst, t[IPv6].dst)
+        self.assertEqual(rx[scapy.layers.inet6.IPv6].src,
+                         t[scapy.layers.inet6.IPv6].src)
+        self.assertEqual(rx[scapy.layers.inet6.IPv6].dst,
+                         t[scapy.layers.inet6.IPv6].dst)
 
         #
         # Test we proxy for the host on the main interface
         #
         ns_pg0 = (Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac) /
-                  IPv6(dst=d, src=self.pg0.remote_ip6) /
-                  ICMPv6ND_NS(tgt=self.pg0._remote_hosts[2].ip6) /
-                  ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+                  scapy.layers.inet6.IPv6(dst=d, src=self.pg0.remote_ip6) /
+                  scapy.layers.inet6.ICMPv6ND_NS(
+                      tgt=self.pg0._remote_hosts[2].ip6) /
+                  scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                      lladdr=self.pg0.remote_mac))
 
         self.send_and_expect_na(self.pg0, ns_pg0,
                                 "NS to proxy entry on main",
@@ -1367,9 +1404,11 @@ class IPv6NDProxyTest(TestIPv6ND):
         # Setup and resolve proxy for another host on another interface
         #
         ns_pg2 = (Ether(dst=in6_getnsmac(nsma), src=self.pg2.remote_mac) /
-                  IPv6(dst=d, src=self.pg0._remote_hosts[3].ip6) /
-                  ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
-                  ICMPv6NDOptSrcLLAddr(lladdr=self.pg0._remote_hosts[2].mac))
+                  scapy.layers.inet6.IPv6(dst=d,
+                                          src=self.pg0._remote_hosts[3].ip6) /
+                  scapy.layers.inet6.ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
+                  scapy.layers.inet6.ICMPv6NDOptSrcLLAddr(
+                      lladdr=self.pg0._remote_hosts[2].mac))
 
         self.vapi.ip6_nd_proxy(
             inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
@@ -1390,9 +1429,9 @@ class IPv6NDProxyTest(TestIPv6ND):
         #
         t2 = (Ether(dst=self.pg2.local_mac,
                     src=self.pg0.remote_hosts[3].mac) /
-              IPv6(dst=self.pg0._remote_hosts[2].ip6,
-                   src=self.pg0._remote_hosts[3].ip6) /
-              UDP(sport=10000, dport=20000) /
+              scapy.layers.inet6.IPv6(dst=self.pg0._remote_hosts[2].ip6,
+                                      src=self.pg0._remote_hosts[3].ip6) /
+              scapy.layers.inet6.UDP(sport=10000, dport=20000) /
               Raw('\xa5' * 100))
 
         self.pg2.add_stream(t2)
@@ -1404,8 +1443,10 @@ class IPv6NDProxyTest(TestIPv6ND):
         self.assertEqual(rx[Ether].dst, self.pg0._remote_hosts[2].mac)
         self.assertEqual(rx[Ether].src, self.pg1.local_mac)
 
-        self.assertEqual(rx[IPv6].src, t2[IPv6].src)
-        self.assertEqual(rx[IPv6].dst, t2[IPv6].dst)
+        self.assertEqual(rx[scapy.layers.inet6.IPv6].src,
+                         t2[scapy.layers.inet6.IPv6].src)
+        self.assertEqual(rx[scapy.layers.inet6.IPv6].dst,
+                         t2[scapy.layers.inet6.IPv6].dst)
 
         #
         # remove the proxy configs
@@ -1445,7 +1486,7 @@ class IPv6NDProxyTest(TestIPv6ND):
 
         rx = self.pg0.get_capture(1)
 
-        self.assertTrue(rx[0].haslayer(ICMPv6ND_NS))
+        self.assertTrue(rx[0].haslayer(scapy.layers.inet6.ICMPv6ND_NS))
 
 
 class TestIPNull(VppTestCase):
@@ -1473,8 +1514,8 @@ class TestIPNull(VppTestCase):
 
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg0.local_mac) /
-             IPv6(src=self.pg0.remote_ip6, dst="2001::1") /
-             UDP(sport=1234, dport=1234) /
+             scapy.layers.inet6.IPv6(src=self.pg0.remote_ip6, dst="2001::1") /
+             scapy.layers.inet6.UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
         #
@@ -1489,7 +1530,7 @@ class TestIPNull(VppTestCase):
 
         rx = self.pg0.get_capture(1)
         rx = rx[0]
-        icmp = rx[ICMPv6DestUnreach]
+        icmp = rx[scapy.layers.inet6.ICMPv6DestUnreach]
 
         # 0 = "No route to destination"
         self.assertEqual(icmp.code, 0)
@@ -1510,7 +1551,7 @@ class TestIPNull(VppTestCase):
 
         rx = self.pg0.get_capture(1)
         rx = rx[0]
-        icmp = rx[ICMPv6DestUnreach]
+        icmp = rx[scapy.layers.inet6.ICMPv6DestUnreach]
 
         # 1 = "Communication with destination administratively prohibited"
         self.assertEqual(icmp.code, 1)
@@ -1560,13 +1601,13 @@ class TestIPDisabled(VppTestCase):
 
         pu = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
-              IPv6(src="2001::1", dst=self.pg0.remote_ip6) /
-              UDP(sport=1234, dport=1234) /
+              scapy.layers.inet6.IPv6(src="2001::1", dst=self.pg0.remote_ip6) /
+              scapy.layers.inet6.UDP(sport=1234, dport=1234) /
               Raw('\xa5' * 100))
         pm = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
-              IPv6(src="2001::1", dst="ffef::1") /
-              UDP(sport=1234, dport=1234) /
+              scapy.layers.inet6.IPv6(src="2001::1", dst="ffef::1") /
+              scapy.layers.inet6.UDP(sport=1234, dport=1234) /
               Raw('\xa5' * 100))
 
         #
@@ -1667,9 +1708,10 @@ class TestIP6LoadBalance(VppTestCase):
         src_mpls_pkts = []
 
         for ii in range(65):
-            port_ip_hdr = (IPv6(dst="3000::1", src="3000:1::1") /
-                           UDP(sport=1234, dport=1234 + ii) /
-                           Raw('\xa5' * 100))
+            port_ip_hdr = (
+                scapy.layers.inet6.IPv6(dst="3000::1", src="3000:1::1") /
+                scapy.layers.inet6.UDP(sport=1234, dport=1234 + ii) /
+                Raw('\xa5' * 100))
             port_ip_pkts.append((Ether(src=self.pg0.remote_mac,
                                        dst=self.pg0.local_mac) /
                                  port_ip_hdr))
@@ -1688,9 +1730,10 @@ class TestIP6LoadBalance(VppTestCase):
                                   MPLS(label=14, ttl=2) /
                                   MPLS(label=999, ttl=2) /
                                   port_ip_hdr))
-            src_ip_hdr = (IPv6(dst="3000::1", src="3000:1::%d" % ii) /
-                          UDP(sport=1234, dport=1234) /
-                          Raw('\xa5' * 100))
+            src_ip_hdr = (
+                scapy.layers.inet6.IPv6(dst="3000::1", src="3000:1::%d" % ii) /
+                scapy.layers.inet6.UDP(sport=1234, dport=1234) /
+                Raw('\xa5' * 100))
             src_ip_pkts.append((Ether(src=self.pg0.remote_mac,
                                       dst=self.pg0.local_mac) /
                                 src_ip_hdr))
@@ -1787,13 +1830,16 @@ class TestIP6LoadBalance(VppTestCase):
         for ii in range(257):
             port_pkts.append((Ether(src=self.pg0.remote_mac,
                                     dst=self.pg0.local_mac) /
-                              IPv6(dst="4000::1", src="4000:1::1") /
-                              UDP(sport=1234, dport=1234 + ii) /
+                              scapy.layers.inet6.IPv6(dst="4000::1",
+                                                      src="4000:1::1") /
+                              scapy.layers.inet6.UDP(sport=1234,
+                                                     dport=1234 + ii) /
                               Raw('\xa5' * 100)))
             src_pkts.append((Ether(src=self.pg0.remote_mac,
                                    dst=self.pg0.local_mac) /
-                             IPv6(dst="4000::1", src="4000:1::%d" % ii) /
-                             UDP(sport=1234, dport=1234) /
+                             scapy.layers.inet6.IPv6(dst="4000::1",
+                                                     src="4000:1::%d" % ii) /
+                             scapy.layers.inet6.UDP(sport=1234, dport=1234) /
                              Raw('\xa5' * 100)))
 
         route_3000_2 = VppIpRoute(self, "3000::2", 128,
@@ -1836,8 +1882,10 @@ class TestIP6LoadBalance(VppTestCase):
         for ii in range(257):
             port_pkts.append((Ether(src=self.pg0.remote_mac,
                                     dst=self.pg0.local_mac) /
-                              IPv6(dst="6000::1", src="6000:1::1") /
-                              UDP(sport=1234, dport=1234 + ii) /
+                              scapy.layers.inet6.IPv6(dst="6000::1",
+                                                      src="6000:1::1") /
+                              scapy.layers.inet6.UDP(sport=1234,
+                                                     dport=1234 + ii) /
                               Raw('\xa5' * 100)))
 
         route_5000_2 = VppIpRoute(self, "5000::2", 128,
@@ -1885,8 +1933,9 @@ class TestIP6Punt(VppTestCase):
 
         p = (Ether(src=self.pg0.remote_mac,
                    dst=self.pg0.local_mac) /
-             IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
-             TCP(sport=1234, dport=1234) /
+             scapy.layers.inet6.IPv6(src=self.pg0.remote_ip6,
+                                     dst=self.pg0.local_ip6) /
+             scapy.layers.inet6.TCP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
         pkts = p * 1025
@@ -2016,13 +2065,13 @@ class TestIPDeag(VppTestCase):
         #
         p_dst = (Ether(src=self.pg0.remote_mac,
                        dst=self.pg0.local_mac) /
-                 IPv6(src="5::5", dst="1::1") /
-                 TCP(sport=1234, dport=1234) /
+                 scapy.layers.inet6.IPv6(src="5::5", dst="1::1") /
+                 scapy.layers.inet6.TCP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
         p_src = (Ether(src=self.pg0.remote_mac,
                        dst=self.pg0.local_mac) /
-                 IPv6(src="2::2", dst="1::2") /
-                 TCP(sport=1234, dport=1234) /
+                 scapy.layers.inet6.IPv6(src="2::2", dst="1::2") /
+                 scapy.layers.inet6.TCP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
         pkts_dst = p_dst * 257
         pkts_src = p_src * 257
@@ -2069,8 +2118,8 @@ class TestIPDeag(VppTestCase):
 
         p_l = (Ether(src=self.pg0.remote_mac,
                      dst=self.pg0.local_mac) /
-               IPv6(src="3::4", dst="3::3") /
-               TCP(sport=1234, dport=1234) /
+               scapy.layers.inet6.IPv6(src="3::4", dst="3::3") /
+               scapy.layers.inet6.TCP(sport=1234, dport=1234) /
                Raw('\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, p_l * 257,
@@ -2104,10 +2153,10 @@ class TestIP6Input(VppTestCase):
         #
         p_version = (Ether(src=self.pg0.remote_mac,
                            dst=self.pg0.local_mac) /
-                     IPv6(src=self.pg0.remote_ip6,
-                          dst=self.pg1.remote_ip6,
-                          version=3) /
-                     UDP(sport=1234, dport=1234) /
+                     scapy.layers.inet6.IPv6(src=self.pg0.remote_ip6,
+                                             dst=self.pg1.remote_ip6,
+                                             version=3) /
+                     scapy.layers.inet6.UDP(sport=1234, dport=1234) /
                      Raw('\xa5' * 100))
 
         self.send_and_assert_no_replies(self.pg0, p_version * 65,
@@ -2118,15 +2167,15 @@ class TestIP6Input(VppTestCase):
         #
         p_version = (Ether(src=self.pg0.remote_mac,
                            dst=self.pg0.local_mac) /
-                     IPv6(src=self.pg0.remote_ip6,
-                          dst=self.pg1.remote_ip6,
-                          hlim=1) /
-                     UDP(sport=1234, dport=1234) /
+                     scapy.layers.inet6.IPv6(src=self.pg0.remote_ip6,
+                                             dst=self.pg1.remote_ip6,
+                                             hlim=1) /
+                     scapy.layers.inet6.UDP(sport=1234, dport=1234) /
                      Raw('\xa5' * 100))
 
         rx = self.send_and_expect(self.pg0, p_version * 65, self.pg0)
         rx = rx[0]
-        icmp = rx[ICMPv6TimeExceeded]
+        icmp = rx[scapy.layers.inet6.ICMPv6TimeExceeded]
         self.assertEqual(icmp.type, 3)
         # 0: "hop limit exceeded in transit",
         self.assertEqual(icmp.code, 0)

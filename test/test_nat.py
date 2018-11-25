@@ -574,7 +574,7 @@ class MethodHolder(VppTestCase):
         for packet in capture:
             try:
                 self.assertEqual(packet[IP].src, src_ip)
-                self.assertTrue(packet.haslayer(ICMP))
+                self.assertTrue(bool(packet.haslayer(ICMP)))
                 icmp = packet[ICMP]
                 self.assertEqual(icmp.type, icmp_type)
                 self.assertTrue(icmp.haslayer(IPerror))
@@ -604,7 +604,7 @@ class MethodHolder(VppTestCase):
         for packet in capture:
             try:
                 self.assertEqual(packet[IP].dst, in_if.remote_ip4)
-                self.assertTrue(packet.haslayer(ICMP))
+                self.assertTrue(bool(packet.haslayer(ICMP)))
                 icmp = packet[ICMP]
                 self.assertEqual(icmp.type, icmp_type)
                 self.assertTrue(icmp.haslayer(IPerror))
@@ -2993,7 +2993,7 @@ class TestNAT44(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, nat_ip)
             self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -3013,7 +3013,7 @@ class TestNAT44(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, self.pg1.remote_ip4)
             self.assertEqual(packet[IP].dst, self.pg0.remote_ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -3048,7 +3048,7 @@ class TestNAT44(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, host_nat_ip)
             self.assertEqual(packet[IP].dst, server.ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -3068,7 +3068,7 @@ class TestNAT44(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, server_nat_ip)
             self.assertEqual(packet[IP].dst, host.ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -4348,7 +4348,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, self.nat_addr)
             self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -4368,7 +4368,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, self.pg1.remote_ip4)
             self.assertEqual(packet[IP].dst, self.pg0.remote_ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -4412,7 +4412,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, self.nat_addr)
             self.assertEqual(packet[IP].dst, server.ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -4432,7 +4432,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, server_nat_ip)
             self.assertEqual(packet[IP].dst, host.ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -6586,7 +6586,7 @@ class TestNAT64(MethodHolder):
         packet = capture[0]
         try:
             self.assertEqual(packet[IPv6].src, self.pg5.local_ip6)
-            self.assertTrue(packet.haslayer(ICMPv6ND_NS))
+            self.assertTrue(bool(packet.haslayer(ICMPv6ND_NS)))
             tgt = packet[ICMPv6ND_NS].tgt
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
@@ -6614,7 +6614,7 @@ class TestNAT64(MethodHolder):
         try:
             self.assertEqual(packet[IPv6].src, self.pg5.local_ip6)
             self.assertEqual(packet[IPv6].dst, self.pg5.remote_ip6)
-            self.assertTrue(packet.haslayer(ICMPv6EchoReply))
+            self.assertTrue(bool(packet.haslayer(ICMPv6EchoReply)))
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
@@ -7193,7 +7193,7 @@ class TestNAT64(MethodHolder):
         try:
             self.assertEqual(packet[IP].src, self.nat_addr)
             self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertTrue(bool(packet.haslayer(GRE)))
             self.assert_packet_checksums_valid(packet)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
