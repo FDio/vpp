@@ -11,11 +11,12 @@
 import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
 from scapy.layers.inet import ICMP
+from six import StringIO
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from socket import AF_INET, AF_INET6, inet_pton
-import StringIO
+
 
 """ Test_mtu is a subclass of VPPTestCase classes.
     MTU tests.
