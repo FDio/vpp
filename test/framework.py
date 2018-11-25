@@ -1,36 +1,41 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+
+import copy
 import gc
-import sys
 import os
+import random
 import select
-import unittest
+import six
+import sys
 import tempfile
 import time
-import faulthandler
-import random
-import copy
-import psutil
+import unittest
 from collections import deque
-from threading import Thread, Event
 from inspect import getdoc, isclass
-from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
-from scapy.packet import Raw
-from hook import StepHook, PollHook, VppDiedError
-from vpp_pg_interface import VppPGInterface
-from vpp_sub_interface import VppSubInterface
-from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import VppPapiProvider
-from vpp_papi.vpp_stats import VPPStats
-from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
-    get_logger, colorize
-from vpp_object import VppObjectRegistry
-from util import ppp, is_core_present
+from threading import Thread, Event
+from traceback import format_exception
+
+import faulthandler
+import psutil
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+from scapy.packet import Raw
+from vpp_papi.vpp_stats import VPPStats
+
+from hook import StepHook, PollHook, VppDiedError
+from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
+    get_logger, colorize
+from util import ppp, is_core_present
+from vpp_lo_interface import VppLoInterface
+from vpp_object import VppObjectRegistry
+from vpp_papi_provider import VppPapiProvider
+from vpp_pg_interface import VppPGInterface
+from vpp_sub_interface import VppSubInterface
+
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
     # @ https://docs.python.org/2/library/subprocess.html
@@ -327,7 +332,7 @@ class VppTestCase(unittest.TestCase):
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
-        raw_input("Press ENTER to continue running the testcase...")
+        six.input("Press ENTER to continue running the testcase...")
 
     @classmethod
     def run_vpp(cls):
@@ -467,7 +472,7 @@ class VppTestCase(unittest.TestCase):
                 print(double_line_delim)
                 print("VPP or GDB server is still running")
                 print(single_line_delim)
-                raw_input("When done debugging, press ENTER to kill the "
+                six.input("When done debugging, press ENTER to kill the "
                           "process and finish running the testcase...")
 
         # first signal that we want to stop the pump thread, then wake it up
