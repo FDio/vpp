@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import enum
 import unittest
 from logging import *
 
@@ -19,7 +20,7 @@ from scapy.volatile import RandMAC, RandIP
 from util import ppp, ppc
 
 
-class GreTunnelTypes:
+class GreTunnelTypes(enum.IntEnum):
     TT_L3 = 0
     TT_TEB = 1
     TT_ERSPAN = 2

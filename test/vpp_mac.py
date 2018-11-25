@@ -6,7 +6,7 @@
 from util import mactobinary
 
 
-class VppMacAddress():
+class VppMacAddress(object):
     def __init__(self, addr):
         self.address = addr
 
