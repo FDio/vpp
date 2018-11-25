@@ -308,6 +308,7 @@ typedef enum
   ETYPE_ID_IP4,
   ETYPE_ID_IP6,
   ETYPE_ID_MPLS,
+  ETYPE_ID_TAGGED,
   ETYPE_N_IDS,
 } etype_id_t;
 
@@ -353,6 +354,7 @@ eth_input_advance_and_flags (vlib_main_t * vm, u32 * from, u32 n_left,
 typedef struct
 {
   u16 etypes[VLIB_FRAME_SIZE];
+  u64 tags[VLIB_FRAME_SIZE];
   u32 bufs_by_etype[ETYPE_N_IDS][VLIB_FRAME_SIZE];
   u16 n_bufs_by_etype[ETYPE_N_IDS];
 } eth_input_data_t;
@@ -476,12 +478,24 @@ eth_input_adv_and_flags_x1 (vlib_buffer_t ** b, i16 adv, u32 flags, int is_l3)
     vnet_buffer (b[0])->l2.l2_len = adv;
 }
 
+
 static_always_inline void
-eth_input_process_frame (vlib_main_t * vm, u32 * from, u16 * etype,
-			 u32 n_left, int is_l3)
+eth_input_get_etype_and_tags (vlib_buffer_t * b, u16 * etype, u64 * tags,
+			      int maybe_tagged)
+{
+  ethernet_header_t *e;
+  e = vlib_buffer_get_current (b);
+  etype[0] = e->type;
+  if (maybe_tagged)
+    tags[0] = *(u64 *) (e + 1);
+}
+
+static_always_inline void
+eth_input_process_frame_inline (vlib_main_t * vm, u32 * from, u16 * etype,
+				u64 * tags, u32 n_left, int is_l3,
+				int maybe_tagged)
 {
   vlib_buffer_t *b[16];
-  ethernet_header_t *e;
   int adv = sizeof (ethernet_header_t);
 
   u32 flags = VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
@@ -495,75 +509,63 @@ eth_input_process_frame (vlib_main_t * vm, u32 * from, u16 * etype,
 
       vlib_prefetch_buffer_header (ph[0], LOAD);
       vlib_prefetch_buffer_data (pd[0], LOAD);
-      e = vlib_buffer_get_current (b[0]);
-      etype[0] = e->type;
+      eth_input_get_etype_and_tags (b[0], etype + 0, tags + 0, maybe_tagged);
 
       vlib_prefetch_buffer_header (ph[1], LOAD);
       vlib_prefetch_buffer_data (pd[1], LOAD);
-      e = vlib_buffer_get_current (b[1]);
-      etype[1] = e->type;
+      eth_input_get_etype_and_tags (b[1], etype + 1, tags + 1, maybe_tagged);
 
       vlib_prefetch_buffer_header (ph[2], LOAD);
       vlib_prefetch_buffer_data (pd[2], LOAD);
-      e = vlib_buffer_get_current (b[2]);
-      etype[2] = e->type;
+      eth_input_get_etype_and_tags (b[2], etype + 2, tags + 2, maybe_tagged);
 
       vlib_prefetch_buffer_header (ph[3], LOAD);
       vlib_prefetch_buffer_data (pd[3], LOAD);
-      e = vlib_buffer_get_current (b[3]);
-      etype[3] = e->type;
+      eth_input_get_etype_and_tags (b[3], etype + 3, tags + 3, maybe_tagged);
 
       eth_input_adv_and_flags_x4 (b, adv, flags, is_l3);
 
       /* next */
       n_left -= 4;
       etype += 4;
+      tags += 4;
       from += 4;
     }
   while (n_left >= 4)
     {
       vlib_get_buffers (vm, from, b, 4);
-
-      e = vlib_buffer_get_current (b[0]);
-      etype[0] = e->type;
-
-      e = vlib_buffer_get_current (b[1]);
-      etype[1] = e->type;
-
-      e = vlib_buffer_get_current (b[2]);
-      etype[2] = e->type;
-
-      e = vlib_buffer_get_current (b[3]);
-      etype[3] = e->type;
-
+      eth_input_get_etype_and_tags (b[0], etype + 0, tags + 0, maybe_tagged);
+      eth_input_get_etype_and_tags (b[1], etype + 1, tags + 1, maybe_tagged);
+      eth_input_get_etype_and_tags (b[2], etype + 2, tags + 2, maybe_tagged);
+      eth_input_get_etype_and_tags (b[3], etype + 3, tags + 3, maybe_tagged);
       eth_input_adv_and_flags_x4 (b, adv, flags, is_l3);
 
       /* next */
       n_left -= 4;
       etype += 4;
+      tags += 4;
       from += 4;
     }
   while (n_left)
     {
       vlib_get_buffers (vm, from, b, 1);
-
-      e = vlib_buffer_get_current (b[0]);
-      etype[0] = e->type;
-
+      eth_input_get_etype_and_tags (b[0], etype + 0, tags + 0, maybe_tagged);
       eth_input_adv_and_flags_x1 (b, adv, flags, is_l3);
 
       /* next */
       n_left -= 1;
       etype += 1;
+      tags += 1;
       from += 1;
     }
 }
 
 static_always_inline void
 eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
-		eth_input_data_t * d)
+		eth_input_data_t * d, int maybe_tagged)
 {
   u16 *etype = d->etypes;
+  u64 *tags = d->tags;
   i32 n_left = n_packets;
 
 #if defined (CLIB_HAVE_VEC256)
@@ -571,9 +573,13 @@ eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
   u16x16 et16_ip4 = u16x16_splat (clib_host_to_net_u16 (ETHERNET_TYPE_IP4));
   u16x16 et16_ip6 = u16x16_splat (clib_host_to_net_u16 (ETHERNET_TYPE_IP6));
   u16x16 et16_mpls = u16x16_splat (clib_host_to_net_u16 (ETHERNET_TYPE_MPLS));
+  u16x16 et16_vlan = u16x16_splat (clib_host_to_net_u16 (ETHERNET_TYPE_VLAN));
+  u16x16 et16_qinq =
+    u16x16_splat (clib_host_to_net_u16 (ETHERNET_TYPE_DOT1AD));
   u16x16 id16_ip4 = u16x16_splat (ETYPE_ID_IP4);
   u16x16 id16_ip6 = u16x16_splat (ETYPE_ID_IP6);
   u16x16 id16_mpls = u16x16_splat (ETYPE_ID_MPLS);
+  u16x16 id16_tagged = u16x16_splat (ETYPE_ID_TAGGED);
 
   while (n_left > 0)
     {
@@ -582,6 +588,8 @@ eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
       r += (e16 == et16_ip4) & id16_ip4;
       r += (e16 == et16_ip6) & id16_ip6;
       r += (e16 == et16_mpls) & id16_mpls;
+      if (maybe_tagged)
+	r += ((e16 == et16_vlan) | (e16 == et16_qinq)) & id16_tagged;
       u16x16_store_unaligned (r, etype);
       etype += 16;
       n_left -= 16;
@@ -591,9 +599,12 @@ eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
   u16x8 et8_ip4 = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_IP4));
   u16x8 et8_ip6 = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_IP6));
   u16x8 et8_mpls = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_MPLS));
+  u16x8 et8_vlan = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_VLAN));
+  u16x8 et8_qinq = u16x8_splat (clib_host_to_net_u16 (ETHERNET_TYPE_DOT1AD));
   u16x8 id8_ip4 = u16x8_splat (ETYPE_ID_IP4);
   u16x8 id8_ip6 = u16x8_splat (ETYPE_ID_IP6);
   u16x8 id8_mpls = u16x8_splat (ETYPE_ID_MPLS);
+  u16x8 id8_tagged = u16x8_splat (ETYPE_ID_TAGGED);
 
   while (n_left > 0)
     {
@@ -602,6 +613,9 @@ eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
       r += (e8 == et8_ip4) & id8_ip4;
       r += (e8 == et8_ip6) & id8_ip6;
       r += (e8 == et8_mpls) & id8_mpls;
+      r += (e8 == et8_vlan) & id8_tagged;
+      if (maybe_tagged)
+	r += ((e8 == et8_vlan) | (e8 == et8_qinq)) & id8_tagged;
       u16x8_store_unaligned (r, etype);
       etype += 8;
       n_left -= 8;
@@ -615,6 +629,10 @@ eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
 	etype[0] = ETYPE_ID_IP6;
       else if (etype[0] == ETHERNET_TYPE_MPLS)
 	etype[0] = ETYPE_ID_MPLS;
+      else if (maybe_tagged && etype[0] == ETHERNET_TYPE_VLAN)
+	etype[0] = ETYPE_ID_TAGGED;
+      else if (maybe_tagged && etype[0] == ETHERNET_TYPE_DOT1AD)
+	etype[0] = ETYPE_ID_TAGGED;
       else
 	etype[0] = ETYPE_ID_UNKNOWN;
 
@@ -638,11 +656,23 @@ eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
 					       etype[0]))
 	{
 	  clib_memcpy_fast (&d->bufs_by_etype[x][y], from, 16 * sizeof (u32));
+	  if (maybe_tagged && x == ETYPE_ID_TAGGED)
+	    {
+	      u64x4 r0 = u64x4_load_unaligned (tags + 0);
+	      u64x4 r1 = u64x4_load_unaligned (tags + 4);
+	      u64x4 r2 = u64x4_load_unaligned (tags + 8);
+	      u64x4 r3 = u64x4_load_unaligned (tags + 12);
+	      u64x4_store_unaligned (r0, d->tags + y + 0);
+	      u64x4_store_unaligned (r1, d->tags + y + 4);
+	      u64x4_store_unaligned (r2, d->tags + y + 8);
+	      u64x4_store_unaligned (r3, d->tags + y + 12);
+	    }
 	  d->n_bufs_by_etype[x] += 16;
 
 	  /* next */
 	  n_left -= 16;
 	  etype += 16;
+	  tags += 16;
 	  from += 16;
 	  continue;
 	}
@@ -652,24 +682,58 @@ eth_input_sort (vlib_main_t * vm, u32 * from, u32 n_packets,
 					     etype[0]))
 	{
 	  clib_memcpy_fast (&d->bufs_by_etype[x][y], from, 8 * sizeof (u32));
+	  if (maybe_tagged && x == ETYPE_ID_TAGGED)
+	    {
+	      u64x2 r0 = u64x2_load_unaligned (tags + 0);
+	      u64x2 r1 = u64x2_load_unaligned (tags + 2);
+	      u64x2 r2 = u64x2_load_unaligned (tags + 4);
+	      u64x2 r3 = u64x2_load_unaligned (tags + 6);
+	      u64x2_store_unaligned (r0, d->tags + y + 0);
+	      u64x2_store_unaligned (r1, d->tags + y + 2);
+	      u64x2_store_unaligned (r2, d->tags + y + 4);
+	      u64x2_store_unaligned (r3, d->tags + y + 6);
+	    }
 	  d->n_bufs_by_etype[x] += 8;
 
 	  /* next */
 	  n_left -= 8;
 	  etype += 8;
+	  tags += 8;
 	  from += 8;
 	  continue;
 	}
 #endif
       d->bufs_by_etype[x][y] = from[0];
+      if (maybe_tagged && x == ETYPE_ID_TAGGED)
+	d->tags[y] = tags[0];
       d->n_bufs_by_etype[x]++;
 
       /* next */
       n_left -= 1;
       etype += 1;
+      tags += 1;
       from += 1;
     }
 }
+
+static_always_inline void
+eth_input_process_frame (vlib_main_t * vm, u32 * from, eth_input_data_t * d,
+			 u32 n_packets, int is_l3, int maybe_tagged)
+{
+  if (maybe_tagged)
+    {
+      eth_input_process_frame_inline (vm, from, d->etypes, d->tags, n_packets,
+				      is_l3, /* maybe_tagged */ 1);
+      eth_input_sort (vm, from, n_packets, d, /* maybe_tagged */ 1);
+    }
+  else
+    {
+      eth_input_process_frame_inline (vm, from, d->etypes, d->tags, n_packets,
+				      is_l3, /* maybe_tagged */ 0);
+      eth_input_sort (vm, from, n_packets, d, /* maybe_tagged */ 0);
+    }
+}
+
 
 static_always_inline void
 ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -1246,12 +1310,13 @@ VLIB_NODE_FN (ethernet_input_node) (vlib_main_t * vm,
       main_intf_t *intf0 = vec_elt_at_index (em->main_intfs, hi->hw_if_index);
       subint_config_t *subint0 = &intf0->untagged_subint;
       int ip4_cksum_ok = (frame->flags & ETH_INPUT_FRAME_F_IP4_CKSUM_OK) != 0;
+      int maybe_tagged = intf0->dot1q_vlans || intf0->dot1ad_vlans;
 
       if (subint0->flags & SUBINT_CONFIG_L2)
 	{
 	  /* untagged packets are treated as L2 */
-	  eth_input_process_frame (vm, from, d->etypes, n_packets, 0);
-	  eth_input_sort (vm, from, n_packets, d);
+	  eth_input_process_frame (vm, from, d, n_packets, /* is_l3 */ 0,
+				   maybe_tagged);
 	  eth_input_enqueue_untagged (vm, node, d, ip4_cksum_ok, 0);
 	}
       else
@@ -1264,8 +1329,8 @@ VLIB_NODE_FN (ethernet_input_node) (vlib_main_t * vm,
 	    goto slowpath;
 
 	  /* untagged packets are treated as L3 */
-	  eth_input_process_frame (vm, from, d->etypes, n_packets, 1);
-	  eth_input_sort (vm, from, n_packets, d);
+	  eth_input_process_frame (vm, from, d, n_packets, /* is_l3 */ 1,
+				   maybe_tagged);
 	  eth_input_enqueue_untagged (vm, node, d, ip4_cksum_ok, 1);
 	}
       return n_packets;
