@@ -2,7 +2,7 @@ from scapy.layers.l2 import Dot1Q
 import abc
 import six
 from vpp_pg_interface import VppPGInterface
-from vpp_papi_provider import L2_VTR_OP
+from vpp_l2 import L2_VTR_OP
 from vpp_interface import VppInterface
 
 

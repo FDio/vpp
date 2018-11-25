@@ -11,7 +11,7 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppP2PSubint
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_papi import mac_pton
 
@@ -184,7 +184,7 @@ class P2PEthernetIPV6(VppTestCase):
         route_8000 = VppIpRoute(self, "8000::", 64,
                                 [VppRoutePath(self.pg0.remote_ip6,
                                               self.pg0.sw_if_index,
-                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                              proto=DPO_PROTO.IP6)],
                                 is_ip6=1)
         route_8000.add_vpp_config()
 
@@ -204,7 +204,7 @@ class P2PEthernetIPV6(VppTestCase):
         route_9001 = VppIpRoute(self, "9001::", 64,
                                 [VppRoutePath(self.pg1.remote_ip6,
                                               self.pg1.sw_if_index,
-                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                              proto=DPO_PROTO.IP6)],
                                 is_ip6=1)
         route_9001.add_vpp_config()
 
@@ -229,7 +229,7 @@ class P2PEthernetIPV6(VppTestCase):
         route_3 = VppIpRoute(self, "9000::", 64,
                              [VppRoutePath(self.pg1._remote_hosts[0].ip6,
                                            self.pg1.sw_if_index,
-                                           proto=DpoProto.DPO_PROTO_IP6)],
+                                           proto=DPO_PROTO.IP6)],
                              is_ip6=1)
         route_3.add_vpp_config()
 
@@ -254,7 +254,7 @@ class P2PEthernetIPV6(VppTestCase):
         route_9001 = VppIpRoute(self, "9000::", 64,
                                 [VppRoutePath(self.pg1._remote_hosts[0].ip6,
                                               self.pg1.sw_if_index,
-                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                              proto=DPO_PROTO.IP6)],
                                 is_ip6=1)
         route_9001.add_vpp_config()
 
@@ -275,19 +275,19 @@ class P2PEthernetIPV6(VppTestCase):
         route_8000 = VppIpRoute(self, "8000::", 64,
                                 [VppRoutePath(self.pg0.remote_ip6,
                                               self.pg0.sw_if_index,
-                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                              proto=DPO_PROTO.IP6)],
                                 is_ip6=1)
         route_8000.add_vpp_config()
         route_8001 = VppIpRoute(self, "8001::", 64,
                                 [VppRoutePath(self.p2p_sub_ifs[0].remote_ip6,
                                               self.p2p_sub_ifs[0].sw_if_index,
-                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                              proto=DPO_PROTO.IP6)],
                                 is_ip6=1)
         route_8001.add_vpp_config()
         route_8002 = VppIpRoute(self, "8002::", 64,
                                 [VppRoutePath(self.p2p_sub_ifs[1].remote_ip6,
                                               self.p2p_sub_ifs[1].sw_if_index,
-                                              proto=DpoProto.DPO_PROTO_IP6)],
+                                              proto=DPO_PROTO.IP6)],
                                 is_ip6=1)
         route_8002.add_vpp_config()
 

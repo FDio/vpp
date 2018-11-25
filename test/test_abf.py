@@ -4,8 +4,9 @@ from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel
+
+from vpp_ip import DPO_PROTO
+from vpp_ip_route import VppIpRoute, VppMplsLabel, VppRoutePath
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -297,7 +298,7 @@ class TestAbf(VppTestCase):
         abf_1 = VppAbfPolicy(self, 10, acl_1,
                              [VppRoutePath("3001::1",
                                            0xffffffff,
-                                           proto=DpoProto.DPO_PROTO_IP6)])
+                                           proto=DPO_PROTO.IP6)])
         abf_1.add_vpp_config()
 
         attach_1 = VppAbfAttach(self, 10, self.pg0.sw_if_index,
@@ -325,7 +326,7 @@ class TestAbf(VppTestCase):
         route = VppIpRoute(self, "3001::1", 32,
                            [VppRoutePath(self.pg1.remote_ip6,
                                          self.pg1.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
+                                         proto=DPO_PROTO.IP6)],
                            is_ip6=1)
         route.add_vpp_config()
 

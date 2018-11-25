@@ -3,12 +3,13 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip import DpoProto
+
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
-    MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, \
+    MFIB_ENTRY_FLAG, MFIB_ITF_FLAG, MPLS_LABEL_INVALID, \
     VppMplsLabel
-from vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
+from vpp_bier import BIER_HDR_PROTO, VppBierImp, VppBierDispEntry, \
     VppBierDispTable, VppBierTable, VppBierTableID, VppBierRoute
 from vpp_udp_encap import VppUdpEncap
 
@@ -344,12 +345,12 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MFIB_ITF_FLAG.ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 MFIB_ITF_FLAG.FORWARD,
+                                 proto=DPO_PROTO.BIER,
                                  bier_imp=bi.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
 
@@ -414,7 +415,7 @@ class TestBier(VppTestCase):
             self, bti, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
-                          proto=DpoProto.DPO_PROTO_BIER,
+                          proto=DPO_PROTO.BIER,
                           nh_table_id=8)])
         bier_route_1.add_vpp_config()
 
@@ -422,8 +423,8 @@ class TestBier(VppTestCase):
         # An entry in the disposition table
         #
         bier_de_1 = VppBierDispEntry(self, bdt.id, 99,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     DpoProto.DPO_PROTO_BIER,
+                                     BIER_HDR_PROTO.IPV4,
+                                     DPO_PROTO.BIER,
                                      "0.0.0.0", 0, rpf_id=8192)
         bier_de_1.add_vpp_config()
 
@@ -434,9 +435,9 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MFIB_ITF_FLAG.FORWARD)])
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
 
@@ -472,8 +473,8 @@ class TestBier(VppTestCase):
         # Add the default route to the disposition table
         #
         bier_de_2 = VppBierDispEntry(self, bdt.id, 0,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     DpoProto.DPO_PROTO_BIER,
+                                     BIER_HDR_PROTO.IPV4,
+                                     DPO_PROTO.BIER,
                                      "0.0.0.0", 0, rpf_id=8192)
         bier_de_2.add_vpp_config()
 
@@ -493,13 +494,13 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.2", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             paths=[VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 MFIB_ITF_FLAG.FORWARD,
+                                 proto=DPO_PROTO.BIER,
                                  bier_imp=bi.bi_index),
                    VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MFIB_ITF_FLAG.FORWARD)])
         route_eg_232_1_1_2.add_vpp_config()
         route_eg_232_1_1_2.update_rpf_id(8192)
 
@@ -543,24 +544,24 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MFIB_ITF_FLAG.ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 MFIB_ITF_FLAG.FORWARD,
+                                 proto=DPO_PROTO.BIER,
                                  bier_imp=bi_low.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
         route_ing_232_1_1_2 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.1.1.2", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MFIB_ITF_FLAG.ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 MFIB_ITF_FLAG.FORWARD,
+                                 proto=DPO_PROTO.BIER,
                                  bier_imp=bi_high.bi_index)])
         route_ing_232_1_1_2.add_vpp_config()
 
@@ -578,7 +579,7 @@ class TestBier(VppTestCase):
             self, bti, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
-                          proto=DpoProto.DPO_PROTO_BIER,
+                          proto=DPO_PROTO.BIER,
                           nh_table_id=8)])
         bier_route_1.add_vpp_config()
         bier_route_max = VppBierRoute(self, bti, max_bp,
@@ -592,13 +593,13 @@ class TestBier(VppTestCase):
         #  lookup in VRF 10
         #
         bier_de_1 = VppBierDispEntry(self, bdt.id, 333,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     DpoProto.DPO_PROTO_BIER,
+                                     BIER_HDR_PROTO.IPV4,
+                                     DPO_PROTO.BIER,
                                      "0.0.0.0", 10, rpf_id=8192)
         bier_de_1.add_vpp_config()
         bier_de_1 = VppBierDispEntry(self, bdt.id, 334,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     DpoProto.DPO_PROTO_BIER,
+                                     BIER_HDR_PROTO.IPV4,
+                                     DPO_PROTO.BIER,
                                      "0.0.0.0", 10, rpf_id=8193)
         bier_de_1.add_vpp_config()
 
@@ -610,20 +611,20 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             table_id=10,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MFIB_ITF_FLAG.FORWARD)])
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
         route_eg_232_1_1_2 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.1.1.2", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             table_id=10,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MFIB_ITF_FLAG.FORWARD)])
         route_eg_232_1_1_2.add_vpp_config()
         route_eg_232_1_1_2.update_rpf_id(8193)
 
@@ -728,12 +729,12 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             paths=[VppMRoutePath(self.pg0.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                 MFIB_ITF_FLAG.ACCEPT),
                    VppMRoutePath(0xffffffff,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
-                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 MFIB_ITF_FLAG.FORWARD,
+                                 proto=DPO_PROTO.BIER,
                                  bier_imp=bi2.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
 
@@ -787,7 +788,7 @@ class TestBier(VppTestCase):
             self, bti, 1,
             [VppRoutePath("0.0.0.0",
                           0xffffffff,
-                          proto=DpoProto.DPO_PROTO_BIER,
+                          proto=DPO_PROTO.BIER,
                           nh_table_id=8)])
         bier_route_1.add_vpp_config()
 
@@ -795,8 +796,8 @@ class TestBier(VppTestCase):
         # An entry in the disposition table
         #
         bier_de_1 = VppBierDispEntry(self, bdt.id, 99,
-                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
-                                     DpoProto.DPO_PROTO_BIER,
+                                     BIER_HDR_PROTO.IPV4,
+                                     DPO_PROTO.BIER,
                                      "0.0.0.0", 0, rpf_id=8192)
         bier_de_1.add_vpp_config()
 
@@ -807,9 +808,9 @@ class TestBier(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MFIB_ITF_FLAG.FORWARD)])
         route_eg_232_1_1_1.add_vpp_config()
         route_eg_232_1_1_1.update_rpf_id(8192)
 

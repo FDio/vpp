@@ -1,9 +1,8 @@
 """ test framework utilities """
 
-import abc
+import enum
 import socket
 from socket import AF_INET6
-import six
 import sys
 import os.path
 
@@ -199,7 +198,7 @@ class ForeignAddressFactory(object):
         return self.net_template.format(self.count)
 
 
-class L4_Conn():
+class L4_Conn(object):
     """ L4 'connection' tied to two VPP interfaces """
 
     def __init__(self, testcase, if1, if2, af, l4proto, port1, port2):
@@ -254,9 +253,9 @@ class L4_Conn():
         return [p1, p2]
 
 
-class L4_CONN_SIDE:
-    L4_CONN_SIDE_ZERO = 0
-    L4_CONN_SIDE_ONE = 1
+class L4_CONN_SIDE(enum.IntEnum):  # noqa
+    ZERO = 0
+    ONE = 1
 
 
 class LoggerWrapper(object):

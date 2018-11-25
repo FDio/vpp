@@ -11,7 +11,7 @@ from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_papi_provider import L2_VTR_OP
+from vpp_l2 import L2_VTR_OP
 from collections import namedtuple
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])

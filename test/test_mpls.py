@@ -4,11 +4,11 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
-    MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
-    VppMplsLabel, MplsLspMode, find_mpls_route
+    MFIB_ITF_FLAG, MFIB_ENTRY_FLAG, VppIpTable, VppMplsTable, \
+    VppMplsLabel, MPLS_LSP_MODE, find_mpls_route
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
@@ -426,7 +426,7 @@ class TestMPLS(VppTestCase):
             self, 42, 0,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
-                          labels=[VppMplsLabel(43, MplsLspMode.UNIFORM)])])
+                          labels=[VppMplsLabel(43, MPLS_LSP_MODE.UNIFORM)])])
         route_42_neos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip4(self.pg0,
@@ -466,7 +466,7 @@ class TestMPLS(VppTestCase):
             self, 3333, 1,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
-                          labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)])])
+                          labels=[VppMplsLabel(3, MPLS_LSP_MODE.UNIFORM)])])
         route_3333_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip4(
@@ -488,7 +488,7 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          proto=DPO_PROTO.IP6)])
         route_333_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(self.pg0, [VppMplsLabel(333)])
@@ -513,7 +513,7 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(3)],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          proto=DPO_PROTO.IP6)])
         route_334_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(self.pg0,
@@ -528,8 +528,8 @@ class TestMPLS(VppTestCase):
             self, 335, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
-                          labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)],
-                          proto=DpoProto.DPO_PROTO_IP6)])
+                          labels=[VppMplsLabel(3, MPLS_LSP_MODE.UNIFORM)],
+                          proto=DPO_PROTO.IP6)])
         route_335_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip6(
@@ -747,7 +747,7 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(32,
-                                               mode=MplsLspMode.UNIFORM)])])
+                                               mode=MPLS_LSP_MODE.UNIFORM)])])
         route_10_0_0_3.add_vpp_config()
 
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3",
@@ -764,9 +764,9 @@ class TestMPLS(VppTestCase):
             self, "2001::3", 128,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6,
+                          proto=DPO_PROTO.IP6,
                           labels=[VppMplsLabel(32,
-                                               mode=MplsLspMode.UNIFORM)])],
+                                               mode=MPLS_LSP_MODE.UNIFORM)])],
             is_ip6=1)
         route_2001_3.add_vpp_config()
 
@@ -909,7 +909,7 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
                           labels=[VppMplsLabel(44, ttl=32),
-                                  VppMplsLabel(46, MplsLspMode.UNIFORM)])])
+                                  VppMplsLabel(46, MPLS_LSP_MODE.UNIFORM)])])
         mpls_tun.add_vpp_config()
         mpls_tun.admin_up()
 
@@ -965,7 +965,8 @@ class TestMPLS(VppTestCase):
                 [VppRoutePath(self.pg0.remote_ip4,
                               self.pg0.sw_if_index,
                               labels=[VppMplsLabel(44, ttl=32),
-                                      VppMplsLabel(46, MplsLspMode.UNIFORM)])])
+                                      VppMplsLabel(46, MPLS_LSP_MODE.UNIFORM)
+                                      ])])
             mpls_tun.add_vpp_config()
             mpls_tun.admin_up()
 
@@ -1218,11 +1219,11 @@ class TestMPLS(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             [VppMRoutePath(self.pg0.sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                           MFIB_ITF_FLAG.ACCEPT),
              VppMRoutePath(mpls_tun._sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                           MFIB_ITF_FLAG.FORWARD)])
         route_232_1_1_1.add_vpp_config()
 
         self.vapi.cli("clear trace")
@@ -1248,10 +1249,10 @@ class TestMPLS(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             table_id=1,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                                 MFIB_ITF_FLAG.FORWARD)])
         route_232_1_1_1.add_vpp_config()
 
         #
@@ -1316,10 +1317,10 @@ class TestMPLS(VppTestCase):
             self,
             "::",
             "ff01::1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             table_id=1,
             paths=[VppMRoutePath(self.pg1.sw_if_index,
-                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+                                 MFIB_ITF_FLAG.FORWARD)],
             is_ip6=1)
         route_ff.add_vpp_config()
 
@@ -1337,7 +1338,7 @@ class TestMPLS(VppTestCase):
                           self.pg1.sw_if_index,
                           nh_table_id=1,
                           rpf_id=55,
-                          proto=DpoProto.DPO_PROTO_IP6)],
+                          proto=DPO_PROTO.IP6)],
             is_multicast=1)
 
         route_34_eos.add_vpp_config()
@@ -1746,11 +1747,11 @@ class TestMPLSPIC(VppTestCase):
                               0xffffffff,
                               nh_table_id=1,
                               is_resolve_attached=1,
-                              proto=DpoProto.DPO_PROTO_IP6),
+                              proto=DPO_PROTO.IP6),
                  VppRoutePath(self.pg3.remote_ip6,
                               0xffffffff,
                               nh_table_id=1,
-                              proto=DpoProto.DPO_PROTO_IP6,
+                              proto=DPO_PROTO.IP6,
                               is_resolve_attached=1)],
                 table_id=1,
                 is_ip6=1))
@@ -1890,7 +1891,7 @@ class TestMPLSL2(VppTestCase):
             self,
             [VppRoutePath(self.pg0.remote_ip4,
                           self.pg0.sw_if_index,
-                          labels=[VppMplsLabel(42, MplsLspMode.UNIFORM)])],
+                          labels=[VppMplsLabel(42, MPLS_LSP_MODE.UNIFORM)])],
             is_l2=1)
         mpls_tun_1.add_vpp_config()
         mpls_tun_1.admin_up()
@@ -1903,7 +1904,7 @@ class TestMPLSL2(VppTestCase):
             [VppRoutePath("0.0.0.0",
                           mpls_tun_1.sw_if_index,
                           is_interface_rx=1,
-                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+                          proto=DPO_PROTO.ETHERNET)])
         route_55_eos.add_vpp_config()
 
         #
@@ -1965,7 +1966,7 @@ class TestMPLSL2(VppTestCase):
             [VppRoutePath("0.0.0.0",
                           mpls_tun.sw_if_index,
                           is_interface_rx=1,
-                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+                          proto=DPO_PROTO.ETHERNET)])
         route_55_eos.add_vpp_config()
 
         #

@@ -2,36 +2,25 @@ import os
 import time
 from collections import deque
 
+import enum
 from six import moves, iteritems
 from vpp_papi import VPP, mac_pton
 from hook import Hook
-from vpp_l2 import L2_PORT_TYPE
+from vpp_l2 import L2_PORT_TYPE, L2_VTR_OP
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 
-class L2_VTR_OP:
-    L2_DISABLED = 0
-    L2_PUSH_1 = 1
-    L2_PUSH_2 = 2
-    L2_POP_1 = 3
-    L2_POP_2 = 4
-    L2_TRANSLATE_1_1 = 5
-    L2_TRANSLATE_1_2 = 6
-    L2_TRANSLATE_2_1 = 7
-    L2_TRANSLATE_2_2 = 8
-
-
-class QOS_SOURCE:
+class QOS_SOURCE(enum.IntEnum):  # noqa
     EXT = 0
     VLAN = 1
     MPLS = 2
     IP = 3
 
 
-class SYSLOG_SEVERITY:
+class SYSLOG_SEVERITY(enum.IntEnum):  # noqa
     EMERG = 0
     ALERT = 1
     CRIT = 2

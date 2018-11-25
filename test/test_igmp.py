@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import enum
 import unittest
 
 from scapy.layers.l2 import Ether
@@ -12,7 +13,7 @@ from vpp_igmp import find_igmp_state, IGMP_FILTER, IgmpRecord, IGMP_MODE, \
 from vpp_ip_route import find_mroute, VppIpTable
 
 
-class IgmpMode:
+class IGMP_MODE(enum.IntEnum):  # noqa
     HOST = 1
     ROUTER = 0
 
