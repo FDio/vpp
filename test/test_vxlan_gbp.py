@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import six
 import socket
 from util import ip4_range
 import unittest
@@ -12,11 +13,9 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
-import StringIO
-
 
 def reassemble(listoffragments):
-    buffer = StringIO.StringIO()
+    buffer = six.StringIO.StringIO()
     first = listoffragments[0]
     buffer.seek(20)
     for pkt in listoffragments:
