@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
+import six
 import struct
-import StringIO
 import random
+import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from scapy.layers.inet import IP, TCP, UDP, ICMP
@@ -721,7 +721,7 @@ class MethodHolder(VppTestCase):
 
         :returns: Reassembled IPv4 packet
         """
-        buffer = StringIO.StringIO()
+        buffer = six.StringIO.StringIO()
         for p in frags:
             self.assertEqual(p[IP].src, src)
             self.assertEqual(p[IP].dst, dst)
@@ -750,7 +750,7 @@ class MethodHolder(VppTestCase):
 
         :returns: Reassembled IPv6 packet
         """
-        buffer = StringIO.StringIO()
+        buffer = six.StringIO.StringIO()
         for p in frags:
             self.assertEqual(p[IPv6].src, src)
             self.assertEqual(p[IPv6].dst, dst)

@@ -1,10 +1,10 @@
 """ test framework utilities """
 
+from six import moves
 import socket
 import sys
 import os.path
 from abc import abstractmethod, ABCMeta
-from cStringIO import StringIO
 from scapy.utils6 import in6_mactoifaceid
 
 from scapy.layers.l2 import Ether
@@ -18,7 +18,7 @@ from socket import AF_INET6
 
 def ppp(headline, packet):
     """ Return string containing the output of scapy packet.show() call. """
-    o = StringIO()
+    o = moves.cStringIO()
     old_stdout = sys.stdout
     sys.stdout = o
     print(headline)

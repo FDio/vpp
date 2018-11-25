@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """IP{4,6} over IP{v,6} tunnel functional tests"""
 
+import six
 import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment
 from scapy.all import fragment, fragment6, RandShort, defragment6
@@ -8,7 +9,6 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
-import StringIO
 
 """ Testipip is a subclass of  VPPTestCase classes.
 
@@ -19,7 +19,7 @@ IPIP tests.
 
 # Replace by deframent from scapy.
 def reassemble(listoffragments):
-    buffer = StringIO.StringIO()
+    buffer = six.StringIO.StringIO()
     first = listoffragments[0]
     buffer.seek(20)
     for pkt in listoffragments:

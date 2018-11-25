@@ -8,6 +8,7 @@
 # - Verify that sub-interfaces inherit MTU correctly
 # - Different types of interfaces?
 #
+import six
 import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, ICMPv6PacketTooBig
 from scapy.layers.inet import ICMP
@@ -15,7 +16,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from socket import AF_INET, AF_INET6, inet_pton
-import StringIO
+
 
 """ Test_mtu is a subclass of VPPTestCase classes.
     MTU tests.
@@ -23,7 +24,7 @@ import StringIO
 
 
 def reassemble(listoffragments):
-    buffer = StringIO.StringIO()
+    buffer = six.StringIO.StringIO()
     first = listoffragments[0]
     buffer.seek(20)
     for pkt in listoffragments:

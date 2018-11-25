@@ -1,21 +1,20 @@
 #!/usr/bin/env python
 
+import six
 import socket
-from util import ip4n_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
+from util import ip4n_range, ip4_range
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
-import StringIO
-
 
 def reassemble(listoffragments):
-    buffer = StringIO.StringIO()
+    buffer = six.StringIO.StringIO()
     first = listoffragments[0]
     buffer.seek(20)
     for pkt in listoffragments:
