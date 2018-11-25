@@ -251,7 +251,7 @@ class VCLCutThruTestCase(VCLTestCase):
 
         try:
             subprocess.check_output(['iperf3', '-v'])
-        except:
+        except subprocess.CalledProcessError:
             self.logger.error("WARNING: 'iperf3' is not installed,")
             self.logger.error("         'test_ldp_cut_thru_iperf3' not run!")
             return
@@ -496,7 +496,7 @@ class VCLThruHostStackIperfTestCase(VCLTestCase):
 
         try:
             subprocess.check_output(['iperf3', '-v'])
-        except:
+        except subprocess.CalledProcessError:
             self.logger.error("WARNING: 'iperf3' is not installed,")
             self.logger.error(
                 "         'test_ldp_thru_host_stack_iperf3' not run!")
@@ -811,7 +811,7 @@ class VCLIpv6ThruHostStackIperfTestCase(VCLTestCase):
 
         try:
             subprocess.check_output(['iperf3', '-v'])
-        except:
+        except subprocess.CalledProcessError:
             self.logger.error("WARNING: 'iperf3' is not installed,")
             self.logger.error(
                 "         'test_ldp_thru_host_stack_iperf3' not run!")
