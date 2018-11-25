@@ -1,14 +1,15 @@
+import enum
 import socket
 
 from vpp_object import VppObject
 
 
-class MEMIF_ROLE:
+class MEMIF_ROLE(enum.IntEnum):  # noqa
     MASTER = 0
     SLAVE = 1
 
 
-class MEMIF_MODE:
+class MEMIF_MODE(enum.IntEnum):  # noqa
     ETHERNET = 0
     IP = 1
     PUNT_INJECT = 2

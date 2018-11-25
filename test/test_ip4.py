@@ -13,7 +13,7 @@ from six import moves
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
+    VppMRoutePath, MFIB_ITF_FLAG, MFIB_ENTRY_FLAG, VppMplsIpBind, \
     VppMplsTable, VppIpTable
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 
@@ -700,11 +700,11 @@ class TestIPDisabled(VppTestCase):
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
-            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            MFIB_ENTRY_FLAG.NONE,
             [VppMRoutePath(self.pg1.sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                           MFIB_ITF_FLAG.ACCEPT),
              VppMRoutePath(self.pg0.sw_if_index,
-                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+                           MFIB_ITF_FLAG.FORWARD)])
         route_232_1_1_1.add_vpp_config()
 
         pu = (Ether(src=self.pg1.remote_mac,
