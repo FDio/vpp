@@ -4,42 +4,43 @@
   object abstractions for representing IP routes in VPP
 """
 
-from vpp_object import *
+import enum
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import *
+from vpp_object import *
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 
-class MRouteItfFlags:
-    MFIB_ITF_FLAG_NONE = 0
-    MFIB_ITF_FLAG_NEGATE_SIGNAL = 1
-    MFIB_ITF_FLAG_ACCEPT = 2
-    MFIB_ITF_FLAG_FORWARD = 4
-    MFIB_ITF_FLAG_SIGNAL_PRESENT = 8
-    MFIB_ITF_FLAG_INTERNAL_COPY = 16
+class MFIB_ITF_FLAG(enum.IntEnum):  # noqa
+    NONE = 0
+    NEGATE_SIGNAL = 1
+    ACCEPT = 2
+    FORWARD = 4
+    SIGNAL_PRESENT = 8
+    INTERNAL_COPY = 16
 
 
-class MRouteEntryFlags:
-    MFIB_ENTRY_FLAG_NONE = 0
-    MFIB_ENTRY_FLAG_SIGNAL = 1
-    MFIB_ENTRY_FLAG_DROP = 2
-    MFIB_ENTRY_FLAG_CONNECTED = 4
-    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
+class MFIB_ENTRY_FLAG(enum.IntEnum):  # noqa
+    NONE = 0
+    SIGNAL = 1
+    DROP = 2
+    CONNECTED = 4
+    INHERIT_ACCEPT = 8
 
 
-class MplsLspMode:
+class MPLS_LSP_MODE(enum.IntEnum):  # noqa
     PIPE = 0
     UNIFORM = 1
 
 
 def ip_to_dpo_proto(addr):
     if addr.version is 6:
-        return DpoProto.DPO_PROTO_IP6
+        return DPO_PROTO.IP6
     else:
-        return DpoProto.DPO_PROTO_IP4
+        return DPO_PROTO.IP4
 
 
 def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
@@ -230,35 +231,36 @@ class VppIpInterfaceBind(VppObject):
 
 
 class VppMplsLabel(object):
-    def __init__(self, value, mode=MplsLspMode.PIPE, ttl=64, exp=0):
+    def __init__(self, value, mode=MPLS_LSP_MODE.PIPE, ttl=64, exp=0):
         self.value = value
         self.mode = mode
         self.ttl = ttl
         self.exp = exp
 
     def encode(self):
-        is_uniform = 0 if self.mode is MplsLspMode.PIPE else 1
+        is_uniform = 0 if self.mode is MPLS_LSP_MODE.PIPE else 1
         return {'label': self.value,
                 'ttl': self.ttl,
                 'exp': self.exp,
                 'is_uniform': is_uniform}
 
+    def _key(self):
+        return (self.value, self.mode, self.ttl, self.exp),
+
     def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return (self.value == other.value and
-                    self.ttl == other.ttl and
-                    self.exp == other.exp and
-                    self.mode == other.mode)
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         elif hasattr(other, 'label'):
-            return (self.value == other.label and
-                    self.ttl == other.ttl and
-                    self.exp == other.exp and
-                    (self.mode == MplsLspMode.UNIFORM) == other.is_uniform)
+            return (self._key == other._key) and \
+                (self.mode == MPLS_LSP_MODE.UNIFORM)
         else:
-            return False
+            return self._key == other._key
 
     def __ne__(self, other):
         return not (self == other)
+
+    def __hash__(self):
+        return hash(self._key())
 
 
 class VppRoutePath(object):
@@ -278,7 +280,7 @@ class VppRoutePath(object):
             is_udp_encap=0,
             is_dvr=0,
             next_hop_id=0xffffffff,
-            proto=DpoProto.DPO_PROTO_IP4):
+            proto=DPO_PROTO.IP4):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
         self.nh_via_label = nh_via_label
@@ -286,9 +288,9 @@ class VppRoutePath(object):
         self.weight = 1
         self.rpf_id = rpf_id
         self.proto = proto
-        if self.proto is DpoProto.DPO_PROTO_IP6:
+        if self.proto is DPO_PROTO.IP6:
             self.nh_addr = inet_pton(AF_INET6, nh_addr)
-        elif self.proto is DpoProto.DPO_PROTO_IP4:
+        elif self.proto is DPO_PROTO.IP4:
             self.nh_addr = inet_pton(AF_INET, nh_addr)
         else:
             self.nh_addr = inet_pton(AF_INET6, "::")
@@ -349,10 +351,10 @@ class VppMRoutePath(VppRoutePath):
 
     def __init__(self, nh_sw_if_index, flags,
                  nh=None,
-                 proto=DpoProto.DPO_PROTO_IP4,
+                 proto=DPO_PROTO.IP4,
                  bier_imp=0):
         if not nh:
-            nh = "::" if proto is DpoProto.DPO_PROTO_IP6 else "0.0.0.0"
+            nh = "::" if proto is DPO_PROTO.IP6 else "0.0.0.0"
         super(VppMRoutePath, self).__init__(nh,
                                             nh_sw_if_index,
                                             proto=proto)

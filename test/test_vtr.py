@@ -10,7 +10,7 @@ from scapy.layers.inet import IP, UDP
 from util import Host
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
-from vpp_papi_provider import L2_VTR_OP
+from vpp_l2 import L2_VTR_OP
 from collections import namedtuple
 
 Tag = namedtuple('Tag', ['dot1', 'vlan'])

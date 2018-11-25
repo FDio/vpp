@@ -3,19 +3,32 @@
 
 """
 
+import enum
 from vpp_object import *
 from vpp_ip import VppIpAddress
 from vpp_lo_interface import VppLoInterface
 from vpp_papi import MACAddress
 
 
-class L2_PORT_TYPE:
+class L2_PORT_TYPE(enum.IntEnum):  # noqa
     NORMAL = 0
     BVI = 1
     UU_FWD = 2
 
 
-class BRIDGE_FLAGS:
+class L2_VTR_OP(enum.IntEnum):  # noqa
+    L2_DISABLED = 0
+    L2_PUSH_1 = 1
+    L2_PUSH_2 = 2
+    L2_POP_1 = 3
+    L2_POP_2 = 4
+    L2_TRANSLATE_1_1 = 5
+    L2_TRANSLATE_1_2 = 6
+    L2_TRANSLATE_2_1 = 7
+    L2_TRANSLATE_2_2 = 8
+
+
+class BRIDGE_FLAGS(enum.IntEnum):  # noqa
     NONE = 0
     LEARN = 1
     FWD = 2
