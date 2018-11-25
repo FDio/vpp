@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import six
 import os
 import unittest
 import inspect
@@ -131,7 +132,7 @@ class RemoteClass(Process):
                isinstance(val, RemoteClassAttr):
                 mutable_args[i] = val.get_remote_value()
         args = tuple(mutable_args)
-        for key, val in kwargs.iteritems():
+        for key, val in six.iteritems(kwargs):
             if isinstance(val, RemoteClass) or \
                isinstance(val, RemoteClassAttr):
                 kwargs[key] = val.get_remote_value()
