@@ -3,6 +3,7 @@
 
 """
 
+import enum
 from vpp_object import *
 from util import mactobinary
 from vpp_ip import VppIpAddress
@@ -10,13 +11,13 @@ from vpp_mac import VppMacAddress
 from vpp_lo_interface import VppLoInterface
 
 
-class L2_PORT_TYPE:
+class L2_PORT_TYPE(enum.Enum):
     NORMAL = 0
     BVI = 1
     UU_FWD = 2
 
 
-class BRIDGE_FLAGS:
+class BRIDGE_FLAGS(enum.Enum):
     NONE = 0
     LEARN = 1
     FWD = 2

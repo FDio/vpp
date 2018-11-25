@@ -4,6 +4,7 @@ import time
 from collections import deque
 
 from six import moves
+import enum
 
 from hook import Hook
 
@@ -28,7 +29,7 @@ MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 
-class L2_VTR_OP:
+class L2_VTR_OP(enum.Enum):
     L2_DISABLED = 0
     L2_PUSH_1 = 1
     L2_PUSH_2 = 2
@@ -40,14 +41,14 @@ class L2_VTR_OP:
     L2_TRANSLATE_2_2 = 8
 
 
-class QOS_SOURCE:
+class QOS_SOURCE(enum.Enum):
     EXT = 0
     VLAN = 1
     MPLS = 2
     IP = 3
 
 
-class SYSLOG_SEVERITY:
+class SYSLOG_SEVERITY(enum.Enum):
     EMERG = 0
     ALERT = 1
     CRIT = 2
