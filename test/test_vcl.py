@@ -7,7 +7,7 @@ import subprocess
 import signal
 from framework import VppTestCase, VppTestRunner, running_extended_tests, \
     Worker
-from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath, DPO_PROTO
 
 
 class VCLAppWorker(Worker):
@@ -147,12 +147,12 @@ class VCLTestCase(VppTestCase):
         ip_t01 = VppIpRoute(self, self.loop1.local_ip6, 128,
                             [VppRoutePath("::0", 0xffffffff,
                                           nh_table_id=2,
-                                          proto=DpoProto.DPO_PROTO_IP6)],
+                                          proto=DPO_PROTO.IP6)],
                             table_id=1, is_ip6=1)
         ip_t10 = VppIpRoute(self, self.loop0.local_ip6, 128,
                             [VppRoutePath("::0", 0xffffffff,
                                           nh_table_id=1,
-                                          proto=DpoProto.DPO_PROTO_IP6)],
+                                          proto=DPO_PROTO.IP6)],
                             table_id=2, is_ip6=1)
         ip_t01.add_vpp_config()
         ip_t10.add_vpp_config()

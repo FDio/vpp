@@ -445,7 +445,7 @@ def run_forked(testcase_suites):
     return results
 
 
-class SplitToSuitesCallback:
+class SplitToSuitesCallback(object):
     def __init__(self, filter_callback):
         self.suites = {}
         self.suite_name = 'default'
@@ -522,7 +522,7 @@ def filter_tests(tests, filter_cb):
     return result
 
 
-class FilterByTestOption:
+class FilterByTestOption(object):
     def __init__(self, filter_file_name, filter_class_name, filter_func_name):
         self.filter_file_name = filter_file_name
         self.filter_class_name = filter_class_name
@@ -540,7 +540,7 @@ class FilterByTestOption:
         return True
 
 
-class FilterByClassList:
+class FilterByClassList(object):
     def __init__(self, classes_with_filenames):
         self.classes_with_filenames = classes_with_filenames
 
