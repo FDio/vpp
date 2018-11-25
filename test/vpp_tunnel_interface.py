@@ -1,13 +1,13 @@
-from abc import abstractmethod, ABCMeta
+import abc
+import six
 from vpp_pg_interface import is_ipv6_misc
 from vpp_interface import VppInterface
 
 
+@six.add_metaclass(abc.ABCMeta)
 class VppTunnelInterface(VppInterface):
-    """ VPP tunnel interface abstration """
-    __metaclass__ = ABCMeta
+    """ VPP tunnel interface abstraction """
 
-    @abstractmethod
     def __init__(self, test, parent_if):
         super(VppTunnelInterface, self).__init__(test)
         self.parent_if = parent_if

@@ -1,32 +1,33 @@
 """ abstract vpp object and object registry """
 
-from abc import ABCMeta, abstractmethod
+import abc
+import six
 
 from six import moves
 
 
+@six.add_metaclass(abc.ABCMeta)
 class VppObject(object):
     """ Abstract vpp object """
-    __metaclass__ = ABCMeta
 
-    @abstractmethod
+    @abc.abstractmethod
     def add_vpp_config(self):
         """ Add the configuration for this object to vpp. """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def query_vpp_config(self):
         """Query the vpp configuration.
 
         :return: True if the object is configured"""
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def remove_vpp_config(self):
         """ Remove the configuration for this object from vpp. """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def object_id(self):
         """ Return a unique string representing this object. """
         pass
