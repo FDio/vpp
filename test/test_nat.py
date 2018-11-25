@@ -2111,7 +2111,7 @@ class TestNAT44(MethodHolder):
 
         # general user and session dump verifications
         users = self.vapi.nat44_user_dump()
-        self.assertTrue(len(users) >= 3)
+        self.assertGreaterEqual(len(users), 3)
         addresses = self.vapi.nat44_address_dump()
         self.assertEqual(len(addresses), 1)
         for user in users:
@@ -2127,7 +2127,7 @@ class TestNAT44(MethodHolder):
 
         # pg4 session dump
         sessions = self.vapi.nat44_user_session_dump(self.pg4.remote_ip4n, 10)
-        self.assertTrue(len(sessions) >= 4)
+        self.assertGreaterEqual(len(sessions), 4)
         for session in sessions:
             self.assertFalse(session.is_static)
             self.assertEqual(session.inside_ip_address[0:4],
@@ -2137,7 +2137,7 @@ class TestNAT44(MethodHolder):
 
         # pg6 session dump
         sessions = self.vapi.nat44_user_session_dump(self.pg6.remote_ip4n, 20)
-        self.assertTrue(len(sessions) >= 3)
+        self.assertGreater(len(sessions), 3)
         for session in sessions:
             self.assertTrue(session.is_static)
             self.assertEqual(session.inside_ip_address[0:4],
@@ -4146,7 +4146,7 @@ class TestNAT44EndpointDependent(MethodHolder):
                 server1_n += 1
             else:
                 server2_n += 1
-        self.assertTrue(server1_n > server2_n)
+        self.assertGreater(server1_n, server2_n)
 
     def test_static_lb_2(self):
         """ NAT44 local service load balancing (asymmetrical rule) """

@@ -1350,7 +1350,7 @@ class ARPTestCase(VppTestCase):
         # how many we get is going to be dependent on the time for packet
         # processing but it should be small
         #
-        self.assertTrue(len(rx) < 64)
+        self.assertLess(len(rx), 64)
 
         #
         # IPv6/ND
@@ -1378,7 +1378,7 @@ class ARPTestCase(VppTestCase):
         # how many we get is going to be dependent on the time for packet
         # processing but it should be small
         #
-        self.assertTrue(len(rx) < 64)
+        self.assertLess(len(rx), 64)
 
 
 class NeighborStatsTestCase(VppTestCase):
