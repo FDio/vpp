@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
+import six
+from six import StringIO
 import struct
-import StringIO
 import random
+import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from scapy.layers.inet import IP, TCP, UDP, ICMP

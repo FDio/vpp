@@ -4,11 +4,11 @@
 import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment
 from scapy.all import fragment, fragment6, RandShort, defragment6
+from six import StringIO
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
-import StringIO
 
 """ Testipip is a subclass of  VPPTestCase classes.
 

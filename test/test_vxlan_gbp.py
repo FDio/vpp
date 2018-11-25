@@ -3,6 +3,7 @@
 import socket
 from util import ip4_range
 import unittest
+from six import StringIO
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 from vpp_ip import VppIpAddress
@@ -11,8 +12,6 @@ from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
-
-import StringIO
 
 
 def reassemble(listoffragments):

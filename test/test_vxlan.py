@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 
+from six import StringIO
 import socket
-from util import ip4n_range, ip4_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
+from util import ip4n_range, ip4_range
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
-
-import StringIO
 
 
 def reassemble(listoffragments):
