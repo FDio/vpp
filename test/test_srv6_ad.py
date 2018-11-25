@@ -5,7 +5,7 @@ import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
@@ -146,7 +146,7 @@ class TestSRv6(VppTestCase):
         route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
+                                         proto=DPO_PROTO.IP6)],
                            is_ip6=1)
         route.add_vpp_config()
 
@@ -281,7 +281,7 @@ class TestSRv6(VppTestCase):
         route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
+                                         proto=DPO_PROTO.IP6)],
                            is_ip6=1)
         route.add_vpp_config()
 
@@ -424,7 +424,7 @@ class TestSRv6(VppTestCase):
         route = VppIpRoute(self, self.sid_list[self.test_sid_index + 1], 128,
                            [VppRoutePath(self.pg0.remote_ip6,
                                          self.pg0.sw_if_index,
-                                         proto=DpoProto.DPO_PROTO_IP6)],
+                                         proto=DPO_PROTO.IP6)],
                            is_ip6=1)
         route.add_vpp_config()
 

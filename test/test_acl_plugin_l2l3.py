@@ -36,7 +36,7 @@ from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 
 from framework import VppTestCase, VppTestRunner
-from vpp_papi_provider import L2_PORT_TYPE
+from vpp_l2 import L2_PORT_TYPE
 import time
 
 

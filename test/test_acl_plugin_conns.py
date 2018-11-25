@@ -55,7 +55,7 @@ def to_acl_rule(self, is_permit, wildcard_sport=False):
 Packet.to_acl_rule = to_acl_rule
 
 
-class IterateWithSleep():
+class IterateWithSleep(object):
     def __init__(self, testcase, n_iters, description, sleep_sec):
         self.curr = 0
         self.testcase = testcase
