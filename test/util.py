@@ -1,9 +1,11 @@
 """ test framework utilities """
 
+import abc
 import socket
+import six
 import sys
 import os.path
-from abc import abstractmethod, ABCMeta
+
 from cStringIO import StringIO
 from scapy.utils6 import in6_mactoifaceid
 
@@ -103,11 +105,9 @@ def check_core_path(logger, core_path):
 
 
 class NumericConstant(object):
-    __metaclass__ = ABCMeta
 
     desc_dict = {}
 
-    @abstractmethod
     def __init__(self, value):
         self._value = value
 

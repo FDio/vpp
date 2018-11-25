@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+import abc
+import six
 import unittest
 
 from scapy.packet import Raw
@@ -10,6 +13,7 @@ from framework import VppTestCase, VppTestRunner
 from lisp import *
 
 
+@six.add_metaclass
 class Driver(object):
 
     config_order = ['locator-sets',
@@ -43,7 +47,7 @@ class Driver(object):
                   Raw(payload))
         return packet
 
-    @abstractmethod
+    @abc.abstractmethod
     def run(self):
         """ testing procedure """
         pass
