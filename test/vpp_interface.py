@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABCMeta
+import binascii
 import socket
 
 from util import Host, mk_ll_addr, mactobinary
@@ -230,7 +231,7 @@ class VppInterface(object):
             if intf.sw_if_index == self.sw_if_index:
                 self._name = intf.interface_name.split(b'\0', 1)[0]
                 self._local_mac = \
-                    ':'.join(intf.l2_address.encode('hex')[i:i + 2]
+                    ':'.join(binascii.hexlify(intf.l2_address)[i:i + 2]
                              for i in range(0, 12, 2))
                 self._dump = intf
                 break

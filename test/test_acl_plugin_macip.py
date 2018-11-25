@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """ACL plugin - MACIP tests
 """
+import binascii
 import random
 import re
 import unittest
@@ -185,8 +186,8 @@ class MethodHolder(VppTestCase):
                         rule = "DENY  "
                     print "    IP6" if r.is_ipv6 else "    IP4", \
                           rule, \
-                          r.src_mac.encode('hex'), \
-                          r.src_mac_mask.encode('hex'),\
+                          binascii.hexlify(r.src_mac), \
+                          binascii.hexlify(r.src_mac_mask),\
                           unpack('<16B', r.src_ip_addr), \
                           r.src_ip_prefix_len
         return acls
@@ -575,8 +576,8 @@ class MethodHolder(VppTestCase):
         # TODO : verify
         # for acl in acls:
         #     for r in acl.r:
-        #         print r.src_mac.encode('hex'), \
-        #               r.src_mac_mask.encode('hex'),\
+        #         print binascii.hexlify(r.src_mac), \
+        #               binascii.hexlify(r.src_mac_mask),\
         #               unpack('<16B', r.src_ip_addr), \
         #               r.src_ip_prefix_len
         #
