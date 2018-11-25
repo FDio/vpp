@@ -287,6 +287,29 @@ typedef struct
   u32 input_next_mpls;
 } next_by_ethertype_t;
 
+typedef enum
+{
+  ETYPE_ID_UNKNOWN = 0,
+  ETYPE_ID_IP4,
+  ETYPE_ID_IP6,
+  ETYPE_ID_MPLS,
+  ETYPE_ID_VLAN,
+  ETYPE_ID_DOT1AD,
+  ETYPE_N_IDS,
+} etype_id_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u16 etypes[VLIB_FRAME_SIZE];
+  u64 dmacs[VLIB_FRAME_SIZE];
+  u64 tags_unsorted[VLIB_FRAME_SIZE];
+  u64 tags_vlan[VLIB_FRAME_SIZE];
+  u64 tags_dot1ad[VLIB_FRAME_SIZE];
+  u32 bufs_by_etype[ETYPE_N_IDS][VLIB_FRAME_SIZE];
+  u16 n_bufs_by_etype[ETYPE_N_IDS];
+} eth_input_per_thread_data_t;
+
 typedef struct
 {
   vlib_main_t *vlib_main;
@@ -330,6 +353,9 @@ typedef struct
 
   /* Allocated loopback instances */
   uword *bm_loopback_instances;
+
+  /* per-thread data */
+  eth_input_per_thread_data_t *per_thread_data;
 } ethernet_main_t;
 
 extern ethernet_main_t ethernet_main;

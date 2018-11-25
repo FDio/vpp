@@ -84,6 +84,7 @@ ethernet_init (vlib_main_t * vm)
 {
   ethernet_main_t *em = &ethernet_main;
   clib_error_t *error;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   /*
    * Set up the L2 path now, or we'll wipe out the L2 ARP
@@ -107,6 +108,9 @@ ethernet_init (vlib_main_t * vm)
     return error;
   if ((error = vlib_call_init_function (vm, vnet_feature_init)))
     return error;
+
+  vec_validate_aligned (em->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }
