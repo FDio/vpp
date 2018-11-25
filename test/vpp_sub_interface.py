@@ -1,12 +1,13 @@
 from scapy.layers.l2 import Dot1Q
-from abc import abstractmethod, ABCMeta
+import abc
+import six
 from vpp_pg_interface import VppPGInterface
 from vpp_papi_provider import L2_VTR_OP
 from vpp_interface import VppInterface
 
 
+@six.add_metaclass
 class VppSubInterface(VppPGInterface):
-    __metaclass__ = ABCMeta
 
     @property
     def parent(self):
@@ -42,11 +43,11 @@ class VppSubInterface(VppPGInterface):
         super(VppSubInterface, self).set_sw_if_index(sw_if_index)
         self.set_vtr(L2_VTR_OP.L2_DISABLED)
 
-    @abstractmethod
+    @abc.abstractmethod
     def create_arp_req(self):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def create_ndp_req(self):
         pass
 
@@ -56,7 +57,7 @@ class VppSubInterface(VppPGInterface):
     def resolve_ndp(self):
         super(VppSubInterface, self).resolve_ndp(self.parent)
 
-    @abstractmethod
+    @abc.abstractmethod
     def add_dot1_layer(self, pkt):
         pass
 
