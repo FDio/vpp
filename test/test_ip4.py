@@ -1147,8 +1147,8 @@ class TestIPPunt(VppTestCase):
         # but not equal to the number sent, since some were policed
         #
         rx = self.pg1._get_capture(1)
-        self.assertTrue(len(rx) > 0)
-        self.assertTrue(len(rx) < len(pkts))
+        self.assertGreater(len(rx), 0)
+        self.assertLess(len(rx), len(pkts))
 
         #
         # remove the poilcer. back to full rx

@@ -72,9 +72,9 @@ class Test6RD(VppTestCase):
         if IP in rx:
             self.fail()
 
-        self.assertTrue(rx[IPv6].src == expected[IPv6].src)
-        self.assertTrue(rx[IPv6].dst == expected[IPv6].dst)
-        self.assertTrue(rx[IPv6].nh == expected[IPv6].nh)
+        self.assertEqual(rx[IPv6].src, expected[IPv6].src)
+        self.assertEqual(rx[IPv6].dst, expected[IPv6].dst)
+        self.assertEqual(rx[IPv6].nh, expected[IPv6].nh)
 
     def payload(self, len):
         return 'x' * len
