@@ -17,7 +17,7 @@ def binarytomac(binary):
     return str(x.decode('ascii'))
 
 
-class VppMacAddress():
+class VppMacAddress(object):
     def __init__(self, addr):
         self._address = addr
 

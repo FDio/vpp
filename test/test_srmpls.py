@@ -4,7 +4,7 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppIpTable, VppMplsTable, VppMplsLabel
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
