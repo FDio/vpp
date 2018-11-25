@@ -348,7 +348,7 @@ class VppTestCase(unittest.TestCase):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        bufsize=1)
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             cls.logger.critical("Couldn't start vpp: %s" % e)
             raise
 

@@ -135,7 +135,7 @@ class TestJVpp(VppTestCase):
         self.logger.info("Process output : {0}{1}".format(os.linesep, out))
 
         if self.process.returncode != 0:
-            raise Exception(
+            raise subprocess.CalledProcessError(
                 "Command {0} failed with return code: {1}.{2}"
                 "Process error output: {2}{3}"
                 .format(command, self.process.returncode, os.linesep, err))
