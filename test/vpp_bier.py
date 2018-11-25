@@ -2,12 +2,13 @@
   BIER Tables and Routes
 """
 
+import enum
 import socket
 from vpp_object import VppObject
 from vpp_ip_route import MPLS_LABEL_INVALID, VppRoutePath, VppMplsLabel
 
 
-class BIER_HDR_PAYLOAD:
+class BIER_HDR_PAYLOAD(enum.IntEnum):
     BIER_HDR_PROTO_MPLS_DOWN_STREAM = 1
     BIER_HDR_PROTO_MPLS_UP_STREAM = 2
     BIER_HDR_PROTO_ETHERNET = 3
@@ -18,7 +19,7 @@ class BIER_HDR_PAYLOAD:
     BIER_HDR_PROTO_OAM = 8
 
 
-class VppBierTableID():
+class VppBierTableID(object):
     def __init__(self, sub_domain_id, set_id, hdr_len_id):
         self.set_id = set_id
         self.sub_domain_id = sub_domain_id
