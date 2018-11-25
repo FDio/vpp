@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
+import inspect
 import os
 import unittest
-import inspect
 from multiprocessing import Process, Pipe
-from pickle import dumps, PicklingError
+from pickle import dumps
+
+import six
+
 from framework import VppTestCase
 
 
@@ -99,7 +102,7 @@ class RemoteClass(Process):
         self._pipe = Pipe()  # pipe for input/output arguments
 
     def __repr__(self):
-        return repr(RemoteClassAttr(self, None))
+        return six.reprlib(RemoteClassAttr(self, None))
 
     def __str__(self):
         return str(RemoteClassAttr(self, None))
@@ -191,7 +194,7 @@ class RemoteClass(Process):
     def _get_local_repr(self, path):
         try:
             obj = self._get_local_object(path)
-            return repr(obj)
+            return six.reprlib(obj)
         except AttributeError:
             return None
 

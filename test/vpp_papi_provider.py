@@ -1,8 +1,11 @@
-import os
 import fnmatch
+import os
 import time
-from hook import Hook
 from collections import deque
+
+import six
+
+from hook import Hook
 
 # Sphinx creates auto-generated documentation by importing the python source
 # files and collecting the docstrings from them. The NO_VPP_PAPI flag allows
@@ -184,14 +187,14 @@ class VppPapiProvider(object):
             if hasattr(reply, 'retval') and reply.retval >= 0:
                 msg = "API call passed unexpectedly: expected negative "\
                     "return value instead of %d in %s" % \
-                    (reply.retval, repr(reply))
+                    (reply.retval, six.reprlib(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead "\
                     "of %d in %s" % (expected_retval, reply.retval,
-                                     repr(reply))
+                                     six.reprlib(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         else:

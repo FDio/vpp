@@ -2,6 +2,8 @@
 
 from abc import ABCMeta, abstractmethod
 
+import six
+
 
 class VppObject(object):
     """ Abstract vpp object """
@@ -81,6 +83,6 @@ class VppObjectRegistry(object):
         if failed:
             logger.error("REG: Couldn't remove configuration for object(s):")
             for obj in failed:
-                logger.error(repr(obj))
+                logger.error(six.reprlib(obj))
             raise Exception("Couldn't remove configuration for object(s): %s" %
                             (", ".join(str(x) for x in failed)))
