@@ -9,7 +9,6 @@ from util import Host, mk_ll_addr, mactobinary
 
 class VppInterface(object):
     """Generic VPP interface."""
-    __metaclass__ = ABCMeta
 
     @property
     def sw_if_index(self):
@@ -180,7 +179,6 @@ class VppInterface(object):
             self._hosts_by_ip4[ip4] = host
             self._hosts_by_ip6[ip6] = host
 
-    @abstractmethod
     def __init__(self, test):
         self._test = test
 
