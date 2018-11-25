@@ -10,7 +10,7 @@ from template_ipsec import TemplateIpsec
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
         VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_papi import VppEnum
 
 
@@ -49,7 +49,7 @@ class IPSecNATTestCase(TemplateIpsec):
         self.config_esp_tun(p)
         self.logger.info(self.vapi.ppcli("show ipsec"))
 
-        d = DpoProto.DPO_PROTO_IP6 if p.is_ipv6 else DpoProto.DPO_PROTO_IP4
+        d = DPO_PROTO.IP6 if p.is_ipv6 else DPO_PROTO.IP4
         VppIpRoute(self,  p.remote_tun_if_host, p.addr_len,
                    [VppRoutePath(self.tun_if.remote_addr[p.addr_type],
                                  0xffffffff,

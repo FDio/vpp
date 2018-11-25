@@ -4,6 +4,7 @@
 """
 import logging
 
+import enum
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
 from vpp_papi import VppEnum
@@ -15,19 +16,19 @@ except NameError:
 _log = logging.getLogger(__name__)
 
 
-class DpoProto:
-    DPO_PROTO_IP4 = 0
-    DPO_PROTO_IP6 = 1
-    DPO_PROTO_MPLS = 2
-    DPO_PROTO_ETHERNET = 3
-    DPO_PROTO_BIER = 4
-    DPO_PROTO_NSH = 5
+class DPO_PROTO(enum.IntEnum):  # noqa
+    IP4 = 0
+    IP6 = 1
+    MPLS = 2
+    ETHERNET = 3
+    BIER = 4
+    NSH = 5
 
 
 INVALID_INDEX = 0xffffffff
 
 
-class VppIpAddressUnion():
+class VppIpAddressUnion(object):
     def __init__(self, addr):
         self.addr = addr
         self.ip_addr = ip_address(text_type(self.addr))
@@ -70,7 +71,7 @@ class VppIpAddressUnion():
             return NotImplemented
 
 
-class VppIpAddress():
+class VppIpAddress(object):
     def __init__(self, addr):
         self.addr = VppIpAddressUnion(addr)
 
@@ -143,12 +144,12 @@ class VppIpAddress():
     @property
     def dpo_proto(self):
         if self.version == 6:
-            return DpoProto.DPO_PROTO_IP6
+            return DPO_PROTO.IP6
         else:
-            return DpoProto.DPO_PROTO_IP4
+            return DPO_PROTO.IP4
 
 
-class VppIpPrefix():
+class VppIpPrefix(object):
     def __init__(self, addr, len):
         self.addr = VppIpAddress(addr)
         self.len = len
@@ -190,7 +191,7 @@ class VppIpPrefix():
             return NotImplemented
 
 
-class VppIpMPrefix():
+class VppIpMPrefix(object):
     def __init__(self, saddr, gaddr, len):
         self.saddr = saddr
         self.gaddr = gaddr

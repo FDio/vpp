@@ -16,9 +16,8 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import L2_VTR_OP
+from vpp_l2 import L2_VTR_OP, L2_PORT_TYPE
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
-from vpp_papi_provider import L2_PORT_TYPE
 
 
 class MethodHolder(VppTestCase):
