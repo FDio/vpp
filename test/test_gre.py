@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
+import enum
 import unittest
 from logging import *
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
-from vpp_papi_provider import L2_VTR_OP
+from vpp_l2 import L2_VTR_OP
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, GRE
@@ -19,10 +20,10 @@ from scapy.volatile import RandMAC, RandIP
 from util import ppp, ppc
 
 
-class GreTunnelTypes:
-    TT_L3 = 0
-    TT_TEB = 1
-    TT_ERSPAN = 2
+class GRE_TT(enum.IntEnum):  # noqa
+    L3 = 0
+    TEB = 1
+    ERSPAN = 2
 
 
 class TestGRE(VppTestCase):
@@ -531,7 +532,7 @@ class TestGRE(VppTestCase):
             self, "2001::1", 128,
             [VppRoutePath("::",
                           gre_if.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)],
+                          proto=DPO_PROTO.IP6)],
             is_ip6=1)
         route6_via_tun.add_vpp_config()
 
@@ -574,7 +575,7 @@ class TestGRE(VppTestCase):
             self, "4004::1", 128,
             [VppRoutePath("0::0",
                           gre_if.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)],
+                          proto=DPO_PROTO.IP6)],
             is_ip6=1)
 
         route_via_tun.add_vpp_config()
@@ -597,7 +598,7 @@ class TestGRE(VppTestCase):
             self, "1002::1", 128,
             [VppRoutePath(self.pg2.remote_ip6,
                           self.pg2.sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)],
+                          proto=DPO_PROTO.IP6)],
             is_ip6=1)
         route_tun_dst.add_vpp_config()
 
@@ -758,10 +759,10 @@ class TestGRE(VppTestCase):
         #
         gre_if1 = VppGreInterface(self, self.pg0.local_ip4,
                                   "2.2.2.2",
-                                  type=GreTunnelTypes.TT_TEB)
+                                  type=GRE_TT.TEB)
         gre_if2 = VppGreInterface(self, self.pg0.local_ip4,
                                   "2.2.2.3",
-                                  type=GreTunnelTypes.TT_TEB)
+                                  type=GRE_TT.TEB)
         gre_if1.add_vpp_config()
         gre_if2.add_vpp_config()
 

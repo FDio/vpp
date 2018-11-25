@@ -4,7 +4,7 @@ import unittest
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_papi_provider import L2_VTR_OP, L2_PORT_TYPE
+from vpp_l2 import L2_VTR_OP, L2_PORT_TYPE
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
