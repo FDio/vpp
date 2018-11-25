@@ -3,17 +3,19 @@ import random
 import socket
 import unittest
 
+
+from six import moves
+from scapy.contrib.mpls import MPLS
+from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
+from scapy.layers.l2 import Ether, Dot1Q, ARP
+from scapy.packet import Raw
+
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsTable, VppIpTable
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, ARP
-from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
-from util import ppp
-from scapy.contrib.mpls import MPLS
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 
 
 class TestIPv4(VppTestCase):
@@ -133,11 +135,11 @@ class TestIPv4(VppTestCase):
                     UDP(sport=1234, dport=1234))
 
         pkts = [self.modify_packet(src_if, i, pkt_tmpl)
-                for i in xrange(self.pg_if_packet_sizes[0],
-                                self.pg_if_packet_sizes[1], 10)]
+                for i in moves.range(self.pg_if_packet_sizes[0],
+                                   self.pg_if_packet_sizes[1], 10)]
         pkts_b = [self.modify_packet(src_if, i, pkt_tmpl)
-                  for i in xrange(self.pg_if_packet_sizes[1] + hdr_ext,
-                                  self.pg_if_packet_sizes[2] + hdr_ext, 50)]
+                  for i in moves.range(self.pg_if_packet_sizes[1] + hdr_ext,
+                                     self.pg_if_packet_sizes[2] + hdr_ext, 50)]
         pkts.extend(pkts_b)
 
         return pkts
