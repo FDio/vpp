@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import binascii
 import random
 import socket
 import unittest
@@ -302,9 +303,8 @@ class TestIPv4FibCrud(VppTestCase):
         :return list: added ips with 32 prefix
         """
         added_ips = []
-        dest_addr = int(socket.inet_pton(socket.AF_INET,
-                                         start_dest_addr).encode('hex'),
-                        16)
+        dest_addr = int(binascii.hexlify(socket.inet_pton(socket.AF_INET,
+                                         start_dest_addr)), 16)
         dest_addr_len = 32
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):
@@ -318,9 +318,8 @@ class TestIPv4FibCrud(VppTestCase):
     def unconfig_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
 
         removed_ips = []
-        dest_addr = int(socket.inet_pton(socket.AF_INET,
-                                         start_dest_addr).encode('hex'),
-                        16)
+        dest_addr = int(binascii.hexlify(socket.inet_pton(socket.AF_INET,
+                                         start_dest_addr)), 16)
         dest_addr_len = 32
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):
