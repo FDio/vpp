@@ -14,7 +14,6 @@ from vpp_sub_interface import VppDot1QSubint
 
 from vpp_ip import *
 from vpp_mac import *
-from vpp_papi_provider import L2_PORT_TYPE
 from vpp_papi import VppEnum
 
 from scapy.packet import Raw
@@ -28,7 +27,7 @@ from scapy.layers.vxlan import VXLAN
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
 from util import mactobinary
-from vpp_papi_provider import L2_VTR_OP
+from vpp_l2 import L2_VTR_OP, L2_PORT_TYPE
 
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
@@ -405,7 +404,7 @@ class VppGbpRouteDomain(VppObject):
         return False
 
 
-class VppGbpContractNextHop():
+class VppGbpContractNextHop(object):
     def __init__(self, mac, bd, ip, rd):
         self.mac = mac
         self.ip = ip
@@ -419,7 +418,7 @@ class VppGbpContractNextHop():
                 'rd_id': self.rd.rd_id}
 
 
-class VppGbpContractRule():
+class VppGbpContractRule(object):
     def __init__(self, action, hash_mode, nhs=[]):
         self.action = action
         self.hash_mode = hash_mode

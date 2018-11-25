@@ -21,7 +21,7 @@ from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from util import ppp
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import UnexpectedApiReturnValueError
@@ -1730,12 +1730,12 @@ class BFDFIBTestCase(VppTestCase):
         ip_2001_s_64 = VppIpRoute(self, "2001::", 64,
                                   [VppRoutePath(self.pg0.remote_ip6,
                                                 self.pg0.sw_if_index,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                                proto=DPO_PROTO.IP6)],
                                   is_ip6=1)
         ip_2002_s_64 = VppIpRoute(self, "2002::", 64,
                                   [VppRoutePath(self.pg0.remote_ip6,
                                                 0xffffffff,
-                                                proto=DpoProto.DPO_PROTO_IP6)],
+                                                proto=DPO_PROTO.IP6)],
                                   is_ip6=1)
         ip_2001_s_64.add_vpp_config()
         ip_2002_s_64.add_vpp_config()
