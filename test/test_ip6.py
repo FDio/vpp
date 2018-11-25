@@ -1,30 +1,29 @@
 #!/usr/bin/env python
 
-import unittest
 import socket
+import unittest
+
+import six
+from scapy.contrib.mpls import MPLS
+from scapy.layers.inet6 import IPv6, UDP, TCP, ICMPv6ND_NS, ICMPv6ND_RS, \
+    ICMPv6ND_RA, ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
+    ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
+    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply
+from scapy.layers.l2 import Ether, Dot1Q
+from scapy.packet import Raw
+from scapy.utils import inet_pton, inet_ntop
+from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
+    in6_mactoifaceid
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp, ip6_normalize
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint
-from vpp_pg_interface import is_ipv6_misc
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsRoute, VppMplsTable, VppIpTable
 from vpp_neighbor import find_nbr, VppNeighbor
-
-from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet6 import IPv6, UDP, TCP, ICMPv6ND_NS, ICMPv6ND_RS, \
-    ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation, \
-    ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
-    ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
-    ICMPv6TimeExceeded, ICMPv6EchoRequest, ICMPv6EchoReply
-from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
-    in6_mactoifaceid, in6_ismaddr
-from scapy.utils import inet_pton, inet_ntop
-from scapy.contrib.mpls import MPLS
-
+from vpp_pg_interface import is_ipv6_misc
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 
 AF_INET6 = socket.AF_INET6
 
@@ -281,10 +280,10 @@ class TestIPv6(TestIPv6ND):
                     UDP(sport=1234, dport=1234))
 
         pkts = [self.modify_packet(src_if, i, pkt_tmpl)
-                for i in xrange(self.pg_if_packet_sizes[0],
+                for i in six.range(self.pg_if_packet_sizes[0],
                                 self.pg_if_packet_sizes[1], 10)]
         pkts_b = [self.modify_packet(src_if, i, pkt_tmpl)
-                  for i in xrange(self.pg_if_packet_sizes[1] + hdr_ext,
+                  for i in six.range(self.pg_if_packet_sizes[1] + hdr_ext,
                                   self.pg_if_packet_sizes[2] + hdr_ext, 50)]
         pkts.extend(pkts_b)
 
