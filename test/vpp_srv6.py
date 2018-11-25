@@ -8,7 +8,7 @@ from vpp_object import *
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 
 
-class SRv6LocalSIDBehaviors():
+class SRv6LocalSIDBehaviors(object):
     # from src/vnet/srv6/sr.h
     SR_BEHAVIOR_END = 1
     SR_BEHAVIOR_X = 2
@@ -22,13 +22,13 @@ class SRv6LocalSIDBehaviors():
     SR_BEHAVIOR_LAST = 10      # Must always be the last one
 
 
-class SRv6PolicyType():
+class SRv6PolicyType(object):
     # from src/vnet/srv6/sr.h
     SR_POLICY_TYPE_DEFAULT = 0
     SR_POLICY_TYPE_SPRAY = 1
 
 
-class SRv6PolicySteeringTypes():
+class SRv6PolicySteeringTypes(object):
     # from src/vnet/srv6/sr.h
     SR_STEER_L2 = 2
     SR_STEER_IPV4 = 4
