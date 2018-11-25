@@ -1,16 +1,17 @@
 import binascii
 import socket
-from abc import abstractmethod, ABCMeta
+import abc
 
+import six
 from six import moves
 
 from util import Host, mk_ll_addr
 from vpp_papi import mac_ntop
 
 
+@six.add_metaclass(abc.ABCMeta)
 class VppInterface(object):
     """Generic VPP interface."""
-    __metaclass__ = ABCMeta
 
     @property
     def sw_if_index(self):
@@ -181,7 +182,7 @@ class VppInterface(object):
             self._hosts_by_ip4[ip4] = host
             self._hosts_by_ip6[ip6] = host
 
-    @abstractmethod
+    @abc.abstractmethod
     def __init__(self, test):
         self._test = test
 

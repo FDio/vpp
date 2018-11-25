@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from abc import abstractmethod, ABCMeta
+import abc
+import six
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
@@ -8,9 +9,9 @@ from scapy.layers.inet import IP, UDP
 from util import ip4_range
 
 
+@six.add_metaclass(abc.ABCMeta)
 class BridgeDomain(object):
     """ Bridge domain abstraction """
-    __metaclass__ = ABCMeta
 
     @property
     def frame_request(self):
@@ -28,27 +29,27 @@ class BridgeDomain(object):
                 UDP(sport=20000, dport=10000) /
                 Raw('\xa5' * 100))
 
-    @abstractmethod
+    @abc.abstractmethod
     def ip_range(self, start, end):
         """ range of remote ip's """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def encap_mcast(self, pkt, src_ip, src_mac, vni):
         """ Encapsulate mcast packet """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def encapsulate(self, pkt, vni):
         """ Encapsulate packet """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def decapsulate(self, pkt):
         """ Decapsulate packet """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def check_encapsulation(self, pkt, vni, local_only=False):
         """ Verify the encapsulation """
         pass
