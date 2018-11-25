@@ -4,16 +4,17 @@
   object abstractions for representing IP routes in VPP
 """
 
-from vpp_object import *
+import enum
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_ip import *
+from vpp_object import *
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 
-class MRouteItfFlags:
+class MRouteItfFlags(enum.Enum):
     MFIB_ITF_FLAG_NONE = 0
     MFIB_ITF_FLAG_NEGATE_SIGNAL = 1
     MFIB_ITF_FLAG_ACCEPT = 2
@@ -22,7 +23,7 @@ class MRouteItfFlags:
     MFIB_ITF_FLAG_INTERNAL_COPY = 16
 
 
-class MRouteEntryFlags:
+class MRouteEntryFlags(enum.Enum):
     MFIB_ENTRY_FLAG_NONE = 0
     MFIB_ENTRY_FLAG_SIGNAL = 1
     MFIB_ENTRY_FLAG_DROP = 2
@@ -30,7 +31,7 @@ class MRouteEntryFlags:
     MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
 
 
-class MplsLspMode:
+class MplsLspMode(enum.Enum):
     PIPE = 0
     UNIFORM = 1
 
