@@ -129,13 +129,13 @@ class ACLPluginConnTestCase(VppTestCase):
     """ ACL plugin connection-oriented extended testcases """
 
     @classmethod
-    def setUpClass(self):
-        super(ACLPluginConnTestCase, self).setUpClass()
+    def setUpClass(cls):
+        super(ACLPluginConnTestCase, cls).setUpClass()
         # create pg0 and pg1
-        self.create_pg_interfaces(range(2))
+        cls.create_pg_interfaces(range(2))
         cmd = "set acl-plugin session table event-trace 1"
-        self.logger.info(self.vapi.cli(cmd))
-        for i in self.pg_interfaces:
+        cls.logger.info(cls.vapi.cli(cmd))
+        for i in cls.pg_interfaces:
             i.admin_up()
             i.config_ip4()
             i.config_ip6()
