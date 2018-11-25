@@ -882,6 +882,8 @@ start_workers (vlib_main_t * vm)
 
                             fl_clone[0] = fl_orig[0];
                             fl_clone->buffers = 0;
+                            vec_validate(fl_clone->buffers, 0);
+                            vec_reset_length(fl_clone->buffers);
                             fl_clone->n_alloc = 0;
                           }));
 /* *INDENT-ON* */

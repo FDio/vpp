@@ -386,6 +386,8 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 
   clib_memset (f, 0, sizeof (f[0]));
   f->index = f - vm->buffer_free_list_pool;
+  vec_validate (f->buffers, 0);
+  vec_reset_length (f->buffers);
   f->n_data_bytes = vlib_buffer_round_size (n_data_bytes);
   f->min_n_buffers_each_alloc = VLIB_FRAME_SIZE;
   f->buffer_pool_index = 0;
@@ -412,6 +414,8 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 	      wf - wvm->buffer_free_list_pool);
       wf[0] = f[0];
       wf->buffers = 0;
+      vec_validate (wf->buffers, 0);
+      vec_reset_length (wf->buffers);
       wf->n_alloc = 0;
     }
 
