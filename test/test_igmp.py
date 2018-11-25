@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import enum
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
@@ -12,7 +13,7 @@ from scapy.contrib.igmp import *
 from vpp_ip_route import find_mroute, VppIpTable
 
 
-class IgmpMode:
+class IgmpMode(enum.Enum):
     HOST = 1
     ROUTER = 0
 

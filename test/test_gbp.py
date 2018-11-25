@@ -365,7 +365,7 @@ class VppGbpRouteDomain(VppObject):
         return False
 
 
-class VppGbpContractNextHop():
+class VppGbpContractNextHop(object):
     def __init__(self, mac, bd, ip, rd):
         self.mac = mac
         self.ip = ip
@@ -379,7 +379,7 @@ class VppGbpContractNextHop():
                 'rd_id': self.rd.rd_id}
 
 
-class VppGbpContractRule():
+class VppGbpContractRule(object):
     def __init__(self, action, nhs=[]):
         self.action = action
         self.nhs = nhs
