@@ -33,7 +33,7 @@
 #endif
 
 
-#if __GNUC__ > 4  && !__clang__
+#if __GNUC__ > 4  && !__clang__ && CLIB_DEBUG == 0
 #define CLIB_CPU_OPTIMIZED __attribute__ ((optimize ("O3")))
 #else
 #define CLIB_CPU_OPTIMIZED
