@@ -1,14 +1,16 @@
 
-from vpp_object import VppObject
+import enum
 import socket
 
+from vpp_object import VppObject
 
-class IGMP_MODE:
+
+class IGMP_MODE(enum.IntEnum):  # noqa
     ROUTER = 0
     HOST = 1
 
 
-class IGMP_FILTER:
+class IGMP_FILTER(enum.IntEnum):  # noqa
     INCLUDE = 1
     EXCLUDE = 0
 
@@ -30,7 +32,7 @@ def wait_for_igmp_event(test, timeout, itf, gaddr, saddr, ff):
     return False
 
 
-class IgmpSG():
+class IgmpSG(object):
     def __init__(self, gaddr, saddrs):
         self.gaddr = gaddr
         self.gaddr_p = socket.inet_pton(socket.AF_INET, gaddr)
@@ -43,7 +45,7 @@ class IgmpSG():
             self.saddrs_encoded.append(ss)
 
 
-class IgmpRecord():
+class IgmpRecord(object):
     def __init__(self, sg, type):
         self.sg = sg
         self.type = type

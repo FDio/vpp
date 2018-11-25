@@ -6,7 +6,7 @@ from socket import AF_INET, AF_INET6, inet_pton
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
-    VppIpTable, DpoProto
+    VppIpTable, DPO_PROTO
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
@@ -1358,7 +1358,7 @@ class ARPTestCase(VppTestCase):
         ip_10_1 = VppIpRoute(self, "10::1", 128,
                              [VppRoutePath(self.pg0.remote_hosts[1].ip6,
                                            self.pg0.sw_if_index,
-                                           proto=DpoProto.DPO_PROTO_IP6)],
+                                           proto=DPO_PROTO.IP6)],
                              is_ip6=1)
         ip_10_1.add_vpp_config()
 

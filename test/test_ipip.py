@@ -5,7 +5,7 @@ import unittest
 from scapy.layers.inet6 import IPv6, Ether, IP, UDP, IPv6ExtHdrFragment
 from scapy.all import fragment, fragment6, RandShort, defragment6
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import DpoProto
+from vpp_ip import DPO_PROTO
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
@@ -85,14 +85,14 @@ class TestIPIP(VppTestCase):
             self, "130.67.0.0", 16,
             [VppRoutePath("0.0.0.0",
                           sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP4)], is_ip6=0)
+                          proto=DPO_PROTO.IP4)], is_ip6=0)
         ip4_via_tunnel.add_vpp_config()
 
         ip6_via_tunnel = VppIpRoute(
             self, "dead::", 16,
             [VppRoutePath("::",
                           sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)], is_ip6=1)
+                          proto=DPO_PROTO.IP6)], is_ip6=1)
         ip6_via_tunnel.add_vpp_config()
 
         # IPv6 in to IPv4 tunnel
@@ -285,14 +285,14 @@ class TestIPIP6(VppTestCase):
             self, "130.67.0.0", 16,
             [VppRoutePath("0.0.0.0",
                           sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP4)], is_ip6=0)
+                          proto=DPO_PROTO.IP4)], is_ip6=0)
         ip4_via_tunnel.add_vpp_config()
 
         ip6_via_tunnel = VppIpRoute(
             self, "dead::", 16,
             [VppRoutePath("::",
                           sw_if_index,
-                          proto=DpoProto.DPO_PROTO_IP6)], is_ip6=1)
+                          proto=DPO_PROTO.IP6)], is_ip6=1)
         ip6_via_tunnel.add_vpp_config()
 
         self.tunnel_ip6_via_tunnel = ip6_via_tunnel
