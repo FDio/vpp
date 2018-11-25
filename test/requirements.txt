@@ -1,5 +1,6 @@
 cffi                                    # MIT
 cryptography!=2.0                       # BSD/Apache-2.0
+enum34>=1.1.6 ; python_version <= '3.3' # BSD
 faulthandler; python_version < '3.3' #  # BSD License (2 clause)
 flake8                                  # MIT
 ipaddress; python_version < '3.3'       # PSF
