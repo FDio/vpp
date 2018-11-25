@@ -1263,7 +1263,8 @@ class VppTestRunner(unittest.TextTestRunner):
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
                                             verbosity, failfast, buffer,
                                             resultclass)
-        KeepAliveReporter.pipe = keep_alive_pipe
+        self.reporter = KeepAliveReporter()
+        self.reporter.pipe = keep_alive_pipe
 
         self.orig_stream = self.stream
         self.resultclass.test_framework_result_pipe = result_pipe
