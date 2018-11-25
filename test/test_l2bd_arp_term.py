@@ -156,12 +156,13 @@ class TestL2bdArpTerm(VppTestCase):
     def arp_resp_hosts(self, src_host, pkts):
         return {self.arp_resp_host(src_host, p) for p in pkts}
 
-    def inttoip4(self, ip):
+    @staticmethod
+    def inttoip4(ip):
         o1 = int(ip / 16777216) % 256
         o2 = int(ip / 65536) % 256
         o3 = int(ip / 256) % 256
         o4 = int(ip) % 256
-        return '%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
+        return '%s.%s.%s.%s' % (o1, o2, o3, o4)
 
     def arp_event_host(self, e):
         return Host(mac=':'.join(['%02x' % ord(char) for char in e.new_mac]),
