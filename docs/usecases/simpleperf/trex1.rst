@@ -30,15 +30,3 @@ On *csp2s22c03*, use the VCC CLI command show run to display the graph runtime s
 Observe that the average vector per node is 10.69 and 14.47:
 
 .. figure:: /_images/build-a-fast-network-stack-terminal-3.png
-
-Summary
-=======
-
-This tutorial showed how to download, compile, and install the VPP binary on an
-Intel® Architecture platform. Examples of /etc/sysctl.d/80-vpp.conf and
-/etc/vpp/startup.conf/startup.conf configuration files were provided to get the
-user up and running with VPP. The tutorial also illustrated how to detect and bind
-the network interfaces to a DPDK-compatible driver. You can use the VPP CLI to assign
-IP addresses to these interfaces and bring them up. Finally, four examples using iperf3
-and TRex were included, to show how VPP processes packets in batches.
-
