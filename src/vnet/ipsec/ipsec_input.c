@@ -44,6 +44,7 @@ static char *ipsec_input_error_strings[] = {
 
 typedef struct
 {
+  u32 spd;
   u32 sa_id;
   u32 spi;
   u32 seq;
@@ -65,11 +66,14 @@ format_ipsec_input_trace (u8 * s, va_list * args)
 
   if (t->sa_id != 0)
     {
-      s = format (s, "esp: sa_id %u spi %u seq %u", t->sa_id, t->spi, t->seq);
+      s =
+	format (s, "esp: sa_id %u spd %u spi %u seq %u", t->sa_id, t->spd,
+		t->spi, t->seq);
     }
   else
     {
-      s = format (s, "esp: no sa spi %u seq %u", t->spi, t->seq);
+      s =
+	format (s, "esp: no sa spd %u spi %u seq %u", t->spd, t->spi, t->seq);
     }
   return s;
 }
@@ -269,6 +273,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 			tr->sa_id = p0->sa_id;
 		      tr->spi = clib_host_to_net_u32 (esp0->spi);
 		      tr->seq = clib_host_to_net_u32 (esp0->seq);
+		      tr->spd = spd0->id;
 		    }
 		}
 
@@ -309,6 +314,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 			tr->sa_id = p0->sa_id;
 		      tr->spi = clib_host_to_net_u32 (ah0->spi);
 		      tr->seq = clib_host_to_net_u32 (ah0->seq_no);
+		      tr->spd = spd0->id;
 		    }
 		}
 	    }
@@ -457,6 +463,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 		    tr->sa_id = p0->sa_id;
 		  tr->spi = clib_host_to_net_u32 (esp0->spi);
 		  tr->seq = clib_host_to_net_u32 (esp0->seq);
+		  tr->spd = spd0->id;
 		}
 	    }
 
