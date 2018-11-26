@@ -3,7 +3,7 @@ import os
 import time
 from collections import deque
 
-import six
+from six import moves
 
 from hook import Hook
 
@@ -187,14 +187,14 @@ class VppPapiProvider(object):
             if hasattr(reply, 'retval') and reply.retval >= 0:
                 msg = "API call passed unexpectedly: expected negative "\
                     "return value instead of %d in %s" % \
-                    (reply.retval, six.reprlib(reply))
+                    (reply.retval, moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead "\
                     "of %d in %s" % (expected_retval, reply.retval,
-                                     six.reprlib(reply))
+                                     moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         else:
