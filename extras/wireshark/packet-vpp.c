@@ -95,7 +95,7 @@ static dissector_table_t vpp_subdissector_table;
 _(eth_maybefcs)                                 \
 _(ip)                                           \
 _(ipv6)                                         \
-_(udp)
+_(tcp)
 
 #define _(a) static dissector_handle_t a##_dissector_handle;
 foreach_next_dissector;
@@ -110,17 +110,28 @@ foreach_next_dissector;
  * arg is [only] used as a string (#xxx). 
  */
 
+/* 
+ * Note: in addition to these direct mappings, we 
+ * send traces w/ b->data[b->current_data] = 0x45 to
+ * the ip dissector, and 0x60 to the ipv6 dissector.
+ *
+ * It pays to add direct mappings for common places which
+ * may receive broken packets during development. ip4-lookup and
+ * ip6-lookup are obvious places where people send
+ * hand-crafted packets which may turn out to be broken.
+ */
 #define foreach_node_to_dissector_pair          \
-_("ip6-lookup", ipv6)                           \
-_("ip4-input", ip)                              \
-_("ip4-not-enabled", ip)                        \
-_("ip4-input-no-checksum", ip)                  \
-_("ip4-lookup", ip)                             \
-_("ip4-local", ip)                              \
-_("ip4-udp-lookup", udp)                        \
-_("ip4-icmp-error", ip)                         \
+_("ethernet-input", eth_maybefcs)               \
 _("ip4-glean", ip)                              \
-_("ethernet-input", eth_maybefcs)
+_("ip4-icmp-error", ip)                         \
+_("ip4-input", ip)                              \
+_("ip4-input-no-checksum", ip)                  \
+_("ip4-local", ip)                              \
+_("ip4-lookup", ip)                             \
+_("ip4-udp-lookup", ip)                         \
+_("ip6-lookup", ipv6)                           \
+_("tcp4-output", tcp)                           \
+_("tcp6-output", tcp)
 
 static void
 add_multi_line_string_to_tree(proto_tree *tree, tvbuff_t *tvb, gint start,
@@ -756,8 +767,25 @@ dissect_vpp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
      * Failing that, pretend its an ethernet packet
      */ 
     if (!dissector_try_string (vpp_subdissector_table, name, eth_tvb,
-                               pinfo, tree, NULL))
-        call_dissector (eth_maybefcs_dissector_handle, eth_tvb, pinfo, tree);
+                               pinfo, tree, NULL)) {
+        guint8 maybe_protocol_id; 
+        dissector_handle_t best_guess_dissector_handle
+            = eth_maybefcs_dissector_handle;
+
+        maybe_protocol_id = tvb_get_guint8 (tvb, offset);
+
+        switch (maybe_protocol_id) {
+        case 0x45:
+            best_guess_dissector_handle = ip_dissector_handle;
+            break;
+        case 0x60:
+            best_guess_dissector_handle = ipv6_dissector_handle;
+            break;
+        default:
+            break;
+        }
+        call_dissector (best_guess_dissector_handle, eth_tvb, pinfo, tree);
+    }
 
     g_free (name);
     return tvb_captured_length(tvb);

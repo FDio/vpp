@@ -2209,19 +2209,20 @@ tcp6_output (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_output_node) =
 {
-  .function = tcp4_output,.name = "tcp4-output",
-    /* Takes a vector of packets. */
-    .vector_size = sizeof (u32),
-    .n_errors = TCP_N_ERROR,
-    .error_strings = tcp_error_strings,
-    .n_next_nodes = TCP_OUTPUT_N_NEXT,
-    .next_nodes = {
+  .function = tcp4_output,
+  .name = "tcp4-output",
+  /* Takes a vector of packets. */
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_strings = tcp_error_strings,
+  .n_next_nodes = TCP_OUTPUT_N_NEXT,
+  .next_nodes = {
 #define _(s,n) [TCP_OUTPUT_NEXT_##s] = n,
     foreach_tcp4_output_next
 #undef _
-    },
-    .format_buffer = format_tcp_header,
-    .format_trace = format_tcp_tx_trace,
+  },
+  .format_buffer = format_tcp_header,
+  .format_trace = format_tcp_tx_trace,
 };
 /* *INDENT-ON* */
 
