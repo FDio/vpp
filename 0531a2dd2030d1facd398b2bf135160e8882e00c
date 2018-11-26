@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "17909c75_ae78538d",
+        "filename": "src/vnet/feature/feature.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 1516
+      },
+      "writtenOn": "2018-11-26T17:01:50Z",
+      "side": 1,
+      "message": "Should vnet_feature_arc_init() ensure the last node is correct by adding an implicit runs_before constraint to all other nodes during initial registration walk?",
+      "revId": "0531a2dd2030d1facd398b2bf135160e8882e00c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
