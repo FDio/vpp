@@ -5,6 +5,7 @@ import random
 import socket
 from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
+
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 
@@ -12,6 +13,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
+
+try:
+    unicode
+except NameError:
+    # In Python 3 unicode no longer exists (it's just str)
+    unicode = str  # noqa
 
 #
 # The number of packets to sent.
