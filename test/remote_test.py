@@ -6,7 +6,7 @@ import unittest
 from multiprocessing import Process, Pipe
 from pickle import dumps
 
-import six
+from six import moves
 
 from framework import VppTestCase
 
@@ -102,7 +102,7 @@ class RemoteClass(Process):
         self._pipe = Pipe()  # pipe for input/output arguments
 
     def __repr__(self):
-        return six.reprlib(RemoteClassAttr(self, None))
+        return moves.reprlib.repr(RemoteClassAttr(self, None))
 
     def __str__(self):
         return str(RemoteClassAttr(self, None))
@@ -194,7 +194,7 @@ class RemoteClass(Process):
     def _get_local_repr(self, path):
         try:
             obj = self._get_local_object(path)
-            return six.reprlib(obj)
+            return moves.reprlib.repr(obj)
         except AttributeError:
             return None
 
