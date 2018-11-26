@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "63167260_c127b912",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2018-11-26T20:06:50Z",
+      "side": 1,
+      "message": "We are not really used relaxed ordering. Use of acquire and release is defined by Release Consistency.\n\nI suggest: \"Use acquire/release ordering when accessing/updating svm_fifo shared variable cursize\".",
+      "range": {
+        "startLine": 7,
+        "startChar": 7,
+        "endLine": 7,
+        "endChar": 22
+      },
+      "revId": "e46ce504f4283709ef6e1cbdf9c2310835cf7621",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
