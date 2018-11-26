@@ -517,7 +517,6 @@ eth_vlan_table_lookups (ethernet_main_t * em,
 // Returns 1 if a matching subinterface was found, otherwise returns 0.
 always_inline u32
 eth_identify_subint (vnet_hw_interface_t * hi,
-		     vlib_buffer_t * b0,
 		     u32 match_flags,
 		     main_intf_t * main_intf,
 		     vlan_intf_t * vlan_intf,

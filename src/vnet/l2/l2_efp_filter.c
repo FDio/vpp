@@ -301,7 +301,6 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 				  &main_intf1, &vlan_intf1, &qinq_intf1);
 
 	  matched0 = eth_identify_subint (hi0,
-					  b0,
 					  match_flags0,
 					  main_intf0,
 					  vlan_intf0,
@@ -310,7 +309,6 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 					  &error0, &is_l20);
 
 	  matched1 = eth_identify_subint (hi1,
-					  b1,
 					  match_flags1,
 					  main_intf1,
 					  vlan_intf1,
@@ -419,7 +417,6 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 				  &main_intf0, &vlan_intf0, &qinq_intf0);
 
 	  matched0 = eth_identify_subint (hi0,
-					  b0,
 					  match_flags0,
 					  main_intf0,
 					  vlan_intf0,

@@ -208,9 +208,8 @@ identify_subint (vnet_hw_interface_t * hi,
 {
   u32 matched;
 
-  matched = eth_identify_subint (hi, b0, match_flags,
-				 main_intf, vlan_intf, qinq_intf,
-				 new_sw_if_index, error0, is_l2);
+  matched = eth_identify_subint (hi, match_flags, main_intf, vlan_intf,
+				 qinq_intf, new_sw_if_index, error0, is_l2);
 
   if (matched)
     {
