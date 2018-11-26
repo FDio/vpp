@@ -11,6 +11,8 @@ VPP with Iperf3 and TRex
    iperf31
    trex
    trex1
+   trex2
+   trex3
 
 
 

@@ -66,13 +66,6 @@ information on the configuration file, please refer to the `TRex Manual <http://
          - ip: 10.10.1.2
            default_gw: 10.10.1.1
    
-     platform:
-         master_thread_id: 0
-         latency_thread_id: 1
-         dual_if:
-           - socket: 1
-             threads: [22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43]
-
 Stop the previous VPP session and start it again in order to add a route for new
 IP addresses 16.0.0.0/8 and 48.0.0.0/8, according to Figure 2. Those IP addresses
 are needed because TRex generates packets that use these addresses. Refer to the
@@ -130,4 +123,3 @@ configuration file "cap2/dns.yaml".
 On *csp2s22c03*, the *show run* command displays the graph runtime statistics.
 
 .. figure:: /_images/build-a-fast-network-stack-terminal-2.png
-
