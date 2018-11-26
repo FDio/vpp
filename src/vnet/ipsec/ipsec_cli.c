@@ -167,10 +167,10 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
     sa.integ_key_len = sizeof (sa.integ_key);
 
   if (ck)
-    strncpy ((char *) sa.crypto_key, (char *) ck, sa.crypto_key_len);
+    memcpy (sa.crypto_key, ck, sa.crypto_key_len);
 
   if (ik)
-    strncpy ((char *) sa.integ_key, (char *) ik, sa.integ_key_len);
+    memcpy (sa.integ_key, ik, sa.integ_key_len);
 
   if (is_add)
     {
