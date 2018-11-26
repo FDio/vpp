@@ -115,6 +115,7 @@ vnet_feature_init (vlib_main_t * vm)
       clib_error_t *error;
       vnet_feature_config_main_t *cm;
       vnet_config_main_t *vcm;
+      char **features_in_order, *last_feature;
 
       arc_index = areg->feature_arc_index;
       cm = &fm->feature_config_mains[arc_index];
@@ -127,6 +128,19 @@ vnet_feature_init (vlib_main_t * vm)
 	{
 	  clib_error_report (error);
 	  os_exit (1);
+	}
+
+      features_in_order = fm->feature_nodes[arc_index];
+
+      /* If specificed, verify that the last node in the arc is actually last */
+      if (areg->last_in_arc && vec_len (features_in_order) > 0)
+	{
+	  last_feature = features_in_order[vec_len (features_in_order) - 1];
+	  if (strncmp (areg->last_in_arc, last_feature,
+		       strlen (areg->last_in_arc)))
+	    clib_warning
+	      ("WARNING: %s arc: last node is %s, but expected %s!",
+	       areg->arc_name, last_feature, areg->last_in_arc);
 	}
 
       fm->next_feature_by_name[arc_index] =

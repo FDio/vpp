@@ -711,6 +711,7 @@ VNET_FEATURE_ARC_INIT (ip4_unicast, static) =
 {
   .arc_name = "ip4-unicast",
   .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
+  .last_in_arc = "ip4-lookup",
   .arc_index_ptr = &ip4_main.lookup_main.ucast_feature_arc_index,
 };
 
@@ -796,6 +797,7 @@ VNET_FEATURE_ARC_INIT (ip4_multicast, static) =
 {
   .arc_name = "ip4-multicast",
   .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
+  .last_in_arc = "ip4-mfib-forward-lookup",
   .arc_index_ptr = &ip4_main.lookup_main.mcast_feature_arc_index,
 };
 
@@ -825,6 +827,7 @@ VNET_FEATURE_ARC_INIT (ip4_output, static) =
 {
   .arc_name = "ip4-output",
   .start_nodes = VNET_FEATURES ("ip4-rewrite", "ip4-midchain", "ip4-dvr-dpo"),
+  .last_in_arc = "interface-output",
   .arc_index_ptr = &ip4_main.lookup_main.output_feature_arc_index,
 };
 
@@ -1212,6 +1215,7 @@ VNET_FEATURE_ARC_INIT (ip4_local) =
 {
   .arc_name  = "ip4-local",
   .start_nodes = VNET_FEATURES ("ip4-local"),
+  .last_in_arc = "ip4-local-end-of-arc",
 };
 /* *INDENT-ON* */
 
