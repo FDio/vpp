@@ -2190,13 +2190,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, n_left_from);
   clib_memset_u16 (nexts, IP4_REWRITE_NEXT_DROP, n_left_from);
 
-  if (n_left_from >= 6)
-    {
-      int i;
-      for (i = 0; i < 6; i++)
-	vlib_prefetch_buffer_header (bufs[i], LOAD);
-    }
-
   next = nexts;
   b = bufs;
   while (n_left_from >= 8)
