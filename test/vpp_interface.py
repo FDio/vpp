@@ -1,7 +1,7 @@
 import socket
 from abc import abstractmethod, ABCMeta
 
-import six
+from six import moves
 
 from util import Host, mk_ll_addr, mactobinary
 
@@ -240,7 +240,7 @@ class VppInterface(object):
             raise Exception(
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
-                (self.sw_if_index, six.reprlib(r)))
+                (self.sw_if_index, moves.reprlib.repr(r)))
         self._local_ip6_ll = mk_ll_addr(self.local_mac)
         self._local_ip6n_ll = socket.inet_pton(socket.AF_INET6,
                                                self.local_ip6_ll)
