@@ -699,7 +699,28 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #endif  /* DEFAULT_TRIM_THRESHOLD */
 #ifndef DEFAULT_MMAP_THRESHOLD
 #if HAVE_MMAP
-#define DEFAULT_MMAP_THRESHOLD ((size_t)256U * (size_t)1024U)
+/*
+ * The default value in the dlmalloc was set as follows:
+ *
+ * #define DEFAULT_MMAP_THRESHOLD ((size_t)256U * (size_t)1024U)
+ *
+ * Above this threshold the sys_alloc() calls mmap_alloc() to directly mmap the memory.
+ * However, the interaction of this path with the rest of the vpp infra results
+ * in vpp infra considering directly mmap-allocated pieces to not
+ * be part of the heap, with predictable consequence.
+ *
+ * A simple unit-test to show that behavior is to make a small private
+ * heap and repeatedly perform vec_add1() within that heap.
+ *
+ * The issue is because there is no tracking which mmap-allocated chunk
+ * belongs to which heap.
+ *
+ * The temporary approach is to dial up the threshold so that the problematic
+ * code path never gets called. The full fix needs to introduce
+ * introduce the vector of mmap-allocated chunks to mspace, and in general
+ * do some more thorough testing.
+ */
+#define DEFAULT_MMAP_THRESHOLD ((size_t)~0ULL)
 #else   /* HAVE_MMAP */
 #define DEFAULT_MMAP_THRESHOLD MAX_SIZE_T
 #endif  /* HAVE_MMAP */
