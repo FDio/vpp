@@ -371,6 +371,7 @@ VNET_FEATURE_ARC_INIT (ip6_unicast, static) =
 {
   .arc_name  = "ip6-unicast",
   .start_nodes = VNET_FEATURES ("ip6-input"),
+  .last_in_arc = "ip6-lookup",
   .arc_index_ptr = &ip6_main.lookup_main.ucast_feature_arc_index,
 };
 
@@ -442,6 +443,7 @@ VNET_FEATURE_ARC_INIT (ip6_multicast, static) =
 {
   .arc_name  = "ip6-multicast",
   .start_nodes = VNET_FEATURES ("ip6-input"),
+  .last_in_arc = "ip6-mfib-forward-lookup",
   .arc_index_ptr = &ip6_main.lookup_main.mcast_feature_arc_index,
 };
 
@@ -468,6 +470,7 @@ VNET_FEATURE_ARC_INIT (ip6_output, static) =
 {
   .arc_name  = "ip6-output",
   .start_nodes = VNET_FEATURES ("ip6-rewrite", "ip6-midchain", "ip6-dvr-dpo"),
+  .last_in_arc = "interface-output",
   .arc_index_ptr = &ip6_main.lookup_main.output_feature_arc_index,
 };
 

@@ -104,6 +104,7 @@ VNET_FEATURE_ARC_INIT (mpls_input, static) =
 {
   .arc_name  = "mpls-input",
   .start_nodes = VNET_FEATURES ("mpls-input"),
+  .last_in_arc = "mpls-lookup",
   .arc_index_ptr = &mpls_main.input_feature_arc_index,
 };
 
@@ -123,6 +124,7 @@ VNET_FEATURE_ARC_INIT (mpls_output, static) =
 {
   .arc_name  = "mpls-output",
   .start_nodes = VNET_FEATURES ("mpls-output", "mpls-midchain"),
+  .last_in_arc = "interface-output",
   .arc_index_ptr = &mpls_main.output_feature_arc_index,
 };
 

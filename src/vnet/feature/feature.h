@@ -30,6 +30,8 @@ typedef struct _vnet_feature_arc_registration
   /** Start nodes */
   char **start_nodes;
   int n_start_nodes;
+  /** End of the arc (optional, for consistency-checking) */
+  char *last_in_arc;
   /* Feature arc index, assigned by init function */
   u8 feature_arc_index;
   u8 *arc_index_ptr;
