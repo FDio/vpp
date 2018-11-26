@@ -393,6 +393,7 @@ class JsonParser(object):
                 if progress <= last_progress:
                     # cannot make forward progress
                     self.exceptions.extend(exceptions)
+                    break
                 exceptions = []
                 last_progress = progress
                 progress = 0
