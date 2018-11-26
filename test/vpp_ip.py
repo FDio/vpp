@@ -15,6 +15,13 @@ except NameError:
 _log = logging.getLogger(__name__)
 
 
+try:
+    unicode
+except NameError:
+    # In Python 3 unicode no longer exists (it's just str)
+    unicode = str  # noqa:
+
+
 class DpoProto:
     DPO_PROTO_IP4 = 0
     DPO_PROTO_IP6 = 1
