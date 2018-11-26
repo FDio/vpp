@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8d85b8f7_3dd4b862",
+        "filename": "src/vnet/ip/ip4.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-26T17:26:20Z",
+      "side": 1,
+      "message": "Compilers probably recognize both three-liners, but the code would be more readable if a function for (conditional) swap of two u32 variables is used.",
+      "range": {
+        "startLine": 319,
+        "startChar": 4,
+        "endLine": 319,
+        "endChar": 5
+      },
+      "revId": "2af0e3a74c40e5df946813324574ccc18feb4761",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
