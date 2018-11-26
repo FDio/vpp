@@ -27,7 +27,7 @@ from .vpp_format import VPPFormat
 logger = logging.getLogger(__name__)
 
 
-class BaseTypes():
+class BaseTypes(object):
     def __init__(self, type, elements=0):
         base_types = {'u8': '>B',
                       'u16': '>H',
@@ -72,7 +72,7 @@ def vpp_get_type(name):
         return None
 
 
-class FixedList_u8():
+class FixedList_u8(object):
     def __init__(self, name, field_type, num):
         self.name = name
         self.num = num
@@ -98,7 +98,7 @@ class FixedList_u8():
         return self.packer.unpack(data, offset)
 
 
-class FixedList():
+class FixedList(object):
     def __init__(self, name, field_type, num):
         self.num = num
         self.packer = types[field_type]
@@ -125,7 +125,7 @@ class FixedList():
         return result, total
 
 
-class VLAList():
+class VLAList(object):
     def __init__(self, name, field_type, len_field_name, index):
         self.name = name
         self.index = index
@@ -198,7 +198,7 @@ class VLAList_legacy():
         return r, total
 
 
-class VPPEnumType():
+class VPPEnumType(object):
     def __init__(self, name, msgdef):
         self.size = types['u32'].size
         e_hash = {}
@@ -227,7 +227,7 @@ class VPPEnumType():
         return self.enum(x), size
 
 
-class VPPUnionType():
+class VPPUnionType(object):
     def __init__(self, name, msgdef):
         self.name = name
         self.size = 0
@@ -277,7 +277,7 @@ class VPPUnionType():
         return self.tuple._make(r), maxsize
 
 
-class VPPType():
+class VPPType(object):
     # Set everything up to be able to pack / unpack
     def __init__(self, name, msgdef):
         self.name = name

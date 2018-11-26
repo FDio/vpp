@@ -47,7 +47,7 @@ def vac_error_handler(arg, msg, msg_len):
     vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
 
 
-class VppTransport:
+class VppTransport(object):
     def __init__(self, parent, read_timeout, server_address):
         self.connected = False
         self.read_timeout = read_timeout

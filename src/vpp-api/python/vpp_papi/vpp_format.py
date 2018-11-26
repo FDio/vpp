@@ -16,7 +16,7 @@
 from socket import inet_pton, inet_ntop, AF_INET6, AF_INET
 
 
-class VPPFormat:
+class VPPFormat(object):
     @staticmethod
     def format_vl_api_ip6_prefix_t(args):
         prefix, len = args.split('/')

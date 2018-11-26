@@ -10,7 +10,7 @@ import queue
 import logging
 
 
-class VppTransport:
+class VppTransport(object):
     def __init__(self, parent, read_timeout, server_address):
         self.connected = False
         self.read_timeout = read_timeout if read_timeout > 0 else 1
