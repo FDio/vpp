@@ -104,7 +104,7 @@ class TestClassifier(VppTestCase):
                                    is_add=is_add)
 
     def create_stream(self, src_if, dst_if, packet_sizes,
-                      proto_l=UDP(sport=1234, dport=5678)):
+                      proto_l=None):
         """Create input packet stream for defined interfaces.
 
         :param VppInterface src_if: Source Interface for packet stream.
@@ -112,6 +112,9 @@ class TestClassifier(VppTestCase):
         :param list packet_sizes: packet size to test.
         :param Scapy proto_l: Required IP protocol. Default protocol is UDP.
         """
+        if proto_l is None:
+            proto_l = UDP(sport=1234, dport=5678)
+
         pkts = []
 
         for size in packet_sizes:
