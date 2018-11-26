@@ -6,6 +6,7 @@
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
 from vpp_papi import VppEnum
+import six
 
 
 class DpoProto:
@@ -23,7 +24,7 @@ INVALID_INDEX = 0xffffffff
 class VppIpAddressUnion():
     def __init__(self, addr):
         self.addr = addr
-        self.ip_addr = ip_address(unicode(self.addr))
+        self.ip_addr = ip_address(six.text_type(self.addr))
 
     def encode(self):
         if self.version is 6:
@@ -202,7 +203,7 @@ class VppIpPrefix():
 
 class VppIp6Prefix():
     def __init__(self, prefix, prefixlen):
-        self.ip_prefix = ip_address(unicode(prefix))
+        self.ip_prefix = ip_address(six.text_type(prefix))
         self.prefixlen = prefixlen
 
     def encode(self):
@@ -219,8 +220,8 @@ class VppIpMPrefix():
         self.saddr = saddr
         self.gaddr = gaddr
         self.len = len
-        self.ip_saddr = ip_address(unicode(self.saddr))
-        self.ip_gaddr = ip_address(unicode(self.gaddr))
+        self.ip_saddr = ip_address(six.text_type(self.saddr))
+        self.ip_gaddr = ip_address(six.text_type(self.gaddr))
 
     def encode(self):
 
