@@ -45,7 +45,7 @@ class VppEnumType(type):
 # Python3
 # class VppEnum(metaclass=VppEnumType):
 #    pass
-class VppEnum:
+class VppEnum(object):
     __metaclass__ = VppEnumType
 
 
@@ -77,7 +77,7 @@ class FuncWrapper(object):
         return self._func(**kwargs)
 
 
-class VPP():
+class VPP(object):
     """VPP interface.
 
     This class provides the APIs to VPP.  The APIs are loaded
