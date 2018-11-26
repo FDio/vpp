@@ -2197,7 +2197,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
   if (n_left_from >= 6)
     {
       int i;
-      for (i = 0; i < 6; i++)
+      for (i = 2; i < 6; i++)
 	vlib_prefetch_buffer_header (bufs[i], LOAD);
     }
 
