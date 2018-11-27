@@ -206,9 +206,7 @@ dpdk_ring_alloc (struct rte_mempool *mp)
 static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-  return ! !(xd->port_conf.rxmode.hw_strip_crc);
-#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
+#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
   return ! !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP);
 #else
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
@@ -371,27 +369,15 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       if (dm->conf->no_multi_seg)
 	{
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	  xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
-	  xd->port_conf.rxmode.jumbo_frame = 0;
-	  xd->port_conf.rxmode.enable_scatter = 0;
-#else
 	  xd->port_conf.txmode.offloads &= ~DEV_TX_OFFLOAD_MULTI_SEGS;
 	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 	  xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
-#endif
 	}
       else
 	{
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOMULTSEGS;
-	  xd->port_conf.rxmode.jumbo_frame = 1;
-	  xd->port_conf.rxmode.enable_scatter = 1;
-#else
 	  xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
 	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	  xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
-#endif
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
 
@@ -466,13 +452,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-		  xd->tx_conf.txq_flags &= ~(ETH_TXQ_FLAGS_NOXSUMUDP |
-				                     ETH_TXQ_FLAGS_NOXSUMTCP);
-#else
 	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
 	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-#endif
 		  xd->flags |=
 		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
 		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
@@ -492,42 +473,28 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBEVF:
 	    case VNET_DPDK_PMD_I40EVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	      xd->port_conf.rxmode.hw_strip_crc = 1;
-#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
+#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
 	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	      xd->port_conf.rxmode.hw_strip_crc = 1;
-#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
+#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
 
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-		  xd->tx_conf.txq_flags &= ~(ETH_TXQ_FLAGS_NOXSUMUDP |
-				                     ETH_TXQ_FLAGS_NOXSUMTCP);
-#else
 	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
 	          xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-#endif
-		  xd->flags |=
-		    DPDK_DEVICE_FLAG_TX_OFFLOAD;
+		  xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD;
 		}
 	      break;
 
 	    case VNET_DPDK_PMD_ENA:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	      xd->port_conf.rxmode.enable_scatter = 0;
-#else
 	      xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_SCATTER;
-#endif
 	      break;
 
 	    case VNET_DPDK_PMD_DPAA2:
@@ -545,9 +512,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Intel Red Rock Canyon */
 	    case VNET_DPDK_PMD_FM10K:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	      xd->port_conf.rxmode.hw_strip_crc = 1;
-#elif RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
+#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
 	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 #endif
 	      break;
@@ -562,11 +527,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* vmxnet3 */
 	    case VNET_DPDK_PMD_VMXNET3:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	      xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
-#else
 	      xd->port_conf.txmode.offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
-#endif
 	      break;
 
 	    case VNET_DPDK_PMD_AF_PACKET:
@@ -824,14 +785,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  int vlan_off;
 	  vlan_off = rte_eth_dev_get_vlan_offload (xd->port_id);
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 8, 0, 0)
-	  xd->port_conf.rxmode.hw_vlan_strip = vlan_off;
-#else
           if (vlan_off)
 	    xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
 	  else
 	    xd->port_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_VLAN_STRIP;
-#endif
 	  if (rte_eth_dev_set_vlan_offload (xd->port_id, vlan_off) == 0)
 	    dpdk_log_info ("VLAN strip enabled for interface\n");
 	  else
