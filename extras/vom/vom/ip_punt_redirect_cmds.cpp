@@ -47,7 +47,7 @@ config_cmd::issue(connection& con)
   payload.is_add = 1;
   payload.punt.rx_sw_if_index = m_rx_itf.value();
   payload.punt.tx_sw_if_index = m_tx_itf.value();
-  payload.punt.nh = to_api(m_addr);
+  to_api(m_addr, &payload.punt.nh); // = to_api(m_addr);
 
   VAPI_CALL(req.execute());
 
@@ -93,7 +93,7 @@ unconfig_cmd::issue(connection& con)
   payload.is_add = 0;
   payload.punt.rx_sw_if_index = m_rx_itf.value();
   payload.punt.tx_sw_if_index = m_tx_itf.value();
-  payload.punt.nh = to_api(m_addr);
+  to_api(m_addr, &payload.punt.nh); // = to_api(m_addr);
 
   VAPI_CALL(req.execute());
 

@@ -23,7 +23,7 @@ namespace VOM {
 
 typedef boost::asio::ip::address ip_address_t;
 
-vapi_type_address to_api(const ip_address_t& a);
+void to_api(const ip_address_t& a, vapi_type_address* v);
 
 ip_address_t from_api(const vapi_type_address& v);
 

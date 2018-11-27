@@ -54,7 +54,7 @@ create_cmd::issue(connection& con)
   payload.endpoint.n_ips = m_ip_addrs.size();
 
   for (n = 0; n < payload.endpoint.n_ips; n++) {
-    payload.endpoint.ips[n] = to_api(m_ip_addrs[n]);
+    to_api(m_ip_addrs[n], &payload.endpoint.ips[n]);
   }
   payload.endpoint.mac = to_api(m_mac);
 
