@@ -346,7 +346,7 @@ ldp_init (void)
 int
 close (int fd)
 {
-  int rv;
+  int rv, refcnt;
   const char *func_str;
   u32 sid = ldp_sid_from_fd (fd);
 
@@ -388,13 +388,15 @@ close (int fd)
       LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x)",
 	    getpid (), fd, fd, func_str, sid, sid);
 
+      refcnt = vppcom_session_attr (sid, VPPCOM_ATTR_GET_REFCNT, 0, 0);
       rv = vppcom_session_close (sid);
       if (rv != VPPCOM_OK)
 	{
 	  errno = -rv;
 	  rv = -1;
 	}
-      ldp_fd_free_w_sid (sid);
+      if (refcnt == 1)
+	ldp_fd_free_w_sid (sid);
     }
   else
     {
