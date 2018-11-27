@@ -2214,6 +2214,7 @@ VLIB_REGISTER_NODE (tcp4_output_node) =
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
+  .protocol_hint = VLIB_NODE_PROTO_HINT_TCP,
   .error_strings = tcp_error_strings,
   .n_next_nodes = TCP_OUTPUT_N_NEXT,
   .next_nodes = {
@@ -2236,6 +2237,7 @@ VLIB_REGISTER_NODE (tcp6_output_node) =
     /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
+  .protocol_hint = VLIB_NODE_PROTO_HINT_TCP,
   .error_strings = tcp_error_strings,
   .n_next_nodes = TCP_OUTPUT_N_NEXT,
   .next_nodes = {
