@@ -77,7 +77,7 @@ create_cmd::issue(connection& con)
 
       payload.contract.rules[ii].nh_set.n_nhs = nh_size;
       while (jj < nh_size) {
-        payload.contract.rules[ii].nh_set.nhs[jj].ip = to_api(nh_it->getIp());
+        to_api(nh_it->getIp(), payload.contract.rules[ii].nh_set.nhs[jj].ip);
         payload.contract.rules[ii].nh_set.nhs[jj].mac = to_api(nh_it->getMac());
         payload.contract.rules[ii].nh_set.nhs[jj].bd_id = nh_it->getBdId();
         payload.contract.rules[ii].nh_set.nhs[jj].rd_id = nh_it->getRdId();
