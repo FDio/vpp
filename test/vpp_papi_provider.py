@@ -3783,10 +3783,7 @@ class VppPapiProvider(object):
                                 'sw_if_index': sw_if_index,
                                 'n_srcs': len(saddrs),
                                 'saddrs': saddrs,
-                                'gaddr':
-                                {
-                                    'address': gaddr
-                                }
+                                'gaddr':  gaddr
                             }
                         })
 

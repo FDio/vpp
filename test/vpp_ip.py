@@ -27,17 +27,9 @@ class VppIpAddressUnion():
 
     def encode(self):
         if self.version is 6:
-            return {
-                'ip6': {
-                    'address': self.ip_addr.packed
-                },
-            }
+            return {'ip6': self.ip_addr.packed}
         else:
-            return {
-                'ip4': {
-                    'address': self.ip_addr.packed
-                },
-            }
+            return {'ip4': self.ip_addr.packed}
 
     @property
     def version(self):
@@ -64,9 +56,9 @@ class VppIpAddressUnion():
         elif hasattr(other, "ip4") and hasattr(other, "ip6"):
             # vl_api_address_union_t
             if 4 is self.version:
-                return self.ip_addr.packed == other.ip4.address
+                return self.ip_addr.packed == other.ip4
             else:
-                return self.ip_addr.packed == other.ip6.address
+                return self.ip_addr.packed == other.ip6
         else:
             raise Exception("Comparing VppIpAddresUnions:%s"
                             " with unknown type: %s" %
@@ -206,7 +198,7 @@ class VppIp6Prefix():
         self.prefixlen = prefixlen
 
     def encode(self):
-        return {'prefix': {'address': self.ip_prefix.packed},
+        return {'prefix': self.ip_prefix.packed,
                 'len': self.prefixlen}
 
 
@@ -227,31 +219,15 @@ class VppIpMPrefix():
         if 6 is self.ip_saddr.version:
             prefix = {
                 'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
-                'grp_address': {
-                    'ip6': {
-                        'address': self.ip_gaddr.packed
-                    },
-                },
-                'src_address': {
-                    'ip6': {
-                        'address': self.ip_saddr.packed
-                    },
-                },
+                'grp_address': {'ip6': self.ip_gaddr.packed},
+                'src_address': {'ip6': self.ip_saddr.packed},
                 'grp_address_length': self.len,
             }
         else:
             prefix = {
                 'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
-                'grp_address': {
-                    'ip4': {
-                        'address': self.ip_gaddr.packed
-                    },
-                },
-                'src_address': {
-                    'ip4': {
-                        'address': self.ip_saddr.packed
-                    },
-                },
+                'grp_address': {'ip4': self.ip_gaddr.packed},
+                'src_address': {'ip4': self.ip_saddr.packed},
                 'grp_address_length': self.len,
             }
         return prefix
