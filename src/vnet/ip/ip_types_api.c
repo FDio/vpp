@@ -67,9 +67,9 @@ ip_address_union_encode (const ip46_address_t * in,
 			 vl_api_address_union_t * out)
 {
   if (ADDRESS_IP6 == clib_net_to_host_u32 (af))
-    memcpy (out->ip6.address, &in->ip6, sizeof (out->ip6));
+    memcpy (out->ip6, &in->ip6, sizeof (out->ip6));
   else
-    memcpy (out->ip4.address, &in->ip4, sizeof (out->ip4));
+    memcpy (out->ip4, &in->ip4, sizeof (out->ip4));
 }
 
 void

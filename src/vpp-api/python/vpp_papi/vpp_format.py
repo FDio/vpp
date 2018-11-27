@@ -32,7 +32,7 @@ class VPPFormat(object):
 
     @staticmethod
     def unformat_vl_api_ip6_prefix_t(args):
-        return "{}/{}".format(inet_ntop(AF_INET6, args.prefix.address),
+        return "{}/{}".format(inet_ntop(AF_INET6, args.prefix),
                               args.len)
 
     @staticmethod
@@ -43,7 +43,7 @@ class VPPFormat(object):
 
     @staticmethod
     def unformat_vl_api_ip4_prefix_t(args):
-        return "{}/{}".format(inet_ntop(AF_INET, args.prefix.address),
+        return "{}/{}".format(inet_ntop(AF_INET, args.prefix),
                               args.len)
 
     @staticmethod
@@ -57,18 +57,18 @@ class VPPFormat(object):
     @staticmethod
     def format_vl_api_address_t(args):
         try:
-            return {'un': {'ip6': {'address': inet_pton(AF_INET6, args)}},
+            return {'un': {'ip6': inet_pton(AF_INET6, args)},
                     'af': int(1)}
         except socket.error as e:
-            return {'un': {'ip4': {'address': inet_pton(AF_INET, args)}},
+            return {'un': {'ip4': inet_pton(AF_INET, args)},
                     'af': int(0)}
 
     @staticmethod
     def unformat_vl_api_address_t(arg):
         if arg.af == 1:
-            return inet_ntop(AF_INET6, arg.un.ip6.address)
+            return inet_ntop(AF_INET6, arg.un.ip6)
         if arg.af == 0:
-            return inet_ntop(AF_INET, arg.un.ip4.address)
+            return inet_ntop(AF_INET, arg.un.ip4)
         raise VPPFormatError
 
     @staticmethod
@@ -81,11 +81,11 @@ class VPPFormat(object):
     def unformat_vl_api_prefix_t(arg):
         if arg.address.af == 1:
             return "{}/{}".format(inet_ntop(AF_INET6,
-                                            arg.address.un.ip6.address),
+                                            arg.address.un.ip6),
                                   arg.address_length)
         if arg.address.af == 0:
             return "{}/{}".format(inet_ntop(AF_INET,
-                                            arg.address.un.ip4.address),
+                                            arg.address.un.ip4),
                                   arg.address_length)
         raise VPPFormatError
 
