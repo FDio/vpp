@@ -8,7 +8,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsTable, VppIpTable
+    VppMplsTable, VppIpTable, VppIpAddress
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, ARP
@@ -1094,7 +1094,7 @@ class TestIPPunt(VppTestCase):
     def setUp(self):
         super(TestIPPunt, self).setUp()
 
-        self.create_pg_interfaces(range(2))
+        self.create_pg_interfaces(range(4))
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -1121,8 +1121,7 @@ class TestIPPunt(VppTestCase):
         #
         # Configure a punt redirect via pg1.
         #
-        nh_addr = socket.inet_pton(socket.AF_INET,
-                                   self.pg1.remote_ip4)
+        nh_addr = VppIpAddress(self.pg1.remote_ip4).encode()
         self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
                                    self.pg1.sw_if_index,
                                    nh_addr)
@@ -1179,6 +1178,40 @@ class TestIPPunt(VppTestCase):
                                    self.pg1.sw_if_index,
                                    nh_addr,
                                    is_add=0)
+
+    def test_ip_punt_dump(self):
+        """ IP4 punt redirect dump"""
+
+        #
+        # Configure a punt redirects
+        #
+        nh_address = VppIpAddress(self.pg3.remote_ip4).encode()
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   nh_address)
+        self.vapi.ip_punt_redirect(self.pg1.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   nh_address)
+        self.vapi.ip_punt_redirect(self.pg2.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   VppIpAddress('0.0.0.0').encode())
+
+        #
+        # Dump pg0 punt redirects
+        #
+        punts = self.vapi.ip_punt_redirect_dump(self.pg0.sw_if_index)
+        for p in punts:
+            self.assertEqual(p.punt.rx_sw_if_index, self.pg0.sw_if_index)
+
+        #
+        # Dump punt redirects for all interfaces
+        #
+        punts = self.vapi.ip_punt_redirect_dump(0xffffffff)
+        self.assertEqual(len(punts), 3)
+        for p in punts:
+            self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
+        self.assertNotEqual(punts[1].punt.nh.un.ip4, self.pg3.remote_ip4)
+        self.assertEqual(punts[2].punt.nh.un.ip4.address, '\x00'*4)
 
 
 class TestIPDeag(VppTestCase):

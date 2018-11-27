@@ -44,10 +44,14 @@ config_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.is_add = 1;
-  payload.rx_sw_if_index = m_rx_itf.value();
-  payload.tx_sw_if_index = m_tx_itf.value();
+  payload.punt.rx_sw_if_index = m_rx_itf.value();
+  payload.punt.tx_sw_if_index = m_tx_itf.value();
 
-  to_bytes(m_addr, &payload.is_ip6, payload.nh);
+  if (m_addr.is_v6()) {
+    to_bytes(m_addr.to_v6(), payload.punt.nh.un.ip4.address);
+  } else {
+    to_bytes(m_addr.to_v4(), payload.punt.nh.un.ip6.address);
+  }
 
   VAPI_CALL(req.execute());
 
@@ -91,10 +95,14 @@ unconfig_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.is_add = 0;
-  payload.rx_sw_if_index = m_rx_itf.value();
-  payload.tx_sw_if_index = m_tx_itf.value();
+  payload.punt.rx_sw_if_index = m_rx_itf.value();
+  payload.punt.tx_sw_if_index = m_tx_itf.value();
 
-  to_bytes(m_addr, &payload.is_ip6, payload.nh);
+  if (m_addr.is_v6()) {
+    to_bytes(m_addr.to_v6(), payload.punt.nh.un.ip4.address);
+  } else {
+    to_bytes(m_addr.to_v4(), payload.punt.nh.un.ip6.address);
+  }
 
   VAPI_CALL(req.execute());
 
