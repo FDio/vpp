@@ -49,18 +49,14 @@ Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
-%if 0%{?fedora} >= 26
+%if 0%{?fedora}
 BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
 BuildRequires: python2-devel, python2-virtualenv, python2-ply
 BuildRequires: mbedtls-devel
 %else
-%if 0%{?fedora} == 25
-BuildRequires: subunit, subunit-devel
-BuildRequires: openssl-devel
-BuildRequires: python-devel, python2-virtualenv, python2-ply
-BuildRequires: mbedtls-devel
-%else
+%if 0%{rhel} == 7
+BuildRequires: devtoolset-7-toolchain
 BuildREquires: openssl-devel
 BuildRequires: python-devel, python-virtualenv, python-ply
 %endif
@@ -157,6 +153,9 @@ This package contains a tailored VPP SELinux policy
 groupadd -f -r vpp
 
 %build
+%if 0%{?rhel}
+. /opt/rh/devtoolset-7/enable
+%endif
 %if %{with aesni}
     make bootstrap
     make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
