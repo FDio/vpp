@@ -26,6 +26,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip_neighbor.h>
 #include <vnet/ip/ip6_neighbor.h>
+#include <vnet/ip/ip_punt_drop.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/dpo/drop_dpo.h>
@@ -110,7 +111,9 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
 _(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
-_(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)
+_(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)           \
+_(IP_PUNT_REDIRECT_DUMP, ip_punt_redirect_dump)
+
 
 extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
@@ -615,39 +618,39 @@ vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t * mp,
 {
   vl_api_ip_punt_redirect_reply_t *rmp;
   int rv = 0;
+  ip46_type_t ipv;
+  ip46_address_t nh;
 
+  if (!vnet_sw_if_index_is_api_valid (ntohl (mp->punt.tx_sw_if_index)))
+    goto bad_sw_if_index;
+
+  ipv = ip_address_decode (&mp->punt.nh, &nh);
   if (mp->is_add)
     {
-      ip46_address_t nh;
-
-      clib_memset (&nh, 0, sizeof (nh));
-
-      if (mp->is_ip6)
+      if (ipv == IP46_TYPE_IP6)
 	{
-	  memcpy (&nh.ip6, mp->nh, sizeof (nh.ip6));
-
-	  ip6_punt_redirect_add (ntohl (mp->rx_sw_if_index),
-				 ntohl (mp->tx_sw_if_index), &nh);
+	  ip6_punt_redirect_add (ntohl (mp->punt.rx_sw_if_index),
+				 ntohl (mp->punt.tx_sw_if_index), &nh);
 	}
-      else
+      else if (ipv == IP46_TYPE_IP4)
 	{
-	  memcpy (&nh.ip4, mp->nh, sizeof (nh.ip4));
-
-	  ip4_punt_redirect_add (ntohl (mp->rx_sw_if_index),
-				 ntohl (mp->tx_sw_if_index), &nh);
+	  ip4_punt_redirect_add (ntohl (mp->punt.rx_sw_if_index),
+				 ntohl (mp->punt.tx_sw_if_index), &nh);
 	}
     }
   else
     {
-      if (mp->is_ip6)
+      if (ipv == IP46_TYPE_IP6)
 	{
-	  ip6_punt_redirect_del (ntohl (mp->rx_sw_if_index));
+	  ip6_punt_redirect_del (ntohl (mp->punt.rx_sw_if_index));
 	}
-      else
+      else if (ipv == IP46_TYPE_IP4)
 	{
-	  ip4_punt_redirect_del (ntohl (mp->rx_sw_if_index));
+	  ip4_punt_redirect_del (ntohl (mp->punt.rx_sw_if_index));
 	}
     }
+
+  BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_IP_PUNT_REDIRECT_REPLY);
 }
@@ -3307,6 +3310,76 @@ void
     }
 
   REPLY_MACRO (VL_API_IP_REASSEMBLY_SET_REPLY);
+}
+
+void
+send_ip_punt_redirect_details (vl_api_registration_t * reg,
+			       u32 context, u32 sw_if_index,
+			       ip_punt_redirect_rx_t * pr, u8 is_ipv6)
+{
+  vl_api_ip_punt_redirect_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return;
+
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP_PUNT_REDIRECT_DETAILS);
+  mp->context = context;
+  mp->punt.rx_sw_if_index = htonl (sw_if_index);
+  mp->punt.tx_sw_if_index = htonl (pr->tx_sw_if_index);
+  if (is_ipv6)
+    {
+      ip_address_encode (&pr->nh, IP46_TYPE_IP6, &mp->punt.nh);
+    }
+  else
+    {
+      ip_address_encode (&pr->nh, IP46_TYPE_IP4, &mp->punt.nh);
+    }
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_ip_punt_redirect_dump_t_handler (vl_api_ip_punt_redirect_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+  u32 sw_if_index;
+  int rv __attribute__ ((unused)) = 0;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  if (~0 != sw_if_index)
+    VALIDATE_SW_IF_INDEX (mp);
+
+  ip_punt_redirect_detail_t *pr, *prs;
+  if (mp->is_ipv6)
+    {
+      prs = ip6_punt_redirect_entries (sw_if_index);
+      /* *INDENT-OFF* */
+      vec_foreach (pr, prs)
+      {
+        send_ip_punt_redirect_details (reg, mp->context, pr->rx_sw_if_index, &pr->punt_redirect, 1);
+      }
+      /* *INDENT-ON* */
+      vec_free (prs);
+    }
+  else
+    {
+      prs = ip4_punt_redirect_entries (sw_if_index);
+      /* *INDENT-OFF* */
+      vec_foreach (pr, prs)
+      {
+        send_ip_punt_redirect_details (reg, mp->context, pr->rx_sw_if_index, &pr->punt_redirect, 0);
+      }
+      /* *INDENT-ON* */
+      vec_free (prs);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
 }
 
 #define vl_msg_name_crc_list

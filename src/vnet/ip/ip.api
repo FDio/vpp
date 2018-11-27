@@ -630,26 +630,47 @@ autoreply define ip_punt_police
   u8 is_ip6;
 };
 
-/** \brief IP punt redirect
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - 1 to add neighbor, 0 to delete
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+/** \brief Punt redirect type
     @param rx_sw_if_index - specify the original RX interface of traffic
                             that should be redirected. ~0 means any interface.
     @param tx_sw_if_index - the TX interface to which traffic shoulde be
                             redirected.
-    @param nh - The next-hop to redirect the traffic to.
+    @param nh - the next-hop to redirect the traffic to.
+    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+*/
+typeonly define punt_redirect
+{
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+  vl_api_address_t nh;
+};
+
+/** \brief IP punt redirect
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param punt - punt definition
+    @param is_add - 1 to add neighbor, 0 to delete
 */
 autoreply define ip_punt_redirect
 {
   u32 client_index;
   u32 context;
-  u32 rx_sw_if_index;
-  u32 tx_sw_if_index;
+  vl_api_punt_redirect_t punt;
   u8 is_add;
-  u8 is_ip6;
-  u8 nh[16];
+};
+
+define ip_punt_redirect_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+};
+
+define ip_punt_redirect_details
+{
+  u32 context;
+  vl_api_punt_redirect_t punt;
 };
 
 autoreply define ip_container_proxy_add_del
