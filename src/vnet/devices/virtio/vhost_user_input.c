@@ -243,6 +243,122 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
   cpu->rx_buffers_len++;
 }
 
+#include "/home/damarion/cisco/vpp-sandbox/include/tscmarks.h"
+typedef struct {
+  uword addr[1024];
+  u32 len[1024];
+  u16 flags[1024];
+  u16 next[1024];
+  vlib_buffer_t buffer_template;
+}
+vu_per_thread_data_t;
+
+vu_per_thread_data_t vudata[4];
+
+static_always_inline void
+vhost_user_linearize_desc (vhost_user_vring_t *txvq, vu_per_thread_data_t *d,
+			   u16 count, u16 last_avail_idx, u16 mask, u16 * orfp)
+{
+  u32 i = 0;
+  u64 or_flags = 0;
+  while (i < count)
+    {
+      vring_desc_t *vd[4];
+
+      if (i + 7 < mask + 1)
+	{
+	  void *p;
+          p = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 4) & mask];
+          _mm_prefetch (p, _MM_HINT_T0);
+          p = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 5) & mask];
+          _mm_prefetch (p, _MM_HINT_T0);
+          p = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 6) & mask];
+          _mm_prefetch (p, _MM_HINT_T0);
+          p = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 7) & mask];
+          _mm_prefetch (p, _MM_HINT_T0);
+	}
+
+      vd[0] = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 0) & mask];
+      vd[1] = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 1) & mask];
+      vd[2] = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 2) & mask];
+      vd[3] = txvq->desc + txvq->avail->ring[(last_avail_idx + i + 3) & mask];
+
+#if 0
+      u8x32 s = {
+	  0, 1, 2, 3, 8, 9, 10, 11, 4, 5, 12, 13, 6, 7, 14, 15,
+	  0, 1, 2, 3, 8, 9, 10, 11, 4, 5, 12, 13, 6, 7, 14, 15,
+      };
+      u64x4 r0 = u64x4_load_unaligned (vd[0]);
+      u64x4 r1 = u64x4_load_unaligned (vd[1]);
+      u64x4 r2 = u64x4_load_unaligned (vd[2]);
+      u64x4 r3 = u64x4_load_unaligned (vd[3]);
+      u64x4 r;
+      r = (u64x4) {r0[0], r1[0], r2[0], r3[0]};
+      u64x4_store_unaligned(r, d->addr + i);
+      r = (u64x4) {r0[1], r1[1], r2[1], r3[1]};
+      r = (u64x4) _mm256_shuffle_epi8 ((__m256i) r, (__m256i) s);
+      u64x2_store_unaligned (u64x4_extract_lo (r), d->len +i);
+      u64x4_scatter_one (r, 2, d->flags + i);
+      u64x4_scatter_one (r, 3, d->next + i);
+      or_flags |= r[2];
+#else
+      d->addr[i + 0] = vd[0]->addr;
+      d->addr[i + 1] = vd[1]->addr;
+      d->addr[i + 2] = vd[2]->addr;
+      d->addr[i + 3] = vd[3]->addr;
+
+      d->len[i + 0] = vd[0]->len;
+      d->len[i + 1] = vd[1]->len;
+      d->len[i + 2] = vd[2]->len;
+      d->len[i + 3] = vd[3]->len;
+
+      or_flags |= d->flags[i + 0] = vd[0]->flags;
+      or_flags |= d->flags[i + 1] = vd[1]->flags;
+      or_flags |= d->flags[i + 2] = vd[2]->flags;
+      or_flags |= d->flags[i + 3] = vd[3]->flags;
+
+      d->next[i + 0] = vd[0]->next;
+      d->next[i + 1] = vd[1]->next;
+      d->next[i + 2] = vd[2]->next;
+      d->next[i + 3] = vd[3]->next;
+#endif
+      i+=4;
+    }
+#if 0
+  or_flags |= or_flags >> 16;
+  or_flags |= or_flags >> 32;
+  or_flags |= or_flags >> 48;
+#endif
+  orfp[0] = or_flags;
+}
+
+static_always_inline u32
+vhost_user_validate_map_and_adv (vhost_user_intf_t * vui,
+				 vu_per_thread_data_t *d,
+				 u16 n_left)
+{
+  uword *addr = d->addr;
+  u32 *len = d->len;
+  u32 hint = 0;
+  u32 hdr_sz = vui->virtio_net_hdr_sz;
+
+  while (n_left)
+    {
+      addr[0] = pointer_to_uword (map_guest_mem (vui, addr[0], &hint) + hdr_sz);
+      len[0] -= hdr_sz;
+      if (addr[0] == 0 || len[0] <= sizeof (ethernet_header_t) ||
+	  len[0] > VLIB_BUFFER_DATA_SIZE) /* FIXME - not critical */
+	return ~1;
+
+      /* next */
+      n_left -= 1;
+      addr += 1;
+      len += 1;
+    }
+
+  return 0;
+}
+
 static_always_inline u32
 vhost_user_if_input (vlib_main_t * vm,
 		     vhost_user_main_t * vum,
@@ -260,6 +376,8 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 map_hint = 0;
   vhost_cpu_t *cpu = &vum->cpus[vm->thread_index];
+  vu_per_thread_data_t *d = &vudata[vm->thread_index];
+  vlib_buffer_t *bt = &d->buffer_template;
   u16 copy_len = 0;
   u8 feature_arc_idx = fm->device_input_feature_arc_index;
   u32 current_config_index = ~(u32) 0;
@@ -334,9 +452,83 @@ vhost_user_if_input (vlib_main_t * vm,
 			VHOST_USER_INPUT_FUNC_ERROR_FULL_RX_QUEUE, 1);
     }
 
-  if (n_left > VLIB_FRAME_SIZE)
-    n_left = VLIB_FRAME_SIZE;
+  if (PREDICT_FALSE (vnet_have_features (feature_arc_idx, vui->sw_if_index)))
+    {
+      vnet_feature_config_main_t *cm;
+      cm = &fm->feature_config_mains[feature_arc_idx];
+      current_config_index = vec_elt (cm->config_index_by_sw_if_index,
+				      vui->sw_if_index);
+      vnet_get_config_data (&cm->config_main, &current_config_index,
+			    &next_index, 0);
+    }
 
+  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+  if (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT)
+    {
+      /* give some hints to ethernet-input */
+      vlib_next_frame_t *nf;
+      vlib_frame_t *f;
+      ethernet_input_frame_t *ef;
+      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
+      f = vlib_get_frame (vm, nf->frame_index);
+      f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+
+      ef = vlib_frame_scalar_args (f);
+      ef->sw_if_index = vui->sw_if_index;
+      ef->hw_if_index = vui->hw_if_index;
+    }
+
+  n_left = clib_min (n_left, n_left_to_next);
+
+  u16 last_avail_idx = txvq->last_avail_idx;
+  u16 last_used_idx = txvq->last_used_idx;
+
+  tsc_mark("linearize");
+  u16 or_flags, rv;
+  vhost_user_linearize_desc (txvq, d, n_left, last_used_idx, mask, &or_flags);
+
+  /* if any other flag is set, something is terribly wrong and we bail out */
+  if (or_flags & ~(VIRTQ_DESC_F_INDIRECT | VIRTQ_DESC_F_NEXT))
+    clib_error ("bad flags 0x%x", or_flags);
+
+  /* either INDIRECT or NEXT is set, falling back to slowpath */
+  if (or_flags)
+    goto slowpath;
+
+  tsc_mark("validate+map+adv");
+  if (vhost_user_validate_map_and_adv (vui, d, n_left))
+    {
+      clib_warning("invalid");
+      goto done;
+    }
+
+  tsc_mark("biffer alloc");
+  if ((rv = vlib_buffer_alloc (vm, to_next, n_left)) < n_left)
+    {
+      vlib_error_count (vm, vhost_user_input_node.index,
+			VHOST_USER_INPUT_FUNC_ERROR_NO_BUFFER, n_left - rv);
+      if (rv == 0)
+	goto done;
+      n_left = rv;
+    }
+
+  /* init buffer metadata FIXME move to per-thread-data */
+  vlib_buffer_free_list_t *fl;
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_init_for_free_list (bt, fl);
+  vnet_buffer (bt)->sw_if_index[VLIB_RX] = vui->sw_if_index;
+  vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+  bt->total_length_not_including_first_buffer = 0;
+  bt->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  if (current_config_index != ~(u32) 0)
+    {
+      bt->current_config_index = current_config_index;
+      vnet_buffer (bt)->feature_arc_index = feature_arc_idx;
+    }
+
+  tsc_mark("slowpath");
+slowpath:
   /*
    * For small packets (<2kB), we will not need more than one vlib buffer
    * per packet. In case packets are bigger, we will just yeld at some point
@@ -375,35 +567,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	}
     }
 
-  if (PREDICT_FALSE (vnet_have_features (feature_arc_idx, vui->sw_if_index)))
-    {
-      vnet_feature_config_main_t *cm;
-      cm = &fm->feature_config_mains[feature_arc_idx];
-      current_config_index = vec_elt (cm->config_index_by_sw_if_index,
-				      vui->sw_if_index);
-      vnet_get_config_data (&cm->config_main, &current_config_index,
-			    &next_index, 0);
-    }
 
-  u16 last_avail_idx = txvq->last_avail_idx;
-  u16 last_used_idx = txvq->last_used_idx;
-
-  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-  if (next_index == VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT)
-    {
-      /* give some hints to ethernet-input */
-      vlib_next_frame_t *nf;
-      vlib_frame_t *f;
-      ethernet_input_frame_t *ef;
-      nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
-      f = vlib_get_frame (vm, nf->frame_index);
-      f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
-
-      ef = vlib_frame_scalar_args (f);
-      ef->sw_if_index = vui->sw_if_index;
-      ef->hw_if_index = vui->hw_if_index;
-    }
 
   while (n_left > 0)
     {
@@ -632,6 +796,13 @@ stop:
   vnet_device_increment_rx_packets (vm->thread_index, n_rx_packets);
 
 done:
+  tsc_mark(0);
+  if (tsc_print(3, n_rx_packets))
+    {
+      fformat (stderr, "\nlen   %U", format_hexdump, d->len, 32);
+      fformat (stderr, "\nflags %U", format_hexdump, d->flags, 16);
+      fformat (stderr, "\nnext  %U", format_hexdump, d->next, 16);
+    }
   return n_rx_packets;
 }
 
