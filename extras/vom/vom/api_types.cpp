@@ -22,7 +22,7 @@ to_api(const boost::asio::ip::address_v4& a)
 {
   vapi_type_ip4_address v;
 
-  std::copy_n(a.to_bytes().data(), 4, v.address);
+  std::copy_n(a.to_bytes().data(), 4, v);
 
   return v;
 }
@@ -32,7 +32,7 @@ to_api(const boost::asio::ip::address_v6& a)
 {
   vapi_type_ip6_address v;
 
-  std::copy_n(a.to_bytes().data(), 16, v.address);
+  std::copy_n(a.to_bytes().data(), 16, v);
 
   return v;
 }
@@ -68,12 +68,12 @@ from_api(const vapi_type_address& v)
 
   if (ADDRESS_IP6 == v.af) {
     std::array<uint8_t, 16> a;
-    std::copy(v.un.ip6.address, v.un.ip6.address + 16, std::begin(a));
+    std::copy(v.un.ip6, v.un.ip6 + 16, std::begin(a));
     boost::asio::ip::address_v6 v6(a);
     addr = v6;
   } else {
     std::array<uint8_t, 4> a;
-    std::copy(v.un.ip6.address, v.un.ip6.address + 4, std::begin(a));
+    std::copy(v.un.ip6, v.un.ip6 + 4, std::begin(a));
     boost::asio::ip::address_v4 v4(a);
     addr = v4;
   }
