@@ -295,13 +295,10 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   if ((pm->flags & CLIB_PMALLOC_F_NO_PAGEMAP) == 0)
     mmap_flags |= MAP_LOCKED;
 
-  if (a->log2_subpage_sz != pm->sys_log2_page_sz)
-    mmap_flags |= MAP_HUGETLB | MAP_LOCKED;
-
   if (a->flags & CLIB_PMALLOC_ARENA_F_SHARED_MEM)
     {
       mmap_flags |= MAP_SHARED;
-      if (mmap_flags & MAP_HUGETLB)
+      if (a->log2_subpage_sz != pm->sys_log2_page_sz)
 	pm->error = clib_mem_create_hugetlb_fd ((char *) a->name, &a->fd);
       else
 	pm->error = clib_mem_create_fd ((char *) a->name, &a->fd);
@@ -312,6 +309,9 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     }
   else
     {
+      if (a->log2_subpage_sz != pm->sys_log2_page_sz)
+	mmap_flags |= MAP_HUGETLB;
+
       mmap_flags |= MAP_PRIVATE | MAP_ANONYMOUS;
       a->fd = -1;
     }
