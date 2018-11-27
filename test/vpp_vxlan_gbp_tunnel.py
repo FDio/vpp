@@ -57,8 +57,8 @@ class VppVxlanGbpTunnel(VppInterface):
 
     def query_vpp_config(self):
         return (INDEX_INVALID != find_vxlan_gbp_tunnel(self._test,
-                                                       self.src.address,
-                                                       self.dst.address,
+                                                       self.src,
+                                                       self.dst,
                                                        self.vni))
 
     def __str__(self):
