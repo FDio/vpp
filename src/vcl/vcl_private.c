@@ -255,6 +255,8 @@ vcl_worker_alloc_and_init ()
   clib_spinlock_lock (&vcm->workers_lock);
   wrk = vcl_worker_alloc ();
   vcl_set_worker_index (wrk->wrk_index);
+  wrk->thread_id = pthread_self ();
+  wrk->current_pid = getpid ();
 
   wrk->mqs_epfd = -1;
   if (vcm->cfg.use_mq_eventfd)
@@ -295,7 +297,6 @@ vcl_worker_alloc_and_init ()
     clib_warning ("failed to add pthread cleanup function");
   if (pthread_setspecific (vcl_worker_stop_key, &wrk->thread_id))
     clib_warning ("failed to setup key value");
-  wrk->thread_id = pthread_self ();
 
   clib_spinlock_unlock (&vcm->workers_lock);
 
@@ -304,6 +305,130 @@ vcl_worker_alloc_and_init ()
   return wrk;
 }
 
+vcl_session_t *
+pool_dup (vcl_session_t *pool)
+{
+  vcl_session_t *new = 0;
+  pool_header_t *ph, *new_ph;
+  u32 n_elts;
+
+  n_elts = pool_len (pool);
+  new = _vec_resize (new, n_elts, n_elts * sizeof(new[0]),
+                     pool_aligned_header_bytes, 0);
+  clib_memcpy_fast (new, pool, n_elts * sizeof (new[0]));
+
+  ph = pool_header (pool);
+  new_ph = pool_header (new);
+
+  new_ph->free_bitmap = clib_bitmap_dup (ph->free_bitmap);
+  new_ph->free_indices = vec_dup (ph->free_indices);
+  new_ph->max_elts = ph->max_elts;
+
+  pool_validate (new);
+  return new;
+}
+
+vcl_shared_session_t *
+vcl_shared_session_alloc (void)
+{
+  vcl_shared_session_t *ss;
+  pool_get (vcm->shared_sessions, ss);
+  memset (ss, 0, sizeof (*ss));
+  ss->ss_index = ss - vcm->shared_sessions;
+  return ss;
+}
+
+vcl_shared_session_t *
+vcl_shared_session_get (u32 ss_index)
+{
+  if (!pool_elt_at_index (vcm->shared_sessions, ss_index))
+    return 0;
+  return pool_elt_at_index (vcm->shared_sessions, ss_index);
+}
+
+void
+vcl_shared_session_free (vcl_shared_session_t *ss)
+{
+  pool_put (vcm->shared_sessions, ss);
+}
+
+void
+vcl_worker_share_session (vcl_worker_t *parent, vcl_worker_t *wrk,
+                          vcl_session_t *new_s)
+{
+  vcl_shared_session_t *ss;
+  vcl_session_t *s;
+
+  s = vcl_session_get (parent, new_s->session_index);
+  if (s->shared_index == ~0)
+    {
+      ss = vcl_shared_session_alloc ();
+      vec_add1 (ss->workers, parent->wrk_index);
+      s->shared_index = ss->ss_index;
+    }
+  else
+    {
+      ss = vcl_shared_session_get (s->shared_index);
+    }
+  new_s->shared_index = ss->ss_index;
+  vec_add1 (ss->workers, wrk->wrk_index);
+}
+
+int
+vcl_worker_unshare_session (vcl_worker_t *wrk, vcl_session_t *s)
+{
+  vcl_shared_session_t *ss;
+  int i;
+
+  ss = vcl_shared_session_get (s->shared_index);
+  for (i = 0; i < vec_len (ss->workers); i++)
+    {
+      if (ss->workers[i] == wrk->wrk_index)
+	{
+	  vec_del1 (ss->workers, i);
+	  break;
+	}
+    }
+
+  if (vec_len (ss->workers) == 0)
+    {
+      vcl_shared_session_free (ss);
+      return 1;
+    }
+
+  return 0;
+}
+
+void
+vcl_worker_share_sessions (u32 parent_wrk_index)
+{
+  vcl_worker_t *parent_wrk, *wrk;
+  vcl_session_t *new_s;
+
+  parent_wrk = vcl_worker_get (parent_wrk_index);
+  if (!parent_wrk->sessions)
+    return;
+
+  wrk = vcl_worker_get_current ();
+  wrk->sessions = pool_dup (parent_wrk->sessions);
+  wrk->session_index_by_vpp_handles = hash_dup (parent_wrk->session_index_by_vpp_handles);
+
+  /* *INDENT-OFF* */
+  pool_foreach (new_s, wrk->sessions, ({
+    vcl_worker_share_session (parent_wrk, wrk, new_s);
+  }));
+  /* *INDENT-ON* */
+}
+
+int
+vcl_session_get_refcnt (vcl_session_t *s)
+{
+  vcl_shared_session_t *ss;
+  ss = vcl_shared_session_get (s->shared_index);
+  if (ss)
+    return vec_len (ss->workers);
+  return 0;
+}
 /*
  * fd.io coding-style-patch-verification: ON
  *
