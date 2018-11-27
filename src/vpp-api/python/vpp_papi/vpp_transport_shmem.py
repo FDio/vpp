@@ -83,8 +83,8 @@ class VppTransport(object):
     def resume(self):
         vpp_api.vac_rx_resume()
 
-    def get_callback(self, async):
-        return vac_callback_sync if not async else vac_callback_async
+    def get_callback(self, do_async):
+        return vac_callback_sync if not do_async else vac_callback_async
 
     def get_msg_index(self, name):
         return vpp_api.vac_get_msg_index(name)

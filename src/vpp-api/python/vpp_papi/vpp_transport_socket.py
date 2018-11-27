@@ -118,7 +118,7 @@ class VppTransport(object):
     def callback(self):
         raise NotImplemented
 
-    def get_callback(self, async):
+    def get_callback(self, do_async):
         return self.callback
 
     def get_msg_index(self, name):
