@@ -137,6 +137,7 @@ typedef enum
   VPPCOM_ATTR_SET_TCP_KEEPINTVL,
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
+  VPPCOM_ATTR_GET_REFCNT,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
@@ -278,6 +279,11 @@ extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
  * is spawned.
  */
 extern int vppcom_worker_register (void);
+
+/**
+ * Retrieve current worker index
+ */
+extern int vppcom_worker_index (void);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
