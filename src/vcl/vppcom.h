@@ -137,6 +137,7 @@ typedef enum
   VPPCOM_ATTR_SET_TCP_KEEPINTVL,
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
+  VPPCOM_ATTR_GET_REFCNT,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
