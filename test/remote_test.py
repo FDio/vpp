@@ -6,6 +6,7 @@ import unittest
 from multiprocessing import Process, Pipe
 from pickle import dumps
 
+import six
 from six import moves
 
 from framework import VppTestCase
