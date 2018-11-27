@@ -116,7 +116,7 @@ class VppTransport:
         pass
 
     def callback(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_callback(self, async):
         return self.callback
