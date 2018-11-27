@@ -4073,3 +4073,8 @@ class VppPapiProvider(object):
     def syslog_get_filter(self):
         """Return syslog filter parameters"""
         return self.api(self.papi.syslog_get_filter, {})
+
+    def ip_punt_redirect_dump(self, sw_if_index, is_ipv6=0):
+        return self.api(self.papi.ip_punt_redirect_dump,
+                        {'sw_if_index': sw_if_index,
+                         'is_ipv6': is_ipv6})

@@ -652,6 +652,23 @@ autoreply define ip_punt_redirect
   u8 nh[16];
 };
 
+define ip_punt_redirect_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+};
+
+define ip_punt_redirect_details
+{
+  u32 context;
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+  u8 nh[16];
+  u8 is_ip6;
+};
+
 autoreply define ip_container_proxy_add_del
 {
   u32 client_index;

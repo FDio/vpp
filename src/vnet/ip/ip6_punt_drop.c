@@ -399,6 +399,46 @@ VLIB_CLI_COMMAND (ip6_punt_redirect_command, static) =
 };
 /* *INDENT-ON* */
 
+ip_punt_redirect_detail_t *
+ip6_punt_redirect_entries (u32 sw_if_index)
+{
+  ip_punt_redirect_rx_t *pr;
+  ip_punt_redirect_detail_t *prs = 0;
+  u32 rx_sw_if_index;
+
+  vec_foreach_index (rx_sw_if_index,
+		     ip6_punt_redirect_cfg.redirect_by_rx_sw_if_index)
+  {
+    if (sw_if_index == ~0 || sw_if_index == rx_sw_if_index)
+      {
+	pr =
+	  &ip6_punt_redirect_cfg.redirect_by_rx_sw_if_index[rx_sw_if_index];
+	if (NULL != pr && ~0 != pr->tx_sw_if_index)
+	  {
+	    ip_punt_redirect_detail_t detail = {.rx_sw_if_index =
+		rx_sw_if_index,
+	      .punt_redirect = *pr
+	    };
+	    vec_add1 (prs, detail);
+	  }
+      }
+  }
+  if (~0 != ip6_punt_redirect_cfg.any_rx_sw_if_index.tx_sw_if_index)
+    {
+      pr = &ip6_punt_redirect_cfg.any_rx_sw_if_index;
+      if (NULL != pr)
+	{
+	  ip_punt_redirect_detail_t detail = {.rx_sw_if_index =
+	      rx_sw_if_index,
+	    .punt_redirect = *pr
+	  };
+	  vec_add1 (prs, detail);
+	}
+    }
+
+  return prs;
+}
+
 static clib_error_t *
 ip6_punt_redirect_show_cmd (vlib_main_t * vm,
 			    unformat_input_t * main_input,

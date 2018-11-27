@@ -245,6 +245,18 @@ typedef struct ip4_punt_redirect_trace_t_
   u32 next;
 } ip_punt_redirect_trace_t;
 
+typedef struct ip_punt_redirect_detail_t_
+{
+  /**
+   * the RX interface
+   */
+  u32 rx_sw_if_index;
+  /**
+   * IP punt redirect configuration
+   */
+  ip_punt_redirect_rx_t punt_redirect;
+} ip_punt_redirect_detail_t;
+
 /**
  * Add a punt redirect entry
  */
@@ -257,6 +269,9 @@ extern void ip_punt_redirect_del (ip_punt_redirect_t * cfg,
 extern u8 *format_ip_punt_redirect (u8 * s, va_list * args);
 
 extern u8 *format_ip_punt_redirect_trace (u8 * s, va_list * args);
+
+extern ip_punt_redirect_detail_t *ip4_punt_redirect_entries (u32 sw_if_index);
+extern ip_punt_redirect_detail_t *ip6_punt_redirect_entries (u32 sw_if_index);
 
 always_inline u32
 ip_punt_redirect_tx_via_adj (vlib_buffer_t * b0, adj_index_t ai)

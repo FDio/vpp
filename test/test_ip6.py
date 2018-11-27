@@ -1867,7 +1867,7 @@ class TestIP6Punt(VppTestCase):
     def setUp(self):
         super(TestIP6Punt, self).setUp()
 
-        self.create_pg_interfaces(range(2))
+        self.create_pg_interfaces(range(4))
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -1956,6 +1956,45 @@ class TestIP6Punt(VppTestCase):
                                    nh_addr,
                                    is_add=0,
                                    is_ip6=1)
+
+    def test_ip_punt_dump(self):
+        """ IP6 punt redirect dump"""
+
+        #
+        # Configure a punt redirects
+        #
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   socket.inet_pton(socket.AF_INET6,
+                                                    self.pg3.remote_ip6),
+                                   is_ip6=1)
+        self.vapi.ip_punt_redirect(self.pg1.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   socket.inet_pton(socket.AF_INET6,
+                                                    self.pg3.remote_ip6),
+                                   is_ip6=1)
+        self.vapi.ip_punt_redirect(self.pg2.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   '\x00'*16,
+                                   is_ip6=1)
+
+        #
+        # Dump pg0 punt redirects
+        #
+        punts = self.vapi.ip_punt_redirect_dump(self.pg0.sw_if_index,
+                                                is_ipv6=1)
+        for p in punts:
+            self.assertEqual(p.rx_sw_if_index, self.pg0.sw_if_index)
+
+        #
+        # Dump punt redirects for all interfaces
+        #
+        punts = self.vapi.ip_punt_redirect_dump(0xffffffff, is_ipv6=1)
+        self.assertEqual(len(punts), 3)
+        for p in punts:
+            self.assertEqual(p.tx_sw_if_index, self.pg3.sw_if_index)
+        self.assertNotEqual(punts[1].nh, '\x00'*16)
+        self.assertEqual(punts[2].nh, '\x00'*16)
 
 
 class TestIPDeag(VppTestCase):
