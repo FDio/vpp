@@ -136,6 +136,12 @@ do {                                            \
 #define VCL_SESS_ATTR_TEST(ATTR, VAL)           \
   ((ATTR) & (1 << (VAL)) ? 1 : 0)
 
+typedef struct vcl_shared_session_
+{
+  u32 ss_index;
+  u32 *workers;
+} vcl_shared_session_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -161,6 +167,7 @@ typedef struct
   svm_msg_q_t *our_evt_q;
   u64 options[16];
   vcl_session_msg_t *accept_evts_fifo;
+  u32 shared_index;
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
@@ -302,12 +309,15 @@ typedef struct vppcom_main_t_
   /** Flag indicating that a new segment is being mounted */
   volatile u32 mounting_segment;
 
+  volatile u32 forking;
+
   /** Workers */
   vcl_worker_t *workers;
 
   /** Lock to protect worker registrations */
   clib_spinlock_t workers_lock;
 
+  vcl_shared_session_t *shared_sessions;
 #ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
@@ -330,6 +340,7 @@ vcl_session_alloc (vcl_worker_t * wrk)
   pool_get (wrk->sessions, s);
   memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
+  s->shared_index = ~0;
   return s;
 }
 
@@ -481,6 +492,8 @@ int vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq);
 int vcl_mq_epoll_del_evfd (vcl_worker_t * wrk, u32 mqc_index);
 
 vcl_worker_t *vcl_worker_alloc_and_init (void);
+void vcl_worker_share_sessions (u32 parent_wrk_index);
+int vcl_worker_unshare_session (vcl_worker_t *wrk, vcl_session_t *s);
 
 static inline vcl_worker_t *
 vcl_worker_get (u32 wrk_index)
