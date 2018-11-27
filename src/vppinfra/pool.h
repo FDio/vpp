@@ -373,7 +373,7 @@ do {									\
  * @param P pool to copy
  * @return copy of pool
  */
-#define pool_dup(P) pool_dup_aligned(P, 0)
+#define pool_dup(P) pool_dup_aligned(P,0)
 
 /** Low-level free pool operator (do not call directly). */
 always_inline void *

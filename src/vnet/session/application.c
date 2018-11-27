@@ -2379,7 +2379,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (app_index != ~0)
     {
-      app = application_get (app_index);
+      app = application_get_if_valid (app_index);
       if (!app)
 	return clib_error_return (0, "No app with index %u", app_index);
 
