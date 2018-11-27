@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6edc68ae_25d4556b",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-27T10:53:12Z",
+      "side": 1,
+      "message": "six.binary_type(block) \nThis is str in Python 2 and bytes in Python 3.  Does that help?",
+      "range": {
+        "startLine": 139,
+        "startChar": 12,
+        "endLine": 139,
+        "endChar": 31
+      },
+      "revId": "4ae27acd6fcaf3649852439485f33f8f0b2206e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
