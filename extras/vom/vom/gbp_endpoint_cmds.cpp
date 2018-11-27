@@ -31,8 +31,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
   , m_ip_addrs(ip_addrs)
   , m_mac(mac)
   , m_epg_id(epg_id)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -44,8 +43,8 @@ create_cmd::operator==(const create_cmd& other) const
 rc_t
 create_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), m_ip_addrs.size() * sizeof(vapi_type_address),
-            std::ref(*this));
+  msg_t req(
+    con.ctx(), m_ip_addrs.size() * sizeof(vapi_type_address), std::ref(*this));
   uint8_t n;
 
   auto& payload = req.get_request().get_payload();
@@ -54,7 +53,7 @@ create_cmd::issue(connection& con)
   payload.endpoint.n_ips = m_ip_addrs.size();
 
   for (n = 0; n < payload.endpoint.n_ips; n++) {
-    payload.endpoint.ips[n] = to_api(m_ip_addrs[n]);
+    to_api(m_ip_addrs[n], payload.endpoint.ips[n]);
   }
   payload.endpoint.mac = to_api(m_mac);
 
@@ -100,8 +99,7 @@ create_cmd::to_string() const
 
 delete_cmd::delete_cmd(HW::item<handle_t>& item)
   : rpc_cmd(item)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -131,9 +129,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

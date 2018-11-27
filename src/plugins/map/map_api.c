@@ -179,7 +179,7 @@ vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
       clib_memset (rmp, 0, sizeof (*rmp));
       rmp->_vl_msg_id = ntohs (VL_API_MAP_RULE_DETAILS + mm->msg_id_base);
       rmp->psid = htons (i);
-      clib_memcpy (rmp->ip6_dst.address, &dst, sizeof (rmp->ip6_dst.address));
+      clib_memcpy (rmp->ip6_dst, &dst, sizeof (rmp->ip6_dst));
       rmp->context = mp->context;
       vl_api_send_msg (reg, (u8 *) rmp);
     }

@@ -16,8 +16,8 @@ class IGMP_FILTER:
 def find_igmp_state(states, itf, gaddr, saddr):
     for s in states:
         if s.sw_if_index == itf.sw_if_index and \
-           s.gaddr.address == socket.inet_pton(socket.AF_INET, gaddr) and \
-           s.saddr.address == socket.inet_pton(socket.AF_INET, saddr):
+           s.gaddr == socket.inet_pton(socket.AF_INET, gaddr) and \
+           s.saddr == socket.inet_pton(socket.AF_INET, saddr):
             return True
     return False
 
@@ -25,8 +25,8 @@ def find_igmp_state(states, itf, gaddr, saddr):
 def wait_for_igmp_event(test, timeout, itf, gaddr, saddr, ff):
     ev = test.vapi.wait_for_event(timeout, "igmp_event")
     if ev.sw_if_index == itf.sw_if_index and \
-       ev.gaddr.address == socket.inet_pton(socket.AF_INET, gaddr) and \
-       ev.saddr.address == socket.inet_pton(socket.AF_INET, saddr) and \
+       ev.gaddr == socket.inet_pton(socket.AF_INET, gaddr) and \
+       ev.saddr == socket.inet_pton(socket.AF_INET, saddr) and \
        ev.filter == ff:
         return True
     return False
@@ -42,7 +42,7 @@ class IgmpSG():
         for s in saddrs:
             ss = socket.inet_pton(socket.AF_INET, s)
             self.saddrs_p.append(ss)
-            self.saddrs_encoded.append({'address': ss})
+            self.saddrs_encoded.append(ss)
 
 
 class IgmpRecord():

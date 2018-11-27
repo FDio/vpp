@@ -27,8 +27,7 @@ config_cmd::config_cmd(HW::item<bool>& item,
   , m_rx_itf(rx_itf)
   , m_tx_itf(tx_itf)
   , m_addr(addr)
-{
-}
+{}
 
 bool
 config_cmd::operator==(const config_cmd& o) const
@@ -47,7 +46,7 @@ config_cmd::issue(connection& con)
   payload.is_add = 1;
   payload.punt.rx_sw_if_index = m_rx_itf.value();
   payload.punt.tx_sw_if_index = m_tx_itf.value();
-  payload.punt.nh = to_api(m_addr);
+  to_api(m_addr, payload.punt.nh);
 
   VAPI_CALL(req.execute());
 
@@ -73,8 +72,7 @@ unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
   , m_rx_itf(rx_itf)
   , m_tx_itf(tx_itf)
   , m_addr(addr)
-{
-}
+{}
 
 bool
 unconfig_cmd::operator==(const unconfig_cmd& o) const
@@ -93,7 +91,7 @@ unconfig_cmd::issue(connection& con)
   payload.is_add = 0;
   payload.punt.rx_sw_if_index = m_rx_itf.value();
   payload.punt.tx_sw_if_index = m_tx_itf.value();
-  payload.punt.nh = to_api(m_addr);
+  to_api(m_addr, payload.punt.nh);
 
   VAPI_CALL(req.execute());
 

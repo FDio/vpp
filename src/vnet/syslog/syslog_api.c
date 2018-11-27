@@ -149,9 +149,9 @@ vl_api_syslog_get_sender_t_handler (vl_api_syslog_get_sender_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SYSLOG_GET_SENDER_REPLY,
   ({
-    clib_memcpy (rmp->collector_address.address, &(sm->collector),
+    clib_memcpy (rmp->collector_address, &(sm->collector),
                  sizeof(ip4_address_t));
-    clib_memcpy (rmp->src_address.address, &(sm->src_address),
+    clib_memcpy (rmp->src_address, &(sm->src_address),
                  sizeof(ip4_address_t));
     rmp->collector_port = htons (sm->collector_port);
     if (sm->fib_index == ~0)

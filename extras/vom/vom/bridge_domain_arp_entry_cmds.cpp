@@ -27,8 +27,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
   , m_bd(bd)
   , m_mac(mac)
   , m_ip_addr(ip_addr)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -46,7 +45,7 @@ create_cmd::issue(connection& con)
   payload.bd_id = m_bd;
   payload.is_add = 1;
   payload.mac = to_api(m_mac);
-  payload.ip = to_api(m_ip_addr);
+  to_api(m_ip_addr, payload.ip);
 
   VAPI_CALL(req.execute());
 
@@ -72,8 +71,7 @@ delete_cmd::delete_cmd(HW::item<bool>& item,
   , m_bd(bd)
   , m_mac(mac)
   , m_ip_addr(ip_addr)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -91,7 +89,7 @@ delete_cmd::issue(connection& con)
   payload.bd_id = m_bd;
   payload.is_add = 0;
   payload.mac = to_api(m_mac);
-  payload.ip = to_api(m_ip_addr);
+  to_api(m_ip_addr, payload.ip);
 
   VAPI_CALL(req.execute());
 
@@ -114,13 +112,11 @@ delete_cmd::to_string() const
 
 dump_cmd::dump_cmd(uint32_t bd_id)
   : m_bd(bd_id)
-{
-}
+{}
 
 dump_cmd::dump_cmd(const dump_cmd& d)
   : m_bd(d.m_bd)
-{
-}
+{}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const
