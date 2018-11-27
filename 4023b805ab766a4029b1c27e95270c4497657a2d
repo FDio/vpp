@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3ec2d48_e02c9062",
+        "filename": "src/vpp-api/vapi/vapi_c_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 773,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-27T17:08:43Z",
+      "side": 1,
+      "message": "Pease use a subclass of Exception, https://docs.python.org/2/library/exceptions.html",
+      "range": {
+        "startLine": 773,
+        "startChar": 14,
+        "endLine": 773,
+        "endChar": 23
+      },
+      "revId": "4023b805ab766a4029b1c27e95270c4497657a2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
