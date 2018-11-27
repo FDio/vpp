@@ -218,6 +218,7 @@ typedef struct
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
+  u8 *name;
   u8 *interface_name_suffix;
 
   /* number of sub-interfaces */
@@ -332,6 +333,7 @@ void dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
 typedef struct
 {
   vlib_pci_addr_t pci_addr;
+  u8 *name;
   u8 is_blacklisted;
   u8 vlan_strip_offload;
 #define DPDK_DEVICE_VLAN_STRIP_DEFAULT 0

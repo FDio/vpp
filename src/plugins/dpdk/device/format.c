@@ -157,6 +157,9 @@ format_dpdk_device_name (u8 * s, va_list * args)
   struct rte_pci_device *pci_dev;
   u8 *ret;
 
+  if (xd->name)
+    return format (s, "%s", xd->name);
+
   if (dm->conf->interface_name_format_decimal)
     devname_format = "%s%d/%d/%d";
   else
