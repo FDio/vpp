@@ -41,9 +41,9 @@ class TestIPIP(VppTestCase):
         cls.create_pg_interfaces(range(2))
         cls.interfaces = list(cls.pg_interfaces)
 
-    def setUp(cls):
-        super(TestIPIP, cls).setUp()
-        for i in cls.interfaces:
+    def setUp(self):
+        super(TestIPIP, self).setUp()
+        for i in self.interfaces:
             i.admin_up()
             i.config_ip4()
             i.config_ip6()
