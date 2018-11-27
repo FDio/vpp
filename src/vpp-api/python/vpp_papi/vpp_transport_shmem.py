@@ -47,7 +47,13 @@ def vac_error_handler(arg, msg, msg_len):
     vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
 
 
+class VppTransportShmemIOError(IOError):
+    pass
+
+
 class VppTransport(object):
+    VppTransportShmemIOError = VppTransportShmemIOError
+
     def __init__(self, parent, read_timeout, server_address):
         self.connected = False
         self.read_timeout = read_timeout
@@ -95,23 +101,23 @@ class VppTransport(object):
     def _write_new_cffi(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
-            raise IOError(1, 'Not connected')
+            raise VppTransportShmemIOError(1, 'Not connected')
         return vpp_api.vac_write(ffi.from_buffer(buf), len(buf))
 
     def _write_legacy_cffi(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
-            raise IOError(1, 'Not connected')
+            raise VppTransportShmemIOError(1, 'Not connected')
         return vpp_api.vac_write(bytes(buf), len(buf))
 
     def read(self):
         if not self.connected:
-            raise IOError(1, 'Not connected')
+            raise VppTransportShmemIOError(1, 'Not connected')
         mem = ffi.new("char **")
         size = ffi.new("int *")
         rv = vpp_api.vac_read(mem, size, self.read_timeout)
         if rv:
-            raise IOError(rv, 'vac_read failed')
+            raise VppTransportShmemIOError(rv, 'vac_read failed')
         msg = bytes(ffi.buffer(mem[0], size[0]))
         vpp_api.vac_free(mem[0])
         return msg
