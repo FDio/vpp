@@ -57,6 +57,17 @@ typedef uword (vlib_node_function_t) (struct vlib_main_t * vm,
 
 typedef enum
 {
+  VLIB_NODE_PROTO_HINT_NONE = 0,
+  VLIB_NODE_PROTO_HINT_ETHERNET,
+  VLIB_NODE_PROTO_HINT_IP4,
+  VLIB_NODE_PROTO_HINT_IP6,
+  VLIB_NODE_PROTO_HINT_TCP,
+  VLIB_NODE_PROTO_HINT_UDP,
+  VLIB_NODE_N_PROTO_HINTS,
+} vlib_node_proto_hint_t;
+
+typedef enum
+{
   /* An internal node on the call graph (could be output). */
   VLIB_NODE_TYPE_INTERNAL,
 
@@ -133,6 +144,9 @@ typedef struct _vlib_node_registration
 
   /* Node flags. */
   u16 flags;
+
+  /* protocol at b->data[b->current_data] upon entry to the dispatch fn */
+  u8 protocol_hint;
 
   /* Size of scalar and vector arguments in bytes. */
   u16 scalar_size, vector_size;
@@ -319,6 +333,9 @@ typedef struct vlib_node_t
 
   /* Number of bytes of run time data. */
   u8 runtime_data_bytes;
+
+  /* protocol at b->data[b->current_data] upon entry to the dispatch fn */
+  u8 protocol_hint;
 
   /* Number of error codes used by this node. */
   u16 n_errors;

@@ -317,6 +317,7 @@ char *ip4_error_strings[] = {
 VLIB_REGISTER_NODE (ip4_input_node) = {
   .name = "ip4-input",
   .vector_size = sizeof (u32),
+  .protocol_hint = VLIB_NODE_PROTO_HINT_IP4,
 
   .n_errors = IP4_N_ERROR,
   .error_strings = ip4_error_strings,
