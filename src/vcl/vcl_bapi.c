@@ -354,20 +354,22 @@ vppcom_api_hookup (void)
 void
 vppcom_send_session_enable_disable (u8 is_enable)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_session_enable_disable_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_SESSION_ENABLE_DISABLE);
-  bmp->client_index = vcm->my_client_index;
+  bmp->client_index = wrk->my_client_index;
   bmp->context = htonl (0xfeedface);
   bmp->is_enable = is_enable;
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
 
 void
 vppcom_app_send_attach (void)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_attach_t *bmp;
   u8 nsid_len = vec_len (vcm->cfg.namespace_id);
   u8 app_is_proxy = (vcm->cfg.app_proxy_transport_tcp ||
@@ -377,7 +379,7 @@ vppcom_app_send_attach (void)
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
-  bmp->client_index = vcm->my_client_index;
+  bmp->client_index = wrk->my_client_index;
   bmp->context = htonl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT |
@@ -402,20 +404,21 @@ vppcom_app_send_attach (void)
       clib_memcpy_fast (bmp->namespace_id, vcm->cfg.namespace_id, nsid_len);
       bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = vcm->cfg.namespace_secret;
     }
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
 
 void
 vppcom_app_send_detach (void)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_application_detach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
-  bmp->client_index = vcm->my_client_index;
+  bmp->client_index = wrk->my_client_index;
   bmp->context = htonl (0xfeedface);
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
 
 void
@@ -429,14 +432,14 @@ vcl_send_app_worker_add_del (u8 is_add)
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
-  mp->client_index = vcm->my_client_index;
+  mp->client_index = wrk->my_client_index;
   mp->app_index = clib_host_to_net_u32 (vcm->app_index);
   mp->context = wrk_index;
   mp->is_add = is_add;
   if (!is_add)
     mp->wrk_index = clib_host_to_net_u32 (wrk_index);
 
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & mp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
 }
 
 void
@@ -448,7 +451,7 @@ vppcom_send_connect_sock (vcl_session_t * session)
   cmp = vl_msg_api_alloc (sizeof (*cmp));
   memset (cmp, 0, sizeof (*cmp));
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_SOCK);
-  cmp->client_index = vcm->my_client_index;
+  cmp->client_index = wrk->my_client_index;
   cmp->context = session->session_index;
   cmp->wrk_index = wrk->vpp_wrk_index;
   cmp->is_ip4 = session->transport.is_ip4;
@@ -456,20 +459,21 @@ vppcom_send_connect_sock (vcl_session_t * session)
   cmp->port = session->transport.rmt_port;
   cmp->proto = session->session_type;
   clib_memcpy_fast (cmp->options, session->options, sizeof (cmp->options));
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & cmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cmp);
 }
 
 void
 vppcom_send_disconnect_session (u64 vpp_handle)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_disconnect_session_t *dmp;
 
   dmp = vl_msg_api_alloc (sizeof (*dmp));
   memset (dmp, 0, sizeof (*dmp));
   dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
-  dmp->client_index = vcm->my_client_index;
+  dmp->client_index = wrk->my_client_index;
   dmp->handle = vpp_handle;
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & dmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & dmp);
 }
 
 /* VPP combines bind and listen as one operation. VCL manages the separation
@@ -486,7 +490,7 @@ vppcom_send_bind_sock (vcl_session_t * session)
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_BIND_SOCK);
-  bmp->client_index = vcm->my_client_index;
+  bmp->client_index = wrk->my_client_index;
   bmp->context = session->session_index;
   bmp->wrk_index = wrk->vpp_wrk_index;
   bmp->is_ip4 = session->transport.is_ip4;
@@ -494,7 +498,7 @@ vppcom_send_bind_sock (vcl_session_t * session)
   bmp->port = session->transport.lcl_port;
   bmp->proto = session->session_type;
   clib_memcpy_fast (bmp->options, session->options, sizeof (bmp->options));
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
 
 void
@@ -507,15 +511,16 @@ vppcom_send_unbind_sock (u64 vpp_handle)
   memset (ump, 0, sizeof (*ump));
 
   ump->_vl_msg_id = ntohs (VL_API_UNBIND_SOCK);
-  ump->client_index = vcm->my_client_index;
+  ump->client_index = wrk->my_client_index;
   ump->wrk_index = wrk->vpp_wrk_index;
   ump->handle = vpp_handle;
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & ump);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & ump);
 }
 
 void
 vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_accept_session_reply_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -524,7 +529,7 @@ vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
   rmp->retval = htonl (retval);
   rmp->context = context;
   rmp->handle = handle;
-  vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & rmp);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & rmp);
 }
 
 u32
@@ -549,6 +554,7 @@ vppcom_init_error_string_table (void)
 int
 vppcom_connect_to_vpp (char *app_name)
 {
+  vcl_worker_t *wrk = vcl_worker_get_current ();
   api_main_t *am = &api_main;
   vppcom_cfg_t *vcl_cfg = &vcm->cfg;
 
@@ -584,9 +590,9 @@ vppcom_connect_to_vpp (char *app_name)
 
     }
 
-  vcm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  vcm->my_client_index = (u32) am->my_client_index;
-  vcm->app_state = STATE_APP_CONN_VPP;
+  wrk->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  wrk->my_client_index = (u32) am->my_client_index;
+  wrk->wrk_state = STATE_APP_CONN_VPP;
 
   VDBG (0, "app (%s) is connected to VPP!", app_name);
   vcl_evt (VCL_EVT_INIT, vcm);

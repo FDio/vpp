@@ -49,22 +49,23 @@
 #define DESTRUCTOR_ATTRIBUTE
 #endif
 
+#define LDP_MAX_NWORKERS 32
+
 typedef struct ldp_fd_entry_
 {
-  u32 sid;
+  u32 session_index;
   u32 fd;
   u32 fd_index;
 } ldp_fd_entry_t;
 
-typedef struct
+typedef struct ldp_worker_ctx_
 {
-  int init;
-  char app_name[LDP_APP_NAME_MAX];
-  u32 sid_bit_val;
-  u32 sid_bit_mask;
-  u32 debug;
   u8 *io_buffer;
   clib_time_t clib_time;
+
+  /*
+   * Select state
+   */
   clib_bitmap_t *rd_bitmap;
   clib_bitmap_t *wr_bitmap;
   clib_bitmap_t *ex_bitmap;
@@ -74,18 +75,39 @@ typedef struct
   clib_bitmap_t *libc_rd_bitmap;
   clib_bitmap_t *libc_wr_bitmap;
   clib_bitmap_t *libc_ex_bitmap;
+  u8 select_vcl;
+
+  /*
+   * Poll state
+   */
   vcl_poll_t *vcl_poll;
   struct pollfd *libc_poll;
   u16 *libc_poll_idxs;
-  u8 select_vcl;
+
+  /*
+   * Epoll state
+   */
   u8 epoll_wait_vcl;
-  u8 vcl_needs_real_epoll;	/*< vcl needs next epoll_create to
-				   go to libc_epoll */
   int vcl_mq_epfd;
+
+} ldp_worker_ctx_t;
+
+typedef struct
+{
+  ldp_worker_ctx_t *workers;
+  int init;
+  char app_name[LDP_APP_NAME_MAX];
+  u32 sid_bit_val;
+  u32 sid_bit_mask;
+  u32 debug;
   ldp_fd_entry_t *fd_pool;
   clib_rwlock_t fd_table_lock;
-  uword *sid_to_fd_table;
+  uword *session_index_to_fd_table;
+
+  /** vcl needs next epoll_create to go to libc_epoll */
+  u8 vcl_needs_real_epoll;
 } ldp_main_t;
+
 #define LDP_DEBUG ldp->debug
 
 #define LDBG(_lvl, _fmt, _args...) 					\
@@ -99,6 +121,12 @@ static ldp_main_t ldp_main = {
 };
 
 static ldp_main_t *ldp = &ldp_main;
+
+static inline ldp_worker_ctx_t *
+ldp_worker_get_current (void)
+{
+  return (ldp->workers + vppcom_worker_index ());
+}
 
 /*
  * RETURN:  0 on success or -1 on error.
@@ -134,10 +162,10 @@ ldp_fd_alloc (u32 sid)
       return -1;
     }
   pool_get (ldp->fd_pool, fde);
-  fde->sid = sid;
+  fde->session_index = vppcom_session_index (sid);
   fde->fd_index = fde - ldp->fd_pool;
   fde->fd = fde->fd_index + ldp->sid_bit_val;
-  hash_set (ldp->sid_to_fd_table, sid, fde->fd);
+  hash_set (ldp->session_index_to_fd_table, fde->session_index, fde->fd);
   clib_rwlock_writer_unlock (&ldp->fd_table_lock);
   return fde->fd;
 }
@@ -159,7 +187,7 @@ ldp_fd_from_sid (u32 sid)
   int fd;
 
   clib_rwlock_reader_lock (&ldp->fd_table_lock);
-  fdp = hash_get (ldp->sid_to_fd_table, sid);
+  fdp = hash_get (ldp->session_index_to_fd_table, vppcom_session_index (sid));
   fd = fdp ? *fdp : -EMFILE;
   clib_rwlock_reader_unlock (&ldp->fd_table_lock);
 
@@ -175,20 +203,24 @@ ldp_fd_is_sid (int fd)
 static inline u32
 ldp_sid_from_fd (int fd)
 {
+  u32 fd_index, session_index;
   ldp_fd_entry_t *fde;
-  u32 fd_index, sid;
 
   if (!ldp_fd_is_sid (fd))
     return INVALID_SESSION_ID;
 
   fd_index = fd - ldp->sid_bit_val;
   fde = ldp_fd_entry_get_w_lock (fd_index);
-  sid = fde ? fde->sid : INVALID_SESSION_ID;
+  if (!fde)
+    {
+      LDBG (0, "unknown fd %d", fd);
+      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+      return INVALID_SESSION_ID;
+    }
+  session_index = fde->session_index;
   clib_rwlock_reader_unlock (&ldp->fd_table_lock);
 
-  /* Handle forks */
-  sid = vppcom_session_handle (vppcom_session_index (sid));
-  return sid;
+  return vppcom_session_handle (session_index);
 }
 
 static void
@@ -206,7 +238,7 @@ ldp_fd_free_w_sid (u32 sid)
   fde = ldp_fd_entry_get_w_lock (fd_index);
   if (fde)
     {
-      hash_unset (ldp->sid_to_fd_table, fde->sid);
+      hash_unset (ldp->session_index_to_fd_table, fde->session_index);
       pool_put (ldp->fd_pool, fde);
     }
   clib_rwlock_writer_unlock (&ldp->fd_table_lock);
@@ -215,6 +247,7 @@ ldp_fd_free_w_sid (u32 sid)
 static inline int
 ldp_init (void)
 {
+  ldp_worker_ctx_t *ldpw;
   int rv;
 
   if (PREDICT_TRUE (ldp->init))
@@ -232,6 +265,8 @@ ldp_init (void)
       return rv;
     }
   ldp->vcl_needs_real_epoll = 0;
+  pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
+  ldpw = ldp_worker_get_current ();
 
   char *env_var_str = getenv (LDP_ENV_DEBUG);
   if (env_var_str)
@@ -301,7 +336,7 @@ ldp_init (void)
 	}
     }
 
-  clib_time_init (&ldp->clib_time);
+  clib_time_init (&ldpw->clib_time);
   clib_rwlock_init (&ldp->fd_table_lock);
   LDBG (0, "LDP<%d>: LDP initialization: done!", getpid ());
 
@@ -311,7 +346,7 @@ ldp_init (void)
 int
 close (int fd)
 {
-  int rv;
+  int rv, refcnt;
   const char *func_str;
   u32 sid = ldp_sid_from_fd (fd);
 
@@ -353,13 +388,15 @@ close (int fd)
       LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x)",
 	    getpid (), fd, fd, func_str, sid, sid);
 
-      ldp_fd_free_w_sid (sid);
+      refcnt = vppcom_session_attr (sid, VPPCOM_ATTR_GET_REFCNT, 0, 0);
       rv = vppcom_session_close (sid);
       if (rv != VPPCOM_OK)
 	{
 	  errno = -rv;
 	  rv = -1;
 	}
+      if (refcnt == 1)
+	ldp_fd_free_w_sid (sid);
     }
   else
     {
@@ -859,6 +896,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	     const __sigset_t * __restrict sigmask)
 {
   uword sid_bits, sid_bits_set, libc_bits, libc_bits_set;
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   u32 minbits = clib_max (nfds, BITS (uword)), sid;
   char *func_str = "##";
   f64 time_out;
@@ -882,8 +920,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	  LDBG (3, "LDP<%d>: sleeping for %.02f seconds", getpid (),
 		time_out);
 
-	  time_out += clib_time_now (&ldp->clib_time);
-	  while (clib_time_now (&ldp->clib_time) < time_out)
+	  time_out += clib_time_now (&ldpw->clib_time);
+	  while (clib_time_now (&ldpw->clib_time) < time_out)
 	    ;
 	  return 0;
 	}
@@ -924,31 +962,31 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
   u32 n_bytes = nfds / 8 + ((nfds % 8) ? 1 : 0);
   if (readfds)
     {
-      clib_bitmap_validate (ldp->sid_rd_bitmap, minbits);
-      clib_bitmap_validate (ldp->libc_rd_bitmap, minbits);
-      clib_bitmap_validate (ldp->rd_bitmap, minbits);
-      clib_memcpy_fast (ldp->rd_bitmap, readfds, n_bytes);
+      clib_bitmap_validate (ldpw->sid_rd_bitmap, minbits);
+      clib_bitmap_validate (ldpw->libc_rd_bitmap, minbits);
+      clib_bitmap_validate (ldpw->rd_bitmap, minbits);
+      clib_memcpy_fast (ldpw->rd_bitmap, readfds, n_bytes);
       memset (readfds, 0, n_bytes);
 
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (fd, ldp->rd_bitmap, ({
+      clib_bitmap_foreach (fd, ldpw->rd_bitmap, ({
 	if (fd > nfds)
 	  break;
         sid = ldp_sid_from_fd (fd);
         LDBG (3, "LDP<%d>: readfds: fd %d (0x%x), sid %u (0x%x)",
               getpid (), fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
-          clib_bitmap_set_no_check (ldp->libc_rd_bitmap, fd, 1);
+          clib_bitmap_set_no_check (ldpw->libc_rd_bitmap, fd, 1);
         else
-          clib_bitmap_set_no_check (ldp->sid_rd_bitmap,
+          clib_bitmap_set_no_check (ldpw->sid_rd_bitmap,
                                     vppcom_session_index (sid), 1);
       }));
       /* *INDENT-ON* */
 
-      sid_bits_set = clib_bitmap_last_set (ldp->sid_rd_bitmap) + 1;
+      sid_bits_set = clib_bitmap_last_set (ldpw->sid_rd_bitmap) + 1;
       sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
 
-      libc_bits_set = clib_bitmap_last_set (ldp->libc_rd_bitmap) + 1;
+      libc_bits_set = clib_bitmap_last_set (ldpw->libc_rd_bitmap) + 1;
       libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
 
       LDBG (3, "LDP<%d>: readfds: sid_bits_set %d, sid_bits %d, "
@@ -957,31 +995,31 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
     }
   if (writefds)
     {
-      clib_bitmap_validate (ldp->sid_wr_bitmap, minbits);
-      clib_bitmap_validate (ldp->libc_wr_bitmap, minbits);
-      clib_bitmap_validate (ldp->wr_bitmap, minbits);
-      clib_memcpy_fast (ldp->wr_bitmap, writefds, n_bytes);
+      clib_bitmap_validate (ldpw->sid_wr_bitmap, minbits);
+      clib_bitmap_validate (ldpw->libc_wr_bitmap, minbits);
+      clib_bitmap_validate (ldpw->wr_bitmap, minbits);
+      clib_memcpy_fast (ldpw->wr_bitmap, writefds, n_bytes);
       memset (writefds, 0, n_bytes);
 
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (fd, ldp->wr_bitmap, ({
+      clib_bitmap_foreach (fd, ldpw->wr_bitmap, ({
 	if (fd > nfds)
 	  break;
         sid = ldp_sid_from_fd (fd);
         LDBG (3, "LDP<%d>: writefds: fd %d (0x%x), sid %u (0x%x)",
                         getpid (), fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
-          clib_bitmap_set_no_check (ldp->libc_wr_bitmap, fd, 1);
+          clib_bitmap_set_no_check (ldpw->libc_wr_bitmap, fd, 1);
         else
-          clib_bitmap_set_no_check (ldp->sid_wr_bitmap,
+          clib_bitmap_set_no_check (ldpw->sid_wr_bitmap,
                                     vppcom_session_index (sid), 1);
       }));
       /* *INDENT-ON* */
 
-      sid_bits_set = clib_bitmap_last_set (ldp->sid_wr_bitmap) + 1;
+      sid_bits_set = clib_bitmap_last_set (ldpw->sid_wr_bitmap) + 1;
       sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
 
-      libc_bits_set = clib_bitmap_last_set (ldp->libc_wr_bitmap) + 1;
+      libc_bits_set = clib_bitmap_last_set (ldpw->libc_wr_bitmap) + 1;
       libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
 
       LDBG (3, "LDP<%d>: writefds: sid_bits_set %d, sid_bits %d, "
@@ -990,31 +1028,31 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
     }
   if (exceptfds)
     {
-      clib_bitmap_validate (ldp->sid_ex_bitmap, minbits);
-      clib_bitmap_validate (ldp->libc_ex_bitmap, minbits);
-      clib_bitmap_validate (ldp->ex_bitmap, minbits);
-      clib_memcpy_fast (ldp->ex_bitmap, exceptfds, n_bytes);
+      clib_bitmap_validate (ldpw->sid_ex_bitmap, minbits);
+      clib_bitmap_validate (ldpw->libc_ex_bitmap, minbits);
+      clib_bitmap_validate (ldpw->ex_bitmap, minbits);
+      clib_memcpy_fast (ldpw->ex_bitmap, exceptfds, n_bytes);
       memset (exceptfds, 0, n_bytes);
 
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (fd, ldp->ex_bitmap, ({
+      clib_bitmap_foreach (fd, ldpw->ex_bitmap, ({
 	if (fd > nfds)
 	  break;
         sid = ldp_sid_from_fd (fd);
         LDBG (3, "LDP<%d>: exceptfds: fd %d (0x%x), sid %u (0x%x)",
                         getpid (), fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
-          clib_bitmap_set_no_check (ldp->libc_ex_bitmap, fd, 1);
+          clib_bitmap_set_no_check (ldpw->libc_ex_bitmap, fd, 1);
         else
-          clib_bitmap_set_no_check (ldp->sid_ex_bitmap,
+          clib_bitmap_set_no_check (ldpw->sid_ex_bitmap,
                                     vppcom_session_index (sid), 1);
       }));
       /* *INDENT-ON* */
 
-      sid_bits_set = clib_bitmap_last_set (ldp->sid_ex_bitmap) + 1;
+      sid_bits_set = clib_bitmap_last_set (ldpw->sid_ex_bitmap) + 1;
       sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
 
-      libc_bits_set = clib_bitmap_last_set (ldp->libc_ex_bitmap) + 1;
+      libc_bits_set = clib_bitmap_last_set (ldpw->libc_ex_bitmap) + 1;
       libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
 
       LDBG (3, "LDP<%d>: exceptfds: sid_bits_set %d, sid_bits %d, "
@@ -1033,27 +1071,27 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
     {
       if (sid_bits)
 	{
-	  if (!ldp->select_vcl)
+	  if (!ldpw->select_vcl)
 	    {
 	      func_str = "vppcom_select";
 
 	      if (readfds)
-		clib_memcpy_fast (ldp->rd_bitmap, ldp->sid_rd_bitmap,
-				  vec_len (ldp->rd_bitmap) *
+		clib_memcpy_fast (ldpw->rd_bitmap, ldpw->sid_rd_bitmap,
+				  vec_len (ldpw->rd_bitmap) *
 				  sizeof (clib_bitmap_t));
 	      if (writefds)
-		clib_memcpy_fast (ldp->wr_bitmap, ldp->sid_wr_bitmap,
-				  vec_len (ldp->wr_bitmap) *
+		clib_memcpy_fast (ldpw->wr_bitmap, ldpw->sid_wr_bitmap,
+				  vec_len (ldpw->wr_bitmap) *
 				  sizeof (clib_bitmap_t));
 	      if (exceptfds)
-		clib_memcpy_fast (ldp->ex_bitmap, ldp->sid_ex_bitmap,
-				  vec_len (ldp->ex_bitmap) *
+		clib_memcpy_fast (ldpw->ex_bitmap, ldpw->sid_ex_bitmap,
+				  vec_len (ldpw->ex_bitmap) *
 				  sizeof (clib_bitmap_t));
 
 	      rv = vppcom_select (sid_bits,
-				  readfds ? ldp->rd_bitmap : NULL,
-				  writefds ? ldp->wr_bitmap : NULL,
-				  exceptfds ? ldp->ex_bitmap : NULL, 0);
+				  readfds ? ldpw->rd_bitmap : NULL,
+				  writefds ? ldpw->wr_bitmap : NULL,
+				  exceptfds ? ldpw->ex_bitmap : NULL, 0);
 	      if (rv < 0)
 		{
 		  errno = -rv;
@@ -1064,7 +1102,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 		  if (readfds)
 		    {
                       /* *INDENT-OFF* */
-                      clib_bitmap_foreach (sid, ldp->rd_bitmap,
+                      clib_bitmap_foreach (sid, ldpw->rd_bitmap,
                         ({
                           fd = ldp_fd_from_sid (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
@@ -1080,7 +1118,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 		  if (writefds)
 		    {
                       /* *INDENT-OFF* */
-                      clib_bitmap_foreach (sid, ldp->wr_bitmap,
+                      clib_bitmap_foreach (sid, ldpw->wr_bitmap,
                         ({
                           fd = ldp_fd_from_sid (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
@@ -1096,7 +1134,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 		  if (exceptfds)
 		    {
                       /* *INDENT-OFF* */
-                      clib_bitmap_foreach (sid, ldp->ex_bitmap,
+                      clib_bitmap_foreach (sid, ldpw->ex_bitmap,
                         ({
                           fd = ldp_fd_from_sid (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
@@ -1109,12 +1147,12 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                         }));
                       /* *INDENT-ON* */
 		    }
-		  ldp->select_vcl = 1;
+		  ldpw->select_vcl = 1;
 		  goto done;
 		}
 	    }
 	  else
-	    ldp->select_vcl = 0;
+	    ldpw->select_vcl = 0;
 	}
       if (libc_bits)
 	{
@@ -1123,16 +1161,16 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	  func_str = "libc_pselect";
 
 	  if (readfds)
-	    clib_memcpy_fast (readfds, ldp->libc_rd_bitmap,
-			      vec_len (ldp->rd_bitmap) *
+	    clib_memcpy_fast (readfds, ldpw->libc_rd_bitmap,
+			      vec_len (ldpw->rd_bitmap) *
 			      sizeof (clib_bitmap_t));
 	  if (writefds)
-	    clib_memcpy_fast (writefds, ldp->libc_wr_bitmap,
-			      vec_len (ldp->wr_bitmap) *
+	    clib_memcpy_fast (writefds, ldpw->libc_wr_bitmap,
+			      vec_len (ldpw->wr_bitmap) *
 			      sizeof (clib_bitmap_t));
 	  if (exceptfds)
-	    clib_memcpy_fast (exceptfds, ldp->libc_ex_bitmap,
-			      vec_len (ldp->ex_bitmap) *
+	    clib_memcpy_fast (exceptfds, ldpw->libc_ex_bitmap,
+			      vec_len (ldpw->ex_bitmap) *
 			      sizeof (clib_bitmap_t));
 	  tspec.tv_sec = tspec.tv_nsec = 0;
 	  rv = libc_pselect (libc_bits,
@@ -1143,20 +1181,20 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	    goto done;
 	}
     }
-  while ((time_out == -1) || (clib_time_now (&ldp->clib_time) < time_out));
+  while ((time_out == -1) || (clib_time_now (&ldpw->clib_time) < time_out));
   rv = 0;
 
 done:
   /* TBD: set timeout to amount of time left */
-  clib_bitmap_zero (ldp->rd_bitmap);
-  clib_bitmap_zero (ldp->sid_rd_bitmap);
-  clib_bitmap_zero (ldp->libc_rd_bitmap);
-  clib_bitmap_zero (ldp->wr_bitmap);
-  clib_bitmap_zero (ldp->sid_wr_bitmap);
-  clib_bitmap_zero (ldp->libc_wr_bitmap);
-  clib_bitmap_zero (ldp->ex_bitmap);
-  clib_bitmap_zero (ldp->sid_ex_bitmap);
-  clib_bitmap_zero (ldp->libc_ex_bitmap);
+  clib_bitmap_zero (ldpw->rd_bitmap);
+  clib_bitmap_zero (ldpw->sid_rd_bitmap);
+  clib_bitmap_zero (ldpw->libc_rd_bitmap);
+  clib_bitmap_zero (ldpw->wr_bitmap);
+  clib_bitmap_zero (ldpw->sid_wr_bitmap);
+  clib_bitmap_zero (ldpw->libc_wr_bitmap);
+  clib_bitmap_zero (ldpw->ex_bitmap);
+  clib_bitmap_zero (ldpw->sid_ex_bitmap);
+  clib_bitmap_zero (ldpw->libc_ex_bitmap);
 
   if (LDP_DEBUG > 3)
     {
@@ -1776,6 +1814,7 @@ send (int fd, const void *buf, size_t n, int flags)
 ssize_t
 sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 {
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   ssize_t size = 0;
   const char *func_str;
   u32 sid = ldp_sid_from_fd (out_fd);
@@ -1804,7 +1843,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 			out_fd, out_fd, func_str, sid, sid, rv,
 			vppcom_retval_str (rv));
 
-	  vec_reset_length (ldp->io_buffer);
+	  vec_reset_length (ldpw->io_buffer);
 	  errno = -rv;
 	  size = -1;
 	  goto done;
@@ -1840,7 +1879,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 		("LDP<%d>: ERROR: fd %d (0x%x): %s(): sid %u (0x%x), "
 		 "returned %d (%s)!", getpid (), out_fd, out_fd, func_str,
 		 sid, sid, size, vppcom_retval_str (size));
-	      vec_reset_length (ldp->io_buffer);
+	      vec_reset_length (ldpw->io_buffer);
 	      errno = -size;
 	      size = -1;
 	      goto done;
@@ -1872,8 +1911,8 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 		continue;
 	    }
 	  bytes_to_read = clib_min (n_bytes_left, bytes_to_read);
-	  vec_validate (ldp->io_buffer, bytes_to_read);
-	  nbytes = libc_read (in_fd, ldp->io_buffer, bytes_to_read);
+	  vec_validate (ldpw->io_buffer, bytes_to_read);
+	  nbytes = libc_read (in_fd, ldpw->io_buffer, bytes_to_read);
 	  if (nbytes < 0)
 	    {
 	      func_str = "libc_read";
@@ -1881,13 +1920,13 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	      clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): in_fd (%d), "
 			    "io_buffer %p, bytes_to_read %lu, rv %d, "
 			    "errno %d", getpid (), out_fd, out_fd, func_str,
-			    in_fd, ldp->io_buffer, bytes_to_read, nbytes,
+			    in_fd, ldpw->io_buffer, bytes_to_read, nbytes,
 			    errno_val);
 	      errno = errno_val;
 
 	      if (results == 0)
 		{
-		  vec_reset_length (ldp->io_buffer);
+		  vec_reset_length (ldpw->io_buffer);
 		  size = -1;
 		  goto done;
 		}
@@ -1898,10 +1937,10 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 	    clib_warning
 	      ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
 	       "buf %p, nbytes %u: results %d, n_bytes_left %d", getpid (),
-	       out_fd, out_fd, func_str, sid, sid, ldp->io_buffer, nbytes,
+	       out_fd, out_fd, func_str, sid, sid, ldpw->io_buffer, nbytes,
 	       results, n_bytes_left);
 
-	  size = vppcom_session_write (sid, ldp->io_buffer, nbytes);
+	  size = vppcom_session_write (sid, ldpw->io_buffer, nbytes);
 	  if (size < 0)
 	    {
 	      if (size == VPPCOM_EAGAIN)
@@ -1927,12 +1966,12 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
 				"sid %u, io_buffer %p, nbytes %u "
 				"returned %d (%s)",
 				getpid (), out_fd, out_fd, func_str,
-				sid, ldp->io_buffer, nbytes,
+				sid, ldpw->io_buffer, nbytes,
 				size, vppcom_retval_str (size));
 		}
 	      if (results == 0)
 		{
-		  vec_reset_length (ldp->io_buffer);
+		  vec_reset_length (ldpw->io_buffer);
 		  errno = -size;
 		  size = -1;
 		  goto done;
@@ -1947,7 +1986,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
       while (n_bytes_left > 0);
 
     update_offset:
-      vec_reset_length (ldp->io_buffer);
+      vec_reset_length (ldpw->io_buffer);
       if (offset)
 	{
 	  off_t off = lseek (in_fd, *offset, SEEK_SET);
@@ -3022,6 +3061,7 @@ shutdown (int fd, int how)
 int
 epoll_create1 (int flags)
 {
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   const char *func_str;
   int rv;
 
@@ -3032,7 +3072,7 @@ epoll_create1 (int flags)
     {
       rv = libc_epoll_create1 (flags);
       ldp->vcl_needs_real_epoll = 0;
-      ldp->vcl_mq_epfd = rv;
+      ldpw->vcl_mq_epfd = rv;
       LDBG (0, "LDP<%d>: created vcl epfd %u", getpid (), rv);
       return rv;
     }
@@ -3200,6 +3240,7 @@ static inline int
 ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 		 int timeout, const sigset_t * sigmask)
 {
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   double time_to_wait = (double) 0, time_out, now = 0;
   u32 vep_idx = ldp_sid_from_fd (epfd);
   int libc_epfd, rv = 0;
@@ -3214,7 +3255,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
       return -1;
     }
 
-  if (epfd == ldp->vcl_mq_epfd)
+  if (epfd == ldpw->vcl_mq_epfd)
     return libc_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
 
   if (PREDICT_FALSE (vep_idx == INVALID_SESSION_ID))
@@ -3226,7 +3267,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
     }
 
   time_to_wait = ((timeout >= 0) ? (double) timeout : 0);
-  time_out = clib_time_now (&ldp->clib_time) + time_to_wait;
+  time_out = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
   func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
   libc_epfd = vppcom_session_attr (vep_idx, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
@@ -3243,7 +3284,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	maxevents, timeout, sigmask, time_to_wait, time_out);
   do
     {
-      if (!ldp->epoll_wait_vcl)
+      if (!ldpw->epoll_wait_vcl)
 	{
 	  func_str = "vppcom_epoll_wait";
 
@@ -3254,7 +3295,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	  rv = vppcom_epoll_wait (vep_idx, events, maxevents, 0);
 	  if (rv > 0)
 	    {
-	      ldp->epoll_wait_vcl = 1;
+	      ldpw->epoll_wait_vcl = 1;
 	      goto done;
 	    }
 	  else if (rv < 0)
@@ -3265,7 +3306,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	    }
 	}
       else
-	ldp->epoll_wait_vcl = 0;
+	ldpw->epoll_wait_vcl = 0;
 
       if (libc_epfd > 0)
 	{
@@ -3282,7 +3323,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	}
 
       if (timeout != -1)
-	now = clib_time_now (&ldp->clib_time);
+	now = clib_time_now (&ldpw->clib_time);
     }
   while (now < time_out);
 
@@ -3323,6 +3364,7 @@ epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout)
 int
 poll (struct pollfd *fds, nfds_t nfds, int timeout)
 {
+  ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   const char *func_str = __func__;
   int rv, i, n_revents = 0;
   u32 sid;
@@ -3350,7 +3392,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
       if (sid != INVALID_SESSION_ID)
 	{
 	  fds[i].fd = -fds[i].fd;
-	  vec_add2 (ldp->vcl_poll, vp, 1);
+	  vec_add2 (ldpw->vcl_poll, vp, 1);
 	  vp->fds_ndx = i;
 	  vp->sid = sid;
 	  vp->events = fds[i].events;
@@ -3364,23 +3406,23 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	}
       else
 	{
-	  vec_add1 (ldp->libc_poll, fds[i]);
-	  vec_add1 (ldp->libc_poll_idxs, i);
+	  vec_add1 (ldpw->libc_poll, fds[i]);
+	  vec_add1 (ldpw->libc_poll_idxs, i);
 	}
     }
 
   do
     {
-      if (vec_len (ldp->vcl_poll))
+      if (vec_len (ldpw->vcl_poll))
 	{
 	  func_str = "vppcom_poll";
 
 	  LDBG (3, "LDP<%d>: calling %s(): vcl_poll %p, n_sids %u (0x%x): "
-		"n_libc_fds %u", getpid (), func_str, ldp->vcl_poll,
-		vec_len (ldp->vcl_poll), vec_len (ldp->vcl_poll),
-		vec_len (ldp->libc_poll));
+		"n_libc_fds %u", getpid (), func_str, ldpw->vcl_poll,
+		vec_len (ldpw->vcl_poll), vec_len (ldpw->vcl_poll),
+		vec_len (ldpw->libc_poll));
 
-	  rv = vppcom_poll (ldp->vcl_poll, vec_len (ldp->vcl_poll), 0);
+	  rv = vppcom_poll (ldpw->vcl_poll, vec_len (ldpw->vcl_poll), 0);
 	  if (rv < 0)
 	    {
 	      errno = -rv;
@@ -3391,14 +3433,14 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	    n_revents += rv;
 	}
 
-      if (vec_len (ldp->libc_poll))
+      if (vec_len (ldpw->libc_poll))
 	{
 	  func_str = "libc_poll";
 
 	  LDBG (3, "LDP<%d>: calling %s(): fds %p, nfds %u: n_sids %u",
-		getpid (), fds, nfds, vec_len (ldp->vcl_poll));
+		getpid (), fds, nfds, vec_len (ldpw->vcl_poll));
 
-	  rv = libc_poll (ldp->libc_poll, vec_len (ldp->libc_poll), 0);
+	  rv = libc_poll (ldpw->libc_poll, vec_len (ldpw->libc_poll), 0);
 	  if (rv < 0)
 	    goto done;
 	  else
@@ -3412,11 +3454,11 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	}
     }
   while ((wait_for_time == -1) ||
-	 (clib_time_now (&ldp->clib_time) < wait_for_time));
+	 (clib_time_now (&ldpw->clib_time) < wait_for_time));
   rv = 0;
 
 done:
-  vec_foreach (vp, ldp->vcl_poll)
+  vec_foreach (vp, ldpw->vcl_poll)
   {
     fds[vp->fds_ndx].fd = -fds[vp->fds_ndx].fd;
     fds[vp->fds_ndx].revents = vp->revents;
@@ -3429,14 +3471,14 @@ done:
       fds[vp->fds_ndx].revents |= POLLWRNORM;
 #endif
   }
-  vec_reset_length (ldp->vcl_poll);
+  vec_reset_length (ldpw->vcl_poll);
 
-  for (i = 0; i < vec_len (ldp->libc_poll); i++)
+  for (i = 0; i < vec_len (ldpw->libc_poll); i++)
     {
-      fds[ldp->libc_poll_idxs[i]].revents = ldp->libc_poll[i].revents;
+      fds[ldpw->libc_poll_idxs[i]].revents = ldpw->libc_poll[i].revents;
     }
-  vec_reset_length (ldp->libc_poll_idxs);
-  vec_reset_length (ldp->libc_poll);
+  vec_reset_length (ldpw->libc_poll_idxs);
+  vec_reset_length (ldpw->libc_poll);
 
   if (LDP_DEBUG > 3)
     {
@@ -3453,7 +3495,7 @@ done:
 	{
 	  clib_warning ("LDP<%d>: returning %d (0x%x): n_sids %u, "
 			"n_libc_fds %d", getpid (), rv, rv,
-			vec_len (ldp->vcl_poll), vec_len (ldp->libc_poll));
+			vec_len (ldpw->vcl_poll), vec_len (ldpw->libc_poll));
 
 	  for (i = 0; i < nfds; i++)
 	    {
