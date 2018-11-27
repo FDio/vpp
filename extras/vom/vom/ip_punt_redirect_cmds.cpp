@@ -14,6 +14,7 @@
  */
 
 #include "vom/ip_punt_redirect_cmds.hpp"
+#include <vom/api_types.hpp>
 
 namespace VOM {
 namespace ip_punt_redirect_cmds {
@@ -44,10 +45,9 @@ config_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.is_add = 1;
-  payload.rx_sw_if_index = m_rx_itf.value();
-  payload.tx_sw_if_index = m_tx_itf.value();
-
-  to_bytes(m_addr, &payload.is_ip6, payload.nh);
+  payload.punt.rx_sw_if_index = m_rx_itf.value();
+  payload.punt.tx_sw_if_index = m_tx_itf.value();
+  payload.punt.nh = to_api(m_addr);
 
   VAPI_CALL(req.execute());
 
@@ -91,10 +91,9 @@ unconfig_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.is_add = 0;
-  payload.rx_sw_if_index = m_rx_itf.value();
-  payload.tx_sw_if_index = m_tx_itf.value();
-
-  to_bytes(m_addr, &payload.is_ip6, payload.nh);
+  payload.punt.rx_sw_if_index = m_rx_itf.value();
+  payload.punt.tx_sw_if_index = m_tx_itf.value();
+  payload.punt.nh = to_api(m_addr);
 
   VAPI_CALL(req.execute());
 
