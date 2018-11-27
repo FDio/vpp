@@ -22,6 +22,30 @@
       "revId": "9697acbb9c37f5187b1f5bd34f43b3280d1a88d5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cab240b7_ab89a29e",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2018-11-27T15:03:01Z",
+      "side": 1,
+      "message": "Thanks. Darn, I need to figure a way to get Spell check turned on for commit message editing in Emacs.",
+      "parentUuid": "1a586821_fae593f2",
+      "range": {
+        "startLine": 9,
+        "startChar": 20,
+        "endLine": 9,
+        "endChar": 30
+      },
+      "revId": "9697acbb9c37f5187b1f5bd34f43b3280d1a88d5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
