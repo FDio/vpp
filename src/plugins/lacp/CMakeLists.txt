@@ -28,6 +28,7 @@ add_vpp_plugin(lacp
   lacp.api
 
   INSTALL_HEADERS
+  protocol.h
   machine.h
   rx_machine.h
   tx_machine.h
