@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe142e74_8a4f9afd",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-11-27T12:24:44Z",
+      "side": 1,
+      "message": "May I suggest to add a comment on top of DPDK_VERSION stating what was agreed sometime ago at the VPP project meeting?\n\nSomething like:\n\"DPDK 18.11 LTS - being recommended for system integration and deployment by its community - will be supported in VPP until it is EOL (roughly 2 years)\".\n\nIn case people forget :)",
+      "revId": "1a5b432c9575cfdabb393f6b8804cea2ed4f5c60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
