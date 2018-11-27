@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "26f0ee5a_3409dc73",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-27T12:18:16Z",
+      "side": 1,
+      "message": "please define a common type, called ip_punt_redirect, and then use this type in both the add_del and details message.\nuse a vl_api_address_t for the nh field.",
+      "revId": "8d894fa61114bbf81b2b83766ed74eaccc61f619",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
