@@ -29,6 +29,9 @@
 #include <vcl/vppcom.h>
 #include <vppinfra/time.h>
 #include <vppinfra/bitmap.h>
+#include <vppinfra/lock.h>
+#include <vppinfra/pool.h>
+#include <vppinfra/hash.h>
 
 #define HAVE_CONSTRUCTOR_ATTRIBUTE
 #ifdef HAVE_CONSTRUCTOR_ATTRIBUTE
@@ -45,6 +48,13 @@
 #else
 #define DESTRUCTOR_ATTRIBUTE
 #endif
+
+typedef struct ldp_fd_entry_
+{
+  u32 sid;
+  u32 fd;
+  u32 fd_index;
+} ldp_fd_entry_t;
 
 typedef struct
 {
@@ -72,7 +82,9 @@ typedef struct
   u8 vcl_needs_real_epoll;	/*< vcl needs next epoll_create to
 				   go to libc_epoll */
   int vcl_mq_epfd;
-
+  ldp_fd_entry_t *fd_pool;
+  clib_rwlock_t fd_table_lock;
+  uword *sid_to_fd_table;
 } ldp_main_t;
 #define LDP_DEBUG ldp->debug
 
@@ -110,26 +122,94 @@ ldp_get_app_name ()
   return ldp->app_name;
 }
 
+static int
+ldp_fd_alloc (u32 sid)
+{
+  ldp_fd_entry_t *fde;
+
+  clib_rwlock_writer_lock (&ldp->fd_table_lock);
+  if (pool_elts (ldp->fd_pool) >= (1ULL << 32) - ldp->sid_bit_val)
+    {
+      clib_rwlock_writer_unlock (&ldp->fd_table_lock);
+      return -1;
+    }
+  pool_get (ldp->fd_pool, fde);
+  fde->sid = sid;
+  fde->fd_index = fde - ldp->fd_pool;
+  fde->fd = fde->fd_index + ldp->sid_bit_val;
+  hash_set (ldp->sid_to_fd_table, sid, fde->fd);
+  clib_rwlock_writer_unlock (&ldp->fd_table_lock);
+  return fde->fd;
+}
+
+static ldp_fd_entry_t *
+ldp_fd_entry_get_w_lock (u32 fd_index)
+{
+  clib_rwlock_reader_lock (&ldp->fd_table_lock);
+  if (pool_is_free_index (ldp->fd_pool, fd_index))
+    return 0;
+
+  return pool_elt_at_index (ldp->fd_pool, fd_index);
+}
+
 static inline int
 ldp_fd_from_sid (u32 sid)
 {
-  if (PREDICT_FALSE (sid >= ldp->sid_bit_val))
-    return -EMFILE;
-  else
-    return (sid | ldp->sid_bit_val);
+  uword *fdp;
+  int fd;
+
+  clib_rwlock_reader_lock (&ldp->fd_table_lock);
+  fdp = hash_get (ldp->sid_to_fd_table, sid);
+  fd = fdp ? *fdp : -EMFILE;
+  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+
+  return fd;
 }
 
 static inline int
 ldp_fd_is_sid (int fd)
 {
-  return ((u32) fd & ldp->sid_bit_val) ? 1 : 0;
+  return fd >= ldp->sid_bit_val;
 }
 
 static inline u32
 ldp_sid_from_fd (int fd)
 {
-  return (ldp_fd_is_sid (fd) ? ((u32) fd & ldp->sid_bit_mask) :
-	  INVALID_SESSION_ID);
+  ldp_fd_entry_t *fde;
+  u32 fd_index, sid;
+
+  if (!ldp_fd_is_sid (fd))
+    return INVALID_SESSION_ID;
+
+  fd_index = fd - ldp->sid_bit_val;
+  fde = ldp_fd_entry_get_w_lock (fd_index);
+  sid = fde ? fde->sid : INVALID_SESSION_ID;
+  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+
+  /* Handle forks */
+  sid = vppcom_session_handle (vppcom_session_index (sid));
+  return sid;
+}
+
+static void
+ldp_fd_free_w_sid (u32 sid)
+{
+  ldp_fd_entry_t *fde;
+  u32 fd_index;
+  int fd;
+
+  fd = ldp_fd_from_sid (sid);
+  if (!fd)
+    return;
+
+  fd_index = fd - ldp->sid_bit_val;
+  fde = ldp_fd_entry_get_w_lock (fd_index);
+  if (fde)
+    {
+      hash_unset (ldp->sid_to_fd_table, fde->sid);
+      pool_put (ldp->fd_pool, fde);
+    }
+  clib_rwlock_writer_unlock (&ldp->fd_table_lock);
 }
 
 static inline int
@@ -222,6 +302,7 @@ ldp_init (void)
     }
 
   clib_time_init (&ldp->clib_time);
+  clib_rwlock_init (&ldp->fd_table_lock);
   LDBG (0, "LDP<%d>: LDP initialization: done!", getpid ());
 
   return 0;
@@ -272,6 +353,7 @@ close (int fd)
       LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x)",
 	    getpid (), fd, fd, func_str, sid, sid);
 
+      ldp_fd_free_w_sid (sid);
       rv = vppcom_session_close (sid);
       if (rv != VPPCOM_OK)
 	{
@@ -776,13 +858,11 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	     const struct timespec *__restrict timeout,
 	     const __sigset_t * __restrict sigmask)
 {
-  int rv;
+  uword sid_bits, sid_bits_set, libc_bits, libc_bits_set;
+  u32 minbits = clib_max (nfds, BITS (uword)), sid;
   char *func_str = "##";
   f64 time_out;
-  int fd;
-  uword sid_bits, sid_bits_set, libc_bits, libc_bits_set;
-  u32 minbits = clib_max (nfds, BITS (uword));
-  u32 sid;
+  int rv, fd;
 
   if (nfds < 0)
     {
@@ -860,7 +940,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldp->libc_rd_bitmap, fd, 1);
         else
-          clib_bitmap_set_no_check (ldp->sid_rd_bitmap, sid, 1);
+          clib_bitmap_set_no_check (ldp->sid_rd_bitmap,
+                                    vppcom_session_index (sid), 1);
       }));
       /* *INDENT-ON* */
 
@@ -892,7 +973,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldp->libc_wr_bitmap, fd, 1);
         else
-          clib_bitmap_set_no_check (ldp->sid_wr_bitmap, sid, 1);
+          clib_bitmap_set_no_check (ldp->sid_wr_bitmap,
+                                    vppcom_session_index (sid), 1);
       }));
       /* *INDENT-ON* */
 
@@ -924,7 +1006,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldp->libc_ex_bitmap, fd, 1);
         else
-          clib_bitmap_set_no_check (ldp->sid_ex_bitmap, sid, 1);
+          clib_bitmap_set_no_check (ldp->sid_ex_bitmap,
+                                    vppcom_session_index (sid), 1);
       }));
       /* *INDENT-ON* */
 
@@ -983,7 +1066,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldp->rd_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (sid);
+                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -999,7 +1082,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldp->wr_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (sid);
+                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -1015,7 +1098,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldp->ex_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (sid);
+                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -1153,7 +1236,7 @@ socket (int domain, int type, int protocol)
       else
 	{
 	  func_str = "ldp_fd_from_sid";
-	  rv = ldp_fd_from_sid (sid);
+	  rv = ldp_fd_alloc (sid);
 	  if (rv < 0)
 	    {
 	      (void) vppcom_session_close (sid);
@@ -2838,7 +2921,7 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 			      "accept sid %u (0x%x), ep %p, flags 0x%x",
 			      getpid (), listen_fd, listen_fd,
 			      func_str, accept_sid, accept_sid, ep, flags);
-	      rv = ldp_fd_from_sid ((u32) accept_sid);
+	      rv = ldp_fd_alloc ((u32) accept_sid);
 	      if (rv < 0)
 		{
 		  (void) vppcom_session_close ((u32) accept_sid);
@@ -2965,7 +3048,7 @@ epoll_create1 (int flags)
       rv = -1;
     }
   else
-    rv = ldp_fd_from_sid ((u32) rv);
+    rv = ldp_fd_alloc ((u32) rv);
 
   if (LDP_DEBUG > 1)
     {

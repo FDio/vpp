@@ -3353,6 +3353,12 @@ vppcom_session_index (uint32_t session_handle)
 }
 
 int
+vppcom_session_handle (uint32_t session_index)
+{
+  return vcl_get_worker_index () << 24 | session_index;
+}
+
+int
 vppcom_worker_register (void)
 {
   if (vcl_worker_alloc_and_init ())
