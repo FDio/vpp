@@ -10,7 +10,7 @@ from vpp_pg_interface import is_ipv6_misc
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute, VppMplsTable, VppIpTable
+    VppMplsRoute, VppMplsTable, VppIpTable, VppIpAddress
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
@@ -1867,7 +1867,7 @@ class TestIP6Punt(VppTestCase):
     def setUp(self):
         super(TestIP6Punt, self).setUp()
 
-        self.create_pg_interfaces(range(2))
+        self.create_pg_interfaces(range(4))
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -1894,8 +1894,7 @@ class TestIP6Punt(VppTestCase):
         #
         # Configure a punt redirect via pg1.
         #
-        nh_addr = inet_pton(AF_INET6,
-                            self.pg1.remote_ip6)
+        nh_addr = VppIpAddress(self.pg1.remote_ip6).encode()
         self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
                                    self.pg1.sw_if_index,
                                    nh_addr,
@@ -1956,6 +1955,44 @@ class TestIP6Punt(VppTestCase):
                                    nh_addr,
                                    is_add=0,
                                    is_ip6=1)
+
+    def test_ip_punt_dump(self):
+        """ IP6 punt redirect dump"""
+
+        #
+        # Configure a punt redirects
+        #
+        nh_addr = VppIpAddress(self.pg3.remote_ip6).encode()
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   nh_addr,
+                                   is_ip6=1)
+        self.vapi.ip_punt_redirect(self.pg1.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   nh_addr,
+                                   is_ip6=1)
+        self.vapi.ip_punt_redirect(self.pg2.sw_if_index,
+                                   self.pg3.sw_if_index,
+                                   VppIpAddress('0::0').encode(),
+                                   is_ip6=1)
+
+        #
+        # Dump pg0 punt redirects
+        #
+        punts = self.vapi.ip_punt_redirect_dump(self.pg0.sw_if_index,
+                                                is_ipv6=1)
+        for p in punts:
+            self.assertEqual(p.punt.rx_sw_if_index, self.pg0.sw_if_index)
+
+        #
+        # Dump punt redirects for all interfaces
+        #
+        punts = self.vapi.ip_punt_redirect_dump(0xffffffff, is_ipv6=1)
+        self.assertEqual(len(punts), 3)
+        for p in punts:
+            self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
+        self.assertNotEqual(punts[1].punt.nh.un.ip6, self.pg3.remote_ip6)
+        self.assertEqual(punts[2].punt.nh.un.ip6.address, '\x00'*16)
 
 
 class TestIPDeag(VppTestCase):
