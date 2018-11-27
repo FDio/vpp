@@ -3306,7 +3306,7 @@ void
 				     mp->enable_ip6);
     }
 
-  REPLY_MACRO (VL_API_IP_REASSEMBLY_SET_REPLY);
+  REPLY_MACRO (VL_API_IP_REASSEMBLY_ENABLE_DISABLE_REPLY);
 }
 
 #define vl_msg_name_crc_list
