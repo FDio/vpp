@@ -23,17 +23,23 @@ namespace VOM {
 
 typedef boost::asio::ip::address ip_address_t;
 
-vapi_type_address to_api(const ip_address_t& a);
+void
+to_api(const ip_address_t& a, vapi_type_address& v);
 
-ip_address_t from_api(const vapi_type_address& v);
+ip_address_t
+from_api(const vapi_type_address& v);
 
-vapi_type_mac_address to_api(const mac_address_t& a);
+vapi_type_mac_address
+to_api(const mac_address_t& a);
 
-mac_address_t from_api(const vapi_type_mac_address& v);
+mac_address_t
+from_api(const vapi_type_mac_address& v);
 
-route::prefix_t from_api(const vapi_type_prefix&);
+route::prefix_t
+from_api(const vapi_type_prefix&);
 
-vapi_type_prefix to_api(const route::prefix_t&);
+vapi_type_prefix
+to_api(const route::prefix_t&);
 };
 
 /*

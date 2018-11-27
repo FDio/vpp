@@ -1211,7 +1211,7 @@ class TestIPPunt(VppTestCase):
         for p in punts:
             self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
         self.assertNotEqual(punts[1].punt.nh.un.ip4, self.pg3.remote_ip4)
-        self.assertEqual(punts[2].punt.nh.un.ip4.address, '\x00'*4)
+        self.assertEqual(punts[2].punt.nh.un.ip4, '\x00'*4)
 
 
 class TestIPDeag(VppTestCase):

@@ -3796,10 +3796,7 @@ class VppPapiProvider(object):
                                 'sw_if_index': sw_if_index,
                                 'n_srcs': len(saddrs),
                                 'saddrs': saddrs,
-                                'gaddr':
-                                {
-                                    'address': gaddr
-                                }
+                                'gaddr':  gaddr
                             }
                         })
 
@@ -4067,10 +4064,8 @@ class VppPapiProvider(object):
         :param max_msg_size: maximum message length (Default value = 480)
         """
         return self.api(self.papi.syslog_set_sender,
-                        {'collector_address': {
-                             'address': collector},
-                         'src_address': {
-                             'address': src},
+                        {'collector_address': collector,
+                         'src_address': src,
                          'collector_port': collector_port,
                          'vrf_id': vrf_id,
                          'max_msg_size': max_msg_size})
