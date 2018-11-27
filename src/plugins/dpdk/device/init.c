@@ -320,16 +320,20 @@ dpdk_lib_init (dpdk_main_t * dm)
 			pci_addr.as_u32);
 	}
 
-      if (p)
-	devconf = pool_elt_at_index (dm->conf->dev_confs, p[0]);
-      else
-	devconf = &dm->conf->default_devconf;
 
       /* Create vnet interface */
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
       xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
       xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
       xd->cpu_socket = (i8) rte_eth_dev_socket_id (i);
+
+      if (p)
+	{
+	  devconf = pool_elt_at_index (dm->conf->dev_confs, p[0]);
+	  xd->name = devconf->name;
+	}
+      else
+	devconf = &dm->conf->default_devconf;
 
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
       if (pci_dev)
@@ -1027,6 +1031,8 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
       else if (unformat (input, "num-rx-desc %u", &devconf->num_rx_desc))
 	;
       else if (unformat (input, "num-tx-desc %u", &devconf->num_tx_desc))
+	;
+      else if (unformat (input, "name %s", &devconf->name))
 	;
       else if (unformat (input, "workers %U", unformat_bitmap_list,
 			 &devconf->workers))
