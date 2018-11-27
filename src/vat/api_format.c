@@ -5460,6 +5460,7 @@ _(bier_route_add_del_reply)                             \
 _(bier_table_add_del_reply)                             \
 _(proxy_arp_add_del_reply)                              \
 _(proxy_arp_intfc_enable_disable_reply)                 \
+_(ip_reassembly_enable_disable_reply)                   \
 _(sw_interface_set_unnumbered_reply)                    \
 _(ip_neighbor_add_del_reply)                            \
 _(oam_add_del_reply)                                    \
@@ -5679,6 +5680,8 @@ _(BIER_TABLE_ADD_DEL_REPLY, bier_table_add_del_reply)			\
 _(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)                     \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY,                                 \
   proxy_arp_intfc_enable_disable_reply)                                 \
+_(IP_REASSEMBLY_ENABLE_DISABLE_REPLY,                                   \
+  ip_reassembly_enable_disable_reply)                                   \
 _(MPLS_TUNNEL_ADD_DEL_REPLY, mpls_tunnel_add_del_reply)                 \
 _(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
   sw_interface_set_unnumbered_reply)                                    \
@@ -9746,6 +9749,58 @@ api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable_disable = enable;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip_reassembly_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_reassembly_enable_disable_t *mp;
+  u32 sw_if_index;
+  u8 enable = 1;
+  u8 ip4 = 0;
+  u8 ip6 = 0;
+  u8 sw_if_index_set = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "ip4"))
+	ip4 = 1;
+      else if (unformat (i, "ip6"))
+	ip6 = 1;
+      else if (unformat (i, "enable"))
+	enable = 1;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (IP_REASSEMBLY_ENABLE_DISABLE, mp);
+  u8 ip46 = (ip4 == ip6);
+  mp->sw_if_index = ntohl (sw_if_index);
+  if (ip4 || ip46)
+    mp->enable_ip4 = enable;
+  if (ip6 || ip46)
+    mp->enable_ip6 = enable;
 
   S (mp);
   W (ret);
@@ -23691,6 +23746,8 @@ _(proxy_arp_add_del,                                                    \
   "<lo-ip4-addr> - <hi-ip4-addr> [vrf <n>] [del]")                      \
 _(proxy_arp_intfc_enable_disable,                                       \
   "<intfc> | sw_if_index <id> enable | disable")                        \
+_(ip_reassembly_enable_disable,                                         \
+  "<intfc> | sw_if_index <id> [ip4] [ip6] enable | disable")            \
 _(sw_interface_set_unnumbered,                                          \
   "<intfc> | sw_if_index <id> unnum_if_index <id> [del]")               \
 _(ip_neighbor_add_del,                                                  \
