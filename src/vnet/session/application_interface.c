@@ -163,7 +163,11 @@ session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
    * that "supports" app's namespace. This will fix our local connection
    * endpoint.
    */
-  fib_index = sep->is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+  u8 is_default = (0 == app_namespace_index (app_ns));
+  if (is_default && sep->fib_index)
+    fib_index = sep->fib_index;
+  else
+    fib_index = sep->is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
   sep->peer.fib_index = fib_index;
   sep->fib_index = fib_index;
 
