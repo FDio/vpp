@@ -72,6 +72,10 @@ def vpp_get_type(name):
         return None
 
 
+class VPPSerializerValueError(ValueError):
+    pass
+
+
 class FixedList_u8():
     def __init__(self, name, field_type, num):
         self.name = name
@@ -85,16 +89,18 @@ class FixedList_u8():
         if not list:
             return b'\x00' * self.size
         if len(list) > self.num:
-            raise ValueError('Fixed list length error for "{}", got: {}'
-                             ' expected: {}'
-                             .format(self.name, len(list), self.num))
+            raise VPPSerializerValueError(
+                'Fixed list length error for "{}", got: {}'
+                ' expected: {}'
+                .format(self.name, len(list), self.num))
         return self.packer.pack(list)
 
     def unpack(self, data, offset=0, result=None):
         if len(data[offset:]) < self.num:
-            raise ValueError('Invalid array length for "{}" got {}'
-                             ' expected {}'
-                             .format(self.name, len(data[offset:]), self.num))
+            raise VPPSerializerValueError(
+                'Invalid array length for "{}" got {}'
+                ' expected {}'
+                .format(self.name, len(data[offset:]), self.num))
         return self.packer.unpack(data, offset)
 
 
@@ -106,8 +112,9 @@ class FixedList():
 
     def pack(self, list, kwargs):
         if len(list) != self.num:
-            raise ValueError('Fixed list length error, got: {} expected: {}'
-                             .format(len(list), self.num))
+            raise VPPSerializerValueError(
+                'Fixed list length error, got: {} expected: {}'
+                .format(len(list), self.num))
         b = bytes()
         for e in list:
             b += self.packer.pack(e)
@@ -137,8 +144,9 @@ class VLAList():
         if not list:
             return b""
         if len(list) != kwargs[self.length_field]:
-            raise ValueError('Variable length error, got: {} expected: {}'
-                             .format(len(list), kwargs[self.length_field]))
+            raise VPPSerializerValueError(
+                'Variable length error, got: {} expected: {}'
+                .format(len(list), kwargs[self.length_field]))
         b = bytes()
 
         # u8 array
@@ -187,7 +195,8 @@ class VLAList_legacy():
         total = 0
         # Return a list of arguments
         if (len(data) - offset) % self.packer.size:
-            raise ValueError('Legacy Variable Length Array length mismatch.')
+            raise VPPSerializerValueError(
+                'Legacy Variable Length Array length mismatch.')
         elements = int((len(data) - offset) / self.packer.size)
         r = []
         for e in range(elements):
@@ -241,7 +250,8 @@ class VPPUnionType():
             f_type, f_name = f
             if f_type not in types:
                 logger.debug('Unknown union type {}'.format(f_type))
-                raise ValueError('Unknown message type {}'.format(f_type))
+                raise VPPSerializerValueError(
+                    'Unknown message type {}'.format(f_type))
             fields.append(f_name)
             size = types[f_type].size
             self.packers[f_name] = types[f_type]
@@ -297,7 +307,8 @@ class VPPType():
             self.fieldtypes.append(f_type)
             if f_type not in types:
                 logger.debug('Unknown type {}'.format(f_type))
-                raise ValueError('Unknown message type {}'.format(f_type))
+                raise VPPSerializerValueError(
+                    'Unknown message type {}'.format(f_type))
             if len(f) == 3:  # list
                 list_elements = f[2]
                 if list_elements == 0:
@@ -333,8 +344,9 @@ class VPPType():
 
             # Try one of the format functions
             if data and type(data) is not dict and a not in data:
-                raise ValueError("Invalid argument: {} expected {}.{}".
-                                 format(data, self.name, a))
+                raise VPPSerializerValueError(
+                    "Invalid argument: {} expected {}.{}".
+                    format(data, self.name, a))
 
             # Defaulting to zero.
             if not data or a not in data:  # Default to 0
