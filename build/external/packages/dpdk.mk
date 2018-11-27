@@ -21,12 +21,12 @@ DPDK_MLX5_PMD_DLOPEN_DEPS    ?= n
 DPDK_TAP_PMD                 ?= n
 DPDK_FAILSAFE_PMD            ?= n
 
-DPDK_VERSION                 ?= 18.08
+DPDK_VERSION                 ?= 18.11
 DPDK_BASE_URL                ?= http://fast.dpdk.org/rel
 DPDK_TARBALL                 := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL                 := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_18.05_TARBALL_MD5_CKSUM := 9fc86367cd9407ff6a8dfea56c4eddc4
 DPDK_18.08_TARBALL_MD5_CKSUM := da5e7fb25ab063c47e53929fb8c58be5
+DPDK_18.11_TARBALL_MD5_CKSUM := 04b86f4a77f4f81a7fbd26467dd2ea9f
 MACHINE=$(shell uname -m)
 
 # replace dot with space, and if 3rd word exists we deal with stable dpdk rel
