@@ -26,11 +26,11 @@ class ContainerIntegrationTestCase(VppTestCase):
     """ Container integration extended testcases """
 
     @classmethod
-    def setUpClass(self):
-        super(ContainerIntegrationTestCase, self).setUpClass()
+    def setUpClass(cls):
+        super(ContainerIntegrationTestCase, cls).setUpClass()
         # create pg0 and pg1
-        self.create_pg_interfaces(range(2))
-        for i in self.pg_interfaces:
+        cls.create_pg_interfaces(range(2))
+        for i in cls.pg_interfaces:
             i.admin_up()
             i.config_ip4()
             i.config_ip6()
