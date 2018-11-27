@@ -350,6 +350,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
   clib_memset (n, 0, sizeof (n[0]));
   n->index = vec_len (nm->nodes);
   n->node_fn_registrations = r->node_fn_registrations;
+  n->protocol_hint = r->protocol_hint;
 
   vec_add1 (nm->nodes, n);
 

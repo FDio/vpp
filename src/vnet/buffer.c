@@ -24,9 +24,9 @@ format_vnet_buffer (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
   u8 *a = 0;
 
-#define _(bit, name, v) \
+#define _(bit,name,ss,v)                      \
   if (v && (b->flags & VNET_BUFFER_F_##name)) \
-    a = format (a, "%s ", v);
+    a = format (a, "%s ", ss);
   foreach_vnet_buffer_flag
 #undef _
     if (b->flags & VNET_BUFFER_F_L2_HDR_OFFSET_VALID)

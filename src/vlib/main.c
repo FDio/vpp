@@ -945,25 +945,69 @@ add_trajectory_trace (vlib_buffer_t * b, u32 node_index)
 #endif
 }
 
+u8 *format_vnet_buffer_flags (u8 * s, va_list * args) __attribute__ ((weak));
+u8 *
+format_vnet_buffer_flags (u8 * s, va_list * args)
+{
+  s = format (s, "BUG STUB %s", __FUNCTION__);
+  return s;
+}
+
+u8 *format_vnet_buffer_opaque (u8 * s, va_list * args) __attribute__ ((weak));
+u8 *
+format_vnet_buffer_opaque (u8 * s, va_list * args)
+{
+  s = format (s, "BUG STUB %s", __FUNCTION__);
+  return s;
+}
+
+u8 *format_vnet_buffer_opaque2 (u8 * s, va_list * args)
+  __attribute__ ((weak));
+u8 *
+format_vnet_buffer_opaque2 (u8 * s, va_list * args)
+{
+  s = format (s, "BUG STUB %s", __FUNCTION__);
+  return s;
+}
+
+static u8 *
+format_buffer_metadata (u8 * s, va_list * args)
+{
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+
+  s = format (s, "flags: %U\n", format_vnet_buffer_flags, b);
+  s = format (s, "current_data: %d, current_length: %d\n",
+	      (i32) (b->current_data), (i32) (b->current_length));
+  s = format (s, "current_config_index: %d, flow_id: %x, next_buffer: %x\n",
+	      b->current_config_index, b->flow_id, b->next_buffer);
+  s = format (s, "error: %d, n_add_refs: %d, buffer_pool_index: %d\n",
+	      (u32) (b->error), (u32) (b->n_add_refs),
+	      (u32) (b->buffer_pool_index));
+  s = format (s,
+	      "trace_index: %d, recycle_count: %d, len_not_first_buf: %d\n",
+	      b->trace_index, b->recycle_count,
+	      b->total_length_not_including_first_buffer);
+  s = format (s, "free_list_index: %d\n", (u32) (b->free_list_index));
+  return s;
+}
+
+#define A(x) vec_add1(vm->pcap_buffer, (x))
+
 static void
 dispatch_pcap_trace (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   int i;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **bufp, *b;
-  u8 name_tlv[64];
   pcap_main_t *pm = &vm->dispatch_pcap_main;
   vlib_trace_main_t *tm = &vm->trace_main;
   u32 capture_size;
   vlib_node_t *n;
-  u8 *packet_trace = 0;
   i32 n_left;
   f64 time_now = vlib_time_now (vm);
   u32 *from;
-  u32 name_length;
-  u16 trace_length;
-  u8 version[2];
   u8 *d;
+  u8 string_count;
 
   /* Input nodes don't have frames yet */
   if (frame == 0 || frame->n_vectors == 0)
@@ -973,15 +1017,7 @@ dispatch_pcap_trace (vlib_main_t * vm,
   vlib_get_buffers (vm, from, bufs, frame->n_vectors);
   bufp = bufs;
 
-  /* Create a node name TLV, since WS can't possibly guess */
   n = vlib_get_node (vm, node->node_index);
-  name_length = vec_len (n->name);
-  name_length = name_length < ARRAY_LEN (name_tlv) - 2 ?
-    name_length : ARRAY_LEN (name_tlv) - 2;
-
-  name_tlv[0] = (u8) name_length;
-  clib_memcpy_fast (name_tlv + 1, n->name, name_length);
-  name_tlv[name_length + 1] = 0;
 
   for (i = 0; i < frame->n_vectors; i++)
     {
@@ -989,10 +1025,34 @@ dispatch_pcap_trace (vlib_main_t * vm,
 	{
 	  b = bufp[i];
 
-	  version[0] = VLIB_PCAP_MAJOR_VERSION;
-	  version[1] = VLIB_PCAP_MINOR_VERSION;
+	  vec_reset_length (vm->pcap_buffer);
+	  string_count = 0;
 
-	  vec_reset_length (packet_trace);
+	  /* Version, flags */
+	  A ((u8) VLIB_PCAP_MAJOR_VERSION);
+	  A ((u8) VLIB_PCAP_MINOR_VERSION);
+	  A (0 /* string_count */ );
+	  A (n->protocol_hint);
+
+	  /* Buffer index (big endian) */
+	  A ((from[i] >> 24) & 0xff);
+	  A ((from[i] >> 16) & 0xff);
+	  A ((from[i] >> 8) & 0xff);
+	  A ((from[i] >> 0) & 0xff);
+
+	  /* Node name, NULL-terminated ASCII */
+	  vm->pcap_buffer = format (vm->pcap_buffer, "%v%c", n->name, 0);
+	  string_count++;
+
+	  vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
+				    format_buffer_metadata, b, 0);
+	  string_count++;
+	  vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
+				    format_vnet_buffer_opaque, b, 0);
+	  string_count++;
+	  vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
+				    format_vnet_buffer_opaque2, b, 0);
+	  string_count++;
 
 	  /* Is this packet traced? */
 	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
@@ -1000,55 +1060,29 @@ dispatch_pcap_trace (vlib_main_t * vm,
 	      vlib_trace_header_t **h
 		= pool_elt_at_index (tm->trace_buffer_pool, b->trace_index);
 
-	      packet_trace = format (packet_trace, "%U%c",
-				     format_vlib_trace, vm, h[0], 0);
+	      vm->pcap_buffer = format (vm->pcap_buffer, "%U%c",
+					format_vlib_trace, vm, h[0], 0);
+	      string_count++;
 	    }
 
-	  /* Figure out how many bytes we're capturing */
-          /* *INDENT-OFF* */
-	  capture_size = (sizeof (vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
-            + sizeof (version)
-            + vlib_buffer_length_in_chain (vm, b)
-            + sizeof (u32) + (name_length + 2)	/* +2: count plus NULL byte */
-	    + (vec_len (packet_trace) + 2);	/* +2: trace count */
-          /* *INDENT-ON* */
+	  /* Save the string count */
+	  vm->pcap_buffer[2] = string_count;
+
+	  /* Figure out how many bytes in the pcap trace */
+	  capture_size = vec_len (vm->pcap_buffer) +
+	    +vlib_buffer_length_in_chain (vm, b);
 
 	  clib_spinlock_lock_if_init (&pm->lock);
 	  n_left = clib_min (capture_size, 16384);
 	  d = pcap_add_packet (pm, time_now, n_left, capture_size);
 
-	  /* Copy the (major, minor) version numbers */
-	  clib_memcpy_fast (d, version, sizeof (version));
-	  d += sizeof (version);
-
-	  /* Copy the buffer index */
-	  clib_memcpy_fast (d, &from[i], sizeof (u32));
-	  d += 4;
-
-	  /* Copy the name TLV */
-	  clib_memcpy_fast (d, name_tlv, name_length + 2);
-	  d += name_length + 2;
-
-	  /* Copy the buffer metadata, but not the rewrite space */
-	  clib_memcpy_fast (d, b, sizeof (*b) - VLIB_BUFFER_PRE_DATA_SIZE);
-	  d += sizeof (*b) - VLIB_BUFFER_PRE_DATA_SIZE;
-
-	  trace_length = vec_len (packet_trace);
-	  /* Copy the trace data length (may be zero) */
-	  clib_memcpy_fast (d, &trace_length, sizeof (trace_length));
-	  d += 2;
-
-	  /* Copy packet trace data (if any) */
-	  if (vec_len (packet_trace))
-	    clib_memcpy_fast (d, packet_trace, vec_len (packet_trace));
-
-	  d += vec_len (packet_trace);
+	  /* Copy the header */
+	  clib_memcpy_fast (d, vm->pcap_buffer, vec_len (vm->pcap_buffer));
+	  d += vec_len (vm->pcap_buffer);
 
 	  n_left = clib_min
 	    (vlib_buffer_length_in_chain (vm, b),
-	     16384 -
-	     ((sizeof (*b) - VLIB_BUFFER_PRE_DATA_SIZE) +
-	      (trace_length + 2)));
+	     (16384 - vec_len (vm->pcap_buffer)));
 	  /* Copy the packet data */
 	  while (1)
 	    {
@@ -1064,7 +1098,6 @@ dispatch_pcap_trace (vlib_main_t * vm,
 	  clib_spinlock_unlock_if_init (&pm->lock);
 	}
     }
-  vec_free (packet_trace);
 }
 
 static_always_inline u64

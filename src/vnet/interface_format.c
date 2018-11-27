@@ -367,6 +367,218 @@ format_vnet_sw_interface_name_override (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_vnet_buffer_flags (u8 * s, va_list * args)
+{
+  vlib_buffer_t *buf = va_arg (*args, vlib_buffer_t *);
+
+#define _(a,b,c,v) if (buf->flags & VNET_BUFFER_F_##b) s = format (s, "%s ", c);
+  foreach_vnet_buffer_flag;
+#undef _
+  return s;
+}
+
+u8 *
+format_vnet_buffer_opaque (u8 * s, va_list * args)
+{
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+  vnet_buffer_opaque_t *o = (vnet_buffer_opaque_t *) b->opaque;
+  int i;
+
+  s = format (s, "raw: ");
+
+  for (i = 0; i < ARRAY_LEN (b->opaque); i++)
+    s = format (s, "%08x ", b->opaque[i]);
+
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "sw_if_index[VLIB_RX]: %d, sw_if_index[VLIB_TX]: %d",
+	      o->sw_if_index[0], o->sw_if_index[1]);
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "L2 offset %d, L3 offset %d, L4 offset %d, feature arc index %d",
+	      (u32) (o->l2_hdr_offset),
+	      (u32) (o->l3_hdr_offset),
+	      (u32) (o->l4_hdr_offset), (u32) (o->feature_arc_index));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.adj_index[VLIB_RX]: %d, ip.adj_index[VLIB_TX]: %d",
+	      (u32) (o->ip.adj_index[0]), (u32) (o->ip.adj_index[1]));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.flow_hash: 0x%x, ip.save_protocol: 0x%x, ip.fib_index: %d",
+	      o->ip.flow_hash, o->ip.save_protocol, o->ip.fib_index);
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.save_rewrite_length: %d, ip.rpf_id: %d",
+	      o->ip.save_rewrite_length, o->ip.rpf_id);
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.icmp.type: %d ip.icmp.code: %d, ip.icmp.data: 0x%x",
+	      (u32) (o->ip.icmp.type),
+	      (u32) (o->ip.icmp.code), o->ip.icmp.data);
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.reass.next_index: %d, ip.reass.estimated_mtu: %d",
+	      o->ip.reass.next_index, (u32) (o->ip.reass.estimated_mtu));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.reass.fragment_first: %d ip.reass.fragment_last: %d",
+	      (u32) (o->ip.reass.fragment_first),
+	      (u32) (o->ip.reass.fragment_last));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.reass.range_first: %d ip.reass.range_last: %d",
+	      (u32) (o->ip.reass.range_first),
+	      (u32) (o->ip.reass.range_last));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip.reass.next_range_bi: 0x%x, ip.reass.ip6_frag_hdr_offset: %d",
+	      o->ip.reass.next_range_bi,
+	      (u32) (o->ip.reass.ip6_frag_hdr_offset));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "mpls.ttl: %d, mpls.exp: %d, mpls.first: %d, "
+	      "mpls.save_rewrite_length: %d, mpls.bier.n_bytes: %d",
+	      (u32) (o->mpls.ttl), (u32) (o->mpls.exp), (u32) (o->mpls.first),
+	      o->mpls.save_rewrite_length, (u32) (o->mpls.bier.n_bytes));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "l2.feature_bitmap: %08x, l2.bd_index: %d, l2.l2_len: %d, "
+	      "l2.shg: %d, l2.l2fib_sn: %d, l2.bd_age: %d",
+	      o->l2.feature_bitmap, (u32) (o->l2.bd_index),
+	      (u32) (o->l2.l2_len), (u32) (o->l2.shg), (u32) (o->l2.l2fib_sn),
+	      (u32) (o->l2.bd_age));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "l2t.next_index: %d, l2t.session_index: %d",
+	      (u32) (o->l2t.next_index), o->l2t.session_index);
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "l2_classify.table_index: %d, l2_classify.opaque_index: %d, "
+	      "l2_classify.hash: 0x%llx",
+	      o->l2_classify.table_index,
+	      o->l2_classify.opaque_index, o->l2_classify.hash);
+  vec_add1 (s, '\n');
+
+  s = format (s, "policer.index: %d", o->policer.index);
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ipsec.flags: 0x%x, ipsec.sad_index: %d",
+	      o->ipsec.flags, o->ipsec.sad_index);
+  vec_add1 (s, '\n');
+
+  s = format (s, "map.mtu: %d", (u32) (o->map.mtu));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "map_t.v6.saddr: 0x%x, map_t.v6.daddr: 0x%x, "
+	      "map_t.v6.frag_offset: %d, map_t.v6.l4_offset: %d",
+	      o->map_t.v6.saddr,
+	      o->map_t.v6.daddr,
+	      (u32) (o->map_t.v6.frag_offset), (u32) (o->map_t.v6.l4_offset));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "map_t.v6.l4_protocol: %d, map_t.checksum_offset: %d, "
+	      "map_t.mtu: %d",
+	      (u32) (o->map_t.v6.l4_protocol),
+	      (u32) (o->map_t.checksum_offset), (u32) (o->map_t.mtu));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "ip_frag.mtu: %d, ip_frag.next_index: %d, ip_frag.flags: 0x%x",
+	      (u32) (o->ip_frag.mtu),
+	      (u32) (o->ip_frag.next_index), (u32) (o->ip_frag.flags));
+  vec_add1 (s, '\n');
+
+  s = format (s, "cop.current_config_index: %d", o->cop.current_config_index);
+  vec_add1 (s, '\n');
+
+  s = format (s, "lisp.overlay_afi: %d", (u32) (o->lisp.overlay_afi));
+  vec_add1 (s, '\n');
+
+  s = format
+    (s, "tcp.connection_index: %d, tcp.seq_number: %d, tcp.seq_end: %d, "
+     "tcp.ack_number: %d, tcp.hdr_offset: %d, tcp.data_offset: %d",
+     o->tcp.connection_index,
+     o->tcp.seq_number,
+     o->tcp.seq_end,
+     o->tcp.ack_number,
+     (u32) (o->tcp.hdr_offset), (u32) (o->tcp.data_offset));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "tcp.data_len: %d, tcp.flags: 0x%x",
+	      (u32) (o->tcp.data_len), (u32) (o->tcp.flags));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "sctp.connection_index: %d, sctp.sid: %d, sctp.ssn: %d, "
+	      "sctp.tsn: %d, sctp.hdr_offset: %d",
+	      o->sctp.connection_index,
+	      (u32) (o->sctp.sid),
+	      (u32) (o->sctp.ssn),
+	      (u32) (o->sctp.tsn), (u32) (o->sctp.hdr_offset));
+  vec_add1 (s, '\n');
+
+  s = format
+    (s, "sctp.data_offset: %d, sctp.data_len: %d, sctp.subconn_idx: %d, "
+     "sctp.flags: 0x%x",
+     (u32) (o->sctp.data_offset),
+     (u32) (o->sctp.data_len),
+     (u32) (o->sctp.subconn_idx), (u32) (o->sctp.flags));
+  vec_add1 (s, '\n');
+
+  s = format (s, "snat.flags: 0x%x", o->snat.flags);
+  vec_add1 (s, '\n');
+  return s;
+}
+
+u8 *
+format_vnet_buffer_opaque2 (u8 * s, va_list * args)
+{
+  vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
+  vnet_buffer_opaque2_t *o = (vnet_buffer_opaque2_t *) b->opaque2;
+
+  int i;
+
+  s = format (s, "raw: ");
+
+  for (i = 0; i < ARRAY_LEN (b->opaque2); i++)
+    s = format (s, "%08x ", b->opaque2[i]);
+  vec_add1 (s, '\n');
+
+  s = format (s, "qos.bits: %x, qos.source: %x",
+	      (u32) (o->qos.bits), (u32) (o->qos.source));
+  vec_add1 (s, '\n');
+  s = format (s, "loop_counter: %d", o->loop_counter);
+  vec_add1 (s, '\n');
+
+  s = format (s, "gbp.flags: %x, gbp.src_epg: %d",
+	      (u32) (o->gbp.flags), (u32) (o->gbp.src_epg));
+  vec_add1 (s, '\n');
+
+  s = format (s, "pg_replay_timestamp: %llu", (u32) (o->pg_replay_timestamp));
+  vec_add1 (s, '\n');
+  return s;
+}
+
 uword
 unformat_vnet_hw_interface (unformat_input_t * input, va_list * args)
 {

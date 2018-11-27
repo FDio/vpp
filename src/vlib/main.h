@@ -134,6 +134,7 @@ typedef struct vlib_main_t
   /* Pcap dispatch trace main */
   pcap_main_t dispatch_pcap_main;
   uword dispatch_pcap_enable;
+  u8 *pcap_buffer;
 
   /* Error handling. */
   vlib_error_main_t error_main;
