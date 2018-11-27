@@ -22,6 +22,30 @@
       "revId": "e46ce504f4283709ef6e1cbdf9c2310835cf7621",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86d94864_077d496d",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2018-11-27T10:15:45Z",
+      "side": 1,
+      "message": "Done. Used \"accessing\" instead of \"accessing/updating\" to restrict to the 80 column boundary.",
+      "parentUuid": "63167260_c127b912",
+      "range": {
+        "startLine": 7,
+        "startChar": 7,
+        "endLine": 7,
+        "endChar": 22
+      },
+      "revId": "e46ce504f4283709ef6e1cbdf9c2310835cf7621",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
