@@ -767,12 +767,9 @@ if __name__ == '__main__':
                             field_class=CField,
                             message_class=CMessage)
 
-    # not using the model of having separate generated header and code files
-    # with generated symbols present in shared library (per discussion with
-    # Damjan), to avoid symbol version issues in .so
-    # gen_c_headers_and_code(jsonparser, logger, args.prefix)
+    if len(jsonparser.exceptions) > 0:
+        for e in jsonparser.exceptions:
+            logger.error(e)
+        raise Exception("Cannot parse JSON files")
 
     gen_c_unified_headers(jsonparser, logger, args.prefix, args.remove_path)
-
-    for e in jsonparser.exceptions:
-        logger.warning(e)
