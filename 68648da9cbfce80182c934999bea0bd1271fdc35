@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f1536ccf_26bc52e8",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 9798,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-27T09:41:34Z",
+      "side": 1,
+      "message": "wju dp we need this variable?",
+      "revId": "68648da9cbfce80182c934999bea0bd1271fdc35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
