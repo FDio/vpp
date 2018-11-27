@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd23654e_e7f05077",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_shmem.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-11-27T09:54:25Z",
+      "side": 1,
+      "message": "Please change to do_async to be consistent with the similar change in vpp_papi.py",
+      "revId": "3d2c2c3a16fcfadcf01d08c7870e4d983a3c16de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
