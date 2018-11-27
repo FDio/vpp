@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-typedef ip4_address {
-  u8 address[4];
-};
-
-typedef ip6_address {
-  u8 address[16];
-};
+typedef u8 ip4_address[4];
+typedef u8 ip6_address[16];
 
 enum address_family {
   ADDRESS_IP4 = 0,
