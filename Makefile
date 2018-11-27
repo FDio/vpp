@@ -88,27 +88,24 @@ RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
 RPM_DEPENDS += boost boost-devel
 RPM_DEPENDS += selinux-policy selinux-policy-devel
-RPM_DEPENDS += cmake3 ninja-build
+RPM_DEPENDS += ninja-build
 
-ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
-	RPM_DEPENDS += subunit subunit-devel
-	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python-devel python2-ply
-	RPM_DEPENDS += python2-virtualenv
-	RPM_DEPENDS += mbedtls-devel
-	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
-else ifeq ($(shell if [ "$(OS_ID)" = "fedora" ]; then test $(OS_VERSION_ID) -gt 25; echo $$?; fi),0)
+ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
 	RPM_DEPENDS += python2-devel python2-ply
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS += mbedtls-devel
+	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
+	RPM_DEPENDS += epel-release
+	RPM_DEPENDS += centos-release-scl-rh
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel python-ply
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS += devtoolset-7
+	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
 
@@ -298,11 +295,15 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 ifeq ($(OS_ID),rhel)
 	@sudo -E yum-config-manager --enable rhel-server-rhscl-7-rpms
 else ifeq ($(OS_ID),centos)
-	@sudo -E yum install $(CONFIRM) centos-release-scl-rh
-endif
+	@sudo -E yum install $(CONFIRM) centos-release-scl-rh epel-release
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
+else ifeq ($(OS_ID),fedora)
+	@sudo -E dnf groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E dnf install $(CONFIRM) $(RPM_DEPENDS)
+	@sudo -E dnf debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
+endif
 else ifeq ($(filter opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
