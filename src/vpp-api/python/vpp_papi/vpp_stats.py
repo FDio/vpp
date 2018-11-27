@@ -138,12 +138,26 @@ def stat_entry_to_python(api, e):
     return None
 
 
+class VPPStatsIOError(IOError):
+    pass
+
+
+class VPPStatsClientLoadError(RuntimeError):
+    pass
+
+
 class VPPStats(object):
-    def __init__(self, socketname='/var/run/stats.sock', timeout=10):
+    VPPStatsIOError = VPPStatsIOError
+
+    default_socketname = '/var/run/stats.sock'
+    sharedlib_name = 'libvppapiclient.so'
+
+    def __init__(self, socketname=default_socketname, timeout=10):
         try:
-            self.api = ffi.dlopen('libvppapiclient.so')
+            self.api = ffi.dlopen(VPPStats.sharedlib_name)
         except Exception:
-            raise RuntimeError("Could not open: libvppapiclient.so")
+            raise VPPStatsClientLoadError("Could not open: %s" %
+                                          VPPStats.sharedlib_name)
         self.client = self.api.stat_client_get()
 
         poll_end_time = time.time() + timeout
@@ -154,7 +168,7 @@ class VPPStats(object):
                 break
 
         if rv != 0:
-            raise IOError()
+            raise VPPStatsIOError()
 
     def heartbeat(self):
         return self.api.stat_segment_heartbeat_r(self.client)
@@ -169,7 +183,7 @@ class VPPStats(object):
         rv = self.api.stat_segment_dump_r(counters, self.client)
         # Raise exception and retry
         if rv == ffi.NULL:
-            raise IOError()
+            raise VPPStatsIOError()
         rv_len = self.api.stat_segment_vec_len(rv)
         for i in range(rv_len):
             n = ffi.string(rv[i].name).decode()
@@ -184,7 +198,7 @@ class VPPStats(object):
             try:
                 dir = self.ls(name)
                 return self.dump(dir).values()[0]
-            except Exception as e:
+            except VPPStatsIOError as e:
                 if retries > 10:
                     return None
                 retries += 1
@@ -201,7 +215,7 @@ class VPPStats(object):
                 error_names = self.ls(['/err/'])
                 error_counters = self.dump(error_names)
                 break
-            except Exception as e:
+            except VPPStatsIOError as e:
                 if retries > 10:
                     return None
                 retries += 1

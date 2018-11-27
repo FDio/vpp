@@ -14,9 +14,16 @@
 #
 
 from socket import inet_pton, inet_ntop, AF_INET6, AF_INET
+import socket
+
+
+class VPPFormatError(Exception):
+    pass
 
 
 class VPPFormat(object):
+    VPPFormatError = VPPFormatError
+
     @staticmethod
     def format_vl_api_ip6_prefix_t(args):
         prefix, len = args.split('/')
@@ -52,7 +59,7 @@ class VPPFormat(object):
         try:
             return {'un': {'ip6': {'address': inet_pton(AF_INET6, args)}},
                     'af': int(1)}
-        except Exception as e:
+        except socket.error as e:
             return {'un': {'ip4': {'address': inet_pton(AF_INET, args)}},
                     'af': int(0)}
 
@@ -62,7 +69,7 @@ class VPPFormat(object):
             return inet_ntop(AF_INET6, arg.un.ip6.address)
         if arg.af == 0:
             return inet_ntop(AF_INET, arg.un.ip4.address)
-        raise
+        raise VPPFormatError
 
     @staticmethod
     def format_vl_api_prefix_t(args):
@@ -80,7 +87,7 @@ class VPPFormat(object):
             return "{}/{}".format(inet_ntop(AF_INET,
                                             arg.address.un.ip4.address),
                                   arg.address_length)
-        raise
+        raise VPPFormatError
 
     @staticmethod
     def format_u8(args):
@@ -101,7 +108,7 @@ class VPPFormat(object):
     def unformat_bytes(args):
         try:
             return args.decode('utf-8')
-        except Exception as e:
+        except ValueError as e:
             return args
 
     @staticmethod

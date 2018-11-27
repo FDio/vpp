@@ -77,6 +77,26 @@ class FuncWrapper(object):
         return self._func(**kwargs)
 
 
+class VPPApiError(Exception):
+    pass
+
+
+class VPPNotImplementedError(NotImplementedError):
+    pass
+
+
+class VPPIOError(IOError):
+    pass
+
+
+class VPPRuntimeError(RuntimeError):
+    pass
+
+
+class VPPValueError(ValueError):
+    pass
+
+
 class VPP(object):
     """VPP interface.
 
@@ -89,6 +109,11 @@ class VPP(object):
     provides a means to register a callback function to receive
     these messages in a background thread.
     """
+    VPPApiError = VPPApiError
+    VPPRuntimeError = VPPRuntimeError
+    VPPValueError = VPPValueError
+    VPPNotImplementedError = VPPNotImplementedError
+    VPPIOError = VPPIOError
 
     def process_json_file(self, apidef_file):
         api = json.load(apidef_file)
@@ -134,15 +159,15 @@ class VPP(object):
             if len(unresolved) == 0:
                 break
             if i > 3:
-                raise ValueError('Unresolved type definitions {}'
-                                 .format(unresolved))
+                raise VPPValueError('Unresolved type definitions {}'
+                                    .format(unresolved))
             types = unresolved
             i += 1
 
         for m in api['messages']:
             try:
                 self.messages[m[0]] = VPPMessage(m[0], m[1:])
-            except NotImplementedError:
+            except VPPNotImplementedError:
                 self.logger.error('Not implemented error for {}'.format(m[0]))
 
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
@@ -192,7 +217,7 @@ class VPP(object):
                 if testmode:
                     apifiles = []
                 else:
-                    raise
+                    raise VPPRuntimeError
 
         for file in apifiles:
             with open(file) as apidef_file:
@@ -202,7 +227,7 @@ class VPP(object):
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
-            raise ValueError(1, 'Missing JSON message definitions')
+            raise VPPValueError(1, 'Missing JSON message definitions')
 
         self.transport = VppTransport(self, read_timeout=read_timeout,
                                       server_address=server_address)
@@ -333,7 +358,7 @@ class VPP(object):
         if api_dir is None:
             api_dir = cls.find_api_dir()
             if api_dir is None:
-                raise RuntimeError("api_dir cannot be located")
+                raise VPPApiError("api_dir cannot be located")
 
         if isinstance(patterns, list) or isinstance(patterns, tuple):
             patterns = [p.strip() + '.api.json' for p in patterns]
@@ -352,7 +377,7 @@ class VPP(object):
     @property
     def api(self):
         if not hasattr(self, "_api"):
-            raise Exception("Not connected, api definitions not available")
+            raise VPPApiError("Not connected, api definitions not available")
         return self._api
 
     def make_function(self, msg, i, multipart, do_async):
@@ -393,7 +418,7 @@ class VPP(object):
 
         rv = self.transport.connect(name.encode(), pfx, msg_handler, rx_qlen)
         if rv != 0:
-            raise IOError(2, 'Connect failed')
+            raise VPPIOError(2, 'Connect failed')
         self.vpp_dictionary_maxid = self.transport.msg_table_max_index()
         self._register_functions(do_async=do_async)
 
@@ -459,7 +484,7 @@ class VPP(object):
             # No context -> async notification that we feed to the callback
             self.message_queue.put_nowait(r)
         else:
-            raise IOError(2, 'RPC reply message received in event handler')
+            raise VPPIOError(2, 'RPC reply message received in event handler')
 
     def decode_incoming_msg(self, msg):
         if not msg:
@@ -474,7 +499,7 @@ class VPP(object):
         #
         msgobj = self.id_msgdef[i]
         if not msgobj:
-            raise IOError(2, 'Reply message undefined')
+            raise VPPIOError(2, 'Reply message undefined')
 
         r, size = msgobj.unpack(msg)
         return r
@@ -502,7 +527,7 @@ class VPP(object):
     def validate_args(self, msg, kwargs):
         d = set(kwargs.keys()) - set(msg.field_by_name.keys())
         if d:
-            raise ValueError('Invalid argument {} to {}'
+            raise VPPValueError('Invalid argument {} to {}'
                              .format(list(d), msg.name))
 
     def _call_vpp(self, i, msg, multipart, **kwargs):
@@ -549,7 +574,7 @@ class VPP(object):
         while (True):
             msg = self.transport.read()
             if not msg:
-                raise IOError(2, 'VPP API client: read failed')
+                raise VPPIOError(2, 'VPP API client: read failed')
             r = self.decode_incoming_msg(msg)
             msgname = type(r).__name__
             if context not in r or r.context == 0 or context != r.context:

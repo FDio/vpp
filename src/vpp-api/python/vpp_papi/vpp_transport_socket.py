@@ -13,7 +13,13 @@ except ImportError:
 import logging
 
 
+class VppTransportSocketIOError(IOError):
+    pass
+
+
 class VppTransport(object):
+    VppTransportSocketIOError = VppTransportSocketIOError
+
     def __init__(self, parent, read_timeout, server_address):
         self.connected = False
         self.read_timeout = read_timeout if read_timeout > 0 else 1
@@ -59,7 +65,8 @@ class VppTransport(object):
                     else:
                         self.parent.msg_handler_async(msg)
                 else:
-                    raise IOError(2, 'Unknown response from select')
+                    raise VppTransportSocketIOError(
+                        2, 'Unknown response from select')
 
     def connect(self, name, pfx, msg_handler, rx_qlen):
 
@@ -87,7 +94,7 @@ class VppTransport(object):
         msg = self._read()
         hdr, length = self.parent.header.unpack(msg, 0)
         if hdr.msgid != 16:
-            raise IOError('Invalid reply message')
+            raise VppTransportSocketIOError('Invalid reply message')
 
         r, length = sockclnt_create_reply.unpack(msg)
         self.socket_index = r.index
@@ -136,7 +143,7 @@ class VppTransport(object):
     def write(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
-            raise IOError(1, 'Not connected')
+            raise VppTransportSocketIOError(1, 'Not connected')
 
         # Send header
         header = self.header.pack(0, len(buf), 0)
@@ -177,7 +184,7 @@ class VppTransport(object):
 
     def read(self):
         if not self.connected:
-            raise IOError(1, 'Not connected')
+            raise VppTransportSocketIOError(1, 'Not connected')
         try:
             return self.q.get(True, self.read_timeout)
         except queue.Empty:
