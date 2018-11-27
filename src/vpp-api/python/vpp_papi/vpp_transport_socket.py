@@ -119,7 +119,7 @@ class VppTransport(object):
         pass
 
     def callback(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_callback(self, do_async):
         return self.callback
