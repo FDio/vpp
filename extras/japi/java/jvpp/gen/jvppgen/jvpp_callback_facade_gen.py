@@ -210,7 +210,7 @@ public final class CallbackJVpp${plugin_name}FacadeCallback implements $plugin_p
                 failedCall.onError(reply);
             } catch(RuntimeException ex) {
                 ex.addSuppressed(reply);
-                LOG.log(java.util.logging.Level.WARNING, String.format("Callback: %s failed while handling exception: %s", failedCall, reply), ex);
+                LOG.log(java.util.logging.Level.WARNING, java.lang.String.format("Callback: %s failed while handling exception: %s", failedCall, reply), ex);
             }
         }
     }
@@ -265,7 +265,7 @@ _CALLBACK_METHOD_TEMPLATE = Template("""
         $plugin_package.callback.$callback callback;
         final int replyId = reply.context;
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-            LOG.fine(String.format("Received ${message} event message: %s", reply));
+            LOG.fine(java.lang.String.format("Received ${message} event message: %s", reply));
         }
         synchronized(requests) {
             callback = ($plugin_package.callback.$callback) requests.remove(replyId);
@@ -282,7 +282,7 @@ _CALLBACK_EVENT_METHOD_TEMPLATE = Template("""
     @SuppressWarnings("unchecked")
     public void on${message}($plugin_package.dto.${message} notification) {
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-            LOG.fine(String.format("Received ${message} event message: %s", notification));
+            LOG.fine(java.lang.String.format("Received ${message} event message: %s", notification));
         }
         eventCallback.on${message}(notification);
     }

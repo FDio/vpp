@@ -14,7 +14,7 @@
  */
 
 #include <vnet/vnet.h>
-
+#include <jvpp-common/jvpp_common.h>
 #include <vpp/api/vpe_msg_enum.h>
 #define vl_typedefs             /* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
@@ -24,8 +24,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <jni.h>
-
-#include <jvpp-common/jvpp_common.h>
+#include <jvpp_core.h>
 
 // TODO: generate jvpp_plugin_name.c files (or at least reuse plugin's main structure)
 typedef struct {
