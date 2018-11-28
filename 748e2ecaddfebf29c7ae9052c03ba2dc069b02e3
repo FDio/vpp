@@ -16,6 +16,24 @@
       "revId": "748e2ecaddfebf29c7ae9052c03ba2dc069b02e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a183fe58_a94b3c24",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-11-28T06:29:44Z",
+      "side": 1,
+      "message": "Yup",
+      "parentUuid": "38492c66_4bfb46f9",
+      "revId": "748e2ecaddfebf29c7ae9052c03ba2dc069b02e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
