@@ -5572,7 +5572,7 @@ _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
 _(l2_interface_pbb_tag_rewrite_reply)                   \
-_(punt_reply)                                           \
+_(set_punt_reply)                                       \
 _(feature_enable_disable_reply)				\
 _(sw_interface_tag_add_del_reply)			\
 _(hw_interface_set_mtu_reply)                           \
@@ -5902,7 +5902,7 @@ _(IPSEC_GRE_ADD_DEL_TUNNEL_REPLY, ipsec_gre_add_del_tunnel_reply)       \
 _(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
 _(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
 _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
-_(PUNT_REPLY, punt_reply)                                               \
+_(SET_PUNT_REPLY, set_punt_reply)                                       \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
 _(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)           \
@@ -21725,10 +21725,10 @@ api_ipsec_gre_add_del_tunnel (vat_main_t * vam)
 }
 
 static int
-api_punt (vat_main_t * vam)
+api_set_punt (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_punt_t *mp;
+  vl_api_set_punt_t *mp;
   u32 ipv = ~0;
   u32 protocol = ~0;
   u32 port = ~0;
@@ -21752,12 +21752,12 @@ api_punt (vat_main_t * vam)
 	}
     }
 
-  M (PUNT, mp);
+  M (SET_PUNT, mp);
 
   mp->is_add = (u8) is_add;
-  mp->ipv = (u8) ipv;
-  mp->l4_protocol = (u8) protocol;
-  mp->l4_port = htons ((u16) port);
+  mp->punt.ipv = (u8) ipv;
+  mp->punt.l4_protocol = (u8) protocol;
+  mp->punt.l4_port = htons ((u16) port);
 
   S (mp);
   W (ret);
@@ -24033,7 +24033,7 @@ _(l2_interface_pbb_tag_rewrite,                                         \
   "<intfc> | sw_if_index <nn> \n"                                       \
   "[disable | push | pop | translate_pbb_stag <outer_tag>] \n"          \
   "dmac <mac> smac <mac> sid <nn> [vlanid <nn>]")                       \
-_(punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")     \
+_(set_punt, "protocol <l4-protocol> [ip <ver>] [port <l4-port>] [del]")     \
 _(flow_classify_set_interface,                                          \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>] [del]") \
 _(flow_classify_dump, "type [ip4|ip6]")                                 \

@@ -987,6 +987,29 @@ sctp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (sctp_init);
 
+static clib_error_t *
+show_sctp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
+		   vlib_cli_command_t * cmd_arg)
+{
+  sctp_main_t *tm = &sctp_main;
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+  vlib_cli_output (vm, "IPv4 UDP punt: %s",
+		   tm->punt_unknown4 ? "enabled" : "disabled");
+  vlib_cli_output (vm, "IPv6 UDP punt: %s",
+		   tm->punt_unknown6 ? "enabled" : "disabled");
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
+{
+  .path = "show sctp punt",
+  .short_help = "show sctp punt",
+  .function = show_sctp_punt_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
