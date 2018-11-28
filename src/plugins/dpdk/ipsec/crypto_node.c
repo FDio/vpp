@@ -44,7 +44,7 @@ static char *dpdk_crypto_input_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t dpdk_crypto_input_node;
+extern vlib_node_registration_t dpdk_crypto_input_node;
 
 typedef struct
 {
@@ -174,8 +174,8 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
   return total_n_deq;
 }
 
-static uword
-dpdk_crypto_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+static_always_inline uword
+dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * frame)
 {
   u32 thread_index = vlib_get_thread_index ();
@@ -228,10 +228,16 @@ dpdk_crypto_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_deq;
 }
 
+VLIB_NODE_FN (dpdk_crypto_input_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * from_frame)
+{
+  return dpdk_crypto_input_inline (vm, node, from_frame);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_crypto_input_node) =
 {
-  .function = dpdk_crypto_input_fn,
   .name = "dpdk-crypto-input",
   .format_trace = format_dpdk_crypto_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
@@ -248,7 +254,6 @@ VLIB_REGISTER_NODE (dpdk_crypto_input_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dpdk_crypto_input_node, dpdk_crypto_input_fn)
 /*
  * fd.io coding-style-patch-verification: ON
  *
