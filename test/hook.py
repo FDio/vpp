@@ -74,6 +74,14 @@ class PollHook(Hook):
             self.logger.error(
                 "Could not run `file' utility on core-file, "
                 "rc=%s" % e.returncode)
+        except OSError as e:
+            self.logger.error(
+                "Could not run `file' utility on core-file, "
+                "oserror=%s %s" % (e.errno, e.strerror))
+        except Exception as e:
+            self.logger.error(
+                "Unanticipated error running `file' utility on core-file, "
+                "%s" % e)
 
     def poll_vpp(self):
         """

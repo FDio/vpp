@@ -351,6 +351,12 @@ class VppTestCase(unittest.TestCase):
         except subprocess.CalledProcessError as e:
             cls.logger.critical("Couldn't start vpp: %s" % e)
             raise
+        except OSError as e:
+            cls.logger.critical("Couldn't start vpp: %s %s" % e.strerror)
+            raise
+        except Exception as e:
+            cls.logger.critical("Couldn't start vpp: Unexpected: %s" % e)
+            raise
 
         cls.wait_for_enter()
 
