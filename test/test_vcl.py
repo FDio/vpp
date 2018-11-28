@@ -252,8 +252,16 @@ class VCLCutThruTestCase(VCLTestCase):
         try:
             subprocess.check_output(['iperf3', '-v'])
         except subprocess.CalledProcessError:
+            self.logger.error("WARNING: 'iperf3 -v' returns non-0")
+            self.logger.error("         'test' not run!")
+            return
+        except OSError as e:
             self.logger.error("WARNING: 'iperf3' is not installed,")
-            self.logger.error("         'test_ldp_cut_thru_iperf3' not run!")
+            self.logger.error("         'test' not run!")
+            return
+        except Exception as e:
+            self.logger.error("WARNING: 'iperf3' unexpected error,")
+            self.logger.error("         'test' not run!")
             return
 
         self.timeout = self.client_iperf3_timeout
@@ -500,6 +508,14 @@ class VCLThruHostStackIperfTestCase(VCLTestCase):
             self.logger.error("WARNING: 'iperf3' is not installed,")
             self.logger.error(
                 "         'test_ldp_thru_host_stack_iperf3' not run!")
+            return
+        except OSError as e:
+            self.logger.error("WARNING: 'iperf3' is not installed,")
+            self.logger.error("         'test' not run!")
+            return
+        except Exception as e:
+            self.logger.error("WARNING: 'iperf3' unexpected error,")
+            self.logger.error("         'test' not run!")
             return
 
         self.timeout = self.client_iperf3_timeout
@@ -815,6 +831,14 @@ class VCLIpv6ThruHostStackIperfTestCase(VCLTestCase):
             self.logger.error("WARNING: 'iperf3' is not installed,")
             self.logger.error(
                 "         'test_ldp_thru_host_stack_iperf3' not run!")
+            return
+        except OSError as e:
+            self.logger.error("WARNING: 'iperf3' is not installed,")
+            self.logger.error("         'test' not run!")
+            return
+        except Exception as e:
+            self.logger.error("WARNING: 'iperf3' unexpected error,")
+            self.logger.error("         'test' not run!")
             return
 
         self.timeout = self.client_iperf3_timeout
