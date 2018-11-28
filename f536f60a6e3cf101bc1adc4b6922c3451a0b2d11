@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "31fb522b_4d341b6a",
+        "filename": "extras/vom/vom/ip_punt_redirect_cmds.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T17:14:47Z",
+      "side": 1,
+      "message": "use; payload.punt.nh \u003d to_api(m_addr)",
+      "revId": "f536f60a6e3cf101bc1adc4b6922c3451a0b2d11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e4557d18_e0cf1b2b",
+        "filename": "src/vnet/ip/ip4_punt_drop.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 570,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T17:14:47Z",
+      "side": 1,
+      "message": "random new line",
+      "revId": "f536f60a6e3cf101bc1adc4b6922c3451a0b2d11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c1f213d3_ab812329",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 4075,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T17:14:47Z",
+      "side": 1,
+      "message": "i\u0027d suggesting adding this new function next to the other ip_punt_redirect functions, rather than at the end of the file.",
+      "revId": "f536f60a6e3cf101bc1adc4b6922c3451a0b2d11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
