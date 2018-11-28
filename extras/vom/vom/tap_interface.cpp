@@ -25,21 +25,19 @@ tap_interface::event_handler tap_interface::m_evh;
  * Construct a new object matching the desried state
  */
 tap_interface::tap_interface(const std::string& name,
-                             type_t type,
-                             admin_state_t state,
-                             route::prefix_t prefix)
-  : interface(name, type, state)
+                             const admin_state_t& state,
+                             const route::prefix_t& prefix)
+  : interface(name, type_t::TAPV2, state)
   , m_prefix(prefix)
   , m_l2_address(l2_address_t::ZERO)
 {
 }
 
 tap_interface::tap_interface(const std::string& name,
-                             type_t type,
-                             admin_state_t state,
-                             route::prefix_t prefix,
+                             const admin_state_t& state,
+                             const route::prefix_t& prefix,
                              const l2_address_t& l2_address)
-  : interface(name, type, state)
+  : interface(name, type_t::TAPV2, state)
   , m_prefix(prefix)
   , m_l2_address(l2_address)
 {
@@ -61,11 +59,7 @@ tap_interface::tap_interface(const tap_interface& o)
 std::queue<cmd*>&
 tap_interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  if (type_t::TAPV2 == type())
-    q.push(new tap_interface_cmds::tapv2_create_cmd(m_hdl, name(), m_prefix,
-                                                    m_l2_address));
-  else
-    q.push(new tap_interface_cmds::tap_create_cmd(m_hdl, name(), m_prefix,
+  q.push(new tap_interface_cmds::tapv2_create_cmd(m_hdl, name(), m_prefix,
                                                   m_l2_address));
 
   return (q);
@@ -74,10 +68,7 @@ tap_interface::mk_create_cmd(std::queue<cmd*>& q)
 std::queue<cmd*>&
 tap_interface::mk_delete_cmd(std::queue<cmd*>& q)
 {
-  if (type_t::TAPV2 == type())
-    q.push(new tap_interface_cmds::tapv2_delete_cmd(m_hdl));
-  else
-    q.push(new tap_interface_cmds::tap_delete_cmd(m_hdl));
+  q.push(new tap_interface_cmds::tapv2_delete_cmd(m_hdl));
 
   return (q);
 }

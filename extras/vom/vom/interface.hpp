@@ -94,10 +94,6 @@ public:
      * Local interface type (specific to VPP)
      */
     const static type_t LOCAL;
-    /**
-     * TAP interface type
-     */
-    const static type_t TAP;
 
     /**
      * TAPv2 interface type
@@ -322,7 +318,8 @@ public:
       int sw_if_index = reply.get_response().get_payload().sw_if_index;
       int retval = reply.get_response().get_payload().retval;
 
-      VOM_LOG(log_level_t::DEBUG) << this->to_string() << " " << retval;
+      VOM_LOG(log_level_t::DEBUG) << this->to_string() << " res:" << retval
+                                  << " sw-if-index:" << sw_if_index;
 
       rc_t rc = rc_t::from_vpp_retval(retval);
       handle_t handle = handle_t::INVALID;

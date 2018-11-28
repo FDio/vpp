@@ -76,7 +76,7 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   /*
    * pull out the other special cases
    */
-  if (interface::type_t::TAP == type || interface::type_t::TAPV2 == type) {
+  if (interface::type_t::TAPV2 == type) {
     /*
      * TAP interfaces
      */
@@ -165,21 +165,6 @@ interface_factory::new_af_packet_interface(
 
 std::shared_ptr<tap_interface>
 interface_factory::new_tap_interface(
-  const vapi_payload_sw_interface_tap_details& vd)
-{
-  std::shared_ptr<tap_interface> sp;
-  std::string name = reinterpret_cast<const char*>(vd.dev_name);
-  handle_t hdl(vd.sw_if_index);
-
-  sp = tap_interface(name, interface::type_t::TAP, interface::admin_state_t::UP,
-                     route::prefix_t::ZERO)
-         .singular();
-  sp->set(hdl);
-  return (sp);
-}
-
-std::shared_ptr<tap_interface>
-interface_factory::new_tap_v2_interface(
   const vapi_payload_sw_interface_tap_v2_details& vd)
 {
   std::shared_ptr<tap_interface> sp;
@@ -196,8 +181,7 @@ interface_factory::new_tap_v2_interface(
       route::prefix_t(1, (uint8_t*)vd.host_ip6_addr, vd.host_ip6_prefix_len);
 
   l2_address_t l2_address(vd.host_mac_addr, 6);
-  sp = tap_interface(name, interface::type_t::TAPV2,
-                     interface::admin_state_t::UP, pfx, l2_address)
+  sp = tap_interface(name, interface::admin_state_t::UP, pfx, l2_address)
          .singular();
 
   sp->set(hdl);
