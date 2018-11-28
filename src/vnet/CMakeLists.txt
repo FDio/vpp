@@ -125,6 +125,7 @@ list(APPEND VNET_MULTIARCH_SOURCES ethernet/node.c)
 list(APPEND VNET_HEADERS
   ethernet/error.def
   ethernet/ethernet.h
+  ethernet/mac_address.h
   ethernet/packet.h
   ethernet/types.def
   ethernet/sfp.h
