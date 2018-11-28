@@ -2,30 +2,26 @@
 """ BFD tests """
 
 from __future__ import division
-
-import binascii
-import hashlib
-import time
 import unittest
+import hashlib
+import binascii
+import time
+from struct import pack, unpack
 from random import randint, shuffle, getrandbits
 from socket import AF_INET, AF_INET6, inet_ntop
-from struct import pack, unpack
-
-from six import moves
+from scapy.packet import Raw
+from scapy.layers.l2 import Ether
 from scapy.layers.inet import UDP, IP
 from scapy.layers.inet6 import IPv6
-from scapy.layers.l2 import Ether
-from scapy.packet import Raw
-
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
 from framework import VppTestCase, VppTestRunner, running_extended_tests
+from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
+from vpp_lo_interface import VppLoInterface
 from util import ppp
+from vpp_papi_provider import UnexpectedApiReturnValueError
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import UnexpectedApiReturnValueError
-from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 
 USEC_IN_SEC = 1000000
 
@@ -606,7 +602,7 @@ def verify_udp(test, packet):
 def verify_event(test, event, expected_state):
     """ Verify correctness of event values. """
     e = event
-    test.logger.debug("BFD: Event: %s" % moves.reprlib.repr(e))
+    test.logger.debug("BFD: Event: %s" % repr(e))
     test.assert_equal(e.sw_if_index,
                       test.vpp_session.interface.sw_if_index,
                       "BFD interface index")

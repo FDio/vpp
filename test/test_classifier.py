@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import binascii
-import socket
 import unittest
+import socket
+import binascii
+import sys
 
 from framework import VppTestCase, VppTestRunner
 
@@ -217,9 +218,9 @@ class TestClassifier(VppTestCase):
         :param int dst_port: destination port number "x"
         """
         if src_ip:
-            src_ip = binascii.hexlify(socket.inet_aton(src_ip))
+            src_ip = socket.inet_aton(src_ip).encode('hex')
         if dst_ip:
-            dst_ip = binascii.hexlify(socket.inet_aton(dst_ip))
+            dst_ip = socket.inet_aton(dst_ip).encode('hex')
 
         return ('{:0>20}{:0>12}{:0>8}{:0>4}{:0>4}'.format(
             hex(proto)[2:], src_ip, dst_ip, hex(src_port)[2:],

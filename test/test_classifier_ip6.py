@@ -184,11 +184,9 @@ class TestClassifier(VppTestCase):
         :param int dst_port: destination port number "x"
         """
         if src_ip:
-            src_ip = binascii.hexlify(socket.inet_pton(
-                socket.AF_INET6, src_ip))
+            src_ip = socket.inet_pton(socket.AF_INET6, src_ip).encode('hex')
         if dst_ip:
-            dst_ip = binascii.hexlify(socket.inet_pton(
-                socket.AF_INET6, dst_ip))
+            dst_ip = socket.inet_pton(socket.AF_INET6, dst_ip).encode('hex')
 
         return ('{:0>14}{:0>34}{:0>32}{:0>4}{:0>4}'.format(
             hex(nh)[2:], src_ip, dst_ip, hex(src_port)[2:],

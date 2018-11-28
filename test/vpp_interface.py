@@ -1,8 +1,5 @@
-import binascii
-import socket
 from abc import abstractmethod, ABCMeta
-
-from six import moves
+import socket
 
 from util import Host, mk_ll_addr, mactobinary
 
@@ -233,7 +230,7 @@ class VppInterface(object):
             if intf.sw_if_index == self.sw_if_index:
                 self._name = intf.interface_name.split(b'\0', 1)[0]
                 self._local_mac = \
-                    ':'.join(binascii.hexlify(intf.l2_address)[i:i + 2]
+                    ':'.join(intf.l2_address.encode('hex')[i:i + 2]
                              for i in range(0, 12, 2))
                 self._dump = intf
                 break
@@ -241,7 +238,7 @@ class VppInterface(object):
             raise Exception(
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
-                (self.sw_if_index, moves.reprlib.repr(r)))
+                (self.sw_if_index, repr(r)))
         self._local_ip6_ll = mk_ll_addr(self.local_mac)
         self._local_ip6n_ll = socket.inet_pton(socket.AF_INET6,
                                                self.local_ip6_ll)
