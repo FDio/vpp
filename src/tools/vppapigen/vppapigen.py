@@ -540,7 +540,8 @@ class VPPAPIParser(object):
                                 .format(p[1], p[2], p[4]),
                                 self._token_coord(p, 1))
 
-        if type(p[4]) is str and p[4] not in self.fields:
+        if type(p[4]) is str and (p[1] != 'string' and
+                                  p[4] not in self.fields):
             # Verify that length field exists
             self._parse_error('Missing length field: {} {}[{}];'
                               .format(p[1], p[2], p[4]),

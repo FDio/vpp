@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 class BaseTypes(object):
     def __init__(self, type, elements=0):
         base_types = {'u8': '>B',
+                      'string': '>s',
                       'u16': '>H',
                       'u32': '>I',
                       'i32': '>i',
@@ -38,7 +39,7 @@ class BaseTypes(object):
                       'bool': '>?',
                       'header': '>HI'}
 
-        if elements > 0 and type == 'u8':
+        if elements > 0 and (type == 'u8' or type == 'string'):
             self.packer = struct.Struct('>%ss' % elements)
         else:
             self.packer = struct.Struct(base_types[type])
@@ -58,7 +59,7 @@ class BaseTypes(object):
 types = {'u8': BaseTypes('u8'), 'u16': BaseTypes('u16'),
          'u32': BaseTypes('u32'), 'i32': BaseTypes('i32'),
          'u64': BaseTypes('u64'), 'f64': BaseTypes('f64'),
-         'bool': BaseTypes('bool')}
+         'bool': BaseTypes('bool'), 'string': BaseTypes('u8')}
 
 
 def vpp_get_type(name):
@@ -78,6 +79,7 @@ class FixedList_u8(object):
         self.num = num
         self.packer = BaseTypes(field_type, num)
         self.size = self.packer.size
+        self.field_type = field_type
 
     def pack(self, list, kwargs = None):
         """Packs a fixed length bytestring. Left-pads with zeros
@@ -97,6 +99,10 @@ class FixedList_u8(object):
                 'Invalid array length for "{}" got {}'
                 ' expected {}'
                 .format(self.name, len(data[offset:]), self.num))
+        if self.field_type == 'string':
+            s = self.packer.unpack(data, offset)
+            s2 = s[0].split(b'\0',1)[0]
+            return (s2.decode('utf-8'), self.num)
         return self.packer.unpack(data, offset)
 
 
@@ -131,6 +137,7 @@ class FixedList(object):
 class VLAList(object):
     def __init__(self, name, field_type, len_field_name, index):
         self.name = name
+        self.field_type = field_type
         self.index = index
         self.packer = types[field_type]
         self.size = self.packer.size
@@ -146,6 +153,7 @@ class VLAList(object):
         b = bytes()
 
         # u8 array
+
         if self.packer.size == 1:
             return bytearray(list)
 
@@ -166,6 +174,56 @@ class VLAList(object):
 
         r = []
         for e in range(result[self.index]):
+            x, size = self.packer.unpack(data, offset)
+            r.append(x)
+            offset += size
+            total += size
+        return r, total
+
+class VLAList_embedded(object):
+    def __init__(self, name, field_type, len_field_name):
+        self.name = name
+        self.field_type = field_type
+        self.packer = types[field_type]
+        self.size = self.packer.size
+        self.length_field = len_field_name
+        self.length_field_packer = BaseTypes('u32', 0)
+
+    def pack(self, list, kwargs=None):
+        if not list:
+            return self.length_field_packer.pack(0) + b""
+        b = bytes()
+
+        # u8 array / string
+        if self.packer.size == 1:
+            if self.field_type == 'string':
+                return self.length_field_packer.pack(len(list))+ list.encode('utf8')
+            else:
+                return self.length_field_packer.pack(len(list)) + bytearray(list)
+
+        for e in list:
+            b += self.packer.pack(e)
+        return self.length_field_packer.pack(len(list)) + b
+
+    def unpack(self, data, offset=0, result=None):
+        # Return a list of arguments
+        total = 0
+
+        length, size = self.length_field_packer.unpack(data, offset);
+        offset += size
+
+        # u8 array or string
+        if self.packer.size == 1:
+            if length == 0:
+                return b'', 0
+            p = BaseTypes('u8', length)
+            x, size = p.unpack(data, offset)
+            if self.field_type == 'string':
+                return (x.decode('utf8'), size)
+            return (x, size)
+
+        r = []
+        for e in length:
             x, size = self.packer.unpack(data, offset)
             r.append(x)
             offset += size
@@ -322,7 +380,7 @@ class VPPType(object):
                 if list_elements == 0:
                     p = VLAList_legacy(f_name, f_type)
                     self.packers.append(p)
-                elif f_type == 'u8':
+                elif f_type == 'u8' or f_type == 'string':
                     p = FixedList_u8(f_name, f_type, list_elements)
                     self.packers.append(p)
                     size += p.size
@@ -331,10 +389,13 @@ class VPPType(object):
                     self.packers.append(p)
                     size += p.size
             elif len(f) == 4:  # Variable length list
-                    # Find index of length field
+                # Find index of length field
+                try:
                     length_index = self.fields.index(f[3])
                     p = VLAList(f_name, f_type, f[3], length_index)
-                    self.packers.append(p)
+                except ValueError:
+                    p = VLAList_embedded(f_name, f_type, f[3])
+                self.packers.append(p)
             else:
                 self.packers.append(types[f_type])
                 size += types[f_type].size
