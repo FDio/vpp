@@ -60,6 +60,7 @@ static char *ah_decrypt_error_strings[] = {
 typedef struct
 {
   ipsec_integ_alg_t integ_alg;
+  u32 seq_num;
 } ah_decrypt_trace_t;
 
 /* packet trace format function */
@@ -70,7 +71,8 @@ format_ah_decrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ah_decrypt_trace_t *t = va_arg (*args, ah_decrypt_trace_t *);
 
-  s = format (s, "ah: integrity %U", format_ipsec_integ_alg, t->integ_alg);
+  s = format (s, "ah: integrity %U seq-num %d",
+	      format_ipsec_integ_alg, t->integ_alg, t->seq_num);
   return s;
 }
 
@@ -143,8 +145,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  seq = clib_host_to_net_u32 (ah0->seq_no);
+
 	  /* anti-replay check */
-	  //TODO UT remaining
 	  if (sa0->use_anti_replay)
 	    {
 	      int rv = 0;
@@ -223,7 +225,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 
-	      //TODO UT remaining
 	      if (PREDICT_TRUE (sa0->use_anti_replay))
 		{
 		  if (PREDICT_TRUE (sa0->use_esn))
@@ -247,7 +248,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 		next0 = AH_DECRYPT_NEXT_IP6_INPUT;
 	      else
 		{
-		  clib_warning ("next header: 0x%x", ah0->nexthdr);
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 ah6_decrypt_node.index,
@@ -313,6 +313,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      ah_decrypt_trace_t *tr =
 		vlib_add_trace (vm, node, i_b0, sizeof (*tr));
 	      tr->integ_alg = sa0->integ_alg;
+	      tr->seq_num = seq;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, i_bi0, next0);

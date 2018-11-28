@@ -45,6 +45,7 @@ class TemplateIpsecAh(TemplateIpsec):
                                              cls.tra_if.sw_if_index)
         for _, p in cls.params.items():
             cls.config_ah_tra(p)
+            cls.configure_sa_tra(p)
         cls.logger.info(cls.vapi.ppcli("show ipsec"))
         for _, p in cls.params.items():
             cls.config_ah_tun(p)
@@ -134,12 +135,14 @@ class TemplateIpsecAh(TemplateIpsec):
                                          auth_algo_vpp_id, auth_key,
                                          crypt_algo_vpp_id, crypt_key,
                                          cls.vpp_ah_protocol, is_tunnel=0,
-                                         is_tunnel_ipv6=0)
+                                         is_tunnel_ipv6=0,
+                                         use_anti_replay=1)
         cls.vapi.ipsec_sad_add_del_entry(vpp_tra_sa_id, vpp_tra_spi,
                                          auth_algo_vpp_id, auth_key,
                                          crypt_algo_vpp_id, crypt_key,
                                          cls.vpp_ah_protocol, is_tunnel=0,
-                                         is_tunnel_ipv6=0)
+                                         is_tunnel_ipv6=0,
+                                         use_anti_replay=1)
         l_startaddr = r_startaddr = socket.inet_pton(addr_type, addr_any)
         l_stopaddr = r_stopaddr = socket.inet_pton(addr_type, addr_bcast)
         cls.vapi.ipsec_spd_add_del_entry(cls.tra_spd_id, vpp_tra_sa_id,

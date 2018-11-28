@@ -51,6 +51,7 @@ class TemplateIpsecEsp(TemplateIpsec):
                                              cls.tra_if.sw_if_index)
         for _, p in cls.params.items():
             cls.config_esp_tra(p)
+            cls.configure_sa_tra(p)
         cls.logger.info(cls.vapi.ppcli("show ipsec"))
         cls.vapi.ipsec_spd_add_del(cls.tun_spd_id)
         cls.vapi.ipsec_interface_add_del_spd(cls.tun_spd_id,
@@ -144,11 +145,13 @@ class TemplateIpsecEsp(TemplateIpsec):
         cls.vapi.ipsec_sad_add_del_entry(scapy_tra_sa_id, scapy_tra_spi,
                                          auth_algo_vpp_id, auth_key,
                                          crypt_algo_vpp_id, crypt_key,
-                                         cls.vpp_esp_protocol, is_tunnel=0)
+                                         cls.vpp_esp_protocol, is_tunnel=0,
+                                         use_anti_replay=1)
         cls.vapi.ipsec_sad_add_del_entry(vpp_tra_sa_id, vpp_tra_spi,
                                          auth_algo_vpp_id, auth_key,
                                          crypt_algo_vpp_id, crypt_key,
-                                         cls.vpp_esp_protocol, is_tunnel=0)
+                                         cls.vpp_esp_protocol, is_tunnel=0,
+                                         use_anti_replay=1)
         l_startaddr = r_startaddr = socket.inet_pton(addr_type, addr_any)
         l_stopaddr = r_stopaddr = socket.inet_pton(addr_type, addr_bcast)
         cls.vapi.ipsec_spd_add_del_entry(cls.tra_spd_id, vpp_tra_sa_id,
