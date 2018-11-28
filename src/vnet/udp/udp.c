@@ -441,6 +441,66 @@ udp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (udp_init);
 
+static clib_error_t *
+show_udp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
+		  vlib_cli_command_t * cmd_arg)
+{
+  udp_main_t *um = vnet_get_udp_main ();
+
+  clib_error_t *error = NULL;
+
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+
+  udp_dst_port_info_t *port_info;
+  if (um->punt_unknown4)
+    {
+      vlib_cli_output (vm, "IPv4 UDP punt: enabled");
+    }
+  else
+    {
+      u8 *s = NULL;
+      vec_foreach (port_info, um->dst_port_infos[UDP_IP4])
+      {
+	if (udp_is_valid_dst_port (port_info->dst_port, 1))
+	  {
+	    s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
+	  }
+      }
+      s = format (s, "%c", 0);
+      vlib_cli_output (vm, "IPV4 UDP ports punt : %s", s);
+    }
+
+  if (um->punt_unknown6)
+    {
+      vlib_cli_output (vm, "IPv6 UDP punt: enabled");
+    }
+  else
+    {
+      u8 *s = NULL;
+      vec_foreach (port_info, um->dst_port_infos[UDP_IP6])
+      {
+	if (udp_is_valid_dst_port (port_info->dst_port, 01))
+	  {
+	    s = format (s, (!s) ? "%d" : ", %d", port_info->dst_port);
+	  }
+      }
+      s = format (s, "%c", 0);
+      vlib_cli_output (vm, "IPV6 UDP ports punt : %s", s);
+    }
+
+  return (error);
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
+{
+  .path = "show udp punt",
+  .short_help = "show udp punt [ipv4|ipv6]",
+  .function = show_udp_punt_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

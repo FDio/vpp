@@ -274,6 +274,7 @@ punt_socket_register (bool is_ip4, u8 protocol, u16 port,
   memcpy (c.caddr.sun_path, client_pathname, sizeof (c.caddr.sun_path));
   c.caddr.sun_family = AF_UNIX;
   c.port = port;
+  c.protocol = protocol;
   n = sparse_vec_validate (v, port);
   n[0] = c;
 }
@@ -424,6 +425,9 @@ udp46_punt_socket_inline (vlib_main_t * vm,
       if (sendmsg (pm->socket_fd, &msg, 0) < (ssize_t) l)
 	vlib_node_increment_counter (vm, node_index,
 				     PUNT_ERROR_SOCKET_TX_ERROR, 1);
+      else
+	vlib_node_increment_counter (vm, node_index, PUNT_ERROR_SOCKET_TX, 1);
+
     }
 
 error:
@@ -748,7 +752,7 @@ static clib_error_t *
 punt_cli (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 port;
+  u32 port = ~0;
   bool is_add = true;
   u32 protocol = ~0;
   clib_error_t *error = NULL;
@@ -758,25 +762,9 @@ punt_cli (vlib_main_t * vm,
       if (unformat (input, "del"))
 	is_add = false;
       else if (unformat (input, "all"))
-	{
-	  /* punt both IPv6 and IPv4 when used in CLI */
-	  error = vnet_punt_add_del (vm, ~0, protocol, ~0, is_add);
-	  if (error)
-	    {
-	      clib_error_report (error);
-	      goto done;
-	    }
-	}
+	;
       else if (unformat (input, "%d", &port))
-	{
-	  /* punt both IPv6 and IPv4 when used in CLI */
-	  error = vnet_punt_add_del (vm, ~0, protocol, port, is_add);
-	  if (error)
-	    {
-	      clib_error_report (error);
-	      goto done;
-	    }
-	}
+	;
       else if (unformat (input, "udp"))
 	protocol = IP_PROTOCOL_UDP;
       else if (unformat (input, "tcp"))
@@ -788,6 +776,15 @@ punt_cli (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  /* punt both IPv6 and IPv4 when used in CLI */
+  error = vnet_punt_add_del (vm, ~0, protocol, port, is_add);
+  if (error)
+    {
+      clib_error_report (error);
+      goto done;
+    }
+
 done:
   return error;
 }
@@ -817,6 +814,228 @@ VLIB_CLI_COMMAND (punt_command, static) = {
   .path = "set punt",
   .short_help = "set punt [udp|tcp] [del] <all | port-num1 [port-num2 ...]>",
   .function = punt_cli,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+punt_socket_register_cmd (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  bool is_ipv4 = true;
+  u32 protocol = ~0;
+  u32 port = ~0;
+  u8 *socket_name = 0;
+  clib_error_t *error = NULL;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ipv4"))
+	;
+      else if (unformat (input, "ipv6"))
+	is_ipv4 = false;
+      else if (unformat (input, "udp"))
+	protocol = IP_PROTOCOL_UDP;
+      else if (unformat (input, "tcp"))
+	protocol = IP_PROTOCOL_TCP;
+      else if (unformat (input, "%d", &port))
+	;
+      else if (unformat (input, "socket %s", &socket_name))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  error =
+    vnet_punt_socket_add (vm, 1, is_ipv4, protocol, port,
+			  (char *) socket_name);
+  if (error)
+    {
+      goto done;
+    }
+done:
+  return error;
+}
+
+/*?
+ *
+ * @cliexpar
+ * @cliexcmd{punt socket register}
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (punt_socket_register_command, static) =
+{
+  .path = "punt socket register",
+  .function = punt_socket_register_cmd,
+  .short_help = "punt socket register [ipv4|ipv6] [udp|tcp]> <all | port-num1 [port-num2 ...]> <socket>",
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+punt_socket_deregister_cmd (vlib_main_t * vm,
+			    unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  bool is_ipv4 = true;
+  u32 protocol = ~0;
+  u32 port = ~0;
+  clib_error_t *error = NULL;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ipv4"))
+	;
+      else if (unformat (input, "ipv6"))
+	is_ipv4 = false;
+      else if (unformat (input, "udp"))
+	protocol = IP_PROTOCOL_UDP;
+      else if (unformat (input, "tcp"))
+	protocol = IP_PROTOCOL_TCP;
+      else if (unformat (input, "%d", &port))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  error = vnet_punt_socket_del (vm, is_ipv4, protocol, port);
+  if (error)
+    {
+      goto done;
+    }
+done:
+  return error;
+}
+
+/*?
+ *
+ * @cliexpar
+ * @cliexcmd{punt socket register}
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (punt_socket_deregister_command, static) =
+{
+  .path = "punt socket deregister",
+  .function = punt_socket_deregister_cmd,
+  .short_help = "punt socket deregister [ipv4|ipv6] [udp|tcp]> <all | port-num1 [port-num2 ...]>",
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+punt_socket_detail_t *
+punt_socket_entries (u8 ipv)
+{
+  punt_main_t *pm = &punt_main;
+  punt_client_t *pc;
+  punt_socket_detail_t *ps = 0;
+  bool is_valid;
+
+  punt_client_t *v = !ipv ? pm->clients_by_dst_port4 :
+    pm->clients_by_dst_port6;
+
+  vec_foreach (pc, v)
+  {
+    if (pc && pc->port != 0)
+      {
+	is_valid = false;
+	if (pc->protocol == IP_PROTOCOL_UDP)
+	  {
+	    is_valid = udp_is_valid_dst_port (pc->port, !ipv);
+	  }
+	if (is_valid)
+	  {
+	    punt_socket_detail_t detail = {
+	      .ipv = ipv,
+	      .l4_protocol = pc->protocol,
+	      .l4_port = pc->port
+	    };
+	    memcpy (detail.pathname, pc->caddr.sun_path,
+		    sizeof (pc->caddr.sun_path));
+	    vec_add1 (ps, detail);
+	  }
+      }
+  }
+  return ps;
+}
+
+u8 *
+format_punt_socket (u8 * s, va_list * args)
+{
+  punt_client_t *clients = va_arg (*args, punt_client_t *);
+  u8 *is_ipv6 = va_arg (*args, u8 *);
+  punt_client_t *pc;
+  bool is_valid;
+
+  vec_foreach (pc, clients)
+  {
+    if (pc && pc->port != 0)
+      {
+	is_valid = false;
+	if (pc->protocol == IP_PROTOCOL_UDP)
+	  {
+	    is_valid = udp_is_valid_dst_port (pc->port, !(*is_ipv6));
+	  }
+	if (is_valid)
+	  {
+	    s = format (s, " punt %s port %d to socket %s \n",
+			(pc->protocol == IP_PROTOCOL_UDP) ? "UDP" : "TCP",
+			pc->port, pc->caddr.sun_path);
+	  }
+      }
+  }
+
+  return (s);
+}
+
+static clib_error_t *
+punt_socket_show_cmd (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u8 is_ipv6;
+  punt_main_t *pm = &punt_main;
+  clib_error_t *error = NULL;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "ipv4"))
+	is_ipv6 = 0;
+      else if (unformat (input, "ipv6"))
+	is_ipv6 = 1;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  punt_client_t *v =
+    is_ipv6 ? pm->clients_by_dst_port6 : pm->clients_by_dst_port4;
+  vlib_cli_output (vm, "%U", format_punt_socket, v, &is_ipv6);
+
+done:
+  return (error);
+}
+
+/*?
+ *
+ * @cliexpar
+ * @cliexcmd{show punt socket ipv4}
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_punt_socket_registration_command, static) =
+{
+  .path = "show punt socket registrations",
+  .function = punt_socket_show_cmd,
+  .short_help = "show punt socket registrations [ipv4|ipv6]",
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
