@@ -3,7 +3,8 @@ import datetime
 import os
 import time
 
-datestring = datetime.datetime.utcfromtimestamp(int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
+datestring = datetime.datetime.utcfromtimestamp(
+    int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
 input_filename = 'inputfil'
 top_boilerplate = '''\
 /*
@@ -94,6 +95,20 @@ def duplicate_wrapper_tail():
     return '#endif\n\n'
 
 
+def api2c(fieldtype):
+    mappingtable = {'string': 'u8', }
+    if fieldtype in mappingtable:
+        return mappingtable[fieldtype]
+    return fieldtype
+
+
+def is_embedded_length_vla(fieldtype):
+    mappingtable = {'string': None}
+    if fieldtype in mappingtable:
+        return True
+    return False
+
+
 def typedefs(objs, aliases, filename):
     name = filename.replace('.', '_')
     output = '''\
@@ -130,12 +145,14 @@ def typedefs(objs, aliases, filename):
                 output += "typedef VL_API_PACKED(struct _vl_api_%s {\n" % o.name
             for b in o.block:
                 if b.type == 'Field':
-                    output += "    %s %s;\n" % (b.fieldtype, b.fieldname)
+                    output += "    %s %s;\n" % (api2c(b.fieldtype), b.fieldname)
                 elif b.type == 'Array':
                     if b.lengthfield:
-                        output += "    %s %s[0];\n" % (b.fieldtype, b.fieldname)
+                        if is_embedded_length_vla(b.fieldtype):
+                            output += "    u32 %s;\n" % b.lengthfield
+                        output += "    %s %s[0];\n" % (api2c(b.fieldtype), b.fieldname)
                     else:
-                        output += "    %s %s[%s];\n" % (b.fieldtype, b.fieldname,
+                        output += "    %s %s[%s];\n" % (api2c(b.fieldtype), b.fieldname,
                                                         b.length)
                 else:
                     raise ValueError("Error in processing array type %s" % b)

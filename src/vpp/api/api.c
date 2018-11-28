@@ -217,11 +217,19 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   unformat_input_t input;
   u8 *out_vec = 0;
+  u32 len = 0;
+
+  if (vl_msg_api_get_msg_length(mp) < ntohl(mp->length)) {
+    rv = -1;
+    goto error;
+  }
 
   unformat_init_string (&input, (char *) mp->cmd, ntohl (mp->length));
   vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
 
-  u32 len = vec_len (out_vec);
+  len = vec_len (out_vec);
+
+ error:
   /* *INDENT-OFF* */
   REPLY_MACRO3(VL_API_CLI_INBAND_REPLY, len,
   ({

@@ -93,8 +93,7 @@ define cli_inband
 {
   u32 client_index;
   u32 context;
-  u32 length;
-  u8 cmd[length];
+  string cmd[length];
 };
 
 /** \brief vpe parser cli string response
@@ -112,8 +111,7 @@ define cli_inband_reply
 {
   u32 context;
   i32 retval;
-  u32 length;
-  u8 reply[length];
+  string reply[length];
 };
 
 /** \brief Get node index using name request
@@ -187,10 +185,10 @@ define show_version_reply
 {
   u32 context;
   i32 retval;
-  u8 program[32];
-  u8 version[32];
-  u8 build_date[32];
-  u8 build_directory[256];
+  string program[32];
+  string version[32];
+  string build_date[32];
+  string build_directory[256];
 };
 
 
