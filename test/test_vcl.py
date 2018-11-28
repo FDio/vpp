@@ -1,3 +1,4 @@
+'''
 #!/usr/bin/env python
 """ Vpp VCL tests """
 
@@ -824,3 +825,4 @@ class VCLIpv6ThruHostStackIperfTestCase(VCLTestCase):
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
+'''
