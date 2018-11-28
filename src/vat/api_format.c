@@ -1105,7 +1105,7 @@ vl_api_cli_inband_reply_t_handler (vl_api_cli_inband_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
-  u32 length = ntohl (mp->length);
+  u32 length = vl_api_string_len (&mp->reply);
 
   vec_reset_length (vam->cmd_reply);
 
@@ -1113,7 +1113,8 @@ vl_api_cli_inband_reply_t_handler (vl_api_cli_inband_reply_t * mp)
   if (retval == 0)
     {
       vec_validate (vam->cmd_reply, length);
-      clib_memcpy ((char *) (vam->cmd_reply), mp->reply, length);
+      clib_memcpy ((char *) (vam->cmd_reply),
+		   vl_api_from_api_string (&mp->reply), length);
       vam->cmd_reply[length] = 0;
     }
   vam->result_ready = 1;
@@ -1129,7 +1130,8 @@ vl_api_cli_inband_reply_t_handler_json (vl_api_cli_inband_reply_t * mp)
 
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_string_copy (&node, "reply", mp->reply);
+  vat_json_object_add_string_copy (&node, "reply",
+				   vl_api_from_api_string (&mp->reply));
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -1300,10 +1302,18 @@ static void vl_api_show_version_reply_t_handler
 
   if (retval >= 0)
     {
-      errmsg ("        program: %s", mp->program);
-      errmsg ("        version: %s", mp->version);
-      errmsg ("     build date: %s", mp->build_date);
-      errmsg ("build directory: %s", mp->build_directory);
+      char *p = (char *) &mp->program;
+      errmsg ("        program: %s\n",
+	      vl_api_from_api_string ((vl_api_string_t *) p));
+      p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
+      errmsg ("        version: %s\n",
+	      vl_api_from_api_string ((vl_api_string_t *) p));
+      p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
+      errmsg ("     build date: %s\n",
+	      vl_api_from_api_string ((vl_api_string_t *) p));
+      p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
+      errmsg ("build directory: %s\n",
+	      vl_api_from_api_string ((vl_api_string_t *) p));
     }
   vam->retval = retval;
   vam->result_ready = 1;
@@ -1317,11 +1327,22 @@ static void vl_api_show_version_reply_t_handler_json
 
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_string_copy (&node, "program", mp->program);
-  vat_json_object_add_string_copy (&node, "version", mp->version);
-  vat_json_object_add_string_copy (&node, "build_date", mp->build_date);
+  char *p = (char *) &mp->program;
+  vat_json_object_add_string_copy (&node, "program",
+				   vl_api_from_api_string ((vl_api_string_t *)
+							   p));
+  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
+  vat_json_object_add_string_copy (&node, "version",
+				   vl_api_from_api_string ((vl_api_string_t *)
+							   p));
+  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
+  vat_json_object_add_string_copy (&node, "build_date",
+				   vl_api_from_api_string ((vl_api_string_t *)
+							   p));
+  p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
   vat_json_object_add_string_copy (&node, "build_directory",
-				   mp->build_directory);
+				   vl_api_from_api_string ((vl_api_string_t *)
+							   p));
 
   vat_json_print (vam->ofp, &node);
   vat_json_free (&node);
@@ -6339,8 +6360,7 @@ exec_inband (vat_main_t * vam)
    */
   u32 len = vec_len (vam->input->buffer);
   M2 (CLI_INBAND, mp, len);
-  clib_memcpy (mp->cmd, vam->input->buffer, len);
-  mp->length = htonl (len);
+  vl_api_to_api_string (len, (const char *) vam->input->buffer, &mp->cmd);
 
   S (mp);
   W (ret);
