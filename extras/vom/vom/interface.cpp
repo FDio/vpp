@@ -287,7 +287,7 @@ interface::mk_create_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::af_packet_create_cmd(m_hdl, m_name));
     if (!m_tag.empty())
       q.push(new interface_cmds::set_tag(m_hdl, m_tag));
-  } else if (type_t::TAP == m_type || type_t::TAPV2 == m_type) {
+  } else if (type_t::TAPV2 == m_type) {
     if (!m_tag.empty())
       q.push(new interface_cmds::set_tag(m_hdl, m_tag));
   } else if (type_t::VHOST == m_type) {
@@ -523,28 +523,6 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
   }
 
   /*
-   * dump VPP tap interfaces
-   */
-  std::shared_ptr<tap_interface_cmds::tap_dump_cmd> tapcmd =
-    std::make_shared<tap_interface_cmds::tap_dump_cmd>();
-
-  HW::enqueue(tapcmd);
-  HW::write();
-
-  for (auto& tap_record : *tapcmd) {
-    std::shared_ptr<tap_interface> tapitf =
-      interface_factory::new_tap_interface(tap_record.get_payload());
-    VOM_LOG(log_level_t::DEBUG) << "tap-dump: " << tapitf->to_string();
-
-    /*
-     * Write each of the discovered interfaces into the OM,
-     * but disable the HW Command q whilst we do, so that no
-     * commands are sent to VPP
-     */
-    OM::commit(key, *tapitf);
-  }
-
-  /*
    * dump VPP tapv2 interfaces
    */
   std::shared_ptr<tap_interface_cmds::tapv2_dump_cmd> tapv2cmd =
@@ -555,7 +533,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
 
   for (auto& tapv2_record : *tapv2cmd) {
     std::shared_ptr<tap_interface> tapv2itf =
-      interface_factory::new_tap_v2_interface(tapv2_record.get_payload());
+      interface_factory::new_tap_interface(tapv2_record.get_payload());
     VOM_LOG(log_level_t::DEBUG) << "tapv2-dump: " << tapv2itf->to_string();
 
     /*

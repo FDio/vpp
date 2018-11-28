@@ -16,6 +16,7 @@
 #ifndef __VOM_IP_PUNT_REDIRECT_CMDS_H__
 #define __VOM_IP_PUNT_REDIRECT_CMDS_H__
 
+#include "vom/dump_cmd.hpp"
 #include "vom/ip_punt_redirect.hpp"
 #include "vom/rpc_cmd.hpp"
 
@@ -34,8 +35,8 @@ public:
    * Constructor
    */
   config_cmd(HW::item<bool>& item,
-             const handle_t& rx_itf,
-             const handle_t& tx_itf,
+             const handle_t rx_itf,
+             const handle_t tx_itf,
              const boost::asio::ip::address& addr);
 
   /**
@@ -56,11 +57,11 @@ private:
   /**
    * Reference to the interface from which traffic is coming
    */
-  const handle_t& m_rx_itf;
+  const handle_t m_rx_itf;
   /**
    * Reference to the interface where traffic will be redirected
    */
-  const handle_t& m_tx_itf;
+  const handle_t m_tx_itf;
 
   /**
    * Reference to nexh hop ip address
@@ -78,8 +79,8 @@ public:
    * Constructor
    */
   unconfig_cmd(HW::item<bool>& item,
-               const handle_t& rx_itf,
-               const handle_t& tx_itf,
+               const handle_t rx_itf,
+               const handle_t tx_itf,
                const boost::asio::ip::address& addr);
 
   /**
@@ -100,16 +101,48 @@ private:
   /**
    * Reference to the interface from which traffic is coming
    */
-  const handle_t& m_rx_itf;
+  const handle_t m_rx_itf;
   /**
    * Reference to the interface where traffic will be redirected
    */
-  const handle_t& m_tx_itf;
+  const handle_t m_tx_itf;
 
   /**
    * Reference to nexh hop ip address
    */
   const boost::asio::ip::address& m_addr;
+};
+
+/**
+ * A cmd class that Dumps all the IP punt redirect
+ */
+class dump_cmd : public VOM::dump_cmd<vapi::Ip_punt_redirect_dump>
+{
+public:
+  /**
+   * Constructor
+   */
+  dump_cmd() = default;
+
+  /**
+   * Issue the command to VPP/HW
+   */
+  rc_t issue(connection& con);
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  bool operator==(const dump_cmd& i) const;
+
+private:
+  /**
+   * HW reutrn code
+   */
+  HW::item<bool> item;
 };
 
 }; // namespace ip_punt_redirect_cmds

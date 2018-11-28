@@ -31,82 +31,13 @@ namespace tap_interface_cmds {
 /**
  * A functor class that creates an interface
  */
-class tap_create_cmd : public interface::create_cmd<vapi::Tap_connect>
-{
-public:
-  tap_create_cmd(HW::item<handle_t>& item,
-             const std::string& name,
-             route::prefix_t& prefix,
-             const l2_address_t& l2_address);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-
-private:
-  route::prefix_t& m_prefix;
-  const l2_address_t& m_l2_address;
-};
-
-/**
- * A functor class that deletes a Tap interface
- */
-class tap_delete_cmd : public interface::delete_cmd<vapi::Tap_delete>
-{
-public:
-  tap_delete_cmd(HW::item<handle_t>& item);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-};
-
-/**
- * A cmd class that Dumps all the Vpp Interfaces
- */
-class tap_dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_tap_dump>
-{
-public:
-  /**
-   * Default Constructor
-   */
-  tap_dump_cmd();
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-
-  /**
-   * Comparison operator - only used for UT
-   */
-  bool operator==(const tap_dump_cmd& i) const;
-};
-
-/**
- * A functor class that creates an interface
- */
 class tapv2_create_cmd : public interface::create_cmd<vapi::Tap_create_v2>
 {
 public:
   tapv2_create_cmd(HW::item<handle_t>& item,
-             const std::string& name,
-             route::prefix_t& prefix,
-             const l2_address_t& l2_address);
+                   const std::string& name,
+                   const route::prefix_t& prefix,
+                   const l2_address_t& l2_address);
 
   /**
    * Issue the command to VPP/HW
@@ -118,7 +49,7 @@ public:
   std::string to_string() const;
 
 private:
-  route::prefix_t& m_prefix;
+  const route::prefix_t& m_prefix;
   const l2_address_t& m_l2_address;
 };
 
