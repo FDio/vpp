@@ -140,6 +140,35 @@ typedef struct msgbuf_
   u8 data[0];			 /**< actual message begins here  */
 } msgbuf_t;
 
+/* VPP API string type */
+typedef struct
+{
+  u32 length;
+  u8 buf[0];
+} __attribute__ ((packed)) vl_api_string_t;
+
+static inline int
+vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
+{
+  if (strncpy_s ((char *) str->buf, len, buf, len - 1) != 0)
+    len = 0;
+  str->length = clib_host_to_net_u32 (len);
+  return len + sizeof (u32);
+}
+
+/* Return a C string from API string */
+static inline u8 *
+vl_api_from_api_string (vl_api_string_t * astr)
+{
+  return astr->buf;
+}
+
+static inline u32
+vl_api_string_len (vl_api_string_t * astr)
+{
+  return clib_net_to_host_u32 (astr->length);
+}
+
 /* api_shared.c prototypes */
 void vl_msg_api_handler (void *the_msg);
 void vl_msg_api_handler_no_free (void *the_msg);

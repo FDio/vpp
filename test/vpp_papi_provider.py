@@ -213,10 +213,10 @@ class VppPapiProvider(object):
         """
         self.hook.before_cli(cli)
         cli += '\n'
-        r = self.papi.cli_inband(length=len(cli), cmd=cli)
+        r = self.papi.cli_inband(cmd=cli)
         self.hook.after_cli(cli)
         if hasattr(r, 'reply'):
-            return r.reply.decode().rstrip('\x00')
+            return r.reply
 
     def ppcli(self, cli):
         """ Helper method to print CLI command in case of info logging level.

@@ -30,6 +30,8 @@ from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
 from . vpp_format import VPPFormat
 
+logger = logging.getLogger(__name__)
+
 if sys.version[0] == '2':
     import Queue as queue
 else:
@@ -62,6 +64,19 @@ def vpp_iterator(d):
         return d.iteritems()
     else:
         return d.items()
+
+
+def call_logger(msgdef, kwargs):
+    s = 'Calling {}('.format(msgdef.name)
+    for k, v in kwargs.items():
+        s += '{}:{} '.format(k, v)
+    s += ')'
+    return s
+
+
+def return_logger(r):
+    s = 'Return from {}'.format(r)
+    return s
 
 
 class VppApiDynamicMethodHolder(object):
@@ -486,10 +501,31 @@ class VPP(object):
         else:
             raise VPPIOError(2, 'RPC reply message received in event handler')
 
+    def has_context(self, msg):
+        if len(msg) < 10:
+            return False
+
+        header = VPPType('header_with_context', [['u16', 'msgid'],
+                                                 ['u32', 'client_index'],
+                                                 ['u32', 'context']])
+
+        (i, ci, context), size = header.unpack(msg, 0)
+        if self.id_names[i] == 'rx_thread_exit':
+            return
+
+        #
+        # Decode message and returns a tuple.
+        #
+        msgobj = self.id_msgdef[i]
+        if 'context' in msgobj.field_by_name and context >= 0:
+            return True
+        return False
+
     def decode_incoming_msg(self, msg):
         if not msg:
             self.logger.warning('vpp_api.read failed')
             return
+
         (i, ci), size = self.header.unpack(msg, 0)
         if self.id_names[i] == 'rx_thread_exit':
             return
@@ -528,9 +564,9 @@ class VPP(object):
         d = set(kwargs.keys()) - set(msg.field_by_name.keys())
         if d:
             raise VPPValueError('Invalid argument {} to {}'
-                             .format(list(d), msg.name))
+                                .format(list(d), msg.name))
 
-    def _call_vpp(self, i, msg, multipart, **kwargs):
+    def _call_vpp(self, i, msgdef, multipart, **kwargs):
         """Given a message, send the message and await a reply.
 
         msgdef - the message packing definition
@@ -558,8 +594,11 @@ class VPP(object):
                 kwargs['client_index'] = self.transport.socket_index
         except AttributeError:
             pass
-        self.validate_args(msg, kwargs)
-        b = msg.pack(kwargs)
+        self.validate_args(msgdef, kwargs)
+
+        logging.debug(call_logger(msgdef, kwargs))
+
+        b = msgdef.pack(kwargs)
         self.transport.suspend()
 
         self.transport.write(b)
@@ -592,6 +631,7 @@ class VPP(object):
 
         self.transport.resume()
 
+        logger.debug(return_logger(rl))
         return rl
 
     def _call_vpp_async(self, i, msg, **kwargs):

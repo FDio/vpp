@@ -217,16 +217,25 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   unformat_input_t input;
   u8 *out_vec = 0;
+  u32 len = 0;
 
-  unformat_init_string (&input, (char *) mp->cmd, ntohl (mp->length));
+  if (vl_msg_api_get_msg_length (mp) < vl_api_string_len (&mp->cmd))
+    {
+      rv = -1;
+      goto error;
+    }
+
+  unformat_init_string (&input, vl_api_from_api_string (&mp->cmd),
+			vl_api_string_len (&mp->cmd));
   vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
 
-  u32 len = vec_len (out_vec);
+  len = vec_len (out_vec);
+
+error:
   /* *INDENT-OFF* */
   REPLY_MACRO3(VL_API_CLI_INBAND_REPLY, len,
   ({
-    rmp->length = htonl (len);
-    clib_memcpy (rmp->reply, out_vec, len);
+    vl_api_to_api_string(len, out_vec, &rmp->reply);
   }));
   /* *INDENT-ON* */
   vec_free (out_vec);
@@ -241,16 +250,22 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   char *vpe_api_get_version (void);
   char *vpe_api_get_build_date (void);
 
+  u32 program_len = strnlen_s ("vpe", 32) + 1;
+  u32 version_len = strnlen_s (vpe_api_get_version (), 32) + 1;
+  u32 build_date_len = strnlen_s (vpe_api_get_build_date (), 32) + 1;
+  u32 build_directory_len =
+    strnlen_s (vpe_api_get_build_directory (), 256) + 1;
+
+  u32 n = program_len + version_len + build_date_len + build_directory_len;
+
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_SHOW_VERSION_REPLY,
+  REPLY_MACRO3(VL_API_SHOW_VERSION_REPLY, n,
   ({
-    strncpy ((char *) rmp->program, "vpe", ARRAY_LEN(rmp->program)-1);
-    strncpy ((char *) rmp->build_directory, vpe_api_get_build_directory(),
-             ARRAY_LEN(rmp->build_directory)-1);
-    strncpy ((char *) rmp->version, vpe_api_get_version(),
-             ARRAY_LEN(rmp->version)-1);
-    strncpy ((char *) rmp->build_date, vpe_api_get_build_date(),
-             ARRAY_LEN(rmp->build_date)-1);
+    char *p = (char *)&rmp->program;
+    p += vl_api_to_api_string(program_len, "vpe", (vl_api_string_t *)p);
+    p += vl_api_to_api_string(version_len, vpe_api_get_version(), (vl_api_string_t *)p);
+    p += vl_api_to_api_string(build_date_len, vpe_api_get_build_date(), (vl_api_string_t *)p);
+    vl_api_to_api_string(build_directory_len, vpe_api_get_build_directory(), (vl_api_string_t *)p);
   }));
   /* *INDENT-ON* */
 }

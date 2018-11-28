@@ -16,6 +16,8 @@
 #ifndef __API_TYPES_H__
 #define __API_TYPES_H__
 
+#include <vlibapi/api_common.h>
+
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs

@@ -907,7 +907,7 @@ class VppTestCase(unittest.TestCase):
     def assert_packet_counter_equal(self, counter, expected_value):
         counters = self.vapi.cli("sh errors").split('\n')
         counter_value = -1
-        for i in range(1, len(counters)-1):
+        for i in range(1, len(counters)):
             results = counters[i].split()
             if results[1] == counter:
                 counter_value = int(results[0])
