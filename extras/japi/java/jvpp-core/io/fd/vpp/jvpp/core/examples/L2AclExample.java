@@ -75,7 +75,7 @@ public class L2AclExample {
             hexChars[j * 2] = hexArray[v >>> 4];
             hexChars[j * 2 + 1] = hexArray[v & 0x0F];
         }
-        return new String(hexChars);
+        return new java.lang.String(hexChars);
     }
 
     private static ClassifyTableInfo createClassifyTableInfoRequest(final int tableId) {

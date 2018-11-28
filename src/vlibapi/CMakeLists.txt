@@ -17,6 +17,7 @@ install(
   api.h
   vat_helper_macros.h
   api_common.h
+  api_types.h
 
   DESTINATION
   include/vlibapi

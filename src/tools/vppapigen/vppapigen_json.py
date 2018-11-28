@@ -32,19 +32,18 @@ def walk_defs(s):
         d = []
         d.append(t.name)
         for b in t.block:
-            f = []
             if b.type == 'Field':
-                f = [b.fieldtype, b.fieldname]
+                d.append([b.fieldtype, b.fieldname])
             elif b.type == 'Array':
                 if b.lengthfield:
-                    f = [b.fieldtype, b.fieldname, b.length, b.lengthfield]
+                    d.append([b.fieldtype, b.fieldname, b.length, b.lengthfield])
                 else:
-                    f = [b.fieldtype, b.fieldname, b.length]
+                    d.append([b.fieldtype, b.fieldname, b.length])
             elif b.type == 'Union':
-                print('UNION')
+                pass
             else:
                 raise ValueError("Error in processing array type %s" % b)
-            d.append(f)
+
         if t.crc:
             c = {}
             c['crc'] = "{0:#0{1}x}".format(t.crc, 10)

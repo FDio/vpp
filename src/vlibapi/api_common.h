@@ -25,6 +25,7 @@
  */
 
 #include <vppinfra/clib_error.h>
+#include <vlibapi/api_types.h>
 #include <svm/svm_common.h>
 #include <svm/queue.h>
 

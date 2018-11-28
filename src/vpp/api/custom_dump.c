@@ -2109,10 +2109,10 @@ static void *vl_api_cli_inband_t_print
 {
   u8 *s;
   u8 *cmd = 0;
-  u32 length = ntohl (mp->length);
+  u32 length = vl_api_string_len (&mp->cmd);
 
   vec_validate (cmd, length);
-  clib_memcpy (cmd, mp->cmd, length);
+  clib_memcpy (cmd, vl_api_from_api_string (&mp->cmd), length);
 
   s = format (0, "SCRIPT: exec %v ", cmd);
 

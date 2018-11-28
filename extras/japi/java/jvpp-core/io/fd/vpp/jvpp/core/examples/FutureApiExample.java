@@ -47,10 +47,10 @@ public class FutureApiExample {
         LOG.info(
             String.format(
                 "Received ShowVersionReply: context=%d, program=%s, version=%s, buildDate=%s, buildDirectory=%s%n",
-                reply.context, new String(reply.program, StandardCharsets.UTF_8),
-                new String(reply.version, StandardCharsets.UTF_8),
-                new String(reply.buildDate, StandardCharsets.UTF_8),
-                new String(reply.buildDirectory, StandardCharsets.UTF_8)));
+                reply.context, reply.program,
+                reply.version,
+                reply.buildDate,
+                reply.buildDirectory));
     }
 
     private static void testEmptyBridgeDomainDump(final FutureJVppCoreFacade jvpp) throws Exception {
@@ -100,7 +100,7 @@ public class FutureApiExample {
             LOG.info(
                 String.format("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
                         + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                    new String(details.interfaceName, StandardCharsets.UTF_8),
+                    details.interfaceName,
                     details.l2AddressLength, details.adminUpDown,
                     details.linkUpDown, details.linkSpeed, (int) details.linkMtu));
         }

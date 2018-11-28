@@ -59,8 +59,7 @@ class VppTransport(object):
                         return
                     # Put either to local queue or if context == 0
                     # callback queue
-                    r = self.parent.decode_incoming_msg(msg)
-                    if hasattr(r, 'context') and r.context > 0:
+                    if self.parent.has_context(msg):
                         self.q.put(msg)
                     else:
                         self.parent.msg_handler_async(msg)

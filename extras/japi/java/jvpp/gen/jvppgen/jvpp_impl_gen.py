@@ -74,7 +74,7 @@ import io.fd.vpp.jvpp.JVppRegistry;
 public final class JVpp${plugin_name}Impl implements $plugin_package.JVpp${plugin_name} {
 
     private final static Logger LOG = Logger.getLogger(JVpp${plugin_name}Impl.class.getName());
-    private static final String LIBNAME = "libjvpp_${plugin_name_underscore}.so";
+    private static final java.lang.String LIBNAME = "libjvpp_${plugin_name_underscore}.so";
 
     // FIXME using NativeLibraryLoader makes load fail could not find (WantInterfaceEventsReply).
     static {
@@ -151,7 +151,7 @@ _JVPP_IMPL_METHOD_TEMPLATE = Template("""
         java.util.Objects.requireNonNull(request, "Null request object");
         connection.checkActive();
         if (LOG.isLoggable(Level.FINE)) {
-            LOG.fine(String.format("Sending $type event message: %s", request));
+            LOG.fine(java.lang.String.format("Sending $type event message: %s", request));
         }
         int result=${name}0(request);
         if (result<0){

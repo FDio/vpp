@@ -39,10 +39,10 @@ public class CallbackJVppFacadeExample {
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback1 received ShowVersionReply: context=%d, program=%s,"
                     + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context,
-                new String(msg.program, StandardCharsets.UTF_8),
-                new String(msg.version, StandardCharsets.UTF_8),
-                new String(msg.buildDate, StandardCharsets.UTF_8),
-                new String(msg.buildDirectory, StandardCharsets.UTF_8));
+                msg.program,
+                msg.version,
+                msg.buildDate,
+                msg.buildDirectory);
         }
 
         @Override
@@ -57,10 +57,10 @@ public class CallbackJVppFacadeExample {
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback2 received ShowVersionReply: context=%d, program=%s,"
                     + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context,
-                new String(msg.program, StandardCharsets.UTF_8),
-                new String(msg.version, StandardCharsets.UTF_8),
-                new String(msg.buildDate, StandardCharsets.UTF_8),
-                new String(msg.buildDirectory, StandardCharsets.UTF_8));
+                msg.program,
+                msg.version,
+                msg.buildDate,
+                msg.buildDirectory);
         }
 
         @Override
