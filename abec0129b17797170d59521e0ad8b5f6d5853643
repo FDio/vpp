@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c5426d21_53e3ea82",
+        "filename": "test/sanity_run_vpp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-28T09:39:00Z",
+      "side": 1,
+      "message": "w",
+      "range": {
+        "startLine": 11,
+        "startChar": 34,
+        "endLine": 11,
+        "endChar": 35
+      },
+      "revId": "abec0129b17797170d59521e0ad8b5f6d5853643",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
