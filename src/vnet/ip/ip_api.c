@@ -108,6 +108,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
   ip_source_and_port_range_check_add_del)                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
+_(IP_SOURCE_CHECK_INTERFACE_ADD_DEL,                                    \
+  ip_source_check_interface_add_del)                                    \
 _(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
 _(IP_REASSEMBLY_GET, ip_reassembly_get)                                 \
 _(IP_REASSEMBLY_ENABLE_DISABLE, ip_reassembly_enable_disable)
@@ -2135,6 +2137,36 @@ static void
 reply:
 
   REPLY_MACRO (VL_API_IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY);
+}
+
+typedef union
+{
+  u32 fib_index;
+} ip4_source_check_config_t;
+
+static void
+  vl_api_ip_source_check_interface_add_del_t_handler
+  (vl_api_ip_source_check_interface_add_del_t * mp)
+{
+  vl_api_ip_source_check_interface_add_del_reply_t *rmp;
+  int rv;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u8 is_add = mp->is_add;
+  char *feature_name =
+    mp->loose ? "ip4-source-check-via-any" : "ip4-source-check-via-rx";
+
+  ip4_source_check_config_t config;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  config.fib_index =
+    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
+  rv =
+    vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
+				 is_add, &config, sizeof (config));
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_IP_SOURCE_CHECK_INTERFACE_ADD_DEL_REPLY);
 }
 
 #define IP4_ARP_EVENT 3
