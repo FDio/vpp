@@ -63,8 +63,8 @@ static char *esp_encrypt_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t dpdk_esp4_encrypt_node;
-vlib_node_registration_t dpdk_esp6_encrypt_node;
+extern vlib_node_registration_t dpdk_esp4_encrypt_node;
+extern vlib_node_registration_t dpdk_esp6_encrypt_node;
 
 typedef struct
 {

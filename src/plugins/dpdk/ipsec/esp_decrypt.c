@@ -62,8 +62,8 @@ static char * esp_decrypt_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t dpdk_esp4_decrypt_node;
-vlib_node_registration_t dpdk_esp6_decrypt_node;
+extern vlib_node_registration_t dpdk_esp4_decrypt_node;
+extern vlib_node_registration_t dpdk_esp6_decrypt_node;
 
 typedef struct {
   ipsec_crypto_alg_t crypto_alg;
@@ -451,8 +451,8 @@ static char * esp_decrypt_post_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t dpdk_esp4_decrypt_post_node;
-vlib_node_registration_t dpdk_esp6_decrypt_post_node;
+extern vlib_node_registration_t dpdk_esp4_decrypt_post_node;
+extern vlib_node_registration_t dpdk_esp6_decrypt_post_node;
 
 static u8 * format_esp_decrypt_post_trace (u8 * s, va_list * args)
 {
@@ -695,7 +695,9 @@ VLIB_REGISTER_NODE (dpdk_esp4_decrypt_post_node) = {
 VLIB_NODE_FN(dpdk_esp6_decrypt_post_node) (vlib_main_t * vm,
 	     vlib_node_runtime_t * node,
 	     vlib_frame_t * from_frame)
-{return dpdk_esp_decrypt_post_inline(vm, node, from_frame, 0/*is_ip6*/);}
+{
+  return dpdk_esp_decrypt_post_inline(vm, node, from_frame, 0/*is_ip6*/);
+}
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
@@ -715,3 +717,4 @@ VLIB_REGISTER_NODE (dpdk_esp6_decrypt_post_node) = {
   },
 };
 /* *INDENT-ON* */
+
