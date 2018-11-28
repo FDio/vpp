@@ -42,6 +42,15 @@ public:
                    const boost::asio::ip::address& addr);
 
   /**
+   * Construct a new object matching the desried state
+   *
+   * @param tx_itf - The interface to which traffic should be redirected.
+   * @param addr - The next hop ip address to redirect the traffic.
+   */
+  ip_punt_redirect(const interface& tx_itf,
+                   const boost::asio::ip::address& addr);
+
+  /**
    * Copy Constructor
    */
   ip_punt_redirect(const ip_punt_redirect& o);
@@ -73,8 +82,13 @@ public:
   typedef interface::key_t key_t;
 
   /**
-   * Find an singular instance in the DB for the interface passed
+   * return the object's key
    */
+  const key_t key() const;
+
+  /**
+ * Find an singular instance in the DB for the interface passed
+ */
   static std::shared_ptr<ip_punt_redirect> find(const interface& i);
 
 private:
