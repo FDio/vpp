@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dd774be9_a0d1bd6c",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T13:15:50Z",
+      "side": 1,
+      "message": "don\u0027t need this anymore.",
+      "revId": "124d2e12c84b307996b22b2375f91d25eac70cb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b897a63b_fe9eafe1",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T13:15:50Z",
+      "side": 1,
+      "message": "don\u0027t need this",
+      "revId": "124d2e12c84b307996b22b2375f91d25eac70cb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b543f21_4e00fabb",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 621,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T13:15:50Z",
+      "side": 1,
+      "message": "use ip_address_decode",
+      "revId": "124d2e12c84b307996b22b2375f91d25eac70cb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e95f63bf_48c0f8af",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T13:15:50Z",
+      "side": 1,
+      "message": "coudl you also please add a test for the validity of the RX interface:\n  rx_sw_if_index \u003d ntohl (mp-\u003erx_sw_if_index);\n  if (!vnet_sw_if_index_is_api_valid (rx_sw_if_index))\n    goto bad_sw_if_index;",
+      "revId": "124d2e12c84b307996b22b2375f91d25eac70cb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5671d108_3d980aa8",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3336,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T13:15:50Z",
+      "side": 1,
+      "message": "ip_address_encode",
+      "revId": "124d2e12c84b307996b22b2375f91d25eac70cb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
