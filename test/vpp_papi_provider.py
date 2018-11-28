@@ -3348,7 +3348,9 @@ class VppPapiProvider(object):
                                 is_tunnel=1,
                                 is_tunnel_ipv6=0,
                                 is_add=1,
-                                udp_encap=0):
+                                udp_encap=0,
+                                use_anti_replay=0,
+                                use_extended_sequence_number=0):
         """ IPSEC SA add/del
         :param sad_id: security association ID
         :param spi: security param index of the SA in decimal
@@ -3381,7 +3383,9 @@ class VppPapiProvider(object):
              'is_add': is_add,
              'is_tunnel': is_tunnel,
              'is_tunnel_ipv6': is_tunnel_ipv6,
-             'udp_encap': udp_encap})
+             'udp_encap': udp_encap,
+             'use_extended_sequence_number': use_extended_sequence_number,
+             'use_anti_replay': use_anti_replay})
 
     def ipsec_spd_add_del_entry(self,
                                 spd_id,

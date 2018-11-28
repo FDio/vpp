@@ -158,20 +158,20 @@ class TemplateIpsec(VppTestCase):
                 src=self.tun_if.local_addr[params.addr_type]))
         return vpp_tun_sa, scapy_tun_sa
 
-    def configure_sa_tra(self, params):
-        scapy_tra_sa = SecurityAssociation(self.encryption_type,
-                                           spi=params.vpp_tra_spi,
-                                           crypt_algo=params.crypt_algo,
-                                           crypt_key=params.crypt_key,
-                                           auth_algo=params.auth_algo,
-                                           auth_key=params.auth_key)
-        vpp_tra_sa = SecurityAssociation(self.encryption_type,
-                                         spi=params.scapy_tra_spi,
-                                         crypt_algo=params.crypt_algo,
-                                         crypt_key=params.crypt_key,
-                                         auth_algo=params.auth_algo,
-                                         auth_key=params.auth_key)
-        return vpp_tra_sa, scapy_tra_sa
+    @classmethod
+    def configure_sa_tra(cls, params):
+        params.scapy_tra_sa = SecurityAssociation(cls.encryption_type,
+                                                  spi=params.vpp_tra_spi,
+                                                  crypt_algo=params.crypt_algo,
+                                                  crypt_key=params.crypt_key,
+                                                  auth_algo=params.auth_algo,
+                                                  auth_key=params.auth_key)
+        params.vpp_tra_sa = SecurityAssociation(cls.encryption_type,
+                                                spi=params.scapy_tra_spi,
+                                                crypt_algo=params.crypt_algo,
+                                                crypt_key=params.crypt_key,
+                                                auth_algo=params.auth_algo,
+                                                auth_key=params.auth_key)
 
 
 class IpsecTcpTests(object):
@@ -192,23 +192,95 @@ class IpsecTcpTests(object):
 
 
 class IpsecTraTests(object):
+    def test_tra_anti_replay(self, count=1):
+        """ ipsec v4 transport anti-reply test """
+        p = self.params[socket.AF_INET]
+
+        # fire in a packet with seq number 1
+        pkt = (Ether(src=self.tra_if.remote_mac,
+                     dst=self.tra_if.local_mac) /
+               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                         dst=self.tra_if.local_ip4) /
+                                      ICMP(),
+                                      seq_num=1))
+        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+
+        # now move the window over to 235
+        pkt = (Ether(src=self.tra_if.remote_mac,
+                     dst=self.tra_if.local_mac) /
+               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                         dst=self.tra_if.local_ip4) /
+                                      ICMP(),
+                                      seq_num=235))
+        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+
+        # the window size is 64 packets
+        # in window are still accepted
+        pkt = (Ether(src=self.tra_if.remote_mac,
+                     dst=self.tra_if.local_mac) /
+               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                         dst=self.tra_if.local_ip4) /
+                                      ICMP(),
+                                      seq_num=172))
+        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+
+        # out of window are dropped
+        pkt = (Ether(src=self.tra_if.remote_mac,
+                     dst=self.tra_if.local_mac) /
+               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                         dst=self.tra_if.local_ip4) /
+                                      ICMP(),
+                                      seq_num=17))
+        self.send_and_assert_no_replies(self.tra_if, pkt * 17)
+
+        err = self.statistics.get_counter(
+            '/err/%s/SA replayed packet' % self.tra4_decrypt_node_name)
+        self.assertEqual(err, 17)
+
+        # a packet that does not decrypt does not move the window forward
+        bogus_sa = SecurityAssociation(self.encryption_type,
+                                       p.vpp_tra_spi)
+        pkt = (Ether(src=self.tra_if.remote_mac,
+                     dst=self.tra_if.local_mac) /
+               bogus_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                   dst=self.tra_if.local_ip4) /
+                                ICMP(),
+                                seq_num=350))
+        self.send_and_assert_no_replies(self.tra_if, pkt * 17)
+
+        err = self.statistics.get_counter(
+            '/err/%s/Integrity check failed' % self.tra4_decrypt_node_name)
+        self.assertEqual(err, 17)
+
+        # which we can determine since this packet is still in the window
+        pkt = (Ether(src=self.tra_if.remote_mac,
+                     dst=self.tra_if.local_mac) /
+               p.scapy_tra_sa.encrypt(IP(src=self.tra_if.remote_ip4,
+                                         dst=self.tra_if.local_ip4) /
+                                      ICMP(),
+                                      seq_num=234))
+        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+
+        # move the security-associations seq number on to the last we used
+        p.scapy_tra_sa.seq_num = 351
+        p.vpp_tra_sa.seq_num = 351
+
     def test_tra_basic(self, count=1):
         """ ipsec v4 transport basic test """
         try:
             p = self.params[socket.AF_INET]
-            vpp_tra_sa, scapy_tra_sa = self.configure_sa_tra(p)
-            send_pkts = self.gen_encrypt_pkts(scapy_tra_sa, self.tra_if,
+            send_pkts = self.gen_encrypt_pkts(p.scapy_tra_sa, self.tra_if,
                                               src=self.tra_if.remote_ip4,
                                               dst=self.tra_if.local_ip4,
                                               count=count)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
-            for p in recv_pkts:
+            for rx in recv_pkts:
                 try:
-                    decrypted = vpp_tra_sa.decrypt(p[IP])
+                    decrypted = p.vpp_tra_sa.decrypt(rx[IP])
                     self.assert_packet_checksums_valid(decrypted)
                 except:
-                    self.logger.debug(ppp("Unexpected packet:", p))
+                    self.logger.debug(ppp("Unexpected packet:", rx))
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
@@ -222,19 +294,18 @@ class IpsecTraTests(object):
         """ ipsec v6 transport basic test """
         try:
             p = self.params[socket.AF_INET6]
-            vpp_tra_sa, scapy_tra_sa = self.configure_sa_tra(p)
-            send_pkts = self.gen_encrypt_pkts6(scapy_tra_sa, self.tra_if,
+            send_pkts = self.gen_encrypt_pkts6(p.scapy_tra_sa, self.tra_if,
                                                src=self.tra_if.remote_ip6,
                                                dst=self.tra_if.local_ip6,
                                                count=count)
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
-            for p in recv_pkts:
+            for rx in recv_pkts:
                 try:
-                    decrypted = vpp_tra_sa.decrypt(p[IPv6])
+                    decrypted = p.vpp_tra_sa.decrypt(rx[IPv6])
                     self.assert_packet_checksums_valid(decrypted)
                 except:
-                    self.logger.debug(ppp("Unexpected packet:", p))
+                    self.logger.debug(ppp("Unexpected packet:", rx))
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
