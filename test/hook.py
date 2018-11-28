@@ -84,17 +84,28 @@ class PollHook(Hook):
         super(PollHook, self).__init__(test)
 
     def on_crash(self, core_path):
-        self.logger.error("Core file present, debug with: gdb %s %s" %
-                          (self.test.vpp_bin, core_path))
+        self.logger.error("Core file present, debug with: gdb %s %s",
+                          self.testcase.vpp_bin, core_path)
         check_core_path(self.logger, core_path)
-        self.logger.error("Running `file %s':" % core_path)
+        self.logger.error("Running `file %s':", core_path)
         try:
             info = check_output(["file", core_path])
             self.logger.error(info)
         except CalledProcessError as e:
             self.logger.error(
-                "Could not run `file' utility on core-file, "
-                "rc=%s" % e.returncode)
+                "Subprocess returned with error running `file' utility on "
+                "core-file, "
+                "rc=%s",  e.returncode)
+        except OSError as e:
+            self.logger.error(
+                "Subprocess returned OS error running `file' utility on "
+                "core-file, "
+                "oserror=(%s) %s", e.errno, e.strerror)
+        except Exception as e:
+            self.logger.error(
+                "Subprocess returned unanticipated error running `file' "
+                "utility on core-file, "
+                "%s", e)
 
     def poll_vpp(self):
         """

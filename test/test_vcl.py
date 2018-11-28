@@ -276,9 +276,20 @@ class LDPCutThruTestCase(VCLTestCase):
         try:
             subprocess.check_output(['iperf3', '-v'])
         except subprocess.CalledProcessError:
-            self.logger.error("WARNING: 'iperf3' is not installed,")
+            self.logger.error(
+                "WARNING: Subprocess returned non-0 running 'iperf3 -v")
             self.logger.error("         'test_ldp_cut_thru_iperf3' not run!")
             return
+        except OSError as e:
+            self.logger.error(
+                "WARNING: Subprocess returned with OS error (%s) %s\n"
+                "         'iperf3' is likely not installed,",
+                e.errno, e.strerror)
+            self.logger.error("         'test_ldp_cut_thru_iperf3' not run!")
+            return
+        except Exception:
+            self.logger.exception(
+                "Subprocess returned non-0 running 'iperf3 -v")
 
         self.timeout = self.client_iperf3_timeout
         self.cut_thru_test("iperf3", self.server_iperf3_args,
@@ -651,6 +662,14 @@ class LDPThruHostStackIperf(VCLTestCase):
             self.logger.error("WARNING: 'iperf3' is not installed,")
             self.logger.error(
                 "         'test_ldp_thru_host_stack_iperf3' not run!")
+            return
+        except OSError as e:
+            self.logger.error("WARNING: 'iperf3' is not installed,")
+            self.logger.error("         'test' not run!")
+            return
+        except Exception as e:
+            self.logger.error("WARNING: 'iperf3' unexpected error,")
+            self.logger.error("         'test' not run!")
             return
 
         self.timeout = self.client_iperf3_timeout
