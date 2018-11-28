@@ -743,6 +743,22 @@ autoreply define ip_source_and_port_range_check_interface_add_del
   u32 udp_out_vrf_id;
 };
 
+/** \brief Set interface source check request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add or del
+    @param loose - strict or loose
+    @param sw_if_index - interface index
+*/
+autoreply define ip_source_check_interface_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 loose;
+  u32 sw_if_index;
+};
+
 /** \brief Enable/disable periodic IP neighbor scan
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
