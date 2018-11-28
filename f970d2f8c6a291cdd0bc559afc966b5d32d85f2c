@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3de396fe_a8e6a70f",
+        "filename": "extras/wireshark/packet-vpp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-11-28T13:18:27Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 114,
+        "startChar": 49,
+        "endLine": 114,
+        "endChar": 50
+      },
+      "revId": "f970d2f8c6a291cdd0bc559afc966b5d32d85f2c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
