@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.1.0";
+option version = "2.2.0";
 
 import "vnet/ip/ip_types.api";
 
@@ -38,8 +38,8 @@ define map_add_domain
   u8 ea_bits_len;
   u8 psid_offset;
   u8 psid_length;
-  u8 is_translation;
-  u8 is_rfc6052;
+  bool is_translation;
+  bool is_rfc6052;
   u16 mtu;
 };
 
@@ -81,7 +81,7 @@ autoreply define map_add_del_rule
   u32 client_index;
   u32 context;
   u32 index;
-  u8 is_add;
+  bool is_add;
   vl_api_ip6_address_t ip6_dst;
   u16 psid;
 };
@@ -108,7 +108,7 @@ define map_domain_details
   u8 psid_length;
   u8 flags;
   u16 mtu;
-  u8 is_translation;
+  bool is_translation;
 };
 
 define map_rule_dump
