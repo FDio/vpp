@@ -40,27 +40,35 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_punt_api_msg                                            \
-_(PUNT, punt)                                                           \
+_(SET_PUNT, set_punt)                                                   \
 _(PUNT_SOCKET_REGISTER, punt_socket_register)                           \
-_(PUNT_SOCKET_DEREGISTER, punt_socket_deregister)
+_(PUNT_SOCKET_DEREGISTER, punt_socket_deregister)                       \
+_(PUNT_DUMP, punt_dump)                                                 \
+_(PUNT_SOCKET_DUMP, punt_socket_dump)
 
 static void
-vl_api_punt_t_handler (vl_api_punt_t * mp)
+vl_api_set_punt_t_handler (vl_api_set_punt_t * mp)
 {
-  vl_api_punt_reply_t *rmp;
+  vl_api_set_punt_reply_t *rmp;
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   clib_error_t *error;
 
-  error = vnet_punt_add_del (vm, mp->ipv, mp->l4_protocol,
-			     ntohs (mp->l4_port), mp->is_add);
+  error = vnet_punt_add_del (vm, mp->punt.ipv, mp->punt.l4_protocol,
+			     ntohs (mp->punt.l4_port), mp->is_add);
   if (error)
     {
       rv = -1;
       clib_error_report (error);
     }
 
-  REPLY_MACRO (VL_API_PUNT_REPLY);
+  REPLY_MACRO (VL_API_SET_PUNT_REPLY);
+}
+
+static void
+vl_api_punt_dump_t_handler (vl_api_punt_dump_t * mp)
+{
+
 }
 
 static void
@@ -72,9 +80,10 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   clib_error_t *error;
   vl_api_registration_t *reg;
 
-  error = vnet_punt_socket_add (vm, ntohl (mp->header_version),
-				mp->is_ip4, mp->l4_protocol,
-				ntohs (mp->l4_port), (char *) mp->pathname);
+  error = 0;
+  vnet_punt_socket_add (vm, ntohl (mp->header_version),
+			mp->punt.ipv, mp->punt.l4_protocol,
+			ntohs (mp->punt.l4_port), (char *) mp->pathname);
   if (error)
     {
       rv = -1;
@@ -95,6 +104,48 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
+void
+send_punt_socket_details (vl_api_registration_t * reg,
+			  u32 context, punt_socket_detail_t * p)
+{
+  vl_api_punt_socket_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  if (!mp)
+    return;
+
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_PUNT_SOCKET_DETAILS);
+  mp->context = context;
+  mp->punt.ipv = p->ipv;
+  mp->punt.l4_protocol = p->l4_protocol;
+  mp->punt.l4_port = htons (p->l4_port);
+  memcpy (mp->pathname, p->pathname, sizeof (p->pathname));
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_punt_socket_dump_t_handler (vl_api_punt_socket_dump_t * mp)
+{
+  vl_api_registration_t *reg;
+  punt_socket_detail_t *p, *ps;
+  int rv __attribute__ ((unused)) = 0;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ps = punt_socket_entries (mp->is_ipv6);
+  /* *INDENT-OFF* */
+  vec_foreach (p, ps)
+  {
+    send_punt_socket_details (reg, mp->context, p);
+  }
+  /* *INDENT-ON* */
+  vec_free (ps);
+}
+
 static void
 vl_api_punt_socket_deregister_t_handler (vl_api_punt_socket_deregister_t * mp)
 {
@@ -104,8 +155,8 @@ vl_api_punt_socket_deregister_t_handler (vl_api_punt_socket_deregister_t * mp)
   clib_error_t *error;
   vl_api_registration_t *reg;
 
-  error = vnet_punt_socket_del (vm, mp->is_ip4, mp->l4_protocol,
-				ntohs (mp->l4_port));
+  error = vnet_punt_socket_del (vm, mp->punt.ipv, mp->punt.l4_protocol,
+				ntohs (mp->punt.l4_port));
   if (error)
     {
       rv = -1;
