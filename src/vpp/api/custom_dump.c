@@ -3363,19 +3363,19 @@ static void *vl_api_flow_classify_set_interface_t_print
 }
 
 static void *
-vl_api_punt_t_print (vl_api_punt_t * mp, void *handle)
+vl_api_set_punt_t_print (vl_api_set_punt_t * mp, void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: punt ");
 
-  if (mp->ipv != (u8) ~ 0)
-    s = format (s, "ip %d ", mp->ipv);
+  if (mp->punt.ipv != (u8) ~ 0)
+    s = format (s, "ip %d ", mp->punt.ipv);
 
-  s = format (s, "protocol %d ", mp->l4_protocol);
+  s = format (s, "protocol %d ", mp->punt.l4_protocol);
 
-  if (mp->l4_port != (u16) ~ 0)
-    s = format (s, "port %d ", ntohs (mp->l4_port));
+  if (mp->punt.l4_port != (u16) ~ 0)
+    s = format (s, "port %d ", ntohs (mp->punt.l4_port));
 
   if (!mp->is_add)
     s = format (s, "del ");
@@ -3891,7 +3891,7 @@ _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
-_(PUNT, punt)                                                           \
+_(SET_PUNT, set_punt)                                                   \
 _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
 _(FLOW_CLASSIFY_DUMP, flow_classify_dump)				\
 _(GET_FIRST_MSG_ID, get_first_msg_id)                                   \

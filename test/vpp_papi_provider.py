@@ -3489,15 +3489,27 @@ class VppPapiProvider(object):
              'namespace_id': namespace_id,
              'namespace_id_len': len(namespace_id)})
 
-    def punt_socket_register(self, l4_port, pathname, header_version=1,
-                             is_ip4=1, l4_protocol=0x11):
-        """ Punt to socket """
+    def punt_socket_register(self, port, pathname, protocol=0x11,
+                             header_version=1, is_ip4=1):
+        """ Register punt socket """
         return self.api(self.papi.punt_socket_register,
-                        {'is_ip4': is_ip4,
-                         'l4_protocol': l4_protocol,
-                         'l4_port': l4_port,
-                         'pathname': pathname,
-                         'header_version': header_version})
+                        {'header_version': header_version,
+                         'punt': {'ipv': is_ip4,
+                                  'l4_protocol': protocol,
+                                  'l4_port': port},
+                         'pathname': pathname})
+
+    def punt_socket_deregister(self, port, protocol=0x11, is_ip4=1):
+        """ Unregister punt socket """
+        return self.api(self.papi.punt_socket_deregister,
+                        {'punt': {'ipv': is_ip4,
+                                  'l4_protocol': protocol,
+                                  'l4_port': port}})
+
+    def punt_socket_dump(self, is_ip6=1):
+        """ Dump punt socket"""
+        return self.api(self.papi.punt_socket_dump,
+                        {'is_ipv6': is_ip6})
 
     def ip_reassembly_set(self, timeout_ms, max_reassemblies,
                           expire_walk_interval_ms, is_ip6=0):
