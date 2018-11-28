@@ -253,13 +253,23 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
                 "Core-file exists in test temporary directory: %s!" %
                 core_path)
             check_core_path(logger, core_path)
-            logger.debug("Running `file %s':" % core_path)
+            logger.debug("Running 'file %s':" % core_path)
             try:
                 info = check_output(["file", core_path])
                 logger.debug(info)
             except CalledProcessError as e:
-                logger.error("Could not run `file' utility on core-file, "
-                             "rc=%s" % e.returncode)
+                logger.error("Subprocess returned with return code "
+                             "while running `file' utility on core-file "
+                             "returned: "
+                             "rc=%s", e.returncode)
+            except OSError as e:
+                logger.error("Subprocess returned with OS error while "
+                             "running 'file' utility "
+                             "on core-file: "
+                             "(%s) %s", e.errno, e.strerror)
+            except Exception as e:
+                logger.exception("Unexpected error running `file' utility "
+                                 "on core-file")
 
     if vpp_pid:
         # Copy api post mortem

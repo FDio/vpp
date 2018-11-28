@@ -367,7 +367,16 @@ class VppTestCase(unittest.TestCase):
                                        stderr=subprocess.PIPE,
                                        bufsize=1)
         except subprocess.CalledProcessError as e:
-            cls.logger.critical("Couldn't start vpp: %s" % e)
+            cls.logger.critical("Subprocess returned with non-0 return code: ("
+                                "%s)", e.returncode)
+            raise
+        except OSError as e:
+            cls.logger.critical("Subprocess returned with OS error: "
+                                "(%s) %s", e.errno, e.strerror)
+            raise
+        except Exception as e:
+            cls.logger.exception("Subprocess returned unexpected from "
+                                 "%s:", cmdline)
             raise
 
         cls.wait_for_enter()
