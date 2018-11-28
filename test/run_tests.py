@@ -253,6 +253,14 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
             except CalledProcessError as e:
                 logger.error("Could not run `file' utility on core-file, "
                              "rc=%s" % e.returncode)
+            except OSError as e:
+                logger.error("Could not run `file' utility on core-file, "
+                            "rc=%s %s" % (e.errno, e.strerror))
+            except Exception as e:
+                logger.error("Unexpected error running `file' utility "
+                             "on core-file, "
+                             "rc=%s %s" % (e.errno, e.strerror))
+
 
     if vpp_pid:
         # Copy api post mortem
