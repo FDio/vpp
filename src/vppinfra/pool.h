@@ -340,6 +340,26 @@ do {									\
 /** Allocate N more free elements to pool (unspecified alignment). */
 #define pool_alloc(P,N) pool_alloc_aligned(P,N,0)
 
+#define pool_dup(P)							\
+({									\
+  typeof (P) _pool_var (new) = 0;					\
+  pool_header_t * _pool_var (ph), * _pool_var (new_ph);			\
+  u32 _pool_var (n) = pool_len (P);					\
+  _pool_var (new) = _vec_resize (_pool_var (new), _pool_var (n),	\
+				 _pool_var (n) * sizeof ((P)[0]), 	\
+				 pool_aligned_header_bytes, 0);		\
+  clib_memcpy_fast (_pool_var (new), (P), 				\
+		    _pool_var (n) * sizeof ((P)[0]));			\
+  _pool_var (ph) = pool_header (P);					\
+  _pool_var (new_ph) = pool_header (_pool_var (new));			\
+  _pool_var (new_ph)->free_bitmap = 					\
+    clib_bitmap_dup (_pool_var (ph)->free_bitmap);			\
+  _pool_var (new_ph)->free_indices = 					\
+    vec_dup (_pool_var (ph)->free_indices);				\
+  _pool_var (new_ph)->max_elts = _pool_var (ph)->max_elts;		\
+  _pool_var (new);							\
+})
+
 /** Low-level free pool operator (do not call directly). */
 always_inline void *
 _pool_free (void *v)
