@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "38492c66_4bfb46f9",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2018-11-28T05:18:26Z",
+      "side": 1,
+      "message": "As the usage is not defined is this line to return the pointer to the new pool ?",
+      "revId": "748e2ecaddfebf29c7ae9052c03ba2dc069b02e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
