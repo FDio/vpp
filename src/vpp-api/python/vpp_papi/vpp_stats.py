@@ -138,7 +138,7 @@ def stat_entry_to_python(api, e):
     return None
 
 
-class VPPStats(object):
+class VPPStats:
     def __init__(self, socketname='/var/run/stats.sock', timeout=10):
         try:
             self.api = ffi.dlopen('libvppapiclient.so')
