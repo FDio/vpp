@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd34dc4f_5aab3367",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 736,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T10:04:16Z",
+      "side": 1,
+      "message": "convention says this is is_add not is_del",
+      "revId": "66f29023fed3e91b600a1646dcb077fdfeae6f9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8e28ce5b_643f69ec",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2154,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T10:04:16Z",
+      "side": 1,
+      "message": "please use the:\nVALIDATE_SW_IF_INDEX (mp);\n...\nBAD_SW_IF_INDEX_LABEL\n\ncouplet to detect bad interfaces.",
+      "revId": "66f29023fed3e91b600a1646dcb077fdfeae6f9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15f4f1ca_9fe55b44",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2161,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-28T10:04:16Z",
+      "side": 1,
+      "message": "fib_table_get_index_for_sw_if_index(...)",
+      "revId": "66f29023fed3e91b600a1646dcb077fdfeae6f9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
