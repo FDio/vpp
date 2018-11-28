@@ -53,14 +53,12 @@ frag_set_sw_if_index (vlib_buffer_t * to, vlib_buffer_t * from)
   vnet_buffer (to)->sw_if_index[VLIB_TX] =
     vnet_buffer (from)->sw_if_index[VLIB_TX];
 
-  /* Copy adj_index in case DPO based node is sending for the
-   * fragmentation, the packet would be sent back to the proper
-   * DPO next node and Index
-   */
-  vnet_buffer (to)->ip.adj_index[VLIB_RX] =
-    vnet_buffer (from)->ip.adj_index[VLIB_RX];
-  vnet_buffer (to)->ip.adj_index[VLIB_TX] =
-    vnet_buffer (from)->ip.adj_index[VLIB_TX];
+  /* Copy QoS Bits */
+  if (PREDICT_TRUE (from->flags & VNET_BUFFER_F_QOS_DATA_VALID))
+    {
+      vnet_buffer2 (to)->qos = vnet_buffer2 (from)->qos;
+      to->flags |= VNET_BUFFER_F_QOS_DATA_VALID;
+    }
 }
 
 static vlib_buffer_t *
