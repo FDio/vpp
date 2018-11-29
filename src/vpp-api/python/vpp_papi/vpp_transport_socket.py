@@ -6,7 +6,10 @@ import struct
 import threading
 import select
 import multiprocessing
-import queue
+try:
+    import queue as queue
+except ImportError:
+    import Queue as queue
 import logging
 
 
