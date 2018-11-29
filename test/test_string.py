@@ -2,7 +2,8 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, is_skip_aarch64_set,\
+    is_platform_aarch64
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 
@@ -19,6 +20,8 @@ class TestString(VppTestCase):
     def tearDown(self):
         super(TestString, self).tearDown()
 
+    @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
+                     "test doesn't work on aarch64")
     def test_string_unittest(self):
         """ String unit tests """
         names = ["memcpy_s",
