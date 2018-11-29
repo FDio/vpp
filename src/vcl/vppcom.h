@@ -279,6 +279,11 @@ extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
  */
 extern int vppcom_worker_register (void);
 
+/**
+ * Retrieve current worker index
+ */
+extern int vppcom_worker_index (void);
+
 /* *INDENT-OFF* */
 #ifdef __cplusplus
 }

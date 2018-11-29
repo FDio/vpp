@@ -3366,6 +3366,12 @@ vppcom_worker_register (void)
   return VPPCOM_EEXIST;
 }
 
+int
+vppcom_worker_index (void)
+{
+  return vcl_get_worker_index ();
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
