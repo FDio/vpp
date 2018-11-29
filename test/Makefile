@@ -299,6 +299,8 @@ help:
 	@echo ""
 	@echo " TEST_DEBUG=1         - turn on debugging of the test framework itself (expert)"
 	@echo ""
+	@echo " SKIP_AARCH64=1       - skip tests that are failing on the ARM platorm in FD.io CI"
+	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc            - generate documentation for test framework"
 	@echo " test-wipe-doc       - wipe documentation for test framework"
