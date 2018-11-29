@@ -2,7 +2,8 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, is_skip_aarch64_set, \
+    is_platform_aarch64
 from vpp_object import VppObject
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
@@ -1827,6 +1828,8 @@ class TestGBP(VppTestCase):
         self.logger.info(self.vapi.cli("sh int"))
         self.logger.info(self.vapi.cli("sh gbp vxlan"))
 
+    @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
+                     "test doesn't work on aarch64")
     def test_gbp_learn_vlan_l2(self):
         """ GBP L2 Endpoint w/ VLANs"""
 
@@ -1995,6 +1998,8 @@ class TestGBP(VppTestCase):
         self.pg2.unconfig_ip4()
         self.pg3.unconfig_ip4()
 
+    @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
+                     "test doesn't work on aarch64")
     def test_gbp_learn_l3(self):
         """ GBP L3 Endpoint Learning """
 
