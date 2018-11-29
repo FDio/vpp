@@ -16,6 +16,24 @@
       "revId": "01c6d3a08b8e116e98f7f7238873ca5101de43b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3c9d2c50_7b7a1170",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-29T16:50:52Z",
+      "side": 1,
+      "message": "Because scapy has multiple definitions for UDP/TCP. \nhttps://github.com/secdev/scapy/blob/master/scapy/layers/inet.py\nhttps://github.com/secdev/scapy/blob/master/scapy/layers/inet6.py\n\n I\u0027ll refactor just to catch those 2 modules.",
+      "parentUuid": "154fdfd5_9036acda",
+      "revId": "01c6d3a08b8e116e98f7f7238873ca5101de43b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
