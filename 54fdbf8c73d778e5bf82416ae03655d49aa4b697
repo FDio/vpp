@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "aa7ad6dd_04c2ae73",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-11-29T16:48:15Z",
+      "side": 1,
+      "message": "let\u0027s give this a better name, \"skip\" indicates that this does something, which is not true\n\nlet\u0027s call it platform_is_aarch64()?",
+      "revId": "54fdbf8c73d778e5bf82416ae03655d49aa4b697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
