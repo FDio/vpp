@@ -393,7 +393,35 @@ dpdk_packet_template_init (vlib_main_t * vm,
 clib_error_t *
 dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 		  u32 num_elts, u32 pool_priv_size, u16 cache_size, u8 numa,
-		  struct rte_mempool **_mp, u32 * map_index)
+		  struct rte_mempool **_mp)
+{
+  struct rte_mempool *mp;
+  i32 ret;
+
+  mp = rte_mempool_create_empty ((char *) pool_name, num_elts, elt_size,
+				 512, pool_priv_size, numa, 0);
+  if (!mp)
+    return clib_error_return (0, "failed to create %s", pool_name);
+
+  rte_mempool_set_ops_byname (mp, RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
+
+  ret = rte_mempool_populate_default (mp);
+  if (ret < 0)
+    {
+      rte_mempool_free (mp);
+      return clib_error_return (0, "failed to populate mempool %s ret=%d",
+				pool_name, ret);
+    }
+
+  _mp[0] = mp;
+
+  return 0;
+}
+
+static clib_error_t *
+_dpdk_buffer_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
+			  u32 num_elts, u32 pool_priv_size, u16 cache_size,
+			  u8 numa, struct rte_mempool **_mp, u32 * map_index)
 {
   struct rte_mempool *mp;
   enum rte_iova_mode iova_mode;
@@ -462,7 +490,7 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 			 unsigned socket_id)
 {
   dpdk_main_t *dm = &dpdk_main;
-  struct rte_mempool *rmp;
+  struct rte_mempool *rmp = 0;
   clib_error_t *error = 0;
   u8 *pool_name;
   u32 elt_size, i;
@@ -480,9 +508,9 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
     VLIB_BUFFER_HDR_SIZE /* priv size */  +
     VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE;	/*data room size */
 
-  error = dpdk_pool_create (vm, pool_name, elt_size, num_mbufs,
-			    sizeof (dpdk_mempool_private_t), 512, socket_id,
-			    &rmp, &map_index);
+  error = _dpdk_buffer_pool_create (vm, pool_name, elt_size, num_mbufs,
+				    sizeof (dpdk_mempool_private_t), 512,
+				    socket_id, &rmp, &map_index);
 
   vec_free (pool_name);
 
