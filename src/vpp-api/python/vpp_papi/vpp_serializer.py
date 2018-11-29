@@ -224,7 +224,7 @@ class VPPEnumType(object):
 
     def unpack(self, data, offset=0, result=None):
         x, size = types['u32'].unpack(data, offset)
-        return self.enum(x), size
+        return self.enum[x], size
 
 
 class VPPUnionType(object):
