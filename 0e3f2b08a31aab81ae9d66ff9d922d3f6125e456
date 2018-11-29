@@ -22,6 +22,30 @@
       "revId": "0e3f2b08a31aab81ae9d66ff9d922d3f6125e456",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f11ed7ff_7162495a",
+        "filename": "extras/vom/vom/interface_types.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-29T12:36:08Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4b79c894_b495268e",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 68
+      },
+      "revId": "0e3f2b08a31aab81ae9d66ff9d922d3f6125e456",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
