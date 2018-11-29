@@ -224,12 +224,12 @@ class VCLCutThruTestCase(VCLTestCase):
         self.client_iperf3_timeout = 20
         self.client_iperf3_args = ["-V4d", "-t 5", "-c", self.server_addr]
         self.server_iperf3_args = ["-V4d", "-s"]
-        self.client_uni_dir_nsock_timeout = 60
+        self.client_uni_dir_nsock_timeout = 20
         self.client_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
                                                "-I", "2",
                                                self.server_addr,
                                                self.server_port]
-        self.client_bi_dir_nsock_timeout = 120
+        self.client_bi_dir_nsock_timeout = 20
         self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
                                               "-I", "2",
                                               self.server_addr,
@@ -381,14 +381,14 @@ class VCLThruHostStackGroupBTestCase(VCLTestCase):
 
         self.thru_host_stack_setup()
         if self.vppDebug:
-            self.client_bi_dir_nsock_timeout = 120
+            self.client_bi_dir_nsock_timeout = 20
             self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
                                                   # OUCH! Host Stack Bug?
                                                   # "-I", "2",
                                                   self.loop0.local_ip4,
                                                   self.server_port]
         else:
-            self.client_bi_dir_nsock_timeout = 60
+            self.client_bi_dir_nsock_timeout = 20
             self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
                                                   # OUCH! Host Stack Bug?
                                                   # "-I", "2",
@@ -417,10 +417,10 @@ class VCLThruHostStackGroupCTestCase(VCLTestCase):
 
         self.thru_host_stack_setup()
         if self.vppDebug:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "2"
         else:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "5"
 
         self.client_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
@@ -450,10 +450,10 @@ class VCLThruHostStackGroupDTestCase(VCLTestCase):
 
         self.thru_host_stack_setup()
         if self.vppDebug:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "2"
         else:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "5"
 
         self.client_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
@@ -515,8 +515,8 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
 
         self.cut_thru_setup()
         self.client_iperf3_timeout = 20
-        self.client_uni_dir_nsock_timeout = 60
-        self.client_bi_dir_nsock_timeout = 120
+        self.client_uni_dir_nsock_timeout = 20
+        self.client_bi_dir_nsock_timeout = 20
         self.client_ipv6_echo_test_args = ["-6", "-E", self.echo_phrase, "-X",
                                            self.server_ipv6_addr,
                                            self.server_port]
@@ -653,14 +653,14 @@ class VCLIpv6ThruHostStackGroupATestCase(VCLTestCase):
 
         self.thru_host_stack_ipv6_setup()
         if self.vppDebug:
-            self.client_bi_dir_nsock_timeout = 120
+            self.client_bi_dir_nsock_timeout = 20
             self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
                                                        "-B", "-X", "-6",
                                                        "-I", "2",
                                                        self.loop0.local_ip6,
                                                        self.server_port]
         else:
-            self.client_bi_dir_nsock_timeout = 90
+            self.client_bi_dir_nsock_timeout = 20
             self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
                                                        "-B", "-X", "-6",
                                                        "-I", "2",
@@ -689,7 +689,7 @@ class VCLIpv6ThruHostStackGroupBTestCase(VCLTestCase):
 
         self.thru_host_stack_ipv6_setup()
         if self.vppDebug:
-            self.client_bi_dir_nsock_timeout = 120
+            self.client_bi_dir_nsock_timeout = 20
             self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
                                                        "-B", "-X", "-6",
                                                        # OUCH! Host Stack Bug?
@@ -697,7 +697,7 @@ class VCLIpv6ThruHostStackGroupBTestCase(VCLTestCase):
                                                        self.loop0.local_ip6,
                                                        self.server_port]
         else:
-            self.client_bi_dir_nsock_timeout = 60
+            self.client_bi_dir_nsock_timeout = 20
             self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000",
                                                        "-B", "-X", "-6",
                                                        # OUCH! Host Stack Bug?
@@ -728,10 +728,10 @@ class VCLIpv6ThruHostStackGroupCTestCase(VCLTestCase):
 
         self.thru_host_stack_ipv6_setup()
         if self.vppDebug:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "2"
         else:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "5"
 
         self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
@@ -763,10 +763,10 @@ class VCLIpv6ThruHostStackGroupDTestCase(VCLTestCase):
 
         self.thru_host_stack_ipv6_setup()
         if self.vppDebug:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "2"
         else:
-            self.client_uni_dir_nsock_timeout = 120
+            self.client_uni_dir_nsock_timeout = 20
             self.numSockets = "5"
 
         self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
