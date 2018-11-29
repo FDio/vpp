@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9c354701_6c8591fc",
+        "filename": "src/vnet/dhcp/dhcp4_proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-29T13:58:23Z",
+      "side": 1,
+      "message": "there\u0027s similar code in the v6 file too.",
+      "revId": "237482b29143ccd672bcedf41a884d234dec833c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
