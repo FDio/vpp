@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from __future__ import print_function
 import binascii
 import random
 import socket
@@ -215,11 +215,11 @@ class MethodHolder(VppTestCase):
                                  data_set={1: 'octets', 2: 'packets'},
                                  ip_ver='v4'):
         if self.debug_print:
-            print capture[0].show()
+            print(capture[0].show())
         if cflow.haslayer(Data):
             data = decoder.decode_data_set(cflow.getlayer(Set))
             if self.debug_print:
-                print data
+                print(data)
             if ip_ver == 'v4':
                 ip_layer = capture[0][IP]
             else:
