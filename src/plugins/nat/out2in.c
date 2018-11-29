@@ -29,6 +29,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat_syslog.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -132,6 +133,11 @@ nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
 					   s->out2in.port,
 					   s->in2out.fib_index);
 
+      nat_syslog_nat44_apmdel (s->user_index, s->in2out.fib_index,
+			       &s->in2out.addr, s->in2out.port,
+			       &s->out2in.addr, s->out2in.port,
+			       s->in2out.protocol);
+
       if (!snat_is_session_static (s))
 	snat_free_outside_address_and_port (sm->addresses, ctx->thread_index,
 					    &s->out2in);
@@ -229,6 +235,11 @@ create_session_for_static_mapping (snat_main_t * sm,
 				       s->in2out.protocol,
 				       s->in2out.port,
 				       s->out2in.port, s->in2out.fib_index);
+
+  nat_syslog_nat44_apmadd (s->user_index, s->in2out.fib_index,
+			   &s->in2out.addr, s->in2out.port, &s->out2in.addr,
+			   s->out2in.port, s->in2out.protocol);
+
   return s;
 }
 

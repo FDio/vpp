@@ -21,6 +21,9 @@ from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
 from util import ip4_range
 from util import mactobinary
+from syslog_rfc5424_parser import SyslogMessage, ParseError
+from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
+from vpp_papi_provider import SYSLOG_SEVERITY
 
 
 class MethodHolder(VppTestCase):
@@ -68,6 +71,8 @@ class MethodHolder(VppTestCase):
                             domain_id=self.ipfix_domain_id)
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
+
+        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.EMERG)
 
         interfaces = self.vapi.nat44_interface_dump()
         for intf in interfaces:
@@ -1030,6 +1035,55 @@ class MethodHolder(VppTestCase):
         self.assertEqual(struct.pack("I", limit), record[473])
         # sourceIPv4Address
         self.assertEqual(src_addr, record[8])
+
+    def verify_syslog_apmap(self, data, is_add=True):
+        message = data.decode('utf-8')
+        try:
+            message = SyslogMessage.parse(message)
+            self.assertEqual(message.severity, SyslogSeverity.info)
+            self.assertEqual(message.appname, 'NAT')
+            self.assertEqual(message.msgid, 'APMADD' if is_add else 'APMDEL')
+            sd_params = message.sd.get('napmap')
+            self.assertTrue(sd_params is not None)
+            self.assertEqual(sd_params.get('IATYP'), 'IPv4')
+            self.assertEqual(sd_params.get('ISADDR'), self.pg0.remote_ip4)
+            self.assertEqual(sd_params.get('ISPORT'), "%d" % self.tcp_port_in)
+            self.assertEqual(sd_params.get('XATYP'), 'IPv4')
+            self.assertEqual(sd_params.get('XSADDR'), self.nat_addr)
+            self.assertEqual(sd_params.get('XSPORT'), "%d" % self.tcp_port_out)
+            self.assertEqual(sd_params.get('PROTO'), "%d" % IP_PROTOS.tcp)
+            self.assertTrue(sd_params.get('SSUBIX') is not None)
+            self.assertEqual(sd_params.get('SVLAN'), '0')
+        except ParseError as e:
+            self.logger.error(e)
+
+    def verify_syslog_sess(self, data, is_add=True, is_ip6=False):
+        message = data.decode('utf-8')
+        try:
+            message = SyslogMessage.parse(message)
+            self.assertEqual(message.severity, SyslogSeverity.info)
+            self.assertEqual(message.appname, 'NAT')
+            self.assertEqual(message.msgid, 'SADD' if is_add else 'SDEL')
+            sd_params = message.sd.get('nsess')
+            self.assertTrue(sd_params is not None)
+            if is_ip6:
+                self.assertEqual(sd_params.get('IATYP'), 'IPv6')
+                self.assertEqual(sd_params.get('ISADDR'), self.pg0.remote_ip6)
+            else:
+                self.assertEqual(sd_params.get('IATYP'), 'IPv4')
+                self.assertEqual(sd_params.get('ISADDR'), self.pg0.remote_ip4)
+                self.assertTrue(sd_params.get('SSUBIX') is not None)
+            self.assertEqual(sd_params.get('ISPORT'), "%d" % self.tcp_port_in)
+            self.assertEqual(sd_params.get('XATYP'), 'IPv4')
+            self.assertEqual(sd_params.get('XSADDR'), self.nat_addr)
+            self.assertEqual(sd_params.get('XSPORT'), "%d" % self.tcp_port_out)
+            self.assertEqual(sd_params.get('PROTO'), "%d" % IP_PROTOS.tcp)
+            self.assertEqual(sd_params.get('SVLAN'), '0')
+            self.assertEqual(sd_params.get('XDADDR'), self.pg1.remote_ip4)
+            self.assertEqual(sd_params.get('XDPORT'),
+                             "%d" % self.tcp_external_port)
+        except ParseError as e:
+            self.logger.error(e)
 
     def verify_mss_value(self, pkt, mss):
         """
@@ -2686,6 +2740,32 @@ class TestNAT44(MethodHolder):
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 self.verify_ipfix_max_sessions(data, max_sessions)
+
+    def test_syslog_apmap(self):
+        """ Test syslog address and port mapping creation and deletion """
+        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
+        self.vapi.syslog_set_sender(self.pg3.remote_ip4n, self.pg3.local_ip4n)
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=self.tcp_port_in, dport=20))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        self.tcp_port_out = capture[0][TCP].sport
+        capture = self.pg3.get_capture(1)
+        self.verify_syslog_apmap(capture[0][Raw].load)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.nat44_add_address(self.nat_addr, is_add=0)
+        capture = self.pg3.get_capture(1)
+        self.verify_syslog_apmap(capture[0][Raw].load, False)
 
     def test_pool_addr_fib(self):
         """ NAT44 add pool addresses to FIB """
@@ -5777,6 +5857,32 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_start()
         self.pg1.get_capture(1)
 
+    def test_syslog_sess(self):
+        """ Test syslog session creation and deletion """
+        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
+        self.vapi.syslog_set_sender(self.pg2.remote_ip4n, self.pg2.local_ip4n)
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=self.tcp_port_in, dport=self.tcp_external_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        self.tcp_port_out = capture[0][TCP].sport
+        capture = self.pg2.get_capture(1)
+        self.verify_syslog_sess(capture[0][Raw].load)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.nat44_add_address(self.nat_addr, is_add=0)
+        capture = self.pg2.get_capture(1)
+        self.verify_syslog_sess(capture[0][Raw].load, False)
+
     def tearDown(self):
         super(TestNAT44EndpointDependent, self).tearDown()
         if not self.vpp_dead:
@@ -6524,6 +6630,7 @@ class TestNAT64(MethodHolder):
             cls.udp_port_out = 6304
             cls.icmp_id_in = 6305
             cls.icmp_id_out = 6305
+            cls.tcp_external_port = 80
             cls.nat_addr = '10.0.0.3'
             cls.nat_addr_n = socket.inet_pton(socket.AF_INET, cls.nat_addr)
             cls.vrf1_id = 10
@@ -7726,6 +7833,39 @@ class TestNAT64(MethodHolder):
                 else:
                     self.logger.error(ppp("Unexpected or invalid packet: ", p))
 
+    def test_syslog_sess(self):
+        """ Test syslog session creation and deletion """
+        self.tcp_port_in = random.randint(1025, 65535)
+        remote_host_ip6 = self.compose_ip6(self.pg1.remote_ip4,
+                                           '64:ff9b::',
+                                           96)
+
+        self.vapi.nat64_add_del_pool_addr_range(self.nat_addr_n,
+                                                self.nat_addr_n)
+        self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
+        self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
+        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
+        self.vapi.syslog_set_sender(self.pg3.remote_ip4n, self.pg3.local_ip4n)
+
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst=remote_host_ip6) /
+             TCP(sport=self.tcp_port_in, dport=self.tcp_external_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg1.get_capture(1)
+        self.tcp_port_out = p[0][TCP].sport
+        capture = self.pg3.get_capture(1)
+        self.verify_syslog_sess(capture[0][Raw].load, is_ip6=True)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.vapi.nat64_add_del_pool_addr_range(self.nat_addr_n,
+                                                self.nat_addr_n,
+                                                is_add=0)
+        capture = self.pg3.get_capture(1)
+        self.verify_syslog_sess(capture[0][Raw].load, False, True)
+
     def nat64_get_ses_num(self):
         """
         Return number of active NAT64 sessions.
@@ -7741,6 +7881,8 @@ class TestNAT64(MethodHolder):
                             domain_id=self.ipfix_domain_id)
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
+
+        self.vapi.syslog_set_filter(SYSLOG_SEVERITY.EMERG)
 
         self.vapi.nat_set_timeouts()
 
@@ -7802,7 +7944,7 @@ class TestDSlite(MethodHolder):
             cls.nat_addr = '10.0.0.3'
             cls.nat_addr_n = socket.inet_pton(socket.AF_INET, cls.nat_addr)
 
-            cls.create_pg_interfaces(range(2))
+            cls.create_pg_interfaces(range(3))
             cls.pg0.admin_up()
             cls.pg0.config_ip4()
             cls.pg0.resolve_arp()
@@ -7810,10 +7952,35 @@ class TestDSlite(MethodHolder):
             cls.pg1.config_ip6()
             cls.pg1.generate_remote_hosts(2)
             cls.pg1.configure_ipv6_neighbors()
+            cls.pg2.admin_up()
+            cls.pg2.config_ip4()
+            cls.pg2.resolve_arp()
 
         except Exception:
             super(TestDSlite, cls).tearDownClass()
             raise
+
+    def verify_syslog_apmadd(self, data, isaddr, isport, xsaddr, xsport,
+                             sv6enc, proto):
+        message = data.decode('utf-8')
+        try:
+            message = SyslogMessage.parse(message)
+            self.assertEqual(message.severity, SyslogSeverity.info)
+            self.assertEqual(message.appname, 'NAT')
+            self.assertEqual(message.msgid, 'APMADD')
+            sd_params = message.sd.get('napmap')
+            self.assertTrue(sd_params is not None)
+            self.assertEqual(sd_params.get('IATYP'), 'IPv4')
+            self.assertEqual(sd_params.get('ISADDR'), isaddr)
+            self.assertEqual(sd_params.get('ISPORT'), "%d" % isport)
+            self.assertEqual(sd_params.get('XATYP'), 'IPv4')
+            self.assertEqual(sd_params.get('XSADDR'), xsaddr)
+            self.assertEqual(sd_params.get('XSPORT'), "%d" % xsport)
+            self.assertEqual(sd_params.get('PROTO'), "%d" % proto)
+            self.assertTrue(sd_params.get('SSUBIX') is not None)
+            self.assertEqual(sd_params.get('SV6ENC'), sv6enc)
+        except ParseError as e:
+            self.logger.error(e)
 
     def test_dslite(self):
         """ Test DS-Lite """
@@ -7827,6 +7994,7 @@ class TestDSlite(MethodHolder):
         aftr_ip6 = '2001:db8:85a3::8a2e:370:1'
         aftr_ip6_n = socket.inet_pton(socket.AF_INET6, aftr_ip6)
         self.vapi.dslite_set_aftr_addr(aftr_ip6_n, aftr_ip4_n)
+        self.vapi.syslog_set_sender(self.pg2.remote_ip4n, self.pg2.local_ip4n)
 
         # UDP
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
@@ -7845,6 +8013,10 @@ class TestDSlite(MethodHolder):
         self.assertEqual(capture[UDP].dport, 10000)
         self.assert_packet_checksums_valid(capture)
         out_port = capture[UDP].sport
+        capture = self.pg2.get_capture(1)
+        self.verify_syslog_apmadd(capture[0][Raw].load, '192.168.1.1',
+                                  20000, self.nat_addr, out_port,
+                                  self.pg1.remote_hosts[0].ip6, IP_PROTOS.udp)
 
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              IP(dst=self.nat_addr, src=self.pg0.remote_ip4) /

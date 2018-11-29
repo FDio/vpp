@@ -14,6 +14,7 @@
  */
 #include <nat/dslite.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat_syslog.h>
 
 vlib_node_registration_t dslite_in2out_node;
 vlib_node_registration_t dslite_in2out_slowpath_node;
@@ -45,6 +46,7 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
   u32 oldest_index;
   dslite_session_t *s;
   snat_session_key_t out2in_key;
+  u32 b4_index;
 
   out2in_key.protocol = in2out_key->proto;
   out2in_key.fib_index = 0;
@@ -66,12 +68,13 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
       clib_dlist_init (dm->per_thread_data[thread_index].list_pool,
 		       b4->sessions_per_b4_list_head_index);
 
-      b4_kv.value = b4 - dm->per_thread_data[thread_index].b4s;
+      b4_index = b4_kv.value = b4 - dm->per_thread_data[thread_index].b4s;
       clib_bihash_add_del_16_8 (&dm->per_thread_data[thread_index].b4_hash,
 				&b4_kv, 1);
     }
   else
     {
+      b4_index = b4_value.value;
       b4 =
 	pool_elt_at_index (dm->per_thread_data[thread_index].b4s,
 			   b4_value.value);
@@ -103,6 +106,11 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
 			       &out2in_kv, 0);
       snat_free_outside_address_and_port (dm->addr_pool, thread_index,
 					  &s->out2in);
+
+      nat_syslog_dslite_apmdel (b4_index, &s->in2out.softwire_id,
+				&s->in2out.addr, s->in2out.port,
+				&s->out2in.addr, s->out2in.port,
+				s->in2out.proto);
 
       if (snat_alloc_outside_address_and_port
 	  (dm->addr_pool, 0, thread_index, &out2in_key,
@@ -146,6 +154,10 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
   out2in_kv.value = s - dm->per_thread_data[thread_index].sessions;
   clib_bihash_add_del_8_8 (&dm->per_thread_data[thread_index].out2in,
 			   &out2in_kv, 1);
+
+  nat_syslog_dslite_apmadd (b4_index, &s->in2out.softwire_id, &s->in2out.addr,
+			    s->in2out.port, &s->out2in.addr, s->out2in.port,
+			    s->in2out.proto);
 
   return next;
 }

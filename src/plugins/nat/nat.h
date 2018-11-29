@@ -222,6 +222,9 @@ typedef CLIB_PACKED(struct
   u8 state;
   u32 i2o_fin_seq;
   u32 o2i_fin_seq;
+
+  /* user index */
+  u32 user_index;
 }) snat_session_t;
 /* *INDENT-ON* */
 
