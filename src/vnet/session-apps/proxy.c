@@ -176,7 +176,7 @@ proxy_connected_callback (u32 app_index, u32 api_context,
 }
 
 static int
-proxy_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
+proxy_add_segment_callback (u32 client_index, u64 segment_handle)
 {
   clib_warning ("called...");
   return -1;
