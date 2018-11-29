@@ -1306,19 +1306,36 @@ class Worker(Thread):
         env = os.environ.copy()
         env.update(self.env)
         env["CK_LOG_FILE_NAME"] = "-"
-        self.process = subprocess.Popen(
-            self.args, shell=False, env=env, preexec_fn=os.setpgrp,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = self.process.communicate()
-        self.logger.debug("Finished running `%s'" % executable)
-        self.logger.info("Return code is `%s'" % self.process.returncode)
-        self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stdout:" % executable)
-        self.logger.info(single_line_delim)
-        self.logger.info(out)
-        self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stderr:" % executable)
-        self.logger.info(single_line_delim)
-        self.logger.info(err)
-        self.logger.info(single_line_delim)
-        self.result = self.process.returncode
+        out, err = None, None
+        try:
+            self.process = subprocess.Popen(
+                self.args, shell=False, env=env, preexec_fn=os.setpgrp,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = self.process.communicate()
+        except subprocess.CalledProcessError as e:
+            self.logger.debug("Worker thread subprocess returned with rc=%s" %
+                              e.returncode)
+            raise
+        except OSError as e:
+            self.logger.debug("Worker thread subprocess failed to run with "
+                              "errno=%s %s" %
+                              e.errno, e.strerror)
+            raise
+        except Exception as e:
+            self.logger.debug("Worker thread subprocess failed unexpectedly "
+                              "with errno=%s" % e)
+            raise
+        else:
+            self.logger.debug("Finished running `%s'" % executable)
+        finally:
+            self.logger.info("Return code is `%s'" % self.process.returncode)
+            self.logger.info(single_line_delim)
+            self.logger.info("Executable `%s' wrote to stdout:" % executable)
+            self.logger.info(single_line_delim)
+            self.logger.info(out)
+            self.logger.info(single_line_delim)
+            self.logger.info("Executable `%s' wrote to stderr:" % executable)
+            self.logger.info(single_line_delim)
+            self.logger.info(err)
+            self.logger.info(single_line_delim)
+            self.result = self.process.returncode
