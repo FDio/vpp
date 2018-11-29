@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c0147a76_671f7f8b",
+        "filename": "src/vnet/ip/ip_frag.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-29T07:57:39Z",
+      "side": 1,
+      "message": "shouldn\u0027t this be conditional on the from packet having valid QoS bits",
+      "revId": "4488ba085bd5cc4490da42920fee57fbb6df3590",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
