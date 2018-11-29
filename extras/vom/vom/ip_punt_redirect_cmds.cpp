@@ -27,8 +27,7 @@ config_cmd::config_cmd(HW::item<bool>& item,
   , m_rx_itf(rx_itf)
   , m_tx_itf(tx_itf)
   , m_addr(addr)
-{
-}
+{}
 
 bool
 config_cmd::operator==(const config_cmd& o) const
@@ -73,8 +72,7 @@ unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
   , m_rx_itf(rx_itf)
   , m_tx_itf(tx_itf)
   , m_addr(addr)
-{
-}
+{}
 
 bool
 unconfig_cmd::operator==(const unconfig_cmd& o) const
