@@ -24,7 +24,7 @@ function(vpp_generate_api_c_header file)
     COMMAND mkdir -p ${output_dir}
     COMMAND ${VPP_APIGEN}
     ARGS --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} --output ${output_name}
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${file}
+    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
   )
 endfunction()
@@ -39,7 +39,7 @@ function(vpp_generate_api_json_header file dir component)
     COMMAND mkdir -p ${output_dir}
     COMMAND ${VPP_APIGEN}
     ARGS --includedir ${CMAKE_SOURCE_DIR} --input ${CMAKE_CURRENT_SOURCE_DIR}/${file} JSON --output ${output_name}
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${file}
+    DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
   )
   install(
