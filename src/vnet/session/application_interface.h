@@ -234,6 +234,7 @@ typedef struct session_accepted_msg_
   u64 handle;
   u64 server_rx_fifo;
   u64 server_tx_fifo;
+  u64 segment_handle;
   u64 vpp_event_queue_address;
   u64 server_event_queue_address;
   u64 client_event_queue_address;

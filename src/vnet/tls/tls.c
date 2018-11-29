@@ -367,7 +367,7 @@ tls_session_reset_callback (stream_session_t * s)
 }
 
 int
-tls_add_segment_callback (u32 client_index, const ssvm_private_t * fs)
+tls_add_segment_callback (u32 client_index, u64 segment_handle)
 {
   /* No-op for builtin */
   return 0;

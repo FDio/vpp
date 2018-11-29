@@ -117,6 +117,36 @@ segment_manager_get_segment (segment_manager_t * sm, u32 segment_index)
   return pool_elt_at_index (sm->segments, segment_index);
 }
 
+u64
+segment_manager_segment_handle (segment_manager_t * sm,
+				svm_fifo_segment_private_t * segment)
+{
+  u32 segment_index = segment_manager_segment_index (sm, segment);
+  return (((u64) segment_manager_index (sm) << 32) | segment_index);
+}
+
+void
+segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
+				      u32 * segment_index)
+{
+  *sm_index = segment_handle >> 32;
+  *segment_index = segment_handle & 0xFFFFFFFF;
+}
+
+svm_fifo_segment_private_t *
+segment_manager_get_segment_w_handle (u64 segment_handle)
+{
+  u32 sm_index, segment_index;
+  segment_manager_t *sm;
+
+  segment_manager_parse_segment_handle (segment_handle, &sm_index,
+					&segment_index);
+  sm = segment_manager_get (sm_index);
+  if (!sm || pool_is_free_index (sm->segments, segment_index))
+    return 0;
+  return pool_elt_at_index (sm->segments, segment_index);
+}
+
 /**
  * Reads a segment from the segment manager's pool and acquires reader lock
  *
@@ -484,6 +514,7 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   int alloc_fail = 1, rv = 0, new_fs_index;
   segment_manager_properties_t *props;
   u8 added_a_segment = 0;
+  u64 segment_handle;
   u32 sm_index;
 
   props = segment_manager_properties_get (sm);
@@ -513,13 +544,18 @@ alloc_check:
 
       ASSERT (rx_fifo && tx_fifo);
       sm_index = segment_manager_index (sm);
+      *fifo_segment_index = segment_manager_segment_index (sm, fifo_segment);
       (*tx_fifo)->segment_manager = sm_index;
       (*rx_fifo)->segment_manager = sm_index;
-      *fifo_segment_index = segment_manager_segment_index (sm, fifo_segment);
+      (*tx_fifo)->segment_index = *fifo_segment_index;
+      (*rx_fifo)->segment_index = *fifo_segment_index;
 
       if (added_a_segment)
-	rv = app_worker_add_segment_notify (sm->app_wrk_index,
-					    &fifo_segment->ssvm);
+	{
+	  segment_handle = segment_manager_segment_handle (sm, fifo_segment);
+	  rv = app_worker_add_segment_notify (sm->app_wrk_index,
+					      segment_handle);
+	}
       /* Drop the lock after app is notified */
       segment_manager_segment_reader_unlock (sm);
       return rv;

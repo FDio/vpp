@@ -103,6 +103,7 @@ autoreply define application_detach {
    					  socket transport available
     @param segment_size - size of the segment to be mapped
     @param segment_name - name of the segment to be mapped
+    @param segment_handle - unique identifier for segment
 */
 autoreply define map_another_segment {
     u32 client_index;
@@ -110,6 +111,7 @@ autoreply define map_another_segment {
     u8 fd_flags;
     u32 segment_size;
     u8 segment_name[128];
+    u64 segment_handle;
 };
 
 /** \brief vpp->client unmap shared memory segment
