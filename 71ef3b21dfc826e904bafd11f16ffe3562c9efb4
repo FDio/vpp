@@ -46,6 +46,29 @@
       "revId": "71ef3b21dfc826e904bafd11f16ffe3562c9efb4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b19a0750_3f2f9182",
+        "filename": "test/run_tests.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-29T15:59:07Z",
+      "side": 1,
+      "message": "Do you need a finally: here?",
+      "range": {
+        "startLine": 430,
+        "startChar": 8,
+        "endLine": 430,
+        "endChar": 35
+      },
+      "revId": "71ef3b21dfc826e904bafd11f16ffe3562c9efb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
