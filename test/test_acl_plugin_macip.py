@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 """ACL plugin - MACIP tests
 """
 import binascii
@@ -167,29 +168,29 @@ class MethodHolder(VppTestCase):
             self.logger.info(self.vapi.ppcli("sh acl-plugin acl"))
             self.logger.info(self.vapi.ppcli("sh acl-plugin interface"))
             self.logger.info(self.vapi.ppcli("sh acl-plugin tables"))
-            # print self.vapi.ppcli("show interface address")
-            # print self.vapi.ppcli("show hardware")
-            # print self.vapi.ppcli("sh acl-plugin macip interface")
-            # print self.vapi.ppcli("sh acl-plugin macip acl")
+            # print(self.vapi.ppcli("show interface address"))
+            # print(self.vapi.ppcli("show hardware"))
+            # print(self.vapi.ppcli("sh acl-plugin macip interface"))
+            # print(self.vapi.ppcli("sh acl-plugin macip acl"))
         self.delete_acls()
 
     def macip_acl_dump_debug(self):
         acls = self.vapi.macip_acl_dump()
         if self.DEBUG:
             for acl in acls:
-                print "ACL #"+str(acl.acl_index)
+                print("ACL #"+str(acl.acl_index))
                 for r in acl.r:
                     rule = "ACTION"
                     if r.is_permit == 1:
                         rule = "PERMIT"
                     elif r.is_permit == 0:
                         rule = "DENY  "
-                    print "    IP6" if r.is_ipv6 else "    IP4", \
-                          rule, \
-                          binascii.hexlify(r.src_mac), \
-                          binascii.hexlify(r.src_mac_mask),\
-                          unpack('<16B', r.src_ip_addr), \
-                          r.src_ip_prefix_len
+                    print("    IP6" if r.is_ipv6 else "    IP4",
+                          rule,
+                          binascii.hexlify(r.src_mac),
+                          binascii.hexlify(r.src_mac_mask),
+                          unpack('<16B', r.src_ip_addr),
+                          r.src_ip_prefix_len)
         return acls
 
     def create_rules(self, mac_type=EXACT_MAC, ip_type=EXACT_IP,
@@ -569,22 +570,22 @@ class MethodHolder(VppTestCase):
         # p_l3 = IPv6 if is_ip6 else IP
         # if self.DEBUG:
         #     for p in stream:
-        #         print p[Ether].src, p[Ether].dst, p[p_l3].src, p[p_l3].dst
+        #         print(p[Ether].src, p[Ether].dst, p[p_l3].src, p[p_l3].dst)
         #
         # acls = self.macip_acl_dump_debug()
 
         # TODO : verify
         # for acl in acls:
         #     for r in acl.r:
-        #         print binascii.hexlify(r.src_mac), \
+        #         print(binascii.hexlify(r.src_mac), \
         #               binascii.hexlify(r.src_mac_mask),\
         #               unpack('<16B', r.src_ip_addr), \
-        #               r.src_ip_prefix_len
+        #               r.src_ip_prefix_len)
         #
         # for p in capture:
-        #     print p[Ether].src, p[Ether].dst, p[p_l3].src, p[p_l3].dst
-        #     data = p[Raw].load.split(':',1)[1]
-        #     print p[p_l3].src, data
+        #     print(p[Ether].src, p[Ether].dst, p[p_l3].src, p[p_l3].dst
+        #     data = p[Raw].load.split(':',1)[1])
+        #     print(p[p_l3].src, data)
 
     def run_traffic(self, mac_type, ip_type, traffic, is_ip6, packets,
                     do_not_expected_capture=False, tags=None,
