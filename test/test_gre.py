@@ -768,23 +768,28 @@ class TestGRE(VppTestCase):
         self.verify_decapped_4o4(self.pg0, rx, tx)
 
         #
-        # Send tunneled packets that match the created tunnel and
+        # Send tunneled packets that match the created tunnel
         # but arrive on an interface that is not in the tunnel's
-        # encap VRF, these are dropped
+        # encap VRF, these are dropped.
+        # IP enable the interface so they aren't dropped due to
+        # IP not being enabled.
         #
+        self.pg2.config_ip4()
         self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_4o4(self.pg2,
                                            "2.2.2.2",
                                            self.pg1.local_ip4,
                                            self.pg0.local_ip4,
                                            self.pg0.remote_ip4)
-        self.pg1.add_stream(tx)
+        self.pg2.add_stream(tx)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         self.pg0.assert_nothing_captured(
             remark="GRE decap packets in wrong VRF")
+
+        self.pg2.unconfig_ip4()
 
         #
         # test case cleanup
