@@ -1424,6 +1424,16 @@ class TestGBP(VppTestCase):
                 is_inside=0,
                 is_add=0)
 
+    def wait_for_ep_timeout(self, sw_if_index=None, ip=None, mac=None,
+                            n_tries=100, s_time=1):
+        while (n_tries):
+            if not find_gbp_endpoint(self, sw_if_index, ip, mac):
+                return True
+            n_tries = n_tries - 1
+            self.sleep(s_time)
+        self.assertFalse(find_gbp_endpoint(self, sw_if_index, ip, mac))
+        return False
+
     def test_gbp_learn_l2(self):
         """ GBP L2 Endpoint Learning """
 
@@ -1586,10 +1596,9 @@ class TestGBP(VppTestCase):
         # If we sleep for the threshold time, the learnt endpoints should
         # age out
         #
-        self.sleep(2)
         for l in learnt:
-            self.assertFalse(find_gbp_endpoint(self,
-                                               mac=l['mac']))
+            self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
+                                     mac=l['mac'])
 
         #
         # repeat. the do not learn bit is set so the EPs are not learnt
@@ -1660,11 +1669,9 @@ class TestGBP(VppTestCase):
                 self.assertTrue(rx[VXLAN].gpflags.A)
                 self.assertFalse(rx[VXLAN].gpflags.D)
 
-        self.sleep(2)
         for l in learnt:
-            self.assertFalse(find_gbp_endpoint(self,
-                                               vx_tun_l2_1.sw_if_index,
-                                               mac=l['mac']))
+            self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
+                                     mac=l['mac'])
 
         #
         # repeat in the other EPG
@@ -1809,11 +1816,9 @@ class TestGBP(VppTestCase):
         #
         # clean up
         #
-        self.sleep(2)
         for l in learnt:
-            self.assertFalse(find_gbp_endpoint(self,
-                                               vx_tun_l2_1.sw_if_index,
-                                               mac=l['mac']))
+            self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
+                                     mac=l['mac'])
 
         self.pg2.unconfig_ip4()
         self.pg3.unconfig_ip4()
@@ -2161,7 +2166,6 @@ class TestGBP(VppTestCase):
                 self.assertEqual(inner[IP].src, ep.ip4.address)
                 self.assertEqual(inner[IP].dst, l['ip'])
 
-        self.sleep(2)
         for l in learnt:
             self.assertFalse(find_gbp_endpoint(self,
                                                tep1_sw_if_index,
@@ -2236,11 +2240,8 @@ class TestGBP(VppTestCase):
                 self.assertEqual(inner[IPv6].dst, l['ip6'])
 
         self.logger.info(self.vapi.cli("sh gbp endpoint"))
-        self.sleep(2)
         for l in learnt:
-            self.assertFalse(find_gbp_endpoint(self,
-                                               tep1_sw_if_index,
-                                               ip=l['ip']))
+            self.wait_for_ep_timeout(ip=l['ip'])
 
         #
         # Static sends to unknown EP with no route
