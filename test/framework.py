@@ -1271,14 +1271,17 @@ class VppTestRunner(unittest.TextTestRunner):
         self.print_summary = print_summary
 
     def _makeResult(self):
+        "Modifies the signature of the base class"
         return self.resultclass(self.stream,
                                 self.descriptions,
                                 self.verbosity,
                                 self)
 
     def run(self, test):
-        """
-        Run the tests
+        """Run the given test case or test suite.
+
+        Extends the base class to catch any signals and performs custom
+        stream redirection unless 'print_summary' is True.
 
         :param test:
 
@@ -1293,32 +1296,51 @@ class VppTestRunner(unittest.TextTestRunner):
 
 
 class Worker(Thread):
-    def __init__(self, args, logger, env={}):
+    def __init__(self, args, logger, env=None):
         self.logger = logger
         self.args = args
+        self.process = None
         self.result = None
+        if env is None:
+            env = os.environ.copy()
         self.env = copy.deepcopy(env)
         super(Worker, self).__init__()
 
     def run(self):
         executable = self.args[0]
         self.logger.debug("Running executable w/args `%s'" % self.args)
-        env = os.environ.copy()
-        env.update(self.env)
-        env["CK_LOG_FILE_NAME"] = "-"
-        self.process = subprocess.Popen(
-            self.args, shell=False, env=env, preexec_fn=os.setpgrp,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = self.process.communicate()
-        self.logger.debug("Finished running `%s'" % executable)
-        self.logger.info("Return code is `%s'" % self.process.returncode)
-        self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stdout:" % executable)
-        self.logger.info(single_line_delim)
-        self.logger.info(out)
-        self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stderr:" % executable)
-        self.logger.info(single_line_delim)
-        self.logger.info(err)
-        self.logger.info(single_line_delim)
-        self.result = self.process.returncode
+        self.env["CK_LOG_FILE_NAME"] = "-"
+        out, err = None, None
+        try:
+            self.process = subprocess.Popen(
+                self.args, shell=False, env=self.env, preexec_fn=os.setpgrp,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = self.process.communicate()
+        except subprocess.CalledProcessError as e:
+            self.logger.debug("Worker thread subprocess returned with rc=%s" %
+                              e.returncode)
+            raise
+        except OSError as e:
+            self.logger.debug("Worker thread subprocess failed to run with "
+                              "errno=%d %s" %
+                              (e.errno, e.strerror))
+            raise
+        except Exception as e:
+            self.logger.debug("Worker thread subprocess failed unexpectedly "
+                              "with errno=%s" % e)
+            raise
+        else:
+            self.logger.debug("Finished running `%s'" % executable)
+            self.logger.info("Return code is `%s'" % self.process.returncode)
+            self.result = self.process.returncode
+        finally:
+            self.logger.info(single_line_delim)
+            self.logger.info("Executable `%s' wrote to stdout:" % executable)
+            self.logger.info(single_line_delim)
+            self.logger.info(out)
+            self.logger.info(single_line_delim)
+            self.logger.info("Executable `%s' wrote to stderr:" % executable)
+            self.logger.info(single_line_delim)
+            self.logger.info(err)
+            self.logger.info(single_line_delim)
+
