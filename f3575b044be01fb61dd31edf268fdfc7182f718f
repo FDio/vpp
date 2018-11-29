@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a6c1cd65_7d57aa50",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-11-29T08:18:49Z",
+      "side": 1,
+      "message": "Please leave this as it is, what you did is confusing. If you want different mempool allocation for ipsec code do it in ipsec code, not in buffer.c",
+      "range": {
+        "startLine": 422,
+        "startChar": 0,
+        "endLine": 422,
+        "endChar": 24
+      },
+      "revId": "f3575b044be01fb61dd31edf268fdfc7182f718f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
