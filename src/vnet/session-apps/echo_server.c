@@ -96,7 +96,7 @@ echo_server_session_connected_callback (u32 app_index, u32 api_context,
 }
 
 int
-echo_server_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
+echo_server_add_segment_callback (u32 client_index, u64 segment_handle)
 {
   /* New heaps may be added */
   return 0;

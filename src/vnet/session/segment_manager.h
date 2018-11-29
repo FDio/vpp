@@ -117,13 +117,23 @@ segment_manager_event_queue (segment_manager_t * sm)
   return sm->event_queue;
 }
 
+always_inline u64
+segment_manager_make_segment_handle (u32 segment_manager_index,
+				     u32 segment_index)
+{
+  return (((u64) segment_manager_index << 32) | segment_index);
+}
+
+u64 segment_manager_segment_handle (segment_manager_t * sm,
+				    svm_fifo_segment_private_t * segment);
+
 segment_manager_t *segment_manager_new ();
 int segment_manager_init (segment_manager_t * sm, u32 first_seg_size,
 			  u32 prealloc_fifo_pairs);
 
-svm_fifo_segment_private_t *segment_manager_get_segment (segment_manager_t *
-							 sm,
+svm_fifo_segment_private_t *segment_manager_get_segment (segment_manager_t *,
 							 u32 segment_index);
+svm_fifo_segment_private_t *segment_manager_get_segment_w_handle (u64);
 svm_fifo_segment_private_t
   * segment_manager_get_segment_w_lock (segment_manager_t * sm,
 					u32 segment_index);
