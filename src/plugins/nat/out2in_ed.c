@@ -29,6 +29,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat_syslog.h>
 
 #define foreach_nat_out2in_ed_error                     \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
@@ -173,6 +174,13 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 					   s->out2in.port,
 					   s->in2out.fib_index);
 
+      nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
+			     &s->in2out.addr, s->in2out.port,
+			     &s->ext_host_nat_addr, s->ext_host_nat_port,
+			     &s->out2in.addr, s->out2in.port,
+			     &s->ext_host_addr, s->ext_host_port,
+			     s->in2out.protocol, is_twice_nat_session (s));
+
       if (is_twice_nat_session (s))
 	{
 	  for (i = 0; i < vec_len (sm->twice_nat_addresses); i++)
@@ -302,6 +310,19 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 					       nat44_i2o_ed_is_idle_session_cb,
 					       &ctx))
     nat_log_notice ("in2out-ed key add failed");
+
+  snat_ipfix_logging_nat44_ses_create (s->in2out.addr.as_u32,
+				       s->out2in.addr.as_u32,
+				       s->in2out.protocol,
+				       s->in2out.port,
+				       s->out2in.port, s->in2out.fib_index);
+
+  nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
+			 &s->in2out.addr, s->in2out.port,
+			 &s->ext_host_nat_addr, s->ext_host_nat_port,
+			 &s->out2in.addr, s->out2in.port,
+			 &s->ext_host_addr, s->ext_host_port,
+			 s->in2out.protocol, is_twice_nat_session (s));
 
   return s;
 }

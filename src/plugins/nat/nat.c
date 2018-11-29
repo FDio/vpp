@@ -29,6 +29,7 @@
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_affinity.h>
+#include <nat/nat_syslog.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 
@@ -236,6 +237,13 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
       ed_kv.key[1] = ed_key.as_u64[1];
       if (clib_bihash_add_del_16_8 (&tsm->in2out_ed, &ed_kv, 0))
 	nat_log_warn ("in2out_ed key del failed");
+
+      nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
+			     &s->in2out.addr, s->in2out.port,
+			     &s->ext_host_nat_addr, s->ext_host_nat_port,
+			     &s->out2in.addr, s->out2in.port,
+			     &s->ext_host_addr, s->ext_host_port,
+			     s->in2out.protocol, is_twice_nat_session (s));
     }
   else
     {
@@ -245,6 +253,11 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
       kv.key = s->out2in.as_u64;
       if (clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 0))
 	nat_log_warn ("out2in key del failed");
+
+      nat_syslog_nat44_apmdel (s->user_index, s->in2out.fib_index,
+			       &s->in2out.addr, s->in2out.port,
+			       &s->out2in.addr, s->out2in.port,
+			       s->in2out.protocol);
     }
 
   if (snat_is_unk_proto_session (s))
@@ -382,6 +395,8 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
       clib_dlist_addtail (tsm->list_pool,
 			  s->per_user_list_head_index,
 			  per_user_translation_list_elt - tsm->list_pool);
+
+      s->user_index = u - tsm->users;
     }
 
   return s;

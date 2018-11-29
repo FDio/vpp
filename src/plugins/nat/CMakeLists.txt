@@ -47,6 +47,7 @@ add_vpp_plugin(nat
   nat66_out2in.c
   nat_affinity.c
   nat_format.c
+  nat_syslog.c
 
   API_FILES
   nat.api

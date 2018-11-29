@@ -28,6 +28,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat_syslog.h>
 
 #define foreach_nat_in2out_ed_error                       \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
@@ -196,6 +197,13 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 					   s->in2out.port,
 					   s->out2in.port,
 					   s->in2out.fib_index);
+
+      nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
+			     &s->in2out.addr, s->in2out.port,
+			     &s->ext_host_nat_addr, s->ext_host_nat_port,
+			     &s->out2in.addr, s->out2in.port,
+			     &s->ext_host_addr, s->ext_host_port,
+			     s->in2out.protocol, is_twice_nat_session (s));
 
       if (is_twice_nat_session (s))
 	{
@@ -409,6 +417,14 @@ slow_path_ed (snat_main_t * sm,
 				       s->in2out.protocol,
 				       s->in2out.port,
 				       s->out2in.port, s->in2out.fib_index);
+
+  nat_syslog_nat44_sadd (s->user_index, s->in2out.fib_index,
+			 &s->in2out.addr, s->in2out.port,
+			 &s->ext_host_nat_addr, s->ext_host_nat_port,
+			 &s->out2in.addr, s->out2in.port,
+			 &s->ext_host_addr, s->ext_host_port,
+			 s->in2out.protocol, 0);
+
   return next;
 }
 
