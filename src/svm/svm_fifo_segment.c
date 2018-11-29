@@ -337,7 +337,7 @@ svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
  * Allocate fifo in svm segment
  */
 svm_fifo_t *
-svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
+svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * fs,
 			     u32 data_size_in_bytes,
 			     svm_fifo_segment_freelist_t list_index)
 {
@@ -361,7 +361,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
   freelist_index = max_log2 (data_size_in_bytes)
     - max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE);
 
-  sh = s->ssvm.sh;
+  sh = fs->ssvm.sh;
   ssvm_lock_non_recursive (sh, 1);
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
 

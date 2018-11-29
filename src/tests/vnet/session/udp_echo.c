@@ -915,7 +915,6 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   udp_echo_main_t *utm = &udp_echo_main;
   svm_fifo_segment_create_args_t _a, *a = &_a;
   svm_fifo_segment_private_t *seg;
-  u8 *seg_name;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -932,9 +931,8 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   seg = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
   clib_warning ("Mapped new segment '%s' size %d", seg->ssvm.name,
 		seg->ssvm.ssvm_size);
-  seg_name = format (0, "%s", (char *) mp->segment_name);
-  hash_set_mem (utm->segments_table, seg_name, a->new_segment_indices[0]);
-  vec_free (seg_name);
+  hash_set (utm->segments_table, clib_net_to_host_u64 (mp->segment_handle),
+	    a->new_segment_indices[0]);
 }
 
 static void
@@ -942,22 +940,19 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
 {
   udp_echo_main_t *utm = &udp_echo_main;
   svm_fifo_segment_private_t *seg;
-  u64 *seg_indexp;
-  u8 *seg_name;
+  u64 *seg_indexp, segment_handle;
 
-
-  seg_name = format (0, "%s", mp->segment_name);
-  seg_indexp = hash_get_mem (utm->segments_table, seg_name);
+  segment_handle = clib_net_to_host_u64 (mp->segment_handle);
+  seg_indexp = hash_get (utm->segments_table, segment_handle);
   if (!seg_indexp)
     {
-      clib_warning ("segment not mapped: %s", seg_name);
+      clib_warning ("segment not mapped: %s", segment_handle);
       return;
     }
-  hash_unset_mem (utm->segments_table, seg_name);
+  hash_unset (utm->segments_table, segment_handle);
   seg = svm_fifo_segment_get_segment ((u32) seg_indexp[0]);
   svm_fifo_segment_delete (seg);
-  clib_warning ("Unmapped segment '%s'", seg_name);
-  vec_free (seg_name);
+  clib_warning ("Unmapped segment '%s'", segment_handle);
 }
 
 static void
@@ -1228,7 +1223,6 @@ main (int argc, char **argv)
   utm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
   utm->my_pid = getpid ();
   utm->configured_segment_size = 1 << 20;
-  utm->segments_table = hash_create_vec (0, sizeof (u8), sizeof (u64));
   utm->have_return = 1;
   utm->bytes_to_send = 1024;
   utm->fifo_size = 128 << 10;

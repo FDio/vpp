@@ -483,7 +483,7 @@ echo_clients_rx_callback (stream_session_t * s)
 }
 
 int
-echo_client_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
+echo_client_add_segment_callback (u32 client_index, u64 segment_handle)
 {
   /* New heaps may be added */
   return 0;
