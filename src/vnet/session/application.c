@@ -1007,11 +1007,12 @@ application_use_mq_for_ctrl (application_t * app)
  * Send an API message to the external app, to map new segment
  */
 int
-app_worker_add_segment_notify (u32 app_wrk_index, ssvm_private_t * fs)
+app_worker_add_segment_notify (u32 app_wrk_index, u64 segment_handle)
 {
   app_worker_t *app_wrk = app_worker_get (app_wrk_index);
   application_t *app = application_get (app_wrk->app_index);
-  return app->cb_fns.add_segment_callback (app_wrk->api_client_index, fs);
+  return app->cb_fns.add_segment_callback (app_wrk->api_client_index,
+					   segment_handle);
 }
 
 u32
@@ -1597,6 +1598,7 @@ application_local_session_connect (app_worker_t * client_wrk,
   segment_manager_t *sm;
   local_session_t *ls;
   svm_msg_q_t *sq, *cq;
+  u64 segment_handle;
 
   ls = application_local_session_alloc (server_wrk);
   server = application_get (server_wrk->app_index);
@@ -1660,8 +1662,9 @@ application_local_session_connect (app_worker_t * client_wrk,
   ls->listener_session_type = ll->session_type;
   ls->session_state = SESSION_STATE_READY;
 
+  segment_handle = segment_manager_segment_handle (sm, seg);
   if ((rv = server->cb_fns.add_segment_callback (server_wrk->api_client_index,
-						 &seg->ssvm)))
+						 segment_handle)))
     {
       clib_warning ("failed to notify server of new segment");
       segment_manager_segment_reader_unlock (sm);
@@ -1706,6 +1709,7 @@ application_local_session_connect_notify (local_session_t * ls)
   segment_manager_t *sm;
   application_t *client;
   int rv, is_fail = 0;
+  u64 segment_handle;
   uword client_key;
 
   client_wrk = app_worker_get (ls->client_wrk_index);
@@ -1714,8 +1718,9 @@ application_local_session_connect_notify (local_session_t * ls)
 
   sm = application_get_local_segment_manager_w_session (server_wrk, ls);
   seg = segment_manager_get_segment_w_lock (sm, ls->svm_segment_index);
+  segment_handle = segment_manager_segment_handle (sm, seg);
   if ((rv = client->cb_fns.add_segment_callback (client_wrk->api_client_index,
-						 &seg->ssvm)))
+						 segment_handle)))
     {
       clib_warning ("failed to notify client %u of new segment",
 		    ls->client_wrk_index);

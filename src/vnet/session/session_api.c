@@ -79,20 +79,24 @@ session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 }
 
 static int
-send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
+send_add_segment_callback (u32 api_client_index, u64 segment_handle)
 {
   int fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_map_another_segment_t *mp;
+  svm_fifo_segment_private_t *fs;
   vl_api_registration_t *reg;
+  ssvm_private_t *sp;
   u8 fd_flags = 0;
 
   reg = vl_mem_api_client_index_to_registration (api_client_index);
   if (!reg)
     {
-      clib_warning ("no registration: %u", api_client_index);
+      clib_warning ("no api registration for client: %u", api_client_index);
       return -1;
     }
 
+  fs = segment_manager_get_segment_w_handle (segment_handle);
+  sp = &fs->ssvm;
   if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
     {
       if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
@@ -111,6 +115,7 @@ send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
   mp->segment_size = sp->ssvm_size;
   mp->fd_flags = fd_flags;
+  mp->segment_handle = segment_handle;
   strncpy ((char *) mp->segment_name, (char *) sp->name,
 	   sizeof (mp->segment_name) - 1);
 
@@ -434,6 +439,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
   mp->context = app->app_index;
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+  mp->segment_handle = session_segment_handle (s);
 
   if (session_has_transport (s))
     {
@@ -589,6 +595,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   evt->event_type = SESSION_CTRL_EVT_CONNECTED;
   mp = (session_connected_msg_t *) evt->data;
   mp->context = api_context;
+  mp->segment_handle = session_segment_handle (s);
 
   if (is_fail)
     goto done;

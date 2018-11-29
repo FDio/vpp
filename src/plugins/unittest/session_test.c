@@ -63,7 +63,7 @@ dummy_session_connected_callback (u32 app_index, u32 api_context,
 static u32 dummy_segment_count;
 
 int
-dummy_add_segment_callback (u32 client_index, const ssvm_private_t * fs)
+dummy_add_segment_callback (u32 client_index, u64 segment_handle)
 {
   dummy_segment_count = 1;
   return 0;

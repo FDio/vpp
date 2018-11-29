@@ -39,6 +39,7 @@ format_function_t format_ooo_list;
 #define SVM_FIFO_TRACE 			(0)
 #define OOO_SEGMENT_INVALID_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_SESSION_INDEX 	((u32)~0)
+#define SVM_FIFO_INVALID_INDEX		((u32)~0)
 
 typedef struct
 {
@@ -61,6 +62,7 @@ typedef struct _svm_fifo
   u8 master_thread_index;
   u8 client_thread_index;
   u32 segment_manager;
+  u32 segment_index;
   u32 ct_session_index;		/**< Local session index for vpp */
     CLIB_CACHE_LINE_ALIGN_MARK (end_shared);
   u32 head;
