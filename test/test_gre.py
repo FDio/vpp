@@ -442,13 +442,8 @@ class TestGRE(VppTestCase):
         #    which is a drop.
         #
         tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "4.4.4.4")
-        self.pg0.add_stream(tx)
 
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.pg0.assert_nothing_captured(
-            remark="GRE packets forwarded without DIP resolved")
+        self.send_and_assert_no_replies(self.pg0, tx)
 
         #
         # Add a route that resolves the tunnel's destination
@@ -462,14 +457,8 @@ class TestGRE(VppTestCase):
         # Send a packet stream that is routed into the tunnel
         #  - packets are GRE encapped
         #
-        self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "4.4.4.4")
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_tunneled_4o4(self.pg0, rx, tx,
                                  self.pg0.local_ip4, "1.1.1.2")
 
@@ -477,18 +466,12 @@ class TestGRE(VppTestCase):
         # Send tunneled packets that match the created tunnel and
         # are decapped and forwarded
         #
-        self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_4o4(self.pg0,
                                            "1.1.1.2",
                                            self.pg0.local_ip4,
                                            self.pg0.local_ip4,
                                            self.pg0.remote_ip4)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_decapped_4o4(self.pg0, rx, tx)
 
         #
@@ -500,12 +483,8 @@ class TestGRE(VppTestCase):
                                            self.pg0.local_ip4,
                                            self.pg0.local_ip4,
                                            self.pg0.remote_ip4)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.pg0.assert_nothing_captured(
+        self.send_and_assert_no_replies(
+            self.pg0, tx,
             remark="GRE packets forwarded despite no SRC address match")
 
         #
@@ -519,19 +498,14 @@ class TestGRE(VppTestCase):
         # Send IPv6 tunnel encapslated packets
         #  - dropped since IPv6 is not enabled on the tunnel
         #
-        self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_6o4(self.pg0,
                                            "1.1.1.2",
                                            self.pg0.local_ip4,
                                            self.pg0.local_ip6,
                                            self.pg0.remote_ip6)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.pg0.assert_nothing_captured(remark="IPv6 GRE packets forwarded "
-                                         "despite IPv6 not enabled on tunnel")
+        self.send_and_assert_no_replies(self.pg0, tx,
+                                        "IPv6 GRE packets forwarded "
+                                        "despite IPv6 not enabled on tunnel")
 
         #
         # Enable IPv6 on the tunnel
@@ -542,18 +516,12 @@ class TestGRE(VppTestCase):
         # Send IPv6 tunnel encapslated packets
         #  - forwarded since IPv6 is enabled on the tunnel
         #
-        self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_6o4(self.pg0,
                                            "1.1.1.2",
                                            self.pg0.local_ip4,
                                            self.pg0.local_ip6,
                                            self.pg0.remote_ip6)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_decapped_6o4(self.pg0, rx, tx)
 
         #
@@ -618,13 +586,9 @@ class TestGRE(VppTestCase):
         #    which is a drop.
         #
         tx = self.create_stream_ip6(self.pg2, "5005::1", "4004::1")
-        self.pg2.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.pg2.assert_nothing_captured(
-            remark="GRE packets forwarded without DIP resolved")
+        self.send_and_assert_no_replies(
+            self.pg2, tx,
+            "GRE packets forwarded without DIP resolved")
 
         #
         # Add a route that resolves the tunnel's destination
@@ -641,14 +605,8 @@ class TestGRE(VppTestCase):
         # Send a packet stream that is routed into the tunnel
         #  - packets are GRE encapped
         #
-        self.vapi.cli("clear trace")
         tx = self.create_stream_ip6(self.pg2, "5005::1", "4004::1")
-        self.pg2.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg2.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg2, tx, self.pg2)
         self.verify_tunneled_6o6(self.pg2, rx, tx,
                                  self.pg2.local_ip6, "1002::1")
 
@@ -660,12 +618,7 @@ class TestGRE(VppTestCase):
                                            self.pg2.local_ip6,
                                            "2001::1",
                                            self.pg1.remote_ip6)
-        self.vapi.cli("clear trace")
-        self.pg2.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = self.pg1.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg2, tx, self.pg1)
 
         #
         # RX'd packet is UDP over IPv6, test the GRE header is gone.
@@ -739,12 +692,7 @@ class TestGRE(VppTestCase):
         #
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "5.5.5.5", "9.9.9.9")
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg1.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg1)
         self.verify_tunneled_4o4(self.pg1, rx, tx,
                                  self.pg1.local_ip4, "2.2.2.2")
 
@@ -759,12 +707,7 @@ class TestGRE(VppTestCase):
                                            self.pg1.local_ip4,
                                            self.pg0.local_ip4,
                                            self.pg0.remote_ip4)
-        self.pg1.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg1, tx, self.pg0)
         self.verify_decapped_4o4(self.pg0, rx, tx)
 
         #
@@ -781,13 +724,9 @@ class TestGRE(VppTestCase):
                                            self.pg1.local_ip4,
                                            self.pg0.local_ip4,
                                            self.pg0.remote_ip4)
-        self.pg2.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        self.pg0.assert_nothing_captured(
-            remark="GRE decap packets in wrong VRF")
+        rx = self.send_and_assert_no_replies(
+            self.pg2, tx,
+            "GRE decap packets in wrong VRF")
 
         self.pg2.unconfig_ip4()
 
@@ -840,30 +779,18 @@ class TestGRE(VppTestCase):
         # Send in tunnel encapped L2. expect out tunnel encapped L2
         # in both directions
         #
-        self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_l2o4(self.pg0,
                                             "2.2.2.2",
                                             self.pg0.local_ip4)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_tunneled_l2o4(self.pg0, rx, tx,
                                   self.pg0.local_ip4,
                                   "2.2.2.3")
 
-        self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_l2o4(self.pg0,
                                             "2.2.2.3",
                                             self.pg0.local_ip4)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_tunneled_l2o4(self.pg0, rx, tx,
                                   self.pg0.local_ip4,
                                   "2.2.2.2")
@@ -910,33 +837,21 @@ class TestGRE(VppTestCase):
         # Send traffic in both directiond - expect the VLAN tags to
         # be swapped.
         #
-        self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_vlano4(self.pg0,
                                               "2.2.2.2",
                                               self.pg0.local_ip4,
                                               11)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_tunneled_vlano4(self.pg0, rx, tx,
                                     self.pg0.local_ip4,
                                     "2.2.2.3",
                                     12)
 
-        self.vapi.cli("clear trace")
         tx = self.create_tunnel_stream_vlano4(self.pg0,
                                               "2.2.2.3",
                                               self.pg0.local_ip4,
                                               12)
-        self.pg0.add_stream(tx)
-
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg0.get_capture(len(tx))
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_tunneled_vlano4(self.pg0, rx, tx,
                                     self.pg0.local_ip4,
                                     "2.2.2.2",
