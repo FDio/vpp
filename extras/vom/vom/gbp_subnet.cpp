@@ -31,7 +31,8 @@ const gbp_subnet::type_t gbp_subnet::type_t::STITCHED_INTERNAL(
 const gbp_subnet::type_t gbp_subnet::type_t::STITCHED_EXTERNAL(
   1,
   "stitched-external");
-const gbp_subnet::type_t gbp_subnet::type_t::TRANSPORT(1, "transport");
+const gbp_subnet::type_t gbp_subnet::type_t::TRANSPORT(2, "transport");
+const gbp_subnet::type_t gbp_subnet::type_t::L3_OUT(3, "l3-out");
 
 singular_db<gbp_subnet::key_t, gbp_subnet> gbp_subnet::m_db;
 
