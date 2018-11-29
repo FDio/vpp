@@ -441,6 +441,14 @@ session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
   return (proto << 1 | is_ip4);
 }
 
+always_inline u64
+session_segment_handle (stream_session_t * s)
+{
+  svm_fifo_t *f = s->server_rx_fifo;
+  return segment_manager_make_segment_handle (f->segment_manager,
+					      f->segment_index);
+}
+
 always_inline u8
 session_has_transport (stream_session_t * s)
 {

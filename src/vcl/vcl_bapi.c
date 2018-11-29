@@ -244,7 +244,7 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
  * XXX - have sessionID by handle hash currently
  */
 
-  VDBG (1, "Unmapped segment '%s'", mp->segment_name);
+  VDBG (1, "Unmapped segment '%s'", mp->segment_handle);
 }
 
 static void

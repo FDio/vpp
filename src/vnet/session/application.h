@@ -31,11 +31,10 @@
 typedef struct _stream_session_cb_vft
 {
   /** Notify server of new segment */
-  int (*add_segment_callback) (u32 api_client_index,
-			       const ssvm_private_t * ssvm_seg);
+  int (*add_segment_callback) (u32 api_client_index, u64 segment_handle);
+
   /** Notify server of new segment */
-  int (*del_segment_callback) (u32 api_client_index,
-			       const ssvm_private_t * ssvm_seg);
+  int (*del_segment_callback) (u32 api_client_index, u64 segment_handle);
 
   /** Notify server of newly accepted session */
   int (*session_accept_callback) (stream_session_t * new_session);
@@ -232,7 +231,7 @@ segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  stream_session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
 int app_worker_alloc_connects_segment_manager (app_worker_t * app);
-int app_worker_add_segment_notify (u32 app_or_wrk, ssvm_private_t * fs);
+int app_worker_add_segment_notify (u32 app_or_wrk, u64 segment_handle);
 u32 app_worker_n_listeners (app_worker_t * app);
 stream_session_t *app_worker_first_listener (app_worker_t * app,
 					     u8 fib_proto,
