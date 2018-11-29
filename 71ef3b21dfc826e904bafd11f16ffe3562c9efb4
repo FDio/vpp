@@ -22,6 +22,30 @@
       "revId": "71ef3b21dfc826e904bafd11f16ffe3562c9efb4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f02a0dd_837fded4",
+        "filename": "test/run_tests.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-11-29T15:21:14Z",
+      "side": 1,
+      "message": "This is not meant to catch \"the\" exception, but rather all exceptions and not use the exception in any way which is why I went with Klement\u0027s suggestion.\n\nraise Exception: would not catch SystemExit, KeyboardInterrupt and GeneratorExit, but I think those don\u0027t need to be caught here, so we could do this. Klement, what do you think?",
+      "parentUuid": "396d78fe_96c1e3e7",
+      "range": {
+        "startLine": 426,
+        "startChar": 4,
+        "endLine": 426,
+        "endChar": 11
+      },
+      "revId": "71ef3b21dfc826e904bafd11f16ffe3562c9efb4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
