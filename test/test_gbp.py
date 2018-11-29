@@ -2,7 +2,7 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, skip_aarch64
 from vpp_object import VppObject
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
@@ -575,6 +575,7 @@ class VppGbpAcl(VppObject):
         return False
 
 
+@unittest.skipIf(skip_aarch64(), "test doesn't work on aarch64")
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 

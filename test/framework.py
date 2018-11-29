@@ -12,6 +12,7 @@ import faulthandler
 import random
 import copy
 import psutil
+import platform
 from collections import deque
 from threading import Thread, Event
 from inspect import getdoc, isclass
@@ -131,6 +132,12 @@ def pump_output(testclass):
                             "VPP STDERR: %s" % line.rstrip("\n"))
         # ignoring the dummy pipe here intentionally - the flag will take care
         # of properly terminating the loop
+
+
+def skip_aarch64():
+    machine = platform.machine()
+    return (machine == 'aarch64') & \
+           (os.getenv('SKIP_AARCH64_CI', 'n').lower() in ('yes', 'y', '1'))
 
 
 def running_extended_tests():

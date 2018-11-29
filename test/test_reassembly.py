@@ -4,7 +4,7 @@ import six
 import unittest
 from random import shuffle
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, skip_aarch64
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
@@ -177,6 +177,7 @@ class TestIPv4Reassembly(VppTestCase):
         self.verify_capture(packets)
         self.src_if.assert_nothing_captured()
 
+    @unittest.skipIf(skip_aarch64(), "test doesn't work on aarch64")
     def test_random(self):
         """ random order reassembly """
 
