@@ -85,8 +85,8 @@ def msg_name_crc_list(s, suffix):
 
 
 def duplicate_wrapper_head(name):
-    s = "#ifndef defined_%s\n" % name
-    s += "#define defined_%s\n" % name
+    s = "#ifndef _vl_api_defined_%s\n" % name
+    s += "#define _vl_api_defined_%s\n" % name
     return s
 
 
