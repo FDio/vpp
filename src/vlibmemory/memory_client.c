@@ -270,21 +270,16 @@ vl_api_memclnt_delete_reply_t_handler (vl_api_memclnt_delete_reply_t * mp)
   am->vl_input_queue = 0;
 }
 
-int
-vl_client_disconnect (void)
+void
+vl_client_send_disconnect (void)
 {
   vl_api_memclnt_delete_t *mp;
-  vl_api_memclnt_delete_reply_t *rp;
-  svm_queue_t *vl_input_queue;
   vl_shmem_hdr_t *shmem_hdr;
-  time_t begin;
   api_main_t *am = &api_main;
 
   ASSERT (am->vlib_rp);
   shmem_hdr = am->shmem_hdr;
   ASSERT (shmem_hdr && shmem_hdr->vl_input_queue);
-
-  vl_input_queue = am->vl_input_queue;
 
   mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_delete_t));
   clib_memset (mp, 0, sizeof (*mp));
@@ -293,6 +288,18 @@ vl_client_disconnect (void)
   mp->handle = (uword) am->my_registration;
 
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+}
+
+int
+vl_client_disconnect (void)
+{
+  vl_api_memclnt_delete_reply_t *rp;
+  svm_queue_t *vl_input_queue;
+  api_main_t *am = &api_main;
+  time_t begin;
+
+  vl_input_queue = am->vl_input_queue;
+  vl_client_send_disconnect ();
 
   /*
    * Have to be careful here, in case the client is disconnecting
