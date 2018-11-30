@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "11dfc46b_c7aeea51",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T17:30:34Z",
+      "side": 1,
+      "message": "At the moment, it is functional by printing stats ;)",
+      "parentUuid": "ecd833af_68a70a77",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9acaa711_665ea73d",
         "filename": "extras/vom/vom/stat_class.cpp",
         "patchSetId": 7
@@ -143,6 +161,24 @@
     },
     {
       "key": {
+        "uuid": "07c55200_5bbfec70",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T17:30:34Z",
+      "side": 1,
+      "message": "at the moment it is interface index :)",
+      "parentUuid": "04af01d7_11bacc5e",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8f86a203_cd46df7a",
         "filename": "extras/vom/vom/stat_class.cpp",
         "patchSetId": 7
@@ -154,6 +190,24 @@
       "writtenOn": "2018-11-30T13:22:31Z",
       "side": 1,
       "message": "you probably don\u0027t want a variable called handle_t since that is also the name of a type.",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d4e4423c_947ab0a8",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T17:30:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8f86a203_cd46df7a",
       "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -277,6 +331,24 @@
       "side": 1,
       "message": "all the methods for this file/class are inlined. why?",
       "parentUuid": "47693673_f8d9bde1",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "de47c1f9_dbcab28d",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T17:30:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d67bee5b_e31cc5c9",
       "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
