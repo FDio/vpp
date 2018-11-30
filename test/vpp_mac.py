@@ -21,11 +21,11 @@ class VppMacAddress():
 
     @property
     def address(self):
-        return self.address
+        return self._address
 
     @address.setter
     def address(self, value):
-        self.address = value
+        self._address = value
 
     def __str__(self):
         return self.address
