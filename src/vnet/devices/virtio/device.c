@@ -204,15 +204,12 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (n_left != frame->n_vectors)
     {
+      u64 x = 1;
       CLIB_MEMORY_STORE_BARRIER ();
       vring->avail->idx = avail;
       vring->desc_next = next;
       vring->desc_in_use = used;
-      if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
-	{
-	  u64 x = 1;
-	  CLIB_UNUSED (int r) = write (vring->kick_fd, &x, sizeof (x));
-	}
+      CLIB_UNUSED (int r) = write (vring->kick_fd, &x, sizeof (x));
     }
 
 

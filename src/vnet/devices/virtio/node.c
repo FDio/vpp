@@ -86,6 +86,7 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
   u16 used, next, avail, n_slots;
   u16 sz = vring->size;
   u16 mask = sz - 1;
+  u64 b;
 
   used = vring->desc_in_use;
 
@@ -116,11 +117,8 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
   vring->desc_next = next;
   vring->desc_in_use = used;
 
-  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
-    {
-      u64 b = 1;
-      CLIB_UNUSED (int r) = write (vring->kick_fd, &b, sizeof (b));
-    }
+  b = 1;
+  CLIB_UNUSED (int r) = write (vring->kick_fd, &b, sizeof (b));
 }
 
 static_always_inline uword
