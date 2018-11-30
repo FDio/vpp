@@ -52,6 +52,24 @@
       "revId": "03cd1f43943e4e754079975a85198f884b4f7891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d1091075_d2bafa72",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-11-30T13:03:19Z",
+      "side": 1,
+      "message": "e.errno \u003d\u003d errno.ENOENT is also common and I think it makes sense to use it so that we differentiate between the different OSError cases.",
+      "parentUuid": "86c9ea53_b941f8d6",
+      "revId": "03cd1f43943e4e754079975a85198f884b4f7891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
