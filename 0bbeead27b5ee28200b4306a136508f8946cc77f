@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "ecd833af_68a70a77",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T13:22:31Z",
+      "side": 1,
+      "message": "you can deprecate the old stats in another patch, but at least make this one functionally useful.",
+      "parentUuid": "994dd1a8_c26cdd6d",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9acaa711_665ea73d",
         "filename": "extras/vom/vom/stat_class.cpp",
         "patchSetId": 7
@@ -101,6 +119,41 @@
       "side": 1,
       "message": "It should be named as index which represents offset in the stat directory.",
       "parentUuid": "bcb52811_a09429c5",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "04af01d7_11bacc5e",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T13:22:31Z",
+      "side": 1,
+      "message": "but an index of what? interfaces, errors, routes, nodes, etc..",
+      "parentUuid": "8e563d51_e193cd6f",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8f86a203_cd46df7a",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T13:22:31Z",
+      "side": 1,
+      "message": "you probably don\u0027t want a variable called handle_t since that is also the name of a type.",
       "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -206,6 +259,24 @@
       "side": 1,
       "message": "It is just a constructor to setup the pointer to stats!",
       "parentUuid": "c7a2a872_866f4d25",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d67bee5b_e31cc5c9",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T13:22:31Z",
+      "side": 1,
+      "message": "all the methods for this file/class are inlined. why?",
+      "parentUuid": "47693673_f8d9bde1",
       "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
