@@ -62,7 +62,8 @@ static void
 }
 
 static int
-ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
+vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
+		    int fd)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
   int rv;
@@ -79,8 +80,29 @@ ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
       return rv;
     }
+  vcl_segment_table_add (segment_handle, a->new_segment_indices[0]);
   vec_reset_length (a->new_segment_indices);
   return 0;
+}
+
+static void
+vcl_segment_detach (u64 segment_handle)
+{
+  svm_fifo_segment_private_t *segment;
+  u32 segment_index;
+
+  segment_index = vcl_segment_table_lookup (segment_handle);
+  if (segment_index == (u32) ~ 0)
+    return;
+  segment = svm_fifo_segment_get_segment (segment_index);
+  svm_fifo_segment_delete (segment);
+  vcl_segment_table_del (segment_handle);
+}
+
+static u64
+vcl_vpp_worker_segment_handle (u32 wrk_index)
+{
+  return (VCL_INVALID_SEGMENT_HANDLE - wrk_index - 1);
 }
 
 static void
@@ -88,6 +110,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
   vcl_worker_t *wrk = vcl_worker_get (0);
+  u64 segment_handle;
   u32 n_fds = 0;
   int *fds = 0;
 
@@ -100,19 +123,27 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
+  segment_handle = clib_net_to_host_u64 (mp->segment_handle);
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    {
+      clib_warning ("invalid segment handle");
+      return;
+    }
+
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
       vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-	if (ssvm_segment_attach ("vpp-mq-seg", SSVM_SEGMENT_MEMFD,
-				 fds[n_fds++]))
+	if (vcl_segment_attach (vcl_vpp_worker_segment_handle (0),
+				"vpp-mq-seg", SSVM_SEGMENT_MEMFD,
+				fds[n_fds++]))
 	  return;
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	if (ssvm_segment_attach ((char *) mp->segment_name,
-				 SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
+				SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  return;
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
@@ -126,8 +157,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
   else
     {
-      if (ssvm_segment_attach ((char *) mp->segment_name, SSVM_SEGMENT_SHM,
-			       -1))
+      if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
+			      SSVM_SEGMENT_SHM, -1))
 	return;
     }
 
@@ -140,6 +171,7 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 					   mp)
 {
   int n_fds = 0, *fds = 0;
+  u64 segment_handle;
   vcl_worker_t *wrk;
   u32 wrk_index;
 
@@ -159,19 +191,27 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
 
+  segment_handle = clib_net_to_host_u64 (mp->segment_handle);
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    {
+      clib_warning ("invalid segment handle");
+      return;
+    }
+
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
       vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-	if (ssvm_segment_attach ("vpp-worker-seg", SSVM_SEGMENT_MEMFD,
-				 fds[n_fds++]))
+	if (vcl_segment_attach
+	    (vcl_vpp_worker_segment_handle (wrk->wrk_index), "vpp-worker-seg",
+	     SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
-	if (ssvm_segment_attach ((char *) mp->segment_name,
-				 SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
+				SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
@@ -185,8 +225,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
     }
   else
     {
-      if (ssvm_segment_attach ((char *) mp->segment_name, SSVM_SEGMENT_SHM,
-			       -1))
+      if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
+			      SSVM_SEGMENT_SHM, -1))
 	goto failed;
     }
   vcm->app_state = STATE_APP_READY;
@@ -212,9 +252,8 @@ static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_SHM;
+  u64 segment_handle;
   int fd = -1;
-
-  vcm->mounting_segment = 1;
 
   if (mp->fd_flags)
     {
@@ -222,8 +261,15 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
       seg_type = SSVM_SEGMENT_MEMFD;
     }
 
-  if (PREDICT_FALSE (ssvm_segment_attach ((char *) mp->segment_name,
-					  seg_type, fd)))
+  segment_handle = clib_net_to_host_u64 (mp->segment_handle);
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    {
+      clib_warning ("invalid segment handle");
+      return;
+    }
+
+  if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
+			  seg_type, fd))
     {
       clib_warning ("VCL<%d>: svm_fifo_segment_attach ('%s') failed",
 		    getpid (), mp->segment_name);
@@ -232,20 +278,14 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 
   VDBG (1, "VCL<%d>: mapped new segment '%s' size %d", getpid (),
 	mp->segment_name, mp->segment_size);
-  vcm->mounting_segment = 0;
 }
 
 static void
 vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
 {
-
-/*
- * XXX Need segment_name to session_id hash,
- * XXX - have sessionID by handle hash currently
- */
-
-  VDBG (1, "Unmapped segment '%s'",
-	clib_net_to_host_u64 (mp->segment_handle));
+  u64 segment_handle = clib_net_to_host_u64 (mp->segment_handle);
+  vcl_segment_detach (segment_handle);
+  VDBG (1, "Unmapped segment: %d", segment_handle);
 }
 
 static void

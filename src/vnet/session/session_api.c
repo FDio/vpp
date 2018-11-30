@@ -825,6 +825,7 @@ done:
 	rmp->app_event_queue_address = pointer_to_uword (a->app_evt_q);
 	rmp->n_fds = n_fds;
 	rmp->fd_flags = fd_flags;
+	rmp->segment_handle = clib_host_to_net_u64 (a->segment_handle);
       }
   }));
   /* *INDENT-ON* */

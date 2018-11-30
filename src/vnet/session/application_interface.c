@@ -558,6 +558,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 
   ASSERT (vec_len (fs->ssvm.name) <= 128);
   a->segment = &fs->ssvm;
+  a->segment_handle = segment_manager_segment_handle (sm, fs);
 
   segment_manager_segment_reader_unlock (sm);
   vec_free (app_name);

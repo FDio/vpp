@@ -309,9 +309,6 @@ typedef struct vppcom_main_t_
   /** VCL configuration */
   vppcom_cfg_t cfg;
 
-  /** Flag indicating that a new segment is being mounted */
-  volatile u32 mounting_segment;
-
   volatile u32 forking;
 
   /** Workers */
@@ -320,7 +317,15 @@ typedef struct vppcom_main_t_
   /** Lock to protect worker registrations */
   clib_spinlock_t workers_lock;
 
+  /** Pool of shared sessions */
   vcl_shared_session_t *shared_sessions;
+
+  /** Lock to protect segment hash table */
+  clib_rwlock_t segment_table_lock;
+
+  /** Mapped segments table */
+  uword *segment_table;
+
 #ifdef VCL_ELOG
   /* VPP Event-logger */
   elog_main_t elog_main;
@@ -335,6 +340,8 @@ typedef struct vppcom_main_t_
 extern vppcom_main_t *vcm;
 
 #define VCL_INVALID_SESSION_INDEX ((u32)~0)
+#define VCL_INVALID_SEGMENT_INDEX ((u32)~0)
+#define VCL_INVALID_SEGMENT_HANDLE ((u64)~0)
 
 static inline vcl_session_t *
 vcl_session_alloc (vcl_worker_t * wrk)
@@ -501,6 +508,10 @@ int vcl_worker_set_bapi (void);
 void vcl_worker_share_sessions (u32 parent_wrk_index);
 int vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s);
 int vcl_session_get_refcnt (vcl_session_t * s);
+
+void vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index);
+u32 vcl_segment_table_lookup (u64 segment_handle);
+void vcl_segment_table_del (u64 segment_handle);
 
 static inline vcl_worker_t *
 vcl_worker_get (u32 wrk_index)

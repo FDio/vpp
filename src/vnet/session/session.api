@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.4.0";
+option version = "1.5.0";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -45,6 +45,7 @@ option version = "1.4.0";
     @param segment_name_length - length of segment name 
     @param segment_name - name of segment client needs to attach to
     @param app_index - index of the newly created app
+    @param segment_handle - handle for segment
 */
 define application_attach_reply {
     u32 context;
@@ -56,6 +57,7 @@ define application_attach_reply {
     u8 segment_name_length;
     u8 segment_name[128];
     u32 app_index;
+    u64 segment_handle;
 };
 
 /** \brief Application add TLS certificate
