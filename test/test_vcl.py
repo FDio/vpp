@@ -61,7 +61,7 @@ class VCLTestCase(VppTestCase):
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
                                      self.logger, self.env)
         worker_server.start()
-        self.sleep(0.2)
+        self.sleep(0.3)
         worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
                                      self.logger, self.env)
         worker_client.start()
@@ -171,7 +171,7 @@ class VCLTestCase(VppTestCase):
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
                                      self.logger, self.env)
         worker_server.start()
-        self.sleep(0.2)
+        self.sleep(0.3)
 
         self.env.update({'VCL_APP_NAMESPACE_ID': "2",
                          'VCL_APP_NAMESPACE_SECRET': "5678"})
@@ -212,11 +212,11 @@ class VCLTestCase(VppTestCase):
         self.assert_equal(worker_client.result, 0, "Binary test return code")
 
 
-class VCLCutThruTestCase(VCLTestCase):
-    """ VCL Cut Thru Tests """
+class LDPCutThruTestCase(VCLTestCase):
+    """ LDP Cut Thru Tests """
 
     def setUp(self):
-        super(VCLCutThruTestCase, self).setUp()
+        super(LDPCutThruTestCase, self).setUp()
 
         self.cut_thru_setup()
         self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
@@ -238,7 +238,7 @@ class VCLCutThruTestCase(VCLTestCase):
     def tearDown(self):
         self.cut_thru_tear_down()
 
-        super(VCLCutThruTestCase, self).tearDown()
+        super(LDPCutThruTestCase, self).tearDown()
 
     def test_ldp_cut_thru_echo(self):
         """ run LDP cut thru echo test """
@@ -275,6 +275,33 @@ class VCLCutThruTestCase(VCLTestCase):
         self.cut_thru_test("sock_test_server", self.server_args,
                            "sock_test_client",
                            self.client_bi_dir_nsock_test_args)
+
+
+class VCLCutThruTestCase(VCLTestCase):
+    """ VCL Cut Thru Tests """
+
+    def setUp(self):
+        super(VCLCutThruTestCase, self).setUp()
+
+        self.cut_thru_setup()
+        self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
+                                      self.server_addr, self.server_port]
+
+        self.client_uni_dir_nsock_timeout = 20
+        self.client_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
+                                               "-I", "2",
+                                               self.server_addr,
+                                               self.server_port]
+        self.client_bi_dir_nsock_timeout = 20
+        self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
+                                              "-I", "2",
+                                              self.server_addr,
+                                              self.server_port]
+
+    def tearDown(self):
+        self.cut_thru_tear_down()
+
+        super(VCLCutThruTestCase, self).tearDown()
 
     def test_vcl_cut_thru_echo(self):
         """ run VCL cut thru echo test """
@@ -507,11 +534,11 @@ class VCLThruHostStackIperfTestCase(VCLTestCase):
                                   "iperf3", self.client_iperf3_args)
 
 
-class VCLIpv6CutThruTestCase(VCLTestCase):
-    """ VCL IPv6 Cut Thru Tests """
+class LDPIpv6CutThruTestCase(VCLTestCase):
+    """ LDP IPv6 Cut Thru Tests """
 
     def setUp(self):
-        super(VCLIpv6CutThruTestCase, self).setUp()
+        super(LDPIpv6CutThruTestCase, self).setUp()
 
         self.cut_thru_setup()
         self.client_iperf3_timeout = 20
@@ -537,7 +564,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
     def tearDown(self):
         self.cut_thru_tear_down()
 
-        super(VCLIpv6CutThruTestCase, self).tearDown()
+        super(LDPIpv6CutThruTestCase, self).tearDown()
 
     def test_ldp_ipv6_cut_thru_echo(self):
         """ run LDP IPv6 cut thru echo test """
@@ -577,6 +604,35 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
         self.cut_thru_test("sock_test_server", self.server_ipv6_args,
                            "sock_test_client",
                            self.client_ipv6_bi_dir_nsock_test_args)
+
+
+class VCLIpv6CutThruTestCase(VCLTestCase):
+    """ VCL IPv6 Cut Thru Tests """
+
+    def setUp(self):
+        super(VCLIpv6CutThruTestCase, self).setUp()
+
+        self.cut_thru_setup()
+        self.client_uni_dir_nsock_timeout = 20
+        self.client_bi_dir_nsock_timeout = 20
+        self.client_ipv6_echo_test_args = ["-6", "-E", self.echo_phrase, "-X",
+                                           self.server_ipv6_addr,
+                                           self.server_port]
+        self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
+                                                    "-6",
+                                                    "-I", "2",
+                                                    self.server_ipv6_addr,
+                                                    self.server_port]
+        self.client_ipv6_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
+                                                   "-6",
+                                                   "-I", "2",
+                                                   self.server_ipv6_addr,
+                                                   self.server_port]
+
+    def tearDown(self):
+        self.cut_thru_tear_down()
+
+        super(VCLIpv6CutThruTestCase, self).tearDown()
 
     def test_vcl_ipv6_cut_thru_echo(self):
         """ run VCL IPv6 cut thru echo test """
