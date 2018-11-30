@@ -3556,10 +3556,7 @@ ldp_destructor (void)
 {
   swrap_destructor ();
   if (ldp->init)
-    {
-      vppcom_app_destroy ();
-      ldp->init = 0;
-    }
+    ldp->init = 0;
 
   /* Don't use clib_warning() here because that calls writev()
    * which will call ldp_init().

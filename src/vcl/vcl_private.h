@@ -504,7 +504,7 @@ int vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq);
 int vcl_mq_epoll_del_evfd (vcl_worker_t * wrk, u32 mqc_index);
 
 vcl_worker_t *vcl_worker_alloc_and_init (void);
-void vcl_worker_cleanup (void);
+void vcl_worker_cleanup (u8 notify_vpp);
 int vcl_worker_register_with_vpp (void);
 int vcl_worker_set_bapi (void);
 void vcl_worker_share_sessions (u32 parent_wrk_index);

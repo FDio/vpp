@@ -700,12 +700,12 @@ vcl_app_fork_child_handler (void)
   u8 *child_name;
   int rv, parent_wrk;
 
-  VDBG (0, "initializing forked child");
+  parent_wrk = vcl_get_worker_index ();
+  VDBG (0, "initializing forked child with parent wrk %u", parent_wrk);
 
   /*
    * Allocate worker
    */
-  parent_wrk = vcl_get_worker_index ();
   vcl_set_worker_index (~0);
   if (!vcl_worker_alloc_and_init ())
     VERR ("couldn't allocate new worker");
@@ -744,6 +744,27 @@ vcl_app_fork_parent_handler (void)
     ;
 }
 
+/**
+ * Handle app exit
+ *
+ * Notify vpp of the disconnect and mark the worker as free. If we're the
+ * last worker, do a full cleanup otherwise, since we're probably a forked
+ * child, avoid syscalls as much as possible. We might've lost privileges.
+ */
+void
+vppcom_app_exit (void)
+{
+  if (!pool_elts (vcm->workers))
+    return;
+
+  vcl_worker_cleanup (1 /* notify vpp */ );
+  vcl_elog_stop (vcm);
+  if (vec_len (vcm->workers) == 1)
+    vl_client_disconnect_from_vlib ();
+  else
+    vl_client_send_disconnect ();
+}
+
 /*
  * VPPCOM Public API functions
  */
@@ -774,6 +795,7 @@ vppcom_app_create (char *app_name)
   clib_rwlock_init (&vcm->segment_table_lock);
   pthread_atfork (NULL, vcl_app_fork_parent_handler,
 		  vcl_app_fork_child_handler);
+  atexit (vppcom_app_exit);
 
   /* Allocate default worker */
   vcl_worker_alloc_and_init ();
@@ -816,9 +838,12 @@ vppcom_app_destroy (void)
   int rv;
   f64 orig_app_timeout;
 
+  if (!pool_elts (vcm->workers))
+    return;
+
   vcl_evt (VCL_EVT_DETACH, vcm);
 
-  if (vec_len (vcm->workers) == 1)
+  if (pool_elts (vcm->workers) == 1)
     {
       vppcom_app_send_detach ();
       orig_app_timeout = vcm->cfg.app_timeout;
@@ -828,15 +853,16 @@ vppcom_app_destroy (void)
       if (PREDICT_FALSE (rv))
 	VDBG (0, "application detach timed out! returning %d (%s)", rv,
 	      vppcom_retval_str (rv));
+      vec_free (vcm->app_name);
+      vcl_worker_cleanup (0 /* notify vpp */ );
     }
   else
     {
-      vcl_worker_cleanup ();
+      vcl_worker_cleanup (1 /* notify vpp */ );
     }
 
   vcl_elog_stop (vcm);
   vl_client_disconnect_from_vlib ();
-  vec_free (vcm->app_name);
 }
 
 int
