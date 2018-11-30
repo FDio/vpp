@@ -8,7 +8,7 @@ from util import mactobinary
 
 class VppMacAddress():
     def __init__(self, addr):
-        self.address = addr
+        self._address = addr
 
     def encode(self):
         return {
@@ -21,11 +21,7 @@ class VppMacAddress():
 
     @property
     def address(self):
-        return self.address
-
-    @address.setter
-    def address(self, value):
-        self.address = value
+        return self._address
 
     def __str__(self):
         return self.address
