@@ -190,7 +190,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (rv))
 		{
-		  clib_warning ("anti-replay SPI %u seq %u", sa0->spi, seq);
 		  if (is_ip6)
 		    vlib_node_increment_counter (vm,
 						 esp6_decrypt_node.index,
@@ -330,7 +329,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 		    next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
 		  else
 		    {
-		      clib_warning ("next header: 0x%x", f0->next_header);
 		      if (is_ip6)
 			vlib_node_increment_counter (vm,
 						     esp6_decrypt_node.index,
