@@ -145,11 +145,8 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (rv))
 		{
-		  clib_warning ("anti-replay SPI %u seq %u", sa0->spi, seq);
 		  vlib_node_increment_counter (vm, ah_decrypt_node.index,
 					       AH_DECRYPT_ERROR_REPLAY, 1);
-		  to_next[0] = i_bi0;
-		  to_next += 1;
 		  goto trace;
 		}
 	    }
@@ -188,8 +185,6 @@ ah_decrypt_node_fn (vlib_main_t * vm,
 		  vlib_node_increment_counter (vm, ah_decrypt_node.index,
 					       AH_DECRYPT_ERROR_INTEG_ERROR,
 					       1);
-		  to_next[0] = i_bi0;
-		  to_next += 1;
 		  goto trace;
 		}
 
