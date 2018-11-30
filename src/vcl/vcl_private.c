@@ -442,6 +442,36 @@ vcl_session_get_refcnt (vcl_session_t * s)
   return 0;
 }
 
+void
+vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index)
+{
+  clib_rwlock_writer_lock (&vcm->segment_table_lock);
+  hash_set (vcm->segment_table, segment_handle, svm_segment_index);
+  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
+}
+
+u32
+vcl_segment_table_lookup (u64 segment_handle)
+{
+  uword *seg_indexp;
+
+  clib_rwlock_reader_lock (&vcm->segment_table_lock);
+  seg_indexp = hash_get (vcm->segment_table, segment_handle);
+  clib_rwlock_reader_unlock (&vcm->segment_table_lock);
+
+  if (!seg_indexp)
+    return VCL_INVALID_SEGMENT_INDEX;
+  return ((u32) * seg_indexp);
+}
+
+void
+vcl_segment_table_del (u64 segment_handle)
+{
+  clib_rwlock_writer_lock (&vcm->segment_table_lock);
+  hash_unset (vcm->segment_table, segment_handle);
+  clib_rwlock_writer_unlock (&vcm->segment_table_lock);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

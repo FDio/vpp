@@ -1591,8 +1591,8 @@ application_local_session_connect (app_worker_t * client_wrk,
 				   local_session_t * ll, u32 opaque)
 {
   u32 seg_size, evt_q_sz, evt_q_elts, margin = 16 << 10;
+  u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index;
   segment_manager_properties_t *props, *cprops;
-  u32 round_rx_fifo_sz, round_tx_fifo_sz;
   int rv, has_transport, seg_index;
   svm_fifo_segment_private_t *seg;
   application_t *server, *client;
@@ -1654,8 +1654,13 @@ application_local_session_connect (app_worker_t * client_wrk,
       segment_manager_segment_reader_unlock (sm);
       goto failed;
     }
+  sm_index = segment_manager_index (sm);
   ls->server_rx_fifo->ct_session_index = ls->session_index;
   ls->server_tx_fifo->ct_session_index = ls->session_index;
+  ls->server_rx_fifo->segment_manager = sm_index;
+  ls->server_tx_fifo->segment_manager = sm_index;
+  ls->server_rx_fifo->segment_index = seg_index;
+  ls->server_tx_fifo->segment_index = seg_index;
   ls->svm_segment_index = seg_index;
   ls->listener_index = ll->session_index;
   ls->client_wrk_index = client_wrk->wrk_index;

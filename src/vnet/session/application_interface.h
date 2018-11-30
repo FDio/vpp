@@ -28,6 +28,7 @@ typedef struct _vnet_app_attach_args_t
 #undef _
   ssvm_private_t * segment;
   svm_msg_q_t *app_evt_q;
+  u64 segment_handle;
 } vnet_app_attach_args_t;
 
 typedef struct _vnet_app_detach_args_t

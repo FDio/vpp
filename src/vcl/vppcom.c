@@ -22,46 +22,26 @@
 
 __thread uword __vcl_worker_index = ~0;
 
-static u8 not_ready;
 
-void
-sigsegv_signal (int signum)
+static int
+vcl_wait_for_segment (u64 segment_handle)
 {
-  not_ready = 1;
-}
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  u32 wait_for_seconds = 10, segment_index;
+  f64 timeout;
 
-static void
-vcl_wait_for_memory (void *mem)
-{
-  u8 __clib_unused test;
-  if (vcm->mounting_segment)
-    {
-      while (vcm->mounting_segment)
-	;
-      return;
-    }
-  if (1 || vcm->debug)
-    {
-      usleep (1e5);
-      return;
-    }
-  if (signal (SIGSEGV, sigsegv_signal))
-    {
-      perror ("signal()");
-      return;
-    }
-  not_ready = 0;
+  if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
+    return 1;
 
-again:
-  test = *(u8 *) mem;
-  if (not_ready)
+  timeout = clib_time_now (&wrk->clib_time) + wait_for_seconds;
+  while (clib_time_now (&wrk->clib_time) < timeout)
     {
-      not_ready = 0;
-      usleep (1);
-      goto again;
+      segment_index = vcl_segment_table_lookup (segment_handle);
+      if (segment_index != VCL_INVALID_SEGMENT_INDEX)
+	return 0;
+      usleep (10);
     }
-
-  signal (SIGSEGV, SIG_DFL);
+  return 1;
 }
 
 const char *
@@ -281,7 +261,12 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 					     svm_msg_q_t *);
       session->our_evt_q = uword_to_pointer (mp->server_event_queue_address,
 					     svm_msg_q_t *);
-      vcl_wait_for_memory (session->vpp_evt_q);
+      if (vcl_wait_for_segment (mp->segment_handle))
+	{
+	  clib_warning ("segment for session %u couldn't be mounted!",
+			session->session_index);
+	  return VCL_INVALID_SESSION_INDEX;
+	}
       rx_fifo->master_session_index = session->session_index;
       tx_fifo->master_session_index = session->session_index;
       rx_fifo->master_thread_index = vcl_get_worker_index ();
@@ -360,7 +345,13 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
-  vcl_wait_for_memory (rx_fifo);
+  if (vcl_wait_for_segment (mp->segment_handle))
+    {
+      clib_warning ("segment for session %u couldn't be mounted!",
+		    session->session_index);
+      return VCL_INVALID_SESSION_INDEX;
+    }
+
   rx_fifo->client_session_index = session_index;
   tx_fifo->client_session_index = session_index;
   rx_fifo->client_thread_index = vcl_get_worker_index ();
@@ -436,8 +427,8 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   session = vcl_session_get (wrk, sid);
   if (mp->retval)
     {
-      VDBG (0, "VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: bind failed: %U",
-	    getpid (), mp->handle, sid, format_api_error, ntohl (mp->retval));
+      VERR ("vpp handle 0x%llx, sid %u: bind failed: %U", mp->handle, sid,
+	    format_api_error, mp->retval);
       if (session)
 	{
 	  session->session_state = STATE_FAILED;
@@ -780,6 +771,7 @@ vppcom_app_create (char *app_name)
 			      20 /* timeout in secs */ );
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
+  clib_rwlock_init (&vcm->segment_table_lock);
   pthread_atfork (NULL, vcl_app_fork_parent_handler,
 		  vcl_app_fork_child_handler);
 
