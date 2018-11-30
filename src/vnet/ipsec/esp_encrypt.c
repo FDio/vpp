@@ -137,14 +137,8 @@ esp_encrypt_inline (vlib_main_t * vm,
 
   if (PREDICT_FALSE (vec_len (empty_buffers) < n_left_from))
     {
-      if (is_ip6)
-	vlib_node_increment_counter (vm, esp6_encrypt_node.index,
-				     ESP_ENCRYPT_ERROR_NO_BUFFER,
-				     n_left_from);
-      else
-	vlib_node_increment_counter (vm, esp4_encrypt_node.index,
-				     ESP_ENCRYPT_ERROR_NO_BUFFER,
-				     n_left_from);
+      vlib_node_increment_counter (vm, node->node_index,
+				   ESP_ENCRYPT_ERROR_NO_BUFFER, n_left_from);
       clib_warning ("not enough empty buffers. discarding frame");
       goto free_buffers_and_exit;
     }
@@ -189,12 +183,8 @@ esp_encrypt_inline (vlib_main_t * vm,
 	    {
 	      clib_warning ("sequence number counter has cycled SPI %u",
 			    sa0->spi);
-	      if (is_ip6)
-		vlib_node_increment_counter (vm, esp6_encrypt_node.index,
-					     ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
-	      else
-		vlib_node_increment_counter (vm, esp4_encrypt_node.index,
-					     ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
+	      vlib_node_increment_counter (vm, node->node_index,
+					   ESP_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      //TODO: rekey SA
 	      o_bi0 = i_bi0;
 	      to_next[0] = o_bi0;
@@ -428,14 +418,9 @@ esp_encrypt_inline (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  if (is_ip6)
-    vlib_node_increment_counter (vm, esp6_encrypt_node.index,
-				 ESP_ENCRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
-  else
-    vlib_node_increment_counter (vm, esp4_encrypt_node.index,
-				 ESP_ENCRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
+  vlib_node_increment_counter (vm, node->node_index,
+			       ESP_ENCRYPT_ERROR_RX_PKTS,
+			       from_frame->n_vectors);
 
 free_buffers_and_exit:
   if (recycle)
