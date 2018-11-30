@@ -744,6 +744,28 @@ vcl_app_fork_parent_handler (void)
     ;
 }
 
+/**
+ * Handle app exit
+ *
+ * Notify vpp of the disconnect and mark the worker as free. If we're the
+ * last worker, do a full cleanup otherwise, since we're probably a forked
+ * child, avoid syscalls as much as possible. We might've lost privileges.
+ */
+static void
+vppcom_app_exit (void)
+{
+  if (vec_len (vcm->workers) == 1)
+    {
+      vcl_worker_cleanup ();
+      vcl_elog_stop (vcm);
+      vl_client_disconnect_from_vlib ();
+      return;
+    }
+
+  vcl_worker_cleanup ();
+  vl_client_send_disconnect();
+}
+
 /*
  * VPPCOM Public API functions
  */
@@ -774,6 +796,7 @@ vppcom_app_create (char *app_name)
   clib_rwlock_init (&vcm->segment_table_lock);
   pthread_atfork (NULL, vcl_app_fork_parent_handler,
 		  vcl_app_fork_child_handler);
+  atexit (vppcom_app_exit);
 
   /* Allocate default worker */
   vcl_worker_alloc_and_init ();
@@ -828,6 +851,7 @@ vppcom_app_destroy (void)
       if (PREDICT_FALSE (rv))
 	VDBG (0, "application detach timed out! returning %d (%s)", rv,
 	      vppcom_retval_str (rv));
+      vec_free (vcm->app_name);
     }
   else
     {
@@ -836,7 +860,6 @@ vppcom_app_destroy (void)
 
   vcl_elog_stop (vcm);
   vl_client_disconnect_from_vlib ();
-  vec_free (vcm->app_name);
 }
 
 int

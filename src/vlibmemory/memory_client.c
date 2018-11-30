@@ -270,6 +270,26 @@ vl_api_memclnt_delete_reply_t_handler (vl_api_memclnt_delete_reply_t * mp)
   am->vl_input_queue = 0;
 }
 
+void
+vl_client_send_disconnect (void)
+{
+  vl_api_memclnt_delete_t *mp;
+  vl_shmem_hdr_t *shmem_hdr;
+  api_main_t *am = &api_main;
+
+  ASSERT (am->vlib_rp);
+  shmem_hdr = am->shmem_hdr;
+  ASSERT (shmem_hdr && shmem_hdr->vl_input_queue);
+
+  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_delete_t));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_DELETE);
+  mp->index = am->my_client_index;
+  mp->handle = (uword) am->my_registration;
+
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+}
+
 int
 vl_client_disconnect (void)
 {
