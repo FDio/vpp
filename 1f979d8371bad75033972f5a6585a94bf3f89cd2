@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f955385d_2df56a2d",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 806,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-11-30T17:02:06Z",
+      "side": 1,
+      "message": "I understand what you\u0027re trying to do here but we shouldn\u0027t default in vpp to using the test certificates. This should be provided through a separate binary api call.",
+      "range": {
+        "startLine": 792,
+        "startChar": 0,
+        "endLine": 806,
+        "endChar": 39
+      },
+      "revId": "1f979d8371bad75033972f5a6585a94bf3f89cd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5158f5a4_c37c2620",
+        "filename": "src/vnet/tls/tls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-11-30T17:02:06Z",
+      "side": 1,
+      "message": "I guess you\u0027ve changed the code because the parent_app_api_context should not be overwritten before it\u0027s used, but that\u0027s not clear from this comment.",
+      "range": {
+        "startLine": 274,
+        "startChar": 2,
+        "endLine": 274,
+        "endChar": 25
+      },
+      "revId": "1f979d8371bad75033972f5a6585a94bf3f89cd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
