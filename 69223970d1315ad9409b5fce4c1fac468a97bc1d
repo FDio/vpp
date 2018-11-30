@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b41c1416_ab8f3458",
+        "filename": "test/sanity_run_vpp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-30T04:40:36Z",
+      "side": 1,
+      "message": "verify that the base VppTestCase Fixture runs",
+      "range": {
+        "startLine": 11,
+        "startChar": 27,
+        "endLine": 11,
+        "endChar": 62
+      },
+      "revId": "69223970d1315ad9409b5fce4c1fac468a97bc1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0dd70b07_9a361fcd",
+        "filename": "test/sanity_run_vpp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-30T04:40:36Z",
+      "side": 1,
+      "message": "Can we move this class into framework.py and import it in place of VppTestCase?",
+      "range": {
+        "startLine": 10,
+        "startChar": 0,
+        "endLine": 12,
+        "endChar": 8
+      },
+      "revId": "69223970d1315ad9409b5fce4c1fac468a97bc1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "74ada83f_a9188905",
+        "filename": "test/sanity_run_vpp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-30T04:40:36Z",
+      "side": 1,
+      "message": "def main():",
+      "range": {
+        "startLine": 14,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 26
+      },
+      "revId": "69223970d1315ad9409b5fce4c1fac468a97bc1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c6b5afb8_003d7061",
+        "filename": "test/sanity_run_vpp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-30T04:40:36Z",
+      "side": 1,
+      "message": "return rc\n\nif __name__ \u003d\u003d \u0027__main__\u0027:\n    exut(main)",
+      "range": {
+        "startLine": 37,
+        "startChar": 2,
+        "endLine": 37,
+        "endChar": 12
+      },
+      "revId": "69223970d1315ad9409b5fce4c1fac468a97bc1d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
