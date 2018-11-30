@@ -127,12 +127,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    {
 	      clib_warning ("sequence number counter has cycled SPI %u",
 			    sa0->spi);
-	      if (is_ip6)
-		vlib_node_increment_counter (vm, ah6_encrypt_node.index,
-					     AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
-	      else
-		vlib_node_increment_counter (vm, ah4_encrypt_node.index,
-					     AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
+	      vlib_node_increment_counter (vm, node->node_index,
+					   AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      //TODO need to confirm if below is needed
 	      to_next[0] = i_bi0;
 	      to_next += 1;
@@ -314,14 +310,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  if (is_ip6)
-    vlib_node_increment_counter (vm, ah6_encrypt_node.index,
-				 AH_ENCRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
-  else
-    vlib_node_increment_counter (vm, ah4_encrypt_node.index,
-				 AH_ENCRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
+  vlib_node_increment_counter (vm, node->node_index,
+			       AH_ENCRYPT_ERROR_RX_PKTS,
+			       from_frame->n_vectors);
 
   return from_frame->n_vectors;
 }

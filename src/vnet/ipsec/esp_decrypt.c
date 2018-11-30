@@ -131,14 +131,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 
   if (PREDICT_FALSE (vec_len (empty_buffers) < n_left_from))
     {
-      if (is_ip6)
-	vlib_node_increment_counter (vm, esp6_decrypt_node.index,
-				     ESP_DECRYPT_ERROR_NO_BUFFER,
-				     n_left_from);
-      else
-	vlib_node_increment_counter (vm, esp4_decrypt_node.index,
-				     ESP_DECRYPT_ERROR_NO_BUFFER,
-				     n_left_from);
+      vlib_node_increment_counter (vm, node->node_index,
+				   ESP_DECRYPT_ERROR_NO_BUFFER, n_left_from);
       goto free_buffers_and_exit;
     }
 
@@ -191,14 +185,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (rv))
 		{
 		  clib_warning ("anti-replay SPI %u seq %u", sa0->spi, seq);
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 esp6_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_REPLAY, 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 esp4_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_REPLAY, 1);
+		  vlib_node_increment_counter (vm, node->node_index,
+					       ESP_DECRYPT_ERROR_REPLAY, 1);
 		  o_bi0 = i_bi0;
 		  to_next[0] = o_bi0;
 		  to_next += 1;
@@ -225,16 +213,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (memcmp (icv, sig, icv_size)))
 		{
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 esp6_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_INTEG_ERROR,
-						 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 esp4_decrypt_node.index,
-						 ESP_DECRYPT_ERROR_INTEG_ERROR,
-						 1);
+		  vlib_node_increment_counter (vm, node->node_index,
+					       ESP_DECRYPT_ERROR_INTEG_ERROR,
+					       1);
 		  o_bi0 = i_bi0;
 		  to_next[0] = o_bi0;
 		  to_next += 1;
@@ -331,16 +312,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 		  else
 		    {
 		      clib_warning ("next header: 0x%x", f0->next_header);
-		      if (is_ip6)
-			vlib_node_increment_counter (vm,
-						     esp6_decrypt_node.index,
-						     ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-						     1);
-		      else
-			vlib_node_increment_counter (vm,
-						     esp4_decrypt_node.index,
-						     ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
-						     1);
+		      vlib_node_increment_counter (vm, node->node_index,
+						   ESP_DECRYPT_ERROR_DECRYPTION_FAILED,
+						   1);
 		      o_b0 = 0;
 		      goto trace;
 		    }
@@ -412,14 +386,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  if (is_ip6)
-    vlib_node_increment_counter (vm, esp6_decrypt_node.index,
-				 ESP_DECRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
-  else
-    vlib_node_increment_counter (vm, esp4_decrypt_node.index,
-				 ESP_DECRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
+  vlib_node_increment_counter (vm, node->node_index,
+			       ESP_DECRYPT_ERROR_RX_PKTS,
+			       from_frame->n_vectors);
 
 
 free_buffers_and_exit:
