@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "89df9287_fd04d467",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-11-30T08:20:21Z",
+      "side": 1,
+      "message": "If this is meant to handle only the case where iperf is not installed, maybe we could use FileNotFoundError here? That should be the subclass of OSError that gets raised in that case.",
+      "revId": "03cd1f43943e4e754079975a85198f884b4f7891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
