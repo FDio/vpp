@@ -612,8 +612,8 @@ class AllResults(dict):
                             print('  Testcase name: {}'.format(
                                 colorize(new_testcase_name, RED)))
                             old_testcase_name = new_testcase_name
-                        print('    FAILURE: {}'.format(
-                            colorize(test_name, RED)))
+                        print('    FAILURE: {} [{}]'.format(
+                            colorize(test_name, RED), failed_test_id))
                     for failed_test_id in errored_testcase_ids:
                         new_testcase_name, test_name = \
                             result.get_testcase_names(failed_test_id)
@@ -621,8 +621,8 @@ class AllResults(dict):
                             print('  Testcase name: {}'.format(
                                 colorize(new_testcase_name, RED)))
                             old_testcase_name = new_testcase_name
-                        print('      ERROR: {}'.format(
-                            colorize(test_name, RED)))
+                        print('      ERROR: {} [{}]'.format(
+                            colorize(test_name, RED), failed_test_id))
         if len(self.testsuites_no_tests_run) > 0:
             print('TESTCASES WHERE NO TESTS WERE SUCCESSFULLY EXECUTED:')
             tc_classes = set()
