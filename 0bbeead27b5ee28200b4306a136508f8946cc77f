@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "994dd1a8_c26cdd6d",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T11:35:22Z",
+      "side": 1,
+      "message": "It is just printing the interface stats here! I\u0027ll remove the old stats support in a separate patch then It will return the stats from new stats api.",
+      "parentUuid": "eefdee4b_7000894b",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9acaa711_665ea73d",
         "filename": "extras/vom/vom/stat_class.cpp",
         "patchSetId": 7
@@ -30,6 +48,24 @@
       "writtenOn": "2018-11-30T10:36:20Z",
       "side": 1,
       "message": "return the stats?",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2a2212aa_89c5801c",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T11:35:22Z",
+      "side": 1,
+      "message": "at the moment print until we have old stat support. I\u0027ll remove the old stats in separate patch and then it will get the stats for all registered objects.",
+      "parentUuid": "9acaa711_665ea73d",
       "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "8e563d51_e193cd6f",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T11:35:22Z",
+      "side": 1,
+      "message": "It should be named as index which represents offset in the stat directory.",
+      "parentUuid": "bcb52811_a09429c5",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d339d91f_0f78e5fd",
         "filename": "extras/vom/vom/stat_class.hpp",
         "patchSetId": 7
@@ -64,6 +118,24 @@
       "writtenOn": "2018-11-30T10:36:20Z",
       "side": 1,
       "message": "stat_class is an odd name. it is a class, but what does it do. maybe stats_reader or stats_listener",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b344b3f7_9918fec1",
+        "filename": "extras/vom/vom/stat_class.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T11:35:22Z",
+      "side": 1,
+      "message": "Yes, I agree with you! I will change it.",
+      "parentUuid": "d339d91f_0f78e5fd",
       "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "9b32dc5c_c0b005c6",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T11:35:22Z",
+      "side": 1,
+      "message": "will remove them!",
+      "parentUuid": "62351ec9_588bf184",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c7a2a872_866f4d25",
         "filename": "extras/vom/vom/stat_client.hpp",
         "patchSetId": 7
@@ -98,6 +188,24 @@
       "writtenOn": "2018-11-30T10:36:20Z",
       "side": 1,
       "message": "why are all the methods here inlined?",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "47693673_f8d9bde1",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-11-30T11:35:22Z",
+      "side": 1,
+      "message": "It is just a constructor to setup the pointer to stats!",
+      "parentUuid": "c7a2a872_866f4d25",
       "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
