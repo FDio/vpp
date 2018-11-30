@@ -826,8 +826,6 @@ crypto_create_crypto_op_pool (vlib_main_t * vm, u8 numa)
   u32 pool_priv_size = sizeof (struct rte_crypto_op_pool_private);
   struct rte_crypto_op_pool_private *priv;
   struct rte_mempool *mp;
-  clib_error_t *error = NULL;
-  u32 map_index;
 
   data = vec_elt_at_index (dcm->data, numa);
 
@@ -837,21 +835,21 @@ crypto_create_crypto_op_pool (vlib_main_t * vm, u8 numa)
 
   pool_name = format (0, "crypto_pool_numa%u%c", numa, 0);
 
-  error = dpdk_pool_create (vm, pool_name, crypto_op_len (), conf->num_mbufs,
-			    pool_priv_size, 512, numa, &mp, &map_index);
+  mp =
+    rte_mempool_create ((char *) pool_name,
+			conf->num_mbufs,
+			crypto_op_len (), 512, pool_priv_size, NULL, NULL,
+			crypto_op_init, NULL, numa, 0);
 
   vec_free (pool_name);
 
-  if (error)
-    return error;
+  if (!mp)
+    return clib_error_return (0, "failed to create crypto op mempool");
 
   /* Initialize mempool private data */
   priv = rte_mempool_get_priv (mp);
   priv->priv_size = pool_priv_size;
   priv->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
-
-  /* call the object initializers */
-  rte_mempool_obj_iter (mp, crypto_op_init, 0);
 
   data->crypto_op = mp;
 
@@ -865,9 +863,7 @@ crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
   crypto_data_t *data;
   u8 *pool_name;
   struct rte_mempool *mp;
-  clib_error_t *error = NULL;
   u32 elt_size;
-  u32 map_index;
 
   data = vec_elt_at_index (dcm->data, numa);
 
@@ -879,13 +875,14 @@ crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
 
   elt_size = rte_cryptodev_sym_get_header_session_size ();
 
-  error = dpdk_pool_create (vm, pool_name, elt_size, DPDK_CRYPTO_NB_SESS_OBJS,
-			    0, 512, numa, &mp, &map_index);
+  mp =
+    rte_mempool_create ((char *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
+			elt_size, 512, 0, NULL, NULL, NULL, NULL, numa, 0);
 
   vec_free (pool_name);
 
-  if (error)
-    return error;
+  if (!mp)
+    return clib_error_return (0, "failed to create crypto session mempool");
 
   data->session_h = mp;
 
@@ -899,10 +896,8 @@ crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
   crypto_data_t *data;
   u8 *pool_name;
   struct rte_mempool *mp;
-  clib_error_t *error = NULL;
   u32 elt_size;
   u8 numa = dev->numa;
-  u32 map_index;
 
   data = vec_elt_at_index (dcm->data, numa);
 
@@ -917,14 +912,14 @@ crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
   pool_name = format (0, "session_drv%u_pool_numa%u%c", dev->drv_id, numa, 0);
 
   elt_size = rte_cryptodev_sym_get_private_session_size (dev->id);
-
-  error = dpdk_pool_create (vm, pool_name, elt_size, DPDK_CRYPTO_NB_SESS_OBJS,
-			    0, 512, numa, &mp, &map_index);
+  mp =
+    rte_mempool_create ((char *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
+			elt_size, 512, 0, NULL, NULL, NULL, NULL, numa, 0);
 
   vec_free (pool_name);
 
-  if (error)
-    return error;
+  if (!mp)
+    return clib_error_return (0, "failed to create session drv mempool");
 
   data->session_drv[dev->drv_id] = mp;
   clib_spinlock_init (&data->lockp);
