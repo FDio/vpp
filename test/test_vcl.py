@@ -347,13 +347,13 @@ class VCLThruHostStackNSessionBidirTestCase(VCLTestCase):
 
         self.thru_host_stack_setup()
         if self.vppDebug:
-            self.client_bi_dir_nsock_timeout = 120
+            self.client_bi_dir_nsock_timeout = 20
             self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
                                                   "-I", "2",
                                                   self.loop0.local_ip4,
                                                   self.server_port]
         else:
-            self.client_bi_dir_nsock_timeout = 90
+            self.client_bi_dir_nsock_timeout = 20
             self.client_bi_dir_nsock_test_args = ["-N", "1000", "-B", "-X",
                                                   "-I", "2",
                                                   self.loop0.local_ip4,
