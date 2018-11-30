@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8cb03d45_4fe0d916",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T10:36:20Z",
+      "side": 1,
+      "message": "when is a C++ file not C++?",
+      "revId": "0b3f1fe919f14cc08c9aca74a4d8327144815348",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
