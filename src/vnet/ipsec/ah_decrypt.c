@@ -157,14 +157,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (rv))
 		{
 		  clib_warning ("anti-replay SPI %u seq %u", sa0->spi, seq);
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 ah6_decrypt_node.index,
-						 AH_DECRYPT_ERROR_REPLAY, 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 ah4_decrypt_node.index,
-						 AH_DECRYPT_ERROR_REPLAY, 1);
+		  vlib_node_increment_counter (vm, node->node_index,
+					       AH_DECRYPT_ERROR_REPLAY, 1);
 		  to_next[0] = i_bi0;
 		  to_next += 1;
 		  goto trace;
@@ -213,16 +207,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (memcmp (digest, sig, icv_size)))
 		{
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 ah6_decrypt_node.index,
-						 AH_DECRYPT_ERROR_INTEG_ERROR,
-						 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 ah4_decrypt_node.index,
-						 AH_DECRYPT_ERROR_INTEG_ERROR,
-						 1);
+		  vlib_node_increment_counter (vm, node->node_index,
+					       AH_DECRYPT_ERROR_INTEG_ERROR,
+					       1);
 		  to_next[0] = i_bi0;
 		  to_next += 1;
 		  goto trace;
@@ -253,16 +240,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 	      else
 		{
 		  clib_warning ("next header: 0x%x", ah0->nexthdr);
-		  if (is_ip6)
-		    vlib_node_increment_counter (vm,
-						 ah6_decrypt_node.index,
-						 AH_DECRYPT_ERROR_DECRYPTION_FAILED,
-						 1);
-		  else
-		    vlib_node_increment_counter (vm,
-						 ah4_decrypt_node.index,
-						 AH_DECRYPT_ERROR_DECRYPTION_FAILED,
-						 1);
+		  vlib_node_increment_counter (vm, node->node_index,
+					       AH_DECRYPT_ERROR_DECRYPTION_FAILED,
+					       1);
 		  goto trace;
 		}
 	    }
@@ -324,14 +304,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  if (is_ip6)
-    vlib_node_increment_counter (vm, ah6_decrypt_node.index,
-				 AH_DECRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
-  else
-    vlib_node_increment_counter (vm, ah4_decrypt_node.index,
-				 AH_DECRYPT_ERROR_RX_PKTS,
-				 from_frame->n_vectors);
+  vlib_node_increment_counter (vm, node->node_index, AH_DECRYPT_ERROR_RX_PKTS,
+			       from_frame->n_vectors);
 
   return from_frame->n_vectors;
 }
