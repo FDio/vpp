@@ -16,6 +16,24 @@
       "revId": "03cd1f43943e4e754079975a85198f884b4f7891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "089c5812_bf0f6472",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-11-30T09:58:45Z",
+      "side": 1,
+      "message": "OSError has subclasses only in Python3.\n\nHowever, we can check the return code (e.errno) for errno.ENOENT instead and that should work for both python2 and 3.",
+      "parentUuid": "89df9287_fd04d467",
+      "revId": "03cd1f43943e4e754079975a85198f884b4f7891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
