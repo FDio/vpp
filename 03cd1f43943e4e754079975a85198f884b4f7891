@@ -34,6 +34,24 @@
       "revId": "03cd1f43943e4e754079975a85198f884b4f7891",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86c9ea53_b941f8d6",
+        "filename": "test/test_vcl.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-11-30T12:34:37Z",
+      "side": 1,
+      "message": "Yes. \nI don\u0027t want py2 and py3 to have different behaviors.  OSError is where the code is common.  If you re interested in some of the differences, https://pypi.org/project/pep3134/.",
+      "parentUuid": "089c5812_bf0f6472",
+      "revId": "03cd1f43943e4e754079975a85198f884b4f7891",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
