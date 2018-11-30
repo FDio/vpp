@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eefdee4b_7000894b",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T10:36:20Z",
+      "side": 1,
+      "message": "return the stats",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9acaa711_665ea73d",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T10:36:20Z",
+      "side": 1,
+      "message": "return the stats?",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bcb52811_a09429c5",
+        "filename": "extras/vom/vom/stat_class.cpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T10:36:20Z",
+      "side": 1,
+      "message": "this is a handle for what object type?",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d339d91f_0f78e5fd",
+        "filename": "extras/vom/vom/stat_class.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T10:36:20Z",
+      "side": 1,
+      "message": "stat_class is an odd name. it is a class, but what does it do. maybe stats_reader or stats_listener",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "62351ec9_588bf184",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T10:36:20Z",
+      "side": 1,
+      "message": "isn\u0027t __cplusplus always defined in a C++ file?",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c7a2a872_866f4d25",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-11-30T10:36:20Z",
+      "side": 1,
+      "message": "why are all the methods here inlined?",
+      "revId": "0bbeead27b5ee28200b4306a136508f8946cc77f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
