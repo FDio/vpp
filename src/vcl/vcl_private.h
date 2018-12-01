@@ -557,6 +557,11 @@ void vppcom_send_bind_sock (vcl_session_t * session);
 void vppcom_send_unbind_sock (u64 vpp_handle);
 void vppcom_api_hookup (void);
 void vppcom_send_accept_session_reply (u64 vpp_handle, u32 context, int rv);
+void vppcom_send_application_tls_cert_add (vcl_session_t * session,
+					   char *cert, u32 cert_len);
+void
+vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
+				     u32 key_len);
 void vcl_send_app_worker_add_del (u8 is_add);
 void vcl_send_child_worker_del (vcl_worker_t * wrk);
 

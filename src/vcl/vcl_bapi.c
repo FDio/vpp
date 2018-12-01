@@ -367,6 +367,31 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_sock_reply_t * mp)
 		  ntohl (mp->retval));
 }
 
+static void
+  vl_api_application_tls_cert_add_reply_t_handler
+  (vl_api_application_tls_cert_add_reply_t * mp)
+{
+  if (mp->retval)
+    {
+      clib_warning ("VCL<%d>: add cert failed: %U", getpid (),
+		    format_api_error, ntohl (mp->retval));
+      return;
+    }
+}
+
+static void
+  vl_api_application_tls_key_add_reply_t_handler
+  (vl_api_application_tls_key_add_reply_t * mp)
+{
+  if (mp->retval)
+    {
+      clib_warning ("VCL<%d>: add key failed: %U", getpid (),
+		    format_api_error, ntohl (mp->retval));
+      return;
+    }
+
+}
+
 #define foreach_sock_msg                                        	\
 _(SESSION_ENABLE_DISABLE_REPLY, session_enable_disable_reply)   	\
 _(BIND_SOCK_REPLY, bind_sock_reply)                             	\
@@ -375,6 +400,8 @@ _(CONNECT_SESSION_REPLY, connect_session_reply)                        	\
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)			\
 _(APPLICATION_ATTACH_REPLY, application_attach_reply)           	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)           	\
+_(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
+_(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
 _(UNMAP_SEGMENT, unmap_segment)						\
 _(APP_CUT_THROUGH_REGISTRATION_ADD, app_cut_through_registration_add)	\
@@ -594,6 +621,42 @@ vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
   rmp->context = context;
   rmp->handle = handle;
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & rmp);
+}
+
+void
+vppcom_send_application_tls_cert_add (vcl_session_t * session, char *cert,
+				      u32 cert_len)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vl_api_application_tls_cert_add_t *cert_mp;
+
+  cert_mp = vl_msg_api_alloc (sizeof (*cert_mp) + cert_len);
+  clib_memset (cert_mp, 0, sizeof (*cert_mp));
+  cert_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_CERT_ADD);
+  cert_mp->client_index = wrk->my_client_index;
+  cert_mp->context = session->session_index;
+  cert_mp->cert_len = clib_host_to_net_u16 (cert_len);
+  clib_memcpy_fast (cert_mp->cert, cert, cert_len);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cert_mp);
+
+}
+
+void
+vppcom_send_application_tls_key_add (vcl_session_t * session, char *key,
+				     u32 key_len)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vl_api_application_tls_key_add_t *key_mp;
+
+  key_mp = vl_msg_api_alloc (sizeof (*key_mp) + key_len);
+  clib_memset (key_mp, 0, sizeof (*key_mp));
+  key_mp->_vl_msg_id = ntohs (VL_API_APPLICATION_TLS_KEY_ADD);
+  key_mp->client_index = wrk->my_client_index;
+  key_mp->context = session->session_index;
+  key_mp->key_len = clib_host_to_net_u16 (key_len);
+  clib_memcpy_fast (key_mp->key, key, key_len);
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & key_mp);
+
 }
 
 u32

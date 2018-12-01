@@ -320,7 +320,8 @@ print_usage_and_exit (void)
 	   "  -h               Print this message and exit.\n"
 	   "  -6               Use IPv6\n"
 	   "  -w <num>         Number of workers\n"
-	   "  -u               Use UDP transport layer\n");
+	   "  -D               Use UDP transport layer\n"
+	   "  -S               Use TLS transport layer\n");
   exit (1);
 }
 
@@ -370,7 +371,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
   vsm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6Dsw:")) != -1)
+  while ((c = getopt (argc, argv, "6DSsw:")) != -1)
     switch (c)
       {
       case '6':
@@ -379,6 +380,10 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 
       case 'D':
 	vsm->cfg.proto = VPPCOM_PROTO_UDP;
+	break;
+
+      case 'S':
+	vsm->cfg.proto = VPPCOM_PROTO_TLS;
 	break;
 
       case 'w':
@@ -498,6 +503,15 @@ vts_worker_init (vcl_test_server_worker_t * wrk)
 					  0 /* is_nonblocking */ );
   if (wrk->listen_fd < 0)
     vtfail ("vppcom_session_create()", wrk->listen_fd);
+
+
+  if (vsm->cfg.proto == VPPCOM_PROTO_TLS)
+    {
+      vppcom_session_tls_add_cert (wrk->listen_fd, vcl_test_crt_rsa,
+				   vcl_test_crt_rsa_len);
+      vppcom_session_tls_add_key (wrk->listen_fd, vcl_test_key_rsa,
+				  vcl_test_key_rsa_len);
+    }
 
   rv = vppcom_session_bind (wrk->listen_fd, &vsm->cfg.endpt);
   if (rv < 0)

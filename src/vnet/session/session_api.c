@@ -60,6 +60,8 @@ _(APPLICATION_TLS_CERT_ADD, application_tls_cert_add)			\
 _(APPLICATION_TLS_KEY_ADD, application_tls_key_add)			\
 _(APP_WORKER_ADD_DEL, app_worker_add_del)				\
 
+tls_engine_type_t default_tls_engine = TLS_ENGINE_OPENSSL;
+
 static int
 session_send_fds (vl_api_registration_t * reg, int fds[], int n_fds)
 {
@@ -744,6 +746,7 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   vl_api_registration_t *reg;
   clib_error_t *error = 0;
   u8 fd_flags = 0;
+  application_t *app;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -788,6 +791,10 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
       vec_free (a->namespace_id);
       goto done;
     }
+
+  app = application_get (a->app_index);
+  app->tls_engine = default_tls_engine;
+
   vec_free (a->namespace_id);
 
   /* Send event queues segment */
