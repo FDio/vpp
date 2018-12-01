@@ -22,6 +22,30 @@
       "revId": "6ccc6e91648312cc210e9b6a18e469e64f4a523f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4921e25a_dd8bd48d",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_format.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-01T19:13:40Z",
+      "side": 1,
+      "message": "I just wanted to provide the ability to subclass this and provide an alternate exception.",
+      "parentUuid": "e41670e6_14314247",
+      "range": {
+        "startLine": 25,
+        "startChar": 4,
+        "endLine": 25,
+        "endChar": 35
+      },
+      "revId": "6ccc6e91648312cc210e9b6a18e469e64f4a523f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
