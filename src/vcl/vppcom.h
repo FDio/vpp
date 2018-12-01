@@ -48,6 +48,10 @@ typedef enum
 {
   VPPCOM_PROTO_TCP = 0,
   VPPCOM_PROTO_UDP,
+  VPPCOM_PROTO_SCTP,
+  VPPCOM_PROTO_NONE,
+  VPPCOM_PROTO_TLS,
+  VPPCOM_PROTO_UDPC
 } vppcom_proto_t;
 
 static inline char *
@@ -58,10 +62,19 @@ vppcom_proto_str (vppcom_proto_t proto)
   switch (proto)
     {
     case VPPCOM_PROTO_TCP:
-      proto_str = "VPPCOM_PROTO_TCP";
+      proto_str = "TCP";
       break;
     case VPPCOM_PROTO_UDP:
-      proto_str = "VPPCOM_PROTO_UDP";
+      proto_str = "UDP";
+      break;
+    case VPPCOM_PROTO_SCTP:
+      proto_str = "SCTP";
+      break;
+    case VPPCOM_PROTO_TLS:
+      proto_str = "TLS";
+      break;
+    case VPPCOM_PROTO_UDPC:
+      proto_str = "UDPC";
       break;
     default:
       proto_str = "UNKNOWN";

@@ -320,7 +320,8 @@ print_usage_and_exit (void)
 	   "  -h               Print this message and exit.\n"
 	   "  -6               Use IPv6\n"
 	   "  -w <num>         Number of workers\n"
-	   "  -u               Use UDP transport layer\n");
+	   "  -D               Use UDP transport layer\n"
+	   "  -S               Use TLS transport layer\n");
   exit (1);
 }
 
@@ -370,7 +371,7 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
   vsm->cfg.proto = VPPCOM_PROTO_TCP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "6Dsw:")) != -1)
+  while ((c = getopt (argc, argv, "6DSsw:")) != -1)
     switch (c)
       {
       case '6':
@@ -379,6 +380,10 @@ vcl_test_server_process_opts (vcl_test_server_main_t * vsm, int argc,
 
       case 'D':
 	vsm->cfg.proto = VPPCOM_PROTO_UDP;
+	break;
+
+      case 'S':
+	vsm->cfg.proto = VPPCOM_PROTO_TLS;
 	break;
 
       case 'w':

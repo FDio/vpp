@@ -1004,7 +1004,7 @@ vppcom_session_bind (uint32_t session_handle, vppcom_endpt_t * ep)
 	format_ip46_address, &session->transport.lcl_ip,
 	session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (session->transport.lcl_port),
-	session->session_type ? "UDP" : "TCP");
+	vppcom_proto_str (session->session_type));
   vcl_evt (VCL_EVT_BIND, session);
 
   if (session->session_type == VPPCOM_PROTO_UDP)
@@ -1233,7 +1233,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 	    &session->transport.rmt_ip, session->transport.is_ip4 ?
 	    IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	    clib_net_to_host_u16 (session->transport.rmt_port),
-	    session->session_type ? "UDP" : "TCP", session->session_state,
+	    vppcom_proto_str (session->session_type), session->session_state,
 	    vppcom_session_state_str (session->session_state));
       return VPPCOM_OK;
     }
@@ -1255,7 +1255,7 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 	&session->transport.rmt_ip, session->transport.is_ip4 ?
 	IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (session->transport.rmt_port),
-	session->session_type ? "UDP" : "TCP");
+	vppcom_proto_str (session->session_type));
 
   /*
    * Send connect request and wait for reply from vpp

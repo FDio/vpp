@@ -740,6 +740,9 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   vl_api_registration_t *reg;
   clib_error_t *error = 0;
   u8 fd_flags = 0;
+  application_t *app;
+  vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
+  vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -784,6 +787,24 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
       vec_free (a->namespace_id);
       goto done;
     }
+
+
+  clib_memset (a_cert, 0, sizeof (*a_cert));
+  a_cert->app_index = a->app_index;
+  vec_validate (a_cert->cert, test_srv_crt_rsa_len);
+  clib_memcpy_fast (a_cert->cert, test_srv_crt_rsa, test_srv_crt_rsa_len);
+  vnet_app_add_tls_cert (a_cert);
+
+  clib_memset (a_key, 0, sizeof (*a_key));
+  a_key->app_index = a->app_index;
+
+  vec_validate (a_key->key, test_srv_key_rsa_len);
+  clib_memcpy_fast (a_key->key, test_srv_key_rsa, test_srv_key_rsa_len);
+  vnet_app_add_tls_key (a_key);
+
+  app = application_get (a->app_index);
+  app->tls_engine = TLS_ENGINE_OPENSSL;
+
   vec_free (a->namespace_id);
 
   /* Send event queues segment */

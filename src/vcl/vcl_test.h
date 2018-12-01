@@ -89,6 +89,7 @@ typedef struct __attribute__ ((packed))
   uint32_t verbose;
   uint32_t address_ip6;
   uint32_t transport_udp;
+  uint32_t transport_tls;
   uint64_t rxbuf_size;
   uint64_t txbuf_size;
   uint64_t num_writes;
