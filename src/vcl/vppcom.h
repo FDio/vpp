@@ -48,6 +48,10 @@ typedef enum
 {
   VPPCOM_PROTO_TCP = 0,
   VPPCOM_PROTO_UDP,
+  VPPCOM_PROTO_SCTP,
+  VPPCOM_PROTO_NONE,
+  VPPCOM_PROTO_TLS,
+  VPPCOM_PROTO_UDPC
 } vppcom_proto_t;
 
 static inline char *
@@ -58,10 +62,19 @@ vppcom_proto_str (vppcom_proto_t proto)
   switch (proto)
     {
     case VPPCOM_PROTO_TCP:
-      proto_str = "VPPCOM_PROTO_TCP";
+      proto_str = "TCP";
       break;
     case VPPCOM_PROTO_UDP:
-      proto_str = "VPPCOM_PROTO_UDP";
+      proto_str = "UDP";
+      break;
+    case VPPCOM_PROTO_SCTP:
+      proto_str = "SCTP";
+      break;
+    case VPPCOM_PROTO_TLS:
+      proto_str = "TLS";
+      break;
+    case VPPCOM_PROTO_UDPC:
+      proto_str = "UDPC";
       break;
     default:
       proto_str = "UNKNOWN";
@@ -269,6 +282,10 @@ extern int vppcom_session_read_segments (uint32_t session_handle,
 					 vppcom_data_segments_t ds);
 extern void vppcom_session_free_segments (uint32_t session_handle,
 					  vppcom_data_segments_t ds);
+extern int vppcom_session_tls_add_cert (uint32_t session_handle, char *cert,
+					uint32_t cert_len);
+extern int vppcom_session_tls_add_key (uint32_t session_handle, char *key,
+				       uint32_t key_len);
 extern int vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds,
 				     uint32_t max_bytes);
 
