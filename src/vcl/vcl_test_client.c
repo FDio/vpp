@@ -711,10 +711,11 @@ print_usage_and_exit (void)
 	   "  OPTIONS\n"
 	   "  -h               Print this message and exit.\n"
 	   "  -6               Use IPv6\n"
-	   "  -u               Use UDP transport layer\n"
 	   "  -c               Print test config before test.\n"
 	   "  -w <dir>         Write test results to <dir>.\n"
 	   "  -X               Exit after running test.\n"
+	   "  -D               Use UDP transport layer\n"
+	   "  -S               Use TLS transport layer\n"
 	   "  -E               Run Echo test.\n"
 	   "  -N <num-writes>  Test Cfg: number of writes.\n"
 	   "  -R <rxbuf-size>  Test Cfg: rx buffer size.\n"
@@ -732,7 +733,7 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
   int c, v;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV6D")) != -1)
+  while ((c = getopt (argc, argv, "chn:w:XE:I:N:R:T:UBV6DS")) != -1)
     switch (c)
       {
       case 'c':
@@ -873,6 +874,10 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
 	ctrl->cfg.transport_udp = 1;
 	break;
 
+      case 'S':
+	ctrl->cfg.transport_tls = 1;
+	break;
+
       case '?':
 	switch (optopt)
 	  {
@@ -902,7 +907,19 @@ vtc_process_opts (vcl_test_client_main_t * vcm, int argc, char **argv)
       vtwrn ("Insufficient number of arguments!");
       print_usage_and_exit ();
     }
-  vcm->proto = ctrl->cfg.transport_udp ? VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP;
+
+  if (ctrl->cfg.transport_udp)
+    {
+      vcm->proto = VPPCOM_PROTO_UDP;
+    }
+  else if (ctrl->cfg.transport_tls)
+    {
+      vcm->proto = VPPCOM_PROTO_TLS;
+    }
+  else
+    {
+      vcm->proto = VPPCOM_PROTO_TCP;
+    }
 
   memset (&vcm->server_addr, 0, sizeof (vcm->server_addr));
   if (ctrl->cfg.address_ip6)
@@ -987,6 +1004,15 @@ main (int argc, char **argv)
   ctrl->fd = vppcom_session_create (vcm->proto, 0 /* is_nonblocking */ );
   if (ctrl->fd < 0)
     vtfail ("vppcom_session_create()", ctrl->fd);
+
+  if (vcm->proto == VPPCOM_PROTO_TLS)
+    {
+      vppcom_session_tls_add_cert (ctrl->fd, vcl_test_crt_rsa,
+				   vcl_test_crt_rsa_len);
+      vppcom_session_tls_add_key (ctrl->fd, vcl_test_key_rsa,
+				  vcl_test_key_rsa_len);
+    }
+
 
   vtinf ("Connecting to server...");
   rv = vppcom_session_connect (ctrl->fd, &vcm->server_endpt);
