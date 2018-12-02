@@ -94,6 +94,8 @@ app_worker_map_free (application_t * app, app_worker_map_t * map)
 static app_worker_map_t *
 app_worker_map_get (application_t * app, u32 map_index)
 {
+  if (pool_is_free_index (app->worker_maps, map_index))
+    return 0;
   return pool_elt_at_index (app->worker_maps, map_index);
 }
 
