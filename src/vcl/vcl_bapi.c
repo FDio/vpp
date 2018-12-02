@@ -187,7 +187,10 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
     return;
 
   wrk_index = mp->context;
-  wrk = vcl_worker_get (wrk_index);
+  wrk = vcl_worker_get_if_valid (wrk_index);
+  if (!wrk)
+    return;
+
   wrk->vpp_wrk_index = clib_net_to_host_u32 (mp->wrk_index);
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
@@ -196,7 +199,7 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
       clib_warning ("invalid segment handle");
-      return;
+      goto failed;
     }
 
   if (mp->n_fds)
@@ -205,9 +208,9 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
       vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-	if (vcl_segment_attach
-	    (vcl_vpp_worker_segment_handle (wrk->wrk_index), "vpp-worker-seg",
-	     SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	if (vcl_segment_attach (vcl_vpp_worker_segment_handle (wrk_index),
+				"vpp-worker-seg", SSVM_SEGMENT_MEMFD,
+				fds[n_fds++]))
 	  goto failed;
 
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
@@ -468,7 +471,6 @@ vcl_send_app_worker_add_del (u8 is_add)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;
-  u32 wrk_index = wrk->wrk_index;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
@@ -476,10 +478,29 @@ vcl_send_app_worker_add_del (u8 is_add)
   mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
   mp->client_index = wrk->my_client_index;
   mp->app_index = clib_host_to_net_u32 (vcm->app_index);
-  mp->context = wrk_index;
+  mp->context = wrk->wrk_index;
   mp->is_add = is_add;
   if (!is_add)
-    mp->wrk_index = clib_host_to_net_u32 (wrk_index);
+    mp->wrk_index = clib_host_to_net_u32 (wrk->vpp_wrk_index);
+
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+}
+
+void
+vcl_send_child_worker_del (vcl_worker_t * child_wrk)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vl_api_app_worker_add_del_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+
+  mp->_vl_msg_id = ntohs (VL_API_APP_WORKER_ADD_DEL);
+  mp->client_index = wrk->my_client_index;
+  mp->app_index = clib_host_to_net_u32 (vcm->app_index);
+  mp->context = wrk->wrk_index;
+  mp->is_add = 0;
+  mp->wrk_index = clib_host_to_net_u32 (child_wrk->vpp_wrk_index);
 
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
 }
