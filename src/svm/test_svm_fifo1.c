@@ -15,10 +15,13 @@
 
 #include "svm_fifo_segment.h"
 
+svm_fifo_segment_main_t segment_main;
+
 clib_error_t *
 hello_world (int verbose)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_main_t *sm = &segment_main;
   svm_fifo_segment_private_t *sp;
   svm_fifo_t *f;
   int rv;
@@ -31,12 +34,12 @@ hello_world (int verbose)
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
 
-  rv = svm_fifo_segment_create (a);
+  rv = svm_fifo_segment_create (sm, a);
 
   if (rv)
     return clib_error_return (0, "svm_fifo_segment_create returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
+  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
 
   f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
 
@@ -72,6 +75,7 @@ clib_error_t *
 master (int verbose)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_main_t *sm = &segment_main;
   svm_fifo_segment_private_t *sp;
   svm_fifo_t *f;
   int rv;
@@ -84,12 +88,12 @@ master (int verbose)
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
 
-  rv = svm_fifo_segment_create (a);
+  rv = svm_fifo_segment_create (sm, a);
 
   if (rv)
     return clib_error_return (0, "svm_fifo_segment_create returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
+  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
 
   f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
 
@@ -109,6 +113,7 @@ clib_error_t *
 mempig (int verbose)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_main_t *sm = &segment_main;
   svm_fifo_segment_private_t *sp;
   svm_fifo_t *f;
   svm_fifo_t **flist = 0;
@@ -120,12 +125,12 @@ mempig (int verbose)
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
 
-  rv = svm_fifo_segment_create (a);
+  rv = svm_fifo_segment_create (sm, a);
 
   if (rv)
     return clib_error_return (0, "svm_fifo_segment_create returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
+  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
 
   for (i = 0; i < 1000; i++)
     {
@@ -166,6 +171,7 @@ clib_error_t *
 offset (int verbose)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_main_t *sm = &segment_main;
   svm_fifo_segment_private_t *sp;
   svm_fifo_t *f;
   int rv;
@@ -178,12 +184,12 @@ offset (int verbose)
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
 
-  rv = svm_fifo_segment_create (a);
+  rv = svm_fifo_segment_create (sm, a);
 
   if (rv)
     return clib_error_return (0, "svm_fifo_segment_create returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
+  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
 
   f = svm_fifo_segment_alloc_fifo (sp, 200 << 10, FIFO_SEGMENT_RX_FREELIST);
 
@@ -225,6 +231,7 @@ clib_error_t *
 slave (int verbose)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_main_t *sm = &segment_main;
   svm_fifo_segment_private_t *sp;
   svm_fifo_t *f;
   ssvm_shared_header_t *sh;
@@ -243,7 +250,7 @@ slave (int verbose)
   if (rv)
     return clib_error_return (0, "svm_fifo_segment_attach returned %d", rv);
 
-  sp = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
+  sp = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
   sh = sp->ssvm.sh;
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
 
@@ -269,11 +276,12 @@ slave (int verbose)
 int
 test_ssvm_fifo1 (unformat_input_t * input)
 {
+  svm_fifo_segment_main_t *sm = &segment_main;
   clib_error_t *error = 0;
   int verbose = 0;
   int test_id = 0;
 
-  svm_fifo_segment_main_init (0x200000000ULL, 20);
+  svm_fifo_segment_main_init (sm, 0x200000000ULL, 20);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
