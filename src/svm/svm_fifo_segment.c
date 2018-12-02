@@ -297,9 +297,13 @@ svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
   svm_fifo_segment_private_t *s;
   int rv;
 
+  clib_warning ("getting segment from pool %p", sm->segments);
   /* Allocate a fresh segment */
   pool_get (sm->segments, s);
   clib_memset (s, 0, sizeof (*s));
+
+  clib_warning ("got segment pool is now %p elts %u. seg name %s",
+		sm->segments, pool_elts (sm->segments), a->segment_name);
 
   s->ssvm.ssvm_size = a->segment_size;
   s->ssvm.my_pid = getpid ();
@@ -310,12 +314,14 @@ svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
   else
     s->ssvm.attach_timeout = sm->timeout_in_seconds;
 
+  clib_warning ("about to init");
   if ((rv = ssvm_slave_init (&s->ssvm, a->segment_type)))
     {
       _vec_len (s) = vec_len (s) - 1;
       return (rv);
     }
 
+  clib_warning ("done init");
   /* Fish the segment header */
   s->h = s->ssvm.sh->opaque[0];
 
