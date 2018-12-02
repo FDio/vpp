@@ -121,8 +121,7 @@ typedef struct
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
 
-  /* convenience */
-  svm_fifo_segment_main_t *segment_main;
+  svm_fifo_segment_main_t segment_main;
 
   u8 *connect_test_data;
 
@@ -336,8 +335,9 @@ static void
 vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
-  udp_echo_main_t *utm = &udp_echo_main;
   svm_fifo_segment_create_args_t _a = { 0 }, *a = &_a;
+  udp_echo_main_t *utm = &udp_echo_main;
+  svm_fifo_segment_main_t *sm = &utm->segment_main;
   int rv;
 
   if (mp->retval)
@@ -359,7 +359,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   ASSERT (mp->app_event_queue_address);
 
   /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
+  rv = svm_fifo_segment_attach (sm, a);
   if (rv)
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed",
@@ -912,8 +912,9 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
-  udp_echo_main_t *utm = &udp_echo_main;
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  udp_echo_main_t *utm = &udp_echo_main;
+  svm_fifo_segment_main_t *sm = &utm->segment_main;
   svm_fifo_segment_private_t *seg;
   int rv;
 
@@ -921,14 +922,14 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
   /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
+  rv = svm_fifo_segment_attach (sm, a);
   if (rv)
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed",
 		    mp->segment_name);
       return;
     }
-  seg = svm_fifo_segment_get_segment (a->new_segment_indices[0]);
+  seg = svm_fifo_segment_get_segment (sm, a->new_segment_indices[0]);
   clib_warning ("Mapped new segment '%s' size %d", seg->ssvm.name,
 		seg->ssvm.ssvm_size);
   hash_set (utm->segments_table, clib_net_to_host_u64 (mp->segment_handle),
@@ -939,6 +940,7 @@ static void
 vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
 {
   udp_echo_main_t *utm = &udp_echo_main;
+  svm_fifo_segment_main_t *sm = &utm->segment_main;
   svm_fifo_segment_private_t *seg;
   u64 *seg_indexp, segment_handle;
 
@@ -950,8 +952,8 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
       return;
     }
   hash_unset (utm->segments_table, segment_handle);
-  seg = svm_fifo_segment_get_segment ((u32) seg_indexp[0]);
-  svm_fifo_segment_delete (seg);
+  seg = svm_fifo_segment_get_segment (sm, (u32) seg_indexp[0]);
+  svm_fifo_segment_delete (sm, seg);
   clib_warning ("Unmapped segment '%s'", segment_handle);
 }
 
@@ -1206,6 +1208,7 @@ int
 main (int argc, char **argv)
 {
   udp_echo_main_t *utm = &udp_echo_main;
+  svm_fifo_segment_main_t *sm = &utm->segment_main;
   u8 *uri = (u8 *) "udp://6.0.1.1/1234";
   unformat_input_t _argv, *a = &_argv;
   int i_am_server = 1;
@@ -1217,7 +1220,7 @@ main (int argc, char **argv)
 
   clib_mem_init_thread_safe (0, 256 << 20);
 
-  svm_fifo_segment_main_init (0x200000000ULL, 20);
+  svm_fifo_segment_main_init (sm, 0x200000000ULL, 20);
 
   vec_validate (utm->rx_buf, 128 << 10);
   utm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
@@ -1226,7 +1229,6 @@ main (int argc, char **argv)
   utm->have_return = 1;
   utm->bytes_to_send = 1024;
   utm->fifo_size = 128 << 10;
-  utm->segment_main = &svm_fifo_segment_main;
   utm->cut_through_session_index = ~0;
   clib_time_init (&utm->clib_time);
 

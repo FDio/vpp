@@ -15,8 +15,6 @@
 
 #include <svm/svm_fifo_segment.h>
 
-svm_fifo_segment_main_t svm_fifo_segment_main;
-
 static void
 allocate_new_fifo_chunk (svm_fifo_segment_header_t * fsh,
 			 u32 data_size_in_bytes, int chunk_size)
@@ -203,9 +201,9 @@ svm_fifo_segment_init (svm_fifo_segment_private_t * s)
  * Create an svm fifo segment and initialize as master
  */
 int
-svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
+svm_fifo_segment_create (svm_fifo_segment_main_t * sm,
+			 svm_fifo_segment_create_args_t * a)
 {
-  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   svm_fifo_segment_private_t *s;
   int rv;
 
@@ -237,9 +235,9 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
  * Create an svm fifo segment in process-private memory
  */
 int
-svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
+svm_fifo_segment_create_process_private (svm_fifo_segment_main_t * sm,
+					 svm_fifo_segment_create_args_t * a)
 {
-  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   svm_fifo_segment_private_t *s;
   ssvm_shared_header_t *sh;
   u32 rnd_size = 0;
@@ -291,9 +289,9 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
  * Attach as slave to an svm fifo segment
  */
 int
-svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
+svm_fifo_segment_attach (svm_fifo_segment_main_t * sm,
+			 svm_fifo_segment_create_args_t * a)
 {
-  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   svm_fifo_segment_private_t *s;
   int rv;
 
@@ -324,10 +322,9 @@ svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
 }
 
 void
-svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
+svm_fifo_segment_delete (svm_fifo_segment_main_t * sm,
+			 svm_fifo_segment_private_t * s)
 {
-  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
-
   ssvm_delete (&s->ssvm);
   clib_memset (s, 0xfe, sizeof (*s));
   pool_put (sm->segments, s);
@@ -495,27 +492,26 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
 }
 
 void
-svm_fifo_segment_main_init (u64 baseva, u32 timeout_in_seconds)
+svm_fifo_segment_main_init (svm_fifo_segment_main_t * sm, u64 baseva,
+			    u32 timeout_in_seconds)
 {
-  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
-
   sm->next_baseva = baseva;
   sm->timeout_in_seconds = timeout_in_seconds;
 }
 
 u32
-svm_fifo_segment_index (svm_fifo_segment_private_t * s)
+svm_fifo_segment_index (svm_fifo_segment_main_t * sm,
+			svm_fifo_segment_private_t * s)
 {
-  return s - svm_fifo_segment_main.segments;
+  return s - sm->segments;
 }
 
 /**
  * Retrieve svm segments pool. Used only for debug purposes.
  */
 svm_fifo_segment_private_t *
-svm_fifo_segment_segments_pool (void)
+svm_fifo_segment_segments_pool (svm_fifo_segment_main_t * sm)
 {
-  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   return sm->segments;
 }
 
