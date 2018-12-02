@@ -75,13 +75,16 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
   if (type == SSVM_SEGMENT_MEMFD)
     a->memfd_fd = fd;
 
+  clib_warning ("about to attach seg name %s", name);
   if ((rv = svm_fifo_segment_attach (a)))
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
       return rv;
     }
+  clib_warning ("attached, and now adding new segment index to table");
   vcl_segment_table_add (segment_handle, a->new_segment_indices[0]);
   vec_reset_length (a->new_segment_indices);
+  clib_warning ("done attaching");
   return 0;
 }
 
@@ -181,13 +184,16 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 		    format_api_error, ntohl (mp->retval));
       goto failed;
     }
-  wrk_index = mp->context;
-  wrk = vcl_worker_get (wrk_index);
-  wrk->vpp_wrk_index = clib_net_to_host_u32 (mp->wrk_index);
 
   if (!mp->is_add)
     return;
 
+  wrk_index = mp->context;
+  wrk = vcl_worker_get_if_valid (wrk_index);
+  if (!wrk)
+    return;
+
+  wrk->vpp_wrk_index = clib_net_to_host_u32 (mp->wrk_index);
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
 
@@ -195,25 +201,30 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
       clib_warning ("invalid segment handle");
-      return;
+      goto failed;
     }
 
+  clib_warning ("need to mount segments will mount VPP_MQ_SEG %u",
+		mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT);
   if (mp->n_fds)
     {
       vec_validate (fds, mp->n_fds);
       vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
 
       if (mp->fd_flags & SESSION_FD_F_VPP_MQ_SEGMENT)
-	if (vcl_segment_attach
-	    (vcl_vpp_worker_segment_handle (wrk->wrk_index), "vpp-worker-seg",
-	     SSVM_SEGMENT_MEMFD, fds[n_fds++]))
+	if (vcl_segment_attach (vcl_vpp_worker_segment_handle (wrk_index),
+				"vpp-worker-seg", SSVM_SEGMENT_MEMFD,
+				fds[n_fds++]))
 	  goto failed;
 
+      clib_warning ("mounted first, second segment handle is %u",
+		    segment_handle);
       if (mp->fd_flags & SESSION_FD_F_MEMFD_SEGMENT)
 	if (vcl_segment_attach (segment_handle, (char *) mp->segment_name,
 				SSVM_SEGMENT_MEMFD, fds[n_fds++]))
 	  goto failed;
 
+      clib_warning ("mounted second");
       if (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD)
 	{
 	  svm_msg_q_set_consumer_eventfd (wrk->app_event_queue, fds[n_fds]);
@@ -465,7 +476,7 @@ vppcom_app_send_detach (void)
 void
 vcl_send_app_worker_add_del (u8 is_add)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_worker_t * wrk = vcl_worker_get_current ();
   vl_api_app_worker_add_del_t *mp;
   u32 wrk_index = wrk->wrk_index;
 
@@ -481,6 +492,25 @@ vcl_send_app_worker_add_del (u8 is_add)
     mp->wrk_index = clib_host_to_net_u32 (wrk_index);
 
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & mp);
+}
+
+void
+vcl_send_child_worker_del (u32 wrk_index)
+{
+  vcl_worker_t * wrk = vcl_worker_get_current ();
+  vl_api_app_worker_add_del_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(VL_API_APP_WORKER_ADD_DEL);
+  mp->client_index = wrk->my_client_index;
+  mp->app_index = clib_host_to_net_u32 (vcm->app_index);
+  mp->context = wrk_index;
+  mp->is_add = 0;
+  mp->wrk_index = clib_host_to_net_u32 (wrk_index);
+
+  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) &mp);
 }
 
 void
