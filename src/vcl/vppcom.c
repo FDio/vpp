@@ -767,7 +767,7 @@ vppcom_app_create (char *app_name)
   vcm->main_pid = getpid ();
   vcm->app_name = format (0, "%s", app_name);
   vppcom_init_error_string_table ();
-  svm_fifo_segment_main_init (vcl_cfg->segment_baseva,
+  svm_fifo_segment_main_init (&vcm->sm, vcl_cfg->segment_baseva,
 			      20 /* timeout in secs */ );
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);

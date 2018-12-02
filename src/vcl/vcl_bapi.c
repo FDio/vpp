@@ -75,7 +75,7 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
   if (type == SSVM_SEGMENT_MEMFD)
     a->memfd_fd = fd;
 
-  if ((rv = svm_fifo_segment_attach (a)))
+  if ((rv = svm_fifo_segment_attach (&vcm->sm, a)))
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
       return rv;
@@ -88,14 +88,15 @@ vcl_segment_attach (u64 segment_handle, char *name, ssvm_segment_type_t type,
 static void
 vcl_segment_detach (u64 segment_handle)
 {
+  svm_fifo_segment_main_t *sm = &vcm->sm;
   svm_fifo_segment_private_t *segment;
   u32 segment_index;
 
   segment_index = vcl_segment_table_lookup (segment_handle);
   if (segment_index == (u32) ~ 0)
     return;
-  segment = svm_fifo_segment_get_segment (segment_index);
-  svm_fifo_segment_delete (segment);
+  segment = svm_fifo_segment_get_segment (sm, segment_index);
+  svm_fifo_segment_delete (sm, segment);
   vcl_segment_table_del (segment_handle);
 }
 

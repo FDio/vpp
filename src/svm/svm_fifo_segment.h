@@ -59,8 +59,6 @@ typedef struct
   u32 timeout_in_seconds;
 } svm_fifo_segment_main_t;
 
-extern svm_fifo_segment_main_t svm_fifo_segment_main;
-
 typedef struct
 {
   ssvm_segment_type_t segment_type;
@@ -73,10 +71,9 @@ typedef struct
 #define svm_fifo_segment_flags(_seg) _seg->h->flags
 
 static inline svm_fifo_segment_private_t *
-svm_fifo_segment_get_segment (u32 segment_index)
+svm_fifo_segment_get_segment (svm_fifo_segment_main_t * sm, u32 segment_index)
 {
-  svm_fifo_segment_main_t *ssm = &svm_fifo_segment_main;
-  return pool_elt_at_index (ssm->segments, segment_index);
+  return pool_elt_at_index (sm->segments, segment_index);
 }
 
 static inline u8
@@ -92,15 +89,19 @@ svm_fifo_segment_get_fifo_list (svm_fifo_segment_private_t * fifo_segment)
 }
 
 int svm_fifo_segment_init (svm_fifo_segment_private_t * s);
-int svm_fifo_segment_create (svm_fifo_segment_create_args_t * a);
-int svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t
-					     * a);
+int svm_fifo_segment_create (svm_fifo_segment_main_t * sm,
+			     svm_fifo_segment_create_args_t * a);
+int svm_fifo_segment_create_process_private (svm_fifo_segment_main_t * sm,
+					     svm_fifo_segment_create_args_t
+					     *);
 void svm_fifo_segment_preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
 					      u32 rx_fifo_size,
 					      u32 tx_fifo_size,
 					      u32 * n_fifo_pairs);
-int svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a);
-void svm_fifo_segment_delete (svm_fifo_segment_private_t * s);
+int svm_fifo_segment_attach (svm_fifo_segment_main_t * sm,
+			     svm_fifo_segment_create_args_t * a);
+void svm_fifo_segment_delete (svm_fifo_segment_main_t * sm,
+			      svm_fifo_segment_private_t * s);
 
 svm_fifo_t *svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 					 u32 data_size_in_bytes,
@@ -108,15 +109,18 @@ svm_fifo_t *svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 void svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s,
 				 svm_fifo_t * f,
 				 svm_fifo_segment_freelist_t index);
-void svm_fifo_segment_main_init (u64 baseva, u32 timeout_in_seconds);
-u32 svm_fifo_segment_index (svm_fifo_segment_private_t * s);
+void svm_fifo_segment_main_init (svm_fifo_segment_main_t * sm, u64 baseva,
+				 u32 timeout_in_seconds);
+u32 svm_fifo_segment_index (svm_fifo_segment_main_t * sm,
+			    svm_fifo_segment_private_t * s);
 u32 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment);
 u32 svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t *
 				     fifo_segment, u32 fifo_size_in_bytes);
 void svm_fifo_segment_info (svm_fifo_segment_private_t * seg, uword * address,
 			    u64 * size);
 
-svm_fifo_segment_private_t *svm_fifo_segment_segments_pool (void);
+svm_fifo_segment_private_t
+  * svm_fifo_segment_segments_pool (svm_fifo_segment_main_t * sm);
 
 format_function_t format_svm_fifo_segment;
 format_function_t format_svm_fifo_segment_type;

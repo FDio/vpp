@@ -142,8 +142,7 @@ typedef struct
    * and all other messages are exchanged using shm IPC. */
   u8 use_sock_api;
 
-  /* convenience */
-  svm_fifo_segment_main_t *segment_main;
+  svm_fifo_segment_main_t sm;
 } echo_main_t;
 
 echo_main_t echo_main;
@@ -350,6 +349,7 @@ static int
 ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
+  svm_fifo_segment_main_t *sm = &echo_main.sm;
   int rv;
 
   clib_memset (a, 0, sizeof (*a));
@@ -359,7 +359,7 @@ ssvm_segment_attach (char *name, ssvm_segment_type_t type, int fd)
   if (type == SSVM_SEGMENT_MEMFD)
     a->memfd_fd = fd;
 
-  if ((rv = svm_fifo_segment_attach (a)))
+  if ((rv = svm_fifo_segment_attach (sm, a)))
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
       return rv;
@@ -514,6 +514,7 @@ disconnect_from_vpp (echo_main_t * em)
 static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
+  svm_fifo_segment_main_t *sm = &echo_main.sm;
   svm_fifo_segment_create_args_t _a, *a = &_a;
   int rv;
 
@@ -521,7 +522,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
   /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
+  rv = svm_fifo_segment_attach (sm, a);
   if (rv)
     {
       clib_warning ("svm_fifo_segment_attach ('%s') failed",
@@ -1384,6 +1385,7 @@ main (int argc, char **argv)
 {
   int i_am_server = 1, test_return_packets = 0;
   echo_main_t *em = &echo_main;
+  svm_fifo_segment_main_t *sm = &em->sm;
   unformat_input_t _argv, *a = &_argv;
   u8 *chroot_prefix;
   u8 *uri = 0;
@@ -1406,7 +1408,7 @@ main (int argc, char **argv)
 
   clib_time_init (&em->clib_time);
   init_error_string_table (em);
-  svm_fifo_segment_main_init (0x200000000ULL, 20);
+  svm_fifo_segment_main_init (sm, 0x200000000ULL, 20);
   unformat_init_command_line (a, argv);
 
   while (unformat_check_input (a) != UNFORMAT_END_OF_INPUT)
@@ -1467,7 +1469,6 @@ main (int argc, char **argv)
     }
 
   em->i_am_master = i_am_server;
-  em->segment_main = &svm_fifo_segment_main;
   em->test_return_packets = test_return_packets;
   em->bytes_to_send = bytes_to_send;
   em->time_to_stop = 0;
