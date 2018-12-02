@@ -221,13 +221,16 @@ vcl_worker_free (vcl_worker_t * wrk)
 }
 
 void
-vcl_worker_cleanup (u8 notify_vpp)
+vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-
   clib_spinlock_lock (&vcm->workers_lock);
   if (notify_vpp)
-    vcl_send_app_worker_add_del (0 /* is_add */ );
+    {
+      if (wrk->wrk_index == vcl_get_worker_index ())
+	vcl_send_app_worker_add_del (0 /* is_add */ );
+      else
+	vcl_send_child_worker_del (wrk);
+    }
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
   hash_free (wrk->session_index_by_vpp_handles);
@@ -235,7 +238,6 @@ vcl_worker_cleanup (u8 notify_vpp)
   clib_spinlock_free (&wrk->ct_registration_lock);
   vec_free (wrk->mq_events);
   vec_free (wrk->mq_msg_vector);
-  vcl_set_worker_index (~0);
   vcl_worker_free (wrk);
   clib_spinlock_unlock (&vcm->workers_lock);
 }
@@ -243,8 +245,10 @@ vcl_worker_cleanup (u8 notify_vpp)
 static void
 vcl_worker_cleanup_cb (void *arg)
 {
-  u32 wrk_index = vcl_get_worker_index ();
-  vcl_worker_cleanup (1 /* notify vpp */ );
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  u32 wrk_index = wrk->wrk_index;
+  vcl_worker_cleanup (wrk, 1 /* notify vpp */ );
+  vcl_set_worker_index (~0);
   VDBG (0, "cleaned up worker %u", wrk_index);
 }
 
@@ -309,7 +313,6 @@ vcl_worker_register_with_vpp (void)
       clib_warning ("failed to add worker to vpp");
       return -1;
     }
-
   if (pthread_key_create (&vcl_worker_stop_key, vcl_worker_cleanup_cb))
     clib_warning ("failed to add pthread cleanup function");
   if (pthread_setspecific (vcl_worker_stop_key, &wrk->thread_id))
@@ -414,12 +417,11 @@ vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s)
 }
 
 void
-vcl_worker_share_sessions (u32 parent_wrk_index)
+vcl_worker_share_sessions (vcl_worker_t * parent_wrk)
 {
-  vcl_worker_t *parent_wrk, *wrk;
   vcl_session_t *new_s;
+  vcl_worker_t *wrk;
 
-  parent_wrk = vcl_worker_get (parent_wrk_index);
   if (!parent_wrk->sessions)
     return;
 
