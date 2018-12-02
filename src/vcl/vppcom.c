@@ -694,6 +694,57 @@ vcl_cleanup_bapi (void)
   vl_client_api_unmap ();
 }
 
+
+struct sigaction old_sa;
+
+void
+vcl_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current (), *child_wrk;
+  if (wrk->forked_child == ~0)
+    return;
+
+  sigaction (SIGCHLD, &old_sa, 0);
+
+  child_wrk = vcl_worker_get_if_valid (wrk->forked_child);
+  if (child_wrk)
+    vcl_worker_cleanup (child_wrk, 0);
+  vec_add1 (vcm->workers_deleted, wrk->forked_child);
+  wrk->forked_child = ~0;
+
+  if (old_sa.sa_flags & SA_SIGINFO)
+    {
+      void (*fn) (int, siginfo_t *, void *) = old_sa.sa_sigaction;
+      fn (signum, si, uc);
+    }
+  else
+    {
+      void (*fn) (int) = old_sa.sa_handler;
+      if (fn)
+	fn (signum);
+    }
+}
+
+void
+vcl_incercept_sigchld ()
+{
+  struct sigaction sa;
+  clib_memset (&sa, 0, sizeof (sa));
+  sa.sa_sigaction = vcl_intercept_sigchld_handler;
+  sa.sa_flags = SA_SIGINFO;
+  if (sigaction (SIGCHLD, &sa, &old_sa))
+    {
+      clib_warning ("FAILED");
+      exit (-1);
+    }
+}
+
+void
+vcl_app_pre_fork (void)
+{
+  vcl_incercept_sigchld ();
+}
+
 void
 vcl_app_fork_child_handler (void)
 {
@@ -733,6 +784,8 @@ vcl_app_fork_child_handler (void)
 
   VDBG (0, "forked child main worker initialized");
   vcm->forking = 0;
+
+  vcl_worker_get (parent_wrk)->forked_child = vcl_get_worker_index ();
 }
 
 void
@@ -756,8 +809,9 @@ vppcom_app_exit (void)
 {
   if (!pool_elts (vcm->workers))
     return;
-
-  vcl_worker_cleanup (1 /* notify vpp */ );
+  vec_add1 (vcm->workers_deleted, vcl_get_worker_index ());
+  vcl_worker_cleanup (vcl_worker_get_current (), 1 /* notify vpp */ );
+  vcl_set_worker_index (~0);
   vcl_elog_stop (vcm);
   if (vec_len (vcm->workers) == 1)
     vl_client_disconnect_from_vlib ();
@@ -784,6 +838,8 @@ vppcom_app_create (char *app_name)
   vppcom_cfg (&vcm->cfg);
   vcl_cfg = &vcm->cfg;
 
+//  pool_alloc (svm_fifo_segment_main.segments, 50);
+
   vcm->main_cpu = pthread_self ();
   vcm->main_pid = getpid ();
   vcm->app_name = format (0, "%s", app_name);
@@ -793,7 +849,7 @@ vppcom_app_create (char *app_name)
   pool_alloc (vcm->workers, vcl_cfg->max_workers);
   clib_spinlock_init (&vcm->workers_lock);
   clib_rwlock_init (&vcm->segment_table_lock);
-  pthread_atfork (NULL, vcl_app_fork_parent_handler,
+  pthread_atfork (vcl_app_pre_fork, vcl_app_fork_parent_handler,
 		  vcl_app_fork_child_handler);
   atexit (vppcom_app_exit);
 
@@ -854,13 +910,14 @@ vppcom_app_destroy (void)
 	VDBG (0, "application detach timed out! returning %d (%s)", rv,
 	      vppcom_retval_str (rv));
       vec_free (vcm->app_name);
-      vcl_worker_cleanup (0 /* notify vpp */ );
+      vcl_worker_cleanup (vcl_worker_get_current (), 0 /* notify vpp */ );
     }
   else
     {
-      vcl_worker_cleanup (1 /* notify vpp */ );
+      vcl_worker_cleanup (vcl_worker_get_current (), 1 /* notify vpp */ );
     }
 
+  vcl_set_worker_index (~0);
   vcl_elog_stop (vcm);
   vl_client_disconnect_from_vlib ();
 }
