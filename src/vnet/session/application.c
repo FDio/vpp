@@ -94,6 +94,8 @@ app_worker_map_free (application_t * app, app_worker_map_t * map)
 static app_worker_map_t *
 app_worker_map_get (application_t * app, u32 map_index)
 {
+  if (pool_is_free_index (app->worker_maps, map_index))
+    return 0;
   return pool_elt_at_index (app->worker_maps, map_index);
 }
 
@@ -928,6 +930,7 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       segment_manager_segment_reader_unlock (sm);
       a->evt_q = app_wrk->event_queue;
       a->wrk_map_index = app_wrk->wrk_map_index;
+      clib_warning ("added wrk %u map-index %u", app_wrk->wrk_index, app_wrk->wrk_map_index);
     }
   else
     {
@@ -940,6 +943,8 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
       if (!app_wrk)
 	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
 				       "No worker %u", a->wrk_map_index);
+      clib_warning ("removing wrk %u map-index %u", app_wrk->wrk_index, app_wrk->wrk_map_index);
+
       application_api_table_del (app_wrk->api_client_index);
       app_worker_free (app_wrk);
       app_worker_map_free (app, wrk_map);
