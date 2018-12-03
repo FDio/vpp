@@ -192,6 +192,7 @@ class VppTestCase(unittest.TestCase):
     """
 
     extra_vpp_punt_config = []
+    extra_vpp_plugin_config = []
 
     @property
     def packet_infos(self):
@@ -307,7 +308,7 @@ class VppTestCase(unittest.TestCase):
                            "{", "socket-name", cls.stats_sock, "}", "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
-                           "}", "}", ]
+                           "}"] + cls.extra_vpp_plugin_config + ["}", ]
         if cls.extra_vpp_punt_config is not None:
             cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
         if plugin_path is not None:
