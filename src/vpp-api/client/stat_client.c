@@ -105,7 +105,7 @@ get_stat_vector (void)
 }
 
 int
-stat_segment_connect_r (char *socket_name, stat_client_main_t * sm)
+stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
 {
   int mfd = -1;
   int sock;
@@ -160,7 +160,7 @@ stat_segment_connect_r (char *socket_name, stat_client_main_t * sm)
 }
 
 int
-stat_segment_connect (char *socket_name)
+stat_segment_connect (const char *socket_name)
 {
   stat_client_main_t *sm = &stat_client_main;
   return stat_segment_connect_r (socket_name, sm);
