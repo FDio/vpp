@@ -64,7 +64,8 @@
   _(16, L4_HDR_OFFSET_VALID, "l4_hdr_offset_valid", 0)  \
   _(17, FLOW_REPORT, "flow-report", 1)                  \
   _(18, IS_DVR, "dvr", 1)                               \
-  _(19, QOS_DATA_VALID, "qos-data-valid", 0)
+  _(19, QOS_DATA_VALID, "qos-data-valid", 0)            \
+  _(20, HSI_PARAMS_VALID, "hsi-params-valid", 0)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -368,6 +369,9 @@ typedef struct
     u16 src_epg;
   } gbp;
 
+  u32 hsi_params;
+  u32 __unused2;
+
   union
   {
     struct
@@ -382,7 +386,15 @@ typedef struct
       u64 pad[1];
       u64 pg_replay_timestamp;
     };
-    u32 unused[10];
+    struct
+    {
+      union
+      {
+	u32 nh_v4_addr;
+	u32 nh_v6_addr[4];
+      };
+    } pbf;
+    u32 unused[8];
   };
 } vnet_buffer_opaque2_t;
 
