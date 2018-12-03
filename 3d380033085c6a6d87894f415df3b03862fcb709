@@ -16,6 +16,24 @@
       "revId": "3d380033085c6a6d87894f415df3b03862fcb709",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ae8400d_6363c62d",
+        "filename": "test/vpp_mac.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-03T09:31:31Z",
+      "side": 1,
+      "message": "That happens indirectly by calling the @setter.address.",
+      "parentUuid": "d0aadf0e_dfe27d79",
+      "revId": "3d380033085c6a6d87894f415df3b03862fcb709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
