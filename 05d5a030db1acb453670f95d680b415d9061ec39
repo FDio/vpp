@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d67d1ec1_24d1db35",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T11:13:20Z",
+      "side": 1,
+      "message": "return the stats, don\u0027t print.",
+      "revId": "05d5a030db1acb453670f95d680b415d9061ec39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "383b6e5c_44e8ee94",
+        "filename": "extras/vom/vom/stat_client.cpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T11:13:20Z",
+      "side": 1,
+      "message": "ew. if you have to do things like this, it\u0027s worth questioning the API being called.\n https://gerrit.fd.io/r/16319",
+      "revId": "05d5a030db1acb453670f95d680b415d9061ec39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3f971ed1_b15d353c",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T11:13:20Z",
+      "side": 1,
+      "message": "in the absence of the push model for stats, I\u0027m not sure how this class and its listeners adds value. The client can use the stats_client directly, no?",
+      "revId": "05d5a030db1acb453670f95d680b415d9061ec39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ae42e28_4b6b43d5",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T11:13:20Z",
+      "side": 1,
+      "message": "this class constructs the stats_client. how does one pass the non-default values to the stats_client for construction?\n\nhow many instances of this class can the user create? what would different instances do?",
+      "revId": "05d5a030db1acb453670f95d680b415d9061ec39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "51019705_3b722e72",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T11:13:20Z",
+      "side": 1,
+      "message": "this function is unused",
+      "revId": "05d5a030db1acb453670f95d680b415d9061ec39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fac63920_6ddcd452",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T11:13:20Z",
+      "side": 1,
+      "message": "this argument is an index to what object type?\nhow do we use this class to read both interface and route stats?",
+      "revId": "05d5a030db1acb453670f95d680b415d9061ec39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "35ffc021_8ade4662",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 11
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T11:13:20Z",
+      "side": 1,
+      "message": "unused",
+      "revId": "05d5a030db1acb453670f95d680b415d9061ec39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
