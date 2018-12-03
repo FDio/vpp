@@ -52,6 +52,24 @@
       "revId": "3d380033085c6a6d87894f415df3b03862fcb709",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "77210eee_05f5548d",
+        "filename": "test/vpp_mac.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-03T15:16:56Z",
+      "side": 1,
+      "message": "It you need address to be a property, we need to set the property.  If not, there is no need for the @property/@setter.  Why was this attribute originally implemented as a property?",
+      "parentUuid": "e0336c3d_fb1513e2",
+      "revId": "3d380033085c6a6d87894f415df3b03862fcb709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
