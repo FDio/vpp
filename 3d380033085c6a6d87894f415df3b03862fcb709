@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0aadf0e_dfe27d79",
+        "filename": "test/vpp_mac.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T09:13:46Z",
+      "side": 1,
+      "message": "_address here too?",
+      "revId": "3d380033085c6a6d87894f415df3b03862fcb709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
