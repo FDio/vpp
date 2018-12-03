@@ -39,6 +39,8 @@
 
 #include <vnet/vnet.h>
 #include <vppinfra/bitmap.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
 
 u8 *
 format_vnet_sw_interface_flags (u8 * s, va_list * args)
@@ -461,6 +463,12 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
 	      o->l2.feature_bitmap, (u32) (o->l2.bd_index),
 	      (u32) (o->l2.l2_len), (u32) (o->l2.shg), (u32) (o->l2.l2fib_sn),
 	      (u32) (o->l2.bd_age));
+  vec_add1 (s, '\n');
+
+  s = format (s,
+	      "l2.feature_bitmap_input: %U, L2.feature_bitmap_output: %U",
+	      format_l2_input_features, o->l2.feature_bitmap, 0,
+	      format_l2_output_features, o->l2.feature_bitmap, 0);
   vec_add1 (s, '\n');
 
   s = format (s,
