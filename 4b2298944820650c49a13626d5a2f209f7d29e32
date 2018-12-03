@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "16f209f2_e6167e74",
+        "filename": "extras/vom/vom/api_types.cpp",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T09:37:11Z",
+      "side": 1,
+      "message": "pass a reference not a pointer",
+      "revId": "4b2298944820650c49a13626d5a2f209f7d29e32",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
