@@ -34,6 +34,24 @@
       "revId": "3d380033085c6a6d87894f415df3b03862fcb709",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e0336c3d_fb1513e2",
+        "filename": "test/vpp_mac.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-03T10:25:42Z",
+      "side": 1,
+      "message": "so do we need the setter if this is changed tp self_addess \u003d addr ?",
+      "parentUuid": "9ae8400d_6363c62d",
+      "revId": "3d380033085c6a6d87894f415df3b03862fcb709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
