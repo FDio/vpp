@@ -1,7 +1,6 @@
 /etc/vpp(/.*)?					gen_context(system_u:object_r:vpp_config_rw_t,s0)
 
 /usr/bin/elftool			--	gen_context(system_u:object_r:vpp_exec_t,s0)
-/usr/bin/jvpp_gen.py			--	gen_context(system_u:object_r:vpp_exec_t,s0)
 /usr/bin/svmdbtool			--	gen_context(system_u:object_r:vpp_exec_t,s0)
 /usr/bin/svmtool			--	gen_context(system_u:object_r:vpp_exec_t,s0)
 /usr/bin/vpp				--	gen_context(system_u:object_r:vpp_exec_t,s0)

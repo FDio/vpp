@@ -125,14 +125,6 @@ Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}
 %description api-lua
 This package contains the lua bindings for the vpp api
 
-%package api-java
-Summary: VPP api java bindings
-Group: Development/Libraries
-Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}
-
-%description api-java
-This package contains the java bindings for the vpp api
-
 %package api-python
 Summary: VPP api python bindings
 Group: Development/Libraries
@@ -219,13 +211,6 @@ do
 	   %{buildroot}/usr/share/doc/vpp/examples/lua/$file )
 done
 
-# Java bindings
-mkdir -p -m755 %{buildroot}/usr/share/java
-for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/japi/share/java -type f -name '*.jar' -print )
-do
-	install -p -m 644 $file %{buildroot}/usr/share/java
-done
-
 # Python bindings
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_install
 
@@ -256,12 +241,6 @@ do
 		install -p -m 644 $dir/$file %{buildroot}%{_includedir}/$file
 	done
 done
-
-mkdir -p -m755 %{buildroot}%{python2_sitelib}/jvppgen
-install -p -m755 %{_mu_build_dir}/../extras/japi/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
-for i in $(ls %{_mu_build_dir}/../extras/japi/java/jvpp/gen/jvppgen/*.py); do
-   install -p -m666 ${i} %{buildroot}%{python2_sitelib}/jvppgen
-done;
 
 install -p -m 644 %{_mu_build_dir}/../src/tools/vppapigen/vppapigen_c.py %{buildroot}/usr/share/vpp
 install -p -m 644 %{_mu_build_dir}/../src/tools/vppapigen/vppapigen_json.py %{buildroot}/usr/share/vpp
@@ -387,10 +366,6 @@ fi
 %defattr(644,root,root,644)
 /usr/share/doc/vpp/examples/lua
 
-%files api-java
-%defattr(644,root,root)
-/usr/share/java/*
-
 %files api-python
 %defattr(644,root,root,755)
 %{python2_sitelib}/vpp_*
@@ -403,9 +378,7 @@ fi
 %files devel
 %defattr(-,bin,bin)
 /usr/bin/vppapigen
-/usr/bin/jvpp_gen.py
 %{_includedir}/*
-%{python2_sitelib}/jvppgen/*
 /usr/share/doc/vpp/examples/sample-plugin
 /usr/share/vpp
 

@@ -193,7 +193,7 @@ needed:
 
 .. code-block:: console
 
-   $ sudo yum install vpp-plugins vpp-devel vpp-api-python vpp-api-lua vpp-api-java
+   $ sudo yum install vpp-plugins vpp-devel vpp-api-python vpp-api-lua
 
 Starting VPP
 ============

@@ -52,13 +52,6 @@ Description: VPP LUA API bindings
   This package contains VPP lua api bindings
   .
 
-Package: vpp-api-java
-Architecture: any
-Depends: ${misc:Depends}, vpp (= ${source:Version})
-Description: VPP Java API bindings
-  This package contains VPP java api bindings
-  .
-
 Package: vpp-api-python
 Architecture: any
 Depends: ${python:Depends}, ${misc:Depends}, vpp (= ${source:Version})

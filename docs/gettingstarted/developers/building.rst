@@ -159,9 +159,9 @@ Once the packages are built they can be found in the build-root directory.
     If the packages are built correctly, then this should be the corresponding output:
 
     vpp_18.07-rc0~456-gb361076_amd64.deb             vpp-dbg_18.07-rc0~456-gb361076_amd64.deb
-    vpp-api-java_18.07-rc0~456-gb361076_amd64.deb    vpp-dev_18.07-rc0~456-gb361076_amd64.deb
-    vpp-api-lua_18.07-rc0~456-gb361076_amd64.deb     vpp-lib_18.07-rc0~456-gb361076_amd64.deb
-    vpp-api-python_18.07-rc0~456-gb361076_amd64.deb  vpp-plugins_18.07-rc0~456-gb361076_amd64.deb
+    vpp-dev_18.07-rc0~456-gb361076_amd64.deb         vpp-api-lua_18.07-rc0~456-gb361076_amd64.deb
+    vpp-lib_18.07-rc0~456-gb361076_amd64.deb         vpp-api-python_18.07-rc0~456-gb361076_amd64.deb
+    vpp-plugins_18.07-rc0~456-gb361076_amd64.deb
 
 Finally, the created packages can be installed using the following commands. Install
 the package that correspnds to OS that VPP will be running on:

@@ -27,7 +27,6 @@ Uninstalling the packages:
     These packages are installed on node localhost
     Name                      Version
     vpp                       18.04-release
-    vpp-api-java              18.04-release
     vpp-api-lua               18.04-release
     vpp-api-python            18.04-release
     vpp-dbg                   18.04-release
@@ -88,7 +87,6 @@ Installing the packages:
     These packages are installed on node localhost
     Name                      Version
     vpp                       18.04-release
-    vpp-api-java              18.04-release
     vpp-api-lua               18.04-release
     vpp-api-python            18.04-release
     vpp-dbg                   18.04-release

@@ -55,10 +55,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	./scripts/find-vpp-api-lua-contents $(INSTALL_PREFIX)$(ARCH)	\
 	 deb/debian/vpp-api-lua.install ;				\
 									\
-	: vpp-api-java package ;					\
-	./scripts/find-vpp-api-java-contents $(INSTALL_PREFIX)$(ARCH)	\
-	 deb/debian/vpp-api-java.install ;				\
-									\
 	: bin package needs startup config ; 				\
 	echo ../../src/vpp/conf/startup.conf /etc/vpp 			\
 	   >> deb/debian/vpp.install ;					\
@@ -82,12 +78,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	   >> deb/debian/vpp-dev.install ;				\
 	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/vppapigen_json.py /usr/share/vpp \
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../../extras/japi/java/jvpp/gen/jvpp_gen.py /usr/bin	\
-	   >> deb/debian/vpp-dev.install ;				\
-	for i in $$(ls ../src/vpp-api/java/jvpp/gen/jvppgen/*.py); do	\
-	   echo ../$${i} /usr/lib/python2.7/dist-packages/jvppgen	\
-	       >> deb/debian/vpp-dev.install;				\
-	done;								\
 									\
 	: generate changelog;						\
 	./scripts/generate-deb-changelog 				\
