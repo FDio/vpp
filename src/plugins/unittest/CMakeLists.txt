@@ -13,7 +13,10 @@
 
 add_vpp_plugin(unittest
   SOURCES
+  bier_test.c
   bihash_test.c
+  fib_test.c
+  mfib_test.c
   session_test.c
   string_test.c
   tcp_test.c

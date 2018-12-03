@@ -1162,7 +1162,6 @@ list(APPEND VNET_API_FILES unix/tap.api)
 
 list(APPEND VNET_SOURCES
   fib/fib.c
-  fib/fib_test.c
   fib/ip4_fib.c
   fib/ip6_fib.c
   fib/mpls_fib.c
@@ -1273,7 +1272,6 @@ list(APPEND VNET_HEADERS
 ##############################################################################
 
 list(APPEND VNET_SOURCES
-  mfib/mfib_test.c
   mfib/mfib_forward.c
   mfib/ip4_mfib.c
   mfib/ip6_mfib.c
@@ -1333,7 +1331,6 @@ list(APPEND VNET_SOURCES
   bier/bier_output.c
   bier/bier_table.c
   bier/bier_types.c
-  bier/bier_test.c
   bier/bier_api.c
   bier/bier_drop.c
   bier/bier_update.c
