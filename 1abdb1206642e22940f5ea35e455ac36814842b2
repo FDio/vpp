@@ -88,6 +88,24 @@
       "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6ab8e47e_ecca0c44",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-12-04T20:37:47Z",
+      "side": 1,
+      "message": "Unless you\u0027re committing code to fd.io vpp which uses the nh_vX_addr fields, this patch won\u0027t be merged.",
+      "parentUuid": "6761162b_e00a90c0",
+      "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
