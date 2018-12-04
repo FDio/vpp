@@ -862,8 +862,8 @@ vppcom_app_create (char *app_name)
 
   if (vcm->is_init)
     {
-      clib_warning ("vcl<%u> already initialized", getpid ());
-      return -1;
+      VDBG (1, "already initialized");
+      return VPPCOM_EEXIST;
     }
 
   vcm->is_init = 1;
