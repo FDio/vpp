@@ -16,6 +16,24 @@
       "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2787f5e9_26073ae2",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2018-12-04T17:18:29Z",
+      "side": 1,
+      "message": "I do see a use case for open-source as well, when policy based  forwarding needs to be done",
+      "parentUuid": "f3d04a3d_36dc32bf",
+      "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
