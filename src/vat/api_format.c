@@ -19929,14 +19929,14 @@ vl_api_mpls_fib_path_print (vat_main_t * vam, vl_api_fib_path_t * fp)
     print (vam->ofp,
 	   "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
 	   "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U",
-	   ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+	   fp->weight, ntohl (fp->sw_if_index), fp->is_local,
 	   fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
 	   format_ip6_address, fp->next_hop);
   else if (fp->afi == IP46_TYPE_IP4)
     print (vam->ofp,
 	   "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
 	   "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U",
-	   ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+	   fp->weight, ntohl (fp->sw_if_index), fp->is_local,
 	   fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
 	   format_ip4_address, fp->next_hop);
 }
