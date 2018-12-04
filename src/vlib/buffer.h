@@ -98,6 +98,7 @@ enum
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
 #define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
+#define VLIB_BUFFER_FLAGS_ALL (0x1f)
 
 /* VLIB buffer representation. */
 typedef struct
