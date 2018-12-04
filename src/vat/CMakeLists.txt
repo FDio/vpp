@@ -29,6 +29,8 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   plugin.c
   json_format.c
 
+  DEPENDS api_headers
+
   LINK_LIBRARIES
   vlibmemoryclient
   svm
