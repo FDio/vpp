@@ -36,3 +36,4 @@ The Developers section covers the following areas:
    buildsystem/index.rst
    eventviewer
    fib20/index.rst
+   buildwireshark
