@@ -424,9 +424,15 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 static void
 echo_clients_session_reset_callback (stream_session_t * s)
 {
+  echo_client_main_t *ecm = &echo_client_main;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
   if (s->session_state == SESSION_STATE_READY)
     clib_warning ("Reset active connection %U", format_stream_session, s, 2);
-  stream_session_cleanup (s);
+
+  a->handle = session_handle (s);
+  a->app_index = ecm->app_index;
+  vnet_disconnect_session (a);
   return;
 }
 
@@ -440,7 +446,7 @@ static void
 echo_clients_session_disconnect_callback (stream_session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  vnet_disconnect_args_t _a, *a = &_a;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   a->handle = session_handle (s);
   a->app_index = ecm->app_index;
   vnet_disconnect_session (a);
@@ -451,7 +457,7 @@ void
 echo_clients_session_disconnect (stream_session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
-  vnet_disconnect_args_t _a, *a = &_a;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   a->handle = session_handle (s);
   a->app_index = ecm->app_index;
   vnet_disconnect_session (a);
