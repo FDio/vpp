@@ -34,6 +34,24 @@
       "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4ca24589_ec70a246",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-04T20:30:14Z",
+      "side": 1,
+      "message": "policy based forwarding, or ACL based forwarding (ABF) as the open-source plugin is called, pre-resolves the nexth-ops defined in the policy. Therefore the result of the policy lookup is a DPO and this, as usual, is stored in ip.adj_index[VLID_TX]. Can you not do the same?",
+      "parentUuid": "2787f5e9_26073ae2",
+      "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
