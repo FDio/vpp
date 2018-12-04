@@ -250,12 +250,14 @@ Packet tracer
 -------------
 
 Vlib includes a frame element \[packet\] trace facility, with a simple
-vlib cli interface. The cli is straightforward: "trace add
-input-node-name count".
+debug CLI interface. The cli is straightforward: "trace add
+input-node-name count" to start capturing packet traces.
 
 To trace 100 packets on a typical x86\_64 system running the dpdk
 plugin: "trace add dpdk-input 100". When using the packet generator:
 "trace add pg-input 100"
+
+To display the packet trace: "show trace"
 
 Each graph node has the opportunity to capture its own trace data. It is
 almost always a good idea to do so. The trace capture APIs are simple.
@@ -286,3 +288,180 @@ Here's a simple example:
 The trace framework hands the per-node format function the data it
 captured as the packet whizzed by. The format function pretty-prints the
 data as desired.
+
+Graph Dispatcher Pcap Tracing
+-----------------------------
+
+The vpp graph dispatcher knows how to capture vectors of packets in pcap
+format as they're dispatched. The pcap captures are as follows:
+
+```
+    VPP graph dispatch trace record description:
+
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | Major Version | Minor Version | NStrings      | ProtoHint     |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | Buffer index (big endian)                                     |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       + VPP graph node name ...     ...               | NULL octet    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | Buffer Metadata ... ...                       | NULL octet    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | Buffer Opaque ... ...                         | NULL octet    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | Buffer Opaque 2 ... ...                       | NULL octet    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | VPP ASCII packet trace (if NStrings > 4)      | NULL octet    |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       | Packet data (up to 16K)                                       |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+Graph dispatch records comprise a version stamp, an indication of how
+many NULL-terminated strings will follow the record header and preceed
+packet data, and a protocol hint.
+
+The buffer index is an opaque 32-bit cookie which allows consumers of
+these data to easily filter/track single packets as they traverse the
+forwarding graph. Multiple records per packet are normal, and to be
+expected. 
+
+As of this writing: major version = 1, minor version = 0. Nstrings
+SHOULD be 4 or 5. Consumers SHOULD be wary values less than 4 or
+greater than 5. They MAY attempt to display the claimed number of
+strings, or they MAY treat the condition as an error.
+
+Here is the current set of protocol hints:
+
+```c
+    typedef enum
+      {
+        VLIB_NODE_PROTO_HINT_NONE = 0,
+        VLIB_NODE_PROTO_HINT_ETHERNET,
+        VLIB_NODE_PROTO_HINT_IP4,
+        VLIB_NODE_PROTO_HINT_IP6,
+        VLIB_NODE_PROTO_HINT_TCP,
+        VLIB_NODE_PROTO_HINT_UDP,
+        VLIB_NODE_N_PROTO_HINTS,
+      } vlib_node_proto_hint_t;
+```
+
+Example: VLIB_NODE_PROTO_HINT_IP6 means that the first octet of packet
+data SHOULD be 0x60, and should begin an ipv6 packet header.
+
+Downstream consumers of these data SHOULD pay attention to the
+protocol hint. They MUST tolerate inaccurate hints, which WILL occur
+from time to time.
+
+### Dispatch Pcap Trace Debug CLI
+
+To start a dispatch trace capture of up to 10,000 trace records:
+
+```
+     pcap dispatch trace on max 10000 file dispatch.pcap
+```
+
+To start a dispatch trace which will also include standard vpp packet
+tracing for packets which originate in dpdk-input:
+
+```
+     pcap dispatch trace on max 10000 file dispatch.pcap buffer-trace dpdk-input 1000
+```
+To save the pcap trace, e.g. in /tmp/dispatch.pcap:
+
+```
+    pcap dispatch trace off
+```    
+
+### Wireshark dissection of dispatch pcap traces
+
+It almost goes without saying that we built a companion wireshark
+dissector to display these traces. As of this writing, we're in the
+process of trying to upstream the wireshark dissector.
+
+Until various games of "fetch me a rock" involved are finished, please
+see the "How to build a vpp dispatch trace aware Wireshark" page
+for build info, and/or take a look at .../extras/wireshark.
+
+Here is a sample packet dissection, with some fields omitted for
+clarity.  The point is that the wireshark dissector accurately
+displays **all** of the vpp buffer metadata, and the name of the graph
+node in question.
+
+```
+    Frame 1: 2216 bytes on wire (17728 bits), 2216 bytes captured (17728 bits)
+        Encapsulation type: USER 13 (58)
+        [Protocols in frame: vpp:vpp-metadata:vpp-opaque:vpp-opaque2:eth:ethertype:ip:tcp:data]
+    VPP Dispatch Trace
+        BufferIndex: 0x00036663
+    NodeName: ethernet-input
+    VPP Buffer Metadata
+        Metadata: flags: 
+        Metadata: current_data: 0, current_length: 102
+        Metadata: current_config_index: 0, flow_id: 0, next_buffer: 0
+        Metadata: error: 0, n_add_refs: 0, buffer_pool_index: 0
+        Metadata: trace_index: 0, recycle_count: 0, len_not_first_buf: 0
+        Metadata: free_list_index: 0
+        Metadata: 
+    VPP Buffer Opaque
+        Opaque: raw: 00000007 ffffffff 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+        Opaque: sw_if_index[VLIB_RX]: 7, sw_if_index[VLIB_TX]: -1
+        Opaque: L2 offset 0, L3 offset 0, L4 offset 0, feature arc index 0
+        Opaque: ip.adj_index[VLIB_RX]: 0, ip.adj_index[VLIB_TX]: 0
+        Opaque: ip.flow_hash: 0x0, ip.save_protocol: 0x0, ip.fib_index: 0
+        Opaque: ip.save_rewrite_length: 0, ip.rpf_id: 0
+        Opaque: ip.icmp.type: 0 ip.icmp.code: 0, ip.icmp.data: 0x0
+        Opaque: ip.reass.next_index: 0, ip.reass.estimated_mtu: 0
+        Opaque: ip.reass.fragment_first: 0 ip.reass.fragment_last: 0
+        Opaque: ip.reass.range_first: 0 ip.reass.range_last: 0
+        Opaque: ip.reass.next_range_bi: 0x0, ip.reass.ip6_frag_hdr_offset: 0
+        Opaque: mpls.ttl: 0, mpls.exp: 0, mpls.first: 0, mpls.save_rewrite_length: 0, mpls.bier.n_bytes: 0
+        Opaque: l2.feature_bitmap: 00000000, l2.bd_index: 0, l2.l2_len: 0, l2.shg: 0, l2.l2fib_sn: 0, l2.bd_age: 0
+        Opaque: l2.feature_bitmap_input:   none configured, L2.feature_bitmap_output:   none configured
+        Opaque: l2t.next_index: 0, l2t.session_index: 0
+        Opaque: l2_classify.table_index: 0, l2_classify.opaque_index: 0, l2_classify.hash: 0x0
+        Opaque: policer.index: 0
+        Opaque: ipsec.flags: 0x0, ipsec.sad_index: 0
+        Opaque: map.mtu: 0
+        Opaque: map_t.v6.saddr: 0x0, map_t.v6.daddr: 0x0, map_t.v6.frag_offset: 0, map_t.v6.l4_offset: 0
+        Opaque: map_t.v6.l4_protocol: 0, map_t.checksum_offset: 0, map_t.mtu: 0
+        Opaque: ip_frag.mtu: 0, ip_frag.next_index: 0, ip_frag.flags: 0x0
+        Opaque: cop.current_config_index: 0
+        Opaque: lisp.overlay_afi: 0
+        Opaque: tcp.connection_index: 0, tcp.seq_number: 0, tcp.seq_end: 0, tcp.ack_number: 0, tcp.hdr_offset: 0, tcp.data_offset: 0
+        Opaque: tcp.data_len: 0, tcp.flags: 0x0
+        Opaque: sctp.connection_index: 0, sctp.sid: 0, sctp.ssn: 0, sctp.tsn: 0, sctp.hdr_offset: 0
+        Opaque: sctp.data_offset: 0, sctp.data_len: 0, sctp.subconn_idx: 0, sctp.flags: 0x0
+        Opaque: snat.flags: 0x0
+        Opaque: 
+    VPP Buffer Opaque2
+        Opaque2: raw: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+        Opaque2: qos.bits: 0, qos.source: 0
+        Opaque2: loop_counter: 0
+        Opaque2: gbp.flags: 0, gbp.src_epg: 0
+        Opaque2: pg_replay_timestamp: 0
+        Opaque2: 
+    Ethernet II, Src: 06:d6:01:41:3b:92 (06:d6:01:41:3b:92), Dst: IntelCor_3d:f6    Transmission Control Protocol, Src Port: 22432, Dst Port: 54084, Seq: 1, Ack: 1, Len: 36
+        Source Port: 22432
+        Destination Port: 54084
+        TCP payload (36 bytes)
+    Data (36 bytes)
+
+    0000  cf aa 8b f5 53 14 d4 c7 29 75 3e 56 63 93 9d 11   ....S...)u>Vc...
+    0010  e5 f2 92 27 86 56 4c 21 ce c5 23 46 d7 eb ec 0d   ...'.VL!..#F....
+    0020  a8 98 36 5a                                       ..6Z
+        Data: cfaa8bf55314d4c729753e5663939d11e5f2922786564c21…
+        [Length: 36]
+```
+
+It's a matter of a couple of mouse-clicks in Wireshark to filter the
+trace to a specific buffer index. With that specific kind of filtration,
+one can watch a packet walk through the forwarding graph; noting any/all
+metadata changes, header checksum changes, and so forth.
+
+This should be of significant value when developing new vpp graph
+nodes. If new code mispositions b->current_data, it will be completely
+obvious from looking at the dispatch trace in wireshark.
+
