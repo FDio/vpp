@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3d04a3d_36dc32bf",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-12-04T16:46:01Z",
+      "side": 1,
+      "message": "Are these fields used by open-source fd.io code?",
+      "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
