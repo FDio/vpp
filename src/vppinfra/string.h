@@ -1025,7 +1025,7 @@ strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
 	}
     }
   else
-    m = n;
+    m = clib_strnlen (src, n);
 
   /* Check for src/dst overlap, which is not allowed */
   low = (uword) (src < dest ? src : dest);
