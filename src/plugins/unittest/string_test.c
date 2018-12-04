@@ -530,6 +530,7 @@ test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[] = "To err is human.";
   char dst[64];
+  char *dst_alias = dst;
   int indicator;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
@@ -559,12 +560,9 @@ test_strcpy_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = strcpy_s (dst, s1size, dst);
+  err = strcpy_s (dst, s1size, dst_alias);
   if (err == EOK)
     return -1;
-#endif
 
   /* overlap fail */
   err = strcpy_s (dst, s1size, dst + 1);
@@ -580,6 +578,7 @@ test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[] = "The journey of a one thousand miles begins with one step.";
   char dst[100];
+  char *dst_alias = dst;
   int indicator;
   errno_t err;
 
@@ -613,12 +612,9 @@ test_clib_strcpy (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = clib_strcpy (dst, dst);
+  err = clib_strcpy (dst, dst_alias);
   if (err == EOK)
     return -1;
-#endif
 
   /* overlap fail */
   err = clib_strcpy (dst, dst + 1);
@@ -634,6 +630,7 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[] = "Those who dare to fail miserably can achieve greatly.";
   char dst[100], old_dst[100];
+  char *dst_alias = dst;
   int indicator;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
@@ -712,12 +709,9 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = strncpy_s (dst, s1size, dst, s1size);
+  err = strncpy_s (dst, s1size, dst_alias, s1size);
   if (err == EOK)
     return -1;
-#endif
 
   /* OK, seems to work */
   return 0;
@@ -728,6 +722,7 @@ test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[] = "Those who dare to fail miserably can achieve greatly.";
   char dst[100], old_dst[100];
+  char *dst_alias = dst;
   int indicator;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
@@ -768,15 +763,12 @@ test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
   /* verify it against strncpy */
   memset_s (dst, sizeof (dst), 0, sizeof (dst));
 
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
   strncpy (dst, "The price of greatness is responsibility.", 10);
   if (strcmp_s (dst, clib_strnlen (dst, sizeof (dst)), "The price ",
 		&indicator) != EOK)
     return -1;
   if (indicator != 0)
     return -1;
-#endif
 
   /* n > string len of src */
   err = clib_strncpy (dst, src, clib_strnlen (src, sizeof (src)) + 10);
@@ -814,17 +806,14 @@ test_clib_strncpy (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-  err = clib_strncpy (dst, dst + 1, s1size);
+  err = clib_strncpy (dst, dst + 1, s1size - 1);
   if (err == EOK)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = clib_strncpy (dst, dst, s1size);
+  err = clib_strncpy (dst, dst_alias, s1size);
   if (err == EOK)
     return -1;
-#endif
 
   /* OK, seems to work */
   return 0;
@@ -834,6 +823,7 @@ static int
 test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[100], dst[100], old_dst[100];
+  char *dst_alias = dst;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
   int indicator;
@@ -874,12 +864,9 @@ test_strcat_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = strcat_s (dst, s1size, dst);
+  err = strcat_s (dst, s1size, dst_alias);
   if (err != EINVAL)
     return -1;
-#endif
 
   /* not enough space for dst */
   err = strcat_s (dst, 10, src);
@@ -894,6 +881,7 @@ static int
 test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[100], dst[100], old_dst[100];
+  char *dst_alias = dst;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
   int indicator;
@@ -944,12 +932,9 @@ test_clib_strcat (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = clib_strcat (dst, dst);
+  err = clib_strcat (dst, dst_alias);
   if (err != EINVAL)
     return -1;
-#endif
 
   /* OK, seems to work */
   return 0;
@@ -959,6 +944,7 @@ static int
 test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[100], dst[100], old_dst[100];
+  char *dst_alias = dst;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
   char s1[] = "Two things are infinite: ";
@@ -1068,12 +1054,9 @@ test_strncat_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = strncat_s (dst, s1size, dst, clib_strnlen (dst, sizeof (dst)));
+  err = strncat_s (dst, s1size, dst_alias, clib_strnlen (dst, sizeof (dst)));
   if (err != EINVAL)
     return -1;
-#endif
 
   /* OK, seems to work */
   return 0;
@@ -1083,6 +1066,7 @@ static int
 test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[100], dst[100], old_dst[100];
+  char *dst_alias = dst;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
   char s1[] = "Two things are infinite: ";
@@ -1185,12 +1169,9 @@ test_clib_strncat (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* overlap fail */
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  err = clib_strncat (dst, dst, clib_strnlen (dst, sizeof (dst)));
+  err = clib_strncat (dst, dst_alias, clib_strnlen (dst, sizeof (dst)));
   if (err != EINVAL)
     return -1;
-#endif
 
   /* OK, seems to work */
   return 0;
@@ -1294,9 +1275,7 @@ static int
 test_clib_strtok (vlib_main_t * vm, unformat_input_t * input)
 {
   int indicator;
-  char *s1 __attribute__ ((unused));
-  char *tok __attribute__ ((unused));
-  char *ptr __attribute__ ((unused));
+  char *s1, *s1_alias, *tok, *ptr;
   char str1[40];
   char *p2str;
   char *tok1, *tok2, *tok3, *tok4, *tok5, *tok6, *tok7;
@@ -1398,17 +1377,16 @@ test_clib_strtok (vlib_main_t * vm, unformat_input_t * input)
   /* negative stuff */
   s1 = 0;
   ptr = 0;
-#if __GNUC__ < 8
-  /* GCC 8 flunks this one at compile time... */
-  tok = clib_strtok (s1, s1, (char **) 0);
+  s1_alias = s1;
+  tok = clib_strtok (s1, s1_alias, (char **) 0);
   if (tok != 0)
     return -1;
 
   /* s1 and ptr contents are null */
-  tok = clib_strtok (s1, s1, &ptr);
+  s1_alias = s1;
+  tok = clib_strtok (s1, s1_alias, &ptr);
   if (tok != 0)
     return -1;
-#endif
 
   /* verify it against strtok_r */
   /* No can do. This causes a crash in strtok_r */
