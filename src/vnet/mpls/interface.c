@@ -62,7 +62,7 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
       fib_table_lock(lfib_index, FIB_PROTOCOL_MPLS,
                      (is_api? FIB_SOURCE_API: FIB_SOURCE_CLI));
 
-      vec_validate(mm->fib_index_by_sw_if_index, 0);
+      vec_validate(mm->fib_index_by_sw_if_index, sw_if_index);
       mm->fib_index_by_sw_if_index[sw_if_index] = lfib_index;
     }
   else
