@@ -73,7 +73,7 @@ void
 echo_server_session_disconnect_callback (stream_session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
-  vnet_disconnect_args_t _a, *a = &_a;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   a->handle = session_handle (s);
   a->app_index = esm->app_index;
@@ -83,8 +83,12 @@ echo_server_session_disconnect_callback (stream_session_t * s)
 void
 echo_server_session_reset_callback (stream_session_t * s)
 {
+  echo_server_main_t *esm = &echo_server_main;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   clib_warning ("Reset session %U", format_stream_session, s, 2);
-  stream_session_cleanup (s);
+  a->handle = session_handle (s);
+  a->app_index = esm->app_index;
+  vnet_disconnect_session (a);
 }
 
 int

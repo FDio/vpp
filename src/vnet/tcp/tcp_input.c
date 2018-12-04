@@ -501,8 +501,8 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
   else
     {
       mrtt = tcp_time_now_w_thread (thread_index) - tc->rcv_opts.tsecr;
+      mrtt = clib_max (mrtt, 1);
       tc->mrtt_us = (f64) mrtt *TCP_TICK;
-
     }
 
   if (mrtt > 0 && mrtt < TCP_RTT_MAX)
