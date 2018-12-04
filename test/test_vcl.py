@@ -43,8 +43,13 @@ class VCLTestCase(VppTestCase):
         self.server_args = [self.server_port]
         self.server_ipv6_addr = "::1"
         self.server_ipv6_args = ["-6", self.server_port]
-        self.timeout = 10
+        self.timeout = 20
         self.echo_phrase = "Hello, world! Jenny is a friend of mine."
+        self.pre_test_sleep = 0.3
+        self.post_test_sleep = 0.2
+
+        if os.path.isfile("/tmp/ldp_server_af_unix_socket"):
+            os.remove("/tmp/ldp_server_af_unix_socket")
 
         super(VCLTestCase, self).__init__(methodName)
 
@@ -61,7 +66,7 @@ class VCLTestCase(VppTestCase):
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
                                      self.logger, self.env)
         worker_server.start()
-        self.sleep(0.3)
+        self.sleep(self.pre_test_sleep)
         worker_client = VCLAppWorker(self.build_dir, client_app, client_args,
                                      self.logger, self.env)
         worker_client.start()
@@ -70,6 +75,7 @@ class VCLTestCase(VppTestCase):
             self.validateResults(worker_client, worker_server, self.timeout)
         except Exception as error:
             self.fail("Failed with %s" % error)
+        self.sleep(self.post_test_sleep)
 
     def thru_host_stack_setup(self):
         self.vapi.session_enable_disable(is_enabled=1)
@@ -171,7 +177,7 @@ class VCLTestCase(VppTestCase):
         worker_server = VCLAppWorker(self.build_dir, server_app, server_args,
                                      self.logger, self.env)
         worker_server.start()
-        self.sleep(0.3)
+        self.sleep(self.pre_test_sleep)
 
         self.env.update({'VCL_APP_NAMESPACE_ID': "2",
                          'VCL_APP_NAMESPACE_SECRET': "5678"})
@@ -184,12 +190,13 @@ class VCLTestCase(VppTestCase):
             self.validateResults(worker_client, worker_server, self.timeout)
         except Exception as error:
             self.fail("Failed with %s" % error)
+        self.sleep(self.post_test_sleep)
 
     def validateResults(self, worker_client, worker_server, timeout):
         if os.path.isdir('/proc/{}'.format(worker_server.process.pid)):
             self.logger.info("Killing server worker process (pid %d)" %
                              worker_server.process.pid)
-            os.killpg(os.getpgid(worker_server.process.pid), signal.SIGTERM)
+            os.killpg(os.getpgid(worker_server.process.pid), signal.SIGKILL)
             worker_server.join()
         self.logger.info("Client worker result is `%s'" % worker_client.result)
         error = False
@@ -200,7 +207,7 @@ class VCLTestCase(VppTestCase):
                     "Timeout: %ss! Killing client worker process (pid %d)" %
                     (timeout, worker_client.process.pid))
                 os.killpg(os.getpgid(worker_client.process.pid),
-                          signal.SIGTERM)
+                          signal.SIGKILL)
                 worker_client.join()
             except:
                 self.logger.debug(
@@ -222,7 +229,7 @@ class LDPCutThruTestCase(VCLTestCase):
         self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
                                       self.server_addr, self.server_port]
         self.client_iperf3_timeout = 20
-        self.client_iperf3_args = ["-V4d", "-t 5", "-c", self.server_addr]
+        self.client_iperf3_args = ["-V4d", "-t 2", "-c", self.server_addr]
         self.server_iperf3_args = ["-V4d", "-s"]
         self.client_uni_dir_nsock_timeout = 20
         self.client_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
@@ -510,7 +517,7 @@ class VCLThruHostStackIperfTestCase(VCLTestCase):
 
         self.thru_host_stack_setup()
         self.client_iperf3_timeout = 20
-        self.client_iperf3_args = ["-V4d", "-t 5", "-c", self.loop0.local_ip4]
+        self.client_iperf3_args = ["-V4d", "-t 2", "-c", self.loop0.local_ip4]
         self.server_iperf3_args = ["-V4d", "-s"]
 
     def tearDown(self):
@@ -547,7 +554,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
         self.client_ipv6_echo_test_args = ["-6", "-E", self.echo_phrase, "-X",
                                            self.server_ipv6_addr,
                                            self.server_port]
-        self.client_ipv6_iperf3_args = ["-V6d", "-t 5", "-c",
+        self.client_ipv6_iperf3_args = ["-V6d", "-t 2", "-c",
                                         self.server_ipv6_addr]
         self.server_ipv6_iperf3_args = ["-V6d", "-s"]
         self.client_ipv6_uni_dir_nsock_test_args = ["-N", "1000", "-U", "-X",
@@ -853,7 +860,7 @@ class VCLIpv6ThruHostStackIperfTestCase(VCLTestCase):
 
         self.thru_host_stack_ipv6_setup()
         self.client_iperf3_timeout = 20
-        self.client_ipv6_iperf3_args = ["-V6d", "-t 5", "-c",
+        self.client_ipv6_iperf3_args = ["-V6d", "-t 2", "-c",
                                         self.loop0.local_ip6]
         self.server_ipv6_iperf3_args = ["-V6d", "-s"]
 

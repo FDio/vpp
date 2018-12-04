@@ -587,7 +587,10 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
 
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    {
+      clib_warning ("failed to allocate msg");
+      return -1;
+    }
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_CONNECTED;
@@ -668,7 +671,10 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     }
 
   if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return -1;
+    {
+      clib_warning ("failed to alloc msg");
+      return -1;
+    }
 
   evt = svm_msg_q_msg_data (app_mq, msg);
   clib_memset (evt, 0, sizeof (*evt));

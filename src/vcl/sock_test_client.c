@@ -23,6 +23,7 @@
 #include <time.h>
 #include <arpa/inet.h>
 #include <vcl/sock_test.h>
+#include <fcntl.h>
 #ifndef VCL_TEST
 #include <sys/un.h>
 #endif
@@ -647,6 +648,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 		       errno_val);
 	      return tsock->fd;
 	    }
+	  fcntl(tsock->fd, F_SETFL, O_NONBLOCK);
 
 #ifdef VCL_TEST
 	  rv = vppcom_session_connect (tsock->fd, &scm->server_endpt);

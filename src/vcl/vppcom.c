@@ -464,7 +464,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
       session->tx_fifo = tx_fifo;
     }
 
-  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: bind succeeded!",
+  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: bind succeeded!",
 	getpid (), mp->handle, sid);
   return sid;
 }
@@ -559,7 +559,10 @@ vppcom_wait_for_session_state_change (u32 session_index,
 	}
 
       if (svm_msg_q_sub (wrk->app_event_queue, &msg, SVM_Q_NOWAIT, 0))
-	continue;
+	{
+	  usleep (100);
+	  continue;
+	}
       e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
       vcl_handle_mq_event (wrk, e);
       svm_msg_q_free_msg (wrk->app_event_queue, &msg);
@@ -1181,9 +1184,9 @@ handle:
     VCL_SESS_ATTR_SET (client_session->attr, VCL_SESS_ATTR_NONBLOCK);
 
   listen_vpp_handle = listen_session->vpp_handle;
-  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: Got a client request! "
+  VDBG (0, "vpp handle 0x%llx, sid %u: Got a client request! "
 	"vpp handle 0x%llx, sid %u, flags %d, is_nonblocking %u",
-	getpid (), listen_vpp_handle, listen_session_handle,
+	listen_vpp_handle, listen_session_handle,
 	client_session->vpp_handle, client_session_index,
 	flags, VCL_SESS_ATTR_TEST (client_session->attr,
 				   VCL_SESS_ATTR_NONBLOCK));
@@ -1209,9 +1212,9 @@ handle:
   vcl_send_session_accepted_reply (vpp_evt_q, client_session->client_context,
 				   client_session->vpp_handle, 0);
 
-  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: accepted vpp handle 0x%llx, "
+  VDBG (0, "vpp handle 0x%llx, sid %u: accepted vpp handle 0x%llx, "
 	"sid %u connection from peer %s address %U port %u to local %s "
-	"address %U port %u", getpid (), listen_vpp_handle,
+	"address %U port %u", listen_vpp_handle,
 	listen_session_handle, client_session->vpp_handle,
 	client_session_index,
 	client_session->transport.is_ip4 ? "IPv4" : "IPv6",
