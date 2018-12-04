@@ -1739,6 +1739,7 @@ application_local_session_connect_notify (local_session_t * ls)
       segment_manager_segment_reader_unlock (sm);
     }
 
+  clib_warning ("sending connected notify");
   client->cb_fns.session_connected_callback (client_wrk->wrk_index,
 					     ls->client_opaque,
 					     (stream_session_t *) ls,
