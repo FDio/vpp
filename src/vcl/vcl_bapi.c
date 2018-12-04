@@ -182,13 +182,13 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
 		    format_api_error, ntohl (mp->retval));
       goto failed;
     }
-  wrk_index = mp->context;
-  wrk = vcl_worker_get (wrk_index);
-  wrk->vpp_wrk_index = clib_net_to_host_u32 (mp->wrk_index);
 
   if (!mp->is_add)
     return;
 
+  wrk_index = mp->context;
+  wrk = vcl_worker_get (wrk_index);
+  wrk->vpp_wrk_index = clib_net_to_host_u32 (mp->wrk_index);
   wrk->app_event_queue = uword_to_pointer (mp->app_event_queue_address,
 					   svm_msg_q_t *);
 
@@ -328,7 +328,7 @@ static void
 vl_api_bind_sock_reply_t_handler (vl_api_bind_sock_reply_t * mp)
 {
   /* Expecting a similar message on mq. So ignore this */
-  VDBG (1, "VCL<%d>: bapi msg vpp handle 0x%llx, sid %u: bind retval: %u!",
+  VDBG (0, "bapi msg vpp handle 0x%llx, sid %u: bind retval: %u!",
 	getpid (), mp->handle, mp->context, mp->retval);
 }
 
