@@ -296,6 +296,7 @@ tcp_connection_reset (tcp_connection_t * tc)
     case TCP_STATE_CLOSED:
       return;
     }
+  tc->state = TCP_STATE_CLOSED;
 }
 
 /**
@@ -348,6 +349,9 @@ tcp_connection_close (tcp_connection_t * tc)
       break;
     case TCP_STATE_FIN_WAIT_1:
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+      break;
+    case TCP_STATE_CLOSED:
+      tcp_connection_timers_reset (tc);
       break;
     default:
       TCP_DBG ("state: %u", tc->state);
