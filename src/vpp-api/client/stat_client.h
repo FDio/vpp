@@ -54,7 +54,8 @@ int stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm);
 int stat_segment_connect (const char *socket_name);
 void stat_segment_disconnect_r (stat_client_main_t * sm);
 void stat_segment_disconnect (void);
-uint8_t **stat_segment_string_vector (uint8_t ** string_vector, char *string);
+uint8_t **stat_segment_string_vector (uint8_t ** string_vector,
+				      const char *string);
 int stat_segment_vec_len (void *vec);
 void stat_segment_vec_free (void *vec);
 uint32_t *stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm);
