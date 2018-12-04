@@ -1063,6 +1063,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 static void
 vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
 {
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   app_worker_t *app_wrk;
   application_t *app;
   stream_session_t *s;
@@ -1097,7 +1098,9 @@ vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
 
   /* This comes as a response to a reset, transport only waiting for
    * confirmation to remove connection state, no need to disconnect */
-  stream_session_cleanup (s);
+  a->handle = mp->handle;
+  a->app_index = app->app_index;
+  vnet_disconnect_session (a);
 }
 
 static void

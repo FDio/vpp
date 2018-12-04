@@ -296,6 +296,7 @@ tcp_connection_reset (tcp_connection_t * tc)
     case TCP_STATE_CLOSED:
       return;
     }
+  tc->state = TCP_STATE_CLOSED;
 }
 
 /**
@@ -348,6 +349,9 @@ tcp_connection_close (tcp_connection_t * tc)
       break;
     case TCP_STATE_FIN_WAIT_1:
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+      break;
+    case TCP_STATE_CLOSED:
+      tcp_connection_timers_reset (tc);
       break;
     default:
       TCP_DBG ("state: %u", tc->state);
@@ -553,6 +557,7 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
   tc->snd_una_max = tc->snd_nxt;
+  tc->srtt = 1;
 }
 
 void
@@ -1052,7 +1057,8 @@ tcp_snd_space_inline (tcp_connection_t * tc)
 {
   int snd_space, snt_limited;
 
-  if (PREDICT_FALSE (tcp_in_fastrecovery (tc)))
+  if (PREDICT_FALSE (tcp_in_fastrecovery (tc)
+		     || tc->state == TCP_STATE_CLOSED))
     return 0;
 
   snd_space = tcp_available_output_snd_space (tc);
