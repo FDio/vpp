@@ -444,7 +444,10 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt_cfg,
       error = transport_find_local_ip_for_remote (rmt_cfg->peer.sw_if_index,
 						  rmt, lcl_addr);
       if (error)
-	return -1;
+	{
+	  clib_error_report (error);
+	  return -1;
+	}
     }
   else
     {
