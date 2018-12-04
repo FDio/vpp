@@ -70,6 +70,24 @@
       "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6761162b_e00a90c0",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2018-12-04T20:33:49Z",
+      "side": 1,
+      "message": "this is little different in the sense.. its not acl based rule, rather always send downlink traffic to a specific nh instead of follow the DA.. so nh based lookup has to happen.. before transmit the packet.. \n\nif you see its not generic enough, would manage the way dave b  suggested",
+      "parentUuid": "4ca24589_ec70a246",
+      "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
