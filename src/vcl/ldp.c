@@ -258,9 +258,12 @@ ldp_init (void)
   rv = vppcom_app_create (ldp_get_app_name ());
   if (rv != VPPCOM_OK)
     {
-      fprintf (stderr, "\nLDP<%d>: ERROR: ldp_init: vppcom_app_create()"
-	       " failed!  rv = %d (%s)\n",
-	       getpid (), rv, vppcom_retval_str (rv));
+      ldp->vcl_needs_real_epoll = 0;
+      if (rv == VPPCOM_EEXIST)
+	return 0;
+      LDBG (2, "\nLDP<%d>: ERROR: ldp_init: vppcom_app_create()"
+	    " failed!  rv = %d (%s)\n",
+	    getpid (), rv, vppcom_retval_str (rv));
       ldp->init = 0;
       return rv;
     }
