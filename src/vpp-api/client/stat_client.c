@@ -321,7 +321,7 @@ stat_segment_ls_r (uint8_t ** patterns, stat_client_main_t * sm)
   int i, j;
   for (i = 0; i < vec_len (patterns); i++)
     {
-      int rv = regcomp (&regex[i], (char *) patterns[i], 0);
+      int rv = regcomp (&regex[i], (const char *) patterns[i], 0);
       if (rv)
 	{
 	  fprintf (stderr, "Could not compile regex %s\n", patterns[i]);
@@ -419,12 +419,12 @@ stat_segment_vec_free (void *vec)
 }
 
 /* Create a vector from a string (or add to existing) */
-u8 **
-stat_segment_string_vector (u8 ** string_vector, char *string)
+uint8_t **
+stat_segment_string_vector (uint8_t ** string_vector, uint8_t * string)
 {
-  u8 *name = 0;
-  name = vec_dup ((u8 *) string);
-  vec_add1 (string_vector, (u8 *) name);
+  uint8_t *name = 0;
+  name = vec_dup ((uint8_t *) string);
+  vec_add1 (string_vector, (uint8_t *) name);
   return string_vector;
 }
 
