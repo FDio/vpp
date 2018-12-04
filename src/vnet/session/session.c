@@ -835,7 +835,7 @@ stream_session_reset_notify (transport_connection_t * tc)
   app_worker_t *app_wrk;
   application_t *app;
   s = session_get (tc->s_index, tc->thread_index);
-  s->session_state = SESSION_STATE_CLOSED;
+  svm_fifo_dequeue_drop_all (s->server_tx_fifo);
   app_wrk = app_worker_get (s->app_wrk_index);
   app = application_get (app_wrk->app_index);
   app->cb_fns.session_reset_callback (s);

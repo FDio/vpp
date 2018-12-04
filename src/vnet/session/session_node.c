@@ -84,6 +84,7 @@ session_mq_accepted_reply_handler (void *data)
 static void
 session_mq_reset_reply_handler (void *data)
 {
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   session_reset_reply_msg_t *mp;
   app_worker_t *app_wrk;
   stream_session_t *s;
@@ -119,7 +120,9 @@ session_mq_reset_reply_handler (void *data)
 
   /* This comes as a response to a reset, transport only waiting for
    * confirmation to remove connection state, no need to disconnect */
-  stream_session_cleanup (s);
+  a->handle = mp->handle;
+  a->app_index = app->app_index;
+  vnet_disconnect_session (a);
 }
 
 static void
