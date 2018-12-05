@@ -3302,13 +3302,19 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   if (is_ip4)
     {
       ip4_header_t *ip4 = vlib_buffer_get_current (b);
+      int ip_hdr_bytes = ip4_header_bytes (ip4);
+      if (PREDICT_FALSE (b->current_length < ip_hdr_bytes + sizeof (*tcp)))
+	{
+	  *error = TCP_ERROR_LENGTH;
+	  return 0;
+	}
       tcp = ip4_next_header (ip4);
       vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip4;
-      n_advance_bytes = (ip4_header_bytes (ip4) + tcp_header_bytes (tcp));
+      n_advance_bytes = (ip_hdr_bytes + tcp_header_bytes (tcp));
       n_data_bytes = clib_net_to_host_u16 (ip4->length) - n_advance_bytes;
 
       /* Length check. Checksum computed by ipx_local no need to compute again */
-      if (PREDICT_FALSE (n_advance_bytes < 0))
+      if (PREDICT_FALSE (n_data_bytes < 0))
 	{
 	  *error = TCP_ERROR_LENGTH;
 	  return 0;
@@ -3322,6 +3328,11 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   else
     {
       ip6_header_t *ip6 = vlib_buffer_get_current (b);
+      if (PREDICT_FALSE (b->current_length < sizeof (*ip6) + sizeof (*tcp)))
+	{
+	  *error = TCP_ERROR_LENGTH;
+	  return 0;
+	}
       tcp = ip6_next_header (ip6);
       vnet_buffer (b)->tcp.hdr_offset = (u8 *) tcp - (u8 *) ip6;
       n_advance_bytes = tcp_header_bytes (tcp);
@@ -3329,7 +3340,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
 	- n_advance_bytes;
       n_advance_bytes += sizeof (ip6[0]);
 
-      if (PREDICT_FALSE (n_advance_bytes < 0))
+      if (PREDICT_FALSE (n_data_bytes < 0))
 	{
 	  *error = TCP_ERROR_LENGTH;
 	  return 0;
