@@ -277,9 +277,19 @@ esp_decrypt_inline (vlib_main_t * vm,
 		    }
 		  else
 		    {
-		      ih4 =
-			(ip4_header_t *) ((u8 *) esp0 -
-					  sizeof (ip4_header_t));
+		      if (sa0->udp_encap)
+			{
+			  ih4 =
+			    (ip4_header_t *) ((u8 *) esp0 -
+					      sizeof (udp_header_t) -
+					      sizeof (ip4_header_t));
+			}
+		      else
+			{
+			  ih4 =
+			    (ip4_header_t *) ((u8 *) esp0 -
+					      sizeof (ip4_header_t));
+			}
 		      oh4 = vlib_buffer_get_current (o_b0);
 		      ip_hdr_size = sizeof (ip4_header_t);
 		    }
