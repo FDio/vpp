@@ -18,6 +18,8 @@
 
 #include <future>
 
+#include <vapi/vapi.hpp>
+
 #include "vom/cmd.hpp"
 #include "vom/logger.hpp"
 

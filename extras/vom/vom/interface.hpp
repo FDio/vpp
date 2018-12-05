@@ -389,6 +389,18 @@ public:
     const std::string m_name;
   };
 
+  struct event
+  {
+    event(const interface& itf, const interface::oper_state_t& state)
+      : itf(itf)
+      , state(state)
+    {
+    }
+
+    const interface& itf;
+    interface::oper_state_t state;
+  };
+
   /**
    * A class that listens to interface Events
    */
@@ -404,7 +416,7 @@ public:
      * Virtual function called on the listener when the command has data
      * ready to process
      */
-    virtual void handle_interface_event(interface_cmds::events_cmd* cmd) = 0;
+    virtual void handle_interface_event(std::vector<event> es) = 0;
 
     /**
      * Return the HW::item representing the status
@@ -468,6 +480,16 @@ public:
    */
   void enable_stats(stat_listener& el,
                     const stats_type_t& st = stats_type_t::NORMAL);
+
+  /**
+   * Enable the reception of events of all interfaces
+   */
+  static void enable_events(interface::event_listener& el);
+
+  /**
+   * disable the reception of events of all interfaces
+   */
+  static void disable_events();
 
 protected:
   /**
@@ -658,6 +680,8 @@ private:
    */
   template <typename MSG>
   friend class delete_cmd;
+
+  static std::shared_ptr<interface_cmds::events_cmd> m_events_cmd;
 };
 };
 /*

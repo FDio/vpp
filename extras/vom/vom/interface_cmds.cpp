@@ -441,7 +441,30 @@ events_cmd::retire(connection& con)
 void
 events_cmd::notify()
 {
-  m_listener.handle_interface_event(this);
+  std::lock_guard<interface_cmds::events_cmd> lg(*this);
+  std::vector<interface::event> events;
+
+  for (auto& msg : *this) {
+    auto& payload = msg.get_payload();
+
+    handle_t handle(payload.sw_if_index);
+    std::shared_ptr<interface> sp = interface::find(handle);
+
+    if (sp) {
+      interface::oper_state_t oper_state =
+        interface::oper_state_t::from_int(payload.link_up_down);
+
+      VOM_LOG(log_level_t::DEBUG) << "Interface Event: " << sp->to_string()
+                                  << " state: " << oper_state.to_string();
+
+      sp->set(oper_state);
+      events.push_back({ *sp, oper_state });
+    }
+  }
+
+  flush();
+
+  m_listener.handle_interface_event(events);
 }
 
 std::string
