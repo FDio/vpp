@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a6c81701_7b6b0606",
+        "filename": "test/framework.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-05T01:37:12Z",
+      "side": 1,
+      "message": "Wouldn\u0027t this be better as:\ndef _is_skip_aarch64_set():\n    ...\nis_skip_aarch64_set \u003d _is_skip_aatch64_set() ?",
+      "range": {
+        "startLine": 137,
+        "startChar": 1,
+        "endLine": 138,
+        "endChar": 70
+      },
+      "revId": "2725ca3bee6524290788cc8a187d4232aba98a5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2d28ebe5_99bf0617",
+        "filename": "test/framework.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-05T01:37:12Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 141,
+        "startChar": 0,
+        "endLine": 142,
+        "endChar": 42
+      },
+      "revId": "2725ca3bee6524290788cc8a187d4232aba98a5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
