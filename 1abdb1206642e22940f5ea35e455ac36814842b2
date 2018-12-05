@@ -106,6 +106,24 @@
       "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0ea89f2f_74e7a76e",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T05:07:27Z",
+      "side": 1,
+      "message": "sure it\u0027s not a ACL, but the \u0027specific next-hop\u0027 is still known when the policy is added, so can be resolved (i.e. lookup up) before the packets arrive.",
+      "parentUuid": "6ab8e47e_ecca0c44",
+      "revId": "1abdb1206642e22940f5ea35e455ac36814842b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
