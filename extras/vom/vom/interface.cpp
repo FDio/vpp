@@ -39,6 +39,11 @@ std::map<handle_t, std::weak_ptr<interface>> interface::m_hdl_db;
 interface::event_handler interface::m_evh;
 
 /**
+ * the event enable command.
+ */
+std::shared_ptr<interface_cmds::events_cmd> interface::m_events_cmd;
+
+/**
  * Construct a new object matching the desried state
  */
 interface::interface(const std::string& name,
@@ -483,6 +488,20 @@ void
 interface::dump(std::ostream& os)
 {
   db_dump(m_db, os);
+}
+
+void
+interface::enable_events(interface::event_listener& el)
+{
+  m_events_cmd = std::make_shared<interface_cmds::events_cmd>(el);
+  HW::enqueue(m_events_cmd);
+  HW::write();
+}
+
+void
+interface::disable_events()
+{
+  m_events_cmd.reset();
 }
 
 void

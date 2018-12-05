@@ -22,8 +22,6 @@
 #include "vom/prefix.hpp"
 #include "vom/singular_db.hpp"
 
-#include <vapi/ip.api.vapi.hpp>
-
 namespace VOM {
 /**
  * A route-domain is a VRF.
