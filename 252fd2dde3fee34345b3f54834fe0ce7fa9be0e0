@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "017d00fd_ea933091",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T10:32:34Z",
+      "side": 1,
+      "message": "I was thinking the same. But VPP provide stats in quite weird way. Same type of stats are together for all interfaces. How stat_reader would create struct stats for an interface and initialize them with respective stat values.",
+      "parentUuid": "e16f3e2b_bd5694d7",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d9b10f08_318fa7f2",
         "filename": "extras/vom/vom/stat_reader.cpp",
         "patchSetId": 17
@@ -47,6 +65,24 @@
       "writtenOn": "2018-12-05T07:49:18Z",
       "side": 1,
       "message": "how does one pass non default values to the stat_client?",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0f7b051f_f7f755bb",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T10:32:34Z",
+      "side": 1,
+      "message": "We are using the default constructor of stat_client. If one has to use the stat_client with custom constructor, he/she can call it directly stat_client class ;)\nLosing the functionality provided by stat_reader.",
+      "parentUuid": "d9b10f08_318fa7f2",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "396c5999_94c9f82a",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T10:32:34Z",
+      "side": 1,
+      "message": "It can\u0027t be private. See stat_reader.cpp line #22.",
+      "parentUuid": "63f402ee_bb3a47d6",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b814e597_af5fab7a",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
@@ -81,6 +135,24 @@
       "writtenOn": "2018-12-05T07:49:18Z",
       "side": 1,
       "message": "this is an index for which object type? interface, node, error, route...",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0b1f7113_bc17fec5",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T10:32:34Z",
+      "side": 1,
+      "message": "At the moment, it is interface indexes.",
+      "parentUuid": "b814e597_af5fab7a",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -104,6 +176,24 @@
     },
     {
       "key": {
+        "uuid": "471badbe_b273154e",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T10:32:34Z",
+      "side": 1,
+      "message": "It is doing the JOB internally!",
+      "parentUuid": "cc0c15f6_4d50d711",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "137783d4_ad68d5fa",
         "filename": "extras/vom/vom/test_stats.cpp",
         "patchSetId": 17
@@ -121,6 +211,24 @@
     },
     {
       "key": {
+        "uuid": "34ce9302_cc6116bd",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T10:32:34Z",
+      "side": 1,
+      "message": "I don\u0027t get the idea. What will happen, when listener will be invoked?\nHere we are implementing PULL method.\n\nStat_Reader class provides a get_stats() to get stats from VPP stat segment and fill registered interfaces with respective stats.\nThen client must call stat_reader::get_stats() once and interface::get_stats on each of the registered interfaces on which it has enabled stats. This way it won\u0027t call VPP stat_segment for each interface.",
+      "parentUuid": "137783d4_ad68d5fa",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "84b6ae41_f8fd1c8a",
         "filename": "extras/vom/vom/test_stats.cpp",
         "patchSetId": 17
@@ -132,6 +240,24 @@
       "writtenOn": "2018-12-05T08:15:27Z",
       "side": 1,
       "message": "what does the \u0027reset\u0027 function on an interface do?  reload the SPF adapter ;)",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ab5af124_98f4528e",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T10:32:34Z",
+      "side": 1,
+      "message": "These were references to interfaces. I am justing removing those references ;)",
+      "parentUuid": "84b6ae41_f8fd1c8a",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
