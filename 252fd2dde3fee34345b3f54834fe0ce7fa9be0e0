@@ -161,6 +161,24 @@
     },
     {
       "key": {
+        "uuid": "ab760fd4_ebfc80c9",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T13:05:26Z",
+      "side": 1,
+      "message": "which raises the question why is this constructed in the HW:init()?  why is a stats reader object not constructed independently?",
+      "parentUuid": "acac6539_b6f4f306",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
@@ -279,6 +297,24 @@
       "side": 1,
       "message": "I will prefer to have it generic. But I will pass extra information as stat type : interface, node, error, route etc.",
       "parentUuid": "3ecd684a_ead78c92",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "25dd005c_53101ce2",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T13:05:26Z",
+      "side": 1,
+      "message": "i appreciate generic is prefered, but the service this provides is not generic it\u0027s per-interface, so this needs to be made obvious. perhaps have overloaded versions of \u0027register\u0027 that take a VOM object like interface, or maybe add a virtual method to object_base::get_stats_index().\nif you make it type specific like this the user simply cannot pass a error stat index where it meant to pass an interface index.",
+      "parentUuid": "3e238bda_47705c8c",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -427,6 +463,24 @@
     },
     {
       "key": {
+        "uuid": "103b9b1b_9ba4663b",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T13:05:26Z",
+      "side": 1,
+      "message": "i meant the listener gets invoked when \"fill registered interfaces with respective stat\"",
+      "parentUuid": "8eb8c262_029036a0",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "84b6ae41_f8fd1c8a",
         "filename": "extras/vom/vom/test_stats.cpp",
         "patchSetId": 17
@@ -492,6 +546,24 @@
       "side": 1,
       "message": "By calling, disable_stats()for respective interface.",
       "parentUuid": "22ebb8ab_4821fc6e",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd2f1869_f277cb68",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T13:05:26Z",
+      "side": 1,
+      "message": "ok. but, i don\u0027t see a call to disable in this test.",
+      "parentUuid": "d0b9efd0_699d4484",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
