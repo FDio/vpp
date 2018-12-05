@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "07cbb52b_3d831f7e",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T12:19:25Z",
+      "side": 1,
+      "message": "It is not possible to do the way you have explained.",
+      "parentUuid": "196001d7_b2a299e9",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d9b10f08_318fa7f2",
         "filename": "extras/vom/vom/stat_reader.cpp",
         "patchSetId": 17
@@ -119,6 +137,24 @@
       "side": 1,
       "message": "but i want both the functionality of stat_reader and non-default constructor values.\nwhy can this constructor also take the same default constructor values and pass them to the stat_client?",
       "parentUuid": "0f7b051f_f7f755bb",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "acac6539_b6f4f306",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T12:19:25Z",
+      "side": 1,
+      "message": "This constructor is called from OM::HW::init(); When cmd_q object will be created.\nHow would you provide custom values to stat_reader to pass it to stat_client constructor from cmd_q()?",
+      "parentUuid": "81e1921c_9c3bf6df",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -231,6 +267,24 @@
     },
     {
       "key": {
+        "uuid": "3e238bda_47705c8c",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T12:19:25Z",
+      "side": 1,
+      "message": "I will prefer to have it generic. But I will pass extra information as stat type : interface, node, error, route etc.",
+      "parentUuid": "3ecd684a_ead78c92",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "cc0c15f6_4d50d711",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
@@ -278,6 +332,24 @@
       "side": 1,
       "message": "right. but that\u0027s not what a user would expect from a \u0027get\u0027 function. change the name, and definitely change the documentation.",
       "parentUuid": "471badbe_b273154e",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ad5ea9a2_367c770a",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T12:19:25Z",
+      "side": 1,
+      "message": "I agree with you.",
+      "parentUuid": "a09db235_0d516719",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -337,6 +409,24 @@
     },
     {
       "key": {
+        "uuid": "8eb8c262_029036a0",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T12:19:25Z",
+      "side": 1,
+      "message": "When client will call stat_reader::get_stats();",
+      "parentUuid": "fcb22d89_c7fbad29",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "84b6ae41_f8fd1c8a",
         "filename": "extras/vom/vom/test_stats.cpp",
         "patchSetId": 17
@@ -384,6 +474,24 @@
       "side": 1,
       "message": "so how does the client disable collecting stats on an interface?",
       "parentUuid": "ab5af124_98f4528e",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d0b9efd0_699d4484",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T12:19:25Z",
+      "side": 1,
+      "message": "By calling, disable_stats()for respective interface.",
+      "parentUuid": "22ebb8ab_4821fc6e",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
