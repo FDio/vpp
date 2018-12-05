@@ -197,6 +197,24 @@
     },
     {
       "key": {
+        "uuid": "9edc005b_e13d54b5",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T17:20:16Z",
+      "side": 1,
+      "message": "i can see what it does. my questions is *why* is it constructed in the HW",
+      "parentUuid": "2dd2915f_5a601580",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
