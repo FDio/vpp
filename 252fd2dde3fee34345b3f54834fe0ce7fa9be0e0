@@ -101,6 +101,40 @@
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "137783d4_ad68d5fa",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T08:15:27Z",
+      "side": 1,
+      "message": "after calling get_stats on the reader, the client must then call get_stats on each of the interfaces on which it previously called enable_stats. therefore the client must keep a list of these interfaces.\nhow about passing a listener in the interface::enable_stats() which is invoked when the interface\u0027s stats become available?",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "84b6ae41_f8fd1c8a",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T08:15:27Z",
+      "side": 1,
+      "message": "what does the \u0027reset\u0027 function on an interface do?  reload the SPF adapter ;)",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
