@@ -16,6 +16,24 @@
       "revId": "ae798a165e905b76f3d865c360cea4303c50b8a9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "681da16b_12496e85",
+        "filename": "src/vppinfra/string.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 1043,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2018-12-05T19:05:52Z",
+      "side": 1,
+      "message": "I decided against that since it should almost never end up in this block.",
+      "parentUuid": "3c400b22_cd4e7039",
+      "revId": "ae798a165e905b76f3d865c360cea4303c50b8a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
