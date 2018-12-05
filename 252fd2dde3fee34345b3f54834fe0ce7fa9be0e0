@@ -179,6 +179,24 @@
     },
     {
       "key": {
+        "uuid": "2dd2915f_5a601580",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T16:37:54Z",
+      "side": 1,
+      "message": "stats_reader object requires to be constructed once. It establishes connection to VPP stat_segment and ready for stats scraping.",
+      "parentUuid": "ab760fd4_ebfc80c9",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
@@ -582,6 +600,24 @@
       "side": 1,
       "message": "ok. but, i don\u0027t see a call to disable in this test.",
       "parentUuid": "d0b9efd0_699d4484",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3fc14acb_c135e128",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-05T16:37:54Z",
+      "side": 1,
+      "message": "I\u0027ll disable them :)",
+      "parentUuid": "fd2f1869_f277cb68",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
