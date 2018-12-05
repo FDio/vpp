@@ -296,23 +296,27 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
       svm = am->vlib_rp;
       int private_registration = 0;
 
-      /*
-       * Note: the API message handling path will set am->vlib_rp
-       * as appropriate for pairwise / private memory segments
-       */
-      rp = vl_msg_api_alloc (sizeof (*rp));
-      rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_DELETE_REPLY);
-      rp->handle = mp->handle;
-      rp->response = 1;
-
-      vl_msg_api_send_shmem (regp->vl_input_queue, (u8 *) & rp);
-
-      if (client_index != regp->vl_api_registration_pool_index)
+      /* Send reply unless client asked us to do the cleanup */
+      if (!mp->do_cleanup)
 	{
-	  clib_warning ("mismatch client_index %d pool_index %d",
-			client_index, regp->vl_api_registration_pool_index);
-	  vl_msg_api_free (rp);
-	  return;
+	  /*
+	   * Note: the API message handling path will set am->vlib_rp
+	   * as appropriate for pairwise / private memory segments
+	   */
+	  rp = vl_msg_api_alloc (sizeof (*rp));
+	  rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_DELETE_REPLY);
+	  rp->handle = mp->handle;
+	  rp->response = 1;
+
+	  vl_msg_api_send_shmem (regp->vl_input_queue, (u8 *) & rp);
+	  if (client_index != regp->vl_api_registration_pool_index)
+	    {
+	      clib_warning ("mismatch client_index %d pool_index %d",
+			    client_index,
+			    regp->vl_api_registration_pool_index);
+	      vl_msg_api_free (rp);
+	      return;
+	    }
 	}
 
       /* For horizontal scaling, add a hash table... */
@@ -352,6 +356,8 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 			  regp->vl_api_registration_pool_index);
 	  pthread_mutex_lock (&svm->mutex);
 	  oldheap = svm_push_data_heap (svm);
+	  if (mp->do_cleanup)
+	    svm_queue_free (regp->vl_input_queue);
 	  vec_free (regp->name);
 	  /* Poison the old registration */
 	  clib_memset (regp, 0xF1, sizeof (*regp));
