@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 /*
  * Define services not following the normal conventions here
@@ -53,6 +53,7 @@ manual_print
 define memclnt_delete {
     u32 index;                  /* index, used e.g. by API trace replay */
     u64 handle;               /* handle by which vlib knows this client */
+    u8 do_cleanup;				/* vlib to cleanup the registration */
 };
 
 define memclnt_delete_reply {

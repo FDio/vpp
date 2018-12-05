@@ -21,7 +21,7 @@
 #include <vlibmemory/memory_shared.h>
 
 int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
-void vl_client_send_disconnect (void);
+void vl_client_send_disconnect (u8 do_cleanup);
 int vl_client_disconnect (void);
 int vl_client_api_map (const char *region_name);
 void vl_client_api_unmap (void);

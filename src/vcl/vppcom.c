@@ -737,14 +737,17 @@ vcl_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
     return;
 
   child_wrk = vcl_worker_get_if_valid (wrk->forked_child);
-  if (si->si_pid != child_wrk->current_pid)
+  if (!child_wrk)
+    goto done;
+
+  if (si && si->si_pid != child_wrk->current_pid)
     {
       VDBG (0, "unexpected child pid %u", si->si_pid);
-      return;
+      goto done;
     }
-  if (child_wrk)
-    vcl_cleanup_forked_child (wrk, child_wrk);
+  vcl_cleanup_forked_child (wrk, child_wrk);
 
+done:
   if (old_sa.sa_flags & SA_SIGINFO)
     {
       void (*fn) (int, siginfo_t *, void *) = old_sa.sa_sigaction;
@@ -848,7 +851,7 @@ vppcom_app_exit (void)
   if (vec_len (vcm->workers) == 1)
     vl_client_disconnect_from_vlib ();
   else
-    vl_client_send_disconnect ();
+    vl_client_send_disconnect (1 /* vpp should cleanup */ );
 }
 
 /*
