@@ -117,9 +117,9 @@ func (v *vppConnector) reduceCombinedCounters(stat *adapter.StatEntry) *[]adapte
 	counters := stat.Data.(adapter.CombinedCounterStat)
 	stats := make([]adapter.CombinedCounter, len(v.Interfaces))
 	for _, workerStats := range counters {
-		for i, interfaceStats := range workerStats {
-			stats[i].Bytes += interfaceStats.Bytes
-			stats[i].Packets += interfaceStats.Packets
+		for i := 0; i < len(v.Interfaces); i++ {
+			stats[i].Bytes += workerStats[i].Bytes
+			stats[i].Packets += workerStats[i].Packets
 		}
 	}
 	return &stats
@@ -129,8 +129,8 @@ func (v *vppConnector) reduceSimpleCounters(stat *adapter.StatEntry) *[]adapter.
 	counters := stat.Data.(adapter.SimpleCounterStat)
 	stats := make([]adapter.Counter, len(v.Interfaces))
 	for _, workerStats := range counters {
-		for i, interfaceStats := range workerStats {
-			stats[i] += interfaceStats
+		for i := 0; i < len(v.Interfaces); i++ {
+			stats[i] += workerStats[i]
 		}
 	}
 	return &stats
