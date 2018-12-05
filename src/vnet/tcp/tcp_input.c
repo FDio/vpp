@@ -121,10 +121,11 @@ tcp_segment_in_rcv_wnd (tcp_connection_t * tc, u32 seq, u32 end_seq)
  *
  * @param th TCP header
  * @param to TCP options data structure to be populated
+ * @param is_syn set if packet is syn
  * @return -1 if parsing failed
  */
-static int
-tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
+static inline int
+tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
 {
   const u8 *data;
   u8 opt_len, opts_len, kind;
@@ -136,7 +137,7 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 
   /* Zero out all flags but those set in SYN */
   to->flags &= (TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_WSCALE
-		| TCP_OPTS_FLAG_SACK);
+		| TCP_OPTS_FLAG_TSTAMP | TCP_OPTION_MSS);
 
   for (; opts_len > 0; opts_len -= opt_len, data += opt_len)
     {
@@ -166,6 +167,8 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
       switch (kind)
 	{
 	case TCP_OPTION_MSS:
+	  if (!is_syn)
+	    break;
 	  if ((opt_len == TCP_OPTION_LEN_MSS) && tcp_syn (th))
 	    {
 	      to->flags |= TCP_OPTS_FLAG_MSS;
@@ -173,6 +176,8 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 	    }
 	  break;
 	case TCP_OPTION_WINDOW_SCALE:
+	  if (!is_syn)
+	    break;
 	  if ((opt_len == TCP_OPTION_LEN_WINDOW_SCALE) && tcp_syn (th))
 	    {
 	      to->flags |= TCP_OPTS_FLAG_WSCALE;
@@ -186,14 +191,18 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 	    }
 	  break;
 	case TCP_OPTION_TIMESTAMP:
-	  if (opt_len == TCP_OPTION_LEN_TIMESTAMP)
+	  if (is_syn)
+	    to->flags |= TCP_OPTS_FLAG_TSTAMP;
+	  if ((to->flags & TCP_OPTS_FLAG_TSTAMP)
+	      && opt_len == TCP_OPTION_LEN_TIMESTAMP)
 	    {
-	      to->flags |= TCP_OPTS_FLAG_TSTAMP;
 	      to->tsval = clib_net_to_host_u32 (*(u32 *) (data + 2));
 	      to->tsecr = clib_net_to_host_u32 (*(u32 *) (data + 6));
 	    }
 	  break;
 	case TCP_OPTION_SACK_PERMITTED:
+	  if (!is_syn)
+	    break;
 	  if (opt_len == TCP_OPTION_LEN_SACK_PERMITTED && tcp_syn (th))
 	    to->flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
 	  break;
@@ -289,7 +298,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
       goto error;
     }
 
-  if (PREDICT_FALSE (tcp_options_parse (th0, &tc0->rcv_opts)))
+  if (PREDICT_FALSE (tcp_options_parse (th0, &tc0->rcv_opts, 0)))
     {
       clib_warning ("options parse error");
       *error0 = TCP_ERROR_OPTIONS;
@@ -361,6 +370,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
       /* TODO implement RFC 5961 */
       if (tc0->state == TCP_STATE_SYN_RCVD)
 	{
+	  tcp_options_parse (th0, &tc0->rcv_opts, 1);
 	  tcp_send_synack (tc0);
 	  TCP_EVT_DBG (TCP_EVT_SYN_RCVD, tc0, 0);
 	}
@@ -2434,7 +2444,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* Parse options */
-      if (tcp_options_parse (tcp0, &tc0->rcv_opts))
+      if (tcp_options_parse (tcp0, &tc0->rcv_opts, 1))
 	{
 	  clib_warning ("options parse fail");
 	  error0 = TCP_ERROR_OPTIONS;
@@ -3093,7 +3103,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    sizeof (ip6_address_t));
 	}
 
-      if (tcp_options_parse (th0, &child0->rcv_opts))
+      if (tcp_options_parse (th0, &child0->rcv_opts, 1))
 	{
 	  clib_warning ("options parse fail");
 	  goto drop;
