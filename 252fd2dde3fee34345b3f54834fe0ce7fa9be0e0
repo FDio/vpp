@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f013090_3fd9bc45",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T07:49:18Z",
+      "side": 1,
+      "message": "make this the operator\u003c\u003c overload for interface::stats",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e16f3e2b_bd5694d7",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T07:49:18Z",
+      "side": 1,
+      "message": "i\u0027d suggest defining:\nstruct stats\n{\ncoutner_t rx;\ncounter_t rx_unicast\n... etc ...\n};\n\nand have a get/set method that returns/passes this struct.",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d9b10f08_318fa7f2",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T07:49:18Z",
+      "side": 1,
+      "message": "how does one pass non default values to the stat_client?",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "63f402ee_bb3a47d6",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T07:49:18Z",
+      "side": 1,
+      "message": "this type can be private",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b814e597_af5fab7a",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T07:49:18Z",
+      "side": 1,
+      "message": "this is an index for which object type? interface, node, error, route...",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cc0c15f6_4d50d711",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T07:49:18Z",
+      "side": 1,
+      "message": "no index is given and no stats are returned....",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
