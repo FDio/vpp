@@ -1031,10 +1031,20 @@ strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
   low = (uword) (src < dest ? src : dest);
   hi = (uword) (src < dest ? dest : src);
 
+  /*
+   * This check may fail innocently if src + dmax >= dst, but
+   * src + strlen(src) < dst. If it fails, check more carefully before
+   * blowing the whistle.
+   */
   if (PREDICT_FALSE (low + (m - 1) >= hi))
     {
-      clib_c11_violation ("src/dest overlap");
-      return EINVAL;
+      m = clib_strnlen (src, m);
+
+      if (low + (m - 1) >= hi)
+	{
+	  clib_c11_violation ("src/dest overlap");
+	  return EINVAL;
+	}
     }
 
   clib_memcpy_fast (dest, src, m);
