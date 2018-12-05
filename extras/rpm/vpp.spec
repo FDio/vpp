@@ -15,11 +15,16 @@
 %{!?python_sitearch:    %global python_sitearch     %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 %{!?python_version: %global python_version      %(%{__python} -c "import sys; sys.stdout.write(sys.version[:3])")}
 %{!?__python2:      %global __python2       %{__python}}
+%{!?__python3:      %global __python3       %{__python}}
 %{!?python2_sitelib:    %global python2_sitelib     %{python_sitelib}}
 %{!?python2_sitearch:   %global python2_sitearch    %{python_sitearch}}
 %{!?python2_version:    %global python2_version     %{python_version}}
+%{!?python3_sitelib:    %global python3_sitelib     %{python_sitelib}}
+%{!?python3_sitearch:   %global python3_sitearch    %{python_sitearch}}
+%{!?python3_version:    %global python3_version     %{python_version}}
 
 %{!?python2_minor_version: %define python2_minor_version %(%{__python} -c "import sys ; print sys.version[2:3]")}
+%{!?python3_minor_version: %define python3_minor_version %(%{__python} -c "import sys ; print sys.version[2:3]")}
 
 %{?systemd_requires}
 
@@ -165,6 +170,7 @@ groupadd -f -r vpp
     make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
 %endif
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
+cd %{_mu_build_dir}/../src/vpp-api/python && %py3_build
 cd %{_mu_build_dir}/../extras/selinux && make -f %{_datadir}/selinux/devel/Makefile
 
 %install
@@ -228,6 +234,7 @@ done
 
 # Python bindings
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_install
+cd %{_mu_build_dir}/../src/vpp-api/python && %py3_install
 
 # SELinux Policy
 # Install SELinux interfaces
@@ -394,6 +401,7 @@ fi
 %files api-python
 %defattr(644,root,root,755)
 %{python2_sitelib}/vpp_*
+%{python3_sitelib}/vpp_*
 
 %files selinux-policy
 %defattr(-,root,root,0755)
