@@ -586,7 +586,7 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
   if (ipsec_get_sa_index_by_sa_id (old_sa->id) == old_sa_index)
     hash_unset (im->sa_index_by_sa_id, old_sa->id);
 
-  if (!ipsec_add_del_sa_sess_cb (im, old_sa_index, 0))
+  if (ipsec_add_del_sa_sess_cb (im, old_sa_index, 0))
     {
       clib_warning ("IPsec backend add/del callback returned error");
       return VNET_API_ERROR_SYSCALL_ERROR_1;
