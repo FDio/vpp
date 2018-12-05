@@ -25,9 +25,9 @@ var (
 			Stats:              interfaceStats{},                                        // TODO
 		}
 	}
-	testInterfaces = func() *map[uint32]*vppInterface {
-		return &map[uint32]*vppInterface{
-			testSwIfIndex: testInterface(),
+	testInterfaces = func() []*vppInterface {
+		return []*vppInterface{
+			testInterface(),
 		}
 	}
 
@@ -164,7 +164,7 @@ func TestVppIfStats_GetStatsForAllInterfacesNoStats(t *testing.T) {
 	mockStatsAPI := NewMockStatsAPI(mockCtrl)
 	mockStatsAPI.EXPECT().DumpStats("/if").Return([]*adapter.StatEntry{}, nil)
 
-	v := vppConnector{stats: mockStatsAPI, Interfaces: *testInterfaces()}
+	v := vppConnector{stats: mockStatsAPI, Interfaces: testInterfaces()}
 	err := v.getStatsForAllInterfaces()
 	assert.NoError(t, err, "GetStatsForAllInterfaces should not return an error")
 	assert.Equal(t, interfaceStats{}, v.Interfaces[testSwIfIndex].Stats, "Stats should be empty")
@@ -177,7 +177,7 @@ func testStats(t *testing.T, statsDump *[]*adapter.StatEntry, expectedStats *int
 	mockStatsAPI := NewMockStatsAPI(mockCtrl)
 	mockStatsAPI.EXPECT().DumpStats("/if").Return(*statsDump, nil)
 
-	v := vppConnector{stats: mockStatsAPI, Interfaces: *testInterfaces()}
+	v := vppConnector{stats: mockStatsAPI, Interfaces: testInterfaces()}
 	err := v.getStatsForAllInterfaces()
 	assert.NoError(t, err, "GetStatsForAllInterfaces should not return an error")
 	assert.Equal(t, *expectedStats, v.Interfaces[testSwIfIndex].Stats, "Collected and saved stats should match")
