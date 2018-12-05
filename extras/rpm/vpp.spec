@@ -11,15 +11,21 @@
 %define _vpp_install_dir install-%{_vpp_tag}-native
 
 # Failsafe backport of Python2-macros for RHEL <= 6
-%{!?python_sitelib: %global python_sitelib      %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%{!?python_sitelib:     %global python_sitelib      %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 %{!?python_sitearch:    %global python_sitearch     %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
-%{!?python_version: %global python_version      %(%{__python} -c "import sys; sys.stdout.write(sys.version[:3])")}
-%{!?__python2:      %global __python2       %{__python}}
+%{!?python_version:     %global python_version      %(%{__python} -c "import sys; sys.stdout.write(sys.version[:3])")}
+
+%{!?__python2:          %global __python2       %{__python}}
 %{!?python2_sitelib:    %global python2_sitelib     %{python_sitelib}}
 %{!?python2_sitearch:   %global python2_sitearch    %{python_sitearch}}
 %{!?python2_version:    %global python2_version     %{python_version}}
-
 %{!?python2_minor_version: %define python2_minor_version %(%{__python} -c "import sys ; print sys.version[2:3]")}
+
+%{!?__python3:          %global __python3       %{__python3}}
+%{!?python3_sitelib:    %global python3_sitelib     %{python_sitelib}}
+%{!?python3_sitearch:   %global python3_sitearch    %{python_sitearch}}
+%{!?python3_version:    %global python3_version     %{python_version}}
+%{!?python3_minor_version: %define python3_minor_version %(%{__python3} -c "import sys ; print sys.version[2:3]")}
 
 %{?systemd_requires}
 
@@ -53,6 +59,7 @@ BuildRequires: check, check-devel
 BuildRequires: subunit, subunit-devel
 BuildRequires: compat-openssl10-devel
 BuildRequires: python2-devel, python2-virtualenv, python2-ply
+BuildRequires: python3-devel, python3-virtualenv, python3-ply
 BuildRequires: mbedtls-devel
 BuildRequires: cmake
 %else
@@ -60,6 +67,7 @@ BuildRequires: cmake
 BuildRequires: devtoolset-7-toolchain
 BuildREquires: openssl-devel
 BuildRequires: python-devel, python-virtualenv, python-ply
+BuildRequires: python3-devel, python3-virtualenv, python3-ply
 BuildRequires: cmake3
 %endif
 %endif
@@ -132,9 +140,18 @@ Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}
 This package contains the java bindings for the vpp api
 
 %package api-python
-Summary: VPP api python bindings
+Summary: VPP api python bindings for Python 3
 Group: Development/Libraries
-Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools libffi-devel
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python3, python3-setuptools, python3-cffi
+%package selinux-policy
+
+%description api-python
+This package contains the python bindings for the vpp api
+
+%package api-python3
+Summary: VPP api python bindings for Python 2
+Group: Development/Libraries
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python, python-setuptools, python-cffi
 
 %description api-python
 This package contains the python bindings for the vpp api
@@ -166,6 +183,7 @@ groupadd -f -r vpp
     make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
 %endif
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
+cd %{_mu_build_dir}/../src/vpp-api/python && %py3_build
 cd %{_mu_build_dir}/../extras/selinux && make -f %{_datadir}/selinux/devel/Makefile
 
 %install
@@ -229,6 +247,7 @@ done
 
 # Python bindings
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_install
+cd %{_mu_build_dir}/../src/vpp-api/python && %py3_install
 
 # SELinux Policy
 # Install SELinux interfaces
@@ -395,6 +414,10 @@ fi
 %files api-python
 %defattr(644,root,root,755)
 %{python2_sitelib}/vpp_*
+
+%files api-python3
+%defattr(644,root,root,755)
+%{python3_sitelib}/vpp_*
 
 %files selinux-policy
 %defattr(-,root,root,0755)
