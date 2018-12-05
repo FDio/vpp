@@ -271,7 +271,7 @@ vl_api_memclnt_delete_reply_t_handler (vl_api_memclnt_delete_reply_t * mp)
 }
 
 void
-vl_client_send_disconnect (void)
+vl_client_send_disconnect (u8 do_cleanup)
 {
   vl_api_memclnt_delete_t *mp;
   vl_shmem_hdr_t *shmem_hdr;
@@ -286,6 +286,7 @@ vl_client_send_disconnect (void)
   mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_DELETE);
   mp->index = am->my_client_index;
   mp->handle = (uword) am->my_registration;
+  mp->do_cleanup = do_cleanup;
 
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
 }
@@ -299,7 +300,7 @@ vl_client_disconnect (void)
   time_t begin;
 
   vl_input_queue = am->vl_input_queue;
-  vl_client_send_disconnect ();
+  vl_client_send_disconnect (0 /* wait for reply */ );
 
   /*
    * Have to be careful here, in case the client is disconnecting
