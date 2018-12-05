@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "196001d7_b2a299e9",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T11:43:30Z",
+      "side": 1,
+      "message": "not sure i understand your question.\n\ninstead of calling interface::set(counter, type) multiple times for the different types, construct and interface::stat ss(...) with each of the respective counter types and call interface::set(ss).",
+      "parentUuid": "017d00fd_ea933091",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d9b10f08_318fa7f2",
         "filename": "extras/vom/vom/stat_reader.cpp",
         "patchSetId": 17
@@ -83,6 +101,24 @@
       "side": 1,
       "message": "We are using the default constructor of stat_client. If one has to use the stat_client with custom constructor, he/she can call it directly stat_client class ;)\nLosing the functionality provided by stat_reader.",
       "parentUuid": "d9b10f08_318fa7f2",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "81e1921c_9c3bf6df",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T11:43:30Z",
+      "side": 1,
+      "message": "but i want both the functionality of stat_reader and non-default constructor values.\nwhy can this constructor also take the same default constructor values and pass them to the stat_client?",
+      "parentUuid": "0f7b051f_f7f755bb",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -124,6 +160,24 @@
     },
     {
       "key": {
+        "uuid": "3b03a728_ecbde9a9",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T11:43:30Z",
+      "side": 1,
+      "message": "it should be private since nothing outside this class uses it.",
+      "parentUuid": "396c5999_94c9f82a",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b814e597_af5fab7a",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
@@ -153,6 +207,24 @@
       "side": 1,
       "message": "At the moment, it is interface indexes.",
       "parentUuid": "b814e597_af5fab7a",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ecd684a_ead78c92",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T11:43:30Z",
+      "side": 1,
+      "message": "then either make the function name or the class name reflect that this is interfaces only not a generic stats reading interface.",
+      "parentUuid": "0b1f7113_bc17fec5",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -194,6 +266,24 @@
     },
     {
       "key": {
+        "uuid": "a09db235_0d516719",
+        "filename": "extras/vom/vom/stat_reader.hpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T11:43:30Z",
+      "side": 1,
+      "message": "right. but that\u0027s not what a user would expect from a \u0027get\u0027 function. change the name, and definitely change the documentation.",
+      "parentUuid": "471badbe_b273154e",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "137783d4_ad68d5fa",
         "filename": "extras/vom/vom/test_stats.cpp",
         "patchSetId": 17
@@ -229,6 +319,24 @@
     },
     {
       "key": {
+        "uuid": "fcb22d89_c7fbad29",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T11:43:30Z",
+      "side": 1,
+      "message": "when \"fill registered interfaces with respective stat\"",
+      "parentUuid": "34ce9302_cc6116bd",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "84b6ae41_f8fd1c8a",
         "filename": "extras/vom/vom/test_stats.cpp",
         "patchSetId": 17
@@ -258,6 +366,24 @@
       "side": 1,
       "message": "These were references to interfaces. I am justing removing those references ;)",
       "parentUuid": "84b6ae41_f8fd1c8a",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "22ebb8ab_4821fc6e",
+        "filename": "extras/vom/vom/test_stats.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-05T11:43:30Z",
+      "side": 1,
+      "message": "so how does the client disable collecting stats on an interface?",
+      "parentUuid": "ab5af124_98f4528e",
       "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
