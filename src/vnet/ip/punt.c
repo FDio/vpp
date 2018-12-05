@@ -741,7 +741,18 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
       return 0;
     }
   else
-    return clib_error_return (0, "punt delete is not supported yet");
+    {
+      if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_SCTP)
+	return clib_error_return (0,
+				  "punt TCP/SCTP ports is not supported yet");
+      if (ipv == 4 || ipv == (u8) ~ 0)
+	udp_unregister_dst_port (vm, port, 1);
+
+      if (ipv == 6 || ipv == (u8) ~ 0)
+	udp_unregister_dst_port (vm, port, 0);
+
+      return 0;
+    }
 }
 
 static clib_error_t *
