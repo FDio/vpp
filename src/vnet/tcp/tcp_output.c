@@ -1515,7 +1515,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
     {
       tc = tcp_half_open_connection_get (index);
       /* Note: the connection may have transitioned to ESTABLISHED... */
-      if (PREDICT_FALSE (tc == 0))
+      if (PREDICT_FALSE (tc == 0 || tc->state != TCP_STATE_SYN_SENT))
 	return;
       tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
     }
@@ -1523,7 +1523,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
     {
       tc = tcp_connection_get (index, thread_index);
       /* Note: the connection may have been closed and pool_put */
-      if (PREDICT_FALSE (tc == 0))
+      if (PREDICT_FALSE (tc == 0 || tc->state >= TCP_STATE_SYN_RCVD))
 	return;
       tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
     }
