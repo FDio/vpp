@@ -93,7 +93,7 @@ format_mfib_entry_flags (u8 * s, va_list * args)
         s = format(s, " flags:");
         FOR_EACH_MFIB_ATTRIBUTE(attr) {
             if ((1<<attr) & flags) {
-                s = format (s, "%s,", mfib_flag_names[attr]);
+                s = format (s, "%s,", mfib_flag_names_long[attr]);
             }
         }
     }
@@ -146,6 +146,10 @@ unformat_mfib_entry_flags (unformat_input_t * input,
     mfib_entry_attribute_t attr;
 
     old = *eflags;
+    FOR_EACH_MFIB_ATTRIBUTE(attr) {
+        if (unformat (input, mfib_flag_names_long[attr]))
+            *eflags |= (1 << attr);
+    }
     FOR_EACH_MFIB_ATTRIBUTE(attr) {
         if (unformat (input, mfib_flag_names[attr]))
             *eflags |= (1 << attr);

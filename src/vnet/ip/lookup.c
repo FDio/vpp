@@ -814,6 +814,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
   mfib_entry_flags_t eflags = 0;
   u32 gcount, scount, ss, gg, incr;
   f64 timet[2];
+  u32 rpf_id = MFIB_RPF_ID_NONE;
 
   gcount = scount = 1;
   vnm = vnet_get_main ();
@@ -835,6 +836,8 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	is_del = 1;
       else if (unformat (line_input, "add"))
 	is_del = 0;
+      else if (unformat (line_input, "rpf-id %d", &rpf_id))
+	;
       else if (unformat (line_input, "scount %d", &scount))
 	;
       else if (unformat (line_input, "gcount %d", &gcount))
@@ -883,6 +886,30 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
 	}
+      else if (unformat (line_input, "via %U %U %U",
+			 unformat_ip4_address, &rpath.frp_addr.ip4,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index,
+			 unformat_mfib_itf_flags, &iflags))
+	{
+	  rpath.frp_weight = 1;
+	}
+      else if (unformat (line_input, "via %U %U %U",
+			 unformat_ip6_address, &rpath.frp_addr.ip6,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index,
+			 unformat_mfib_itf_flags, &iflags))
+	{
+	  rpath.frp_weight = 1;
+	}
+      else if (unformat (line_input, "via %U %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index,
+			 unformat_mfib_itf_flags, &iflags))
+	{
+	  clib_memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
+	  rpath.frp_weight = 1;
+	}
       else if (unformat (line_input, "via %U %U",
 			 unformat_ip4_address, &rpath.frp_addr.ip4,
 			 unformat_vnet_sw_interface, vnm,
@@ -904,7 +931,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	  clib_memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
 	  rpath.frp_weight = 1;
 	}
-      else if (unformat (line_input, "via local"))
+      else if (unformat (line_input, "via local Forward"))
 	{
 	  clib_memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
 	  rpath.frp_sw_if_index = ~0;
@@ -914,9 +941,8 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	   * set the path proto appropriately for the prefix
 	   */
 	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
+	  iflags = MFIB_ITF_FLAG_FORWARD;
 	}
-      else if (unformat (line_input, "%U", unformat_mfib_itf_flags, &iflags))
-	;
       else if (unformat (line_input, "%U",
 			 unformat_mfib_entry_flags, &eflags))
 	;
@@ -965,10 +991,10 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	      /* no path provided => route delete */
 	      mfib_table_entry_delete (fib_index, &pfx, MFIB_SOURCE_CLI);
 	    }
-	  else if (eflags)
+	  else if (eflags || (MFIB_RPF_ID_NONE != rpf_id))
 	    {
 	      mfib_table_entry_update (fib_index, &pfx, MFIB_SOURCE_CLI,
-				       MFIB_RPF_ID_NONE, eflags);
+				       rpf_id, eflags);
 	    }
 	  else
 	    {
@@ -1053,7 +1079,7 @@ done:
 VLIB_CLI_COMMAND (ip_mroute_command, static) =
 {
   .path = "ip mroute",
-  .short_help = "ip mroute [add|del] <dst-ip-addr>/<width> [table <table-id>] [via <next-hop-ip-addr> [<interface>],",
+  .short_help = "ip mroute [add|del] <dst-ip-addr>/<width> [table <table-id>] [rpf-id <ID>] [via <next-hop-ip-addr> [<interface>],",
   .function = vnet_ip_mroute_cmd,
   .is_mp_safe = 1,
 };
