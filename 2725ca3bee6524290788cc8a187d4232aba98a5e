@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "42e39a36_3aa207a7",
+        "filename": "test/framework.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-12-06T09:09:04Z",
+      "side": 1,
+      "message": "It probably would, but then it would be inconsistent with running_extended_tests(). I\u0027d rather make it consistent and leave the refactor to another patch.",
+      "parentUuid": "a6c81701_7b6b0606",
+      "range": {
+        "startLine": 137,
+        "startChar": 1,
+        "endLine": 138,
+        "endChar": 70
+      },
+      "revId": "2725ca3bee6524290788cc8a187d4232aba98a5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2d28ebe5_99bf0617",
         "filename": "test/framework.py",
         "patchSetId": 6
