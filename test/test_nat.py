@@ -3,7 +3,6 @@
 import socket
 import unittest
 import struct
-import StringIO
 import random
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
@@ -23,6 +22,7 @@ from util import mactobinary
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
 from vpp_papi_provider import SYSLOG_SEVERITY
+from io import BytesIO
 
 
 class MethodHolder(VppTestCase):
@@ -725,13 +725,13 @@ class MethodHolder(VppTestCase):
 
         :returns: Reassembled IPv4 packet
         """
-        buffer = StringIO.StringIO()
+        buffer = BytesIO()
         for p in frags:
             self.assertEqual(p[IP].src, src)
             self.assertEqual(p[IP].dst, dst)
             self.assert_ip_checksum_valid(p)
             buffer.seek(p[IP].frag * 8)
-            buffer.write(p[IP].payload)
+            buffer.write(bytes(p[IP].payload))
         ip = IP(src=frags[0][IP].src, dst=frags[0][IP].dst,
                 proto=frags[0][IP].proto)
         if ip.proto == IP_PROTOS.tcp:
@@ -754,12 +754,12 @@ class MethodHolder(VppTestCase):
 
         :returns: Reassembled IPv6 packet
         """
-        buffer = StringIO.StringIO()
+        buffer = BytesIO()
         for p in frags:
             self.assertEqual(p[IPv6].src, src)
             self.assertEqual(p[IPv6].dst, dst)
             buffer.seek(p[IPv6ExtHdrFragment].offset * 8)
-            buffer.write(p[IPv6ExtHdrFragment].payload)
+            buffer.write(bytes(p[IPv6ExtHdrFragment].payload))
         ip = IPv6(src=frags[0][IPv6].src, dst=frags[0][IPv6].dst,
                   nh=frags[0][IPv6ExtHdrFragment].nh)
         if ip.nh == IP_PROTOS.tcp:

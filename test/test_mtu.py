@@ -15,26 +15,12 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from socket import AF_INET, AF_INET6, inet_pton
-import StringIO
+from util import reassemble4
+
 
 """ Test_mtu is a subclass of VPPTestCase classes.
     MTU tests.
 """
-
-
-def reassemble(listoffragments):
-    buffer = StringIO.StringIO()
-    first = listoffragments[0]
-    buffer.seek(20)
-    for pkt in listoffragments:
-        # pkt.show2()
-        buffer.seek(pkt[IP].frag*8)
-        buffer.write(pkt[IP].payload)
-    first.len = len(buffer.getvalue()) + 20
-    first.flags = 0
-    del(first.chksum)
-    header = str(first[IP])[:20]
-    return first[IP].__class__(header + buffer.getvalue())
 
 
 class TestMTU(VppTestCase):
@@ -134,7 +120,7 @@ class TestMTU(VppTestCase):
         self.pg0.add_stream(p4*1)
         self.pg_start()
         rx = self.pg1.get_capture(3)
-        reass_pkt = reassemble(rx)
+        reass_pkt = reassemble4(rx)
         self.validate(reass_pkt, p4_reply)
 
         '''
@@ -152,7 +138,7 @@ class TestMTU(VppTestCase):
         self.pg0.add_stream(p4*1)
         self.pg_start()
         rx = self.pg1.get_capture(16)
-        reass_pkt = reassemble(rx)
+        reass_pkt = reassemble4(rx)
         reass_pkt.show2()
         p4_reply.show2()
         self.validate(reass_pkt, p4_reply)

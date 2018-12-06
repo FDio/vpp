@@ -139,7 +139,11 @@ class TestCaseWrapper(object):
         self.finished_parent_end, self.finished_child_end = Pipe(duplex=False)
         self.result_parent_end, self.result_child_end = Pipe(duplex=False)
         self.testcase_suite = testcase_suite
-        self.stdouterr_queue = manager.StreamQueue()
+        if sys.version[0] == '2':
+            self.stdouterr_queue = manager.StreamQueue()
+        else:
+            from multiprocessing import get_context
+            self.stdouterr_queue = manager.StreamQueue(ctx=get_context())
         self.logger = get_parallel_logger(self.stdouterr_queue)
         self.child = Process(target=test_runner_wrapper,
                              args=(testcase_suite,
