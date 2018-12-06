@@ -202,6 +202,7 @@ send_ip_fib_details (vpe_api_main_t * am,
   fib_route_path_encode_t *api_rpath;
   vl_api_fib_path_t *fp;
   int path_count;
+  u32 addr = pfx->fp_addr.ip4.as_u32;
 
   path_count = vec_len (api_rpaths);
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
@@ -215,7 +216,8 @@ send_ip_fib_details (vpe_api_main_t * am,
   memcpy (mp->table_name, table->ft_desc,
 	  clib_min (vec_len (table->ft_desc), sizeof (mp->table_name)));
   mp->address_length = pfx->fp_len;
-  memcpy (mp->address, &pfx->fp_addr.ip4, sizeof (pfx->fp_addr.ip4));
+  addr &= ip4_main.fib_masks[pfx->fp_len];
+  memcpy (mp->address, &addr, sizeof (pfx->fp_addr.ip4));
   mp->stats_index =
     htonl (fib_table_entry_get_stats_index (table->ft_index, pfx));
 
