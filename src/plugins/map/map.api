@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.2.0";
+option version = "2.3.0";
 
 import "vnet/ip/ip_types.api";
 
@@ -152,4 +152,171 @@ define map_summary_stats_reply
   u64 total_bytes[2];
   u64 total_ip4_fragments;
   u64 total_security_check[2];
+};
+
+
+/** \brief Set MAP fragmentation parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param inner - 1=frag inner packet, 0=frag tunnel packets
+    @param ignore_df - 1=IP4 fragment despite DF bit, 0=honor DF
+*/
+autoreply define map_param_set_fragmentation
+{
+  u32 client_index;
+  u32 context;
+  bool inner;
+  bool ignore_df;
+};
+
+
+/** \brief Set MAP ICMP parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param icmp4_err_relay_src - IPv4 ICMP err relay src address
+*/
+autoreply define map_param_set_icmp
+{
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t ip4_err_relay_src;
+};
+
+
+/** \brief Set MAP ICMP6 parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_unreachable - 1 = send ICMP unreachable err msgs
+*/
+autoreply define map_param_set_icmp6
+{
+  u32 client_index;
+  u32 context;
+  bool enable_unreachable;
+};
+
+
+/** \brief Add/delete MAP pre-resolve IP addresses parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 = Add non-zero IP addresses, 0 = delete
+    @param ip4_nh_address - direct IP4 next-hop address
+    @param ip6_nh_address - direct IP6 next-hop address
+*/
+autoreply define map_param_add_del_pre_resolve
+{
+  u32 client_index;
+  u32 context;
+  bool is_add;
+  vl_api_ip4_address_t ip4_nh_address;
+  vl_api_ip6_address_t ip6_nh_address;
+};
+
+
+/** \brief Set MAP reassembly parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip6 - 1 = params apply to IPv6, 0 = params apply to IPv4
+    @param lifetime_ms - reassembly valid lifetime, or ~0
+    @param pool_size - max number of reassemblies, or ~0
+    @param buffers -  max number of reassembly buffers, or ~0 
+    @param ht_ratio - hash-table size factor, or ~0
+*/
+autoreply define map_param_set_reassembly
+{
+  u32 client_index;
+  u32 context;
+  bool is_ip6;
+  u16 lifetime_ms;
+  u16 pool_size;
+  u32 buffers;
+  f64 ht_ratio;
+};
+
+
+/** \brief Set MAP security-check parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 1=enable security check on first inbound packet
+    @param fragments - 1=enable check on (subsequent) fragments too
+*/
+autoreply define map_param_set_security_check
+{
+  u32 client_index;
+  u32 context;
+  bool enable;
+  bool fragments;
+};
+
+
+/** \brief Set MAP traffic class parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param copy - 1 = copy packet class/TOS field, 0 = use class instead
+    @param class - class field value when copy == 0
+*/
+autoreply define map_param_set_traffic_class
+{
+  u32 client_index;
+  u32 context;
+  bool copy;
+  u8 class;
+};
+
+
+/** \brief Request for a single block of MAP parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define map_param_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+
+/** \brief Reply for map_param_get request
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for request
+    @param inner - 1=frag inner packet, 0=frag tunnel packets, ~0=untouched
+    @param ignore_df - 1=IP4 fragm despite DF bit, 0=honor DF, ~0=untouched
+    @param icmp_ip4_err_relay_src - IPv4 ICMP err relay src address
+    @param icmp6_enable_unreachable - 1 = send ICMP unreachable err msgs
+    @param ip4_nh_address - direct IP4 next-hop address
+    @param ip6_nh_address - direct IP6 next-hop address
+    @param ip4_lifetime_ms - reassembly valid lifetime, or ~0
+    @param ip4_pool_size - max number of reassemblies, or ~0
+    @param ip4_buffers -  max number of reassembly buffers, or ~0
+    @param ip4_ht_ratio - reassembly valid lifetime, or ~0
+    @param ip6_lifetime_ms - max number of reassemblies, or ~0
+    @param ip6_pool_size - max number of reassemblies, or ~0
+    @param ip6_buffers -  max number of reassembly buffers, or ~0 
+    @param ip6_ht_ratio - hash-table size factor, or ~0
+    @param sec_check_enable - 1=enable security check on first inbound packet
+    @param sec_check_fragments - 1=enable check on (subsequent) fragments too
+    @param tc_copy - 1 = copy packet class/TOS field, 0 = use class instead
+    @param tc_class - class field value when copy == 0
+*/
+define map_param_get_reply
+{
+  u32 context;
+  i32 retval;
+  u8 frag_inner;
+  u8 frag_ignore_df;
+  vl_api_ip4_address_t icmp_ip4_err_relay_src;
+  bool icmp6_enable_unreachable;
+  vl_api_ip4_address_t ip4_nh_address;
+  vl_api_ip6_address_t ip6_nh_address;
+  u16 ip4_lifetime_ms;
+  u16 ip4_pool_size;
+  u32 ip4_buffers;
+  f64 ip4_ht_ratio;
+  u16 ip6_lifetime_ms;
+  u16 ip6_pool_size;
+  u32 ip6_buffers;
+  f64 ip6_ht_ratio;
+  bool sec_check_enable;
+  bool sec_check_fragments;
+  bool tc_copy;
+  u8 tc_class;
 };

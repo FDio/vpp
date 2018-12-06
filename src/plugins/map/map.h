@@ -25,6 +25,13 @@
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
+#define MAP_ERR_GOOD			0
+#define MAP_ERR_BAD_POOL_SIZE		-1
+#define MAP_ERR_BAD_HT_RATIO		-2
+#define MAP_ERR_BAD_LIFETIME		-3
+#define MAP_ERR_BAD_BUFFERS		-4
+#define MAP_ERR_BAD_BUFFERS_TOO_LARGE	-5
+
 int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 		       ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		       ip6_address_t * ip6_src, u8 ip6_src_len,
@@ -34,6 +41,17 @@ int map_delete_domain (u32 map_domain_index);
 int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      u8 is_add);
 u8 *format_map_trace (u8 * s, va_list * args);
+
+int map_param_set_fragmentation (bool inner, bool ignore_df);
+int map_param_set_icmp (ip4_address_t * ip4_err_relay_src);
+int map_param_set_icmp6 (u8 enable_unreachable);
+void map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, int is_del);
+int map_param_set_reassembly (bool is_ipv6, u16 lifetime_ms,
+			      u16 pool_size, u32 buffers, f64 ht_ratio,
+			      u32 * reass, u32 * packets);
+int map_param_set_security_check (bool enable, bool fragments);
+int map_param_set_traffic_class (bool copy, u8 tc);
+
 
 typedef enum
 {
