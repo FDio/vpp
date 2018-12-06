@@ -8,7 +8,7 @@ from framework import VppTestCase, running_extended_tests, \
     running_on_centos, VppTestRunner, Worker
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class VAPITestCase(VppTestCase):
     """ VAPI test """
 
@@ -41,7 +41,7 @@ class VAPITestCase(VppTestCase):
                 "Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
 
-    @unittest.skipIf(running_on_centos(), "Centos's gcc can't compile our C++")
+    @unittest.skipIf(running_on_centos, "Centos's gcc can't compile our C++")
     def test_vapi_cpp(self):
         """ run C++ VAPI tests """
         var = "TEST_DIR"

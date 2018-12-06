@@ -8,7 +8,7 @@ from framework import VppTestCase, running_extended_tests, \
     VppTestRunner, Worker
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class VOMTestCase(VppTestCase):
     """ VPP Object Model Test """
 

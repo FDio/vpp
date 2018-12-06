@@ -178,7 +178,7 @@ class TestIPv4Reassembly(VppTestCase):
         self.verify_capture(packets)
         self.src_if.assert_nothing_captured()
 
-    @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
+    @unittest.skipIf(is_skip_aarch64_set and is_platform_aarch64,
                      "test doesn't work on aarch64")
     def test_random(self):
         """ random order reassembly """
