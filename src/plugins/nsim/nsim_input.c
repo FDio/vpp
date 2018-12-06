@@ -76,6 +76,7 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 my_thread_index = vm->thread_index;
   u32 *my_buffer_cache = nsm->buffer_indices_by_thread[my_thread_index];
   nsim_wheel_t *wp = nsm->wheel_by_thread[my_thread_index];
+  u32 n_trace = vlib_get_trace_count (vm, node);
   f64 now = vlib_time_now (vm);
   uword n_rx_packets = 0;
   vlib_buffer_t *b0;
@@ -152,6 +153,18 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0->current_data = 0;
 	  b0->current_length = ep->current_length;
+
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+
+	  if (PREDICT_FALSE (n_trace))
+	    {
+	      nsim_tx_trace_t *t0;
+	      vlib_trace_buffer (vm, node, next_index, b0,
+				 0 /* follow_chain */ );
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      t0->expired = ep->tx_time;
+	      t0->tx_sw_if_index = ep->tx_sw_if_index;
+	    }
 
 	  /* Copy data from the ring */
 	  clib_memcpy_fast (b0->data, ep->data, ep->current_length);

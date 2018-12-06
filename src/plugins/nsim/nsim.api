@@ -3,7 +3,7 @@
  * @brief VPP control-plane API messages for the network delay simulator
  */
 
-option version = "1.0.0";
+option version = "1.1.0";
 
 /** \brief enable / disable the network delay simulation cross-connect
     @param client_index - opaque cookie to identify the sender
@@ -47,4 +47,5 @@ autoreply define nsim_configure
   u32 delay_in_usec;
   u32 average_packet_size;
   u64 bandwidth_in_bits_per_second;
+  u32 packets_per_drop;
 };

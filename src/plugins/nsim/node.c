@@ -25,6 +25,7 @@ typedef struct
   f64 expires;
   u32 tx_sw_if_index;
   int is_drop;
+  int is_lost;
 } nsim_trace_t;
 
 #ifndef CLIB_MARCH_VARIANT
@@ -38,7 +39,8 @@ format_nsim_trace (u8 * s, va_list * args)
   nsim_trace_t *t = va_arg (*args, nsim_trace_t *);
 
   if (t->is_drop)
-    s = format (s, "NSIM: ring drop");
+    s = format (s, "NSIM: dropped, %s", t->is_lost ?
+		"simulated network loss" : "no space in ring");
   else
     s = format (s, "NSIM: tx time %.6f sw_if_index %d",
 		t->expires, t->tx_sw_if_index);
@@ -51,7 +53,8 @@ vlib_node_registration_t nsim_node;
 
 #define foreach_nsim_error                              \
 _(BUFFERED, "Packets buffered")                         \
-_(DROPPED, "Packets dropped due to lack of space")
+_(DROPPED, "Packets dropped due to lack of space")	\
+_(LOSS, "Network loss simulation drop packets")
 
 typedef enum
 {
@@ -90,6 +93,7 @@ nsim_inline (vlib_main_t * vm,
   int is_drop0;
   u32 no_error = node->errors[NSIM_ERROR_BUFFERED];
   u32 no_buffer_error = node->errors[NSIM_ERROR_DROPPED];
+  u32 loss_error = node->errors[NSIM_ERROR_LOSS];
   nsim_wheel_entry_t *ep = 0;
 
   ASSERT (wp);
@@ -109,6 +113,19 @@ nsim_inline (vlib_main_t * vm,
       is_drop0 = 0;
       if (PREDICT_TRUE (wp->cursize < wp->wheel_size))
 	{
+	  if (PREDICT_FALSE (nsm->drop_fraction != 0.0))
+	    {
+	      /* Get a random number on the closed interval [0,1] */
+	      f64 rnd = random_f64 (&nsm->seed);
+	      /* Drop the pkt? */
+	      if (rnd <= nsm->drop_fraction)
+		{
+		  b[0]->error = loss_error;
+		  is_drop0 = 1;
+		  goto do_trace;
+		}
+	    }
+
 	  ep = wp->entries + wp->tail;
 	  wp->tail++;
 	  if (wp->tail == wp->wheel_size)
@@ -130,6 +147,7 @@ nsim_inline (vlib_main_t * vm,
 	  is_drop0 = 1;
 	}
 
+    do_trace:
       if (is_trace)
 	{
 	  if (b[0]->flags & VLIB_BUFFER_IS_TRACED)
@@ -137,6 +155,7 @@ nsim_inline (vlib_main_t * vm,
 	      nsim_trace_t *t = vlib_add_trace (vm, node, b[0], sizeof (*t));
 	      t->expires = expires;
 	      t->is_drop = is_drop0;
+	      t->is_lost = b[0]->error == loss_error;
 	      t->tx_sw_if_index = (is_drop0 == 0) ? ep->tx_sw_if_index : 0;
 	    }
 	}
