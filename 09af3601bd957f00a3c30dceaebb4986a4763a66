@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c9de0877_06dc1edd",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-06T22:17:18Z",
+      "side": 1,
+      "message": "try using just binascii.unhexlify. No str and no .decode.  It has been working the best for me so far.",
+      "range": {
+        "startLine": 237,
+        "startChar": 20,
+        "endLine": 238,
+        "endChar": 65
+      },
+      "revId": "09af3601bd957f00a3c30dceaebb4986a4763a66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
