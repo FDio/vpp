@@ -8,29 +8,13 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
-import StringIO
+from util import reassemble4
 
 """ Testipip is a subclass of  VPPTestCase classes.
 
 IPIP tests.
 
 """
-
-
-# Replace by deframent from scapy.
-def reassemble(listoffragments):
-    buffer = StringIO.StringIO()
-    first = listoffragments[0]
-    buffer.seek(20)
-    for pkt in listoffragments:
-        buffer.seek(pkt[IP].frag*8)
-        buffer.write(pkt[IP].payload)
-    first.len = len(buffer.getvalue()) + 20
-    first.flags = 0
-    del(first.chksum)
-    header = str(first[IP])[:20]
-    return first[IP].__class__(header + buffer.getvalue())
-
 
 class TestIPIP(VppTestCase):
     """ IPIP Test Case """
@@ -214,7 +198,7 @@ class TestIPIP(VppTestCase):
         self.pg1.add_stream(frags)
         self.pg_start()
         rx = self.pg0.get_capture(6)
-        reass_pkt = reassemble(rx)
+        reass_pkt = reassemble4(rx)
         p4_reply.ttl -= 1
         p4_reply.id = 256
         self.validate(reass_pkt, p4_reply)
@@ -225,7 +209,7 @@ class TestIPIP(VppTestCase):
         self.pg1.add_stream(frags)
         self.pg_start()
         rx = self.pg0.get_capture(2)
-        reass_pkt = reassemble(rx)
+        reass_pkt = reassemble4(rx)
         p4_reply.ttl -= 1
         p4_reply.id = 512
         self.validate(reass_pkt, p4_reply)
