@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "49c9610a_f31735ff",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-06T12:30:07Z",
+      "side": 1,
+      "message": "please add something similar in the IPv6 equivalent function.",
+      "revId": "851d5771838127ea9ae419143ce8a015f6af2a22",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
