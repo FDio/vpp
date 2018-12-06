@@ -4,7 +4,7 @@ import time
 from collections import deque
 
 from six import moves
-
+from vpp_mac import mactobinary
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
 
@@ -210,7 +210,7 @@ class VppPapiProvider(object):
         """
         self.hook.before_cli(cli)
         cli += '\n'
-        r = self.papi.cli_inband(length=len(cli), cmd=cli)
+        r = self.papi.cli_inband(length=len(cli), cmd=str(cli).encode('utf8'))
         self.hook.after_cli(cli)
         if hasattr(r, 'reply'):
             return r.reply.decode().rstrip('\x00')
@@ -224,7 +224,7 @@ class VppPapiProvider(object):
         return cli + "\n" + str(self.cli(cli))
 
     def _convert_mac(self, mac):
-        return mac.replace(':', '').decode('hex')
+        return mactobinary(mac)
 
     def show_version(self):
         """ """
@@ -1037,7 +1037,6 @@ class VppPapiProvider(object):
         :param is_static:  (Default value = 0)
         :param is_no_adj_fib:  (Default value = 0)
         """
-
         return self.api(
             self.papi.ip_neighbor_add_del,
             {'sw_if_index': sw_if_index,

@@ -4,9 +4,8 @@
 """
 
 from vpp_object import *
-from util import mactobinary
 from vpp_ip import VppIpAddress
-from vpp_mac import VppMacAddress
+from vpp_mac import VppMacAddress, mactobinary
 from vpp_lo_interface import VppLoInterface
 
 

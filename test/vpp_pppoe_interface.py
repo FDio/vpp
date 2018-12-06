@@ -1,7 +1,7 @@
 
 from vpp_interface import VppInterface
 import socket
-from util import mactobinary
+from vpp_mac import mactobinary
 
 
 class VppPppoeInterface(VppInterface):

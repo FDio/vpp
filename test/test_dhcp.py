@@ -8,7 +8,7 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
-
+from vpp_mac import mactobinary, binarytomac
 from scapy.layers.l2 import Ether, getmacbyip, ARP
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, in6_getnsmac
@@ -20,7 +20,6 @@ from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
 from scapy.utils6 import in6_ptop
-from util import mactobinary
 
 DHCP4_CLIENT_PORT = 68
 DHCP4_SERVER_PORT = 67

@@ -196,8 +196,13 @@ class VPPStats(object):
         retries = 0
         while True:
             try:
-                dir = self.ls(name)
-                return self.dump(dir).values()[0]
+                d = self.ls(name)
+                s = self.dump(d)
+                if len(s) > 1:
+                    raise AttributeError('Matches multiple counters {}'
+                                         .format(name))
+                k, v = s.popitem()
+                return v
             except VPPStatsIOError as e:
                 if retries > 10:
                     return None

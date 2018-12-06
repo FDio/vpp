@@ -6,7 +6,7 @@
 
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_object import *
-from util import mactobinary
+from vpp_mac import mactobinary
 
 
 def find_nbr(test, sw_if_index, ip_addr, is_static=0, inet=AF_INET, mac=None):
