@@ -766,7 +766,7 @@ if __name__ == '__main__':
     print("%s out of %s tests match specified filters" % (
         tests_amount, tests_amount + cb.filtered.countTestCases()))
 
-    if not running_extended_tests():
+    if not running_extended_tests:
         print("Not running extended tests (some tests will be skipped)")
 
     attempts = retries + 1

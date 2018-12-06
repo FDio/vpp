@@ -21,7 +21,7 @@ class Conn(L4_Conn):
     pass
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class ContainerIntegrationTestCase(VppTestCase):
     """ Container integration extended testcases """
 

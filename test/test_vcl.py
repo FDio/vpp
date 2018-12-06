@@ -247,7 +247,7 @@ class LDPCutThruTestCase(VCLTestCase):
 
         super(LDPCutThruTestCase, self).tearDown()
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_cut_thru_echo(self):
         """ run LDP cut thru echo test """
 
@@ -268,7 +268,7 @@ class LDPCutThruTestCase(VCLTestCase):
         self.cut_thru_test("iperf3", self.server_iperf3_args,
                            "iperf3", self.client_iperf3_args)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_cut_thru_uni_dir_nsock(self):
         """ run LDP cut thru uni-directional (multiple sockets) test """
 
@@ -277,7 +277,7 @@ class LDPCutThruTestCase(VCLTestCase):
                            "sock_test_client",
                            self.client_uni_dir_nsock_test_args)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_cut_thru_bi_dir_nsock(self):
         """ run LDP cut thru bi-directional (multiple sockets) test """
 
@@ -581,7 +581,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            "sock_test_client",
                            self.client_ipv6_echo_test_args)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_ipv6_cut_thru_iperf3(self):
         """ run LDP IPv6 cut thru iperf3 test """
 
@@ -597,7 +597,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
         self.cut_thru_test("iperf3", self.server_ipv6_iperf3_args,
                            "iperf3", self.client_ipv6_iperf3_args)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_ipv6_cut_thru_uni_dir_nsock(self):
         """ run LDP IPv6 cut thru uni-directional (multiple sockets) test """
 
@@ -606,7 +606,7 @@ class LDPIpv6CutThruTestCase(VCLTestCase):
                            "sock_test_client",
                            self.client_ipv6_uni_dir_nsock_test_args)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_ipv6_cut_thru_bi_dir_nsock(self):
         """ run LDP IPv6 cut thru bi-directional (multiple sockets) test """
 
@@ -652,7 +652,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
                            "vcl_test_client",
                            self.client_ipv6_echo_test_args)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_vcl_ipv6_cut_thru_uni_dir_nsock(self):
         """ run VCL IPv6 cut thru uni-directional (multiple sockets) test """
 
@@ -661,7 +661,7 @@ class VCLIpv6CutThruTestCase(VCLTestCase):
                            "vcl_test_client",
                            self.client_ipv6_uni_dir_nsock_test_args)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_vcl_ipv6_cut_thru_bi_dir_nsock(self):
         """ run VCL IPv6 cut thru bi-directional (multiple sockets) test """
 
