@@ -118,7 +118,8 @@ nsim_enable_disable (nsim_main_t * nsm, u32 sw_if_index0,
 }
 
 static int
-nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size)
+nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size,
+		f64 drop_fraction)
 {
   u64 total_buffer_size_in_bytes, per_worker_buffer_size;
   u64 wheel_slots_per_worker;
@@ -148,6 +149,7 @@ nsim_configure (nsim_main_t * nsm, f64 bandwidth, f64 delay, f64 packet_size)
     }
 
   nsm->delay = delay;
+  nsm->drop_fraction = drop_fraction;
 
   /* delay in seconds, bandwidth in bits/sec */
   total_buffer_size_in_bytes = (u32) ((delay * bandwidth) / 8.0) + 0.5;
@@ -318,14 +320,21 @@ vl_api_nsim_configure_t_handler (vl_api_nsim_configure_t * mp)
 {
   vl_api_nsim_configure_reply_t *rmp;
   nsim_main_t *nsm = &nsim_main;
-  f64 delay, bandwidth, packet_size;
+  f64 delay, bandwidth, packet_size, drop_fraction;
+  u32 packets_per_drop;
   int rv;
 
   delay = ((f64) (ntohl (mp->delay_in_usec))) * 1e-6;
   bandwidth = (f64) (clib_net_to_host_u64 (mp->bandwidth_in_bits_per_second));
   packet_size = (f64) (ntohl (mp->average_packet_size));
 
-  rv = nsim_configure (nsm, bandwidth, delay, packet_size);
+  packets_per_drop = ntohl (mp->packets_per_drop);
+  if (packets_per_drop > 0)
+    drop_fraction = 1.0 / (f64) (packets_per_drop);
+  else
+    drop_fraction = 0.0;
+
+  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction);
 
   REPLY_MACRO (VL_API_NSIM_CONFIGURE_REPLY);
 }
@@ -447,6 +456,8 @@ set_nsim_command_fn (vlib_main_t * vm,
   nsim_main_t *nsm = &nsim_main;
   f64 delay, bandwidth;
   f64 packet_size = 1500.0;
+  f64 drop_fraction = 0.0;
+  u32 packets_per_drop;
   u32 num_workers = vlib_num_workers ();
   int rv;
 
@@ -459,11 +470,22 @@ set_nsim_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "packet-size %f", &packet_size))
 	;
+      else if (unformat (input, "packets-per-drop %d", &packets_per_drop))
+	{
+	  if (packets_per_drop > 0)
+	    drop_fraction = 1.0 / ((f64) packets_per_drop);
+	}
+      else if (unformat (input, "drop-fraction %f", &drop_fraction))
+	{
+	  if (drop_fraction < 0.0 || drop_fraction > 1.0)
+	    return clib_error_return
+	      (0, "drop fraction must be between zero and 1");
+	}
       else
 	break;
     }
 
-  rv = nsim_configure (nsm, bandwidth, delay, packet_size);
+  rv = nsim_configure (nsm, bandwidth, delay, packet_size, drop_fraction);
 
   switch (rv)
     {
@@ -485,6 +507,10 @@ set_nsim_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "Configured link delay %.2f ms, %.2f ms round-trip",
 		   nsm->delay * 1e3, 2.0 * nsm->delay * 1e3);
+  if (nsm->drop_fraction > 0.0)
+    vlib_cli_output (vm, "... simulating a network drop fraction of %.5f",
+		     nsm->drop_fraction);
+
 
   if (num_workers)
     vlib_cli_output (vm, "Sim uses %llu bytes per thread, %llu bytes total",
@@ -547,6 +573,10 @@ show_nsim_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm,
 		   "...inserting link delay of %.2f ms, %.2f ms round-trip",
 		   nsm->delay * 1e3, 2.0 * nsm->delay * 1e3);
+
+  if (nsm->drop_fraction > 0.0)
+    vlib_cli_output (vm, "... simulating a network drop fraction of %.5f",
+		     nsm->drop_fraction);
 
   if (verbose)
     {

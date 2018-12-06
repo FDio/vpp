@@ -182,6 +182,7 @@ api_nsim_configure (vat_main_t * vam)
   f64 delay = 0.0, bandwidth = 0.0;
   f64 packet_size = 1500.0;
   u32 num_workers = vlib_num_workers ();
+  u32 packets_per_drop = 0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -191,6 +192,8 @@ api_nsim_configure (vat_main_t * vam)
       else if (unformat (i, "bandwidth %U", unformat_bandwidth, &bandwidth))
 	;
       else if (unformat (i, "packet-size %f", &packet_size))
+	;
+      else if (unformat (i, "packets-per-drop %u", &packets_per_drop))
 	;
       else
 	break;
@@ -211,6 +214,7 @@ api_nsim_configure (vat_main_t * vam)
   mp->bandwidth_in_bits_per_second = (u64) (bandwidth);
   mp->bandwidth_in_bits_per_second =
     clib_host_to_net_u64 (mp->bandwidth_in_bits_per_second);
+  mp->packets_per_drop = ntohl (packets_per_drop);
 
   /* send it... */
   S (mp);
@@ -227,7 +231,8 @@ api_nsim_configure (vat_main_t * vam)
 #define foreach_vpe_api_msg                                             \
 _(nsim_enable_disable,                                                  \
 "[<intfc0> | sw_if_index <swif0>] [<intfc1> | sw_if_index <swif1>] [disable]") \
-_(nsim_configure, "delay <time> bandwidth <bw> [packet-size <nn>]")
+_(nsim_configure, "delay <time> bandwidth <bw> [packet-size <nn>]" \
+"[packets-per-drop <nnnn>]")
 
 static void
 nsim_api_hookup (vat_main_t * vam)

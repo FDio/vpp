@@ -54,6 +54,8 @@ typedef struct
   /* Two interfaces, cross-connected with delay */
   u32 sw_if_index0, sw_if_index1;
   u32 output_next_index0, output_next_index1;
+  /* Random seed for loss-rate simulation */
+  u32 seed;
 
   /* Per-thread buffer / scheduler wheels */
   nsim_wheel_t **wheel_by_thread;
@@ -63,6 +65,7 @@ typedef struct
   f64 delay;
   f64 bandwidth;
   f64 packet_size;
+  f64 drop_fraction;
 
   u64 mmap_size;
 
