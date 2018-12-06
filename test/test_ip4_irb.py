@@ -31,7 +31,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import mactobinary
+from vpp_mac import mactobinary
 from vpp_papi_provider import L2_PORT_TYPE
 
 

@@ -13,7 +13,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppP2PSubint
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from util import mactobinary
+from vpp_mac import mactobinary
 
 
 class P2PEthernetAPI(VppTestCase):
