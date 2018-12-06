@@ -17,6 +17,8 @@ import json
 import pprint
 from collections import OrderedDict
 
+import binascii
+
 BASE_PACKAGE = "io.fd.vpp.jvpp"
 
 
@@ -303,6 +305,11 @@ def is_control_ping_reply(msg):
     return msg.name == u'control_ping_reply'
 
 
+def crc(block):
+    s = str(block).encode()
+    return binascii.crc32(s) & 0xffffffff
+
+
 class JVppModel(object):
     def __init__(self, logger, json_api_files, plugin_name):
         self.logger = logger
@@ -333,8 +340,43 @@ class JVppModel(object):
 
         self._parse_types(types)
 
+    def _parse_aliases(self, types):
+        for alias_name in self._aliases:
+            alias = self._aliases[alias_name]
+            alias_type = {"type": "type"}
+            java_name_lower = _underscore_to_camelcase_lower(alias_name)
+            vpp_type = alias["type"]
+            crc_value = '0x%08x' % crc(alias_name)
+            if "length" in alias:
+                length = alias["length"]
+                alias_type["data"] = [
+                    alias_name,
+                    [
+                        vpp_type,
+                        java_name_lower,
+                        length
+                    ],
+                    {
+                        "crc": crc_value
+                    }
+                ]
+            else:
+                alias_type["data"] = [
+                    alias_name,
+                    [
+                        vpp_type,
+                        java_name_lower
+                    ],
+                    {
+                        "crc": crc_value
+                    }
+                ]
+
+            types[alias_name] = alias_type
+
     def _parse_types(self, types):
         self._parse_simple_types()
+        self._parse_aliases(types)
         i = 0
         while True:
             unresolved = {}
@@ -484,9 +526,6 @@ class JVppModel(object):
 
     def _parse_field(self, field, fields):
         type_name = _extract_type_name(field[0])
-        if type_name in self._aliases and type_name not in self._types_by_name:
-            aliased_type = self._types_by_name.get(self._aliases.get(type_name).get("type"))
-            self._types_by_name[type_name] = aliased_type
 
         if type_name in self._types_by_name:
             if len(field) > 2:
@@ -523,6 +562,7 @@ class JVppModel(object):
             del messages[name]
 
         self.messages = self._messages_by_name.values()
+
 
 _ARRAY_SUFFIX = '[]'
 

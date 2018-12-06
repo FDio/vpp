@@ -43,7 +43,7 @@ def generate_jni_impl(model):
                 java_dto_name=msg.java_name_upper
             )
             jni_identifiers = generate_j2c_identifiers(msg, class_ref_name="requestClass", object_ref_name="request")
-            msg_initialization = generate_j2c_swap(msg, struct_ref_name="mp")
+            msg_initialization = generate_j2c_swap(msg, struct_ref_name="mp", is_alias=False)
 
         jni_impl.append(_JNI_IMPL_TEMPLATE.substitute(
             c_name=msg.name,

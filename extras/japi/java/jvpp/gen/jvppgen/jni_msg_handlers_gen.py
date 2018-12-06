@@ -41,7 +41,7 @@ def generate_jni_handlers(model):
             err_handler=_generate_error_handler(msg),
             class_ref_name=msg.java_name_lower,
             dto_name=msg.java_name_upper,
-            dto_setters=generate_c2j_swap(msg, object_ref_name="dto", struct_ref_name="mp")
+            dto_setters=generate_c2j_swap(msg, object_ref_name="dto", struct_ref_name="mp", is_alias=False)
         ))
     return "".join(jni_impl)
 
