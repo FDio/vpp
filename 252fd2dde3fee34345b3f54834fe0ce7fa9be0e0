@@ -215,6 +215,24 @@
     },
     {
       "key": {
+        "uuid": "593eb73a_e2a0e175",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-06T07:22:50Z",
+      "side": 1,
+      "message": "That is the place where we init VOM and constructed cmd_q. I don\u0027t see any reason why it should not be constructed here. Single instance of stat_reader should be constructed during init time similar to API connection.",
+      "parentUuid": "9edc005b_e13d54b5",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
