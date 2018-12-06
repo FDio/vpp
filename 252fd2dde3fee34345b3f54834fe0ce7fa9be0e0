@@ -233,6 +233,24 @@
     },
     {
       "key": {
+        "uuid": "1d670095_f550948c",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-06T08:34:03Z",
+      "side": 1,
+      "message": "some reasons i think think of on why it should not be here:\n 1) you can\u0027t pass it non-default constructor values\n 2) you can\u0027t Mock it for UT (like we can the cmd_q)\n 3) the VOM client does *need* a stat reader. instead it can create it on demand\n 4) multiple instances of a stats_reader is not an error, though it may not be sensible. If you want to force a single instance, there are better ways (see the singleton pattern, or make the class static like we do HW.hpp).\nI would leave it to the VOM client to construct the stats_reader and then give it to VOM (like we do with the cmd_q).",
+      "parentUuid": "593eb73a_e2a0e175",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
