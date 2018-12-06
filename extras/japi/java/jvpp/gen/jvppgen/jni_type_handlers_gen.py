@@ -42,6 +42,11 @@ def generate_type_handlers(model, logger):
 
 def _generate_class(model, t, type_handlers):
     ref_name = t.java_name_lower
+    if t.name in model._aliases:
+        is_alias = True
+    else:
+        is_alias = False
+
     type_handlers.append(_TYPE_HOST_TO_NET_TEMPLATE.substitute(
         c_name=t.name,
         json_filename=model.json_api_files,
@@ -49,7 +54,7 @@ def _generate_class(model, t, type_handlers):
         type_reference_name=ref_name,
         class_FQN=t.jni_name,
         jni_identifiers=generate_j2c_identifiers(t, class_ref_name="%sClass" % ref_name, object_ref_name="_host"),
-        type_swap=generate_j2c_swap(t, struct_ref_name="_net")
+        type_swap=generate_j2c_swap(t, struct_ref_name="_net", is_alias=is_alias)
     ))
     type_handlers.append(_TYPE_NET_TO_HOST_TEMPLATE.substitute(
         c_name=t.name,
@@ -57,7 +62,7 @@ def _generate_class(model, t, type_handlers):
         json_definition=t.doc,
         type_reference_name=ref_name,
         class_FQN=t.jni_name,
-        type_swap=generate_c2j_swap(t, object_ref_name="_host", struct_ref_name="_net")
+        type_swap=generate_c2j_swap(t, object_ref_name="_host", struct_ref_name="_net", is_alias=is_alias)
     ))
 
 _TYPE_HOST_TO_NET_TEMPLATE = Template("""
@@ -159,13 +164,17 @@ def _generate_union_host_to_net(model, t):
     swap = []
     for i, field in enumerate(t.fields):
         field_type = field.type
+        if t.name in model._aliases:
+            is_alias = True
+        else:
+            is_alias = False
         swap.append(_UNION_FIELD_HOST_TO_NET_TEMPLATE.substitute(
             field_index=i,
             java_name=field.java_name,
             jni_signature=field_type.jni_signature,
             jni_type=field_type.jni_type,
             jni_accessor=field_type.jni_accessor,
-            swap=generate_j2c_field_swap(field, struct_ref_name="_net")
+            swap=generate_j2c_field_swap(field, struct_ref_name="_net", is_alias=is_alias)
         ))
 
     return _UNION_HOST_TO_NET_TEMPLATE.substitute(
@@ -200,13 +209,17 @@ $swap
 
 
 def _generate_union_net_to_host(model, t):
+    if t.name in model._aliases:
+        is_alias = True
+    else:
+        is_alias = False
     return _UNION_NET_TO_HOST_TEMPLATE.substitute(
         c_name=t.name,
         json_filename=model.json_api_files,
         json_definition=t.doc,
         type_reference_name=t.java_name_lower,
         class_FQN=t.jni_name,
-        swap=generate_c2j_swap(t, object_ref_name="_host", struct_ref_name="_net")
+        swap=generate_c2j_swap(t, object_ref_name="_host", struct_ref_name="_net", is_alias=is_alias)
     )
 
 _UNION_NET_TO_HOST_TEMPLATE = Template("""
