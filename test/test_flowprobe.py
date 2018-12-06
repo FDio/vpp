@@ -824,7 +824,7 @@ class Datapath(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0002")
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class DisableIPFIX(MethodHolder):
     """Disable IPFIX"""
 
@@ -865,7 +865,7 @@ class DisableIPFIX(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0001")
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class ReenableIPFIX(MethodHolder):
     """Re-enable IPFIX"""
 
@@ -926,7 +926,7 @@ class ReenableIPFIX(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0001")
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class DisableFP(MethodHolder):
     """Disable Flowprobe feature"""
 
@@ -966,7 +966,7 @@ class DisableFP(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0001")
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class ReenableFP(MethodHolder):
     """Re-enable Flowprobe feature"""
 

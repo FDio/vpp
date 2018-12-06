@@ -12,7 +12,7 @@ from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class TestVxlanGpe(BridgeDomain, VppTestCase):
     """ VXLAN-GPE Test Case """
 

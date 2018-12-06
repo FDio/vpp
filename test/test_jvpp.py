@@ -13,7 +13,7 @@ API_FILES_PATH = "japi/java"
 REGISTRY_JAR_PREFIX = "jvpp-registry"
 
 
-@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class TestJVpp(VppTestCase):
     """ JVPP Core Test Case """
 

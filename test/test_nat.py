@@ -2719,7 +2719,7 @@ class TestNAT44(MethodHolder):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 self.verify_ipfix_addr_exhausted(data)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ipfix_max_sessions(self):
         """ IPFIX logging maximum session entries exceeded """
         self.nat44_add_address(self.nat_addr)
@@ -3698,7 +3698,7 @@ class TestNAT44(MethodHolder):
             self.pg1.resolve_arp()
             self.pg2.resolve_arp()
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_timeout(self):
         """ NAT44 session timeouts """
         self.nat44_add_address(self.nat_addr)
@@ -4260,7 +4260,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         sessions = self.vapi.nat44_user_session_dump(server.ip4n, 0)
         self.assertEqual(len(sessions), 0)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_static_lb_multi_clients(self):
         """ NAT44 local service load balancing - multiple clients"""
 
@@ -5853,7 +5853,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_timeout(self):
         """ NAT44 session timeouts """
         self.nat44_add_address(self.nat_addr)
@@ -5895,7 +5895,7 @@ class TestNAT44EndpointDependent(MethodHolder):
             nsessions = nsessions + user.nsessions
         self.assertLess(nsessions, 2 * max_sessions)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_rst_timeout(self):
         """ NAT44 session RST timeouts """
         self.nat44_add_address(self.nat_addr)
@@ -5931,7 +5931,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.assertEqual(users[0].ip_address, self.pg0.remote_ip4n)
         self.assertEqual(users[0].nsessions, 1)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_limit_per_user(self):
         """ Maximum sessions per user limit """
         self.nat44_add_address(self.nat_addr)
@@ -6626,7 +6626,7 @@ class TestDeterministicNAT(MethodHolder):
             self.logger.error("TCP session termination failed")
             raise
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_timeout(self):
         """ Deterministic NAT session timeouts """
         self.vapi.nat_det_add_del_map(self.pg0.remote_ip4n,
@@ -6649,7 +6649,7 @@ class TestDeterministicNAT(MethodHolder):
         dms = self.vapi.nat_det_map_dump()
         self.assertEqual(0, dms[0].ses_num)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_limit_per_user(self):
         """ Deterministic NAT maximum sessions per user limit """
         self.vapi.nat_det_add_del_map(self.pg0.remote_ip4n,
@@ -7127,7 +7127,7 @@ class TestNAT64(MethodHolder):
 
         self.assertEqual(ses_num_end - ses_num_start, 3)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_session_timeout(self):
         """ NAT64 session timeout """
         self.icmp_id_in = 1234
@@ -7788,7 +7788,7 @@ class TestNAT64(MethodHolder):
         addresses = self.vapi.nat64_pool_addr_dump()
         self.assertEqual(0, len(adresses))
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ipfix_max_bibs_sessions(self):
         """ IPFIX logging maximum session and BIB entries exceeded """
         max_bibs = 1280

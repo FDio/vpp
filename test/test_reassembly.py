@@ -275,7 +275,7 @@ class TestIPv4Reassembly(VppTestCase):
         # self.assert_packet_counter_equal(
         #     "/err/ip4-reassembly-feature/malformed packets", 1)
 
-    @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
+    @unittest.skipIf(is_skip_aarch64_set and is_platform_aarch64,
                      "test doesn't work on aarch64")
     def test_random(self):
         """ random order reassembly """
