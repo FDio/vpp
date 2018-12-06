@@ -859,6 +859,11 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 				     twice_nat_type_t twice_nat,
 				     u8 out2in_only, u8 * tag, u32 affinity);
 
+int nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
+					   ip4_address_t l_addr, u16 l_port,
+					   snat_protocol_t proto, u32 vrf_id,
+					   u8 probability, u8 is_add);
+
 clib_error_t *snat_api_init (vlib_main_t * vm, snat_main_t * sm);
 
 /**

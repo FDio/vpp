@@ -1675,6 +1675,39 @@ class VppPapiProvider(object):
              'local_num': local_num,
              'locals': locals})
 
+    def nat44_lb_static_mapping_add_del_local(
+           self,
+           external_addr,
+           external_port,
+           local_addr,
+           local_port,
+           protocol,
+           probability,
+           vrf_id=0,
+           is_add=1):
+        """Add/delete NAT44 load-balancing static mapping rule backend
+
+        :param external_addr: external IPv4 address of the servic
+        :param external_port: external L4 port number of the service
+        :param local_addr: IPv4 address of the internal node
+        :param local_port: L4 port number of the internal node
+        :param protocol: IP protocol number
+        :param probability: probability of the internal node
+        :param vrf_id: VRF id of the internal node
+        :param is_add: 1 if add, 0 if delete
+        """
+        return self.api(
+            self.papi.nat44_lb_static_mapping_add_del_local,
+            {'is_add': is_add,
+             'external_addr': external_addr,
+             'external_port': external_port,
+             'local': {
+                 'addr': local_addr,
+                 'port': local_port,
+                 'probability': probability,
+                 'vrf_id': vrf_id},
+             'protocol': protocol})
+
     def nat44_lb_static_mapping_dump(self):
         """Dump NAT44 load balancing static mappings
 

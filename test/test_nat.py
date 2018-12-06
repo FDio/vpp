@@ -4187,6 +4187,7 @@ class TestNAT44EndpointDependent(MethodHolder):
         local_port = 8080
         server1 = self.pg0.remote_hosts[0]
         server2 = self.pg0.remote_hosts[1]
+        server3 = self.pg0.remote_hosts[2]
 
         locals = [{'addr': server1.ip4n,
                    'port': local_port,
@@ -4226,6 +4227,65 @@ class TestNAT44EndpointDependent(MethodHolder):
             else:
                 server2_n += 1
         self.assertGreater(server1_n, server2_n)
+
+        # add new back-end
+        self.vapi.nat44_lb_static_mapping_add_del_local(external_addr_n,
+                                                        external_port,
+                                                        server3.ip4n,
+                                                        local_port,
+                                                        IP_PROTOS.tcp,
+                                                        20)
+        server1_n = 0
+        server2_n = 0
+        server3_n = 0
+        clients = ip4_range(self.pg1.remote_ip4, 60, 110)
+        pkts = []
+        for client in clients:
+            p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                 IP(src=client, dst=self.nat_addr) /
+                 TCP(sport=12346, dport=external_port))
+            pkts.append(p)
+        self.assertGreater(len(pkts), 0)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for p in capture:
+            if p[IP].dst == server1.ip4:
+                server1_n += 1
+            elif p[IP].dst == server2.ip4:
+                server2_n += 1
+            else:
+                server3_n += 1
+        self.assertGreater(server1_n, 0)
+        self.assertGreater(server2_n, 0)
+        self.assertGreater(server3_n, 0)
+
+        # remove one back-end
+        self.vapi.nat44_lb_static_mapping_add_del_local(external_addr_n,
+                                                        external_port,
+                                                        server2.ip4n,
+                                                        local_port,
+                                                        IP_PROTOS.tcp,
+                                                        10,
+                                                        is_add=0)
+        server1_n = 0
+        server2_n = 0
+        server3_n = 0
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for p in capture:
+            if p[IP].dst == server1.ip4:
+                server1_n += 1
+            elif p[IP].dst == server2.ip4:
+                server2_n += 1
+            else:
+                server3_n += 1
+        self.assertGreater(server1_n, 0)
+        self.assertEqual(server2_n, 0)
+        self.assertGreater(server3_n, 0)
 
     def test_static_lb_2(self):
         """ NAT44 local service load balancing (asymmetrical rule) """
