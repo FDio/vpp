@@ -35,6 +35,17 @@ int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      u8 is_add);
 u8 *format_map_trace (u8 * s, va_list * args);
 
+int map_param_set_fragmentation (bool inner, bool ignore_df);
+int map_param_set_icmp (ip4_address_t * ip4_err_relay_src);
+int map_param_set_icmp6 (u8 enable_unreachable);
+void map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, int is_del);
+int map_param_set_reassembly (bool is_ipv6, u16 lifetime_ms,
+			      u16 pool_size, u32 buffers, f64 ht_ratio,
+			      u32 * reass, u32 * packets);
+int map_param_set_security_check (bool enable, bool fragments);
+int map_param_set_traffic_class (bool copy, u8 tc);
+
+
 typedef enum
 {
   MAP_DOMAIN_PREFIX = 1 << 0,

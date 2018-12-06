@@ -440,7 +440,7 @@ map_fib_unresolve (map_main_pre_resolved_t * pr,
   pr->sibling = FIB_NODE_INDEX_INVALID;
 }
 
-static void
+void
 map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, int is_del)
 {
   if (ip6 && (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0))
@@ -476,8 +476,11 @@ map_security_check_command_fn (vlib_main_t * vm,
 			       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
+  bool enable = false;
+  bool check_frag = false;
+  bool saw_enable = false;
+  bool saw_frag = false;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -485,10 +488,26 @@ map_security_check_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "off"))
-	mm->sec_check = false;
-      else if (unformat (line_input, "on"))
-	mm->sec_check = true;
+      if (unformat (line_input, "enable"))
+	{
+	  enable = false;
+	  saw_enable = true;
+	}
+      else if (unformat (line_input, "disable"))
+	{
+	  enable = true;
+	  saw_enable = true;
+	}
+      else if (unformat (line_input, "fragments on"))
+	{
+	  check_frag = true;
+	  saw_frag = true;
+	}
+      else if (unformat (line_input, "fragments off"))
+	{
+	  check_frag = false;
+	  saw_frag = true;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -497,44 +516,27 @@ map_security_check_command_fn (vlib_main_t * vm,
 	}
     }
 
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-map_security_check_frag_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
-  clib_error_t *error = NULL;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  if (!saw_enable)
     {
-      if (unformat (line_input, "off"))
-	mm->sec_check_frag = false;
-      else if (unformat (line_input, "on"))
-	mm->sec_check_frag = true;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
+      error = clib_error_return (0,
+				 "Must specify enable 'enable' or 'disable'");
+      goto done;
     }
 
+  if (!saw_frag)
+    {
+      error = clib_error_return (0, "Must specify fragments 'on' or 'off'");
+      goto done;
+    }
+
+  map_param_set_security_check (enable, check_frag);
+
 done:
   unformat_free (line_input);
 
   return error;
 }
+
 
 static clib_error_t *
 map_add_domain_command_fn (vlib_main_t * vm,
@@ -754,6 +756,7 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t icmp_src_address;
+  ip4_address_t *p_icmp_addr = 0;
   map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
 
@@ -767,7 +770,10 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
     {
       if (unformat
 	  (line_input, "%U", unformat_ip4_address, &icmp_src_address))
-	mm->icmp4_src_address = icmp_src_address;
+	{
+	  mm->icmp4_src_address = icmp_src_address;
+	  p_icmp_addr = &icmp_src_address;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -775,6 +781,8 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_icmp (p_icmp_addr);
 
 done:
   unformat_free (line_input);
@@ -788,9 +796,9 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
 				  vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   int num_m_args = 0;
   clib_error_t *error = NULL;
+  bool enabled = false;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -800,9 +808,9 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
     {
       num_m_args++;
       if (unformat (line_input, "on"))
-	mm->icmp6_enabled = true;
+	enabled = true;
       else if (unformat (line_input, "off"))
-	mm->icmp6_enabled = false;
+	enabled = false;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -815,19 +823,26 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
   if (num_m_args != 1)
     error = clib_error_return (0, "mandatory argument(s) missing");
 
+
+  map_param_set_icmp6 (enabled);
+
 done:
   unformat_free (line_input);
 
   return error;
 }
 
+
 static clib_error_t *
 map_fragment_command_fn (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
+  bool frag_inner = false;
+  bool frag_ignore_df = false;
+  bool saw_in_out = false;
+  bool saw_df = false;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -836,9 +851,25 @@ map_fragment_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "inner"))
-	mm->frag_inner = true;
+	{
+	  frag_inner = true;
+	  saw_in_out = true;
+	}
       else if (unformat (line_input, "outer"))
-	mm->frag_inner = false;
+	{
+	  frag_inner = false;
+	  saw_in_out = true;
+	}
+      else if (unformat (line_input, "ignore-df"))
+	{
+	  frag_ignore_df = true;
+	  saw_df = true;
+	}
+      else if (unformat (line_input, "honor-df"))
+	{
+	  frag_ignore_df = false;
+	  saw_df = true;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -847,38 +878,19 @@ map_fragment_command_fn (vlib_main_t * vm,
 	}
     }
 
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-static clib_error_t *
-map_fragment_df_command_fn (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
-  clib_error_t *error = NULL;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  if (!saw_in_out)
     {
-      if (unformat (line_input, "on"))
-	mm->frag_ignore_df = true;
-      else if (unformat (line_input, "off"))
-	mm->frag_ignore_df = false;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
+      error = clib_error_return (0, "Must specify 'inner' or 'outer'");
+      goto done;
     }
+
+  if (!saw_df)
+    {
+      error = clib_error_return (0, "Must specify 'ignore-df' or 'honor-df'");
+      goto done;
+    }
+
+  map_param_set_fragmentation (frag_inner, frag_ignore_df);
 
 done:
   unformat_free (line_input);
@@ -892,11 +904,10 @@ map_traffic_class_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   u32 tc = 0;
   clib_error_t *error = NULL;
+  bool tc_copy = false;
 
-  mm->tc_copy = false;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -905,9 +916,9 @@ map_traffic_class_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "copy"))
-	mm->tc_copy = true;
+	tc_copy = true;
       else if (unformat (line_input, "%x", &tc))
-	mm->tc = tc & 0xff;
+	tc = tc & 0xff;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -915,6 +926,8 @@ map_traffic_class_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_traffic_class (tc_copy, tc);
 
 done:
   unformat_free (line_input);
@@ -1282,110 +1295,34 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				  MAP_IP6_REASS_CONF_BUFFERS_MAX);
     }
 
-  if (ip4)
+  int rv;
+  u32 reass = 0, packets = 0;
+  rv = map_param_set_reassembly (!ip4, lifetime, pool_size, buffers, ht_ratio,
+				 &reass, &packets);
+
+  switch (rv)
     {
-      u32 reass = 0, packets = 0;
-      if (pool_size != ~0)
-	{
-	  if (map_ip4_reass_conf_pool_size (pool_size, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip4-reass pool-size");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip4-reass pool-size (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1))
-	{
-	  if (map_ip4_reass_conf_ht_ratio (ht_ratio, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip4-reass ht-log2len");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip4-reass ht-log2len (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (lifetime != ~0)
-	{
-	  if (map_ip4_reass_conf_lifetime (lifetime))
-	    vlib_cli_output (vm, "Could not set ip4-reass lifetime");
-	  else
-	    vlib_cli_output (vm, "Setting ip4-reass lifetime");
-	}
-      if (buffers != ~(0ull))
-	{
-	  if (map_ip4_reass_conf_buffers (buffers))
-	    vlib_cli_output (vm, "Could not set ip4-reass buffers");
-	  else
-	    vlib_cli_output (vm, "Setting ip4-reass buffers");
-	}
+    case 0:
+      vlib_cli_output (vm,
+		       "Note: destroyed-reassembly=%u , dropped-fragments=%u",
+		       reass, packets);
+      break;
 
-      if (map_main.ip4_reass_conf_buffers >
-	  map_main.ip4_reass_conf_pool_size *
-	  MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
-	{
-	  vlib_cli_output (vm,
-			   "Note: 'ip4-reass buffers' > pool-size * max-fragments-per-reassembly.");
-	}
-    }
+    case VNET_API_ERROR_MAP_BAD_POOL_SIZE:
+      return clib_error_return (0, "Could not set reass pool-size");
 
-  if (ip6)
-    {
-      u32 reass = 0, packets = 0;
-      if (pool_size != ~0)
-	{
-	  if (map_ip6_reass_conf_pool_size (pool_size, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip6-reass pool-size");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip6-reass pool-size (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1))
-	{
-	  if (map_ip6_reass_conf_ht_ratio (ht_ratio, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip6-reass ht-log2len");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip6-reass ht-log2len (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (lifetime != ~0)
-	{
-	  if (map_ip6_reass_conf_lifetime (lifetime))
-	    vlib_cli_output (vm, "Could not set ip6-reass lifetime");
-	  else
-	    vlib_cli_output (vm, "Setting ip6-reass lifetime");
-	}
-      if (buffers != ~(0ull))
-	{
-	  if (map_ip6_reass_conf_buffers (buffers))
-	    vlib_cli_output (vm, "Could not set ip6-reass buffers");
-	  else
-	    vlib_cli_output (vm, "Setting ip6-reass buffers");
-	}
+    case VNET_API_ERROR_MAP_BAD_HT_RATIO:
+      return clib_error_return (0, "Could not set reass ht-log2len");
 
-      if (map_main.ip6_reass_conf_buffers >
-	  map_main.ip6_reass_conf_pool_size *
-	  MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
-	{
-	  vlib_cli_output (vm,
-			   "Note: 'ip6-reass buffers' > pool-size * max-fragments-per-reassembly.");
-	}
+    case VNET_API_ERROR_MAP_BAD_LIFETIME:
+      return clib_error_return (0, "Could not set ip6-reass lifetime");
+
+    case VNET_API_ERROR_MAP_BAD_BUFFERS:
+      return clib_error_return (0, "Could not set ip6-reass buffers");
+
+    case VNET_API_ERROR_MAP_BAD_BUFFERS_TOO_LARGE:
+      return clib_error_return (0,
+				"Note: 'ip6-reass buffers' > pool-size * max-fragments-per-reassembly.");
     }
 
   return 0;
@@ -2032,6 +1969,7 @@ VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
 
 /*?
  * Enable or disable the MAP-E inbound security check
+ * Specifiy if the inbound security check should be done on fragments
  *
  * @cliexpar
  * @cliexstart{map params security-check}
@@ -2039,13 +1977,19 @@ VLIB_CLI_COMMAND(map_pre_resolve_command, static) = {
  * By default, a decapsulated packet's IPv4 source address will be
  * verified against the outer header's IPv6 source address. Disabling
  * this feature will allow IPv4 source address spoofing.
+ *
+ * Typically the inbound on-decapsulation security check is only done
+ * on the first packet. The packet that contains the L4
+ * information. While a security check on every fragment is possible,
+ * it has a cost. State must be created on the first fragment.
  * @cliexend
  ?*/
 VLIB_CLI_COMMAND(map_security_check_command, static) = {
   .path = "map params security-check",
-  .short_help = "map params security-check on|off",
+  .short_help = "map params security-check enable|disable fragments on|off",
   .function = map_security_check_command_fn,
 };
+
 
 /*?
  * Specifiy the IPv4 source address used for relayed ICMP error messages
@@ -2085,19 +2029,6 @@ VLIB_CLI_COMMAND(map_icmp_unreachables_command, static) = {
  *
  * @cliexpar
  * @cliexstart{map params fragment}
- * @cliexend
- ?*/
-VLIB_CLI_COMMAND(map_fragment_command, static) = {
-  .path = "map params fragment",
-  .short_help = "map params fragment inner|outer",
-  .function = map_fragment_command_fn,
-};
-
-/*?
- * Ignore the IPv4 Don't fragment bit
- *
- * @cliexpar
- * @cliexstart{map params fragment ignore-df}
  *
  * Allows fragmentation of the IPv4 packet even if the DF bit is
  * set. The choice between inner or outer fragmentation of tunnel
@@ -2106,29 +2037,12 @@ VLIB_CLI_COMMAND(map_fragment_command, static) = {
  * endpoint.
  * @cliexend
  ?*/
-VLIB_CLI_COMMAND(map_fragment_df_command, static) = {
-  .path = "map params fragment ignore-df",
-  .short_help = "map params fragment ignore-df on|off",
-  .function = map_fragment_df_command_fn,
+VLIB_CLI_COMMAND(map_fragment_command, static) = {
+  .path = "map params fragment",
+  .short_help = "map params fragment inner|outer ignore-df|honor-df",
+  .function = map_fragment_command_fn,
 };
 
-/*?
- * Specifiy if the inbound security check should be done on fragments
- *
- * @cliexpar
- * @cliexstart{map params security-check fragments}
- *
- * Typically the inbound on-decapsulation security check is only done
- * on the first packet. The packet that contains the L4
- * information. While a security check on every fragment is possible,
- * it has a cost. State must be created on the first fragment.
- * @cliexend
- ?*/
-VLIB_CLI_COMMAND(map_security_check_frag_command, static) = {
-  .path = "map params security-check fragments",
-  .short_help = "map params security-check fragments on|off",
-  .function = map_security_check_frag_command_fn,
-};
 
 /*?
  * Add MAP domain
