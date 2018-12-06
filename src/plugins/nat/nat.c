@@ -26,6 +26,7 @@
 #include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/dslite.h>
+#include <nat/lwb4.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_affinity.h>
@@ -1950,6 +1951,7 @@ snat_init (vlib_main_t * vm)
     return error;
 
   dslite_init (vm);
+  lwb4_init (vm);
 
   nat66_init ();
 
