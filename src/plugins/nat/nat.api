@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "4.0.0";
+option version = "4.1.0";
 
 /**
  * @file nat.api
@@ -775,8 +775,27 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u8 out2in_only;
   u8 tag[64];
   u32 affinity;
-  u8 local_num;
+  u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
+};
+
+/** \brief Add/delete NAT44 load-balancing static mapping rule backend
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param external_addr - external IPv4 address of the service
+    @param external_port - external L4 port number of the service
+    @param protocol - IP protocol number of the service
+    @param local - local network node
+*/
+autoreply define nat44_lb_static_mapping_add_del_local {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 external_addr[4];
+  u16 external_port;
+  u8 protocol;
+  vl_api_nat44_lb_addr_port_t local;
 };
 
 /** \brief Dump NAT44 load-balancing static mapping rules
@@ -815,7 +834,7 @@ manual_endian define nat44_lb_static_mapping_details {
   u8 out2in_only;
   u8 tag[64];
   u32 affinity;
-  u8 local_num;
+  u32 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };
 

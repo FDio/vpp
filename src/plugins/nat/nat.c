@@ -665,7 +665,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
   snat_session_t *s;
   snat_static_map_resolve_t *rp, *rp_match = 0;
   nat44_lb_addr_port_t *local;
-  u8 find = 0;
+  u32 find = ~0;
 
   if (!sm->endpoint_dependent)
     {
@@ -759,13 +759,13 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  if (is_identity_static_mapping (m))
 	    {
               /* *INDENT-OFF* */
-              vec_foreach (local, m->locals)
-                {
-                  if (local->vrf_id == vrf_id)
-                    return VNET_API_ERROR_VALUE_EXIST;
-                }
+              pool_foreach (local, m->locals,
+              ({
+                if (local->vrf_id == vrf_id)
+                  return VNET_API_ERROR_VALUE_EXIST;
+              }));
               /* *INDENT-ON* */
-	      vec_add2 (m->locals, local, 1);
+	      pool_get (m->locals, local);
 	      local->vrf_id = vrf_id;
 	      local->fib_index =
 		fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
@@ -879,7 +879,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
       if (identity_nat)
 	{
 	  m->flags |= NAT_STATIC_MAPPING_FLAG_IDENTITY_NAT;
-	  vec_add2 (m->locals, local, 1);
+	  pool_get (m->locals, local);
 	  local->vrf_id = vrf_id;
 	  local->fib_index = fib_index;
 	}
@@ -979,19 +979,19 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	  if (vrf_id == ~0)
 	    vrf_id = sm->inside_vrf_id;
 
-	  for (i = 0; i < vec_len (m->locals); i++)
-	    {
-	      if (m->locals[i].vrf_id == vrf_id)
-		{
-		  find = 1;
-		  break;
-		}
-	    }
-	  if (!find)
+          /* *INDENT-OFF* */
+          pool_foreach (local, m->locals,
+          ({
+	    if (local->vrf_id == vrf_id)
+              find = local - m->locals;
+	  }));
+          /* *INDENT-ON* */
+	  if (find == ~0)
 	    return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-	  fib_index = m->locals[i].fib_index;
-	  vec_del1 (m->locals, i);
+	  local = pool_elt_at_index (m->locals, find);
+	  fib_index = local->fib_index;
+	  pool_put (m->locals, local);
 	}
       else
 	fib_index = m->fib_index;
@@ -1089,7 +1089,7 @@ snat_add_static_mapping (ip4_address_t l_addr, ip4_address_t e_addr,
 	}
 
       fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_LOW);
-      if (vec_len (m->locals))
+      if (pool_elts (m->locals))
 	return 0;
 
       m_key.addr = m->external_addr;
@@ -1258,7 +1258,8 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	    }
 	  locals[i].prefix = (i == 0) ? locals[i].probability :
 	    (locals[i - 1].prefix + locals[i].probability);
-	  vec_add1 (m->locals, locals[i]);
+	  pool_get (m->locals, local);
+	  *local = locals[i];
 	  if (sm->num_workers > 1)
 	    {
 	      ip4_header_t ip = {
@@ -1331,8 +1332,8 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 	}
 
       /* *INDENT-OFF* */
-      vec_foreach (local, m->locals)
-        {
+      pool_foreach (local, m->locals,
+      ({
           fib_table_unlock (local->fib_index, FIB_PROTOCOL_IP4,
                             FIB_SOURCE_PLUGIN_LOW);
           m_key.addr = local->addr;
@@ -1361,7 +1362,7 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
 
           /* Delete sessions */
           u_key.addr = local->addr;
-          u_key.fib_index = m->fib_index;
+          u_key.fib_index = local->fib_index;
           kv.key = u_key.as_u64;
           if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
             {
@@ -1391,15 +1392,196 @@ nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                     }
                 }
             }
-        }
+      }));
       /* *INDENT-ON* */
       if (m->affinity)
 	nat_affinity_flush_service (m->affinity_per_service_list_head_index);
-      vec_free (m->locals);
+      pool_free (m->locals);
       vec_free (m->tag);
       vec_free (m->workers);
 
       pool_put (sm->static_mappings, m);
+    }
+
+  return 0;
+}
+
+int
+nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
+				       ip4_address_t l_addr, u16 l_port,
+				       snat_protocol_t proto, u32 vrf_id,
+				       u8 probability, u8 is_add)
+{
+  snat_main_t *sm = &snat_main;
+  snat_static_mapping_t *m = 0;
+  snat_session_key_t m_key;
+  clib_bihash_kv_8_8_t kv, value;
+  nat44_lb_addr_port_t *local, *prev_local, *match_local = 0;
+  snat_main_per_thread_data_t *tsm;
+  snat_user_key_t u_key;
+  snat_user_t *u;
+  snat_session_t *s;
+  dlist_elt_t *head, *elt;
+  u32 elt_index, head_index, ses_index, *locals = 0;
+  uword *bitmap = 0;
+  int i;
+
+  if (!sm->endpoint_dependent)
+    return VNET_API_ERROR_FEATURE_DISABLED;
+
+  m_key.addr = e_addr;
+  m_key.port = e_port;
+  m_key.protocol = proto;
+  m_key.fib_index = 0;
+  kv.key = m_key.as_u64;
+  if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+    m = pool_elt_at_index (sm->static_mappings, value.value);
+
+  if (!m)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  if (!is_lb_static_mapping (m))
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  /* *INDENT-OFF* */
+  pool_foreach (local, m->locals,
+  ({
+    if ((local->addr.as_u32 == l_addr.as_u32) && (local->port == l_port) &&
+        (local->vrf_id == vrf_id))
+      {
+        match_local = local;
+        break;
+      }
+  }));
+  /* *INDENT-ON* */
+
+  if (is_add)
+    {
+      if (match_local)
+	return VNET_API_ERROR_VALUE_EXIST;
+
+      pool_get (m->locals, local);
+      clib_memset (local, 0, sizeof (*local));
+      local->addr.as_u32 = l_addr.as_u32;
+      local->port = l_port;
+      local->probability = probability;
+      local->vrf_id = vrf_id;
+      local->fib_index =
+	fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
+					   FIB_SOURCE_PLUGIN_LOW);
+
+      if (!is_out2in_only_static_mapping (m))
+	{
+	  m_key.addr = l_addr;
+	  m_key.port = l_port;
+	  m_key.fib_index = local->fib_index;
+	  kv.key = m_key.as_u64;
+	  kv.value = m - sm->static_mappings;
+	  if (clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 1))
+	    nat_log_err ("static_mapping_by_local key add failed");
+	}
+    }
+  else
+    {
+      if (!match_local)
+	return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      if (pool_elts (m->locals) < 3)
+	return VNET_API_ERROR_UNSPECIFIED;
+
+      fib_table_unlock (match_local->fib_index, FIB_PROTOCOL_IP4,
+			FIB_SOURCE_PLUGIN_LOW);
+
+      if (!is_out2in_only_static_mapping (m))
+	{
+	  m_key.addr = l_addr;
+	  m_key.port = l_port;
+	  m_key.fib_index = match_local->fib_index;
+	  kv.key = m_key.as_u64;
+	  if (clib_bihash_add_del_8_8 (&sm->static_mapping_by_local, &kv, 0))
+	    nat_log_err ("static_mapping_by_local key del failed");
+	}
+
+      if (sm->num_workers > 1)
+	{
+	  ip4_header_t ip = {
+	    .src_address = local->addr,
+	  };
+	  tsm = vec_elt_at_index (sm->per_thread_data,
+				  sm->worker_in2out_cb (&ip, m->fib_index));
+	}
+      else
+	tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+
+      /* Delete sessions */
+      u_key.addr = match_local->addr;
+      u_key.fib_index = match_local->fib_index;
+      kv.key = u_key.as_u64;
+      if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+	{
+	  u = pool_elt_at_index (tsm->users, value.value);
+	  if (u->nstaticsessions)
+	    {
+	      head_index = u->sessions_per_user_list_head_index;
+	      head = pool_elt_at_index (tsm->list_pool, head_index);
+	      elt_index = head->next;
+	      elt = pool_elt_at_index (tsm->list_pool, elt_index);
+	      ses_index = elt->value;
+	      while (ses_index != ~0)
+		{
+		  s = pool_elt_at_index (tsm->sessions, ses_index);
+		  elt = pool_elt_at_index (tsm->list_pool, elt->next);
+		  ses_index = elt->value;
+
+		  if (!(is_lb_session (s)))
+		    continue;
+
+		  if ((s->in2out.addr.as_u32 != match_local->addr.as_u32) ||
+		      (clib_net_to_host_u16 (s->in2out.port) !=
+		       match_local->port))
+		    continue;
+
+		  nat_free_session_data (sm, s, tsm - sm->per_thread_data);
+		  nat44_delete_session (sm, s, tsm - sm->per_thread_data);
+		}
+	    }
+	}
+
+      pool_put (m->locals, match_local);
+    }
+
+  vec_free (m->workers);
+
+  /* *INDENT-OFF* */
+  pool_foreach (local, m->locals,
+  ({
+    vec_add1 (locals, local - m->locals);
+    if (sm->num_workers > 1)
+      {
+        ip4_header_t ip;
+        ip.src_address.as_u32 = local->addr.as_u32,
+        bitmap = clib_bitmap_set (bitmap,
+                                  sm->worker_in2out_cb (&ip, local->fib_index),
+                                  1);
+      }
+  }));
+  /* *INDENT-ON* */
+
+  local = pool_elt_at_index (m->locals, locals[0]);
+  local->prefix = local->probability;
+  for (i = 1; i < vec_len (locals); i++)
+    {
+      local = pool_elt_at_index (m->locals, locals[i]);
+      prev_local = pool_elt_at_index (m->locals, locals[i - 1]);
+      local->prefix = local->probability + prev_local->prefix;
+    }
+
+  /* Assign workers */
+  if (sm->num_workers > 1)
+    {
+      /* *INDENT-OFF* */
+      clib_bitmap_foreach (i, bitmap, ({ vec_add1(m->workers, i); }));
+      /* *INDENT-ON* */
     }
 
   return 0;
@@ -2095,8 +2277,9 @@ snat_static_mapping_match (snat_main_t * sm,
   snat_static_mapping_t *m;
   snat_session_key_t m_key;
   clib_bihash_8_8_t *mapping_hash = &sm->static_mapping_by_local;
-  u32 rand, lo = 0, hi, mid;
+  u32 rand, lo = 0, hi, mid, *tmp = 0, i;
   u8 backend_index;
+  nat44_lb_addr_port_t *local;
 
   m_key.fib_index = match.fib_index;
   if (by_external)
@@ -2136,42 +2319,52 @@ snat_static_mapping_match (snat_main_t * sm,
 					      &backend_index))
 		goto get_local;
 
-	      mapping->addr = m->locals[backend_index].addr;
-	      mapping->port =
-		clib_host_to_net_u16 (m->locals[backend_index].port);
-	      mapping->fib_index = m->locals[backend_index].fib_index;
+	      local = pool_elt_at_index (m->locals, backend_index);
+	      mapping->addr = local->addr;
+	      mapping->port = clib_host_to_net_u16 (local->port);
+	      mapping->fib_index = local->fib_index;
 	      goto end;
 	    }
 	get_local:
-	  hi = vec_len (m->locals) - 1;
-	  rand = 1 + (random_u32 (&sm->random_seed) % m->locals[hi].prefix);
+          /* *INDENT-OFF* */
+          pool_foreach_index (i, m->locals,
+          ({
+            vec_add1 (tmp, i);
+          }));
+          /* *INDENT-ON* */
+	  hi = vec_len (tmp) - 1;
+	  local = pool_elt_at_index (m->locals, tmp[hi]);
+	  rand = 1 + (random_u32 (&sm->random_seed) % local->prefix);
 	  while (lo < hi)
 	    {
 	      mid = ((hi - lo) >> 1) + lo;
-	      (rand > m->locals[mid].prefix) ? (lo = mid + 1) : (hi = mid);
+	      local = pool_elt_at_index (m->locals, tmp[mid]);
+	      (rand > local->prefix) ? (lo = mid + 1) : (hi = mid);
 	    }
-	  if (!(m->locals[lo].prefix >= rand))
+	  local = pool_elt_at_index (m->locals, tmp[lo]);
+	  if (!(local->prefix >= rand))
 	    return 1;
 	  if (PREDICT_FALSE (sm->num_workers > 1))
 	    {
 	      ip4_header_t ip = {
-		.src_address = m->locals[lo].addr,
+		.src_address = local->addr,
 	      };
 	      if (sm->worker_in2out_cb (&ip, m->fib_index) !=
 		  vlib_get_thread_index ())
 		goto get_local;
 	    }
-	  mapping->addr = m->locals[lo].addr;
-	  mapping->port = clib_host_to_net_u16 (m->locals[lo].port);
-	  mapping->fib_index = m->locals[lo].fib_index;
+	  mapping->addr = local->addr;
+	  mapping->port = clib_host_to_net_u16 (local->port);
+	  mapping->fib_index = local->fib_index;
 	  if (m->affinity)
 	    {
 	      if (nat_affinity_create_and_lock (ext_host_addr[0], match.addr,
 						match.protocol, match.port,
-						lo, m->affinity,
+						tmp[lo], m->affinity,
 						m->affinity_per_service_list_head_index))
 		nat_log_info ("create affinity record failed");
 	    }
+	  vec_free (tmp);
 	}
       else
 	{

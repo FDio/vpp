@@ -948,6 +948,98 @@ done:
 }
 
 static clib_error_t *
+add_lb_backend_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  snat_main_t *sm = &snat_main;
+  clib_error_t *error = 0;
+  ip4_address_t l_addr, e_addr;
+  u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0;
+  int is_add = 1;
+  int rv;
+  snat_protocol_t proto;
+  u8 proto_set = 0;
+
+  if (sm->deterministic)
+    return clib_error_return (0, UNSUPPORTED_IN_DET_MODE_STR);
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "local %U:%u probability %u",
+		    unformat_ip4_address, &l_addr, &l_port, &probability))
+	;
+      else if (unformat (line_input, "local %U:%u vrf %u probability %u",
+			 unformat_ip4_address, &l_addr, &l_port, &vrf_id,
+			 &probability))
+	;
+      else if (unformat (line_input, "external %U:%u", unformat_ip4_address,
+			 &e_addr, &e_port))
+	;
+      else if (unformat (line_input, "protocol %U", unformat_snat_protocol,
+			 &proto))
+	proto_set = 1;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else
+	{
+	  error = clib_error_return (0, "unknown input: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!l_port || !e_port)
+    {
+      error = clib_error_return (0, "local or external must be set");
+      goto done;
+    }
+
+  if (!proto_set)
+    {
+      error = clib_error_return (0, "missing protocol");
+      goto done;
+    }
+
+  rv =
+    nat44_lb_static_mapping_add_del_local (e_addr, (u16) e_port, l_addr,
+					   l_port, proto, vrf_id, probability,
+					   is_add);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (0, "External is not load-balancing static "
+				 "mapping.");
+      goto done;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      error = clib_error_return (0, "Mapping or back-end not exist.");
+      goto done;
+    case VNET_API_ERROR_VALUE_EXIST:
+      error = clib_error_return (0, "Back-end already exist.");
+      goto done;
+    case VNET_API_ERROR_FEATURE_DISABLED:
+      error =
+	clib_error_return (0, "Available only for endpoint-dependent mode.");
+      goto done;
+    case VNET_API_ERROR_UNSPECIFIED:
+      error = clib_error_return (0, "At least two back-ends must remain");
+      goto done;
+    default:
+      break;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
 nat44_show_static_mappings_command_fn (vlib_main_t * vm,
 				       unformat_input_t * input,
 				       vlib_cli_command_t * cmd)
@@ -1932,6 +2024,24 @@ VLIB_CLI_COMMAND (add_lb_static_mapping_command, static) = {
     "external <addr>:<port> local <addr>:<port> [vrf <table-id>] "
     "probability <n> [twice-nat|self-twice-nat] [out2in-only] "
     "[affinity <timeout-seconds>] [del]",
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 add load-balancing static mapping}
+ * Modify service load balancing using NAT44
+ * To add new back-end server 10.100.10.30:8080 for service load balancing
+ * static mapping with external IP address 1.2.3.4 and TCP port 80 use:
+ *  vpp# nat44 add load-balancing back-end protocol tcp external 1.2.3.4:80 local 10.100.10.30:8080 probability 25
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (add_lb_backend_command, static) = {
+  .path = "nat44 add load-balancing back-end",
+  .function = add_lb_backend_command_fn,
+  .short_help =
+    "nat44 add load-balancing back-end protocol tcp|udp "
+    "external <addr>:<port> local <addr>:<port> [vrf <table-id>] "
+    "probability <n> [del]",
 };
 
 /*?
