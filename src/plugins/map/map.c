@@ -440,7 +440,7 @@ map_fib_unresolve (map_main_pre_resolved_t * pr,
   pr->sibling = FIB_NODE_INDEX_INVALID;
 }
 
-static void
+void
 map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, int is_del)
 {
   if (ip6 && (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0))
@@ -476,8 +476,8 @@ map_security_check_command_fn (vlib_main_t * vm,
 			       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
+  u8 enable = ~0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -486,9 +486,9 @@ map_security_check_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "off"))
-	mm->sec_check = false;
+	enable = false;
       else if (unformat (line_input, "on"))
-	mm->sec_check = true;
+	enable = true;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -496,6 +496,8 @@ map_security_check_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_security_check (enable, ~0);
 
 done:
   unformat_free (line_input);
@@ -509,8 +511,8 @@ map_security_check_frag_command_fn (vlib_main_t * vm,
 				    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
+  u8 check_frag = ~0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -519,9 +521,9 @@ map_security_check_frag_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "off"))
-	mm->sec_check_frag = false;
+	check_frag = false;
       else if (unformat (line_input, "on"))
-	mm->sec_check_frag = true;
+	check_frag = true;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -529,6 +531,8 @@ map_security_check_frag_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_security_check (~0, check_frag);
 
 done:
   unformat_free (line_input);
@@ -754,6 +758,7 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t icmp_src_address;
+  ip4_address_t *p_icmp_addr = 0;
   map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
 
@@ -767,7 +772,10 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
     {
       if (unformat
 	  (line_input, "%U", unformat_ip4_address, &icmp_src_address))
-	mm->icmp4_src_address = icmp_src_address;
+	{
+	  mm->icmp4_src_address = icmp_src_address;
+	  p_icmp_addr = &icmp_src_address;
+	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -775,6 +783,8 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_icmp (p_icmp_addr);
 
 done:
   unformat_free (line_input);
@@ -788,9 +798,9 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
 				  vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   int num_m_args = 0;
   clib_error_t *error = NULL;
+  bool enabled = false;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -800,9 +810,9 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
     {
       num_m_args++;
       if (unformat (line_input, "on"))
-	mm->icmp6_enabled = true;
+	enabled = true;
       else if (unformat (line_input, "off"))
-	mm->icmp6_enabled = false;
+	enabled = false;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -815,19 +825,23 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
   if (num_m_args != 1)
     error = clib_error_return (0, "mandatory argument(s) missing");
 
+
+  map_param_set_icmp6 (enabled);
+
 done:
   unformat_free (line_input);
 
   return error;
 }
 
+
 static clib_error_t *
 map_fragment_command_fn (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
+  u8 frag_inner;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -836,9 +850,9 @@ map_fragment_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "inner"))
-	mm->frag_inner = true;
+	frag_inner = true;
       else if (unformat (line_input, "outer"))
-	mm->frag_inner = false;
+	frag_inner = false;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -846,6 +860,8 @@ map_fragment_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_fragmentation (frag_inner, ~0);
 
 done:
   unformat_free (line_input);
@@ -859,8 +875,8 @@ map_fragment_df_command_fn (vlib_main_t * vm,
 			    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   clib_error_t *error = NULL;
+  u8 frag_ignore_df;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -869,9 +885,9 @@ map_fragment_df_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "on"))
-	mm->frag_ignore_df = true;
+	frag_ignore_df = true;
       else if (unformat (line_input, "off"))
-	mm->frag_ignore_df = false;
+	frag_ignore_df = false;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -879,6 +895,8 @@ map_fragment_df_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_fragmentation (~0, frag_ignore_df);
 
 done:
   unformat_free (line_input);
@@ -892,11 +910,10 @@ map_traffic_class_command_fn (vlib_main_t * vm,
 			      vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  map_main_t *mm = &map_main;
   u32 tc = 0;
   clib_error_t *error = NULL;
+  u8 tc_copy = false;
 
-  mm->tc_copy = false;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -905,9 +922,9 @@ map_traffic_class_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "copy"))
-	mm->tc_copy = true;
+	tc_copy = true;
       else if (unformat (line_input, "%x", &tc))
-	mm->tc = tc & 0xff;
+	tc = tc & 0xff;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -915,6 +932,8 @@ map_traffic_class_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  map_param_set_traffic_class (tc_copy, tc);
 
 done:
   unformat_free (line_input);
@@ -1282,110 +1301,34 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				  MAP_IP6_REASS_CONF_BUFFERS_MAX);
     }
 
-  if (ip4)
+  int rv;
+  u32 reass = 0, packets = 0;
+  rv = map_param_set_reassembly (!ip4, lifetime, pool_size, buffers, ht_ratio,
+				 &reass, &packets);
+
+  switch (rv)
     {
-      u32 reass = 0, packets = 0;
-      if (pool_size != ~0)
-	{
-	  if (map_ip4_reass_conf_pool_size (pool_size, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip4-reass pool-size");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip4-reass pool-size (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1))
-	{
-	  if (map_ip4_reass_conf_ht_ratio (ht_ratio, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip4-reass ht-log2len");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip4-reass ht-log2len (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (lifetime != ~0)
-	{
-	  if (map_ip4_reass_conf_lifetime (lifetime))
-	    vlib_cli_output (vm, "Could not set ip4-reass lifetime");
-	  else
-	    vlib_cli_output (vm, "Setting ip4-reass lifetime");
-	}
-      if (buffers != ~(0ull))
-	{
-	  if (map_ip4_reass_conf_buffers (buffers))
-	    vlib_cli_output (vm, "Could not set ip4-reass buffers");
-	  else
-	    vlib_cli_output (vm, "Setting ip4-reass buffers");
-	}
+    case 0:
+      vlib_cli_output (vm,
+		       "Note: destroyed-reassembly=%u , dropped-fragments=%u",
+		       reass, packets);
+      break;
 
-      if (map_main.ip4_reass_conf_buffers >
-	  map_main.ip4_reass_conf_pool_size *
-	  MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
-	{
-	  vlib_cli_output (vm,
-			   "Note: 'ip4-reass buffers' > pool-size * max-fragments-per-reassembly.");
-	}
-    }
+    case VNET_API_ERROR_MAP_BAD_POOL_SIZE:
+      return clib_error_return (0, "Could not set reass pool-size");
 
-  if (ip6)
-    {
-      u32 reass = 0, packets = 0;
-      if (pool_size != ~0)
-	{
-	  if (map_ip6_reass_conf_pool_size (pool_size, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip6-reass pool-size");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip6-reass pool-size (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1))
-	{
-	  if (map_ip6_reass_conf_ht_ratio (ht_ratio, &reass, &packets))
-	    {
-	      vlib_cli_output (vm, "Could not set ip6-reass ht-log2len");
-	    }
-	  else
-	    {
-	      vlib_cli_output (vm,
-			       "Setting ip6-reass ht-log2len (destroyed-reassembly=%u , dropped-fragments=%u)",
-			       reass, packets);
-	    }
-	}
-      if (lifetime != ~0)
-	{
-	  if (map_ip6_reass_conf_lifetime (lifetime))
-	    vlib_cli_output (vm, "Could not set ip6-reass lifetime");
-	  else
-	    vlib_cli_output (vm, "Setting ip6-reass lifetime");
-	}
-      if (buffers != ~(0ull))
-	{
-	  if (map_ip6_reass_conf_buffers (buffers))
-	    vlib_cli_output (vm, "Could not set ip6-reass buffers");
-	  else
-	    vlib_cli_output (vm, "Setting ip6-reass buffers");
-	}
+    case VNET_API_ERROR_MAP_BAD_HT_RATIO:
+      return clib_error_return (0, "Could not set reass ht-log2len");
 
-      if (map_main.ip6_reass_conf_buffers >
-	  map_main.ip6_reass_conf_pool_size *
-	  MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
-	{
-	  vlib_cli_output (vm,
-			   "Note: 'ip6-reass buffers' > pool-size * max-fragments-per-reassembly.");
-	}
+    case VNET_API_ERROR_MAP_BAD_LIFETIME:
+      return clib_error_return (0, "Could not set ip6-reass lifetime");
+
+    case VNET_API_ERROR_MAP_BAD_BUFFERS:
+      return clib_error_return (0, "Could not set ip6-reass buffers");
+
+    case VNET_API_ERROR_MAP_BAD_BUFFERS_TOO_LARGE:
+      return clib_error_return (0,
+				"Note: 'ip6-reass buffers' > pool-size * max-fragments-per-reassembly.");
     }
 
   return 0;
