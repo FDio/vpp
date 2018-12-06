@@ -20,7 +20,9 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/dpo/drop_dpo.h>
+#include <vnet/dpo/load_balance.h>
 #include <vnet/fib/fib_walk.h>
+#include <vnet/fib/fib_entry.h>
 
 /**
  * The two midchain tx feature node indices
@@ -473,6 +475,7 @@ adj_midchain_setup (adj_index_t adj_index,
 
     adj->sub_type.midchain.fixup_func = fixup;
     adj->sub_type.midchain.fixup_data = data;
+    adj->sub_type.midchain.fei = FIB_NODE_INDEX_INVALID;
     adj->ia_flags |= flags;
 
     arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
@@ -548,11 +551,24 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 void
 adj_nbr_midchain_unstack (adj_index_t adj_index)
 {
+    fib_node_index_t *entry_indicies, tmp;
     ip_adjacency_t *adj;
 
     ASSERT(ADJ_INDEX_INVALID != adj_index);
+    adj = adj_get (adj_index);
 
-    adj = adj_get(adj_index);
+    /*
+     * check to see if this unstacking breaks a recursion loop
+     */
+    entry_indicies = NULL;
+    tmp = adj->sub_type.midchain.fei;
+    adj->sub_type.midchain.fei = FIB_NODE_INDEX_INVALID;
+
+    if (FIB_NODE_INDEX_INVALID != tmp)
+    {
+        fib_entry_recursive_loop_detect(tmp, &entry_indicies);
+        vec_free(entry_indicies);
+    }
 
     /*
      * stack on the drop
@@ -562,6 +578,74 @@ adj_nbr_midchain_unstack (adj_index_t adj_index)
               &adj->sub_type.midchain.next_dpo,
               drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
     CLIB_MEMORY_BARRIER();
+}
+
+void
+adj_nbr_midchain_stack_on_fib_entry (adj_index_t ai,
+                                     fib_node_index_t fei,
+                                     fib_forward_chain_type_t fct)
+{
+    fib_node_index_t *entry_indicies;
+    dpo_id_t tmp = DPO_INVALID;
+    ip_adjacency_t *adj;
+
+    adj = adj_get (ai);
+
+    /*
+     * check to see if this stacking will form a recursion loop
+     */
+    entry_indicies = NULL;
+    adj->sub_type.midchain.fei = fei;
+
+    if (fib_entry_recursive_loop_detect(adj->sub_type.midchain.fei, &entry_indicies))
+    {
+        /*
+         * loop formed, stack on the drop.
+         */
+        dpo_copy(&tmp, drop_dpo_get(fib_forw_chain_type_to_dpo_proto(fct)));
+    }
+    else
+    {
+        fib_entry_contribute_forwarding (fei, fct, &tmp);
+
+        if ((adj->ia_flags & ADJ_FLAG_MIDCHAIN_IP_STACK) &&
+            (DPO_LOAD_BALANCE == tmp.dpoi_type))
+        {
+            /*
+             * do that hash now and stack on the choice.
+             * If the choice is an incomplete adj then we will need a poke when
+             * it becomes complete. This happens since the adj update walk propagates
+             * as far a recursive paths.
+             */
+            const dpo_id_t *choice;
+            load_balance_t *lb;
+            int hash;
+
+            lb = load_balance_get (tmp.dpoi_index);
+
+            if (FIB_FORW_CHAIN_TYPE_UNICAST_IP4 == fct)
+            {
+                hash = ip4_compute_flow_hash ((ip4_header_t *) adj_get_rewrite (ai),
+                                              lb->lb_hash_config);
+            }
+            else if (FIB_FORW_CHAIN_TYPE_UNICAST_IP6 == fct)
+            {
+                hash = ip6_compute_flow_hash ((ip6_header_t *) adj_get_rewrite (ai),
+                                              lb->lb_hash_config);
+            }
+            else
+            {
+                hash = 0;
+                ASSERT(0);
+            }
+
+            choice = load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
+            dpo_copy (&tmp, choice);
+        }
+    }
+    adj_nbr_midchain_stack (ai, &tmp);
+    dpo_reset(&tmp);
+    vec_free(entry_indicies);
 }
 
 /**
@@ -585,6 +669,33 @@ adj_nbr_midchain_stack (adj_index_t adj_index,
 			next);
 }
 
+int
+adj_ndr_midchain_recursive_loop_detect (adj_index_t ai,
+                                        fib_node_index_t **entry_indicies)
+{
+    fib_node_index_t *entry_index, *entries;
+    ip_adjacency_t * adj;
+
+    adj = adj_get(ai);
+    entries = *entry_indicies;
+
+    vec_foreach(entry_index, entries)
+    {
+        if (*entry_index == adj->sub_type.midchain.fei)
+        {
+            /*
+             * The entry this midchain links to is already in the set
+             * of visisted entries, this is a loop
+             */
+            adj->ia_flags |= ADJ_FLAG_MIDCHAIN_LOOPED;
+            return (1);
+        }
+    }
+
+    adj->ia_flags &= ~ADJ_FLAG_MIDCHAIN_LOOPED;
+    return (0);
+}
+
 u8*
 format_adj_midchain (u8* s, va_list *ap)
 {
@@ -599,8 +710,15 @@ format_adj_midchain (u8* s, va_list *ap)
     s = format (s, " %U",
 		format_vnet_rewrite,
 		&adj->rewrite_header, sizeof (adj->rewrite_data), indent);
-    s = format (s, "\n%Ustacked-on:\n%U%U",
-                format_white_space, indent,
+    s = format (s, "\n%Ustacked-on",
+                format_white_space, indent);
+
+    if (FIB_NODE_INDEX_INVALID != adj->sub_type.midchain.fei)
+    {
+        s = format (s, " entry:%d", adj->sub_type.midchain.fei);
+
+    }
+    s = format (s, ":\n%U%U",
                 format_white_space, indent+2,
                 format_dpo_id, &adj->sub_type.midchain.next_dpo, indent+2);
 

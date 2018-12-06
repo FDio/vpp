@@ -128,9 +128,7 @@ gre_tunnel_from_fib_node (fib_node_t * node)
 void
 gre_tunnel_stack (adj_index_t ai)
 {
-  fib_forward_chain_type_t fib_fwd;
   gre_main_t *gm = &gre_main;
-  dpo_id_t tmp = DPO_INVALID;
   ip_adjacency_t *adj;
   gre_tunnel_t *gt;
   u32 sw_if_index;
@@ -149,42 +147,14 @@ gre_tunnel_stack (adj_index_t ai)
        VNET_HW_INTERFACE_FLAG_LINK_UP) == 0)
     {
       adj_nbr_midchain_unstack (ai);
-      return;
     }
-
-  fib_fwd = fib_forw_chain_type_from_fib_proto (gt->tunnel_dst.fp_proto);
-
-  fib_entry_contribute_forwarding (gt->fib_entry_index, fib_fwd, &tmp);
-  if (DPO_LOAD_BALANCE == tmp.dpoi_type)
+  else
     {
-      /*
-       * post GRE rewrite we will load-balance. However, the GRE encap
-       * is always the same for this adjacency/tunnel and hence the IP/GRE
-       * src,dst hash is always the same result too. So we do that hash now and
-       * stack on the choice.
-       * If the choice is an incomplete adj then we will need a poke when
-       * it becomes complete. This happens since the adj update walk propagates
-       * as far a recursive paths.
-       */
-      const dpo_id_t *choice;
-      load_balance_t *lb;
-      int hash;
-
-      lb = load_balance_get (tmp.dpoi_index);
-
-      if (fib_fwd == FIB_FORW_CHAIN_TYPE_UNICAST_IP4)
-	hash = ip4_compute_flow_hash ((ip4_header_t *) adj_get_rewrite (ai),
-				      lb->lb_hash_config);
-      else
-	hash = ip6_compute_flow_hash ((ip6_header_t *) adj_get_rewrite (ai),
-				      lb->lb_hash_config);
-      choice =
-	load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
-      dpo_copy (&tmp, choice);
+      adj_nbr_midchain_stack_on_fib_entry (ai,
+					   gt->fib_entry_index,
+					   fib_forw_chain_type_from_fib_proto
+					   (gt->tunnel_dst.fp_proto));
     }
-
-  adj_nbr_midchain_stack (ai, &tmp);
-  dpo_reset (&tmp);
 }
 
 /**

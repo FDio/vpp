@@ -301,17 +301,20 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 {
   gre_main_t *gm = &gre_main;
   gre_tunnel_t *t;
-  u32 ti;
+  adj_flags_t af;
   u8 is_ipv6;
+  u32 ti;
 
   ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
   t = pool_elt_at_index (gm->tunnels, ti);
   is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
+  af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+
+  if (VNET_LINK_ETHERNET == adj_get_link_type (ai))
+    af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
 
   adj_nbr_midchain_update_rewrite
-    (ai, !is_ipv6 ? gre4_fixup : gre6_fixup, NULL,
-     (VNET_LINK_ETHERNET == adj_get_link_type (ai) ?
-      ADJ_FLAG_MIDCHAIN_NO_COUNT : ADJ_FLAG_NONE),
+    (ai, !is_ipv6 ? gre4_fixup : gre6_fixup, NULL, af,
      gre_build_rewrite (vnm, sw_if_index, adj_get_link_type (ai), NULL));
 
   gre_tunnel_stack (ai);

@@ -53,7 +53,8 @@ extern void adj_nbr_midchain_update_rewrite(adj_index_t adj_index,
 /**
  * @brief
  *  [re]stack a midchain. 'Stacking' is the act of forming parent-child
- *  relationships in the data-plane graph.
+ *  relationships in the data-plane graph. Do NOT use this function to
+ *  stack on a DPO type that might form a loop.
  *
  * @param adj_index
  *  The index of the midchain to stack
@@ -66,6 +67,25 @@ extern void adj_nbr_midchain_stack(adj_index_t adj_index,
 
 /**
  * @brief
+ *  [re]stack a midchain. 'Stacking' is the act of forming parent-child
+ *  relationships in the data-plane graph. Since function performs recursive
+ *  loop detection.
+ *
+ * @param adj_index
+ *  The index of the midchain to stack
+ *
+ * @param fei
+ *  The FIB entry to stack on
+ *
+ * @param fct
+ *  The chain type to use from the fib entry fowarding
+ */
+extern void adj_nbr_midchain_stack_on_fib_entry(adj_index_t adj_index,
+                                                fib_node_index_t fei,
+                                                fib_forward_chain_type_t fct);
+
+/**
+ * @brief
  *  unstack a midchain. This will break the chain between the midchain and
  *  the next graph section. This is a implemented as stack-on-drop
  *
@@ -73,6 +93,18 @@ extern void adj_nbr_midchain_stack(adj_index_t adj_index,
  *  The index of the midchain to stack
  */
 extern void adj_nbr_midchain_unstack(adj_index_t adj_index);
+
+/**
+ * @brief descend the FIB graph looking for loops
+ *
+ * @param ai
+ *  The adj index to traverse
+ *
+ * @param entry_indicies)
+ *  A pointer to a vector of FIB entries already visited.
+ */
+extern int adj_ndr_midchain_recursive_loop_detect(adj_index_t ai,
+                                                  fib_node_index_t **entry_indicies);
 
 /**
  * @brief

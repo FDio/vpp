@@ -157,14 +157,12 @@ typedef void (*adj_midchain_fixup_t) (vlib_main_t * vm,
 /**
  * @brief Flags on an IP adjacency
  */
-typedef enum ip_adjacency_flags_t_
+typedef enum adj_attr_t_
 {
-    ADJ_FLAG_NONE = 0,
-
     /**
      * Currently a sync walk is active. Used to prevent re-entrant walking
      */
-    ADJ_FLAG_SYNC_WALK_ACTIVE = (1 << 0),
+    ADJ_ATTR_SYNC_WALK_ACTIVE = 0,
 
     /**
      * Packets TX through the midchain do not increment the interface
@@ -173,8 +171,46 @@ typedef enum ip_adjacency_flags_t_
      * the packet will have traversed the interface's TX node, and hence have
      * been counted, before it traverses ths midchain
      */
-    ADJ_FLAG_MIDCHAIN_NO_COUNT = (1 << 1),
+    ADJ_ATTR_MIDCHAIN_NO_COUNT,
+    /**
+     * When stacking midchains on a fib-entry extract the choice from the
+     * load-balance returned based on an IP hash of the adj's rewrite
+     */
+    ADJ_ATTR_MIDCHAIN_IP_STACK,
+    /**
+     * If the midchain were to stack on its FIB entry a loop would form.
+     */
+    ADJ_ATTR_MIDCHAIN_LOOPED,
+}  adj_attr_t;
+
+#define ADJ_ATTR_NAMES {                                        \
+    [ADJ_ATTR_SYNC_WALK_ACTIVE] = "walk-active",                \
+    [ADJ_ATTR_MIDCHAIN_NO_COUNT] = "midchain-no-count",         \
+    [ADJ_ATTR_MIDCHAIN_IP_STACK] = "midchain-ip-stack",         \
+    [ADJ_ATTR_MIDCHAIN_LOOPED] = "midchain-looped",             \
+}
+
+#define FOR_EACH_ADJ_ATTR(_attr)                 \
+    for (_attr = ADJ_ATTR_SYNC_WALK_ACTIVE;      \
+	 _attr <= ADJ_ATTR_MIDCHAIN_LOOPED;      \
+	 _attr++)
+
+/**
+ * @brief Flags on an IP adjacency
+ */
+typedef enum adj_flags_t_
+{
+    ADJ_FLAG_NONE = 0,
+    ADJ_FLAG_SYNC_WALK_ACTIVE = (1 << ADJ_ATTR_SYNC_WALK_ACTIVE),
+    ADJ_FLAG_MIDCHAIN_NO_COUNT = (1 << ADJ_ATTR_MIDCHAIN_NO_COUNT),
+    ADJ_FLAG_MIDCHAIN_IP_STACK = (1 << ADJ_ATTR_MIDCHAIN_IP_STACK),
+    ADJ_FLAG_MIDCHAIN_LOOPED = (1 << ADJ_ATTR_MIDCHAIN_LOOPED),
 }  __attribute__ ((packed)) adj_flags_t;
+
+/**
+ * @brief Format adjacency flags
+ */
+extern u8* format_adj_flags(u8 * s, va_list * args);
 
 /**
  * @brief IP unicast adjacency.
@@ -257,6 +293,11 @@ typedef struct ip_adjacency_t_
        * Fixup data passed back to the client in the fixup function
        */
       const void *fixup_data;
+      /**
+       * the FIB entry this midchain resolves through. required for recursive
+       * loop detection.
+       */
+      fib_node_index_t fei;
     } midchain;
     /**
      * IP_LOOKUP_NEXT_GLEAN
@@ -353,6 +394,18 @@ extern const u8* adj_get_rewrite (adj_index_t ai);
  * an interface have changed
  */
 extern void adj_feature_update (u32 sw_if_index, u8 arc_index, u8 is_enable);
+
+/**
+ * @brief descend the FIB graph looking for loops
+ *
+ * @param ai
+ *  The adj index to traverse
+ *
+ * @param entry_indicies)
+ *  A pointer to a vector of FIB entries already visited.
+ */
+extern int adj_recursive_loop_detect (adj_index_t ai,
+                                      fib_node_index_t **entry_indicies);
 
 /**
  * @brief

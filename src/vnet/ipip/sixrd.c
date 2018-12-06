@@ -152,9 +152,9 @@ ip6ip_tunnel_stack (adj_index_t ai, u32 fib_entry_index)
   if (vnet_hw_interface_get_flags (vnet_get_main (), t->hw_if_index) &
       VNET_HW_INTERFACE_FLAG_LINK_UP)
     {
-      adj_nbr_midchain_stack (ai,
-			      fib_entry_contribute_ip_forwarding
-			      (fib_entry_index));
+      adj_nbr_midchain_stack_on_fib_entry (ai,
+					   fib_entry_index,
+					   FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
     }
   else
     {
