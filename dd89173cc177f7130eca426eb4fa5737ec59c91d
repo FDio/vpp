@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d1388c71_30a119de",
+        "filename": "test/vpp_mac.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-06T21:46:14Z",
+      "side": 1,
+      "message": "I wonder why do we need this property (and setter).\nLeaving .address accessible as an ordinary field would behave the same (but quicker). Am I missing something?",
+      "range": {
+        "startLine": 22,
+        "startChar": 4,
+        "endLine": 22,
+        "endChar": 13
+      },
+      "revId": "dd89173cc177f7130eca426eb4fa5737ec59c91d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
