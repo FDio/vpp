@@ -45,6 +45,11 @@ const ip46_address_t ADJ_BCAST_ADDR = {
     },
 };
 
+/**
+ * Adj flag names
+ */
+static const char *adj_attr_names[] = ADJ_ATTR_NAMES;
+
 always_inline void
 adj_poison (ip_adjacency_t * adj)
 {
@@ -95,6 +100,28 @@ adj_index_is_special (adj_index_t adj_index)
     return (0);
 }
 
+u8*
+format_adj_flags (u8 * s, va_list * args)
+{
+    adj_flags_t af;
+    adj_attr_t at;
+
+    af = va_arg (*args, int);
+
+    if (ADJ_FLAG_NONE == af)
+    {
+        return (format(s, "None"));
+    }
+    FOR_EACH_ADJ_ATTR(at)
+    {
+        if (af & (1 << at))
+        {
+            s = format(s, "%s ", adj_attr_names[at]);
+        }
+    }
+    return (s);
+}
+
 /**
  * @brief Pretty print helper function for formatting specific adjacencies.
  * @param s - input string to format
@@ -113,10 +140,11 @@ format_ip_adjacency (u8 * s, va_list * args)
     adj_index = va_arg (*args, u32);
     fiaf = va_arg (*args, format_ip_adjacency_flags_t);
     adj = adj_get(adj_index);
-  
+
     switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_BCAST:
 	s = format (s, "%U", format_adj_nbr, adj_index, 0);
 	break;
     case IP_LOOKUP_NEXT_ARP:
@@ -134,8 +162,12 @@ format_ip_adjacency (u8 * s, va_list * args)
     case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
 	s = format (s, "%U", format_adj_mcast_midchain, adj_index, 0);
 	break;
-    default:
-	break;
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+        break;
     }
 
     if (fiaf & FORMAT_IP_ADJACENCY_DETAIL)
@@ -143,6 +175,7 @@ format_ip_adjacency (u8 * s, va_list * args)
         vlib_counter_t counts;
 
         vlib_get_combined_counter(&adjacency_counters, adj_index, &counts);
+        s = format (s, "\n   flags:%U", format_adj_flags, adj->ia_flags);
         s = format (s, "\n   counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n   locks:%d", adj->ia_node.fn_locks);
 	s = format(s, "\n delegates:\n  ");
@@ -157,6 +190,39 @@ format_ip_adjacency (u8 * s, va_list * args)
     }
 
     return s;
+}
+
+int
+adj_recursive_loop_detect (adj_index_t ai,
+                           fib_node_index_t **entry_indicies)
+{
+    ip_adjacency_t * adj;
+
+    adj = adj_get(ai);
+
+    switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_GLEAN:
+    case IP_LOOKUP_NEXT_MCAST:
+    case IP_LOOKUP_NEXT_BCAST:
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+        /*
+         * these adjcencey types are terminal graph nodes, so there's no
+         * possibility of a loop down here.
+         */
+	break;
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+        return (adj_ndr_midchain_recursive_loop_detect(ai, entry_indicies));
+    }
+
+    return (0);
 }
 
 /*
@@ -403,7 +469,7 @@ adj_get_link_type (adj_index_t ai)
 
     adj = adj_get(ai);
 
-    return (adj->ia_link); 
+    return (adj->ia_link);
 }
 
 /**

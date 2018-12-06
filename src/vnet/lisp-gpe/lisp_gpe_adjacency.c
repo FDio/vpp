@@ -131,48 +131,13 @@ static void
 lisp_gpe_adj_stack_one (lisp_gpe_adjacency_t * ladj, adj_index_t ai)
 {
   const lisp_gpe_tunnel_t *lgt;
-  dpo_id_t tmp = DPO_INVALID;
 
   lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
-  fib_entry_contribute_forwarding (lgt->fib_entry_index,
-				   lisp_gpe_adj_get_fib_chain_type (ladj),
-				   &tmp);
 
-  if (DPO_LOAD_BALANCE == tmp.dpoi_type)
-    {
-      /*
-       * post LISP rewrite we will load-balance. However, the LISP encap
-       * is always the same for this adjacency/tunnel and hence the IP/UDP src,dst
-       * hash is always the same result too. So we do that hash now and
-       * stack on the choice.
-       * If the choice is an incomplete adj then we will need a poke when
-       * it becomes complete. This happens since the adj update walk propagates
-       * as far a recursive paths.
-       */
-      const dpo_id_t *choice;
-      load_balance_t *lb;
-      int hash;
-
-      lb = load_balance_get (tmp.dpoi_index);
-
-      if (IP4 == ip_addr_version (&ladj->remote_rloc))
-	{
-	  hash = ip4_compute_flow_hash ((ip4_header_t *) adj_get_rewrite (ai),
-					lb->lb_hash_config);
-	}
-      else
-	{
-	  hash = ip6_compute_flow_hash ((ip6_header_t *) adj_get_rewrite (ai),
-					lb->lb_hash_config);
-	}
-
-      choice =
-	load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
-      dpo_copy (&tmp, choice);
-    }
-
-  adj_nbr_midchain_stack (ai, &tmp);
-  dpo_reset (&tmp);
+  adj_nbr_midchain_stack_on_fib_entry (ai,
+				       lgt->fib_entry_index,
+				       lisp_gpe_adj_get_fib_chain_type
+				       (ladj));
 }
 
 /**
@@ -332,6 +297,7 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ip_adjacency_t *adj;
   ip_address_t rloc;
   vnet_link_t linkt;
+  adj_flags_t af;
   index_t lai;
 
   adj = adj_get (ai);
@@ -347,12 +313,12 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ladj = pool_elt_at_index (lisp_adj_pool, lai);
   lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
   linkt = adj_get_link_type (ai);
+  af = ADJ_FLAG_MIDCHAIN_IP_STACK;
+  if (VNET_LINK_ETHERNET == linkt)
+    af |= ADJ_FLAG_MIDCHAIN_NO_COUNT;
+
   adj_nbr_midchain_update_rewrite
-    (ai, lisp_gpe_fixup,
-     NULL,
-     (VNET_LINK_ETHERNET == linkt ?
-      ADJ_FLAG_MIDCHAIN_NO_COUNT :
-      ADJ_FLAG_NONE),
+    (ai, lisp_gpe_fixup, NULL, af,
      lisp_gpe_tunnel_build_rewrite (lgt, ladj,
 				    lisp_gpe_adj_proto_from_vnet_link_type
 				    (linkt)));

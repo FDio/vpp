@@ -1802,7 +1802,7 @@ fib_path_recursive_loop_detect (fib_node_index_t path_index,
 	{
 	    /*
 	     * no loop here yet. keep forward walking the graph.
-	     */	    
+	     */
 	    if (fib_entry_recursive_loop_detect(path->fp_via_fib, entry_indicies))
 	    {
 		FIB_PATH_DBG(path, "recursive loop formed");
@@ -1818,6 +1818,18 @@ fib_path_recursive_loop_detect (fib_node_index_t path_index,
     }
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
     case FIB_PATH_TYPE_ATTACHED:
+	if (adj_recursive_loop_detect(path->fp_dpo.dpoi_index,
+                                      entry_indicies))
+	{
+	    FIB_PATH_DBG(path, "recursive loop formed");
+	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RECURSIVE_LOOP;
+	}
+        else
+        {
+            FIB_PATH_DBG(path, "recursive loop cleared");
+            path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RECURSIVE_LOOP;
+        }
+        break;
     case FIB_PATH_TYPE_SPECIAL:
     case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_DVR:
@@ -2690,7 +2702,7 @@ show_fib_path_command (vlib_main_t * vm,
 	    path = fib_path_get(pi);
 	    u8 *s = format(NULL, "%U", format_fib_path, pi, 1,
                            FIB_PATH_FORMAT_FLAGS_NONE);
-	    s = format(s, "children:");
+	    s = format(s, "\n  children:");
 	    s = fib_node_children_format(path->fp_node.fn_children, s);
 	    vlib_cli_output (vm, "%s", s);
 	    vec_free(s);

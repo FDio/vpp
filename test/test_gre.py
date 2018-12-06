@@ -867,6 +867,67 @@ class TestGRE(VppTestCase):
         route_tun1_dst.add_vpp_config()
         route_tun2_dst.add_vpp_config()
 
+    def test_gre_loop(self):
+        """ GRE tunnel loop Tests """
+
+        #
+        # Create an L3 GRE tunnel.
+        #  - set it admin up
+        #  - assign an IP Addres
+        #
+        gre_if = VppGreInterface(self,
+                                 self.pg0.local_ip4,
+                                 "1.1.1.2")
+        gre_if.add_vpp_config()
+        gre_if.admin_up()
+        gre_if.config_ip4()
+
+        #
+        # add a route to the tunnel's destination that points
+        # through the tunnel, hence forming a loop in the forwarding
+        # graph
+        #
+        route_dst = VppIpRoute(self, "1.1.1.2", 32,
+                               [VppRoutePath("0.0.0.0",
+                                             gre_if.sw_if_index)])
+        route_dst.add_vpp_config()
+
+        #
+        # packets to the tunnels destination should be dropped
+        #
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "1.1.1.2")
+        self.send_and_assert_no_replies(self.pg2, tx)
+
+        self.logger.info(self.vapi.ppcli("sh adj 7"))
+
+        #
+        # break the loop
+        #
+        route_dst.modify([VppRoutePath(self.pg1.remote_ip4,
+                                       self.pg1.sw_if_index)])
+        route_dst.add_vpp_config()
+
+        rx = self.send_and_expect(self.pg0, tx, self.pg1)
+
+        #
+        # a good route throught the tunnel to check it restacked
+        #
+        route_via_tun_2 = VppIpRoute(self, "2.2.2.2", 32,
+                                     [VppRoutePath("0.0.0.0",
+                                                   gre_if.sw_if_index)])
+        route_via_tun_2.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "2.2.2.3", "2.2.2.2")
+        rx = self.send_and_expect(self.pg0, tx, self.pg1)
+        self.verify_tunneled_4o4(self.pg1, rx, tx,
+                                 self.pg0.local_ip4, "1.1.1.2")
+
+        #
+        # cleanup
+        #
+        route_via_tun_2.remove_vpp_config()
+        gre_if.remove_vpp_config()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
