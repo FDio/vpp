@@ -252,13 +252,356 @@ out:
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
+
+int
+map_param_set_fragmentation (u8 inner, u8 ignore_df)
+{
+  map_main_t *mm = &map_main;
+
+  if (inner != (u8) ~ 0)
+    mm->frag_inner = ! !inner;
+
+  if (ignore_df != (u8) ~ 0)
+    mm->frag_ignore_df = ! !ignore_df;
+
+  return 0;
+}
+
+static void
+  vl_api_map_param_set_fragmentation_t_handler
+  (vl_api_map_param_set_fragmentation_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_set_fragmentation_reply_t *rmp;
+  int rv = 0;
+
+  rv = map_param_set_fragmentation (mp->inner, mp->ignore_df);
+
+  REPLY_MACRO (VL_API_MAP_PARAM_SET_FRAGMENTATION_REPLY);
+}
+
+
+int
+map_param_set_icmp (ip4_address_t * icmp_src_address)
+{
+  map_main_t *mm = &map_main;
+
+  if (icmp_src_address == 0)
+    return -1;
+
+  mm->icmp4_src_address = *icmp_src_address;
+
+  return 0;
+}
+
+
+static void
+vl_api_map_param_set_icmp_t_handler (vl_api_map_param_set_icmp_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_set_icmp_reply_t *rmp;
+  int rv;
+
+  rv = map_param_set_icmp ((ip4_address_t *) & mp->ip4_err_relay_src);
+
+  REPLY_MACRO (VL_API_MAP_PARAM_SET_ICMP_REPLY);
+}
+
+
+int
+map_param_set_icmp6 (u8 enable_unreachable)
+{
+  map_main_t *mm = &map_main;
+
+  mm->icmp6_enabled = ! !enable_unreachable;
+
+  return 0;
+}
+
+static void
+vl_api_map_param_set_icmp6_t_handler (vl_api_map_param_set_icmp6_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_set_icmp6_reply_t *rmp;
+  int rv;
+
+  rv = map_param_set_icmp6 (mp->enable_unreachable);
+
+  REPLY_MACRO (VL_API_MAP_PARAM_SET_ICMP6_REPLY);
+}
+
+
+static void
+  vl_api_map_param_add_del_pre_resolve_t_handler
+  (vl_api_map_param_add_del_pre_resolve_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_add_del_pre_resolve_reply_t *rmp;
+  int rv = 0;
+
+  map_pre_resolve ((ip4_address_t *) & mp->ip4_nh_address,
+		   (ip6_address_t *) & mp->ip6_nh_address, mp->is_add);
+
+  REPLY_MACRO (VL_API_MAP_PARAM_ADD_DEL_PRE_RESOLVE_REPLY);
+}
+
+
+int
+map_param_set_reassembly (bool is_ipv6,
+			  u16 lifetime_ms,
+			  u16 pool_size,
+			  u32 buffers,
+			  f64 ht_ratio, u32 * reass, u32 * packets)
+{
+  u32 ps_reass = 0, ps_packets = 0;
+  u32 ht_reass = 0, ht_packets = 0;
+
+  if (is_ipv6)
+    {
+      if (pool_size != (u16) ~ 0)
+	{
+	  if (pool_size > MAP_IP6_REASS_CONF_POOL_SIZE_MAX)
+	    return VNET_API_ERROR_MAP_BAD_POOL_SIZE;
+	  if (map_ip6_reass_conf_pool_size
+	      (pool_size, &ps_reass, &ps_packets))
+	    return VNET_API_ERROR_MAP_BAD_POOL_SIZE;
+	}
+
+      if (ht_ratio != (MAP_IP6_REASS_CONF_HT_RATIO_MAX + 1))
+	{
+	  if (ht_ratio > MAP_IP6_REASS_CONF_HT_RATIO_MAX)
+	    return VNET_API_ERROR_MAP_BAD_HT_RATIO;
+	  if (map_ip6_reass_conf_ht_ratio (ht_ratio, &ht_reass, &ht_packets))
+	    return VNET_API_ERROR_MAP_BAD_HT_RATIO;
+	}
+
+      if (lifetime_ms != (u16) ~ 0)
+	{
+	  if (lifetime_ms > MAP_IP6_REASS_CONF_LIFETIME_MAX)
+	    return VNET_API_ERROR_MAP_BAD_LIFETIME;
+	  if (map_ip6_reass_conf_lifetime (lifetime_ms))
+	    return VNET_API_ERROR_MAP_BAD_LIFETIME;
+	}
+
+      if (buffers != ~0)
+	{
+	  if (buffers > MAP_IP6_REASS_CONF_BUFFERS_MAX)
+	    return VNET_API_ERROR_MAP_BAD_BUFFERS;
+	  if (map_ip6_reass_conf_buffers (buffers))
+	    return VNET_API_ERROR_MAP_BAD_BUFFERS;
+	}
+
+      if (map_main.ip6_reass_conf_buffers >
+	  map_main.ip6_reass_conf_pool_size *
+	  MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
+	{
+	  return VNET_API_ERROR_MAP_BAD_BUFFERS_TOO_LARGE;
+	}
+    }
+  else
+    {
+      if (pool_size != (u16) ~ 0)
+	{
+	  if (pool_size > MAP_IP4_REASS_CONF_POOL_SIZE_MAX)
+	    return VNET_API_ERROR_MAP_BAD_POOL_SIZE;
+	  if (map_ip4_reass_conf_pool_size
+	      (pool_size, &ps_reass, &ps_packets))
+	    return VNET_API_ERROR_MAP_BAD_POOL_SIZE;
+	}
+
+      if (ht_ratio != (MAP_IP4_REASS_CONF_HT_RATIO_MAX + 1))
+	{
+	  if (ht_ratio > MAP_IP4_REASS_CONF_HT_RATIO_MAX)
+	    return VNET_API_ERROR_MAP_BAD_HT_RATIO;
+	  if (map_ip4_reass_conf_ht_ratio (ht_ratio, &ht_reass, &ht_packets))
+	    return VNET_API_ERROR_MAP_BAD_HT_RATIO;
+	}
+
+      if (lifetime_ms != (u16) ~ 0)
+	{
+	  if (lifetime_ms > MAP_IP4_REASS_CONF_LIFETIME_MAX)
+	    return VNET_API_ERROR_MAP_BAD_LIFETIME;
+	  if (map_ip4_reass_conf_lifetime (lifetime_ms))
+	    return VNET_API_ERROR_MAP_BAD_LIFETIME;
+	}
+
+      if (buffers != ~0)
+	{
+	  if (buffers > MAP_IP4_REASS_CONF_BUFFERS_MAX)
+	    return VNET_API_ERROR_MAP_BAD_BUFFERS;
+	  if (map_ip4_reass_conf_buffers (buffers))
+	    return VNET_API_ERROR_MAP_BAD_BUFFERS;
+	}
+
+      if (map_main.ip4_reass_conf_buffers >
+	  map_main.ip4_reass_conf_pool_size *
+	  MAP_IP4_REASS_MAX_FRAGMENTS_PER_REASSEMBLY)
+	{
+	  return VNET_API_ERROR_MAP_BAD_BUFFERS_TOO_LARGE;
+	}
+    }
+
+  if (reass)
+    *reass = ps_reass + ht_reass;
+
+  if (packets)
+    *packets = ps_packets + ht_packets;
+
+  return 0;
+}
+
+
+static void
+  vl_api_map_param_set_reassembly_t_handler
+  (vl_api_map_param_set_reassembly_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_set_reassembly_reply_t *rmp;
+  u32 reass = 0, packets = 0;
+  int rv;
+  f64 ht_ratio;
+
+  ht_ratio = (f64) clib_net_to_host_u64 (mp->ht_ratio);
+  if (ht_ratio == ~0)
+    ht_ratio = MAP_IP6_REASS_CONF_HT_RATIO_MAX + 1;
+
+  rv = map_param_set_reassembly (mp->is_ip6,
+				 clib_net_to_host_u16 (mp->lifetime_ms),
+				 clib_net_to_host_u16 (mp->pool_size),
+				 clib_net_to_host_u32 (mp->buffers),
+				 ht_ratio, &reass, &packets);
+
+  /*
+   * FIXME: Should the lost reass and packet counts be returned in the API?
+   */
+
+  REPLY_MACRO (VL_API_MAP_PARAM_SET_REASSEMBLY_REPLY);
+}
+
+
+int
+map_param_set_security_check (u8 enable, u8 fragments)
+{
+  map_main_t *mm = &map_main;
+
+  if (enable != (u8) ~ 0)
+    mm->sec_check = ! !enable;
+
+  if (fragments != (u8) ~ 0)
+    mm->sec_check_frag = ! !fragments;
+
+  return 0;
+}
+
+static void
+  vl_api_map_param_set_security_check_t_handler
+  (vl_api_map_param_set_security_check_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_set_security_check_reply_t *rmp;
+  int rv;
+
+  rv = map_param_set_security_check (mp->enable, mp->fragments);
+
+  REPLY_MACRO (VL_API_MAP_PARAM_SET_SECURITY_CHECK_REPLY);
+}
+
+
+int
+map_param_set_traffic_class (u8 copy, u8 tc)
+{
+  map_main_t *mm = &map_main;
+
+  mm->tc_copy = ! !copy;
+  mm->tc = tc;
+
+  return 0;
+}
+
+static void
+  vl_api_map_param_set_traffic_class_t_handler
+  (vl_api_map_param_set_traffic_class_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_set_traffic_class_reply_t *rmp;
+  int rv;
+
+  rv = map_param_set_traffic_class (mp->copy, mp->class);
+
+  REPLY_MACRO (VL_API_MAP_PARAM_SET_TRAFFIC_CLASS_REPLY);
+}
+
+
+static void
+vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_get_reply_t *rmp;
+  vl_api_registration_t *reg;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = htons (VL_API_MAP_PARAM_GET_REPLY + mm->msg_id_base);
+  rmp->context = mp->context;
+  rmp->retval = 0;
+
+  rmp->frag_inner = mm->frag_inner;
+  rmp->frag_ignore_df = mm->frag_ignore_df;
+
+  clib_memcpy (&rmp->icmp_ip4_err_relay_src,
+	       &mm->icmp4_src_address, sizeof (rmp->icmp_ip4_err_relay_src));
+
+  rmp->icmp6_enable_unreachable = mm->icmp6_enabled;
+
+  /*
+   * FIXME: How are these addresses re-extracted from the FIB?
+   * Or should a local map_main copy be kept?
+   */
+  clib_memset (&rmp->ip4_nh_address, 0, sizeof (rmp->ip4_nh_address));
+  clib_memset (&rmp->ip6_nh_address, 0, sizeof (rmp->ip6_nh_address));
+
+  rmp->ip4_lifetime_ms =
+    clib_net_to_host_u16 (mm->ip4_reass_conf_lifetime_ms);
+  rmp->ip4_pool_size = clib_net_to_host_u16 (mm->ip4_reass_conf_pool_size);
+  rmp->ip4_buffers = clib_net_to_host_u32 (mm->ip4_reass_conf_buffers);
+  rmp->ip4_ht_ratio =
+    clib_net_to_host_u32 ((u32) mm->ip4_reass_conf_ht_ratio);
+
+  rmp->ip6_lifetime_ms =
+    clib_net_to_host_u16 (mm->ip6_reass_conf_lifetime_ms);
+  rmp->ip6_pool_size = clib_net_to_host_u16 (mm->ip6_reass_conf_pool_size);
+  rmp->ip6_buffers = clib_net_to_host_u32 (mm->ip6_reass_conf_buffers);
+  rmp->ip6_ht_ratio =
+    clib_net_to_host_u32 ((u32) mm->ip6_reass_conf_ht_ratio);
+
+  rmp->sec_check_enable = mm->sec_check;
+  rmp->sec_check_fragments = mm->sec_check_frag;
+
+  rmp->tc_copy = mm->tc_copy;
+  rmp->tc_class = mm->tc;
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+}
+
+
 #define foreach_map_plugin_api_msg		\
 _(MAP_ADD_DOMAIN, map_add_domain)		\
 _(MAP_DEL_DOMAIN, map_del_domain)		\
 _(MAP_ADD_DEL_RULE, map_add_del_rule)		\
 _(MAP_DOMAIN_DUMP, map_domain_dump)		\
 _(MAP_RULE_DUMP, map_rule_dump)			\
-_(MAP_SUMMARY_STATS, map_summary_stats)
+_(MAP_SUMMARY_STATS, map_summary_stats)		\
+_(MAP_PARAM_SET_FRAGMENTATION, map_param_set_fragmentation)	\
+_(MAP_PARAM_SET_ICMP, map_param_set_icmp)	\
+_(MAP_PARAM_SET_ICMP6, map_param_set_icmp6)	\
+_(MAP_PARAM_ADD_DEL_PRE_RESOLVE, map_param_add_del_pre_resolve)	\
+_(MAP_PARAM_SET_REASSEMBLY, map_param_set_reassembly)		\
+_(MAP_PARAM_SET_SECURITY_CHECK, map_param_set_security_check)	\
+_(MAP_PARAM_SET_TRAFFIC_CLASS, map_param_set_traffic_class)	\
+_(MAP_PARAM_GET, map_param_get)
 
 #define vl_msg_name_crc_list
 #include <map/map_all_api_h.h>

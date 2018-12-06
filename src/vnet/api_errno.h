@@ -145,7 +145,13 @@ _(INVALID_SESSION_ID, -148, "session ID out of range")			\
 _(ACL_IN_USE_BY_LOOKUP_CONTEXT, -149, "ACL in use by a lookup context")	\
 _(INVALID_VALUE_3, -150, "Invalid value #3")                            \
 _(NON_ETHERNET, -151, "Interface is not an Ethernet interface")         \
-_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface")
+_(BD_ALREADY_HAS_BVI, -152, "Bridge domain already has a BVI interface") \
+_(MAP_BAD_POOL_SIZE, -153, "Could not set reass pool-size")		\
+_(MAP_BAD_HT_RATIO, -154, "Could not set reass ht-log2len")		\
+_(MAP_BAD_LIFETIME, -155, "Could not set ip6-reass lifetime")		\
+_(MAP_BAD_BUFFERS, -156, "Could not set ip6-reass buffers")		\
+_(MAP_BAD_BUFFERS_TOO_LARGE, -157, "Note: 'ip6-reass buffers' > pool-size * max-fragments-per-reassembly.")
+
 
 typedef enum
 {
