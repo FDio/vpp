@@ -28,7 +28,6 @@ from scapy.layers.vxlan import VXLAN
 
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
-from util import mactobinary
 from vpp_papi_provider import L2_VTR_OP
 
 

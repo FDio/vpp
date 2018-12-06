@@ -2,8 +2,19 @@
   MAC Types
 
 """
+import binascii
 
-from util import mactobinary
+
+def mactobinary(mac):
+    """ Convert the : separated format into binary packet data for the API """
+    return binascii.unhexlify(mac.replace(':', ''))
+
+
+def binarytomac(binary):
+    """ Convert binary packed data in a : separated string """
+    x = b':'.join(binascii.hexlify(binary)[i:i + 2]
+                  for i in range(0, 12, 2))
+    return str(x.decode('ascii'))
 
 
 class VppMacAddress():

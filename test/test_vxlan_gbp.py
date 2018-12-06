@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import socket
-from util import ip4_range
+from util import ip4_range, reassemble4_ether
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -11,22 +11,6 @@ from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
-
-import StringIO
-
-
-def reassemble(listoffragments):
-    buffer = StringIO.StringIO()
-    first = listoffragments[0]
-    buffer.seek(20)
-    for pkt in listoffragments:
-        buffer.seek(pkt[IP].frag*8)
-        buffer.write(pkt[IP].payload)
-    first.len = len(buffer.getvalue()) + 20
-    first.flags = 0
-    del(first.chksum)
-    header = str(first[Ether])[:34]
-    return first[Ether].__class__(header + buffer.getvalue())
 
 
 class TestVxlanGbp(VppTestCase):
@@ -258,7 +242,7 @@ class TestVxlanGbp(VppTestCase):
 
         # Pick first received frame and check if it's correctly encapsulated.
         out = self.pg0.get_capture(2)
-        pkt = reassemble(out)
+        pkt = reassemble4_ether(out)
         self.check_encapsulation(pkt, self.single_tunnel_bd)
 
         payload = self.decapsulate(pkt)

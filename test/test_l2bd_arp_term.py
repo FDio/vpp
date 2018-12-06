@@ -19,8 +19,8 @@ from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types
 
 from framework import VppTestCase, VppTestRunner
-from util import Host, ppp, mactobinary
-from vpp_mac import VppMacAddress
+from util import Host, ppp
+from vpp_mac import VppMacAddress, mactobinary
 from vpp_ip import VppIpAddress
 
 
