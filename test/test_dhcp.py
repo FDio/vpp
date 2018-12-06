@@ -7,7 +7,7 @@ import struct
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
-from util import mk_ll_addr
+from util import mk_ll_addr, binarytomac
 
 from scapy.layers.l2 import Ether, getmacbyip, ARP
 from scapy.layers.inet import IP, UDP, ICMP

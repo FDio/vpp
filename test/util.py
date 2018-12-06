@@ -4,7 +4,6 @@ import socket
 import sys
 import os.path
 from abc import abstractmethod, ABCMeta
-from cStringIO import StringIO
 from scapy.utils6 import in6_mactoifaceid
 
 from scapy.layers.l2 import Ether
@@ -14,11 +13,13 @@ from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, IPv6ExtHdrRouting,\
     IPv6ExtHdrHopByHop
 from scapy.utils import hexdump
 from socket import AF_INET6
+from io import BytesIO
+import binascii
 
 
 def ppp(headline, packet):
     """ Return string containing the output of scapy packet.show() call. """
-    o = StringIO()
+    o = BytesIO()
     old_stdout = sys.stdout
     sys.stdout = o
     print(headline)
@@ -60,7 +61,14 @@ def ip4n_range(ip4n, s, e):
 
 def mactobinary(mac):
     """ Convert the : separated format into binary packet data for the API """
-    return mac.replace(':', '').decode('hex')
+    return binascii.unhexlify(mac.replace(':', ''))
+
+
+def binarytomac(binary):
+    """ Convert binary packed data in a : separated string """
+    x = b':'.join(binascii.hexlify(binary)[i:i + 2]
+                  for i in range(0, 12, 2))
+    return str(x.decode('ascii'))
 
 
 def mk_ll_addr(mac):
@@ -441,3 +449,29 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     pkts[-1][IPv6ExtHdrFragment].m = 0  # reset more-flags in last fragment
 
     return pkts
+
+
+def reassemble4_core(listoffragments, return_ip):
+    buffer = BytesIO()
+    first = listoffragments[0]
+    buffer.seek(20)
+    for pkt in listoffragments:
+        buffer.seek(pkt[IP].frag*8)
+        buffer.write(bytes(pkt[IP].payload))
+    first.len = len(buffer.getvalue()) + 20
+    first.flags = 0
+    del(first.chksum)
+    if return_ip:
+        header = bytes(first[IP])[:20]
+        return first[IP].__class__(header + buffer.getvalue())
+    else:
+        header = bytes(first[Ether])[:34]
+        return first[Ether].__class__(header + buffer.getvalue())
+
+
+def reassemble4_ether(listoffragments):
+    return reassemble4_core(listoffragments, False)
+
+
+def reassemble4(listoffragments):
+    return reassemble4_core(listoffragments, True)
