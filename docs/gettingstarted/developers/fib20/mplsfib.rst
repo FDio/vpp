@@ -89,9 +89,11 @@ actions are:
 
 These can be programmed respectively by:	
 
-#. mpls local-label 33 eos ip4-lookup-in-table X
-#. mpls local-label 33 [eos] via 10.10.10.10 GigEthernet0/0/0
-#. mpls local-label 33 [eos] via 10.10.10.10 GigEthernet0/0/0 out-labels 66
+.. code-block:: console
+
+   $ mpls local-label 33 eos ip4-lookup-in-table X
+   $ mpls local-label 33 [eos] via 10.10.10.10 GigEthernet0/0/0
+   $ mpls local-label 33 [eos] via 10.10.10.10 GigEthernet0/0/0 out-labels 66
 
 the latter is an example of an MPLS cross connect. Any description of
 a next-hop, recursive, non-recursive, labelled, non-labelled, etc,
