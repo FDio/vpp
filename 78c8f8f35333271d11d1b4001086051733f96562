@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3bff949c_66397bb3",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-12-06T12:31:14Z",
+      "side": 1,
+      "message": "why is this changed? what is the logic behind it?",
+      "revId": "78c8f8f35333271d11d1b4001086051733f96562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
