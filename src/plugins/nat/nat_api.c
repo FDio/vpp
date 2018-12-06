@@ -23,6 +23,7 @@
 #include <nat/nat64.h>
 #include <nat/nat66.h>
 #include <nat/dslite.h>
+#include <nat/lwb4.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
 #include <vlibapi/api.h>
@@ -2937,6 +2938,111 @@ static void *vl_api_dslite_add_del_pool_addr_range_t_print
 }
 
 
+/**************/
+/*** LwB4 *****/
+/**************/
+
+static void
+vl_api_lwb4_set_aftr_addr_t_handler (vl_api_lwb4_set_aftr_addr_t * mp)
+{
+  vl_api_lwb4_set_aftr_addr_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  lwb4_main_t *dm = &lwb4_main;
+  int rv = 0;
+  ip6_address_t ip6_addr;
+
+  memcpy (&ip6_addr.as_u8, mp->ip6_addr, 16);
+
+  rv = lwb4_set_aftr_ip6_addr (dm, &ip6_addr);
+
+  REPLY_MACRO (VL_API_LWB4_SET_AFTR_ADDR_REPLY);
+}
+
+static void *
+vl_api_lwb4_set_aftr_addr_t_print (vl_api_lwb4_set_aftr_addr_t * mp,
+				   void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lwb4_set_aftr_addr_t ");
+  s = format (s, "ip6_addr %U\n", format_ip6_address, mp->ip6_addr);
+
+  FINISH;
+}
+
+
+
+static void
+vl_api_lwb4_set_b4_params_t_handler (vl_api_lwb4_set_b4_params_t * mp)
+{
+  vl_api_lwb4_set_b4_params_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  int rv = 0;
+
+  lwb4_main_t *dm = &lwb4_main;
+
+  ip6_address_t ip6_addr;
+  ip4_address_t ip4_addr;
+
+  memcpy (&ip6_addr.as_u8, mp->ip6_addr, 16);
+  memcpy (&ip4_addr.as_u8, mp->ip4_addr, 4);
+
+  rv = lwb4_set_b4_params (dm, &ip6_addr, &ip4_addr,
+			   mp->psid_length, mp->psid_shift,
+			   clib_net_to_host_u16 (mp->psid));
+
+  REPLY_MACRO (VL_API_LWB4_SET_B4_PARAMS_REPLY);
+}
+
+static void *
+vl_api_lwb4_set_b4_params_t_print (vl_api_lwb4_set_b4_params_t * mp,
+				   void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lwb4_set_b4_params ");
+  s =
+    format (s,
+	    "ip6_addr %U ip4_addr %U PSID Length %u PSID Shift %u PSID %u\n",
+	    format_ip6_address, mp->ip6_addr, format_ip4_address,
+	    mp->ip4_addr, mp->psid_length, mp->psid_shift, mp->psid);
+
+  FINISH;
+}
+
+static void
+vl_api_lwb4_get_b4_params_t_handler (vl_api_lwb4_get_b4_params_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_lwb4_get_b4_params_reply_t *rmp;
+  lwb4_main_t *dm = &lwb4_main;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_LWB4_GET_B4_PARAMS_REPLY,
+  ({
+    memcpy (rmp->ip4_addr, &dm->b4_ip4_addr.as_u8, 4);
+    memcpy (rmp->ip6_addr, &dm->aftr_ip6_addr.as_u8, 16);
+    rmp->psid_length = dm->psid_length;
+    rmp->psid_shift = dm->psid_shift;
+    rmp->psid = dm->psid;
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_lwb4_get_b4_params_t_print (vl_api_lwb4_get_b4_params_t * mp,
+				   void *handle)
+{
+  u8 *s;
+
+  /* TODO: Fix me? */
+  s = format (0, "SCRIPT: lwb4_get_b4_params");
+
+  FINISH;
+}
+
+
 /*************/
 /*** NAT66 ***/
 /*************/
@@ -3183,6 +3289,9 @@ _(DSLITE_SET_AFTR_ADDR, dslite_set_aftr_addr)                           \
 _(DSLITE_GET_AFTR_ADDR, dslite_get_aftr_addr)                           \
 _(DSLITE_SET_B4_ADDR, dslite_set_b4_addr)                               \
 _(DSLITE_GET_B4_ADDR, dslite_get_b4_addr)                               \
+_(LWB4_SET_AFTR_ADDR, lwb4_set_aftr_addr)                               \
+_(LWB4_SET_B4_PARAMS, lwb4_set_b4_params)                               \
+_(LWB4_GET_B4_PARAMS, lwb4_get_b4_params)                               \
 _(NAT66_ADD_DEL_INTERFACE, nat66_add_del_interface)                     \
 _(NAT66_INTERFACE_DUMP, nat66_interface_dump)                           \
 _(NAT66_ADD_DEL_STATIC_MAPPING, nat66_add_del_static_mapping)           \

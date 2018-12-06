@@ -1395,6 +1395,88 @@ define dslite_get_b4_addr_reply {
 };
 
 /*
+ * LwB4 APIs
+ */
+
+/** \brief Set AFTR IPv6 address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip6_addr - IP64 address
+*/
+autoreply define lwb4_set_aftr_addr {
+  u32 client_index;
+  u32 context;
+  u8 ip6_addr[16];
+};
+
+/** \brief Get AFTR IPv6 address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lwb4_get_aftr_addr {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Response to get AFTR IPv6 address
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip6_addr - IPv6 address
+*/
+define lwb4_get_aftr_addr_reply {
+  u32 context;
+  i32 retval;
+  u8 ip6_addr[16];
+};
+
+/** \brief Set B4 IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IP64 address
+    @param psid_length - PSID Length
+    @param psid_shift - PSID Shift
+    @param psid - Port set ID
+*/
+autoreply define lwb4_set_b4_params {
+  u32 client_index;
+  u32 context;
+  u8  ip4_addr[4];
+  u8  ip6_addr[16];
+  u8  psid_length;
+  u8  psid_shift;
+  u16 psid;
+};
+
+/** \brief Get B4 IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define lwb4_get_b4_params {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Response to get B4 IPv6 and IPv4 addresses
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IPv4 address
+    @param psid_length - PSID Length
+    @param psid_shift - PSID shift
+    @param psid - Port Set ID
+*/
+define lwb4_get_b4_params_reply {
+  u32 context;
+  i32 retval;
+  u8 ip4_addr[4];
+  u8 ip6_addr[16];
+  u8 psid_length;
+  u8 psid_shift;
+  u16 psid;
+};
+
+/*
  * NAT66 APIs
  */
 /** \brief Enable/disable NAT66 feature on the interface

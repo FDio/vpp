@@ -7992,6 +7992,167 @@ class TestDSliteCE(MethodHolder):
             self.logger.info(
                 self.vapi.cli("show dslite b4-tunnel-endpoint-address"))
 
+class TestLwB4(MethodHolder):
+    """ LwB4 Test Cases """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestLwB4, cls).setUpClass()
+
+        cls.b4_ip4 = '192.0.0.2'
+        b4_ip4_n = socket.inet_pton(socket.AF_INET, cls.b4_ip4)
+        cls.b4_ip6 = '2001:db8:62aa::375e:f4c1:1'
+        b4_ip6_n = socket.inet_pton(socket.AF_INET6, cls.b4_ip6)
+        cls.psid_length = 6
+        cls.psid_shift = 10
+        cls.psid = 1
+
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.pg0.admin_up()
+            cls.pg0.config_ip4()
+            cls.pg0.resolve_arp()
+            cls.pg1.admin_up()
+            cls.pg1.config_ip6()
+            cls.pg1.generate_remote_hosts(1)
+            cls.pg1.configure_ipv6_neighbors()
+
+            cls.vapi.lwb4_set_b4_params(b4_ip4_n, b4_ip6_n,
+                                        cls.psid_length, cls.psid_shift,
+                                        cls.psid)
+            cls.aftr_ip6 = cls.pg1.remote_ip6
+            aftr_ip6_n = socket.inet_pton(socket.AF_INET6, cls.aftr_ip6)
+            cls.vapi.lwb4_set_aftr_addr(aftr_ip6_n)
+
+        except Exception:
+            super(TestLwB4, cls).tearDownClass()
+            raise
+
+    def assertPSIDRange(self, port):
+        """ Asserts that the given port matches the PSID parameters of the test """
+        psid_mask = (1 << self.psid_length) - 1
+        psid = (port >> self.psid_shift) & psid_mask
+        self.assertEqual(psid, self.psid)
+
+    def test_in2out(self):
+        # UDP encapsulation / NAT
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(dst=self.pg1.remote_ip4, src=self.pg0.remote_ip4) /
+             UDP(sport=10000, dport=20000))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        capture = capture[0]
+        self.assertEqual(capture[IPv6].src, self.b4_ip6)
+        self.assertEqual(capture[IPv6].dst, self.aftr_ip6)
+        self.assertEqual(capture[IP].src, self.b4_ip4)
+        self.assertEqual(capture[IP].dst, self.pg1.remote_ip4)
+        self.assertPSIDRange(capture[UDP].sport)
+        self.assertEqual(capture[UDP].dport, 20000)
+        self.assert_packet_checksums_valid(capture)
+
+        output = self.vapi.cli("show lwb4 sessions")
+        session_str = '{orig_ip4}:{orig_port} out {b4_ip4}:{nat_port} protocol udp'.format(
+            orig_ip4=self.pg0.remote_ip4,
+            orig_port=10000,
+            b4_ip4=self.b4_ip4,
+            nat_port=capture[UDP].sport
+        )
+        self.assertTrue(session_str in output)
+
+    def test_out2in(self):
+        # first send a packet to get mapping
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(dst=self.pg1.remote_ip4, src=self.pg0.remote_ip4) /
+             UDP(sport=10000, dport=20000))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        capture = capture[0]
+        nat_sport = capture[UDP].sport
+
+        # UDP decapsulation
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IPv6(dst=self.b4_ip6, src=self.aftr_ip6) /
+             IP(dst=self.b4_ip4, src=self.pg1.remote_ip4) /
+             UDP(sport=20000, dport=nat_sport))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        capture = capture[0]
+        self.assertFalse(capture.haslayer(IPv6))
+        self.assertEqual(capture[IP].src, self.pg1.remote_ip4)
+        self.assertEqual(capture[IP].dst, self.pg0.remote_ip4)
+        self.assertEqual(capture[UDP].sport, 20000)
+        self.assertEqual(capture[UDP].dport, 10000)
+        self.assert_packet_checksums_valid(capture)
+
+    def test_icmp(self):
+        out = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(dst=self.pg1.remote_ip4, src=self.pg0.remote_ip4) /
+               ICMP(id=4000, type="echo-request"))
+        self.pg0.add_stream(out)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        capture = capture[0]
+        self.assertTrue(capture.haslayer(IPv6))
+        self.assertTrue(capture.haslayer(ICMP))
+        nat_id = capture[ICMP].id
+
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IPv6(dst=self.b4_ip6, src=self.aftr_ip6) /
+             IP(dst=self.b4_ip4, src=self.pg1.remote_ip4) /
+             ICMP(id=nat_id, type='echo-reply'))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        capture = capture[0]
+        self.assertFalse(capture.haslayer(IPv6))
+        self.assertEqual(capture[IP].src, self.pg1.remote_ip4)
+        self.assertEqual(capture[IP].dst, self.pg0.remote_ip4)
+        self.assertEqual(capture[ICMP].id, 4000)
+        self.assert_packet_checksums_valid(capture)
+        out_id = capture[ICMP].id
+
+    def test_icmpv6(self):
+        out = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+               IPv6(dst=self.b4_ip6, src=self.aftr_ip6) /
+               ICMPv6DestUnreach(code=1) /
+               IPv6(dst=self.aftr_ip6, src=self.b4_ip6) /
+               IP(dst=self.pg1.remote_ip4, src=self.pg0.remote_ip4) /
+               # FIXME: should this work even without a UDP payload here?
+               UDP())
+        self.pg1.add_stream(out)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        capture = capture[0]
+        self.assertTrue(capture.haslayer(IP))
+        self.assertTrue(capture[IP].dst == self.pg0.remote_ip4)
+
+    def test_icmpv6_drop(self):
+        # non-AFTR src IP should cause a drop
+        out = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+               IPv6(dst=self.b4_ip6, src="2001:4860:4860::8888") /
+               ICMPv6DestUnreach(code=1) /
+               IPv6(dst=self.aftr_ip6, src=self.b4_ip6) /
+               IP(dst=self.pg1.remote_ip4, src=self.pg0.remote_ip4) /
+               UDP())
+        self.pg1.add_stream(out)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.assert_nothing_captured()
+
+    def tearDown(self):
+        super(TestLwB4, self).tearDown()
+        if not self.vpp_dead:
+            self.logger.info(self.vapi.cli("show lwb4 config"))
+            self.logger.info(self.vapi.cli("show lwb4 sessions"))
 
 class TestNAT66(MethodHolder):
     """ NAT66 Test Cases """

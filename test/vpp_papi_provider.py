@@ -2109,6 +2109,32 @@ class VppPapiProvider(object):
              'end_addr': end_addr,
              'is_add': is_add})
 
+    def lwb4_set_b4_params(self, ip4, ip6, length, shift, psid):
+        """Set lwB4 parameters
+
+        :param ip4: IPv4 address
+        :param ip6: IPv6 address
+        :param length: PSID length
+        :param shift: PSID shift
+        :param psid: PSID number
+        """
+        return self.api(
+            self.papi.lwb4_set_b4_params,
+            {'ip4_addr': ip4,
+             'ip6_addr': ip6,
+             'psid_length' : length,
+             'psid_shift' : shift,
+             'psid' : psid})
+
+    def lwb4_set_aftr_addr(self, ip6):
+        """Set lwB4 AFTR address
+
+        :param ip6: IPv6 address
+        """
+        return self.api(
+            self.papi.lwb4_set_aftr_addr,
+            {'ip6_addr': ip6})
+
     def nat66_add_del_interface(
             self,
             sw_if_index,
