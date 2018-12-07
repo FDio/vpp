@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/udp/udp.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -596,6 +597,9 @@ ipsec_tunnel_if_init (vlib_main_t * vm)
 
   im->ipsec_if_pool_index_by_key = hash_create (0, sizeof (uword));
   im->ipsec_if_real_dev_by_show_dev = hash_create (0, sizeof (uword));
+
+  udp_register_dst_port (vm, UDP_DST_PORT_ipsec, ipsec_if_input_node.index,
+			 1);
 
   return 0;
 }
