@@ -129,6 +129,7 @@ class VPP(object):
             types[t[0]] = {'type': 'type', 'data': t}
         for t, v in api['aliases'].items():
             types['vl_api_' + t + '_t'] = {'type': 'alias', 'data': v}
+        self.services.update(api['services'])
 
         i = 0
         while True:
@@ -193,6 +194,7 @@ class VPP(object):
         self.logger = logger
 
         self.messages = {}
+        self.services = {}
         self.id_names = []
         self.id_msgdef = []
         self.header = VPPType('header', [['u16', 'msgid'],
@@ -404,10 +406,15 @@ class VPP(object):
             if i > 0:
                 self.id_msgdef[i] = msg
                 self.id_names[i] = name
-                # TODO: Fix multipart (use services)
-                multipart = True if name.find('_dump') > 0 else False
-                f = self.make_function(msg, i, multipart, do_async)
-                setattr(self._api, name, FuncWrapper(f))
+
+                # Create function for client side messages.
+                if name in self.services:
+                    if 'stream' in self.services[name] and self.services[name]['stream']:
+                        multipart = True
+                    else:
+                        multipart = False
+                    f = self.make_function(msg, i, multipart, do_async)
+                    setattr(self._api, name, FuncWrapper(f))
             else:
                 self.logger.debug(
                     'No such message type or failed CRC checksum: %s', n)
