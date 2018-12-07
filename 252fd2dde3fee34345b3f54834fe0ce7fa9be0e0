@@ -251,6 +251,24 @@
     },
     {
       "key": {
+        "uuid": "3cae3853_5d4718a7",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-07T10:02:19Z",
+      "side": 1,
+      "message": "1) Why do you want to pass non-default values to constructor as that functionality is not implemented in stat_reader. If someone has to use non-implemented functionality, they can directly use stat_client.hpp.\n\n2) How do you mock connection class today?\n\n3) Why does client need a stats_reader? stats_reader methods are static, so you can call them from anywhere.\n\n4) stat_reader class is already static like HW :)\n\nToday client needs to construct cmd_q. Then client will need to construct stat_reader. Tomorrow the list will grow.",
+      "parentUuid": "1d670095_f550948c",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
