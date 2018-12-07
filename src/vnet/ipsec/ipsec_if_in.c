@@ -107,7 +107,17 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
-	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+
+	  if (ip0->protocol == IP_PROTOCOL_UDP)
+	    {
+	      esp0 =
+		(esp_header_t *) ((u8 *) ip0 + sizeof (ip4_header_t) +
+				  sizeof (udp_header_t));
+	    }
+	  else
+	    {
+	      esp0 = (esp_header_t *) ((u8 *) ip0 + sizeof (ip4_header_t));
+	    }
 
 	  next0 = IPSEC_INPUT_NEXT_DROP;
 
@@ -178,7 +188,16 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 		  vnet_buffer (b0)->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
 		}
 
-	      vlib_buffer_advance (b0, ip4_header_bytes (ip0));
+	      if (ip0->protocol == IP_PROTOCOL_UDP)
+		{
+		  vlib_buffer_advance (b0,
+				       sizeof (ip4_header_t) +
+				       sizeof (udp_header_t));
+		}
+	      else
+		{
+		  vlib_buffer_advance (b0, sizeof (ip4_header_t));
+		}
 	      next0 = im->esp4_decrypt_next_index;
 	    }
 
