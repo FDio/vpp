@@ -245,7 +245,7 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
 always_inline int
 tcp_segment_check_paws (tcp_connection_t * tc)
 {
-  return tcp_opts_tstamp (&tc->rcv_opts) && tc->tsval_recent
+  return tcp_opts_tstamp (&tc->rcv_opts)
     && timestamp_lt (tc->rcv_opts.tsval, tc->tsval_recent);
 }
 
@@ -307,8 +307,6 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
   if (PREDICT_FALSE (tcp_segment_check_paws (tc0)))
     {
       *error0 = TCP_ERROR_PAWS;
-      if (CLIB_DEBUG > 2)
-	clib_warning ("paws failed\n%U", format_tcp_connection, tc0, 2);
       TCP_EVT_DBG (TCP_EVT_PAWS_FAIL, tc0, vnet_buffer (b0)->tcp.seq_number,
 		   vnet_buffer (b0)->tcp.seq_end);
 
@@ -317,8 +315,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
       if (timestamp_lt (tc0->tsval_recent_age + TCP_PAWS_IDLE,
 			tcp_time_now_w_thread (tc0->c_thread_index)))
 	{
-	  /* Age isn't reset until we get a valid tsval (bsd inspired) */
-	  tc0->tsval_recent = 0;
+	  tc0->tsval_recent = tc0->rcv_opts.tsval;
 	  clib_warning ("paws failed - really old segment. REALLY?");
 	}
       else
