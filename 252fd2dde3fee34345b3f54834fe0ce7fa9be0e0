@@ -287,6 +287,24 @@
     },
     {
       "key": {
+        "uuid": "4928783f_08889745",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-07T11:19:23Z",
+      "side": 1,
+      "message": "1) I am not saying that we will not implement the rest of the stats feature. But it will be out of scope for this patch. Where do you want to handle the node and route counters and all the error?\nI am thinking to push a separate patch for that functionality. And hence default constructor will change to support all implemented stats by then.\n2) You don\u0027t call connection function to connect to VPP. Though Connection object will be created in consequence of cmd_q construction. May be, I need to implement stat_connection functions there?\n3 \u0026 4) Currently, stat_reader is part of cmd_q construction. It is indirectly controlled by client similar to vpp api connection.",
+      "parentUuid": "8faec5c2_c68700c8",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
