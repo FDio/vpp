@@ -202,6 +202,7 @@ wipe: reset
 	@make -C ext clean
 	@rm -rf $(VENV_PATH)
 	@rm -f $(PAPI_INSTALL_FLAGS)
+	@find .. -type f -name "*.api.json" ! -path "../test/*" -exec rm {} \;
 
 doc: verify-test-dir $(PIP_PATCH_DONE)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
