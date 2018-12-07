@@ -359,6 +359,7 @@ wipedist:
 
 wipe: wipedist test-wipe $(BR)/.deps.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -wipe,$(TARGETS)))
+	@find . -type f -name "*.api.json" ! -path "./test/*" -exec rm {} \;
 
 rebuild: wipe build
 
