@@ -1021,6 +1021,7 @@ tcp_send_synack (tcp_connection_t * tc)
   if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
     return;
 
+  tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
   b = vlib_get_buffer (vm, bi);
   tcp_make_synack (tc, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
