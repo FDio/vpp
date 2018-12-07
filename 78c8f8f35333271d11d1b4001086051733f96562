@@ -16,6 +16,24 @@
       "revId": "78c8f8f35333271d11d1b4001086051733f96562",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4adf7ed5_25512984",
+        "filename": "src/vnet/ipsec/esp_encrypt.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 1492
+      },
+      "writtenOn": "2018-12-07T07:03:25Z",
+      "side": 1,
+      "message": "Because for i_b0, it stores IP+Payload, it is the original packet. For o_b0, it stores IP+UDP+Payload which UDP will be insert in output packet.So in order to seek to payload in i_b0, we need to only skip IP header, not IP+UDP header.\n\nThis error only occurs with udp_encap enabled. ip_udp_hdr_size \u003d sizeof (IP header + UDP header).  In other situlation, ip_udp_hdr_size \u003d sizeof (IP header) which will not cause error.\n\nFor more details, please refer to: VPP-1515\" target\u003d\"_blank\" rel\u003d\"nofollow\"\u003ehttps://jira.fd.io/browse/VPP-1515",
+      "parentUuid": "3bff949c_66397bb3",
+      "revId": "78c8f8f35333271d11d1b4001086051733f96562",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
