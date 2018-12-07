@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d4234240_7db87315",
+        "filename": "test/util.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-07T11:12:51Z",
+      "side": 1,
+      "message": "Are you opposed to moving these into vpp_mac.py?",
+      "range": {
+        "startLine": 62,
+        "startChar": 0,
+        "endLine": 71,
+        "endChar": 33
+      },
+      "revId": "e5f1ee6c0b55a780e065a4574846109baf08f7bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
