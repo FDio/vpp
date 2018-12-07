@@ -269,6 +269,24 @@
     },
     {
       "key": {
+        "uuid": "8faec5c2_c68700c8",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 17
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-07T10:37:00Z",
+      "side": 1,
+      "message": "1) surely if the stats.sock is located elsewhere, then the functionality of the stat_reader is still valuable. and if i pass a pattern other than \u0027/if\u0027 and this no longer works, then these classes should really be renamed to interface_stat_* since that\u0027s all the do...\n2) see vom_test.cpp\n3 \u0026 4) the client doesn\u0027t use the stats_reader nor cmd_q directly, but it is, by their construction, controlling how they function.",
+      "parentUuid": "3cae3853_5d4718a7",
+      "revId": "252fd2dde3fee34345b3f54834fe0ce7fa9be0e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "63f402ee_bb3a47d6",
         "filename": "extras/vom/vom/stat_reader.hpp",
         "patchSetId": 17
