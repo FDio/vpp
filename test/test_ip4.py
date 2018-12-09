@@ -1470,6 +1470,25 @@ class TestIPInput(VppTestCase):
         # Reset MTU for subsequent tests
         self.vapi.sw_interface_set_mtu(self.pg1.sw_if_index, [9000, 0, 0, 0])
 
+        #
+        # source address 0.0.0.0 and 25.255.255.255 and for-us
+        #
+        p_s0 = (Ether(src=self.pg0.remote_mac,
+                      dst=self.pg0.local_mac) /
+                IP(src="0.0.0.0",
+                   dst=self.pg0.local_ip4) /
+                ICMP(id=4, seq=4) /
+                Raw(load='\x0a' * 18))
+        rx = self.send_and_assert_no_replies(self.pg0, p_s0 * 17)
+
+        p_s0 = (Ether(src=self.pg0.remote_mac,
+                      dst=self.pg0.local_mac) /
+                IP(src="255.255.255.255",
+                   dst=self.pg0.local_ip4) /
+                ICMP(id=4, seq=4) /
+                Raw(load='\x0a' * 18))
+        rx = self.send_and_assert_no_replies(self.pg0, p_s0 * 17)
+
 
 class TestIPDirectedBroadcast(VppTestCase):
     """ IPv4 Directed Broadcast """
