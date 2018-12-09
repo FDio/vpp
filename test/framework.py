@@ -931,17 +931,17 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def sleep(cls, timeout, remark=None):
         if hasattr(cls, 'logger'):
-            cls.logger.debug("Starting sleep for %ss (%s)" % (timeout, remark))
+            cls.logger.debug("Starting sleep for %es (%s)", (timeout, remark))
         before = time.time()
         time.sleep(timeout)
         after = time.time()
-        if after - before > 2 * timeout:
+        if hasattr(cls, 'logger') and after - before > 2 * timeout:
             cls.logger.error("unexpected time.sleep() result - "
-                             "slept for %ss instead of ~%ss!" % (
+                             "slept for %es instead of ~%es!", (
                                  after - before, timeout))
         if hasattr(cls, 'logger'):
             cls.logger.debug(
-                "Finished sleep (%s) - slept %ss (wanted %ss)" % (
+                "Finished sleep (%s) - slept %es (wanted %es)", (
                     remark, after - before, timeout))
 
     def send_and_assert_no_replies(self, intf, pkts, remark="", timeout=None):
