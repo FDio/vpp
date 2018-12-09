@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da62cf7f_2295c251",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2018-12-09T19:10:58Z",
+      "side": 1,
+      "message": "Is this supposed to be VNET_BUFFER_F_IS_IP6?",
+      "revId": "d0457858764c7889d6100dd187db301008a54ac5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
