@@ -32,6 +32,7 @@ from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
     # @ https://docs.python.org/2/library/subprocess.html
@@ -39,19 +40,16 @@ if os.name == 'posix' and sys.version_info[0] < 3:
 else:
     import subprocess
 
-
 PASS = 0
 FAIL = 1
 ERROR = 2
 SKIP = 3
 TEST_RUN = 4
 
-
 debug_framework = False
 if os.getenv('TEST_DEBUG', "0") == "1":
     debug_framework = True
     import debug_internal
-
 
 """
   Test framework module.
@@ -130,8 +128,8 @@ def pump_output(testclass):
                     for line in split[:limit]:
                         testclass.logger.debug(
                             "VPP STDERR: %s" % line.rstrip("\n"))
-        # ignoring the dummy pipe here intentionally - the flag will take care
-        # of properly terminating the loop
+                        # ignoring the dummy pipe here intentionally - the flag will take care
+                        # of properly terminating the loop
 
 
 def is_skip_aarch64_set():
@@ -844,8 +842,8 @@ class VppTestCase(unittest.TestCase):
                 for cf in checksum_fields:
                     if hasattr(layer, cf):
                         if ignore_zero_udp_checksums and \
-                                0 == getattr(layer, cf) and \
-                                layer.name in udp_layers:
+                                        0 == getattr(layer, cf) and \
+                                        layer.name in udp_layers:
                             continue
                         delattr(layer, cf)
                         checksums.append((counter, cf))
@@ -920,7 +918,7 @@ class VppTestCase(unittest.TestCase):
     def assert_packet_counter_equal(self, counter, expected_value):
         counters = self.vapi.cli("sh errors").split('\n')
         counter_value = -1
-        for i in range(1, len(counters)-1):
+        for i in range(1, len(counters) - 1):
             results = counters[i].split()
             if results[1] == counter:
                 counter_value = int(results[0])
@@ -931,18 +929,18 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def sleep(cls, timeout, remark=None):
         if hasattr(cls, 'logger'):
-            cls.logger.debug("Starting sleep for %ss (%s)" % (timeout, remark))
+            cls.logger.debug("Starting sleep for %es (%s)", timeout, remark)
         before = time.time()
         time.sleep(timeout)
         after = time.time()
-        if after - before > 2 * timeout:
+        if hasattr(cls, 'logger') and after - before > 2 * timeout:
             cls.logger.error("unexpected time.sleep() result - "
-                             "slept for %ss instead of ~%ss!" % (
-                                 after - before, timeout))
+                             "slept for %es instead of ~%es!",
+                             after - before, timeout)
         if hasattr(cls, 'logger'):
             cls.logger.debug(
-                "Finished sleep (%s) - slept %ss (wanted %ss)" % (
-                    remark, after - before, timeout))
+                "Finished sleep (%s) - slept %es (wanted %es)",
+                remark, after - before, timeout)
 
     def send_and_assert_no_replies(self, intf, pkts, remark="", timeout=None):
         self.vapi.cli("clear trace")
@@ -1262,6 +1260,7 @@ class VppTestRunner(unittest.TextTestRunner):
     """
     A basic test runner implementation which prints results to standard error.
     """
+
     @property
     def resultclass(self):
         """Class maintaining the results of the tests"""
@@ -1270,7 +1269,6 @@ class VppTestRunner(unittest.TextTestRunner):
     def __init__(self, keep_alive_pipe=None, descriptions=True, verbosity=1,
                  result_pipe=None, failfast=False, buffer=False,
                  resultclass=None, print_summary=True):
-
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
