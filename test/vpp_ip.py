@@ -5,7 +5,7 @@
 
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
-from vpp_papi import VppEnum
+from vpp_papi import vpp_serializer
 
 
 class DpoProto:
@@ -19,6 +19,11 @@ class DpoProto:
 
 INVALID_INDEX = 0xffffffff
 
+vl_api_address_family_t = vpp_serializer.VPPEnumType('vl_api_address_family_t',
+                                                     [["ADDRESS_IP4", 0],
+                                                      ["ADDRESS_IP6", 1],
+                                                      {"enumtype": "u32"}])
+
 
 class VppIpAddressUnion():
     def __init__(self, addr):
@@ -26,7 +31,7 @@ class VppIpAddressUnion():
         self.ip_addr = ip_address(unicode(self.addr))
 
     def encode(self):
-        if self.version is 6:
+        if self.version == 6:
             return {'ip6': self.ip_addr.packed}
         else:
             return {'ip4': self.ip_addr.packed}
@@ -41,10 +46,7 @@ class VppIpAddressUnion():
 
     @property
     def length(self):
-        if self.version is 6:
-            return 128
-        else:
-            return 32
+        return self.ip_addr.max_prefixlen
 
     @property
     def bytes(self):
@@ -55,13 +57,13 @@ class VppIpAddressUnion():
             return self.ip_addr == other.ip_addr
         elif hasattr(other, "ip4") and hasattr(other, "ip6"):
             # vl_api_address_union_t
-            if 4 is self.version:
+            if 4 == self.version:
                 return self.ip_addr.packed == other.ip4
             else:
                 return self.ip_addr.packed == other.ip6
         else:
-            raise Exception("Comparing VppIpAddresUnions:%s"
-                            " with unknown type: %s" %
+            raise TypeError("Comparing VppIpAddressUnions:%s"
+                            " with incomparable type: %s" %
                             (self, other))
 
         return False
@@ -72,14 +74,14 @@ class VppIpAddress():
         self.addr = VppIpAddressUnion(addr)
 
     def encode(self):
-        if self.addr.version is 6:
+        if self.addr.version == 6:
             return {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+                'af': vl_api_address_family_t.ADDRESS_IP6.value,
                 'un': self.addr.encode()
             }
         else:
             return {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                'af': vl_api_address_family_t.ADDRESS_IP4.value,
                 'un': self.addr.encode()
             }
 
@@ -88,17 +90,20 @@ class VppIpAddress():
             return self.addr == other.addr
         elif hasattr(other, "af") and hasattr(other, "un"):
             # a vp_api_address_t
-            if 4 is self.version:
+            if 4 == self.version:
                 return other.af == \
-                    VppEnum.vl_api_address_family_t.ADDRESS_IP4 and \
-                    other.un == self.addr
+                       vl_api_address_family_t.ADDRESS_IP4 and \
+                       other.un == self.addr
             else:
                 return other.af == \
-                    VppEnum.vl_api_address_family_t.ADDRESS_IP6 and \
-                    other.un == self.addr
+                       vl_api_address_family_t.ADDRESS_IP6 and \
+                       other.un == self.addr
         else:
-            raise Exception("Comparing VppIpAddress:%s with unknown type: %s" %
-                            (self, other))
+            raise TypeError(
+                "Comparing VppIpAddress:<%s> %s with incomparable "
+                "type: <%s> %s" %
+                (self.__class__.__name__, self,
+                 other.__class__.__name__, other))
         return False
 
     def __ne__(self, other):
@@ -106,10 +111,6 @@ class VppIpAddress():
 
     def __str__(self):
         return self.address
-
-    @property
-    def bytes(self):
-        return self.addr.bytes
 
     @property
     def bytes(self):
@@ -140,7 +141,7 @@ class VppIpAddress():
 
     @property
     def dpo_proto(self):
-        if self.version is 6:
+        if self.version == 6:
             return DpoProto.DPO_PROTO_IP6
         else:
             return DpoProto.DPO_PROTO_IP4
@@ -150,11 +151,6 @@ class VppIpPrefix():
     def __init__(self, addr, len):
         self.addr = VppIpAddress(addr)
         self.len = len
-
-    def __eq__(self, other):
-        if self.addr == other.addr and self.len == other.len:
-            return True
-        return False
 
     def encode(self):
         return {'address': self.addr.encode(),
@@ -185,11 +181,11 @@ class VppIpPrefix():
         elif hasattr(other, "address") and hasattr(other, "address_length"):
             # vl_api_prefix_t
             return self.len == other.address_length and \
-                self.addr == other.address
+                   self.addr == other.address
         else:
-            raise Exception("Comparing VppIpPrefix:%s with unknown type: %s" %
-                            (self, other))
-        return False
+            raise TypeError(
+                "Comparing VppIpPrefix:%s with incomparable type: %s" %
+                (self, other))
 
 
 class VppIp6Prefix():
@@ -213,19 +209,21 @@ class VppIpMPrefix():
         self.len = len
         self.ip_saddr = ip_address(unicode(self.saddr))
         self.ip_gaddr = ip_address(unicode(self.gaddr))
+        if self.ip_saddr.version != self.ip_gaddr.version:
+            raise ValueError('Source and group addresses must be of the '
+                             'same address family.')
 
     def encode(self):
-
-        if 6 is self.ip_saddr.version:
+        if 6 == self.ip_saddr.version:
             prefix = {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
+                'af': vl_api_address_family_t.ADDRESS_IP6,
                 'grp_address': {'ip6': self.ip_gaddr.packed},
                 'src_address': {'ip6': self.ip_saddr.packed},
                 'grp_address_length': self.len,
             }
         else:
             prefix = {
-                'af': VppEnum.vl_api_address_family_t.ADDRESS_IP4,
+                'af': vl_api_address_family_t.ADDRESS_IP4,
                 'grp_address': {'ip4': self.ip_gaddr.packed},
                 'src_address': {'ip4': self.ip_saddr.packed},
                 'grp_address_length': self.len,
