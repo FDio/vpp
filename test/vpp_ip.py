@@ -55,7 +55,7 @@ class VppIpAddressUnion():
             return self.ip_addr == other.ip_addr
         elif hasattr(other, "ip4") and hasattr(other, "ip6"):
             # vl_api_address_union_t
-            if 4 is self.version:
+            if 4 == self.version:
                 return self.ip_addr.packed == other.ip4
             else:
                 return self.ip_addr.packed == other.ip6
@@ -88,7 +88,7 @@ class VppIpAddress():
             return self.addr == other.addr
         elif hasattr(other, "af") and hasattr(other, "un"):
             # a vp_api_address_t
-            if 4 is self.version:
+            if 4 == self.version:
                 return other.af == \
                     VppEnum.vl_api_address_family_t.ADDRESS_IP4 and \
                     other.un == self.addr
@@ -216,7 +216,7 @@ class VppIpMPrefix():
 
     def encode(self):
 
-        if 6 is self.ip_saddr.version:
+        if 6 == self.ip_saddr.version:
             prefix = {
                 'af': VppEnum.vl_api_address_family_t.ADDRESS_IP6,
                 'grp_address': {'ip6': self.ip_gaddr.packed},
