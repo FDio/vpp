@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a5f6e406_4b678a49",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-12-09T14:03:53Z",
+      "side": 1,
+      "message": "MAJOR version when you make incompatible API changes,\nMINOR version when you add functionality in a backwards-compatible manner, and\nPATCH version when you make backwards-compatible bug fixes.",
+      "revId": "30303b25529fb03e7fc0abc74a67a75a4c0d3628",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "00c3860e_e5cee985",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-12-09T14:03:53Z",
+      "side": 1,
+      "message": "Should be make this bool and require the caller to set it to a value?",
+      "range": {
+        "startLine": 163,
+        "startChar": 1,
+        "endLine": 164,
+        "endChar": 75
+      },
+      "revId": "30303b25529fb03e7fc0abc74a67a75a4c0d3628",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "399a88d4_92e066e0",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-12-09T14:03:53Z",
+      "side": 1,
+      "message": "Similarly for this?",
+      "range": {
+        "startLine": 242,
+        "startChar": 1,
+        "endLine": 243,
+        "endChar": 81
+      },
+      "revId": "30303b25529fb03e7fc0abc74a67a75a4c0d3628",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c10a459e_be2a260e",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-12-09T14:03:53Z",
+      "side": 1,
+      "message": "In my view, error returns should use a plugin specific namespace.\nI know we are not consistent here, and I also looked at a scheme were plugins could get a number space out of a global error space. But thinking about it, what does that buy you?",
+      "range": {
+        "startLine": 148,
+        "startChar": 1,
+        "endLine": 154,
+        "endChar": 0
+      },
+      "revId": "30303b25529fb03e7fc0abc74a67a75a4c0d3628",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
