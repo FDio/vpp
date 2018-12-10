@@ -20,7 +20,6 @@ DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
 DEFINE_VAPI_MSG_IDS_AF_PACKET_API_JSON;
 DEFINE_VAPI_MSG_IDS_VHOST_USER_API_JSON;
-DEFINE_VAPI_MSG_IDS_STATS_API_JSON;
 
 namespace VOM {
 namespace interface_cmds {
@@ -345,46 +344,6 @@ set_mac_cmd::to_string() const
   return (s.str());
 }
 
-collect_detail_stats_change_cmd::collect_detail_stats_change_cmd(
-  HW::item<interface::stats_type_t>& item,
-  const handle_t& hdl,
-  bool enable)
-  : rpc_cmd(item)
-  , m_hdl(hdl)
-  , m_enable(enable)
-{
-}
-
-bool
-collect_detail_stats_change_cmd::operator==(
-  const collect_detail_stats_change_cmd& other) const
-{
-  return ((m_hdl == other.m_hdl) && (m_hw_item == other.m_hw_item) &&
-          (m_enable == other.m_enable));
-}
-
-rc_t
-collect_detail_stats_change_cmd::issue(connection& con)
-{
-  msg_t req(con.ctx(), std::ref(*this));
-
-  auto& payload = req.get_request().get_payload();
-  payload.sw_if_index = m_hdl.value();
-  payload.enable_disable = m_enable;
-
-  VAPI_CALL(req.execute());
-
-  return (wait());
-}
-
-std::string
-collect_detail_stats_change_cmd::to_string() const
-{
-  std::ostringstream s;
-  s << "itf-stats: " << m_hw_item.to_string() << " hdl:" << m_hdl.to_string();
-  return (s.str());
-}
-
 events_cmd::events_cmd(interface::event_listener& el)
   : event_cmd(el.status())
   , m_listener(el)
@@ -471,137 +430,6 @@ std::string
 events_cmd::to_string() const
 {
   return ("itf-events");
-}
-
-/**
- * Interface statistics
- */
-stats_enable_cmd::stats_enable_cmd(interface::stat_listener& el,
-                                   const handle_t& handle)
-  : event_cmd(el.status())
-  , m_listener(el)
-  , m_swifindex(handle)
-{
-}
-
-bool
-stats_enable_cmd::operator==(const stats_enable_cmd& other) const
-{
-  return (true);
-}
-
-rc_t
-stats_enable_cmd::issue(connection& con)
-{
-  /*
-   * First set the call back to handle the interface stats
-   */
-  m_reg.reset(new reg_t(con.ctx(), std::ref(*(static_cast<event_cmd*>(this)))));
-
-  /*
-   * then send the request to enable them
-   */
-  msg_t req(con.ctx(), 1, std::ref(*(static_cast<rpc_cmd*>(this))));
-
-  auto& payload = req.get_request().get_payload();
-  payload.enable_disable = 1;
-  payload.pid = getpid();
-  payload.num = 1;
-
-  payload.sw_ifs[0] = m_swifindex.value();
-
-  VAPI_CALL(req.execute());
-
-  wait();
-
-  return (rc_t::OK);
-}
-
-void
-stats_enable_cmd::retire(connection& con)
-{
-  /*
-   * disable interface stats.
-   */
-  msg_t req(con.ctx(), 1, std::ref(*(static_cast<rpc_cmd*>(this))));
-
-  auto& payload = req.get_request().get_payload();
-  payload.enable_disable = 0;
-  payload.pid = getpid();
-  payload.num = 1;
-  payload.sw_ifs[0] = m_swifindex.value();
-
-  VAPI_CALL(req.execute());
-
-  wait();
-}
-
-interface::stat_listener&
-stats_enable_cmd::listener() const
-{
-  return m_listener;
-}
-
-void
-stats_enable_cmd::set(const rc_t& rc)
-{
-  m_listener.status().set(rc);
-}
-
-void
-stats_enable_cmd::notify()
-{
-  m_listener.handle_interface_stat(this);
-}
-
-std::string
-stats_enable_cmd::to_string() const
-{
-  std::ostringstream s;
-  s << "itf-stats-enable itf:" << m_swifindex.to_string();
-  return (s.str());
-}
-
-stats_disable_cmd::stats_disable_cmd(const handle_t& handle)
-  : rpc_cmd(m_res)
-  , m_swifindex(handle)
-{
-}
-
-bool
-stats_disable_cmd::operator==(const stats_disable_cmd& other) const
-{
-  return (true);
-}
-
-rc_t
-stats_disable_cmd::issue(connection& con)
-{
-  /*
-   * then send the request to enable them
-   */
-  msg_t req(con.ctx(), 1, std::ref(*this));
-
-  auto& payload = req.get_request().get_payload();
-  payload.enable_disable = 0;
-  payload.pid = getpid();
-  payload.num = 1;
-
-  payload.sw_ifs[0] = m_swifindex.value();
-
-  VAPI_CALL(req.execute());
-
-  wait();
-
-  return (rc_t::OK);
-}
-
-std::string
-stats_disable_cmd::to_string() const
-{
-  std::ostringstream s;
-  s << "itf-stats-disable itf:" << m_swifindex.to_string();
-  return (s.str());
 }
 
 dump_cmd::dump_cmd()
