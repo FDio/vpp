@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "2.0.0";
+option version = "2.1.0";
 
 /** \brief IPsec: Add/delete Security Policy Database
     @param client_index - opaque cookie to identify the sender
@@ -563,6 +563,10 @@ define ipsec_spd_interface_details {
     @param renumber - intf display name uses a specified instance if != 0
     @param show_instance - instance to display for intf if renumber is set
     @param udp_encap - enable UDP encapsulation for NAT traversal
+    @param tx_table_id_is_set - whether a specific fib must be used when
+           routing packets after encap. When set to 0, FIB from the inner
+           packet's input interface is used
+    @param tx_table_id - the FIB id used for encapsulated packets
 */
 define ipsec_tunnel_if_add_del {
   u32 client_index;
@@ -587,6 +591,8 @@ define ipsec_tunnel_if_add_del {
   u8 renumber;
   u32 show_instance;
   u8 udp_encap;
+  u8 tx_table_id_is_set;
+  u32 tx_table_id;
 };
 
 /** \brief Add/delete IPsec tunnel interface response
@@ -637,6 +643,8 @@ define ipsec_sa_dump {
     @param replay_window - bit map of seq nums received relative to last_seq if using anti-replay
     @param total_data_size - total bytes sent or received
     @param udp_encap - 1 if UDP encap enabled, 0 otherwise
+    @param tx_table_id_is_set - whether a specific fib is set for encapsulated packets
+    @param tx_table_id - the FIB id used for encapsulated packets
 */
 define ipsec_sa_details {
   u32 context;
@@ -669,6 +677,9 @@ define ipsec_sa_details {
 
   u64 total_data_size;
   u8 udp_encap;
+
+  u8 tx_table_id_is_set;
+  u32 tx_table_id;
 };
 
 /** \brief Set key on IPsec interface
