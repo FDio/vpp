@@ -916,15 +916,18 @@ class VppTestCase(unittest.TestCase):
             self.assert_checksum_valid(pkt, 'ICMPv6EchoReply', 'cksum')
 
     def assert_packet_counter_equal(self, counter, expected_value):
-        counters = self.vapi.cli("sh errors").split('\n')
-        counter_value = -1
-        for i in range(1, len(counters) - 1):
-            results = counters[i].split()
-            if results[1] == counter:
-                counter_value = int(results[0])
-                break
-        self.assert_equal(counter_value, expected_value,
-                          "packet counter `%s'" % counter)
+        if counter.startswith("/"):
+            counter_value = self.statistics.get_counter(counter)
+            self.assert_equal(counter_value, expected_value,
+                              "packet counter `%s'" % counter)
+        else:
+            counters = self.vapi.cli("sh errors").split('\n')
+            counter_value = -1
+            for i in range(1, len(counters) - 1):
+                results = counters[i].split()
+                if results[1] == counter:
+                    counter_value = int(results[0])
+                    break
 
     @classmethod
     def sleep(cls, timeout, remark=None):
