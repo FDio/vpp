@@ -531,7 +531,6 @@ udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
   udp_dst_port_info_t *pi;
-  u16 *n;
 
   pi = udp_get_dst_port_info (um, dst_port, is_ip4);
   /* Not registered? Fagedaboudit */
@@ -540,29 +539,28 @@ udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
 
   /* Kill the mapping. Don't bother killing the pi, it may be back. */
   if (is_ip4)
-    n = sparse_vec_validate (um->next_by_dst_port4,
-			     clib_host_to_net_u16 (dst_port));
+    sparse_vec_index_remove (um->next_by_dst_port4,
+			  clib_host_to_net_u16 (dst_port));
   else
-    n = sparse_vec_validate (um->next_by_dst_port6,
-			     clib_host_to_net_u16 (dst_port));
-
-  n[0] = SPARSE_VEC_INVALID_INDEX;
+    sparse_vec_index_remove (um->next_by_dst_port6,
+			  clib_host_to_net_u16 (dst_port));
 }
 
 bool
 udp_is_valid_dst_port (udp_dst_port_t dst_port, u8 is_ip4)
 {
   udp_main_t *um = &udp_main;
-  u16 *n;
+  u32 n;
 
   if (is_ip4)
-    n = sparse_vec_validate (um->next_by_dst_port4,
-			     clib_host_to_net_u16 (dst_port));
+    n =
+      sparse_vec_index (um->next_by_dst_port4,
+			clib_host_to_net_u16 (dst_port));
   else
-    n = sparse_vec_validate (um->next_by_dst_port6,
-			     clib_host_to_net_u16 (dst_port));
-
-  return (n[0] != SPARSE_VEC_INVALID_INDEX);
+    n =
+      sparse_vec_index (um->next_by_dst_port6,
+			clib_host_to_net_u16 (dst_port));
+  return (n != SPARSE_VEC_INVALID_INDEX);
 }
 
 void

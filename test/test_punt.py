@@ -179,8 +179,10 @@ class TestIP4PuntSocket(TestPuntSocket):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        # FIXME - when punt socket deregister is implemented
-        # self.pg0.get_capture(nr_packets)
+        rx = self.pg0.get_capture(nr_packets)
+        for p in rx:
+            self.assertEqual(int(p[IP].proto), 1)   # ICMP
+            self.assertEqual(int(p[ICMP].code), 3)  # unreachable
 
 
 class TestIP6PuntSocket(TestPuntSocket):
@@ -301,8 +303,10 @@ class TestIP6PuntSocket(TestPuntSocket):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        # FIXME - when punt socket deregister is implemented
-#        self.pg0.get_capture(nr_packets)
+        rx = self.pg0.get_capture(nr_packets)
+        for p in rx:
+            self.assertEqual(int(p[IPv6].nh), 58)                # ICMPv6
+            self.assertEqual(int(p[ICMPv6DestUnreach].code), 4)  # unreachable
 
 
 if __name__ == '__main__':
