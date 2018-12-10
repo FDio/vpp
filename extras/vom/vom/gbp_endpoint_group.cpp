@@ -36,6 +36,17 @@ gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
 {
 }
 
+gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
+                                       const gbp_route_domain& rd,
+                                       const gbp_bridge_domain& bd)
+  : m_hw(false)
+  , m_epg_id(epg_id)
+  , m_itf()
+  , m_rd(rd.singular())
+  , m_bd(bd.singular())
+{
+}
+
 gbp_endpoint_group::gbp_endpoint_group(const gbp_endpoint_group& epg)
   : m_hw(epg.m_hw)
   , m_epg_id(epg.m_epg_id)
@@ -84,7 +95,8 @@ gbp_endpoint_group::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_epg_id, m_bd->id(), m_rd->id(), m_itf->handle()));
+      m_hw, m_epg_id, m_bd->id(), m_rd->id(),
+      (m_itf ? m_itf->handle() : handle_t::INVALID)));
   }
 }
 
@@ -93,8 +105,8 @@ gbp_endpoint_group::to_string() const
 {
   std::ostringstream s;
   s << "gbp-endpoint-group:["
-    << "epg:" << m_epg_id << ", " << m_itf->to_string() << ", "
-    << m_bd->to_string() << ", " << m_rd->to_string() << "]";
+    << "epg:" << m_epg_id << ", " << (m_itf ? m_itf->to_string() : "NULL")
+    << ", " << m_bd->to_string() << ", " << m_rd->to_string() << "]";
 
   return (s.str());
 }
@@ -104,7 +116,8 @@ gbp_endpoint_group::update(const gbp_endpoint_group& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_epg_id, m_bd->id(), m_rd->id(), m_itf->handle()));
+      m_hw, m_epg_id, m_bd->id(), m_rd->id(),
+      (m_itf ? m_itf->handle() : handle_t::INVALID)));
   }
 }
 
@@ -130,6 +143,18 @@ void
 gbp_endpoint_group::dump(std::ostream& os)
 {
   db_dump(m_db, os);
+}
+
+const std::shared_ptr<gbp_route_domain>
+gbp_endpoint_group::get_route_domain()
+{
+  return m_rd;
+}
+
+const std::shared_ptr<gbp_bridge_domain>
+gbp_endpoint_group::get_bridge_domain()
+{
+  return m_bd;
 }
 
 gbp_endpoint_group::event_handler::event_handler()

@@ -31,6 +31,14 @@ gbp_bridge_domain::event_handler gbp_bridge_domain::m_evh;
 /**
  * Construct a new object matching the desried state
  */
+gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const interface& bvi)
+  : m_id(bd.id())
+  , m_bd(bd.singular())
+  , m_bvi(bvi.singular())
+{
+}
+
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd)
   : m_id(bd.id())
   , m_bd(bd.singular())
@@ -47,9 +55,31 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
 {
 }
 
+gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const std::shared_ptr<interface> bvi,
+                                     const std::shared_ptr<interface> uu_fwd)
+  : m_id(bd.id())
+  , m_bd(bd.singular())
+  , m_bvi(bvi->singular())
+  , m_uu_fwd(uu_fwd->singular())
+{
+}
+
+gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const interface& bvi,
+                                     const std::shared_ptr<interface> uu_fwd)
+  : m_id(bd.id())
+  , m_bd(bd.singular())
+  , m_bvi(bvi.singular())
+  , m_uu_fwd(uu_fwd->singular())
+{
+}
+
 gbp_bridge_domain::gbp_bridge_domain(const gbp_bridge_domain& bd)
   : m_id(bd.id())
   , m_bd(bd.m_bd)
+  , m_bvi(bd.m_bvi)
+  , m_uu_fwd(bd.m_uu_fwd)
 {
 }
 
@@ -63,6 +93,18 @@ uint32_t
 gbp_bridge_domain::id() const
 {
   return (m_bd->id());
+}
+
+const std::shared_ptr<bridge_domain>
+gbp_bridge_domain::get_bridge_domain()
+{
+  return m_bd;
+}
+
+const std::shared_ptr<interface>
+gbp_bridge_domain::get_bvi()
+{
+  return m_bvi;
 }
 
 bool
@@ -121,7 +163,14 @@ std::string
 gbp_bridge_domain::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-bridge-domain:[" << m_bd->to_string() << "]";
+  s << "gbp-bridge-domain:[" << m_bd->to_string();
+
+  if (m_bvi)
+    s << " bvi:" << m_bvi->to_string();
+  if (m_uu_fwd)
+    s << " uu-fwd:" << m_uu_fwd->to_string();
+
+  s << "]";
 
   return (s.str());
 }
@@ -187,11 +236,11 @@ gbp_bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
       interface::find(payload.bd.bvi_sw_if_index);
 
     if (uu_fwd && bvi) {
-      gbp_bridge_domain bd(payload.bd.bd_id, *bvi, *uu_fwd);
+      gbp_bridge_domain bd(payload.bd.bd_id, bvi, uu_fwd);
       OM::commit(key, bd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
-    } else {
-      gbp_bridge_domain bd(payload.bd.bd_id);
+    } else if (bvi) {
+      gbp_bridge_domain bd(payload.bd.bd_id, *bvi);
       OM::commit(key, bd);
       VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
     }
