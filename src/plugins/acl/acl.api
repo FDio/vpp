@@ -19,7 +19,7 @@
     used to control the ACL plugin
 */
 
-option version = "1.0.0";
+option version = "1.0.1";
 
 /** \brief Get the plugin version
     @param client_index - opaque cookie to identify the sender
@@ -67,6 +67,27 @@ define acl_plugin_control_ping_reply
   i32 retval;
   u32 client_index;
   u32 vpe_pid;
+};
+
+/** \brief Get Connection table max entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define acl_plugin_get_conn_table_max_entries
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get connection table max entries
+    @param context - sender context, to match reply w/ request
+    @param conn_table_max_entries - the value of maximum entries of connection table
+*/
+define acl_plugin_get_conn_table_max_entries_reply
+{
+  u32 context;
+  u64 conn_table_max_entries;
 };
 
 /** \brief Access List Rule entry

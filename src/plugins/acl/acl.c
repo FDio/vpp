@@ -85,7 +85,8 @@ _(MACIP_ACL_DUMP, macip_acl_dump) \
 _(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get) \
 _(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump) \
 _(ACL_INTERFACE_SET_ETYPE_WHITELIST, acl_interface_set_etype_whitelist) \
-_(ACL_INTERFACE_ETYPE_WHITELIST_DUMP, acl_interface_etype_whitelist_dump)
+_(ACL_INTERFACE_ETYPE_WHITELIST_DUMP, acl_interface_etype_whitelist_dump) \
+_(ACL_PLUGIN_GET_CONN_TABLE_MAX_ENTRIES,acl_plugin_get_conn_table_max_entries)
 
 
 /* *INDENT-OFF* */
@@ -294,6 +295,32 @@ acl_print_acl_x (acl_vector_print_func_t vpr, vlib_main_t * vm,
       out0 = format (out0, "\n");
       vpr (vm, out0);
     }
+}
+
+static void
+  vl_api_acl_plugin_get_conn_table_max_entries_t_handler
+  (vl_api_acl_plugin_get_conn_table_max_entries_t * mp)
+{
+  acl_main_t *am = &acl_main;
+  vl_api_acl_plugin_get_conn_table_max_entries_reply_t *rmp;
+  int msg_size = sizeof (*rmp);
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  rmp = vl_msg_api_alloc (msg_size);
+  memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id =
+    ntohs (VL_API_ACL_PLUGIN_GET_CONN_TABLE_MAX_ENTRIES_REPLY +
+	   am->msg_id_base);
+  rmp->context = mp->context;
+  rmp->conn_table_max_entries = __bswap_64 (am->fa_conn_table_max_entries);
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
 static void
