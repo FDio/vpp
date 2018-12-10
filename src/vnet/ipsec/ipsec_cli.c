@@ -19,6 +19,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
+#include <vnet/fib/fib.h>
 
 #include <vnet/ipsec/ipsec.h>
 
@@ -80,6 +81,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   clib_error_t *error = NULL;
 
   clib_memset (&sa, 0, sizeof (sa));
+  sa.tx_fib_index = ~((u32)0); /* Only supported for ipsec interfaces */
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -458,6 +460,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
   vnet_hw_interface_t *hi;
   u8 *protocol = NULL;
   u8 *policy = NULL;
+  u8 *tx_table_id = NULL;
 
   /* *INDENT-OFF* */
   pool_foreach (sa, im->sad, ({
@@ -670,8 +673,16 @@ show_ipsec_command_fn (vlib_main_t * vm,
     hi = vnet_get_hw_interface (im->vnet_main, t->hw_if_index);
     vlib_cli_output(vm, "  %s seq", hi->name);
     sa = pool_elt_at_index(im->sad, t->output_sa_index);
-    vlib_cli_output(vm, "   seq %u seq-hi %u esn %u anti-replay %u udp-encap %u",
-                    sa->seq, sa->seq_hi, sa->use_esn, sa->use_anti_replay, sa->udp_encap);
+
+    vec_reset_length(tx_table_id);
+    if (sa->tx_fib_index == ~((u32)0))
+      tx_table_id = format(tx_table_id, "use-input");
+    else
+      tx_table_id = format(tx_table_id, "%d",
+                           fib_table_get_table_id(sa->tx_fib_index, FIB_PROTOCOL_IP4));
+
+    vlib_cli_output(vm, "   seq %u seq-hi %u esn %u anti-replay %u udp-encap %u tx-fib-index %v",
+                    sa->seq, sa->seq_hi, sa->use_esn, sa->use_anti_replay, sa->udp_encap, tx_table_id);
     vlib_cli_output(vm, "   local-spi %u local-ip %U", sa->spi,
                     format_ip4_address, &sa->tunnel_src_addr.ip4);
     vlib_cli_output(vm, "   local-crypto %U %U",
@@ -696,6 +707,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
   }));
   vec_free(policy);
   vec_free(protocol);
+  vec_free(tx_table_id);
   /* *INDENT-ON* */
   return 0;
 }
@@ -910,6 +922,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	a.is_add = 0;
       else if (unformat (line_input, "udp-encap"))
 	a.udp_encap = 1;
+      else if (unformat (line_input, "tx-table %u", &a.tx_table_id))
+        a.tx_table_id_is_set = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -952,7 +966,9 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_ipsec_tunnel_command, static) = {
   .path = "create ipsec tunnel",
-  .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> remote-ip <addr> remote-spi <spi> [instance <inst_num>] [udp-encap]",
+  .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> "
+      "remote-ip <addr> remote-spi <spi> [instance <inst_num>] [udp-encap] "
+      "[tx-table <table-id>]",
   .function = create_ipsec_tunnel_command_fn,
 };
 /* *INDENT-ON* */
