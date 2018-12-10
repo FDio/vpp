@@ -37,11 +37,17 @@ public:
   /**
    * Construct a GBP bridge_domain
    */
+  gbp_bridge_domain(const bridge_domain& bd, const interface& bvi);
   gbp_bridge_domain(const bridge_domain& bd);
-
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
                     const interface& uu_fwd);
+  gbp_bridge_domain(const bridge_domain& bd,
+                    const std::shared_ptr<interface> bvi,
+                    const std::shared_ptr<interface> uu_fwd);
+  gbp_bridge_domain(const bridge_domain& bd,
+                    const interface& bvi,
+                    const std::shared_ptr<interface> uu_fwd);
 
   /**
    * Copy Construct
@@ -92,6 +98,9 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
+
+  const std::shared_ptr<bridge_domain> get_bridge_domain();
+  const std::shared_ptr<interface> get_bvi();
 
 private:
   /**

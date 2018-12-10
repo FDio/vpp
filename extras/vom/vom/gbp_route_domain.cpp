@@ -34,6 +34,8 @@ gbp_route_domain::event_handler gbp_route_domain::m_evh;
 gbp_route_domain::gbp_route_domain(const gbp_route_domain& rd)
   : m_id(rd.id())
   , m_rd(rd.m_rd)
+  , m_ip4_uu_fwd(rd.m_ip4_uu_fwd)
+  , m_ip6_uu_fwd(rd.m_ip6_uu_fwd)
 {
 }
 
@@ -44,6 +46,15 @@ gbp_route_domain::gbp_route_domain(const route_domain& rd,
   , m_rd(rd.singular())
   , m_ip4_uu_fwd(ip4_uu_fwd.singular())
   , m_ip6_uu_fwd(ip6_uu_fwd.singular())
+{
+}
+gbp_route_domain::gbp_route_domain(const route_domain& rd,
+                                   const std::shared_ptr<interface> ip4_uu_fwd,
+                                   const std::shared_ptr<interface> ip6_uu_fwd)
+  : m_id(rd.table_id())
+  , m_rd(rd.singular())
+  , m_ip4_uu_fwd(ip4_uu_fwd->singular())
+  , m_ip6_uu_fwd(ip6_uu_fwd->singular())
 {
 }
 
@@ -63,6 +74,12 @@ uint32_t
 gbp_route_domain::id() const
 {
   return (m_rd->table_id());
+}
+
+const std::shared_ptr<route_domain>
+gbp_route_domain::get_route_domain()
+{
+  return m_rd;
 }
 
 bool
@@ -121,7 +138,14 @@ std::string
 gbp_route_domain::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-route-domain:[" << m_rd->to_string() << "]";
+  s << "gbp-route-domain:[" << m_rd->to_string();
+
+  if (m_ip4_uu_fwd)
+    s << " v4-uu:" << m_ip4_uu_fwd->to_string();
+  if (m_ip6_uu_fwd)
+    s << " v6-uu:" << m_ip6_uu_fwd->to_string();
+
+  s << "]";
 
   return (s.str());
 }

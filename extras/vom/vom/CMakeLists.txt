@@ -164,6 +164,7 @@ list(APPEND VOM_SOURCES
   sub_interface.cpp
   tap_interface.cpp
   tap_interface_cmds.cpp
+  vxlan_gbp_tunnel_cmds.cpp
   vxlan_tunnel_cmds.cpp
   vxlan_tunnel.cpp
 )

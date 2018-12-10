@@ -98,7 +98,7 @@ class MockListener : public interface::event_listener,
     void handle_interface_stat(interface_cmds::stats_enable_cmd *cmd)
     {
     }
-    void handle_interface_event(interface_cmds::events_cmd *cmd)
+    void handle_interface_event(std::vector<VOM::interface::event> events)
     {
     }
 };
