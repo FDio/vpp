@@ -139,6 +139,7 @@ typedef struct
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
 
+  u32 tx_fib_index;
   u32 salt;
 
   /* runtime */
@@ -183,6 +184,8 @@ typedef struct
   u8 renumber;
   u32 show_instance;
   u8 udp_encap;
+  u8 tx_table_id_is_set;
+  u32 tx_table_id;
 } ipsec_add_del_tunnel_args_t;
 
 typedef struct
