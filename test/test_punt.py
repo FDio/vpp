@@ -29,29 +29,6 @@ class TestPuntSocket(VppTestCase):
             "punt", "{", "socket", cls.tempdir+"/socket_punt", "}"]
         super(TestPuntSocket, cls).setUpConstants()
 
-    def process_cli(self, exp, ptr):
-        for line in self.vapi.cli(exp).split('\n')[1:]:
-            m = ptr.match(line.strip())
-            if m:
-                yield m.groups()
-
-    def show_errors(self):
-        for pack in self.process_cli("show errors", self.err_ptr):
-            try:
-                count, node, reason = pack
-            except ValueError:
-                pass
-            else:
-                yield count, node, reason
-
-    def get_punt_count(self, counter):
-        errors = list(self.show_errors())
-        for count, node, reason in errors:
-            if (node == counter and
-                    reason == u'Socket TX'):
-                return int(count)
-        return 0
-
     def socket_client_create(self, sock_name):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         try:
@@ -179,8 +156,10 @@ class TestIP4PuntSocket(TestPuntSocket):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        # FIXME - when punt socket deregister is implemented
-        # self.pg0.get_capture(nr_packets)
+        rx = self.pg0.get_capture(nr_packets)
+        for p in rx:
+            self.assertEqual(int(p[IP].proto), 1)   # ICMP
+            self.assertEqual(int(p[ICMP].code), 3)  # unreachable
 
 
 class TestIP6PuntSocket(TestPuntSocket):
@@ -301,8 +280,10 @@ class TestIP6PuntSocket(TestPuntSocket):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        # FIXME - when punt socket deregister is implemented
-#        self.pg0.get_capture(nr_packets)
+        rx = self.pg0.get_capture(nr_packets)
+        for p in rx:
+            self.assertEqual(int(p[IPv6].nh), 58)                # ICMPv6
+            self.assertEqual(int(p[ICMPv6DestUnreach].code), 4)  # unreachable
 
 
 if __name__ == '__main__':
