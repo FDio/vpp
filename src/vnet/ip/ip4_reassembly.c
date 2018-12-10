@@ -654,12 +654,12 @@ ip4_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
   ASSERT (fb->current_length >= sizeof (*fip));
   vnet_buffer_opaque_t *fvnb = vnet_buffer (fb);
   reass->next_index = fvnb->ip.reass.next_index;	// store next_index before it's overwritten
-  u32 fragment_first = fvnb->ip.reass.fragment_first =
-    ip4_get_fragment_offset_bytes (fip);
-  u32 fragment_length =
+  const u32 fragment_first = ip4_get_fragment_offset_bytes (fip);
+  const u32 fragment_length =
     clib_net_to_host_u16 (fip->length) - ip4_header_bytes (fip);
-  u32 fragment_last = fvnb->ip.reass.fragment_last =
-    fragment_first + fragment_length - 1;
+  const u32 fragment_last = fragment_first + fragment_length - 1;
+  fvnb->ip.reass.fragment_first = fragment_first;
+  fvnb->ip.reass.fragment_last = fragment_last;
   int more_fragments = ip4_get_fragment_more (fip);
   u32 candidate_range_bi = reass->first_bi;
   u32 prev_range_bi = ~0;
@@ -927,28 +927,43 @@ ip4_reassembly_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      ip4_reass_key_t k;
-	      k.as_u64[0] =
-		(u64) vnet_buffer (b0)->sw_if_index[VLIB_RX] << 32 | (u64)
-		ip0->src_address.as_u32;
-	      k.as_u64[1] =
-		(u64) ip0->dst_address.
-		as_u32 << 32 | (u64) ip0->fragment_id << 16 | (u64) ip0->
-		protocol << 8;
-
-	      ip4_reass_t *reass =
-		ip4_reass_find_or_create (vm, rm, rt, &k, &vec_drop_timeout);
-
-	      if (reass)
+	      ip4_header_t *fip = vlib_buffer_get_current (b0);
+	      const u32 fragment_first = ip4_get_fragment_offset_bytes (fip);
+	      const u32 fragment_length =
+		clib_net_to_host_u16 (fip->length) - ip4_header_bytes (fip);
+	      const u32 fragment_last = fragment_first + fragment_length - 1;
+	      if (fragment_first > fragment_last
+		  || fragment_first + fragment_length > UINT16_MAX - 20)
 		{
-		  ip4_reass_update (vm, node, rm, rt, reass, &bi0, &next0,
-				    &error0, &vec_drop_overlap,
-				    &vec_drop_compress, is_feature);
+		  next0 = IP4_REASSEMBLY_NEXT_DROP;
+		  error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
 		}
 	      else
 		{
-		  next0 = IP4_REASSEMBLY_NEXT_DROP;
-		  error0 = IP4_ERROR_REASS_LIMIT_REACHED;
+		  ip4_reass_key_t k;
+		  k.as_u64[0] =
+		    (u64) vnet_buffer (b0)->sw_if_index[VLIB_RX] << 32 | (u64)
+		    ip0->src_address.as_u32;
+		  k.as_u64[1] =
+		    (u64) ip0->dst_address.
+		    as_u32 << 32 | (u64) ip0->fragment_id << 16 | (u64) ip0->
+		    protocol << 8;
+
+		  ip4_reass_t *reass =
+		    ip4_reass_find_or_create (vm, rm, rt, &k,
+					      &vec_drop_timeout);
+
+		  if (reass)
+		    {
+		      ip4_reass_update (vm, node, rm, rt, reass, &bi0, &next0,
+					&error0, &vec_drop_overlap,
+					&vec_drop_compress, is_feature);
+		    }
+		  else
+		    {
+		      next0 = IP4_REASSEMBLY_NEXT_DROP;
+		      error0 = IP4_ERROR_REASS_LIMIT_REACHED;
+		    }
 		}
 
 	      b0->error = node->errors[error0];
