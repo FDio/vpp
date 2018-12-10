@@ -178,6 +178,31 @@ class TestIPv4Reassembly(VppTestCase):
         self.verify_capture(packets)
         self.src_if.assert_nothing_captured()
 
+    def test_5737(self):
+        """ fragment length + ip header size > 65535 """
+        raw = ('E\x00\x00\x88,\xf8\x1f\xfe@\x01\x98\x00\xc0\xa8\n-\xc0\xa8\n'
+               '\x01\x08\x00\xf0J\xed\xcb\xf1\xf5Test-group: IPv4.IPv4.ipv4-'
+               'message.Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Of'
+               'fset; Test-case: 5737')
+
+        malformed_packet = (Ether(dst=self.src_if.local_mac,
+                                  src=self.src_if.remote_mac) /
+                            IP(raw))
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IP(id=1000, src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4) /
+             UDP(sport=1234, dport=5678) /
+             Raw("X" * 1000))
+        valid_fragments = fragment_rfc791(p, 400)
+
+        self.pg_enable_capture()
+        self.src_if.add_stream([malformed_packet] + valid_fragments)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_packet_counter_equal(
+            "/err/ip4-reassembly-feature/malformed packets", 1)
+
     @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
                      "test doesn't work on aarch64")
     def test_random(self):
@@ -838,7 +863,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
                 seen.add(packet_index)
                 self.assertEqual(payload_info.dst, self.src_dst_if.sw_if_index)
                 info = self._packet_infos[packet_index]
-                self.assertTrue(info is not None)
+                self.assertIsNotNone(info)
                 self.assertEqual(packet_index, info.index)
                 saved_packet = info.data
                 self.assertEqual(ip.src, saved_packet[IP].dst)
@@ -850,8 +875,8 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for index in self._packet_infos:
-            self.assertTrue(index in seen or index in dropped_packet_indexes,
-                            "Packet with packet_index %d not received" % index)
+            self.assertIn(index, seen,
+                          "Packet with packet_index %d not received" % index)
 
     def test_reassembly(self):
         """ basic reassembly """
