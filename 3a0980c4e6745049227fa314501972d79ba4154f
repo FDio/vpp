@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "662c86e7_fdd4448d",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 18
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-10T12:42:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3fbc9e73_5c3f0f1a",
+      "revId": "3a0980c4e6745049227fa314501972d79ba4154f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "11ee67fd_63bce6c9",
         "filename": "extras/vom/vom/interface.hpp",
         "patchSetId": 18
@@ -30,6 +48,24 @@
       "writtenOn": "2018-12-08T12:58:53Z",
       "side": 1,
       "message": "unlike C, C++ doesn\u0027t require the void argument.",
+      "revId": "3a0980c4e6745049227fa314501972d79ba4154f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4c072c84_b4d71c07",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 18
+      },
+      "lineNbr": 506,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-10T12:42:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "11ee67fd_63bce6c9",
       "revId": "3a0980c4e6745049227fa314501972d79ba4154f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -64,6 +100,24 @@
       "writtenOn": "2018-12-08T12:58:53Z",
       "side": 1,
       "message": "why are all these functions called \u0027stat_client_something\u0027 rather than just \u0027something\u0027?",
+      "revId": "3a0980c4e6745049227fa314501972d79ba4154f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "62eadd1b_2da48ba5",
+        "filename": "extras/vom/vom/stat_client.hpp",
+        "patchSetId": 18
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-10T12:42:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "38f530e3_85d2ce48",
       "revId": "3a0980c4e6745049227fa314501972d79ba4154f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
