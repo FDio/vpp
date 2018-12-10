@@ -59,6 +59,7 @@ interface::interface(const std::string& name,
   , m_stats_type(stats_type_t::NORMAL)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
+  , m_stats_enable(0)
 {
 }
 
@@ -77,6 +78,7 @@ interface::interface(const std::string& name,
   , m_stats_type(stats_type_t::NORMAL)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
+  , m_stats_enable(0)
 {
 }
 
@@ -91,6 +93,7 @@ interface::interface(const interface& o)
   , m_stats_type(o.m_stats_type)
   , m_oper(o.m_oper)
   , m_tag(o.m_tag)
+  , m_stats_enable(o.m_stats_enable)
 {
 }
 
@@ -175,13 +178,11 @@ interface::sweep()
       new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
   }
 
-  if (m_stats) {
+  if (m_stats_enable) {
     if (stats_type_t::DETAILED == m_stats_type) {
-      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
-        m_stats_type, handle_i(), false));
+      ;
     }
-    HW::enqueue(new interface_cmds::stats_disable_cmd(m_hdl.data()));
-    m_stats.reset();
+    disable_stats();
   }
 
   // If the interface is up, bring it down
@@ -209,16 +210,11 @@ interface::replay()
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
 
-  if (m_stats) {
+  if (m_stats_enable) {
     if (stats_type_t::DETAILED == m_stats_type) {
       m_stats_type.set(rc_t::NOOP);
-      HW::enqueue(new interface_cmds::collect_detail_stats_change_cmd(
-        m_stats_type, handle_i(), true));
     }
-    stat_listener& listener = m_stats->listener();
-    listener.status().set(rc_t::NOOP);
-    m_stats.reset(new interface_cmds::stats_enable_cmd(listener, handle_i()));
-    HW::enqueue(m_stats);
+    enable_stats();
   }
 
   if (m_table_id && (m_table_id.data() != route::DEFAULT_TABLE)) {
@@ -427,27 +423,27 @@ void
 interface::set(counter_t count, const std::string& stat_type)
 {
   if ("rx" == stat_type)
-    m_stat.m_rx = count;
+    m_stats.m_rx = count;
   else if ("tx" == stat_type)
-    m_stat.m_tx = count;
+    m_stats.m_tx = count;
   else if ("rx-unicast" == stat_type)
-    m_stat.m_rx_unicast = count;
+    m_stats.m_rx_unicast = count;
   else if ("tx-unicast" == stat_type)
-    m_stat.m_tx_unicast = count;
+    m_stats.m_tx_unicast = count;
   else if ("rx-multicast" == stat_type)
-    m_stat.m_rx_multicast = count;
+    m_stats.m_rx_multicast = count;
   else if ("tx-multicast" == stat_type)
-    m_stat.m_tx_multicast = count;
+    m_stats.m_tx_multicast = count;
   else if ("rx-broadcast" == stat_type)
-    m_stat.m_rx_broadcast = count;
+    m_stats.m_rx_broadcast = count;
   else if ("tx-broadcast" == stat_type)
-    m_stat.m_rx_broadcast = count;
+    m_stats.m_rx_broadcast = count;
 }
 
 const interface::stats_t&
 interface::get_stats(void) const
 {
-  return m_stat;
+  return m_stats;
 }
 
 std::ostream&
@@ -484,6 +480,7 @@ void
 interface::enable_stats()
 {
   singular()->enable_stats_i();
+  m_stats_enable = 1;
 }
 
 void
@@ -496,6 +493,7 @@ void
 interface::disable_stats()
 {
   singular()->disable_stats_i();
+  m_stats_enable = 0;
 }
 
 std::shared_ptr<interface>
