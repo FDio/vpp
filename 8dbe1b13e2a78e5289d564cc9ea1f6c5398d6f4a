@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3266c482_68b8be39",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-12-10T14:33:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8526ea9a_4f2de95c",
+      "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bb0d1b7b_757b43f1",
         "filename": "src/vnet/ipsec/ipsec.api",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2018-12-10T12:03:25Z",
       "side": 1,
       "message": "please be mindful of the whitesapce.",
+      "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf33123a_2168f8b1",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 680,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-12-10T14:33:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bb0d1b7b_757b43f1",
       "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "403c84b7_284f2fee",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-12-10T14:33:37Z",
+      "side": 1,
+      "message": "The current (before this change) default behavior was to use the table from the input iface. This actually does not make much sense, but I did not wanted to break backward compatibility.\nIf you think it makes sense to make such an API change, please confirm here and I will be happy to remove the is_set and change the default behavior accordingly.",
+      "parentUuid": "9f30be47_b6a0b495",
+      "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2b893406_431405d3",
         "filename": "src/vnet/ipsec/ipsec_if.c",
         "patchSetId": 2
@@ -64,6 +118,24 @@
       "writtenOn": "2018-12-10T12:03:25Z",
       "side": 1,
       "message": "should this be used as part of the key for determining which tunnel was matched in the RX path?",
+      "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "224ed210_af3494b3",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2018-12-10T14:33:37Z",
+      "side": 1,
+      "message": "I think it might make sense. We can use the same data-path variable for sure. Maybe the control-plane should give it a different name. If you don\u0027t mind I would like to keep this idea for a separate patch.",
+      "parentUuid": "2b893406_431405d3",
       "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
