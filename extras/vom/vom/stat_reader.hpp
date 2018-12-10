@@ -16,6 +16,7 @@
 #ifndef __VOM_STAT_READER_H__
 #define __VOM_STAT_READER_H__
 
+#include "vom/enum_base.hpp"
 #include "vom/stat_client.hpp"
 #include <set>
 
@@ -29,6 +30,21 @@ class interface;
 class stat_reader
 {
 public:
+
+  struct stats_type_t : public enum_base<stats_type_t>
+  {
+    const static stats_type_t NONE;
+    const static stats_type_t INTERFACE;
+
+  private:
+    stats_type_t(int v, const std::string& s);
+  };
+
+  /**
+   * typedef of stat_indexes
+   */
+  typedef std::set<uint32_t> stat_indexes_t;
+
   /**
    * Default Constructor
    */
@@ -43,6 +59,11 @@ public:
    * Destructor
    */
   ~stat_reader();
+
+  /**
+   * get stat indexes
+   */
+  const stat_indexes_t& get(const stats_type_t) const;
 
   /**
    * connection to stat object
@@ -78,14 +99,14 @@ private:
   static void unregisters(const interface& itf);
 
   /**
-   * typedef of stat_indexes
-   */
-  typedef std::set<uint32_t> stat_indexes_t;
-
-  /**
    * stat_client object
    */
   stat_client m_client;
+
+  /**
+   * stat index empty
+   */
+  const stat_indexes_t m_stat_index_empty;
 
   /**
    * static pointer to set of registered interfaces

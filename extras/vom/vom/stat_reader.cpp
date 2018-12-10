@@ -18,6 +18,14 @@
 
 namespace VOM {
 
+const stat_reader::stats_type_t stat_reader::stats_type_t::NONE(0, "none");
+const stat_reader::stats_type_t stat_reader::stats_type_t::INTERFACE(1, "interface");
+
+stat_reader::stats_type_t::stats_type_t(int v, const std::string& s)
+  : enum_base<stat_reader::stats_type_t>(v, s)
+{
+}
+
 stat_reader::stat_indexes_t stat_reader::m_stat_itf_indexes;
 
 stat_reader::stat_reader()
@@ -56,6 +64,17 @@ void
 stat_reader::unregisters(const interface& intf)
 {
   m_stat_itf_indexes.erase(intf.handle().value());
+}
+
+const stat_reader::stat_indexes_t&
+stat_reader::get(const stat_reader::stats_type_t stats_type) const
+{
+  stat_reader::stat_indexes_t stat_index;
+  if (stats_type == stat_reader::stats_type_t::INTERFACE)
+      return m_stat_itf_indexes;
+  else if(stats_type == stat_reader::stats_type_t::NONE)
+      return m_stat_index_empty;
+  return m_stat_index_empty;
 }
 
 void

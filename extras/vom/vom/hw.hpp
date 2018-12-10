@@ -333,6 +333,8 @@ public:
    */
   static bool poll();
 
+  static const std::set<uint32_t>& get(const stat_reader::stats_type_t);
+
   /**
    * read stats from stat segment
    */

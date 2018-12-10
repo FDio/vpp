@@ -267,6 +267,12 @@ HW::poll()
   return (m_poll_state);
 }
 
+const std::set<uint32_t>&
+HW::get(const stat_reader::stats_type_t stats_type)
+{
+  return m_statReader->get(stats_type);
+}
+
 void
 HW::read()
 {

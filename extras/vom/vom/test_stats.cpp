@@ -56,14 +56,16 @@ int main()
   while (i--)
     {
       sleep(3);
-      std::cout << "stats # " << std::to_string(i) << std::endl; 
+      std::cout << "stats # " << std::to_string(i) << std::endl;
       VOM::HW::read();
 
       if (i == 2)
         intf->disable_stats();
- 
-      std::cout << intf->get_stats() << intf1->get_stats()
-                << intf2->get_stats();
+      for (auto &index : VOM::HW::get(VOM::stat_reader::stats_type_t::INTERFACE))
+        {
+          std::cout << VOM::interface::find(index)->name() << " "
+                    << VOM::interface::find(index)->get_stats();
+        }
     }
 
   intf1->disable_stats();
