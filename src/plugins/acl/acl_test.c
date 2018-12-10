@@ -175,7 +175,14 @@ static void vl_api_acl_interface_etype_whitelist_details_t_handler
         vam->result_ready = 1;
     }
 
-
+static void vl_api_acl_plugin_get_conn_table_max_entries_reply_t_handler
+    (vl_api_acl_plugin_get_conn_table_max_entries_reply_t * mp)
+    {
+        vat_main_t * vam = acl_test_main.vat_main;
+        clib_warning("\nConn table max entries: %d",
+                    __bswap_64(mp->conn_table_max_entries) );
+        vam->result_ready = 1;
+    }
 
 static inline u8 *
 vl_api_acl_rule_t_pretty_format (u8 *out, vl_api_acl_rule_t * a)
@@ -302,7 +309,8 @@ _(MACIP_ACL_DETAILS, macip_acl_details)  \
 _(MACIP_ACL_INTERFACE_ADD_DEL_REPLY, macip_acl_interface_add_del_reply)  \
 _(MACIP_ACL_INTERFACE_GET_REPLY, macip_acl_interface_get_reply)  \
 _(ACL_PLUGIN_CONTROL_PING_REPLY, acl_plugin_control_ping_reply) \
-_(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply)
+_(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply) \
+_(ACL_PLUGIN_GET_CONN_TABLE_MAX_ENTRIES_REPLY,acl_plugin_get_conn_table_max_entries_reply)
 
 static int api_acl_plugin_get_version (vat_main_t * vam)
 {
@@ -536,6 +544,27 @@ static int api_acl_add_replace (vat_main_t * vam)
       }
     mp->acl_index = ntohl(acl_index);
     mp->count = htonl(n_rules);
+
+    /* send it... */
+    S(mp);
+
+    /* Wait for a reply... */
+    W (ret);
+    return ret;
+}
+
+static int api_acl_plugin_get_conn_table_max_entries (vat_main_t * vam)
+{
+    acl_test_main_t * sm = &acl_test_main;
+    vl_api_acl_plugin_get_conn_table_max_entries_t * mp;
+    u32 msg_size = sizeof(*mp);
+    int ret;
+
+    vam->result_ready = 0;
+    mp = vl_msg_api_alloc_as_if_client(msg_size);
+    memset (mp, 0, msg_size);
+    mp->_vl_msg_id = ntohs (VL_API_ACL_PLUGIN_GET_CONN_TABLE_MAX_ENTRIES + sm->msg_id_base);
+    mp->client_index = vam->my_client_index;
 
     /* send it... */
     S(mp);
@@ -1455,7 +1484,8 @@ _(macip_acl_add_replace, "<acl-idx> [<ipv4|ipv6> <permit|deny|action N> [count <
 _(macip_acl_del, "<acl-idx>")\
 _(macip_acl_dump, "[<acl-idx>]") \
 _(macip_acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] acl <acl-idx>") \
-_(macip_acl_interface_get, "")
+_(macip_acl_interface_get, "") \
+_(acl_plugin_get_conn_table_max_entries, "")
 
 
 static
