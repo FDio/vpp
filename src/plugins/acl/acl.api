@@ -69,6 +69,27 @@ define acl_plugin_control_ping_reply
   u32 vpe_pid;
 };
 
+/** \brief Get Connection table max entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+
+define acl_plugin_get_conn_table_max_entries
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get connection table max entries
+    @param context - sender context, to match reply w/ request
+    @param conn_table_max_entries - the value of maximum entries of connection table
+*/
+define acl_plugin_get_conn_table_max_entries_reply
+{
+  u32 context;
+  u64 conn_table_max_entries;
+};
+
 /** \brief Access List Rule entry
     @param is_permit - deny (0), permit (1), or permit+reflect(2) action on this rule.
     @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
