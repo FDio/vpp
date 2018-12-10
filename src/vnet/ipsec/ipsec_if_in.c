@@ -230,7 +230,7 @@ VLIB_REGISTER_NODE (ipsec_if_input_node) = {
   .n_errors = ARRAY_LEN(ipsec_if_input_error_strings),
   .error_strings = ipsec_if_input_error_strings,
 
-  .sibling_of = "ipsec4-input",
+  .sibling_of = "ipsec4-input-feature",
 };
 /* *INDENT-ON* */
 

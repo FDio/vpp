@@ -428,7 +428,7 @@ VLIB_NODE_FN (ipsec4_output_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_output_node) = {
-  .name = "ipsec4-output",
+  .name = "ipsec4-output-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_output_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -454,7 +454,7 @@ VLIB_NODE_FN (ipsec6_output_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec6_output_node) = {
-  .name = "ipsec6-output",
+  .name = "ipsec6-output-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_output_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -487,13 +487,13 @@ ipsec_output_node_fn (vlib_main_t * vm,
 VLIB_REGISTER_NODE (ipsec4_output_node) = {
   .vector_size = sizeof (u32),
   .function = ipsec_output_node_fn,
-  .name = "ipsec4-output",
+  .name = "ipsec4-output-feature",
 };
 
 VLIB_REGISTER_NODE (ipsec6_output_node) = {
   .vector_size = sizeof (u32),
   .function = ipsec_output_node_fn,
-  .name = "ipsec6-output",
+  .name = "ipsec6-output-feature",
 };
 /* *INDENT-ON* */
 #endif

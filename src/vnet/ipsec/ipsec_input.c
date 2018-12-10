@@ -335,7 +335,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
-  .name = "ipsec4-input",
+  .name = "ipsec4-input-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -482,7 +482,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
-  .name = "ipsec6-input",
+  .name = "ipsec6-input-feature",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -490,7 +490,7 @@ VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
   .n_errors = ARRAY_LEN(ipsec_input_error_strings),
   .error_strings = ipsec_input_error_strings,
 
-  .sibling_of = "ipsec4-input",
+  .sibling_of = "ipsec4-input-feature",
 };
 /* *INDENT-ON* */
 
