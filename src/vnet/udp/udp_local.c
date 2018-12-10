@@ -95,6 +95,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  u32 i0, i1, dst_port0, dst_port1;
 	  u32 advance0, advance1;
 	  u32 error0, next0, error1, next1;
+	  bool is_valid0, is_valid1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -182,8 +183,14 @@ udp46_local_inline (vlib_main_t * vm,
 	  next1 = (error1 == 0) ?
 	    vec_elt (is_ip4 ? um->next_by_dst_port4 : um->next_by_dst_port6,
 		     i1) : next1;
+	  is_valid0 =
+	    udp_is_valid_dst_port (clib_net_to_host_u16 (h0->dst_port),
+				   is_ip4);
+	  is_valid1 =
+	    udp_is_valid_dst_port (clib_net_to_host_u16 (h1->dst_port),
+				   is_ip4);
 
-	  if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX))
+	  if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX || !is_valid0))
 	    {
 	      // move the pointer back so icmp-error can find the
 	      // ip packet header
@@ -220,7 +227,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      vlib_buffer_advance (b0, sizeof (*h0));
 	    }
 
-	  if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX))
+	  if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX || !is_valid1))
 	    {
 	      // move the pointer back so icmp-error can find the
 	      // ip packet header
@@ -294,6 +301,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  udp_header_t *h0 = 0;
 	  u32 i0, next0;
 	  u32 advance0;
+	  bool is_valid0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -328,8 +336,12 @@ udp46_local_inline (vlib_main_t * vm,
 				     um->next_by_dst_port6, h0->dst_port);
 	      next0 = vec_elt (is_ip4 ? um->next_by_dst_port4 :
 			       um->next_by_dst_port6, i0);
+	      is_valid0 =
+		udp_is_valid_dst_port (clib_net_to_host_u16 (h0->dst_port),
+				       is_ip4);
 
-	      if (PREDICT_FALSE (i0 == SPARSE_VEC_INVALID_INDEX))
+	      if (PREDICT_FALSE
+		  (i0 == SPARSE_VEC_INVALID_INDEX || !is_valid0))
 		{
 		  // move the pointer back so icmp-error can find the
 		  // ip packet header
