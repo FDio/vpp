@@ -81,11 +81,27 @@ public:
   };
 
   /**
+   * mode for the tunnel
+   */
+  struct mode_t : public enum_base<mode_t>
+  {
+    ~mode_t() = default;
+    const static mode_t STANDARD;
+    const static mode_t GBP;
+    const static mode_t GPE;
+
+  private:
+    mode_t(int v, const std::string s);
+    mode_t() = default;
+  };
+
+  /**
    * Construct a new object matching the desried state
    */
   vxlan_tunnel(const boost::asio::ip::address& src,
                const boost::asio::ip::address& dst,
-               uint32_t vni);
+               uint32_t vni,
+               const mode_t& mode = mode_t::STANDARD);
 
   /**
    * Construct a new object matching the desried state with a handle
@@ -94,7 +110,8 @@ public:
   vxlan_tunnel(const handle_t& hdl,
                const boost::asio::ip::address& src,
                const boost::asio::ip::address& dst,
-               uint32_t vni);
+               uint32_t vni,
+               const mode_t& mode = mode_t::STANDARD);
 
   /*
    * Destructor
@@ -122,9 +139,9 @@ public:
   const handle_t& handle() const;
 
   /**
-   * Dump all L3Configs into the stream provided
+   * Fond the singular instance of the interface in the DB by key
    */
-  static void dump(std::ostream& os);
+  static std::shared_ptr<vxlan_tunnel> find(const interface::key_t& k);
 
 private:
   /**
@@ -204,9 +221,9 @@ private:
   endpoint_t m_tep;
 
   /**
-   * A map of all VLAN tunnela against thier key
+   * The tunnel mode
    */
-  static singular_db<endpoint_t, vxlan_tunnel> m_db;
+  mode_t m_mode;
 
   /**
    * Construct a unique name for the tunnel

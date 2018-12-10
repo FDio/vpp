@@ -47,9 +47,31 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
 {
 }
 
+gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const std::shared_ptr<interface> bvi,
+                                     const std::shared_ptr<interface> uu_fwd)
+  : m_id(bd.id())
+  , m_bd(bd.singular())
+  , m_bvi(bvi->singular())
+  , m_uu_fwd(uu_fwd->singular())
+{
+}
+
+gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
+                                     const interface& bvi,
+                                     const std::shared_ptr<interface> uu_fwd)
+  : m_id(bd.id())
+  , m_bd(bd.singular())
+  , m_bvi(bvi.singular())
+  , m_uu_fwd(uu_fwd->singular())
+{
+}
+
 gbp_bridge_domain::gbp_bridge_domain(const gbp_bridge_domain& bd)
   : m_id(bd.id())
   , m_bd(bd.m_bd)
+  , m_bvi(bd.m_bvi)
+  , m_uu_fwd(bd.m_uu_fwd)
 {
 }
 
@@ -63,6 +85,18 @@ uint32_t
 gbp_bridge_domain::id() const
 {
   return (m_bd->id());
+}
+
+const std::shared_ptr<bridge_domain>
+gbp_bridge_domain::get_bridge_domain()
+{
+  return m_bd;
+}
+
+const std::shared_ptr<interface>
+gbp_bridge_domain::get_bvi()
+{
+  return m_bvi;
 }
 
 bool
@@ -121,7 +155,14 @@ std::string
 gbp_bridge_domain::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-bridge-domain:[" << m_bd->to_string() << "]";
+  s << "gbp-bridge-domain:[" << m_bd->to_string();
+
+  if (m_bvi)
+    s << " bvi:" << m_bvi->to_string();
+  if (m_bvi)
+    s << " uu-fwd:" << m_uu_fwd->to_string();
+
+  s << "]";
 
   return (s.str());
 }
