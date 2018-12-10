@@ -393,13 +393,13 @@ VNET_FEATURE_INIT (ip6_policer_classify, static) =
 {
   .arc_name = "ip6-unicast",
   .node_name = "ip6-policer-classify",
-  .runs_before = VNET_FEATURES ("ipsec6-input"),
+  .runs_before = VNET_FEATURES ("ipsec6-input-feature"),
 };
 
 VNET_FEATURE_INIT (ip6_ipsec, static) =
 {
   .arc_name = "ip6-unicast",
-  .node_name = "ipsec6-input",
+  .node_name = "ipsec6-input-feature",
   .runs_before = VNET_FEATURES ("l2tp-decap"),
 };
 
@@ -477,12 +477,12 @@ VNET_FEATURE_ARC_INIT (ip6_output, static) =
 VNET_FEATURE_INIT (ip6_outacl, static) = {
   .arc_name = "ip6-output",
   .node_name = "ip6-outacl",
-  .runs_before = VNET_FEATURES ("ipsec6-output"),
+  .runs_before = VNET_FEATURES ("ipsec6-output-feature"),
 };
 
 VNET_FEATURE_INIT (ip6_ipsec_output, static) = {
   .arc_name = "ip6-output",
-  .node_name = "ipsec6-output",
+  .node_name = "ipsec6-output-feature",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
