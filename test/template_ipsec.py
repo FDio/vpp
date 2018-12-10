@@ -233,9 +233,8 @@ class IpsecTraTests(object):
                                       seq_num=17))
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-        err = self.statistics.get_counter(
-            '/err/%s/SA replayed packet' % self.tra4_decrypt_node_name)
-        self.assertEqual(err, 17)
+        self.assert_packet_counter_equal(
+            '/err/%s/SA replayed packet' % self.tra4_decrypt_node_name, 17)
 
         # a packet that does not decrypt does not move the window forward
         bogus_sa = SecurityAssociation(self.encryption_type,
@@ -248,9 +247,8 @@ class IpsecTraTests(object):
                                 seq_num=350))
         self.send_and_assert_no_replies(self.tra_if, pkt * 17)
 
-        err = self.statistics.get_counter(
-            '/err/%s/Integrity check failed' % self.tra4_decrypt_node_name)
-        self.assertEqual(err, 17)
+        self.assert_packet_counter_equal(
+            '/err/%s/Integrity check failed' % self.tra4_decrypt_node_name, 17)
 
         # which we can determine since this packet is still in the window
         pkt = (Ether(src=self.tra_if.remote_mac,
@@ -259,7 +257,7 @@ class IpsecTraTests(object):
                                          dst=self.tra_if.local_ip4) /
                                       ICMP(),
                                       seq_num=234))
-        recv_pkts = self.send_and_expect(self.tra_if, [pkt], self.tra_if)
+        self.send_and_expect(self.tra_if, [pkt], self.tra_if)
 
         # move the security-associations seq number on to the last we used
         p.scapy_tra_sa.seq_num = 351
