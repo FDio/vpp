@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bb0d1b7b_757b43f1",
+        "filename": "src/vnet/ipsec/ipsec.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 680,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-10T12:03:25Z",
+      "side": 1,
+      "message": "please be mindful of the whitesapce.",
+      "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9f30be47_b6a0b495",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-10T12:03:25Z",
+      "side": 1,
+      "message": "i don\u0027t think this should be here. the tx_table_id sable_id should be set. it\u0027s default value is 0, which is the global table.",
+      "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2b893406_431405d3",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-10T12:03:25Z",
+      "side": 1,
+      "message": "should this be used as part of the key for determining which tunnel was matched in the RX path?",
+      "revId": "8dbe1b13e2a78e5289d564cc9ea1f6c5398d6f4a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
