@@ -97,6 +97,32 @@ sparse_vec_new (uword elt_bytes, uword sparse_index_bits)
   return v;
 }
 
+always_inline void
+sparse_vec_index_remove (void *v, uword sparse_index)
+{
+  sparse_vec_header_t *h;
+  uword i, b, w;
+  u8 is_member;
+
+  h = sparse_vec_header (v);
+  i = sparse_index / BITS (h->is_member_bitmap[0]);
+  b = sparse_index % BITS (h->is_member_bitmap[0]);
+
+  ASSERT (i < vec_len (h->is_member_bitmap));
+  ASSERT (i < vec_len (h->member_counts));
+
+  w = h->is_member_bitmap[i];
+  is_member = (w & (1ULL << b)) != 0;
+  if (is_member)
+    {
+      uword j;
+      w &= ~(1UL << b);
+      h->is_member_bitmap[i] = w;
+      for (j = i + 1; j < vec_len (h->member_counts); j++)
+	h->member_counts[j] -= 1;
+    }
+}
+
 always_inline uword
 sparse_vec_index_internal (void *v,
 			   uword sparse_index,
