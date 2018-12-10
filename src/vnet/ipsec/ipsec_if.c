@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -262,6 +263,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
   ipsec_sa_t *sa;
   u32 dev_instance;
   u32 slot;
+  u32 tx_fib_index = ~0;
 
   u64 key = (u64) args->remote_ip.as_u32 << 32 | (u64) args->remote_spi;
   p = hash_get (im->ipsec_if_pool_index_by_key, key);
@@ -271,6 +273,10 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       /* check if same src/dst pair exists */
       if (p)
 	return VNET_API_ERROR_INVALID_VALUE;
+
+      tx_fib_index = fib_table_find (FIB_PROTOCOL_IP4, args->tx_table_id);
+      if (tx_fib_index == ~((u32) 0))
+	return VNET_API_ERROR_NO_SUCH_FIB;
 
       pool_get_aligned (im->tunnel_interfaces, t, CLIB_CACHE_LINE_BYTES);
       clib_memset (t, 0, sizeof (*t));
@@ -301,6 +307,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       sa->use_anti_replay = args->anti_replay;
       sa->integ_alg = args->integ_alg;
       sa->udp_encap = args->udp_encap;
+      sa->tx_fib_index = ~((u32) 0);	/* Not used, but set for troubleshooting */
       if (args->remote_integ_key_len <= sizeof (args->remote_integ_key))
 	{
 	  sa->integ_key_len = args->remote_integ_key_len;
@@ -326,6 +333,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       sa->use_anti_replay = args->anti_replay;
       sa->integ_alg = args->integ_alg;
       sa->udp_encap = args->udp_encap;
+      sa->tx_fib_index = tx_fib_index;
       if (args->local_integ_key_len <= sizeof (args->local_integ_key))
 	{
 	  sa->integ_key_len = args->local_integ_key_len;
