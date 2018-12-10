@@ -32,7 +32,6 @@ namespace VOM {
  * Forward declaration of the stats and events command
  */
 namespace interface_cmds {
-class stats_enable_cmd;
 class events_cmd;
 };
 
@@ -452,36 +451,6 @@ public:
   };
 
   /**
-   * A class that listens to interface Stats
-   */
-  class stat_listener
-  {
-  public:
-    /**
-     * Default Constructor
-     */
-    stat_listener();
-
-    /**
-     * Virtual function called on the listener when the command has data
-     * ready to process
-     */
-    virtual void handle_interface_stat(
-      interface_cmds::stats_enable_cmd* cmd) = 0;
-
-    /**
-     * Return the HW::item representing the status
-     */
-    HW::item<bool>& status();
-
-  protected:
-    /**
-     * The status of the subscription
-     */
-    HW::item<bool> m_status;
-  };
-
-  /**
    * The the singular instance of the interface in the DB by handle
    */
   static std::shared_ptr<interface> find(const handle_t& h);
@@ -662,11 +631,6 @@ private:
   std::shared_ptr<route_domain> m_rd;
 
   /**
-   * shared pointer to the stats object for this interface.
-   */
-  std::shared_ptr<interface_cmds::stats_enable_cmd> m_stats;
-
-  /**
    * The state of the interface
    */
   HW::item<admin_state_t> m_state;
@@ -689,7 +653,7 @@ private:
   /**
    * Interface stats
    */
-  stats_t m_stat;
+  stats_t m_stats;
 
   /**
    * Operational state of the interface
@@ -700,6 +664,11 @@ private:
    * tag of the interface
    */
   std::string m_tag;
+
+  /**
+   * stats enable/disable
+   */
+  bool m_stats_enable;
 
   /**
    * A map of all interfaces keyed against VPP's handle
