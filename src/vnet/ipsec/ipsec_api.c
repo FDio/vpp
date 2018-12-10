@@ -23,6 +23,7 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -471,6 +472,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   tun.local_integ_key_len = mp->local_integ_key_len;
   tun.remote_integ_key_len = mp->remote_integ_key_len;
   tun.udp_encap = mp->udp_encap;
+  tun.tx_table_id = ntohl (mp->tx_table_id);
   memcpy (&tun.local_ip, mp->local_ip, 4);
   memcpy (&tun.remote_ip, mp->remote_ip, 4);
   memcpy (&tun.local_crypto_key, &mp->local_crypto_key,
@@ -554,6 +556,9 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
   mp->total_data_size = clib_host_to_net_u64 (sa->total_data_size);
   mp->udp_encap = sa->udp_encap;
+
+  mp->tx_table_id =
+    htonl (fib_table_get_table_id (sa->tx_fib_index, FIB_PROTOCOL_IP4));
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
