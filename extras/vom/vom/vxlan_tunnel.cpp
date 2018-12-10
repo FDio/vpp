@@ -14,8 +14,10 @@
  */
 
 #include "vom/vxlan_tunnel.hpp"
+#include "vom/api_types.hpp"
 #include "vom/logger.hpp"
 #include "vom/singular_db_funcs.hpp"
+#include "vom/vxlan_gbp_tunnel_cmds.hpp"
 #include "vom/vxlan_tunnel_cmds.hpp"
 
 namespace VOM {
@@ -23,12 +25,14 @@ const std::string VXLAN_TUNNEL_NAME = "vxlan-tunnel-itf";
 
 vxlan_tunnel::event_handler vxlan_tunnel::m_evh;
 
-/**
- * A DB of all vxlan_tunnels
- * this does not register as a listener for replay events, since the tunnels
- * are also in the base-class interface DB and so will be poked from there.
- */
-singular_db<vxlan_tunnel::endpoint_t, vxlan_tunnel> vxlan_tunnel::m_db;
+const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::STANDARD(0, "standard");
+const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::GBP(0, "GBP");
+const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::GPE(0, "GPE");
+
+vxlan_tunnel::mode_t::mode_t(int v, const std::string s)
+  : enum_base<vxlan_tunnel::mode_t>(v, s)
+{
+}
 
 vxlan_tunnel::endpoint_t::endpoint_t(const boost::asio::ip::address& src,
                                      const boost::asio::ip::address& dst,
@@ -99,17 +103,20 @@ vxlan_tunnel::mk_name(const boost::asio::ip::address& src,
 
 vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
                            const boost::asio::ip::address& dst,
-                           uint32_t vni)
+                           uint32_t vni,
+                           const mode_t& mode)
   : interface(mk_name(src, dst, vni),
               interface::type_t::VXLAN,
               interface::admin_state_t::UP)
   , m_tep(src, dst, vni)
+  , m_mode(mode)
 {
 }
 
 vxlan_tunnel::vxlan_tunnel(const vxlan_tunnel& o)
   : interface(o)
   , m_tep(o.m_tep)
+  , m_mode(o.m_mode)
 {
 }
 
@@ -117,6 +124,12 @@ const handle_t&
 vxlan_tunnel::handle() const
 {
   return (m_hdl.data());
+}
+
+std::shared_ptr<vxlan_tunnel>
+vxlan_tunnel::find(const interface::key_t& k)
+{
+  return std::dynamic_pointer_cast<vxlan_tunnel>(m_db.find(k));
 }
 
 void
@@ -139,12 +152,7 @@ vxlan_tunnel::replay()
 vxlan_tunnel::~vxlan_tunnel()
 {
   sweep();
-
-  /*
- * release from both DBs
- */
   release();
-  m_db.release(m_tep, this);
 }
 
 std::string
@@ -168,37 +176,15 @@ vxlan_tunnel::update(const vxlan_tunnel& desired)
 }
 
 std::shared_ptr<vxlan_tunnel>
-vxlan_tunnel::find_or_add(const vxlan_tunnel& temp)
-{
-  /*
-   * a VXLAN tunnel needs to be in both the interface-find-by-name
-   * and the vxlan_tunnel-find-by-endpoint singular databases
-   */
-  std::shared_ptr<vxlan_tunnel> sp;
-
-  sp = m_db.find_or_add(temp.m_tep, temp);
-
-  interface::m_db.add(temp.name(), sp);
-
-  return (sp);
-}
-
-std::shared_ptr<vxlan_tunnel>
 vxlan_tunnel::singular() const
 {
-  return (find_or_add(*this));
+  return std::dynamic_pointer_cast<vxlan_tunnel>(singular_i());
 }
 
 std::shared_ptr<interface>
 vxlan_tunnel::singular_i() const
 {
-  return find_or_add(*this);
-}
-
-void
-vxlan_tunnel::dump(std::ostream& os)
-{
-  db_dump(m_db, os);
+  return m_db.find_or_add(key(), *this);
 }
 
 void
@@ -207,27 +193,51 @@ vxlan_tunnel::event_handler::handle_populate(const client_db::key_t& key)
   /*
    * dump VPP current states
    */
-  std::shared_ptr<vxlan_tunnel_cmds::dump_cmd> cmd =
-    std::make_shared<vxlan_tunnel_cmds::dump_cmd>();
+  {
+    std::shared_ptr<vxlan_tunnel_cmds::dump_cmd> cmd =
+      std::make_shared<vxlan_tunnel_cmds::dump_cmd>();
 
-  HW::enqueue(cmd);
-  HW::write();
+    HW::enqueue(cmd);
+    HW::write();
 
-  for (auto& record : *cmd) {
-    auto& payload = record.get_payload();
-    handle_t hdl(payload.sw_if_index);
-    boost::asio::ip::address src =
-      from_bytes(payload.is_ipv6, payload.src_address);
-    boost::asio::ip::address dst =
-      from_bytes(payload.is_ipv6, payload.dst_address);
+    for (auto& record : *cmd) {
+      auto& payload = record.get_payload();
+      handle_t hdl(payload.sw_if_index);
+      boost::asio::ip::address src =
+        from_bytes(payload.is_ipv6, payload.src_address);
+      boost::asio::ip::address dst =
+        from_bytes(payload.is_ipv6, payload.dst_address);
 
-    std::shared_ptr<vxlan_tunnel> vt =
-      vxlan_tunnel(src, dst, payload.vni).singular();
-    vt->set(hdl);
+      std::shared_ptr<vxlan_tunnel> vt =
+        vxlan_tunnel(src, dst, payload.vni).singular();
+      vt->set(hdl);
 
-    VOM_LOG(log_level_t::DEBUG) << "dump: " << vt->to_string();
+      VOM_LOG(log_level_t::DEBUG) << "dump: " << vt->to_string();
 
-    OM::commit(key, *vt);
+      OM::commit(key, *vt);
+    }
+  }
+  {
+    std::shared_ptr<vxlan_gbp_tunnel_cmds::dump_cmd> cmd =
+      std::make_shared<vxlan_gbp_tunnel_cmds::dump_cmd>();
+
+    HW::enqueue(cmd);
+    HW::write();
+
+    for (auto& record : *cmd) {
+      auto& payload = record.get_payload();
+      handle_t hdl(payload.tunnel.sw_if_index);
+      boost::asio::ip::address src = from_api(payload.tunnel.src);
+      boost::asio::ip::address dst = from_api(payload.tunnel.dst);
+
+      std::shared_ptr<vxlan_tunnel> vt =
+        vxlan_tunnel(src, dst, payload.tunnel.vni, mode_t::GBP).singular();
+      vt->set(hdl);
+
+      VOM_LOG(log_level_t::DEBUG) << "dump: " << vt->to_string();
+
+      OM::commit(key, *vt);
+    }
   }
 }
 

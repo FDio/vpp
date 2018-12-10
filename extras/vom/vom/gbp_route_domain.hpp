@@ -42,6 +42,9 @@ public:
   gbp_route_domain(const route_domain& rd,
                    const interface& ip4_uu_fwd,
                    const interface& ip6_uu_fwd);
+  gbp_route_domain(const route_domain& rd,
+                   const std::shared_ptr<interface> ip4_uu_fwd,
+                   const std::shared_ptr<interface> ip6_uu_fwd);
 
   /**
    * Copy Construct
@@ -92,6 +95,8 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
+
+  const std::shared_ptr<route_domain> get_route_domain();
 
 private:
   /**
