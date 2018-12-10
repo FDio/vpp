@@ -86,9 +86,10 @@ class TestCDP(VppTestCase):
         self.assertTrue(neighbors, "CDP didn't register neighbor")
 
         port, system = neighbors[0]
+        length = min(len(system), len(self.device_id))
 
         self.assert_equal(port, self.port_id, "CDP received invalid port id")
-        self.assert_equal(system, self.device_id,
+        self.assert_equal(system[:length], self.device_id[:length],
                           "CDP received invalid device id")
 
     def test_cdp_underflow_tlv(self):
