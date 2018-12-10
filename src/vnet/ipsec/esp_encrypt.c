@@ -311,7 +311,15 @@ esp_encrypt_inline (vlib_main_t * vm,
 		  vnet_buffer (o_b0)->sw_if_index[VLIB_TX] =
 		    vnet_buffer (i_b0)->sw_if_index[VLIB_TX];
 		}
-	      vlib_buffer_advance (i_b0, sizeof (ip4_header_t));
+
+	      if (is_ip6)
+		{
+		  vlib_buffer_advance (i_b0, sizeof (ip6_header_t));
+		}
+	      else
+		{
+		  vlib_buffer_advance (i_b0, sizeof (ip4_header_t));
+		}
 	    }
 
 	  ASSERT (sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);
