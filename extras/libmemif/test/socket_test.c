@@ -49,7 +49,7 @@ START_TEST (test_msg_queue)
   int err;
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t conn;
@@ -97,7 +97,7 @@ START_TEST (test_enq_ack)
   int err;
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
   memif_connection_t conn;
   conn.msg_queue = NULL;
@@ -117,7 +117,7 @@ START_TEST (test_enq_init)
   int err;
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
   memif_connection_t conn;
   conn.msg_queue = NULL;
@@ -140,7 +140,7 @@ START_TEST (test_enq_init)
   ck_assert_uint_eq (i->version, MEMIF_VERSION);
   ck_assert_uint_eq (i->id, conn.args.interface_id);
   ck_assert_uint_eq (i->mode, conn.args.mode);
-  ck_assert_str_eq (i->secret, conn.args.secret);
+  ck_assert_str_eq ((char *)i->secret, (char *)conn.args.secret);
   queue_free (&conn.msg_queue);
 }
 
@@ -150,7 +150,7 @@ START_TEST (test_enq_add_region)
   int err;
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
   memif_connection_t conn;
   conn.msg_queue = NULL;
@@ -186,7 +186,7 @@ START_TEST (test_enq_add_ring)
   int err;
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   memif_connection_t conn;
@@ -227,7 +227,7 @@ START_TEST (test_enq_connect)
   int err;
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
   memif_connection_t conn;
   conn.msg_queue = NULL;
@@ -242,7 +242,7 @@ START_TEST (test_enq_connect)
 
   ck_assert_uint_eq (e->msg.type, MEMIF_MSG_TYPE_CONNECT);
   ck_assert_int_eq (e->fd, -1);
-  ck_assert_str_eq (e->msg.connect.if_name, TEST_IF_NAME);
+  ck_assert_str_eq ((char *)e->msg.connect.if_name, TEST_IF_NAME);
   queue_free (&conn.msg_queue);
 }
 
@@ -252,7 +252,7 @@ START_TEST (test_enq_connected)
   int err;
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
   memif_connection_t conn;
   conn.msg_queue = NULL;
@@ -267,7 +267,7 @@ START_TEST (test_enq_connected)
 
   ck_assert_uint_eq (e->msg.type, MEMIF_MSG_TYPE_CONNECTED);
   ck_assert_int_eq (e->fd, -1);
-  ck_assert_str_eq (e->msg.connect.if_name, TEST_IF_NAME);
+  ck_assert_str_eq ((char *)e->msg.connect.if_name, TEST_IF_NAME);
   queue_free (&conn.msg_queue);
 }
 
@@ -293,7 +293,7 @@ START_TEST (test_send_hello)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   if ((err = memif_msg_send_hello (conn.fd)) != MEMIF_ERR_SUCCESS)
@@ -311,7 +311,7 @@ START_TEST (test_send_disconnect)
   /* only possible fail if memif_msg_send fails...  */
   /* obsolete without socket */
   if ((err =
-       memif_msg_send_disconnect (conn.fd, "unit_test_dc",
+       memif_msg_send_disconnect (conn.fd, (uint8_t *)"unit_test_dc",
 				  0)) != MEMIF_ERR_SUCCESS)
     ck_assert_msg (err == MEMIF_ERR_BAD_FD, "err code: %u, err msg: %s", err,
 		   memif_strerror (err));
@@ -346,7 +346,7 @@ START_TEST (test_recv_hello)
   ck_assert_uint_eq (conn.run_args.num_s2m_rings, 2);
   ck_assert_uint_eq (conn.run_args.num_m2s_rings, 2);
   ck_assert_uint_eq (conn.run_args.log2_ring_size, 10);
-  ck_assert_str_eq (conn.remote_name, TEST_IF_NAME);
+  ck_assert_str_eq ((char *)conn.remote_name, TEST_IF_NAME);
 
   h->max_version = 9;
   if ((err = memif_msg_receive_hello (&conn, &msg)) != MEMIF_ERR_SUCCESS)
@@ -391,7 +391,7 @@ START_TEST (test_recv_init)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   if ((err = memif_msg_receive_init (&ms, -1, &msg)) != MEMIF_ERR_SUCCESS)
@@ -454,7 +454,7 @@ START_TEST (test_recv_add_region)
 
   ck_assert_uint_eq (mr->fd, fd);
   ck_assert_uint_eq (mr->region_size, 2048);
-  ck_assert_ptr_eq (mr->shm, NULL);
+  ck_assert_ptr_eq (mr->addr, NULL);
 }
 
 END_TEST
@@ -507,7 +507,7 @@ START_TEST (test_recv_connect)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   if ((err = memif_create (&c, &args, on_connect,
@@ -535,7 +535,7 @@ START_TEST (test_recv_connect)
   if ((err = memif_msg_receive_connect (conn, &msg)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
-  ck_assert_str_eq (conn->remote_if_name, TEST_IF_NAME);
+  ck_assert_str_eq ((char *)conn->remote_if_name, TEST_IF_NAME);
 }
 
 END_TEST
@@ -552,7 +552,7 @@ START_TEST (test_recv_connected)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   if ((err = memif_create (&c, &args, on_connect,
@@ -580,7 +580,7 @@ START_TEST (test_recv_connected)
   if ((err = memif_msg_receive_connected (conn, &msg)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
-  ck_assert_str_eq (conn->remote_if_name, TEST_IF_NAME);
+  ck_assert_str_eq ((char *)conn->remote_if_name, TEST_IF_NAME);
 }
 
 END_TEST
@@ -597,7 +597,7 @@ START_TEST (test_recv_disconnect)
     ck_assert_msg (err == MEMIF_ERR_DISCONNECT,
 		   "err code: %u, err msg: %s", err, memif_strerror (err));
 
-  ck_assert_str_eq (conn.remote_disconnect_string, "unit_test_dc");
+  ck_assert_str_eq ((char *)conn.remote_disconnect_string, "unit_test_dc");
 }
 
 END_TEST Suite *
