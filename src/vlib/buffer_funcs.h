@@ -1244,7 +1244,8 @@ vlib_buffer_chain_compress (vlib_main_t * vm,
 			first->current_length,
 			vlib_buffer_get_current (second), amount_to_copy);
       first->current_length += amount_to_copy;
-      vlib_buffer_advance (second, amount_to_copy);
+      second->current_data += amount_to_copy;
+      second->current_length -= amount_to_copy;
       if (first->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
 	{
 	  first->total_length_not_including_first_buffer -= amount_to_copy;
