@@ -18,6 +18,8 @@
 #ifndef _MEMIF_H_
 #define _MEMIF_H_
 
+#include <stdint.h>
+
 #ifndef MEMIF_CACHELINE_SIZE
 #define MEMIF_CACHELINE_SIZE 64
 #endif
