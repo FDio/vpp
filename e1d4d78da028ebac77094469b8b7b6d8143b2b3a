@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "d869a5c8_f214e648",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2018-12-11T18:52:15Z",
+      "side": 1,
+      "message": "Yes, let\u0027s revisit enum\u0027s when we are on Python 3.",
+      "parentUuid": "689e1de1_20fb6138",
+      "range": {
+        "startLine": 29,
+        "startChar": 38,
+        "endLine": 29,
+        "endChar": 50
+      },
+      "revId": "e1d4d78da028ebac77094469b8b7b6d8143b2b3a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "def4e98f_b52f3159",
         "filename": "src/vpp-api/python/vpp_papi/vpp_serializer.py",
         "patchSetId": 1
