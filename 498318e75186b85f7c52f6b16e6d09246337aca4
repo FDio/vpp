@@ -16,6 +16,24 @@
       "revId": "498318e75186b85f7c52f6b16e6d09246337aca4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baf6c7f0_1d9bc5c8",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-11T11:28:24Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "56b55f28_392fc9c2",
+      "revId": "498318e75186b85f7c52f6b16e6d09246337aca4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
