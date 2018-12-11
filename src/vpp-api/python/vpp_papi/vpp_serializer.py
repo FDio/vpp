@@ -17,7 +17,10 @@ import struct
 import collections
 from enum import IntEnum
 import logging
-from .vpp_format import VPPFormat
+from . import vpp_format
+import ipaddress
+import sys
+import socket
 
 #
 # Set log-level in application by doing e.g.:
@@ -25,6 +28,32 @@ from .vpp_format import VPPFormat
 # logger.setLevel(logging.DEBUG)
 #
 logger = logging.getLogger(__name__)
+
+if sys.version[0] == '2':
+    check = lambda d: type(d) is dict
+else:
+    check = lambda d: type(d) is dict or type(d) is bytes
+
+def conversion_required(data, field_type):
+    if check(data):
+        return False
+    try:
+        if type(data).__name__ in vpp_format.conversion_table[field_type]:
+            return True
+    except KeyError:
+        return False
+
+
+def conversion_packer(data, field_type):
+    t = type(data).__name__
+    return types[field_type].pack(vpp_format.
+                                  conversion_table[field_type][t](data))
+
+
+def conversion_unpacker(data, field_type):
+    if field_type not in vpp_format.conversion_unpacker_table:
+        return data
+    return vpp_format.conversion_unpacker_table[field_type](data)
 
 
 class BaseTypes(object):
@@ -51,7 +80,7 @@ class BaseTypes(object):
             data = 0
         return self.packer.pack(data)
 
-    def unpack(self, data, offset, result=None):
+    def unpack(self, data, offset, result=None, ntc=False):
         return self.packer.unpack_from(data, offset)[0], self.packer.size
 
 
@@ -79,19 +108,21 @@ class FixedList_u8(object):
         self.packer = BaseTypes(field_type, num)
         self.size = self.packer.size
 
-    def pack(self, list, kwargs=None):
+    def pack(self, data, kwargs=None):
         """Packs a fixed length bytestring. Left-pads with zeros
         if input data is too short."""
-        if not list:
+        if not data:
             return b'\x00' * self.size
-        if len(list) > self.num:
+
+        if len(data) > self.num:
             raise VPPSerializerValueError(
                 'Fixed list length error for "{}", got: {}'
                 ' expected: {}'
-                .format(self.name, len(list), self.num))
-        return self.packer.pack(list)
+                .format(self.name, len(data), self.num))
 
-    def unpack(self, data, offset=0, result=None):
+        return self.packer.pack(data)
+
+    def unpack(self, data, offset=0, result=None, ntc=False):
         if len(data[offset:]) < self.num:
             raise VPPSerializerValueError(
                 'Invalid array length for "{}" got {}'
@@ -105,6 +136,8 @@ class FixedList(object):
         self.num = num
         self.packer = types[field_type]
         self.size = self.packer.size * num
+        self.name = name
+        self.field_type = field_type
 
     def pack(self, list, kwargs):
         if len(list) != self.num:
@@ -116,12 +149,12 @@ class FixedList(object):
             b += self.packer.pack(e)
         return b
 
-    def unpack(self, data, offset=0, result=None):
+    def unpack(self, data, offset=0, result=None, ntc=False):
         # Return a list of arguments
         result = []
         total = 0
         for e in range(self.num):
-            x, size = self.packer.unpack(data, offset)
+            x, size = self.packer.unpack(data, offset, ntc=ntc)
             result.append(x)
             offset += size
             total += size
@@ -153,7 +186,7 @@ class VLAList(object):
             b += self.packer.pack(e)
         return b
 
-    def unpack(self, data, offset=0, result=None):
+    def unpack(self, data, offset=0, result=None, ntc=False):
         # Return a list of arguments
         total = 0
 
@@ -162,11 +195,11 @@ class VLAList(object):
             if result[self.index] == 0:
                 return b'', 0
             p = BaseTypes('u8', result[self.index])
-            return p.unpack(data, offset)
+            return p.unpack(data, offset, ntc=ntc)
 
         r = []
         for e in range(result[self.index]):
-            x, size = self.packer.unpack(data, offset)
+            x, size = self.packer.unpack(data, offset, ntc=ntc)
             r.append(x)
             offset += size
             total += size
@@ -187,7 +220,7 @@ class VLAList_legacy():
             b += self.packer.pack(e)
         return b
 
-    def unpack(self, data, offset=0, result=None):
+    def unpack(self, data, offset=0, result=None, ntc=False):
         total = 0
         # Return a list of arguments
         if (len(data) - offset) % self.packer.size:
@@ -196,7 +229,7 @@ class VLAList_legacy():
         elements = int((len(data) - offset) / self.packer.size)
         r = []
         for e in range(elements):
-            x, size = self.packer.unpack(data, offset)
+            x, size = self.packer.unpack(data, offset, ntc=ntc)
             r.append(x)
             offset += self.packer.size
             total += size
@@ -227,7 +260,7 @@ class VPPEnumType(object):
     def pack(self, data, kwargs=None):
         return types['u32'].pack(data)
 
-    def unpack(self, data, offset=0, result=None):
+    def unpack(self, data, offset=0, result=None, ntc=False):
         x, size = types['u32'].unpack(data, offset)
         return self.enum(x), size
 
@@ -272,31 +305,53 @@ class VPPUnionType(object):
         r[:len(b)] = b
         return r
 
-    def unpack(self, data, offset=0, result=None):
+    def unpack(self, data, offset=0, result=None, ntc=False):
         r = []
         maxsize = 0
         for k, p in self.packers.items():
-            x, size = p.unpack(data, offset)
+            x, size = p.unpack(data, offset, ntc=ntc)
             if size > maxsize:
                 maxsize = size
             r.append(x)
         return self.tuple._make(r), maxsize
 
 
-def VPPTypeAlias(name, msgdef):
-    t = vpp_get_type(msgdef['type'])
-    if not t:
-        raise ValueError()
-    if 'length' in msgdef:
-        if msgdef['length'] == 0:
+class VPPTypeAlias(object):
+    def __init__(self, name, msgdef):
+        self.name = name
+        t = vpp_get_type(msgdef['type'])
+        if not t:
             raise ValueError()
-        if msgdef['type'] == 'u8':
-            types[name] = FixedList_u8(name, msgdef['type'],
-                                       msgdef['length'])
+        if 'length' in msgdef:
+            if msgdef['length'] == 0:
+                raise ValueError()
+            if msgdef['type'] == 'u8':
+                self.packer = FixedList_u8(name, msgdef['type'],
+                                           msgdef['length'])
+                self.size = self.packer.size
+            else:
+                self.packer = FixedList(name, msgdef['type'], msgdef['length'])
         else:
-            types[name] = FixedList(name, msgdef['type'], msgdef['length'])
-    else:
-        types[name] = t
+            self.packer = t
+            self.size = t.size
+
+        types[name] = self
+
+    def pack(self, data, kwargs=None):
+        if data and conversion_required(data, self.name):
+            try:
+                return conversion_packer(data, self.name)
+            # Python 2 and 3 raises different exceptions from inet_pton
+            except(OSError, socket.error, TypeError):
+                pass
+
+        return self.packer.pack(data, kwargs)
+
+    def unpack(self, data, offset=0, result=None, ntc=False):
+        t, size = self.packer.unpack(data, offset, result, ntc=ntc)
+        if not ntc:
+            return conversion_unpacker(t, self.name), size
+        return t, size
 
 
 class VPPType(object):
@@ -352,9 +407,12 @@ class VPPType(object):
         if not kwargs:
             kwargs = data
         b = bytes()
-        for i, a in enumerate(self.fields):
 
-            # Try one of the format functions
+        # Try one of the format functions
+        if data and conversion_required(data, self.name):
+            return conversion_packer(data, self.name)
+
+        for i, a in enumerate(self.fields):
             if data and type(data) is not dict and a not in data:
                 raise VPPSerializerValueError(
                     "Invalid argument: {} expected {}.{}".
@@ -367,33 +425,27 @@ class VPPType(object):
             else:
                 arg = data[a]
                 kwarg = kwargs[a] if a in kwargs else None
-
             if isinstance(self.packers[i], VPPType):
-                try:
-                    b += self.packers[i].pack(arg, kwarg)
-                except ValueError:
-                    # Invalid argument, can we convert it?
-                    arg = VPPFormat.format(self.packers[i].name, data[a])
-                    data[a] = arg
-                    kwarg = arg
-                    b += self.packers[i].pack(arg, kwarg)
+                b += self.packers[i].pack(arg, kwarg)
             else:
                 b += self.packers[i].pack(arg, kwargs)
 
         return b
 
-    def unpack(self, data, offset=0, result=None):
+    def unpack(self, data, offset=0, result=None, ntc=False):
         # Return a list of arguments
         result = []
         total = 0
         for p in self.packers:
-            x, size = p.unpack(data, offset, result)
+            x, size = p.unpack(data, offset, result, ntc)
             if type(x) is tuple and len(x) == 1:
                 x = x[0]
             result.append(x)
             offset += size
             total += size
         t = self.tuple._make(result)
+        if not ntc:
+            t = conversion_unpacker(t, self.name)
         return t, total
 
 

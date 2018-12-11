@@ -6,7 +6,7 @@ import socket
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import *
 from vpp_ip_route import VppIpRoute, VppRoutePath
-
+from ipaddress import IPv6Network, IPv4Network
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP, ICMP, TCP, fragment
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
@@ -76,9 +76,9 @@ class TestMAP(VppTestCase):
         #
         # Add a domain that maps from pg0 to pg1
         #
-        map_dst = VppIp6Prefix(map_br_pfx, map_br_pfx_len).encode()
-        map_src = VppIp6Prefix("3000::1", 128).encode()
-        client_pfx = VppIp4Prefix("192.168.0.0", 16).encode()
+        map_dst = '{}/{}'.format(map_br_pfx, map_br_pfx_len)
+        map_src = '3000::1/128'
+        client_pfx = '192.168.0.0/16'
         self.vapi.map_add_domain(map_dst, map_src, client_pfx)
 
         #
@@ -168,10 +168,10 @@ class TestMAP(VppTestCase):
         #
         # Add a domain that maps from pg0 to pg1
         #
-        map_dst = VppIp6Prefix("2001:db8::", 32).encode()
-        map_src = VppIp6Prefix("1234:5678:90ab:cdef::", 64).encode()
-        ip4_pfx = VppIp4Prefix("192.168.0.0", 24).encode()
-        self.vapi.map_add_domain(map_dst, map_src, ip4_pfx, 16, 6, 4, 1)
+        self.vapi.map_add_domain('2001:db8::/32',
+                                 '1234:5678:90ab:cdef::/64',
+                                 '192.168.0.0/24',
+                                 16, 6, 4, 1)
 
         # Enable MAP-T on interfaces.
 

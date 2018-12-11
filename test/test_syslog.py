@@ -94,10 +94,10 @@ class TestSyslog(VppTestCase):
         """ Syslog Protocol test """
         self.vapi.syslog_set_sender(self.pg0.remote_ip4n, self.pg0.local_ip4n)
         config = self.vapi.syslog_get_sender()
-        self.assertEqual(config.collector_address,
-                         self.pg0.remote_ip4n)
+        self.assertEqual(str(config.collector_address),
+                         self.pg0.remote_ip4)
         self.assertEqual(config.collector_port, 514)
-        self.assertEqual(config.src_address, self.pg0.local_ip4n)
+        self.assertEqual(str(config.src_address), self.pg0.local_ip4)
         self.assertEqual(config.vrf_id, 0)
         self.assertEqual(config.max_msg_size, 480)
 
