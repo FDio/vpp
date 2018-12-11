@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5e5f4019_386f0b32",
+        "filename": "src/vnet/ipsec/ipsec_if_in.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-12-11T12:41:01Z",
+      "side": 1,
+      "message": "let\u0027s store the size required in the first branch and skip the branch here",
+      "revId": "a86c543c62f736312fbcb6fb3663b91979800324",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
