@@ -1156,7 +1156,8 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     vxlan_tunnel vxt(ep.src, ep.dst, ep.vni);
 
     HW::item<handle_t> hw_vxt(3, rc_t::OK);
-    ADD_EXPECT(vxlan_tunnel_cmds::create_cmd(hw_vxt, "don't-care", ep));
+    ADD_EXPECT(vxlan_tunnel_cmds::create_cmd(hw_vxt, "don't-care", ep,
+                                             handle_t::INVALID));
 
     TRY_CHECK_RC(OM::write(franz, vxt));
 

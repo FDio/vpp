@@ -23,9 +23,11 @@ namespace vxlan_gbp_tunnel_cmds {
 
 create_cmd::create_cmd(HW::item<handle_t>& item,
                        const std::string& name,
-                       const vxlan_tunnel::endpoint_t& ep)
+                       const vxlan_tunnel::endpoint_t& ep,
+                       handle_t mcast_itf)
   : interface::create_cmd<vapi::Vxlan_gbp_tunnel_add_del>(item, name)
   , m_ep(ep)
+  , m_mcast_itf(mcast_itf)
 {
 }
 
@@ -46,7 +48,7 @@ create_cmd::issue(connection& con)
 
   to_api(m_ep.src, payload.tunnel.src);
   to_api(m_ep.src, payload.tunnel.dst);
-  payload.tunnel.mcast_sw_if_index = ~0;
+  payload.tunnel.mcast_sw_if_index = m_mcast_itf.value();
   payload.tunnel.encap_table_id = 0;
   payload.tunnel.vni = m_ep.vni;
 

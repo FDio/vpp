@@ -37,7 +37,8 @@ public:
    */
   create_cmd(HW::item<handle_t>& item,
              const std::string& name,
-             const vxlan_tunnel::endpoint_t& ep);
+             const vxlan_tunnel::endpoint_t& ep,
+             handle_t mcast_itf);
 
   /**
    * Issue the command to VPP/HW
@@ -58,6 +59,7 @@ private:
    * Enpoint values of the tunnel to be created
    */
   const vxlan_tunnel::endpoint_t m_ep;
+  handle_t m_mcast_itf;
 };
 
 /**
