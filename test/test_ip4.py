@@ -14,7 +14,7 @@ from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsTable, VppIpTable, VppIpAddress
+    VppMplsTable, VppIpTable
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 
 
@@ -1123,7 +1123,7 @@ class TestIPPunt(VppTestCase):
         #
         # Configure a punt redirect via pg1.
         #
-        nh_addr = VppIpAddress(self.pg1.remote_ip4).encode()
+        nh_addr = self.pg1.remote_ip4
         self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
                                    self.pg1.sw_if_index,
                                    nh_addr)
@@ -1187,7 +1187,7 @@ class TestIPPunt(VppTestCase):
         #
         # Configure a punt redirects
         #
-        nh_address = VppIpAddress(self.pg3.remote_ip4).encode()
+        nh_address = self.pg3.remote_ip4
         self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
                                    self.pg3.sw_if_index,
                                    nh_address)
@@ -1196,7 +1196,7 @@ class TestIPPunt(VppTestCase):
                                    nh_address)
         self.vapi.ip_punt_redirect(self.pg2.sw_if_index,
                                    self.pg3.sw_if_index,
-                                   VppIpAddress('0.0.0.0').encode())
+                                   '0.0.0.0')
 
         #
         # Dump pg0 punt redirects
@@ -1212,8 +1212,8 @@ class TestIPPunt(VppTestCase):
         self.assertEqual(len(punts), 3)
         for p in punts:
             self.assertEqual(p.punt.tx_sw_if_index, self.pg3.sw_if_index)
-        self.assertNotEqual(punts[1].punt.nh.un.ip4, self.pg3.remote_ip4)
-        self.assertEqual(punts[2].punt.nh.un.ip4, '\x00'*4)
+        self.assertNotEqual(punts[1].punt.nh, self.pg3.remote_ip4)
+        self.assertEqual(str(punts[2].punt.nh), '0.0.0.0')
 
 
 class TestIPDeag(VppTestCase):

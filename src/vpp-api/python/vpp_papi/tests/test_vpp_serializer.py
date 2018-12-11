@@ -4,10 +4,10 @@ import unittest
 from vpp_papi.vpp_serializer import VPPType, VPPEnumType
 from vpp_papi.vpp_serializer import VPPUnionType, VPPMessage
 from vpp_papi.vpp_serializer import VPPTypeAlias
-from vpp_papi.vpp_format import VPPFormat
 from socket import inet_pton, AF_INET, AF_INET6
 import logging
 import sys
+from ipaddress import *
 
 
 class TestAddType(unittest.TestCase):
@@ -27,8 +27,10 @@ class TestAddType(unittest.TestCase):
         af = VPPEnumType('vl_api_address_family_t', [["ADDRESS_IP4", 0],
                                                      ["ADDRESS_IP6", 1],
                                                      {"enumtype": "u32"}])
-        ip4 = VPPType('vl_api_ip4_address_t', [['u8', 'address', 4]])
-        ip6 = VPPType('vl_api_ip6_address_t', [['u8', 'address', 16]])
+        ip4 = VPPTypeAlias('vl_api_ip4_address_t', {'type': 'u8',
+                                                    'length': 4})
+        ip6 = VPPTypeAlias('vl_api_ip6_address_t', {'type': 'u8',
+                                                    'length': 16})
         VPPUnionType('vl_api_address_union_t',
                      [["vl_api_ip4_address_t", "ip4"],
                       ["vl_api_ip6_address_t", "ip6"]])
@@ -47,41 +49,34 @@ class TestAddType(unittest.TestCase):
                                                  'vla_address'],
                                                 ['u8', 'is_cool']])
 
-        b = ip4.pack({'address': inet_pton(AF_INET, '1.1.1.1')})
+        b = ip4.pack(inet_pton(AF_INET, '1.1.1.1'))
         self.assertEqual(len(b), 4)
         nt, size = ip4.unpack(b)
-        self.assertEqual(nt.address, inet_pton(AF_INET, '1.1.1.1'))
+        self.assertEqual(str(nt), '1.1.1.1')
 
-        b = ip6.pack({'address': inet_pton(AF_INET6, '1::1')})
+        b = ip6.pack(inet_pton(AF_INET6, '1::1'))
         self.assertEqual(len(b), 16)
 
         b = address.pack({'af': af.ADDRESS_IP4,
                           'un':
-                          {'ip4':
-                           {'address': inet_pton(AF_INET, '2.2.2.2')}}})
+                          {'ip4': inet_pton(AF_INET, '2.2.2.2')}})
         self.assertEqual(len(b), 20)
 
         nt, size = address.unpack(b)
-        self.assertEqual(nt.af, af.ADDRESS_IP4)
-        self.assertEqual(nt.un.ip4.address,
-                         inet_pton(AF_INET, '2.2.2.2'))
-        self.assertEqual(nt.un.ip6.address,
-                         inet_pton(AF_INET6, '0202:0202::'))
+        self.assertEqual(str(nt), '2.2.2.2')
 
         # List of addresses
         address_list = []
         for i in range(4):
             address_list.append({'af': af.ADDRESS_IP4,
                                  'un':
-                                 {'ip4':
-                                  {'address': inet_pton(AF_INET, '2.2.2.2')}}})
+                                 {'ip4': inet_pton(AF_INET, '2.2.2.2')}})
         b = va_address_list.pack({'count': len(address_list),
                                   'addresses': address_list})
         self.assertEqual(len(b), 81)
 
         nt, size = va_address_list.unpack(b)
-        self.assertEqual(nt.addresses[0].un.ip4.address,
-                         inet_pton(AF_INET, '2.2.2.2'))
+        self.assertEqual(str(nt.addresses[0]), '2.2.2.2')
 
         b = message_with_va_address_list.pack({'vla_address':
                                                {'count': len(address_list),
@@ -97,6 +92,12 @@ class TestAddType(unittest.TestCase):
                                                      {"enumtype": "u32"}])
         ip4 = VPPTypeAlias('vl_api_ip4_address_t', {'type': 'u8',
                                                     'length': 4})
+        b = ip4.pack('1.1.1.1')
+        self.assertEqual(len(b), 4)
+        nt, size = ip4.unpack(b)
+
+        self.assertEqual(str(nt), '1.1.1.1')
+
         ip6 = VPPTypeAlias('vl_api_ip6_address_t', {'type': 'u8',
                                                     'length': 16})
         VPPUnionType('vl_api_address_union_t',
@@ -108,44 +109,65 @@ class TestAddType(unittest.TestCase):
                            ['vl_api_address_union_t', 'un']])
 
         prefix = VPPType('vl_api_prefix_t',
-                          [['vl_api_address_t', 'address'],
-                           ['u8', 'address_length']])
+                         [['vl_api_address_t', 'address'],
+                          ['u8', 'address_length']])
         message = VPPMessage('svs',
-                          [['vl_api_prefix_t', 'prefix']])
+                             [['vl_api_prefix_t', 'prefix']])
         message_addr = VPPMessage('svs_address',
                                   [['vl_api_address_t', 'address']])
 
         b = message_addr.pack({'address': "1::1"})
         self.assertEqual(len(b), 20)
         nt, size = message_addr.unpack(b)
-        self.assertEqual("1::1", VPPFormat.unformat(nt.address))
+        self.assertEqual("1::1", str(nt.address))
         b = message_addr.pack({'address': "1.1.1.1"})
         self.assertEqual(len(b), 20)
         nt, size = message_addr.unpack(b)
-        self.assertEqual("1.1.1.1", VPPFormat.unformat(nt.address))
+        self.assertEqual("1.1.1.1", str(nt.address))
 
-        b = message.pack({'prefix': "1.1.1.1/24"})
+        b = message.pack({'prefix': "1.1.1.0/24"})
         self.assertEqual(len(b), 21)
         nt, size = message.unpack(b)
-        self.assertEqual("1.1.1.1/24", VPPFormat.unformat(nt.prefix))
+        self.assertEqual("1.1.1.0/24", str(nt.prefix))
 
         message_array = VPPMessage('address_array',
-                                   [['vl_api_ip4_address_t',
+                                   [['vl_api_ip6_address_t',
                                      'addresses', 2]])
-        b = message_array.pack({'addresses': ["1::1", "2::2"]})
-        self.assertEqual(len(b), 8)
-
+        b = message_array.pack({'addresses': [IPv6Address(u"1::1"), "2::2"]})
+        self.assertEqual(len(b), 32)
         message_array_vla = VPPMessage('address_array_vla',
                                        [['u32', 'num'],
-                                        ['vl_api_ip4_address_t',
+                                        ['vl_api_ip6_address_t',
                                          'addresses', 0, 'num']])
         b = message_array_vla.pack({'addresses': ["1::1", "2::2"], 'num': 2})
-        self.assertEqual(len(b), 12)
+        self.assertEqual(len(b), 36)
+
+        message_array4 = VPPMessage('address_array4',
+                                    [['vl_api_ip4_address_t',
+                                      'addresses', 2]])
+        b = message_array4.pack({'addresses': ["1.1.1.1", "2.2.2.2"]})
+        self.assertEqual(len(b), 8)
+        b = message_array4.pack({'addresses': [IPv4Address(u"1.1.1.1"),
+                                               "2.2.2.2"]})
+        self.assertEqual(len(b), 8)
+
+        message = VPPMessage('address', [['vl_api_address_t', 'address']])
+        b = message.pack({'address': '1::1'})
+        self.assertEqual(len(b), 20)
+        b = message.pack({'address': '1.1.1.1'})
+        self.assertEqual(len(b), 20)
+        message = VPPMessage('prefix', [['vl_api_prefix_t', 'prefix']])
+        b = message.pack({'prefix': '1::1/130'})
+        self.assertEqual(len(b), 21)
+        b = message.pack({'prefix': IPv6Network(u'1::/119')})
+        self.assertEqual(len(b), 21)
+        b = message.pack({'prefix': IPv4Network(u'1.1.0.0/16')})
+        self.assertEqual(len(b), 21)
 
     def test_zero_vla(self):
         '''Default zero'ed out for VLAs'''
         list = VPPType('vl_api_list_t',
-                         [['u8', 'count', 10]])
+                       [['u8', 'count', 10]])
 
         # Define an embedded VLA type
         valist = VPPType('vl_api_valist_t',
@@ -153,12 +175,12 @@ class TestAddType(unittest.TestCase):
                           ['u8', 'string', 0, 'count']])
         # Define a message
         vamessage = VPPMessage('vamsg',
-                          [['vl_api_valist_t', 'valist'],
-                           ['u8', 'is_something']])
+                               [['vl_api_valist_t', 'valist'],
+                                ['u8', 'is_something']])
 
         message = VPPMessage('msg',
-                          [['vl_api_list_t', 'list'],
-                           ['u8', 'is_something']])
+                             [['vl_api_list_t', 'list'],
+                              ['u8', 'is_something']])
 
         # Pack message without VLA specified
         b = message.pack({'is_something': 1})
