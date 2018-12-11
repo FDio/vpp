@@ -66,7 +66,7 @@ START_TEST (test_init)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   libmemif_main_t *lm = &libmemif_main;
@@ -86,7 +86,7 @@ START_TEST (test_init_epoll)
   int err;
 
   if ((err =
-       memif_init (NULL, TEST_APP_NAME, NULL, NULL)) != MEMIF_ERR_SUCCESS)
+       memif_init (NULL, TEST_APP_NAME, NULL, NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   libmemif_main_t *lm = &libmemif_main;
@@ -113,7 +113,7 @@ START_TEST (test_create)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -177,7 +177,7 @@ START_TEST (test_create_master)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -238,7 +238,7 @@ START_TEST (test_create_mult)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -330,7 +330,7 @@ START_TEST (test_control_fd_handler)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -401,7 +401,7 @@ START_TEST (test_buffer_alloc)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -495,7 +495,7 @@ START_TEST (test_tx_burst)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -600,7 +600,7 @@ START_TEST (test_rx_burst)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -689,7 +689,7 @@ START_TEST (test_get_details)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -766,7 +766,7 @@ START_TEST (test_init_regions_and_queues)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -790,7 +790,7 @@ START_TEST (test_init_regions_and_queues)
   ck_assert_ptr_ne (c->tx_queues, NULL);
   ck_assert_ptr_ne (c->rx_queues, NULL);
 
-  ck_assert_ptr_ne (c->regions->shm, NULL);
+  ck_assert_ptr_ne (c->regions->addr, NULL);
   ck_assert_ptr_ne (c->tx_queues->ring, NULL);
   ck_assert_ptr_ne (c->rx_queues->ring, NULL);
 
@@ -821,7 +821,7 @@ START_TEST (test_connect1)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));
@@ -867,7 +867,7 @@ START_TEST (test_disconnect_internal)
 
   if ((err =
        memif_init (control_fd_update, TEST_APP_NAME, NULL,
-		   NULL)) != MEMIF_ERR_SUCCESS)
+		   NULL, NULL)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   strncpy ((char *) args.interface_name, TEST_IF_NAME, strlen (TEST_IF_NAME));

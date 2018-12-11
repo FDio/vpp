@@ -375,7 +375,6 @@ memif_msg_receive_init (memif_socket_t * ms, int fd, memif_msg_t * msg)
   uint8_t err_string[96];
   memset (err_string, 0, sizeof (char) * 96);
   int err = MEMIF_ERR_SUCCESS;	/* 0 */
-  int err_disc;
   if (i->version != MEMIF_VERSION)
     {
       DBG ("MEMIF_VER_ERR");
