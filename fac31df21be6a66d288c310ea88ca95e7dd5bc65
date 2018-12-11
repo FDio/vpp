@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5bce9d41_2e2ba1e7",
+        "filename": "src/plugins/dpdk/ipsec/ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1044,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2018-12-11T12:53:59Z",
+      "side": 1,
+      "message": "I don\u0027t think this is correct.\nWith the possibility of having multiple plugins providing different ipsec backends, it\u0027s not a good idea to force-select a backend in plugin startup.\n\nWhy can\u0027t you use CLI or API to select the dpdk backend?",
+      "revId": "fac31df21be6a66d288c310ea88ca95e7dd5bc65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
