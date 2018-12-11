@@ -69,6 +69,15 @@ class VppIpAddressUnion():
                        self, other)
             return NotImplemented
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.addr)
+
+    def __repr__(self):
+        return '<%s (addr=%s)>' % (self.__class__.__name__, self.addr)
+
 
 class VppIpAddress():
     def __init__(self, addr):
@@ -110,8 +119,14 @@ class VppIpAddress():
     def __ne__(self, other):
         return not (self == other)
 
+    def __hash__(self):
+        return hash(self.addr)
+
     def __str__(self):
         return self.address
+
+    def __repr__(self):
+        return '<%s (addr=%s)>' % (self.__class__.__name__, self.addr)
 
     @property
     def bytes(self):
@@ -173,6 +188,10 @@ class VppIpPrefix():
     def is_ip6(self):
         return self.addr.is_ip6
 
+    def __repr__(self):
+        return '<%s (addr=%s, length=%s)>' % (
+            self.__class__.__name__, self.addr, self.length)
+
     def __str__(self):
         return "%s/%d" % (self.address, self.length)
 
@@ -188,6 +207,12 @@ class VppIpPrefix():
                 "Comparing VppIpPrefix:%s with incomparable type: %s" %
                 (self, other))
             return NotImplemented
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.addr, self.len,))
 
 
 class VppIpMPrefix():
@@ -217,3 +242,21 @@ class VppIpMPrefix():
                 'grp_address_length': self.len,
             }
         return prefix
+
+    def __repr__(self):
+        return '<%s (saddr=%s, gaddr=%s, len=%s)>' % (
+            self.__class__.__name__, self.saddr, self.gaddr, self.len)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self.saddr, self.gaddr, self.len,) == \
+                   (other.saddr, other.gaddr, other.len)
+        else:
+            raise TypeError('Comparing incomparable types %s and %s.' % (
+                self.__class__.__name__, other.__class__.__name__))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.saddr, self.gaddr, self.len,))
