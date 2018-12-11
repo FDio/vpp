@@ -16,6 +16,24 @@
       "revId": "a86c543c62f736312fbcb6fb3663b91979800324",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d0ba762d_d3f672a0",
+        "filename": "src/vnet/ipsec/ipsec_if_in.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 1492
+      },
+      "writtenOn": "2018-12-11T13:13:08Z",
+      "side": 1,
+      "message": "u8 ip_udp_hdr_size;\n\nif (ip0-\u003eprotocol \u003d\u003d IP_PROTOCOL_UDP)\n{\n  ip_udp_hdr_size \u003d sizeof (ip4_header_t) + sizeof (udp_header_t);\n}\nelse\n{\n  ip_udp_hdr_size \u003d sizeof (ip4_header_t);\n}\n\nesp0 \u003d (esp_header_t *) ((u8 *) ip0 + ip_udp_hdr_size;\n\nvlib_buffer_advance (b0, ip_udp_hdr_size);\n\nHow about the change above? I store header size in ip_udp_hdr_size. If you agree, I will resubmit a new patch.",
+      "parentUuid": "5e5f4019_386f0b32",
+      "revId": "a86c543c62f736312fbcb6fb3663b91979800324",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
