@@ -66,6 +66,9 @@ class VppIpAddressUnion():
 
         return False
 
+    def __repr__(self):
+        return '<%s (addr=%s)>' % (self.__class__.__name__, self.addr)
+
 
 class VppIpAddress():
     def __init__(self, addr):
@@ -106,6 +109,9 @@ class VppIpAddress():
 
     def __str__(self):
         return self.address
+
+    def __repr__(self):
+        return '<%s (addr=%s)>' % (self.__class__.__name__, self.addr)
 
     @property
     def bytes(self):
@@ -176,6 +182,10 @@ class VppIpPrefix():
     def is_ip6(self):
         return self.addr.is_ip6
 
+    def __repr__(self):
+        return '<%s (addr=%s, length=%s)>' % (
+            self.__class__.__name__, self.addr, self.length)
+
     def __str__(self):
         return "%s/%d" % (self.address, self.length)
 
@@ -200,6 +210,10 @@ class VppIp6Prefix():
     def encode(self):
         return {'prefix': self.ip_prefix.packed,
                 'len': self.prefixlen}
+
+    def __repr__(self):
+        return '<%s (prefix=%s, prefixlen=%s>' % (
+            self.__class__.__name__, str(self.ip_prefix), self.prefixlen)
 
 
 class VppIp4Prefix(VppIp6Prefix):
@@ -231,3 +245,7 @@ class VppIpMPrefix():
                 'grp_address_length': self.len,
             }
         return prefix
+
+    def __repr__(self):
+        return '<%s (saddr=%s, gaddr=%s, len=%s)>' % (
+            self.__class__.__name__, self.saddr, self.gaddr, self.len)
