@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "753ed3c0_eae6d55c",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-11T16:52:51Z",
+      "side": 1,
+      "message": "why not *this rather than name() ?",
+      "revId": "ebd28540842708629b1d0a98c101fc4a3907f3d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a0e9f639_63a280a9",
+        "filename": "extras/vom/vom/interface.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 496,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-11T16:52:51Z",
+      "side": 1,
+      "message": "m_listener \u003d NULL;",
+      "revId": "ebd28540842708629b1d0a98c101fc4a3907f3d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
