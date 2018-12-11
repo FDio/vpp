@@ -16,6 +16,24 @@
       "revId": "d0457858764c7889d6100dd187db301008a54ac5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e6cd737a_47bd1255",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2018-12-11T09:24:16Z",
+      "side": 1,
+      "message": "Thanks a lot for the catch! I uploaded the fixed and rebased version.",
+      "parentUuid": "da62cf7f_2295c251",
+      "revId": "d0457858764c7889d6100dd187db301008a54ac5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
