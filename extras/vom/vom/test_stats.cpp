@@ -5,12 +5,24 @@
 #include <vom/tap_interface.hpp>
 #include <vom/stat_reader.hpp>
 
+class listener : public VOM::interface::stat_listener
+{
+public:
+  listener() {}
+  ~listener() {}
+  void handle_interface_stat(const std::string &name, const VOM::interface::stats_t& stats)
+  {
+    std::cout << name << " " << stats;
+  }
+};
+
 /**
  * Run VPP on another terminal before running vom_stats_test
  */
 int main()
 {
   uint8_t i = 5;
+  listener *listen = new listener();
 
   VOM::HW::init(new VOM::HW::cmd_q());
   VOM::OM::init();
@@ -49,9 +61,9 @@ int main()
       std::cout << "Interface #3 index is " << intf2->handle().value() << std::endl;
     }
 
-  intf->enable_stats();
-  intf1->enable_stats();
-  intf2->enable_stats();
+  intf->enable_stats(listen);
+  intf1->enable_stats(listen);
+  intf2->enable_stats(listen);
 
   while (i--)
     {
@@ -62,8 +74,6 @@ int main()
       if (i == 2)
         intf->disable_stats();
  
-      std::cout << intf->get_stats() << intf1->get_stats()
-                << intf2->get_stats();
     }
 
   intf1->disable_stats();
@@ -75,6 +85,7 @@ int main()
 
   VOM::OM::remove("__TAP__");
 
+  delete listen;
   sleep(2);
   VOM::HW::disconnect();
 

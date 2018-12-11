@@ -214,7 +214,7 @@ interface::replay()
     if (stats_type_t::DETAILED == m_stats_type) {
       m_stats_type.set(rc_t::NOOP);
     }
-    enable_stats();
+    enable_stats(m_listener);
   }
 
   if (m_table_id && (m_table_id.data() != route::DEFAULT_TABLE)) {
@@ -446,6 +446,12 @@ interface::get_stats(void) const
   return m_stats;
 }
 
+void
+interface::publish_stats()
+{
+  m_listener->handle_interface_stat(name(), m_stats);
+}
+
 std::ostream&
 operator<<(std::ostream& os, const interface::stats_t& stats)
 {
@@ -471,15 +477,16 @@ operator<<(std::ostream& os, const interface::stats_t& stats)
 }
 
 void
-interface::enable_stats_i()
+interface::enable_stats_i(stat_listener *el)
 {
   stat_reader::registers(*this);
+  m_listener = el;
 }
 
 void
-interface::enable_stats()
+interface::enable_stats(stat_listener * el)
 {
-  singular()->enable_stats_i();
+  singular()->enable_stats_i(el);
   m_stats_enable = 1;
 }
 

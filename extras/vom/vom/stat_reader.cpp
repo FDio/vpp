@@ -89,8 +89,7 @@ stat_reader::read()
             count.bytes +=
               sde.get_stat_segment_combined_counter_data()[k][i].bytes;
           }
-          handle_t hdl(i);
-          std::shared_ptr<interface> itf = interface::find(hdl);
+          std::shared_ptr<interface> itf = interface::find(i);
           if (itf)
             itf->set(count, name);
         }
@@ -98,6 +97,12 @@ stat_reader::read()
 
       default:;
     }
+  }
+
+  for (auto& i : m_stat_itf_indexes) {
+    std::shared_ptr<interface> itf = interface::find(i);
+    if (itf)
+      itf->publish_stats();
   }
 }
 

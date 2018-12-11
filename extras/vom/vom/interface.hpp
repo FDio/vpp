@@ -461,11 +461,13 @@ public:
      */
     stat_listener();
 
+    virtual ~stat_listener() = default;
+
     /**
      * Virtual function called on the listener when the command has data
      * ready to process
      */
-    virtual void handle_interface_stat() = 0;
+    virtual void handle_interface_stat(const std::string &, const interface::stats_t&) = 0;
 
     /**
      * Return the HW::item representing the status
@@ -497,7 +499,7 @@ public:
   /**
    * Enable stats for this interface
    */
-  void enable_stats();
+  void enable_stats(stat_listener* el);
 
   /**
    * Disable stats for this interface
@@ -608,6 +610,11 @@ private:
   friend stat_reader;
 
   /**
+   * publish stats
+   */
+  void publish_stats();
+
+  /**
    * Set the interface stat
    */
   void set(counter_t count, const std::string& stat_type);
@@ -615,7 +622,7 @@ private:
   /**
    * enable the interface stats in the singular instance
    */
-  void enable_stats_i();
+  void enable_stats_i(stat_listener* el);
 
   /**
    * disable the interface stats in the singular instance
@@ -687,7 +694,7 @@ private:
   /**
    * reference to stat listener
    */
-  stat_listener& m_listener;
+  stat_listener* m_listener;
 
   /**
    * Operational state of the interface
