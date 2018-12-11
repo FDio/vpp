@@ -16,6 +16,24 @@
       "revId": "fac31df21be6a66d288c310ea88ca95e7dd5bc65",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fe2db6f_32d9a13a",
+        "filename": "src/plugins/dpdk/ipsec/ipsec.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1044,
+      "author": {
+        "id": 1492
+      },
+      "writtenOn": "2018-12-11T13:20:01Z",
+      "side": 1,
+      "message": "What you said is very helpful for me.The user should has option to select backend plugin. In old version, the VPP just need to enable QAT VF and bind to DPDK, then VPP will automatically select QAT as the backend.\n\nSo is there any exiting CLI or API for user selecting?",
+      "parentUuid": "5bce9d41_2e2ba1e7",
+      "revId": "fac31df21be6a66d288c310ea88ca95e7dd5bc65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
