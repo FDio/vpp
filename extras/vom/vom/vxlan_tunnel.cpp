@@ -91,6 +91,21 @@ vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
               interface::admin_state_t::UP)
   , m_tep(src, dst, vni)
   , m_mode(mode)
+  , m_mcast_itf()
+{
+}
+
+vxlan_tunnel::vxlan_tunnel(const boost::asio::ip::address& src,
+                           const boost::asio::ip::address& dst,
+                           uint32_t vni,
+                           const interface& mcast_itf,
+                           const mode_t& mode)
+  : interface(mk_name(src, dst, mode, vni),
+              interface::type_t::VXLAN,
+              interface::admin_state_t::UP)
+  , m_tep(src, dst, vni)
+  , m_mode(mode)
+  , m_mcast_itf(mcast_itf.singular())
 {
 }
 
@@ -130,9 +145,13 @@ vxlan_tunnel::replay()
 {
   if (m_hdl) {
     if (mode_t::STANDARD == m_mode)
-      HW::enqueue(new vxlan_tunnel_cmds::create_cmd(m_hdl, name(), m_tep));
+      HW::enqueue(new vxlan_tunnel_cmds::create_cmd(
+        m_hdl, name(), m_tep,
+        (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
     else if (mode_t::GBP == m_mode)
-      HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(m_hdl, name(), m_tep));
+      HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(
+        m_hdl, name(), m_tep,
+        (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
   }
 }
 
@@ -160,9 +179,13 @@ vxlan_tunnel::update(const vxlan_tunnel& desired)
    */
   if (!m_hdl) {
     if (mode_t::STANDARD == m_mode)
-      HW::enqueue(new vxlan_tunnel_cmds::create_cmd(m_hdl, name(), m_tep));
+      HW::enqueue(new vxlan_tunnel_cmds::create_cmd(
+        m_hdl, name(), m_tep,
+        (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
     else if (mode_t::GBP == m_mode)
-      HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(m_hdl, name(), m_tep));
+      HW::enqueue(new vxlan_gbp_tunnel_cmds::create_cmd(
+        m_hdl, name(), m_tep,
+        (m_mcast_itf ? m_mcast_itf->handle() : handle_t::INVALID)));
   }
 }
 

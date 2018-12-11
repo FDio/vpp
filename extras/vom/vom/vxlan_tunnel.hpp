@@ -97,15 +97,10 @@ public:
                const boost::asio::ip::address& dst,
                uint32_t vni,
                const mode_t& mode = mode_t::STANDARD);
-
-  /**
-   * Construct a new object matching the desried state with a handle
-   * read from VPP
-   */
-  vxlan_tunnel(const handle_t& hdl,
-               const boost::asio::ip::address& src,
+  vxlan_tunnel(const boost::asio::ip::address& src,
                const boost::asio::ip::address& dst,
                uint32_t vni,
+               const interface& mcast_itf,
                const mode_t& mode = mode_t::STANDARD);
 
   /*
@@ -219,6 +214,12 @@ private:
    * The tunnel mode
    */
   mode_t m_mode;
+
+  /**
+   * The interface on which to send the packets if the destination
+   * is multicast
+   */
+  std::shared_ptr<interface> m_mcast_itf;
 
   /**
    * Construct a unique name for the tunnel
