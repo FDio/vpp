@@ -66,6 +66,15 @@ class VppIpAddressUnion():
 
         return False
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.addr)
+
+    def __repr__(self):
+        return '<%s (addr=%s)>' % (self.__class__.__name__, self.addr)
+
 
 class VppIpAddress():
     def __init__(self, addr):
@@ -104,8 +113,14 @@ class VppIpAddress():
     def __ne__(self, other):
         return not (self == other)
 
+    def __hash__(self):
+        return hash(self.addr)
+
     def __str__(self):
         return self.address
+
+    def __repr__(self):
+        return '<%s (addr=%s)>' % (self.__class__.__name__, self.addr)
 
     @property
     def bytes(self):
@@ -176,6 +191,10 @@ class VppIpPrefix():
     def is_ip6(self):
         return self.addr.is_ip6
 
+    def __repr__(self):
+        return '<%s (addr=%s, length=%s)>' % (
+            self.__class__.__name__, self.addr, self.length)
+
     def __str__(self):
         return "%s/%d" % (self.address, self.length)
 
@@ -191,6 +210,12 @@ class VppIpPrefix():
                             (self, other))
         return False
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.addr, self.len,))
+
 
 class VppIp6Prefix():
     def __init__(self, prefix, prefixlen):
@@ -200,6 +225,24 @@ class VppIp6Prefix():
     def encode(self):
         return {'prefix': self.ip_prefix.packed,
                 'len': self.prefixlen}
+
+    def __repr__(self):
+        return '<%s (prefix=%s, prefixlen=%s>' % (
+            self.__class__.__name__, str(self.ip_prefix), self.prefixlen)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self.ip_prefix, self.prefixlen) == \
+                   (other.ip_prefix, other.prefixlen)
+        else:
+            raise TypeError('Comparing incomparable types %s and %s.' % (
+                self.__class__.__name__, other.__class__.__name__))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.ip_prefix, self.prefixlen,))
 
 
 class VppIp4Prefix(VppIp6Prefix):
@@ -231,3 +274,21 @@ class VppIpMPrefix():
                 'grp_address_length': self.len,
             }
         return prefix
+
+    def __repr__(self):
+        return '<%s (saddr=%s, gaddr=%s, len=%s)>' % (
+            self.__class__.__name__, self.saddr, self.gaddr, self.len)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self.saddr, self.gaddr, self.len,) == \
+                   (other.saddr, other.gaddr, other.len)
+        else:
+            raise TypeError('Comparing incomparable types %s and %s.' % (
+                self.__class__.__name__, other.__class__.__name__))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.saddr, self.gaddr, self.len,))
