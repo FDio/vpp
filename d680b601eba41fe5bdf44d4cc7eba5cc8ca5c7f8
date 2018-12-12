@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "301aea54_d1c8162e",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 237,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-12T17:29:20Z",
+      "side": 1,
+      "message": "What is this testing? the seq_num or number of pkts?  Can this test be modified to use distinct literal constants?",
+      "range": {
+        "startLine": 237,
+        "startChar": 72,
+        "endLine": 237,
+        "endChar": 74
+      },
+      "revId": "d680b601eba41fe5bdf44d4cc7eba5cc8ca5c7f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f3516a0f_81405dc6",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-12T17:29:20Z",
+      "side": 1,
+      "message": "Raw(raw)\nor better yet: \nraw \u003d( \\x08\\x00\\xf0J\\xed\\xcb\\xf1\\xf5Test-group: IPv4.IPv4.ipv4-\u0027\n               \u0027message.Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Of\u0027\n               \u0027fset; Test-case: 5737\u0027)\n\nIP(version\u003d4 ihl\u003d5 tos\u003d0x0 len\u003d136 id\u003d11512 flags\u003d frag\u003d8190 ttl\u003d64 proto\u003dicmp chksum\u003d0x9800 src\u003d192.168.10.45 dst\u003d192.168.10.1 options\u003d[]) / Raw(raw)\n\n\u003e\u003e\u003e raw \u003d (\u0027E\\x00\\x00\\x88,\\xf8\\x1f\\xfe@\\x01\\x98\\x00\\xc0\\xa8\\n-\\xc0\\xa8\\n\u0027\n               \u0027\\x01\\x08\\x00\\xf0J\\xed\\xcb\\xf1\\xf5Test-group: IPv4.IPv4.ipv4-\u0027\n               \u0027message.Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Of\u0027\n               \u0027fset; Test-case: 5737\u0027)\n\u003e\u003e\u003e IP(raw)\n\u003cIP  version\u003d4 ihl\u003d5 tos\u003d0x0 len\u003d136 id\u003d11512 flags\u003d frag\u003d8190 ttl\u003d64 proto\u003dicmp chksum\u003d0x9800 src\u003d192.168.10.45 dst\u003d192.168.10.1 options\u003d[] |\u003cRaw  load\u003d\u0027\\x08\\x00\\xf0J\\xed\\xcb\\xf1\\xf5Test-group: IPv4.IPv4.ipv4-message.Ethernet-Payload.IPv4-Packet.IPv4-Header.Fragment-Offset; Test-case: 5737\u0027 |\u003e\u003e",
+      "range": {
+        "startLine": 183,
+        "startChar": 0,
+        "endLine": 190,
+        "endChar": 36
+      },
+      "revId": "d680b601eba41fe5bdf44d4cc7eba5cc8ca5c7f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
