@@ -38,6 +38,23 @@ typedef enum
   UDP_PING_N_NEXT,
 } udp_ping_next_t;
 
+#define foreach_udp_ping_error                  \
+_(BADHBH, "Malformed hop-by-hop header")
+
+typedef enum
+{
+#define _(sym,str) UDP_PING_ERROR_##sym,
+  foreach_udp_ping_error
+#undef _
+    UDP_PING_N_ERROR,
+} udp_ping_error_t;
+
+static char *udp_ping_error_strings[] = {
+#define _(sym,string) string,
+  foreach_udp_ping_error
+#undef _
+};
+
 udp_ping_main_t udp_ping_main;
 
 uword
@@ -502,14 +519,25 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
  *
  */
 void
-udp_ping_local_analyse (vlib_buffer_t * b0,
-			ip6_header_t * ip0,
-			ip6_hop_by_hop_header_t * hbh0, u16 * next0)
+udp_ping_local_analyse (vlib_node_runtime_t * node, vlib_buffer_t * b0,
+			ip6_header_t * ip0, ip6_hop_by_hop_header_t * hbh0,
+			u16 * next0)
 {
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
 
   *next0 = UDP_PING_NEXT_IP6_DROP;
+
+  /*
+   * Sanity check: hbh header length must be less than
+   * b0->current_length.
+   */
+  if (PREDICT_FALSE ((hbh0->length + 1) << 3) >= b0->current_length)
+    {
+      *next0 = UDP_PING_NEXT_DROP;
+      b0->error = node->errors[UDP_PING_ERROR_BADHBH];
+      return;
+    }
 
   if (PREDICT_TRUE (hbh0->protocol == IP_PROTOCOL_UDP))
     {
@@ -600,7 +628,7 @@ end:
  * @par Graph mechanics: buffer, next index usage
  *
  * <em>Uses:</em>
- * - <code>udp_ping_local_analyse(p0, ip0, hbh0, &next0)</code>
+ * - <code>udp_ping_local_analyse(node, p0, ip0, hbh0, &next0)</code>
  *     - Checks packet type - request/respnse and process them.
  *
  * <em>Next Index:</em>
@@ -660,8 +688,8 @@ udp_ping_local_node_fn (vlib_main_t * vm,
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
 
-	  udp_ping_local_analyse (p0, ip0, hbh0, &next0);
-	  udp_ping_local_analyse (p1, ip1, hbh1, &next1);
+	  udp_ping_local_analyse (node, p0, ip0, hbh0, &next0);
+	  udp_ping_local_analyse (node, p1, ip1, hbh1, &next1);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -727,7 +755,7 @@ udp_ping_local_node_fn (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 
-	  udp_ping_local_analyse (p0, ip0, hbh0, &next0);
+	  udp_ping_local_analyse (node, p0, ip0, hbh0, &next0);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -774,6 +802,8 @@ VLIB_REGISTER_NODE (udp_ping_local, static) =
   .format_trace = format_udp_ping_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_next_nodes = UDP_PING_N_NEXT,
+  .n_errors = UDP_PING_N_ERROR,
+  .error_strings = udp_ping_error_strings,
   .next_nodes =
     {
       [UDP_PING_NEXT_DROP] = "error-drop",
