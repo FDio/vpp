@@ -543,6 +543,12 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
       tc->burst_acked = 0;
       tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
 
+      if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
+	{
+	  if (seq_leq (tc->psh_seq, tc->snd_una))
+	    tc->flags &= ~TCP_CONN_PSH_PENDING;
+	}
+
       /* If everything has been acked, stop retransmit timer
        * otherwise update. */
       tcp_retransmit_timer_update (tc);

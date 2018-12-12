@@ -1665,8 +1665,9 @@ vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
     return (e->event_type == SESSION_IO_EVT_CT_RX);
 }
 
-int
-vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
+static inline int
+vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
+			     u8 is_flush)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
   int rv, n_write, is_nonblocking;
@@ -1733,6 +1734,9 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
 
   ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
   et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
+  if (is_flush && !vcl_session_is_ct (s))
+    et = SESSION_IO_EVT_TX_FLUSH;
+
   if (s->is_dgram)
     n_write = app_send_dgram_raw (tx_fifo, &s->transport,
 				  s->vpp_evt_q, buf, n, et, SVM_Q_WAIT);
@@ -1746,6 +1750,13 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
 	s->vpp_handle, session_handle, n_write);
 
   return n_write;
+}
+
+int
+vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
+{
+  return vppcom_session_write_inline (session_handle, buf, n,
+				      0 /* is_flush */ );
 }
 
 static vcl_session_t *
@@ -3345,7 +3356,7 @@ vppcom_session_sendto (uint32_t session_handle, void *buffer,
 	    getpid (), flags, flags);
     }
 
-  return (vppcom_session_write (session_handle, buffer, buflen));
+  return (vppcom_session_write_inline (session_handle, buffer, buflen, 1));
 }
 
 int

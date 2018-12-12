@@ -61,6 +61,7 @@ typedef struct _transport_proto_vft
   u32 (*send_space) (transport_connection_t * tc);
   u32 (*tx_fifo_offset) (transport_connection_t * tc);
   void (*update_time) (f64 time_now, u8 thread_index);
+  void (*flush_data) (transport_connection_t *tconn);
 
   /*
    * Connection retrieval
