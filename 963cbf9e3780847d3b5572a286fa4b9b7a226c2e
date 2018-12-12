@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "10948f1a_71ae73e9",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 181,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-12T15:37:38Z",
+      "side": 1,
+      "message": "Can we put the result of this into a variable, such as \"should_skip_for_aarch64\"?\nThat would save some space, but hide the implementation; not sure if it is worth overall.",
+      "range": {
+        "startLine": 181,
+        "startChar": 21,
+        "endLine": 181,
+        "endChar": 64
+      },
+      "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "43cbcd6c_77f7e7db",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-12T15:37:38Z",
+      "side": 1,
+      "message": "\"test is known to fail on aarch64\"\n\nIt is possible the test logic works correctly, and it is just exposing an unknown bug in VPP visible only on aarch64.\n\"Known to fail\" should sound more neutral with respect to whether it the test code (or VPP, or both) causing the failure.",
+      "range": {
+        "startLine": 182,
+        "startChar": 21,
+        "endLine": 182,
+        "endChar": 51
+      },
+      "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
