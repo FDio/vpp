@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "35af31a0_e0c1cea8",
+        "filename": "extras/vom/vom/hw.hpp",
+        "patchSetId": 22
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-12T14:35:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "163c35d8_e3a0157d",
+      "revId": "666ac4ca0e361faf9de2d0354ca8b47d696df136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e61e009e_6f3a7bbe",
         "filename": "extras/vom/vom/interface.hpp",
         "patchSetId": 22
@@ -30,6 +48,24 @@
       "writtenOn": "2018-12-12T13:04:28Z",
       "side": 1,
       "message": "can we replace this extra boolean with (m_listener \u003d\u003d NULL) ?",
+      "revId": "666ac4ca0e361faf9de2d0354ca8b47d696df136",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "51518e8a_b4ee3341",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 22
+      },
+      "lineNbr": 712,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-12T14:35:39Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e61e009e_6f3a7bbe",
       "revId": "666ac4ca0e361faf9de2d0354ca8b47d696df136",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
