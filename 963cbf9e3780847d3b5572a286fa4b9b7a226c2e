@@ -45,6 +45,30 @@
       "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "87f6a2b8_5d2ee540",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-12T17:41:28Z",
+      "side": 1,
+      "message": "I can write a decorator that that extends @unittest.expectedfailure. Then if/when the bug is fixed, it will show up as an unexpectedsuccess.  Is that what you are asking for?",
+      "parentUuid": "43cbcd6c_77f7e7db",
+      "range": {
+        "startLine": 182,
+        "startChar": 21,
+        "endLine": 182,
+        "endChar": 51
+      },
+      "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
