@@ -221,7 +221,7 @@ public final class ${details_class}ReplyDump implements io.fd.vpp.jvpp.dto.JVppR
     }
 
     @Override
-    public String toString() {
+    public java.lang.String toString() {
         return "${details_class}ReplyDump{" +
                 "${details_field}=" + ${details_field} + "}";
     }

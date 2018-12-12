@@ -26,6 +26,7 @@
 #include <jni.h>
 
 #include <jvpp-common/jvpp_common.h>
+#include <jvpp_core.h>
 
 // TODO: generate jvpp_plugin_name.c files (or at least reuse plugin's main structure)
 typedef struct {
