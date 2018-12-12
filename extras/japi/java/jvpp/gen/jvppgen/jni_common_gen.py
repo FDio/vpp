@@ -165,6 +165,7 @@ def _generate_field_length_check(field):
     else:
         return ""
 
+
 # Make sure we do not write more elements that are expected
 _FIELD_LENGTH_CHECK = Template("""
         size_t max_size = ${field_length};
@@ -177,9 +178,13 @@ def _generate_j2c_scalar_swap(field, struct_ref_name, is_alias):
         host = field.java_name
         if not is_alias:
             net = "%s->%s" % (struct_ref_name, field.name)
-            return "    %s;" % field_type.get_host_to_net_function(host, net)
+            if field_type.name == "string":
+                net = "%s->%s" % (struct_ref_name, field.name)
+                return "    _host_to_net_%s(env, %s, (vl_api_string_t *) &%s);" % (field_type.name, host, net)
+            else:
+                return "    %s;" % field_type.get_host_to_net_function(host, net)
         else:
-            net = "%s" % (struct_ref_name)
+            net = "%s" % struct_ref_name
             return "    *%s;" % field_type.get_host_to_net_function(host, net)
     else:
         return "    %s->%s = %s;" % (struct_ref_name, field.name, field.java_name)
@@ -424,7 +429,10 @@ _C2J_ENUM_SWAP_TEMPLATE = Template("""
 def _generate_c2j_primitive_type_swap(msg_java_name, field, object_ref_name, struct_ref_name, is_alias):
     field_type = field.type
     if not is_alias:
-        template = _C2J_PRIMITIVE_TYPE_SWAP_TEMPLATE
+        if field_type.name == "string":
+            template = _C2J_STRING_TYPE_SWAP_TEMPLATE
+        else:
+            template = _C2J_PRIMITIVE_TYPE_SWAP_TEMPLATE
     else:
         template = _C2J_ALIAS_PRIMITIVE_TYPE_SWAP_TEMPLATE
     return template.substitute(
@@ -441,6 +449,12 @@ def _generate_c2j_primitive_type_swap(msg_java_name, field, object_ref_name, str
 _C2J_PRIMITIVE_TYPE_SWAP_TEMPLATE = Template("""
     jfieldID ${java_name}FieldId = (*env)->GetFieldID(env, ${class_ref_name}Class, "${java_name}", "${jni_signature}");
     (*env)->Set${jni_accessor}Field(env, ${object_ref_name}, ${java_name}FieldId, ${net_to_host_function}(${struct_ref_name}->${c_name}));
+""")
+
+
+_C2J_STRING_TYPE_SWAP_TEMPLATE = Template("""
+    jfieldID ${java_name}FieldId = (*env)->GetFieldID(env, ${class_ref_name}Class, "${java_name}", "${jni_signature}");
+    (*env)->Set${jni_accessor}Field(env, ${object_ref_name}, ${java_name}FieldId, ${net_to_host_function}(env, (const vl_api_string_t *) &${struct_ref_name}->${c_name}));
 """)
 
 
