@@ -216,8 +216,19 @@ udp46_local_inline (vlib_main_t * vm,
 	  else
 	    {
 	      b0->error = node->errors[UDP_ERROR_NONE];
-	      // advance to the payload
-	      vlib_buffer_advance (b0, sizeof (*h0));
+	      // To support IPSEC UDP encapsulation, we must back to ip4 header.
+	      // For other situlation just advance to the payload
+	      if (is_ip4
+		  && h0->src_port == clib_host_to_net_u16 (UDP_DST_PORT_ipsec)
+		  && h0->dst_port ==
+		  clib_host_to_net_u16 (UDP_DST_PORT_ipsec))
+		{
+		  vlib_buffer_advance (b0, -(word) sizeof (ip4_header_t));
+		}
+	      else
+		{
+		  vlib_buffer_advance (b0, sizeof (*h0));
+		}
 	    }
 
 	  if (PREDICT_FALSE (i1 == SPARSE_VEC_INVALID_INDEX))
@@ -253,8 +264,19 @@ udp46_local_inline (vlib_main_t * vm,
 	  else
 	    {
 	      b1->error = node->errors[UDP_ERROR_NONE];
-	      // advance to the payload
-	      vlib_buffer_advance (b1, sizeof (*h1));
+	      // To support IPSEC UDP encapsulation, we must back to ip4 header
+	      // For other situlation just advance to the payload
+	      if (is_ip4
+		  && h1->src_port == clib_host_to_net_u16 (UDP_DST_PORT_ipsec)
+		  && h1->dst_port ==
+		  clib_host_to_net_u16 (UDP_DST_PORT_ipsec))
+		{
+		  vlib_buffer_advance (b1, -(word) sizeof (ip4_header_t));
+		}
+	      else
+		{
+		  vlib_buffer_advance (b1, sizeof (*h1));
+		}
 	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -362,8 +384,20 @@ udp46_local_inline (vlib_main_t * vm,
 	      else
 		{
 		  b0->error = node->errors[UDP_ERROR_NONE];
-		  // advance to the payload
-		  vlib_buffer_advance (b0, sizeof (*h0));
+		  // To support IPSEC UDP encapsulation, we must back to ip4 header
+		  // For other situlation just advance to the payload
+		  if (is_ip4
+		      && h0->src_port ==
+		      clib_host_to_net_u16 (UDP_DST_PORT_ipsec)
+		      && h0->dst_port ==
+		      clib_host_to_net_u16 (UDP_DST_PORT_ipsec))
+		    {
+		      vlib_buffer_advance (b0, -(word) sizeof (ip4_header_t));
+		    }
+		  else
+		    {
+		      vlib_buffer_advance (b0, sizeof (*h0));
+		    }
 		}
 	    }
 	  else
