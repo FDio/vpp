@@ -117,7 +117,7 @@ _HANDLER_IMPL_TEMPLATE = Template("""
     public void on$notification(
         final $plugin_package.dto.$notification notification) {
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-            LOG.fine(String.format("Received $notification event message: %s", notification));
+            LOG.fine(java.lang.String.format("Received $notification event message: %s", notification));
         }
         final io.fd.vpp.jvpp.callback.JVppCallback jVppCallback = registeredCallbacks.get($plugin_package.dto.$notification.class);
         if (null != jVppCallback) {
@@ -153,7 +153,7 @@ public final class ${plugin_name}EventRegistryImpl implements ${plugin_name}Even
     @Override
     public void onError(io.fd.vpp.jvpp.VppCallbackException ex) {
         java.util.logging.Logger LOG = java.util.logging.Logger.getLogger(${plugin_name}EventRegistryImpl.class.getName());
-        LOG.log(java.util.logging.Level.WARNING, String.format("Received onError exception: call=%s, context=%d, retval=%d%n", ex.getMethodName(),
+        LOG.log(java.util.logging.Level.WARNING, java.lang.String.format("Received onError exception: call=%s, context=%d, retval=%d%n", ex.getMethodName(),
             ex.getCtxId(), ex.getErrorCode()), ex);
     }
 }
