@@ -3,6 +3,7 @@ import os
 import sys
 import traceback
 from log import RED, single_line_delim, double_line_delim
+import ipaddress
 from subprocess import check_output, CalledProcessError
 from util import check_core_path, get_core_path
 
@@ -23,8 +24,23 @@ class Hook(object):
         @param api_name: name of the API
         @param api_args: tuple containing the API arguments
         """
+
+        def _friendly_format(val):
+            if not isinstance(val, str):
+                return val
+            if len(val) == 6:
+                return '{!s} ({!s})'.format(val, ':'.join(['{:02x}'.format(
+                    ord(x)) for x in val]))
+            try:
+                return '{!s} ({!s})'.format(val, str(
+                    ipaddress.ip_address(val)))
+            except ipaddress.AddressValueError:
+                return val
+
+        _args = ', '.join("{!s}={!r}".format(key, _friendly_format(val)) for
+                          (key, val) in api_args.items())
         self.logger.debug("API: %s (%s)" %
-                          (api_name, api_args), extra={'color': RED})
+                          (api_name, _args), extra={'color': RED})
 
     def after_api(self, api_name, api_args):
         """
@@ -94,8 +110,8 @@ class PollHook(Hook):
                 s = signaldict[abs(self.testcase.vpp.returncode)]
             else:
                 s = "unknown"
-            msg = "VPP subprocess died unexpectedly with returncode %d [%s]" %\
-                (self.testcase.vpp.returncode, s)
+            msg = "VPP subprocess died unexpectedly with returncode %d [%s]." \
+                  % (self.testcase.vpp.returncode, s)
             self.logger.critical(msg)
             core_path = get_core_path(self.testcase.tempdir)
             if os.path.isfile(core_path):
