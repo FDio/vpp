@@ -103,7 +103,7 @@ def generate_to_string(class_name, fields):
 
 _TO_STRING_TEMPLATE = Template("""
     @Override
-    public String toString() {
+    public java.lang.String toString() {
         return "$class_name{" +
 $to_string_fields
     }""")
