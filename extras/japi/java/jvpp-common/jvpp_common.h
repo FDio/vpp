@@ -17,6 +17,7 @@
 //
 #include <vppinfra/types.h>
 #include <vlibapi/api.h>
+#include <vlibapi/api_types.h>
 #include <vlibmemory/api.h>
 #include <jni.h>
 
