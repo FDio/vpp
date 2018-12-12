@@ -1169,7 +1169,11 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
     advertise_wnd = tcp_window_to_advertise (tc, next_state);
 
   flags = tcp_make_state_flags (tc, next_state);
-
+  if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
+    {
+      if (seq_leq (tc->psh_seq, tc->snd_nxt + data_len))
+	flags |= TCP_FLAG_PSH;
+    }
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);

@@ -572,9 +572,13 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   ctx->transport_vft = transport_protocol_get_vft (tp);
   ctx->tc = session_tx_get_transport (ctx, peek_data);
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
-  ctx->snd_space =
-    transport_connection_snd_space (ctx->tc, vm->clib_time.last_cpu_time,
-				    ctx->snd_mss);
+
+  if (PREDICT_FALSE (e->event_type == SESSION_IO_EVT_TX_FLUSH))
+    ctx->transport_vft->flush_data (ctx->tc);
+
+  ctx->snd_space = transport_connection_snd_space (ctx->tc,
+                                                   vm->clib_time.last_cpu_time,
+                                                   ctx->snd_mss);
   if (ctx->snd_space == 0 || ctx->snd_mss == 0)
     {
       vec_add1 (wrk->pending_event_vector, *e);
@@ -828,6 +832,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       e = &fifo_events[i];
       switch (e->event_type)
 	{
+	case SESSION_IO_EVT_TX_FLUSH:
 	case FIFO_EVENT_APP_TX:
 	  /* Don't try to send more that one frame per dispatch cycle */
 	  if (n_tx_packets == VLIB_FRAME_SIZE)
