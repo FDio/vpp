@@ -2724,6 +2724,14 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto drop;
 	    }
 
+	  /* Make sure the ack is exactly right */
+	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number)
+	    {
+	      error0 = TCP_ERROR_SEGMENT_INVALID;
+	      tcp_send_reset_w_pkt (tc0, b0, is_ip4);
+	      goto drop;
+	    }
+
 	  /* Update rtt and rto */
 	  tcp_estimate_initial_rtt (tc0);
 

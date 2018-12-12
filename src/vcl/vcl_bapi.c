@@ -98,6 +98,7 @@ vcl_segment_detach (u64 segment_handle)
   segment = svm_fifo_segment_get_segment (sm, segment_index);
   svm_fifo_segment_delete (sm, segment);
   vcl_segment_table_del (segment_handle);
+  VDBG (0, "detached segment %u handle %u", segment_index, segment_handle);
 }
 
 static u64
