@@ -104,12 +104,11 @@ class CAlias(CField):
 
     def get_c_def(self):
         if self.len is not None:
-            return "typedef %s vapi_type_%s[%d];" % (self.type.get_c_name(), self.name, self.len)
+            return "typedef %s vapi_type_%s[%d];" % (
+                self.type.get_c_name(), self.name, self.len)
         else:
-            return "typedef %s vapi_type_%s;" % (self.type.get_c_name(), self.name)
-        #return "typedef %s" % super(CAlias, self).get_c_def()
-
-    # def needs_byte_swap
+            return "typedef %s vapi_type_%s;" % (
+                self.type.get_c_name(), self.name)
 
 
 class CStruct(Struct):
