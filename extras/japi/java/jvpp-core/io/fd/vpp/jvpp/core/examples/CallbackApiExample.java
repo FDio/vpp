@@ -77,17 +77,17 @@ public class CallbackApiExample {
             System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
                     + "buildDate=%s, buildDirectory=%s%n",
                 msg.context,
-                new String(msg.program, StandardCharsets.UTF_8),
-                new String(msg.version, StandardCharsets.UTF_8),
-                new String(msg.buildDate, StandardCharsets.UTF_8),
-                new String(msg.buildDirectory, StandardCharsets.UTF_8));
+                msg.program,
+                msg.version,
+                msg.buildDate,
+                msg.buildDirectory);
         }
 
         @Override
         public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
             System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
                     + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                new String(msg.interfaceName, StandardCharsets.UTF_8), msg.l2AddressLength, msg.adminUpDown,
+                msg.interfaceName, msg.l2AddressLength, msg.adminUpDown,
                 msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
         }
 

@@ -280,7 +280,7 @@ _FUTURE_JVPP_FACADE_DETAILS_CALLBACK_TEMPLATE = Template("""
         io.fd.vpp.jvpp.future.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.dto.${callback_dto}ReplyDump> completableFuture;
         final int replyId = reply.context;
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-            LOG.fine(String.format("Received $callback_dto event message: %s", reply));
+            LOG.fine(java.lang.String.format("Received $callback_dto event message: %s", reply));
         }
         synchronized(requests) {
             completableFuture = (io.fd.vpp.jvpp.future.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.dto.${callback_dto}ReplyDump>) requests.get(replyId);
@@ -305,7 +305,7 @@ _FUTURE_JVPP_FACADE_REPLY_CALLBACK_TEMPLATE = Template("""
         java.util.concurrent.CompletableFuture<io.fd.vpp.jvpp.dto.JVppReply<$plugin_package.dto.$request_dto>> completableFuture;
         final int replyId = reply.context;
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-            LOG.fine(String.format("Received $callback_dto event message: %s", reply));
+            LOG.fine(java.lang.String.format("Received $callback_dto event message: %s", reply));
         }
         synchronized(requests) {
             completableFuture =
@@ -331,7 +331,7 @@ _FUTURE_JVPP_FACADE_EVENT_CALLBACK_TEMPLATE = Template("""
     @Override
     public void on$callback_dto($plugin_package.dto.$callback_dto notification) {
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
-            LOG.fine(String.format("Received $callback_dto event message: %s", notification));
+            LOG.fine(java.lang.String.format("Received $callback_dto event message: %s", notification));
         }
         notificationCallback.on$callback_dto(notification);
     }
