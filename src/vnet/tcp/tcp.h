@@ -124,6 +124,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FRXT_PENDING, "Fast-retransmit pending")	\
   _(FRXT_FIRST, "Fast-retransmit first again")	\
   _(DEQ_PENDING, "Pending dequeue acked")	\
+  _(PSH_PENDING, "Pending psh packet")		\
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -334,6 +335,8 @@ typedef struct _tcp_connection
   u32 last_fib_check;	/**< Last time we checked fib route for peer */
   u32 sw_if_index;	/**< Interface for the connection */
   u32 tx_fifo_size;	/**< Tx fifo size. Used to constrain cwnd */
+
+  u32 psh_seq;		/**< Add psh header for seg that includes this */
 } tcp_connection_t;
 
 /* *INDENT-OFF* */
