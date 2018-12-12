@@ -1123,6 +1123,14 @@ tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
   return tcp_push_header (tc, b);
 }
 
+static void
+tcp_session_flush_data (transport_connection_t * tconn)
+{
+  tcp_connection_t *tc = (tcp_connection_t *) tconn;
+  tc->flags |= TCP_CONN_PSH_PENDING;
+  tc->psh_seq = tc->snd_una_max + transport_max_tx_dequeue (tconn);
+}
+
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
@@ -1139,6 +1147,7 @@ const static transport_proto_vft_t tcp_proto = {
   .send_space = tcp_session_send_space,
   .update_time = tcp_update_time,
   .tx_fifo_offset = tcp_session_tx_fifo_offset,
+  .flush_data = tcp_session_flush_data,
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
   .format_half_open = format_tcp_half_open_session,
