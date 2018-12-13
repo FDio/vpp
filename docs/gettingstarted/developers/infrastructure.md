@@ -48,13 +48,16 @@ macro! It's smart about NULL pointers.\]
 
 Typically, the user header is not present. User headers allow for other
 data structures to be built atop vppinfra vectors. Users may specify the
-alignment for data elements via the [vec]()\*\_aligned macros.
+alignment for first data element of a vector via the [vec]()\*\_aligned
+macros. 
 
-Vectors elements can be any C type e.g. (int, double, struct bar). This
+Vector elements can be any C type e.g. (int, double, struct bar). This
 is also true for data types built atop vectors (e.g. heap, pool, etc.).
-Many macros have \_a variants supporting alignment of vector data and
-\_h variants supporting non-zero-length vector headers. The \_ha
-variants support both.
+Many macros have \_a variants supporting alignment of vector elements
+and \_h variants supporting non-zero-length vector headers. The \_ha
+variants support both.  Additionally cacheline alignment within a
+vector element structure can be specified using the
+[CLIB_CACHE_LINE_ALIGN_MARK]() macro.
 
 Inconsistent usage of header and/or alignment related macro variants
 will cause delayed, confusing failures.
