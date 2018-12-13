@@ -2727,7 +2727,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Make sure the ack is exactly right */
-	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number)
+	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0)
 	    {
 	      error0 = TCP_ERROR_SEGMENT_INVALID;
 	      tcp_send_reset_w_pkt (tc0, b0, is_ip4);
