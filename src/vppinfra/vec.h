@@ -70,16 +70,18 @@
    Typically, the header is not present.  Headers allow for other
    data structures to be built atop CLIB vectors.
 
-   Users may specify the alignment for data elements via the
-   vec_*_aligned macros.
+   Users may specify the alignment for first data element of a vector
+   via the vec_*_aligned macros.
 
-   Vectors elements can be any C type e.g. (int, double, struct bar).
+   Vector elements can be any C type e.g. (int, double, struct bar).
    This is also true for data types built atop vectors (e.g. heap,
    pool, etc.).
 
-   Many macros have _a variants supporting alignment of vector data
-   and _h variants supporting non zero length vector headers.
-   The _ha variants support both.
+   Many macros have \_a variants supporting alignment of vector elements
+   and \_h variants supporting non-zero-length vector headers. The \_ha
+   variants support both.  Additionally cacheline alignment within a
+   vector element structure can be specified using the
+   CLIB_CACHE_LINE_ALIGN_MARK() macro.
 
    Standard programming error: memorize a pointer to the ith element
    of a vector then expand it. Vectors expand by 3/2, so such code
