@@ -464,8 +464,7 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
       session->tx_fifo = tx_fifo;
     }
 
-  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: bind succeeded!",
-	getpid (), mp->handle, sid);
+  VDBG (0, "session %u [0x%llx]: listen succeeded!", sid, mp->handle);
   return sid;
 }
 
@@ -569,7 +568,7 @@ vppcom_wait_for_session_state_change (u32 session_index,
     }
   while (clib_time_now (&wrk->clib_time) < timeout);
 
-  VDBG (0, "VCL<%d>: timeout waiting for state 0x%x (%s)", getpid (), state,
+  VDBG (0, "timeout waiting for state 0x%x (%s)", state,
 	vppcom_session_state_str (state));
   vcl_evt (VCL_EVT_SESSION_TIMEOUT, session, session_state);
 
@@ -1003,7 +1002,7 @@ vppcom_session_close (uint32_t session_handle)
   state = session->session_state;
   vpp_handle = session->vpp_handle;
 
-  VDBG (0, "Closing session handle %u vpp handle %u", session_handle,
+  VDBG (1, "closing session handle %u vpp handle %u", session_handle,
 	vpp_handle);
 
   if (is_vep)
@@ -1077,8 +1076,7 @@ cleanup:
     }
   vcl_session_free (wrk, session);
 
-  VDBG (0, "session handle %u vpp handle %u removed", session_handle,
-	vpp_handle);
+  VDBG (0, "session handle %u [0x%llx] removed", session_handle, vpp_handle);
 
   vcl_evt (VCL_EVT_CLOSE, session, rv);
 
@@ -1138,29 +1136,22 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
   int rv;
 
   listen_session = vcl_session_get_w_handle (wrk, listen_sh);
-  if (!listen_session)
+  if (!listen_session || listen_session->is_vep)
     return VPPCOM_EBADFD;
 
   if (q_len == 0 || q_len == ~0)
     q_len = vcm->cfg.listen_queue_size;
 
-  if (listen_session->is_vep)
-    {
-      clib_warning ("VCL<%d>: ERROR: sid %u: cannot listen on an "
-		    "epoll session!", getpid (), listen_sh);
-      return VPPCOM_EBADFD;
-    }
-
   listen_vpp_handle = listen_session->vpp_handle;
   if (listen_session->session_state & STATE_LISTEN)
     {
-      VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: already in listen state!",
-	    getpid (), listen_vpp_handle, listen_sh);
+      VDBG (0, "session %u [0x%llx]: already in listen state!",
+	    listen_sh, listen_vpp_handle);
       return VPPCOM_OK;
     }
 
-  VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: sending VPP bind+listen "
-	"request...", getpid (), listen_vpp_handle, listen_sh);
+  VDBG (0, "session %u [0x%llx]: sending vpp listen request...",
+	listen_sh, listen_vpp_handle);
 
   /*
    * Send listen request to vpp and wait for reply
@@ -1173,9 +1164,9 @@ vppcom_session_listen (uint32_t listen_sh, uint32_t q_len)
   if (PREDICT_FALSE (rv))
     {
       listen_session = vcl_session_get_w_handle (wrk, listen_sh);
-      VDBG (0, "VCL<%d>: vpp handle 0x%llx, sid %u: bind+listen failed! "
-	    "returning %d (%s)", getpid (), listen_session->vpp_handle,
-	    listen_sh, rv, vppcom_retval_str (rv));
+      VDBG (0, "session %u [0x%llx]: listen failed! returning %d (%s)",
+	    listen_sh, listen_session->vpp_handle, rv,
+	    vppcom_retval_str (rv));
       return rv;
     }
 
@@ -1271,7 +1262,7 @@ handle:
     VCL_SESS_ATTR_SET (client_session->attr, VCL_SESS_ATTR_NONBLOCK);
 
   listen_vpp_handle = listen_session->vpp_handle;
-  VDBG (0, "vpp handle 0x%llx, sid %u: Got a client request! "
+  VDBG (1, "vpp handle 0x%llx, sid %u: Got a client request! "
 	"vpp handle 0x%llx, sid %u, flags %d, is_nonblocking %u",
 	listen_vpp_handle, listen_session_handle,
 	client_session->vpp_handle, client_session_index,
@@ -1299,16 +1290,12 @@ handle:
   vcl_send_session_accepted_reply (vpp_evt_q, client_session->client_context,
 				   client_session->vpp_handle, 0);
 
-  VDBG (0, "vpp handle 0x%llx, sid %u: accepted vpp handle 0x%llx, "
-	"sid %u connection from peer %s address %U port %u to local %s "
-	"address %U port %u", listen_vpp_handle,
-	listen_session_handle, client_session->vpp_handle,
-	client_session_index,
-	client_session->transport.is_ip4 ? "IPv4" : "IPv6",
+  VDBG (0, "listener %u [0x%llx] accepted %u [0x%llx] peer: %U:%u "
+	"local: %U:%u", listen_session_handle, listen_vpp_handle,
+	client_session_index, client_session->vpp_handle,
 	format_ip46_address, &client_session->transport.rmt_ip,
 	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (client_session->transport.rmt_port),
-	client_session->transport.is_ip4 ? "IPv4" : "IPv6",
 	format_ip46_address, &client_session->transport.lcl_ip,
 	client_session->transport.is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6,
 	clib_net_to_host_u16 (client_session->transport.lcl_port));
