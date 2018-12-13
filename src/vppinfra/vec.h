@@ -70,8 +70,10 @@
    Typically, the header is not present.  Headers allow for other
    data structures to be built atop CLIB vectors.
 
-   Users may specify the alignment for data elements via the
-   vec_*_aligned macros.
+   Users may specify the alignment for the first data element via the
+   vec_*_aligned macros. Cacheline alignment within a vector element
+   structure can be specified using the CLIB_CACHE_LINE_ALIGN_MARK
+   macro.
 
    Vectors elements can be any C type e.g. (int, double, struct bar).
    This is also true for data types built atop vectors (e.g. heap,
