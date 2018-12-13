@@ -2302,7 +2302,7 @@ classify_session_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (classify_session_command, static) = {
     .path = "classify session",
     .short_help =
-    "classify session [hit-next|l2-hit-next|"
+    "classify session [hit-next|l2-input-hit-next|l2-output-hit-next|"
     "acl-hit-next <next_index>|policer-hit-next <policer_name>]"
     "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]"
     "\n [action set-ip4-fib-id|set-ip6-fib-id|set-sr-policy-index <n>] [del]",
