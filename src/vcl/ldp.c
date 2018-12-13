@@ -112,7 +112,7 @@ typedef struct
 
 #define LDBG(_lvl, _fmt, _args...) 					\
   if (ldp->debug > _lvl)						\
-    clib_warning (_fmt, ##_args)
+    clib_warning ("ldp<%d>: " _fmt, getpid(), ##_args)
 
 static ldp_main_t ldp_main = {
   .sid_bit_val = (1 << LDP_SID_BIT_MIN),
@@ -261,9 +261,8 @@ ldp_init (void)
       ldp->vcl_needs_real_epoll = 0;
       if (rv == VPPCOM_EEXIST)
 	return 0;
-      LDBG (2, "\nLDP<%d>: ERROR: ldp_init: vppcom_app_create()"
-	    " failed!  rv = %d (%s)\n",
-	    getpid (), rv, vppcom_retval_str (rv));
+      LDBG (2, "\nERROR: ldp_init: vppcom_app_create()"
+	    " failed!  rv = %d (%s)\n", rv, vppcom_retval_str (rv));
       ldp->init = 0;
       return rv;
     }
@@ -282,8 +281,8 @@ ldp_init (void)
       else
 	{
 	  ldp->debug = tmp;
-	  LDBG (0, "LDP<%d>: configured LDP debug level (%u) from env var "
-		LDP_ENV_DEBUG "!", getpid (), ldp->debug);
+	  LDBG (0, "configured LDP debug level (%u) from env var "
+		LDP_ENV_DEBUG "!", ldp->debug);
 	}
     }
 
@@ -291,8 +290,8 @@ ldp_init (void)
   if (env_var_str)
     {
       ldp_set_app_name (env_var_str);
-      LDBG (0, "LDP<%d>: configured LDP app name (%s) from the env var "
-	    LDP_ENV_APP_NAME "!", getpid (), ldp->app_name);
+      LDBG (0, "configured LDP app name (%s) from the env var "
+	    LDP_ENV_APP_NAME "!", ldp->app_name);
     }
 
   env_var_str = getenv (LDP_ENV_SID_BIT);
@@ -333,15 +332,15 @@ ldp_init (void)
 	  ldp->sid_bit_val = (1 << sb);
 	  ldp->sid_bit_mask = ldp->sid_bit_val - 1;
 
-	  LDBG (0, "LDP<%d>: configured LDP sid bit (%u) from "
-		LDP_ENV_SID_BIT "!  sid bit value %d (0x%x)", getpid (), sb,
+	  LDBG (0, "configured LDP sid bit (%u) from "
+		LDP_ENV_SID_BIT "!  sid bit value %d (0x%x)", sb,
 		ldp->sid_bit_val, ldp->sid_bit_val);
 	}
     }
 
   clib_time_init (&ldpw->clib_time);
   clib_rwlock_init (&ldp->fd_table_lock);
-  LDBG (0, "LDP<%d>: LDP initialization: done!", getpid ());
+  LDBG (0, "LDP initialization: done!");
 
   return 0;
 }
@@ -350,7 +349,6 @@ int
 close (int fd)
 {
   int rv, refcnt;
-  const char *func_str;
   u32 sid = ldp_sid_from_fd (fd);
 
   if ((errno = -ldp_init ()))
@@ -360,14 +358,11 @@ close (int fd)
     {
       int epfd;
 
-      func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
       epfd = vppcom_session_attr (sid, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
       if (epfd > 0)
 	{
-	  func_str = "libc_close";
-
-	  LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): epfd %u (0x%x)",
-		getpid (), fd, fd, func_str, epfd, epfd);
+	  LDBG (0, "fd %d (0x%x): calling libc_close: epfd %u (0x%x)",
+		fd, fd, epfd, epfd);
 
 	  rv = libc_close (epfd);
 	  if (rv < 0)
@@ -386,10 +381,8 @@ close (int fd)
 	  goto done;
 	}
 
-      func_str = "vppcom_session_close";
-
-      LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x)",
-	    getpid (), fd, fd, func_str, sid, sid);
+      LDBG (0, "fd %d (0x%x): calling vppcom_session_close: sid %u (0x%x)",
+	    fd, fd, sid, sid);
 
       refcnt = vppcom_session_attr (sid, VPPCOM_ATTR_GET_REFCNT, 0, 0);
       rv = vppcom_session_close (sid);
@@ -403,30 +396,13 @@ close (int fd)
     }
   else
     {
-      func_str = "libc_close";
-
-      LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s()", getpid (), fd, fd,
-	    func_str);
-
+      LDBG (0, "fd %d (0x%x): calling libc_close", fd, fd);
       rv = libc_close (fd);
     }
 
 done:
-  if (LDP_DEBUG > 0)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, rv, rv);
-    }
+
+  LDBG (1, "fd %d (0x%x): returning %d (0x%x)", fd, fd, rv, rv);
   return rv;
 }
 
@@ -434,7 +410,6 @@ ssize_t
 read (int fd, void *buf, size_t nbytes)
 {
   ssize_t size;
-  const char *func_str;
   u32 sid = ldp_sid_from_fd (fd);
 
   if ((errno = -ldp_init ()))
@@ -442,12 +417,8 @@ read (int fd, void *buf, size_t nbytes)
 
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = "vppcom_session_read";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "sid %u (0x%x), buf %p, nbytes %u", getpid (),
-		      fd, fd, func_str, sid, sid, buf, nbytes);
+      LDBG (2, "fd %d (0x%x): calling vppcom_session_read(): sid %u (0x%x),"
+	    " buf %p, nbytes %u", fd, fd, sid, sid, buf, nbytes);
 
       size = vppcom_session_read (sid, buf, nbytes);
       if (size < 0)
@@ -458,38 +429,19 @@ read (int fd, void *buf, size_t nbytes)
     }
   else
     {
-      func_str = "libc_read";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "buf %p, nbytes %u", getpid (),
-		      fd, fd, func_str, buf, nbytes);
+      LDBG (2, "fd %d (0x%x): calling libc_read(): buf %p, nbytes %u",
+	    fd, fd, buf, nbytes);
 
       size = libc_read (fd, buf, nbytes);
     }
 
-  if (LDP_DEBUG > 2)
-    {
-      if (size < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, size, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, size, size);
-    }
+  LDBG (2, "fd %d (0x%x): returning %d (0x%x)", fd, fd, size, size);
   return size;
 }
 
 ssize_t
 readv (int fd, const struct iovec * iov, int iovcnt)
 {
-  const char *func_str;
   ssize_t size = 0;
   u32 sid = ldp_sid_from_fd (fd);
   int rv = 0, i, total = 0;
@@ -499,16 +451,13 @@ readv (int fd, const struct iovec * iov, int iovcnt)
 
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = "vppcom_session_read";
       do
 	{
 	  for (i = 0; i < iovcnt; ++i)
 	    {
-	      if (LDP_DEBUG > 2)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s() [%d]: "
-			      "sid %u (0x%x), iov %p, iovcnt %d, total %d",
-			      getpid (), fd, fd, func_str, i, sid, sid,
-			      iov, iovcnt, total);
+	      LDBG (2, "fd %d (0x%x): calling vppcom_session_read() [%d]:"
+		    " sid %u (0x%x), iov %p, iovcnt %d, total %d", fd, fd, i,
+		    sid, sid, iov, iovcnt, total);
 
 	      rv = vppcom_session_read (sid, iov[i].iov_base, iov[i].iov_len);
 	      if (rv < 0)
@@ -518,11 +467,8 @@ readv (int fd, const struct iovec * iov, int iovcnt)
 		  total += rv;
 		  if (rv < iov[i].iov_len)
 		    {
-		      if (LDP_DEBUG > 2)
-			clib_warning ("LDP<%d>: fd %d (0x%x): "
-				      "rv (%d) < iov[%d].iov_len (%d)",
-				      getpid (), fd, fd, rv, i,
-				      iov[i].iov_len);
+		      LDBG (2, "fd %d (0x%x): rv (%d) < iov[%d].iov_len (%d)",
+			    fd, fd, rv, i, iov[i].iov_len);
 		      break;
 		    }
 		}
@@ -540,37 +486,20 @@ readv (int fd, const struct iovec * iov, int iovcnt)
     }
   else
     {
-      func_str = "libc_readv";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "iov %p, iovcnt %d", getpid (), fd, fd, iov, iovcnt);
+      LDBG (2, "fd %d (0x%x): calling libc_readv(): iov %p, iovcnt %d", fd,
+	    fd, iov, iovcnt);
 
       size = libc_readv (fd, iov, iovcnt);
     }
 
-  if (LDP_DEBUG > 2)
-    {
-      if (size < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, size, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, size, size);
-    }
+
+  LDBG (2, "fd %d (0x%x): returning %d (0x%x)", fd, fd, size, size);
   return size;
 }
 
 ssize_t
 write (int fd, const void *buf, size_t nbytes)
 {
-  const char *func_str;
   ssize_t size = 0;
   u32 sid = ldp_sid_from_fd (fd);
 
@@ -579,12 +508,8 @@ write (int fd, const void *buf, size_t nbytes)
 
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = "vppcom_session_write";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "sid %u (0x%x), buf %p, nbytes %u", getpid (),
-		      fd, fd, func_str, sid, sid, buf, nbytes);
+      LDBG (2, "fd %d (0x%x): calling vppcom_session_write(): sid %u (0x%x), "
+	    "buf %p, nbytes %u", fd, fd, sid, sid, buf, nbytes);
 
       size = vppcom_session_write (sid, (void *) buf, nbytes);
       if (size < 0)
@@ -595,31 +520,13 @@ write (int fd, const void *buf, size_t nbytes)
     }
   else
     {
-      func_str = "libc_write";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "buf %p, nbytes %u", getpid (),
-		      fd, fd, func_str, buf, nbytes);
+      LDBG (2, "fd %d (0x%x): calling libc_write(): buf %p, nbytes %u",
+	    fd, fd, buf, nbytes);
 
       size = libc_write (fd, buf, nbytes);
     }
 
-  if (LDP_DEBUG > 2)
-    {
-      if (size < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, size, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, size, size);
-    }
+  LDBG (2, "fd %d (0x%x): returning %d (0x%x)", fd, fd, size, size);
   return size;
 }
 
@@ -734,8 +641,8 @@ fcntl (int fd, int cmd, ...)
 	{
 	case F_SETFL:
 	  func_str = "vppcom_session_attr[SET_FLAGS]";
-	  LDBG (2, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x) "
-		"flags %d (0x%x), size %d", getpid (), fd, fd, func_str, sid,
+	  LDBG (2, "fd %d (0x%x): calling %s(): sid %u (0x%x) "
+		"flags %d (0x%x), size %d", fd, fd, func_str, sid,
 		sid, flags, flags, size);
 
 	  rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_FLAGS, &flags,
@@ -744,16 +651,16 @@ fcntl (int fd, int cmd, ...)
 
 	case F_GETFL:
 	  func_str = "vppcom_session_attr[GET_FLAGS]";
-	  LDBG (2, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
-		"flags %d (0x%x), size %d", getpid (), fd, fd, func_str, sid,
+	  LDBG (2, "fd %d (0x%x): calling %s(): sid %u (0x%x), "
+		"flags %d (0x%x), size %d", fd, fd, func_str, sid,
 		sid, flags, flags, size);
 
 	  rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_FLAGS, &flags,
 				    &size);
 	  if (rv == VPPCOM_OK)
 	    {
-	      LDBG (2, "LDP<%d>: fd %d (0x%x), cmd %d (F_GETFL): %s() "
-		    "returned flags %d (0x%x)", getpid (), fd, fd, cmd,
+	      LDBG (2, "fd %d (0x%x), cmd %d (F_GETFL): %s() "
+		    "returned flags %d (0x%x)", fd, fd, cmd,
 		    func_str, flags, flags);
 	      rv = flags;
 	    }
@@ -777,9 +684,7 @@ fcntl (int fd, int cmd, ...)
     {
       func_str = "libc_vfcntl";
 
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): cmd %d",
-		      getpid (), fd, fd, func_str, cmd);
+      LDBG (2, "fd %d (0x%x): calling %s(): cmd %d", fd, fd, func_str, cmd);
 
       rv = libc_vfcntl (fd, cmd, ap);
     }
@@ -920,8 +825,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       /* select as fine grained sleep */
       if (!nfds)
 	{
-	  LDBG (3, "LDP<%d>: sleeping for %.02f seconds", getpid (),
-		time_out);
+	  LDBG (3, "sleeping for %.02f seconds", time_out);
 
 	  time_out += clib_time_now (&ldpw->clib_time);
 	  while (clib_time_now (&ldpw->clib_time) < time_out)
@@ -942,8 +846,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
     {
       func_str = "libc_pselect";
 
-      LDBG (3, "LDP<%d>: calling %s(): nfds %d, readfds %p, writefds %p, "
-	    "exceptfds %p, timeout %p, sigmask %p", getpid (), func_str, nfds,
+      LDBG (3, "calling %s(): nfds %d, readfds %p, writefds %p, "
+	    "exceptfds %p, timeout %p, sigmask %p", func_str, nfds,
 	    readfds, writefds, exceptfds, timeout, sigmask);
 
       rv = libc_pselect (nfds, readfds, writefds, exceptfds,
@@ -976,8 +880,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	if (fd > nfds)
 	  break;
         sid = ldp_sid_from_fd (fd);
-        LDBG (3, "LDP<%d>: readfds: fd %d (0x%x), sid %u (0x%x)",
-              getpid (), fd, fd, sid, sid);
+        LDBG (3, "readfds: fd %d (0x%x), sid %u (0x%x)", fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldpw->libc_rd_bitmap, fd, 1);
         else
@@ -992,8 +895,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       libc_bits_set = clib_bitmap_last_set (ldpw->libc_rd_bitmap) + 1;
       libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
 
-      LDBG (3, "LDP<%d>: readfds: sid_bits_set %d, sid_bits %d, "
-	    "libc_bits_set %d, libc_bits %d", getpid (), sid_bits_set,
+      LDBG (3, "readfds: sid_bits_set %d, sid_bits %d, "
+	    "libc_bits_set %d, libc_bits %d", sid_bits_set,
 	    sid_bits, libc_bits_set, libc_bits);
     }
   if (writefds)
@@ -1009,8 +912,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	if (fd > nfds)
 	  break;
         sid = ldp_sid_from_fd (fd);
-        LDBG (3, "LDP<%d>: writefds: fd %d (0x%x), sid %u (0x%x)",
-                        getpid (), fd, fd, sid, sid);
+        LDBG (3, "writefds: fd %d (0x%x), sid %u (0x%x)", fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldpw->libc_wr_bitmap, fd, 1);
         else
@@ -1025,8 +927,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       libc_bits_set = clib_bitmap_last_set (ldpw->libc_wr_bitmap) + 1;
       libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
 
-      LDBG (3, "LDP<%d>: writefds: sid_bits_set %d, sid_bits %d, "
-	    "libc_bits_set %d, libc_bits %d", getpid (),
+      LDBG (3, "writefds: sid_bits_set %d, sid_bits %d, "
+	    "libc_bits_set %d, libc_bits %d",
 	    sid_bits_set, sid_bits, libc_bits_set, libc_bits);
     }
   if (exceptfds)
@@ -1042,8 +944,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	if (fd > nfds)
 	  break;
         sid = ldp_sid_from_fd (fd);
-        LDBG (3, "LDP<%d>: exceptfds: fd %d (0x%x), sid %u (0x%x)",
-                        getpid (), fd, fd, sid, sid);
+        LDBG (3, "exceptfds: fd %d (0x%x), sid %u (0x%x)", fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldpw->libc_ex_bitmap, fd, 1);
         else
@@ -1058,8 +959,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       libc_bits_set = clib_bitmap_last_set (ldpw->libc_ex_bitmap) + 1;
       libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
 
-      LDBG (3, "LDP<%d>: exceptfds: sid_bits_set %d, sid_bits %d, "
-	    "libc_bits_set %d, libc_bits %d", getpid (),
+      LDBG (3, "exceptfds: sid_bits_set %d, sid_bits %d, "
+	    "libc_bits_set %d, libc_bits %d",
 	    sid_bits_set, sid_bits, libc_bits_set, libc_bits);
     }
 
@@ -1264,9 +1165,8 @@ socket (int domain, int type, int protocol)
 
       func_str = "vppcom_session_create";
 
-      LDBG (0, "LDP<%d>: : calling %s(): proto %u (%s), is_nonblocking %u",
-	    getpid (), func_str, proto, vppcom_proto_str (proto),
-	    is_nonblocking);
+      LDBG (0, "calling %s(): proto %u (%s), is_nonblocking %u",
+	    func_str, proto, vppcom_proto_str (proto), is_nonblocking);
 
       sid = vppcom_session_create (proto, is_nonblocking);
       if (sid < 0)
@@ -1290,7 +1190,7 @@ socket (int domain, int type, int protocol)
     {
       func_str = "libc_socket";
 
-      LDBG (0, "LDP<%d>: : calling %s()", getpid (), func_str);
+      LDBG (0, "calling %s()", func_str);
 
       rv = libc_socket (domain, type, protocol);
     }
@@ -1307,7 +1207,7 @@ socket (int domain, int type, int protocol)
 	  errno = errno_val;
 	}
       else
-	clib_warning ("LDP<%d>: : returning fd %d (0x%x)", getpid (), rv, rv);
+	clib_warning ("returning fd %d (0x%x)", getpid (), rv, rv);
     }
   return rv;
 }
@@ -1342,7 +1242,7 @@ socketpair (int domain, int type, int protocol, int fds[2])
     {
       func_str = "libc_socket";
 
-      LDBG (1, "LDP<%d>: : calling %s()", getpid (), func_str);
+      LDBG (1, "calling %s()", func_str);
 
       rv = libc_socketpair (domain, type, protocol, fds);
     }
@@ -1368,7 +1268,6 @@ int
 bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
   int rv;
-  const char *func_str;
   u32 sid = ldp_sid_from_fd (fd);
 
   if ((errno = -ldp_init ()))
@@ -1377,8 +1276,6 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
   if (sid != INVALID_SESSION_ID)
     {
       vppcom_endpt_t ep;
-
-      func_str = "vppcom_session_bind";
 
       switch (addr->sa_family)
 	{
@@ -1420,10 +1317,8 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	  rv = -1;
 	  goto done;
 	}
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
-		      "addr %p, len %u",
-		      getpid (), fd, fd, func_str, sid, sid, addr, len);
+      LDBG (0, "fd %d (0x%x): calling vppcom_session_bind(): "
+	    "sid %u (0x%x), addr %p, len %u", fd, fd, sid, sid, addr, len);
 
       rv = vppcom_session_bind (sid, &ep);
       if (rv != VPPCOM_OK)
@@ -1434,32 +1329,15 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
     }
   else
     {
-      func_str = "libc_bind";
-
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "addr %p, len %u",
-		      getpid (), fd, fd, func_str, addr, len);
+      LDBG (0, "fd %d (0x%x): calling libc_bind(): addr %p, len %u",
+	    fd, fd, addr, len);
 
       rv = libc_bind (fd, addr, len);
     }
 
 done:
-  if (LDP_DEBUG > 0)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, rv, rv);
-    }
+  LDBG (1, "fd %d (0x%x): returning %d", fd, fd, rv);
+
   return rv;
 }
 
@@ -1583,7 +1461,6 @@ int
 connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
   int rv;
-  const char *func_str = __func__;
   u32 sid = ldp_sid_from_fd (fd);
 
   if ((errno = -ldp_init ()))
@@ -1601,8 +1478,6 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
   if (sid != INVALID_SESSION_ID)
     {
       vppcom_endpt_t ep;
-
-      func_str = "vppcom_session_connect";
 
       switch (addr->sa_family)
 	{
@@ -1644,10 +1519,8 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	  rv = -1;
 	  goto done;
 	}
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x) "
-		      "addr %p len %u",
-		      getpid (), fd, fd, func_str, sid, sid, addr, len);
+      LDBG (0, "fd %d (0x%x): calling vppcom_session_connect(): sid %u (0x%x)"
+	    " addr %p len %u", fd, fd, sid, sid, addr, len);
 
       rv = vppcom_session_connect (sid, &ep);
       if (rv != VPPCOM_OK)
@@ -1658,32 +1531,14 @@ connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
     }
   else
     {
-      func_str = "libc_connect";
-
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "addr %p, len %u",
-		      getpid (), fd, fd, func_str, addr, len);
+      LDBG (0, "fd %d (0x%x): calling libc_connect(): addr %p, len %u",
+	    fd, fd, addr, len);
 
       rv = libc_connect (fd, addr, len);
     }
 
 done:
-  if (LDP_DEBUG > 0)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, rv, rv);
-    }
+  LDBG (1, "fd %d (0x%x): returning %d (0x%x)", fd, fd, rv, rv);
   return rv;
 }
 
@@ -2865,7 +2720,6 @@ int
 listen (int fd, int n)
 {
   int rv;
-  const char *func_str;
   u32 sid = ldp_sid_from_fd (fd);
 
   if ((errno = -ldp_init ()))
@@ -2873,10 +2727,8 @@ listen (int fd, int n)
 
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = "vppcom_session_listen";
-
-      LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), n %d",
-	    getpid (), fd, fd, func_str, sid, sid, n);
+      LDBG (0, "fd %d (0x%x): calling vppcom_session_listen():"
+	    " sid %u (0x%x), n %d", fd, fd, sid, sid, n);
 
       rv = vppcom_session_listen (sid, n);
       if (rv != VPPCOM_OK)
@@ -2887,29 +2739,12 @@ listen (int fd, int n)
     }
   else
     {
-      func_str = "libc_listen";
-
-      LDBG (0, "LDP<%d>: fd %d (0x%x): calling %s(): n %d", getpid (), fd,
-	    fd, func_str, n);
+      LDBG (0, "fd %d (0x%x): calling libc_listen(): n %d", fd, fd, n);
 
       rv = libc_listen (fd, n);
     }
 
-  if (LDP_DEBUG > 0)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, rv, rv);
-    }
+  LDBG (1, "fd %d (0x%x): returning %d (0x%x)", fd, fd, rv, rv);
   return rv;
 }
 
@@ -2918,7 +2753,6 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	     socklen_t * __restrict addr_len, int flags)
 {
   int rv;
-  const char *func_str;
   u32 listen_sid = ldp_sid_from_fd (listen_fd);
   int accept_sid;
 
@@ -2932,13 +2766,9 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
       memset (&ep, 0, sizeof (ep));
       ep.ip = src_addr;
 
-      func_str = "vppcom_session_accept";
-
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: listen fd %d (0x%x): calling %s(): "
-		      "listen sid %u (0x%x), ep %p, flags 0x%x",
-		      getpid (), listen_fd, listen_fd, func_str,
-		      listen_sid, listen_sid, ep, flags);
+      LDBG (0, "listen fd %d (0x%x): calling vppcom_session_accept:"
+	    " listen sid %u (0x%x), ep %p, flags 0x%x", listen_fd,
+	    listen_fd, listen_sid, listen_sid, ep, flags);
 
       accept_sid = vppcom_session_accept (listen_sid, &ep, flags);
       if (accept_sid < 0)
@@ -2957,12 +2787,6 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	    }
 	  else
 	    {
-	      func_str = "ldp_fd_from_sid";
-	      if (LDP_DEBUG > 0)
-		clib_warning ("LDP<%d>: listen fd %d (0x%x): calling %s(): "
-			      "accept sid %u (0x%x), ep %p, flags 0x%x",
-			      getpid (), listen_fd, listen_fd,
-			      func_str, accept_sid, accept_sid, ep, flags);
 	      rv = ldp_fd_alloc ((u32) accept_sid);
 	      if (rv < 0)
 		{
@@ -2975,32 +2799,16 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
     }
   else
     {
-      func_str = "libc_accept4";
-
-      if (LDP_DEBUG > 0)
-	clib_warning ("LDP<%d>: listen fd %d (0x%x): calling %s(): "
-		      "addr %p, addr_len %p, flags 0x%x",
-		      getpid (), listen_fd, listen_fd, func_str,
-		      addr, addr_len, flags);
+      LDBG (0, "listen fd %d (0x%x): calling libc_accept4(): "
+	    "addr %p, addr_len %p, flags 0x%x", listen_fd,
+	    listen_fd, addr, addr_len, flags);
 
       rv = libc_accept4 (listen_fd, addr, addr_len, flags);
     }
 
-  if (LDP_DEBUG > 0)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: listen fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), listen_fd,
-			listen_fd, func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: listen fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), listen_fd, listen_fd, rv, rv);
-    }
+  LDBG (1, "listen fd %d (0x%x): returning %d (0x%x)", listen_fd, listen_fd,
+	rv, rv);
+
   return rv;
 }
 
@@ -3076,12 +2884,12 @@ epoll_create1 (int flags)
       rv = libc_epoll_create1 (flags);
       ldp->vcl_needs_real_epoll = 0;
       ldpw->vcl_mq_epfd = rv;
-      LDBG (0, "LDP<%d>: created vcl epfd %u", getpid (), rv);
+      LDBG (0, "created vcl epfd %u", rv);
       return rv;
     }
   func_str = "vppcom_epoll_create";
 
-  LDBG (1, "LDP<%d>: calling %s()", getpid (), func_str);
+  LDBG (1, "calling %s()", func_str);
 
   rv = vppcom_epoll_create ();
 
@@ -3135,8 +2943,8 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
        */
       func_str = "libc_epoll_ctl";
 
-      LDBG (1, "LDP<%d>: epfd %d (0x%x): calling %s(): op %d, fd %d (0x%x),"
-	    " event %p", getpid (), epfd, epfd, func_str, op, fd, fd, event);
+      LDBG (1, "epfd %d (0x%x): calling %s(): op %d, fd %d (0x%x),"
+	    " event %p", epfd, epfd, func_str, op, fd, fd, event);
 
       rv = libc_epoll_ctl (epfd, op, fd, event);
       goto done;
@@ -3144,15 +2952,15 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 
   sid = ldp_sid_from_fd (fd);
 
-  LDBG (0, "LDP<%d>: epfd %d (0x%x), vep_idx %d (0x%x), sid %d (0x%x)",
-	getpid (), epfd, epfd, vep_idx, vep_idx, sid, sid);
+  LDBG (0, "epfd %d (0x%x), vep_idx %d (0x%x), sid %d (0x%x)",
+	epfd, epfd, vep_idx, vep_idx, sid, sid);
 
   if (sid != INVALID_SESSION_ID)
     {
       func_str = "vppcom_epoll_ctl";
 
-      LDBG (1, "LDP<%d>: epfd %d (0x%x): calling %s(): vep_idx %d (0x%x),"
-	    " op %d, sid %u (0x%x), event %p", getpid (), epfd, epfd,
+      LDBG (1, "epfd %d (0x%x): calling %s(): vep_idx %d (0x%x),"
+	    " op %d, sid %u (0x%x), event %p", epfd, epfd,
 	    func_str, vep_idx, vep_idx, sid, sid, event);
 
       rv = vppcom_epoll_ctl (vep_idx, op, sid, event);
@@ -3170,16 +2978,16 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
       func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
       libc_epfd = vppcom_session_attr (vep_idx, VPPCOM_ATTR_GET_LIBC_EPFD, 0,
 				       0);
-      LDBG (1, "LDP<%d>: epfd %d (0x%x), vep_idx %d (0x%x): %s() "
-	    "returned libc_epfd %d (0x%x)", getpid (), epfd, epfd,
+      LDBG (1, "epfd %d (0x%x), vep_idx %d (0x%x): %s() "
+	    "returned libc_epfd %d (0x%x)", epfd, epfd,
 	    vep_idx, vep_idx, func_str, libc_epfd, libc_epfd);
 
       if (!libc_epfd)
 	{
 	  func_str = "libc_epoll_create1";
 
-	  LDBG (1, "LDP<%d>: epfd %d (0x%x), vep_idx %d (0x%x): "
-		"calling %s(): EPOLL_CLOEXEC", getpid (), epfd, epfd,
+	  LDBG (1, "epfd %d (0x%x), vep_idx %d (0x%x): "
+		"calling %s(): EPOLL_CLOEXEC", epfd, epfd,
 		vep_idx, vep_idx, func_str);
 
 	  libc_epfd = libc_epoll_create1 (EPOLL_CLOEXEC);
@@ -3190,9 +2998,9 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 	    }
 
 	  func_str = "vppcom_session_attr[SET_LIBC_EPFD]";
-	  LDBG (1, "LDP<%d>: epfd %d (0x%x): calling %s(): vep_idx %d (0x%x),"
+	  LDBG (1, "epfd %d (0x%x): calling %s(): vep_idx %d (0x%x),"
 		" VPPCOM_ATTR_SET_LIBC_EPFD, libc_epfd %d (0x%x), size %d",
-		getpid (), epfd, epfd, func_str, vep_idx, vep_idx, libc_epfd,
+		epfd, epfd, func_str, vep_idx, vep_idx, libc_epfd,
 		libc_epfd, size);
 
 	  rv = vppcom_session_attr (vep_idx, VPPCOM_ATTR_SET_LIBC_EPFD,
@@ -3213,8 +3021,8 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 
       func_str = "libc_epoll_ctl";
 
-      LDBG (1, "LDP<%d>: epfd %d (0x%x): calling %s(): libc_epfd %d (0x%x), "
-	    "op %d, fd %d (0x%x), event %p", getpid (), epfd, epfd, func_str,
+      LDBG (1, "epfd %d (0x%x): calling %s(): libc_epfd %d (0x%x), "
+	    "op %d, fd %d (0x%x), event %p", epfd, epfd, func_str,
 	    libc_epfd, libc_epfd, op, fd, fd, event);
 
       rv = libc_epoll_ctl (libc_epfd, op, fd, event);
@@ -3281,9 +3089,9 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
       goto done;
     }
 
-  LDBG (2, "LDP<%d>: epfd %d (0x%x): vep_idx %d (0x%x), libc_epfd %d (0x%x), "
+  LDBG (2, "epfd %d (0x%x): vep_idx %d (0x%x), libc_epfd %d (0x%x), "
 	"events %p, maxevents %d, timeout %d, sigmask %p: time_to_wait %.02f",
-	getpid (), epfd, epfd, vep_idx, vep_idx, libc_epfd, libc_epfd, events,
+	epfd, epfd, vep_idx, vep_idx, libc_epfd, libc_epfd, events,
 	maxevents, timeout, sigmask, time_to_wait, time_out);
   do
     {
@@ -3291,8 +3099,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	{
 	  func_str = "vppcom_epoll_wait";
 
-	  LDBG (3, "LDP<%d>: epfd %d (0x%x): calling %s(): vep_idx %d (0x%x),"
-		" events %p, maxevents %d", getpid (), epfd, epfd, func_str,
+	  LDBG (3, "epfd %d (0x%x): calling %s(): vep_idx %d (0x%x),"
+		" events %p, maxevents %d", epfd, epfd, func_str,
 		vep_idx, vep_idx, events, maxevents);
 
 	  rv = vppcom_epoll_wait (vep_idx, events, maxevents, 0);
@@ -3315,8 +3123,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	{
 	  func_str = "libc_epoll_pwait";
 
-	  LDBG (3, "LDP<%d>: epfd %d (0x%x): calling %s(): libc_epfd %d "
-		"(0x%x), events %p, maxevents %d, sigmask %p", getpid (),
+	  LDBG (3, "epfd %d (0x%x): calling %s(): libc_epfd %d "
+		"(0x%x), events %p, maxevents %d, sigmask %p",
 		epfd, epfd, func_str, libc_epfd, libc_epfd, events,
 		maxevents, sigmask);
 
@@ -3374,8 +3182,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
   vcl_poll_t *vp;
   double wait_for_time;
 
-  LDBG (3, "LDP<%d>: fds %p, nfds %d, timeout %d", getpid (), fds, nfds,
-	timeout);
+  LDBG (3, "fds %p, nfds %d, timeout %d", fds, nfds, timeout);
 
   if (timeout >= 0)
     wait_for_time = (f64) timeout / 1000;
@@ -3387,9 +3194,8 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
       if (fds[i].fd < 0)
 	continue;
 
-      LDBG (3, "LDP<%d>: fds[%d] fd %d (0x%0x) events = 0x%x revents = 0x%x",
-	    getpid (), i, fds[i].fd, fds[i].fd, fds[i].events,
-	    fds[i].revents);
+      LDBG (3, "fds[%d] fd %d (0x%0x) events = 0x%x revents = 0x%x",
+	    i, fds[i].fd, fds[i].fd, fds[i].events, fds[i].revents);
 
       sid = ldp_sid_from_fd (fds[i].fd);
       if (sid != INVALID_SESSION_ID)
@@ -3420,8 +3226,8 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	{
 	  func_str = "vppcom_poll";
 
-	  LDBG (3, "LDP<%d>: calling %s(): vcl_poll %p, n_sids %u (0x%x): "
-		"n_libc_fds %u", getpid (), func_str, ldpw->vcl_poll,
+	  LDBG (3, "calling %s(): vcl_poll %p, n_sids %u (0x%x): "
+		"n_libc_fds %u", func_str, ldpw->vcl_poll,
 		vec_len (ldpw->vcl_poll), vec_len (ldpw->vcl_poll),
 		vec_len (ldpw->libc_poll));
 
@@ -3440,8 +3246,8 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	{
 	  func_str = "libc_poll";
 
-	  LDBG (3, "LDP<%d>: calling %s(): fds %p, nfds %u: n_sids %u",
-		getpid (), fds, nfds, vec_len (ldpw->vcl_poll));
+	  LDBG (3, "calling %s(): fds %p, nfds %u: n_sids %u",
+		fds, nfds, vec_len (ldpw->vcl_poll));
 
 	  rv = libc_poll (ldpw->libc_poll, vec_len (ldpw->libc_poll), 0);
 	  if (rv < 0)
