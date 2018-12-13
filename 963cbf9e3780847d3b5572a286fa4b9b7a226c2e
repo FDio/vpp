@@ -69,6 +69,30 @@
       "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dfefc7ee_eb99007c",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2018-12-13T08:32:22Z",
+      "side": 1,
+      "message": "A note about expected failures/unexpected successes: the test runner will not report these in the summary since there is no support for these.",
+      "parentUuid": "87f6a2b8_5d2ee540",
+      "range": {
+        "startLine": 182,
+        "startChar": 21,
+        "endLine": 182,
+        "endChar": 51
+      },
+      "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
