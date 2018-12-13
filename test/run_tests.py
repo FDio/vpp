@@ -87,33 +87,37 @@ class TestResult(dict):
             return suite_from_failed(self.testcase_suite, rerun_ids)
 
     def get_testcase_names(self, test_id):
-        if re.match(r'.+\..+\..+', test_id):
+        # could be tearDownClass (test_ipsec_esp.TestIpsecEsp1)
+        setup_teardown_match = re.match(
+            r'((tearDownClass)|(setUpClass)) \((.+\..+)\)', test_id)
+        if setup_teardown_match:
+            test_name, _, _, testcase_name = setup_teardown_match.groups()
+            if len(testcase_name.split('.')) == 2:
+                for key in self.testcases_by_id.keys():
+                    if key.startswith(testcase_name):
+                        testcase_name = key
+                        break
+            testcase_name = self._get_testcase_doc_name(testcase_name)
+        else:
             test_name = self._get_test_description(test_id)
             testcase_name = self._get_testcase_doc_name(test_id)
-        else:
-            # could be tearDownClass (test_ipsec_esp.TestIpsecEsp1)
-            setup_teardown_match = re.match(
-                r'((tearDownClass)|(setUpClass)) \((.+\..+)\)', test_id)
-            if setup_teardown_match:
-                test_name, _, _, testcase_name = setup_teardown_match.groups()
-                if len(testcase_name.split('.')) == 2:
-                    for key in self.testcases_by_id.keys():
-                        if key.startswith(testcase_name):
-                            testcase_name = key
-                            break
-                testcase_name = self._get_testcase_doc_name(testcase_name)
-            else:
-                test_name = test_id
-                testcase_name = test_id
 
         return testcase_name, test_name
 
     def _get_test_description(self, test_id):
-        return get_test_description(descriptions,
-                                    self.testcases_by_id[test_id])
+        if test_id in self.testcases_by_id:
+            desc = get_test_description(descriptions,
+                                        self.testcases_by_id[test_id])
+        else:
+            desc = test_id
+        return desc
 
     def _get_testcase_doc_name(self, test_id):
-        return get_testcase_doc_name(self.testcases_by_id[test_id])
+        if test_id in self.testcases_by_id:
+            doc_name = get_testcase_doc_name(self.testcases_by_id[test_id])
+        else:
+            doc_name = test_id
+        return doc_name
 
 
 def test_runner_wrapper(suite, keep_alive_pipe, stdouterr_queue,
