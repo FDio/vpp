@@ -106,6 +106,8 @@ vl_api_bond_create_t_handler (vl_api_bond_create_t * mp)
 
   clib_memset (ap, 0, sizeof (*ap));
 
+  ap->instance = ntohl (mp->instance);
+
   if (mp->use_custom_mac)
     {
       clib_memcpy (ap->hw_addr, mp->mac_address, 6);
@@ -197,6 +199,7 @@ bond_send_sw_interface_details (vpe_api_main_t * am,
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_BOND_DETAILS);
   mp->sw_if_index = htonl (bond_if->sw_if_index);
+  mp->instance = htonl (bond_if->user_instance);
   clib_memcpy (mp->interface_name, bond_if->interface_name,
 	       MIN (ARRAY_LEN (mp->interface_name) - 1,
 		    strlen ((const char *) bond_if->interface_name)));
