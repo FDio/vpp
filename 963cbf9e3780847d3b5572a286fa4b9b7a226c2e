@@ -93,6 +93,30 @@
       "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39f9588a_b85bdad2",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-13T13:12:35Z",
+      "side": 1,
+      "message": "Understood.  I think there is a distinction between \"this is what we do\" and \"this is valuable to do\".  My thought is that \"expectedfailure\" offers the ability for the community to get more involved, as tests can be introduced as they are discovered, instead of only once they have been addressed.  You ll have way more experience in that area than I do.  What do you all think?",
+      "parentUuid": "dfefc7ee_eb99007c",
+      "range": {
+        "startLine": 182,
+        "startChar": 21,
+        "endLine": 182,
+        "endChar": 51
+      },
+      "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
