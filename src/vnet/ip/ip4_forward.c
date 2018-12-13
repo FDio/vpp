@@ -2348,7 +2348,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  adj0->sub_type.midchain.fixup_func
 	    (vm, adj0, b[0], adj0->sub_type.midchain.fixup_data);
 	  adj1->sub_type.midchain.fixup_func
-	    (vm, adj1, b[1], adj0->sub_type.midchain.fixup_data);
+	    (vm, adj1, b[1], adj1->sub_type.midchain.fixup_data);
 	}
 
       if (is_mcast)
@@ -2360,7 +2360,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 				      adj0->rewrite_header.dst_mcast_offset,
 				      &ip0->dst_address.as_u32, (u8 *) ip0);
 	  vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
-				      adj0->rewrite_header.dst_mcast_offset,
+				      adj1->rewrite_header.dst_mcast_offset,
 				      &ip1->dst_address.as_u32, (u8 *) ip1);
 	}
 
