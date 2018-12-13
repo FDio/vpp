@@ -97,6 +97,23 @@ vmxnet3_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
 			node_index);
 }
 
+static void
+vmxnet3_clear_hw_interface_counters (u32 instance)
+{
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
+  vmxnet3_device_t *vd = pool_elt_at_index (vmxm->devices, instance);
+  vmxnet3_queues *q = &vd->dma->queues;
+
+  /*
+   * Set the "last_cleared_stats" to the current stats, so that
+   * things appear to clear from a display perspective.
+   */
+  vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
+
+  clib_memcpy (&vd->tx_stats, &q->tx.stats, sizeof (vd->tx_stats));
+  clib_memcpy (&vd->rx_stats, &q->rx.stats, sizeof (vd->rx_stats));
+}
+
 static char *vmxnet3_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_vmxnet3_tx_func_error
@@ -110,6 +127,7 @@ VNET_DEVICE_CLASS (vmxnet3_device_class,) =
   .format_device = format_vmxnet3_device,
   .format_device_name = format_vmxnet3_device_name,
   .admin_up_down_function = vmxnet3_interface_admin_up_down,
+  .clear_counters = vmxnet3_clear_hw_interface_counters,
   .rx_mode_change_function = vmxnet3_interface_rx_mode_change,
   .rx_redirect_to_node = vmxnet3_set_interface_next_node,
   .tx_function_n_errors = VMXNET3_TX_N_ERROR,

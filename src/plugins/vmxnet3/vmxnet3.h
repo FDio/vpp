@@ -488,6 +488,8 @@ typedef struct
   vmxnet3_dma *dma;
 
   u32 link_speed;
+  vmxnet3_tx_stats tx_stats;
+  vmxnet3_rx_stats rx_stats;
 } vmxnet3_device_t;
 
 typedef struct
