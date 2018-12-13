@@ -337,7 +337,7 @@ static void
   int rv = 0;
 
   map_pre_resolve ((ip4_address_t *) & mp->ip4_nh_address,
-		   (ip6_address_t *) & mp->ip6_nh_address, mp->is_add);
+		   (ip6_address_t *) & mp->ip6_nh_address, !mp->is_add);
 
   REPLY_MACRO (VL_API_MAP_PARAM_ADD_DEL_PRE_RESOLVE_REPLY);
 }
