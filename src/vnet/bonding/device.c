@@ -72,7 +72,7 @@ format_bond_interface_name (u8 * s, va_list * args)
   bond_main_t *bm = &bond_main;
   bond_if_t *bif = pool_elt_at_index (bm->interfaces, dev_instance);
 
-  s = format (s, "BondEthernet%lu", bif->dev_instance);
+  s = format (s, "BondEthernet%lu", bif->id);
 
   return s;
 }

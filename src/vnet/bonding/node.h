@@ -77,6 +77,7 @@ enum
 
 typedef struct
 {
+  u32 id;
   u8 hw_addr_set;
   u8 hw_addr[6];
   u8 mode;
@@ -112,6 +113,7 @@ typedef struct
 typedef struct
 {
   u32 sw_if_index;
+  u32 id;
   u8 interface_name[64];
   u8 mode;
   u8 lb;
@@ -158,7 +160,12 @@ typedef struct
   /* the last slave index for the rr lb */
   u32 lb_rr_last_index;
 
+  /* Real device instance in interface vector */
   u32 dev_instance;
+
+  /* Interface ID being shown to user */
+  u32 id;
+
   u32 hw_if_index;
   u32 sw_if_index;
 
@@ -296,6 +303,9 @@ typedef struct
 {
   /* pool of bonding interfaces */
   bond_if_t *interfaces;
+
+  /* record used interface IDs */
+  uword *id_used;
 
   /* pool of slave interfaces */
   slave_if_t *neighbors;
