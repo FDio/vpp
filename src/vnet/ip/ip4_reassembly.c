@@ -504,7 +504,10 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip->flags_and_fragment_offset = 0;
   ip->length = clib_host_to_net_u16 (first_b->current_length + total_length);
   ip->checksum = ip4_header_checksum (ip);
+  u32 before = vec_len (*vec_drop_compress);
   vlib_buffer_chain_compress (vm, first_b, vec_drop_compress);
+  rt->buffers_n += vec_len (*vec_drop_compress) - before;
+
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
     {
       ip4_reass_add_trace (vm, node, rm, reass, reass->first_bi, FINALIZE, 0);

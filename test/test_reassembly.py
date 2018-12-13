@@ -203,6 +203,37 @@ class TestIPv4Reassembly(VppTestCase):
         self.assert_packet_counter_equal(
             "/err/ip4-reassembly-feature/malformed packets", 1)
 
+    def test_44924(self):
+        """ compress tiny fragments """
+        packets = [(Ether(dst=self.src_if.local_mac,
+                          src=self.src_if.remote_mac) /
+                    IP(id=24339, flags="MF", frag=0, ttl=64,
+                       src=self.src_if.remote_ip4,
+                       dst=self.dst_if.remote_ip4) /
+                    ICMP(type="echo-request", code=0, id=0x1fe6, seq=0x2407) /
+                    Raw(load='Test-group: IPv4')),
+                   (Ether(dst=self.src_if.local_mac,
+                          src=self.src_if.remote_mac) /
+                    IP(id=24339, flags="MF", frag=3, ttl=64,
+                       src=self.src_if.remote_ip4,
+                       dst=self.dst_if.remote_ip4) /
+                    ICMP(type="echo-request", code=0, id=0x1fe6, seq=0x2407) /
+                    Raw(load='.IPv4.Fragmentation.vali')),
+                   (Ether(dst=self.src_if.local_mac,
+                          src=self.src_if.remote_mac) /
+                    IP(id=24339, frag=6, ttl=64,
+                       src=self.src_if.remote_ip4,
+                       dst=self.dst_if.remote_ip4) /
+                    ICMP(type="echo-request", code=0, id=0x1fe6, seq=0x2407) /
+                    Raw(load='d; Test-case: 44924'))
+                   ]
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(packets)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+
     @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
                      "test doesn't work on aarch64")
     def test_random(self):
