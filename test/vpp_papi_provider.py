@@ -3884,19 +3884,22 @@ class VppPapiProvider(object):
             mode,
             lb,
             use_custom_mac,
-            mac_address=''):
+            mac_address='',
+            interface_id=0xFFFFFFFF):
         """
         :param mode: mode
         :param lb: load balance
         :param use_custom_mac: use custom mac
         :param mac_address: mac address
+        :param interface_id: custom interface ID
         """
         return self.api(
             self.papi.bond_create,
             {'mode': mode,
              'lb': lb,
              'use_custom_mac': use_custom_mac,
-             'mac_address': mac_address
+             'mac_address': mac_address,
+             'id': interface_id
              })
 
     def bond_delete(

@@ -24,6 +24,7 @@ option version = "1.0.0";
 /** \brief Initialize a new bond interface with the given paramters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param id - if non-~0, specifies a custom interface ID
     @param use_custom_mac - if set, mac_address is valid
     @param mac_address - mac addr to assign to the interface if use_custom_mac is set
     @param mode - mode, required (1=round-robin, 2=active-backup, 3=xor, 4=broadcastcast, 5=lacp)
@@ -33,6 +34,7 @@ define bond_create
 {
   u32 client_index;
   u32 context;
+  u32 id;
   u8 use_custom_mac;
   u8 mac_address[6];
   u8 mode;
@@ -112,6 +114,7 @@ define sw_interface_bond_dump
 
 /** \brief Reply for bond dump request
     @param sw_if_index - software index of bond interface
+    @param id - ID of interface
     @param interface_name - name of interface
     @param mode - bonding mode
     @param lb - load balance algo
@@ -122,6 +125,7 @@ define sw_interface_bond_details
 {
   u32 context;
   u32 sw_if_index;
+  u32 id;
   u8 interface_name[64];
   u8 mode;
   u8 lb;

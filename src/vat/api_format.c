@@ -7919,6 +7919,7 @@ api_bond_create (vat_main_t * vam)
   u8 mode;
   u8 lb;
   u8 mode_is_set = 0;
+  u32 id = ~0;
 
   clib_memset (mac_address, 0, sizeof (mac_address));
   lb = BOND_LB_L2;
@@ -7934,6 +7935,8 @@ api_bond_create (vat_main_t * vam)
       else if (unformat (i, "hw-addr %U", unformat_ethernet_address,
 			 mac_address))
 	custom_mac = 1;
+      else if (unformat (i, "id %u", &id))
+	;
       else
 	break;
     }
@@ -7951,6 +7954,7 @@ api_bond_create (vat_main_t * vam)
 
   mp->mode = mode;
   mp->lb = lb;
+  mp->id = htonl (id);
 
   if (custom_mac)
     clib_memcpy (mp->mac_address, mac_address, 6);
@@ -23176,7 +23180,8 @@ _(tap_delete_v2,                                                        \
 _(sw_interface_tap_v2_dump, "")                                         \
 _(bond_create,                                                          \
   "[hw-addr <mac-addr>] {round-robin | active-backup | "                \
-  "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]}")        \
+  "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "        \
+  "[id <if-id>]")                                                       \
 _(bond_delete,                                                          \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(bond_enslave,                                                         \

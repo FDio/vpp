@@ -675,9 +675,11 @@ static void *vl_api_bond_create_t_print
     s = format (s, "mac-address %U ",
 		format_ethernet_address, mp->mac_address);
   if (mp->mode)
-    s = format (s, "mode %U", format_bond_mode, mp->mode);
+    s = format (s, "mode %U ", format_bond_mode, mp->mode);
   if (mp->lb)
-    s = format (s, "lb %U", format_bond_load_balance, mp->lb);
+    s = format (s, "lb %U ", format_bond_load_balance, mp->lb);
+  if (mp->id != ~0)
+    s = format (s, "id %u ", ntohl (mp->id));
   FINISH;
 }
 
