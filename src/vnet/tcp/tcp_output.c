@@ -126,7 +126,10 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
    * scale to be computed in the same way */
   max_fifo = tm->max_rx_fifo ? tm->max_rx_fifo : TCP_MAX_RX_FIFO_SIZE;
 
-  tc->rcv_wscale = tcp_window_compute_scale (max_fifo);
+  /* Compute rcv wscale only if peer advertised support for it */
+  if (tc->state != TCP_STATE_SYN_RCVD || tcp_opts_wscale (&tc->rcv_opts))
+    tc->rcv_wscale = tcp_window_compute_scale (max_fifo);
+
   tc->rcv_wnd = tcp_initial_wnd_unscaled (tc);
 
   return clib_min (tc->rcv_wnd, TCP_WND_MAX);
