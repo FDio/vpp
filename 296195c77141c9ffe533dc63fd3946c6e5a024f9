@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "48281eee_2aeb651f",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2269,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-13T04:30:30Z",
+      "side": 1,
+      "message": "Have you considered using parameterized tests?",
+      "range": {
+        "startLine": 2219,
+        "startChar": 1,
+        "endLine": 2269,
+        "endChar": 0
+      },
+      "revId": "296195c77141c9ffe533dc63fd3946c6e5a024f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
