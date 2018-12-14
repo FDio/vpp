@@ -49,13 +49,13 @@ stat_reader::disconnect()
 void
 stat_reader::registers(const interface& intf)
 {
-  m_stat_itf_indexes.insert(intf.handle().value());
+  m_stat_itf_indexes.insert(intf.handle_i().value());
 }
 
 void
 stat_reader::unregisters(const interface& intf)
 {
-  m_stat_itf_indexes.erase(intf.handle().value());
+  m_stat_itf_indexes.erase(intf.handle_i().value());
 }
 
 void

@@ -38,7 +38,6 @@ public:
    * Construct a GBP bridge_domain
    */
   gbp_bridge_domain(const bridge_domain& bd, const interface& bvi);
-  gbp_bridge_domain(const bridge_domain& bd);
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
                     const interface& uu_fwd);
