@@ -1283,6 +1283,8 @@ tcp_send_acks (tcp_worker_ctx_t * wrk)
   for (i = 0; i < vec_len (pending_acks); i++)
     {
       tc = tcp_connection_get (pending_acks[i], thread_index);
+      if (tc->rcv_nxt - tc->irs <= 11)
+	continue;
       tc->flags &= ~TCP_CONN_SNDACK;
       n_acks = clib_max (1, tc->pending_dupacks);
       /* If we're supposed to send dupacks but have no ooo data
