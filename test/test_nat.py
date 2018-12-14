@@ -1507,13 +1507,21 @@ class TestNAT44(MethodHolder):
 
     def test_dynamic(self):
         """ NAT44 dynamic translation test """
-
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
 
         # in2out
+        tcpn = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/TCP packets')
+        udpn = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/UDP packets')
+        icmpn = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/ICMP packets')
+        totaln = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/good in2out packets processed')
+
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -1521,13 +1529,42 @@ class TestNAT44(MethodHolder):
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
+        err = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/TCP packets')
+        self.assertEqual(err - tcpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/UDP packets')
+        self.assertEqual(err - udpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/ICMP packets')
+        self.assertEqual(err - icmpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-in2out-slowpath/good in2out packets processed')
+        self.assertEqual(err - totaln, 3)
+
         # out2in
+        tcpn = self.statistics.get_counter('/err/nat44-out2in/TCP packets')
+        udpn = self.statistics.get_counter('/err/nat44-out2in/UDP packets')
+        icmpn = self.statistics.get_counter('/err/nat44-out2in/ICMP packets')
+        totaln = self.statistics.get_counter(
+            '/err/nat44-out2in/good out2in packets processed')
+
         pkts = self.create_stream_out(self.pg1)
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
+
+        err = self.statistics.get_counter('/err/nat44-out2in/TCP packets')
+        self.assertEqual(err - tcpn, 1)
+        err = self.statistics.get_counter('/err/nat44-out2in/UDP packets')
+        self.assertEqual(err - udpn, 1)
+        err = self.statistics.get_counter('/err/nat44-out2in/ICMP packets')
+        self.assertEqual(err - icmpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-out2in/good out2in packets processed')
+        self.assertEqual(err - totaln, 3)
 
     def test_dynamic_icmp_errors_in2out_ttl_1(self):
         """ NAT44 handling of client packets with TTL=1 """
@@ -3356,6 +3393,11 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+        err = self.statistics.get_counter('/err/nat44-classify/next in2out')
+        self.assertEqual(err, 1)
+        err = self.statistics.get_counter('/err/nat44-classify/next out2in')
+        self.assertEqual(err, 1)
+
     def test_del_session(self):
         """ Delete NAT44 session """
         self.nat44_add_address(self.nat_addr)
@@ -4008,6 +4050,15 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.assertEqual(1, nat_config.endpoint_dependent)
 
         # in2out
+        tcpn = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/TCP packets')
+        udpn = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/UDP packets')
+        icmpn = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/ICMP packets')
+        totaln = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/good in2out packets processed')
+
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -4015,13 +4066,44 @@ class TestNAT44EndpointDependent(MethodHolder):
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
+        err = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/TCP packets')
+        self.assertEqual(err - tcpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/UDP packets')
+        self.assertEqual(err - udpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/ICMP packets')
+        self.assertEqual(err - icmpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-ed-in2out-slowpath/good in2out packets processed')
+        self.assertEqual(err - totaln, 3)
+
         # out2in
+        tcpn = self.statistics.get_counter('/err/nat44-ed-out2in/TCP packets')
+        udpn = self.statistics.get_counter('/err/nat44-ed-out2in/UDP packets')
+        icmpn = self.statistics.get_counter(
+            '/err/nat44-ed-out2in-slowpath/ICMP packets')
+        totaln = self.statistics.get_counter(
+            '/err/nat44-ed-out2in/good out2in packets processed')
+
         pkts = self.create_stream_out(self.pg1)
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
+
+        err = self.statistics.get_counter('/err/nat44-ed-out2in/TCP packets')
+        self.assertEqual(err - tcpn, 1)
+        err = self.statistics.get_counter('/err/nat44-ed-out2in/UDP packets')
+        self.assertEqual(err - udpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-ed-out2in-slowpath/ICMP packets')
+        self.assertEqual(err - icmpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat44-ed-out2in/good out2in packets processed')
+        self.assertEqual(err - totaln, 2)
 
     def test_forwarding(self):
         """ NAT44 forwarding test """
@@ -6840,6 +6922,12 @@ class TestNAT64(MethodHolder):
         self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
 
         # in2out
+        tcpn = self.statistics.get_counter('/err/nat64-in2out/TCP packets')
+        udpn = self.statistics.get_counter('/err/nat64-in2out/UDP packets')
+        icmpn = self.statistics.get_counter('/err/nat64-in2out/ICMP packets')
+        totaln = self.statistics.get_counter(
+            '/err/nat64-in2out/good in2out packets processed')
+
         pkts = self.create_stream_in_ip6(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -6848,7 +6936,23 @@ class TestNAT64(MethodHolder):
         self.verify_capture_out(capture, nat_ip=self.nat_addr,
                                 dst_ip=self.pg1.remote_ip4)
 
+        err = self.statistics.get_counter('/err/nat64-in2out/TCP packets')
+        self.assertEqual(err - tcpn, 1)
+        err = self.statistics.get_counter('/err/nat64-in2out/UDP packets')
+        self.assertEqual(err - udpn, 1)
+        err = self.statistics.get_counter('/err/nat64-in2out/ICMP packets')
+        self.assertEqual(err - icmpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat64-in2out/good in2out packets processed')
+        self.assertEqual(err - totaln, 3)
+
         # out2in
+        tcpn = self.statistics.get_counter('/err/nat64-out2in/TCP packets')
+        udpn = self.statistics.get_counter('/err/nat64-out2in/UDP packets')
+        icmpn = self.statistics.get_counter('/err/nat64-out2in/ICMP packets')
+        totaln = self.statistics.get_counter(
+            '/err/nat64-out2in/good out2in packets processed')
+
         pkts = self.create_stream_out(self.pg1, dst_ip=self.nat_addr)
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -6856,6 +6960,16 @@ class TestNAT64(MethodHolder):
         capture = self.pg0.get_capture(len(pkts))
         ip = IPv6(src=''.join(['64:ff9b::', self.pg1.remote_ip4]))
         self.verify_capture_in_ip6(capture, ip[IPv6].src, self.pg0.remote_ip6)
+
+        err = self.statistics.get_counter('/err/nat64-out2in/TCP packets')
+        self.assertEqual(err - tcpn, 1)
+        err = self.statistics.get_counter('/err/nat64-out2in/UDP packets')
+        self.assertEqual(err - udpn, 1)
+        err = self.statistics.get_counter('/err/nat64-out2in/ICMP packets')
+        self.assertEqual(err - icmpn, 1)
+        err = self.statistics.get_counter(
+            '/err/nat64-out2in/good out2in packets processed')
+        self.assertEqual(err - totaln, 3)
 
         # in2out
         pkts = self.create_stream_in_ip6(self.pg0, self.pg1)

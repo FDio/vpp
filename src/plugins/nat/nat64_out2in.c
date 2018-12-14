@@ -72,13 +72,20 @@ vlib_node_registration_t nat64_out2in_reass_node;
 vlib_node_registration_t nat64_out2in_handoff_node;
 
 #define foreach_nat64_out2in_error                       \
-_(UNSUPPORTED_PROTOCOL, "Unsupported protocol")          \
-_(OUT2IN_PACKETS, "Good out2in packets processed")       \
-_(NO_TRANSLATION, "No translation")                      \
+_(UNSUPPORTED_PROTOCOL, "unsupported protocol")          \
+_(OUT2IN_PACKETS, "good out2in packets processed")       \
+_(NO_TRANSLATION, "no translation")                      \
 _(UNKNOWN, "unknown")                                    \
-_(DROP_FRAGMENT, "Drop fragment")                        \
-_(MAX_REASS, "Maximum reassemblies exceeded")            \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")
+_(DROP_FRAGMENT, "drop fragment")                        \
+_(MAX_REASS, "maximum reassemblies exceeded")            \
+_(MAX_FRAG, "maximum fragments per reassembly exceeded") \
+_(TCP_PACKETS, "TCP packets")                            \
+_(UDP_PACKETS, "UDP packets")                            \
+_(ICMP_PACKETS, "ICMP packets")                          \
+_(OTHER_PACKETS, "other protocol packets")               \
+_(FRAGMENTS, "fragments")                                \
+_(CACHED_FRAGMENTS, "cached fragments")                  \
+_(PROCESSED_FRAGMENTS, "processed fragments")
 
 
 typedef enum
@@ -413,6 +420,8 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   nat64_out2in_next_t next_index;
   u32 pkts_processed = 0;
   u32 thread_index = vm->thread_index;
+  u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
+    0, fragments = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -459,17 +468,20 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  next0 = NAT64_OUT2IN_NEXT_DROP;
 		  b0->error = node->errors[NAT64_OUT2IN_ERROR_NO_TRANSLATION];
 		}
+	      other_packets++;
 	      goto trace0;
 	    }
 
 	  if (PREDICT_FALSE (ip4_is_fragment (ip40)))
 	    {
 	      next0 = NAT64_OUT2IN_NEXT_REASS;
+	      fragments++;
 	      goto trace0;
 	    }
 
 	  if (proto0 == SNAT_PROTOCOL_ICMP)
 	    {
+	      icmp_packets++;
 	      if (icmp_to_icmp6
 		  (b0, nat64_out2in_icmp_set_cb, &ctx0,
 		   nat64_out2in_inner_icmp_set_cb, &ctx0))
@@ -481,6 +493,11 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
+	      if (proto0 == SNAT_PROTOCOL_TCP)
+		tcp_packets++;
+	      else
+		udp_packets++;
+
 	      if (ip4_to_ip6_tcp_udp (b0, nat64_out2in_tcp_udp_set_cb, &ctx0))
 		{
 		  udp0 = ip4_next_header (ip40);
@@ -511,7 +528,7 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t->next_index = next0;
 	    }
 
-	  pkts_processed += next0 != NAT64_OUT2IN_NEXT_DROP;
+	  pkts_processed += next0 == NAT64_OUT2IN_NEXT_IP6_LOOKUP;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -522,6 +539,18 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_node_increment_counter (vm, nat64_out2in_node.index,
 			       NAT64_OUT2IN_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
+  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+			       NAT64_OUT2IN_ERROR_TCP_PACKETS, tcp_packets);
+  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+			       NAT64_OUT2IN_ERROR_UDP_PACKETS, tcp_packets);
+  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+			       NAT64_OUT2IN_ERROR_ICMP_PACKETS, icmp_packets);
+  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+			       NAT64_OUT2IN_ERROR_OTHER_PACKETS,
+			       other_packets);
+  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+			       NAT64_OUT2IN_ERROR_FRAGMENTS, fragments);
+
   return frame->n_vectors;
 }
 
@@ -651,7 +680,7 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
-  u32 pkts_processed = 0;
+  u32 pkts_processed = 0, cached_fragments = 0;
   u32 *fragments_to_drop = 0;
   u32 *fragments_to_loopback = 0;
   nat64_main_t *nm = &nat64_main;
@@ -825,6 +854,7 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      n_left_to_next++;
 	      to_next--;
+	      cached_fragments++;
 	    }
 	  else
 	    {
@@ -862,8 +892,11 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_node_increment_counter (vm, nat64_out2in_reass_node.index,
-			       NAT64_OUT2IN_ERROR_OUT2IN_PACKETS,
+			       NAT64_OUT2IN_ERROR_PROCESSED_FRAGMENTS,
 			       pkts_processed);
+  vlib_node_increment_counter (vm, nat64_out2in_reass_node.index,
+			       NAT64_OUT2IN_ERROR_CACHED_FRAGMENTS,
+			       cached_fragments);
 
   nat_send_all_to_node (vm, fragments_to_drop, node,
 			&node->errors[NAT64_OUT2IN_ERROR_DROP_FRAGMENT],
@@ -898,7 +931,9 @@ VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_reass_node,
 			      nat64_out2in_reass_node_fn);
 
 #define foreach_nat64_out2in_handoff_error                       \
-_(CONGESTION_DROP, "congestion drop")
+_(CONGESTION_DROP, "congestion drop")                            \
+_(SAME_WORKER, "same worker")                                    \
+_(DO_HANDOFF, "do handoff")
 
 typedef enum
 {
@@ -942,6 +977,8 @@ nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_enq, n_left_from, *from;
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 fq_index;
+  u32 thread_index = vm->thread_index;
+  u32 do_handoff = 0, same_worker = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -958,6 +995,11 @@ nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       ip0 = vlib_buffer_get_current (b[0]);
       ti[0] = nat64_get_worker_out2in (ip0);
+
+      if (ti[0] != thread_index)
+	do_handoff++;
+      else
+	same_worker++;
 
       if (PREDICT_FALSE
 	  ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -981,6 +1023,13 @@ nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     vlib_node_increment_counter (vm, node->node_index,
 				 NAT64_OUT2IN_HANDOFF_ERROR_CONGESTION_DROP,
 				 frame->n_vectors - n_enq);
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT64_OUT2IN_HANDOFF_ERROR_SAME_WORKER,
+			       same_worker);
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT64_OUT2IN_HANDOFF_ERROR_DO_HANDOFF,
+			       do_handoff);
+
   return frame->n_vectors;
 }
 

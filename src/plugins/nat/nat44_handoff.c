@@ -31,7 +31,9 @@ typedef struct
 } nat44_handoff_trace_t;
 
 #define foreach_nat44_handoff_error                       \
-_(CONGESTION_DROP, "congestion drop")
+_(CONGESTION_DROP, "congestion drop")                     \
+_(SAME_WORKER, "same worker")                             \
+_(DO_HANDOFF, "do handoff")
 
 typedef enum
 {
@@ -79,6 +81,8 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 thread_indices[VLIB_FRAME_SIZE], *ti;
   u32 fq_index;
   snat_get_worker_function_t *get_worker;
+  u32 thread_index = vm->thread_index;
+  u32 do_handoff = 0, same_worker = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -114,6 +118,11 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       ip0 = vlib_buffer_get_current (b[0]);
       ti[0] = get_worker (ip0, rx_fib_index0);
 
+      if (ti[0] != thread_index)
+	do_handoff++;
+      else
+	same_worker++;
+
       if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			 && (b[0]->flags & VLIB_BUFFER_IS_TRACED)))
 	{
@@ -136,6 +145,10 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     vlib_node_increment_counter (vm, node->node_index,
 				 NAT44_HANDOFF_ERROR_CONGESTION_DROP,
 				 frame->n_vectors - n_enq);
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT44_HANDOFF_ERROR_SAME_WORKER, same_worker);
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT44_HANDOFF_ERROR_DO_HANDOFF, do_handoff);
   return frame->n_vectors;
 }
 

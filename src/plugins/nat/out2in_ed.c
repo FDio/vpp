@@ -32,16 +32,23 @@
 #include <nat/nat_syslog.h>
 
 #define foreach_nat_out2in_ed_error                     \
-_(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
-_(OUT2IN_PACKETS, "Good out2in packets processed")      \
-_(OUT_OF_PORTS, "Out of ports")                         \
+_(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
+_(OUT2IN_PACKETS, "good out2in packets processed")      \
+_(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(NO_TRANSLATION, "No translation")                     \
-_(MAX_SESSIONS_EXCEEDED, "Maximum sessions exceeded")   \
-_(DROP_FRAGMENT, "Drop fragment")                       \
-_(MAX_REASS, "Maximum reassemblies exceeded")           \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")\
-_(NON_SYN, "non-SYN packet try to create session")
+_(NO_TRANSLATION, "no translation")                     \
+_(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
+_(DROP_FRAGMENT, "drop fragment")                       \
+_(MAX_REASS, "maximum reassemblies exceeded")           \
+_(MAX_FRAG, "maximum fragments per reassembly exceeded")\
+_(NON_SYN, "non-SYN packet try to create session")      \
+_(TCP_PACKETS, "TCP packets")                           \
+_(UDP_PACKETS, "UDP packets")                           \
+_(ICMP_PACKETS, "ICMP packets")                         \
+_(OTHER_PACKETS, "other protocol packets")              \
+_(FRAGMENTS, "fragments")                               \
+_(CACHED_FRAGMENTS, "cached fragments")                 \
+_(PROCESSED_FRAGMENTS, "processed fragments")
 
 typedef enum
 {
@@ -712,6 +719,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
+    0, fragments = 0;
 
   stats_node_index = is_slow_path ? nat44_ed_out2in_slowpath_node.index :
     nat44_ed_out2in_node.index;
@@ -804,6 +813,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		    nat44_ed_out2in_unknown_proto (sm, b0, ip0, rx_fib_index0,
 						   thread_index, now, vm,
 						   node);
+		  other_packets++;
 		  if (!sm->forwarding_enabled)
 		    {
 		      if (!s0)
@@ -817,6 +827,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  next0 = icmp_out2in_ed_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		     next0, now, thread_index, &s0);
+		  icmp_packets++;
 		  goto trace00;
 		}
 	    }
@@ -831,6 +842,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip0))
 		{
 		  next0 = NAT44_ED_OUT2IN_NEXT_REASS;
+		  fragments++;
 		  goto trace00;
 		}
 
@@ -963,6 +975,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
 		}
 	      tcp0->checksum = ip_csum_fold (sum0);
+	      tcp_packets++;
 	      if (nat44_set_tcp_session_state_o2i
 		  (sm, s0, tcp0, thread_index))
 		goto trace00;
@@ -976,6 +989,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
 		}
 	      udp0->checksum = 0;
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -999,7 +1013,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s0 - tsm->sessions;
 	    }
 
-	  pkts_processed += next0 != NAT44_ED_OUT2IN_NEXT_DROP;
+	  pkts_processed += next0 == NAT44_ED_OUT2IN_NEXT_LOOKUP;
 
 	  next1 = NAT44_ED_OUT2IN_NEXT_LOOKUP;
 	  vnet_buffer (b1)->snat.flags = 0;
@@ -1033,6 +1047,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		    nat44_ed_out2in_unknown_proto (sm, b1, ip1, rx_fib_index1,
 						   thread_index, now, vm,
 						   node);
+		  other_packets++;
 		  if (!sm->forwarding_enabled)
 		    {
 		      if (!s1)
@@ -1046,6 +1061,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  next1 = icmp_out2in_ed_slow_path
 		    (sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
 		     next1, now, thread_index, &s1);
+		  icmp_packets++;
 		  goto trace01;
 		}
 	    }
@@ -1060,6 +1076,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip1))
 		{
 		  next1 = NAT44_ED_OUT2IN_NEXT_REASS;
+		  fragments++;
 		  goto trace01;
 		}
 
@@ -1192,6 +1209,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  ip1->src_address.as_u32 = s1->ext_host_nat_addr.as_u32;
 		}
 	      tcp1->checksum = ip_csum_fold (sum1);
+	      tcp_packets++;
 	      if (nat44_set_tcp_session_state_o2i
 		  (sm, s1, tcp1, thread_index))
 		goto trace01;
@@ -1205,6 +1223,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  ip1->src_address.as_u32 = s1->ext_host_nat_addr.as_u32;
 		}
 	      udp1->checksum = 0;
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1228,7 +1247,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s1 - tsm->sessions;
 	    }
 
-	  pkts_processed += next1 != NAT44_ED_OUT2IN_NEXT_DROP;
+	  pkts_processed += next1 == NAT44_ED_OUT2IN_NEXT_LOOKUP;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -1296,6 +1315,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		    nat44_ed_out2in_unknown_proto (sm, b0, ip0, rx_fib_index0,
 						   thread_index, now, vm,
 						   node);
+		  other_packets++;
 		  if (!sm->forwarding_enabled)
 		    {
 		      if (!s0)
@@ -1309,6 +1329,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  next0 = icmp_out2in_ed_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		     next0, now, thread_index, &s0);
+		  icmp_packets++;
 		  goto trace0;
 		}
 	    }
@@ -1323,6 +1344,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip0))
 		{
 		  next0 = NAT44_ED_OUT2IN_NEXT_REASS;
+		  fragments++;
 		  goto trace0;
 		}
 
@@ -1455,6 +1477,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
 		}
 	      tcp0->checksum = ip_csum_fold (sum0);
+	      tcp_packets++;
 	      if (nat44_set_tcp_session_state_o2i
 		  (sm, s0, tcp0, thread_index))
 		goto trace0;
@@ -1468,6 +1491,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		  ip0->src_address.as_u32 = s0->ext_host_nat_addr.as_u32;
 		}
 	      udp0->checksum = 0;
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1491,7 +1515,7 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s0 - tsm->sessions;
 	    }
 
-	  pkts_processed += next0 != NAT44_ED_OUT2IN_NEXT_DROP;
+	  pkts_processed += next0 == NAT44_ED_OUT2IN_NEXT_LOOKUP;
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -1504,6 +1528,18 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
   vlib_node_increment_counter (vm, stats_node_index,
 			       NAT_OUT2IN_ED_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_OUT2IN_ED_ERROR_TCP_PACKETS, tcp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_OUT2IN_ED_ERROR_UDP_PACKETS, udp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_OUT2IN_ED_ERROR_ICMP_PACKETS,
+			       icmp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_OUT2IN_ED_ERROR_OTHER_PACKETS,
+			       other_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_OUT2IN_ED_ERROR_FRAGMENTS, fragments);
   return frame->n_vectors;
 }
 

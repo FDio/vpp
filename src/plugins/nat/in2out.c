@@ -80,16 +80,23 @@ vlib_node_registration_t snat_in2out_output_slowpath_node;
 vlib_node_registration_t nat44_in2out_reass_node;
 
 #define foreach_snat_in2out_error                       \
-_(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
-_(IN2OUT_PACKETS, "Good in2out packets processed")      \
-_(OUT_OF_PORTS, "Out of ports")                         \
-_(BAD_OUTSIDE_FIB, "Outside VRF ID not found")          \
+_(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
+_(IN2OUT_PACKETS, "good in2out packets processed")      \
+_(OUT_OF_PORTS, "out of ports")                         \
+_(BAD_OUTSIDE_FIB, "outside VRF ID not found")          \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(NO_TRANSLATION, "No translation")                     \
-_(MAX_SESSIONS_EXCEEDED, "Maximum sessions exceeded")   \
-_(DROP_FRAGMENT, "Drop fragment")                       \
-_(MAX_REASS, "Maximum reassemblies exceeded")           \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")
+_(NO_TRANSLATION, "no translation")                     \
+_(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
+_(DROP_FRAGMENT, "drop fragment")                       \
+_(MAX_REASS, "maximum reassemblies exceeded")           \
+_(MAX_FRAG, "maximum fragments per reassembly exceeded")\
+_(TCP_PACKETS, "TCP packets")                           \
+_(UDP_PACKETS, "UDP packets")                           \
+_(ICMP_PACKETS, "ICMP packets")                         \
+_(OTHER_PACKETS, "other protocol packets")              \
+_(FRAGMENTS, "fragments")                               \
+_(CACHED_FRAGMENTS, "cached fragments")                 \
+_(PROCESSED_FRAGMENTS, "processed fragments")
 
 typedef enum
 {
@@ -851,6 +858,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
   f64 now = vlib_time_now (vm);
   u32 stats_node_index;
   u32 thread_index = vm->thread_index;
+  u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
+    0, fragments = 0;
 
   stats_node_index = is_slow_path ? snat_in2out_slowpath_node.index :
     snat_in2out_node.index;
@@ -950,6 +959,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		      b0->error =
 			node->errors[SNAT_IN2OUT_ERROR_UNSUPPORTED_PROTOCOL];
 		    }
+		  other_packets++;
 		  goto trace00;
 		}
 
@@ -958,6 +968,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  next0 = icmp_in2out_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0,
 		     node, next0, now, thread_index, &s0);
+		  icmp_packets++;
 		  goto trace00;
 		}
 	    }
@@ -972,6 +983,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip0))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_REASS;
+		  fragments++;
 		  goto trace00;
 		}
 
@@ -1064,12 +1076,14 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 				     length /* changed member */ );
 	      mss_clamping (sm, tcp0, &sum0);
 	      tcp0->checksum = ip_csum_fold (sum0);
+	      tcp_packets++;
 	    }
 	  else
 	    {
 	      old_port0 = udp0->src_port;
 	      udp0->src_port = s0->out2in.port;
 	      udp0->checksum = 0;
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1094,7 +1108,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  s0 - sm->per_thread_data[thread_index].sessions;
 	    }
 
-	  pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
+	  pkts_processed += next0 == SNAT_IN2OUT_NEXT_LOOKUP;
 
 	  if (is_output_feature)
 	    iph_offset1 = vnet_buffer (b1)->ip.save_rewrite_length;
@@ -1134,6 +1148,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		      b1->error =
 			node->errors[SNAT_IN2OUT_ERROR_UNSUPPORTED_PROTOCOL];
 		    }
+		  other_packets++;
 		  goto trace01;
 		}
 
@@ -1142,6 +1157,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  next1 = icmp_in2out_slow_path
 		    (sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
 		     next1, now, thread_index, &s1);
+		  icmp_packets++;
 		  goto trace01;
 		}
 	    }
@@ -1156,6 +1172,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip1))
 		{
 		  next1 = SNAT_IN2OUT_NEXT_REASS;
+		  fragments++;
 		  goto trace01;
 		}
 
@@ -1248,12 +1265,14 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 				     length /* changed member */ );
 	      mss_clamping (sm, tcp1, &sum1);
 	      tcp1->checksum = ip_csum_fold (sum1);
+	      tcp_packets++;
 	    }
 	  else
 	    {
 	      old_port1 = udp1->src_port;
 	      udp1->src_port = s1->out2in.port;
 	      udp1->checksum = 0;
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1277,7 +1296,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  s1 - sm->per_thread_data[thread_index].sessions;
 	    }
 
-	  pkts_processed += next1 != SNAT_IN2OUT_NEXT_DROP;
+	  pkts_processed += next1 == SNAT_IN2OUT_NEXT_LOOKUP;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -1354,6 +1373,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		      b0->error =
 			node->errors[SNAT_IN2OUT_ERROR_UNSUPPORTED_PROTOCOL];
 		    }
+		  other_packets++;
 		  goto trace0;
 		}
 
@@ -1362,6 +1382,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  next0 = icmp_in2out_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		     next0, now, thread_index, &s0);
+		  icmp_packets++;
 		  goto trace0;
 		}
 	    }
@@ -1376,6 +1397,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip0))
 		{
 		  next0 = SNAT_IN2OUT_NEXT_REASS;
+		  fragments++;
 		  goto trace0;
 		}
 
@@ -1467,12 +1489,14 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 				     length /* changed member */ );
 	      mss_clamping (sm, tcp0, &sum0);
 	      tcp0->checksum = ip_csum_fold (sum0);
+	      tcp_packets++;
 	    }
 	  else
 	    {
 	      old_port0 = udp0->src_port;
 	      udp0->src_port = s0->out2in.port;
 	      udp0->checksum = 0;
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1497,7 +1521,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 		  s0 - sm->per_thread_data[thread_index].sessions;
 	    }
 
-	  pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
+	  pkts_processed += next0 == SNAT_IN2OUT_NEXT_LOOKUP;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -1511,6 +1535,18 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
   vlib_node_increment_counter (vm, stats_node_index,
 			       SNAT_IN2OUT_ERROR_IN2OUT_PACKETS,
 			       pkts_processed);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       SNAT_IN2OUT_ERROR_TCP_PACKETS, tcp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       SNAT_IN2OUT_ERROR_UDP_PACKETS, tcp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       SNAT_IN2OUT_ERROR_ICMP_PACKETS, icmp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       SNAT_IN2OUT_ERROR_OTHER_PACKETS,
+			       other_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       SNAT_IN2OUT_ERROR_FRAGMENTS, fragments);
+
   return frame->n_vectors;
 }
 
@@ -1669,7 +1705,7 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   snat_in2out_next_t next_index;
-  u32 pkts_processed = 0;
+  u32 pkts_processed = 0, cached_fragments = 0;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
@@ -1885,6 +1921,7 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
 	    {
 	      n_left_to_next++;
 	      to_next--;
+	      cached_fragments++;
 	    }
 	  else
 	    {
@@ -1922,8 +1959,11 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
     }
 
   vlib_node_increment_counter (vm, nat44_in2out_reass_node.index,
-			       SNAT_IN2OUT_ERROR_IN2OUT_PACKETS,
+			       SNAT_IN2OUT_ERROR_PROCESSED_FRAGMENTS,
 			       pkts_processed);
+  vlib_node_increment_counter (vm, nat44_in2out_reass_node.index,
+			       SNAT_IN2OUT_ERROR_CACHED_FRAGMENTS,
+			       cached_fragments);
 
   nat_send_all_to_node (vm, fragments_to_drop, node,
 			&node->errors[SNAT_IN2OUT_ERROR_DROP_FRAGMENT],
