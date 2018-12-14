@@ -930,13 +930,11 @@ ip4_reassembly_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      ip4_header_t *fip = vlib_buffer_get_current (b0);
-	      const u32 fragment_first = ip4_get_fragment_offset_bytes (fip);
+	      const u32 fragment_first = ip4_get_fragment_offset_bytes (ip0);
 	      const u32 fragment_length =
-		clib_net_to_host_u16 (fip->length) - ip4_header_bytes (fip);
+		clib_net_to_host_u16 (ip0->length) - ip4_header_bytes (ip0);
 	      const u32 fragment_last = fragment_first + fragment_length - 1;
-	      if (fragment_first > fragment_last
-		  || fragment_first + fragment_length > UINT16_MAX - 20)
+	      if (fragment_first > fragment_last || fragment_first + fragment_length > UINT16_MAX - 20 || (fragment_length < 8 && ip4_get_fragment_more (ip0)))	// 8 is minimum frag length per RFC 791
 		{
 		  next0 = IP4_REASSEMBLY_NEXT_DROP;
 		  error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
