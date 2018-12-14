@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <sys/poll.h>
 #include <sys/epoll.h>
+#include <vppinfra/bitmap.h>
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
@@ -241,9 +242,9 @@ extern int vppcom_session_write (uint32_t session_handle, void *buf,
 				 size_t n);
 
 extern int vppcom_select (unsigned long n_bits,
-			  unsigned long *read_map,
-			  unsigned long *write_map,
-			  unsigned long *except_map, double wait_for_time);
+			  clib_bitmap_t * read_map,
+			  clib_bitmap_t * write_map,
+			  clib_bitmap_t * except_map, double wait_for_time);
 
 extern int vppcom_epoll_create (void);
 extern int vppcom_epoll_ctl (uint32_t vep_handle, int op,

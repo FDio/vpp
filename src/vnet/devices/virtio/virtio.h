@@ -86,6 +86,7 @@ typedef struct
   u32 call_file_index;
   u32 *buffers;
   u16 last_used_idx;
+    CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } virtio_vring_t;
 
 typedef struct

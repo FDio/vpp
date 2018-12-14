@@ -188,6 +188,7 @@ typedef struct
   /* Writer (only) lock for this table */
   volatile u32 *writer_lock;
 
+    CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } vnet_classify_table_t;
 
 struct _vnet_classify_main

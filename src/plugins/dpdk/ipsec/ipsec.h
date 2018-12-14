@@ -83,6 +83,7 @@ typedef struct
   u8 boundary;
   u8 disabled;
   u8 resources;
+  u8 pad[0] __attribute__ ((aligned (8)));
 } crypto_alg_t __attribute__ ((aligned (8)));
 
 typedef struct
@@ -129,8 +130,9 @@ typedef struct
 typedef struct
 {
   struct rte_cryptodev_sym_session *session;
-  u64 dev_mask;
-} crypto_session_by_drv_t;
+  u64 dev_mask __attribute__ ((aligned (sizeof (u64))));
+}
+crypto_session_by_drv_t;
 
 typedef struct
 {
