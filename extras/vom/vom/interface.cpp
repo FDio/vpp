@@ -58,6 +58,8 @@ interface::interface(const std::string& name,
   , m_table_id(route::DEFAULT_TABLE)
   , m_l2_address(l2_address_t::ZERO, rc_t::UNSET)
   , m_stats_type(stats_type_t::NORMAL)
+  , m_stats({})
+  , m_listener(nullptr)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
 {
@@ -76,6 +78,8 @@ interface::interface(const std::string& name,
   , m_table_id(m_rd->table_id())
   , m_l2_address(l2_address_t::ZERO, rc_t::UNSET)
   , m_stats_type(stats_type_t::NORMAL)
+  , m_stats({})
+  , m_listener(nullptr)
   , m_oper(oper_state_t::DOWN)
   , m_tag(tag)
 {
@@ -90,6 +94,8 @@ interface::interface(const interface& o)
   , m_table_id(o.m_table_id)
   , m_l2_address(o.m_l2_address)
   , m_stats_type(o.m_stats_type)
+  , m_stats(o.m_stats)
+  , m_listener(o.m_listener)
   , m_oper(o.m_oper)
   , m_tag(o.m_tag)
 {
@@ -177,7 +183,7 @@ interface::sweep()
   }
 
   if (m_listener) {
-    disable_stats();
+    disable_stats_i();
   }
 
   // If the interface is up, bring it down
