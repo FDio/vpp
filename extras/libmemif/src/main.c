@@ -2074,19 +2074,18 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (l0 + l1 <= buflen)
     {
       md->regions = (memif_region_details_t *) buf + l0;
+      for (i = 0; i < md->regions_num; i++)
+        {
+          md->regions[i].index = i;
+          md->regions[i].addr = c->regions[i].addr;
+          md->regions[i].size = c->regions[i].region_size;
+          md->regions[i].fd = c->regions[i].fd;
+          md->regions[i].is_external = c->regions[i].is_external;
+        }
       l0 += l1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
-
-  for (i = 0; i < md->regions_num; i++)
-    {
-      md->regions[i].index = i;
-      md->regions[i].addr = c->regions[i].addr;
-      md->regions[i].size = c->regions[i].region_size;
-      md->regions[i].fd = c->regions[i].fd;
-      md->regions[i].is_external = c->regions[i].is_external;
-    }
 
   md->rx_queues_num =
     (c->args.is_master) ? c->run_args.num_s2m_rings : c->
@@ -2096,21 +2095,20 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (l0 + l1 <= buflen)
     {
       md->rx_queues = (memif_queue_details_t *) buf + l0;
+      for (i = 0; i < md->rx_queues_num; i++)
+        {
+          md->rx_queues[i].region = c->rx_queues[i].region;
+          md->rx_queues[i].qid = i;
+          md->rx_queues[i].ring_size = (1 << c->rx_queues[i].log2_ring_size);
+          md->rx_queues[i].flags = c->rx_queues[i].ring->flags;
+          md->rx_queues[i].head = c->rx_queues[i].ring->head;
+          md->rx_queues[i].tail = c->rx_queues[i].ring->tail;
+          md->rx_queues[i].buffer_size = c->run_args.buffer_size;
+        }
       l0 += l1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
-
-  for (i = 0; i < md->rx_queues_num; i++)
-    {
-      md->rx_queues[i].region = c->rx_queues[i].region;
-      md->rx_queues[i].qid = i;
-      md->rx_queues[i].ring_size = (1 << c->rx_queues[i].log2_ring_size);
-      md->rx_queues[i].flags = c->rx_queues[i].ring->flags;
-      md->rx_queues[i].head = c->rx_queues[i].ring->head;
-      md->rx_queues[i].tail = c->rx_queues[i].ring->tail;
-      md->rx_queues[i].buffer_size = c->run_args.buffer_size;
-    }
 
   md->tx_queues_num =
     (c->args.is_master) ? c->run_args.num_m2s_rings : c->
@@ -2120,21 +2118,20 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (l0 + l1 <= buflen)
     {
       md->tx_queues = (memif_queue_details_t *) buf + l0;
+      for (i = 0; i < md->tx_queues_num; i++)
+        {
+          md->tx_queues[i].region = c->tx_queues[i].region;
+          md->tx_queues[i].qid = i;
+          md->tx_queues[i].ring_size = (1 << c->tx_queues[i].log2_ring_size);
+          md->tx_queues[i].flags = c->tx_queues[i].ring->flags;
+          md->tx_queues[i].head = c->tx_queues[i].ring->head;
+          md->tx_queues[i].tail = c->tx_queues[i].ring->tail;
+          md->tx_queues[i].buffer_size = c->run_args.buffer_size;
+        }
       l0 += l1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
-
-  for (i = 0; i < md->tx_queues_num; i++)
-    {
-      md->tx_queues[i].region = c->tx_queues[i].region;
-      md->tx_queues[i].qid = i;
-      md->tx_queues[i].ring_size = (1 << c->tx_queues[i].log2_ring_size);
-      md->tx_queues[i].flags = c->tx_queues[i].ring->flags;
-      md->tx_queues[i].head = c->tx_queues[i].ring->head;
-      md->tx_queues[i].tail = c->tx_queues[i].ring->tail;
-      md->tx_queues[i].buffer_size = c->run_args.buffer_size;
-    }
 
   md->link_up_down = (c->fd > 0) ? 1 : 0;
 
