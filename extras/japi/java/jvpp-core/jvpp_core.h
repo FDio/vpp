@@ -28,21 +28,8 @@
 // *   u8 buf[0];
 // * } __attribute__ ((packed)) vl_api_string_t;
 // */
-static void _host_to_net_string(JNIEnv * env, jstring javaString, vl_api_string_t * _net)
-{
-    const char *nativeString = (*env)->GetStringUTFChars(env, javaString, 0);
-    int len = strlen(nativeString);
+static  void _host_to_net_string(JNIEnv * env, jstring javaString, vl_api_string_t * vl_api_string);
 
-    vl_api_string_t * vl_api_string = (vl_api_string_t *)calloc(1, (sizeof(vl_api_string_t) + len * sizeof(u8)));
-    if (NULL == vl_api_string)
-        return;
-
-    vl_api_string->length = len;
-    memcpy(vl_api_string->buf, nativeString, len);
-
-    _net = vl_api_string;
-    (*env)->ReleaseStringUTFChars(env, javaString, nativeString);
-}
 
 //
 // /**
@@ -53,9 +40,11 @@ static void _host_to_net_string(JNIEnv * env, jstring javaString, vl_api_string_
 // *   u8 buf[0];
 // * } __attribute__ ((packed)) vl_api_string_t;
 // */
-static jstring _net_to_host_string(JNIEnv * env, const vl_api_string_t * _net)
-{
-    jstring jstr = (*env)->NewStringUTF(env, (char *)_net->buf);
+static jstring _net_to_host_string(JNIEnv * env, const vl_api_string_t * _net);
 
-    return jstr;
-}
+
+//
+// /**
+// * Returns the length of jstring as size_t
+// */
+static size_t jstr_length(JNIEnv *env, jstring string);
