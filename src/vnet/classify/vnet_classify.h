@@ -149,6 +149,7 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Mask to apply after skipping N vectors */
   u32x4 *mask;
   /* Buckets and entries */
