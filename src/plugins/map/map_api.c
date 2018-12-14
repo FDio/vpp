@@ -562,14 +562,14 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
   rmp->ip4_pool_size = clib_net_to_host_u16 (mm->ip4_reass_conf_pool_size);
   rmp->ip4_buffers = clib_net_to_host_u32 (mm->ip4_reass_conf_buffers);
   rmp->ip4_ht_ratio =
-    clib_net_to_host_u32 ((u32) mm->ip4_reass_conf_ht_ratio);
+    clib_net_to_host_u64 ((u64) mm->ip4_reass_conf_ht_ratio);
 
   rmp->ip6_lifetime_ms =
     clib_net_to_host_u16 (mm->ip6_reass_conf_lifetime_ms);
   rmp->ip6_pool_size = clib_net_to_host_u16 (mm->ip6_reass_conf_pool_size);
   rmp->ip6_buffers = clib_net_to_host_u32 (mm->ip6_reass_conf_buffers);
   rmp->ip6_ht_ratio =
-    clib_net_to_host_u32 ((u32) mm->ip6_reass_conf_ht_ratio);
+    clib_net_to_host_u64 ((u64) mm->ip6_reass_conf_ht_ratio);
 
   rmp->sec_check_enable = mm->sec_check;
   rmp->sec_check_fragments = mm->sec_check_frag;
