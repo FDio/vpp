@@ -2348,7 +2348,7 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_radv_t * radv_info)
   rh->ip.hop_limit = 255;
   rh->ip.src_address = radv_info->link_local_address;
   /* set address ff02::2 */
-  rh->ip.dst_address.as_u64[0] = clib_host_to_net_u64 (0xff02L << 48);
+  rh->ip.dst_address.as_u64[0] = clib_host_to_net_u64 (0xff02ULL << 48);
   rh->ip.dst_address.as_u64[1] = clib_host_to_net_u64 (2);
 
   rh->neighbor.icmp.checksum = ip6_tcp_udp_icmp_compute_checksum (vm, p0,

@@ -4098,7 +4098,7 @@ void mspace_get_address_and_size (mspace msp, unsigned long long *addrp,
   ms = (mstate)msp;
   this_seg = &ms->seg;
 
-  *addrp = (unsigned long long) this_seg->base;
+  *addrp = (unsigned long) this_seg->base;
   *sizep = this_seg->size;
 }
 
@@ -4161,7 +4161,7 @@ void* mspace_get_aligned (mspace msp,
                           unsigned long long align, 
                           unsigned long long align_offset) {
   char *rv;
-  unsigned long long searchp;
+  unsigned long searchp;
   unsigned *wwp;                /* "where's Waldo" pointer */
   mstate ms = (mstate)msp;
 
@@ -4183,7 +4183,7 @@ void* mspace_get_aligned (mspace msp,
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
       
-      mheap_get_trace ((u64)rv + sizeof (unsigned), psize);
+      mheap_get_trace ((unsigned long)rv + sizeof (unsigned), psize);
     }
 
     wwp = (unsigned *)rv;
@@ -4210,7 +4210,7 @@ void* mspace_get_aligned (mspace msp,
     if (rv && use_trace(ms)) {
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
-      mheap_get_trace ((u64)rv, psize);
+      mheap_get_trace ((unsigned long)rv, psize);
     }
     return rv;
   }
@@ -4228,7 +4228,7 @@ void* mspace_get_aligned (mspace msp,
       return rv;
 
   /* Honor the alignment request */
-  searchp = (unsigned long long)(rv + sizeof (unsigned));
+  searchp = (unsigned long)(rv + sizeof (unsigned));
 
 #if 0  /* this is the idea... */
   while ((searchp + align_offset) % align)
@@ -4245,13 +4245,13 @@ void* mspace_get_aligned (mspace msp,
   }
 
   wwp = (unsigned *)(searchp - sizeof(unsigned));
-  *wwp = (searchp - (((unsigned long long) rv) + sizeof (*wwp)));
+  *wwp = (searchp - (((unsigned long) rv) + sizeof (*wwp)));
   assert (*wwp < align);
 
   if (use_trace(ms)) {
     mchunkptr p  = mem2chunk(rv);
     size_t psize = chunksize(p);
-    mheap_get_trace ((u64)rv, psize);
+    mheap_get_trace ((unsigned long)rv, psize);
   }
   return (void *) searchp;
 }
@@ -4276,7 +4276,7 @@ void mspace_put (mspace msp, void *p_arg)
       mchunkptr p  = mem2chunk(object_header);
       size_t psize = chunksize(p);
 
-      mheap_put_trace ((u64)p_arg, psize);
+      mheap_put_trace ((unsigned long)p_arg, psize);
     }
 
 #if CLIB_DEBUG > 0
@@ -4300,7 +4300,7 @@ void mspace_put_no_offset (mspace msp, void *p_arg)
       mchunkptr p  = mem2chunk(p_arg);
       size_t psize = chunksize(p);
 
-      mheap_put_trace ((u64)p_arg, psize);
+      mheap_put_trace ((unsigned long)p_arg, psize);
     }
   mspace_free (msp, p_arg);
 }

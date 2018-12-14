@@ -554,9 +554,9 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 	    {
 	      if (LDP_DEBUG > 4)
 		printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s() [%d]: "
-			"sid %u (0x%x), buf %p, nbytes %ld, total %ld",
+			"sid %u (0x%x), buf %p, nbytes %lu, total %ld",
 			__func__, __LINE__, getpid (), fd, fd, func_str,
-			i, sid, sid, iov[i].iov_base, iov[i].iov_len, total);
+			i, sid, sid, iov[i].iov_base, (unsigned long)iov[i].iov_len, (long)total);
 
 	      rv = vppcom_session_write (sid, iov[i].iov_base,
 					 iov[i].iov_len);
@@ -569,9 +569,9 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 		    {
 		      if (LDP_DEBUG > 4)
 			printf ("%s:%d: LDP<%d>: fd %d (0x%x): "
-				"rv (%d) < iov[%d].iov_len (%ld)",
+				"rv (%d) < iov[%d].iov_len (%lu)",
 				__func__, __LINE__, getpid (), fd, fd,
-				rv, i, iov[i].iov_len);
+				rv, i, (unsigned long)iov[i].iov_len);
 		      break;
 		    }
 		}
@@ -608,12 +608,12 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 	  fprintf (stderr,
 		   "%s:%d: LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
 		   "rv %ld, errno = %d\n", __func__, __LINE__, getpid (), fd,
-		   fd, func_str, size, errno_val);
+		   fd, func_str, (long)size, errno_val);
 	  errno = errno_val;
 	}
       else
 	printf ("%s:%d: LDP<%d>: fd %d (0x%x): returning %ld\n",
-		__func__, __LINE__, getpid (), fd, fd, size);
+		__func__, __LINE__, getpid (), fd, fd, (long)size);
     }
   return size;
 }

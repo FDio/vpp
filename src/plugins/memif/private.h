@@ -130,6 +130,8 @@ typedef struct
 
   /* queue type */
   memif_ring_type_t type;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } memif_queue_t;
 
 #define foreach_memif_if_flag \
@@ -209,6 +211,7 @@ typedef struct
   u32 data_len;
   i16 buffer_offset;
   u16 buffer_vec_index;
+  u8 pad[0] __attribute__((aligned(16)));
 } memif_copy_op_t;
 
 #define MEMIF_RX_VECTOR_SZ VLIB_FRAME_SIZE

@@ -1839,9 +1839,9 @@ if (PREDICT_FALSE (svm_fifo_is_empty (_fifo)))			\
 
 static void
 vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
-			    unsigned long n_bits, unsigned long *read_map,
-			    unsigned long *write_map,
-			    unsigned long *except_map, u32 * bits_set)
+			    unsigned long n_bits, clib_bitmap_t *read_map,
+			    clib_bitmap_t *write_map,
+			    clib_bitmap_t *except_map, u32 * bits_set)
 {
   session_disconnected_msg_t *disconnected_msg;
   session_connected_msg_t *connected_msg;
@@ -1948,8 +1948,8 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 
 static int
 vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
-		      unsigned long n_bits, unsigned long *read_map,
-		      unsigned long *write_map, unsigned long *except_map,
+		      unsigned long n_bits, clib_bitmap_t *read_map,
+		      clib_bitmap_t *write_map, clib_bitmap_t *except_map,
 		      double time_to_wait, u32 * bits_set)
 {
   svm_msg_q_msg_t *msg;
@@ -2000,8 +2000,8 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 
 static int
 vppcom_select_condvar (vcl_worker_t * wrk, unsigned long n_bits,
-		       unsigned long *read_map, unsigned long *write_map,
-		       unsigned long *except_map, double time_to_wait,
+		       clib_bitmap_t *read_map, clib_bitmap_t *write_map,
+		       clib_bitmap_t *except_map, double time_to_wait,
 		       u32 * bits_set)
 {
   double total_wait = 0, wait_slice;
@@ -2033,8 +2033,8 @@ vppcom_select_condvar (vcl_worker_t * wrk, unsigned long n_bits,
 
 static int
 vppcom_select_eventfd (vcl_worker_t * wrk, unsigned long n_bits,
-		       unsigned long *read_map, unsigned long *write_map,
-		       unsigned long *except_map, double time_to_wait,
+		       clib_bitmap_t *read_map, clib_bitmap_t *write_map,
+		       clib_bitmap_t *except_map, double time_to_wait,
 		       u32 * bits_set)
 {
   vcl_mq_evt_conn_t *mqc;
@@ -2057,16 +2057,14 @@ vppcom_select_eventfd (vcl_worker_t * wrk, unsigned long n_bits,
 }
 
 int
-vppcom_select (unsigned long n_bits, unsigned long *read_map,
-	       unsigned long *write_map, unsigned long *except_map,
+vppcom_select (unsigned long n_bits, clib_bitmap_t *read_map,
+	       clib_bitmap_t *write_map, clib_bitmap_t *except_map,
 	       double time_to_wait)
 {
   u32 sid, minbits = clib_max (n_bits, BITS (uword)), bits_set = 0;
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session = 0;
   int rv, i;
-
-  ASSERT (sizeof (clib_bitmap_t) == sizeof (long int));
 
   if (n_bits && read_map)
     {
