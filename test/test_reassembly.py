@@ -234,6 +234,37 @@ class TestIPv4Reassembly(VppTestCase):
 
         self.dst_if.get_capture(1)
 
+    def test_frag_1(self):
+        """ fragment of size 1 """
+        malformed_packets = [(Ether(dst=self.src_if.local_mac,
+                                    src=self.src_if.remote_mac) /
+                              IP(id=7, len=21, flags="MF", frag=0, ttl=64,
+                                 src=self.src_if.remote_ip4,
+                                 dst=self.dst_if.remote_ip4) /
+                              ICMP(type="echo-request")),
+                             (Ether(dst=self.src_if.local_mac,
+                                    src=self.src_if.remote_mac) /
+                              IP(id=7, len=21, frag=1, ttl=64,
+                                 src=self.src_if.remote_ip4,
+                                 dst=self.dst_if.remote_ip4) /
+                              Raw(load='\x08')),
+                             ]
+
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IP(id=1000, src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4) /
+             UDP(sport=1234, dport=5678) /
+             Raw("X" * 1000))
+        valid_fragments = fragment_rfc791(p, 400)
+
+        self.pg_enable_capture()
+        self.src_if.add_stream(malformed_packets + valid_fragments)
+        self.pg_start()
+
+        self.dst_if.get_capture(1)
+        self.assert_packet_counter_equal(
+            "/err/ip4-reassembly-feature/malformed packets", 1)
+
     @unittest.skipIf(is_skip_aarch64_set() and is_platform_aarch64(),
                      "test doesn't work on aarch64")
     def test_random(self):

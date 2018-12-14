@@ -935,8 +935,7 @@ ip4_reassembly_inline (vlib_main_t * vm,
 	      const u32 fragment_length =
 		clib_net_to_host_u16 (fip->length) - ip4_header_bytes (fip);
 	      const u32 fragment_last = fragment_first + fragment_length - 1;
-	      if (fragment_first > fragment_last
-		  || fragment_first + fragment_length > UINT16_MAX - 20)
+	      if (fragment_first > fragment_last || fragment_first + fragment_length > UINT16_MAX - 20 || fragment_length < 8)	// 8 is minimum frag length per RFC 791
 		{
 		  next0 = IP4_REASSEMBLY_NEXT_DROP;
 		  error0 = IP4_ERROR_REASS_MALFORMED_PACKET;
