@@ -1539,9 +1539,14 @@ clib_error_t *
 session_manager_main_init (vlib_main_t * vm)
 {
   session_manager_main_t *smm = &session_manager_main;
-  smm->session_baseva = 0x200000000ULL;
-  smm->session_va_space_size = (u64) 128 << 30;
+  smm->session_baseva = HIGH_SEGMENT_BASEVA;
+#if (HIGH_SEGMENT_BASEVA > (4ULL << 30))
+  smm->session_va_space_size = 128ULL << 30;
   smm->evt_qs_segment_size = 64 << 20;
+#else
+  smm->session_va_space_size = 128 << 20;
+  smm->evt_qs_segment_size = 1 << 20;
+#endif
   smm->is_enabled = 0;
   return 0;
 }

@@ -66,7 +66,7 @@ typedef struct svm_map_region_args_
 {
   const char *root_path;	/* NULL means use the truly global arena */
   const char *name;
-  u64 baseva;
+  uword baseva;
   u64 size;
   u64 pvt_heap_size;
   uword flags;
@@ -77,6 +77,16 @@ typedef struct svm_map_region_args_
   int gid;
 } svm_map_region_args_t;
 
+/*
+ * Memory mapped to high addresses for session/vppcom/vcl/etc...
+ */
+#if __WORDSIZE == 64
+#define HIGH_SEGMENT_BASEVA (8ULL   << 30)	/* 8GB */
+#elif __WORDSIZE == 32
+#define HIGH_SEGMENT_BASEVA (3584UL << 20)	/* 3.5GB */
+#else
+#error "unknown __WORDSIZE"
+#endif
 
 /*
  * Memory shared across all router instances. Packet buffers, etc

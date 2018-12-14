@@ -589,8 +589,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   ctx->snd_space = transport_connection_snd_space (ctx->tc,
-						   vm->
-						   clib_time.last_cpu_time,
+						   vm->clib_time.
+						   last_cpu_time,
 						   ctx->snd_mss);
   if (ctx->snd_space == 0 || ctx->snd_mss == 0)
     {
@@ -1008,7 +1008,8 @@ dump_thread_0_event_queue (void)
 
 	case FIFO_EVENT_RPC:
 	  fformat (stdout, "[%04d] RPC call %llx with %llx\n",
-		   i, (u64) (e->rpc_args.fp), (u64) (e->rpc_args.arg));
+		   i, (u64) (uword) (e->rpc_args.fp),
+		   (u64) (uword) (e->rpc_args.arg));
 	  break;
 
 	default:

@@ -959,9 +959,12 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 				  sizeof (clib_bitmap_t));
 
 	      rv = vppcom_select (sid_bits,
-				  readfds ? ldpw->rd_bitmap : NULL,
-				  writefds ? ldpw->wr_bitmap : NULL,
-				  exceptfds ? ldpw->ex_bitmap : NULL, 0);
+				  readfds ? (unsigned long *) ldpw->rd_bitmap
+				  : NULL,
+				  writefds ? (unsigned long *) ldpw->wr_bitmap
+				  : NULL,
+				  exceptfds ? (unsigned long *)
+				  ldpw->ex_bitmap : NULL, 0);
 	      if (rv < 0)
 		{
 		  errno = -rv;

@@ -281,7 +281,7 @@ test_ssvm_fifo1 (unformat_input_t * input)
   int verbose = 0;
   int test_id = 0;
 
-  svm_fifo_segment_main_init (sm, 0x200000000ULL, 20);
+  svm_fifo_segment_main_init (sm, HIGH_SEGMENT_BASEVA, 20);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

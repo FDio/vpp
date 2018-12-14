@@ -113,6 +113,7 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* ring data */
   memif_ring_t *ring;
   memif_log2_ring_size_t log2_ring_size;
@@ -205,6 +206,7 @@ typedef struct
 
 typedef struct
 {
+  CLIB_ALIGN_MARK (pad, 16);	/* align up to 16 bytes for 32bit builds */
   void *data;
   u32 data_len;
   i16 buffer_offset;

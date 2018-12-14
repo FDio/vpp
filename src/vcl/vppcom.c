@@ -1944,7 +1944,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       if (sid < n_bits && read_map)
 	{
-	  clib_bitmap_set_no_check (read_map, sid, 1);
+	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
 	  *bits_set += 1;
 	}
       break;
@@ -1955,7 +1955,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	break;
       if (sid < n_bits && write_map)
 	{
-	  clib_bitmap_set_no_check (write_map, sid, 1);
+	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
 	  *bits_set += 1;
 	}
       break;
@@ -1967,7 +1967,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       sid = session->session_index;
       if (sid < n_bits && read_map)
 	{
-	  clib_bitmap_set_no_check (read_map, sid, 1);
+	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
 	  *bits_set += 1;
 	}
       break;
@@ -1978,7 +1978,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       sid = session->session_index;
       if (sid < n_bits && write_map)
 	{
-	  clib_bitmap_set_no_check (write_map, sid, 1);
+	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
 	  *bits_set += 1;
 	}
       break;
@@ -1990,7 +1990,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       sid = session->session_index;
       if (sid < n_bits && read_map)
 	{
-	  clib_bitmap_set_no_check (read_map, sid, 1);
+	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
 	  *bits_set += 1;
 	}
       break;
@@ -2006,7 +2006,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       sid = session->session_index;
       if (sid < n_bits && except_map)
 	{
-	  clib_bitmap_set_no_check (except_map, sid, 1);
+	  clib_bitmap_set_no_check ((uword *) except_map, sid, 1);
 	  *bits_set += 1;
 	}
       break;
@@ -2014,7 +2014,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
       if (sid < n_bits && except_map)
 	{
-	  clib_bitmap_set_no_check (except_map, sid, 1);
+	  clib_bitmap_set_no_check ((uword *) except_map, sid, 1);
 	  *bits_set += 1;
 	}
       break;
@@ -2144,30 +2144,35 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
   vcl_session_t *session = 0;
   int rv, i;
 
-  ASSERT (sizeof (clib_bitmap_t) == sizeof (long int));
+  STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (unsigned long),
+		 "vppcom bitmap size mismatch");
+  STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (fd_mask),
+		 "vppcom bitmap size mismatch");
+  STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (uword),
+		 "vppcom bitmap size mismatch");
 
   if (n_bits && read_map)
     {
       clib_bitmap_validate (wrk->rd_bitmap, minbits);
       clib_memcpy_fast (wrk->rd_bitmap, read_map,
-			vec_len (wrk->rd_bitmap) * sizeof (clib_bitmap_t));
-      memset (read_map, 0, vec_len (wrk->rd_bitmap) * sizeof (clib_bitmap_t));
+			vec_len (wrk->rd_bitmap) * sizeof (unsigned long));
+      memset (read_map, 0, vec_len (wrk->rd_bitmap) * sizeof (unsigned long));
     }
   if (n_bits && write_map)
     {
       clib_bitmap_validate (wrk->wr_bitmap, minbits);
       clib_memcpy_fast (wrk->wr_bitmap, write_map,
-			vec_len (wrk->wr_bitmap) * sizeof (clib_bitmap_t));
+			vec_len (wrk->wr_bitmap) * sizeof (unsigned long));
       memset (write_map, 0,
-	      vec_len (wrk->wr_bitmap) * sizeof (clib_bitmap_t));
+	      vec_len (wrk->wr_bitmap) * sizeof (unsigned long));
     }
   if (n_bits && except_map)
     {
       clib_bitmap_validate (wrk->ex_bitmap, minbits);
       clib_memcpy_fast (wrk->ex_bitmap, except_map,
-			vec_len (wrk->ex_bitmap) * sizeof (clib_bitmap_t));
+			vec_len (wrk->ex_bitmap) * sizeof (unsigned long));
       memset (except_map, 0,
-	      vec_len (wrk->ex_bitmap) * sizeof (clib_bitmap_t));
+	      vec_len (wrk->ex_bitmap) * sizeof (unsigned long));
     }
 
   if (!n_bits)
@@ -2188,7 +2193,7 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
     rv = svm_fifo_is_full (session->tx_fifo);
     if (!rv)
       {
-        clib_bitmap_set_no_check (write_map, sid, 1);
+        clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
       }
   }));
@@ -2208,7 +2213,7 @@ check_rd:
     rv = vppcom_session_read_ready (session);
     if (rv)
       {
-        clib_bitmap_set_no_check (read_map, sid, 1);
+        clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
         bits_set++;
       }
   }));

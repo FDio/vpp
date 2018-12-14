@@ -81,6 +81,9 @@
 #define CLIB_PACKED(x)	x __attribute__ ((packed))
 #define CLIB_UNUSED(x)	x __attribute__ ((unused))
 
+/* similar to CLIB_CACHE_LINE_ALIGN_MARK() but with arbitrary alignment */
+#define CLIB_ALIGN_MARK(name, alignment) u8 name[0] __attribute__((aligned(alignment)))
+
 /* Make a string from the macro's argument */
 #define CLIB_STRING_MACRO(x) #x
 

@@ -74,6 +74,7 @@ typedef struct
 
 typedef struct
 {
+  CLIB_ALIGN_MARK (pad, 8);	/* align up to 8 bytes for 32bit builds */
   char *name;
   enum rte_crypto_sym_xform_type type;
   u32 alg;
@@ -83,7 +84,7 @@ typedef struct
   u8 boundary;
   u8 disabled;
   u8 resources;
-} crypto_alg_t __attribute__ ((aligned (8)));
+} crypto_alg_t;
 
 typedef struct
 {
@@ -128,6 +129,7 @@ typedef struct
 
 typedef struct
 {
+  CLIB_ALIGN_MARK (pad, 16);	/* align up to 16 bytes for 32bit builds */
   struct rte_cryptodev_sym_session *session;
   u64 dev_mask;
 } crypto_session_by_drv_t;

@@ -291,7 +291,7 @@ typedef struct CV (clib_cuckoo)
 } CVT (clib_cuckoo);
 
 void CV (clib_cuckoo_init) (CVT (clib_cuckoo) * h, const char *name,
-			    u64 nbuckets,
+			    uword nbuckets,
 			    void (*garbage_callback) (CVT (clib_cuckoo) *,
 						      void *),
 			    void *garbage_ctx);

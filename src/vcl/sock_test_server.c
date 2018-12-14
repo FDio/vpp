@@ -751,7 +751,7 @@ main (int argc, char **argv)
       _rfdset = ssm->rd_fdset;
 
 #ifdef VCL_TEST
-      rv = vppcom_select (ssm->nfds, (uint64_t *) rfdset, NULL, NULL, 0);
+      rv = vppcom_select (ssm->nfds, (unsigned long *) rfdset, NULL, NULL, 0);
 #else
       {
 	struct timeval timeout;

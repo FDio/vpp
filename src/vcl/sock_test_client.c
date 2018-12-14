@@ -157,8 +157,9 @@ echo_test_client ()
       _rfdset = rd_fdset;
 
 #ifdef VCL_TEST
-      rv = vppcom_select (nfds, (uint64_t *) rfdset, (uint64_t *) wfdset,
-			  NULL, 0);
+      rv =
+	vppcom_select (nfds, (unsigned long *) rfdset,
+		       (unsigned long *) wfdset, NULL, 0);
 #else
       {
 	struct timeval timeout;
@@ -417,8 +418,9 @@ stream_test_client (vcl_test_t test)
       _rfdset = rd_fdset;
 
 #ifdef VCL_TEST
-      rv = vppcom_select (nfds, (uint64_t *) rfdset, (uint64_t *) wfdset,
-			  NULL, 0);
+      rv =
+	vppcom_select (nfds, (unsigned long *) rfdset,
+		       (unsigned long *) wfdset, NULL, 0);
 #else
       {
 	struct timeval timeout;

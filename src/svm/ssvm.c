@@ -177,7 +177,7 @@ map_it:
   return SSVM_API_ERROR_SLAVE_TIMEOUT;
 
 re_map_it:
-  ssvm->requested_va = (u64) sh->ssvm_va;
+  ssvm->requested_va = sh->ssvm_va;
   ssvm->ssvm_size = sh->ssvm_size;
   munmap (sh, MMAP_PAGESIZE);
 

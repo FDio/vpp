@@ -4089,8 +4089,7 @@ size_t destroy_mspace(mspace msp) {
   return freed;
 }
 
-void mspace_get_address_and_size (mspace msp, unsigned long long *addrp,
-                                  unsigned long long *sizep)
+void mspace_get_address_and_size (mspace msp, char **addrp, size_t *sizep)
 {
   mstate ms;
   msegment *this_seg;
@@ -4098,7 +4097,7 @@ void mspace_get_address_and_size (mspace msp, unsigned long long *addrp,
   ms = (mstate)msp;
   this_seg = &ms->seg;
 
-  *addrp = (unsigned long long) this_seg->base;
+  *addrp = this_seg->base;
   *sizep = this_seg->size;
 }
 
@@ -4157,11 +4156,11 @@ int mspace_enable_disable_trace (mspace msp, int enable)
 }
 
 void* mspace_get_aligned (mspace msp, 
-                          unsigned long long n_user_data_bytes,
-                          unsigned long long align, 
-                          unsigned long long align_offset) {
+                          unsigned long n_user_data_bytes,
+                          unsigned long align, 
+                          unsigned long align_offset) {
   char *rv;
-  unsigned long long searchp;
+  unsigned long searchp;
   unsigned *wwp;                /* "where's Waldo" pointer */
   mstate ms = (mstate)msp;
 
@@ -4183,7 +4182,7 @@ void* mspace_get_aligned (mspace msp,
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
       
-      mheap_get_trace ((u64)rv + sizeof (unsigned), psize);
+      mheap_get_trace ((unsigned long)rv + sizeof (unsigned), psize);
     }
 
     wwp = (unsigned *)rv;
@@ -4201,7 +4200,7 @@ void* mspace_get_aligned (mspace msp,
    * Waldo is the address of the chunk of memory returned by mspace_malloc, 
    * which we need later to call mspace_free...
    */
-  if (align > 4<<10 || align_offset == ~0ULL) {
+  if (align > 4<<10 || align_offset == ~0UL) {
     n_user_data_bytes -= sizeof(unsigned);
     assert(align_offset == 0);
     rv = internal_memalign(ms, (size_t)align, n_user_data_bytes);
@@ -4210,7 +4209,7 @@ void* mspace_get_aligned (mspace msp,
     if (rv && use_trace(ms)) {
       mchunkptr p  = mem2chunk(rv);
       size_t psize = chunksize(p);
-      mheap_get_trace ((u64)rv, psize);
+      mheap_get_trace ((unsigned long)rv, psize);
     }
     return rv;
   }
@@ -4228,7 +4227,7 @@ void* mspace_get_aligned (mspace msp,
       return rv;
 
   /* Honor the alignment request */
-  searchp = (unsigned long long)(rv + sizeof (unsigned));
+  searchp = (unsigned long)(rv + sizeof (unsigned));
 
 #if 0  /* this is the idea... */
   while ((searchp + align_offset) % align)
@@ -4236,7 +4235,7 @@ void* mspace_get_aligned (mspace msp,
 #endif
 
   {
-    unsigned long long where_now, delta;
+    unsigned long where_now, delta;
 
     where_now = (searchp + align_offset) % align;
     delta = align - where_now;
@@ -4245,13 +4244,13 @@ void* mspace_get_aligned (mspace msp,
   }
 
   wwp = (unsigned *)(searchp - sizeof(unsigned));
-  *wwp = (searchp - (((unsigned long long) rv) + sizeof (*wwp)));
+  *wwp = (searchp - (((unsigned long) rv) + sizeof (*wwp)));
   assert (*wwp < align);
 
   if (use_trace(ms)) {
     mchunkptr p  = mem2chunk(rv);
     size_t psize = chunksize(p);
-    mheap_get_trace ((u64)rv, psize);
+    mheap_get_trace ((unsigned long)rv, psize);
   }
   return (void *) searchp;
 }
@@ -4276,7 +4275,7 @@ void mspace_put (mspace msp, void *p_arg)
       mchunkptr p  = mem2chunk(object_header);
       size_t psize = chunksize(p);
 
-      mheap_put_trace ((u64)p_arg, psize);
+      mheap_put_trace ((unsigned long)p_arg, psize);
     }
 
 #if CLIB_DEBUG > 0
@@ -4300,7 +4299,7 @@ void mspace_put_no_offset (mspace msp, void *p_arg)
       mchunkptr p  = mem2chunk(p_arg);
       size_t psize = chunksize(p);
 
-      mheap_put_trace ((u64)p_arg, psize);
+      mheap_put_trace ((unsigned long)p_arg, psize);
     }
   mspace_free (msp, p_arg);
 }

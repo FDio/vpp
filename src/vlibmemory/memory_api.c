@@ -326,8 +326,8 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 	  if (am->vlib_private_rps[i] == svm)
 	    {
 	      /* Note: account for the memfd header page */
-	      u64 virtual_base = svm->virtual_base - MMAP_PAGESIZE;
-	      u64 virtual_size = svm->virtual_size + MMAP_PAGESIZE;
+	      uword virtual_base = svm->virtual_base - MMAP_PAGESIZE;
+	      uword virtual_size = svm->virtual_size + MMAP_PAGESIZE;
 
 	      /*
 	       * Kill the registration pool element before we make
@@ -650,8 +650,8 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 		  int i;
 		  svm_region_t *dead_rp = (*regpp)->vlib_rp;
 		  /* Note: account for the memfd header page */
-		  u64 virtual_base = dead_rp->virtual_base - MMAP_PAGESIZE;
-		  u64 virtual_size = dead_rp->virtual_size + MMAP_PAGESIZE;
+		  uword virtual_base = dead_rp->virtual_base - MMAP_PAGESIZE;
+		  uword virtual_size = dead_rp->virtual_size + MMAP_PAGESIZE;
 
 		  /* For horizontal scaling, add a hash table... */
 		  for (i = 0; i < vec_len (am->vlib_private_rps); i++)

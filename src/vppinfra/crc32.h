@@ -30,14 +30,14 @@ clib_crc32c (u8 * s, int len)
 {
   u32 v = 0;
 
-#if __x86_64__
+#if defined(__x86_64__)
   for (; len >= 8; len -= 8, s += 8)
     v = _mm_crc32_u64 (v, *((u64 *) s));
 #else
   /* workaround weird GCC bug when using _mm_crc32_u32
      which happens with -O2 optimization */
 #if !defined (__i686__)
-  volatile ("":::"memory");
+  asm volatile ("":::"memory");
 #endif
 #endif
 

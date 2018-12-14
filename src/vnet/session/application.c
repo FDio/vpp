@@ -1695,14 +1695,14 @@ failed:
   return rv;
 }
 
-static uword
+static u64
 application_client_local_connect_key (local_session_t * ls)
 {
-  return ((uword) ls->app_wrk_index << 32 | (uword) ls->session_index);
+  return (((u64) ls->app_wrk_index) << 32 | (u64) ls->session_index);
 }
 
 static void
-application_client_local_connect_key_parse (uword key, u32 * app_wrk_index,
+application_client_local_connect_key_parse (u64 key, u32 * app_wrk_index,
 					    u32 * session_index)
 {
   *app_wrk_index = key >> 32;
@@ -1718,7 +1718,7 @@ application_local_session_connect_notify (local_session_t * ls)
   application_t *client;
   int rv, is_fail = 0;
   u64 segment_handle;
-  uword client_key;
+  u64 client_key;
 
   client_wrk = app_worker_get (ls->client_wrk_index);
   server_wrk = app_worker_get (ls->app_wrk_index);
@@ -1759,7 +1759,7 @@ application_local_session_cleanup (app_worker_t * client_wrk,
   svm_fifo_segment_private_t *seg;
   stream_session_t *listener;
   segment_manager_t *sm;
-  uword client_key;
+  u64 client_key;
   u8 has_transport;
 
   /* Retrieve listener transport type as it is the one that decides where
@@ -2179,7 +2179,7 @@ app_worker_format_local_connects (app_worker_t * app, int verbose)
   u32 app_wrk_index, session_index;
   app_worker_t *server_wrk;
   local_session_t *ls;
-  uword client_key;
+  u64 client_key;
   u64 value;
 
   /* Header */
