@@ -98,8 +98,8 @@ $(GET_PIP_SCRIPT):
 
 $(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && python $(GET_PIP_SCRIPT)"
-	@bash -c "source $(VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(GET_PIP_SCRIPT)"
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS)"
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -112,11 +112,11 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@touch $@
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate && cd $(WS_ROOT)/src/vpp-api/python && python setup.py install"
+	@bash -c "source $(VENV_PATH)/bin/activate && cd $(WS_ROOT)/src/vpp-api/python && $(PYTHON_INTERP) setup.py install"
 	@touch $@
 
 define retest-func
-@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate python $(PYTHON_PROFILE_OPTS) run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@env FORCE_FOREGROUND=$(FORCE_FOREGROUND) FAILED_DIR=$(FAILED_DIR) VENV_PATH=$(VENV_PATH) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(VENV_PATH)/bin/activate $(PYTHON_INTERP) $(PYTHON_PROFILE_OPTS) run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -125,8 +125,8 @@ ifeq ($(SANITY),no)
 SANITY_IMPORT_VPP_PAPI_CMD=true
 SANITY_RUN_VPP_CMD=true
 else
-SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && python sanity_import_vpp_papi.py
-SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && python sanity_run_vpp.py
+SANITY_IMPORT_VPP_PAPI_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_import_vpp_papi.py
+SANITY_RUN_VPP_CMD=source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) sanity_run_vpp.py
 endif
 
 ifndef TEST_JOBS
@@ -205,7 +205,7 @@ wipe: reset
 
 doc: verify-test-dir $(PIP_PATCH_DONE)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && pip install sphinx sphinx-rtd-theme"
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install sphinx sphinx-rtd-theme"
 	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
 .PHONY: wipe-doc
@@ -234,7 +234,7 @@ wipe-cov: wipe
 .PHONY: checkstyle
 checkstyle: verify-test-dir
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && pip install pycodestyle"
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
