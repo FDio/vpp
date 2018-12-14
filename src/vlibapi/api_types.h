@@ -32,13 +32,12 @@ typedef struct
 static inline int
 vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
 {
-  if (strncpy_s ((char *) str->buf, len, buf, len - 1) != 0)
-    len = 0;
+  clib_memcpy(str->buf, buf, len);
   str->length = clib_host_to_net_u32 (len);
   return len + sizeof (u32);
 }
 
-/* Return a C string from API string */
+/* Return a pointer to the API string (not nul terminated */
 static inline u8 *
 vl_api_from_api_string (vl_api_string_t * astr)
 {
