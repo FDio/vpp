@@ -297,10 +297,9 @@ typedef struct session_reset_msg_
 
 typedef struct session_reset_reply_msg_
 {
-  u32 client_index;
   u32 context;
-  i32 retval;
   u64 handle;
+  i32 retval;
 } __clib_packed session_reset_reply_msg_t;
 
 typedef struct app_session_event_

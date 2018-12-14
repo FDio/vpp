@@ -836,6 +836,9 @@ stream_session_reset_notify (transport_connection_t * tc)
   application_t *app;
   s = session_get (tc->s_index, tc->thread_index);
   svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+    return;
+  s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
   app_wrk = app_worker_get (s->app_wrk_index);
   app = application_get (app_wrk->app_index);
   app->cb_fns.session_reset_callback (s);
@@ -1204,11 +1207,10 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
   for (i = 0; i < vec_len (smm->wrk); i++)
     {
       svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
-      u32 notif_q_size = clib_max (16, evt_q_length >> 4);
       svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
 	{evt_q_length, evt_size, 0}
 	,
-	{notif_q_size, 256, 0}
+	{evt_q_length << 1, 256, 0}
       };
       cfg->consumer_pid = 0;
       cfg->n_rings = 2;

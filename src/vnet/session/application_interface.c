@@ -668,7 +668,6 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
 
       /* We're peeking into another's thread pool. Make sure */
       ASSERT (s->session_index == session_index_from_handle (a->handle));
-
       stream_session_disconnect (s);
     }
   return 0;
