@@ -265,6 +265,7 @@ tcp_connection_new (u8 thread_index)
 void
 tcp_connection_reset (tcp_connection_t * tc)
 {
+  clib_warning ("resetting session %u in state %u", tc->c_s_index, tc->state);
   TCP_EVT_DBG (TCP_EVT_RST_RCVD, tc);
   switch (tc->state)
     {

@@ -735,6 +735,7 @@ stream_session_accept_notify (transport_connection_t * tc)
   if (!app_wrk)
     return;
   app = application_get (app_wrk->app_index);
+  clib_warning ("accepting %u", s->session_index);
   app->cb_fns.session_accept_callback (s);
 }
 
@@ -797,6 +798,8 @@ stream_session_delete_notify (transport_connection_t * tc)
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
 
+  clib_warning ("delete notify %u state %u", tc->s_index, s->session_state);
+
   /* Make sure we don't try to send anything more */
   svm_fifo_dequeue_drop_all (s->server_tx_fifo);
 
@@ -836,6 +839,7 @@ stream_session_reset_notify (transport_connection_t * tc)
   application_t *app;
   s = session_get (tc->s_index, tc->thread_index);
   svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+  s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
   app_wrk = app_worker_get (s->app_wrk_index);
   app = application_get (app_wrk->app_index);
   app->cb_fns.session_reset_callback (s);

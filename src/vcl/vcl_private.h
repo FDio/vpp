@@ -95,6 +95,9 @@ typedef struct
   ip46_address_t ip46;
 } vppcom_ip46_t;
 
+#define VCL_ACCEPTED_F_CLOSED 	(1 << 0)
+#define VCL_ACCEPTED_F_RESET 	(1 << 1)
+
 typedef struct vcl_session_msg
 {
   u32 next;
@@ -102,6 +105,7 @@ typedef struct vcl_session_msg
   {
     session_accepted_msg_t accepted_msg;
   };
+  u32 flags;
 } vcl_session_msg_t;
 
 enum
@@ -155,6 +159,7 @@ typedef struct
   u32 sm_seg_index;
   u32 client_context;
   u64 vpp_handle;
+  u32 vpp_thread_index;
 
   /* Socket configuration state */
   u8 is_vep;
