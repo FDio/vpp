@@ -30,16 +30,24 @@
 #include <nat/nat_inlines.h>
 #include <nat/nat_syslog.h>
 
-#define foreach_nat_in2out_ed_error                       \
-_(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
-_(IN2OUT_PACKETS, "Good in2out packets processed")      \
-_(OUT_OF_PORTS, "Out of ports")                         \
+#define foreach_nat_in2out_ed_error                     \
+_(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
+_(IN2OUT_PACKETS, "good in2out packets processed")      \
+_(OUT_OF_PORTS, "out of ports")                         \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(MAX_SESSIONS_EXCEEDED, "Maximum sessions exceeded")   \
-_(DROP_FRAGMENT, "Drop fragment")                       \
-_(MAX_REASS, "Maximum reassemblies exceeded")           \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")\
-_(NON_SYN, "non-SYN packet try to create session")
+_(MAX_SESSIONS_EXCEEDED, "maximum sessions exceeded")   \
+_(DROP_FRAGMENT, "drop fragment")                       \
+_(MAX_REASS, "maximum reassemblies exceeded")           \
+_(MAX_FRAG, "maximum fragments per reassembly exceeded")\
+_(NON_SYN, "non-SYN packet try to create session")      \
+_(TCP_PACKETS, "TCP packets")                           \
+_(UDP_PACKETS, "UDP packets")                           \
+_(ICMP_PACKETS, "ICMP packets")                         \
+_(OTHER_PACKETS, "other protocol packets")              \
+_(FRAGMENTS, "fragments")                               \
+_(CACHED_FRAGMENTS, "cached fragments")                 \
+_(PROCESSED_FRAGMENTS, "processed fragments")
+
 
 typedef enum
 {
@@ -899,6 +907,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
+    0, fragments = 0;
 
   stats_node_index = is_slow_path ? nat44_ed_in2out_slowpath_node.index :
     nat44_ed_in2out_node.index;
@@ -993,6 +1003,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 						      node);
 		  if (!s0)
 		    next0 = NAT_IN2OUT_ED_NEXT_DROP;
+		  other_packets++;
 		  goto trace00;
 		}
 
@@ -1001,6 +1012,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		  next0 = icmp_in2out_ed_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		     next0, now, thread_index, &s0);
+		  icmp_packets++;
 		  goto trace00;
 		}
 	    }
@@ -1015,6 +1027,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip0))
 		{
 		  next0 = NAT_IN2OUT_ED_NEXT_REASS;
+		  fragments++;
 		  goto trace00;
 		}
 
@@ -1120,6 +1133,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		}
 	      mss_clamping (sm, tcp0, &sum0);
 	      tcp0->checksum = ip_csum_fold (sum0);
+	      tcp_packets++;
 	      if (nat44_set_tcp_session_state_i2o
 		  (sm, s0, tcp0, thread_index))
 		goto trace00;
@@ -1133,6 +1147,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		  udp0->dst_port = s0->ext_host_port;
 		  ip0->dst_address.as_u32 = s0->ext_host_addr.as_u32;
 		}
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1156,7 +1171,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s0 - tsm->sessions;
 	    }
 
-	  pkts_processed += next0 != NAT_IN2OUT_ED_NEXT_DROP;
+	  pkts_processed += next0 == NAT_IN2OUT_ED_NEXT_LOOKUP;
 
 
 	  next1 = NAT_IN2OUT_ED_NEXT_LOOKUP;
@@ -1197,6 +1212,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 						      node);
 		  if (!s1)
 		    next1 = NAT_IN2OUT_ED_NEXT_DROP;
+		  other_packets++;
 		  goto trace01;
 		}
 
@@ -1205,6 +1221,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		  next1 = icmp_in2out_ed_slow_path
 		    (sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
 		     next1, now, thread_index, &s1);
+		  icmp_packets++;
 		  goto trace01;
 		}
 	    }
@@ -1219,6 +1236,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip1))
 		{
 		  next1 = NAT_IN2OUT_ED_NEXT_REASS;
+		  fragments++;
 		  goto trace01;
 		}
 
@@ -1324,6 +1342,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		}
 	      tcp1->checksum = ip_csum_fold (sum1);
 	      mss_clamping (sm, tcp1, &sum1);
+	      tcp_packets++;
 	      if (nat44_set_tcp_session_state_i2o
 		  (sm, s1, tcp1, thread_index))
 		goto trace01;
@@ -1337,6 +1356,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		  udp1->dst_port = s1->ext_host_port;
 		  ip1->dst_address.as_u32 = s1->ext_host_addr.as_u32;
 		}
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1360,7 +1380,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s1 - tsm->sessions;
 	    }
 
-	  pkts_processed += next1 != NAT_IN2OUT_ED_NEXT_DROP;
+	  pkts_processed += next1 == NAT_IN2OUT_ED_NEXT_LOOKUP;
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -1430,6 +1450,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 						      node);
 		  if (!s0)
 		    next0 = NAT_IN2OUT_ED_NEXT_DROP;
+		  other_packets++;
 		  goto trace0;
 		}
 
@@ -1438,6 +1459,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		  next0 = icmp_in2out_ed_slow_path
 		    (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
 		     next0, now, thread_index, &s0);
+		  icmp_packets++;
 		  goto trace0;
 		}
 	    }
@@ -1452,6 +1474,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 	      if (ip4_is_fragment (ip0))
 		{
 		  next0 = NAT_IN2OUT_ED_NEXT_REASS;
+		  fragments++;
 		  goto trace0;
 		}
 
@@ -1557,6 +1580,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		}
 	      mss_clamping (sm, tcp0, &sum0);
 	      tcp0->checksum = ip_csum_fold (sum0);
+	      tcp_packets++;
 	      if (nat44_set_tcp_session_state_i2o
 		  (sm, s0, tcp0, thread_index))
 		goto trace0;
@@ -1570,6 +1594,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		  udp0->dst_port = s0->ext_host_port;
 		  ip0->dst_address.as_u32 = s0->ext_host_addr.as_u32;
 		}
+	      udp_packets++;
 	    }
 
 	  /* Accounting */
@@ -1593,7 +1618,7 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 		t->session_index = s0 - tsm->sessions;
 	    }
 
-	  pkts_processed += next0 != NAT_IN2OUT_ED_NEXT_DROP;
+	  pkts_processed += next0 == NAT_IN2OUT_ED_NEXT_LOOKUP;
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -1607,6 +1632,19 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
   vlib_node_increment_counter (vm, stats_node_index,
 			       NAT_IN2OUT_ED_ERROR_IN2OUT_PACKETS,
 			       pkts_processed);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_IN2OUT_ED_ERROR_TCP_PACKETS, tcp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_IN2OUT_ED_ERROR_UDP_PACKETS, tcp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_IN2OUT_ED_ERROR_ICMP_PACKETS,
+			       icmp_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_IN2OUT_ED_ERROR_OTHER_PACKETS,
+			       other_packets);
+  vlib_node_increment_counter (vm, stats_node_index,
+			       NAT_IN2OUT_ED_ERROR_FRAGMENTS, fragments);
+
   return frame->n_vectors;
 }
 
@@ -1746,7 +1784,7 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   nat_in2out_ed_next_t next_index;
-  u32 pkts_processed = 0;
+  u32 pkts_processed = 0, cached_fragments = 0;
   snat_main_t *sm = &snat_main;
   f64 now = vlib_time_now (vm);
   u32 thread_index = vm->thread_index;
@@ -2025,6 +2063,7 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 	    {
 	      n_left_to_next++;
 	      to_next--;
+	      cached_fragments++;
 	    }
 	  else
 	    {
@@ -2062,8 +2101,11 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
     }
 
   vlib_node_increment_counter (vm, nat44_ed_in2out_reass_node.index,
-			       NAT_IN2OUT_ED_ERROR_IN2OUT_PACKETS,
+			       NAT_IN2OUT_ED_ERROR_PROCESSED_FRAGMENTS,
 			       pkts_processed);
+  vlib_node_increment_counter (vm, nat44_ed_in2out_reass_node.index,
+			       NAT_IN2OUT_ED_ERROR_CACHED_FRAGMENTS,
+			       cached_fragments);
 
   nat_send_all_to_node (vm, fragments_to_drop, node,
 			&node->errors[NAT_IN2OUT_ED_ERROR_DROP_FRAGMENT],

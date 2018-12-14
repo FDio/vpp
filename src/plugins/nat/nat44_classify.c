@@ -31,7 +31,10 @@ vlib_node_registration_t nat44_handoff_classify_node;
 
 #define foreach_nat44_classify_error                      \
 _(MAX_REASS, "Maximum reassemblies exceeded")             \
-_(MAX_FRAG, "Maximum fragments per reassembly exceeded")
+_(MAX_FRAG, "Maximum fragments per reassembly exceeded")  \
+_(NEXT_IN2OUT, "next in2out")                             \
+_(NEXT_OUT2IN, "next out2in")                             \
+_(FRAG_CACHED, "fragment cached")
 
 typedef enum
 {
@@ -93,6 +96,7 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 *fragments_to_drop = 0;
   u32 *fragments_to_loopback = 0;
+  u32 next_in2out = 0, next_out2in = 0, frag_cached = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -361,12 +365,18 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 	    {
 	      n_left_to_next++;
 	      to_next--;
+	      frag_cached++;
 	    }
 	  else
-	    /* verify speculative enqueue, maybe switch current next frame */
-	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					     to_next, n_left_to_next,
-					     bi0, next0);
+	    {
+	      next_in2out += next0 == NAT44_CLASSIFY_NEXT_IN2OUT;
+	      next_out2in += next0 == NAT44_CLASSIFY_NEXT_OUT2IN;
+
+	      /* verify speculative enqueue, maybe switch current next frame */
+	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					       to_next, n_left_to_next,
+					       bi0, next0);
+	    }
 
 	  if (n_left_from == 0 && vec_len (fragments_to_loopback))
 	    {
@@ -397,6 +407,13 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
 			NAT44_CLASSIFY_NEXT_DROP);
 
   vec_free (fragments_to_drop);
+
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT44_CLASSIFY_ERROR_NEXT_IN2OUT, next_in2out);
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT44_CLASSIFY_ERROR_NEXT_OUT2IN, next_out2in);
+  vlib_node_increment_counter (vm, node->node_index,
+			       NAT44_CLASSIFY_ERROR_FRAG_CACHED, frag_cached);
 
   return frame->n_vectors;
 }
