@@ -66,7 +66,7 @@ session_mq_accepted_reply_handler (void *data)
       s = session_get_from_handle_if_valid (mp->handle);
       if (!s)
 	{
-	  clib_warning ("session doesn't exist");
+	  clib_warning ("session 0x%llx doesn't exist", mp->handle);
 	  return;
 	}
       app_wrk = app_worker_get (s->app_wrk_index);
@@ -92,17 +92,17 @@ session_mq_reset_reply_handler (void *data)
   u32 index, thread_index;
 
   mp = (session_reset_reply_msg_t *) data;
-  app = application_lookup (mp->client_index);
+  app = application_lookup (mp->context);
   if (!app)
     return;
 
   session_parse_handle (mp->handle, &index, &thread_index);
   s = session_get_if_valid (index, thread_index);
-  if (!s)
-    {
-      SESSION_DBG ("Invalid session!");
-      return;
-    }
+
+  /* Session was already closed or already cleaned up */
+  if (!s || s->session_state != SESSION_STATE_TRANSPORT_CLOSING)
+    return;
+
   app_wrk = app_worker_get (s->app_wrk_index);
   if (!app_wrk || app_wrk->app_index != app->app_index)
     {
@@ -811,6 +811,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  vec_add2 (fifo_events, e, 1);
 	  svm_msg_q_sub_w_lock (mq, msg);
+	  /* Works because reply messages are smaller than a session evt.
+	   * If we ever need to support bigger messages this needs to be
+	   * fixed */
 	  clib_memcpy_fast (e, svm_msg_q_msg_data (mq, msg), sizeof (*e));
 	  svm_msg_q_free_msg (mq, msg);
 	}
@@ -875,7 +878,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	case FIFO_EVENT_DISCONNECT:
 	  /* Make sure stream disconnects run after the pending list is
 	   * drained */
-	  s = session_get_from_handle (e->session_handle);
+	  s = session_get_from_handle_if_valid (e->session_handle);
+	  if (PREDICT_FALSE (!s))
+	    break;
+
 	  if (!e->postponed)
 	    {
 	      e->postponed = 1;
