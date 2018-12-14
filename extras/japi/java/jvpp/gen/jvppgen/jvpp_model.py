@@ -447,7 +447,7 @@ class JVppModel(object):
                               host_to_net_function='clib_host_to_net_i64',
                               net_to_host_function='clib_net_to_host_i64'),
             'f64': SimpleType('f64', 'double', 'D', 'jdouble', 'Double'),
-            'string': SimpleType('string', 'String', 'l', 'jstring', 'Object',
+            'string': SimpleType('string', 'String', 'Ljava/lang/String;', 'jstring', 'Object',
                                  host_to_net_function='_host_to_net_string',
                                  net_to_host_function='_net_to_host_string')
         })
