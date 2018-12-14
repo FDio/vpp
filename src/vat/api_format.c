@@ -6360,7 +6360,7 @@ exec_inband (vat_main_t * vam)
    */
   u32 len = vec_len (vam->input->buffer);
   M2 (CLI_INBAND, mp, len);
-  vl_api_to_api_string (len, (const char *) vam->input->buffer, &mp->cmd);
+  vl_api_to_api_string (len - 1, (const char *) vam->input->buffer, &mp->cmd);
 
   S (mp);
   W (ret);
