@@ -942,7 +942,8 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
   udp_echo_main_t *utm = &udp_echo_main;
   svm_fifo_segment_main_t *sm = &utm->segment_main;
   svm_fifo_segment_private_t *seg;
-  u64 *seg_indexp, segment_handle;
+  uword *seg_indexp;
+  u64 segment_handle;
 
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   seg_indexp = hash_get (utm->segments_table, segment_handle);
@@ -1220,7 +1221,7 @@ main (int argc, char **argv)
 
   clib_mem_init_thread_safe (0, 256 << 20);
 
-  svm_fifo_segment_main_init (sm, 0x200000000ULL, 20);
+  svm_fifo_segment_main_init (sm, HIGH_SEGMENT_BASEVA, 20);
 
   vec_validate (utm->rx_buf, 128 << 10);
   utm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));

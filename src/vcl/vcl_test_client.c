@@ -350,8 +350,8 @@ vtc_worker_loop (void *arg)
       _wfdset = wrk->wr_fdset;
       _rfdset = wrk->rd_fdset;
 
-      rv = vppcom_select (wrk->max_fd_index, (uint64_t *) rfdset,
-			  (uint64_t *) wfdset, NULL, 0);
+      rv = vppcom_select (wrk->max_fd_index, (unsigned long *) rfdset,
+			  (unsigned long *) wfdset, NULL, 0);
       if (rv < 0)
 	{
 	  vterr ("vppcom_select()", rv);

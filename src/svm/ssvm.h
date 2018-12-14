@@ -64,9 +64,9 @@ typedef struct
   void *heap;
 
   /* Segment must be mapped at this address, or no supper */
-  u64 ssvm_va;
+  uword ssvm_va;
   /* The actual mmap size */
-  u64 ssvm_size;
+  uword ssvm_size;
   u32 master_pid;
   u32 slave_pid;
   u8 *name;

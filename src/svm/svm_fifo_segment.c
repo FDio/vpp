@@ -575,8 +575,8 @@ svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t * fifo_segment,
 }
 
 void
-svm_fifo_segment_info (svm_fifo_segment_private_t * seg, uword * address,
-		       u64 * size)
+svm_fifo_segment_info (svm_fifo_segment_private_t * seg, char **address,
+		       size_t * size)
 {
   if (ssvm_type (&seg->ssvm) == SSVM_SEGMENT_PRIVATE)
     {
@@ -587,14 +587,12 @@ svm_fifo_segment_info (svm_fifo_segment_private_t * seg, uword * address,
       heap_header = mheap_header (seg->ssvm.sh->heap);
       *size = heap_header->max_size;
 #else
-      mspace_get_address_and_size (seg->ssvm.sh->heap,
-				   (unsigned long long *) address,
-				   (unsigned long long *) size);
+      mspace_get_address_and_size (seg->ssvm.sh->heap, address, size);
 #endif
     }
   else
     {
-      *address = seg->ssvm.sh->ssvm_va;
+      *address = (char *) seg->ssvm.sh->ssvm_va;
       *size = seg->ssvm.ssvm_size;
     }
 }

@@ -73,6 +73,7 @@ typedef enum
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct vring_desc *desc;
   struct vring_used *used;
   struct vring_avail *avail;

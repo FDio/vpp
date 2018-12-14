@@ -1448,22 +1448,20 @@ DLMALLOC_EXPORT int mspace_trim(mspace msp, size_t pad);
 DLMALLOC_EXPORT int mspace_mallopt(int, int);
 
 DLMALLOC_EXPORT void* mspace_get_aligned (mspace msp, 
-                                          unsigned long long n_user_data_bytes,
-                                          unsigned long long align, 
-                                          unsigned long long align_offset);
+                                          unsigned long n_user_data_bytes,
+                                          unsigned long align, 
+                                          unsigned long align_offset);
 
 DLMALLOC_EXPORT int mspace_is_heap_object (mspace msp, void *p);
 
-DLMALLOC_EXPORT void mspace_get_address_and_size (mspace msp, 
-                                                  unsigned long long *addrp,
-                                                  unsigned long long *sizep);
+DLMALLOC_EXPORT void mspace_get_address_and_size (mspace msp, char **addrp, size_t *sizep);
 DLMALLOC_EXPORT void mspace_put (mspace msp, void *p);
 DLMALLOC_EXPORT void mspace_put_no_offset (mspace msp, void *p);
 DLMALLOC_EXPORT size_t mspace_usable_size_with_delta (const void *p);
 DLMALLOC_EXPORT void mspace_disable_expand (mspace msp);
 DLMALLOC_EXPORT void *mspace_least_addr (mspace msp);
-DLMALLOC_EXPORT void mheap_get_trace (u64 offset, u64 size);
-DLMALLOC_EXPORT void mheap_put_trace (u64 offset, u64 size);
+DLMALLOC_EXPORT void mheap_get_trace (uword offset, uword size);
+DLMALLOC_EXPORT void mheap_put_trace (uword offset, uword size);
 DLMALLOC_EXPORT int mspace_enable_disable_trace (mspace msp, int enable);
 
 #endif /* MSPACES */

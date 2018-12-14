@@ -84,7 +84,7 @@ lb_hash_t *lb_hash_alloc(u32 buckets, u32 timeout)
     return NULL;
 
   // Allocate 1 more bucket for prefetch
-  u32 size = ((u64)&((lb_hash_t *)(0))->buckets[0]) +
+  u32 size = ((uword)&((lb_hash_t *)(0))->buckets[0]) +
       sizeof(lb_hash_bucket_t) * (buckets + 1);
   u8 *mem = 0;
   lb_hash_t *h;

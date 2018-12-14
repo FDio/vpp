@@ -116,8 +116,8 @@ u32 svm_fifo_segment_index (svm_fifo_segment_main_t * sm,
 u32 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment);
 u32 svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t *
 				     fifo_segment, u32 fifo_size_in_bytes);
-void svm_fifo_segment_info (svm_fifo_segment_private_t * seg, uword * address,
-			    u64 * size);
+void svm_fifo_segment_info (svm_fifo_segment_private_t * seg, char **address,
+			    size_t * size);
 
 svm_fifo_segment_private_t
   * svm_fifo_segment_segments_pool (svm_fifo_segment_main_t * sm);
