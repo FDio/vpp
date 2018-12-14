@@ -99,7 +99,7 @@ test_bihash_thread_fn (void *arg)
   BVT (clib_bihash_kv) kv;
   bihash_test_main_t *tm = &bihash_test_main;
   int i, j;
-  u32 my_thread_index = (u32) (u64) arg;
+  u32 my_thread_index = (uword) arg;
 
   while (tm->thread_barrier)
     ;
@@ -150,7 +150,7 @@ test_bihash_threads (bihash_test_main_t * tm)
   for (i = 0; i < tm->nthreads; i++)
     {
       rv = pthread_create (&handle, NULL, test_bihash_thread_fn,
-			   (void *) (u64) i);
+			   (void *) (uword) i);
       if (rv)
 	{
 	  clib_unix_warning ("pthread_create returned %d", rv);

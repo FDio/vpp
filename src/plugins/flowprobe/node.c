@@ -148,7 +148,7 @@ flowprobe_get_variant (flowprobe_variant_t which,
 /*
  * NTP rfc868 : 2 208 988 800 corresponds to 00:00  1 Jan 1970 GMT
  */
-#define NTP_TIMESTAMP 2208988800L
+#define NTP_TIMESTAMP 2208988800LU
 
 static inline u32
 flowprobe_common_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
