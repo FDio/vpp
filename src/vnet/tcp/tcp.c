@@ -359,10 +359,12 @@ tcp_connection_close (tcp_connection_t * tc)
 
   TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 
-  /* If in CLOSED and WAITCLOSE timer is not set, delete connection now */
+  /* If in CLOSED and WAITCLOSE timer is not set, delete connection.
+   * But instead of doing it now wait until next dispatch cycle to give
+   * the session layer a chance to clear unhandled events */
   if (!tcp_timer_is_active (tc, TCP_TIMER_WAITCLOSE)
       && tc->state == TCP_STATE_CLOSED)
-    tcp_connection_del (tc);
+    tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, 1);
 }
 
 static void

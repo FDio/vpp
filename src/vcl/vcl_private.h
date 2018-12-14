@@ -67,13 +67,13 @@ typedef enum
   STATE_CONNECT = 0x02,
   STATE_LISTEN = 0x04,
   STATE_ACCEPT = 0x08,
-  STATE_CLOSE_ON_EMPTY = 0x10,
+  STATE_VPP_CLOSING = 0x10,
   STATE_DISCONNECT = 0x20,
   STATE_FAILED = 0x40
 } session_state_t;
 
-#define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_CLOSE_ON_EMPTY)
-#define CLIENT_STATE_OPEN  (STATE_CONNECT|STATE_CLOSE_ON_EMPTY)
+#define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)
+#define CLIENT_STATE_OPEN  (STATE_CONNECT|STATE_VPP_CLOSING)
 #define STATE_OPEN (SERVER_STATE_OPEN | CLIENT_STATE_OPEN)
 
 typedef struct epoll_event vppcom_epoll_event_t;
@@ -95,6 +95,9 @@ typedef struct
   ip46_address_t ip46;
 } vppcom_ip46_t;
 
+#define VCL_ACCEPTED_F_CLOSED 	(1 << 0)
+#define VCL_ACCEPTED_F_RESET 	(1 << 1)
+
 typedef struct vcl_session_msg
 {
   u32 next;
@@ -102,6 +105,7 @@ typedef struct vcl_session_msg
   {
     session_accepted_msg_t accepted_msg;
   };
+  u32 flags;
 } vcl_session_msg_t;
 
 enum
@@ -155,6 +159,7 @@ typedef struct
   u32 sm_seg_index;
   u32 client_context;
   u64 vpp_handle;
+  u32 vpp_thread_index;
 
   /* Socket configuration state */
   u8 is_vep;
