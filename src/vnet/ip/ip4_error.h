@@ -87,7 +87,8 @@
   _ (REASS_DUPLICATE_FRAGMENT, "duplicate/overlapping fragments")       \
   _ (REASS_LIMIT_REACHED, "drops due to concurrent reassemblies limit") \
   _ (REASS_TIMEOUT, "fragments dropped due to reassembly timeout")      \
-  _ (REASS_MALFORMED_PACKET, "malformed packets")
+  _ (REASS_MALFORMED_PACKET, "malformed packets")                       \
+  _ (REASS_INTERNAL_ERROR, "drops due to internal reassembly error")
 
 typedef enum
 {
