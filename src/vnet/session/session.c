@@ -735,6 +735,7 @@ stream_session_accept_notify (transport_connection_t * tc)
   if (!app_wrk)
     return;
   app = application_get (app_wrk->app_index);
+  clib_warning ("accepting %u %p", s->session_index, s->server_tx_fifo);
   app->cb_fns.session_accept_callback (s);
 }
 
@@ -796,6 +797,7 @@ stream_session_delete_notify (transport_connection_t * tc)
   /* App might've been removed already */
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
+  clib_warning ("delete notify session %u state %u", tc->s_index, s->session_state);
 
   /* Make sure we don't try to send anything more */
   svm_fifo_dequeue_drop_all (s->server_tx_fifo);
@@ -836,6 +838,10 @@ stream_session_reset_notify (transport_connection_t * tc)
   application_t *app;
   s = session_get (tc->s_index, tc->thread_index);
   svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+    return;
+  clib_warning ("resetting %u state %u", s->session_index, s->session_state);
+  s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
   app_wrk = app_worker_get (s->app_wrk_index);
   app = application_get (app_wrk->app_index);
   app->cb_fns.session_reset_callback (s);
@@ -1081,6 +1087,7 @@ stream_session_disconnect (stream_session_t * s)
    * held, just append a new event to pending disconnects vector. */
   if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
     {
+      clib_warning ("request to disconnect %u state %u", s->session_index, s->session_state);
       wrk = session_manager_get_worker (s->thread_index);
       vec_add2 (wrk->pending_disconnects, evt, 1);
       clib_memset (evt, 0, sizeof (*evt));
@@ -1101,6 +1108,7 @@ stream_session_disconnect (stream_session_t * s)
 void
 stream_session_disconnect_transport (stream_session_t * s)
 {
+  clib_warning ("disconenct transport %u", s->session_index);
   /* If transport is already closed, just free the session */
   if (s->session_state == SESSION_STATE_CLOSED)
     {
@@ -1204,11 +1212,9 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
   for (i = 0; i < vec_len (smm->wrk); i++)
     {
       svm_msg_q_cfg_t _cfg, *cfg = &_cfg;
-      u32 notif_q_size = clib_max (16, evt_q_length >> 4);
       svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
-	{evt_q_length, evt_size, 0}
-	,
-	{notif_q_size, 256, 0}
+	{evt_q_length, evt_size, 0},
+	{evt_q_length << 1, 256, 0}
       };
       cfg->consumer_pid = 0;
       cfg->n_rings = 2;
