@@ -40,6 +40,12 @@ if os.name == 'posix' and sys.version_info[0] < 3:
 else:
     import subprocess
 
+#  Python2/3 compatible
+try:
+    input = raw_input
+except NameError:
+    pass
+
 PASS = 0
 FAIL = 1
 ERROR = 2
@@ -347,7 +353,7 @@ class VppTestCase(unittest.TestCase):
             print("Now is the time to attach a gdb by running the above "
                   "command and set up breakpoints etc.")
         print(single_line_delim)
-        raw_input("Press ENTER to continue running the testcase...")
+        input("Press ENTER to continue running the testcase...")
 
     @classmethod
     def run_vpp(cls):
@@ -487,8 +493,8 @@ class VppTestCase(unittest.TestCase):
                 print(double_line_delim)
                 print("VPP or GDB server is still running")
                 print(single_line_delim)
-                raw_input("When done debugging, press ENTER to kill the "
-                          "process and finish running the testcase...")
+                input("When done debugging, press ENTER to kill the "
+                      "process and finish running the testcase...")
 
         # first signal that we want to stop the pump thread, then wake it up
         if hasattr(cls, 'pump_thread_stop_flag'):
