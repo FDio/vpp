@@ -1551,15 +1551,11 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	  e = svm_msg_q_msg_data (mq, &msg);
 	  svm_msg_q_unlock (mq);
 	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
-	    {
-	      vcl_handle_mq_event (wrk, e);
-	      svm_msg_q_free_msg (mq, &msg);
-	      continue;
-	    }
+	    vcl_handle_mq_event (wrk, e);
 	  svm_msg_q_free_msg (mq, &msg);
 
-	  if (PREDICT_FALSE (s->session_state == STATE_VPP_CLOSING))
-	    return 0;
+	  if (PREDICT_FALSE (s->session_state == STATE_DISCONNECT))
+	    return VPPCOM_ECONNRESET;
 	}
     }
 
@@ -1644,15 +1640,11 @@ vppcom_session_read_segments (uint32_t session_handle,
 	  e = svm_msg_q_msg_data (mq, &msg);
 	  svm_msg_q_unlock (mq);
 	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
-	    {
-	      vcl_handle_mq_event (wrk, e);
-	      svm_msg_q_free_msg (mq, &msg);
-	      continue;
-	    }
+	    vcl_handle_mq_event (wrk, e);
 	  svm_msg_q_free_msg (mq, &msg);
 
-	  if (PREDICT_FALSE (s->session_state == STATE_VPP_CLOSING))
-	    return 0;
+	  if (PREDICT_FALSE (s->session_state == STATE_DISCONNECT))
+	    return VPPCOM_ECONNRESET;
 	}
     }
 
@@ -1802,11 +1794,11 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 	  if (!vcl_is_tx_evt_for_session (e, s->session_index, is_ct))
 	    vcl_handle_mq_event (wrk, e);
 	  svm_msg_q_free_msg (mq, &msg);
+
+	  if (PREDICT_FALSE (!(s->session_state & STATE_OPEN)))
+	    return VPPCOM_ECONNRESET;
 	}
     }
-
-  if (PREDICT_FALSE (!(s->session_state & STATE_OPEN)))
-    return VPPCOM_ECONNRESET;
 
   ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
   et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
