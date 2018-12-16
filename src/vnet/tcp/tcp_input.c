@@ -316,18 +316,18 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 			tcp_time_now_w_thread (tc0->c_thread_index)))
 	{
 	  tc0->tsval_recent = tc0->rcv_opts.tsval;
-	  clib_warning ("paws failed - really old segment. REALLY?");
+	  clib_warning ("paws failed: 24-day old segment");
 	}
-      else
+      /* Drop after ack if not rst. Resets can fail paws check as per
+       * RFC 7323 sec. 5.2: When an <RST> segment is received, it MUST NOT
+       * be subjected to the PAWS check by verifying an acceptable value in
+       * SEG.TSval */
+      else if (!tcp_rst (th0))
 	{
-	  /* Drop after ack if not rst */
-	  if (!tcp_rst (th0))
-	    {
-	      tcp_program_ack (wrk, tc0);
-	      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
-	    }
+	  tcp_program_ack (wrk, tc0);
+	  TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc0, vnet_buffer (b0)->tcp);
+	  goto error;
 	}
-      goto error;
     }
 
   /* 1st: check sequence number */
