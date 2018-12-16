@@ -251,11 +251,10 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   char *vpe_api_get_version (void);
   char *vpe_api_get_build_date (void);
 
-  u32 program_len = strnlen_s ("vpe", 32) + 1;
-  u32 version_len = strnlen_s (vpe_api_get_version (), 32) + 1;
-  u32 build_date_len = strnlen_s (vpe_api_get_build_date (), 32) + 1;
-  u32 build_directory_len =
-    strnlen_s (vpe_api_get_build_directory (), 256) + 1;
+  u32 program_len = strnlen_s ("vpe", 32);
+  u32 version_len = strnlen_s (vpe_api_get_version (), 32);
+  u32 build_date_len = strnlen_s (vpe_api_get_build_date (), 32);
+  u32 build_directory_len = strnlen_s (vpe_api_get_build_directory (), 256);
 
   u32 n = program_len + version_len + build_date_len + build_directory_len;
 

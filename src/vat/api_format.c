@@ -1302,18 +1302,30 @@ static void vl_api_show_version_reply_t_handler
 
   if (retval >= 0)
     {
+      char *s;
       char *p = (char *) &mp->program;
-      errmsg ("        program: %s\n",
-	      vl_api_from_api_string ((vl_api_string_t *) p));
-      p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
-      errmsg ("        version: %s\n",
-	      vl_api_from_api_string ((vl_api_string_t *) p));
-      p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
-      errmsg ("     build date: %s\n",
-	      vl_api_from_api_string ((vl_api_string_t *) p));
-      p += vl_api_string_len ((vl_api_string_t *) p) + sizeof (u32);
-      errmsg ("build directory: %s\n",
-	      vl_api_from_api_string ((vl_api_string_t *) p));
+
+      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
+      errmsg ("        program: %s\n", s);
+      free (s);
+
+      p +=
+	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
+      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
+      errmsg ("        version: %s\n", s);
+      free (s);
+
+      p +=
+	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
+      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
+      errmsg ("     build date: %s\n", s);
+      free (s);
+
+      p +=
+	vl_api_string_len ((vl_api_string_t *) p) + sizeof (vl_api_string_t);
+      s = vl_api_from_api_string_c ((vl_api_string_t *) p);
+      errmsg ("build directory: %s\n", s);
+      free (s);
     }
   vam->retval = retval;
   vam->result_ready = 1;
