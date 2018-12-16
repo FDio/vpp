@@ -50,4 +50,10 @@ vl_api_string_len (vl_api_string_t * astr)
   return clib_net_to_host_u32 (astr->length);
 }
 
+static inline char *
+vl_api_from_api_string_c (vl_api_string_t *astr)
+{
+  return strndup((char *)astr->buf, clib_net_to_host_u32(astr->length));
+}
+
 #endif
