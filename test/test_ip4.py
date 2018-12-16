@@ -441,6 +441,9 @@ class TestIPv4FibCrud(VppTestCase):
         super(TestIPv4FibCrud, self).setUp()
         self.reset_packet_infos()
 
+        self.configured_routes = []
+        self.deleted_routes = []
+
     def test_1_add_routes(self):
         """ Add 1k routes
 
@@ -471,6 +474,9 @@ class TestIPv4FibCrud(VppTestCase):
 
         - delete 10 routes check with traffic script.
         """
+        # config 1M FIB entries
+        self.configured_routes.extend(self.config_fib_many_to_one(
+            "10.0.0.0", self.pg0.remote_ip4, 100))
         self.deleted_routes.extend(self.unconfig_fib_many_to_one(
             "10.0.0.10", self.pg0.remote_ip4, 10))
         for x in self.deleted_routes:
@@ -501,6 +507,14 @@ class TestIPv4FibCrud(VppTestCase):
         - re-add 5 routes check with traffic script.
         - add 100 routes check with traffic script.
         """
+        # config 1M FIB entries
+        self.configured_routes.extend(self.config_fib_many_to_one(
+            "10.0.0.0", self.pg0.remote_ip4, 100))
+        self.deleted_routes.extend(self.unconfig_fib_many_to_one(
+            "10.0.0.10", self.pg0.remote_ip4, 10))
+        for x in self.deleted_routes:
+            self.configured_routes.remove(x)
+
         tmp = self.config_fib_many_to_one(
             "10.0.0.10", self.pg0.remote_ip4, 5)
         self.configured_routes.extend(tmp)
