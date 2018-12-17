@@ -84,6 +84,22 @@ vlib_increment_simple_counter (vlib_simple_counter_main_t * cm,
   my_counters[index] += increment;
 }
 
+/** Set a simple counter
+    @param cm - (vlib_simple_counter_main_t *) simple counter main pointer
+    @param thread_index - (u32) the current cpu index
+    @param index - (u32) index of the counter to increment
+    @param value - (u64) quantitiy to set to the counter
+*/
+always_inline void
+vlib_set_simple_counter (vlib_simple_counter_main_t * cm,
+			 u32 thread_index, u32 index, u64 value)
+{
+  counter_t *my_counters;
+
+  my_counters = cm->counters[thread_index];
+  my_counters[index] = value;
+}
+
 /** Get the value of a simple counter
     Scrapes the entire set of per-thread counters. Innacurate unless
     worker threads which might increment the counter are
