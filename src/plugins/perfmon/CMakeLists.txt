@@ -23,3 +23,11 @@ install(
   DESTINATION share/vpp/plugins/perfmon
   COMPONENT vpp-dev
 )
+
+option(VPP_BUILD_MAPFILE_TOOL "Build perfmon mapfile utility." OFF)
+if(VPP_BUILD_MAPFILE_TOOL)
+  add_vpp_executable(mapfile_tool
+    SOURCES mapfile_tool.c
+    LINK_LIBRARIES vppinfra Threads::Threads
+    )
+endif(VPP_BUILD_MAPFILE_TOOL)

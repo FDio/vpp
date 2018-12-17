@@ -69,7 +69,8 @@ perfmon_parse_table (perfmon_main_t * pm, char *path, char *table_name)
   if (error)
     {
       vlib_log_err (pm->log_class,
-		    "Failed to read CPU-specific counter table");
+		    "Failed to read CPU-specific counter table %s",
+		    json_filename);
       vlib_log_err (pm->log_class,
 		    "Please install the vpp-dev package and then:");
       vlib_log_err
