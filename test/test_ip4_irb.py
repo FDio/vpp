@@ -31,7 +31,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from vpp_mac import mactobinary
+from vpp_papi import MACAddress
 from vpp_papi_provider import L2_PORT_TYPE
 
 
@@ -265,7 +265,7 @@ class TestIpIrb(VppTestCase):
         self.send_and_verify_l2_to_ip()
 
         # change the BVI's mac and resed traffic
-        self.loop0.set_mac("00:00:00:11:11:33")
+        self.loop0.set_mac(MACAddress("00:00:00:11:11:33"))
 
         self.send_and_verify_l2_to_ip()
         # check it wasn't flooded

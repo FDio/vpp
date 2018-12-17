@@ -1,7 +1,7 @@
 
 from vpp_interface import VppInterface
 import socket
-from vpp_mac import mactobinary
+from vpp_papi import mac_pton
 
 
 class VppPppoeInterface(VppInterface):
@@ -20,7 +20,7 @@ class VppPppoeInterface(VppInterface):
 
     def add_vpp_config(self):
         cip = socket.inet_pton(socket.AF_INET, self.client_ip)
-        cmac = mactobinary(self.client_mac)
+        cmac = mac_pton(self.client_mac)
         r = self.test.vapi.pppoe_add_del_session(
                 cip, cmac,
                 session_id=self.session_id,
@@ -30,7 +30,7 @@ class VppPppoeInterface(VppInterface):
 
     def remove_vpp_config(self):
         cip = socket.inet_pton(socket.AF_INET, self.client_ip)
-        cmac = mactobinary(self.client_mac)
+        cmac = mac_pton(self.client_mac)
         self.unconfig()
         self.test.vapi.pppoe_add_del_session(
                 cip, cmac,

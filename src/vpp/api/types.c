@@ -63,7 +63,7 @@ unformat_vl_api_mac_address (unformat_input_t * input, va_list * args)
 {
   vl_api_mac_address_t *mac = va_arg (*args, vl_api_mac_address_t *);
 
-  return (unformat (input, "%U",unformat_ethernet_address, mac->bytes));
+  return (unformat (input, "%U",unformat_ethernet_address, mac));
 }
 
 uword
@@ -86,6 +86,6 @@ format_vl_api_mac_address (u8 * s, va_list * args)
 {
   vl_api_mac_address_t *mac = va_arg (*args, vl_api_mac_address_t *);
 
-  return (format (s, "%U", format_ethernet_address, mac->bytes));
+  return (format (s, "%U", format_ethernet_address, mac));
 }
 

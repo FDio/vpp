@@ -14,7 +14,7 @@ from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, IPv6ExtHdrRouting,\
 from scapy.utils import hexdump
 from socket import AF_INET6
 from io import BytesIO
-from vpp_mac import mactobinary
+from vpp_papi import mac_pton
 
 
 def ppp(headline, packet):
@@ -130,7 +130,7 @@ class Host(object):
     @property
     def bin_mac(self):
         """ MAC address """
-        return mactobinary(self._mac)
+        return mac_pton(self._mac)
 
     @property
     def ip4(self):

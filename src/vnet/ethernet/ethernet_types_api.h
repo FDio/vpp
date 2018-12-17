@@ -22,15 +22,8 @@
 
 #include <vnet/ethernet/mac_address.h>
 
-/**
- * Forward declarations so we need not #include the API definitions here
- */
-struct _vl_api_mac_address;
-
-extern void mac_address_decode (const struct _vl_api_mac_address *in,
-				mac_address_t * out);
-extern void mac_address_encode (const mac_address_t * in,
-				struct _vl_api_mac_address *out);
+extern void mac_address_decode (const u8 * in, mac_address_t * out);
+extern void mac_address_encode (const mac_address_t * in, u8 * out);
 
 #endif
 
