@@ -40,6 +40,8 @@ int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 int map_delete_domain (u32 map_domain_index);
 int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      u8 is_add);
+int map_if_enable_disable (bool is_enable, u32 sw_if_index,
+			   bool is_translation);
 u8 *format_map_trace (u8 * s, va_list * args);
 
 int map_param_set_fragmentation (bool inner, bool ignore_df);
@@ -51,6 +53,7 @@ int map_param_set_reassembly (bool is_ipv6, u16 lifetime_ms,
 			      u32 * reass, u32 * packets);
 int map_param_set_security_check (bool enable, bool fragments);
 int map_param_set_traffic_class (bool copy, u8 tc);
+int map_param_set_tcp (u16 tcp_mss);
 
 
 typedef enum
@@ -264,6 +267,8 @@ typedef struct {
   bool sec_check;		/* Inbound security check */
   bool sec_check_frag;		/* Inbound security check for (subsequent) fragments */
   bool icmp6_enabled;		/* Send destination unreachable for security check failure */
+
+  u16 tcp_mss;			/* TCP MSS clamp value */
 
   /* ICMPv6 -> ICMPv4 relay parameters */
   ip4_address_t icmp4_src_address;
