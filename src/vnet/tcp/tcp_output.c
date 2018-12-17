@@ -447,7 +447,6 @@ tcp_init_mss (tcp_connection_t * tc)
 
   if (tc->snd_mss < 45)
     {
-      clib_warning ("snd mss is 0");
       /* Assume that at least the min default mss works */
       tc->snd_mss = default_min_mss;
       tc->rcv_opts.mss = default_min_mss;

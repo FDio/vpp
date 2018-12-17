@@ -246,7 +246,7 @@ tcp_connection_del (tcp_connection_t * tc)
 }
 
 tcp_connection_t *
-tcp_connection_new (u8 thread_index)
+tcp_connection_alloc (u8 thread_index)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
@@ -256,6 +256,15 @@ tcp_connection_new (u8 thread_index)
   tc->c_c_index = tc - tm->connections[thread_index];
   tc->c_thread_index = thread_index;
   return tc;
+}
+
+void
+tcp_connection_free (tcp_connection_t * tc)
+{
+  tcp_main_t *tm = &tcp_main;
+  pool_put (tm->connections[tc->c_thread_index], tc);
+  if (CLIB_DEBUG > 0)
+    clib_memset (tc, 0xFA, sizeof (*tc));
 }
 
 /** Notify session that connection has been reset.
