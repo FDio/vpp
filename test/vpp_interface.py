@@ -5,7 +5,7 @@ from abc import abstractmethod, ABCMeta
 from six import moves
 
 from util import Host, mk_ll_addr
-from vpp_mac import mactobinary, binarytomac
+from vpp_papi import mac_pton, mac_ntop
 
 
 class VppInterface(object):
@@ -191,11 +191,10 @@ class VppInterface(object):
         self._hosts_by_ip6 = {}
 
     def set_mac(self, mac):
-        self._local_mac = mac
-        self._local_ip6_ll = mk_ll_addr(mac)
+        self._local_mac = str(mac)
+        self._local_ip6_ll = mk_ll_addr(self._local_mac)
         self.test.vapi.sw_interface_set_mac_address(
-            self.sw_if_index,
-            mactobinary(self._local_mac))
+            self.sw_if_index, mac.packed)
 
     def set_sw_if_index(self, sw_if_index):
         self._sw_if_index = sw_if_index
@@ -234,7 +233,7 @@ class VppInterface(object):
             if intf.sw_if_index == self.sw_if_index:
                 self._name = intf.interface_name.split(b'\0',
                                                        1)[0].decode('utf8')
-                self._local_mac = binarytomac(intf.l2_address)
+                self._local_mac = mac_ntop(intf.l2_address)
                 self._dump = intf
                 break
         else:
@@ -274,7 +273,7 @@ class VppInterface(object):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            macn = mactobinary(host.mac)
+            macn = mac_pton(host.mac)
             ipn = host.ip4n
             self.test.vapi.ip_neighbor_add_del(
                 self.sw_if_index, macn, ipn)
@@ -305,7 +304,7 @@ class VppInterface(object):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            macn = mactobinary(host.mac)
+            macn = mac_pton(host.mac)
             ipn = host.ip6n
             self.test.vapi.ip_neighbor_add_del(
                 self.sw_if_index, macn, ipn, is_ipv6=1)
