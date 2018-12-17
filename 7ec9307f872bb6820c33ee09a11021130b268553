@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9c755523_38a1c8e3",
+        "filename": "src/vpp-api/python/vpp_papi/macaddress.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-17T13:30:24Z",
+      "side": 1,
+      "message": "Is there value in also supporting \u0027cisco-style\u0027 formatted macs (aabb.ccdd.eeff)?",
+      "range": {
+        "startLine": 34,
+        "startChar": 8,
+        "endLine": 34,
+        "endChar": 73
+      },
+      "revId": "7ec9307f872bb6820c33ee09a11021130b268553",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ee8fc87_474fa51e",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_format.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-17T13:30:24Z",
+      "side": 1,
+      "message": "pep8 suggests that these should be written as:\ndef m(o): return o.packed\ndef s(s): return macaddress.mac_pton(s)\n\nIt improves error messages and facilitates a unittest to be able to mock the anonymous function.  \n---\nAlways use a def statement instead of an assignment statement that binds a lambda expression directly to an identifier.\n\nYes:\n\ndef f(x): return 2*x\nNo:\n\nf \u003d lambda x: 2*x\nThe first form means that the name of the resulting function object is specifically \u0027f\u0027 instead of the generic \u0027\u003clambda\u003e\u0027. This is more useful for tracebacks and string representations in general. The use of the assignment statement eliminates the sole benefit a lambda expression can offer over an explicit def statement (i.e. that it can be embedded inside a larger expression)\n\nMaybe this suggestion belongs in a separate refactoring to keep the code consistent?",
+      "range": {
+        "startLine": 100,
+        "startChar": 1,
+        "endLine": 101,
+        "endChar": 47
+      },
+      "revId": "7ec9307f872bb6820c33ee09a11021130b268553",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
