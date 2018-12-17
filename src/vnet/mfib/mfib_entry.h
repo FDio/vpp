@@ -19,6 +19,7 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/mfib/mfib_types.h>
 #include <vnet/mfib/mfib_itf.h>
+#include <vnet/mfib/mfib_entry_delegate.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/dpo.h>
 
@@ -34,10 +35,12 @@ typedef struct mfib_entry_t_ {
      * Base class. The entry's node representation in the graph.
      */
     fib_node_t mfe_node;
+
     /**
      * The prefix of the route
      */
     mfib_prefix_t mfe_prefix;
+
     /**
      * The index of the FIB table this entry is in
      */
@@ -82,7 +85,27 @@ typedef struct mfib_entry_t_ {
      * A hash table of interfaces
      */
     mfib_itf_t *mfe_itfs;
+
+    /**
+     * A vector of delegates.
+     */
+    mfib_entry_delegate_t *fe_delegates;
 } mfib_entry_t;
+
+/**
+ * Debug macro
+ */
+extern vlib_log_class_t mfib_entry_logger;
+
+#define MFIB_ENTRY_DBG(_e, _fmt, _args...)		\
+{                                                       \
+    vlib_log_debug(mfib_entry_logger,                   \
+                   "e:[%d:%U]: " _fmt,                  \
+                   mfib_entry_get_index(_e),		\
+                   format_mfib_prefix,			\
+                   &_e->mfe_prefix,                     \
+                   ##_args);                            \
+}
 
 #define MFIB_ENTRY_FORMAT_BRIEF   (0x0)
 #define MFIB_ENTRY_FORMAT_DETAIL  (0x1)
@@ -95,13 +118,20 @@ extern fib_node_index_t mfib_entry_create(u32 fib_index,
                                           mfib_source_t source,
                                           const mfib_prefix_t *prefix,
                                           fib_rpf_id_t rpf_id,
-                                          mfib_entry_flags_t entry_flags);
+                                          mfib_entry_flags_t entry_flags,
+                                          index_t repi);
 
 extern int mfib_entry_update(fib_node_index_t fib_entry_index,
                              mfib_source_t source,
                              mfib_entry_flags_t entry_flags,
                              fib_rpf_id_t rpf_id,
                              index_t rep_dpo);
+
+extern int mfib_entry_special_add(fib_node_index_t fib_entry_index,
+                                  mfib_source_t source,
+                                  mfib_entry_flags_t entry_flags,
+                                  fib_rpf_id_t rpf_id,
+                                  index_t rep_dpo);
 
 extern void mfib_entry_path_update(fib_node_index_t fib_entry_index,
                                    mfib_source_t source,
@@ -127,19 +157,35 @@ extern void mfib_entry_child_remove(fib_node_index_t mfib_entry_index,
 extern void mfib_entry_lock(fib_node_index_t fib_entry_index);
 extern void mfib_entry_unlock(fib_node_index_t fib_entry_index);
 
-extern void mfib_entry_get_prefix(fib_node_index_t fib_entry_index,
-                                  mfib_prefix_t *pfx);
+extern const mfib_prefix_t *mfib_entry_get_prefix(fib_node_index_t fib_entry_index);
 extern u32 mfib_entry_get_fib_index(fib_node_index_t fib_entry_index);
 extern int mfib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                  mfib_source_t source);
+extern int mfib_entry_is_host(fib_node_index_t fib_entry_index);
 extern u32 mfib_entry_get_stats_index(fib_node_index_t fib_entry_index);
+extern void mfib_entry_cover_changed(fib_node_index_t fib_entry_index);
+extern void mfib_entry_cover_updated(fib_node_index_t fib_entry_index);
 
 extern const dpo_id_t*mfib_entry_contribute_ip_forwarding(
     fib_node_index_t mfib_entry_index);
 
+/**
+ * Flags to control what is present in the replicate DPO returned when
+ * the entry contributes forwarding
+ */
+typedef enum mfib_entry_fwd_flags_t_
+{
+    MFIB_ENTRY_FWD_FLAG_NONE,
+    /**
+     * Do not reutrn any local replications in the set
+     */
+    MFIB_ENTRY_FWD_FLAG_NO_LOCAL,
+} mfib_entry_fwd_flags_t;
+
 extern void mfib_entry_contribute_forwarding(
     fib_node_index_t mfib_entry_index,
     fib_forward_chain_type_t type,
+    mfib_entry_fwd_flags_t flags,
     dpo_id_t *dpo);
 
 extern void mfib_entry_encode(fib_node_index_t fib_entry_index,

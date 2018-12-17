@@ -408,13 +408,13 @@ send_ip_mfib_details (vl_api_registration_t * reg,
 {
   fib_route_path_encode_t *api_rpath, *api_rpaths = NULL;
   vl_api_ip_mfib_details_t *mp;
+  const mfib_prefix_t *pfx;
   mfib_entry_t *mfib_entry;
   vl_api_fib_path_t *fp;
-  mfib_prefix_t pfx;
   int path_count;
 
   mfib_entry = mfib_entry_get (mfei);
-  mfib_entry_get_prefix (mfei, &pfx);
+  pfx = mfib_entry_get_prefix (mfei);
   mfib_entry_encode (mfei, &api_rpaths);
 
   path_count = vec_len (api_rpaths);
@@ -428,11 +428,11 @@ send_ip_mfib_details (vl_api_registration_t * reg,
   mp->rpf_id = mfib_entry->mfe_rpf_id;
   mp->entry_flags = mfib_entry->mfe_flags;
   mp->table_id = htonl (table_id);
-  mp->address_length = pfx.fp_len;
-  memcpy (mp->grp_address, &pfx.fp_grp_addr.ip4,
-	  sizeof (pfx.fp_grp_addr.ip4));
-  memcpy (mp->src_address, &pfx.fp_src_addr.ip4,
-	  sizeof (pfx.fp_src_addr.ip4));
+  mp->address_length = pfx->fp_len;
+  memcpy (mp->grp_address, &pfx->fp_grp_addr.ip4,
+	  sizeof (pfx->fp_grp_addr.ip4));
+  memcpy (mp->src_address, &pfx->fp_src_addr.ip4,
+	  sizeof (pfx->fp_src_addr.ip4));
 
   mp->count = htonl (path_count);
   fp = mp->path;
@@ -503,7 +503,7 @@ static void
 send_ip6_mfib_details (vpe_api_main_t * am,
 		       vl_api_registration_t * reg,
 		       u32 table_id,
-		       mfib_prefix_t * pfx,
+		       const mfib_prefix_t * pfx,
 		       fib_route_path_encode_t * api_rpaths, u32 context)
 {
   vl_api_ip6_mfib_details_t *mp;
@@ -559,8 +559,8 @@ vl_api_ip6_mfib_dump_t_handler (vl_api_ip6_mfib_dump_t * mp)
   vl_api_registration_t *reg;
   ip6_main_t *im = &ip6_main;
   mfib_table_t *mfib_table;
+  const mfib_prefix_t *pfx;
   fib_node_index_t *mfeip;
-  mfib_prefix_t pfx;
   fib_route_path_encode_t *api_rpaths = NULL;
   vl_api_ip6_mfib_dump_ctc_t ctx = {
     .entries = NULL,
@@ -582,11 +582,11 @@ vl_api_ip6_mfib_dump_t_handler (vl_api_ip6_mfib_dump_t * mp)
 
     vec_foreach(mfeip, ctx.entries)
     {
-      mfib_entry_get_prefix (*mfeip, &pfx);
+      pfx = mfib_entry_get_prefix (*mfeip);
       mfib_entry_encode (*mfeip, &api_rpaths);
       send_ip6_mfib_details (am, reg,
                              mfib_table->mft_table_id,
-                             &pfx, api_rpaths,
+                             pfx, api_rpaths,
                              mp->context);
     }
     vec_reset_length (api_rpaths);
@@ -1833,7 +1833,7 @@ vl_mfib_signal_send_one (vl_api_registration_t * reg,
 			 u32 context, const mfib_signal_t * mfs)
 {
   vl_api_mfib_signal_details_t *mp;
-  mfib_prefix_t prefix;
+  const mfib_prefix_t *prefix;
   mfib_table_t *mfib;
   mfib_itf_t *mfi;
 
@@ -1844,25 +1844,25 @@ vl_mfib_signal_send_one (vl_api_registration_t * reg,
   mp->context = context;
 
   mfi = mfib_itf_get (mfs->mfs_itf);
-  mfib_entry_get_prefix (mfs->mfs_entry, &prefix);
+  prefix = mfib_entry_get_prefix (mfs->mfs_entry);
   mfib = mfib_table_get (mfib_entry_get_fib_index (mfs->mfs_entry),
-			 prefix.fp_proto);
+			 prefix->fp_proto);
   mp->table_id = ntohl (mfib->mft_table_id);
   mp->sw_if_index = ntohl (mfi->mfi_sw_if_index);
 
-  if (FIB_PROTOCOL_IP4 == prefix.fp_proto)
+  if (FIB_PROTOCOL_IP4 == prefix->fp_proto)
     {
-      mp->grp_address_len = ntohs (prefix.fp_len);
+      mp->grp_address_len = ntohs (prefix->fp_len);
 
-      memcpy (mp->grp_address, &prefix.fp_grp_addr.ip4, 4);
-      if (prefix.fp_len > 32)
+      memcpy (mp->grp_address, &prefix->fp_grp_addr.ip4, 4);
+      if (prefix->fp_len > 32)
 	{
-	  memcpy (mp->src_address, &prefix.fp_src_addr.ip4, 4);
+	  memcpy (mp->src_address, &prefix->fp_src_addr.ip4, 4);
 	}
     }
   else
     {
-      mp->grp_address_len = ntohs (prefix.fp_len);
+      mp->grp_address_len = ntohs (prefix->fp_len);
 
       ASSERT (0);
     }

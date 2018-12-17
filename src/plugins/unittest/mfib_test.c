@@ -34,9 +34,6 @@
         fformat(stderr, "FAIL:%d: " _comment "\n",		\
                 __LINE__, ##_args);				\
         res = 1;                                                \
-    } else {							\
-        fformat(stderr, "PASS:%d: " _comment "\n",		\
-                __LINE__, ##_args);				\
     }								\
     res;							\
 })
@@ -223,16 +220,16 @@ mfib_test_entry (fib_node_index_t fei,
                  int n_buckets,
                  ...)
 {
+    const mfib_prefix_t *pfx;
     const mfib_entry_t *mfe;
     const replicate_t *rep;
-    mfib_prefix_t pfx;
     va_list ap;
     int res;
 
 
     res = 0;
     mfe = mfib_entry_get(fei);
-    mfib_entry_get_prefix(fei, &pfx);
+    pfx = mfib_entry_get_prefix(fei);
 
     MFIB_TEST_REP((eflags == mfe->mfe_flags),
                   "%U has %U expect %U",
@@ -253,7 +250,8 @@ mfib_test_entry (fib_node_index_t fei,
 
         mfib_entry_contribute_forwarding(
             fei,
-            fib_forw_chain_type_from_fib_proto(pfx.fp_proto),
+            mfib_forw_chain_type_from_fib_proto(pfx->fp_proto),
+            MFIB_ENTRY_FWD_FLAG_NONE,
             &tmp);
         rep = replicate_get(tmp.dpoi_index);
 
@@ -278,15 +276,15 @@ mfib_test_entry_itf (fib_node_index_t fei,
                      u32 sw_if_index,
                      mfib_itf_flags_t flags)
 {
+    const mfib_prefix_t *pfx;
     const mfib_entry_t *mfe;
     const mfib_itf_t *mfi;
-    mfib_prefix_t pfx;
     int res;
 
     res = 0;
     mfe = mfib_entry_get(fei);
     mfi = mfib_entry_get_itf(mfe, sw_if_index);
-    mfib_entry_get_prefix(fei, &pfx);
+    pfx = mfib_entry_get_prefix(fei);
 
     MFIB_TEST_REP((NULL != mfi),
                   "%U has interface %d",
@@ -305,19 +303,19 @@ static int
 mfib_test_entry_no_itf (fib_node_index_t fei,
                         u32 sw_if_index)
 {
+    const mfib_prefix_t *pfx;
     const mfib_entry_t *mfe;
     const mfib_itf_t *mfi;
-    mfib_prefix_t pfx;
     int res;
 
     res = 0;
     mfe = mfib_entry_get(fei);
     mfi = mfib_entry_get_itf(mfe, sw_if_index);
-    mfib_entry_get_prefix(fei, &pfx);
+    pfx = mfib_entry_get_prefix(fei);
 
     MFIB_TEST_REP((NULL == mfi),
                   "%U has no interface %d",
-                  format_mfib_prefix, &pfx, sw_if_index);
+                  format_mfib_prefix, pfx, sw_if_index);
 
     return (res);
 }
@@ -1143,11 +1141,12 @@ mfib_test_i (fib_protocol_t PROTO,
     dpo_set(&td, DPO_ADJACENCY_MCAST, fib_proto_to_dpo(PROTO), ai_1);
     replicate_set_bucket(repi2, 0, &td);
 
-    mfei = mfib_table_entry_special_add(fib_index,
-                                        pfx_star_g_3,
-                                        MFIB_SOURCE_SRv6,
-                                        MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF,
-                                        repi2);
+    mfib_entry_update(mfei,
+                      MFIB_SOURCE_SRv6,
+                      (MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF |
+                       MFIB_ENTRY_FLAG_EXCLUSIVE),
+                      MFIB_RPF_ID_NONE,
+                      repi2);
     MFIB_TEST(!mfib_test_entry(mfei,
                                (MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF |
                                 MFIB_ENTRY_FLAG_EXCLUSIVE),
@@ -1278,6 +1277,11 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * Unlock the table - it's the last lock so should be gone thereafter
      */
+    MFIB_TEST(((PROTO == FIB_PROTOCOL_IP4 ? 1 : 5) ==
+               mfib_table_get_n_routes(fib_index, PROTO)),
+              "1 = %d route left in the FIB",
+              mfib_table_get_n_routes(fib_index, PROTO));
+
     mfib_table_unlock(fib_index, PROTO, MFIB_SOURCE_API);
 
     MFIB_TEST((FIB_NODE_INDEX_INVALID ==
@@ -1494,6 +1498,435 @@ mfib_test_v6 (void)
                         &nbr2));
 }
 
+static int
+mfib_test_rr_i (fib_protocol_t FPROTO,
+                dpo_proto_t DPROTO,
+                vnet_link_t LINKT,
+                const mfib_prefix_t *pfx_cover,
+                const mfib_prefix_t *pfx_host1,
+                const mfib_prefix_t *pfx_host2)
+{
+    fib_node_index_t mfei_cover, mfei_host1, mfei_host2, ai_1, ai_2;
+    u32 fib_index, n_entries, n_itfs, n_reps, n_pls;
+    test_main_t *tm;
+    int res;
+
+    res = 0;
+    n_entries = pool_elts(mfib_entry_pool);
+    n_itfs = pool_elts(mfib_itf_pool);
+    n_reps = pool_elts(replicate_pool);
+    n_pls = fib_path_list_pool_size();
+    tm = &test_main;
+
+    fib_index = 0;
+    ai_1 = adj_mcast_add_or_lock(FPROTO,
+                                 LINKT,
+                                 tm->hw[1]->sw_if_index);
+    ai_2 = adj_mcast_add_or_lock(FPROTO,
+                                 LINKT,
+                                 tm->hw[2]->sw_if_index);
+
+    fib_route_path_t path_via_if0 = {
+        .frp_proto = DPROTO,
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = tm->hw[0]->sw_if_index,
+        .frp_fib_index = ~0,
+        .frp_weight = 0,
+        .frp_flags = 0,
+    };
+    fib_route_path_t path_via_if1 = {
+        .frp_proto = DPROTO,
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = tm->hw[1]->sw_if_index,
+        .frp_fib_index = ~0,
+        .frp_weight = 0,
+        .frp_flags = 0,
+    };
+    fib_route_path_t path_via_if2 = {
+        .frp_proto = DPROTO,
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = tm->hw[2]->sw_if_index,
+        .frp_fib_index = ~0,
+        .frp_weight = 0,
+        .frp_flags = 0,
+    };
+    fib_route_path_t path_for_us = {
+        .frp_proto = DPROTO,
+        .frp_addr = zero_addr,
+        .frp_sw_if_index = 0xffffffff,
+        .frp_fib_index = ~0,
+        .frp_weight = 0,
+        .frp_flags = FIB_ROUTE_PATH_LOCAL,
+    };
+
+    /*
+     * with only the default in place, recusre thru the /32
+     */
+    mfei_host1 = mfib_table_entry_special_add(fib_index, pfx_host1,
+                                              MFIB_SOURCE_RR,
+                                              MFIB_ENTRY_FLAG_NONE,
+                                              INDEX_INVALID);
+    /*
+     * expect its forwarding to match the cover's
+     */
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_DROP,
+                               0),
+              "%U no replications OK",
+              format_mfib_prefix, pfx_host1);
+
+    /*
+     * Insert the less specific /28
+     */
+    mfib_table_entry_path_update(fib_index,
+                                 pfx_cover,
+                                 MFIB_SOURCE_API,
+                                 &path_via_if1,
+                                 MFIB_ITF_FLAG_FORWARD);
+
+    mfei_cover = mfib_table_lookup_exact_match(fib_index, pfx_cover);
+
+    MFIB_TEST(!mfib_test_entry(mfei_cover,
+                               MFIB_ENTRY_FLAG_NONE,
+                               1,
+                               DPO_ADJACENCY_MCAST, ai_1),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_cover);
+
+    /*
+     * expect the /32 forwarding to match the new cover's
+     */
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               1,
+                               DPO_ADJACENCY_MCAST, ai_1),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_host1);
+
+    /*
+     * add another path to the cover
+     */
+    mfib_table_entry_path_update(fib_index,
+                                 pfx_cover,
+                                 MFIB_SOURCE_API,
+                                 &path_via_if2,
+                                 MFIB_ITF_FLAG_FORWARD);
+
+    /*
+     * expect the /32 and /28 to be via both boths
+     */
+    MFIB_TEST(!mfib_test_entry(mfei_cover,
+                               MFIB_ENTRY_FLAG_NONE,
+                               2,
+                               DPO_ADJACENCY_MCAST, ai_1,
+                               DPO_ADJACENCY_MCAST, ai_2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_cover);
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               2,
+                               DPO_ADJACENCY_MCAST, ai_1,
+                               DPO_ADJACENCY_MCAST, ai_2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_host1);
+
+    /*
+     * and the other host whilst all is ready
+     */
+    mfei_host2 = mfib_table_entry_special_add(fib_index, pfx_host2,
+                                              MFIB_SOURCE_RR,
+                                              MFIB_ENTRY_FLAG_NONE,
+                                              INDEX_INVALID);
+    MFIB_TEST(!mfib_test_entry(mfei_host2,
+                               MFIB_ENTRY_FLAG_NONE,
+                               2,
+                               DPO_ADJACENCY_MCAST, ai_1,
+                               DPO_ADJACENCY_MCAST, ai_2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_host2);
+
+    /*
+     * repaet multiple time to simulate multiple recursve children
+     */
+    mfei_host2 = mfib_table_entry_special_add(fib_index, pfx_host2,
+                                              MFIB_SOURCE_RR,
+                                              MFIB_ENTRY_FLAG_NONE,
+                                              INDEX_INVALID);
+    mfei_host2 = mfib_table_entry_special_add(fib_index, pfx_host2,
+                                              MFIB_SOURCE_RR,
+                                              MFIB_ENTRY_FLAG_NONE,
+                                              INDEX_INVALID);
+    mfei_host2 = mfib_table_entry_special_add(fib_index, pfx_host2,
+                                              MFIB_SOURCE_RR,
+                                              MFIB_ENTRY_FLAG_NONE,
+                                              INDEX_INVALID);
+
+    /*
+     * add an accepting path to the cover
+     */
+    mfib_table_entry_path_update(fib_index,
+                                 pfx_cover,
+                                 MFIB_SOURCE_API,
+                                 &path_via_if0,
+                                 MFIB_ITF_FLAG_ACCEPT);
+
+    /*
+     * expect the /32 and /28 to be via both boths
+     */
+    MFIB_TEST(!mfib_test_entry(mfei_cover,
+                               MFIB_ENTRY_FLAG_NONE,
+                               2,
+                               DPO_ADJACENCY_MCAST, ai_1,
+                               DPO_ADJACENCY_MCAST, ai_2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_cover);
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               2,
+                               DPO_ADJACENCY_MCAST, ai_1,
+                               DPO_ADJACENCY_MCAST, ai_2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_cover);
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_host1, tm->hw[0]->sw_if_index,
+                                      MFIB_ITF_FLAG_ACCEPT));
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_cover, tm->hw[0]->sw_if_index,
+                                      MFIB_ITF_FLAG_ACCEPT));
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_host1, tm->hw[1]->sw_if_index,
+                                      MFIB_ITF_FLAG_FORWARD));
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_cover, tm->hw[1]->sw_if_index,
+                                      MFIB_ITF_FLAG_FORWARD));
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_host1, tm->hw[2]->sw_if_index,
+                                      MFIB_ITF_FLAG_FORWARD));
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_cover, tm->hw[2]->sw_if_index,
+                                      MFIB_ITF_FLAG_FORWARD));
+
+    /*
+     * add a for-us path to the cover
+     */
+    mfib_table_entry_path_update(fib_index,
+                                 pfx_cover,
+                                 MFIB_SOURCE_API,
+                                 &path_for_us,
+                                 MFIB_ITF_FLAG_FORWARD);
+
+    /*
+     * expect the /32 and /28 to be via all three paths
+     */
+    MFIB_TEST(!mfib_test_entry(mfei_cover,
+                               MFIB_ENTRY_FLAG_NONE,
+                               3,
+                               DPO_ADJACENCY_MCAST, ai_1,
+                               DPO_ADJACENCY_MCAST, ai_2,
+                               DPO_RECEIVE, 0),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_cover);
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               3,
+                               DPO_ADJACENCY_MCAST, ai_1,
+                               DPO_ADJACENCY_MCAST, ai_2,
+                               DPO_RECEIVE, 0),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_cover);
+
+    /*
+     * get the forwarding chain from the RR prefix
+     */
+    replicate_t *rep;
+    dpo_id_t dpo = DPO_INVALID;
+
+    mfib_entry_contribute_forwarding(
+        mfei_host1,
+        mfib_forw_chain_type_from_dpo_proto(DPROTO),
+        MFIB_ENTRY_FWD_FLAG_NONE,
+        &dpo);
+
+    rep = replicate_get(dpo.dpoi_index);
+    MFIB_TEST((3 == rep->rep_n_buckets),
+              "%U replicate 3 buckets",
+              format_mfib_prefix, pfx_host1);
+
+    /*
+     * get the forwarding chain from the RR prefix without local paths
+     */
+    mfib_entry_contribute_forwarding(
+        mfei_host1,
+        mfib_forw_chain_type_from_dpo_proto(DPROTO),
+        MFIB_ENTRY_FWD_FLAG_NO_LOCAL,
+        &dpo);
+
+    rep = replicate_get(dpo.dpoi_index);
+    MFIB_TEST((2 == rep->rep_n_buckets),
+              "%U no-local replicate 2 buckets",
+              format_mfib_prefix, pfx_host1);
+
+    dpo_reset(&dpo);
+
+    /*
+     * delete the cover, expect the /32 to be via the default
+     */
+    mfib_table_entry_delete(fib_index, pfx_cover, MFIB_SOURCE_API);
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_DROP,
+                               0),
+              "%U no replications OK",
+              format_mfib_prefix, pfx_host1);
+
+    /*
+     * source the /32 with its own path
+     */
+    mfib_table_entry_path_update(fib_index,
+                                 pfx_host1,
+                                 MFIB_SOURCE_API,
+                                 &path_via_if2,
+                                 MFIB_ITF_FLAG_FORWARD);
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               1,
+                               DPO_ADJACENCY_MCAST, ai_2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_host1);
+
+    /*
+     * remove host2 - as many times as it was added
+     */
+    mfib_table_entry_delete(fib_index, pfx_host2,
+                            MFIB_SOURCE_RR);
+    mfib_table_entry_delete(fib_index, pfx_host2,
+                            MFIB_SOURCE_RR);
+    mfib_table_entry_delete(fib_index, pfx_host2,
+                            MFIB_SOURCE_RR);
+    mfib_table_entry_delete(fib_index, pfx_host2,
+                            MFIB_SOURCE_RR);
+
+
+    /*
+     * remove the RR source with paths present
+     */
+    mfib_table_entry_delete(fib_index, pfx_host1,
+                            MFIB_SOURCE_RR);
+
+    /*
+     * add the RR back then remove the path and RR
+     */
+    mfib_table_entry_path_update(fib_index,
+                                 pfx_host1,
+                                 MFIB_SOURCE_API,
+                                 &path_via_if2,
+                                 MFIB_ITF_FLAG_FORWARD);
+    MFIB_TEST(!mfib_test_entry(mfei_host1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               1,
+                               DPO_ADJACENCY_MCAST, ai_2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_cover);
+
+    mfib_table_entry_delete(fib_index, pfx_host1,
+                            MFIB_SOURCE_API);
+    mfib_table_entry_delete(fib_index, pfx_host1,
+                            MFIB_SOURCE_RR);
+
+    /*
+     * test we've leaked no resources
+     */
+    adj_unlock(ai_1);
+    adj_unlock(ai_2);
+    MFIB_TEST(0 == adj_mcast_db_size(), "%d MCAST adjs", adj_mcast_db_size());
+    MFIB_TEST(n_pls == fib_path_list_pool_size(), "%d=%d path-lists",
+              n_pls, fib_path_list_pool_size());
+    MFIB_TEST(n_reps == pool_elts(replicate_pool), "%d=%d replicates",
+              n_reps, pool_elts(replicate_pool));
+    MFIB_TEST(n_entries == pool_elts(mfib_entry_pool),
+              " No more entries %d!=%d",
+              n_entries, pool_elts(mfib_entry_pool));
+    MFIB_TEST(n_itfs == pool_elts(mfib_itf_pool),
+              " No more Interfaces %d!=%d",
+              n_itfs, pool_elts(mfib_itf_pool));
+    return (res);
+}
+
+static int
+mfib_test_rr_v4 (void)
+{
+    /*
+     * 2 length of prefix to play with
+     */
+    const mfib_prefix_t pfx_host1 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_grp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0xe0001011),
+        },
+    };
+    const mfib_prefix_t pfx_host2 = {
+        .fp_len = 64,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_grp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0xe0001011),
+        },
+        .fp_src_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x10101010),
+        },
+    };
+    const mfib_prefix_t pfx_cover = {
+        .fp_len = 28,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_grp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0xe0001010),
+        },
+    };
+
+    return (mfib_test_rr_i(FIB_PROTOCOL_IP4,
+                           DPO_PROTO_IP4,
+                           VNET_LINK_IP4,
+                           &pfx_cover,
+                           &pfx_host1,
+                           &pfx_host2));
+}
+
+static int
+mfib_test_rr_v6 (void)
+{
+    /*
+     * 2 length of prefix to play with
+     */
+    const mfib_prefix_t pfx_host1 = {
+        .fp_len = 128,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_grp_addr = {
+            .ip6.as_u64[0] = clib_host_to_net_u64(0xff03000000000000),
+            .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000001),
+        },
+    };
+    const mfib_prefix_t pfx_host2 = {
+        .fp_len = 256,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_grp_addr = {
+            .ip6.as_u64[0] = clib_host_to_net_u64(0xff03000000000000),
+            .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000001),
+        },
+        .fp_src_addr = {
+            .ip6.as_u64[0] = clib_host_to_net_u64(0x2001000000000000),
+            .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000001),
+        },
+    };
+    const mfib_prefix_t pfx_cover = {
+        .fp_len = 64,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_grp_addr = {
+            .ip6.as_u64[0] = clib_host_to_net_u64(0xff03000000000000),
+            .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000000),
+        },
+    };
+
+    return (mfib_test_rr_i(FIB_PROTOCOL_IP6,
+                           DPO_PROTO_IP6,
+                           VNET_LINK_IP6,
+                           &pfx_cover,
+                           &pfx_host1,
+                           &pfx_host2));
+}
+
 static clib_error_t *
 mfib_test (vlib_main_t * vm,
            unformat_input_t * input,
@@ -1502,23 +1935,35 @@ mfib_test (vlib_main_t * vm,
     int res = 0;
 
     res += mfib_test_mk_intf(4);
+    res += mfib_test_rr_v4();
+
+    if (res)
+    {
+        return clib_error_return(0, "MFIB RR V4 Unit Test Failed");
+    }
+
+    res += mfib_test_rr_v6();
+
+    if (res)
+    {
+        return clib_error_return(0, "MFIB RR V6 Unit Test Failed");
+    }
+
     res += mfib_test_v4();
 
     if (res)
     {
-        return clib_error_return(0, "MFIB Unit Test Failed");
+        return clib_error_return(0, "MFIB V4 Unit Test Failed");
     }
 
     res += mfib_test_v6();
 
     if (res)
     {
-        return clib_error_return(0, "MFIB Unit Test Failed");
+        return clib_error_return(0, "MFIB V6 Unit Test Failed");
     }
-    else
-    {
-        return (NULL);
-    }
+
+    return (NULL);
 }
 
 VLIB_CLI_COMMAND (test_fib_command, static) = {
