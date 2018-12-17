@@ -24,8 +24,10 @@ namespace VOM {
 typedef boost::asio::ip::address ip_address_t;
 
 void to_api(const ip_address_t& a, vapi_type_address& v);
+void to_api(const boost::asio::ip::address& a, vapi_type_ip4_address& v);
 
 ip_address_t from_api(const vapi_type_address& v);
+ip_address_t from_api(const vapi_type_ip4_address& v);
 
 vapi_type_mac_address to_api(const mac_address_t& a);
 

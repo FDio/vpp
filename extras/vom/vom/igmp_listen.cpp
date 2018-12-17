@@ -26,11 +26,20 @@ igmp_listen::event_handler igmp_listen::m_evh;
  * Construct a new object matching the desried state
  */
 igmp_listen::igmp_listen(const igmp_binding& igmp_bind,
-                         const boost::asio::ip::address& gaddr,
+                         const boost::asio::ip::address_v4& gaddr,
                          const igmp_listen::src_addrs_t& saddrs)
   : m_igmp_bind(igmp_bind.singular())
   , m_gaddr(gaddr)
   , m_saddrs(saddrs)
+  , m_listen(true, rc_t::NOOP)
+{
+}
+
+igmp_listen::igmp_listen(const igmp_binding& igmp_bind,
+                         const boost::asio::ip::address_v4& gaddr)
+  : m_igmp_bind(igmp_bind.singular())
+  , m_gaddr(gaddr)
+  , m_saddrs()
   , m_listen(true, rc_t::NOOP)
 {
 }

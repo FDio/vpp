@@ -14,6 +14,7 @@
  */
 
 #include "vom/igmp_listen_cmds.hpp"
+#include "vom/api_types.hpp"
 
 DEFINE_VAPI_MSG_IDS_IGMP_API_JSON;
 
@@ -44,17 +45,24 @@ listen_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.group.sw_if_index = m_itf.value();
-  payload.group.filter = EXCLUDE;
-  to_bytes(m_gaddr.to_v4(), (u8*)&payload.group.gaddr);
-  auto addr = m_saddrs.cbegin();
-  u8 i = 0;
-  while (addr != m_saddrs.cend()) {
-    to_bytes(addr->to_v4(), (u8*)&payload.group.saddrs[i]);
-    addr++;
-    i++;
+  to_api(m_gaddr.to_v4(), payload.group.gaddr);
+
+  if (0 == size) {
+    // no sources => (*,G) join
+    payload.group.filter = EXCLUDE;
+    payload.group.n_srcs = 0;
+  } else {
+    // source => (S,G) join
+    payload.group.filter = INCLUDE;
+    u8 i = 0;
+
+    for (auto addr : m_saddrs) {
+      to_api(addr, payload.group.saddrs[i]);
+      i++;
+    }
+    payload.group.n_srcs = i;
   }
 
-  payload.group.n_srcs = i;
   VAPI_CALL(req.execute());
 
   return (wait());
@@ -99,7 +107,7 @@ unlisten_cmd::issue(connection& con)
   payload.group.sw_if_index = m_itf.value();
   payload.group.n_srcs = 0;
   payload.group.filter = INCLUDE;
-  to_bytes(m_gaddr.to_v4(), (u8*)&payload.group.gaddr);
+  to_api(m_gaddr.to_v4(), payload.group.gaddr);
 
   VAPI_CALL(req.execute());
 

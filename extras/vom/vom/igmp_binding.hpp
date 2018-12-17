@@ -31,6 +31,12 @@ class igmp_binding : public object_base
 {
 public:
   /**
+   * A binding is tied to a given interface, hence its key is
+   * that of the interface
+   */
+  typedef interface::key_t key_t;
+
+  /**
    * Construct a new object matching the desried state
    */
   igmp_binding(const interface& itf);
@@ -51,6 +57,11 @@ public:
   bool operator==(const igmp_binding& l) const;
 
   /**
+   * Get the object's key
+   */
+  const key_t key() const;
+
+  /**
    * Return the 'singular' of the IGMP binding that matches this object
    */
   std::shared_ptr<igmp_binding> singular() const;
@@ -69,6 +80,11 @@ public:
    * Dump all IGMP bindings into the stream provided
    */
   static void dump(std::ostream& os);
+
+  /**
+   * Find a listen from its key
+   */
+  static std::shared_ptr<igmp_binding> find(const key_t& k);
 
 private:
   /**
@@ -124,7 +140,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<interface::key_t, igmp_binding>;
+  friend class singular_db<key_t, igmp_binding>;
 
   /**
    * Sweep/reap the object if still stale
@@ -152,7 +168,7 @@ private:
   /**
    * A map of all IGMP bindings keyed against the interface.
    */
-  static singular_db<interface::key_t, igmp_binding> m_db;
+  static singular_db<key_t, igmp_binding> m_db;
 };
 };
 

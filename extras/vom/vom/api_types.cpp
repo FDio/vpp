@@ -28,6 +28,11 @@ to_api(const ip_address_t& a, vapi_type_address& v)
     memcpy(v.un.ip6, a.to_v6().to_bytes().data(), 16);
   }
 }
+void
+to_api(const boost::asio::ip::address& a, vapi_type_ip4_address& v)
+{
+  memcpy(v, a.to_v4().to_bytes().data(), 4);
+}
 
 ip_address_t
 from_api(const vapi_type_address& v)
