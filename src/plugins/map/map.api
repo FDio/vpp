@@ -125,6 +125,22 @@ define map_rule_details
   u16 psid;
 };
 
+/** \brief Enable or disable a MAP interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - 
+    @param is_enable - 0=disable, 1=enable interface
+    @param is_translation -  0=encapsulation, 1=translation
+*/
+autoreply define map_if_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  bool is_enable;
+  bool is_translation; /* 0 - encapsulation, 1 - translation */
+};
+
 /** \brief Request for a single block of summary stats
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -261,6 +277,19 @@ autoreply define map_param_set_traffic_class
   u32 context;
   bool copy;
   u8 class;
+};
+
+
+/** \brief Set MAP TCP parammeters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @parma tcp_mss - TCP MSS clamping value
+*/
+autoreply define map_param_set_tcp
+{
+  u32 client_index;
+  u32 context;
+  u16 tcp_mss;
 };
 
 
