@@ -190,6 +190,30 @@
     },
     {
       "key": {
+        "uuid": "e4ba5dcb_e12c0499",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-12-17T22:53:00Z",
+      "side": 1,
+      "message": "We\u0027re actually using unsigned long because linux uses:\n\ntypedef __kernel_fd_set\t\tfd_set;\ntypedef struct {\n\tunsigned long fds_bits[__FD_SETSIZE / (8 * sizeof(long))];\n} __kernel_fd_set;\n\nAnd bsd: \n\ntypedef\tunsigned long\t__fd_mask;\ntypedef\tstruct fd_set {\n\t__fd_mask\t__fds_bits[_howmany(FD_SETSIZE, _NFDBITS)];\n} fd_set;\n\nWe do use clib bitmap functions on the unsigned long array/fd_set but only because we\u0027re leveraging the clib_bitmap optimizations for things like looking up the first bit set. However, we don\u0027t really expect clib_bitmaps_t over those api, that is, the underlying structures are not vectors, they\u0027re arrays, and we always call the safe versions of those functions, i.e., don\u0027t expand/trim the vectors.  So, unless this is not working, I\u0027d rather keep the unsigned longs. Does that raise issues when compiling 32 bit?\n\nAs for the assert you\u0027ve mentioned, yeah, we should definitely have a static assert like that.",
+      "parentUuid": "3240db66_14136cf0",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 28
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da054dfa_e40dc832",
         "filename": "src/vnet/classify/vnet_classify.h",
         "patchSetId": 2
