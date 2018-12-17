@@ -610,7 +610,7 @@ int session_dequeue_notify (stream_session_t * s);
 void stream_session_init_fifos_pointers (transport_connection_t * tc,
 					 u32 rx_pointer, u32 tx_pointer);
 
-void stream_session_accept_notify (transport_connection_t * tc);
+int stream_session_accept_notify (transport_connection_t * tc);
 void stream_session_disconnect_notify (transport_connection_t * tc);
 void stream_session_delete_notify (transport_connection_t * tc);
 void stream_session_reset_notify (transport_connection_t * tc);
