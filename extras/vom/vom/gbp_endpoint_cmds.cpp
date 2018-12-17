@@ -56,7 +56,7 @@ create_cmd::issue(connection& con)
   for (n = 0; n < payload.endpoint.n_ips; n++) {
     to_api(m_ip_addrs[n], payload.endpoint.ips[n]);
   }
-  payload.endpoint.mac = to_api(m_mac);
+  to_api(m_mac, payload.endpoint.mac);
 
   VAPI_CALL(req.execute());
 

@@ -5,8 +5,8 @@
 
 from vpp_object import *
 from vpp_ip import VppIpAddress
-from vpp_mac import VppMacAddress, mactobinary
 from vpp_lo_interface import VppLoInterface
+from vpp_papi import MACAddress
 
 
 class L2_PORT_TYPE:
@@ -39,7 +39,7 @@ def find_bridge_domain_port(test, bd_id, sw_if_index):
 
 
 def find_bridge_domain_arp_entry(test, bd_id, mac, ip):
-    vmac = VppMacAddress(mac)
+    vmac = MACAddress(mac)
     vip = VppIpAddress(ip)
 
     if vip.version == 4:
@@ -50,17 +50,17 @@ def find_bridge_domain_arp_entry(test, bd_id, mac, ip):
     arps = test.vapi.bd_ip_mac_dump(bd_id)
     for arp in arps:
         # do IP addr comparison too once .api is fixed...
-        if vmac.bytes == arp.mac_address and \
+        if vmac.packed == arp.mac_address and \
            vip.bytes == arp.ip_address[:n]:
             return True
     return False
 
 
 def find_l2_fib_entry(test, bd_id, mac, sw_if_index):
-    vmac = VppMacAddress(mac)
+    vmac = MACAddress(mac)
     lfs = test.vapi.l2_fib_table_dump(bd_id)
     for lf in lfs:
-        if vmac.bytes == lf.mac and sw_if_index == lf.sw_if_index:
+        if vmac.packed == lf.mac and sw_if_index == lf.sw_if_index:
             return True
     return False
 
@@ -143,13 +143,13 @@ class VppBridgeDomainArpEntry(VppObject):
     def __init__(self, test, bd, mac, ip):
         self._test = test
         self.bd = bd
-        self.mac = VppMacAddress(mac)
+        self.mac = MACAddress(mac)
         self.ip = VppIpAddress(ip)
 
     def add_vpp_config(self):
         self._test.vapi.bd_ip_mac_add_del(
             self.bd.bd_id,
-            self.mac.encode(),
+            self.mac.packed,
             self.ip.encode(),
             is_add=1)
         self._test.registry.register(self, self._test.logger)
@@ -157,14 +157,14 @@ class VppBridgeDomainArpEntry(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.bd_ip_mac_add_del(
             self.bd.bd_id,
-            self.mac.encode(),
+            self.mac.packed,
             self.ip.encode(),
             is_add=0)
 
     def query_vpp_config(self):
         return find_bridge_domain_arp_entry(self._test,
                                             self.bd.bd_id,
-                                            self.mac.address,
+                                            self.mac.packed,
                                             self.ip.address)
 
     def __str__(self):
@@ -180,7 +180,7 @@ class VppL2FibEntry(VppObject):
                  static_mac=0, filter_mac=0, bvi_mac=-1):
         self._test = test
         self.bd = bd
-        self.mac = VppMacAddress(mac)
+        self.mac = MACAddress(mac)
         self.itf = itf
         self.static_mac = static_mac
         self.filter_mac = filter_mac
@@ -191,7 +191,7 @@ class VppL2FibEntry(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.l2fib_add_del(
-            self.mac.address,
+            self.mac.packed,
             self.bd.bd_id,
             self.itf.sw_if_index,
             is_add=1,
@@ -202,7 +202,7 @@ class VppL2FibEntry(VppObject):
 
     def remove_vpp_config(self):
         self._test.vapi.l2fib_add_del(
-            self.mac.address,
+            self.mac.packed,
             self.bd.bd_id,
             self.itf.sw_if_index,
             is_add=0)
@@ -210,7 +210,7 @@ class VppL2FibEntry(VppObject):
     def query_vpp_config(self):
         return find_l2_fib_entry(self._test,
                                  self.bd.bd_id,
-                                 self.mac.address,
+                                 self.mac.packed,
                                  self.itf.sw_if_index)
 
     def __str__(self):

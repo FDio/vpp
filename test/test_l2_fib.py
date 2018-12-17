@@ -69,6 +69,7 @@ from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
+from vpp_papi import mac_pton
 
 # from src/vnet/l2/l2_fib.h
 MAC_EVENT_ACTION_ADD = 0
@@ -205,7 +206,7 @@ class TestL2fib(VppTestCase):
             swif = pg_if.sw_if_index
             for host in hosts[swif]:
                 self.vapi.l2fib_add_del(
-                    host.mac, bd_id, swif, static_mac=1)
+                    mac_pton(host.mac), bd_id, swif, static_mac=1)
 
     def delete_l2_fib_entry(self, bd_id, hosts):
         """
@@ -218,7 +219,7 @@ class TestL2fib(VppTestCase):
             swif = pg_if.sw_if_index
             for host in hosts[swif]:
                 self.vapi.l2fib_add_del(
-                    host.mac, bd_id, swif, is_add=0)
+                    mac_pton(host.mac), bd_id, swif, is_add=0)
 
     def flush_int(self, swif, learned_hosts):
         """

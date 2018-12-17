@@ -45,7 +45,7 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_bd;
   payload.is_add = 1;
-  payload.mac = to_api(m_mac);
+  to_api(m_mac, payload.mac);
   to_api(m_ip_addr, payload.ip);
 
   VAPI_CALL(req.execute());
@@ -90,7 +90,7 @@ delete_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_bd;
   payload.is_add = 0;
-  payload.mac = to_api(m_mac);
+  to_api(m_mac, payload.mac);
   to_api(m_ip_addr, payload.ip);
 
   VAPI_CALL(req.execute());

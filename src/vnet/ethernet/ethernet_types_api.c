@@ -30,15 +30,15 @@
 #undef vl_printfun
 
 void
-mac_address_decode (const vl_api_mac_address_t * in, mac_address_t * out)
+mac_address_decode (const u8 * in, mac_address_t * out)
 {
-  mac_address_from_bytes (out, in->bytes);
+  mac_address_from_bytes (out, in);
 }
 
 void
-mac_address_encode (const mac_address_t * in, vl_api_mac_address_t * out)
+mac_address_encode (const mac_address_t * in, u8 * out)
 {
-  clib_memcpy_fast (out->bytes, in->bytes, 6);
+  clib_memcpy_fast (out, in->bytes, 6);
 }
 
 /*
