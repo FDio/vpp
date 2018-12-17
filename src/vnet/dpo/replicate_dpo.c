@@ -16,6 +16,7 @@
 #include <vnet/ip/lookup.h>
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
+#include <vnet/dpo/receive_dpo.h>
 #include <vnet/adj/adj.h>
 #include <vnet/mpls/mpls_types.h>
 
@@ -101,6 +102,23 @@ replicate_alloc_i (void)
 }
 
 static u8*
+format_replicate_flags (u8 *s, va_list *args)
+{
+    int flags = va_arg (*args, int);
+
+    if (flags == REPLICATE_FLAGS_NONE)
+    {
+        s = format (s, "none");
+    }
+    else if (flags & REPLICATE_FLAGS_HAS_LOCAL)
+    {
+        s = format (s, "has-local ");
+    }
+
+    return (s);
+}
+
+static u8*
 replicate_format (index_t repi,
                   replicate_format_flags_t flags,
                   u32 indent,
@@ -118,6 +136,7 @@ replicate_format (index_t repi,
 
     s = format(s, "%U: ", format_dpo_type, DPO_REPLICATE);
     s = format(s, "[index:%d buckets:%d ", repi, rep->rep_n_buckets);
+    s = format(s, "flags:[%U] ", format_replicate_flags, rep->rep_flags);
     s = format(s, "to:[%Ld:%Ld]]", to.packets, to.bytes);
 
     for (i = 0; i < rep->rep_n_buckets; i++)
@@ -182,6 +201,14 @@ replicate_set_bucket_i (replicate_t *rep,
                         dpo_id_t *buckets,
                         const dpo_id_t *next)
 {
+    if (dpo_is_receive(&buckets[bucket]))
+    {
+        rep->rep_flags &= ~REPLICATE_FLAGS_HAS_LOCAL;
+    }
+    if (dpo_is_receive(next))
+    {
+        rep->rep_flags |= REPLICATE_FLAGS_HAS_LOCAL;
+    }
     dpo_stack(DPO_REPLICATE, rep->rep_proto, &buckets[bucket], next);
 }
 
@@ -490,6 +517,67 @@ replicate_lock (dpo_id_t *dpo)
     rep = replicate_get(dpo->dpoi_index);
 
     rep->rep_locks++;
+}
+
+index_t
+replicate_dup (replicate_flags_t flags,
+               index_t repi)
+{
+    replicate_t *rep, *copy;
+
+    rep = replicate_get(repi);
+
+    if (rep->rep_flags == flags ||
+        flags & REPLICATE_FLAGS_HAS_LOCAL)
+    {
+        /*
+         * we can include all the buckets from the original in the copy
+         */
+        return (repi);
+    }
+    else
+    {
+        /*
+         * caller doesn't want the local paths that the original has
+         */
+        if (rep->rep_n_buckets == 1)
+        {
+            /*
+             * original has only one bucket that is the local, so create
+             * a new one with only the drop
+             */
+            copy = replicate_create_i (1, rep->rep_proto);
+
+            replicate_set_bucket_i(copy, 0,
+                                   replicate_get_buckets(copy),
+                                   drop_dpo_get(rep->rep_proto));
+        }
+        else
+        {
+            dpo_id_t *old_buckets, *copy_buckets;
+            u16 bucket, pos;
+
+            copy = replicate_create_i(rep->rep_n_buckets - 1,
+                                      rep->rep_proto);
+
+            rep = replicate_get(repi);
+            old_buckets = replicate_get_buckets(rep);
+            copy_buckets = replicate_get_buckets(copy);
+            pos = 0;
+
+            for (bucket = 0; bucket < rep->rep_n_buckets; bucket++)
+            {
+                if (!dpo_is_receive(&old_buckets[bucket]))
+                {
+                    replicate_set_bucket_i(copy, pos, copy_buckets,
+                                           (&old_buckets[bucket]));
+                    pos++;
+                }
+            }
+        }
+    }
+
+    return (replicate_get_index(copy));
 }
 
 static void

@@ -365,13 +365,45 @@ ip6_mfib_table_fwd_lookup (const ip6_mfib_t *mfib,
 
 	ASSERT(len >= 0 && len <= 256);
         IP6_MFIB_MK_KEY(mfib, grp, src, len, key);
-
 	rv = clib_bihash_search_inline_2_40_8(&table->ip6_mhash, &key, &value);
 	if (rv == 0)
 	    return value.value;
     }
 
     return (FIB_NODE_INDEX_INVALID);
+}
+
+
+fib_node_index_t
+ip6_mfib_table_get_less_specific (const ip6_mfib_t *mfib,
+                                  const ip6_address_t *src,
+                                  const ip6_address_t *grp,
+                                  u32 len)
+{
+    u32 mask_len;
+
+    /*
+     * in the absence of a tree structure for the table that allows for an O(1)
+     * parent get, a cheeky way to find the cover is to LPM for the prefix with
+     * mask-1.
+     * there should always be a cover, though it may be the default route. the
+     * default route's cover is the default route.
+     */
+    if (len == 256)
+    {
+        /* go from (S,G) to (*,G*) */
+        mask_len = 128;
+    }
+    else if (len != 0)
+    {
+	mask_len = len - 1;
+    }
+    else
+    {
+        mask_len = len;
+    }
+
+    return (ip6_mfib_table_lookup(mfib, src, grp, mask_len));
 }
 
 /*
@@ -501,12 +533,23 @@ ip6_mfib_table_show_one (ip6_mfib_t *mfib,
                          vlib_main_t * vm,
                          ip6_address_t *src,
                          ip6_address_t *grp,
-                         u32 mask_len)
+                         u32 mask_len,
+                         u32 cover)
 {
-    vlib_cli_output(vm, "%U",
-                    format_mfib_entry,
-                    ip6_mfib_table_lookup(mfib, src, grp, mask_len),
-                    MFIB_ENTRY_FORMAT_DETAIL);
+    if (cover)
+    {
+        vlib_cli_output(vm, "%U",
+                        format_mfib_entry,
+                        ip6_mfib_table_get_less_specific(mfib, src, grp, mask_len),
+                        MFIB_ENTRY_FORMAT_DETAIL);
+    }
+    else
+    {
+        vlib_cli_output(vm, "%U",
+                        format_mfib_entry,
+                        ip6_mfib_table_lookup(mfib, src, grp, mask_len),
+                        MFIB_ENTRY_FORMAT_DETAIL);
+    }
 }
 
 typedef struct ip6_mfib_show_ctx_t_ {
@@ -600,11 +643,12 @@ ip6_show_mfib (vlib_main_t * vm,
     mfib_table_t *mfib_table;
     int verbose, matching;
     ip6_address_t grp, src = {{0}};
-    u32 mask = 32;
+    u32 mask = 128, cover;
     int table_id = -1, fib_index = ~0;
 
     verbose = 1;
     matching = 0;
+    cover = 0;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -634,6 +678,8 @@ ip6_show_mfib (vlib_main_t * vm,
             ;
         else if (unformat (input, "index %d", &fib_index))
             ;
+        else if (unformat (input, "cover"))
+            cover = 1;
         else
             break;
     }
@@ -671,7 +717,7 @@ ip6_show_mfib (vlib_main_t * vm,
         }
         else
         {
-            ip6_mfib_table_show_one(mfib, vm, &src, &grp, mask);
+            ip6_mfib_table_show_one(mfib, vm, &src, &grp, mask, cover);
         }
     }));
 

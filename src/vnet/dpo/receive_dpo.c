@@ -25,6 +25,12 @@
  */
 receive_dpo_t *receive_dpo_pool;
 
+int
+dpo_is_receive (const dpo_id_t *dpo)
+{
+    return (dpo->dpoi_type == DPO_RECEIVE);
+}
+
 static receive_dpo_t *
 receive_dpo_alloc (void)
 {
