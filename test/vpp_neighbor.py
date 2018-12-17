@@ -6,7 +6,7 @@
 
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 from vpp_object import *
-from vpp_mac import mactobinary
+from vpp_papi import mac_pton
 
 
 def find_nbr(test, sw_if_index, ip_addr, is_static=0, inet=AF_INET, mac=None):
@@ -22,7 +22,7 @@ def find_nbr(test, sw_if_index, ip_addr, is_static=0, inet=AF_INET, mac=None):
         if nbr_addr == n.ip_address[:s] \
            and is_static == n.is_static:
             if mac:
-                if n.mac_address == mactobinary(mac):
+                if n.mac_address == mac_pton(mac):
                     return True
             else:
                 return True
@@ -38,7 +38,7 @@ class VppNeighbor(VppObject):
                  af=AF_INET, is_static=False, is_no_fib_entry=0):
         self._test = test
         self.sw_if_index = sw_if_index
-        self.mac_addr = mactobinary(mac_addr)
+        self.mac_addr = mac_pton(mac_addr)
         self.af = af
         self.is_static = is_static
         self.is_no_fib_entry = is_no_fib_entry

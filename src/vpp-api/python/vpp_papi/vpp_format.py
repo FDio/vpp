@@ -16,6 +16,7 @@
 from socket import inet_pton, inet_ntop, AF_INET6, AF_INET
 import socket
 import ipaddress
+from . import macaddress
 
 # Copies from vl_api_address_t definition
 ADDRESS_IP4 = 0
@@ -94,6 +95,11 @@ conversion_table = {
                                   'len': o.prefixlen},
         'str': lambda s: format_vl_api_prefix_t(s)
     },
+    'vl_api_mac_address_t':
+    {
+        'MACAddress': lambda o: o.packed,
+        'str': lambda s: macaddress.mac_pton(s)
+    },
 }
 
 
@@ -118,4 +124,5 @@ conversion_unpacker_table = {
     'vl_api_ip4_prefix_t': lambda o: ipaddress.IPv4Network((o.prefix, o.len)),
     'vl_api_address_t': lambda o: unformat_api_address_t(o),
     'vl_api_prefix_t': lambda o: unformat_api_prefix_t(o),
+    'vl_api_mac_address_t': lambda o: macaddress.MACAddress(o),
 }
