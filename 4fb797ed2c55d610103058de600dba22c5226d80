@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "c8eed0da_f1d96eea",
+        "filename": "src/plugins/memif/private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-12-17T10:58:58Z",
+      "side": 1,
+      "message": "I would prefer that this is 1st line, like we typically do...",
+      "range": {
+        "startLine": 134,
+        "startChar": 4,
+        "endLine": 134,
+        "endChar": 30
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7f36488d_367afe5d",
+        "filename": "src/plugins/memif/private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-12-17T10:58:58Z",
+      "side": 1,
+      "message": "Let\u0027s introduce macro:\n\nCLIB_ALIGN_MARK (name, alignment);\n\nand use it at the beginning of the struct instead at end....",
+      "range": {
+        "startLine": 214,
+        "startChar": 2,
+        "endLine": 214,
+        "endChar": 43
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f78a52c_871e406e",
         "filename": "src/vcl/vcl_private.h",
         "patchSetId": 2
