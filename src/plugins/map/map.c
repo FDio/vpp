@@ -1169,6 +1169,9 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
   else
     vlib_cli_output (vm, "MAP traffic-class: %x", mm->tc);
 
+  if (mm->tcp_mss)
+    vlib_cli_output (vm, "MAP TCP MSS clamping: %u", mm->tcp_mss);
+
   vlib_cli_output (vm,
 		   "MAP IPv6 inbound security check: %s, fragmented packet security check: %s",
 		   mm->sec_check ? "enabled" : "disabled",
@@ -1326,6 +1329,56 @@ map_params_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   return 0;
+}
+
+
+static clib_error_t *
+map_if_command_fn (vlib_main_t * vm,
+		   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  bool is_enable = true, is_translation = false;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "del"))
+	is_enable = false;
+      else if (unformat (line_input, "map-t"))
+	is_translation = true;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+done:
+  unformat_free (line_input);
+
+  if (sw_if_index == ~0)
+    {
+      error = clib_error_return (0, "unknown interface");
+      return error;
+    }
+
+  int rv = map_if_enable_disable (is_enable, sw_if_index, is_translation);
+  if (rv)
+    {
+      error = clib_error_return (0, "failure enabling MAP on interface");
+    }
+
+  return error;
 }
 
 
@@ -1913,6 +1966,45 @@ map_ip6_reass_conf_buffers (u32 buffers)
   return 0;
 }
 
+static clib_error_t *
+map_tcp_mss_command_fn (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  u32 tcp_mss = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%u", &tcp_mss))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (tcp_mss >= (0x1 << 16))
+    {
+      error = clib_error_return (0, "invalid value `%u'", tcp_mss);
+      goto done;
+    }
+
+  map_param_set_tcp (tcp_mss);
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+
 /* *INDENT-OFF* */
 
 /*?
@@ -1946,6 +2038,22 @@ VLIB_CLI_COMMAND(map_traffic_class_command, static) = {
   .path = "map params traffic-class",
   .short_help = "map params traffic-class {0x0-0xff | copy}",
   .function = map_traffic_class_command_fn,
+};
+
+/*?
+ * TCP MSS clamping
+ *
+ * @cliexpar
+ * @cliexstart{map params tcp-mss}
+ *
+ * This command is used to set the TCP MSS in translated
+ * or encapsulated packets.
+ * @cliexend
+ ?*/
+VLIB_CLI_COMMAND(map_tcp_mss_command, static) = {
+  .path = "map params tcp-mss",
+  .short_help = "map params tcp-mss <value>",
+  .function = map_tcp_mss_command_fn,
 };
 
 /*?
@@ -2122,6 +2230,16 @@ VLIB_CLI_COMMAND(show_map_fragments_command, static) = {
   .path = "show map fragments",
   .short_help = "show map fragments",
   .function = show_map_fragments_command_fn,
+};
+
+/*?
+ * Enable MAP processing on interface (input feature)
+ *
+ ?*/
+VLIB_CLI_COMMAND(map_if_command, static) = {
+  .path = "map interface",
+  .short_help = "map interface <interface-name> [map-t] [del]",
+  .function = map_if_command_fn,
 };
 
 VLIB_PLUGIN_REGISTER() = {

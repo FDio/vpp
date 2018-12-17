@@ -526,6 +526,29 @@ static void
 }
 
 
+int
+map_param_set_tcp (u16 tcp_mss)
+{
+  map_main_t *mm = &map_main;
+
+  mm->tcp_mss = tcp_mss;
+
+  return 0;
+}
+
+
+static void
+vl_api_map_param_set_tcp_t_handler (vl_api_map_param_set_tcp_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_param_set_tcp_reply_t *rmp;
+  int rv = 0;
+
+  map_param_set_tcp (ntohs (mp->tcp_mss));
+  REPLY_MACRO (VL_API_MAP_PARAM_SET_TCP_REPLY);
+}
+
+
 static void
 vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
 {
@@ -581,12 +604,52 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
 }
 
 
+int
+map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
+{
+  if (is_translation == false)
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "ip4-map", sw_if_index,
+				   is_enable ? 1 : 0, 0, 0);
+      vnet_feature_enable_disable ("ip6-unicast", "ip6-map", sw_if_index,
+				   is_enable ? 1 : 0, 0, 0);
+    }
+  else
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "ip4-map-t", sw_if_index,
+				   is_enable ? 1 : 0, 0, 0);
+      vnet_feature_enable_disable ("ip6-unicast", "ip6-map-t", sw_if_index,
+				   is_enable ? 1 : 0, 0, 0);
+    }
+  return 0;
+}
+
+
+static void
+vl_api_map_if_enable_disable_t_handler (vl_api_map_if_enable_disable_t * mp)
+{
+  map_main_t *mm = &map_main;
+  vl_api_map_if_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv =
+    map_if_enable_disable (mp->is_enable, htonl (mp->sw_if_index),
+			   mp->is_translation);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_MAP_IF_ENABLE_DISABLE_REPLY);
+}
+
+
 #define foreach_map_plugin_api_msg		\
 _(MAP_ADD_DOMAIN, map_add_domain)		\
 _(MAP_DEL_DOMAIN, map_del_domain)		\
 _(MAP_ADD_DEL_RULE, map_add_del_rule)		\
 _(MAP_DOMAIN_DUMP, map_domain_dump)		\
 _(MAP_RULE_DUMP, map_rule_dump)			\
+_(MAP_IF_ENABLE_DISABLE, map_if_enable_disable)	\
 _(MAP_SUMMARY_STATS, map_summary_stats)		\
 _(MAP_PARAM_SET_FRAGMENTATION, map_param_set_fragmentation)	\
 _(MAP_PARAM_SET_ICMP, map_param_set_icmp)	\
@@ -595,6 +658,7 @@ _(MAP_PARAM_ADD_DEL_PRE_RESOLVE, map_param_add_del_pre_resolve)	\
 _(MAP_PARAM_SET_REASSEMBLY, map_param_set_reassembly)		\
 _(MAP_PARAM_SET_SECURITY_CHECK, map_param_set_security_check)	\
 _(MAP_PARAM_SET_TRAFFIC_CLASS, map_param_set_traffic_class)	\
+_(MAP_PARAM_SET_TCP, map_param_set_tcp)	\
 _(MAP_PARAM_GET, map_param_get)
 
 #define vl_msg_name_crc_list
