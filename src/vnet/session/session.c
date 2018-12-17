@@ -194,7 +194,6 @@ session_alloc_for_connection (transport_connection_t * tc)
 
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
-  s->session_state = SESSION_STATE_CONNECTING;
   s->enqueue_epoch = (u64) ~ 0;
 
   /* Attach transport to session and vice versa */
@@ -629,6 +628,7 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
 	}
       else
 	{
+	  new_s->session_state = SESSION_STATE_CONNECTING;
 	  new_s->app_wrk_index = app_wrk->wrk_index;
 	  new_si = new_s->session_index;
 	  new_ti = new_s->thread_index;
@@ -723,7 +723,7 @@ session_dgram_connect_notify (transport_connection_t * tc,
   return 0;
 }
 
-void
+int
 stream_session_accept_notify (transport_connection_t * tc)
 {
   app_worker_t *app_wrk;
@@ -733,9 +733,9 @@ stream_session_accept_notify (transport_connection_t * tc)
   s = session_get (tc->s_index, tc->thread_index);
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
-    return;
+    return -1;
   app = application_get (app_wrk->app_index);
-  app->cb_fns.session_accept_callback (s);
+  return app->cb_fns.session_accept_callback (s);
 }
 
 /**
@@ -805,7 +805,10 @@ stream_session_delete_notify (transport_connection_t * tc)
     case SESSION_STATE_TRANSPORT_CLOSING:
       /* If transport finishes or times out before we get a reply
        * from the app, do the whole disconnect since we might still
-       * have lingering events */
+       * have lingering events. Cleanup session table in advance
+       * because transport will soon be closed and closed sessions
+       * are assumed to have been removed from the lookup table */
+      session_lookup_del_session (s);
       stream_session_disconnect (s);
       s->session_state = SESSION_STATE_CLOSED;
       break;
@@ -872,7 +875,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   if (notify)
     {
       application_t *app = application_get (app_wrk->app_index);
-      app->cb_fns.session_accept_callback (s);
+      return app->cb_fns.session_accept_callback (s);
     }
 
   return 0;
