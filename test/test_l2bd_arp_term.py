@@ -20,7 +20,6 @@ from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
 
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
-from vpp_mac import VppMacAddress, mactobinary
 
 
 class TestL2bdArpTerm(VppTestCase):
@@ -72,7 +71,7 @@ class TestL2bdArpTerm(VppTestCase):
         for e in entries:
             ip = e.ip4 if is_ipv6 == 0 else e.ip6
             self.vapi.bd_ip_mac_add_del(bd_id=bd_id,
-                                        mac=VppMacAddress(e.mac).encode(),
+                                        mac=e.mac,
                                         ip=ip,
                                         is_ipv6=is_ipv6,
                                         is_add=is_add)

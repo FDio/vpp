@@ -13,7 +13,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppP2PSubint
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_mac import mactobinary
+from vpp_papi import mac_pton
 
 
 class P2PEthernetAPI(VppTestCase):
@@ -33,12 +33,12 @@ class P2PEthernetAPI(VppTestCase):
             i.admin_up()
 
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
-        p2p = VppP2PSubint(self, parent_if, sub_id, mactobinary(remote_mac))
+        p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
         self.p2p_sub_ifs.append(p2p)
 
     def delete_p2p_ethernet(self, parent_if, remote_mac):
         self.vapi.delete_p2pethernet_subif(parent_if.sw_if_index,
-                                           mactobinary(remote_mac))
+                                           mac_pton(remote_mac))
 
     def test_api(self):
         """delete/create p2p subif"""
@@ -79,7 +79,7 @@ class P2PEthernetAPI(VppTestCase):
             try:
                 macs.append(':'.join(re.findall('..', '{:02x}'.format(mac+i))))
                 self.vapi.create_p2pethernet_subif(self.pg2.sw_if_index,
-                                                   mactobinary(macs[i-1]),
+                                                   mac_pton(macs[i-1]),
                                                    i)
             except Exception:
                 self.logger.info("Failed to create subif %d %s" % (
@@ -144,7 +144,7 @@ class P2PEthernetIPV6(VppTestCase):
         super(P2PEthernetIPV6, self).tearDown()
 
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
-        p2p = VppP2PSubint(self, parent_if, sub_id, mactobinary(remote_mac))
+        p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
         p2p.admin_up()
         p2p.config_ip6()
         p2p.disable_ipv6_ra()
@@ -389,7 +389,7 @@ class P2PEthernetIPV4(VppTestCase):
         return dst_if.get_capture(count)
 
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
-        p2p = VppP2PSubint(self, parent_if, sub_id, mactobinary(remote_mac))
+        p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
         p2p.admin_up()
         p2p.config_ip4()
         return p2p

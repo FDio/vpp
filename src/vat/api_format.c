@@ -82,14 +82,6 @@
 #if VPP_API_TEST_BUILTIN == 0
 #include <netdb.h>
 
-/* *INDENT-OFF* */
-const mac_address_t ZERO_MAC_ADDRESS = {
-  .bytes = {
-    0, 0, 0, 0, 0, 0,
-  },
-};
-/* *INDENT-ON* */
-
 u32
 vl (void *p)
 {
@@ -7323,7 +7315,7 @@ static int
 api_bd_ip_mac_add_del (vat_main_t * vam)
 {
   vl_api_address_t ip = VL_API_ZERO_ADDRESS;
-  vl_api_mac_address_t mac = VL_API_ZERO_MAC_ADDRESS;
+  vl_api_mac_address_t mac = { 0 };
   unformat_input_t *i = vam->input;
   vl_api_bd_ip_mac_add_del_t *mp;
   ip46_type_t type;

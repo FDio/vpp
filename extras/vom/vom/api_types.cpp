@@ -54,20 +54,16 @@ from_api(const vapi_type_address& v)
   return addr;
 }
 
-vapi_type_mac_address
-to_api(const mac_address_t& a)
+void
+to_api(const mac_address_t& a, vapi_type_mac_address& v)
 {
-  vapi_type_mac_address v;
-
-  std::copy(std::begin(a.bytes), std::end(a.bytes), v.bytes);
-
-  return (v);
+  std::copy(std::begin(a.bytes), std::end(a.bytes), v);
 }
 
 mac_address_t
 from_api(const vapi_type_mac_address& v)
 {
-  return mac_address_t(v.bytes);
+  return mac_address_t(v);
 }
 
 route::prefix_t

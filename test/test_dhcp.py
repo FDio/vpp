@@ -8,7 +8,6 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
-from vpp_mac import mactobinary, binarytomac
 from scapy.layers.l2 import Ether, getmacbyip, ARP
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, in6_getnsmac
@@ -20,6 +19,7 @@ from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
 from scapy.utils6 import in6_ptop
+from vpp_papi import mac_pton
 
 DHCP4_CLIENT_PORT = 68
 DHCP4_SERVER_PORT = 67
@@ -1218,7 +1218,7 @@ class TestDHCP(VppTestCase):
                    UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
                    BOOTP(op=1,
                          yiaddr=self.pg3.local_ip4,
-                         chaddr=mactobinary(self.pg3.local_mac)) /
+                         chaddr=mac_pton(self.pg3.local_mac)) /
                    DHCP(options=[('message-type', 'offer'),
                                  ('server_id', self.pg3.remote_ip4),
                                  'end']))
@@ -1238,7 +1238,7 @@ class TestDHCP(VppTestCase):
                  IP(src=self.pg3.remote_ip4, dst="255.255.255.255") /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
                  BOOTP(op=1, yiaddr=self.pg3.local_ip4,
-                       chaddr=mactobinary(self.pg3.local_mac)) /
+                       chaddr=mac_pton(self.pg3.local_mac)) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
                                ('router', self.pg3.remote_ip4),
@@ -1267,7 +1267,7 @@ class TestDHCP(VppTestCase):
 
         # remove the left over ARP entry
         self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mactobinary(self.pg3.remote_mac),
+                                      mac_pton(self.pg3.remote_mac),
                                       self.pg3.remote_ip4,
                                       is_add=0)
         #
@@ -1315,7 +1315,7 @@ class TestDHCP(VppTestCase):
                  IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
                  BOOTP(op=1, yiaddr=self.pg3.local_ip4,
-                       chaddr=mactobinary(self.pg3.local_mac)) /
+                       chaddr=mac_pton(self.pg3.local_mac)) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
                                ('router', self.pg3.remote_ip4),
@@ -1373,7 +1373,7 @@ class TestDHCP(VppTestCase):
                    IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                    UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
                    BOOTP(op=1, yiaddr=self.pg3.local_ip4,
-                         chaddr=mactobinary(self.pg3.local_mac)) /
+                         chaddr=mac_pton(self.pg3.local_mac)) /
                    DHCP(options=[('message-type', 'offer'),
                                  ('server_id', self.pg3.remote_ip4),
                                  'end']))
@@ -1394,7 +1394,7 @@ class TestDHCP(VppTestCase):
                  IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
                  BOOTP(op=1, yiaddr=self.pg3.local_ip4,
-                       chaddr=mactobinary(self.pg3.local_mac)) /
+                       chaddr=mac_pton(self.pg3.local_mac)) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
                                ('router', self.pg3.remote_ip4),
@@ -1423,7 +1423,7 @@ class TestDHCP(VppTestCase):
 
         # remove the left over ARP entry
         self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mactobinary(self.pg3.remote_mac),
+                                      mac_pton(self.pg3.remote_mac),
                                       self.pg3.remote_ip4,
                                       is_add=0)
 
@@ -1481,7 +1481,7 @@ class TestDHCP(VppTestCase):
                    UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
                    BOOTP(op=1,
                          yiaddr=self.pg3.local_ip4,
-                         chaddr=mactobinary(self.pg3.local_mac)) /
+                         chaddr=mac_pton(self.pg3.local_mac)) /
                    DHCP(options=[('message-type', 'offer'),
                                  ('server_id', self.pg3.remote_ip4),
                                  ('lease_time', lease_time),
@@ -1502,7 +1502,7 @@ class TestDHCP(VppTestCase):
                  IP(src=self.pg3.remote_ip4, dst='255.255.255.255') /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
                  BOOTP(op=1, yiaddr=self.pg3.local_ip4,
-                       chaddr=mactobinary(self.pg3.local_mac)) /
+                       chaddr=mac_pton(self.pg3.local_mac)) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', '255.255.255.0'),
                                ('router', self.pg3.remote_ip4),
@@ -1530,7 +1530,7 @@ class TestDHCP(VppTestCase):
 
         # remove the left over ARP entry
         self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
-                                      mactobinary(self.pg3.remote_mac),
+                                      mac_pton(self.pg3.remote_mac),
                                       self.pg3.remote_ip4,
                                       is_add=0)
 
