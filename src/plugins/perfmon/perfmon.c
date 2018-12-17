@@ -28,6 +28,72 @@ perfmon_main_t perfmon_main;
 
 static char *perfmon_json_path = "/usr/share/vpp/plugins/perfmon";
 
+typedef struct
+{
+  u8 model;
+  u8 stepping;
+  u8 has_stepping;
+  char *filename;
+} file_by_model_and_stepping_t;
+
+/* Created by parsing mapfile.csv, see mapfile_tool.c */
+
+static const file_by_model_and_stepping_t fms_table[] = {
+  /* model, stepping, stepping valid, file */
+  {0x2E, 0x0, 0, "NehalemEX_core_V2.json"},
+  {0x1E, 0x0, 0, "NehalemEP_core_V2.json"},
+  {0x1F, 0x0, 0, "NehalemEP_core_V2.json"},
+  {0x1A, 0x0, 0, "NehalemEP_core_V2.json"},
+  {0x2F, 0x0, 0, "WestmereEX_core_V2.json"},
+  {0x25, 0x0, 0, "WestmereEP-SP_core_V2.json"},
+  {0x2C, 0x0, 0, "WestmereEP-DP_core_V2.json"},
+  {0x37, 0x0, 0, "Silvermont_core_V14.json"},
+  {0x4D, 0x0, 0, "Silvermont_core_V14.json"},
+  {0x4C, 0x0, 0, "Silvermont_core_V14.json"},
+  {0x5C, 0x0, 0, "goldmont_core_v13.json"},
+  {0x5F, 0x0, 0, "goldmont_core_v13.json"},
+  {0x1C, 0x0, 0, "Bonnell_core_V4.json"},
+  {0x26, 0x0, 0, "Bonnell_core_V4.json"},
+  {0x27, 0x0, 0, "Bonnell_core_V4.json"},
+  {0x36, 0x0, 0, "Bonnell_core_V4.json"},
+  {0x35, 0x0, 0, "Bonnell_core_V4.json"},
+  {0x2A, 0x0, 0, "sandybridge_core_v16.json"},
+  {0x2D, 0x0, 0, "Jaketown_core_V20.json"},
+  {0x3A, 0x0, 0, "ivybridge_core_v21.json"},
+  {0x3E, 0x0, 0, "ivytown_core_v20.json"},
+  {0x3C, 0x0, 0, "haswell_core_v28.json"},
+  {0x45, 0x0, 0, "haswell_core_v28.json"},
+  {0x46, 0x0, 0, "haswell_core_v28.json"},
+  {0x3F, 0x0, 0, "haswellx_core_v20.json"},
+  {0x3D, 0x0, 0, "broadwell_core_v23.json"},
+  {0x47, 0x0, 0, "broadwell_core_v23.json"},
+  {0x4F, 0x0, 0, "broadwellx_core_v14.json"},
+  {0x56, 0x0, 0, "broadwellde_core_v7.json"},
+  {0x4E, 0x0, 0, "skylake_core_v42.json"},
+  {0x5E, 0x0, 0, "skylake_core_v42.json"},
+  {0x8E, 0x0, 0, "skylake_core_v42.json"},
+  {0x9E, 0x0, 0, "skylake_core_v42.json"},
+  {0x57, 0x0, 0, "KnightsLanding_core_V9.json"},
+  {0x85, 0x0, 0, "KnightsLanding_core_V9.json"},
+  {0x55, 0x0, 1, "skylakex_core_v1.12.json"},
+  {0x55, 0x1, 1, "skylakex_core_v1.12.json"},
+  {0x55, 0x2, 1, "skylakex_core_v1.12.json"},
+  {0x55, 0x3, 1, "skylakex_core_v1.12.json"},
+  {0x55, 0x4, 1, "skylakex_core_v1.12.json"},
+  {0x55, 0x5, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0x6, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0x7, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0x8, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0x9, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0xA, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0xB, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0xC, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0xD, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0xE, 1, "cascadelakex_core_v1.00.json"},
+  {0x55, 0xF, 1, "cascadelakex_core_v1.00.json"},
+  {0x7A, 0x0, 0, "goldmontplus_core_v1.01.json"},
+};
+
 static void
 set_perfmon_json_path ()
 {
@@ -58,15 +124,6 @@ set_perfmon_json_path ()
   perfmon_json_path = (char *) s;
 }
 
-#define foreach_cpuid_table                     \
-_(0x0106E5, NehalemEP_core_V2.json)     /* Intel(R) Xeon(R) CPU X3430  @ 2.40GHz     */        \
-_(0x0306C3, haswell_core_v28.json)      /* Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz   */        \
-_(0x0306F2, haswell_core_v28.json)      /* Intel(R) Xeon(R) CPU E5-2640 v3 @ 2.60GHz */        \
-_(0x040661, haswell_core_v28.json)      /* Intel(R) Core(TM) i7-4870HQ CPU @ 2.50GHz */        \
-_(0x0406D8, Silvermont_core_V14.json)   /* Intel(R) Atom(TM) CPU  C2758  @ 2.40GHz   */        \
-_(0x0406E3, skylake_core_v42.json)      /* Intel(R) Core(TM) i7-6500U CPU @ 2.50GHz  */        \
-_(0x0506E3, skylake_core_v42.json)	/* Intel(R) Core(TM) i5-6600 CPU @ 3.30GHz   */
-
 static inline u32
 get_cpuid (void)
 {
@@ -88,6 +145,8 @@ perfmon_init (vlib_main_t * vm)
   u32 cpuid;
   uword *ht;
   int found_a_table = 0;
+  int i;
+  u8 model, stepping;
 
   pm->vlib_main = vm;
   pm->vnet_main = vnet_get_main ();
@@ -110,23 +169,32 @@ perfmon_init (vlib_main_t * vm)
 
   cpuid = get_cpuid ();
 
-  if (0)
+  for (i = 0; i < ARRAY_LEN (fms_table); i++)
     {
-    }
-#define _(id,table)                                             \
-  else if (cpuid == id)                                         \
-    {                                                           \
-      vlib_log_debug (pm->log_class, "Found table %s", #table); \
-      ht = perfmon_parse_table (pm, perfmon_json_path, #table); \
-      found_a_table = 1;                                        \
-    }
-  foreach_cpuid_table;
-#undef _
+      model = ((cpuid >> 12) & 0xf0) | ((cpuid >> 4) & 0xf);
+      stepping = cpuid & 0xf;
 
+      if (fms_table[i].model != model)
+	continue;
+
+      if (fms_table[i].has_stepping)
+	{
+	  if (fms_table[i].stepping != stepping)
+	    continue;
+	}
+
+      found_a_table = 1;
+      ht = perfmon_parse_table (pm, perfmon_json_path, fms_table[i].filename);
+      break;
+    }
   pm->perfmon_table = ht;
 
-  if (found_a_table == 0)
-    vlib_log_err (pm->log_class, "No table for cpuid %x", cpuid);
+  if (found_a_table == 0 || pm->perfmon_table == 0 || hash_elts (ht) == 0)
+    {
+      vlib_log_err (pm->log_class, "No table for cpuid %x", cpuid);
+      vlib_log_err (pm->log_class, "  model %x, stepping %x",
+		    model, stepping);
+    }
 
   return error;
 }
