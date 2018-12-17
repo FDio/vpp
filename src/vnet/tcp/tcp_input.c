@@ -3097,7 +3097,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       /* Create child session and send SYN-ACK */
-      child0 = tcp_connection_new (my_thread_index);
+      child0 = tcp_connection_alloc (my_thread_index);
       child0->c_lcl_port = th0->dst_port;
       child0->c_rmt_port = th0->src_port;
       child0->c_is_ip4 = is_ip4;
@@ -3119,7 +3119,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (tcp_options_parse (th0, &child0->rcv_opts, 1))
 	{
-	  clib_warning ("options parse fail");
+	  error0 = TCP_ERROR_OPTIONS;
+	  tcp_connection_free (child0);
 	  goto drop;
 	}
 
