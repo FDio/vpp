@@ -1598,7 +1598,10 @@ process_ack:
     {
       tcp_cc_handle_event (tc, is_dack);
       if (!tcp_in_cong_recovery (tc))
-	return 0;
+	{
+	  *error = TCP_ERROR_ACK_OK;
+	  return 0;
+	}
       *error = TCP_ERROR_ACK_DUP;
       if (vnet_buffer (b)->tcp.data_len || tcp_is_fin (th))
 	return 0;
@@ -2750,7 +2753,11 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	  tcp_retransmit_timer_reset (tc0);
 	  tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
-	  stream_session_accept_notify (&tc0->connection);
+	  if (stream_session_accept_notify (&tc0->connection))
+	    {
+	      error0 = TCP_ERROR_EVENT_FIFO_FULL;
+	      goto drop;
+	    }
 	  error0 = TCP_ERROR_ACK_OK;
 	  break;
 	case TCP_STATE_ESTABLISHED:
@@ -3151,7 +3158,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				 0 /* notify */ ))
 	{
 	  clib_warning ("session accept fail");
-	  tcp_connection_cleanup (child0);
+	  tcp_connection_reset (child0);
 	  error0 = TCP_ERROR_CREATE_SESSION_FAIL;
 	  goto drop;
 	}
@@ -3407,8 +3414,9 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
       vnet_buffer (b)->tcp.flags = tc->state;
 
       if (*error == TCP_ERROR_DISPATCH)
-	clib_warning ("disp error state %U flags %U", format_tcp_state,
-		      state, format_tcp_flags, (int) flags);
+	clib_warning ("tcp conn %u disp error state %U flags %U",
+	              tc->c_c_index, format_tcp_state, state,
+	              format_tcp_flags, (int) flags);
     }
 }
 
