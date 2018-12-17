@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "14593a47_353ce31b",
+        "filename": "src/plugins/memif/private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-17T20:19:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c8eed0da_f1d96eea",
+      "range": {
+        "startLine": 134,
+        "startChar": 4,
+        "endLine": 134,
+        "endChar": 30
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7f36488d_367afe5d",
         "filename": "src/plugins/memif/private.h",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-12-17T10:58:58Z",
       "side": 1,
       "message": "Let\u0027s introduce macro:\n\nCLIB_ALIGN_MARK (name, alignment);\n\nand use it at the beginning of the struct instead at end....",
+      "range": {
+        "startLine": 214,
+        "startChar": 2,
+        "endLine": 214,
+        "endChar": 43
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "98aa08da_e2d5d93e",
+        "filename": "src/plugins/memif/private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-17T20:19:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7f36488d_367afe5d",
       "range": {
         "startLine": 214,
         "startChar": 2,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "065bd2d0_b8d0b9b6",
+        "filename": "src/vcl/vcl_private.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-17T20:19:57Z",
+      "side": 1,
+      "message": "For 64bit build this is a no-op as u64 and uword are the same\n\nFor 32bit build either will compile, but it\u0027s just a tradeoff for which the types of usage gcc may catch at build time.\n\nNote that given the way that u32/u64 are defined in vppinfra/types.h a cast for the printf() formatting issues elsewhere in this change will still be needed.",
+      "parentUuid": "5f78a52c_871e406e",
+      "range": {
+        "startLine": 178,
+        "startChar": 2,
+        "endLine": 178,
+        "endChar": 7
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "72253298_ce5ef698",
         "filename": "src/vcl/vppcom.h",
         "patchSetId": 2
@@ -82,6 +154,30 @@
       "writtenOn": "2018-12-14T22:40:14Z",
       "side": 1,
       "message": "We\u0027ve been trying to maintain vppcom api independent of vppinfra types, so I\u0027d rather we used a different approach here. Would size_t solve the issue?\n\nAlso, are you really trying to use vcl on 32 bit machines?",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 28
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3240db66_14136cf0",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-17T20:19:57Z",
+      "side": 1,
+      "message": "clib_bitmap_*() functions appear all based on assumptions that uword (or clib_bitmap_t) is used\n\nThose functions would not work correctly (on big endian systems), if the incorrect type is used.\n\nLooking at the users of vppcom_select():\n\nsrc/vcl/ldp.c::ldp_pselect() is using clib_bitmap_t\nsrc/vcl/sock_test_client.c::echo_test_client() is using fd_set\nsrc/vcl/sock_test_server.c::main() is using fd_set\nsrc/vcl/vcl_test_client.c::vtc_worker_loop() is using fd_set\n\nmixing clib_bitmap_t and fd_set seems very dangerous as fd_set is at the mercy of glibc/etc..\n\nstrong types here seem approprate given clib_bitmap_*() depend on a specific size unit.\n\nSome asserts for (sizeof(clib_bitmap_t) \u003d\u003d sizeof(fd_mask)) may be good idea too.\n\nThoughts?",
+      "parentUuid": "72253298_ce5ef698",
       "range": {
         "startLine": 23,
         "startChar": 0,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "25fad76f_b17f1b2a",
+        "filename": "src/vnet/classify/vnet_classify.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-17T20:19:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da054dfa_e40dc832",
+      "range": {
+        "startLine": 191,
+        "startChar": 4,
+        "endLine": 191,
+        "endChar": 36
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6872ecd3_b7268802",
         "filename": "src/vnet/devices/virtio/virtio.h",
         "patchSetId": 2
@@ -128,6 +248,30 @@
       "writtenOn": "2018-12-17T11:03:29Z",
       "side": 1,
       "message": "1st line please...",
+      "range": {
+        "startLine": 89,
+        "startChar": 4,
+        "endLine": 89,
+        "endChar": 37
+      },
+      "revId": "4fb797ed2c55d610103058de600dba22c5226d80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c9db9d60_fdd827ab",
+        "filename": "src/vnet/devices/virtio/virtio.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-17T20:19:57Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6872ecd3_b7268802",
       "range": {
         "startLine": 89,
         "startChar": 4,
