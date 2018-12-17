@@ -26,6 +26,82 @@ static const char *mfib_flag_names_long[] = MFIB_ENTRY_NAMES_LONG;
 static const char *mfib_itf_flag_long_names[] = MFIB_ITF_NAMES_LONG;
 static const char *mfib_itf_flag_names[] = MFIB_ITF_NAMES_SHORT;
 
+int
+mfib_prefix_is_cover (const mfib_prefix_t *p1,
+                      const mfib_prefix_t *p2)
+{
+    if (!ip46_address_is_equal(&p1->fp_src_addr, &p2->fp_src_addr))
+        return (0);
+
+    switch (p1->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (ip4_destination_matches_route(&ip4_main,
+					      &p1->fp_grp_addr.ip4,
+					      &p2->fp_grp_addr.ip4,
+					      p1->fp_len));
+    case FIB_PROTOCOL_IP6:
+	return (ip6_destination_matches_route(&ip6_main,
+					      &p1->fp_grp_addr.ip6,
+					      &p2->fp_grp_addr.ip6,
+					      p1->fp_len));
+    case FIB_PROTOCOL_MPLS:
+	break;
+    }
+    return (0);
+}
+
+int
+mfib_prefix_is_host (const mfib_prefix_t *pfx)
+{
+    switch (pfx->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (64 == pfx->fp_len);
+    case FIB_PROTOCOL_IP6:
+	return (256 == pfx->fp_len);
+    case FIB_PROTOCOL_MPLS:
+        ASSERT(0);
+	break;
+    }
+    return (0);
+}
+
+fib_forward_chain_type_t
+mfib_forw_chain_type_from_dpo_proto (dpo_proto_t proto)
+{
+    switch (proto)
+    {
+    case DPO_PROTO_IP4:
+	return (FIB_FORW_CHAIN_TYPE_MCAST_IP4);
+    case DPO_PROTO_IP6:
+	return (FIB_FORW_CHAIN_TYPE_MCAST_IP6);
+    case DPO_PROTO_MPLS:
+    case DPO_PROTO_ETHERNET:
+    case DPO_PROTO_NSH:
+    case DPO_PROTO_BIER:
+        break;
+    }
+    ASSERT(0);
+    return (FIB_FORW_CHAIN_TYPE_MCAST_IP4);
+}
+
+fib_forward_chain_type_t
+mfib_forw_chain_type_from_fib_proto (fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	return (FIB_FORW_CHAIN_TYPE_MCAST_IP4);
+    case FIB_PROTOCOL_IP6:
+	return (FIB_FORW_CHAIN_TYPE_MCAST_IP6);
+    case FIB_PROTOCOL_MPLS:
+        break;
+    }
+    ASSERT(0);
+    return (FIB_FORW_CHAIN_TYPE_MCAST_IP4);
+}
+
 u8 *
 format_mfib_prefix (u8 * s, va_list * args)
 {

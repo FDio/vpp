@@ -1279,6 +1279,11 @@ list(APPEND VNET_SOURCES
   mfib/mfib_signal.c
   mfib/mfib_itf.c
   mfib/mfib_entry.c
+  mfib/mfib_entry.c
+  mfib/mfib_entry_cover.c
+  mfib/mfib_entry_delegate.c
+  mfib/mfib_entry_src.c
+  mfib/mfib_entry_src_rr.c
   mfib/mfib_table.c
 )
 

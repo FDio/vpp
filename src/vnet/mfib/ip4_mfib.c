@@ -224,6 +224,38 @@ ip4_mfib_table_lookup (const ip4_mfib_t *mfib,
     return (FIB_NODE_INDEX_INVALID);
 }
 
+fib_node_index_t
+ip4_mfib_table_get_less_specific (const ip4_mfib_t *mfib,
+                                  const ip4_address_t *src,
+                                  const ip4_address_t *grp,
+                                  u32 len)
+{
+    u32 mask_len;
+
+    /*
+     * in the absence of a tree structure for the table that allows for an O(1)
+     * parent get, a cheeky way to find the cover is to LPM for the prefix with
+     * mask-1.
+     * there should always be a cover, though it may be the default route. the
+     * default route's cover is the default route.
+     */
+    if (len == 64)
+    {
+        /* go from (S,G) to (*,G*) */
+        mask_len = 32;
+    }
+    else if (len != 0)
+    {
+	mask_len = len - 1;
+    }
+    else
+    {
+        mask_len = len;
+    }
+
+    return (ip4_mfib_table_lookup(mfib, src, grp, mask_len));
+}
+
 void
 ip4_mfib_table_entry_insert (ip4_mfib_t *mfib,
                              const ip4_address_t *grp,

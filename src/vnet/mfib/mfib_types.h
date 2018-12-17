@@ -169,10 +169,10 @@ typedef enum mfib_source_t_
     MFIB_SOURCE_SRv6,
     MFIB_SOURCE_GTPU,
     MFIB_SOURCE_VXLAN_GPE,
-    MFIB_SOURCE_RR,
     MFIB_SOURCE_GENEVE,
     MFIB_SOURCE_IGMP,
     MFIB_SOURCE_VXLAN_GBP,
+    MFIB_SOURCE_RR,
     MFIB_SOURCE_DEFAULT_ROUTE,
 } mfib_source_t;
 
@@ -186,14 +186,20 @@ typedef enum mfib_source_t_
     [MFIB_SOURCE_SRv6] = "SRv6",                   \
     [MFIB_SOURCE_GTPU] = "GTPU",                   \
     [MFIB_SOURCE_VXLAN_GPE] = "VXLAN-GPE",         \
-    [MFIB_SOURCE_RR] = "Recursive-resolution",     \
     [MFIB_SOURCE_GENEVE] = "Geneve",               \
     [MFIB_SOURCE_IGMP] = "IGMP",                   \
     [MFIB_SOURCE_VXLAN_GBP] = "VXLAN-GBP",         \
+    [MFIB_SOURCE_RR] = "Recursive-resolution",     \
     [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
 }
 
-#define MFIB_N_SOURCES (MFIB_SOURCE_DEFAULT_ROUTE)
+#define FOREACH_MFIB_SOURCE(_ms)                \
+    for (_ms = MFIB_SOURCE_SPECIAL;             \
+         _ms <= MFIB_SOURCE_DEFAULT_ROUTE;      \
+         _ms++)
+
+#define MFIB_N_SOURCES (MFIB_SOURCE_DEFAULT_ROUTE + 1)
+#define MFIB_SOURCE_NONE (MFIB_SOURCE_DEFAULT_ROUTE + 1)
 
 /**
  * \brief Compare two prefixes for equality
@@ -209,5 +215,20 @@ extern uword unformat_mfib_itf_flags(unformat_input_t * input,
                                      va_list * args);
 extern uword unformat_mfib_entry_flags(unformat_input_t * input,
                                        va_list * args);
+/**
+ * \brief Compare two prefixes for covering relationship
+ *
+ * \return non-zero if the first prefix is a cover for the second
+ */
+extern int mfib_prefix_is_cover(const mfib_prefix_t *p1,
+                                const mfib_prefix_t *p2);
+
+/**
+ * \brief Return true is the prefix is a host prefix
+ */
+extern int mfib_prefix_is_host(const mfib_prefix_t *p);
+
+extern fib_forward_chain_type_t mfib_forw_chain_type_from_dpo_proto(dpo_proto_t proto);
+extern fib_forward_chain_type_t mfib_forw_chain_type_from_fib_proto(fib_protocol_t proto);
 
 #endif

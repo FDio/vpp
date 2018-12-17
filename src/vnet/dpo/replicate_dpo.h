@@ -47,6 +47,15 @@ extern replicate_main_t replicate_main;
 #define REP_NUM_INLINE_BUCKETS 4
 
 /**
+ * Flags on the replicate DPO
+ */
+typedef enum replicate_flags_t_
+{
+    REPLICATE_FLAGS_NONE,
+    REPLICATE_FLAGS_HAS_LOCAL,
+} __clib_packed replicate_flags_t;
+
+/**
  * The FIB DPO provieds;
  *  - load-balancing over the next DPOs in the chain/graph
  *  - per-route counters
@@ -69,6 +78,11 @@ typedef struct replicate_t_ {
      * u8.
      */
     dpo_proto_t rep_proto;
+
+    /**
+     * Flags specifying the replicate properties/behaviour
+     */
+    replicate_flags_t rep_flags;
 
     /**
      * The number of locks, which is approximately the number of users,
@@ -120,6 +134,9 @@ extern const dpo_id_t *replicate_get_bucket(index_t repi,
 extern int replicate_is_drop(const dpo_id_t *dpo);
 
 extern u16 replicate_n_buckets(index_t repi);
+
+extern index_t replicate_dup(replicate_flags_t flags,
+                             index_t repi);
 
 /**
  * The encapsulation breakages are for fast DP access

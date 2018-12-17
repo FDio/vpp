@@ -41,6 +41,10 @@ extern fib_node_index_t ip6_mfib_table_lookup_exact_match(const ip6_mfib_t *fib,
                                                           const ip6_address_t *grp,
                                                           const ip6_address_t *src,
                                                           u32 len);
+extern fib_node_index_t ip6_mfib_table_get_less_specific (const ip6_mfib_t *mfib,
+                                                          const ip6_address_t *src,
+                                                          const ip6_address_t *grp,
+                                                          u32 len);
 
 extern void ip6_mfib_table_entry_remove(ip6_mfib_t *fib,
                                         const ip6_address_t *grp,
