@@ -278,6 +278,8 @@ tcp_connection_reset (tcp_connection_t * tc)
   switch (tc->state)
     {
     case TCP_STATE_SYN_RCVD:
+      ASSERT (session_get (tc->c_s_index, tc->c_thread_index)->session_state
+	      == SESSION_STATE_ACCEPTING);
       /* Cleanup everything. App wasn't notified yet */
       stream_session_delete_notify (&tc->connection);
       tcp_connection_cleanup (tc);
