@@ -31,7 +31,7 @@ namespace VOM {
 class igmp_listen : public object_base
 {
 public:
-  typedef std::set<boost::asio::ip::address> src_addrs_t;
+  typedef std::set<boost::asio::ip::address_v4> src_addrs_t;
 
   /**
    * The key type for igmp_listens
@@ -42,8 +42,10 @@ public:
    * Construct a new object matching the desried state
    */
   igmp_listen(const igmp_binding& igmp_bind,
-              const boost::asio::ip::address& gaddr,
+              const boost::asio::ip::address_v4& gaddr,
               const src_addrs_t& saddrs);
+  igmp_listen(const igmp_binding& igmp_bind,
+              const boost::asio::ip::address_v4& gaddr);
 
   /**
    * Copy Constructor
@@ -162,7 +164,7 @@ private:
   /**
    * The group address for igmp configuration
    */
-  const boost::asio::ip::address m_gaddr;
+  const boost::asio::ip::address_v4 m_gaddr;
 
   /**
    * The set of src addresses to listen for

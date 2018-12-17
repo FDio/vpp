@@ -22,7 +22,7 @@ namespace VOM {
 /**
  * A DB of all igmp bindings configs
  */
-singular_db<interface::key_t, igmp_binding> igmp_binding::m_db;
+singular_db<igmp_binding::key_t, igmp_binding> igmp_binding::m_db;
 
 igmp_binding::event_handler igmp_binding::m_evh;
 
@@ -41,13 +41,19 @@ igmp_binding::igmp_binding(const igmp_binding& o)
 igmp_binding::~igmp_binding()
 {
   sweep();
-  m_db.release(m_itf->key(), this);
+  m_db.release(key(), this);
 }
 
 bool
 igmp_binding::operator==(const igmp_binding& l) const
 {
   return (*m_itf == *l.m_itf);
+}
+
+const igmp_binding::key_t
+igmp_binding::key() const
+{
+  return (m_itf->key());
 }
 
 void
@@ -96,7 +102,13 @@ igmp_binding::update(const igmp_binding& desired)
 std::shared_ptr<igmp_binding>
 igmp_binding::find_or_add(const igmp_binding& temp)
 {
-  return (m_db.find_or_add(temp.m_itf->key(), temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<igmp_binding>
+igmp_binding::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<igmp_binding>
