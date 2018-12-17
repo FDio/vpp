@@ -183,11 +183,7 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to, u8 is_syn)
 	      to->flags |= TCP_OPTS_FLAG_WSCALE;
 	      to->wscale = data[2];
 	      if (to->wscale > TCP_MAX_WND_SCALE)
-		{
-		  clib_warning ("Illegal window scaling value: %d",
-				to->wscale);
-		  to->wscale = TCP_MAX_WND_SCALE;
-		}
+		to->wscale = TCP_MAX_WND_SCALE;
 	    }
 	  break;
 	case TCP_OPTION_TIMESTAMP:
@@ -1598,7 +1594,10 @@ process_ack:
     {
       tcp_cc_handle_event (tc, is_dack);
       if (!tcp_in_cong_recovery (tc))
-	return 0;
+	{
+	  *error = TCP_ERROR_ACK_OK;
+	  return 0;
+	}
       *error = TCP_ERROR_ACK_DUP;
       if (vnet_buffer (b)->tcp.data_len || tcp_is_fin (th))
 	return 0;
@@ -2169,7 +2168,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 						 thread_index);
-  err_counters[TCP_ERROR_EVENT_FIFO_FULL] = errors;
+  err_counters[TCP_ERROR_MSG_QUEUE_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
   tcp_handle_postponed_dequeues (wrk);
   tcp_handle_disconnects (wrk);
@@ -2569,7 +2568,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 						 my_thread_index);
-  tcp_inc_counter (syn_sent, TCP_ERROR_EVENT_FIFO_FULL, errors);
+  tcp_inc_counter (syn_sent, TCP_ERROR_MSG_QUEUE_FULL, errors);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
 
   return from_frame->n_vectors;
@@ -2750,7 +2749,12 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	  tcp_retransmit_timer_reset (tc0);
 	  tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
-	  stream_session_accept_notify (&tc0->connection);
+	  if (stream_session_accept_notify (&tc0->connection))
+	    {
+	      error0 = TCP_ERROR_MSG_QUEUE_FULL;
+	      tcp_connection_reset (tc0);
+	      goto drop;
+	    }
 	  error0 = TCP_ERROR_ACK_OK;
 	  break;
 	case TCP_STATE_ESTABLISHED:
@@ -2958,7 +2962,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 						 thread_index);
-  tcp_inc_counter (rcv_process, TCP_ERROR_EVENT_FIFO_FULL, errors);
+  tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
 
@@ -3150,7 +3154,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (stream_session_accept (&child0->connection, lc0->c_s_index,
 				 0 /* notify */ ))
 	{
-	  clib_warning ("session accept fail");
 	  tcp_connection_cleanup (child0);
 	  error0 = TCP_ERROR_CREATE_SESSION_FAIL;
 	  goto drop;
@@ -3407,8 +3410,9 @@ tcp_input_dispatch_buffer (tcp_main_t * tm, tcp_connection_t * tc,
       vnet_buffer (b)->tcp.flags = tc->state;
 
       if (*error == TCP_ERROR_DISPATCH)
-	clib_warning ("disp error state %U flags %U", format_tcp_state,
-		      state, format_tcp_flags, (int) flags);
+	clib_warning ("tcp conn %u disp error state %U flags %U",
+		      tc->c_c_index, format_tcp_state, state,
+		      format_tcp_flags, (int) flags);
     }
 }
 
