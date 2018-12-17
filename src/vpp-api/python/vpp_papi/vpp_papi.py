@@ -28,6 +28,7 @@ import weakref
 import atexit
 from . vpp_serializer import VPPType, VPPEnumType, VPPUnionType, BaseTypes
 from . vpp_serializer import VPPMessage, vpp_get_type, VPPTypeAlias
+from . macaddress import MACAddress, mac_pton, mac_ntop
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ def vpp_atexit(vpp_weakref):
     if vpp_instance and vpp_instance.transport.connected:
         vpp_instance.logger.debug('Cleaning up VPP on exit')
         vpp_instance.disconnect()
+
 
 if sys.version[0] == '2':
     def vpp_iterator(d):

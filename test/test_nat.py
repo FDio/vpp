@@ -18,7 +18,7 @@ from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
 from util import ip4_range
-from vpp_mac import mactobinary
+from vpp_papi import mac_pton
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
 from vpp_papi_provider import SYSLOG_SEVERITY
@@ -2952,11 +2952,11 @@ class TestNAT44(MethodHolder):
         """ NAT44 interfaces without configured IP address """
 
         self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mactobinary(self.pg7.remote_mac),
+                                      mac_pton(self.pg7.remote_mac),
                                       self.pg7.remote_ip4n,
                                       is_static=1)
         self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mactobinary(self.pg8.remote_mac),
+                                      mac_pton(self.pg8.remote_mac),
                                       self.pg8.remote_ip4n,
                                       is_static=1)
 
@@ -2994,11 +2994,11 @@ class TestNAT44(MethodHolder):
         """ NAT44 interfaces without configured IP address - 1:1 NAT """
 
         self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mactobinary(self.pg7.remote_mac),
+                                      mac_pton(self.pg7.remote_mac),
                                       self.pg7.remote_ip4n,
                                       is_static=1)
         self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mactobinary(self.pg8.remote_mac),
+                                      mac_pton(self.pg8.remote_mac),
                                       self.pg8.remote_ip4n,
                                       is_static=1)
 
@@ -3040,11 +3040,11 @@ class TestNAT44(MethodHolder):
         self.icmp_id_out = 30608
 
         self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mactobinary(self.pg7.remote_mac),
+                                      mac_pton(self.pg7.remote_mac),
                                       self.pg7.remote_ip4n,
                                       is_static=1)
         self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mactobinary(self.pg8.remote_mac),
+                                      mac_pton(self.pg8.remote_mac),
                                       self.pg8.remote_ip4n,
                                       is_static=1)
 

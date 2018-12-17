@@ -7,8 +7,8 @@ from framework import VppTestCase, VppTestRunner
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from vpp_mac import mactobinary
 from vpp_bond_interface import VppBondInterface
+from vpp_papi import MACAddress
 
 
 class TestBondInterface(VppTestCase):
@@ -56,7 +56,7 @@ class TestBondInterface(VppTestCase):
         # create interface (BondEthernet0)
         #        self.logger.info("create bond")
         bond0_mac = "02:fe:38:30:59:3c"
-        mac = mactobinary(bond0_mac)
+        mac = MACAddress(bond0_mac).packed
         bond0 = VppBondInterface(self,
                                  mode=3,
                                  lb=1,

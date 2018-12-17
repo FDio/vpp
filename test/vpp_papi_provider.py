@@ -4,7 +4,7 @@ import time
 from collections import deque
 
 from six import moves
-from vpp_mac import mactobinary
+from vpp_papi import mac_pton
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
 
@@ -222,9 +222,6 @@ class VppPapiProvider(object):
         :returns: CLI output
         """
         return cli + "\n" + str(self.cli(cli))
-
-    def _convert_mac(self, mac):
-        return mactobinary(mac)
 
     def show_version(self):
         """ """
@@ -643,7 +640,7 @@ class VppPapiProvider(object):
             interface. (Default value = 0)
         """
         return self.api(self.papi.l2fib_add_del,
-                        {'mac': self._convert_mac(mac),
+                        {'mac': mac,
                          'bd_id': bd_id,
                          'sw_if_index': sw_if_index,
                          'is_add': is_add,

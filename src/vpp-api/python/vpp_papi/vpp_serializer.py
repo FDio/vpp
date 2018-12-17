@@ -30,9 +30,10 @@ import socket
 logger = logging.getLogger(__name__)
 
 if sys.version[0] == '2':
-    check = lambda d: type(d) is dict
+    def check(d): type(d) is dict
 else:
-    check = lambda d: type(d) is dict or type(d) is bytes
+    def check(d): type(d) is dict or type(d) is bytes
+
 
 def conversion_required(data, field_type):
     if check(data):
@@ -101,7 +102,7 @@ class String(object):
             return b'', 0
         p = BaseTypes('u8', length)
         x, size = p.unpack(data, offset + length_field_size)
-        x2 = x.split(b'\0',1)[0]
+        x2 = x.split(b'\0', 1)[0]
         return (x2.decode('utf8'), size + length_field_size)
 
 

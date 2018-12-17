@@ -883,7 +883,7 @@ vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
   bd_index = p[0];
 
   type = ip_address_decode (&mp->ip, &ip_addr);
-  mac_address_decode (&mp->mac, &mac);
+  mac_address_decode (mp->mac, &mac);
 
   if (bd_add_del_ip_mac (bd_index, type, &ip_addr, &mac, mp->is_add))
     rv = VNET_API_ERROR_UNSPECIFIED;
