@@ -822,8 +822,7 @@ stream_session_delete_notify (transport_connection_t * tc)
       stream_session_delete (s);
       break;
     default:
-      /* Assume connection was not yet added the lookup table */
-      session_free_w_fifos (s);
+      stream_session_delete (s);
       break;
     }
 }
