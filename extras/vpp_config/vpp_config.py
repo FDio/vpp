@@ -427,8 +427,14 @@ def autoconfig_install():
             question = "Do you want to install VPP [Y/n]? "
             answer = autoconfig_yn(question, 'y')
             if answer == 'y':
+                question = "Do you want to install the release version [Y/n]? "
+                answer = autoconfig_yn(question, 'y')
+                if answer == 'y':
+                    branch = 'release'
+                else:
+                    branch = 'master'
                 logger.setLevel(logging.INFO)
-                vutil.install_vpp(node)
+                vutil.install_vpp(node, branch)
 
     # Set the logging level back
     logger.setLevel(logging.ERROR)

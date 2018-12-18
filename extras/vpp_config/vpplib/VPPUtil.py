@@ -20,10 +20,6 @@ import requests
 
 from collections import Counter
 
-# VPP_VERSION = '1707'
-# VPP_VERSION = '1710'
-VPP_VERSION = '1810'
-
 
 class VPPUtil(object):
     """General class for any VPP related methods/functions."""
@@ -113,16 +109,15 @@ class VPPUtil(object):
             raise RuntimeError('{} failed on node {} {} {}'.format(
                 cmd, node['host'], stdout, stderr))
 
-    def _install_vpp_ubuntu(self, node, fdio_release=VPP_VERSION,
-                            ubuntu_version='xenial'):
+    def _install_vpp_ubuntu(self, node, branch, ubuntu_version='xenial'):
         """
         Install the VPP packages
 
         :param node: Node dictionary with cpuinfo.
-        :param fdio_release: VPP release number
+        :param branch: VPP branch
         :param ubuntu_version: Ubuntu Version
         :type node: dict
-        :type fdio_release: string
+        :type branch: string
         :type ubuntu_version: string
         """
 
@@ -133,23 +128,14 @@ class VPPUtil(object):
         self._autoconfig_backup_file(sfile)
 
         reps = 'deb [trusted=yes] https://packagecloud.io/fdio/'
-        # When using a stable branch
-        # reps += '{}/ubuntu {} main ./\n'.format(fdio_release, ubuntu_version)
-        # When using release
-        reps += 'release/ubuntu {} main ./\n'.format(ubuntu_version)
-        # When using master
-        # reps += 'master/ubuntu {} main ./\n'.format(ubuntu_version)
-        # When using 1807
-        # reps += '1807/ubuntu {} main ./\n'.format(ubuntu_version)
+        reps += '{}/ubuntu {} main ./\n'.format(branch, ubuntu_version)
 
         with open(sfile, 'w') as sfd:
             sfd.write(reps)
             sfd.close()
 
         # Add the key
-        key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format('release'))
-        # key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format('master'))
-        # key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format('1807'))
+        key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format(branch))
         cmd = 'echo "{}" | apt-key add -'.format(key.content)
         (ret, stdout, stderr) = self.exec_command(cmd)
         if ret != 0:
@@ -176,17 +162,14 @@ class VPPUtil(object):
         self._install_vpp_pkg_ubuntu(node, 'vpp-dev')
         self._install_vpp_pkg_ubuntu(node, 'vpp-dbg')
 
-    def _install_vpp_centos(self, node, fdio_release=VPP_VERSION,
-                            centos_version='centos7'):
+    def _install_vpp_centos(self, node, branch):
         """
         Install the VPP packages
 
         :param node: Node dictionary with cpuinfo.
-        :param fdio_release: VPP release number
-        :param centos_version: Ubuntu Version
+        :param branch: The branch name  release or master
         :type node: dict
-        :type fdio_release: string
-        :type centos_version: string
+        :type branch: string
         """
 
         # Be sure the correct system packages are installed
@@ -221,30 +204,25 @@ class VPPUtil(object):
                 node['host'],
                 stderr))
 
-        # Set the branch
-        bname = 'release'
-        # bname = '1810'
-        # bname = 'master'
-
         # Get the file contents
-        reps = '[fdio_{}]\n'.format(bname)
-        reps += 'name=fdio_{}\n'.format(bname)
-        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/$basearch\n'.format(bname)
+        reps = '[fdio_{}]\n'.format(branch)
+        reps += 'name=fdio_{}\n'.format(branch)
+        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/$basearch\n'.format(branch)
         reps += 'repo_gpgcheck=1\n'
         reps += 'gpgcheck=0\n'
         reps += 'enabled=1\n'
-        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(bname)
+        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(branch)
         reps += 'sslverify=1\n'
         reps += 'sslcacert=/etc/pki/tls/certs/ca-bundle.crt\n'
         reps += 'metadata_expire=300\n'
         reps += '\n'
-        reps += '[fdio_{}-source]\n'.format(bname)
-        reps += 'name=fdio_release-{}\n'.format(bname)
-        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/SRPMS\n'.format(bname)
+        reps += '[fdio_{}-source]\n'.format(branch)
+        reps += 'name=fdio_{}-source\n'.format(branch)
+        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/SRPMS\n'.format(branch)
         reps += 'repo_gpgcheck=1\n'
         reps += 'gpgcheck=0\n'
         reps += 'enabled=1\n'
-        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(bname)
+        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(branch)
         reps += 'sslverify =1\n'
         reps += 'sslcacert=/etc/pki/tls/certs/ca-bundle.crt\n'
         reps += 'metadata_expire=300\n'
@@ -262,7 +240,7 @@ class VPPUtil(object):
                 node['host'],
                 stderr))
 
-        cmd = "yum -q makecache -y --disablerepo='*' --enablerepo='fdio_{}'".format(bname)
+        cmd = "yum -q makecache -y --disablerepo='*' --enablerepo='fdio_{}'".format(branch)
         (ret, stdout, stderr) = self.exec_command(cmd)
         if ret != 0:
             logging.debug('{} failed on node {} {}'.format(
@@ -281,24 +259,27 @@ class VPPUtil(object):
         self._install_vpp_pkg_centos(node, 'vpp-devel')
         self._install_vpp_pkg_centos(node, 'vpp-debuginfo')
 
-    def install_vpp(self, node):
+    def install_vpp(self, node, branch):
         """
         Install the VPP packages
 
         :param node: Node dictionary with cpuinfo.
+        :param branch: The branch name
         :type node: dict
+        :type branch: string
+
         """
         distro = self.get_linux_distro()
         logging.info("  {}".format(distro[0]))
         if distro[0] == 'Ubuntu':
             logging.info("Install Ubuntu")
-            self._install_vpp_ubuntu(node)
+            self._install_vpp_ubuntu(node, branch, ubuntu_version=distro[2])
         elif distro[0] == 'CentOS Linux':
             logging.info("Install CentOS")
-            self._install_vpp_centos(node)
+            self._install_vpp_centos(node, branch)
         else:
             logging.info("Install CentOS (default)")
-            self._install_vpp_centos(node)
+            self._install_vpp_centos(node, branch)
         return
 
     def _uninstall_vpp_pkg_ubuntu(self, node, pkg):
@@ -565,11 +546,13 @@ class VPPUtil(object):
 
         return interfaces
 
-    def _get_installed_vpp_pkgs_ubuntu(self):
+    def _get_installed_vpp_pkgs_ubuntu(self, distro):
         """
         Get the VPP hardware information and return it in a
         dictionary
 
+        :param distro: The linux distro
+        :type distro: dict
         :returns: List of the packages installed
         :rtype: list
         """
@@ -631,7 +614,7 @@ class VPPUtil(object):
 
         distro = self.get_linux_distro()
         if distro[0] == 'Ubuntu':
-            pkgs = self._get_installed_vpp_pkgs_ubuntu()
+            pkgs = self._get_installed_vpp_pkgs_ubuntu(distro)
         elif distro[0] == 'CentOS Linux':
             pkgs = self._get_installed_vpp_pkgs_centos()
         else:
@@ -719,9 +702,7 @@ class VPPUtil(object):
         cmd = 'service vpp stop'
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            logging.debug('{} failed on node {} {} {}'.
-                               format(cmd, node['host'],
-                                      stdout, stderr))
+            logging.debug('{} failed on node {} {} {}'.format(cmd, node['host'], stdout, stderr))
 
     # noinspection RegExpRedundantEscape
     @staticmethod
@@ -850,7 +831,7 @@ class VPPUtil(object):
         for line in lines:
             iface = re.findall(r'[a-zA-z]+\d+/\d+/\d+', line)
             if len(iface):
-                ifcidx ={'name': iface[0], 'index': line.split()[1] }
+                ifcidx = {'name': iface[0], 'index': line.split()[1]}
                 ifaces.append(ifcidx)
 
         print stdout
