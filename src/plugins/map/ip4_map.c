@@ -15,7 +15,6 @@
 /*
  * Defines used for testing various optimisation schemes
  */
-#define MAP_ENCAP_DUAL 0
 
 #include "map.h"
 #include <vnet/ip/ip_frag.h>
