@@ -87,6 +87,10 @@ typedef struct
   u32 first_worker_index;
   u16 port_per_thread;
 
+  /* counters/gauges */
+  vlib_simple_counter_main_t total_b4s;
+  vlib_simple_counter_main_t total_sessions;
+
   /* If set then the DSLite component behaves as CPE/B4
    * otherwise it behaves as AFTR */
   u8 is_ce;

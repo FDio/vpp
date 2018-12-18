@@ -240,6 +240,16 @@ nat64_init (vlib_main_t * vm)
   vec_add1 (im->add_del_interface_address_callbacks, cb4);
   nm->ip4_main = im;
 
+  /* Init counters */
+  nm->total_bibs.name = "total-bibs";
+  nm->total_bibs.stat_segment_name = "/nat64/total-bibs";
+  vlib_validate_simple_counter (&nm->total_bibs, 0);
+  vlib_zero_simple_counter (&nm->total_bibs, 0);
+  nm->total_sessions.name = "total-sessions";
+  nm->total_sessions.stat_segment_name = "/nat64/total-sessions";
+  vlib_validate_simple_counter (&nm->total_sessions, 0);
+  vlib_zero_simple_counter (&nm->total_sessions, 0);
+
   return 0;
 }
 
@@ -319,7 +329,13 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
       /* Delete sessions using address */
         /* *INDENT-OFF* */
         vec_foreach (db, nm->db)
-          nat64_db_free_out_addr (db, &a->addr);
+          {
+            nat64_db_free_out_addr (db, &a->addr);
+            vlib_set_simple_counter (&nm->total_bibs, db - nm->db, 0,
+                                     db->bib.bib_entries_num);
+            vlib_set_simple_counter (&nm->total_sessions, db - nm->db, 0,
+                                     db->st.st_entries_num);
+          }
 #define _(N, id, n, s) \
       clib_bitmap_free (a->busy_##n##_port_bitmap);
       foreach_snat_protocol
@@ -584,12 +600,16 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
       continue;
 
     if (static_bib->is_add)
-      (void) nat64_db_bib_entry_create (db, &static_bib->in_addr,
-                                        &static_bib->out_addr,
-                                        static_bib->in_port,
-                                        static_bib->out_port,
-				        static_bib->fib_index,
-                                        static_bib->proto, 1);
+      {
+          (void) nat64_db_bib_entry_create (db, &static_bib->in_addr,
+                                            &static_bib->out_addr,
+                                            static_bib->in_port,
+                                            static_bib->out_port,
+                                            static_bib->fib_index,
+                                            static_bib->proto, 1);
+          vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+                                   db->bib.bib_entries_num);
+      }
     else
       {
         addr.as_u64[0] = static_bib->in_addr.as_u64[0];
@@ -598,7 +618,13 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
                                         static_bib->proto,
                                         static_bib->fib_index, 1);
         if (bibe)
-          nat64_db_bib_entry_free (db, bibe);
+          {
+            nat64_db_bib_entry_free (db, bibe);
+            vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+                                     db->bib.bib_entries_num);
+            vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
+                                     db->st.st_entries_num);
+          }
       }
 
       static_bib->done = 1;
@@ -703,6 +729,9 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 				       fib_index, proto, 1);
 	  if (!bibe)
 	    return VNET_API_ERROR_UNSPECIFIED;
+
+	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+				   db->bib.bib_entries_num);
 	}
     }
   else
@@ -711,7 +740,11 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       if (!nm->sm->num_workers)
-	nat64_db_bib_entry_free (db, bibe);
+	{
+	  nat64_db_bib_entry_free (db, bibe);
+	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+				   db->bib.bib_entries_num);
+	}
     }
 
   if (nm->sm->num_workers)
@@ -1143,6 +1176,10 @@ nat64_expire_worker_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   u32 now = (u32) vlib_time_now (vm);
 
   nad64_db_st_free_expired (db, now);
+  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+			   db->bib.bib_entries_num);
+  vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
+			   db->st.st_entries_num);
 
   return 0;
 }

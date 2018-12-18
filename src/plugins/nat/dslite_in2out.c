@@ -71,6 +71,10 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
       b4_index = b4_kv.value = b4 - dm->per_thread_data[thread_index].b4s;
       clib_bihash_add_del_16_8 (&dm->per_thread_data[thread_index].b4_hash,
 				&b4_kv, 1);
+
+      vlib_set_simple_counter (&dm->total_b4s, thread_index, 0,
+			       pool_elts (dm->
+					  per_thread_data[thread_index].b4s));
     }
   else
     {
@@ -139,6 +143,10 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
       clib_dlist_addtail (dm->per_thread_data[thread_index].list_pool,
 			  s->per_b4_list_head_index,
 			  elt - dm->per_thread_data[thread_index].list_pool);
+
+      vlib_set_simple_counter (&dm->total_sessions, thread_index, 0,
+			       pool_elts (dm->per_thread_data
+					  [thread_index].sessions));
     }
 
   s->in2out = *in2out_key;

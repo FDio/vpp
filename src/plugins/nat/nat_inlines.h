@@ -159,6 +159,8 @@ nat44_delete_user_with_no_session (snat_main_t * sm, snat_user_t * u,
       pool_put_index (tsm->list_pool, u->sessions_per_user_list_head_index);
       pool_put (tsm->users, u);
       clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 0);
+      vlib_set_simple_counter (&sm->total_users, thread_index, 0,
+			       pool_elts (tsm->users));
     }
 }
 
@@ -177,6 +179,8 @@ nat44_delete_session (snat_main_t * sm, snat_session_t * ses,
   clib_dlist_remove (tsm->list_pool, ses->per_user_index);
   pool_put_index (tsm->list_pool, ses->per_user_index);
   pool_put (tsm->sessions, ses);
+  vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+			   pool_elts (tsm->sessions));
 
   u_key.addr = ses->in2out.addr;
   u_key.fib_index = ses->in2out.fib_index;
