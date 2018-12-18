@@ -377,6 +377,9 @@ typedef struct
   dpdk_device_config_t *dev_confs;
   uword *device_config_index_by_pci_addr;
 
+  /* devices blacklist by pci vendor_id, device_id */
+  u32 *blacklist_by_pci_vendor_and_device;
+
 } dpdk_config_main_t;
 
 extern dpdk_config_main_t dpdk_config_main;
