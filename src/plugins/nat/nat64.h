@@ -108,6 +108,10 @@ typedef struct
   /* The process node which orcherstrates the cleanup */
   u32 nat64_expire_walk_node_index;
 
+  /* counters/gauges */
+  vlib_simple_counter_main_t total_bibs;
+  vlib_simple_counter_main_t total_sessions;
+
   ip4_main_t *ip4_main;
   snat_main_t *sm;
 } nat64_main_t;

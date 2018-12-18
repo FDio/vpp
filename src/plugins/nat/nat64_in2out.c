@@ -221,6 +221,9 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 				       sport, out_port, fib_index, proto, 0);
 	  if (!bibe)
 	    return -1;
+
+	  vlib_set_simple_counter (&nm->total_bibs, ctx->thread_index, 0,
+				   db->bib.bib_entries_num);
 	}
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
@@ -229,6 +232,9 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 				  &daddr.ip4, dport);
       if (!ste)
 	return -1;
+
+      vlib_set_simple_counter (&nm->total_sessions, ctx->thread_index, 0,
+			       db->st.st_entries_num);
     }
 
   ip4->src_address.as_u32 = bibe->out_addr.as_u32;
@@ -312,6 +318,9 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 					   fib_index, IP_PROTOCOL_ICMP, 0);
 	      if (!bibe)
 		return -1;
+
+	      vlib_set_simple_counter (&nm->total_bibs, ctx->thread_index, 0,
+				       db->bib.bib_entries_num);
 	    }
 
 	  nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
@@ -320,6 +329,9 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 				      &daddr.ip4, 0);
 	  if (!ste)
 	    return -1;
+
+	  vlib_set_simple_counter (&nm->total_sessions, ctx->thread_index, 0,
+				   db->st.st_entries_num);
 	}
 
       nat64_session_reset_timeout (ste, ctx->vm);
@@ -549,6 +561,9 @@ nat64_in2out_unk_proto_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 				       0);
 	  if (!bibe)
 	    return -1;
+
+	  vlib_set_simple_counter (&nm->total_bibs, s_ctx->thread_index, 0,
+				   db->bib.bib_entries_num);
 	}
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
@@ -556,6 +571,9 @@ nat64_in2out_unk_proto_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 	nat64_db_st_entry_create (db, bibe, &ip6->dst_address, &daddr.ip4, 0);
       if (!ste)
 	return -1;
+
+      vlib_set_simple_counter (&nm->total_sessions, s_ctx->thread_index, 0,
+			       db->st.st_entries_num);
     }
 
   nat64_session_reset_timeout (ste, s_ctx->vm);
@@ -635,6 +653,9 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 				       sport, out_port, fib_index, proto, 0);
 	  if (!bibe)
 	    return -1;
+
+	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+				   db->bib.bib_entries_num);
 	}
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
@@ -643,6 +664,9 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 				  &daddr.ip4, dport);
       if (!ste)
 	return -1;
+
+      vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
+			       db->st.st_entries_num);
     }
 
   if (proto == IP_PROTOCOL_TCP)
@@ -890,6 +914,9 @@ nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 				       0);
 	  if (!bibe)
 	    return -1;
+
+	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
+				   db->bib.bib_entries_num);
 	}
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
@@ -897,6 +924,9 @@ nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 	nat64_db_st_entry_create (db, bibe, &ip6->dst_address, &daddr.ip4, 0);
       if (!ste)
 	return -1;
+
+      vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
+			       db->st.st_entries_num);
     }
 
   nat64_session_reset_timeout (ste, vm);
@@ -1510,6 +1540,8 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
 			    node->errors[NAT64_IN2OUT_ERROR_NO_TRANSLATION];
 			  goto trace0;
 			}
+		      vlib_set_simple_counter (&nm->total_bibs, thread_index,
+					       0, db->bib.bib_entries_num);
 		    }
 		  nat64_extract_ip4 (&ip60->dst_address, &daddr0.ip4,
 				     fib_index0);
@@ -1524,6 +1556,9 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
 			node->errors[NAT64_IN2OUT_ERROR_NO_TRANSLATION];
 		      goto trace0;
 		    }
+
+		  vlib_set_simple_counter (&nm->total_sessions, thread_index,
+					   0, db->st.st_entries_num);
 		}
 	      reass0->sess_index = nat64_db_st_entry_get_index (db, ste0);
 

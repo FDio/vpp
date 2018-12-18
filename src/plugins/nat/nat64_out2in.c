@@ -165,6 +165,12 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
       nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
       ste =
 	nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, sport);
+
+      if (!ste)
+	return -1;
+
+      vlib_set_simple_counter (&nm->total_sessions, ctx->thread_index, 0,
+			       db->st.st_entries_num);
     }
 
   ip6->src_address.as_u64[0] = ste->in_r_addr.as_u64[0];
@@ -240,6 +246,12 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
 	  nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
 	  ste =
 	    nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, 0);
+
+	  if (!ste)
+	    return -1;
+
+	  vlib_set_simple_counter (&nm->total_sessions, ctx->thread_index, 0,
+				   db->st.st_entries_num);
 	}
 
       nat64_session_reset_timeout (ste, ctx->vm);
@@ -397,6 +409,12 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 
       nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
       ste = nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, 0);
+
+      if (!ste)
+	return -1;
+
+      vlib_set_simple_counter (&nm->total_sessions, ctx->thread_index, 0,
+			       db->st.st_entries_num);
     }
 
   nat64_session_reset_timeout (ste, ctx->vm);
@@ -802,6 +820,9 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			node->errors[NAT64_OUT2IN_ERROR_NO_TRANSLATION];
 		      goto trace0;
 		    }
+
+		  vlib_set_simple_counter (&nm->total_sessions, thread_index,
+					   0, db->st.st_entries_num);
 		}
 	      reass0->sess_index = nat64_db_st_entry_get_index (db, ste0);
 	      reass0->thread_index = thread_index;

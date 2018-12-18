@@ -67,6 +67,16 @@ dslite_init (vlib_main_t * vm)
 
   dm->is_ce = 0;
 
+  /* Init counters */
+  dm->total_b4s.name = "total-b4s";
+  dm->total_b4s.stat_segment_name = "/dslite/total-b4s";
+  vlib_validate_simple_counter (&dm->total_b4s, 0);
+  vlib_zero_simple_counter (&dm->total_b4s, 0);
+  dm->total_sessions.name = "total-sessions";
+  dm->total_sessions.stat_segment_name = "/dslite/total-sessions";
+  vlib_validate_simple_counter (&dm->total_sessions, 0);
+  vlib_zero_simple_counter (&dm->total_sessions, 0);
+
   dslite_dpo_module_init ();
 }
 

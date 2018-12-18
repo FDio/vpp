@@ -322,6 +322,9 @@ nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr, u32 fib_index,
       /* add user */
       if (clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1))
 	nat_log_warn ("user_hash keay add failed");
+
+      vlib_set_simple_counter (&sm->total_users, thread_index, 0,
+			       pool_elts (tsm->users));
     }
   else
     {
@@ -397,6 +400,8 @@ nat_session_alloc_or_recycle (snat_main_t * sm, snat_user_t * u,
 			  per_user_translation_list_elt - tsm->list_pool);
 
       s->user_index = u - tsm->users;
+      vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+			       pool_elts (tsm->sessions));
     }
 
   return s;
@@ -471,6 +476,9 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 			      s->per_user_list_head_index,
 			      per_user_translation_list_elt - tsm->list_pool);
 	}
+
+      vlib_set_simple_counter (&sm->total_sessions, thread_index, 0,
+			       pool_elts (tsm->sessions));
     }
 
   return s;
@@ -2206,6 +2214,16 @@ snat_init (vlib_main_t * vm)
   vec_add1 (im->add_del_interface_address_callbacks, cb4);
 
   nat_dpo_module_init ();
+
+  /* Init counters */
+  sm->total_users.name = "total-users";
+  sm->total_users.stat_segment_name = "/nat44/total-users";
+  vlib_validate_simple_counter (&sm->total_users, 0);
+  vlib_zero_simple_counter (&sm->total_users, 0);
+  sm->total_sessions.name = "total-sessions";
+  sm->total_sessions.stat_segment_name = "/nat44/total-sessions";
+  vlib_validate_simple_counter (&sm->total_sessions, 0);
+  vlib_zero_simple_counter (&sm->total_sessions, 0);
 
   /* Init IPFIX logging */
   snat_ipfix_logging_init (vm);
