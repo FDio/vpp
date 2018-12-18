@@ -64,11 +64,9 @@ session_mq_accepted_reply_handler (void *data)
   else
     {
       s = session_get_from_handle_if_valid (mp->handle);
-      if (!s)
-	{
-	  clib_warning ("session 0x%llx doesn't exist", mp->handle);
-	  return;
-	}
+      /* Closed while waiting for app to reply */
+      if (!s || s->session_state > SESSION_STATE_READY)
+	return;
       app_wrk = app_worker_get (s->app_wrk_index);
       if (app_wrk->app_index != mp->context)
 	{

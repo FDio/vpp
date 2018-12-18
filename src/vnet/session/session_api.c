@@ -408,6 +408,7 @@ mq_try_lock_and_alloc_msg (svm_msg_q_t * app_mq, svm_msg_q_msg_t * msg)
       if (!rv)
 	return 0;
       try++;
+      usleep (1);
     }
   clib_warning ("failed to alloc msg");
   return -1;
