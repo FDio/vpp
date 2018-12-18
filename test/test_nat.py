@@ -1566,6 +1566,11 @@ class TestNAT44(MethodHolder):
             '/err/nat44-out2in/good out2in packets processed')
         self.assertEqual(err - totaln, 3)
 
+        users = self.statistics.get_counter('/nat44/total-users')
+        self.logger.error(self.vapi.cli('show statistics segment'))
+        self.logger.error(users)
+        #self.assertEqual(users[0][0], 1);
+
     def test_dynamic_icmp_errors_in2out_ttl_1(self):
         """ NAT44 handling of client packets with TTL=1 """
 

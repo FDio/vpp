@@ -1089,6 +1089,7 @@ nat44_show_sessions_command_fn (vlib_main_t * vm, unformat_input_t * input,
         vlib_cli_output (vm, "  %U", format_snat_user, tsm, u, verbose);
       }));
     }
+  vlib_cli_output (vm, "\n%Lu\n", vlib_get_simple_counter(&sm->total_users, 0));
   /* *INDENT-ON* */
 
   return 0;
