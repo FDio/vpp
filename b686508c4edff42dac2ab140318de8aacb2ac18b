@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c8d6b335_263c0a56",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 4372,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-18T15:50:30Z",
+      "side": 1,
+      "message": "Are these 2 independent tests or one interdependent test?",
+      "range": {
+        "startLine": 4313,
+        "startChar": 3,
+        "endLine": 4372,
+        "endChar": 1
+      },
+      "revId": "b686508c4edff42dac2ab140318de8aacb2ac18b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
