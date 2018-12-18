@@ -20,8 +20,10 @@ from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 from scapy.packet import Raw
 from hook import StepHook, PollHook, VppDiedError
-from vpp_pg_interface import VppPGInterface
+from vpp_config import VppTestCaseVppConfig
+from vpp_interface import VppInterface
 from vpp_sub_interface import VppSubInterface
+from vpp_pg_interface import VppPGInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
 from vpp_papi.vpp_stats import VPPStats
@@ -205,8 +207,8 @@ class VppTestCase(unittest.TestCase):
     classes. It provides methods to create and run test case.
     """
 
-    extra_vpp_punt_config = []
-    extra_vpp_plugin_config = []
+    CLI_LISTEN_DEFAULT = 'localhost:5002'
+    config = VppTestCaseVppConfig()
 
     @property
     def packet_infos(self):
@@ -301,32 +303,26 @@ class VppTestCase(unittest.TestCase):
                 plugin_path = cls.plugin_path
         elif cls.extern_plugin_path is not None:
             plugin_path = cls.extern_plugin_path
-        debug_cli = ""
+
         if cls.step or cls.debug_gdb or cls.debug_gdbserver:
-            debug_cli = "cli-listen localhost:5002"
+            cls.config.add('unix', 'cli-listen', cls.CLI_LISTEN_DEFAULT)
+
         coredump_size = None
         size = os.getenv("COREDUMP_SIZE")
-        if size is not None:
-            coredump_size = "coredump-size %s" % size
-        if coredump_size is None:
-            coredump_size = "coredump-size unlimited"
+        cls.config.add('unix', 'coredump-size',
+                       size if size is not None else 'unlimited')
 
-        cpu_core_number = cls.get_least_used_cpu()
+        cls.config.add('unix', 'runtime-dir', cls.tempdir)
+        cls.config.add('api-segment', 'prefix', cls.shm_prefix)
+        cls.config.add('cpu', 'main-core', str(cls.get_least_used_cpu()))
+        cls.config.add('statseg', 'socket-name', cls.stats_sock)
 
-        cls.vpp_cmdline = [cls.vpp_bin, "unix",
-                           "{", "nodaemon", debug_cli, "full-coredump",
-                           coredump_size, "runtime-dir", cls.tempdir, "}",
-                           "api-trace", "{", "on", "}", "api-segment", "{",
-                           "prefix", cls.shm_prefix, "}", "cpu", "{",
-                           "main-core", str(cpu_core_number), "}", "statseg",
-                           "{", "socket-name", cls.stats_sock, "}", "plugins",
-                           "{", "plugin", "dpdk_plugin.so", "{", "disable",
-                           "}", "plugin", "unittest_plugin.so", "{", "enable",
-                           "}"] + cls.extra_vpp_plugin_config + ["}", ]
-        if cls.extra_vpp_punt_config is not None:
-            cls.vpp_cmdline.extend(cls.extra_vpp_punt_config)
         if plugin_path is not None:
-            cls.vpp_cmdline.extend(["plugin_path", plugin_path])
+            cls.config.add('plugins', 'path', plugin_path)
+        cls.config.add_plugin('dpdk_plugin.so', 'disable')
+        cls.config.add_plugin('unittest_plugin.so', 'enable')
+
+        cls.vpp_cmdline = [cls.vpp_bin] + cls.config.shlex()
         cls.logger.info("vpp_cmdline args: %s" % cls.vpp_cmdline)
         cls.logger.info("vpp_cmdline: %s" % " ".join(cls.vpp_cmdline))
 
@@ -857,8 +853,8 @@ class VppTestCase(unittest.TestCase):
                 for cf in checksum_fields:
                     if hasattr(layer, cf):
                         if ignore_zero_udp_checksums and \
-                                        0 == getattr(layer, cf) and \
-                                        layer.name in udp_layers:
+                                0 == getattr(layer, cf) and \
+                                layer.name in udp_layers:
                             continue
                         delattr(layer, cf)
                         checksums.append((counter, cf))

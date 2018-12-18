@@ -106,7 +106,7 @@ cj_config (vlib_main_t * vm, unformat_input_t * input)
 
 /*?
  * Configure the circular journal diagnostic mechanism. This is only useful
- * if you, the deveoper, have written code to make use of the circular
+ * if you, the developer, have written code to make use of the circular
  * journal.
  *
  * @cfgcmd{records, &lt;number&gt;}

@@ -689,7 +689,18 @@ vl_sock_api_init (vlib_main_t * vm)
   clib_socket_t *sock = &sm->socksvr_listen_socket;
   clib_error_t *error;
 
-  /* If not explicitly configured, do not bind/enable, etc. */
+  /* Let the user know why we can't start. */
+  if (geteuid () && strncmp(API_SOCKET_FILE, (char *) sm->socket_name,
+  sizeof(API_SOCKET_FILE))
+   ==
+  0)
+    {
+      clib_warning ("Not initializing socksvr API: must be superuser to "
+      "use 'default' %s", API_SOCKET_FILE );
+      return 0;
+    }
+
+/* If not explicitly configured, do not bind/enable, etc. */
   if (sm->socket_name == 0)
     return 0;
 
@@ -784,6 +795,7 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 	  return clib_error_return (0, "unknown input '%U'",
 				    format_unformat_error, input);
 	}
+
     }
   return 0;
 }
