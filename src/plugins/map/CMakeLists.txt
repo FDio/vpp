@@ -20,6 +20,7 @@ add_vpp_plugin(map
   map_api.c
   map.c
   map_dpo.c
+  lpm.c
 
   API_FILES
   map.api
