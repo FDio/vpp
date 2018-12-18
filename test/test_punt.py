@@ -25,8 +25,8 @@ class TestPuntSocket(VppTestCase):
     @classmethod
     def setUpConstants(cls):
         tempdir = cls.tempdir
-        cls.extra_vpp_punt_config = [
-            "punt", "{", "socket", cls.tempdir+"/socket_punt", "}"]
+        cls.config.default_values['punt'] = {}
+        cls.config.add('punt', 'socket', '%s/socket_punt' % cls.tempdir)
         super(TestPuntSocket, cls).setUpConstants()
 
     def process_cli(self, exp, ptr):
@@ -57,7 +57,7 @@ class TestPuntSocket(VppTestCase):
         try:
             os.unlink(sock_name)
         except:
-            self.logger.debug("Unlink socket faild")
+            self.logger.debug("Unlink socket failed")
         self.sock.bind(sock_name)
 
     def socket_client_close(self):
