@@ -24,12 +24,10 @@
 #include <vapi/vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
-#include <vapi/stats.api.vapi.hpp>
 #include <fake.api.vapi.hpp>
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
-DEFINE_VAPI_MSG_IDS_STATS_API_JSON;
 DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = nullptr;
@@ -51,8 +49,11 @@ void verify_show_version_reply (const Show_version_reply &r)
   auto &p = r.get_payload ();
   printf ("show_version_reply: program: `%s', version: `%s', build directory: "
           "`%s', build date: `%s'\n",
-          p.program, p.version, p.build_directory, p.build_date);
-  ck_assert_str_eq ("vpe", (char *)p.program);
+          vl_api_from_api_string (&p.program),
+          vl_api_from_api_string (&p.version),
+          vl_api_from_api_string (&p.build_directory),
+          vl_api_from_api_string (&p.build_date));
+  ck_assert_str_eq ("vpe", (char *)vl_api_from_api_string (&p.program));
 }
 
 Connection con;
@@ -358,152 +359,6 @@ START_TEST (test_loopbacks_2)
 
 END_TEST;
 
-START_TEST (test_stats_1)
-{
-  printf ("--- Receive single stats by waiting for response ---\n");
-  Want_stats ws (con);
-  auto &payload = ws.get_request ().get_payload ();
-  payload.enable_disable = 1;
-  payload.pid = getpid ();
-  auto rv = ws.execute ();
-  ck_assert_int_eq (VAPI_OK, rv);
-  Event_registration<Vnet_interface_simple_counters> sc (con);
-  WAIT_FOR_RESPONSE (sc, rv);
-  ck_assert_int_eq (VAPI_OK, rv);
-  auto &rs = sc.get_result_set ();
-  int count = 0;
-  for (auto &r : rs)
-    {
-      printf ("simple counters: first_sw_if_index=%u\n",
-              r.get_payload ().first_sw_if_index);
-      ++count;
-    }
-  ck_assert_int_ne (0, count);
-}
-
-END_TEST;
-
-struct Vnet_interface_simple_counters_cb
-{
-  Vnet_interface_simple_counters_cb () : called{0} {};
-  int called;
-  vapi_error_e
-  operator() (Event_registration<Vnet_interface_simple_counters> &e)
-  {
-    ++called;
-    auto &rs = e.get_result_set ();
-    int count = 0;
-    for (auto &r : rs)
-      {
-        printf ("simple counters: first_sw_if_index=%u\n",
-                r.get_payload ().first_sw_if_index);
-        ++count;
-      }
-    ck_assert_int_ne (0, count);
-    return VAPI_OK;
-  }
-};
-
-START_TEST (test_stats_2)
-{
-  printf ("--- Receive single stats by getting a callback ---\n");
-  Want_stats ws (con);
-  auto &payload = ws.get_request ().get_payload ();
-  payload.enable_disable = 1;
-  payload.pid = getpid ();
-  auto rv = ws.execute ();
-  ck_assert_int_eq (VAPI_OK, rv);
-  Vnet_interface_simple_counters_cb cb;
-  Event_registration<Vnet_interface_simple_counters> sc (con, std::ref (cb));
-  WAIT_FOR_RESPONSE (sc, rv);
-  ck_assert_int_eq (VAPI_OK, rv);
-  ck_assert_int_ne (0, cb.called);
-}
-
-END_TEST;
-
-struct Vnet_interface_simple_counters_2_cb
-{
-  Vnet_interface_simple_counters_2_cb () : called{0}, total{0} {};
-  int called;
-  int total;
-  vapi_error_e
-  operator() (Event_registration<Vnet_interface_simple_counters> &e)
-  {
-    ++called;
-    auto &rs = e.get_result_set ();
-    int count = 0;
-    for (auto &r : rs)
-      {
-        printf ("simple counters: first_sw_if_index=%u\n",
-                r.get_payload ().first_sw_if_index);
-        ++count;
-      }
-    rs.free_all_responses ();
-    ck_assert_int_ne (0, count);
-    total += count;
-    return VAPI_OK;
-  }
-};
-
-START_TEST (test_stats_3)
-{
-  printf (
-      "--- Receive single stats by getting a callback - clear results ---\n");
-  Want_stats ws (con);
-  auto &payload = ws.get_request ().get_payload ();
-  payload.enable_disable = 1;
-  payload.pid = getpid ();
-  auto rv = ws.execute ();
-  ck_assert_int_eq (VAPI_OK, rv);
-  Vnet_interface_simple_counters_2_cb cb;
-  Event_registration<Vnet_interface_simple_counters> sc (con, std::ref (cb));
-  for (int i = 0; i < 5; ++i)
-    {
-      WAIT_FOR_RESPONSE (sc, rv);
-    }
-  ck_assert_int_eq (VAPI_OK, rv);
-  ck_assert_int_eq (5, cb.called);
-  ck_assert_int_eq (5, cb.total);
-}
-
-END_TEST;
-
-START_TEST (test_stats_4)
-{
-  printf ("--- Receive multiple stats by waiting for response ---\n");
-  Want_stats ws (con);
-  auto &payload = ws.get_request ().get_payload ();
-  payload.enable_disable = 1;
-  payload.pid = getpid ();
-  auto rv = ws.execute ();
-  ck_assert_int_eq (VAPI_OK, rv);
-  Event_registration<Vnet_interface_simple_counters> sc (con);
-  Event_registration<Vnet_interface_combined_counters> cc (con);
-  WAIT_FOR_RESPONSE (sc, rv);
-  ck_assert_int_eq (VAPI_OK, rv);
-  WAIT_FOR_RESPONSE (cc, rv);
-  ck_assert_int_eq (VAPI_OK, rv);
-  int count = 0;
-  for (auto &r : sc.get_result_set ())
-    {
-      printf ("simple counters: first_sw_if_index=%u\n",
-              r.get_payload ().first_sw_if_index);
-      ++count;
-    }
-  ck_assert_int_ne (0, count);
-  count = 0;
-  for (auto &r : cc.get_result_set ())
-    {
-      printf ("combined counters: first_sw_if_index=%u\n",
-              r.get_payload ().first_sw_if_index);
-      ++count;
-    }
-  ck_assert_int_ne (0, count);
-}
-
-END_TEST;
-
 START_TEST (test_unsupported)
 {
   printf ("--- Unsupported messages ---\n");
@@ -556,10 +411,6 @@ Suite *test_suite (void)
   tcase_add_test (tc_cpp_api, test_show_version_2);
   tcase_add_test (tc_cpp_api, test_loopbacks_1);
   tcase_add_test (tc_cpp_api, test_loopbacks_2);
-  tcase_add_test (tc_cpp_api, test_stats_1);
-  tcase_add_test (tc_cpp_api, test_stats_2);
-  tcase_add_test (tc_cpp_api, test_stats_3);
-  tcase_add_test (tc_cpp_api, test_stats_4);
   tcase_add_test (tc_cpp_api, test_unsupported);
   suite_add_tcase (s, tc_cpp_api);
 

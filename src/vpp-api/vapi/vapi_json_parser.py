@@ -302,6 +302,7 @@ class JsonParser(object):
             ]
         }
 
+        self.types['string'] = simple_type_class('vl_api_string_t')
         self.replies = set()
         self.events = set()
         self.simple_type_class = simple_type_class

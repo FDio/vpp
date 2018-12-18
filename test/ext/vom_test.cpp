@@ -1348,9 +1348,9 @@ BOOST_AUTO_TEST_CASE(test_igmp) {
     const std::string Isaiah = "IsaiahBerlin";
     rc_t rc = rc_t::OK;
 
-    boost::asio::ip::address gaddr = boost::asio::ip::address::from_string("232.0.0.1");
-    boost::asio::ip::address saddr1 = boost::asio::ip::address::from_string("192.168.0.20");
-    boost::asio::ip::address saddr2 = boost::asio::ip::address::from_string("192.168.0.30");
+    boost::asio::ip::address_v4 gaddr = boost::asio::ip::address_v4::from_string("232.0.0.1");
+    boost::asio::ip::address_v4 saddr1 = boost::asio::ip::address_v4::from_string("192.168.0.20");
+    boost::asio::ip::address_v4 saddr2 = boost::asio::ip::address_v4::from_string("192.168.0.30");
 
     std::string itf3_name = "host3";
     interface itf3(itf3_name,

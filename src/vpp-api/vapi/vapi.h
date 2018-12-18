@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <vppinfra/types.h>
+#include <vlibapi/api_types.h>
 #include <vapi/vapi_common.h>
 #include <svm/queue.h>
 
