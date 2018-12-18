@@ -121,8 +121,8 @@ class TestPuntSocket(VppTestCase):
 
     @classmethod
     def setUpConstants(cls):
-        cls.extra_vpp_punt_config = [
-            "punt", "{", "socket", cls.tempdir+"/socket_punt", "}"]
+        tempdir = cls.tempdir
+        cls.config.add('punt', 'socket', '%s/socket_punt' % cls.tempdir)
         super(TestPuntSocket, cls).setUpConstants()
 
     def setUp(self):
