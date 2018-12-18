@@ -21,6 +21,8 @@
 #define included_api_types_h
 
 #include <vppinfra/types.h>
+#include <arpa/inet.h>
+#include <string.h>
 
 /* VPP API string type */
 typedef struct
@@ -32,8 +34,8 @@ typedef struct
 static inline int
 vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
 {
-  clib_memcpy(str->buf, buf, len);
-  str->length = clib_host_to_net_u32 (len);
+  memcpy(str->buf, buf, len);
+  str->length = htonl (len);
   return len + sizeof (u32);
 }
 
@@ -47,13 +49,13 @@ vl_api_from_api_string (vl_api_string_t * astr)
 static inline u32
 vl_api_string_len (vl_api_string_t * astr)
 {
-  return clib_net_to_host_u32 (astr->length);
+  return ntohl (astr->length);
 }
 
 static inline char *
 vl_api_from_api_string_c (vl_api_string_t *astr)
 {
-  return strndup((char *)astr->buf, clib_net_to_host_u32(astr->length));
+  return strndup((char *)astr->buf, ntohl (astr->length));
 }
 
 #endif

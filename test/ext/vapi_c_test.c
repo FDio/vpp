@@ -27,13 +27,11 @@
 #include <vapi/vpe.api.vapi.h>
 #include <vapi/interface.api.vapi.h>
 #include <vapi/l2.api.vapi.h>
-#include <vapi/stats.api.vapi.h>
 #include <fake.api.vapi.h>
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
 DEFINE_VAPI_MSG_IDS_L2_API_JSON;
-DEFINE_VAPI_MSG_IDS_STATS_API_JSON;
 DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = NULL;
@@ -102,41 +100,6 @@ START_TEST (test_hton_2)
   vapi_type_msg_header2_t_hton (&h);
   ck_assert_int_eq (be16toh (h._vl_msg_id), _vl_msg_id);
   ck_assert_int_eq (h.client_index, client_index);
-}
-
-END_TEST;
-
-START_TEST (test_hton_3)
-{
-  const size_t data_size = 10;
-  vapi_msg_vnet_interface_combined_counters *m =
-    malloc (sizeof (vapi_msg_vnet_interface_combined_counters) +
-	    data_size * sizeof (vapi_type_vlib_counter));
-  ck_assert_ptr_ne (NULL, m);
-  vapi_payload_vnet_interface_combined_counters *p = &m->payload;
-  const u16 _vl_msg_id = 1;
-  p->_vl_msg_id = _vl_msg_id;
-  const u32 first_sw_if_index = 2;
-  p->first_sw_if_index = first_sw_if_index;
-  p->count = data_size;
-  const u64 packets = 1234;
-  const u64 bytes = 2345;
-  int i;
-  for (i = 0; i < data_size; ++i)
-    {
-      p->data[i].packets = packets;
-      p->data[i].bytes = bytes;
-    }
-  vapi_msg_vnet_interface_combined_counters_hton (m);
-  ck_assert_int_eq (_vl_msg_id, be16toh (p->_vl_msg_id));
-  ck_assert_int_eq (first_sw_if_index, be32toh (p->first_sw_if_index));
-  ck_assert_int_eq (data_size, be32toh (p->count));
-  for (i = 0; i < data_size; ++i)
-    {
-      ck_assert_int_eq (packets, be64toh (p->data[i].packets));
-      ck_assert_int_eq (bytes, be64toh (p->data[i].bytes));
-    }
-  free (p);
 }
 
 END_TEST;
@@ -278,42 +241,6 @@ START_TEST (test_ntoh_2)
 
 END_TEST;
 
-START_TEST (test_ntoh_3)
-{
-  const size_t data_size = 10;
-  vapi_msg_vnet_interface_combined_counters *m =
-    malloc (sizeof (vapi_msg_vnet_interface_combined_counters) +
-	    data_size * sizeof (vapi_type_vlib_counter));
-  ck_assert_ptr_ne (NULL, m);
-  vapi_payload_vnet_interface_combined_counters *p = &m->payload;
-  const u16 _vl_msg_id = 1;
-  p->_vl_msg_id = _vl_msg_id;
-  const u32 first_sw_if_index = 2;
-  p->first_sw_if_index = first_sw_if_index;
-  const size_t be_data_size = htobe32 (data_size);
-  p->count = be_data_size;
-  const u64 packets = 1234;
-  const u64 bytes = 2345;
-  int i;
-  for (i = 0; i < data_size; ++i)
-    {
-      p->data[i].packets = packets;
-      p->data[i].bytes = bytes;
-    }
-  vapi_msg_vnet_interface_combined_counters_ntoh (m);
-  ck_assert_int_eq (_vl_msg_id, be16toh (p->_vl_msg_id));
-  ck_assert_int_eq (first_sw_if_index, be32toh (p->first_sw_if_index));
-  ck_assert_int_eq (be_data_size, be32toh (p->count));
-  for (i = 0; i < data_size; ++i)
-    {
-      ck_assert_int_eq (packets, htobe64 (p->data[i].packets));
-      ck_assert_int_eq (bytes, htobe64 (p->data[i].bytes));
-    }
-  free (p);
-}
-
-END_TEST;
-
 #define verify_ntoh_swap(expr, value)           \
   if (4 == sizeof (expr))                       \
     {                                           \
@@ -432,11 +359,14 @@ show_version_cb (vapi_ctx_t ctx, void *caller_ctx,
 {
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (true, is_last);
-  ck_assert_str_eq ("vpe", (char *) p->program);
+  ck_assert_str_eq ("vpe", (char *) vl_api_from_api_string (&p->program));
   printf
     ("show_version_reply: program: `%s', version: `%s', build directory: "
-     "`%s', build date: `%s'\n", p->program, p->version, p->build_directory,
-     p->build_date);
+     "`%s', build date: `%s'\n",
+     vl_api_from_api_string (&p->program),
+     vl_api_from_api_string (&p->version),
+     vl_api_from_api_string (&p->build_directory),
+     vl_api_from_api_string (&p->build_date));
   ++*(int *) caller_ctx;
   return VAPI_OK;
 }
@@ -864,69 +794,6 @@ START_TEST (test_loopbacks_2)
 END_TEST;
 
 vapi_error_e
-interface_simple_stats_cb (vapi_ctx_t ctx, void *callback_ctx,
-			   vapi_error_e rv, bool is_last,
-			   vapi_payload_want_interface_simple_stats_reply *
-			   payload)
-{
-  return VAPI_OK;
-}
-
-vapi_error_e
-simple_counters_cb (vapi_ctx_t ctx, void *callback_ctx,
-		    vapi_payload_vnet_interface_simple_counters * payload)
-{
-  int *called = callback_ctx;
-  ++*called;
-  printf ("simple counters: first_sw_if_index=%u\n",
-	  payload->first_sw_if_index);
-  return VAPI_OK;
-}
-
-START_TEST (test_stats_1)
-{
-  printf ("--- Receive stats using generic blocking API ---\n");
-  vapi_msg_want_interface_simple_stats *ws =
-    vapi_alloc_want_interface_simple_stats (ctx);
-  ws->payload.enable_disable = 1;
-  ws->payload.pid = getpid ();
-  vapi_error_e rv;
-  rv = vapi_want_interface_simple_stats (ctx, ws, interface_simple_stats_cb,
-					 NULL);
-  ck_assert_int_eq (VAPI_OK, rv);
-  int called = 0;
-  vapi_set_event_cb (ctx, vapi_msg_id_vnet_interface_simple_counters,
-		     (vapi_event_cb) simple_counters_cb, &called);
-  rv = vapi_dispatch_one (ctx);
-  ck_assert_int_eq (VAPI_OK, rv);
-  ck_assert_int_eq (1, called);
-}
-
-END_TEST;
-
-START_TEST (test_stats_2)
-{
-  printf ("--- Receive stats using stat-specific blocking API ---\n");
-  vapi_msg_want_interface_simple_stats *ws =
-    vapi_alloc_want_interface_simple_stats (ctx);
-  ws->payload.enable_disable = 1;
-  ws->payload.pid = getpid ();
-  vapi_error_e rv;
-  rv = vapi_want_interface_simple_stats (ctx, ws, interface_simple_stats_cb,
-					 NULL);
-  ck_assert_int_eq (VAPI_OK, rv);
-  int called = 0;
-  vapi_set_vapi_msg_vnet_interface_simple_counters_event_cb (ctx,
-							     simple_counters_cb,
-							     &called);
-  rv = vapi_dispatch_one (ctx);
-  ck_assert_int_eq (VAPI_OK, rv);
-  ck_assert_int_eq (1, called);
-}
-
-END_TEST;
-
-vapi_error_e
 generic_cb (vapi_ctx_t ctx, void *callback_ctx, vapi_msg_id_t id, void *msg)
 {
   int *called = callback_ctx;
@@ -935,7 +802,9 @@ generic_cb (vapi_ctx_t ctx, void *callback_ctx, vapi_msg_id_t id, void *msg)
   ck_assert_int_eq (id, vapi_msg_id_show_version_reply);
   ck_assert_ptr_ne (NULL, msg);
   vapi_msg_show_version_reply *reply = msg;
-  ck_assert_str_eq ("vpe", (char *) reply->payload.program);
+  ck_assert_str_eq ("vpe",
+		    (char *) vl_api_from_api_string (&reply->
+						     payload.program));
   return VAPI_OK;
 }
 
@@ -966,53 +835,6 @@ START_TEST (test_show_version_5)
   rv = vapi_dispatch_one (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (1, called);	/* needs to remain unchanged */
-}
-
-END_TEST;
-
-vapi_error_e
-combined_counters_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
-		      vapi_payload_vnet_interface_combined_counters * payload)
-{
-  int *called = callback_ctx;
-  ++*called;
-  printf ("combined counters: first_sw_if_index=%u\n",
-	  payload->first_sw_if_index);
-  return VAPI_OK;
-}
-
-vapi_error_e
-stats_cb (vapi_ctx_t ctx, void *callback_ctx, vapi_error_e rv,
-	  bool is_last, vapi_payload_want_stats_reply * payload)
-{
-  return VAPI_OK;
-}
-
-START_TEST (test_stats_3)
-{
-  printf ("--- Receive multiple stats using stat-specific non-blocking API "
-	  "---\n");
-  vapi_msg_want_stats *ws = vapi_alloc_want_stats (ctx);
-  ws->payload.enable_disable = 1;
-  ws->payload.pid = getpid ();
-  vapi_error_e rv;
-  rv = vapi_want_stats (ctx, ws, stats_cb, NULL);
-  ck_assert_int_eq (VAPI_OK, rv);
-  int called = 0;
-  int called2 = 0;
-  vapi_set_vapi_msg_vnet_interface_simple_counters_event_cb (ctx,
-							     simple_counters_cb,
-							     &called);
-  vapi_set_vapi_msg_vnet_interface_combined_counters_event_cb (ctx,
-							       combined_counters_cb,
-							       &called2);
-  while (!called || !called2)
-    {
-      if (VAPI_EAGAIN != (rv = vapi_dispatch_one (ctx)))
-	{
-	  ck_assert_int_eq (VAPI_OK, rv);
-	}
-    }
 }
 
 END_TEST;
@@ -1106,11 +928,9 @@ test_suite (void)
   TCase *tc_swap = tcase_create ("Byteswap tests");
   tcase_add_test (tc_swap, test_hton_1);
   tcase_add_test (tc_swap, test_hton_2);
-  tcase_add_test (tc_swap, test_hton_3);
   tcase_add_test (tc_swap, test_hton_4);
   tcase_add_test (tc_swap, test_ntoh_1);
   tcase_add_test (tc_swap, test_ntoh_2);
-  tcase_add_test (tc_swap, test_ntoh_3);
   tcase_add_test (tc_swap, test_ntoh_4);
   suite_add_tcase (s, tc_swap);
 
@@ -1124,8 +944,6 @@ test_suite (void)
   tcase_add_test (tc_block, test_show_version_1);
   tcase_add_test (tc_block, test_show_version_2);
   tcase_add_test (tc_block, test_loopbacks_1);
-  tcase_add_test (tc_block, test_stats_1);
-  tcase_add_test (tc_block, test_stats_2);
   suite_add_tcase (s, tc_block);
 
   TCase *tc_nonblock = tcase_create ("Nonblocking API");
@@ -1135,7 +953,6 @@ test_suite (void)
   tcase_add_test (tc_nonblock, test_show_version_4);
   tcase_add_test (tc_nonblock, test_show_version_5);
   tcase_add_test (tc_nonblock, test_loopbacks_2);
-  tcase_add_test (tc_nonblock, test_stats_3);
   tcase_add_test (tc_nonblock, test_no_response_1);
   tcase_add_test (tc_nonblock, test_no_response_2);
   suite_add_tcase (s, tc_nonblock);
