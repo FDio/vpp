@@ -36,7 +36,7 @@ public:
    */
   listen_cmd(HW::item<bool>& item,
              const handle_t& itf,
-             const boost::asio::ip::address& gaddr,
+             const boost::asio::ip::address_v4& gaddr,
              const igmp_listen::src_addrs_t& saddrs);
 
   /**
@@ -62,7 +62,7 @@ private:
   /**
    * The igmp group to bind
    */
-  const boost::asio::ip::address& m_gaddr;
+  const boost::asio::ip::address_v4& m_gaddr;
 
   /**
    * The igmp srouce specific addresses to listen them
@@ -81,7 +81,7 @@ public:
    */
   unlisten_cmd(HW::item<bool>& item,
                const handle_t& itf,
-               const boost::asio::ip::address& gaddr);
+               const boost::asio::ip::address_v4& gaddr);
 
   /**
    * Issue the command to VPP/HW
@@ -107,7 +107,7 @@ private:
   /**
    * The igmp group to unlisten
    */
-  const boost::asio::ip::address& m_gaddr;
+  const boost::asio::ip::address_v4& m_gaddr;
 };
 
 /**
