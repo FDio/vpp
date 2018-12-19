@@ -418,7 +418,7 @@ interface::set(const std::string& tag)
 }
 
 void
-interface::set(counter_t count, const std::string& stat_type)
+interface::set(const counter_t& count, const std::string& stat_type)
 {
   if ("rx" == stat_type)
     m_stats.m_rx = count;

@@ -25,7 +25,6 @@
 #include "vom/route_domain.hpp"
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-#include "vom/stat_client.hpp"
 
 namespace VOM {
 /**
@@ -619,7 +618,7 @@ private:
   /**
    * Set the interface stat
    */
-  void set(counter_t count, const std::string& stat_type);
+  void set(const counter_t& count, const std::string& stat_type);
 
   /**
    * enable the interface stats in the singular instance
