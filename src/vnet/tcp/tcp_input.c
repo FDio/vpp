@@ -2725,7 +2725,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Make sure the ack is exactly right */
-	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0)
+	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0
+	      || vnet_buffer (b0)->tcp.data_len)
 	    {
 	      tcp_connection_reset (tc0);
 	      error0 = TCP_ERROR_SEGMENT_INVALID;
@@ -2913,9 +2914,10 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	case TCP_STATE_ESTABLISHED:
 	case TCP_STATE_SYN_RCVD:
-	  /* Send FIN-ACK notify app and enter CLOSE-WAIT */
+	  /* Send ACK, notify app and enter CLOSE-WAIT */
 	  tcp_connection_timers_reset (tc0);
-	  tcp_send_fin (tc0);
+	  tc0->rcv_nxt += 1;
+	  tcp_program_ack (wrk, tc0);
 	  stream_session_disconnect_notify (&tc0->connection);
 	  tc0->state = TCP_STATE_CLOSE_WAIT;
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
