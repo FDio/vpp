@@ -244,7 +244,8 @@ test_elog_main (unformat_input_t * input)
       vec_foreach (e, es)
       {
 	clib_warning ("%18.9f: %12U %U\n", e->time,
-		      format_elog_track, em, e, format_elog_event, em, e);
+		      format_elog_track_name, em, e, format_elog_event, em,
+		      e);
       }
     }
 
