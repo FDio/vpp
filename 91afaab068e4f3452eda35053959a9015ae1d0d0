@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a1668a11_995e8f37",
+        "filename": "test/vpp_mac.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-19T14:46:41Z",
+      "side": 1,
+      "message": "Intent of https://gerrit.fd.io/r/#/c/16307/2/test/vpp_mac.py@22 still stands.\nWhy do we pretend this field is private, when lines 22-24 give full access?",
+      "range": {
+        "startLine": 11,
+        "startChar": 13,
+        "endLine": 11,
+        "endChar": 21
+      },
+      "revId": "91afaab068e4f3452eda35053959a9015ae1d0d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
