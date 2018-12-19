@@ -1137,15 +1137,13 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   dpdk_device_config_t *devconf;
   vlib_pci_addr_t pci_addr;
   unformat_input_t sub_input;
-  uword x;
+  uword default_hugepage_sz, x;
   u8 *s, *tmp = 0;
   u32 log_level;
   int ret, i;
   int num_whitelisted = 0;
   u8 no_pci = 0;
   u8 no_vmbus = 0;
-  u8 no_huge = 0;
-  u8 huge_dir = 0;
   u8 file_prefix = 0;
   u8 *socket_mem = 0;
   u8 *huge_dir_path = 0;
@@ -1163,7 +1161,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       if (unformat (input, "no-hugetlb"))
 	{
 	  vec_add1 (conf->eal_init_args, (u8 *) "--no-huge");
-	  no_huge = 1;
 	}
 
       else if (unformat (input, "enable-tcp-udp-checksum"))
@@ -1255,9 +1252,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 #define _(a)                                          \
 	else if (unformat(input, #a " %s", &s))	      \
 	  {					      \
-            if (!strncmp(#a, "huge-dir", 8))          \
-              huge_dir = 1;                           \
-            else if (!strncmp(#a, "file-prefix", 11)) \
+            if (!strncmp(#a, "file-prefix", 11)) \
               file_prefix = 1;                        \
 	    tmp = format (0, "--%s%c", #a, 0);	      \
 	    vec_add1 (conf->eal_init_args, tmp);      \
@@ -1306,107 +1301,29 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (!conf->uio_driver_name)
     conf->uio_driver_name = format (0, "auto%c", 0);
 
-  /*
-   * Use 1G huge pages if available.
-   */
-  if (!no_huge && !huge_dir)
+  default_hugepage_sz = clib_mem_get_default_hugepage_size ();
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (x, tm->cpu_socket_bitmap, (
     {
-      u32 x, *mem_by_socket = 0;
-      uword c = 0;
-      int rv;
+      clib_error_t *e;
+      uword n_pages;
+      /* preallocate at least 16MB of hugepages per socket,
+	 if more is needed it is up to consumer to preallocate more */
+      n_pages = round_pow2 ((uword) 16 << 20, default_hugepage_sz);
+      n_pages /= default_hugepage_sz;
 
-      umount ((char *) huge_dir_path);
+      if ((e = clib_sysfs_prealloc_hugepages(x, 0, n_pages)))
+	clib_error_report (e);
+  }));
+  /* *INDENT-ON* */
 
-      /* Process "socket-mem" parameter value */
-      if (vec_len (socket_mem))
-	{
-	  unformat_input_t in;
-	  unformat_init_vector (&in, socket_mem);
-	  while (unformat_check_input (&in) != UNFORMAT_END_OF_INPUT)
-	    {
-	      if (unformat (&in, "%u,", &x))
-		;
-	      else if (unformat (&in, "%u", &x))
-		;
-	      else if (unformat (&in, ","))
-		x = 0;
-	      else
-		break;
-
-	      vec_add1 (mem_by_socket, x);
-	    }
-	  /* Note: unformat_free vec_frees(in.buffer), aka socket_mem... */
-	  unformat_free (&in);
-	  socket_mem = 0;
-	}
-      else
-	{
-	  /* *INDENT-OFF* */
-	  clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
-	    {
-	      vec_validate(mem_by_socket, c);
-	      mem_by_socket[c] = 64; /* default per-socket mem */
-	    }
-	  ));
-	  /* *INDENT-ON* */
-	}
-
-      uword default_hugepage_sz = clib_mem_get_default_hugepage_size ();
-      /* *INDENT-OFF* */
-      clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
-        {
-	  clib_error_t *e;
-	  uword n_pages;
-	  vec_validate(mem_by_socket, c);
-	  n_pages = round_pow2 ((uword) mem_by_socket[c]<<20,
-				default_hugepage_sz);
-	  n_pages /= default_hugepage_sz;
-
-	  if ((e = clib_sysfs_prealloc_hugepages(c, 0, n_pages)))
-	    clib_error_report (e);
-      }));
-      /* *INDENT-ON* */
-
-      if (mem_by_socket == 0)
-	{
-	  error = clib_error_return (0, "mem_by_socket NULL");
-	  goto done;
-	}
-      _vec_len (mem_by_socket) = c + 1;
-
-      /* regenerate socket_mem string */
-      vec_foreach_index (x, mem_by_socket)
-	socket_mem = format (socket_mem, "%s%u",
-			     socket_mem ? "," : "", mem_by_socket[x]);
-      socket_mem = format (socket_mem, "%c", 0);
-
-      vec_free (mem_by_socket);
-
-      error = vlib_unix_recursive_mkdir ((char *) huge_dir_path);
-      if (error)
-	{
-	  goto done;
-	}
-
-      rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0, NULL);
-
-      if (rv)
-	{
-	  error = clib_error_return (0, "mount failed %d", errno);
-	  goto done;
-	}
-
-      tmp = format (0, "--huge-dir%c", 0);
+  if (!file_prefix)
+    {
+      tmp = format (0, "--file-prefix%c", 0);
       vec_add1 (conf->eal_init_args, tmp);
-      tmp = format (0, "%s%c", huge_dir_path, 0);
+      tmp = format (0, "vpp%c", 0);
       vec_add1 (conf->eal_init_args, tmp);
-      if (!file_prefix)
-	{
-	  tmp = format (0, "--file-prefix%c", 0);
-	  vec_add1 (conf->eal_init_args, tmp);
-	  tmp = format (0, "vpp%c", 0);
-	  vec_add1 (conf->eal_init_args, tmp);
-	}
     }
 
   if (error)
@@ -1485,14 +1402,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   tmp = format (0, "%u%c", tm->main_lcore, 0);
   vec_add1 (conf->eal_init_args, tmp);
 
-  /* set socket-mem */
-  if (!no_huge)
-    {
-      tmp = format (0, "--socket-mem%c", 0);
-      vec_add1 (conf->eal_init_args, tmp);
-      tmp = format (0, "%s%c", socket_mem, 0);
-      vec_add1 (conf->eal_init_args, tmp);
-    }
+
+  if (socket_mem)
+    clib_warning ("socket-mem argument is deprecated");
 
   /* NULL terminate the "argv" vector, in case of stupidity */
   vec_add1 (conf->eal_init_args, 0);
@@ -1860,6 +1772,7 @@ dpdk_init (vlib_main_t * vm)
   dm->conf->nchannels = 4;
   dm->conf->num_mbufs = dm->conf->num_mbufs ? dm->conf->num_mbufs : NB_MBUF;
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
+  vec_add1 (dm->conf->eal_init_args, (u8 *) "--in-memory");
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template = (VLIB_BUFFER_TOTAL_LENGTH_VALID |
