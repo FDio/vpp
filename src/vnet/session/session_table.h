@@ -18,7 +18,15 @@
 
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_48_8.h>
+#include <vnet/session/session_types.h>
 #include <vnet/session/session_rules_table.h>
+
+typedef session_t * (* session_lookup_listener4_t)
+  (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
+   u16 lcl_port, u16 rmt_port, u8 proto);
+typedef session_t * (* session_lookup_listener6_t)
+  (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
+   u16 lcl_port, u16 rmt_port, u8 proto);
 
 typedef struct _session_lookup_table
 {
@@ -49,6 +57,10 @@ typedef struct _session_lookup_table
    * byproduct of fib table ids not necessarily being the same for
    * identical fib idices of v4 and v6 fib protos */
   u8 active_fib_proto;
+
+  session_lookup_listener4_t session_lookup_listener4;
+  session_lookup_listener6_t session_lookup_listener6;
+
   /* Required for pool_get_aligned(...) */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 } session_table_t;

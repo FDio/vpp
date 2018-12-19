@@ -175,6 +175,7 @@ typedef enum
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
   _(USE_LOCAL_SCOPE, "App can use local session scope")		\
   _(EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")		\
+  _(IS_MULTI_FIB, "Use endpoints FIB instead of apps")		\
 
 typedef enum _app_options
 {
