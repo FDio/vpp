@@ -115,7 +115,6 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
       strncpy (e.name, stat_segment_name, 128 - 1);
       e.type = type;
       vec_add1 (sm->directory_vector, e);
-      vector_index++;
     }
 
   stat_segment_directory_entry_t *ep = &sm->directory_vector[vector_index];
