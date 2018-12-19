@@ -1252,11 +1252,8 @@ tcp_timer_waitclose_handler (u32 conn_index)
 
   /* Session didn't come back with a close(). Send FIN either way
    * and switch to LAST_ACK. */
-  if (tc->state == TCP_STATE_CLOSE_WAIT)
+  if (tc->state == TCP_STATE_CLOSE_WAIT && (tc->flags & TCP_CONN_FINPNDG))
     {
-      if (tc->flags & TCP_CONN_FINSNT)
-	TCP_DBG ("FIN was sent and still in CLOSE WAIT!");
-
       /* Make sure we don't try to send unsent data */
       tcp_connection_timers_reset (tc);
       tcp_cong_recovery_off (tc);
@@ -1272,8 +1269,9 @@ tcp_timer_waitclose_handler (u32 conn_index)
     }
   else if (tc->state == TCP_STATE_FIN_WAIT_1)
     {
-      /* Wait for session layer to clean up tx events */
+      tcp_connection_timers_reset (tc);
       tc->state = TCP_STATE_CLOSED;
+      /* Wait for session layer to clean up tx events */
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, 1);
       return;
     }
