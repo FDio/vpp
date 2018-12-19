@@ -874,21 +874,19 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  break;
 	case FIFO_EVENT_DISCONNECT:
-	  /* Make sure stream disconnects run after the pending list is
-	   * drained */
 	  s = session_get_from_handle_if_valid (e->session_handle);
 	  if (PREDICT_FALSE (!s))
 	    break;
 
-	  if (!e->postponed)
+	  /* Make sure session disconnects run after the pending list is
+	   * drained, i.e., postpone if the first time. If not the first
+	   * and the tx queue is still not empty, try to wait for some
+	   * dispatch cycles */
+	  if (!e->postponed
+	      || (e->postponed < 200
+		  && svm_fifo_max_dequeue (s->server_tx_fifo)))
 	    {
-	      e->postponed = 1;
-	      vec_add1 (wrk->pending_disconnects, *e);
-	      continue;
-	    }
-	  /* If tx queue is still not empty, wait */
-	  if (svm_fifo_max_dequeue (s->server_tx_fifo))
-	    {
+	      e->postponed += 1;
 	      vec_add1 (wrk->pending_disconnects, *e);
 	      continue;
 	    }
