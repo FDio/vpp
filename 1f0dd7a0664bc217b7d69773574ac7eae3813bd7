@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3569acf0_c8fe89c2",
+        "filename": "extras/japi/java/jvpp/gen/jvppgen/jni_type_handlers_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-19T14:21:09Z",
+      "side": 1,
+      "message": "is_alias \u003d t.name in model._aliases",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 48,
+        "endChar": 24
+      },
+      "revId": "1f0dd7a0664bc217b7d69773574ac7eae3813bd7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
