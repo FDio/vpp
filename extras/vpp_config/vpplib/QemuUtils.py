@@ -12,6 +12,7 @@
 # limitations under the License.
 
 """QEMU utilities library."""
+from  __future__ import absolute_import, division
 
 from time import time, sleep
 import json
@@ -100,8 +101,9 @@ class QemuUtils(object):
         :type threads: int
         :type sockets: int
         """
-        self._qemu_opt['smp'] = '-smp {},cores={},threads={},sockets={}'.format(
-            cpus, cores, threads, sockets)
+        self._qemu_opt['smp'] = \
+            '-smp {},cores={},threads={},sockets={}'.format(
+                cpus, cores, threads, sockets)
 
     def qemu_set_ssh_fwd_port(self, fwd_port):
         """Set host port for guest SSH forwarding.
@@ -256,7 +258,8 @@ class QemuUtils(object):
         if int(ret_code) != 0:
             logging.debug('QMP execute failed {0}'.format(stderr))
             raise RuntimeError('QMP execute "{0}"'
-                               ' failed on {1}'.format(cmd, self._node['host']))
+                               ' failed on {1}'.format(
+                cmd, self._node['host']))
         logging.debug(stdout)
         # Skip capabilities negotiation messages.
         out_list = stdout.splitlines()
@@ -268,7 +271,8 @@ class QemuUtils(object):
     def _qemu_qga_flush(self):
         """Flush the QGA parser state
         """
-        qga_cmd = '(printf "\xFF"; sleep 1) | sudo -S socat - UNIX-CONNECT:' + \
+        qga_cmd = '(printf "\xFF"; sleep 1) | ' \
+                  'sudo -S socat - UNIX-CONNECT:' + \
                   self._qga_sock
         # TODO: probably need something else
         (ret_code, stdout, stderr) = self._ssh.exec_command(qga_cmd)
@@ -298,7 +302,8 @@ class QemuUtils(object):
         if int(ret_code) != 0:
             logging.debug('QGA execute failed {0}'.format(stderr))
             raise RuntimeError('QGA execute "{0}"'
-                               ' failed on {1}'.format(cmd, self._node['host']))
+                               ' failed on {1}'.format(
+                cmd, self._node['host']))
         logging.debug(stdout)
         if not stdout:
             return {}
@@ -322,7 +327,8 @@ class QemuUtils(object):
                 self._qemu_qga_flush()
                 out = self._qemu_qga_exec('guest-ping')
             except ValueError:
-                logging.debug('QGA guest-ping unexpected output {}'.format(out))
+                logging.debug(
+                    'QGA guest-ping unexpected output {}'.format(out))
             # Empty output - VM not booted yet
             if not out:
                 sleep(5)
@@ -335,10 +341,12 @@ class QemuUtils(object):
             else:
                 # If there is an unexpected output from QGA guest-info, try
                 # again until timeout.
-                logging.debug('QGA guest-ping unexpected output {}'.format(out))
+                logging.debug(
+                    'QGA guest-ping unexpected output {}'.format(out))
 
-        logging.debug('VM {0} booted on {1}'.format(self._qemu_opt['disk_image'],
-                                                    self._node['host']))
+        logging.debug(
+            'VM {0} booted on {1}'.format(self._qemu_opt['disk_image'],
+                                          self._node['host']))
 
     def _update_vm_interfaces(self):
         """Update interface names in VM node dict."""
@@ -349,8 +357,9 @@ class QemuUtils(object):
         interfaces = out.get('return')
         mac_name = {}
         if not interfaces:
-            raise RuntimeError('Get VM {0} interface list failed on {1}'.format(
-                self._qemu_opt['disk_image'], self._node['host']))
+            raise RuntimeError(
+                'Get VM {0} interface list failed on {1}'.format(
+                    self._qemu_opt['disk_image'], self._node['host']))
         # Create MAC-name dict
         for interface in interfaces:
             if 'hardware-address' not in interface:
@@ -361,7 +370,8 @@ class QemuUtils(object):
             mac = interface.get('mac_address')
             if_name = mac_name.get(mac)
             if if_name is None:
-                logging.debug('Interface name for MAC {} not found'.format(mac))
+                logging.debug(
+                    'Interface name for MAC {} not found'.format(mac))
             else:
                 interface['name'] = if_name
 
@@ -380,20 +390,25 @@ class QemuUtils(object):
             # If we want to allocate hugepage dynamically
             if allocate:
                 mem_needed = abs((huge_free * huge_size) - (mem_size * 1024))
-                huge_to_allocate = ((mem_needed / huge_size) * 2) + huge_total
+                huge_to_allocate = ((mem_needed // huge_size) * 2) + huge_total
                 max_map_count = huge_to_allocate*4
-                # Increase maximum number of memory map areas a process may have
-                cmd = 'echo "{0}" | sudo tee /proc/sys/vm/max_map_count'.format(
+                # Increase maximum number of memory map areas a
+                # process may have
+                cmd = \
+                    'echo "{0}" | sudo tee /proc/sys/vm/max_map_count'.format(
                     max_map_count)
                 (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
                 # Increase hugepage count
-                cmd = 'echo "{0}" | sudo tee /proc/sys/vm/nr_hugepages'.format(
+                cmd = \
+                    'echo "{0}" | sudo tee /proc/sys/vm/nr_hugepages'.format(
                     huge_to_allocate)
                 (ret_code, _, stderr) = self._ssh.exec_command_sudo(cmd)
                 if int(ret_code) != 0:
-                    logging.debug('Mount huge pages failed {0}'.format(stderr))
-                    raise RuntimeError('Mount huge pages failed on {0}'.format(
-                        self._node['host']))
+                    logging.debug(
+                        'Mount huge pages failed {0}'.format(stderr))
+                    raise RuntimeError(
+                        'Mount huge pages failed on {0}'.format(
+                            self._node['host']))
             # If we do not want to allocate dynamicaly end with error
             else:
                 raise RuntimeError(
@@ -467,7 +482,8 @@ class QemuUtils(object):
                 try:
                     huge_free = int(out)
                 except ValueError:
-                    logging.debug('Reading free huge pages information failed')
+                    logging.debug(
+                        'Reading free huge pages information failed')
                 else:
                     break
         else:
@@ -493,7 +509,8 @@ class QemuUtils(object):
                 try:
                     huge_total = int(out)
                 except ValueError:
-                    logging.debug('Reading total huge pages information failed')
+                    logging.debug(
+                        'Reading total huge pages information failed')
                 else:
                     break
         else:

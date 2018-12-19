@@ -101,7 +101,8 @@ class VppGrubUtil(object):
         value = cmdline.split('{}='.format(grubcmdline))[1]
         value = value.rstrip('"').lstrip('"')
 
-        # jadfix intel_pstate=disable sometimes cause networks to hang on reboot
+        # jadfix intel_pstate=disable sometimes cause networks to
+        # hang on reboot
         # iommu = re.findall(r'iommu=\w+', value)
         # pstate = re.findall(r'intel_pstate=\w+', value)
         # If there is already some iommu commands set, leave them,
