@@ -11,7 +11,7 @@ Use:
 
 The installation and executing of the VPP configuration utility is simple. First
 install the python pip module. Using pip install, then pip install vpp-config.
-Then simply type Òvpp-configÓ and answer the questions. If you are not sure what
+Then simply type ï¿½vpp-configï¿½ and answer the questions. If you are not sure what
 to answer choose the default. For yes or no questions the capital letter
 designates the default. For example, for a question that shows [Y/n] Y is the
 default. For numbers the default is within the brackets for example for a
@@ -36,14 +36,15 @@ environment so you can start from scratch. These are the steps to run the utilit
 in this environment. The scripts are meant to be run from the root directory.
 
   ./scripts/clean.sh
-  ./scripts/cp-data.sh 
-  ./vpp_config.py 
+  ./scripts/cp-data.sh
+  ./vpp-config
 
 When the utility is installed with pip the wrapper scripts/vpp-config is written to
 /usr/local/bin. However, the starting point when debugging this script locally is
-./vpp_config.py. Run the utility by executing ./vpp_config.py from the root directory. 
+vpp-config. Run the utility by executing vpp-config.
 
-The start point in the code is in vpp_config.py. However, most of the work is done in
+The start point in the code is in vpp_config.py. However, most of the work is
+done in
 the files in ./vpplib
 
 Uploading to PyPi:
@@ -51,7 +52,7 @@ Uploading to PyPi:
 To upload this utility to PpPi simple do the following. Currently, I have my own account
 when we want everyone to contribute we will need to change that.
 
-  sudo ÐH bash
+  sudo ï¿½H bash
   cd vpp_config
   python setup.py sdist bdist_wheel
   twine upload dist/*
@@ -137,7 +138,7 @@ There are no VPP packages on node localhost.
 Do you want to install VPP [Y/n]? 
 INFO:root: Local Command: ls /etc/apt/sources.list.d/99fd.io.list.orig
 INFO:root:  /etc/apt/sources.list.d/99fd.io.list.orig
-ÉÉ..
+ï¿½ï¿½..
 
 What would you like to do?
 
