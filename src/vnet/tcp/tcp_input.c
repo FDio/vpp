@@ -2819,6 +2819,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  tcp_send_fin (tc0);
 		  tcp_connection_timers_reset (tc0);
 		  tc0->state = TCP_STATE_LAST_ACK;
+		  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 		  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 		}
 	    }

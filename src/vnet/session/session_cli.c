@@ -204,10 +204,11 @@ static clib_error_t *
 show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
+  u8 *str = 0, one_session = 0, do_listeners = 0, sst, do_elog = 1;
   session_manager_main_t *smm = &session_manager_main;
-  u8 *str = 0, one_session = 0, do_listeners = 0, sst;
+  u32 transport_proto = ~0, track_index;
   stream_session_t *pool, *s;
-  u32 transport_proto = ~0;
+  transport_connection_t *tc;
   app_worker_t *app_wrk;
   int verbose = 0, i;
   const u8 *app_name;
@@ -230,6 +231,8 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  one_session = 1;
 	}
+      else if (unformat (input, "elog"))
+	do_elog = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -237,7 +240,21 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (one_session)
     {
-      vlib_cli_output (vm, "%U", format_stream_session, s, 3);
+      str = format (0, "%U", format_stream_session, s, 3);
+      if (do_elog)
+	{
+	  elog_main_t *em = &vm->elog_main;
+	  f64 dt;
+
+	  tc = session_get_transport (s);
+	  track_index = transport_elog_track_index (tc);
+	  dt = (em->init_time.cpu - vm->clib_time.init_cpu_time)
+	    * vm->clib_time.seconds_per_clock;
+	  if (track_index != ~0)
+	    str = format (str, " session elog:\n%U", format_elog_track, em,
+			  dt, track_index);
+	}
+      vlib_cli_output (vm, "%v", str);
       return 0;
     }
 

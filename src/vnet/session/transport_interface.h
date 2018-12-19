@@ -103,6 +103,16 @@ transport_tx_fn_type_t transport_protocol_tx_fn_type (transport_proto_t tp);
 void transport_update_time (f64 time_now, u8 thread_index);
 void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 
+always_inline u32
+transport_elog_track_index (transport_connection_t * tc)
+{
+#if TRANSPORT_DEBUG
+  return tc->elog_track.track_index_plus_one - 1;
+#else
+  return ~0;
+#endif
+}
+
 void transport_connection_tx_pacer_reset (transport_connection_t * tc,
 					  u32 rate_bytes_per_sec,
 					  u32 initial_bucket, u64 time_now);

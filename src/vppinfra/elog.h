@@ -515,7 +515,8 @@ void elog_merge (elog_main_t * dst, u8 * dst_tag,
 
 /* 2 arguments elog_main_t and elog_event_t to format event or track name. */
 u8 *format_elog_event (u8 * s, va_list * va);
-u8 *format_elog_track (u8 * s, va_list * va);
+u8 *format_elog_track_name (u8 * s, va_list * va);
+u8 *format_elog_track (u8 * s, va_list * args);
 
 void serialize_elog_main (serialize_main_t * m, va_list * va);
 void unserialize_elog_main (serialize_main_t * m, va_list * va);
