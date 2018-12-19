@@ -396,12 +396,35 @@ format_elog_event (u8 * s, va_list * va)
 }
 
 u8 *
-format_elog_track (u8 * s, va_list * va)
+format_elog_track_name (u8 * s, va_list * va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
   elog_event_t *e = va_arg (*va, elog_event_t *);
   elog_track_t *t = vec_elt_at_index (em->tracks, e->track);
   return format (s, "%s", t->name);
+}
+
+u8 *
+format_elog_track (u8 * s, va_list * args)
+{
+  elog_main_t *em = va_arg (*args, elog_main_t *);
+  f64 dt = va_arg (*args, f64);
+  int track_index = va_arg (*args, int);
+  elog_event_t *e, *es;
+  u8 indent;
+
+  indent = format_get_indent (s) + 1;
+
+  es = elog_peek_events (em);
+  vec_foreach (e, es)
+  {
+    if (e->track != track_index)
+      continue;
+    s = format (s, "%U%18.9f: %U\n", format_white_space, indent, e->time + dt,
+		format_elog_event, em, e);
+  }
+  vec_free (es);
+  return s;
 }
 
 void
