@@ -26,13 +26,6 @@ extern "C" {
 
 namespace VOM {
 
-typedef struct
-{
-  uint64_t packets;
-  uint64_t bytes;
-} counter_t;
-
-typedef uint64_t stat_counter_t;
 /**
  * A representation of a stat client in VPP
  */
@@ -45,14 +38,9 @@ public:
   struct stat_data_t
   {
     /**
-     * stat data constructor
-     */
-    stat_data_t();
-
-    /**
      * stat data custom constructor
      */
-    stat_data_t(stat_segment_data_t* stat_seg_data);
+    stat_data_t(const stat_segment_data_t& stat_seg_data);
 
     /**
      * get name of stat
@@ -67,10 +55,10 @@ public:
     /**
      * Get pointer to actual data
      */
-    double get_stat_segment_scalar_data();
-    uint64_t get_stat_segment_error_data();
-    uint64_t** get_stat_segment_simple_counter_data();
-    counter_t** get_stat_segment_combined_counter_data();
+    double get_stat_segment_scalar_data() const;
+    uint64_t get_stat_segment_error_data() const;
+    uint64_t** get_stat_segment_simple_counter_data() const;
+    vlib_counter_t** get_stat_segment_combined_counter_data() const;
 
   private:
     /**
@@ -89,9 +77,9 @@ public:
     union
     {
       double m_scalar_value;
-      uint64_t m_error_Value;
-      uint64_t** m_simple_counter_vec;
-      counter_t** m_combined_counter_vec;
+      uint64_t m_error_value;
+      counter_t** m_simple_counter_vec;
+      vlib_counter_t** m_combined_counter_vec;
     };
   };
 
@@ -141,21 +129,6 @@ public:
   void disconnect();
 
   /**
-   * Get vector length of VPP style vector
-   */
-  int vec_len(void* vec);
-
-  /**
-   * Free VPP style vector
-   */
-  void vec_free(void* vec);
-
-  /**
-   * ls on the stat directory using given pattern
-   */
-  void ls();
-
-  /**
    * dump all the stats for given pattern
    */
   const stat_data_vec_t& dump();
@@ -166,9 +139,9 @@ public:
   const stat_data_vec_t& dump_entry(uint32_t index);
 
   /**
-   * Free stat segment data
+   * Get vector length of VPP style vector
    */
-  void data_free();
+  int vec_len(void* vec);
 
   double heartbeat();
 
@@ -178,6 +151,21 @@ public:
   std::string index_to_name(uint32_t index);
 
 private:
+  /**
+   * Free VPP style vector
+   */
+  void vec_free(void* vec);
+
+  /**
+   * Free stat segment data
+   */
+  void data_free();
+
+  /**
+   * ls on the stat directory using given pattern
+   */
+  void ls();
+
   /**
    * socket name
    */

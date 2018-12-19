@@ -378,6 +378,17 @@ struct l2_address_t
   std::vector<uint8_t> bytes;
 };
 
+struct counter_t
+{
+  counter_t()
+    : packets(0)
+    , bytes(0)
+  {
+  }
+  uint64_t packets;
+  uint64_t bytes;
+};
+
 /**
  * Ostream operator for a MAC address
  */
