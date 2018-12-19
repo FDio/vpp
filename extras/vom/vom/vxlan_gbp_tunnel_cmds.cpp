@@ -47,10 +47,11 @@ create_cmd::issue(connection& con)
   payload.is_add = 1;
 
   to_api(m_ep.src, payload.tunnel.src);
-  to_api(m_ep.src, payload.tunnel.dst);
+  to_api(m_ep.dst, payload.tunnel.dst);
   payload.tunnel.mcast_sw_if_index = m_mcast_itf.value();
   payload.tunnel.encap_table_id = 0;
   payload.tunnel.vni = m_ep.vni;
+  payload.tunnel.instance = ~0;
 
   VAPI_CALL(req.execute());
 
@@ -67,7 +68,8 @@ std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "vxlan-gbp-tunnel-create: " << m_hw_item.to_string() << m_ep.to_string();
+  s << "vxlan-gbp-tunnel-create: " << m_hw_item.to_string() << " "
+    << m_ep.to_string();
 
   return (s.str());
 }
@@ -95,7 +97,7 @@ delete_cmd::issue(connection& con)
   payload.is_add = 0;
 
   to_api(m_ep.src, payload.tunnel.src);
-  to_api(m_ep.src, payload.tunnel.dst);
+  to_api(m_ep.dst, payload.tunnel.dst);
   payload.tunnel.mcast_sw_if_index = ~0;
   payload.tunnel.encap_table_id = 0;
   payload.tunnel.vni = m_ep.vni;
