@@ -76,7 +76,7 @@ PYTHON_EXTRA_DEPENDS=
 endif
 
 PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
-SCAPY_SOURCE=$(shell find $(VENV_PATH) -name site-packages)
+SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
 BUILD_COV_DIR=$(TEST_DIR)/coverage
 
 GET_PIP_SCRIPT=$(TEST_RUN_DIR)/get-pip.py
