@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ec63e41b_0bbeef92",
+        "filename": "docs/gettingstarted/developers/buildwireshark.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-19T11:29:36Z",
+      "side": 1,
+      "message": "Not aligned from right.",
+      "range": {
+        "startLine": 12,
+        "startChar": 40,
+        "endLine": 12,
+        "endChar": 41
+      },
+      "revId": "01fdbcca130a6575712de99e26f46e21da432d40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "53131e02_a1f9adf3",
+        "filename": "docs/gettingstarted/developers/buildwireshark.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-19T11:29:36Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 14,
+        "startChar": 62,
+        "endLine": 14,
+        "endChar": 63
+      },
+      "revId": "01fdbcca130a6575712de99e26f46e21da432d40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
