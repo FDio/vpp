@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 #
 #   BSD LICENSE
 #
@@ -646,6 +646,7 @@ def main():
     get_nic_details()
     get_crypto_details()
     do_arg_actions()
+
 
 if __name__ == "__main__":
     main()
