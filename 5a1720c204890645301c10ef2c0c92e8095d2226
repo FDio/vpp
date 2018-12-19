@@ -22,6 +22,30 @@
       "revId": "5a1720c204890645301c10ef2c0c92e8095d2226",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15ba83e9_3d9ee27e",
+        "filename": "extras/vom/vom/stat_reader.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-19T13:43:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "96a8a419_d94bc17e",
+      "range": {
+        "startLine": 87,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 62
+      },
+      "revId": "5a1720c204890645301c10ef2c0c92e8095d2226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
