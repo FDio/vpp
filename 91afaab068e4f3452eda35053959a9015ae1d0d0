@@ -22,6 +22,30 @@
       "revId": "91afaab068e4f3452eda35053959a9015ae1d0d0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "65e234cd_b5869351",
+        "filename": "test/vpp_mac.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-19T15:14:46Z",
+      "side": 1,
+      "message": "When I spoke with the original author for clarification, the intent was for the field to be read-only and only set in the constructor.  Otherwise, yes, we could remove the address property and set self.address directly.  The purpose of creating a property is to ensure method invocation on each accession.  This property method just evaluates and returns the guarded value.",
+      "parentUuid": "a1668a11_995e8f37",
+      "range": {
+        "startLine": 11,
+        "startChar": 13,
+        "endLine": 11,
+        "endChar": 21
+      },
+      "revId": "91afaab068e4f3452eda35053959a9015ae1d0d0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
