@@ -12,7 +12,7 @@
 # limitations under the License.
 
 """CPU utilities library."""
-
+from __future__ import absolute_import, division
 import re
 
 from vpplib.VPPUtil import VPPUtil
@@ -43,8 +43,8 @@ class CpuUtils(object):
     @staticmethod
     def is_smt_enabled(cpu_info):
         """Uses CPU mapping to find out if SMT is enabled or not. If SMT is
-        enabled, the L1d,L1i,L2,L3 setting is the same for two processors. These
-        two processors are two threads of one core.
+        enabled, the L1d,L1i,L2,L3 setting is the same for two processors.
+        These two processors are two threads of one core.
 
         :param cpu_info: CPU info, the output of "lscpu -p".
         :type cpu_info: list
@@ -53,7 +53,7 @@ class CpuUtils(object):
         """
 
         cpu_mems = [item[-4:] for item in cpu_info]
-        cpu_mems_len = len(cpu_mems) / CpuUtils.NR_OF_THREADS
+        cpu_mems_len = len(cpu_mems) // CpuUtils.NR_OF_THREADS
         count = 0
         for cpu_mem in cpu_mems[:cpu_mems_len]:
             if cpu_mem in cpu_mems[cpu_mems_len:]:
@@ -137,7 +137,7 @@ class CpuUtils(object):
 
         if smt_enabled and not smt_used:
             cpu_list_len = len(cpu_list)
-            cpu_list = cpu_list[:cpu_list_len / CpuUtils.NR_OF_THREADS]
+            cpu_list = cpu_list[:cpu_list_len // CpuUtils.NR_OF_THREADS]
 
         return cpu_list
 
@@ -171,8 +171,8 @@ class CpuUtils(object):
             cpu_cnt = cpu_list_len - skip_cnt
 
         if smt_used:
-            cpu_list_0 = cpu_list[:cpu_list_len / CpuUtils.NR_OF_THREADS]
-            cpu_list_1 = cpu_list[cpu_list_len / CpuUtils.NR_OF_THREADS:]
+            cpu_list_0 = cpu_list[:cpu_list_len // CpuUtils.NR_OF_THREADS]
+            cpu_list_1 = cpu_list[cpu_list_len // CpuUtils.NR_OF_THREADS:]
             cpu_list = [cpu for cpu in cpu_list_0[skip_cnt:skip_cnt + cpu_cnt]]
             cpu_list_ex = [cpu for cpu in
                            cpu_list_1[skip_cnt:skip_cnt + cpu_cnt]]
@@ -236,8 +236,8 @@ class CpuUtils(object):
                                                        smt_used=smt_used)
         if smt_used:
             cpu_list_len = len(cpu_list)
-            cpu_list_0 = cpu_list[:cpu_list_len / CpuUtils.NR_OF_THREADS]
-            cpu_list_1 = cpu_list[cpu_list_len / CpuUtils.NR_OF_THREADS:]
+            cpu_list_0 = cpu_list[:cpu_list_len // CpuUtils.NR_OF_THREADS]
+            cpu_list_1 = cpu_list[cpu_list_len // CpuUtils.NR_OF_THREADS:]
             cpu_range = "{}{}{},{}{}{}".format(cpu_list_0[0], sep,
                                                cpu_list_0[-1],
                                                cpu_list_1[0], sep,

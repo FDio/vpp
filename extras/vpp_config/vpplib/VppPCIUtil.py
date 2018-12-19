@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 """VPP PCI Utility libraries"""
 
 import re
@@ -44,7 +46,7 @@ class VppPCIUtil(object):
 
         ids = re.findall(PCI_DEV_ID_REGEX, device_string)
         descriptions = re.findall(r'\'([\s\S]*?)\'', device_string)
-        unused = re.findall(r'unused=[\w,]+', device_string)
+        unused = re.findall(r'unused=\w+|unused=', device_string)
 
         for i, j in enumerate(ids):
             device = {'description': descriptions[i]}
@@ -268,8 +270,8 @@ class VppPCIUtil(object):
         dashseparator = ("-" * (len(header) - 2))
 
         if show_header is True:
-            print header
-            print dashseparator
+            print (header)
+            print (dashseparator)
         for dit in devices.items():
             dvid = dit[0]
             device = dit[1]
@@ -282,11 +284,11 @@ class VppPCIUtil(object):
                     else:
                         interface = interfaces[i]
 
-                print "{:15} {:25} {:50}".format(
-                    dvid, interface, device['description'])
+                print ("{:15} {:25} {:50}".format(
+                    dvid, interface, device['description']))
             else:
-                print "{:15} {:50}".format(
-                    dvid, device['description'])
+                print ("{:15} {:50}".format(
+                    dvid, device['description']))
 
     @staticmethod
     def unbind_vpp_device(node, device_id):

@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 """VPP Huge Page Utilities"""
 
 import re
@@ -95,16 +97,16 @@ class VppHugePageUtil(object):
 
         node = self._node
         hugepages = node['hugepages']
-        print "  {:30}: {}".format("Total System Memory",
-                                   hugepages['memtotal'])
-        print "  {:30}: {}".format("Total Free Memory",
-                                   hugepages['memfree'])
-        print "  {:30}: {}".format("Actual Huge Page Total",
-                                   hugepages['actual_total'])
-        print "  {:30}: {}".format("Configured Huge Page Total",
-                                   hugepages['total'])
-        print "  {:30}: {}".format("Huge Pages Free", hugepages['free'])
-        print "  {:30}: {}".format("Huge Page Size", hugepages['size'])
+        print ("  {:30}: {}".format("Total System Memory",
+                                   hugepages['memtotal']))
+        print ("  {:30}: {}".format("Total Free Memory",
+                                    hugepages['memfree']))
+        print ("  {:30}: {}".format("Actual Huge Page Total",
+                                    hugepages['actual_total']))
+        print ("  {:30}: {}".format("Configured Huge Page Total",
+                                    hugepages['total']))
+        print ("  {:30}: {}".format("Huge Pages Free", hugepages['free']))
+        print ("  {:30}: {}".format("Huge Page Size", hugepages['size']))
 
     def get_huge_page_config(self):
         """
