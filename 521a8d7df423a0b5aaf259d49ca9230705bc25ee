@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6c812b64_461bbdae",
+        "filename": "src/vnet/adj/adj.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-19T15:55:45Z",
+      "side": 1,
+      "message": "adjacency",
+      "range": {
+        "startLine": 216,
+        "startChar": 17,
+        "endLine": 216,
+        "endChar": 26
+      },
+      "revId": "521a8d7df423a0b5aaf259d49ca9230705bc25ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
