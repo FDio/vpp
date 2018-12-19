@@ -886,9 +886,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vec_add1 (wrk->pending_disconnects, *e);
 	      continue;
 	    }
-	  /* If tx queue is still not empty, wait */
-	  if (svm_fifo_max_dequeue (s->server_tx_fifo))
+	  /* If tx queue is still not empty, try to wait */
+	  if (e->postponed < 200 && svm_fifo_max_dequeue (s->server_tx_fifo))
 	    {
+	      e->postponed += 1;
 	      vec_add1 (wrk->pending_disconnects, *e);
 	      continue;
 	    }

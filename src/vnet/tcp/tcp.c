@@ -344,6 +344,9 @@ tcp_connection_close (tcp_connection_t * tc)
       else
 	tc->flags |= TCP_CONN_FINPNDG;
       tc->state = TCP_STATE_FIN_WAIT_1;
+      /* Set a timer in case the peer stops responding. Otherwise the
+       * connection will be stuck here forever. */
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_CLOSE_WAIT:
       if (!session_tx_fifo_max_dequeue (&tc->connection))
@@ -1252,9 +1255,7 @@ tcp_timer_waitclose_handler (u32 conn_index)
   if (tc->state == TCP_STATE_CLOSE_WAIT)
     {
       if (tc->flags & TCP_CONN_FINSNT)
-	{
-	  clib_warning ("FIN was sent and still in CLOSE WAIT. Weird!");
-	}
+	TCP_DBG ("FIN was sent and still in CLOSE WAIT!");
 
       /* Make sure we don't try to send unsent data */
       tcp_connection_timers_reset (tc);
@@ -1267,6 +1268,15 @@ tcp_timer_waitclose_handler (u32 conn_index)
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 
       /* Don't delete the connection yet */
+      return;
+    }
+  else if (tc->state == TCP_STATE_ESTABLISHED)
+    {
+      if (!(tc->flags & TCP_CONN_FINPNDG))
+	TCP_DBG ("Wait close popped in established");
+      /* Wait for session layer to clean up tx events */
+      tc->state = TCP_STATE_CLOSED;
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, 1);
       return;
     }
 
