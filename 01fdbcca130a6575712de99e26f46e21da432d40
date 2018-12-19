@@ -45,6 +45,98 @@
       "revId": "01fdbcca130a6575712de99e26f46e21da432d40",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "87c351ba_b3442ad2",
+        "filename": "docs/gettingstarted/developers/vnet.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-19T13:33:35Z",
+      "side": 1,
+      "message": "of",
+      "range": {
+        "startLine": 332,
+        "startChar": 42,
+        "endLine": 332,
+        "endChar": 43
+      },
+      "revId": "01fdbcca130a6575712de99e26f46e21da432d40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b70c0a84_5fa65480",
+        "filename": "docs/gettingstarted/developers/vnet.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-19T13:33:35Z",
+      "side": 1,
+      "message": "can you expand on why?",
+      "range": {
+        "startLine": 355,
+        "startChar": 58,
+        "endLine": 355,
+        "endChar": 68
+      },
+      "revId": "01fdbcca130a6575712de99e26f46e21da432d40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6ba26c14_0615ab48",
+        "filename": "docs/gettingstarted/developers/vnet.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-19T13:33:35Z",
+      "side": 1,
+      "message": "Whitespace. \ngit rebase -f master --whitespace\u003dfix ?",
+      "range": {
+        "startLine": 376,
+        "startChar": 3,
+        "endLine": 376,
+        "endChar": 7
+      },
+      "revId": "01fdbcca130a6575712de99e26f46e21da432d40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "02082b76_82712cdd",
+        "filename": "docs/gettingstarted/developers/vnet.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-19T13:33:35Z",
+      "side": 1,
+      "message": "[\"How to build a vpp dispatch trace aware Wireshark\"] (./buildwireshark.md)",
+      "range": {
+        "startLine": 385,
+        "startChar": 8,
+        "endLine": 385,
+        "endChar": 59
+      },
+      "revId": "01fdbcca130a6575712de99e26f46e21da432d40",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
