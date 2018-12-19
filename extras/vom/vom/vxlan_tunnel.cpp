@@ -26,8 +26,8 @@ const std::string VXLAN_TUNNEL_NAME = "vxlan-tunnel-itf";
 vxlan_tunnel::event_handler vxlan_tunnel::m_evh;
 
 const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::STANDARD(0, "standard");
-const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::GBP(0, "GBP");
-const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::GPE(0, "GPE");
+const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::GBP(1, "GBP");
+const vxlan_tunnel::mode_t vxlan_tunnel::mode_t::GPE(2, "GPE");
 
 vxlan_tunnel::mode_t::mode_t(int v, const std::string s)
   : enum_base<vxlan_tunnel::mode_t>(v, s)

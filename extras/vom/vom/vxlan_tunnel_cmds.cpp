@@ -66,7 +66,8 @@ std::string
 create_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "vxlan-tunnel-create: " << m_hw_item.to_string() << m_ep.to_string();
+  s << "vxlan-tunnel-create: " << m_hw_item.to_string() << " "
+    << m_ep.to_string();
 
   return (s.str());
 }
