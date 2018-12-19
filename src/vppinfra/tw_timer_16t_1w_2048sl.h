@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef __included_tw_timer_16t_2w_512sl_h__
-#define __included_tw_timer_16t_2w_512sl_h__
+#ifndef __included_tw_timer_16t_1w_2048sl__
+#define __included_tw_timer_16t_1w_2048sl__
 
 /* ... So that a client app can create multiple wheel geometries */
 #undef TW_TIMER_WHEELS
@@ -41,7 +41,7 @@
 
 #include <vppinfra/tw_timer_template.h>
 
-#endif /* __included_tw_timer_16t_2w_512sl_h__ */
+#endif /* __included_tw_timer_16t_1w_2048sl__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
