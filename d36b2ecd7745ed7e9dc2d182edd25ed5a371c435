@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4432d93a_98d692ee",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-12-19T02:12:22Z",
+      "side": 1,
+      "message": "Fixing the py2/py3 thing properly - can I ask, does the VPP package *really* require python?  Or pciutils?  It shouldn\u0027t - this sounds like it\u0027s packaging helper scripts that should be separated from the main package.  Without understanding the reasoning, it is hard to see how to do this right: vpp needs python2, but I might only require the python3 papi.\n\nAlso, it shouldn\u0027t require the selinux policy, I would think.  I might not be running SELinux.",
+      "revId": "d36b2ecd7745ed7e9dc2d182edd25ed5a371c435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3197dfe7_b2c1de8f",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-12-19T02:12:22Z",
+      "side": 1,
+      "message": "And why would I use the VPP libs separately from VPP (and if I did would I need all of them)?",
+      "revId": "d36b2ecd7745ed7e9dc2d182edd25ed5a371c435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "52db422f_8025a80c",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-12-19T02:12:22Z",
+      "side": 1,
+      "message": "Plugins - weird that they\u0027re all in one file...",
+      "revId": "d36b2ecd7745ed7e9dc2d182edd25ed5a371c435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "70fad52e_c62c6f97",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-12-19T02:12:22Z",
+      "side": 1,
+      "message": "I very much doubt these are its only dependencies, but the packaging has a suspiciously short list of requirements, neither of which is mentioned here and neither of which is libffi-devel. It also requires enum34 even for python3 versions, so I\u0027m guessing it\u0027s seen no love.  Can we convert the Python packaging to PBR?",
+      "revId": "d36b2ecd7745ed7e9dc2d182edd25ed5a371c435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "046fef76_fa8b028c",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 1
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2018-12-19T02:12:22Z",
+      "side": 1,
+      "message": "Has anyone ever tested this?",
+      "revId": "d36b2ecd7745ed7e9dc2d182edd25ed5a371c435",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
