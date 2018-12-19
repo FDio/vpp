@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 """VPP util library"""
 import logging
 import re
@@ -46,13 +48,13 @@ class VPPUtil(object):
 
         with prc.stdout:
             for line in iter(prc.stdout.readline, b''):
-                logging.info("  {}".format(line.strip('\n')))
-                out += line
+                logging.info("  {}".format(line.strip(b'\n')))
+                out += line.decode()
 
         with prc.stderr:
             for line in iter(prc.stderr.readline, b''):
-                logging.warn("  {}".format(line.strip('\n')))
-                err += line
+                logging.warn("  {}".format(line.strip(b'\n')))
+                err += line.decode()
 
         ret = prc.wait()
 
@@ -135,7 +137,9 @@ class VPPUtil(object):
             sfd.close()
 
         # Add the key
-        key = requests.get('https://packagecloud.io/fdio/{}/gpgkey'.format(branch))
+
+        key = requests.get(
+            'https://packagecloud.io/fdio/{}/gpgkey'.format(branch))
         cmd = 'echo "{}" | apt-key add -'.format(key.content)
         (ret, stdout, stderr) = self.exec_command(cmd)
         if ret != 0:
@@ -205,28 +209,31 @@ class VPPUtil(object):
                 stderr))
 
         # Get the file contents
-        reps = '[fdio_{}]\n'.format(branch)
-        reps += 'name=fdio_{}\n'.format(branch)
-        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/$basearch\n'.format(branch)
-        reps += 'repo_gpgcheck=1\n'
-        reps += 'gpgcheck=0\n'
-        reps += 'enabled=1\n'
-        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(branch)
-        reps += 'sslverify=1\n'
-        reps += 'sslcacert=/etc/pki/tls/certs/ca-bundle.crt\n'
-        reps += 'metadata_expire=300\n'
-        reps += '\n'
-        reps += '[fdio_{}-source]\n'.format(branch)
-        reps += 'name=fdio_{}-source\n'.format(branch)
-        reps += 'baseurl=https://packagecloud.io/fdio/{}/el/7/SRPMS\n'.format(branch)
-        reps += 'repo_gpgcheck=1\n'
-        reps += 'gpgcheck=0\n'
-        reps += 'enabled=1\n'
-        reps += 'gpgkey=https://packagecloud.io/fdio/{}/gpgkey\n'.format(branch)
-        reps += 'sslverify =1\n'
-        reps += 'sslcacert=/etc/pki/tls/certs/ca-bundle.crt\n'
-        reps += 'metadata_expire=300\n'
 
+        reps = '\n'.join([
+            '[fdio_{}]'.format(branch),
+            'name=fdio_{}'.format(branch),
+            'baseurl=https://packagecloud.io/fdio/{}/el/7/$basearch'.format(
+                branch),
+            'repo_gpgcheck=1',
+            'gpgcheck=0',
+            'enabled=1',
+            'gpgkey=https://packagecloud.io/fdio/{}/gpgkey'.format(branch),
+            'sslverify=1',
+            'sslcacert=/etc/pki/tls/certs/ca-bundle.crt',
+            'metadata_expire=300\n',
+            '[fdio_{}-source]'.format(branch),
+            'name=fdio_release-{}'.format(branch),
+            'baseurl=https://packagecloud.io/fdio/{}/el/7/SRPMS'.format(
+                branch),
+            'repo_gpgcheck=1',
+            'gpgcheck=0',
+            'enabled=1',
+            'gpgkey=https://packagecloud.io/fdio/{}/gpgkey'.format(branch),
+            'sslverify =1',
+            'sslcacert=/etc/pki/tls/certs/ca-bundle.crt',
+            'metadata_expire=300\n'
+        ])
         with open(sfile, 'w') as sfd:
             sfd.write(reps)
             sfd.close()
@@ -240,7 +247,8 @@ class VPPUtil(object):
                 node['host'],
                 stderr))
 
-        cmd = "yum -q makecache -y --disablerepo='*' --enablerepo='fdio_{}'".format(branch)
+        cmd = "yum -q makecache -y --disablerepo='*' " \
+              "--enablerepo='fdio_{}'".format(branch)
         (ret, stdout, stderr) = self.exec_command(cmd)
         if ret != 0:
             logging.debug('{} failed on node {} {}'.format(
@@ -425,14 +433,15 @@ class VPPUtil(object):
 
         :param node: VPP node.
         :type node: dict
-        :returns: Dictionary containing a list of VMs and the interfaces that are connected to VPP
+        :returns: Dictionary containing a list of VMs and the interfaces
+                  that are connected to VPP
         :rtype: dictionary
         """
 
         vmdict = {}
 
-        print "Need to implement get vms"
-        
+        print ("Need to implement get vms")
+
         return vmdict
 
     @staticmethod
@@ -627,8 +636,10 @@ class VPPUtil(object):
     def get_interfaces_numa_node(node, *iface_keys):
         """Get numa node on which are located most of the interfaces.
 
-        Return numa node with highest count of interfaces provided as arguments.
-        Return 0 if the interface does not have numa_node information available.
+        Return numa node with highest count of interfaces provided as
+        arguments.
+        Return 0 if the interface does not have numa_node information
+        available.
         If all interfaces have unknown location (-1), then return 0.
         If most of interfaces have unknown location (-1), but there are
         some interfaces with known location, then return the second most
@@ -702,7 +713,9 @@ class VPPUtil(object):
         cmd = 'service vpp stop'
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
-            logging.debug('{} failed on node {} {} {}'.format(cmd, node['host'], stdout, stderr))
+            logging.debug('{} failed on node {} {} {}'.
+                          format(cmd, node['host'],
+                                 stdout, stderr))
 
     # noinspection RegExpRedundantEscape
     @staticmethod
@@ -754,11 +767,12 @@ class VPPUtil(object):
 
         distro = platform.linux_distribution()
         if distro[0] == 'Ubuntu' or \
-                        distro[0] == 'CentOS Linux' or \
-                        distro[:7] == 'Red Hat':
+                distro[0] == 'CentOS Linux' or \
+                distro[:7] == 'Red Hat':
             return distro
         else:
-            raise RuntimeError('Linux Distribution {} is not supported'.format(distro[0]))
+            raise RuntimeError(
+                'Linux Distribution {} is not supported'.format(distro[0]))
 
     @staticmethod
     def version():
@@ -810,7 +824,7 @@ class VPPUtil(object):
         bridges = []
         for line in lines:
             if line == 'no bridge-domains in use':
-                print line
+                print (line)
                 return ifaces
             if len(line) == 0:
                 continue
@@ -834,5 +848,5 @@ class VPPUtil(object):
                 ifcidx = {'name': iface[0], 'index': line.split()[1]}
                 ifaces.append(ifcidx)
 
-        print stdout
+        print (stdout)
         return ifaces

@@ -12,12 +12,13 @@
 # limitations under the License.
 
 """Library that supports Auto Configuration."""
+from __future__ import absolute_import, division, print_function
 
 import logging
 import os
 import re
 import yaml
-from netaddr import IPAddress
+from ipaddress import ip_address
 
 from vpplib.VPPUtil import VPPUtil
 from vpplib.VppPCIUtil import VppPCIUtil
@@ -25,6 +26,12 @@ from vpplib.VppHugePageUtil import VppHugePageUtil
 from vpplib.CpuUtils import CpuUtils
 from vpplib.VppGrubUtil import VppGrubUtil
 from vpplib.QemuUtils import QemuUtils
+
+#  Python2/3 compatible
+try:
+    input = raw_input  # noqa
+except NameError:
+    pass
 
 __all__ = ["AutoConfig"]
 
@@ -104,18 +111,18 @@ class AutoConfig(object):
         """
 
         while True:
-            answer = raw_input("Please enter the IPv4 Address [n.n.n.n/n]: ")
+            answer = input("Please enter the IPv4 Address [n.n.n.n/n]: ")
             try:
                 ipinput = answer.split('/')
-                ipaddr = IPAddress(ipinput[0])
+                ipaddr = ip_address(ipinput[0])
                 if len(ipinput) > 1:
                     plen = answer.split('/')[1]
                 else:
-                    answer = raw_input("Please enter the netmask [n.n.n.n]: ")
-                    plen = IPAddress(answer).netmask_bits()
+                    answer = input("Please enter the netmask [n.n.n.n]: ")
+                    plen = ip_address(answer).netmask_bits()
                 return '{}/{}'.format(ipaddr, plen)
             except None:
-                print "Please enter a valid IPv4 address."
+                print("Please enter a valid IPv4 address.")
 
     @staticmethod
     def _ask_user_range(question, first, last, default):
@@ -136,7 +143,7 @@ class AutoConfig(object):
         """
 
         while True:
-            answer = raw_input(question)
+            answer = input(question)
             if answer == '':
                 answer = default
                 break
@@ -144,11 +151,11 @@ class AutoConfig(object):
                 if int(answer) in range(first, last + 1):
                     break
                 else:
-                    print "Please a value between {} and {} or Return.". \
-                        format(first, last)
+                    print("Please a value between {} and {} or Return.".
+                          format(first, last))
             else:
-                print "Please a number between {} and {} or Return.". \
-                    format(first, last)
+                print("Please a number between {} and {} or Return.".
+                      format(first, last))
 
         return int(answer)
 
@@ -169,14 +176,14 @@ class AutoConfig(object):
         default = default.lower()
         answer = ''
         while not input_valid:
-            answer = raw_input(question)
+            answer = input(question)
             if answer == '':
                 answer = default
             if re.findall(r'[YyNn]', answer):
                 input_valid = True
                 answer = answer[0].lower()
             else:
-                print "Please answer Y, N or Return."
+                print("Please answer Y, N or Return.")
 
         return answer
 
@@ -194,7 +201,9 @@ class AutoConfig(object):
                 if 'metadata' in topo:
                     self._metadata = topo['metadata']
             except yaml.YAMLError as exc:
-                raise RuntimeError("Couldn't read the Auto config file {}.".format(self._autoconfig_filename, exc))
+                raise RuntimeError(
+                    "Couldn't read the Auto config file {}.".format(
+                        self._autoconfig_filename, exc))
 
         systemfile = self._rootdir + self._metadata['system_config_file']
         if self._clean is False and os.path.isfile(systemfile):
@@ -204,7 +213,9 @@ class AutoConfig(object):
                     if 'nodes' in systopo:
                         self._nodes = systopo['nodes']
                 except yaml.YAMLError as sysexc:
-                    raise RuntimeError("Couldn't read the System config file {}.".format(systemfile, sysexc))
+                    raise RuntimeError(
+                        "Couldn't read the System config file {}.".format(
+                            systemfile, sysexc))
         else:
             # Get the nodes from Auto Config
             if 'nodes' in topo:
@@ -246,7 +257,7 @@ class AutoConfig(object):
                 if 'nodes' in ydata:
                     nodes = ydata['nodes']
             except yaml.YAMLError as exc:
-                print exc
+                print(exc)
                 return
 
         for i in nodes.items():
@@ -413,7 +424,8 @@ class AutoConfig(object):
         return devices
 
     @staticmethod
-    def _calc_vpp_workers(node, vpp_workers, numa_node, other_cpus_end, total_vpp_workers,
+    def _calc_vpp_workers(node, vpp_workers, numa_node, other_cpus_end,
+                          total_vpp_workers,
                           reserve_vpp_main_core):
         """
         Calculate the VPP worker information
@@ -542,7 +554,8 @@ class AutoConfig(object):
 
             # Get the number of cpus to skip, we never use the first cpu
             other_cpus_start = 1
-            other_cpus_end = other_cpus_start + node['cpu']['total_other_cpus'] - 1
+            other_cpus_end = other_cpus_start + \
+                node['cpu']['total_other_cpus'] - 1
             other_workers = None
             if other_cpus_end is not 0:
                 other_workers = (other_cpus_start, other_cpus_end)
@@ -569,14 +582,16 @@ class AutoConfig(object):
                     value = item[1]
 
                     # Get the number of descriptors and queues
-                    mbufs = self._calc_desc_and_queues(len(ports_per_numa),
-                                                       len(value['interfaces']), total_rx_queues, value)
+                    mbufs = self._calc_desc_and_queues(
+                        len(ports_per_numa),
+                        len(value['interfaces']), total_rx_queues, value)
                     total_mbufs += mbufs
 
                     # Get the VPP workers
-                    reserve_vpp_main_core = self._calc_vpp_workers(node, vpp_workers, numa_node,
-                                                                   other_cpus_end, total_workers_node,
-                                                                   reserve_vpp_main_core)
+                    reserve_vpp_main_core = self._calc_vpp_workers(
+                        node, vpp_workers, numa_node,
+                        other_cpus_end, total_workers_node,
+                        reserve_vpp_main_core)
 
                 total_mbufs *= 2.5
                 total_mbufs = int(total_mbufs)
@@ -607,36 +622,43 @@ class AutoConfig(object):
 
         # Generate the api-segment gid vpp sheit in any case
         if (aos + pos) == 0:
-            tcp = "api-segment {\n"
-            tcp = tcp + "  gid vpp\n"
-            tcp = tcp + "}\n"
+            tcp = '\n'.join([
+                "api-segment {",
+                "  gid vpp",
+                "}"
+            ])
             return tcp.rstrip('\n')
 
-        tcp = "# TCP stack-related configuration parameters\n"
-        tcp = tcp + "# expecting {:d} client sessions, {:d} server sessions\n\n".format(aos, pos)
-        tcp = tcp + "heapsize 4g\n\n"
-        tcp = tcp + "api-segment {\n"
-        tcp = tcp + "  global-size 2000M\n"
-        tcp = tcp + "  api-size 1G\n"
-        tcp = tcp + "}\n\n"
+        tcp = '\n'.join([
+            "# TCP stack-related configuration parameters",
+            "# expecting {:d} client sessions, {:d} server sessions\n".format(
+                aos, pos),
+            "heapsize 4g\n",
+            "api-segment {",
+            "  global-size 2000M",
+            "  api-size 1G",
+            "}\n",
 
-        tcp = tcp + "session {\n"
-        tcp = tcp + "  event-queue-length " + "{:d}".format(aos + pos) + "\n"
-        tcp = tcp + "  preallocated-sessions " + "{:d}".format(aos + pos) + "\n"
-        tcp = tcp + "  v4-session-table-buckets " + "{:d}".format((aos + pos) / 4) + "\n"
-        tcp = tcp + "  v4-session-table-memory 3g\n"
+            "session {",
+            "  event-queue-length {:d}".format(aos + pos),
+            "  preallocated-sessions {:d}".format(aos + pos),
+            "  v4-session-table-buckets {:d}".format((aos + pos) // 4),
+            "  v4-session-table-memory 3g\n"
+        ])
         if aos > 0:
-            tcp = tcp + "  v4-halfopen-table-buckets " + \
-                  "{:d}".format((aos + pos) / 4) + "\n"
+            tcp = tcp + "  v4-halfopen-table-buckets {:d}".format(
+                (aos + pos) // 4) + "\n"
             tcp = tcp + "  v4-halfopen-table-memory 3g\n"
-            tcp = tcp + "  local-endpoints-table-buckets " + "{:d}".format((aos + pos) / 4) + "\n"
+            tcp = tcp + "  local-endpoints-table-buckets {:d}".format(
+                (aos + pos) // 4) + "\n"
             tcp = tcp + "  local-endpoints-table-memory 3g\n"
         tcp = tcp + "}\n\n"
 
         tcp = tcp + "tcp {\n"
-        tcp = tcp + "  preallocated-connections " + "{:d}".format(aos + pos) + "\n"
+        tcp = tcp + "  preallocated-connections {:d}".format(aos + pos) + "\n"
         if aos > 0:
-            tcp = tcp + "  preallocated-half-open-connections " + "{:d}".format(aos) + "\n"
+            tcp = tcp + "  preallocated-half-open-connections {:d}".format(
+                aos) + "\n"
         tcp = tcp + "}\n\n"
 
         return tcp.rstrip('\n')
@@ -923,22 +945,27 @@ class AutoConfig(object):
         :type numa_nodes: list
         """
 
-        print "\nYour system has {} core(s) and {} Numa Nodes.". \
-            format(total_cpus, len(numa_nodes))
-        print "To begin, we suggest not reserving any cores for VPP or other processes."
-        print "Then to improve performance start reserving cores and adding queues as needed. "
+        print("\nYour system has {} core(s) and {} Numa Nodes.".
+              format(total_cpus, len(numa_nodes)))
+        print("To begin, we suggest not reserving any cores for "
+              "VPP or other processes.")
+        print("Then to improve performance start reserving cores and "
+              "adding queues as needed.")
 
         max_vpp_cpus = 4
         total_vpp_cpus = 0
         if max_vpp_cpus > 0:
-            question = "\nHow many core(s) shall we reserve for VPP [0-{}][0]? ".format(max_vpp_cpus)
+            question = "\nHow many core(s) shall we reserve for " \
+                       "VPP [0-{}][0]? ".format(max_vpp_cpus)
             total_vpp_cpus = self._ask_user_range(question, 0, max_vpp_cpus, 0)
             node['cpu']['total_vpp_cpus'] = total_vpp_cpus
 
         max_other_cores = (total_cpus - total_vpp_cpus) / 2
-        question = 'How many core(s) do you want to reserve for processes other than VPP? [0-{}][0]? '. \
+        question = 'How many core(s) do you want to reserve for ' \
+                   'processes other than VPP? [0-{}][0]? '. \
             format(str(max_other_cores))
-        total_other_cpus = self._ask_user_range(question, 0, max_other_cores, 0)
+        total_other_cpus = self._ask_user_range(
+            question, 0, max_other_cores, 0)
         node['cpu']['total_other_cpus'] = total_other_cpus
 
         max_main_cpus = max_vpp_cpus + 1 - total_vpp_cpus
@@ -952,8 +979,8 @@ class AutoConfig(object):
             node['cpu']['reserve_vpp_main_core'] = reserve_vpp_main_core
             node['cpu']['vpp_main_core'] = 0
 
-        question = "How many RX queues per port shall we use for VPP [1-4][1]? ". \
-            format(max_vpp_cpus)
+        question = "How many RX queues per port shall we use for " \
+                   "VPP [1-4][1]? ".format(max_vpp_cpus)
         total_rx_queues = self._ask_user_range(question, 1, 4, 1)
         node['cpu']['total_rx_queues'] = total_rx_queues
 
@@ -1030,8 +1057,8 @@ class AutoConfig(object):
 
         odevices_len = len(other_devices)
         if odevices_len > 0:
-            print "\nThese device(s) are currently NOT being used",
-            print "by VPP or the OS.\n"
+            print("\nThese device(s) are currently NOT being used "
+                  "by VPP or the OS.\n")
             VppPCIUtil.show_vpp_devices(other_devices, show_interfaces=False)
             question = "\nWould you like to give any of these devices"
             question += " back to the OS [Y/n]? "
@@ -1046,11 +1073,15 @@ class AutoConfig(object):
                     question += " the OS [y/N]? "
                     answer = self._ask_user_yn(question, 'n')
                     if answer == 'y':
-                        if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                        if 'unused' in device and len(
+                                device['unused']) != 0 and \
+                                device['unused'][0] != '':
                             driver = device['unused'][0]
-                            ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                            ret = VppPCIUtil.bind_vpp_device(
+                                node, driver, dvid)
                             if ret:
-                                logging.debug('Could not bind device {}'.format(dvid))
+                                logging.debug(
+                                    'Could not bind device {}'.format(dvid))
                             else:
                                 vppd[dvid] = device
                 for dit in vppd.items():
@@ -1061,8 +1092,8 @@ class AutoConfig(object):
 
         odevices_len = len(other_devices)
         if odevices_len > 0:
-            print "\nThese device(s) are still NOT being used ",
-            print "by VPP or the OS.\n"
+            print("\nThese device(s) are still NOT being used "
+                  "by VPP or the OS.\n")
             VppPCIUtil.show_vpp_devices(other_devices, show_interfaces=False)
             question = "\nWould you like use any of these for VPP [y/N]? "
             answer = self._ask_user_yn(question, 'N')
@@ -1079,12 +1110,16 @@ class AutoConfig(object):
                 for dit in vppd.items():
                     dvid = dit[0]
                     device = dit[1]
-                    if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                    if 'unused' in device and len(device['unused']) != 0 and \
+                            device['unused'][0] != '':
                         driver = device['unused'][0]
-                        logging.debug('Binding device {} to driver {}'.format(dvid, driver))
+                        logging.debug(
+                            'Binding device {} to driver {}'.format(dvid,
+                                                                    driver))
                         ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
                         if ret:
-                            logging.debug('Could not bind device {}'.format(dvid))
+                            logging.debug(
+                                'Could not bind device {}'.format(dvid))
                         else:
                             dpdk_devices[dvid] = device
                             del other_devices[dvid]
@@ -1141,11 +1176,11 @@ class AutoConfig(object):
 
             klen = len(kernel_devices)
             if klen > 0:
-                print "\nThese devices have kernel interfaces, but",
-                print "appear to be safe to use with VPP.\n"
+                print("\nThese devices have kernel interfaces, but "
+                      "appear to be safe to use with VPP.\n")
                 VppPCIUtil.show_vpp_devices(kernel_devices)
-                question = "\nWould you like to use any of these "
-                question += "device(s) for VPP [y/N]? "
+                question = "\nWould you like to use any of these " \
+                           "device(s) for VPP [y/N]? "
                 answer = self._ask_user_yn(question, 'n')
                 if answer == 'y':
                     vppd = {}
@@ -1161,20 +1196,27 @@ class AutoConfig(object):
                     for dit in vppd.items():
                         dvid = dit[0]
                         device = dit[1]
-                        if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                        if 'unused' in device and len(
+                                device['unused']) != 0 and device['unused'][
+                                0] != '':
                             driver = device['unused'][0]
-                            logging.debug('Binding device {} to driver {}'.format(dvid, driver))
-                            ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                            logging.debug(
+                                'Binding device {} to driver {}'.format(
+                                    dvid, driver))
+                            ret = VppPCIUtil.bind_vpp_device(
+                                node, driver, dvid)
                             if ret:
-                                logging.debug('Could not bind device {}'.format(dvid))
+                                logging.debug(
+                                    'Could not bind device {}'.format(dvid))
                             else:
                                 dpdk_devices[dvid] = device
                                 del kernel_devices[dvid]
 
             dlen = len(dpdk_devices)
             if dlen > 0:
-                print "\nThese device(s) will be used by VPP.\n"
-                VppPCIUtil.show_vpp_devices(dpdk_devices, show_interfaces=False)
+                print("\nThese device(s) will be used by VPP.\n")
+                VppPCIUtil.show_vpp_devices(dpdk_devices,
+                                            show_interfaces=False)
                 question = "\nWould you like to remove any of "
                 question += "these device(s) [y/N]? "
                 answer = self._ask_user_yn(question, 'n')
@@ -1191,12 +1233,18 @@ class AutoConfig(object):
                     for dit in vppd.items():
                         dvid = dit[0]
                         device = dit[1]
-                        if 'unused' in device and len(device['unused']) != 0 and device['unused'][0] != '':
+                        if 'unused' in device and len(
+                                device['unused']) != 0 and device['unused'][
+                                0] != '':
                             driver = device['unused'][0]
-                            logging.debug('Binding device {} to driver {}'.format(dvid, driver))
-                            ret = VppPCIUtil.bind_vpp_device(node, driver, dvid)
+                            logging.debug(
+                                'Binding device {} to driver {}'.format(
+                                    dvid, driver))
+                            ret = VppPCIUtil.bind_vpp_device(node, driver,
+                                                             dvid)
                             if ret:
-                                logging.debug('Could not bind device {}'.format(dvid))
+                                logging.debug(
+                                    'Could not bind device {}'.format(dvid))
                             else:
                                 kernel_devices[dvid] = device
                                 del dpdk_devices[dvid]
@@ -1208,8 +1256,8 @@ class AutoConfig(object):
                 VppPCIUtil.vpp_create_interface(interfaces, dvid, device)
             node['interfaces'] = interfaces
 
-            print "\nThese device(s) will be used by VPP, please",
-            print "rerun this option if this is incorrect.\n"
+            print("\nThese device(s) will be used by VPP, please "
+                  "rerun this option if this is incorrect.\n")
             VppPCIUtil.show_vpp_devices(dpdk_devices, show_interfaces=False)
 
         self._update_auto_config()
@@ -1231,18 +1279,19 @@ class AutoConfig(object):
             hugesize = int(size.split(' ')[0])
             # The max number of huge pages should be no more than
             # 70% of total free memory
-            maxpages = (int(memfree) * MAX_PERCENT_FOR_HUGE_PAGES / 100) / hugesize
-            print "\nThere currently {} {} huge pages free.". \
-                format(free, size)
-            question = "Do you want to reconfigure the number of "
-            question += "huge pages [y/N]? "
+            maxpages = (int(memfree) * MAX_PERCENT_FOR_HUGE_PAGES // 100) // \
+                hugesize
+            print("\nThere currently {} {} huge pages free.".format(
+                free, size))
+            question = "Do you want to reconfigure the number of " \
+                       "huge pages [y/N]? "
             answer = self._ask_user_yn(question, 'n')
             if answer == 'n':
                 node['hugepages']['total'] = total
                 continue
 
-            print "\nThere currently a total of {} huge pages.". \
-                format(total)
+            print("\nThere currently a total of {} huge pages.".
+                  format(total))
             question = "How many huge pages do you want [{} - {}][{}]? ". \
                 format(MIN_TOTAL_HUGE_PAGES, maxpages, MIN_TOTAL_HUGE_PAGES)
             answer = self._ask_user_range(question, 1024, maxpages, 1024)
@@ -1271,16 +1320,16 @@ class AutoConfig(object):
         for i in self._nodes.items():
             node = i[1]
 
-            question = "\nHow many active-open / tcp client sessions are expected "
-            question = question + "[0-10000000][0]? "
+            question = "\nHow many active-open / tcp client sessions are " \
+                       "expected [0-10000000][0]? "
             answer = self._ask_user_range(question, 0, 10000000, 0)
             # Less than 10K is equivalent to 0
             if int(answer) < 10000:
                 answer = 0
             node['tcp']['active_open_sessions'] = answer
 
-            question = "How many passive-open / tcp server sessions are expected "
-            question = question + "[0-10000000][0]? "
+            question = "How many passive-open / tcp server sessions are " \
+                       "expected [0-10000000][0]? "
             answer = self._ask_user_range(question, 0, 10000000, 0)
             # Less than 10K is equivalent to 0
             if int(answer) < 10000:
@@ -1302,7 +1351,7 @@ class AutoConfig(object):
         :type node: dict
         """
 
-        print '\nWe are patching the node "{}":\n'.format(node['host'])
+        print('\nWe are patching the node "{}":\n'.format(node['host']))
         QemuUtils.build_qemu(node, force_install=True, apply_patch=True)
 
     @staticmethod
@@ -1316,44 +1365,44 @@ class AutoConfig(object):
 
         item = 'Model name'
         if item in cpu:
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
         item = 'CPU(s)'
         if item in cpu:
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
         item = 'Thread(s) per core'
         if item in cpu:
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
         item = 'Core(s) per socket'
         if item in cpu:
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
         item = 'Socket(s)'
         if item in cpu:
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
         item = 'NUMA node(s)'
         numa_nodes = 0
         if item in cpu:
             numa_nodes = int(cpu[item])
-        for i in xrange(0, numa_nodes):
+        for i in range(0, numa_nodes):
             item = "NUMA node{} CPU(s)".format(i)
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
         item = 'CPU max MHz'
         if item in cpu:
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
         item = 'CPU min MHz'
         if item in cpu:
-            print "{:>20}:    {}".format(item, cpu[item])
+            print("{:>20}:    {}".format(item, cpu[item]))
 
         if node['cpu']['smt_enabled']:
             smt = 'Enabled'
         else:
             smt = 'Disabled'
-        print "{:>20}:    {}".format('SMT', smt)
+        print("{:>20}:    {}".format('SMT', smt))
 
         # VPP Threads
-        print "\nVPP Threads: (Name: Cpu Number)"
+        print("\nVPP Threads: (Name: Cpu Number)")
         vpp_processes = cpu['vpp_processes']
         for i in vpp_processes.items():
-            print "  {:10}: {:4}".format(i[0], i[1])
+            print("  {:10}: {:4}".format(i[0], i[1]))
 
     @staticmethod
     def device_info(node):
@@ -1365,53 +1414,53 @@ class AutoConfig(object):
         if 'cpu' in node and 'total_mbufs' in node['cpu']:
             total_mbufs = node['cpu']['total_mbufs']
             if total_mbufs is not 0:
-                print "Total Number of Buffers: {}".format(total_mbufs)
+                print("Total Number of Buffers: {}".format(total_mbufs))
 
         vpp = VppPCIUtil(node)
         vpp.get_all_devices()
         linkup_devs = vpp.get_link_up_devices()
         if len(linkup_devs):
-            print ("\nDevices with link up (can not be used with VPP):")
+            print("\nDevices with link up (can not be used with VPP):")
             vpp.show_vpp_devices(linkup_devs, show_header=False)
             # for dev in linkup_devs:
             #    print ("    " + dev)
         kernel_devs = vpp.get_kernel_devices()
         if len(kernel_devs):
-            print ("\nDevices bound to kernel drivers:")
+            print("\nDevices bound to kernel drivers:")
             vpp.show_vpp_devices(kernel_devs, show_header=False)
         else:
-            print ("\nNo devices bound to kernel drivers")
+            print("\nNo devices bound to kernel drivers")
 
         dpdk_devs = vpp.get_dpdk_devices()
         if len(dpdk_devs):
-            print ("\nDevices bound to DPDK drivers:")
+            print("\nDevices bound to DPDK drivers:")
             vpp.show_vpp_devices(dpdk_devs, show_interfaces=True,
                                  show_header=False)
         else:
-            print ("\nNo devices bound to DPDK drivers")
+            print("\nNo devices bound to DPDK drivers")
 
         other_devs = vpp.get_other_devices()
         if len(other_devs):
-            print ("\nDevices not bound to Kernel or DPDK drivers:")
+            print("\nDevices not bound to Kernel or DPDK drivers:")
             vpp.show_vpp_devices(other_devs, show_interfaces=True,
                                  show_header=False)
         else:
-            print ("\nNo devices not bound to Kernel or DPDK drivers")
+            print("\nNo devices not bound to Kernel or DPDK drivers")
 
         vpputl = VPPUtil()
         interfaces = vpputl.get_hardware(node)
         if interfaces == {}:
             return
 
-        print ("\nDevices in use by VPP:")
+        print("\nDevices in use by VPP:")
 
         if len(interfaces.items()) < 2:
-            print ("None")
+            print("None")
             return
 
-        print "{:30} {:4} {:4} {:7} {:4} {:7}". \
-            format('Name', 'Numa', 'RXQs',
-                   'RXDescs', 'TXQs', 'TXDescs')
+        print("{:30} {:4} {:4} {:7} {:4} {:7}".
+              format('Name', 'Numa', 'RXQs',
+                     'RXDescs', 'TXQs', 'TXDescs'))
         for intf in sorted(interfaces.items()):
             name = intf[0]
             value = intf[1]
@@ -1429,8 +1478,8 @@ class AutoConfig(object):
             if 'tx descs' in value:
                 tx_ds = int(value['tx descs'])
 
-            print ("{:30} {:>4} {:>4} {:>7} {:>4} {:>7}".
-                   format(name, numa, rx_qs, rx_ds, tx_qs, tx_ds))
+            print("{:30} {:>4} {:>4} {:>7} {:>4} {:>7}".
+                  format(name, numa, rx_qs, rx_ds, tx_qs, tx_ds))
 
     @staticmethod
     def hugepage_info(node):
@@ -1458,8 +1507,8 @@ class AutoConfig(object):
         if 'layout' in node['cpu']:
             total_cpus = len(node['cpu']['layout'])
             if total_cpus < 2:
-                print "\nThere is only {} CPU(s) available on this system.".format(total_cpus)
-                print "This is not enough to run VPP."
+                print("\nThere is only {} CPU(s) available on this system. "
+                      "This is not enough to run VPP.".format(total_cpus))
                 min_sys_res = False
 
         # System Memory
@@ -1474,8 +1523,12 @@ class AutoConfig(object):
             percentmemhugepages = (memhugepages / memfree) * 100
             if free is '0' and \
                     percentmemhugepages > MAX_PERCENT_FOR_HUGE_PAGES:
-                print "\nThe System has only {} of free memory.".format(int(memfree))
-                print "You will not be able to allocate enough Huge Pages for VPP."
+                print(
+                    "\nThe System has only {} of free memory. You will not "
+                    "be able to allocate enough Huge Pages for VPP.".format(
+                        int(
+                            memfree))
+                )
                 min_sys_res = False
 
         return min_sys_res
@@ -1487,45 +1540,43 @@ class AutoConfig(object):
         """
 
         for i in self._nodes.items():
-            print "\n=============================="
+            print("\n==============================")
             name = i[0]
             node = i[1]
 
-            print "NODE: {}\n".format(name)
+            print("NODE: {}\n".format(name))
 
             # CPU
-            print "CPU:"
+            print("CPU:")
             self.cpu_info(node)
 
             # Grub
-            print "\nGrub Command Line:"
+            print("\nGrub Command Line:")
             if 'grub' in node:
-                print \
-                    "  Current: {}".format(
-                        node['grub']['current_cmdline'])
-                print \
-                    "  Configured: {}".format(
-                        node['grub']['default_cmdline'])
+                print("  Current: {}".format(
+                    node['grub']['current_cmdline']))
+                print("  Configured: {}".format(
+                    node['grub']['default_cmdline']))
 
             # Huge Pages
-            print "\nHuge Pages:"
+            print("\nHuge Pages:")
             self.hugepage_info(node)
 
             # Devices
-            print "\nDevices:"
+            print("\nDevices:")
             self.device_info(node)
 
             # Status
-            print "\nVPP Service Status:"
+            print("\nVPP Service Status:")
             state, errors = VPPUtil.status(node)
-            print "  {}".format(state)
+            print("  {}".format(state))
             for e in errors:
-                print "  {}".format(e)
+                print("  {}".format(e))
 
             # Minimum system resources
             self.min_system_resources(node)
 
-            print "\n=============================="
+            print("\n==============================")
 
     def _ipv4_interface_setup_questions(self, node):
         """
@@ -1549,7 +1600,8 @@ class AutoConfig(object):
             if name == 'local0':
                 continue
 
-            question = "Would you like add address to interface {} [Y/n]? ".format(name)
+            question = "Would you like add address to " \
+                       "interface {} [Y/n]? ".format(name)
             answer = self._ask_user_yn(question, 'y')
             if answer == 'y':
                 address = {}
@@ -1573,7 +1625,7 @@ class AutoConfig(object):
             # Show the current interfaces with IP addresses
             current_ints = VPPUtil.get_int_ip(node)
             if current_ints is not {}:
-                print ("\nThese are the current interfaces with IP addresses:")
+                print("\nThese are the current interfaces with IP addresses:")
                 for items in sorted(current_ints.items()):
                     name = items[0]
                     value = items[1]
@@ -1581,13 +1633,16 @@ class AutoConfig(object):
                         address = 'Not Set'
                     else:
                         address = value['address']
-                    print ("{:30} {:20} {:10}".format(name, address, value['state']))
-                question = "\nWould you like to keep this configuration [Y/n]? "
+                    print("{:30} {:20} {:10}".format(name, address,
+                                                     value['state']))
+                question = "\nWould you like to keep this configuration " \
+                           "[Y/n]? "
                 answer = self._ask_user_yn(question, 'y')
                 if answer == 'y':
                     continue
             else:
-                print ("\nThere are currently no interfaces with IP addresses.")
+                print("\nThere are currently no interfaces with IP "
+                      "addresses.")
 
             # Create a script that add the ip addresses to the interfaces
             # and brings the interfaces up
@@ -1653,24 +1708,32 @@ class AutoConfig(object):
             if name == 'local0':
                 continue
 
-            question = "Would you like connect this interface {} to the VM [Y/n]? ".format(name)
+            question = "Would you like connect this interface {} to " \
+                       "the VM [Y/n]? ".format(name)
             answer = self._ask_user_yn(question, 'y')
             if answer == 'y':
-                sockfilename = '/var/run/vpp/{}.sock'.format(name.replace('/', '_'))
+                sockfilename = '/var/run/vpp/{}.sock'.format(
+                    name.replace('/', '_'))
                 if os.path.exists(sockfilename):
                     os.remove(sockfilename)
-                cmd = 'vppctl create vhost-user socket {} server'.format(sockfilename)
+                cmd = 'vppctl create vhost-user socket {} server'.format(
+                    sockfilename)
                 (ret, stdout, stderr) = vpputl.exec_command(cmd)
                 if ret != 0:
-                    raise RuntimeError("Couldn't execute the command {}, {}.".format(cmd, stderr))
+                    raise RuntimeError(
+                        "Couldn't execute the command {}, {}.".format(cmd,
+                                                                      stderr))
                 vintname = stdout.rstrip('\r\n')
 
                 cmd = 'chmod 777 {}'.format(sockfilename)
                 (ret, stdout, stderr) = vpputl.exec_command(cmd)
                 if ret != 0:
-                    raise RuntimeError("Couldn't execute the command {}, {}.".format(cmd, stderr))
+                    raise RuntimeError(
+                        "Couldn't execute the command {}, {}.".format(cmd,
+                                                                      stderr))
 
-                interface = {'name': name, 'virtualinterface': '{}'.format(vintname),
+                interface = {'name': name,
+                             'virtualinterface': '{}'.format(vintname),
                              'bridge': '{}'.format(inum)}
                 inum += 1
                 interfaces_with_virtual_interfaces.append(interface)
@@ -1679,8 +1742,8 @@ class AutoConfig(object):
 
     def create_and_bridge_virtual_interfaces(self):
         """
-        After asking the user some questions, create a VM and connect the interfaces
-        to VPP interfaces
+        After asking the user some questions, create a VM and connect
+        the interfaces to VPP interfaces
 
         """
 
@@ -1688,39 +1751,49 @@ class AutoConfig(object):
             node = i[1]
 
             # Show the current bridge and interface configuration
-            print "\nThis the current bridge configuration:"
+            print("\nThis the current bridge configuration:")
             VPPUtil.show_bridge(node)
             question = "\nWould you like to keep this configuration [Y/n]? "
             answer = self._ask_user_yn(question, 'y')
             if answer == 'y':
                 continue
 
-            # Create a script that builds a bridge configuration with physical interfaces
-            # and virtual interfaces
+            # Create a script that builds a bridge configuration with
+            # physical interfaces and virtual interfaces
             ints_with_vints = self._create_vints_questions(node)
             content = ''
             for intf in ints_with_vints:
-                vhoststr = 'comment { The following command creates the socket }\n'
-                vhoststr += 'comment { and returns a virtual interface }\n'
-                vhoststr += 'comment {{ create vhost-user socket /var/run/vpp/sock{}.sock server }}\n'. \
-                    format(intf['bridge'])
+                vhoststr = '\n'.join([
+                    'comment { The following command creates the socket }',
+                    'comment { and returns a virtual interface }',
+                    'comment {{ create vhost-user socket '
+                    '/var/run/vpp/sock{}.sock server }}\n'.format(
+                        intf['bridge'])
+                ])
 
-                setintdnstr = 'set interface state {} down\n'.format(intf['name'])
+                setintdnstr = 'set interface state {} down\n'.format(
+                    intf['name'])
 
-                setintbrstr = 'set interface l2 bridge {} {}\n'.format(intf['name'], intf['bridge'])
-                setvintbrstr = 'set interface l2 bridge {} {}\n'.format(intf['virtualinterface'], intf['bridge'])
+                setintbrstr = 'set interface l2 bridge {} {}\n'.format(
+                    intf['name'], intf['bridge'])
+                setvintbrstr = 'set interface l2 bridge {} {}\n'.format(
+                    intf['virtualinterface'], intf['bridge'])
 
                 # set interface state VirtualEthernet/0/0/0 up
-                setintvststr = 'set interface state {} up\n'.format(intf['virtualinterface'])
+                setintvststr = 'set interface state {} up\n'.format(
+                    intf['virtualinterface'])
 
                 # set interface state VirtualEthernet/0/0/0 down
-                setintupstr = 'set interface state {} up\n'.format(intf['name'])
+                setintupstr = 'set interface state {} up\n'.format(
+                    intf['name'])
 
-                content += vhoststr + setintdnstr + setintbrstr + setvintbrstr + setintvststr + setintupstr
+                content += vhoststr + setintdnstr + setintbrstr + \
+                    setvintbrstr + setintvststr + setintupstr
 
             # Write the content to the script
             rootdir = node['rootdir']
-            filename = rootdir + '/vpp/vpp-config/scripts/create_vms_and_connect_to_vpp'
+            filename = rootdir + \
+                '/vpp/vpp-config/scripts/create_vms_and_connect_to_vpp'
             with open(filename, 'w+') as sfile:
                 sfile.write(content)
 
@@ -1768,30 +1841,38 @@ class AutoConfig(object):
         inum = 1
 
         while True:
-            print '\nPlease pick one interface to connect to the iperf VM.'
+            print('\nPlease pick one interface to connect to the iperf VM.')
             for intf in sorted(interfaces.items()):
                 name = intf[0]
                 if name == 'local0':
                     continue
 
-                question = "Would you like connect this interface {} to the VM [y/N]? ".format(name)
+                question = "Would you like connect this interface {} to " \
+                           "the VM [y/N]? ".format(name)
                 answer = self._ask_user_yn(question, 'n')
                 if answer == 'y':
-                    self._sockfilename = '/var/run/vpp/{}.sock'.format(name.replace('/', '_'))
+                    self._sockfilename = '/var/run/vpp/{}.sock'.format(
+                        name.replace('/', '_'))
                     if os.path.exists(self._sockfilename):
                         os.remove(self._sockfilename)
-                    cmd = 'vppctl create vhost-user socket {} server'.format(self._sockfilename)
+                    cmd = 'vppctl create vhost-user socket {} server'.format(
+                        self._sockfilename)
                     (ret, stdout, stderr) = vpputl.exec_command(cmd)
                     if ret != 0:
-                        raise RuntimeError("Couldn't execute the command {}, {}.".format(cmd, stderr))
+                        raise RuntimeError(
+                            "Couldn't execute the command {}, {}.".format(
+                                cmd, stderr))
                     vintname = stdout.rstrip('\r\n')
 
                     cmd = 'chmod 777 {}'.format(self._sockfilename)
                     (ret, stdout, stderr) = vpputl.exec_command(cmd)
                     if ret != 0:
-                        raise RuntimeError("Couldn't execute the command {}, {}.".format(cmd, stderr))
+                        raise RuntimeError(
+                            "Couldn't execute the command {}, {}.".format(
+                                cmd, stderr))
 
-                    interface = {'name': name, 'virtualinterface': '{}'.format(vintname),
+                    interface = {'name': name,
+                                 'virtualinterface': '{}'.format(vintname),
                                  'bridge': '{}'.format(inum)}
                     inum += 1
                     interfaces_with_virtual_interfaces.append(interface)
@@ -1799,8 +1880,8 @@ class AutoConfig(object):
 
     def create_and_bridge_iperf_virtual_interface(self):
         """
-        After asking the user some questions, and create and bridge a virtual interface
-        to be used with iperf VM
+        After asking the user some questions, and create and bridge a
+        virtual interface to be used with iperf VM
 
         """
 
@@ -1808,37 +1889,47 @@ class AutoConfig(object):
             node = i[1]
 
             # Show the current bridge and interface configuration
-            print "\nThis the current bridge configuration:"
+            print("\nThis the current bridge configuration:")
             ifaces = VPPUtil.show_bridge(node)
             question = "\nWould you like to keep this configuration [Y/n]? "
             answer = self._ask_user_yn(question, 'y')
             if answer == 'y':
-                self._sockfilename = '/var/run/vpp/{}.sock'.format(ifaces[0]['name'].replace('/', '_'))
+                self._sockfilename = '/var/run/vpp/{}.sock'.format(
+                    ifaces[0]['name'].replace('/', '_'))
                 if os.path.exists(self._sockfilename):
                     continue
 
-            # Create a script that builds a bridge configuration with physical interfaces
-            # and virtual interfaces
+            # Create a script that builds a bridge configuration with
+            # physical interfaces and virtual interfaces
             ints_with_vints = self._iperf_vm_questions(node)
             content = ''
             for intf in ints_with_vints:
-                vhoststr = 'comment { The following command creates the socket }\n'
-                vhoststr += 'comment { and returns a virtual interface }\n'
-                vhoststr += 'comment {{ create vhost-user socket /var/run/vpp/sock{}.sock server }}\n'. \
-                    format(intf['bridge'])
+                vhoststr = '\n'.join([
+                    'comment { The following command creates the socket }',
+                    'comment { and returns a virtual interface }',
+                    'comment {{ create vhost-user socket '
+                    '/var/run/vpp/sock{}.sock server }}\n'.format(
+                        intf['bridge'])
+                ])
 
-                setintdnstr = 'set interface state {} down\n'.format(intf['name'])
+                setintdnstr = 'set interface state {} down\n'.format(
+                    intf['name'])
 
-                setintbrstr = 'set interface l2 bridge {} {}\n'.format(intf['name'], intf['bridge'])
-                setvintbrstr = 'set interface l2 bridge {} {}\n'.format(intf['virtualinterface'], intf['bridge'])
+                setintbrstr = 'set interface l2 bridge {} {}\n'.format(
+                    intf['name'], intf['bridge'])
+                setvintbrstr = 'set interface l2 bridge {} {}\n'.format(
+                    intf['virtualinterface'], intf['bridge'])
 
                 # set interface state VirtualEthernet/0/0/0 up
-                setintvststr = 'set interface state {} up\n'.format(intf['virtualinterface'])
+                setintvststr = 'set interface state {} up\n'.format(
+                    intf['virtualinterface'])
 
                 # set interface state VirtualEthernet/0/0/0 down
-                setintupstr = 'set interface state {} up\n'.format(intf['name'])
+                setintupstr = 'set interface state {} up\n'.format(
+                    intf['name'])
 
-                content += vhoststr + setintdnstr + setintbrstr + setvintbrstr + setintvststr + setintupstr
+                content += vhoststr + setintdnstr + setintbrstr + \
+                    setvintbrstr + setintvststr + setintupstr
 
             # Write the content to the script
             rootdir = node['rootdir']
@@ -1859,8 +1950,8 @@ class AutoConfig(object):
     @staticmethod
     def destroy_iperf_vm(name):
         """
-        After asking the user some questions, create a VM and connect the interfaces
-        to VPP interfaces
+        After asking the user some questions, create a VM and connect
+        the interfaces to VPP interfaces
 
         :param name: The name of the VM to be be destroyed
         :type name: str
@@ -1870,37 +1961,46 @@ class AutoConfig(object):
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.debug(stderr)
-            raise RuntimeError("Couldn't execute the command {} : {}".format(cmd, stderr))
+            raise RuntimeError(
+                "Couldn't execute the command {} : {}".format(cmd, stderr))
 
         if re.findall(name, stdout):
             cmd = 'virsh destroy {}'.format(name)
             (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
             if ret != 0:
                 logging.debug(stderr)
-                raise RuntimeError("Couldn't execute the command {} : {}".format(cmd, stderr))
+                raise RuntimeError(
+                    "Couldn't execute the command {} : {}".format(
+                        cmd, stderr))
 
     def create_iperf_vm(self, vmname):
         """
-        After asking the user some questions, create a VM and connect the interfaces
-        to VPP interfaces
+        After asking the user some questions, create a VM and connect
+        the interfaces to VPP interfaces
 
         """
 
         # Read the iperf VM template file
         distro = VPPUtil.get_linux_distro()
         if distro[0] == 'Ubuntu':
-            tfilename = '{}/vpp/vpp-config/configs/iperf-ubuntu.xml.template'.format(self._rootdir)
+            tfilename = \
+                '{}/vpp/vpp-config/configs/iperf-ubuntu.xml.template'.format(
+                    self._rootdir)
         else:
-            tfilename = '{}/vpp/vpp-config/configs/iperf-centos.xml.template'.format(self._rootdir)
+            tfilename = \
+                '{}/vpp/vpp-config/configs/iperf-centos.xml.template'.format(
+                    self._rootdir)
 
         with open(tfilename, 'r') as tfile:
             tcontents = tfile.read()
         tfile.close()
 
         # Add the variables
-        imagename = '{}/vpp/vpp-config/{}'.format(self._rootdir, IPERFVM_IMAGE)
+        imagename = '{}/vpp/vpp-config/{}'.format(
+            self._rootdir, IPERFVM_IMAGE)
         isoname = '{}/vpp/vpp-config/{}'.format(self._rootdir, IPERFVM_ISO)
-        tcontents = tcontents.format(vmname=vmname, imagename=imagename, isoname=isoname,
+        tcontents = tcontents.format(vmname=vmname, imagename=imagename,
+                                     isoname=isoname,
                                      vhostsocketname=self._sockfilename)
 
         # Write the xml
@@ -1913,4 +2013,5 @@ class AutoConfig(object):
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.debug(stderr)
-            raise RuntimeError("Couldn't execute the command {} : {}".format(cmd, stderr))
+            raise RuntimeError(
+                "Couldn't execute the command {} : {}".format(cmd, stderr))
