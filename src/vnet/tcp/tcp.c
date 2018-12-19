@@ -290,7 +290,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_timers_reset (tc);
       /* Set the cleanup timer, in case the session layer/app don't
        * cleanly close the connection */
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       stream_session_reset_notify (&tc->connection);
       break;
     case TCP_STATE_CLOSE_WAIT:
@@ -300,7 +300,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       tc->state = TCP_STATE_CLOSED;
       TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
       tcp_connection_timers_reset (tc);
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       break;
     case TCP_STATE_CLOSED:
       return;
@@ -336,7 +336,7 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_connection_timers_reset (tc);
       tcp_send_fin (tc);
       tc->state = TCP_STATE_FIN_WAIT_1;
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_ESTABLISHED:
       if (!session_tx_fifo_max_dequeue (&tc->connection))
@@ -344,6 +344,9 @@ tcp_connection_close (tcp_connection_t * tc)
       else
 	tc->flags |= TCP_CONN_FINPNDG;
       tc->state = TCP_STATE_FIN_WAIT_1;
+      /* Set a timer in case the peer stops responding. Otherwise the
+       * connection will be stuck here forever. */
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_CLOSE_WAIT:
       if (!session_tx_fifo_max_dequeue (&tc->connection))
@@ -373,7 +376,7 @@ tcp_connection_close (tcp_connection_t * tc)
    * the session layer a chance to clear unhandled events */
   if (!tcp_timer_is_active (tc, TCP_TIMER_WAITCLOSE)
       && tc->state == TCP_STATE_CLOSED)
-    tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, 1);
+    tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 }
 
 static void
@@ -1251,11 +1254,6 @@ tcp_timer_waitclose_handler (u32 conn_index)
    * and switch to LAST_ACK. */
   if (tc->state == TCP_STATE_CLOSE_WAIT)
     {
-      if (tc->flags & TCP_CONN_FINSNT)
-	{
-	  clib_warning ("FIN was sent and still in CLOSE WAIT. Weird!");
-	}
-
       /* Make sure we don't try to send unsent data */
       tcp_connection_timers_reset (tc);
       tcp_cong_recovery_off (tc);
@@ -1267,6 +1265,13 @@ tcp_timer_waitclose_handler (u32 conn_index)
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 
       /* Don't delete the connection yet */
+      return;
+    }
+  else if (tc->state == TCP_STATE_FIN_WAIT_1)
+    {
+      /* Wait for session layer to clean up tx events */
+      tc->state = TCP_STATE_CLOSED;
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       return;
     }
 

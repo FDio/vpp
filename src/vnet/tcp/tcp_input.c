@@ -2861,7 +2861,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * we can't ensure that we have no packets already enqueued
 	   * to output. Rely instead on the waitclose timer */
 	  tcp_connection_timers_reset (tc0);
-	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, 1);
+	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 
 	  goto drop;
 
@@ -2918,6 +2918,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_send_fin (tc0);
 	  stream_session_disconnect_notify (&tc0->connection);
 	  tc0->state = TCP_STATE_CLOSE_WAIT;
+	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
@@ -3639,6 +3640,8 @@ do {                                                       	\
   /* FIN in reply to our FIN from the other side */
   _(FIN_WAIT_1, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_1, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(FIN_WAIT_1, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
+    TCP_ERROR_NONE);
   _(CLOSING, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   /* FIN confirming that the peer (app) has closed */
   _(FIN_WAIT_2, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);

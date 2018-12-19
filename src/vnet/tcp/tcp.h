@@ -102,7 +102,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_2MSL_TIME           300	/* 30s */
 #define TCP_CLOSEWAIT_TIME	20	/* 2s */
 #define TCP_TIMEWAIT_TIME	100	/* 10s */
-#define TCP_CLEANUP_TIME	10	/* 1s Time to wait before cleanup */
+#define TCP_FINWAIT1_TIME	600	/* 60s */
+#define TCP_CLEANUP_TIME	1	/* 0.1s */
 #define TCP_TIMER_PERSIST_MIN	2	/* 0.2s */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
@@ -124,7 +125,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(FRXT_PENDING, "Fast-retransmit pending")	\
   _(FRXT_FIRST, "Fast-retransmit first again")	\
   _(DEQ_PENDING, "Pending dequeue acked")	\
-  _(PSH_PENDING, "Pending psh packet")		\
+  _(PSH_PENDING, "PSH pending")			\
 
 typedef enum _tcp_connection_flag_bits
 {
