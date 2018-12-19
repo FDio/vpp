@@ -105,7 +105,7 @@ void convert_clib_file(char *clib_file)
 
         ep->event_id = find_or_add_event(brief_event_name, "%s");
 
-        track_name = format (0, "%U%c", format_elog_track, em, e, 0);
+        track_name = format (0, "%U%c", format_elog_track_name, em, e, 0);
 
         ep->track_id = find_or_add_track (track_name);
 
