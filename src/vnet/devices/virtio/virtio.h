@@ -86,6 +86,7 @@ typedef struct
   u32 call_file_index;
   u32 *buffers;
   u16 last_used_idx;
+  u16 last_kick_avail_idx;
 } virtio_vring_t;
 
 typedef struct
@@ -135,6 +136,16 @@ clib_error_t *virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif,
 extern void virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring);
 
 format_function_t format_virtio_device_name;
+
+static_always_inline void
+virtio_kick (virtio_vring_t * vring)
+{
+  u64 x = 1;
+  int __clib_unused r;
+
+  r = write (vring->kick_fd, &x, sizeof (x));
+  vring->last_kick_avail_idx = vring->avail->idx;
+}
 
 #endif /* _VNET_DEVICES_VIRTIO_VIRTIO_H_ */
 

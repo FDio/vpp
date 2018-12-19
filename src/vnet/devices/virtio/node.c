@@ -87,6 +87,7 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
   u16 sz = vring->size;
   u16 mask = sz - 1;
 
+more:
   used = vring->desc_in_use;
 
   if (sz - used < sz / 8)
@@ -97,6 +98,12 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
   avail = vring->avail->idx;
   n_slots = vlib_buffer_alloc_to_ring (vm, vring->buffers, next, vring->size,
 				       n_slots);
+
+  if (n_slots == 0)
+    return;
+
+  /* deliver free buffers in chunk of 64 */
+  n_slots = clib_min (n_slots, 64);
 
   while (n_slots)
     {
@@ -117,10 +124,8 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
   vring->desc_in_use = used;
 
   if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
-    {
-      u64 b = 1;
-      CLIB_UNUSED (int r) = write (vring->kick_fd, &b, sizeof (b));
-    }
+    virtio_kick (vring);
+  goto more;
 }
 
 static_always_inline uword
@@ -139,6 +144,10 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = vring->size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
+
+  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
+      vring->last_kick_avail_idx != vring->avail->idx)
+    virtio_kick (vring);
 
   if (n_left == 0)
     goto refill;

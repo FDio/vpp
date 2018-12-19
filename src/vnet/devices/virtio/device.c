@@ -169,7 +169,6 @@ add_buffer_to_slot (vlib_main_t * vm, virtio_vring_t * vring, u32 bi,
   return n_added;
 }
 
-
 static_always_inline uword
 virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame, virtio_if_t * vif)
@@ -183,6 +182,10 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 *buffers = vlib_frame_vector_args (frame);
 
   clib_spinlock_lock_if_init (&vif->lockp);
+
+  if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
+      vring->last_kick_avail_idx != vring->avail->idx)
+    virtio_kick (vring);
 
   /* free consumed buffers */
   virtio_free_used_desc (vm, vring);
@@ -209,10 +212,7 @@ virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vring->desc_next = next;
       vring->desc_in_use = used;
       if ((vring->used->flags & VIRTIO_RING_FLAG_MASK_INT) == 0)
-	{
-	  u64 x = 1;
-	  CLIB_UNUSED (int r) = write (vring->kick_fd, &x, sizeof (x));
-	}
+	virtio_kick (vring);
     }
 
 
