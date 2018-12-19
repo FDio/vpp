@@ -290,22 +290,21 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_timers_reset (tc);
       /* Set the cleanup timer, in case the session layer/app don't
        * cleanly close the connection */
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       stream_session_reset_notify (&tc->connection);
       break;
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
     case TCP_STATE_CLOSING:
-      tc->state = TCP_STATE_CLOSED;
-      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
       tcp_connection_timers_reset (tc);
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       break;
     case TCP_STATE_CLOSED:
       return;
     }
   tc->state = TCP_STATE_CLOSED;
+  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 }
 
 /**
@@ -1252,7 +1251,7 @@ tcp_timer_waitclose_handler (u32 conn_index)
 
   /* Session didn't come back with a close(). Send FIN either way
    * and switch to LAST_ACK. */
-  if (tc->state == TCP_STATE_CLOSE_WAIT)
+  if (tc->state == TCP_STATE_CLOSE_WAIT && (tc->flags & TCP_CONN_FINPNDG))
     {
       /* Make sure we don't try to send unsent data */
       tcp_connection_timers_reset (tc);
@@ -1269,8 +1268,9 @@ tcp_timer_waitclose_handler (u32 conn_index)
     }
   else if (tc->state == TCP_STATE_FIN_WAIT_1)
     {
-      /* Wait for session layer to clean up tx events */
+      tcp_connection_timers_reset (tc);
       tc->state = TCP_STATE_CLOSED;
+      /* Wait for session layer to clean up tx events */
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       return;
     }
