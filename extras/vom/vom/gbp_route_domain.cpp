@@ -141,9 +141,9 @@ gbp_route_domain::to_string() const
   s << "gbp-route-domain:[" << m_rd->to_string();
 
   if (m_ip4_uu_fwd)
-    s << " v4-uu:" << m_ip4_uu_fwd->to_string();
+    s << " v4-uu:[" << m_ip4_uu_fwd->to_string() << "]";
   if (m_ip6_uu_fwd)
-    s << " v6-uu:" << m_ip6_uu_fwd->to_string();
+    s << " v6-uu:[" << m_ip6_uu_fwd->to_string() << "]";
 
   s << "]";
 

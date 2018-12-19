@@ -136,12 +136,9 @@ void
 gbp_bridge_domain::replay()
 {
   if (rc_t::OK == m_id.rc()) {
-    if (m_bvi && m_uu_fwd)
-      HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(m_id, m_bvi->handle(),
-                                                         m_uu_fwd->handle()));
-    else
-      HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
-        m_id, handle_t::INVALID, handle_t::INVALID));
+    HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
+      m_id, (m_bvi ? m_bvi->handle() : handle_t::INVALID),
+      (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID)));
   }
 }
 
@@ -182,12 +179,9 @@ gbp_bridge_domain::update(const gbp_bridge_domain& desired)
    * the desired state is always that the interface should be created
    */
   if (rc_t::OK != m_id.rc()) {
-    if (m_bvi && m_uu_fwd)
-      HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(m_id, m_bvi->handle(),
-                                                         m_uu_fwd->handle()));
-    else
-      HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
-        m_id, handle_t::INVALID, handle_t::INVALID));
+    HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
+      m_id, (m_bvi ? m_bvi->handle() : handle_t::INVALID),
+      (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID)));
   }
 }
 
