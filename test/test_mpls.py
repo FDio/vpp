@@ -8,7 +8,7 @@ from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
     MRouteItfFlags, MRouteEntryFlags, VppIpTable, VppMplsTable, \
-    VppMplsLabel, MplsLspMode
+    VppMplsLabel, MplsLspMode, find_mpls_route
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
@@ -378,6 +378,12 @@ class TestMPLS(VppTestCase):
                                                   self.pg0.sw_if_index,
                                                   labels=[VppMplsLabel(33)])])
         route_32_eos.add_vpp_config()
+
+        self.assertTrue(
+            find_mpls_route(self, 0, 32, 1,
+                            [VppRoutePath(self.pg0.remote_ip4,
+                                          self.pg0.sw_if_index,
+                                          labels=[VppMplsLabel(33)])]))
 
         #
         # a stream that matches the route for 10.0.0.1

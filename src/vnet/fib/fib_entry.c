@@ -1652,12 +1652,25 @@ void
 fib_entry_encode (fib_node_index_t fib_entry_index,
 		  fib_route_path_encode_t **api_rpaths)
 {
+    fib_path_ext_list_t *ext_list;
     fib_entry_t *fib_entry;
+    fib_entry_src_t *bsrc;
 
+    ext_list = NULL;
     fib_entry = fib_entry_get(fib_entry_index);
+    bsrc = fib_entry_get_best_src_i(fib_entry);
+
+    if (bsrc)
+    {
+	ext_list = &bsrc->fes_path_exts;
+    }
+
     if (FIB_NODE_INDEX_INVALID != fib_entry->fe_parent)
     {
-        fib_path_list_walk(fib_entry->fe_parent, fib_path_encode, api_rpaths);
+        fib_path_list_walk_w_ext(fib_entry->fe_parent,
+                                 ext_list,
+                                 fib_path_encode,
+                                 api_rpaths);
     }
 }
 

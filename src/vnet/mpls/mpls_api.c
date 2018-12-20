@@ -459,7 +459,8 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   mp->mt_sw_if_index = ntohl (mt->mt_sw_if_index);
   mp->mt_count = ntohl (n);
 
-  fib_path_list_walk (mt->mt_path_list, fib_path_encode, &api_rpaths);
+  fib_path_list_walk_w_ext (mt->mt_path_list,
+			    &mt->mt_path_exts, fib_path_encode, &api_rpaths);
 
   fp = mp->mt_paths;
   vec_foreach (api_rpath, api_rpaths)

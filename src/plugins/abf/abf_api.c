@@ -185,7 +185,7 @@ abf_policy_send_details (u32 api, void *args)
   mp->policy.acl_index = htonl (ap->ap_acl);
   mp->policy.policy_id = htonl (ap->ap_id);
 
-  fib_path_list_walk (ap->ap_pl, fib_path_encode, &api_rpaths);
+  fib_path_list_walk_w_ext (ap->ap_pl, NULL, fib_path_encode, &api_rpaths);
 
   fp = mp->policy.paths;
   vec_foreach (api_rpath, api_rpaths)
