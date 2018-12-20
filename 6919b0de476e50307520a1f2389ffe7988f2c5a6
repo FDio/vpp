@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e2010589_77509399",
+        "filename": "test/framework.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 845,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-20T13:48:00Z",
+      "side": 1,
+      "message": "I think the previous indentation was better.",
+      "range": {
+        "startLine": 845,
+        "startChar": 32,
+        "endLine": 845,
+        "endChar": 40
+      },
+      "revId": "6919b0de476e50307520a1f2389ffe7988f2c5a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
