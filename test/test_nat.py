@@ -6106,8 +6106,7 @@ class TestNAT44Out2InDPO(MethodHolder):
         self.src_ip6_pfx_len = 96
         self.vapi.map_add_domain(self.dst_ip6_pfx_n, self.dst_ip6_pfx_len,
                                  self.src_ip6_pfx_n, self.src_ip6_pfx_len,
-                                 '\x00\x00\x00\x00', 0, is_translation=1,
-                                 is_rfc6052=1)
+                                 '\x00\x00\x00\x00', 0)
 
     @unittest.skip('Temporary disabled')
     def test_464xlat_ce(self):
