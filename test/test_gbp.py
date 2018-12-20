@@ -1444,7 +1444,7 @@ class TestGBP(VppTestCase):
         # lower the inactive threshold so these tests pass in a
         # reasonable amount of time
         #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(1)
+        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
 
         #
         # IP tables
@@ -1839,7 +1839,7 @@ class TestGBP(VppTestCase):
         # lower the inactive threshold so these tests pass in a
         # reasonable amount of time
         #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(1)
+        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
 
         #
         # IP tables
@@ -2014,7 +2014,7 @@ class TestGBP(VppTestCase):
         # lower the inactive threshold so these tests pass in a
         # reasonable amount of time
         #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(1)
+        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
 
         #
         # IP tables
@@ -2384,7 +2384,13 @@ class TestGBP(VppTestCase):
         rep_88.remove_vpp_config()
         rep_2.remove_vpp_config()
 
-        self.logger.info(self.vapi.cli("show gbp endpoint"))
+        self.assertTrue(find_gbp_endpoint(self, ip=rep_2.ip4.address))
+
+        p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
+             IP(src=ep.ip4.address, dst=rep_2.ip4.address) /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+        rxs = self.send_and_expect(self.pg0, [p], self.pg2)
 
         self.assertFalse(find_gbp_endpoint(self, ip=rep_88.ip4.address))
 
@@ -2394,20 +2400,13 @@ class TestGBP(VppTestCase):
              Raw('\xa5' * 100))
         rxs = self.send_and_expect(self.pg0, [p], self.pg4)
 
-        self.assertTrue(find_gbp_endpoint(self, ip=rep_2.ip4.address))
-
-        p = (Ether(src=ep.mac, dst=self.loop0.local_mac) /
-             IP(src=ep.ip4.address, dst=rep_2.ip4.address) /
-             UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
-        rxs = self.send_and_expect(self.pg0, [p], self.pg2)
-
         #
         # to appease the testcase we cannot have the registered EP stll
         # present (because it's DP learnt) when the TC ends so wait until
         # it is removed
         #
-        self.sleep(2)
+        self.wait_for_ep_timeout(ip=rep_88.ip4.address)
+        self.wait_for_ep_timeout(ip=rep_2.ip4.address)
 
         #
         # shutdown with learnt endpoint present
@@ -2458,7 +2457,7 @@ class TestGBP(VppTestCase):
         # lower the inactive threshold so these tests pass in a
         # reasonable amount of time
         #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(1)
+        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
 
         #
         # IP tables
