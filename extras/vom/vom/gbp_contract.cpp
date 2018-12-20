@@ -26,11 +26,15 @@ gbp_contract::event_handler gbp_contract::m_evh;
 
 gbp_contract::gbp_contract(epg_id_t src_epg_id,
                            epg_id_t dst_epg_id,
-                           const ACL::l3_list& acl)
+                           const ACL::l3_list& acl,
+                           const gbp_rules_t& rules,
+                           const ethertype_set_t& allowed_ethertypes)
   : m_hw(false)
   , m_src_epg_id(src_epg_id)
   , m_dst_epg_id(dst_epg_id)
   , m_acl(acl.singular())
+  , m_gbp_rules(rules)
+  , m_allowed_ethertypes(allowed_ethertypes)
 {
 }
 
@@ -39,6 +43,8 @@ gbp_contract::gbp_contract(const gbp_contract& gbpc)
   , m_src_epg_id(gbpc.m_src_epg_id)
   , m_dst_epg_id(gbpc.m_dst_epg_id)
   , m_acl(gbpc.m_acl)
+  , m_gbp_rules(gbpc.m_gbp_rules)
+  , m_allowed_ethertypes(gbpc.m_allowed_ethertypes)
 {
 }
 
@@ -77,7 +83,8 @@ gbp_contract::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules));
+      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules,
+      m_allowed_ethertypes));
   }
 }
 
@@ -100,12 +107,6 @@ gbp_contract::to_string() const
 }
 
 void
-gbp_contract::set_gbp_rules(const gbp_contract::gbp_rules_t& gbp_rules)
-{
-  m_gbp_rules = gbp_rules;
-}
-
-void
 gbp_contract::update(const gbp_contract& r)
 {
   /*
@@ -113,7 +114,8 @@ gbp_contract::update(const gbp_contract& r)
    */
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules));
+      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules,
+      m_allowed_ethertypes));
   }
 }
 
@@ -169,31 +171,44 @@ gbp_contract::event_handler::handle_populate(const client_db::key_t& key)
       ACL::l3_list::find(payload.contract.acl_index);
 
     if (acl) {
-      gbp_contract gbpc(payload.contract.src_epg, payload.contract.dst_epg,
-                        *acl);
-      OM::commit(key, gbpc);
-      if (payload.contract.n_rules) {
-        gbp_contract::gbp_rules_t rules;
-        for (u8 i = 0; i < payload.contract.n_rules; i++) {
-          const gbp_rule::action_t action =
-            gbp_rule::action_t::from_int(payload.contract.rules[i].action);
-          const gbp_rule::hash_mode_t hm = gbp_rule::hash_mode_t::from_int(
-            payload.contract.rules[i].nh_set.hash_mode);
-          gbp_rule::next_hops_t nhs;
-          for (u8 j = 0; j < payload.contract.rules[i].nh_set.n_nhs; j++) {
-            gbp_rule::next_hop_t nh(
-              from_api(payload.contract.rules[i].nh_set.nhs[j].ip),
-              from_api(payload.contract.rules[i].nh_set.nhs[j].mac),
-              payload.contract.rules[i].nh_set.nhs[j].bd_id,
-              payload.contract.rules[i].nh_set.nhs[j].rd_id);
-            nhs.insert(nh);
-          }
-          gbp_rule::next_hop_set_t next_hop_set(hm, nhs);
-          gbp_rule gr(i, next_hop_set, action);
-          rules.insert(gr);
+      gbp_contract::gbp_rules_t rules;
+
+      for (uint8_t i = 0; i < payload.contract.n_rules; i++) {
+        const gbp_rule::action_t action =
+          gbp_rule::action_t::from_int(payload.contract.rules[i].action);
+        const gbp_rule::hash_mode_t hm = gbp_rule::hash_mode_t::from_int(
+          payload.contract.rules[i].nh_set.hash_mode);
+        gbp_rule::next_hops_t nhs;
+        for (u8 j = 0; j < payload.contract.rules[i].nh_set.n_nhs; j++) {
+          gbp_rule::next_hop_t nh(
+            from_api(payload.contract.rules[i].nh_set.nhs[j].ip),
+            from_api(payload.contract.rules[i].nh_set.nhs[j].mac),
+            payload.contract.rules[i].nh_set.nhs[j].bd_id,
+            payload.contract.rules[i].nh_set.nhs[j].rd_id);
+          nhs.insert(nh);
         }
-        gbpc.set_gbp_rules(rules);
+        gbp_rule::next_hop_set_t next_hop_set(hm, nhs);
+        gbp_rule gr(i, next_hop_set, action);
+        rules.insert(gr);
       }
+
+      ethertype_set_t allowed_ethertypes;
+      u8 *data, n_et;
+      u16* et;
+
+      data = (((u8*)&payload.contract.n_ether_types) +
+              (sizeof(payload.contract.rules[0]) * payload.contract.n_rules));
+      n_et = *data;
+      et = (u16*)(++data);
+
+      for (uint8_t i = 0; i < n_et; i++) {
+        allowed_ethertypes.insert(ethertype_t::from_numeric_val(et[i]));
+      }
+
+      gbp_contract gbpc(payload.contract.src_epg, payload.contract.dst_epg,
+                        *acl, rules, allowed_ethertypes);
+      OM::commit(key, gbpc);
+
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpc.to_string();
     }
   }

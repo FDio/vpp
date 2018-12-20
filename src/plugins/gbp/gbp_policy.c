@@ -106,6 +106,19 @@ gbp_rule_l2_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0)
   return (dpo->dpoi_next_node);
 }
 
+always_inline u8
+gbp_policy_is_ethertype_allowed (const gbp_contract_t * gc0, u16 ethertype)
+{
+  u16 *et;
+
+  vec_foreach (et, gc0->gc_allowed_ethertypes)
+  {
+    if (*et == ethertype)
+      return (1);
+  }
+  return (0);
+}
+
 static uword
 gbp_policy_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
@@ -130,9 +143,9 @@ gbp_policy_inline (vlib_main_t * vm,
 	{
 	  const ethernet_header_t *h0;
 	  const gbp_endpoint_t *ge0;
+	  const gbp_contract_t *gc0;
 	  gbp_policy_next_t next0;
 	  gbp_contract_key_t key0;
-	  gbp_contract_t *gc0;
 	  u32 bi0, sw_if_index0;
 	  vlib_buffer_t *b0;
 	  index_t gci0;
@@ -204,66 +217,84 @@ gbp_policy_inline (vlib_main_t * vm,
 
 		  if (INDEX_INVALID != gci0)
 		    {
-		      fa_5tuple_opaque_t pkt_5tuple0;
-		      u8 action0 = 0;
-		      u32 acl_pos_p0, acl_match_p0;
 		      u32 rule_match_p0, trace_bitmap0;
-		      u8 *h0, l2_len0;
+		      fa_5tuple_opaque_t pkt_5tuple0;
+		      u32 acl_pos_p0, acl_match_p0;
+		      u8 is_ip60, l2_len0, action0;
+		      const gbp_rule_t *gu;
 		      u16 ether_type0;
-		      u8 is_ip60 = 0;
+		      const u8 *h0;
 
+		      action0 = 0;
 		      gc0 = gbp_contract_get (gci0);
 		      l2_len0 = vnet_buffer (b0)->l2.l2_len;
 		      h0 = vlib_buffer_get_current (b0);
 
-		      ether_type0 =
-			clib_net_to_host_u16 (*(u16 *) (h0 + l2_len0 - 2));
+		      ether_type0 = *(u16 *) (h0 + l2_len0 - 2);
 
-		      is_ip60 = (ether_type0 == ETHERNET_TYPE_IP6) ? 1 : 0;
-		      /*
-		       * tests against the ACL
-		       */
-		      acl_plugin_fill_5tuple_inline (gm->
-						     acl_plugin.p_acl_main,
-						     gc0->gc_lc_index, b0,
-						     is_ip60,
-						     /* is_input */ 0,
-						     /* is_l2_path */ 1,
-						     &pkt_5tuple0);
-		      acl_plugin_match_5tuple_inline (gm->
-						      acl_plugin.p_acl_main,
-						      gc0->gc_lc_index,
-						      &pkt_5tuple0, is_ip60,
-						      &action0, &acl_pos_p0,
-						      &acl_match_p0,
-						      &rule_match_p0,
-						      &trace_bitmap0);
-
-		      if (action0 > 0)
+		      if (!gbp_policy_is_ethertype_allowed (gc0, ether_type0))
 			{
-			  gbp_rule_t *gu;
+			  /*
+			   * black list model so drop
+			   */
+			  goto trace;
+			}
 
-			  vnet_buffer2 (b0)->gbp.flags |= VXLAN_GBP_GPFLAGS_A;
-			  gu = gbp_rule_get (gc0->gc_rules[rule_match_p0]);
+		      if ((ether_type0 ==
+			   clib_net_to_host_u16 (ETHERNET_TYPE_IP6))
+			  || (ether_type0 ==
+			      clib_net_to_host_u16 (ETHERNET_TYPE_IP4)))
+			{
+			  is_ip60 =
+			    (ether_type0 ==
+			     clib_net_to_host_u16 (ETHERNET_TYPE_IP6)) ? 1 :
+			    0;
+			  /*
+			   * tests against the ACL
+			   */
+			  acl_plugin_fill_5tuple_inline (gm->
+							 acl_plugin.p_acl_main,
+							 gc0->gc_lc_index, b0,
+							 is_ip60,
+							 /* is_input */ 0,
+							 /* is_l2_path */ 1,
+							 &pkt_5tuple0);
+			  acl_plugin_match_5tuple_inline (gm->
+							  acl_plugin.p_acl_main,
+							  gc0->gc_lc_index,
+							  &pkt_5tuple0,
+							  is_ip60, &action0,
+							  &acl_pos_p0,
+							  &acl_match_p0,
+							  &rule_match_p0,
+							  &trace_bitmap0);
 
-			  switch (gu->gu_action)
+			  if (action0 > 0)
 			    {
-			    case GBP_RULE_PERMIT:
-			      next0 = vnet_l2_feature_next
-				(b0,
-				 gpm->l2_output_feat_next
-				 [is_port_based],
-				 (is_port_based ?
-				  L2OUTPUT_FEAT_GBP_POLICY_PORT :
-				  L2OUTPUT_FEAT_GBP_POLICY_MAC));
-			      break;
-			    case GBP_RULE_DENY:
-			      ASSERT (0);
-			      next0 = 0;
-			      break;
-			    case GBP_RULE_REDIRECT:
-			      next0 = gbp_rule_l2_redirect (gu, b0);
-			      break;
+			      vnet_buffer2 (b0)->gbp.flags |=
+				VXLAN_GBP_GPFLAGS_A;
+			      gu =
+				gbp_rule_get (gc0->gc_rules[rule_match_p0]);
+
+			      switch (gu->gu_action)
+				{
+				case GBP_RULE_PERMIT:
+				  next0 = vnet_l2_feature_next
+				    (b0,
+				     gpm->l2_output_feat_next
+				     [is_port_based],
+				     (is_port_based ?
+				      L2OUTPUT_FEAT_GBP_POLICY_PORT :
+				      L2OUTPUT_FEAT_GBP_POLICY_MAC));
+				  break;
+				case GBP_RULE_DENY:
+				  ASSERT (0);
+				  next0 = 0;
+				  break;
+				case GBP_RULE_REDIRECT:
+				  next0 = gbp_rule_l2_redirect (gu, b0);
+				  break;
+				}
 			    }
 			}
 		    }

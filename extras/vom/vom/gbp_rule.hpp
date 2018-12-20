@@ -166,12 +166,12 @@ public:
     /**
      * get the hash mode
      */
-    const hash_mode_t& getHashMode(void) const;
+    const hash_mode_t& hash_mode(void) const;
 
     /**
      * get the set of next hops
      */
-    const next_hops_t& getNextHops(void) const;
+    const next_hops_t& next_hops(void) const;
 
   private:
     /**
@@ -235,8 +235,8 @@ public:
   std::string to_string() const;
 
   /**
-   * less-than operator
-   */
+  * less-than operator
+  */
   bool operator<(const gbp_rule& rule) const;
 
   /**
@@ -247,7 +247,6 @@ public:
   /**
    * Getters
    */
-  uint32_t priority() const;
   const next_hop_set_t& nhs() const;
   const action_t& action() const;
 

@@ -128,13 +128,13 @@ gbp_rule::next_hop_set_t::operator==(const next_hop_set_t& nhs) const
 }
 
 const gbp_rule::hash_mode_t&
-gbp_rule::next_hop_set_t::getHashMode() const
+gbp_rule::next_hop_set_t::hash_mode() const
 {
   return m_hm;
 }
 
 const gbp_rule::next_hops_t&
-gbp_rule::next_hop_set_t::getNextHops() const
+gbp_rule::next_hop_set_t::next_hops() const
 {
   return m_nhs;
 }
@@ -191,12 +191,6 @@ gbp_rule::to_string() const
     << " next-hop-set:[" << m_nhs.to_string() << "]]";
 
   return (s.str());
-}
-
-uint32_t
-gbp_rule::priority() const
-{
-  return m_priority;
 }
 
 const gbp_rule::action_t&
