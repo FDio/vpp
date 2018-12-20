@@ -22,6 +22,30 @@
       "revId": "6919b0de476e50307520a1f2389ffe7988f2c5a6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bec84894_1560a1b9",
+        "filename": "test/framework.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 845,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2018-12-20T15:19:53Z",
+      "side": 1,
+      "message": "I agree.",
+      "parentUuid": "e2010589_77509399",
+      "range": {
+        "startLine": 845,
+        "startChar": 32,
+        "endLine": 845,
+        "endChar": 40
+      },
+      "revId": "6919b0de476e50307520a1f2389ffe7988f2c5a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
