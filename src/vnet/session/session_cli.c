@@ -204,7 +204,7 @@ static clib_error_t *
 show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
-  u8 *str = 0, one_session = 0, do_listeners = 0, sst, do_elog = 1;
+  u8 *str = 0, one_session = 0, do_listeners = 0, sst, do_elog = 0;
   session_manager_main_t *smm = &session_manager_main;
   u32 transport_proto = ~0, track_index;
   stream_session_t *pool, *s;
@@ -241,7 +241,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (one_session)
     {
       str = format (0, "%U", format_stream_session, s, 3);
-      if (do_elog)
+      if (do_elog && s->session_state != SESSION_STATE_LISTENING)
 	{
 	  elog_main_t *em = &vm->elog_main;
 	  f64 dt;
