@@ -523,7 +523,6 @@ policer_classify_inline (vlib_main_t * vm,
   u32 hits = 0;
   u32 misses = 0;
   u32 chain_hits = 0;
-  u32 drop = 0;
   u32 n_next_nodes;
   u64 time_in_policer_periods;
 
@@ -709,7 +708,6 @@ policer_classify_inline (vlib_main_t * vm,
 		    {
 		      next0 = POLICER_CLASSIFY_NEXT_INDEX_DROP;
 		      b0->error = node->errors[POLICER_CLASSIFY_ERROR_DROP];
-		      drop++;
 		    }
 		  hits++;
 		}
@@ -745,7 +743,6 @@ policer_classify_inline (vlib_main_t * vm,
 			      next0 = POLICER_CLASSIFY_NEXT_INDEX_DROP;
 			      b0->error =
 				node->errors[POLICER_CLASSIFY_ERROR_DROP];
-			      drop++;
 			    }
 			  hits++;
 			  chain_hits++;
@@ -780,8 +777,6 @@ policer_classify_inline (vlib_main_t * vm,
 			       POLICER_CLASSIFY_ERROR_HIT, hits);
   vlib_node_increment_counter (vm, node->node_index,
 			       POLICER_CLASSIFY_ERROR_CHAIN_HIT, chain_hits);
-  vlib_node_increment_counter (vm, node->node_index,
-			       POLICER_CLASSIFY_ERROR_DROP, drop);
 
   return frame->n_vectors;
 }
