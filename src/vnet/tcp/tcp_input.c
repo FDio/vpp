@@ -509,6 +509,7 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
 
   if (mrtt > 0 && mrtt < TCP_RTT_MAX)
     tcp_estimate_rtt (tc, mrtt);
+  tcp_update_rto (tc);
 }
 
 /**
