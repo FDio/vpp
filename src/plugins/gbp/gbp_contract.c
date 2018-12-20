@@ -434,7 +434,8 @@ gbp_contract_mk_lbs (index_t * guis)
 
 int
 gbp_contract_update (epg_id_t src_epg,
-		     epg_id_t dst_epg, u32 acl_index, index_t * rules)
+		     epg_id_t dst_epg,
+		     u32 acl_index, index_t * rules, u16 * allowed_ethertypes)
 {
   gbp_main_t *gm = &gbp_main;
   u32 *acl_vec = NULL;
@@ -462,6 +463,7 @@ gbp_contract_update (epg_id_t src_epg,
       gbp_contract_rules_free (gc->gc_rules);
       gbp_main.acl_plugin.put_lookup_context_index (gc->gc_lc_index);
       gc->gc_rules = NULL;
+      vec_free (gc->gc_allowed_ethertypes);
     }
   else
     {
@@ -474,6 +476,7 @@ gbp_contract_update (epg_id_t src_epg,
   GBP_CONTRACT_DBG ("update: %U", format_gbp_contract, gci);
 
   gc->gc_rules = rules;
+  gc->gc_allowed_ethertypes = allowed_ethertypes;
   gbp_contract_resolve (gc->gc_rules);
   gbp_contract_mk_lbs (gc->gc_rules);
 
@@ -506,6 +509,7 @@ gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg)
 
       gbp_contract_rules_free (gc->gc_rules);
       gbp_main.acl_plugin.put_lookup_context_index (gc->gc_lc_index);
+      vec_free (gc->gc_allowed_ethertypes);
 
       hash_unset (gbp_contract_db.gc_hash, key.as_u32);
       pool_put (gbp_contract_pool, gc);
@@ -561,7 +565,7 @@ gbp_contract_cli (vlib_main_t * vm,
 
   if (add)
     {
-      gbp_contract_update (src_epg_id, dst_epg_id, acl_index, NULL);
+      gbp_contract_update (src_epg_id, dst_epg_id, acl_index, NULL, NULL);
     }
   else
     {
@@ -604,6 +608,7 @@ format_gbp_contract (u8 * s, va_list * args)
   index_t gci = va_arg (*args, index_t);
   gbp_contract_t *gc;
   index_t *gui;
+  u16 *et;
 
   gc = gbp_contract_get (gci);
 
@@ -614,6 +619,14 @@ format_gbp_contract (u8 * s, va_list * args)
   {
     s = format (s, "\n    %d: %U", *gui, format_gbp_rule, *gui);
   }
+
+  s = format (s, "\n    allowed-ethertypes:[");
+  vec_foreach (et, gc->gc_allowed_ethertypes)
+  {
+    int host_et = clib_net_to_host_u16 (*et);
+    s = format (s, "0x%x, ", host_et);
+  }
+  s = format (s, "]");
 
   return (s);
 }
