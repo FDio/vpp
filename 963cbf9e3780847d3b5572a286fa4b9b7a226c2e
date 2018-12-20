@@ -117,6 +117,30 @@
       "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0429c1ed_b6671611",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2018-12-20T15:25:49Z",
+      "side": 1,
+      "message": "I think the best compromise is to keep \"skipIf\" for now, but add a TODO to create \"expectFailureIf\" decorator (and for the runner to report its results correctly).",
+      "parentUuid": "39f9588a_b85bdad2",
+      "range": {
+        "startLine": 182,
+        "startChar": 21,
+        "endLine": 182,
+        "endChar": 51
+      },
+      "revId": "963cbf9e3780847d3b5572a286fa4b9b7a226c2e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
