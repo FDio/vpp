@@ -42,11 +42,18 @@ public:
   typedef std::pair<epg_id_t, epg_id_t> key_t;
 
   /**
+   * A set of allowed ethertypes
+   */
+  typedef std::set<ethertype_t> ethertype_set_t;
+
+  /**
    * Construct a GBP contract
    */
   gbp_contract(epg_id_t src_epg_id,
                epg_id_t dst_epg_id,
-               const ACL::l3_list& acl);
+               const ACL::l3_list& acl,
+               const gbp_rules_t& gpb_rules,
+               const ethertype_set_t& allowed_ethertypes);
 
   /**
    * Copy Construct
@@ -92,11 +99,6 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
-
-  /**
-   * Set gbp_rules in case of Redirect Contract
-   */
-  void set_gbp_rules(const gbp_rules_t& gbp_rules);
 
 private:
   /**
@@ -183,6 +185,11 @@ private:
    * The gbp rules applied to traffic between the gourps
    */
   gbp_rules_t m_gbp_rules;
+
+  /**
+   * the set of Ether-types allowed by this contract
+   */
+  ethertype_set_t m_allowed_ethertypes;
 
   /**
    * A map of all bridge_domains

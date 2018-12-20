@@ -105,6 +105,12 @@ gbp_rule::next_hop_set_t::next_hop_set_t(const gbp_rule::hash_mode_t& hm,
 {
 }
 
+gbp_rule::next_hop_set_t::next_hop_set_t(const hash_mode_t& hm)
+  : m_hm(hm)
+  , m_nhs()
+{
+}
+
 std::string
 gbp_rule::next_hop_set_t::to_string() const
 {
@@ -128,13 +134,13 @@ gbp_rule::next_hop_set_t::operator==(const next_hop_set_t& nhs) const
 }
 
 const gbp_rule::hash_mode_t&
-gbp_rule::next_hop_set_t::getHashMode() const
+gbp_rule::next_hop_set_t::hash_mode() const
 {
   return m_hm;
 }
 
 const gbp_rule::next_hops_t&
-gbp_rule::next_hop_set_t::getNextHops() const
+gbp_rule::next_hop_set_t::next_hops() const
 {
   return m_nhs;
 }
@@ -168,6 +174,13 @@ gbp_rule::gbp_rule(uint32_t priority,
 {
 }
 
+gbp_rule::gbp_rule(uint32_t priority, const gbp_rule::action_t& a)
+  : m_priority(priority)
+  , m_nhs()
+  , m_action(a)
+{
+}
+
 bool
 gbp_rule::operator<(const gbp_rule& other) const
 {
@@ -191,12 +204,6 @@ gbp_rule::to_string() const
     << " next-hop-set:[" << m_nhs.to_string() << "]]";
 
   return (s.str());
-}
-
-uint32_t
-gbp_rule::priority() const
-{
-  return m_priority;
 }
 
 const gbp_rule::action_t&

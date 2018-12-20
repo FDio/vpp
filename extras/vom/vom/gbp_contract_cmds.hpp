@@ -37,7 +37,8 @@ public:
              epg_id_t src_epg_id,
              epg_id_t dst_epg_id,
              const handle_t& acl,
-             const gbp_contract::gbp_rules_t& gbp_rules);
+             const gbp_contract::gbp_rules_t& gbp_rules,
+             const gbp_contract::ethertype_set_t& allowed_ethertypes);
 
   /**
    * Issue the command to VPP/HW
@@ -59,6 +60,7 @@ private:
   const epg_id_t m_dst_epg_id;
   const handle_t m_acl;
   const gbp_contract::gbp_rules_t& m_gbp_rules;
+  const gbp_contract::ethertype_set_t& m_allowed_ethertypes;
 };
 
 /**
