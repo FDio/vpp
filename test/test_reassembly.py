@@ -4,8 +4,7 @@ import six
 import unittest
 from random import shuffle
 
-from framework import VppTestCase, VppTestRunner, is_skip_aarch64_set,\
-    is_platform_aarch64
+from framework import VppTestCase, VppTestRunner
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
@@ -275,8 +274,6 @@ class TestIPv4Reassembly(VppTestCase):
         # self.assert_packet_counter_equal(
         #     "/err/ip4-reassembly-feature/malformed packets", 1)
 
-    @unittest.skipIf(is_skip_aarch64_set and is_platform_aarch64,
-                     "test doesn't work on aarch64")
     def test_random(self):
         """ random order reassembly """
 
