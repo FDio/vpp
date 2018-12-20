@@ -66,6 +66,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
       evt->rpc_args.arg = args;
       break;
     case FIFO_EVENT_APP_TX:
+    case SESSION_IO_EVT_TX_FLUSH:
     case FIFO_EVENT_BUILTIN_RX:
       evt->fifo = data;
       break;
