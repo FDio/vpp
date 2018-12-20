@@ -166,12 +166,12 @@ public:
     /**
      * get the hash mode
      */
-    const hash_mode_t& getHashMode(void) const;
+    const hash_mode_t& hash_mode(void) const;
 
     /**
      * get the set of next hops
      */
-    const next_hops_t& getNextHops(void) const;
+    const next_hops_t& next_hops(void) const;
 
   private:
     /**
@@ -217,7 +217,7 @@ public:
   /**
    * Construct a new object matching the desried state
    */
-  gbp_rule(uint32_t priority, const next_hop_set_t& nhs, const action_t& a);
+  gbp_rule(const next_hop_set_t& nhs, const action_t& a);
 
   /**
    * Copy Constructor
@@ -233,11 +233,6 @@ public:
    * convert to string format for debug purposes
    */
   std::string to_string() const;
-
-  /**
-   * less-than operator
-   */
-  bool operator<(const gbp_rule& rule) const;
 
   /**
    * comparison operator (for testing)

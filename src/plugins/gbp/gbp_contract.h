@@ -102,6 +102,18 @@ typedef struct gbp_rule_t_
   dpo_id_t gu_dpo[GBP_POLICY_N_NODES][FIB_PROTOCOL_IP_MAX];
 } gbp_rule_t;
 
+typedef struct gbp_ethertype_rule_t_
+{
+  /**
+   * ethertype in network order
+   */
+  u16 ger_ether_type;
+  /**
+   * Coreesponding rule
+   */
+  index_t ger_rule;
+} gbp_ethertype_rule_t;
+
 /**
  * A Group Based Policy Contract.
  *  Determines the ACL that applies to traffic pass between two endpoint groups
@@ -120,6 +132,11 @@ typedef struct gbp_contract_t_
    * The ACL to apply for packets from the source to the destination EPG
    */
   index_t *gc_rules;
+
+  /**
+   * An ethertype whitelist
+   */
+  u16 *gc_allowed_ethertypes;
 } gbp_contract_t;
 
 /**
@@ -135,7 +152,8 @@ typedef struct gbp_contract_db_t_
 
 extern int gbp_contract_update (epg_id_t src_epg,
 				epg_id_t dst_epg,
-				u32 acl_index, index_t * rules);
+				u32 acl_index,
+				index_t * rules, u16 * allowed_ethertypes);
 extern int gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg);
 
 extern index_t gbp_rule_alloc (gbp_rule_action_t action,

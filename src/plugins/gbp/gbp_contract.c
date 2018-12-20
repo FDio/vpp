@@ -434,7 +434,8 @@ gbp_contract_mk_lbs (index_t * guis)
 
 int
 gbp_contract_update (epg_id_t src_epg,
-		     epg_id_t dst_epg, u32 acl_index, index_t * rules)
+		     epg_id_t dst_epg,
+		     u32 acl_index, index_t * rules, u16 * allowed_ethertypes)
 {
   gbp_main_t *gm = &gbp_main;
   u32 *acl_vec = NULL;
@@ -462,6 +463,7 @@ gbp_contract_update (epg_id_t src_epg,
       gbp_contract_rules_free (gc->gc_rules);
       gbp_main.acl_plugin.put_lookup_context_index (gc->gc_lc_index);
       gc->gc_rules = NULL;
+      vec_free (gc->gc_allowed_ethertypes);
     }
   else
     {
@@ -474,6 +476,7 @@ gbp_contract_update (epg_id_t src_epg,
   GBP_CONTRACT_DBG ("update: %U", format_gbp_contract, gci);
 
   gc->gc_rules = rules;
+  gc->gc_allowed_ethertypes = allowed_ethertypes;
   gbp_contract_resolve (gc->gc_rules);
   gbp_contract_mk_lbs (gc->gc_rules);
 
@@ -561,7 +564,7 @@ gbp_contract_cli (vlib_main_t * vm,
 
   if (add)
     {
-      gbp_contract_update (src_epg_id, dst_epg_id, acl_index, NULL);
+      gbp_contract_update (src_epg_id, dst_epg_id, acl_index, NULL, NULL);
     }
   else
     {
