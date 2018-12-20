@@ -292,6 +292,8 @@ tcp_connection_reset (tcp_connection_t * tc)
        * cleanly close the connection */
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       stream_session_reset_notify (&tc->connection);
+      tc->state = TCP_STATE_CLOSED;
+      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
       break;
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_FIN_WAIT_1:
@@ -299,12 +301,12 @@ tcp_connection_reset (tcp_connection_t * tc)
     case TCP_STATE_CLOSING:
       tcp_connection_timers_reset (tc);
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+      tc->state = TCP_STATE_CLOSED;
+      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
       break;
     case TCP_STATE_CLOSED:
-      return;
+      break;
     }
-  tc->state = TCP_STATE_CLOSED;
-  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 }
 
 /**
@@ -329,7 +331,7 @@ tcp_connection_close (tcp_connection_t * tc)
   switch (tc->state)
     {
     case TCP_STATE_SYN_SENT:
-      tc->state = TCP_STATE_CLOSED;
+      /* Do nothing. Establish timer will pop and cleanup the connection */
       break;
     case TCP_STATE_SYN_RCVD:
       tcp_connection_timers_reset (tc);
@@ -1219,8 +1221,9 @@ tcp_timer_establish_handler (u32 conn_index)
   if (tc)
     {
       ASSERT (tc->state == TCP_STATE_SYN_SENT);
-      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
-      TCP_DBG ("establish pop: %U", format_tcp_connection, tc, 2);
+      /* Notify app if we haven't tried to clean this up already */
+      if (!(tc->flags & TCP_CONN_HALF_OPEN_DONE))
+	session_stream_connect_notify (&tc->connection, 1 /* fail */ );
     }
   else
     {
@@ -1228,7 +1231,6 @@ tcp_timer_establish_handler (u32 conn_index)
       /* note: the connection may have already disappeared */
       if (PREDICT_FALSE (tc == 0))
 	return;
-      TCP_DBG ("establish pop: %U", format_tcp_connection, tc, 2);
       ASSERT (tc->state == TCP_STATE_SYN_RCVD);
       /* Start cleanup. App wasn't notified yet so use delete notify as
        * opposed to delete to cleanup session layer state. */
