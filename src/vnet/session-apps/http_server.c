@@ -24,16 +24,36 @@ typedef enum
 
 typedef struct
 {
-  u64 session_handle;
+  u32 hs_index;
+  u32 thread_index;
   u64 node_index;
-  u8 *data;
 } http_server_args;
+
+typedef enum
+{
+  HTTP_STATE_CLOSED,
+  HTTP_STATE_ESTABLISHED,
+  HTTP_STATE_OK_SENT,
+} http_session_state_t;
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+#define _(type, name) type name;
+  foreach_app_session_field
+#undef _
+  u32 thread_index;
+  u8 *rx_buf;
+  u32 vpp_session_index;
+  u64 vpp_session_handle;
+} http_session_t;
 
 typedef struct
 {
-  u8 **rx_buf;
+  http_session_t **sessions;
+  clib_rwlock_t sessions_lock;
+  u32 **session_to_http_session;
+
   svm_msg_q_t **vpp_queue;
-  u64 byte_index;
 
   uword *handler_by_get_request;
 
@@ -54,13 +74,106 @@ typedef struct
   u32 private_segment_size;
   u32 fifo_size;
   u8 *uri;
+  u32 is_static;
   vlib_main_t *vlib_main;
 } http_server_main_t;
 
 http_server_main_t http_server_main;
 
 static void
-free_http_process (http_server_args * args)
+http_server_sessions_reader_lock (void)
+{
+  clib_rwlock_reader_lock (&http_server_main.sessions_lock);
+}
+
+static void
+http_server_sessions_reader_unlock (void)
+{
+  clib_rwlock_reader_unlock (&http_server_main.sessions_lock);
+}
+
+static void
+http_server_sessions_writer_lock (void)
+{
+  clib_rwlock_writer_lock (&http_server_main.sessions_lock);
+}
+
+static void
+http_server_sessions_writer_unlock (void)
+{
+  clib_rwlock_writer_unlock (&http_server_main.sessions_lock);
+}
+
+static void
+http_server_session_lookup_add (u32 thread_index, u32 s_index, u32 hs_index)
+{
+  http_server_main_t *hsm = &http_server_main;
+  vec_validate (hsm->session_to_http_session[thread_index], s_index);
+  hsm->session_to_http_session[thread_index][s_index] = hs_index;
+}
+
+static void
+http_server_session_lookup_del (u32 thread_index, u32 s_index)
+{
+  http_server_main_t *hsm = &http_server_main;
+  hsm->session_to_http_session[thread_index][s_index] = ~0;
+}
+
+static http_session_t *
+http_server_session_lookup (u32 thread_index, u32 s_index)
+{
+  http_server_main_t *hsm = &http_server_main;
+  u32 hs_index;
+
+  if (s_index < vec_len (hsm->session_to_http_session[thread_index]))
+    {
+      hs_index = hsm->session_to_http_session[thread_index][s_index];
+      if (hs_index < vec_len (hsm->sessions[thread_index]))
+	return &hsm->sessions[thread_index][hs_index];
+    }
+  return 0;
+}
+
+static http_session_t *
+http_server_session_alloc (u32 thread_index)
+{
+  http_server_main_t *hsm = &http_server_main;
+  http_session_t *hs;
+  pool_get (hsm->sessions[thread_index], hs);
+  memset (hs, 0, sizeof (*hs));
+  hs->session_index = hs - hsm->sessions[thread_index];
+  hs->thread_index = thread_index;
+  return hs;
+}
+
+static http_session_t *
+http_server_session_get (u32 thread_index, u32 hs_index)
+{
+  http_server_main_t *hsm = &http_server_main;
+  return pool_elt_at_index (hsm->sessions[thread_index], hs_index);
+}
+
+static void
+http_server_session_free (http_session_t * hs)
+{
+  http_server_main_t *hsm = &http_server_main;
+  pool_put (hsm->sessions[hs->thread_index], hs);
+  if (CLIB_DEBUG)
+    memset (hs, 0xfa, sizeof (*hs));
+}
+
+static void
+http_server_session_cleanup (http_session_t * hs)
+{
+  if (!hs)
+    return;
+  http_server_session_lookup_del (hs->thread_index, hs->vpp_session_index);
+  vec_free (hs->rx_buf);
+  http_server_session_free (hs);
+}
+
+static void
+http_process_free (http_server_args * args)
 {
   vlib_node_runtime_t *rt;
   vlib_main_t *vm = &vlib_global_main;
@@ -88,11 +201,13 @@ free_http_process (http_server_args * args)
 }
 
 /* *INDENT-OFF* */
+static const char *http_ok =
+    "HTTP/1.1 200 OK\r\n";
+
 static const char *http_response =
-    "HTTP/1.1 200 OK\r\n"
     "Content-Type: text/html\r\n"
     "Expires: Mon, 11 Jan 1970 10:10:10 GMT\r\n"
-    "Connection: keep-alive \r\n"
+    "Connection: close \r\n"
     "Pragma: no-cache\r\n"
     "Content-Length: %d\r\n\r\n%s";
 
@@ -120,6 +235,7 @@ static const char *html_header_static =
 /* *INDENT-ON* */
 
 static u8 *static_http;
+static u8 *static_ok;
 
 static void
 http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
@@ -138,13 +254,14 @@ http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 }
 
 void
-send_data (stream_session_t * s, u8 * data)
+send_data (http_session_t * hs, u8 * data)
 {
+  http_server_main_t *hsm = &http_server_main;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  vlib_main_t *vm = vlib_get_main ();
+  f64 last_sent_timer = vlib_time_now (vm);
   u32 offset, bytes_to_send;
   f64 delay = 10e-3;
-  http_server_main_t *hsm = &http_server_main;
-  vlib_main_t *vm = hsm->vlib_main;
-  f64 last_sent_timer = vlib_time_now (vm);
 
   bytes_to_send = vec_len (data);
   offset = 0;
@@ -154,7 +271,7 @@ send_data (stream_session_t * s, u8 * data)
       int actual_transfer;
 
       actual_transfer = svm_fifo_enqueue_nowait
-	(s->server_tx_fifo, bytes_to_send, data + offset);
+	(hs->tx_fifo, bytes_to_send, data + offset);
 
       /* Made any progress? */
       if (actual_transfer <= 0)
@@ -163,7 +280,9 @@ send_data (stream_session_t * s, u8 * data)
 	  /* 10s deadman timer */
 	  if (vlib_time_now (vm) > last_sent_timer + 10.0)
 	    {
-	      /* $$$$ FC: reset transport session here? */
+	      a->handle = hs->vpp_session_handle;
+	      a->app_index = hsm->app_index;
+	      vnet_disconnect_session (a);
 	      break;
 	    }
 	  /* Exponential backoff, within reason */
@@ -176,46 +295,48 @@ send_data (stream_session_t * s, u8 * data)
 	  offset += actual_transfer;
 	  bytes_to_send -= actual_transfer;
 
-	  if (svm_fifo_set_event (s->server_tx_fifo))
-	    session_send_io_evt_to_thread (s->server_tx_fifo,
-					   FIFO_EVENT_APP_TX);
+	  if (svm_fifo_set_event (hs->tx_fifo))
+	    session_send_io_evt_to_thread (hs->tx_fifo,
+					   SESSION_IO_EVT_TX_FLUSH);
 	  delay = 10e-3;
 	}
     }
 }
 
 static void
-send_error (stream_session_t * s, char *str)
+send_error (http_session_t * hs, char *str)
 {
   u8 *data;
 
   data = format (0, http_error_template, str);
-  send_data (s, data);
+  send_data (hs, data);
   vec_free (data);
 }
 
 static uword
-http_cli_process (vlib_main_t * vm,
-		  vlib_node_runtime_t * rt, vlib_frame_t * f)
+http_cli_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+		  vlib_frame_t * f)
 {
+  u8 *request = 0, *reply = 0, *http = 0, *html = 0;
   http_server_main_t *hsm = &http_server_main;
-  u8 *request = 0, *reply = 0;
   http_server_args **save_args;
   http_server_args *args;
-  stream_session_t *s;
   unformat_input_t input;
+  http_session_t *hs;
   int i;
-  u8 *http = 0, *html = 0;
 
   save_args = vlib_node_get_runtime_data (hsm->vlib_main, rt->node_index);
   args = *save_args;
-  s = session_get_from_handle (args->session_handle);
-  ASSERT (s);
 
-  request = (u8 *) (void *) (args->data);
+  http_server_sessions_reader_lock ();
+
+  hs = http_server_session_get (args->thread_index, args->hs_index);
+  ASSERT (hs);
+
+  request = hs->rx_buf;
   if (vec_len (request) < 7)
     {
-      send_error (s, "400 Bad Request");
+      send_error (hs, "400 Bad Request");
       goto out;
     }
 
@@ -227,7 +348,7 @@ http_cli_process (vlib_main_t * vm,
 	goto found;
     }
 bad_request:
-  send_error (s, "400 Bad Request");
+  send_error (hs, "400 Bad Request");
   goto out;
 
 found:
@@ -256,7 +377,7 @@ found:
   html = format (0, html_header_template, request /* title */ );
 
   /* Run the command */
-  unformat_init_vector (&input, request);
+  unformat_init_vector (&input, vec_dup (request));
   vlib_cli_input (vm, &input, http_cli_output, (uword) & reply);
   unformat_free (&input);
   request = 0;
@@ -265,19 +386,20 @@ found:
   html = format (html, "%v", reply);
   html = format (html, html_footer);
   /* And the http reply */
-  http = format (0, http_response, vec_len (html), html);
+  http = format (0, http_ok, vec_len (http_ok));
+  http = format (http, http_response, vec_len (html), html);
 
   /* Send it */
-  send_data (s, http);
+  send_data (hs, http);
 
 out:
   /* Cleanup */
-  vec_free (request);
+  http_server_sessions_reader_unlock ();
   vec_free (reply);
   vec_free (html);
   vec_free (http);
 
-  free_http_process (args);
+  http_process_free (args);
   return (0);
 }
 
@@ -331,44 +453,50 @@ alloc_http_process_callback (void *cb_args)
 }
 
 static int
-session_rx_request (stream_session_t * s)
+session_rx_request (http_session_t * hs)
 {
-  http_server_main_t *hsm = &http_server_main;
-  svm_fifo_t *rx_fifo;
-  u32 max_dequeue;
-  int actual_transfer;
+  u32 max_dequeue, cursize;
+  int n_read;
 
-  rx_fifo = s->server_rx_fifo;
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  svm_fifo_unset_event (rx_fifo);
+  cursize = vec_len (hs->rx_buf);
+  max_dequeue = svm_fifo_max_dequeue (hs->rx_fifo);
   if (PREDICT_FALSE (max_dequeue == 0))
     return -1;
 
-  vec_validate (hsm->rx_buf[s->thread_index], max_dequeue - 1);
-  _vec_len (hsm->rx_buf[s->thread_index]) = max_dequeue;
+  vec_validate (hs->rx_buf, cursize + max_dequeue - 1);
+  n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize,
+				max_dequeue, 0, 0 /* peek */ );
+  ASSERT (n_read == max_dequeue);
+  if (svm_fifo_is_empty (hs->rx_fifo))
+    svm_fifo_unset_event (hs->rx_fifo);
 
-  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_dequeue,
-					     hsm->rx_buf[s->thread_index]);
-  ASSERT (actual_transfer > 0);
-  _vec_len (hsm->rx_buf[s->thread_index]) = actual_transfer;
+  _vec_len (hs->rx_buf) = cursize + n_read;
   return 0;
 }
 
 static int
 http_server_rx_callback (stream_session_t * s)
 {
-  http_server_main_t *hsm = &http_server_main;
   http_server_args *args;
+  http_session_t *hs;
   int rv;
 
-  rv = session_rx_request (s);
+  http_server_sessions_reader_lock ();
+
+  hs = http_server_session_lookup (s->thread_index, s->session_index);
+  if (!hs || hs->session_state != HTTP_STATE_ESTABLISHED)
+    return -1;
+
+  rv = session_rx_request (hs);
   if (rv)
     return rv;
 
   /* send the command to a new/recycled vlib process */
   args = clib_mem_alloc (sizeof (*args));
-  args->data = vec_dup (hsm->rx_buf[s->thread_index]);
-  args->session_handle = session_handle (s);
+  args->hs_index = hs->session_index;
+  args->thread_index = hs->thread_index;
+
+  http_server_sessions_reader_unlock ();
 
   /* Send an RPC request via the thread-0 input node */
   if (vlib_get_thread_index () != 0)
@@ -382,73 +510,140 @@ static int
 http_server_rx_callback_static (stream_session_t * s)
 {
   http_server_main_t *hsm = &http_server_main;
+  vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  http_session_t *hs;
+  u32 request_len;
   u8 *request = 0;
-  int i;
-  int rv;
+  int i, rv;
 
-  rv = session_rx_request (s);
+  hs = http_server_session_lookup (s->thread_index, s->session_index);
+  if (!hs || hs->session_state == HTTP_STATE_CLOSED)
+    return 0;
+
+  /* ok 200 was sent */
+  if (hs->session_state == HTTP_STATE_OK_SENT)
+    goto send_data;
+
+  rv = session_rx_request (hs);
   if (rv)
-    return rv;
+    goto wait_for_data;
 
-  request = hsm->rx_buf[s->thread_index];
+  request = hs->rx_buf;
+  request_len = vec_len (request);
   if (vec_len (request) < 7)
     {
-      send_error (s, "400 Bad Request");
-      goto out;
+      send_error (hs, "400 Bad Request");
+      goto close_session;
     }
 
-  for (i = 0; i < vec_len (request) - 4; i++)
+  for (i = 0; i < request_len - 4; i++)
     {
       if (request[i] == 'G' &&
 	  request[i + 1] == 'E' &&
 	  request[i + 2] == 'T' && request[i + 3] == ' ')
-	goto found;
+	goto find_end;
     }
-  send_error (s, "400 Bad Request");
-  goto out;
+  send_error (hs, "400 Bad Request");
+  goto close_session;
 
-found:
+find_end:
 
-  /* Send it */
-  send_data (s, static_http);
+  /* check for the end sequence: /r/n/r/n */
+  if (request[request_len - 1] != 0xa || request[request_len - 3] != 0xa
+      || request[request_len - 2] != 0xd || request[request_len - 4] != 0xd)
+    goto wait_for_data;
 
-out:
-  /* Cleanup */
-  vec_free (request);
-  hsm->rx_buf[s->thread_index] = request;
+  /* send 200 OK first */
+  send_data (hs, static_ok);
+  hs->session_state = HTTP_STATE_OK_SENT;
+  goto postpone;
+
+send_data:
+  send_data (hs, static_http);
+  http_server_session_cleanup (hs);
+
+close_session:
+  a->handle = session_handle (s);
+  a->app_index = hsm->app_index;
+  vnet_disconnect_session (a);
+  return 0;
+
+postpone:
+  svm_fifo_set_event (hs->rx_fifo);
+  session_send_io_evt_to_thread (hs->rx_fifo, FIFO_EVENT_BUILTIN_RX);
+  return 0;
+
+wait_for_data:
   return 0;
 }
 
 static int
 http_server_session_accept_callback (stream_session_t * s)
 {
-  http_server_main_t *bsm = &http_server_main;
+  http_server_main_t *hsm = &http_server_main;
+  http_session_t *hs;
 
-  bsm->vpp_queue[s->thread_index] =
+  hsm->vpp_queue[s->thread_index] =
     session_manager_get_vpp_event_queue (s->thread_index);
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_lock ();
+
+  hs = http_server_session_alloc (s->thread_index);
+  http_server_session_lookup_add (s->thread_index, s->session_index,
+				  hs->session_index);
+  hs->rx_fifo = s->server_rx_fifo;
+  hs->tx_fifo = s->server_tx_fifo;
+  hs->vpp_session_index = s->session_index;
+  hs->vpp_session_handle = session_handle (s);
+  hs->session_state = HTTP_STATE_ESTABLISHED;
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_unlock ();
+
   s->session_state = SESSION_STATE_READY;
-  bsm->byte_index = 0;
   return 0;
 }
 
 static void
 http_server_session_disconnect_callback (stream_session_t * s)
 {
-  http_server_main_t *bsm = &http_server_main;
+  http_server_main_t *hsm = &http_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  http_session_t *hs;
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_lock ();
+
+  hs = http_server_session_lookup (s->thread_index, s->session_index);
+  http_server_session_cleanup (hs);
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_unlock ();
 
   a->handle = session_handle (s);
-  a->app_index = bsm->app_index;
+  a->app_index = hsm->app_index;
   vnet_disconnect_session (a);
 }
 
 static void
 http_server_session_reset_callback (stream_session_t * s)
 {
-  http_server_main_t *htm = &http_server_main;
+  http_server_main_t *hsm = &http_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  http_session_t *hs;
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_lock ();
+
+  hs = http_server_session_lookup (s->thread_index, s->session_index);
+  http_server_session_cleanup (hs);
+
+  if (!hsm->is_static)
+    http_server_sessions_writer_unlock ();
+
   a->handle = session_handle (s);
-  a->app_index = htm->app_index;
+  a->app_index = hsm->app_index;
   vnet_disconnect_session (a);
 }
 
@@ -476,23 +671,8 @@ static session_cb_vft_t http_server_session_cb_vft = {
   .session_reset_callback = http_server_session_reset_callback
 };
 
-/* Abuse VPP's input queue */
 static int
-create_api_loopback (vlib_main_t * vm)
-{
-  http_server_main_t *hsm = &http_server_main;
-  api_main_t *am = &api_main;
-  vl_shmem_hdr_t *shmem_hdr;
-
-  shmem_hdr = am->shmem_hdr;
-  hsm->vl_input_queue = shmem_hdr->vl_input_queue;
-  hsm->my_client_index =
-    vl_api_memclnt_create_internal ("http_server", hsm->vl_input_queue);
-  return 0;
-}
-
-static int
-server_attach ()
+http_server_attach ()
 {
   vnet_app_add_tls_cert_args_t _a_cert, *a_cert = &_a_cert;
   vnet_app_add_tls_key_args_t _a_key, *a_key = &_a_key;
@@ -507,7 +687,8 @@ server_attach ()
   if (hsm->private_segment_size)
     segment_size = hsm->private_segment_size;
 
-  a->api_client_index = hsm->my_client_index;
+  a->api_client_index = ~0;
+  a->name = format (0, "test_http_server");
   a->session_cb_vft = &http_server_session_cb_vft;
   a->options = options;
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
@@ -520,9 +701,11 @@ server_attach ()
 
   if (vnet_application_attach (a))
     {
+      vec_free (a->name);
       clib_warning ("failed to attach server");
       return -1;
     }
+  vec_free (a->name);
   hsm->app_index = a->app_index;
 
   clib_memset (a_cert, 0, sizeof (*a_cert));
@@ -556,18 +739,18 @@ http_server_listen ()
 static int
 http_server_create (vlib_main_t * vm)
 {
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   http_server_main_t *hsm = &http_server_main;
   u32 num_threads;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-
-  ASSERT (hsm->my_client_index == (u32) ~ 0);
-  if (create_api_loopback (vm))
-    return -1;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
-  vec_validate (http_server_main.vpp_queue, num_threads - 1);
+  vec_validate (hsm->vpp_queue, num_threads - 1);
+  vec_validate (hsm->sessions, num_threads - 1);
+  vec_validate (hsm->session_to_http_session, num_threads - 1);
 
-  if (server_attach ())
+  clib_rwlock_init (&hsm->sessions_lock);
+
+  if (http_server_attach ())
     {
       clib_warning ("failed to attach server");
       return -1;
@@ -586,17 +769,18 @@ http_server_create_command_fn (vlib_main_t * vm,
 			       vlib_cli_command_t * cmd)
 {
   http_server_main_t *hsm = &http_server_main;
-  int rv, is_static = 0;
   u64 seg_size;
   u8 *html;
+  int rv;
 
   hsm->prealloc_fifos = 0;
   hsm->private_segment_size = 0;
   hsm->fifo_size = 0;
+  hsm->is_static = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "static"))
-	is_static = 1;
+	hsm->is_static = 1;
       else if (unformat (input, "prealloc-fifos %d", &hsm->prealloc_fifos))
 	;
       else if (unformat (input, "private-segment-size %U",
@@ -623,12 +807,13 @@ http_server_create_command_fn (vlib_main_t * vm,
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
 
-  if (is_static)
+  if (hsm->is_static)
     {
       http_server_session_cb_vft.builtin_app_rx_callback =
 	http_server_rx_callback_static;
       html = format (0, html_header_static);
       static_http = format (0, http_response, vec_len (html), html);
+      static_ok = format (0, http_ok);
     }
   rv = http_server_create (vm);
   switch (rv)
@@ -654,13 +839,9 @@ static clib_error_t *
 http_server_main_init (vlib_main_t * vm)
 {
   http_server_main_t *hsm = &http_server_main;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 num_threads;
 
   hsm->my_client_index = ~0;
   hsm->vlib_main = vm;
-  num_threads = 1 /* main thread */  + vtm->n_threads;
-  vec_validate (hsm->rx_buf, num_threads - 1);
   return 0;
 }
 
