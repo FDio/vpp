@@ -43,51 +43,47 @@ create_cmd::operator==(const create_cmd& other) const
 rc_t
 create_cmd::issue(connection& con)
 {
-  u8 size = m_gbp_rules.empty() ? 1 : m_gbp_rules.size();
-  msg_t req(con.ctx(), size, std::ref(*this));
+  size_t n_rules = m_gbp_rules.size();
+  size_t n_et_rules = 0;
+
+  msg_t req(con.ctx(), n_rules, n_et_rules, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.contract.acl_index = m_acl.value();
   payload.contract.src_epg = m_src_epg_id;
   payload.contract.dst_epg = m_dst_epg_id;
-  if (size > 1) {
-    u32 ii = 0;
-    auto it = m_gbp_rules.cbegin();
-    payload.contract.n_rules = m_gbp_rules.size();
-    while (it != m_gbp_rules.cend()) {
-      if (it->action() == gbp_rule::action_t::REDIRECT)
-        payload.contract.rules[ii].action = GBP_API_RULE_REDIRECT;
-      else if (it->action() == gbp_rule::action_t::PERMIT)
-        payload.contract.rules[ii].action = GBP_API_RULE_PERMIT;
-      else
-        payload.contract.rules[ii].action = GBP_API_RULE_DENY;
 
-      if (it->nhs().getHashMode() == gbp_rule::hash_mode_t::SYMMETRIC)
-        payload.contract.rules[ii].nh_set.hash_mode =
-          GBP_API_HASH_MODE_SYMMETRIC;
-      else if (it->nhs().getHashMode() == gbp_rule::hash_mode_t::SRC_IP)
-        payload.contract.rules[ii].nh_set.hash_mode = GBP_API_HASH_MODE_SRC_IP;
-      else
-        payload.contract.rules[ii].nh_set.hash_mode = GBP_API_HASH_MODE_DST_IP;
+  uint32_t ii = 0;
+  payload.contract.n_rules = n_rules;
 
-      const gbp_rule::next_hops_t& next_hops = it->nhs().getNextHops();
-      u8 jj = 0, nh_size = (next_hops.size() > 8) ? 8 : next_hops.size();
-      auto nh_it = next_hops.cbegin();
+  for (auto rule : m_gbp_rules) {
+    if (rule.action() == gbp_rule::action_t::REDIRECT)
+      payload.contract.rules[ii].action = GBP_API_RULE_REDIRECT;
+    else if (rule.action() == gbp_rule::action_t::PERMIT)
+      payload.contract.rules[ii].action = GBP_API_RULE_PERMIT;
+    else
+      payload.contract.rules[ii].action = GBP_API_RULE_DENY;
 
-      payload.contract.rules[ii].nh_set.n_nhs = nh_size;
-      while (jj < nh_size) {
-        to_api(nh_it->getIp(), payload.contract.rules[ii].nh_set.nhs[jj].ip);
-        to_api(nh_it->getMac(), payload.contract.rules[ii].nh_set.nhs[jj].mac);
-        payload.contract.rules[ii].nh_set.nhs[jj].bd_id = nh_it->getBdId();
-        payload.contract.rules[ii].nh_set.nhs[jj].rd_id = nh_it->getRdId();
-        ++nh_it;
-        ++jj;
-      }
+    if (rule.nhs().hash_mode() == gbp_rule::hash_mode_t::SYMMETRIC)
+      payload.contract.rules[ii].nh_set.hash_mode = GBP_API_HASH_MODE_SYMMETRIC;
+    else if (rule.nhs().hash_mode() == gbp_rule::hash_mode_t::SRC_IP)
+      payload.contract.rules[ii].nh_set.hash_mode = GBP_API_HASH_MODE_SRC_IP;
+    else
+      payload.contract.rules[ii].nh_set.hash_mode = GBP_API_HASH_MODE_DST_IP;
 
-      ++it;
-      ++ii;
+    const gbp_rule::next_hops_t& next_hops = rule.nhs().next_hops();
+    uint8_t jj = 0, nh_size = (next_hops.size() > 8) ? 8 : next_hops.size();
+
+    payload.contract.rules[ii].nh_set.n_nhs = nh_size;
+    for (auto nh : next_hops) {
+      to_api(nh.getIp(), payload.contract.rules[ii].nh_set.nhs[jj].ip);
+      to_api(nh.getMac(), payload.contract.rules[ii].nh_set.nhs[jj].mac);
+      payload.contract.rules[ii].nh_set.nhs[jj].bd_id = nh.getBdId();
+      payload.contract.rules[ii].nh_set.nhs[jj].rd_id = nh.getRdId();
+      jj++;
     }
+    ++ii;
   }
   VAPI_CALL(req.execute());
 
@@ -124,7 +120,7 @@ delete_cmd::operator==(const delete_cmd& other) const
 rc_t
 delete_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), 1, std::ref(*this));
+  msg_t req(con.ctx(), 0, 0, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;

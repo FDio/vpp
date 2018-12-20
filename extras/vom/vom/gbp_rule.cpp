@@ -128,13 +128,13 @@ gbp_rule::next_hop_set_t::operator==(const next_hop_set_t& nhs) const
 }
 
 const gbp_rule::hash_mode_t&
-gbp_rule::next_hop_set_t::getHashMode() const
+gbp_rule::next_hop_set_t::hash_mode() const
 {
   return m_hm;
 }
 
 const gbp_rule::next_hops_t&
-gbp_rule::next_hop_set_t::getNextHops() const
+gbp_rule::next_hop_set_t::next_hops() const
 {
   return m_nhs;
 }
@@ -159,26 +159,17 @@ gbp_rule::action_t::from_int(vapi_enum_gbp_rule_action i)
   return gbp_rule::action_t::DENY;
 }
 
-gbp_rule::gbp_rule(uint32_t priority,
-                   const gbp_rule::next_hop_set_t& nhs,
+gbp_rule::gbp_rule(const gbp_rule::next_hop_set_t& nhs,
                    const gbp_rule::action_t& a)
-  : m_priority(priority)
-  , m_nhs(nhs)
+  : m_nhs(nhs)
   , m_action(a)
 {
 }
 
 bool
-gbp_rule::operator<(const gbp_rule& other) const
-{
-  return (other.m_priority < m_priority);
-}
-
-bool
 gbp_rule::operator==(const gbp_rule& rule) const
 {
-  return ((m_action == rule.m_action) && (m_nhs == rule.m_nhs) &&
-          (m_priority == rule.m_priority));
+  return ((m_action == rule.m_action) && (m_nhs == rule.m_nhs));
 }
 
 std::string
@@ -187,16 +178,10 @@ gbp_rule::to_string() const
   std::ostringstream s;
 
   s << "gbp-rule:["
-    << "priority:" << m_priority << " action:" << m_action.to_string()
-    << " next-hop-set:[" << m_nhs.to_string() << "]]";
+    << " action:" << m_action.to_string() << " next-hop-set:["
+    << m_nhs.to_string() << "]]";
 
   return (s.str());
-}
-
-uint32_t
-gbp_rule::priority() const
-{
-  return m_priority;
 }
 
 const gbp_rule::action_t&
