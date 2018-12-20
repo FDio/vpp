@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "c7dbca2e_ac6c0182",
+        "filename": "src/vppinfra/dlmalloc.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4092,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-20T22:56:59Z",
+      "side": 1,
+      "message": "\"char **addrp, size_t *sizep\" may be better as they would match init_user_mstate() and malloc_segment.  There is only one user which is casting on the calling side that can be fixed.",
+      "parentUuid": "429bb6dc_08a3aad3",
+      "revId": "8b9cdd0365b3c53d186e93f5b0800a5679cca33d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4080bc6b_818cb54b",
         "filename": "src/vppinfra/dlmalloc.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2018-12-18T23:48:33Z",
       "side": 1,
       "message": "Shouldn\u0027t the inbound parameters be \"unsigned long\" vs. \"unsigned long long?\"",
+      "revId": "8b9cdd0365b3c53d186e93f5b0800a5679cca33d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "96620264_6ae7321b",
+        "filename": "src/vppinfra/dlmalloc.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4159,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2018-12-20T22:56:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4080bc6b_818cb54b",
       "revId": "8b9cdd0365b3c53d186e93f5b0800a5679cca33d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
