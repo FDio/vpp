@@ -2732,9 +2732,8 @@ class VppPapiProvider(object):
                        ea_bits_len=0,
                        psid_offset=0,
                        psid_length=0,
-                       is_translation=0,
-                       is_rfc6052=0,
                        mtu=1280):
+
         return self.api(
             self.papi.map_add_domain,
             {
@@ -2744,9 +2743,23 @@ class VppPapiProvider(object):
                 'ea_bits_len': ea_bits_len,
                 'psid_offset': psid_offset,
                 'psid_length': psid_length,
-                'is_translation': is_translation,
-                'is_rfc6052': is_rfc6052,
                 'mtu': mtu
+            })
+
+    def map_if_enable_disable(self, is_enable, sw_if_index, is_translation):
+        return self.api(
+            self.papi.map_if_enable_disable,
+            {
+                'is_enable': is_enable,
+                'sw_if_index': sw_if_index,
+                'is_translation': is_translation,
+            })
+
+    def map_param_set_tcp(self, tcp_mss):
+        return self.api(
+            self.papi.map_param_set_tcp,
+            {
+                'tcp_mss': tcp_mss,
             })
 
     def gtpu_add_del_tunnel(

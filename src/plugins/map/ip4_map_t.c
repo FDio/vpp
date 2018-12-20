@@ -229,10 +229,44 @@ ip4_map_t_icmp (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static int
-ip4_to_ip6_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *ctx)
+/*
+ * Translate fragmented IPv4 UDP/TCP packet to IPv6.
+ */
+always_inline int
+map_ip4_to_ip6_fragmented (vlib_buffer_t * p,
+			   ip4_mapt_pseudo_header_t * pheader)
 {
-  ip4_mapt_pseudo_header_t *pheader = ctx;
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  ip6_frag_hdr_t *frag;
+
+  ip4 = vlib_buffer_get_current (p);
+  frag = (ip6_frag_hdr_t *) u8_ptr_add (ip4, sizeof (*ip4) - sizeof (*frag));
+  ip6 =
+    (ip6_header_t *) u8_ptr_add (ip4,
+				 sizeof (*ip4) - sizeof (*frag) -
+				 sizeof (*ip6));
+  vlib_buffer_advance (p, sizeof (*ip4) - sizeof (*ip6) - sizeof (*frag));
+
+  //We know that the protocol was one of ICMP, TCP or UDP
+  //because the first fragment was found and cached
+  frag->next_hdr =
+    (ip4->protocol == IP_PROTOCOL_ICMP) ? IP_PROTOCOL_ICMP6 : ip4->protocol;
+  frag->identification = frag_id_4to6 (ip4->fragment_id);
+  frag->rsv = 0;
+  frag->fragment_offset_and_more =
+    ip6_frag_hdr_offset_and_more (ip4_get_fragment_offset (ip4),
+				  clib_net_to_host_u16
+				  (ip4->flags_and_fragment_offset) &
+				  IP4_HEADER_FLAG_MORE_FRAGMENTS);
+
+  ip6->ip_version_traffic_class_and_flow_label =
+    clib_host_to_net_u32 ((6 << 28) + (ip4->tos << 20));
+  ip6->payload_length =
+    clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) -
+			  sizeof (*ip4) + sizeof (*frag));
+  ip6->hop_limit = ip4->ttl;
+  ip6->protocol = IP_PROTOCOL_IPV6_FRAGMENTATION;
 
   ip6->dst_address.as_u64[0] = pheader->daddr.as_u64[0];
   ip6->dst_address.as_u64[1] = pheader->daddr.as_u64[1];
@@ -277,7 +311,7 @@ ip4_map_t_fragmented (vlib_main_t * vm,
 	  pheader0 = vlib_buffer_get_current (p0);
 	  vlib_buffer_advance (p0, sizeof (*pheader0));
 
-	  if (ip4_to_ip6_fragmented (p0, ip4_to_ip6_set_cb, pheader0))
+	  if (map_ip4_to_ip6_fragmented (p0, pheader0))
 	    {
 	      p0->error = error_node->errors[MAP_ERROR_FRAGMENT_DROPPED];
 	      next0 = IP4_MAPT_FRAGMENTED_NEXT_DROP;
@@ -300,6 +334,110 @@ ip4_map_t_fragmented (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   return frame->n_vectors;
+}
+
+/*
+ * Translate IPv4 UDP/TCP packet to IPv6.
+ */
+always_inline int
+map_ip4_to_ip6_tcp_udp (vlib_buffer_t * p, ip4_mapt_pseudo_header_t * pheader)
+{
+  map_main_t *mm = &map_main;
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  ip_csum_t csum;
+  u16 *checksum;
+  ip6_frag_hdr_t *frag;
+  u32 frag_id;
+  ip4_address_t old_src, old_dst;
+
+  ip4 = vlib_buffer_get_current (p);
+
+  if (ip4->protocol == IP_PROTOCOL_UDP)
+    {
+      udp_header_t *udp = ip4_next_header (ip4);
+      checksum = &udp->checksum;
+
+      /*
+       * UDP checksum is optional over IPv4 but mandatory for IPv6 We
+       * do not check udp->length sanity but use our safe computed
+       * value instead
+       */
+      if (PREDICT_FALSE (!*checksum))
+	{
+	  u16 udp_len = clib_host_to_net_u16 (ip4->length) - sizeof (*ip4);
+	  csum = ip_incremental_checksum (0, udp, udp_len);
+	  csum = ip_csum_with_carry (csum, clib_host_to_net_u16 (udp_len));
+	  csum =
+	    ip_csum_with_carry (csum, clib_host_to_net_u16 (IP_PROTOCOL_UDP));
+	  csum = ip_csum_with_carry (csum, *((u64 *) (&ip4->src_address)));
+	  *checksum = ~ip_csum_fold (csum);
+	}
+    }
+  else
+    {
+      tcp_header_t *tcp = ip4_next_header (ip4);
+      if (mm->tcp_mss > 0)
+	{
+	  csum = tcp->checksum;
+	  map_mss_clamping (tcp, &csum, mm->tcp_mss);
+	  tcp->checksum = ip_csum_fold (csum);
+	}
+      checksum = &tcp->checksum;
+    }
+
+  old_src.as_u32 = ip4->src_address.as_u32;
+  old_dst.as_u32 = ip4->dst_address.as_u32;
+
+  /* Deal with fragmented packets */
+  if (PREDICT_FALSE (ip4->flags_and_fragment_offset &
+		     clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS)))
+    {
+      ip6 =
+	(ip6_header_t *) u8_ptr_add (ip4,
+				     sizeof (*ip4) - sizeof (*ip6) -
+				     sizeof (*frag));
+      frag =
+	(ip6_frag_hdr_t *) u8_ptr_add (ip4, sizeof (*ip4) - sizeof (*frag));
+      frag_id = frag_id_4to6 (ip4->fragment_id);
+      vlib_buffer_advance (p, sizeof (*ip4) - sizeof (*ip6) - sizeof (*frag));
+    }
+  else
+    {
+      ip6 = (ip6_header_t *) (((u8 *) ip4) + sizeof (*ip4) - sizeof (*ip6));
+      vlib_buffer_advance (p, sizeof (*ip4) - sizeof (*ip6));
+      frag = NULL;
+    }
+
+  ip6->ip_version_traffic_class_and_flow_label =
+    clib_host_to_net_u32 ((6 << 28) + (ip4->tos << 20));
+  ip6->payload_length = u16_net_add (ip4->length, -sizeof (*ip4));
+  ip6->hop_limit = ip4->ttl;
+  ip6->protocol = ip4->protocol;
+  if (PREDICT_FALSE (frag != NULL))
+    {
+      frag->next_hdr = ip6->protocol;
+      frag->identification = frag_id;
+      frag->rsv = 0;
+      frag->fragment_offset_and_more = ip6_frag_hdr_offset_and_more (0, 1);
+      ip6->protocol = IP_PROTOCOL_IPV6_FRAGMENTATION;
+      ip6->payload_length = u16_net_add (ip6->payload_length, sizeof (*frag));
+    }
+
+  ip6->dst_address.as_u64[0] = pheader->daddr.as_u64[0];
+  ip6->dst_address.as_u64[1] = pheader->daddr.as_u64[1];
+  ip6->src_address.as_u64[0] = pheader->saddr.as_u64[0];
+  ip6->src_address.as_u64[1] = pheader->saddr.as_u64[1];
+
+  csum = ip_csum_sub_even (*checksum, old_src.as_u32);
+  csum = ip_csum_sub_even (csum, old_dst.as_u32);
+  csum = ip_csum_add_even (csum, ip6->src_address.as_u64[0]);
+  csum = ip_csum_add_even (csum, ip6->src_address.as_u64[1]);
+  csum = ip_csum_add_even (csum, ip6->dst_address.as_u64[0]);
+  csum = ip_csum_add_even (csum, ip6->dst_address.as_u64[1]);
+  *checksum = ip_csum_fold (csum);
+
+  return 0;
 }
 
 static uword
@@ -338,7 +476,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 	  pheader0 = vlib_buffer_get_current (p0);
 	  vlib_buffer_advance (p0, sizeof (*pheader0));
 
-	  if (ip4_to_ip6_tcp_udp (p0, ip4_to_ip6_set_cb, pheader0))
+	  if (map_ip4_to_ip6_tcp_udp (p0, pheader0))
 	    {
 	      p0->error = error_node->errors[MAP_ERROR_UNKNOWN];
 	      next0 = IP4_MAPT_TCP_UDP_NEXT_DROP;
@@ -436,7 +574,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip40;
 	  map_domain_t *d0;
-	  ip4_mapt_next_t next0;
+	  ip4_mapt_next_t next0 = 0;
 	  u16 ip4_len0;
 	  u8 error0;
 	  i32 dst_port0;
@@ -456,12 +594,17 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			     ip40->ip_version_and_header_length != 0x45))
 	    {
 	      error0 = MAP_ERROR_UNKNOWN;
-	      next0 = IP4_MAPT_NEXT_DROP;
 	    }
 
-	  vnet_buffer (p0)->map_t.map_domain_index =
-	    vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  d0 = ip4_map_get_domain (vnet_buffer (p0)->map_t.map_domain_index);
+	  d0 = ip4_map_get_domain (&ip40->dst_address,
+				   &vnet_buffer (p0)->map_t.map_domain_index,
+				   &error0);
+
+	  if (!d0)
+	    {			/* Guess it wasn't for us */
+	      vnet_feature_next (&next0, p0);
+	      goto exit;
+	    }
 
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 
@@ -489,9 +632,10 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  pheader0->daddr.as_u64[1] =
 	    map_get_sfx_net (d0, ip40->dst_address.as_u32, (u16) dst_port0);
 
-	  //It is important to cache at this stage because the result might be necessary
-	  //for packets within the same vector.
-	  //Actually, this approach even provides some limited out-of-order fragments support
+	  // It is important to cache at this stage because the result
+	  // might be necessary for packets within the same vector.
+	  // Actually, this approach even provides some limited
+	  // out-of-order fragments support
 	  if (PREDICT_FALSE
 	      (ip4_is_first_fragment (ip40) && (dst_port0 != -1)
 	       && (d0->ea_bits_len != 0 || !d0->rules)
@@ -513,6 +657,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  next0 = (error0 != MAP_ERROR_NONE) ? IP4_MAPT_NEXT_DROP : next0;
 	  p0->error = error_node->errors[error0];
+	exit:
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next, pi0,
 					   next0);
@@ -527,6 +672,11 @@ static char *map_t_error_strings[] = {
   foreach_map_error
 #undef _
 };
+
+VNET_FEATURE_INIT (ip4_map_t_feature, static) =
+{
+.arc_name = "ip4-unicast",.node_name = "ip4-map-t",.runs_before =
+    VNET_FEATURES ("ip4-flow-classify"),};
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ip4_map_t_fragmented_node) = {

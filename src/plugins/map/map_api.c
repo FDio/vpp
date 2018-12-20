@@ -54,12 +54,6 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   u32 index;
   u8 flags = 0;
 
-  if (mp->is_translation)
-    flags |= MAP_DOMAIN_TRANSLATION;
-
-  if (mp->is_rfc6052)
-    flags |= MAP_DOMAIN_RFC6052;
-
   rv =
     map_create_domain ((ip4_address_t *) & mp->ip4_prefix.prefix,
 		       mp->ip4_prefix.len,
@@ -137,7 +131,6 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->psid_length = d->psid_length;
     rmp->flags = d->flags;
     rmp->mtu = htons(d->mtu);
-    rmp->is_translation = (d->flags & MAP_DOMAIN_TRANSLATION); // Redundant
 
     vl_api_send_msg (reg, (u8 *) rmp);
   }));

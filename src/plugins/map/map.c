@@ -18,7 +18,6 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
-#include <map/map_dpo.h>
 #include <vppinfra/crc32.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
@@ -74,29 +73,7 @@ map_create_domain (ip4_address_t * ip4_prefix,
 {
   u8 suffix_len, suffix_shift;
   map_main_t *mm = &map_main;
-  dpo_id_t dpo_v4 = DPO_INVALID;
-  dpo_id_t dpo_v6 = DPO_INVALID;
   map_domain_t *d;
-
-  /* Sanity check on the src prefix length */
-  if (flags & MAP_DOMAIN_TRANSLATION)
-    {
-      if (ip6_src_len != 96 && ip6_src_len != 64)
-	{
-	  clib_warning ("MAP-T only supports prefix lengths of 64 and 96.");
-	  return -1;
-	}
-    }
-  else
-    {
-      if (ip6_src_len != 128)
-	{
-	  clib_warning
-	    ("MAP-E requires a BR address, not a prefix (ip6_src_len should "
-	     "be 128).");
-	  return -1;
-	}
-    }
 
   /* How many, and which bits to grab from the IPv4 DA */
   if (ip4_prefix_len + ea_bits_len < 32)
@@ -145,53 +122,13 @@ map_create_domain (ip4_address_t * ip4_prefix,
   d->psid_mask = (1 << d->psid_length) - 1;
   d->ea_shift = 64 - ip6_prefix_len - suffix_len - d->psid_length;
 
-  /* MAP data-plane object */
-  if (d->flags & MAP_DOMAIN_TRANSLATION)
-    map_t_dpo_create (DPO_PROTO_IP4, *map_domain_index, &dpo_v4);
-  else
-    map_dpo_create (DPO_PROTO_IP4, *map_domain_index, &dpo_v4);
+  /* MAP longest match lookup table (input feature / FIB) */
+  mm->ip4_prefix_tbl->add (mm->ip4_prefix_tbl, &d->ip4_prefix,
+			   d->ip4_prefix_len, *map_domain_index);
 
-  /* Create ip4 route */
-  fib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP4,
-    .fp_len = d->ip4_prefix_len,
-    .fp_addr = {
-		.ip4 = d->ip4_prefix,
-		}
-    ,
-  };
-  fib_table_entry_special_dpo_add (0, &pfx,
-				   FIB_SOURCE_MAP,
-				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v4);
-  dpo_reset (&dpo_v4);
-
-  /*
-   * construct a DPO to use the v6 domain
-   */
-  if (d->flags & MAP_DOMAIN_TRANSLATION)
-    map_t_dpo_create (DPO_PROTO_IP6, *map_domain_index, &dpo_v6);
-  else
-    map_dpo_create (DPO_PROTO_IP6, *map_domain_index, &dpo_v6);
-
-  /*
-   * Multiple MAP domains may share same source IPv6 TEP. Which is just dandy.
-   * We are not tracking the sharing. So a v4 lookup to find the correct
-   * domain post decap/trnaslate is always done
-   *
-   * Create ip6 route. This is a reference counted add. If the prefix
-   * already exists and is MAP sourced, it is now MAP source n+1 times
-   * and will need to be removed n+1 times.
-   */
-  fib_prefix_t pfx6 = {
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = d->ip6_src_len,
-    .fp_addr.ip6 = d->ip6_src,
-  };
-
-  fib_table_entry_special_dpo_add (0, &pfx6,
-				   FIB_SOURCE_MAP,
-				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v6);
-  dpo_reset (&dpo_v6);
+  /* Really needed? Or always use FIB? */
+  mm->ip6_src_prefix_tbl->add (mm->ip6_src_prefix_tbl, &d->ip6_src,
+			       d->ip6_src_len, *map_domain_index);
 
   /* Validate packet/byte counters */
   map_domain_counter_lock (mm);
@@ -231,26 +168,10 @@ map_delete_domain (u32 map_domain_index)
     }
 
   d = pool_elt_at_index (mm->domains, map_domain_index);
-
-  fib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP4,
-    .fp_len = d->ip4_prefix_len,
-    .fp_addr = {
-		.ip4 = d->ip4_prefix,
-		}
-    ,
-  };
-  fib_table_entry_special_remove (0, &pfx, FIB_SOURCE_MAP);
-
-  fib_prefix_t pfx6 = {
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = d->ip6_src_len,
-    .fp_addr = {
-		.ip6 = d->ip6_src,
-		}
-    ,
-  };
-  fib_table_entry_special_remove (0, &pfx6, FIB_SOURCE_MAP);
+  mm->ip4_prefix_tbl->delete (mm->ip4_prefix_tbl, &d->ip4_prefix,
+			      d->ip4_prefix_len);
+  mm->ip6_src_prefix_tbl->delete (mm->ip6_src_prefix_tbl, &d->ip6_src,
+				  d->ip6_src_len);
 
   /* Deleting rules */
   if (d->rules)
@@ -263,7 +184,7 @@ map_delete_domain (u32 map_domain_index)
 
 int
 map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
-		  u8 is_add)
+		  bool is_add)
 {
   map_domain_t *d;
   map_main_t *mm = &map_main;
@@ -441,7 +362,7 @@ map_fib_unresolve (map_main_pre_resolved_t * pr,
 }
 
 void
-map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, int is_del)
+map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, bool is_del)
 {
   if (ip6 && (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0))
     {
@@ -587,10 +508,6 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "mtu %d", &mtu))
 	num_m_args++;
-      else if (unformat (line_input, "map-t"))
-	flags |= MAP_DOMAIN_TRANSLATION;
-      else if (unformat (line_input, "rfc6052"))
-	flags |= (MAP_DOMAIN_TRANSLATION | MAP_DOMAIN_RFC6052);
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -714,7 +631,7 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
   ip4_address_t ip4nh, *p_v4 = NULL;
   ip6_address_t ip6nh, *p_v6 = NULL;
   clib_error_t *error = NULL;
-  int is_del = 0;
+  bool is_del = false;
 
   clib_memset (&ip4nh, 0, sizeof (ip4nh));
   clib_memset (&ip6nh, 0, sizeof (ip6nh));
@@ -731,7 +648,7 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
 	if (unformat (line_input, "ip6-nh %U", unformat_ip6_address, &ip6nh))
 	p_v6 = &ip6nh;
       else if (unformat (line_input, "del"))
-	is_del = 1;
+	is_del = true;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -938,12 +855,8 @@ done:
 static char *
 map_flags_to_string (u32 flags)
 {
-  if (flags & MAP_DOMAIN_RFC6052)
-    return "rfc6052";
   if (flags & MAP_DOMAIN_PREFIX)
     return "prefix";
-  if (flags & MAP_DOMAIN_TRANSLATION)
-    return "map-t";
   return "";
 }
 
@@ -1070,9 +983,10 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (map_domain_index == ~0)
     {
-    /* *INDENT-OFF* */
-    pool_foreach(d, mm->domains, ({vlib_cli_output(vm, "%U", format_map_domain, d, counters);}));
-    /* *INDENT-ON* */
+      /* *INDENT-OFF* */
+      pool_foreach(d, mm->domains,
+	({vlib_cli_output(vm, "%U", format_map_domain, d, counters);}));
+      /* *INDENT-ON* */
     }
   else
     {
@@ -2257,6 +2171,9 @@ map_init (vlib_main_t * vm)
 {
   map_main_t *mm = &map_main;
   clib_error_t *error = 0;
+
+  memset (mm, 0, sizeof (*mm));
+
   mm->vnet_main = vnet_get_main ();
   mm->vlib_main = vm;
 
@@ -2290,6 +2207,7 @@ map_init (vlib_main_t * vm)
 
   vlib_validate_simple_counter (&mm->icmp_relayed, 0);
   vlib_zero_simple_counter (&mm->icmp_relayed, 0);
+  mm->icmp_relayed.stat_segment_name = "/map/icmp-relayed";
 
   /* IP4 virtual reassembly */
   mm->ip4_reass_hash_table = 0;
@@ -2326,7 +2244,17 @@ map_init (vlib_main_t * vm)
 #ifdef MAP_SKIP_IP6_LOOKUP
   fib_node_register_type (FIB_NODE_TYPE_MAP_E, &map_vft);
 #endif
-  map_dpo_module_init ();
+
+  /* Create empty domain that's used in case of error */
+  map_domain_t *d;
+  pool_get_aligned (mm->domains, d, CLIB_CACHE_LINE_BYTES);
+  memset (d, 0, sizeof (*d));
+  d->ip6_src_len = 64;
+
+  /* LPM lookup tables */
+  mm->ip4_prefix_tbl = lpm_table_init (LPM_TYPE_KEY32);
+  mm->ip6_prefix_tbl = lpm_table_init (LPM_TYPE_KEY128);
+  mm->ip6_src_prefix_tbl = lpm_table_init (LPM_TYPE_KEY128);
 
   error = map_plugin_api_hookup (vm);
 
