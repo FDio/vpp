@@ -37,6 +37,7 @@
 #include <vnet/fib/fib_internal.h>
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/fib/mpls_fib.h>
+#include <vnet/fib/fib_path_ext.h>
 #include <vnet/udp/udp_encap.h>
 #include <vnet/bier/bier_fmask.h>
 #include <vnet/bier/bier_table.h>
@@ -605,10 +606,14 @@ format_fib_path (u8 * s, va_list * args)
                         vnm,
                         path->dvr.fp_interface));
         break;
+    case FIB_PATH_TYPE_DEAG:
+        s = format (s, " %sfib-index:%d",
+                    (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_RPF_ID ?  "m" : ""),
+                    path->deag.fp_tbl_id);
+        break;
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_SPECIAL:
-    case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_EXCLUSIVE:
 	if (dpo_id_is_valid(&path->fp_dpo))
 	{
@@ -2609,7 +2614,8 @@ fib_path_is_looped (fib_node_index_t path_index)
 
 fib_path_list_walk_rc_t
 fib_path_encode (fib_node_index_t path_list_index,
-		 fib_node_index_t path_index,
+                 fib_node_index_t path_index,
+                 const fib_path_ext_t *path_ext,
                  void *ctx)
 {
     fib_route_path_encode_t **api_rpaths = ctx;
@@ -2628,7 +2634,7 @@ fib_path_encode (fib_node_index_t path_list_index,
     api_rpath->dpo = path->fp_dpo;
 
     switch (path->fp_type)
-      {
+    {
       case FIB_PATH_TYPE_RECEIVE:
         api_rpath->rpath.frp_addr = path->receive.fp_addr;
         api_rpath->rpath.frp_sw_if_index = path->receive.fp_interface;
@@ -2647,6 +2653,10 @@ fib_path_encode (fib_node_index_t path_list_index,
         break;
       case FIB_PATH_TYPE_DEAG:
         api_rpath->rpath.frp_fib_index = path->deag.fp_tbl_id;
+        if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_RPF_ID)
+        {
+            api_rpath->rpath.frp_flags |= FIB_ROUTE_PATH_RPF_ID;
+        }
         break;
       case FIB_PATH_TYPE_RECURSIVE:
         api_rpath->rpath.frp_addr = path->recursive.fp_nh.fp_ip;
@@ -2660,9 +2670,18 @@ fib_path_encode (fib_node_index_t path_list_index,
           api_rpath->rpath.frp_udp_encap_id = path->udp_encap.fp_udp_encap_id;
           api_rpath->rpath.frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
           break;
+      case FIB_PATH_TYPE_INTF_RX:
+	  api_rpath->rpath.frp_sw_if_index = path->receive.fp_interface;
+	  api_rpath->rpath.frp_flags |= FIB_ROUTE_PATH_INTF_RX;
+	  break;
       default:
         break;
-      }
+    }
+
+    if (path_ext && path_ext->fpe_type == FIB_PATH_EXT_MPLS) 
+    {
+        api_rpath->rpath.frp_label_stack = path_ext->fpe_path.frp_label_stack;
+    }
 
     return (FIB_PATH_LIST_WALK_CONTINUE);
 }

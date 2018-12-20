@@ -291,6 +291,21 @@ extern u32 mfib_table_get_index_for_sw_if_index(fib_protocol_t proto,
 
 /**
  * @brief
+ *  Get the Table-ID of the FIB from protocol and index
+ *
+ * @param fib_index
+ *  The FIB index
+ *
+ * @paran proto
+ *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @return fib_index
+ *  The tableID of the FIB
+ */
+extern u32 mfib_table_get_table_id(u32 fib_index, fib_protocol_t proto);
+
+/**
+ * @brief
  *  Get the index of the FIB for a Table-ID. This DOES NOT create the
  * FIB if it does not exist.
  *

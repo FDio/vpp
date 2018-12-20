@@ -24,6 +24,7 @@
 #include <vnet/fib/fib_node_list.h>
 #include <vnet/fib/fib_walk.h>
 #include <vnet/fib/fib_urpf_list.h>
+#include <vnet/fib/fib_path_ext.h>
 
 /**
  * The magic number of child entries that make a path-list popular.
@@ -722,7 +723,7 @@ fib_path_list_create (fib_path_list_flags_t flags,
 	if (FIB_NODE_INDEX_INVALID != old_path_list_index)
 	{
 	    fib_path_list_destroy(path_list);
-	
+
 	    path_list_index = old_path_list_index;
 	}
 	else
@@ -747,7 +748,7 @@ fib_path_list_create (fib_path_list_flags_t flags,
     return (path_list_index);
 }
 
-static fib_path_cfg_flags_t 
+static fib_path_cfg_flags_t
 fib_path_list_flags_2_path_flags (fib_path_list_flags_t plf)
 {
     fib_path_cfg_flags_t pf = FIB_PATH_CFG_FLAG_NONE;
@@ -1343,6 +1344,29 @@ fib_path_list_walk (fib_node_index_t path_list_index,
     }
 }
 
+void
+fib_path_list_walk_w_ext (fib_node_index_t path_list_index,
+                          const fib_path_ext_list_t *ext_list,
+                          fib_path_list_walk_w_ext_fn_t func,
+                          void *ctx)
+{
+    fib_node_index_t *path_index;
+    fib_path_list_t *path_list;
+    fib_path_ext_t *path_ext;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    vec_foreach(path_index, path_list->fpl_paths)
+    {
+        path_ext = fib_path_ext_list_find_by_path_index(ext_list, *path_index);
+
+        if (FIB_PATH_LIST_WALK_STOP == func(path_list_index,
+                                            *path_index,
+                                            path_ext,
+                                            ctx))
+            break;
+    }
+}
 
 void
 fib_path_list_module_init (void)

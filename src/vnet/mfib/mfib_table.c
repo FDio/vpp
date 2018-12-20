@@ -490,6 +490,17 @@ mfib_table_get_index_for_sw_if_index (fib_protocol_t proto,
 }
 
 u32
+mfib_table_get_table_id (u32 fib_index,
+                        fib_protocol_t proto)
+{
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(fib_index, proto);
+
+    return ((NULL != mfib_table ? mfib_table->mft_table_id : ~0));
+}
+
+u32
 mfib_table_find (fib_protocol_t proto,
                  u32 table_id)
 {

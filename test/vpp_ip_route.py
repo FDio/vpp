@@ -78,6 +78,24 @@ def find_mroute(test, grp_addr, src_addr, grp_addr_len,
     return False
 
 
+def find_mpls_route(test, table_id, label, eos_bit, paths=None):
+    dump = test.vapi.mpls_fib_dump()
+    for e in dump:
+        if label == e.label \
+           and eos_bit == e.eos_bit \
+           and table_id == e.table_id:
+            if not paths:
+                return True
+            else:
+                if (len(paths) != len(e.path)):
+                    return False
+                for i in range(len(paths)):
+                    if (paths[i] != e.path[i]):
+                        return False
+                return True
+    return False
+
+
 def fib_interface_ip_prefix(test, address, length, sw_if_index):
     vp = VppIpPrefix(address, length)
     addrs = test.vapi.ip_address_dump(sw_if_index, is_ipv6=vp.is_ip6)
@@ -225,6 +243,23 @@ class VppMplsLabel(object):
                 'exp': self.exp,
                 'is_uniform': is_uniform}
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self.value == other.value and
+                    self.ttl == other.ttl and
+                    self.exp == other.exp and
+                    self.mode == other.mode)
+        elif hasattr(other, 'label'):
+            return (self.value == other.label and
+                    self.ttl == other.ttl and
+                    self.exp == other.exp and
+                    (self.mode == MplsLspMode.UNIFORM) == other.is_uniform)
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not (self == other)
+
 
 class VppRoutePath(object):
 
@@ -293,7 +328,21 @@ class VppRoutePath(object):
                 'label_stack': self.encode_labels()}
 
     def __eq__(self, other):
-        return self.nh_addr == other.nh_addr
+        if isinstance(other, self.__class__):
+            return self.nh_addr == other.nh_addr
+        elif hasattr(other, 'sw_if_index'):
+            # vl_api_fib_path_t
+            if (len(self.nh_labels) != other.n_labels):
+                return False
+            for i in range(len(self.nh_labels)):
+                if (self.nh_labels[i] != other.label_stack[i]):
+                    return False
+            return self.nh_itf == other.sw_if_index
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not (self == other)
 
 
 class VppMRoutePath(VppRoutePath):
@@ -725,13 +774,8 @@ class VppMplsRoute(VppObject):
                                                is_add=0)
 
     def query_vpp_config(self):
-        dump = self._test.vapi.mpls_fib_dump()
-        for e in dump:
-            if self.local_label == e.label \
-               and self.eos_bit == e.eos_bit \
-               and self.table_id == e.table_id:
-                return True
-        return False
+        return find_mpls_route(self._test, self.table_id,
+                               self.local_label, self.eos_bit)
 
     def __str__(self):
         return self.object_id()

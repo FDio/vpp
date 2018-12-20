@@ -264,7 +264,10 @@ send_bier_route_details (const bier_table_t *bt,
     mp->br_bp = htons(be->be_bp);
     mp->br_n_paths = htonl(n_paths);
 
-    fib_path_list_walk(be->be_path_list, fib_path_encode, &api_rpaths);
+    fib_path_list_walk_w_ext(be->be_path_list,
+                             NULL,
+                             fib_path_encode,
+                             &api_rpaths);
 
     fp = mp->br_paths;
     vec_foreach (api_rpath, api_rpaths)
@@ -625,7 +628,10 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
             mp->bde_payload_proto = pproto;
             mp->bde_bp = htons(bp);
 
-            fib_path_list_walk(pl, fib_path_encode, &api_rpaths);
+            fib_path_list_walk_w_ext(pl,
+                                     NULL,
+                                     fib_path_encode,
+                                     &api_rpaths);
 
             fp = mp->bde_paths;
             vec_foreach (api_rpath, api_rpaths)

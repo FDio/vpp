@@ -183,6 +183,7 @@ extern u32 fib_path_get_rpf_id(fib_node_index_t path_index);
 extern void fib_path_module_init(void);
 extern fib_path_list_walk_rc_t fib_path_encode(fib_node_index_t path_list_index,
                                                fib_node_index_t path_index,
+                                               const struct fib_path_ext_t_ *ext_list,
                                                void *ctx);
 
 #endif

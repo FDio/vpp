@@ -810,6 +810,8 @@ add_del_route_t_handler (u8 is_multipath,
       path.frp_local_label = next_hop_via_label;
       path.frp_eos = MPLS_NON_EOS;
     }
+  if (is_local)
+    path_flags |= FIB_ROUTE_PATH_LOCAL;
   if (is_dvr)
     path_flags |= FIB_ROUTE_PATH_DVR;
   if (is_resolve_host)

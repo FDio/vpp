@@ -183,6 +183,17 @@ extern void fib_path_list_walk(fib_node_index_t pl_index,
 			       fib_path_list_walk_fn_t func,
 			       void *ctx);
 
+typedef fib_path_list_walk_rc_t (*fib_path_list_walk_w_ext_fn_t)(
+    fib_node_index_t pl_index,
+    fib_node_index_t path_index,
+    const struct fib_path_ext_t_ *ext_list,
+    void *ctx);
+
+extern void fib_path_list_walk_w_ext(fib_node_index_t pl_index,
+                                     const fib_path_ext_list_t *ext_list,
+                                     fib_path_list_walk_w_ext_fn_t func,
+                                     void *ctx);
+
 extern void fib_path_list_module_init(void);
 
 extern void fib_path_list_module_init(void);

@@ -1324,9 +1324,10 @@ mfib_entry_encode (fib_node_index_t mfib_entry_index,
 
     if (FIB_NODE_INDEX_INVALID != bsrc->mfes_pl)
     {
-        fib_path_list_walk(bsrc->mfes_pl,
-                           fib_path_encode,
-                           api_rpaths);
+        fib_path_list_walk_w_ext(bsrc->mfes_pl,
+                                 NULL,
+                                 fib_path_encode,
+                                 api_rpaths);
     }
 }
 

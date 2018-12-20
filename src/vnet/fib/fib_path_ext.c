@@ -328,11 +328,14 @@ fib_path_ext_list_find_by_path_index (const fib_path_ext_list_t *list,
 {
     fib_path_ext_t *path_ext;
 
-    vec_foreach(path_ext, list->fpel_exts)
+    if (NULL != list)
     {
-        if (path_ext->fpe_path_index == path_index)
+        vec_foreach(path_ext, list->fpel_exts)
         {
-            return (path_ext);
+            if (path_ext->fpe_path_index == path_index)
+            {
+                return (path_ext);
+            }
         }
     }
     return (NULL);
