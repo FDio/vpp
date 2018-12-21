@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "a079a539_f44ac528",
+        "filename": "src/plugins/gbp/gbp_contract.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-21T12:46:24Z",
+      "side": 1,
+      "message": "no. removed.",
+      "parentUuid": "5ccfc177_7ecd8974",
+      "range": {
+        "startLine": 105,
+        "startChar": 0,
+        "endLine": 105,
+        "endChar": 36
+      },
+      "revId": "86cf42b92a017495d1a8052caf0e70c1beb4fc58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "245329e6_7bbb5106",
         "filename": "src/plugins/gbp/gbp_policy.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-12-21T12:06:59Z",
       "side": 1,
       "message": "Loop for lookup?",
+      "range": {
+        "startLine": 114,
+        "startChar": 2,
+        "endLine": 114,
+        "endChar": 13
+      },
+      "revId": "86cf42b92a017495d1a8052caf0e70c1beb4fc58",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ec5f5d9b_839ac9a5",
+        "filename": "src/plugins/gbp/gbp_policy.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-12-21T12:46:24Z",
+      "side": 1,
+      "message": "yes. number of types is small.",
+      "parentUuid": "245329e6_7bbb5106",
       "range": {
         "startLine": 114,
         "startChar": 2,
