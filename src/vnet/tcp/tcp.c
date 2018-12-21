@@ -299,6 +299,7 @@ tcp_connection_reset (tcp_connection_t * tc)
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
     case TCP_STATE_CLOSING:
+    case TCP_STATE_LAST_ACK:
       tcp_connection_timers_reset (tc);
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       tc->state = TCP_STATE_CLOSED;
@@ -1249,38 +1250,65 @@ tcp_timer_waitclose_handler (u32 conn_index)
   tc = tcp_connection_get (conn_index, thread_index);
   if (!tc)
     return;
+
   tc->timers[TCP_TIMER_WAITCLOSE] = TCP_TIMER_HANDLE_INVALID;
 
-  /* Session didn't come back with a close(). Send FIN either way
-   * and switch to LAST_ACK. */
-  if (tc->state == TCP_STATE_CLOSE_WAIT && (tc->flags & TCP_CONN_FINPNDG))
+  switch (tc->state)
     {
-      /* Make sure we don't try to send unsent data */
+    case TCP_STATE_CLOSE_WAIT:
       tcp_connection_timers_reset (tc);
+
+      if (!(tc->flags & TCP_CONN_FINPNDG))
+	{
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+	  break;
+	}
+
+      /* Session didn't come back with a close. Send FIN either way
+       * and switch to LAST_ACK. */
       tcp_cong_recovery_off (tc);
+      /* Make sure we don't try to send unsent data */
       tc->snd_una_max = tc->snd_nxt = tc->snd_una;
       tcp_send_fin (tc);
-      tc->state = TCP_STATE_LAST_ACK;
+      tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
 
       /* Make sure we don't wait in LAST ACK forever */
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 
       /* Don't delete the connection yet */
-      return;
-    }
-  else if (tc->state == TCP_STATE_FIN_WAIT_1)
-    {
+      break;
+    case TCP_STATE_FIN_WAIT_1:
       tcp_connection_timers_reset (tc);
-      /* If FIN pending send it before closing */
       if (tc->flags & TCP_CONN_FINPNDG)
-	tcp_send_fin (tc);
-      tc->state = TCP_STATE_CLOSED;
-      /* Wait for session layer to clean up tx events */
+	{
+	  /* If FIN pending send it before closing and wait as long as
+	   * the rto timeout would wait. Notify session layer that transport
+	   * is closed. We haven't sent everything but we did try. */
+	  tcp_cong_recovery_off (tc);
+	  tcp_send_fin (tc);
+	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE,
+			 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+	  session_stream_close_notify (&tc->connection);
+	}
+      else
+	{
+	  /* We've sent the fin but no progress. Close the connection and
+	   * to make sure everything is flushed, setup a cleanup timer */
+	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+	}
+      break;
+    case TCP_STATE_LAST_ACK:
+    case TCP_STATE_CLOSING:
+      tcp_connection_timers_reset (tc);
+      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
-      return;
+      break;
+    default:
+      tcp_connection_del (tc);
+      break;
     }
-
-  tcp_connection_del (tc);
 }
 
 /* *INDENT-OFF* */

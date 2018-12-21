@@ -830,6 +830,24 @@ stream_session_delete_notify (transport_connection_t * tc)
 }
 
 /**
+ * Notification from transport that session can be closed
+ *
+ * Should be called by transport only if it was closed with non-empty
+ * tx fifo and once it decides to begin the closing procedure prior to
+ * issuing a delete notify. This gives the chance to the session layer
+ * to cleanup any outstanding events.
+ */
+void
+session_stream_close_notify (transport_connection_t * tc)
+{
+  stream_session_t *s;
+
+  if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
+    return;
+  s->session_state = SESSION_STATE_CLOSED;
+}
+
+/**
  * Notify application that connection has been reset.
  */
 void

@@ -509,6 +509,7 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
 
   if (mrtt > 0 && mrtt < TCP_RTT_MAX)
     tcp_estimate_rtt (tc, mrtt);
+  tcp_update_rto (tc);
 }
 
 /**
@@ -3710,6 +3711,10 @@ do {                                                       	\
   _(FIN_WAIT_1, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
   _(CLOSING, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(CLOSING, TCP_FLAG_SYN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(CLOSING, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(CLOSING, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
+    TCP_ERROR_NONE);
   /* FIN confirming that the peer (app) has closed */
   _(FIN_WAIT_2, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_2, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
