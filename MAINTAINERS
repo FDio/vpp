@@ -252,6 +252,12 @@ M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@outlook.com>
 M:	Radu Nicolau <radu.nicolau@intel.com>
 F:	src/plugins/dpdk/ipsec/
 
+Plugin - DPI
+I:      dpi
+M:      Hongjun Ni <hongjun.ni@intel.com>
+M:      Andreas Schultz <andreas.schultz@travelping.com>
+F:      src/plugins/dpi/
+
 Plugin - flowprobe
 I:	flowprobe
 Y:	src/plugins/flowprobe/FEATURE.yaml
