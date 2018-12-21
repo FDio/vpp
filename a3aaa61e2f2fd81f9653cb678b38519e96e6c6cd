@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bb26b97e_cde12554",
+        "filename": "extras/vom/vom/gbp_rule.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2018-12-21T12:06:59Z",
+      "side": 0,
+      "message": "ACL rules are set in priority order, If we want to have 1:1 mapping between acl rules and gbp_rules, I think so, we need this.",
+      "range": {
+        "startLine": 162,
+        "startChar": 19,
+        "endLine": 162,
+        "endChar": 37
+      },
+      "revId": "a3aaa61e2f2fd81f9653cb678b38519e96e6c6cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
