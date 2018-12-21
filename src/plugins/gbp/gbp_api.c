@@ -154,7 +154,7 @@ vl_api_gbp_endpoint_add_t_handler (vl_api_gbp_endpoint_add_t * mp)
 	ip_address_decode (&mp->endpoint.ips[ii], &ips[ii]);
       }
     }
-  mac_address_decode ((const u8 *) &mp->endpoint.mac, &mac);
+  mac_address_decode (mp->endpoint.mac, &mac);
 
   if (GBP_ENDPOINT_FLAG_REMOTE & gef)
     {
@@ -260,7 +260,7 @@ gbp_endpoint_send_details (index_t gei, void *args)
   mp->endpoint.flags = gbp_endpoint_flags_encode (gef->gef_flags);
   mp->handle = htonl (gei);
   mp->age = vlib_time_now (vlib_get_main ()) - ge->ge_last_time;
-  mac_address_encode (&ge->ge_key.gek_mac, (u8 *) & mp->endpoint.mac);
+  mac_address_encode (&ge->ge_key.gek_mac, mp->endpoint.mac);
 
   vec_foreach_index (ii, ge->ge_key.gek_ips)
   {
@@ -821,7 +821,7 @@ gbp_next_hop_decode (const vl_api_gbp_next_hop_t * in, index_t * gnhi)
     return (VNET_API_ERROR_NO_SUCH_FIB);
 
   ip_address_decode (&in->ip, &ip);
-  mac_address_decode ((const u8 *) &in->mac, &mac);
+  mac_address_decode (in->mac, &mac);
 
   *gnhi = gbp_next_hop_alloc (&ip, grd, &mac, gbd);
 
