@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2018 Intel, Travelping and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+autoreply define dpi_app_add_del {
+  u32 client_index;
+  u32 context;
+  u8 name[64];
+  u8 is_add;
+};
+
+define dpi_flow_add_del {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_ipv6;
+  u8 src_ip[16];
+  u8 dst_ip[16];
+  u16 src_port;
+  u16 dst_port;
+  u32 vrf_id;
+  u8 protocol;
+};
+
+define dpi_flow_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 flow_id;
+};
+
+autoreply define dpi_app_rule_add_del {
+  u32 client_index;
+  u32 context;
+  u8 app[64];
+  u32 id;
+  u8 host[256];
+  u8 pattern[256];
+  u8 is_add;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
