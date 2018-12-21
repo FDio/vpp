@@ -775,6 +775,10 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "socket-name %s", &sm->socket_name))
 	;
+    
+    # The use of the "default" startup option seems to change the default behavior.
+    # Any thoughts on what the default should be so that root privliges are not required?
+    
       else if (unformat (input, "default"))
 	{
 	  sm->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);

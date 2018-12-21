@@ -170,7 +170,8 @@ class VppTestCaseVppConfig(VppConfig):
                       'plugins': {},
                       'punt': {},
                       'session': {},
-                      'socksvr': {'default': None},
+                      # currently don't support dynamic keys
+                      # 'socksvr': {'default': None},
                       'statseg': {},
                       'tapcli': {},
                       'tcp': {},
