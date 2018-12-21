@@ -819,6 +819,7 @@ stream_session_delete_notify (transport_connection_t * tc)
       break;
     case SESSION_STATE_CLOSED:
     case SESSION_STATE_ACCEPTING:
+    case SESSION_STATE_CLOSED_WAITING:
       stream_session_delete (s);
       break;
     default:
@@ -1112,7 +1113,18 @@ stream_session_disconnect_transport (stream_session_t * s)
       session_free_w_fifos (s);
       return;
     }
-  s->session_state = SESSION_STATE_CLOSED;
+
+  /* If tx queue wasn't drained, change state to closed waiting for transport.
+   * This way, the transport, if it so wishes, can continue to try sending the
+   * outstanding data (in closed state it cannot). It MUST however at one
+   * point, either after sending everything or after a timeout, call delete
+   * notify. This will finally lead to the complete cleanup of the session.
+   */
+  if (svm_fifo_max_dequeue (s->server_tx_fifo))
+    s->session_state = SESSION_STATE_CLOSED_WAITING;
+  else
+    s->session_state = SESSION_STATE_CLOSED;
+
   tp_vfts[session_get_transport_proto (s)].close (s->connection_index,
 						  s->thread_index);
 }

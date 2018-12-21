@@ -2645,7 +2645,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 thread_index = vm->thread_index, errors = 0, *first_buffer;
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
-  u32 n_left_from, *from;
+  u32 n_left_from, *from, max_dequeue;
 
   from = first_buffer = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -2776,7 +2776,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tc0->flags & TCP_CONN_FINPNDG)
 	    {
 	      /* TX fifo finally drained */
-	      if (!session_tx_fifo_max_dequeue (&tc0->connection))
+	      max_dequeue = session_tx_fifo_max_dequeue (&tc0->connection);
+	      if (max_dequeue <= tc0->burst_acked)
 		tcp_send_fin (tc0);
 	    }
 	  /* If FIN is ACKed */
