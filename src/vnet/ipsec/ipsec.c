@@ -569,16 +569,21 @@ clib_error_t *
 ipsec_check_support_cb (ipsec_main_t * im, ipsec_sa_t * sa)
 {
   clib_error_t *error = 0;
-  ipsec_ah_backend_t *ah =
-    pool_elt_at_index (im->ah_backends, im->ah_current_backend);
-  ASSERT (ah->check_support_cb);
-  error = ah->check_support_cb (sa);
-  if (error)
-    return error;
-  ipsec_esp_backend_t *esp =
-    pool_elt_at_index (im->esp_backends, im->esp_current_backend);
-  ASSERT (esp->check_support_cb);
-  error = esp->check_support_cb (sa);
+
+  if (PREDICT_FALSE (sa->protocol == IPSEC_PROTOCOL_AH))
+    {
+      ipsec_ah_backend_t *ah =
+	pool_elt_at_index (im->ah_backends, im->ah_current_backend);
+      ASSERT (ah->check_support_cb);
+      error = ah->check_support_cb (sa);
+    }
+  else
+    {
+      ipsec_esp_backend_t *esp =
+	pool_elt_at_index (im->esp_backends, im->esp_current_backend);
+      ASSERT (esp->check_support_cb);
+      error = esp->check_support_cb (sa);
+    }
   return error;
 }
 
