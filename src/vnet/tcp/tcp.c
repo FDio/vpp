@@ -1271,6 +1271,9 @@ tcp_timer_waitclose_handler (u32 conn_index)
   else if (tc->state == TCP_STATE_FIN_WAIT_1)
     {
       tcp_connection_timers_reset (tc);
+      /* If FIN pending send it before closing */
+      if (tc->flags & TCP_CONN_FINPNDG)
+	tcp_send_fin (tc);
       tc->state = TCP_STATE_CLOSED;
       /* Wait for session layer to clean up tx events */
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
