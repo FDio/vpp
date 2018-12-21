@@ -562,6 +562,13 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
   return (tcp_connection_t *) tconn;
 }
 
+always_inline void
+tcp_connection_set_state (tcp_connection_t * tc, tcp_state_t state)
+{
+  tc->state = state;
+  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
+}
+
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
