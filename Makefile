@@ -79,7 +79,11 @@ else
 	DEB_DEPENDS += libssl-dev
 endif
 
-RPM_DEPENDS  = redhat-lsb glibc-static
+ifeq ($(OS_VERSION_ID),18.04)
+    DEB_DEPENDS += libhyperscan-dev libhyperscan4
+endif
+
+RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel
 RPM_DEPENDS += apr-devel
 RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
@@ -111,6 +115,7 @@ endif
 # +ganglia-devel if building the ganglia plugin
 
 RPM_DEPENDS += chrpath libffi-devel rpm-build
+RPM_DEPENDS += userspace-rcu-devel hyperscan-devel
 
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
@@ -119,6 +124,7 @@ RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
+RPM_SUSE_DEVEL_DEPS += liburcu-devel hyperscan-devel
 
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
 RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
