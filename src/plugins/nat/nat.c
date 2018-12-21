@@ -1575,6 +1575,8 @@ nat44_lb_static_mapping_add_del_local (ip4_address_t e_addr, u16 e_port,
   }));
   /* *INDENT-ON* */
 
+  ASSERT (vec_len (locals) > 1);
+
   local = pool_elt_at_index (m->locals, locals[0]);
   local->prefix = local->probability;
   for (i = 1; i < vec_len (locals); i++)
