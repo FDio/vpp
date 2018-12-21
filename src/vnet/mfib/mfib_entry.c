@@ -633,16 +633,25 @@ mfib_entry_stack (mfib_entry_t *mfib_entry,
         {
             /*
              * for exclusive routes the source provided a replicate DPO
-             * we we stashed inthe special path list with one path
+             * which we stashed in the special path list with one path,
              * so we can stack directly on that.
              */
             ASSERT(1 == vec_len(ctx.next_hops));
 
-            dpo_stack(DPO_MFIB_ENTRY, dp,
-                      &mfib_entry->mfe_rep,
-                      &ctx.next_hops[0].path_dpo);
-            dpo_reset(&ctx.next_hops[0].path_dpo);
-            vec_free(ctx.next_hops);
+            if (NULL != ctx.next_hops)
+            {
+                dpo_stack(DPO_MFIB_ENTRY, dp,
+                          &mfib_entry->mfe_rep,
+                          &ctx.next_hops[0].path_dpo);
+                dpo_reset(&ctx.next_hops[0].path_dpo);
+                vec_free(ctx.next_hops);
+            }
+            else
+            {
+                dpo_stack(DPO_MFIB_ENTRY, dp,
+                          &mfib_entry->mfe_rep,
+                          drop_dpo_get(dp));
+            }
         }
     }
     else

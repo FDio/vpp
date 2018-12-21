@@ -438,7 +438,7 @@ ip6_mfib_table_lookup (const ip6_mfib_t *mfib,
     {
 	len = table->prefix_lengths_in_search_order[i];
 
-	ASSERT(len >= 0 && len <= 256);
+	ASSERT(len <= 256);
         IP6_MFIB_MK_KEY(mfib, grp, src, len, key);
 
 	rv = clib_bihash_search_inline_2_40_8(&table->ip6_mhash, &key, &value);
