@@ -79,6 +79,12 @@ else
 	DEB_DEPENDS += libssl-dev
 endif
 
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
+ifeq ($(OS_VERSION_ID),18.04)
+    DEB_DEPENDS += libhyperscan-dev libhyperscan4
+endif
+endif
+
 RPM_DEPENDS  = redhat-lsb glibc-static
 RPM_DEPENDS += apr-devel
 RPM_DEPENDS += numactl-devel
@@ -111,6 +117,12 @@ endif
 # +ganglia-devel if building the ganglia plugin
 
 RPM_DEPENDS += chrpath libffi-devel rpm-build
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
+ifeq ($(OS_VERSION_ID),18.04)
+RPM_DEPENDS += hyperscan-devel
+endif
+endif
+
 # lowercase- replace spaces with dashes.
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | sed -e 's/ /-/' | awk '{print tolower($$0)}')
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
@@ -119,6 +131,11 @@ RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
+ifeq ($(OS_VERSION_ID),18.04)
+RPM_SUSE_DEVEL_DEPS += hyperscan-devel
+endif
+endif
 
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
 RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
