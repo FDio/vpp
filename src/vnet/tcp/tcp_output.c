@@ -392,9 +392,13 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
   switch (state)
     {
     case TCP_STATE_ESTABLISHED:
-    case TCP_STATE_FIN_WAIT_1:
-    case TCP_STATE_CLOSED:
     case TCP_STATE_CLOSE_WAIT:
+    case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_LAST_ACK:
+    case TCP_STATE_CLOSING:
+    case TCP_STATE_FIN_WAIT_2:
+    case TCP_STATE_TIME_WAIT:
+    case TCP_STATE_CLOSED:
       return tcp_make_established_options (tc, opts);
     case TCP_STATE_SYN_RCVD:
       return tcp_make_synack_options (tc, opts);
@@ -1124,6 +1128,8 @@ tcp_make_state_flags (tcp_connection_t * tc, tcp_state_t next_state)
     {
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_CLOSE_WAIT:
+    case TCP_STATE_TIME_WAIT:
+    case TCP_STATE_FIN_WAIT_2:
       return TCP_FLAG_ACK;
     case TCP_STATE_SYN_RCVD:
       return TCP_FLAG_SYN | TCP_FLAG_ACK;
@@ -1131,6 +1137,7 @@ tcp_make_state_flags (tcp_connection_t * tc, tcp_state_t next_state)
       return TCP_FLAG_SYN;
     case TCP_STATE_LAST_ACK:
     case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_CLOSING:
       if (tc->snd_nxt + 1 < tc->snd_una_max)
 	return TCP_FLAG_ACK;
       else
