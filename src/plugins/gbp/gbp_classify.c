@@ -406,11 +406,11 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 		{
 		case DPO_PROTO_IP4:
 		  ip4_0 = (vlib_buffer_get_current (b0) +
-			   vnet_buffer (b0)->l2.l2_len);
+			   vnet_buffer_l2hdr_size (b0));
 		  break;
 		case DPO_PROTO_IP6:
 		  ip6_0 = (vlib_buffer_get_current (b0) +
-			   vnet_buffer (b0)->l2.l2_len);
+			   vnet_buffer_l2hdr_size (b0));
 		  break;
 		default:
 		  /* not IP so no LPM classify possible */

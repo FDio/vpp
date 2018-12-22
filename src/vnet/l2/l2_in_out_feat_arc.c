@@ -162,7 +162,7 @@ get_ethertype_xN (int vector_sz, int is_output, vlib_buffer_t ** b,
   for (ii = 0; ii < vector_sz; ii++)
     {
       ethernet_header_t *h0 = vlib_buffer_get_current (b[ii]);
-      u8 *l3h0 = (u8 *) h0 + vnet_buffer (b[ii])->l2.l2_len;
+      u8 *l3h0 = (u8 *) h0 + vnet_buffer_l2hdr_size (b[ii]);
       out_ethertype[ii] = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
     }
 }

@@ -227,7 +227,7 @@ vnet_update_l2_len (vlib_buffer_t * b)
 {
   ethernet_header_t *eth;
   u16 ethertype;
-  u8 vlan_count = 0;
+  u16 len = sizeof (ethernet_header_t);
 
   /* point at current l2 hdr */
   eth = vlib_buffer_get_current (b);
@@ -238,35 +238,33 @@ vnet_update_l2_len (vlib_buffer_t * b)
    *
    * Determine l2 header len, check for up to 2 vlans
    */
-  vnet_buffer (b)->l2.l2_len = sizeof (ethernet_header_t);
   ethertype = clib_net_to_host_u16 (eth->type);
   if (ethernet_frame_is_tagged (ethertype))
     {
       ethernet_vlan_header_t *vlan;
-      vnet_buffer (b)->l2.l2_len += sizeof (*vlan);
-      vlan_count = 1;
+      len += sizeof (*vlan);
       vlan = (void *) (eth + 1);
       ethertype = clib_net_to_host_u16 (vlan->type);
       if (ethertype == ETHERNET_TYPE_VLAN)
-	{
-	  vnet_buffer (b)->l2.l2_len += sizeof (*vlan);
-	  vlan_count = 2;
-	}
+	len += sizeof (*vlan);
     }
-  ethernet_buffer_set_vlan_count (b, vlan_count);
+
+  b->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+    VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+  vnet_buffer (b)->l2_hdr_offset = b->current_data;
+  vnet_buffer (b)->l3_hdr_offset = b->current_data + len;
 }
 
 /*
  * Compute flow hash of an ethernet packet, use 5-tuple hash if L3 packet
  * is ip4 or ip6. Otherwise hash on smac/dmac/etype.
  * The vlib buffer current pointer is expected to be at ethernet header
- * and vnet l2.l2_len is expected to be setup already.
  */
 static inline u32
 vnet_l2_compute_flow_hash (vlib_buffer_t * b)
 {
   ethernet_header_t *eh = vlib_buffer_get_current (b);
-  u8 *l3h = (u8 *) eh + vnet_buffer (b)->l2.l2_len;
+  u8 *l3h = (u8 *) eh + vnet_buffer_l2hdr_size (b);
   u16 ethertype = clib_net_to_host_u16 (*(u16 *) (l3h - 2));
 
   if (ethertype == ETHERNET_TYPE_IP4)

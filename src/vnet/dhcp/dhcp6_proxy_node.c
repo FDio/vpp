@@ -196,7 +196,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	   */
 	  u0 = (void *) h0 - (sizeof (*u0));
 	  ip0 = (void *) u0 - (sizeof (*ip0));
-	  e_h0 = (void *) ip0 - ethernet_buffer_header_size (b0);
+	  e_h0 = (void *) ip0 - vnet_buffer_l2hdr_size (b0);
 
 	  clib_memcpy (client_src_mac, e_h0->src_address, 6);
 

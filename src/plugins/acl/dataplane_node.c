@@ -191,7 +191,7 @@ nonip_in_out_node_fn (vlib_main_t * vm,
       int error0 = 0;
 
       ethernet_header_t *h0 = vlib_buffer_get_current (b[0]);
-      u8 *l3h0 = (u8 *) h0 + vnet_buffer (b[0])->l2.l2_len;
+      u8 *l3h0 = (u8 *) h0 + vnet_buffer_l2hdr_size (b[0]);
       ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
 
       if (is_permitted_ethertype (am, sw_if_index0, is_output, ethertype))

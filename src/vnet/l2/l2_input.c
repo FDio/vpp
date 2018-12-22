@@ -178,7 +178,7 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
   /* determine layer2 kind for stat and mask */
   if (PREDICT_FALSE (ethernet_address_cast (h0->dst_address)))
     {
-      u8 *l3h0 = (u8 *) h0 + vnet_buffer (b0)->l2.l2_len;
+      u8 *l3h0 = (u8 *) h0 + vnet_buffer_l2hdr_size (b0);
 
 #define get_u16(addr) ( *((u16 *)(addr)) )
       u16 ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));

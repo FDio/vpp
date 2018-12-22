@@ -1376,7 +1376,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 
 	      /* Reuse current MAC header, copy SMAC to DMAC and
 	       * interface MAC to SMAC */
-	      vlib_buffer_advance (p0, -ethernet_buffer_header_size (p0));
+	      vlib_buffer_advance (p0, -vnet_buffer_l2hdr_size (p0));
 	      eth0 = vlib_buffer_get_current (p0);
 	      clib_memcpy (eth0->dst_address, eth0->src_address, 6);
 	      if (eth_if0)

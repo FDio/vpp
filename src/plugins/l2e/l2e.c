@@ -265,8 +265,8 @@ l2_emulation_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
-	  l2_len0 = vnet_buffer (b0)->l2.l2_len;
-	  l2_len1 = vnet_buffer (b1)->l2.l2_len;
+	  l2_len0 = vnet_buffer_l2hdr_size (b0);
+	  l2_len1 = vnet_buffer_l2hdr_size (b0);
 
 	  h0 = vlib_buffer_get_current (b0);
 	  h1 = vlib_buffer_get_current (b1);
@@ -364,7 +364,7 @@ l2_emulation_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  l2_len0 = vnet_buffer (b0)->l2.l2_len;
+	  l2_len0 = vnet_buffer_l2hdr_size (b0);
 
 	  h0 = vlib_buffer_get_current (b0);
 	  ether_type0 = clib_net_to_host_u16 (*(u16 *) (h0 + l2_len0 - 2));

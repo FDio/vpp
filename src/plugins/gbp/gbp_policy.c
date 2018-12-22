@@ -93,7 +93,7 @@ gbp_rule_l2_redirect (const gbp_rule_t * gu, vlib_buffer_t * b0)
 
   eth0 = vlib_buffer_get_current (b0);
   /* pop the ethernet header to prepare for L3 rewrite */
-  vlib_buffer_advance (b0, vnet_buffer (b0)->l2.l2_len);
+  vlib_buffer_advance (b0, vnet_buffer_l2hdr_size (b0));
 
   dproto = ethertype_to_dpo_proto (eth0->type);
   dpo = &gu->gu_dpo[GBP_POLICY_NODE_L2][dproto];
@@ -227,7 +227,7 @@ gbp_policy_inline (vlib_main_t * vm,
 
 		      action0 = 0;
 		      gc0 = gbp_contract_get (gci0);
-		      l2_len0 = vnet_buffer (b0)->l2.l2_len;
+		      l2_len0 = vnet_buffer_l2hdr_size (b0);
 		      h0 = vlib_buffer_get_current (b0);
 
 		      ether_type0 = *(u16 *) (h0 + l2_len0 - 2);

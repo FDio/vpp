@@ -458,10 +458,10 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
   vec_add1 (s, '\n');
 
   s = format (s,
-	      "l2.feature_bitmap: %08x, l2.bd_index: %d, l2.l2_len: %d, "
+	      "l2.feature_bitmap: %08x, l2.bd_index: %d, "
 	      "l2.shg: %d, l2.l2fib_sn: %d, l2.bd_age: %d",
 	      o->l2.feature_bitmap, (u32) (o->l2.bd_index),
-	      (u32) (o->l2.l2_len), (u32) (o->l2.shg), (u32) (o->l2.l2fib_sn),
+	      (u32) (o->l2.shg), (u32) (o->l2.l2fib_sn),
 	      (u32) (o->l2.bd_age));
   vec_add1 (s, '\n');
 
