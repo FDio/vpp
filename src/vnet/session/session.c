@@ -1097,6 +1097,7 @@ stream_session_disconnect (stream_session_t * s)
       /* Session already closed. Clear the tx fifo */
       if (s->session_state == SESSION_STATE_CLOSED)
 	svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+//      stream_session_disconnect_transport (s);
       return;
     }
 

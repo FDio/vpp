@@ -509,7 +509,7 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
 
   if (mrtt > 0 && mrtt < TCP_RTT_MAX)
     tcp_estimate_rtt (tc, mrtt);
-  tcp_update_rto (tc);
+//  tcp_update_rto (tc);
 }
 
 /**
@@ -1648,12 +1648,11 @@ static void
 tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     u32 * error)
 {
+  /* Account for the FIN and send ack */
+  tc->rcv_nxt += 1;
+  tcp_program_ack (wrk, tc);
   /* Enter CLOSE-WAIT and notify session. To avoid lingering
    * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
-  /* Account for the FIN if nothing else was received */
-  if (vnet_buffer (b)->tcp.data_len == 0)
-    tc->rcv_nxt += 1;
-  tcp_program_ack (wrk, tc);
   tc->state = TCP_STATE_CLOSE_WAIT;
   tcp_program_disconnect (wrk, tc);
   tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
@@ -2094,7 +2093,6 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   u32 n_left_from, *from, *first_buffer;
   u16 err_counters[TCP_N_ERROR] = { 0 };
-  u8 is_fin = 0;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     tcp_established_trace_frame (vm, node, frame, is_ip4);
@@ -2106,7 +2104,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 bi0, error0 = TCP_ERROR_ACK_OK;
       vlib_buffer_t *b0;
-      tcp_header_t *th0 = 0;
+      tcp_header_t *th0;
       tcp_connection_t *tc0;
 
       if (n_left_from > 1)
@@ -2132,13 +2130,6 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       th0 = tcp_buffer_hdr (b0);
-      /* N.B. buffer is rewritten if segment is ooo. Thus, th0 becomes a
-       * dangling reference. */
-      is_fin = tcp_is_fin (th0);
-
-      /* SYNs, FINs and data consume sequence numbers */
-      vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	+ tcp_is_syn (th0) + is_fin + vnet_buffer (b0)->tcp.data_len;
 
       /* TODO header prediction fast path */
 
@@ -2160,7 +2151,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	error0 = tcp_segment_rcv (wrk, tc0, b0);
 
       /* 8: check the FIN bit */
-      if (PREDICT_FALSE (is_fin))
+      if (PREDICT_FALSE (tcp_is_fin (th0)))
 	tcp_rcv_fin (wrk, tc0, b0, &error0);
 
     done:
@@ -2382,10 +2373,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
-      /* SYNs, FINs and data consume sequence numbers */
-      vnet_buffer (b0)->tcp.seq_end =
-	seq0 + tcp_is_syn (tcp0) + tcp_is_fin (tcp0) +
-	vnet_buffer (b0)->tcp.data_len;
+      /* SYNs consume sequence numbers */
+      vnet_buffer (b0)->tcp.seq_end += tcp_is_syn (tcp0);
 
       /*
        *  1. check the ACK bit
@@ -2674,10 +2663,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       tcp0 = tcp_buffer_hdr (b0);
       is_fin0 = tcp_is_fin (tcp0);
-
-      /* SYNs, FINs and data consume sequence numbers */
-      vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	+ tcp_is_syn (tcp0) + is_fin0 + vnet_buffer (b0)->tcp.data_len;
 
       if (CLIB_DEBUG)
 	{
@@ -3392,6 +3377,8 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
   vnet_buffer (b)->tcp.data_offset = n_advance_bytes;
   vnet_buffer (b)->tcp.data_len = n_data_bytes;
+  vnet_buffer (b)->tcp.seq_end = vnet_buffer (b)->tcp.seq_number
+      + n_data_bytes;
   vnet_buffer (b)->tcp.flags = 0;
 
   *error = is_filtered ? TCP_ERROR_FILTERED : *error;
