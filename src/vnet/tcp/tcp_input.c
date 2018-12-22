@@ -1648,13 +1648,12 @@ static void
 tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	     u32 * error)
 {
+  /* Account for the FIN and send ack */
+  tc->rcv_nxt += 1;
+  tcp_program_ack (wrk, tc);
   /* Enter CLOSE-WAIT and notify session. To avoid lingering
    * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
-  /* Account for the FIN if nothing else was received */
-  if (vnet_buffer (b)->tcp.data_len == 0)
-    tc->rcv_nxt += 1;
-  tcp_program_ack (wrk, tc);
-  tc->state = TCP_STATE_CLOSE_WAIT;
+  tcp_connection_set_state (tc, TCP_STATE_CLOSE_WAIT);
   tcp_program_disconnect (wrk, tc);
   tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
   TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc);
@@ -2094,7 +2093,6 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   u32 n_left_from, *from, *first_buffer;
   u16 err_counters[TCP_N_ERROR] = { 0 };
-  u8 is_fin = 0;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     tcp_established_trace_frame (vm, node, frame, is_ip4);
@@ -2106,7 +2104,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       u32 bi0, error0 = TCP_ERROR_ACK_OK;
       vlib_buffer_t *b0;
-      tcp_header_t *th0 = 0;
+      tcp_header_t *th0;
       tcp_connection_t *tc0;
 
       if (n_left_from > 1)
@@ -2132,13 +2130,6 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
       th0 = tcp_buffer_hdr (b0);
-      /* N.B. buffer is rewritten if segment is ooo. Thus, th0 becomes a
-       * dangling reference. */
-      is_fin = tcp_is_fin (th0);
-
-      /* SYNs, FINs and data consume sequence numbers */
-      vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	+ tcp_is_syn (th0) + is_fin + vnet_buffer (b0)->tcp.data_len;
 
       /* TODO header prediction fast path */
 
@@ -2160,7 +2151,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	error0 = tcp_segment_rcv (wrk, tc0, b0);
 
       /* 8: check the FIN bit */
-      if (PREDICT_FALSE (is_fin))
+      if (PREDICT_FALSE (tcp_is_fin (th0)))
 	tcp_rcv_fin (wrk, tc0, b0, &error0);
 
     done:
@@ -2382,10 +2373,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  goto drop;
 	}
 
-      /* SYNs, FINs and data consume sequence numbers */
-      vnet_buffer (b0)->tcp.seq_end =
-	seq0 + tcp_is_syn (tcp0) + tcp_is_fin (tcp0) +
-	vnet_buffer (b0)->tcp.data_len;
+      /* SYNs consume sequence numbers */
+      vnet_buffer (b0)->tcp.seq_end += tcp_is_syn (tcp0);
 
       /*
        *  1. check the ACK bit
@@ -2675,10 +2664,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       tcp0 = tcp_buffer_hdr (b0);
       is_fin0 = tcp_is_fin (tcp0);
 
-      /* SYNs, FINs and data consume sequence numbers */
-      vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	+ tcp_is_syn (tcp0) + is_fin0 + vnet_buffer (b0)->tcp.data_len;
-
       if (CLIB_DEBUG)
 	{
 	  tcp_connection_t *tmp;
@@ -2784,8 +2769,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* If FIN is ACKed */
 	  else if (tc0->snd_una == tc0->snd_una_max)
 	    {
-	      tc0->state = TCP_STATE_FIN_WAIT_2;
-	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+	      tcp_connection_set_state (tc0, TCP_STATE_FIN_WAIT_2);
 
 	      /* Stop all retransmit timers because we have nothing more
 	       * to send. Enable waitclose though because we're willing to
@@ -2820,8 +2804,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		{
 		  tcp_send_fin (tc0);
 		  tcp_connection_timers_reset (tc0);
-		  tc0->state = TCP_STATE_LAST_ACK;
-		  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+		  tcp_connection_set_state (tc0, TCP_STATE_LAST_ACK);
 		  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 		}
 	    }
@@ -2833,8 +2816,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
 	    goto drop;
 
-	  tc0->state = TCP_STATE_TIME_WAIT;
-	  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	  goto drop;
 
@@ -2858,8 +2840,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto drop;
 	    }
 
-	  tc0->state = TCP_STATE_CLOSED;
-	  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+	  tcp_connection_set_state (tc0, TCP_STATE_CLOSED);
 
 	  /* Don't free the connection from the data path since
 	   * we can't ensure that we have no packets already enqueued
@@ -2897,8 +2878,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	case TCP_STATE_FIN_WAIT_2:
 	  if (vnet_buffer (b0)->tcp.data_len)
 	    error0 = tcp_segment_rcv (wrk, tc0, b0);
-	  else if (is_fin0)
-	    tc0->rcv_nxt += 1;
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
 	case TCP_STATE_CLOSING:
@@ -2913,10 +2892,17 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (!is_fin0)
 	goto drop;
 
+      TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
+
       switch (tc0->state)
 	{
 	case TCP_STATE_ESTABLISHED:
-	  tcp_rcv_fin (wrk, tc0, b0, &error0);
+	  /* Account for the FIN and send ack */
+	  tc0->rcv_nxt += 1;
+	  tcp_program_ack (wrk, tc0);
+	  tcp_connection_set_state (tc0, TCP_STATE_CLOSE_WAIT);
+	  tcp_program_disconnect (wrk, tc0);
+	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	  break;
 	case TCP_STATE_SYN_RCVD:
 	  /* Send FIN-ACK, enter LAST-ACK and because the app was not
@@ -2925,8 +2911,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_connection_timers_reset (tc0);
 	  tc0->rcv_nxt += 1;
 	  tcp_send_fin (tc0);
-	  tc0->state = TCP_STATE_LAST_ACK;
-	  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+	  tcp_connection_set_state (tc0, TCP_STATE_LAST_ACK);
 	  tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	  break;
 	case TCP_STATE_CLOSE_WAIT:
@@ -2935,19 +2920,19 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* move along .. */
 	  break;
 	case TCP_STATE_FIN_WAIT_1:
-	  tc0->state = TCP_STATE_CLOSING;
+	  tc0->rcv_nxt += 1;
+	  tcp_connection_set_state (tc0, TCP_STATE_CLOSING);
 	  tcp_program_ack (wrk, tc0);
-	  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 	  /* Wait for ACK but not forever */
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	  break;
 	case TCP_STATE_FIN_WAIT_2:
 	  /* Got FIN, send ACK! Be more aggressive with resource cleanup */
-	  tc0->state = TCP_STATE_TIME_WAIT;
+	  tc0->rcv_nxt += 1;
+	  tcp_connection_set_state (tc0, TCP_STATE_TIME_WAIT);
 	  tcp_connection_timers_reset (tc0);
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	  tcp_program_ack (wrk, tc0);
-	  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 	  break;
 	case TCP_STATE_TIME_WAIT:
 	  /* Remain in the TIME-WAIT state. Restart the time-wait
@@ -2957,7 +2942,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  break;
 	}
       error0 = TCP_ERROR_FIN_RCVD;
-      TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
 
     drop:
 
@@ -3392,6 +3376,8 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   vnet_buffer (b)->tcp.ack_number = clib_net_to_host_u32 (tcp->ack_number);
   vnet_buffer (b)->tcp.data_offset = n_advance_bytes;
   vnet_buffer (b)->tcp.data_len = n_data_bytes;
+  vnet_buffer (b)->tcp.seq_end = vnet_buffer (b)->tcp.seq_number
+    + n_data_bytes;
   vnet_buffer (b)->tcp.flags = 0;
 
   *error = is_filtered ? TCP_ERROR_FILTERED : *error;
@@ -3714,6 +3700,8 @@ do {                                                       	\
   _(CLOSING, TCP_FLAG_SYN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(CLOSING, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(CLOSING, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
+    TCP_ERROR_NONE);
+  _(CLOSING, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
   /* FIN confirming that the peer (app) has closed */
   _(FIN_WAIT_2, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
