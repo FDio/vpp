@@ -795,7 +795,11 @@ vcl_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
   if (vcl_get_worker_index () == ~0)
     return;
 
-  sigaction (SIGCHLD, &old_sa, 0);
+  if (sigaction (SIGCHLD, &old_sa, 0))
+    {
+      VERR ("couldn't restore sigchld");
+      exit (-1);
+    }
 
   wrk = vcl_worker_get_current ();
   if (wrk->forked_child == ~0)
