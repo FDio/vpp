@@ -648,7 +648,14 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 		       errno_val);
 	      return tsock->fd;
 	    }
-	  fcntl (tsock->fd, F_SETFL, O_NONBLOCK);
+	  if (fcntl (tsock->fd, F_SETFL, O_NONBLOCK) < 0)
+	    {
+	      errno_val = errno;
+	      perror ("ERROR in sock_test_connect_test_sockets()");
+	      fprintf (stderr, "CLIENT: ERROR: fcntl failed (errno = %d)!\n",
+		       errno_val);
+	      return -1;
+	    }
 
 #ifdef VCL_TEST
 	  rv = vppcom_session_connect (tsock->fd, &scm->server_endpt);
