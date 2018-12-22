@@ -292,8 +292,7 @@ tcp_connection_reset (tcp_connection_t * tc)
        * cleanly close the connection */
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
       stream_session_reset_notify (&tc->connection);
-      tc->state = TCP_STATE_CLOSED;
-      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
+      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
       break;
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_FIN_WAIT_1:
@@ -302,8 +301,10 @@ tcp_connection_reset (tcp_connection_t * tc)
     case TCP_STATE_LAST_ACK:
       tcp_connection_timers_reset (tc);
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
-      tc->state = TCP_STATE_CLOSED;
-      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
+      /* Make sure we mark the session as closed. In some states we may
+       * be still trying to send data */
+      session_stream_close_notify (&tc->connection);
+      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
       break;
     case TCP_STATE_CLOSED:
       break;
