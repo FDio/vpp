@@ -24,6 +24,19 @@ install(
   COMPONENT vpp-dev
 )
 
+file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/vpp/plugins/perfmon)
+
+add_custom_command(OUTPUT PERFMON_JSON_FILES
+  COMMAND ${CMAKE_COMMAND} tar Jxf PerfmonTables.tar.xz ${CMAKE_INSTALL_PREFIX}/share/vpp/plugins/perfmon
+  COMMENT "Untar'ing PerfmonTables.tar.xz"
+  WORKING_DIRECTORY .
+  VERBATIM
+)
+
+add_custom_target(
+    perfmon-json-files ALL DEPENDS PERFMON_JSON_FILES
+    )
+
 option(VPP_BUILD_MAPFILE_TOOL "Build perfmon mapfile utility." OFF)
 if(VPP_BUILD_MAPFILE_TOOL)
   add_vpp_executable(mapfile_tool
