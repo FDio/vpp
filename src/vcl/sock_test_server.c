@@ -653,7 +653,14 @@ main (int argc, char **argv)
 	       errno_val);
       return rv;
     }
-  fcntl (ssm->listen_fd, F_SETFL, O_NONBLOCK);
+  if (fcntl (ssm->listen_fd, F_SETFL, O_NONBLOCK) < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main()");
+      fprintf (stderr, "SERVER: ERROR: fcntl failed (errno = %d)!\n",
+	       errno_val);
+      return rv;
+    }
 
 #ifdef VCL_TEST
   rv = vppcom_session_listen (ssm->listen_fd, 10);
