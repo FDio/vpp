@@ -354,6 +354,8 @@ dist:
 	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
 build: $(BR)/.deps.ok
+	@find . -type f -name "*.api.h" ! -path "./test/*" -exec rm {} \;
+	@find . -type f -name "*.api.json" ! -path "./test/*" -exec rm {} \;
 	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
 
 wipedist:
@@ -361,7 +363,6 @@ wipedist:
 
 wipe: wipedist test-wipe $(BR)/.deps.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -wipe,$(TARGETS)))
-	@find . -type f -name "*.api.json" ! -path "./test/*" -exec rm {} \;
 
 rebuild: wipe build
 
