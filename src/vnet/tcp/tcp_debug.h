@@ -20,8 +20,8 @@
 
 #define TCP_DEBUG (1)
 #define TCP_DEBUG_SM (0)
-#define TCP_DEBUG_CC (0)
-#define TCP_DEBUG_CC_STAT (0)
+#define TCP_DEBUG_CC (1)
+#define TCP_DEBUG_CC_STAT (1)
 #define TCP_DEBUG_BUFFER_ALLOCATION (0)
 
 #define foreach_tcp_dbg_evt		\
@@ -821,6 +821,7 @@ if (TCP_DEBUG_CC > 1)							\
 if (tcp_cc_time_to_print_stats (_tc))					\
 {									\
   TCP_EVT_CC_RTO_STAT_PRINT (_tc);					\
+  _tc->c_cc_stat_tstamp = tcp_time_now ();				\
 }									\
 }
 
@@ -844,6 +845,7 @@ if (tcp_cc_time_to_print_stats (_tc))					\
 if (tcp_cc_time_to_print_stats (_tc))					\
 {									\
     TCP_EVT_CC_SND_STAT_PRINT(_tc);					\
+    _tc->c_cc_stat_tstamp = tcp_time_now ();				\
 }									\
 }
 
