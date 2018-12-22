@@ -440,6 +440,11 @@ I:	mdata
 M:	Dave Barach <dave@barachs.net>
 F:	src/plugins/mdata/
 
+Plugin - AF_XDP Device driver
+I:	xdp
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/plugins/xdp/
+
 Test Infrastructure
 I:	tests
 M:	Klement Sekera <ksekera@cisco.com>

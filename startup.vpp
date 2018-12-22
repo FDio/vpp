@@ -1,0 +1,3 @@
+set logging class xdp level debug
+trace add xdp-input 1000
+create interface xdp eno0v0
