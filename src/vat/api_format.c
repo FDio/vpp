@@ -91,9 +91,15 @@ vl (void *p)
 int
 vat_socket_connect (vat_main_t * vam)
 {
+  int rv;
   vam->socket_client_main = &socket_client_main;
-  return vl_socket_client_connect ((char *) vam->socket_name, "vpp_api_test",
-				   0 /* default socket rx, tx buffer */ );
+  if ((rv = vl_socket_client_connect ((char *) vam->socket_name,
+				      "vpp_api_test",
+				      0 /* default socket rx, tx buffer */ )))
+    return rv;
+  /* vpp expects the client index in network order */
+  vam->my_client_index = htonl (socket_client_main.client_index);
+  return 0;
 }
 #else /* vpp built-in case, we don't do sockets... */
 int

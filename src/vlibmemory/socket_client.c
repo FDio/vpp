@@ -79,6 +79,9 @@ vl_socket_client_read (int wait)
 		    scm->socket_buffer_size);
 	  if (n < 0)
 	    {
+	      if (errno == EAGAIN)
+		continue;
+
 	      clib_unix_warning ("socket_read");
 	      return -1;
 	    }
@@ -103,8 +106,11 @@ vl_socket_client_read (int wait)
 	  n = read (scm->socket_fd,
 		    scm->socket_rx_buffer + vec_len (scm->socket_rx_buffer),
 		    msg_size - vec_len (scm->socket_rx_buffer));
-	  if (n < 0 && errno != EAGAIN)
+	  if (n < 0)
 	    {
+	      if (errno == EAGAIN)
+		continue;
+
 	      clib_unix_warning ("socket_read");
 	      return -1;
 	    }
@@ -358,7 +364,8 @@ vl_socket_client_connect (char *socket_path, char *client_name,
 
   sock = &scm->client_socket;
   sock->config = socket_path;
-  sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET;
+  sock->flags = CLIB_SOCKET_F_IS_CLIENT
+    | CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_NON_BLOCKING_CONNECT;
 
   if ((error = clib_socket_init (sock)))
     {
