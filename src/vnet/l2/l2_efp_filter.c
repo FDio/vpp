@@ -136,7 +136,7 @@ extract_keys (vnet_main_t * vnet_main,
   *outer_id0 = clib_net_to_host_u16 (h0[0].priority_cfi_and_id);
   *inner_id0 = clib_net_to_host_u16 (h0[1].priority_cfi_and_id);
 
-  tag_len = vnet_buffer (b0)->l2.l2_len - sizeof (ethernet_header_t);
+  tag_len = vnet_buffer_l2hdr_size (b0) - sizeof (ethernet_header_t);
   tag_num = tag_len / sizeof (ethernet_vlan_header_t);
   *match_flags0 = eth_create_valid_subint_match_flags (tag_num);
 }

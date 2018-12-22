@@ -106,8 +106,6 @@ parse_header (ethernet_input_variant_t variant,
 	      u16 * orig_type,
 	      u16 * outer_id, u16 * inner_id, u32 * match_flags)
 {
-  u8 vlan_count;
-
   if (variant == ETHERNET_INPUT_VARIANT_ETHERNET
       || variant == ETHERNET_INPUT_VARIANT_NOT_L2)
     {
@@ -142,7 +140,6 @@ parse_header (ethernet_input_variant_t variant,
   *inner_id = 0;
 
   *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_0_TAG;
-  vlan_count = 0;
 
   // check for vlan encaps
   if (ethernet_frame_is_tagged (*type))
@@ -163,7 +160,6 @@ parse_header (ethernet_input_variant_t variant,
       *type = clib_net_to_host_u16 (h0->type);
 
       vlib_buffer_advance (b0, sizeof (h0[0]));
-      vlan_count = 1;
 
       if (*type == ETHERNET_TYPE_VLAN)
 	{
@@ -179,18 +175,15 @@ parse_header (ethernet_input_variant_t variant,
 	  *type = clib_net_to_host_u16 (h0->type);
 
 	  vlib_buffer_advance (b0, sizeof (h0[0]));
-	  vlan_count = 2;
 	  if (*type == ETHERNET_TYPE_VLAN)
 	    {
 	      // More than double tagged packet
 	      *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_3_TAG;
 
 	      vlib_buffer_advance (b0, sizeof (h0[0]));
-	      vlan_count = 3;	// "unknown" number, aka, 3-or-more
 	    }
 	}
     }
-  ethernet_buffer_set_vlan_count (b0, vlan_count);
 }
 
 // Determine the subinterface for this packet, given the result of the
@@ -253,11 +246,8 @@ determine_next_node (ethernet_main_t * em,
     {
       // record the L2 len and reset the buffer so the L2 header is preserved
       u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
-      vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
       *next0 = em->l2_next;
-      ASSERT (vnet_buffer (b0)->l2.l2_len ==
-	      ethernet_buffer_header_size (b0));
-      vlib_buffer_advance (b0, -(vnet_buffer (b0)->l2.l2_len));
+      vlib_buffer_advance (b0, -(b0->current_data - eth_start));
 
       // check for common IP/MPLS ethertypes
     }
@@ -401,14 +391,6 @@ eth_input_adv_and_flags_x4 (vlib_buffer_t ** b, int is_l3)
   b[2]->flags |= flags;
   b[3]->flags |= flags;
 #endif
-
-  if (!is_l3)
-    {
-      vnet_buffer (b[0])->l2.l2_len = adv;
-      vnet_buffer (b[1])->l2.l2_len = adv;
-      vnet_buffer (b[2])->l2.l2_len = adv;
-      vnet_buffer (b[3])->l2.l2_len = adv;
-    }
 }
 
 static_always_inline void
@@ -424,8 +406,6 @@ eth_input_adv_and_flags_x1 (vlib_buffer_t ** b, int is_l3)
   if (is_l3)
     vlib_buffer_advance (b[0], adv);
   b[0]->flags |= flags;
-  if (!is_l3)
-    vnet_buffer (b[0])->l2.l2_len = adv;
 }
 
 
@@ -591,14 +571,10 @@ eth_input_tag_lookup (vlib_main_t * vm, vnet_main_t * vnm,
     next[0] = l->next;
 
   vlib_buffer_advance (b, l->adv);
-  vnet_buffer (b)->l2.l2_len = l->len;
   vnet_buffer (b)->l3_hdr_offset = vnet_buffer (b)->l2_hdr_offset + l->len;
 
   if (l->err == ETHERNET_ERROR_NONE)
-    {
-      vnet_buffer (b)->sw_if_index[VLIB_RX] = l->sw_if_index;
-      ethernet_buffer_set_vlan_count (b, l->n_tags);
-    }
+    vnet_buffer (b)->sw_if_index[VLIB_RX] = l->sw_if_index;
   else
     b->error = node->errors[l->err];
 
@@ -1115,9 +1091,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		  b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 		  b1->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 		  next0 = em->l2_next;
-		  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
 		  next1 = em->l2_next;
-		  vnet_buffer (b1)->l2.l2_len = sizeof (ethernet_header_t);
 		}
 	      else
 		{
@@ -1341,7 +1315,6 @@ ethernet_input_inline (vlib_main_t * vm,
 		    sizeof (ethernet_header_t);
 		  b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 		  next0 = em->l2_next;
-		  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
 		}
 	      else
 		{

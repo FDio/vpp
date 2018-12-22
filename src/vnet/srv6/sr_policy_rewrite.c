@@ -1626,7 +1626,7 @@ l2_flow_hash (vlib_buffer_t * b0)
 
   eh = vlib_buffer_get_current (b0);
   eh_type = clib_net_to_host_u16 (eh->type);
-  eh_size = ethernet_buffer_header_size (b0);
+  eh_size = vnet_buffer_l2hdr_size (b0);
 
   is_ip = (eh_type == ETHERNET_TYPE_IP4 || eh_type == ETHERNET_TYPE_IP6);
 

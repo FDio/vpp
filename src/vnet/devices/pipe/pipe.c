@@ -376,12 +376,6 @@ pipe_rx (vlib_main_t * vm,
 	  is_l20 = pipe0->subint.flags & SUBINT_CONFIG_L2;
 	  is_l21 = pipe1->subint.flags & SUBINT_CONFIG_L2;
 
-	  /*
-	   * from discussion with Neale - we do not support the tagged traffic.
-	   * So assume a simple ethernet header
-	   */
-	  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
-	  vnet_buffer (b1)->l2.l2_len = sizeof (ethernet_header_t);
 	  vlib_buffer_advance (b0, is_l20 ? 0 : sizeof (ethernet_header_t));
 	  vlib_buffer_advance (b1, is_l21 ? 0 : sizeof (ethernet_header_t));
 
@@ -427,7 +421,6 @@ pipe_rx (vlib_main_t * vm,
 
 	  is_l20 = pipe0->subint.flags & SUBINT_CONFIG_L2;
 
-	  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
 	  vlib_buffer_advance (b0, is_l20 ? 0 : sizeof (ethernet_header_t));
 
 	  pipe_determine_next_node (&ethernet_main, is_l20, type0, b0,

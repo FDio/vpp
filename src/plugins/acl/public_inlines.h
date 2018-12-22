@@ -211,7 +211,7 @@ acl_fill_5tuple (acl_main_t * am, u32 sw_if_index0, vlib_buffer_t * b0, int is_i
 
   if (is_l2_path)
     {
-      l3_offset = ethernet_buffer_header_size(b0);
+      l3_offset = vnet_buffer_l2hdr_size (b0);
     }
   else
     {

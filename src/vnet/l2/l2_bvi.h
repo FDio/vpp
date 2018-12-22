@@ -54,7 +54,7 @@ l2_to_bvi (vlib_main_t * vlib_main,
   vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
 
   /* Strip L2 header */
-  u8 l2_len = vnet_buffer (b0)->l2.l2_len;
+  u8 l2_len = vnet_buffer_l2hdr_size (b0);
   vlib_buffer_advance (b0, l2_len);
 
   u8 *l3h = vlib_buffer_get_current (b0);

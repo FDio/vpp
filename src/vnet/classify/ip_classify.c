@@ -112,13 +112,11 @@ ip_classify_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = (void *) vlib_buffer_get_current (b0) -
-	ethernet_buffer_header_size (b0);
+      h0 = vnet_buffer_get_l2hdr (b0);
 
       bi1 = from[1];
       b1 = vlib_get_buffer (vm, bi1);
-      h1 = (void *) vlib_buffer_get_current (b1) -
-	ethernet_buffer_header_size (b1);
+      h1 = vnet_buffer_get_l2hdr (b1);
 
       cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       cd0 = classify_dpo_get (cd_index0);
@@ -162,8 +160,7 @@ ip_classify_inline (vlib_main_t * vm,
 
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
-      h0 = (void *) vlib_buffer_get_current (b0) -
-	ethernet_buffer_header_size (b0);
+      h0 = vnet_buffer_get_l2hdr (b0);
 
       cd_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
       cd0 = classify_dpo_get (cd_index0);

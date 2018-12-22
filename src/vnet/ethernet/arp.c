@@ -2326,7 +2326,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	    goto next_l2_feature;
 
 	  eth0 = vlib_buffer_get_current (p0);
-	  l3h0 = (u8 *) eth0 + vnet_buffer (p0)->l2.l2_len;
+	  l3h0 = (u8 *) eth0 + vnet_buffer_l2hdr_size (p0);
 	  ethertype0 = clib_net_to_host_u16 (*(u16 *) (l3h0 - 2));
 	  arp0 = (ethernet_arp_header_t *) l3h0;
 

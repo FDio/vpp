@@ -171,7 +171,7 @@ qos_record_inline (vlib_main_t * vm,
 
 	  if (is_l2)
 	    {
-	      l2_len = vnet_buffer (b0)->l2.l2_len;
+	      l2_len = vnet_buffer_l2hdr_size (b0);
 	      u8 *l3h;
 	      u16 ethertype;
 

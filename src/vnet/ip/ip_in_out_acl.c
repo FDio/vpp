@@ -177,11 +177,8 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 
       if (is_output)
 	{
-	  /* Save the rewrite length, since we are using the l2_classify struct */
-	  vnet_buffer (b0)->l2_classify.pad.l2_len =
-	    vnet_buffer (b0)->ip.save_rewrite_length;
 	  /* advance the match pointer so the matching happens on IP header */
-	  h0 += vnet_buffer (b0)->l2_classify.pad.l2_len;
+	  h0 += vnet_buffer (b0)->ip.save_rewrite_length;
 	}
 
       vnet_buffer (b0)->l2_classify.hash =
@@ -196,11 +193,8 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 
       if (is_output)
 	{
-	  /* Save the rewrite length, since we are using the l2_classify struct */
-	  vnet_buffer (b1)->l2_classify.pad.l2_len =
-	    vnet_buffer (b1)->ip.save_rewrite_length;
 	  /* advance the match pointer so the matching happens on IP header */
-	  h1 += vnet_buffer (b1)->l2_classify.pad.l2_len;
+	  h1 += vnet_buffer (b1)->ip.save_rewrite_length;
 	}
 
       vnet_buffer (b1)->l2_classify.hash =
@@ -242,11 +236,8 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 
       if (is_output)
 	{
-	  /* Save the rewrite length, since we are using the l2_classify struct */
-	  vnet_buffer (b0)->l2_classify.pad.l2_len =
-	    vnet_buffer (b0)->ip.save_rewrite_length;
 	  /* advance the match pointer so the matching happens on IP header */
-	  h0 += vnet_buffer (b0)->l2_classify.pad.l2_len;
+	  h0 += vnet_buffer (b0)->ip.save_rewrite_length;
 	}
 
       vnet_buffer (b0)->l2_classify.hash =
@@ -333,7 +324,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 
 	      /* advance the match pointer so the matching happens on IP header */
 	      if (is_output)
-		h0 += vnet_buffer (b0)->l2_classify.pad.l2_len;
+		h0 += vnet_buffer_l2hdr_size (b0);
 
 	      e0 = vnet_classify_find_entry (t0, (u8 *) h0, hash0, now);
 	      if (e0)
@@ -403,7 +394,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 
 		      /* advance the match pointer so the matching happens on IP header */
 		      if (is_output)
-			h0 += vnet_buffer (b0)->l2_classify.pad.l2_len;
+			h0 += vnet_buffer_l2hdr_size (b0);
 
 		      hash0 = vnet_classify_hash_packet (t0, (u8 *) h0);
 		      e0 = vnet_classify_find_entry
@@ -462,7 +453,7 @@ ip_in_out_acl_inline (vlib_main_t * vm,
 	  if ((next0 == ACL_NEXT_INDEX_DENY) && is_output)
 	    {
 	      /* on output, for the drop node to work properly, go back to ip header */
-	      vlib_buffer_advance (b0, vnet_buffer (b0)->l2.l2_len);
+	      vlib_buffer_advance (b0, vnet_buffer_l2hdr_size (b0));
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
