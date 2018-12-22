@@ -26,8 +26,7 @@ gbp_rule::next_hop_t::next_hop_t(const boost::asio::ip::address& ip,
   , m_mac(mac)
   , m_bd_id(bd_id)
   , m_rd_id(rd_id)
-{
-}
+{}
 
 std::string
 gbp_rule::next_hop_t::to_string() const
@@ -84,8 +83,7 @@ const gbp_rule::hash_mode_t gbp_rule::hash_mode_t::SYMMETRIC(2, "symmetric");
 
 gbp_rule::hash_mode_t::hash_mode_t(int v, const std::string s)
   : enum_base(v, s)
-{
-}
+{}
 
 const gbp_rule::hash_mode_t&
 gbp_rule::hash_mode_t::from_int(vapi_enum_gbp_hash_mode i)
@@ -102,14 +100,12 @@ gbp_rule::next_hop_set_t::next_hop_set_t(const gbp_rule::hash_mode_t& hm,
                                          gbp_rule::next_hops_t& nhs)
   : m_hm(hm)
   , m_nhs(nhs)
-{
-}
+{}
 
 gbp_rule::next_hop_set_t::next_hop_set_t(const hash_mode_t& hm)
   : m_hm(hm)
   , m_nhs()
-{
-}
+{}
 
 std::string
 gbp_rule::next_hop_set_t::to_string() const
@@ -151,8 +147,7 @@ const gbp_rule::action_t gbp_rule::action_t::DENY(0, "deny");
 
 gbp_rule::action_t::action_t(int v, const std::string s)
   : enum_base(v, s)
-{
-}
+{}
 
 const gbp_rule::action_t&
 gbp_rule::action_t::from_int(vapi_enum_gbp_rule_action i)
@@ -171,15 +166,13 @@ gbp_rule::gbp_rule(uint32_t priority,
   : m_priority(priority)
   , m_nhs(nhs)
   , m_action(a)
-{
-}
+{}
 
 gbp_rule::gbp_rule(uint32_t priority, const gbp_rule::action_t& a)
   : m_priority(priority)
   , m_nhs()
   , m_action(a)
-{
-}
+{}
 
 bool
 gbp_rule::operator<(const gbp_rule& other) const

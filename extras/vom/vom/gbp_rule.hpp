@@ -237,8 +237,8 @@ public:
   std::string to_string() const;
 
   /**
-  * less-than operator
-  */
+   * less-than operator
+   */
   bool operator<(const gbp_rule& rule) const;
 
   /**

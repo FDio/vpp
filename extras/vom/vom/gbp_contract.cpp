@@ -35,8 +35,7 @@ gbp_contract::gbp_contract(epg_id_t src_epg_id,
   , m_acl(acl.singular())
   , m_gbp_rules(rules)
   , m_allowed_ethertypes(allowed_ethertypes)
-{
-}
+{}
 
 gbp_contract::gbp_contract(const gbp_contract& gbpc)
   : m_hw(gbpc.m_hw)
@@ -45,8 +44,7 @@ gbp_contract::gbp_contract(const gbp_contract& gbpc)
   , m_acl(gbpc.m_acl)
   , m_gbp_rules(gbpc.m_gbp_rules)
   , m_allowed_ethertypes(gbpc.m_allowed_ethertypes)
-{
-}
+{}
 
 gbp_contract::~gbp_contract()
 {
@@ -82,9 +80,12 @@ void
 gbp_contract::replay()
 {
   if (m_hw) {
-    HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules,
-      m_allowed_ethertypes));
+    HW::enqueue(new gbp_contract_cmds::create_cmd(m_hw,
+                                                  m_src_epg_id,
+                                                  m_dst_epg_id,
+                                                  m_acl->handle(),
+                                                  m_gbp_rules,
+                                                  m_allowed_ethertypes));
   }
 }
 
@@ -113,9 +114,12 @@ gbp_contract::update(const gbp_contract& r)
    * create the table if it is not yet created
    */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new gbp_contract_cmds::create_cmd(
-      m_hw, m_src_epg_id, m_dst_epg_id, m_acl->handle(), m_gbp_rules,
-      m_allowed_ethertypes));
+    HW::enqueue(new gbp_contract_cmds::create_cmd(m_hw,
+                                                  m_src_epg_id,
+                                                  m_dst_epg_id,
+                                                  m_acl->handle(),
+                                                  m_gbp_rules,
+                                                  m_allowed_ethertypes));
   }
 }
 
@@ -205,8 +209,11 @@ gbp_contract::event_handler::handle_populate(const client_db::key_t& key)
         allowed_ethertypes.insert(ethertype_t::from_numeric_val(et[i]));
       }
 
-      gbp_contract gbpc(payload.contract.src_epg, payload.contract.dst_epg,
-                        *acl, rules, allowed_ethertypes);
+      gbp_contract gbpc(payload.contract.src_epg,
+                        payload.contract.dst_epg,
+                        *acl,
+                        rules,
+                        allowed_ethertypes);
       OM::commit(key, gbpc);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpc.to_string();

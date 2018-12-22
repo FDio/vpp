@@ -31,8 +31,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
   , m_acl(acl)
   , m_gbp_rules(gbp_rules)
   , m_allowed_ethertypes(allowed_ethertypes)
-{
-}
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
@@ -124,8 +123,7 @@ delete_cmd::delete_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_src_epg_id(src_epg_id)
   , m_dst_epg_id(dst_epg_id)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const

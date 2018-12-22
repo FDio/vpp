@@ -104,7 +104,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();
@@ -197,7 +199,8 @@ private:
   static singular_db<key_t, gbp_contract> m_db;
 };
 
-std::ostream& operator<<(std::ostream& os, const gbp_contract::key_t& key);
+std::ostream&
+operator<<(std::ostream& os, const gbp_contract::key_t& key);
 }; // namespace
 
 /*
