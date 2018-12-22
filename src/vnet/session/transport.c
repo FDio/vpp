@@ -666,6 +666,33 @@ transport_init (void)
     clib_spinlock_init (&local_endpoints_lock);
 }
 
+static clib_error_t *
+show_transport_fn (vlib_main_t * vm, unformat_input_t * input,
+			   vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error;
+
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      error = clib_error_return (0, "unknown input `%U'",
+                              format_unformat_error, line_input);
+      unformat_free (line_input);
+      return error;
+    }
+  vlib_cli_output (vm, "endpoint pool size: %u", pool_elts (local_endpoints));
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_transport_command, static) =
+{
+  .path = "show transport",
+  .short_help = "show transport",
+  .function = show_transport_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
