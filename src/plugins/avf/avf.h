@@ -111,6 +111,7 @@ typedef struct
   u32 hw_if_index;
   vlib_pci_dev_handle_t pci_dev_handle;
   void *bar0;
+  u8 *name;
 
   /* queues */
   avf_rxq_t *rxqs;
@@ -200,6 +201,7 @@ extern avf_main_t avf_main;
 typedef struct
 {
   vlib_pci_addr_t addr;
+  u8 *name;
   int enable_elog;
   u16 rxq_num;
   u16 rxq_size;
