@@ -292,7 +292,6 @@ fib_entry_src_adj_deactivate (fib_entry_src_t *src,
     /*
      * remove the depednecy on the covering entry
      */
-    ASSERT(FIB_NODE_INDEX_INVALID != src->u.adj.fesa_cover);
     cover = fib_entry_get(src->u.adj.fesa_cover);
 
     fib_entry_cover_untrack(cover, src->u.adj.fesa_sibling);
