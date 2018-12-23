@@ -52,6 +52,8 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.txq_size = tmp;
       else if (unformat (line_input, "num-rx-queues %u", &tmp))
 	args.rxq_num = tmp;
+      else if (unformat (line_input, "name %s", &args.name))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -59,6 +61,8 @@ avf_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_free (line_input);
 
   avf_create_if (vm, &args);
+
+  vec_free (args.name);
 
   return args.error;
 }
