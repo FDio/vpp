@@ -197,6 +197,7 @@ public:
     counter_t m_tx_multicast;
     counter_t m_rx_broadcast;
     counter_t m_tx_broadcast;
+    counter_t m_drop;
   };
 
   /**

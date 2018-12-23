@@ -424,6 +424,8 @@ interface::set(const counter_t& count, const std::string& stat_type)
     m_stats.m_rx = count;
   else if ("tx" == stat_type)
     m_stats.m_tx = count;
+  else if ("drops" == stat_type)
+    m_stats.m_drop = count;
   else if ("rx-unicast" == stat_type)
     m_stats.m_rx_unicast = count;
   else if ("tx-unicast" == stat_type)
@@ -454,22 +456,12 @@ std::ostream&
 operator<<(std::ostream& os, const interface::stats_t& stats)
 {
   os << "["
-     << "rx [packets " << stats.m_rx.packets << ", bytes " << stats.m_rx.bytes
-     << "]"
-     << " rx-unicast [packets " << stats.m_rx_unicast.packets << ", bytes "
-     << stats.m_rx_unicast.bytes << "]"
-     << " rx-multicast [packets " << stats.m_rx_multicast.packets << ", bytes "
-     << stats.m_rx_multicast.bytes << "]"
-     << " rx-broadcast [packets " << stats.m_rx_broadcast.packets << ", bytes "
-     << stats.m_rx_broadcast.bytes << "]"
-     << " tx [packets " << stats.m_tx.packets << ", bytes " << stats.m_tx.bytes
-     << "]"
-     << " tx-unicast [packets " << stats.m_tx_unicast.packets << ", bytes "
-     << stats.m_tx_unicast.bytes << "]"
-     << " tx-multicast [packets " << stats.m_tx_multicast.packets << ", bytes "
-     << stats.m_tx_multicast.bytes << "]"
-     << " tx-broadcast [packets " << stats.m_tx_broadcast.packets << ", bytes "
-     << stats.m_tx_broadcast.bytes << "]]" << std::endl;
+     << "rx " << stats.m_rx << " rx-unicast " << stats.m_rx_unicast
+     << " rx-multicast " << stats.m_rx_multicast << " rx-broadcast "
+     << stats.m_rx_broadcast << " tx " << stats.m_tx << " tx-unicast "
+     << stats.m_tx_unicast << " tx-multicast " << stats.m_tx_multicast
+     << " tx-broadcast " << stats.m_tx_broadcast << " drops " << stats.m_drop
+     << "]" << std::endl;
 
   return (os);
 }

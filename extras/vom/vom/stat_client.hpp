@@ -179,7 +179,7 @@ private:
   /**
    * connection bit
    */
-  int m_stat_connect;
+  bool m_stat_connect;
 
   /**
    * Pointer to VPP style vector of stat indexes
