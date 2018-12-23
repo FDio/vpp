@@ -147,16 +147,6 @@ typedef struct
   clib_error_t *error;
 } avf_device_t;
 
-typedef struct
-{
-  u32 status;
-  u16 length;
-  u8 ptype;
-  u8 error;
-} avf_rx_vector_entry_t;
-
-STATIC_ASSERT_SIZEOF (avf_rx_vector_entry_t, 8);
-
 #define AVF_RX_VECTOR_SZ VLIB_FRAME_SIZE
 
 enum
@@ -169,7 +159,6 @@ enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  avf_rx_vector_entry_t rx_vector[AVF_RX_VECTOR_SZ];
   u32 *to_free;
   vlib_buffer_t buffer_template;
 } avf_per_thread_data_t;
@@ -274,7 +263,7 @@ typedef struct
 {
   u32 next_index;
   u32 hw_if_index;
-  avf_rx_vector_entry_t rxve;
+  u64 qw1;
 } avf_input_trace_t;
 
 #define foreach_avf_tx_func_error	       \
