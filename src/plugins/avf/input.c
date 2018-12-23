@@ -46,104 +46,89 @@ static __clib_unused char *avf_input_error_strings[] = {
 #define AVF_RX_DESC_STATUS_EOP		AVF_RX_DESC_STATUS(1)
 
 #define AVF_INPUT_REFILL_TRESHOLD 32
+
+static_always_inline void
+avf_rx_desc_write (avf_rx_desc_t * d, u64 addr)
+{
+#ifdef CLIB_HAVE_VEC256
+  u64x4 v = { addr, 0, 0, 0 };
+  u64x4_store_unaligned (v, (void *) d);
+#else
+  d->qword[0] = addr;
+  d->qword[1] = 0;
+#endif
+}
+
 static_always_inline void
 avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
 		int use_va_dma)
 {
-  u16 n_refill, mask, n_alloc, slot;
-  u32 s0, s1, s2, s3;
-  vlib_buffer_t *b[4];
-  avf_rx_desc_t *d[4];
+  u16 n_refill, mask, n_alloc, slot, size;
+  vlib_buffer_t *b[8];
+  avf_rx_desc_t *d, *first_d;
+  void *p[8];
 
-  n_refill = rxq->size - 1 - rxq->n_enqueued;
+  size = rxq->size;
+  mask = size - 1;
+  n_refill = mask - rxq->n_enqueued;
   if (PREDICT_TRUE (n_refill <= AVF_INPUT_REFILL_TRESHOLD))
     return;
 
-  mask = rxq->size - 1;
   slot = (rxq->next - n_refill - 1) & mask;
 
   n_refill &= ~7;		/* round to 8 */
-  n_alloc = vlib_buffer_alloc_to_ring (vm, rxq->bufs, slot, rxq->size,
-				       n_refill);
+  n_alloc = vlib_buffer_alloc_to_ring (vm, rxq->bufs, slot, size, n_refill);
 
   if (PREDICT_FALSE (n_alloc != n_refill))
     {
       vlib_error_count (vm, node->node_index,
 			AVF_INPUT_ERROR_BUFFER_ALLOC, 1);
       if (n_alloc)
-	vlib_buffer_free_from_ring (vm, rxq->bufs, slot, rxq->size, n_alloc);
+	vlib_buffer_free_from_ring (vm, rxq->bufs, slot, size, n_alloc);
       return;
     }
 
   rxq->n_enqueued += n_alloc;
+  first_d = rxq->descs;
 
-  while (n_alloc >= 4)
+  ASSERT (slot % 8 == 0);
+
+  while (n_alloc >= 8)
     {
-      if (PREDICT_TRUE (slot + 3 < rxq->size))
-	{
-	  s0 = slot;
-	  s1 = slot + 1;
-	  s2 = slot + 2;
-	  s3 = slot + 3;
-	}
-      else
-	{
-	  s0 = slot;
-	  s1 = (slot + 1) & mask;
-	  s2 = (slot + 2) & mask;
-	  s3 = (slot + 3) & mask;
-	}
-
-      d[0] = ((avf_rx_desc_t *) rxq->descs) + s0;
-      d[1] = ((avf_rx_desc_t *) rxq->descs) + s1;
-      d[2] = ((avf_rx_desc_t *) rxq->descs) + s2;
-      d[3] = ((avf_rx_desc_t *) rxq->descs) + s3;
-      b[0] = vlib_get_buffer (vm, rxq->bufs[s0]);
-      b[1] = vlib_get_buffer (vm, rxq->bufs[s1]);
-      b[2] = vlib_get_buffer (vm, rxq->bufs[s2]);
-      b[3] = vlib_get_buffer (vm, rxq->bufs[s3]);
+      d = first_d + slot;
 
       if (use_va_dma)
 	{
-	  d[0]->qword[0] = vlib_buffer_get_va (b[0]);
-	  d[1]->qword[0] = vlib_buffer_get_va (b[1]);
-	  d[2]->qword[0] = vlib_buffer_get_va (b[2]);
-	  d[3]->qword[0] = vlib_buffer_get_va (b[3]);
+	  vlib_get_buffers_with_offset (vm, rxq->bufs + slot, p, 8,
+					sizeof (vlib_buffer_t));
+	  avf_rx_desc_write (d + 0, pointer_to_uword (p[0]));
+	  avf_rx_desc_write (d + 1, pointer_to_uword (p[1]));
+	  avf_rx_desc_write (d + 2, pointer_to_uword (p[2]));
+	  avf_rx_desc_write (d + 3, pointer_to_uword (p[3]));
+	  avf_rx_desc_write (d + 4, pointer_to_uword (p[4]));
+	  avf_rx_desc_write (d + 5, pointer_to_uword (p[5]));
+	  avf_rx_desc_write (d + 6, pointer_to_uword (p[6]));
+	  avf_rx_desc_write (d + 7, pointer_to_uword (p[7]));
 	}
       else
 	{
-	  d[0]->qword[0] = vlib_buffer_get_pa (vm, b[0]);
-	  d[1]->qword[0] = vlib_buffer_get_pa (vm, b[1]);
-	  d[2]->qword[0] = vlib_buffer_get_pa (vm, b[2]);
-	  d[3]->qword[0] = vlib_buffer_get_pa (vm, b[3]);
+	  vlib_get_buffers (vm, rxq->bufs + slot, b, 8);
+	  avf_rx_desc_write (d + 0, vlib_buffer_get_pa (vm, b[0]));
+	  avf_rx_desc_write (d + 1, vlib_buffer_get_pa (vm, b[1]));
+	  avf_rx_desc_write (d + 2, vlib_buffer_get_pa (vm, b[2]));
+	  avf_rx_desc_write (d + 3, vlib_buffer_get_pa (vm, b[3]));
+	  avf_rx_desc_write (d + 4, vlib_buffer_get_pa (vm, b[4]));
+	  avf_rx_desc_write (d + 5, vlib_buffer_get_pa (vm, b[5]));
+	  avf_rx_desc_write (d + 6, vlib_buffer_get_pa (vm, b[6]));
+	  avf_rx_desc_write (d + 7, vlib_buffer_get_pa (vm, b[7]));
 	}
 
-      d[0]->qword[1] = 0;
-      d[1]->qword[1] = 0;
-      d[2]->qword[1] = 0;
-      d[3]->qword[1] = 0;
-
       /* next */
-      slot = (slot + 4) & mask;
-      n_alloc -= 4;
-    }
-  while (n_alloc)
-    {
-      s0 = slot;
-      d[0] = ((avf_rx_desc_t *) rxq->descs) + s0;
-      b[0] = vlib_get_buffer (vm, rxq->bufs[s0]);
-      if (use_va_dma)
-	d[0]->qword[0] = vlib_buffer_get_va (b[0]);
-      else
-	d[0]->qword[0] = vlib_buffer_get_pa (vm, b[0]);
-      d[0]->qword[1] = 0;
-
-      /* next */
-      slot = (slot + 1) & mask;
-      n_alloc -= 1;
+      slot = (slot + 8) & mask;
+      n_alloc -= 8;
     }
 
-  CLIB_MEMORY_BARRIER ();
+  CLIB_MEMORY_STORE_BARRIER ();
   *(rxq->qrx_tail) = slot;
 }
 
@@ -223,7 +208,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = rxq->size - 1;
   u16 n_rxv = 0;
   u8 or_error = 0;
-  u32 *bi;
+  u32 *bi, *to_next, n_left_to_next;
   vlib_buffer_t *bufs[AVF_RX_VECTOR_SZ];
   vlib_buffer_t *bt = &ptd->buffer_template;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
@@ -239,7 +224,6 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if ((d->qword[1] & AVF_RX_DESC_STATUS_DD) == 0)
     goto done;
 
-  u32 *to_next, n_left_to_next;
   if (PREDICT_FALSE (ad->per_interface_next_index != ~0))
     next_index = ad->per_interface_next_index;
   vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
@@ -272,15 +256,8 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (rxq->next >= rxq->size - 4)
 	goto one_by_one;
 
-      /* load 1st quadword of 4 dscriptors into 256-bit vector register */
-      /* *INDENT-OFF* */
-      q1x4 = (u64x4) {
-	  d[0].qword[1],
-	  d[1].qword[1],
-	  d[2].qword[1],
-	  d[3].qword[1]
-      };
-      /* *INDENT-ON* */
+      q1x4 = u64x4_gather ((void *) &d[0].qword[1], (void *) &d[1].qword[1],
+			   (void *) &d[2].qword[1], (void *) &d[3].qword[1]);
 
       /* not all packets are ready or at least one of them is chained */
       if (!u64x4_is_equal (q1x4 & status_dd_eop_mask, status_dd_eop_mask))
