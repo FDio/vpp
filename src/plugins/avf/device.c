@@ -1407,37 +1407,12 @@ avf_init (vlib_main_t * vm)
   avf_main_t *am = &avf_main;
   clib_error_t *error;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  int i;
 
   if ((error = vlib_call_init_function (vm, pci_bus_init)))
     return error;
 
   vec_validate_aligned (am->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
-
-  /* initialize ptype based loopup table */
-  vec_validate_aligned (am->ptypes, 255, CLIB_CACHE_LINE_BYTES);
-
-  /* *INDENT-OFF* */
-  vec_foreach_index (i, am->ptypes)
-    {
-      avf_ptype_t *p = vec_elt_at_index (am->ptypes, i);
-      if ((i >= 22) && (i <= 87))
-	{
-	  p->next_node = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
-	  p->flags = VNET_BUFFER_F_IS_IP4;
-	}
-      else if ((i >= 88) && (i <= 153))
-	{
-	  p->next_node = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
-	  p->flags = VNET_BUFFER_F_IS_IP6;
-	}
-      else
-	p->next_node = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-      p->buffer_advance = device_input_next_node_advance[p->next_node];
-      p->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-    }
-  /* *INDENT-ON* */
 
   am->log_class = vlib_log_register_class ("avf_plugin", 0);
   vlib_log_debug (am->log_class, "initialized");

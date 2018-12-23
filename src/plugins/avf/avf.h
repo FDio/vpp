@@ -176,24 +176,12 @@ typedef struct
 
 typedef struct
 {
-  u8 next_node;
-  i8 buffer_advance;
-  u32 flags;
-} avf_ptype_t;
-
-STATIC_ASSERT (VNET_DEVICE_INPUT_N_NEXT_NODES < 256, "too many next nodes");
-
-typedef struct
-{
   u16 msg_id_base;
 
   avf_device_t *devices;
   avf_per_thread_data_t *per_thread_data;
 
   vlib_log_class_t log_class;
-
-  /* 256 element array for ptype based lookup */
-  avf_ptype_t *ptypes;
 } avf_main_t;
 
 extern avf_main_t avf_main;
