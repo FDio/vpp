@@ -61,7 +61,9 @@ stat_reader::unregisters(const interface& intf)
 void
 stat_reader::read()
 {
+  std::set<std::shared_ptr<interface>> itfs_w_stats;
   const stat_client::stat_data_vec_t& sd = m_client.dump();
+
   for (auto& sde : sd) {
     std::string name;
 
@@ -70,20 +72,41 @@ stat_reader::read()
 
     name = sde.name();
 
+    if (name.find("/if") != std::string::npos)
+      name.erase(0, 4);
+
     switch (sde.type()) {
-      case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
       case STAT_DIR_TYPE_ERROR_INDEX:
       case STAT_DIR_TYPE_SCALAR_INDEX:
       case STAT_DIR_TYPE_ILLEGAL:
         break;
+
+      case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE: {
+        uint64_t** data;
+
+        data = sde.get_stat_segment_simple_counter_data();
+
+        for (auto& i : m_stat_itf_indexes) {
+          counter_t count;
+
+          for (int k = 0; k < m_client.vec_len(data); k++) {
+            count.packets += data[k][i];
+          }
+
+          std::shared_ptr<interface> itf = interface::find(i);
+          if (itf) {
+            itf->set(count, name);
+            itfs_w_stats.insert(itf);
+          }
+        }
+        break;
+      }
 
       case STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED: {
         vlib_counter_t** data;
 
         data = sde.get_stat_segment_combined_counter_data();
 
-        if (name.find("/if") != std::string::npos)
-          name.erase(0, 4);
         for (auto& i : m_stat_itf_indexes) {
           counter_t count;
 
@@ -91,19 +114,19 @@ stat_reader::read()
             count.packets += data[k][i].packets;
             count.bytes += data[k][i].bytes;
           }
+
           std::shared_ptr<interface> itf = interface::find(i);
-          if (itf)
+          if (itf) {
             itf->set(count, name);
+            itfs_w_stats.insert(itf);
+          }
         }
         break;
       }
     }
   }
-
-  for (auto& i : m_stat_itf_indexes) {
-    std::shared_ptr<interface> itf = interface::find(i);
-    if (itf)
-      itf->publish_stats();
+  for (auto itf : itfs_w_stats) {
+    itf->publish_stats();
   }
 }
 

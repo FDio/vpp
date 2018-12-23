@@ -78,7 +78,7 @@ stat_client::stat_data_t::get_stat_segment_combined_counter_data() const
 stat_client::stat_client(std::string& socket_name)
   : m_socket_name(socket_name)
   , m_patterns()
-  , m_stat_connect(0)
+  , m_stat_connect(false)
   , m_counter_vec()
   , m_stat_seg_data(nullptr)
   , m_stat_data()
@@ -89,7 +89,7 @@ stat_client::stat_client(std::string& socket_name)
 stat_client::stat_client(std::vector<std::string>& pattern)
   : m_socket_name("/run/vpp/stats.sock")
   , m_patterns(pattern)
-  , m_stat_connect(0)
+  , m_stat_connect(false)
   , m_counter_vec()
   , m_stat_seg_data(nullptr)
   , m_stat_data()
@@ -100,7 +100,7 @@ stat_client::stat_client(std::string socket_name,
                          std::vector<std::string> patterns)
   : m_socket_name(socket_name)
   , m_patterns(patterns)
-  , m_stat_connect(0)
+  , m_stat_connect(false)
   , m_counter_vec()
   , m_stat_seg_data(nullptr)
   , m_stat_data()
@@ -110,7 +110,7 @@ stat_client::stat_client(std::string socket_name,
 stat_client::stat_client()
   : m_socket_name("/run/vpp/stats.sock")
   , m_patterns()
-  , m_stat_connect(0)
+  , m_stat_connect(false)
   , m_counter_vec()
   , m_stat_seg_data(nullptr)
   , m_stat_data()
@@ -136,7 +136,7 @@ int
 stat_client::connect()
 {
   if (stat_segment_connect(m_socket_name.c_str()) == 0) {
-    m_stat_connect = 1;
+    m_stat_connect = true;
     ls();
   }
   return m_stat_connect;
@@ -147,6 +147,7 @@ stat_client::disconnect()
 {
   if (m_stat_connect)
     stat_segment_disconnect();
+  m_stat_connect = false;
 }
 
 int
@@ -176,17 +177,20 @@ const stat_client::stat_data_vec_t&
 stat_client::dump()
 {
   stat_segment_data_free(m_stat_seg_data);
+  m_stat_seg_data = NULL;
   if (m_stat_data.size()) {
     m_stat_data.clear();
   }
-  m_stat_seg_data = stat_segment_dump(m_counter_vec);
-  if (!m_stat_seg_data) {
-    ls();
-    return m_stat_data;
-  }
-  for (int i = 0; i < stat_segment_vec_len(m_stat_seg_data); i++) {
-    stat_data_t sd(m_stat_seg_data[i]);
-    m_stat_data.push_back(sd);
+  if (m_stat_connect) {
+    m_stat_seg_data = stat_segment_dump(m_counter_vec);
+    if (!m_stat_seg_data) {
+      ls();
+      return m_stat_data;
+    }
+    for (int i = 0; i < stat_segment_vec_len(m_stat_seg_data); i++) {
+      stat_data_t sd(m_stat_seg_data[i]);
+      m_stat_data.push_back(sd);
+    }
   }
   return m_stat_data;
 }
@@ -195,17 +199,20 @@ const stat_client::stat_data_vec_t&
 stat_client::dump_entry(uint32_t index)
 {
   stat_segment_data_free(m_stat_seg_data);
+  m_stat_seg_data = NULL;
   if (m_stat_data.size()) {
     m_stat_data.clear();
   }
-  m_stat_seg_data = stat_segment_dump_entry(index);
-  if (!m_stat_seg_data) {
-    ls();
-    return m_stat_data;
-  }
-  for (int i = 0; i < stat_segment_vec_len(m_stat_seg_data); i++) {
-    stat_data_t sd(m_stat_seg_data[i]);
-    m_stat_data.push_back(sd);
+  if (m_stat_connect) {
+    m_stat_seg_data = stat_segment_dump_entry(index);
+    if (!m_stat_seg_data) {
+      ls();
+      return m_stat_data;
+    }
+    for (int i = 0; i < stat_segment_vec_len(m_stat_seg_data); i++) {
+      stat_data_t sd(m_stat_seg_data[i]);
+      m_stat_data.push_back(sd);
+    }
   }
   return m_stat_data;
 }

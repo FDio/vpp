@@ -324,6 +324,13 @@ ethertype_t::from_numeric_val(uint16_t numeric)
   return (ethertype_t::UNSPECIFIED);
 }
 
+std::ostream&
+operator<<(std::ostream& os, const counter_t& c)
+{
+  os << "[packets: " << c.packets << " bytes:" << c.bytes << "]";
+  return os;
+}
+
 }; // namespace VOM
 
 /*

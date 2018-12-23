@@ -385,6 +385,11 @@ struct counter_t
     , bytes(0)
   {
   }
+  counter_t(const counter_t& c)
+    : packets(c.packets)
+    , bytes(c.bytes)
+  {
+  }
   uint64_t packets;
   uint64_t bytes;
 };
@@ -398,6 +403,11 @@ std::ostream& operator<<(std::ostream& os, const mac_address_t& mac);
  * Ostream operator for a MAC address
  */
 std::ostream& operator<<(std::ostream& os, const l2_address_t& l2);
+
+/**
+ * Ostream operator for a MAC address
+ */
+std::ostream& operator<<(std::ostream& os, const counter_t& c);
 };
 
 /*
