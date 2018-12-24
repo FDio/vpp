@@ -224,7 +224,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
          format_white_space, indent,
          (vip->encap_args.srv_type == LB_SRV_TYPE_CLUSTERIP)?"clusterip":
              "nodeport",
-         ntohs(vip->port), ntohs(vip->encap_args.target_port));
+         vip->port, ntohs(vip->encap_args.target_port));
     }
 
   //Print counters
