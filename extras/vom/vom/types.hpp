@@ -63,6 +63,11 @@ enum class dependency_t
   TABLE,
 
   /**
+   * virtual tables - tables with a dependency on another table
+   */
+  VIRTUAL_TABLE,
+
+  /**
    * ACLs
    */
   ACL,

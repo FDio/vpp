@@ -19,8 +19,18 @@
 namespace VOM {
 namespace ACL {
 template <>
+dependency_t
+l2_binding::event_handler::order() const
+{
+  return (dependency_t::BINDING);
+}
+
+template <>
 l2_binding::event_handler::event_handler()
 {
+  /* hack to get this function instantiated */
+  order();
+
   OM::register_listener(this);
   inspect::register_handler({ "l2-acl-binding" }, "L2 ACL bindings", this);
 }
@@ -29,6 +39,9 @@ template <>
 void
 l2_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
+  /* hack to get this function instantiated */
+  order();
+
   /*
    * dump VPP Bridge domains
    */
@@ -43,19 +56,36 @@ l2_binding::event_handler::handle_populate(const client_db::key_t& key)
 
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
 
-    for (int ii = 0; ii < payload.count; ii++) {
-      std::shared_ptr<l2_list> acl = l2_list::find(payload.acls[ii]);
+    if (itf) {
+      for (int ii = 0; ii < payload.count; ii++) {
+        std::shared_ptr<l2_list> acl = l2_list::find(payload.acls[ii]);
 
-      l2_binding binding(direction_t::INPUT, *itf, *acl);
-
-      OM::commit(key, binding);
+        if (acl) {
+          l2_binding binding(direction_t::INPUT, *itf, *acl);
+          OM::commit(key, binding);
+        } else {
+          VOM_LOG(log_level_t::ERROR) << "no ACL id:" << payload.acls[ii];
+        }
+      }
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "no interface:" << payload.sw_if_index;
     }
   }
 }
 
 template <>
+dependency_t
+l3_binding::event_handler::order() const
+{
+  return (dependency_t::BINDING);
+}
+
+template <>
 l3_binding::event_handler::event_handler()
 {
+  /* hack to get this function instantiated */
+  order();
+
   OM::register_listener(this);
   inspect::register_handler({ "l3-acl-binding" }, "L3 ACL bindings", this);
 }
@@ -64,6 +94,9 @@ template <>
 void
 l3_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
+  /* hack to get this function instantiated */
+  order();
+
   std::shared_ptr<binding_cmds::l3_dump_cmd> cmd =
     std::make_shared<binding_cmds::l3_dump_cmd>();
 
@@ -76,17 +109,25 @@ l3_binding::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
     uint8_t n_input = payload.n_input;
 
-    for (int ii = 0; ii < payload.count; ii++) {
-      std::shared_ptr<l3_list> acl = l3_list::find(payload.acls[ii]);
+    if (itf) {
+      for (int ii = 0; ii < payload.count; ii++) {
+        std::shared_ptr<l3_list> acl = l3_list::find(payload.acls[ii]);
 
-      if (n_input) {
-        l3_binding binding(direction_t::INPUT, *itf, *acl);
-        n_input--;
-        OM::commit(key, binding);
-      } else {
-        l3_binding binding(direction_t::OUTPUT, *itf, *acl);
-        OM::commit(key, binding);
+        if (acl) {
+          if (n_input) {
+            l3_binding binding(direction_t::INPUT, *itf, *acl);
+            n_input--;
+            OM::commit(key, binding);
+          } else {
+            l3_binding binding(direction_t::OUTPUT, *itf, *acl);
+            OM::commit(key, binding);
+          }
+        } else {
+          VOM_LOG(log_level_t::ERROR) << "no ACL id:" << payload.acls[ii];
+        }
       }
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "no interface:" << payload.sw_if_index;
     }
   }
 }

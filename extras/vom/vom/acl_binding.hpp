@@ -129,7 +129,7 @@ private:
     /**
      * Get the sortable Id of the listener
      */
-    dependency_t order() const { return (dependency_t::BINDING); }
+    dependency_t order() const;
   };
 
   /**

@@ -198,6 +198,15 @@ gbp_endpoint_group::event_handler::handle_populate(const client_db::key_t& key)
       OM::commit(key, gbpe);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
+    } else if (bd && rd) {
+      gbp_endpoint_group gbpe(payload.epg.epg_id, *rd, *bd);
+      OM::commit(key, gbpe);
+
+      VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "no itf:" << payload.epg.uplink_sw_if_index
+                                  << " or BD:" << payload.epg.bd_id
+                                  << " or RD:" << payload.epg.rd_id;
     }
   }
 }

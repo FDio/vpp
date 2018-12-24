@@ -215,6 +215,9 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
       l2_binding l2(*uu_fwd_itf, bd,
                     l2_binding::l2_port_type_t::L2_PORT_TYPE_UU_FWD);
       OM::commit(key, l2);
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "no uu-fwd interface:"
+                                  << payload.uu_fwd_sw_if_index;
     }
 
     /**
@@ -226,6 +229,9 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
       if (itf) {
         l2_binding l2(*itf, bd);
         OM::commit(key, l2);
+      } else {
+        VOM_LOG(log_level_t::ERROR) << "no interface:"
+                                    << payload.sw_if_details[ii].sw_if_index;
       }
     }
   }

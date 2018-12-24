@@ -167,6 +167,10 @@ gbp_ext_itf::event_handler::handle_populate(const client_db::key_t& key)
       OM::commit(key, ext_itf);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << ext_itf.to_string();
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "no itf:" << payload.ext_itf.sw_if_index
+                                  << " or BD:" << payload.ext_itf.bd_id
+                                  << " or RD:" << payload.ext_itf.rd_id;
     }
   }
 }

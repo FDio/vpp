@@ -524,7 +524,7 @@ gbp_endpoint_group_send_details (gbp_endpoint_group_t * gg, void *args)
   mp->epg.uplink_sw_if_index = ntohl (gg->gg_uplink_sw_if_index);
   mp->epg.epg_id = ntohs (gg->gg_id);
   mp->epg.bd_id = ntohl (gbp_endpoint_group_get_bd_id (gg));
-  mp->epg.rd_id = ntohl (gg->gg_rd);
+  mp->epg.rd_id = ntohl (gbp_route_domain_get_rd_id (gg->gg_rd));
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 
@@ -672,7 +672,7 @@ gbp_recirc_send_details (gbp_recirc_t * gr, void *args)
 
   mp->recirc.epg_id = ntohs (gr->gr_epg);
   mp->recirc.sw_if_index = ntohl (gr->gr_sw_if_index);
-  mp->recirc.is_ext = ntohl (gr->gr_is_ext);
+  mp->recirc.is_ext = gr->gr_is_ext;
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 

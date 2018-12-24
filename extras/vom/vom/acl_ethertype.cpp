@@ -225,6 +225,8 @@ acl_ethertype::event_handler::handle_populate(const client_db::key_t& key)
         VOM_LOG(log_level_t::DEBUG) << "ethertype dump: " << a_e.to_string();
         OM::commit(key, a_e);
       }
+    } else {
+      VOM_LOG(log_level_t::ERROR) << "no interface:" << payload.sw_if_index;
     }
   }
 }

@@ -170,6 +170,10 @@ gbp_endpoint::event_handler::handle_populate(const client_db::key_t& key)
       OM::commit(key, gbpe);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
+    } else {
+      VOM_LOG(log_level_t::ERROR)
+        << "no interface:" << payload.endpoint.sw_if_index
+        << "or epg:" << payload.endpoint.epg_id;
     }
   }
 }

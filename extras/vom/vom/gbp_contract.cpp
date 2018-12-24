@@ -210,6 +210,8 @@ gbp_contract::event_handler::handle_populate(const client_db::key_t& key)
       OM::commit(key, gbpc);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpc.to_string();
+    } else {
+      VOM_LOG(log_level_t::ERROR) << " no ACL:" << payload.contract.acl_index;
     }
   }
 }
