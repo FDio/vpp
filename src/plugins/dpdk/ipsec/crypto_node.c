@@ -90,7 +90,7 @@ format_dpdk_crypto_input_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-dpdk_crypto_check_check_op (vlib_main_t * vm, vlib_node_runtime_t * node,
+dpdk_crypto_input_check_op (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    struct rte_crypto_op *op0, u16 * next)
 {
   if (PREDICT_FALSE (op0->status != RTE_CRYPTO_OP_STATUS_SUCCESS))
@@ -203,10 +203,10 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
       next[2] = crypto_op_get_priv (op2)->next;
       next[3] = crypto_op_get_priv (op3)->next;
 
-      dpdk_crypto_check_check_op (vm, node, op0, next + 0);
-      dpdk_crypto_check_check_op (vm, node, op0, next + 1);
-      dpdk_crypto_check_check_op (vm, node, op0, next + 2);
-      dpdk_crypto_check_check_op (vm, node, op0, next + 3);
+      dpdk_crypto_input_check_op (vm, node, op0, next + 0);
+      dpdk_crypto_input_check_op (vm, node, op1, next + 1);
+      dpdk_crypto_input_check_op (vm, node, op2, next + 2);
+      dpdk_crypto_input_check_op (vm, node, op3, next + 3);
 
       b0 = vlib_buffer_from_rte_mbuf (op0->sym[0].m_src);
       b1 = vlib_buffer_from_rte_mbuf (op1->sym[0].m_src);
@@ -238,7 +238,7 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       next[0] = crypto_op_get_priv (op0)->next;
 
-      dpdk_crypto_check_check_op (vm, node, op0, next + 0);
+      dpdk_crypto_input_check_op (vm, node, op0, next + 0);
 
       /* XXX store bi0 and next0 in op0 private? */
       b0 = vlib_buffer_from_rte_mbuf (op0->sym[0].m_src);
