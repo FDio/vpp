@@ -237,7 +237,7 @@ gbp_route_domain::event_handler::handle_replay()
 dependency_t
 gbp_route_domain::event_handler::order() const
 {
-  return (dependency_t::TABLE);
+  return (dependency_t::VIRTUAL_TABLE);
 }
 
 void
