@@ -32,6 +32,32 @@ perf_event_open (struct perf_event_attr *hw_event, pid_t pid, int cpu,
   return ret;
 }
 
+int
+perfmon_test_event (perfmon_main_t * pm, char *name, int pe_type,
+		    unsigned long pe_config)
+{
+  struct perf_event_attr pe;
+  int fd;
+
+  memset (&pe, 0, sizeof (struct perf_event_attr));
+  pe.type = pe_type;
+  pe.size = sizeof (struct perf_event_attr);
+  pe.config = pe_config;
+  pe.disabled = 1;
+  pe.pinned = 1;
+
+  fd = perf_event_open (&pe, 0, -1, -1, 0);
+  if (fd == -1)
+    {
+      vlib_log_warn (pm->log_class, "event test failed: type %d config %d",
+		     pe_type, pe_config);
+      return -1;
+    }
+
+  close (fd);
+  return 0;
+}
+
 static void
 read_current_perf_counters (vlib_main_t * vm, u64 * c0, u64 * c1)
 {
