@@ -27,6 +27,13 @@
 
 #include <linux/perf_event.h>
 
+/*
+If type is PERF_TYPE_HW_CACHE, then we are measuring a hardware CPU cache event.
+To calculate the appropriate config value use the following equation:
+    (perf_hw_cache_id) | (perf_hw_cache_op_id << 8) |
+    (perf_hw_cache_op_result_id << 16)
+*/
+
 #define foreach_perfmon_event                                           \
 _(PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES, "cpu-cycles")           \
 _(PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS, "instructions")       \
@@ -46,7 +53,17 @@ _(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES, "context-switches") \
 _(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_MIGRATIONS, "cpu-migrations")   \
 _(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MIN, "minor-pagefaults") \
 _(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MAJ, "major-pagefaults") \
-_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS, "emulation-faults")
+_(PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS, "emulation-faults") \
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16), "L1-dcache-loads")	\
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16), "L1-dcache-load-misses")	\
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_WRITE << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16), "L1-dcache-stores")	\
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_L1D | (PERF_COUNT_HW_CACHE_OP_WRITE << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16), "L1-dcache-store-misses")	\
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_L1I | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16), "L1-icache-loads")	\
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_L1I | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16), "L1-icache-load-misses")	\
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_LL | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16), "LLC-loads")	\
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_LL | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16), "LLC-load-misses") \
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_LL | (PERF_COUNT_HW_CACHE_OP_WRITE << 8) | (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16), "LLC-stores") \
+_(PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_LL | (PERF_COUNT_HW_CACHE_OP_WRITE << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16), "LLC-store-misses")
 
 typedef struct
 {
@@ -93,6 +110,9 @@ typedef struct
   perfmon_capture_t *capture_pool;
   uword *capture_by_thread_and_node_name;
 
+  /* available generic events */
+  perfmon_event_config_t *perfmon_generic_events;
+
   /* CPU-specific event tables, hash table of selected table (if any)  */
   perfmon_cpuid_and_table_t *perfmon_tables;
   uword *perfmon_table;
@@ -130,6 +150,8 @@ extern perfmon_main_t perfmon_main;
 
 extern vlib_node_registration_t perfmon_periodic_node;
 uword *perfmon_parse_table (perfmon_main_t * pm, char *path, char *filename);
+int perfmon_test_event (char *name, int pe_type, unsigned long pe_config);
+
 
 /* Periodic function events */
 #define PERFMON_START 1
