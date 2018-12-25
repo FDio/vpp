@@ -163,6 +163,17 @@ perfmon_init (vlib_main_t * vm)
   vec_validate (pm->rdpmc_indices, vec_len (vlib_mains) - 1);
   pm->page_size = getpagesize ();
 
+  pm->perfmon_generic_events = 0;
+
+#define _(type,config,_name)                             \
+  if(!perfmon_test_event(pm, _name,type,config)) { \
+    perfmon_event_config_t c; \
+    c.name=_name; c.pe_type=type; c.pe_config=config; \
+    vec_add1(pm->perfmon_generic_events, c); \
+  }
+  foreach_perfmon_event;
+#undef _
+
   ht = pm->perfmon_table = 0;
 
   set_perfmon_json_path ();
@@ -232,6 +243,39 @@ atox (u8 * s)
       s++;
     }
   return rv;
+}
+
+static uword
+unformat_generic_event (unformat_input_t * input, va_list * args)
+{
+  perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
+  perfmon_event_config_t *ep = va_arg (*args, perfmon_event_config_t *);
+  u8 *s = 0;
+
+  if (pm->perfmon_generic_events == 0)
+    return 0;
+
+  if (!unformat (input, "%s", &s))
+    return 0;
+
+  int found = 0;
+  perfmon_event_config_t *c;
+  vec_foreach (c, pm->perfmon_generic_events)
+  {
+    if (!strcmp (c->name, (char *) s))
+      {
+	ep->name = c->name;
+	ep->pe_type = c->pe_type;
+	ep->pe_config = c->pe_config;
+
+	found = 1;
+	break;
+      }
+  }
+
+  vec_free (s);
+
+  return found;
 }
 
 static uword
@@ -339,17 +383,11 @@ set_pmc_command_fn (vlib_main_t * vm,
 	{
 	  vec_add1 (pm->events_to_collect, ec);
 	}
-#define _(type,event,str)                       \
-      else if (unformat (line_input, str))      \
-        {                                       \
-          ec.name = str;                        \
-          ec.pe_type = type;                    \
-          ec.pe_config = event;                 \
-          vec_add1 (pm->events_to_collect, ec); \
-        }
-      foreach_perfmon_event
-#undef _
-	else
+      else if (unformat (line_input, "%U", unformat_generic_event, pm, &ec))
+	{
+	  vec_add1 (pm->events_to_collect, ec);
+	}
+      else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, line_input);
     }
@@ -488,15 +526,15 @@ format_capture (u8 * s, va_list * args)
 static u8 *
 format_generic_events (u8 * s, va_list * args)
 {
+  perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
   int verbose = va_arg (*args, int);
 
-#define _(type,config,name)                             \
-  if (verbose == 0)                                     \
-    s = format (s, "\n  %s", name);                     \
-  else                                                  \
-    s = format (s, "\n  %s (%d, %d)", name, type, config);
-  foreach_perfmon_event;
-#undef _
+  perfmon_event_config_t *c;
+
+  vec_foreach (c, pm->perfmon_generic_events) if (verbose == 0)
+    s = format (s, "\n  %s", c->name);
+  else
+    s = format (s, "\n  %s (%d, %d)", c->name, c->pe_type, c->pe_config);
   return s;
 }
 
@@ -534,7 +572,8 @@ format_processor_events (u8 * s, va_list * args)
     sn->nvps = value;
   }));
 
-  vec_sort_with_function (sort_nvps, sort_nvps_by_name);
+  if (sort_nvps)
+    vec_sort_with_function (sort_nvps, sort_nvps_by_name);
 
   if (verbose == 0)
     {
@@ -583,7 +622,7 @@ show_pmc_command_fn (vlib_main_t * vm,
   if (events)
     {
       vlib_cli_output (vm, "Generic Events %U",
-                       format_generic_events, verbose);
+                       format_generic_events, pm, verbose);
       vlib_cli_output (vm, "Synthetic Events");
       vlib_cli_output (vm, "  instructions-per-clock");
       vlib_cli_output (vm, "  branch-mispredict-rate");
