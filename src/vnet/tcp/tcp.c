@@ -172,7 +172,7 @@ tcp_half_open_connection_cleanup (tcp_connection_t * tc)
   /* Make sure this is the owning thread */
   if (tc->c_thread_index != vlib_get_thread_index ())
     return 1;
-  tcp_timer_reset (tc, TCP_TIMER_ESTABLISH);
+  tcp_timer_reset (tc, TCP_TIMER_ESTABLISH_AO);
   tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT_SYN);
   tcp_half_open_connection_del (tc);
   return 0;
@@ -308,6 +308,8 @@ tcp_connection_reset (tcp_connection_t * tc)
       break;
     case TCP_STATE_CLOSED:
       break;
+    default:
+      TCP_DBG ("reset state: %u", tc->state);
     }
 }
 
@@ -333,7 +335,9 @@ tcp_connection_close (tcp_connection_t * tc)
   switch (tc->state)
     {
     case TCP_STATE_SYN_SENT:
-      /* Do nothing. Establish timer will pop and cleanup the connection */
+      /* Try to cleanup. If not on the right thread, mark as half-open done.
+       * Connection will be cleaned up when establish timer pops */
+      tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_RCVD:
       tcp_connection_timers_reset (tc);
@@ -349,7 +353,8 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
       /* Set a timer in case the peer stops responding. Otherwise the
        * connection will be stuck here forever. */
-      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
+      ASSERT (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID);
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_CLOSE_WAIT:
       if (!session_tx_fifo_max_dequeue (&tc->connection))
@@ -367,17 +372,14 @@ tcp_connection_close (tcp_connection_t * tc)
       break;
     case TCP_STATE_CLOSED:
       tcp_connection_timers_reset (tc);
+      /* Delete connection but instead of doing it now wait until next
+       * dispatch cycle to give the session layer a chance to clear
+       * unhandled events */
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       break;
     default:
       TCP_DBG ("state: %u", tc->state);
     }
-
-  /* If in CLOSED and WAITCLOSE timer is not set, delete connection.
-   * But instead of doing it now wait until next dispatch cycle to give
-   * the session layer a chance to clear unhandled events */
-  if (!tcp_timer_is_active (tc, TCP_TIMER_WAITCLOSE)
-      && tc->state == TCP_STATE_CLOSED)
-    tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 }
 
 static void
@@ -393,9 +395,7 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc;
   tc = tcp_connection_get (conn_index, thread_index);
-  tcp_connection_timers_reset (tc);
-  tc->state = TCP_STATE_CLOSED;
-  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
+  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
   tcp_connection_cleanup (tc);
 }
 
@@ -1217,39 +1217,45 @@ tcp_timer_establish_handler (u32 conn_index)
 {
   tcp_connection_t *tc;
 
-  tc = tcp_half_open_connection_get (conn_index);
-  if (tc)
-    {
-      ASSERT (tc->state == TCP_STATE_SYN_SENT);
-      /* Notify app if we haven't tried to clean this up already */
-      if (!(tc->flags & TCP_CONN_HALF_OPEN_DONE))
-	session_stream_connect_notify (&tc->connection, 1 /* fail */ );
-    }
-  else
-    {
-      tc = tcp_connection_get (conn_index, vlib_get_thread_index ());
-      /* note: the connection may have already disappeared */
-      if (PREDICT_FALSE (tc == 0))
-	return;
-      ASSERT (tc->state == TCP_STATE_SYN_RCVD);
-      /* Start cleanup. App wasn't notified yet so use delete notify as
-       * opposed to delete to cleanup session layer state. */
-      stream_session_delete_notify (&tc->connection);
-    }
+  tc = tcp_connection_get (conn_index, vlib_get_thread_index ());
+  /* note: the connection may have already disappeared */
+  if (PREDICT_FALSE (tc == 0))
+    return;
+  ASSERT (tc->state == TCP_STATE_SYN_RCVD);
+  /* Start cleanup. App wasn't notified yet so use delete notify as
+   * opposed to delete to cleanup session layer state. */
+  stream_session_delete_notify (&tc->connection);
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
+  tcp_connection_cleanup (tc);
+}
+
+static void
+tcp_timer_establish_ao_handler (u32 conn_index)
+{
+  tcp_connection_t *tc;
+
+  tc = tcp_half_open_connection_get (conn_index);
+  if (!tc)
+    return;
+
+  ASSERT (tc->state == TCP_STATE_SYN_SENT);
+  /* Notify app if we haven't tried to clean this up already */
+  if (!(tc->flags & TCP_CONN_HALF_OPEN_DONE))
+    session_stream_connect_notify (&tc->connection, 1 /* fail */ );
+
+  tc->timers[TCP_TIMER_ESTABLISH_AO] = TCP_TIMER_HANDLE_INVALID;
   tcp_connection_cleanup (tc);
 }
 
 static void
 tcp_timer_waitclose_handler (u32 conn_index)
 {
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vlib_get_thread_index (), rto;
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (conn_index, thread_index);
   if (!tc)
     return;
-
   tc->timers[TCP_TIMER_WAITCLOSE] = TCP_TIMER_HANDLE_INVALID;
 
   switch (tc->state)
@@ -1287,8 +1293,9 @@ tcp_timer_waitclose_handler (u32 conn_index)
 	   * is closed. We haven't sent everything but we did try. */
 	  tcp_cong_recovery_off (tc);
 	  tcp_send_fin (tc);
+	  rto = clib_max (tc->rto >> tc->rto_boff, 1);
 	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE,
-			 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+			 clib_min (rto * TCP_TO_TIMER_TICK, TCP_2MSL_TIME));
 	  session_stream_close_notify (&tc->connection);
 	}
       else
@@ -1321,7 +1328,8 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
     tcp_timer_keep_handler,
     tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
-    tcp_timer_establish_handler
+    tcp_timer_establish_handler,
+    tcp_timer_establish_ao_handler,
 };
 /* *INDENT-ON* */
 

@@ -388,6 +388,49 @@ if (_tc)								\
   ed->data[3] = _tc->snd_nxt - _tc->iss;				\
   ed->data[4] = _tc->rcv_nxt - _tc->irs;				\
 }
+
+#define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)            \
+{                                                               	\
+  tcp_connection_t *_tc;                                        	\
+  if (_timer_id == TCP_TIMER_RETRANSMIT_SYN 				\
+      || _timer_id == TCP_TIMER_ESTABLISH_AO)                        	\
+    {                                                           	\
+      _tc = tcp_half_open_connection_get (_tc_index);           	\
+    }                                                           	\
+  else                                                          	\
+    {                                                           	\
+      u32 _thread_index = vlib_get_thread_index ();                 	\
+      _tc = tcp_connection_get (_tc_index, _thread_index);      	\
+    }                                                           	\
+  ELOG_TYPE_DECLARE (_e) =                                      	\
+  {                                                             	\
+    .format = "timer-pop: %s (%d)",                              	\
+    .format_args = "t4i4",                                      	\
+    .n_enum_strings = 8,                                        	\
+    .enum_strings = {                                           	\
+      "retransmit",                                             	\
+      "delack",                                                 	\
+      "persist",                                                    	\
+      "keep",                                                   	\
+      "waitclose",                                              	\
+      "retransmit syn",                                         	\
+      "establish",                                              	\
+      "establish-ao",                                              	\
+    },                                                          	\
+  };                                                            	\
+  if (_tc)								\
+    {									\
+      DECLARE_ETD(_tc, _e, 2);                                      	\
+      ed->data[0] = _timer_id;                                      	\
+      ed->data[1] = _timer_id;                                      	\
+    }									\
+  else									\
+    {									\
+      clib_warning ("pop %d for unexisting connection %d", _timer_id,	\
+		    _tc_index);						\
+    }									\
+}
+
 #else
 #define TCP_EVT_SYN_SENT_HANDLER(_tc, ...)
 #define TCP_EVT_SYNACK_SENT_HANDLER(_tc, ...)
@@ -398,6 +441,7 @@ if (_tc)								\
 #define TCP_EVT_FIN_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_RST_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_STATE_CHANGE_HANDLER(_tc, ...)
+#define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)
 #endif
 
 #if TCP_DEBUG_SM > 1
@@ -542,52 +586,11 @@ if (_av > 0) 								\
   ed->data[4] = _tc->rcv_wnd - (_tc->rcv_nxt - _tc->rcv_las);		\
 }
 
-#define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)            \
-{                                                               	\
-  tcp_connection_t *_tc;                                        	\
-  if (_timer_id == TCP_TIMER_RETRANSMIT_SYN                     	\
-    || _timer_id == TCP_TIMER_ESTABLISH)                        	\
-    {                                                           	\
-      _tc = tcp_half_open_connection_get (_tc_index);           	\
-    }                                                           	\
-  else                                                          	\
-    {                                                           	\
-      u32 _thread_index = vlib_get_thread_index ();                 	\
-      _tc = tcp_connection_get (_tc_index, _thread_index);      	\
-    }                                                           	\
-  ELOG_TYPE_DECLARE (_e) =                                      	\
-  {                                                             	\
-    .format = "timer-pop: %s (%d)",                              	\
-    .format_args = "t4i4",                                      	\
-    .n_enum_strings = 7,                                        	\
-    .enum_strings = {                                           	\
-      "retransmit",                                             	\
-      "delack",                                                 	\
-      "persist",                                                    	\
-      "keep",                                                   	\
-      "waitclose",                                              	\
-      "retransmit syn",                                         	\
-      "establish",                                              	\
-    },                                                          	\
-  };                                                            	\
-  if (_tc)								\
-    {									\
-      DECLARE_ETD(_tc, _e, 2);                                      	\
-      ed->data[0] = _timer_id;                                      	\
-      ed->data[1] = _timer_id;                                      	\
-    }									\
-  else									\
-    {									\
-      clib_warning ("pop %d for unexisting connection %d", _timer_id,	\
-		    _tc_index);						\
-    }									\
-}
 #else
 #define TCP_EVT_ACK_SENT_HANDLER(_tc, ...)
 #define TCP_EVT_ACK_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_PKTIZE_HANDLER(_tc, ...)
 #define TCP_EVT_INPUT_HANDLER(_tc, _type, _len, _written, ...)
-#define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)
 #endif
 
 /*
