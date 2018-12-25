@@ -128,14 +128,17 @@ format_avf_input_trace (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
   u32 indent = format_get_indent (s);
-  avf_rx_vector_entry_t *rxve = &t->rxve;
 
   s = format (s, "avf: %v (%d) next-node %U",
 	      hi->name, t->hw_if_index, format_vlib_next_node_name, vm,
 	      node->index, t->next_index);
+
   s = format (s, "\n%Ustatus 0x%x error 0x%x ptype 0x%x length %u",
-	      format_white_space, indent + 2, rxve->status, rxve->error,
-	      rxve->ptype, rxve->length);
+	      format_white_space, indent + 2,
+	      t->qw1 & pow2_mask (19),
+	      (t->qw1 >> AVF_RXD_ERROR_SHIFT) & pow2_mask (8),
+	      (t->qw1 >> AVF_RXD_PTYPE_SHIFT) & pow2_mask (8),
+	      (t->qw1 >> AVF_RXD_LEN_SHIFT));
 
   return s;
 }

@@ -22,6 +22,17 @@
 
 #include <vlib/log.h>
 
+#define AVF_RXD_STATUS(x)		(1ULL << x)
+#define AVF_RXD_STATUS_DD		AVF_RXD_STATUS(0)
+#define AVF_RXD_STATUS_EOP		AVF_RXD_STATUS(1)
+#define AVF_RXD_ERROR_SHIFT		19
+#define AVF_RXD_PTYPE_SHIFT		30
+#define AVF_RXD_LEN_SHIFT		38
+
+#define AVF_RXD_ERROR_IPE		(1ULL << (AVF_RXD_ERROR_SHIFT + 3))
+#define AVF_RXD_ERROR_L4E		(1ULL << (AVF_RXD_ERROR_SHIFT + 4))
+
+
 #define foreach_avf_device_flags \
   _(0, INITIALIZED, "initialized") \
   _(1, ERROR, "error") \
@@ -147,16 +158,6 @@ typedef struct
   clib_error_t *error;
 } avf_device_t;
 
-typedef struct
-{
-  u32 status;
-  u16 length;
-  u8 ptype;
-  u8 error;
-} avf_rx_vector_entry_t;
-
-STATIC_ASSERT_SIZEOF (avf_rx_vector_entry_t, 8);
-
 #define AVF_RX_VECTOR_SZ VLIB_FRAME_SIZE
 
 enum
@@ -169,7 +170,6 @@ enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  avf_rx_vector_entry_t rx_vector[AVF_RX_VECTOR_SZ];
   u32 *to_free;
   vlib_buffer_t buffer_template;
 } avf_per_thread_data_t;
@@ -274,7 +274,7 @@ typedef struct
 {
   u32 next_index;
   u32 hw_if_index;
-  avf_rx_vector_entry_t rxve;
+  u64 qw1;
 } avf_input_trace_t;
 
 #define foreach_avf_tx_func_error	       \
