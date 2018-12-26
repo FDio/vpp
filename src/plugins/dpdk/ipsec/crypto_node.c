@@ -166,99 +166,102 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
 					       res->qp_id + outbound,
 					       ops, VLIB_FRAME_SIZE);
 
-  res->inflights[outbound] -= n_ops;
-
-  dpdk_crypto_input_trace (vm, node, ops, n_deq);
-
-  while (n_ops >= 4)
+  if (n_deq > 0)
     {
-      struct rte_crypto_op *op0, *op1, *op2, *op3;
-      vlib_buffer_t *b0, *b1, *b2, *b3;
+      res->inflights[outbound] -= n_ops;
 
-      /* Prefetch next iteration. */
-      if (n_ops >= 8)
+      dpdk_crypto_input_trace (vm, node, ops, n_deq);
+
+      while (n_ops >= 4)
 	{
-	  CLIB_PREFETCH (ops[4], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (ops[5], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (ops[6], CLIB_CACHE_LINE_BYTES, LOAD);
-	  CLIB_PREFETCH (ops[7], CLIB_CACHE_LINE_BYTES, LOAD);
+	  struct rte_crypto_op *op0, *op1, *op2, *op3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
 
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[4]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[5]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[6]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[7]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
+	  /* Prefetch next iteration. */
+	  if (n_ops >= 8)
+	    {
+	      CLIB_PREFETCH (ops[4], CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (ops[5], CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (ops[6], CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (ops[7], CLIB_CACHE_LINE_BYTES, LOAD);
+
+	      CLIB_PREFETCH (crypto_op_get_priv (ops[4]),
+			     CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (crypto_op_get_priv (ops[5]),
+			     CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (crypto_op_get_priv (ops[6]),
+			     CLIB_CACHE_LINE_BYTES, LOAD);
+	      CLIB_PREFETCH (crypto_op_get_priv (ops[7]),
+			     CLIB_CACHE_LINE_BYTES, LOAD);
+	    }
+
+	  op0 = ops[0];
+	  op1 = ops[1];
+	  op2 = ops[2];
+	  op3 = ops[3];
+
+	  next[0] = crypto_op_get_priv (op0)->next;
+	  next[1] = crypto_op_get_priv (op1)->next;
+	  next[2] = crypto_op_get_priv (op2)->next;
+	  next[3] = crypto_op_get_priv (op3)->next;
+
+	  dpdk_crypto_input_check_op (vm, node, op0, next + 0);
+	  dpdk_crypto_input_check_op (vm, node, op1, next + 1);
+	  dpdk_crypto_input_check_op (vm, node, op2, next + 2);
+	  dpdk_crypto_input_check_op (vm, node, op3, next + 3);
+
+	  b0 = vlib_buffer_from_rte_mbuf (op0->sym[0].m_src);
+	  b1 = vlib_buffer_from_rte_mbuf (op1->sym[0].m_src);
+	  b2 = vlib_buffer_from_rte_mbuf (op2->sym[0].m_src);
+	  b3 = vlib_buffer_from_rte_mbuf (op3->sym[0].m_src);
+
+	  bi[0] = vlib_get_buffer_index (vm, b0);
+	  bi[1] = vlib_get_buffer_index (vm, b1);
+	  bi[2] = vlib_get_buffer_index (vm, b2);
+	  bi[3] = vlib_get_buffer_index (vm, b3);
+
+	  op0->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	  op1->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	  op2->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	  op3->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+
+	  /* next */
+	  next += 4;
+	  n_ops -= 4;
+	  ops += 4;
+	  bi += 4;
+	}
+      while (n_ops > 0)
+	{
+	  struct rte_crypto_op *op0;
+	  vlib_buffer_t *b0;
+
+	  op0 = ops[0];
+
+	  next[0] = crypto_op_get_priv (op0)->next;
+
+	  dpdk_crypto_input_check_op (vm, node, op0, next + 0);
+
+	  /* XXX store bi0 and next0 in op0 private? */
+	  b0 = vlib_buffer_from_rte_mbuf (op0->sym[0].m_src);
+	  bi[0] = vlib_get_buffer_index (vm, b0);
+
+	  op0->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+
+	  /* next */
+	  next += 1;
+	  n_ops -= 1;
+	  ops += 1;
+	  bi += 1;
 	}
 
-      op0 = ops[0];
-      op1 = ops[1];
-      op2 = ops[2];
-      op3 = ops[3];
+      vlib_node_increment_counter (vm, node->node_index,
+				   DPDK_CRYPTO_INPUT_ERROR_DQ_COPS, n_deq);
 
-      next[0] = crypto_op_get_priv (op0)->next;
-      next[1] = crypto_op_get_priv (op1)->next;
-      next[2] = crypto_op_get_priv (op2)->next;
-      next[3] = crypto_op_get_priv (op3)->next;
+      vlib_buffer_enqueue_to_next (vm, node, bis, nexts, n_deq);
 
-      dpdk_crypto_input_check_op (vm, node, op0, next + 0);
-      dpdk_crypto_input_check_op (vm, node, op1, next + 1);
-      dpdk_crypto_input_check_op (vm, node, op2, next + 2);
-      dpdk_crypto_input_check_op (vm, node, op3, next + 3);
-
-      b0 = vlib_buffer_from_rte_mbuf (op0->sym[0].m_src);
-      b1 = vlib_buffer_from_rte_mbuf (op1->sym[0].m_src);
-      b2 = vlib_buffer_from_rte_mbuf (op2->sym[0].m_src);
-      b3 = vlib_buffer_from_rte_mbuf (op3->sym[0].m_src);
-
-      bi[0] = vlib_get_buffer_index (vm, b0);
-      bi[1] = vlib_get_buffer_index (vm, b1);
-      bi[2] = vlib_get_buffer_index (vm, b2);
-      bi[3] = vlib_get_buffer_index (vm, b3);
-
-      op0->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-      op1->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-      op2->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-      op3->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-
-      /* next */
-      next += 4;
-      n_ops -= 4;
-      ops += 4;
-      bi += 4;
+      crypto_free_ops (numa, cwm->ops, n_deq);
     }
-  while (n_ops > 0)
-    {
-      struct rte_crypto_op *op0;
-      vlib_buffer_t *b0;
-
-      op0 = ops[0];
-
-      next[0] = crypto_op_get_priv (op0)->next;
-
-      dpdk_crypto_input_check_op (vm, node, op0, next + 0);
-
-      /* XXX store bi0 and next0 in op0 private? */
-      b0 = vlib_buffer_from_rte_mbuf (op0->sym[0].m_src);
-      bi[0] = vlib_get_buffer_index (vm, b0);
-
-      op0->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-
-      /* next */
-      next += 1;
-      n_ops -= 1;
-      ops += 1;
-      bi += 1;
-    }
-
-  vlib_node_increment_counter (vm, node->node_index,
-			       DPDK_CRYPTO_INPUT_ERROR_DQ_COPS, n_deq);
-
-  vlib_buffer_enqueue_to_next (vm, node, bis, nexts, n_deq);
-
-  crypto_free_ops (numa, cwm->ops, n_deq);
 
   return n_deq;
 }
