@@ -52,3 +52,14 @@ class MACAddress():
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.mac_string)
+
+    def __eq__(self, other):
+        if not isinstance(other, MACAddress):
+            return NotImplemented
+        return self.mac_binary == other.mac_binary
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(self.mac_binary)
