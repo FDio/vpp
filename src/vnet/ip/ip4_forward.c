@@ -53,6 +53,7 @@
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
+#include <vnet/buffer.h>
 
 #include <vnet/ip/ip4_forward.h>
 
@@ -2268,12 +2269,22 @@ ip4_rewrite_inline (vlib_main_t * vm,
       CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
 
       /* Check MTU of outgoing interface. */
-      ip4_mtu_check (b[0], clib_net_to_host_u16 (ip0->length),
+      u16 ip0_len = clib_net_to_host_u16 (ip0->length);
+      u16 ip1_len = clib_net_to_host_u16 (ip1->length);
+      if (0 /* FIXME - necessary for GSO ?  */) {
+	ip0_len = (b[0]->flags & VNET_BUFFER_F_GSO) ? vnet_buffer2 (b[0])->gso_size +
+	ip4_header_bytes (ip0) : clib_net_to_host_u16 (ip0->length);
+        ip1_len =
+	(b[1]->flags & VNET_BUFFER_F_GSO) ? vnet_buffer2 (b[1])->gso_size +
+	ip4_header_bytes (ip1) : clib_net_to_host_u16 (ip1->length);
+      }
+
+      ip4_mtu_check (b[0], ip0_len,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
 		     next + 0, &error0);
-      ip4_mtu_check (b[1], clib_net_to_host_u16 (ip1->length),
+      ip4_mtu_check (b[1], ip1_len,
 		     adj1[0].rewrite_header.max_l3_packet_bytes,
 		     ip1->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
@@ -2396,7 +2407,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
       vnet_buffer (b[0])->ip.save_rewrite_length = rw_len0;
 
       /* Check MTU of outgoing interface. */
-      ip4_mtu_check (b[0], clib_net_to_host_u16 (ip0->length),
+      u16 ip0_len =
+	(b[0]->flags & VNET_BUFFER_F_GSO) ? vnet_buffer2 (b[0])->gso_size +
+	ip4_header_bytes (ip0) : clib_net_to_host_u16 (ip0->length);
+      ip4_mtu_check (b[0], ip0_len,
 		     adj0[0].rewrite_header.max_l3_packet_bytes,
 		     ip0->flags_and_fragment_offset &
 		     clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT),
