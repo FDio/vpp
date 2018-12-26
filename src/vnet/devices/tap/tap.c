@@ -173,7 +173,19 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
+  if (args->gso_enable)
+    {
+      offload = TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6 | TUN_F_UFO;
+      vif->gso_enabled = 1;
+
+    }
+  else
+    {
+      vif->gso_enabled = 0;
+    }
+
   _IOCTL (vif->tap_fd, TUNSETOFFLOAD, offload);
+
   _IOCTL (vif->tap_fd, TUNSETVNETHDRSZ, &hdrsz);
   _IOCTL (vif->fd, VHOST_SET_OWNER, 0);
 
@@ -380,6 +392,10 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   args->sw_if_index = vif->sw_if_index;
   hw = vnet_get_hw_interface (vnm, vif->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  if (args->gso_enable) {
+    hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+    vnm->interface_main.gso_interface_count++;
+  }
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, 0, ~0);
@@ -431,6 +447,10 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
+  /* decrement if this was a GSO interface */
+  if (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO)
+    vnm->interface_main.gso_interface_count--;
+
   vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
 
   /* bring down the interface */
@@ -454,6 +474,51 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   clib_memset (vif, 0, sizeof (*vif));
   pool_put (mm->interfaces, vif);
 
+  return 0;
+}
+
+int
+tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index, int enable_disable)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *vif;
+  vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  clib_error_t *err = 0;
+
+  if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
+
+  const unsigned int gso_on =
+    TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6 | TUN_F_UFO;
+  const unsigned int gso_off = 0;
+  unsigned int offload = enable_disable ? gso_on : gso_off;
+  _IOCTL (vif->tap_fd, TUNSETOFFLOAD, offload);
+  vif->gso_enabled = enable_disable ? 1 : 0;
+  if (enable_disable)
+    {
+      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) == 0) {
+        vnm->interface_main.gso_interface_count++;
+      }
+      hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+    }
+  else
+    {
+      if ((hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO) != 0) {
+        vnm->interface_main.gso_interface_count--;
+      }
+      hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+    }
+
+error:
+  if (err)
+    {
+      clib_warning ("Error %s gso on sw_if_index %d",
+		    enable_disable ? "enabling" : "disabling", sw_if_index);
+      return VNET_API_ERROR_SYSCALL_ERROR_3;
+    }
   return 0;
 }
 
