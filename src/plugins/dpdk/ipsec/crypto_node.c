@@ -166,6 +166,10 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
 					       res->qp_id + outbound,
 					       ops, VLIB_FRAME_SIZE);
 
+  /* no op dequeued, do not proceed */
+  if (n_deq == 0)
+    return 0;
+
   res->inflights[outbound] -= n_ops;
 
   dpdk_crypto_input_trace (vm, node, ops, n_deq);
@@ -183,14 +187,14 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  CLIB_PREFETCH (ops[6], CLIB_CACHE_LINE_BYTES, LOAD);
 	  CLIB_PREFETCH (ops[7], CLIB_CACHE_LINE_BYTES, LOAD);
 
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[4]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[5]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[6]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
-	  CLIB_PREFETCH (crypto_op_get_priv (ops[7]), CLIB_CACHE_LINE_BYTES,
-			 LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[4]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[5]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[6]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (crypto_op_get_priv (ops[7]),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
 	}
 
       op0 = ops[0];
