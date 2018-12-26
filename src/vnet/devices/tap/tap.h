@@ -41,6 +41,7 @@ typedef struct
   u8 host_ip6_prefix_len;
   ip6_address_t host_ip6_gw;
   u8 host_ip6_gw_set;
+  u8 gso_enable;
   /* return */
   u32 sw_if_index;
   int rv;
@@ -76,6 +77,8 @@ typedef struct
 
 void tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args);
 int tap_delete_if (vlib_main_t * vm, u32 sw_if_index);
+int tap_gso_enable_disable (vlib_main_t * vm, u32 sw_if_index,
+			    int enable_disable);
 int tap_dump_ifs (tap_interface_details_t ** out_tapids);
 
 #endif /* _VNET_DEVICES_VIRTIO_TAP_H_ */
