@@ -3638,7 +3638,7 @@ acl_init (vlib_main_t * vm)
   return error;
 }
 
-VLIB_INIT_FUNCTION (acl_init);
+        VLIB_INIT_FUNCTION (acl_init);
 
 
 /*
