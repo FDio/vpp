@@ -28,4 +28,5 @@ add_vpp_plugin(map
   map_all_api_h.h
   map_msg_enum.h
   map.h
+  lpm.h
 )
