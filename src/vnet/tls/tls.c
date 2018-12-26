@@ -262,7 +262,6 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
     goto failed;
 
   ctx->app_session_handle = session_handle (app_session);
-  ctx->c_s_index = app_session->session_index;
   app_session->session_state = SESSION_STATE_CONNECTING;
   if (cb_fn (ctx->parent_app_index, ctx->parent_app_api_context,
 	     app_session, 0 /* not failed */ ))
@@ -272,6 +271,9 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
       return -1;
     }
 
+  /* parent_app_api_context should not be overwitten before used,
+   * so defer setting c_s_index */
+  ctx->c_s_index = app_session->session_index;
   app_session->session_state = SESSION_STATE_READY;
   session_lookup_add_connection (&ctx->connection,
 				 session_handle (app_session));
