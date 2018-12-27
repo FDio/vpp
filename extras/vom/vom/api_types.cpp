@@ -28,6 +28,21 @@ to_api(const ip_address_t& a, vapi_type_address& v)
     memcpy(v.un.ip6, a.to_v6().to_bytes().data(), 16);
   }
 }
+
+void
+to_api(const ip_address_t& a,
+       vapi_union_address_union& u,
+       vapi_enum_address_family& af)
+{
+  if (a.is_v4()) {
+    af = ADDRESS_IP4;
+    memcpy(u.ip4, a.to_v4().to_bytes().data(), 4);
+  } else {
+    af = ADDRESS_IP6;
+    memcpy(u.ip6, a.to_v6().to_bytes().data(), 16);
+  }
+}
+
 void
 to_api(const boost::asio::ip::address& a, vapi_type_ip4_address& v)
 {
@@ -47,6 +62,26 @@ from_api(const vapi_type_address& v)
   } else {
     std::array<uint8_t, 4> a;
     std::copy(v.un.ip6, v.un.ip6 + 4, std::begin(a));
+    boost::asio::ip::address_v4 v4(a);
+    addr = v4;
+  }
+
+  return addr;
+}
+
+ip_address_t
+from_api(const vapi_union_address_union& u, vapi_enum_address_family af)
+{
+  boost::asio::ip::address addr;
+
+  if (ADDRESS_IP6 == af) {
+    std::array<uint8_t, 16> a;
+    std::copy(u.ip6, u.ip6 + 16, std::begin(a));
+    boost::asio::ip::address_v6 v6(a);
+    addr = v6;
+  } else {
+    std::array<uint8_t, 4> a;
+    std::copy(u.ip6, u.ip6 + 4, std::begin(a));
     boost::asio::ip::address_v4 v4(a);
     addr = v4;
   }
@@ -78,6 +113,25 @@ to_api(const route::prefix_t& p)
   vapi_type_prefix v;
   to_api(p.address(), v.address);
   v.address_length = p.mask_width();
+  return v;
+}
+
+route::mprefix_t
+from_api(const vapi_type_mprefix& v)
+{
+  return route::mprefix_t(from_api(v.src_address, v.af),
+                          from_api(v.grp_address, v.af), v.grp_address_length);
+}
+
+vapi_type_mprefix
+to_api(const route::mprefix_t& p)
+{
+  vapi_enum_address_family af;
+  vapi_type_mprefix v;
+  to_api(p.grp_address(), v.grp_address, af);
+  to_api(p.src_address(), v.src_address, af);
+  v.grp_address_length = p.mask_width();
+  v.af = af;
   return v;
 }
 };

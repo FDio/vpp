@@ -171,8 +171,8 @@ public:
   const static prefix_t ZEROv6;
 
   /**
-   * Convert the prefix into VPP API parameters
-   */
+  * Convert the prefix into VPP API parameters
+  */
   void to_vpp(uint8_t* is_ip6, uint8_t* addr, uint8_t* len) const;
 
   /**
@@ -206,7 +206,119 @@ private:
    */
   uint8_t m_len;
 };
+
+/**
+* A prefix defintion. Address + length
+*/
+class mprefix_t
+{
+public:
+  /**
+   * Default Constructor - creates ::/0
+   */
+  mprefix_t();
+  /**
+   * Constructor for (S,G)
+   */
+  mprefix_t(const boost::asio::ip::address& saddr,
+            const boost::asio::ip::address& gaddr);
+  /*
+   * Constructor for (*,G)
+   */
+  mprefix_t(const boost::asio::ip::address& gaddr);
+
+  /*
+   * Constructor for (*,G/n)
+   */
+  mprefix_t(const boost::asio::ip::address& gaddr, uint8_t len);
+
+  /**
+*Constructor for (S,G)
+*/
+  mprefix_t(const boost::asio::ip::address& saddr,
+            const boost::asio::ip::address& gaddr,
+            uint16_t len);
+
+  /**
+   * Copy Constructor
+   */
+  mprefix_t(const mprefix_t&);
+
+  /**
+   * Destructor
+   */
+  ~mprefix_t();
+
+  /**
+   * Get the address
+   */
+  const boost::asio::ip::address& grp_address() const;
+  const boost::asio::ip::address& src_address() const;
+
+  /**
+   * Get the network mask width
+   */
+  uint8_t mask_width() const;
+
+  /**
+   * Assignement
+   */
+  mprefix_t& operator=(const mprefix_t&);
+
+  /**
+   * Less than operator
+   */
+  bool operator<(const mprefix_t& o) const;
+
+  /**
+   * equals operator
+   */
+  bool operator==(const mprefix_t& o) const;
+
+  /**
+   * not equal opartor
+   */
+  bool operator!=(const mprefix_t& o) const;
+
+  /**
+   * convert to string format for debug purposes
+   */
+  std::string to_string() const;
+
+  /**
+   * The all Zeros prefix
+   */
+  const static mprefix_t ZERO;
+
+  /**
+   * The all Zeros v6 prefix
+   */
+  const static mprefix_t ZEROv6;
+
+  /**
+   * Get the L3 protocol
+   */
+  l3_proto_t l3_proto() const;
+
+  void to_vpp(uint8_t* is_ip6,
+              uint8_t* saddr,
+              uint8_t* gaddr,
+              uint16_t* len) const;
+
+private:
+  /**
+   * The address
+   */
+  boost::asio::ip::address m_gaddr;
+  boost::asio::ip::address m_saddr;
+
+  /**
+   * The prefix length
+   */
+  uint8_t m_len;
 };
+
+}; // namespace route
 
 boost::asio::ip::address_v4 operator|(const boost::asio::ip::address_v4& addr1,
                                       const boost::asio::ip::address_v4& addr2);
@@ -254,7 +366,7 @@ uint32_t mask_width(const boost::asio::ip::address& addr);
 /**
  * Convert a VPP byte stinrg into a boost addresss
  */
-boost::asio::ip::address from_bytes(uint8_t is_ip6, uint8_t* array);
+boost::asio::ip::address from_bytes(uint8_t is_ip6, const uint8_t* array);
 };
 
 /*

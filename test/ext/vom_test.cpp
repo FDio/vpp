@@ -38,6 +38,7 @@
 #include "vom/prefix.hpp"
 #include "vom/route.hpp"
 #include "vom/route_cmds.hpp"
+#include "vom/mroute_cmds.hpp"
 #include "vom/route_domain.hpp"
 #include "vom/route_domain_cmds.hpp"
 #include "vom/vxlan_tunnel.hpp"
@@ -250,6 +251,14 @@ public:
                     else if (typeid(*f_exp) == typeid(route::ip_route_cmds::delete_cmd))
                     {
                         rc = handle_derived<route::ip_route_cmds::delete_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(route::ip_mroute_cmds::update_cmd))
+                    {
+			rc = handle_derived<route::ip_mroute_cmds::update_cmd>(f_exp, f_act);
+                    }
+                    else if (typeid(*f_exp) == typeid(route::ip_mroute_cmds::delete_cmd))
+                    {
+                        rc = handle_derived<route::ip_mroute_cmds::delete_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(neighbour_cmds::create_cmd))
                     {
@@ -1762,6 +1771,26 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_dvr, 0, pfx_6, {*path_l2}));
     TRY_CHECK_RC(OM::write(ian, *route_dvr));
 
+    /*
+     * a multicast route
+     */
+    route::mprefix_t mpfx_4(boost::asio::ip::address::from_string("232.1.1.1"), 32);
+    route::ip_mroute *mroute_4 = new route::ip_mroute(mpfx_4);
+
+    route::path *mp1 = new route::path(itf1, nh_proto_t::IPV4);
+    route::path *mp2 = new route::path(*itf2, nh_proto_t::IPV4);
+    mroute_4->add(*mp1, route::itf_flags_t::FORWARD);
+    mroute_4->add(*mp1, route::itf_flags_t::ACCEPT);
+    mroute_4->add(*mp2, route::itf_flags_t::FORWARD);
+    HW::item<bool> hw_mroute_4(true, rc_t::OK);
+    ADD_EXPECT(route::ip_mroute_cmds::update_cmd(hw_mroute_4, 0, mpfx_4,
+                                                 *mp1, route::itf_flags_t::FORWARD));
+    ADD_EXPECT(route::ip_mroute_cmds::update_cmd(hw_mroute_4, 0, mpfx_4,
+                                                 *mp2, route::itf_flags_t::FORWARD));
+    ADD_EXPECT(route::ip_mroute_cmds::update_cmd(hw_mroute_4, 0, mpfx_4,
+                                                 *mp1, route::itf_flags_t::ACCEPT));
+    TRY_CHECK_RC(OM::write(ian, *mroute_4));
+
     STRICT_ORDER_OFF();
     // delete the stack objects that hold references to others
     // so the OM::remove is the call that removes the last reference
@@ -1775,6 +1804,18 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     delete route_dvr;
     delete path_l2;
     delete ne;
+    delete mroute_4;
+
+    ADD_EXPECT(route::ip_mroute_cmds::delete_cmd(hw_mroute_4, 0, mpfx_4,
+                                                 *mp1, route::itf_flags_t::FORWARD));
+    ADD_EXPECT(route::ip_mroute_cmds::delete_cmd(hw_mroute_4, 0, mpfx_4,
+                                                 *mp2, route::itf_flags_t::FORWARD));
+    ADD_EXPECT(route::ip_mroute_cmds::delete_cmd(hw_mroute_4, 0, mpfx_4,
+                                                 *mp1, route::itf_flags_t::ACCEPT));
+
+    delete mp1;
+    delete mp2;
+
     ADD_EXPECT(neighbour_cmds::delete_cmd(hw_neighbour, hw_ifh.data(), mac_n, nh_10));
     ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_dvr, 0, pfx_6));
     ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5));
