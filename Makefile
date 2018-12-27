@@ -310,7 +310,7 @@ else ifeq ($(filter opensuse-tumbleweed,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
 else ifeq ($(filter opensuse-leap,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
-	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
+	@sudo -E zypper install -f -y $(RPM_SUSE_DEPENDS)
 else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper refresh
 	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
