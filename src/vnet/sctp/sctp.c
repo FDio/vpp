@@ -23,6 +23,7 @@ sctp_connection_bind (u32 session_index, transport_endpoint_t * tep)
   sctp_main_t *tm = &sctp_main;
   sctp_connection_t *listener;
   void *iface_ip;
+  u32 mtu = 1460;
 
   pool_get (tm->listener_pool, listener);
   clib_memset (listener, 0, sizeof (*listener));
@@ -43,11 +44,13 @@ sctp_connection_bind (u32 session_index, transport_endpoint_t * tep)
   ip_copy (&listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.lcl_ip,
 	   &tep->ip, tep->is_ip4);
 
-  u32 mtu = tep->is_ip4 ? vnet_sw_interface_get_mtu (vnet_get_main (),
-						     tep->sw_if_index,
-						     VNET_MTU_IP4) :
-    vnet_sw_interface_get_mtu (vnet_get_main (), tep->sw_if_index,
-			       VNET_MTU_IP6);
+  if (tep->sw_if_index != ENDPOINT_INVALID_INDEX)
+    mtu = tep->is_ip4 ? vnet_sw_interface_get_mtu (vnet_get_main (),
+						   tep->sw_if_index,
+						   VNET_MTU_IP4) :
+      vnet_sw_interface_get_mtu (vnet_get_main (), tep->sw_if_index,
+				 VNET_MTU_IP6);
+
   listener->sub_conn[SCTP_PRIMARY_PATH_IDX].PMTU = mtu;
   listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.is_ip4 = tep->is_ip4;
   listener->sub_conn[SCTP_PRIMARY_PATH_IDX].connection.proto =
@@ -192,12 +195,13 @@ format_sctp_connection_id (u8 * s, va_list * args)
   u8 i;
   for (i = 0; i < MAX_SCTP_CONNECTIONS; i++)
     {
+      if (i > 0 && sctp_conn->sub_conn[i].state == SCTP_SUBCONN_STATE_DOWN)
+	continue;
       if (sctp_conn->sub_conn[i].connection.is_ip4)
 	{
-	  s = format (s, "%U[#%d][%s] %U:%d->%U:%d",
-		      s,
+	  s = format (s, "[#%d][%s] %U:%d->%U:%d",
 		      sctp_conn->sub_conn[i].connection.thread_index,
-		      "T",
+		      "S",
 		      format_ip4_address,
 		      &sctp_conn->sub_conn[i].connection.lcl_ip.ip4,
 		      clib_net_to_host_u16 (sctp_conn->sub_conn[i].
@@ -209,10 +213,9 @@ format_sctp_connection_id (u8 * s, va_list * args)
 	}
       else
 	{
-	  s = format (s, "%U[#%d][%s] %U:%d->%U:%d",
-		      s,
+	  s = format (s, "[#%d][%s] %U:%d->%U:%d",
 		      sctp_conn->sub_conn[i].connection.thread_index,
-		      "T",
+		      "S",
 		      format_ip6_address,
 		      &sctp_conn->sub_conn[i].connection.lcl_ip.ip6,
 		      clib_net_to_host_u16 (sctp_conn->sub_conn[i].
@@ -238,6 +241,8 @@ format_sctp_connection (u8 * s, va_list * args)
   if (verbose)
     {
       s = format (s, "%-15U", format_sctp_state, sctp_conn->state);
+      if (verbose > 1)
+	s = format (s, "\n");
     }
 
   return s;
@@ -458,6 +463,7 @@ sctp_connection_open (transport_endpoint_cfg_t * rmt)
   ip46_address_t lcl_addr;
   u16 lcl_port;
   uword thread_id;
+  u32 mtu = 1460;
   int rv;
 
   u8 idx = SCTP_PRIMARY_PATH_IDX;
@@ -484,11 +490,12 @@ sctp_connection_open (transport_endpoint_cfg_t * rmt)
 
   clib_spinlock_lock_if_init (&tm->half_open_lock);
   sctp_conn = sctp_half_open_connection_new (thread_id);
-  u32 mtu = rmt->is_ip4 ? vnet_sw_interface_get_mtu (vnet_get_main (),
-						     rmt->peer.sw_if_index,
-						     VNET_MTU_IP4) :
-    vnet_sw_interface_get_mtu (vnet_get_main (), rmt->peer.sw_if_index,
-			       VNET_MTU_IP6);
+  if (rmt->peer.sw_if_index != ENDPOINT_INVALID_INDEX)
+    mtu = rmt->is_ip4 ? vnet_sw_interface_get_mtu (vnet_get_main (),
+						   rmt->peer.sw_if_index,
+						   VNET_MTU_IP4) :
+      vnet_sw_interface_get_mtu (vnet_get_main (), rmt->peer.sw_if_index,
+				 VNET_MTU_IP6);
   sctp_conn->sub_conn[idx].PMTU = mtu;
 
   transport_connection_t *trans_conn = &sctp_conn->sub_conn[idx].connection;
