@@ -1795,7 +1795,7 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
     {
       tc0 = tcp_connection_get (0 /* connection index */ , 0 /* thread */ );
       tc0->state = TCP_STATE_CLOSED;
-      stream_session_disconnect_notify (&tc0->connection);
+      session_transport_closing_notify (&tc0->connection);
     }
 
   return rv;

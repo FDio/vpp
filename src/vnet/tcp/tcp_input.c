@@ -1639,7 +1639,7 @@ tcp_handle_disconnects (tcp_worker_ctx_t * wrk)
     {
       tc = tcp_connection_get (pending_disconnects[i], thread_index);
       tcp_disconnect_pending_off (tc);
-      stream_session_disconnect_notify (&tc->connection);
+      session_transport_closing_notify (&tc->connection);
     }
   _vec_len (wrk->pending_disconnects) = 0;
 }
