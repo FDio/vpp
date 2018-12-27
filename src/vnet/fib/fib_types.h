@@ -528,6 +528,10 @@ typedef struct fib_route_path_t_ {
 	     * Exclusive DPO
 	     */
 	    dpo_id_t dpo;
+            /**
+             * MFIB interface flags
+             */
+            u32 frp_mitf_flags;
         };
         /**
          * A path that resolves via a BIER Table.

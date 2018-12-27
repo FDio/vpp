@@ -204,15 +204,44 @@ private:
   uint8_t m_preference;
 };
 
+class itf_flags_t : public enum_base<itf_flags_t>
+{
+public:
+  const static itf_flags_t NONE;
+  /**
+   * Path is accepting multicast traffic
+   */
+  const static itf_flags_t ACCEPT;
+
+  /**
+   * A local/for-us/recieve
+   */
+  const static itf_flags_t FORWARD;
+
+  static const itf_flags_t& from_vpp(uint32_t val);
+
+private:
+  /**
+   * Private constructor taking the value and the string name
+   */
+  itf_flags_t(int v, const std::string& s);
+};
+
 /**
  * A path-list is a set of paths
  */
 typedef std::set<path> path_list_t;
 
 /**
+ * A mpath-list is a set of paths and interface flags
+ */
+typedef std::set<std::pair<path, itf_flags_t>> mpath_list_t;
+
+/**
  * ostream output for iterator
  */
 std::ostream& operator<<(std::ostream& os, const path_list_t& path_list);
+std::ostream& operator<<(std::ostream& os, const mpath_list_t& path_list);
 
 /**
  * A IP route
@@ -392,9 +421,170 @@ private:
   static singular_db<key_t, ip_route> m_db;
 };
 
+/**
+ * A IP multicast route
+ */
+class ip_mroute : public object_base
+{
+public:
+  /**
+   * The key for a route
+   */
+  typedef std::pair<route::table_id_t, mprefix_t> key_t;
+
+  /**
+   * Construct a route in the default table
+   */
+  ip_mroute(const mprefix_t& mprefix);
+
+  /**
+   * Copy Construct
+   */
+  ip_mroute(const ip_mroute& r);
+
+  /**
+   * Construct a route in the given route domain
+   */
+  ip_mroute(const route_domain& rd, const mprefix_t& mprefix);
+
+  /**
+   * Destructor
+   */
+  ~ip_mroute();
+
+  /**
+   * Get the route's key
+   */
+  const key_t key() const;
+
+  /**
+   * Comparison operator
+   */
+  bool operator==(const ip_mroute& i) const;
+
+  /**
+   * Return the matching 'singular instance'
+   */
+  std::shared_ptr<ip_mroute> singular() const;
+
+  /**
+   * Find the instnace of the route domain in the OM
+   */
+  static std::shared_ptr<ip_mroute> find(const ip_mroute& temp);
+
+  /**
+   * Dump all route-doamin into the stream provided
+   */
+  static void dump(std::ostream& os);
+
+  /**
+   * replay the object to create it in hardware
+   */
+  void replay(void);
+
+  /**
+   * Convert to string for debugging
+   */
+  std::string to_string() const;
+
+  /**
+   * Return the matching 'singular instance'
+   */
+  static std::shared_ptr<ip_mroute> find(const key_t& k);
+
+  void add(const path& path, const itf_flags_t& flag);
+
+private:
+  /**
+   * Class definition for listeners to OM events
+   */
+  class event_handler : public OM::listener, public inspect::command_handler
+  {
+  public:
+    event_handler();
+    virtual ~event_handler() = default;
+
+    /**
+     * Handle a populate event
+     */
+    void handle_populate(const client_db::key_t& key);
+
+    /**
+     * Handle a replay event
+     */
+    void handle_replay();
+
+    /**
+     * Show the object in the Singular DB
+     */
+    void show(std::ostream& os);
+
+    /**
+     * Get the sortable Id of the listener
+     */
+    dependency_t order() const;
+  };
+
+  /**
+   * event_handler to register with OM
+   */
+  static event_handler m_evh;
+
+  /**
+   * Find or add the instnace of the route domain in the OM
+   */
+  static std::shared_ptr<ip_mroute> find_or_add(const ip_mroute& temp);
+
+  /*
+   * It's the OM class that updates the objects in HW
+   */
+  friend class VOM::OM;
+
+  /**
+   * It's the singular_db class that calls replay()
+   */
+  friend class singular_db<key_t, ip_mroute>;
+
+  /**
+   * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
+   */
+  void update(const ip_mroute& obj);
+
+  /**
+   * Sweep/reap the object if still stale
+   */
+  void sweep(void);
+
+  /**
+   * HW configuration for the result of creating the route
+   */
+  HW::item<bool> m_hw;
+
+  /**
+   * The route domain the route is in.
+   */
+  std::shared_ptr<route_domain> m_rd;
+
+  /**
+   * The mprefix to match
+   */
+  mprefix_t m_mprefix;
+
+  /**
+   * The set of paths
+   */
+  mpath_list_t m_paths;
+
+  /**
+   * A map of all routes
+   */
+  static singular_db<key_t, ip_mroute> m_db;
+};
+
 std::ostream& operator<<(std::ostream& os, const ip_route::key_t& key);
-};
-};
+std::ostream& operator<<(std::ostream& os, const ip_mroute::key_t& key);
+}; // namespace route
+}; // namesapce VPP
 
 /*
  * fd.io coding-style-patch-verification: ON

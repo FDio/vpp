@@ -410,7 +410,7 @@ send_ip_mfib_details (vl_api_registration_t * reg,
   vl_api_ip_mfib_details_t *mp;
   const mfib_prefix_t *pfx;
   mfib_entry_t *mfib_entry;
-  vl_api_fib_path_t *fp;
+  vl_api_mfib_path_t *fp;
   int path_count;
 
   mfib_entry = mfib_entry_get (mfei);
@@ -438,7 +438,8 @@ send_ip_mfib_details (vl_api_registration_t * reg,
   fp = mp->path;
   vec_foreach (api_rpath, api_rpaths)
   {
-    fib_api_path_encode (api_rpath, fp);
+    fib_api_path_encode (api_rpath, &fp->path);
+    fp->itf_flags = ntohl (api_rpath->rpath.frp_mitf_flags);
     fp++;
   }
   vec_free (api_rpaths);
@@ -508,7 +509,7 @@ send_ip6_mfib_details (vpe_api_main_t * am,
 {
   vl_api_ip6_mfib_details_t *mp;
   fib_route_path_encode_t *api_rpath;
-  vl_api_fib_path_t *fp;
+  vl_api_mfib_path_t *fp;
   int path_count;
 
   path_count = vec_len (api_rpaths);
@@ -530,7 +531,8 @@ send_ip6_mfib_details (vpe_api_main_t * am,
   fp = mp->path;
   vec_foreach (api_rpath, api_rpaths)
   {
-    fib_api_path_encode (api_rpath, fp);
+    fib_api_path_encode (api_rpath, &fp->path);
+    fp->itf_flags = ntohl (api_rpath->rpath.frp_mitf_flags);
     fp++;
   }
 
