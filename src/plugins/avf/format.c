@@ -128,17 +128,23 @@ format_avf_input_trace (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
   u32 indent = format_get_indent (s);
+  int i = 0;
 
   s = format (s, "avf: %v (%d) next-node %U",
 	      hi->name, t->hw_if_index, format_vlib_next_node_name, vm,
 	      node->index, t->next_index);
 
-  s = format (s, "\n%Ustatus 0x%x error 0x%x ptype 0x%x length %u",
-	      format_white_space, indent + 2,
-	      t->qw1 & pow2_mask (19),
-	      (t->qw1 >> AVF_RXD_ERROR_SHIFT) & pow2_mask (8),
-	      (t->qw1 >> AVF_RXD_PTYPE_SHIFT) & pow2_mask (8),
-	      (t->qw1 >> AVF_RXD_LEN_SHIFT));
+  do
+    {
+      s = format (s, "\n%Udesc %u: status 0x%x error 0x%x ptype 0x%x len %u",
+		  format_white_space, indent + 2, i,
+		  t->qw1s[i] & pow2_mask (19),
+		  (t->qw1s[i] >> AVF_RXD_ERROR_SHIFT) & pow2_mask (8),
+		  (t->qw1s[i] >> AVF_RXD_PTYPE_SHIFT) & pow2_mask (8),
+		  (t->qw1s[i] >> AVF_RXD_LEN_SHIFT));
+    }
+  while ((t->qw1s[i++] & AVF_RXD_STATUS_EOP) == 0 &&
+	 i < AVF_RX_MAX_DESC_IN_CHAIN);
 
   return s;
 }
