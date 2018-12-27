@@ -1293,9 +1293,9 @@ tcp_timer_waitclose_handler (u32 conn_index)
 	   * is closed. We haven't sent everything but we did try. */
 	  tcp_cong_recovery_off (tc);
 	  tcp_send_fin (tc);
-	  rto = clib_max (tc->rto >> tc->rto_boff, 1);
+	  rto = clib_max ((tc->rto >> tc->rto_boff) * TCP_TO_TIMER_TICK, 1);
 	  tcp_timer_set (tc, TCP_TIMER_WAITCLOSE,
-			 clib_min (rto * TCP_TO_TIMER_TICK, TCP_2MSL_TIME));
+			 clib_min (rto, TCP_2MSL_TIME));
 	  session_transport_closed_notify (&tc->connection);
 	}
       else
