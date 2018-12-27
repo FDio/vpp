@@ -578,7 +578,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 
       rxq->vsi_id = ad->vsi_id;
       rxq->queue_id = i;
-      rxq->max_pkt_size = 1518;
+      rxq->max_pkt_size = ETHERNET_MAX_PACKET_BYTES;
       if (i < vec_len (ad->rxqs))
 	{
 	  avf_rxq_t *q = vec_elt_at_index (ad->rxqs, i);

@@ -24,8 +24,7 @@
 #include <avf/avf.h>
 
 #define foreach_avf_input_error \
-  _(BUFFER_ALLOC, "buffer alloc error") \
-  _(RX_PACKET_ERROR, "Rx packet errors")
+  _(BUFFER_ALLOC, "buffer alloc error")
 
 typedef enum
 {
@@ -128,11 +127,44 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
   *(rxq->qrx_tail) = slot;
 }
 
+
+static_always_inline uword
+avf_rx_attach_tail (vlib_main_t * vm, vlib_buffer_t * bt, vlib_buffer_t * b,
+		    u64 qw1, avf_rx_tail_t * t)
+{
+  vlib_buffer_t *hb = b;
+  u32 tlnifb = 0, i = 0;
+
+  if (qw1 & AVF_RXD_STATUS_EOP)
+    return 0;
+
+  while ((qw1 & AVF_RXD_STATUS_EOP) == 0)
+    {
+      ASSERT (i < AVF_RX_MAX_DESC_IN_CHAIN - 1);
+      ASSERT (qw1 & AVF_RXD_STATUS_DD);
+      qw1 = t->qw1s[i];
+      b->next_buffer = t->buffers[i];
+      b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+      b = vlib_get_buffer (vm, b->next_buffer);
+      clib_memcpy_fast (b, bt, sizeof (vlib_buffer_t));
+      tlnifb += b->current_length = qw1 >> AVF_RXD_LEN_SHIFT;
+      i++;
+    }
+
+  hb->total_length_not_including_first_buffer = tlnifb;
+  hb->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  return tlnifb;
+}
+
 static_always_inline uword
 avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_buffer_t * bt, u64 * qw1,
-		      vlib_buffer_t ** b, u32 n_left)
+		      avf_per_thread_data_t * ptd, u32 n_left,
+		      int maybe_multiseg)
 {
+  vlib_buffer_t *bt = &ptd->buffer_template;
+  vlib_buffer_t **b = ptd->bufs;
+  u64 *qw1 = ptd->qw1s;
+  avf_rx_tail_t *tail = ptd->tails;
   uword n_rx_bytes = 0;
 
   while (n_left >= 4)
@@ -145,19 +177,20 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_prefetch_buffer_header (b[11], LOAD);
 	}
 
+      clib_memcpy64_x4 (b[0], b[1], b[2], b[3], bt);
+
       n_rx_bytes += b[0]->current_length = qw1[0] >> AVF_RXD_LEN_SHIFT;
       n_rx_bytes += b[1]->current_length = qw1[1] >> AVF_RXD_LEN_SHIFT;
       n_rx_bytes += b[2]->current_length = qw1[2] >> AVF_RXD_LEN_SHIFT;
       n_rx_bytes += b[3]->current_length = qw1[3] >> AVF_RXD_LEN_SHIFT;
 
-      clib_memcpy_fast (vnet_buffer (b[0])->sw_if_index,
-			vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy_fast (vnet_buffer (b[1])->sw_if_index,
-			vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy_fast (vnet_buffer (b[2])->sw_if_index,
-			vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
-      clib_memcpy_fast (vnet_buffer (b[3])->sw_if_index,
-			vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
+      if (maybe_multiseg)
+	{
+	  n_rx_bytes += avf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
+	  n_rx_bytes += avf_rx_attach_tail (vm, bt, b[1], qw1[1], tail + 1);
+	  n_rx_bytes += avf_rx_attach_tail (vm, bt, b[2], qw1[2], tail + 2);
+	  n_rx_bytes += avf_rx_attach_tail (vm, bt, b[3], qw1[3], tail + 3);
+	}
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
@@ -166,20 +199,24 @@ avf_process_rx_burst (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       /* next */
       qw1 += 4;
+      tail += 4;
       b += 4;
       n_left -= 4;
     }
   while (n_left)
     {
+      clib_memcpy_fast (b[0], bt, sizeof (vlib_buffer_t));
+
       n_rx_bytes += b[0]->current_length = qw1[0] >> AVF_RXD_LEN_SHIFT;
 
-      clib_memcpy_fast (vnet_buffer (b[0])->sw_if_index,
-			vnet_buffer (bt)->sw_if_index, 2 * sizeof (u32));
+      if (maybe_multiseg)
+	n_rx_bytes += avf_rx_attach_tail (vm, bt, b[0], qw1[0], tail + 0);
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       /* next */
       qw1 += 1;
+      tail += 1;
       b += 1;
       n_left -= 1;
     }
@@ -197,13 +234,11 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     vec_elt_at_index (am->per_thread_data, thr_idx);
   avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, qid);
   u32 n_trace, n_rx_packets = 0, n_rx_bytes = 0;
-  u16 n_desc = 0;
+  u16 n_tail_desc = 0;
   u64 or_qw1 = 0;
   u32 *bi, *to_next, n_left_to_next;
-  vlib_buffer_t *bufs[AVF_RX_VECTOR_SZ];
   vlib_buffer_t *bt = &ptd->buffer_template;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  u64 qw1s[AVF_RX_VECTOR_SZ];
   u16 next = rxq->next;
   u16 size = rxq->size;
   u16 mask = size - 1;
@@ -226,7 +261,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
      copy needed data from descriptor to rx vector */
   bi = to_next;
 
-  while (n_desc < AVF_RX_VECTOR_SZ)
+  while (n_rx_packets < AVF_RX_VECTOR_SZ)
     {
       if (next + 11 < size)
 	{
@@ -242,7 +277,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
 
 #ifdef CLIB_HAVE_VEC256
-      if (n_desc >= AVF_RX_VECTOR_SZ - 4 || next >= size - 4)
+      if (n_rx_packets >= AVF_RX_VECTOR_SZ - 4 || next >= size - 4)
 	goto one_by_one;
 
       q1x4 = u64x4_gather ((void *) &d[0].qword[1], (void *) &d[1].qword[1],
@@ -253,43 +288,65 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	goto one_by_one;
 
       or_q1x4 |= q1x4;
-      u64x4_store_unaligned (q1x4, qw1s + n_desc);
+      u64x4_store_unaligned (q1x4, ptd->qw1s + n_rx_packets);
       clib_memcpy_fast (bi, rxq->bufs + next, 4 * sizeof (u32));
 
       /* next */
       next = (next + 4) & mask;
       d = fd + next;
-      n_desc += 4;
+      n_rx_packets += 4;
       bi += 4;
       continue;
     one_by_one:
 #endif
       CLIB_PREFETCH ((void *) (fd + ((next + 8) & mask)),
 		     CLIB_CACHE_LINE_BYTES, LOAD);
-      if ((d->qword[1] & AVF_RXD_STATUS_DD) == 0)
+
+      if (avf_rxd_is_not_dd (d))
 	break;
 
-      or_qw1 |= qw1s[n_desc] = d[0].qword[1];
       bi[0] = rxq->bufs[next];
 
       /* deal with chained buffers */
-      while (PREDICT_FALSE ((d->qword[1] & AVF_RXD_STATUS_EOP) == 0))
+      if (PREDICT_FALSE (avf_rxd_is_not_eop (d)))
 	{
-	  clib_error ("fixme");
+	  u16 tail_desc = 0;
+	  u16 tail_next = next;
+	  avf_rx_tail_t *tail = ptd->tails + n_rx_packets;
+	  avf_rx_desc_t *td;
+	  do
+	    {
+	      tail_next = (tail_next + 1) & mask;
+	      td = fd + tail_next;
+
+	      /* bail out in case of incomplete transaction */
+	      if (avf_rxd_is_not_dd (td))
+		goto no_more_desc;
+
+	      or_qw1 |= tail->qw1s[tail_desc] = td[0].qword[1];
+	      tail->buffers[tail_desc] = rxq->bufs[tail_next];
+	      tail_desc++;
+	    }
+	  while (avf_rxd_is_not_eop (td));
+	  next = tail_next;
+	  n_tail_desc += tail_desc;
 	}
+
+      or_qw1 |= ptd->qw1s[n_rx_packets] = d[0].qword[1];
 
       /* next */
       next = (next + 1) & mask;
       d = fd + next;
-      n_desc++;
+      n_rx_packets++;
       bi++;
     }
+no_more_desc:
 
-  if (n_desc == 0)
+  if (n_rx_packets == 0)
     goto done;
 
   rxq->next = next;
-  rxq->n_enqueued -= n_desc;
+  rxq->n_enqueued -= n_rx_packets + n_tail_desc;
 
 #ifdef CLIB_HAVE_VEC256
   or_qw1 |= or_q1x4[0] | or_q1x4[1] | or_q1x4[2] | or_q1x4[3];
@@ -301,20 +358,22 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   else
     avf_rxq_refill (vm, node, rxq, 0 /* use_va_dma */ );
 
-  vlib_get_buffers (vm, to_next, bufs, n_desc);
-  n_rx_packets = n_desc;
+  vlib_get_buffers (vm, to_next, ptd->bufs, n_rx_packets);
 
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = ad->sw_if_index;
   vnet_buffer (bt)->sw_if_index[VLIB_TX] = ~0;
 
-  n_rx_bytes = avf_process_rx_burst (vm, node, bt, qw1s, bufs, n_desc);
+  if (n_tail_desc)
+    n_rx_bytes = avf_process_rx_burst (vm, node, ptd, n_rx_packets, 1);
+  else
+    n_rx_bytes = avf_process_rx_burst (vm, node, ptd, n_rx_packets, 0);
 
   /* packet trace if enabled */
   if (PREDICT_FALSE ((n_trace = vlib_get_trace_count (vm, node))))
     {
-      u32 n_left = n_rx_packets;
+      u32 n_left = n_rx_packets, i = 0, j;
       bi = to_next;
-      u64 *qw1 = qw1s;
+
       while (n_trace && n_left)
 	{
 	  vlib_buffer_t *b;
@@ -324,13 +383,15 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	  tr->next_index = next_index;
 	  tr->hw_if_index = ad->hw_if_index;
-	  tr->qw1 = qw1[0];
+	  tr->qw1s[0] = ptd->qw1s[i];
+	  for (j = 1; j < AVF_RX_MAX_DESC_IN_CHAIN; j++)
+	    tr->qw1s[j] = ptd->tails[i].qw1s[j - 1];
 
 	  /* next */
 	  n_trace--;
 	  n_left--;
 	  bi++;
-	  qw1++;
+	  i++;
 	}
       vlib_set_trace_count (vm, node, n_trace);
     }
