@@ -388,9 +388,9 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
    * main thread, even when we have workers and we avoid polling main thread,
    * i.e., we can't cleanup pending disconnects, so force cleanup for both
    */
-  stream_session_cleanup (s);
+  session_transport_cleanup (s);
   s = session_get (accepted_session_index, accepted_session_thread);
-  stream_session_cleanup (s);
+  session_transport_cleanup (s);
 
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
