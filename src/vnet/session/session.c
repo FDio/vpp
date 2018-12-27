@@ -234,6 +234,7 @@ session_alloc_for_connection (transport_connection_t * tc)
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->enqueue_epoch = (u64) ~ 0;
+  s->session_state = SESSION_STATE_CLOSED;
 
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
@@ -773,6 +774,7 @@ stream_session_accept_notify (transport_connection_t * tc)
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
     return -1;
+  s->session_state = SESSION_STATE_ACCEPTING;
   app = application_get (app_wrk->app_index);
   return app->cb_fns.session_accept_callback (s);
 }
@@ -824,6 +826,7 @@ session_transport_delete_notify (transport_connection_t * tc)
 
   switch (s->session_state)
     {
+    case SESSION_STATE_ACCEPTING:
     case SESSION_STATE_TRANSPORT_CLOSING:
       /* If transport finishes or times out before we get a reply
        * from the app, mark transport as closed and wait for reply
@@ -844,11 +847,13 @@ session_transport_delete_notify (transport_connection_t * tc)
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
       session_program_transport_close (s);
       break;
+    case SESSION_STATE_TRANSPORT_CLOSED:
+      break;
     case SESSION_STATE_CLOSED:
-    case SESSION_STATE_ACCEPTING:
       session_delete (s);
       break;
     default:
+      clib_warning ("session state %u", s->session_state);
       session_delete (s);
       break;
     }
@@ -869,7 +874,16 @@ session_transport_closed_notify (transport_connection_t * tc)
 
   if (!(s = session_get_if_valid (tc->s_index, tc->thread_index)))
     return;
-  s->session_state = SESSION_STATE_CLOSED;
+
+  /* If app close has not been received or has not yet resulted in
+   * a transport close, only mark the session transport as closed */
+  if (s->session_state <= SESSION_STATE_CLOSING)
+    {
+      session_lookup_del_session (s);
+      s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
+    }
+  else
+    s->session_state = SESSION_STATE_CLOSED;
 }
 
 /**
@@ -913,7 +927,6 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 
   s->app_wrk_index = app_wrk->wrk_index;
   s->listener_index = listener_index;
-  s->session_state = SESSION_STATE_ACCEPTING;
 
   /* Shoulder-tap the server */
   if (notify)
@@ -1141,7 +1154,7 @@ void
 session_transport_close (stream_session_t * s)
 {
   /* If transport is already closed, just free the session */
-  if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED)
+  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
     {
       session_free_w_fifos (s);
       return;
