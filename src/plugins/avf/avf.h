@@ -32,6 +32,10 @@
 #define AVF_RXD_ERROR_IPE		(1ULL << (AVF_RXD_ERROR_SHIFT + 3))
 #define AVF_RXD_ERROR_L4E		(1ULL << (AVF_RXD_ERROR_SHIFT + 4))
 
+#define AVF_TXD_CMD(x)			(1 << (x + 4))
+#define AVF_TXD_CMD_EOP			AVF_TXD_CMD(0)
+#define AVF_TXD_CMD_RS			AVF_TXD_CMD(1)
+#define AVF_TXD_CMD_RSV			AVF_TXD_CMD(2)
 
 #define foreach_avf_device_flags \
   _(0, INITIALIZED, "initialized") \
