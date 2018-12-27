@@ -28,6 +28,7 @@
 #define AVF_RXD_ERROR_SHIFT		19
 #define AVF_RXD_PTYPE_SHIFT		30
 #define AVF_RXD_LEN_SHIFT		38
+#define AVF_RX_MAX_DESC_IN_CHAIN	5
 
 #define AVF_RXD_ERROR_IPE		(1ULL << (AVF_RXD_ERROR_SHIFT + 3))
 #define AVF_RXD_ERROR_L4E		(1ULL << (AVF_RXD_ERROR_SHIFT + 4))
@@ -173,8 +174,16 @@ enum
 
 typedef struct
 {
+  u64 qw1s[AVF_RX_MAX_DESC_IN_CHAIN - 1];
+  u32 buffers[AVF_RX_MAX_DESC_IN_CHAIN - 1];
+} avf_rx_tail_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u32 *to_free;
+  vlib_buffer_t *bufs[AVF_RX_VECTOR_SZ];
+  u64 qw1s[AVF_RX_VECTOR_SZ];
+  avf_rx_tail_t tails[AVF_RX_VECTOR_SZ];
   vlib_buffer_t buffer_template;
 } avf_per_thread_data_t;
 
@@ -274,11 +283,23 @@ avf_reg_flush (avf_device_t * ad)
   asm volatile ("":::"memory");
 }
 
+static_always_inline int
+avf_rxd_is_not_eop (avf_rx_desc_t * d)
+{
+  return (d->qword[1] & AVF_RXD_STATUS_EOP) == 0;
+}
+
+static_always_inline int
+avf_rxd_is_not_dd (avf_rx_desc_t * d)
+{
+  return (d->qword[1] & AVF_RXD_STATUS_DD) == 0;
+}
+
 typedef struct
 {
   u32 next_index;
   u32 hw_if_index;
-  u64 qw1;
+  u64 qw1s[AVF_RX_MAX_DESC_IN_CHAIN];
 } avf_input_trace_t;
 
 #define foreach_avf_tx_func_error	       \
