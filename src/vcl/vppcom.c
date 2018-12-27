@@ -509,7 +509,8 @@ vcl_session_accepted (vcl_worker_t * wrk, session_accepted_msg_t * msg)
 
   session = vcl_session_get_w_vpp_handle (wrk, msg->handle);
   if (PREDICT_FALSE (session != 0))
-    VWRN ("session handle overlap %lu!", msg->handle);
+    VWRN ("session overlap handle %lu state %u!", msg->handle,
+	  session->session_state);
 
   session = vcl_session_table_lookup_listener (wrk, msg->listener_handle);
   if (!session)
@@ -1119,6 +1120,12 @@ vppcom_session_close (uint32_t session_handle)
 			  getpid (), vpp_handle, session_handle,
 			  rv, vppcom_retval_str (rv));
 	}
+      else if (state == STATE_DISCONNECT)
+	{
+	  svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, session);
+	  vcl_send_session_disconnected_reply (mq, wrk->my_client_index,
+					       session->vpp_handle, 0);
+	}
     }
 
 cleanup:
@@ -1378,19 +1385,10 @@ handle:
    */
   if (accept_flags)
     {
-      svm_msg_q_t *mq = vcl_session_vpp_evt_q (wrk, client_session);
       if (accept_flags & VCL_ACCEPTED_F_CLOSED)
-	{
-	  client_session->session_state = STATE_DISCONNECT;
-	  vcl_send_session_disconnected_reply (mq, wrk->my_client_index,
-					       client_session->vpp_handle, 0);
-	}
+	client_session->session_state = STATE_VPP_CLOSING;
       else if (accept_flags & VCL_ACCEPTED_F_RESET)
-	{
-	  client_session->session_state = STATE_DISCONNECT;
-	  vcl_send_session_reset_reply (mq, wrk->my_client_index,
-					client_session->vpp_handle, 0);
-	}
+	client_session->session_state = STATE_DISCONNECT;
     }
   return vcl_session_handle (client_session);
 }
@@ -1830,6 +1828,14 @@ vppcom_session_write (uint32_t session_handle, void *buf, size_t n)
   return vppcom_session_write_inline (session_handle, buf, n,
 				      0 /* is_flush */ );
 }
+
+int
+vppcom_session_write_msg (uint32_t session_handle, void *buf, size_t n)
+{
+  return vppcom_session_write_inline (session_handle, buf, n,
+				      1 /* is_flush */ );
+}
+
 
 static vcl_session_t *
 vcl_ct_session_get_from_fifo (vcl_worker_t * wrk, svm_fifo_t * f, u8 type)

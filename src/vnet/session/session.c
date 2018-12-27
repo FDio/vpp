@@ -234,6 +234,7 @@ session_alloc_for_connection (transport_connection_t * tc)
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->enqueue_epoch = (u64) ~ 0;
+  s->session_state = SESSION_STATE_CLOSED;
 
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
@@ -773,6 +774,7 @@ stream_session_accept_notify (transport_connection_t * tc)
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
     return -1;
+  s->session_state = SESSION_STATE_ACCEPTING;
   app = application_get (app_wrk->app_index);
   return app->cb_fns.session_accept_callback (s);
 }
@@ -844,11 +846,14 @@ session_transport_delete_notify (transport_connection_t * tc)
       s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
       session_program_transport_close (s);
       break;
-    case SESSION_STATE_CLOSED:
     case SESSION_STATE_ACCEPTING:
+      clib_warning ("this happened");
+      break;
+    case SESSION_STATE_CLOSED:
       session_delete (s);
       break;
     default:
+      clib_warning ("session state %u", s->session_state);
       session_delete (s);
       break;
     }
@@ -913,7 +918,6 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 
   s->app_wrk_index = app_wrk->wrk_index;
   s->listener_index = listener_index;
-  s->session_state = SESSION_STATE_ACCEPTING;
 
   /* Shoulder-tap the server */
   if (notify)

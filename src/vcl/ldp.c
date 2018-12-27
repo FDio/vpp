@@ -511,7 +511,7 @@ write (int fd, const void *buf, size_t nbytes)
       LDBG (2, "fd %d (0x%x): calling vppcom_session_write(): sid %u (0x%x), "
 	    "buf %p, nbytes %u", fd, fd, sid, sid, buf, nbytes);
 
-      size = vppcom_session_write (sid, (void *) buf, nbytes);
+      size = vppcom_session_write_msg (sid, (void *) buf, nbytes);
       if (size < 0)
 	{
 	  errno = -size;
@@ -558,8 +558,8 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 			__func__, __LINE__, getpid (), fd, fd, func_str,
 			i, sid, sid, iov[i].iov_base, iov[i].iov_len, total);
 
-	      rv = vppcom_session_write (sid, iov[i].iov_base,
-					 iov[i].iov_len);
+	      rv = vppcom_session_write_msg (sid, iov[i].iov_base,
+					     iov[i].iov_len);
 	      if (rv < 0)
 		break;
 	      else
