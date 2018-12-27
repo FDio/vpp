@@ -740,7 +740,7 @@ sctp_expired_timers_cb (u32 conn_index, u32 timer_id)
 	{
 	  /* Start cleanup. App wasn't notified yet so use delete notify as
 	   * opposed to delete to cleanup session layer state. */
-	  stream_session_delete_notify (&sctp_conn->sub_conn
+	  session_transport_delete_notify (&sctp_conn->sub_conn
 					[SCTP_PRIMARY_PATH_IDX].connection);
 
 	  sctp_connection_timers_reset (sctp_conn);

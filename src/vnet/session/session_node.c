@@ -891,7 +891,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      continue;
 	    }
 
-	  stream_session_disconnect_transport (s);
+	  session_transport_close (s);
 	  break;
 	case FIFO_EVENT_BUILTIN_RX:
 	  s = session_event_get_session (e, thread_index);

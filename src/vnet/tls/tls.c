@@ -390,7 +390,7 @@ tls_session_disconnect_callback (stream_session_t * tls_session)
   ctx = tls_ctx_get (tls_session->opaque);
   if (!tls_ctx_handshake_is_over (ctx))
     {
-      stream_session_disconnect (tls_session);
+      session_close (tls_session);
       return;
     }
   ctx->is_passive_close = 1;
@@ -568,7 +568,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
 
   ctx = tls_ctx_get (ctx_handle);
   tls_disconnect_transport (ctx);
-  stream_session_delete_notify (&ctx->connection);
+  session_transport_delete_notify (&ctx->connection);
   tls_ctx_free (ctx);
 }
 

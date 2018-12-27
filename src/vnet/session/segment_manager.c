@@ -406,7 +406,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
 	  }
 	session = session_get (fifo->master_session_index,
 	                       fifo->master_thread_index);
-	stream_session_disconnect (session);
+	session_close (session);
 	fifo = fifo->next;
       }
 
