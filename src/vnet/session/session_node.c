@@ -446,7 +446,7 @@ session_tx_not_ready (stream_session_t * s, u8 peek_data)
        * session is not ready or closed */
       if (s->session_state < SESSION_STATE_READY)
 	return 1;
-      if (s->session_state == SESSION_STATE_CLOSED)
+      if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED)
 	return 2;
     }
   return 0;
@@ -891,7 +891,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      continue;
 	    }
 
-	  stream_session_disconnect_transport (s);
+	  session_transport_close (s);
 	  break;
 	case FIFO_EVENT_BUILTIN_RX:
 	  s = session_event_get_session (e, thread_index);

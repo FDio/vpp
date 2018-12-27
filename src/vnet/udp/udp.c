@@ -168,7 +168,7 @@ udp_session_close (u32 connection_index, u32 thread_index)
     {
       udp_unregister_dst_port (vm, clib_net_to_host_u16 (uc->c_lcl_port),
 			       uc->c_is_ip4);
-      stream_session_delete_notify (&uc->connection);
+      session_transport_delete_notify (&uc->connection);
       udp_connection_free (uc);
     }
 }

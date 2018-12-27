@@ -304,7 +304,7 @@ sctp_handle_operation_err (sctp_header_t * sctp_hdr,
 	{
 	  sctp_connection_cleanup (sctp_conn);
 
-	  stream_session_disconnect_notify (&sctp_conn->
+	  session_transport_closing_notify (&sctp_conn->
 					    sub_conn[idx].connection);
 	}
     }
@@ -1295,7 +1295,7 @@ sctp_handle_shutdown_complete (sctp_header_t * sctp_hdr,
 
   sctp_timer_reset (sctp_conn, idx, SCTP_TIMER_T2_SHUTDOWN);
 
-  stream_session_disconnect_notify (&sctp_conn->sub_conn[idx].connection);
+  session_transport_closing_notify (&sctp_conn->sub_conn[idx].connection);
 
   sctp_conn->state = SCTP_STATE_CLOSED;
 
