@@ -532,6 +532,35 @@ vl_map_shmem (const char *region_name, int is_vlib)
 
   if (is_vlib == 0)
     {
+      int tfd;
+      u8 *api_name;
+      /*
+       * Clients wait for vpp to set up the root / API regioins
+       */
+      if (am->root_path)
+	api_name = format (0, "/dev/shm/%s-%s%c", am->root_path,
+			   region_name + 1, 0);
+      else
+	api_name = format (0, "/dev/shm%s%c", region_name, 0);
+
+      /* Wait up to 100 seconds... */
+      for (i = 0; i < 10000; i++)
+	{
+	  ts.tv_sec = 0;
+	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
+	  while (nanosleep (&ts, &tsrem) < 0)
+	    ts = tsrem;
+	  tfd = open ((char *) api_name, O_RDWR);
+	  if (tfd > 0)
+	    break;
+	}
+      vec_free (api_name);
+      if (tfd < 0)
+	{
+	  clib_warning ("region init fail");
+	  return -2;
+	}
+      close (tfd);
       rv = svm_region_init_chroot (am->root_path);
       if (rv)
 	return rv;
