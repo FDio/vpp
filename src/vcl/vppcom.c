@@ -2542,7 +2542,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       ASSERT (e->fifo->client_thread_index == vcl_get_worker_index ());
       vcl_fifo_rx_evt_valid_or_break (e->fifo);
       sid = e->fifo->client_session_index;
-      session = vcl_session_get (wrk, sid);
+      if (!(session = vcl_session_get (wrk, sid)))
+	break;
       session_events = session->vep.ev.events;
       if (!(EPOLLIN & session->vep.ev.events) || session->has_rx_evt)
 	break;
@@ -2553,7 +2554,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case FIFO_EVENT_APP_TX:
       sid = e->fifo->client_session_index;
-      session = vcl_session_get (wrk, sid);
+      if (!(session = vcl_session_get (wrk, sid)))
+	break;
       session_events = session->vep.ev.events;
       if (!(EPOLLOUT & session_events))
 	break;
@@ -2564,6 +2566,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_IO_EVT_CT_TX:
       vcl_fifo_rx_evt_valid_or_break (e->fifo);
       session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
+      if (PREDICT_FALSE (!session))
+	break;
       sid = session->session_index;
       session_events = session->vep.ev.events;
       if (!(EPOLLIN & session->vep.ev.events) || session->has_rx_evt)
@@ -2575,6 +2579,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       break;
     case SESSION_IO_EVT_CT_RX:
       session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 1);
+      if (PREDICT_FALSE (!session))
+	break;
       sid = session->session_index;
       session_events = session->vep.ev.events;
       if (!(EPOLLOUT & session_events))
@@ -2602,7 +2608,8 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       vcl_session_connected_handler (wrk, connected_msg);
       /* Generate EPOLLOUT because there's no connected event */
       sid = vcl_session_index_from_vpp_handle (wrk, connected_msg->handle);
-      session = vcl_session_get (wrk, sid);
+      if (!(session = vcl_session_get (wrk, sid)))
+	break;
       session_events = session->vep.ev.events;
       if (EPOLLOUT & session_events)
 	{
