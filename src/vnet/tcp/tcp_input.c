@@ -2671,7 +2671,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       is_ip4);
 	  if (tmp->state != tc0->state)
 	    {
-	      clib_warning ("state changed");
+	      if (tc0->state != TCP_STATE_CLOSED)
+		clib_warning ("state changed");
 	      goto drop;
 	    }
 	}
