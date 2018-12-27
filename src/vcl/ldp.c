@@ -511,7 +511,7 @@ write (int fd, const void *buf, size_t nbytes)
       LDBG (2, "fd %d (0x%x): calling vppcom_session_write(): sid %u (0x%x), "
 	    "buf %p, nbytes %u", fd, fd, sid, sid, buf, nbytes);
 
-      size = vppcom_session_write (sid, (void *) buf, nbytes);
+      size = vppcom_session_write_msg (sid, (void *) buf, nbytes);
       if (size < 0)
 	{
 	  errno = -size;
@@ -533,7 +533,6 @@ write (int fd, const void *buf, size_t nbytes)
 ssize_t
 writev (int fd, const struct iovec * iov, int iovcnt)
 {
-  const char *func_str;
   ssize_t size = 0, total = 0;
   u32 sid = ldp_sid_from_fd (fd);
   int i, rv = 0;
@@ -547,33 +546,19 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = "vppcom_session_write";
       do
 	{
 	  for (i = 0; i < iovcnt; ++i)
 	    {
-	      if (LDP_DEBUG > 4)
-		printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s() [%d]: "
-			"sid %u (0x%x), buf %p, nbytes %ld, total %ld",
-			__func__, __LINE__, getpid (), fd, fd, func_str,
-			i, sid, sid, iov[i].iov_base, iov[i].iov_len, total);
-
-	      rv = vppcom_session_write (sid, iov[i].iov_base,
-					 iov[i].iov_len);
+	      rv = vppcom_session_write_msg (sid, iov[i].iov_base,
+					     iov[i].iov_len);
 	      if (rv < 0)
 		break;
 	      else
 		{
 		  total += rv;
 		  if (rv < iov[i].iov_len)
-		    {
-		      if (LDP_DEBUG > 4)
-			printf ("%s:%d: LDP<%d>: fd %d (0x%x): "
-				"rv (%d) < iov[%d].iov_len (%ld)",
-				__func__, __LINE__, getpid (), fd, fd,
-				rv, i, iov[i].iov_len);
-		      break;
-		    }
+		    break;
 		}
 	    }
 	}
@@ -589,32 +574,9 @@ writev (int fd, const struct iovec * iov, int iovcnt)
     }
   else
     {
-      func_str = "libc_writev";
-
-      if (LDP_DEBUG > 4)
-	printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s(): "
-		"iov %p, iovcnt %d\n", __func__, __LINE__, getpid (),
-		fd, fd, func_str, iov, iovcnt);
-
       size = libc_writev (fd, iov, iovcnt);
     }
 
-  if (LDP_DEBUG > 4)
-    {
-      if (size < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  fprintf (stderr,
-		   "%s:%d: LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-		   "rv %ld, errno = %d\n", __func__, __LINE__, getpid (), fd,
-		   fd, func_str, size, errno_val);
-	  errno = errno_val;
-	}
-      else
-	printf ("%s:%d: LDP<%d>: fd %d (0x%x): returning %ld\n",
-		__func__, __LINE__, getpid (), fd, fd, size);
-    }
   return size;
 }
 
