@@ -23,15 +23,101 @@
 
 #include <avf/avf.h>
 
-#define AVF_TXQ_DESC_CMD(x)             (1 << (x + 4))
-#define AVF_TXQ_DESC_CMD_EOP		AVF_TXQ_DESC_CMD(0)
-#define AVF_TXQ_DESC_CMD_RS		AVF_TXQ_DESC_CMD(1)
-#define AVF_TXQ_DESC_CMD_RSV		AVF_TXQ_DESC_CMD(2)
-
 static_always_inline u8
 avf_tx_desc_get_dtyp (avf_tx_desc_t * d)
 {
   return d->qword[1] & 0x0f;
+}
+
+static_always_inline u16
+avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
+		u32 n_packets, int use_va_dma)
+{
+  u16 next = txq->next;
+  u64 bits = (AVF_TXD_CMD_EOP | AVF_TXD_CMD_RS | AVF_TXD_CMD_RSV);
+  u16 n_desc = 0;
+  u16 n_desc_left, n_packets_left = n_packets;
+  u16 mask = txq->size - 1;
+  vlib_buffer_t *b[4];
+  avf_tx_desc_t *d = txq->descs + next;
+
+  /* avoid ring wrap */
+  n_desc_left = txq->size - clib_max (txq->next, txq->n_enqueued + 8);
+
+  while (n_packets_left && n_desc_left)
+    {
+      u32 or_flags;
+      if (n_packets_left < 8 || n_desc_left < 4)
+	goto one_by_one;
+
+      vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
+      vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
+      vlib_prefetch_buffer_with_index (vm, buffers[6], LOAD);
+      vlib_prefetch_buffer_with_index (vm, buffers[7], LOAD);
+
+      b[0] = vlib_get_buffer (vm, buffers[0]);
+      b[1] = vlib_get_buffer (vm, buffers[1]);
+      b[2] = vlib_get_buffer (vm, buffers[2]);
+      b[3] = vlib_get_buffer (vm, buffers[3]);
+
+      or_flags = b[0]->flags | b[1]->flags | b[2]->flags | b[3]->flags;
+
+      if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
+	goto one_by_one;
+
+      clib_memcpy_fast (txq->bufs + next, buffers, sizeof (u32) * 4);
+
+      if (use_va_dma)
+	{
+	  d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
+	  d[1].qword[0] = vlib_buffer_get_current_va (b[1]);
+	  d[2].qword[0] = vlib_buffer_get_current_va (b[2]);
+	  d[3].qword[0] = vlib_buffer_get_current_va (b[3]);
+	}
+      else
+	{
+	  d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+	  d[1].qword[0] = vlib_buffer_get_current_pa (vm, b[1]);
+	  d[2].qword[0] = vlib_buffer_get_current_pa (vm, b[2]);
+	  d[3].qword[0] = vlib_buffer_get_current_pa (vm, b[3]);
+	}
+
+      d[0].qword[1] = ((u64) b[0]->current_length) << 34 | bits;
+      d[1].qword[1] = ((u64) b[1]->current_length) << 34 | bits;
+      d[2].qword[1] = ((u64) b[2]->current_length) << 34 | bits;
+      d[3].qword[1] = ((u64) b[3]->current_length) << 34 | bits;
+
+      next += 4;
+      n_desc += 4;
+      buffers += 4;
+      n_packets_left -= 4;
+      n_desc_left -= 4;
+      d += 4;
+      continue;
+
+    one_by_one:
+      txq->bufs[next] = buffers[0];
+      b[0] = vlib_get_buffer (vm, buffers[0]);
+
+      if (use_va_dma)
+	d[0].qword[0] = vlib_buffer_get_current_va (b[0]);
+      else
+	d[0].qword[0] = vlib_buffer_get_current_pa (vm, b[0]);
+
+      d[0].qword[1] = (((u64) b[0]->current_length) << 34) | bits;
+
+      next += 1;
+      n_desc += 1;
+      buffers += 1;
+      n_packets_left -= 1;
+      n_desc_left -= 1;
+      d += 1;
+    }
+
+  CLIB_MEMORY_BARRIER ();
+  *(txq->qtx_tail) = txq->next = next & mask;
+  txq->n_enqueued += n_desc;
+  return n_packets - n_packets_left;
 }
 
 VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
@@ -44,28 +130,21 @@ VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
   u32 thread_index = vm->thread_index;
   u8 qid = thread_index;
   avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
-  avf_tx_desc_t *d0, *d1, *d2, *d3;
   u32 *buffers = vlib_frame_vector_args (frame);
-  u32 bi0, bi1, bi2, bi3;
-  u16 n_left, n_left_to_send, n_in_batch;
-  vlib_buffer_t *b0, *b1, *b2, *b3;
-  u16 next;
+  u16 n_enq, n_left;
   u16 n_retry = 5;
-  u16 mask = txq->size - 1;
-  u64 bits = (AVF_TXQ_DESC_CMD_EOP | AVF_TXQ_DESC_CMD_RS |
-	      AVF_TXQ_DESC_CMD_RSV);
 
   clib_spinlock_lock_if_init (&txq->lock);
 
-  n_left_to_send = frame->n_vectors;
-  next = txq->next;
+  n_left = frame->n_vectors;
 
 retry:
   /* release consumed bufs */
   if (txq->n_enqueued)
     {
-      u16 first, slot, n_free = 0;
-      first = slot = (next - txq->n_enqueued) & mask;
+      avf_tx_desc_t *d0;
+      u16 first, slot, n_free = 0, mask = txq->size - 1;
+      first = slot = (txq->next - txq->n_enqueued) & mask;
       d0 = txq->descs + slot;
       while (n_free < txq->n_enqueued && avf_tx_desc_get_dtyp (d0) == 0x0F)
 	{
@@ -82,101 +161,23 @@ retry:
 	}
     }
 
-  n_in_batch = clib_min (n_left_to_send, txq->size - txq->n_enqueued - 8);
-  n_left = n_in_batch;
+  if (ad->flags & AVF_DEVICE_F_VA_DMA)
+    n_enq = avf_tx_enqueue (vm, txq, buffers, n_left, 1);
+  else
+    n_enq = avf_tx_enqueue (vm, txq, buffers, n_left, 0);
 
-  while (n_left >= 8)
+  n_left -= n_enq;
+
+  if (n_left)
     {
-      u16 slot0, slot1, slot2, slot3;
+      buffers += n_enq;
 
-      vlib_prefetch_buffer_with_index (vm, buffers[4], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[5], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[6], LOAD);
-      vlib_prefetch_buffer_with_index (vm, buffers[7], LOAD);
-
-      slot0 = next;
-      slot1 = (next + 1) & mask;
-      slot2 = (next + 2) & mask;
-      slot3 = (next + 3) & mask;
-
-      d0 = txq->descs + slot0;
-      d1 = txq->descs + slot1;
-      d2 = txq->descs + slot2;
-      d3 = txq->descs + slot3;
-
-      bi0 = buffers[0];
-      bi1 = buffers[1];
-      bi2 = buffers[2];
-      bi3 = buffers[3];
-
-      txq->bufs[slot0] = bi0;
-      txq->bufs[slot1] = bi1;
-      txq->bufs[slot2] = bi2;
-      txq->bufs[slot3] = bi3;
-      b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
-      b2 = vlib_get_buffer (vm, bi2);
-      b3 = vlib_get_buffer (vm, bi3);
-
-      if (ad->flags & AVF_DEVICE_F_VA_DMA)
-	{
-	  d0->qword[0] = vlib_buffer_get_current_va (b0);
-	  d1->qword[0] = vlib_buffer_get_current_va (b1);
-	  d2->qword[0] = vlib_buffer_get_current_va (b2);
-	  d3->qword[0] = vlib_buffer_get_current_va (b3);
-	}
-      else
-	{
-	  d0->qword[0] = vlib_buffer_get_current_pa (vm, b0);
-	  d1->qword[0] = vlib_buffer_get_current_pa (vm, b1);
-	  d2->qword[0] = vlib_buffer_get_current_pa (vm, b2);
-	  d3->qword[0] = vlib_buffer_get_current_pa (vm, b3);
-	}
-
-      d0->qword[1] = ((u64) b0->current_length) << 34 | bits;
-      d1->qword[1] = ((u64) b1->current_length) << 34 | bits;
-      d2->qword[1] = ((u64) b2->current_length) << 34 | bits;
-      d3->qword[1] = ((u64) b3->current_length) << 34 | bits;
-
-      next = (next + 4) & mask;
-      txq->n_enqueued += 4;
-      buffers += 4;
-      n_left -= 4;
-    }
-
-  while (n_left)
-    {
-      d0 = txq->descs + next;
-      bi0 = buffers[0];
-      txq->bufs[next] = bi0;
-      b0 = vlib_get_buffer (vm, bi0);
-
-      if (ad->flags & AVF_DEVICE_F_VA_DMA)
-	d0->qword[0] = vlib_buffer_get_current_va (b0);
-      else
-	d0->qword[0] = vlib_buffer_get_current_pa (vm, b0);
-
-      d0->qword[1] = (((u64) b0->current_length) << 34) | bits;
-
-      next = (next + 1) & mask;
-      txq->n_enqueued++;
-      buffers++;
-      n_left--;
-    }
-
-  CLIB_MEMORY_BARRIER ();
-  *(txq->qtx_tail) = txq->next = next;
-
-  n_left_to_send -= n_in_batch;
-
-  if (n_left_to_send)
-    {
       if (n_retry--)
 	goto retry;
 
-      vlib_buffer_free (vm, buffers, n_left_to_send);
+      vlib_buffer_free (vm, buffers, n_left);
       vlib_error_count (vm, node->node_index,
-			AVF_TX_ERROR_NO_FREE_SLOTS, n_left_to_send);
+			AVF_TX_ERROR_NO_FREE_SLOTS, n_left);
     }
 
   clib_spinlock_unlock_if_init (&txq->lock);
