@@ -391,7 +391,7 @@ close (int fd)
 	  errno = -rv;
 	  rv = -1;
 	}
-      if (refcnt == 1)
+      if (refcnt <= 1)
 	ldp_fd_free_w_sid (sid);
     }
   else
@@ -511,7 +511,7 @@ write (int fd, const void *buf, size_t nbytes)
       LDBG (2, "fd %d (0x%x): calling vppcom_session_write(): sid %u (0x%x), "
 	    "buf %p, nbytes %u", fd, fd, sid, sid, buf, nbytes);
 
-      size = vppcom_session_write (sid, (void *) buf, nbytes);
+      size = vppcom_session_write_msg (sid, (void *) buf, nbytes);
       if (size < 0)
 	{
 	  errno = -size;
@@ -533,7 +533,6 @@ write (int fd, const void *buf, size_t nbytes)
 ssize_t
 writev (int fd, const struct iovec * iov, int iovcnt)
 {
-  const char *func_str;
   ssize_t size = 0, total = 0;
   u32 sid = ldp_sid_from_fd (fd);
   int i, rv = 0;
@@ -547,33 +546,19 @@ writev (int fd, const struct iovec * iov, int iovcnt)
 
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = "vppcom_session_write";
       do
 	{
 	  for (i = 0; i < iovcnt; ++i)
 	    {
-	      if (LDP_DEBUG > 4)
-		printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s() [%d]: "
-			"sid %u (0x%x), buf %p, nbytes %ld, total %ld",
-			__func__, __LINE__, getpid (), fd, fd, func_str,
-			i, sid, sid, iov[i].iov_base, iov[i].iov_len, total);
-
-	      rv = vppcom_session_write (sid, iov[i].iov_base,
-					 iov[i].iov_len);
+	      rv = vppcom_session_write_msg (sid, iov[i].iov_base,
+					     iov[i].iov_len);
 	      if (rv < 0)
 		break;
 	      else
 		{
 		  total += rv;
 		  if (rv < iov[i].iov_len)
-		    {
-		      if (LDP_DEBUG > 4)
-			printf ("%s:%d: LDP<%d>: fd %d (0x%x): "
-				"rv (%d) < iov[%d].iov_len (%ld)",
-				__func__, __LINE__, getpid (), fd, fd,
-				rv, i, iov[i].iov_len);
-		      break;
-		    }
+		    break;
 		}
 	    }
 	}
@@ -589,32 +574,9 @@ writev (int fd, const struct iovec * iov, int iovcnt)
     }
   else
     {
-      func_str = "libc_writev";
-
-      if (LDP_DEBUG > 4)
-	printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s(): "
-		"iov %p, iovcnt %d\n", __func__, __LINE__, getpid (),
-		fd, fd, func_str, iov, iovcnt);
-
       size = libc_writev (fd, iov, iovcnt);
     }
 
-  if (LDP_DEBUG > 4)
-    {
-      if (size < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  fprintf (stderr,
-		   "%s:%d: LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-		   "rv %ld, errno = %d\n", __func__, __LINE__, getpid (), fd,
-		   fd, func_str, size, errno_val);
-	  errno = errno_val;
-	}
-      else
-	printf ("%s:%d: LDP<%d>: fd %d (0x%x): returning %ld\n",
-		__func__, __LINE__, getpid (), fd, fd, size);
-    }
   return size;
 }
 
@@ -3077,7 +3039,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
       return -1;
     }
 
-  time_to_wait = ((timeout >= 0) ? (double) timeout : 0);
+  time_to_wait = ((timeout >= 0) ? (double) timeout/1000 : 0);
   time_out = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
   func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
@@ -3128,7 +3090,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 		epfd, epfd, func_str, libc_epfd, libc_epfd, events,
 		maxevents, sigmask);
 
-	  rv = libc_epoll_pwait (libc_epfd, events, maxevents, 1, sigmask);
+	  rv = libc_epoll_pwait (libc_epfd, events, maxevents, 0, sigmask);
 	  if (rv != 0)
 	    goto done;
 	}

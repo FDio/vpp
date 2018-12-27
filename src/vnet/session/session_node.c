@@ -29,6 +29,7 @@ session_mq_accepted_reply_handler (void *data)
 {
   session_accepted_reply_msg_t *mp = (session_accepted_reply_msg_t *) data;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+  stream_session_state_t old_state;
   app_worker_t *app_wrk;
   local_session_t *ls;
   stream_session_t *s;
@@ -64,18 +65,29 @@ session_mq_accepted_reply_handler (void *data)
   else
     {
       s = session_get_from_handle_if_valid (mp->handle);
-      /* Closed while waiting for app to reply */
-      if (!s || s->session_state > SESSION_STATE_READY)
+      if (!s)
 	return;
+
       app_wrk = app_worker_get (s->app_wrk_index);
       if (app_wrk->app_index != mp->context)
 	{
 	  clib_warning ("app doesn't own session");
 	  return;
 	}
+
+      old_state = s->session_state;
       s->session_state = SESSION_STATE_READY;
       if (!svm_fifo_is_empty (s->server_rx_fifo))
 	app_worker_lock_and_send_event (app_wrk, s, FIFO_EVENT_APP_RX);
+
+      /* Closed while waiting for app to reply. Resend disconnect */
+      if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	{
+	  application_t *app = application_get (app_wrk->app_index);
+	  app->cb_fns.session_disconnect_callback (s);
+	  s->session_state = old_state;
+	  return;
+	}
     }
 }
 

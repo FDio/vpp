@@ -239,6 +239,8 @@ extern int vppcom_session_connect (uint32_t session_handle,
 extern int vppcom_session_read (uint32_t session_handle, void *buf, size_t n);
 extern int vppcom_session_write (uint32_t session_handle, void *buf,
 				 size_t n);
+extern int vppcom_session_write_msg (uint32_t session_handle, void *buf,
+				     size_t n);
 
 extern int vppcom_select (unsigned long n_bits,
 			  unsigned long *read_map,
