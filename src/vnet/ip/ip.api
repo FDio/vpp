@@ -502,6 +502,12 @@ define ip_mfib_dump
     @param count - the number of fib_path in path
     @param path  - array of of fib_path structures
 */
+typedef mfib_path
+{
+  vl_api_fib_path_t path;
+  u32 itf_flags;
+};
+
 manual_endian manual_print define ip_mfib_details
 {
   u32 context;
@@ -513,7 +519,7 @@ manual_endian manual_print define ip_mfib_details
   u8  src_address[4];
   u32 count;
   u32 stats_index;
-  vl_api_fib_path_t path[count];
+  vl_api_mfib_path_t path[count];
 };
 
 /** \brief Dump IP6 multicast fib table
@@ -541,7 +547,7 @@ manual_endian manual_print define ip6_mfib_details
   u8  grp_address[16];
   u8  src_address[16];
   u32 count;
-  vl_api_fib_path_t path[count];
+  vl_api_mfib_path_t path[count];
 };
 
 define ip_address_details

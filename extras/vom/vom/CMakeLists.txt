@@ -158,6 +158,7 @@ list(APPEND VOM_SOURCES
   neighbour.cpp
   neighbour_cmds.cpp
   object_base.cpp
+  mroute_cmds.cpp
   om.cpp
   pipe.cpp
   pipe_cmds.cpp
@@ -165,6 +166,7 @@ list(APPEND VOM_SOURCES
   ra_config.cpp
   ra_prefix.cpp
   route.cpp
+  route_api_types.cpp
   route_cmds.cpp
   route_domain.cpp
   route_domain_cmds.cpp

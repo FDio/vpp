@@ -15,48 +15,48 @@
 
 #include <sstream>
 
-#include <vom/route_api_types.hpp>
-#include <vom/route_cmds.hpp>
+#include "vom/api_types.hpp"
+#include "vom/mroute_cmds.hpp"
+#include "vom/route_api_types.hpp"
 
 namespace VOM {
 namespace route {
-namespace ip_route_cmds {
+namespace ip_mroute_cmds {
 
 update_cmd::update_cmd(HW::item<bool>& item,
                        table_id_t id,
-                       const prefix_t& prefix,
-                       const path_list_t& paths)
+                       const mprefix_t& mprefix,
+                       const path& path,
+                       const itf_flags_t& flags)
   : rpc_cmd(item)
   , m_id(id)
-  , m_prefix(prefix)
-  , m_paths(paths)
+  , m_mprefix(mprefix)
+  , m_path(path)
+  , m_flags(flags)
 {
-  // no multipath yet.
-  assert(paths.size() == 1);
 }
 
 bool
 update_cmd::operator==(const update_cmd& other) const
 {
-  return ((m_prefix == other.m_prefix) && (m_id == other.m_id));
+  return ((m_mprefix == other.m_mprefix) && (m_id == other.m_id));
 }
 
 rc_t
 update_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), 0, std::ref(*this));
+  msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
 
   payload.table_id = m_id;
   payload.is_add = 1;
-  payload.is_multipath = 0;
 
-  m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
-                  &payload.dst_address_length);
+  m_mprefix.to_vpp(&payload.is_ipv6, payload.grp_address, payload.src_address,
+                   &payload.grp_address_length);
 
-  for (auto& p : m_paths)
-    to_vpp(p, payload);
+  to_vpp(m_path, payload);
+  payload.itf_flags = m_flags.value();
 
   VAPI_CALL(req.execute());
 
@@ -67,38 +67,46 @@ std::string
 update_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "ip-route-create: " << m_hw_item.to_string() << " table-id:" << m_id
-    << " prefix:" << m_prefix.to_string() << " paths:" << m_paths;
+  s << "ip-mroute-create: " << m_hw_item.to_string() << " table-id:" << m_id
+    << " mprefix:" << m_mprefix.to_string() << " path:" << m_path.to_string()
+    << " flags:" << m_flags;
 
   return (s.str());
 }
 
 delete_cmd::delete_cmd(HW::item<bool>& item,
                        table_id_t id,
-                       const prefix_t& prefix)
+                       const mprefix_t& mprefix,
+                       const path& path,
+                       const itf_flags_t& flags)
   : rpc_cmd(item)
   , m_id(id)
-  , m_prefix(prefix)
+  , m_mprefix(mprefix)
+  , m_path(path)
+  , m_flags(flags)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return ((m_prefix == other.m_prefix) && (m_id == other.m_id));
+  return ((m_mprefix == other.m_mprefix) && (m_id == other.m_id));
 }
 
 rc_t
 delete_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), 0, std::ref(*this));
+  msg_t req(con.ctx(), std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.table_id = m_id;
   payload.is_add = 0;
 
-  m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
-                  &payload.dst_address_length);
+  m_mprefix.to_vpp(&payload.is_ipv6, payload.grp_address, payload.src_address,
+                   &payload.grp_address_length);
+
+  to_vpp(m_path, payload);
+  payload.itf_flags = m_flags.value();
 
   VAPI_CALL(req.execute());
 
@@ -112,8 +120,8 @@ std::string
 delete_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "ip-route-delete: " << m_hw_item.to_string() << " id:" << m_id
-    << " prefix:" << m_prefix.to_string();
+  s << "ip-mroute-delete: " << m_hw_item.to_string() << " id:" << m_id
+    << " mprefix:" << m_mprefix.to_string();
 
   return (s.str());
 }
@@ -143,7 +151,7 @@ dump_v4_cmd::issue(connection& con)
 std::string
 dump_v4_cmd::to_string() const
 {
-  return ("ip-route-v4-dump");
+  return ("ip-mroute-v4-dump");
 }
 
 dump_v6_cmd::dump_v6_cmd()
@@ -171,10 +179,10 @@ dump_v6_cmd::issue(connection& con)
 std::string
 dump_v6_cmd::to_string() const
 {
-  return ("ip-route-v6-dump");
+  return ("ip-mroute-v6-dump");
 }
-} // namespace ip_route_cmds
-} // namespace route
+} // namespace ip_mroute_cmds
+} // namespace mroute
 } // namespace vom
   /*
    * fd.io coding-style-patch-verification: ON

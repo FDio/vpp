@@ -190,7 +190,7 @@ route::prefix_t::to_string() const
 }
 
 boost::asio::ip::address
-from_bytes(uint8_t is_ip6, uint8_t* bytes)
+from_bytes(uint8_t is_ip6, const uint8_t* bytes)
 {
   boost::asio::ip::address addr;
 
@@ -418,6 +418,135 @@ route::prefix_t::high() const
   pfx.m_addr = pfx.m_addr | ~pfx.mask();
 
   return (pfx);
+}
+
+/**
+ * The all Zeros prefix
+ */
+const route::mprefix_t route::mprefix_t::ZERO;
+const route::mprefix_t route::mprefix_t::ZEROv6;
+
+route::mprefix_t::mprefix_t(const boost::asio::ip::address& gaddr, uint8_t len)
+  : m_gaddr(gaddr)
+  , m_saddr()
+  , m_len(len)
+{
+}
+
+route::mprefix_t::mprefix_t(const boost::asio::ip::address& gaddr)
+  : m_gaddr(gaddr)
+  , m_saddr()
+  , m_len(VOM::mask_width(gaddr))
+{
+}
+
+route::mprefix_t::mprefix_t(const boost::asio::ip::address& saddr,
+                            const boost::asio::ip::address& gaddr)
+  : m_gaddr(gaddr)
+  , m_saddr(saddr)
+  , m_len(2 * VOM::mask_width(gaddr))
+{
+}
+
+route::mprefix_t::mprefix_t(const boost::asio::ip::address& saddr,
+                            const boost::asio::ip::address& gaddr,
+                            uint16_t len)
+  : m_gaddr(gaddr)
+  , m_saddr(saddr)
+  , m_len(len)
+{
+}
+
+route::mprefix_t::mprefix_t(const mprefix_t& o)
+  : m_gaddr(o.m_gaddr)
+  , m_saddr(o.m_saddr)
+  , m_len(o.m_len)
+{
+}
+route::mprefix_t::mprefix_t()
+  : m_gaddr()
+  , m_saddr()
+  , m_len(0)
+{
+}
+
+route::mprefix_t::~mprefix_t()
+{
+}
+
+const boost::asio::ip::address&
+route::mprefix_t::grp_address() const
+{
+  return (m_gaddr);
+}
+
+const boost::asio::ip::address&
+route::mprefix_t::src_address() const
+{
+  return (m_saddr);
+}
+
+uint8_t
+route::mprefix_t::mask_width() const
+{
+  return (m_len);
+}
+
+void
+route::mprefix_t::to_vpp(uint8_t* is_ip6,
+                         uint8_t* saddr,
+                         uint8_t* gaddr,
+                         uint16_t* len) const
+{
+  *len = m_len;
+  to_bytes(m_saddr, is_ip6, saddr);
+  to_bytes(m_gaddr, is_ip6, gaddr);
+}
+
+route::mprefix_t&
+route::mprefix_t::operator=(const route::mprefix_t& o)
+{
+  m_gaddr = o.m_gaddr;
+  m_saddr = o.m_saddr;
+  m_len = o.m_len;
+
+  return (*this);
+}
+
+bool
+route::mprefix_t::operator<(const route::mprefix_t& o) const
+{
+  if (m_len == o.m_len) {
+    if (m_saddr == o.m_saddr)
+      return (m_gaddr < o.m_gaddr);
+    else
+      return (m_saddr < o.m_saddr);
+  } else {
+    return (m_len < o.m_len);
+  }
+}
+
+bool
+route::mprefix_t::operator==(const route::mprefix_t& o) const
+{
+  return (m_len == o.m_len && m_gaddr == o.m_gaddr && m_saddr == o.m_saddr);
+}
+
+bool
+route::mprefix_t::operator!=(const route::mprefix_t& o) const
+{
+  return (!(*this == o));
+}
+
+std::string
+route::mprefix_t::to_string() const
+{
+  std::ostringstream s;
+
+  s << "(" << m_saddr.to_string() << "," << m_gaddr.to_string() << "/"
+    << std::to_string(m_len) << ")";
+
+  return (s.str());
 }
 
 }; // namespace VOM

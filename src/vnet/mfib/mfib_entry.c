@@ -1325,6 +1325,7 @@ void
 mfib_entry_encode (fib_node_index_t mfib_entry_index,
                   fib_route_path_encode_t **api_rpaths)
 {
+    fib_route_path_encode_t *api_rpath;
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *bsrc;
 
@@ -1337,6 +1338,18 @@ mfib_entry_encode (fib_node_index_t mfib_entry_index,
                                  NULL,
                                  fib_path_encode,
                                  api_rpaths);
+    }
+
+    vec_foreach(api_rpath, *api_rpaths)
+    {
+        mfib_itf_t *mfib_itf;
+
+        mfib_itf = mfib_entry_itf_find(bsrc->mfes_itfs,
+                                       api_rpath->rpath.frp_sw_if_index);
+        if (mfib_itf)
+        {
+            api_rpath->rpath.frp_mitf_flags = mfib_itf->mfi_flags;
+        }
     }
 }
 
