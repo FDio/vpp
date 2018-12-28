@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
+#include <vppinfra/ring.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 
@@ -34,9 +35,9 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
 		u32 n_packets, int use_va_dma)
 {
   u16 next = txq->next;
-  u64 bits = (AVF_TXD_CMD_EOP | AVF_TXD_CMD_RS | AVF_TXD_CMD_RSV);
+  u64 bits = AVF_TXD_CMD_EOP | AVF_TXD_CMD_RSV;
   u16 n_desc = 0;
-  u16 n_desc_left, n_packets_left = n_packets;
+  u16 *slot, n_desc_left, n_packets_left = n_packets;
   u16 mask = txq->size - 1;
   vlib_buffer_t *b[4];
   avf_tx_desc_t *d = txq->descs + next;
@@ -114,6 +115,13 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
       d += 1;
     }
 
+  if ((slot = clib_ring_enq (txq->rs_slots)))
+    {
+      u16 rs_slot = slot[0] = (next - 1) & mask;
+      d = txq->descs + rs_slot;
+      d[0].qword[1] |= AVF_TXD_CMD_RS;
+    }
+
   CLIB_MEMORY_BARRIER ();
   *(txq->qtx_tail) = txq->next = next & mask;
   txq->n_enqueued += n_desc;
@@ -142,19 +150,28 @@ retry:
   /* release consumed bufs */
   if (txq->n_enqueued)
     {
-      avf_tx_desc_t *d0;
-      u16 first, slot, n_free = 0, mask = txq->size - 1;
-      first = slot = (txq->next - txq->n_enqueued) & mask;
-      d0 = txq->descs + slot;
-      while (n_free < txq->n_enqueued && avf_tx_desc_get_dtyp (d0) == 0x0F)
+      i32 complete_slot = -1;
+      while (1)
 	{
-	  n_free++;
-	  slot = (slot + 1) & mask;
-	  d0 = txq->descs + slot;
+	  u16 *slot = clib_ring_get_first (txq->rs_slots);
+
+	  if (slot == 0)
+	    break;
+
+	  complete_slot = slot[0];
+	  if (avf_tx_desc_get_dtyp (txq->descs + complete_slot) != 0x0F)
+	    break;
+
+	  clib_ring_deq (txq->rs_slots);
 	}
 
-      if (n_free)
+      if (complete_slot >= 0)
 	{
+	  u16 first, mask, n_free;
+	  mask = txq->size - 1;
+	  first = (txq->next - txq->n_enqueued) & mask;
+	  n_free = (complete_slot + 1 - first) & mask;
+
 	  txq->n_enqueued -= n_free;
 	  vlib_buffer_free_from_ring (vm, txq->bufs, first, txq->size,
 				      n_free);

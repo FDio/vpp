@@ -114,6 +114,7 @@ typedef struct
   avf_tx_desc_t *descs;
   u32 *bufs;
   u16 n_enqueued;
+  u16 *rs_slots;
 } avf_txq_t;
 
 typedef struct

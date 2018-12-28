@@ -16,6 +16,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vppinfra/ring.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
@@ -288,6 +289,9 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
 
   vec_validate_aligned (txq->bufs, txq->size, CLIB_CACHE_LINE_BYTES);
   txq->qtx_tail = ad->bar0 + AVF_QTX_TAIL (qid);
+
+  /* initialize ring of pending RS slots */
+  clib_ring_new_aligned (txq->rs_slots, 32, CLIB_CACHE_LINE_BYTES);
 
   ad->n_tx_queues = clib_min (ad->num_queue_pairs, qid + 1);
   return 0;
@@ -1166,6 +1170,7 @@ avf_delete_if (vlib_main_t * vm, avf_device_t * ad)
 				      txq->n_enqueued);
 	}
       vec_free (txq->bufs);
+      clib_ring_free (txq->rs_slots);
     }
   /* *INDENT-ON* */
   vec_free (ad->txqs);
