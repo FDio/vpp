@@ -333,8 +333,7 @@ srp_topology_packet (vlib_main_t * vm, u32 sw_if_index, u8 ** contents)
     u32 * to_next = vlib_frame_vector_args (f);
     u32 bi;
 
-    bi = vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
-			       /* buffer to append to */ ~0,
+    bi = vlib_buffer_add_data (vm, /* buffer to append to */ ~0,
 			       *contents, vec_len (*contents));
     b = vlib_get_buffer (vm, bi);
     vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
@@ -620,8 +619,7 @@ static void tx_ips_packet (srp_interface_t * si,
     = ~ip_csum_fold (ip_incremental_checksum (0, &i->control,
 					      sizeof (i[0]) - STRUCT_OFFSET_OF (srp_ips_header_t, control)));
 
-  bi = vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
-			     /* buffer to append to */ ~0,
+  bi = vlib_buffer_add_data (vm, /* buffer to append to */ ~0,
 			     i, sizeof (i[0]));
 
   /* FIXME trace. */

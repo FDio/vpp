@@ -435,7 +435,6 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   s->last_increment_packet_size = s->min_packet_bytes;
 
   {
-    pg_buffer_index_t *bi;
     int n;
 
     s->buffer_bytes = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
@@ -443,9 +442,6 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
     n += (s->max_packet_bytes % s->buffer_bytes) != 0;
 
     vec_resize (s->buffer_indices, n);
-
-    vec_foreach (bi, s->buffer_indices)
-      bi->free_list_index = VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX;
   }
 
   /* Find an interface to use. */

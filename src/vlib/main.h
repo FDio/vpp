@@ -116,9 +116,6 @@ typedef struct vlib_main_t
   /* Size of the heap */
   uword heap_size;
 
-  /* Pool of buffer free lists. */
-  vlib_buffer_free_list_t *buffer_free_list_pool;
-
   /* physical memory main structure. */
   vlib_physmem_main_t physmem_main;
 

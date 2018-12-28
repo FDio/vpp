@@ -1190,10 +1190,7 @@ pg_stream_fill_helper (pg_main_t * pg,
   uword is_start_of_packet = bi == s->buffer_indices;
   u32 n_allocated;
 
-  n_allocated = vlib_buffer_alloc_from_free_list (vm,
-						  buffers,
-						  n_alloc,
-						  bi->free_list_index);
+  n_allocated = vlib_buffer_alloc (vm, buffers, n_alloc);
   if (n_allocated == 0)
     return 0;
 
@@ -1525,12 +1522,13 @@ pg_generate_packets (vlib_node_runtime_t * node,
       head = clib_fifo_head (bi0->buffer_fifo);
 
       if (head + n_this_frame <= end)
-	vlib_copy_buffers (to_next, head, n_this_frame);
+	clib_memcpy_fast (to_next, head, n_this_frame * sizeof (u32));
       else
 	{
 	  u32 n = end - head;
-	  vlib_copy_buffers (to_next + 0, head, n);
-	  vlib_copy_buffers (to_next + n, start, n_this_frame - n);
+	  clib_memcpy_fast (to_next + 0, head, n * sizeof (u32));
+	  clib_memcpy_fast (to_next + n, start,
+			    (n_this_frame - n) * sizeof (u32));
 	}
 
       vec_foreach (bi, s->buffer_indices)
