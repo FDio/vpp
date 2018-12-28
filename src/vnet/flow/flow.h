@@ -24,7 +24,7 @@
 
 #define foreach_flow_type \
   _(IP4_N_TUPLE, ip4_n_tuple, "ipv4-n-tuple") \
-  _(IP6_N_TUPLE, ip6_n_tuple, "ipv4-n-tuple") \
+  _(IP6_N_TUPLE, ip6_n_tuple, "ipv6-n-tuple") \
   _(IP4_VXLAN, ip4_vxlan, "ipv4-vxlan") \
   _(IP6_VXLAN, ip6_vxlan, "ipv6-vxlan")
 
