@@ -1,8 +1,13 @@
 import os
+import socket
 import time
 from collections import deque
 
 from six import moves
+
+from custom_exceptions import ApiInternalError
+from custom_exceptions import UnexpectedApiPositiveReturnValueError
+from custom_exceptions import UnexpectedApiReturnValueError
 from vpp_papi import VPP, mac_pton
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
@@ -40,11 +45,6 @@ class SYSLOG_SEVERITY:
     NOTICE = 5
     INFO = 6
     DBG = 7
-
-
-class UnexpectedApiReturnValueError(Exception):
-    """ exception raised when the API return value is unexpected """
-    pass
 
 
 class VppPapiProvider(object):
@@ -163,6 +163,9 @@ class VppPapiProvider(object):
         :param api_args: tuple of API function arguments
         :param expected_retval: Expected return value (Default value = 0)
         :returns: reply from the API
+        :raises UnexpectedApiPositiveReturnValueError
+        :raises UnexpectedApiReturnValueError
+        :raises ApiInternalError
 
         """
         self.hook.before_api(api_fn.__name__, api_args)
@@ -173,18 +176,22 @@ class VppPapiProvider(object):
                     "return value instead of %d in %s" % \
                     (reply.retval, moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise UnexpectedApiPositiveReturnValueError(
+                    ret_val=reply.retval)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected %d return value instead "\
                     "of %d in %s" % (expected_retval, reply.retval,
                                      moves.reprlib.repr(reply))
                 self.test_class.logger.info(msg)
-                raise UnexpectedApiReturnValueError(msg)
+                raise UnexpectedApiReturnValueError(reply=reply,
+                                                    expected=expected_retval)
         else:
-            raise Exception("Internal error, unexpected value for "
-                            "self._expect_api_retval %s" %
-                            self._expect_api_retval)
+            raise ApiInternalError(
+                message="Internal error, valueError for "
+                        "self._expect_api_retval %s should "
+                        "be in [%s,%s]" % (self._expect_api_retval,
+                                           self._negative, self._zero))
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
@@ -262,7 +269,7 @@ class VppPapiProvider(object):
                                      is_ipv6=0, is_add=1, del_all=0):
         """
 
-        :param addr: param is_ipv6:  (Default value = 0)
+        :param addr:
         :param sw_if_index:
         :param addr_len:
         :param is_ipv6:  (Default value = 0)
