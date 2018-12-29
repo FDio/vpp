@@ -921,7 +921,7 @@ format_vlib_buffer_free_list (u8 * s, va_list * va)
   bytes_alloc = size * f->n_alloc;
   bytes_free = size * n_free;
 
-  s = format (s, "%7d%30v%12d%12d%=12U%=12U%=12d%=12d", threadnum,
+  s = format (s, "%7u%30v%12u%12u%=12U%=12U%=12u%=12u", threadnum,
 	      f->name, f->index, f->n_data_bytes,
 	      format_memory_size, bytes_alloc,
 	      format_memory_size, bytes_free, f->n_alloc, n_free);
