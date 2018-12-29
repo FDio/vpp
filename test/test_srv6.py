@@ -56,7 +56,8 @@ class TestSRv6(VppTestCase):
         """
         self.logger.debug("Configuring interface %s" % (interface.name))
         if ipv6:
-            self.logger.debug("Configuring IPv6")
+            self.logger.debug("Configuring IPv6. "
+                              "Setting ndp timeout to 5 sec.")
             interface.set_table_ip6(ipv6_table_id)
             interface.config_ip6()
             interface.resolve_ndp(timeout=5)

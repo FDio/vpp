@@ -48,7 +48,7 @@ class TestMemif(VppTestCase):
         return False
 
     def test_memif_socket_filename_add_del(self):
-        """ Memif socket filenale add/del """
+        """ Memif socket filename add/del """
 
         # dump default socket filename
         dump = self.vapi.memif_socket_filename_dump()

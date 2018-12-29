@@ -7,6 +7,7 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
+from custom_exceptions import CaptureUnexpectedPacketError
 from lisp import *
 from util import ppp, ForeignAddressFactory
 
@@ -101,7 +102,7 @@ class SimpleDriver(Driver):
         except:
             self.test.logger.error(ppp("Unexpected or invalid packet:",
                                    packet))
-            raise
+            raise CaptureUnexpectedPacketError(packet=packet)
 
     def configure_tc(self, tc):
         for config_item in self.config_order:
