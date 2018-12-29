@@ -529,8 +529,7 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
       ctx->max_len_to_snd = max_segs * ctx->snd_mss;
     }
 
-  n_bytes_per_buf = vlib_buffer_free_list_buffer_size (vm,
-						       VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  n_bytes_per_buf = VLIB_BUFFER_DATA_SIZE;
   ASSERT (n_bytes_per_buf > MAX_HDRS_LEN);
   n_bytes_per_seg = MAX_HDRS_LEN + ctx->snd_mss;
   ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);

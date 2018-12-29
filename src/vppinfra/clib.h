@@ -88,6 +88,7 @@
 #define __clib_weak __attribute__ ((weak))
 #define __clib_packed __attribute__ ((packed))
 #define __clib_constructor __attribute__ ((constructor))
+#define __clib_cacheline_aligned __attribute__ ((aligned(CLIB_CACHE_LINE_BYTES)))
 
 #define never_inline __attribute__ ((__noinline__))
 

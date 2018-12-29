@@ -244,7 +244,7 @@ mrvl_pp2_create_if (mrvl_pp2_create_if_args_t * args)
   /* FIXME bpool bit select per pp */
   s = format (s, "pool-%d:%d%c", pp2_id, pp2_id + 8, 0);
   bpool_params.match = (char *) s;
-  bpool_params.buff_len = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  bpool_params.buff_len = VLIB_BUFFER_DATA_SIZE;
   /* FIXME +64 ? */
   if (pp2_bpool_init (&bpool_params, &ppif->inqs[0].bpool))
     {

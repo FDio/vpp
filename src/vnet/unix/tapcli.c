@@ -297,11 +297,8 @@ tapcli_rx_iface (vlib_main_t * vm,
 	{
 	  uword len = vec_len (tm->threads[thread_index].rx_buffers);
 	  _vec_len (tm->threads[thread_index].rx_buffers) +=
-	    vlib_buffer_alloc_from_free_list (vm,
-					      &tm->threads[thread_index].
-					      rx_buffers[len],
-					      VLIB_FRAME_SIZE - len,
-					      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+	    vlib_buffer_alloc (vm, &tm->threads[thread_index].rx_buffers[len],
+			       VLIB_FRAME_SIZE - len);
 	  if (PREDICT_FALSE
 	      (vec_len (tm->threads[thread_index].rx_buffers) <
 	       tm->mtu_buffers))

@@ -719,8 +719,6 @@ start_workers (vlib_main_t * vm)
       for (i = 0; i < vec_len (tm->registrations); i++)
 	{
 	  vlib_node_main_t *nm, *nm_clone;
-	  vlib_buffer_free_list_t *fl_clone, *fl_orig;
-	  vlib_buffer_free_list_t *orig_freelist_pool;
 	  int k;
 
 	  tr = tm->registrations[i];
@@ -868,26 +866,6 @@ start_workers (vlib_main_t * vm)
 		(vlib_mains[0]->error_main.counters_last_clear,
 		 CLIB_CACHE_LINE_BYTES);
 
-	      /* Fork the vlib_buffer_main_t free lists, etc. */
-	      orig_freelist_pool = vm_clone->buffer_free_list_pool;
-	      vm_clone->buffer_free_list_pool = 0;
-
-            /* *INDENT-OFF* */
-            pool_foreach (fl_orig, orig_freelist_pool,
-                          ({
-                            pool_get_aligned (vm_clone->buffer_free_list_pool,
-                                              fl_clone, CLIB_CACHE_LINE_BYTES);
-                            ASSERT (fl_orig - orig_freelist_pool
-                                    == fl_clone - vm_clone->buffer_free_list_pool);
-
-                            fl_clone[0] = fl_orig[0];
-                            fl_clone->buffers = 0;
-                            vec_validate(fl_clone->buffers, 0);
-                            vec_reset_length(fl_clone->buffers);
-                            fl_clone->n_alloc = 0;
-                          }));
-/* *INDENT-ON* */
-
 	      worker_thread_index++;
 	    }
 	}
@@ -962,6 +940,7 @@ start_workers (vlib_main_t * vm)
           /* *INDENT-ON* */
 	}
     }
+
   vlib_worker_thread_barrier_sync (vm);
   vlib_worker_thread_barrier_release (vm);
   return 0;
@@ -1680,6 +1659,9 @@ vlib_worker_thread_fn (void *arg)
   clib_error_t *e;
 
   ASSERT (vm->thread_index == vlib_get_thread_index ());
+
+  vm->cpu_index = clib_get_current_cpu_index ();
+  vm->numa_node = clib_get_current_numa_node ();
 
   vlib_worker_thread_init (w);
   clib_time_init (&vm->clib_time);
