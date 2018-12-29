@@ -6,7 +6,7 @@ ipaddress; python_version < '3.3'       # PSF
 parameterized>=0.6.1                    # BSD
 pexpect                                 # ISC
 psutil                                  # BSD
-pycodestyle                             # MIT (Expat license)       https://pypi.org/project/pycodestyle/
+pycodestyle>=2.4.0                      # MIT (Expat license)       https://pypi.org/project/pycodestyle/
 scapy==2.4.0; python_version >= '2.7' or python_version >= '3.4'    # GPL2  https://github.com/secdev/scapy/blob/master/LICENSE
 six                                     # MIT
 subprocess32                            # PSF
