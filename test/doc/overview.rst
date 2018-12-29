@@ -234,7 +234,7 @@ Automatic filtering of packets:
 
 Both APIs (`get_capture` and `wait_for_packet`) by default filter the packet
 capture, removing known uninteresting packets from it - these are IPv6 Router
-Advertisments and IPv6 Router Alerts. These packets are unsolicitated
+Advertisments and IPv6 Router Alerts. These packets are unsolicited
 and from the point of |vtf| are random. If a test wants to receive these
 packets, it should specify either None or a custom filtering function
 as the value to the 'filter_out_fn' argument.
@@ -407,10 +407,10 @@ basic IPv4 forwarding.
                      # ... more assertions here
                      self.assert_equal(udp.sport, saved_packet[UDP].sport,
                                        "UDP source port")
-                 except:
+                 except KeyError:
                      self.logger.error(ppp("Unexpected or invalid packet:",
                                        packet))
-                     raise
+                     raise CaptureInvalidPacketError
              remaining_packet = self.get_next_packet_info_for_interface2(
                         src_if.sw_if_index,
                         dst_if.sw_if_index,

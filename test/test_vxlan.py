@@ -4,6 +4,7 @@ import socket
 from util import ip4n_range, ip4_range, reassemble4
 import unittest
 from framework import VppTestCase, VppTestRunner
+from vpp_interface import InterfaceError
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether, Raw
@@ -112,7 +113,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
                 vni=vni,
                 is_add=is_add)
             if r.sw_if_index == 0xffffffff:
-                raise "bad sw_if_index"
+                raise InterfaceError("bad sw_if_index")
 
     @classmethod
     def add_shared_mcast_dst_load(cls):

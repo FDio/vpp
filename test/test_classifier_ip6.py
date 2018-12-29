@@ -146,15 +146,16 @@ class TestClassifier(VppTestCase):
                 self.assertEqual(ip6_received.dst, ip_saved.dst)
                 self.assertEqual(proto_received.sport, proto_saved.sport)
                 self.assertEqual(proto_received.dport, proto_saved.dport)
-            except:
+            except (IndexError, AssertionError):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
                 i.sw_if_index, dst_sw_if_index, last_info[i.sw_if_index])
-            self.assertTrue(remaining_packet is None,
-                            "Interface %s: Packet expected from interface %s "
-                            "didn't arrive" % (dst_if.name, i.name))
+            self.assertIsNone(remaining_packet,
+                              "Interface %s: Packet expected from "
+                              "interface %s didn't arrive" % (
+                                  dst_if.name, i.name))
 
     @staticmethod
     def build_ip6_mask(nh='', src_ip='', dst_ip='',

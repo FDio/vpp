@@ -32,6 +32,11 @@ class VppObject(object):
         pass
 
 
+class RegistryError(Exception):
+    """Exception raised by the object registry """
+    pass
+
+
 class VppObjectRegistry(object):
     """ Class which handles automatic configuration cleanup. """
     _shared_state = {}
@@ -84,5 +89,6 @@ class VppObjectRegistry(object):
             logger.error("REG: Couldn't remove configuration for object(s):")
             for obj in failed:
                 logger.error(moves.reprlib.repr(obj))
-            raise Exception("Couldn't remove configuration for object(s): %s" %
-                            (", ".join(str(x) for x in failed)))
+            raise RegistryError("Couldn't remove configuration for "
+                                "object(s): %s" %
+                                (", ".join(str(x) for x in failed)))
