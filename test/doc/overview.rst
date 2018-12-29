@@ -5,6 +5,7 @@
 .. _virtualenv: http://docs.python-guide.org/en/latest/dev/virtualenvs/
 .. _scapy: http://www.secdev.org/projects/scapy/
 .. _logging: https://docs.python.org/2/library/logging.html
+.. _parameterized.expand: https://pypi.org/project/parameterized/
 .. _process: https://docs.python.org/2/library/multiprocessing.html#the-process-class
 .. _pipes: https://docs.python.org/2/library/multiprocessing.html#multiprocessing.Pipe
 .. _managed: https://docs.python.org/2/library/multiprocessing.html#managers
@@ -36,24 +37,32 @@ The test class defines one or more test functions, which act as test cases.
 
 Function flow when running a test case is:
 
+0. `setUpModule`:
+   This function is called once before the TestCase classes in the given
+   module.
 1. `setUpClass <VppTestCase.setUpClass>`:
-   This function is called once for each test class, allowing a one-time test
-   setup to be executed. If this functions throws an exception,
+   This class method is called once for each TestCase class, allowing a
+   per-TestClass setup to be executed. Since the VPP subprocess is reused
+   for each test method in a TestClass, configuration of the VPP executable is
+   typically done here.  If this functions throws an exception,
    none of the test functions are executed.
 2. `setUp <VppTestCase.setUp>`:
-   The setUp function runs before each of the test functions. If this function
-   throws an exception other than AssertionError_ or SkipTest_, then this is
-   considered an error, not a test failure.
-3. *test_<name>*:
+   The setUp method runs before each of the `test_<name>` methods within the TestCase.
+   If this method throws an exception other than AssertionError_ or SkipTest_,
+   then this is considered an error, not a test failure.
+3. `*test_<name>*`:
    This is the guts of the test case. It should execute the test scenario
    and use the various assert functions from the unittest framework to check
-   necessary. Multiple test_<name> methods can exist in a test case.
+   as necessary. One test method should be written for each test scenario.
+   Method reuse is encouraged through the use of of the @ parameterized.expand_
+   decorator. Multiple `test_<name>` methods can exist in a test case.
 4. `tearDown <VppTestCase.tearDown>`:
    The tearDown function is called after each test function with the purpose
    of doing partial cleanup.
 5. `tearDownClass <VppTestCase.tearDownClass>`:
    Method called once after running all of the test functions to perform
    the final cleanup.
+6. `tearDownMethod`: This function is called before exiting the module.
 
 Logging
 #######
@@ -118,7 +127,7 @@ The test temporary directory holds the following interesting files:
   named after the interface, so for e.g. pg1, the file will be named
   pg1_out.pcap
 * history files - whenever the capture is restarted or a new stream is added,
-  the existing files are rotated and renamed, soo all the pcap files
+  the existing files are rotated and renamed, so all the pcap files
   are always saved for later debugging if needed
 * core - if vpp dumps a core, it'll be stored in the temporary directory
 * vpp_stdout.txt - file containing output which vpp printed to stdout
@@ -234,7 +243,7 @@ Automatic filtering of packets:
 
 Both APIs (`get_capture` and `wait_for_packet`) by default filter the packet
 capture, removing known uninteresting packets from it - these are IPv6 Router
-Advertisments and IPv6 Router Alerts. These packets are unsolicitated
+Advertisements and IPv6 Router Alerts. These packets are unsolicited
 and from the point of |vtf| are random. If a test wants to receive these
 packets, it should specify either None or a custom filtering function
 as the value to the 'filter_out_fn' argument.
@@ -347,19 +356,19 @@ basic IPv4 forwarding.
 2. Add a setUpClass function containing the setup needed for our test to run::
 
          @classmethod
-         def setUpClass(self):
-             super(IP4FwdTestCase, self).setUpClass()
-             self.create_pg_interfaces(range(2))  #  create pg0 and pg1
-             for i in self.pg_interfaces:
-                 i.admin_up()  # put the interface up
-                 i.config_ip4()  # configure IPv4 address on the interface
-                 i.resolve_arp()  # resolve ARP, so that we know VPP MAC
+         def setUpClass(cls):
+             super(IP4FwdTestCase, cls).setUpClass()
+             cls.create_pg_interfaces(range(2))  #  create cls.pg0 and cls.pg1
+             for pg in self.pg_interfaces:
+                 pg.admin_up()  # put the interface up
+                 pg.config_ip4()  # configure IPv4 address on the interface
+                 pg.resolve_arp()  # resolve ARP, so that we know VPP MAC
 
 3. Create a helper method to create the packets to send::
 
          def create_stream(self, src_if, dst_if, count):
              packets = []
-             for i in range(count):
+             for _ in range(count):
                  # create packet info stored in the test case instance
                  info = self.create_packet_info(src_if, dst_if)
                  # convert the info into packet payload
@@ -407,10 +416,11 @@ basic IPv4 forwarding.
                      # ... more assertions here
                      self.assert_equal(udp.sport, saved_packet[UDP].sport,
                                        "UDP source port")
-                 except:
+                 except (KeyError, AssertionError):
                      self.logger.error(ppp("Unexpected or invalid packet:",
                                        packet))
-                     raise
+                     raise CaptureUnexpectedPacketError(packet=packet,
+                                                        interface=src_if)
              remaining_packet = self.get_next_packet_info_for_interface2(
                         src_if.sw_if_index,
                         dst_if.sw_if_index,
@@ -441,4 +451,4 @@ basic IPv4 forwarding.
              # verify capture
              self.verify_capture(self.pg0, self.pg1, capture)
 
-6. Run the test by issuing 'make test'.
+6. Run the test by issuing 'make test TEST=test_ip4_fwd.IP4FwdTestCase'.
