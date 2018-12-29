@@ -267,6 +267,11 @@ vlib_pci_get_device_info (vlib_main_t * vm, vlib_pci_addr_t * addr,
   di->driver_name = clib_sysfs_link_to_name ((char *) f);
 
   di->iommu_group = -1;
+  if (lvm->container_fd == -1)
+    {
+      linux_vfio_get_container_fd ();
+    }
+
   if (lvm->container_fd != -1)
     {
       u8 *tmpstr;

@@ -87,6 +87,28 @@ get_vfio_iommu_group (int group)
   return p ? pool_elt_at_index (lvm->iommu_groups, p[0]) : 0;
 }
 
+clib_error_t *
+linux_vfio_get_container_fd ()
+{
+  linux_vfio_main_t *lvm = &vfio_main;
+  int fd;
+
+
+  if ((fd = open ("/dev/vfio/vfio", O_RDWR)) == -1)
+    return clib_error_return_unix (0, "failed to open VFIO container");
+
+  if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
+    {
+      close (fd);
+      return clib_error_return_unix (0, "incompatible VFIO version");
+    }
+
+  lvm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
+  lvm->container_fd = fd;
+
+  return 0;
+}
+
 static clib_error_t *
 open_vfio_iommu_group (int group, int is_noiommu)
 {
@@ -99,17 +121,9 @@ open_vfio_iommu_group (int group, int is_noiommu)
 
   if (lvm->container_fd == -1)
     {
-      if ((fd = open ("/dev/vfio/vfio", O_RDWR)) == -1)
-	return clib_error_return_unix (0, "failed to open VFIO container");
-
-      if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
-	{
-	  close (fd);
-	  return clib_error_return_unix (0, "incompatible VFIO version");
-	}
-
-      lvm->iommu_pool_index_by_group = hash_create (0, sizeof (uword));
-      lvm->container_fd = fd;
+      err = linux_vfio_get_container_fd ();
+      if (err)
+	return err;
     }
 
   g = get_vfio_iommu_group (group);
