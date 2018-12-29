@@ -17,6 +17,7 @@ from collections import deque
 from threading import Thread, Event
 from inspect import getdoc, isclass
 from traceback import format_exception
+import logging
 from logging import FileHandler, DEBUG, Formatter
 from scapy.packet import Raw
 from hook import StepHook, PollHook, VppDiedError
@@ -52,6 +53,8 @@ ERROR = 2
 SKIP = 3
 TEST_RUN = 4
 
+logger = logging.getLogger(__name__)
+
 debug_framework = False
 if os.getenv('TEST_DEBUG', "0") == "1":
     debug_framework = True
@@ -63,6 +66,11 @@ if os.getenv('TEST_DEBUG', "0") == "1":
   The module provides a set of tools for constructing and running tests and
   representing the results.
 """
+
+
+class VppError(Exception):
+    """ Base Class for all VPP specific errors"""
+    pass
 
 
 class _PacketInfo(object):
@@ -181,7 +189,7 @@ class KeepAliveReporter(object):
     @pipe.setter
     def pipe(self, pipe):
         if self._pipe is not None:
-            raise Exception("Internal error - pipe should only be set once.")
+            raise VppError("Internal error - pipe should only be set once.")
         self._pipe = pipe
 
     def send_keep_alive(self, test, desc=None):
@@ -241,7 +249,7 @@ class VppTestCase(unittest.TestCase):
         elif dl == "gdbserver":
             cls.debug_gdbserver = True
         else:
-            raise Exception("Unrecognized DEBUG option: '%s'" % d)
+            raise EnvironmentError("Unrecognized DEBUG option: '%s'" % d)
 
     @staticmethod
     def get_least_used_cpu():
@@ -363,7 +371,7 @@ class VppTestCase(unittest.TestCase):
             gdbserver = '/usr/bin/gdbserver'
             if not os.path.isfile(gdbserver) or \
                     not os.access(gdbserver, os.X_OK):
-                raise Exception("gdbserver binary '%s' does not exist or is "
+                raise VppError("gdbserver binary '%s' does not exist or is "
                                 "not executable" % gdbserver)
 
             cmdline = [gdbserver, 'localhost:7777'] + cls.vpp_cmdline
@@ -396,8 +404,8 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """
-        Perform class setup before running the testcase
-        Remove shared memory files, start vpp and connect the vpp-api
+        Perform setup before running the test_methods in the testcase class.
+        Remove shared memory files, start vpp and connect the vpp-api.
         """
         gc.collect()  # run garbage collection first
         random.seed()
@@ -475,11 +483,12 @@ class VppTestCase(unittest.TestCase):
                                    "VPP-API connection failed, did you forget "
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
-        except Exception:
+        except VppError:
+            cls.logger.error('VppError.  Quitting...')
             try:
                 cls.quit()
-            except Exception:
-                pass
+            except Exception as e:
+                cls.logger.error('Unexpected error trying to quit: %s', e)
             raise
 
     @classmethod
@@ -590,7 +599,7 @@ class VppTestCase(unittest.TestCase):
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
         if self.vpp_dead:
-            raise Exception("VPP is dead when setting up the test")
+            raise VppDiedError("VPP is dead when setting up the test")
         self.sleep(.1, "during setUp")
         self.vpp_stdout_deque.append(
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
@@ -614,20 +623,29 @@ class VppTestCase(unittest.TestCase):
                            use self.pg_interfaces)
 
         """
-        if interfaces is None:
-            interfaces = cls.pg_interfaces
-        for i in interfaces:
-            i.enable_capture()
+        try:
+            if interfaces is None:
+                interfaces = cls.pg_interfaces
+            for i in interfaces:
+                i.enable_capture()
+        except AttributeError:
+            logger.error('List of packet generator interfaces not configured.')
 
     @classmethod
     def register_capture(cls, cap_name):
         """ Register a capture in the testclass """
         # add to the list of captures with current timestamp
-        cls._captures.append((time.time(), cap_name))
+        try:
+            cls._captures.append((time.time(), cap_name))
+        except AttributeError:
+            logger.error('List of packet captures not configured.')
         # filter out from zombies
-        cls._zombie_captures = [(stamp, name)
-                                for (stamp, name) in cls._zombie_captures
-                                if name != cap_name]
+        try:
+            cls._zombie_captures = [(stamp, name)
+                                    for (stamp, name) in cls._zombie_captures
+                                    if name != cap_name]
+        except AttributeError:
+            logger.error("List of 'zombie' packet captures not configured.")
 
     @classmethod
     def pg_start(cls):
@@ -641,7 +659,7 @@ class VppTestCase(unittest.TestCase):
             if wait > 0:
                 cls.sleep(wait, "before deleting capture %s" % cap_name)
                 now = time.time()
-            cls.logger.debug("Removing zombie capture %s" % cap_name)
+            cls.logger.debug("Removing zombie capture %s", cap_name)
             cls.vapi.cli('packet-generator delete %s' % cap_name)
 
         cls.vapi.cli("trace add pg-input 50")  # 50 is maximum
@@ -763,11 +781,12 @@ class VppTestCase(unittest.TestCase):
 
     def get_next_packet_info(self, info):
         """
-        Iterate over the packet info list stored in the testcase
+        Iterate over the list of packet info stored in the testcase
         Start iteration with first element if info is None
         Continue based on index in info if info is specified
 
         :param info: info or None
+        :type   _PacketInfo
         :returns: next info in list or None if no more infos
         """
         if info is None:
@@ -1158,7 +1177,7 @@ class VppTestResult(unittest.TestResult):
             self.log_error(test, err, 'addError')
             error_type_str = colorize("ERROR", RED)
         else:
-            raise Exception('Error type %s cannot be used to record an '
+            raise TypeError('Error type %s cannot be used to record an '
                             'error or a failure' % error_type)
 
         unittest_fn(self, test, err)

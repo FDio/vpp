@@ -36,7 +36,7 @@ class VCLTestCase(VppTestCase):
         var = "VPP_BUILD_DIR"
         self.build_dir = os.getenv(var, None)
         if self.build_dir is None:
-            raise Exception("Environment variable `%s' not set" % var)
+            raise EnvironmentError("Environment variable `%s' not set" % var)
         self.vppDebug = 'vpp_debug' in self.build_dir
         self.server_addr = "127.0.0.1"
         self.server_port = "22000"

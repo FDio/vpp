@@ -27,6 +27,7 @@ endif
 .PHONY: regen-api-doc
 regen-api-doc: verify-virtualenv
 	@mkdir -p $(API_DOC_GEN_DIR)
+	@cp $(SRC_DOC_DIR)/exceptions.rst $(API_DOC_GEN_DIR)
 	@cp $(SRC_DOC_DIR)/index.rst $(API_DOC_GEN_DIR)
 	@cp $(SRC_DOC_DIR)/indices.rst $(API_DOC_GEN_DIR)
 	@cp $(SRC_DOC_DIR)/overview.rst $(API_DOC_GEN_DIR)

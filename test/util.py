@@ -289,7 +289,7 @@ def fragment_rfc791(packet, fragsize, _logger=None):
     logger.debug(ppp("Fragmenting packet:", packet))
     packet = packet.__class__(str(packet))  # recalculate all values
     if len(packet[IP].options) > 0:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Not implemented")
     if len(packet) <= fragsize:
         return [packet]
 

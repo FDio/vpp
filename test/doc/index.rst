@@ -7,5 +7,6 @@ Contents
    :glob:
 
    overview
+   exceptions
    modules
    indices
