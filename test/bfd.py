@@ -275,7 +275,7 @@ class VppBFDUDPSession(VppObject):
             elif self.af == AF_INET6:
                 return self._interface.local_ip6
             else:
-                raise Exception("Unexpected af '%s'" % self.af)
+                raise ValueError("Unexpected af '%s'" % self.af)
         return self._local_addr
 
     @property
@@ -287,7 +287,7 @@ class VppBFDUDPSession(VppObject):
             elif self.af == AF_INET6:
                 return self._interface.local_ip6n
             else:
-                raise Exception("Unexpected af '%s'" % self.af)
+                raise ValueError("Unexpected af '%s'" % self.af)
         return self._local_addr_n
 
     @property

@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
+import unittest
+
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
+from custom_exceptions import CaptureUnexpectedPacketError
 from vpp_papi_provider import SYSLOG_SEVERITY
 from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
@@ -17,7 +20,8 @@ class TestSyslog(VppTestCase):
         super(TestSyslog, cls).setUpClass()
 
         try:
-            cls.create_pg_interfaces(range(1))
+            cls.pg_interfaces = cls.pg0, = cls.create_pg_interfaces(
+                range(1), idempotent=True)
             cls.pg0.admin_up()
             cls.pg0.config_ip4()
             cls.pg0.resolve_arp()
@@ -32,9 +36,11 @@ class TestSyslog(VppTestCase):
         Generate syslog message
 
         :param facility: facility value
+        :type  syslog_rfc5424_parser.constants SyslogFacility
         :param severity: severity level
+        :type  syslog_rfc5424_parser.constants SyslogSeverity
         :param appname: application name that originate message
-        :param msgid: message indetifier
+        :param msgid: message identifier
         :param sd: structured data (optional)
         :param msg: free-form message (optional)
         """
@@ -70,7 +76,7 @@ class TestSyslog(VppTestCase):
         :param facility: facility value
         :param severity: severity level
         :param appname: application name that originate message
-        :param msgid: message indetifier
+        :param msgid: message identifier
         :param sd: structured data (optional)
         :param msg: free-form message (optional)
         """
@@ -125,9 +131,10 @@ class TestSyslog(VppTestCase):
             self.assertEqual(capture[0][IP].dst, self.pg0.remote_ip4)
             self.assertEqual(capture[0][UDP].dport, 514)
             self.assert_packet_checksums_valid(capture[0], False)
-        except:
+        except(IndexError,):
                 self.logger.error(ppp("invalid packet:", capture[0]))
-                raise
+                raise CaptureUnexpectedPacketError(packet=capture[0],
+                                                   interface=self.pg0)
         self.syslog_verify(capture[0][Raw].load,
                            SyslogFacility.local7,
                            SyslogSeverity.info,
@@ -138,8 +145,8 @@ class TestSyslog(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.vapi.syslog_set_filter(SYSLOG_SEVERITY.WARN)
-        filter = self.vapi.syslog_get_filter()
-        self.assertEqual(filter.severity, SYSLOG_SEVERITY.WARN)
+        filter_ = self.vapi.syslog_get_filter()
+        self.assertEqual(filter_.severity, SYSLOG_SEVERITY.WARN)
         self.syslog_generate(SyslogFacility.local7,
                              SyslogSeverity.info,
                              appname,
@@ -180,9 +187,10 @@ class TestSyslog(VppTestCase):
         capture = self.pg0.get_capture(1)
         try:
             self.assertEqual(capture[0][UDP].dport, 12345)
-        except:
+        except (KeyError,):
                 self.logger.error(ppp("invalid packet:", capture[0]))
-                raise
+                raise CaptureUnexpectedPacketError(packet=capture[0],
+                                                   interface=self.pg0)
         self.syslog_verify(capture[0][Raw].load,
                            SyslogFacility.local5,
                            SyslogSeverity.err,

@@ -892,11 +892,25 @@ class TestIPLoadBalance(VppTestCase):
             i.admin_down()
         super(TestIPLoadBalance, self).tearDown()
 
-    def send_and_expect_load_balancing(self, input, pkts, outputs):
-        input.add_stream(pkts)
+    def send_and_expect_load_balancing(self, input_, pkts, outputs):
+        """
+
+        :param input_:
+        :type input_:  VppInterface
+        :param pkts:
+        :type pkts: list of Scapy.Packets()
+        :param outputs:
+        :type outputs:
+        :return:
+        :rtype:
+        :raises: AssertionError, AttributeError
+        """
+
+        input_.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         for oo in outputs:
+            rx = oo._get_capture(1)
             rx = oo._get_capture(1)
             self.assertNotEqual(0, len(rx))
 

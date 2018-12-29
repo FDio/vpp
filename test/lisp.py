@@ -1,4 +1,5 @@
 from scapy.fields import *
+from custom_exceptions import LispError
 from vpp_object import *
 
 
@@ -133,7 +134,7 @@ class LispEID(object):
             self.prefix_length = 0
             self.data_length = 6
         else:
-            raise Exception('Unsupported EID format {}!'.format(eid))
+            raise LispError('Unsupported EID format {}!'.format(eid))
 
     def __str__(self):
         if self.eid_type == LispEIDType.IP4:
@@ -141,8 +142,8 @@ class LispEID(object):
         elif self.eid_type == LispEIDType.IP6:
             return socket.inet_pton(socket.AF_INET6, self.eid_address)
         elif self.eid_type == LispEIDType.MAC:
-            return Exception('Unimplemented')
-        raise Exception('Unknown EID type {}!'.format(self.eid_type))
+            return LispError('Unimplemented')
+        raise LispError('Unknown EID type {}!'.format(self.eid_type))
 
 
 class VppLispMapping(VppObject):
@@ -258,7 +259,7 @@ class VppLispAdjacency(VppObject):
         self._leid = LispEID(leid)
         self._reid = LispEID(reid)
         if self._leid.eid_type != self._reid.eid_type:
-            raise Exception('remote and local EID are different types!')
+            raise LispError('remote and local EID are different types!')
         self._vni = vni
         self._test = test
 

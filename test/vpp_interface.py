@@ -1,11 +1,14 @@
 import binascii
+import logging
 import socket
 from abc import abstractmethod, ABCMeta
 
 from six import moves
-
+from custom_exceptions import InterfaceError
 from util import Host, mk_ll_addr
 from vpp_papi import mac_pton, mac_ntop
+
+logger = logging.getLogger(__name__)
 
 
 class VppInterface(object):
@@ -237,7 +240,7 @@ class VppInterface(object):
                 self._dump = intf
                 break
         else:
-            raise Exception(
+            raise InterfaceError(
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
                 (self.sw_if_index, moves.reprlib.repr(r)))
@@ -280,6 +283,9 @@ class VppInterface(object):
 
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
+        self.test.logger.debug("config_ip6: sw_if_index: %s, _local_ip6n: %s, "
+                               "local_ip6_prefix_len: %s", self.sw_if_index,
+                               self._local_ip6n, self.local_ip6_prefix_len)
         self.test.vapi.sw_interface_add_del_address(
             self.sw_if_index, self._local_ip6n, self.local_ip6_prefix_len,
             is_ipv6=1)

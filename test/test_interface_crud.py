@@ -20,7 +20,7 @@ from framework import VppTestCase, VppTestRunner
 
 
 class TestLoopbackInterfaceCRUD(VppTestCase):
-    """CRUD Loopback
+    """Loopback Interface CRUD Tests
 
     """
 
@@ -78,7 +78,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
             self.assertIn(info, rcvd_icmp_pkts)
 
     def test_crud(self):
-        # create
+        """ Create Loopback test."""
         loopbacks = self.create_loopback_interfaces(20)
         for i in loopbacks:
             i.local_ip4_prefix_len = 32

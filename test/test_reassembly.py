@@ -6,7 +6,7 @@ from random import shuffle
 
 from framework import VppTestCase, VppTestRunner, is_skip_aarch64_set,\
     is_platform_aarch64
-
+from custom_exceptions import CaptureUnexpectedPacketError
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP, ICMP
@@ -119,7 +119,7 @@ class TestIPv4Reassembly(VppTestCase):
                     packet_index not in dropped_packet_indexes,
                     ppp("Packet received, but should be dropped:", packet))
                 if packet_index in seen:
-                    raise Exception(ppp("Duplicate packet received", packet))
+                    raise (ppp("Duplicate packet received", packet))
                 seen.add(packet_index)
                 self.assertEqual(payload_info.dst, self.src_if.sw_if_index)
                 info = self._packet_infos[packet_index]
@@ -129,7 +129,7 @@ class TestIPv4Reassembly(VppTestCase):
                 self.assertEqual(ip.src, saved_packet[IP].src)
                 self.assertEqual(ip.dst, saved_packet[IP].dst)
                 self.assertEqual(udp.payload, saved_packet[UDP].payload)
-            except Exception:
+            except (IndexError, AssertionError):
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for index in self._packet_infos:
