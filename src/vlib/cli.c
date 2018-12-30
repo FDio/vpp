@@ -852,7 +852,7 @@ show_cpu (vlib_main_t * vm, unformat_input_t * input,
 {
 #define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
   _("Model name", "%U", format_cpu_model_name);
-  _("Microarchitecture", "%U", format_cpu_uarch);
+  _("Microarch model (family)", "%U", format_cpu_uarch);
   _("Flags", "%U", format_cpu_flags);
   _("Base frequency", "%.2f GHz",
     ((f64) vm->clib_time.clocks_per_second) * 1e-9);
