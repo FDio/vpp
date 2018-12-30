@@ -340,28 +340,6 @@ vlib_buffer_get_current_pa (vlib_main_t * vm, vlib_buffer_t * b)
     vlib_prefetch_buffer_header (_b, type);		\
   } while (0)
 
-#if 0
-/* Iterate over known allocated vlib bufs. You probably do not want
- * to do this!
- @param vm      the vlib_main_t
- @param bi      found allocated buffer index
- @param body    operation to perform on buffer index
- function executes body for each allocated buffer index
- */
-#define vlib_buffer_foreach_allocated(vm,bi,body)                \
-do {                                                             \
-  vlib_main_t * _vmain = (vm);                                   \
-  vlib_buffer_main_t * _bmain = &_vmain->buffer_main;            \
-  hash_pair_t * _vbpair;                                         \
-  hash_foreach_pair(_vbpair, _bmain->buffer_known_hash, ({       \
-    if (VLIB_BUFFER_KNOWN_ALLOCATED == _vbpair->value[0]) {      \
-      (bi) = _vbpair->key;                                       \
-      body;                                                      \
-    }                                                            \
-  }));                                                           \
-} while (0)
-#endif
-
 typedef enum
 {
   /* Index is unknown. */
@@ -693,31 +671,6 @@ vlib_buffer_free_list_buffer_size (vlib_main_t * vm,
   return f->n_data_bytes;
 }
 
-void vlib_aligned_memcpy (void *_dst, void *_src, int n_bytes);
-
-/* Reasonably fast buffer copy routine. */
-always_inline void
-vlib_copy_buffers (u32 * dst, u32 * src, u32 n)
-{
-  while (n >= 4)
-    {
-      dst[0] = src[0];
-      dst[1] = src[1];
-      dst[2] = src[2];
-      dst[3] = src[3];
-      dst += 4;
-      src += 4;
-      n -= 4;
-    }
-  while (n > 0)
-    {
-      dst[0] = src[0];
-      dst += 1;
-      src += 1;
-      n -= 1;
-    }
-}
-
 /* Append given data to end of buffer, possibly allocating new buffers. */
 u32 vlib_buffer_add_data (vlib_main_t * vm,
 			  vlib_buffer_free_list_index_t free_list_index,
@@ -1017,6 +970,8 @@ typedef struct
   vlib_buffer_free_list_index_t free_list_index;
 
   u32 *free_buffers;
+
+  u8 *name;
 } vlib_packet_template_t;
 
 void vlib_packet_template_get_packet_helper (vlib_main_t * vm,
@@ -1037,36 +992,6 @@ always_inline void
 vlib_packet_template_free (vlib_main_t * vm, vlib_packet_template_t * t)
 {
   vec_free (t->packet_data);
-}
-
-always_inline u32
-unserialize_vlib_buffer_n_bytes (serialize_main_t * m)
-{
-  serialize_stream_t *s = &m->stream;
-  vlib_serialize_buffer_main_t *sm
-    = uword_to_pointer (m->stream.data_function_opaque,
-			vlib_serialize_buffer_main_t *);
-  vlib_main_t *vm = sm->vlib_main;
-  u32 n, *f;
-
-  n = s->n_buffer_bytes - s->current_buffer_index;
-  if (sm->last_buffer != ~0)
-    {
-      vlib_buffer_t *b = vlib_get_buffer (vm, sm->last_buffer);
-      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-	{
-	  b = vlib_get_buffer (vm, b->next_buffer);
-	  n += b->current_length;
-	}
-    }
-
-  /* *INDENT-OFF* */
-  clib_fifo_foreach (f, sm->rx.buffer_fifo, ({
-    n += vlib_buffer_index_length_in_chain (vm, f[0]);
-  }));
-/* *INDENT-ON* */
-
-  return n;
 }
 
 /* Set a buffer quickly into "uninitialized" state.  We want this to

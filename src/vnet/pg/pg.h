@@ -89,8 +89,6 @@ typedef struct
   /* Buffers pre-initialized with fixed buffer data for this stream. */
   u32 *buffer_fifo;
 
-  /* Buffer free list for this buffer index in stream. */
-  vlib_buffer_free_list_index_t free_list_index;
 } pg_buffer_index_t;
 
 typedef struct pg_stream_t

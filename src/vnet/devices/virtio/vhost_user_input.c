@@ -349,9 +349,8 @@ vhost_user_if_input (vlib_main_t * vm,
     {
       u32 curr_len = cpu->rx_buffers_len;
       cpu->rx_buffers_len +=
-	vlib_buffer_alloc_from_free_list (vm, cpu->rx_buffers + curr_len,
-					  VHOST_USER_RX_BUFFERS_N - curr_len,
-					  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+	vlib_buffer_alloc (vm, cpu->rx_buffers + curr_len,
+			   VHOST_USER_RX_BUFFERS_N - curr_len);
 
       if (PREDICT_FALSE
 	  (cpu->rx_buffers_len < VHOST_USER_RX_BUFFER_STARVATION))

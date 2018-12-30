@@ -407,12 +407,6 @@ typedef struct
   vlib_buffer_fill_free_list_cb_t *vlib_buffer_fill_free_list_cb;
   vlib_buffer_free_cb_t *vlib_buffer_free_cb;
   vlib_buffer_free_no_next_cb_t *vlib_buffer_free_no_next_cb;
-  void (*vlib_packet_template_init_cb) (struct vlib_main_t * vm, void *t,
-					void *packet_data,
-					uword n_packet_data_bytes,
-					uword
-					min_n_buffers_each_physmem_alloc,
-					u8 * name);
   void (*vlib_buffer_delete_free_list_cb) (struct vlib_main_t * vm,
 					   vlib_buffer_free_list_index_t
 					   free_list_index);
@@ -478,61 +472,8 @@ u8 vlib_buffer_register_physmem_map (struct vlib_main_t * vm,
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
 
-typedef struct
-{
-  struct vlib_main_t *vlib_main;
 
-  u32 first_buffer, last_buffer;
-
-  union
-  {
-    struct
-    {
-      /* Total accumulated bytes in chain starting with first_buffer. */
-      u32 n_total_data_bytes;
-
-      /* Max number of bytes to accumulate in chain starting with first_buffer.
-         As this limit is reached buffers are enqueued to next node. */
-      u32 max_n_data_bytes_per_chain;
-
-      /* Next node to enqueue buffers to relative to current process node. */
-      u32 next_index;
-
-      /* Free list to use to allocate new buffers. */
-      vlib_buffer_free_list_index_t free_list_index;
-    } tx;
-
-    struct
-    {
-      /* CLIB fifo of buffer indices waiting to be unserialized. */
-      u32 *buffer_fifo;
-
-      /* Event type used to signal that RX buffers have been added to fifo. */
-      uword ready_one_time_event;
-    } rx;
-  };
-} vlib_serialize_buffer_main_t;
-
-void serialize_open_vlib_buffer (serialize_main_t * m, struct vlib_main_t *vm,
-				 vlib_serialize_buffer_main_t * sm);
-void unserialize_open_vlib_buffer (serialize_main_t * m,
-				   struct vlib_main_t *vm,
-				   vlib_serialize_buffer_main_t * sm);
-
-u32 serialize_close_vlib_buffer (serialize_main_t * m);
-void unserialize_close_vlib_buffer (serialize_main_t * m);
 void *vlib_set_buffer_free_callback (struct vlib_main_t *vm, void *fp);
-
-always_inline u32
-serialize_vlib_buffer_n_bytes (serialize_main_t * m)
-{
-  serialize_stream_t *s = &m->stream;
-  vlib_serialize_buffer_main_t *sm
-    = uword_to_pointer (m->stream.data_function_opaque,
-			vlib_serialize_buffer_main_t *);
-  return sm->tx.n_total_data_bytes + s->current_buffer_index +
-    vec_len (s->overflow_buffer);
-}
 
 /*
  */

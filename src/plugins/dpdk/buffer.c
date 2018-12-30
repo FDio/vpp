@@ -373,23 +373,6 @@ CLIB_MULTIARCH_FN (dpdk_buffer_free_no_next) (vlib_main_t * vm, u32 * buffers,
 }
 
 #ifndef CLIB_MARCH_VARIANT
-static void
-dpdk_packet_template_init (vlib_main_t * vm,
-			   void *vt,
-			   void *packet_data,
-			   uword n_packet_data_bytes,
-			   uword min_n_buffers_each_alloc, u8 * name)
-{
-  vlib_packet_template_t *t = (vlib_packet_template_t *) vt;
-
-  vlib_worker_thread_barrier_sync (vm);
-  clib_memset (t, 0, sizeof (t[0]));
-
-  vec_add (t->packet_data, packet_data, n_packet_data_bytes);
-
-  vlib_worker_thread_barrier_release (vm);
-}
-
 clib_error_t *
 dpdk_pool_create (vlib_main_t * vm, u8 * pool_name, u32 elt_size,
 		  u32 num_elts, u32 pool_priv_size, u16 cache_size, u8 numa,
@@ -626,7 +609,6 @@ VLIB_BUFFER_REGISTER_CALLBACKS (dpdk, static) = {
   .vlib_buffer_fill_free_list_cb = &dpdk_buffer_fill_free_list,
   .vlib_buffer_free_cb = &dpdk_buffer_free,
   .vlib_buffer_free_no_next_cb = &dpdk_buffer_free_no_next,
-  .vlib_packet_template_init_cb = &dpdk_packet_template_init,
   .vlib_buffer_delete_free_list_cb = &dpdk_buffer_delete_free_list,
 };
 /* *INDENT-ON* */
