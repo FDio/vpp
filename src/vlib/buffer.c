@@ -661,26 +661,6 @@ vlib_buffer_free_no_next_internal (vlib_main_t * vm, u32 * buffers,
 			   0);
 }
 
-/* Copy template packet data into buffers as they are allocated. */
-static void __attribute__ ((unused))
-vlib_packet_template_buffer_init (vlib_main_t * vm,
-				  vlib_buffer_free_list_t * fl,
-				  u32 * buffers, u32 n_buffers)
-{
-  vlib_packet_template_t *t =
-    uword_to_pointer (fl->buffer_init_function_opaque,
-		      vlib_packet_template_t *);
-  uword i;
-
-  for (i = 0; i < n_buffers; i++)
-    {
-      vlib_buffer_t *b = vlib_get_buffer (vm, buffers[i]);
-      ASSERT (b->current_length == vec_len (t->packet_data));
-      clib_memcpy_fast (vlib_buffer_get_current (b), t->packet_data,
-			b->current_length);
-    }
-}
-
 void
 vlib_packet_template_init (vlib_main_t * vm,
 			   vlib_packet_template_t * t,
@@ -688,19 +668,11 @@ vlib_packet_template_init (vlib_main_t * vm,
 			   uword n_packet_data_bytes,
 			   uword min_n_buffers_each_alloc, char *fmt, ...)
 {
-  vlib_buffer_main_t *bm = &buffer_main;
   va_list va;
-  u8 *name;
-  vlib_buffer_free_list_t *fl;
 
   va_start (va, fmt);
-  name = va_format (0, fmt, &va);
+  t->name = va_format (0, fmt, &va);
   va_end (va);
-
-  if (bm->cb.vlib_packet_template_init_cb)
-    bm->cb.vlib_packet_template_init_cb (vm, (void *) t, packet_data,
-					 n_packet_data_bytes,
-					 min_n_buffers_each_alloc, name);
 
   vlib_worker_thread_barrier_sync (vm);
 
@@ -709,23 +681,6 @@ vlib_packet_template_init (vlib_main_t * vm,
   vec_add (t->packet_data, packet_data, n_packet_data_bytes);
   t->min_n_buffers_each_alloc = min_n_buffers_each_alloc;
 
-  t->free_list_index = vlib_buffer_create_free_list_helper
-    (vm, n_packet_data_bytes,
-     /* is_public */ 1,
-     /* is_default */ 0,
-     name);
-
-  ASSERT (t->free_list_index != 0);
-  fl = vlib_buffer_get_free_list (vm, t->free_list_index);
-  fl->min_n_buffers_each_alloc = t->min_n_buffers_each_alloc;
-
-  fl->buffer_init_function = vlib_packet_template_buffer_init;
-  fl->buffer_init_function_opaque = pointer_to_uword (t);
-
-  fl->buffer_init_template.current_data = 0;
-  fl->buffer_init_template.current_length = n_packet_data_bytes;
-  fl->buffer_init_template.flags = 0;
-  fl->buffer_init_template.n_add_refs = 0;
   vlib_worker_thread_barrier_release (vm);
 }
 
@@ -747,23 +702,6 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
   b->current_length = vec_len (t->packet_data);
 
   return b->data;
-}
-
-void
-vlib_packet_template_get_packet_helper (vlib_main_t * vm,
-					vlib_packet_template_t * t)
-{
-  word n = t->min_n_buffers_each_alloc;
-  word l = vec_len (t->packet_data);
-  word n_alloc;
-
-  ASSERT (l > 0);
-  ASSERT (vec_len (t->free_buffers) == 0);
-
-  vec_validate (t->free_buffers, n - 1);
-  n_alloc = vlib_buffer_alloc_from_free_list (vm, t->free_buffers,
-					      n, t->free_list_index);
-  _vec_len (t->free_buffers) = n_alloc;
 }
 
 /* Append given data to end of buffer, possibly allocating new buffers. */
