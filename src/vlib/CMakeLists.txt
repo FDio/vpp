@@ -47,7 +47,6 @@ endif()
 add_vpp_library(vlib
   SOURCES
   buffer.c
-  buffer_serialize.c
   cli.c
   counter.c
   error.c

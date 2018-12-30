@@ -99,8 +99,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   struct netmap_ring *ring;
   int cur_ring;
   u32 thread_index = vm->thread_index;
-  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
-							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  u32 n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
 
   if (nif->per_interface_next_index != ~0)
     next_index = nif->per_interface_next_index;

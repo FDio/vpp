@@ -1445,8 +1445,7 @@ tcp_main_enable (vlib_main_t * vm)
 
   tcp_initialize_timer_wheels (tm);
 
-  tm->bytes_per_buffer = vlib_buffer_free_list_buffer_size
-    (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  tm->bytes_per_buffer = VLIB_BUFFER_DATA_SIZE;
 
   return error;
 }

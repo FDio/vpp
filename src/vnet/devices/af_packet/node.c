@@ -192,8 +192,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 *block_start = apif->rx_ring + block * block_size;
   uword n_trace = vlib_get_trace_count (vm, node);
   u32 thread_index = vm->thread_index;
-  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
-							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  u32 n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
 
   if (apif->per_interface_next_index != ~0)

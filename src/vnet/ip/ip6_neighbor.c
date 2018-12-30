@@ -2758,10 +2758,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
     return;
 
   /* send report now - build a mldpv2 report packet  */
-  n_allocated = vlib_buffer_alloc_from_free_list (vm,
-						  &bo0,
-						  n_to_alloc,
-						  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  n_allocated = vlib_buffer_alloc (vm, &bo0, n_to_alloc);
   if (PREDICT_FALSE (n_allocated == 0))
     {
       clib_warning ("buffer allocation failure");
@@ -2954,8 +2951,7 @@ ip6_neighbor_process_timer_event (vlib_main_t * vm,
         radv_info->last_multicast_time = now;
 
         /* send advert now - build a "solicted" router advert with unspecified source address */
-        n_allocated = vlib_buffer_alloc_from_free_list
-          (vm, &bo0, n_to_alloc, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+        n_allocated = vlib_buffer_alloc (vm, &bo0, n_to_alloc);
 
         if (PREDICT_FALSE(n_allocated == 0))
           {
