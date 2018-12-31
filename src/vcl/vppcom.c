@@ -1571,8 +1571,8 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 			      SVM_Q_WAIT);
     }
 
-  VDBG (2, "VCL<%d>: vpp handle 0x%llx, sid %u: read %d bytes from (%p)",
-	getpid (), s->vpp_handle, session_handle, n_read, rx_fifo);
+  VDBG (2, "vpp handle 0x%llx, sid %u: read %d bytes from (%p)",
+	s->vpp_handle, session_handle, n_read, rx_fifo);
 
   return n_read;
 }
@@ -2330,9 +2330,8 @@ vppcom_epoll_create (void)
   vep_session->wait_cont_idx = ~0;
   vep_session->vpp_handle = ~0;
 
-  vcl_evt (VCL_EVT_EPOLL_CREATE, vep_session, vep_sh);
-  VDBG (0, "VCL<%d>: Created vep_idx %u / sid %u!",
-	getpid (), vep_session->session_index, vep_session->session_index);
+  vcl_evt (VCL_EVT_EPOLL_CREATE, vep_session, vep_session->session_index);
+  VDBG (0, "Created vep_idx %u", vep_session->session_index);
 
   return vcl_session_handle (vep_session);
 }
@@ -2348,21 +2347,19 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 
   if (vep_handle == session_handle)
     {
-      clib_warning ("VCL<%d>: ERROR: vep_idx == session_index (%u)!",
-		    getpid (), vep_handle);
+      VDBG (0, "vep_sh == session handle (%u)!", vep_handle);
       return VPPCOM_EINVAL;
     }
 
   vep_session = vcl_session_get_w_handle (wrk, vep_handle);
   if (PREDICT_FALSE (!vep_session))
     {
-      clib_warning ("VCL<%d>: ERROR: Invalid vep_idx (%u)!", vep_handle);
+      VDBG (0, "Invalid vep_sh (%u)!", vep_handle);
       return VPPCOM_EBADFD;
     }
   if (PREDICT_FALSE (!vep_session->is_vep))
     {
-      clib_warning ("VCL<%d>: ERROR: vep_idx (%u) is not a vep!",
-		    getpid (), vep_handle);
+      VDBG (0, "vep_sh (%u) is not a vep!", vep_handle);
       return VPPCOM_EINVAL;
     }
 
@@ -2372,13 +2369,12 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
   session = vcl_session_get_w_handle (wrk, session_handle);
   if (PREDICT_FALSE (!session))
     {
-      VDBG (0, "VCL<%d>: ERROR: Invalid session_handle (%u)!",
-	    getpid (), session_handle);
+      VDBG (0, "Invalid session_handle (%u)!", session_handle);
       return VPPCOM_EBADFD;
     }
   if (PREDICT_FALSE (session->is_vep))
     {
-      clib_warning ("ERROR: session_handle (%u) is a vep!", vep_handle);
+      VDBG (0, "session_handle (%u) is a vep!", vep_handle);
       return VPPCOM_EINVAL;
     }
 
@@ -2387,8 +2383,7 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
     case EPOLL_CTL_ADD:
       if (PREDICT_FALSE (!event))
 	{
-	  clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_ADD: NULL pointer to "
-			"epoll_event structure!", getpid ());
+	  VDBG (0, "EPOLL_CTL_ADD: NULL pointer to epoll_event structure!");
 	  return VPPCOM_EINVAL;
 	}
       if (vep_session->vep.next_sh != ~0)
@@ -2398,9 +2393,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 						   vep_session->vep.next_sh);
 	  if (PREDICT_FALSE (!next_session))
 	    {
-	      clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_ADD: Invalid "
-			    "vep.next_sid (%u) on vep_idx (%u)!",
-			    getpid (), vep_session->vep.next_sh, vep_handle);
+	      VDBG (0, "EPOLL_CTL_ADD: Invalid vep.next_sid (%u) on "
+		    "vep_idx (%u)!", vep_session->vep.next_sh, vep_handle);
 	      return VPPCOM_EBADFD;
 	    }
 	  ASSERT (next_session->vep.prev_sh == vep_handle);
@@ -2415,57 +2409,49 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       session->is_vep_session = 1;
       vep_session->vep.next_sh = session_handle;
 
-      VDBG (1, "VCL<%d>: EPOLL_CTL_ADD: vep_idx %u, sid %u, events 0x%x, "
-	    "data 0x%llx!", getpid (), vep_handle, session_handle,
-	    event->events, event->data.u64);
+      VDBG (1, "EPOLL_CTL_ADD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
+            vep_handle, session_handle, event->events, event->data.u64);
       vcl_evt (VCL_EVT_EPOLL_CTLADD, session, event->events, event->data.u64);
       break;
 
     case EPOLL_CTL_MOD:
       if (PREDICT_FALSE (!event))
 	{
-	  clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_MOD: NULL pointer to "
-			"epoll_event structure!", getpid ());
+	  VDBG (0, "EPOLL_CTL_MOD: NULL pointer to epoll_event structure!");
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
       else if (PREDICT_FALSE (!session->is_vep_session))
 	{
-	  clib_warning ("VCL<%d>: ERROR: sid %u EPOLL_CTL_MOD: "
-			"not a vep session!", getpid (), session_handle);
+	  VDBG (0, "sid %u EPOLL_CTL_MOD: not a vep session!",
+	        session_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
       else if (PREDICT_FALSE (session->vep.vep_sh != vep_handle))
 	{
-	  clib_warning ("VCL<%d>: ERROR: sid %u EPOLL_CTL_MOD: "
-			"vep_idx (%u) != vep_idx (%u)!",
-			getpid (), session_handle,
-			session->vep.vep_sh, vep_handle);
+	  VDBG (0, "EPOLL_CTL_MOD: sh %u vep_sh (%u) != vep_sh (%u)!",
+	        session_handle, session->vep.vep_sh, vep_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
       session->vep.et_mask = VEP_DEFAULT_ET_MASK;
       session->vep.ev = *event;
-      VDBG (1, "VCL<%d>: EPOLL_CTL_MOD: vep_idx %u, sid %u, events 0x%x,"
-	    " data 0x%llx!", getpid (), vep_handle, session_handle,
-	    event->events, event->data.u64);
+      VDBG (1, "EPOLL_CTL_MOD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
+            vep_handle, session_handle, event->events, event->data.u64);
       break;
 
     case EPOLL_CTL_DEL:
       if (PREDICT_FALSE (!session->is_vep_session))
 	{
-	  clib_warning ("VCL<%d>: ERROR: sid %u EPOLL_CTL_DEL: "
-			"not a vep session!", getpid (), session_handle);
+	  VDBG (0, "EPOLL_CTL_DEL: %u not a vep session!",  session_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
       else if (PREDICT_FALSE (session->vep.vep_sh != vep_handle))
 	{
-	  clib_warning ("VCL<%d>: ERROR: sid %u EPOLL_CTL_DEL: "
-			"vep_idx (%u) != vep_idx (%u)!",
-			getpid (), session_handle,
-			session->vep.vep_sh, vep_handle);
+	  VDBG (0, "EPOLL_CTL_DEL: sh %u vep_sh (%u) != vep_sh (%u)!",
+	        session_handle, session->vep.vep_sh, vep_handle);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
@@ -2482,9 +2468,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  prev_session = vcl_session_get_w_handle (wrk, session->vep.prev_sh);
 	  if (PREDICT_FALSE (!prev_session))
 	    {
-	      clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_DEL: Invalid "
-			    "vep.prev_sid (%u) on sid (%u)!",
-			    getpid (), session->vep.prev_sh, session_handle);
+	      VDBG (0, "EPOLL_CTL_DEL: Invalid prev_sid (%u) on sid (%u)!",
+	            session->vep.prev_sh, session_handle);
 	      return VPPCOM_EBADFD;
 	    }
 	  ASSERT (prev_session->vep.next_sh == session_handle);
@@ -2496,9 +2481,8 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  next_session = vcl_session_get_w_handle (wrk, session->vep.next_sh);
 	  if (PREDICT_FALSE (!next_session))
 	    {
-	      clib_warning ("VCL<%d>: ERROR: EPOLL_CTL_DEL: Invalid "
-			    "vep.next_sid (%u) on sid (%u)!",
-			    getpid (), session->vep.next_sh, session_handle);
+	      VDBG (0, "EPOLL_CTL_DEL: Invalid next_sid (%u) on sid (%u)!",
+	            session->vep.next_sh, session_handle);
 	      return VPPCOM_EBADFD;
 	    }
 	  ASSERT (next_session->vep.prev_sh == session_handle);
@@ -2510,13 +2494,13 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       session->vep.prev_sh = ~0;
       session->vep.vep_sh = ~0;
       session->is_vep_session = 0;
-      VDBG (1, "VCL<%d>: EPOLL_CTL_DEL: vep_idx %u, sid %u!",
-	    getpid (), vep_handle, session_handle);
+      VDBG (1, "EPOLL_CTL_DEL: vep_idx %u, sid %u!", vep_handle,
+            session_handle);
       vcl_evt (VCL_EVT_EPOLL_CTLDEL, session, vep_sh);
       break;
 
     default:
-      clib_warning ("VCL<%d>: ERROR: Invalid operation (%d)!", getpid (), op);
+      VDBG (0, "Invalid operation (%d)!", op);
       rv = VPPCOM_EINVAL;
     }
 
@@ -3381,8 +3365,7 @@ vppcom_session_recvfrom (uint32_t session_handle, void *buffer,
     rv = vppcom_session_peek (session_handle, buffer, buflen);
   else
     {
-      clib_warning ("VCL<%d>: Unsupport flags for recvfrom %d",
-		    getpid (), flags);
+      VDBG (0, "Unsupport flags for recvfrom %d", flags);
       return VPPCOM_EAFNOSUPPORT;
     }
 
