@@ -51,11 +51,15 @@
 
 #define LDP_MAX_NWORKERS 32
 
+#define LDP_F_SHUT_RD	(1 << 0)
+#define LDP_F_SHUT_WR	(1 << 1)
+
 typedef struct ldp_fd_entry_
 {
   u32 session_index;
   u32 fd;
   u32 fd_index;
+  u32 flags;
 } ldp_fd_entry_t;
 
 typedef struct ldp_worker_ctx_
@@ -1876,55 +1880,29 @@ ssize_t
 recv (int fd, void *buf, size_t n, int flags)
 {
   ssize_t size;
-  const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid;
 
   if ((errno = -ldp_init ()))
     return -1;
 
+  sid = ldp_sid_from_fd (fd);
   if (sid != INVALID_SESSION_ID)
     {
-      func_str = "vppcom_session_recvfrom";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "sid %u (0x%x), buf %p, n %u, flags 0x%x", getpid (),
-		      fd, fd, func_str, sid, sid, buf, n, flags);
+      LDBG (2, "fd %d (0x%x): calling vcl recvfrom: sid %u (0x%x), buf %p,"
+	    " n %u, flags 0x%x", fd, fd, sid, sid, buf, n, flags);
 
       size = vppcom_session_recvfrom (sid, buf, n, flags, NULL);
       if (size < 0)
-	{
-	  errno = -size;
-	  size = -1;
-	}
+	errno = -size;
     }
   else
     {
-      func_str = "libc_recv";
-
-      if (LDP_DEBUG > 2)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-		      "buf %p, n %u, flags 0x%x", getpid (),
-		      fd, fd, func_str, buf, n, flags);
+      LDBG (2, "fd %d (0x%x): calling libc_recvfrom(): buf %p, n %u, "
+	    "flags 0x%x", fd, fd, buf, n, flags);
 
       size = libc_recv (fd, buf, n, flags);
     }
 
-  if (LDP_DEBUG > 2)
-    {
-      if (size < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, size, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, size, size);
-    }
   return size;
 }
 
@@ -2790,44 +2768,43 @@ accept (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict addr_len)
 int
 shutdown (int fd, int how)
 {
-  int rv;
-  const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  int rv = 0;
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sid != INVALID_SESSION_ID)
+  if (ldp_fd_is_sid (fd))
     {
-      func_str = "vppcom_session_close[TODO]";
-      rv = close (fd);
+      u32 fd_index = fd - ldp->sid_bit_val;
+      ldp_fd_entry_t *fde;
+
+      fde = ldp_fd_entry_get_w_lock (fd_index);
+      if (!fde)
+	{
+	  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+	  errno = ENOTCONN;
+	  return -1;
+	}
+
+      if (how == SHUT_RD)
+	fde->flags |= LDP_F_SHUT_RD;
+      else if (how == SHUT_WR)
+	fde->flags |= LDP_F_SHUT_WR;
+      else if (how == SHUT_RDWR)
+	fde->flags |= (LDP_F_SHUT_RD | LDP_F_SHUT_WR);
+
+      if ((fde->flags & LDP_F_SHUT_RD) && (fde->flags & LDP_F_SHUT_WR))
+	rv = close (fd);
+
+      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+      LDBG (0, "fd %d (0x%x): calling vcl shutdown: how %d", fd, fd, how);
     }
   else
     {
-      func_str = "libc_shutdown";
-
-      if (LDP_DEBUG > 1)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): how %d",
-		      getpid (), fd, fd, func_str, how);
-
+      LDBG (1, "fd %d (0x%x): calling libc_shutdown: how %d", fd, fd, how);
       rv = libc_shutdown (fd, how);
     }
 
-  if (LDP_DEBUG > 1)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, rv, rv);
-    }
   return rv;
 }
 
@@ -3017,7 +2994,6 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
   double time_to_wait = (double) 0, time_out, now = 0;
   u32 vep_idx = ldp_sid_from_fd (epfd);
   int libc_epfd, rv = 0;
-  const char *func_str;
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -3033,8 +3009,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 
   if (PREDICT_FALSE (vep_idx == INVALID_SESSION_ID))
     {
-      clib_warning ("LDP<%d>: ERROR: epfd %d (0x%x): bad vep_idx %d (0x%x)!",
-		    getpid (), epfd, epfd, vep_idx, vep_idx);
+      LDBG (0, "epfd %d (0x%x): bad vep_idx %d (0x%x)!", epfd, epfd, vep_idx,
+	    vep_idx);
       errno = EBADFD;
       return -1;
     }
@@ -3042,7 +3018,6 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
   time_to_wait = ((timeout >= 0) ? (double) timeout / 1000 : 0);
   time_out = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
-  func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
   libc_epfd = vppcom_session_attr (vep_idx, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
   if (PREDICT_FALSE (libc_epfd < 0))
     {
@@ -3059,11 +3034,9 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
     {
       if (!ldpw->epoll_wait_vcl)
 	{
-	  func_str = "vppcom_epoll_wait";
-
-	  LDBG (3, "epfd %d (0x%x): calling %s(): vep_idx %d (0x%x),"
-		" events %p, maxevents %d", epfd, epfd, func_str,
-		vep_idx, vep_idx, events, maxevents);
+	  LDBG (3, "epfd %d (0x%x): calling vcl_epoll_wait: vep_idx %d (0x%x)"
+		" events %p, maxevents %d", epfd, epfd, vep_idx, vep_idx,
+		events, maxevents);
 
 	  rv = vppcom_epoll_wait (vep_idx, events, maxevents, 0);
 	  if (rv > 0)
@@ -3083,12 +3056,9 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 
       if (libc_epfd > 0)
 	{
-	  func_str = "libc_epoll_pwait";
-
-	  LDBG (3, "epfd %d (0x%x): calling %s(): libc_epfd %d "
-		"(0x%x), events %p, maxevents %d, sigmask %p",
-		epfd, epfd, func_str, libc_epfd, libc_epfd, events,
-		maxevents, sigmask);
+	  LDBG (3, "epfd %d (0x%x): calling libc_epoll_wait: libc_epfd %d "
+		"(0x%x), events %p, maxevents %d, sigmask %p", epfd, epfd,
+		libc_epfd, libc_epfd, events, maxevents, sigmask);
 
 	  rv = libc_epoll_pwait (libc_epfd, events, maxevents, 0, sigmask);
 	  if (rv != 0)
@@ -3101,23 +3071,6 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
   while (now < time_out);
 
 done:
-  if (LDP_DEBUG > 3)
-    {
-      if (libc_epfd > 0)
-	epfd = libc_epfd;
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: epfd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), epfd, epfd,
-			func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: epfd %d (0x%x): returning %d (0x%x)",
-		      getpid (), epfd, epfd, rv, rv);
-    }
   return rv;
 }
 
