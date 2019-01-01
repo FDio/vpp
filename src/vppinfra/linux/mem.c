@@ -63,6 +63,12 @@ clib_mem_get_default_hugepage_size (void)
   if (size)
     goto done;
 
+  /*
+   * If the kernel doesn't support hugepages, /proc/meminfo won't
+   * say anything about it. Use the regular page size as a default.
+   */
+  size = clib_mem_get_page_size () / 1024;
+
   if ((fd = open ("/proc/meminfo", 0)) == -1)
     return 0;
 
