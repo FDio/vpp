@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3e31680_5c8cfd38",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 796,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-02T17:20:20Z",
+      "side": 1,
+      "message": "This can be passed as an option from vcl. No need to configure it statically here.",
+      "range": {
+        "startLine": 796,
+        "startChar": 2,
+        "endLine": 796,
+        "endChar": 39
+      },
+      "revId": "c1d116ba754318933e8550f6f79ab901497929cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
