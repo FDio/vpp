@@ -22,6 +22,30 @@
       "revId": "95ebf6e568aa0a066fbea1f237672646713f6858",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d57e75d_014b00f4",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 780,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-02T17:55:31Z",
+      "side": 1,
+      "message": "Thanks Florin.  I have an updated working version here: https://gerrit.fd.io/r/#/c/16616/ . I will provide another patch incorporating this comment.",
+      "parentUuid": "370f6a2f_0e937faa",
+      "range": {
+        "startLine": 779,
+        "startChar": 3,
+        "endLine": 780,
+        "endChar": 89
+      },
+      "revId": "95ebf6e568aa0a066fbea1f237672646713f6858",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
