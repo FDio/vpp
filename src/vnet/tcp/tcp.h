@@ -464,6 +464,9 @@ typedef struct _tcp_main
   /** vlib buffer size */
   u32 bytes_per_buffer;
 
+  /* Seed used to generate random iss */
+  u32 iss_seed;
+
   /*
    * Configuration
    */
