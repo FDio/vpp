@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7b40247e_f9c0486e",
+        "filename": "extras/libmemif/test/socket_test.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-01-02T18:14:24Z",
+      "side": 1,
+      "message": "All edited (or added) files should bump their copyright year to 2018 (or 2019).",
+      "range": {
+        "startLine": 3,
+        "startChar": 17,
+        "endLine": 3,
+        "endChar": 21
+      },
+      "revId": "8f554b793c68fd5271334bf0e167dabc4c9ac73d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
