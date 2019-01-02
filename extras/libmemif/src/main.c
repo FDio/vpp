@@ -2073,7 +2073,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l1 = sizeof (memif_region_details_t) * md->regions_num;
   if (l0 + l1 <= buflen)
     {
-      md->regions = (memif_region_details_t *) buf + l0;
+      md->regions = (memif_region_details_t *) (buf + l0);
       for (i = 0; i < md->regions_num; i++)
         {
           md->regions[i].index = i;
@@ -2094,7 +2094,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l1 = sizeof (memif_queue_details_t) * md->rx_queues_num;
   if (l0 + l1 <= buflen)
     {
-      md->rx_queues = (memif_queue_details_t *) buf + l0;
+      md->rx_queues = (memif_queue_details_t *) (buf + l0);
       for (i = 0; i < md->rx_queues_num; i++)
         {
           md->rx_queues[i].region = c->rx_queues[i].region;
@@ -2117,7 +2117,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l1 = sizeof (memif_queue_details_t) * md->tx_queues_num;
   if (l0 + l1 <= buflen)
     {
-      md->tx_queues = (memif_queue_details_t *) buf + l0;
+      md->tx_queues = (memif_queue_details_t *) (buf + l0);
       for (i = 0; i < md->tx_queues_num; i++)
         {
           md->tx_queues[i].region = c->tx_queues[i].region;
