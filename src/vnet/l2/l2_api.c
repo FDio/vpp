@@ -561,6 +561,7 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
   vl_api_bridge_flags_reply_t *rmp;
   u32 bitmap = 0;
   int rv = 0;
+  u32 bitmap = 0;
 
   bd_flags_t flags = bd_flags_decode (mp->flags);
   u32 bd_id = ntohl (mp->bd_id);

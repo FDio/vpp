@@ -371,12 +371,13 @@ static u8 *CV (format_cuckoo_path) (u8 * s, va_list * args)
  * empty slot, i.e. one which requires minimum swaps to move it
  * to one of the buckets provided
  */
-static int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
-						 clib_cuckoo_lookup_info_t *
-						 lookup, uword * path_idx_out,
-						 uword * found_bucket,
-						 CVT (clib_cuckoo_kv) *
-						 *found_elt)
+static inline int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
+							clib_cuckoo_lookup_info_t
+							* lookup,
+							uword * path_idx_out,
+							uword * found_bucket,
+							CVT (clib_cuckoo_kv) *
+							*found_elt)
 {
   uword *tail;
   ASSERT (!vec_len (h->bfs_search_queue));
@@ -384,6 +385,10 @@ static int CV (clib_cuckoo_find_empty_slot_bfs) (CVT (clib_cuckoo) * h,
   pool_flush (tmp, h->paths,);
   int rv = CLIB_CUCKOO_ERROR_AGAIN;
   int counter = 0;
+
+  *path_idx_out = ~0U;		/* -Wmaybe-uninitialized in caller */
+  *found_bucket = ~0U;		/* -Wmaybe-uninitialized in caller */
+
   /* start by creating paths starting in each of the buckets ... */
   vec_add2 (h->bfs_search_queue, tail, CLIB_CUCKOO_KVP_PER_BUCKET);
   int i;
