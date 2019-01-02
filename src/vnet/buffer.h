@@ -274,10 +274,6 @@ typedef struct
     {
       u32 flags;
       u32 sad_index;
-      u32 ip_version_traffic_class_and_flow_label;
-      u8 tos;
-      u8 ttl_or_hop_limit;
-      u32 seq;
     } ipsec;
 
     /* MAP */

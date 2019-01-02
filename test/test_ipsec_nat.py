@@ -9,7 +9,7 @@ from util import ppp, ppc
 from template_ipsec import TemplateIpsec
 
 
-class TemplateIPSecNAT(TemplateIpsec):
+class IPSecNATTestCase(TemplateIpsec):
     """ IPSec/NAT
     TUNNEL MODE:
 
@@ -33,7 +33,7 @@ class TemplateIPSecNAT(TemplateIpsec):
 
     @classmethod
     def setUpClass(cls):
-        super(TemplateIPSecNAT, cls).setUpClass()
+        super(IPSecNATTestCase, cls).setUpClass()
         cls.tun_if = cls.pg0
         cls.vapi.ipsec_spd_add_del(cls.tun_spd_id)
         cls.vapi.ipsec_interface_add_del_spd(cls.tun_spd_id,
@@ -236,8 +236,3 @@ class TemplateIPSecNAT(TemplateIpsec):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_plain(capture)
-
-
-class IPSecNAT(TemplateIPSecNAT):
-    """ IPSec/NAT """
-    pass
