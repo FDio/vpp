@@ -22,6 +22,30 @@
       "revId": "e81da87722247ce8201f26680cf8cd20d3a09bb0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15ad5850_755c735b",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 701,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-02T23:24:03Z",
+      "side": 1,
+      "message": "If the socket initialization lower (line 738) fails, we should get an error. Isn\u0027t that descriptive enough?",
+      "parentUuid": "e25cc72d_ecf24588",
+      "range": {
+        "startLine": 692,
+        "startChar": 0,
+        "endLine": 701,
+        "endChar": 60
+      },
+      "revId": "e81da87722247ce8201f26680cf8cd20d3a09bb0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
