@@ -227,6 +227,10 @@ class VppTestCase(unittest.TestCase):
         return cls.test_instance
 
     @classmethod
+    def name(cls):
+        return cls.__name__
+
+    @classmethod
     def set_debug_flags(cls, d):
         cls.debug_core = False
         cls.debug_gdb = False
@@ -276,7 +280,7 @@ class VppTestCase(unittest.TestCase):
     def print_header(cls):
         if not hasattr(cls, '_header_printed'):
             print(double_line_delim)
-            print(colorize(getdoc(cls).splitlines()[0], GREEN))
+            print(colorize(get_testcase_doc_name(cls), GREEN))
             print(double_line_delim)
             cls._header_printed = True
 
@@ -1015,7 +1019,11 @@ class VppTestCase(unittest.TestCase):
 
 
 def get_testcase_doc_name(test):
-    return getdoc(test.__class__).splitlines()[0]
+    try:
+        return getdoc(test).splitlines()[0]
+    except AttributeError:
+        return '%s (Please add docstring to TestCase).' % \
+               test.name()
 
 
 def get_test_description(descriptions, test):
