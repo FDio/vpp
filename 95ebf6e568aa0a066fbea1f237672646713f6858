@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "370f6a2f_0e937faa",
+        "filename": "src/vlibmemory/socket_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 780,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-02T17:13:38Z",
+      "side": 1,
+      "message": "Default means that the default path is used for the socket file. That happens to be under /run and does require root privileges. If you don\u0027t want that path, just use instead of default \"socket-name /tmp/vpp-api.sock\" and have the client use that as well.",
+      "range": {
+        "startLine": 779,
+        "startChar": 3,
+        "endLine": 780,
+        "endChar": 89
+      },
+      "revId": "95ebf6e568aa0a066fbea1f237672646713f6858",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
