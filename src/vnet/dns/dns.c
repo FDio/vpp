@@ -1497,7 +1497,7 @@ vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
 	  vec_add1 (lookup_name, '.');
 	}
       len = vec_len (lookup_name);
-      vec_validate (lookup_name, len + 8);
+      vec_resize (lookup_name, 1 + 8);
       memcpy (lookup_name + len, "ip6.arpa", 8);
     }
   else
