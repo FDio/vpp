@@ -437,6 +437,12 @@ typedef struct tcp_worker_ctx_
 
 } tcp_worker_ctx_t;
 
+typedef struct tcp_iss_seed_
+{
+  u64 first;
+  u64 second;
+} tcp_iss_seed_t;
+
 typedef struct _tcp_main
 {
   /* Per-worker thread tcp connection pools */
@@ -463,6 +469,9 @@ typedef struct _tcp_main
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
+
+  /* Seed used to generate random iss */
+  tcp_iss_seed_t iss_seed;
 
   /*
    * Configuration

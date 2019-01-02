@@ -552,6 +552,26 @@ tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
   return &tm->cc_algos[type];
 }
 
+/**
+ * Generate random iss as per rfc6528
+ */
+static u32
+tcp_generate_random_iss (tcp_connection_t * tc)
+{
+  tcp_main_t *tm = &tcp_main;
+  u64 tmp;
+
+  if (tc->c_is_ip4)
+    tmp = (u64) tc->c_lcl_ip.ip4.as_u32 << 32 | (u64) tc->c_rmt_ip.ip4.as_u32;
+  else
+    tmp = tc->c_lcl_ip.ip6.as_u64[0] ^ tc->c_lcl_ip.ip6.as_u64[1]
+      ^ tc->c_rmt_ip.ip6.as_u64[0] ^ tc->c_rmt_ip.ip6.as_u64[1];
+
+  tmp ^= tm->iss_seed.first | ((u64) tc->c_lcl_port << 16 | tc->c_rmt_port);
+  tmp ^= tm->iss_seed.second;
+  tmp = clib_xxhash (tmp) + clib_cpu_time_now ();
+  return ((tmp >> 32) ^ (tmp & 0xffffffff));
+}
 
 /**
  * Initialize connection send variables.
@@ -559,8 +579,6 @@ tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
 void
 tcp_init_snd_vars (tcp_connection_t * tc)
 {
-  u32 time_now;
-
   /*
    * We use the time to randomize iss and for setting up the initial
    * timestamp. Make sure it's updated otherwise syn and ack in the
@@ -568,9 +586,8 @@ tcp_init_snd_vars (tcp_connection_t * tc)
    * direction for us.
    */
   tcp_set_time_now (tcp_get_worker (vlib_get_thread_index ()));
-  time_now = tcp_time_now ();
 
-  tc->iss = random_u32 (&time_now);
+  tc->iss = tcp_generate_random_iss (tc);
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
   tc->snd_una_max = tc->snd_nxt;
@@ -1368,6 +1385,16 @@ tcp_initialize_timer_wheels (tcp_main_t * tm)
   /* *INDENT-ON* */
 }
 
+static void
+tcp_initialize_iss_seed (tcp_main_t * tm)
+{
+  u32 default_seed = random_default_seed ();
+  u64 time_now = clib_cpu_time_now ();
+
+  tm->iss_seed.first = (u64) random_u32 (&default_seed) << 32;
+  tm->iss_seed.second = random_u64 (&time_now);
+}
+
 static clib_error_t *
 tcp_main_enable (vlib_main_t * vm)
 {
@@ -1444,6 +1471,7 @@ tcp_main_enable (vlib_main_t * vm)
     }
 
   tcp_initialize_timer_wheels (tm);
+  tcp_initialize_iss_seed (tm);
 
   tm->bytes_per_buffer = VLIB_BUFFER_DATA_SIZE;
 
