@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "704b840f_93889c8e",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-01-02T16:16:42Z",
+      "side": 1,
+      "message": "As in \"allows contributions with a docstring missing to pass verify\"?\nI do not think we want that.",
+      "range": {
+        "startLine": 22,
+        "startChar": 11,
+        "endLine": 22,
+        "endChar": 40
+      },
+      "revId": "862c610f289707a5540011ff8a18fe0c8cac8a3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "289a9c52_2ab57b83",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1025,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-01-02T16:16:42Z",
+      "side": 1,
+      "message": "If you want to inform the user, while still giving -1,\nappend this text to the error message and re-raise.",
+      "range": {
+        "startLine": 1025,
+        "startChar": 20,
+        "endLine": 1025,
+        "endChar": 52
+      },
+      "revId": "862c610f289707a5540011ff8a18fe0c8cac8a3f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
