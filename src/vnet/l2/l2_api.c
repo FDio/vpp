@@ -559,6 +559,7 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
   bd_main_t *bdm = &bd_main;
   vl_api_bridge_flags_reply_t *rmp;
   int rv = 0;
+  u32 bitmap = 0;
 
   bd_flags_t flags = bd_flags_decode (mp->flags);
   u32 bd_id = ntohl (mp->bd_id);
@@ -575,7 +576,7 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
       goto out;
     }
 
-  u32 bitmap = bd_set_flags (vm, bd_index, flags, mp->is_set);
+  bitmap = bd_set_flags (vm, bd_index, flags, mp->is_set);
 
 out:
   /* *INDENT-OFF* */
