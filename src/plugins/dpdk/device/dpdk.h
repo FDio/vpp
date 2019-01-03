@@ -130,6 +130,10 @@ typedef struct
 
   struct rte_ring *swq;
 
+  u32 n_subports_per_port;
+  u32 n_pipes_per_subport;
+  u32 n_pipes_per_subport_log2;
+
   u64 hqos_field0_slabmask;
   u32 hqos_field0_slabpos;
   u32 hqos_field0_slabshr;

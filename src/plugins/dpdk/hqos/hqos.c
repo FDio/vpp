@@ -359,6 +359,10 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
 	tid = i;
 
       xd->hqos_wt[tid].swq = xd->hqos_ht->swq[i];
+      xd->hqos_wt[tid].n_subports_per_port = hqos->port.n_subports_per_port;
+      xd->hqos_wt[tid].n_pipes_per_subport = hqos->port.n_pipes_per_subport;
+      xd->hqos_wt[tid].n_pipes_per_subport_log2 =
+	 __builtin_ctz(hqos->port.n_pipes_per_subport);
       xd->hqos_wt[tid].hqos_field0_slabpos = hqos->pktfield0_slabpos;
       xd->hqos_wt[tid].hqos_field0_slabmask = hqos->pktfield0_slabmask;
       xd->hqos_wt[tid].hqos_field0_slabshr =
@@ -629,12 +633,29 @@ VLIB_REGISTER_THREAD (hqos_thread_reg, static) =
   val;                                                          \
 })
 
-#define RTE_SCHED_PORT_HIERARCHY(subport, pipe, traffic_class, queue, color) \
-  ((((u64) (queue)) & 0x3) |                               \
-  ((((u64) (traffic_class)) & 0x3) << 2) |                 \
-  ((((u64) (color)) & 0x3) << 4) |                         \
-  ((((u64) (subport)) & 0xFFFF) << 16) |                   \
-  ((((u64) (pipe)) & 0xFFFFFFFF) << 32))
+static_always_inline u32
+dpdk_hqos_qindex(dpdk_device_hqos_per_worker_thread_t * hqos,
+			u32 subport, u32 pipe,
+			u32 traffic_class, u32 queue)
+{
+  return ((subport & (hqos->n_subports_per_port - 1)) <<
+			 (hqos->n_pipes_per_subport_log2 + 4)) |
+			 ((pipe & (hqos->n_pipes_per_subport - 1)) << 4) |
+			 ((traffic_class &
+			    (RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE - 1)) << 2) |
+			 (queue & (RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS - 1));
+}
+
+static_always_inline void
+dpdk_hqos_pkt_write(dpdk_device_hqos_per_worker_thread_t * hqos,
+			struct rte_mbuf *pkt, u32 subport, u32 pipe,
+			u32 traffic_class, u32 queue, u8 color)
+{
+  u32 queue_id = dpdk_hqos_qindex(hqos, subport, pipe,
+			 traffic_class, queue);
+
+  rte_mbuf_sched_set(pkt, queue_id, traffic_class, color);
+}
 
 void
 dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
@@ -702,35 +723,14 @@ dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
       u32 pkt3_tc = hqos->hqos_tc_table[pkt3_dscp & 0x3F] >> 2;
       u32 pkt3_tc_q = hqos->hqos_tc_table[pkt3_dscp & 0x3F] & 0x3;
 
-      u64 pkt0_sched = RTE_SCHED_PORT_HIERARCHY (pkt0_subport,
-						 pkt0_pipe,
-						 pkt0_tc,
-						 pkt0_tc_q,
-						 0);
-      u64 pkt1_sched = RTE_SCHED_PORT_HIERARCHY (pkt1_subport,
-						 pkt1_pipe,
-						 pkt1_tc,
-						 pkt1_tc_q,
-						 0);
-      u64 pkt2_sched = RTE_SCHED_PORT_HIERARCHY (pkt2_subport,
-						 pkt2_pipe,
-						 pkt2_tc,
-						 pkt2_tc_q,
-						 0);
-      u64 pkt3_sched = RTE_SCHED_PORT_HIERARCHY (pkt3_subport,
-						 pkt3_pipe,
-						 pkt3_tc,
-						 pkt3_tc_q,
-						 0);
-
-      pkt0->hash.sched.lo = pkt0_sched & 0xFFFFFFFF;
-      pkt0->hash.sched.hi = pkt0_sched >> 32;
-      pkt1->hash.sched.lo = pkt1_sched & 0xFFFFFFFF;
-      pkt1->hash.sched.hi = pkt1_sched >> 32;
-      pkt2->hash.sched.lo = pkt2_sched & 0xFFFFFFFF;
-      pkt2->hash.sched.hi = pkt2_sched >> 32;
-      pkt3->hash.sched.lo = pkt3_sched & 0xFFFFFFFF;
-      pkt3->hash.sched.hi = pkt3_sched >> 32;
+      dpdk_hqos_pkt_write(hqos, pkt0, pkt0_subport, pkt0_pipe,
+			 pkt0_tc, pkt0_tc_q, 0);
+      dpdk_hqos_pkt_write(hqos, pkt1, pkt1_subport, pkt1_pipe,
+			 pkt1_tc, pkt1_tc_q, 0);
+      dpdk_hqos_pkt_write(hqos, pkt2, pkt2_subport, pkt2_pipe,
+			 pkt2_tc, pkt2_tc_q, 0);
+      dpdk_hqos_pkt_write(hqos, pkt3, pkt3_subport, pkt3_pipe,
+			 pkt3_tc, pkt3_tc_q, 0);
     }
 
   for (; i < n_pkts; i++)
@@ -751,14 +751,8 @@ dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,
       u32 pkt_tc = hqos->hqos_tc_table[pkt_dscp & 0x3F] >> 2;
       u32 pkt_tc_q = hqos->hqos_tc_table[pkt_dscp & 0x3F] & 0x3;
 
-      u64 pkt_sched = RTE_SCHED_PORT_HIERARCHY (pkt_subport,
-						pkt_pipe,
-						pkt_tc,
-						pkt_tc_q,
-						0);
-
-      pkt->hash.sched.lo = pkt_sched & 0xFFFFFFFF;
-      pkt->hash.sched.hi = pkt_sched >> 32;
+      dpdk_hqos_pkt_write(hqos, pkt, pkt_subport, pkt_pipe,
+			 pkt_tc, pkt_tc_q, 0);
     }
 }
 
