@@ -181,6 +181,24 @@
       "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ac0697d3_6e1984db",
+        "filename": "src/plugins/ipsecmb/ipsecmb.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-03T11:11:38Z",
+      "side": 1,
+      "message": "I don\u0027t see how having function pointers is easier than having a macro which just picks the right architecture-specific version of the library code in the source code...",
+      "parentUuid": "0c3e474f_d711e4ed",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
