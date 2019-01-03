@@ -600,19 +600,31 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
 int
 map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 {
+  map_main_t *mm = &map_main;
+
+  is_enable = ! !is_enable;
+
   if (is_translation == false)
     {
-      vnet_feature_enable_disable ("ip4-unicast", "ip4-map", sw_if_index,
-				   is_enable ? 1 : 0, 0, 0);
-      vnet_feature_enable_disable ("ip6-unicast", "ip6-map", sw_if_index,
-				   is_enable ? 1 : 0, 0, 0);
+      if (mm->is_encap_enabled != is_enable)
+	{
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-map", sw_if_index,
+				       is_enable ? 1 : 0, 0, 0);
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-map", sw_if_index,
+				       is_enable ? 1 : 0, 0, 0);
+	  mm->is_encap_enabled = is_enable;
+	}
     }
   else
     {
-      vnet_feature_enable_disable ("ip4-unicast", "ip4-map-t", sw_if_index,
-				   is_enable ? 1 : 0, 0, 0);
-      vnet_feature_enable_disable ("ip6-unicast", "ip6-map-t", sw_if_index,
-				   is_enable ? 1 : 0, 0, 0);
+      if (mm->is_translation_enabled != is_enable)
+	{
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-map-t",
+				       sw_if_index, is_enable ? 1 : 0, 0, 0);
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-map-t",
+				       sw_if_index, is_enable ? 1 : 0, 0, 0);
+	  mm->is_translation_enabled = is_enable;
+	}
     }
   return 0;
 }
