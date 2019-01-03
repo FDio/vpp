@@ -60,6 +60,7 @@ typedef struct ldp_fd_entry_
   u32 fd;
   u32 fd_index;
   u32 flags;
+  clib_spinlock_t lock;
 } ldp_fd_entry_t;
 
 typedef struct ldp_worker_ctx_
@@ -155,7 +156,7 @@ ldp_get_app_name ()
 }
 
 static int
-ldp_fd_alloc (u32 sid)
+ldp_fd_alloc (u32 sh)
 {
   ldp_fd_entry_t *fde;
 
@@ -166,32 +167,54 @@ ldp_fd_alloc (u32 sid)
       return -1;
     }
   pool_get (ldp->fd_pool, fde);
-  fde->session_index = vppcom_session_index (sid);
+  fde->session_index = vppcom_session_index (sh);
   fde->fd_index = fde - ldp->fd_pool;
   fde->fd = fde->fd_index + ldp->sid_bit_val;
   hash_set (ldp->session_index_to_fd_table, fde->session_index, fde->fd);
+  clib_spinlock_init (&fde->lock);
   clib_rwlock_writer_unlock (&ldp->fd_table_lock);
   return fde->fd;
 }
 
 static ldp_fd_entry_t *
-ldp_fd_entry_get_w_lock (u32 fd_index)
+ldp_fd_entry_get (u32 fd_index)
 {
-  clib_rwlock_reader_lock (&ldp->fd_table_lock);
   if (pool_is_free_index (ldp->fd_pool, fd_index))
     return 0;
-
   return pool_elt_at_index (ldp->fd_pool, fd_index);
 }
 
+static ldp_fd_entry_t *
+ldp_fd_entry_get_w_lock (u32 fd_index)
+{
+  ldp_fd_entry_t *fe;
+  clib_rwlock_reader_lock (&ldp->fd_table_lock);
+  if (pool_is_free_index (ldp->fd_pool, fd_index))
+    {
+      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+      return 0;
+    }
+
+  fe = pool_elt_at_index (ldp->fd_pool, fd_index);
+  clib_spinlock_lock (fe->lock);
+  return fe;
+}
+
+static void
+ldp_fd_entry_unlock (ldp_fd_entry_t *fde)
+{
+  clib_spinlock_unlock (&fde->lock);
+  clib_rwlock_reader_unlock (ldp->fd_pool);
+}
+
 static inline int
-ldp_fd_from_sid (u32 sid)
+ldp_fd_from_sh (u32 sh)
 {
   uword *fdp;
   int fd;
 
   clib_rwlock_reader_lock (&ldp->fd_table_lock);
-  fdp = hash_get (ldp->session_index_to_fd_table, vppcom_session_index (sid));
+  fdp = hash_get (ldp->session_index_to_fd_table, vppcom_session_index (sh));
   fd = fdp ? *fdp : -EMFILE;
   clib_rwlock_reader_unlock (&ldp->fd_table_lock);
 
@@ -218,33 +241,32 @@ ldp_sid_from_fd (int fd)
   if (!fde)
     {
       LDBG (0, "unknown fd %d", fd);
-      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
       return INVALID_SESSION_ID;
     }
   session_index = fde->session_index;
-  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+  ldp_fd_entry_unlock (fde);
 
   return vppcom_session_handle (session_index);
 }
 
 static void
-ldp_fd_free_w_sid (u32 sid)
+ldp_fd_free_w_sh (u32 sh)
 {
   ldp_fd_entry_t *fde;
   u32 fd_index;
   int fd;
 
-  fd = ldp_fd_from_sid (sid);
+  fd = ldp_fd_from_sh (sh);
   if (!fd)
     return;
 
   fd_index = fd - ldp->sid_bit_val;
-  fde = ldp_fd_entry_get_w_lock (fd_index);
-  if (fde)
-    {
-      hash_unset (ldp->session_index_to_fd_table, fde->session_index);
-      pool_put (ldp->fd_pool, fde);
-    }
+  clib_rwlock_writer_lock (&ldp->fd_table_lock);
+  fde = ldp_fd_entry_get (fd_index);
+  ASSERT (fde != 0);
+  hash_unset (ldp->session_index_to_fd_table, fde->session_index);
+  clib_spinlock_free (fde->lock);
+  pool_put (ldp->fd_pool, fde);
   clib_rwlock_writer_unlock (&ldp->fd_table_lock);
 }
 
@@ -353,11 +375,12 @@ int
 close (int fd)
 {
   int rv, refcnt;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid;
 
   if ((errno = -ldp_init ()))
     return -1;
 
+  sid = ldp_sid_from_fd (fd);
   if (sid != INVALID_SESSION_ID)
     {
       int epfd;
@@ -396,7 +419,7 @@ close (int fd)
 	  rv = -1;
 	}
       if (refcnt <= 1)
-	ldp_fd_free_w_sid (sid);
+	ldp_fd_free_w_sh (sid);
     }
   else
     {
@@ -414,11 +437,12 @@ ssize_t
 read (int fd, void *buf, size_t nbytes)
 {
   ssize_t size;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid;
 
   if ((errno = -ldp_init ()))
     return -1;
 
+  sid = ldp_sid_from_fd (fd);
   if (sid != INVALID_SESSION_ID)
     {
       LDBG (2, "fd %d (0x%x): calling vppcom_session_read(): sid %u (0x%x),"
@@ -977,7 +1001,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldpw->rd_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
+                          fd = ldp_fd_from_sh (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -993,7 +1017,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldpw->wr_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
+                          fd = ldp_fd_from_sh (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -1009,7 +1033,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldpw->ex_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
+                          fd = ldp_fd_from_sh (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -2696,13 +2720,14 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	     socklen_t * __restrict addr_len, int flags)
 {
   int rv;
-  u32 listen_sid = ldp_sid_from_fd (listen_fd);
-  int accept_sid;
+  u32 listen_sh;
+  int accept_sh;
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (listen_sid != INVALID_SESSION_ID)
+  listen_sh = ldp_sid_from_fd (listen_fd);
+  if (listen_sh != INVALID_SESSION_ID)
     {
       vppcom_endpt_t ep;
       u8 src_addr[sizeof (struct sockaddr_in6)];
@@ -2711,12 +2736,12 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 
       LDBG (0, "listen fd %d (0x%x): calling vppcom_session_accept:"
 	    " listen sid %u (0x%x), ep %p, flags 0x%x", listen_fd,
-	    listen_fd, listen_sid, listen_sid, ep, flags);
+	    listen_fd, listen_sh, listen_sh, ep, flags);
 
-      accept_sid = vppcom_session_accept (listen_sid, &ep, flags);
-      if (accept_sid < 0)
+      accept_sh = vppcom_session_accept (listen_sh, &ep, flags);
+      if (accept_sh < 0)
 	{
-	  errno = -accept_sid;
+	  errno = -accept_sh;
 	  rv = -1;
 	}
       else
@@ -2724,16 +2749,16 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	  rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
 	  if (rv != VPPCOM_OK)
 	    {
-	      (void) vppcom_session_close ((u32) accept_sid);
+	      (void) vppcom_session_close ((u32) accept_sh);
 	      errno = -rv;
 	      rv = -1;
 	    }
 	  else
 	    {
-	      rv = ldp_fd_alloc ((u32) accept_sid);
+	      rv = ldp_fd_alloc ((u32) accept_sh);
 	      if (rv < 0)
 		{
-		  (void) vppcom_session_close ((u32) accept_sid);
+		  (void) vppcom_session_close ((u32) accept_sh);
 		  errno = -rv;
 		  rv = -1;
 		}
@@ -2784,7 +2809,6 @@ shutdown (int fd, int how)
       fde = ldp_fd_entry_get_w_lock (fd_index);
       if (!fde)
 	{
-	  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
 	  errno = ENOTCONN;
 	  return -1;
 	}
@@ -2799,7 +2823,7 @@ shutdown (int fd, int how)
       if ((fde->flags & LDP_F_SHUT_RD) && (fde->flags & LDP_F_SHUT_WR))
 	rv = close (fd);
 
-      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+      ldp_fd_entry_unlock (fde);
       LDBG (0, "fd %d (0x%x): calling vcl shutdown: how %d", fd, fd, how);
     }
   else
