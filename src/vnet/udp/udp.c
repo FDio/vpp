@@ -105,11 +105,13 @@ u32
 udp_session_unbind (u32 listener_index)
 {
   vlib_main_t *vm = vlib_get_main ();
+  udp_main_t *um = vnet_get_udp_main ();
 
   udp_connection_t *listener;
   listener = udp_listener_get (listener_index);
   udp_unregister_dst_port (vm, clib_net_to_host_u16 (listener->c_lcl_port),
 			   listener->c_is_ip4);
+  pool_put_index (um->listener_pool, listener_index);
   return 0;
 }
 
@@ -127,6 +129,7 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
 {
   udp_connection_t *uc;
   vlib_main_t *vm = vlib_get_main ();
+  stream_session_t *ls;
 
   uc = udp_get_connection_from_transport (tc);
 
@@ -144,6 +147,13 @@ udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
   vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
   vnet_buffer (b)->sw_if_index[VLIB_TX] = uc->c_fib_index;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  ls = listen_session_get (tc->s_index);
+  if (ls->session_state == SESSION_STATE_LISTENING)
+    {
+      memset (&(uc->c_rmt_ip), 0, sizeof (ip46_address_t));
+      uc->c_rmt_port = 0;
+    }
 
   return 0;
 }

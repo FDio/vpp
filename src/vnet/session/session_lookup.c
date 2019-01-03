@@ -327,13 +327,13 @@ session_lookup_del_connection (transport_connection_t * tc)
     {
       make_v4_ss_kv_from_tc (&kv4, tc);
       return clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4,
-				       0 /* is_add */ );
+				       0 /* is_del */ );
     }
   else
     {
       make_v6_ss_kv_from_tc (&kv6, tc);
       return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6,
-				       0 /* is_add */ );
+				       0 /* is_del */ );
     }
 }
 
