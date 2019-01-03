@@ -44,6 +44,10 @@ vcl_wait_for_segment (u64 segment_handle)
   return 1;
 }
 
+static int vppcom_wait_for_session_state_change (u32 session_index,
+                                                 session_state_t state,
+                                                 f64 wait_for_time);
+
 const char *
 vppcom_session_state_str (session_state_t state)
 {
@@ -175,15 +179,6 @@ format_ip46_address (u8 * s, va_list * args)
  */
 
 
-static svm_msg_q_t *
-vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
-{
-  if (vcl_session_is_ct (s))
-    return wrk->vpp_event_queues[0];
-  else
-    return wrk->vpp_event_queues[s->vpp_thread_index];
-}
-
 static void
 vcl_send_session_accepted_reply (svm_msg_q_t * mq, u32 context,
 				 session_handle_t handle, int retval)
@@ -224,6 +219,24 @@ vcl_send_session_reset_reply (svm_msg_q_t * mq, u32 context,
   rmp->handle = handle;
   rmp->context = context;
   rmp->retval = retval;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
+}
+
+void
+vcl_send_session_worker_update (vcl_worker_t *wrk, vcl_session_t *s,
+                                u32 wrk_index)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_worker_update_msg_t *mp;
+  svm_msg_q_t *mq;
+
+  VDBG (0, "REQUEST WORKER UPDATE 0x%llx", s->vpp_handle);
+  mq = vcl_session_vpp_evt_q (wrk, s);
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_WORKER_UPDATE);
+  mp = (session_worker_update_msg_t *) app_evt->evt->data;
+  mp->client_index = wrk->my_client_index;
+  mp->handle = s->vpp_handle;
+  mp->wrk_index = wrk_index;
   app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
@@ -540,15 +553,68 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
   /* Caught a disconnect before actually accepting the session */
   if (session->session_state == STATE_LISTEN)
     {
-
       if (!vcl_flag_accepted_session (session, msg->handle,
 				      VCL_ACCEPTED_F_CLOSED))
 	VDBG (0, "session was not accepted!");
       return 0;
     }
 
+  VDBG (0, "\n\n DISCONNECTED %u 0x%llx", session->session_index, session->vpp_handle);
+
   session->session_state = STATE_VPP_CLOSING;
   return session;
+}
+
+static void
+vcl_session_req_worker_update_handler (vcl_worker_t * wrk, void * data)
+{
+  session_req_worker_update_msg_t *msg;
+  session_state_t state;
+  vcl_session_t *s;
+
+
+  msg = (session_req_worker_update_msg_t *)data;
+  VDBG (0, "THIS ONE:0x%llx", msg->session_handle);
+  s = vcl_session_get_w_vpp_handle (wrk, msg->session_handle);
+  if (!s)
+    return;
+  VDBG (0, "THIS ONE SECOND POINT");
+
+  vcl_send_session_worker_update (wrk, s, wrk->wrk_index);
+  state = s->session_state;
+  vppcom_wait_for_session_state_change (s->session_index, STATE_UPDATED, 5);
+  s->session_state = state;
+}
+
+static void
+vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void * data)
+{
+  session_worker_update_reply_msg_t *msg;
+  vcl_session_t *s;
+
+  msg = (session_worker_update_reply_msg_t *) data;
+  s = vcl_session_get_w_vpp_handle (wrk, msg->handle);
+  if (!s)
+    {
+      VDBG (0, "unknown handle 0x%llx", msg->handle);
+      return;
+    }
+  if (vcl_wait_for_segment (msg->segment_handle))
+    {
+      clib_warning ("segment for session %u couldn't be mounted!",
+		    s->session_index);
+      return ;
+    }
+  s->rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_t *);
+  s->tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_t *);
+
+  s->rx_fifo->client_session_index = s->session_index;
+  s->tx_fifo->client_session_index = s->session_index;
+  s->rx_fifo->client_thread_index = wrk->wrk_index;
+  s->tx_fifo->client_thread_index = wrk->wrk_index;
+  s->session_state = STATE_UPDATED;
+  VDBG (0, "session %u[0x%llx] moved to worker %u", s->session_index,
+        s->vpp_handle, wrk->wrk_index);
 }
 
 static int
@@ -587,13 +653,19 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
     case SESSION_CTRL_EVT_BOUND:
       vcl_session_bound_handler (wrk, (session_bound_msg_t *) e->data);
       break;
+    case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
+      vcl_session_req_worker_update_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
+      vcl_session_worker_update_reply_handler (wrk, e->data);
+      break;
     default:
       clib_warning ("unhandled %u", e->event_type);
     }
   return VPPCOM_OK;
 }
 
-static inline int
+static int
 vppcom_wait_for_session_state_change (u32 session_index,
 				      session_state_t state,
 				      f64 wait_for_time)
@@ -845,6 +917,22 @@ static void
 vcl_app_pre_fork (void)
 {
   vcl_incercept_sigchld ();
+  vcl_worker_t *wrk = vcl_worker_get_current();
+  svm_msg_q_msg_t msg;
+  session_event_t *e;
+  svm_msg_q_t *mq;
+
+  mq = wrk->app_event_queue;
+  svm_msg_q_lock (mq);
+  vcl_mq_dequeue_batch (wrk, wrk->app_event_queue);
+  svm_msg_q_unlock (mq);
+
+  while (!svm_msg_q_sub (wrk->app_event_queue, &msg, SVM_Q_NOWAIT, 0))
+    {
+      e = svm_msg_q_msg_data (wrk->app_event_queue, &msg);
+      vcl_handle_mq_event (wrk, e);
+      svm_msg_q_free_msg (wrk->app_event_queue, &msg);
+    }
 }
 
 static void
@@ -1097,7 +1185,11 @@ vppcom_session_close (uint32_t session_handle)
 	}
 
       if (!do_disconnect)
-	goto cleanup;
+	{
+	  VDBG (0, "session handle %u [0x%llx] disconnect skipped",
+	        session_handle, vpp_handle);
+	  goto cleanup;
+	}
 
       if (state & STATE_LISTEN)
 	{
@@ -1143,10 +1235,7 @@ cleanup:
       vcl_ct_registration_unlock (wrk);
     }
 
-  if (vpp_handle != ~0)
-    {
-      vcl_session_table_del_vpp_handle (wrk, vpp_handle);
-    }
+  vcl_session_table_del_vpp_handle (wrk, vpp_handle);
   vcl_session_free (wrk, session);
 
   VDBG (0, "session handle %u [0x%llx] removed", session_handle, vpp_handle);
@@ -2018,6 +2107,12 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  *bits_set += 1;
 	}
       break;
+    case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
+      vcl_session_worker_update_reply_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
+      vcl_session_req_worker_update_handler (wrk, e->data);
+      break;
     default:
       clib_warning ("unhandled: %u", e->event_type);
       break;
@@ -2626,6 +2721,12 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
       session_evt_data = session->vep.ev.data.u64;
       session_events = session->vep.ev.events;
+      break;
+    case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
+      vcl_session_req_worker_update_handler (wrk, e->data);
+      break;
+    case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
+      vcl_session_worker_update_reply_handler (wrk, e->data);
       break;
     default:
       VDBG (0, "unhandled: %u", e->event_type);
@@ -3531,9 +3632,15 @@ vppcom_mq_epoll_fd (void)
 }
 
 int
-vppcom_session_index (uint32_t session_handle)
+vppcom_session_index (vcl_session_handle_t session_handle)
 {
   return session_handle & 0xFFFFFF;
+}
+
+int
+vppcom_session_worker (vcl_session_handle_t session_handle)
+{
+  return session_handle >> 24;
 }
 
 int
