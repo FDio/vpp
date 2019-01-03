@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0cc21623_8d8c0c24",
+        "filename": "src/plugins/ipsecmb/esp_encrypt.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T08:41:41Z",
+      "side": 1,
+      "message": "here, you should call get_completed_job to handle all completed jobs. As indicated in IPSecMB readme, the sequence should be like this:\n\n                job \u003d IMB_SUBMIT_JOB(mb_mgr);\n                while (job) {\n                        job \u003d IMB_GET_COMPLETED_JOB(mb_mgr);\n                } /* end while (job) */\n\nOf course, jobs will evenetually handled by after calling flush_job, but my understadning is it is faster or more efficient doing this way.",
+      "range": {
+        "startLine": 491,
+        "startChar": 0,
+        "endLine": 491,
+        "endChar": 3
+      },
+      "revId": "727c394723d6cd026dde176f330329facbac0e0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
