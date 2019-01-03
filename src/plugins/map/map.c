@@ -2256,6 +2256,9 @@ map_init (vlib_main_t * vm)
   mm->ip6_prefix_tbl = lpm_table_init (LPM_TYPE_KEY128);
   mm->ip6_src_prefix_tbl = lpm_table_init (LPM_TYPE_KEY128);
 
+  mm->bm_trans_enabled_by_sw_if = 0;
+  mm->bm_encap_enabled_by_sw_if = 0;
+
   error = map_plugin_api_hookup (vm);
 
   return error;

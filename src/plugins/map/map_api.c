@@ -600,12 +600,36 @@ vl_api_map_param_get_t_handler (vl_api_map_param_get_t * mp)
 int
 map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 {
+  map_main_t *mm = &map_main;
+
+  if (pool_is_free_index (mm->vnet_main->interface_main.sw_interfaces,
+			  sw_if_index))
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  is_enable = ! !is_enable;
+
+  if (is_translation)
+    {
+      if (clib_bitmap_get (mm->bm_trans_enabled_by_sw_if, sw_if_index)
+	  == is_enable)
+	return 0;
+    }
+  else
+    {
+      if (clib_bitmap_get (mm->bm_encap_enabled_by_sw_if, sw_if_index)
+	  == is_enable)
+	return 0;
+    }
+
   if (is_translation == false)
     {
       vnet_feature_enable_disable ("ip4-unicast", "ip4-map", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "ip6-map", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
+      mm->bm_encap_enabled_by_sw_if =
+	clib_bitmap_set (mm->bm_encap_enabled_by_sw_if, sw_if_index,
+			 is_enable);
     }
   else
     {
@@ -613,7 +637,11 @@ map_if_enable_disable (bool is_enable, u32 sw_if_index, bool is_translation)
 				   is_enable ? 1 : 0, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "ip6-map-t", sw_if_index,
 				   is_enable ? 1 : 0, 0, 0);
+      mm->bm_trans_enabled_by_sw_if =
+	clib_bitmap_set (mm->bm_trans_enabled_by_sw_if, sw_if_index,
+			 is_enable);
     }
+
   return 0;
 }
 
