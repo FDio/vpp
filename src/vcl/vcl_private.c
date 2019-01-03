@@ -375,21 +375,23 @@ vcl_worker_share_session (vcl_worker_t * parent, vcl_worker_t * wrk,
 			  vcl_session_t * new_s)
 {
   vcl_shared_session_t *ss;
-  vcl_session_t *s;
+  vcl_session_t *old_s;
 
-  s = vcl_session_get (parent, new_s->session_index);
-  if (s->shared_index == ~0)
+  if (new_s->shared_index == ~0)
     {
       ss = vcl_shared_session_alloc ();
+      ss->session_index = new_s->session_index;
       vec_add1 (ss->workers, parent->wrk_index);
-      s->shared_index = ss->ss_index;
+      vec_add1 (ss->workers, wrk->wrk_index);
+      new_s->shared_index = ss->ss_index;
+      old_s = vcl_session_get (parent, new_s->session_index);
+      old_s->shared_index = ss->ss_index;
     }
   else
     {
-      ss = vcl_shared_session_get (s->shared_index);
+      ss = vcl_shared_session_get (new_s->shared_index);
+      vec_add1 (ss->workers, wrk->wrk_index);
     }
-  new_s->shared_index = ss->ss_index;
-  vec_add1 (ss->workers, wrk->wrk_index);
 }
 
 int
@@ -413,6 +415,12 @@ vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s)
       vcl_shared_session_free (ss);
       return 1;
     }
+
+  /* If the first removed and not last, start session worker change.
+   * First request goes to vpp and vpp reflects it back to the right
+   * worker */
+  if (i == 0)
+    vcl_send_session_worker_update (wrk, s, ss->workers[0]);
 
   return 0;
 }

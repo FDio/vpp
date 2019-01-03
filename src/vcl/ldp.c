@@ -57,9 +57,11 @@
 typedef struct ldp_fd_entry_
 {
   u32 session_index;
+  u32 worker_index;
   u32 fd;
   u32 fd_index;
   u32 flags;
+  clib_spinlock_t lock;
 } ldp_fd_entry_t;
 
 typedef struct ldp_worker_ctx_
@@ -101,7 +103,7 @@ typedef struct
   ldp_worker_ctx_t *workers;
   int init;
   char app_name[LDP_APP_NAME_MAX];
-  u32 sid_bit_val;
+  u32 sh_bit_val;
   u32 sid_bit_mask;
   u32 debug;
   ldp_fd_entry_t *fd_pool;
@@ -119,7 +121,7 @@ typedef struct
     clib_warning ("ldp<%d>: " _fmt, getpid(), ##_args)
 
 static ldp_main_t ldp_main = {
-  .sid_bit_val = (1 << LDP_SID_BIT_MIN),
+  .sh_bit_val = (1 << LDP_SID_BIT_MIN),
   .sid_bit_mask = (1 << LDP_SID_BIT_MIN) - 1,
   .debug = LDP_DEBUG_INIT,
 };
@@ -154,44 +156,73 @@ ldp_get_app_name ()
   return ldp->app_name;
 }
 
+static inline vcl_session_handle_t
+ldp_fd_entry_sh (ldp_fd_entry_t * fde)
+{
+  return vppcom_session_handle (fde->session_index);
+}
+
 static int
-ldp_fd_alloc (u32 sid)
+ldp_fd_alloc (vcl_session_handle_t sh)
 {
   ldp_fd_entry_t *fde;
 
   clib_rwlock_writer_lock (&ldp->fd_table_lock);
-  if (pool_elts (ldp->fd_pool) >= (1ULL << 32) - ldp->sid_bit_val)
+  if (pool_elts (ldp->fd_pool) >= (1ULL << 32) - ldp->sh_bit_val)
     {
       clib_rwlock_writer_unlock (&ldp->fd_table_lock);
       return -1;
     }
   pool_get (ldp->fd_pool, fde);
-  fde->session_index = vppcom_session_index (sid);
+  fde->session_index = vppcom_session_index (sh);
+  fde->worker_index = vppcom_session_worker (sh);
   fde->fd_index = fde - ldp->fd_pool;
-  fde->fd = fde->fd_index + ldp->sid_bit_val;
+  fde->fd = fde->fd_index + ldp->sh_bit_val;
   hash_set (ldp->session_index_to_fd_table, fde->session_index, fde->fd);
+  clib_spinlock_init (&fde->lock);
   clib_rwlock_writer_unlock (&ldp->fd_table_lock);
   return fde->fd;
 }
 
 static ldp_fd_entry_t *
-ldp_fd_entry_get_w_lock (u32 fd_index)
+ldp_fd_entry_get (u32 fd_index)
 {
-  clib_rwlock_reader_lock (&ldp->fd_table_lock);
   if (pool_is_free_index (ldp->fd_pool, fd_index))
     return 0;
-
   return pool_elt_at_index (ldp->fd_pool, fd_index);
 }
 
+static ldp_fd_entry_t *
+ldp_fd_entry_lock (u32 fd_index)
+{
+  ldp_fd_entry_t *fe;
+  clib_rwlock_reader_lock (&ldp->fd_table_lock);
+  if (pool_is_free_index (ldp->fd_pool, fd_index))
+    {
+      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+      return 0;
+    }
+
+  fe = pool_elt_at_index (ldp->fd_pool, fd_index);
+  clib_spinlock_lock (&fe->lock);
+  return fe;
+}
+
+static void
+ldp_fd_entry_unlock (ldp_fd_entry_t * fde)
+{
+  clib_spinlock_unlock (&fde->lock);
+  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+}
+
 static inline int
-ldp_fd_from_sid (u32 sid)
+ldp_fd_from_sh (vcl_session_handle_t sh)
 {
   uword *fdp;
   int fd;
 
   clib_rwlock_reader_lock (&ldp->fd_table_lock);
-  fdp = hash_get (ldp->session_index_to_fd_table, vppcom_session_index (sid));
+  fdp = hash_get (ldp->session_index_to_fd_table, vppcom_session_index (sh));
   fd = fdp ? *fdp : -EMFILE;
   clib_rwlock_reader_unlock (&ldp->fd_table_lock);
 
@@ -199,52 +230,63 @@ ldp_fd_from_sid (u32 sid)
 }
 
 static inline int
-ldp_fd_is_sid (int fd)
+ldp_fd_is_sh (int fd)
 {
-  return fd >= ldp->sid_bit_val;
+  return fd >= ldp->sh_bit_val;
 }
 
 static inline u32
-ldp_sid_from_fd (int fd)
+ldp_sh_from_fd (int fd)
 {
   u32 fd_index, session_index;
   ldp_fd_entry_t *fde;
 
-  if (!ldp_fd_is_sid (fd))
+  if (!ldp_fd_is_sh (fd))
     return INVALID_SESSION_ID;
 
-  fd_index = fd - ldp->sid_bit_val;
-  fde = ldp_fd_entry_get_w_lock (fd_index);
+  fd_index = fd - ldp->sh_bit_val;
+  fde = ldp_fd_entry_lock (fd_index);
   if (!fde)
     {
       LDBG (0, "unknown fd %d", fd);
-      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
       return INVALID_SESSION_ID;
     }
   session_index = fde->session_index;
-  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+  ldp_fd_entry_unlock (fde);
 
   return vppcom_session_handle (session_index);
 }
 
+static ldp_fd_entry_t *
+ldp_fd_entry_lock_w_fd (int fd)
+{
+  u32 fd_index;
+
+  if (!ldp_fd_is_sh (fd))
+    return 0;
+
+  fd_index = fd - ldp->sh_bit_val;
+  return ldp_fd_entry_lock (fd_index);
+}
+
 static void
-ldp_fd_free_w_sid (u32 sid)
+ldp_fd_free_w_sh (vcl_session_handle_t sh)
 {
   ldp_fd_entry_t *fde;
   u32 fd_index;
   int fd;
 
-  fd = ldp_fd_from_sid (sid);
+  fd = ldp_fd_from_sh (sh);
   if (!fd)
     return;
 
-  fd_index = fd - ldp->sid_bit_val;
-  fde = ldp_fd_entry_get_w_lock (fd_index);
-  if (fde)
-    {
-      hash_unset (ldp->session_index_to_fd_table, fde->session_index);
-      pool_put (ldp->fd_pool, fde);
-    }
+  fd_index = fd - ldp->sh_bit_val;
+  clib_rwlock_writer_lock (&ldp->fd_table_lock);
+  fde = ldp_fd_entry_get (fd_index);
+  ASSERT (fde != 0);
+  hash_unset (ldp->session_index_to_fd_table, fde->session_index);
+  clib_spinlock_free (&fde->lock);
+  pool_put (ldp->fd_pool, fde);
   clib_rwlock_writer_unlock (&ldp->fd_table_lock);
 }
 
@@ -307,38 +349,38 @@ ldp_init (void)
 	  clib_warning ("LDP<%d>: WARNING: Invalid LDP sid bit specified in"
 			" the env var " LDP_ENV_SID_BIT " (%s)! sid bit "
 			"value %d (0x%x)", getpid (), env_var_str,
-			ldp->sid_bit_val, ldp->sid_bit_val);
+			ldp->sh_bit_val, ldp->sh_bit_val);
 	}
       else if (sb < LDP_SID_BIT_MIN)
 	{
-	  ldp->sid_bit_val = (1 << LDP_SID_BIT_MIN);
-	  ldp->sid_bit_mask = ldp->sid_bit_val - 1;
+	  ldp->sh_bit_val = (1 << LDP_SID_BIT_MIN);
+	  ldp->sid_bit_mask = ldp->sh_bit_val - 1;
 
 	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
 			" env var " LDP_ENV_SID_BIT " (%s) is too small. "
 			"Using LDP_SID_BIT_MIN (%d)! sid bit value %d (0x%x)",
 			getpid (), sb, env_var_str, LDP_SID_BIT_MIN,
-			ldp->sid_bit_val, ldp->sid_bit_val);
+			ldp->sh_bit_val, ldp->sh_bit_val);
 	}
       else if (sb > LDP_SID_BIT_MAX)
 	{
-	  ldp->sid_bit_val = (1 << LDP_SID_BIT_MAX);
-	  ldp->sid_bit_mask = ldp->sid_bit_val - 1;
+	  ldp->sh_bit_val = (1 << LDP_SID_BIT_MAX);
+	  ldp->sid_bit_mask = ldp->sh_bit_val - 1;
 
 	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
 			" env var " LDP_ENV_SID_BIT " (%s) is too big. Using"
 			" LDP_SID_BIT_MAX (%d)! sid bit value %d (0x%x)",
 			getpid (), sb, env_var_str, LDP_SID_BIT_MAX,
-			ldp->sid_bit_val, ldp->sid_bit_val);
+			ldp->sh_bit_val, ldp->sh_bit_val);
 	}
       else
 	{
-	  ldp->sid_bit_val = (1 << sb);
-	  ldp->sid_bit_mask = ldp->sid_bit_val - 1;
+	  ldp->sh_bit_val = (1 << sb);
+	  ldp->sid_bit_mask = ldp->sh_bit_val - 1;
 
 	  LDBG (0, "configured LDP sid bit (%u) from "
 		LDP_ENV_SID_BIT "!  sid bit value %d (0x%x)", sb,
-		ldp->sid_bit_val, ldp->sid_bit_val);
+		ldp->sh_bit_val, ldp->sh_bit_val);
 	}
     }
 
@@ -352,17 +394,18 @@ ldp_init (void)
 int
 close (int fd)
 {
-  int rv, refcnt;
-  u32 sid = ldp_sid_from_fd (fd);
+  int rv, refcnt, epfd;
+  ldp_fd_entry_t *fde;
+  u32 sh;
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sid != INVALID_SESSION_ID)
+  fde = ldp_fd_entry_lock_w_fd (fd);
+  if (fde)
     {
-      int epfd;
-
-      epfd = vppcom_session_attr (sid, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+      sh = ldp_fd_entry_sh (fde);
+      epfd = vppcom_session_attr (sh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
       if (epfd > 0)
 	{
 	  LDBG (0, "fd %d (0x%x): calling libc_close: epfd %u (0x%x)",
@@ -374,7 +417,7 @@ close (int fd)
 	      u32 size = sizeof (epfd);
 	      epfd = 0;
 
-	      (void) vppcom_session_attr (sid, VPPCOM_ATTR_SET_LIBC_EPFD,
+	      (void) vppcom_session_attr (sh, VPPCOM_ATTR_SET_LIBC_EPFD,
 					  &epfd, &size);
 	    }
 	}
@@ -382,21 +425,24 @@ close (int fd)
 	{
 	  errno = -epfd;
 	  rv = -1;
+	  ldp_fd_entry_unlock (fde);
 	  goto done;
 	}
 
       LDBG (0, "fd %d (0x%x): calling vppcom_session_close: sid %u (0x%x)",
-	    fd, fd, sid, sid);
+	    fd, fd, sh, sh);
 
-      refcnt = vppcom_session_attr (sid, VPPCOM_ATTR_GET_REFCNT, 0, 0);
-      rv = vppcom_session_close (sid);
+      refcnt = vppcom_session_attr (sh, VPPCOM_ATTR_GET_REFCNT, 0, 0);
+      rv = vppcom_session_close (sh);
       if (rv != VPPCOM_OK)
 	{
 	  errno = -rv;
 	  rv = -1;
 	}
+
+      ldp_fd_entry_unlock (fde);
       if (refcnt <= 1)
-	ldp_fd_free_w_sid (sid);
+	ldp_fd_free_w_sh (sh);
     }
   else
     {
@@ -413,23 +459,27 @@ done:
 ssize_t
 read (int fd, void *buf, size_t nbytes)
 {
+  vcl_session_handle_t sh;
+  ldp_fd_entry_t *fde;
   ssize_t size;
-  u32 sid = ldp_sid_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sid != INVALID_SESSION_ID)
+  fde = ldp_fd_entry_lock_w_fd (fd);
+  if (fde)
     {
+      sh = ldp_fd_entry_sh (fde);
       LDBG (2, "fd %d (0x%x): calling vppcom_session_read(): sid %u (0x%x),"
-	    " buf %p, nbytes %u", fd, fd, sid, sid, buf, nbytes);
+	    " buf %p, nbytes %u", fd, fd, sh, sh, buf, nbytes);
 
-      size = vppcom_session_read (sid, buf, nbytes);
+      size = vppcom_session_read (sh, buf, nbytes);
       if (size < 0)
 	{
 	  errno = -size;
 	  size = -1;
 	}
+      ldp_fd_entry_unlock (fde);
     }
   else
     {
@@ -447,7 +497,7 @@ ssize_t
 readv (int fd, const struct iovec * iov, int iovcnt)
 {
   ssize_t size = 0;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
   int rv = 0, i, total = 0;
 
   if ((errno = -ldp_init ()))
@@ -504,23 +554,27 @@ readv (int fd, const struct iovec * iov, int iovcnt)
 ssize_t
 write (int fd, const void *buf, size_t nbytes)
 {
+  vcl_session_handle_t sh;
+  ldp_fd_entry_t *fde;
   ssize_t size = 0;
-  u32 sid = ldp_sid_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sid != INVALID_SESSION_ID)
+  fde = ldp_fd_entry_lock_w_fd (fd);
+  if (fde)
     {
+      sh = ldp_fd_entry_sh (fde);
       LDBG (2, "fd %d (0x%x): calling vppcom_session_write(): sid %u (0x%x), "
-	    "buf %p, nbytes %u", fd, fd, sid, sid, buf, nbytes);
+	    "buf %p, nbytes %u", fd, fd, sh, sh, buf, nbytes);
 
-      size = vppcom_session_write_msg (sid, (void *) buf, nbytes);
+      size = vppcom_session_write_msg (sh, (void *) buf, nbytes);
       if (size < 0)
 	{
 	  errno = -size;
 	  size = -1;
 	}
+      ldp_fd_entry_unlock (fde);
     }
   else
     {
@@ -538,7 +592,7 @@ ssize_t
 writev (int fd, const struct iovec * iov, int iovcnt)
 {
   ssize_t size = 0, total = 0;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
   int i, rv = 0;
 
   /*
@@ -590,7 +644,7 @@ fcntl (int fd, int cmd, ...)
   const char *func_str = __func__;
   int rv = 0;
   va_list ap;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -681,7 +735,7 @@ ioctl (int fd, unsigned long int cmd, ...)
   const char *func_str;
   int rv;
   va_list ap;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -808,7 +862,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
     time_out = -1;
 
 
-  if (nfds <= ldp->sid_bit_val)
+  if (nfds <= ldp->sh_bit_val)
     {
       func_str = "libc_pselect";
 
@@ -821,11 +875,11 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       goto done;
     }
 
-  if (PREDICT_FALSE (ldp->sid_bit_val > FD_SETSIZE / 2))
+  if (PREDICT_FALSE (ldp->sh_bit_val > FD_SETSIZE / 2))
     {
       clib_warning ("LDP<%d>: ERROR: LDP sid bit value %d (0x%x) > "
 		    "FD_SETSIZE/2 %d (0x%x)!", getpid (),
-		    ldp->sid_bit_val, ldp->sid_bit_val,
+		    ldp->sh_bit_val, ldp->sh_bit_val,
 		    FD_SETSIZE / 2, FD_SETSIZE / 2);
       errno = EOVERFLOW;
       return -1;
@@ -845,7 +899,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_foreach (fd, ldpw->rd_bitmap, ({
 	if (fd > nfds)
 	  break;
-        sid = ldp_sid_from_fd (fd);
+        sid = ldp_sh_from_fd (fd);
         LDBG (3, "readfds: fd %d (0x%x), sid %u (0x%x)", fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldpw->libc_rd_bitmap, fd, 1);
@@ -877,7 +931,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_foreach (fd, ldpw->wr_bitmap, ({
 	if (fd > nfds)
 	  break;
-        sid = ldp_sid_from_fd (fd);
+        sid = ldp_sh_from_fd (fd);
         LDBG (3, "writefds: fd %d (0x%x), sid %u (0x%x)", fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldpw->libc_wr_bitmap, fd, 1);
@@ -909,7 +963,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       clib_bitmap_foreach (fd, ldpw->ex_bitmap, ({
 	if (fd > nfds)
 	  break;
-        sid = ldp_sid_from_fd (fd);
+        sid = ldp_sh_from_fd (fd);
         LDBG (3, "exceptfds: fd %d (0x%x), sid %u (0x%x)", fd, fd, sid, sid);
         if (sid == INVALID_SESSION_ID)
           clib_bitmap_set_no_check (ldpw->libc_ex_bitmap, fd, 1);
@@ -977,7 +1031,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldpw->rd_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
+                          fd = ldp_fd_from_sh (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -993,7 +1047,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldpw->wr_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
+                          fd = ldp_fd_from_sh (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -1009,7 +1063,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
                       /* *INDENT-OFF* */
                       clib_bitmap_foreach (sid, ldpw->ex_bitmap,
                         ({
-                          fd = ldp_fd_from_sid (vppcom_session_handle (sid));
+                          fd = ldp_fd_from_sh (vppcom_session_handle (sid));
                           if (PREDICT_FALSE (fd < 0))
                             {
                               errno = EBADFD;
@@ -1237,7 +1291,7 @@ int
 bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
   int rv;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1361,7 +1415,7 @@ getsockname (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
 {
   int rv;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1430,7 +1484,7 @@ int
 connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
   int rv;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1516,7 +1570,7 @@ getpeername (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
 {
   int rv;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1586,7 +1640,7 @@ send (int fd, const void *buf, size_t n, int flags)
 {
   ssize_t size;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1644,7 +1698,7 @@ sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
   ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   ssize_t size = 0;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (out_fd);
+  u32 sid = ldp_sh_from_fd (out_fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1888,7 +1942,7 @@ recv (int fd, void *buf, size_t n, int flags)
   if ((errno = -ldp_init ()))
     return -1;
 
-  sid = ldp_sid_from_fd (fd);
+  sid = ldp_sh_from_fd (fd);
   if (sid != INVALID_SESSION_ID)
     {
       LDBG (2, "fd %d (0x%x): calling vcl recvfrom: sid %u (0x%x), buf %p,"
@@ -1915,7 +1969,7 @@ sendto (int fd, const void *buf, size_t n, int flags,
 {
   ssize_t size;
   const char *func_str = __func__;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2006,7 +2060,7 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
 {
   ssize_t size;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2076,7 +2130,7 @@ sendmsg (int fd, const struct msghdr * message, int flags)
 {
   ssize_t size;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2125,7 +2179,7 @@ sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
 {
   ssize_t size;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2172,7 +2226,7 @@ recvmsg (int fd, struct msghdr * message, int flags)
 {
   ssize_t size;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2222,7 +2276,7 @@ recvmmsg (int fd, struct mmsghdr *vmessages,
 {
   ssize_t size;
   const char *func_str;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2271,7 +2325,7 @@ getsockopt (int fd, int level, int optname,
 {
   int rv;
   const char *func_str = __func__;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
   u32 buflen = optlen ? (u32) * optlen : 0;
 
   if ((errno = -ldp_init ()))
@@ -2499,7 +2553,7 @@ setsockopt (int fd, int level, int optname,
 {
   int rv;
   const char *func_str = __func__;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2663,7 +2717,7 @@ int
 listen (int fd, int n)
 {
   int rv;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -2696,13 +2750,14 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	     socklen_t * __restrict addr_len, int flags)
 {
   int rv;
-  u32 listen_sid = ldp_sid_from_fd (listen_fd);
-  int accept_sid;
+  u32 listen_sh;
+  int accept_sh;
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (listen_sid != INVALID_SESSION_ID)
+  listen_sh = ldp_sh_from_fd (listen_fd);
+  if (listen_sh != INVALID_SESSION_ID)
     {
       vppcom_endpt_t ep;
       u8 src_addr[sizeof (struct sockaddr_in6)];
@@ -2711,12 +2766,12 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 
       LDBG (0, "listen fd %d (0x%x): calling vppcom_session_accept:"
 	    " listen sid %u (0x%x), ep %p, flags 0x%x", listen_fd,
-	    listen_fd, listen_sid, listen_sid, ep, flags);
+	    listen_fd, listen_sh, listen_sh, ep, flags);
 
-      accept_sid = vppcom_session_accept (listen_sid, &ep, flags);
-      if (accept_sid < 0)
+      accept_sh = vppcom_session_accept (listen_sh, &ep, flags);
+      if (accept_sh < 0)
 	{
-	  errno = -accept_sid;
+	  errno = -accept_sh;
 	  rv = -1;
 	}
       else
@@ -2724,16 +2779,16 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	  rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
 	  if (rv != VPPCOM_OK)
 	    {
-	      (void) vppcom_session_close ((u32) accept_sid);
+	      (void) vppcom_session_close ((u32) accept_sh);
 	      errno = -rv;
 	      rv = -1;
 	    }
 	  else
 	    {
-	      rv = ldp_fd_alloc ((u32) accept_sid);
+	      rv = ldp_fd_alloc ((u32) accept_sh);
 	      if (rv < 0)
 		{
-		  (void) vppcom_session_close ((u32) accept_sid);
+		  (void) vppcom_session_close ((u32) accept_sh);
 		  errno = -rv;
 		  rv = -1;
 		}
@@ -2776,15 +2831,14 @@ shutdown (int fd, int how)
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (ldp_fd_is_sid (fd))
+  if (ldp_fd_is_sh (fd))
     {
-      u32 fd_index = fd - ldp->sid_bit_val;
+      u32 fd_index = fd - ldp->sh_bit_val;
       ldp_fd_entry_t *fde;
 
-      fde = ldp_fd_entry_get_w_lock (fd_index);
+      fde = ldp_fd_entry_lock (fd_index);
       if (!fde)
 	{
-	  clib_rwlock_reader_unlock (&ldp->fd_table_lock);
 	  errno = ENOTCONN;
 	  return -1;
 	}
@@ -2799,7 +2853,7 @@ shutdown (int fd, int how)
       if ((fde->flags & LDP_F_SHUT_RD) && (fde->flags & LDP_F_SHUT_WR))
 	rv = close (fd);
 
-      clib_rwlock_reader_unlock (&ldp->fd_table_lock);
+      ldp_fd_entry_unlock (fde);
       LDBG (0, "fd %d (0x%x): calling vcl shutdown: how %d", fd, fd, how);
     }
   else
@@ -2869,7 +2923,7 @@ epoll_create (int size)
 int
 epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
 {
-  u32 vep_idx = ldp_sid_from_fd (epfd), sid;
+  u32 vep_idx = ldp_sh_from_fd (epfd), sid;
   const char *func_str;
   int rv;
 
@@ -2892,7 +2946,7 @@ epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
       goto done;
     }
 
-  sid = ldp_sid_from_fd (fd);
+  sid = ldp_sh_from_fd (fd);
 
   LDBG (0, "epfd %d (0x%x), vep_idx %d (0x%x), sid %d (0x%x)",
 	epfd, epfd, vep_idx, vep_idx, sid, sid);
@@ -2995,7 +3049,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 {
   ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
   double time_to_wait = (double) 0, time_out, now = 0;
-  u32 vep_idx = ldp_sid_from_fd (epfd);
+  u32 vep_idx = ldp_sh_from_fd (epfd);
   int libc_epfd, rv = 0;
 
   if ((errno = -ldp_init ()))
@@ -3115,7 +3169,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
       LDBG (3, "fds[%d] fd %d (0x%0x) events = 0x%x revents = 0x%x",
 	    i, fds[i].fd, fds[i].fd, fds[i].events, fds[i].revents);
 
-      sid = ldp_sid_from_fd (fds[i].fd);
+      sid = ldp_sh_from_fd (fds[i].fd);
       if (sid != INVALID_SESSION_ID)
 	{
 	  fds[i].fd = -fds[i].fd;

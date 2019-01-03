@@ -724,6 +724,48 @@ app_worker_stop_listen (app_worker_t * app_wrk, session_handle_t handle)
   return 0;
 }
 
+int
+app_worker_own_session (app_worker_t * app_wrk, stream_session_t * s)
+{
+  segment_manager_t *sm;
+  svm_fifo_t *rxf, *txf;
+
+  s->app_wrk_index = app_wrk->wrk_index;
+
+  rxf = s->server_rx_fifo;
+  txf = s->server_tx_fifo;
+
+  if (!rxf || !txf)
+    return 0;
+
+  s->server_rx_fifo = 0;
+  s->server_tx_fifo = 0;
+
+  sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
+  if (session_alloc_fifos (sm, s))
+    return -1;
+
+  if (!svm_fifo_is_empty (rxf))
+    {
+      clib_memcpy_fast (s->server_rx_fifo->data, rxf->data, rxf->nitems);
+      s->server_rx_fifo->head = rxf->head;
+      s->server_rx_fifo->tail = rxf->tail;
+      s->server_rx_fifo->cursize = rxf->cursize;
+    }
+
+  if (!svm_fifo_is_empty (txf))
+    {
+      clib_memcpy_fast (s->server_tx_fifo->data, txf->data, txf->nitems);
+      s->server_tx_fifo->head = txf->head;
+      s->server_tx_fifo->tail = txf->tail;
+      s->server_tx_fifo->cursize = txf->cursize;
+    }
+
+  segment_manager_dealloc_fifos (rxf->segment_index, rxf, txf);
+
+  return 0;
+}
+
 /**
  * Start listening local transport endpoint for requested transport.
  *
@@ -887,6 +929,14 @@ app_worker_get_connect_segment_manager (app_worker_t * app)
 {
   ASSERT (app->connects_seg_manager != (u32) ~ 0);
   return segment_manager_get (app->connects_seg_manager);
+}
+
+segment_manager_t *
+app_worker_get_or_alloc_connect_segment_manager (app_worker_t * app_wrk)
+{
+  if (app_wrk->connects_seg_manager == (u32) ~ 0)
+    app_worker_alloc_connects_segment_manager (app_wrk);
+  return segment_manager_get (app_wrk->connects_seg_manager);
 }
 
 segment_manager_t *
