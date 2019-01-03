@@ -69,7 +69,8 @@ typedef enum
   STATE_ACCEPT = 0x08,
   STATE_VPP_CLOSING = 0x10,
   STATE_DISCONNECT = 0x20,
-  STATE_FAILED = 0x40
+  STATE_FAILED = 0x40,
+  STATE_UPDATED = 0x80,
 } session_state_t;
 
 #define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)
@@ -144,6 +145,7 @@ typedef struct vcl_shared_session_
 {
   u32 ss_index;
   u32 *workers;
+  u32 session_index;
 } vcl_shared_session_t;
 
 typedef struct
@@ -286,6 +288,8 @@ typedef struct vcl_worker_
 
   /** Vector of unhandled events */
   session_event_t *unhandled_evts_vector;
+
+  u32 *pending_session_wrk_updates;
 
   /** Used also as a thread stop key buffer */
   pthread_t thread_id;
@@ -543,6 +547,17 @@ vcl_worker_get_current (void)
   return vcl_worker_get (vcl_get_worker_index ());
 }
 
+static inline svm_msg_q_t *
+vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
+{
+  if (vcl_session_is_ct (s))
+    return wrk->vpp_event_queues[0];
+  else
+    return wrk->vpp_event_queues[s->vpp_thread_index];
+}
+
+void vcl_send_session_worker_update (vcl_worker_t *wrk, vcl_session_t *s,
+                                     u32 wrk_index);
 /*
  * VCL Binary API
  */
@@ -556,7 +571,6 @@ void vppcom_send_disconnect_session (u64 vpp_handle);
 void vppcom_send_bind_sock (vcl_session_t * session);
 void vppcom_send_unbind_sock (u64 vpp_handle);
 void vppcom_api_hookup (void);
-void vppcom_send_accept_session_reply (u64 vpp_handle, u32 context, int rv);
 void vcl_send_app_worker_add_del (u8 is_add);
 void vcl_send_child_worker_del (vcl_worker_t * wrk);
 

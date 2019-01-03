@@ -84,6 +84,8 @@ typedef struct vppcom_endpt_t_
   uint16_t port;
 } vppcom_endpt_t;
 
+typedef uint32_t vcl_session_handle_t;
+
 typedef enum
 {
   VPPCOM_OK = 0,
@@ -264,7 +266,8 @@ extern int vppcom_session_sendto (uint32_t session_handle, void *buffer,
 extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 			double wait_for_time);
 extern int vppcom_mq_epoll_fd (void);
-extern int vppcom_session_index (uint32_t session_handle);
+extern int vppcom_session_index (vcl_session_handle_t session_handle);
+extern int vppcom_session_worker (vcl_session_handle_t session_handle);
 extern int vppcom_session_handle (uint32_t session_index);
 
 extern int vppcom_session_read_segments (uint32_t session_handle,

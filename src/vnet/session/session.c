@@ -802,6 +802,7 @@ session_transport_closing_notify (transport_connection_t * tc)
     return;
   app = application_get (app_wrk->app_index);
   app->cb_fns.session_disconnect_callback (s);
+  clib_warning ("closing %u %u", s->session_index, s->app_wrk_index);
 }
 
 /**
