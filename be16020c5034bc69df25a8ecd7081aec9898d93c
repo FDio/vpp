@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "127335a9_fd1e0d80",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T10:51:04Z",
+      "side": 1,
+      "message": "maybe a bit faster, but simply because it is simpler to write function code. you can try.",
+      "parentUuid": "25a4f074_77529ce0",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b187dce3_4fa7f0a7",
         "filename": "src/plugins/ipsecmb/esp_decrypt.c",
         "patchSetId": 33
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "all this code assumes that data fits, the same way as original openssl code does. this will be fixed when I add support for buffer chains...",
       "parentUuid": "b187dce3_4fa7f0a7",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "35d3821c_06ae5339",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T10:51:04Z",
+      "side": 1,
+      "message": "perfect if you can support buffer chain.",
+      "parentUuid": "8802c9b9_30b40f23",
       "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -124,6 +160,24 @@
       "side": 1,
       "message": "that means function pointers and that degrades performance no?",
       "parentUuid": "a3636792_16a3f29c",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0c3e474f_d711e4ed",
+        "filename": "src/plugins/ipsecmb/ipsecmb.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T10:51:04Z",
+      "side": 1,
+      "message": "no. anyway we have to call ipsec mb functions.\n\nthis is to make coding easier, you don\u0027t have to use CLIB_MARCH_VARIANT to include your node functions.",
+      "parentUuid": "824a5fd0_5f7588b7",
       "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
