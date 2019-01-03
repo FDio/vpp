@@ -172,6 +172,10 @@ typedef struct
   /* Mapping from sw_if_index to tunnel index */
   u32 *tunnel_index_by_sw_if_index;
 
+  /* graph node state */
+  uword *bm_ip4_bypass_enabled_by_sw_if;
+  uword *bm_ip6_bypass_enabled_by_sw_if;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
