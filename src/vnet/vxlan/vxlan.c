@@ -919,12 +919,28 @@ VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
 void
 vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
 {
+  vxlan_main_t *vxm = &vxlan_main;
+
+  is_enable = ! !is_enable;
+
   if (is_ip6)
-    vnet_feature_enable_disable ("ip6-unicast", "ip6-vxlan-bypass",
-				 sw_if_index, is_enable, 0, 0);
+    {
+      if (vxm->ip6_bypass_enabled != is_enable)
+	{
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-vxlan-bypass",
+				       sw_if_index, is_enable, 0, 0);
+	}
+      vxm->ip6_bypass_enabled = is_enable;
+    }
   else
-    vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass",
-				 sw_if_index, is_enable, 0, 0);
+    {
+      if (vxm->ip4_bypass_enabled != is_enable)
+	{
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass",
+				       sw_if_index, is_enable, 0, 0);
+	}
+      vxm->ip4_bypass_enabled = is_enable;
+    }
 }
 
 
@@ -1215,6 +1231,9 @@ vxlan_init (vlib_main_t * vm)
 
   vnet_flow_get_range (vxm->vnet_main, "vxlan", 1024 * 1024,
 		       &vxm->flow_id_start);
+
+  vxm->ip4_bypass_enabled = 0;
+  vxm->ip6_bypass_enabled = 0;
 
   /* initialize the ip6 hash */
   clib_bihash_init_16_8 (&vxm->vxlan4_tunnel_by_key, "vxlan4",
