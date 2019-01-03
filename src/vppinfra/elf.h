@@ -775,9 +775,10 @@ typedef struct
    word 2: minor version of the ABI
    word 3: subminor version of the ABI
 */
-#ifndef ELF_NOTE_ABI
-#define ELF_NOTE_ABI		1
-#endif
+/* This seems to be unnecessary, and causes cross-compilation issues */
+// #ifndef ELF_NOTE_ABI
+// #define ELF_NOTE_ABI         1
+// #endif
 
 /* Known OSes.  These value can appear in word 0 of an ELF_NOTE_ABI
    note section entry.  */

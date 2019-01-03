@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+find_path(OPENSSL_INCLUDE_DIR NAMES openssl/x509_vfy.h openssl/opensslconf.h)
+find_path(OPENSSL_INCLUDE_DIR2 NAMES openssl/opensslconf.h)
+include_directories(${OPENSSL_INCLUDE_DIR})
+include_directories(${OPENSSL_INCLUDE_DIR2})
+
 ##############################################################################
 # Generate vpp/app/version.h
 ##############################################################################

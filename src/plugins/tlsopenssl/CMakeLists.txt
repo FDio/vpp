@@ -11,9 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+find_path(OPENSSL_INCLUDE_DIR2 NAMES openssl/opensslconf.h)
+
 include (CheckFunctionExists)
 if(OPENSSL_FOUND)
   include_directories(${OPENSSL_INCLUDE_DIR})
+  include_directories(${OPENSSL_INCLUDE_DIR2})
+  # When compiling against openssl 1.1.0g, a few unused-value warnings occur
+  # Disable that specific warning for the affected file
+  set_source_files_properties(tls_openssl.c PROPERTIES COMPILE_FLAGS -Wno-unused-value)
   add_vpp_plugin(tlsopenssl
     SOURCES
     tls_openssl.c
@@ -22,6 +28,7 @@ if(OPENSSL_FOUND)
     LINK_LIBRARIES
     ${OPENSSL_LIBRARIES}
   )
+
 
   set(CMAKE_REQUIRED_INCLUDES "${OPENSSL_INCLUDE_DIR}")
   set(CMAKE_REQUIRED_LIBRARIES "${OPENSSL_LIBRARIES}")

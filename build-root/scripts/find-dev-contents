@@ -29,7 +29,7 @@ do
 done        
 
 # Perf monitor .json tarball
-for i in $(find ${1}/vpp/share/vpp/plugins/perfmon -name *.tar.xz -type f -print); do
+for i in $(find ${1}/*/share/vpp/plugins/perfmon -name *.tar.xz -type f -print); do
     echo ../${i} /usr/share/vpp/plugins/perfmon >> ${2}
 done
 

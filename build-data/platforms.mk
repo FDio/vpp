@@ -76,11 +76,11 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	   >> deb/debian/vpp.dirs ;					\
 									\
 	: dev package needs a couple of additions ;			\
-	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/bin/vppapigen /usr/bin	\
+	echo ../$(INSTALL_PREFIX)$(ARCH)/*/bin/vppapigen /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/vppapigen_c.py /usr/share/vpp  \
+	echo ../$(INSTALL_PREFIX)$(ARCH)/*/share/vpp/vppapigen_c.py /usr/share/vpp  \
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/share/vpp/vppapigen_json.py /usr/share/vpp \
+	echo ../$(INSTALL_PREFIX)$(ARCH)/*/share/vpp/vppapigen_json.py /usr/share/vpp \
 	   >> deb/debian/vpp-dev.install ;				\
 	echo ../../extras/japi/java/jvpp/gen/jvpp_gen.py /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\
@@ -95,6 +95,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	: Go fabricate the actual Debian packages ;			\
 	(								\
 	cd deb &&							\
-	dpkg-buildpackage -us -uc -b					\
+	dpkg-buildpackage $($(PLATFORM)_dpkg_build_args) -d -us -uc -b	\
 	)
 
