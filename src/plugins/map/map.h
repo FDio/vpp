@@ -321,6 +321,10 @@ typedef struct {
   /* Counters */
   u32 ip6_reass_buffered_counter;
 
+  /* Graph node state */
+  u8 is_translation_enabled;
+  u8 is_encap_enabled;
+
   /* Lookup tables */
   lpm_t *ip4_prefix_tbl;
   lpm_t *ip6_prefix_tbl;
