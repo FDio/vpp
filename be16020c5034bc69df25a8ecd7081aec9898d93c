@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "25a4f074_77529ce0",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-03T10:15:29Z",
+      "side": 1,
+      "message": "I don\u0027t see much reason for rewriting working code - is it faster?",
+      "parentUuid": "07b7443b_97e9f3d6",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b187dce3_4fa7f0a7",
         "filename": "src/plugins/ipsecmb/esp_decrypt.c",
         "patchSetId": 33
@@ -30,6 +48,24 @@
       "writtenOn": "2019-01-03T08:41:41Z",
       "side": 1,
       "message": "you are assuming there are till space in the buffer tail. would it be safer to put output mac on the beggining of the buffer: vlib_buffer_get_current (b0) - sizeof(esp) - iv_size ?",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8802c9b9_30b40f23",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-03T10:15:29Z",
+      "side": 1,
+      "message": "all this code assumes that data fits, the same way as original openssl code does. this will be fixed when I add support for buffer chains...",
+      "parentUuid": "b187dce3_4fa7f0a7",
       "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -70,6 +106,24 @@
       "writtenOn": "2019-01-03T08:41:41Z",
       "side": 1,
       "message": "Why don\u0027t put all these function into ipsecmb_main_t, like what __set_funcs() is doing? \n\nsomething like this:\n\ntypedef struct\n{\n  MB_MGR **mb_mgr;\n  struct\n  {\n    init_mb_mgr_t init_mb_mgr;\n\t/**\u003c Initialise scheduler  */\n    get_next_job_t get_next_job;\n\t/**\u003c Get next free job structure */\n    submit_job_t submit_job;\n\t/**\u003c Submit job to scheduler */\n    get_completed_job_t get_completed_job;\n\t/**\u003c Get completed job */\n    flush_job_t flush_job;\n\t/**\u003c flush jobs from manager */\n  } job;\n  struct\n  {\n\n    aes_keyexp_128_t ctr_keyexp_fn;\n    aes_cmac_keyexp_t cmac_keyexp_fn;\n    aes_cmac_sub_key_gen_t cmac_subkey_gen_fn;\n  } key;\n}",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "824a5fd0_5f7588b7",
+        "filename": "src/plugins/ipsecmb/ipsecmb.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-03T10:15:29Z",
+      "side": 1,
+      "message": "that means function pointers and that degrades performance no?",
+      "parentUuid": "a3636792_16a3f29c",
       "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
