@@ -11,6 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+find_path(OPENSSL_INCLUDE_DIR NAMES openssl/x509_vfy.h openssl/opensslconf.h)
+find_path(OPENSSL_INCLUDE_DIR2 NAMES openssl/opensslconf.h)
+find_library(CRYPTO_LIB crypto)
+message(STATUS "Found crypto lib in ${CRYPTO_LIB}")
+include_directories(${OPENSSL_INCLUDE_DIR})
+include_directories(${OPENSSL_INCLUDE_DIR2})
+
 ##############################################################################
 # vat plugin shared library
 ##############################################################################
@@ -38,7 +45,7 @@ add_vpp_executable(vpp_api_test ENABLE_EXPORTS
   vatplugin
   vppinfra
   Threads::Threads
-  rt m dl crypto
+  rt m dl ${CRYPTO_LIB}
 )
 
 ##############################################################################

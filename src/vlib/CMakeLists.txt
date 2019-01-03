@@ -28,15 +28,17 @@ install(
 ##############################################################################
 # Find lib and include files
 ##############################################################################
-message(STATUS "Looking for libuuid")
+message(STATUS "Looking for uuid.h")
 find_path(UUID_INCLUDE_DIR NAMES uuid/uuid.h)
+message(STATUS "Looking for libuuid")
 find_library(UUID_LIB NAMES uuid)
 
 if(UUID_INCLUDE_DIR AND UUID_LIB)
   include_directories(${UUID_INCLUDE_DIR})
   set(VMBUS_SOURCE linux/vmbus.c)
-  set(VMBUS_LIBS uuid)
+  set(VMBUS_LIBS ${UUID_LIB})
   message(STATUS "Found uuid in ${UUID_INCLUDE_DIR}")
+  message(STATUS "Found libuuid in ${UUID_LIB}")
 else()
   message(WARNING "-- libuuid not found - vmbus support disabled")
 endif()

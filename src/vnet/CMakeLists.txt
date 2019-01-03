@@ -12,7 +12,10 @@
 # limitations under the License.
 
 add_definitions (-DWITH_LIBSSL=1)
+find_path(OPENSSL_INCLUDE_DIR NAMES openssl/x509_vfy.h openssl/opensslconf.h)
+find_path(OPENSSL_INCLUDE_DIR2 NAMES openssl/opensslconf.h)
 include_directories(${OPENSSL_INCLUDE_DIR})
+include_directories(${OPENSSL_INCLUDE_DIR2})
 
 unset(VNET_SOURCES)
 unset(VNET_HEADERS)

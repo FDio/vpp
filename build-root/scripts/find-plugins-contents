@@ -15,14 +15,14 @@
 
 rm -f $2
 
-for i in ${1}/vpp/lib/vpp_plugins/*.so; do
+for i in ${1}/*/lib/vpp_plugins/*.so; do
 	echo ../${i} /usr/lib/vpp_plugins >> ${2}
 done
 
-for i in ${1}/vpp/lib/vpp_api_test_plugins/*.so; do
+for i in ${1}/*/lib/vpp_api_test_plugins/*.so; do
 	echo ../${i} /usr/lib/vpp_api_test_plugins >> ${2}
 done
 
-for i in $(find ${1}/plugins ${1}/vpp/share/vpp/api/plugins/ -name *.api.json -type f -print); do
+for i in $(find ${1}/plugins ${1}/*/share/vpp/api/plugins/ -name *.api.json -type f -print); do
     echo ../${i} /usr/share/vpp/api/ >> ${2}
 done
