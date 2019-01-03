@@ -919,12 +919,28 @@ VLIB_CLI_COMMAND (show_vxlan_tunnel_command, static) = {
 void
 vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable)
 {
+  vxlan_main_t *vxm = &vxlan_main;
+
+  is_enable = ! !is_enable;
+
   if (is_ip6)
-    vnet_feature_enable_disable ("ip6-unicast", "ip6-vxlan-bypass",
-				 sw_if_index, is_enable, 0, 0);
+    {
+      if (vxm->ip6_bypass_enabled != is_enable)
+	{
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-vxlan-bypass",
+				       sw_if_index, is_enable, 0, 0);
+	}
+      vxm->ip6_bypass_enabled = is_enable;
+    }
   else
-    vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass",
-				 sw_if_index, is_enable, 0, 0);
+    {
+      if (vxm->ip4_bypass_enabled != is_enable)
+	{
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass",
+				       sw_if_index, is_enable, 0, 0);
+	}
+      vxm->ip4_bypass_enabled = is_enable;
+    }
 }
 
 
