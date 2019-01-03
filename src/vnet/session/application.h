@@ -225,12 +225,15 @@ int app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk);
 app_worker_t *app_worker_get (u32 wrk_index);
 app_worker_t *app_worker_get_if_valid (u32 wrk_index);
 application_t *app_worker_get_app (u32 wrk_index);
+int app_worker_own_session (app_worker_t * app_wrk, stream_session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
 int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
 			     u32 api_context);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  stream_session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
+segment_manager_t
+  * app_worker_get_or_alloc_connect_segment_manager (app_worker_t *);
 int app_worker_alloc_connects_segment_manager (app_worker_t * app);
 int app_worker_add_segment_notify (u32 app_or_wrk, u64 segment_handle);
 u32 app_worker_n_listeners (app_worker_t * app);

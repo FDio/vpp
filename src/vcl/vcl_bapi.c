@@ -610,21 +610,6 @@ vppcom_send_unbind_sock (u64 vpp_handle)
 }
 
 void
-vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_accept_session_reply_t *rmp;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
-  rmp->retval = htonl (retval);
-  rmp->context = context;
-  rmp->handle = handle;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & rmp);
-}
-
-void
 vppcom_send_application_tls_cert_add (vcl_session_t * session, char *cert,
 				      u32 cert_len)
 {
