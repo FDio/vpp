@@ -22,6 +22,30 @@
       "revId": "c1d116ba754318933e8550f6f79ab901497929cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "18af5451_84e5b2fb",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 796,
+      "author": {
+        "id": 1269
+      },
+      "writtenOn": "2019-01-03T02:26:25Z",
+      "side": 1,
+      "message": "I once consider to use vcl option as well, but considering support LD_PRELOAD, I think it is not good to make vcl have too many interface, so I prefer that we can keep this option in vpp configuration instead of vcl configuration to make VCL transparent. How do you think so? \nSo the first patch is to enable TLS support in VCL first, and then the second can add an option to let user to choose openssl or mbedtls.",
+      "parentUuid": "f3e31680_5c8cfd38",
+      "range": {
+        "startLine": 796,
+        "startChar": 2,
+        "endLine": 796,
+        "endChar": 39
+      },
+      "revId": "c1d116ba754318933e8550f6f79ab901497929cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
