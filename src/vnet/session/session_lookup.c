@@ -326,14 +326,28 @@ session_lookup_del_connection (transport_connection_t * tc)
   if (tc->is_ip4)
     {
       make_v4_ss_kv_from_tc (&kv4, tc);
-      return clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4,
-				       0 /* is_add */ );
+      int ret = clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4,0 /* is_del */ );
+      if (ret)
+      {
+          memset(&tc->rmt_ip.ip4,0,sizeof(ip4_address_t));
+          tc->rmt_port = 0;
+          make_v4_ss_kv_from_tc (&kv4, tc);
+          ret = clib_bihash_add_del_16_8 (&st->v4_session_hash, &kv4,0 /* is_del */ );
+      }
+      return ret;
     }
   else
     {
       make_v6_ss_kv_from_tc (&kv6, tc);
-      return clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6,
-				       0 /* is_add */ );
+      int ret = clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6, 0 /* is_del */ );
+      if (ret)
+      {
+          memset(&tc->rmt_ip.ip6,0,sizeof(ip6_address_t));
+          tc->rmt_port = 0;
+          make_v6_ss_kv_from_tc (&kv6, tc);
+          ret = clib_bihash_add_del_48_8 (&st->v6_session_hash, &kv6, 0 /* is_del */ );
+      }
+      return ret;
     }
 }
 

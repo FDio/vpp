@@ -105,11 +105,13 @@ u32
 udp_session_unbind (u32 listener_index)
 {
   vlib_main_t *vm = vlib_get_main ();
+  udp_main_t *um = vnet_get_udp_main ();
 
   udp_connection_t *listener;
   listener = udp_listener_get (listener_index);
   udp_unregister_dst_port (vm, clib_net_to_host_u16 (listener->c_lcl_port),
 			   listener->c_is_ip4);
+  pool_put_index (um->listener_pool, listener_index);
   return 0;
 }
 
