@@ -1,0 +1,78 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "07b7443b_97e9f3d6",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T08:41:41Z",
+      "side": 1,
+      "message": "I\u0027d recommend to use \u0027vlib_buffer_enqueue_to_next\u0027 to re-write the node function. It would make the code much simpler. \n\nI can share a code sample if you like.",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b187dce3_4fa7f0a7",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T08:41:41Z",
+      "side": 1,
+      "message": "you are assuming there are till space in the buffer tail. would it be safer to put output mac on the beggining of the buffer: vlib_buffer_get_current (b0) - sizeof(esp) - iv_size ?",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a43299b0_8fad7f33",
+        "filename": "src/plugins/ipsecmb/esp_decrypt.c",
+        "patchSetId": 33
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T08:41:41Z",
+      "side": 1,
+      "message": "this local variable can be removed. IPSec MB would make sure all pending jobs are flushed out when calling flush_job in a while loop.",
+      "range": {
+        "startLine": 338,
+        "startChar": 9,
+        "endLine": 338,
+        "endChar": 26
+      },
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a3636792_16a3f29c",
+        "filename": "src/plugins/ipsecmb/ipsecmb.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-03T08:41:41Z",
+      "side": 1,
+      "message": "Why don\u0027t put all these function into ipsecmb_main_t, like what __set_funcs() is doing? \n\nsomething like this:\n\ntypedef struct\n{\n  MB_MGR **mb_mgr;\n  struct\n  {\n    init_mb_mgr_t init_mb_mgr;\n\t/**\u003c Initialise scheduler  */\n    get_next_job_t get_next_job;\n\t/**\u003c Get next free job structure */\n    submit_job_t submit_job;\n\t/**\u003c Submit job to scheduler */\n    get_completed_job_t get_completed_job;\n\t/**\u003c Get completed job */\n    flush_job_t flush_job;\n\t/**\u003c flush jobs from manager */\n  } job;\n  struct\n  {\n\n    aes_keyexp_128_t ctr_keyexp_fn;\n    aes_cmac_keyexp_t cmac_keyexp_fn;\n    aes_cmac_sub_key_gen_t cmac_subkey_gen_fn;\n  } key;\n}",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
