@@ -175,15 +175,6 @@ format_ip46_address (u8 * s, va_list * args)
  */
 
 
-static svm_msg_q_t *
-vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
-{
-  if (vcl_session_is_ct (s))
-    return wrk->vpp_event_queues[0];
-  else
-    return wrk->vpp_event_queues[s->vpp_thread_index];
-}
-
 static void
 vcl_send_session_accepted_reply (svm_msg_q_t * mq, u32 context,
 				 session_handle_t handle, int retval)
@@ -540,7 +531,6 @@ vcl_session_disconnected_handler (vcl_worker_t * wrk,
   /* Caught a disconnect before actually accepting the session */
   if (session->session_state == STATE_LISTEN)
     {
-
       if (!vcl_flag_accepted_session (session, msg->handle,
 				      VCL_ACCEPTED_F_CLOSED))
 	VDBG (0, "session was not accepted!");
@@ -1143,10 +1133,7 @@ cleanup:
       vcl_ct_registration_unlock (wrk);
     }
 
-  if (vpp_handle != ~0)
-    {
-      vcl_session_table_del_vpp_handle (wrk, vpp_handle);
-    }
+  vcl_session_table_del_vpp_handle (wrk, vpp_handle);
   vcl_session_free (wrk, session);
 
   VDBG (0, "session handle %u [0x%llx] removed", session_handle, vpp_handle);

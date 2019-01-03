@@ -353,11 +353,12 @@ int
 close (int fd)
 {
   int rv, refcnt;
-  u32 sid = ldp_sid_from_fd (fd);
+  u32 sid;
 
   if ((errno = -ldp_init ()))
     return -1;
 
+  sid = ldp_sid_from_fd (fd);
   if (sid != INVALID_SESSION_ID)
     {
       int epfd;

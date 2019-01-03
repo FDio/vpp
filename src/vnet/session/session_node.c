@@ -173,7 +173,7 @@ session_mq_disconnected_handler (void *data)
   svm_msg_q_unlock (app_wrk->event_queue);
   evt = svm_msg_q_msg_data (app_wrk->event_queue, msg);
   clib_memset (evt, 0, sizeof (*evt));
-  evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
+  evt->event_type = SESSION_CTRL_EVT_DISCONNECTED_REPLY;
   rmp = (session_disconnected_reply_msg_t *) evt->data;
   rmp->handle = mp->handle;
   rmp->context = mp->context;
@@ -205,6 +205,40 @@ session_mq_disconnected_reply_handler (void *data)
       a->app_index = app->app_index;
       vnet_disconnect_session (a);
     }
+}
+
+static void
+session_mq_worker_update_handler (void *data)
+{
+  session_worker_update_msg_t *mp = (session_worker_update_msg_t *) data;
+  app_worker_t *app_wrk;
+  stream_session_t *s;
+  application_t *app;
+
+  app = application_lookup (mp->client_index);
+  if (!app)
+    return;
+  if (!(s = session_get_from_handle_if_valid (mp->handle)))
+    {
+      clib_warning ("invalid handle %llu", mp->handle);
+      return;
+    }
+  app_wrk = app_worker_get (s->app_wrk_index);
+  if (app_wrk->app_index != app->app_index)
+    {
+      clib_warning ("app %u does not own session %llu", app->app_index,
+                    mp->handle);
+      return;
+    }
+  app_wrk = application_get_worker (app, mp->wrk_index);
+  s->app_wrk_index = app_wrk->wrk_index;
+
+  /* Retransmit messages that may have been lost */
+  if (!svm_fifo_is_empty (s->server_rx_fifo))
+    app_worker_lock_and_send_event (app_wrk, s, FIFO_EVENT_APP_RX);
+
+  if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+    app->cb_fns.session_disconnect_callback (s);
 }
 
 vlib_node_registration_t session_queue_node;
@@ -935,6 +969,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  break;
 	case SESSION_CTRL_EVT_RESET_REPLY:
 	  session_mq_reset_reply_handler (e->data);
+	  break;
+	case SESSION_CTRL_EVT_WORKER_UPDATE:
+	  session_mq_worker_update_handler (e->data);
 	  break;
 	default:
 	  clib_warning ("unhandled event type %d", e->event_type);

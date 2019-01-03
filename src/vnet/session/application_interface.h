@@ -302,6 +302,13 @@ typedef struct session_reset_reply_msg_
   u64 handle;
 } __clib_packed session_reset_reply_msg_t;
 
+typedef struct session_worker_update_msg_
+{
+  u32 client_index;
+  u32 wrk_index;
+  u64 handle;
+} __clib_packed session_worker_update_msg_t;
+
 typedef struct app_session_event_
 {
   svm_msg_q_msg_t msg;
