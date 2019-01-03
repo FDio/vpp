@@ -46,6 +46,30 @@
       "revId": "c1d116ba754318933e8550f6f79ab901497929cf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a1c3454d_83822bb3",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 796,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-03T03:09:40Z",
+      "side": 1,
+      "message": "No need to add a new api. We already have the “APP_OPTIONS_TLS_ENGINE” attach option. Just add it to vcl’s attach message with value openssl. That way vcl will end up openssl dependent, but other apps will be able to request something else.\n \nAlso, as we go forward we may end up with multiple TLS engines in vpp, so depending on the environment applications may really want to ask for a specific engine. I don’t like having that many options either, but we may end up at one point exposing such apis to applications …",
+      "parentUuid": "18af5451_84e5b2fb",
+      "range": {
+        "startLine": 796,
+        "startChar": 2,
+        "endLine": 796,
+        "endChar": 39
+      },
+      "revId": "c1d116ba754318933e8550f6f79ab901497929cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
