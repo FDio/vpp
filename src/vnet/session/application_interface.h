@@ -220,9 +220,9 @@ typedef struct session_bound_msg_
   u8 lcl_is_ip4;
   u8 lcl_ip[16];
   u16 lcl_port;
-  u64 rx_fifo;
-  u64 tx_fifo;
-  u64 vpp_evt_q;
+  uword rx_fifo;
+  uword tx_fifo;
+  uword vpp_evt_q;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[128];
@@ -233,12 +233,12 @@ typedef struct session_accepted_msg_
   u32 context;
   u64 listener_handle;
   u64 handle;
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
+  uword server_rx_fifo;
+  uword server_tx_fifo;
   u64 segment_handle;
-  u64 vpp_event_queue_address;
-  u64 server_event_queue_address;
-  u64 client_event_queue_address;
+  uword vpp_event_queue_address;
+  uword server_event_queue_address;
+  uword client_event_queue_address;
   u16 port;
   u8 is_ip4;
   u8 ip[16];
@@ -260,12 +260,12 @@ typedef struct session_connected_msg_
   u32 context;
   i32 retval;
   u64 handle;
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
+  uword server_rx_fifo;
+  uword server_tx_fifo;
   u64 segment_handle;
-  u64 vpp_event_queue_address;
-  u64 client_event_queue_address;
-  u64 server_event_queue_address;
+  uword vpp_event_queue_address;
+  uword client_event_queue_address;
+  uword server_event_queue_address;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[64];
@@ -301,6 +301,21 @@ typedef struct session_reset_reply_msg_
   i32 retval;
   u64 handle;
 } __clib_packed session_reset_reply_msg_t;
+
+typedef struct session_worker_update_msg_
+{
+  u32 client_index;
+  u32 wrk_index;
+  u64 handle;
+} __clib_packed session_worker_update_msg_t;
+
+typedef struct session_worker_update_reply_msg_
+{
+  u64 handle;
+  uword rx_fifo;
+  uword tx_fifo;
+  u64 segment_handle;
+} __clib_packed session_worker_update_reply_msg_t;
 
 typedef struct app_session_event_
 {

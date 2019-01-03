@@ -375,21 +375,40 @@ vcl_worker_share_session (vcl_worker_t * parent, vcl_worker_t * wrk,
 			  vcl_session_t * new_s)
 {
   vcl_shared_session_t *ss;
-  vcl_session_t *s;
+  vcl_session_t *old_s;
 
-  s = vcl_session_get (parent, new_s->session_index);
-  if (s->shared_index == ~0)
+  if (new_s->shared_index == ~0)
     {
       ss = vcl_shared_session_alloc ();
+      ss->session_index = new_s->session_index;
       vec_add1 (ss->workers, parent->wrk_index);
-      s->shared_index = ss->ss_index;
+      vec_add1 (ss->workers, wrk->wrk_index);
+      new_s->shared_index = ss->ss_index;
+      old_s = vcl_session_get (parent, new_s->session_index);
+      old_s->shared_index = ss->ss_index;
     }
   else
     {
-      ss = vcl_shared_session_get (s->shared_index);
+      ss = vcl_shared_session_get (new_s->shared_index);
+      vec_add1 (ss->workers, wrk->wrk_index);
     }
-  new_s->shared_index = ss->ss_index;
-  vec_add1 (ss->workers, wrk->wrk_index);
+}
+
+static void
+vcl_send_session_worker_update (vcl_worker_t *wrk, vcl_session_t *s,
+                                u32 wrk_index)
+{
+  app_session_evt_t _app_evt, *app_evt = &_app_evt;
+  session_worker_update_msg_t *mp;
+  svm_msg_q_t *mq;
+
+  mq = vcl_session_vpp_evt_q (wrk, s);
+  app_alloc_ctrl_evt_to_vpp (mq, app_evt, SESSION_CTRL_EVT_WORKER_UPDATE);
+  mp = (session_worker_update_msg_t *) app_evt->evt->data;
+  mp->client_index = wrk->my_client_index;
+  mp->handle = s->vpp_handle;
+  mp->wrk_index = wrk_index;
+  app_send_ctrl_evt_to_vpp (mq, app_evt);
 }
 
 int
@@ -413,6 +432,10 @@ vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s)
       vcl_shared_session_free (ss);
       return 1;
     }
+
+  /* If the first removed and not last, notify vpp of the owner change */
+  if (i == 0)
+    vcl_send_session_worker_update (wrk, s, ss->workers[0]);
 
   return 0;
 }
