@@ -129,6 +129,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   struct rte_ring *swq;
+  struct rte_sched_port *hqos;
 
   u64 hqos_field0_slabmask;
   u32 hqos_field0_slabpos;
