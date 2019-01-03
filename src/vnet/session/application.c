@@ -890,6 +890,14 @@ app_worker_get_connect_segment_manager (app_worker_t * app)
 }
 
 segment_manager_t *
+app_worker_get_or_alloc_connect_segment_manager (app_worker_t * app_wrk)
+{
+  if (app_wrk->connects_seg_manager == (u32) ~ 0)
+    app_worker_alloc_connects_segment_manager (app_wrk);
+  return segment_manager_get (app_wrk->connects_seg_manager);
+}
+
+segment_manager_t *
 app_worker_get_listen_segment_manager (app_worker_t * app,
 				       stream_session_t * listener)
 {

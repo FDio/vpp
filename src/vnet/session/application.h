@@ -231,6 +231,8 @@ int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  stream_session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
+segment_manager_t
+  * app_worker_get_or_alloc_connect_segment_manager (app_worker_t *);
 int app_worker_alloc_connects_segment_manager (app_worker_t * app);
 int app_worker_add_segment_notify (u32 app_or_wrk, u64 segment_handle);
 u32 app_worker_n_listeners (app_worker_t * app);
