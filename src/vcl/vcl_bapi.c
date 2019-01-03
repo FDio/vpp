@@ -236,6 +236,7 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
     }
   vcm->app_state = STATE_APP_READY;
   VDBG (0, "worker %u vpp-worker %u added", wrk_index, wrk->vpp_wrk_index);
+  VDBG (0, "event queue %p", wrk->app_event_queue);
   return;
 
 failed:
@@ -579,21 +580,6 @@ vppcom_send_unbind_sock (u64 vpp_handle)
   ump->wrk_index = wrk->vpp_wrk_index;
   ump->handle = vpp_handle;
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & ump);
-}
-
-void
-vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
-{
-  vcl_worker_t *wrk = vcl_worker_get_current ();
-  vl_api_accept_session_reply_t *rmp;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
-  rmp->retval = htonl (retval);
-  rmp->context = context;
-  rmp->handle = handle;
-  vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & rmp);
 }
 
 u32
