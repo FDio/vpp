@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "02a87b0e_d0e2a204",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-04T16:32:47Z",
+      "side": 1,
+      "message": "I\u0027m seeing different results between py2 and py3 and wanted to identify whether its due to https://hynek.me/articles/hasattr/  \n\nBut practically speaking, we have a private instance variable being updated by another private instance variable.  It is proper to use _test here and not the property.   The property could inject new dependencies into that line.\n\nIs it really more ugly than _out_path and _out_file?",
+      "parentUuid": "6f8fb899_52a2a78e",
+      "revId": "561e6ef78efa5789bbe06a2e8671c843eb24a3f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "aab04f94_b72431d2",
         "filename": "test/vpp_pg_interface.py",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2019-01-04T10:04:43Z",
       "side": 1,
       "message": "is there a guarantee that this never throws?",
+      "revId": "561e6ef78efa5789bbe06a2e8671c843eb24a3f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15290554_ee4f3243",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-04T16:32:47Z",
+      "side": 1,
+      "message": "Nope.\n\nI\u0027m trying to work through writing some unit tests to hopefully help sure that py3 returns the same results as py2 and that one line returns True/False and can raise AttributeError and OSError.  \nThat requires 2^3 tests to cover just that one line. \n\nWhat I actually need to do is to use an intermediate local variable, say . maybe _is_valid path and wrap the try around that.\n\nWhat are your feelings about moving some of the input parameters to the method signature?",
+      "parentUuid": "aab04f94_b72431d2",
       "revId": "561e6ef78efa5789bbe06a2e8671c843eb24a3f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
