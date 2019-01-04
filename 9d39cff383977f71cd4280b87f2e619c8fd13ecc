@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "270c9d1e_6487bc80",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-04T04:14:53Z",
+      "side": 1,
+      "message": "This function, by construction, removes the connection\u0027s flow from the lookup table. It\u0027s not the place to add additional logic meant to deal with listener cleanup.\n\nInstead, there are two options:\n1) make sure in session_stop_listen that the session ip/port are 0-ed for listeners that are DGRAM transports, i.e., if session_tx_is_dgram(s)\n2) Make zero ip/port in udp_push_header if the connection is a marked as a listener. \n\nOut of the two, I prefer 2 because it avoids inaccurate reporting in \"show session\" cli. That is, a listener shouldn\u0027t have a remote ip/port. The problem however is that we don\u0027t mark udp connections as listeners so doing that is a bit more involved.",
+      "range": {
+        "startLine": 330,
+        "startChar": 0,
+        "endLine": 337,
+        "endChar": 17
+      },
+      "revId": "9d39cff383977f71cd4280b87f2e619c8fd13ecc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
