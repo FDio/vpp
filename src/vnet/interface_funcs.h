@@ -387,6 +387,9 @@ void vnet_sw_interface_update_unnumbered (u32 sw_if_index,
 
 int vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index,
 						    u8 enable);
+
+int vnet_sw_interface_stats_dump (u32 sw_if_index);
+
 void vnet_sw_interface_ip_directed_broadcast (vnet_main_t * vnm,
 					      u32 sw_if_index, u8 enable);
 

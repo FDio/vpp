@@ -197,6 +197,32 @@ class Union(Type):
     def get_host_to_net_function(self, host_ref_name, net_ref_name):
         return "_host_to_net_%s(env, %s, &(%s))" % (self.name, host_ref_name, net_ref_name)
 
+class StatsT(Type):
+    def __init__(self, name, crc, fields, definition, plugin_name):
+        _java_name = _underscore_to_camelcase_upper(name)
+
+        super(StatsT, self).__init__(
+            name=name,
+            java_name=_java_name,
+            java_name_fqn="io.fd.vpp.jvpp.%s.types.%s" % (plugin_name, _java_name),
+            jni_signature="Lio/fd/vpp/jvpp/%s/types/%s;" % (plugin_name, _java_name),
+            jni_type="jobject",
+            jni_accessor="Object",
+            host_to_net_function="_host_to_net_%s" % name,
+            net_to_host_function="_net_to_host_%s" % name
+        )
+
+        self.crc = crc
+        self.fields = fields
+        self.doc = _message_to_javadoc(definition)
+        self.java_name_lower = _underscore_to_camelcase_lower(name)
+        self.vpp_name = "%s%s%s" % (_VPP_TYPE_PREFIX, name, _VPP_TYPE_SUFFIX)
+        # Fully qualified class name used by FindClass function, see:
+        # https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#FindClass
+        self.jni_name = "io/fd/vpp/jvpp/%s/types/%s" % (plugin_name, _java_name)
+
+    def get_host_to_net_function(self, host_ref_name, net_ref_name):
+        return "_host_to_net_%s(env, %s, &(%s))" % (self.name, host_ref_name, net_ref_name)
 
 class Field(object):
     def __init__(self, name, field_type, array_len=None, array_len_field=None):
@@ -397,6 +423,8 @@ class JVppModel(object):
                         type = self._parse_union(name, data)
                     elif type == 'type':
                         type = self._parse_type(name, data)
+                    #elif type == 'stats_t':
+                     #   type = self._parse_stats_t(name, data)
                     else:
                         self.logger.warning("Unsupported type %s. Ignoring...", type)
                         continue
@@ -449,7 +477,7 @@ class JVppModel(object):
             'f64': SimpleType('f64', 'double', 'D', 'jdouble', 'Double'),
             'string': SimpleType('string', 'String', 'l', 'jstring', 'Object',
                                  host_to_net_function='_host_to_net_string',
-                                 net_to_host_function='_net_to_host_string')
+                                 net_to_host_function='_net_to_host_string',)
         })
 
         for n, t in self._types_by_name.items():
@@ -472,6 +500,11 @@ class JVppModel(object):
         self.logger.debug("Parsing union %s: %s", name, definition)
         crc, fields = self._parse_fields(definition)
         return Union(name, crc, fields, definition, self.plugin_name)
+
+    def _parse_stats_t(self, name, definition):
+        self.logger.debug("Parsing stats_t %s: %s", name, definition)
+        crc, fields = self._parse_fields(definition)
+        return StatsT(name, crc, fields, definition, self.plugin_name)
 
     def _parse_type(self, name, definition):
         self.logger.debug("Parsing type %s: %s", name, definition)

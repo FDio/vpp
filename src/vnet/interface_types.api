@@ -15,4 +15,5 @@
  */
 
 typedef u32 interface_index;
+typedef u64 counter_t;
 

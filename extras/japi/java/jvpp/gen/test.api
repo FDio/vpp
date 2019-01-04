@@ -572,23 +572,33 @@ autoreply define delete_loopback
   u32 sw_if_index;
 };
 
-/** \brief Enable or disable detailed interface stats
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - The interface to collect detail stats on. ~0 implies
-                         all interfaces.
-    @param enable_disable - set to 1 to enable, 0 to disable detailed stats
+
+
+/** \brief Interface statistics
+
 */
-autoreply define collect_detailed_interface_stats
+define sw_interface_stats
+{
+  u32 context;
+  u32 sw_if_index;
+  u64 drops;
+  u64 rx_packets;
+  u64 tx_packets;
+
+};
+
+define sw_interface_stats_dump
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-  u8  enable_disable;
 };
+
 
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
  * End:
  */
+
+

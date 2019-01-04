@@ -21,6 +21,42 @@
 #include <vnet/ethernet/ethernet.h>
 
 int
+vnet_sw_interface_stats_dump (u32 sw_if_index)
+{
+  ethernet_interface_t *eif;
+  vnet_sw_interface_t *si;
+  ethernet_main_t *em;
+  vnet_main_t *vnm;
+
+  vnm = vnet_get_main ();
+  em = &ethernet_main;
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+
+  /*
+   * only ethernet HW interfaces are supported at this time
+   */
+   si.
+  /*if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    {
+      return (VNET_API_ERROR_INVALID_VALUE);
+    }
+
+  eif = ethernet_get_interface (em, si->hw_if_index);
+
+  if (!eif)
+    {
+      return (VNET_API_ERROR_FEATURE_DISABLED);
+    }
+
+  vnet_feature_enable_disable ("device-input", "stats-collect-rx",
+			       sw_if_index, enable, 0, 0);
+  vnet_feature_enable_disable ("interface-output", "stats-collect-tx",
+			       sw_if_index, enable, 0, 0);*/
+
+  return (0);
+}
+
+int
 vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index, u8 enable)
 {
   ethernet_interface_t *eif;

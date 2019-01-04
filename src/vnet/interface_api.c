@@ -73,6 +73,7 @@ _(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)		\
 _(DELETE_LOOPBACK, delete_loopback)                             \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)             \
 _(COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats) \
+_(SW_INTERFACE_STATS_DUMP, sw_interface_stats_dump) \
 _(SW_INTERFACE_SET_IP_DIRECTED_BROADCAST,                            \
   sw_interface_set_ip_directed_broadcast)
 
@@ -1323,6 +1324,64 @@ vl_api_delete_loopback_t_handler (vl_api_delete_loopback_t * mp)
   rv = vnet_delete_loopback_interface (sw_if_index);
 
   REPLY_MACRO (VL_API_DELETE_LOOPBACK_REPLY);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+static void
+vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  vnet_sw_interface_t *swif;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
+  vl_api_registration_t *rp;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  if (rp == 0)
+    {
+      clib_warning ("Client %d AWOL", mp->client_index);
+      return;
+    }
+
+  u8 *filter = 0, *name = 0;
+  if (mp->name_filter_valid)
+    {
+      mp->name_filter[ARRAY_LEN (mp->name_filter) - 1] = 0;
+      filter = format (0, "%s%c", mp->name_filter, 0);
+    }
+
+  char *strcasestr (char *, char *);	/* lnx hdr file botch */
+  /* *INDENT-OFF* */
+  pool_foreach (swif, im->sw_interfaces,
+  ({
+    if (!vnet_swif_is_api_visible (swif))
+        continue;
+    vec_reset_length(name);
+    name = format (name, "%U%c", format_vnet_sw_interface_name, am->vnet_main,
+                   swif, 0);
+
+    if (filter && !strcasestr((char *) name, (char *) filter))
+	continue;
+
+    send_sw_interface_details (am, rp, swif, name, mp->context);
+  }));
+  /* *INDENT-ON* */
+
+  vec_free (name);
+  vec_free (filter);
+} ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void
+  vl_api_sw_interface_stats_dump_t_handler
+  (vl_api_sw_interface_stats_dump_t * mp)
+{
+  vl_api_sw_interface_stats_t *rmp;
+  int rv = 0;
+
+  rv =
+    vnet_sw_interface_stats_dump (ntohl (mp->sw_if_index),
+						    mp->enable_disable);
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_STATS);
 }
 
 static void
