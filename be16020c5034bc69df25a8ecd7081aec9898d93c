@@ -199,6 +199,24 @@
       "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b1895b4_2ffdaf52",
+        "filename": "src/plugins/ipsecmb/ipsecmb.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-01-04T00:55:33Z",
+      "side": 1,
+      "message": "I am not saying it is wrong. Just curious why you are using different ways to handle key_expand and job functions. Probably you should check how DPDK aesni PMD is dealing with it.",
+      "parentUuid": "ac0697d3_6e1984db",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
