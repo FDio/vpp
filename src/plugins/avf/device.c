@@ -587,7 +587,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	{
 	  avf_rxq_t *q = vec_elt_at_index (ad->rxqs, i);
 	  rxq->ring_len = q->size;
-	  rxq->databuffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+	  rxq->databuffer_size = VLIB_BUFFER_DATA_SIZE;
 	  rxq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	  avf_reg_write (ad, AVF_QRX_TAIL (i), q->size - 1);
 	}

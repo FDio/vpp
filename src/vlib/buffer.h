@@ -59,8 +59,6 @@
 /* Amount of head buffer data copied to each replica head buffer */
 #define VLIB_BUFFER_CLONE_HEAD_SIZE (256)
 
-typedef u8 vlib_buffer_free_list_index_t;
-
 /** \file
     vlib buffer structure definition and a few select
     access methods. This structure and the buffer allocation
@@ -72,11 +70,10 @@ typedef u8 vlib_buffer_free_list_index_t;
  * Buffer Flags
  */
 #define foreach_vlib_buffer_flag \
-  _( 0, NON_DEFAULT_FREELIST, "non-default-fl")		\
-  _( 1, IS_TRACED, 0)					\
-  _( 2, NEXT_PRESENT, 0)				\
-  _( 3, TOTAL_LENGTH_VALID, 0)				\
-  _( 4, EXT_HDR_VALID, "ext-hdr-valid")
+  _( 0, IS_TRACED, 0)					\
+  _( 1, NEXT_PRESENT, 0)				\
+  _( 2, TOTAL_LENGTH_VALID, 0)				\
+  _( 3, EXT_HDR_VALID, "ext-hdr-valid")
 
 /* NOTE: only buffer generic flags should be defined here, please consider
    using user flags. i.e. src/vnet/buffer.h */
@@ -98,7 +95,7 @@ enum
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
 #define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
-#define VLIB_BUFFER_FLAGS_ALL (0x1f)
+#define VLIB_BUFFER_FLAGS_ALL (0x0f)
 
 /* VLIB buffer representation. */
 typedef struct
@@ -157,10 +154,7 @@ typedef struct
   /**< Only valid for first buffer in chain. Current length plus
      total length given here give total number of bytes in buffer chain.
   */
-  vlib_buffer_free_list_index_t free_list_index; /** < only used if
-						   VLIB_BUFFER_NON_DEFAULT_FREELIST
-						   flag is set */
-  u8 align_pad[3]; /**< available */
+  u8 align_pad[4]; /**< available */
   u32 opaque2[12];  /**< More opaque data, see ../vnet/vnet/buffer.h */
 
   /***** end of second cache line */
@@ -358,45 +352,10 @@ vlib_buffer_pull (vlib_buffer_t * b, u8 size)
 /* Forward declaration. */
 struct vlib_main_t;
 
-typedef struct vlib_buffer_free_list_t
-{
-  /* Template buffer used to initialize first 16 bytes of buffers
-     allocated on this free list. */
-  vlib_buffer_t buffer_init_template;
-
-  /* Our index into vlib_main_t's buffer_free_list_pool. */
-  vlib_buffer_free_list_index_t index;
-
-  /* Number of data bytes for buffers in this free list. */
-  u32 n_data_bytes;
-
-  /* Number of buffers to allocate when we need to allocate new buffers */
-  u32 min_n_buffers_each_alloc;
-
-  /* Total number of buffers allocated from this free list. */
-  u32 n_alloc;
-
-  /* Vector of free buffers.  Each element is a byte offset into I/O heap. */
-  u32 *buffers;
-
-  /* index of buffer pool used to get / put buffers */
-  u8 buffer_pool_index;
-
-  /* Free list name. */
-  u8 *name;
-
-  /* Callback functions to initialize newly allocated buffers.
-     If null buffers are zeroed. */
-  void (*buffer_init_function) (struct vlib_main_t * vm,
-				struct vlib_buffer_free_list_t * fl,
-				u32 * buffers, u32 n_buffers);
-
-  uword buffer_init_function_opaque;
-} __attribute__ ((aligned (16))) vlib_buffer_free_list_t;
-
 typedef uword (vlib_buffer_fill_free_list_cb_t) (struct vlib_main_t * vm,
-						 vlib_buffer_free_list_t * fl,
-						 uword min_free_buffers);
+						 u8 buffer_pool_index,
+						 u32 * buffers,
+						 u32 n_buffers);
 typedef void (vlib_buffer_free_cb_t) (struct vlib_main_t * vm, u32 * buffers,
 				      u32 n_buffers);
 typedef void (vlib_buffer_free_no_next_cb_t) (struct vlib_main_t * vm,
@@ -407,9 +366,6 @@ typedef struct
   vlib_buffer_fill_free_list_cb_t *vlib_buffer_fill_free_list_cb;
   vlib_buffer_free_cb_t *vlib_buffer_free_cb;
   vlib_buffer_free_no_next_cb_t *vlib_buffer_free_no_next_cb;
-  void (*vlib_buffer_delete_free_list_cb) (struct vlib_main_t * vm,
-					   vlib_buffer_free_list_index_t
-					   free_list_index);
 } vlib_buffer_callbacks_t;
 
 extern vlib_buffer_callbacks_t *vlib_buffer_callbacks;
@@ -417,13 +373,27 @@ extern vlib_buffer_callbacks_t *vlib_buffer_callbacks;
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 *cached_buffers;
+  u32 n_alloc;
+} vlib_buffer_pool_thread_t;
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   uword start;
   uword size;
   uword log2_page_size;
+  u8 index;
   u32 physmem_map_index;
   u32 buffer_size;
   u32 *buffers;
+  u8 *name;
   clib_spinlock_t lock;
+
+  /* per-thread data */
+  vlib_buffer_pool_thread_t *threads;
+
+  /* buffer metadata template */
+  vlib_buffer_t __clib_cacheline_aligned buffer_template;
 } vlib_buffer_pool_t;
 
 typedef struct
@@ -439,12 +409,6 @@ typedef struct
     u32 (*buffer_free_callback) (struct vlib_main_t * vm,
 				 u32 * buffers,
 				 u32 n_buffers, u32 follow_buffer_next);
-#define VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX (0)
-#define VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES VLIB_BUFFER_DATA_SIZE
-
-  /* Hash table mapping buffer size (rounded to next unit of
-     sizeof (vlib_buffer_t)) to free list index. */
-  uword *free_list_by_size;
 
   /* Hash table mapping buffer index into number
      0 => allocated but free, 1 => allocated and not-free.
@@ -452,23 +416,15 @@ typedef struct
      has never been allocated. */
   uword *buffer_known_hash;
   clib_spinlock_t buffer_known_hash_lockp;
+  u32 n_numa_nodes;
 
   /* Callbacks */
   vlib_buffer_callbacks_t cb;
   int callbacks_registered;
 } vlib_buffer_main_t;
 
-extern vlib_buffer_main_t buffer_main;
-
-static_always_inline vlib_buffer_pool_t *
-vlib_buffer_pool_get (u8 buffer_pool_index)
-{
-  vlib_buffer_main_t *bm = &buffer_main;
-  return vec_elt_at_index (bm->buffer_pools, buffer_pool_index);
-}
-
-u8 vlib_buffer_register_physmem_map (struct vlib_main_t * vm,
-				     u32 physmem_map_index);
+u8 vlib_buffer_pool_create (struct vlib_main_t *vm, char *name,
+			    u32 buffer_size, u32 physmem_map_index);
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
 
