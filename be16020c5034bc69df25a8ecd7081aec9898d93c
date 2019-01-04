@@ -217,6 +217,24 @@
       "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bc3e5bac_e0277cb8",
+        "filename": "src/plugins/ipsecmb/ipsecmb.h",
+        "patchSetId": 33
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-04T10:23:31Z",
+      "side": 1,
+      "message": "because the code which does the key expansion is generic code, while esp_encrypt/decrypt and ah_encrypt/decrypt is multi-arch enabled - that is there is a separate .o file for SSE2, AVX2, AVX512 etc.",
+      "parentUuid": "5b1895b4_2ffdaf52",
+      "revId": "be16020c5034bc69df25a8ecd7081aec9898d93c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
