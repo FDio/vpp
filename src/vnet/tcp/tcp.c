@@ -284,8 +284,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       break;
     case TCP_STATE_SYN_SENT:
       session_stream_connect_notify (&tc->connection, 1 /* fail */ );
-      tcp_connection_set_state (tc, TCP_STATE_CLOSED);
-      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+      tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
       tcp_connection_timers_reset (tc);
