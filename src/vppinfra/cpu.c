@@ -16,6 +16,8 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/format.h>
 #include <vppinfra/cpu.h>
+#include <vppinfra/bitmap.h>
+#include <vppinfra/linux/sysfs.h>
 
 #define foreach_x86_cpu_uarch \
  _(0x06, 0x9e, "Kaby Lake", "Kaby Lake DT/H/S/X") \
@@ -209,7 +211,23 @@ format_cpu_flags (u8 * s, va_list * args)
 #endif
 }
 
+u32
+clib_get_max_numa_node ()
+{
+  clib_bitmap_t *bmp = 0;
+  clib_error_t *err = 0;
+  u32 rv = ~0;
 
+  err = clib_sysfs_read ("/sys/devices/system/node/possible", "%U",
+			 unformat_bitmap_list, &bmp);
+  if (err)
+    clib_error_free (err);
+  else
+    rv = clib_bitmap_last_set (bmp);
+
+  vec_free (bmp);
+  return rv;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -57,6 +57,7 @@ vlib_physmem_shared_map_create (vlib_main_t * vm, char *name, uword size,
   map->fd = a->fd;
   map->n_pages = a->n_pages * a->subpages_per_page;
   map->log2_page_size = a->log2_subpage_sz;
+  map->numa_node = a->numa_node;
 
   for (i = 0; i < a->n_pages; i++)
     {

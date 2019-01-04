@@ -155,7 +155,6 @@ blindly cut-'n-pasted.
   vlib_buffer_t *b0;
   ip4_header_t *ip;
   udp_header_t *udp;
-  vlib_buffer_free_list_t *fl;
 
   /* Allocate a buffer */
   if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
@@ -164,8 +163,6 @@ blindly cut-'n-pasted.
   b0 = vlib_get_buffer (vm, bi0);
 
   /* Initialize the buffer */
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-  vlib_buffer_init_for_free_list (b0, fl);
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
   /* At this point b0->current_data = 0, b0->current_length = 0 */

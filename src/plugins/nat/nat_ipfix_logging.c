@@ -620,7 +620,6 @@ snat_ipfix_logging_nat44_ses (u8 nat_event, u32 src_ip, u32 nat_src_ip,
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
   u8 proto = ~0;
 
   if (!silm->enabled)
@@ -645,9 +644,6 @@ snat_ipfix_logging_nat44_ses (u8 nat_event, u32 src_ip, u32 nat_src_ip,
 	}
 
       b0 = silm->nat44_session_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -723,7 +719,6 @@ snat_ipfix_logging_addr_exhausted (u32 pool_id, int do_flush)
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
   u8 nat_event = NAT_ADDRESSES_EXHAUTED;
 
   if (!silm->enabled)
@@ -746,9 +741,6 @@ snat_ipfix_logging_addr_exhausted (u32 pool_id, int do_flush)
 	}
 
       b0 = silm->addr_exhausted_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -809,7 +801,6 @@ snat_ipfix_logging_max_entries_per_usr (u32 limit, u32 src_ip, int do_flush)
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_ENTRIES_PER_USER;
 
@@ -833,9 +824,6 @@ snat_ipfix_logging_max_entries_per_usr (u32 limit, u32 src_ip, int do_flush)
 	}
 
       b0 = silm->max_entries_per_user_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -902,7 +890,6 @@ nat_ipfix_logging_max_ses (u32 limit, int do_flush)
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_SESSION_ENTRIES;
 
@@ -926,9 +913,6 @@ nat_ipfix_logging_max_ses (u32 limit, int do_flush)
 	}
 
       b0 = silm->max_sessions_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -992,7 +976,6 @@ nat_ipfix_logging_max_bib (u32 limit, int do_flush)
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_BIB_ENTRIES;
 
@@ -1016,9 +999,6 @@ nat_ipfix_logging_max_bib (u32 limit, int do_flush)
 	}
 
       b0 = silm->max_bibs_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -1082,7 +1062,6 @@ nat_ipfix_logging_max_frag_ip4 (u32 limit, u32 src, int do_flush)
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_FRAGMENTS_PENDING_REASSEMBLY;
 
@@ -1106,9 +1085,6 @@ nat_ipfix_logging_max_frag_ip4 (u32 limit, u32 src, int do_flush)
 	}
 
       b0 = silm->max_frags_ip4_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -1175,7 +1151,6 @@ nat_ipfix_logging_max_frag_ip6 (u32 limit, ip6_address_t * src, int do_flush)
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
   u8 nat_event = QUOTA_EXCEEDED;
   u32 quota_event = MAX_FRAGMENTS_PENDING_REASSEMBLY;
 
@@ -1199,9 +1174,6 @@ nat_ipfix_logging_max_frag_ip6 (u32 limit, ip6_address_t * src, int do_flush)
 	}
 
       b0 = silm->max_frags_ip6_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -1270,7 +1242,6 @@ nat_ipfix_logging_nat64_bibe (u8 nat_event, ip6_address_t * src_ip,
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
 
   if (!silm->enabled)
     return;
@@ -1292,9 +1263,6 @@ nat_ipfix_logging_nat64_bibe (u8 nat_event, ip6_address_t * src_ip,
 	}
 
       b0 = silm->nat64_bib_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
@@ -1374,7 +1342,6 @@ nat_ipfix_logging_nat64_ses (u8 nat_event, ip6_address_t * src_ip,
   u32 offset;
   vlib_main_t *vm = frm->vlib_main;
   u64 now;
-  vlib_buffer_free_list_t *fl;
 
   if (!silm->enabled)
     return;
@@ -1396,9 +1363,6 @@ nat_ipfix_logging_nat64_ses (u8 nat_event, ip6_address_t * src_ip,
 	}
 
       b0 = silm->nat64_ses_buffer = vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }

@@ -102,6 +102,7 @@ typedef struct
   u32 *bufs;
   u16 n_enqueued;
   u8 int_mode;
+  u8 buffer_pool_index;
 } avf_rxq_t;
 
 typedef struct
@@ -127,6 +128,7 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
   vlib_pci_dev_handle_t pci_dev_handle;
+  u32 numa_node;
   void *bar0;
   u8 *name;
 

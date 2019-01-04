@@ -224,9 +224,14 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   rxq = vec_elt_at_index (ad->rxqs, qid);
   rxq->size = rxq_size;
   rxq->next = 0;
-  rxq->descs = vlib_physmem_alloc_aligned (vm, rxq->size *
-					   sizeof (avf_rx_desc_t),
-					   2 * CLIB_CACHE_LINE_BYTES);
+  rxq->descs = vlib_physmem_alloc_aligned_on_numa (vm, rxq->size *
+						   sizeof (avf_rx_desc_t),
+						   2 * CLIB_CACHE_LINE_BYTES,
+						   ad->numa_node);
+
+  rxq->buffer_pool_index =
+    vlib_buffer_pool_get_default_for_numa (vm, ad->numa_node);
+
   if (rxq->descs == 0)
     return vlib_physmem_last_error (vm);
 
@@ -237,7 +242,8 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   vec_validate_aligned (rxq->bufs, rxq->size, CLIB_CACHE_LINE_BYTES);
   rxq->qrx_tail = ad->bar0 + AVF_QRX_TAIL (qid);
 
-  n_alloc = vlib_buffer_alloc (vm, rxq->bufs, rxq->size - 8);
+  n_alloc = vlib_buffer_alloc_from_pool (vm, rxq->bufs, rxq->size - 8,
+					 rxq->buffer_pool_index, 0);
 
   if (n_alloc == 0)
     return clib_error_return (0, "buffer allocation error");
@@ -278,9 +284,10 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   txq = vec_elt_at_index (ad->txqs, qid);
   txq->size = txq_size;
   txq->next = 0;
-  txq->descs = vlib_physmem_alloc_aligned (vm, txq->size *
-					   sizeof (avf_tx_desc_t),
-					   2 * CLIB_CACHE_LINE_BYTES);
+  txq->descs = vlib_physmem_alloc_aligned_on_numa (vm, txq->size *
+						   sizeof (avf_tx_desc_t),
+						   2 * CLIB_CACHE_LINE_BYTES,
+						   ad->numa_node);
   if (txq->descs == 0)
     return vlib_physmem_last_error (vm);
 
@@ -587,7 +594,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	{
 	  avf_rxq_t *q = vec_elt_at_index (ad->rxqs, i);
 	  rxq->ring_len = q->size;
-	  rxq->databuffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+	  rxq->databuffer_size = VLIB_BUFFER_DATA_SIZE;
 	  rxq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	  avf_reg_write (ad, AVF_QRX_TAIL (i), q->size - 1);
 	}
@@ -1223,6 +1230,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
       return;
     }
   ad->pci_dev_handle = h;
+  ad->numa_node = vlib_pci_get_numa_node (vm, h);
 
   vlib_pci_set_private_data (vm, h, ad->dev_instance);
 
@@ -1243,8 +1251,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
     goto error;
 
-  if (!(ad->atq = vlib_physmem_alloc (vm, sizeof (avf_aq_desc_t) *
-				      AVF_MBOX_LEN)))
+  ad->atq = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (avf_aq_desc_t) *
+						AVF_MBOX_LEN,
+						CLIB_CACHE_LINE_BYTES,
+						ad->numa_node);
+  if (ad->atq == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;
@@ -1253,8 +1264,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->atq)))
     goto error;
 
-  if (!(ad->arq = vlib_physmem_alloc (vm, sizeof (avf_aq_desc_t) *
-				      AVF_MBOX_LEN)))
+  ad->arq = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (avf_aq_desc_t) *
+						AVF_MBOX_LEN,
+						CLIB_CACHE_LINE_BYTES,
+						ad->numa_node);
+  if (ad->arq == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;
@@ -1263,8 +1277,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->arq)))
     goto error;
 
-  if (!(ad->atq_bufs = vlib_physmem_alloc (vm, AVF_MBOX_BUF_SZ *
-					   AVF_MBOX_LEN)))
+  ad->atq_bufs = vlib_physmem_alloc_aligned_on_numa (vm, AVF_MBOX_BUF_SZ *
+						     AVF_MBOX_LEN,
+						     CLIB_CACHE_LINE_BYTES,
+						     ad->numa_node);
+  if (ad->atq_bufs == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;
@@ -1273,8 +1290,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->atq_bufs)))
     goto error;
 
-  if (!(ad->arq_bufs = vlib_physmem_alloc (vm, AVF_MBOX_BUF_SZ *
-					   AVF_MBOX_LEN)))
+  ad->arq_bufs = vlib_physmem_alloc_aligned_on_numa (vm, AVF_MBOX_BUF_SZ *
+						     AVF_MBOX_LEN,
+						     CLIB_CACHE_LINE_BYTES,
+						     ad->numa_node);
+  if (ad->arq_bufs == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;
