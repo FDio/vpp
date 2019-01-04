@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f8fb899_52a2a78e",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-04T10:04:43Z",
+      "side": 1,
+      "message": "how is this change related to swallowing exceptions?\n\nalso, why do this change? if anybody ever decides to change how the property is handled, he\u0027ll need to also find this place and fix it here\n\nand it\u0027s ugly! all the code in almost every file reads self.test ...",
+      "revId": "561e6ef78efa5789bbe06a2e8671c843eb24a3f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aab04f94_b72431d2",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-04T10:04:43Z",
+      "side": 1,
+      "message": "is there a guarantee that this never throws?",
+      "revId": "561e6ef78efa5789bbe06a2e8671c843eb24a3f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "08657a8d_f12b3f15",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 365,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-04T10:04:43Z",
+      "side": 1,
+      "message": "Apart from different semantics, this is ugly and less readable.\n\nReadability counts, no?",
+      "revId": "561e6ef78efa5789bbe06a2e8671c843eb24a3f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
