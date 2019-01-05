@@ -31,7 +31,7 @@ extern "C"
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
-#define INVALID_SESSION_ID                  	(~0)
+#define INVALID_SESSION_ID                  	((u32)~0)
 #define VPPCOM_CONF_DEFAULT                  	"/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                      	"VCL_CONFIG"
 #define VPPCOM_ENV_DEBUG                     	"VCL_DEBUG"
@@ -306,6 +306,19 @@ extern int vppcom_worker_register (void);
  * Retrieve current worker index
  */
 extern int vppcom_worker_index (void);
+
+/*
+ * VCL Locked Sessions
+ */
+
+typedef uint32_t vls_handle_t;
+
+vls_handle_t vls_create (uint8_t proto, uint8_t is_nonblocking);
+int vls_close (vls_handle_t vlsh);
+ssize_t vls_read (vls_handle_t vlsh, void *buf, size_t nbytes);
+int vls_write (vls_handle_t vlsh, void *buf, size_t nbytes);
+int vls_write_msg (vls_handle_t vlsh, void *buf, size_t nbytes);
+int vls_attr (vls_handle_t vlsh, uint32_t op, void *buffer, uint32_t *buflen);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
