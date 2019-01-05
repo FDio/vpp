@@ -31,7 +31,7 @@ extern "C"
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
-#define INVALID_SESSION_ID                  	(~0)
+#define INVALID_SESSION_ID                  	((u32)~0)
 #define VPPCOM_CONF_DEFAULT                  	"/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                      	"VCL_CONFIG"
 #define VPPCOM_ENV_DEBUG                     	"VCL_DEBUG"
@@ -153,12 +153,14 @@ typedef enum
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
   VPPCOM_ATTR_GET_REFCNT,
+  VPPCOM_ATTR_SET_SHUT,
+  VPPCOM_ATTR_GET_SHUT,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
 {
   uint32_t fds_ndx;
-  uint32_t sid;
+  vcl_session_handle_t sh;
   short events;
   short revents;
 } vcl_poll_t;
