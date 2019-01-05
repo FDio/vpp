@@ -125,6 +125,8 @@ enum
   VCL_SESS_ATTR_TCP_NODELAY,	// SOL_TCP,TCP_NODELAY
   VCL_SESS_ATTR_TCP_KEEPIDLE,	// SOL_TCP,TCP_KEEPIDLE
   VCL_SESS_ATTR_TCP_KEEPINTVL,	// SOL_TCP,TCP_KEEPINTVL
+  VCL_SESS_ATTR_SHUT_RD,
+  VCL_SESS_ATTR_SHUT_WR,
   VCL_SESS_ATTR_MAX
 } vppcom_session_attr_t;
 
@@ -583,6 +585,7 @@ u32 vcl_max_nsid_len (void);
 
 u8 *format_api_error (u8 * s, va_list * args);
 
+void vls_init ();
 #endif /* SRC_VCL_VCL_PRIVATE_H_ */
 
 /*

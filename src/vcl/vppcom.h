@@ -31,7 +31,7 @@ extern "C"
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
-#define INVALID_SESSION_ID                  	(~0)
+#define INVALID_SESSION_ID                  	((u32)~0)
 #define VPPCOM_CONF_DEFAULT                  	"/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                      	"VCL_CONFIG"
 #define VPPCOM_ENV_DEBUG                     	"VCL_DEBUG"
@@ -153,12 +153,14 @@ typedef enum
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
   VPPCOM_ATTR_GET_REFCNT,
+  VPPCOM_ATTR_SET_SHUT,
+  VPPCOM_ATTR_GET_SHUT,
 } vppcom_attr_op_t;
 
 typedef struct _vcl_poll
 {
   uint32_t fds_ndx;
-  uint32_t sid;
+  vcl_session_handle_t sh;
   short events;
   short revents;
 } vcl_poll_t;
@@ -306,6 +308,38 @@ extern int vppcom_worker_register (void);
  * Retrieve current worker index
  */
 extern int vppcom_worker_index (void);
+
+/*
+ * VCL Locked Sessions
+ */
+
+#define VLS_INVALID_HANDLE ((uint32_t)~0)
+
+typedef uint32_t vls_handle_t;
+
+vls_handle_t vls_create (uint8_t proto, uint8_t is_nonblocking);
+int vls_close (vls_handle_t vlsh);
+int vls_bind (vls_handle_t vlsh, vppcom_endpt_t * ep);
+int vls_listen (vls_handle_t vlsh, int q_len);
+int vls_connect (vls_handle_t vlsh, vppcom_endpt_t * server_ep);
+int vls_accept (vls_handle_t vlsh, vppcom_endpt_t * ep, int flags);
+ssize_t vls_read (vls_handle_t vlsh, void *buf, size_t nbytes);
+ssize_t vls_recvfrom (vls_handle_t vlsh, void *buffer, uint32_t buflen,
+		      int flags, vppcom_endpt_t * ep);
+int vls_write (vls_handle_t vlsh, void *buf, size_t nbytes);
+int vls_write_msg (vls_handle_t vlsh, void *buf, size_t nbytes);
+int vls_sendto (vls_handle_t vlsh, void *buf, int buflen, int flags,
+		vppcom_endpt_t * ep);
+int vls_attr (vls_handle_t vlsh, uint32_t op, void *buffer,
+	      uint32_t * buflen);
+vls_handle_t vls_epoll_create (void);
+int vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
+		   struct epoll_event *event);
+int vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
+		    int maxevents, double wait_for_time);
+vcl_session_handle_t vlsh_to_sh (vls_handle_t vlsh);
+vcl_session_handle_t vlsh_to_session_index (vls_handle_t vlsh);
+vls_handle_t vls_session_index_to_vlsh (uint32_t session_index);
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
