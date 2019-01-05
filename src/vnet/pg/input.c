@@ -37,6 +37,14 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+  /*
+   * To be honest, the packet generator needs an extreme
+   * makeover. Two key assumptions which drove the current implementation
+   * are no longer true. First, buffer managers implement a
+   * post-TX recycle list. Second, that packet generator performance
+   * is first-order important.
+   */
+
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/vnet.h>
@@ -1055,49 +1063,6 @@ pg_set_next_buffer_pointers (pg_main_t * pg,
 }
 
 static_always_inline void
-init_replay_buffers_inline (vlib_main_t * vm,
-			    pg_stream_t * s,
-			    u32 * buffers,
-			    u32 n_buffers, u32 data_offset, u32 n_data)
-{
-  u32 n_left, *b, i, l;
-
-  n_left = n_buffers;
-  b = buffers;
-  i = s->current_replay_packet_index;
-  l = vec_len (s->replay_packet_templates);
-
-  while (n_left >= 1)
-    {
-      u32 bi0, n0;
-      vlib_buffer_t *b0;
-      u8 *d0;
-
-      bi0 = b[0];
-      b += 1;
-      n_left -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-
-      vnet_buffer (b0)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
-      /* was s->sw_if_index[VLIB_TX]; */
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-
-      d0 = vec_elt (s->replay_packet_templates, i);
-      vnet_buffer2 (b0)->pg_replay_timestamp = s->replay_packet_timestamps[i];
-
-      n0 = n_data;
-      if (data_offset + n_data >= vec_len (d0))
-	n0 = vec_len (d0) > data_offset ? vec_len (d0) - data_offset : 0;
-
-      b0->current_length = n0;
-
-      clib_memcpy_fast (b0->data, d0 + data_offset, n0);
-      i = i + 1 == l ? 0 : i + 1;
-    }
-}
-
-static_always_inline void
 init_buffers_inline (vlib_main_t * vm,
 		     pg_stream_t * s,
 		     u32 * buffers,
@@ -1106,9 +1071,7 @@ init_buffers_inline (vlib_main_t * vm,
   u32 n_left, *b;
   u8 *data, *mask;
 
-  if (vec_len (s->replay_packet_templates) > 0)
-    return init_replay_buffers_inline (vm, s, buffers, n_buffers, data_offset,
-				       n_data);
+  ASSERT (s->replay_packet_templates == 0);
 
   data = s->fixed_packet_data + data_offset;
   mask = s->fixed_packet_data_mask + data_offset;
@@ -1190,6 +1153,8 @@ pg_stream_fill_helper (pg_main_t * pg,
   uword is_start_of_packet = bi == s->buffer_indices;
   u32 n_allocated;
 
+  ASSERT (vec_len (s->replay_packet_templates) == 0);
+
   n_allocated = vlib_buffer_alloc (vm, buffers, n_alloc);
   if (n_allocated == 0)
     return 0;
@@ -1213,36 +1178,133 @@ pg_stream_fill_helper (pg_main_t * pg,
 
   if (is_start_of_packet)
     {
-      if (vec_len (s->replay_packet_templates) > 0)
-	{
-	  vnet_main_t *vnm = vnet_get_main ();
-	  vnet_interface_main_t *im = &vnm->interface_main;
-	  vnet_sw_interface_t *si =
-	    vnet_get_sw_interface (vnm, s->sw_if_index[VLIB_RX]);
-	  u32 l = 0;
-	  u32 i;
-	  for (i = 0; i < n_alloc; i++)
-	    l += vlib_buffer_index_length_in_chain (vm, buffers[i]);
-	  vlib_increment_combined_counter (im->combined_sw_if_counters
-					   + VNET_INTERFACE_COUNTER_RX,
-					   vlib_get_thread_index (),
-					   si->sw_if_index, n_alloc, l);
-	  s->current_replay_packet_index += n_alloc;
-	  s->current_replay_packet_index %=
-	    vec_len (s->replay_packet_templates);
-	}
-      else
-	{
-	  pg_generate_set_lengths (pg, s, buffers, n_alloc);
-	  if (vec_len (s->buffer_indices) > 1)
-	    pg_generate_fix_multi_buffer_lengths (pg, s, buffers, n_alloc);
+      pg_generate_set_lengths (pg, s, buffers, n_alloc);
+      if (vec_len (s->buffer_indices) > 1)
+	pg_generate_fix_multi_buffer_lengths (pg, s, buffers, n_alloc);
 
-	  pg_generate_edit (pg, s, buffers, n_alloc);
-	}
+      pg_generate_edit (pg, s, buffers, n_alloc);
     }
 
   return n_alloc;
 }
+
+static u32
+pg_stream_fill_replay (pg_main_t * pg, pg_stream_t * s, u32 n_alloc)
+{
+  pg_buffer_index_t *bi;
+  u32 n_left, i, l;
+  u32 buffer_alloc_request = 0;
+  u32 buffer_alloc_result;
+  u32 current_buffer_index;
+  u32 *buffers;
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_sw_interface_t *si;
+
+  buffers = pg->replay_buffers_by_thread[vm->thread_index];
+  vec_reset_length (buffers);
+  bi = s->buffer_indices;
+
+  n_left = n_alloc;
+  i = s->current_replay_packet_index;
+  l = vec_len (s->replay_packet_templates);
+
+  /* Figure out how many buffers we need */
+  while (n_left > 0)
+    {
+      u8 *d0;
+
+      d0 = vec_elt (s->replay_packet_templates, i);
+      buffer_alloc_request += (vec_len (d0) + (VLIB_BUFFER_DATA_SIZE - 1))
+	/ VLIB_BUFFER_DATA_SIZE;
+
+      i = ((i + 1) == l) ? 0 : i + 1;
+      n_left--;
+    }
+
+  ASSERT (buffer_alloc_request > 0);
+  vec_validate (buffers, buffer_alloc_request - 1);
+
+  /* Allocate that many buffers */
+  buffer_alloc_result = vlib_buffer_alloc (vm, buffers, buffer_alloc_request);
+  if (buffer_alloc_result < buffer_alloc_request)
+    {
+      clib_warning ("alloc failure, got %d not %d", buffer_alloc_result,
+		    buffer_alloc_request);
+      vlib_buffer_free_no_next (vm, buffers, buffer_alloc_result);
+      pg->replay_buffers_by_thread[vm->thread_index] = buffers;
+      return 0;
+    }
+
+  /* Now go generate the buffers, and add them to the FIFO */
+  n_left = n_alloc;
+
+  current_buffer_index = 0;
+  i = s->current_replay_packet_index;
+  l = vec_len (s->replay_packet_templates);
+  while (n_left > 0)
+    {
+      u8 *d0;
+      int not_last;
+      u32 data_offset;
+      u32 bytes_to_copy, bytes_this_chunk;
+      vlib_buffer_t *b;
+
+      d0 = vec_elt (s->replay_packet_templates, i);
+      data_offset = 0;
+      bytes_to_copy = vec_len (d0);
+
+      /* Add head chunk to pg fifo */
+      clib_fifo_add1 (bi->buffer_fifo, buffers[current_buffer_index]);
+
+      /* Copy the data */
+      while (bytes_to_copy)
+	{
+	  bytes_this_chunk = clib_min (bytes_to_copy, VLIB_BUFFER_DATA_SIZE);
+	  ASSERT (current_buffer_index < vec_len (buffers));
+	  b = vlib_get_buffer (vm, buffers[current_buffer_index]);
+	  clib_memcpy_fast (b->data, d0 + data_offset, bytes_this_chunk);
+	  vnet_buffer (b)->sw_if_index[VLIB_RX] = s->sw_if_index[VLIB_RX];
+	  vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  b->flags = 0;
+	  b->next_buffer = 0;
+	  b->current_data = 0;
+	  b->current_length = bytes_this_chunk;
+
+	  not_last = bytes_this_chunk < bytes_to_copy;
+	  if (not_last)
+	    {
+	      ASSERT (current_buffer_index < (vec_len (buffers) - 1));
+	      b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+	      b->next_buffer = buffers[current_buffer_index + 1];
+	    }
+	  bytes_to_copy -= bytes_this_chunk;
+	  data_offset += bytes_this_chunk;
+	  current_buffer_index++;
+	}
+
+      i = ((i + 1) == l) ? 0 : i + 1;
+      n_left--;
+    }
+
+  /* Update the interface counters */
+  si = vnet_get_sw_interface (vnm, s->sw_if_index[VLIB_RX]);
+  l = 0;
+  for (i = 0; i < n_alloc; i++)
+    l += vlib_buffer_index_length_in_chain (vm, buffers[i]);
+  vlib_increment_combined_counter (im->combined_sw_if_counters
+				   + VNET_INTERFACE_COUNTER_RX,
+				   vlib_get_thread_index (),
+				   si->sw_if_index, n_alloc, l);
+
+  s->current_replay_packet_index += n_alloc;
+  s->current_replay_packet_index %= vec_len (s->replay_packet_templates);
+
+  pg->replay_buffers_by_thread[vm->thread_index] = buffers;
+  return n_alloc;
+}
+
 
 static u32
 pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
@@ -1269,6 +1331,12 @@ pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
       if (n_alloc < 0)
 	n_alloc = 0;
     }
+
+  /*
+   * Handle pcap replay directly
+   */
+  if (s->replay_packet_templates)
+    return pg_stream_fill_replay (pg, s, n_alloc);
 
   /* All buffer fifos should have the same size. */
   if (CLIB_DEBUG > 0)
@@ -1531,8 +1599,15 @@ pg_generate_packets (vlib_node_runtime_t * node,
 			    (n_this_frame - n) * sizeof (u32));
 	}
 
-      vec_foreach (bi, s->buffer_indices)
-	clib_fifo_advance_head (bi->buffer_fifo, n_this_frame);
+      if (s->replay_packet_templates == 0)
+	{
+	  vec_foreach (bi, s->buffer_indices)
+	    clib_fifo_advance_head (bi->buffer_fifo, n_this_frame);
+	}
+      else
+	{
+	  clib_fifo_advance_head (bi0->buffer_fifo, n_this_frame);
+	}
 
       if (current_config_index != ~(u32) 0)
 	for (i = 0; i < n_this_frame; i++)
@@ -1553,6 +1628,18 @@ pg_generate_packets (vlib_node_runtime_t * node,
       n_packets_to_generate -= n_this_frame;
       n_packets_generated += n_this_frame;
       n_left -= n_this_frame;
+      if (CLIB_DEBUG > 0)
+	{
+	  int i;
+	  vlib_buffer_t *b;
+
+	  for (i = 0; i < VLIB_FRAME_SIZE - n_left; i++)
+	    {
+	      b = vlib_get_buffer (vm, to_next[i]);
+	      ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
+		      b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
+	    }
+	}
       vlib_put_next_frame (vm, node, next_index, n_left);
     }
 
