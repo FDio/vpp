@@ -470,7 +470,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
   if (!regp)
     return;
 
-  u32 reg_index = ntohl (mp->index);
+  u32 reg_index = socket_api_registration_handle_to_index (ntohl (mp->index));
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = htons (VL_API_SOCKCLNT_DELETE_REPLY);
   rp->context = mp->context;
