@@ -22,7 +22,6 @@
 
 __thread uword __vcl_worker_index = ~0;
 
-
 static int
 vcl_wait_for_segment (u64 segment_handle)
 {
@@ -1116,6 +1115,7 @@ vppcom_app_create (char *app_name)
   VDBG (0, "app_name '%s', my_client_index %d (0x%x)", app_name,
 	vcm->workers[0].my_client_index, vcm->workers[0].my_client_index);
 
+  vls_init ();
   return VPPCOM_OK;
 }
 
@@ -2993,7 +2993,7 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session;
   int rv = VPPCOM_OK;
-  u32 *flags = buffer;
+  u32 *flags = buffer, tmp_flags;
   vppcom_endpt_t *ep = buffer;
 
   session = vcl_session_get_w_handle (wrk, session_handle);
@@ -3514,6 +3514,26 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
       rv = vcl_session_get_refcnt (session);
       break;
 
+    case VPPCOM_ATTR_SET_SHUT:
+      if (*flags == SHUT_RD || *flags == SHUT_RDWR)
+	VCL_SESS_ATTR_SET (session->attr, VCL_SESS_ATTR_SHUT_RD);
+      if (*flags == SHUT_WR || *flags == SHUT_RDWR)
+	VCL_SESS_ATTR_SET (session->attr, VCL_SESS_ATTR_SHUT_WR);
+      break;
+
+    case VPPCOM_ATTR_GET_SHUT:
+      if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_SHUT_RD))
+	tmp_flags = 1;
+      if (VCL_SESS_ATTR_TEST (session->attr, VCL_SESS_ATTR_SHUT_WR))
+	tmp_flags |= 2;
+      if (tmp_flags == 1)
+	*(int *) buffer = SHUT_RD;
+      else if (tmp_flags == 2)
+	*(int *) buffer = SHUT_WR;
+      else if (tmp_flags == 3)
+	*(int *) buffer = SHUT_RDWR;
+      *buflen = sizeof (int);
+      break;
     default:
       rv = VPPCOM_EINVAL;
       break;
@@ -3620,7 +3640,7 @@ vppcom_poll (vcl_poll_t * vp, uint32_t n_sids, double wait_for_time)
 
       for (i = 0; i < n_sids; i++)
 	{
-	  session = vcl_session_get (wrk, vp[i].sid);
+	  session = vcl_session_get (wrk, vp[i].sh);
 	  if (!session)
 	    {
 	      vp[i].revents = POLLHUP;
@@ -3695,7 +3715,7 @@ vppcom_poll (vcl_poll_t * vp, uint32_t n_sids, double wait_for_time)
       for (i = 0; i < n_sids; i++)
 	{
 	  clib_warning ("VCL<%d>: vp[%d].sid %d (0x%x), .events 0x%x, "
-			".revents 0x%x", getpid (), i, vp[i].sid, vp[i].sid,
+			".revents 0x%x", getpid (), i, vp[i].sh, vp[i].sh,
 			vp[i].events, vp[i].revents);
 	}
     }
