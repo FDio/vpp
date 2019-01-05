@@ -20,6 +20,7 @@ add_vpp_library(vppcom
   vcl_bapi.c
   vcl_cfg.c
   vcl_private.c
+  vcl_locked.c
 
   LINK_LIBRARIES
   vppinfra svm vlibmemoryclient rt pthread

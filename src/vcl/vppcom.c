@@ -22,7 +22,6 @@
 
 __thread uword __vcl_worker_index = ~0;
 
-
 static int
 vcl_wait_for_segment (u64 segment_handle)
 {
