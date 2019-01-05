@@ -1171,10 +1171,8 @@ pselect (int nfds, fd_set * __restrict readfds,
 int
 socket (int domain, int type, int protocol)
 {
-  const char *func_str;
-  int rv;
+  int rv, sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
   u8 is_nonblocking = type & SOCK_NONBLOCK ? 1 : 0;
-  int sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1182,56 +1180,25 @@ socket (int domain, int type, int protocol)
   if (((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
-      int sid;
       u8 proto = ((sock_type == SOCK_DGRAM) ?
 		  VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP);
 
-      func_str = "vppcom_session_create";
+      LDBG (0, "calling vls_create: proto %u (%s), is_nonblocking %u",
+	    proto, vppcom_proto_str (proto), is_nonblocking);
 
-      LDBG (0, "calling %s(): proto %u (%s), is_nonblocking %u",
-	    func_str, proto, vppcom_proto_str (proto), is_nonblocking);
-
-      sid = vppcom_session_create (proto, is_nonblocking);
-      if (sid < 0)
+      rv = vls_create (proto, is_nonblocking);
+      if (rv)
 	{
-	  errno = -sid;
+	  errno = -rv;
 	  rv = -1;
-	}
-      else
-	{
-	  func_str = "ldp_fd_from_sid";
-	  rv = ldp_fd_alloc (sid);
-	  if (rv < 0)
-	    {
-	      (void) vppcom_session_close (sid);
-	      errno = -rv;
-	      rv = -1;
-	    }
 	}
     }
   else
     {
-      func_str = "libc_socket";
-
-      LDBG (0, "calling %s()", func_str);
-
+      LDBG (0, "calling libc_socket");
       rv = libc_socket (domain, type, protocol);
     }
 
-  if (LDP_DEBUG > 0)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: %s() failed! "
-			"rv %d, errno = %d",
-			getpid (), func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("returning fd %d (0x%x)", getpid (), rv, rv);
-    }
   return rv;
 }
 
@@ -1245,9 +1212,7 @@ socket (int domain, int type, int protocol)
 int
 socketpair (int domain, int type, int protocol, int fds[2])
 {
-  const char *func_str;
-  int rv;
-  int sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
+  int rv, sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1255,48 +1220,30 @@ socketpair (int domain, int type, int protocol, int fds[2])
   if (((domain == AF_INET) || (domain == AF_INET6)) &&
       ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
-      func_str = __func__;
-
-      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+      LDBG (0, "LDP-TBD");
       errno = ENOSYS;
       rv = -1;
     }
   else
     {
-      func_str = "libc_socket";
-
-      LDBG (1, "calling %s()", func_str);
-
+      LDBG (1, "calling libc_socketpair");
       rv = libc_socketpair (domain, type, protocol, fds);
     }
 
-  if (LDP_DEBUG > 1)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: %s() failed! "
-			"rv %d, errno = %d",
-			getpid (), func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: : returning fd %d (0x%x)", getpid (), rv, rv);
-    }
   return rv;
 }
 
 int
 bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
+  vls_handle_t vlsh;
   int rv;
-  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sid != INVALID_SESSION_ID)
+  vlsh = ldp_sh_from_fd (fd);
+  if (vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_t ep;
 
@@ -1305,9 +1252,8 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	case AF_INET:
 	  if (len != sizeof (struct sockaddr_in))
 	    {
-	      clib_warning
-		("LDP<%d>: ERROR: fd %d (0x%x): sid %u (0x%x): Invalid "
-		 "AF_INET addr len %u!", getpid (), fd, fd, sid, sid, len);
+	      LDBG (0, "ERROR: fd %d (0x%x): sid %u (0x%x): Invalid "
+	            "AF_INET addr len %u!", fd, fd, vlsh, vlsh, len);
 	      errno = EINVAL;
 	      rv = -1;
 	      goto done;
@@ -1320,9 +1266,8 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	case AF_INET6:
 	  if (len != sizeof (struct sockaddr_in6))
 	    {
-	      clib_warning
-		("LDP<%d>: ERROR: fd %d (0x%x): sid %u (0x%x): Invalid "
-		 "AF_INET6 addr len %u!", getpid (), fd, fd, sid, sid, len);
+	      LDBG (0, "ERROR: fd %d (0x%x): sid %u (0x%x): Invalid "
+	            "AF_INET6 addr len %u!", fd, fd, vlsh, vlsh, len);
 	      errno = EINVAL;
 	      rv = -1;
 	      goto done;
@@ -1333,17 +1278,16 @@ bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 	  break;
 
 	default:
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): sid %u (0x%x): "
-			"Unsupported address family %u!",
-			getpid (), fd, fd, sid, sid, addr->sa_family);
+	  LDBG (0, "ERROR: fd %d (0x%x): sid %u (0x%x): Unsupported address"
+	        " family %u!", fd, fd, vlsh, vlsh, addr->sa_family);
 	  errno = EAFNOSUPPORT;
 	  rv = -1;
 	  goto done;
 	}
-      LDBG (0, "fd %d (0x%x): calling vppcom_session_bind(): "
-	    "sid %u (0x%x), addr %p, len %u", fd, fd, sid, sid, addr, len);
+      LDBG (0, "fd %d (0x%x): calling vls_bind(): sid %u (0x%x), addr %p,"
+            " len %u", fd, fd, vlsh, vlsh, addr, len);
 
-      rv = vppcom_session_bind (sid, &ep);
+      rv = vls_bind (vlsh, &ep);
       if (rv != VPPCOM_OK)
 	{
 	  errno = -rv;
@@ -2551,14 +2495,14 @@ int
 setsockopt (int fd, int level, int optname,
 	    const void *optval, socklen_t optlen)
 {
+  vls_handle_t vlsh;
   int rv;
-  const char *func_str = __func__;
-  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sid != INVALID_SESSION_ID)
+  vlsh = ldp_sh_from_fd (fd);
+  if (vlsh != VLS_INVALID_HANDLE)
     {
       rv = -EOPNOTSUPP;
 
@@ -2568,47 +2512,24 @@ setsockopt (int fd, int level, int optname,
 	  switch (optname)
 	    {
 	    case TCP_NODELAY:
-	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_NODELAY]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x)",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_NODELAY,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_TCP_NODELAY,
 					(void *) optval, &optlen);
 	      break;
 	    case TCP_MAXSEG:
-	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_USER_MSS]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x)",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_USER_MSS,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_TCP_USER_MSS,
 					(void *) optval, &optlen);
 	      break;
 	    case TCP_KEEPIDLE:
-	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_KEEPIDLE]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x)",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_KEEPIDLE,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_TCP_KEEPIDLE,
 					(void *) optval, &optlen);
 	      break;
 	    case TCP_KEEPINTVL:
-	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_KEEPINTVL]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x), SOL_TCP",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_KEEPINTVL,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_TCP_KEEPINTVL,
 					(void *) optval, &optlen);
 	      break;
 	    default:
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
-			      "sid %u (0x%x), SOL_TCP, "
-			      "optname %d unsupported!",
-			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      LDBG (0, "ERROR: fd %d: setsockopt() SOL_TCP: vlsh %u"
+	            "optname %d unsupported!", fd, vlsh, optname);
 	      break;
 	    }
 	  break;
@@ -2616,20 +2537,12 @@ setsockopt (int fd, int level, int optname,
 	  switch (optname)
 	    {
 	    case IPV6_V6ONLY:
-	      func_str = "vppcom_session_attr[SOL_IPV6,SET_V6ONLY]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x)",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_V6ONLY,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_V6ONLY,
 					(void *) optval, &optlen);
 	      break;
 	    default:
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
-			      "sid %u (0x%x), SOL_IPV6, "
-			      "optname %d unsupported!",
-			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      LDBG (0, "ERROR: fd %d: setsockopt SOL_IPV6: vlsh %u"
+	            "optname %d unsupported!", fd, vlsh, optname);
 	      break;
 	    }
 	  break;
@@ -2637,38 +2550,20 @@ setsockopt (int fd, int level, int optname,
 	  switch (optname)
 	    {
 	    case SO_KEEPALIVE:
-	      func_str = "vppcom_session_attr[SOL_SOCKET,SET_KEEPALIVE]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x)",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_KEEPALIVE,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_KEEPALIVE,
 					(void *) optval, &optlen);
 	      break;
 	    case SO_REUSEADDR:
-	      func_str = "vppcom_session_attr[SOL_SOCKET,SET_REUSEADDR]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x)",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_REUSEADDR,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_REUSEADDR,
 					(void *) optval, &optlen);
 	      break;
 	    case SO_BROADCAST:
-	      func_str = "vppcom_session_attr[SOL_SOCKET,SET_BROADCAST]";
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
-			      "sid %u (0x%x)",
-			      getpid (), fd, fd, func_str, sid, sid);
-	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_BROADCAST,
+	      rv = vppcom_session_attr (vlsh, VPPCOM_ATTR_SET_BROADCAST,
 					(void *) optval, &optlen);
 	      break;
 	    default:
-	      if (LDP_DEBUG > 1)
-		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
-			      "sid %u (0x%x), SOL_SOCKET, "
-			      "optname %d unsupported!",
-			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      LDBG (0, "ERROR: fd %d: setsockopt SOL_SOCKET: vlsh %u "
+	            "optname %d unsupported!", fd, vlsh, optname);
 	      break;
 	    }
 	  break;
@@ -2684,50 +2579,28 @@ setsockopt (int fd, int level, int optname,
     }
   else
     {
-      func_str = "libc_setsockopt";
-
-      if (LDP_DEBUG > 1)
-	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): level %d, "
-		      "optname %d, optval %p, optlen %d",
-		      getpid (), fd, fd, func_str, level, optname,
-		      optval, optlen);
-
       rv = libc_setsockopt (fd, level, optname, optval, optlen);
     }
 
-  if (LDP_DEBUG > 1)
-    {
-      if (rv < 0)
-	{
-	  int errno_val = errno;
-	  perror (func_str);
-	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
-			"rv %d, errno = %d", getpid (), fd, fd,
-			func_str, rv, errno_val);
-	  errno = errno_val;
-	}
-      else
-	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
-		      getpid (), fd, fd, rv, rv);
-    }
   return rv;
 }
 
 int
 listen (int fd, int n)
 {
+  vls_handle_t vlsh;
   int rv;
-  u32 sid = ldp_sh_from_fd (fd);
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  if (sid != INVALID_SESSION_ID)
+  vlsh = ldp_sh_from_fd (fd);
+  if (vlsh != VLS_INVALID_HANDLE)
     {
-      LDBG (0, "fd %d (0x%x): calling vppcom_session_listen():"
-	    " sid %u (0x%x), n %d", fd, fd, sid, sid, n);
+      LDBG (0, "fd %d (0x%x): calling vls_listen: sid %u (0x%x), n %d",
+            fd, fd, vlsh, vlsh, n);
 
-      rv = vppcom_session_listen (sid, n);
+      rv = vppcom_session_listen (vlsh, n);
       if (rv != VPPCOM_OK)
 	{
 	  errno = -rv;
@@ -2737,7 +2610,6 @@ listen (int fd, int n)
   else
     {
       LDBG (0, "fd %d (0x%x): calling libc_listen(): n %d", fd, fd, n);
-
       rv = libc_listen (fd, n);
     }
 
@@ -2749,15 +2621,14 @@ static inline int
 ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	     socklen_t * __restrict addr_len, int flags)
 {
+  vls_handle_t listen_vlsh, accept_vlsh;
   int rv;
-  u32 listen_sh;
-  int accept_sh;
 
   if ((errno = -ldp_init ()))
     return -1;
 
-  listen_sh = ldp_sh_from_fd (listen_fd);
-  if (listen_sh != INVALID_SESSION_ID)
+  listen_vlsh = ldp_sh_from_fd (listen_fd);
+  if (listen_vlsh != VLS_INVALID_HANDLE)
     {
       vppcom_endpt_t ep;
       u8 src_addr[sizeof (struct sockaddr_in6)];
@@ -2766,12 +2637,12 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 
       LDBG (0, "listen fd %d (0x%x): calling vppcom_session_accept:"
 	    " listen sid %u (0x%x), ep %p, flags 0x%x", listen_fd,
-	    listen_fd, listen_sh, listen_sh, ep, flags);
+	    listen_fd, listen_vlsh, listen_vlsh, ep, flags);
 
-      accept_sh = vppcom_session_accept (listen_sh, &ep, flags);
-      if (accept_sh < 0)
+      accept_vlsh = vls_accept (listen_vlsh, &ep, flags);
+      if (accept_vlsh < 0)
 	{
-	  errno = -accept_sh;
+	  errno = -accept_vlsh;
 	  rv = -1;
 	}
       else
@@ -2779,16 +2650,16 @@ ldp_accept4 (int listen_fd, __SOCKADDR_ARG addr,
 	  rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
 	  if (rv != VPPCOM_OK)
 	    {
-	      (void) vppcom_session_close ((u32) accept_sh);
+	      (void) vls_close ((u32) accept_vlsh);
 	      errno = -rv;
 	      rv = -1;
 	    }
 	  else
 	    {
-	      rv = ldp_fd_alloc ((u32) accept_sh);
+	      rv = ldp_fd_alloc ((u32) accept_vlsh);
 	      if (rv < 0)
 		{
-		  (void) vppcom_session_close ((u32) accept_sh);
+		  (void) vls_close ((u32) accept_vlsh);
 		  errno = -rv;
 		  rv = -1;
 		}
