@@ -31,7 +31,7 @@ extern "C"
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
-#define INVALID_SESSION_ID                  	(~0)
+#define INVALID_SESSION_ID                  	((u32)~0)
 #define VPPCOM_CONF_DEFAULT                  	"/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                      	"VCL_CONFIG"
 #define VPPCOM_ENV_DEBUG                     	"VCL_DEBUG"
