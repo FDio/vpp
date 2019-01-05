@@ -20,6 +20,7 @@ add_vpp_library(vppcom
   vcl_bapi.c
   vcl_cfg.c
   vcl_private.c
+  vcl_locked.c
 
   LINK_LIBRARIES
   vppinfra svm vlibmemoryclient rt pthread
@@ -43,6 +44,7 @@ add_vpp_headers(vcl
   ldp_glibc_socket.h
   vcl_test.h
   vppcom.h
+  vcl_locked.h
   ldp_socket_wrapper.h
 )
 
