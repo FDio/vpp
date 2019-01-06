@@ -128,7 +128,6 @@ def stat_entry_to_python(api, e):
     # Scalar index
     if e.type == 1:
         return e.scalar_value
-        return None
     if e.type == 2:
         return simple_counter_vec_list(api, e.simple_counter_vec)
     if e.type == 3:
@@ -139,7 +138,30 @@ def stat_entry_to_python(api, e):
 
 
 class VPPStatsIOError(IOError):
-    pass
+    message = "Stat segment client connection returned: " \
+              "%(retval)s %(strerror)s."
+
+    strerror = {-1: "Stat client couldn't open socket",
+                -2: "Stat client socket open but couldn't connect",
+                -3: "Receiving file descriptor failed",
+                -4: "mmap fstat failed",
+                -5: "mmap map failed"
+                }
+
+    def __init__(self, message=None, **kwargs):
+        if 'retval' in kwargs:
+            self.retval = kwargs['retval']
+            kwargs['strerror'] = self.strerror[int(self.retval)]
+
+        if not message:
+            try:
+                message = self.message % kwargs
+            except Exception as e:
+                message = self.message
+        else:
+            message = message % kwargs
+
+        super(VPPStatsIOError, self).__init__(message)
 
 
 class VPPStatsClientLoadError(RuntimeError):
@@ -168,7 +190,7 @@ class VPPStats(object):
                 break
 
         if rv != 0:
-            raise VPPStatsIOError()
+            raise VPPStatsIOError(retval=rv)
 
     def heartbeat(self):
         return self.api.stat_segment_heartbeat_r(self.client)
