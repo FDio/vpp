@@ -325,8 +325,16 @@ packet data, and a protocol hint.
 
 The buffer index is an opaque 32-bit cookie which allows consumers of
 these data to easily filter/track single packets as they traverse the
-forwarding graph. Multiple records per packet are normal, and to be
-expected. 
+forwarding graph.
+
+Multiple records per packet are normal, and to be expected. Packets
+will appear multipe times as they traverse the vpp forwarding
+graph. In this way, vpp graph dispatch traces are significantly
+different from regular network packet captures from an end-station.
+This property complicates stateful packet analysis.
+
+Restricting stateful analysis to records from a single vpp graph node
+such as "ethernet-input" seems likely to improve the situation.
 
 As of this writing: major version = 1, minor version = 0. Nstrings
 SHOULD be 4 or 5. Consumers SHOULD be wary values less than 4 or
@@ -352,7 +360,7 @@ Example: VLIB_NODE_PROTO_HINT_IP6 means that the first octet of packet
 data SHOULD be 0x60, and should begin an ipv6 packet header.
 
 Downstream consumers of these data SHOULD pay attention to the
-protocol hint. They MUST tolerate inaccurate hints, which WILL occur
+protocol hint. They MUST tolerate inaccurate hints, which MAY occur
 from time to time.
 
 ### Dispatch Pcap Trace Debug CLI
@@ -381,9 +389,9 @@ It almost goes without saying that we built a companion wireshark
 dissector to display these traces. As of this writing, we're in the
 process of trying to upstream the wireshark dissector.
 
-Until various games of "fetch me a rock" involved are finished, please
-see the "How to build a vpp dispatch trace aware Wireshark" page
-for build info, and/or take a look at .../extras/wireshark.
+Until we manage to upstream the wireshark dissector, please see the
+"How to build a vpp dispatch trace aware Wireshark" page for build
+info, and/or take a look at .../extras/wireshark.
 
 Here is a sample packet dissection, with some fields omitted for
 clarity.  The point is that the wireshark dissector accurately
