@@ -328,16 +328,24 @@ srp_topology_packet (vlib_main_t * vm, u32 sw_if_index, u8 ** contents)
 					      vec_len (*contents) - STRUCT_OFFSET_OF (srp_generic_control_header_t, control)));
 
   {
-    vlib_frame_t * f = vlib_get_frame_to_node (vm, hi->output_node_index);
+    vlib_frame_t * f; 
     vlib_buffer_t * b;
-    u32 * to_next = vlib_frame_vector_args (f);
-    u32 bi;
+    u32 * to_next;
+    u32 bi = ~0;
 
-    bi = vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
-			       /* buffer to append to */ ~0,
-			       *contents, vec_len (*contents));
+    if (vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
+                              /* buffer to append to */ &bi,
+                              *contents, vec_len (*contents)))
+      {
+        /* complete or partial buffer allocation failure */
+        if (bi != ~0)
+          vlib_buffer_free (vm, &bi, 1);
+        return SRP_ERROR_CONTROL_PACKETS_PROCESSED;
+      }
     b = vlib_get_buffer (vm, bi);
     vnet_buffer (b)->sw_if_index[VLIB_RX] = vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
+    f = vlib_get_frame_to_node (vm, hi->output_node_index);
+    to_next = vlib_frame_vector_args (f);
     to_next[0] = bi;
     f->n_vectors = 1;
     vlib_put_frame_to_node (vm, hi->output_node_index, f);
@@ -609,7 +617,7 @@ static void tx_ips_packet (srp_interface_t * si,
   vnet_hw_interface_t * hi = vnet_get_hw_interface (vnm, si->rings[tx_ring].hw_if_index);
   vlib_frame_t * f;
   vlib_buffer_t * b;
-  u32 * to_next, bi;
+  u32 * to_next, bi = ~0;
 
   if (! vnet_sw_interface_is_admin_up (vnm, hi->sw_if_index))
     return;
@@ -620,9 +628,15 @@ static void tx_ips_packet (srp_interface_t * si,
     = ~ip_csum_fold (ip_incremental_checksum (0, &i->control,
 					      sizeof (i[0]) - STRUCT_OFFSET_OF (srp_ips_header_t, control)));
 
-  bi = vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
-			     /* buffer to append to */ ~0,
-			     i, sizeof (i[0]));
+  if (vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
+                            /* buffer to append to */ &bi,
+                            i, sizeof (i[0])))
+    {
+      /* complete or partial allocation failure */
+      if (bi != ~0)
+        vlib_buffer_free (vm, &bi, 1);
+      return;
+    }
 
   /* FIXME trace. */
   if (0)

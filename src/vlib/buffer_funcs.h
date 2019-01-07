@@ -672,9 +672,9 @@ vlib_buffer_free_list_buffer_size (vlib_main_t * vm,
 }
 
 /* Append given data to end of buffer, possibly allocating new buffers. */
-u32 vlib_buffer_add_data (vlib_main_t * vm,
+int vlib_buffer_add_data (vlib_main_t * vm,
 			  vlib_buffer_free_list_index_t free_list_index,
-			  u32 buffer_index, void *data, u32 n_data_bytes);
+			  u32 * buffer_index, void *data, u32 n_data_bytes);
 
 /* duplicate all buffers in chain */
 always_inline vlib_buffer_t *

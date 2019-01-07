@@ -705,16 +705,16 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
 }
 
 /* Append given data to end of buffer, possibly allocating new buffers. */
-u32
+int
 vlib_buffer_add_data (vlib_main_t * vm,
 		      vlib_buffer_free_list_index_t free_list_index,
-		      u32 buffer_index, void *data, u32 n_data_bytes)
+		      u32 * buffer_index, void *data, u32 n_data_bytes)
 {
   u32 n_buffer_bytes, n_left, n_left_this_buffer, bi;
   vlib_buffer_t *b;
   void *d;
 
-  bi = buffer_index;
+  bi = *buffer_index;
   if (bi == ~0
       && 1 != vlib_buffer_alloc_from_free_list (vm, &bi, 1, free_list_index))
     goto out_of_buffers;
@@ -756,11 +756,12 @@ vlib_buffer_add_data (vlib_main_t * vm,
       b = vlib_get_buffer (vm, b->next_buffer);
     }
 
-  return bi;
+  *buffer_index = bi;
+  return 0;
 
 out_of_buffers:
-  clib_error ("out of buffers");
-  return bi;
+  clib_warning ("out of buffers");
+  return 1;
 }
 
 u16
