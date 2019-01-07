@@ -190,7 +190,8 @@ class VPP(object):
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
                  logger=None, loglevel=None,
                  read_timeout=5, use_socket=False,
-                 server_address='/run/vpp-api.sock'):
+                 server_address='/run/vpp-api.sock',
+                 library_path=''):
         """Create a VPP API object.
 
         apifiles is a list of files containing API
@@ -248,7 +249,8 @@ class VPP(object):
             raise VPPValueError(1, 'Missing JSON message definitions')
 
         self.transport = VppTransport(self, read_timeout=read_timeout,
-                                      server_address=server_address)
+                                      server_address=server_address,
+                                      library_path=library_path)
         # Make sure we allow VPP to clean up the message rings.
         atexit.register(vpp_atexit, weakref.ref(self))
 
