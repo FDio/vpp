@@ -372,8 +372,8 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	  const gbp_recirc_t *gr0;
 	  const dpo_id_t *dpo0;
 	  load_balance_t *lb0;
-	  ip4_header_t *ip4_0;
-	  ip6_header_t *ip6_0;
+	  ip4_header_t *ip4_0 = NULL;
+	  ip6_header_t *ip6_0 = NULL;
 	  vlib_buffer_t *b0;
 	  epg_id_t src_epg0;
 
@@ -441,7 +441,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	      lbi0 = ip4_fib_forwarding_lookup (fib_index0,
 						&ip4_0->src_address);
 	    }
-	  else if (DPO_PROTO_IP4 == dproto)
+	  else if (DPO_PROTO_IP6 == dproto)
 	    {
 	      lbi0 = ip6_fib_table_fwding_lookup (&ip6_main, fib_index0,
 						  &ip6_0->src_address);
