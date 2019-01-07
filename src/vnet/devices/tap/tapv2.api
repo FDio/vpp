@@ -47,6 +47,7 @@ option version = "2.0.0";
     @param host_ip4_gw - host IPv4 default gateway
     @param host_ip6_gw_set - host IPv6 default gateway should be set
     @param host_ip6_gw - host IPv6 default gateway
+    @param tap_flags - flags for the TAP interface creation
 */
 define tap_create_v2
 {
@@ -76,6 +77,7 @@ define tap_create_v2
   u8 host_ip6_gw_set;
   u8 host_ip6_gw[16];
   u8 tag[64];
+  u32 tap_flags;
 };
 
 /** \brief Reply for tap create reply
@@ -140,6 +142,7 @@ define sw_interface_tap_v2_details
   u8 host_ip4_prefix_len;
   u8 host_ip6_addr[16];
   u8 host_ip6_prefix_len;
+  u32 tap_flags;
 };
 
 /*
