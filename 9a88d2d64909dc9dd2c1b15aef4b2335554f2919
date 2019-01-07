@@ -16,6 +16,24 @@
       "revId": "9a88d2d64909dc9dd2c1b15aef4b2335554f2919",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cb17e5a8_255709df",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 944,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-01-07T17:49:42Z",
+      "side": 1,
+      "message": "Just like other places (eg: acl_interface_in_enable_disable()), and after a minor discussion with Damjan, this is to explicitly prevent duplicate nodes from being added to the graph.",
+      "parentUuid": "acecb1dd_ba99204c",
+      "revId": "9a88d2d64909dc9dd2c1b15aef4b2335554f2919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
