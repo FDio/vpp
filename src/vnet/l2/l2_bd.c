@@ -91,13 +91,27 @@ bd_add_bd_index (bd_main_t * bdm, u32 bd_id)
   return rv;
 }
 
+static inline void
+bd_free_ip_mac_tables (l2_bridge_domain_t * bd)
+{
+  u64 mac_addr;
+  ip6_address_t *ip6_addr_key;
+
+  hash_free (bd->mac_by_ip4);
+  /* *INDENT-OFF* */
+  hash_foreach_mem (ip6_addr_key, mac_addr, bd->mac_by_ip6,
+  ({
+    clib_mem_free (ip6_addr_key); /* free memory used for ip6 addr key */
+  }));
+  /* *INDENT-ON* */
+  hash_free (bd->mac_by_ip6);
+}
+
 static int
 bd_delete (bd_main_t * bdm, u32 bd_index)
 {
   l2_bridge_domain_t *bd = &l2input_main.bd_configs[bd_index];
   u32 bd_id = bd->bd_id;
-  u64 mac_addr;
-  ip6_address_t *ip6_addr_key;
 
   /* flush non-static MACs in BD and removed bd_id from hash table */
   l2fib_flush_bd_mac (vlib_get_main (), bd_index);
@@ -115,14 +129,7 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
 
   /* free memory used by BD */
   vec_free (bd->members);
-  hash_free (bd->mac_by_ip4);
-  /* *INDENT-OFF* */
-  hash_foreach_mem (ip6_addr_key, mac_addr, bd->mac_by_ip6,
-  ({
-    clib_mem_free (ip6_addr_key); /* free memory used for ip6 addr key */
-  }));
-  /* *INDENT-ON* */
-  hash_free (bd->mac_by_ip6);
+  bd_free_ip_mac_tables (bd);
 
   return 0;
 }
@@ -806,6 +813,20 @@ bd_add_del_ip_mac (u32 bd_index,
 }
 
 /**
+ * Flush IP address to MAC address mapping tables in a BD.
+ */
+void
+bd_flush_ip_mac (u32 bd_index)
+{
+  l2_bridge_domain_t *bd = l2input_bd_config (bd_index);
+  ASSERT (bd_is_valid (bd));
+  bd_free_ip_mac_tables (bd);
+  bd->mac_by_ip4 = 0;
+  bd->mac_by_ip6 =
+    hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
+}
+
+/**
     Set bridge-domain arp entry add/delete.
     The CLI format is:
     set bridge-domain arp entry <bridge-domain-id> <ip-addr> <mac-addr> [del]
@@ -848,6 +869,11 @@ bd_arp_entry (vlib_main_t * vm,
   else if (unformat (input, "%U", unformat_ip6_address, &ip_addr.ip6))
     {
       type = IP46_TYPE_IP6;
+    }
+  else if (unformat (input, "del-all"))
+    {
+      bd_flush_ip_mac (bd_index);
+      goto done;
     }
   else
     {
@@ -893,7 +919,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (bd_arp_entry_cli, static) = {
   .path = "set bridge-domain arp entry",
-  .short_help = "set bridge-domain arp entry <bridge-domain-id> <ip-addr> <mac-addr> [del]",
+  .short_help = "set bridge-domain arp entry <bridge-domain-id> [<ip-addr> <mac-addr> [del] | del-all]",
   .function = bd_arp_entry,
 };
 /* *INDENT-ON* */

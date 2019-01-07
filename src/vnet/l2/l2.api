@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-option version = "2.1.1";
+option version = "2.1.2";
 
 import "vnet/ip/ip_types.api";
 import "vnet/ethernet/ethernet_types.api";
@@ -485,6 +485,17 @@ autoreply define bd_ip_mac_add_del
   u8 is_add;
   vl_api_address_t ip;
   vl_api_mac_address_t mac;
+};
+
+/** \brief Flush bridge domain IP to MAC entries
+    @param client_index - opaque cookie to identify the sender
+    @param bd_id - bridge domain identifier
+*/
+autoreply define bd_ip_mac_flush
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
 };
 
 /** \brief bridge domain IP to MAC entry details structure

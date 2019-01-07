@@ -5259,6 +5259,7 @@ _(ikev2_initiate_del_child_sa_reply)                    \
 _(ikev2_initiate_rekey_child_sa_reply)                  \
 _(delete_loopback_reply)                                \
 _(bd_ip_mac_add_del_reply)                              \
+_(bd_ip_mac_flush_reply)                                \
 _(want_interface_events_reply)                          \
 _(cop_interface_enable_disable_reply)			\
 _(cop_whitelist_enable_disable_reply)                   \
@@ -5515,6 +5516,7 @@ _(IKEV2_INITIATE_DEL_CHILD_SA_REPLY, ikev2_initiate_del_child_sa_reply) \
 _(IKEV2_INITIATE_REKEY_CHILD_SA_REPLY, ikev2_initiate_rekey_child_sa_reply) \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
+_(BD_IP_MAC_FLUSH_REPLY, bd_ip_mac_flush_reply)                         \
 _(BD_IP_MAC_DETAILS, bd_ip_mac_details)                                 \
 _(DHCP_COMPL_EVENT, dhcp_compl_event)                                   \
 _(WANT_INTERFACE_EVENTS_REPLY, want_interface_events_reply)             \
@@ -7379,6 +7381,40 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
 
   clib_memcpy (&mp->ip, &ip, sizeof (ip));
   clib_memcpy (&mp->mac, &mac, sizeof (mac));
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_bd_ip_mac_flush (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bd_ip_mac_flush_t *mp;
+  u32 bd_id;
+  u8 bd_id_set = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "bd_id %d", &bd_id))
+	{
+	  bd_id_set++;
+	}
+      else
+	break;
+    }
+
+  if (bd_id_set == 0)
+    {
+      errmsg ("missing bridge domain");
+      return -99;
+    }
+
+  M (BD_IP_MAC_FLUSH, mp);
+
+  mp->bd_id = ntohl (bd_id);
 
   S (mp);
   W (ret);
@@ -23352,7 +23388,8 @@ _(ikev2_initiate_del_child_sa, "<ispi>")                                \
 _(ikev2_initiate_rekey_child_sa, "<ispi>")                              \
 _(delete_loopback,"sw_if_index <nn>")                                   \
 _(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
-_(bd_ip_mac_dump, "[bd_id] <id>")                                       \
+_(bd_ip_mac_flush, "bd_id <bridge-domain-id>")                          \
+_(bd_ip_mac_dump, "[bd_id] <bridge-domain-id>")                         \
 _(want_interface_events,  "enable|disable")                             \
 _(get_first_msg_id, "client <name>")					\
 _(cop_interface_enable_disable, "<intfc> | sw_if_index <nn> [disable]") \
