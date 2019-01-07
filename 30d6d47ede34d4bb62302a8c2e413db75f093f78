@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "f746edb3_ac1f2a88",
+        "filename": "src/vat/vat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-01-07T18:23:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "81211ec8_10eee621",
+      "range": {
+        "startLine": 113,
+        "startChar": 8,
+        "endLine": 113,
+        "endChar": 27
+      },
+      "revId": "30d6d47ede34d4bb62302a8c2e413db75f093f78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "44d3fbb4_cd876217",
         "filename": "src/vat/vat.py",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2019-01-07T17:40:44Z",
       "side": 1,
       "message": "Should this be a class attribute?\n(also makes writing unit tests a little easier)",
+      "range": {
+        "startLine": 267,
+        "startChar": 8,
+        "endLine": 267,
+        "endChar": 35
+      },
+      "revId": "30d6d47ede34d4bb62302a8c2e413db75f093f78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bcec664e_570ff144",
+        "filename": "src/vat/vat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-01-07T18:23:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "44d3fbb4_cd876217",
       "range": {
         "startLine": 267,
         "startChar": 8,
@@ -82,6 +130,30 @@
       "writtenOn": "2019-01-07T17:40:44Z",
       "side": 1,
       "message": "Do you want a custom exception here, explaining why we\u0027re barfing and how to fix it?  If you would like me to add them, let me know.  I was thinking it could return what I\u0027m looking for and maybe the current value of LD_LIBRARY_PATH? (I imagine it could remove the need of ~50-200 LOC in test.) Overkill?",
+      "range": {
+        "startLine": 62,
+        "startChar": 8,
+        "endLine": 62,
+        "endChar": 47
+      },
+      "revId": "30d6d47ede34d4bb62302a8c2e413db75f093f78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6d065e91_04a4a1fb",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_shmem.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-01-07T18:23:06Z",
+      "side": 1,
+      "message": "Feel free to add!",
+      "parentUuid": "4a8b222e_0af235a1",
       "range": {
         "startLine": 62,
         "startChar": 8,
