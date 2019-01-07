@@ -515,6 +515,17 @@ static void *vl_api_bd_ip_mac_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_bd_ip_mac_flush_t_print
+  (vl_api_bd_ip_mac_flush_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: bd_ip_mac_flush ");
+  s = format (s, "bd_id %d ", ntohl (mp->bd_id));
+
+  FINISH;
+}
+
 static void *vl_api_bd_ip_mac_dump_t_print
   (vl_api_bd_ip_mac_dump_t * mp, void *handle)
 {
@@ -3827,6 +3838,7 @@ _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
 _(DELETE_LOOPBACK, delete_loopback)                                     \
 _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)					\
+_(BD_IP_MAC_FLUSH, bd_ip_mac_flush)					\
 _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable) 		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
 _(AF_PACKET_CREATE, af_packet_create)					\
