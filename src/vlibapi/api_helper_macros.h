@@ -183,7 +183,7 @@ static void vl_api_want_##lca##_t_handler (                             \
     p = hash_get (vam->lca##_registration_hash, mp->client_index);      \
     if (p) {                                                            \
         if (mp->enable_disable) {                                       \
-            clib_warning ("pid %d: already enabled...", mp->pid);       \
+	    clib_warning ("pid %d: already enabled...", ntohl(mp->pid)); \
             rv = VNET_API_ERROR_INVALID_REGISTRATION;                   \
             goto reply;                                                 \
         } else {                                                        \
