@@ -40,7 +40,7 @@ STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR) <
 
 static_always_inline uword
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
-			  struct rte_mbuf *mb, vlib_buffer_free_list_t * fl)
+			  struct rte_mbuf *mb)
 {
   u8 nb_seg = 1;
   struct rte_mbuf *mb_seg = 0;
@@ -59,10 +59,6 @@ dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
       ASSERT (mb_seg != 0);
 
       b_seg = vlib_buffer_from_rte_mbuf (mb_seg);
-      vlib_buffer_init_for_free_list (b_seg, fl);
-
-      ASSERT ((b_seg->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
-      ASSERT (b_seg->current_data == 0);
 
       /*
        * The driver (e.g. virtio) may not put the packet data at the start
@@ -167,13 +163,9 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 {
   u32 n_left = n_rx_packets;
   vlib_buffer_t *b[4];
-  vlib_buffer_free_list_t *fl;
   struct rte_mbuf **mb = ptd->mbufs;
   uword n_bytes = 0;
   u8 *flags, or_flags = 0;
-
-  if (maybe_multiseg)
-    fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   mb = ptd->mbufs;
   flags = ptd->flags;
@@ -208,10 +200,10 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 
       if (maybe_multiseg)
 	{
-	  n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], fl);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[1], mb[1], fl);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[2], mb[2], fl);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3], fl);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0]);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[1], mb[1]);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[2], mb[2]);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3]);
 	}
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
@@ -235,7 +227,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       n_bytes += b[0]->current_length = mb[0]->data_len;
 
       if (maybe_multiseg)
-	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], fl);
+	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       /* next */

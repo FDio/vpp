@@ -72,7 +72,10 @@ avf_rxq_refill (vlib_main_t * vm, vlib_node_runtime_t * node, avf_rxq_t * rxq,
   slot = (rxq->next - n_refill - 1) & mask;
 
   n_refill &= ~7;		/* round to 8 */
-  n_alloc = vlib_buffer_alloc_to_ring (vm, rxq->bufs, slot, size, n_refill);
+  n_alloc =
+    vlib_buffer_alloc_to_ring_from_pool_no_init (vm, rxq->bufs, slot, size,
+						 n_refill,
+						 rxq->buffer_pool_index);
 
   if (PREDICT_FALSE (n_alloc != n_refill))
     {
@@ -362,6 +365,7 @@ no_more_desc:
 
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = ad->sw_if_index;
   vnet_buffer (bt)->sw_if_index[VLIB_TX] = ~0;
+  bt->buffer_pool_index = rxq->buffer_pool_index;
 
   if (n_tail_desc)
     n_rx_bytes = avf_process_rx_burst (vm, node, ptd, n_rx_packets, 1);

@@ -180,7 +180,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   memif_main_t *mm = &memif_main;
   memif_ring_t *ring;
   memif_queue_t *mq;
-  u16 buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  u16 buffer_size = VLIB_BUFFER_DATA_SIZE;
   uword n_trace = vlib_get_trace_count (vm, node);
   u16 nexts[MEMIF_RX_VECTOR_SZ], *next = nexts;
   u32 _to_next_bufs[MEMIF_RX_VECTOR_SZ], *to_next_bufs = _to_next_bufs, *bi;
@@ -559,7 +559,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* asume that somebody will want to add ethernet header on the packet
      so start with IP header at offset 14 */
   start_offset = (mode == MEMIF_INTERFACE_MODE_IP) ? 14 : 0;
-  buffer_length = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES - start_offset;
+  buffer_length = VLIB_BUFFER_DATA_SIZE - start_offset;
 
   cur_slot = mq->last_tail;
   last_slot = ring->tail;
