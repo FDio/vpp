@@ -3758,17 +3758,15 @@ class VppPapiProvider(object):
         """ GBP VXLAN tunnel add/del """
         return self.api(self.papi.gbp_vxlan_tunnel_dump, {})
 
-    def ipip_6rd_add_tunnel(self, ip6_table_id, ip6_prefix, ip6_prefix_len,
-                            ip4_table_id, ip4_prefix, ip4_prefix_len, ip4_src,
+    def ipip_6rd_add_tunnel(self, ip6_table_id, ip6_prefix,
+                            ip4_table_id, ip4_prefix, ip4_src,
                             security_check):
         """ 6RD tunnel Add """
         return self.api(self.papi.ipip_6rd_add_tunnel,
                         {'ip4_table_id': ip4_table_id,
                          'ip6_table_id': ip6_table_id,
                          'ip6_prefix': ip6_prefix,
-                         'ip6_prefix_len': ip6_prefix_len,
                          'ip4_prefix': ip4_prefix,
-                         'ip4_prefix_len': ip4_prefix_len,
                          'ip4_src': ip4_src,
                          'security_check': security_check})
 
@@ -3777,12 +3775,11 @@ class VppPapiProvider(object):
         return self.api(self.papi.ipip_6rd_del_tunnel,
                         {'sw_if_index': sw_if_index})
 
-    def ipip_add_tunnel(self, src_address, dst_address, is_ipv6=1,
+    def ipip_add_tunnel(self, src_address, dst_address,
                         instance=0xFFFFFFFF, table_id=0, tc_tos=0):
         """ IPIP tunnel Add/Del """
         return self.api(self.papi.ipip_add_tunnel,
-                        {'is_ipv6': is_ipv6,
-                         'instance': instance,
+                        {'instance': instance,
                          'src_address': src_address,
                          'dst_address': dst_address,
                          'table_id': table_id,

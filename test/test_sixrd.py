@@ -85,9 +85,9 @@ class Test6RD(VppTestCase):
         p_ip6 = IPv6(src="1::1", dst="2002:AC10:0202::1", nh='UDP')
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2002::'), 16,
-            0, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg0.local_ip4n, True)
+            0, '2002::/16',
+            0, '0.0.0.0/0',
+            self.pg0.local_ip4, True)
         self.tunnel_index = rv.sw_if_index
 
         self.vapi.cli("show ip6 fib")
@@ -119,9 +119,9 @@ class Test6RD(VppTestCase):
         p_ip6 = IPv6(src="1::1", dst="2002:AC10:0402::1", nh='UDP')
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            20, inet_pton(AF_INET6, '2002::'), 16,
-            10, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg2.local_ip4n, True)
+            20, '2002::/16',
+            10, '0.0.0.0/0',
+            self.pg2.local_ip4, True)
         self.tunnel_index = rv.sw_if_index
 
         self.vapi.cli("show ip6 fib")
@@ -151,15 +151,15 @@ class Test6RD(VppTestCase):
         """ ip4 -> ip6 (decap) 6rd test """
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2002::'), 16,
-            0, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg0.local_ip4n, True)
+            0, '2002::/16',
+            0, '0.0.0.0/0',
+            self.pg0.local_ip4, True)
         self.tunnel_index = rv.sw_if_index
         rv = self.vapi.ipip_6rd_del_tunnel(rv.sw_if_index)
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2002::'), 16,
-            0, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg0.local_ip4n, True)
+            0, '2002::/16',
+            0, '0.0.0.0/0',
+            self.pg0.local_ip4, True)
         self.tunnel_index = rv.sw_if_index
 
         p_ip6 = (IPv6(src="2002:AC10:0202::1", dst=self.pg1.remote_ip6) /
@@ -181,15 +181,15 @@ class Test6RD(VppTestCase):
         """ ip4 -> ip6 (decap) 6rd VRF test """
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            20, inet_pton(AF_INET6, '2002::'), 16,
-            10, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg2.local_ip4n, True)
+            20, '2002::/16',
+            10, '0.0.0.0/0',
+            self.pg2.local_ip4, True)
         self.tunnel_index = rv.sw_if_index
         rv = self.vapi.ipip_6rd_del_tunnel(rv.sw_if_index)
         rv = self.vapi.ipip_6rd_add_tunnel(
-            20, inet_pton(AF_INET6, '2002::'), 16,
-            10, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg2.local_ip4n, True)
+            20, '2002::/16',
+            10, '0.0.0.0/0',
+            self.pg2.local_ip4, True)
         self.tunnel_index = rv.sw_if_index
         self.vapi.sw_interface_set_table(self.tunnel_index, 1, 20)
 
@@ -214,15 +214,15 @@ class Test6RD(VppTestCase):
 
         self.tunnel_index = []
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2002::'), 16,
-            0, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg0.local_ip4n, True)
+            0, '2002::/16',
+            0, '0.0.0.0/0',
+            self.pg0.local_ip4, True)
         self.tunnel_index.append(rv.sw_if_index)
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2003::'), 16,
-            0, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg1.local_ip4n, True)
+            0, '2003::/16',
+            0, '0.0.0.0/0',
+            self.pg1.local_ip4, True)
         self.tunnel_index.append(rv.sw_if_index)
 
         self.vapi.cli("show ip6 fib")
@@ -249,9 +249,9 @@ class Test6RD(VppTestCase):
         """ ip4 -> ip6 (decap) 6rd test """
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2002::'), 16,
-            0, inet_pton(AF_INET, '172.0.0.0'), 8,
-            self.pg0.local_ip4n, True)
+            0, '2002::/16',
+            0, '172.0.0.0/8',
+            self.pg0.local_ip4, True)
 
         self.tunnel_index = rv.sw_if_index
 
@@ -271,9 +271,9 @@ class Test6RD(VppTestCase):
         """ ip4 -> ip6 (decap) security check 6rd test """
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2002::'), 16,
-            0, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg0.local_ip4n, True)
+            0, '2002::/16',
+            0, '0.0.0.0/0',
+            self.pg0.local_ip4, True)
         self.tunnel_index = rv.sw_if_index
 
         self.vapi.cli("show ip6 fib")
@@ -304,9 +304,9 @@ class Test6RD(VppTestCase):
         """ 6rd BGP tunnel """
 
         rv = self.vapi.ipip_6rd_add_tunnel(
-            0, inet_pton(AF_INET6, '2002::'), 16,
-            0, inet_pton(AF_INET, '0.0.0.0'), 0,
-            self.pg0.local_ip4n, False)
+            0, '2002::/16',
+            0, '0.0.0.0/0',
+            self.pg0.local_ip4, False)
         self.tunnel_index = rv.sw_if_index
 
         default_route = VppIpRoute(
