@@ -50,6 +50,7 @@
 
 option version = "1.1.0";
 import "vnet/interface_types.api";
+import "vnet/ip/ip_types.api";
 
 /**
  * Create an IP{v4,v6} over IP{v4,v6} tunnel.
@@ -58,10 +59,9 @@ define ipip_add_tunnel
 {
   u32 client_index;
   u32 context;
-  u8 is_ipv6;
   u32 instance;		/* If non-~0, specifies a custom dev instance */
-  u8 src_address[16];
-  u8 dst_address[16];
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
   u32 table_id;
   u8 tc_tos;		/* If ~0, the TOS/TC value is copied from
 			   inner packet, otherwise set to value */
@@ -93,11 +93,9 @@ define ipip_6rd_add_tunnel
   u32 context;
   u32 ip6_table_id;
   u32 ip4_table_id;
-  u8 ip6_prefix[16];
-  u8 ip4_prefix[4];
-  u8 ip4_src[4];
-  u8 ip6_prefix_len;
-  u8 ip4_prefix_len;
+  vl_api_ip6_prefix_t ip6_prefix;
+  vl_api_ip4_prefix_t ip4_prefix;
+  vl_api_ip4_address_t ip4_src;
   u8 security_check;
   u8 tc_tos;		/* If ~0, the TOS/TC value is copied from
 			   inner packet, otherwise set to value */
@@ -135,9 +133,8 @@ define ipip_tunnel_details
   u32 context;
   vl_api_interface_index_t sw_if_index;
   u32 instance;
-  u8 is_ipv6;
-  u8 src_address[16];
-  u8 dst_address[16];
+  vl_api_address_t src_address;
+  vl_api_address_t dst_address;
   u32 fib_index;
   u8 tc_tos;
 };

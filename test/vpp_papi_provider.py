@@ -3777,12 +3777,11 @@ class VppPapiProvider(object):
         return self.api(self.papi.ipip_6rd_del_tunnel,
                         {'sw_if_index': sw_if_index})
 
-    def ipip_add_tunnel(self, src_address, dst_address, is_ipv6=1,
+    def ipip_add_tunnel(self, src_address, dst_address,
                         instance=0xFFFFFFFF, table_id=0, tc_tos=0):
         """ IPIP tunnel Add/Del """
         return self.api(self.papi.ipip_add_tunnel,
-                        {'is_ipv6': is_ipv6,
-                         'instance': instance,
+                        {'instance': instance,
                          'src_address': src_address,
                          'dst_address': dst_address,
                          'table_id': table_id,

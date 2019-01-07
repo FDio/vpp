@@ -306,7 +306,6 @@ class VPPUnionType(object):
                 continue
             f_type, f_name = f
             if f_type not in types:
-                logger.debug('Unknown union type {}'.format(f_type))
                 raise VPPSerializerValueError(
                     'Unknown message type {}'.format(f_type))
             fields.append(f_name)
@@ -400,7 +399,6 @@ class VPPType(object):
             self.field_by_name[f_name] = None
             self.fieldtypes.append(f_type)
             if f_type not in types:
-                logger.debug('Unknown type {}'.format(f_type))
                 raise VPPSerializerValueError(
                     'Unknown message type {}'.format(f_type))
             if len(f) == 3:  # list
