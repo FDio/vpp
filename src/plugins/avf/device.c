@@ -224,9 +224,11 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   rxq = vec_elt_at_index (ad->rxqs, qid);
   rxq->size = rxq_size;
   rxq->next = 0;
-  rxq->descs = vlib_physmem_alloc_aligned (vm, rxq->size *
-					   sizeof (avf_rx_desc_t),
-					   2 * CLIB_CACHE_LINE_BYTES);
+  rxq->descs = vlib_physmem_alloc_aligned_on_numa (vm, rxq->size *
+						   sizeof (avf_rx_desc_t),
+						   2 * CLIB_CACHE_LINE_BYTES,
+						   ad->numa_node);
+
   if (rxq->descs == 0)
     return vlib_physmem_last_error (vm);
 
@@ -278,9 +280,10 @@ avf_txq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 txq_size)
   txq = vec_elt_at_index (ad->txqs, qid);
   txq->size = txq_size;
   txq->next = 0;
-  txq->descs = vlib_physmem_alloc_aligned (vm, txq->size *
-					   sizeof (avf_tx_desc_t),
-					   2 * CLIB_CACHE_LINE_BYTES);
+  txq->descs = vlib_physmem_alloc_aligned_on_numa (vm, txq->size *
+						   sizeof (avf_tx_desc_t),
+						   2 * CLIB_CACHE_LINE_BYTES,
+						   ad->numa_node);
   if (txq->descs == 0)
     return vlib_physmem_last_error (vm);
 
@@ -1223,6 +1226,7 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
       return;
     }
   ad->pci_dev_handle = h;
+  ad->numa_node = vlib_pci_get_numa_node (vm, h);
 
   vlib_pci_set_private_data (vm, h, ad->dev_instance);
 
@@ -1243,8 +1247,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
     goto error;
 
-  if (!(ad->atq = vlib_physmem_alloc (vm, sizeof (avf_aq_desc_t) *
-				      AVF_MBOX_LEN)))
+  ad->atq = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (avf_aq_desc_t) *
+						AVF_MBOX_LEN,
+						CLIB_CACHE_LINE_BYTES,
+						ad->numa_node);
+  if (ad->atq == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;
@@ -1253,8 +1260,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->atq)))
     goto error;
 
-  if (!(ad->arq = vlib_physmem_alloc (vm, sizeof (avf_aq_desc_t) *
-				      AVF_MBOX_LEN)))
+  ad->arq = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (avf_aq_desc_t) *
+						AVF_MBOX_LEN,
+						CLIB_CACHE_LINE_BYTES,
+						ad->numa_node);
+  if (ad->arq == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;
@@ -1263,8 +1273,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->arq)))
     goto error;
 
-  if (!(ad->atq_bufs = vlib_physmem_alloc (vm, AVF_MBOX_BUF_SZ *
-					   AVF_MBOX_LEN)))
+  ad->atq_bufs = vlib_physmem_alloc_aligned_on_numa (vm, AVF_MBOX_BUF_SZ *
+						     AVF_MBOX_LEN,
+						     CLIB_CACHE_LINE_BYTES,
+						     ad->numa_node);
+  if (ad->atq_bufs == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;
@@ -1273,8 +1286,11 @@ avf_create_if (vlib_main_t * vm, avf_create_if_args_t * args)
   if ((error = vlib_pci_map_dma (vm, h, ad->atq_bufs)))
     goto error;
 
-  if (!(ad->arq_bufs = vlib_physmem_alloc (vm, AVF_MBOX_BUF_SZ *
-					   AVF_MBOX_LEN)))
+  ad->arq_bufs = vlib_physmem_alloc_aligned_on_numa (vm, AVF_MBOX_BUF_SZ *
+						     AVF_MBOX_LEN,
+						     CLIB_CACHE_LINE_BYTES,
+						     ad->numa_node);
+  if (ad->arq_bufs == 0)
     {
       error = vlib_physmem_last_error (vm);
       goto error;

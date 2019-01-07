@@ -50,6 +50,7 @@ typedef struct
   u32 n_pages;
   uword *page_table;
   u32 log2_page_size;
+  u32 numa_node;
 } vlib_physmem_map_t;
 
 typedef struct

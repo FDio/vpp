@@ -54,6 +54,15 @@ vlib_physmem_alloc_aligned (vlib_main_t * vm, uword n_bytes, uword alignment)
   return clib_pmalloc_alloc_aligned (pm, n_bytes, alignment);
 }
 
+always_inline void *
+vlib_physmem_alloc_aligned_on_numa (vlib_main_t * vm, uword n_bytes,
+				    uword alignment, u32 numa_node)
+{
+  clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
+  return clib_pmalloc_alloc_aligned_on_numa (pm, n_bytes, alignment,
+					     numa_node);
+}
+
 /* By default allocate I/O memory with cache line alignment. */
 always_inline void *
 vlib_physmem_alloc (vlib_main_t * vm, uword n_bytes)

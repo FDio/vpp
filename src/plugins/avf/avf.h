@@ -127,6 +127,7 @@ typedef struct
   u32 sw_if_index;
   u32 hw_if_index;
   vlib_pci_dev_handle_t pci_dev_handle;
+  u32 numa_node;
   void *bar0;
   u8 *name;
 
