@@ -392,7 +392,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 
 	  if (DPO_PROTO_IP4 == dproto)
 	    ip4_0 = vlib_buffer_get_current (b0);
-	  else if (DPO_PROTO_IP4 == dproto)
+	  else if (DPO_PROTO_IP6 == dproto)
 	    ip6_0 = vlib_buffer_get_current (b0);
 	  else if (DPO_PROTO_ETHERNET == dproto)
 	    {
