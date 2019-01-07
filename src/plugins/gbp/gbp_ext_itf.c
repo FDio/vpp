@@ -113,6 +113,9 @@ gbp_ext_itf_delete (u32 sw_if_index)
   gbp_ext_itf_t *gx;
   index_t gxi;
 
+  if (vec_len (gbp_ext_itf_db) <= sw_if_index)
+    return (VNET_API_ERROR_INVALID_SW_IF_INDEX);
+
   gxi = gbp_ext_itf_db[sw_if_index];
 
   if (INDEX_INVALID != gxi)
