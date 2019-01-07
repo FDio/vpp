@@ -142,6 +142,7 @@ openssl_engine_register (char *engine_name, char *algorithm)
     }
   if (registered < 0)
     {
+      clib_error ("engine %s is not regisered in VPP", engine_name);
       return 0;
     }
 
@@ -151,6 +152,7 @@ openssl_engine_register (char *engine_name, char *algorithm)
 
   if (engine == NULL)
     {
+      clib_warning ("Failed to find engine ENGINE_by_id %s", engine_name);
       return 0;
     }
 
@@ -245,7 +247,7 @@ openssl_evt_alloc (void)
 }
 
 int
-openssl_async_run (void *evt)
+tls_async_openssl_callback (SSL * s, void *evt)
 {
   openssl_evt_t *event, *event_tail;
   openssl_async_t *om = &openssl_async_main;
@@ -299,7 +301,7 @@ vpp_add_async_pending_event (tls_ctx_t * ctx,
   event->handler = handler;
   event->cb_args.event_index = eidx;
   event->cb_args.thread_index = thread_id;
-  event->engine_callback.callback = openssl_async_run;
+  event->engine_callback.callback = tls_async_openssl_callback;
   event->engine_callback.arg = &event->cb_args;
 
   /* add to pending list */
@@ -326,11 +328,11 @@ vpp_add_async_run_event (tls_ctx_t * ctx, openssl_resume_handler * handler)
   event->handler = handler;
   event->cb_args.event_index = eidx;
   event->cb_args.thread_index = thread_id;
-  event->engine_callback.callback = openssl_async_run;
+  event->engine_callback.callback = tls_async_openssl_callback;
   event->engine_callback.arg = &event->cb_args;
 
   /* This is a retry event, and need to put to ring to make it run again */
-  return openssl_async_run (&event->cb_args);
+  return tls_async_openssl_callback (NULL, &event->cb_args);
 
 }
 
@@ -365,26 +367,10 @@ event_handler (void *tls_async)
 void
 dasync_polling ()
 {
-  openssl_async_t *om = &openssl_async_main;
-  openssl_evt_t *event;
-  int *evt_pending;
-  openssl_tls_callback_t *engine_cb;
-  u8 thread_index = vlib_get_thread_index ();
-
-  /* POC code here to simulate the engine to call callback */
-  evt_pending = &om->status[thread_index].evt_pending_head;
-  while (*evt_pending >= 0)
-    {
-      TLS_DBG (2, "polling... current head = %d\n", *evt_pending);
-      event = openssl_evt_get_w_thread (*evt_pending, thread_index);
-      *evt_pending = event->next;
-      if (event->status == SSL_ASYNC_PENDING)
-	{
-	  engine_cb = &event->engine_callback;
-	  (*engine_cb->callback) (engine_cb->arg);
-	}
-    }
-
+/* dasync is a fake async device, and could not be polled.
+ * We have added code in the dasync engine to triggered the callback already,
+ * so nothing can be done here
+ */
 }
 
 void

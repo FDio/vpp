@@ -53,7 +53,7 @@ typedef struct openssl_main_
 
 typedef struct openssl_tls_callback_
 {
-  int (*callback) (void *arg);
+  int (*callback) (SSL * ssl, void *arg);
   void *arg;
 } openssl_tls_callback_t;
 
@@ -66,6 +66,7 @@ openssl_tls_callback_t *vpp_add_async_pending_event (tls_ctx_t * ctx,
 						     handler);
 int vpp_add_async_run_event (tls_ctx_t * ctx, openssl_resume_handler *
 			     handler);
+int tls_async_openssl_callback (SSL * s, void *evt);
 void openssl_polling_start (ENGINE * engine);
 int openssl_engine_register (char *engine, char *alg);
 void openssl_async_node_enable_disable (u8 is_en);
