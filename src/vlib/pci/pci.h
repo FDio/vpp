@@ -102,6 +102,7 @@ vlib_pci_device_info_t *vlib_pci_get_device_info (vlib_main_t * vm,
 vlib_pci_addr_t *vlib_pci_get_all_dev_addrs ();
 vlib_pci_addr_t *vlib_pci_get_addr (vlib_main_t * vm,
 				    vlib_pci_dev_handle_t h);
+u32 vlib_pci_get_numa_node (vlib_main_t * vm, vlib_pci_dev_handle_t h);
 uword vlib_pci_get_private_data (vlib_main_t * vm, vlib_pci_dev_handle_t h);
 void vlib_pci_set_private_data (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 				uword private_data);

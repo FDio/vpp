@@ -97,6 +97,7 @@ typedef struct
   linux_pci_device_type_t type;
   vlib_pci_dev_handle_t handle;
   vlib_pci_addr_t addr;
+  u32 numa_node;
 
   /* Resource file descriptors. */
   linux_pci_region_t *regions;
@@ -163,6 +164,13 @@ vlib_pci_get_addr (vlib_main_t * vm, vlib_pci_dev_handle_t h)
 {
   linux_pci_device_t *d = linux_pci_get_device (h);
   return &d->addr;
+}
+
+u32
+vlib_pci_get_numa_node (vlib_main_t * vm, vlib_pci_dev_handle_t h)
+{
+  linux_pci_device_t *d = linux_pci_get_device (h);
+  return d->numa_node;
 }
 
 /* Call to allocate/initialize the pci subsystem.
@@ -1210,6 +1218,7 @@ vlib_pci_device_open (vlib_main_t * vm, vlib_pci_addr_t * addr,
   p->handle = p - lpm->linux_pci_devices;
   p->addr.as_u32 = di->addr.as_u32;
   p->intx_irq.fd = -1;
+  p->numa_node = di->numa_node;
   /*
    * pci io bar read/write fd
    */
