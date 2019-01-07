@@ -12713,11 +12713,11 @@ static void vl_api_sw_interface_tap_v2_details_t_handler
 		    mp->host_ip6_prefix_len);
 
   print (vam->ofp,
-	 "\n%-16s %-12d %-5d %-12d %-12d %-14U %-30s %-20s %-20s %-30s",
+	 "\n%-16s %-12d %-5d %-12d %-12d %-14U %-30s %-20s %-20s %-30s 0x%-08x",
 	 mp->dev_name, ntohl (mp->sw_if_index), ntohl (mp->id),
 	 ntohs (mp->rx_ring_sz), ntohs (mp->tx_ring_sz),
 	 format_ethernet_address, mp->host_mac_addr, mp->host_namespace,
-	 mp->host_bridge, ip4, ip6);
+	 mp->host_bridge, ip4, ip6, ntohl (mp->tap_flags));
 
   vec_free (ip4);
   vec_free (ip6);
@@ -12739,6 +12739,7 @@ static void vl_api_sw_interface_tap_v2_details_t_handler_json
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "id", ntohl (mp->id));
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "tap_flags", ntohl (mp->tap_flags));
   vat_json_object_add_string_copy (node, "dev_name", mp->dev_name);
   vat_json_object_add_uint (node, "rx_ring_sz", ntohs (mp->rx_ring_sz));
   vat_json_object_add_uint (node, "tx_ring_sz", ntohs (mp->tx_ring_sz));

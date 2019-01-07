@@ -29,6 +29,7 @@ typedef struct
   u8 mac_addr[6];
   u16 rx_ring_sz;
   u16 tx_ring_sz;
+  u32 tap_flags;
   u8 *host_namespace;
   u8 *host_if_name;
   u8 host_mac_addr[6];
@@ -52,6 +53,7 @@ typedef struct
 {
   u32 id;
   u32 sw_if_index;
+  u32 tap_flags;
   u8 dev_name[64];
   u16 tx_ring_sz;
   u16 rx_ring_sz;
