@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3342bdb1_81736420",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_transport_shmem.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-07T17:40:44Z",
+      "side": 0,
+      "message": "Thank you!",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 42
+      },
+      "revId": "356824fa3ccd1adb96fe6834458923aa9536517a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
