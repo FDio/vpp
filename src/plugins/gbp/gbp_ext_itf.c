@@ -113,6 +113,7 @@ gbp_ext_itf_delete (u32 sw_if_index)
   gbp_ext_itf_t *gx;
   index_t gxi;
 
+  vec_validate (gbp_ext_itf_db, sw_if_index);
   gxi = gbp_ext_itf_db[sw_if_index];
 
   if (INDEX_INVALID != gxi)

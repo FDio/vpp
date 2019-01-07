@@ -177,6 +177,7 @@ gbp_recirc_delete (u32 sw_if_index)
   gbp_recirc_t *gr;
   index_t gri;
 
+  vec_validate (gbp_recirc_db, sw_if_index);
   gri = gbp_recirc_db[sw_if_index];
 
   if (INDEX_INVALID != gri)

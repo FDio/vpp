@@ -701,16 +701,18 @@ vl_api_gbp_ext_itf_add_del_t_handler (vl_api_gbp_ext_itf_add_del_t * mp)
 {
   vl_api_gbp_ext_itf_add_del_reply_t *rmp;
   u32 sw_if_index;
+  vl_api_gbp_ext_itf_t ext_itf;
   int rv = 0;
 
-  sw_if_index = ntohl (mp->ext_itf.sw_if_index);
+  ext_itf = mp->ext_itf;
+  sw_if_index = ntohl (ext_itf.sw_if_index);
+
   if (!vnet_sw_if_index_is_api_valid (sw_if_index))
     goto bad_sw_if_index;
 
   if (mp->is_add)
     rv = gbp_ext_itf_add (sw_if_index,
-			  ntohl (mp->ext_itf.bd_id),
-			  ntohl (mp->ext_itf.rd_id));
+			  ntohl (ext_itf.bd_id), ntohl (ext_itf.rd_id));
   else
     rv = gbp_ext_itf_delete (sw_if_index);
 
