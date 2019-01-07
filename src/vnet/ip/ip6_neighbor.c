@@ -1690,11 +1690,15 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		      u16 payload_length =
 			sizeof (icmp6_router_advertisement_header_t);
 
-		      vlib_buffer_add_data (vm,
-					    vlib_buffer_get_free_list_index
-					    (p0), bi0, (void *) &rh,
-					    sizeof
-					    (icmp6_router_advertisement_header_t));
+		      if (vlib_buffer_add_data
+			  (vm, vlib_buffer_get_free_list_index
+			   (p0), &bi0, (void *) &rh,
+			   sizeof (icmp6_router_advertisement_header_t)))
+			{
+			  /* buffer allocation failed, drop the pkt */
+			  error0 = ICMP6_ERROR_ALLOC_FAILURE;
+			  goto drop0;
+			}
 
 		      if (radv_info->adv_link_layer_address)
 			{
@@ -1709,11 +1713,15 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			  clib_memcpy (&h.ethernet_address[0],
 				       eth_if0->address, 6);
 
-			  vlib_buffer_add_data (vm,
-						vlib_buffer_get_free_list_index
-						(p0), bi0, (void *) &h,
-						sizeof
-						(icmp6_neighbor_discovery_ethernet_link_layer_address_option_t));
+			  if (vlib_buffer_add_data
+			      (vm, vlib_buffer_get_free_list_index
+			       (p0), &bi0, (void *) &h,
+			       sizeof
+			       (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t)))
+			    {
+			      error0 = ICMP6_ERROR_ALLOC_FAILURE;
+			      goto drop0;
+			    }
 
 			  payload_length +=
 			    sizeof
@@ -1734,11 +1742,15 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			  payload_length +=
 			    sizeof (icmp6_neighbor_discovery_mtu_option_t);
 
-			  vlib_buffer_add_data (vm,
-						vlib_buffer_get_free_list_index
-						(p0), bi0, (void *) &h,
-						sizeof
-						(icmp6_neighbor_discovery_mtu_option_t));
+			  if (vlib_buffer_add_data
+			      (vm, vlib_buffer_get_free_list_index
+			       (p0), &bi0, (void *) &h,
+			       sizeof
+			       (icmp6_neighbor_discovery_mtu_option_t)))
+			    {
+			      error0 = ICMP6_ERROR_ALLOC_FAILURE;
+			      goto drop0;
+			    }
 			}
 
 		      /* add advertised prefix options  */
@@ -1787,10 +1799,15 @@ icmp6_router_solicitation (vlib_main_t * vm,
 
                             payload_length += sizeof( icmp6_neighbor_discovery_prefix_information_option_t);
 
-                            vlib_buffer_add_data (vm,
-					    vlib_buffer_get_free_list_index (p0),
-                                                  bi0,
-                                                  (void *)&h, sizeof(icmp6_neighbor_discovery_prefix_information_option_t));
+                            if (vlib_buffer_add_data
+                                (vm, vlib_buffer_get_free_list_index (p0),
+                                 &bi0,
+                                 (void *)&h,
+                                 sizeof(icmp6_neighbor_discovery_prefix_information_option_t)))
+                              {
+                                error0 = ICMP6_ERROR_ALLOC_FAILURE;
+                                goto drop0;
+                              }
 
                           }
                       }));
@@ -1875,6 +1892,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		}
 	    }
 
+	drop0:
 	  p0->error = error_node->errors[error0];
 
 	  if (error0 != ICMP6_ERROR_NONE)
@@ -2761,6 +2779,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
   n_allocated = vlib_buffer_alloc (vm, &bo0, n_to_alloc);
   if (PREDICT_FALSE (n_allocated == 0))
     {
+    alloc_fail:
       clib_warning ("buffer allocation failure");
       return;
     }
@@ -2827,9 +2846,13 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
 
     num_addr_records++;
 
-    vlib_buffer_add_data
-      (vm, vlib_buffer_get_free_list_index (b0), bo0,
-       (void *)&rr, sizeof(icmp6_multicast_address_record_t));
+    if(vlib_buffer_add_data
+      (vm, vlib_buffer_get_free_list_index (b0), &bo0,
+       (void *)&rr, sizeof(icmp6_multicast_address_record_t)))
+      {
+        vlib_buffer_free (vm, &bo0, 1);
+        goto alloc_fail;
+      }
 
     payload_length += sizeof( icmp6_multicast_address_record_t);
   }));
