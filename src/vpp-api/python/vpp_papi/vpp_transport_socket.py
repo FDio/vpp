@@ -20,7 +20,7 @@ class VppTransportSocketIOError(IOError):
 class VppTransport(object):
     VppTransportSocketIOError = VppTransportSocketIOError
 
-    def __init__(self, parent, read_timeout, server_address):
+    def __init__(self, parent, read_timeout, server_address, library_path):
         self.connected = False
         self.read_timeout = read_timeout if read_timeout > 0 else 1
         self.parent = parent
