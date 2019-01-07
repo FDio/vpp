@@ -229,6 +229,9 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
 						   2 * CLIB_CACHE_LINE_BYTES,
 						   ad->numa_node);
 
+  rxq->buffer_pool_index =
+    vlib_buffer_pool_get_default_for_numa (vm, ad->numa_node);
+
   if (rxq->descs == 0)
     return vlib_physmem_last_error (vm);
 
@@ -239,7 +242,8 @@ avf_rxq_init (vlib_main_t * vm, avf_device_t * ad, u16 qid, u16 rxq_size)
   vec_validate_aligned (rxq->bufs, rxq->size, CLIB_CACHE_LINE_BYTES);
   rxq->qrx_tail = ad->bar0 + AVF_QRX_TAIL (qid);
 
-  n_alloc = vlib_buffer_alloc (vm, rxq->bufs, rxq->size - 8);
+  n_alloc = vlib_buffer_alloc_from_pool (vm, rxq->bufs, rxq->size - 8,
+					 rxq->buffer_pool_index, 0);
 
   if (n_alloc == 0)
     return clib_error_return (0, "buffer allocation error");
@@ -590,7 +594,7 @@ avf_op_config_vsi_queues (vlib_main_t * vm, avf_device_t * ad)
 	{
 	  avf_rxq_t *q = vec_elt_at_index (ad->rxqs, i);
 	  rxq->ring_len = q->size;
-	  rxq->databuffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+	  rxq->databuffer_size = VLIB_BUFFER_DATA_SIZE;
 	  rxq->dma_ring_addr = avf_dma_addr (vm, ad, (void *) q->descs);
 	  avf_reg_write (ad, AVF_QRX_TAIL (i), q->size - 1);
 	}

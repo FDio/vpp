@@ -43,6 +43,7 @@
  * Allocate/free network buffers.
  */
 
+#include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 
@@ -52,8 +53,6 @@ vlib_buffer_callbacks_t *vlib_buffer_callbacks = 0;
    typically set to 16MB so setting default size for buffer memory to 14MB
    */
 static u32 vlib_buffer_physmem_sz = 14 << 20;
-
-vlib_buffer_main_t buffer_main;
 
 /* logging */
 static vlib_log_class_t buffer_log_default;
@@ -87,9 +86,10 @@ format_vlib_buffer (u8 * s, va_list * args)
     a = format (a, "%s ", v);
   foreach_vlib_buffer_flag
 #undef _
-    s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
-		b->current_data, b->current_length,
-		vlib_buffer_get_free_list_index (b), b->n_add_refs);
+    s =
+    format (s, "current data %d, length %d, buffer-pool %d, clone-count %u",
+	    b->current_data, b->current_length, b->buffer_pool_index,
+	    b->n_add_refs);
 
   if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
     s = format (s, ", totlen-nifb %d",
@@ -179,31 +179,25 @@ vlib_validate_buffer_helper (vlib_main_t * vm,
 			     u32 bi,
 			     uword follow_buffer_next, uword ** unique_hash)
 {
+  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-  vlib_buffer_free_list_t *fl;
 
-  if (pool_is_free_index
-      (vm->buffer_free_list_pool, vlib_buffer_get_free_list_index (b)))
-    return format (0, "unknown free list 0x%x",
-		   vlib_buffer_get_free_list_index (b));
-
-  fl =
-    pool_elt_at_index (vm->buffer_free_list_pool,
-		       vlib_buffer_get_free_list_index (b));
+  if (vec_len (bm->buffer_pools) <= b->buffer_pool_index)
+    return format (0, "unknown buffer pool 0x%x", b->buffer_pool_index);
 
   if ((signed) b->current_data < (signed) -VLIB_BUFFER_PRE_DATA_SIZE)
     return format (0, "current data %d before pre-data", b->current_data);
 
-  if (b->current_data + b->current_length > fl->n_data_bytes)
-    return format (0, "%d-%d beyond end of buffer %d",
-		   b->current_data, b->current_length, fl->n_data_bytes);
+  if (b->current_data + b->current_length > VLIB_BUFFER_DATA_SIZE)
+    return format (0, "%d-%d beyond end of buffer %d", b->current_data,
+		   b->current_length, VLIB_BUFFER_DATA_SIZE);
 
   if (follow_buffer_next && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
     {
       vlib_buffer_known_state_t k;
       u8 *msg, *result;
 
-      k = vlib_buffer_is_known (b->next_buffer);
+      k = vlib_buffer_is_known (vm, b->next_buffer);
       if (k != VLIB_BUFFER_KNOWN_ALLOCATED)
 	return format (0, "next 0x%x: %U",
 		       b->next_buffer, format_vlib_buffer_known_state, k);
@@ -261,7 +255,7 @@ vlib_validate_buffers (vlib_main_t * vm,
 	  goto done;
 	}
 
-      k = vlib_buffer_is_known (bi);
+      k = vlib_buffer_is_known (vm, bi);
       if (k != known_state)
 	{
 	  msg = format (0, "is %U; expected %U",
@@ -335,7 +329,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 
       bi = b[0];
       b += 1;
-      known = vlib_buffer_is_known (bi);
+      known = vlib_buffer_is_known (vm, bi);
       if (known != expected_state)
 	{
 	  ASSERT (0);
@@ -345,162 +339,55 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 	     format_vlib_buffer_known_state, known, bi);
 	}
 
-      vlib_buffer_set_known_state
-	(bi, is_free ? VLIB_BUFFER_KNOWN_FREE : VLIB_BUFFER_KNOWN_ALLOCATED);
+      vlib_buffer_set_known_state (vm, bi, is_free ? VLIB_BUFFER_KNOWN_FREE :
+				   VLIB_BUFFER_KNOWN_ALLOCATED);
     }
 }
 
-/* Add buffer free list. */
-static vlib_buffer_free_list_index_t
-vlib_buffer_create_free_list_helper (vlib_main_t * vm,
-				     u32 n_data_bytes,
-				     u32 is_public, u32 is_default, u8 * name)
+static uword
+vlib_buffer_pool_get_internal (vlib_main_t * vm, u8 buffer_pool_index,
+			       u32 * buffers, u32 n_buffers)
 {
-  vlib_buffer_main_t *bm = &buffer_main;
-  vlib_buffer_free_list_t *f;
-  int i;
+  vlib_buffer_pool_t *bp = vlib_buffer_pool_get (vm, buffer_pool_index);
+  u32 len;
 
-  ASSERT (vlib_get_thread_index () == 0);
+  ASSERT (bp->buffers);
 
-  if (!is_default && pool_elts (vm->buffer_free_list_pool) == 0)
+  clib_spinlock_lock (&bp->lock);
+  len = vec_len (bp->buffers);
+  if (PREDICT_TRUE (n_buffers < len))
     {
-      vlib_buffer_free_list_index_t default_free_free_list_index;
-
-      /* *INDENT-OFF* */
-      default_free_free_list_index =
-        vlib_buffer_create_free_list_helper
-        (vm,
-         /* default buffer size */ VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES,
-         /* is_public */ 1,
-         /* is_default */ 1,
-         (u8 *) "default");
-      /* *INDENT-ON* */
-      ASSERT (default_free_free_list_index ==
-	      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-
-      if (n_data_bytes == VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES && is_public)
-	return default_free_free_list_index;
+      len -= n_buffers;
+      vlib_buffer_copy_indices (buffers, bp->buffers + len, n_buffers);
+      _vec_len (bp->buffers) = len;
+      clib_spinlock_unlock (&bp->lock);
+      return n_buffers;
     }
-
-  pool_get_aligned (vm->buffer_free_list_pool, f, CLIB_CACHE_LINE_BYTES);
-
-  clib_memset (f, 0, sizeof (f[0]));
-  f->index = f - vm->buffer_free_list_pool;
-  vec_validate (f->buffers, 0);
-  vec_reset_length (f->buffers);
-  f->n_data_bytes = vlib_buffer_round_size (n_data_bytes);
-  f->min_n_buffers_each_alloc = VLIB_FRAME_SIZE;
-  f->buffer_pool_index = 0;
-  f->name = clib_mem_is_vec (name) ? name : format (0, "%s", name);
-
-  /* Setup free buffer template. */
-  vlib_buffer_set_free_list_index (&f->buffer_init_template, f->index);
-  f->buffer_init_template.n_add_refs = 0;
-
-  if (is_public)
+  else
     {
-      uword *p = hash_get (bm->free_list_by_size, f->n_data_bytes);
-      if (!p)
-	hash_set (bm->free_list_by_size, f->n_data_bytes, f->index);
-    }
-
-  for (i = 1; i < vec_len (vlib_mains); i++)
-    {
-      vlib_main_t *wvm = vlib_mains[i];
-      vlib_buffer_free_list_t *wf;
-      pool_get_aligned (wvm->buffer_free_list_pool,
-			wf, CLIB_CACHE_LINE_BYTES);
-      ASSERT (f - vm->buffer_free_list_pool ==
-	      wf - wvm->buffer_free_list_pool);
-      wf[0] = f[0];
-      wf->buffers = 0;
-      vec_validate (wf->buffers, 0);
-      vec_reset_length (wf->buffers);
-      wf->n_alloc = 0;
-    }
-
-  return f->index;
-}
-
-vlib_buffer_free_list_index_t
-vlib_buffer_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
-			      char *fmt, ...)
-{
-  va_list va;
-  u8 *name;
-
-  va_start (va, fmt);
-  name = va_format (0, fmt, &va);
-  va_end (va);
-
-  return vlib_buffer_create_free_list_helper (vm, n_data_bytes,
-					      /* is_public */ 0,
-					      /* is_default */ 0,
-					      name);
-}
-
-static void
-del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
-{
-  vlib_buffer_pool_t *bp = vlib_buffer_pool_get (f->buffer_pool_index);
-
-  vec_add_aligned (bp->buffers, f->buffers, vec_len (f->buffers),
-		   CLIB_CACHE_LINE_BYTES);
-  vec_free (f->name);
-  vec_free (f->buffers);
-
-  /* Poison it. */
-  clib_memset (f, 0xab, sizeof (f[0]));
-}
-
-/* Add buffer free list. */
-void
-vlib_buffer_delete_free_list_internal (vlib_main_t * vm,
-				       vlib_buffer_free_list_index_t index)
-{
-  vlib_buffer_free_list_t *f;
-  int i;
-
-  ASSERT (vlib_get_thread_index () == 0);
-
-  f = vlib_buffer_get_free_list (vm, index);
-
-  ASSERT (vec_len (f->buffers) == f->n_alloc);
-
-  del_free_list (vm, f);
-
-  pool_put (vm->buffer_free_list_pool, f);
-
-  for (i = 1; i < vec_len (vlib_mains); i++)
-    {
-      vlib_main_t *wvm = vlib_mains[i];
-      f = vlib_buffer_get_free_list (vlib_mains[i], index);
-      del_free_list (wvm, f);
-      pool_put (wvm->buffer_free_list_pool, f);
+      vlib_buffer_copy_indices (buffers, bp->buffers, len);
+      _vec_len (bp->buffers) = 0;
+      clib_spinlock_unlock (&bp->lock);
+      return len;
     }
 }
 
-static_always_inline void *
-vlib_buffer_pool_get_buffer (vlib_main_t * vm, vlib_buffer_pool_t * bp)
-{
-  return vlib_physmem_alloc_from_map (vm, bp->physmem_map_index,
-				      bp->buffer_size, CLIB_CACHE_LINE_BYTES);
-}
-
+#if 0
 /* Make sure free list has at least given number of free buffers. */
 static uword
-vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
-				     vlib_buffer_free_list_t * fl,
-				     uword min_free_buffers)
+vlib_buffer_pool_get_internal (vlib_main_t * vm, u8 buffer_pool_index,
+			       u32 * buffers, u32 n_buffers)
 {
   vlib_buffer_t *b;
-  vlib_buffer_pool_t *bp = vlib_buffer_pool_get (fl->buffer_pool_index);
+  vlib_buffer_pool_t *bp = vlib_buffer_pool_get (vm, buffer_pool_index);
+  vlib_buffer_pool_thread_t *bpt =
+    vec_elt_at_index (bp->threads, vm->thread_index);
   int n;
   u32 *bi;
   u32 n_alloc = 0;
 
   /* Already have enough free buffers on free list? */
-  n = min_free_buffers - vec_len (fl->buffers);
+  n = min_free_buffers - vec_len (bpt->buffers);
   if (n <= 0)
     return min_free_buffers;
 
@@ -510,11 +397,11 @@ vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
       clib_spinlock_lock (&bp->lock);
       n_copy = clib_min (vec_len (bp->buffers), n);
       n_left = vec_len (bp->buffers) - n_copy;
-      vec_add_aligned (fl->buffers, bp->buffers + n_left, n_copy,
+      vec_add_aligned (bpt->buffers, bp->buffers + n_left, n_copy,
 		       CLIB_CACHE_LINE_BYTES);
       _vec_len (bp->buffers) = n_left;
       clib_spinlock_unlock (&bp->lock);
-      n = min_free_buffers - vec_len (fl->buffers);
+      n = min_free_buffers - vec_len (bpt->buffers);
       if (n <= 0)
 	return min_free_buffers;
     }
@@ -523,7 +410,7 @@ vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
   n = round_pow2 (n, CLIB_CACHE_LINE_BYTES / sizeof (u32));
 
   /* Always allocate new buffers in reasonably large sized chunks. */
-  n = clib_max (n, fl->min_n_buffers_each_alloc);
+  n = clib_max (n, VLIB_FRAME_SIZE);
 
   clib_spinlock_lock (&bp->lock);
   while (n_alloc < n)
@@ -533,44 +420,27 @@ vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
 
       n_alloc += 1;
 
-      vec_add2_aligned (fl->buffers, bi, 1, CLIB_CACHE_LINE_BYTES);
+      vec_add2_aligned (bpt->buffers, bi, 1, CLIB_CACHE_LINE_BYTES);
       bi[0] = vlib_get_buffer_index (vm, b);
 
       if (CLIB_DEBUG > 0)
-	vlib_buffer_set_known_state (bi[0], VLIB_BUFFER_KNOWN_FREE);
+	vlib_buffer_set_known_state (vm, bi[0], VLIB_BUFFER_KNOWN_FREE);
 
       clib_memset (b, 0, sizeof (vlib_buffer_t));
-      vlib_buffer_init_for_free_list (b, fl);
-
-      if (fl->buffer_init_function)
-	fl->buffer_init_function (vm, fl, bi, 1);
     }
 
 done:
   clib_spinlock_unlock (&bp->lock);
-  fl->n_alloc += n_alloc;
+  bpt->n_alloc += n_alloc;
   return n_alloc;
 }
-
-void *
-vlib_set_buffer_free_callback (vlib_main_t * vm, void *fp)
-{
-  vlib_buffer_main_t *bm = &buffer_main;
-  void *rv = bm->buffer_free_callback;
-
-  bm->buffer_free_callback = fp;
-  return rv;
-}
+#endif
 
 static_always_inline void
 recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
 		 vlib_buffer_t * b, u32 follow_buffer_next)
 {
-  vlib_buffer_free_list_t *fl;
-  vlib_buffer_free_list_index_t fi;
   u32 flags, next;
-
-  fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
 
   do
     {
@@ -583,7 +453,7 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
 	{
 	  vlib_buffer_validate_alloc_free (vm, &bi, 1,
 					   VLIB_BUFFER_KNOWN_ALLOCATED);
-	  vlib_buffer_add_to_free_list (vm, fl, bi, 1);
+	  vlib_buffer_add_to_free_list (vm, bi, 1);
 	}
       bi = next;
     }
@@ -594,16 +464,9 @@ static_always_inline void
 vlib_buffer_free_inline (vlib_main_t * vm,
 			 u32 * buffers, u32 n_buffers, u32 follow_buffer_next)
 {
-  vlib_buffer_main_t *bm = &buffer_main;
+  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_t *p, *b0, *b1, *b2, *b3;
   int i = 0;
-  u32 (*cb) (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
-	     u32 follow_buffer_next);
-
-  cb = bm->buffer_free_callback;
-
-  if (PREDICT_FALSE (cb != 0))
-    n_buffers = (*cb) (vm, buffers, n_buffers, follow_buffer_next);
 
   if (!n_buffers)
     return;
@@ -647,18 +510,11 @@ vlib_buffer_free_inline (vlib_main_t * vm,
 }
 
 static void
-vlib_buffer_free_internal (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
+vlib_buffer_pool_put_internal (vlib_main_t * vm, u8 buffer_pool_index,
+			       u32 * buffers, u32 n_buffers)
 {
   vlib_buffer_free_inline (vm, buffers, n_buffers,	/* follow_buffer_next */
 			   1);
-}
-
-static void
-vlib_buffer_free_no_next_internal (vlib_main_t * vm, u32 * buffers,
-				   u32 n_buffers)
-{
-  vlib_buffer_free_inline (vm, buffers, n_buffers,	/* follow_buffer_next */
-			   0);
 }
 
 void
@@ -680,7 +536,6 @@ vlib_packet_template_init (vlib_main_t * vm,
 
   vec_add (t->packet_data, packet_data, n_packet_data_bytes);
   t->min_n_buffers_each_alloc = min_n_buffers_each_alloc;
-
   vlib_worker_thread_barrier_release (vm);
 }
 
@@ -706,22 +561,20 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
 
 /* Append given data to end of buffer, possibly allocating new buffers. */
 int
-vlib_buffer_add_data (vlib_main_t * vm,
-		      vlib_buffer_free_list_index_t free_list_index,
-		      u32 * buffer_index, void *data, u32 n_data_bytes)
+vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
+		      u32 n_data_bytes)
 {
   u32 n_buffer_bytes, n_left, n_left_this_buffer, bi;
   vlib_buffer_t *b;
   void *d;
 
   bi = *buffer_index;
-  if (bi == ~0
-      && 1 != vlib_buffer_alloc_from_free_list (vm, &bi, 1, free_list_index))
+  if (bi == ~0 && 1 != vlib_buffer_alloc (vm, &bi, 1))
     goto out_of_buffers;
 
   d = data;
   n_left = n_data_bytes;
-  n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
 
   b = vlib_get_buffer (vm, bi);
   b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -746,9 +599,7 @@ vlib_buffer_add_data (vlib_main_t * vm,
 	break;
 
       d += n;
-      if (1 !=
-	  vlib_buffer_alloc_from_free_list (vm, &b->next_buffer, 1,
-					    free_list_index))
+      if (1 != vlib_buffer_alloc (vm, &b->next_buffer, 1))
 	goto out_of_buffers;
 
       b->flags |= VLIB_BUFFER_NEXT_PRESENT;
@@ -766,15 +617,12 @@ out_of_buffers:
 
 u16
 vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
-					  vlib_buffer_free_list_index_t
-					  free_list_index,
 					  vlib_buffer_t * first,
 					  vlib_buffer_t ** last, void *data,
 					  u16 data_len)
 {
   vlib_buffer_t *l = *last;
-  u32 n_buffer_bytes =
-    vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  u32 n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
   u16 copied = 0;
   ASSERT (n_buffer_bytes >= l->current_length + l->current_data);
   while (data_len)
@@ -782,9 +630,8 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
       u16 max = n_buffer_bytes - l->current_length - l->current_data;
       if (max == 0)
 	{
-	  if (1 !=
-	      vlib_buffer_alloc_from_free_list (vm, &l->next_buffer, 1,
-						free_list_index))
+	  if (1 != vlib_buffer_alloc_from_pool (vm, &l->next_buffer, 1,
+						first->buffer_pool_index, 1))
 	    return copied;
 	  *last = l = vlib_buffer_chain_buffer (vm, l, l->next_buffer);
 	  max = n_buffer_bytes - l->current_length - l->current_data;
@@ -801,9 +648,10 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
 }
 
 u8
-vlib_buffer_register_physmem_map (vlib_main_t * vm, u32 physmem_map_index)
+vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 buffer_size,
+			 u32 physmem_map_index, int is_external)
 {
-  vlib_buffer_main_t *bm = &buffer_main;
+  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *p;
   vlib_physmem_map_t *m = vlib_physmem_get_map (vm, physmem_map_index);
   uword start = pointer_to_uword (m->base);
@@ -837,33 +685,68 @@ vlib_buffer_register_physmem_map (vlib_main_t * vm, u32 physmem_map_index)
   vec_add2 (bm->buffer_pools, p, 1);
   p->start = start;
   p->size = size;
+  p->index = p - bm->buffer_pools;
+  p->buffer_template.buffer_pool_index = p->index;
   p->physmem_map_index = physmem_map_index;
+  p->name = format (0, "%s%c", name, 0);
+  p->buffer_size = buffer_size;
+  p->numa_node = m->numa_node;
 
+  vec_validate_aligned (p->threads, vec_len (vlib_mains) - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  clib_spinlock_init (&p->lock);
+
+  if (is_external)
+    goto done;
+
+  while (1)
+    {
+      vlib_buffer_t *b;
+      u32 bi;
+
+      b = vlib_physmem_alloc_from_map (vm, p->physmem_map_index,
+				       p->buffer_size, CLIB_CACHE_LINE_BYTES);
+
+      if (b == 0)
+	break;
+
+      bi = vlib_get_buffer_index (vm, b);
+
+      vec_add1_aligned (p->buffers, bi, CLIB_CACHE_LINE_BYTES);
+
+      if (CLIB_DEBUG > 0)
+	vlib_buffer_set_known_state (vm, bi, VLIB_BUFFER_KNOWN_FREE);
+
+      p->n_buffers += 1;
+    }
+
+done:
   ASSERT (p - bm->buffer_pools < 256);
-  return p - bm->buffer_pools;
+  return p->index;
 }
 
 static u8 *
-format_vlib_buffer_free_list (u8 * s, va_list * va)
+format_vlib_buffer_pool (u8 * s, va_list * va)
 {
-  vlib_buffer_free_list_t *f = va_arg (*va, vlib_buffer_free_list_t *);
-  u32 threadnum = va_arg (*va, u32);
-  uword bytes_alloc, bytes_free, n_free, size;
+  vlib_buffer_pool_t *bp = va_arg (*va, vlib_buffer_pool_t *);
+  vlib_buffer_pool_thread_t *bpt;
+  u32 cached = 0;
 
-  if (!f)
-    return format (s, "%=7s%=30s%=12s%=12s%=12s%=12s%=12s%=12s",
-		   "Thread", "Name", "Index", "Size", "Alloc", "Free",
-		   "#Alloc", "#Free");
+  if (!bp)
+    return format (s, "%-20s%=6s%=6s%=6s%=6s%=8s%=8s%=8s",
+		   "Pool Name", "Index", "NUMA", "Size", "Total", "Avail",
+		   "Cached", "Used");
 
-  size = sizeof (vlib_buffer_t) + f->n_data_bytes;
-  n_free = vec_len (f->buffers);
-  bytes_alloc = size * f->n_alloc;
-  bytes_free = size * n_free;
+  /* *INDENT-OFF* */
+  vec_foreach (bpt, bp->threads)
+    cached += vec_len (bpt->cached_buffers);
+  /* *INDENT-ON* */
 
-  s = format (s, "%7d%30v%12d%12d%=12U%=12U%=12d%=12d", threadnum,
-	      f->name, f->index, f->n_data_bytes,
-	      format_memory_size, bytes_alloc,
-	      format_memory_size, bytes_free, f->n_alloc, n_free);
+  s = format (s, "%-20s%=6d%=6d%=6u%=6u%=8u%=8u%=8u",
+	      bp->name, bp->index, bp->numa_node, bp->buffer_size,
+	      bp->n_buffers, vec_len (bp->buffers), cached,
+	      bp->n_buffers - vec_len (bp->buffers) - cached);
 
   return s;
 }
@@ -872,25 +755,15 @@ static clib_error_t *
 show_buffers (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  vlib_buffer_free_list_t *f;
-  vlib_main_t *curr_vm;
-  u32 vm_index = 0;
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_pool_t *bp;
 
-  vlib_cli_output (vm, "%U", format_vlib_buffer_free_list, 0, 0);
+  vlib_cli_output (vm, "%U", format_vlib_buffer_pool, 0);
 
-  do
-    {
-      curr_vm = vlib_mains[vm_index];
-
-    /* *INDENT-OFF* */
-    pool_foreach (f, curr_vm->buffer_free_list_pool, ({
-      vlib_cli_output (vm, "%U", format_vlib_buffer_free_list, f, vm_index);
-    }));
-    /* *INDENT-ON* */
-
-      vm_index++;
-    }
-  while (vm_index < vec_len (vlib_mains));
+  /* *INDENT-OFF* */
+  vec_foreach (bp, bm->buffer_pools)
+    vlib_cli_output (vm, "%U", format_vlib_buffer_pool, bp);
+  /* *INDENT-ON* */
 
   return 0;
 }
@@ -904,38 +777,41 @@ VLIB_CLI_COMMAND (show_buffers_command, static) = {
 /* *INDENT-ON* */
 
 clib_error_t *
-vlib_buffer_main_init (struct vlib_main_t * vm)
+vlib_buffer_worker_init (vlib_main_t * vm)
 {
-  vlib_buffer_main_t *bm = &buffer_main;
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_pool_t *bp;
+
+  /* *INDENT-OFF* */
+  vec_foreach (bp, bm->buffer_pools)
+    {
+      clib_spinlock_lock (&bp->lock);
+      vec_validate_aligned (bp->threads, vec_len (vlib_mains) - 1,
+			    CLIB_CACHE_LINE_BYTES);
+      clib_spinlock_unlock (&bp->lock);
+    }
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (vlib_buffer_worker_init);
+
+clib_error_t *
+vlib_buffer_main_init_numa_node (struct vlib_main_t * vm, u32 numa_node)
+{
   clib_error_t *error;
+  int log2_page_size = 0;
   u32 physmem_map_index;
   u8 pool_index;
-  int log2_page_size = 0;
+  u8 *name;
 
-  buffer_log_default = vlib_log_register_class ("buffer", 0);
-
-  if (vlib_buffer_callbacks)
-    {
-      /* external plugin has registered own buffer callbacks
-         so we just copy them  and quit */
-      clib_memcpy_fast (&bm->cb, vlib_buffer_callbacks,
-			sizeof (vlib_buffer_callbacks_t));
-      bm->callbacks_registered = 1;
-      return 0;
-    }
-
-  bm->cb.vlib_buffer_fill_free_list_cb = &vlib_buffer_fill_free_list_internal;
-  bm->cb.vlib_buffer_free_cb = &vlib_buffer_free_internal;
-  bm->cb.vlib_buffer_free_no_next_cb = &vlib_buffer_free_no_next_internal;
-  bm->cb.vlib_buffer_delete_free_list_cb =
-    &vlib_buffer_delete_free_list_internal;
-  clib_spinlock_init (&bm->buffer_known_hash_lockp);
+  name = format (0, "buffers-numa-%d%c", numa_node, 0);
 
 retry:
-  error = vlib_physmem_shared_map_create (vm, "buffers",
+  error = vlib_physmem_shared_map_create (vm, (char *) name,
 					  vlib_buffer_physmem_sz,
-					  log2_page_size,
-					  CLIB_PMALLOC_NUMA_LOCAL,
+					  log2_page_size, numa_node,
 					  &physmem_map_index);
 
   if (error && log2_page_size == 0)
@@ -951,13 +827,67 @@ retry:
   if (error)
     return error;
 
-  pool_index = vlib_buffer_register_physmem_map (vm, physmem_map_index);
-  vlib_buffer_pool_t *bp = vlib_buffer_pool_get (pool_index);
-  clib_spinlock_init (&bp->lock);
-  bp->buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES +
-    sizeof (vlib_buffer_t);
+  vec_reset_length (name);
+  name = format (name, "default-numa-%d%c", numa_node, 0);
 
+  pool_index = vlib_buffer_pool_create (vm, (char *) name,
+					VLIB_BUFFER_DATA_SIZE +
+					sizeof (vlib_buffer_t),
+					physmem_map_index,
+					/* is_external */ 0);
+  vlib_buffer_pool_t *bp = vlib_buffer_pool_get (vm, pool_index);
+  bp->buffer_size = VLIB_BUFFER_DATA_SIZE + sizeof (vlib_buffer_t);
   return 0;
+}
+
+clib_error_t *
+vlib_buffer_main_init (struct vlib_main_t * vm)
+{
+  vlib_buffer_main_t *bm;
+  clib_error_t *err;
+  clib_bitmap_t *bmp = 0;
+  u32 numa_node;
+
+  buffer_log_default = vlib_log_register_class ("buffer", 0);
+
+  bm = vm->buffer_main = clib_mem_alloc (sizeof (bm[0]));
+  clib_memset (bm, 0, sizeof (bm[0]));
+
+  if (vlib_buffer_callbacks)
+    {
+      /* external plugin has registered own buffer callbacks
+         so we just copy them  and quit */
+      clib_memcpy_fast (&bm->cb, vlib_buffer_callbacks,
+			sizeof (vlib_buffer_callbacks_t));
+      bm->callbacks_registered = 1;
+      return 0;
+    }
+
+  bm->cb.vlib_buffer_pool_get_cb = &vlib_buffer_pool_get_internal;
+  bm->cb.vlib_buffer_pool_put_cb = &vlib_buffer_pool_put_internal;
+  clib_spinlock_init (&bm->buffer_known_hash_lockp);
+
+  err = clib_sysfs_read ("/sys/devices/system/node/possible", "%U",
+			 unformat_bitmap_list, &bmp);
+  if (err)
+    {
+      /* no info from sysfs, assuming that only numa 0 exists */
+      clib_error_free (err);
+      bmp = clib_bitmap_set (bmp, 0, 1);
+    }
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (numa_node, bmp, {
+      if ((err = vlib_buffer_main_init_numa_node(vm, numa_node)))
+	  goto done;
+    });
+  /* *INDENT-ON* */
+
+  bm->n_numa_nodes = clib_bitmap_last_set (bmp) + 1;
+
+done:
+  vec_free (bmp);
+  return err;
 }
 
 static clib_error_t *
@@ -978,6 +908,28 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_EARLY_CONFIG_FUNCTION (vlib_buffers_configure, "buffers");
+
+void
+vlib_buffer_free2 (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
+		   int maybe_next)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+
+  ASSERT (bm->cb.vlib_buffer_pool_put_cb);
+
+  while (n_buffers)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, buffers[0]);
+      vlib_buffer_pool_t *bp =
+	vlib_buffer_pool_get (vm, b->buffer_pool_index);
+
+      ASSERT (pointer_to_uword (b) >= bp->start &&
+	      pointer_to_uword (b) < bp->start + bp->size - bp->buffer_size);
+      bm->cb.vlib_buffer_pool_put_cb (vm, b->buffer_pool_index, buffers, 1);
+      buffers++;
+      n_buffers--;
+    }
+}
 
 
 /** @endcond */
