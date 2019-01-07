@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "acecb1dd_ba99204c",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 944,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-07T08:38:39Z",
+      "side": 1,
+      "message": "this scheme means multiple enables are undone by a single disable. Is that intentional or do is a reference counting scheme more appropriate?",
+      "revId": "9a88d2d64909dc9dd2c1b15aef4b2335554f2919",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
