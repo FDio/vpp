@@ -204,6 +204,8 @@ u32 bd_add_del_ip_mac (u32 bd_index,
 		       const ip46_address_t * ip_addr,
 		       const mac_address_t * mac, u8 is_add);
 
+void bd_flush_ip_mac (u32 bd_index);
+
 #endif
 
 /*
