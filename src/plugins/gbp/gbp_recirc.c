@@ -171,12 +171,14 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
   return (0);
 }
 
-void
+int
 gbp_recirc_delete (u32 sw_if_index)
 {
   gbp_recirc_t *gr;
   index_t gri;
 
+  if (vec_len (gbp_recirc_db) <= sw_if_index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
   gri = gbp_recirc_db[sw_if_index];
 
   if (INDEX_INVALID != gri)
@@ -214,7 +216,9 @@ gbp_recirc_delete (u32 sw_if_index)
       gbp_endpoint_group_unlock (gr->gr_epgi);
       gbp_recirc_db[sw_if_index] = INDEX_INVALID;
       pool_put (gbp_recirc_pool, gr);
+      return (0);
     }
+  return VNET_API_ERROR_NO_SUCH_ENTRY;
 }
 
 void
