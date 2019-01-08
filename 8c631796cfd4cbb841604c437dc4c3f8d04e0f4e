@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0fa50f5e_1eb5695a",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 986,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-08T12:32:50Z",
+      "side": 1,
+      "message": "my intention here was for testing replication cases. A user would specify the single input interface and the set of output interfaces on which the indentical stream would be present. but in the end i didn\u0027t use that functionality. so you can remove the whole is_instnace block.",
+      "revId": "8c631796cfd4cbb841604c437dc4c3f8d04e0f4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
