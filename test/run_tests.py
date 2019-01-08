@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from __future__ import print_function
 import sys
 import shutil
 import os
@@ -16,7 +16,7 @@ from multiprocessing.queues import Queue
 from multiprocessing.managers import BaseManager
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
-    TEST_RUN
+    TEST_RUN, EXPECTED_FAILURE, UNEXPECTED_SUCCESS
 from debug import spawn_gdb
 from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
     colorize, single_line_delim
@@ -61,6 +61,8 @@ class TestResult(dict):
         self[ERROR] = []
         self[SKIP] = []
         self[TEST_RUN] = []
+        self[EXPECTED_FAILURE] = []
+        self[UNEXPECTED_SUCCESS] = []
         self.crashed = False
         self.testcase_suite = testcase_suite
         self.testcases = [testcase for testcase in testcase_suite]
@@ -68,7 +70,8 @@ class TestResult(dict):
 
     def was_successful(self):
         return 0 == len(self[FAIL]) == len(self[ERROR]) \
-            and len(self[PASS] + self[SKIP]) \
+            and len(self[PASS] + self[SKIP] + self[EXPECTED_FAILURE] +
+                    self[UNEXPECTED_SUCCESS]) \
             == self.testcase_suite.countTestCases() == len(self[TEST_RUN])
 
     def no_tests_run(self):
@@ -565,12 +568,15 @@ class AllResults(dict):
         self[ERROR] = 0
         self[SKIP] = 0
         self[TEST_RUN] = 0
+        self[EXPECTED_FAILURE] = 0
+        self[UNEXPECTED_SUCCESS] = 0
         self.rerun = []
         self.testsuites_no_tests_run = []
 
     def add_results(self, result):
         self.results_per_suite.append(result)
-        result_types = [PASS, FAIL, ERROR, SKIP, TEST_RUN]
+        result_types = [PASS, FAIL, ERROR, SKIP, TEST_RUN,
+                        EXPECTED_FAILURE, UNEXPECTED_SUCCESS]
         for result_type in result_types:
             self[result_type] += len(result[result_type])
 
@@ -584,7 +590,10 @@ class AllResults(dict):
             if result.crashed:
                 retval = -1
             else:
-                retval = 1
+                if result[FAIL] - result[EXPECTED_FAILURE] > 0:
+                    retval = 1
+                else:
+                    retval = 0
         elif not result.was_successful():
             retval = 1
 
@@ -599,6 +608,8 @@ class AllResults(dict):
         print('TEST RESULTS:')
         print('     Scheduled tests: {}'.format(self.all_testcases))
         print('      Executed tests: {}'.format(self[TEST_RUN]))
+        print('       Reported bugs: {}'.format(self[UNEXPECTED_SUCCESS] +
+                                                self[EXPECTED_FAILURE]))
         print('        Passed tests: {}'.format(
             colorize(str(self[PASS]), GREEN)))
         if self[SKIP] > 0:
@@ -610,6 +621,13 @@ class AllResults(dict):
         if self[FAIL] > 0:
             print('            Failures: {}'.format(
                 colorize(str(self[FAIL]), RED)))
+        if self[EXPECTED_FAILURE] > 0:
+            print('        Failing Bugs: {}'.format(
+                colorize(str(self[EXPECTED_FAILURE]), YELLOW)))
+        if self[UNEXPECTED_SUCCESS] > 0:
+            print('        Passing Bugs: {}'.format(
+                colorize(str(self[UNEXPECTED_SUCCESS]), GREEN)))
+
         if self[ERROR] > 0:
             print('              Errors: {}'.format(
                 colorize(str(self[ERROR]), RED)))

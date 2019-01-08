@@ -19,6 +19,8 @@ from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 from scapy.packet import Raw
+
+from decorators import extended_test, reported_bug
 from hook import StepHook, PollHook, VppDiedError
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
@@ -51,6 +53,8 @@ FAIL = 1
 ERROR = 2
 SKIP = 3
 TEST_RUN = 4
+EXPECTED_FAILURE = 5
+UNEXPECTED_SUCCESS = 6
 
 debug_framework = False
 if os.getenv('TEST_DEBUG', "0") == "1":
@@ -1027,8 +1031,8 @@ def get_test_description(descriptions, test):
 
 
 class TestCaseInfo(object):
-    def __init__(self, logger, tempdir, vpp_pid, vpp_bin_path):
-        self.logger = logger
+    def __init__(self, logger_, tempdir, vpp_pid, vpp_bin_path):
+        self.logger = logger_
         self.tempdir = tempdir
         self.vpp_pid = vpp_pid
         self.vpp_bin_path = vpp_bin_path
@@ -1037,6 +1041,17 @@ class TestCaseInfo(object):
 
 class VppTestResult(unittest.TestResult):
     """
+    Holder for test result information.
+
+    Test results are automatically managed by the TestCase and TestSuite
+    classes, and do not need to be explicitly manipulated by writers of tests.
+
+    Each instance holds the total number of tests run, and collections of
+    failures and errors that occurred among those test runs. The collections
+    contain tuples of (testcase, exceptioninfo), where exceptioninfo is the
+    formatted traceback of the error that occurred.
+
+
     @property result_string
      String variable to store the test case result string.
     @property errors
@@ -1062,7 +1077,7 @@ class VppTestResult(unittest.TestResult):
             test case descriptions.
         :param verbosity Integer variable to store required verbosity level.
         """
-        unittest.TestResult.__init__(self, stream, descriptions, verbosity)
+        super(VppTestResult, self).__init__(stream, descriptions, verbosity)
         self.stream = stream
         self.descriptions = descriptions
         self.verbosity = verbosity
@@ -1081,7 +1096,7 @@ class VppTestResult(unittest.TestResult):
                 "--- addSuccess() %s.%s(%s) called" % (test.__class__.__name__,
                                                        test._testMethodName,
                                                        test._testMethodDoc))
-        unittest.TestResult.addSuccess(self, test)
+        super(VppTestResult, self).addSuccess(test)
         self.result_string = colorize("OK", GREEN)
 
         self.send_result_through_pipe(test, PASS)
@@ -1099,7 +1114,7 @@ class VppTestResult(unittest.TestResult):
                 "--- addSkip() %s.%s(%s) called, reason is %s" %
                 (test.__class__.__name__, test._testMethodName,
                  test._testMethodDoc, reason))
-        unittest.TestResult.addSkip(self, test, reason)
+        super(VppTestResult, self).addSkip(test, reason)
         self.result_string = colorize("SKIP", YELLOW)
 
         self.send_result_through_pipe(test, SKIP)
@@ -1202,6 +1217,18 @@ class VppTestResult(unittest.TestResult):
 
         """
         self.add_error(test, err, unittest.TestResult.addError, ERROR)
+
+    def addExpectedFailure(self, test, err):
+        super(VppTestResult, self).addExpectedFailure(test, err)
+
+        self.result_string = colorize("BUG-", YELLOW)
+        self.send_result_through_pipe(test, EXPECTED_FAILURE)
+
+    def addUnexpectedSuccess(self, test):
+        super(VppTestResult, self).addUnexpectedSuccess(test)
+
+        self.result_string = colorize("BUG+", GREEN)
+        self.send_result_through_pipe(test, UNEXPECTED_SUCCESS)
 
     def getDescription(self, test):
         """

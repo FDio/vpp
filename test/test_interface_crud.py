@@ -16,7 +16,7 @@ import unittest
 from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether
 
-from framework import VppTestCase, VppTestRunner
+from framework import extended_test, reported_bug, VppTestCase, VppTestRunner
 
 
 class TestLoopbackInterfaceCRUD(VppTestCase):
@@ -145,6 +145,25 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg0.assert_nothing_captured()
+
+
+class TestLoopbackSimpleTests(VppTestCase):
+    """Simple Loopback Tests (No PG's, etc...)"""
+
+    @reported_bug
+    def test_idempotent_add_address(self):
+        """Test re-adding the same address passes silently."""
+        _loopback, = self.create_loopback_interfaces(1)
+        _addr = '\x01\x02\x03\x04'
+        _addr_len = 24
+        _args = {'sw_if_index': _loopback.sw_if_index,
+                 'address': _addr,
+                 'address_length': _addr_len,
+                 'is_add': 1}
+        for _ in range(2):
+            _rv = self.vapi.api(self.vapi.papi.sw_interface_add_del_address,
+                                _args)
+            self.assertEqual(_rv.retval, 0)
 
 
 if __name__ == '__main__':
