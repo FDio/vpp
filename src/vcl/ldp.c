@@ -85,6 +85,11 @@ typedef struct ldp_worker_ctx_
 
 } ldp_worker_ctx_t;
 
+STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (fd_mask),
+               "ldp bitmap size mismatch");
+STATIC_ASSERT (sizeof (vcl_si_set) == sizeof (fd_mask),
+               "ldp bitmap size mismatch");
+
 typedef struct
 {
   ldp_worker_ctx_t *workers;
@@ -211,32 +216,29 @@ ldp_init (void)
       u32 sb;
       if (sscanf (env_var_str, "%u", &sb) != 1)
 	{
-	  clib_warning ("LDP<%d>: WARNING: Invalid LDP sid bit specified in"
-			" the env var " LDP_ENV_SID_BIT " (%s)! sid bit "
-			"value %d (0x%x)", getpid (), env_var_str,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: Invalid LDP sid bit specified in the env var "
+		LDP_ENV_SID_BIT " (%s)! sid bit value %d (0x%x)", env_var_str,
+		ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else if (sb < LDP_SID_BIT_MIN)
 	{
 	  ldp->vlsh_bit_val = (1 << LDP_SID_BIT_MIN);
 	  ldp->vlsh_bit_mask = ldp->vlsh_bit_val - 1;
 
-	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
-			" env var " LDP_ENV_SID_BIT " (%s) is too small. "
-			"Using LDP_SID_BIT_MIN (%d)! sid bit value %d (0x%x)",
-			getpid (), sb, env_var_str, LDP_SID_BIT_MIN,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: LDP sid bit (%u) specified in the env var "
+		LDP_ENV_SID_BIT " (%s) is too small. Using LDP_SID_BIT_MIN"
+		" (%d)! sid bit value %d (0x%x)", sb, env_var_str,
+		LDP_SID_BIT_MIN, ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else if (sb > LDP_SID_BIT_MAX)
 	{
 	  ldp->vlsh_bit_val = (1 << LDP_SID_BIT_MAX);
 	  ldp->vlsh_bit_mask = ldp->vlsh_bit_val - 1;
 
-	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
-			" env var " LDP_ENV_SID_BIT " (%s) is too big. Using"
-			" LDP_SID_BIT_MAX (%d)! sid bit value %d (0x%x)",
-			getpid (), sb, env_var_str, LDP_SID_BIT_MAX,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: LDP sid bit (%u) specified in the env var "
+		LDP_ENV_SID_BIT " (%s) is too big. Using LDP_SID_BIT_MAX"
+		" (%d)! sid bit value %d (0x%x)", sb, env_var_str,
+		LDP_SID_BIT_MAX, ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else
 	{
@@ -246,6 +248,15 @@ ldp_init (void)
 	  LDBG (0, "configured LDP sid bit (%u) from "
 		LDP_ENV_SID_BIT "!  sid bit value %d (0x%x)", sb,
 		ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	}
+
+      /* Make sure there are enough bits in the fd set for vcl sessions */
+      if (ldp->vlsh_bit_val > FD_SETSIZE / 2)
+	{
+	  LDBG (0, "ERROR: LDP vlsh bit value %d > FD_SETSIZE/2 %d!",
+		ldp->vlsh_bit_val, FD_SETSIZE / 2);
+	  ldp->init = 0;
+	  return -1;
 	}
     }
 
