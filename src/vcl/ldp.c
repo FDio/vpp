@@ -62,13 +62,12 @@ typedef struct ldp_worker_ctx_
   clib_bitmap_t *rd_bitmap;
   clib_bitmap_t *wr_bitmap;
   clib_bitmap_t *ex_bitmap;
-  clib_bitmap_t *sid_rd_bitmap;
-  clib_bitmap_t *sid_wr_bitmap;
-  clib_bitmap_t *sid_ex_bitmap;
+  clib_bitmap_t *si_rd_bitmap;
+  clib_bitmap_t *si_wr_bitmap;
+  clib_bitmap_t *si_ex_bitmap;
   clib_bitmap_t *libc_rd_bitmap;
   clib_bitmap_t *libc_wr_bitmap;
   clib_bitmap_t *libc_ex_bitmap;
-  u8 select_vcl;
 
   /*
    * Poll state
@@ -84,6 +83,13 @@ typedef struct ldp_worker_ctx_
   int vcl_mq_epfd;
 
 } ldp_worker_ctx_t;
+
+/* clib_bitmap_t, fd_mask and vcl_si_set are used interchangeably. Make sure
+ * they are the same size */
+STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (fd_mask),
+	       "ldp bitmap size mismatch");
+STATIC_ASSERT (sizeof (vcl_si_set) == sizeof (fd_mask),
+	       "ldp bitmap size mismatch");
 
 typedef struct
 {
@@ -211,32 +217,29 @@ ldp_init (void)
       u32 sb;
       if (sscanf (env_var_str, "%u", &sb) != 1)
 	{
-	  clib_warning ("LDP<%d>: WARNING: Invalid LDP sid bit specified in"
-			" the env var " LDP_ENV_SID_BIT " (%s)! sid bit "
-			"value %d (0x%x)", getpid (), env_var_str,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: Invalid LDP sid bit specified in the env var "
+		LDP_ENV_SID_BIT " (%s)! sid bit value %d (0x%x)", env_var_str,
+		ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else if (sb < LDP_SID_BIT_MIN)
 	{
 	  ldp->vlsh_bit_val = (1 << LDP_SID_BIT_MIN);
 	  ldp->vlsh_bit_mask = ldp->vlsh_bit_val - 1;
 
-	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
-			" env var " LDP_ENV_SID_BIT " (%s) is too small. "
-			"Using LDP_SID_BIT_MIN (%d)! sid bit value %d (0x%x)",
-			getpid (), sb, env_var_str, LDP_SID_BIT_MIN,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: LDP sid bit (%u) specified in the env var "
+		LDP_ENV_SID_BIT " (%s) is too small. Using LDP_SID_BIT_MIN"
+		" (%d)! sid bit value %d (0x%x)", sb, env_var_str,
+		LDP_SID_BIT_MIN, ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else if (sb > LDP_SID_BIT_MAX)
 	{
 	  ldp->vlsh_bit_val = (1 << LDP_SID_BIT_MAX);
 	  ldp->vlsh_bit_mask = ldp->vlsh_bit_val - 1;
 
-	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
-			" env var " LDP_ENV_SID_BIT " (%s) is too big. Using"
-			" LDP_SID_BIT_MAX (%d)! sid bit value %d (0x%x)",
-			getpid (), sb, env_var_str, LDP_SID_BIT_MAX,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: LDP sid bit (%u) specified in the env var "
+		LDP_ENV_SID_BIT " (%s) is too big. Using LDP_SID_BIT_MAX"
+		" (%d)! sid bit value %d (0x%x)", sb, env_var_str,
+		LDP_SID_BIT_MAX, ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else
 	{
@@ -246,6 +249,15 @@ ldp_init (void)
 	  LDBG (0, "configured LDP sid bit (%u) from "
 		LDP_ENV_SID_BIT "!  sid bit value %d (0x%x)", sb,
 		ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	}
+
+      /* Make sure there are enough bits in the fd set for vcl sessions */
+      if (ldp->vlsh_bit_val > FD_SETSIZE / 2)
+	{
+	  LDBG (0, "ERROR: LDP vlsh bit value %d > FD_SETSIZE/2 %d!",
+		ldp->vlsh_bit_val, FD_SETSIZE / 2);
+	  ldp->init = 0;
+	  return -1;
 	}
     }
 
@@ -563,6 +575,79 @@ ioctl (int fd, unsigned long int cmd, ...)
   return rv;
 }
 
+always_inline void
+ldp_select_init_bitmaps (fd_set * __restrict original,
+			 clib_bitmap_t ** resultb, clib_bitmap_t ** libcb,
+			 clib_bitmap_t ** vclb, int nfds, u32 minbits,
+			 u32 n_bytes, uword * si_bits, uword * libc_bits)
+{
+  uword si_bits_set, libc_bits_set;
+  vls_handle_t vlsh;
+  int fd;
+
+  clib_bitmap_validate (*vclb, minbits);
+  clib_bitmap_validate (*libcb, minbits);
+  clib_bitmap_validate (*resultb, minbits);
+  clib_memcpy_fast (*resultb, original, n_bytes);
+  memset (original, 0, n_bytes);
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (fd, *resultb, ({
+    if (fd > nfds)
+      break;
+    vlsh = ldp_fd_to_vlsh (fd);
+    if (vlsh == VLS_INVALID_HANDLE)
+      clib_bitmap_set_no_check (*libcb, fd, 1);
+    else
+      clib_bitmap_set_no_check (*vclb, vlsh_to_session_index (vlsh), 1);
+  }));
+  /* *INDENT-ON* */
+
+  si_bits_set = clib_bitmap_last_set (*vclb) + 1;
+  *si_bits = (si_bits_set > *si_bits) ? si_bits_set : *si_bits;
+
+  libc_bits_set = clib_bitmap_last_set (*libcb) + 1;
+  *libc_bits = (libc_bits_set > *libc_bits) ? libc_bits_set : *libc_bits;
+}
+
+always_inline int
+ldp_select_vcl_map_to_libc (clib_bitmap_t * vclb, fd_set * __restrict libcb)
+{
+  vls_handle_t vlsh;
+  uword si;
+  int fd;
+
+  if (!libcb)
+    return 0;
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (si, vclb, ({
+    vlsh = vls_session_index_to_vlsh (si);
+    fd = ldp_vlsh_to_fd (vlsh);
+    if (PREDICT_FALSE (fd < 0))
+      {
+        errno = EBADFD;
+        return -1;
+      }
+    FD_SET (fd, libcb);
+  }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
+always_inline void
+ldp_select_libc_map_merge (clib_bitmap_t * result, fd_set * __restrict libcb)
+{
+  uword fd;
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (fd, result, ({
+    FD_SET ((int)fd, libcb);
+  }));
+  /* *INDENT-ON* */
+}
+
 int
 ldp_pselect (int nfds, fd_set * __restrict readfds,
 	     fd_set * __restrict writefds,
@@ -570,12 +655,12 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 	     const struct timespec *__restrict timeout,
 	     const __sigset_t * __restrict sigmask)
 {
-  uword sid_bits, sid_bits_set, libc_bits, libc_bits_set;
+  u32 minbits = clib_max (nfds, BITS (uword)), n_bytes;
   ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
-  u32 minbits = clib_max (nfds, BITS (uword)), si;
-  vls_handle_t vlsh;
-  f64 time_out;
-  int rv, fd;
+  struct timespec libc_tspec = { 0 };
+  f64 time_out, vcl_timeout = 0;
+  uword si_bits, libc_bits;
+  int rv, bits_set = 0;
 
   if (nfds < 0)
     {
@@ -613,218 +698,112 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       goto done;
     }
 
-  if (PREDICT_FALSE (ldp->vlsh_bit_val > FD_SETSIZE / 2))
-    {
-      LDBG (0, "ERROR: LDP sid bit value %d > FD_SETSIZE/2 %d!",
-	    ldp->vlsh_bit_val, FD_SETSIZE / 2);
-      errno = EOVERFLOW;
-      return -1;
-    }
-
-  sid_bits = libc_bits = 0;
-  u32 n_bytes = nfds / 8 + ((nfds % 8) ? 1 : 0);
+  si_bits = libc_bits = 0;
+  n_bytes = nfds / 8 + ((nfds % 8) ? 1 : 0);
 
   if (readfds)
-    {
-      clib_bitmap_validate (ldpw->sid_rd_bitmap, minbits);
-      clib_bitmap_validate (ldpw->libc_rd_bitmap, minbits);
-      clib_bitmap_validate (ldpw->rd_bitmap, minbits);
-      clib_memcpy_fast (ldpw->rd_bitmap, readfds, n_bytes);
-      memset (readfds, 0, n_bytes);
-
-      /* *INDENT-OFF* */
-      clib_bitmap_foreach (fd, ldpw->rd_bitmap, ({
-	if (fd > nfds)
-	  break;
-        vlsh = ldp_fd_to_vlsh (fd);
-        if (vlsh == VLS_INVALID_HANDLE)
-          clib_bitmap_set_no_check (ldpw->libc_rd_bitmap, fd, 1);
-        else
-          clib_bitmap_set_no_check (ldpw->sid_rd_bitmap,
-                                    vlsh_to_session_index (vlsh), 1);
-      }));
-      /* *INDENT-ON* */
-
-      sid_bits_set = clib_bitmap_last_set (ldpw->sid_rd_bitmap) + 1;
-      sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
-
-      libc_bits_set = clib_bitmap_last_set (ldpw->libc_rd_bitmap) + 1;
-      libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
-    }
+    ldp_select_init_bitmaps (readfds, &ldpw->rd_bitmap, &ldpw->libc_rd_bitmap,
+			     &ldpw->si_rd_bitmap, nfds, minbits, n_bytes,
+			     &si_bits, &libc_bits);
   if (writefds)
-    {
-      clib_bitmap_validate (ldpw->sid_wr_bitmap, minbits);
-      clib_bitmap_validate (ldpw->libc_wr_bitmap, minbits);
-      clib_bitmap_validate (ldpw->wr_bitmap, minbits);
-      clib_memcpy_fast (ldpw->wr_bitmap, writefds, n_bytes);
-      memset (writefds, 0, n_bytes);
-
-      /* *INDENT-OFF* */
-      clib_bitmap_foreach (fd, ldpw->wr_bitmap, ({
-	if (fd > nfds)
-	  break;
-        vlsh = ldp_fd_to_vlsh (fd);
-        if (vlsh == VLS_INVALID_HANDLE)
-          clib_bitmap_set_no_check (ldpw->libc_wr_bitmap, fd, 1);
-        else
-          clib_bitmap_set_no_check (ldpw->sid_wr_bitmap,
-                                    vlsh_to_session_index (vlsh), 1);
-      }));
-      /* *INDENT-ON* */
-
-      sid_bits_set = clib_bitmap_last_set (ldpw->sid_wr_bitmap) + 1;
-      sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
-
-      libc_bits_set = clib_bitmap_last_set (ldpw->libc_wr_bitmap) + 1;
-      libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
-
-    }
+    ldp_select_init_bitmaps (writefds, &ldpw->wr_bitmap,
+			     &ldpw->libc_wr_bitmap, &ldpw->si_wr_bitmap, nfds,
+			     minbits, n_bytes, &si_bits, &libc_bits);
   if (exceptfds)
-    {
-      clib_bitmap_validate (ldpw->sid_ex_bitmap, minbits);
-      clib_bitmap_validate (ldpw->libc_ex_bitmap, minbits);
-      clib_bitmap_validate (ldpw->ex_bitmap, minbits);
-      clib_memcpy_fast (ldpw->ex_bitmap, exceptfds, n_bytes);
-      memset (exceptfds, 0, n_bytes);
+    ldp_select_init_bitmaps (exceptfds, &ldpw->ex_bitmap,
+			     &ldpw->libc_ex_bitmap, &ldpw->si_ex_bitmap, nfds,
+			     minbits, n_bytes, &si_bits, &libc_bits);
 
-      /* *INDENT-OFF* */
-      clib_bitmap_foreach (fd, ldpw->ex_bitmap, ({
-	if (fd > nfds)
-	  break;
-        vlsh = ldp_fd_to_vlsh (fd);
-        if (vlsh == VLS_INVALID_HANDLE)
-          clib_bitmap_set_no_check (ldpw->libc_ex_bitmap, fd, 1);
-        else
-          clib_bitmap_set_no_check (ldpw->sid_ex_bitmap,
-                                    vlsh_to_session_index (vlsh), 1);
-      }));
-      /* *INDENT-ON* */
-
-      sid_bits_set = clib_bitmap_last_set (ldpw->sid_ex_bitmap) + 1;
-      sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
-
-      libc_bits_set = clib_bitmap_last_set (ldpw->libc_ex_bitmap) + 1;
-      libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
-    }
-
-  if (PREDICT_FALSE (!sid_bits && !libc_bits))
+  if (PREDICT_FALSE (!si_bits && !libc_bits))
     {
       errno = EINVAL;
       rv = -1;
       goto done;
     }
 
+  libc_tspec = si_bits ? libc_tspec : *timeout;
+
   do
     {
-      if (sid_bits)
+      if (si_bits)
 	{
-	  if (!ldpw->select_vcl)
-	    {
-	      if (readfds)
-		clib_memcpy_fast (ldpw->rd_bitmap, ldpw->sid_rd_bitmap,
-				  vec_len (ldpw->rd_bitmap) *
-				  sizeof (clib_bitmap_t));
-	      if (writefds)
-		clib_memcpy_fast (ldpw->wr_bitmap, ldpw->sid_wr_bitmap,
-				  vec_len (ldpw->wr_bitmap) *
-				  sizeof (clib_bitmap_t));
-	      if (exceptfds)
-		clib_memcpy_fast (ldpw->ex_bitmap, ldpw->sid_ex_bitmap,
-				  vec_len (ldpw->ex_bitmap) *
-				  sizeof (clib_bitmap_t));
-
-	      rv = vppcom_select (sid_bits,
-				  readfds ? (unsigned long *) ldpw->rd_bitmap
-				  : NULL,
-				  writefds ? (unsigned long *) ldpw->wr_bitmap
-				  : NULL,
-				  exceptfds ? (unsigned long *)
-				  ldpw->ex_bitmap : NULL, 0);
-	      if (rv < 0)
-		{
-		  errno = -rv;
-		  rv = -1;
-		}
-	      else if (rv > 0)
-		{
-		  if (readfds)
-		    {
-                      /* *INDENT-OFF* */
-                      clib_bitmap_foreach (si, ldpw->rd_bitmap, ({
-                	vlsh = vls_session_index_to_vlsh (si);
-                        fd = ldp_vlsh_to_fd (vlsh);
-                        if (PREDICT_FALSE (fd < 0))
-                          {
-                            errno = EBADFD;
-                            rv = -1;
-                            goto done;
-                          }
-                        FD_SET (fd, readfds);
-                      }));
-                      /* *INDENT-ON* */
-		    }
-		  if (writefds)
-		    {
-                      /* *INDENT-OFF* */
-                      clib_bitmap_foreach (si, ldpw->wr_bitmap, ({
-                	vlsh = vls_session_index_to_vlsh (si);
-                        fd = ldp_vlsh_to_fd (vlsh);
-                        if (PREDICT_FALSE (fd < 0))
-                          {
-                            errno = EBADFD;
-                            rv = -1;
-                            goto done;
-                          }
-                        FD_SET (fd, writefds);
-                      }));
-                      /* *INDENT-ON* */
-		    }
-		  if (exceptfds)
-		    {
-                      /* *INDENT-OFF* */
-                      clib_bitmap_foreach (si, ldpw->ex_bitmap, ({
-                	vlsh = vls_session_index_to_vlsh (si);
-                        fd = ldp_vlsh_to_fd (vlsh);
-                        if (PREDICT_FALSE (fd < 0))
-                          {
-                            errno = EBADFD;
-                            rv = -1;
-                            goto done;
-                          }
-                        FD_SET (fd, exceptfds);
-                      }));
-                      /* *INDENT-ON* */
-		    }
-		  ldpw->select_vcl = 1;
-		  goto done;
-		}
-	    }
-	  else
-	    ldpw->select_vcl = 0;
-	}
-      if (libc_bits)
-	{
-	  struct timespec tspec;
-
 	  if (readfds)
-	    clib_memcpy_fast (readfds, ldpw->libc_rd_bitmap,
+	    clib_memcpy_fast (ldpw->rd_bitmap, ldpw->si_rd_bitmap,
 			      vec_len (ldpw->rd_bitmap) *
 			      sizeof (clib_bitmap_t));
 	  if (writefds)
-	    clib_memcpy_fast (writefds, ldpw->libc_wr_bitmap,
+	    clib_memcpy_fast (ldpw->wr_bitmap, ldpw->si_wr_bitmap,
 			      vec_len (ldpw->wr_bitmap) *
 			      sizeof (clib_bitmap_t));
 	  if (exceptfds)
-	    clib_memcpy_fast (exceptfds, ldpw->libc_ex_bitmap,
+	    clib_memcpy_fast (ldpw->ex_bitmap, ldpw->si_ex_bitmap,
 			      vec_len (ldpw->ex_bitmap) *
 			      sizeof (clib_bitmap_t));
-	  tspec.tv_sec = tspec.tv_nsec = 0;
+
+	  rv = vppcom_select (si_bits, readfds ? ldpw->rd_bitmap : NULL,
+			      writefds ? ldpw->wr_bitmap : NULL,
+			      exceptfds ? ldpw->ex_bitmap : NULL,
+			      vcl_timeout);
+	  if (rv < 0)
+	    {
+	      errno = -rv;
+	      rv = -1;
+	    }
+	  else if (rv > 0)
+	    {
+	      if (ldp_select_vcl_map_to_libc (ldpw->rd_bitmap, readfds))
+		{
+		  rv = -1;
+		  goto done;
+		}
+
+	      if (ldp_select_vcl_map_to_libc (ldpw->wr_bitmap, writefds))
+		{
+		  rv = -1;
+		  goto done;
+		}
+
+	      if (ldp_select_vcl_map_to_libc (ldpw->ex_bitmap, exceptfds))
+		{
+		  rv = -1;
+		  goto done;
+		}
+	      bits_set = rv;
+	    }
+	}
+      if (libc_bits)
+	{
+	  if (readfds)
+	    clib_memcpy_fast (ldpw->rd_bitmap, ldpw->libc_rd_bitmap,
+			      vec_len (ldpw->libc_rd_bitmap) *
+			      sizeof (clib_bitmap_t));
+	  if (writefds)
+	    clib_memcpy_fast (ldpw->wr_bitmap, ldpw->libc_wr_bitmap,
+			      vec_len (ldpw->libc_wr_bitmap) *
+			      sizeof (clib_bitmap_t));
+	  if (exceptfds)
+	    clib_memcpy_fast (ldpw->ex_bitmap, ldpw->libc_ex_bitmap,
+			      vec_len (ldpw->libc_ex_bitmap) *
+			      sizeof (clib_bitmap_t));
+
 	  rv = libc_pselect (libc_bits,
-			     readfds ? readfds : NULL,
-			     writefds ? writefds : NULL,
-			     exceptfds ? exceptfds : NULL, &tspec, sigmask);
-	  if (rv != 0)
-	    goto done;
+			     readfds ? (fd_set *) ldpw->rd_bitmap : NULL,
+			     writefds ? (fd_set *) ldpw->wr_bitmap : NULL,
+			     exceptfds ? (fd_set *) ldpw->ex_bitmap : NULL,
+			     &libc_tspec, sigmask);
+	  if (rv > 0)
+	    {
+	      ldp_select_libc_map_merge (ldpw->rd_bitmap, readfds);
+	      ldp_select_libc_map_merge (ldpw->wr_bitmap, writefds);
+	      ldp_select_libc_map_merge (ldpw->ex_bitmap, exceptfds);
+	      bits_set += rv;
+	    }
+	}
+
+      if (bits_set)
+	{
+	  rv = bits_set;
+	  goto done;
 	}
     }
   while ((time_out == -1) || (clib_time_now (&ldpw->clib_time) < time_out));
@@ -833,13 +812,13 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 done:
   /* TBD: set timeout to amount of time left */
   clib_bitmap_zero (ldpw->rd_bitmap);
-  clib_bitmap_zero (ldpw->sid_rd_bitmap);
+  clib_bitmap_zero (ldpw->si_rd_bitmap);
   clib_bitmap_zero (ldpw->libc_rd_bitmap);
   clib_bitmap_zero (ldpw->wr_bitmap);
-  clib_bitmap_zero (ldpw->sid_wr_bitmap);
+  clib_bitmap_zero (ldpw->si_wr_bitmap);
   clib_bitmap_zero (ldpw->libc_wr_bitmap);
   clib_bitmap_zero (ldpw->ex_bitmap);
-  clib_bitmap_zero (ldpw->sid_ex_bitmap);
+  clib_bitmap_zero (ldpw->si_ex_bitmap);
   clib_bitmap_zero (ldpw->libc_ex_bitmap);
 
   return rv;
