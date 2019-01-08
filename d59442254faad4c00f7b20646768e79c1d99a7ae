@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8776b720_2106f489",
+        "filename": "test/decorators.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-08T10:30:34Z",
+      "side": 1,
+      "message": "just a notice - I see you moved some code around and put a copyright on it in your name\n\nkeeping in mind that:\n\n1.) I don\u0027t know how this copyright stuff works\n2.) I\u0027m not a lawyer\n\nstill I Have a feeling that this is not right",
+      "revId": "d59442254faad4c00f7b20646768e79c1d99a7ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "788c87df_a78a519d",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1034,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-08T10:30:34Z",
+      "side": 1,
+      "message": "why this change?\nwhat does it have to with this changeset?\nlooks real ugly...",
+      "revId": "d59442254faad4c00f7b20646768e79c1d99a7ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
