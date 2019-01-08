@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ef89b97_9abee4e6",
+        "filename": "build-data/packages/libmemif.mk",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-01-08T13:54:40Z",
+      "side": 1,
+      "message": "2017-2019?",
+      "revId": "650182c207f144984d2c406eb40edf9b5163356b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0fe4d29a_99f344aa",
+        "filename": "extras/libmemif/CMakeLists.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-01-08T13:54:40Z",
+      "side": 1,
+      "message": "2017-2019?",
+      "revId": "650182c207f144984d2c406eb40edf9b5163356b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
