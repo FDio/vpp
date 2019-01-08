@@ -173,6 +173,8 @@ typedef struct vppcom_data_segment_
 
 typedef vppcom_data_segment_t vppcom_data_segments_t[2];
 
+typedef unsigned long vcl_si_set;
+
 /*
  * VPPCOM Public API Functions
  */
@@ -259,10 +261,9 @@ extern int vppcom_session_write (uint32_t session_handle, void *buf,
 extern int vppcom_session_write_msg (uint32_t session_handle, void *buf,
 				     size_t n);
 
-extern int vppcom_select (unsigned long n_bits,
-			  unsigned long *read_map,
-			  unsigned long *write_map,
-			  unsigned long *except_map, double wait_for_time);
+extern int vppcom_select (int n_bits, vcl_si_set * read_map,
+			  vcl_si_set * write_map, vcl_si_set * except_map,
+			  double wait_for_time);
 
 extern int vppcom_epoll_create (void);
 extern int vppcom_epoll_ctl (uint32_t vep_handle, int op,
