@@ -90,6 +90,11 @@ typedef struct
   u32 et_mask;
 } vppcom_epoll_t;
 
+/* Select uses the vcl_si_set as if a clib_bitmap. Make sure they are the
+ * same size */
+STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (vcl_si_set),
+	       "vppcom bitmap size mismatch");
+
 typedef struct
 {
   u8 is_ip4;
