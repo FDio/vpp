@@ -977,7 +977,13 @@ class VppTestCase(unittest.TestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        if isinstance(object, (list,)):
+        # This always evaluates to False.
+        # >>> isinstance(object, (list,))
+        # False
+
+        # Can we remove this,
+        # or is 'object' supposed to be 'output'?
+        if isinstance(output, (list,)):
             rx = []
             for o in output:
                 rx.append(output.get_capture(len(pkts)))
@@ -990,7 +996,7 @@ class VppTestCase(unittest.TestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        if isinstance(object, (list,)):
+        if isinstance(output, (list,)):
             outputs = output
             rx = []
             for o in outputs:
