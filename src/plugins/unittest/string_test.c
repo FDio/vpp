@@ -628,7 +628,7 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
 {
   char src[] = "Those who dare to fail miserably can achieve greatly.";
   char dst[100], old_dst[100];
-  int indicator;
+  int indicator, i;
   size_t s1size = sizeof (dst);	// including null
   errno_t err;
 
@@ -658,6 +658,10 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
 
   /* n > string len of src */
+  err = clib_memset (dst, 1, sizeof (dst));
+  if (err != EOK)
+    return -1;
+
   err = strncpy_s (dst, s1size, src, clib_strnlen (src, sizeof (src)) + 10);
   if (err != EOK)
     return -1;
@@ -666,6 +670,11 @@ test_strncpy_s (vlib_main_t * vm, unformat_input_t * input)
     return -1;
   if (indicator != 0)
     return -1;
+
+  /* Make sure bytes after strlen(dst) is untouched */
+  for (i = 1 + clib_strnlen (dst, sizeof (dst)); i < sizeof (dst); i++)
+    if (dst[i] != 1)
+      return -1;
 
   /* truncation, n >= dmax */
   err = strncpy_s (dst, clib_strnlen (src, sizeof (src)), src,

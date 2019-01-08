@@ -103,7 +103,7 @@ void clib_memswap (void *_a, void *_b, uword bytes);
  * In order to provide smooth mapping from unsafe string API to the clib string
  * macro, we often have to improvise s1max and s2max due to the additional
  * arguments are required for implementing the safe API. This macro is used
- * to provide the s1max/s2max. It is not perfect becuase the actual
+ * to provide the s1max/s2max. It is not perfect because the actual
  * s1max/s2max may be greater than 4k and the mapping from the unsafe API to
  * the macro would cause a regression. However, it is not terribly likely.
  * So I bet against the odds.
@@ -1025,7 +1025,8 @@ strncpy_s_inline (char *__restrict__ dest, rsize_t dmax,
 	}
     }
   else
-    m = n;
+    /* cap the copy to strlen(src) in case n > strlen(src) */
+    m = clib_strnlen (src, n);
 
   /* Check for src/dst overlap, which is not allowed */
   low = (uword) (src < dest ? src : dest);
