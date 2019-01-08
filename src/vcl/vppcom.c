@@ -2043,18 +2043,17 @@ vppcom_session_write_ready (vcl_session_t * session)
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
   if (PREDICT_FALSE (session->is_vep))
     {
-      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
-		    "cannot write to an epoll session!",
-		    getpid (), session->vpp_handle, session->session_index);
+      VDBG (0, "session %u [0x%llx]: cannot write to an epoll session!",
+            session->session_index, session->vpp_handle);
       return VPPCOM_EBADFD;
     }
 
   if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
     {
-      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
-		    "cannot write to a listen session!",
-		    getpid (), session->vpp_handle, session->session_index);
-      return VPPCOM_EBADFD;
+      if (session->tx_fifo)
+	return svm_fifo_max_enqueue (session->tx_fifo);
+      else
+	return VPPCOM_EBADFD;
     }
 
   if (PREDICT_FALSE (!(session->session_state & STATE_OPEN)))
@@ -2063,18 +2062,12 @@ vppcom_session_write_ready (vcl_session_t * session)
       int rv;
 
       rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
-      clib_warning ("VCL<%d>: ERROR: vpp handle 0x%llx, sid %u: "
-		    "session is not open! state 0x%x (%s), "
-		    "returning %d (%s)", getpid (), session->vpp_handle,
-		    session->session_index,
-		    state, vppcom_session_state_str (state),
-		    rv, vppcom_retval_str (rv));
+      VDBG (0, "session %u [0x%llx]: session is not open! state 0x%x (%s), "
+            "returning %d (%s)", session->session_index, session->vpp_handle,
+            state, vppcom_session_state_str (state), rv,
+            vppcom_retval_str (rv));
       return rv;
     }
-
-  VDBG (3, "VCL<%d>: vpp handle 0x%llx, sid %u: peek %s (%p), ready = %d",
-	getpid (), session->vpp_handle, session->session_index,
-	session->tx_fifo, svm_fifo_max_enqueue (session->tx_fifo));
 
   return svm_fifo_max_enqueue (session->tx_fifo);
 }
@@ -2248,15 +2241,15 @@ vcl_select_handle_mq (vcl_worker_t * wrk, svm_msg_q_t * mq,
 }
 
 static int
-vppcom_select_condvar (vcl_worker_t * wrk, unsigned long n_bits,
-		       unsigned long *read_map, unsigned long *write_map,
-		       unsigned long *except_map, double time_to_wait,
+vppcom_select_condvar (vcl_worker_t * wrk, int n_bits,
+                       vcl_si_set *read_map, vcl_si_set *write_map,
+                       vcl_si_set *except_map, double time_to_wait,
 		       u32 * bits_set)
 {
   double total_wait = 0, wait_slice;
   vcl_cut_through_registration_t *cr;
 
-  time_to_wait = (time_to_wait == -1) ? 10e9 : time_to_wait;
+  time_to_wait = (time_to_wait == -1) ? 1e6 : time_to_wait;
   wait_slice = wrk->cut_through_registrations ? 10e-6 : time_to_wait;
   do
     {
@@ -2270,7 +2263,7 @@ vppcom_select_condvar (vcl_worker_t * wrk, unsigned long n_bits,
       vcl_ct_registration_unlock (wrk);
 
       vcl_select_handle_mq (wrk, wrk->app_event_queue, n_bits, read_map,
-			    write_map, except_map, time_to_wait, bits_set);
+			    write_map, except_map, wait_slice, bits_set);
       total_wait += wait_slice;
       if (*bits_set)
 	return *bits_set;
@@ -2281,9 +2274,9 @@ vppcom_select_condvar (vcl_worker_t * wrk, unsigned long n_bits,
 }
 
 static int
-vppcom_select_eventfd (vcl_worker_t * wrk, unsigned long n_bits,
-		       unsigned long *read_map, unsigned long *write_map,
-		       unsigned long *except_map, double time_to_wait,
+vppcom_select_eventfd (vcl_worker_t * wrk, int n_bits,
+                       vcl_si_set *read_map, vcl_si_set *write_map,
+                       vcl_si_set *except_map, double time_to_wait,
 		       u32 * bits_set)
 {
   vcl_mq_evt_conn_t *mqc;
@@ -2306,44 +2299,36 @@ vppcom_select_eventfd (vcl_worker_t * wrk, unsigned long n_bits,
 }
 
 int
-vppcom_select (unsigned long n_bits, unsigned long *read_map,
-	       unsigned long *write_map, unsigned long *except_map,
-	       double time_to_wait)
+vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
+               vcl_si_set * except_map, double time_to_wait)
 {
   u32 sid, minbits = clib_max (n_bits, BITS (uword)), bits_set = 0;
   vcl_worker_t *wrk = vcl_worker_get_current ();
   vcl_session_t *session = 0;
   int rv, i;
 
-  STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (unsigned long),
-		 "vppcom bitmap size mismatch");
-  STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (fd_mask),
-		 "vppcom bitmap size mismatch");
-  STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (uword),
-		 "vppcom bitmap size mismatch");
-
   if (n_bits && read_map)
     {
       clib_bitmap_validate (wrk->rd_bitmap, minbits);
       clib_memcpy_fast (wrk->rd_bitmap, read_map,
-			vec_len (wrk->rd_bitmap) * sizeof (unsigned long));
-      memset (read_map, 0, vec_len (wrk->rd_bitmap) * sizeof (unsigned long));
+			vec_len (wrk->rd_bitmap) * sizeof (vcl_si_set));
+      memset (read_map, 0, vec_len (wrk->rd_bitmap) * sizeof (vcl_si_set));
     }
   if (n_bits && write_map)
     {
       clib_bitmap_validate (wrk->wr_bitmap, minbits);
       clib_memcpy_fast (wrk->wr_bitmap, write_map,
-			vec_len (wrk->wr_bitmap) * sizeof (unsigned long));
+			vec_len (wrk->wr_bitmap) * sizeof (vcl_si_set));
       memset (write_map, 0,
-	      vec_len (wrk->wr_bitmap) * sizeof (unsigned long));
+	      vec_len (wrk->wr_bitmap) * sizeof (vcl_si_set));
     }
   if (n_bits && except_map)
     {
       clib_bitmap_validate (wrk->ex_bitmap, minbits);
       clib_memcpy_fast (wrk->ex_bitmap, except_map,
-			vec_len (wrk->ex_bitmap) * sizeof (unsigned long));
+			vec_len (wrk->ex_bitmap) * sizeof (vcl_si_set));
       memset (except_map, 0,
-	      vec_len (wrk->ex_bitmap) * sizeof (unsigned long));
+	      vec_len (wrk->ex_bitmap) * sizeof (vcl_si_set));
     }
 
   if (!n_bits)
@@ -2367,6 +2352,8 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
         bits_set++;
       }
+    else
+      svm_fifo_set_want_tx_evt (session->tx_fifo, 1);
   }));
 
 check_rd:

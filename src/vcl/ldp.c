@@ -85,6 +85,11 @@ typedef struct ldp_worker_ctx_
 
 } ldp_worker_ctx_t;
 
+STATIC_ASSERT (sizeof (clib_bitmap_t) == sizeof (fd_mask),
+               "ldp bitmap size mismatch");
+STATIC_ASSERT (sizeof (vcl_si_set) == sizeof (fd_mask),
+               "ldp bitmap size mismatch");
+
 typedef struct
 {
   ldp_worker_ctx_t *workers;
@@ -211,32 +216,29 @@ ldp_init (void)
       u32 sb;
       if (sscanf (env_var_str, "%u", &sb) != 1)
 	{
-	  clib_warning ("LDP<%d>: WARNING: Invalid LDP sid bit specified in"
-			" the env var " LDP_ENV_SID_BIT " (%s)! sid bit "
-			"value %d (0x%x)", getpid (), env_var_str,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: Invalid LDP sid bit specified in the env var "
+		LDP_ENV_SID_BIT " (%s)! sid bit value %d (0x%x)", env_var_str,
+		ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else if (sb < LDP_SID_BIT_MIN)
 	{
 	  ldp->vlsh_bit_val = (1 << LDP_SID_BIT_MIN);
 	  ldp->vlsh_bit_mask = ldp->vlsh_bit_val - 1;
 
-	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
-			" env var " LDP_ENV_SID_BIT " (%s) is too small. "
-			"Using LDP_SID_BIT_MIN (%d)! sid bit value %d (0x%x)",
-			getpid (), sb, env_var_str, LDP_SID_BIT_MIN,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: LDP sid bit (%u) specified in the env var "
+		LDP_ENV_SID_BIT " (%s) is too small. Using LDP_SID_BIT_MIN"
+		" (%d)! sid bit value %d (0x%x)", sb, env_var_str,
+		LDP_SID_BIT_MIN, ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else if (sb > LDP_SID_BIT_MAX)
 	{
 	  ldp->vlsh_bit_val = (1 << LDP_SID_BIT_MAX);
 	  ldp->vlsh_bit_mask = ldp->vlsh_bit_val - 1;
 
-	  clib_warning ("LDP<%d>: WARNING: LDP sid bit (%u) specified in the"
-			" env var " LDP_ENV_SID_BIT " (%s) is too big. Using"
-			" LDP_SID_BIT_MAX (%d)! sid bit value %d (0x%x)",
-			getpid (), sb, env_var_str, LDP_SID_BIT_MAX,
-			ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	  LDBG (0, "WARNING: LDP sid bit (%u) specified in the env var "
+		LDP_ENV_SID_BIT " (%s) is too big. Using LDP_SID_BIT_MAX"
+		" (%d)! sid bit value %d (0x%x)", sb, env_var_str,
+		LDP_SID_BIT_MAX, ldp->vlsh_bit_val, ldp->vlsh_bit_val);
 	}
       else
 	{
@@ -246,6 +248,15 @@ ldp_init (void)
 	  LDBG (0, "configured LDP sid bit (%u) from "
 		LDP_ENV_SID_BIT "!  sid bit value %d (0x%x)", sb,
 		ldp->vlsh_bit_val, ldp->vlsh_bit_val);
+	}
+
+      /* Make sure there are enough bits in the fd set for vcl sessions */
+      if (ldp->vlsh_bit_val > FD_SETSIZE / 2)
+	{
+	  LDBG (0, "ERROR: LDP vlsh bit value %d > FD_SETSIZE/2 %d!",
+		ldp->vlsh_bit_val, FD_SETSIZE / 2);
+	  ldp->init = 0;
+	  return -1;
 	}
     }
 
@@ -572,9 +583,9 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 {
   uword sid_bits, sid_bits_set, libc_bits, libc_bits_set;
   ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
-  u32 minbits = clib_max (nfds, BITS (uword)), si;
+  u32 minbits = clib_max (nfds, BITS (uword)), si, n_bytes;
   vls_handle_t vlsh;
-  f64 time_out;
+  f64 time_out, vcl_timeout;
   int rv, fd;
 
   if (nfds < 0)
@@ -622,7 +633,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
     }
 
   sid_bits = libc_bits = 0;
-  u32 n_bytes = nfds / 8 + ((nfds % 8) ? 1 : 0);
+  n_bytes = nfds / 8 + ((nfds % 8) ? 1 : 0);
 
   if (readfds)
     {
@@ -714,6 +725,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       goto done;
     }
 
+  vcl_timeout = libc_bits ? 0 : time_out;
   do
     {
       if (sid_bits)
@@ -739,7 +751,7 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 				  writefds ? (unsigned long *) ldpw->wr_bitmap
 				  : NULL,
 				  exceptfds ? (unsigned long *)
-				  ldpw->ex_bitmap : NULL, 0);
+				  ldpw->ex_bitmap : NULL, vcl_timeout);
 	      if (rv < 0)
 		{
 		  errno = -rv;
