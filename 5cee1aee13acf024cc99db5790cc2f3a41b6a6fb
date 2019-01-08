@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "f9a401aa_585ba122",
+        "filename": "src/vnet/interface.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 1335,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-08T23:52:56Z",
+      "side": 1,
+      "message": "ack. thus no need for tm then...",
+      "parentUuid": "8c3fc6d4_2d70d82f",
+      "range": {
+        "startLine": 1335,
+        "startChar": 45,
+        "endLine": 1335,
+        "endChar": 65
+      },
+      "revId": "5cee1aee13acf024cc99db5790cc2f3a41b6a6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8983befe_dab76b78",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 25
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "3c81ee80_26e0d414",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 904,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-08T23:52:56Z",
+      "side": 1,
+      "message": "I had exactly that initially, but perftest was very happy... We can do another 2h run with this piece comment out and predict_false, and see what it thinks ?",
+      "parentUuid": "8983befe_dab76b78",
+      "range": {
+        "startLine": 904,
+        "startChar": 15,
+        "endLine": 904,
+        "endChar": 62
+      },
+      "revId": "5cee1aee13acf024cc99db5790cc2f3a41b6a6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "70aa25ab_86fb2a13",
         "filename": "src/vnet/ip/ip4_forward.c",
         "patchSetId": 25
@@ -59,6 +107,30 @@
       "writtenOn": "2019-01-08T23:23:21Z",
       "side": 1,
       "message": "PREDICT_FALSE? Although that shouldn\u0027t matter too much ...",
+      "range": {
+        "startLine": 2491,
+        "startChar": 6,
+        "endLine": 2491,
+        "endChar": 49
+      },
+      "revId": "5cee1aee13acf024cc99db5790cc2f3a41b6a6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3f1bd366_acead9bb",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 2491,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-08T23:52:56Z",
+      "side": 1,
+      "message": "yeah it is once per vector, but let me add that, sounds like a good idea at this stage.",
+      "parentUuid": "70aa25ab_86fb2a13",
       "range": {
         "startLine": 2491,
         "startChar": 6,
