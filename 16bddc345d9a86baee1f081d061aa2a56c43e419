@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "290d927c_3132cfe8",
+        "filename": "src/vnet/session/session_lookup.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 330,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-08T08:52:59Z",
+      "side": 1,
+      "message": "is_add is the name of the field and 0 is the value. No need to change this comment so please revert.",
+      "range": {
+        "startLine": 330,
+        "startChar": 16,
+        "endLine": 330,
+        "endChar": 22
+      },
+      "revId": "16bddc345d9a86baee1f081d061aa2a56c43e419",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "201c6ee1_e7901a50",
+        "filename": "src/vnet/udp/udp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-08T08:52:59Z",
+      "side": 1,
+      "message": "This is somewhat of a layer violation. Still, I\u0027m fine with change until we find a better solution.",
+      "range": {
+        "startLine": 151,
+        "startChar": 2,
+        "endLine": 156,
+        "endChar": 5
+      },
+      "revId": "16bddc345d9a86baee1f081d061aa2a56c43e419",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
