@@ -977,12 +977,7 @@ class VppTestCase(unittest.TestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        if isinstance(object, (list,)):
-            rx = []
-            for o in output:
-                rx.append(output.get_capture(len(pkts)))
-        else:
-            rx = output.get_capture(len(pkts))
+        rx = output.get_capture(len(pkts))
         return rx
 
     def send_and_expect_only(self, input, pkts, output, timeout=None):
@@ -990,14 +985,8 @@ class VppTestCase(unittest.TestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        if isinstance(object, (list,)):
-            outputs = output
-            rx = []
-            for o in outputs:
-                rx.append(output.get_capture(len(pkts)))
-        else:
-            rx = output.get_capture(len(pkts))
-            outputs = [output]
+        rx = output.get_capture(len(pkts))
+        outputs = [output]
         if not timeout:
             timeout = 1
         for i in self.pg_interfaces:
