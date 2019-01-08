@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "abd28178_9d52b11c",
+        "filename": "src/plugins/perfmon/perfmon_periodic.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-01-08T14:12:37Z",
+      "side": 1,
+      "message": "Please add these messages to the perfmon event log:\n\nvlib_log_debug (pm-\u003elog_class, ...)",
+      "revId": "f43a748f4d0883ec36eb1d68d2c7e074c67a9183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
