@@ -3579,7 +3579,6 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_endpoint_add,
                         {'endpoint': {
                             'sw_if_index': sw_if_index,
-                            'flags': 0,
                             'ips': ips,
                             'n_ips': len(ips),
                             'mac': mac,
