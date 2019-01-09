@@ -1854,6 +1854,10 @@ ip4_arp_inline (vlib_main_t * vm,
 	    vlib_packet_template_get_packet (vm,
 					     &im->ip4_arp_request_packet_template,
 					     &bi0);
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  /* copy the persistent fields from the original */
+	  clib_memcpy_fast (b0->opaque2, p0->opaque2, sizeof (p0->opaque2));
 
 	  /* Seems we're out of buffers */
 	  if (PREDICT_FALSE (!h0))
@@ -1894,7 +1898,6 @@ ip4_arp_inline (vlib_main_t * vm,
 	  p0->error = node->errors[IP4_ARP_ERROR_REQUEST_SENT];
 
 	  vlib_buffer_copy_trace_flag (vm, p0, bi0);
-	  b0 = vlib_get_buffer (vm, bi0);
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
 

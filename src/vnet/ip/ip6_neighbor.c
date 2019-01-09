@@ -3284,6 +3284,10 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	    if (!h0)
 	      continue;
 
+	    /* copy the persistent fields from the original */
+	    b0 = vlib_get_buffer (vm, bi0);
+	    clib_memcpy_fast (b0->opaque2, p0->opaque2, sizeof (p0->opaque2));
+
 	    /*
 	     * Build ethernet header.
 	     * Choose source address based on destination lookup
@@ -3324,7 +3328,6 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 	    ASSERT (bogus_length == 0);
 
 	    vlib_buffer_copy_trace_flag (vm, p0, bi0);
-	    b0 = vlib_get_buffer (vm, bi0);
 	    vnet_buffer (b0)->sw_if_index[VLIB_TX]
 	      = vnet_buffer (p0)->sw_if_index[VLIB_TX];
 

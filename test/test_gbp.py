@@ -3135,8 +3135,9 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[VXLAN].vni, 88)
             self.assertTrue(rx[VXLAN].flags.G)
             self.assertTrue(rx[VXLAN].flags.Instance)
-            # policy is not applied since we don't know where it's going
-            self.assertFalse(rx[VXLAN].gpflags.A)
+            # policy was applied to the original IP packet
+            self.assertEqual(rx[VXLAN].gpid, 200)
+            self.assertTrue(rx[VXLAN].gpflags.A)
             self.assertFalse(rx[VXLAN].gpflags.D)
 
             inner = rx[VXLAN].payload
