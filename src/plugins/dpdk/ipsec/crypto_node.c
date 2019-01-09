@@ -22,6 +22,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ipsec/ipsec.h>
 
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>
 #include <dpdk/ipsec/ipsec.h>

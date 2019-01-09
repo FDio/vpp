@@ -19,8 +19,8 @@
 #include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
-
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 

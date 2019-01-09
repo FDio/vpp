@@ -967,7 +967,7 @@ add_device_vfio (vlib_main_t * vm, linux_pci_device_t * p,
     {
       vlib_buffer_pool_t *bp;
       /* *INDENT-OFF* */
-      vec_foreach (bp, buffer_main.buffer_pools)
+      vec_foreach (bp, vm->buffer_main->buffer_pools)
 	{
 	  u32 i;
 	  vlib_physmem_map_t *pm;

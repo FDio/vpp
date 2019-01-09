@@ -892,7 +892,7 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
 
   if (mb->packet_type)
     s = format (s, "\n%U%U", format_white_space, indent,
-		format_dpdk_pkt_types, &mb->packet_type);
+		format_dpdk_rte_mbuf, &mb->packet_type, 0);
 
   return s;
 }

@@ -40,6 +40,7 @@ void
 dpdk_device_setup (dpdk_device_t * xd)
 {
   dpdk_main_t *dm = &dpdk_main;
+  vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->sw_if_index);
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
@@ -116,26 +117,23 @@ dpdk_device_setup (dpdk_device_t * xd)
 			CLIB_CACHE_LINE_BYTES);
   for (j = 0; j < xd->rx_q_used; j++)
     {
-      dpdk_mempool_private_t *privp;
       uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
 						       xd->hw_if_index, j);
       unsigned lcore = vlib_worker_threads[tidx].cpu_id;
       u16 socket_id = rte_lcore_to_socket_id (lcore);
+      u8 bpidx = vlib_buffer_pool_get_default_for_numa (vm, socket_id);
+      vlib_buffer_pool_t *bp = vlib_buffer_pool_get (vm, bpidx);
+      struct rte_mempool *mp = bp->external;
 
-      rv =
-	rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
-				xd->cpu_socket, 0,
-				dm->pktmbuf_pools[socket_id]);
+      rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
+				   xd->cpu_socket, 0, mp);
 
       /* retry with any other CPU socket */
       if (rv < 0)
-	rv =
-	  rte_eth_rx_queue_setup (xd->port_id, j,
-				  xd->nb_rx_desc, SOCKET_ID_ANY, 0,
-				  dm->pktmbuf_pools[socket_id]);
+	rv = rte_eth_rx_queue_setup (xd->port_id, j, xd->nb_rx_desc,
+				     SOCKET_ID_ANY, 0, mp);
 
-      privp = rte_mempool_get_priv (dm->pktmbuf_pools[socket_id]);
-      xd->buffer_pool_for_queue[j] = privp->buffer_pool_index;
+      xd->buffer_pool_for_queue[j] = bp->index;
 
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_rx_queue_setup", rv);

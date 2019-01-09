@@ -54,7 +54,7 @@ set(VPP_LOG2_CACHE_LINE_SIZE ${VPP_LOG2_CACHE_LINE_SIZE}
 # CPU optimizations and multiarch support
 ##############################################################################
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
-  set(CMAKE_C_FLAGS "-march=corei7 -mtune=corei7-avx ${CMAKE_C_FLAGS}")
+  set(CMAKE_C_FLAGS "-march=core-avx2  -mtune=core-avx2 ${CMAKE_C_FLAGS}")
   check_c_compiler_flag("-march=core-avx2" compiler_flag_march_core_avx2)
   if(compiler_flag_march_core_avx2)
     list(APPEND MARCH_VARIANTS "avx2\;-march=core-avx2 -mtune=core-avx2")
