@@ -49,7 +49,7 @@
 #include <vppinfra/lock.h>
 
 /**
- * @brief Packet types supported by PCAP
+ * @brief Known libpcap encap types
  *
  * These codes end up in the pcap file header.
  * If you decide to build a wireshark dissector,
@@ -58,22 +58,16 @@
  *
  * For example:
  *
- *   { 160,		WTAP_ENCAP_USER13 },
+ *   { 280, 		WTAP_ENCAP_VPP },
  *
- * A file with (vpp) packet type PCAP_PACKET_TYPE_user13
- * aka 160, will need a top-level dissector registered to
- * deal with WTAP_ENCAP_USER13 [=58].
+ * A file with the officially-allocated vpp packet type PCAP_PACKET_TYPE_vpp
+ * aka 280, will need a top-level dissector registered to
+ * deal with WTAP_ENCAP_VPP [=206].
  *
  * Something like so:
  *
- * dissector_add_uint("wtap_encap", WTAP_ENCAP_USER13, vpp_dissector_handle);
+ * dissector_add_uint("wtap_encap", WTAP_ENCAP_VPP, vpp_dissector_handle);
  *
- * null 0
- * ethernet 1
- * ppp 9
- * ip 12
- * hdlc 104
- * user0 147 ... user15 162
  */
 #define foreach_vnet_pcap_packet_type           \
   _ (null, 0)					\
@@ -96,7 +90,8 @@
   _ (user12,   159)                             \
   _ (user13,   160)                             \
   _ (user14,   161)                             \
-  _ (user15,   162)
+  _ (user15,   162)				\
+  _ (vpp, 280)					\
 
 typedef enum
 {

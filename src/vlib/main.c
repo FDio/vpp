@@ -2220,7 +2220,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	    pm->file_name = (char *) format (0, "/tmp/dispatch.pcap%c", 0);
 
 	  pm->n_packets_captured = 0;
-	  pm->packet_type = PCAP_PACKET_TYPE_user13;
+	  pm->packet_type = PCAP_PACKET_TYPE_vpp;
 	  if (pm->lock == 0)
 	    clib_spinlock_init (&(pm->lock));
 	  vm->dispatch_pcap_enable = 1;

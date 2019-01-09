@@ -415,7 +415,7 @@ proto_reg_handoff_vpp(void)
     vpp_opaque_dissector_handle = find_dissector("vppOpaque");
     vpp_opaque2_dissector_handle = find_dissector("vppOpaque2");
     vpp_trace_dissector_handle = find_dissector("vppTrace");
-    dissector_add_uint("wtap_encap", WTAP_ENCAP_USER13, vpp_dissector_handle);
+    dissector_add_uint("wtap_encap", WTAP_ENCAP_VPP, vpp_dissector_handle);
 }
 
 /*
