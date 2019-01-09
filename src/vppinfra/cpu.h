@@ -312,6 +312,7 @@ CLIB_MARCH_SFX(fn ## _march_constructor) (void)				\
 format_function_t format_cpu_uarch;
 format_function_t format_cpu_model_name;
 format_function_t format_cpu_flags;
+i8 is_denvertion_goldmont ();
 
 /*
  * fd.io coding-style-patch-verification: ON
