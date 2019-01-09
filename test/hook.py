@@ -13,8 +13,9 @@ class Hook(object):
     Generic hooks before/after API/CLI calls
     """
 
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self, test):
+        self.test = test
+        self.logger = test.logger
 
     def before_api(self, api_name, api_args):
         """
@@ -75,12 +76,11 @@ class PollHook(Hook):
     """ Hook which checks if the vpp subprocess is alive """
 
     def __init__(self, testcase):
-        super(PollHook, self).__init__(testcase.logger)
-        self.testcase = testcase
+        super(PollHook, self).__init__(testcase)
 
     def on_crash(self, core_path):
         self.logger.error("Core file present, debug with: gdb %s %s" %
-                          (self.testcase.vpp_bin, core_path))
+                          (self.test.vpp_bin, core_path))
         check_core_path(self.logger, core_path)
         self.logger.error("Running `file %s':" % core_path)
         try:
@@ -96,27 +96,27 @@ class PollHook(Hook):
         Poll the vpp status and throw an exception if it's not running
         :raises VppDiedError: exception if VPP is not running anymore
         """
-        if self.testcase.vpp_dead:
+        if self.test.vpp_dead:
             # already dead, nothing to do
             return
 
-        self.testcase.vpp.poll()
-        if self.testcase.vpp.returncode is not None:
+        self.test.vpp.poll()
+        if self.test.vpp.returncode is not None:
             signaldict = dict(
                 (k, v) for v, k in reversed(sorted(signal.__dict__.items()))
                 if v.startswith('SIG') and not v.startswith('SIG_'))
 
-            if self.testcase.vpp.returncode in signaldict:
-                s = signaldict[abs(self.testcase.vpp.returncode)]
+            if self.test.vpp.returncode in signaldict:
+                s = signaldict[abs(self.test.vpp.returncode)]
             else:
                 s = "unknown"
             msg = "VPP subprocess died unexpectedly with returncode %d [%s]." \
-                  % (self.testcase.vpp.returncode, s)
+                  % (self.test.vpp.returncode, s)
             self.logger.critical(msg)
-            core_path = get_core_path(self.testcase.tempdir)
+            core_path = get_core_path(self.test.tempdir)
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
-            self.testcase.vpp_dead = True
+            self.test.vpp_dead = True
             raise VppDiedError(msg)
 
     def before_api(self, api_name, api_args):

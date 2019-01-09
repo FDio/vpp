@@ -1,4 +1,5 @@
 import fnmatch
+import logging
 import os
 import time
 from collections import deque
@@ -69,7 +70,7 @@ class VppPapiProvider(object):
     _zero, _negative = range(2)
 
     def __init__(self, name, shm_prefix, test_class, read_timeout):
-        self.hook = Hook("vpp-papi-provider")
+        self.hook = Hook(test_class)
         self.name = name
         self.shm_prefix = shm_prefix
         self.test_class = test_class
