@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e5330bea_eb3fa6bc",
+        "filename": "src/vnet/bonding/cli.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 361,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-01-09T22:33:20Z",
+      "side": 1,
+      "message": "Should this be %u instead of %d? Also, it would be more consistent with the other devices like memif and tapv2 if you call it \"id\" instead of instance. If you agree with me on this, would you please make global changes to your diffs to call it id instead of instance? For example, the variable names should be called id instead of instance. What you did was to name the variable instance and put in description it is actually an id.",
+      "revId": "48a4a128b24a2ee68913d5d438f7471456efa37a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
