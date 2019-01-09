@@ -68,6 +68,29 @@
       "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9fdb47b7_addef401",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-09T17:54:22Z",
+      "side": 1,
+      "message": "if (do_segmentation \u0026\u0026 (or_flags \u0026 VNET_BUFFER_F_GSO))\n  break;\n\nsaves precious space on my screen :)",
+      "range": {
+        "startLine": 672,
+        "startChar": 3,
+        "endLine": 678,
+        "endChar": 6
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
