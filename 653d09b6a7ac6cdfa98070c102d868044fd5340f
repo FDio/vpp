@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "b48ae603_a5d5b4ac",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-09T17:48:43Z",
+      "side": 1,
+      "message": "What\u0027s wrong with asking too often, vlib_buffer_alloc already does same thing you are doing here... vlib_buffer_alloc maintains per-thread free list and always fills free list in bigger chunk...",
+      "range": {
+        "startLine": 236,
+        "startChar": 0,
+        "endLine": 236,
+        "endChar": 58
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f304e6f3_90984420",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 28
