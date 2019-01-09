@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "8d2d3c83_62f17122",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 25
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-09T00:21:57Z",
+      "side": 1,
+      "message": "I think the idea is \"this space is up for grabs if you need less than u64, these are places to take from, rather than spending another u64\"",
+      "parentUuid": "94b69e18_e16c96cc",
+      "range": {
+        "startLine": 406,
+        "startChar": 0,
+        "endLine": 407,
+        "endChar": 19
+      },
+      "revId": "5cee1aee13acf024cc99db5790cc2f3a41b6a6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b260a117_04287366",
         "filename": "src/vnet/devices/tap/tap.c",
         "patchSetId": 25
@@ -42,6 +66,24 @@
     },
     {
       "key": {
+        "uuid": "310b3d66_b5f15d7e",
+        "filename": "src/vnet/devices/tap/tap.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-09T00:21:57Z",
+      "side": 1,
+      "message": "ack, thanks!",
+      "parentUuid": "b260a117_04287366",
+      "revId": "5cee1aee13acf024cc99db5790cc2f3a41b6a6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2dab3d84_d84f730b",
         "filename": "src/vnet/devices/virtio/node.c",
         "patchSetId": 25
@@ -53,6 +95,30 @@
       "writtenOn": "2019-01-08T23:59:07Z",
       "side": 1,
       "message": "Several instances of comments extending beyond 80 lines.",
+      "range": {
+        "startLine": 155,
+        "startChar": 71,
+        "endLine": 155,
+        "endChar": 83
+      },
+      "revId": "5cee1aee13acf024cc99db5790cc2f3a41b6a6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4da18580_0182e836",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-09T00:21:57Z",
+      "side": 1,
+      "message": "ack, thanks!",
+      "parentUuid": "2dab3d84_d84f730b",
       "range": {
         "startLine": 155,
         "startChar": 71,
@@ -146,6 +212,30 @@
       "writtenOn": "2019-01-08T23:59:07Z",
       "side": 1,
       "message": "Maybe move this directly under the flags.",
+      "range": {
+        "startLine": 523,
+        "startChar": 0,
+        "endLine": 523,
+        "endChar": 53
+      },
+      "revId": "5cee1aee13acf024cc99db5790cc2f3a41b6a6fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "33fadb51_80fbcfcf",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 25
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-09T00:21:57Z",
+      "side": 1,
+      "message": "aww, excellent catch, thank you!",
+      "parentUuid": "baf2ba53_bbda0b07",
       "range": {
         "startLine": 523,
         "startChar": 0,
