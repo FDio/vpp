@@ -470,8 +470,6 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
-	    vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 
 	  /* mbuf packet starts at ESP header */
