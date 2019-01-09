@@ -575,6 +575,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  if (devconf->num_tx_desc)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
+
+          if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && (is_denvertion_goldmont () > 0)) {
+            if (xd->nb_rx_desc > 512)
+              xd->nb_rx_desc = 512;
+            if (xd->nb_tx_desc > 512)
+              xd->nb_tx_desc = 512;
+           }
 	}
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
