@@ -209,6 +209,22 @@ format_cpu_flags (u8 * s, va_list * args)
 #endif
 }
 
+i8
+is_denvertion_goldmont ()
+{
+  u32 __attribute__ ((unused)) eax, ebx, ecx, edx;
+  u8 model, family;
+
+  if (__get_cpuid (1, &eax, &ebx, &ecx, &edx) == 0)
+    return -1;
+
+  model = ((eax >> 4) & 0x0f) | ((eax >> 12) & 0xf0);
+  family = (eax >> 8) & 0x0f;
+
+  if ((family == 0x6) && (model == 0x5f))
+    return 1;
+  return 0;
+}
 
 
 /*
