@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f304e6f3_90984420",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-09T17:43:56Z",
+      "side": 1,
+      "message": "this looks quite expensive, why not just simple memcpy?",
+      "range": {
+        "startLine": 267,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 69
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8da39574_c70d8011",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-09T17:43:56Z",
+      "side": 1,
+      "message": "what if nb0-\u003en_add_refs !\u003d 0",
+      "range": {
+        "startLine": 287,
+        "startChar": 0,
+        "endLine": 293,
+        "endChar": 1
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
