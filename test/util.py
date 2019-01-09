@@ -440,20 +440,24 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
 
 
 def reassemble4_core(listoffragments, return_ip):
+    # internet header length, ethernet header length.
+    ihl = (listoffragments[0] & 0x0f) * 8
+    ehl = 14
+
     buffer = BytesIO()
     first = listoffragments[0]
-    buffer.seek(20)
+    buffer.seek(ihl)
     for pkt in listoffragments:
         buffer.seek(pkt[IP].frag*8)
         buffer.write(bytes(pkt[IP].payload))
-    first.len = len(buffer.getvalue()) + 20
+    first.len = len(buffer.getvalue()) + ihl
     first.flags = 0
     del(first.chksum)
     if return_ip:
-        header = bytes(first[IP])[:20]
+        header = bytes(first[IP])[:ihl]
         return first[IP].__class__(header + buffer.getvalue())
     else:
-        header = bytes(first[Ether])[:34]
+        header = bytes(first[Ether])[:ehl + ihl]
         return first[Ether].__class__(header + buffer.getvalue())
 
 
