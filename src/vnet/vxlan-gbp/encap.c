@@ -50,6 +50,7 @@ typedef struct
   u32 tunnel_index;
   u32 vni;
   u16 sclass;
+  u8 flags;
 } vxlan_gbp_encap_trace_t;
 
 u8 *
@@ -59,8 +60,10 @@ format_vxlan_gbp_encap_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   vxlan_gbp_encap_trace_t *t = va_arg (*args, vxlan_gbp_encap_trace_t *);
 
-  s = format (s, "VXLAN_GBP encap to vxlan_gbp_tunnel%d vni %d sclass %d",
-	      t->tunnel_index, t->vni, t->sclass);
+  s =
+    format (s,
+	    "VXLAN_GBP encap to vxlan_gbp_tunnel%d vni %d sclass %d flags %d",
+	    t->tunnel_index, t->vni, t->sclass, t->flags);
   return s;
 }
 
@@ -322,6 +325,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	      tr->tunnel_index = t0 - vxm->tunnels;
 	      tr->vni = t0->vni;
 	      tr->sclass = vnet_buffer2 (b0)->gbp.src_epg;
+	      tr->flags = vnet_buffer2 (b0)->gbp.flags;
 	    }
 
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
@@ -331,6 +335,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	      tr->tunnel_index = t1 - vxm->tunnels;
 	      tr->vni = t1->vni;
 	      tr->sclass = vnet_buffer2 (b1)->gbp.src_epg;
+	      tr->flags = vnet_buffer2 (b1)->gbp.flags;
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -465,6 +470,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	      tr->tunnel_index = t0 - vxm->tunnels;
 	      tr->vni = t0->vni;
 	      tr->sclass = vnet_buffer2 (b0)->gbp.src_epg;
+	      tr->flags = vnet_buffer2 (b0)->gbp.flags;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
