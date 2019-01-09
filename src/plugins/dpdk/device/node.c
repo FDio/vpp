@@ -19,6 +19,7 @@
 #include <vppinfra/xxhash.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls/packet.h>
@@ -40,7 +41,7 @@ STATIC_ASSERT ((PKT_RX_IP_CKSUM_BAD | PKT_RX_FDIR) <
 
 static_always_inline uword
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
-			  struct rte_mbuf *mb, vlib_buffer_free_list_t * fl)
+			  struct rte_mbuf *mb, vlib_buffer_t * bt)
 {
   u8 nb_seg = 1;
   struct rte_mbuf *mb_seg = 0;
@@ -59,10 +60,7 @@ dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
       ASSERT (mb_seg != 0);
 
       b_seg = vlib_buffer_from_rte_mbuf (mb_seg);
-      vlib_buffer_init_for_free_list (b_seg, fl);
-
-      ASSERT ((b_seg->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
-      ASSERT (b_seg->current_data == 0);
+      vlib_buffer_copy_template (b_seg, bt);
 
       /*
        * The driver (e.g. virtio) may not put the packet data at the start
@@ -167,17 +165,16 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 {
   u32 n_left = n_rx_packets;
   vlib_buffer_t *b[4];
-  vlib_buffer_free_list_t *fl;
   struct rte_mbuf **mb = ptd->mbufs;
   uword n_bytes = 0;
   u8 *flags, or_flags = 0;
-
-  if (maybe_multiseg)
-    fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_t bt;
 
   mb = ptd->mbufs;
   flags = ptd->flags;
 
+  /* copy template into local variable - will save per packet load */
+  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
   while (n_left >= 8)
     {
       dpdk_prefetch_buffer_x4 (mb + 4);
@@ -187,7 +184,10 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       b[2] = vlib_buffer_from_rte_mbuf (mb[2]);
       b[3] = vlib_buffer_from_rte_mbuf (mb[3]);
 
-      clib_memcpy64_x4 (b[0], b[1], b[2], b[3], &ptd->buffer_template);
+      vlib_buffer_copy_template (b[0], &bt);
+      vlib_buffer_copy_template (b[1], &bt);
+      vlib_buffer_copy_template (b[2], &bt);
+      vlib_buffer_copy_template (b[3], &bt);
 
       dpdk_prefetch_mbuf_x4 (mb + 4);
 
@@ -208,10 +208,10 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
 
       if (maybe_multiseg)
 	{
-	  n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], fl);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[1], mb[1], fl);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[2], mb[2], fl);
-	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3], fl);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[1], mb[1], &bt);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[2], mb[2], &bt);
+	  n_bytes += dpdk_process_subseq_segs (vm, b[3], mb[3], &bt);
 	}
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
@@ -227,7 +227,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
   while (n_left)
     {
       b[0] = vlib_buffer_from_rte_mbuf (mb[0]);
-      clib_memcpy_fast (b[0], &ptd->buffer_template, 64);
+      vlib_buffer_copy_template (b[0], &bt);
       or_flags |= dpdk_ol_flags_extract (mb, flags, 1);
       flags += 1;
 
@@ -235,7 +235,7 @@ dpdk_process_rx_burst (vlib_main_t * vm, dpdk_per_thread_data_t * ptd,
       n_bytes += b[0]->current_length = mb[0]->data_len;
 
       if (maybe_multiseg)
-	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], fl);
+	n_bytes += dpdk_process_subseq_segs (vm, b[0], mb[0], &bt);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 
       /* next */

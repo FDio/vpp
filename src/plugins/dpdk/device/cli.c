@@ -24,6 +24,7 @@
 #include <vppinfra/linux/sysfs.c>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls/packet.h>
@@ -381,27 +382,27 @@ static clib_error_t *
 show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
 		  vlib_cli_command_t * cmd)
 {
-  struct rte_mempool *rmp;
-  int i;
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_pool_t *bp;
 
-  for (i = 0; i < vec_len (dpdk_main.pktmbuf_pools); i++)
-    {
-      rmp = dpdk_main.pktmbuf_pools[i];
-      if (rmp)
-	{
-	  unsigned count = rte_mempool_avail_count (rmp);
-	  unsigned free_count = rte_mempool_in_use_count (rmp);
+  vec_foreach (bp, bm->buffer_pools)
+  {
+    struct rte_mempool *rmp = dpdk_mempool_by_buffer_pool_index[bp->index];
+    if (rmp)
+      {
+	unsigned count = rte_mempool_avail_count (rmp);
+	unsigned free_count = rte_mempool_in_use_count (rmp);
 
-	  vlib_cli_output (vm,
-			   "name=\"%s\"  available = %7d allocated = %7d total = %7d\n",
-			   rmp->name, (u32) count, (u32) free_count,
-			   (u32) (count + free_count));
-	}
-      else
-	{
-	  vlib_cli_output (vm, "rte_mempool is NULL (!)\n");
-	}
-    }
+	vlib_cli_output (vm,
+			 "name=\"%s\"  available = %7d allocated = %7d total = %7d\n",
+			 rmp->name, (u32) count, (u32) free_count,
+			 (u32) (count + free_count));
+      }
+    else
+      {
+	vlib_cli_output (vm, "rte_mempool is NULL (!)\n");
+      }
+  }
   return 0;
 }
 

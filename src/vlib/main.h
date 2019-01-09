@@ -116,8 +116,8 @@ typedef struct vlib_main_t
   /* Size of the heap */
   uword heap_size;
 
-  /* Pool of buffer free lists. */
-  vlib_buffer_free_list_t *buffer_free_list_pool;
+  /* buffer main structure. */
+  vlib_buffer_main_t *buffer_main;
 
   /* physical memory main structure. */
   vlib_physmem_main_t physmem_main;
@@ -172,8 +172,10 @@ typedef struct vlib_main_t
   /* Hash table to record which init functions have been called. */
   uword *init_functions_called;
 
-  /* to compare with node runtime */
+  /* thread, cpu and numa_node indices */
   u32 thread_index;
+  u32 cpu_index;
+  u32 numa_node;
 
   /* List of init functions to call, setup by constructors */
   _vlib_init_function_list_elt_t *init_function_registrations;

@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-#define rte_mbuf_from_vlib_buffer(x) (((struct rte_mbuf *)x) - 1)
-#define vlib_buffer_from_rte_mbuf(x) ((vlib_buffer_t *)(x+1))
-
 #define DPDK_NB_RX_DESC_DEFAULT   1024
 #define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_NB_RX_DESC_VIRTIO    256
@@ -51,14 +48,6 @@ _(proc-type)                                    \
 _(file-prefix)                                  \
 _(vdev)                                         \
 _(log-level)
-
-typedef struct
-{
-  /* must be first */
-  struct rte_pktmbuf_pool_private mbp_priv;
-  u8 buffer_pool_index;
-} dpdk_mempool_private_t;
-
 
 static inline void
 dpdk_get_xstats (dpdk_device_t * xd)

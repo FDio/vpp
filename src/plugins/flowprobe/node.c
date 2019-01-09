@@ -631,7 +631,6 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
   flow_report_main_t *frm = &flow_report_main;
   vlib_buffer_t *b0;
   u32 bi0;
-  vlib_buffer_free_list_t *fl;
   u32 my_cpu_number = vm->thread_index;
 
   /* Find or allocate a buffer */
@@ -650,9 +649,6 @@ flowprobe_get_buffer (vlib_main_t * vm, flowprobe_variant_t which)
       /* Initialize the buffer */
       b0 = fm->context[which].buffers_per_worker[my_cpu_number] =
 	vlib_get_buffer (vm, bi0);
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (b0, fl);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
       b0->current_data = 0;

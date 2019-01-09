@@ -19,8 +19,8 @@
 #include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
-
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
@@ -128,10 +128,8 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
       mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
       first_mb->nb_segs++;
       if (PREDICT_FALSE (b->n_add_refs))
-	{
-	  rte_mbuf_refcnt_update (mb, b->n_add_refs);
-	  b->n_add_refs = 0;
-	}
+	mb->pool =
+	  dpdk_no_cache_mempool_by_buffer_pool_index[b->buffer_pool_index];
     }
 }
 

@@ -519,7 +519,6 @@ static void *
 tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
   ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
-  b->flags &= VLIB_BUFFER_NON_DEFAULT_FREELIST;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->total_length_not_including_first_buffer = 0;
   b->current_data = 0;

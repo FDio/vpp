@@ -163,7 +163,6 @@ syslog_msg_send (syslog_msg_t * syslog_msg)
   u32 bi, msg_len, *to_next;
   u8 *tmp;
   vlib_buffer_t *b;
-  vlib_buffer_free_list_t *fl;
   vlib_frame_t *f;
   int i;
 
@@ -172,8 +171,6 @@ syslog_msg_send (syslog_msg_t * syslog_msg)
 
   b = vlib_get_buffer (vm, bi);
   clib_memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-  vlib_buffer_init_for_free_list (b, fl);
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
 
   /* one message per UDP datagram RFC5426 3.1. */

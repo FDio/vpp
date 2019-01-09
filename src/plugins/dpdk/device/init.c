@@ -22,6 +22,7 @@
 #include <vlib/log.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
@@ -273,11 +274,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 			CLIB_CACHE_LINE_BYTES);
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
-      vlib_buffer_free_list_t *fl;
       dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
-      fl = vlib_buffer_get_free_list (vm,
-				      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (&ptd->buffer_template, fl);
+      clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
       ptd->buffer_template.flags = dm->buffer_flags_template;
       vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
@@ -1472,17 +1470,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   }
 
   /* main thread 1st */
-  error = dpdk_buffer_pool_create (vm, conf->num_mbufs, rte_socket_id ());
-  if (error)
+  if ((error = dpdk_buffer_pools_create (vm, conf->num_mbufs)))
     return error;
-
-  for (i = 0; i < RTE_MAX_LCORE; i++)
-    {
-      error = dpdk_buffer_pool_create (vm, conf->num_mbufs,
-				       rte_lcore_to_socket_id (i));
-      if (error)
-	return error;
-    }
 
 done:
   return error;
