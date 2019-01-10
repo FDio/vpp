@@ -789,11 +789,15 @@ if __name__ == '__main__':
     if attempts > 1:
         print("Perform %s attempts to pass the suite..." % attempts)
 
-    if run_interactive:
+    if run_interactive and len(suites):
         # don't fork if requiring interactive terminal
+        full_suite = unittest.TestSuite()
+        map(full_suite.addTests, suites)
+        # for suite in suites:
+        #     full_suite.addTests(suite)
         result = VppTestRunner(verbosity=verbose,
                                failfast=failfast,
-                               print_summary=True).run(suites[0])
+                               print_summary=True).run(full_suite)
         was_successful = result.wasSuccessful()
         if not was_successful:
             for test_case_info in result.failed_test_cases_info:
