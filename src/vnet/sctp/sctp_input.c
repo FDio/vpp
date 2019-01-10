@@ -2114,7 +2114,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index;
-  u8 is_filtered;
+  u8 result;
   sctp_main_t *tm = vnet_get_sctp_main ();
 
   from = vlib_frame_vector_args (from_frame);
@@ -2175,7 +2175,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 							  sctp_hdr->src_port,
 							  TRANSPORT_PROTO_SCTP,
 							  my_thread_index,
-							  &is_filtered);
+							  &result);
 	    }
 	  else
 	    {
@@ -2198,7 +2198,7 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 							  sctp_hdr->src_port,
 							  TRANSPORT_PROTO_SCTP,
 							  my_thread_index,
-							  &is_filtered);
+							  &result);
 	    }
 
 	  /* Length check */
@@ -2256,10 +2256,10 @@ sctp46_input_dispatcher (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (is_filtered)
+	      if (result)
 		{
 		  next0 = SCTP_INPUT_NEXT_DROP;
-		  error0 = SCTP_ERROR_FILTERED;
+		  error0 = SCTP_ERROR_NONE + result;
 		}
 	      else if ((is_ip4 && tm->punt_unknown4) ||
 		       (!is_ip4 && tm->punt_unknown6))

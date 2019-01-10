@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 tcp_error (NONE, "no error")
+tcp_error (WRONG_THREAD, "Wrong worker thread")
+tcp_error (FILTERED, "Packets filtered")
 tcp_error (LENGTH, "inconsistent ip/tcp lengths")
 tcp_error (NO_LISTENER, "no listener for dst port")
 tcp_error (LOOKUP_DROPS, "lookup drops")
@@ -40,7 +42,6 @@ tcp_error (INVALID_CONNECTION, "Invalid connection")
 tcp_error (CONNECTION_CLOSED, "Connection closed")
 tcp_error (CREATE_EXISTS, "Connection already exists")
 tcp_error (PUNT, "Packets punted")
-tcp_error (FILTERED, "Packets filtered")
 tcp_error (OPTIONS, "Could not parse options")
 tcp_error (PAWS, "PAWS check failed")
 tcp_error (RCV_WND, "Segment not in receive window")
