@@ -852,7 +852,7 @@ transport_connection_t *
 session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
 			       ip4_address_t * rmt, u16 lcl_port,
 			       u16 rmt_port, u8 proto, u32 thread_index,
-			       u8 * is_filtered)
+			       u8 * result)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -871,7 +871,11 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
     {
-      ASSERT ((u32) (kv4.value >> 32) == thread_index);
+      if (PREDICT_FALSE ((u32) (kv4.value >> 32) != thread_index))
+	{
+	  *result = SESSION_LOOKUP_RESULT_WRONG_THREAD;
+	  return 0;
+	}
       s = session_get (kv4.value & 0xFFFFFFFFULL, thread_index);
       return tp_vfts[proto].get_connection (s->connection_index,
 					    thread_index);
@@ -891,8 +895,11 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
 					      rmt, lcl_port, rmt_port);
   if (session_lookup_action_index_is_valid (action_index))
     {
-      if ((*is_filtered = (action_index == SESSION_RULES_TABLE_ACTION_DROP)))
-	return 0;
+      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	{
+	  *result = SESSION_LOOKUP_RESULT_FILTERED;
+	  return 0;
+	}
       if ((s = session_lookup_action_to_session (action_index,
 						 FIB_PROTOCOL_IP4, proto)))
 	return tp_vfts[proto].get_listener (s->connection_index);
@@ -912,9 +919,8 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
 /**
  * Lookup connection with ip4 and transport layer information
  *
- * Not optimized. This is used on the fast path so it needs to be fast.
- * Thereby, duplication of code and 'hacks' allowed. Lookup logic is identical
- * to that of @ref session_lookup_connection_wt4
+ * Not optimized. Lookup logic is identical to that of
+ * @ref session_lookup_connection_wt4
  *
  * @param fib_index	index of the fib wherein the connection was received
  * @param lcl		local ip4 address
@@ -1070,7 +1076,7 @@ transport_connection_t *
 session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
 			       ip6_address_t * rmt, u16 lcl_port,
 			       u16 rmt_port, u8 proto, u32 thread_index,
-			       u8 * is_filtered)
+			       u8 * result)
 {
   session_table_t *st;
   stream_session_t *s;
@@ -1087,6 +1093,11 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
   if (rv == 0)
     {
       ASSERT ((u32) (kv6.value >> 32) == thread_index);
+      if (PREDICT_FALSE ((u32) (kv6.value >> 32) != thread_index))
+	{
+	  *result = SESSION_LOOKUP_RESULT_WRONG_THREAD;
+	  return 0;
+	}
       s = session_get (kv6.value & 0xFFFFFFFFULL, thread_index);
       return tp_vfts[proto].get_connection (s->connection_index,
 					    thread_index);
@@ -1102,8 +1113,11 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
 					      rmt, lcl_port, rmt_port);
   if (session_lookup_action_index_is_valid (action_index))
     {
-      if ((*is_filtered = (action_index == SESSION_RULES_TABLE_ACTION_DROP)))
-	return 0;
+      if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+	{
+	  *result = SESSION_LOOKUP_RESULT_FILTERED;
+	  return 0;
+	}
       if ((s = session_lookup_action_to_session (action_index,
 						 FIB_PROTOCOL_IP6, proto)))
 	return tp_vfts[proto].get_listener (s->connection_index);

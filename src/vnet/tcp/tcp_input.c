@@ -3295,7 +3295,7 @@ tcp_input_trace_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
 static void
 tcp_input_set_error_next (tcp_main_t * tm, u16 * next, u32 * error, u8 is_ip4)
 {
-  if (*error == TCP_ERROR_FILTERED)
+  if (*error == TCP_ERROR_FILTERED || *error == TCP_ERROR_WRONG_THREAD)
     {
       *next = TCP_INPUT_NEXT_DROP;
     }
@@ -3319,7 +3319,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
   int n_advance_bytes, n_data_bytes;
   transport_connection_t *tc;
   tcp_header_t *tcp;
-  u8 is_filtered = 0;
+  u8 result = 0;
 
   if (is_ip4)
     {
@@ -3345,7 +3345,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
       tc = session_lookup_connection_wt4 (fib_index, &ip4->dst_address,
 					  &ip4->src_address, tcp->dst_port,
 					  tcp->src_port, TRANSPORT_PROTO_TCP,
-					  thread_index, &is_filtered);
+					  thread_index, &result);
     }
   else
     {
@@ -3371,7 +3371,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
       tc = session_lookup_connection_wt6 (fib_index, &ip6->dst_address,
 					  &ip6->src_address, tcp->dst_port,
 					  tcp->src_port, TRANSPORT_PROTO_TCP,
-					  thread_index, &is_filtered);
+					  thread_index, &result);
     }
 
   vnet_buffer (b)->tcp.seq_number = clib_net_to_host_u32 (tcp->seq_number);
@@ -3382,7 +3382,7 @@ tcp_input_lookup_buffer (vlib_buffer_t * b, u8 thread_index, u32 * error,
     + n_data_bytes;
   vnet_buffer (b)->tcp.flags = 0;
 
-  *error = is_filtered ? TCP_ERROR_FILTERED : *error;
+  *error = result ? TCP_ERROR_NONE + result : *error;
 
   return tcp_get_connection_from_transport (tc);
 }

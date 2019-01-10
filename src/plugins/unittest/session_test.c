@@ -1194,7 +1194,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 				      &is_filtered);
   SESSION_TEST ((tc == 0), "lookup for 1.2.3.4/32 1234 5.6.7.8/16 4321 "
 		"should fail (deny rule)");
-  SESSION_TEST ((is_filtered == 1), "lookup should be filtered (deny)");
+  SESSION_TEST ((is_filtered == SESSION_LOOKUP_RESULT_FILTERED),
+		"lookup should be filtered (deny)");
 
   handle = session_lookup_local_endpoint (local_ns_index, &sep);
   SESSION_TEST ((handle == SESSION_DROP_HANDLE), "lookup for 1.2.3.4/32 1234 "
