@@ -3369,7 +3369,7 @@ class VppPapiProvider(object):
                         {'spd_index': spd_index if spd_index else 0,
                          'spd_index_valid': 1 if spd_index else 0})
 
-    def ipsec_sad_add_del_entry(self,
+    def ipsec_sad_entry_add_del(self,
                                 sad_id,
                                 spi,
                                 integrity_algorithm,
@@ -3379,12 +3379,8 @@ class VppPapiProvider(object):
                                 protocol,
                                 tunnel_src_address='',
                                 tunnel_dst_address='',
-                                is_tunnel=1,
-                                is_tunnel_ipv6=0,
-                                is_add=1,
-                                udp_encap=0,
-                                use_anti_replay=0,
-                                use_extended_sequence_number=0):
+                                flags=0,
+                                is_add=1):
         """ IPSEC SA add/del
         :param sad_id: security association ID
         :param spi: security param index of the SA in decimal
@@ -3401,31 +3397,35 @@ class VppPapiProvider(object):
              crypto and ipsec algorithms
         """
         return self.api(
-            self.papi.ipsec_sad_add_del_entry,
-            {'sad_id': sad_id,
-             'spi': spi,
-             'tunnel_src_address': tunnel_src_address,
-             'tunnel_dst_address': tunnel_dst_address,
-             'protocol': protocol,
-             'integrity_algorithm': integrity_algorithm,
-             'integrity_key_length': len(integrity_key),
-             'integrity_key': integrity_key,
-             'crypto_algorithm': crypto_algorithm,
-             'crypto_key_length': len(crypto_key) if crypto_key is not None
-             else 0,
-             'crypto_key': crypto_key,
-             'is_add': is_add,
-             'is_tunnel': is_tunnel,
-             'is_tunnel_ipv6': is_tunnel_ipv6,
-             'udp_encap': udp_encap,
-             'use_extended_sequence_number': use_extended_sequence_number,
-             'use_anti_replay': use_anti_replay})
+            self.papi.ipsec_sad_entry_add_del,
+            {
+                'is_add': is_add,
+                'entry':
+                {
+                    'sad_id': sad_id,
+                    'spi': spi,
+                    'tunnel_src': tunnel_src_address,
+                    'tunnel_dst': tunnel_dst_address,
+                    'protocol': protocol,
+                    'integrity_algorithm': integrity_algorithm,
+                    'integrity_key': {
+                        'length': len(integrity_key),
+                        'data': integrity_key,
+                    },
+                    'crypto_algorithm': crypto_algorithm,
+                    'crypto_key': {
+                        'length': len(crypto_key),
+                        'data': crypto_key,
+                    },
+                    'flags': flags,
+                }
+            })
 
     def ipsec_sa_dump(self, sa_id=None):
         return self.api(self.papi.ipsec_sa_dump,
                         {'sa_id': sa_id if sa_id else 0xffffffff})
 
-    def ipsec_spd_add_del_entry(self,
+    def ipsec_spd_entry_add_del(self,
                                 spd_id,
                                 sa_id,
                                 local_address_start,
@@ -3464,24 +3464,28 @@ class VppPapiProvider(object):
         :param is_add: (Default value = 1)
         """
         return self.api(
-            self.papi.ipsec_spd_add_del_entry,
-            {'spd_id': spd_id,
-             'sa_id': sa_id,
-             'local_address_start': local_address_start,
-             'local_address_stop': local_address_stop,
-             'remote_address_start': remote_address_start,
-             'remote_address_stop': remote_address_stop,
-             'local_port_start': local_port_start,
-             'local_port_stop': local_port_stop,
-             'remote_port_start': remote_port_start,
-             'remote_port_stop': remote_port_stop,
-             'is_add': is_add,
-             'protocol': protocol,
-             'policy': policy,
-             'priority': priority,
-             'is_outbound': is_outbound,
-             'is_ipv6': is_ipv6,
-             'is_ip_any': is_ip_any})
+            self.papi.ipsec_spd_entry_add_del,
+            {
+                'is_add': is_add,
+                'entry':
+                {
+                    'spd_id': spd_id,
+                    'sa_id': sa_id,
+                    'local_address_start': local_address_start,
+                    'local_address_stop': local_address_stop,
+                    'remote_address_start': remote_address_start,
+                    'remote_address_stop': remote_address_stop,
+                    'local_port_start': local_port_start,
+                    'local_port_stop': local_port_stop,
+                    'remote_port_start': remote_port_start,
+                    'remote_port_stop': remote_port_stop,
+                    'protocol': protocol,
+                    'policy': policy,
+                    'priority': priority,
+                    'is_outbound': is_outbound,
+                    'is_ip_any': is_ip_any
+                }
+            })
 
     def ipsec_spd_dump(self, spd_id, sa_id=0xffffffff):
         return self.api(self.papi.ipsec_spd_dump,

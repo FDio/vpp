@@ -361,20 +361,6 @@ unformat_ipsec_policy_action (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-uword
-unformat_ipsec_crypto_alg (unformat_input_t * input, va_list * args)
-{
-  u32 *r = va_arg (*args, u32 *);
-
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_CRYPTO_ALG_##f;
-  foreach_ipsec_crypto_alg
-#undef _
-    else
-    return 0;
-  return 1;
-}
-
 u8 *
 format_ipsec_crypto_alg (u8 * s, va_list * args)
 {
@@ -390,20 +376,6 @@ format_ipsec_crypto_alg (u8 * s, va_list * args)
       return format (s, "unknown");
     }
   return format (s, "%s", t);
-}
-
-uword
-unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args)
-{
-  u32 *r = va_arg (*args, u32 *);
-
-  if (0);
-#define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_INTEG_ALG_##f;
-  foreach_ipsec_integ_alg
-#undef _
-    else
-    return 0;
-  return 1;
 }
 
 u8 *
@@ -472,6 +444,34 @@ api_unformat_hw_if_index (unformat_input_t * input, va_list * args)
 }
 
 #endif /* VPP_API_TEST_BUILTIN */
+
+uword
+unformat_ipsec_api_crypto_alg (unformat_input_t * input, va_list * args)
+{
+  u32 *r = va_arg (*args, u32 *);
+
+  if (0);
+#define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_API_CRYPTO_ALG_##f;
+  foreach_ipsec_crypto_alg
+#undef _
+    else
+    return 0;
+  return 1;
+}
+
+uword
+unformat_ipsec_api_integ_alg (unformat_input_t * input, va_list * args)
+{
+  u32 *r = va_arg (*args, u32 *);
+
+  if (0);
+#define _(v,f,s) else if (unformat (input, s)) *r = IPSEC_API_INTEG_ALG_##f;
+  foreach_ipsec_integ_alg
+#undef _
+    else
+    return 0;
+  return 1;
+}
 
 static uword
 unformat_policer_rate_type (unformat_input_t * input, va_list * args)
@@ -5208,8 +5208,8 @@ _(want_l2_macs_events_reply)                            \
 _(input_acl_set_interface_reply)                        \
 _(ipsec_spd_add_del_reply)                              \
 _(ipsec_interface_add_del_spd_reply)                    \
-_(ipsec_spd_add_del_entry_reply)                        \
-_(ipsec_sad_add_del_entry_reply)                        \
+_(ipsec_spd_entry_add_del_reply)                        \
+_(ipsec_sad_entry_add_del_reply)                        \
 _(ipsec_sa_set_key_reply)                               \
 _(ipsec_tunnel_if_add_del_reply)                        \
 _(ipsec_tunnel_if_set_key_reply)                        \
@@ -5463,8 +5463,8 @@ _(IP_ADDRESS_DETAILS, ip_address_details)                               \
 _(IP_DETAILS, ip_details)                                               \
 _(IPSEC_SPD_ADD_DEL_REPLY, ipsec_spd_add_del_reply)                     \
 _(IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply) \
-_(IPSEC_SPD_ADD_DEL_ENTRY_REPLY, ipsec_spd_add_del_entry_reply)         \
-_(IPSEC_SAD_ADD_DEL_ENTRY_REPLY, ipsec_sad_add_del_entry_reply)         \
+_(IPSEC_SPD_ENTRY_ADD_DEL_REPLY, ipsec_spd_entry_add_del_reply)         \
+_(IPSEC_SAD_ENTRY_ADD_DEL_REPLY, ipsec_sad_entry_add_del_reply)         \
 _(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
 _(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
@@ -14829,25 +14829,23 @@ api_ipsec_interface_add_del_spd (vat_main_t * vam)
 }
 
 static int
-api_ipsec_spd_add_del_entry (vat_main_t * vam)
+api_ipsec_spd_entry_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_ipsec_spd_add_del_entry_t *mp;
+  vl_api_ipsec_spd_entry_add_del_t *mp;
   u8 is_add = 1, is_outbound = 0, is_ipv6 = 0, is_ip_any = 1;
   u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
   i32 priority = 0;
   u32 rport_start = 0, rport_stop = (u32) ~ 0;
   u32 lport_start = 0, lport_stop = (u32) ~ 0;
-  ip4_address_t laddr4_start, laddr4_stop, raddr4_start, raddr4_stop;
-  ip6_address_t laddr6_start, laddr6_stop, raddr6_start, raddr6_stop;
+  vl_api_address_t laddr_start = { }, laddr_stop =
+  {
+  }, raddr_start =
+  {
+  }, raddr_stop =
+  {
+  };
   int ret;
-
-  laddr4_start.as_u32 = raddr4_start.as_u32 = 0;
-  laddr4_stop.as_u32 = raddr4_stop.as_u32 = (u32) ~ 0;
-  laddr6_start.as_u64[0] = raddr6_start.as_u64[0] = 0;
-  laddr6_start.as_u64[1] = raddr6_start.as_u64[1] = 0;
-  laddr6_stop.as_u64[0] = raddr6_stop.as_u64[0] = (u64) ~ 0;
-  laddr6_stop.as_u64[1] = raddr6_stop.as_u64[1] = (u64) ~ 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -14873,58 +14871,18 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
 	;
       else if (unformat (i, "rport_stop %d", &rport_stop))
 	;
-      else
-	if (unformat
-	    (i, "laddr_start %U", unformat_ip4_address, &laddr4_start))
-	{
-	  is_ipv6 = 0;
-	  is_ip_any = 0;
-	}
-      else
-	if (unformat (i, "laddr_stop %U", unformat_ip4_address, &laddr4_stop))
-	{
-	  is_ipv6 = 0;
-	  is_ip_any = 0;
-	}
-      else
-	if (unformat
-	    (i, "raddr_start %U", unformat_ip4_address, &raddr4_start))
-	{
-	  is_ipv6 = 0;
-	  is_ip_any = 0;
-	}
-      else
-	if (unformat (i, "raddr_stop %U", unformat_ip4_address, &raddr4_stop))
-	{
-	  is_ipv6 = 0;
-	  is_ip_any = 0;
-	}
-      else
-	if (unformat
-	    (i, "laddr_start %U", unformat_ip6_address, &laddr6_start))
-	{
-	  is_ipv6 = 1;
-	  is_ip_any = 0;
-	}
-      else
-	if (unformat (i, "laddr_stop %U", unformat_ip6_address, &laddr6_stop))
-	{
-	  is_ipv6 = 1;
-	  is_ip_any = 0;
-	}
-      else
-	if (unformat
-	    (i, "raddr_start %U", unformat_ip6_address, &raddr6_start))
-	{
-	  is_ipv6 = 1;
-	  is_ip_any = 0;
-	}
-      else
-	if (unformat (i, "raddr_stop %U", unformat_ip6_address, &raddr6_stop))
-	{
-	  is_ipv6 = 1;
-	  is_ip_any = 0;
-	}
+      else if (unformat (i, "laddr_start %U",
+			 unformat_vl_api_address, &laddr_start))
+	is_ip_any = 0;
+      else if (unformat (i, "laddr_stop %U", unformat_vl_api_address,
+			 &laddr_stop))
+	is_ip_any = 0;
+      else if (unformat (i, "raddr_start %U", unformat_vl_api_address,
+			 &raddr_start))
+	is_ip_any = 0;
+      else if (unformat (i, "raddr_stop %U", unformat_vl_api_address,
+			 &raddr_stop))
+	is_ip_any = 0;
       else
 	if (unformat (i, "action %U", unformat_ipsec_policy_action, &policy))
 	{
@@ -14942,65 +14900,51 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
 
     }
 
-  M (IPSEC_SPD_ADD_DEL_ENTRY, mp);
+  M (IPSEC_SPD_ENTRY_ADD_DEL, mp);
 
-  mp->spd_id = ntohl (spd_id);
-  mp->priority = ntohl (priority);
-  mp->is_outbound = is_outbound;
-
-  mp->is_ipv6 = is_ipv6;
-  if (is_ipv6 || is_ip_any)
-    {
-      clib_memcpy (mp->remote_address_start, &raddr6_start,
-		   sizeof (ip6_address_t));
-      clib_memcpy (mp->remote_address_stop, &raddr6_stop,
-		   sizeof (ip6_address_t));
-      clib_memcpy (mp->local_address_start, &laddr6_start,
-		   sizeof (ip6_address_t));
-      clib_memcpy (mp->local_address_stop, &laddr6_stop,
-		   sizeof (ip6_address_t));
-    }
-  else
-    {
-      clib_memcpy (mp->remote_address_start, &raddr4_start,
-		   sizeof (ip4_address_t));
-      clib_memcpy (mp->remote_address_stop, &raddr4_stop,
-		   sizeof (ip4_address_t));
-      clib_memcpy (mp->local_address_start, &laddr4_start,
-		   sizeof (ip4_address_t));
-      clib_memcpy (mp->local_address_stop, &laddr4_stop,
-		   sizeof (ip4_address_t));
-    }
-  mp->protocol = (u8) protocol;
-  mp->local_port_start = ntohs ((u16) lport_start);
-  mp->local_port_stop = ntohs ((u16) lport_stop);
-  mp->remote_port_start = ntohs ((u16) rport_start);
-  mp->remote_port_stop = ntohs ((u16) rport_stop);
-  mp->policy = (u8) policy;
-  mp->sa_id = ntohl (sa_id);
   mp->is_add = is_add;
-  mp->is_ip_any = is_ip_any;
+
+  mp->entry.spd_id = ntohl (spd_id);
+  mp->entry.priority = ntohl (priority);
+  mp->entry.is_outbound = is_outbound;
+
+  clib_memcpy (&mp->entry.remote_address_start, &raddr_start,
+	       sizeof (vl_api_address_t));
+  clib_memcpy (&mp->entry.remote_address_stop, &raddr_stop,
+	       sizeof (vl_api_address_t));
+  clib_memcpy (&mp->entry.local_address_start, &laddr_start,
+	       sizeof (vl_api_address_t));
+  clib_memcpy (&mp->entry.local_address_stop, &laddr_stop,
+	       sizeof (vl_api_address_t));
+
+  mp->entry.protocol = (u8) protocol;
+  mp->entry.local_port_start = ntohs ((u16) lport_start);
+  mp->entry.local_port_stop = ntohs ((u16) lport_stop);
+  mp->entry.remote_port_start = ntohs ((u16) rport_start);
+  mp->entry.remote_port_stop = ntohs ((u16) rport_stop);
+  mp->entry.policy = (u8) policy;
+  mp->entry.sa_id = ntohl (sa_id);
+  mp->entry.is_ip_any = is_ip_any;
+
   S (mp);
   W (ret);
   return ret;
 }
 
 static int
-api_ipsec_sad_add_del_entry (vat_main_t * vam)
+api_ipsec_sad_entry_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_ipsec_sad_add_del_entry_t *mp;
+  vl_api_ipsec_sad_entry_add_del_t *mp;
   u32 sad_id = 0, spi = 0;
   u8 *ck = 0, *ik = 0;
   u8 is_add = 1;
 
-  u8 protocol = IPSEC_PROTOCOL_AH;
-  u8 is_tunnel = 0, is_tunnel_ipv6 = 0;
-  u32 crypto_alg = 0, integ_alg = 0;
-  ip4_address_t tun_src4;
-  ip4_address_t tun_dst4;
-  ip6_address_t tun_src6;
-  ip6_address_t tun_dst6;
+  vl_api_ipsec_crypto_alg_t crypto_alg = IPSEC_API_CRYPTO_ALG_NONE;
+  vl_api_ipsec_integ_alg_t integ_alg = IPSEC_API_INTEG_ALG_NONE;
+  vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
+  vl_api_ipsec_proto_t protocol = IPSEC_API_PROTO_AH;
+  vl_api_address_t tun_src, tun_dst;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -15012,51 +14956,30 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
       else if (unformat (i, "spi %d", &spi))
 	;
       else if (unformat (i, "esp"))
-	protocol = IPSEC_PROTOCOL_ESP;
-      else if (unformat (i, "tunnel_src %U", unformat_ip4_address, &tun_src4))
+	protocol = IPSEC_API_PROTO_ESP;
+      else
+	if (unformat (i, "tunnel_src %U", unformat_vl_api_address, &tun_src))
 	{
-	  is_tunnel = 1;
-	  is_tunnel_ipv6 = 0;
-	}
-      else if (unformat (i, "tunnel_dst %U", unformat_ip4_address, &tun_dst4))
-	{
-	  is_tunnel = 1;
-	  is_tunnel_ipv6 = 0;
-	}
-      else if (unformat (i, "tunnel_src %U", unformat_ip6_address, &tun_src6))
-	{
-	  is_tunnel = 1;
-	  is_tunnel_ipv6 = 1;
-	}
-      else if (unformat (i, "tunnel_dst %U", unformat_ip6_address, &tun_dst6))
-	{
-	  is_tunnel = 1;
-	  is_tunnel_ipv6 = 1;
+	  flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL;
+	  if (ADDRESS_IP6 == tun_src.af)
+	    flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
 	}
       else
-	if (unformat
-	    (i, "crypto_alg %U", unformat_ipsec_crypto_alg, &crypto_alg))
+	if (unformat (i, "tunnel_dst %U", unformat_vl_api_address, &tun_dst))
 	{
-	  if (crypto_alg >= IPSEC_CRYPTO_N_ALG)
-	    {
-	      clib_warning ("unsupported crypto-alg: '%U'",
-			    format_ipsec_crypto_alg, crypto_alg);
-	      return -99;
-	    }
+	  flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL;
+	  if (ADDRESS_IP6 == tun_src.af)
+	    flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
 	}
+      else
+	if (unformat (i, "crypto_alg %U",
+		      unformat_ipsec_api_crypto_alg, &crypto_alg))
+	;
       else if (unformat (i, "crypto_key %U", unformat_hex_string, &ck))
 	;
-      else
-	if (unformat
-	    (i, "integ_alg %U", unformat_ipsec_integ_alg, &integ_alg))
-	{
-	  if (integ_alg >= IPSEC_INTEG_N_ALG)
-	    {
-	      clib_warning ("unsupported integ-alg: '%U'",
-			    format_ipsec_integ_alg, integ_alg);
-	      return -99;
-	    }
-	}
+      else if (unformat (i, "integ_alg %U",
+			 unformat_ipsec_api_integ_alg, &integ_alg))
+	;
       else if (unformat (i, "integ_key %U", unformat_hex_string, &ik))
 	;
       else
@@ -15067,46 +14990,37 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 
     }
 
-  M (IPSEC_SAD_ADD_DEL_ENTRY, mp);
+  M (IPSEC_SAD_ENTRY_ADD_DEL, mp);
 
-  mp->sad_id = ntohl (sad_id);
   mp->is_add = is_add;
-  mp->protocol = protocol;
-  mp->spi = ntohl (spi);
-  mp->is_tunnel = is_tunnel;
-  mp->is_tunnel_ipv6 = is_tunnel_ipv6;
-  mp->crypto_algorithm = crypto_alg;
-  mp->integrity_algorithm = integ_alg;
-  mp->crypto_key_length = vec_len (ck);
-  mp->integrity_key_length = vec_len (ik);
+  mp->entry.sad_id = ntohl (sad_id);
+  mp->entry.protocol = protocol;
+  mp->entry.spi = ntohl (spi);
+  mp->entry.flags = flags;
 
-  if (mp->crypto_key_length > sizeof (mp->crypto_key))
-    mp->crypto_key_length = sizeof (mp->crypto_key);
+  mp->entry.crypto_algorithm = crypto_alg;
+  mp->entry.integrity_algorithm = integ_alg;
+  mp->entry.crypto_key.length = vec_len (ck);
+  mp->entry.integrity_key.length = vec_len (ik);
 
-  if (mp->integrity_key_length > sizeof (mp->integrity_key))
-    mp->integrity_key_length = sizeof (mp->integrity_key);
+  if (mp->entry.crypto_key.length > sizeof (mp->entry.crypto_key.data))
+    mp->entry.crypto_key.length = sizeof (mp->entry.crypto_key.data);
+
+  if (mp->entry.integrity_key.length > sizeof (mp->entry.integrity_key.data))
+    mp->entry.integrity_key.length = sizeof (mp->entry.integrity_key.data);
 
   if (ck)
-    clib_memcpy (mp->crypto_key, ck, mp->crypto_key_length);
+    clib_memcpy (mp->entry.crypto_key.data, ck, mp->entry.crypto_key.length);
   if (ik)
-    clib_memcpy (mp->integrity_key, ik, mp->integrity_key_length);
+    clib_memcpy (mp->entry.integrity_key.data, ik,
+		 mp->entry.integrity_key.length);
 
-  if (is_tunnel)
+  if (flags & IPSEC_API_SAD_FLAG_IS_TUNNEL)
     {
-      if (is_tunnel_ipv6)
-	{
-	  clib_memcpy (mp->tunnel_src_address, &tun_src6,
-		       sizeof (ip6_address_t));
-	  clib_memcpy (mp->tunnel_dst_address, &tun_dst6,
-		       sizeof (ip6_address_t));
-	}
-      else
-	{
-	  clib_memcpy (mp->tunnel_src_address, &tun_src4,
-		       sizeof (ip4_address_t));
-	  clib_memcpy (mp->tunnel_dst_address, &tun_dst4,
-		       sizeof (ip4_address_t));
-	}
+      clib_memcpy (&mp->entry.tunnel_src, &tun_src,
+		   sizeof (mp->entry.tunnel_src));
+      clib_memcpy (&mp->entry.tunnel_dst, &tun_dst,
+		   sizeof (mp->entry.tunnel_dst));
     }
 
   S (mp);
@@ -15141,19 +15055,19 @@ api_ipsec_sa_set_key (vat_main_t * vam)
   M (IPSEC_SA_SET_KEY, mp);
 
   mp->sa_id = ntohl (sa_id);
-  mp->crypto_key_length = vec_len (ck);
-  mp->integrity_key_length = vec_len (ik);
+  mp->crypto_key.length = vec_len (ck);
+  mp->integrity_key.length = vec_len (ik);
 
-  if (mp->crypto_key_length > sizeof (mp->crypto_key))
-    mp->crypto_key_length = sizeof (mp->crypto_key);
+  if (mp->crypto_key.length > sizeof (mp->crypto_key.data))
+    mp->crypto_key.length = sizeof (mp->crypto_key.data);
 
-  if (mp->integrity_key_length > sizeof (mp->integrity_key))
-    mp->integrity_key_length = sizeof (mp->integrity_key);
+  if (mp->integrity_key.length > sizeof (mp->integrity_key.data))
+    mp->integrity_key.length = sizeof (mp->integrity_key.data);
 
   if (ck)
-    clib_memcpy (mp->crypto_key, ck, mp->crypto_key_length);
+    clib_memcpy (mp->crypto_key.data, ck, mp->crypto_key.length);
   if (ik)
-    clib_memcpy (mp->integrity_key, ik, mp->integrity_key_length);
+    clib_memcpy (mp->integrity_key.data, ik, mp->integrity_key.length);
 
   S (mp);
   W (ret);
@@ -15205,7 +15119,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	;
       else
 	if (unformat
-	    (i, "crypto_alg %U", unformat_ipsec_crypto_alg, &crypto_alg))
+	    (i, "crypto_alg %U", unformat_ipsec_api_crypto_alg, &crypto_alg))
 	{
 	  if (crypto_alg >= IPSEC_CRYPTO_N_ALG)
 	    {
@@ -15216,7 +15130,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
 	}
       else
 	if (unformat
-	    (i, "integ_alg %U", unformat_ipsec_integ_alg, &integ_alg))
+	    (i, "integ_alg %U", unformat_ipsec_api_integ_alg, &integ_alg))
 	{
 	  if (integ_alg >= IPSEC_INTEG_N_ALG)
 	    {
@@ -15427,15 +15341,20 @@ api_ipsec_tunnel_if_set_key (vat_main_t * vam)
       if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
 	;
       else
-	if (unformat (i, "local crypto %U", unformat_ipsec_crypto_alg, &alg))
+	if (unformat
+	    (i, "local crypto %U", unformat_ipsec_api_crypto_alg, &alg))
 	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
       else
-	if (unformat (i, "remote crypto %U", unformat_ipsec_crypto_alg, &alg))
+	if (unformat
+	    (i, "remote crypto %U", unformat_ipsec_api_crypto_alg, &alg))
 	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO;
-      else if (unformat (i, "local integ %U", unformat_ipsec_integ_alg, &alg))
+      else
+	if (unformat
+	    (i, "local integ %U", unformat_ipsec_api_integ_alg, &alg))
 	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG;
       else
-	if (unformat (i, "remote integ %U", unformat_ipsec_integ_alg, &alg))
+	if (unformat
+	    (i, "remote integ %U", unformat_ipsec_api_integ_alg, &alg))
 	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
       else if (unformat (i, "%U", unformat_hex_string, &key))
 	;
@@ -23239,10 +23158,10 @@ _(ip_dump, "ipv4 | ipv6")                                               \
 _(ipsec_spd_add_del, "spd_id <n> [del]")                                \
 _(ipsec_interface_add_del_spd, "(<intfc> | sw_if_index <id>)\n"         \
   "  spid_id <n> ")                                                     \
-_(ipsec_sad_add_del_entry, "sad_id <n> spi <n> crypto_alg <alg>\n"      \
+_(ipsec_sad_entry_add_del, "sad_id <n> spi <n> crypto_alg <alg>\n"      \
   "  crypto_key <hex> tunnel_src <ip4|ip6> tunnel_dst <ip4|ip6>\n"      \
   "  integ_alg <alg> integ_key <hex>")                                  \
-_(ipsec_spd_add_del_entry, "spd_id <n> priority <n> action <action>\n"  \
+_(ipsec_spd_entry_add_del, "spd_id <n> priority <n> action <action>\n"  \
   "  (inbound|outbound) [sa_id <n>] laddr_start <ip4|ip6>\n"            \
   "  laddr_stop <ip4|ip6> raddr_start <ip4|ip6> raddr_stop <ip4|ip6>\n" \
   "  [lport_start <n> lport_stop <n>] [rport_start <n> rport_stop <n>]" ) \
