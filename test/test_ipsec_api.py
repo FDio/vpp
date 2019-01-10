@@ -1,7 +1,8 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from template_ipsec import IPsecIPv4Params
+from template_ipsec import TemplateIpsec, IPsecIPv4Params
+from vpp_papi import VppEnum
 
 
 class IpsecApiTestCase(VppTestCase):
@@ -13,8 +14,10 @@ class IpsecApiTestCase(VppTestCase):
         self.pg0.config_ip4()
         self.pg0.admin_up()
 
-        self.vpp_esp_protocol = 1
-        self.vpp_ah_protocol = 0
+        self.vpp_esp_protocol = (VppEnum.vl_api_ipsec_proto_t.
+                                 IPSEC_API_PROTO_ESP)
+        self.vpp_ah_protocol = (VppEnum.vl_api_ipsec_proto_t.
+                                IPSEC_API_PROTO_AH)
         self.ipv4_params = IPsecIPv4Params()
 
     def tearDown(self):
@@ -59,24 +62,22 @@ class IpsecApiTestCase(VppTestCase):
         crypt_algo_vpp_id = params.crypt_algo_vpp_id
         crypt_key = params.crypt_key
 
-        self.vapi.ipsec_sad_add_del_entry(scapy_tun_sa_id, scapy_tun_spi,
+        self.vapi.ipsec_sad_entry_add_del(scapy_tun_sa_id, scapy_tun_spi,
                                           auth_algo_vpp_id, auth_key,
                                           crypt_algo_vpp_id, crypt_key,
                                           self.vpp_ah_protocol,
-                                          self.pg0.local_addr_n[addr_type],
-                                          self.pg0.remote_addr_n[addr_type],
-                                          is_tunnel=1, is_tunnel_ipv6=is_ipv6)
+                                          self.pg0.local_addr[addr_type],
+                                          self.pg0.remote_addr[addr_type])
         with self.vapi.assert_negative_api_retval():
             self.vapi.ipsec_select_backend(
                 protocol=self.vpp_ah_protocol, index=0)
 
-        self.vapi.ipsec_sad_add_del_entry(scapy_tun_sa_id, scapy_tun_spi,
+        self.vapi.ipsec_sad_entry_add_del(scapy_tun_sa_id, scapy_tun_spi,
                                           auth_algo_vpp_id, auth_key,
                                           crypt_algo_vpp_id, crypt_key,
                                           self.vpp_ah_protocol,
-                                          self.pg0.local_addr_n[addr_type],
-                                          self.pg0.remote_addr_n[addr_type],
-                                          is_tunnel=1, is_tunnel_ipv6=is_ipv6,
+                                          self.pg0.local_addr[addr_type],
+                                          self.pg0.remote_addr[addr_type],
                                           is_add=0)
         self.vapi.ipsec_select_backend(
             protocol=self.vpp_ah_protocol, index=0)
