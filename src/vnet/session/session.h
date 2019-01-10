@@ -176,20 +176,6 @@ typedef struct session_tx_context_
   session_dgram_hdr_t hdr;
 } session_tx_context_t;
 
-/* Forward definition */
-typedef struct _session_manager_main session_manager_main_t;
-
-typedef int
-  (session_fifo_rx_fn) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			session_event_t * e0, stream_session_t * s0,
-			int *n_tx_pkts);
-
-extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
-extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
-
-u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
-
 typedef struct session_manager_worker_
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -237,7 +223,18 @@ typedef struct session_manager_worker_
 
 } session_manager_worker_t;
 
-struct _session_manager_main
+typedef int (session_fifo_rx_fn) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  session_manager_worker_t * wrk,
+				  session_event_t * e, int *n_tx_pkts);
+
+extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
+extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
+extern session_fifo_rx_fn session_tx_fifo_dequeue_internal;
+
+u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e);
+
+typedef struct session_manager_main_
 {
   /** Worker contexts */
   session_manager_worker_t *wrk;
@@ -297,7 +294,7 @@ struct _session_manager_main
   f64 *last_event_poll_by_thread;
 #endif
 
-};
+} session_manager_main_t;
 
 extern session_manager_main_t session_manager_main;
 extern vlib_node_registration_t session_queue_node;
