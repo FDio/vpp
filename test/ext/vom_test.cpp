@@ -1732,23 +1732,39 @@ BOOST_AUTO_TEST_CASE(test_routing) {
      * A route via interface 1 in the default table
      */
     route::prefix_t pfx_5("5.5.5.5", 32);
+    boost::asio::ip::address nh_9 = boost::asio::ip::address::from_string("10.10.10.9");
+    route::path *path_9 = new route::path(nh_9, itf1);
     boost::asio::ip::address nh_10 = boost::asio::ip::address::from_string("10.10.10.11");
     route::path *path_10 = new route::path(nh_10, itf1);
     route::ip_route *route_5 = new route::ip_route(pfx_5);
     route_5->add(*path_10);
+    route_5->add(*path_9);
     HW::item<bool> hw_route_5(true, rc_t::OK);
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5, 0, pfx_5, {*path_10}));
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5, 0, pfx_5, *path_9));
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5, 0, pfx_5, *path_10));
     TRY_CHECK_RC(OM::write(ian, *route_5));
+
+    route_5->remove(*path_9);
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5, 0, pfx_5, *path_9));
+    TRY_CHECK_RC(OM::write(ian, *route_5));
+
+    delete path_9;
 
     /*
      * A route via interface 2 in the non-default table
      */
     boost::asio::ip::address nh_11 = boost::asio::ip::address::from_string("11.11.11.10");
     route::path *path_11 = new route::path(nh_11, *itf2);
+    boost::asio::ip::address nh_12 = boost::asio::ip::address::from_string("11.11.11.12");
+    route::path *path_12 = new route::path(nh_12, *itf2);
     route::ip_route *route_5_2 = new route::ip_route(rd4, pfx_5);
     route_5_2->add(*path_11);
     HW::item<bool> hw_route_5_2(true, rc_t::OK);
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5_2, 1, pfx_5, {*path_11}));
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5_2, 1, pfx_5, *path_11));
+    TRY_CHECK_RC(OM::write(ian, *route_5_2));
+
+    route_5_2->add(*path_12);
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_5_2, 1, pfx_5, *path_12));
     TRY_CHECK_RC(OM::write(ian, *route_5_2));
 
     /*
@@ -1768,7 +1784,7 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     route::ip_route *route_dvr = new route::ip_route(pfx_6);
     route_dvr->add(*path_l2);
     HW::item<bool> hw_route_dvr(true, rc_t::OK);
-    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_dvr, 0, pfx_6, {*path_l2}));
+    ADD_EXPECT(route::ip_route_cmds::update_cmd(hw_route_dvr, 0, pfx_6, *path_l2));
     TRY_CHECK_RC(OM::write(ian, *route_dvr));
 
     /*
@@ -1798,11 +1814,8 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     delete l3_10;
     delete itf2;
     delete route_5;
-    delete path_10;
     delete route_5_2;
-    delete path_11;
     delete route_dvr;
-    delete path_l2;
     delete ne;
     delete mroute_4;
 
@@ -1817,9 +1830,16 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     delete mp2;
 
     ADD_EXPECT(neighbour_cmds::delete_cmd(hw_neighbour, hw_ifh.data(), mac_n, nh_10));
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_dvr, 0, pfx_6));
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5));
-    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5, 0, pfx_5));
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_dvr, 0, pfx_6, *path_l2));
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5, *path_11));
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5, *path_12));
+    ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5, 0, pfx_5, *path_10));
+
+    delete path_10;
+    delete path_11;
+    delete path_12;
+    delete path_l2;
+
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_10_unbind, hw_ifh.data(), pfx_10));
     ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_11_unbind, hw_ifh2.data(), pfx_11));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));

@@ -339,8 +339,9 @@ void
 ip_route::sweep()
 {
   if (m_hw) {
-    HW::enqueue(
-      new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix));
+    for (auto& p : m_paths)
+      HW::enqueue(
+        new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix, p));
   }
   HW::write();
 }
@@ -349,8 +350,9 @@ void
 ip_route::replay()
 {
   if (m_hw) {
-    HW::enqueue(
-      new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
+    for (auto& p : m_paths)
+      HW::enqueue(
+        new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, p));
   }
 }
 std::string
@@ -367,12 +369,37 @@ ip_route::to_string() const
 void
 ip_route::update(const ip_route& r)
 {
-  /*
-* create the table if it is not yet created
-*/
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(
-      new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
+    /*
+     * route not yet installed. install each of the desired paths
+     */
+    m_paths = r.m_paths;
+
+    for (auto& p : m_paths)
+      HW::enqueue(
+        new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, p));
+  } else {
+    /*
+     * add each path that is not installed yet and remove each that is no longer
+     * wanted
+     */
+    path_list_t to_add;
+    set_difference(r.m_paths.begin(), r.m_paths.end(), m_paths.begin(),
+                   m_paths.end(), std::inserter(to_add, to_add.begin()));
+
+    for (auto& p : to_add)
+      HW::enqueue(
+        new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, p));
+
+    path_list_t to_del;
+    set_difference(m_paths.begin(), m_paths.end(), r.m_paths.begin(),
+                   r.m_paths.end(), std::inserter(to_del, to_del.begin()));
+
+    for (auto& p : to_del)
+      HW::enqueue(
+        new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix, p));
+
+    m_paths = r.m_paths;
   }
 }
 

@@ -25,20 +25,19 @@ namespace ip_route_cmds {
 update_cmd::update_cmd(HW::item<bool>& item,
                        table_id_t id,
                        const prefix_t& prefix,
-                       const path_list_t& paths)
+                       const path& path)
   : rpc_cmd(item)
   , m_id(id)
   , m_prefix(prefix)
-  , m_paths(paths)
+  , m_path(path)
 {
-  // no multipath yet.
-  assert(paths.size() == 1);
 }
 
 bool
 update_cmd::operator==(const update_cmd& other) const
 {
-  return ((m_prefix == other.m_prefix) && (m_id == other.m_id));
+  return ((m_prefix == other.m_prefix) && (m_id == other.m_id) &&
+          (m_path == other.m_path));
 }
 
 rc_t
@@ -54,9 +53,7 @@ update_cmd::issue(connection& con)
 
   m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
                   &payload.dst_address_length);
-
-  for (auto& p : m_paths)
-    to_vpp(p, payload);
+  to_vpp(m_path, payload);
 
   VAPI_CALL(req.execute());
 
@@ -68,24 +65,27 @@ update_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-route-create: " << m_hw_item.to_string() << " table-id:" << m_id
-    << " prefix:" << m_prefix.to_string() << " paths:" << m_paths;
+    << " prefix:" << m_prefix.to_string() << " paths:" << m_path.to_string();
 
   return (s.str());
 }
 
 delete_cmd::delete_cmd(HW::item<bool>& item,
                        table_id_t id,
-                       const prefix_t& prefix)
+                       const prefix_t& prefix,
+                       const path& path)
   : rpc_cmd(item)
   , m_id(id)
   , m_prefix(prefix)
+  , m_path(path)
 {
 }
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
 {
-  return ((m_prefix == other.m_prefix) && (m_id == other.m_id));
+  return ((m_prefix == other.m_prefix) && (m_id == other.m_id) &&
+          (m_path == other.m_path));
 }
 
 rc_t
@@ -99,6 +99,7 @@ delete_cmd::issue(connection& con)
 
   m_prefix.to_vpp(&payload.is_ipv6, payload.dst_address,
                   &payload.dst_address_length);
+  to_vpp(m_path, payload);
 
   VAPI_CALL(req.execute());
 
@@ -113,7 +114,7 @@ delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-route-delete: " << m_hw_item.to_string() << " id:" << m_id
-    << " prefix:" << m_prefix.to_string();
+    << " prefix:" << m_prefix.to_string() << " paths:" << m_path.to_string();
 
   return (s.str());
 }
