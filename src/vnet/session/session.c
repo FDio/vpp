@@ -557,7 +557,11 @@ session_dequeue_notify (stream_session_t * s)
   if (PREDICT_FALSE (!app))
     return -1;
 
-  return app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_TX);
+  if (app_worker_lock_and_send_event (app, s, FIFO_EVENT_APP_TX))
+    return -1;
+
+  svm_fifo_clear_tx_ntf (s->server_tx_fifo);
+  return 0;
 }
 
 /**
