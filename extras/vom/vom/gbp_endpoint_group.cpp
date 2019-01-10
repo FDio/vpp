@@ -146,13 +146,13 @@ gbp_endpoint_group::dump(std::ostream& os)
 }
 
 const std::shared_ptr<gbp_route_domain>
-gbp_endpoint_group::get_route_domain()
+gbp_endpoint_group::get_route_domain() const
 {
   return m_rd;
 }
 
 const std::shared_ptr<gbp_bridge_domain>
-gbp_endpoint_group::get_bridge_domain()
+gbp_endpoint_group::get_bridge_domain() const
 {
   return m_bd;
 }

@@ -36,7 +36,8 @@ public:
    */
   create_cmd(HW::item<uint32_t>& item,
              const handle_t bvi,
-             const handle_t uu_fwd);
+             const handle_t uu_fwd,
+             const gbp_bridge_domain::flags_t& flags);
 
   /**
    * Issue the command to VPP/HW
@@ -55,6 +56,7 @@ public:
 private:
   const handle_t m_bvi;
   const handle_t m_uu_fwd;
+  const gbp_bridge_domain::flags_t& m_flags;
 };
 
 /**
