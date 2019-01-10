@@ -38,7 +38,7 @@ public:
   update_cmd(HW::item<bool>& item,
              table_id_t id,
              const prefix_t& prefix,
-             const path_list_t& paths);
+             const path& path);
 
   /**
    * Issue the command to VPP/HW
@@ -58,7 +58,7 @@ public:
 private:
   route::table_id_t m_id;
   prefix_t m_prefix;
-  const path_list_t m_paths;
+  const path m_path;
 };
 
 /**
@@ -70,7 +70,10 @@ public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item, table_id_t id, const prefix_t& prefix);
+  delete_cmd(HW::item<bool>& item,
+             table_id_t id,
+             const prefix_t& prefix,
+             const path& path);
 
   /**
    * Issue the command to VPP/HW
@@ -90,6 +93,7 @@ public:
 private:
   route::table_id_t m_id;
   prefix_t m_prefix;
+  const path m_path;
 };
 
 /**
