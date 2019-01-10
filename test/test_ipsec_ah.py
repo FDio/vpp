@@ -9,6 +9,7 @@ from template_ipsec import IpsecTcpTests
 from vpp_ipsec import *
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
+from vpp_papi import VppEnum
 
 
 class TemplateIpsecAh(TemplateIpsec):
@@ -82,6 +83,8 @@ class TemplateIpsecAh(TemplateIpsec):
         remote_tun_if_host = params.remote_tun_if_host
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
+        e = VppEnum.vl_api_ipsec_spd_action_t
+
         VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
                    auth_algo_vpp_id, auth_key,
                    crypt_algo_vpp_id, crypt_key,
@@ -110,28 +113,32 @@ class TemplateIpsecAh(TemplateIpsec):
                          remote_tun_if_host,
                          self.pg1.remote_addr[addr_type],
                          self.pg1.remote_addr[addr_type],
-                         0, priority=10, policy=3,
+                         0, priority=10,
+                         policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                          is_outbound=0).add_vpp_config()
         VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
                          self.pg1.remote_addr[addr_type],
                          self.pg1.remote_addr[addr_type],
                          remote_tun_if_host,
                          remote_tun_if_host,
-                         0, priority=10, policy=3).add_vpp_config()
+                         0, policy=e.IPSEC_API_SPD_ACTION_PROTECT,
+                         priority=10).add_vpp_config()
 
         VppIpsecSpdEntry(self, self.tun_spd, vpp_tun_sa_id,
                          remote_tun_if_host,
                          remote_tun_if_host,
                          self.pg0.local_addr[addr_type],
                          self.pg0.local_addr[addr_type],
-                         0, priority=20, policy=3,
+                         0, priority=20,
+                         policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                          is_outbound=0).add_vpp_config()
         VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
                          self.pg0.local_addr[addr_type],
                          self.pg0.local_addr[addr_type],
                          remote_tun_if_host,
                          remote_tun_if_host,
-                         0, priority=20, policy=3).add_vpp_config()
+                         0, policy=e.IPSEC_API_SPD_ACTION_PROTECT,
+                         priority=20).add_vpp_config()
 
     def config_ah_tra(self, params):
         addr_type = params.addr_type
@@ -145,17 +152,20 @@ class TemplateIpsecAh(TemplateIpsec):
         crypt_key = params.crypt_key
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
+        flags = (VppEnum.vl_api_ipsec_sad_flags_t.
+                 IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY)
+        e = VppEnum.vl_api_ipsec_spd_action_t
 
         VppIpsecSA(self, scapy_tra_sa_id, scapy_tra_spi,
                    auth_algo_vpp_id, auth_key,
                    crypt_algo_vpp_id, crypt_key,
                    self.vpp_ah_protocol,
-                   use_anti_replay=1).add_vpp_config()
+                   flags=flags).add_vpp_config()
         VppIpsecSA(self, vpp_tra_sa_id, vpp_tra_spi,
                    auth_algo_vpp_id, auth_key,
                    crypt_algo_vpp_id, crypt_key,
                    self.vpp_ah_protocol,
-                   use_anti_replay=1).add_vpp_config()
+                   flags=flags).add_vpp_config()
 
         VppIpsecSpdEntry(self, self.tra_spd, vpp_tra_sa_id,
                          addr_any, addr_bcast,
@@ -172,14 +182,16 @@ class TemplateIpsecAh(TemplateIpsec):
                          self.tra_if.local_addr[addr_type],
                          self.tra_if.remote_addr[addr_type],
                          self.tra_if.remote_addr[addr_type],
-                         0, priority=10, policy=3,
+                         0, priority=10,
+                         policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                          is_outbound=0).add_vpp_config()
         VppIpsecSpdEntry(self, self.tra_spd, scapy_tra_sa_id,
                          self.tra_if.local_addr[addr_type],
                          self.tra_if.local_addr[addr_type],
                          self.tra_if.remote_addr[addr_type],
                          self.tra_if.remote_addr[addr_type],
-                         0, priority=10, policy=3).add_vpp_config()
+                         0, policy=e.IPSEC_API_SPD_ACTION_PROTECT,
+                         priority=10).add_vpp_config()
 
 
 class TestIpsecAh1(TemplateIpsecAh, IpsecTraTests, IpsecTunTests):

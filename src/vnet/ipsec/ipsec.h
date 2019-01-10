@@ -68,8 +68,10 @@ typedef enum
 #define _(v, f, s) IPSEC_POLICY_ACTION_##f = v,
   foreach_ipsec_policy_action
 #undef _
-    IPSEC_POLICY_N_ACTION,
 } ipsec_policy_action_t;
+
+#define IPSEC_POLICY_N_ACTION (IPSEC_POLICY_ACTION_PROTECT + 1)
+
 
 #define foreach_ipsec_crypto_alg    \
   _ (0, NONE, "none")               \
@@ -220,7 +222,7 @@ typedef struct
   port_range_t rport;
 
   // Policy
-  u8 policy;
+  ipsec_policy_action_t policy;
   u32 sa_id;
   u32 sa_index;
 
