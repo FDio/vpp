@@ -41,6 +41,13 @@ format_function_t format_ooo_list;
 #define SVM_FIFO_INVALID_SESSION_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_INDEX		((u32)~0)
 
+enum
+{
+  SVM_FIFO_NO_TX_NOTIF = 0,
+  SVM_FIFO_WANT_TX_NOTIF = 1,
+  SVM_FIFO_WANT_TX_NOTIF_IF_FULL = 2,
+};
+
 typedef struct
 {
   u32 offset;
@@ -66,7 +73,8 @@ typedef struct _svm_fifo
   u32 ct_session_index;		/**< Local session index for vpp */
     CLIB_CACHE_LINE_ALIGN_MARK (end_shared);
   u32 head;
-  volatile u32 want_tx_evt;	/**< producer wants nudge */
+  volatile u32 want_tx_ntf;	/**< producer wants nudge */
+  volatile u32 has_tx_ntf;
     CLIB_CACHE_LINE_ALIGN_MARK (end_consumer);
 
   /* producer */
@@ -174,18 +182,6 @@ svm_fifo_unset_event (svm_fifo_t * f)
   clib_atomic_release (&f->has_event);
 }
 
-static inline void
-svm_fifo_set_want_tx_evt (svm_fifo_t * f, u8 want_evt)
-{
-  f->want_tx_evt = want_evt;
-}
-
-static inline u8
-svm_fifo_want_tx_evt (svm_fifo_t * f)
-{
-  return f->want_tx_evt;
-}
-
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
 void svm_fifo_free (svm_fifo_t * f);
 
@@ -200,26 +196,9 @@ int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
 void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
 int svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs);
 void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs);
-u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);
-ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
 void svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer);
 void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len);
-
 format_function_t format_svm_fifo;
-
-always_inline ooo_segment_t *
-svm_fifo_newest_ooo_segment (svm_fifo_t * f)
-{
-  if (f->ooos_newest == OOO_SEGMENT_INVALID_INDEX)
-    return 0;
-  return pool_elt_at_index (f->ooo_segments, f->ooos_newest);
-}
-
-always_inline void
-svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
-{
-  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
-}
 
 /**
  * Max contiguous chunk of data that can be read
@@ -262,6 +241,77 @@ always_inline u8 *
 svm_fifo_tail (svm_fifo_t * f)
 {
   return (f->data + f->tail);
+}
+
+always_inline u32
+svm_fifo_nitems (svm_fifo_t * f)
+{
+  return f->nitems;
+}
+
+static inline void
+svm_fifo_add_want_tx_ntf (svm_fifo_t * f, u8 ntf_type)
+{
+  f->want_tx_ntf |= ntf_type;
+}
+
+static inline void
+svm_fifo_del_want_tx_ntf (svm_fifo_t * f, u8 ntf_type)
+{
+  f->want_tx_ntf &= ~ntf_type;
+}
+
+static inline void
+svm_fifo_clear_tx_ntf (svm_fifo_t * f)
+{
+  /* Set the flag if want_tx_notif_if_full was the only ntf requested */
+  f->has_tx_ntf = f->want_tx_ntf == SVM_FIFO_WANT_TX_NOTIF_IF_FULL;
+  svm_fifo_del_want_tx_ntf (f, SVM_FIFO_WANT_TX_NOTIF);
+}
+
+static inline void
+svm_fifo_reset_tx_ntf (svm_fifo_t * f)
+{
+  f->has_tx_ntf = 0;
+}
+
+static inline u8
+svm_fifo_needs_tx_ntf (svm_fifo_t * f, u32 n_last_deq)
+{
+  u8 want_ntf = f->want_tx_ntf;
+
+  if (PREDICT_TRUE (want_ntf == SVM_FIFO_NO_TX_NOTIF))
+    return 0;
+  else if (want_ntf & SVM_FIFO_WANT_TX_NOTIF)
+    return 1;
+  else if (want_ntf & SVM_FIFO_WANT_TX_NOTIF_IF_FULL)
+    {
+      u32 max_deq = svm_fifo_max_dequeue (f);
+      u32 nitems = svm_fifo_nitems (f);
+      if (!f->has_tx_ntf && max_deq < nitems
+	  && max_deq + n_last_deq >= nitems)
+	return 1;
+
+      return 0;
+    }
+  return 0;
+}
+
+u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);
+ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
+
+always_inline ooo_segment_t *
+svm_fifo_newest_ooo_segment (svm_fifo_t * f)
+{
+  if (f->ooos_newest == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+  return pool_elt_at_index (f->ooo_segments, f->ooos_newest);
+}
+
+always_inline void
+svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
+{
+  f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 }
 
 always_inline u32

@@ -632,32 +632,30 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
 always_inline int
 session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
-				session_event_t * e,
-				stream_session_t * s, int *n_tx_packets,
+				session_manager_worker_t * wrk,
+				session_event_t * e, int *n_tx_packets,
 				u8 peek_data)
 {
   u32 next_index, next0, next1, *to_next, n_left_to_next;
   u32 n_trace = vlib_get_trace_count (vm, node), n_bufs_needed = 0;
-  u32 thread_index = s->thread_index, n_left, pbi;
+  u32 thread_index = vm->thread_index, n_left, pbi;
   session_manager_main_t *smm = &session_manager_main;
-  session_manager_worker_t *wrk = &smm->wrk[thread_index];
   session_tx_context_t *ctx = &wrk->ctx;
   transport_proto_t tp;
   vlib_buffer_t *pb;
   u16 n_bufs, rv;
 
-  if (PREDICT_FALSE ((rv = session_tx_not_ready (s, peek_data))))
+  if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
     {
       if (rv < 2)
 	vec_add1 (wrk->pending_event_vector, *e);
       return SESSION_TX_NO_DATA;
     }
 
-  next_index = smm->session_type_to_next[s->session_type];
+  next_index = smm->session_type_to_next[ctx->s->session_type];
   next0 = next1 = next_index;
 
-  tp = session_get_transport_proto (s);
-  ctx->s = s;
+  tp = session_get_transport_proto (ctx->s);
   ctx->transport_vft = transport_protocol_get_vft (tp);
   ctx->tc = session_tx_get_transport (ctx, peek_data);
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
@@ -679,7 +677,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* Allow enqueuing of a new event */
-  svm_fifo_unset_event (s->server_tx_fifo);
+  svm_fifo_unset_event (ctx->s->server_tx_fifo);
 
   /* Check how much we can pull. */
   session_tx_set_dequeue_params (vm, ctx, VLIB_FRAME_SIZE - *n_tx_packets,
@@ -784,7 +782,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (PREDICT_FALSE (n_trace > 0))
     session_tx_trace_frame (vm, node, next_index, to_next,
-			    ctx->n_segs_per_evt, s, n_trace);
+			    ctx->n_segs_per_evt, ctx->s, n_trace);
 
   _vec_len (wrk->tx_buffers) = n_bufs;
   *n_tx_packets += ctx->n_segs_per_evt;
@@ -794,18 +792,18 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* If we couldn't dequeue all bytes mark as partially read */
   ASSERT (ctx->left_to_snd == 0);
   if (ctx->max_len_to_snd < ctx->max_dequeue)
-    if (svm_fifo_set_event (s->server_tx_fifo))
+    if (svm_fifo_set_event (ctx->s->server_tx_fifo))
       vec_add1 (wrk->pending_event_vector, *e);
 
   if (!peek_data && ctx->transport_vft->tx_type == TRANSPORT_TX_DGRAM)
     {
       /* Fix dgram pre header */
       if (ctx->max_len_to_snd < ctx->max_dequeue)
-	svm_fifo_overwrite_head (s->server_tx_fifo, (u8 *) & ctx->hdr,
+	svm_fifo_overwrite_head (ctx->s->server_tx_fifo, (u8 *) & ctx->hdr,
 				 sizeof (session_dgram_pre_hdr_t));
       /* More data needs to be read */
-      else if (svm_fifo_max_dequeue (s->server_tx_fifo) > 0)
-	if (svm_fifo_set_event (s->server_tx_fifo))
+      else if (svm_fifo_max_dequeue (ctx->s->server_tx_fifo) > 0)
+	if (svm_fifo_set_event (ctx->s->server_tx_fifo))
 	  vec_add1 (wrk->pending_event_vector, *e);
     }
   return SESSION_TX_OK;
@@ -813,27 +811,29 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 int
 session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      session_event_t * e,
-			      stream_session_t * s, int *n_tx_pkts)
+			      session_manager_worker_t * wrk,
+			      session_event_t * e, int *n_tx_pkts)
 {
-  return session_tx_fifo_read_and_snd_i (vm, node, e, s, n_tx_pkts, 1);
+  return session_tx_fifo_read_and_snd_i (vm, node, wrk, e, n_tx_pkts, 1);
 }
 
 int
 session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
-				 session_event_t * e,
-				 stream_session_t * s, int *n_tx_pkts)
+				 session_manager_worker_t * wrk,
+				 session_event_t * e, int *n_tx_pkts)
 {
-  return session_tx_fifo_read_and_snd_i (vm, node, e, s, n_tx_pkts, 0);
+  return session_tx_fifo_read_and_snd_i (vm, node, wrk, e, n_tx_pkts, 0);
 }
 
 int
 session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
-				  session_event_t * e,
-				  stream_session_t * s, int *n_tx_pkts)
+				  session_manager_worker_t * wrk,
+				  session_event_t * e, int *n_tx_pkts)
 {
+  stream_session_t *s = wrk->ctx.s;
   application_t *app;
+
   if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
     return 0;
   app = application_get (s->t_app_index);
@@ -923,7 +923,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       stream_session_t *s;	/* $$$ prefetch 1 ahead maybe */
       session_event_t *e;
-      u8 want_tx_evt;
+      u8 need_tx_ntf;
 
       e = &fifo_events[i];
       switch (e->event_type)
@@ -943,19 +943,17 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_warning ("session was freed!");
 	      continue;
 	    }
-
-	  want_tx_evt = svm_fifo_want_tx_evt (s->server_tx_fifo);
+	  wrk->ctx.s = s;
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
-	  rv = (smm->session_tx_fns[s->session_type]) (vm, node, e, s,
+	  rv = (smm->session_tx_fns[s->session_type]) (vm, node, wrk, e,
 						       &n_tx_packets);
 	  if (PREDICT_TRUE (rv == SESSION_TX_OK))
 	    {
-	      if (PREDICT_FALSE (want_tx_evt))
-		{
-		  svm_fifo_set_want_tx_evt (s->server_tx_fifo, 0);
-		  session_dequeue_notify (s);
-		}
+	      need_tx_ntf = svm_fifo_needs_tx_ntf (s->server_tx_fifo,
+						   wrk->ctx.max_len_to_snd);
+	      if (PREDICT_FALSE (need_tx_ntf))
+		session_dequeue_notify (s);
 	    }
 	  else if (PREDICT_FALSE (rv == SESSION_TX_NO_BUFFERS))
 	    {
@@ -995,8 +993,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  break;
 	case FIFO_EVENT_BUILTIN_TX:
 	  s = session_get_from_handle_if_valid (e->session_handle);
+	  wrk->ctx.s = s;
 	  if (PREDICT_TRUE (s != 0))
-	    session_tx_fifo_dequeue_internal (vm, node, e, s, &n_tx_packets);
+	    session_tx_fifo_dequeue_internal (vm, node, wrk, e,
+					      &n_tx_packets);
 	  break;
 	case FIFO_EVENT_RPC:
 	  fp = e->rpc_args.fp;
