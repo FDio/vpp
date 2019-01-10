@@ -102,8 +102,8 @@ public:
    */
   epg_id_t id() const;
 
-  const std::shared_ptr<gbp_route_domain> get_route_domain();
-  const std::shared_ptr<gbp_bridge_domain> get_bridge_domain();
+  const std::shared_ptr<gbp_route_domain> get_route_domain() const;
+  const std::shared_ptr<gbp_bridge_domain> get_bridge_domain() const;
 
 private:
   /**

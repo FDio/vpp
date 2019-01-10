@@ -34,19 +34,36 @@ public:
    */
   typedef bridge_domain::key_t key_t;
 
+  struct flags_t : enum_base<flags_t>
+  {
+    const static flags_t NONE;
+    const static flags_t DO_NOT_LEARN;
+
+    static const flags_t& from_vpp(int i);
+
+  private:
+    flags_t(int v, const std::string& s);
+    flags_t();
+  };
+
   /**
    * Construct a GBP bridge_domain
    */
-  gbp_bridge_domain(const bridge_domain& bd, const interface& bvi);
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
-                    const interface& uu_fwd);
+                    const flags_t& flags = flags_t::NONE);
+  gbp_bridge_domain(const bridge_domain& bd,
+                    const interface& bvi,
+                    const interface& uu_fwd,
+                    const flags_t& flags = flags_t::NONE);
   gbp_bridge_domain(const bridge_domain& bd,
                     const std::shared_ptr<interface> bvi,
-                    const std::shared_ptr<interface> uu_fwd);
+                    const std::shared_ptr<interface> uu_fwd,
+                    const flags_t& flags = flags_t::NONE);
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
-                    const std::shared_ptr<interface> uu_fwd);
+                    const std::shared_ptr<interface> uu_fwd,
+                    const flags_t& flags = flags_t::NONE);
 
   /**
    * Copy Construct
@@ -98,8 +115,8 @@ public:
    */
   std::string to_string() const;
 
-  const std::shared_ptr<bridge_domain> get_bridge_domain();
-  const std::shared_ptr<interface> get_bvi();
+  const std::shared_ptr<bridge_domain> get_bridge_domain() const;
+  const std::shared_ptr<interface> get_bvi() const;
 
 private:
   /**
@@ -171,6 +188,7 @@ private:
   std::shared_ptr<bridge_domain> m_bd;
   std::shared_ptr<interface> m_bvi;
   std::shared_ptr<interface> m_uu_fwd;
+  const flags_t& m_flags;
 
   /**
    * A map of all bridge_domains

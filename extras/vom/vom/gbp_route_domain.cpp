@@ -77,7 +77,7 @@ gbp_route_domain::id() const
 }
 
 const std::shared_ptr<route_domain>
-gbp_route_domain::get_route_domain()
+gbp_route_domain::get_route_domain() const
 {
   return m_rd;
 }

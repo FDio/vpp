@@ -21,6 +21,16 @@
 
 namespace VOM {
 
+const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::NONE(0, "none");
+const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::DO_NOT_LEARN(
+  0,
+  "do-not-learn");
+
+gbp_bridge_domain::flags_t::flags_t(int v, const std::string& s)
+  : enum_base<gbp_bridge_domain::flags_t>(v, s)
+{
+}
+
 /**
  * A DB of al the interfaces, key on the name
  */
@@ -32,40 +42,48 @@ gbp_bridge_domain::event_handler gbp_bridge_domain::m_evh;
  * Construct a new object matching the desried state
  */
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
-                                     const interface& bvi)
+                                     const interface& bvi,
+                                     const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
   , m_bvi(bvi.singular())
+  , m_flags(flags)
 {
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
                                      const interface& bvi,
-                                     const interface& uu_fwd)
+                                     const interface& uu_fwd,
+                                     const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
   , m_bvi(bvi.singular())
   , m_uu_fwd(uu_fwd.singular())
+  , m_flags(flags)
 {
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
                                      const std::shared_ptr<interface> bvi,
-                                     const std::shared_ptr<interface> uu_fwd)
+                                     const std::shared_ptr<interface> uu_fwd,
+                                     const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
   , m_bvi(bvi->singular())
   , m_uu_fwd(uu_fwd->singular())
+  , m_flags(flags)
 {
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
                                      const interface& bvi,
-                                     const std::shared_ptr<interface> uu_fwd)
+                                     const std::shared_ptr<interface> uu_fwd,
+                                     const flags_t& flags)
   : m_id(bd.id())
   , m_bd(bd.singular())
   , m_bvi(bvi.singular())
   , m_uu_fwd(uu_fwd->singular())
+  , m_flags(flags)
 {
 }
 
@@ -74,6 +92,7 @@ gbp_bridge_domain::gbp_bridge_domain(const gbp_bridge_domain& bd)
   , m_bd(bd.m_bd)
   , m_bvi(bd.m_bvi)
   , m_uu_fwd(bd.m_uu_fwd)
+  , m_flags(bd.m_flags)
 {
 }
 
@@ -90,13 +109,13 @@ gbp_bridge_domain::id() const
 }
 
 const std::shared_ptr<bridge_domain>
-gbp_bridge_domain::get_bridge_domain()
+gbp_bridge_domain::get_bridge_domain() const
 {
   return m_bd;
 }
 
 const std::shared_ptr<interface>
-gbp_bridge_domain::get_bvi()
+gbp_bridge_domain::get_bvi() const
 {
   return m_bvi;
 }
@@ -138,7 +157,7 @@ gbp_bridge_domain::replay()
   if (rc_t::OK == m_id.rc()) {
     HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
       m_id, (m_bvi ? m_bvi->handle() : handle_t::INVALID),
-      (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID)));
+      (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID), m_flags));
   }
 }
 
@@ -181,7 +200,7 @@ gbp_bridge_domain::update(const gbp_bridge_domain& desired)
   if (rc_t::OK != m_id.rc()) {
     HW::enqueue(new gbp_bridge_domain_cmds::create_cmd(
       m_id, (m_bvi ? m_bvi->handle() : handle_t::INVALID),
-      (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID)));
+      (m_uu_fwd ? m_uu_fwd->handle() : handle_t::INVALID), m_flags));
   }
 }
 
