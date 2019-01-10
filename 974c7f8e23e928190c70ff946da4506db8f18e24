@@ -34,6 +34,24 @@
       "revId": "974c7f8e23e928190c70ff946da4506db8f18e24",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "340d0160_43dd8397",
+        "filename": "src/plugins/gbp/gbp_classify.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-10T15:22:52Z",
+      "side": 1,
+      "message": "if the compiler indicates that the value can be used uninitialised doesn\u0027t this change mean it will instead be used with a value of NULL, i.e. it will crash?",
+      "parentUuid": "17bea0db_cd1abac0",
+      "revId": "974c7f8e23e928190c70ff946da4506db8f18e24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
