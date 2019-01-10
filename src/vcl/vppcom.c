@@ -1744,9 +1744,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   if (svm_fifo_is_empty (rx_fifo))
     svm_fifo_unset_event (rx_fifo);
 
-  if (is_ct && svm_fifo_want_tx_evt (rx_fifo))
+  if (is_ct && svm_fifo_needs_tx_ntf (rx_fifo, n_read))
     {
-      svm_fifo_set_want_tx_evt (s->rx_fifo, 0);
+      svm_fifo_clear_tx_ntf (s->rx_fifo);
       app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo, SESSION_IO_EVT_CT_RX,
 			      SVM_Q_WAIT);
     }
@@ -1959,7 +1959,7 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 	}
       while (svm_fifo_is_full (tx_fifo))
 	{
-	  svm_fifo_set_want_tx_evt (tx_fifo, 1);
+	  svm_fifo_add_want_tx_ntf (tx_fifo, SVM_FIFO_WANT_TX_NOTIF);
 	  svm_msg_q_lock (mq);
 	  if (svm_msg_q_is_empty (mq))
 	    svm_msg_q_wait (mq);
@@ -2351,7 +2351,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
         bits_set++;
       }
     else
-      svm_fifo_set_want_tx_evt (session->tx_fifo, 1);
+      svm_fifo_add_want_tx_ntf (session->tx_fifo, SVM_FIFO_WANT_TX_NOTIF);
   }));
 
 check_rd:
@@ -2570,6 +2570,10 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       session->is_vep_session = 1;
       vep_session->vep.next_sh = session_handle;
 
+      if (session->tx_fifo)
+	svm_fifo_add_want_tx_ntf (session->tx_fifo,
+				  SVM_FIFO_WANT_TX_NOTIF_IF_FULL);
+
       VDBG (1, "EPOLL_CTL_ADD: vep_sh %u, sh %u, events 0x%x, data 0x%llx!",
 	    vep_handle, session_handle, event->events, event->data.u64);
       vcl_evt (VCL_EVT_EPOLL_CTLADD, session, event->events, event->data.u64);
@@ -2655,6 +2659,10 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
       session->vep.prev_sh = ~0;
       session->vep.vep_sh = ~0;
       session->is_vep_session = 0;
+
+      if (session->tx_fifo)
+	svm_fifo_del_want_tx_ntf (session->tx_fifo, SVM_FIFO_NO_TX_NOTIF);
+
       VDBG (1, "EPOLL_CTL_DEL: vep_idx %u, sid %u!", vep_handle,
 	    session_handle);
       vcl_evt (VCL_EVT_EPOLL_CTLDEL, session, vep_sh);
@@ -2708,6 +2716,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       add_event = 1;
       events[*num_ev].events |= EPOLLOUT;
       session_evt_data = session->vep.ev.data.u64;
+      svm_fifo_reset_tx_ntf (session->tx_fifo);
       break;
     case SESSION_IO_EVT_CT_TX:
       vcl_fifo_rx_evt_valid_or_break (e->fifo);
@@ -2734,6 +2743,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       add_event = 1;
       events[*num_ev].events |= EPOLLOUT;
       session_evt_data = session->vep.ev.data.u64;
+      svm_fifo_reset_tx_ntf (session->tx_fifo);
       break;
     case SESSION_CTRL_EVT_ACCEPTED:
       session = vcl_session_accepted (wrk,
