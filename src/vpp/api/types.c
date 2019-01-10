@@ -19,6 +19,8 @@
 #include <vpp/api/types.h>
 #include <vat/vat.h>
 
+#include <vnet/ipsec/ipsec.h>
+
 u8 *
 format_vl_api_address (u8 * s, va_list * args)
 {
@@ -88,4 +90,3 @@ format_vl_api_mac_address (u8 * s, va_list * args)
 
   return (format (s, "%U", format_ethernet_address, mac));
 }
-

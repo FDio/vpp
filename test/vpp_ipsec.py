@@ -1,5 +1,6 @@
 from vpp_object import *
 from ipaddress import ip_address
+from vpp_papi import VppEnum
 
 try:
     text_type = unicode
@@ -82,7 +83,7 @@ class VppIpsecSpdEntry(VppObject):
                  remote_start, remote_stop,
                  proto,
                  priority=100,
-                 policy=0,
+                 policy=None,
                  is_outbound=1,
                  remote_port_start=0,
                  remote_port_stop=65535,
@@ -98,7 +99,11 @@ class VppIpsecSpdEntry(VppObject):
         self.proto = proto
         self.is_outbound = is_outbound
         self.priority = priority
-        self.policy = policy
+        if not policy:
+            self.policy = (VppEnum.vl_api_ipsec_spd_action_t.
+                           IPSEC_API_SPD_ACTION_BYPASS)
+        else:
+            self.policy = policy
         self.is_ipv6 = (0 if self.local_start.version == 4 else 1)
         self.local_port_start = local_port_start
         self.local_port_stop = local_port_stop
@@ -106,13 +111,13 @@ class VppIpsecSpdEntry(VppObject):
         self.remote_port_stop = remote_port_stop
 
     def add_vpp_config(self):
-        self.test.vapi.ipsec_spd_add_del_entry(
+        self.test.vapi.ipsec_spd_entry_add_del(
             self.spd.id,
             self.sa_id,
-            self.local_start.packed,
-            self.local_stop.packed,
-            self.remote_start.packed,
-            self.remote_stop.packed,
+            self.local_start,
+            self.local_stop,
+            self.remote_start,
+            self.remote_stop,
             protocol=self.proto,
             is_ipv6=self.is_ipv6,
             is_outbound=self.is_outbound,
@@ -125,13 +130,13 @@ class VppIpsecSpdEntry(VppObject):
         self.test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.ipsec_spd_add_del_entry(
+        self.test.vapi.ipsec_spd_entry_add_del(
             self.spd.id,
             self.sa_id,
-            self.local_start.packed,
-            self.local_stop.packed,
-            self.remote_start.packed,
-            self.remote_stop.packed,
+            self.local_start,
+            self.local_stop,
+            self.remote_start,
+            self.remote_stop,
             protocol=self.proto,
             is_ipv6=self.is_ipv6,
             is_outbound=self.is_outbound,
@@ -157,12 +162,12 @@ class VppIpsecSpdEntry(VppObject):
     def query_vpp_config(self):
         ss = self.test.vapi.ipsec_spd_dump(self.spd.id)
         for s in ss:
-            if s.sa_id == self.sa_id and \
-               s.is_outbound == self.is_outbound and \
-               s.priority == self.priority and \
-               s.policy == self.policy and \
-               s.is_ipv6 == self.is_ipv6 and \
-               s.remote_start_port == self.remote_port_start:
+            if s.entry.sa_id == self.sa_id and \
+               s.entry.is_outbound == self.is_outbound and \
+               s.entry.priority == self.priority and \
+               s.entry.policy == self.policy and \
+               s.entry.remote_address_start == self.remote_start and \
+               s.entry.remote_port_start == self.remote_port_start:
                 return True
         return False
 
@@ -177,8 +182,8 @@ class VppIpsecSA(VppObject):
                  crypto_alg, crypto_key,
                  proto,
                  tun_src=None, tun_dst=None,
-                 use_anti_replay=0,
-                 udp_encap=0):
+                 flags=None):
+        e = VppEnum.vl_api_ipsec_sad_flags_t
         self.test = test
         self.id = id
         self.spi = spi
@@ -187,22 +192,23 @@ class VppIpsecSA(VppObject):
         self.crypto_alg = crypto_alg
         self.crypto_key = crypto_key
         self.proto = proto
-        self.is_tunnel = 0
-        self.is_tunnel_v6 = 0
+
         self.tun_src = tun_src
         self.tun_dst = tun_dst
+        if not flags:
+            self.flags = e.IPSEC_API_SAD_FLAG_NONE
+        else:
+            self.flags = flags
         if (tun_src):
             self.tun_src = ip_address(text_type(tun_src))
-            self.is_tunnel = 1
+            self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL
             if (self.tun_src.version == 6):
-                self.is_tunnel_v6 = 1
+                self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL_V6
         if (tun_dst):
             self.tun_dst = ip_address(text_type(tun_dst))
-        self.use_anti_replay = use_anti_replay
-        self.udp_encap = udp_encap
 
     def add_vpp_config(self):
-        self.test.vapi.ipsec_sad_add_del_entry(
+        self.test.vapi.ipsec_sad_entry_add_del(
             self.id,
             self.spi,
             self.integ_alg,
@@ -210,16 +216,13 @@ class VppIpsecSA(VppObject):
             self.crypto_alg,
             self.crypto_key,
             self.proto,
-            (self.tun_src.packed if self.tun_src else []),
-            (self.tun_dst.packed if self.tun_dst else []),
-            is_tunnel=self.is_tunnel,
-            is_tunnel_ipv6=self.is_tunnel_v6,
-            use_anti_replay=self.use_anti_replay,
-            udp_encap=self.udp_encap)
+            (self.tun_src if self.tun_src else []),
+            (self.tun_dst if self.tun_dst else []),
+            flags=self.flags)
         self.test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.ipsec_sad_add_del_entry(
+        self.test.vapi.ipsec_sad_entry_add_del(
             self.id,
             self.spi,
             self.integ_alg,
@@ -227,12 +230,9 @@ class VppIpsecSA(VppObject):
             self.crypto_alg,
             self.crypto_key,
             self.proto,
-            (self.tun_src.packed if self.tun_src else []),
-            (self.tun_dst.packed if self.tun_dst else []),
-            is_tunnel=self.is_tunnel,
-            is_tunnel_ipv6=self.is_tunnel_v6,
-            use_anti_replay=self.use_anti_replay,
-            udp_encap=self.udp_encap,
+            (self.tun_src if self.tun_src else []),
+            (self.tun_dst if self.tun_dst else []),
+            flags=self.flags,
             is_add=0)
 
     def __str__(self):
