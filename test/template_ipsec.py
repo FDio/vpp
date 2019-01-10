@@ -8,60 +8,67 @@ from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
+from vpp_papi import VppEnum
 
 
 class IPsecIPv4Params(object):
-    addr_type = socket.AF_INET
-    addr_any = "0.0.0.0"
-    addr_bcast = "255.255.255.255"
-    addr_len = 32
-    is_ipv6 = 0
-    remote_tun_if_host = '1.1.1.1'
+    def __init__(self):
+        self.addr_type = socket.AF_INET
+        self.addr_any = "0.0.0.0"
+        self.addr_bcast = "255.255.255.255"
+        self.addr_len = 32
+        self.is_ipv6 = 0
+        self.remote_tun_if_host = '1.1.1.1'
 
-    scapy_tun_sa_id = 10
-    scapy_tun_spi = 1001
-    vpp_tun_sa_id = 20
-    vpp_tun_spi = 1000
+        self.scapy_tun_sa_id = 10
+        self.scapy_tun_spi = 1001
+        self.vpp_tun_sa_id = 20
+        self.vpp_tun_spi = 1000
 
-    scapy_tra_sa_id = 30
-    scapy_tra_spi = 2001
-    vpp_tra_sa_id = 40
-    vpp_tra_spi = 2000
+        self.scapy_tra_sa_id = 30
+        self.scapy_tra_spi = 2001
+        self.vpp_tra_sa_id = 40
+        self.vpp_tra_spi = 2000
 
-    auth_algo_vpp_id = 2  # internal VPP enum value for SHA1_96
-    auth_algo = 'HMAC-SHA1-96'  # scapy name
-    auth_key = 'C91KUR9GYMm5GfkEvNjX'
+        self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                 IPSEC_API_INTEG_ALG_SHA1_96)
+        self.auth_algo = 'HMAC-SHA1-96'  # scapy name
+        self.auth_key = 'C91KUR9GYMm5GfkEvNjX'
 
-    crypt_algo_vpp_id = 1  # internal VPP enum value for AES_CBC_128
-    crypt_algo = 'AES-CBC'  # scapy name
-    crypt_key = 'JPjyOWBeVEQiMe7h'
+        self.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
+                                  IPSEC_API_CRYPTO_ALG_AES_CBC_128)
+        self.crypt_algo = 'AES-CBC'  # scapy name
+        self.crypt_key = 'JPjyOWBeVEQiMe7h'
 
 
 class IPsecIPv6Params(object):
-    addr_type = socket.AF_INET6
-    addr_any = "0::0"
-    addr_bcast = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
-    addr_len = 128
-    is_ipv6 = 1
-    remote_tun_if_host = '1111:1111:1111:1111:1111:1111:1111:1111'
+    def __init__(self):
+        self.addr_type = socket.AF_INET6
+        self.addr_any = "0::0"
+        self.addr_bcast = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+        self.addr_len = 128
+        self.is_ipv6 = 1
+        self.remote_tun_if_host = '1111:1111:1111:1111:1111:1111:1111:1111'
 
-    scapy_tun_sa_id = 50
-    scapy_tun_spi = 3001
-    vpp_tun_sa_id = 60
-    vpp_tun_spi = 3000
+        self.scapy_tun_sa_id = 50
+        self.scapy_tun_spi = 3001
+        self.vpp_tun_sa_id = 60
+        self.vpp_tun_spi = 3000
 
-    scapy_tra_sa_id = 70
-    scapy_tra_spi = 4001
-    vpp_tra_sa_id = 80
-    vpp_tra_spi = 4000
+        self.scapy_tra_sa_id = 70
+        self.scapy_tra_spi = 4001
+        self.vpp_tra_sa_id = 80
+        self.vpp_tra_spi = 4000
 
-    auth_algo_vpp_id = 4  # internal VPP enum value for SHA_256_128
-    auth_algo = 'SHA2-256-128'  # scapy name
-    auth_key = 'C91KUR9GYMm5GfkEvNjX'
+        self.auth_algo_vpp_id = (VppEnum.vl_api_ipsec_integ_alg_t.
+                                 IPSEC_API_INTEG_ALG_SHA_256_128)
+        self.auth_algo = 'SHA2-256-128'  # scapy name
+        self.auth_key = 'C91KUR9GYMm5GfkEvNjX'
 
-    crypt_algo_vpp_id = 3  # internal VPP enum value for AES_CBC_256
-    crypt_algo = 'AES-CBC'  # scapy name
-    crypt_key = 'JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h'
+        self.crypt_algo_vpp_id = (VppEnum.vl_api_ipsec_crypto_alg_t.
+                                  IPSEC_API_CRYPTO_ALG_AES_CBC_256)
+        self.crypt_algo = 'AES-CBC'  # scapy name
+        self.crypt_key = 'JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h'
 
 
 class TemplateIpsec(VppTestCase):
@@ -101,8 +108,10 @@ class TemplateIpsec(VppTestCase):
         self.tun_spd_id = 1
         self.tra_spd_id = 2
 
-        self.vpp_esp_protocol = 1
-        self.vpp_ah_protocol = 0
+        self.vpp_esp_protocol = (VppEnum.vl_api_ipsec_proto_t.
+                                 IPSEC_API_PROTO_ESP)
+        self.vpp_ah_protocol = (VppEnum.vl_api_ipsec_proto_t.
+                                IPSEC_API_PROTO_AH)
 
         self.create_pg_interfaces(range(3))
         self.interfaces = list(self.pg_interfaces)

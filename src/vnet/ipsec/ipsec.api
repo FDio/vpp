@@ -1,3 +1,4 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
  * Copyright (c) 2015-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,9 @@
  * limitations under the License.
  */
 
-option version = "2.1.0";
+option version = "3.0.0";
+
+import "vnet/ip/ip_types.api";
 
 /** \brief IPsec: Add/delete Security Policy Database
     @param client_index - opaque cookie to identify the sender
@@ -50,121 +53,236 @@ autoreply define ipsec_interface_add_del_spd
   u32 spd_id;
 };
 
-/** \brief IPsec: Add/delete Security Policy Database entry
+
+enum ipsec_spd_action
+{
+  /* bypass - no IPsec processing */
+  IPSEC_API_SPD_ACTION_BYPASS = 0,
+  /* discard - discard packet with ICMP processing */
+  IPSEC_API_SPD_ACTION_DISCARD,
+  /* resolve - send request to control plane for SA resolving */
+  IPSEC_API_SPD_ACTION_RESOLVE,
+  /* protect - apply IPsec policy using following parameters */
+  IPSEC_API_SPD_ACTION_PROTECT,
+};
+
+/** \brief IPsec: Security Policy Database entry
 
     See RFC 4301, 4.4.1.1 on how to match packet to selectors
 
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add SPD if non-zero, else delete
     @param spd_id - SPD instance id (control plane allocated)
     @param priority - priority of SPD entry (non-unique value).  Used to order SPD matching - higher priorities match before lower
     @param is_outbound - entry applies to outbound traffic if non-zero, otherwise applies to inbound traffic
-    @param is_ipv6 - remote/local address are IPv6 if non-zero, else IPv4
     @param remote_address_start - start of remote address range to match
     @param remote_address_stop - end of remote address range to match
     @param local_address_start - start of local address range to match
     @param local_address_stop - end of local address range to match
-    @param protocol - protocol type to match [0 means any]
+    @param protocol - protocol type to match [0 means any] otherwise IANA value
     @param remote_port_start - start of remote port range to match ...
     @param remote_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
     @param local_port_start - start of local port range to match ...
     @param local_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
-    @param policy - 0 = bypass (no IPsec processing), 1 = discard (discard packet with ICMP processing), 2 = resolve (send request to control plane for SA resolving, and discard without ICMP processing), 3 = protect (apply IPsec policy using following parameters)
+    @param policy - action to perform on match
     @param sa_id - SAD instance id (control plane allocated)
-
 */
-
-autoreply define ipsec_spd_add_del_entry
+typedef ipsec_spd_entry
 {
-  u32 client_index;
-  u32 context;
-  u8 is_add;
-
   u32 spd_id;
   i32 priority;
   u8 is_outbound;
 
-  // Selector
-  u8 is_ipv6;
-  u8 is_ip_any;
-  u8 remote_address_start[16];
-  u8 remote_address_stop[16];
-  u8 local_address_start[16];
-  u8 local_address_stop[16];
-
+  u32 sa_id;
+  vl_api_ipsec_spd_action_t policy;
   u8 protocol;
+
+  // Selector
+  u8 is_ip_any;
+  vl_api_address_t remote_address_start;
+  vl_api_address_t remote_address_stop;
+  vl_api_address_t local_address_start;
+  vl_api_address_t local_address_stop;
 
   u16 remote_port_start;
   u16 remote_port_stop;
   u16 local_port_start;
   u16 local_port_stop;
+};
 
-  // Policy
-  u8 policy;
-  u32 sa_id;
+/** \brief IPsec: Add/delete Security Policy Database entry
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add SPD if non-zero, else delete
+    @param entry - Description of the entry to add/dell
+*/
+autoreply define ipsec_spd_entry_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_ipsec_spd_entry_t entry;
+};
+
+/** \brief Dump IPsec all SPD IDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipsec_spds_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump IPsec all SPD IDs response
+    @param client_index - opaque cookie to identify the sender
+    @param spd_id - SPD instance id (control plane allocated)
+    @param npolicies - number of policies in SPD
+*/
+define ipsec_spds_details {
+  u32 context;
+  u32 spd_id;
+  u32 npolicies;
+}; 
+
+/** \brief Dump ipsec policy database data
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param spd_id - SPD instance id
+    @param sa_id - SA id, optional, set to ~0 to see all policies in SPD
+*/
+define ipsec_spd_dump {
+    u32 client_index;
+    u32 context;
+    u32 spd_id;
+    u32 sa_id;
+};
+
+/** \brief IPsec policy database response
+    @param context - sender context which was passed in the request
+    €param entry - The SPD entry.
+    @param bytes - byte count of packets matching this policy
+    @param packets - count of packets matching this policy
+*/
+define ipsec_spd_details {
+    u32 context;
+    vl_api_ipsec_spd_entry_t entry;
+    u64 bytes;
+    u64 packets;
+};
+
+/*
+ * @brief Support cryptographic algorithms
+ */
+enum ipsec_crypto_alg
+{
+  IPSEC_API_CRYPTO_ALG_NONE = 0,
+  IPSEC_API_CRYPTO_ALG_AES_CBC_128,
+  IPSEC_API_CRYPTO_ALG_AES_CBC_192,
+  IPSEC_API_CRYPTO_ALG_AES_CBC_256,
+  IPSEC_API_CRYPTO_ALG_AES_CTR_128,
+  IPSEC_API_CRYPTO_ALG_AES_CTR_192,
+  IPSEC_API_CRYPTO_ALG_AES_CTR_256,
+  IPSEC_API_CRYPTO_ALG_AES_GCM_128,
+  IPSEC_API_CRYPTO_ALG_AES_GCM_192,
+  IPSEC_API_CRYPTO_ALG_AES_GCM_256,
+  IPSEC_API_CRYPTO_ALG_DES_CBC,
+  IPSEC_API_CRYPTO_ALG_3DES_CBC,
+};
+
+/*
+ * @brief Supported Integrity Algorithms
+ */
+enum ipsec_integ_alg
+{
+  IPSEC_API_INTEG_ALG_NONE = 0,
+  /* RFC2403 */
+  IPSEC_API_INTEG_ALG_MD5_96,
+  /* RFC2404 */
+  IPSEC_API_INTEG_ALG_SHA1_96,
+  /* draft-ietf-ipsec-ciph-sha-256-00 */
+  IPSEC_API_INTEG_ALG_SHA_256_96,
+  /* RFC4868 */
+  IPSEC_API_INTEG_ALG_SHA_256_128,
+  /* RFC4868 */
+  IPSEC_API_INTEG_ALG_SHA_384_192,
+  /* RFC4868 */
+  IPSEC_API_INTEG_ALG_SHA_512_256,
+};
+
+enum ipsec_sad_flags
+{
+  IPSEC_API_SAD_FLAG_NONE = 0,
+  /* Enable extended sequence numbers */
+  IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM = 0x01,
+  /* Enable Anti-replay */
+  IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY = 0x02,
+  /* IPsec tunnel mode if non-zero, else transport mode */
+  IPSEC_API_SAD_FLAG_IS_TUNNEL = 0x04,
+  /* IPsec tunnel mode is IPv6 if non-zero,
+   *  else IPv4 tunnel only valid if is_tunnel is non-zero */
+  IPSEC_API_SAD_FLAG_IS_TUNNEL_V6 = 0x08,
+  /* enable UDP encapsulation for NAT traversal */
+  IPSEC_API_SAD_FLAG_UDP_ENCAP = 0x10,
+};
+
+enum ipsec_proto
+{
+  IPSEC_API_PROTO_ESP,
+  IPSEC_API_PROTO_AH,
+};
+
+typedef key
+{
+  /* the length of the key */
+  u8 length;
+  /* The data for the key */
+  u8 data[128];
+};
+
+/** \brief IPsec: Security Association Database entry
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add SAD entry if non-zero, else delete
+    @param sad_id - sad id
+    @param spi - security parameter index
+    @param protocol - 0 = AH, 1 = ESP
+    @param crypto_algorithm - a supported crypto algorithm
+    @param crypto_key - crypto keying material
+    @param integrity_algorithm - one of the supported algorithms
+    @param integrity_key - integrity keying material
+    @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
+    @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
+ */
+typedef ipsec_sad_entry
+{
+  u32 sad_id;
+
+  u32 spi;
+
+  vl_api_ipsec_proto_t protocol;
+
+  vl_api_ipsec_crypto_alg_t crypto_algorithm;
+  vl_api_key_t crypto_key;
+
+  vl_api_ipsec_integ_alg_t integrity_algorithm;
+  vl_api_key_t integrity_key;
+
+  vl_api_ipsec_sad_flags_t flags;
+
+  vl_api_address_t tunnel_src;
+  vl_api_address_t tunnel_dst;
 };
 
 /** \brief IPsec: Add/delete Security Association Database entry
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - add SAD entry if non-zero, else delete
-
-    @param sad_id - sad id
-
-    @param spi - security parameter index
-
-    @param protocol - 0 = AH, 1 = ESP
-
-    @param crypto_algorithm - 0 = Null, 1 = AES-CBC-128, 2 = AES-CBC-192, 3 = AES-CBC-256, 4 = 3DES-CBC
-    @param crypto_key_length - length of crypto_key in bytes
-    @param crypto_key - crypto keying material
-
-    @param integrity_algorithm - 0 = None, 1 = MD5-96, 2 = SHA1-96, 3 = SHA-256, 4 = SHA-384, 5=SHA-512
-    @param integrity_key_length - length of integrity_key in bytes
-    @param integrity_key - integrity keying material
-
-    @param use_extended_sequence_number - use ESN when non-zero
-
-    @param is_tunnel - IPsec tunnel mode if non-zero, else transport mode
-    @param is_tunnel_ipv6 - IPsec tunnel mode is IPv6 if non-zero, else IPv4 tunnel only valid if is_tunnel is non-zero
-    @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
-    @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
-    @param udp_encap - enable UDP encapsulation for NAT traversal
-
-    To be added:
-     Anti-replay
-     IPsec tunnel address copy mode (to support GDOI)
+    @param entry - Entry to add or delete
  */
-
-autoreply define ipsec_sad_add_del_entry
+autoreply define ipsec_sad_entry_add_del
 {
   u32 client_index;
   u32 context;
   u8 is_add;
-
-  u32 sad_id;
-
-  u32 spi;
-
-  u8 protocol;
-
-  u8 crypto_algorithm;
-  u8 crypto_key_length;
-  u8 crypto_key[128];
-
-  u8 integrity_algorithm;
-  u8 integrity_key_length;
-  u8 integrity_key[128];
-
-  u8 use_extended_sequence_number;
-  u8 use_anti_replay;
-
-  u8 is_tunnel;
-  u8 is_tunnel_ipv6;
-  u8 tunnel_src_address[16];
-  u8 tunnel_dst_address[16];
-  u8 udp_encap;
+  vl_api_ipsec_sad_entry_t entry;
 };
 
 /** \brief IPsec: Update Security Association keys
@@ -173,10 +291,7 @@ autoreply define ipsec_sad_add_del_entry
 
     @param sa_id - sa id
 
-    @param crypto_key_length - length of crypto_key in bytes
     @param crypto_key - crypto keying material
-
-    @param integrity_key_length - length of integrity_key in bytes
     @param integrity_key - integrity keying material
 */
 
@@ -187,11 +302,8 @@ autoreply define ipsec_sa_set_key
 
   u32 sa_id;
 
-  u8 crypto_key_length;
-  u8 crypto_key[128];
-
-  u8 integrity_key_length;
-  u8 integrity_key[128];
+  vl_api_key_t crypto_key;
+  vl_api_key_t integrity_key;
 };
 
 /** \brief IKEv2: Add/delete profile
@@ -441,80 +553,6 @@ autoreply define ikev2_initiate_rekey_child_sa
   u32 ispi;
 };
 
-/** \brief Dump IPsec all SPD IDs
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define ipsec_spds_dump {
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief Dump IPsec all SPD IDs response
-    @param client_index - opaque cookie to identify the sender
-    @param spd_id - SPD instance id (control plane allocated)
-    @param npolicies - number of policies in SPD
-*/
-define ipsec_spds_details {
-  u32 context;
-  u32 spd_id;
-  u32 npolicies;
-}; 
-
-/** \brief Dump ipsec policy database data
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param spd_id - SPD instance id
-    @param sa_id - SA id, optional, set to ~0 to see all policies in SPD
-*/
-define ipsec_spd_dump {
-    u32 client_index;
-    u32 context;
-    u32 spd_id;
-    u32 sa_id;
-};
-
-/** \brief IPsec policy database response
-    @param context - sender context which was passed in the request
-    @param spd_id - SPD instance id
-    @param priority - numeric value to control policy evaluation order
-    @param is_outbound - [1|0] to indicate if direction is [out|in]bound
-    @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
-    @param local_start_addr - first address in local traffic selector range
-    @param local_stop_addr - last address in local traffic selector range
-    @param local_start_port - first port in local traffic selector range
-    @param local_stop_port - last port in local traffic selector range
-    @param remote_start_addr - first address in remote traffic selector range
-    @param remote_stop_addr - last address in remote traffic selector range
-    @param remote_start_port - first port in remote traffic selector range
-    @param remote_stop_port - last port in remote traffic selector range
-    @param protocol - traffic selector protocol
-    @param policy - policy action
-    @param sa_id - SA id
-    @param bytes - byte count of packets matching this policy
-    @param packets - count of packets matching this policy
-*/
-define ipsec_spd_details {
-    u32 context;
-    u32 spd_id;
-    i32 priority;
-    u8 is_outbound;
-    u8 is_ipv6;
-    u8 local_start_addr[16];
-    u8 local_stop_addr[16];
-    u16 local_start_port;
-    u16 local_stop_port;
-    u8 remote_start_addr[16];
-    u8 remote_stop_addr[16];
-    u16 remote_start_port;
-    u16 remote_stop_port;
-    u8 protocol;
-    u8 policy;
-    u32 sa_id;
-    u64 bytes;
-    u64 packets;
-};
-
 /** \brief IPsec: Get SPD interfaces
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -728,7 +766,7 @@ define ipsec_backend_dump {
 define ipsec_backend_details {
   u32 context;
   u8 name[128];
-  u8 protocol;
+  vl_api_ipsec_proto_t protocol;
   u8 index;
   u8 active;
 };
@@ -742,7 +780,7 @@ define ipsec_backend_details {
 autoreply define ipsec_select_backend {
   u32 client_index;
   u32 context;
-  u8 protocol;
+  vl_api_ipsec_proto_t protocol;
   u8 index;
 };
 

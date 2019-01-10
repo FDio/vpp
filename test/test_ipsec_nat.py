@@ -155,6 +155,9 @@ class IPSecNATTestCase(TemplateIpsec):
         crypt_key = params.crypt_key
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
+        flags = (VppEnum.vl_api_ipsec_sad_flags_t.
+                 IPSEC_API_SAD_FLAG_UDP_ENCAP)
+        e = VppEnum.vl_api_ipsec_spd_action_t
 
         VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
                    auth_algo_vpp_id, auth_key,
@@ -162,14 +165,14 @@ class IPSecNATTestCase(TemplateIpsec):
                    self.vpp_esp_protocol,
                    self.pg1.remote_addr[addr_type],
                    self.tun_if.remote_addr[addr_type],
-                   udp_encap=1).add_vpp_config()
+                   flags=flags).add_vpp_config()
         VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
                    auth_algo_vpp_id, auth_key,
                    crypt_algo_vpp_id, crypt_key,
                    self.vpp_esp_protocol,
                    self.tun_if.remote_addr[addr_type],
                    self.pg1.remote_addr[addr_type],
-                   udp_encap=1).add_vpp_config()
+                   flags=flags).add_vpp_config()
 
         VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
                          addr_any, addr_bcast,
@@ -198,14 +201,16 @@ class IPSecNATTestCase(TemplateIpsec):
                          self.tun_if.remote_addr[addr_type],
                          self.pg1.remote_addr[addr_type],
                          self.pg1.remote_addr[addr_type],
-                         0, priority=10, policy=3,
+                         0, priority=10,
+                         policy=e.IPSEC_API_SPD_ACTION_PROTECT,
                          is_outbound=0).add_vpp_config()
         VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
                          self.pg1.remote_addr[addr_type],
                          self.pg1.remote_addr[addr_type],
                          self.tun_if.remote_addr[addr_type],
                          self.tun_if.remote_addr[addr_type],
-                         0, priority=10, policy=3).add_vpp_config()
+                         0, policy=e.IPSEC_API_SPD_ACTION_PROTECT,
+                         priority=10).add_vpp_config()
 
     def test_ipsec_nat_tun(self):
         """ IPSec/NAT tunnel test case """
