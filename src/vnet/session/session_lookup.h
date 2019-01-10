@@ -21,6 +21,13 @@
 #include <vnet/session/transport.h>
 #include <vnet/session/application_namespace.h>
 
+typedef enum session_lookup_result_
+{
+  SESSION_LOOKUP_RESULT_NONE,
+  SESSION_LOOKUP_RESULT_WRONG_THREAD,
+  SESSION_LOOKUP_RESULT_FILTERED
+} session_lookup_result_t;
+
 stream_session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
 					ip4_address_t * rmt, u16 lcl_port,
 					u16 rmt_port, u8 proto);

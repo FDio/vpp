@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 sctp_error (NONE, "no error")
+sctp_error (WRONG_WORKER, "Wrong worker thread")
+sctp_error (FILTERED, "Packets filtered")
 sctp_error (PKTS_SENT, "Packets sent")
 sctp_error (INVALID_CONNECTION, "Invalid connection")
 sctp_error (INVALID_TAG, "Invalid verification tag")
@@ -47,5 +49,4 @@ sctp_error (EVENT_FIFO_FULL, "Events not sent for lack of event fifo space")
 sctp_error (UNKNOWN_CHUNK, "Unrecognized / unknown chunk or chunk-state mismatch")
 sctp_error (BUNDLING_VIOLATION, "Bundling not allowed")
 sctp_error (PUNT, "Packets punted")
-sctp_error (FILTERED, "Packets filtered")
 sctp_error (MAX_CONNECTIONS, "Reached max supported subconnection")
