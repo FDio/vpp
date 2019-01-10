@@ -52,6 +52,24 @@
       "revId": "974c7f8e23e928190c70ff946da4506db8f18e24",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6af50e9e_a34e00b1",
+        "filename": "src/plugins/gbp/gbp_classify.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 376,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-01-10T16:44:11Z",
+      "side": 1,
+      "message": "removed!",
+      "parentUuid": "340d0160_43dd8397",
+      "revId": "974c7f8e23e928190c70ff946da4506db8f18e24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
