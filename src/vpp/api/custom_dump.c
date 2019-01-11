@@ -1915,16 +1915,13 @@ static void *vl_api_gre_add_del_tunnel_t_print
   (vl_api_gre_add_del_tunnel_t * mp, void *handle)
 {
   u8 *s;
+  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->src_address);
+  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->dst_address);
 
   s = format (0, "SCRIPT: gre_add_del_tunnel ");
 
-  s = format (s, "dst %U ", format_ip46_address,
-	      (ip46_address_t *) & (mp->dst_address),
-	      mp->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4);
-
-  s = format (s, "src %U ", format_ip46_address,
-	      (ip46_address_t *) & (mp->src_address),
-	      mp->is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4);
+  s = format (s, "dst %U ", format_ip46_address, &dst, IP46_TYPE_ANY);
+  s = format (s, "src %U ", format_ip46_address, &src, IP46_TYPE_ANY);
 
   s = format (s, "instance %d ", ntohl (mp->instance));
 
