@@ -206,7 +206,7 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 	clib_bitmap_t *b = clib_bitmap_dup_or (d, l);
 	if (header)
 	  {
-	    vlib_cli_output (vm, "%-20s %-20s  %6s   %6s", "Source", "Destination",
+	    vlib_cli_output (vm, "%-32s %-32s  %6s   %6s", "Source", "Destination",
 			     "Device", "L2");
 	    header = 0;
 	  }
@@ -219,7 +219,7 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 	    int l2 = (clib_bitmap_get (lrxm->mirror_ports, i) +
 		      clib_bitmap_get (ltxm->mirror_ports, i) * 2);
 
-	    vlib_cli_output (vm, "%-20v %-20U (%6s) (%6s)", s,
+	    vlib_cli_output (vm, "%-32v %-32U (%6s) (%6s)", s,
 			     format_vnet_sw_if_index_name, vnm, i,
 			     states[device], states[l2]);
 	    vec_reset_length (s);
