@@ -45,6 +45,8 @@ class VppObjectRegistry(object):
 
     def register(self, obj, logger):
         """ Register an object in the registry. """
+        if not isinstance(obj, VppObject):
+            raise ValueError("Will not register non-VppObject! Try again!")
         if obj.object_id() not in self._object_dict:
             self._object_registry.append(obj)
             self._object_dict[obj.object_id()] = obj
