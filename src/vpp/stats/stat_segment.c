@@ -380,6 +380,31 @@ VLIB_CLI_COMMAND (show_stat_segment_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+show_stat_heap_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  int verbose = 0;
+
+  if (unformat (input, "verbose"))
+    verbose = 1;
+
+  ASSERT (sm->heap);
+  vlib_cli_output (vm, "%U", format_mheap, sm->heap, verbose /* verbose */ );
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_stat_heap_command, static) =
+{
+  .path = "show statistics heap",
+  .short_help = "show statistics heap [verbose]",
+  .function = show_stat_heap_command_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * Node performance counters:
  * total_calls [threads][node-index]
