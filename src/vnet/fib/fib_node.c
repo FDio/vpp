@@ -252,6 +252,8 @@ fib_memory_show (vlib_main_t * vm,
 
     fib_node_list_memory_show();
 
+    vlib_cli_output (vm, "\nMtrie Mheap Usage: %U\n", format_mheap, ip4_main.mtrie_mheap, 1);
+
     return (NULL);
 }
 
