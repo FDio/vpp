@@ -594,6 +594,7 @@ format_dpdk_device (u8 * s, va_list * args)
       int retval;
 
       rss_conf.rss_key = 0;
+      rss_conf.rss_hf = 0;
       retval = rte_eth_dev_rss_hash_conf_get (xd->port_id, &rss_conf);
       if (retval < 0)
 	clib_warning ("rte_eth_dev_rss_hash_conf_get returned %d", retval);
