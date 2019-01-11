@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 from socket import AF_INET, AF_INET6, inet_pton
+import unittest
 
 from framework import VppTestCase, VppTestRunner
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 
 from scapy.packet import Raw
@@ -10,7 +11,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 
-class VppPipe(VppInterface):
+class VppPipe(VppBaseInterface):
     """
     VPP Pipe
     """

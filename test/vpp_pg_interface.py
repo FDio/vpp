@@ -5,7 +5,7 @@ import struct
 from traceback import format_exc, format_stack
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
@@ -33,7 +33,7 @@ def is_ipv6_misc(p):
     return False
 
 
-class VppPGInterface(VppInterface):
+class VppPGInterface(VppBaseInterface):
     """
     VPP packet-generator interface
     """

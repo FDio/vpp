@@ -700,8 +700,8 @@ class VppTestCase(unittest.TestCase):
         Create packet info object containing the source and destination indexes
         and add it to the testcase's packet info list
 
-        :param VppInterface src_if: source interface
-        :param VppInterface dst_if: destination interface
+        :param VppBaseInterface src_if: source interface
+        :param VppBaseInterface dst_if: destination interface
 
         :returns: _PacketInfo object
 

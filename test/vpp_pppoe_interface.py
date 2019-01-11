@@ -1,10 +1,10 @@
 
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 import socket
 from vpp_papi import mac_pton
 
 
-class VppPppoeInterface(VppInterface):
+class VppPppoeInterface(VppBaseInterface):
     """
     VPP Pppoe interface
     """

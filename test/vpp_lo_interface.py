@@ -1,8 +1,8 @@
 from vpp_object import VppObject
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 
 
-class VppLoInterface(VppInterface, VppObject):
+class VppLoInterface(VppBaseInterface, VppObject):
     """VPP loopback interface."""
 
     def __init__(self, test):

@@ -1,8 +1,8 @@
 
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 
 
-class VppMPLSTunnelInterface(VppInterface):
+class VppMPLSTunnelInterface(VppBaseInterface):
     """
     VPP MPLS Tunnel interface
     """

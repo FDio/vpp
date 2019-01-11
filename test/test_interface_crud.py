@@ -40,7 +40,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
     def create_icmp_stream(src_if, dst_ifs):
         """
 
-        :param VppInterface src_if: Packets are send to this interface,
+        :param VppBaseInterface src_if: Packets are send to this interface,
             using this interfaces remote host.
         :param list dst_ifs: IPv4 ICMP requests are send to interfaces
             addresses.
@@ -58,7 +58,8 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
         """
 
         :param capture: Capture to verify.
-        :param VppInterface request_src_if: Interface where was send packets.
+        :param VppBaseInterface request_src_if: Interface where was
+        send packets.
         :param list dst_ifs: Interfaces where was generated IPv4 ICMP requests.
         """
         rcvd_icmp_pkts = []

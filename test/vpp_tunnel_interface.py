@@ -1,9 +1,9 @@
 from abc import abstractmethod, ABCMeta
 from vpp_pg_interface import is_ipv6_misc
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 
 
-class VppTunnelInterface(VppInterface):
+class VppTunnelInterface(VppBaseInterface):
     """ VPP tunnel interface abstration """
     __metaclass__ = ABCMeta
 

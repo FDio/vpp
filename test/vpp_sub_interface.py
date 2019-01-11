@@ -2,7 +2,7 @@ from scapy.layers.l2 import Dot1Q
 from abc import abstractmethod, ABCMeta
 from vpp_pg_interface import VppPGInterface
 from vpp_papi_provider import L2_VTR_OP
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 
 
 class VppSubInterface(VppPGInterface):
@@ -31,7 +31,7 @@ class VppSubInterface(VppPGInterface):
         return self._vtr
 
     def __init__(self, test, parent, sub_id):
-        VppInterface.__init__(self, test)
+        VppBaseInterface.__init__(self, test)
         self._parent = parent
         self._parent.add_sub_if(self)
         self._sub_id = sub_id

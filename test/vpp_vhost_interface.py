@@ -1,7 +1,7 @@
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 
 
-class VppVhostInterface(VppInterface):
+class VppVhostInterface(VppBaseInterface):
     """VPP vhost interface."""
 
     def __init__(self, test, sock_filename, is_server=0, renumber=0,

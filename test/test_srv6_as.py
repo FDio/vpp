@@ -623,8 +623,8 @@ class TestSRv6(VppTestCase):
                       count):
         """Create SRv6 input packet stream for defined interface.
 
-        :param VppInterface src_if: Interface to create packet stream for
-        :param VppInterface dst_if: destination interface of packet stream
+        :param VppBaseInterface src_if: Interface to create packet stream for
+        :param VppBaseInterface dst_if: destination interface of packet stream
         :param packet_header: Layer3 scapy packet headers,
                 L2 is added when not provided,
                 Raw(payload) with packet_info is added

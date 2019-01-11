@@ -1,5 +1,5 @@
 
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 from vpp_ip import VppIpAddress
 
 
@@ -19,7 +19,7 @@ def find_vxlan_gbp_tunnel(test, src, dst, vni):
     return INDEX_INVALID
 
 
-class VppVxlanGbpTunnel(VppInterface):
+class VppVxlanGbpTunnel(VppBaseInterface):
     """
     VPP VXLAN GBP interface
     """

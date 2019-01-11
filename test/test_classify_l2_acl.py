@@ -216,7 +216,7 @@ class TestClassifyAcl(VppTestCase):
                                 hit_next_index=0xffffffff, is_add=1):
         """Create Classify Session
 
-        :param VppInterface intf: Interface to apply classify session.
+        :param VppBaseInterface intf: Interface to apply classify session.
         :param int table_index: table index to identify classify table.
         :param str match: matched value for interested traffic.
         :param int pbr_action: enable/disable PBR feature.
@@ -234,7 +234,7 @@ class TestClassifyAcl(VppTestCase):
     def input_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Input ACL interface
 
-        :param VppInterface intf: Interface to apply Input ACL feature.
+        :param VppBaseInterface intf: Interface to apply Input ACL feature.
         :param int table_index: table index to identify classify table.
         :param int is_add: option to configure classify session.
             - enable(1) or disable(0)
@@ -248,7 +248,7 @@ class TestClassifyAcl(VppTestCase):
     def output_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Output ACL interface
 
-        :param VppInterface intf: Interface to apply Output ACL feature.
+        :param VppBaseInterface intf: Interface to apply Output ACL feature.
         :param int table_index: table index to identify classify table.
         :param int is_add: option to configure classify session.
             - enable(1) or disable(0)
