@@ -92,7 +92,7 @@ class TestECMP(VppTestCase):
                       ip_prefix_len, packet_sizes, ip_l=IP):
         """Create input packet stream for defined interfaces.
 
-        :param VppInterface src_if: Source Interface for packet stream.
+        :param VppBaseInterface src_if: Source Interface for packet stream.
         :param str src_ip_start: Starting source IPv4 or IPv6 address.
         :param str dst_ip_start: Starting destination IPv4 or IPv6 address.
         :param int ip_prefix_len: IP address prefix length.
@@ -118,7 +118,8 @@ class TestECMP(VppTestCase):
     def verify_capture(self, rx_if, capture, ip_l=IP):
         """Verify captured input packet stream for defined interface.
 
-        :param VppInterface rx_if: Interface to verify captured packet stream.
+        :param VppBaseInterface rx_if: Interface to verify captured
+        packet stream.
         :param list capture: Captured packet stream.
         :param Scapy ip_l: Required IP layer - IP or IPv6. (Default is IP.)
         """

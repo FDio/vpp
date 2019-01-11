@@ -5,10 +5,11 @@ from abc import abstractmethod, ABCMeta
 from six import moves
 
 from util import Host, mk_ll_addr
+from vpp_object import VppObject
 from vpp_papi import mac_pton, mac_ntop
 
 
-class VppInterface(object):
+class Interface(object):
     """Generic VPP interface."""
     __metaclass__ = ABCMeta
 
@@ -424,9 +425,27 @@ class VppInterface(object):
             self.sw_if_index,
             enable)
 
+    def __str__(self):
+        return self.name
+
+
+class VppBaseInterface(VppObject, Interface):
+
+    def __init__(self, test):
+        super(VppBaseInterface, self).__init__(test)
+
+    def add_vpp_config(self):
+        raise NotImplementedError
+
+    def remove_vpp_config(self):
+        raise NotImplementedError
+
     def query_vpp_config(self):
         dump = self.test.vapi.sw_interface_dump()
         return self.is_interface_config_in_dump(dump)
+
+    def object_id(self):
+        raise NotImplementedError
 
     def get_interface_config_from_dump(self, dump):
         for i in dump:
@@ -456,6 +475,3 @@ class VppInterface(object):
                                "admin state")
         self.test.assert_equal(if_state.link_up_down, link_up_down,
                                "link state")
-
-    def __str__(self):
-        return self.name

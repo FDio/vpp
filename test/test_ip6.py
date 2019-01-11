@@ -257,7 +257,7 @@ class TestIPv6(TestIPv6ND):
         """Add load, set destination IP and extend packet to required packet
         size for defined interface.
 
-        :param VppInterface src_if: Interface to create packet for.
+        :param VppBaseInterface src_if: Interface to create packet for.
         :param int packet_size: Required packet size.
         :param Scapy pkt: Packet to be modified.
         """
@@ -277,7 +277,7 @@ class TestIPv6(TestIPv6ND):
     def create_stream(self, src_if):
         """Create input packet stream for defined interface.
 
-        :param VppInterface src_if: Interface to create packet stream for.
+        :param VppBaseInterface src_if: Interface to create packet stream for.
         """
         hdr_ext = 4 if isinstance(src_if, VppSubInterface) else 0
         pkt_tmpl = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
@@ -298,7 +298,8 @@ class TestIPv6(TestIPv6ND):
     def verify_capture(self, dst_if, capture):
         """Verify captured input packet stream for defined interface.
 
-        :param VppInterface dst_if: Interface to verify captured packet stream
+        :param VppBaseInterface dst_if: Interface to verify captured
+        packet stream
                                     for.
         :param list capture: Captured packet stream.
         """

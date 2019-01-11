@@ -162,8 +162,8 @@ class MethodHolder(VppTestCase):
                       size=None, ip_ver='v4'):
         """Create a packet stream to tickle the plugin
 
-        :param VppInterface src_if: Source interface for packet stream
-        :param VppInterface src_if: Dst interface for packet stream
+        :param VppBaseInterface src_if: Source interface for packet stream
+        :param VppBaseInterface src_if: Dst interface for packet stream
         """
         if src_if is None:
             src_if = self.pg1

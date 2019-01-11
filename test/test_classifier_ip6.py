@@ -91,8 +91,9 @@ class TestClassifier(VppTestCase):
                       proto_l=UDP(sport=1234, dport=5678)):
         """Create input packet stream for defined interfaces.
 
-        :param VppInterface src_if: Source Interface for packet stream.
-        :param VppInterface dst_if: Destination Interface for packet stream.
+        :param VppBaseInterface src_if: Source Interface for packet stream.
+        :param VppBaseInterface dst_if: Destination Interface for
+        packet stream.
         :param list packet_sizes: packet size to test.
         :param Scapy proto_l: Required IP protocol. Default protocol is UDP.
         """
@@ -113,7 +114,8 @@ class TestClassifier(VppTestCase):
     def verify_capture(self, dst_if, capture, proto_l=UDP):
         """Verify captured input packet stream for defined interface.
 
-        :param VppInterface dst_if: Interface to verify captured packet stream.
+        :param VppBaseInterface dst_if: Interface to verify captured
+        packet stream.
         :param list capture: Captured packet stream.
         :param Scapy proto_l: Required IP protocol. Default protocol is UDP.
         """
@@ -259,7 +261,7 @@ class TestClassifier(VppTestCase):
     def input_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Input ACL interface
 
-        :param VppInterface intf: Interface to apply Input ACL feature.
+        :param VppBaseInterface intf: Interface to apply Input ACL feature.
         :param int table_index: table index to identify classify table.
         :param int is_add: option to configure classify session.
             - enable(1) or disable(0)
@@ -273,7 +275,7 @@ class TestClassifier(VppTestCase):
     def output_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Output ACL interface
 
-        :param VppInterface intf: Interface to apply Output ACL feature.
+        :param VppBaseInterface intf: Interface to apply Output ACL feature.
         :param int table_index: table index to identify classify table.
         :param int is_add: option to configure classify session.
             - enable(1) or disable(0)

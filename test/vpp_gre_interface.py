@@ -1,9 +1,9 @@
 
-from vpp_interface import VppInterface
+from vpp_interface import VppBaseInterface
 import socket
 
 
-class VppGreInterface(VppInterface):
+class VppGreInterface(VppBaseInterface):
     """
     VPP GRE interface
     """
@@ -46,7 +46,7 @@ class VppGreInterface(VppInterface):
         return "gre-%d" % self.sw_if_index
 
 
-class VppGre6Interface(VppInterface):
+class VppGre6Interface(VppBaseInterface):
     """
     VPP GRE IPv6 interface
     """

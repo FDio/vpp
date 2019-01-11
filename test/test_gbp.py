@@ -485,7 +485,7 @@ class VppGbpContract(VppObject):
         return False
 
 
-class VppGbpVxlanTunnel(VppInterface):
+class VppGbpVxlanTunnel(VppBaseInterface):
     """
     GBP VXLAN tunnel
     """
