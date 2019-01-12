@@ -123,7 +123,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      vlib_cli_output (vm, "pcap tx capture already on...");
+	      vlib_cli_output (vm, "pcap %s capture already on...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
 	      errorFlag = 1;
 	      break;
 	    }
@@ -140,6 +141,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 		  dm->pcap[rx_tx].pcap_main.n_packets_to_capture =
 		    dm->pcap[rx_tx].pcap_main.n_packets_captured;
 		  error = pcap_write (&dm->pcap[rx_tx].pcap_main);
+		  if (dm->pcap[rx_tx].pcap_main.file_descriptor >= 0)
+		    pcap_close (&dm->pcap[rx_tx].pcap_main);
 		  if (error)
 		    clib_error_report (error);
 		  else
@@ -151,7 +154,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      vlib_cli_output (vm, "pcap tx capture already off...");
+	      vlib_cli_output (vm, "pcap %s capture already off...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
 	      errorFlag = 1;
 	      break;
 	    }

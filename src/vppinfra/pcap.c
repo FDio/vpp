@@ -104,7 +104,7 @@ pcap_write (pcap_main_t * pm)
 	{
 	  error =
 	    clib_error_return_unix (0, "failed to open `%s'", pm->file_name);
-	  goto done;
+	  return error;
 	}
 
       pm->flags |= PCAP_MAIN_INIT_DONE;
@@ -131,7 +131,7 @@ pcap_write (pcap_main_t * pm)
 	    error =
 	      clib_error_return (0, "short write of file header `%s'",
 				 pm->file_name);
-	  goto done;
+	  return error;
 	}
     }
 
@@ -146,7 +146,7 @@ pcap_write (pcap_main_t * pm)
       if (n < 0 && unix_error_is_fatal (errno))
 	{
 	  error = clib_error_return_unix (0, "write `%s'", pm->file_name);
-	  goto done;
+	  return error;
 	}
       pm->n_pcap_data_written += n;
     }
@@ -157,15 +157,6 @@ pcap_write (pcap_main_t * pm)
       pm->n_pcap_data_written = 0;
     }
 
-  if (pm->n_packets_captured >= pm->n_packets_to_capture)
-    pcap_close (pm);
-
-done:
-  if (error)
-    {
-      if (pm->file_descriptor >= 0)
-	close (pm->file_descriptor);
-    }
   return error;
 }
 
