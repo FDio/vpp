@@ -122,7 +122,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      vlib_cli_output (vm, "pcap tx capture already on...");
+	      vlib_cli_output (vm, "pcap %s capture already on...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
 	      errorFlag = 1;
 	      break;
 	    }
@@ -150,7 +151,8 @@ pcap_trace_command_internal (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      vlib_cli_output (vm, "pcap tx capture already off...");
+	      vlib_cli_output (vm, "pcap %s capture already off...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
 	      errorFlag = 1;
 	      break;
 	    }

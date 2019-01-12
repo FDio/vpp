@@ -100,6 +100,7 @@ pg_capture (pg_capture_args_t * a)
   pi->pcap_file_name = a->pcap_file_name;
   pi->pcap_main.file_name = (char *) pi->pcap_file_name;
   pi->pcap_main.n_packets_to_capture = a->count;
+  pi->pcap_main.n_packets_captured = 0;
   pi->pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
 
   return 0;
