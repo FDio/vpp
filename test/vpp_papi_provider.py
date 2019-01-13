@@ -75,15 +75,16 @@ class VppPapiProvider(object):
         self.test_class = test_class
         self._expect_api_retval = self._zero
         self._expect_stack = []
-        jsonfiles = []
 
         install_dir = os.getenv('VPP_INSTALL_PATH')
-        for root, dirnames, filenames in os.walk(install_dir):
-            for filename in fnmatch.filter(filenames, '*.api.json'):
-                jsonfiles.append(os.path.join(root, filename))
 
-        self.vpp = VPP(jsonfiles, logger=test_class.logger,
+        # Vapi requires 'VPP_API_DIR', not set when run from Makefile.
+        if 'VPP_API_DIR' not in os.environ:
+            os.environ['VPP_API_DIR'] = os.getenv('VPP_INSTALL_PATH')
+
+        self.vpp = VPP(logger=test_class.logger,
                        read_timeout=read_timeout)
+        self._events = deque()
         self._events = deque()
 
     def __enter__(self):
