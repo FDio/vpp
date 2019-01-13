@@ -206,7 +206,7 @@ wipe: reset
 doc: verify-test-dir $(PIP_PATCH_DONE)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
 	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install sphinx sphinx-rtd-theme"
-	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
+	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) html"
 
 .PHONY: wipe-doc
 

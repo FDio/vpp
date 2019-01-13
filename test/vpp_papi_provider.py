@@ -4,21 +4,9 @@ import time
 from collections import deque
 
 from six import moves
-from vpp_papi import mac_pton
+from vpp_papi import VPP, mac_pton
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
-
-# Sphinx creates auto-generated documentation by importing the python source
-# files and collecting the docstrings from them. The NO_VPP_PAPI flag allows
-# the vpp_papi_provider.py file to be importable without having to build
-# the whole vpp api if the user only wishes to generate the test documentation.
-
-try:
-    from vpp_papi import VPP
-except ImportError:
-    if not os.getenv("NO_VPP_PAPI") == 1:
-        raise
-    pass
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
