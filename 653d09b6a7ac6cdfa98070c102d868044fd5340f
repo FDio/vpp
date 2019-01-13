@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fae29b30_49601041",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-13T13:26:23Z",
+      "side": 1,
+      "message": "in the \"reuse the buffers\" scheme the idea was to ask once - but as we discussed I have got rid of that scheme now...",
+      "parentUuid": "b48ae603_a5d5b4ac",
+      "range": {
+        "startLine": 236,
+        "startChar": 0,
+        "endLine": 236,
+        "endChar": 58
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f304e6f3_90984420",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 28
@@ -36,6 +60,30 @@
       "writtenOn": "2019-01-09T17:43:56Z",
       "side": 1,
       "message": "this looks quite expensive, why not just simple memcpy?",
+      "range": {
+        "startLine": 267,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 69
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9552a440_afa57551",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-13T13:26:23Z",
+      "side": 1,
+      "message": "done the memcpy.",
+      "parentUuid": "f304e6f3_90984420",
       "range": {
         "startLine": 267,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "ee32ce8b_75b4a5e5",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-13T13:26:23Z",
+      "side": 1,
+      "message": "got rid of this as I moved to not recycling the buffers, as we discussed.",
+      "parentUuid": "8da39574_c70d8011",
+      "range": {
+        "startLine": 287,
+        "startChar": 0,
+        "endLine": 293,
+        "endChar": 1
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9fdb47b7_addef401",
         "filename": "src/vnet/interface_output.c",
         "patchSetId": 28
@@ -82,6 +154,30 @@
       "writtenOn": "2019-01-09T17:54:22Z",
       "side": 1,
       "message": "if (do_segmentation \u0026\u0026 (or_flags \u0026 VNET_BUFFER_F_GSO))\n  break;\n\nsaves precious space on my screen :)",
+      "range": {
+        "startLine": 672,
+        "startChar": 3,
+        "endLine": 678,
+        "endChar": 6
+      },
+      "revId": "653d09b6a7ac6cdfa98070c102d868044fd5340f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dba462da_8ea04e44",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 28
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-01-13T13:26:23Z",
+      "side": 1,
+      "message": "done.",
+      "parentUuid": "9fdb47b7_addef401",
       "range": {
         "startLine": 672,
         "startChar": 3,
