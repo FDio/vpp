@@ -33,6 +33,16 @@ string(REPLACE "-" ";" VPP_LIB_VERSION ${VPP_VERSION})
 list(GET VPP_LIB_VERSION 0 VPP_LIB_VERSION)
 
 ##############################################################################
+# cross compiling
+##############################################################################
+if(CMAKE_CROSSCOMPILING)
+  set(CMAKE_IGNORE_PATH
+    /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/
+    /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/lib/
+  )
+endif()
+
+##############################################################################
 # build config
 ##############################################################################
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -123,6 +133,7 @@ pr("VPP library version" "${VPP_LIB_VERSION}")
 pr("GIT toplevel dir" "${VPP_GIT_TOPLEVEL_DIR}")
 pr("C flags" "${CMAKE_C_FLAGS}")
 pr("Linker flags" "${CMAKE_LINKER_FLAGS}")
+pr("Host processor" "${CMAKE_HOST_SYSTEM_PROCESSOR}")
 pr("Target processor" "${CMAKE_SYSTEM_PROCESSOR}")
 pr("Build type" "${CMAKE_BUILD_TYPE}")
 pr("Prefix path" "${CMAKE_PREFIX_PATH}")
