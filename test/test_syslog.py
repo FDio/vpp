@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import unittest
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from scapy.packet import Raw
