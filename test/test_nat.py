@@ -1043,6 +1043,10 @@ class MethodHolder(VppTestCase):
         message = data.decode('utf-8')
         try:
             message = SyslogMessage.parse(message)
+        except (ParseError, KeyError) as e:
+            self.logger.error(e)
+            raise
+        else:
             self.assertEqual(message.severity, SyslogSeverity.info)
             self.assertEqual(message.appname, 'NAT')
             self.assertEqual(message.msgid, 'APMADD' if is_add else 'APMDEL')
@@ -1057,13 +1061,15 @@ class MethodHolder(VppTestCase):
             self.assertEqual(sd_params.get('PROTO'), "%d" % IP_PROTOS.tcp)
             self.assertTrue(sd_params.get('SSUBIX') is not None)
             self.assertEqual(sd_params.get('SVLAN'), '0')
-        except ParseError as e:
-            self.logger.error(e)
 
     def verify_syslog_sess(self, data, is_add=True, is_ip6=False):
         message = data.decode('utf-8')
         try:
             message = SyslogMessage.parse(message)
+        except (ParseError, KeyError) as e:
+            self.logger.error(e)
+            raise
+        else:
             self.assertEqual(message.severity, SyslogSeverity.info)
             self.assertEqual(message.appname, 'NAT')
             self.assertEqual(message.msgid, 'SADD' if is_add else 'SDEL')
@@ -1085,8 +1091,6 @@ class MethodHolder(VppTestCase):
             self.assertEqual(sd_params.get('XDADDR'), self.pg1.remote_ip4)
             self.assertEqual(sd_params.get('XDPORT'),
                              "%d" % self.tcp_external_port)
-        except ParseError as e:
-            self.logger.error(e)
 
     def verify_mss_value(self, pkt, mss):
         """
@@ -8165,6 +8169,10 @@ class TestDSlite(MethodHolder):
         message = data.decode('utf-8')
         try:
             message = SyslogMessage.parse(message)
+        except (ParseError, KeyError) as e:
+            self.logger.error(e)
+            raise
+        else:
             self.assertEqual(message.severity, SyslogSeverity.info)
             self.assertEqual(message.appname, 'NAT')
             self.assertEqual(message.msgid, 'APMADD')
@@ -8179,8 +8187,6 @@ class TestDSlite(MethodHolder):
             self.assertEqual(sd_params.get('PROTO'), "%d" % proto)
             self.assertTrue(sd_params.get('SSUBIX') is not None)
             self.assertEqual(sd_params.get('SV6ENC'), sv6enc)
-        except ParseError as e:
-            self.logger.error(e)
 
     def test_dslite(self):
         """ Test DS-Lite """
