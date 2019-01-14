@@ -31,6 +31,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
@@ -213,6 +214,40 @@ dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 #else
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
 #endif
+}
+
+static int
+check_l3cache ()
+{
+  const char *sys_cache_dir = "/sys/devices/system/cpu/cpu0/cache";
+  struct dirent *dp;
+  DIR *dir_cache = opendir (sys_cache_dir);
+
+  if (dir_cache == NULL)
+    return -1;
+
+  while ((dp = readdir (dir_cache)) != NULL)
+    {
+      if (dp->d_type == DT_DIR)
+	{
+	  u8 *p = NULL;
+	  int level_cache = -1;
+
+	  p = format (p, "%s/%s/%s", sys_cache_dir, dp->d_name, "level");
+	  clib_sysfs_read ((char *) p, "%d", &level_cache);
+	  vec_free (p);
+	  if (level_cache == 3)
+	    {
+	      closedir (dir_cache);
+	      return 1;
+	    }
+	}
+    }
+
+  if (dir_cache != NULL)
+    closedir (dir_cache);
+
+  return 0;
 }
 
 static clib_error_t *
@@ -570,10 +605,20 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  if (devconf->num_rx_desc)
 	    xd->nb_rx_desc = devconf->num_rx_desc;
+          else {
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_rx_desc = 512;
+          }
 
 	  if (devconf->num_tx_desc)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
-	}
+          else {
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_tx_desc = 512;
+	  }
+       }
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
