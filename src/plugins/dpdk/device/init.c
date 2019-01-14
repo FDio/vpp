@@ -36,6 +36,7 @@
 #include <sys/mount.h>
 #include <string.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include <dpdk/device/dpdk_priv.h>
 
@@ -155,6 +156,47 @@ static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
+}
+
+/* The funciton check_l3cache helps check if Level 3 cache exists or not on current CPUs
+  return value 1: exist.
+  return value 0: not exist.
+*/
+static int
+check_l3cache ()
+{
+
+  struct dirent *dp;
+  clib_error_t *err;
+  const char *sys_cache_dir = "/sys/devices/system/cpu/cpu0/cache";
+  DIR *dir_cache = opendir (sys_cache_dir);
+
+  if (dir_cache == NULL)
+    return -1;
+
+  while ((dp = readdir (dir_cache)) != NULL)
+    {
+      if (dp->d_type == DT_DIR)
+	{
+	  u8 *p = NULL;
+	  int level_cache = -1;
+
+	  p = format (p, "%s/%s/%s", sys_cache_dir, dp->d_name, "level");
+	  if ((err = clib_sysfs_read ((char *) p, "%d", &level_cache)))
+	    clib_error_free (err);
+
+	  if (level_cache == 3)
+	    {
+	      closedir (dir_cache);
+	      return 1;
+	    }
+	}
+    }
+
+  if (dir_cache != NULL)
+    closedir (dir_cache);
+
+  return 0;
 }
 
 static clib_error_t *
@@ -500,10 +542,30 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  if (devconf->num_rx_desc)
 	    xd->nb_rx_desc = devconf->num_rx_desc;
+          else {
+
+            /* If num_rx_desc is not specified by VPP user, the current CPU is working
+            with 2M page and has no L3 cache, default num_rx_desc is changed to 512
+            from original 1024 to help reduce TLB misses.
+            */
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_rx_desc = 512;
+          }
 
 	  if (devconf->num_tx_desc)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
-	}
+          else {
+
+            /* If num_tx_desc is not specified by VPP user, the current CPU is working
+            with 2M page and has no L3 cache, default num_tx_desc is changed to 512
+            from original 1024 to help reduce TLB misses.
+            */
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_tx_desc = 512;
+	  }
+       }
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
