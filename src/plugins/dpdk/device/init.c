@@ -572,9 +572,18 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  if (devconf->num_rx_desc)
 	    xd->nb_rx_desc = devconf->num_rx_desc;
-
+	  else {
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && (access ("/sys/devices/system/cpu/cpu0/cache/index3", F_OK) != 0))
+              xd->nb_rx_desc = 512;
+          }
 	  if (devconf->num_tx_desc)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
+	  else {
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && (access ("/sys/devices/system/cpu/cpu0/cache/index3", F_OK) != 0))
+              xd->nb_tx_desc = 512;
+          }
 	}
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
