@@ -1280,12 +1280,12 @@ class VppTestRunner(unittest.TextTestRunner):
 
     def __init__(self, keep_alive_pipe=None, descriptions=True, verbosity=1,
                  result_pipe=None, failfast=False, buffer=False,
-                 resultclass=None, print_summary=True):
+                 resultclass=None, print_summary=True, **kwargs):
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
                                             verbosity, failfast, buffer,
-                                            resultclass)
+                                            resultclass, **kwargs)
         KeepAliveReporter.pipe = keep_alive_pipe
 
         self.orig_stream = self.stream
