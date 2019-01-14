@@ -1625,6 +1625,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	  pg_input_trace (pg, node, s, to_next, n);
 	  vlib_set_trace_count (vm, node, n_trace - n);
 	}
+
       n_packets_to_generate -= n_this_frame;
       n_packets_generated += n_this_frame;
       n_left -= n_this_frame;
@@ -1640,6 +1641,13 @@ pg_generate_packets (vlib_node_runtime_t * node,
 		      b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
 	    }
 	}
+
+      int jj;
+      for (jj = 0; jj < n_this_frame; ++ jj){
+	  u32 bi = *(head+jj);
+          printf("#%03d buflen: %llu\n", bi, (long long unsigned)vlib_buffer_index_length_in_chain(vm, bi));
+          fflush(stdout);
+      }
       vlib_put_next_frame (vm, node, next_index, n_left);
     }
 
