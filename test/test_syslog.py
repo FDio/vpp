@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import unittest
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
@@ -17,7 +18,7 @@ class TestSyslog(VppTestCase):
         super(TestSyslog, cls).setUpClass()
 
         try:
-            cls.create_pg_interfaces(range(1))
+            cls.pg0, = cls.create_pg_interfaces(range(1))
             cls.pg0.admin_up()
             cls.pg0.config_ip4()
             cls.pg0.resolve_arp()
@@ -34,7 +35,7 @@ class TestSyslog(VppTestCase):
         :param facility: facility value
         :param severity: severity level
         :param appname: application name that originate message
-        :param msgid: message indetifier
+        :param msgid: message identifier
         :param sd: structured data (optional)
         :param msg: free-form message (optional)
         """
@@ -70,7 +71,7 @@ class TestSyslog(VppTestCase):
         :param facility: facility value
         :param severity: severity level
         :param appname: application name that originate message
-        :param msgid: message indetifier
+        :param msgid: message identifier
         :param sd: structured data (optional)
         :param msg: free-form message (optional)
         """
@@ -79,6 +80,10 @@ class TestSyslog(VppTestCase):
             sd = {}
         try:
             message = SyslogMessage.parse(message)
+        except (ParseError, KeyError) as e:
+            self.logger.error(e)
+            raise
+        else:
             self.assertEqual(message.facility, facility)
             self.assertEqual(message.severity, severity)
             self.assertEqual(message.appname, appname)
@@ -87,8 +92,6 @@ class TestSyslog(VppTestCase):
             self.assertEqual(message.sd, sd)
             self.assertEqual(message.version, 1)
             self.assertEqual(message.hostname, self.pg0.local_ip4)
-        except ParseError as e:
-            self.logger.error(e)
 
     def test_syslog(self):
         """ Syslog Protocol test """
