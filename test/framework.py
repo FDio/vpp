@@ -273,14 +273,6 @@ class VppTestCase(unittest.TestCase):
         return random.choice(tuple(min_usage_set))
 
     @classmethod
-    def print_header(cls):
-        if not hasattr(cls, '_header_printed'):
-            print(double_line_delim)
-            print(colorize(getdoc(cls).splitlines()[0], GREEN))
-            print(double_line_delim)
-            cls._header_printed = True
-
-    @classmethod
     def setUpConstants(cls):
         """ Set-up the test case class based on environment variables """
         s = os.getenv("STEP", "n")
@@ -401,7 +393,6 @@ class VppTestCase(unittest.TestCase):
         """
         gc.collect()  # run garbage collection first
         random.seed()
-        cls.print_header()
         cls.logger = get_logger(cls.__name__)
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
@@ -1051,7 +1042,7 @@ class VppTestResult(unittest.TestResult):
             test case descriptions.
         :param verbosity Integer variable to store required verbosity level.
         """
-        unittest.TestResult.__init__(self, stream, descriptions, verbosity)
+        super(VppTestResult, self).__init__(stream, descriptions, verbosity)
         self.stream = stream
         self.descriptions = descriptions
         self.verbosity = verbosity
@@ -1209,7 +1200,15 @@ class VppTestResult(unittest.TestResult):
         :param test:
 
         """
-        test.print_header()
+
+        def print_header(test):
+            if not hasattr(test, '_header_printed'):
+                print(double_line_delim)
+                print(colorize(getdoc(test).splitlines()[0], GREEN))
+                print(double_line_delim)
+            test._header_printed = True
+
+        print_header(test)
 
         unittest.TestResult.startTest(self, test)
         if self.verbosity > 0:
@@ -1345,3 +1344,6 @@ class Worker(Thread):
         self.logger.info(err)
         self.logger.info(single_line_delim)
         self.result = self.process.returncode
+
+if __name__ == '__main__':
+    pass
