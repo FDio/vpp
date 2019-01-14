@@ -19,7 +19,16 @@ else
 CMAKE?=cmake
 endif
 
+#cross compiling
+ifneq ($(ARCH),)
+vpp_cmake_args += -DCMAKE_SYSTEM_NAME=Linux
+vpp_cmake_args += -DCMAKE_SYSTEM_PROCESSOR=$(ARCH)
+vpp_cmake_args += -DCMAKE_C_COMPILER=$(TARGET)-gcc
+vpp_cmake_prefix_path  = /opt/vpp/external/$(ARCH)
+else
 vpp_cmake_prefix_path  = /opt/vpp/external/$(shell uname -m)
+endif
+
 vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)external
 vpp_cmake_prefix_path := $(subst $() $(),;,$(vpp_cmake_prefix_path))
 
