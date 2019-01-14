@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5d87b9b7_f3b47586",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-14T16:02:01Z",
+      "side": 1,
+      "message": "just mege virtio_pci_legacy_notify_queue() under virtio_kick(vring).... insead of duplicating same code 3 times....",
+      "range": {
+        "startLine": 278,
+        "startChar": 5,
+        "endLine": 278,
+        "endChar": 16
+      },
+      "revId": "d9d5da1ebb8f181de5dbc34b8f9479a80bbdc8dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
