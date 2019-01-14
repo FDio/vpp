@@ -533,7 +533,11 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       y = BN_new ();
       len = t->key_len / 2;
 
-      EC_POINT_get_affine_coordinates_GFp (group, r_point, x, y, bn_ctx);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      EC_POINT_get_affine_coordinates (group, r_point, x, y, bn_ctx);
+#else
+      EC_POINT_get_affine_coordinates_GFP (group, r_point, x, y, bn_ctx);
+#endif
 
       if (sa->is_initiator)
 	{
@@ -562,12 +566,20 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 
 	  x = BN_bin2bn (sa->i_dh_data, len, x);
 	  y = BN_bin2bn (sa->i_dh_data + len, len, y);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	  EC_POINT_set_affine_coordinates (group, i_point, x, y, bn_ctx);
+#else
 	  EC_POINT_set_affine_coordinates_GFp (group, i_point, x, y, bn_ctx);
+#endif
 	  sa->dh_shared_key = vec_new (u8, t->key_len);
 	  EC_POINT_mul (group, shared_point, NULL, i_point,
 			EC_KEY_get0_private_key (ec), NULL);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	  EC_POINT_get_affine_coordinates (group, shared_point, x, y, bn_ctx);
+#else
 	  EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y,
 					       bn_ctx);
+#endif
 	  x_off = len - BN_num_bytes (x);
 	  clib_memset (sa->dh_shared_key, 0, x_off);
 	  BN_bn2bin (x, sa->dh_shared_key + x_off);
@@ -644,7 +656,11 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       x = BN_bin2bn (sa->r_dh_data, len, x);
       y = BN_bin2bn (sa->r_dh_data + len, len, y);
       EC_POINT *r_point = EC_POINT_new (group);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      EC_POINT_set_affine_coordinates (group, r_point, x, y, bn_ctx);
+#else
       EC_POINT_set_affine_coordinates_GFp (group, r_point, x, y, bn_ctx);
+#endif
       EC_KEY_set_public_key (ec, r_point);
 
       EC_POINT *i_point = EC_POINT_new (group);
@@ -652,10 +668,18 @@ ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
 
       x = BN_bin2bn (sa->i_dh_data, len, x);
       y = BN_bin2bn (sa->i_dh_data + len, len, y);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      EC_POINT_set_affine_coordinates (group, i_point, x, y, bn_ctx);
+#else
       EC_POINT_set_affine_coordinates_GFp (group, i_point, x, y, bn_ctx);
+#endif
       EC_POINT_mul (group, shared_point, NULL, r_point,
 		    EC_KEY_get0_private_key (ec), NULL);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+      EC_POINT_get_affine_coordinates (group, shared_point, x, y, bn_ctx);
+#else
       EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y, bn_ctx);
+#endif
       sa->dh_shared_key = vec_new (u8, t->key_len);
       x_off = len - BN_num_bytes (x);
       clib_memset (sa->dh_shared_key, 0, x_off);
