@@ -196,12 +196,10 @@ vpp_ssl_async_process_event (tls_ctx_t * ctx,
 static int
 vpp_ssl_async_retry_func (tls_ctx_t * ctx, openssl_resume_handler * handler)
 {
-  openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
 
   if (vpp_add_async_run_event (ctx, handler))
-    {
-      SSL_clear_async_status (oc->ssl);
-    }
+    return 1;
+
   return 0;
 
 }
