@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
@@ -212,6 +213,63 @@ dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 #else
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
 #endif
+}
+
+static int
+check_l3cache ()
+{
+  const char *path = "/sys/devices/system/cpu/cpu0/cache/";
+  char pathx[255];
+  int flag_l3cache = 0;
+  DIR *dir = opendir (path);
+  DIR *subdir;
+  struct dirent *dp;
+
+  if (dir == NULL)
+    return -1;
+
+  while ((dp = readdir (dir)) != NULL)
+    {
+
+      if (strncmp (dp->d_name, "index", 5) == 0 && dp->d_type == 4)
+	{
+	  strcpy (pathx, path);
+	  strcat (pathx, dp->d_name);
+	  subdir = opendir (pathx);
+
+	  if (subdir == NULL)
+	    return -1;
+
+	  while ((dp = readdir (subdir)) != NULL)
+	    {
+	      if (strcmp (dp->d_name, "level") == 0)
+		{
+		  FILE *fp;
+		  int c;
+
+		  strcat (pathx, "/level");
+		  fp = fopen (pathx, "r");
+
+		  if (fp != NULL)
+		    {
+		      while ((c = fgetc (fp)) != EOF)
+			{
+			  if (c == (int) '3')
+			    flag_l3cache = 1;
+			}
+		      fclose (fp);
+		    }
+		  else
+		    return -1;
+		}
+	    }
+	}
+    }
+
+  if (dir != NULL)
+    closedir (dir);
+
+  return flag_l3cache;
 }
 
 static clib_error_t *
@@ -572,10 +630,21 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  if (devconf->num_rx_desc)
 	    xd->nb_rx_desc = devconf->num_rx_desc;
+          else {
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_rx_desc = 512;
+          }
 
 	  if (devconf->num_tx_desc)
 	    xd->nb_tx_desc = devconf->num_tx_desc;
-	}
+          else {
+            if ((clib_mem_get_default_hugepage_size () == 2 << 20)
+              && check_l3cache() == 0)
+              xd->nb_tx_desc = 512;
+	  }
+
+       }
 
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
