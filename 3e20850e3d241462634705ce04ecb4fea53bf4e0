@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "26498b7d_24a34a43",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-14T09:40:33Z",
+      "side": 1,
+      "message": "This should override user specified values, no?\nUser specified value should have precedence....",
+      "range": {
+        "startLine": 579,
+        "startChar": 0,
+        "endLine": 585,
+        "endChar": 12
+      },
+      "revId": "3e20850e3d241462634705ce04ecb4fea53bf4e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
