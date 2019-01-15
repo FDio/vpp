@@ -206,7 +206,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   app = application_get (app_wrk->app_index);
   lctx = tls_listener_ctx_get (ctx->listener_ctx_index);
 
-  app_session = session_alloc (vlib_get_thread_index ());
+  app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
   app_session->app_wrk_index = ctx->parent_app_index;
   app_session->connection_index = ctx->tls_ctx_handle;
 
@@ -221,7 +221,6 @@ tls_notify_app_accept (tls_ctx_t * ctx)
       TLS_DBG (1, "failed to allocate fifos");
       return rv;
     }
-  ctx->c_s_index = app_session->session_index;
   ctx->app_session_handle = session_handle (app_session);
   session_lookup_add_connection (&ctx->connection,
 				 session_handle (app_session));
@@ -251,7 +250,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
     goto failed;
 
   sm = app_worker_get_connect_segment_manager (app_wrk);
-  app_session = session_alloc (vlib_get_thread_index ());
+  app_session = session_get (ctx->c_s_index, ctx->c_thread_index);
   app_session->app_wrk_index = ctx->parent_app_index;
   app_session->connection_index = ctx->tls_ctx_handle;
   app_session->session_type =
@@ -261,7 +260,6 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   if (session_alloc_fifos (sm, app_session))
     goto failed;
 
-  ctx->app_session_handle = session_handle (app_session);
   app_session->session_state = SESSION_STATE_CONNECTING;
   if (cb_fn (ctx->parent_app_index, ctx->parent_app_api_context,
 	     app_session, 0 /* not failed */ ))
@@ -271,9 +269,7 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
       return -1;
     }
 
-  /* parent_app_api_context should not be overwitten before used,
-   * so defer setting c_s_index */
-  ctx->c_s_index = app_session->session_index;
+  ctx->app_session_handle = session_handle (app_session);
   app_session->session_state = SESSION_STATE_READY;
   session_lookup_add_connection (&ctx->connection,
 				 session_handle (app_session));
@@ -405,7 +401,7 @@ tls_session_disconnect_callback (stream_session_t * tls_session)
 int
 tls_session_accept_callback (stream_session_t * tls_session)
 {
-  stream_session_t *tls_listener;
+  stream_session_t *tls_listener, *app_session;
   tls_ctx_t *lctx, *ctx;
   u32 ctx_handle;
 
@@ -421,6 +417,12 @@ tls_session_accept_callback (stream_session_t * tls_session)
   tls_session->opaque = ctx_handle;
   ctx->tls_session_handle = session_handle (tls_session);
   ctx->listener_ctx_index = tls_listener->opaque;
+
+  /* Preallocate app session. Avoids allocating a session post handshake
+   * on tls_session rx and potentially invalidating the session pool */
+  app_session = session_alloc (ctx->c_thread_index);
+  app_session->session_state = SESSION_STATE_CLOSED;
+  ctx->c_s_index = app_session->session_index;
 
   TLS_DBG (1, "Accept on listener %u new connection [%u]%x",
 	   tls_listener->opaque, vlib_get_thread_index (), ctx_handle);
@@ -453,6 +455,7 @@ int
 tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
 				stream_session_t * tls_session, u8 is_fail)
 {
+  stream_session_t *app_session;
   tls_ctx_t *ho_ctx, *ctx;
   u32 ctx_handle;
 
@@ -495,6 +498,12 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
   ctx->tls_session_handle = session_handle (tls_session);
   tls_session->opaque = ctx_handle;
   tls_session->session_state = SESSION_STATE_READY;
+
+  /* Preallocate app session. Avoids allocating a session post handshake
+   * on tls_session rx and potentially invalidating the session pool */
+  app_session = session_alloc (ctx->c_thread_index);
+  app_session->session_state = SESSION_STATE_CLOSED;
+  ctx->c_s_index = app_session->session_index;
 
   return tls_ctx_init_client (ctx);
 }

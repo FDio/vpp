@@ -39,7 +39,10 @@
 typedef CLIB_PACKED (struct tls_cxt_id_
 {
   u32 parent_app_index;
-  session_handle_t app_session_handle;
+  union {
+    session_handle_t app_session_handle;
+    u32 parent_app_api_ctx;
+  };
   session_handle_t tls_session_handle;
   u32 ssl_ctx;
   u32 listener_ctx_index;
@@ -67,7 +70,7 @@ typedef struct tls_ctx_
 #define tls_ctx_handle c_c_index
   /* Temporary storage for session open opaque. Overwritten once
    * underlying tcp connection is established */
-#define parent_app_api_context c_s_index
+#define parent_app_api_context c_tls_ctx_id.parent_app_api_ctx
 
   u8 is_passive_close;
   u8 resume;

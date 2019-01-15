@@ -599,6 +599,9 @@ segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
   svm_fifo_segment_private_t *fifo_segment;
   segment_manager_t *sm;
 
+  if (!rx_fifo || !tx_fifo)
+    return;
+
   /* It's possible to have no segment manager if the session was removed
    * as result of a detach. */
   if (!(sm = segment_manager_get_if_valid (rx_fifo->segment_manager)))
