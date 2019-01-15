@@ -438,6 +438,149 @@ vls_session_index_to_vlsh (uint32_t session_index)
   return vlsh;
 }
 
+static void
+vls_cleanup_forked_child (vcl_worker_t * wrk, vcl_worker_t * child_wrk)
+{
+  vcl_worker_t *sub_child;
+  int tries = 0;
+
+  if (child_wrk->forked_child != ~0)
+    {
+      sub_child = vcl_worker_get_if_valid (child_wrk->forked_child);
+      if (sub_child)
+	{
+	  /* Wait a bit, maybe the process is going away */
+	  while (kill (sub_child->current_pid, 0) >= 0 && tries++ < 50)
+	    usleep (1e3);
+	  if (kill (sub_child->current_pid, 0) < 0)
+	    vls_cleanup_forked_child (child_wrk, sub_child);
+	}
+    }
+  vcl_worker_cleanup (child_wrk, 1 /* notify vpp */ );
+  VDBG (0, "Cleaned up wrk %u", child_wrk->wrk_index);
+  wrk->forked_child = ~0;
+}
+
+static struct sigaction old_sa;
+
+static void
+vls_intercept_sigchld_handler (int signum, siginfo_t * si, void *uc)
+{
+  vcl_worker_t *wrk, *child_wrk;
+
+  if (vcl_get_worker_index () == ~0)
+    return;
+
+  if (sigaction (SIGCHLD, &old_sa, 0))
+    {
+      VERR ("couldn't restore sigchld");
+      exit (-1);
+    }
+
+  wrk = vcl_worker_get_current ();
+  if (wrk->forked_child == ~0)
+    return;
+
+  child_wrk = vcl_worker_get_if_valid (wrk->forked_child);
+  if (!child_wrk)
+    goto done;
+
+  if (si && si->si_pid != child_wrk->current_pid)
+    {
+      VDBG (0, "unexpected child pid %u", si->si_pid);
+      goto done;
+    }
+  vls_cleanup_forked_child (wrk, child_wrk);
+
+done:
+  if (old_sa.sa_flags & SA_SIGINFO)
+    {
+      void (*fn) (int, siginfo_t *, void *) = old_sa.sa_sigaction;
+      fn (signum, si, uc);
+    }
+  else
+    {
+      void (*fn) (int) = old_sa.sa_handler;
+      if (fn)
+	fn (signum);
+    }
+}
+
+static void
+vls_incercept_sigchld ()
+{
+  struct sigaction sa;
+  clib_memset (&sa, 0, sizeof (sa));
+  sa.sa_sigaction = vls_intercept_sigchld_handler;
+  sa.sa_flags = SA_SIGINFO;
+  if (sigaction (SIGCHLD, &sa, &old_sa))
+    {
+      VERR ("couldn't intercept sigchld");
+      exit (-1);
+    }
+}
+
+static void
+vls_app_pre_fork (void)
+{
+  vls_incercept_sigchld ();
+  vcl_flush_mq_events ();
+}
+
+static void
+vls_app_fork_child_handler (void)
+{
+  vcl_worker_t *parent_wrk, *wrk;
+  int rv, parent_wrk_index;
+  u8 *child_name;
+
+  parent_wrk_index = vcl_get_worker_index ();
+  VDBG (0, "initializing forked child with parent wrk %u", parent_wrk_index);
+
+  /*
+   * Allocate worker
+   */
+  vcl_set_worker_index (~0);
+  if (!vcl_worker_alloc_and_init ())
+    VERR ("couldn't allocate new worker");
+
+  /*
+   * Attach to binary api
+   */
+  child_name = format (0, "%v-child-%u%c", vcm->app_name, getpid (), 0);
+  vcl_cleanup_bapi ();
+  vppcom_api_hookup ();
+  vcm->app_state = STATE_APP_START;
+  rv = vppcom_connect_to_vpp ((char *) child_name);
+  vec_free (child_name);
+  if (rv)
+    {
+      VERR ("couldn't connect to VPP!");
+      return;
+    }
+
+  /*
+   * Register worker with vpp and share sessions
+   */
+  vcl_worker_register_with_vpp ();
+  parent_wrk = vcl_worker_get (parent_wrk_index);
+  wrk = vcl_worker_get_current ();
+  wrk->vpp_event_queues = vec_dup (parent_wrk->vpp_event_queues);
+  vcl_worker_share_sessions (parent_wrk);
+  parent_wrk->forked_child = vcl_get_worker_index ();
+
+  VDBG (0, "forked child main worker initialized");
+  vcm->forking = 0;
+}
+
+static void
+vls_app_fork_parent_handler (void)
+{
+  vcm->forking = 1;
+  while (vcm->forking)
+    ;
+}
+
 int
 vls_app_create (char *app_name)
 {
@@ -445,6 +588,8 @@ vls_app_create (char *app_name)
   if ((rv = vppcom_app_create (app_name)))
     return rv;
   clib_rwlock_init (&vlsm->vls_table_lock);
+  pthread_atfork (vls_app_pre_fork, vls_app_fork_parent_handler,
+		  vls_app_fork_child_handler);
   return VPPCOM_OK;
 }
 

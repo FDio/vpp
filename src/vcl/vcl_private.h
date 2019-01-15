@@ -530,6 +530,8 @@ void vcl_worker_share_sessions (vcl_worker_t * parent_wrk);
 int vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s);
 vcl_shared_session_t *vcl_shared_session_get (u32 ss_index);
 int vcl_session_get_refcnt (vcl_session_t * s);
+void vcl_flush_mq_events (void);
+void vcl_cleanup_bapi (void);
 
 void vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index);
 u32 vcl_segment_table_lookup (u64 segment_handle);
