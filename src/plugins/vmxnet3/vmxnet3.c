@@ -164,7 +164,8 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
   vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
   vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, qid);
 
-  vd->dma = vlib_physmem_alloc_aligned (vm, sizeof (*vd->dma), 512);
+  vd->dma = vlib_physmem_alloc_aligned_on_numa (vm, sizeof (*vd->dma), 512,
+						vd->numa_node);
   if (vd->dma == 0)
     return vlib_physmem_last_error (vm);
 
@@ -246,16 +247,17 @@ vmxnet3_rxq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   rxq->size = qsz;
   for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
     {
-      rxq->rx_desc[rid] = vlib_physmem_alloc_aligned
-	(vm, qsz * sizeof (*rxq->rx_desc[rid]), 512);
+      rxq->rx_desc[rid] = vlib_physmem_alloc_aligned_on_numa
+	(vm, qsz * sizeof (*rxq->rx_desc[rid]), 512, vd->numa_node);
 
       if (rxq->rx_desc[rid] == 0)
 	return vlib_physmem_last_error (vm);
 
       clib_memset (rxq->rx_desc[rid], 0, qsz * sizeof (*rxq->rx_desc[rid]));
     }
-  rxq->rx_comp = vlib_physmem_alloc_aligned (vm, qsz * sizeof (*rxq->rx_comp),
-					     512);
+  rxq->rx_comp =
+    vlib_physmem_alloc_aligned_on_numa (vm, qsz * sizeof (*rxq->rx_comp), 512,
+					vd->numa_node);
   if (rxq->rx_comp == 0)
     return vlib_physmem_last_error (vm);
 
@@ -293,14 +295,16 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   txq = vec_elt_at_index (vd->txqs, qid);
   clib_memset (txq, 0, sizeof (*txq));
   txq->size = qsz;
-  txq->tx_desc = vlib_physmem_alloc_aligned (vm, qsz * sizeof (*txq->tx_desc),
-					     512);
+  txq->tx_desc =
+    vlib_physmem_alloc_aligned_on_numa (vm, qsz * sizeof (*txq->tx_desc), 512,
+					vd->numa_node);
   if (txq->tx_desc == 0)
     return vlib_physmem_last_error (vm);
 
   memset (txq->tx_desc, 0, qsz * sizeof (*txq->tx_desc));
-  txq->tx_comp = vlib_physmem_alloc_aligned (vm, qsz * sizeof (*txq->tx_comp),
-					     512);
+  txq->tx_comp =
+    vlib_physmem_alloc_aligned_on_numa (vm, qsz * sizeof (*txq->tx_comp), 512,
+					vd->numa_node);
   if (txq->tx_comp == 0)
     return vlib_physmem_last_error (vm);
 
@@ -346,14 +350,16 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
   vd->version = count_leading_zeros (ret);
   vd->version = uword_bits - vd->version;
 
-  if (vd->version == 0 || vd->version > 3)
+  if (vd->version == 0)
     {
       error = clib_error_return (0, "unsupported hardware version %u",
 				 vd->version);
       return error;
     }
 
-  vmxnet3_reg_write (vd, 1, VMXNET3_REG_VRRS, 1 << (vd->version - 1));
+  /* cap support version to 3 */
+  vmxnet3_reg_write (vd, 1, VMXNET3_REG_VRRS,
+		     1 << (clib_min (3, vd->version) - 1));
 
   ret = vmxnet3_reg_read (vd, 1, VMXNET3_REG_UVRS);
   if (ret & 1)
@@ -454,6 +460,8 @@ vmxnet3_irq_1_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
     {
       vd->flags |= VMXNET3_DEVICE_F_LINK_UP;
       vd->link_speed = ret >> 16;
+      vnet_hw_interface_set_link_speed (vnm, vd->hw_if_index,
+					vd->link_speed * 1000);
       vnet_hw_interface_set_flags (vnm, vd->hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
     }
@@ -543,6 +551,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
    * references vd->pci_dev_handle
    */
   vd->pci_dev_handle = h;
+  vd->numa_node = vlib_pci_get_numa_node (vm, h);
   vlib_pci_set_private_data (vm, h, vd->dev_instance);
 
   if ((error = vlib_pci_bus_master_enable (vm, h)))
@@ -618,6 +627,8 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
 				    vmxnet3_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, vd->hw_if_index, 0, ~0);
+  vnet_hw_interface_set_link_speed (vnm, vd->hw_if_index,
+				    vd->link_speed * 1000);
   if (vd->flags & VMXNET3_DEVICE_F_LINK_UP)
     vnet_hw_interface_set_flags (vnm, vd->hw_if_index,
 				 VNET_HW_INTERFACE_FLAG_LINK_UP);

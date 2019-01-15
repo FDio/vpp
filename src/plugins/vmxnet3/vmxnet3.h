@@ -467,6 +467,7 @@ typedef struct
   u32 dev_instance;
   u32 sw_if_index;
   u32 hw_if_index;
+  u32 numa_node;
   vlib_pci_dev_handle_t pci_dev_handle;
   vlib_pci_addr_t pci_addr;
   void *bar[2];
