@@ -572,6 +572,9 @@ ip4_icmp_error (vlib_main_t * vm,
 	    error0 = icmp4_icmp_type_to_error (icmp0->type);
 	  vlib_error_count (vm, node->node_index, error0, 1);
 
+	  p0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  p0->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+
 	  /* Verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
