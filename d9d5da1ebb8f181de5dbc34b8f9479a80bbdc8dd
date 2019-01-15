@@ -22,6 +22,30 @@
       "revId": "d9d5da1ebb8f181de5dbc34b8f9479a80bbdc8dd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cb8c83cc_a618d270",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-01-15T11:25:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d87b9b7_f3b47586",
+      "range": {
+        "startLine": 278,
+        "startChar": 5,
+        "endLine": 278,
+        "endChar": 16
+      },
+      "revId": "d9d5da1ebb8f181de5dbc34b8f9479a80bbdc8dd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
