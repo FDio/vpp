@@ -22,6 +22,30 @@
       "revId": "3e20850e3d241462634705ce04ecb4fea53bf4e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1f4854d9_5d5a0871",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-01-15T02:42:16Z",
+      "side": 1,
+      "message": "\u003e This should override user specified values, no?\n \u003e User specified value should have precedence....\n\nMake sense. please help review new version.",
+      "parentUuid": "26498b7d_24a34a43",
+      "range": {
+        "startLine": 579,
+        "startChar": 0,
+        "endLine": 585,
+        "endChar": 12
+      },
+      "revId": "3e20850e3d241462634705ce04ecb4fea53bf4e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
