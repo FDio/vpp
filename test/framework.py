@@ -554,7 +554,7 @@ class VppTestCase(unittest.TestCase):
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
         if not self.vpp_dead:
-            self.logger.debug(self.vapi.cli("show trace"))
+            self.logger.debug(self.vapi.cli("show trace max 1000"))
             self.logger.info(self.vapi.ppcli("show interface"))
             self.logger.info(self.vapi.ppcli("show hardware"))
             self.logger.info(self.statistics.set_errors_str())
@@ -635,7 +635,7 @@ class VppTestCase(unittest.TestCase):
             cls.logger.debug("Removing zombie capture %s" % cap_name)
             cls.vapi.cli('packet-generator delete %s' % cap_name)
 
-        cls.vapi.cli("trace add pg-input 50")  # 50 is maximum
+        cls.vapi.cli("trace add pg-input 1000")
         cls.vapi.cli('packet-generator enable')
         cls._zombie_captures = cls._captures
         cls._captures = []
