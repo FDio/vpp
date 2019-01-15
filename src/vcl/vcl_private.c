@@ -392,6 +392,11 @@ vcl_worker_share_session (vcl_worker_t * parent, vcl_worker_t * wrk,
       ss = vcl_shared_session_get (new_s->shared_index);
       vec_add1 (ss->workers, wrk->wrk_index);
     }
+  if (new_s->rx_fifo)
+    {
+      svm_fifo_add_subscriber (new_s->rx_fifo, wrk->vpp_wrk_index);
+      svm_fifo_add_subscriber (new_s->tx_fifo, wrk->vpp_wrk_index);
+    }
 }
 
 int
@@ -414,6 +419,12 @@ vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s)
     {
       vcl_shared_session_free (ss);
       return 1;
+    }
+
+  if (s->rx_fifo)
+    {
+      svm_fifo_del_subscriber (s->rx_fifo, wrk->vpp_wrk_index);
+      svm_fifo_del_subscriber (s->tx_fifo, wrk->vpp_wrk_index);
     }
 
   /* If the first removed and not last, start session worker change.
