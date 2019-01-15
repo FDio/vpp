@@ -181,7 +181,6 @@ typedef struct
   svm_msg_q_t *our_evt_q;
   u64 options[16];
   vcl_session_msg_t *accept_evts_fifo;
-  u32 shared_index;
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
@@ -371,7 +370,6 @@ vcl_session_alloc (vcl_worker_t * wrk)
   pool_get (wrk->sessions, s);
   memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
-  s->shared_index = ~0;
   return s;
 }
 
@@ -389,11 +387,17 @@ vcl_session_get (vcl_worker_t * wrk, u32 session_index)
   return pool_elt_at_index (wrk->sessions, session_index);
 }
 
-static inline int
+static inline vcl_session_handle_t
+vcl_session_handle_from_index (u32 session_index)
+{
+  ASSERT (session_index < 2 << 24);
+  return (vcl_get_worker_index () << 24 | session_index);
+}
+
+static inline vcl_session_handle_t
 vcl_session_handle (vcl_session_t * s)
 {
-  ASSERT (s->session_index < 2 << 24);
-  return (vcl_get_worker_index () << 24 | s->session_index);
+  return vcl_session_handle_from_index (s->session_index);
 }
 
 static inline void
@@ -529,7 +533,11 @@ int vcl_worker_set_bapi (void);
 void vcl_worker_share_sessions (vcl_worker_t * parent_wrk);
 int vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s);
 vcl_shared_session_t *vcl_shared_session_get (u32 ss_index);
-int vcl_session_get_refcnt (vcl_session_t * s);
+
+void vcl_flush_mq_events (void);
+void vcl_cleanup_bapi (void);
+int vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
+			 vcl_session_handle_t sh, u8 do_disconnect);
 
 void vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index);
 u32 vcl_segment_table_lookup (u64 segment_handle);

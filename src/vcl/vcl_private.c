@@ -346,127 +346,6 @@ vcl_worker_set_bapi (void)
   return -1;
 }
 
-vcl_shared_session_t *
-vcl_shared_session_alloc (void)
-{
-  vcl_shared_session_t *ss;
-  pool_get (vcm->shared_sessions, ss);
-  memset (ss, 0, sizeof (*ss));
-  ss->ss_index = ss - vcm->shared_sessions;
-  return ss;
-}
-
-vcl_shared_session_t *
-vcl_shared_session_get (u32 ss_index)
-{
-  if (pool_is_free_index (vcm->shared_sessions, ss_index))
-    return 0;
-  return pool_elt_at_index (vcm->shared_sessions, ss_index);
-}
-
-void
-vcl_shared_session_free (vcl_shared_session_t * ss)
-{
-  pool_put (vcm->shared_sessions, ss);
-}
-
-void
-vcl_worker_share_session (vcl_worker_t * parent, vcl_worker_t * wrk,
-			  vcl_session_t * new_s)
-{
-  vcl_shared_session_t *ss;
-  vcl_session_t *old_s;
-
-  if (new_s->shared_index == ~0)
-    {
-      ss = vcl_shared_session_alloc ();
-      ss->session_index = new_s->session_index;
-      vec_add1 (ss->workers, parent->wrk_index);
-      vec_add1 (ss->workers, wrk->wrk_index);
-      new_s->shared_index = ss->ss_index;
-      old_s = vcl_session_get (parent, new_s->session_index);
-      old_s->shared_index = ss->ss_index;
-    }
-  else
-    {
-      ss = vcl_shared_session_get (new_s->shared_index);
-      vec_add1 (ss->workers, wrk->wrk_index);
-    }
-  if (new_s->rx_fifo)
-    {
-      svm_fifo_add_subscriber (new_s->rx_fifo, wrk->vpp_wrk_index);
-      svm_fifo_add_subscriber (new_s->tx_fifo, wrk->vpp_wrk_index);
-    }
-}
-
-int
-vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s)
-{
-  vcl_shared_session_t *ss;
-  int i;
-
-  ss = vcl_shared_session_get (s->shared_index);
-  for (i = 0; i < vec_len (ss->workers); i++)
-    {
-      if (ss->workers[i] == wrk->wrk_index)
-	{
-	  vec_del1 (ss->workers, i);
-	  break;
-	}
-    }
-
-  if (vec_len (ss->workers) == 0)
-    {
-      vcl_shared_session_free (ss);
-      return 1;
-    }
-
-  if (s->rx_fifo)
-    {
-      svm_fifo_del_subscriber (s->rx_fifo, wrk->vpp_wrk_index);
-      svm_fifo_del_subscriber (s->tx_fifo, wrk->vpp_wrk_index);
-    }
-
-  /* If the first removed and not last, start session worker change.
-   * First request goes to vpp and vpp reflects it back to the right
-   * worker */
-  if (i == 0)
-    vcl_send_session_worker_update (wrk, s, ss->workers[0]);
-
-  return 0;
-}
-
-void
-vcl_worker_share_sessions (vcl_worker_t * parent_wrk)
-{
-  vcl_session_t *new_s;
-  vcl_worker_t *wrk;
-
-  if (!parent_wrk->sessions)
-    return;
-
-  wrk = vcl_worker_get_current ();
-  wrk->sessions = pool_dup (parent_wrk->sessions);
-  wrk->session_index_by_vpp_handles =
-    hash_dup (parent_wrk->session_index_by_vpp_handles);
-
-  /* *INDENT-OFF* */
-  pool_foreach (new_s, wrk->sessions, ({
-    vcl_worker_share_session (parent_wrk, wrk, new_s);
-  }));
-  /* *INDENT-ON* */
-}
-
-int
-vcl_session_get_refcnt (vcl_session_t * s)
-{
-  vcl_shared_session_t *ss;
-  ss = vcl_shared_session_get (s->shared_index);
-  if (ss)
-    return vec_len (ss->workers);
-  return 0;
-}
-
 void
 vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index)
 {
@@ -495,6 +374,21 @@ vcl_segment_table_del (u64 segment_handle)
   clib_rwlock_writer_lock (&vcm->segment_table_lock);
   hash_unset (vcm->segment_table, segment_handle);
   clib_rwlock_writer_unlock (&vcm->segment_table_lock);
+}
+
+void
+vcl_cleanup_bapi (void)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  api_main_t *am = &api_main;
+
+  am->my_client_index = ~0;
+  am->my_registration = 0;
+  am->vl_input_queue = 0;
+  am->msg_index_by_name_and_crc = 0;
+  scm->socket_fd = 0;
+
+  vl_client_api_unmap ();
 }
 
 /*
