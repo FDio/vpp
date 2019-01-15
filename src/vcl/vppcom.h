@@ -152,7 +152,6 @@ typedef enum
   VPPCOM_ATTR_SET_TCP_KEEPINTVL,
   VPPCOM_ATTR_GET_TCP_USER_MSS,
   VPPCOM_ATTR_SET_TCP_USER_MSS,
-  VPPCOM_ATTR_GET_REFCNT,
   VPPCOM_ATTR_SET_SHUT,
   VPPCOM_ATTR_GET_SHUT,
 } vppcom_attr_op_t;
@@ -284,7 +283,6 @@ extern int vppcom_poll (vcl_poll_t * vp, uint32_t n_sids,
 extern int vppcom_mq_epoll_fd (void);
 extern int vppcom_session_index (vcl_session_handle_t session_handle);
 extern int vppcom_session_worker (vcl_session_handle_t session_handle);
-extern int vppcom_session_handle (uint32_t session_index);
 
 extern int vppcom_session_read_segments (uint32_t session_handle,
 					 vppcom_data_segments_t ds);
