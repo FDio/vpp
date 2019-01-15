@@ -505,10 +505,9 @@ mq_send_session_accepted_cb (stream_session_t * s)
   return 0;
 }
 
-static void
-mq_send_session_disconnected_cb (stream_session_t * s)
+static inline void
+mq_send_session_disconnected (app_worker_t *app_wrk, session_handle_t sh)
 {
-  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   session_disconnected_msg_t *mp;
   svm_msg_q_t *app_mq;
@@ -521,9 +520,42 @@ mq_send_session_disconnected_cb (stream_session_t * s)
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
   mp = (session_disconnected_msg_t *) evt->data;
-  mp->handle = session_handle (s);
+  mp->handle = sh;
   mp->context = app_wrk->api_client_index;
   svm_msg_q_add_and_unlock (app_mq, msg);
+}
+
+static inline void
+mq_disconnected_notify_subscribers (u32 app_index, session_handle_t sh,
+                                    svm_fifo_t * f)
+{
+  app_worker_t *app_wrk;
+  application_t *app;
+  int i;
+
+  app = application_get (app_index);
+  if (!app)
+    return;
+
+  for (i = 0; i < f->n_subscribers; i++)
+    {
+      if (!(app_wrk = application_get_worker (app, f->subscribers[i])))
+	continue;
+      mq_send_session_disconnected (app_wrk, sh);
+    }
+}
+
+static void
+mq_send_session_disconnected_cb (stream_session_t * s)
+{
+  app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+  session_handle_t sh = session_handle (s);
+
+  mq_send_session_disconnected (app_wrk, session_handle (s));
+
+  if (svm_fifo_n_subscribers (s->server_rx_fifo))
+    mq_disconnected_notify_subscribers (app_wrk->app_index, sh,
+                                        s->server_rx_fifo);
 }
 
 void
@@ -531,21 +563,13 @@ mq_send_local_session_disconnected_cb (u32 app_wrk_index,
 				       local_session_t * ls)
 {
   app_worker_t *app_wrk = app_worker_get (app_wrk_index);
-  svm_msg_q_msg_t _msg, *msg = &_msg;
-  session_disconnected_msg_t *mp;
-  svm_msg_q_t *app_mq;
-  session_event_t *evt;
+  session_handle_t sh = application_local_session_handle (ls);
 
-  app_mq = app_wrk->event_queue;
-  if (mq_try_lock_and_alloc_msg (app_mq, msg))
-    return;
-  evt = svm_msg_q_msg_data (app_mq, msg);
-  clib_memset (evt, 0, sizeof (*evt));
-  evt->event_type = SESSION_CTRL_EVT_DISCONNECTED;
-  mp = (session_disconnected_msg_t *) evt->data;
-  mp->handle = application_local_session_handle (ls);
-  mp->context = app_wrk->api_client_index;
-  svm_msg_q_add_and_unlock (app_mq, msg);
+  mq_send_session_disconnected (app_wrk, sh);
+
+  if (svm_fifo_n_subscribers (ls->server_rx_fifo))
+    mq_disconnected_notify_subscribers (app_wrk->app_index, sh,
+                                        ls->server_rx_fifo);
 }
 
 static void

@@ -40,6 +40,7 @@ format_function_t format_ooo_list;
 #define OOO_SEGMENT_INVALID_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_SESSION_INDEX 	((u32)~0)
 #define SVM_FIFO_INVALID_INDEX		((u32)~0)
+#define SVM_FIFO_MAX_EVT_SUBSCRIBERS	8
 
 enum
 {
@@ -57,13 +58,13 @@ typedef struct
 
 typedef struct _svm_fifo
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (shared_first);
   volatile u32 cursize;		/**< current fifo size */
   u32 nitems;
-    CLIB_CACHE_LINE_ALIGN_MARK (end_cursize);
 
+    CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
 
-  /* Backpointers */
   u32 master_session_index;
   u32 client_session_index;
   u8 master_thread_index;
@@ -71,13 +72,15 @@ typedef struct _svm_fifo
   u32 segment_manager;
   u32 segment_index;
   u32 ct_session_index;		/**< Local session index for vpp */
-    CLIB_CACHE_LINE_ALIGN_MARK (end_shared);
+  u32 freelist_index;		/**< aka log2(allocated_size) - const. */
+  i8 refcnt;			/**< reference count  */
+
+    CLIB_CACHE_LINE_ALIGN_MARK (consumer);
   u32 head;
   volatile u32 want_tx_ntf;	/**< producer wants nudge */
   volatile u32 has_tx_ntf;
-    CLIB_CACHE_LINE_ALIGN_MARK (end_consumer);
 
-  /* producer */
+    CLIB_CACHE_LINE_ALIGN_MARK (producer);
   u32 tail;
 
   ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
@@ -85,11 +88,13 @@ typedef struct _svm_fifo
   u32 ooos_newest;		/**< Last segment to have been updated */
   struct _svm_fifo *next;	/**< next in freelist/active chain */
   struct _svm_fifo *prev;	/**< prev in active chain */
+  u8 n_subscribers;
+  u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
+
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
-  u32 freelist_index;		/**< aka log2(allocated_size) - const. */
-  i8 refcnt;			/**< reference count  */
+
     CLIB_CACHE_LINE_ALIGN_MARK (data);
 } svm_fifo_t;
 
@@ -198,6 +203,8 @@ int svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs);
 void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs);
 void svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer);
 void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len);
+void svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber);
+void svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber);
 format_function_t format_svm_fifo;
 
 /**
@@ -295,6 +302,12 @@ svm_fifo_needs_tx_ntf (svm_fifo_t * f, u32 n_last_deq)
       return 0;
     }
   return 0;
+}
+
+always_inline u8
+svm_fifo_n_subscribers (svm_fifo_t * f)
+{
+  return f->n_subscribers;
 }
 
 u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);

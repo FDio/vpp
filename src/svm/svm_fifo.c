@@ -845,6 +845,29 @@ svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer)
   f->head = f->tail = pointer % f->nitems;
 }
 
+void
+svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber)
+{
+  if (f->n_subscribers >= SVM_FIFO_MAX_EVT_SUBSCRIBERS)
+    return;
+  f->subscribers[f->n_subscribers++] = subscriber;
+}
+
+void
+svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber)
+{
+  int i;
+
+  for (i = 0; i < f->n_subscribers; i++)
+    {
+      if (f->subscribers[i] != subscriber)
+	continue;
+      f->subscribers[i] = f->subscribers[f->n_subscribers - 1];
+      f->n_subscribers--;
+      break;
+    }
+}
+
 #endif
 /*
  * fd.io coding-style-patch-verification: ON
