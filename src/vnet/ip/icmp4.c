@@ -519,6 +519,8 @@ ip4_icmp_error (vlib_main_t * vm,
 			       -sizeof (ip4_header_t) -
 			       sizeof (icmp46_header_t) - 4);
 
+	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
+
 	  p0->current_length =
 	    p0->current_length > 576 ? 576 : p0->current_length;
 
