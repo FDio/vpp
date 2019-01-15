@@ -497,6 +497,21 @@ vcl_segment_table_del (u64 segment_handle)
   clib_rwlock_writer_unlock (&vcm->segment_table_lock);
 }
 
+void
+vcl_cleanup_bapi (void)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  api_main_t *am = &api_main;
+
+  am->my_client_index = ~0;
+  am->my_registration = 0;
+  am->vl_input_queue = 0;
+  am->msg_index_by_name_and_crc = 0;
+  scm->socket_fd = 0;
+
+  vl_client_api_unmap ();
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
