@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59b9a59c_d32758f9",
+        "filename": "src/vpp-api/vapi/vapi_c_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 793,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-15T23:08:17Z",
+      "side": 1,
+      "message": "Please don\u0027t raise Exception here.  git blame show that wrote the jsonparser code.  You know that you only put ParserExceptions in jsonparser.exceptions.  Why are you raising Exception here?\n\nEither you want to inform of the technical problem (ParserError,) or you want to inform that there was a VapiError.\n\nIf you check out vapi_json_parser.py:6:\n\nIf you change it to something like:\nclass VapiError(Exception):\n   pass\nclass ParseError (VapiError):\n    pass \n\nThen the consumer gets both details.  They can test for either or both in their code.  You can also create an __init__ for the parserError and include the the data that triggered the ParserError.\n\nPlease don\u0027r raise Exception here ;)",
+      "range": {
+        "startLine": 793,
+        "startChar": 14,
+        "endLine": 793,
+        "endChar": 23
+      },
+      "revId": "2ebb64d3737fa303de5eb194e09c7ecaa98de98d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
