@@ -1968,6 +1968,10 @@ snat_interface_add_del_output_feature (u32 sw_if_index,
   snat_interface_t *i;
   snat_address_t *ap;
   snat_static_mapping_t *m;
+  nat_outside_fib_t *outside_fib;
+  u32 fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
+						       sw_if_index);
+
 
   if (sm->deterministic ||
       (sm->static_mapping_only && !(sm->static_mapping_connection_tracking)))
@@ -1981,6 +1985,34 @@ snat_interface_add_del_output_feature (u32 sw_if_index,
   }));
   /* *INDENT-ON* */
 
+  if (!is_inside)
+    {
+      /* *INDENT-OFF* */
+      vec_foreach (outside_fib, sm->outside_fibs)
+        {
+          if (outside_fib->fib_index == fib_index)
+            {
+              if (is_del)
+                {
+                  outside_fib->refcount--;
+                  if (!outside_fib->refcount)
+                    vec_del1 (sm->outside_fibs, outside_fib - sm->outside_fibs);
+                }
+              else
+                outside_fib->refcount++;
+              goto feature_set;
+            }
+        }
+      /* *INDENT-ON* */
+      if (!is_del)
+	{
+	  vec_add2 (sm->outside_fibs, outside_fib, 1);
+	  outside_fib->refcount = 1;
+	  outside_fib->fib_index = fib_index;
+	}
+    }
+
+feature_set:
   if (is_inside)
     {
       if (sm->endpoint_dependent)
