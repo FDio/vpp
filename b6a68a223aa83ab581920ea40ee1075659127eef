@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bac7993d_7fdf40b1",
+        "filename": "src/vpp/stats/stat_segment.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-01-16T19:20:13Z",
+      "side": 1,
+      "message": "Just Curious:\nWhy is verbose set to 0 here by default ?\nWhy add another command and not set this to 1 by default.",
+      "revId": "b6a68a223aa83ab581920ea40ee1075659127eef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
