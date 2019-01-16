@@ -1034,7 +1034,8 @@ class VppTestResult(unittest.TestResult):
     core_crash_test_cases_info = set()
     current_test_case_info = None
 
-    def __init__(self, stream, descriptions, verbosity, runner):
+    def __init__(self, stream=None, descriptions=None, verbosity=None,
+                 runner=None):
         """
         :param stream File descriptor to store where to report test results.
             Set to the standard error stream by default.
