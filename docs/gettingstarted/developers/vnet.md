@@ -54,16 +54,16 @@ units to convert buffer indices to buffer pointers:
      n_left_from = frame->n_vectors;
      from = vlib_frame_vector_args (frame);
 
-     /* 
-      * Convert up to VLIB_FRAME_SIZE indices in "from" to 
+     /*
+      * Convert up to VLIB_FRAME_SIZE indices in "from" to
       * buffer pointers in bufs[]
       */
      vlib_get_buffers (vm, from, bufs, n_left_from);
      b = bufs;
      next = nexts;
 
-     /* 
-      * While we have at least 4 vector elements (pkts) to process.. 
+     /*
+      * While we have at least 4 vector elements (pkts) to process..
       */
      while (n_left_from >= 4)
        {
@@ -76,7 +76,7 @@ units to convert buffer indices to buffer pointers:
    	     vlib_prefetch_buffer_header (b[7], STORE);
            }
 
-         /* 
+         /*
           * $$$ Process 4x packets right here...
           * set next[0..3] to send the packets where they need to go
           */
@@ -91,12 +91,12 @@ units to convert buffer indices to buffer pointers:
    	 next += 4;
    	 n_left_from -= 4;
    	}
-     /* 
+     /*
       * Clean up 0...3 remaining packets at the end of the incoming frame
       */
      while (n_left_from > 0)
        {
-         /* 
+         /*
           * $$$ Process one packet right here...
           * set next[0..3] to send the packets where they need to go
           */
@@ -117,7 +117,7 @@ units to convert buffer indices to buffer pointers:
      vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
      return frame->n_vectors;
-   }  
+   }
 ```
 
 Given a packet processing task to implement, it pays to scout around
@@ -150,7 +150,7 @@ tcp_get_free_buffer_index(...) for an example.
 The following example shows the **main points**, but is not to be
 blindly cut-'n-pasted.
 
-```c                               
+```c
   u32 bi0;
   vlib_buffer_t *b0;
   ip4_header_t *ip;
@@ -170,7 +170,7 @@ blindly cut-'n-pasted.
 
   /* At this point b0->current_data = 0, b0->current_length = 0 */
 
-  /* 
+  /*
    * Copy data into the buffer. This example ASSUMES that data will fit
    * in a single buffer, and is e.g. an ip4 packet.
    */
@@ -179,7 +179,7 @@ blindly cut-'n-pasted.
        clib_memcpy (b0->data, data, vec_len (data));
        b0->current_length = vec_len (data);
      }
-  else 
+  else
      {
        /* OR, build a udp-ip packet (for example) */
        ip = vlib_buffer_get_current (b0);
@@ -204,7 +204,7 @@ blindly cut-'n-pasted.
            udp->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip);
            if (udp->checksum == 0)
              udp->checksum = 0xffff;
-      }  
+      }
       b0->current_length = vec_len (sizeof (*ip) + sizeof (*udp) +
                                    vec_len (udp_data));
 
@@ -217,7 +217,7 @@ blindly cut-'n-pasted.
   /* Use the default FIB index for tx lookup. Set non-zero to use another fib */
   vnet_buffer (b0)->sw_if_index[VLIB_TX] = 0;
 
-```  
+```
 
 If your use-case calls for large packet transmission, use
 vlib_buffer_chain_append_data_with_alloc(...) to create the requisite
@@ -239,8 +239,8 @@ indices, and dispatch the frame using vlib_put_frame_to_node(...).
     for (i = 0; i < vec_len (buffer_indices_to_send); i++)
       to_next[i] = buffer_indices_to_send[i];
 
-    vlib_put_frame_to_node (vm, ip4_lookup_node_index, f); 
-``` 
+    vlib_put_frame_to_node (vm, ip4_lookup_node_index, f);
+```
 
 It is inefficient to allocate and schedule single packet frames.
 That's typical in case you need to send one packet per second, but
@@ -282,7 +282,7 @@ Here's a simple example:
         s = format (s, "My trace data was: %d", t-><whatever>);
 
         return s;
-    } 
+    }
 ```
 
 The trace framework hands the per-node format function the data it
@@ -381,17 +381,17 @@ To save the pcap trace, e.g. in /tmp/dispatch.pcap:
 
 ```
     pcap dispatch trace off
-```    
+```
 
 ### Wireshark dissection of dispatch pcap traces
 
 It almost goes without saying that we built a companion wireshark
-dissector to display these traces. As of this writing, we're in the
-process of trying to upstream the wireshark dissector.
+dissector to display these traces. As of this writing, we have
+upstreamed the wireshark dissector.
 
-Until we manage to upstream the wireshark dissector, please see the
-"How to build a vpp dispatch trace aware Wireshark" page for build
-info, and/or take a look at .../extras/wireshark.
+Since it will be a while before wireshark/master/latest makes it into
+all of the popular Linux distros, please see the "How to build a vpp
+dispatch trace aware Wireshark" page for build info.
 
 Here is a sample packet dissection, with some fields omitted for
 clarity.  The point is that the wireshark dissector accurately
@@ -406,15 +406,15 @@ node in question.
         BufferIndex: 0x00036663
     NodeName: ethernet-input
     VPP Buffer Metadata
-        Metadata: flags: 
+        Metadata: flags:
         Metadata: current_data: 0, current_length: 102
         Metadata: current_config_index: 0, flow_id: 0, next_buffer: 0
         Metadata: error: 0, n_add_refs: 0, buffer_pool_index: 0
         Metadata: trace_index: 0, recycle_count: 0, len_not_first_buf: 0
         Metadata: free_list_index: 0
-        Metadata: 
+        Metadata:
     VPP Buffer Opaque
-        Opaque: raw: 00000007 ffffffff 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+        Opaque: raw: 00000007 ffffffff 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
         Opaque: sw_if_index[VLIB_RX]: 7, sw_if_index[VLIB_TX]: -1
         Opaque: L2 offset 0, L3 offset 0, L4 offset 0, feature arc index 0
         Opaque: ip.adj_index[VLIB_RX]: 0, ip.adj_index[VLIB_TX]: 0
@@ -443,14 +443,14 @@ node in question.
         Opaque: sctp.connection_index: 0, sctp.sid: 0, sctp.ssn: 0, sctp.tsn: 0, sctp.hdr_offset: 0
         Opaque: sctp.data_offset: 0, sctp.data_len: 0, sctp.subconn_idx: 0, sctp.flags: 0x0
         Opaque: snat.flags: 0x0
-        Opaque: 
+        Opaque:
     VPP Buffer Opaque2
-        Opaque2: raw: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+        Opaque2: raw: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
         Opaque2: qos.bits: 0, qos.source: 0
         Opaque2: loop_counter: 0
         Opaque2: gbp.flags: 0, gbp.src_epg: 0
         Opaque2: pg_replay_timestamp: 0
-        Opaque2: 
+        Opaque2:
     Ethernet II, Src: 06:d6:01:41:3b:92 (06:d6:01:41:3b:92), Dst: IntelCor_3d:f6    Transmission Control Protocol, Src Port: 22432, Dst Port: 54084, Seq: 1, Ack: 1, Len: 36
         Source Port: 22432
         Destination Port: 54084
@@ -472,4 +472,3 @@ metadata changes, header checksum changes, and so forth.
 This should be of significant value when developing new vpp graph
 nodes. If new code mispositions b->current_data, it will be completely
 obvious from looking at the dispatch trace in wireshark.
-
