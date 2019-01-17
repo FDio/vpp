@@ -1049,7 +1049,7 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 					dpdk_ipsec_check_support,
 					add_del_sa_session);
   int rv = ipsec_select_esp_backend (im, idx);
-  ASSERT (rv);
+  ASSERT (rv == 0);
 
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "dpdk-crypto-input");
   ASSERT (node);
