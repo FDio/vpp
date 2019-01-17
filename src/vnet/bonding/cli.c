@@ -512,11 +512,13 @@ bond_enslave (vlib_main_t * vm, bond_enslave_args_t * args)
       ethernet_set_rx_redirect (vnm, sif_hw, 1);
     }
 
-  if ((bif->mode == BOND_MODE_LACP) && bm->lacp_enable_disable)
+  if (bif->mode == BOND_MODE_LACP)
     {
-      (*bm->lacp_enable_disable) (vm, bif, sif, 1);
+      if (bm->lacp_enable_disable)
+	(*bm->lacp_enable_disable) (vm, bif, sif, 1);
     }
-  else
+  else if (sif->port_enabled &&
+	   (sif_hw->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
     {
       bond_enable_collecting_distributing (vm, sif);
     }
