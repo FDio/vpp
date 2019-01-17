@@ -632,7 +632,8 @@ ip_mroute::dump(std::ostream& os)
 ip_mroute::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "ip-route" }, "ip route configurations", this);
+  inspect::register_handler({ "ip-mroute" },
+                            "ip multicast route configurations", this);
 }
 
 void
