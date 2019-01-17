@@ -57,7 +57,7 @@ set(VPP_LOG2_CACHE_LINE_SIZE ${VPP_LOG2_CACHE_LINE_SIZE}
 # CPU optimizations and multiarch support
 ##############################################################################
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
-  set(CMAKE_C_FLAGS "-march=corei7 -mtune=corei7-avx ${CMAKE_C_FLAGS}")
+  string(PREPEND CMAKE_C_FLAGS "-march=corei7 -mtune=corei7-avx ")
   check_c_compiler_flag("-march=core-avx2" compiler_flag_march_core_avx2)
   if(compiler_flag_march_core_avx2)
     list(APPEND MARCH_VARIANTS "avx2\;-march=core-avx2 -mtune=core-avx2")
@@ -67,7 +67,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "amd64.*|x86_64.*|AMD64.*")
     list(APPEND MARCH_VARIANTS "avx512\;-march=skylake-avx512 -mtune=skylake-avx512")
   endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
-  set(CMAKE_C_FLAGS "-march=armv8-a+crc ${CMAKE_C_FLAGS}")
+  string(PREPEND CMAKE_C_FLAGS "-march=armv8-a+crc ")
   check_c_compiler_flag("-march=armv8-a+crc+crypto -mtune=qdf24xx" compiler_flag_march_core_qdf24xx)
   if(compiler_flag_march_core_qdf24xx)
     list(APPEND MARCH_VARIANTS "qdf24xx\;-march=armv8-a+crc+crypto -DCLIB_N_PREFETCHES=8")
