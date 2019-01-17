@@ -45,16 +45,27 @@ endif()
 ##############################################################################
 # build config
 ##############################################################################
+check_c_compiler_flag("-Wno-address-of-packed-member"
+		      compiler_flag_no_address_of_packed_member)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_C_FLAGS_COMMON "-DFORTIFY_SOURCE=2 -fstack-protector-all -Werror")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${CMAKE_C_FLAGS_COMMON} -DCLIB_DEBUG")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${CMAKE_C_FLAGS_COMMON}")
 
-check_c_compiler_flag("-Wno-address-of-packed-member" compiler_flag_no_address_of_packed_member)
-if (compiler_flag_no_address_of_packed_member)
-  add_definitions(-Wno-address-of-packed-member)
+if (CMAKE_BUILD_TYPE)
+  string(PREPEND CMAKE_C_FLAGS "-g -fPIC ")
+  string(PREPEND CMAKE_C_FLAGS "-fstack-protector-all ")
+  string(PREPEND CMAKE_C_FLAGS "-Werror ")
+  string(PREPEND CMAKE_C_FLAGS "-DFORTIFY_SOURCE=2 ")
 endif()
+
+if (compiler_flag_no_address_of_packed_member)
+  string(PREPEND CMAKE_C_FLAGS "-Wno-address-of-packed-member ")
+endif()
+
+string(PREPEND CMAKE_C_FLAGS_RELEASE "-O2 ")
+string(PREPEND CMAKE_C_FLAGS_DEBUG "-O0 -DCLIB_DEBUG ")
+string(PREPEND CMAKE_LINKER_FLAGS_RELEASE "-pie -Wl,-z,now ")
+string(TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_UC)
 
 ##############################################################################
 # install config
@@ -131,11 +142,11 @@ message(STATUS "Configuration:")
 pr("VPP version" "${VPP_VERSION}")
 pr("VPP library version" "${VPP_LIB_VERSION}")
 pr("GIT toplevel dir" "${VPP_GIT_TOPLEVEL_DIR}")
-pr("C flags" "${CMAKE_C_FLAGS}")
-pr("Linker flags" "${CMAKE_LINKER_FLAGS}")
+pr("Build type" "${CMAKE_BUILD_TYPE}")
+pr("C flags" "${CMAKE_C_FLAGS}${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UC}}")
+pr("Linker flags" "${CMAKE_LINKER_FLAGS}${CMAKE_LINKER_FLAGS_${CMAKE_BUILD_TYPE_UC}}")
 pr("Host processor" "${CMAKE_HOST_SYSTEM_PROCESSOR}")
 pr("Target processor" "${CMAKE_SYSTEM_PROCESSOR}")
-pr("Build type" "${CMAKE_BUILD_TYPE}")
 pr("Prefix path" "${CMAKE_PREFIX_PATH}")
 pr("Install prefix" "${CMAKE_INSTALL_PREFIX}")
 
