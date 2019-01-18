@@ -489,7 +489,10 @@ run-vat:
 	@$(SUDO) $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp_api_test
 
 pkg-deb:
-	$(call make,$(PLATFORM),install-deb)
+	$(call make,$(PLATFORM),vpp-package-deb)
+
+pkg-deb-debug:
+	$(call make,$(PLATFORM)_debug,vpp-package-deb)
 
 pkg-rpm: dist
 	make -C extras/rpm
