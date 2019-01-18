@@ -359,6 +359,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
   /* 4th: check the SYN bit */
   if (PREDICT_FALSE (tcp_syn (th0)))
     {
+      *error0 = tcp_ack (th0) ? TCP_ERROR_SYN_ACKS_RCVD : TCP_ERROR_SYNS_RCVD;
       /* TODO implement RFC 5961 */
       if (tc0->state == TCP_STATE_SYN_RCVD)
 	{
@@ -2712,8 +2713,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Make sure the ack is exactly right */
-	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0
-	      || vnet_buffer (b0)->tcp.data_len)
+	  if (tc0->rcv_nxt != vnet_buffer (b0)->tcp.seq_number || is_fin0)
 	    {
 	      tcp_connection_reset (tc0);
 	      error0 = TCP_ERROR_SEGMENT_INVALID;
@@ -3144,6 +3144,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       child0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
 
       tcp_connection_init_vars (child0);
+      child0->rto = TCP_RTO_MIN;
       TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0, 1);
 
       if (stream_session_accept (&child0->connection, lc0->c_s_index,
