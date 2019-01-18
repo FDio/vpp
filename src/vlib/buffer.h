@@ -72,11 +72,10 @@ typedef u8 vlib_buffer_free_list_index_t;
  * Buffer Flags
  */
 #define foreach_vlib_buffer_flag \
-  _( 0, NON_DEFAULT_FREELIST, "non-default-fl")		\
-  _( 1, IS_TRACED, 0)					\
-  _( 2, NEXT_PRESENT, 0)				\
-  _( 3, TOTAL_LENGTH_VALID, 0)				\
-  _( 4, EXT_HDR_VALID, "ext-hdr-valid")
+  _( 0, IS_TRACED, 0)					\
+  _( 1, NEXT_PRESENT, 0)				\
+  _( 2, TOTAL_LENGTH_VALID, 0)				\
+  _( 3, EXT_HDR_VALID, "ext-hdr-valid")
 
 /* NOTE: only buffer generic flags should be defined here, please consider
    using user flags. i.e. src/vnet/buffer.h */
@@ -98,7 +97,7 @@ enum
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
 #define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
-#define VLIB_BUFFER_FLAGS_ALL (0x1f)
+#define VLIB_BUFFER_FLAGS_ALL (0x0f)
 
 /* VLIB buffer representation. */
 typedef struct
@@ -161,10 +160,7 @@ typedef struct
   /**< Only valid for first buffer in chain. Current length plus
      total length given here give total number of bytes in buffer chain.
   */
-  vlib_buffer_free_list_index_t free_list_index; /** < only used if
-						   VLIB_BUFFER_NON_DEFAULT_FREELIST
-						   flag is set */
-  u8 align_pad[3]; /**< available */
+  u8 align_pad[4]; /**< available */
   u32 opaque2[12];  /**< More opaque data, see ../vnet/vnet/buffer.h */
 
   /***** end of second cache line */
