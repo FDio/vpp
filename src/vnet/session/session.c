@@ -535,6 +535,8 @@ session_notify_subscribers (u32 app_index, stream_session_t * s,
       app_wrk = application_get_worker (app, f->subscribers[i]);
       if (!app_wrk)
 	continue;
+      clib_warning ("%u called for subscriber %u (%u)", s->session_index,
+                    f->subscribers[i], f->n_subscribers);
       if (app_worker_lock_and_send_event (app_wrk, s, evt_type))
 	return -1;
     }
