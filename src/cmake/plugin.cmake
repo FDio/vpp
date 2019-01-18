@@ -21,7 +21,7 @@ macro(add_vpp_plugin name)
   set(plugin_name ${name}_plugin)
   set(api_includes)
   if(NOT PLUGIN_COMPONENT)
-    set(PLUGIN_COMPONENT vpp-plugin-misc)
+    set(PLUGIN_COMPONENT vpp-plugin-core)
   endif()
   if(NOT PLUGIN_DEV_COMPONENT)
     if(NOT VPP_EXTERNAL_PROJECT)
@@ -92,4 +92,3 @@ macro(add_vpp_plugin name)
     COMPONENT ${PLUGIN_COMPONENT}
   )
 endmacro()
-
