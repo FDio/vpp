@@ -2378,8 +2378,8 @@ ldp_destructor (void)
    * which will call ldp_init().
    */
   if (LDP_DEBUG > 0)
-    printf ("%s:%d: LDP<%d>: LDP destructor: done!\n",
-	    __func__, __LINE__, getpid ());
+    fprintf (stderr, "%s:%d: LDP<%d>: LDP destructor: done!\n",
+	     __func__, __LINE__, getpid ());
 }
 
 

@@ -88,7 +88,7 @@ typedef struct _svm_fifo
   u32 ooos_newest;		/**< Last segment to have been updated */
   struct _svm_fifo *next;	/**< next in freelist/active chain */
   struct _svm_fifo *prev;	/**< prev in active chain */
-  u8 n_subscribers;
+  volatile u8 n_subscribers;
   u8 subscribers[SVM_FIFO_MAX_EVT_SUBSCRIBERS];
 
 #if SVM_FIFO_TRACE
