@@ -41,6 +41,7 @@ if(CMAKE_CROSSCOMPILING)
     /usr/lib/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu/lib/
   )
 endif()
+set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 
 ##############################################################################
 # build config
