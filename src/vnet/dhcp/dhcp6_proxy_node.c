@@ -315,9 +315,8 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 	  copy_ip6_address (&r1->link_addr, ia0);
 
 	link_address_set:
-	  fl =
-	    vlib_buffer_get_free_list (vm,
-				       vlib_buffer_get_free_list_index (b0));
+	  fl = vlib_buffer_get_free_list
+	    (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
 	  if ((b0->current_length + sizeof (*id1) + sizeof (*vss1) +
 	       sizeof (*cmac)) > fl->n_data_bytes)
