@@ -882,6 +882,8 @@ vppcom_session_disconnect (u32 session_handle)
 void
 vppcom_app_exit (void)
 {
+  if (__vcl_worker_index != 2)
+    VDBG (0, "cleaning up %u", __vcl_worker_index);
   if (!pool_elts (vcm->workers))
     return;
   vcl_worker_cleanup (vcl_worker_get_current (), 1 /* notify vpp */ );
@@ -1694,37 +1696,6 @@ vppcom_session_free_segments (uint32_t session_handle,
   svm_fifo_segments_free (s->rx_fifo, (svm_fifo_segment_t *) ds);
 }
 
-static inline int
-vppcom_session_read_ready (vcl_session_t * session)
-{
-  /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
-  if (PREDICT_FALSE (session->is_vep))
-    {
-      clib_warning ("VCL<%d>: ERROR: sid %u: cannot read from an "
-		    "epoll session!", getpid (), session->session_index);
-      return VPPCOM_EBADFD;
-    }
-
-  if (PREDICT_FALSE (!(session->session_state & (STATE_OPEN | STATE_LISTEN))))
-    {
-      session_state_t state = session->session_state;
-      int rv;
-
-      rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
-
-      VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: session is not open!"
-	    " state 0x%x (%s), returning %d (%s)", getpid (),
-	    session->vpp_handle, session->session_index, state,
-	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
-      return rv;
-    }
-
-  if (session->session_state & STATE_LISTEN)
-    return clib_fifo_elts (session->accept_evts_fifo);
-
-  return svm_fifo_max_dequeue (session->rx_fifo);
-}
-
 int
 vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds, u32 max_bytes)
 {
@@ -1876,41 +1847,6 @@ vcl_ct_session_get_from_fifo (vcl_worker_t * wrk, svm_fifo_t * f, u8 type)
 	return s;
     }
   return 0;
-}
-
-static inline int
-vppcom_session_write_ready (vcl_session_t * session)
-{
-  /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
-  if (PREDICT_FALSE (session->is_vep))
-    {
-      VDBG (0, "session %u [0x%llx]: cannot write to an epoll session!",
-	    session->session_index, session->vpp_handle);
-      return VPPCOM_EBADFD;
-    }
-
-  if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
-    {
-      if (session->tx_fifo)
-	return svm_fifo_max_enqueue (session->tx_fifo);
-      else
-	return VPPCOM_EBADFD;
-    }
-
-  if (PREDICT_FALSE (!(session->session_state & STATE_OPEN)))
-    {
-      session_state_t state = session->session_state;
-      int rv;
-
-      rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
-      VDBG (0, "session %u [0x%llx]: session is not open! state 0x%x (%s), "
-	    "returning %d (%s)", session->session_index, session->vpp_handle,
-	    state, vppcom_session_state_str (state), rv,
-	    vppcom_retval_str (rv));
-      return rv;
-    }
-
-  return svm_fifo_max_enqueue (session->tx_fifo);
 }
 
 #define vcl_fifo_rx_evt_valid_or_break(_fifo)			\
@@ -2207,7 +2143,7 @@ check_rd:
         continue;
       }
 
-    rv = vppcom_session_read_ready (session);
+    rv = vcl_session_read_ready (session);
     if (rv)
       {
         clib_bitmap_set_no_check ((uword*)read_map, sid, 1);
@@ -2840,12 +2776,12 @@ vppcom_session_attr (uint32_t session_handle, uint32_t op,
   switch (op)
     {
     case VPPCOM_ATTR_GET_NREAD:
-      rv = vppcom_session_read_ready (session);
+      rv = vcl_session_read_ready (session);
       VDBG (2, "VPPCOM_ATTR_GET_NREAD: sid %u, nread = %d", rv);
       break;
 
     case VPPCOM_ATTR_GET_NWRITE:
-      rv = vppcom_session_write_ready (session);
+      rv = vcl_session_write_ready (session);
       VDBG (2, "VCL<%d>: VPPCOM_ATTR_GET_NWRITE: sid %u, nwrite = %d",
 	    getpid (), session_handle, rv);
       break;
@@ -3484,7 +3420,7 @@ vppcom_poll (vcl_poll_t * vp, uint32_t n_sids, double wait_for_time)
 
 	  if (POLLIN & vp[i].events)
 	    {
-	      rv = vppcom_session_read_ready (session);
+	      rv = vcl_session_read_ready (session);
 	      if (rv > 0)
 		{
 		  vp[i].revents |= POLLIN;
@@ -3508,7 +3444,7 @@ vppcom_poll (vcl_poll_t * vp, uint32_t n_sids, double wait_for_time)
 
 	  if (POLLOUT & vp[i].events)
 	    {
-	      rv = vppcom_session_write_ready (session);
+	      rv = vcl_session_write_ready (session);
 	      if (rv > 0)
 		{
 		  vp[i].revents |= POLLOUT;
