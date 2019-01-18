@@ -543,6 +543,9 @@ void vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index);
 u32 vcl_segment_table_lookup (u64 segment_handle);
 void vcl_segment_table_del (u64 segment_handle);
 
+int vcl_session_read_ready (vcl_session_t * session);
+int vcl_session_write_ready (vcl_session_t * session);
+
 static inline vcl_worker_t *
 vcl_worker_get (u32 wrk_index)
 {
