@@ -64,6 +64,12 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
   return uword_to_pointer (bm->buffer_mem_start + offset, void *);
 }
 
+static_always_inline void
+vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
+{
+  clib_memcpy_fast (b, bt, STRUCT_OFFSET_OF (vlib_buffer_t, template_end));
+}
+
 /** \brief Translate array of buffer indices into buffer pointers with offset
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
