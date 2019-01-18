@@ -35,6 +35,7 @@
 #include <vnet/policer/policer.h>
 #include <vnet/classify/flow_classify.h>
 #include <vlib/vlib.h>
+#include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -658,6 +659,49 @@ static void *vl_api_sw_interface_tap_v2_dump_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: sw_interface_tap_v2_dump ");
+
+  FINISH;
+}
+
+static void *vl_api_virtio_pci_create_t_print
+  (vl_api_virtio_pci_create_t * mp, void *handle)
+{
+  u8 *s;
+  u8 null_mac[6];
+
+  clib_memset (null_mac, 0, sizeof (null_mac));
+
+  s = format (0, "SCRIPT: virtio_pci_create ");
+  s = format (s, "pci_addr %U ", format_vlib_pci_addr, ntohl (mp->pci_addr));
+  if (memcmp (mp->mac_address, null_mac, 6))
+    s = format (s, "mac-address %U ",
+		format_ethernet_address, mp->mac_address);
+  if (mp->tx_ring_sz)
+    s = format (s, "tx-ring-size %u ", ntohs (mp->tx_ring_sz));
+  if (mp->rx_ring_sz)
+    s = format (s, "rx-ring-size %u ", ntohs (mp->rx_ring_sz));
+  if (mp->features)
+    s = format (s, "features 0x%llx ", clib_net_to_host_u64 (mp->features));
+  FINISH;
+}
+
+static void *vl_api_virtio_pci_delete_t_print
+  (vl_api_virtio_pci_delete_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: virtio_pci_delete ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_sw_interface_virtio_pci_dump_t_print
+  (vl_api_sw_interface_virtio_pci_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_virtio_pci_dump ");
 
   FINISH;
 }
