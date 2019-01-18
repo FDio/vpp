@@ -87,9 +87,9 @@ format_vlib_buffer (u8 * s, va_list * args)
     a = format (a, "%s ", v);
   foreach_vlib_buffer_flag
 #undef _
-    s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
-		b->current_data, b->current_length,
-		vlib_buffer_get_free_list_index (b), b->n_add_refs);
+    s = format (s, "current data %d, length %d, buffer-pool %d, "
+		"clone-count %u", b->current_data, b->current_length,
+		b->buffer_pool_index, b->n_add_refs);
 
   if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
     s = format (s, ", totlen-nifb %d",
@@ -182,14 +182,8 @@ vlib_validate_buffer_helper (vlib_main_t * vm,
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vlib_buffer_free_list_t *fl;
 
-  if (pool_is_free_index
-      (vm->buffer_free_list_pool, vlib_buffer_get_free_list_index (b)))
-    return format (0, "unknown free list 0x%x",
-		   vlib_buffer_get_free_list_index (b));
-
-  fl =
-    pool_elt_at_index (vm->buffer_free_list_pool,
-		       vlib_buffer_get_free_list_index (b));
+  fl = pool_elt_at_index (vm->buffer_free_list_pool,
+			  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   if ((signed) b->current_data < (signed) -VLIB_BUFFER_PRE_DATA_SIZE)
     return format (0, "current data %d before pre-data", b->current_data);
@@ -394,7 +388,6 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
   f->name = clib_mem_is_vec (name) ? name : format (0, "%s", name);
 
   /* Setup free buffer template. */
-  vlib_buffer_set_free_list_index (&f->buffer_init_template, f->index);
   f->buffer_init_template.n_add_refs = 0;
 
   if (is_public)
@@ -567,10 +560,10 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
 		 vlib_buffer_t * b, u32 follow_buffer_next)
 {
   vlib_buffer_free_list_t *fl;
-  vlib_buffer_free_list_index_t fi;
   u32 flags, next;
 
-  fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
+  fl = pool_elt_at_index (vm->buffer_free_list_pool,
+			  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   do
     {
