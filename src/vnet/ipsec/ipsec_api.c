@@ -717,9 +717,10 @@ static void
 #if WITH_LIBSSL > 0
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
+  int data_len = ntohl (mp->data_len);
   u8 *tmp = format (0, "%s", mp->name);
-  u8 *data = vec_new (u8, mp->data_len);
-  clib_memcpy (data, mp->data, mp->data_len);
+  u8 *data = vec_new (u8, data_len);
+  clib_memcpy (data, mp->data, data_len);
   error = ikev2_set_profile_auth (vm, tmp, mp->auth_method, data, mp->is_hex);
   vec_free (tmp);
   vec_free (data);
@@ -742,8 +743,9 @@ vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
-  u8 *data = vec_new (u8, mp->data_len);
-  clib_memcpy (data, mp->data, mp->data_len);
+  int data_len = ntohl (mp->data_len);
+  u8 *data = vec_new (u8, data_len);
+  clib_memcpy (data, mp->data, data_len);
   error = ikev2_set_profile_id (vm, tmp, mp->id_type, data, mp->is_local);
   vec_free (tmp);
   vec_free (data);
