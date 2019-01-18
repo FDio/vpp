@@ -706,22 +706,20 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
 
 /* Append given data to end of buffer, possibly allocating new buffers. */
 int
-vlib_buffer_add_data (vlib_main_t * vm,
-		      vlib_buffer_free_list_index_t free_list_index,
-		      u32 * buffer_index, void *data, u32 n_data_bytes)
+vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
+		      u32 n_data_bytes)
 {
   u32 n_buffer_bytes, n_left, n_left_this_buffer, bi;
   vlib_buffer_t *b;
   void *d;
 
   bi = *buffer_index;
-  if (bi == ~0
-      && 1 != vlib_buffer_alloc_from_free_list (vm, &bi, 1, free_list_index))
+  if (bi == ~0 && 1 != vlib_buffer_alloc (vm, &bi, 1))
     goto out_of_buffers;
 
   d = data;
   n_left = n_data_bytes;
-  n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
 
   b = vlib_get_buffer (vm, bi);
   b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -746,9 +744,7 @@ vlib_buffer_add_data (vlib_main_t * vm,
 	break;
 
       d += n;
-      if (1 !=
-	  vlib_buffer_alloc_from_free_list (vm, &b->next_buffer, 1,
-					    free_list_index))
+      if (1 != vlib_buffer_alloc (vm, &b->next_buffer, 1))
 	goto out_of_buffers;
 
       b->flags |= VLIB_BUFFER_NEXT_PRESENT;
