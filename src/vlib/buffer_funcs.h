@@ -64,6 +64,12 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
   return uword_to_pointer (bm->buffer_mem_start + offset, void *);
 }
 
+static_always_inline void
+vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
+{
+  clib_memcpy_fast (b, bt, STRUCT_OFFSET_OF (vlib_buffer_t, template_end));
+}
+
 /** \brief Translate array of buffer indices into buffer pointers with offset
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
@@ -1011,12 +1017,7 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
 	  CLIB_CACHE_LINE_BYTES * 2);
 
   /* Make sure buffer template is sane. */
-  ASSERT (fl->index == vlib_buffer_get_free_list_index (src));
-
-  clib_memcpy_fast (STRUCT_MARK_PTR (dst, template_start),
-		    STRUCT_MARK_PTR (src, template_start),
-		    STRUCT_OFFSET_OF (vlib_buffer_t, template_end) -
-		    STRUCT_OFFSET_OF (vlib_buffer_t, template_start));
+  vlib_buffer_copy_template (dst, src);
 
   /* Not in the first 16 octets. */
   dst->n_add_refs = src->n_add_refs;

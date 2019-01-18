@@ -104,7 +104,6 @@ enum
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  STRUCT_MARK (template_start);
   /* Offset within data[] that we are currently processing.
      If negative current header points into predata area. */
   i16 current_data;  /**< signed offset in data[], pre_data[]
@@ -131,8 +130,6 @@ typedef struct
                         Only valid if VLIB_BUFFER_NEXT_PRESENT flag is set.
                      */
 
-    STRUCT_MARK (template_end);
-
   u32 current_config_index; /**< Used by feature subgraph arcs to
                                visit enabled feature nodes
                             */
@@ -146,6 +143,13 @@ typedef struct
   u32 opaque[10]; /**< Opaque data used by sub-graphs for their own purposes.
                     See .../vnet/vnet/buffer.h
                  */
+
+    STRUCT_MARK (template_end);	/**< part of buffer metadata which is
+				   initialized on alloc ends here. It may be
+				   different than cacheline on systems with
+				   buffer cacheline size */
+
+  /***** end of first cache line */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   u32 trace_index; /**< Specifies index into trace buffer

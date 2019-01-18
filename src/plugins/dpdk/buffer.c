@@ -241,14 +241,15 @@ CLIB_MULTIARCH_FN (dpdk_buffer_fill_free_list) (vlib_main_t * vm,
     no_prefetch:
       vlib_get_buffer_indices_with_offset (vm, (void **) mb, bi, 8,
 					   sizeof (struct rte_mbuf));
-      clib_memcpy64_x4 (vlib_buffer_from_rte_mbuf (mb[0]),
-			vlib_buffer_from_rte_mbuf (mb[1]),
-			vlib_buffer_from_rte_mbuf (mb[2]),
-			vlib_buffer_from_rte_mbuf (mb[3]), &bt);
-      clib_memcpy64_x4 (vlib_buffer_from_rte_mbuf (mb[4]),
-			vlib_buffer_from_rte_mbuf (mb[5]),
-			vlib_buffer_from_rte_mbuf (mb[6]),
-			vlib_buffer_from_rte_mbuf (mb[7]), &bt);
+
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[0]), &bt);
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[1]), &bt);
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[2]), &bt);
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[3]), &bt);
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[4]), &bt);
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[5]), &bt);
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[6]), &bt);
+      vlib_buffer_copy_template (vlib_buffer_from_rte_mbuf (mb[7]), &bt);
 
       n_left -= 8;
       mb += 8;
