@@ -1906,6 +1906,75 @@ static void vl_api_tap_delete_v2_reply_t_handler_json
 }
 
 static void
+vl_api_virtio_pci_create_reply_t_handler (vl_api_virtio_pci_create_reply_t *
+					  mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_virtio_pci_create_reply_t_handler_json
+  (vl_api_virtio_pci_create_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+
+}
+
+static void
+vl_api_virtio_pci_delete_reply_t_handler (vl_api_virtio_pci_delete_reply_t *
+					  mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_virtio_pci_delete_reply_t_handler_json
+  (vl_api_virtio_pci_delete_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
 vl_api_bond_create_reply_t_handler (vl_api_bond_create_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
@@ -5399,6 +5468,9 @@ _(SW_INTERFACE_TAP_DETAILS, sw_interface_tap_details)                   \
 _(TAP_CREATE_V2_REPLY, tap_create_v2_reply)				\
 _(TAP_DELETE_V2_REPLY, tap_delete_v2_reply)				\
 _(SW_INTERFACE_TAP_V2_DETAILS, sw_interface_tap_v2_details)             \
+_(VIRTIO_PCI_CREATE_REPLY, virtio_pci_create_reply)			\
+_(VIRTIO_PCI_DELETE_REPLY, virtio_pci_delete_reply)			\
+_(SW_INTERFACE_VIRTIO_PCI_DETAILS, sw_interface_virtio_pci_details)     \
 _(BOND_CREATE_REPLY, bond_create_reply)	   			        \
 _(BOND_DELETE_REPLY, bond_delete_reply)			  	        \
 _(BOND_ENSLAVE_REPLY, bond_enslave_reply)				\
@@ -7899,6 +7971,149 @@ api_tap_delete_v2 (vat_main_t * vam)
   M (TAP_DELETE_V2, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+uword
+unformat_pci_addr (unformat_input_t * input, va_list * args)
+{
+  struct pci_addr_t
+  {
+    u16 domain;
+    u8 bus;
+    u8 slot:5;
+    u8 function:3;
+  } *addr;
+  addr = va_arg (*args, struct pci_addr_t *);
+  u32 x[4];
+
+  if (!unformat (input, "%x:%x:%x.%x", &x[0], &x[1], &x[2], &x[3]))
+    return 0;
+
+  addr->domain = x[0];
+  addr->bus = x[1];
+  addr->slot = x[2];
+  addr->function = x[3];
+
+  return 1;
+}
+
+static int
+api_virtio_pci_create (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_virtio_pci_create_t *mp;
+  u8 mac_address[6];
+  u8 random_mac = 1;
+  u32 pci_addr = 0;
+  u64 features = (u64) ~ (0ULL);
+  u32 rx_ring_sz = 0, tx_ring_sz = 0;
+  int ret;
+
+  clib_memset (mac_address, 0, sizeof (mac_address));
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "hw-addr %U", unformat_ethernet_address, mac_address))
+	{
+	  random_mac = 0;
+	}
+      else if (unformat (i, "pci-addr %U", unformat_pci_addr, &pci_addr))
+	;
+      else if (unformat (i, "features 0x%llx", &features))
+	;
+      else if (unformat (i, "rx-ring-size %u", &rx_ring_sz))
+	;
+      else if (unformat (i, "tx-ring-size %u", &tx_ring_sz))
+	;
+      else
+	break;
+    }
+
+  if (pci_addr == 0)
+    {
+      errmsg ("pci address must be non zero. ");
+      return -99;
+    }
+  if (!is_pow2 (rx_ring_sz))
+    {
+      errmsg ("rx ring size must be power of 2. ");
+      return -99;
+    }
+  if (rx_ring_sz > 32768)
+    {
+      errmsg ("rx ring size must be 32768 or lower. ");
+      return -99;
+    }
+  if (!is_pow2 (tx_ring_sz))
+    {
+      errmsg ("tx ring size must be power of 2. ");
+      return -99;
+    }
+  if (tx_ring_sz > 32768)
+    {
+      errmsg ("tx ring size must be 32768 or lower. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (VIRTIO_PCI_CREATE, mp);
+
+  mp->use_random_mac = random_mac;
+
+  mp->pci_addr = htonl (pci_addr);
+  mp->features = clib_host_to_net_u64 (features);
+  mp->rx_ring_sz = htons (rx_ring_sz);
+  mp->tx_ring_sz = htons (tx_ring_sz);
+
+  if (random_mac == 0)
+    clib_memcpy (mp->mac_address, mac_address, 6);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_virtio_pci_delete (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_virtio_pci_delete_t *mp;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing vpp interface name. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (VIRTIO_PCI_DELETE, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
 
   /* send it... */
   S (mp);
@@ -12779,6 +12994,85 @@ api_sw_interface_tap_v2_dump (vat_main_t * vam)
 
   /* Get list of tap interfaces */
   M (SW_INTERFACE_TAP_V2_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static void vl_api_sw_interface_virtio_pci_details_t_handler
+  (vl_api_sw_interface_virtio_pci_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  typedef union
+  {
+    struct
+    {
+      u16 domain;
+      u8 bus;
+      u8 slot:5;
+      u8 function:3;
+    };
+    u32 as_u32;
+  } pci_addr_t;
+  pci_addr_t addr;
+  addr.as_u32 = ntohl (mp->pci_addr);
+  u8 *pci_addr = format (0, "%04x:%02x:%02x.%x", addr.domain, addr.bus,
+			 addr.slot, addr.function);
+
+  print (vam->ofp,
+	 "\n%-12s %-12d %-12d %-12d %-17U 0x%-08llx",
+	 pci_addr, ntohl (mp->sw_if_index),
+	 ntohs (mp->rx_ring_sz), ntohs (mp->tx_ring_sz),
+	 format_ethernet_address, mp->mac_addr,
+	 clib_net_to_host_u64 (mp->features));
+  vec_free (pci_addr);
+}
+
+static void vl_api_sw_interface_virtio_pci_details_t_handler_json
+  (vl_api_sw_interface_virtio_pci_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "pci-addr", ntohl (mp->pci_addr));
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "rx_ring_sz", ntohs (mp->rx_ring_sz));
+  vat_json_object_add_uint (node, "tx_ring_sz", ntohs (mp->tx_ring_sz));
+  vat_json_object_add_uint (node, "features",
+			    clib_net_to_host_u64 (mp->features));
+  vat_json_object_add_string_copy (node, "mac_addr",
+				   format (0, "%U", format_ethernet_address,
+					   &mp->mac_addr));
+}
+
+static int
+api_sw_interface_virtio_pci_dump (vat_main_t * vam)
+{
+  vl_api_sw_interface_virtio_pci_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  print (vam->ofp,
+	 "\n%-12s %-12s %-12s %-12s %-17s %-08s",
+	 "pci_addr", "sw_if_index", "rx_ring_sz", "tx_ring_sz",
+	 "mac_addr", "features");
+
+  /* Get list of tap interfaces */
+  M (SW_INTERFACE_VIRTIO_PCI_DUMP, mp);
   S (mp);
 
   /* Use a control ping for synchronization */
@@ -23178,6 +23472,11 @@ _(tap_create_v2,                                                        \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
+_(virtio_pci_create,                                                    \
+  "pci-addr <pci-address> [use_random_mac | hw-addr <mac-addr>] [tx-ring-size <num> [rx-ring-size <num>] [features <hex-value>]") \
+_(virtio_pci_delete,                                                    \
+  "<vpp-if-name> | sw_if_index <id>")                                   \
+_(sw_interface_virtio_pci_dump, "")                                     \
 _(bond_create,                                                          \
   "[hw-addr <mac-addr>] {round-robin | active-backup | "                \
   "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]} "        \
