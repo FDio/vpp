@@ -21,4 +21,6 @@
 #endif
 
 #define USE_DLMALLOC @DLMALLOC@
+
+#define CLIB_TARGET_TRIPLET "@CMAKE_C_COMPILER_TARGET@"
 #endif
