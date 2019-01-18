@@ -1,0 +1,6 @@
+vpp (@VPP_VERSION@) unstable; urgency=low
+
+  * includes rc0 commits after 19.04 release
+
+ -- fd.io VPP <vpp-dev@fd.io>  @TIMESTAMP@
+

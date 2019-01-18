@@ -16,7 +16,6 @@ install(
   api.cmake
   cpu.cmake
   library.cmake
-  pack.cmake
   plugin.cmake
   VPPConfig.cmake
 
