@@ -2370,16 +2370,18 @@ ldp_constructor (void)
 void
 ldp_destructor (void)
 {
-  swrap_destructor ();
-  if (ldp->init)
-    ldp->init = 0;
+  /*
+      swrap_destructor ();
+      if (ldp->init)
+	ldp->init = 0;
+  */
 
   /* Don't use clib_warning() here because that calls writev()
    * which will call ldp_init().
    */
   if (LDP_DEBUG > 0)
-    printf ("%s:%d: LDP<%d>: LDP destructor: done!\n",
-	    __func__, __LINE__, getpid ());
+    fprintf (stderr, "%s:%d: LDP<%d>: LDP destructor: done!\n",
+	     __func__, __LINE__, getpid ());
 }
 
 
