@@ -70,6 +70,30 @@
       "revId": "c513753107fbed47aec867874b3df03791f3bf4c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b5b8d9c9_a0fb6990",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 1374
+      },
+      "writtenOn": "2019-01-18T09:00:47Z",
+      "side": 1,
+      "message": "New change will scan all the leve files in the directory /sys/devices/system/cpu/cpu0/cache and checks if cpu0 has L3 cache. thanks.",
+      "parentUuid": "68da987a_b18943ed",
+      "range": {
+        "startLine": 577,
+        "startChar": 62,
+        "endLine": 577,
+        "endChar": 68
+      },
+      "revId": "c513753107fbed47aec867874b3df03791f3bf4c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
