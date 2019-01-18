@@ -987,7 +987,6 @@ format_buffer_metadata (u8 * s, va_list * args)
 	      "trace_index: %d, recycle_count: %d, len_not_first_buf: %d\n",
 	      b->trace_index, b->recycle_count,
 	      b->total_length_not_including_first_buffer);
-  s = format (s, "free_list_index: %d\n", (u32) (b->free_list_index));
   return s;
 }
 
