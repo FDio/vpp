@@ -123,13 +123,15 @@ extern vlib_node_registration_t nat64_out2in_node;
 /**
  * @brief Add/delete address to NAT64 pool.
  *
+ * @param thread_index Thread index.
  * @param addr   IPv4 address.
  * @param vrf_id VRF id of tenant, ~0 means independent of VRF.
  * @param is_add 1 if add, 0 if delete.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add);
+int nat64_add_del_pool_addr (u32 thread_index,
+			     ip4_address_t * addr, u32 vrf_id, u8 is_add);
 
 /**
  * @brief Call back function when walking addresses in NAT64 pool, non-zero

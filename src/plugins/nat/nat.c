@@ -264,7 +264,8 @@ nat_free_session_data (snat_main_t * sm, snat_session_t * s, u32 thread_index)
     return;
 
   /* log NAT event */
-  snat_ipfix_logging_nat44_ses_delete (s->in2out.addr.as_u32,
+  snat_ipfix_logging_nat44_ses_delete (thread_index,
+				       s->in2out.addr.as_u32,
 				       s->out2in.addr.as_u32,
 				       s->in2out.protocol,
 				       s->in2out.port,
@@ -454,7 +455,7 @@ nat_ed_session_alloc (snat_main_t * sm, snat_user_t * u, u32 thread_index,
 	  nat_log_warn ("max translations per user %U", format_ip4_address,
 			&u->addr);
 	  snat_ipfix_logging_max_entries_per_user
-	    (sm->max_translations_per_user, u->addr.as_u32);
+	    (thread_index, sm->max_translations_per_user, u->addr.as_u32);
 	  return 0;
 	}
       else
@@ -2557,7 +2558,7 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
     }
 
   /* Totally out of translations to use... */
-  snat_ipfix_logging_addresses_exhausted (0);
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 
@@ -2607,7 +2608,7 @@ nat_alloc_addr_and_port_mape (snat_address_t * addresses,
 
 exhausted:
   /* Totally out of translations to use... */
-  snat_ipfix_logging_addresses_exhausted (0);
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 
@@ -2655,7 +2656,7 @@ nat_alloc_addr_and_port_range (snat_address_t * addresses,
 
 exhausted:
   /* Totally out of translations to use... */
-  snat_ipfix_logging_addresses_exhausted (0);
+  snat_ipfix_logging_addresses_exhausted (thread_index, 0);
   return 1;
 }
 
