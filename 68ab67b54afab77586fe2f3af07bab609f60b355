@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9a9a3e4_decf32cc",
+        "filename": "src/vppinfra/pool.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-01-18T13:54:13Z",
+      "side": 1,
+      "message": "It seems more symmetric to duplicate a NULL pool pointer by returning a NULL new pool.",
+      "revId": "68ab67b54afab77586fe2f3af07bab609f60b355",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
