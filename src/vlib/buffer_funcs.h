@@ -65,6 +65,12 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
 }
 
 static_always_inline void
+vlib_buffer_copy_indices (u32 * dst, u32 * src, u32 n_indices)
+{
+  clib_memcpy_fast (dst, src, n_indices * sizeof (u32));
+}
+
+static_always_inline void
 vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
 {
   clib_memcpy_fast (b, bt, STRUCT_OFFSET_OF (vlib_buffer_t, template_end));
@@ -454,7 +460,7 @@ vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
       /* following code is intentionaly duplicated to allow compiler
          to optimize fast path when n_buffers is constant value */
       src = fl->buffers + len - n_buffers;
-      clib_memcpy_fast (buffers, src, n_buffers * sizeof (u32));
+      vlib_buffer_copy_indices (buffers, src, n_buffers);
       _vec_len (fl->buffers) -= n_buffers;
 
       /* Verify that buffers are known free. */
@@ -465,7 +471,7 @@ vlib_buffer_alloc_from_free_list (vlib_main_t * vm,
     }
 
   src = fl->buffers + len - n_buffers;
-  clib_memcpy_fast (buffers, src, n_buffers * sizeof (u32));
+  vlib_buffer_copy_indices (buffers, src, n_buffers);
   _vec_len (fl->buffers) -= n_buffers;
 
   /* Verify that buffers are known free. */
