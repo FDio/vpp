@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "24617765_eef3a7d9",
+        "filename": "src/CMakeLists.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-01-18T16:43:22Z",
+      "side": 1,
+      "message": "For any set value of CMAKE_BUILD_TYPE should we include -g option ?",
+      "range": {
+        "startLine": 55,
+        "startChar": 4,
+        "endLine": 55,
+        "endChar": 20
+      },
+      "revId": "705b34076ed78b3b0d792591e2f1cbfdeddeb152",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
