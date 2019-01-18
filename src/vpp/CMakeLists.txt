@@ -116,3 +116,6 @@ add_vpp_executable(vpp_prometheus_export
   LINK_LIBRARIES vppapiclient vppinfra svm vlibmemoryclient
   DEPENDS api_headers
 )
+
+install(FILES conf/startup.conf DESTINATION etc/vpp COMPONENT vpp)
+install(FILES conf/80-vpp.conf DESTINATION etc/sysctl.d COMPONENT vpp)
