@@ -60,6 +60,55 @@ vls_table_wunlock (void)
   clib_rwlock_writer_unlock (&vlsm->vls_table_lock);
 }
 
+typedef enum
+{
+  VLS_MT_OP_READ,
+  VLS_MT_OP_WRITE,
+  VLS_MT_OP_SPOOL,
+  VLS_MT_OP_XPOLL,
+} vls_mt_ops_t;
+
+typedef enum
+{
+  VLS_MT_LOCK_MQ,
+  VLS_MT_LOCK_CREATE
+} vls_mt_lock_type_t;
+
+static volatile int vls_mt_n_threads;
+static pthread_once_t vls_mt_counter = PTHREAD_ONCE_INIT;
+static pthread_mutex_t vls_mt_mq_mlock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t vls_mt_spool_mlock = PTHREAD_MUTEX_INITIALIZER;
+
+static void
+vls_mt_add (void)
+{
+  vls_mt_n_threads += 1;
+}
+
+static inline void
+vls_mt_mq_lock (void)
+{
+  pthread_mutex_lock (&vls_mt_mq_mlock);
+}
+
+static inline void
+vls_mt_mq_unlock (void)
+{
+  pthread_mutex_unlock (&vls_mt_mq_mlock);
+}
+
+static inline void
+vls_mt_spool_lock (void)
+{
+  pthread_mutex_lock (&vls_mt_spool_mlock);
+}
+
+static inline void
+vls_mt_create_unlock (void)
+{
+  pthread_mutex_unlock (&vls_mt_spool_mlock);
+}
+
 static inline vcl_session_handle_t
 vls_to_sh (vcl_locked_session_t * vls)
 {
@@ -101,12 +150,12 @@ vls_get (vls_handle_t vlsh)
 }
 
 static void
-vls_free (vcl_locked_session_t * fde)
+vls_free (vcl_locked_session_t * vls)
 {
-  ASSERT (fde != 0);
-  hash_unset (vlsm->session_index_to_vlsh_table, fde->session_index);
-  clib_spinlock_free (&fde->lock);
-  pool_put (vlsm->vls_pool, fde);
+  ASSERT (vls != 0);
+  hash_unset (vlsm->session_index_to_vlsh_table, vls->session_index);
+  clib_spinlock_free (&vls->lock);
+  pool_put (vlsm->vls_pool, vls);
 }
 
 static vcl_locked_session_t *
@@ -154,27 +203,25 @@ vls_dunlock (vcl_locked_session_t * vls)
   vls_table_runlock ();
 }
 
-static void
-vls_get_and_free (vls_handle_t vlsh)
-{
-  vcl_locked_session_t *vls;
-
-  vls_table_wlock ();
-  vls = vls_get (vlsh);
-  vls_free (vls);
-  vls_table_wunlock ();
-}
-
 u8
 vls_is_shared (vcl_locked_session_t * vls)
 {
   return vec_len (vls->workers_subscribed);
 }
 
-int
-vls_unshare_session (vcl_locked_session_t * vls)
+u8
+vls_is_shared_by_wrk (vcl_locked_session_t * vls, u32 wrk_index)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
+  int i;
+  for (i = 0; i < vec_len (vls->workers_subscribed); i++)
+    if (vls->workers_subscribed[i] == wrk_index)
+      return 1;
+  return 0;
+}
+
+int
+vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
+{
   vcl_session_t *s;
   int i;
 
@@ -195,16 +242,25 @@ vls_unshare_session (vcl_locked_session_t * vls)
       return 0;
     }
 
-  /* Assumption is that unshare is only called if session is shared.
-   * So shared_workers must be non-empty if the worker is the owner */
-  if (vls->worker_index == wrk->wrk_index)
+  /* Return, if this is not the owning worker */
+  if (vls->worker_index != wrk->wrk_index)
+    return 0;
+
+  s = vcl_session_get (wrk, vls->session_index);
+
+  /* Check if we can change owner or close */
+  if (vec_len (vls->workers_subscribed))
     {
-      s = vcl_session_get (wrk, vls->session_index);
       vls->worker_index = vls->workers_subscribed[0];
       vec_del1 (vls->workers_subscribed, 0);
       vcl_send_session_worker_update (wrk, s, vls->worker_index);
       if (vec_len (vls->workers_subscribed))
 	clib_warning ("more workers need to be updated");
+    }
+  else
+    {
+      vcl_session_cleanup (wrk, s, vcl_session_handle (s),
+			   1 /* do_disconnect */ );
     }
 
   return 0;
@@ -245,6 +301,76 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   /* *INDENT-ON* */
 }
 
+static void
+vls_mt_acq_locks (vcl_locked_session_t * vls, vls_mt_ops_t op, int *locks_acq)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  vcl_session_t *s = 0;
+  int is_nonblk = 0;
+
+  if (vls)
+    {
+      s = vcl_session_get (wrk, vls->session_index);
+      if (PREDICT_FALSE (!s))
+	return;
+      is_nonblk = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
+    }
+
+  switch (op)
+    {
+    case VLS_MT_OP_READ:
+      if (!is_nonblk)
+	is_nonblk = vcl_session_read_ready (s) != 0;
+      if (!is_nonblk)
+	{
+	  vls_mt_mq_lock ();
+	  *locks_acq |= VLS_MT_LOCK_MQ;
+	}
+      break;
+    case VLS_MT_OP_WRITE:
+      if (!is_nonblk)
+	is_nonblk = vcl_session_write_ready (s) != 0;
+      if (!is_nonblk)
+	{
+	  vls_mt_mq_lock ();
+	  *locks_acq |= VLS_MT_LOCK_MQ;
+	}
+      break;
+    case VLS_MT_OP_XPOLL:
+      vls_mt_mq_lock ();
+      *locks_acq |= VLS_MT_LOCK_MQ;
+      break;
+    case VLS_MT_OP_SPOOL:
+      vls_mt_spool_lock ();
+      *locks_acq |= VLS_MT_LOCK_CREATE;
+      break;
+    default:
+      break;
+    }
+}
+
+static void
+vls_mt_rel_locks (int locks_acq)
+{
+  if (locks_acq & VLS_MT_LOCK_MQ)
+    vls_mt_mq_unlock ();
+  if (locks_acq & VLS_MT_LOCK_CREATE)
+    vls_mt_create_unlock ();
+}
+
+#define vls_mt_guard(_vls, _op)				\
+  pthread_once (&vls_mt_counter, vls_mt_add);		\
+  int _locks_acq = 0;					\
+  if (PREDICT_FALSE (vls_mt_n_threads > 1))		\
+    {							\
+      vls_mt_acq_locks (_vls, _op, &_locks_acq);	\
+      _locks_acq = 1;					\
+    }
+
+#define vls_mt_unguard()				\
+  if (PREDICT_FALSE (_locks_acq))			\
+    vls_mt_rel_locks (_locks_acq)
+
 int
 vls_write (vls_handle_t vlsh, void *buf, size_t nbytes)
 {
@@ -253,7 +379,10 @@ vls_write (vls_handle_t vlsh, void *buf, size_t nbytes)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+
+  vls_mt_guard (vls, VLS_MT_OP_WRITE);
   rv = vppcom_session_write (vls_to_sh_tu (vls), buf, nbytes);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -266,7 +395,9 @@ vls_write_msg (vls_handle_t vlsh, void *buf, size_t nbytes)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_WRITE);
   rv = vppcom_session_write_msg (vls_to_sh_tu (vls), buf, nbytes);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -280,7 +411,9 @@ vls_sendto (vls_handle_t vlsh, void *buf, int buflen, int flags,
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_WRITE);
   rv = vppcom_session_sendto (vls_to_sh_tu (vls), buf, buflen, flags, ep);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -293,7 +426,9 @@ vls_read (vls_handle_t vlsh, void *buf, size_t nbytes)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_READ);
   rv = vppcom_session_read (vls_to_sh_tu (vls), buf, nbytes);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -307,8 +442,10 @@ vls_recvfrom (vls_handle_t vlsh, void *buffer, uint32_t buflen, int flags,
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_READ);
   rv = vppcom_session_recvfrom (vls_to_sh_tu (vls), buffer, buflen, flags,
 				ep);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -347,7 +484,9 @@ vls_listen (vls_handle_t vlsh, int q_len)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_XPOLL);
   rv = vppcom_session_listen (vls_to_sh_tu (vls), q_len);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -360,7 +499,9 @@ vls_connect (vls_handle_t vlsh, vppcom_endpt_t * server_ep)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_XPOLL);
   rv = vppcom_session_connect (vls_to_sh_tu (vls), server_ep);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -374,7 +515,9 @@ vls_accept (vls_handle_t listener_vlsh, vppcom_endpt_t * ep, int flags)
 
   if (!(vls = vls_get_w_dlock (listener_vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_SPOOL);
   sh = vppcom_session_accept (vls_to_sh_tu (vls), ep, flags);
+  vls_mt_unguard ();
   vls_get_and_unlock (listener_vlsh);
   if (sh < 0)
     return sh;
@@ -390,7 +533,9 @@ vls_create (uint8_t proto, uint8_t is_nonblocking)
   vcl_session_handle_t sh;
   vls_handle_t vlsh;
 
+  vls_mt_guard (0, VLS_MT_OP_SPOOL);
   sh = vppcom_session_create (proto, is_nonblocking);
+  vls_mt_unguard ();
   if (sh == INVALID_SESSION_ID)
     return VLS_INVALID_HANDLE;
 
@@ -405,28 +550,34 @@ int
 vls_close (vls_handle_t vlsh)
 {
   vcl_locked_session_t *vls;
-  vcl_session_handle_t sh;
   int rv;
 
-  if (!(vls = vls_get_w_dlock (vlsh)))
-    return VPPCOM_EBADFD;
+  vls_table_wlock ();
 
+  vls = vls_get_and_lock (vlsh);
+  if (!vls)
+    {
+      vls_table_wunlock ();
+      return VPPCOM_EBADFD;
+    }
+
+  vls_mt_guard (0, VLS_MT_OP_SPOOL);
   if (vls_is_shared (vls))
     {
-      vls_unshare_session (vls);
-      vls_dunlock (vls);
+      /* At least two workers share the session so vls won't be freed */
+      vls_unshare_session (vls, vcl_worker_get_current ());
+      vls_unlock (vls);
+      vls_mt_unguard ();
+      vls_table_wunlock ();
       return VPPCOM_OK;
     }
 
-  sh = vls_to_sh (vls);
-  if ((rv = vppcom_session_close (sh)))
-    {
-      vls_dunlock (vls);
-      return rv;
-    }
+  rv = vppcom_session_close (vls_to_sh (vls));
+  vls_free (vls);
+  vls_mt_unguard ();
 
-  vls_dunlock (vls);
-  vls_get_and_free (vlsh);
+  vls_table_wunlock ();
+
   return rv;
 }
 
@@ -482,9 +633,22 @@ vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
 
   if (!(vls = vls_get_w_dlock (ep_vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (0, VLS_MT_OP_XPOLL);
   rv = vppcom_epoll_wait (vls_to_sh_tu (vls), events, maxevents,
 			  wait_for_time);
+  vls_mt_unguard ();
   vls_get_and_unlock (ep_vlsh);
+  return rv;
+}
+
+int
+vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
+	    vcl_si_set * except_map, double wait_for_time)
+{
+  int rv;
+  vls_mt_guard (0, VLS_MT_OP_XPOLL);
+  rv = vppcom_select (n_bits, read_map, write_map, except_map, wait_for_time);
+  vls_mt_unguard ();
   return rv;
 }
 
@@ -511,17 +675,54 @@ vlsh_to_session_index (vls_handle_t vlsh)
 }
 
 vls_handle_t
+vls_si_to_vlsh (u32 session_index)
+{
+  uword *vlshp;
+  vlshp = hash_get (vlsm->session_index_to_vlsh_table, session_index);
+  return vlshp ? *vlshp : VLS_INVALID_HANDLE;
+}
+
+vls_handle_t
 vls_session_index_to_vlsh (uint32_t session_index)
 {
   vls_handle_t vlsh;
-  uword *vlshp;
 
   vls_table_rlock ();
-  vlshp = hash_get (vlsm->session_index_to_vlsh_table, session_index);
-  vlsh = vlshp ? *vlshp : VLS_INVALID_HANDLE;
+  vlsh = vls_si_to_vlsh (session_index);
   vls_table_runlock ();
 
   return vlsh;
+}
+
+static void
+vls_unshare_vcl_worker_sessions (vcl_worker_t * wrk)
+{
+  u32 current_wrk, is_current;
+  vcl_locked_session_t *vls;
+  vcl_session_t *s;
+
+  current_wrk = vcl_get_worker_index ();
+  is_current = current_wrk == wrk->wrk_index;
+  vls_table_wlock ();
+
+  /* *INDENT-OFF* */
+  pool_foreach (s, wrk->sessions, ({
+    vls = vls_get (vls_si_to_vlsh (s->session_index));
+    if (vls && (is_current || vls_is_shared_by_wrk (vls, current_wrk)))
+      vls_unshare_session (vls, wrk);
+  }));
+  /* *INDENT-ON* */
+
+  vls_table_wunlock ();
+}
+
+static void
+vls_cleanup_vcl_worker (vcl_worker_t * wrk)
+{
+  /* Unshare sessions and also cleanup worker since child may have
+   * called _exit () and therefore vcl may not catch the event */
+  vls_unshare_vcl_worker_sessions (wrk);
+  vcl_worker_cleanup (wrk, 1 /* notify vpp */ );
 }
 
 static void
@@ -542,8 +743,8 @@ vls_cleanup_forked_child (vcl_worker_t * wrk, vcl_worker_t * child_wrk)
 	    vls_cleanup_forked_child (child_wrk, sub_child);
 	}
     }
-  vcl_worker_cleanup (child_wrk, 1 /* notify vpp */ );
-  VDBG (0, "Cleaned up wrk %u", child_wrk->wrk_index);
+  vls_cleanup_vcl_worker (child_wrk);
+  VDBG (0, "Cleaned up forked child wrk %u", child_wrk->wrk_index);
   wrk->forked_child = ~0;
 }
 
@@ -624,6 +825,9 @@ vls_app_fork_child_handler (void)
   VDBG (0, "initializing forked child %u with parent wrk %u", getpid (),
 	parent_wrk_index);
 
+  /* Reset number of threads */
+  vls_mt_n_threads = 0;
+
   /*
    * Allocate worker
    */
@@ -666,15 +870,25 @@ vls_app_fork_parent_handler (void)
     ;
 }
 
+void
+vls_app_exit (void)
+{
+  /* Unshare the sessions. VCL will clean up the worker */
+  vls_unshare_vcl_worker_sessions (vcl_worker_get_current ());
+}
+
 int
 vls_app_create (char *app_name)
 {
   int rv;
+
   if ((rv = vppcom_app_create (app_name)))
     return rv;
+
   clib_rwlock_init (&vlsm->vls_table_lock);
   pthread_atfork (vls_app_pre_fork, vls_app_fork_parent_handler,
 		  vls_app_fork_child_handler);
+  atexit (vls_app_exit);
   return VPPCOM_OK;
 }
 
