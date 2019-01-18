@@ -33,8 +33,7 @@ typedef struct vcl_main_
   uword *session_index_to_vlsh_table;
 } vls_main_t;
 
-vls_main_t vls_main;
-vls_main_t *vlsm = &vls_main;
+vls_main_t *vlsm;
 
 static inline void
 vls_table_rlock (void)
@@ -245,6 +244,125 @@ vls_worker_copy_on_fork (vcl_worker_t * parent_wrk)
   /* *INDENT-ON* */
 }
 
+typedef enum
+{
+  VLS_MT_OP_READ,
+  VLS_MT_OP_WRITE,
+  VLS_MT_OP_CREATE,
+  VLS_MT_OP_XPOLL,
+} vls_mt_ops_t;
+
+typedef enum
+{
+  VLS_MT_LOCK_MQ,
+  VLS_MT_LOCK_CREATE
+} vls_mt_lock_type_t;
+
+static pthread_once_t vls_mt_counter = PTHREAD_ONCE_INIT;
+static volatile int vls_mt_n_threads;
+static pthread_mutex_t vls_mt_mq_mlock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t vls_mt_create_mlock = PTHREAD_MUTEX_INITIALIZER;
+
+static void
+vls_mt_add (void)
+{
+  vls_mt_n_threads += 1;
+}
+
+static inline void
+vls_mt_mq_lock (void)
+{
+  pthread_mutex_lock (&vls_mt_mq_mlock);
+}
+
+static inline void
+vls_mt_mq_unlock (void)
+{
+  pthread_mutex_unlock (&vls_mt_mq_mlock);
+}
+
+static inline void
+vls_mt_create_lock (void)
+{
+  pthread_mutex_lock (&vls_mt_create_mlock);
+}
+
+static inline void
+vls_mt_create_unlock (void)
+{
+  pthread_mutex_unlock (&vls_mt_create_mlock);
+}
+
+static void
+vls_mt_acq_locks (vcl_locked_session_t *vls, vls_mt_ops_t op, int *locks_acq)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current();
+  vcl_session_t *s;
+  int is_nonblk = 0;
+
+  if (vls)
+    {
+      s = vcl_session_get (wrk, vls->session_index);
+      if (PREDICT_FALSE(!s))
+	return;
+      is_nonblk = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
+    }
+
+  switch (op)
+  {
+    case VLS_MT_OP_READ:
+      if (!is_nonblk)
+	is_nonblk = vcl_session_read_ready (s) != 0;
+      if (!is_nonblk)
+	{
+	  vls_mt_mq_lock ();
+	  *locks_acq |= VLS_MT_LOCK_MQ;
+	}
+      break;
+    case VLS_MT_OP_WRITE:
+      if (!is_nonblk)
+	is_nonblk = vcl_session_write_ready (s) != 0;
+      if (!is_nonblk)
+	{
+	  vls_mt_mq_lock ();
+	  *locks_acq |= VLS_MT_LOCK_MQ;
+	}
+      break;
+    case VLS_MT_OP_XPOLL:
+      vls_mt_mq_lock ();
+      *locks_acq |= VLS_MT_LOCK_MQ;
+      break;
+    case VLS_MT_OP_CREATE:
+      vls_mt_create_lock ();
+      *locks_acq |= VLS_MT_LOCK_CREATE;
+      break;
+    default:
+      break;
+  }
+}
+
+static void
+vls_mt_rel_locks (int locks_acq)
+{
+  if (locks_acq & VLS_MT_LOCK_MQ)
+    vls_mt_mq_unlock ();
+  if (locks_acq & VLS_MT_LOCK_CREATE)
+    vls_mt_create_unlock ();
+}
+
+#define vls_mt_guard(_vls, _op)				\
+  pthread_once (&vls_mt_counter, vls_mt_add);		\
+  int _locks_acq = 0;					\
+  if (PREDICT_FALSE (vls_mt_n_threads > 1))		\
+    {							\
+      vls_mt_acq_locks (_vls, _op, &_locks_acq);	\
+      _locks_acq = 1;					\
+    }
+
+#define vls_mt_unguard()				\
+  if (PREDICT_FALSE (_locks_acq))			\
+    vls_mt_rel_locks (_locks_acq)
+
 int
 vls_write (vls_handle_t vlsh, void *buf, size_t nbytes)
 {
@@ -253,7 +371,10 @@ vls_write (vls_handle_t vlsh, void *buf, size_t nbytes)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+
+  vls_mt_guard (vls, VLS_MT_OP_WRITE);
   rv = vppcom_session_write (vls_to_sh_tu (vls), buf, nbytes);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -266,7 +387,9 @@ vls_write_msg (vls_handle_t vlsh, void *buf, size_t nbytes)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_WRITE);
   rv = vppcom_session_write_msg (vls_to_sh_tu (vls), buf, nbytes);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -280,7 +403,9 @@ vls_sendto (vls_handle_t vlsh, void *buf, int buflen, int flags,
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_WRITE);
   rv = vppcom_session_sendto (vls_to_sh_tu (vls), buf, buflen, flags, ep);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -293,7 +418,9 @@ vls_read (vls_handle_t vlsh, void *buf, size_t nbytes)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_READ);
   rv = vppcom_session_read (vls_to_sh_tu (vls), buf, nbytes);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -307,8 +434,10 @@ vls_recvfrom (vls_handle_t vlsh, void *buffer, uint32_t buflen, int flags,
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_READ);
   rv = vppcom_session_recvfrom (vls_to_sh_tu (vls), buffer, buflen, flags,
 				ep);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -347,7 +476,9 @@ vls_listen (vls_handle_t vlsh, int q_len)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_XPOLL);
   rv = vppcom_session_listen (vls_to_sh_tu (vls), q_len);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -360,7 +491,9 @@ vls_connect (vls_handle_t vlsh, vppcom_endpt_t * server_ep)
 
   if (!(vls = vls_get_w_dlock (vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_XPOLL);
   rv = vppcom_session_connect (vls_to_sh_tu (vls), server_ep);
+  vls_mt_unguard ();
   vls_get_and_unlock (vlsh);
   return rv;
 }
@@ -374,7 +507,9 @@ vls_accept (vls_handle_t listener_vlsh, vppcom_endpt_t * ep, int flags)
 
   if (!(vls = vls_get_w_dlock (listener_vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (vls, VLS_MT_OP_CREATE);
   sh = vppcom_session_accept (vls_to_sh_tu (vls), ep, flags);
+  vls_mt_unguard ();
   vls_get_and_unlock (listener_vlsh);
   if (sh < 0)
     return sh;
@@ -390,7 +525,9 @@ vls_create (uint8_t proto, uint8_t is_nonblocking)
   vcl_session_handle_t sh;
   vls_handle_t vlsh;
 
+  vls_mt_guard (0, VLS_MT_OP_CREATE);
   sh = vppcom_session_create (proto, is_nonblocking);
+  vls_mt_unguard ();
   if (sh == INVALID_SESSION_ID)
     return VLS_INVALID_HANDLE;
 
@@ -419,7 +556,10 @@ vls_close (vls_handle_t vlsh)
     }
 
   sh = vls_to_sh (vls);
-  if ((rv = vppcom_session_close (sh)))
+  vls_mt_guard (0, VLS_MT_OP_CREATE);
+  rv = vppcom_session_close (sh);
+  vls_mt_unguard ();
+  if (rv)
     {
       vls_dunlock (vls);
       return rv;
@@ -482,9 +622,22 @@ vls_epoll_wait (vls_handle_t ep_vlsh, struct epoll_event *events,
 
   if (!(vls = vls_get_w_dlock (ep_vlsh)))
     return VPPCOM_EBADFD;
+  vls_mt_guard (0, VLS_MT_OP_XPOLL);
   rv = vppcom_epoll_wait (vls_to_sh_tu (vls), events, maxevents,
 			  wait_for_time);
+  vls_mt_unguard ();
   vls_get_and_unlock (ep_vlsh);
+  return rv;
+}
+
+int
+vls_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
+            vcl_si_set * except_map, double wait_for_time)
+{
+  int rv;
+  vls_mt_guard (0, VLS_MT_OP_XPOLL);
+  rv = vppcom_select (n_bits, read_map, write_map, except_map, wait_for_time);
+  vls_mt_unguard ();
   return rv;
 }
 
@@ -624,6 +777,9 @@ vls_app_fork_child_handler (void)
   VDBG (0, "initializing forked child %u with parent wrk %u", getpid (),
 	parent_wrk_index);
 
+  /* Reset number of threads */
+  vls_mt_n_threads = 0;
+
   /*
    * Allocate worker
    */
@@ -666,15 +822,28 @@ vls_app_fork_parent_handler (void)
     ;
 }
 
+void
+vls_app_exit (void)
+{
+  pthread_mutex_destroy (&vls_mt_mq_mlock);
+  pthread_mutex_destroy (&vls_mt_create_mlock);
+}
+
 int
 vls_app_create (char *app_name)
 {
   int rv;
+
   if ((rv = vppcom_app_create (app_name)))
     return rv;
+
+  vlsm = clib_mem_alloc (sizeof (vls_main_t));
+  clib_memset (vlsm, 0, sizeof (*vlsm));
+
   clib_rwlock_init (&vlsm->vls_table_lock);
   pthread_atfork (vls_app_pre_fork, vls_app_fork_parent_handler,
 		  vls_app_fork_child_handler);
+  atexit (vls_app_exit);
   return VPPCOM_OK;
 }
 
