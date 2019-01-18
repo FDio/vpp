@@ -1590,13 +1590,12 @@ pg_generate_packets (vlib_node_runtime_t * node,
       head = clib_fifo_head (bi0->buffer_fifo);
 
       if (head + n_this_frame <= end)
-	clib_memcpy_fast (to_next, head, n_this_frame * sizeof (u32));
+	vlib_buffer_copy_indices (to_next, head, n_this_frame);
       else
 	{
 	  u32 n = end - head;
-	  clib_memcpy_fast (to_next + 0, head, n * sizeof (u32));
-	  clib_memcpy_fast (to_next + n, start,
-			    (n_this_frame - n) * sizeof (u32));
+	  vlib_buffer_copy_indices (to_next + 0, head, n);
+	  vlib_buffer_copy_indices (to_next + n, start, n_this_frame - n);
 	}
 
       if (s->replay_packet_templates == 0)

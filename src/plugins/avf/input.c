@@ -295,7 +295,7 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       or_q1x4 |= q1x4;
       u64x4_store_unaligned (q1x4, ptd->qw1s + n_rx_packets);
-      clib_memcpy_fast (bi, rxq->bufs + next, 4 * sizeof (u32));
+      vlib_buffer_copy_indices (bi, rxq->bufs + next, 4);
 
       /* next */
       next = (next + 4) & mask;
