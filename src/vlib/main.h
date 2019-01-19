@@ -172,8 +172,10 @@ typedef struct vlib_main_t
   /* Hash table to record which init functions have been called. */
   uword *init_functions_called;
 
-  /* to compare with node runtime */
+  /* thread, cpu and numa_node indices */
   u32 thread_index;
+  u32 cpu_index;
+  u32 numa_node;
 
   /* List of init functions to call, setup by constructors */
   _vlib_init_function_list_elt_t *init_function_registrations;
