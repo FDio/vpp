@@ -458,16 +458,7 @@ typedef struct
   int callbacks_registered;
 } vlib_buffer_main_t;
 
-extern vlib_buffer_main_t buffer_main;
-
-static_always_inline vlib_buffer_pool_t *
-vlib_buffer_pool_get (u8 buffer_pool_index)
-{
-  vlib_buffer_main_t *bm = &buffer_main;
-  return vec_elt_at_index (bm->buffer_pools, buffer_pool_index);
-}
-
-u8 vlib_buffer_register_physmem_map (struct vlib_main_t * vm,
+u8 vlib_buffer_register_physmem_map (struct vlib_main_t *vm,
 				     u32 physmem_map_index);
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);

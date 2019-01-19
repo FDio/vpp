@@ -338,7 +338,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
     {
       vlib_buffer_pool_t *bp;
       /* *INDENT-OFF* */
-      vec_foreach (bp, buffer_main.buffer_pools)
+      vec_foreach (bp, vm->buffer_main->buffer_pools)
 	{
 	  vlib_physmem_map_t *pm;
 	  pm = vlib_physmem_get_map (vm, bp->physmem_map_index);

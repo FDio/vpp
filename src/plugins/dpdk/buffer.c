@@ -286,9 +286,9 @@ static_always_inline void
 vlib_buffer_free_inline (vlib_main_t * vm,
 			 u32 * buffers, u32 n_buffers, u32 follow_buffer_next)
 {
-  vlib_buffer_main_t *bm = &buffer_main;
+  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_t *bufp[n_buffers], **b = bufp;
-  u32 thread_index = vlib_get_thread_index ();
+  u32 thread_index = vm->thread_index;
   int i = 0;
   u32 simple_mask = VLIB_BUFFER_NEXT_PRESENT;
   u32 n_left, *bi;
