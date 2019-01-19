@@ -16,6 +16,7 @@
 #ifndef included_clib_cpu_h
 #define included_clib_cpu_h
 
+#include <sys/syscall.h>
 #include <vppinfra/format.h>
 
 /*
@@ -98,6 +99,22 @@ _ (sm4,        19) \
 _ (asimddp,    20) \
 _ (sha512,     21) \
 _ (sve,        22)
+
+static inline u32
+clib_get_current_cpu_index ()
+{
+  unsigned cpu, node;
+  syscall (__NR_getcpu, &cpu, &node, 0);
+  return cpu;
+}
+
+static inline u32
+clib_get_current_numa_node ()
+{
+  unsigned cpu, node;
+  syscall (__NR_getcpu, &cpu, &node, 0);
+  return node;
+}
 
 #if defined(__x86_64__)
 #include "cpuid.h"
