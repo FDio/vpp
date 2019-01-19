@@ -531,7 +531,6 @@ vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
 	vlib_buffer_set_known_state (vm, bi[0], VLIB_BUFFER_KNOWN_FREE);
 
       clib_memset (b, 0, sizeof (vlib_buffer_t));
-      vlib_buffer_init_for_free_list (b, fl);
 
       if (fl->buffer_init_function)
 	fl->buffer_init_function (vm, fl, bi, 1);
