@@ -210,7 +210,6 @@ CLIB_MULTIARCH_FN (dpdk_buffer_fill_free_list) (vlib_main_t * vm,
     return 0;
 
   clib_memset (&bt, 0, sizeof (vlib_buffer_t));
-  vlib_buffer_init_for_free_list (&bt, fl);
   bt.buffer_pool_index = privp->buffer_pool_index;
 
   _vec_len (d->mbuf_alloc_list) = n_alloc;

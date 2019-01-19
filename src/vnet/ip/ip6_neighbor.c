@@ -2307,7 +2307,6 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_radv_t * radv_info)
 {
   u32 bi0;
   vlib_buffer_t *p0;
-  vlib_buffer_free_list_t *fl;
   icmp6_router_solicitation_header_t *rh;
   u16 payload_length;
   int bogus_length;
@@ -2322,8 +2321,6 @@ create_buffer_for_rs (vlib_main_t * vm, ip6_radv_t * radv_info)
     }
 
   p0 = vlib_get_buffer (vm, bi0);
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-  vlib_buffer_init_for_free_list (p0, fl);
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (p0);
   p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 

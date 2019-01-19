@@ -745,15 +745,12 @@ send_ip46_ping (vlib_main_t * vm,
   u32 bi0 = 0;
   int n_buf0 = 0;
   vlib_buffer_t *b0;
-  vlib_buffer_free_list_t *fl;
 
   n_buf0 = vlib_buffer_alloc (vm, &bi0, 1);
   if (n_buf0 < 1)
     ERROR_OUT (SEND_PING_ALLOC_FAIL);
 
   b0 = vlib_get_buffer (vm, bi0);
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-  vlib_buffer_init_for_free_list (b0, fl);
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
   /*

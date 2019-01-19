@@ -967,43 +967,6 @@ vlib_packet_template_free (vlib_main_t * vm, vlib_packet_template_t * t)
   vec_free (t->packet_data);
 }
 
-/* Set a buffer quickly into "uninitialized" state.  We want this to
-   be extremely cheap and arrange for all fields that need to be
-   initialized to be in the first 128 bits of the buffer. */
-always_inline void
-vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
-				vlib_buffer_free_list_t * fl)
-{
-  vlib_buffer_t *src = &fl->buffer_init_template;
-
-  /* Make sure vlib_buffer_t is cacheline aligned and sized */
-  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline0) == 0);
-  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline1) ==
-	  CLIB_CACHE_LINE_BYTES);
-  ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline2) ==
-	  CLIB_CACHE_LINE_BYTES * 2);
-
-  /* Make sure buffer template is sane. */
-  vlib_buffer_copy_template (dst, src);
-
-  /* Not in the first 16 octets. */
-  dst->n_add_refs = src->n_add_refs;
-
-  /* Make sure it really worked. */
-#define _(f) ASSERT (dst->f == src->f);
-  _(current_data);
-  _(current_length);
-  _(flags);
-#undef _
-  /* ASSERT (dst->total_length_not_including_first_buffer == 0); */
-  /* total_length_not_including_first_buffer is not in the template anymore
-   * so it may actually not zeroed for some buffers. One option is to
-   * uncomment the line lower (comes at a cost), the other, is to just  not
-   * care */
-  /* dst->total_length_not_including_first_buffer = 0; */
-  ASSERT (dst->n_add_refs == 0);
-}
-
 static_always_inline vlib_buffer_pool_t *
 vlib_buffer_pool_get (vlib_main_t * vm, u8 buffer_pool_index)
 {
@@ -1020,7 +983,7 @@ vlib_buffer_add_to_free_list (vlib_main_t * vm,
   vlib_buffer_t *b;
   b = vlib_get_buffer (vm, buffer_index);
   if (PREDICT_TRUE (do_init))
-    vlib_buffer_init_for_free_list (b, f);
+    clib_memset (b, 0, STRUCT_OFFSET_OF (vlib_buffer_t, template_end));
   vec_add1_aligned (f->buffers, buffer_index, CLIB_CACHE_LINE_BYTES);
 
   if (vec_len (f->buffers) > 4 * VLIB_FRAME_SIZE)
