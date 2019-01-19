@@ -81,7 +81,6 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   uword n_rx_packets = 0;
   vlib_buffer_t *b0;
   u32 bi0, next0;
-  vlib_buffer_free_list_t *fl;
   u32 *to_next;
   u32 next_index;
   u32 n_left_to_next;
@@ -100,7 +99,6 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
    * We use per-thread buffer caches, so we need the freelist to
    * initialize them...
    */
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   next_index = node->cached_next_index;
 
   while (wp->cursize)
@@ -149,7 +147,6 @@ nsim_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  /* Initialize the buffer */
-	  vlib_buffer_init_for_free_list (b0, fl);
 
 	  b0->current_data = 0;
 	  b0->current_length = ep->current_length;
