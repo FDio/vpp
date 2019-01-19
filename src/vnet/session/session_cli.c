@@ -100,12 +100,14 @@ uword
 unformat_stream_session_id (unformat_input_t * input, va_list * args)
 {
   u8 *proto = va_arg (*args, u8 *);
+  u32 *fib_index = va_arg (*args, u32 *);
   ip46_address_t *lcl = va_arg (*args, ip46_address_t *);
   ip46_address_t *rmt = va_arg (*args, ip46_address_t *);
   u16 *lcl_port = va_arg (*args, u16 *);
   u16 *rmt_port = va_arg (*args, u16 *);
   u8 *is_ip4 = va_arg (*args, u8 *);
   u8 tuple_is_set = 0;
+  u32 vrf = ~0;
 
   clib_memset (lcl, 0, sizeof (*lcl));
   clib_memset (rmt, 0, sizeof (*rmt));
@@ -114,10 +116,16 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
     {
       *proto = TRANSPORT_PROTO_TCP;
     }
-  if (unformat (input, "udp"))
+  else if (unformat (input, "udp"))
     {
       *proto = TRANSPORT_PROTO_UDP;
     }
+  else
+    return 0;
+
+  if (unformat (input, "vrf %u", &vrf))
+    ;
+
   if (unformat (input, "%U:%d->%U:%d", unformat_ip4_address, &lcl->ip4,
 		lcl_port, unformat_ip4_address, &rmt->ip4, rmt_port))
     {
@@ -131,6 +139,13 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
       tuple_is_set = 1;
     }
 
+  if (vrf != ~0)
+    {
+      fib_protocol_t fib_proto;
+      fib_proto = *is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+      *fib_index = fib_table_find (fib_proto, vrf);
+    }
+
   return tuple_is_set;
 }
 
@@ -138,14 +153,14 @@ uword
 unformat_stream_session (unformat_input_t * input, va_list * args)
 {
   stream_session_t **result = va_arg (*args, stream_session_t **);
+  u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
+  ip46_address_t lcl, rmt;
   stream_session_t *s;
   u8 proto = ~0;
-  ip46_address_t lcl, rmt;
-  u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
   u8 is_ip4 = 0;
 
-  if (!unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
-		 &lcl_port, &rmt_port, &is_ip4))
+  if (!unformat (input, "%U", unformat_stream_session_id, &proto, &fib_index,
+		 &lcl, &rmt, &lcl_port, &rmt_port, &is_ip4))
     return 0;
 
   if (is_ip4)
@@ -176,8 +191,8 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
   u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
   u8 is_ip4 = 0;
 
-  if (!unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
-		 &lcl_port, &rmt_port, &is_ip4))
+  if (!unformat (input, "%U", unformat_stream_session_id, &fib_index, &proto,
+		 &lcl, &rmt, &lcl_port, &rmt_port, &is_ip4))
     return 0;
 
   proto = (proto == (u8) ~ 0) ? suggested_proto : proto;
