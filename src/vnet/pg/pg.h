@@ -345,6 +345,7 @@ vlib_node_function_t pg_input, pg_output;
 /* Stream add/delete. */
 void pg_stream_del (pg_main_t * pg, uword index);
 void pg_stream_add (pg_main_t * pg, pg_stream_t * s_init);
+void pg_stream_change (pg_main_t * pg, pg_stream_t * s);
 
 /* Enable/disable stream. */
 void pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s,

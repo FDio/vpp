@@ -483,6 +483,31 @@ pg_stream_del (pg_main_t * pg, uword index)
   pool_put (pg->streams, s);
 }
 
+void
+pg_stream_change (pg_main_t * pg, pg_stream_t * s)
+{
+  /* Determine packet size. */
+  switch (s->packet_size_edit_type)
+    {
+    case PG_EDIT_INCREMENT:
+    case PG_EDIT_RANDOM:
+      if (s->min_packet_bytes == s->max_packet_bytes)
+	s->packet_size_edit_type = PG_EDIT_FIXED;
+    case PG_EDIT_FIXED:
+      break;
+
+    default:
+      /* Get packet size from fixed edits. */
+      s->packet_size_edit_type = PG_EDIT_FIXED;
+      if (!s->replay_packet_templates)
+	s->min_packet_bytes = s->max_packet_bytes =
+	  vec_len (s->fixed_packet_data);
+      break;
+    }
+
+  s->last_increment_packet_size = s->min_packet_bytes;
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON

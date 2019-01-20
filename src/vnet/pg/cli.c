@@ -42,9 +42,9 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 
-#ifdef CLIB_UNIX
+#include <strings.h>
 #include <vppinfra/pcap.h>
-#endif
+
 
 /* Root of all packet generator cli commands. */
 /* *INDENT-OFF* */
@@ -146,39 +146,65 @@ VLIB_CLI_COMMAND (disable_streams_cli, static) = {
 /* *INDENT-ON* */
 
 static u8 *
+format_pg_edit_group (u8 * s, va_list * va)
+{
+  pg_edit_group_t *g = va_arg (*va, pg_edit_group_t *);
+
+  s =
+    format (s, "hdr-size %d, offset %d, ", g->n_packet_bytes,
+	    g->start_byte_offset);
+  if (g->edit_function)
+    {
+      u8 *function_name;
+      u8 *junk_after_name;
+      function_name = format (0, "%U%c", format_clib_elf_symbol_with_address,
+			      g->edit_function, 0);
+      junk_after_name = function_name;
+      while (*junk_after_name && *junk_after_name != ' ')
+	junk_after_name++;
+      *junk_after_name = 0;
+      s = format (s, "edit-funtion %s, ", function_name);
+      vec_free (function_name);
+    }
+
+  return s;
+}
+
+static u8 *
 format_pg_stream (u8 * s, va_list * va)
 {
   pg_stream_t *t = va_arg (*va, pg_stream_t *);
-  u8 *v;
+  int verbose = va_arg (*va, int);
 
   if (!t)
-    return format (s, "%=16s%=12s%=16s%s",
+    return format (s, "%-16s%=12s%=16s%s",
 		   "Name", "Enabled", "Count", "Parameters");
 
-  s = format (s, "%-16v%=12s%16Ld",
+  s = format (s, "%-16v%=12s%=16Ld",
 	      t->name,
 	      pg_stream_is_enabled (t) ? "Yes" : "No",
 	      t->n_packets_generated);
 
-  v = 0;
+  int indent = format_get_indent (s);
 
-  v = format (v, "limit %Ld, ", t->n_packets_limit);
-
-  v = format (v, "rate %.2e pps, ", t->rate_packets_per_second);
-
-  v = format (v, "size %d%c%d, ",
+  s = format (s, "limit %Ld, ", t->n_packets_limit);
+  s = format (s, "rate %.2e pps, ", t->rate_packets_per_second);
+  s = format (s, "size %d%c%d, ",
 	      t->min_packet_bytes,
 	      t->packet_size_edit_type == PG_EDIT_RANDOM ? '+' : '-',
 	      t->max_packet_bytes);
+  s = format (s, "buffer-size %d, ", t->buffer_bytes);
+  s = format (s, "worker %d, ", t->worker_index);
 
-  v = format (v, "buffer-size %d, ", t->buffer_bytes);
-
-  v = format (v, "worker %d, ", t->worker_index);
-
-  if (v)
+  if (verbose)
     {
-      s = format (s, "  %v", v);
-      vec_free (v);
+      pg_edit_group_t *g;
+  /* *INDENT-OFF* */
+  vec_foreach (g, t->edit_groups)
+    {
+      s = format (s, "\n%U%U", format_white_space, indent, format_pg_edit_group, g);
+    }
+  /* *INDENT-ON* */
     }
 
   return s;
@@ -190,6 +216,15 @@ show_streams (vlib_main_t * vm,
 {
   pg_main_t *pg = &pg_main;
   pg_stream_t *s;
+  int verbose = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	break;
+    }
 
   if (pool_elts (pg->streams) == 0)
     {
@@ -197,10 +232,10 @@ show_streams (vlib_main_t * vm,
       goto done;
     }
 
-  vlib_cli_output (vm, "%U", format_pg_stream, 0);
+  vlib_cli_output (vm, "%U", format_pg_stream, 0, 0);
   /* *INDENT-OFF* */
   pool_foreach (s, pg->streams, ({
-      vlib_cli_output (vm, "%U", format_pg_stream, s);
+      vlib_cli_output (vm, "%U", format_pg_stream, s, verbose);
     }));
   /* *INDENT-ON* */
 
@@ -210,8 +245,8 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_streams_cli, static) = {
-  .path = "show packet-generator",
-  .short_help = "Show packet generator streams",
+  .path = "show packet-generator ",
+  .short_help = "show packet-generator [verbose]",
   .function = show_streams,
 };
 /* *INDENT-ON* */
@@ -277,10 +312,11 @@ validate_stream (pg_stream_t * s)
   if (s->max_packet_bytes < s->min_packet_bytes)
     return clib_error_create ("max-size < min-size");
 
-  if (s->buffer_bytes >= 4096 || s->buffer_bytes == 0)
-    return
-      clib_error_create ("buffer-size must be positive and < 4096, given %d",
-			 s->buffer_bytes);
+  u32 hdr_size = pg_edit_group_n_bytes (s, 0);
+  if (s->min_packet_bytes < hdr_size)
+    return clib_error_create ("min-size < total header size %d", hdr_size);
+  if (s->buffer_bytes == 0)
+    return clib_error_create ("buffer-size must be positive");
 
   if (s->rate_packets_per_second < 0)
     return clib_error_create ("negative rate");
@@ -362,10 +398,6 @@ new_stream (vlib_main_t * vm,
 	}
     }
 
-  error = validate_stream (&s);
-  if (error)
-    return error;
-
   if (!sub_input_given && !pcap_file_name)
     {
       error = clib_error_create ("no packet data given");
@@ -418,6 +450,10 @@ new_stream (vlib_main_t * vm,
 	goto done;
       }
   }
+
+  error = validate_stream (&s);
+  if (error)
+    return error;
 
   pg_stream_add (pg, &s);
   return 0;
@@ -501,7 +537,10 @@ change_stream_parameters (vlib_main_t * vm,
 
   error = validate_stream (&s_new);
   if (!error)
-    s[0] = s_new;
+    {
+      s[0] = s_new;
+      pg_stream_change (pg, s);
+    }
 
   return error;
 }

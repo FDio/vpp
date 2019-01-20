@@ -167,7 +167,7 @@ unformat_pg_payload (unformat_input_t * input, va_list * args)
   for (i = 0; i < len; i++)
     v[i] = i % ilen;
 
-  e = pg_create_edit_group (s, sizeof (e[0]), vec_len (v), 0);
+  e = pg_create_edit_group (s, sizeof (e[0]), 0, 0);
 
   e->type = PG_EDIT_FIXED;
   e->n_bits = vec_len (v) * BITS (v[0]);
