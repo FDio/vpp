@@ -879,6 +879,7 @@ if (tcp_cc_time_to_print_stats (_tc))					\
 }
 #else
 #define TCP_EVT_CC_STAT_HANDLER(_tc, ...)
+#define TCP_EVT_CC_STAT_PRINT(_tc)
 #endif
 
 /*
