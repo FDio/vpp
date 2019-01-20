@@ -362,7 +362,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
       default_free_free_list_index =
         vlib_buffer_create_free_list_helper
         (vm,
-         /* default buffer size */ VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES,
+         /* default buffer size */ VLIB_BUFFER_DATA_SIZE,
          /* is_public */ 1,
          /* is_default */ 1,
          (u8 *) "default");
@@ -370,7 +370,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
       ASSERT (default_free_free_list_index ==
 	      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
-      if (n_data_bytes == VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES && is_public)
+      if (n_data_bytes == VLIB_BUFFER_DATA_SIZE && is_public)
 	return default_free_free_list_index;
     }
 
@@ -900,8 +900,7 @@ retry:
   pool_index = vlib_buffer_register_physmem_map (vm, physmem_map_index);
   vlib_buffer_pool_t *bp = vlib_buffer_pool_get (vm, pool_index);
   clib_spinlock_init (&bp->lock);
-  bp->buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES +
-    sizeof (vlib_buffer_t);
+  bp->buffer_size = VLIB_BUFFER_DATA_SIZE + sizeof (vlib_buffer_t);
 
   return 0;
 }

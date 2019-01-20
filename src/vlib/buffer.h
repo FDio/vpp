@@ -437,7 +437,6 @@ typedef struct
 				 u32 * buffers,
 				 u32 n_buffers, u32 follow_buffer_next);
 #define VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX (0)
-#define VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES VLIB_BUFFER_DATA_SIZE
 
   /* Hash table mapping buffer size (rounded to next unit of
      sizeof (vlib_buffer_t)) to free list index. */
