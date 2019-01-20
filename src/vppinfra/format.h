@@ -131,6 +131,10 @@ typedef struct _unformat_input_t
   /* Current index in input buffer. */
   uword index;
 
+  /* Error index in input buffer.
+     How far we have parsed this buffer */
+  uword error_index;
+
   /* Vector of buffer marks.  Used to delineate pieces of the buffer
      for error reporting and for parse recovery. */
   uword *buffer_marks;

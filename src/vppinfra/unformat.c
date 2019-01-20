@@ -379,6 +379,11 @@ unformat_input (unformat_input_t * i, va_list * args)
   unformat_input_t *sub_input = va_arg (*args, unformat_input_t *);
   u8 *s;
 
+  /* mark error index before parsing sub_input string
+     therefore we know which sub_input fails the parsing
+   */
+  i->error_index = i->index;
+
   if (unformat (i, "%v", &s))
     {
       unformat_init_vector (sub_input, s);
@@ -995,7 +1000,11 @@ unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
   va_end (va);
 
   if (!result && input->index != UNFORMAT_END_OF_INPUT)
-    input->index = input->buffer_marks[l];
+    {
+      input->index = input->buffer_marks[l];
+      if (input->index > input->error_index)
+	input->error_index = input->index;
+    }
 
   _vec_len (input->buffer_marks) = l;
 

@@ -412,6 +412,7 @@ new_stream (vlib_main_t * vm,
 
     else if (!unformat_user (&sub_input, unformat_pg_payload, &s))
       {
+	sub_input.index = sub_input.error_index;
 	error = clib_error_create
 	  ("failed to parse packet data from `%U'",
 	   format_unformat_error, &sub_input);
