@@ -22,6 +22,7 @@
 #include <vlib/log.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>

@@ -21,6 +21,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
+#include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
 #include <dpdk/device/dpdk.h>
 #include <dpdk/device/dpdk_priv.h>

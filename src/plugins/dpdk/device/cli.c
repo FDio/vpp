@@ -24,6 +24,7 @@
 #include <vppinfra/linux/sysfs.c>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls/packet.h>
