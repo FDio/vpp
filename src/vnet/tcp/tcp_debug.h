@@ -19,8 +19,8 @@
 #include <vlib/vlib.h>
 
 #define TCP_DEBUG (1)
-#define TCP_DEBUG_SM (0)
-#define TCP_DEBUG_CC (0)
+#define TCP_DEBUG_SM (2)
+#define TCP_DEBUG_CC (2)
 #define TCP_DEBUG_CC_STAT (0)
 #define TCP_DEBUG_BUFFER_ALLOCATION (0)
 
@@ -879,6 +879,7 @@ if (tcp_cc_time_to_print_stats (_tc))					\
 }
 #else
 #define TCP_EVT_CC_STAT_HANDLER(_tc, ...)
+#define TCP_EVT_CC_STAT_PRINT(_tc)
 #endif
 
 /*
