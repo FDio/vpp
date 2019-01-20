@@ -530,14 +530,6 @@ clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 clib_error_t *unformat_hqos (unformat_input_t * input,
 			     dpdk_device_config_hqos_t * hqos);
 
-clib_error_t *dpdk_pool_create (vlib_main_t * vm, u8 * pool_name,
-				u32 elt_size, u32 num_elts,
-				u32 pool_priv_size, u16 cache_size, u8 numa,
-				struct rte_mempool **_mp, u32 * map_index);
-
-clib_error_t *dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
-				       unsigned socket_id);
-
 struct rte_pci_device *dpdk_get_pci_device (const struct rte_eth_dev_info
 					    *info);
 
