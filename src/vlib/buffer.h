@@ -407,9 +407,6 @@ typedef struct
   vlib_buffer_fill_free_list_cb_t *vlib_buffer_fill_free_list_cb;
   vlib_buffer_free_cb_t *vlib_buffer_free_cb;
   vlib_buffer_free_no_next_cb_t *vlib_buffer_free_no_next_cb;
-  void (*vlib_buffer_delete_free_list_cb) (struct vlib_main_t * vm,
-					   vlib_buffer_free_list_index_t
-					   free_list_index);
 } vlib_buffer_callbacks_t;
 
 extern vlib_buffer_callbacks_t *vlib_buffer_callbacks;
