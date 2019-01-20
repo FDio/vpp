@@ -367,9 +367,6 @@ typedef struct vlib_buffer_free_list_t
   /* Our index into vlib_main_t's buffer_free_list_pool. */
   vlib_buffer_free_list_index_t index;
 
-  /* Number of data bytes for buffers in this free list. */
-  u32 n_data_bytes;
-
   /* Number of buffers to allocate when we need to allocate new buffers */
   u32 min_n_buffers_each_alloc;
 
@@ -437,7 +434,6 @@ typedef struct
 				 u32 * buffers,
 				 u32 n_buffers, u32 follow_buffer_next);
 #define VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX (0)
-#define VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES VLIB_BUFFER_DATA_SIZE
 
   /* Hash table mapping buffer size (rounded to next unit of
      sizeof (vlib_buffer_t)) to free list index. */

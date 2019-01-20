@@ -614,28 +614,6 @@ vlib_buffer_free_list_index_t vlib_buffer_create_free_list (vlib_main_t * vm,
 							    u32 n_data_bytes,
 							    char *fmt, ...);
 
-always_inline vlib_buffer_free_list_t *
-vlib_buffer_get_free_list (vlib_main_t * vm,
-			   vlib_buffer_free_list_index_t free_list_index)
-{
-  vlib_buffer_free_list_t *f;
-
-  f = pool_elt_at_index (vm->buffer_free_list_pool, free_list_index);
-
-  /* Sanity: indices must match. */
-  ASSERT (f->index == free_list_index);
-
-  return f;
-}
-
-always_inline u32
-vlib_buffer_free_list_buffer_size (vlib_main_t * vm,
-				   vlib_buffer_free_list_index_t index)
-{
-  vlib_buffer_free_list_t *f = vlib_buffer_get_free_list (vm, index);
-  return f->n_data_bytes;
-}
-
 /* Append given data to end of buffer, possibly allocating new buffers. */
 int vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
 			  u32 n_data_bytes);
@@ -886,8 +864,7 @@ vlib_buffer_chain_append_data (vlib_main_t * vm,
 			       vlib_buffer_t * first,
 			       vlib_buffer_t * last, void *data, u16 data_len)
 {
-  u32 n_buffer_bytes =
-    vlib_buffer_free_list_buffer_size (vm, free_list_index);
+  u32 n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
   ASSERT (n_buffer_bytes >= last->current_length + last->current_data);
   u16 len = clib_min (data_len,
 		      n_buffer_bytes - last->current_length -
@@ -1073,14 +1050,9 @@ vlib_buffer_chain_compress (vlib_main_t * vm,
       /* this is already big enough or not a chain */
       return;
     }
-  /* probe free list to find allocated buffer size to avoid overfill */
-  vlib_buffer_free_list_t *free_list;
-
-  free_list = pool_elt_at_index (vm->buffer_free_list_pool,
-				 VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   u32 want_first_size = clib_min (VLIB_BUFFER_CHAIN_MIN_FIRST_DATA_SIZE,
-				  free_list->n_data_bytes -
+				  VLIB_BUFFER_DATA_SIZE -
 				  first->current_data);
   do
     {
@@ -1127,9 +1099,7 @@ always_inline int
 vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * first)
 {
   vlib_buffer_t *b = first;
-  vlib_buffer_free_list_t *fl =
-    vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-  u32 buf_len = fl->n_data_bytes;
+  u32 buf_len = VLIB_BUFFER_DATA_SIZE;
   // free buffer chain starting from the second buffer
   int free_count = (b->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
   u32 chain_to_free = b->next_buffer;
