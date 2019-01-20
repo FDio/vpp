@@ -430,47 +430,6 @@ vlib_buffer_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
 					      name);
 }
 
-static void
-del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
-{
-  vlib_buffer_pool_t *bp = vlib_buffer_pool_get (vm, f->buffer_pool_index);
-
-  vec_add_aligned (bp->buffers, f->buffers, vec_len (f->buffers),
-		   CLIB_CACHE_LINE_BYTES);
-  vec_free (f->name);
-  vec_free (f->buffers);
-
-  /* Poison it. */
-  clib_memset (f, 0xab, sizeof (f[0]));
-}
-
-/* Add buffer free list. */
-void
-vlib_buffer_delete_free_list_internal (vlib_main_t * vm,
-				       vlib_buffer_free_list_index_t index)
-{
-  vlib_buffer_free_list_t *f;
-  int i;
-
-  ASSERT (vlib_get_thread_index () == 0);
-
-  f = vlib_buffer_get_free_list (vm, index);
-
-  ASSERT (vec_len (f->buffers) == f->n_alloc);
-
-  del_free_list (vm, f);
-
-  pool_put (vm->buffer_free_list_pool, f);
-
-  for (i = 1; i < vec_len (vlib_mains); i++)
-    {
-      vlib_main_t *wvm = vlib_mains[i];
-      f = vlib_buffer_get_free_list (vlib_mains[i], index);
-      del_free_list (wvm, f);
-      pool_put (wvm->buffer_free_list_pool, f);
-    }
-}
-
 static_always_inline void *
 vlib_buffer_pool_get_buffer (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 {
@@ -916,8 +875,6 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   bm->cb.vlib_buffer_fill_free_list_cb = &vlib_buffer_fill_free_list_internal;
   bm->cb.vlib_buffer_free_cb = &vlib_buffer_free_internal;
   bm->cb.vlib_buffer_free_no_next_cb = &vlib_buffer_free_no_next_internal;
-  bm->cb.vlib_buffer_delete_free_list_cb =
-    &vlib_buffer_delete_free_list_internal;
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
 
 retry:

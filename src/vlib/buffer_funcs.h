@@ -613,22 +613,6 @@ vlib_buffer_free_from_ring_no_next (vlib_main_t * vm, u32 * ring, u32 start,
 vlib_buffer_free_list_index_t vlib_buffer_create_free_list (vlib_main_t * vm,
 							    u32 n_data_bytes,
 							    char *fmt, ...);
-always_inline void
-vlib_buffer_delete_free_list (vlib_main_t * vm,
-			      vlib_buffer_free_list_index_t free_list_index)
-{
-  vlib_buffer_main_t *bm = vm->buffer_main;
-
-  ASSERT (bm->cb.vlib_buffer_delete_free_list_cb);
-
-  bm->cb.vlib_buffer_delete_free_list_cb (vm, free_list_index);
-}
-
-/* Make sure we have at least given number of unaligned buffers. */
-void vlib_buffer_free_list_fill_unaligned (vlib_main_t * vm,
-					   vlib_buffer_free_list_t *
-					   free_list,
-					   uword n_unaligned_buffers);
 
 always_inline vlib_buffer_free_list_t *
 vlib_buffer_get_free_list (vlib_main_t * vm,
