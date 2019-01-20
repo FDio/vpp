@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "091a3cab_f088b4b4",
+        "filename": "src/plugins/dpdk/ipsec/crypto_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-20T14:21:00Z",
+      "side": 1,
+      "message": "Why not:\n\nif (n_deq \u003d\u003d 0)\n  return 0;\n\nTo avoid reformatting whole section...",
+      "range": {
+        "startLine": 169,
+        "startChar": 2,
+        "endLine": 169,
+        "endChar": 16
+      },
+      "revId": "3432d1f9b38d3d94553fa887d9fd6ade9a87f9d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
