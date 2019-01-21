@@ -102,6 +102,7 @@ typedef struct
   u32 *bufs;
   u16 n_enqueued;
   u8 int_mode;
+  u8 buffer_pool_index;
 } avf_rxq_t;
 
 typedef struct

@@ -463,7 +463,7 @@ vlib_put_next_frame (vlib_main_t * vm,
   vlib_frame_t *f;
   u32 n_vectors_in_frame;
 
-  if (vm->buffer_main->callbacks_registered == 0 && CLIB_DEBUG > 0)
+  if (CLIB_DEBUG > 0)
     vlib_put_next_frame_validate (vm, r, next_index, n_vectors_left);
 
   nf = vlib_node_runtime_get_next_frame (vm, r, next_index);
@@ -987,8 +987,8 @@ format_buffer_metadata (u8 * s, va_list * args)
 	      (i32) (b->current_data), (i32) (b->current_length));
   s = format (s, "current_config_index: %d, flow_id: %x, next_buffer: %x\n",
 	      b->current_config_index, b->flow_id, b->next_buffer);
-  s = format (s, "error: %d, n_add_refs: %d, buffer_pool_index: %d\n",
-	      (u32) (b->error), (u32) (b->n_add_refs),
+  s = format (s, "error: %d, ref_count: %d, buffer_pool_index: %d\n",
+	      (u32) (b->error), (u32) (b->ref_count),
 	      (u32) (b->buffer_pool_index));
   s = format (s,
 	      "trace_index: %d, len_not_first_buf: %d\n",
@@ -1992,9 +1992,6 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     vm->init_functions_called = hash_create (0, /* value bytes */ 0);
   if ((error = vlib_call_all_init_functions (vm)))
     goto done;
-
-  /* Create default buffer free list. */
-  vlib_buffer_create_free_list (vm, VLIB_BUFFER_DATA_SIZE, "default");
 
   nm->timing_wheel = clib_mem_alloc_aligned (sizeof (TWT (tw_timer_wheel)),
 					     CLIB_CACHE_LINE_BYTES);

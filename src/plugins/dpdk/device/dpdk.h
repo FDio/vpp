@@ -56,8 +56,6 @@
 #include <vlib/pci/pci.h>
 #include <vnet/flow/flow.h>
 
-#define NB_MBUF   (16<<10)
-
 extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t admin_up_down_process_node;
@@ -364,7 +362,7 @@ typedef struct
   u8 nchannels_set_manually;
   u32 coremask;
   u32 nchannels;
-  u32 num_mbufs;
+  u32 num_crypto_mbufs;
 
   /*
    * format interface names ala xxxEthernet%d/%d/%d instead of
@@ -442,9 +440,6 @@ typedef struct
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   dpdk_config_main_t *conf;
-
-  /* mempool */
-  struct rte_mempool **pktmbuf_pools;
 
   /* API message ID base */
   u16 msg_id_base;
