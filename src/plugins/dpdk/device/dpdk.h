@@ -443,9 +443,6 @@ typedef struct
   vnet_main_t *vnet_main;
   dpdk_config_main_t *conf;
 
-  /* mempool */
-  struct rte_mempool **pktmbuf_pools;
-
   /* API message ID base */
   u16 msg_id_base;
 

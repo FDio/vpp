@@ -1989,9 +1989,6 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   if ((error = vlib_call_all_init_functions (vm)))
     goto done;
 
-  /* Create default buffer free list. */
-  vlib_buffer_create_free_list (vm, VLIB_BUFFER_DATA_SIZE, "default");
-
   nm->timing_wheel = clib_mem_alloc_aligned (sizeof (TWT (tw_timer_wheel)),
 					     CLIB_CACHE_LINE_BYTES);
 
