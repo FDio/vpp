@@ -335,8 +335,8 @@ unlock:
 }
 
 int
-nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi,
-			    u32 ** bi_to_drop)
+nat_ip4_reass_add_fragment (u32 thread_index, nat_reass_ip4_t * reass,
+			    u32 bi, u32 ** bi_to_drop)
 {
   nat_reass_main_t *srm = &nat_reass_main;
   dlist_elt_t *elt;
@@ -344,7 +344,7 @@ nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi,
 
   if (reass->frag_n >= srm->ip4_max_frag)
     {
-      nat_ipfix_logging_max_fragments_ip4 (srm->ip4_max_frag,
+      nat_ipfix_logging_max_fragments_ip4 (thread_index, srm->ip4_max_frag,
 					   &reass->key.src);
       reass->flags |= NAT_REASS_FLAG_MAX_FRAG_DROP;
       nat_ip4_reass_get_frags_inline (reass, bi_to_drop);
@@ -541,8 +541,8 @@ unlock:
 }
 
 int
-nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi,
-			    u32 ** bi_to_drop)
+nat_ip6_reass_add_fragment (u32 thread_index, nat_reass_ip6_t * reass,
+			    u32 bi, u32 ** bi_to_drop)
 {
   nat_reass_main_t *srm = &nat_reass_main;
   dlist_elt_t *elt;
@@ -550,7 +550,7 @@ nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi,
 
   if (reass->frag_n >= srm->ip6_max_frag)
     {
-      nat_ipfix_logging_max_fragments_ip6 (srm->ip6_max_frag,
+      nat_ipfix_logging_max_fragments_ip6 (thread_index, srm->ip6_max_frag,
 					   &reass->key.src);
       reass->flags |= NAT_REASS_FLAG_MAX_FRAG_DROP;
       nat_ip6_reass_get_frags_inline (reass, bi_to_drop);
