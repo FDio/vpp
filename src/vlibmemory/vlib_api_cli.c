@@ -1114,8 +1114,8 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 	  ndifferences++;
 
 	  /* Only in one of two tables? */
-	  if (strncmp ((char *) table[i].name, (char *) table[i + 1].name,
-		       vec_len (table[i].name)))
+	  if (i + 1 == vec_len (table)
+	      || strcmp ((char *) table[i].name, (char *) table[i + 1].name))
 	    {
 	    last_unique:
 	      vlib_cli_output (vm, "%-60s only in %s",
