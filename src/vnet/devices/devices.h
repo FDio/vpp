@@ -83,8 +83,8 @@ vnet_hw_interface_set_input_node (vnet_main_t * vnm, u32 hw_if_index,
   hw->input_node_index = node_index;
 }
 
-void vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
-					 u16 queue_id, uword thread_index);
+u32 vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
+					u16 queue_id, u32 thread_index);
 int vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
 					  u16 queue_id);
 int vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,

@@ -135,9 +135,9 @@ vnet_device_queue_update (vnet_main_t * vnm, vnet_device_input_runtime_t * rt)
   }
 }
 
-void
+u32
 vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
-				    u16 queue_id, uword thread_index)
+				    u16 queue_id, u32 thread_index)
 {
   vnet_device_main_t *vdm = &vnet_device_main;
   vlib_main_t *vm, *vm0;
@@ -182,6 +182,7 @@ vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   vlib_worker_thread_barrier_release (vm0);
 
   vlib_node_set_state (vm, hw->input_node_index, rt->enabled_node_state);
+  return thread_index;
 }
 
 int
