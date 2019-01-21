@@ -59,8 +59,6 @@
 /* Amount of head buffer data copied to each replica head buffer */
 #define VLIB_BUFFER_CLONE_HEAD_SIZE (256)
 
-typedef u8 vlib_buffer_free_list_index_t;
-
 /** \file
     vlib buffer structure definition and a few select
     access methods. This structure and the buffer allocation
@@ -367,66 +365,32 @@ vlib_buffer_pull (vlib_buffer_t * b, u8 size)
 /* Forward declaration. */
 struct vlib_main_t;
 
-typedef struct vlib_buffer_free_list_t
-{
-  /* Template buffer used to initialize first 16 bytes of buffers
-     allocated on this free list. */
-  vlib_buffer_t buffer_init_template;
-
-  /* Our index into vlib_main_t's buffer_free_list_pool. */
-  vlib_buffer_free_list_index_t index;
-
-  /* Number of buffers to allocate when we need to allocate new buffers */
-  u32 min_n_buffers_each_alloc;
-
-  /* Total number of buffers allocated from this free list. */
-  u32 n_alloc;
-
-  /* Vector of free buffers.  Each element is a byte offset into I/O heap. */
-  u32 *buffers;
-
-  /* index of buffer pool used to get / put buffers */
-  u8 buffer_pool_index;
-
-  /* Free list name. */
-  u8 *name;
-
-  /* Callback functions to initialize newly allocated buffers.
-     If null buffers are zeroed. */
-  void (*buffer_init_function) (struct vlib_main_t * vm,
-				struct vlib_buffer_free_list_t * fl,
-				u32 * buffers, u32 n_buffers);
-
-  uword buffer_init_function_opaque;
-} __attribute__ ((aligned (16))) vlib_buffer_free_list_t;
-
-typedef uword (vlib_buffer_fill_free_list_cb_t) (struct vlib_main_t * vm,
-						 vlib_buffer_free_list_t * fl,
-						 uword min_free_buffers);
-typedef void (vlib_buffer_free_cb_t) (struct vlib_main_t * vm, u32 * buffers,
-				      u32 n_buffers);
-typedef void (vlib_buffer_free_no_next_cb_t) (struct vlib_main_t * vm,
-					      u32 * buffers, u32 n_buffers);
-
 typedef struct
 {
-  vlib_buffer_fill_free_list_cb_t *vlib_buffer_fill_free_list_cb;
-  vlib_buffer_free_cb_t *vlib_buffer_free_cb;
-  vlib_buffer_free_no_next_cb_t *vlib_buffer_free_no_next_cb;
-} vlib_buffer_callbacks_t;
-
-extern vlib_buffer_callbacks_t *vlib_buffer_callbacks;
-
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 *cached_buffers;
+  u32 n_alloc;
+} vlib_buffer_pool_thread_t;
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   uword start;
   uword size;
   uword log2_page_size;
+  u8 index;
+  u32 numa_node;
   u32 physmem_map_index;
-  u32 buffer_size;
+  u32 data_size;
+  u32 n_buffers;
   u32 *buffers;
+  u8 *name;
   clib_spinlock_t lock;
+
+  /* per-thread data */
+  vlib_buffer_pool_thread_t *threads;
+
+  /* buffer metadata template */
+  vlib_buffer_t buffer_template;
 } vlib_buffer_pool_t;
 
 typedef struct
@@ -438,35 +402,23 @@ typedef struct
   uword buffer_mem_size;
   vlib_buffer_pool_t *buffer_pools;
 
-  /* Buffer free callback, for subversive activities */
-    u32 (*buffer_free_callback) (struct vlib_main_t * vm,
-				 u32 * buffers,
-				 u32 n_buffers, u32 follow_buffer_next);
-#define VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX (0)
-
-  /* Hash table mapping buffer size (rounded to next unit of
-     sizeof (vlib_buffer_t)) to free list index. */
-  uword *free_list_by_size;
-
   /* Hash table mapping buffer index into number
      0 => allocated but free, 1 => allocated and not-free.
      If buffer index is not in hash table then this buffer
      has never been allocated. */
   uword *buffer_known_hash;
   clib_spinlock_t buffer_known_hash_lockp;
+  u32 n_numa_nodes;
 
-  /* Callbacks */
-  vlib_buffer_callbacks_t cb;
-  int callbacks_registered;
+  /* config */
+  u32 buffers_per_numa;
+  u16 ext_hdr_size;
+
+  /* logging */
+  vlib_log_class_t log_default;
 } vlib_buffer_main_t;
 
-u8 vlib_buffer_register_physmem_map (struct vlib_main_t *vm,
-				     u32 physmem_map_index);
-
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
-
-
-void *vlib_set_buffer_free_callback (struct vlib_main_t *vm, void *fp);
 
 /*
  */
@@ -488,23 +440,17 @@ extern void vlib_buffer_trace_trajectory_init (vlib_buffer_t * b);
 #define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b)
 #endif /* VLIB_BUFFER_TRACE_TRAJECTORY */
 
-#endif /* included_vlib_buffer_h */
+extern u16 __vlib_buffer_external_hdr_size;
+#define VLIB_BUFFER_SET_EXT_HDR_SIZE(x) \
+static void __clib_constructor \
+vnet_buffer_set_ext_hdr_size() \
+{ \
+  if (__vlib_buffer_external_hdr_size) \
+    clib_error ("buffer external header space already set"); \
+  __vlib_buffer_external_hdr_size = CLIB_CACHE_LINE_ROUND (x); \
+}
 
-#define VLIB_BUFFER_REGISTER_CALLBACKS(x,...)                           \
-    __VA_ARGS__ vlib_buffer_callbacks_t __##x##_buffer_callbacks;       \
-static void __vlib_add_buffer_callbacks_t_##x (void)                    \
-    __attribute__((__constructor__)) ;                                  \
-static void __vlib_add_buffer_callbacks_t_##x (void)                    \
-{                                                                       \
-    if (vlib_buffer_callbacks)                                          \
-      clib_panic ("vlib buffer callbacks already registered");          \
-    vlib_buffer_callbacks = &__##x##_buffer_callbacks;                  \
-}                                                                       \
-static void __vlib_rm_buffer_callbacks_t_##x (void)                     \
-    __attribute__((__destructor__)) ;                                   \
-static void __vlib_rm_buffer_callbacks_t_##x (void)                     \
-{ vlib_buffer_callbacks = 0; }                                          \
-__VA_ARGS__ vlib_buffer_callbacks_t __##x##_buffer_callbacks
+#endif /* included_vlib_buffer_h */
 
 /*
  * fd.io coding-style-patch-verification: ON
