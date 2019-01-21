@@ -151,60 +151,6 @@ dpdk_device_lock_init (dpdk_device_t * xd)
     }
 }
 
-static struct rte_mempool_ops *
-get_ops_by_name (char *ops_name)
-{
-  u32 i;
-
-  for (i = 0; i < rte_mempool_ops_table.num_ops; i++)
-    {
-      if (!strcmp (ops_name, rte_mempool_ops_table.ops[i].name))
-	return &rte_mempool_ops_table.ops[i];
-    }
-
-  return 0;
-}
-
-static int
-dpdk_ring_alloc (struct rte_mempool *mp)
-{
-  u32 rg_flags = 0, count;
-  i32 ret;
-  char rg_name[RTE_RING_NAMESIZE];
-  struct rte_ring *r;
-
-  ret = snprintf (rg_name, sizeof (rg_name), RTE_MEMPOOL_MZ_FORMAT, mp->name);
-  if (ret < 0 || ret >= (i32) sizeof (rg_name))
-    return -ENAMETOOLONG;
-
-  /* ring flags */
-  if (mp->flags & MEMPOOL_F_SP_PUT)
-    rg_flags |= RING_F_SP_ENQ;
-  if (mp->flags & MEMPOOL_F_SC_GET)
-    rg_flags |= RING_F_SC_DEQ;
-
-  count = rte_align32pow2 (mp->size + 1);
-  /*
-   * Allocate the ring that will be used to store objects.
-   * Ring functions will return appropriate errors if we are
-   * running as a secondary process etc., so no checks made
-   * in this function for that condition.
-   */
-  /* XXX can we get memory from the right socket? */
-  r = clib_mem_alloc_aligned (rte_ring_get_memsize (count),
-			      CLIB_CACHE_LINE_BYTES);
-
-  /* XXX rte_ring_lookup will not work */
-
-  ret = rte_ring_init (r, rg_name, count, rg_flags);
-  if (ret)
-    return ret;
-
-  mp->pool_data = r;
-
-  return 0;
-}
-
 static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
@@ -1452,35 +1398,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (ret < 0)
     return clib_error_return (0, "rte_eal_init returned %d", ret);
 
-  /* set custom ring memory allocator */
-  {
-    struct rte_mempool_ops *ops = NULL;
-
-    ops = get_ops_by_name ("ring_sp_sc");
-    ops->alloc = dpdk_ring_alloc;
-
-    ops = get_ops_by_name ("ring_mp_sc");
-    ops->alloc = dpdk_ring_alloc;
-
-    ops = get_ops_by_name ("ring_sp_mc");
-    ops->alloc = dpdk_ring_alloc;
-
-    ops = get_ops_by_name ("ring_mp_mc");
-    ops->alloc = dpdk_ring_alloc;
-  }
-
   /* main thread 1st */
-  error = dpdk_buffer_pool_create (vm, conf->num_mbufs, rte_socket_id ());
-  if (error)
+  if ((error = dpdk_buffer_pools_create (vm, conf->num_mbufs)))
     return error;
-
-  for (i = 0; i < RTE_MAX_LCORE; i++)
-    {
-      error = dpdk_buffer_pool_create (vm, conf->num_mbufs,
-				       rte_lcore_to_socket_id (i));
-      if (error)
-	return error;
-    }
 
 done:
   return error;
