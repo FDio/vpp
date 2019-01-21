@@ -199,7 +199,8 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       if (snat_is_unk_proto_session (s))
 	goto delete;
 
-      snat_ipfix_logging_nat44_ses_delete (s->in2out.addr.as_u32,
+      snat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
+					   s->in2out.addr.as_u32,
 					   s->out2in.addr.as_u32,
 					   s->in2out.protocol,
 					   s->in2out.port,
@@ -296,7 +297,7 @@ slow_path_ed (snat_main_t * sm,
   if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
     {
       b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-      nat_ipfix_logging_max_sessions (sm->max_translations);
+      nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
       nat_log_notice ("maximum sessions exceeded");
       return NAT_IN2OUT_ED_NEXT_DROP;
     }
@@ -420,7 +421,8 @@ slow_path_ed (snat_main_t * sm,
   *sessionp = s;
 
   /* log NAT event */
-  snat_ipfix_logging_nat44_ses_create (s->in2out.addr.as_u32,
+  snat_ipfix_logging_nat44_ses_create (thread_index,
+				       s->in2out.addr.as_u32,
 				       s->out2in.addr.as_u32,
 				       s->in2out.protocol,
 				       s->in2out.port,
@@ -767,7 +769,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
       if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
 	{
 	  b->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_SESSIONS_EXCEEDED];
-	  nat_ipfix_logging_max_sessions (sm->max_translations);
+	  nat_ipfix_logging_max_sessions (thread_index, sm->max_translations);
 	  nat_log_notice ("maximum sessions exceeded");
 	  return 0;
 	}
@@ -1965,7 +1967,7 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (reass0->sess_index == (u32) ~ 0))
 		{
 		  if (nat_ip4_reass_add_fragment
-		      (reass0, bi0, &fragments_to_drop))
+		      (thread_index, reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[NAT_IN2OUT_ED_ERROR_MAX_FRAG];
 		      nat_log_notice

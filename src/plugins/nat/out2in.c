@@ -133,7 +133,8 @@ nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
       if (clib_bihash_add_del_8_8 (&tsm->in2out, &s_kv, 0))
 	nat_log_warn ("out2in key del failed");
 
-      snat_ipfix_logging_nat44_ses_delete (s->in2out.addr.as_u32,
+      snat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
+					   s->in2out.addr.as_u32,
 					   s->out2in.addr.as_u32,
 					   s->in2out.protocol,
 					   s->in2out.port,
@@ -237,7 +238,8 @@ create_session_for_static_mapping (snat_main_t * sm,
     nat_log_notice ("out2in key add failed");
 
   /* log NAT event */
-  snat_ipfix_logging_nat44_ses_create (s->in2out.addr.as_u32,
+  snat_ipfix_logging_nat44_ses_create (thread_index,
+				       s->in2out.addr.as_u32,
 				       s->out2in.addr.as_u32,
 				       s->in2out.protocol,
 				       s->in2out.port,
@@ -1532,7 +1534,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 	      if (PREDICT_FALSE (reass0->sess_index == (u32) ~ 0))
 		{
 		  if (nat_ip4_reass_add_fragment
-		      (reass0, bi0, &fragments_to_drop))
+		      (thread_index, reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[SNAT_OUT2IN_ERROR_MAX_FRAG];
 		      nat_log_notice

@@ -82,12 +82,14 @@ nat64_ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,
 		if (nm->addr_pool[j].addr.as_u32 == address->as_u32)
 		  return;
 
-	      (void) nat64_add_del_pool_addr (address, ~0, 1);
+	      (void) nat64_add_del_pool_addr (vlib_get_thread_index (),
+					      address, ~0, 1);
 	      return;
 	    }
 	  else
 	    {
-	      (void) nat64_add_del_pool_addr (address, ~0, 0);
+	      (void) nat64_add_del_pool_addr (vlib_get_thread_index (),
+					      address, ~0, 0);
 	      return;
 	    }
 	}
@@ -280,7 +282,8 @@ nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
 }
 
 int
-nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
+nat64_add_del_pool_addr (u32 thread_index,
+			 ip4_address_t * addr, u32 vrf_id, u8 is_add)
 {
   nat64_main_t *nm = &nat64_main;
   snat_address_t *a = 0;
@@ -330,7 +333,7 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
         /* *INDENT-OFF* */
         vec_foreach (db, nm->db)
           {
-            nat64_db_free_out_addr (db, &a->addr);
+            nat64_db_free_out_addr (thread_index, db, &a->addr);
             vlib_set_simple_counter (&nm->total_bibs, db - nm->db, 0,
                                      db->bib.bib_entries_num);
             vlib_set_simple_counter (&nm->total_sessions, db - nm->db, 0,
@@ -394,8 +397,8 @@ nat64_add_interface_address (u32 sw_if_index, int is_add)
 	    {
 	      /* if have address remove it */
 	      if (first_int_addr)
-		(void) nat64_add_del_pool_addr (first_int_addr, ~0, 0);
-
+		(void) nat64_add_del_pool_addr (vlib_get_thread_index (),
+						first_int_addr, ~0, 0);
 	      vec_del1 (nm->auto_add_sw_if_indices, i);
 	      return 0;
 	    }
@@ -410,7 +413,8 @@ nat64_add_interface_address (u32 sw_if_index, int is_add)
 
   /* If the address is already bound - or static - add it now */
   if (first_int_addr)
-    (void) nat64_add_del_pool_addr (first_int_addr, ~0, 1);
+    (void) nat64_add_del_pool_addr (vlib_get_thread_index (),
+				    first_int_addr, ~0, 1);
 
   return 0;
 }
@@ -601,7 +605,8 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
     if (static_bib->is_add)
       {
-          (void) nat64_db_bib_entry_create (db, &static_bib->in_addr,
+          (void) nat64_db_bib_entry_create (thread_index, db,
+                                            &static_bib->in_addr,
                                             &static_bib->out_addr,
                                             static_bib->in_port,
                                             static_bib->out_port,
@@ -619,7 +624,7 @@ nat64_static_bib_worker_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
                                         static_bib->fib_index, 1);
         if (bibe)
           {
-            nat64_db_bib_entry_free (db, bibe);
+            nat64_db_bib_entry_free (thread_index, db, bibe);
             vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
                                      db->bib.bib_entries_num);
             vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
@@ -723,7 +728,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
       if (!nm->sm->num_workers)
 	{
 	  bibe =
-	    nat64_db_bib_entry_create (db, in_addr, out_addr,
+	    nat64_db_bib_entry_create (thread_index, db, in_addr, out_addr,
 				       clib_host_to_net_u16 (in_port),
 				       clib_host_to_net_u16 (out_port),
 				       fib_index, proto, 1);
@@ -741,7 +746,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 
       if (!nm->sm->num_workers)
 	{
-	  nat64_db_bib_entry_free (db, bibe);
+	  nat64_db_bib_entry_free (thread_index, db, bibe);
 	  vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
 				   db->bib.bib_entries_num);
 	}
@@ -1175,7 +1180,7 @@ nat64_expire_worker_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
   nat64_db_t *db = &nm->db[thread_index];
   u32 now = (u32) vlib_time_now (vm);
 
-  nad64_db_st_free_expired (db, now);
+  nad64_db_st_free_expired (thread_index, db, now);
   vlib_set_simple_counter (&nm->total_bibs, thread_index, 0,
 			   db->bib.bib_entries_num);
   vlib_set_simple_counter (&nm->total_sessions, thread_index, 0,
