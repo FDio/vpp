@@ -184,6 +184,10 @@ class VppLispMapping(VppObject):
         mapping = self.get_lisp_mapping_dump_entry()
         return mapping
 
+    def object_id(self):
+        return 'lisp-mapping-[%s]-%s-%s-%s' % (
+            self.vni, self.eid, self.priority, self.weight)
+
 
 class VppLocalMapping(VppLispMapping):
     """ LISP Local mapping """
