@@ -91,6 +91,10 @@ do {							\
 #define STATIC_ASSERT_OFFSET_OF(s, e, o) \
   STATIC_ASSERT (STRUCT_OFFSET_OF(s,e) == o, "Offset of " #s "." #e " must be " # o)
 
+#define STATIC_ASSERT_FITS_IN(s, e, o) \
+  STATIC_ASSERT (STRUCT_OFFSET_OF(s,e) <= (o - sizeof(((s *)0)->e)), \
+  #s "." #e " does not fit into " # o " bytes")
+
 /* Assert without allocating memory. */
 #define ASSERT_AND_PANIC(truth)			\
 do {						\
