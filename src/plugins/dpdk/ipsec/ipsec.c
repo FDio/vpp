@@ -24,6 +24,7 @@
 dpdk_crypto_main_t dpdk_crypto_main;
 
 #define EMPTY_STRUCT {0}
+#define NUM_CRYPTO_MBUFS 16384
 
 static void
 algos_init (u32 n_mains)
@@ -835,11 +836,12 @@ crypto_create_crypto_op_pool (vlib_main_t * vm, u8 numa)
 
   pool_name = format (0, "crypto_pool_numa%u%c", numa, 0);
 
-  mp =
-    rte_mempool_create ((char *) pool_name,
-			conf->num_mbufs,
-			crypto_op_len (), 512, pool_priv_size, NULL, NULL,
-			crypto_op_init, NULL, numa, 0);
+  if (conf->num_crypto_mbufs == 0)
+    conf->num_crypto_mbufs = NUM_CRYPTO_MBUFS;
+
+  mp = rte_mempool_create ((char *) pool_name, conf->num_crypto_mbufs,
+			   crypto_op_len (), 512, pool_priv_size, NULL, NULL,
+			   crypto_op_init, NULL, numa, 0);
 
   vec_free (pool_name);
 

@@ -185,6 +185,7 @@ memif_int_fd_read_ready (clib_file_t * uf)
 clib_error_t *
 memif_connect (memif_if_t * mif)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   clib_file_t template = { 0 };
   memif_region_t *mr;
@@ -235,6 +236,7 @@ memif_connect (memif_if_t * mif)
   vec_foreach_index (i, mif->rx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
+      u32 ti;
       int rv;
 
       mq->ring = mif->regions[mq->region].shm + mq->offset;
@@ -254,6 +256,9 @@ memif_connect (memif_if_t * mif)
 	  memif_file_add (&mq->int_clib_file_index, &template);
 	}
       vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
+      ti = vnet_get_device_input_thread_index (vnm, mif->hw_if_index, i);
+      mq->buffer_pool_index =
+	vlib_buffer_pool_get_default_for_numa (vm, vlib_mains[ti]->numa_node);
       rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
 					  VNET_HW_INTERFACE_RX_MODE_DEFAULT);
       if (rv)
