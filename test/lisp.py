@@ -64,7 +64,7 @@ class VppLispLocator(VppObject):
 
     @property
     def priority(self):
-        return self.priority
+        return self._priority
 
     @property
     def weight(self):
