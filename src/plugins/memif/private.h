@@ -123,6 +123,7 @@ typedef struct
   u16 last_head;
   u16 last_tail;
   u32 *buffers;
+  u8 buffer_pool_index;
 
   /* interrupts */
   int int_fd;

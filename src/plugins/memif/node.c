@@ -280,7 +280,8 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* allocate free buffers */
   vec_validate_aligned (ptd->buffers, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
-  n_alloc = vlib_buffer_alloc (vm, ptd->buffers, n_buffers);
+  n_alloc = vlib_buffer_alloc_from_pool (vm, ptd->buffers, n_buffers,
+					 mq->buffer_pool_index);
   if (PREDICT_FALSE (n_alloc != n_buffers))
     {
       if (n_alloc)
@@ -343,6 +344,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_buffer (&ptd->buffer_template)->feature_arc_index = 0;
   ptd->buffer_template.current_data = start_offset;
   ptd->buffer_template.current_config_index = 0;
+  ptd->buffer_template.buffer_pool_index = mq->buffer_pool_index;
 
   if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
     {
@@ -783,8 +785,9 @@ refill:
   clib_memset (dt, 0, sizeof (memif_desc_t));
   dt->length = buffer_length;
 
-  n_alloc = vlib_buffer_alloc_to_ring (vm, mq->buffers, head & mask,
-				       ring_size, n_slots);
+  n_alloc = vlib_buffer_alloc_to_ring_from_pool (vm, mq->buffers, head & mask,
+						 ring_size, n_slots,
+						 mq->buffer_pool_index);
 
   if (PREDICT_FALSE (n_alloc != n_slots))
     {
