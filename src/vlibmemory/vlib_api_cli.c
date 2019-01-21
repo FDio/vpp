@@ -1090,7 +1090,15 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
        * are identical. Otherwise, the crc is different, or a message is
        * present in only one of the tables.
        */
-      vlib_cli_output (vm, "%=60s %s", "Message Name", "Result");
+      vlib_cli_output (vm, "%-60s | %s", "Message Name", "Result");
+      int i;
+      u8 *dashes = 0;
+      for (i = 0; i <= 60; i++)
+	{
+	  vec_add1 (dashes, '-');
+	}
+      vec_terminate_c_string (dashes);
+      vlib_cli_output (vm, "%60s-|-%s", dashes, "-----------------");
 
       for (i = 0; i < vec_len (table);)
 	{
@@ -1118,20 +1126,20 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 		       vec_len (table[i].name)))
 	    {
 	    last_unique:
-	      vlib_cli_output (vm, "%-60s only in %s",
+	      vlib_cli_output (vm, "%-60s | only in %s",
 			       table[i].name, table[i].which ?
 			       "image" : "file");
 	      i++;
 	      continue;
 	    }
 	  /* In both tables, but with different signatures */
-	  vlib_cli_output (vm, "%-60s definition changed", table[i].name);
+	  vlib_cli_output (vm, "%-60s | definition changed", table[i].name);
 	  i += 2;
 	}
       if (ndifferences == 0)
 	vlib_cli_output (vm, "No api message signature differences found.");
       else
-	vlib_cli_output (vm, "Found %u api message signature differences",
+	vlib_cli_output (vm, "\nFound %u api message signature differences",
 			 ndifferences);
       goto cleanup;
     }
