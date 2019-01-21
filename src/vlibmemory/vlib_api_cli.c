@@ -934,8 +934,12 @@ extract_name (u8 * s)
   u8 *rv;
 
   rv = vec_dup (s);
+  vec_terminate_c_string(rv);
 
-  while (vec_len (rv) && rv[vec_len (rv)] != '_')
+  while (vec_len (rv) && rv[vec_len (rv)] != '_' && vec_len(s) <= vec_len (rv)+8)
+    _vec_len (rv)--;
+
+  if (vec_len (rv) && rv[vec_len (rv)-1] == '_')
     _vec_len (rv)--;
 
   rv[vec_len (rv)] = 0;
@@ -946,19 +950,19 @@ extract_name (u8 * s)
 static u8 *
 extract_crc (u8 * s)
 {
-  int i;
   u8 *rv;
+  int si = vec_len (s);
 
   rv = vec_dup (s);
+  vec_terminate_c_string(rv);
 
-  for (i = vec_len (rv) - 1; i >= 0; i--)
-    {
-      if (rv[i] == '_')
-	{
-	  vec_delete (rv, i + 1, 0);
-	  break;
-	}
-    }
+  while (si && rv[si] != '_' && vec_len(s) <= si+9)
+    si--;
+  if (si >= 0)
+    vec_delete(rv, si+1, 0);
+
+  vec_terminate_c_string(rv);
+
   return rv;
 }
 
@@ -1046,6 +1050,7 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
       item->name_and_crc = name_and_crc;
       item->name = extract_name (name_and_crc);
       item->crc = extract_crc (name_and_crc);
+      item->name_and_crc = format(0, "%s_%s%c", item->name, item->crc, 0);
       item->which = 0;		/* file */
     }
   serialize_close (sm);
@@ -1113,10 +1118,15 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 
 	  ndifferences++;
 
+	  vlib_cli_output (vm, "%-60s comparing --  %s:%d  %s:%d", table[i].name, table[i].name_and_crc, table[i].which, table[i+1].name_and_crc, table[i+1].which);
 	  /* Only in one of two tables? */
-	  if (strncmp ((char *) table[i].name, (char *) table[i + 1].name,
-		       vec_len (table[i].name)))
+	  if (strcmp ((char *) table[i].name, (char *) table[i + 1].name))
 	    {
+            if (0 && strstr((char *) table[i].name, "_reply")) {
+              // skip replies ?
+	      i++;
+	      continue;
+            }
 	    last_unique:
 	      vlib_cli_output (vm, "%-60s only in %s",
 			       table[i].name, table[i].which ?
