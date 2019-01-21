@@ -1470,17 +1470,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   }
 
   /* main thread 1st */
-  error = dpdk_buffer_pool_create (vm, conf->num_mbufs, rte_socket_id ());
-  if (error)
+  if ((error = dpdk_buffer_pools_create (vm, conf->num_mbufs)))
     return error;
-
-  for (i = 0; i < RTE_MAX_LCORE; i++)
-    {
-      error = dpdk_buffer_pool_create (vm, conf->num_mbufs,
-				       rte_lcore_to_socket_id (i));
-      if (error)
-	return error;
-    }
 
 done:
   return error;
