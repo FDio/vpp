@@ -774,7 +774,8 @@ typedef enum
   _(RX_NO_BUF, rx-no-buf, if)			\
   _(RX_MISS, rx-miss, if)			\
   _(RX_ERROR, rx-error, if)			\
-  _(TX_ERROR, tx-error, if)
+  _(TX_ERROR, tx-error, if)         \
+  _(MPLS, mpls, if)
 
 #define foreach_combined_interface_counter_name	\
   _(RX, rx, if)					\
