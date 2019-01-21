@@ -385,7 +385,7 @@ strncat_s (char *__restrict__ dest, rsize_t dmax,
  *         s1max and ptr are modified to contain the state
  *         null      runtime constraint error or token is not found
  *
- * @example
+ * Example:
  *   char *str2 = " ";
  *   char str1[100];
  *   uword len;
@@ -457,7 +457,7 @@ strnlen_s (const char *s, size_t maxsize)
  *         EINVAL runtime constraint error
  *         ESRCH  no match
  *
- * @example
+ * Example:
  *   char *sub = 0;
  *   char *s1 = "success is not final, failure is not fatal.";
  *
