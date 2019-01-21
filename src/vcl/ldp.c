@@ -1700,6 +1700,11 @@ getsockopt (int fd, int level, int optname,
 	      else
 		rv = -EFAULT;
 	      break;
+	    case TCP_CONGESTION:
+	      strcpy (optval, "cubic");
+	      *optlen = strlen ("cubic");
+	      rv = 0;
+	      break;
 	    default:
 	      LDBG (0, "ERROR: fd %d: getsockopt SOL_TCP: sid %u, "
 		    "optname %d unsupported!", fd, vlsh, optname);
@@ -1807,6 +1812,10 @@ setsockopt (int fd, int level, int optname,
 	    case TCP_KEEPINTVL:
 	      rv = vls_attr (vlsh, VPPCOM_ATTR_SET_TCP_KEEPINTVL,
 			     (void *) optval, &optlen);
+	      break;
+	    case TCP_CONGESTION:
+	      /* Ignore */
+	      rv = 0;
 	      break;
 	    default:
 	      LDBG (0, "ERROR: fd %d: setsockopt() SOL_TCP: vlsh %u"
