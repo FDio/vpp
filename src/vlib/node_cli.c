@@ -37,6 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 
@@ -85,6 +88,90 @@ VLIB_CLI_COMMAND (show_node_graph_command, static) = {
   .path = "show vlib graph",
   .short_help = "Show packet processing node graph",
   .function = show_node_graph,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_node_graphviz (vlib_main_t * vm,
+		    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  vlib_node_main_t *nm = &vm->node_main;
+  u8 *chroot_filename = 0;
+  int fd;
+  vlib_node_t **nodes = 0;
+  uword i, j;
+  int n;
+
+  if (!unformat_user (input, unformat_vlib_tmpfile, &chroot_filename))
+    {
+      return clib_error_return (0, "please specify a valid file name "
+				"(hint: `..' or `/' are not allowed)");
+    }
+
+  fd = open ((char *) chroot_filename, O_CREAT | O_TRUNC | O_WRONLY, 0664);
+  if (fd < 0)
+    {
+      error =
+	clib_error_return_unix (0, "failed to open `%s'", chroot_filename);
+      goto done;
+    }
+
+  n = fdformat (fd, "%s", "digraph {\n");
+  if (n < 0)
+    {
+      error = clib_error_return_unix (0, "fdformat `%s'", chroot_filename);
+      goto done;
+    }
+
+  nodes = vec_dup (nm->nodes);
+  vec_sort_with_function (nodes, node_cmp);
+
+  for (i = 0; i < vec_len (nodes); i++)
+    {
+      for (j = 0; j < vec_len (nodes[i]->next_nodes); j++)
+	{
+	  vlib_node_t *x;
+
+	  if (nodes[i]->next_nodes[j] == VLIB_INVALID_NODE_INDEX)
+	    continue;
+
+	  x = vec_elt (nm->nodes, nodes[i]->next_nodes[j]);
+	  fdformat (fd, "  \"%v\" -> \"%v\"\n", nodes[i]->name, x->name);
+	  if (n < 0)
+	    {
+	      error = clib_error_return_unix (0, "fdformat `%s'",
+					      chroot_filename);
+	      goto done;
+	    }
+	}
+    }
+
+  n = fdformat (fd, "%s", "}");
+  if (n < 0)
+    {
+      error = clib_error_return_unix (0, "fdformat `%s'", chroot_filename);
+      goto done;
+    }
+
+  vlib_cli_output (vm,
+		   "vlib graph dumped into `%s'. Run eg. `fdp -Tsvg -O %s'.",
+		   chroot_filename, chroot_filename);
+
+done:
+  vec_free (nodes);
+  vec_free (chroot_filename);
+  vec_free (nodes);
+  if (fd >= 0)
+    close (fd);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_node_graphviz_command, static) = {
+  .path = "show vlib graphviz",
+  .short_help = "Dump packet processing node graph as a graphviz dotfile",
+  .function = show_node_graphviz,
 };
 /* *INDENT-ON* */
 
