@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8bef9096_80ed0468",
+        "filename": "src/plugins/nat/nat_ipfix_logging.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1552,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2019-01-21T05:49:40Z",
+      "side": 1,
+      "message": "worker thread?",
+      "range": {
+        "startLine": 1552,
+        "startChar": 28,
+        "endLine": 1552,
+        "endChar": 44
+      },
+      "revId": "46442520a050c8fa2a41f24f1a4464499dbf79ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4be9bce4_a8ae13df",
+        "filename": "src/plugins/nat/nat_ipfix_logging.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1840,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2019-01-21T05:49:40Z",
+      "side": 1,
+      "message": "please rename to deterministic_nat_data_callback",
+      "range": {
+        "startLine": 1840,
+        "startChar": 29,
+        "endLine": 1840,
+        "endChar": 67
+      },
+      "revId": "46442520a050c8fa2a41f24f1a4464499dbf79ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "104dd2e5_4faae3af",
+        "filename": "src/plugins/nat/nat_ipfix_logging.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1852,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2019-01-21T05:49:40Z",
+      "side": 1,
+      "message": "please rename to nat_data_callback",
+      "range": {
+        "startLine": 1852,
+        "startChar": 29,
+        "endLine": 1852,
+        "endChar": 61
+      },
+      "revId": "46442520a050c8fa2a41f24f1a4464499dbf79ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fdb7c0b4_ee354fff",
+        "filename": "src/plugins/nat/nat_ipfix_logging.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2019-01-21T05:49:40Z",
+      "side": 1,
+      "message": "ipfix",
+      "range": {
+        "startLine": 44,
+        "startChar": 6,
+        "endLine": 44,
+        "endChar": 10
+      },
+      "revId": "46442520a050c8fa2a41f24f1a4464499dbf79ed",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
