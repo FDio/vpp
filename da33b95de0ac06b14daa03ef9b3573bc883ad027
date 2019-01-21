@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9153c548_76839297",
+        "filename": "src/vnet/devices/virtio/device.c",
+        "patchSetId": 32
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-21T20:29:44Z",
+      "side": 1,
+      "message": "virtio-",
+      "range": {
+        "startLine": 65,
+        "startChar": 13,
+        "endLine": 65,
+        "endChar": 22
+      },
+      "revId": "da33b95de0ac06b14daa03ef9b3573bc883ad027",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
