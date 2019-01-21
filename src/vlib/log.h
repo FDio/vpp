@@ -18,8 +18,6 @@
 
 #include <vppinfra/types.h>
 
-typedef u32 vlib_log_class_t;
-
 #define foreach_vlib_log_level \
   _(0, EMERG, emerg) \
   _(1, ALERT, alert) \
