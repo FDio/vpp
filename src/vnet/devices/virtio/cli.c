@@ -79,7 +79,7 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
   vnet_hw_interface_t *hw;
-  virtio_main_t *vmxm = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   virtio_if_t *vif;
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -108,7 +108,7 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (hw == NULL || virtio_device_class.index != hw->dev_class_index)
     return clib_error_return (0, "not a virtio interface");
 
-  vif = pool_elt_at_index (vmxm->interfaces, hw->dev_instance);
+  vif = pool_elt_at_index (vim->interfaces, hw->dev_instance);
 
   if (virtio_pci_delete_if (vm, vif) < 0)
     return clib_error_return (0, "not a virtio pci interface");
@@ -129,7 +129,7 @@ static clib_error_t *
 show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
 		    vlib_cli_command_t * cmd)
 {
-  virtio_main_t *vmxm = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   vnet_main_t *vnm = &vnet_main;
   virtio_if_t *vif;
   clib_error_t *error = 0;
@@ -165,13 +165,13 @@ show_virtio_pci_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (vec_len (hw_if_indices) == 0)
     {
-      pool_foreach (vif, vmxm->interfaces,
+      pool_foreach (vif, vim->interfaces,
 		    vec_add1 (hw_if_indices, vif->hw_if_index);
 	);
     }
   else if (show_device_config)
     {
-      vif = pool_elt_at_index (vmxm->interfaces, hi->dev_instance);
+      vif = pool_elt_at_index (vim->interfaces, hi->dev_instance);
       if (vif->type == VIRTIO_IF_TYPE_PCI)
 	debug_device_config_space (vm, vif);
     }
@@ -194,6 +194,8 @@ VLIB_CLI_COMMAND (show_virtio_pci_command, static) = {
 clib_error_t *
 virtio_pci_cli_init (vlib_main_t * vm)
 {
+  virtio_main_t *vim = &virtio_main;
+  vim->log_default = vlib_log_register_class ("virtio-pci", 0);
   return 0;
 }
 

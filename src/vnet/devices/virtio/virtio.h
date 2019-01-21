@@ -174,6 +174,9 @@ typedef struct
 
 typedef struct
 {
+  /* logging */
+  vlib_log_class_t log_default;
+
   virtio_if_t *interfaces;
 } virtio_main_t;
 

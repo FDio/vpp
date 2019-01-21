@@ -306,9 +306,9 @@ static void
 virtio_pci_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *vmxm = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   uword pd = vlib_pci_get_private_data (vm, h);
-  virtio_if_t *vif = pool_elt_at_index (vmxm->interfaces, pd);
+  virtio_if_t *vif = pool_elt_at_index (vim->interfaces, pd);
   u16 qid = line;
 
   vnet_device_input_set_interrupt_pending (vnm, vif->hw_if_index, qid);
@@ -318,9 +318,9 @@ static void
 virtio_pci_irq_1_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *vmxm = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   uword pd = vlib_pci_get_private_data (vm, h);
-  virtio_if_t *vif = pool_elt_at_index (vmxm->interfaces, pd);
+  virtio_if_t *vif = pool_elt_at_index (vim->interfaces, pd);
 
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
@@ -338,9 +338,9 @@ virtio_pci_irq_1_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 static void
 virtio_pci_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h)
 {
-  virtio_main_t *vmxm = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   uword pd = vlib_pci_get_private_data (vm, h);
-  virtio_if_t *vif = pool_elt_at_index (vmxm->interfaces, pd);
+  virtio_if_t *vif = pool_elt_at_index (vim->interfaces, pd);
   u8 isr = 0;
   u16 line = 0;
 
@@ -592,6 +592,7 @@ clib_error_t *
 virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 {
   clib_error_t *error = 0;
+  virtio_main_t *vim = &virtio_main;
   struct virtio_pci_cap cap;
   u8 pos, common_cfg = 0, notify_base = 0, dev_cfg = 0, isr = 0;
   vlib_pci_dev_handle_t h = vif->pci_dev_handle;
@@ -625,8 +626,8 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 
       if (cap.cap_vndr != PCI_CAP_ID_VNDR)
 	{
-	  clib_warning ("[%2x] skipping non VNDR cap id: %2x", pos,
-			cap.cap_vndr);
+	  virtio_log_debug (vim, vif, "[%2x] %s %2x ", pos,
+			    "skipping non VNDR cap id:", cap.cap_vndr);
 	  goto next;
 	}
 
@@ -651,11 +652,12 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 
   if (common_cfg == 0 || notify_base == 0 || dev_cfg == 0 || isr == 0)
     {
-      clib_warning ("no modern virtio pci device found");
+      virtio_log_debug (vim, vif, "legacy virtio pci device found");
       return error;
     }
 
-  return clib_error_return (error, "modern virtio pci device found");
+  virtio_log_debug (vim, vif, "modern virtio pci device found");
+  return error;
 }
 
 static clib_error_t *
@@ -725,7 +727,7 @@ void
 virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *vmxm = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   virtio_if_t *vif;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
@@ -743,23 +745,29 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	clib_error_return (error,
 			   "queue size must be <= 4096, >= 64, "
 			   "and multiples of 64");
+      vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
+		format_vlib_pci_addr, &args->addr,
+		"queue size must be <= 4096, >= 64, and multiples of 64");
       return;
     }
 
   /* *INDENT-OFF* */
-  pool_foreach (vif, vmxm->interfaces, ({
+  pool_foreach (vif, vim->interfaces, ({
     if (vif->pci_addr.as_u32 == args->addr)
       {
 	args->rv = VNET_API_ERROR_INVALID_VALUE;
 	args->error =
 	  clib_error_return (error, "PCI address in use");
+	  vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
+                format_vlib_pci_addr, &args->addr,
+                " PCI address in use");
 	return;
       }
   }));
   /* *INDENT-ON* */
 
-  pool_get (vmxm->interfaces, vif);
-  vif->dev_instance = vif - vmxm->interfaces;
+  pool_get (vim->interfaces, vif);
+  vif->dev_instance = vif - vim->interfaces;
   vif->per_interface_next_index = ~0;
   vif->pci_addr.as_u32 = args->addr;
 
@@ -774,37 +782,61 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
        vlib_pci_device_open (vm, (vlib_pci_addr_t *) & vif->pci_addr,
 			     virtio_pci_device_ids, &h)))
     {
-      pool_put (vmxm->interfaces, vif);
+      pool_put (vim->interfaces, vif);
       args->rv = VNET_API_ERROR_INVALID_INTERFACE;
       args->error =
 	clib_error_return (error, "pci-addr %U", format_vlib_pci_addr,
 			   &vif->pci_addr);
+      vlib_log (VLIB_LOG_LEVEL_ERR, vim->log_default, "%U: %s",
+		format_vlib_pci_addr, &vif->pci_addr,
+		"error encountered on pci device open");
       return;
     }
   vif->pci_dev_handle = h;
   vlib_pci_set_private_data (vm, h, vif->dev_instance);
 
   if ((error = vlib_pci_bus_master_enable (vm, h)))
-    goto error;
+    {
+      virtio_log_error (vim, vif,
+			"error encountered on pci bus master enable");
+      goto error;
+    }
 
   if ((error = vlib_pci_io_region (vm, h, 0)))
-    goto error;
+    {
+      virtio_log_error (vim, vif, "error encountered on pci io region");
+      goto error;
+    }
 
   if ((error = virtio_pci_device_init (vm, vif, args)))
-    goto error;
+    {
+      virtio_log_error (vim, vif, "error encountered on device init");
+      goto error;
+    }
 
   if (msix_enabled == VIRTIO_MSIX_ENABLED)
     {
       if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
 						   &virtio_pci_irq_0_handler)))
-	goto error;
-
+	{
+	  virtio_log_error (vim, vif,
+			    "error encountered on pci register msix handler 0");
+	  goto error;
+	}
       if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
 						   &virtio_pci_irq_1_handler)))
-	goto error;
+	{
+	  virtio_log_error (vim, vif,
+			    "error encountered on pci register msix handler 1");
+	  goto error;
+	}
 
       if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
-	goto error;
+	{
+	  virtio_log_error (vim, vif,
+			    "error encountered on pci enable msix irq");
+	  goto error;
+	}
     }
   else
     {
@@ -812,7 +844,11 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     }
 
   if ((error = vlib_pci_intr_enable (vm, h)))
-    goto error;
+    {
+      virtio_log_error (vim, vif,
+			"error encountered on pci interrupt enable");
+      goto error;
+    }
 
   vif->type = VIRTIO_IF_TYPE_PCI;
   /* create interface */
@@ -822,7 +858,11 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 				       virtio_pci_flag_change);
 
   if (error)
-    goto error;
+    {
+      virtio_log_error (vim, vif,
+			"error encountered on ethernet register interface");
+      goto error;
+    }
 
   vnet_sw_interface_t *sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;
@@ -854,7 +894,7 @@ int
 virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  virtio_main_t *vmxm = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   u32 i = 0;
 
   if (vif->type != VIRTIO_IF_TYPE_PCI)
@@ -905,7 +945,7 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
     vif->tap_fd = -1;
   clib_error_free (vif->error);
   memset (vif, 0, sizeof (*vif));
-  pool_put (vmxm->interfaces, vif);
+  pool_put (vim->interfaces, vif);
 
   return 0;
 }
