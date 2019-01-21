@@ -202,7 +202,8 @@ icmp_match_in2out_det (snat_main_t * sm, vlib_node_runtime_t * node,
 	    continue;
 
 	  ses0 =
-	    snat_det_ses_create (dm0, &in_addr, echo0->identifier, &key0);
+	    snat_det_ses_create (thread_index, dm0,
+				 &in_addr, echo0->identifier, &key0);
 	  break;
 	}
       if (PREDICT_FALSE (!ses0))
@@ -374,8 +375,8 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 		    continue;
 
 		  ses0 =
-		    snat_det_ses_create (dm0, &ip0->src_address, tcp0->src,
-					 &key0);
+		    snat_det_ses_create (thread_index, dm0, &ip0->src_address,
+					 tcp0->src, &key0);
 		  break;
 		}
 	      if (PREDICT_FALSE (!ses0))
@@ -538,8 +539,8 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 		    continue;
 
 		  ses1 =
-		    snat_det_ses_create (dm1, &ip1->src_address, tcp1->src,
-					 &key1);
+		    snat_det_ses_create (thread_index, dm1, &ip1->src_address,
+					 tcp1->src, &key1);
 		  break;
 		}
 	      if (PREDICT_FALSE (!ses1))
@@ -738,8 +739,8 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 		    continue;
 
 		  ses0 =
-		    snat_det_ses_create (dm0, &ip0->src_address, tcp0->src,
-					 &key0);
+		    snat_det_ses_create (thread_index, dm0, &ip0->src_address,
+					 tcp0->src, &key0);
 		  break;
 		}
 	      if (PREDICT_FALSE (!ses0))
