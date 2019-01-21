@@ -59,6 +59,9 @@ uword unformat_vlib_number_by_name (unformat_input_t * input, va_list * args);
 /* Parse an int either %d or 0x%x. */
 uword unformat_vlib_number (unformat_input_t * input, va_list * args);
 
+/* Parse a filename to dump debug info */
+uword unformat_vlib_tmpfile (unformat_input_t * input, va_list * args);
+
 /* Flag to format_vlib_*_header functions to tell them not to recurse
    into the next layer's header.  For example, tells format_vlib_ethernet_header
    not to format ip header. */

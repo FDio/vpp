@@ -187,6 +187,30 @@ done:
   return p != 0;
 }
 
+/* Parse a filename to dump debug info */
+uword
+unformat_vlib_tmpfile (unformat_input_t * input, va_list * args)
+{
+  u8 **chroot_filename = va_arg (*args, u8 **);
+  u8 *filename;
+
+  if (!unformat (input, "%s", &filename))
+    return 0;
+
+  /* Brain-police user path input */
+  if (strstr ((char *) filename, "..") || index ((char *) filename, '/'))
+    {
+      vec_free (filename);
+      return 0;
+    }
+
+  *chroot_filename = format (0, "/tmp/%s%c", filename, 0);
+  vec_free (filename);
+
+  return 1;
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

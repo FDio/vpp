@@ -2126,7 +2126,9 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	    }
 	  pm->n_packets_to_capture = max;
 	}
-      else if (unformat (line_input, "file %s", &filename))
+      else
+	if (unformat
+	    (line_input, "file %U", unformat_vlib_tmpfile, &filename))
 	{
 	  if (vm->dispatch_pcap_enable)
 	    {
@@ -2135,21 +2137,6 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	      errorFlag = 1;
 	      break;
 	    }
-
-	  /* Brain-police user path input */
-	  if (strstr ((char *) filename, "..")
-	      || index ((char *) filename, '/'))
-	    {
-	      vlib_cli_output (vm, "illegal characters in filename '%s'",
-			       filename);
-	      vlib_cli_output (vm, "Hint: .. and / are not allowed.");
-	      vec_free (filename);
-	      errorFlag = 1;
-	      break;
-	    }
-
-	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
-	  vec_free (filename);
 	}
       else if (unformat (line_input, "status"))
 	{
