@@ -14,11 +14,6 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
-#include <stdint.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
-#include <inttypes.h>
-
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
@@ -66,7 +61,7 @@ virtio_pci_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_create_command, static) = {
   .path = "create interface virtio",
-  .short_help = "create interface virtio <pci-address>"
+  .short_help = "create interface virtio <pci-address> "
                 "[feature-mask <hex-mask>] [rx-queue-size <size>] [tx-queue-size <size>]",
   .function = virtio_pci_create_command_fn,
 };
@@ -119,7 +114,7 @@ virtio_pci_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (virtio_pci_delete_command, static) = {
   .path = "delete interface virtio",
-  .short_help = "delete interface virtio"
+  .short_help = "delete interface virtio "
     "{<interface> | sw_if_index <sw_idx>}",
   .function = virtio_pci_delete_command_fn,
 };

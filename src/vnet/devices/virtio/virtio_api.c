@@ -108,7 +108,7 @@ vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t * mp)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
-  virtio_main_t *vmx = &virtio_main;
+  virtio_main_t *vim = &virtio_main;
   int rv = 0;
   vnet_hw_interface_t *hw;
   virtio_if_t *vif;
@@ -124,7 +124,7 @@ vl_api_virtio_pci_delete_t_handler (vl_api_virtio_pci_delete_t * mp)
       goto reply;
     }
 
-  vif = pool_elt_at_index (vmx->interfaces, hw->dev_instance);
+  vif = pool_elt_at_index (vim->interfaces, hw->dev_instance);
 
   rv = virtio_pci_delete_if (vm, vif);
 

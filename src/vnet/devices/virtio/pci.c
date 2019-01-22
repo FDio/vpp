@@ -15,19 +15,11 @@
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <linux/virtio_net.h>
-#include <linux/virtio_ring.h>
-#include <linux/vhost.h>
-#include <sys/eventfd.h>
-#if defined(__x86_64__)
-#include <sys/io.h>
-#endif
 
 #include <vppinfra/types.h>
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vpp/app/version.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/devices/virtio/virtio.h>
