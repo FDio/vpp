@@ -774,6 +774,7 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
       m->is_static = a->is_static;
       m->key = vec_dup (a->key);
       m->key_id = a->key_id;
+      m->authoritative = a->authoritative;
 
       map_index = m - lcm->mapping_pool;
       gid_dictionary_add_del (&lcm->mapping_index_by_gid, &a->eid, map_index,
