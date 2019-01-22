@@ -21,10 +21,12 @@ namespace gbp_bridge_domain_cmds {
 create_cmd::create_cmd(HW::item<uint32_t>& item,
                        const handle_t bvi,
                        const handle_t uu_fwd,
+                       const handle_t bm_flood,
                        const gbp_bridge_domain::flags_t& flags)
   : rpc_cmd(item)
   , m_bvi(bvi)
   , m_uu_fwd(uu_fwd)
+  , m_bm_flood(bm_flood)
   , m_flags(flags)
 {
 }
@@ -34,7 +36,7 @@ create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_hw_item.data() == other.m_hw_item.data()) &&
           (m_bvi == other.m_bvi) && (m_uu_fwd == other.m_uu_fwd) &&
-          (m_flags == other.m_flags));
+          (m_bm_flood == other.m_bm_flood) && (m_flags == other.m_flags));
 }
 
 rc_t
@@ -47,6 +49,7 @@ create_cmd::issue(connection& con)
   payload.bd.bd_id = m_hw_item.data();
   payload.bd.bvi_sw_if_index = m_bvi.value();
   payload.bd.uu_fwd_sw_if_index = m_uu_fwd.value();
+  payload.bd.bm_flood_sw_if_index = m_bm_flood.value();
 
   payload.bd.flags = GBP_BD_API_FLAG_NONE;
   if (gbp_bridge_domain::flags_t::DO_NOT_LEARN == m_flags)

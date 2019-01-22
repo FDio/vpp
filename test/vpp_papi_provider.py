@@ -3587,7 +3587,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_endpoint_dump,
                         {'_no_type_conversion': True})
 
-    def gbp_endpoint_group_add(self, epg, bd,
+    def gbp_endpoint_group_add(self, epg, sclass, bd,
                                rd, uplink_sw_if_index):
         """ GBP endpoint group Add """
         return self.api(self.papi.gbp_endpoint_group_add,
@@ -3596,7 +3596,8 @@ class VppPapiProvider(object):
                              'uplink_sw_if_index': uplink_sw_if_index,
                              'bd_id': bd,
                              'rd_id': rd,
-                             'epg_id': epg
+                             'epg_id': epg,
+                             'sclass': sclass
                          }})
 
     def gbp_endpoint_group_del(self, epg):
@@ -3610,7 +3611,8 @@ class VppPapiProvider(object):
 
     def gbp_bridge_domain_add(self, bd_id, flags,
                               bvi_sw_if_index,
-                              uu_fwd_sw_if_index):
+                              uu_fwd_sw_if_index,
+                              bm_flood_sw_if_index):
         """ GBP bridge-domain Add """
         return self.api(self.papi.gbp_bridge_domain_add,
                         {'bd':
@@ -3618,6 +3620,7 @@ class VppPapiProvider(object):
                              'flags': flags,
                              'bvi_sw_if_index': bvi_sw_if_index,
                              'uu_fwd_sw_if_index': uu_fwd_sw_if_index,
+                             'bm_flood_sw_if_index': bm_flood_sw_if_index,
                              'bd_id': bd_id
                          }})
 

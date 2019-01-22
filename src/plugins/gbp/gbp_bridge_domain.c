@@ -15,6 +15,7 @@
 
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_endpoint.h>
+#include <plugins/gbp/gbp_sclass.h>
 
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
@@ -147,7 +148,9 @@ format_gbp_bridge_domain (u8 * s, va_list * args)
 int
 gbp_bridge_domain_add_and_lock (u32 bd_id,
 				gbp_bridge_domain_flags_t flags,
-				u32 bvi_sw_if_index, u32 uu_fwd_sw_if_index)
+				u32 bvi_sw_if_index,
+				u32 uu_fwd_sw_if_index,
+				u32 bm_flood_sw_if_index)
 {
   gbp_bridge_domain_t *gb;
   index_t gbi;
@@ -175,6 +178,7 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       gb->gb_bd_index = bd_index;
       gb->gb_uu_fwd_sw_if_index = uu_fwd_sw_if_index;
       gb->gb_bvi_sw_if_index = bvi_sw_if_index;
+      gb->gb_bm_flood_sw_if_index = bm_flood_sw_if_index;
       gb->gb_locks = 1;
       gb->gb_flags = flags;
 
@@ -185,9 +189,19 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
 		       MODE_L2_BRIDGE, gb->gb_bvi_sw_if_index,
 		       bd_index, L2_BD_PORT_TYPE_BVI, 0, 0);
       if (~0 != gb->gb_uu_fwd_sw_if_index)
-	set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			 MODE_L2_BRIDGE, gb->gb_uu_fwd_sw_if_index,
-			 bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
+	{
+	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
+			   MODE_L2_BRIDGE, gb->gb_uu_fwd_sw_if_index,
+			   bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
+	  gbp_sclass_enable_l2 (gb->gb_uu_fwd_sw_if_index);
+	}
+      if (~0 != gb->gb_bm_flood_sw_if_index)
+	{
+	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
+			   MODE_L2_BRIDGE, gb->gb_bm_flood_sw_if_index,
+			   bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
+	  gbp_sclass_enable_l2 (gb->gb_bm_flood_sw_if_index);
+	}
 
       /*
        * Add the BVI's MAC to the L2FIB
@@ -232,9 +246,19 @@ gbp_bridge_domain_unlock (index_t index)
 		       MODE_L3, gb->gb_bvi_sw_if_index,
 		       gb->gb_bd_index, L2_BD_PORT_TYPE_BVI, 0, 0);
       if (~0 != gb->gb_uu_fwd_sw_if_index)
-	set_int_l2_mode (vlib_get_main (), vnet_get_main (),
-			 MODE_L3, gb->gb_uu_fwd_sw_if_index,
-			 gb->gb_bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
+	{
+	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
+			   MODE_L3, gb->gb_uu_fwd_sw_if_index,
+			   gb->gb_bd_index, L2_BD_PORT_TYPE_UU_FWD, 0, 0);
+	  gbp_sclass_disable_l2 (gb->gb_uu_fwd_sw_if_index);
+	}
+      if (~0 != gb->gb_bm_flood_sw_if_index)
+	{
+	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
+			   MODE_L3, gb->gb_bm_flood_sw_if_index,
+			   gb->gb_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
+	  gbp_sclass_disable_l2 (gb->gb_bm_flood_sw_if_index);
+	}
 
       gbp_bridge_domain_db_remove (gb);
 
@@ -280,6 +304,7 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  u32 bm_flood_sw_if_index = ~0;
   u32 uu_fwd_sw_if_index = ~0;
   u32 bvi_sw_if_index = ~0;
   u32 bd_id = ~0;
@@ -290,8 +315,11 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
       if (unformat (input, "bvi %U", unformat_vnet_sw_interface,
 		    vnm, &bvi_sw_if_index))
 	;
-      else if (unformat (input, "uu-flood %U", unformat_vnet_sw_interface,
+      else if (unformat (input, "uu-fwd %U", unformat_vnet_sw_interface,
 			 vnm, &uu_fwd_sw_if_index))
+	;
+      else if (unformat (input, "bm-flood %U", unformat_vnet_sw_interface,
+			 vnm, &bm_flood_sw_if_index))
 	;
       else if (unformat (input, "add"))
 	add = 1;
@@ -312,7 +340,9 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 	return clib_error_return (0, "interface must be specified");
 
       gbp_bridge_domain_add_and_lock (bd_id, GBP_BD_FLAG_NONE,
-				      bvi_sw_if_index, uu_fwd_sw_if_index);
+				      bvi_sw_if_index,
+				      uu_fwd_sw_if_index,
+				      bm_flood_sw_if_index);
     }
   else
     gbp_bridge_domain_delete (bd_id);

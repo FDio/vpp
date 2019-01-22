@@ -55,14 +55,17 @@ public:
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
                     const interface& uu_fwd,
+                    const interface& bm_flood,
                     const flags_t& flags = flags_t::NONE);
   gbp_bridge_domain(const bridge_domain& bd,
                     const std::shared_ptr<interface> bvi,
                     const std::shared_ptr<interface> uu_fwd,
+                    const std::shared_ptr<interface> bm_flood,
                     const flags_t& flags = flags_t::NONE);
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
                     const std::shared_ptr<interface> uu_fwd,
+                    const std::shared_ptr<interface> bm_flood,
                     const flags_t& flags = flags_t::NONE);
 
   /**
@@ -188,6 +191,7 @@ private:
   std::shared_ptr<bridge_domain> m_bd;
   std::shared_ptr<interface> m_bvi;
   std::shared_ptr<interface> m_uu_fwd;
+  std::shared_ptr<interface> m_bm_flood;
   const flags_t& m_flags;
 
   /**

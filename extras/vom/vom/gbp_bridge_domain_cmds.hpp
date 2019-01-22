@@ -37,6 +37,7 @@ public:
   create_cmd(HW::item<uint32_t>& item,
              const handle_t bvi,
              const handle_t uu_fwd,
+             const handle_t bm_flood,
              const gbp_bridge_domain::flags_t& flags);
 
   /**
@@ -56,6 +57,7 @@ public:
 private:
   const handle_t m_bvi;
   const handle_t m_uu_fwd;
+  const handle_t m_bm_flood;
   const gbp_bridge_domain::flags_t& m_flags;
 };
 
