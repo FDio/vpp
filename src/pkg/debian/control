@@ -12,8 +12,7 @@ Package: vpp
 Architecture: any
 Depends: libvppinfra (= ${source:Version}),
          ${shlibs:Depends},
-	 ${misc:Depends},
-	 ${python:Depends}
+	 ${misc:Depends}
 Description: Vector Packet Processing--executables
  This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
  vpp - the vector packet engine
@@ -68,7 +67,7 @@ Description: Vector Packet Processing--runtime dpdk plugin
 Package: vpp-api-python
 Architecture: any
 Depends: vpp (= ${source:Version}),
-         ${python2:Depends},
+         ${python:Depends},
 	 ${misc:Depends}
 Description: VPP Python API bindings
   This package contains VPP python api bindings
