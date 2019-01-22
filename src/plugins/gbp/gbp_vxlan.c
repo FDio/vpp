@@ -23,6 +23,7 @@
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 #include <vlibmemory/api.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/l2/l2_in_out_feat_arc.h>
 
 /**
  * A reference to a VXLAN-GBP tunnel created as a child/dependent tunnel
@@ -161,25 +162,24 @@ gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
 
       if (GBP_VXLAN_TUN_L2 == vxr->vxr_layer)
 	{
-	  l2output_feat_masks_t ofeat;
-	  l2input_feat_masks_t ifeat;
 	  gbp_bridge_domain_t *gbd;
 
 	  gbd = gbp_bridge_domain_get (gt->gt_gbd);
 	  vxr->vxr_itf = gbp_itf_add_and_lock (vxr->vxr_sw_if_index,
 					       gt->gt_bd_index);
 
-	  ofeat = (L2OUTPUT_FEAT_GBP_POLICY_MAC |
-		   L2OUTPUT_FEAT_GBP_ID_2_SCLASS);
-	  ifeat = L2INPUT_FEAT_GBP_SCLASS_2_ID;
-
 	  if (!(gbd->gb_flags & GBP_BD_FLAG_DO_NOT_LEARN))
-	    ifeat |= L2INPUT_FEAT_GBP_LEARN;
+	    vnet_l2_input_feature_enable_disable_all ("gbp-learn-l2",
+						      vxr->vxr_sw_if_index, 1,
+						      0, 0);
 
 	  gbp_itf_set_l2_output_feature (vxr->vxr_itf,
-					 vxr->vxr_sw_if_index, ofeat);
-	  gbp_itf_set_l2_input_feature (vxr->vxr_itf,
-					vxr->vxr_sw_if_index, ifeat);
+					 vxr->vxr_sw_if_index,
+					 (L2OUTPUT_FEAT_GBP_POLICY_MAC
+					  | L2OUTPUT_FEAT_GBP_ID_2_SCLASS));
+	  vnet_l2_input_feature_enable_disable_all ("l2-gbp-sclass-2-id",
+						    vxr->vxr_sw_if_index, 1,
+						    0, 0);
 	}
       else
 	{
@@ -273,8 +273,12 @@ gdb_vxlan_dep_del (index_t vxri)
     {
       gbp_itf_set_l2_output_feature (vxr->vxr_itf, vxr->vxr_sw_if_index,
 				     L2OUTPUT_FEAT_NONE);
-      gbp_itf_set_l2_input_feature (vxr->vxr_itf, vxr->vxr_sw_if_index,
-				    L2INPUT_FEAT_NONE);
+      vnet_l2_input_feature_enable_disable_all ("l2-gbp-sclass-2-id",
+						vxr->vxr_sw_if_index, 0, 0,
+						0);
+      vnet_l2_input_feature_enable_disable_all ("gbp-learn-l2",
+						vxr->vxr_sw_if_index, 0, 0,
+						0);
       gbp_itf_unlock (vxr->vxr_itf);
     }
   else

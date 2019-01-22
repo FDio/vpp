@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/l2/l2_in_out_feat_arc.h>
 #include <plugins/gbp/gbp_itf.h>
 
 /**
@@ -96,6 +97,23 @@ gbp_itf_unlock (index_t gii)
 
       memset (gi, 0, sizeof (*gi));
     }
+}
+
+/*
+ * enable/disable a feature in l2-input arcs by gbp_if_t index
+ */
+int
+gbp_itf_l2_feature_enable_disable (index_t gii, const char *node_name,
+				   int enable_disable)
+{
+  gbp_itf_t *gi = gbp_itf_get (gii);
+
+  if (gi->gi_bd_index == ~0)
+    return 0;
+
+  return vnet_l2_input_feature_enable_disable_all (node_name,
+						   gi->gi_sw_if_index,
+						   enable_disable, 0, 0);
 }
 
 void

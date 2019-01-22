@@ -17,6 +17,7 @@
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
 #include <plugins/gbp/gbp_itf.h>
+#include <vnet/l2/l2_in_out_feat_arc.h>
 
 /**
  * Pool of GBP ext_itfs
@@ -94,8 +95,8 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id)
       }
 
       gx->gx_itf = gbp_itf_add_and_lock (sw_if_index, gb->gb_bd_index);
-      gbp_itf_set_l2_input_feature (gx->gx_itf, (gxi | GBP_EXT_ITF_ID),
-				    L2INPUT_FEAT_GBP_LPM_CLASSIFY);
+      vnet_l2_input_feature_enable_disable_all ("l2-gbp-lpm-classify",
+						sw_if_index, 1, 0, 0);
 
       gbp_ext_itf_db[sw_if_index] = gxi;
 
@@ -127,6 +128,8 @@ gbp_ext_itf_delete (u32 sw_if_index)
       gbp_itf_set_l2_input_feature (gx->gx_itf,
 				    (gxi | GBP_EXT_ITF_ID),
 				    L2INPUT_FEAT_NONE);
+      vnet_l2_input_feature_enable_disable_all ("l2-gbp-lpm-classify",
+						sw_if_index, 0, 0, 0);
       gbp_itf_unlock (gx->gx_itf);
 
       gbp_route_domain_unlock (gx->gx_rd);
