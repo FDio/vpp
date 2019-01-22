@@ -125,13 +125,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	    {
-	      clib_warning ("sequence number counter has cycled SPI %u",
-			    sa0->spi);
 	      vlib_node_increment_counter (vm, node->node_index,
 					   AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
-	      //TODO need to confirm if below is needed
-	      to_next[0] = i_bi0;
-	      to_next += 1;
 	      goto trace;
 	    }
 
