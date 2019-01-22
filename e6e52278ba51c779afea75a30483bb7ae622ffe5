@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "75c84e72_7dfeb769",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2159,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2019-01-22T14:24:04Z",
+      "side": 1,
+      "message": "you should end here otherwise you increment refcount again",
+      "revId": "e6e52278ba51c779afea75a30483bb7ae622ffe5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
