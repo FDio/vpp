@@ -706,7 +706,9 @@ void
 gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode)
 {
   if (GBP_LEARN_MODE_L2 == mode)
-    l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 1);
+    {
+      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 1);
+    }
   else
     {
       vnet_feature_enable_disable ("ip4-unicast",
@@ -720,7 +722,9 @@ void
 gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode)
 {
   if (GBP_LEARN_MODE_L2 == mode)
-    l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 0);
+    {
+      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 0);
+    }
   else
     {
       vnet_feature_enable_disable ("ip4-unicast",

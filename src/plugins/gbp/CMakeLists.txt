@@ -29,6 +29,7 @@ add_vpp_plugin(gbp
   gbp_recirc.c
   gbp_route_domain.c
   gbp_scanner.c
+  gbp_sclass.c
   gbp_subnet.c
   gbp_vxlan.c
 
