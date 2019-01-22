@@ -110,11 +110,6 @@ l2input_bd_config (u32 bd_index)
  _(RW,            "l2-rw")                      \
  _(LEARN,         "l2-learn")                   \
  _(L2_EMULATION,  "l2-emulation")               \
- _(GBP_LEARN,     "gbp-learn-l2")               \
- _(GBP_NULL_CLASSIFY, "gbp-null-classify")      \
- _(GBP_SRC_CLASSIFY,  "gbp-src-classify")       \
- _(GBP_LPM_CLASSIFY,  "l2-gbp-lpm-classify")    \
- _(GBP_SCLASS_2_ID, "l2-gbp-sclass-2-id")         \
  _(VTR,           "l2-input-vtr")               \
  _(L2_IP_QOS_RECORD, "l2-ip-qos-record")        \
  _(VPATH,         "vpath-input-l2")             \
