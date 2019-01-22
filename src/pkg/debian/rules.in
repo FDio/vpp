@@ -17,10 +17,6 @@ export PYBUILD_SYSTEM=distutils
 %:
 	dh $@ --with systemd,python2 --buildsystem=pybuild
 
-override_dh_shlibdeps:
-	@dh_shlibdeps -X_plugin  2>&1 \
-	  | { grep -v -e "probably a plugin" || true; }
-
 override_dh_strip:
 	dh_strip --dbg-package=vpp-dbg
 
