@@ -2938,8 +2938,7 @@ class VppPapiProvider(object):
             is_encap=1,
             type=0,
             fib_table=0,
-            n_segments=0,
-            segments=[]):
+            sids=None):
         """
         :param bsid_addr: bindingSID of the SR Policy
         :param weight: weight of the sid list. optional. (default: 1)
@@ -2949,11 +2948,15 @@ class VppPapiProvider(object):
             (default: default)
         :param fib_table: VRF where to install the FIB entry for the BSID \
             (default: 0)
-        :param n_segments: number of segments \
-            (default: 0)
-        :param segments: a vector of IPv6 address composing the segment list \
-            (default: [])
+
+        :param sids: a dict of vl_api_srv6_sid_list_t \
+            (default: )
         """
+        if sids is None:
+            sids = {'num_sids': 0,
+                    'weight': 1,
+                    'sids': []
+                    }
         return self.api(
             self.papi.sr_policy_add,
             {'bsid_addr': bsid_addr,
@@ -2961,8 +2964,8 @@ class VppPapiProvider(object):
              'is_encap': is_encap,
              'type': type,
              'fib_table': fib_table,
-             'n_segments': n_segments,
-             'segments': segments
+             'sids': sids,
+
              }
         )
 
