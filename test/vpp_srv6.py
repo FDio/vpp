@@ -4,8 +4,36 @@
   object abstractions for representing SRv6 localSIDs in VPP
 """
 
+import ipaddress
 from vpp_object import *
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
+try:
+    text_type = unicode
+except NameError:
+    text_type = str
+
+
+def vl_api_srv6_sid_t(value):
+    return {'addr': value}
+
+
+def vl_api_address_t(address):
+    # Copied from vl_api_address_t definition
+    ADDRESS_IP4 = 0
+    ADDRESS_IP6 = 1
+
+    _addr = ipaddress.ip_address(text_type(address))
+    _vl_api_address_t =  \
+        {'af': ADDRESS_IP4 if _addr.version == 4 else ADDRESS_IP6,
+         'un': {'ip%s' % _addr.version: _addr.packed}
+         }
+    print(_vl_api_address_t)
+    return _vl_api_address_t
+
+
+def vl_api_prefix_t(address, length):
+    return {'address': vl_api_address_t(address),
+            'address_length': length}
 
 
 class SRv6LocalSIDBehaviors():
@@ -113,30 +141,41 @@ class VppSRv6Policy(VppObject):
         self.weight = weight
         self.fib_table = fib_table
         self.segments = segments
-        # keep binary format in _segments
+        # list of vl_api_srv6_sid_t
         self._segments = []
         for seg in segments:
-            self._segments.extend(inet_pton(AF_INET6, seg))
-        self.n_segments = len(segments)
-        # source not passed to API
-        # self.source = inet_pton(AF_INET6, source)
+            packed_seg = inet_pton(AF_INET6, seg)
+            self._segments.append(vl_api_srv6_sid_t(packed_seg))
+        self.n_segments = len(self._segments)
         self.source = source
         self._configured = False
+        self.sr_policy_index = ~0
+
+    @property
+    def vl_api_srv6_sid_list_t(self):
+        return {
+            'num_sids': self.n_segments,
+            'weight': self.weight,
+            'sids': self._segments
+        }
 
     def add_vpp_config(self):
-        self._test.vapi.sr_policy_add(
-                     self._bsid,
+        rv = self._test.vapi.sr_policy_add(
+                     vl_api_srv6_sid_t(self._bsid),
                      self.weight,
                      self.is_encap,
                      self.sr_type,
                      self.fib_table,
-                     self.n_segments,
-                     self._segments)
+                     self.vl_api_srv6_sid_list_t
+        )
+        self.sr_policy_index = rv.sr_policy_index
         self._configured = True
 
     def remove_vpp_config(self):
         self._test.vapi.sr_policy_del(
-                     self._bsid)
+                     vl_api_srv6_sid_t(self._bsid),
+                     self.sr_policy_index
+                        )
         self._configured = False
 
     def query_vpp_config(self):
@@ -172,7 +211,6 @@ class VppSRv6Steering(VppObject):
         self.bsid = bsid
         # keep binary format in _bsid
         self._bsid = inet_pton(AF_INET6, bsid)
-        self.prefix = prefix
         # keep binary format in _prefix
         if ':' in prefix:
             # IPv6
@@ -193,7 +231,7 @@ class VppSRv6Steering(VppObject):
     def add_vpp_config(self):
         self._test.vapi.sr_steering_add_del(
                      0,
-                     self._bsid,
+                     vl_api_srv6_sid_t(self._bsid),
                      self.sr_policy_index,
                      self.table_id,
                      self._prefix,
@@ -205,7 +243,7 @@ class VppSRv6Steering(VppObject):
     def remove_vpp_config(self):
         self._test.vapi.sr_steering_add_del(
                      1,
-                     self._bsid,
+                     vl_api_srv6_sid_t(self._bsid),
                      self.sr_policy_index,
                      self.table_id,
                      self._prefix,

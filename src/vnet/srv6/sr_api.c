@@ -93,7 +93,8 @@ static void vl_api_sr_localsid_add_del_t_handler
 static void
 vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
 {
-  vl_api_sr_policy_add_reply_t *rmp;
+  vl_api_sr_policy_add_reply_t *rmp = vl_msg_api_alloc (sizeof (*rmp));
+  clib_memset (rmp, 0, sizeof (*rmp));
   ip6_address_t *segments = 0, *seg;
   ip6_address_t *this_address = (ip6_address_t *) mp->sids.sids;
 
@@ -110,13 +111,17 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
  *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
  */
   int rv = 0;
+
   rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr,
 		      segments,
 		      ntohl (mp->sids.weight),
 		      mp->type, ntohl (mp->fib_table), mp->is_encap);
+
+
   vec_free (segments);
 
-  REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
+  REPLY_MACRO2 (VL_API_SR_POLICY_ADD_REPLY, rmp->sr_policy_index =
+		ntohl (mp->sr_policy_index));
 }
 
 static void
@@ -175,7 +180,7 @@ vl_api_sr_set_encap_source_t_handler (vl_api_sr_set_encap_source_t * mp)
   int rv = 0;
   sr_set_source ((ip6_address_t *) & mp->encaps_source);
 
-  REPLY_MACRO (VL_API_SR_POLICY_DEL_REPLY);
+  REPLY_MACRO (VL_API_SR_SET_ENCAP_SOURCE_REPLY);
 }
 
 static void vl_api_sr_steering_add_del_t_handler
@@ -186,7 +191,7 @@ static void vl_api_sr_steering_add_del_t_handler
 /*
  * int
  * sr_steering_policy(int is_del, ip6_address_t *bsid, u32 sr_policy_index,
- *  u32 table_id, ip46_address_t *prefix, u32 mask_width, u32 sw_if_index,
+ *  u32 table_id, ip46_address_t *prefix, u32 sw_if_index,
  *  u8 traffic_type)
  */
   if (mp->traffic_type == SR_STEER_L2)
