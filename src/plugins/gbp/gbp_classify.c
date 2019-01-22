@@ -33,21 +33,6 @@ typedef enum gbp_src_classify_type_t_
   GBP_SRC_CLASSIFY_LPM,
 } gbp_src_classify_type_t;
 
-#define GBP_SRC_N_CLASSIFY (GBP_SRC_CLASSIFY_LPM + 1)
-
-/**
- * Grouping of global data for the GBP source EPG classification feature
- */
-typedef struct gbp_src_classify_main_t_
-{
-  /**
-   * Next nodes for L2 output features
-   */
-  u32 l2_input_feat_next[GBP_SRC_N_CLASSIFY][32];
-} gbp_src_classify_main_t;
-
-static gbp_src_classify_main_t gbp_src_classify_main;
-
 /**
  * per-packet trace data
  */
@@ -66,7 +51,6 @@ gbp_classify_inline (vlib_main_t * vm,
 		     vlib_frame_t * frame,
 		     gbp_src_classify_type_t type, dpo_proto_t dproto)
 {
-  gbp_src_classify_main_t *gscm = &gbp_src_classify_main;
   u32 n_left_from, *from, *to_next;
   u32 next_index;
 
@@ -101,9 +85,7 @@ gbp_classify_inline (vlib_main_t * vm,
 	  if (GBP_SRC_CLASSIFY_NULL == type)
 	    {
 	      src_epg = EPG_INVALID;
-	      next0 =
-		vnet_l2_feature_next (b0, gscm->l2_input_feat_next[type],
-				      L2INPUT_FEAT_GBP_NULL_CLASSIFY);
+	      vnet_feature_next (&next0, b0);
 	    }
 	  else
 	    {
@@ -112,9 +94,7 @@ gbp_classify_inline (vlib_main_t * vm,
 		  const ethernet_header_t *h0;
 
 		  h0 = vlib_buffer_get_current (b0);
-		  next0 =
-		    vnet_l2_feature_next (b0, gscm->l2_input_feat_next[type],
-					  L2INPUT_FEAT_GBP_SRC_CLASSIFY);
+		  vnet_feature_next (&next0, b0);
 		  ge0 = gbp_endpoint_find_mac (h0->src_address,
 					       vnet_buffer (b0)->l2.bd_index);
 		}
@@ -290,6 +270,54 @@ VLIB_REGISTER_NODE (gbp_ip6_src_classify_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip6_src_classify_node, gbp_ip6_src_classify);
 
+/*
+ * gpb-null-classify as features in l2-input arcs
+ * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
+ * we need to duplicate our node on each feature arc
+ */
+VNET_FEATURE_INIT (gbp_null_classify_nonip_feat_node, static) =
+{
+  .arc_name = "l2-input-nonip",
+  .node_name = "gbp-null-classify",
+  .runs_before = VNET_FEATURES ("gbp-learn-l2"),
+};
+VNET_FEATURE_INIT (gbp_null_classify_ip4_feat_node, static) =
+{
+  .arc_name = "l2-input-ip4",
+  .node_name = "gbp-null-classify",
+  .runs_before = VNET_FEATURES ("gbp-learn-l2"),
+};
+VNET_FEATURE_INIT (gbp_null_classify_ip6_feat_node, static) =
+{
+  .arc_name = "l2-input-ip6",
+  .node_name = "gbp-null-classify",
+  .runs_before = VNET_FEATURES ("gbp-learn-l2"),
+};
+
+/*
+ * gpb-src-classify as features in l2-input arcs
+ * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
+ * we need to duplicate our node on each feature arc
+ */
+VNET_FEATURE_INIT (gbp_src_classify_nonip_feat_node, static) =
+{
+  .arc_name = "l2-input-nonip",
+  .node_name = "gbp-src-classify",
+  .runs_before = VNET_FEATURES ("gbp-null-classify"),
+};
+VNET_FEATURE_INIT (gbp_src_classify_ip4_feat_node, static) =
+{
+  .arc_name = "l2-input-ip4",
+  .node_name = "gbp-src-classify",
+  .runs_before = VNET_FEATURES ("gbp-null-classify"),
+};
+VNET_FEATURE_INIT (gbp_src_classify_ip6_feat_node, static) =
+{
+  .arc_name = "l2-input-ip6",
+  .node_name = "gbp-src-classify",
+  .runs_before = VNET_FEATURES ("gbp-null-classify"),
+};
+
 VNET_FEATURE_INIT (gbp_ip4_src_classify_feat_node, static) =
 {
   .arc_name = "ip4-unicast",
@@ -349,7 +377,6 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 			 vlib_frame_t * frame,
 			 dpo_proto_t dproto, u8 is_recirc)
 {
-  gbp_src_classify_main_t *gscm = &gbp_src_classify_main;
   u32 n_left_from, *from, *to_next;
   u32 next_index;
 
@@ -433,9 +460,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	      gx0 = gbp_ext_itf_get (sw_if_index0);
 	      fib_index0 = gx0->gx_fib_index[dproto];
 
-	      next0 = vnet_l2_feature_next
-		(b0, gscm->l2_input_feat_next[GBP_SRC_CLASSIFY_LPM],
-		 L2INPUT_FEAT_GBP_LPM_CLASSIFY);
+	      vnet_feature_next (&next0, b0);
 	    }
 
 	  if (DPO_PROTO_IP4 == dproto)
@@ -560,6 +585,30 @@ VLIB_REGISTER_NODE (gbp_l2_lpm_classify_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (gbp_l2_lpm_classify_node, gbp_l2_lpm_classify);
 
+/*
+ * l2-gpb-lpm-classify as features in l2-input arcs
+ * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
+ * we need to duplicate our node on each feature arc
+ */
+VNET_FEATURE_INIT (gbp_l2_lpm_classify_nonip_feat_node, static) =
+{
+  .arc_name = "l2-input-nonip",
+  .node_name = "l2-gbp-lpm-classify",
+  .runs_before = VNET_FEATURES ("gbp-src-classify"),
+};
+VNET_FEATURE_INIT (gbp_l2_lpm_classify_ip4_feat_node, static) =
+{
+  .arc_name = "l2-input-ip4",
+  .node_name = "l2-gbp-lpm-classify",
+  .runs_before = VNET_FEATURES ("gbp-src-classify"),
+};
+VNET_FEATURE_INIT (gbp_l2_lpm_classify_ip6_feat_node, static) =
+{
+  .arc_name = "l2-input-ip6",
+  .node_name = "l2-gbp-lpm-classify",
+  .runs_before = VNET_FEATURES ("gbp-src-classify"),
+};
+
 VNET_FEATURE_INIT (gbp_ip4_lpm_classify_feat_node, static) =
 {
   .arc_name = "ip4-unicast",
@@ -574,33 +623,6 @@ VNET_FEATURE_INIT (gbp_ip6_lpm_classify_feat_node, static) =
 };
 
 /* *INDENT-ON* */
-
-static clib_error_t *
-gbp_src_classify_init (vlib_main_t * vm)
-{
-  gbp_src_classify_main_t *em = &gbp_src_classify_main;
-
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       gbp_src_classify_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       em->l2_input_feat_next[GBP_SRC_CLASSIFY_NULL]);
-  feat_bitmap_init_next_nodes (vm,
-			       gbp_null_classify_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       em->l2_input_feat_next[GBP_SRC_CLASSIFY_PORT]);
-  feat_bitmap_init_next_nodes (vm,
-			       gbp_l2_lpm_classify_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       em->l2_input_feat_next[GBP_SRC_CLASSIFY_LPM]);
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (gbp_src_classify_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

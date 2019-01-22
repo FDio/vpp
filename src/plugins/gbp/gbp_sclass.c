@@ -14,6 +14,7 @@
  */
 
 #include <plugins/gbp/gbp.h>
+#include <plugins/gbp/gbp_itf.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
 
@@ -118,12 +119,7 @@ gbp_sclass_inline (vlib_main_t * vm,
 
 	      if (EPG_INVALID != epg0)
 		{
-		  if (is_l2)
-		    next0 =
-		      vnet_l2_feature_next (b0, glm->gel_l2_input_feat_next,
-					    L2INPUT_FEAT_GBP_SCLASS_2_ID);
-		  else
-		    vnet_feature_next (&next0, b0);
+		  vnet_feature_next (&next0, b0);
 		}
 	    }
 
@@ -291,6 +287,30 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip4_gbp_sclass_2_id_node, ip4_gbp_sclass_2_id);
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_id_2_sclass_node, ip6_gbp_id_2_sclass);
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_sclass_2_id_node, ip6_gbp_sclass_2_id);
 
+/*
+ * l2-gpb-sclass-2-id as features in l2-input arcs
+ * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
+ * we need to duplicate our node on each feature arc
+ */
+VNET_FEATURE_INIT (l2_gbp_sclass_2_id_nonip_feat, static) =
+{
+  .arc_name = "l2-input-nonip",
+  .node_name = "l2-gbp-sclass-2-id",
+  .runs_before = VNET_FEATURES ("l2-gbp-lpm-classify"),
+};
+VNET_FEATURE_INIT (l2_gbp_sclass_2_id_ip4_feat, static) =
+{
+  .arc_name = "l2-input-ip4",
+  .node_name = "l2-gbp-sclass-2-id",
+  .runs_before = VNET_FEATURES ("l2-gbp-lpm-classify"),
+};
+VNET_FEATURE_INIT (l2_gbp_sclass_2_id_ip6_feat, static) =
+{
+  .arc_name = "l2-input-ip6",
+  .node_name = "l2-gbp-sclass-2-id",
+  .runs_before = VNET_FEATURES ("l2-gbp-lpm-classify"),
+};
+
 VNET_FEATURE_INIT (ip4_gbp_sclass_2_id_feat, static) =
 {
   .arc_name = "ip4-unicast",
@@ -318,14 +338,16 @@ VNET_FEATURE_INIT (ip6_gbp_id_2_sclass_feat, static) =
 void
 gbp_sclass_enable_l2 (u32 sw_if_index)
 {
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_SCLASS_2_ID, 1);
+  gbp_itf_l2_feature_enable_disable_if_index (sw_if_index,
+					      "l2-gbp-sclass-2-id", 1);
   l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_GBP_ID_2_SCLASS, 1);
 }
 
 void
 gbp_sclass_disable_l2 (u32 sw_if_index)
 {
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_SCLASS_2_ID, 0);
+  gbp_itf_l2_feature_enable_disable_if_index (sw_if_index,
+					      "l2-gbp-sclass-2-id", 0);
   l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_GBP_ID_2_SCLASS, 0);
 }
 
