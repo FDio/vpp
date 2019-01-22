@@ -1462,31 +1462,31 @@ static void *vl_api_sr_steering_add_del_t_print
 
   s = format (0, "SCRIPT: sr_steering_add_del ");
 
-  s = format (s, (mp->is_del ? "Del: True" : "Del: False"));
+  s = format (s, (mp->is_del ? "Del: True " : "Del: False "));
 
   switch (mp->traffic_type)
     {
     case SR_STEER_L2:
-      s = format (s, "Traffic type: L2 iface: %u", ntohl (mp->sw_if_index));
+      s = format (s, "Traffic type: L2 iface: %u ", ntohl (mp->sw_if_index));
       break;
     case SR_STEER_IPV4:
-      s = format (s, "Traffic type: IPv4 %U/%u", format_ip4_address,
+      s = format (s, "Traffic type: IPv4 %U/%u ", format_ip4_address,
 		  (ip4_address_t *) mp->prefix_addr, ntohl (mp->mask_width));
       break;
     case SR_STEER_IPV6:
-      s = format (s, "Traffic type: IPv6 %U/%u", format_ip6_address,
+      s = format (s, "Traffic type: IPv6 %U/%u ", format_ip6_address,
 		  (ip6_address_t *) mp->prefix_addr, ntohl (mp->mask_width));
       break;
     default:
-      s = format (s, "Traffic type: Unknown(%u)", mp->traffic_type);
+      s = format (s, "Traffic type: Unknown(%u) ", mp->traffic_type);
       break;
     }
-  s = format (s, "BindingSID: %U", format_ip6_address,
-	      (ip6_address_t *) mp->bsid_addr);
+  s = format (s, "BindingSID: %U ", format_ip6_address,
+	      (ip6_address_t *) & mp->bsid_addr);
 
-  s = format (s, "SR Policy Index: %u", ntohl (mp->sr_policy_index));
+  s = format (s, "SR Policy Index: %u ", ntohl (mp->sr_policy_index));
 
-  s = format (s, "FIB_table: %u", ntohl (mp->table_id));
+  s = format (s, "FIB_table: %u ", ntohl (mp->table_id));
 
   FINISH;
 }
@@ -1509,19 +1509,19 @@ static void *vl_api_sr_policy_add_t_print
 
   s = format (0, "SCRIPT: sr_policy_add ");
 
-  s = format (s, "BSID: %U", format_ip6_address,
-	      (ip6_address_t *) mp->bsid_addr);
+  s = format (s, "BSID: %U ", format_ip6_address,
+	      (ip6_address_t *) & mp->bsid_addr);
 
   s =
     format (s,
-	    (mp->is_encap ? "Behavior: Encapsulation" :
-	     "Behavior: SRH insertion"));
+	    (mp->is_encap ? "Behavior: Encapsulation " :
+	     "Behavior: SRH insertion "));
 
-  s = format (s, "FIB_table: %u", ntohl (mp->fib_table));
+  s = format (s, "FIB_table: %u ", ntohl (mp->fib_table));
 
-  s = format (s, (mp->type ? "Type: Default" : "Type: Spray"));
+  s = format (s, (mp->type ? "Type: Default " : "Type: Spray "));
 
-  s = format (s, "SID list weight: %u", ntohl (mp->weight));
+  s = format (s, "SID list weight: %u ", ntohl (mp->weight));
 
   s = format (s, "{");
   vec_foreach (seg, segments)
@@ -1551,16 +1551,16 @@ static void *vl_api_sr_policy_mod_t_print
 
   s = format (0, "SCRIPT: sr_policy_mod ");
 
-  s = format (s, "BSID: %U", format_ip6_address,
-	      (ip6_address_t *) mp->bsid_addr);
+  s = format (s, "BSID: %U ", format_ip6_address,
+	      (ip6_address_t *) & mp->bsid_addr);
 
-  s = format (s, "SR Policy index: %u", ntohl (mp->sr_policy_index));
+  s = format (s, "SR Policy index: %u ", ntohl (mp->sr_policy_index));
 
-  s = format (s, "Operation: %u", mp->operation);
+  s = format (s, "Operation: %u ", mp->operation);
 
-  s = format (s, "SID list index: %u", ntohl (mp->sl_index));
+  s = format (s, "SID list index: %u ", ntohl (mp->sl_index));
 
-  s = format (s, "SID list weight: %u", ntohl (mp->weight));
+  s = format (s, "SID list weight: %u ", ntohl (mp->weight));
 
   s = format (s, "{");
   vec_foreach (seg, segments)
@@ -1572,13 +1572,35 @@ static void *vl_api_sr_policy_mod_t_print
   FINISH;
 }
 
+u8 *
+format_sr_traffic_type (u8 * s, va_list * args)
+{
+  int t_type = *va_arg (*args, u8 *);
+
+  switch (t_type)
+    {
+    case SR_STEER_L2:
+      return format (0, "layer-2");
+    case SR_STEER_IPV4:
+      return format (0, "ipv4");
+    case SR_STEER_IPV6:
+      return format (0, "ipv6");
+    default:
+      return format (0, "unknown");
+    }
+}
+
 static void *vl_api_sr_policy_del_t_print
   (vl_api_sr_policy_del_t * mp, void *handle)
 {
   u8 *s;
 
   s = format (0, "SCRIPT: sr_policy_del ");
-  s = format (s, "To be delivered. Good luck.");
+  s = format (s, "BSID: %U ", format_ip6_address,
+	      (ip6_address_t *) & mp->bsid_addr);
+
+  s = format (s, "SR Policy index: %u ", ntohl (mp->sr_policy_index));
+
   FINISH;
 }
 

@@ -2,7 +2,6 @@
 
 import unittest
 import binascii
-from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
@@ -13,8 +12,6 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
 from scapy.layers.inet import IP, UDP
-
-from scapy.utils import inet_pton, inet_ntop
 
 from util import ppp
 
@@ -67,8 +64,8 @@ class TestSRv6(VppTestCase):
             interface.resolve_arp()
         interface.admin_up()
 
-    def setup_interfaces(self, ipv6=[], ipv4=[],
-                         ipv6_table_id=[], ipv4_table_id=[]):
+    def setup_interfaces(self, ipv6=None, ipv4=None,
+                         ipv6_table_id=None, ipv4_table_id=None):
         """ Create and configure interfaces.
 
         :param ipv6: list of interface IPv6 capabilities
@@ -77,6 +74,14 @@ class TestSRv6(VppTestCase):
         :param ipv4_table_id: list of intf IPv4 FIB table_ids
         :returns: List of created interfaces.
         """
+        if ipv6 is None:
+            ipv6 = []
+        if ipv4 is None:
+            ipv4 = []
+        if ipv6_table_id is None:
+            ipv6_table_id = []
+        if ipv4_table_id is None:
+            ipv4_table_id = []
         # how many interfaces?
         if len(ipv6):
             count = len(ipv6)
@@ -130,7 +135,6 @@ class TestSRv6(VppTestCase):
             i.set_table_ip4(0)
             i.set_table_ip6(0)
 
-    @unittest.skipUnless(0, "PC to fix")
     def test_SRv6_T_Encaps(self):
         """ Test SRv6 Transit.Encaps behavior for IPv6.
         """
@@ -175,7 +179,7 @@ class TestSRv6(VppTestCase):
                         prefix="a7::", mask_width=64,
                         traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV6,
                         sr_policy_index=0, table_id=0,
-                        sw_if_index=0)
+                        sw_if_index=self.pg0.sw_if_index)
         pol_steering.add_vpp_config()
 
         # log the sr steering policies
@@ -232,7 +236,6 @@ class TestSRv6(VppTestCase):
         # cleanup interfaces
         self.teardown_interfaces()
 
-    @unittest.skipUnless(0, "PC to fix")
     def test_SRv6_T_Insert(self):
         """ Test SRv6 Transit.Insert behavior (IPv6 only).
         """
@@ -277,7 +280,7 @@ class TestSRv6(VppTestCase):
                         prefix="a7::", mask_width=64,
                         traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV6,
                         sr_policy_index=0, table_id=0,
-                        sw_if_index=0)
+                        sw_if_index=self.pg0.sw_if_index)
         pol_steering.add_vpp_config()
 
         # log the sr steering policies
@@ -324,7 +327,6 @@ class TestSRv6(VppTestCase):
         # cleanup interfaces
         self.teardown_interfaces()
 
-    @unittest.skipUnless(0, "PC to fix")
     def test_SRv6_T_Encaps_IPv4(self):
         """ Test SRv6 Transit.Encaps behavior for IPv4.
         """
@@ -370,7 +372,7 @@ class TestSRv6(VppTestCase):
                         prefix="7.1.1.0", mask_width=24,
                         traffic_type=SRv6PolicySteeringTypes.SR_STEER_IPV4,
                         sr_policy_index=0, table_id=0,
-                        sw_if_index=0)
+                        sw_if_index=self.pg0.sw_if_index)
         pol_steering.add_vpp_config()
 
         # log the sr steering policies
@@ -1186,7 +1188,7 @@ class TestSRv6(VppTestCase):
 
     @unittest.skipUnless(0, "PC to fix")
     def test_SRv6_T_Insert_Classifier(self):
-        """ Test SRv6 Transit.Insert behavior (IPv6 only).
+        """ Test SRv6 Transit.Insert behavior via classifier (IPv6 only).
             steer packets using the classifier
         """
         # send traffic to one destination interface
@@ -1224,28 +1226,29 @@ class TestSRv6(VppTestCase):
 
         # add classify table
         # mask on dst ip address prefix a7::/8
-        mask = '{:0<16}'.format('ff')
+        mask = binascii.unhexlify('{:0<16}'.format('ff'))
+        n_vectors_to_skip = 2
         r = self.vapi.classify_add_del_table(
             1,
-            binascii.unhexlify(mask),
-            match_n_vectors=(len(mask) - 1) // 32 + 1,
+            mask,
+            match_n_vectors=(len(mask) - 1) // 16 + 1,
             current_data_flag=1,
-            skip_n_vectors=2)  # data offset
+            skip_n_vectors=n_vectors_to_skip)  # data offset
         self.assertIsNotNone(r, msg='No response msg for add_del_table')
         table_index = r.new_table_index
 
-        # add the source routign node as a ip6 inacl netxt node
+        # add the segment routing node as an ip6 inacl next node
         r = self.vapi.add_node_next('ip6-inacl',
                                     'sr-pl-rewrite-insert')
         inacl_next_node_index = r.node_index
 
-        match = '{:0<16}'.format('a7')
+        match = binascii.unhexlify('{:0<16}'.format('a7'))
         r = self.vapi.classify_add_del_session(
             1,
             table_index,
-            binascii.unhexlify(match),
+            match,
             hit_next_index=inacl_next_node_index,
-            action=3,
+            action=3,  # 3 = CLASSIFY_ACTION_SET_METADATA
             metadata=0)  # sr policy index
         self.assertIsNotNone(r, msg='No response msg for add_del_session')
 

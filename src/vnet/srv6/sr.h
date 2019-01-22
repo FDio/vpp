@@ -94,6 +94,7 @@ typedef struct
   u32 fib_table;			/**< FIB table */
 
   u8 is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
+  u32 sr_policy_index;	    /** The index in the sr_policy_t */
 } ip6_sr_policy_t;
 
 /**
