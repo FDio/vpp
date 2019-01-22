@@ -439,7 +439,7 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
 	  vec_foreach (outside_fib, sm->outside_fibs)
 	  {
 	    fei = fib_table_lookup (outside_fib->fib_index, &pfx);
-	    if (FIB_NODE_INDEX_INVALID != fei)
+	    if (FIB_NODE_INDEX_INVALID != fei && outside_fib->refcount)
 	      {
 		sw_if_index = fib_entry_get_resolving_interface (fei);
 		if (sw_if_index != ~0)

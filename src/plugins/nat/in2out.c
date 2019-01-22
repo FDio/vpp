@@ -339,7 +339,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       vec_foreach (outside_fib, sm->outside_fibs)
         {
           fei = fib_table_lookup (outside_fib->fib_index, &pfx);
-          if (FIB_NODE_INDEX_INVALID != fei)
+          if (FIB_NODE_INDEX_INVALID != fei && outside_fib->refcount)
             {
               if (fib_entry_get_resolving_interface (fei) != ~0)
                 {
