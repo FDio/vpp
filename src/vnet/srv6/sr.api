@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-option version = "1.2.0";
+option version = "2.0.0";
+import "vnet/ip/ip_types.api";
 
 /** \brief SRv6 SID
 */
@@ -27,7 +28,7 @@ typeonly define srv6_sid_list
 {
   u8 num_sids;
   u32 weight;
-  vl_api_srv6_sid_t sids[16];
+  vl_api_srv6_sid_t sids[num_sids];
 };
 
 /** \brief IPv6 SR LocalSID add/del request
@@ -74,17 +75,27 @@ typeonly define sr_ip6_address
     @param fib_table is the VRF where to install the FIB entry for the BSID
     @param sids is a srv6_sid_list object
 */
-autoreply define sr_policy_add
+define sr_policy_add
 {
   u32 client_index;
   u32 context;
-  u8 bsid_addr[16];
   u32 weight;
   u8 is_encap;
   u8 type;
   u32 fib_table;
+  u32 sr_policy_index;
+  vl_api_srv6_sid_t bsid_addr;
   vl_api_srv6_sid_list_t sids;
 };
+
+define sr_policy_add_reply
+{
+  u32 client_index;
+  u32 context;
+  u8 retval;
+  u32 sr_policy_index;
+};
+
 
 /** \brief IPv6 SR policy modification
     @param client_index - opaque cookie to identify the sender
@@ -101,20 +112,20 @@ autoreply define sr_policy_mod
 {
   u32 client_index;
   u32 context;
-  u8 bsid_addr[16];
   u32 sr_policy_index;
   u32 fib_table;
   u8 operation;
   u32 sl_index;
   u32 weight;
+  vl_api_srv6_sid_t bsid_addr;
   vl_api_srv6_sid_list_t sids;
 };
 
-/** \brief IPv6 SR policy deletion
+/** \brief IPv6 SR policy deletion. Note: sr_policy_index is ignored if bsid is present.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param bsid is the bindingSID of the SR Policy
-    @param index is the index of the SR policy
+    @param sr_policy_index is the index of the SR policy
 */
 autoreply define sr_policy_del
 {
@@ -154,13 +165,13 @@ autoreply define sr_steering_add_del
   u32 client_index;
   u32 context;
   u8 is_del;
-  u8 bsid_addr[16];
   u32 sr_policy_index;
   u32 table_id;
   u8 prefix_addr[16];
   u32 mask_width;
   u32 sw_if_index;
   u8 traffic_type;
+  vl_api_srv6_sid_t bsid_addr;
 };
 
 /** \brief Dump the list of SR LocalSIDs

@@ -31,6 +31,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vnet/api_errno.h>
 #include <vnet/vnet.h>
 #include <vnet/srv6/sr.h>
 #include <vnet/ip/ip.h>
@@ -86,15 +87,15 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       /* Sanitise the SW_IF_INDEX */
       if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces,
 			      sw_if_index))
-	return -3;
+	return VNET_API_ERROR_NO_SUCH_FIB;
 
       vnet_sw_interface_t *sw =
 	vnet_get_sw_interface (sm->vnet_main, sw_if_index);
       if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
-	return -3;
+	return VNET_API_ERROR_NO_SUCH_FIB;
     }
   else
-    return -1;
+    return VNET_API_ERROR_UNSPECIFIED;
 
   key.traffic_type = traffic_type;
 
@@ -178,13 +179,13 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      if (p)
 		sr_policy = pool_elt_at_index (sm->sr_policies, p[0]);
 	      else
-		return -2;
+		return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 	    }
 	  else
 	    sr_policy = pool_elt_at_index (sm->sr_policies, sr_policy_index);
 
 	  if (!sr_policy)
-	    return -2;
+	    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
 	  steer_pl->sr_policy = sr_policy - sm->sr_policies;
 
@@ -229,7 +230,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
   else
     /* delete; steering policy does not exist; complain */
   if (is_del)
-    return -4;
+    return VNET_API_ERROR_NO_SUCH_INNER_FIB;
 
   /* Retrieve SR policy */
   if (bsid)
@@ -238,7 +239,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       if (p)
 	sr_policy = pool_elt_at_index (sm->sr_policies, p[0]);
       else
-	return -2;
+	return VNET_API_ERROR_INVALID_SW_IF_INDEX;
     }
   else
     sr_policy = pool_elt_at_index (sm->sr_policies, sr_policy_index);
@@ -266,7 +267,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
       /* Incorrect API usage. Should never get here */
       pool_put (sm->steer_policies, steer_pl);
       mhash_unset (&sm->sr_steer_policies_hash, &key, NULL);
-      return -1;
+      return VNET_API_ERROR_UNSPECIFIED;
     }
   steer_pl->sr_policy = sr_policy - sm->sr_policies;
 
@@ -352,12 +353,12 @@ update_fib:
 cleanup_error_encap:
   pool_put (sm->steer_policies, steer_pl);
   mhash_unset (&sm->sr_steer_policies_hash, &key, NULL);
-  return -5;
+  return VNET_API_ERROR_NO_SUCH_LABEL;
 
 cleanup_error_redirection:
   pool_put (sm->steer_policies, steer_pl);
   mhash_unset (&sm->sr_steer_policies_hash, &key, NULL);
-  return -3;
+  return VNET_API_ERROR_NO_SUCH_FIB;
 }
 
 static clib_error_t *
@@ -431,7 +432,7 @@ sr_steer_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   rv =
-    sr_steering_policy (is_del, (sr_policy_index == ~(u32) 0 ? &bsid : NULL),
+    sr_steering_policy (is_del, (sr_policy_index == (u32) ~ 0 ? &bsid : NULL),
 			sr_policy_index, fib_table, &prefix, dst_mask_width,
 			sw_if_index, traffic_type);
 
@@ -485,7 +486,7 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_steering_policy_t **steer_policies = 0;
-  ip6_sr_steering_policy_t *steer_pl;
+  ip6_sr_steering_policy_t *steer_pl = 0;
 
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -496,32 +497,36 @@ show_sr_steering_policies_command_fn (vlib_main_t * vm,
   /* *INDENT-OFF* */
   pool_foreach (steer_pl, sm->steer_policies, ({vec_add1(steer_policies, steer_pl);}));
   /* *INDENT-ON* */
-  vlib_cli_output (vm, "Traffic\t\tSR policy BSID");
+  vlib_cli_output (vm, "%-50s %s", "Traffic", "SR policy BSID");
   for (i = 0; i < vec_len (steer_policies); i++)
     {
       steer_pl = steer_policies[i];
       pl = pool_elt_at_index (sm->sr_policies, steer_pl->sr_policy);
       if (steer_pl->classify.traffic_type == SR_STEER_L2)
 	{
-	  vlib_cli_output (vm, "L2 %U\t%U",
+	  vlib_cli_output (vm, "L2 %-47U %U",
 			   format_vnet_sw_if_index_name, vnm,
 			   steer_pl->classify.l2.sw_if_index,
 			   format_ip6_address, &pl->bsid);
 	}
       else if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
 	{
-	  vlib_cli_output (vm, "L3 %U/%d\t%U",
-			   format_ip4_address,
-			   &steer_pl->classify.l3.prefix.ip4,
-			   steer_pl->classify.l3.mask_width,
+	  vlib_cli_output (vm, "%-50s %-U", format (0, "L3 %U/%u",
+						    format_ip4_address,
+						    &steer_pl->classify.
+						    l3.prefix.ip4,
+						    steer_pl->classify.
+						    l3.mask_width),
 			   format_ip6_address, &pl->bsid);
 	}
       else if (steer_pl->classify.traffic_type == SR_STEER_IPV6)
 	{
-	  vlib_cli_output (vm, "L3 %U/%d\t%U",
-			   format_ip6_address,
-			   &steer_pl->classify.l3.prefix.ip6,
-			   steer_pl->classify.l3.mask_width,
+	  vlib_cli_output (vm, "%-50s %U", format (0, "L3 %U/%u",
+						   format_ip6_address,
+						   &steer_pl->classify.
+						   l3.prefix.ip6,
+						   steer_pl->classify.
+						   l3.mask_width),
 			   format_ip6_address, &pl->bsid);
 	}
     }

@@ -24,6 +24,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/srv6/sr_packet.h>
+#include <vnet/ip/ip_types_api.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/ethernet.h>
 
@@ -94,6 +95,7 @@ typedef struct
   u32 fib_table;			/**< FIB table */
 
   u8 is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
+  u32 sr_policy_index;	    /** The index in the sr_policy_t */
 } ip6_sr_policy_t;
 
 /**
