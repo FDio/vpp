@@ -436,6 +436,7 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
       u32 sw_if_index = fib_entry_get_resolving_interface (fei);
       if (sw_if_index == ~0)
 	{
+	      clib_spinlock_lock_if_init (&sm->outside_fibs_lock);
 	  vec_foreach (outside_fib, sm->outside_fibs)
 	  {
 	    fei = fib_table_lookup (outside_fib->fib_index, &pfx);
@@ -446,6 +447,7 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t * node,
 		  break;
 	      }
 	  }
+	  clib_spinlock_unlock_if_init (&sm->outside_fibs_lock);
 	}
       if (sw_if_index == ~0)
 	return 1;

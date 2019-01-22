@@ -474,6 +474,7 @@ typedef struct snat_main_s
 
   /* vector of outside fibs */
   nat_outside_fib_t *outside_fibs;
+  clib_spinlock_t outside_fibs_lock;
 
   /* Vector of twice NAT addresses for extenal hosts */
   snat_address_t *twice_nat_addresses;
