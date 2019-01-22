@@ -298,6 +298,7 @@ static void
   int rv = 0;
 
   rv = gbp_endpoint_group_add_and_lock (ntohs (mp->epg.epg_id),
+					ntohs (mp->epg.sclass),
 					ntohl (mp->epg.bd_id),
 					ntohl (mp->epg.rd_id),
 					ntohl (mp->epg.uplink_sw_if_index));
@@ -341,7 +342,8 @@ vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t * mp)
 				       gbp_bridge_domain_flags_from_api
 				       (mp->bd.flags),
 				       ntohl (mp->bd.bvi_sw_if_index),
-				       ntohl (mp->bd.uu_fwd_sw_if_index));
+				       ntohl (mp->bd.uu_fwd_sw_if_index),
+				       ntohl (mp->bd.bm_flood_sw_if_index));
 
   REPLY_MACRO (VL_API_GBP_BRIDGE_DOMAIN_ADD_REPLY + GBP_MSG_BASE);
 }
@@ -523,6 +525,7 @@ gbp_endpoint_group_send_details (gbp_endpoint_group_t * gg, void *args)
 
   mp->epg.uplink_sw_if_index = ntohl (gg->gg_uplink_sw_if_index);
   mp->epg.epg_id = ntohs (gg->gg_id);
+  mp->epg.sclass = ntohs (gg->gg_sclass);
   mp->epg.bd_id = ntohl (gbp_endpoint_group_get_bd_id (gg));
   mp->epg.rd_id = ntohl (gbp_route_domain_get_rd_id (gg->gg_rd));
 
@@ -567,6 +570,7 @@ gbp_bridge_domain_send_details (gbp_bridge_domain_t * gb, void *args)
   mp->bd.bd_id = ntohl (gb->gb_bd_id);
   mp->bd.bvi_sw_if_index = ntohl (gb->gb_bvi_sw_if_index);
   mp->bd.uu_fwd_sw_if_index = ntohl (gb->gb_uu_fwd_sw_if_index);
+  mp->bd.bm_flood_sw_if_index = ntohl (gb->gb_bm_flood_sw_if_index);
 
   vl_api_send_msg (ctx->reg, (u8 *) mp);
 

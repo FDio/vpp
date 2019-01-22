@@ -33,6 +33,12 @@ gbp_endpoint_group_t *gbp_endpoint_group_pool;
  * DB of endpoint_groups
  */
 gbp_endpoint_group_db_t gbp_endpoint_group_db;
+
+/**
+ * Map sclass to EPG
+ */
+uword *gbp_epg_sclass_db;
+
 vlib_log_class_t gg_logger;
 
 #define GBP_EPG_DBG(...)                           \
@@ -68,6 +74,7 @@ gbp_endpoint_group_find (epg_id_t epg_id)
 
 int
 gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
+				 u16 sclass,
 				 u32 bd_id, u32 rd_id, u32 uplink_sw_if_index)
 {
   gbp_endpoint_group_t *gg;
@@ -105,6 +112,10 @@ gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
 
       gg->gg_uplink_sw_if_index = uplink_sw_if_index;
       gg->gg_locks = 1;
+      gg->gg_sclass = sclass;
+
+      if (SCLASS_INVALID != gg->gg_sclass)
+	hash_set (gbp_epg_sclass_db, gg->gg_sclass, gg->gg_id);
 
       /*
        * an egress DVR dpo for internal subnets to use when sending
@@ -179,6 +190,8 @@ gbp_endpoint_group_unlock (index_t ggi)
       gbp_bridge_domain_unlock (gg->gg_gbd);
       gbp_route_domain_unlock (gg->gg_rd);
 
+      if (SCLASS_INVALID != gg->gg_sclass)
+	hash_unset (gbp_epg_sclass_db, gg->gg_sclass);
       hash_unset (gbp_endpoint_group_db.gg_hash, gg->gg_id);
 
       pool_put (gbp_endpoint_group_pool, gg);
@@ -243,8 +256,8 @@ static clib_error_t *
 gbp_endpoint_group_cli (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  epg_id_t epg_id = EPG_INVALID, sclass;
   vnet_main_t *vnm = vnet_get_main ();
-  epg_id_t epg_id = EPG_INVALID;
   u32 uplink_sw_if_index = ~0;
   u32 bd_id = ~0;
   u32 rd_id = ~0;
@@ -260,6 +273,8 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
       else if (unformat (input, "del"))
 	add = 0;
       else if (unformat (input, "epg %d", &epg_id))
+	;
+      else if (unformat (input, "sclass %d", &sclass))
 	;
       else if (unformat (input, "bd %d", &bd_id))
 	;
@@ -281,7 +296,7 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
       if (~0 == rd_id)
 	return clib_error_return (0, "route-domain must be specified");
 
-      gbp_endpoint_group_add_and_lock (epg_id, bd_id, rd_id,
+      gbp_endpoint_group_add_and_lock (epg_id, sclass, bd_id, rd_id,
 				       uplink_sw_if_index);
     }
   else
