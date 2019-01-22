@@ -375,6 +375,7 @@ slow_path_ed (snat_main_t * sm,
   s->out2in = key1;
   s->out2in.protocol = key0.protocol;
 
+  clib_spinlock_lock_if_init (&sm->outside_fibs_lock);
   switch (vec_len (sm->outside_fibs))
     {
     case 0:
@@ -400,6 +401,7 @@ slow_path_ed (snat_main_t * sm,
       /* *INDENT-ON* */
       break;
     }
+  clib_spinlock_unlock_if_init (&sm->outside_fibs_lock);
 
   /* Add to lookup tables */
   kv->value = s - tsm->sessions;
@@ -729,6 +731,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
 		},
   };
 
+  clib_spinlock_lock_if_init (&sm->outside_fibs_lock);
   switch (vec_len (sm->outside_fibs))
     {
     case 0:
@@ -754,6 +757,7 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
       /* *INDENT-ON* */
       break;
     }
+  clib_spinlock_unlock_if_init (&sm->outside_fibs_lock);
   old_addr = ip->src_address.as_u32;
 
   make_ed_kv (&s_kv, &ip->src_address, &ip->dst_address, ip->protocol,

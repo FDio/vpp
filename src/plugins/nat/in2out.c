@@ -326,6 +326,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
   s->out2in = key1;
   s->out2in.protocol = key0->protocol;
   s->out2in.fib_index = sm->outside_fib_index;
+  clib_spinlock_lock_if_init (&sm->outside_fibs_lock);
   switch (vec_len (sm->outside_fibs))
     {
     case 0:
@@ -351,6 +352,7 @@ slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       /* *INDENT-ON* */
       break;
     }
+  clib_spinlock_unlock_if_init (&sm->outside_fibs_lock);
   s->ext_host_addr.as_u32 = ip0->dst_address.as_u32;
   s->ext_host_port = udp0->dst_port;
   *sessionp = s;
