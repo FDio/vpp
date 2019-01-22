@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d68276ad_42d6a042",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2159,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2019-01-22T12:32:35Z",
+      "side": 1,
+      "message": "can\u0027t simply rewrite value, should be used by another outside interface, there is outside_fib-\u003erefcount",
+      "revId": "cd7b76b2c2d348f5b5e529377fb7dbd8ef07a19d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
