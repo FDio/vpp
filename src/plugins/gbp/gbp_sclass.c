@@ -50,7 +50,7 @@ typedef struct gbp_sclass_trace_t_
   u32 sclass;
 } gbp_sclass_trace_t;
 
-always_inline uword
+static_always_inline uword
 gbp_sclass_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
 		   vlib_frame_t * frame, int is_id_2_sclass, int is_l2)
@@ -146,42 +146,42 @@ gbp_sclass_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-always_inline uword
+uword
 l2_gbp_id_2_sclass (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 1, 1));
 }
 
-always_inline uword
+uword
 l2_gbp_sclass_2_id (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 0, 1));
 }
 
-always_inline uword
+uword
 ip4_gbp_id_2_sclass (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 1, 0));
 }
 
-always_inline uword
+uword
 ip4_gbp_sclass_2_id (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 0, 0));
 }
 
-always_inline uword
+uword
 ip6_gbp_id_2_sclass (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 1, 0));
 }
 
-always_inline uword
+uword
 ip6_gbp_sclass_2_id (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
