@@ -21,8 +21,6 @@
 #include <net/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
-#include <linux/virtio_net.h>
-#include <linux/vhost.h>
 #include <sys/eventfd.h>
 
 #include <vlib/vlib.h>
@@ -40,10 +38,10 @@
 
 typedef enum
 {
-#define _(f,s) TAP_INPUT_ERROR_##f,
+#define _(f,s) VIRTIO_INPUT_ERROR_##f,
   foreach_virtio_input_error
 #undef _
-    TAP_INPUT_N_ERROR,
+    VIRTIO_INPUT_N_ERROR,
 } virtio_input_error_t;
 
 static char *virtio_input_error_strings[] = {
@@ -302,7 +300,7 @@ VLIB_REGISTER_NODE (virtio_input_node) = {
   .format_trace = format_virtio_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
-  .n_errors = TAP_INPUT_N_ERROR,
+  .n_errors = VIRTIO_INPUT_N_ERROR,
   .error_strings = virtio_input_error_strings,
 };
 

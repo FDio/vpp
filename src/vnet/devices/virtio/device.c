@@ -18,8 +18,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <linux/virtio_net.h>
-#include <linux/vhost.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
