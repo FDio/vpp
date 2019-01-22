@@ -23,7 +23,7 @@ override_dh_strip:
 DEB_HOST_MULTIARCH = $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
 override_dh_install:
-	for c in @VPP_COMPONENTS@; do \
+	@for c in @VPP_COMPONENTS@; do \
 	  @CMAKE_COMMAND@ \
 	    -D CMAKE_INSTALL_CONFIG_NAME=@CMAKE_BUILD_TYPE@ \
 	    -D CMAKE_INSTALL_COMPONENT=$$c \
@@ -34,8 +34,13 @@ override_dh_install:
 	    mkdir -p debian/$$c/usr/lib ; \
 	    mv debian/$$c/$(DEB_HOST_MULTIARCH) debian/$$c/usr/lib ; \
 	  fi ; \
-	  if [ -d debian/$$c/bin ] ; then \
-	    mv debian/$$c/bin debian/$$c/usr/bin ; \
+	  for d in bin include share ; do \
+	    if [ -d debian/$$c/$$d ] ; then \
+	      mkdir -p debian/$$c/usr ; \
+	      mv debian/$$c/$$d debian/$$c/usr/$$d ; \
+	    fi ; \
+	  done ; \
+	  if [ -d debian/$$c ] ; then \
+	    @CMAKE_SOURCE_DIR@/scripts/remove-rpath debian/$$c ; \
 	  fi ; \
-	  @CMAKE_SOURCE_DIR@/scripts/remove-rpath debian/$$c ; \
 	done
