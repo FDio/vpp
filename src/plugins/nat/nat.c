@@ -2144,6 +2144,57 @@ snat_set_workers (uword * bitmap)
   return 0;
 }
 
+static void
+snat_update_outside_fib (u32 new_fib_index, u32 old_fib_index)
+{
+  snat_main_t *sm = &snat_main;
+  nat_outside_fib_t *outside_fib;
+  u8 is_add = 1;
+
+  vec_foreach (outside_fib, sm->outside_fibs)
+  {
+    if (outside_fib->fib_index == new_fib_index)
+      {
+	outside_fib->refcount++;
+	is_add = 0;
+	break;
+      }
+  }
+
+  vec_foreach (outside_fib, sm->outside_fibs)
+  {
+    if (outside_fib->fib_index == old_fib_index)
+      {
+	outside_fib->refcount--;
+	if (!outside_fib->refcount)
+	  vec_del1 (sm->outside_fibs, outside_fib - sm->outside_fibs);
+	break;
+      }
+  }
+
+  if (is_add)
+    {
+      vec_add2 (sm->outside_fibs, outside_fib, 1);
+      outside_fib->refcount = 1;
+      outside_fib->fib_index = new_fib_index;
+    }
+}
+
+static void
+snat_ip6_table_bind (ip6_main_t * im,
+		     uword opaque,
+		     u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
+{
+  snat_update_outside_fib (new_fib_index, old_fib_index);
+}
+
+static void
+snat_ip4_table_bind (ip4_main_t * im,
+		     uword opaque,
+		     u32 sw_if_index, u32 new_fib_index, u32 old_fib_index)
+{
+  snat_update_outside_fib (new_fib_index, old_fib_index);
+}
 
 static void
 snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
@@ -2271,6 +2322,16 @@ snat_init (vlib_main_t * vm)
   dslite_init (vm);
 
   nat66_init ();
+
+  ip6_table_bind_callback_t cbt6 = {
+    .function = snat_ip6_table_bind,
+  };
+  vec_add1 (ip6_main.table_bind_callbacks, cbt6);
+
+  ip4_table_bind_callback_t cbt4 = {
+    .function = snat_ip4_table_bind,
+  };
+  vec_add1 (ip4_main.table_bind_callbacks, cbt4);
 
   /* Init virtual fragmenentation reassembly */
   return nat_reass_init (vm);
