@@ -123,7 +123,7 @@ extern vlib_node_registration_t nat64_out2in_node;
 /**
  * @brief Add/delete address to NAT64 pool.
  *
- * @param thread_index Thread index.
+ * @param thread_index Thread index used by ipfix nat logging (not address per thread).
  * @param addr   IPv4 address.
  * @param vrf_id VRF id of tenant, ~0 means independent of VRF.
  * @param is_add 1 if add, 0 if delete.

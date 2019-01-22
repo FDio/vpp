@@ -73,8 +73,7 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
 
   for (i = 0; i < count; i++)
     {
-      rv = nat64_add_del_pool_addr (vm->thread_index,
-				    &this_addr, vrf_id, is_add);
+      rv = nat64_add_del_pool_addr (0, &this_addr, vrf_id, is_add);
 
       switch (rv)
 	{
