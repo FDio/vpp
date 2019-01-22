@@ -40,4 +40,5 @@ add_custom_target(package-deb
   COMMENT "Building .deb packages..."
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND "dpkg-buildpackage" "-us" "-uc" "-b"
+  USES_TERMINAL
 )
