@@ -94,8 +94,8 @@ gbp_ext_itf_add (u32 sw_if_index, u32 bd_id, u32 rd_id)
       }
 
       gx->gx_itf = gbp_itf_add_and_lock (sw_if_index, gb->gb_bd_index);
-      gbp_itf_set_l2_input_feature (gx->gx_itf, (gxi | GBP_EXT_ITF_ID),
-				    L2INPUT_FEAT_GBP_LPM_CLASSIFY);
+      gbp_itf_l2_feature_enable_disable (gx->gx_itf, "l2-gbp-lpm-classify",
+					 1);
 
       gbp_ext_itf_db[sw_if_index] = gxi;
 
@@ -127,6 +127,7 @@ gbp_ext_itf_delete (u32 sw_if_index)
       gbp_itf_set_l2_input_feature (gx->gx_itf,
 				    (gxi | GBP_EXT_ITF_ID),
 				    L2INPUT_FEAT_NONE);
+      gbp_itf_l2_feature_disable_all (gx->gx_itf);
       gbp_itf_unlock (gx->gx_itf);
 
       gbp_route_domain_unlock (gx->gx_rd);

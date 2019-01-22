@@ -16,6 +16,7 @@
 #include <plugins/gbp/gbp.h>
 #include <plugins/gbp/gbp_learn.h>
 #include <plugins/gbp/gbp_bridge_domain.h>
+#include <plugins/gbp/gbp_itf.h>
 #include <vlibmemory/api.h>
 
 #include <vnet/util/throttle.h>
@@ -28,11 +29,6 @@
  */
 typedef struct gbp_learn_main_t_
 {
-  /**
-   * Next nodes for L2 output features
-   */
-  u32 gl_l2_input_feat_next[32];
-
   /**
    * logger - VLIB log class
    */
@@ -54,31 +50,6 @@ static gbp_learn_main_t gbp_learn_main;
 
 #define GBP_LEARN_DBG(...)                                      \
     vlib_log_debug (gbp_learn_main.gl_logger, __VA_ARGS__);
-
-#define foreach_gbp_learn                      \
-  _(DROP,    "drop")
-
-typedef enum
-{
-#define _(sym,str) GBP_LEARN_ERROR_##sym,
-  foreach_gbp_learn
-#undef _
-    GBP_LEARN_N_ERROR,
-} gbp_learn_error_t;
-
-static char *gbp_learn_error_strings[] = {
-#define _(sym,string) string,
-  foreach_gbp_learn
-#undef _
-};
-
-typedef enum
-{
-#define _(sym,str) GBP_LEARN_NEXT_##sym,
-  foreach_gbp_learn
-#undef _
-    GBP_LEARN_N_NEXT,
-} gbp_learn_next_t;
 
 typedef struct gbp_learn_l2_t_
 {
@@ -240,11 +211,10 @@ gbp_learn_l2 (vlib_main_t * vm,
 	  u32 bi0, sw_if_index0, t0, epg0;
 	  const ethernet_header_t *eh0;
 	  gbp_bridge_domain_t *gb0;
-	  gbp_learn_next_t next0;
+	  u32 next0;
 	  gbp_endpoint_t *ge0;
 	  vlib_buffer_t *b0;
 
-	  next0 = GBP_LEARN_NEXT_DROP;
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
@@ -258,8 +228,7 @@ gbp_learn_l2 (vlib_main_t * vm,
 	  eh0 = vlib_buffer_get_current (b0);
 	  epg0 = vnet_buffer2 (b0)->gbp.src_epg;
 
-	  next0 = vnet_l2_feature_next (b0, glm->gl_l2_input_feat_next,
-					L2INPUT_FEAT_GBP_LEARN);
+	  vnet_feature_next (&next0, b0);
 
 	  ge0 = gbp_endpoint_find_mac (eh0->src_address,
 				       vnet_buffer (b0)->l2.bd_index);
@@ -385,17 +354,34 @@ VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
   .format_trace = format_gbp_learn_l2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(gbp_learn_error_strings),
-  .error_strings = gbp_learn_error_strings,
+  .n_errors = 0,
 
-  .n_next_nodes = GBP_LEARN_N_NEXT,
-
-  .next_nodes = {
-    [GBP_LEARN_NEXT_DROP] = "error-drop",
-  },
+  .n_next_nodes = 0,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (gbp_learn_l2_node, gbp_learn_l2);
+
+/*
+ * gbp-learn-l2 as features in l2-input arcs
+ * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
+ * we need to duplicate our node on each feature arc
+ */
+VNET_FEATURE_INIT (gbp_learn_l2_nonip_feat_node, static) =
+{
+  .arc_name = "l2-input-nonip",
+  .node_name = "gbp-learn-l2"
+};
+VNET_FEATURE_INIT (gbp_learn_l2_ip4_feat_node, static) =
+{
+  .arc_name = "l2-input-ip4",
+  .node_name = "gbp-learn-l2"
+};
+
+VNET_FEATURE_INIT (gbp_learn_l2_ip6_feat_node, static) =
+{
+  .arc_name = "l2-input-ip6",
+  .node_name = "gbp-learn-l2"
+};
 /* *INDENT-ON* */
 
 typedef struct gbp_learn_l3_t_
@@ -515,11 +501,10 @@ gbp_learn_l3 (vlib_main_t * vm,
 	  CLIB_UNUSED (const ip6_header_t *) ip6_0;
 	  ip4_address_t outer_src, outer_dst;
 	  ethernet_header_t *eth0;
-	  gbp_learn_next_t next0;
+	  u32 next0;
 	  gbp_endpoint_t *ge0;
 	  vlib_buffer_t *b0;
 
-	  next0 = GBP_LEARN_NEXT_DROP;
 	  bi0 = from[0];
 	  to_next[0] = bi0;
 	  from += 1;
@@ -707,7 +692,8 @@ gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode)
 {
   if (GBP_LEARN_MODE_L2 == mode)
     {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 1);
+      gbp_itf_l2_feature_enable_disable_if_index (sw_if_index, "gbp-learn-l2",
+						  1);
     }
   else
     {
@@ -723,7 +709,8 @@ gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode)
 {
   if (GBP_LEARN_MODE_L2 == mode)
     {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 0);
+      gbp_itf_l2_feature_enable_disable_if_index (sw_if_index, "gbp-learn-l2",
+						  0);
     }
   else
     {
@@ -739,13 +726,6 @@ gbp_learn_init (vlib_main_t * vm)
 {
   gbp_learn_main_t *glm = &gbp_learn_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
-
-  /* Initialize the feature next-node indices */
-  feat_bitmap_init_next_nodes (vm,
-			       gbp_learn_l2_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       glm->gl_l2_input_feat_next);
 
   throttle_init (&glm->gl_l2_throttle,
 		 tm->n_vlib_mains, GBP_ENDPOINT_HASH_LEARN_RATE);

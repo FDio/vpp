@@ -590,6 +590,8 @@ gbb_endpoint_fwd_reset (gbp_endpoint_t * ge)
       l2fib_del_entry (ge->ge_key.gek_mac.bytes,
 		       gbd->gb_bd_index, gef->gef_itf);
       gbp_itf_set_l2_input_feature (gef->gef_itf, gei, (L2INPUT_FEAT_NONE));
+      gbp_itf_l2_feature_disable_all (gef->gef_itf);
+
       gbp_itf_set_l2_output_feature (gef->gef_itf, gei, L2OUTPUT_FEAT_NONE);
 
       gbp_itf_unlock (gef->gef_itf);
@@ -782,11 +784,11 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
        * interface (on which the GBP-FWD feature would send UU traffic).
        * External endpoints get classified based on an LPM match
        */
-      l2input_feat_masks_t feats = L2INPUT_FEAT_GBP_SRC_CLASSIFY;
+      gbp_itf_l2_feature_enable_disable (gef->gef_itf, "gbp-src-classify", 1);
 
       if (NULL != gg && ~0 != gg->gg_uplink_sw_if_index)
-	feats |= L2INPUT_FEAT_GBP_FWD;
-      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, feats);
+	gbp_itf_set_l2_input_feature (gef->gef_itf, gei,
+				      L2INPUT_FEAT_GBP_FWD);
     }
 
   /*
