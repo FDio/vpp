@@ -2,7 +2,7 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, debug_trace
 from vpp_object import VppObject
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
