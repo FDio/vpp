@@ -40,6 +40,11 @@ if os.name == 'posix' and sys.version_info[0] < 3:
 else:
     import subprocess
 
+try:
+    from contextlib2 import contextmanager
+except ImportError:
+    from contextlib import contextmanager
+
 #  Python2/3 compatible
 try:
     input = raw_input
@@ -242,6 +247,21 @@ class VppTestCase(unittest.TestCase):
             cls.debug_gdbserver = True
         else:
             raise Exception("Unrecognized DEBUG option: '%s'" % d)
+
+    @contextmanager
+    def debug_trace(self):
+        err = False
+        self.vapi.cli("pcap dispatch trace on max 10000 file vppcapture"
+                      " buffer-trace pg-input 1000")
+        self.vapi.cli("clear trace")
+        try:
+            yield
+        except:
+            err = True
+        self.logger.error(self.vapi.cli("show trace"))
+        self.vapi.cli("pcap dispatch trace off")
+        if err:
+            raise
 
     @staticmethod
     def get_least_used_cpu():
@@ -1345,6 +1365,7 @@ class Worker(Thread):
         self.logger.info(err)
         self.logger.info(single_line_delim)
         self.result = self.process.returncode
+
 
 if __name__ == '__main__':
     pass

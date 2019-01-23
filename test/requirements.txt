@@ -11,3 +11,4 @@ scapy==2.4.0; python_version >= '2.7' or python_version >= '3.4'    # GPL2  http
 six                                     # MIT
 subprocess32                            # PSF
 syslog_rfc5424_parser>=0.3.0            # ISC
+contextlib2                             # PSF
