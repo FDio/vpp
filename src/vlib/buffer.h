@@ -99,82 +99,91 @@ enum
 #define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
 #define VLIB_BUFFER_FLAGS_ALL (0x0f)
 
-/* VLIB buffer representation. */
-typedef struct
+/** VLIB buffer representation. */
+typedef union
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /* Offset within data[] that we are currently processing.
-     If negative current header points into predata area. */
-  i16 current_data;  /**< signed offset in data[], pre_data[]
-                        that we are currently processing.
-                        If negative current header points into predata area.
-                     */
-  u16 current_length;  /**< Nbytes between current data and
-                          the end of this buffer.
-                       */
-  u32 flags; /**< buffer flags:
-                <br> VLIB_BUFFER_FREE_LIST_INDEX_MASK: bits used to store free list index,
-                <br> VLIB_BUFFER_IS_TRACED: trace this buffer.
-                <br> VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer.
-                <br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
-                <br> VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager header,
-                set to avoid adding it to a flow report
-                <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
-             */
+  struct
+  {
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
-  u32 flow_id;	/**< Generic flow identifier */
+    /** signed offset in data[], pre_data[] that we are currently
+      * processing. If negative current header points into predata area.  */
+    i16 current_data;
 
+    /** Nbytes between current data and the end of this buffer.  */
+    u16 current_length;
 
-  u32 next_buffer;   /**< Next buffer for this linked-list of buffers.
-                        Only valid if VLIB_BUFFER_NEXT_PRESENT flag is set.
-                     */
+    /** buffer flags:
+	<br> VLIB_BUFFER_FREE_LIST_INDEX_MASK: bits used to store free list index,
+	<br> VLIB_BUFFER_IS_TRACED: trace this buffer.
+	<br> VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer.
+	<br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
+	<br> VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager header,
+	set to avoid adding it to a flow report
+	<br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
+     */
+    u32 flags;
 
-  u32 current_config_index; /**< Used by feature subgraph arcs to
-                               visit enabled feature nodes
-                            */
-  vlib_error_t error;	/**< Error code for buffers to be enqueued
-                           to error handler.
-                        */
-  u8 n_add_refs; /**< Number of additional references to this buffer. */
+    /** Generic flow identifier */
+    u32 flow_id;
 
-  u8 buffer_pool_index;	/**< index of buffer pool this buffer belongs. */
+    /** Number of additional references to this buffer. */
+    u8 n_add_refs;
 
-  u32 opaque[10]; /**< Opaque data used by sub-graphs for their own purposes.
-                    See .../vnet/vnet/buffer.h
-                 */
+    /** index of buffer pool this buffer belongs. */
+    u8 buffer_pool_index;
 
-    STRUCT_MARK (template_end);	/**< part of buffer metadata which is
-				   initialized on alloc ends here. It may be
-				   different than cacheline on systems with
-				   buffer cacheline size */
+    /** Error code for buffers to be enqueued to error handler.  */
+    vlib_error_t error;
 
-  /***** end of first cache line */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+    /** Next buffer for this linked-list of buffers. Only valid if
+      * VLIB_BUFFER_NEXT_PRESENT flag is set. */
+    u32 next_buffer;
 
-  u32 trace_index; /**< Specifies index into trace buffer
-                      if VLIB_PACKET_IS_TRACED flag is set.
-                   */
-  u32 recycle_count; /**< Used by L2 path recycle code */
+    /** Used by feature subgraph arcs to visit enabled feature nodes */
+    u32 current_config_index;
 
-  u32 total_length_not_including_first_buffer;
-  /**< Only valid for first buffer in chain. Current length plus
-     total length given here give total number of bytes in buffer chain.
-  */
-  u8 align_pad[4]; /**< available */
-  u32 opaque2[12];  /**< More opaque data, see ../vnet/vnet/buffer.h */
+    /** Opaque data used by sub-graphs for their own purposes. */
+    u32 opaque[10];
 
-  /***** end of second cache line */
-    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
-  u8 pre_data[VLIB_BUFFER_PRE_DATA_SIZE];  /**< Space for inserting data
-                                               before buffer start.
-                                               Packet rewrite string will be
-                                               rewritten backwards and may extend
-                                               back before buffer->data[0].
-                                               Must come directly before packet data.
-                                            */
+    /** part of buffer metadata which is initialized on alloc ends here. */
+      STRUCT_MARK (template_end);
 
-  u8 data[0]; /**< Packet data. Hardware DMA here */
-} vlib_buffer_t;		/* Must be a multiple of 64B. */
+    /** start of 2nd cache line */
+      CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+    /** Specifies index into trace buffer if VLIB_PACKET_IS_TRACED flag is
+      * set. */
+    u32 trace_index;
+
+    /** Only valid for first buffer in chain. Current length plus total length
+      * given here give total number of bytes in buffer chain. */
+    u32 total_length_not_including_first_buffer;
+
+    /**< More opaque data, see ../vnet/vnet/buffer.h */
+    u32 opaque2[14];
+
+    /** start of third cache line */
+      CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+
+    /** Space for inserting data before buffer start.  Packet rewrite string
+      * will be rewritten backwards and may extend back before
+      * buffer->data[0].  Must come directly before packet data.  */
+    u8 pre_data[VLIB_BUFFER_PRE_DATA_SIZE];
+
+    /** Packet data */
+    u8 data[0];
+  };
+#ifdef CLIB_HAVE_VEC128
+  u8x16 as_u8x16[4];
+#endif
+#ifdef CLIB_HAVE_VEC256
+  u8x16 as_u8x32[2];
+#endif
+#ifdef CLIB_HAVE_VEC512
+  u8x16 as_u8x64[1];
+#endif
+} vlib_buffer_t;
 
 #define VLIB_BUFFER_HDR_SIZE  (sizeof(vlib_buffer_t) - VLIB_BUFFER_PRE_DATA_SIZE)
 
