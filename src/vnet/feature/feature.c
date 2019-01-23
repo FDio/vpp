@@ -212,7 +212,9 @@ vnet_get_feature_index (u8 arc, const char *s)
 
   p = hash_get_mem (fm->next_feature_by_name[arc], s);
   if (p == 0)
-    return ~0;
+    {
+      return ~0;
+    }
 
   reg = uword_to_pointer (p[0], vnet_feature_registration_t *);
   return reg->feature_index;
@@ -230,10 +232,16 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   u32 ci;
 
   if (arc_index == (u8) ~ 0)
-    return VNET_API_ERROR_INVALID_VALUE;
+    {
+      clib_warning ("arc %d does not exist", arc_index);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
 
   if (feature_index == ~0)
-    return VNET_API_ERROR_INVALID_VALUE_2;
+    {
+      clib_warning ("feature %d does not exist", feature_index);
+      return VNET_API_ERROR_INVALID_VALUE_2;
+    }
 
   cm = &fm->feature_config_mains[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
@@ -281,9 +289,17 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
   arc_index = vnet_get_feature_arc_index (arc_name);
 
   if (arc_index == (u8) ~ 0)
-    return VNET_API_ERROR_INVALID_VALUE;
+    {
+      clib_warning ("arc '%s' not found.", arc_name);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
 
   feature_index = vnet_get_feature_index (arc_index, node_name);
+  if (feature_index == (u32) ~ 0)
+    {
+      clib_warning ("feature '%s:%s' not found.", arc_name, node_name);
+      return VNET_API_ERROR_INVALID_VALUE_2;
+    }
 
   return vnet_feature_enable_disable_with_index (arc_index, feature_index,
 						 sw_if_index, enable_disable,
