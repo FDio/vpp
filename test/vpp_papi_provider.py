@@ -2377,12 +2377,19 @@ class VppPapiProvider(object):
             is_add,
             table_index,
             match,
+            n_vectors_to_skip=0,
             opaque_index=0xFFFFFFFF,
             hit_next_index=0xFFFFFFFF,
             advance=0,
             action=0,
             metadata=0):
         """
+        .. Note: match_len is calculated as a multiple of 16 octets and
+                 the match pattern is padded with \0's.  However,
+                 match_len must be 16 octets * t->skip_n_vectors +
+                 t->match_n_vectors, so this fails with
+                 VNET_API_ERROR_INVALID_VALUE. See: classify_api.c:171
+                 So we prepend the skip length to the match pattern.
         :param is_add:
         :param table_index:
         :param match:
@@ -2393,8 +2400,10 @@ class VppPapiProvider(object):
         :param metadata:  (Default value = 0)
         """
 
-        match_len = ((len(match) - 1) / 16 + 1) * 16
-        match = match + '\0' * (match_len - len(match))
+        match_len = ((len(match) - 1) // 16 + 1) * 16 + n_vectors_to_skip * 16
+
+        match = '\0' * 16 * n_vectors_to_skip + \
+                match + '\0' * (16 - (len(match) % 16))
         return self.api(
             self.papi.classify_add_del_session,
             {'is_add': is_add,
