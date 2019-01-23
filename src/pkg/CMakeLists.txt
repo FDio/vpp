@@ -27,7 +27,7 @@ foreach(f rules changelog)
   )
 endforeach()
 
-foreach(f control copyright vpp.postinst vpp.postrm vpp.postinst vpp.service)
+foreach(f control copyright vpp.preinst vpp.postrm vpp.postinst vpp.service)
   file(COPY
     ${CMAKE_CURRENT_SOURCE_DIR}/debian/${f}
     DESTINATION ${CMAKE_BINARY_DIR}/debian
