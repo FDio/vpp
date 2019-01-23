@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c296427a_063ed8d5",
+        "filename": "test/vpp_neighbor.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-23T18:41:44Z",
+      "side": 1,
+      "message": "Can you put this under the imports\ntry:\n    text_type \u003d unicode\nexcept NameError:\n    text_type \u003d str\n\nand use text_type here?",
+      "range": {
+        "startLine": 13,
+        "startChar": 25,
+        "endLine": 13,
+        "endChar": 32
+      },
+      "revId": "33cfb96d9c0b5e72f2ffb41794d3c61f2847fd88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
