@@ -13,6 +13,7 @@ import random
 import copy
 import psutil
 import platform
+from contextlib import contextmanager
 from collections import deque
 from threading import Thread, Event
 from inspect import getdoc, isclass
@@ -1345,6 +1346,23 @@ class Worker(Thread):
         self.logger.info(err)
         self.logger.info(single_line_delim)
         self.result = self.process.returncode
+
+
+@contextmanager
+def debug_trace(testcase):
+    err = False
+    testcase.vapi.cli("pcap dispatch trace on max 10000 file vppcapture"
+                      " buffer-trace pg-input 1000")
+    testcase.vapi.cli("clear trace")
+    try:
+        yield
+    except:
+        err = True
+    testcase.logger.error(testcase.vapi.cli("show trace"))
+    testcase.vapi.cli("pcap dispatch trace off")
+    if err:
+        raise
+
 
 if __name__ == '__main__':
     pass
