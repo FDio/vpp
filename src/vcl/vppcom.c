@@ -30,7 +30,7 @@ vcl_wait_for_segment (u64 segment_handle)
   f64 timeout;
 
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
-    return 1;
+    return 0;
 
   timeout = clib_time_now (&wrk->clib_time) + wait_for_seconds;
   while (clib_time_now (&wrk->clib_time) < timeout)
@@ -505,6 +505,10 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   vcl_session_table_add_listener (wrk, mp->handle, sid);
   session->session_state = STATE_LISTEN;
 
+  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
+  vec_validate (wrk->vpp_event_queues, 0);
+  wrk->vpp_event_queues[0] = session->vpp_evt_q;
+
   if (session->is_dgram)
     {
       svm_fifo_t *rx_fifo, *tx_fifo;
@@ -607,13 +611,16 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 		    s->session_index);
       return;
     }
-  s->rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_t *);
-  s->tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_t *);
 
-  s->rx_fifo->client_session_index = s->session_index;
-  s->tx_fifo->client_session_index = s->session_index;
-  s->rx_fifo->client_thread_index = wrk->wrk_index;
-  s->tx_fifo->client_thread_index = wrk->wrk_index;
+  if (s->rx_fifo)
+    {
+      s->rx_fifo = uword_to_pointer (msg->rx_fifo, svm_fifo_t *);
+      s->tx_fifo = uword_to_pointer (msg->tx_fifo, svm_fifo_t *);
+      s->rx_fifo->client_session_index = s->session_index;
+      s->tx_fifo->client_session_index = s->session_index;
+      s->rx_fifo->client_thread_index = wrk->wrk_index;
+      s->tx_fifo->client_thread_index = wrk->wrk_index;
+    }
   s->session_state = STATE_UPDATED;
 
   VDBG (0, "session %u[0x%llx] moved to worker %u", s->session_index,

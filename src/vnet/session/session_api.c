@@ -719,12 +719,13 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
       mp->lcl_is_ip4 = session_type_is_ip4 (local->session_type);
     }
 
+  vpp_evt_q = session_manager_get_vpp_event_queue (0);
+  mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
+
   if (ls && session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
       mp->rx_fifo = pointer_to_uword (ls->server_rx_fifo);
       mp->tx_fifo = pointer_to_uword (ls->server_tx_fifo);
-      vpp_evt_q = session_manager_get_vpp_event_queue (0);
-      mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
     }
 
 done:
