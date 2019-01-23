@@ -2142,7 +2142,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 		 int timeout, const sigset_t * sigmask)
 {
   ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
-  double time_to_wait = (double) 0, time_out, now = 0;
+  double time_to_wait = (double) 0, time_out;
   int libc_epfd, rv = 0;
   vls_handle_t ep_vlsh;
 
@@ -2207,11 +2207,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	  if (rv != 0)
 	    goto done;
 	}
-
-      if (timeout != -1)
-	now = clib_time_now (&ldpw->clib_time);
     }
-  while (now < time_out);
+  while ((timeout == -1) || (clib_time_now (&ldpw->clib_time) < time_out));
 
 done:
   return rv;
