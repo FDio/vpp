@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "790c2461_c4b191f2",
+        "filename": "src/vat/vat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-23T19:44:39Z",
+      "side": 1,
+      "message": "Do you want to move this to:\ndef main():\n ...\n\nif __name__ \u003d\u003d \u0027__main__\u0027:\n    main()",
+      "range": {
+        "startLine": 297,
+        "startChar": 0,
+        "endLine": 297,
+        "endChar": 25
+      },
+      "revId": "f5e43d1f683fb4f73f0b6bfe17a56b02aa1cd687",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
