@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6a7f97cf_05802c1f",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-23T17:38:40Z",
+      "side": 1,
+      "message": "Can you also refactor this to self like the others?",
+      "range": {
+        "startLine": 168,
+        "startChar": 25,
+        "endLine": 168,
+        "endChar": 28
+      },
+      "revId": "b7473f7218837cc941b1109ec42ae671cd70472a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e7d26fc3_0f44f2e0",
+        "filename": "test/test_ipsec_api.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-23T17:38:40Z",
+      "side": 1,
+      "message": "Does vpp need a delete packet-generator command?",
+      "range": {
+        "startLine": 12,
+        "startChar": 8,
+        "endLine": 12,
+        "endChar": 38
+      },
+      "revId": "b7473f7218837cc941b1109ec42ae671cd70472a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
