@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "85c54c8b_83ed3747",
+        "filename": "src/vnet/ethernet/arp.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-23T20:09:51Z",
+      "side": 1,
+      "message": "Should this also be ip4_address_t?",
+      "range": {
+        "startLine": 92,
+        "startChar": 2,
+        "endLine": 92,
+        "endChar": 5
+      },
+      "revId": "33cfb96d9c0b5e72f2ffb41794d3c61f2847fd88",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c296427a_063ed8d5",
         "filename": "test/vpp_neighbor.py",
         "patchSetId": 11
