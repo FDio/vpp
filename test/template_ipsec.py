@@ -82,39 +82,46 @@ class TemplateIpsec(VppTestCase):
     |tun_if| ------->  |VPP| ------> |pg1|
      ------             ---           ---
     """
-    ipv4_params = IPsecIPv4Params()
-    ipv6_params = IPsecIPv6Params()
-    params = {ipv4_params.addr_type: ipv4_params,
-              ipv6_params.addr_type: ipv6_params}
 
-    payload = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-
-    tun_spd_id = 1
-    tra_spd_id = 2
-
-    vpp_esp_protocol = 1
-    vpp_ah_protocol = 0
-
-    @classmethod
-    def ipsec_select_backend(cls):
+    def ipsec_select_backend(self):
         """ empty method to be overloaded when necessary """
         pass
 
-    @classmethod
-    def setUpClass(cls):
-        super(TemplateIpsec, cls).setUpClass()
-        cls.create_pg_interfaces(range(3))
-        cls.interfaces = list(cls.pg_interfaces)
-        for i in cls.interfaces:
+    def setUp(self):
+        super(TemplateIpsec, self).setUp()
+
+        self.ipv4_params = IPsecIPv4Params()
+        self.ipv6_params = IPsecIPv6Params()
+        self.params = {self.ipv4_params.addr_type: self.ipv4_params,
+                       self.ipv6_params.addr_type: self.ipv6_params}
+
+        self.payload = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"\
+                       "XXXXXXXXXXXXXXXXXXXXX"
+
+        self.tun_spd_id = 1
+        self.tra_spd_id = 2
+
+        self.vpp_esp_protocol = 1
+        self.vpp_ah_protocol = 0
+
+        self.create_pg_interfaces(range(3))
+        self.interfaces = list(self.pg_interfaces)
+        for i in self.interfaces:
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
             i.config_ip6()
             i.resolve_ndp()
-        cls.ipsec_select_backend()
+        self.ipsec_select_backend()
 
     def tearDown(self):
         super(TemplateIpsec, self).tearDown()
+
+        for i in self.interfaces:
+            i.admin_down()
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+
         if not self.vpp_dead:
             self.vapi.cli("show hardware")
 
@@ -158,15 +165,14 @@ class TemplateIpsec(VppTestCase):
                 src=self.tun_if.local_addr[params.addr_type]))
         return vpp_tun_sa, scapy_tun_sa
 
-    @classmethod
-    def configure_sa_tra(cls, params):
-        params.scapy_tra_sa = SecurityAssociation(cls.encryption_type,
+    def configure_sa_tra(self, params):
+        params.scapy_tra_sa = SecurityAssociation(self.encryption_type,
                                                   spi=params.vpp_tra_spi,
                                                   crypt_algo=params.crypt_algo,
                                                   crypt_key=params.crypt_key,
                                                   auth_algo=params.auth_algo,
                                                   auth_key=params.auth_key)
-        params.vpp_tra_sa = SecurityAssociation(cls.encryption_type,
+        params.vpp_tra_sa = SecurityAssociation(self.encryption_type,
                                                 spi=params.scapy_tra_spi,
                                                 crypt_algo=params.crypt_algo,
                                                 crypt_key=params.crypt_key,

@@ -11,12 +11,11 @@ class TemplateIpsecTunIfEsp(TemplateIpsec):
 
     encryption_type = ESP
 
-    @classmethod
-    def setUpClass(cls):
-        super(TemplateIpsecTunIfEsp, cls).setUpClass()
-        cls.tun_if = cls.pg0
-
     def setUp(self):
+        super(TemplateIpsecTunIfEsp, self).setUp()
+
+        self.tun_if = self.pg0
+
         p = self.ipv4_params
         tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
                                       p.scapy_tun_spi, p.crypt_algo_vpp_id,
