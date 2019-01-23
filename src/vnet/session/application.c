@@ -730,6 +730,35 @@ app_worker_own_session (app_worker_t * app_wrk, stream_session_t * s)
   segment_manager_t *sm;
   svm_fifo_t *rxf, *txf;
 
+  if (s->session_state == SESSION_STATE_LISTENING)
+    {
+      app_worker_t *old_wrk = app_worker_get (s->app_wrk_index);
+      u64 lsh = listen_session_get_handle (s);
+      app_listener_t *app_listener;
+      application_t *app;
+
+      if (!old_wrk)
+	return -1;
+
+      hash_unset (old_wrk->listeners_table, lsh);
+      if (!(sm = app_worker_alloc_segment_manager (app_wrk)))
+	return -1;
+
+      hash_set (app_wrk->listeners_table, lsh, segment_manager_index (sm));
+      s->app_wrk_index = app_wrk->wrk_index;
+
+      app = application_get (old_wrk->app_index);
+      if (!app)
+	return -1;
+
+      app_listener = app_listener_get (app, s->listener_db_index);
+      app_listener->workers = clib_bitmap_set (app_listener->workers,
+					       app_wrk->wrk_map_index, 1);
+      app_listener->workers = clib_bitmap_set (app_listener->workers,
+					       old_wrk->wrk_map_index, 0);
+      return 0;
+    }
+
   s->app_wrk_index = app_wrk->wrk_index;
 
   rxf = s->server_rx_fifo;
