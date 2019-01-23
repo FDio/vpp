@@ -391,8 +391,7 @@ class VppIpRoute(VppObject):
         self.is_prohibit = is_prohibit
 
     def add_vpp_config(self):
-        if self.is_local or self.is_unreach or \
-           self.is_prohibit or self.is_drop:
+        if self.is_unreach or self.is_prohibit or self.is_drop:
             r = self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
@@ -421,6 +420,7 @@ class VppIpRoute(VppObject):
                     next_hop_id=path.next_hop_id,
                     is_ipv6=self.is_ip6,
                     is_dvr=path.is_dvr,
+                    is_local=self.is_local,
                     is_resolve_host=path.is_resolve_host,
                     is_resolve_attached=path.is_resolve_attached,
                     is_source_lookup=path.is_source_lookup,
@@ -430,8 +430,7 @@ class VppIpRoute(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        if self.is_local or self.is_unreach or \
-           self.is_prohibit or self.is_drop:
+        if self.is_unreach or self.is_prohibit or self.is_drop:
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
