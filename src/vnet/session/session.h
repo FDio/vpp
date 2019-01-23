@@ -445,7 +445,12 @@ session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
 always_inline u64
 session_segment_handle (stream_session_t * s)
 {
-  svm_fifo_t *f = s->server_rx_fifo;
+  svm_fifo_t *f;
+
+  if (s->session_state == SESSION_STATE_LISTENING)
+    return SESSION_INVALID_HANDLE;
+
+  f = s->server_rx_fifo;
   return segment_manager_make_segment_handle (f->segment_manager,
 					      f->segment_index);
 }

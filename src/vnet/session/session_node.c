@@ -277,10 +277,10 @@ session_mq_worker_update_handler (void *data)
   /*
    * Retransmit messages that may have been lost
    */
-  if (!svm_fifo_is_empty (s->server_tx_fifo))
+  if (s->server_tx_fifo && !svm_fifo_is_empty (s->server_tx_fifo))
     session_send_io_evt_to_thread (s->server_tx_fifo, FIFO_EVENT_APP_TX);
 
-  if (!svm_fifo_is_empty (s->server_rx_fifo))
+  if (s->server_rx_fifo && !svm_fifo_is_empty (s->server_rx_fifo))
     app_worker_lock_and_send_event (app_wrk, s, FIFO_EVENT_APP_RX);
 
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
