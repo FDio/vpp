@@ -808,7 +808,13 @@ add_del_route_t_handler (u8 is_multipath,
       path.frp_eos = MPLS_NON_EOS;
     }
   if (is_local)
-    path_flags |= FIB_ROUTE_PATH_LOCAL;
+    {
+      path_flags |= FIB_ROUTE_PATH_LOCAL;
+      if (~0 != next_hop_sw_if_index)
+	{
+	  entry_flags |= (FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_LOCAL);
+	}
+    }
   if (is_dvr)
     path_flags |= FIB_ROUTE_PATH_DVR;
   if (is_resolve_host)
@@ -838,7 +844,8 @@ add_del_route_t_handler (u8 is_multipath,
 
   stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
 
-  if (is_drop || is_local || is_classify || is_unreach || is_prohibit)
+  if (is_drop || (is_local && (~0 == next_hop_sw_if_index)) ||
+      is_classify || is_unreach || is_prohibit)
     {
       /*
        * special route types that link directly to the adj

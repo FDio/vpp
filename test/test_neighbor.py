@@ -1380,6 +1380,40 @@ class ARPTestCase(VppTestCase):
         #
         self.assertLess(len(rx), 64)
 
+    def test_arp_forus(self):
+        """ ARP for for-us """
+
+        #
+        # Test that VPP responds with ARP requests to addresses that
+        # are connected and local routes.
+        # Use one of the 'remote' addresses in the subnet as a local address
+        # The intention of this route is that it then acts like a secondardy
+        # address added to an interface
+        #
+        self.pg0.generate_remote_hosts(2)
+
+        forus = VppIpRoute(self, self.pg0.remote_hosts[1].ip4, 32,
+                           [VppRoutePath(self.pg0.remote_hosts[1].ip4,
+                                         self.pg0.sw_if_index)],
+                           is_local=1)
+        forus.add_vpp_config()
+
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                   src=self.pg0.remote_mac) /
+             ARP(op="who-has",
+                 hwdst=self.pg0.local_mac,
+                 hwsrc=self.pg0.remote_mac,
+                 pdst=self.pg0.remote_hosts[1].ip4,
+                 psrc=self.pg0.remote_ip4))
+
+        rx = self.send_and_expect(self.pg0, [p], self.pg0)
+
+        self.verify_arp_resp(rx[0],
+                             self.pg0.local_mac,
+                             self.pg0.remote_mac,
+                             self.pg0.remote_hosts[1].ip4,
+                             self.pg0.remote_ip4)
+
 
 class NeighborStatsTestCase(VppTestCase):
     """ ARP Test Case """
