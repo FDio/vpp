@@ -73,7 +73,17 @@ vlib_buffer_copy_indices (u32 * dst, u32 * src, u32 n_indices)
 static_always_inline void
 vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
 {
-  clib_memcpy_fast (b, bt, STRUCT_OFFSET_OF (vlib_buffer_t, template_end));
+#if defined CLIB_HAVE_VEC256
+  b->as_u8x32[0] = bt->as_u8x32[0];
+  b->as_u8x32[1] = bt->as_u8x32[1];
+#elif defined (CLIB_HAVE_VEC128)
+  b->as_u8x16[0] = bt->as_u8x16[0];
+  b->as_u8x16[1] = bt->as_u8x16[1];
+  b->as_u8x16[2] = bt->as_u8x16[2];
+  b->as_u8x16[3] = bt->as_u8x16[3];
+#else
+  clib_memcpy_fast (b, bt, 64);
+#endif
 }
 
 /** \brief Translate array of buffer indices into buffer pointers with offset
