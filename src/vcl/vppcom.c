@@ -2601,31 +2601,34 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       if (!(session = vcl_session_get (wrk, sid)))
 	break;
       session_events = session->vep.ev.events;
-      if (EPOLLOUT & session_events)
-	{
-	  add_event = 1;
-	  events[*num_ev].events |= EPOLLOUT;
-	  session_evt_data = session->vep.ev.data.u64;
-	}
+      if (!(EPOLLOUT & session_events))
+	break;
+      add_event = 1;
+      events[*num_ev].events |= EPOLLOUT;
+      session_evt_data = session->vep.ev.data.u64;
       break;
     case SESSION_CTRL_EVT_DISCONNECTED:
       disconnected_msg = (session_disconnected_msg_t *) e->data;
       session = vcl_session_disconnected_handler (wrk, disconnected_msg);
       if (!session)
 	break;
+      session_events = session->vep.ev.events;
+      if (!((EPOLLHUP | EPOLLRDHUP) & session_events))
+	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
       session_evt_data = session->vep.ev.data.u64;
-      session_events = session->vep.ev.events;
       break;
     case SESSION_CTRL_EVT_RESET:
       sid = vcl_session_reset_handler (wrk, (session_reset_msg_t *) e->data);
       if (!(session = vcl_session_get (wrk, sid)))
 	break;
+      session_events = session->vep.ev.events;
+      if (!((EPOLLHUP | EPOLLRDHUP) & session_events))
+	break;
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
       session_evt_data = session->vep.ev.data.u64;
-      session_events = session->vep.ev.events;
       break;
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
@@ -2710,7 +2713,7 @@ vppcom_epoll_wait_condvar (vcl_worker_t * wrk, struct epoll_event *events,
   double total_wait = 0, wait_slice;
   int rv;
 
-  wait_for_time = (wait_for_time == -1) ? (double) 10e9 : wait_for_time;
+  wait_for_time = (wait_for_time == -1) ? (double) 1e6 : wait_for_time;
   wait_slice = wrk->cut_through_registrations ? 10e-6 : wait_for_time;
 
   do

@@ -2142,7 +2142,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 		 int timeout, const sigset_t * sigmask)
 {
   ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
-  double time_to_wait = (double) 0, time_out, now = 0;
+  double time_to_wait = (double) 0, max_time;
   int libc_epfd, rv = 0;
   vls_handle_t ep_vlsh;
 
@@ -2167,7 +2167,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
     }
 
   time_to_wait = ((timeout >= 0) ? (double) timeout / 1000 : 0);
-  time_out = clib_time_now (&ldpw->clib_time) + time_to_wait;
+  max_time = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
   libc_epfd = vls_attr (ep_vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
   if (PREDICT_FALSE (libc_epfd < 0))
@@ -2179,8 +2179,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 
   LDBG (2, "epfd %d: vep_idx %d, libc_epfd %d, events %p, maxevents %d, "
 	"timeout %d, sigmask %p: time_to_wait %.02f", epfd, ep_vlsh,
-	libc_epfd, events, maxevents, timeout, sigmask, time_to_wait,
-	time_out);
+	libc_epfd, events, maxevents, timeout, sigmask, time_to_wait);
   do
     {
       if (!ldpw->epoll_wait_vcl)
@@ -2207,11 +2206,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	  if (rv != 0)
 	    goto done;
 	}
-
-      if (timeout != -1)
-	now = clib_time_now (&ldpw->clib_time);
     }
-  while (now < time_out);
+  while ((timeout == -1) || (clib_time_now (&ldpw->clib_time) < max_time));
 
 done:
   return rv;
