@@ -229,6 +229,9 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   i16 feature_count;
   u32 ci;
 
+  ASSERT ((u8) ~ 0 != arc_index && "wrong arc index");
+  ASSERT ((u32) ~ 0 != feature_index && "wrong feature index");
+
   if (arc_index == (u8) ~ 0)
     return VNET_API_ERROR_INVALID_VALUE;
 
@@ -279,6 +282,7 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
   u8 arc_index;
 
   arc_index = vnet_get_feature_arc_index (arc_name);
+  ASSERT ((u8) ~ 0 != arc_index && "arc not found");
 
   if (arc_index == (u8) ~ 0)
     return VNET_API_ERROR_INVALID_VALUE;
