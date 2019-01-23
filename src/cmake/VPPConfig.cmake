@@ -26,11 +26,6 @@ set(VPP_EXTERNAL_PROJECT 1)
 
 include(CheckCCompilerFlag)
 
-check_c_compiler_flag("-Wno-address-of-packed-member" compiler_flag_no_address_of_packed_member)
-if (compiler_flag_no_address_of_packed_member)
-  add_definitions(-Wno-address-of-packed-member)
-endif()
-
 include(CheckCCompilerFlag)
 include(${CMAKE_CURRENT_LIST_DIR}/cpu.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/api.cmake)

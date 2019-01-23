@@ -46,7 +46,8 @@ set(CMAKE_C_COMPILER_TARGET ${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
 ##############################################################################
 # build config
 ##############################################################################
-check_c_compiler_flag("-Wno-address-of-packed-member"
+unset(compiler_flag_no_address_of_packed_member CACHE)
+check_c_compiler_flag("-Waddress-of-packed-member"
 		      compiler_flag_no_address_of_packed_member)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
