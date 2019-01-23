@@ -894,6 +894,7 @@ typedef enum
   _ (gratuitous_arp, "ARP probe or announcement dropped") \
   _ (interface_no_table, "Interface is not mapped to an IP table") \
   _ (interface_not_ip_enabled, "Interface is not IP enabled") \
+  _ (unnumbered_mismatch, "RX interface is unnumbered to different subnet") \
 
 typedef enum
 {
@@ -1258,7 +1259,10 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      if (is_unnum0)
 		{
 		  if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
-		    goto drop2;
+		    {
+		      error0 = ETHERNET_ARP_ERROR_unnumbered_mismatch;
+		      goto drop2;
+		    }
 		}
 	    }
 
