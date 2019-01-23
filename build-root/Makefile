@@ -114,11 +114,6 @@ _find_build_data_dir_for_package_fn = $(shell			\
 find_build_data_dir_for_package_fn = $(call ifdef_fn,_mu_package_dir_$(1),)
 
 # dir/PACKAGE
-_find_source_fn = $(shell				\
-  set -eu$(BUILD_DEBUG) ;				\
-  d="$(call find_build_data_dir_for_package_fn,$(1))" ;	\
-  [[ -n "$${d}" ]] && d="$${d}/../$(1)" ;		\
-  echo "$${d}")
 find_source_fn = $(call ifdef3_fn,_mu_package_dir_$(1),,$(_mu_package_dir_$(1))/../$(1))
 
 # Find given FILE in source path as build-data/packages/FILE
@@ -331,7 +326,8 @@ BUILD_ENV =										\
 package_dir_fn = \
   $(call find_build_data_dir_for_package_fn,$(1))/packages
 
-package_mk_fn = $(call package_dir_fn,$(1))/$(1).mk
+package_mk_fn = $(call package_dir_fn,$(1))/$(1).mk \
+		$(wildcard $(call package_dir_fn,$(1))/$(1))
 
 # Pick up built-root/pre-package-include.mk for all source directories
 $(foreach d,$(SOURCE_PATH_BUILD_ROOT_DIRS),	\
@@ -416,7 +412,7 @@ find_filter += -and -not -path '*/.mu_build_*'
 find_newer_filtered_fn =			\
   (! -f $(1)					\
     || -n $(call find_newer_files_fn,$(1),$(3))	\
-    || -n "`find -H $(2)			\
+    || -n "`find -L $(2)			\
 	      -type f				\
               -and -newer $(1)			\
 	      -and \( $(4) \)			\
@@ -625,6 +621,9 @@ configure_check_timestamp =						\
   mkdir -p $(PACKAGE_INSTALL_DIR) ;					\
   conf="$(TIMESTAMP_DIR)/$(CONFIGURE_TIMESTAMP)" ;			\
   dirs="$(call package_mk_fn,$(PACKAGE))				\
+	$(SOURCE_PATH_BUILD_DATA_DIRS)/platforms/$(PLATFORM).mk		\
+	$(shell find $(call find_source_fn,$(PACKAGE_SOURCE))		\
+			-name CMakeLists.txt)				\
 	$(wildcard $(call find_source_fn,				\
 	             $(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)/configure)	\
        $(MU_BUILD_ROOT_DIR)/config.site" ;				\
