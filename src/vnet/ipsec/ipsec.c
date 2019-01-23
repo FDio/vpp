@@ -99,9 +99,9 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
 
   p = hash_get (im->spd_index_by_spd_id, spd_id);
   if (p && is_add)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
   if (!p && !is_add)
-    return VNET_API_ERROR_INVALID_VALUE;
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
 
   if (!is_add)			/* delete */
     {
@@ -441,9 +441,9 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 
   p = hash_get (im->sa_index_by_sa_id, new_sa->id);
   if (p && is_add)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;	/* already exists */
+    return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
   if (!p && !is_add)
-    return VNET_API_ERROR_SYSCALL_ERROR_1;
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
 
   if (!is_add)			/* delete */
     {

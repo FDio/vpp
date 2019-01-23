@@ -29,35 +29,33 @@ class TemplateIpsecAh(TemplateIpsec):
      ---             ---           ---
     """
 
-    encryption_type = AH
+    def setUp(self):
+        super(TemplateIpsecAh, self).setUp()
 
-    @classmethod
-    def setUpClass(cls):
-        super(TemplateIpsecAh, cls).setUpClass()
-        cls.tun_if = cls.pg0
-        cls.tra_if = cls.pg2
-        cls.logger.info(cls.vapi.ppcli("show int addr"))
-        cls.vapi.ipsec_spd_add_del(cls.tun_spd_id)
-        cls.vapi.ipsec_interface_add_del_spd(cls.tun_spd_id,
-                                             cls.tun_if.sw_if_index)
-        cls.vapi.ipsec_spd_add_del(cls.tra_spd_id)
-        cls.vapi.ipsec_interface_add_del_spd(cls.tra_spd_id,
-                                             cls.tra_if.sw_if_index)
-        for _, p in cls.params.items():
-            cls.config_ah_tra(p)
-            cls.configure_sa_tra(p)
-        cls.logger.info(cls.vapi.ppcli("show ipsec"))
-        for _, p in cls.params.items():
-            cls.config_ah_tun(p)
-        cls.logger.info(cls.vapi.ppcli("show ipsec"))
-        for _, p in cls.params.items():
+        self.encryption_type = AH
+        self.tun_if = self.pg0
+        self.tra_if = self.pg2
+        self.logger.info(self.vapi.ppcli("show int addr"))
+        self.vapi.ipsec_spd_add_del(self.tun_spd_id)
+        self.vapi.ipsec_interface_add_del_spd(self.tun_spd_id,
+                                              self.tun_if.sw_if_index)
+        self.vapi.ipsec_spd_add_del(self.tra_spd_id)
+        self.vapi.ipsec_interface_add_del_spd(self.tra_spd_id,
+                                              self.tra_if.sw_if_index)
+        for _, p in self.params.items():
+            self.config_ah_tra(p)
+            self.configure_sa_tra(p)
+            self.logger.info(self.vapi.ppcli("show ipsec"))
+        for _, p in self.params.items():
+            self.config_ah_tun(p)
+            self.logger.info(self.vapi.ppcli("show ipsec"))
+        for _, p in self.params.items():
             src = socket.inet_pton(p.addr_type, p.remote_tun_if_host)
-            cls.vapi.ip_add_del_route(src, p.addr_len,
-                                      cls.tun_if.remote_addr_n[p.addr_type],
-                                      is_ipv6=p.is_ipv6)
+            self.vapi.ip_add_del_route(src, p.addr_len,
+                                       self.tun_if.remote_addr_n[p.addr_type],
+                                       is_ipv6=p.is_ipv6)
 
-    @classmethod
-    def config_ah_tun(cls, params):
+    def config_ah_tun(self, params):
         addr_type = params.addr_type
         is_ipv6 = params.is_ipv6
         scapy_tun_sa_id = params.scapy_tun_sa_id
@@ -71,54 +69,120 @@ class TemplateIpsecAh(TemplateIpsec):
         remote_tun_if_host = params.remote_tun_if_host
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
-        cls.vapi.ipsec_sad_add_del_entry(scapy_tun_sa_id, scapy_tun_spi,
-                                         auth_algo_vpp_id, auth_key,
-                                         crypt_algo_vpp_id, crypt_key,
-                                         cls.vpp_ah_protocol,
-                                         cls.tun_if.local_addr_n[addr_type],
-                                         cls.tun_if.remote_addr_n[addr_type],
-                                         is_tunnel=1, is_tunnel_ipv6=is_ipv6)
-        cls.vapi.ipsec_sad_add_del_entry(vpp_tun_sa_id, vpp_tun_spi,
-                                         auth_algo_vpp_id, auth_key,
-                                         crypt_algo_vpp_id, crypt_key,
-                                         cls.vpp_ah_protocol,
-                                         cls.tun_if.remote_addr_n[addr_type],
-                                         cls.tun_if.local_addr_n[addr_type],
-                                         is_tunnel=1, is_tunnel_ipv6=is_ipv6)
+        self.vapi.ipsec_sad_add_del_entry(scapy_tun_sa_id, scapy_tun_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol,
+                                          self.tun_if.local_addr_n[addr_type],
+                                          self.tun_if.remote_addr_n[addr_type],
+                                          is_tunnel=1, is_tunnel_ipv6=is_ipv6)
+        self.vapi.ipsec_sad_add_del_entry(vpp_tun_sa_id, vpp_tun_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol,
+                                          self.tun_if.remote_addr_n[addr_type],
+                                          self.tun_if.local_addr_n[addr_type],
+                                          is_tunnel=1, is_tunnel_ipv6=is_ipv6)
         l_startaddr = r_startaddr = socket.inet_pton(addr_type, addr_any)
         l_stopaddr = r_stopaddr = socket.inet_pton(addr_type, addr_bcast)
-        cls.vapi.ipsec_spd_add_del_entry(cls.tun_spd_id, vpp_tun_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, is_ipv6=is_ipv6,
-                                         protocol=socket.IPPROTO_AH)
-        cls.vapi.ipsec_spd_add_del_entry(cls.tun_spd_id, vpp_tun_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, is_outbound=0,
-                                         is_ipv6=is_ipv6,
-                                         protocol=socket.IPPROTO_AH)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_outbound=0,
+                                          is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH)
         l_startaddr = l_stopaddr = socket.inet_pton(addr_type,
                                                     remote_tun_if_host)
-        r_startaddr = r_stopaddr = cls.pg1.remote_addr_n[addr_type]
-        cls.vapi.ipsec_spd_add_del_entry(cls.tun_spd_id, vpp_tun_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, priority=10, policy=3,
-                                         is_outbound=0, is_ipv6=is_ipv6)
-        cls.vapi.ipsec_spd_add_del_entry(cls.tun_spd_id, scapy_tun_sa_id,
-                                         r_startaddr, r_stopaddr, l_startaddr,
-                                         l_stopaddr, priority=10, policy=3,
-                                         is_ipv6=is_ipv6)
-        r_startaddr = r_stopaddr = cls.pg0.local_addr_n[addr_type]
-        cls.vapi.ipsec_spd_add_del_entry(cls.tun_spd_id, vpp_tun_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, priority=20, policy=3,
-                                         is_outbound=0, is_ipv6=is_ipv6)
-        cls.vapi.ipsec_spd_add_del_entry(cls.tun_spd_id, scapy_tun_sa_id,
-                                         r_startaddr, r_stopaddr, l_startaddr,
-                                         l_stopaddr, priority=20, policy=3,
-                                         is_ipv6=is_ipv6)
+        r_startaddr = r_stopaddr = self.pg1.remote_addr_n[addr_type]
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=10, policy=3,
+                                          is_outbound=0, is_ipv6=is_ipv6)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, scapy_tun_sa_id,
+                                          r_startaddr, r_stopaddr, l_startaddr,
+                                          l_stopaddr, priority=10, policy=3,
+                                          is_ipv6=is_ipv6)
+        r_startaddr = r_stopaddr = self.pg0.local_addr_n[addr_type]
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=20, policy=3,
+                                          is_outbound=0, is_ipv6=is_ipv6)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, scapy_tun_sa_id,
+                                          r_startaddr, r_stopaddr, l_startaddr,
+                                          l_stopaddr, priority=20, policy=3,
+                                          is_ipv6=is_ipv6)
 
-    @classmethod
-    def config_ah_tra(cls, params):
+    def unconfig_ah_tun(self, params):
+        addr_type = params.addr_type
+        is_ipv6 = params.is_ipv6
+        scapy_tun_sa_id = params.scapy_tun_sa_id
+        scapy_tun_spi = params.scapy_tun_spi
+        vpp_tun_sa_id = params.vpp_tun_sa_id
+        vpp_tun_spi = params.vpp_tun_spi
+        auth_algo_vpp_id = params.auth_algo_vpp_id
+        auth_key = params.auth_key
+        crypt_algo_vpp_id = params.crypt_algo_vpp_id
+        crypt_key = params.crypt_key
+        remote_tun_if_host = params.remote_tun_if_host
+        addr_any = params.addr_any
+        addr_bcast = params.addr_bcast
+        l_startaddr = l_stopaddr = socket.inet_pton(addr_type,
+                                                    remote_tun_if_host)
+        r_startaddr = r_stopaddr = self.pg0.local_addr_n[addr_type]
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=20, policy=3,
+                                          is_outbound=0, is_ipv6=is_ipv6,
+                                          is_add=0)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, scapy_tun_sa_id,
+                                          r_startaddr, r_stopaddr, l_startaddr,
+                                          l_stopaddr, priority=20, policy=3,
+                                          is_ipv6=is_ipv6,
+                                          is_add=0)
+        r_startaddr = r_stopaddr = self.pg1.remote_addr_n[addr_type]
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=10, policy=3,
+                                          is_outbound=0, is_ipv6=is_ipv6,
+                                          is_add=0)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, scapy_tun_sa_id,
+                                          r_startaddr, r_stopaddr, l_startaddr,
+                                          l_stopaddr, priority=10, policy=3,
+                                          is_ipv6=is_ipv6, is_add=0)
+        l_startaddr = r_startaddr = socket.inet_pton(addr_type, addr_any)
+        l_stopaddr = r_stopaddr = socket.inet_pton(addr_type, addr_bcast)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH,
+                                          is_add=0)
+        self.vapi.ipsec_spd_add_del_entry(self.tun_spd_id, vpp_tun_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_outbound=0,
+                                          is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH,
+                                          is_add=0)
+        self.vapi.ipsec_sad_add_del_entry(scapy_tun_sa_id, scapy_tun_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol,
+                                          self.tun_if.local_addr_n[addr_type],
+                                          self.tun_if.remote_addr_n[addr_type],
+                                          is_tunnel=1, is_tunnel_ipv6=is_ipv6,
+                                          is_add=0)
+        self.vapi.ipsec_sad_add_del_entry(vpp_tun_sa_id, vpp_tun_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol,
+                                          self.tun_if.remote_addr_n[addr_type],
+                                          self.tun_if.local_addr_n[addr_type],
+                                          is_tunnel=1, is_tunnel_ipv6=is_ipv6,
+                                          is_add=0)
+
+    def config_ah_tra(self, params):
         addr_type = params.addr_type
         is_ipv6 = params.is_ipv6
         scapy_tra_sa_id = params.scapy_tra_sa_id
@@ -131,41 +195,114 @@ class TemplateIpsecAh(TemplateIpsec):
         crypt_key = params.crypt_key
         addr_any = params.addr_any
         addr_bcast = params.addr_bcast
-        cls.vapi.ipsec_sad_add_del_entry(scapy_tra_sa_id, scapy_tra_spi,
-                                         auth_algo_vpp_id, auth_key,
-                                         crypt_algo_vpp_id, crypt_key,
-                                         cls.vpp_ah_protocol, is_tunnel=0,
-                                         is_tunnel_ipv6=0,
-                                         use_anti_replay=1)
-        cls.vapi.ipsec_sad_add_del_entry(vpp_tra_sa_id, vpp_tra_spi,
-                                         auth_algo_vpp_id, auth_key,
-                                         crypt_algo_vpp_id, crypt_key,
-                                         cls.vpp_ah_protocol, is_tunnel=0,
-                                         is_tunnel_ipv6=0,
-                                         use_anti_replay=1)
+        self.vapi.ipsec_sad_add_del_entry(scapy_tra_sa_id, scapy_tra_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol, is_tunnel=0,
+                                          is_tunnel_ipv6=0,
+                                          use_anti_replay=1)
+        self.vapi.ipsec_sad_add_del_entry(vpp_tra_sa_id, vpp_tra_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol, is_tunnel=0,
+                                          is_tunnel_ipv6=0,
+                                          use_anti_replay=1)
         l_startaddr = r_startaddr = socket.inet_pton(addr_type, addr_any)
         l_stopaddr = r_stopaddr = socket.inet_pton(addr_type, addr_bcast)
-        cls.vapi.ipsec_spd_add_del_entry(cls.tra_spd_id, vpp_tra_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, is_ipv6=is_ipv6,
-                                         protocol=socket.IPPROTO_AH)
-        cls.vapi.ipsec_spd_add_del_entry(cls.tra_spd_id, scapy_tra_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, is_outbound=0,
-                                         is_ipv6=is_ipv6,
-                                         protocol=socket.IPPROTO_AH)
-        l_startaddr = l_stopaddr = cls.tra_if.local_addr_n[addr_type]
-        r_startaddr = r_stopaddr = cls.tra_if.remote_addr_n[addr_type]
-        cls.vapi.ipsec_spd_add_del_entry(cls.tra_spd_id, vpp_tra_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, priority=10, policy=3,
-                                         is_outbound=0, is_ipv6=is_ipv6)
-        cls.vapi.ipsec_spd_add_del_entry(cls.tra_spd_id, scapy_tra_sa_id,
-                                         l_startaddr, l_stopaddr, r_startaddr,
-                                         r_stopaddr, priority=10,
-                                         policy=3, is_ipv6=is_ipv6)
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, vpp_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH)
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, scapy_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_outbound=0,
+                                          is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH)
+        l_startaddr = l_stopaddr = self.tra_if.local_addr_n[addr_type]
+        r_startaddr = r_stopaddr = self.tra_if.remote_addr_n[addr_type]
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, vpp_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=10, policy=3,
+                                          is_outbound=0, is_ipv6=is_ipv6)
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, scapy_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=10,
+                                          policy=3, is_ipv6=is_ipv6)
+
+    def unconfig_ah_tra(self, params):
+        addr_type = params.addr_type
+        is_ipv6 = params.is_ipv6
+        scapy_tra_sa_id = params.scapy_tra_sa_id
+        scapy_tra_spi = params.scapy_tra_spi
+        vpp_tra_sa_id = params.vpp_tra_sa_id
+        vpp_tra_spi = params.vpp_tra_spi
+        auth_algo_vpp_id = params.auth_algo_vpp_id
+        auth_key = params.auth_key
+        crypt_algo_vpp_id = params.crypt_algo_vpp_id
+        crypt_key = params.crypt_key
+        addr_any = params.addr_any
+        addr_bcast = params.addr_bcast
+        l_startaddr = r_startaddr = socket.inet_pton(addr_type, addr_any)
+        l_stopaddr = r_stopaddr = socket.inet_pton(addr_type, addr_bcast)
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, vpp_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH,
+                                          is_add=0)
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, scapy_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, is_outbound=0,
+                                          is_ipv6=is_ipv6,
+                                          protocol=socket.IPPROTO_AH,
+                                          is_add=0)
+        l_startaddr = l_stopaddr = self.tra_if.local_addr_n[addr_type]
+        r_startaddr = r_stopaddr = self.tra_if.remote_addr_n[addr_type]
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, vpp_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=10, policy=3,
+                                          is_outbound=0, is_ipv6=is_ipv6,
+                                          is_add=0)
+        self.vapi.ipsec_spd_add_del_entry(self.tra_spd_id, scapy_tra_sa_id,
+                                          l_startaddr, l_stopaddr, r_startaddr,
+                                          r_stopaddr, priority=10,
+                                          policy=3, is_ipv6=is_ipv6,
+                                          is_add=0)
+        self.vapi.ipsec_sad_add_del_entry(scapy_tra_sa_id, scapy_tra_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol, is_tunnel=0,
+                                          is_tunnel_ipv6=0,
+                                          use_anti_replay=1,
+                                          is_add=0)
+        self.vapi.ipsec_sad_add_del_entry(vpp_tra_sa_id, vpp_tra_spi,
+                                          auth_algo_vpp_id, auth_key,
+                                          crypt_algo_vpp_id, crypt_key,
+                                          self.vpp_ah_protocol, is_tunnel=0,
+                                          is_tunnel_ipv6=0,
+                                          use_anti_replay=1,
+                                          is_add=0)
 
     def tearDown(self):
+        for _, p in self.params.items():
+            self.unconfig_ah_tun(p)
+        for _, p in self.params.items():
+            self.unconfig_ah_tra(p)
+
+        self.vapi.ipsec_interface_add_del_spd(self.tun_spd_id,
+                                              self.tun_if.sw_if_index,
+                                              is_add=0)
+        self.vapi.ipsec_spd_add_del(self.tun_spd_id, is_add=0)
+        self.vapi.ipsec_interface_add_del_spd(self.tra_spd_id,
+                                              self.tra_if.sw_if_index,
+                                              is_add=0)
+        self.vapi.ipsec_spd_add_del(self.tra_spd_id,
+                                    is_add=0)
+        for _, p in self.params.items():
+            src = socket.inet_pton(p.addr_type, p.remote_tun_if_host)
+            self.vapi.ip_add_del_route(
+                src, p.addr_len, self.tun_if.remote_addr_n[p.addr_type],
+                is_ipv6=p.is_ipv6, is_add=0)
+
         super(TemplateIpsecAh, self).tearDown()
         if not self.vpp_dead:
             self.vapi.cli("show hardware")
