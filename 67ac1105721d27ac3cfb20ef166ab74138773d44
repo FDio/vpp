@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "ea49c477_5f7de35a",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1360,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-01-24T15:05:21Z",
+      "side": 1,
+      "message": "Latest patchset (patchset 4) remove the except clause entirely.",
+      "parentUuid": "c82bade5_d5a27360",
+      "range": {
+        "startLine": 1359,
+        "startChar": 11,
+        "endLine": 1360,
+        "endChar": 8
+      },
+      "revId": "67ac1105721d27ac3cfb20ef166ab74138773d44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7d13932c_b8cd7a1c",
         "filename": "test/test_gbp.py",
         "patchSetId": 2
