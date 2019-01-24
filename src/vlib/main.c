@@ -308,6 +308,9 @@ vlib_next_frame_change_ownership (vlib_main_t * vm,
       owner_next_frame[0] = next_frame[0];
       next_frame[0] = tmp;
 
+      /* just for discussing owenrship issue */
+      next_frame->flags |= owner_next_frame->flags & VLIB_FRAME_TRACE;
+
       /*
        * If next_frame is already pending, we have to track down
        * all pending frames and fix their next_frame_index fields.
