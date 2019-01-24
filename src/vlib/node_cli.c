@@ -148,8 +148,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
   f64 maxc, maxcn;
   u32 maxn;
   u32 indent;
-  u64 pmc_ticks;
-  f64 pmc_ticks_per_packet;
 
   if (!n)
     {
@@ -163,9 +161,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
 		    "%=30s%=12s%=16s%=16s%=16s%=16s%=16s",
 		    "Name", "State", "Calls", "Vectors", "Suspends",
 		    "Clocks", "Vectors/Call");
-      if (vm->perf_counter_id)
-	s = format (s, "%=16s", "Perf Ticks");
-
       return s;
     }
 
@@ -181,13 +176,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
     maxcn = (f64) n->stats_total.max_clock / (f64) maxn;
   else
     maxcn = 0.0;
-
-  pmc_ticks = n->stats_total.perf_counter_ticks -
-    n->stats_last_clear.perf_counter_ticks;
-  if (p > 0)
-    pmc_ticks_per_packet = (f64) pmc_ticks / (f64) p;
-  else
-    pmc_ticks_per_packet = 0.0;
 
   /* Clocks per packet, per call or per suspend. */
   x = 0;
@@ -220,9 +208,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
   else
     s = format (s, "%-30v%=12U%16Ld%16Ld%16Ld%16.2e%16.2f", ns,
 		format_vlib_node_state, vm, n, c, p, d, x, v);
-
-  if (pmc_ticks_per_packet > 0.0)
-    s = format (s, "%16.2e", pmc_ticks_per_packet);
 
   if (ns != n->name)
     vec_free (ns);
