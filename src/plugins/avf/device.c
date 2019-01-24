@@ -653,14 +653,19 @@ clib_error_t *
 avf_op_enable_queues (vlib_main_t * vm, avf_device_t * ad, u32 rx, u32 tx)
 {
   virtchnl_queue_select_t qs = { 0 };
-  int i;
+  int i = 0;
   qs.vsi_id = ad->vsi_id;
   qs.rx_queues = rx;
   qs.tx_queues = tx;
-  for (i = 0; i < ad->n_rx_queues; i++)
+  while (rx)
     {
-      avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
-      avf_reg_write (ad, AVF_QRX_TAIL (i), rxq->n_enqueued);
+      if (rx & (1 << i))
+	{
+	  avf_rxq_t *rxq = vec_elt_at_index (ad->rxqs, i);
+	  avf_reg_write (ad, AVF_QRX_TAIL (i), rxq->n_enqueued);
+	  rx &= ~(1 << i);
+	}
+      i++;
     }
   return avf_send_to_pf (vm, ad, VIRTCHNL_OP_ENABLE_QUEUES, &qs,
 			 sizeof (virtchnl_queue_select_t), 0, 0);
@@ -850,10 +855,8 @@ avf_device_init (vlib_main_t * vm, avf_main_t * am, avf_device_t * ad,
   if ((error = avf_op_add_eth_addr (vm, ad, 1, ad->hwaddr)))
     return error;
 
-  if ((error = avf_op_enable_queues (vm, ad, ad->n_rx_queues, 0)))
-    return error;
-
-  if ((error = avf_op_enable_queues (vm, ad, 0, ad->n_tx_queues)))
+  if ((error = avf_op_enable_queues (vm, ad, pow2_mask (ad->n_rx_queues),
+				     pow2_mask (ad->n_tx_queues))))
     return error;
 
   ad->flags |= AVF_DEVICE_F_INITIALIZED;
