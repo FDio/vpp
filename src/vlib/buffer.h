@@ -178,10 +178,10 @@ typedef union
   u8x16 as_u8x16[4];
 #endif
 #ifdef CLIB_HAVE_VEC256
-  u8x16 as_u8x32[2];
+  u8x32 as_u8x32[2];
 #endif
 #ifdef CLIB_HAVE_VEC512
-  u8x16 as_u8x64[1];
+  u8x64 as_u8x64[1];
 #endif
 } vlib_buffer_t;
 

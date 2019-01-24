@@ -74,7 +74,9 @@ STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
 static_always_inline void
 vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
 {
-#if defined CLIB_HAVE_VEC256
+#if defined CLIB_HAVE_VEC512
+  b->as_u8x64[0] = bt->as_u8x64[0];
+#elif defined (CLIB_HAVE_VEC256)
   b->as_u8x32[0] = bt->as_u8x32[0];
   b->as_u8x32[1] = bt->as_u8x32[1];
 #elif defined (CLIB_HAVE_VEC128)
