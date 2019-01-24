@@ -279,13 +279,13 @@ class VppRoutePath(object):
             is_dvr=0,
             next_hop_id=0xffffffff,
             proto=DpoProto.DPO_PROTO_IP4):
+        self.proto = proto
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
         self.nh_via_label = nh_via_label
         self.nh_labels = labels
         self.weight = 1
         self.rpf_id = rpf_id
-        self.proto = proto
         if self.proto is DpoProto.DPO_PROTO_IP6:
             self.nh_addr = inet_pton(AF_INET6, nh_addr)
         elif self.proto is DpoProto.DPO_PROTO_IP4:

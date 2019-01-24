@@ -3347,6 +3347,9 @@ class VppPapiProvider(object):
             self.papi.ipsec_spd_add_del, {
                 'spd_id': spd_id, 'is_add': is_add})
 
+    def ipsec_spds_dump(self):
+        return self.api(self.papi.ipsec_spds_dump, {})
+
     def ipsec_interface_add_del_spd(self, spd_id, sw_if_index, is_add=1):
         """ IPSEC interface SPD add/del - \
              Wrapper to associate/disassociate SPD to interface in VPP
@@ -3362,6 +3365,11 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.ipsec_interface_add_del_spd,
             {'spd_id': spd_id, 'sw_if_index': sw_if_index, 'is_add': is_add})
+
+    def ipsec_spd_interface_dump(self, spd_index=None):
+        return self.api(self.papi.ipsec_spd_interface_dump,
+                        {'spd_index': spd_index if spd_index else 0,
+                         'spd_index_valid': 1 if spd_index else 0})
 
     def ipsec_sad_add_del_entry(self,
                                 sad_id,
@@ -3414,6 +3422,10 @@ class VppPapiProvider(object):
              'udp_encap': udp_encap,
              'use_extended_sequence_number': use_extended_sequence_number,
              'use_anti_replay': use_anti_replay})
+
+    def ipsec_sa_dump(self, sa_id=None):
+        return self.api(self.papi.ipsec_sa_dump,
+                        {'sa_id': sa_id if sa_id else 0xffffffff})
 
     def ipsec_spd_add_del_entry(self,
                                 spd_id,
@@ -3472,6 +3484,11 @@ class VppPapiProvider(object):
              'is_outbound': is_outbound,
              'is_ipv6': is_ipv6,
              'is_ip_any': is_ip_any})
+
+    def ipsec_spd_dump(self, spd_id, sa_id=0xffffffff):
+        return self.api(self.papi.ipsec_spd_dump,
+                        {'spd_id': spd_id,
+                         'sa_id': sa_id})
 
     def ipsec_tunnel_if_add_del(self, local_ip, remote_ip, local_spi,
                                 remote_spi, crypto_alg, local_crypto_key,
