@@ -15,6 +15,7 @@
 #ifndef __VIRTIO_VHOST_USER_INLINE_H__
 #define __VIRTIO_VHOST_USER_INLINE_H__
 /* vhost-user inline functions */
+#include <vppinfra/elog.h>
 
 static_always_inline void *
 map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
@@ -134,7 +135,19 @@ vhost_map_guest_mem_done:
 	}
     }
 #endif
-  vu_log_err (vui, "failed to map guest mem addr %llx", addr);
+  /* *INDENT-OFF* */
+  ELOG_TYPE_DECLARE (el) =
+  {
+    .format = "failed to map guest mem addr %lx",
+    .format_args = "i8",
+  };
+  /* *INDENT-ON* */
+  struct
+  {
+    uword addr;
+  } *ed;
+  ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+  ed->addr = addr;
   *hint = 0;
   return 0;
 }
