@@ -161,6 +161,12 @@ enable_current_events (perfmon_main_t * pm)
       else
 	p = 0;
 
+      if (ioctl (fd, PERF_EVENT_IOC_RESET, 0) < 0)
+	clib_unix_warning ("reset ioctl");
+
+      if (ioctl (fd, PERF_EVENT_IOC_ENABLE, 0) < 0)
+	clib_unix_warning ("enable ioctl");
+
       /*
        * Software event counters - and others not capable of being
        * read via the "rdpmc" instruction - will be read
@@ -170,12 +176,6 @@ enable_current_events (perfmon_main_t * pm)
 	index = ~0;
       else
 	index = p->index - 1;
-
-      if (ioctl (fd, PERF_EVENT_IOC_RESET, 0) < 0)
-	clib_unix_warning ("reset ioctl");
-
-      if (ioctl (fd, PERF_EVENT_IOC_ENABLE, 0) < 0)
-	clib_unix_warning ("enable ioctl");
 
       pm->rdpmc_indices[i][my_thread_index] = index;
       pm->perf_event_pages[i][my_thread_index] = (void *) p;
