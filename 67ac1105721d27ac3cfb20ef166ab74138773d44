@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "b850b2a4_e4a24aa2",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-01-24T09:16:14Z",
+      "side": 1,
+      "message": "Ok I\u0027ll submit a new patch",
+      "parentUuid": "28350c91_8f9879b8",
+      "range": {
+        "startLine": 16,
+        "startChar": 23,
+        "endLine": 16,
+        "endChar": 37
+      },
+      "revId": "67ac1105721d27ac3cfb20ef166ab74138773d44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a0f00a8d_f997d358",
         "filename": "test/framework.py",
         "patchSetId": 2
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "e76220fe_93039996",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1360,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-01-24T09:16:14Z",
+      "side": 1,
+      "message": "Because in that case, it will rewind up the stack immediately and will not go through lines 1361 \u0026 1362, hence no trace nor pcap trace. A \u0027finally\u0027 close won\u0027t do the trick either unfortunately.\nI agree it is not great, but it is the best way I could come up with.",
+      "parentUuid": "a0f00a8d_f997d358",
+      "range": {
+        "startLine": 1359,
+        "startChar": 11,
+        "endLine": 1360,
+        "endChar": 8
+      },
+      "revId": "67ac1105721d27ac3cfb20ef166ab74138773d44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7d13932c_b8cd7a1c",
         "filename": "test/test_gbp.py",
         "patchSetId": 2
@@ -59,6 +107,30 @@
       "writtenOn": "2019-01-23T17:53:32Z",
       "side": 1,
       "message": "Do you still need to add your with debug_trace(): code?",
+      "range": {
+        "startLine": 5,
+        "startChar": 50,
+        "endLine": 5,
+        "endChar": 61
+      },
+      "revId": "67ac1105721d27ac3cfb20ef166ab74138773d44",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c5da323d_a41f599b",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-01-24T09:16:14Z",
+      "side": 1,
+      "message": "No you are right it is a leftover, I\u0027ll remove that in the next patch",
+      "parentUuid": "7d13932c_b8cd7a1c",
       "range": {
         "startLine": 5,
         "startChar": 50,
