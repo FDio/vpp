@@ -167,13 +167,13 @@ unformat_pg_payload (unformat_input_t * input, va_list * args)
   for (i = 0; i < len; i++)
     v[i] = i % ilen;
 
-  e = pg_create_edit_group (s, sizeof (e[0]), 0, 0);
+  e = pg_create_edit_group (s, sizeof (e[0]), len, 0);
 
   e->type = PG_EDIT_FIXED;
-  e->n_bits = vec_len (v) * BITS (v[0]);
+  e->n_bits = len * BITS (v[0]);
 
   /* Least significant bit is at end of bitstream, since everything is always bigendian. */
-  e->lsb_bit_offset = e->n_bits - BITS (v[0]);
+  e->lsb_bit_offset = len > 0 ? e->n_bits - BITS (v[0]) : 0;
 
   e->values[PG_EDIT_LO] = v;
 
