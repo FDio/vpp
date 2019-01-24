@@ -134,7 +134,17 @@ vhost_map_guest_mem_done:
 	}
     }
 #endif
-  vu_log_err (vui, "failed to map guest mem addr %llx", addr);
+  ELOG_TYPE_DECLARE (el) =
+    {
+      .format = "failed to map guest mem addr %x",
+      .format_args = "i4",
+    };
+  struct
+    {
+      uword addr;
+    } *ed;
+  ed = ELOG_DATA (&vlib_global_main.elog_main, el);
+  ed->addr = addr;
   *hint = 0;
   return 0;
 }
