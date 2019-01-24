@@ -98,7 +98,6 @@ $(GET_PIP_SCRIPT):
 
 $(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(GET_PIP_SCRIPT)"
 	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS)"
 	@touch $@
 
