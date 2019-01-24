@@ -1019,6 +1019,37 @@ VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node,static) = {
 };
 /* *INDENT-ON* */
 
+/* Convenience node to drop a vector of buffers with a "misc error". */
+static uword
+misc_drop_buffers (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame),
+				  /* buffer stride */ 1,
+				  frame->n_vectors,
+				  /* next */ 0,
+				  node->node_index,
+				  /* error */ 0);
+}
+
+static char *misc_drop_buffers_error_strings[] = {
+  [0] = "misc. errors",
+};
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (misc_drop_buffers_node,static) = {
+  .function = misc_drop_buffers,
+  .name = "misc-drop-buffers",
+  .vector_size = sizeof (u32),
+  .n_errors = 1,
+  .n_next_nodes = 1,
+  .next_nodes = {
+      "error-drop",
+  },
+  .error_strings = misc_drop_buffers_error_strings,
+};
+/* *INDENT-ON* */
+
 VLIB_NODE_FUNCTION_MULTIARCH (vnet_per_buffer_interface_output_node,
 			      vnet_per_buffer_interface_output);
 
