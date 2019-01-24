@@ -37,6 +37,7 @@
 					   (16, RW) */
 
 /*
+ * Vector value used to disable MSI for queue.
  * define in include/linux/virtio_pci.h
  * #define VIRTIO_MSI_NO_VECTOR 0xFFFF
  */
@@ -45,7 +46,6 @@
 #define VIRTIO_PCI_ISR_INTR   0x1
 /* The bit of the ISR which indicates a device configuration change. */
 #define VIRTIO_PCI_ISR_CONFIG 0x2
-/* Vector value used to disable MSI for queue. */
 
 /* VirtIO device IDs. */
 #define VIRTIO_ID_NETWORK  0x01

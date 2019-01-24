@@ -24,6 +24,7 @@
 #include <sys/eventfd.h>
 
 #include <vlib/vlib.h>
+#include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
@@ -135,6 +136,9 @@ more:
     {
       virtio_kick (vm, vring, vif);
     }
+  if ((vring->avail->flags & VIRTIO_RING_FLAG_MASK_INT) == 0 &&
+      vif->type == VIRTIO_IF_TYPE_PCI)
+    vlib_pci_intr_enable (vm, vif->pci_dev_handle);
   goto more;
 }
 
