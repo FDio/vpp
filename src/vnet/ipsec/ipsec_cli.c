@@ -460,7 +460,7 @@ show_ipsec_command_fn (vlib_main_t * vm,
   vnet_hw_interface_t *hi;
   u8 *protocol = NULL;
   u8 *policy = NULL;
-  u32 tx_table_id;
+  u32 tx_table_id, spd_id, sw_if_index;
 
   /* *INDENT-OFF* */
   pool_foreach (sa, im->sad, ({
@@ -664,6 +664,16 @@ show_ipsec_command_fn (vlib_main_t * vm,
       };
   }));
   /* *INDENT-ON* */
+
+  vlib_cli_output (vm, "SPD Bindings:");
+  /* *INDENT-OFF* */
+  hash_foreach(sw_if_index, spd_id, im->spd_index_by_sw_if_index, ({
+        vlib_cli_output (vm, "  %d -> %U", spd_id,
+                         format_vnet_sw_if_index_name, im->vnet_main,
+                         sw_if_index);
+  }));
+  /* *INDENT-ON* */
+
 
   vlib_cli_output (vm, "tunnel interfaces");
   /* *INDENT-OFF* */
