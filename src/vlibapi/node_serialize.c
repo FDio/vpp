@@ -57,7 +57,7 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
   u8 *namep;
   u32 name_bytes;
   uword i, j, k;
-  u64 l, v, c, d, pmc;
+  u64 l, v, c, d;
   state_string_enum_t state_code;
 
   serialize_open_vector (sm, vector);
@@ -77,8 +77,6 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 	  v = n->stats_total.vectors - n->stats_last_clear.vectors;
 	  c = n->stats_total.calls - n->stats_last_clear.calls;
 	  d = n->stats_total.suspends - n->stats_last_clear.suspends;
-	  pmc = n->stats_total.perf_counter_ticks
-	    - n->stats_last_clear.perf_counter_ticks;
 
 	  state_code = STATE_INTERNAL;
 
@@ -151,8 +149,6 @@ vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups, u8 * vector,
 	      serialize_integer (sm, v, 8);
 	      /* Total suspends */
 	      serialize_integer (sm, d, 8);
-	      /* PMC counter */
-	      serialize_integer (sm, pmc, 8);
 	    }
 	  else			/* no stats */
 	    serialize_likely_small_unsigned_integer (sm, 0);
@@ -171,7 +167,7 @@ vlib_node_unserialize (u8 * vector)
   vlib_node_t **nodes;
   vlib_node_t ***nodes_by_thread = 0;
   int i, j, k;
-  u64 l, v, c, d, pmc;
+  u64 l, v, c, d;
   state_string_enum_t state_code;
   int stats_present;
 
@@ -229,9 +225,6 @@ vlib_node_unserialize (u8 * vector)
 	      /* Total suspends */
 	      unserialize_integer (sm, &d, 8);
 	      node->stats_total.suspends = d;
-	      /* PMC counter */
-	      unserialize_integer (sm, &pmc, 8);
-	      node->stats_total.perf_counter_ticks = pmc;
 	    }
 	}
     }

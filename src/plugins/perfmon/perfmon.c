@@ -157,10 +157,16 @@ perfmon_init (vlib_main_t * vm)
   pm->log_class = vlib_log_register_class ("perfmon", 0);
 
   /* Default data collection interval */
-  pm->timeout_interval = 3.0;
-  vec_validate (pm->pm_fds, vec_len (vlib_mains) - 1);
-  vec_validate (pm->perf_event_pages, vec_len (vlib_mains) - 1);
-  vec_validate (pm->rdpmc_indices, vec_len (vlib_mains) - 1);
+  pm->timeout_interval = 2.0;	/* seconds */
+  vec_validate (pm->pm_fds, 1);
+  vec_validate (pm->pm_fds[0], vec_len (vlib_mains) - 1);
+  vec_validate (pm->pm_fds[1], vec_len (vlib_mains) - 1);
+  vec_validate (pm->perf_event_pages, 1);
+  vec_validate (pm->perf_event_pages[0], vec_len (vlib_mains) - 1);
+  vec_validate (pm->perf_event_pages[1], vec_len (vlib_mains) - 1);
+  vec_validate (pm->rdpmc_indices, 1);
+  vec_validate (pm->rdpmc_indices[0], vec_len (vlib_mains) - 1);
+  vec_validate (pm->rdpmc_indices[1], vec_len (vlib_mains) - 1);
   pm->page_size = getpagesize ();
 
   ht = pm->perfmon_table = 0;
@@ -297,10 +303,12 @@ set_pmc_command_fn (vlib_main_t * vm,
   perfmon_main_t *pm = &perfmon_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   perfmon_event_config_t ec;
+  f64 delay;
   u32 timeout_seconds;
   u32 deadman;
 
-  vec_reset_length (pm->events_to_collect);
+  vec_reset_length (pm->single_events_to_collect);
+  vec_reset_length (pm->paired_events_to_collect);
   pm->ipc_event_index = ~0;
   pm->mispredict_event_index = ~0;
 
@@ -316,28 +324,28 @@ set_pmc_command_fn (vlib_main_t * vm,
 	  ec.name = "instructions";
 	  ec.pe_type = PERF_TYPE_HARDWARE;
 	  ec.pe_config = PERF_COUNT_HW_INSTRUCTIONS;
-	  pm->ipc_event_index = vec_len (pm->events_to_collect);
-	  vec_add1 (pm->events_to_collect, ec);
+	  pm->ipc_event_index = vec_len (pm->paired_events_to_collect);
+	  vec_add1 (pm->paired_events_to_collect, ec);
 	  ec.name = "cpu-cycles";
 	  ec.pe_type = PERF_TYPE_HARDWARE;
 	  ec.pe_config = PERF_COUNT_HW_CPU_CYCLES;
-	  vec_add1 (pm->events_to_collect, ec);
+	  vec_add1 (pm->paired_events_to_collect, ec);
 	}
       else if (unformat (line_input, "branch-mispredict-rate"))
 	{
 	  ec.name = "branch-misses";
 	  ec.pe_type = PERF_TYPE_HARDWARE;
 	  ec.pe_config = PERF_COUNT_HW_BRANCH_MISSES;
-	  pm->mispredict_event_index = vec_len (pm->events_to_collect);
-	  vec_add1 (pm->events_to_collect, ec);
+	  pm->mispredict_event_index = vec_len (pm->paired_events_to_collect);
+	  vec_add1 (pm->paired_events_to_collect, ec);
 	  ec.name = "branches";
 	  ec.pe_type = PERF_TYPE_HARDWARE;
 	  ec.pe_config = PERF_COUNT_HW_BRANCH_INSTRUCTIONS;
-	  vec_add1 (pm->events_to_collect, ec);
+	  vec_add1 (pm->paired_events_to_collect, ec);
 	}
       else if (unformat (line_input, "%U", unformat_processor_event, pm, &ec))
 	{
-	  vec_add1 (pm->events_to_collect, ec);
+	  vec_add1 (pm->single_events_to_collect, ec);
 	}
 #define _(type,event,str)                       \
       else if (unformat (line_input, str))      \
@@ -345,7 +353,7 @@ set_pmc_command_fn (vlib_main_t * vm,
           ec.name = str;                        \
           ec.pe_type = type;                    \
           ec.pe_config = event;                 \
-          vec_add1 (pm->events_to_collect, ec); \
+          vec_add1 (pm->single_events_to_collect, ec); \
         }
       foreach_perfmon_event
 #undef _
@@ -354,21 +362,33 @@ set_pmc_command_fn (vlib_main_t * vm,
 				  format_unformat_error, line_input);
     }
 
-  if (vec_len (pm->events_to_collect) == 0)
+  /* Stick paired events at the front of the (unified) list */
+  if (vec_len (pm->paired_events_to_collect) > 0)
+    {
+      perfmon_event_config_t *tmp;
+      /* first 2n events are pairs... */
+      vec_append (pm->paired_events_to_collect, pm->single_events_to_collect);
+      tmp = pm->single_events_to_collect;
+      pm->single_events_to_collect = pm->paired_events_to_collect;
+      pm->paired_events_to_collect = tmp;
+    }
+
+  if (vec_len (pm->single_events_to_collect) == 0)
     return clib_error_return (0, "no events specified...");
 
+  /* Figure out how long data collection will take */
+  delay =
+    ((f64) vec_len (pm->single_events_to_collect)) * pm->timeout_interval;
+  delay /= 2.0;			/* collect 2 stats at once */
+
   vlib_cli_output (vm, "Start collection for %d events, wait %.2f seconds",
-		   vec_len (pm->events_to_collect),
-		   (f64) (vec_len (pm->events_to_collect))
-		   * pm->timeout_interval);
+		   vec_len (pm->single_events_to_collect), delay);
 
   vlib_process_signal_event (pm->vlib_main, perfmon_periodic_node.index,
 			     PERFMON_START, 0);
 
   /* Coarse-grained wait */
-  vlib_process_suspend (vm,
-			((f64) (vec_len (pm->events_to_collect)
-				* pm->timeout_interval)));
+  vlib_process_suspend (vm, delay);
 
   deadman = 0;
   /* Reasonable to guess that collection may not be quite done... */
@@ -438,7 +458,7 @@ format_capture (u8 * s, va_list * args)
       if (i == pm->ipc_event_index)
 	{
 	  f64 ipc_rate;
-	  ASSERT (i + 1 < vec_len (c->counter_names));
+	  ASSERT ((i + 1) < vec_len (c->counter_names));
 
 	  if (c->counter_values[i + 1] > 0)
 	    ipc_rate = (f64) c->counter_values[i]

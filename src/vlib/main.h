@@ -84,9 +84,8 @@ typedef struct vlib_main_t
   u32 node_counts_per_main_loop[2];
 
   /* Main loop hw / sw performance counters */
-    u64 (*vlib_node_runtime_perf_counter_cb) (struct vlib_main_t *);
-  int perf_counter_id;
-  int perf_counter_fd;
+  void (*vlib_node_runtime_perf_counter_cb) (struct vlib_main_t *,
+					     u64 *, u64 *);
 
   /* Every so often we switch to the next counter. */
 #define VLIB_LOG2_MAIN_LOOPS_PER_STATS_UPDATE 7
