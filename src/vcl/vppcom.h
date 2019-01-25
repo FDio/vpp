@@ -308,6 +308,14 @@ extern int vppcom_worker_register (void);
  */
 extern int vppcom_worker_index (void);
 
+/**
+ * Returns the current worker's message queues epoll fd
+ *
+ * This only works if vcl is configured to do eventfd based message queue
+ * notifications.
+ */
+extern int vppcom_worker_mqs_epfd (void);
+
 /* *INDENT-OFF* */
 #ifdef __cplusplus
 }

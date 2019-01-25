@@ -3594,6 +3594,15 @@ vppcom_worker_index (void)
   return vcl_get_worker_index ();
 }
 
+int
+vppcom_worker_mqs_epfd (void)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  if (!vcm->cfg.use_mq_eventfd)
+    return -1;
+  return wrk->mqs_epfd;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
