@@ -878,7 +878,7 @@ format_mpls_tunnel (u8 * s, va_list * args)
     mpls_tunnel_t *mt = va_arg (*args, mpls_tunnel_t *);
     mpls_tunnel_attribute_t attr;
 
-    s = format(s, "mpls_tunnel%d: sw_if_index:%d hw_if_index:%d",
+    s = format(s, "mpls-tunnel%d: sw_if_index:%d hw_if_index:%d",
                mt - mpls_tunnel_pool,
                mt->mt_sw_if_index,
                mt->mt_hw_if_index);
