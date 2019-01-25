@@ -360,6 +360,16 @@ class TestDHCP(VppTestCase):
         # not sure why this is not decoding
         # adv = pkt[DHCP6_Advertise]
 
+    def wait_for_no_route(self, address, length,
+                          n_tries=50, s_time=1):
+        while (n_tries):
+            if not find_route(self, address, length):
+                return True
+            n_tries = n_tries - 1
+            self.sleep(s_time)
+
+        return False
+
     def test_dhcp_proxy(self):
         """ DHCPv4 Proxy """
 
@@ -1535,15 +1545,10 @@ class TestDHCP(VppTestCase):
                                       is_add=0)
 
         #
-        # Sleep for the lease time
+        # the route should be gone after the lease expires
         #
-        self.sleep(lease_time+1)
-
-        #
-        # And now the route should be gone
-        #
-        self.assertFalse(find_route(self, self.pg3.local_ip4, 32))
-        self.assertFalse(find_route(self, self.pg3.local_ip4, 24))
+        self.assertTrue(self.wait_for_no_route(self.pg3.local_ip4, 32))
+        self.assertTrue(self.wait_for_no_route(self.pg3.local_ip4, 24))
 
         #
         # remove the DHCP config
