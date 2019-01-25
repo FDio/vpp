@@ -1231,7 +1231,7 @@ class TestSRv6(VppTestCase):
             match_n_vectors=(len(mask) - 1) // 32 + 1,
             current_data_flag=1,
             skip_n_vectors=2)  # data offset
-        self.assertIsNotNone(r, msg='No response msg for add_del_table')
+        self.assertIsNotNone(r, 'No response msg for add_del_table')
         table_index = r.new_table_index
 
         # add the source routign node as a ip6 inacl netxt node
@@ -1247,7 +1247,7 @@ class TestSRv6(VppTestCase):
             hit_next_index=inacl_next_node_index,
             action=3,
             metadata=0)  # sr policy index
-        self.assertIsNotNone(r, msg='No response msg for add_del_session')
+        self.assertIsNotNone(r, 'No response msg for add_del_session')
 
         # log the classify table used in the steering policy
         self.logger.info(self.vapi.cli("show classify table"))
@@ -1257,7 +1257,7 @@ class TestSRv6(VppTestCase):
             sw_if_index=self.pg3.sw_if_index,
             ip6_table_index=table_index)
         self.assertIsNotNone(r,
-                             msg='No response msg for input_acl_set_interface')
+                             'No response msg for input_acl_set_interface')
 
         # log the ip6 inacl
         self.logger.info(self.vapi.cli("show inacl type ip6"))
@@ -1292,7 +1292,7 @@ class TestSRv6(VppTestCase):
             sw_if_index=self.pg3.sw_if_index,
             ip6_table_index=table_index)
         self.assertIsNotNone(r,
-                             msg='No response msg for input_acl_set_interface')
+                             'No response msg for input_acl_set_interface')
 
         # log the ip6 inacl after cleaning
         self.logger.info(self.vapi.cli("show inacl type ip6"))
@@ -1313,13 +1313,13 @@ class TestSRv6(VppTestCase):
             0,
             table_index,
             binascii.unhexlify(match))
-        self.assertIsNotNone(r, msg='No response msg for add_del_session')
+        self.assertIsNotNone(r, 'No response msg for add_del_session')
 
         r = self.vapi.classify_add_del_table(
             0,
             binascii.unhexlify(mask),
             table_index=table_index)
-        self.assertIsNotNone(r, msg='No response msg for add_del_table')
+        self.assertIsNotNone(r, 'No response msg for add_del_table')
 
         self.logger.info(self.vapi.cli("show classify table"))
 

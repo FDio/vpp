@@ -171,6 +171,10 @@ class TestVxlan6(BridgeDomain, VppTestCase):
             super(TestVxlan6, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestVxlan6, cls).tearDownClass()
+
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.
     #  @param self The object pointer.

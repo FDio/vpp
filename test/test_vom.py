@@ -12,6 +12,14 @@ from framework import VppTestCase, running_extended_tests, \
 class VOMTestCase(VppTestCase):
     """ VPP Object Model Test """
 
+    @classmethod
+    def setUpClass(cls):
+        super(VOMTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(VOMTestCase, cls).tearDownClass()
+
     def test_vom_cpp(self):
         """ run C++ VOM tests """
         var = "TEST_DIR"
