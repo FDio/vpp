@@ -781,6 +781,17 @@ start_workers (vlib_main_t * vm)
 	      clib_memset (&vm_clone->random_buffer, 0,
 			   sizeof (vm_clone->random_buffer));
 
+              clib_hgram_main_init (&vm_clone->hgram_main, vm_clone->thread_index);
+              vm_clone->hgram_main_loop = clib_hgram_inst_clone(
+                  &vm_clone->hgram_main, &vm_clone->hgram_main_loop->hdr);
+              vm_clone->hgram_barrier_total = clib_hgram_inst_clone(
+                  &vm_clone->hgram_main, &vm_clone->hgram_barrier_total->hdr);
+              vm_clone->hgram_barrier_open = clib_hgram_inst_clone(
+                  &vm_clone->hgram_main, &vm_clone->hgram_barrier_open->hdr);
+              vm_clone->hgram_barrier_pause = 0;
+              vm_clone->hgram_barrier_enter = 0;
+              vm_clone->hgram_barrier_leave = 0;
+
 	      nm = &vlib_mains[0]->node_main;
 	      nm_clone = &vm_clone->node_main;
 	      /* fork next frames array, preserving node runtime indices */
@@ -850,6 +861,20 @@ start_workers (vlib_main_t * vm)
 					 n->runtime_data_bytes));
 	      }
 
+	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT] =
+		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT],
+				 CLIB_CACHE_LINE_BYTES);
+	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
+	      {
+		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+		rt->thread_index = vm_clone->thread_index;
+		/* copy initial runtime_data from node */
+		if (n->runtime_data && n->runtime_data_bytes > 0)
+		  clib_memcpy (rt->runtime_data, n->runtime_data,
+			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+					 n->runtime_data_bytes));
+	      }
+
 	      nm_clone->processes = vec_dup_aligned (nm->processes,
 						     CLIB_CACHE_LINE_BYTES);
 
@@ -858,6 +883,14 @@ start_workers (vlib_main_t * vm)
 	      nm_clone->frame_size_hash = hash_create (0, sizeof (uword));
 
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
+
+              vlib_node_type_t nt;
+              for (nt = 0; nt < VLIB_N_NODE_TYPE; ++nt)
+                vec_foreach (rt, nm_clone->nodes_by_type[nt])
+                {
+                  rt->hgram_run = clib_hgram_inst_clone (&vm_clone->hgram_main, &rt->hgram_run->hdr);
+                  rt->hgram_idle = clib_hgram_inst_clone (&vm_clone->hgram_main, &rt->hgram_idle->hdr);
+                }
 
 	      clib_mem_set_heap (oldheap);
 	      vec_add1_aligned (vlib_mains, vm_clone, CLIB_CACHE_LINE_BYTES);
@@ -1140,6 +1173,8 @@ vlib_worker_thread_node_refork (void)
     {
       rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
       rt->state = old_rt[j].state;
+      rt->hgram_run = old_rt[j].hgram_run;
+      rt->hgram_idle = old_rt[j].hgram_idle;
       clib_memcpy_fast (rt->runtime_data, old_rt[j].runtime_data,
 			VLIB_NODE_RUNTIME_DATA_SIZE);
     }
@@ -1167,6 +1202,8 @@ vlib_worker_thread_node_refork (void)
     {
       rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
       rt->state = old_rt[j].state;
+      rt->hgram_run = old_rt[j].hgram_run;
+      rt->hgram_idle = old_rt[j].hgram_idle;
       clib_memcpy_fast (rt->runtime_data, old_rt[j].runtime_data,
 			VLIB_NODE_RUNTIME_DATA_SIZE);
     }
@@ -1175,6 +1212,13 @@ vlib_worker_thread_node_refork (void)
 
   nm_clone->processes = vec_dup_aligned (nm->processes,
 					 CLIB_CACHE_LINE_BYTES);
+  vlib_node_type_t nt;
+  for (nt = 0; nt < VLIB_N_NODE_TYPE; ++nt)
+    vec_foreach (rt, nm_clone->nodes_by_type[nt])
+    {
+      rt->hgram_run = clib_hgram_inst_clone (&vm_clone->hgram_main, &rt->hgram_run->hdr);
+      rt->hgram_idle = clib_hgram_inst_clone (&vm_clone->hgram_main, &rt->hgram_idle->hdr);
+    }
 }
 
 void
@@ -1387,6 +1431,11 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
       return;
     }
 
+  u64 cpu_time = vm->clib_time.last_cpu_time;
+  clib_hgram_interval_end (vm->hgram_barrier_open, cpu_time);
+  clib_hgram_interval_start (vm->hgram_barrier_total, cpu_time);
+  clib_hgram_interval_start (vm->hgram_barrier_pause, cpu_time);
+
   vlib_worker_threads[0].barrier_sync_count++;
 
   /* Enforce minimum barrier open time to minimize packet loss */
@@ -1412,6 +1461,10 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
 
   deadline = now + BARRIER_SYNC_TIMEOUT;
 
+  cpu_time = vm->clib_time.last_cpu_time;
+  clib_hgram_interval_end (vm->hgram_barrier_pause, cpu_time);
+  clib_hgram_interval_start (vm->hgram_barrier_enter, cpu_time);
+
   *vlib_worker_threads->wait_at_barrier = 1;
   while (*vlib_worker_threads->workers_at_barrier != count)
     {
@@ -1423,6 +1476,9 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
     }
 
   t_closed = now - vm->barrier_epoch;
+
+  cpu_time = vm->clib_time.last_cpu_time;
+  clib_hgram_interval_end (vm->hgram_barrier_enter, cpu_time);
 
   barrier_trace_sync (t_entry, t_open, t_closed);
 
@@ -1465,6 +1521,9 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
       barrier_trace_release_rec (t_entry);
       return;
     }
+
+  u64 cpu_time = vm->clib_time.last_cpu_time;
+  clib_hgram_interval_start (vm->hgram_barrier_leave, cpu_time);
 
   /* Update (all) node runtimes before releasing the barrier, if needed */
   if (vm->need_vlib_worker_thread_node_runtime_update)
@@ -1521,6 +1580,10 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
     }
 
   t_closed_total = now - vm->barrier_epoch;
+  cpu_time = vm->clib_time.last_cpu_time;
+  clib_hgram_interval_end (vm->hgram_barrier_leave, cpu_time);
+  clib_hgram_interval_end (vm->hgram_barrier_total, cpu_time);
+  clib_hgram_interval_start (vm->hgram_barrier_open, cpu_time);
 
   minimum_open = t_closed_total * BARRIER_MINIMUM_OPEN_FACTOR;
 

@@ -56,6 +56,9 @@ api_main_init (vlib_main_t * vm)
   if (rv)
     clib_warning ("vat_plugin_init returned %d", rv);
 
+  if (vm)
+    api_main.hgram_main = &vm->hgram_main;
+
   return 0;
 }
 

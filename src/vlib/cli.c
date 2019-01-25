@@ -437,6 +437,62 @@ vlib_cli_cmp_command (void *a1, void *a2)
   return vec_cmp (c1->path, c2->path);
 }
 
+static u8*
+format_hgram_name_cli (u8* s, vlib_main_t* vm, clib_hgram_inst_hdr_t* hi)
+{
+  ASSERT(hi);
+
+  /* instance is cli command path with spaces replaced. */
+  vlib_cli_main_t* cm = &vm->cli_main;
+  ASSERT (hi->instance < vec_len (cm->commands));
+  vlib_cli_command_t* c = vec_elt_at_index (cm->commands, hi->instance);
+  u8* path = NULL;
+  u8 skip_dash = 1;
+  uword i;
+  for (i = 0; i < vec_len (c->path); i++)
+    {
+      u8 ch = c->path[i];
+      if (!isalnum(ch))
+        {
+          if (skip_dash)
+            continue;
+          ch = '-';
+          skip_dash = 1;
+        }
+      else
+        skip_dash = 0;
+      vec_add1 (path, ch);
+    }
+  if (skip_dash && vec_len (path))
+    _vec_len (path) -= 1;
+
+  s = format (s, "%s-%v-%u",
+              hi->dataset_desc->name,
+              path, hi->thread_index);
+  vec_free (path);
+  return s;
+}
+
+static const clib_hgram_dataset_desc_t hgram_desc_cli_sync = {
+  .name = "cli-blocking",
+  .description = "Blocking CLI commands (take barrier sync)",
+  .shift = CLIB_HGRAM_SHIFT_9,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 16,
+  .keep0 = 1,
+  .format_name_fp = format_hgram_name_cli,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_cli_async = {
+  .name = "cli-mpsafe",
+  .description = "MP-safe CLI commands (no barrier sync)",
+  .shift = CLIB_HGRAM_SHIFT_9,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 16,
+  .keep0 = 1,
+  .format_name_fp = format_hgram_name_cli,
+};
+
 static clib_error_t *
 vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 				vlib_cli_main_t * cm,
@@ -600,6 +656,12 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		  ed = ELOG_DATA (&vm->elog_main, e);
 		  ed->c = elog_global_id_for_msg_name (c->path);
 		}
+              if (NULL == c->hgram)
+                c->hgram = clib_hgram_inst_interval_new (
+                    &vm->hgram_main,
+                    c->is_mp_safe ? &hgram_desc_cli_async : &hgram_desc_cli_sync,
+                    c - cm->commands/*instance*/);
+              clib_hgram_interval_start (c->hgram, clib_cpu_time_now ());
 
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_sync (vm);
@@ -634,6 +696,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 		  else
 		    ed->err = elog_global_id_for_msg_name ("OK");
 		}
+              clib_hgram_interval_end (c->hgram, clib_cpu_time_now ());
 
 	      if (c_error)
 		{

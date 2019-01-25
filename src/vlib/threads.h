@@ -415,11 +415,12 @@ vlib_worker_thread_barrier_check (void)
 	}
 
       clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, 1);
+      u64 cpu_time = clib_cpu_time_now();
+      clib_hgram_interval_end (vm->hgram_barrier_open, cpu_time);
+      clib_hgram_interval_start (vm->hgram_barrier_total, cpu_time);
+
       if (CLIB_DEBUG > 0)
-	{
-	  vm = vlib_get_main ();
-	  vm->parked_at_barrier = 1;
-	}
+        vm->parked_at_barrier = 1;
       while (*vlib_worker_threads->wait_at_barrier)
 	;
       if (CLIB_DEBUG > 0)
@@ -477,6 +478,10 @@ vlib_worker_thread_barrier_check (void)
 	  ed->thread_index = thread_index;
 	  ed->duration = (int) (1000000.0 * t);
 	}
+
+      cpu_time = clib_cpu_time_now();
+      clib_hgram_interval_end (vm->hgram_barrier_total, cpu_time);
+      clib_hgram_interval_start (vm->hgram_barrier_open, cpu_time);
     }
 }
 

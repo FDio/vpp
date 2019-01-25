@@ -43,6 +43,7 @@
 #include <vppinfra/cpu.h>
 #include <vppinfra/longjmp.h>
 #include <vppinfra/lock.h>
+#include <vppinfra/histogram.h>
 #include <vlib/trace.h>		/* for vlib_trace_filter_t */
 
 /* Forward declaration. */
@@ -490,6 +491,10 @@ typedef struct vlib_node_runtime_t
   vlib_node_function_t *function;	/**< Node function to call. */
 
   vlib_error_t *errors;			/**< Vector of errors for this node. */
+
+  clib_hgram_inst_dispatch_t* hgram_run; /**< Dispatch performance histogram */
+
+  clib_hgram_inst_interval_t* hgram_idle; /**< Idle performance histogram */
 
 #if __SIZEOF_POINTER__ == 4
   u8 pad[8];

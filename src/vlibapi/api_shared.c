@@ -40,6 +40,46 @@ api_main_t api_main =
   };
 /* *INDENT-ON* */
 
+static u8*
+vl_msg_api_format_hgram_name (u8* s, vlib_main_t* vm, clib_hgram_inst_hdr_t* hi)
+{
+  ASSERT(hi);
+
+  /* instance is API message name spaces replaced. */
+  api_main_t * am = &api_main;
+
+  if (vec_len (am->hgram) <= hi->instance)
+    return format (s, "%s-%u-%u",
+                   hi->dataset_desc->name,
+                   hi->instance, hi->thread_index);
+
+  ASSERT (vec_len (am->msg_names) > hi->instance);
+  return format (s, "%s-%s-%u",
+                 hi->dataset_desc->name,
+                 am->msg_names[hi->instance],
+                 hi->thread_index);
+}
+
+static const clib_hgram_dataset_desc_t hgram_desc_api_sync = {
+  .name = "api-blocking",
+  .description = "Blocking API calls (take barrier sync)",
+  .shift = CLIB_HGRAM_SHIFT_9,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 16,
+  .keep0 = 1,
+  .format_name_fp = vl_msg_api_format_hgram_name,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_api_async = {
+  .name = "api-mpsafe",
+  .description = "MP-safe API calls (no barrier sync)",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 16,
+  .keep0 = 1,
+  .format_name_fp = vl_msg_api_format_hgram_name,
+};
+
 void
 vl_msg_api_increment_missing_client_counter (void)
 {
@@ -417,6 +457,13 @@ msg_handler_internal (api_main_t * am,
 
       if (do_it)
 	{
+          if (NULL == am->hgram[id] && NULL != am->hgram_main)
+              am->hgram[id] = clib_hgram_inst_interval_new (
+                  am->hgram_main,
+                  am->is_mp_safe[id] ? &hgram_desc_api_async : &hgram_desc_api_sync,
+                  id/*instance*/);
+          clib_hgram_interval_start (am->hgram[id], clib_cpu_time_now ());
+
 	  if (!am->is_mp_safe[id])
 	    {
 	      vl_msg_api_barrier_trace_context (am->msg_names[id]);
@@ -425,6 +472,8 @@ msg_handler_internal (api_main_t * am,
 	  (*am->msg_handlers[id]) (the_msg);
 	  if (!am->is_mp_safe[id])
 	    vl_msg_api_barrier_release ();
+
+          clib_hgram_interval_end (am->hgram[id], clib_cpu_time_now ());
 	}
     }
   else
@@ -494,6 +543,13 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
       if (am->rx_trace && am->rx_trace->enabled)
 	vl_msg_api_trace (am, am->rx_trace, the_msg);
 
+      if (NULL == am->hgram[id] && NULL != am->hgram_main)
+        am->hgram[id] = clib_hgram_inst_interval_new (
+            am->hgram_main,
+            am->is_mp_safe[id] ? &hgram_desc_api_async : &hgram_desc_api_sync,
+            id/*instance*/);
+      clib_hgram_interval_start (am->hgram[id], clib_cpu_time_now ());
+
       if (!am->is_mp_safe[id])
 	{
 	  vl_msg_api_barrier_trace_context (am->msg_names[id]);
@@ -502,6 +558,8 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
       (*handler) (the_msg, vm, node);
       if (!am->is_mp_safe[id])
 	vl_msg_api_barrier_release ();
+
+      clib_hgram_interval_end (am->hgram[id], clib_cpu_time_now ());
     }
   else
     {
@@ -651,7 +709,8 @@ _(msg_endian_handlers)                          \
 _(msg_print_handlers)                           \
 _(api_trace_cfg)				\
 _(message_bounce)				\
-_(is_mp_safe)
+_(is_mp_safe)					\
+_(hgram)
 
 void
 vl_msg_api_config (vl_msg_api_msg_config_t * c)

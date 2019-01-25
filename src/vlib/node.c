@@ -303,6 +303,58 @@ node_elog_init (vlib_main_t * vm, uword ni)
   node_set_elog_name (vm, ni);
 }
 
+static u8*
+format_hgram_name_node_thread (u8* s, vlib_main_t* vm, clib_hgram_inst_hdr_t* hi)
+{
+  ASSERT(hi);
+
+  /* instance is node name */
+  return format (s, "%s-%U-%u",
+                 hi->dataset_desc->name,
+                 format_vlib_node_name, vm, hi->instance,
+                 hi->thread_index);
+}
+
+static const clib_hgram_dataset_desc_t hgram_desc_dispatch_node = {
+  .name = "dispatch-node",
+  .description = "In dispatch node",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 12,
+  .keep0 = 1,
+  .format_name_fp = format_hgram_name_node_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_dispatch_next = {
+  .name = "dispatch-next",
+  .description = "Between dispatch node",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG8,
+  .buckets = 12,
+  .keep0 = 0,
+  .format_name_fp = format_hgram_name_node_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_process_run = {
+  .name = "process-run",
+  .description = "In process node",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 12,
+  .keep0 = 1,
+  .format_name_fp = format_hgram_name_node_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_process_suspend = {
+  .name = "process-suspend",
+  .description = "Process node suspended",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG8,
+  .buckets = 12,
+  .keep0 = 0,
+  .format_name_fp = format_hgram_name_node_thread,
+};
+
 #ifdef CLIB_UNIX
 #define STACK_ALIGN (clib_mem_get_page_size())
 #else
@@ -495,6 +547,16 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
     rt->n_next_nodes = r->n_next_nodes;
     rt->next_frame_index = vec_len (nm->next_frames);
+
+    rt->hgram_run = clib_hgram_inst_dispatch_new (
+        &vm->hgram_main,
+        n->type == VLIB_NODE_TYPE_PROCESS ? &hgram_desc_process_run : &hgram_desc_dispatch_node,
+        n->index/*instance*/);
+
+    rt->hgram_idle = clib_hgram_inst_interval_new (
+        &vm->hgram_main,
+        n->type == VLIB_NODE_TYPE_PROCESS ? &hgram_desc_process_suspend : &hgram_desc_dispatch_next,
+        n->index/*instance*/);
 
     vec_resize (nm->next_frames, rt->n_next_nodes);
     for (i = 0; i < rt->n_next_nodes; i++)

@@ -2742,9 +2742,12 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   cf->output_vector = 0;
   cf->input_vector = 0;
 
+  vlib_process_t *p = vlib_get_process_from_node (vm, n);
+  p->node_runtime.hgram_run->hdr.type_flags |= CLIB_HGRAM_TYPE_FLAGS_CLEAR;
+  p->node_runtime.hgram_idle->hdr.type_flags |= CLIB_HGRAM_TYPE_FLAGS_CLEAR;
+
   vlib_start_process (vm, n->runtime_index);
 
-  vlib_process_t *p = vlib_get_process_from_node (vm, n);
   p->output_function = unix_vlib_cli_output;
   p->output_function_arg = cf - cm->cli_file_pool;
 

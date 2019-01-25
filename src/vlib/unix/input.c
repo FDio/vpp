@@ -42,6 +42,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
+#include <vppinfra/histogram.h>
 
 /* FIXME autoconf */
 #define HAVE_LINUX_EPOLL
@@ -60,6 +61,8 @@ typedef struct
   /* Statistics. */
   u64 epoll_files_ready;
   u64 epoll_waits;
+
+  clib_hgram_inst_interval_t* hgram_epoll_wait;
 } linux_epoll_main_t;
 
 static linux_epoll_main_t *linux_epoll_mains = 0;
@@ -130,6 +133,16 @@ linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
     }
 }
 
+static const clib_hgram_dataset_desc_t hgram_desc_epool_wait = {
+  .name = "epoll-wait",
+  .description = "time spent in epoll-wait",
+  .shift = CLIB_HGRAM_SHIFT_9,
+  .scale = CLIB_HGRAM_SCALE_LOG8,
+  .buckets = 8,
+  .keep0 = 1,
+  .format_name_fp = clib_hgram_format_name_thread,
+};
+
 static_always_inline uword
 linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * frame, u32 thread_index)
@@ -147,6 +160,10 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     f64 timeout;
     int timeout_ms = 0, max_timeout_ms = 10;
     f64 vector_rate = vlib_last_vectors_per_main_loop (vm);
+
+    if (!em->hgram_epoll_wait)
+      em->hgram_epoll_wait = clib_hgram_inst_interval_new (
+          &vm->hgram_main, &hgram_desc_epool_wait, 0/*instance*/);
 
     /*
      * If we've been asked for a fixed-sleep between main loop polls,
@@ -207,6 +224,8 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	node->input_main_loops_per_call = 1024;
       }
 
+    clib_hgram_interval_start (em->hgram_epoll_wait, clib_cpu_time_now ());
+
     /* Allow any signal to wakeup our sleep. */
     if (is_main || em->epoll_fd != -1)
       {
@@ -223,11 +242,14 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				      em->epoll_events,
 				      vec_len (em->epoll_events), timeout_ms);
 	  }
+
+        clib_hgram_interval_end (em->hgram_epoll_wait, clib_cpu_time_now ());
       }
     else
       {
 	if (timeout_ms)
 	  usleep (timeout_ms * 1000);
+        clib_hgram_interval_end (em->hgram_epoll_wait, clib_cpu_time_now ());
 	return 0;
       }
   }

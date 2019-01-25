@@ -1152,6 +1152,7 @@ dispatch_node (vlib_main_t * vm,
     }
 
   vm->cpu_time_last_node_dispatch = last_time_stamp;
+  clib_hgram_interval_end (node->hgram_idle, last_time_stamp);
 
   if (1 /* || vm->thread_index == node->thread_index */ )
     {
@@ -1300,6 +1301,8 @@ dispatch_node (vlib_main_t * vm,
 	}
     }
 
+  clib_hgram_dispatch_sample (node->hgram_run, t, t-last_time_stamp, n);
+  clib_hgram_interval_start (node->hgram_idle, t);
   return t;
 }
 
@@ -1515,12 +1518,20 @@ dispatch_process (vlib_main_t * vm,
   old_process_index = nm->current_process_index;
   nm->current_process_index = node->runtime_index;
 
+  clib_hgram_interval_end (p->node_runtime.hgram_idle, last_time_stamp);
+
   n_vectors = vlib_process_startup (vm, p, f);
 
   nm->current_process_index = old_process_index;
 
   ASSERT (n_vectors != VLIB_PROCESS_RETURN_LONGJMP_RETURN);
   is_suspend = n_vectors == VLIB_PROCESS_RETURN_LONGJMP_SUSPEND;
+
+  t = clib_cpu_time_now ();
+  clib_hgram_dispatch_sample (p->node_runtime.hgram_run, t, t - last_time_stamp,
+                              is_suspend ? 0 : n_vectors);
+  clib_hgram_interval_start (p->node_runtime.hgram_idle, t);
+
   if (is_suspend)
     {
       vlib_pending_frame_t *pf;
@@ -1567,7 +1578,8 @@ vlib_start_process (vlib_main_t * vm, uword process_index)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p = vec_elt (nm->processes, process_index);
-  dispatch_process (vm, p, /* frame */ 0, /* cpu_time_now */ 0);
+  p->node_runtime.hgram_idle->start_cpu_time = clib_cpu_time_now ();
+  dispatch_process (vm, p, /* frame */ 0, clib_cpu_time_now ());
 }
 
 static u64
@@ -1604,12 +1616,19 @@ dispatch_suspended_process (vlib_main_t * vm,
   /* Save away current process for suspend. */
   nm->current_process_index = node->runtime_index;
 
+  clib_hgram_interval_end (p->node_runtime.hgram_idle, last_time_stamp);
+
   n_vectors = vlib_process_resume (p);
   t = clib_cpu_time_now ();
 
   nm->current_process_index = ~0;
 
   is_suspend = n_vectors == VLIB_PROCESS_RETURN_LONGJMP_SUSPEND;
+
+  clib_hgram_dispatch_sample (p->node_runtime.hgram_run, t, t - last_time_stamp,
+                              is_suspend ? 0 : n_vectors);
+  clib_hgram_interval_start (p->node_runtime.hgram_idle, t);
+
   if (is_suspend)
     {
       /* Suspend it again. */
@@ -1703,6 +1722,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   while (1)
     {
       vlib_node_runtime_t *n;
+
+      clib_hgram_interval_start (vm->hgram_main_loop, cpu_time_now);
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
 	{
@@ -1845,6 +1866,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       /* Record time stamp in case there are no enabled nodes and above
          calls do not update time stamp. */
       cpu_time_now = clib_cpu_time_now ();
+      clib_hgram_interval_end (vm->hgram_main_loop, cpu_time_now);
     }
 }
 
@@ -1909,6 +1931,66 @@ clib_error_t *name (vlib_main_t *vm) { return 0; }
 foreach_weak_reference_stub;
 #undef _
 
+static const clib_hgram_dataset_desc_t hgram_desc_main_loop = {
+  .name = "main-loop",
+  .description = "total main loop iteration time",
+  .shift = CLIB_HGRAM_SHIFT_9,
+  .scale = CLIB_HGRAM_SCALE_LOG2,
+  .buckets = 22,
+  .keep0 = 1,
+  .format_name_fp = clib_hgram_format_name_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_barrier_total = {
+  .name = "barrier-closed",
+  .description = "in barrier, all steps, total",
+  .shift = CLIB_HGRAM_SHIFT_9,
+  .scale = CLIB_HGRAM_SCALE_LOG2,
+  .buckets = 16,
+  .keep0 = 1,
+  .format_name_fp = clib_hgram_format_name_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_barrier_open = {
+  .name = "barrier-open",
+  .description = "barrier idle",
+  .shift = CLIB_HGRAM_SHIFT_9,
+  .scale = CLIB_HGRAM_SCALE_LOG8,
+  .buckets = 10,
+  .keep0 = 1,
+  .format_name_fp = clib_hgram_format_name_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_barrier_pause = {
+  .name = "barrier-delay",
+  .description = "barrier, main open delay step",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 8,
+  .keep0 = 1,
+  .format_name_fp = clib_hgram_format_name_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_barrier_enter = {
+  .name = "barrier-enter",
+  .description = "barrier, main wait for workers to enter",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 12,
+  .keep0 = 1,
+  .format_name_fp = clib_hgram_format_name_thread,
+};
+
+static const clib_hgram_dataset_desc_t hgram_desc_barrier_leave = {
+  .name = "barrier-leave",
+  .description = "barrier, main wait for workers to leave",
+  .shift = CLIB_HGRAM_SHIFT_3,
+  .scale = CLIB_HGRAM_SCALE_LOG4,
+  .buckets = 8,
+  .keep0 = 1,
+  .format_name_fp = clib_hgram_format_name_thread,
+};
+
 /* Main function. */
 int
 vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
@@ -1953,6 +2035,20 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       clib_error_report (error);
       goto done;
     }
+
+  clib_hgram_main_init (&vm->hgram_main, 0);
+  vm->hgram_main_loop = clib_hgram_inst_interval_new (
+      &vm->hgram_main, &hgram_desc_main_loop, 0/*instance*/);
+  vm->hgram_barrier_total = clib_hgram_inst_interval_new (
+      &vm->hgram_main, &hgram_desc_barrier_total, 0/*instance*/);
+  vm->hgram_barrier_open = clib_hgram_inst_interval_new (
+      &vm->hgram_main, &hgram_desc_barrier_open, 0/*instance*/);
+  vm->hgram_barrier_pause = clib_hgram_inst_interval_new (
+      &vm->hgram_main, &hgram_desc_barrier_pause, 0/*instance*/);
+  vm->hgram_barrier_enter = clib_hgram_inst_interval_new (
+      &vm->hgram_main, &hgram_desc_barrier_enter, 0/*instance*/);
+  vm->hgram_barrier_leave = clib_hgram_inst_interval_new (
+      &vm->hgram_main, &hgram_desc_barrier_leave, 0/*instance*/);
 
   /* Register static nodes so that init functions may use them. */
   vlib_register_all_static_nodes (vm);

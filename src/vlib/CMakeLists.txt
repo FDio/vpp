@@ -51,6 +51,7 @@ add_vpp_library(vlib
   counter.c
   error.c
   format.c
+  histogram_cli.c
   i2c.c
   init.c
   linux/pci.c

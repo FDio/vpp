@@ -41,6 +41,7 @@
 #define included_vlib_cli_h
 
 #include <vppinfra/format.h>
+#include <vppinfra/histogram.h>
 
 struct vlib_cli_command_t;
 
@@ -125,6 +126,9 @@ typedef struct vlib_cli_command_t
 
   /* List of CLI commands, built by constructors */
   struct vlib_cli_command_t *next_cli_command;
+
+  /* Histogram */
+  clib_hgram_inst_interval_t* hgram;
 
 } vlib_cli_command_t;
 

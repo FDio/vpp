@@ -48,6 +48,7 @@
 #include <vppinfra/time.h>
 #include <vppinfra/pmc.h>
 #include <vppinfra/pcap.h>
+#include <vppinfra/histogram.h>
 
 #include <pthread.h>
 
@@ -221,6 +222,27 @@ typedef struct vlib_main_t
   uword *pending_rpc_requests;
   uword *processing_rpc_requests;
   clib_spinlock_t pending_rpc_lock;
+
+  /* Statistics histograms. */
+  clib_hgram_main_t hgram_main;
+
+  /* Main loop histogram. All threads. */
+  clib_hgram_inst_interval_t* hgram_main_loop;
+
+  /* Barrier histogram - total time spent in and/or waiting. All threads. */
+  clib_hgram_inst_interval_t* hgram_barrier_total;
+
+  /* Barrier open - total time spent open (not waiting). All threads. */
+  clib_hgram_inst_interval_t* hgram_barrier_open;
+
+  /* Barrier pause - time spent waiting for liveness check to clear. Main thread only. */
+  clib_hgram_inst_interval_t* hgram_barrier_pause;
+
+  /* Barrier enter - time spent waiting for workers to enter. Main thread only. */
+  clib_hgram_inst_interval_t* hgram_barrier_enter;
+
+  /* Barrier enter - time spent waiting for workers to leave. Main thread only. */
+  clib_hgram_inst_interval_t* hgram_barrier_leave;
 
 } vlib_main_t;
 

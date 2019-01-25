@@ -26,6 +26,7 @@
 
 #include <vppinfra/clib_error.h>
 #include <vlibapi/api_types.h>
+#include <vppinfra/histogram.h>
 #include <svm/svm_common.h>
 #include <svm/queue.h>
 
@@ -338,6 +339,12 @@ typedef struct
 
   /** List of API client reaper functions */
   _vl_msg_api_function_list_elt_t *reaper_function_registrations;
+
+  /* Histogram vector */
+  clib_hgram_inst_interval_t** hgram;
+
+  /* Injected hgram_main, if any. */
+  clib_hgram_main_t* hgram_main;
 
 } api_main_t;
 
