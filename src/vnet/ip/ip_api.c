@@ -331,19 +331,17 @@ send_ip6_fib_details (vpe_api_main_t * am,
 
 typedef struct apt_ip6_fib_show_ctx_t_
 {
-  u32 fib_index;
   fib_node_index_t *entries;
 } api_ip6_fib_show_ctx_t;
 
-static void
-api_ip6_fib_table_put_entries (clib_bihash_kv_24_8_t * kvp, void *arg)
+static fib_table_walk_rc_t
+api_ip6_fib_table_put_entries (fib_node_index_t fei, void *arg)
 {
   api_ip6_fib_show_ctx_t *ctx = arg;
 
-  if ((kvp->key[2] >> 32) == ctx->fib_index)
-    {
-      vec_add1 (ctx->entries, kvp->value);
-    }
+  vec_add1 (ctx->entries, fei);
+
+  return (FIB_TABLE_WALK_CONTINUE);
 }
 
 static void
@@ -352,18 +350,15 @@ api_ip6_fib_table_get_all (vl_api_registration_t * reg,
 			   fib_table_t * fib_table)
 {
   vpe_api_main_t *am = &vpe_api_main;
-  ip6_main_t *im6 = &ip6_main;
   fib_node_index_t *fib_entry_index;
   api_ip6_fib_show_ctx_t ctx = {
-    .fib_index = fib_table->ft_index,
     .entries = NULL,
   };
   fib_route_path_encode_t *api_rpaths;
   const fib_prefix_t *pfx;
 
-  BV (clib_bihash_foreach_key_value_pair)
-    ((BVT (clib_bihash) *) & im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].
-     ip6_hash, api_ip6_fib_table_put_entries, &ctx);
+  ip6_fib_table_walk (fib_table->ft_index,
+		      api_ip6_fib_table_put_entries, &ctx);
 
   vec_sort_with_function (ctx.entries, fib_entry_cmp_for_sort);
 
