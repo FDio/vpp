@@ -69,6 +69,10 @@ class BFDAPITestCase(VppTestCase):
             super(BFDAPITestCase, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(BFDAPITestCase, cls).tearDownClass()
+
     def setUp(self):
         super(BFDAPITestCase, self).setUp()
         self.factory = AuthKeyFactory()
@@ -302,7 +306,6 @@ class BFDAPITestCase(VppTestCase):
         self.assertFalse(echo_source.have_usable_ip6)
 
 
-@unittest.skipUnless(running_extended_tests, "part of extended tests")
 class BFDTestSession(object):
     """ BFD session as seen from test framework side """
 
@@ -691,6 +694,10 @@ class BFD4TestCase(VppTestCase):
         except Exception:
             super(BFD4TestCase, cls).tearDownClass()
             raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BFD4TestCase, cls).tearDownClass()
 
     def setUp(self):
         super(BFD4TestCase, self).setUp()
@@ -1498,6 +1505,10 @@ class BFD6TestCase(VppTestCase):
             super(BFD6TestCase, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(BFD6TestCase, cls).tearDownClass()
+
     def setUp(self):
         super(BFD6TestCase, self).setUp()
         self.factory = AuthKeyFactory()
@@ -1687,6 +1698,14 @@ class BFDFIBTestCase(VppTestCase):
     vpp_session = None
     test_session = None
 
+    @classmethod
+    def setUpClass(cls):
+        super(BFDFIBTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BFDFIBTestCase, cls).tearDownClass()
+
     def setUp(self):
         super(BFDFIBTestCase, self).setUp()
         self.create_pg_interfaces(range(1))
@@ -1804,6 +1823,10 @@ class BFDSHA1TestCase(VppTestCase):
         except Exception:
             super(BFDSHA1TestCase, cls).tearDownClass()
             raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BFDSHA1TestCase, cls).tearDownClass()
 
     def setUp(self):
         super(BFDSHA1TestCase, self).setUp()
@@ -2038,6 +2061,10 @@ class BFDAuthOnOffTestCase(VppTestCase):
             super(BFDAuthOnOffTestCase, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(BFDAuthOnOffTestCase, cls).tearDownClass()
+
     def setUp(self):
         super(BFDAuthOnOffTestCase, self).setUp()
         self.factory = AuthKeyFactory()
@@ -2244,6 +2271,10 @@ class BFDCLITestCase(VppTestCase):
         except Exception:
             super(BFDCLITestCase, cls).tearDownClass()
             raise
+
+    @classmethod
+    def tearDownClass(cls):
+        super(BFDCLITestCase, cls).tearDownClass()
 
     def setUp(self):
         super(BFDCLITestCase, self).setUp()

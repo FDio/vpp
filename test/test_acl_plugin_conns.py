@@ -142,6 +142,10 @@ class ACLPluginConnTestCase(VppTestCase):
             i.resolve_arp()
             i.resolve_ndp()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(ACLPluginConnTestCase, cls).tearDownClass()
+
     def tearDown(self):
         """Run standard test teardown and log various show commands
         """
