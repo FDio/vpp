@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fd3b9930_e57ad098",
+        "filename": "src/vnet/dns/dns.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1500,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-25T07:46:33Z",
+      "side": 1,
+      "message": "Why is this needed?",
+      "range": {
+        "startLine": 1500,
+        "startChar": 0,
+        "endLine": 1500,
+        "endChar": 38
+      },
+      "revId": "a3137db60abb48fa6250a72f355100d950e9681b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
