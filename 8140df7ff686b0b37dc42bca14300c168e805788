@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "153d0aec_5089e9d7",
+        "filename": "test/vpp_ipsec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-25T16:53:17Z",
+      "side": 1,
+      "message": "In general, can we check the return call from the vapi call and only register when it is 0?",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 16,
+        "endChar": 59
+      },
+      "revId": "8140df7ff686b0b37dc42bca14300c168e805788",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "079f0cdf_98d3ed1c",
+        "filename": "test/vpp_ipsec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-25T16:53:17Z",
+      "side": 1,
+      "message": "Do we want to use the IANA value of 49152 here?",
+      "range": {
+        "startLine": 84,
+        "startChar": 34,
+        "endLine": 84,
+        "endChar": 36
+      },
+      "revId": "8140df7ff686b0b37dc42bca14300c168e805788",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ec50b761_7e1a3028",
+        "filename": "test/vpp_ipsec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-25T16:53:17Z",
+      "side": 1,
+      "message": "Can you put this under the imports\ntry:\n    text_type \u003d unicode\nexcept NameError:\n    text_type \u003d str\n\nand use text_type here?",
+      "range": {
+        "startLine": 89,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 59
+      },
+      "revId": "8140df7ff686b0b37dc42bca14300c168e805788",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
