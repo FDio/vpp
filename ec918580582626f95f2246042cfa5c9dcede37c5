@@ -22,6 +22,30 @@
       "revId": "ec918580582626f95f2246042cfa5c9dcede37c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6a6ba48a_095d15de",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1551,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-25T16:42:18Z",
+      "side": 1,
+      "message": "we wait n seconds for the first route and then immediately test the second. so i think the answer is, we don\u0027t wait serially.",
+      "parentUuid": "e380d968_9e800f17",
+      "range": {
+        "startLine": 1550,
+        "startChar": 0,
+        "endLine": 1551,
+        "endChar": 71
+      },
+      "revId": "ec918580582626f95f2246042cfa5c9dcede37c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
