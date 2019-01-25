@@ -135,7 +135,7 @@ l2fwd_process (vlib_main_t * vm,
 	       vlib_buffer_t * b0,
 	       u32 sw_if_index0, l2fib_entry_result_t * result0, u16 * next0)
 {
-  int try_flood = result0->raw == ~0;
+  int try_flood = BV (clib_bihash_value_is_clear) (result0->raw);
   int flood_error;
 
   if (PREDICT_FALSE (try_flood))
@@ -248,7 +248,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Clear the one-entry cache in case mac table was updated */
   cached_key.raw = ~0;
-  cached_result.raw = ~0;
+  BV (clib_bihash_value_clear) (cached_result.raw);
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;	/* number of packets to process */
