@@ -118,7 +118,7 @@ l2fib_dump_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
   l2fib_entry_key_t key;
 
   key.raw = kvp->key;
-  result.raw = kvp->value;
+  BV (clib_bihash_value_copy) (&result.raw, &kvp->value);
 
   if ((ctx->bd_index == ~0) || (ctx->bd_index == key.fields.bd_index))
     {
@@ -176,7 +176,7 @@ l2fib_show_walk_cb (BVT (clib_bihash_kv) * kvp, void *arg)
     }
 
   key.raw = kvp->key;
-  result.raw = kvp->value;
+  BV (clib_bihash_value_copy) (&result.raw, &kvp->value);
   ctx->total_entries++;
 
   if (ctx->verbose &&
@@ -414,14 +414,14 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
   if (BV (clib_bihash_search) (&fm->mac_table, &kv, &kv))
     {
       /* decrement counter if overwriting a learned mac  */
-      result.raw = kv.value;
+      BV (clib_bihash_value_copy) (&result.raw, &kv.value);
       if ((!l2fib_entry_result_is_set_AGE_NOT (&result))
 	  && (lm->global_learn_count))
 	lm->global_learn_count--;
     }
 
-  /* set up result */
-  result.raw = 0;		/* clear all fields */
+  /* set up result - clear all fields */
+  BV (clib_bihash_value_zero) (&result.raw);
   result.fields.sw_if_index = sw_if_index;
   result.fields.flags = flags;
 
@@ -429,7 +429,7 @@ l2fib_add_entry (const u8 * mac, u32 bd_index,
   l2fib_entry_result_set_AGE_NOT (&result);
 
   kv.key = key.raw;
-  kv.value = result.raw;
+  BV (clib_bihash_value_copy) (&kv.value, &result.raw);
 
   BV (clib_bihash_add_del) (&fm->mac_table, &kv, 1 /* is_add */ );
 }
@@ -693,7 +693,7 @@ l2fib_del_entry (const u8 * mac, u32 bd_index, u32 sw_if_index)
   if (BV (clib_bihash_search) (&mp->mac_table, &kv, &kv))
     return 1;
 
-  result.raw = kv.value;
+  BV (clib_bihash_value_copy) (&result.raw, &kv.value);
 
   /*  check if sw_if_index of entry match */
   if ((sw_if_index != 0) && (sw_if_index != result.fields.sw_if_index))
@@ -1038,11 +1038,15 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	{
 	  for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
 	    {
-	      if (v->kvp[k].key == ~0ULL && v->kvp[k].value == ~0ULL)
+	      if (v->kvp[k].key == ~0ULL &&
+		  BV (clib_bihash_value_is_clear) (&v->kvp[k].value))
 		continue;
 
-	      l2fib_entry_key_t key = {.raw = v->kvp[k].key };
-	      l2fib_entry_result_t result = {.raw = v->kvp[k].value };
+	      l2fib_entry_key_t key = {
+		.raw = v->kvp[k].key
+	      };
+	      l2fib_entry_result_t result = { };
+	      BV (clib_bihash_value_copy) (&result.raw, &v->kvp[k].value);
 
 	      if (!l2fib_entry_result_is_set_AGE_NOT (&result))
 		learn_count++;
@@ -1083,7 +1087,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		      l2fib_entry_result_clear_LRN_MOV (&result);
 		      BVT (clib_bihash_kv) kv;
 		      kv.key = key.raw;
-		      kv.value = result.raw;
+		      BV (clib_bihash_value_copy) (&kv.value, &result.raw);
 		      BV (clib_bihash_add_del) (&fm->mac_table, &kv, 1);
 		      evt_idx++;
 		      continue;	/* skip aging */

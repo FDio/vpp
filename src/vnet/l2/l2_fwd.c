@@ -78,9 +78,10 @@ format_l2fwd_trace (u8 * s, va_list * args)
 
   s =
     format (s,
-	    "l2-fwd:   sw_if_index %d dst %U src %U bd_index %d result [0x%llx, %d] %U",
+	    "l2-fwd:   sw_if_index %d dst %U src %U bd_index %d result [%U, %d] %U",
 	    t->sw_if_index, format_ethernet_address, t->dst,
-	    format_ethernet_address, t->src, t->bd_index, t->result.raw,
+	    format_ethernet_address, t->src, t->bd_index,
+	    BV (format_clib_bihash_value), &t->result.raw,
 	    t->result.fields.sw_if_index, format_l2fib_entry_result_flags,
 	    t->result.fields.flags);
   return s;
@@ -135,7 +136,7 @@ l2fwd_process (vlib_main_t * vm,
 	       vlib_buffer_t * b0,
 	       u32 sw_if_index0, l2fib_entry_result_t * result0, u16 * next0)
 {
-  int try_flood = result0->raw == ~0;
+  int try_flood = BV (clib_bihash_value_is_clear) (&result0->raw);
   int flood_error;
 
   if (PREDICT_FALSE (try_flood))
@@ -248,7 +249,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Clear the one-entry cache in case mac table was updated */
   cached_key.raw = ~0;
-  cached_result.raw = ~0;
+  BV (clib_bihash_value_clear) (&cached_result.raw);
 
   from = vlib_frame_vector_args (frame);
   n_left = frame->n_vectors;	/* number of packets to process */

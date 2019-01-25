@@ -19,7 +19,7 @@
 #define included_l2fib_h
 
 #include <vlib/vlib.h>
-#include <vppinfra/bihash_8_8.h>
+#include <vppinfra/bihash_8_16.h>
 
 /*
  * The size of the hash table
@@ -146,11 +146,11 @@ typedef struct l2fib_entry_result_t_
       u8 timestamp;		/* timestamp for aging */
       l2fib_seq_num_t sn;	/* bd/int seq num */
     } fields;
-    u64 raw;
+    clib_bihash_v_8_16_t raw;
   };
 } l2fib_entry_result_t;
 
-STATIC_ASSERT_SIZEOF (l2fib_entry_result_t, 8);
+STATIC_ASSERT_SIZEOF (l2fib_entry_result_t, 16);
 
 #define _(a,v,s)                                                        \
   always_inline int                                                     \
@@ -275,7 +275,7 @@ l2fib_lookup_1 (BVT (clib_bihash) * mac_table,
   if (key0->raw == cached_key->raw)
     {
       /* Hit in the one-entry cache */
-      result0->raw = cached_result->raw;
+      BV (clib_bihash_value_copy) (&result0->raw, &cached_result->raw);
     }
   else
     {
@@ -283,13 +283,13 @@ l2fib_lookup_1 (BVT (clib_bihash) * mac_table,
       BVT (clib_bihash_kv) kv;
 
       kv.key = key0->raw;
-      kv.value = ~0ULL;
+      BV (clib_bihash_value_clear) (&kv.value);
       BV (clib_bihash_search_inline) (mac_table, &kv);
-      result0->raw = kv.value;
+      BV (clib_bihash_value_copy) (&result0->raw, &kv.value);
 
       /* Update one-entry cache */
       cached_key->raw = key0->raw;
-      cached_result->raw = result0->raw;
+      BV (clib_bihash_value_copy) (&cached_result->raw, &result0->raw);
     }
 }
 
@@ -325,8 +325,8 @@ l2fib_lookup_2 (BVT (clib_bihash) * mac_table,
   if ((key0->raw == cached_key->raw) && (key1->raw == cached_key->raw))
     {
       /* Both hit in the one-entry cache */
-      result0->raw = cached_result->raw;
-      result1->raw = cached_result->raw;
+      BV (clib_bihash_value_copy) (&result0->raw, &cached_result->raw);
+      BV (clib_bihash_value_copy) (&result1->raw, &cached_result->raw);
     }
   else
     {
@@ -338,18 +338,18 @@ l2fib_lookup_2 (BVT (clib_bihash) * mac_table,
        */
       kv0.key = key0->raw;
       kv1.key = key1->raw;
-      kv0.value = ~0ULL;
-      kv1.value = ~0ULL;
+      BV (clib_bihash_value_clear) (&kv0.value);
+      BV (clib_bihash_value_clear) (&kv1.value);
 
       BV (clib_bihash_search_inline) (mac_table, &kv0);
       BV (clib_bihash_search_inline) (mac_table, &kv1);
 
-      result0->raw = kv0.value;
-      result1->raw = kv1.value;
+      BV (clib_bihash_value_copy) (&result0->raw, &kv0.value);
+      BV (clib_bihash_value_copy) (&result1->raw, &kv1.value);
 
       /* Update one-entry cache */
       cached_key->raw = key1->raw;
-      cached_result->raw = result1->raw;
+      BV (clib_bihash_value_copy) (&cached_result->raw, &result1->raw);
     }
 }
 
@@ -384,10 +384,10 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
       (key2->raw == cached_key->raw) && (key3->raw == cached_key->raw))
     {
       /* Both hit in the one-entry cache */
-      result0->raw = cached_result->raw;
-      result1->raw = cached_result->raw;
-      result2->raw = cached_result->raw;
-      result3->raw = cached_result->raw;
+      BV (clib_bihash_value_copy) (&result0->raw, &cached_result->raw);
+      BV (clib_bihash_value_copy) (&result1->raw, &cached_result->raw);
+      BV (clib_bihash_value_copy) (&result2->raw, &cached_result->raw);
+      BV (clib_bihash_value_copy) (&result3->raw, &cached_result->raw);
     }
   else
     {
@@ -401,24 +401,24 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
       kv1.key = key1->raw;
       kv2.key = key2->raw;
       kv3.key = key3->raw;
-      kv0.value = ~0ULL;
-      kv1.value = ~0ULL;
-      kv2.value = ~0ULL;
-      kv3.value = ~0ULL;
+      BV (clib_bihash_value_clear) (&kv0.value);
+      BV (clib_bihash_value_clear) (&kv1.value);
+      BV (clib_bihash_value_clear) (&kv2.value);
+      BV (clib_bihash_value_clear) (&kv3.value);
 
       BV (clib_bihash_search_inline) (mac_table, &kv0);
       BV (clib_bihash_search_inline) (mac_table, &kv1);
       BV (clib_bihash_search_inline) (mac_table, &kv2);
       BV (clib_bihash_search_inline) (mac_table, &kv3);
 
-      result0->raw = kv0.value;
-      result1->raw = kv1.value;
-      result2->raw = kv2.value;
-      result3->raw = kv3.value;
+      BV (clib_bihash_value_copy) (&result0->raw, &kv0.value);
+      BV (clib_bihash_value_copy) (&result1->raw, &kv1.value);
+      BV (clib_bihash_value_copy) (&result2->raw, &kv2.value);
+      BV (clib_bihash_value_copy) (&result3->raw, &kv3.value);
 
       /* Update one-entry cache */
       cached_key->raw = key1->raw;
-      cached_result->raw = result1->raw;
+      BV (clib_bihash_value_copy) (&cached_result->raw, &result1->raw);
     }
 }
 

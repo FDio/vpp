@@ -148,7 +148,7 @@ l2learn_process (vlib_node_runtime_t * node,
       counter_base[L2LEARN_ERROR_HIT_UPDATE] += 1;
       *count += 1;
     }
-  else if (result0->raw == ~0)
+  else if (BV (clib_bihash_value_is_clear) (&result0->raw))
     {
       /* Entry not in L2FIB - add it  */
       counter_base[L2LEARN_ERROR_MISS] += 1;
@@ -171,7 +171,9 @@ l2learn_process (vlib_node_runtime_t * node,
 
       /* It is ok to learn */
       msm->global_learn_count++;
-      result0->raw = 0;		/* clear all fields */
+      /* clear all fields */
+      result0->raw[0] = 0;
+      result0->raw[1] = 0;
       result0->fields.sw_if_index = sw_if_index0;
       if (msm->client_pid != 0)
 	l2fib_entry_result_set_LRN_EVT (result0);
@@ -229,7 +231,7 @@ l2learn_process (vlib_node_runtime_t * node,
 
   BVT (clib_bihash_kv) kv;
   kv.key = key0->raw;
-  kv.value = result0->raw;
+  BV (clib_bihash_value_copy) (&kv.value, &result0->raw);
   BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */ );
 
   /* Invalidate the cache */
@@ -261,7 +263,7 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Clear the one-entry cache in case mac table was updated */
   cached_key.raw = ~0;
-  cached_result.raw = ~0;	/* warning be gone */
+  BV (clib_bihash_value_clear) (&cached_result.raw);
 
   while (n_left > 8)
     {
