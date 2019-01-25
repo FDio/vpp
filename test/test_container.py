@@ -37,6 +37,10 @@ class ContainerIntegrationTestCase(VppTestCase):
             i.resolve_arp()
             i.resolve_ndp()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(ContainerIntegrationTestCase, cls).tearDownClass()
+
     def tearDown(self):
         """Run standard test teardown and log various show commands
         """

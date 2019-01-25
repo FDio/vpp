@@ -17,6 +17,14 @@ REGISTRY_JAR_PREFIX = "jvpp-registry"
 class TestJVpp(VppTestCase):
     """ JVPP Core Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestJVpp, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestJVpp, cls).tearDownClass()
+
     def invoke_for_jvpp_core(self, api_jar_name, test_class_name):
         self.jvpp_connection_test(api_jar_name=api_jar_name,
                                   test_class_name=test_class_name,

@@ -120,6 +120,14 @@ class TestPuntSocket(VppTestCase):
     nr_packets = 256
 
     @classmethod
+    def setUpClass(cls):
+        super(TestPuntSocket, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestPuntSocket, cls).tearDownClass()
+
+    @classmethod
     def setUpConstants(cls):
         cls.extra_vpp_punt_config = [
             "punt", "{", "socket", cls.tempdir+"/socket_punt", "}"]
@@ -135,6 +143,7 @@ class TestPuntSocket(VppTestCase):
 
     def tearDown(self):
         del self.sock_servers[:]
+        super(TestPuntSocket, self).tearDown()
 
     def socket_client_create(self, sock_name, id=None):
         thread = serverSocketThread(id, sock_name, self.portsCheck)
@@ -148,6 +157,14 @@ class TestPuntSocket(VppTestCase):
 
 class TestIP4PuntSocket(TestPuntSocket):
     """ Punt Socket for IPv4 """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP4PuntSocket, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP4PuntSocket, cls).tearDownClass()
 
     def setUp(self):
         super(TestIP4PuntSocket, self).setUp()
@@ -384,6 +401,14 @@ class TestIP4PuntSocket(TestPuntSocket):
 
 class TestIP6PuntSocket(TestPuntSocket):
     """ Punt Socket for IPv6"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIP6PuntSocket, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6PuntSocket, cls).tearDownClass()
 
     def setUp(self):
         super(TestIP6PuntSocket, self).setUp()

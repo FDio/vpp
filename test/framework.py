@@ -391,6 +391,7 @@ class VppTestCase(unittest.TestCase):
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
+        super(VppTestCase, cls).setUpClass()
         gc.collect()  # run garbage collection first
         random.seed()
         cls.logger = get_logger(cls.__name__)
@@ -550,6 +551,7 @@ class VppTestCase(unittest.TestCase):
 
     def tearDown(self):
         """ Show various debug prints after each test """
+        super(VppTestCase, self).tearDown()
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
@@ -576,6 +578,7 @@ class VppTestCase(unittest.TestCase):
 
     def setUp(self):
         """ Clear trace before running each test"""
+        super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
         self.logger.debug("--- setUp() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,

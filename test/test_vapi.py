@@ -12,6 +12,14 @@ from framework import VppTestCase, running_extended_tests, \
 class VAPITestCase(VppTestCase):
     """ VAPI test """
 
+    @classmethod
+    def setUpClass(cls):
+        super(VAPITestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(VAPITestCase, cls).tearDownClass()
+
     def test_vapi_c(self):
         """ run C VAPI tests """
         var = "TEST_DIR"
