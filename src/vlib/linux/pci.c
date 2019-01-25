@@ -173,6 +173,26 @@ vlib_pci_get_numa_node (vlib_main_t * vm, vlib_pci_dev_handle_t h)
   return d->numa_node;
 }
 
+u32
+vlib_pci_get_num_msix_interrupts (vlib_main_t * vm, vlib_pci_dev_handle_t h)
+{
+  linux_pci_device_t *d = linux_pci_get_device (h);
+
+  if (d->type == LINUX_PCI_DEVICE_TYPE_UIO)
+    return 1;
+  else if (d->type == LINUX_PCI_DEVICE_TYPE_VFIO)
+    {
+      struct vfio_irq_info ii = { 0 };
+
+      ii.argsz = sizeof (struct vfio_irq_info);
+      ii.index = VFIO_PCI_MSIX_IRQ_INDEX;
+      if (ioctl (d->fd, VFIO_DEVICE_GET_IRQ_INFO, &ii) < 0)
+	return 0;
+      return ii.count;
+    }
+  return 0;
+}
+
 /* Call to allocate/initialize the pci subsystem.
    This is not an init function so that users can explicitly enable
    pci only when it's needed. */
