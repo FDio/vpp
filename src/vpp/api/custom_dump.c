@@ -537,72 +537,6 @@ static void *vl_api_bd_ip_mac_dump_t_print
   FINISH;
 }
 
-static void *vl_api_tap_connect_t_print
-  (vl_api_tap_connect_t * mp, void *handle)
-{
-  u8 *s;
-  u8 null_mac[6];
-
-  clib_memset (null_mac, 0, sizeof (null_mac));
-
-  s = format (0, "SCRIPT: tap_connect ");
-  s = format (s, "tapname %s ", mp->tap_name);
-  if (mp->use_random_mac)
-    s = format (s, "random-mac ");
-  if (mp->tag[0])
-    s = format (s, "tag %s ", mp->tag);
-  if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
-  if (mp->ip4_address_set)
-    s = format (s, "address %U/%d ", format_ip4_address, mp->ip4_address,
-		mp->ip4_mask_width);
-  if (mp->ip6_address_set)
-    s = format (s, "address %U/%d ", format_ip6_address, mp->ip6_address,
-		mp->ip6_mask_width);
-  FINISH;
-}
-
-static void *vl_api_tap_modify_t_print
-  (vl_api_tap_modify_t * mp, void *handle)
-{
-  u8 *s;
-  u8 null_mac[6];
-
-  clib_memset (null_mac, 0, sizeof (null_mac));
-
-  s = format (0, "SCRIPT: tap_modify ");
-  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
-  s = format (s, "tapname %s ", mp->tap_name);
-  if (mp->use_random_mac)
-    s = format (s, "random-mac ");
-
-  if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
-
-  FINISH;
-}
-
-static void *vl_api_tap_delete_t_print
-  (vl_api_tap_delete_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: tap_delete ");
-  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
-
-  FINISH;
-}
-
-static void *vl_api_sw_interface_tap_dump_t_print
-  (vl_api_sw_interface_tap_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_tap_dump ");
-
-  FINISH;
-}
-
 static void *vl_api_tap_create_v2_t_print
   (vl_api_tap_create_v2_t * mp, void *handle)
 {
@@ -3785,10 +3719,6 @@ _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
 _(SW_INTERFACE_SET_GENEVE_BYPASS, sw_interface_set_geneve_bypass)       \
-_(TAP_CONNECT, tap_connect)                                             \
-_(TAP_MODIFY, tap_modify)                                               \
-_(TAP_DELETE, tap_delete)                                               \
-_(SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump)                         \
 _(BOND_CREATE, bond_create)                                             \
 _(BOND_DELETE, bond_delete)                                             \
 _(BOND_ENSLAVE, bond_enslave)                                           \
