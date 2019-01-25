@@ -22,6 +22,30 @@
       "revId": "a3137db60abb48fa6250a72f355100d950e9681b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "37e77ad8_427fe0c7",
+        "filename": "src/vnet/dns/dns.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1500,
+      "author": {
+        "id": 1631
+      },
+      "writtenOn": "2019-01-25T15:46:29Z",
+      "side": 1,
+      "message": "../../../src/vnet/dns/dns.c:1482:7: error: assuming signed overflow does not occur when assuming that (X + c) \u003e\u003d X is always true [-Werror\u003dstrict-overflow]\n\n\ngcc is optimizing these 2 lines in vl_api_dns_resolve_ip_t_handler() together:\n\n  len \u003d vec_len (lookup_name);\n  vec_validate (lookup_name, len + 8);\n\nsome pseudo-preprocessing later we end up with:\n\n  len \u003d vec_len (lookup_name);\n  word _vec_i \u003d len + 8;\n  word _vec_l \u003d vec_len (lookup_name);\n  if (_vec_i \u003e\u003d _vec_l)\n\nor further:\n\n  if (vec_len(lookup_name) + 8 \u003e\u003d vec_len(lookup_name))\n\n\nwith the optimization, the if statement is \"always true\", except in the case of overflow.\n\nChanging to vec_resize() resovles this issue and more properly expresses the intent anyway.",
+      "parentUuid": "fd3b9930_e57ad098",
+      "range": {
+        "startLine": 1500,
+        "startChar": 0,
+        "endLine": 1500,
+        "endChar": 38
+      },
+      "revId": "a3137db60abb48fa6250a72f355100d950e9681b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
