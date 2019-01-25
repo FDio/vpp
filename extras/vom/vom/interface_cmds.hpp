@@ -25,7 +25,6 @@
 
 #include <vapi/af_packet.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
-#include <vapi/tap.api.vapi.hpp>
 #include <vapi/vhost_user.api.vapi.hpp>
 #include <vapi/vpe.api.vapi.hpp>
 

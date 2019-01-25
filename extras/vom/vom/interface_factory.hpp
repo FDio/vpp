@@ -28,7 +28,6 @@
 #include <vapi/bond.api.vapi.hpp>
 #include <vapi/interface.api.vapi.hpp>
 #include <vapi/pipe.api.vapi.hpp>
-#include <vapi/tap.api.vapi.hpp>
 #include <vapi/tapv2.api.vapi.hpp>
 #include <vapi/vhost_user.api.vapi.hpp>
 

@@ -1151,17 +1151,12 @@ list(APPEND VNET_API_FILES feature/feature.api)
 
 list(APPEND VNET_SOURCES
   unix/gdb_funcs.c
-  unix/tap_api.c
-  unix/tapcli.c
   unix/tuntap.c
 )
 
 list(APPEND VNET_HEADERS
   unix/tuntap.h
-  unix/tapcli.h
 )
-
-list(APPEND VNET_API_FILES unix/tap.api)
 
 ##############################################################################
 # FIB
