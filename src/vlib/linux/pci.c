@@ -37,6 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <stdbool.h>
+
 #include <vppinfra/linux/sysfs.h>
 
 #include <vlib/vlib.h>
@@ -171,6 +173,20 @@ vlib_pci_get_numa_node (vlib_main_t * vm, vlib_pci_dev_handle_t h)
 {
   linux_pci_device_t *d = linux_pci_get_device (h);
   return d->numa_node;
+}
+
+bool
+vlib_pci_device_driver_is_vfio (vlib_main_t * vm, vlib_pci_dev_handle_t h)
+{
+  linux_pci_device_t *d = linux_pci_get_device (h);
+  return (d->type == LINUX_PCI_DEVICE_TYPE_VFIO);
+}
+
+bool
+vlib_pci_device_driver_is_uio (vlib_main_t * vm, vlib_pci_dev_handle_t h)
+{
+  linux_pci_device_t *d = linux_pci_get_device (h);
+  return (d->type == LINUX_PCI_DEVICE_TYPE_UIO);
 }
 
 /* Call to allocate/initialize the pci subsystem.
