@@ -40,6 +40,10 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 
+#include <vppinfra/bihash_8_8.h>
+#include <vppinfra/bihash_template.h>
+#include <vppinfra/bihash_template.c>
+
 vnet_main_t vnet_main;
 vnet_main_t **vnet_mains;
 
