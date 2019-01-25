@@ -45,18 +45,17 @@
 
 typedef struct
 {
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
-
-  svm_msg_q_t *vpp_evt_q;
-
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+#define _(type, name) type name;
+  foreach_app_session_field
+#undef _
   u64 vpp_session_handle;
   u64 bytes_sent;
   u64 bytes_to_send;
   volatile u64 bytes_received;
   volatile u64 bytes_to_receive;
   f64 start;
-} session_t;
+} echo_session_t;
 
 typedef enum
 {
@@ -81,7 +80,7 @@ typedef struct
   u8 *uri;
 
   /* Session pool */
-  session_t *sessions;
+  echo_session_t *sessions;
 
   /* Hash table for disconnect processing */
   uword *session_index_by_vpp_handles;
@@ -534,7 +533,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 }
 
 static void
-session_print_stats (echo_main_t * em, session_t * session)
+session_print_stats (echo_main_t * em, echo_session_t * session)
 {
   f64 deltat;
   u64 bytes;
@@ -546,7 +545,7 @@ session_print_stats (echo_main_t * em, session_t * session)
 }
 
 static void
-test_recv_bytes (session_t * s, u8 * rx_buf, u32 n_read)
+test_recv_bytes (echo_session_t * s, u8 * rx_buf, u32 n_read)
 {
   int i;
   for (i = 0; i < n_read; i++)
@@ -561,72 +560,63 @@ test_recv_bytes (session_t * s, u8 * rx_buf, u32 n_read)
 }
 
 static void
-recv_test_chunk (echo_main_t * em, session_t * s, u8 * rx_buf)
+recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 {
-  svm_fifo_t *rx_fifo = s->server_rx_fifo;
-  u32 n_read_now, n_to_read;
-  int n_read;
+  int n_to_read, n_read;
 
-  n_to_read = svm_fifo_max_dequeue (rx_fifo);
-  svm_fifo_unset_event (rx_fifo);
+  n_to_read = svm_fifo_max_dequeue (s->rx_fifo);
+  if (!n_to_read)
+    return;
 
   do
     {
-      n_read_now = clib_min (vec_len (rx_buf), n_to_read);
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, n_read_now, rx_buf);
-      if (n_read <= 0)
+      n_read = app_recv_stream ((app_session_t *) s, rx_buf,
+				vec_len (rx_buf));
+
+      if (n_read > 0)
+	{
+	  if (em->test_return_packets)
+	    test_recv_bytes (s, rx_buf, n_read);
+
+	  n_to_read -= n_read;
+
+	  s->bytes_received += n_read;
+	  s->bytes_to_receive -= n_read;
+	}
+      else
 	break;
-
-      if (n_read_now != n_read)
-	clib_warning ("huh?");
-
-      if (em->test_return_packets)
-	test_recv_bytes (s, rx_buf, n_read);
-
-      n_to_read -= n_read;
-      s->bytes_received += n_read;
-      s->bytes_to_receive -= n_read;
     }
   while (n_to_read > 0);
 }
 
 void
-client_handle_fifo_event_rx (echo_main_t * em, session_event_t * e,
-			     u8 * rx_buf)
+client_handle_rx (echo_main_t * em, session_event_t * e, u8 * rx_buf)
 {
-  session_t *s;
+  echo_session_t *s;
 
   s = pool_elt_at_index (em->sessions, e->fifo->client_session_index);
-  recv_test_chunk (em, s, rx_buf);
+  recv_data_chunk (em, s, rx_buf);
 }
 
 static void
-send_test_chunk (echo_main_t * em, session_t * s)
+send_data_chunk (echo_main_t * em, echo_session_t * s)
 {
   u64 test_buf_len, bytes_this_chunk, test_buf_offset;
-  svm_fifo_t *tx_fifo = s->server_tx_fifo;
   u8 *test_data = em->connect_test_data;
-  u32 enq_space = 16 << 10;
-  int written;
+  int n_sent;
 
   test_buf_len = vec_len (test_data);
   test_buf_offset = s->bytes_sent % test_buf_len;
   bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
 			       s->bytes_to_send);
-  enq_space = svm_fifo_max_enqueue (tx_fifo);
 
-  bytes_this_chunk = clib_min (bytes_this_chunk, enq_space);
-  written = svm_fifo_enqueue_nowait (tx_fifo, bytes_this_chunk,
-				     test_data + test_buf_offset);
+  n_sent = app_send_stream ((app_session_t *) s, test_data + test_buf_offset,
+			    bytes_this_chunk, 0);
 
-  if (written > 0)
+  if (n_sent > 0)
     {
-      s->bytes_to_send -= written;
-      s->bytes_sent += written;
-
-      if (svm_fifo_set_event (tx_fifo))
-	app_send_io_evt_to_vpp (s->vpp_evt_q, tx_fifo, FIFO_EVENT_APP_TX,
-				0 /* do wait for mutex */ );
+      s->bytes_to_send -= n_sent;
+      s->bytes_sent += n_sent;
     }
 }
 
@@ -639,7 +629,7 @@ client_thread_fn (void *arg)
   echo_main_t *em = &echo_main;
   static u8 *rx_buf = 0;
   u32 session_index = *(u32 *) arg;
-  session_t *s;
+  echo_session_t *s;
 
   vec_validate (rx_buf, 1 << 20);
 
@@ -649,8 +639,8 @@ client_thread_fn (void *arg)
   s = pool_elt_at_index (em->sessions, session_index);
   while (!em->time_to_stop)
     {
-      send_test_chunk (em, s);
-      recv_test_chunk (em, s, rx_buf);
+      send_data_chunk (em, s);
+      recv_data_chunk (em, s, rx_buf);
       if (!s->bytes_to_send && !s->bytes_to_receive)
 	break;
     }
@@ -688,7 +678,7 @@ client_rx_thread_fn (void *arg)
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
-	  client_handle_fifo_event_rx (em, e, rx_buf);
+	  client_handle_rx (em, e, rx_buf);
 	  break;
 	default:
 	  clib_warning ("unknown event type %d", e->event_type);
@@ -714,7 +704,7 @@ client_send_connect (echo_main_t * em)
 }
 
 void
-client_send_disconnect (echo_main_t * em, session_t * s)
+client_send_disconnect (echo_main_t * em, echo_session_t * s)
 {
   vl_api_disconnect_session_t *dmp;
   dmp = vl_msg_api_alloc (sizeof (*dmp));
@@ -726,12 +716,30 @@ client_send_disconnect (echo_main_t * em, session_t * s)
 }
 
 int
-client_disconnect (echo_main_t * em, session_t * s)
+client_disconnect (echo_main_t * em, echo_session_t * s)
 {
   client_send_disconnect (em, s);
   pool_put (em->sessions, s);
   clib_memset (s, 0xfe, sizeof (*s));
   return 0;
+}
+
+static void
+session_bound_handler (session_bound_msg_t * mp)
+{
+  echo_main_t *em = &echo_main;
+
+  if (mp->retval)
+    {
+      clib_warning ("bind failed: %U", format_api_error,
+		    clib_net_to_host_u32 (mp->retval));
+      em->state = STATE_FAILED;
+      return;
+    }
+
+  clib_warning ("listening on %U:%u", format_ip46_address, mp->lcl_ip,
+		mp->lcl_is_ip4 ? IP46_TYPE_IP4 : IP46_TYPE_IP6, mp->lcl_port);
+  em->state = STATE_READY;
 }
 
 static void
@@ -741,7 +749,7 @@ session_accepted_handler (session_accepted_msg_t * mp)
   session_accepted_reply_msg_t *rmp;
   svm_fifo_t *rx_fifo, *tx_fifo;
   echo_main_t *em = &echo_main;
-  session_t *session;
+  echo_session_t *session;
   static f64 start_time;
   u32 session_index;
   u8 *ip_str;
@@ -762,8 +770,8 @@ session_accepted_handler (session_accepted_msg_t * mp)
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   tx_fifo->client_session_index = session_index;
 
-  session->server_rx_fifo = rx_fifo;
-  session->server_tx_fifo = tx_fifo;
+  session->rx_fifo = rx_fifo;
+  session->tx_fifo = tx_fifo;
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					 svm_msg_q_t *);
 
@@ -799,7 +807,7 @@ static void
 session_connected_handler (session_connected_msg_t * mp)
 {
   echo_main_t *em = &echo_main;
-  session_t *session;
+  echo_session_t *session;
   u32 session_index;
   svm_fifo_t *rx_fifo, *tx_fifo;
   int rv;
@@ -825,8 +833,8 @@ session_connected_handler (session_connected_msg_t * mp)
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   tx_fifo->client_session_index = session_index;
 
-  session->server_rx_fifo = rx_fifo;
-  session->server_tx_fifo = tx_fifo;
+  session->rx_fifo = rx_fifo;
+  session->tx_fifo = tx_fifo;
   session->vpp_session_handle = mp->handle;
   session->start = clib_time_now (&em->clib_time);
   session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
@@ -859,7 +867,7 @@ session_disconnected_handler (session_disconnected_msg_t * mp)
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   session_disconnected_reply_msg_t *rmp;
   echo_main_t *em = &echo_main;
-  session_t *session = 0;
+  echo_session_t *session = 0;
   uword *p;
   int rv = 0;
 
@@ -891,7 +899,7 @@ session_reset_handler (session_reset_msg_t * mp)
   app_session_evt_t _app_evt, *app_evt = &_app_evt;
   echo_main_t *em = &echo_main;
   session_reset_reply_msg_t *rmp;
-  session_t *session = 0;
+  echo_session_t *session = 0;
   uword *p;
   int rv = 0;
 
@@ -923,6 +931,9 @@ handle_mq_event (session_event_t * e)
 {
   switch (e->event_type)
     {
+    case SESSION_CTRL_EVT_BOUND:
+      session_bound_handler ((session_bound_msg_t *) e->data);
+      break;
     case SESSION_CTRL_EVT_ACCEPTED:
       session_accepted_handler ((session_accepted_msg_t *) e->data);
       break;
@@ -946,7 +957,7 @@ clients_run (echo_main_t * em)
   f64 start_time, deltat, timeout = 100.0;
   svm_msg_q_msg_t msg;
   session_event_t *e;
-  session_t *s;
+  echo_session_t *s;
   int i;
 
   /* Init test data */
@@ -1141,37 +1152,38 @@ format_ip46_address (u8 * s, va_list * args)
 }
 
 static void
-server_handle_fifo_event_rx (echo_main_t * em, session_event_t * e)
+server_handle_rx (echo_main_t * em, session_event_t * e)
 {
-  svm_fifo_t *rx_fifo, *tx_fifo;
-  int n_read;
-  session_t *session;
-  int rv;
-  u32 max_dequeue, offset, max_transfer, rx_buf_len;
+  int n_read, max_dequeue, n_sent;
+  u32 offset, to_dequeue;
+  echo_session_t *s;
 
-  rx_buf_len = vec_len (em->rx_buf);
-  rx_fifo = e->fifo;
-  session = pool_elt_at_index (em->sessions, rx_fifo->client_session_index);
-  tx_fifo = session->server_tx_fifo;
+  s = pool_elt_at_index (em->sessions, e->fifo->client_session_index);
 
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-  /* Allow enqueuing of a new event */
-  svm_fifo_unset_event (rx_fifo);
+  /* Clear event only once. Otherwise, if we do it in the loop by calling
+   * app_recv_stream, we may end up with a lot of unhandled rx events on the
+   * message queue */
+  svm_fifo_unset_event (s->rx_fifo);
 
+  max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
   if (PREDICT_FALSE (!max_dequeue))
     return;
 
-  /* Read the max_dequeue */
   do
     {
-      max_transfer = clib_min (rx_buf_len, max_dequeue);
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, max_transfer, em->rx_buf);
+      /* The options here are to limit ourselves to max_dequeue or read
+       * even the data that was enqueued while we were dequeueing and which
+       * now has an rx event in the mq. Either of the two work. */
+      to_dequeue = clib_min (max_dequeue, vec_len (em->rx_buf));
+      n_read = app_recv_stream_raw (s->rx_fifo, em->rx_buf, to_dequeue,
+				    0 /* clear evt */ , 0 /* peek */ );
       if (n_read > 0)
 	{
 	  max_dequeue -= n_read;
-	  session->bytes_received += n_read;
-	  session->bytes_to_receive -= n_read;
+	  s->bytes_received += n_read;
 	}
+      else
+	break;
 
       /* Reflect if a non-drop session */
       if (!em->no_return && n_read > 0)
@@ -1179,27 +1191,23 @@ server_handle_fifo_event_rx (echo_main_t * em, session_event_t * e)
 	  offset = 0;
 	  do
 	    {
-	      rv = svm_fifo_enqueue_nowait (tx_fifo, n_read,
-					    &em->rx_buf[offset]);
-	      if (rv > 0)
+	      n_sent = app_send_stream ((app_session_t *) s,
+					&em->rx_buf[offset],
+					n_read, SVM_Q_WAIT);
+	      if (n_sent > 0)
 		{
-		  n_read -= rv;
-		  offset += rv;
+		  n_read -= n_sent;
+		  offset += n_sent;
 		}
 	    }
-	  while ((rv <= 0 || n_read > 0) && !em->time_to_stop);
-
-	  /* If event wasn't set, add one */
-	  if (svm_fifo_set_event (tx_fifo))
-	    app_send_io_evt_to_vpp (session->vpp_evt_q, tx_fifo,
-				    FIFO_EVENT_APP_TX, SVM_Q_WAIT);
+	  while ((n_sent <= 0 || n_read > 0) && !em->time_to_stop);
 	}
     }
-  while ((n_read < 0 || max_dequeue > 0) && !em->time_to_stop);
+  while (max_dequeue > 0 && !em->time_to_stop);
 }
 
 static void
-server_handle_event_queue (echo_main_t * em)
+server_handle_mq (echo_main_t * em)
 {
   svm_msg_q_msg_t msg;
   session_event_t *e;
@@ -1211,7 +1219,7 @@ server_handle_event_queue (echo_main_t * em)
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
-	  server_handle_fifo_event_rx (em, e);
+	  server_handle_rx (em, e);
 	  break;
 	default:
 	  handle_mq_event (e);
@@ -1283,7 +1291,7 @@ server_unbind (echo_main_t * em)
 void
 server_run (echo_main_t * em)
 {
-  session_t *session;
+  echo_session_t *session;
   int i;
 
   /* $$$$ hack preallocation */
@@ -1303,7 +1311,7 @@ server_run (echo_main_t * em)
     return;
 
   /* Enter handle event loop */
-  server_handle_event_queue (em);
+  server_handle_mq (em);
 
   /* Cleanup */
   server_send_unbind (em);
@@ -1472,7 +1480,7 @@ main (int argc, char **argv)
   em->test_return_packets = test_return_packets;
   em->bytes_to_send = bytes_to_send;
   em->time_to_stop = 0;
-  vec_validate (em->rx_buf, 128 << 10);
+  vec_validate (em->rx_buf, 4 << 20);
   vec_validate (em->client_thread_handles, em->n_clients - 1);
   vec_validate (em->thread_args, em->n_clients - 1);
 
