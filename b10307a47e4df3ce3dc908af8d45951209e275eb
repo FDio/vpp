@@ -22,6 +22,30 @@
       "revId": "b10307a47e4df3ce3dc908af8d45951209e275eb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "300b12d7_5a80a12d",
+        "filename": "test/test_punt.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-25T17:22:09Z",
+      "side": 1,
+      "message": "no particular significance. it\u0027s a number that should result in the quad/dual/single loop in the VPP node being exercised.",
+      "parentUuid": "daabdd88_d39a07b5",
+      "range": {
+        "startLine": 692,
+        "startChar": 53,
+        "endLine": 692,
+        "endChar": 56
+      },
+      "revId": "b10307a47e4df3ce3dc908af8d45951209e275eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
