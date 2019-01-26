@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce1448a1_1b34cbaa",
+        "filename": "src/plugins/perfmon/perfmon_periodic.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-26T22:34:39Z",
+      "side": 1,
+      "message": "We already have this in vppinfra/cpu.h (clib_get_current_cpu_index).\nAlso cpu_index is now stored in vlib_main (vm-\u003ecpu_index).",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 1
+      },
+      "revId": "a6f476295ffa1485ddd1a2e4b953652db28b254f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
