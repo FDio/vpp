@@ -436,6 +436,7 @@ mq_send_session_accepted_cb (stream_session_t * s)
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_ACCEPTED;
   mp = (session_accepted_msg_t *) evt->data;
+  clib_memset (mp, 0, sizeof (*mp));
   mp->context = app->app_index;
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
@@ -614,6 +615,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
   clib_memset (evt, 0, sizeof (*evt));
   evt->event_type = SESSION_CTRL_EVT_CONNECTED;
   mp = (session_connected_msg_t *) evt->data;
+  clib_memset (mp, 0, sizeof (*mp));
   mp->context = api_context;
 
   if (is_fail)
