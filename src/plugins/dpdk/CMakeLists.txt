@@ -17,14 +17,32 @@ if (CMAKE_CROSSCOMPILING)
 endif()
 
 ##############################################################################
+# macros
+##############################################################################
+macro(dpdk_find_library var name)
+  find_library(${var} NAMES ${name} ${ARGN})
+if (NOT ${var})
+  message(WARNING "-- ${name} library not found - dpdk_plugin disabled")
+  return()
+endif()
+    message(STATUS "DPDK plugin needs ${name} library - found at ${${var}}")
+endmacro()
+
+##############################################################################
 # Find lib and include files
 ##############################################################################
 find_path(DPDK_INCLUDE_DIR PATH_SUFFIXES dpdk NAMES rte_config.h)
 find_library(DPDK_LIB NAMES libdpdk.a)
 
 if (NOT DPDK_INCLUDE_DIR)
-  message(WARNING "-- DPDK not found - dpdk_plugin disabled")
+  message(WARNING "-- DPDK headers not found - dpdk_plugin disabled")
   return()
+endif()
+
+if (NOT DPDK_LIB)
+  dpdk_find_library(DPDK_SHLIB "libdpdk.so")
+  set(DPDK_IS_SHARED_LIB 1)
+  message(WARNING "-- linking dpdk plugin against DPDK shared libs")
 endif()
 
 ##############################################################################
@@ -95,75 +113,111 @@ if(NOT ${DPDK_RTE_PKTMBUF_HEADROOM} EQUAL ${PRE_DATA_SIZE})
 endif()
 
 ##############################################################################
+# static or dynamic linking
+##############################################################################
+unset(DPDK_LINK_LIBRARIES)
+unset(DPDK_LINK_FLAGS)
+message(STATUS "Found DPDK ${DPDK_VERSION} in ${DPDK_INCLUDE_DIR}")
+include_directories (${DPDK_INCLUDE_DIR})
+
+if(DPDK_IS_SHARED_LIB)
+  get_filename_component(DPDK_LIB_DIR ${DPDK_SHLIB} DIRECTORY)
+  string_append(DPDK_LINK_FLAGS "-L${DPDK_LIB_DIR}")
+  list(APPEND DPDK_LINK_LIBRARIES ${DPDK_SHLIB})
+else()
+  get_filename_component(DPDK_LIB_DIR ${DPDK_LIB} DIRECTORY)
+  string_append(DPDK_LINK_FLAGS "-L${DPDK_LIB_DIR}")
+  string_append(DPDK_LINK_FLAGS "-Wl,--whole-archive,${DPDK_LIB},--no-whole-archive")
+endif()
+
+##############################################################################
+# libnuma
+##############################################################################
+dpdk_find_library(NUMA_LIB "numa")
+list(APPEND DPDK_LINK_LIBRARIES ${NUMA_LIB})
+
+##############################################################################
+# AESNI libraries
+##############################################################################
+if(DPDK_RTE_LIBRTE_PMD_AESNI_MB OR DPDK_RTE_LIBRTE_PMD_AESNI_GCM)
+  if(DPDK_IS_SHARED_LIB)
+    dpdk_find_library(IPSECMB_LIB "libIPSec_MB.so")
+    list(APPEND DPDK_LINK_LIBRARIES "${IPSECMB_LIB}")
+  else()
+    dpdk_find_library(IPSECMB_LIB "libIPSec_MB.a")
+    get_filename_component(IPSECMB_LIB_DIR ${IPSECMB_LIB} DIRECTORY)
+    string_append(DPDK_LINK_FLAGS "-L${IPSECMB_LIB_DIR}")
+    string_append(DPDK_LINK_FLAGS "-Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
+  endif()
+endif()
+
+##############################################################################
+# Mellanox libraries
+##############################################################################
+if(DPDK_RTE_LIBRTE_MLX4_PMD OR DPDK_RTE_LIBRTE_MLX5_PMD)
+  dpdk_find_library(MNL_LIB "mnl")
+  list(APPEND DPDK_LINK_LIBRARIES "${MNL_LIB}")
+  if (DPDK_RTE_LIBRTE_MLX5_DLOPEN_DEPS)
+    message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
+  else()
+    dpdk_find_library(IBVERBS_LIB "ibverbs")
+    list(APPEND DPDK_LINK_LIBRARIES "${IBVERBS_LIB}")
+    dpdk_find_library(MLX5_LIB "mlx5")
+    list(APPEND DPDK_LINK_LIBRARIES "${MLX5_LIB}")
+    message(STATUS "DPDK depends on libmnl, libibverbs, libmlx5 (Mellanox PMD requirement)")
+  endif()
+endif()
+
+##############################################################################
 # DPDK plugin
 ##############################################################################
-if(DPDK_INCLUDE_DIR AND DPDK_LIB)
-  include_directories (${DPDK_INCLUDE_DIR})
+add_vpp_plugin(dpdk
+  SOURCES
+  buffer.c
+  main.c
+  thread.c
+  api/dpdk_api.c
+  api/dpdk_test.c
+  device/cli.c
+  device/common.c
+  device/device.c
+  device/flow.c
+  device/format.c
+  device/init.c
+  device/node.c
+  hqos/hqos.c
+  ipsec/cli.c
+  ipsec/crypto_node.c
+  ipsec/esp_decrypt.c
+  ipsec/esp_encrypt.c
+  ipsec/ipsec.c
 
-  message(STATUS "Found DPDK ${DPDK_VERSION} in ${DPDK_INCLUDE_DIR}")
-  get_filename_component(DPDK_LIB_DIR ${DPDK_LIB} DIRECTORY)
-  set(DPDK_LINK_FLAGS "-L${DPDK_LIB_DIR} -Wl,--whole-archive,${DPDK_LIB},--no-whole-archive")
-  if(DPDK_RTE_LIBRTE_PMD_AESNI_MB OR DPDK_RTE_LIBRTE_PMD_AESNI_GCM)
-    set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a")
-    message(STATUS "DPDK depends on IPSec MB library")
-  endif()
-  if(DPDK_RTE_LIBRTE_MLX4_PMD OR DPDK_RTE_LIBRTE_MLX5_PMD)
-    if (DPDK_RTE_LIBRTE_MLX5_DLOPEN_DEPS)
-      set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lmnl")
-      message(STATUS "DPDK depends on libmnl (Mellanox PMD requirement)")
-    else()
-      set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lmnl,-libverbs,-lmlx5")
-      message(STATUS "DPDK depends on libmnl, libibverbs, libmlx5 (Mellanox PMD requirement)")
-    endif()
-  endif()
-  set(DPDK_LINK_FLAGS "${DPDK_LINK_FLAGS} -Wl,-lnuma")
-  add_vpp_plugin(dpdk
-    SOURCES
-    buffer.c
-    main.c
-    thread.c
-    api/dpdk_api.c
-    api/dpdk_test.c
-    device/cli.c
-    device/common.c
-    device/device.c
-    device/flow.c
-    device/format.c
-    device/init.c
-    device/node.c
-    hqos/hqos.c
-    ipsec/cli.c
-    ipsec/crypto_node.c
-    ipsec/esp_decrypt.c
-    ipsec/esp_encrypt.c
-    ipsec/ipsec.c
+  MULTIARCH_SOURCES
+  buffer.c
+  device/device.c
+  device/node.c
+  ipsec/crypto_node.c
+  ipsec/esp_decrypt.c
+  ipsec/esp_encrypt.c
 
-    MULTIARCH_SOURCES
-    buffer.c
-    device/device.c
-    device/node.c
-    ipsec/crypto_node.c
-    ipsec/esp_decrypt.c
-    ipsec/esp_encrypt.c
+  API_FILES
+  api/dpdk.api
 
-    API_FILES
-    api/dpdk.api
+  API_TEST_SOURCES
+  api/dpdk_test.c
 
-    API_TEST_SOURCES
-    api/dpdk_test.c
+  INSTALL_HEADERS
+  device/dpdk.h
+  api/dpdk_all_api_h.h
+  ipsec/ipsec.h
 
-    INSTALL_HEADERS
-    device/dpdk.h
-    api/dpdk_all_api_h.h
-    ipsec/ipsec.h
+  LINK_FLAGS
+  "${DPDK_LINK_FLAGS}"
 
-    LINK_FLAGS
-    ${DPDK_LINK_FLAGS}
+  LINK_LIBRARIES
+  ${DPDK_LINK_LIBRARIES}
 
-    COMPONENT
-    vpp-plugin-dpdk
-  )
-else()
-  message(WARNING "DPDK not found - dpdk disabled")
-endif()
+  COMPONENT
+  vpp-plugin-dpdk
+)
 

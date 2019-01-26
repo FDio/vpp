@@ -16,7 +16,7 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(vpp C)
 
 include(CheckCCompilerFlag)
-include(cmake/message.cmake)
+include(cmake/misc.cmake)
 include(cmake/cpu.cmake)
 include(cmake/ccache.cmake)
 
