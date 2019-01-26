@@ -801,7 +801,7 @@ start_workers (vlib_main_t * vm)
 
 	      /* fork the frame dispatch queue */
 	      nm_clone->pending_frames = 0;
-	      vec_validate (nm_clone->pending_frames, 10);	/* $$$$$?????? */
+	      vec_validate (nm_clone->pending_frames, 10);
 	      _vec_len (nm_clone->pending_frames) = 0;
 
 	      /* fork nodes */
@@ -840,6 +840,21 @@ start_workers (vlib_main_t * vm)
 		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
 				 CLIB_CACHE_LINE_BYTES);
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+	      {
+		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+		rt->thread_index = vm_clone->thread_index;
+		/* copy initial runtime_data from node */
+		if (n->runtime_data && n->runtime_data_bytes > 0)
+		  clib_memcpy (rt->runtime_data, n->runtime_data,
+			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+					 n->runtime_data_bytes));
+	      }
+
+	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT] =
+		vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT],
+				 CLIB_CACHE_LINE_BYTES);
+	      vec_foreach (rt,
+			   nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
 	      {
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 		rt->thread_index = vm_clone->thread_index;
@@ -1153,6 +1168,23 @@ vlib_worker_thread_node_refork (void)
 		     CLIB_CACHE_LINE_BYTES);
 
   vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+  {
+    vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+    rt->thread_index = vm_clone->thread_index;
+    /* copy runtime_data, will be overwritten later for existing rt */
+    if (n->runtime_data && n->runtime_data_bytes > 0)
+      clib_memcpy_fast (rt->runtime_data, n->runtime_data,
+			clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+				  n->runtime_data_bytes));
+  }
+
+  /* re-clone pre-input nodes */
+  old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT];
+  nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT] =
+    vec_dup_aligned (nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT],
+		     CLIB_CACHE_LINE_BYTES);
+
+  vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
   {
     vlib_node_t *n = vlib_get_node (vm, rt->node_index);
     rt->thread_index = vm_clone->thread_index;

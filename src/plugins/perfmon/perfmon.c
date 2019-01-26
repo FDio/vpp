@@ -301,11 +301,15 @@ set_pmc_command_fn (vlib_main_t * vm,
 		    unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   perfmon_main_t *pm = &perfmon_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  int num_threads = 1 + vtm->n_threads;
   unformat_input_t _line_input, *line_input = &_line_input;
   perfmon_event_config_t ec;
   f64 delay;
   u32 timeout_seconds;
   u32 deadman;
+  int last_set;
+  clib_error_t *error;
 
   vec_reset_length (pm->single_events_to_collect);
   vec_reset_length (pm->paired_events_to_collect);
@@ -314,6 +318,8 @@ set_pmc_command_fn (vlib_main_t * vm,
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "counter names required...");
+
+  clib_bitmap_zero (pm->thread_bitmap);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -343,6 +349,12 @@ set_pmc_command_fn (vlib_main_t * vm,
 	  ec.pe_config = PERF_COUNT_HW_BRANCH_INSTRUCTIONS;
 	  vec_add1 (pm->paired_events_to_collect, ec);
 	}
+      else if (unformat (line_input, "threads %U",
+			 unformat_bitmap_list, &pm->thread_bitmap))
+	;
+      else if (unformat (line_input, "thread %U",
+			 unformat_bitmap_list, &pm->thread_bitmap))
+	;
       else if (unformat (line_input, "%U", unformat_processor_event, pm, &ec))
 	{
 	  vec_add1 (pm->single_events_to_collect, ec);
@@ -358,9 +370,19 @@ set_pmc_command_fn (vlib_main_t * vm,
       foreach_perfmon_event
 #undef _
 	else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
     }
+
+  unformat_free (line_input);
+
+  last_set = clib_bitmap_last_set (pm->thread_bitmap);
+  if (last_set != ~0 && last_set >= num_threads)
+    return clib_error_return (0, "thread %d does not exist", last_set);
 
   /* Stick paired events at the front of the (unified) list */
   if (vec_len (pm->paired_events_to_collect) > 0)
@@ -410,7 +432,7 @@ set_pmc_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_pmc_command, static) =
 {
   .path = "set pmc",
-  .short_help = "set pmc c1 [..., use \"show pmc events\"]",
+  .short_help = "set pmc [threads n,n1-n2] c1... [see \"show pmc events\"]",
   .function = set_pmc_command_fn,
   .is_mp_safe = 1,
 };
