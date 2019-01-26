@@ -21,6 +21,7 @@
 #include <asm/unistd.h>
 #include <sys/ioctl.h>
 
+/* "not in glibc" */
 static long
 perf_event_open (struct perf_event_attr *hw_event, pid_t pid, int cpu,
 		 int group_fd, unsigned long flags)
@@ -28,6 +29,15 @@ perf_event_open (struct perf_event_attr *hw_event, pid_t pid, int cpu,
   int ret;
 
   ret = syscall (__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
+  return ret;
+}
+
+/* "not in glibc" */
+static int
+getcpu (unsigned *cpu, unsigned *node, void *tcache)
+{
+  int ret;
+  ret = syscall (__NR_getcpu, cpu, node, tcache);
   return ret;
 }
 
@@ -114,6 +124,7 @@ enable_current_events (perfmon_main_t * pm)
   u32 my_thread_index = vm->thread_index;
   u32 index;
   int i, limit = 1;
+  int cpu;
 
   if ((pm->current_event + 1) < vec_len (pm->single_events_to_collect))
     limit = 2;
@@ -140,7 +151,13 @@ enable_current_events (perfmon_main_t * pm)
 	  pe.exclude_hv = 1;
 	}
 
-      fd = perf_event_open (&pe, 0, -1, -1, 0);
+      if (getcpu ((unsigned *) &cpu, 0 /* node */ , 0 /* tcache, unused */ ))
+	{
+	  cpu = -1;
+	  clib_unix_warning ("getcpu");
+	}
+
+      fd = perf_event_open (&pe, 0, cpu, -1, 0);
       if (fd == -1)
 	{
 	  clib_unix_warning ("event open: type %d config %d", c->pe_type,
@@ -237,25 +254,38 @@ static void
 start_event (perfmon_main_t * pm, f64 now, uword event_data)
 {
   int i;
+  int last_set;
+  int all = 0;
   pm->current_event = 0;
+
   if (vec_len (pm->single_events_to_collect) == 0)
     {
       pm->state = PERFMON_STATE_OFF;
       return;
     }
+
+  last_set = clib_bitmap_last_set (pm->thread_bitmap);
+  all = (last_set == ~0);
+
   pm->state = PERFMON_STATE_RUNNING;
   clear_counters (pm);
 
-  /* Start collection on this thread */
-  enable_current_events (pm);
+  /* Start collection on thread 0? */
+  if (all || clib_bitmap_get (pm->thread_bitmap, 0))
+    {
+      /* Start collection on this thread */
+      enable_current_events (pm);
+    }
 
   /* And also on worker threads */
   for (i = 1; i < vec_len (vlib_mains); i++)
     {
       if (vlib_mains[i] == 0)
 	continue;
-      vlib_mains[i]->worker_thread_main_loop_callback = (void *)
-	worker_thread_start_event;
+
+      if (all || clib_bitmap_get (pm->thread_bitmap, i))
+	vlib_mains[i]->worker_thread_main_loop_callback = (void *)
+	  worker_thread_start_event;
     }
 }
 
@@ -397,23 +427,46 @@ scrape_and_clear_counters (perfmon_main_t * pm)
 }
 
 static void
-handle_timeout (perfmon_main_t * pm, f64 now)
+handle_timeout (vlib_main_t * vm, perfmon_main_t * pm, f64 now)
 {
   int i;
-  disable_events (pm);
+  int last_set, all;
+
+  last_set = clib_bitmap_last_set (pm->thread_bitmap);
+  all = (last_set == ~0);
+
+  if (all || clib_bitmap_get (pm->thread_bitmap, 0))
+    disable_events (pm);
 
   /* And also on worker threads */
   for (i = 1; i < vec_len (vlib_mains); i++)
     {
       if (vlib_mains[i] == 0)
 	continue;
-      vlib_mains[i]->worker_thread_main_loop_callback = (void *)
-	worker_thread_stop_event;
+      if (all || clib_bitmap_get (pm->thread_bitmap, i))
+	vlib_mains[i]->worker_thread_main_loop_callback = (void *)
+	  worker_thread_stop_event;
     }
 
-  /* Short delay to make sure workers have stopped collection */
+  /* Make sure workers have stopped collection */
   if (i > 1)
-    vlib_process_suspend (pm->vlib_main, 1e-3);
+    {
+      f64 deadman = vlib_time_now (vm) + 1.0;
+
+      for (i = 1; i < vec_len (vlib_mains); i++)
+	{
+	  /* Has the worker actually stopped collecting data? */
+	  while (vlib_mains[i]->worker_thread_main_loop_callback)
+	    {
+	      if (vlib_time_now (vm) > deadman)
+		{
+		  clib_warning ("Thread %d deadman timeout!", i);
+		  break;
+		}
+	      vlib_process_suspend (pm->vlib_main, 1e-3);
+	    }
+	}
+    }
   scrape_and_clear_counters (pm);
   pm->current_event += pm->n_active;
   if (pm->current_event >= vec_len (pm->single_events_to_collect))
@@ -422,15 +475,18 @@ handle_timeout (perfmon_main_t * pm, f64 now)
       pm->state = PERFMON_STATE_OFF;
       return;
     }
-  enable_current_events (pm);
+
+  if (all || clib_bitmap_get (pm->thread_bitmap, 0))
+    enable_current_events (pm);
 
   /* And also on worker threads */
   for (i = 1; i < vec_len (vlib_mains); i++)
     {
       if (vlib_mains[i] == 0)
 	continue;
-      vlib_mains[i]->worker_thread_main_loop_callback = (void *)
-	worker_thread_start_event;
+      if (all || clib_bitmap_get (pm->thread_bitmap, i))
+	vlib_mains[i]->worker_thread_main_loop_callback = (void *)
+	  worker_thread_start_event;
     }
 }
 
@@ -464,7 +520,7 @@ perfmon_periodic_process (vlib_main_t * vm,
 
 	  /* Handle timeout */
 	case ~0:
-	  handle_timeout (pm, now);
+	  handle_timeout (vm, pm, now);
 	  break;
 
 	default:
