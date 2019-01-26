@@ -121,6 +121,9 @@ typedef struct
   /* Current perf_event file descriptors, per thread */
   int **pm_fds;
 
+  /* thread bitmap */
+  uword *thread_bitmap;
+
   /* Logging */
   vlib_log_class_t log_class;
 

@@ -1105,8 +1105,6 @@ dispatch_pcap_trace (vlib_main_t * vm,
     }
 }
 
-u64 oingo0, oingo1;
-
 static_always_inline u64
 dispatch_node (vlib_main_t * vm,
 	       vlib_node_runtime_t * node,
@@ -1206,12 +1204,6 @@ dispatch_node (vlib_main_t * vm,
 
       vm->main_loop_vectors_processed += n;
       vm->main_loop_nodes_processed += n > 0;
-
-      if (pmc_delta[0] || pmc_delta[1])
-	{
-	  oingo0 += pmc_delta[0];
-	  oingo1 += pmc_delta[1];
-	}
 
       v = vlib_node_runtime_update_stats (vm, node,
 					  /* n_calls */ 1,
