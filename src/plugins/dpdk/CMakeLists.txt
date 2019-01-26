@@ -11,11 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (CMAKE_CROSSCOMPILING)
-  # not supported yet
-  return()
-endif()
-
 ##############################################################################
 # macros
 ##############################################################################
@@ -46,64 +41,27 @@ if (NOT DPDK_LIB)
 endif()
 
 ##############################################################################
-# Find DPDK Version
+# Parse DPDK config and version header files
 ##############################################################################
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/dpdk_vars.c
-"
-#include <stdio.h>
-#include <rte_version.h>
-int main()
-{
-  printf(\"VERSION=%s\\n\", strchr(rte_version(), ' ') + 1);
-  printf(\"RTE_PKTMBUF_HEADROOM=%u\\n\", RTE_PKTMBUF_HEADROOM);
-#ifdef RTE_LIBRTE_PMD_AESNI_MB
-  printf(\"RTE_LIBRTE_PMD_AESNI_MB=%u\\n\", RTE_LIBRTE_PMD_AESNI_MB);
-#endif
-#ifdef RTE_LIBRTE_PMD_AESNI_GCM
-  printf(\"RTE_LIBRTE_PMD_AESNI_GCM=%u\\n\", RTE_LIBRTE_PMD_AESNI_GCM);
-#endif
-#ifdef RTE_LIBRTE_MLX4_PMD
-  printf(\"RTE_LIBRTE_MLX4_PMD=%u\\n\", RTE_LIBRTE_MLX4_PMD);
-#endif
-#ifdef RTE_LIBRTE_MLX5_PMD
-  printf(\"RTE_LIBRTE_MLX5_PMD=%u\\n\", RTE_LIBRTE_MLX5_PMD);
-#ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
-  printf(\"RTE_LIBRTE_MLX5_DLOPEN_DEPS=%u\\n\", RTE_LIBRTE_MLX5_DLOPEN_DEPS);
-#endif
-#endif
-  return 0;
-}
-")
 
-try_compile(DPDK_VARS_COMPILED
-  ${CMAKE_CURRENT_BINARY_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}/dpdk_vars.c
-  CMAKE_FLAGS
-  -DINCLUDE_DIRECTORIES=${DPDK_INCLUDE_DIR}
-  COPY_FILE ${CMAKE_CURRENT_BINARY_DIR}/dpdk_vars.bin
-)
+file(STRINGS ${DPDK_INCLUDE_DIR}/rte_config.h rte_config)
+file(STRINGS ${DPDK_INCLUDE_DIR}/rte_version.h rte_version)
 
-if(DPDK_VARS_COMPILED)
-  execute_process(
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ./dpdk_vars.bin
-    OUTPUT_VARIABLE DPDK_VARS
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  string(REPLACE "\n" ";" DPDK_VARS ${DPDK_VARS})
-  foreach(v ${DPDK_VARS})
-    string(REPLACE "=" ";" v ${v})
+foreach(l ${rte_config} ${rte_version})
+  if (l MATCHES "^#define[\t ]*RTE_")
+    STRING(REGEX REPLACE "^#define[\t ]*([A-Z1-9_]+)[\t ]*(.+)" "\\1;\\2" v "${l}")
     list(GET v 0 name)
     list(GET v 1 value)
     set(DPDK_${name} ${value})
-  endforeach()
-endif()
+  endif()
+endforeach()
 
-file(REMOVE
-  ${CMAKE_CURRENT_BINARY_DIR}/dpdk_vars.c
-  ${CMAKE_CURRENT_BINARY_DIR}/dpdk_vars.bin
-)
+set(DPDK_VERSION
+    "${DPDK_RTE_VER_YEAR}.${DPDK_RTE_VER_MONTH}.${DPDK_RTE_VER_MINOR}")
 
+##############################################################################
+# verify headroom size
+##############################################################################
 if(NOT ${DPDK_RTE_PKTMBUF_HEADROOM} EQUAL ${PRE_DATA_SIZE})
   message(
     FATAL_ERROR
