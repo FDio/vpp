@@ -52,3 +52,16 @@ function(pr desc val)
   endwhile()
   _message("${cyan}${desc}${reset}: ${val}")
 endfunction()
+
+##############################################################################
+# string append
+##############################################################################
+
+macro(string_append var str)
+  if (NOT ${var})
+    set(${var} "${str}")
+  else()
+    set(${var} "${${var}} ${str}")
+  endif()
+endmacro()
+
