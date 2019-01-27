@@ -1723,8 +1723,7 @@ vlib_worker_thread_fn (void *arg)
 
   ASSERT (vm->thread_index == vlib_get_thread_index ());
 
-  vm->cpu_index = clib_get_current_cpu_index ();
-  vm->numa_node = clib_get_current_numa_node ();
+  vm->cpu_id = ~0;
 
   vlib_worker_thread_init (w);
   clib_time_init (&vm->clib_time);
