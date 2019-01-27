@@ -101,7 +101,7 @@ _ (sha512,     21) \
 _ (sve,        22)
 
 static inline u32
-clib_get_current_cpu_index ()
+clib_get_current_cpu_id ()
 {
   unsigned cpu, node;
   syscall (__NR_getcpu, &cpu, &node, 0);

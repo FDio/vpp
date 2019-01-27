@@ -142,7 +142,7 @@ enable_current_events (perfmon_main_t * pm)
 	  pe.exclude_hv = 1;
 	}
 
-      cpu = vm->cpu_index;
+      cpu = vm->cpu_id;
 
       fd = perf_event_open (&pe, 0, cpu, -1, 0);
       if (fd == -1)
