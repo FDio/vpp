@@ -586,7 +586,7 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
   clib_error_t *error = 0;
   virtio_main_t *vim = &virtio_main;
   struct virtio_pci_cap cap;
-  u8 pos, common_cfg = 0, notify_base = 0, dev_cfg = 0, isr = 0;
+  u8 pos, common_cfg = 0, notify_base = 0, dev_cfg = 0, isr = 0, pci_cfg = 0;
   vlib_pci_dev_handle_t h = vif->pci_dev_handle;
 
   if ((error = vlib_pci_read_config_u8 (vm, h, PCI_CAPABILITY_LIST, &pos)))
@@ -637,10 +637,17 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
 	case VIRTIO_PCI_CAP_ISR_CFG:
 	  isr = 1;
 	  break;
+	case VIRTIO_PCI_CAP_PCI_CFG:
+	  if (cap.bar == 0)
+	    pci_cfg = 1;
+	  break;
 	}
     next:
       pos = cap.cap_next;
     }
+
+  if (!pci_cfg)
+    clib_error_return (error, "modern virtio pci device found");
 
   if (common_cfg == 0 || notify_base == 0 || dev_cfg == 0 || isr == 0)
     {
@@ -648,7 +655,7 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
       return error;
     }
 
-  virtio_log_debug (vim, vif, "modern virtio pci device found");
+  virtio_log_debug (vim, vif, "transitional virtio pci device found");
   return error;
 }
 
@@ -659,7 +666,8 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   clib_error_t *error = 0;
   u8 status = 0;
 
-  virtio_pci_read_caps (vm, vif);
+  if ((error = virtio_pci_read_caps (vm, vif)))
+    clib_error_return (error, "Device not supported");
 
   if (virtio_pci_reset_device (vm, vif) < 0)
     clib_error_return (error, "Failed to reset the device");
