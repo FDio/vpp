@@ -594,9 +594,8 @@ vppcom_send_bind_sock (vcl_session_t * session)
 }
 
 void
-vppcom_send_unbind_sock (u64 vpp_handle)
+vppcom_send_unbind_sock (vcl_worker_t * wrk, u64 vpp_handle)
 {
-  vcl_worker_t *wrk = vcl_worker_get_current ();
   vl_api_unbind_sock_t *ump;
 
   ump = vl_msg_api_alloc (sizeof (*ump));
