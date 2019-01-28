@@ -1682,6 +1682,9 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   if (!nm->interrupt_threshold_vector_length)
     nm->interrupt_threshold_vector_length = 5;
 
+  vm->cpu_id = clib_get_current_cpu_id ();
+  vm->numa_node = clib_get_current_numa_node ();
+
   /* Start all processes. */
   if (is_main)
     {
@@ -1695,12 +1698,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   while (1)
     {
       vlib_node_runtime_t *n;
-
-      if (PREDICT_FALSE (vm->cpu_id != clib_get_current_cpu_id ()))
-	{
-	  vm->cpu_id = clib_get_current_cpu_id ();
-	  vm->numa_node = clib_get_current_numa_node ();
-	}
 
       if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
 	{

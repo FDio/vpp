@@ -671,7 +671,6 @@ vlib_unix_main (int argc, char *argv[])
 
   __os_thread_index = 0;
   vm->thread_index = 0;
-  vm->cpu_id = ~0;
 
   i = clib_calljmp (thread0, (uword) vm,
 		    (void *) (vlib_thread_stacks[0] +
