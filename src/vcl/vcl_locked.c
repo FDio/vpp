@@ -22,8 +22,8 @@ typedef struct vcl_locked_session_
   u32 session_index;
   u32 worker_index;
   u32 vls_index;
-  u32 flags;
   u32 *workers_subscribed;
+  clib_bitmap_t *listeners;
 } vcl_locked_session_t;
 
 typedef struct vcl_main_
@@ -220,18 +220,34 @@ vls_is_shared_by_wrk (vcl_locked_session_t * vls, u32 wrk_index)
   return 0;
 }
 
+static void
+vls_set_wrk_listener (vcl_locked_session_t *vls, u32 wrk_index, u8 val)
+{
+  clib_bitmap_validate (vls->listeners, wrk_index);
+  clib_bitmap_set (vls->listeners, wrk_index, val);
+}
+
+static u8
+vls_is_wrk_listener (vcl_locked_session_t *vls, u32 wrk_index)
+{
+  return (clib_bitmap_get (vls->listeners, wrk_index) == 1);
+}
+
 int
 vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
 {
   vcl_session_t *s;
   int i;
 
+  s = vcl_session_get (wrk, vls->session_index);
+  if (s->session_state == STATE_LISTEN)
+    vls_set_wrk_listener (vls, wrk->wrk_index, 0);
+
   for (i = 0; i < vec_len (vls->workers_subscribed); i++)
     {
       if (vls->workers_subscribed[i] != wrk->wrk_index)
 	continue;
 
-      s = vcl_session_get (wrk, vls->session_index);
       if (s->rx_fifo)
 	{
 	  svm_fifo_del_subscriber (s->rx_fifo, wrk->vpp_wrk_index);
@@ -246,8 +262,6 @@ vls_unshare_session (vcl_locked_session_t * vls, vcl_worker_t * wrk)
   /* Return, if this is not the owning worker */
   if (vls->worker_index != wrk->wrk_index)
     return 0;
-
-  s = vcl_session_get (wrk, vls->session_index);
 
   /* Check if we can change owner or close */
   if (vec_len (vls->workers_subscribed))
@@ -281,6 +295,12 @@ vls_share_vcl_session (vcl_worker_t * wrk, vcl_session_t * s)
       svm_fifo_add_subscriber (s->rx_fifo, wrk->vpp_wrk_index);
       svm_fifo_add_subscriber (s->tx_fifo, wrk->vpp_wrk_index);
     }
+  else if (s->session_state == STATE_LISTEN)
+    {
+      VDBG (0, "cloning listener");
+      s->session_state = STATE_LISTEN_NO_MQ;
+    }
+
   vls_dunlock (vls);
 }
 
@@ -597,6 +617,56 @@ vls_epoll_create (void)
   return vlsh;
 }
 
+static void
+vls_epoll_ctl_mp_checks (vcl_locked_session_t *vls, vcl_session_handle_t sh,
+                         int op)
+{
+  vcl_worker_t *wrk = vcl_worker_get_current ();
+  u8 is_add = op == EPOLL_CTL_ADD;
+  vcl_session_t *s;
+
+  s = vcl_session_get (wrk, vls->session_index);
+  switch (s->session_state)
+  {
+    case STATE_LISTEN:
+      if (vls_is_wrk_listener (vls, wrk->wrk_index) == is_add)
+	break;
+      if (!is_add && op != EPOLL_CTL_DEL)
+	break;
+      vls_set_wrk_listener (vls, wrk->wrk_index, is_add);
+      break;
+    case STATE_LISTEN_NO_MQ:
+      if (!is_add)
+	break;
+      if (vls->worker_index != wrk->wrk_index)
+	{
+	  /* Register worker as listener */
+	  vppcom_session_listen (sh, ~0);
+
+	  /* If owner worker did not attempt to accept/xpoll on the session,
+	   * force a listen stop for it, since it may not be interested in
+	   * accepting new sessions.
+	   * This is pretty much a hack done to give app workers the illusion
+	   * that it is fine to listen and not accept new sessions for a
+	   * given listener. Without it, we would accumulate unhandled
+	   * accepts on the passive worker. */
+	  if (!vls_is_wrk_listener (vls, vls->worker_index))
+	    {
+	      vppcom_send_unbind_sock (vcl_worker_get (vls->worker_index),
+	                               s->vpp_handle);
+	      s = vcl_session_get (vcl_worker_get (vls->worker_index),
+	                           vls->session_index);
+	      s->session_state = STATE_LISTEN_NO_MQ;
+	    }
+	}
+      else
+	vls_set_wrk_listener (vls, wrk->wrk_index, 1);
+      break;
+    default:
+      break;
+  }
+}
+
 int
 vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
 	       struct epoll_event *event)
@@ -610,6 +680,10 @@ vls_epoll_ctl (vls_handle_t ep_vlsh, int op, vls_handle_t vlsh,
   vls = vls_get_and_lock (vlsh);
   ep_sh = vls_to_sh (ep_vls);
   sh = vls_to_sh (vls);
+
+  if (vcl_n_workers () > 1)
+    vls_epoll_ctl_mp_checks (vls, sh, op);
+
   vls_table_runlock ();
 
   rv = vppcom_epoll_ctl (ep_sh, op, sh, event);
