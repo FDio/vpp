@@ -63,14 +63,15 @@ typedef enum
 
 typedef enum
 {
-  STATE_START = 0x01,
-  STATE_CONNECT = 0x02,
-  STATE_LISTEN = 0x04,
-  STATE_ACCEPT = 0x08,
-  STATE_VPP_CLOSING = 0x10,
-  STATE_DISCONNECT = 0x20,
-  STATE_FAILED = 0x40,
-  STATE_UPDATED = 0x80,
+  STATE_START = 0,
+  STATE_CONNECT = 0x01,
+  STATE_LISTEN = 0x02,
+  STATE_ACCEPT = 0x04,
+  STATE_VPP_CLOSING = 0x08,
+  STATE_DISCONNECT = 0x10,
+  STATE_FAILED = 0x20,
+  STATE_UPDATED = 0x40,
+  STATE_LISTEN_NO_MQ = 0x80,
 } session_state_t;
 
 #define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)
@@ -491,7 +492,7 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 listener_handle)
     }
 
   session = pool_elt_at_index (wrk->sessions, p[0]);
-  ASSERT (session->session_state & STATE_LISTEN);
+  ASSERT (session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ));
   return session;
 }
 
@@ -566,6 +567,12 @@ vcl_worker_get_current (void)
   return vcl_worker_get (vcl_get_worker_index ());
 }
 
+static inline u8
+vcl_n_workers (void)
+{
+  return pool_elts (vcm->workers);
+}
+
 static inline svm_msg_q_t *
 vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
 {
@@ -588,7 +595,7 @@ void vppcom_app_send_detach (void);
 void vppcom_send_connect_sock (vcl_session_t * session);
 void vppcom_send_disconnect_session (u64 vpp_handle);
 void vppcom_send_bind_sock (vcl_session_t * session);
-void vppcom_send_unbind_sock (u64 vpp_handle);
+void vppcom_send_unbind_sock (vcl_worker_t *wrk, u64 vpp_handle);
 void vppcom_api_hookup (void);
 void vppcom_send_application_tls_cert_add (vcl_session_t * session,
 					   char *cert, u32 cert_len);
