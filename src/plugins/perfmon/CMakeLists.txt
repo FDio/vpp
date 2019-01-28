@@ -16,6 +16,8 @@ add_vpp_plugin(perfmon
   perfmon.c
   perfmon_periodic.c
   parse_util.c
+  perfmon_intel_slm.c
+  perfmon_intel_skx.c
 )
 
 install(
