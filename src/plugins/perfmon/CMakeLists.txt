@@ -15,7 +15,28 @@ add_vpp_plugin(perfmon
   SOURCES
   perfmon.c
   perfmon_periodic.c
-  parse_util.c
+  perfmon_intel_bdw.c
+  perfmon_intel_bdw_de.c
+  perfmon_intel_bdx.c
+  perfmon_intel_bnl.c
+  perfmon_intel_clx.c
+  perfmon_intel_glm.c
+  perfmon_intel_glp.c
+  perfmon_intel_hsw.c
+  perfmon_intel_hsx.c
+  perfmon_intel_ivb.c
+  perfmon_intel_ivt.c
+  perfmon_intel_jkt.c
+  perfmon_intel_knm.c
+  perfmon_intel_nhm_ep.c
+  perfmon_intel_nhm_ex.c
+  perfmon_intel_skl.c
+  perfmon_intel_skx.c
+  perfmon_intel_slm.c
+  perfmon_intel_snb.c
+  perfmon_intel_wsm_ep_dp.c
+  perfmon_intel_wsm_ep_sp.c
+  perfmon_intel_wsm_ex.c
 )
 
 install(
