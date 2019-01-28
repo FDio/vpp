@@ -101,7 +101,9 @@ static_always_inline void
 vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
 			      i32 offset)
 {
+#if defined (CLIB_HAVE_VEC256) || defined (CLIB_HAVE_VEC128)
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
+#endif
 #ifdef CLIB_HAVE_VEC256
   u64x4 off = u64x4_splat (buffer_mem_start + offset);
   /* if count is not const, compiler will not unroll while loop
