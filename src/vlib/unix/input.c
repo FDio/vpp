@@ -223,12 +223,13 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				      em->epoll_events,
 				      vec_len (em->epoll_events), timeout_ms);
 	  }
+
       }
     else
       {
 	if (timeout_ms)
 	  usleep (timeout_ms * 1000);
-	return 0;
+	goto done;
       }
   }
 
@@ -238,7 +239,7 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	vlib_panic_with_error (vm, clib_error_return_unix (0, "epoll_wait"));
 
       /* non fatal error (e.g. EINTR). */
-      return 0;
+      goto done;
     }
 
   em->epoll_waits += 1;
@@ -312,6 +313,13 @@ linux_epoll_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  unix_save_error (um, errors[i]);
 	}
+    }
+
+done:
+  if (PREDICT_FALSE (vm->cpu_id != clib_get_current_cpu_id ()))
+    {
+      vm->cpu_id = clib_get_current_cpu_id ();
+      vm->numa_node = clib_get_current_numa_node ();
     }
 
   return 0;
