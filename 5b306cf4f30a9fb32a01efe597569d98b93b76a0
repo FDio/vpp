@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cab45981_48543a6b",
+        "filename": "src/vnet/devices/virtio/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-01-28T19:47:09Z",
+      "side": 1,
+      "message": "remove it",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 25
+      },
+      "revId": "5b306cf4f30a9fb32a01efe597569d98b93b76a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
