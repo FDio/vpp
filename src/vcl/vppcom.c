@@ -94,6 +94,14 @@ vppcom_session_state_str (session_state_t state)
       st = "STATE_FAILED";
       break;
 
+    case STATE_UPDATED:
+      st = "STATE_UPDATED";
+      break;
+
+    case STATE_LISTEN_NO_MQ:
+      st = "STATE_LISTEN_NO_MQ";
+      break;
+
     default:
       st = "UNKNOWN_STATE";
       break;
@@ -818,11 +826,11 @@ vppcom_session_unbind (u32 session_handle)
   session->vpp_handle = ~0;
   session->session_state = STATE_DISCONNECT;
 
-  VDBG (1, "VCL<%d>: vpp handle 0x%llx, sid %u: sending unbind msg! new state"
-	" 0x%x (%s)", getpid (), vpp_handle, session_handle, STATE_DISCONNECT,
+  VDBG (1, "vpp handle 0x%llx, sid %u: sending unbind msg! new state"
+	" 0x%x (%s)", vpp_handle, session_handle, STATE_DISCONNECT,
 	vppcom_session_state_str (STATE_DISCONNECT));
   vcl_evt (VCL_EVT_UNBIND, session);
-  vppcom_send_unbind_sock (vpp_handle);
+  vppcom_send_unbind_sock (wrk, vpp_handle);
 
   return VPPCOM_OK;
 }
