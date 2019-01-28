@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <perfmon/perfmon.h>
+#include <perfmon/perfmon_intel.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -26,102 +27,19 @@
 
 perfmon_main_t perfmon_main;
 
-static char *perfmon_json_path = "/usr/share/vpp/plugins/perfmon";
-
-typedef struct
+void
+perfmon_register_intel_pmc (perfmon_intel_pmc_cpu_model_t * m, int n_models,
+			    perfmon_intel_pmc_event_t * e, int n_events)
 {
-  u8 model;
-  u8 stepping;
-  u8 has_stepping;
-  char *filename;
-} file_by_model_and_stepping_t;
+  perfmon_main_t *pm = &perfmon_main;
+  perfmon_intel_pmc_registration_t r;
 
-/* Created by parsing mapfile.csv, see mapfile_tool.c */
+  r.events = e;
+  r.models = m;
+  r.n_events = n_events;
+  r.n_models = n_models;
 
-static const file_by_model_and_stepping_t fms_table[] = {
-  /* model, stepping, stepping valid, file */
-  {0x2E, 0x0, 0, "NehalemEX_core_V2.json"},
-  {0x1E, 0x0, 0, "NehalemEP_core_V2.json"},
-  {0x1F, 0x0, 0, "NehalemEP_core_V2.json"},
-  {0x1A, 0x0, 0, "NehalemEP_core_V2.json"},
-  {0x2F, 0x0, 0, "WestmereEX_core_V2.json"},
-  {0x25, 0x0, 0, "WestmereEP-SP_core_V2.json"},
-  {0x2C, 0x0, 0, "WestmereEP-DP_core_V2.json"},
-  {0x37, 0x0, 0, "Silvermont_core_V14.json"},
-  {0x4D, 0x0, 0, "Silvermont_core_V14.json"},
-  {0x4C, 0x0, 0, "Silvermont_core_V14.json"},
-  {0x5C, 0x0, 0, "goldmont_core_v13.json"},
-  {0x5F, 0x0, 0, "goldmont_core_v13.json"},
-  {0x1C, 0x0, 0, "Bonnell_core_V4.json"},
-  {0x26, 0x0, 0, "Bonnell_core_V4.json"},
-  {0x27, 0x0, 0, "Bonnell_core_V4.json"},
-  {0x36, 0x0, 0, "Bonnell_core_V4.json"},
-  {0x35, 0x0, 0, "Bonnell_core_V4.json"},
-  {0x2A, 0x0, 0, "sandybridge_core_v16.json"},
-  {0x2D, 0x0, 0, "Jaketown_core_V20.json"},
-  {0x3A, 0x0, 0, "ivybridge_core_v21.json"},
-  {0x3E, 0x0, 0, "ivytown_core_v20.json"},
-  {0x3C, 0x0, 0, "haswell_core_v28.json"},
-  {0x45, 0x0, 0, "haswell_core_v28.json"},
-  {0x46, 0x0, 0, "haswell_core_v28.json"},
-  {0x3F, 0x0, 0, "haswellx_core_v20.json"},
-  {0x3D, 0x0, 0, "broadwell_core_v23.json"},
-  {0x47, 0x0, 0, "broadwell_core_v23.json"},
-  {0x4F, 0x0, 0, "broadwellx_core_v14.json"},
-  {0x56, 0x0, 0, "broadwellde_core_v7.json"},
-  {0x4E, 0x0, 0, "skylake_core_v42.json"},
-  {0x5E, 0x0, 0, "skylake_core_v42.json"},
-  {0x8E, 0x0, 0, "skylake_core_v42.json"},
-  {0x9E, 0x0, 0, "skylake_core_v42.json"},
-  {0x57, 0x0, 0, "KnightsLanding_core_V9.json"},
-  {0x85, 0x0, 0, "KnightsLanding_core_V9.json"},
-  {0x55, 0x0, 1, "skylakex_core_v1.12.json"},
-  {0x55, 0x1, 1, "skylakex_core_v1.12.json"},
-  {0x55, 0x2, 1, "skylakex_core_v1.12.json"},
-  {0x55, 0x3, 1, "skylakex_core_v1.12.json"},
-  {0x55, 0x4, 1, "skylakex_core_v1.12.json"},
-  {0x55, 0x5, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0x6, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0x7, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0x8, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0x9, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0xA, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0xB, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0xC, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0xD, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0xE, 1, "cascadelakex_core_v1.00.json"},
-  {0x55, 0xF, 1, "cascadelakex_core_v1.00.json"},
-  {0x7A, 0x0, 0, "goldmontplus_core_v1.01.json"},
-};
-
-static void
-set_perfmon_json_path ()
-{
-  char *p, path[PATH_MAX];
-  int rv;
-  u8 *s;
-
-  /* find executable path */
-  if ((rv = readlink ("/proc/self/exe", path, PATH_MAX - 1)) == -1)
-    return;
-
-  /* readlink doesn't provide null termination */
-  path[rv] = 0;
-
-  /* strip filename */
-  if ((p = strrchr (path, '/')) == 0)
-    return;
-  *p = 0;
-
-  /* strip bin/ */
-  if ((p = strrchr (path, '/')) == 0)
-    return;
-  *p = 0;
-
-  /* cons up the .json file path */
-  s = format (0, "%s/share/vpp/plugins/perfmon", path);
-  vec_add1 (s, 0);
-  perfmon_json_path = (char *) s;
+  vec_add1 (pm->perfmon_tables, r);
 }
 
 static inline u32
@@ -137,16 +55,49 @@ get_cpuid (void)
 #endif
 }
 
+static int
+perfmon_cpu_model_matches (perfmon_intel_pmc_cpu_model_t * mt,
+			   u32 n_models, u8 model, u8 stepping)
+{
+  u32 i;
+  for (i = 0; i < n_models; i++)
+    {
+      if (mt[i].model != model)
+	continue;
+
+      if (mt[i].has_stepping)
+	{
+	  if (mt[i].stepping != stepping)
+	    continue;
+	}
+
+      return 1;
+    }
+  return 0;
+}
+
+static perfmon_intel_pmc_event_t *
+perfmon_find_table_by_model_stepping (perfmon_main_t * pm,
+				      u8 model, u8 stepping)
+{
+  perfmon_intel_pmc_registration_t *rt;
+
+  vec_foreach (rt, pm->perfmon_tables)
+  {
+    if (perfmon_cpu_model_matches (rt->models, rt->n_models, model, stepping))
+      return rt->events;
+  }
+  return 0;
+}
+
 static clib_error_t *
 perfmon_init (vlib_main_t * vm)
 {
   perfmon_main_t *pm = &perfmon_main;
   clib_error_t *error = 0;
   u32 cpuid;
-  uword *ht;
-  int found_a_table = 0;
-  int i;
   u8 model, stepping;
+  perfmon_intel_pmc_event_t *ev;
 
   pm->vlib_main = vm;
   pm->vnet_main = vnet_get_main ();
@@ -169,37 +120,32 @@ perfmon_init (vlib_main_t * vm)
   vec_validate (pm->rdpmc_indices[1], vec_len (vlib_mains) - 1);
   pm->page_size = getpagesize ();
 
-  ht = pm->perfmon_table = 0;
-
-  set_perfmon_json_path ();
+  pm->perfmon_table = 0;
+  pm->pmc_event_by_name = 0;
 
   cpuid = get_cpuid ();
+  model = ((cpuid >> 12) & 0xf0) | ((cpuid >> 4) & 0xf);
+  stepping = cpuid & 0xf;
 
-  for (i = 0; i < ARRAY_LEN (fms_table); i++)
-    {
-      model = ((cpuid >> 12) & 0xf0) | ((cpuid >> 4) & 0xf);
-      stepping = cpuid & 0xf;
+  pm->perfmon_table = perfmon_find_table_by_model_stepping (pm,
+							    model, stepping);
 
-      if (fms_table[i].model != model)
-	continue;
-
-      if (fms_table[i].has_stepping)
-	{
-	  if (fms_table[i].stepping != stepping)
-	    continue;
-	}
-
-      found_a_table = 1;
-      ht = perfmon_parse_table (pm, perfmon_json_path, fms_table[i].filename);
-      break;
-    }
-  pm->perfmon_table = ht;
-
-  if (found_a_table == 0 || pm->perfmon_table == 0 || hash_elts (ht) == 0)
+  if (pm->perfmon_table == 0)
     {
       vlib_log_err (pm->log_class, "No table for cpuid %x", cpuid);
       vlib_log_err (pm->log_class, "  model %x, stepping %x",
 		    model, stepping);
+    }
+  else
+    {
+      pm->pmc_event_by_name = hash_create_string (0, sizeof (u32));
+      ev = pm->perfmon_table;
+
+      for (; ev->event_name; ev++)
+	{
+	  hash_set_mem (pm->pmc_event_by_name, ev->event_name,
+			ev - pm->perfmon_table);
+	}
     }
 
   return error;
@@ -219,76 +165,32 @@ VLIB_PLUGIN_REGISTER () =
 /* *INDENT-ON* */
 
 static uword
-atox (u8 * s)
-{
-  uword rv = 0;
-
-  while (*s)
-    {
-      if (*s >= '0' && *s <= '9')
-	rv = (rv << 4) | (*s - '0');
-      else if (*s >= 'a' && *s <= 'f')
-	rv = (rv << 4) | (*s - 'a' + 10);
-      else if (*s >= 'A' && *s <= 'A')
-	rv = (rv << 4) | (*s - 'A' + 10);
-      else if (*s == 'x')
-	;
-      else
-	break;
-      s++;
-    }
-  return rv;
-}
-
-static uword
 unformat_processor_event (unformat_input_t * input, va_list * args)
 {
   perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
   perfmon_event_config_t *ep = va_arg (*args, perfmon_event_config_t *);
   u8 *s = 0;
-  name_value_pair_t **nvps, *nvp;
   hash_pair_t *hp;
-  int i;
-  int set_values = 0;
+  u32 idx;
   u32 pe_config = 0;
 
-  if (pm->perfmon_table == 0)
+  if (pm->perfmon_table == 0 || pm->pmc_event_by_name == 0)
     return 0;
 
   if (!unformat (input, "%s", &s))
     return 0;
 
-  hp = hash_get_pair_mem (pm->perfmon_table, s);
+  hp = hash_get_pair_mem (pm->pmc_event_by_name, s);
 
   vec_free (s);
 
   if (hp == 0)
     return 0;
 
-  nvps = (name_value_pair_t **) (hp->value[0]);
+  idx = (u32) (hp->value[0]);
 
-  for (i = 0; i < vec_len (nvps); i++)
-    {
-      nvp = nvps[i];
-      if (!strncmp ((char *) nvp->name, "EventCode", 9))
-	{
-	  pe_config |= atox (nvp->value);
-	  set_values++;
-	}
-      else if (!strncmp ((char *) nvp->name, "UMask", 5))
-	{
-	  pe_config |= (atox (nvp->value) << 8);
-	  set_values++;
-	}
-      if (set_values == 2)
-	break;
-    }
-
-  if (set_values != 2)
-    {
-      clib_warning ("BUG: only found %d values", set_values);
-      return 0;
-    }
+  pe_config |= pm->perfmon_table[idx].event_code[0];
+  pe_config |= pm->perfmon_table[idx].umask << 8;
 
   ep->name = (char *) hp->key;
   ep->pe_type = PERF_TYPE_RAW;
@@ -545,7 +447,7 @@ format_generic_events (u8 * s, va_list * args)
 typedef struct
 {
   u8 *name;
-  name_value_pair_t **nvps;
+  u32 index;
 } sort_nvp_t;
 
 static int
@@ -558,43 +460,51 @@ sort_nvps_by_name (void *a1, void *a2)
 }
 
 static u8 *
+format_pmc_event (u8 * s, va_list * args)
+{
+  perfmon_intel_pmc_event_t *ev = va_arg (*args, perfmon_intel_pmc_event_t *);
+
+  s = format (s, "%s\n", ev->event_name);
+  s = format (s, "  umask: 0x%x\n", ev->umask);
+  s = format (s, "  code:  0x%x", ev->event_code[0]);
+
+  if (ev->event_code[1])
+    s = format (s, " , 0x%x\n", ev->event_code[1]);
+  else
+    s = format (s, "\n");
+
+  return s;
+}
+
+static u8 *
 format_processor_events (u8 * s, va_list * args)
 {
   perfmon_main_t *pm = va_arg (*args, perfmon_main_t *);
   int verbose = va_arg (*args, int);
-  int i, j;
   sort_nvp_t *sort_nvps = 0;
   sort_nvp_t *sn;
   u8 *key;
-  name_value_pair_t **value;
+  u32 value;
 
   /* *INDENT-OFF* */
-  hash_foreach_mem (key, value, pm->perfmon_table,
+  hash_foreach_mem (key, value, pm->pmc_event_by_name,
   ({
     vec_add2 (sort_nvps, sn, 1);
     sn->name = key;
-    sn->nvps = value;
+    sn->index = value;
   }));
 
   vec_sort_with_function (sort_nvps, sort_nvps_by_name);
 
   if (verbose == 0)
     {
-      for (i = 0; i < vec_len (sort_nvps); i++)
-        s = format (s, "\n  %s ", sort_nvps[i].name);
+      vec_foreach (sn, sort_nvps)
+        s = format (s, "\n  %s ", sn->name);
     }
   else
     {
-      for (i = 0; i < vec_len (sort_nvps); i++)
-        {
-          name_value_pair_t **nvps;
-          s = format (s, "\n  %s:", sort_nvps[i].name);
-
-          nvps = sort_nvps[i].nvps;
-
-          for (j = 0; j < vec_len (nvps); j++)
-            s = format (s, "\n    %s = %s", nvps[j]->name, nvps[j]->value);
-        }
+      vec_foreach (sn, sort_nvps)
+        s = format(s, "%U", format_pmc_event, &pm->perfmon_table[sn->index]);
     }
   vec_free (sort_nvps);
   return s;
