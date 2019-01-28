@@ -110,16 +110,6 @@ foreach(DIR ${SUBDIRS})
 endforeach()
 
 ##############################################################################
-# packaging
-##############################################################################
-include(cmake/pack.cmake)
-add_vpp_packaging(
-  NAME "vpp"
-  VENDOR "fd.io"
-  DESCRIPTION "Vector Packet Processor"
-)
-
-##############################################################################
 # detect if we are inside git repo and add configure dependency
 ##############################################################################
 execute_process(
@@ -127,6 +117,7 @@ execute_process(
   COMMAND git rev-parse --show-toplevel
   OUTPUT_VARIABLE VPP_GIT_TOPLEVEL_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
 )
 
 if (VPP_GIT_TOPLEVEL_DIR)
