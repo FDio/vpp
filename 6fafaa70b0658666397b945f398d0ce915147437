@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fae6e7e3_020814ef",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-29T20:11:57Z",
+      "side": 1,
+      "message": "These seem to be constants to me.  \nShould they be declared elsewhere? Maybe in a VppEnum?",
+      "range": {
+        "startLine": 16,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 24
+      },
+      "revId": "6fafaa70b0658666397b945f398d0ce915147437",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "58d05f4e_e4d30ecb",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-29T20:11:57Z",
+      "side": 1,
+      "message": "Same as above.",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 24
+      },
+      "revId": "6fafaa70b0658666397b945f398d0ce915147437",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
