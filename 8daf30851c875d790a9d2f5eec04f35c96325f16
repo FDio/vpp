@@ -91,6 +91,30 @@
       "revId": "8daf30851c875d790a9d2f5eec04f35c96325f16",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "62e1a9b7_345ba8ea",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 20
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-01-29T22:11:00Z",
+      "side": 1,
+      "message": "Sorry, if I am correct, it should ideally use clib_atomic_sub_fetch_rel (atomics with release) if that api is not already there.",
+      "parentUuid": "19c142d9_43aad51a",
+      "range": {
+        "startLine": 216,
+        "startChar": 0,
+        "endLine": 216,
+        "endChar": 34
+      },
+      "revId": "8daf30851c875d790a9d2f5eec04f35c96325f16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
