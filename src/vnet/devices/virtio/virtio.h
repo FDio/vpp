@@ -142,7 +142,11 @@ typedef struct
     pci_addr_t pci_addr;
   };
   u32 per_interface_next_index;
-  int fd;
+  union
+  {
+    int fd;
+    u32 msix_enabled;
+  };
   union
   {
     int tap_fd;
