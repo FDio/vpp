@@ -24,6 +24,7 @@
 #include <vnet/dpo/dvr_dpo.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_in_out_feat_arc.h>
 
 /**
  * Pool of GBP endpoint_groups
@@ -138,8 +139,9 @@ gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L2_BRIDGE, gg->gg_uplink_sw_if_index,
 			   gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
-	  gbp_itf_l2_feature_enable_disable_if_index
-	    (gg->gg_uplink_sw_if_index, "gbp-null-classify", 1);
+	  vnet_l2_input_feature_enable_disable_all ("gbp-null-classify",
+						    gg->gg_uplink_sw_if_index,
+						    1, 0, 0);
 	}
 
       hash_set (gbp_endpoint_group_db.gg_hash,
@@ -180,8 +182,9 @@ gbp_endpoint_group_unlock (index_t ggi)
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L3, gg->gg_uplink_sw_if_index,
 			   gg->gg_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
-	  gbp_itf_l2_feature_enable_disable_if_index
-	    (gg->gg_uplink_sw_if_index, "gbp-null-classify", 0);
+	  vnet_l2_input_feature_enable_disable_all ("gbp-null-classify",
+						    gg->gg_uplink_sw_if_index,
+						    0, 0, 0);
 	}
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
       {

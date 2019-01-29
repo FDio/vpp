@@ -58,7 +58,31 @@ int vnet_l2_feature_enable_disable (const char *arc_name,
 				    int enable_disable, void *feature_config,
 				    u32 n_feature_config_bytes);
 
+int vnet_l2_input_feature_enable_disable_all (const char *node_name,
+					      u32 sw_if_index,
+					      int enable_disable,
+					      void *feature_config,
+					      u32 n_feature_config_bytes);
+int vnet_l2_output_feature_enable_disable_all (const char *node_name,
+					       u32 sw_if_index,
+					       int enable_disable,
+					       void *feature_config,
+					       u32 n_feature_config_bytes);
 
+#define VNET_L2_FEATURE_INIT_ALL__(x, def, way, ...) \
+  VNET_FEATURE_INIT(x ## _nonip, __VA_ARGS__) = {.arc_name="l2-" way "put-nonip", def}; \
+  VNET_FEATURE_INIT(x ## _ip4,   __VA_ARGS__) = {.arc_name="l2-" way "put-ip4", def}; \
+  VNET_FEATURE_INIT(x ## _ip6,   __VA_ARGS__) = {.arc_name="l2-" way "put-ip6", def}
+
+#define VNET_L2_FEATURE_INIT__(...) __VA_ARGS__
+
+#define VNET_L2_FEATURE_INIT(...) __VA_ARGS__
+
+#define VNET_L2_IN_FEATURE_INIT_ALL(x, def, ...) \
+  VNET_L2_FEATURE_INIT_ALL__(x, VNET_L2_FEATURE_INIT__(def), "in", __VA_ARGS__)
+
+#define VNET_L2_OUT_FEATURE_INIT_ALL(x, def, ...) \
+  VNET_L2_FEATURE_INIT_ALL__(x, VNET_L2_FEATURE_INIT__(def), "out", __VA_ARGS__)
 
 #endif /* __included_vnet_in_out_feat_arc_h__ */
 
