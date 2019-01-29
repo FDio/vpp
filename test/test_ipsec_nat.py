@@ -7,7 +7,8 @@ from scapy.layers.inet import ICMP, IP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
 from util import ppp, ppc
 from template_ipsec import TemplateIpsec
-from vpp_ipsec import *
+from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
+        VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 

@@ -5,7 +5,8 @@ from scapy.layers.ipsec import ESP
 from framework import VppTestRunner
 from template_ipsec import IpsecTraTests, IpsecTunTests
 from template_ipsec import TemplateIpsec, IpsecTcpTests
-from vpp_ipsec import *
+from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
+        VppIpsecSpdItfBinding
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 

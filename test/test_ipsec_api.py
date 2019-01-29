@@ -1,7 +1,7 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner
-from template_ipsec import TemplateIpsec, IPsecIPv4Params
+from template_ipsec import IPsecIPv4Params
 
 
 class IpsecApiTestCase(VppTestCase):
