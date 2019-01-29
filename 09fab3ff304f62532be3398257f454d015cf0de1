@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3c988b48_ab06cff6",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-29T09:36:57Z",
+      "side": 1,
+      "message": "same issue here. a variable length member in the middle.",
+      "revId": "09fab3ff304f62532be3398257f454d015cf0de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "24d806eb_c922ed4b",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-29T09:36:57Z",
+      "side": 1,
+      "message": "same issue here. a variable length member in the middle.",
+      "revId": "09fab3ff304f62532be3398257f454d015cf0de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0b45a33a_612b0f10",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-29T09:36:57Z",
+      "side": 1,
+      "message": "while you\u0027re in this area and making API changes, how about vl_api_prefix_t, instead of the address and mask_width.",
+      "revId": "09fab3ff304f62532be3398257f454d015cf0de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
