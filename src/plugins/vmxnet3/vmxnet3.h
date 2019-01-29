@@ -57,6 +57,11 @@ enum
 #undef _
 };
 
+#define VMXNET3_TXQ_MAX 8
+#define VMXNET3_TX_START(vd) ((vd)->queues)
+#define VMXNET3_RX_START(vd) \
+  ((vd)->queues + (vd)->num_tx_queues * sizeof (vmxnet3_tx_queue))
+
 /* BAR 0 */
 #define VMXNET3_REG_IMR     0x0000	/* Interrupt Mask Register */
 #define VMXNET3_REG_TXPROD  0x0600	/* Tx Producer Index */
@@ -297,11 +302,6 @@ typedef CLIB_PACKED (struct
 		     u8 pad[88];
 		     }) vmxnet3_rx_queue;
 
-typedef CLIB_PACKED (struct
-		     {
-		     vmxnet3_tx_queue tx; vmxnet3_rx_queue rx;
-		     }) vmxnet3_queues;
-
 /*
  * flags:
  *   buffer length   -- bits 0-13
@@ -445,6 +445,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u16 size;
+  u32 reg_txprod;
   clib_spinlock_t lock;
 
   vmxnet3_tx_desc *tx_desc;
@@ -452,11 +453,6 @@ typedef struct
   vmxnet3_tx_ring tx_ring;
   vmxnet3_tx_comp_ring tx_comp_ring;
 } vmxnet3_txq_t;
-
-typedef CLIB_PACKED (struct
-		     {
-		     vmxnet3_queues queues; vmxnet3_shared shared;
-		     }) vmxnet3_dma;
 
 typedef struct
 {
@@ -486,11 +482,12 @@ typedef struct
   /* error */
   clib_error_t *error;
 
-  vmxnet3_dma *dma;
+  vmxnet3_shared *driver_shared;
+  void *queues;
 
   u32 link_speed;
-  vmxnet3_tx_stats tx_stats;
-  vmxnet3_rx_stats rx_stats;
+  vmxnet3_tx_stats *tx_stats;
+  vmxnet3_rx_stats *rx_stats;
 } vmxnet3_device_t;
 
 typedef struct
@@ -508,6 +505,7 @@ typedef struct
   u32 enable_elog;
   u16 rxq_size;
   u16 txq_size;
+  u16 txq_num;
   /* return */
   i32 rv;
   u32 sw_if_index;
@@ -593,7 +591,7 @@ vmxnet3_rxq_refill_ring0 (vlib_main_t * vm, vmxnet3_device_t * vd,
   vmxnet3_rx_desc *rxd;
   u16 n_refill, n_alloc;
   vmxnet3_rx_ring *ring;
-  vmxnet3_queues *q;
+  vmxnet3_rx_queue *rx;
 
   ring = &rxq->rx_ring[0];
   n_refill = rxq->size - ring->fill;
@@ -624,8 +622,8 @@ vmxnet3_rxq_refill_ring0 (vlib_main_t * vm, vmxnet3_device_t * vd,
       n_alloc--;
     }
 
-  q = &vd->dma->queues;
-  if (PREDICT_FALSE (q->rx.ctrl.update_prod))
+  rx = VMXNET3_RX_START (vd);
+  if (PREDICT_FALSE (rx->ctrl.update_prod))
     vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_RXPROD, ring->produce);
 
   return 0;
@@ -638,7 +636,7 @@ vmxnet3_rxq_refill_ring1 (vlib_main_t * vm, vmxnet3_device_t * vd,
   vmxnet3_rx_desc *rxd;
   u16 n_refill, n_alloc;
   vmxnet3_rx_ring *ring;
-  vmxnet3_queues *q;
+  vmxnet3_rx_queue *rx;
 
   ring = &rxq->rx_ring[1];
   n_refill = rxq->size - ring->fill;
@@ -669,8 +667,8 @@ vmxnet3_rxq_refill_ring1 (vlib_main_t * vm, vmxnet3_device_t * vd,
       n_alloc--;
     }
 
-  q = &vd->dma->queues;
-  if (PREDICT_FALSE (q->rx.ctrl.update_prod))
+  rx = VMXNET3_RX_START (vd);
+  if (PREDICT_FALSE (rx->ctrl.update_prod))
     vmxnet3_reg_write_inline (vd, 0, VMXNET3_REG_RXPROD2, ring->produce);
 
   return 0;

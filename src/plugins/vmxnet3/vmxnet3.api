@@ -26,6 +26,7 @@ option version = "1.0.0";
     @param enable_elog - turn on elog (optional - default is off)
     @param rxq_size - receive queue size (optional - default is 1024)
     @param txq_size - transmit queue size (optional - default is 1024)
+    @param txq_num - number of transmit queues (optional - default is 1)
 */
 
 define vmxnet3_create
@@ -37,6 +38,7 @@ define vmxnet3_create
   i32 enable_elog;
   u16 rxq_size;
   u16 txq_size;
+  u16 txq_num;
 };
 
 /** \brief
@@ -66,21 +68,36 @@ autoreply define vmxnet3_delete
   u32 sw_if_index;
 };
 
+/** \brief vmxnet3_tx_list structure
+    @param tx_qsize - tx queue size
+    @param tx_next - tx next index
+    @param tx_produce - tx produce index
+    @param tx_consume - tx consume index
+*/
+
+typeonly define vmxnet3_tx_list
+{
+  u16 tx_qsize;
+  u16 tx_next;
+  u16 tx_produce;
+  u16 tx_consume;
+};
+
 /** \brief Memory interface details structure
     @param context - sender context, to match reply w/ request (memif_dump)
     @param sw_if_index - index of the interface
     @param if_name - name of the interface
     @param hw_addr - interface MAC address
-    @param id - id associated with the interface
-    @param role - role of the interface in the connection (master/slave)
-    @param mode - interface mode
-    @param socket_id - id of the socket filename used by this interface
-           to establish new connections
-    @param ring_size - the number of entries of RX/TX rings
-    @param buffer_size - size of the buffer allocated for each ring entry
+    @param pci_addr - pci address of the interface
+    @param version - vmxnet3 hardware version
     @param admin_up_down - interface administrative status
-    @param link_up_down - interface link status
-
+    @param rx_qsize - rx queue size
+    @param rx_fill - rx fill count
+    @param rx_next - rx next index
+    @param rx_produce - rx produce index
+    @param rx_consume - rx consume index
+    @param tx_count - number of of elements in tx_list
+    @param tx_list - list of vmnxnet3_tx_list
 */
 define vmxnet3_details
 {
@@ -91,21 +108,16 @@ define vmxnet3_details
   u8 hw_addr[6];
   u32 pci_addr;
   u8 version;
+  u8 admin_up_down;
 
-  u16 rx_qid;
   u16 rx_qsize;
   u16 rx_fill[2];
   u16 rx_next;
   u16 rx_produce[2];
   u16 rx_consume[2];
 
-  u16 tx_qid;
-  u16 tx_qsize;
-  u16 tx_next;
-  u16 tx_produce;
-  u16 tx_consume;
-
-  u8 admin_up_down;
+  u8 tx_count;
+  vl_api_vmxnet3_tx_list_t tx_list[8];
 };
 
 /** \brief Dump all vmxnet3 interfaces

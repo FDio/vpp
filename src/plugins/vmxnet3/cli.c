@@ -32,7 +32,6 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vmxnet3_create_if_args_t args;
-  u32 tmp;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -45,10 +44,12 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "elog"))
 	args.enable_elog = 1;
-      else if (unformat (line_input, "rx-queue-size %u", &tmp))
-	args.rxq_size = tmp;
-      else if (unformat (line_input, "tx-queue-size %u", &tmp))
-	args.txq_size = tmp;
+      else if (unformat (line_input, "rx-queue-size %u", &args.rxq_size))
+	;
+      else if (unformat (line_input, "tx-queue-size %u", &args.txq_size))
+	;
+      else if (unformat (line_input, "num-tx-queues %u", &args.txq_num))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -65,7 +66,8 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
   .path = "create interface vmxnet3",
   .short_help = "create interface vmxnet3 <pci-address>"
-                "[rx-queue-size <size>] [tx-queue-size <size>]",
+                "[rx-queue-size <size>] [tx-queue-size <size>]"
+                "[num-tx-queues <number>]",
   .function = vmxnet3_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -319,9 +321,9 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
 	  }
       }
 
-      vec_foreach_index (qid, vd->rxqs)
+      vec_foreach_index (qid, vd->txqs)
       {
-	txq = vec_elt_at_index (vd->txqs, 0);
+	txq = vec_elt_at_index (vd->txqs, qid);
 	vlib_cli_output (vm, "  Queue %u (TX)", qid);
 	vlib_cli_output (vm, "    TX completion next index %u",
 			 txq->tx_comp_ring.next);
