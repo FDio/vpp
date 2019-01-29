@@ -22,9 +22,6 @@
 extern index_t gbp_itf_add_and_lock (u32 sw_if_index, u32 bd_index);
 extern void gbp_itf_unlock (index_t index);
 
-extern int gbp_itf_l2_feature_enable_disable_if_index (index_t if_index,
-						       const char *node_name,
-						       int enable_disable);
 extern int gbp_itf_l2_feature_enable_disable (index_t gii,
 					      const char *node_name,
 					      int enable_disable);

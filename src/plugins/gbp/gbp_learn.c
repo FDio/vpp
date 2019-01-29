@@ -21,6 +21,7 @@
 
 #include <vnet/util/throttle.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_in_out_feat_arc.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
@@ -361,27 +362,8 @@ VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (gbp_learn_l2_node, gbp_learn_l2);
 
-/*
- * gbp-learn-l2 as features in l2-input arcs
- * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
- * we need to duplicate our node on each feature arc
- */
-VNET_FEATURE_INIT (gbp_learn_l2_nonip_feat_node, static) =
-{
-  .arc_name = "l2-input-nonip",
-  .node_name = "gbp-learn-l2"
-};
-VNET_FEATURE_INIT (gbp_learn_l2_ip4_feat_node, static) =
-{
-  .arc_name = "l2-input-ip4",
-  .node_name = "gbp-learn-l2"
-};
-
-VNET_FEATURE_INIT (gbp_learn_l2_ip6_feat_node, static) =
-{
-  .arc_name = "l2-input-ip6",
-  .node_name = "gbp-learn-l2"
-};
+VNET_L2_IN_FEATURE_INIT_ALL(gbp_learn_l2_feat_node,
+  VNET_L2_FEATURE_INIT(.node_name = "gbp-learn-l2"), static);
 /* *INDENT-ON* */
 
 typedef struct gbp_learn_l3_t_
@@ -692,8 +674,8 @@ gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode)
 {
   if (GBP_LEARN_MODE_L2 == mode)
     {
-      gbp_itf_l2_feature_enable_disable_if_index (sw_if_index, "gbp-learn-l2",
-						  1);
+      vnet_l2_input_feature_enable_disable_all ("gbp-learn-l2", sw_if_index,
+						1, 0, 0);
     }
   else
     {
@@ -709,8 +691,8 @@ gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode)
 {
   if (GBP_LEARN_MODE_L2 == mode)
     {
-      gbp_itf_l2_feature_enable_disable_if_index (sw_if_index, "gbp-learn-l2",
-						  0);
+      vnet_l2_input_feature_enable_disable_all ("gbp-learn-l2", sw_if_index,
+						0, 0, 0);
     }
   else
     {

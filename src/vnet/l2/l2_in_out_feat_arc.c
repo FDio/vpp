@@ -640,6 +640,85 @@ vnet_l2_feature_enable_disable (const char *arc_name, const char *node_name,
   return 0;
 }
 
+static int
+vnet_l2_feature_enable_disable_all__ (const char *nonip, const char *ip4,
+				      const char *ip6, const char *node_name,
+				      u32 sw_if_index, int enable_disable,
+				      void *feature_config,
+				      u32 n_feature_config_bytes)
+{
+  int err;
+
+  err = vnet_l2_feature_enable_disable (nonip, node_name, sw_if_index,
+					enable_disable, feature_config,
+					n_feature_config_bytes);
+  if (err)
+    goto err_nonip;
+
+  err = vnet_l2_feature_enable_disable (ip4, node_name, sw_if_index,
+					enable_disable, feature_config,
+					n_feature_config_bytes);
+  if (err)
+    goto err_ip4;
+
+  err = vnet_l2_feature_enable_disable (ip6, node_name, sw_if_index,
+					enable_disable, feature_config,
+					n_feature_config_bytes);
+  if (err)
+    goto err_ip6;
+
+  return 0;
+
+  /* rollback changes in case of errors */
+err_ip6:
+  vnet_l2_feature_enable_disable (ip4, node_name, sw_if_index,
+				  !enable_disable, feature_config,
+				  n_feature_config_bytes);
+err_ip4:
+  vnet_l2_feature_enable_disable (nonip, node_name, sw_if_index,
+				  !enable_disable, feature_config,
+				  n_feature_config_bytes);
+err_nonip:
+  return err;
+}
+
+/*
+ * l2 input arcs are different for nonip, ip4 and ip6. When a node needs to
+ * get all packets, it needs to register itself on the 3 arcs.
+ * This helper allows to enable/disable a node on all l2 arcs
+ */
+int
+vnet_l2_input_feature_enable_disable_all (const char *node_name,
+					  u32 sw_if_index, int enable_disable,
+					  void *feature_config,
+					  u32 n_feature_config_bytes)
+{
+  return vnet_l2_feature_enable_disable_all__ ("l2-input-nonip",
+					       "l2-input-ip4", "l2-input-ip6",
+					       node_name, sw_if_index,
+					       enable_disable, feature_config,
+					       n_feature_config_bytes);
+}
+
+/*
+ * l2 output arcs are different for nonip, ip4 and ip6. When a node needs to
+ * get all packets, it needs to register itself on the 3 arcs.
+ * This helper allows to enable/disable a node on all l2 arcs
+ */
+int
+vnet_l2_output_feature_enable_disable_all (const char *node_name,
+					   u32 sw_if_index,
+					   int enable_disable,
+					   void *feature_config,
+					   u32 n_feature_config_bytes)
+{
+  return vnet_l2_feature_enable_disable_all__ ("l2-output-nonip",
+					       "l2-output-ip4",
+					       "l2-output-ip6", node_name,
+					       sw_if_index, enable_disable,
+					       feature_config,
+					       n_feature_config_bytes);
+}
 
 VLIB_INIT_FUNCTION (l2_in_out_feat_arc_init);
 

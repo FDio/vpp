@@ -100,49 +100,6 @@ gbp_itf_unlock (index_t gii)
 }
 
 /*
- * enable/disable a feature in l2-input arcs by vlib interface index
- */
-int
-gbp_itf_l2_feature_enable_disable_if_index (index_t if_index,
-					    const char *node_name,
-					    int enable_disable)
-{
-  int err;
-
-  /*
-   * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
-   * we need to duplicate our nodes on each feature arc
-   */
-
-  err = vnet_l2_feature_enable_disable ("l2-input-nonip", node_name, if_index,
-					enable_disable, 0, 0);
-  if (err)
-    goto err_nonip;
-
-  err = vnet_l2_feature_enable_disable ("l2-input-ip4", node_name, if_index,
-					enable_disable, 0, 0);
-  if (err)
-    goto err_ip4;
-
-  err = vnet_l2_feature_enable_disable ("l2-input-ip6", node_name, if_index,
-					enable_disable, 0, 0);
-  if (err)
-    goto err_ip6;
-
-  return 0;
-
-  /* rollback changes in case of errors */
-err_ip6:
-  err = vnet_l2_feature_enable_disable ("l2-input-ip4", node_name, if_index,
-					!enable_disable, 0, 0);
-err_ip4:
-  err = vnet_l2_feature_enable_disable ("l2-input-nonip", node_name, if_index,
-					!enable_disable, 0, 0);
-err_nonip:
-  return err;
-}
-
-/*
  * enable/disable a feature in l2-input arcs by gbp_if_t index
  */
 int
@@ -154,9 +111,9 @@ gbp_itf_l2_feature_enable_disable (index_t gii, const char *node_name,
   if (gi->gi_bd_index == ~0)
     return 0;
 
-  return gbp_itf_l2_feature_enable_disable_if_index (gi->gi_sw_if_index,
-						     node_name,
-						     enable_disable);
+  return vnet_l2_input_feature_enable_disable_all (node_name,
+						   gi->gi_sw_if_index,
+						   enable_disable, 0, 0);
 }
 
 void

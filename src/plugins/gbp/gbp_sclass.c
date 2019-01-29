@@ -17,6 +17,7 @@
 #include <plugins/gbp/gbp_itf.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
+#include <vnet/l2/l2_in_out_feat_arc.h>
 
 /**
  * Grouping of global data for the GBP source EPG classification feature
@@ -287,29 +288,10 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip4_gbp_sclass_2_id_node, ip4_gbp_sclass_2_id);
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_id_2_sclass_node, ip6_gbp_id_2_sclass);
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_sclass_2_id_node, ip6_gbp_sclass_2_id);
 
-/*
- * l2-gpb-sclass-2-id as features in l2-input arcs
- * unfortunately, l2-input use 3 different arcs for nonip, ip4 and ip6 packets
- * we need to duplicate our node on each feature arc
- */
-VNET_FEATURE_INIT (l2_gbp_sclass_2_id_nonip_feat, static) =
-{
-  .arc_name = "l2-input-nonip",
-  .node_name = "l2-gbp-sclass-2-id",
-  .runs_before = VNET_FEATURES ("l2-gbp-lpm-classify"),
-};
-VNET_FEATURE_INIT (l2_gbp_sclass_2_id_ip4_feat, static) =
-{
-  .arc_name = "l2-input-ip4",
-  .node_name = "l2-gbp-sclass-2-id",
-  .runs_before = VNET_FEATURES ("l2-gbp-lpm-classify"),
-};
-VNET_FEATURE_INIT (l2_gbp_sclass_2_id_ip6_feat, static) =
-{
-  .arc_name = "l2-input-ip6",
-  .node_name = "l2-gbp-sclass-2-id",
-  .runs_before = VNET_FEATURES ("l2-gbp-lpm-classify"),
-};
+VNET_L2_IN_FEATURE_INIT_ALL(l2_gbp_sclass_2_id_feat,
+  VNET_L2_FEATURE_INIT(
+    .node_name = "l2-gbp-sclass-2-id",
+    .runs_before = VNET_FEATURES ("l2-gbp-lpm-classify")), static);
 
 VNET_FEATURE_INIT (ip4_gbp_sclass_2_id_feat, static) =
 {
@@ -338,16 +320,16 @@ VNET_FEATURE_INIT (ip6_gbp_id_2_sclass_feat, static) =
 void
 gbp_sclass_enable_l2 (u32 sw_if_index)
 {
-  gbp_itf_l2_feature_enable_disable_if_index (sw_if_index,
-					      "l2-gbp-sclass-2-id", 1);
+  vnet_l2_input_feature_enable_disable_all ("l2-gbp-sclass-2-id", sw_if_index,
+					    1, 0, 0);
   l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_GBP_ID_2_SCLASS, 1);
 }
 
 void
 gbp_sclass_disable_l2 (u32 sw_if_index)
 {
-  gbp_itf_l2_feature_enable_disable_if_index (sw_if_index,
-					      "l2-gbp-sclass-2-id", 0);
+  vnet_l2_input_feature_enable_disable_all ("l2-gbp-sclass-2-id", sw_if_index,
+					    0, 0, 0);
   l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_GBP_ID_2_SCLASS, 0);
 }
 
