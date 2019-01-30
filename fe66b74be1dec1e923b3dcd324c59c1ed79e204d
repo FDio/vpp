@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "11cca13b_131ec133",
+        "filename": "src/plugins/dpdk/device/device.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-01-30T17:36:20Z",
+      "side": 1,
+      "message": "Are multiseg membufs part of no cache mempools ?",
+      "range": {
+        "startLine": 130,
+        "startChar": 3,
+        "endLine": 132,
+        "endChar": 68
+      },
+      "revId": "fe66b74be1dec1e923b3dcd324c59c1ed79e204d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
