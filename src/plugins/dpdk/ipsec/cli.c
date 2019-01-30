@@ -141,9 +141,9 @@ format_crypto_worker (u8 * s, va_list * args)
     {
       ind = "  ";
       res = vec_elt_at_index (dcm->resource, res_idx[0]);
-      s = format (s, "%s%-20s dev-id %2u inbound-queue %2u outbound-queue %2u\n",
+      s = format (s, "%s%-20s dev-id %2u queue-pair %2u\n",
 		  ind, vec_elt_at_index (dcm->dev, res->dev_id)->name,
-		  res->dev_id, res->qp_id, res->qp_id + 1);
+		  res->dev_id, res->qp_id);
 
       ind = "    ";
       if (verbose)
@@ -226,12 +226,12 @@ show_dpdk_crypto_placement_v_fn (vlib_main_t * vm, unformat_input_t * input,
  * @cliexstart{show dpdk crypto placement}
  * vpp# show dpdk crypto placement
  * Thread 1 (vpp_wk_0):
- *   cryptodev_aesni_mb_p dev-id  0 inbound-queue  0 outbound-queue  1
- *   cryptodev_aesni_gcm_ dev-id  1 inbound-queue  0 outbound-queue  1
+ *   cryptodev_aesni_mb_p dev-id  0 queue-pair  0
+ *   cryptodev_aesni_gcm_ dev-id  1 queue-pair  0
  *
  * Thread 2 (vpp_wk_1):
- *   cryptodev_aesni_mb_p dev-id  0 inbound-queue  2 outbound-queue  3
- *   cryptodev_aesni_gcm_ dev-id  1 inbound-queue  2 outbound-queue  3
+ *   cryptodev_aesni_mb_p dev-id  0 queue-pair  1
+ *   cryptodev_aesni_gcm_ dev-id  1 queue-pair  1
  * @cliexend
 ?*/
 /* *INDENT-OFF* */
@@ -251,18 +251,18 @@ VLIB_CLI_COMMAND (show_dpdk_crypto_placement, static) = {
  * @cliexstart{show dpdk crypto placement verbose}
  * vpp# show dpdk crypto placement verbose
  * Thread 1 (vpp_wk_0):
- *   cryptodev_aesni_mb_p dev-id  0 inbound-queue  0 outbound-queue  1
+ *   cryptodev_aesni_mb_p dev-id  0 queue-pair  0
  *     Cipher: aes-cbc-128, aes-cbc-192, aes-cbc-256, aes-ctr-128, aes-ctr-192, aes-ctr-256
  *     Auth: md5-96, sha1-96, sha-256-128, sha-384-192, sha-512-256
- *     cryptodev_aesni_gcm_ dev-id  1 inbound-queue  0 outbound-queue  1
+ *     cryptodev_aesni_gcm_ dev-id  1 queue-pair  0
  *     Cipher: aes-gcm-128, aes-gcm-192, aes-gcm-256
  *     Auth:
  *
  * Thread 2 (vpp_wk_1):
- *   cryptodev_aesni_mb_p dev-id  0 inbound-queue  2 outbound-queue  3
+ *   cryptodev_aesni_mb_p dev-id  0 queue-pair  1
  *     Cipher: aes-cbc-128, aes-cbc-192, aes-cbc-256, aes-ctr-128, aes-ctr-192, aes-ctr-256
  *     Auth: md5-96, sha1-96, sha-256-128, sha-384-192, sha-512-256
- *     cryptodev_aesni_gcm_ dev-id  1 inbound-queue  2 outbound-queue  3
+ *     cryptodev_aesni_gcm_ dev-id  1 queue-pair  1
  *     Cipher: aes-gcm-128, aes-gcm-192, aes-gcm-256
  *     Auth:
  *

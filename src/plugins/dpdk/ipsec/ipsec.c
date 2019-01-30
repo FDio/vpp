@@ -19,6 +19,7 @@
 #include <vlib/node_funcs.h>
 
 #include <dpdk/device/dpdk.h>
+#include <dpdk/buffer.h>
 #include <dpdk/ipsec/ipsec.h>
 
 dpdk_crypto_main_t dpdk_crypto_main;
@@ -705,7 +706,7 @@ crypto_scan_devs (u32 n_mains)
 	  continue;
 	}
 
-      max_res_idx = (dev->max_qp / 2) - 1;
+      max_res_idx = dev->max_qp - 1;
 
       vec_validate (dev->free_resources, max_res_idx);
 
@@ -714,13 +715,13 @@ crypto_scan_devs (u32 n_mains)
 				       (crypto_resource_t) EMPTY_STRUCT,
 				       CLIB_CACHE_LINE_BYTES);
 
-      for (j = 0; j <= max_res_idx; j++, res_idx++)
+      for (j = 0; j <= max_res_idx; j++)
 	{
-	  vec_elt (dev->free_resources, max_res_idx - j) = res_idx;
-	  res = &dcm->resource[res_idx];
+	  vec_elt (dev->free_resources, max_res_idx - j) = res_idx + j;
+	  res = &dcm->resource[res_idx + j];
 	  res->dev_id = i;
 	  res->drv_id = drv_id;
-	  res->qp_id = j * 2;
+	  res->qp_id = j;
 	  res->numa = dev->numa;
 	  res->thread_idx = (u16) ~ 0;
 	}
