@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "01b62477_b1a21c1e",
+        "filename": "src/vlib/linux/pci.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 182,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-30T19:49:00Z",
+      "side": 1,
+      "message": "That should be 0, no?",
+      "range": {
+        "startLine": 182,
+        "startChar": 11,
+        "endLine": 182,
+        "endChar": 12
+      },
+      "revId": "0af7abcf7b0f407adbf6aa1c8657a21ca3d0c315",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
