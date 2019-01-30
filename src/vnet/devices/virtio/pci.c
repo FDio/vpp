@@ -646,14 +646,14 @@ virtio_pci_read_caps (vlib_main_t * vm, virtio_if_t * vif)
       pos = cap.cap_next;
     }
 
-  if (!pci_cfg)
-    clib_error_return (error, "modern virtio pci device found");
-
   if (common_cfg == 0 || notify_base == 0 || dev_cfg == 0 || isr == 0)
     {
       virtio_log_debug (vim, vif, "legacy virtio pci device found");
       return error;
     }
+
+  if (!pci_cfg)
+    clib_error_return (error, "modern virtio pci device found");
 
   virtio_log_debug (vim, vif, "transitional virtio pci device found");
   return error;
