@@ -261,7 +261,12 @@ ldp_init (void)
 	}
     }
 
-  clib_time_init (&ldpw->clib_time);
+  /* *INDENT-OFF* */
+  pool_foreach (ldpw, ldp->workers, ({
+    clib_memset (&ldpw->clib_time, 0, sizeof (ldpw->clib_time));
+  }));
+  /* *INDENT-ON* */
+
   LDBG (0, "LDP initialization: done!");
 
   return 0;
@@ -667,6 +672,9 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       errno = EINVAL;
       return -1;
     }
+
+  if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
+    clib_time_init (&ldpw->clib_time);
 
   if (timeout)
     {
@@ -2165,6 +2173,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
       return -1;
     }
 
+  if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
+    clib_time_init (&ldpw->clib_time);
   time_to_wait = ((timeout >= 0) ? (double) timeout / 1000 : 0);
   max_time = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
@@ -2232,14 +2242,15 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
   int rv, i, n_revents = 0;
   vls_handle_t vlsh;
   vcl_poll_t *vp;
-  double wait_for_time;
+  double max_time;
 
   LDBG (3, "fds %p, nfds %d, timeout %d", fds, nfds, timeout);
 
-  if (timeout >= 0)
-    wait_for_time = (f64) timeout / 1000;
-  else
-    wait_for_time = -1;
+  if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
+    clib_time_init (&ldpw->clib_time);
+
+  max_time = (timeout >= 0) ? (f64) timeout / 1000 : 0;
+  max_time += clib_time_now (&ldpw->clib_time);
 
   for (i = 0; i < nfds; i++)
     {
@@ -2299,8 +2310,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	  goto done;
 	}
     }
-  while ((wait_for_time == -1) ||
-	 (clib_time_now (&ldpw->clib_time) < wait_for_time));
+  while ((timeout < 0) || (clib_time_now (&ldpw->clib_time) < max_time));
   rv = 0;
 
 done:
