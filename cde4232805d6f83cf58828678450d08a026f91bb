@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d25e37a9_a31ed820",
+        "filename": "extras/vom/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-01-30T09:09:08Z",
+      "side": 1,
+      "message": "please don\u0027t hardcode patch outside of source_dir",
+      "range": {
+        "startLine": 22,
+        "startChar": 20,
+        "endLine": 22,
+        "endChar": 57
+      },
+      "revId": "cde4232805d6f83cf58828678450d08a026f91bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
