@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f521dc03_947267cc",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-01-30T22:53:02Z",
+      "side": 1,
+      "message": "Won\u0027t it be better to do it in dpdk_lib_init?",
+      "range": {
+        "startLine": 327,
+        "startChar": 6,
+        "endLine": 327,
+        "endChar": 15
+      },
+      "revId": "94519aaed6c1801d1410689c4c6d7823ad7d6357",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
