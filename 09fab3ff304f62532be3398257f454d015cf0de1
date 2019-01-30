@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "6cb0c974_888e599e",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-30T02:51:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3c988b48_ab06cff6",
+      "revId": "09fab3ff304f62532be3398257f454d015cf0de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "24d806eb_c922ed4b",
         "filename": "src/vnet/srv6/sr.api",
         "patchSetId": 3
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "208ec911_0d4cef3b",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 167,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-30T02:51:26Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "24d806eb_c922ed4b",
+      "revId": "09fab3ff304f62532be3398257f454d015cf0de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0b45a33a_612b0f10",
         "filename": "src/vnet/srv6/sr.api",
         "patchSetId": 3
@@ -47,6 +83,24 @@
       "writtenOn": "2019-01-29T09:36:57Z",
       "side": 1,
       "message": "while you\u0027re in this area and making API changes, how about vl_api_prefix_t, instead of the address and mask_width.",
+      "revId": "09fab3ff304f62532be3398257f454d015cf0de1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2c0f8cc0_e23edcae",
+        "filename": "src/vnet/srv6/sr.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 170,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-30T02:51:26Z",
+      "side": 1,
+      "message": "-1.  Look at mask width below.  It is a u32 fed to a classifier. vl_api_prefix_t, is a u8.",
+      "parentUuid": "0b45a33a_612b0f10",
       "revId": "09fab3ff304f62532be3398257f454d015cf0de1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
