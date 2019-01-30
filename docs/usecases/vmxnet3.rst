@@ -39,6 +39,28 @@ Prerequisites
    without IOMMU vfio driver can still be used with recent kernels which
    support no-iommu mode.
 
+VMware Fusion for Mac
+---------------------
+
+VMware fusion does not have a menu option to change the default driver (e1000)
+to the **vmxnet3** driver. VPP supports the **vmxnet3** driver.
+
+These instructions describe how to change the e100 driver for VMware fusion.
+
+* From the VMware Fusion menu bar select **Window** then **Virtual Machine Library**.
+* From the Virtual Machine menu right click on the Virtual Machine you are using and select **Show in Finder**
+* Find the name associated with the VM you are using, right click on it and select **Show Package Contents**
+* Find the **.vmx** file and edit it.
+* Find all the occurences of **e1000** and change them to **vmxnet3**
+
+If you are concerned more with configuration not performance the vmxnet3 driver can be set to
+**interrupt** mode in VPP. This will save a great deal on battery usage. Do this with the following
+
+.. code-block:: console
+
+    # vppctl set interface rx-mode <interface> interrupt
+
+
 System setup
 ~~~~~~~~~~~~
 
