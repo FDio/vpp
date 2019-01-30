@@ -504,6 +504,34 @@ vcl_session_is_ct (vcl_session_t * s)
   return (s->our_evt_q != 0);
 }
 
+static inline u8
+vcl_session_is_open (vcl_session_t * s)
+{
+  return ((s->session_state & STATE_OPEN)
+	  || (s->session_state == STATE_LISTEN
+	      && s->session_type == VPPCOM_PROTO_UDP));
+}
+
+static inline u8
+vcl_session_is_closing (vcl_session_t * s)
+{
+  return (s->session_state == STATE_VPP_CLOSING
+	  || s->session_state == STATE_DISCONNECT);
+}
+
+static inline int
+vcl_session_closing_error (vcl_session_t * s)
+{
+  return s->session_state == STATE_DISCONNECT ? VPPCOM_ECONNRESET : 0;
+}
+
+static inline int
+vcl_session_closed_error (vcl_session_t * s)
+{
+  return s->session_state == STATE_DISCONNECT
+    ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
+}
+
 /*
  * Helpers
  */
