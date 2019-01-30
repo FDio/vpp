@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a6dd011b_ca2c62ea",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-30T17:26:15Z",
+      "side": 1,
+      "message": "Why the change back?  I don\u0027t really have an issue, just curious.\n\nI don\u0027t know the best way to communicate questions to you without implying that I want a change.  It just seems to me that these are more suited to an IPv4NetworkMixin object for improved reuse and the ability to test.  \n\nSome parts of the code use socket.AF, others use \"4/6\" and now with the enums, 0/1.  The same comment is true of add_len. it is seen as both bits and octets in the code.",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 24
+      },
+      "revId": "f8cc5d64555c115dc5921d9fb1144e2f387f4025",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
