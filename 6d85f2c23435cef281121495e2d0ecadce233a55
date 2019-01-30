@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0a94a586_de4348be",
+        "filename": "test/vpp_srv6.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-30T10:00:54Z",
+      "side": 1,
+      "message": "this is not sr-specific, right? can we have this in a common include?",
+      "revId": "6d85f2c23435cef281121495e2d0ecadce233a55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
