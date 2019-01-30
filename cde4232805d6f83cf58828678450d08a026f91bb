@@ -22,6 +22,30 @@
       "revId": "cde4232805d6f83cf58828678450d08a026f91bb",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1e6fb312_2f364ceb",
+        "filename": "extras/vom/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2019-01-30T17:00:12Z",
+      "side": 1,
+      "message": "Any idea, how can I access the scripts/version from vpp/src if I don\u0027t use the above method?",
+      "parentUuid": "d25e37a9_a31ed820",
+      "range": {
+        "startLine": 22,
+        "startChar": 20,
+        "endLine": 22,
+        "endChar": 57
+      },
+      "revId": "cde4232805d6f83cf58828678450d08a026f91bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
