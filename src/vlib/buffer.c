@@ -339,6 +339,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 
       if (known != expected_state)
 	{
+	  ASSERT(0);
 	  vlib_panic_with_msg
 	    (vm, "%s %U buffer 0x%x",
 	     is_free ? "freeing" : "allocating",
