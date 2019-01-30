@@ -699,6 +699,7 @@ vls_close (vls_handle_t vlsh)
   vcl_locked_session_t *vls;
   int rv;
 
+  VDBG (0, "closing %u", vlsh);
   vls_table_wlock ();
 
   vls = vls_get_and_lock (vlsh);
@@ -723,6 +724,7 @@ vls_close (vls_handle_t vlsh)
   vls_free (vls);
   vls_mt_unguard ();
 
+  VDBG (0, "closed %u", vlsh);
   vls_table_wunlock ();
 
   return rv;
