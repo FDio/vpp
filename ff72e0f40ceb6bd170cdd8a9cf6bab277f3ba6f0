@@ -46,6 +46,30 @@
       "revId": "ff72e0f40ceb6bd170cdd8a9cf6bab277f3ba6f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b00f68c6_1ee4ac4b",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 537,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-30T15:42:57Z",
+      "side": 1,
+      "message": "Yes.  I understand that.  ;) I also understand why he added the str, with regard to supporting python3.  \n\nI am asking about the long-term solution. @ole, any preferences?",
+      "parentUuid": "934f2898_acea35fd",
+      "range": {
+        "startLine": 535,
+        "startChar": 0,
+        "endLine": 537,
+        "endChar": 35
+      },
+      "revId": "ff72e0f40ceb6bd170cdd8a9cf6bab277f3ba6f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
