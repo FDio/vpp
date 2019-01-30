@@ -533,12 +533,22 @@ ipsec_rand_seed (void)
 }
 
 static clib_error_t *
-ipsec_check_support (ipsec_sa_t * sa)
+ipsec_check_ah_support (ipsec_sa_t * sa)
+{
+  if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+    return clib_error_return (0, "unsupported none integ-alg");
+  return 0;
+}
+
+static clib_error_t *
+ipsec_check_esp_support (ipsec_sa_t * sa)
 {
   if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
     return clib_error_return (0, "unsupported aes-gcm-128 crypto-alg");
-  if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
-    return clib_error_return (0, "unsupported none integ-alg");
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192)
+    return clib_error_return (0, "unsupported aes-gcm-192 crypto-alg");
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)
+    return clib_error_return (0, "unsupported aes-gcm-256 crypto-alg");
 
   return 0;
 }
@@ -730,7 +740,7 @@ ipsec_init (vlib_main_t * vm)
 				       "ah4-decrypt",
 				       "ah6-encrypt",
 				       "ah6-decrypt",
-				       ipsec_check_support,
+				       ipsec_check_ah_support,
 				       NULL);
 
   im->ah_default_backend = idx;
@@ -743,7 +753,7 @@ ipsec_init (vlib_main_t * vm)
 				    "esp4-decrypt",
 				    "esp6-encrypt",
 				    "esp6-decrypt",
-				    ipsec_check_support, NULL);
+				    ipsec_check_esp_support, NULL);
   im->esp_default_backend = idx;
 
   rv = ipsec_select_esp_backend (im, idx);
