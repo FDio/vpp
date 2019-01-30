@@ -22,6 +22,30 @@
       "revId": "f8cc5d64555c115dc5921d9fb1144e2f387f4025",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4dc191a0_12d22a49",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-30T17:41:34Z",
+      "side": 1,
+      "message": "purely accidental. i was using two machines to do updates.\n\ni would like to make minimum changes. in this patch i\u0027m trying to onlny change the API calls. I can revisit to make more effective use of these constants.",
+      "parentUuid": "a6dd011b_ca2c62ea",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 24
+      },
+      "revId": "f8cc5d64555c115dc5921d9fb1144e2f387f4025",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
