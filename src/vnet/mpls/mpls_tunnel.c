@@ -724,6 +724,7 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
 
         old_pl_index = mt->mt_path_list;
 
+        fib_path_list_lock(old_pl_index);
         mt->mt_path_list =
             fib_path_list_copy_and_path_remove(old_pl_index,
                                                FIB_PATH_LIST_FLAG_SHARED,
@@ -735,6 +736,7 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
         if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
         {
             /* no paths left */
+            fib_path_list_unlock(old_pl_index);
             return (0);
         }
         else
@@ -758,6 +760,7 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
                                   mt->mt_path_list);
 
         mpls_tunnel_restack(mt);
+        fib_path_list_unlock(old_pl_index);
    }
 
     return (fib_path_list_get_n_paths(mt->mt_path_list));
