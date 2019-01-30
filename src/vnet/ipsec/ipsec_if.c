@@ -299,6 +299,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       pool_get (im->sad, sa);
       clib_memset (sa, 0, sizeof (*sa));
       t->input_sa_index = sa - im->sad;
+      sa->protocol = IPSEC_PROTOCOL_ESP;
       sa->spi = args->remote_spi;
       sa->tunnel_src_addr.ip4.as_u32 = args->remote_ip.as_u32;
       sa->tunnel_dst_addr.ip4.as_u32 = args->local_ip.as_u32;
@@ -325,6 +326,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       pool_get (im->sad, sa);
       clib_memset (sa, 0, sizeof (*sa));
       t->output_sa_index = sa - im->sad;
+      sa->protocol = IPSEC_PROTOCOL_ESP;
       sa->spi = args->local_spi;
       sa->tunnel_src_addr.ip4.as_u32 = args->local_ip.as_u32;
       sa->tunnel_dst_addr.ip4.as_u32 = args->remote_ip.as_u32;
