@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fe341b2e_cc1ce166",
+        "filename": "test/test_syslog.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-30T17:55:09Z",
+      "side": 1,
+      "message": "Do you want these changes incorporated here?  These are due to an upstream package change.",
+      "range": {
+        "startLine": 130,
+        "startChar": 11,
+        "endLine": 131,
+        "endChar": 17
+      },
+      "revId": "f49b9de35f3e1062402034219c4da1fa56269de2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
