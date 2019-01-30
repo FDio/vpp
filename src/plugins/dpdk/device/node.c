@@ -324,6 +324,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   /* as DPDK is allocating empty buffers from mempool provided before interface
      start for each queue, it is safe to store this in the template */
   bt->buffer_pool_index = xd->buffer_pool_for_queue[queue_id];
+  bt->ref_count = 1;
   vnet_buffer (bt)->feature_arc_index = 0;
   bt->current_config_index = 0;
 

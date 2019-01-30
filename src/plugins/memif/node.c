@@ -345,6 +345,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   ptd->buffer_template.current_data = start_offset;
   ptd->buffer_template.current_config_index = 0;
   ptd->buffer_template.buffer_pool_index = mq->buffer_pool_index;
+  ptd->buffer_template.ref_count = 1;
 
   if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
     {

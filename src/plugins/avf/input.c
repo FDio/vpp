@@ -371,6 +371,7 @@ no_more_desc:
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = ad->sw_if_index;
   vnet_buffer (bt)->sw_if_index[VLIB_TX] = ~0;
   bt->buffer_pool_index = rxq->buffer_pool_index;
+  bt->ref_count = 1;
 
   if (n_tail_desc)
     n_rx_bytes = avf_process_rx_burst (vm, node, ptd, n_rx_packets, 1);
