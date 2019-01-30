@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9513e0e0_e8e2d640",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-30T12:11:12Z",
+      "side": 1,
+      "message": "I undid this change, so they are constants of this Params class.",
+      "parentUuid": "fae6e7e3_020814ef",
+      "range": {
+        "startLine": 16,
+        "startChar": 0,
+        "endLine": 20,
+        "endChar": 24
+      },
+      "revId": "6fafaa70b0658666397b945f398d0ce915147437",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "58d05f4e_e4d30ecb",
         "filename": "test/template_ipsec.py",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2019-01-29T20:11:57Z",
       "side": 1,
       "message": "Same as above.",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 24
+      },
+      "revId": "6fafaa70b0658666397b945f398d0ce915147437",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "afa230bd_3e4b8ccd",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-01-30T12:11:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "58d05f4e_e4d30ecb",
       "range": {
         "startLine": 46,
         "startChar": 0,
