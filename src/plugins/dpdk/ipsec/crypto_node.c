@@ -145,7 +145,7 @@ dpdk_crypto_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 static_always_inline u32
 dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     crypto_resource_t * res, u8 outbound)
+		     crypto_resource_t * res)
 {
   u32 thread_idx = vlib_get_thread_index ();
   u8 numa = rte_socket_id ();
@@ -164,14 +164,14 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
   ops = cwm->ops;
 
   n_ops = n_deq = rte_cryptodev_dequeue_burst (res->dev_id,
-					       res->qp_id + outbound,
+					       res->qp_id,
 					       ops, VLIB_FRAME_SIZE);
 
   /* no op dequeued, do not proceed */
   if (n_deq == 0)
     return 0;
 
-  res->inflights[outbound] -= n_ops;
+  res->inflights -= n_ops;
 
   dpdk_crypto_input_trace (vm, node, ops, n_deq);
 
@@ -285,13 +285,10 @@ dpdk_crypto_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       res = vec_elt_at_index (dcm->resource, res_idx[0]);
 
-      if (res->inflights[0])
-	n_deq += dpdk_crypto_dequeue (vm, node, res, 0);
+      if (res->inflights)
+	n_deq += dpdk_crypto_dequeue (vm, node, res);
 
-      if (res->inflights[1])
-	n_deq += dpdk_crypto_dequeue (vm, node, res, 1);
-
-      if (PREDICT_FALSE (res->remove && !(res->inflights[0] || res->inflights[1])))
+      if (PREDICT_FALSE (res->remove && !(res->inflights)))
 	vec_add1 (remove, res_idx[0]);
     }
   /* *INDENT-ON* */
