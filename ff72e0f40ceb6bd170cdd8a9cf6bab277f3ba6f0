@@ -22,6 +22,30 @@
       "revId": "ff72e0f40ceb6bd170cdd8a9cf6bab277f3ba6f0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "934f2898_acea35fd",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 537,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-01-30T09:55:22Z",
+      "side": 1,
+      "message": "this is just a revert of derp introduced by Ole\u0027s change to make things usable again (i.e. the log readable)\nfeel free to submit improvements",
+      "parentUuid": "64beb3cc_d4e425ac",
+      "range": {
+        "startLine": 535,
+        "startChar": 0,
+        "endLine": 537,
+        "endChar": 35
+      },
+      "revId": "ff72e0f40ceb6bd170cdd8a9cf6bab277f3ba6f0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
