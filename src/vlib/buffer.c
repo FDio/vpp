@@ -339,10 +339,8 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 
       if (known != expected_state)
 	{
-	  vlib_panic_with_msg
-	    (vm, "%s %U buffer 0x%x",
-	     is_free ? "freeing" : "allocating",
-	     format_vlib_buffer_known_state, known, bi);
+	  clib_panic ("%s %U buffer 0x%x", is_free ? "freeing" : "allocating",
+		      format_vlib_buffer_known_state, known, bi);
 	}
 
       clib_spinlock_lock (&bm->buffer_known_hash_lockp);
