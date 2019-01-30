@@ -34,6 +34,7 @@ lisp_msg_put_locators (vlib_buffer_t * b, locator_t * locators)
     LOC_MWEIGHT (p) = loc->mweight;
     LOC_LOCAL (p) = loc->local;
     LOC_PROBED (p) = loc->probed ? 1 : 0;
+    LOC_REACHABLE (p) = loc->state;
     lisp_msg_put_gid (b, &loc->address);
   }
 }
