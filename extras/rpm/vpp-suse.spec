@@ -41,7 +41,6 @@ BuildRequires:  gcc
 BuildRequires:  gcc-c++
 BuildRequires:  glibc-devel
 BuildRequires:  glibc-devel-static
-BuildRequires:  java-devel >= 1.8
 BuildRequires:  libboost_headers-devel
 BuildRequires:  libboost_thread-devel
 BuildRequires:  libnuma-devel
@@ -124,18 +123,6 @@ Provides:       %{name}-any-api-lua = %{version}
 
 %description api-lua
 This package contains the lua bindings for the vpp api
-
-%package api-java
-Summary:        VPP api java bindings
-Group:          Development/Libraries/Java
-Requires:       %{lname} = %{version}
-Requires:       %{name} = %{version}
-Requires:       %{name}-devel = %{version}
-Conflicts:      otherproviders(%{name}-any-api-java)
-Provides:       %{name}-any-api-java = %{version}
-
-%description api-java
-This package contains the java bindings for the vpp api
 
 %package api-python
 Summary:        VPP api python bindings
@@ -223,13 +210,6 @@ do
            %{buildroot}%{_datadir}/doc/vpp/examples/lua/$file
 done
 
-# Java bindings
-mkdir -p -m755 %{buildroot}%{_datadir}/java
-for file in $(find %{_vpp_install_dir}/japi/share/java -type f -name '*.jar' -print )
-do
-        install -p -m 644 $file %{buildroot}%{_datadir}/java
-done
-
 # Python bindings
 cd %{_vpp_build_dir}/../src/vpp-api/python && %{py2_install}
 
@@ -254,12 +234,6 @@ do
 		install -p -m 644 $dir/$file %{buildroot}%{_includedir}/$file
 	done
 done
-
-mkdir -p -m755 %{buildroot}%{python_sitelib}/jvppgen
-install -p -m755 %{_vpp_build_dir}/../extras/japi/java/jvpp/gen/jvpp_gen.py %{buildroot}%{_prefix}/bin
-for i in $(ls %{_vpp_build_dir}/../extras/japi/java/jvpp/gen/jvppgen/*.py); do
-   install -p -m755 ${i} %{buildroot}%{python_sitelib}/jvppgen
-done;
 
 # sample plugin
 mkdir -p -m755 %{buildroot}%{_datadir}/doc/vpp/examples/sample-plugin/sample
@@ -329,20 +303,14 @@ export NO_BRP_CHECK_RPATH=true
 %files api-lua
 %{_datadir}/doc/vpp/examples/lua
 
-%files api-java
-%{_datadir}/java/*
-
 %files api-python
 %dir %{python_sitelib}/vpp_papi*
 %{python_sitelib}/vpp_papi*
 
 %files devel
-%dir %{python_sitelib}/jvppgen
-%{python_sitelib}/jvppgen/*
 %dir %{_datadir}/doc/vpp
 %dir %{_datadir}/doc/vpp/examples
 %{_libdir}/*.so
-%{_bindir}/jvpp_gen.py
 %{_includedir}/*
 %{_datadir}/doc/vpp/examples/sample-plugin
 %dir %{_datadir}/vpp
