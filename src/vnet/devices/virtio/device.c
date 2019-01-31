@@ -324,6 +324,12 @@ virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
   virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
   virtio_vring_t *vring = vec_elt_at_index (vif->vrings, qid);
 
+  if (vif->type == VIRTIO_IF_TYPE_PCI && !(vif->support_int_mode))
+    {
+      vring->avail->flags |= VIRTIO_RING_FLAG_MASK_INT;
+      return clib_error_return (0, "interrupt mode is not supported");
+    }
+
   if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
     vring->avail->flags |= VIRTIO_RING_FLAG_MASK_INT;
   else
