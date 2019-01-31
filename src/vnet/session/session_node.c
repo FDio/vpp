@@ -379,8 +379,6 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 
       *n_bufs -= 1;
       chain_bi0 = wrk->tx_buffers[*n_bufs];
-      _vec_len (wrk->tx_buffers) = *n_bufs;
-
       chain_b = vlib_get_buffer (vm, chain_bi0);
       chain_b->current_data = 0;
       data = vlib_buffer_get_current (chain_b);
@@ -432,20 +430,6 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
   ASSERT (to_deq == 0
 	  && b->total_length_not_including_first_buffer == left_from_seg);
   ctx->left_to_snd -= left_from_seg;
-}
-
-always_inline int
-session_output_try_get_buffers (vlib_main_t * vm,
-				session_manager_worker_t * wrk,
-				u32 thread_index, u16 * n_bufs, u32 wanted)
-{
-  u32 n_alloc;
-  vec_validate_aligned (wrk->tx_buffers, wanted - 1, CLIB_CACHE_LINE_BYTES);
-  n_alloc = vlib_buffer_alloc (vm, &wrk->tx_buffers[*n_bufs],
-			       wanted - *n_bufs);
-  *n_bufs += n_alloc;
-  _vec_len (wrk->tx_buffers) = *n_bufs;
-  return n_alloc;
 }
 
 always_inline void
@@ -636,9 +620,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 				session_event_t * e, int *n_tx_packets,
 				u8 peek_data)
 {
-  u32 next_index, next0, next1, *to_next, n_left_to_next;
+  u32 next_index, next0, next1, *to_next, n_left_to_next, n_left, pbi;
   u32 n_trace = vlib_get_trace_count (vm, node), n_bufs_needed = 0;
-  u32 thread_index = vm->thread_index, n_left, pbi;
   session_manager_main_t *smm = &session_manager_main;
   session_tx_context_t *ctx = &wrk->ctx;
   transport_proto_t tp;
@@ -686,21 +669,16 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     return SESSION_TX_NO_DATA;
 
-  n_bufs = vec_len (wrk->tx_buffers);
   n_bufs_needed = ctx->n_segs_per_evt * ctx->n_bufs_per_seg;
-
-  /*
-   * Make sure we have at least one full frame of buffers ready
-   */
-  if (n_bufs < n_bufs_needed)
+  vec_validate_aligned (wrk->tx_buffers, n_bufs_needed - 1,
+			CLIB_CACHE_LINE_BYTES);
+  n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, n_bufs_needed);
+  if (PREDICT_FALSE (n_bufs < n_bufs_needed))
     {
-      session_output_try_get_buffers (vm, wrk, thread_index, &n_bufs,
-				      ctx->n_bufs_per_seg * VLIB_FRAME_SIZE);
-      if (PREDICT_FALSE (n_bufs < n_bufs_needed))
-	{
-	  vec_add1 (wrk->pending_event_vector, *e);
-	  return SESSION_TX_NO_BUFFERS;
-	}
+      if (n_bufs)
+	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+      vec_add1 (wrk->pending_event_vector, *e);
+      return SESSION_TX_NO_BUFFERS;
     }
 
   /*
@@ -783,8 +761,11 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (n_trace > 0))
     session_tx_trace_frame (vm, node, next_index, to_next,
 			    ctx->n_segs_per_evt, ctx->s, n_trace);
-
-  _vec_len (wrk->tx_buffers) = n_bufs;
+  if (PREDICT_FALSE (n_bufs))
+    {
+      clib_warning ("not all buffers consumed");
+      vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+    }
   *n_tx_packets += ctx->n_segs_per_evt;
   transport_connection_update_tx_stats (ctx->tc, ctx->max_len_to_snd);
   vlib_put_next_frame (vm, node, next_index, n_left_to_next);
