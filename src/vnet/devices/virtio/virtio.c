@@ -196,6 +196,21 @@ virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
   return 0;
 }
 
+void
+virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 thread_index;
+  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, idx);
+  thread_index =
+    vnet_get_device_input_thread_index (vnm, vif->hw_if_index,
+					vring->queue_id);
+  vring->buffer_pool_index =
+    vlib_buffer_pool_get_default_for_numa (vm,
+					   vlib_mains
+					   [thread_index]->numa_node);
+}
+
 inline void
 virtio_set_net_hdr_size (virtio_if_t * vif)
 {

@@ -96,8 +96,10 @@ more:
 
   next = vring->desc_next;
   avail = vring->avail->idx;
-  n_slots = vlib_buffer_alloc_to_ring (vm, vring->buffers, next, vring->size,
-				       n_slots);
+  n_slots =
+    vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next,
+					 vring->size, n_slots,
+					 vring->buffer_pool_index);
 
   if (n_slots == 0)
     return;
@@ -187,6 +189,8 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = vif->sw_if_index;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  b0->buffer_pool_index = vring->buffer_pool_index;
+	  b0->ref_count = 1;
 
 	  /* if multisegment packet */
 	  if (PREDICT_FALSE (num_buffers > 1))
