@@ -873,6 +873,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, 0, ~0);
+  virtio_vring_set_numa_node (vm, vif, 0);
 
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
