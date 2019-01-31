@@ -40,6 +40,8 @@ typedef struct
   u8 *name;
   clib_time_t clib_time;
   ssvm_private_t memfd_segment;
+
+  int want_shm_pthread;
 } socket_client_main_t;
 
 extern socket_client_main_t socket_client_main;
@@ -53,7 +55,8 @@ int vl_socket_client_read (int wait);
 int vl_socket_client_write (void);
 void vl_socket_client_enable_disable (int enable);
 void *vl_socket_client_msg_alloc (int nbytes);
-int vl_socket_client_init_shm (vl_api_shm_elem_config_t * config);
+int vl_socket_client_init_shm (vl_api_shm_elem_config_t * config,
+			       int want_pthread);
 clib_error_t *vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait);
 
 #endif /* SRC_VLIBMEMORY_SOCKET_CLIENT_H_ */

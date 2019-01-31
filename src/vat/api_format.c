@@ -22025,7 +22025,7 @@ api_sock_init_shm (vat_main_t * vam)
   config[6].count = 128;
   config[6].size = sizeof (uword);
 
-  rv = vl_socket_client_init_shm (config);
+  rv = vl_socket_client_init_shm (config, 1 /* want_pthread */ );
   if (!rv)
     vam->client_index_invalid = 1;
   return rv;
