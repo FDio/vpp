@@ -143,7 +143,11 @@ typedef struct
     pci_addr_t pci_addr;
   };
   u32 per_interface_next_index;
-  int fd;
+  union
+  {
+    int fd;
+    u32 msix_enabled;
+  };
   union
   {
     int tap_fd;
@@ -155,12 +159,12 @@ typedef struct
 
   /* error */
   clib_error_t *error;
+  u8 support_int_mode;		/* support interrupt mode */
   u16 max_queue_pairs;
   u16 tx_ring_sz;
   u16 rx_ring_sz;
   u8 status;
   u8 mac_addr[6];
-  u64 bar[2];
   u8 *host_if_name;
   u8 *net_ns;
   u8 *host_bridge;
@@ -169,7 +173,6 @@ typedef struct
   u8 host_ip4_prefix_len;
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
-
   int ifindex;
 } virtio_if_t;
 
