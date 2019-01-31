@@ -40,6 +40,8 @@ typedef struct
   u8 *name;
   clib_time_t clib_time;
   ssvm_private_t memfd_segment;
+
+  int want_pthread;
 } socket_client_main_t;
 
 extern socket_client_main_t socket_client_main;
@@ -48,6 +50,9 @@ extern socket_client_main_t socket_client_main;
 
 int vl_socket_client_connect (char *socket_path, char *client_name,
 			      u32 socket_buffer_size);
+int vl_socket_client_connect_no_rx_pthread (char *socket_path,
+					    char *client_name,
+					    u32 socket_buffer_size);
 void vl_socket_client_disconnect (void);
 int vl_socket_client_read (int wait);
 int vl_socket_client_write (void);

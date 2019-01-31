@@ -304,8 +304,16 @@ static void vl_api_sock_init_shm_reply_t_handler
 
   new_name = format (0, "%v[shm]%c", scm->name, 0);
   vl_client_install_client_message_handlers ();
-  vl_client_connect_to_vlib_no_map ("pvt", (char *) new_name,
-				    32 /* input_queue_length */ );
+  if (scm->want_pthread)
+    {
+      vl_client_connect_to_vlib_no_map ("pvt", (char *) new_name,
+					32 /* input_queue_length */ );
+    }
+  else
+    {
+      vl_client_connect_to_vlib_no_rx_pthread_no_map ("pvt", (char *) new_name,
+						      32 /* input_queue_length */ );
+    }
   vl_socket_client_enable_disable (0);
   vec_free (new_name);
 }
@@ -345,9 +353,9 @@ vl_sock_client_install_message_handlers (void)
 #undef _
 }
 
-int
-vl_socket_client_connect (char *socket_path, char *client_name,
-			  u32 socket_buffer_size)
+static int
+socket_client_connect_internal (char *socket_path, char *client_name,
+				u32 socket_buffer_size, int want_pthread)
 {
   socket_client_main_t *scm = &socket_client_main;
   vl_api_sockclnt_create_t *mp;
@@ -383,6 +391,7 @@ vl_socket_client_connect (char *socket_path, char *client_name,
   _vec_len (scm->socket_rx_buffer) = 0;
   _vec_len (scm->socket_tx_buffer) = 0;
   scm->name = format (0, "%s", client_name);
+  scm->want_pthread = want_pthread;
 
   mp = vl_socket_client_msg_alloc (sizeof (*mp));
   mp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE);
@@ -399,6 +408,24 @@ vl_socket_client_connect (char *socket_path, char *client_name,
     return (-1);
 
   return (0);
+}
+
+int
+vl_socket_client_connect (char *socket_path, char *client_name,
+			  u32 socket_buffer_size)
+{
+  return socket_client_connect_internal (socket_path, client_name,
+					 socket_buffer_size,
+					 1 /* want pthread */);
+}
+
+int
+vl_socket_client_connect_no_rx_pthread (char *socket_path, char *client_name,
+					u32 socket_buffer_size)
+{
+  return socket_client_connect_internal (socket_path, client_name,
+					 socket_buffer_size,
+					 0 /* want pthread */);
 }
 
 int
