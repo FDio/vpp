@@ -468,6 +468,16 @@ vl_client_connect_to_vlib_no_map (const char *svm_name,
 				   0 /* dont map */ );
 }
 
+int
+vl_client_connect_to_vlib_no_rx_pthread_no_map (const char *svm_name,
+						const char *client_name,
+						int rx_queue_size)
+{
+  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
+				   0 /* want pthread */ ,
+				   0 /* dont map */ );
+}
+
 static void
 disconnect_from_vlib_internal (u8 do_unmap)
 {
