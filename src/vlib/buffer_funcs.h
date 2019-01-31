@@ -635,13 +635,17 @@ vlib_buffer_alloc_to_ring_from_pool (vlib_main_t * vm, u32 * ring, u32 start,
   return n_alloc;
 }
 
-static void
+static_always_inline void
 vlib_buffer_pool_put (vlib_main_t * vm, u8 buffer_pool_index,
 		      u32 * buffers, u32 n_buffers)
 {
   vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
   vlib_buffer_pool_thread_t *bpt =
     vec_elt_at_index (bp->threads, vm->thread_index);
+
+  if (CLIB_DEBUG > 0)
+    vlib_buffer_validate_alloc_free (vm, buffers, n_buffers,
+				     VLIB_BUFFER_KNOWN_ALLOCATED);
 
   vec_add_aligned (bpt->cached_buffers, buffers, n_buffers,
 		   CLIB_CACHE_LINE_BYTES);
@@ -733,10 +737,6 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       vlib_buffer_copy_template (b[3], &bt);
       n_queue += 4;
 
-      if (CLIB_DEBUG > 0)
-	vlib_buffer_validate_alloc_free (vm, buffers, 4,
-					 VLIB_BUFFER_KNOWN_ALLOCATED);
-
       vlib_buffer_validate (vm, b[0]);
       vlib_buffer_validate (vm, b[1]);
       vlib_buffer_validate (vm, b[2]);
@@ -786,9 +786,6 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
       if (clib_atomic_sub_fetch (&b[0]->ref_count, 1) == 0)
 	{
-	  if (CLIB_DEBUG > 0)
-	    vlib_buffer_validate_alloc_free (vm, &bi, 1,
-					     VLIB_BUFFER_KNOWN_ALLOCATED);
 	  vlib_buffer_copy_template (b[0], &bt);
 	  queue[n_queue++] = bi;
 	}
