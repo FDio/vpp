@@ -96,8 +96,10 @@ more:
 
   next = vring->desc_next;
   avail = vring->avail->idx;
-  n_slots = vlib_buffer_alloc_to_ring (vm, vring->buffers, next, vring->size,
-				       n_slots);
+  n_slots =
+    vlib_buffer_alloc_to_ring_from_pool (vm, vring->buffers, next,
+					 vring->size, n_slots,
+					 vring->buffer_pool_index);
 
   if (n_slots == 0)
     return;
