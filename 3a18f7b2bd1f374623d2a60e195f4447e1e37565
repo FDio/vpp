@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4c27ad20_4bd70bdd",
+        "filename": "extras/scripts/list_api_changes.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-31T19:42:38Z",
+      "side": 1,
+      "message": "Sorry for coming in after the commit, but I just noticed this.\nIN the master branch, should this be v19.01 -\u003e master?",
+      "range": {
+        "startLine": 4,
+        "startChar": 0,
+        "endLine": 5,
+        "endChar": 17
+      },
+      "revId": "3a18f7b2bd1f374623d2a60e195f4447e1e37565",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
