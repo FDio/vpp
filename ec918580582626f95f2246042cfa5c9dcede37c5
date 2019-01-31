@@ -46,6 +46,30 @@
       "revId": "ec918580582626f95f2246042cfa5c9dcede37c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1afd2450_8eb517b4",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1551,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-01-31T13:42:43Z",
+      "side": 1,
+      "message": "The 2nd test gets n seconds more to complete than test1.  Route 1, the /32 gets 50 sec to appear, but route 2, the /24 gets 100 seconds to appear.\n\nIs there a need for something more robust (maybe fairer is a better term) like giving each their own thread, or allowing wait_for_no_route to take in the list of tuples so that there is one wait period for the multiple tests?",
+      "parentUuid": "6a6ba48a_095d15de",
+      "range": {
+        "startLine": 1550,
+        "startChar": 0,
+        "endLine": 1551,
+        "endChar": 71
+      },
+      "revId": "ec918580582626f95f2246042cfa5c9dcede37c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
