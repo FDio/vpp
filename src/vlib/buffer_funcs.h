@@ -47,6 +47,34 @@
     vlib buffer access methods.
 */
 
+always_inline void
+vlib_buffer_validate (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_pool_t *bp;
+
+  /* reference count in allocated buffer always must be 1 or higher */
+  ASSERT (b->ref_count > 0);
+
+  /* verify that buffer pointer is from buffer memory range */
+  ASSERT (pointer_to_uword (b) >= bm->buffer_mem_start);
+  ASSERT (pointer_to_uword (b) < bm->buffer_mem_start + bm->buffer_mem_size -
+	  VLIB_BUFFER_DATA_SIZE);
+
+  /* verify that buffer pool index is valid */
+  bp = vec_elt_at_index (bm->buffer_pools, b->buffer_pool_index);
+  ASSERT (pointer_to_uword (b) >= bp->start);
+  ASSERT (pointer_to_uword (b) < bp->start + bp->size -
+	  VLIB_BUFFER_DATA_SIZE);
+}
+
+always_inline void *
+vlib_buffer_ptr_from_index (uword buffer_mem_start, u32 buffer_index,
+			    uword offset)
+{
+  offset += ((uword) buffer_index) << CLIB_LOG2_CACHE_LINE_BYTES;
+  return uword_to_pointer (buffer_mem_start + offset, vlib_buffer_t *);
+}
 
 /** \brief Translate buffer index into buffer pointer
 
@@ -58,10 +86,11 @@ always_inline vlib_buffer_t *
 vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  uword offset = ((uword) buffer_index) << CLIB_LOG2_CACHE_LINE_BYTES;
-  ASSERT (offset < bm->buffer_mem_size);
+  vlib_buffer_t *b;
 
-  return uword_to_pointer (bm->buffer_mem_start + offset, void *);
+  b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffer_index, 0);
+  vlib_buffer_validate (vm, b);
+  return b;
 }
 
 static_always_inline void
@@ -108,9 +137,7 @@ static_always_inline void
 vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
 			      i32 offset)
 {
-#if defined (CLIB_HAVE_VEC256) || defined (CLIB_HAVE_VEC128)
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
-#endif
 #ifdef CLIB_HAVE_VEC256
   u64x4 off = u64x4_splat (buffer_mem_start + offset);
   /* if count is not const, compiler will not unroll while loop
@@ -146,10 +173,10 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
       u64x2_store_unaligned ((b0 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b);
       u64x2_store_unaligned ((b1 << CLIB_LOG2_CACHE_LINE_BYTES) + off, b + 2);
 #else
-      b[0] = ((u8 *) vlib_get_buffer (vm, bi[0])) + offset;
-      b[1] = ((u8 *) vlib_get_buffer (vm, bi[1])) + offset;
-      b[2] = ((u8 *) vlib_get_buffer (vm, bi[2])) + offset;
-      b[3] = ((u8 *) vlib_get_buffer (vm, bi[3])) + offset;
+      b[0] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[0], offset);
+      b[1] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[0], offset);
+      b[2] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[0], offset);
+      b[3] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[0], offset);
 #endif
       b += 4;
       bi += 4;
@@ -157,7 +184,7 @@ vlib_get_buffers_with_offset (vlib_main_t * vm, u32 * bi, void **b, int count,
     }
   while (count)
     {
-      b[0] = ((u8 *) vlib_get_buffer (vm, bi[0])) + offset;
+      b[0] = vlib_buffer_ptr_from_index (buffer_mem_start, bi[0], offset);
       b += 1;
       bi += 1;
       count -= 1;
@@ -710,6 +737,11 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	vlib_buffer_validate_alloc_free (vm, buffers, 4,
 					 VLIB_BUFFER_KNOWN_ALLOCATED);
 
+      vlib_buffer_validate (vm, b[0]);
+      vlib_buffer_validate (vm, b[1]);
+      vlib_buffer_validate (vm, b[2]);
+      vlib_buffer_validate (vm, b[3]);
+
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[1]);
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[2]);
@@ -748,9 +780,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	    }
 	}
 
-      ASSERT (pointer_to_uword (b[0]) >= bp->start &&
-	      pointer_to_uword (b[0]) <
-	      bp->start + bp->size - (bp->data_size + sizeof (*b[0])));
+      vlib_buffer_validate (vm, b[0]);
 
       VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b[0]);
 

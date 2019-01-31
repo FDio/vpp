@@ -569,6 +569,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, u8 index, char *name,
       bi = vlib_get_buffer_index (vm, (vlib_buffer_t *) p);
 
       vec_add1_aligned (bp->buffers, bi, CLIB_CACHE_LINE_BYTES);
+      vlib_get_buffer (vm, bi);
 
       bp->n_buffers += 1;
     }
