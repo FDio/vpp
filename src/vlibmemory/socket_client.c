@@ -304,8 +304,18 @@ static void vl_api_sock_init_shm_reply_t_handler
 
   new_name = format (0, "%v[shm]%c", scm->name, 0);
   vl_client_install_client_message_handlers ();
-  vl_client_connect_to_vlib_no_map ("pvt", (char *) new_name,
-				    32 /* input_queue_length */ );
+  if (scm->want_shm_pthread)
+    {
+      vl_client_connect_to_vlib_no_map ("pvt", (char *) new_name,
+					32 /* input_queue_length */ );
+    }
+  else
+    {
+      vl_client_connect_to_vlib_no_rx_pthread_no_map ("pvt",
+						      (char *) new_name, 32
+						      /* input_queue_length */
+	);
+    }
   vl_socket_client_enable_disable (0);
   vec_free (new_name);
 }
@@ -402,12 +412,15 @@ vl_socket_client_connect (char *socket_path, char *client_name,
 }
 
 int
-vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
+vl_socket_client_init_shm (vl_api_shm_elem_config_t * config,
+			   int want_pthread)
 {
   socket_client_main_t *scm = &socket_client_main;
   vl_api_sock_init_shm_t *mp;
   int rv, i;
   u64 *cfg;
+
+  scm->want_shm_pthread = want_pthread;
 
   mp = vl_socket_client_msg_alloc (sizeof (*mp) +
 				   vec_len (config) * sizeof (u64));

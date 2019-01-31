@@ -482,7 +482,7 @@ connect_to_vpp (char *name)
 	  return -1;
 	}
 
-      if (vl_socket_client_init_shm (0))
+      if (vl_socket_client_init_shm (0, 1 /* want_pthread */ ))
 	{
 	  clib_warning ("init shm api failed");
 	  return -1;
