@@ -60,11 +60,6 @@ vpp-dev
 Vector Packet Processing development support. This package contains
 development support files for the VPP libraries.
 
-vpp-api-java
-------------
-
-JAVA binding for the VPP Binary API.
-
 vpp-api-python 
 --------------
 
