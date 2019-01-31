@@ -42,6 +42,7 @@ struct rte_mempool **dpdk_no_cache_mempool_by_buffer_pool_index = 0;
 clib_error_t *
 dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 {
+  uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
   struct rte_mempool *mp, *nmp;
   dpdk_mempool_private_t priv;
   enum rte_iova_mode iova_mode;
@@ -88,23 +89,34 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
   iova_mode = rte_eal_iova_mode ();
 
   /* populate mempool object buffer header */
+  /* *INDENT-OFF* */
   vec_foreach (bi, bp->buffers)
-  {
-    struct rte_mempool_objhdr *hdr;
-    vlib_buffer_t *b = vlib_get_buffer (vm, *bi);
-    struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b);
-    hdr = (struct rte_mempool_objhdr *) RTE_PTR_SUB (mb, sizeof (*hdr));
-    hdr->mp = mp;
-    hdr->iova = (iova_mode == RTE_IOVA_VA) ?
-      pointer_to_uword (mb) : vlib_physmem_get_pa (vm, mb);
-    STAILQ_INSERT_TAIL (&mp->elt_list, hdr, next);
-    STAILQ_INSERT_TAIL (&nmp->elt_list, hdr, next);
-    mp->populated_size++;
-    nmp->populated_size++;
-  }
+    {
+      struct rte_mempool_objhdr *hdr;
+      vlib_buffer_t *b = vlib_get_buffer (vm, *bi);
+      struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b);
+      hdr = (struct rte_mempool_objhdr *) RTE_PTR_SUB (mb, sizeof (*hdr));
+      hdr->mp = mp;
+      hdr->iova = (iova_mode == RTE_IOVA_VA) ?
+	pointer_to_uword (mb) : vlib_physmem_get_pa (vm, mb);
+      STAILQ_INSERT_TAIL (&mp->elt_list, hdr, next);
+      STAILQ_INSERT_TAIL (&nmp->elt_list, hdr, next);
+      mp->populated_size++;
+      nmp->populated_size++;
+    }
+  /* *INDENT-ON* */
 
   /* call the object initializers */
   rte_mempool_obj_iter (mp, rte_pktmbuf_init, 0);
+
+  /* *INDENT-OFF* */
+  vec_foreach (bi, bp->buffers)
+    {
+      vlib_buffer_t *b;
+      b = vlib_buffer_ptr_from_index (buffer_mem_start, *bi, 0);
+      vlib_buffer_copy_template (b, &bp->buffer_template);
+    }
+  /* *INDENT-ON* */
 
   /* map DMA pages if at least one physical device exists */
   if (rte_eth_dev_count_avail ())
