@@ -216,7 +216,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue) (struct rte_mempool * mp,
     {
       vlib_get_buffer_indices_with_offset (vm, (void **) obj_table, bufs,
 					   n, sizeof (struct rte_mbuf));
-      vlib_buffer_pool_put (vm, buffer_pool_index, bufs, batch_size);
+      vlib_buffer_pool_put (vm, buffer_pool_index, bufs, n);
     }
 
   return 0;
