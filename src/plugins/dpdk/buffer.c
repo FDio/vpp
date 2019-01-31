@@ -117,6 +117,7 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
       uword i;
       size_t page_sz;
       vlib_physmem_map_t *pm;
+      int do_vfio_map = 1;
 
       pm = vlib_physmem_get_map (vm, bp->physmem_map_index);
       page_sz = 1ULL << pm->log2_page_size;
@@ -127,8 +128,21 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 	  uword pa = (iova_mode == RTE_IOVA_VA) ?
 	    pointer_to_uword (va) : pm->page_table[i];
 
-	  if (rte_vfio_dma_map (pointer_to_uword (va), pa, page_sz))
-	    break;
+	  if (do_vfio_map &&
+	      rte_vfio_dma_map (pointer_to_uword (va), pa, page_sz))
+	    do_vfio_map = 0;
+
+	  struct rte_mempool_memhdr *memhdr;
+	  memhdr = clib_mem_alloc (sizeof (*memhdr));
+	  memhdr->mp = mp;
+	  memhdr->addr = va;
+	  memhdr->iova = pa;
+	  memhdr->len = page_sz;
+	  memhdr->free_cb = 0;
+	  memhdr->opaque = 0;
+
+	  STAILQ_INSERT_TAIL (&mp->mem_list, memhdr, next);
+	  mp->nb_mem_chunks++;
 	}
     }
 
