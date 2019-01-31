@@ -103,6 +103,7 @@ typedef struct
   u16 desc_next;
   int kick_fd;
   int call_fd;
+  u8 buffer_pool_index;
   u16 size;
   u16 queue_id;
   u16 flags;
@@ -187,6 +188,8 @@ extern vlib_node_registration_t virtio_input_node;
 clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,
 				 u16 sz);
 clib_error_t *virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif,
+				 u32 idx);
+void virtio_vring_set_numa_node (vlib_main_t * vm, virtio_if_t * vif,
 				 u32 idx);
 extern void virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring);
 extern void virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring);
