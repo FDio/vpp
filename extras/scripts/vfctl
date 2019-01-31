@@ -4,6 +4,15 @@ function die() {
 	echo "ERROR: $*" >&2
 	exit 1
 }
+function pci-unbind() {
+	echo $1 | sudo tee /sys/bus/pci/devices/$1/driver/unbind > /dev/null
+}
+function pci-bind() {
+	pci-unbind $1
+	echo $2 | sudo tee /sys/bus/pci/devices/$1/driver_override > /dev/null
+	echo $1 | sudo tee /sys/bus/pci/drivers/$2/bind > /dev/null
+	echo | sudo tee /sys/bus/pci/devices/$1/driver_override > /dev/null
+}
 
 function show_vfs() {
 	path=$1
@@ -92,6 +101,7 @@ function create () {
 		sudo ip link set dev ${netdev} vf ${vfid} mac ${mac}
 		sudo ip link set dev ${netdev} vf ${vfid} trust on
 		sudo ip link set dev ${netdev} vf ${vfid} spoofchk off
+		pci-bind ${vf} vfio-pci
 	done
 
 	[ $(cat ${path}/sriov_numvfs) -gt 0 ] && show_vfs ${path} ${netdev}
