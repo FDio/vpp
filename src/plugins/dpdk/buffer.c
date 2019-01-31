@@ -27,14 +27,6 @@
 STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
 	       "VLIB_BUFFER_PRE_DATA_SIZE must be equal to RTE_PKTMBUF_HEADROOM");
 
-
-typedef struct
-{
-  /* must be first */
-  struct rte_pktmbuf_pool_private mbp_priv;
-  u8 buffer_pool_index;
-} dpdk_mempool_private_t;
-
 #ifndef CLIB_MARCH_VARIANT
 struct rte_mempool **dpdk_mempool_by_buffer_pool_index = 0;
 struct rte_mempool **dpdk_no_cache_mempool_by_buffer_pool_index = 0;
@@ -44,7 +36,7 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 {
   uword buffer_mem_start = vm->buffer_main->buffer_mem_start;
   struct rte_mempool *mp, *nmp;
-  dpdk_mempool_private_t priv;
+  struct rte_pktmbuf_pool_private priv;
   enum rte_iova_mode iova_mode;
   u32 *bi;
   u8 *name = 0;
@@ -75,14 +67,15 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
   dpdk_mempool_by_buffer_pool_index[bp->index] = mp;
   dpdk_no_cache_mempool_by_buffer_pool_index[bp->index] = nmp;
 
+  mp->pool_id = nmp->pool_id = bp->index;
+
   rte_mempool_set_ops_byname (mp, "vpp", NULL);
   rte_mempool_set_ops_byname (nmp, "vpp-no-cache", NULL);
 
   /* Call the mempool priv initializer */
-  priv.mbp_priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
+  priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
     VLIB_BUFFER_DATA_SIZE;
-  priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
-  priv.buffer_pool_index = bp->index;
+  priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
   rte_pktmbuf_pool_init (mp, &priv);
   rte_pktmbuf_pool_init (nmp, &priv);
 
@@ -176,8 +169,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue) (struct rte_mempool * mp,
   const int batch_size = 32;
   vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_t bt;
-  dpdk_mempool_private_t *privp = rte_mempool_get_priv (mp);
-  u8 buffer_pool_index = privp->buffer_pool_index;
+  u8 buffer_pool_index = mp->pool_id;
   vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
   u32 bufs[batch_size];
   u32 n_left = n;
@@ -249,10 +241,9 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_enqueue_no_cache) (struct rte_mempool * cmp,
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_t bt;
-  dpdk_mempool_private_t *privp = rte_mempool_get_priv (cmp);
   struct rte_mempool *mp;
-  mp = dpdk_mempool_by_buffer_pool_index[privp->buffer_pool_index];
-  u8 buffer_pool_index = privp->buffer_pool_index;
+  mp = dpdk_mempool_by_buffer_pool_index[cmp->pool_id];
+  u8 buffer_pool_index = cmp->pool_id;
   vlib_buffer_pool_t *bp = vlib_get_buffer_pool (vm, buffer_pool_index);
   vlib_buffer_copy_template (&bt, &bp->buffer_template);
 
@@ -285,8 +276,7 @@ CLIB_MULTIARCH_FN (dpdk_ops_vpp_dequeue) (struct rte_mempool * mp,
   const int batch_size = 32;
   vlib_main_t *vm = vlib_get_main ();
   u32 bufs[batch_size], total = 0, n_alloc = 0;
-  dpdk_mempool_private_t *privp = rte_mempool_get_priv (mp);
-  u8 buffer_pool_index = privp->buffer_pool_index;
+  u8 buffer_pool_index = mp->pool_id;
   void **obj = obj_table;
 
   while (n >= batch_size)
@@ -356,10 +346,8 @@ dpdk_ops_vpp_get_count (const struct rte_mempool *mp)
 static unsigned
 dpdk_ops_vpp_get_count_no_cache (const struct rte_mempool *mp)
 {
-  dpdk_mempool_private_t *privp;
   struct rte_mempool *cmp;
-  privp = rte_mempool_get_priv ((struct rte_mempool *) mp);
-  cmp = dpdk_no_cache_mempool_by_buffer_pool_index[privp->buffer_pool_index];
+  cmp = dpdk_no_cache_mempool_by_buffer_pool_index[mp->pool_id];
   return dpdk_ops_vpp_get_count (cmp);
 }
 
