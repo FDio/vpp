@@ -95,7 +95,7 @@ Install the optional packages by running the following command:
 
 .. code-block:: console
 
-  sudo apt-get install vpp-dbg vpp-dev vpp-api-java vpp-api-python vpp-api-lua
+  sudo apt-get install vpp-dbg vpp-dev vpp-api-python vpp-api-lua
 
 
 Uninstall the Packages

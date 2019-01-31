@@ -68,21 +68,17 @@ DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev
 ifeq ($(OS_VERSION_ID),14.04)
-	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
-	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
 	APT_ARGS = -t jessie-backports
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-9)
-	DEB_DEPENDS += default-jdk-headless
 	DEB_DEPENDS += libssl1.0-dev
 else
-	DEB_DEPENDS += default-jdk-headless
 	DEB_DEPENDS += libssl-dev
 endif
 
-RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel
+RPM_DEPENDS  = redhat-lsb glibc-static
 RPM_DEPENDS += apr-devel
 RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
@@ -119,7 +115,7 @@ SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
 RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python-ply
 
-RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
+RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
 
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
@@ -284,7 +280,6 @@ install-dep:
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
-	@sudo -E add-apt-repository ppa:openjdk-r/ppa $(CONFIRM)
 endif
 ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	@grep -q jessie-backports /etc/apt/sources.list /etc/apt/sources.list.d/* 2> /dev/null \
@@ -400,12 +395,12 @@ test-debug:
 	$(call test,vpp,vpp_debug,test)
 
 test-all:
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp vom-install japi-install,)
+	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp vom-install,)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp,test)
 
 test-all-debug:
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp_debug vom-install japi-install,)
+	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=vpp TAG=vpp_debug vom-install,)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_debug,test)
 
@@ -568,8 +563,6 @@ verify: install-dep $(BR)/.deps.ok install-ext-deps
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building libmemif")
 	@make -C build-root PLATFORM=vpp TAG=vpp libmemif-install
-	$(call banner,"Building JAPI")
-	@make -C build-root PLATFORM=vpp TAG=vpp japi-install
 	$(call banner,"Building VOM")
 	@make -C build-root PLATFORM=vpp TAG=vpp vom-install
 	$(call banner,"Building $(PKG) packages")

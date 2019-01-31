@@ -9,6 +9,5 @@ Reference
 
    cmdreference/index.rst
    vppvagrant/index.rst
-   jvpp.rst
    readthedocs/index.rst
    github/index.rst

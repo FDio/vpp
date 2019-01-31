@@ -20,7 +20,7 @@ ifeq ($(TARGET_PLATFORM),thunderx)
 vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
 endif
 
-vpp_root_packages = vpp vom japi
+vpp_root_packages = vpp vom
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
 	-fstack-protector-all -fPIC -Werror

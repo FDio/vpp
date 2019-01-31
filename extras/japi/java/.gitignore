@@ -1,2 +1,0 @@
-# Negate "No core files" pattern from the toplevel .gitignore
-!**/core
