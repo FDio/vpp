@@ -1,0 +1,31 @@
+# Initially listed lexicographically, order may change if a wedge is created.
+# (commented files listed for completeness)
+
+# docs
+sphinx_theme                            # MIT
+sphinx_rtd_theme                        # MIT
+
+# doxygen
+jinja2                                  # BSD
+pyparsing                               # MIT
+
+# extras
+PyYAML                                  # MIT
+
+# Makefile
+git-review                              # Apache 2
+pip                                     # MIT
+pycodestyle                             # MIT (Expat license)       https://pypi.org/project/pycodestyle/
+virtualenv                              # MIT
+
+# src/plugins/nat/extras
+# trex_stl_lib https://github.com/Nandan307/trex_stl_lib
+
+# vppapigen
+ply                                     # BSD
+
+# vpp-papi
+cffi                                    # MIT
+enum34>=1.1.6 ; python_version <= '3.3' # BSD
+ipaddress; python_version < '3.3'       # PSF
+# ply
