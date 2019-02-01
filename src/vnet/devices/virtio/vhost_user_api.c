@@ -244,6 +244,9 @@ vhost_user_api_hookup (vlib_main_t * vm)
   foreach_vpe_api_msg;
 #undef _
 
+  /* Mark CREATE_VHOST_USER_IF as mp safe */
+  am->is_mp_safe[VL_API_CREATE_VHOST_USER_IF] = 1;
+
   /*
    * Set up the (msg_name, crc, message-id) table
    */
