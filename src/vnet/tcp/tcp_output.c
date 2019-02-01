@@ -464,41 +464,6 @@ tcp_init_mss (tcp_connection_t * tc)
     tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP;
 }
 
-static int
-tcp_alloc_tx_buffers (tcp_worker_ctx_t * wrk, u16 * n_bufs, u32 wanted)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  u32 n_alloc;
-
-  ASSERT (wanted > *n_bufs);
-  vec_validate_aligned (wrk->tx_buffers, wanted - 1, CLIB_CACHE_LINE_BYTES);
-  n_alloc = vlib_buffer_alloc (vm, &wrk->tx_buffers[*n_bufs],
-			       wanted - *n_bufs);
-  *n_bufs += n_alloc;
-  _vec_len (wrk->tx_buffers) = *n_bufs;
-  return n_alloc;
-}
-
-always_inline int
-tcp_get_free_buffer_index (tcp_worker_ctx_t * wrk, u32 * bidx)
-{
-  u16 n_bufs = vec_len (wrk->tx_buffers);
-
-  TCP_DBG_BUFFER_ALLOC_MAYBE_FAIL (wrk->vm->thread_index);
-
-  if (PREDICT_FALSE (!n_bufs))
-    {
-      if (!tcp_alloc_tx_buffers (wrk, &n_bufs, VLIB_FRAME_SIZE))
-	{
-	  *bidx = ~0;
-	  return -1;
-	}
-    }
-  *bidx = wrk->tx_buffers[--n_bufs];
-  _vec_len (wrk->tx_buffers) = n_bufs;
-  return 0;
-}
-
 static void *
 tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
@@ -531,7 +496,7 @@ tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 /**
  * Prepare ACK
  */
-static void
+static inline void
 tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 		u8 flags)
 {
@@ -556,12 +521,9 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 /**
  * Convert buffer to ACK
  */
-void
+static inline void
 tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
-  vlib_main_t *vm = vlib_get_main ();
-
-  tcp_reuse_buffer (vm, b);
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_ACK);
   TCP_EVT_DBG (TCP_EVT_ACK_SENT, tc);
   tc->rcv_las = tc->rcv_nxt;
@@ -573,13 +535,7 @@ tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 void
 tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  u8 flags = 0;
-
-  tcp_reuse_buffer (vm, b);
-
-  flags = TCP_FLAG_FIN | TCP_FLAG_ACK;
-  tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, flags);
+  tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_FIN | TCP_FLAG_ACK);
 
   /* Reset flags, make sure ack is sent */
   vnet_buffer (b)->tcp.flags &= ~TCP_BUF_FLAG_DUPACK;
@@ -616,15 +572,12 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
 void
 tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
-  vlib_main_t *vm = vlib_get_main ();
   tcp_options_t _snd_opts, *snd_opts = &_snd_opts;
   u8 tcp_opts_len, tcp_hdr_opts_len;
   tcp_header_t *th;
   u16 initial_wnd;
 
   clib_memset (snd_opts, 0, sizeof (*snd_opts));
-  tcp_reuse_buffer (vm, b);
-
   initial_wnd = tcp_initial_window_to_advertise (tc);
   tcp_opts_len = tcp_make_synack_options (tc, snd_opts);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
@@ -838,7 +791,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
   ip6_header_t *ih6, *pkt_ih6;
   fib_protocol_t fib_proto;
 
-  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     return;
 
   b = vlib_get_buffer (vm, bi);
@@ -914,7 +867,7 @@ tcp_send_reset (tcp_connection_t * tc)
   u16 tcp_hdr_opts_len, advertise_wnd, opts_write_len;
   u8 flags;
 
-  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     return;
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
@@ -997,7 +950,7 @@ tcp_send_syn (tcp_connection_t * tc)
   tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
 		    tc->rto * TCP_TO_TIMER_TICK);
 
-  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     return;
 
   b = vlib_get_buffer (vm, bi);
@@ -1022,12 +975,12 @@ tcp_send_synack (tcp_connection_t * tc)
   vlib_buffer_t *b;
   u32 bi;
 
-  /* Get buffer */
-  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     return;
 
   tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
   b = vlib_get_buffer (vm, bi);
+  tcp_init_buffer (vm, b);
   tcp_make_synack (tc, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 }
@@ -1091,7 +1044,7 @@ tcp_send_fin (tcp_connection_t * tc)
   if (fin_snt)
     tc->snd_nxt = tc->snd_una;
 
-  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       /* Out of buffers so program fin retransmit ASAP */
       tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
@@ -1241,13 +1194,10 @@ tcp_send_ack (tcp_connection_t * tc)
   vlib_buffer_t *b;
   u32 bi;
 
-  /* Get buffer */
-  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     return;
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
-
-  /* Fill in the ACK */
   tcp_make_ack (tc, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
 }
@@ -1335,8 +1285,8 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		     u32 offset, u32 max_deq_bytes, vlib_buffer_t ** b)
 {
   u32 bytes_per_buffer = vnet_get_tcp_main ()->bytes_per_buffer;
-  u32 bi, seg_size;
   vlib_main_t *vm = wrk->vm;
+  u32 bi, seg_size;
   int n_bytes = 0;
   u8 *data;
 
@@ -1354,7 +1304,7 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   /* Easy case, buffer size greater than mss */
   if (PREDICT_TRUE (seg_size <= bytes_per_buffer))
     {
-      if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+      if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	return 0;
       *b = vlib_get_buffer (vm, bi);
       data = tcp_init_buffer (vm, *b);
@@ -1369,27 +1319,24 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   /* Split mss into multiple buffers */
   else
     {
-      u32 chain_bi = ~0, n_bufs_per_seg;
-      u16 n_peeked, len_to_deq, available_bufs;
+      u32 chain_bi = ~0, n_bufs_per_seg, n_bufs;
+      u16 n_peeked, len_to_deq;
       vlib_buffer_t *chain_b, *prev_b;
       int i;
 
       /* Make sure we have enough buffers */
       n_bufs_per_seg = ceil ((double) seg_size / bytes_per_buffer);
-      available_bufs = vec_len (wrk->tx_buffers);
-      if (n_bufs_per_seg > available_bufs)
+      vec_validate_aligned (wrk->tx_buffers, n_bufs_per_seg - 1,
+			    CLIB_CACHE_LINE_BYTES);
+      n_bufs = vlib_buffer_alloc (vm, wrk->tx_buffers, n_bufs_per_seg);
+      if (PREDICT_FALSE (n_bufs != n_bufs_per_seg))
 	{
-	  tcp_alloc_tx_buffers (wrk, &available_bufs, VLIB_FRAME_SIZE);
-	  if (n_bufs_per_seg > available_bufs)
-	    {
-	      *b = 0;
-	      return 0;
-	    }
+	  if (n_bufs)
+	    vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+	  return 0;
 	}
 
-      (void) tcp_get_free_buffer_index (wrk, &bi);
-      ASSERT (bi != (u32) ~ 0);
-      *b = vlib_get_buffer (vm, bi);
+      *b = vlib_get_buffer (vm, wrk->tx_buffers[--n_bufs]);
       data = tcp_init_buffer (vm, *b);
       n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
 					   bytes_per_buffer - MAX_HDRS_LEN);
@@ -1403,8 +1350,7 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	{
 	  prev_b = chain_b;
 	  len_to_deq = clib_min (max_deq_bytes, bytes_per_buffer);
-	  tcp_get_free_buffer_index (wrk, &chain_bi);
-	  ASSERT (chain_bi != (u32) ~ 0);
+	  chain_bi = wrk->tx_buffers[--n_bufs];
 	  chain_b = vlib_get_buffer (vm, chain_bi);
 	  chain_b->current_data = 0;
 	  data = vlib_buffer_get_current (chain_b);
@@ -1426,6 +1372,12 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       tcp_push_hdr_i (tc, *b, tc->state, /* compute opts */ 0, /* burst */ 0);
       if (seq_gt (tc->snd_nxt, tc->snd_una_max))
 	tc->snd_una_max = tc->snd_nxt;
+
+      if (PREDICT_FALSE (n_bufs))
+	{
+	  clib_warning ("not all buffers consumed");
+	  vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+	}
     }
 
   ASSERT (n_bytes > 0);
@@ -1637,7 +1589,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
 			tc->rto * TCP_TO_TIMER_TICK);
 
-      if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+      if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	return;
 
       b = vlib_get_buffer (vm, bi);
@@ -1661,7 +1613,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tc->rtt_ts = 0;
 
-      if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+      if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
 	  tcp_retransmit_timer_force_update (tc);
 	  return;
@@ -1748,7 +1700,7 @@ tcp_timer_persist_handler (u32 index)
   /*
    * Try to force the first unsent segment (or buffer)
    */
-  if (PREDICT_FALSE (tcp_get_free_buffer_index (wrk, &bi)))
+  if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
       tcp_persist_timer_set (tc);
       return;
