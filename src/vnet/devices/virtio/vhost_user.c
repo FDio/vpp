@@ -1467,6 +1467,8 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 	}
     }
 
+  /* Protect the uninitialized vui from being dispatched by rx/tx */
+  vlib_worker_thread_barrier_sync (vlib_get_main ());
   pool_get (vhost_user_main.vhost_user_interfaces, vui);
 
   vhost_user_create_ethernet (vnm, vm, vui, hwaddr);
@@ -1476,6 +1478,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   if (renumber)
     vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
+  vlib_worker_thread_barrier_release (vlib_get_main ());
 
   if (sw_if_index)
     *sw_if_index = sw_if_idx;
@@ -1986,6 +1989,7 @@ VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .short_help = "create vhost-user socket <socket-filename> [server] "
     "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] ",
     .function = vhost_user_connect_command_fn,
+    .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
