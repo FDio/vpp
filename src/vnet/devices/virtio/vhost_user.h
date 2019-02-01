@@ -250,6 +250,14 @@ typedef struct
 
   /* The rx queue policy (interrupt/adaptive/polling) for this queue */
   u32 mode;
+
+  /*
+   * It contains the device queue number. -1 if it does not. The idea is
+   * to not invoke vnet_hw_interface_assign_rx_thread and
+   * vnet_hw_interface_unassign_rx_thread more than once for the duration of
+   * the interface even if it is disconnected and reconnected.
+   */
+  i16 qid;
 } vhost_user_vring_t;
 
 #define VHOST_USER_EVENT_START_TIMER 1
@@ -293,9 +301,6 @@ typedef struct
   /* Whether to use spinlock or per_cpu_tx_qid assignment */
   u8 use_tx_spinlock;
   u16 *per_cpu_tx_qid;
-
-  /* Vector of active rx queues for this interface */
-  u16 *rx_queues;
 } vhost_user_intf_t;
 
 typedef struct
