@@ -677,6 +677,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       if (n_bufs)
 	vlib_buffer_free (vm, wrk->tx_buffers, n_bufs);
+      vec_add1 (wrk->pending_event_vector, *e);
       return SESSION_TX_NO_BUFFERS;
     }
 
