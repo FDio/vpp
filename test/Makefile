@@ -98,7 +98,7 @@ $(GET_PIP_SCRIPT):
 
 $(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS)"
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS) -c test/upper-constraints.txt"
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -233,7 +233,7 @@ wipe-cov: wipe
 .PHONY: checkstyle
 checkstyle: verify-test-dir
 	@virtualenv $(VENV_PATH) -p python3
-	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle"
+	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle -c test/upper-constraints-file.txt"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
