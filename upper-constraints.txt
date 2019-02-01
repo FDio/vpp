@@ -1,0 +1,5 @@
+# Stable/* releases should populate this file with the output of pip freeze.
+# Populating it in the master branch would require someone to manage upstream package changes.
+
+# We apply patches to v.2.4.0.
+scapy===2.4.0
