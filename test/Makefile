@@ -116,6 +116,8 @@ $(PYTHON_DEPENDS): $(PIP_TOOLS_INSTALL_DONE) requirements.txt
 $(PIP_INSTALL_DONE): $(PYTHON_DEPENDS)
 	@bash -c "source $(VENV_PATH)/bin/activate && \
 		  $(PYTHON_INTERP) -m piptools sync $(PYTHON_DEPENDS)"
+# this is test/requirements.txt since makefile is running relative to test
+#	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -r requirements.txt -c ../upper-constraints.txt"
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -268,13 +270,15 @@ papi-wipe:
 
 .PHONY: checkstyle
 checkstyle: verify-test-dir $(PIP_INSTALL_DONE)
+	@virtualenv $(VENV_PATH) -p python3
+#	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle -c ../upper-constraints.txt"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		  $(PYTHON_INTERP) -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py $(PLUGIN_SRC_DIR)/*/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
-	         echo \"*******************************************************************\" &&\
+		 echo \"*******************************************************************\" &&\
 		 false)"
 	@echo "*******************************************************************"
 	@echo "* Test framework PEP8 compliance check passed"
