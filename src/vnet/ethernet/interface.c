@@ -659,9 +659,6 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
 };
 /* *INDENT-ON* */
 
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH (ethernet_simulated_device_class,
-				   simulated_ethernet_interface_tx);
-
 /*
  * Maintain a bitmap of allocated loopback instance numbers.
  */

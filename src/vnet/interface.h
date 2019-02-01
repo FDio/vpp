@@ -302,30 +302,8 @@ CLIB_MARCH_SFX (devclass##_tx_fn_multiarch_register) (void)		\
 }									\
 uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (devclass##_tx_fn)
 
-#define VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
-  uword									\
-  __attribute__ ((flatten))						\
-  __attribute__ ((target (tgt)))					\
-  CLIB_CPU_OPTIMIZED							\
-  fn ## _ ## arch ( vlib_main_t * vm,					\
-                   vlib_node_runtime_t * node,				\
-                   vlib_frame_t * frame)				\
-  { return fn (vm, node, frame); }
-
-#define VLIB_DEVICE_TX_FUNCTION_MULTIARCH_CLONE(fn)			\
-  foreach_march_variant(VLIB_DEVICE_TX_FUNCTION_CLONE_TEMPLATE, fn)
-
-#if CLIB_DEBUG > 0
-#define VLIB_MULTIARCH_CLONE_AND_SELECT_FN(fn,...)
+/* FIXME to be removed */
 #define VLIB_DEVICE_TX_FUNCTION_MULTIARCH(dev, fn)
-#else
-#define VLIB_DEVICE_TX_FUNCTION_MULTIARCH(dev, fn)			\
-  VLIB_DEVICE_TX_FUNCTION_MULTIARCH_CLONE(fn)				\
-  CLIB_MULTIARCH_SELECT_FN(fn, static inline)				\
-  static void __attribute__((__constructor__))				\
-  __vlib_device_tx_function_multiarch_select_##dev (void)		\
-  { dev.tx_function = fn ## _multiarch_select(); }
-#endif
 
 /**
  * Link Type: A description of the protocol of packets on the link.
@@ -871,6 +849,10 @@ vnet_interface_counter_unlock (vnet_interface_main_t * im)
 void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);
 
 int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
+
+uword vnet_interface_output_node (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame);
 
 #endif /* included_vnet_interface_h */
 
