@@ -446,7 +446,7 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
   return n_buffers;
 }
 
-static uword
+uword
 vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
 			    vlib_frame_t * frame)
 {
@@ -462,9 +462,6 @@ vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
     return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
 					      /* do_tx_offloads */ 1);
 }
-
-VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node);
-CLIB_MULTIARCH_SELECT_FN (vnet_interface_output_node);
 
 /* Use buffer's sw_if_index[VNET_TX] to choose output interface. */
 static uword

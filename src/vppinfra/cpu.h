@@ -45,12 +45,8 @@
   if (clib_cpu_supports_ ## arch())					\
     return & fn ## _ ##arch;
 
-#define CLIB_MULTIARCH_SELECT_FN(fn,...)                               \
-  __VA_ARGS__ void * fn ## _multiarch_select(void)                     \
-{                                                                      \
-  foreach_march_variant(CLIB_MULTIARCH_ARCH_CHECK, fn)                 \
-  return & fn;                                                         \
-}
+/* FIXME to be removed */
+#define CLIB_MULTIARCH_SELECT_FN(fn,...)
 
 #ifdef CLIB_MARCH_VARIANT
 #define __CLIB_MULTIARCH_FN(a,b) a##_##b
