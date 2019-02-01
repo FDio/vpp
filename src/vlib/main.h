@@ -155,6 +155,9 @@ typedef struct vlib_main_t
   /* Event logger trace flags */
   int elog_trace_api_messages;
   int elog_trace_cli_commands;
+  int elog_trace_graph_dispatch;
+  int elog_trace_graph_circuit;
+  u32 elog_trace_graph_circuit_node_index;
 
   /* Node call and return event types. */
   elog_event_type_t *node_call_elog_event_types;
