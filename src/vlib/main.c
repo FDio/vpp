@@ -912,18 +912,35 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
 {
   vlib_main_t *evm = &vlib_global_main;
   elog_main_t *em = &evm->elog_main;
+  int enabled = evm->elog_trace_graph_dispatch |
+    evm->elog_trace_graph_circuit;
 
-  if (VLIB_ELOG_MAIN_LOOP && n_vectors)
-    elog_track (em,
-		/* event type */
-		vec_elt_at_index (is_return
-				  ? evm->node_return_elog_event_types
-				  : evm->node_call_elog_event_types,
-				  node_index),
-		/* track */
-		(vm->thread_index ? &vlib_worker_threads[vm->thread_index].
-		 elog_track : &em->default_track),
-		/* data to log */ n_vectors);
+  if (PREDICT_FALSE (enabled && n_vectors))
+    {
+      if (PREDICT_FALSE (!elog_is_enabled (em)))
+	{
+	  evm->elog_trace_graph_dispatch = 0;
+	  evm->elog_trace_graph_circuit = 0;
+	  return;
+	}
+      if (PREDICT_TRUE
+	  (evm->elog_trace_graph_dispatch ||
+	   (evm->elog_trace_graph_circuit &&
+	    node_index == evm->elog_trace_graph_circuit_node_index)))
+	{
+	  elog_track (em,
+		      /* event type */
+		      vec_elt_at_index (is_return
+					? evm->node_return_elog_event_types
+					: evm->node_call_elog_event_types,
+					node_index),
+		      /* track */
+		      (vm->thread_index ?
+		       &vlib_worker_threads[vm->thread_index].elog_track
+		       : &em->default_track),
+		      /* data to log */ n_vectors);
+	}
+    }
 }
 
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
@@ -1116,6 +1133,7 @@ dispatch_node (vlib_main_t * vm,
   u64 t;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_next_frame_t *nf;
+  u64 pmc_before[2], pmc_after[2], pmc_delta[2];
 
   if (CLIB_DEBUG > 0)
     {
@@ -1151,142 +1169,142 @@ dispatch_node (vlib_main_t * vm,
 
   vm->cpu_time_last_node_dispatch = last_time_stamp;
 
-  if (1 /* || vm->thread_index == node->thread_index */ )
+  vlib_elog_main_loop_event (vm, node->node_index,
+			     last_time_stamp, frame ? frame->n_vectors : 0,
+			     /* is_after */ 0);
+
+  vlib_node_runtime_perf_counter (vm, &pmc_before[0], &pmc_before[1]);
+
+  /*
+   * Turn this on if you run into
+   * "bad monkey" contexts, and you want to know exactly
+   * which nodes they've visited... See ixge.c...
+   */
+  if (VLIB_BUFFER_TRACE_TRAJECTORY && frame)
     {
-      u64 pmc_before[2], pmc_after[2], pmc_delta[2];
-
-      vlib_elog_main_loop_event (vm, node->node_index,
-				 last_time_stamp,
-				 frame ? frame->n_vectors : 0,
-				 /* is_after */ 0);
-
-      vlib_node_runtime_perf_counter (vm, &pmc_before[0], &pmc_before[1]);
-
-      /*
-       * Turn this on if you run into
-       * "bad monkey" contexts, and you want to know exactly
-       * which nodes they've visited... See ixge.c...
-       */
-      if (VLIB_BUFFER_TRACE_TRAJECTORY && frame)
+      int i;
+      u32 *from;
+      from = vlib_frame_vector_args (frame);
+      for (i = 0; i < frame->n_vectors; i++)
 	{
-	  int i;
-	  u32 *from;
-	  from = vlib_frame_vector_args (frame);
-	  for (i = 0; i < frame->n_vectors; i++)
-	    {
-	      vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
-	      add_trajectory_trace (b, node->node_index);
-	    }
-	  if (PREDICT_FALSE (vm->dispatch_pcap_enable))
-	    dispatch_pcap_trace (vm, node, frame);
-	  n = node->function (vm, node, frame);
+	  vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
+	  add_trajectory_trace (b, node->node_index);
 	}
-      else
+      if (PREDICT_FALSE (vm->dispatch_pcap_enable))
+	dispatch_pcap_trace (vm, node, frame);
+      n = node->function (vm, node, frame);
+    }
+  else
+    {
+      if (PREDICT_FALSE (vm->dispatch_pcap_enable))
+	dispatch_pcap_trace (vm, node, frame);
+      n = node->function (vm, node, frame);
+    }
+
+  t = clib_cpu_time_now ();
+
+  /*
+   * To validate accounting: pmc_delta = t - pmc_before;
+   * perf ticks should equal clocks/pkt...
+   */
+  vlib_node_runtime_perf_counter (vm, &pmc_after[0], &pmc_after[1]);
+
+  pmc_delta[0] = pmc_after[0] - pmc_before[0];
+  pmc_delta[1] = pmc_after[1] - pmc_before[1];
+
+  vlib_elog_main_loop_event (vm, node->node_index, t, n, 1 /* is_after */ );
+
+  vm->main_loop_vectors_processed += n;
+  vm->main_loop_nodes_processed += n > 0;
+
+  v = vlib_node_runtime_update_stats (vm, node,
+				      /* n_calls */ 1,
+				      /* n_vectors */ n,
+				      /* n_clocks */ t - last_time_stamp,
+				      pmc_delta[0] /* PMC0 */ ,
+				      pmc_delta[1] /* PMC1 */ );
+
+  /* When in interrupt mode and vector rate crosses threshold switch to
+     polling mode. */
+  if (PREDICT_FALSE ((dispatch_state == VLIB_NODE_STATE_INTERRUPT)
+		     || (dispatch_state == VLIB_NODE_STATE_POLLING
+			 && (node->flags
+			     &
+			     VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))))
+    {
+      /* *INDENT-OFF* */
+      ELOG_TYPE_DECLARE (e) =
+        {
+          .function = (char *) __FUNCTION__,
+          .format = "%s vector length %d, switching to %s",
+          .format_args = "T4i4t4",
+          .n_enum_strings = 2,
+          .enum_strings = {
+            "interrupt", "polling",
+          },
+        };
+      /* *INDENT-ON* */
+      struct
+      {
+	u32 node_name, vector_length, is_polling;
+      } *ed;
+
+      if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT
+	   && v >= nm->polling_threshold_vector_length) &&
+	  !(node->flags &
+	    VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))
 	{
-	  if (PREDICT_FALSE (vm->dispatch_pcap_enable))
-	    dispatch_pcap_trace (vm, node, frame);
-	  n = node->function (vm, node, frame);
-	}
+	  vlib_node_t *n = vlib_get_node (vm, node->node_index);
+	  n->state = VLIB_NODE_STATE_POLLING;
+	  node->state = VLIB_NODE_STATE_POLLING;
+	  node->flags &=
+	    ~VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
+	  node->flags |= VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
+	  nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] -= 1;
+	  nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] += 1;
 
-      t = clib_cpu_time_now ();
-
-      /*
-       * To validate accounting: pmc_delta = t - pmc_before;
-       * perf ticks should equal clocks/pkt...
-       */
-      vlib_node_runtime_perf_counter (vm, &pmc_after[0], &pmc_after[1]);
-
-      pmc_delta[0] = pmc_after[0] - pmc_before[0];
-      pmc_delta[1] = pmc_after[1] - pmc_before[1];
-
-      vlib_elog_main_loop_event (vm, node->node_index, t, n,	/* is_after */
-				 1);
-
-      vm->main_loop_vectors_processed += n;
-      vm->main_loop_nodes_processed += n > 0;
-
-      v = vlib_node_runtime_update_stats (vm, node,
-					  /* n_calls */ 1,
-					  /* n_vectors */ n,
-					  /* n_clocks */ t - last_time_stamp,
-					  pmc_delta[0] /* PMC0 */ ,
-					  pmc_delta[1] /* PMC1 */ );
-
-      /* When in interrupt mode and vector rate crosses threshold switch to
-         polling mode. */
-      if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT)
-	  || (dispatch_state == VLIB_NODE_STATE_POLLING
-	      && (node->flags
-		  & VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE)))
-	{
-#ifdef DISPATCH_NODE_ELOG_REQUIRED
-	  ELOG_TYPE_DECLARE (e) =
-	  {
-	    .function = (char *) __FUNCTION__,.format =
-	      "%s vector length %d, switching to %s",.format_args =
-	      "T4i4t4",.n_enum_strings = 2,.enum_strings =
+	  if (PREDICT_FALSE (vlib_global_main.elog_trace_graph_dispatch))
 	    {
-	  "interrupt", "polling",},};
-	  struct
-	  {
-	    u32 node_name, vector_length, is_polling;
-	  } *ed;
-	  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
-#endif
+	      vlib_worker_thread_t *w = vlib_worker_threads
+		+ vm->thread_index;
 
-	  if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT
-	       && v >= nm->polling_threshold_vector_length) &&
-	      !(node->flags &
-		VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))
-	    {
-	      vlib_node_t *n = vlib_get_node (vm, node->node_index);
-	      n->state = VLIB_NODE_STATE_POLLING;
-	      node->state = VLIB_NODE_STATE_POLLING;
-	      node->flags &=
-		~VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
-	      node->flags |=
-		VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
-	      nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] -= 1;
-	      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] += 1;
-
-#ifdef DISPATCH_NODE_ELOG_REQUIRED
 	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
 				    w->elog_track);
 	      ed->node_name = n->name_elog_string;
 	      ed->vector_length = v;
 	      ed->is_polling = 1;
-#endif
 	    }
-	  else if (dispatch_state == VLIB_NODE_STATE_POLLING
-		   && v <= nm->interrupt_threshold_vector_length)
+	}
+      else if (dispatch_state == VLIB_NODE_STATE_POLLING
+	       && v <= nm->interrupt_threshold_vector_length)
+	{
+	  vlib_node_t *n = vlib_get_node (vm, node->node_index);
+	  if (node->flags &
+	      VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)
 	    {
-	      vlib_node_t *n = vlib_get_node (vm, node->node_index);
-	      if (node->flags &
-		  VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)
-		{
-		  /* Switch to interrupt mode after dispatch in polling one more time.
-		     This allows driver to re-enable interrupts. */
-		  n->state = VLIB_NODE_STATE_INTERRUPT;
-		  node->state = VLIB_NODE_STATE_INTERRUPT;
-		  node->flags &=
-		    ~VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
-		  nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] -=
-		    1;
-		  nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] +=
-		    1;
+	      /* Switch to interrupt mode after dispatch in polling one more time.
+	         This allows driver to re-enable interrupts. */
+	      n->state = VLIB_NODE_STATE_INTERRUPT;
+	      node->state = VLIB_NODE_STATE_INTERRUPT;
+	      node->flags &=
+		~VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE;
+	      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] -= 1;
+	      nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] += 1;
 
-		}
-	      else
+	    }
+	  else
+	    {
+	      vlib_worker_thread_t *w = vlib_worker_threads
+		+ vm->thread_index;
+	      node->flags |=
+		VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
+	      if (PREDICT_FALSE (vlib_global_main.elog_trace_graph_dispatch))
 		{
-		  node->flags |=
-		    VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
-#ifdef DISPATCH_NODE_ELOG_REQUIRED
 		  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
 					w->elog_track);
 		  ed->node_name = n->name_elog_string;
 		  ed->vector_length = v;
 		  ed->is_polling = 0;
-#endif
 		}
 	    }
 	}
@@ -1778,8 +1796,29 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
       if (is_main)
 	{
+          /* *INDENT-OFF* */
+          ELOG_TYPE_DECLARE (es) =
+            {
+              .format = "process tw start",
+              .format_args = "",
+            };
+          ELOG_TYPE_DECLARE (ee) =
+            {
+              .format = "process tw end: %d",
+              .format_args = "i4",
+            };
+          /* *INDENT-ON* */
+
+	  struct
+	  {
+	    int nready_procs;
+	  } *ed;
+
 	  /* Check if process nodes have expired from timing wheel. */
 	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
+
+	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
+	    ed = ELOG_DATA (&vlib_global_main.elog_main, es);
 
 	  nm->data_from_advancing_timing_wheel =
 	    TW (tw_timer_expire_timers_vec)
@@ -1787,6 +1826,13 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	     nm->data_from_advancing_timing_wheel);
 
 	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
+
+	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
+	    {
+	      ed = ELOG_DATA (&vlib_global_main.elog_main, ee);
+	      ed->nready_procs =
+		_vec_len (nm->data_from_advancing_timing_wheel);
+	    }
 
 	  if (PREDICT_FALSE
 	      (_vec_len (nm->data_from_advancing_timing_wheel) > 0))
