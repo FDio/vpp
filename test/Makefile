@@ -2,6 +2,12 @@
 
 FAILED_DIR=/tmp/vpp-failed-unittests/
 
+ifeq ($(PYTHON),)
+PYTHON_INTERP=python2.7
+else
+PYTHON_INTERP=$(PYTHON)
+endif
+
 verify-test-dir:
 ifndef TEST_DIR
 	$(error TEST_DIR is not set)
@@ -69,14 +75,11 @@ VENV_PATH=$(TEST_DIR)/run/venv
 
 ifeq ($(TEST_DEBUG),1)
 TEST_RUN_DIR:=$(VENV_PATH)/run-debug
-PYTHON_EXTRA_DEPENDS=objgraph pympler
 else
 TEST_RUN_DIR:=$(VENV_PATH)/run
-PYTHON_EXTRA_DEPENDS=
 endif
 
-PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
-SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
+SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON_INTERP) -name site-packages)
 BUILD_COV_DIR=$(TEST_DIR)/coverage
 
 PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install.done
@@ -85,16 +88,11 @@ PAPI_INSTALL_DONE=$(TEST_RUN_DIR)/papi-install.done
 
 PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
 
-ifeq ($(PYTHON),)
-PYTHON_INTERP=python2.7
-else
-PYTHON_INTERP=$(PYTHON)
-endif
-
 $(PIP_INSTALL_DONE):
 	@mkdir -p $(TEST_RUN_DIR)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS)"
+# this is test/requirements.txt since makefile is running relative to test
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -r requirements.txt -c ../upper-constraints.txt"
 	@touch $@
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
@@ -229,12 +227,12 @@ wipe-cov: wipe
 .PHONY: checkstyle
 checkstyle: verify-test-dir
 	@virtualenv $(VENV_PATH) -p python3
-	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle"
+	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle -c ../upper-constraints.txt"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
 		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
-	         echo \"*******************************************************************\" &&\
+		 echo \"*******************************************************************\" &&\
 		 false)"
 	@echo "*******************************************************************"
 	@echo "* Test framework PEP8 compliance check passed"

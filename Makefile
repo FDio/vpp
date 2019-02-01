@@ -60,13 +60,39 @@ endif
 
 # +libganglia1-dev if building the gmond plugin
 
-DEB_DEPENDS  = curl build-essential autoconf automake ccache
-DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
-DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
-DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
-DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
-DEB_DEPENDS += cmake ninja-build uuid-dev
+DEB_DEPENDS  = autoconf
+DEB_DEPENDS += automake
+DEB_DEPENDS += build-essential
+DEB_DEPENDS += ccache
+DEB_DEPENDS += check
+DEB_DEPENDS += chrpath
+DEB_DEPENDS += clang-format
+DEB_DEPENDS += cmake
+DEB_DEPENDS += cscope
+DEB_DEPENDS += curl
+DEB_DEPENDS += debhelper
+DEB_DEPENDS += dh-systemd
+DEB_DEPENDS += dkms
+DEB_DEPENDS += exuberant-ctags
+DEB_DEPENDS += git
+DEB_DEPENDS += indent
+DEB_DEPENDS += iperf3
+DEB_DEPENDS += lcov
+DEB_DEPENDS += libapr1-dev
+DEB_DEPENDS += libboost-all-dev
+DEB_DEPENDS += libconfuse-dev
+DEB_DEPENDS += libffi-dev
+DEB_DEPENDS += libffi6
+DEB_DEPENDS += libmbedtls-dev
+DEB_DEPENDS += libnuma-dev
+DEB_DEPENDS += libtool
+DEB_DEPENDS += ninja-build
+DEB_DEPENDS += pkg-config
+DEB_DEPENDS += python-all
+DEB_DEPENDS += python-dev
+DEB_DEPENDS += python-pip
+DEB_DEPENDS += python3-pip
+DEB_DEPENDS += uuid-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
@@ -78,29 +104,38 @@ else
 	DEB_DEPENDS += libssl-dev
 endif
 
-RPM_DEPENDS  = redhat-lsb glibc-static
-RPM_DEPENDS += apr-devel
-RPM_DEPENDS += numactl-devel
-RPM_DEPENDS += check check-devel
+RPM_DEPENDS  = apr-devel
 RPM_DEPENDS += boost boost-devel
-RPM_DEPENDS += selinux-policy selinux-policy-devel
-RPM_DEPENDS += ninja-build
+RPM_DEPENDS += check check-devel
+RPM_DEPENDS += chrpath
+RPM_DEPENDS += glibc-static
+RPM_DEPENDS += java-1.8.0-openjdk-devel
+RPM_DEPENDS += libffi-devel
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
+RPM_DEPENDS += ninja-build
+RPM_DEPENDS += numactl-devel
+RPM_DEPENDS += openssl-devel
+RPM_DEPENDS += redhat-lsb
+RPM_DEPENDS += rpm-build
+RPM_DEPENDS += selinux-policy selinux-policy-devel
 
 ifeq ($(OS_ID),fedora)
+    RPM_DEPENDS += compat-openssl10-devel
 	RPM_DEPENDS += dnf-utils
-	RPM_DEPENDS += subunit subunit-devel
-	RPM_DEPENDS += compat-openssl10-devel
-	RPM_DEPENDS += python2-devel python34-ply
+	RPM_DEPENDS += iperf3
+	# needed for install-ext-deps
+	RPM_DEPENDS += python2-devel python-pip python3-devel
+	RPM_DEPENDS += python34-ply
 	RPM_DEPENDS += python2-virtualenv
+	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
+	RPM_DEPENDS += iperf3
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python-devel python34-ply
-	RPM_DEPENDS += python34-devel python34-pip
+	RPM_DEPENDS += python-devel python2-pip python34-devel python34-pip
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
@@ -109,12 +144,10 @@ endif
 
 # +ganglia-devel if building the ganglia plugin
 
-RPM_DEPENDS += chrpath libffi-devel rpm-build
-
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
-RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake boost-devel ccache check-devel chrpath
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake curl indent iperf libtool make ninja
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
@@ -122,26 +155,22 @@ RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-deve
 RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
 RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
 
-RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
+RPM_SUSE_PLATFORM_DEPS = hostname distribution-release shadow rpm-build
 
 ifeq ($(OS_ID),opensuse)
 ifeq ($(SUSE_NAME),Tumbleweed)
-	RPM_SUSE_DEVEL_DEPS = libboost_headers1_68_0-devel-1.68.0  libboost_thread1_68_0-devel-1.68.0 gcc
-	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
+	RPM_SUSE_DEVEL_DEPS += libboost_headers-devel libboost_thread-devel gcc
 endif
 ifeq ($(SUSE_ID),15.0)
 	RPM_SUSE_DEVEL_DEPS += libboost_headers-devel libboost_thread-devel gcc
-	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
 else
 	RPM_SUSE_DEVEL_DEPS += libboost_headers1_68_0-devel-1.68.0 gcc6
-	RPM_SUSE_PYTHON_DEPS += python-virtualenv
 endif
 endif
 
 ifeq ($(OS_ID),opensuse-leap)
 ifeq ($(SUSE_ID),15.0)
-	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc
-	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
+	RPM_SUSE_DEVEL_DEPS += libboost_headers-devel libboost_thread-devel gcc
 endif
 endif
 
@@ -258,19 +287,19 @@ endif
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
-	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
-	  echo "by executing \"make install-dep\"\n" ; \
+	  echo -e "\nPlease install missing packages: \n$$MISSING\n" ; \
+	  echo -e "by executing \"make install-dep\"\n" ; \
 	  exit 1 ; \
 	fi ; \
 	exit 0
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@for i in $(RPM_DEPENDS) ; do \
 	    RPM=$$(basename -s .rpm "$${i##*/}" | cut -d- -f1,2,3)  ;	\
-	    MISSING+=$$(rpm -q $$RPM | grep "^package")	   ;    \
+	    MISSING+="$$(rpm -q $$RPM | grep '^package') "	   ;    \
 	done							   ;	\
-	if [ -n "$$MISSING" ] ; then \
-	  echo "Please install missing RPMs: \n$$MISSING\n" ; \
-	  echo "by executing \"make install-dep\"\n" ; \
+	if [[ "$$MISSING" =~ [^A-Za-z] ]] ; then \
+	  echo -e "Please install missing RPMs: \n$$MISSING\n" ; \
+	  echo -e "by executing \"make install-dep\"\n" ; \
 	  exit 1 ; \
 	fi ; \
 	exit 0
@@ -319,6 +348,8 @@ else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 else
 	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE systems")
 endif
+	@echo "Installing build-level python requirements"
+	@sudo -E python3 -m pip install -r requirements.txt -c upper-constraints.txt
 
 define make
 	@make -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
@@ -452,7 +483,7 @@ retest-debug:
 ifeq ("$(wildcard $(STARTUP_CONF))","")
 define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
-	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
+	@echo -e "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
 	@cd $(STARTUP_DIR) && \
 	  $(SUDO) $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF)
 endef
