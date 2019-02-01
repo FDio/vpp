@@ -913,7 +913,7 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
   vlib_main_t *evm = &vlib_global_main;
   elog_main_t *em = &evm->elog_main;
 
-  if (VLIB_ELOG_MAIN_LOOP && n_vectors)
+  if (PREDICT_FALSE (evm->elog_trace_graph_dispatch && n_vectors))
     elog_track (em,
 		/* event type */
 		vec_elt_at_index (is_return
@@ -1219,20 +1219,22 @@ dispatch_node (vlib_main_t * vm,
 	      && (node->flags
 		  & VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE)))
 	{
-#ifdef DISPATCH_NODE_ELOG_REQUIRED
-	  ELOG_TYPE_DECLARE (e) =
-	  {
-	    .function = (char *) __FUNCTION__,.format =
-	      "%s vector length %d, switching to %s",.format_args =
-	      "T4i4t4",.n_enum_strings = 2,.enum_strings =
-	    {
-	  "interrupt", "polling",},};
+          /* *INDENT-OFF* */
+          ELOG_TYPE_DECLARE (e) =
+            {
+              .function = (char *) __FUNCTION__,
+              .format = "%s vector length %d, switching to %s",
+              .format_args = "T4i4t4",
+              .n_enum_strings = 2,
+              .enum_strings = {
+                "interrupt", "polling",
+              },
+            };
+          /* *INDENT-ON* */
 	  struct
 	  {
 	    u32 node_name, vector_length, is_polling;
 	  } *ed;
-	  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
-#endif
 
 	  if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT
 	       && v >= nm->polling_threshold_vector_length) &&
@@ -1249,13 +1251,17 @@ dispatch_node (vlib_main_t * vm,
 	      nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] -= 1;
 	      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] += 1;
 
-#ifdef DISPATCH_NODE_ELOG_REQUIRED
-	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-				    w->elog_track);
-	      ed->node_name = n->name_elog_string;
-	      ed->vector_length = v;
-	      ed->is_polling = 1;
-#endif
+	      if (PREDICT_FALSE (vlib_global_main.elog_trace_graph_dispatch))
+		{
+		  vlib_worker_thread_t *w = vlib_worker_threads
+		    + vm->thread_index;
+
+		  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
+					w->elog_track);
+		  ed->node_name = n->name_elog_string;
+		  ed->vector_length = v;
+		  ed->is_polling = 1;
+		}
 	    }
 	  else if (dispatch_state == VLIB_NODE_STATE_POLLING
 		   && v <= nm->interrupt_threshold_vector_length)
@@ -1278,15 +1284,19 @@ dispatch_node (vlib_main_t * vm,
 		}
 	      else
 		{
+		  vlib_worker_thread_t *w = vlib_worker_threads
+		    + vm->thread_index;
 		  node->flags |=
 		    VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
-#ifdef DISPATCH_NODE_ELOG_REQUIRED
-		  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
-					w->elog_track);
-		  ed->node_name = n->name_elog_string;
-		  ed->vector_length = v;
-		  ed->is_polling = 0;
-#endif
+		  if (PREDICT_FALSE
+		      (vlib_global_main.elog_trace_graph_dispatch))
+		    {
+		      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
+					    w->elog_track);
+		      ed->node_name = n->name_elog_string;
+		      ed->vector_length = v;
+		      ed->is_polling = 0;
+		    }
 		}
 	    }
 	}
@@ -1778,8 +1788,29 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
       if (is_main)
 	{
+          /* *INDENT-OFF* */
+          ELOG_TYPE_DECLARE (es) =
+            {
+              .format = "process tw start",
+              .format_args = "",
+            };
+          ELOG_TYPE_DECLARE (ee) =
+            {
+              .format = "process tw end: %d",
+              .format_args = "i4",
+            };
+          /* *INDENT-ON* */
+
+	  struct
+	  {
+	    int nready_procs;
+	  } *ed;
+
 	  /* Check if process nodes have expired from timing wheel. */
 	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
+
+	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
+	    ed = ELOG_DATA (&vlib_global_main.elog_main, es);
 
 	  nm->data_from_advancing_timing_wheel =
 	    TW (tw_timer_expire_timers_vec)
@@ -1787,6 +1818,13 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	     nm->data_from_advancing_timing_wheel);
 
 	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
+
+	  if (PREDICT_FALSE (vm->elog_trace_graph_dispatch))
+	    {
+	      ed = ELOG_DATA (&vlib_global_main.elog_main, ee);
+	      ed->nready_procs =
+		_vec_len (nm->data_from_advancing_timing_wheel);
+	    }
 
 	  if (PREDICT_FALSE
 	      (_vec_len (nm->data_from_advancing_timing_wheel) > 0))

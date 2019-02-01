@@ -1465,7 +1465,7 @@ elog_trace_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int enable = 1;
-  int api = 0, cli = 0, barrier = 0;
+  int api = 0, cli = 0, barrier = 0, dispatch = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     goto print_status;
@@ -1474,6 +1474,8 @@ elog_trace_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "api"))
 	api = 1;
+      else if (unformat (line_input, "dispatch"))
+	dispatch = 1;
       else if (unformat (line_input, "cli"))
 	cli = 1;
       else if (unformat (line_input, "barrier"))
@@ -1489,6 +1491,8 @@ elog_trace_command_fn (vlib_main_t * vm,
 
   vm->elog_trace_api_messages = api ? enable : vm->elog_trace_api_messages;
   vm->elog_trace_cli_commands = cli ? enable : vm->elog_trace_cli_commands;
+  vm->elog_trace_graph_dispatch = dispatch ?
+    enable : vm->elog_trace_graph_dispatch;
   vlib_worker_threads->barrier_elog_enabled =
     barrier ? enable : vlib_worker_threads->barrier_elog_enabled;
 
@@ -1502,6 +1506,9 @@ print_status:
   vlib_cli_output
     (vm, "    Barrier sync trace: %s",
      vlib_worker_threads->barrier_elog_enabled ? "on" : "off");
+  vlib_cli_output
+    (vm, "    Graph Dispatch: %s",
+     vm->elog_trace_graph_dispatch ? "on" : "off");
 
   return 0;
 }
