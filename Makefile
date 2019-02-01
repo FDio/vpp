@@ -21,6 +21,12 @@ STARTUP_DIR?=$(PWD)
 MACHINE=$(shell uname -m)
 SUDO?=sudo
 
+ifeq ($(PYTHON),)
+PYTHON_INTERP=python2.7
+else
+PYTHON_INTERP=$(PYTHON)
+endif
+
 ,:=,
 define disable_plugins
 $(if $(1), \
@@ -62,10 +68,10 @@ endif
 
 DEB_DEPENDS  = curl build-essential autoconf automake ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
-DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
+DEB_DEPENDS += libconfuse-dev exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
-DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
-DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
+DEB_DEPENDS += python-all python-dev python-pip libffi6 check
+DEB_DEPENDS += libboost-all-dev libffi-dev  libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
@@ -95,16 +101,14 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
-	RPM_DEPENDS += python2-devel python34-ply
-	RPM_DEPENDS += python2-virtualenv
+	RPM_DEPENDS += python2-devel
 	RPM_DEPENDS += mbedtls-devel
 	RPM_DEPENDS += cmake
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python-devel python34-ply
-	RPM_DEPENDS += python-virtualenv
+	RPM_DEPENDS += python-devel
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'
@@ -116,8 +120,8 @@ RPM_DEPENDS += chrpath libffi-devel rpm-build
 
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
-RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
+RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake boost-devel ccache check-devel chrpath
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
@@ -129,22 +133,16 @@ RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
 
 ifeq ($(OS_ID),opensuse)
 ifeq ($(SUSE_NAME),Tumbleweed)
-	RPM_SUSE_DEVEL_DEPS = libboost_headers1_68_0-devel-1.68.0  libboost_thread1_68_0-devel-1.68.0 gcc
-	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
+	RPM_SUSE_DEVEL_DEPS =  boost-devel libboost_headers-devel libboost_thread-devel gcc
 endif
 ifeq ($(SUSE_ID),15.0)
-	RPM_SUSE_DEVEL_DEPS = libboost_headers1_68_0-devel-1.68.0  libboost_thread1_68_0-devel-1.68.0 gcc6
-	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
-else
-	RPM_SUSE_DEVEL_DEPS += libboost_headers1_68_0-devel-1.68.0 gcc6
-	RPM_SUSE_PYTHON_DEPS += python-virtualenv
+	RPM_SUSE_DEVEL_DEPS = boost-devel libboost_headers-devel libboost_thread-devel gcc
 endif
 endif
 
 ifeq ($(OS_ID),opensuse-leap)
 ifeq ($(SUSE_ID),15.0)
-	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc6
-	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
+	RPM_SUSE_DEVEL_DEPS = boost-devel libboost_headers-devel libboost_thread-devel gcc
 endif
 endif
 
@@ -320,6 +318,9 @@ else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 else
 	$(error "This option currently works only on Ubuntu, Debian, RHEL, CentOS or openSUSE systems")
 endif
+	@echo "Installing build-level python requirements"
+	@sudo -E $(PYTHON_INTERP) -m pip install -r requirements.txt -c upper-constraints.txt
+
 
 define make
 	@make -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
