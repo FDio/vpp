@@ -419,7 +419,14 @@ static inline void *
 get_session_private_data (const struct rte_cryptodev_sym_session *sess,
 			  uint8_t driver_id)
 {
+#if RTE_VERSION < RTE_VERSION_NUM(19, 2, 0, 0)
   return sess->sess_private_data[driver_id];
+#else
+  if (unlikely (sess->nb_drivers <= driver_id))
+    return 0;
+
+  return sess->sess_data[driver_id].data;
+#endif
 }
 
 /* This is from rte_cryptodev_pmd.h */
@@ -427,7 +434,13 @@ static inline void
 set_session_private_data (struct rte_cryptodev_sym_session *sess,
 			  uint8_t driver_id, void *private_data)
 {
+#if RTE_VERSION < RTE_VERSION_NUM(19, 2, 0, 0)
   sess->sess_private_data[driver_id] = private_data;
+#else
+  if (unlikely (sess->nb_drivers <= driver_id))
+    return;
+  sess->sess_data[driver_id].data = private_data;
+#endif
 }
 
 static clib_error_t *
@@ -649,7 +662,11 @@ crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
   qp_conf.nb_descriptors = DPDK_CRYPTO_N_QUEUE_DESC;
   for (qp = 0; qp < n_qp; qp++)
     {
+#if RTE_VERSION < RTE_VERSION_NUM(19, 2, 0, 0)
       ret = rte_cryptodev_queue_pair_setup (dev, qp, &qp_conf, numa, NULL);
+#else
+      ret = rte_cryptodev_queue_pair_setup (dev, qp, &qp_conf, numa);
+#endif
       if (ret < 0)
 	return clib_error_return (0, error_str, dev, qp);
     }

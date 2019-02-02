@@ -154,11 +154,7 @@ dpdk_device_lock_init (dpdk_device_t * xd)
 static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-  return ! !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP);
-#else
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
-#endif
 }
 
 static clib_error_t *
@@ -421,16 +417,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBEVF:
 	    case VNET_DPDK_PMD_I40EVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-#endif
 	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-#endif
 
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
@@ -460,9 +450,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Intel Red Rock Canyon */
 	    case VNET_DPDK_PMD_FM10K:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-#endif
 	      break;
 
 	      /* virtio */

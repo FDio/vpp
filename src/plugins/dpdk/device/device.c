@@ -166,6 +166,7 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
+#if 0
       if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
 	{
 	  /* no wrap, transmit in one burst */
@@ -178,7 +179,9 @@ static_always_inline
 	  n_sent = rte_ring_sp_enqueue_burst (hqos->swq, (void **) mb,
 					      n_left, 0);
 	}
-      else if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
+      else
+#endif
+      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
 	  /* no wrap, transmit in one burst */
 	  n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);

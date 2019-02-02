@@ -40,6 +40,7 @@
  */
 
 
+#if 0
 static clib_error_t *
 get_hqos (u32 hw_if_index, u32 subport_id, dpdk_device_t ** xd,
 	  dpdk_device_config_t ** devconf)
@@ -92,6 +93,7 @@ get_hqos (u32 hw_if_index, u32 subport_id, dpdk_device_t ** xd,
 done:
   return error;
 }
+#endif
 
 static inline clib_error_t *
 pcap_trace_command_internal (vlib_main_t * vm,
@@ -691,6 +693,7 @@ VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
 };
 /* *INDENT-ON* */
 
+#if 0
 static int
 dpdk_device_queue_sort (void *a1, void *a2)
 {
@@ -1986,6 +1989,7 @@ VLIB_CLI_COMMAND (cmd_show_dpdk_hqos_queue_stats, static) = {
   .function = show_dpdk_hqos_queue_stats,
 };
 /* *INDENT-ON* */
+#endif
 
 static clib_error_t *
 show_dpdk_version_command_fn (vlib_main_t * vm,
