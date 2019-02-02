@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import ply.lex as lex
@@ -133,11 +133,11 @@ def crc_block(block):
 
 
 class Service():
-    def __init__(self, caller, reply, events=[], stream=False):
+    def __init__(self, caller, reply, events=None, stream=False):
         self.caller = caller
         self.reply = reply
         self.stream = stream
-        self.events = events
+        self.events = [] if events is None else events
 
 
 class Typedef():
@@ -170,8 +170,8 @@ class Using():
         else:
             a = { 'type': alias.fieldtype }
         self.alias = a
-        self.crc = binascii.crc32(str(alias)) & 0xffffffff
-        global_crc = binascii.crc32(str(alias), global_crc)
+        self.crc = binascii.crc32(str(alias).encode()) & 0xffffffff
+        global_crc = binascii.crc32(str(alias).encode(), global_crc)
         global_type_add(name)
 
     def __repr__(self):
@@ -759,12 +759,17 @@ def main():
     if sys.version[0] == '2':
         cliparser.add_argument('--input', type=argparse.FileType('r'),
                                default=sys.stdin)
+        cliparser.add_argument('--output', nargs='?',
+                               type=argparse.FileType('w'),
+                               default=sys.stdout)
+
     else:
         cliparser.add_argument('--input',
                                type=argparse.FileType('r', encoding='UTF-8'),
                                default=sys.stdin)
-    cliparser.add_argument('--output', nargs='?', type=argparse.FileType('w'),
-                           default=sys.stdout)
+        cliparser.add_argument('--output', nargs='?',
+                               type=argparse.FileType('w', encoding='UTF-8'),
+                               default=sys.stdout)
 
     cliparser.add_argument('output_module', nargs='?', default='C')
     cliparser.add_argument('--debug', action='store_true')
