@@ -315,7 +315,9 @@ typedef struct dpdk_device_config_hqos_t
 int dpdk_hqos_validate_mask (u64 mask, u32 n);
 void dpdk_device_config_hqos_pipe_profile_default (dpdk_device_config_hqos_t *
 						   hqos, u32 pipe_profile_id);
+#if 0
 void dpdk_device_config_hqos_default (dpdk_device_config_hqos_t * hqos);
+#endif
 clib_error_t *dpdk_port_setup_hqos (dpdk_device_t * xd,
 				    dpdk_device_config_hqos_t * hqos);
 void dpdk_hqos_metadata_set (dpdk_device_hqos_per_worker_thread_t * hqos,

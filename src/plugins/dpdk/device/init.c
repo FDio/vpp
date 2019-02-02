@@ -949,7 +949,9 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 
   devconf->pci_addr.as_u32 = pci_addr.as_u32;
   devconf->hqos_enabled = 0;
+#if 0
   dpdk_device_config_hqos_default (&devconf->hqos);
+#endif
 
   if (!input)
     return 0;
