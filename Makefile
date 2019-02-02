@@ -65,7 +65,7 @@ DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
-DEB_DEPENDS += libboost-all-dev libffi-dev python-ply libmbedtls-dev
+DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
 DEB_DEPENDS += cmake ninja-build uuid-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
@@ -95,7 +95,7 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
-	RPM_DEPENDS += python2-devel python2-ply
+	RPM_DEPENDS += python2-devel python34-ply
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS += mbedtls-devel
 	RPM_DEPENDS += cmake
@@ -103,7 +103,7 @@ ifeq ($(OS_ID),fedora)
 else
 	RPM_DEPENDS += yum-utils
 	RPM_DEPENDS += openssl-devel
-	RPM_DEPENDS += python-devel python-ply
+	RPM_DEPENDS += python-devel python34-ply
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
@@ -117,7 +117,7 @@ RPM_DEPENDS += chrpath libffi-devel rpm-build
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 SUSE_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python-ply
+RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel mbedtls-devel libuuid-devel
@@ -130,11 +130,11 @@ RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
 ifeq ($(OS_ID),opensuse)
 ifeq ($(SUSE_NAME),Tumbleweed)
 	RPM_SUSE_DEVEL_DEPS = libboost_headers1_68_0-devel-1.68.0  libboost_thread1_68_0-devel-1.68.0 gcc
-	RPM_SUSE_PYTHON_DEPS += python2-ply python2-virtualenv
+	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
 endif
 ifeq ($(SUSE_ID),15.0)
 	RPM_SUSE_DEVEL_DEPS = libboost_headers1_68_0-devel-1.68.0  libboost_thread1_68_0-devel-1.68.0 gcc6
-	RPM_SUSE_PYTHON_DEPS += python2-ply python2-virtualenv
+	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
 else
 	RPM_SUSE_DEVEL_DEPS += libboost_headers1_68_0-devel-1.68.0 gcc6
 	RPM_SUSE_PYTHON_DEPS += python-virtualenv
@@ -144,7 +144,7 @@ endif
 ifeq ($(OS_ID),opensuse-leap)
 ifeq ($(SUSE_ID),15.0)
 	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc6
-	RPM_SUSE_PYTHON_DEPS += python2-ply python2-virtualenv
+	RPM_SUSE_PYTHON_DEPS += python3-ply python2-virtualenv
 endif
 endif
 
