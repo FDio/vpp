@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -338,7 +338,7 @@ session_lookup_del_connection (transport_connection_t * tc)
 }
 
 int
-session_lookup_del_session (stream_session_t * s)
+session_lookup_del_session (session_t * s)
 {
   transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *ts;
@@ -371,7 +371,7 @@ session_lookup_action_to_handle (u32 action_index)
     }
 }
 
-static stream_session_t *
+static session_t *
 session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
 				   u8 transport_proto)
 {
@@ -384,7 +384,7 @@ session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
 				    fib_proto, transport_proto);
 }
 
-static stream_session_t *
+static session_t *
 session_lookup_action_to_session (u32 action_index, u8 fib_proto,
 				  u8 transport_proto)
 {
@@ -396,7 +396,7 @@ session_lookup_action_to_session (u32 action_index, u8 fib_proto,
 }
 
 /** UNUSED */
-stream_session_t *
+session_t *
 session_lookup_rules_table_session4 (session_table_t * st, u8 proto,
 				     ip4_address_t * lcl, u16 lcl_port,
 				     ip4_address_t * rmt, u16 rmt_port)
@@ -412,7 +412,7 @@ session_lookup_rules_table_session4 (session_table_t * st, u8 proto,
 }
 
 /** UNUSED */
-stream_session_t *
+session_t *
 session_lookup_rules_table_session6 (session_table_t * st, u8 proto,
 				     ip6_address_t * lcl, u16 lcl_port,
 				     ip6_address_t * rmt, u16 rmt_port)
@@ -614,7 +614,7 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
   return SESSION_INVALID_HANDLE;
 }
 
-static inline stream_session_t *
+static inline session_t *
 session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
 			    u16 lcl_port, u8 proto, u8 use_wildcard)
 {
@@ -655,7 +655,7 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   return 0;
 }
 
-stream_session_t *
+session_t *
 session_lookup_listener4 (u32 fib_index, ip4_address_t * lcl, u16 lcl_port,
 			  u8 proto)
 {
@@ -666,7 +666,7 @@ session_lookup_listener4 (u32 fib_index, ip4_address_t * lcl, u16 lcl_port,
   return session_lookup_listener4_i (st, lcl, lcl_port, proto, 0);
 }
 
-static stream_session_t *
+static session_t *
 session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
 			    u16 lcl_port, u8 proto, u8 ip_wildcard)
 {
@@ -698,7 +698,7 @@ session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
   return 0;
 }
 
-stream_session_t *
+session_t *
 session_lookup_listener6 (u32 fib_index, ip6_address_t * lcl, u16 lcl_port,
 			  u8 proto)
 {
@@ -712,7 +712,7 @@ session_lookup_listener6 (u32 fib_index, ip6_address_t * lcl, u16 lcl_port,
 /**
  * Lookup listener, exact or proxy (inaddr_any:0) match
  */
-stream_session_t *
+session_t *
 session_lookup_listener (u32 table_index, session_endpoint_t * sep)
 {
   session_table_t *st;
@@ -856,7 +856,7 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
 {
   session_table_t *st;
   session_kv4_t kv4;
-  stream_session_t *s;
+  session_t *s;
   u32 action_index;
   int rv;
 
@@ -938,7 +938,7 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
 {
   session_table_t *st;
   session_kv4_t kv4;
-  stream_session_t *s;
+  session_t *s;
   u32 action_index;
   int rv;
 
@@ -1003,13 +1003,13 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
  *
  * Typically used by dgram connections
  */
-stream_session_t *
+session_t *
 session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
 		      u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_table_t *st;
   session_kv4_t kv4;
-  stream_session_t *s;
+  session_t *s;
   u32 action_index;
   int rv;
 
@@ -1079,7 +1079,7 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
 			       u8 * result)
 {
   session_table_t *st;
-  stream_session_t *s;
+  session_t *s;
   session_kv6_t kv6;
   u32 action_index;
   int rv;
@@ -1154,7 +1154,7 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
 			    u8 proto)
 {
   session_table_t *st;
-  stream_session_t *s;
+  session_t *s;
   session_kv6_t kv6;
   u32 action_index;
   int rv;
@@ -1211,13 +1211,13 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
  *
  * Typically used by dgram connections
  */
-stream_session_t *
+session_t *
 session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
 		      u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_table_t *st;
   session_kv6_t kv6;
-  stream_session_t *s;
+  session_t *s;
   u32 action_index;
   int rv;
 
@@ -1316,7 +1316,7 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
   clib_bihash_kv_16_8_t *kvp = va_arg (*args, clib_bihash_kv_16_8_t *);
   u32 is_local = va_arg (*args, u32), app_wrk_index, session_index;
   v4_connection_key_t *key = (v4_connection_key_t *) kvp->key;
-  stream_session_t *session;
+  session_t *session;
   app_worker_t *app_wrk;
   const u8 *app_name;
   u8 *str = 0;

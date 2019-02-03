@@ -263,7 +263,7 @@ echo_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       if (PREDICT_FALSE (delete_session == 1))
 	{
-	  stream_session_t *s;
+	  session_t *s;
 
 	  clib_atomic_fetch_add (&ecm->tx_total, sp->bytes_sent);
 	  clib_atomic_fetch_add (&ecm->rx_total, sp->bytes_received);
@@ -356,7 +356,7 @@ echo_clients_init (vlib_main_t * vm)
 
 static int
 echo_clients_session_connected_callback (u32 app_index, u32 api_context,
-					 stream_session_t * s, u8 is_fail)
+					 session_t * s, u8 is_fail)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *session;
@@ -393,9 +393,9 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   session_index = session - ecm->sessions;
   session->bytes_to_send = ecm->bytes_to_send;
   session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
-  session->data.rx_fifo = s->server_rx_fifo;
+  session->data.rx_fifo = s->rx_fifo;
   session->data.rx_fifo->client_session_index = session_index;
-  session->data.tx_fifo = s->server_tx_fifo;
+  session->data.tx_fifo = s->tx_fifo;
   session->data.tx_fifo->client_session_index = session_index;
   session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
   session->vpp_session_handle = session_handle (s);
@@ -422,7 +422,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 }
 
 static void
-echo_clients_session_reset_callback (stream_session_t * s)
+echo_clients_session_reset_callback (session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -437,13 +437,13 @@ echo_clients_session_reset_callback (stream_session_t * s)
 }
 
 static int
-echo_clients_session_create_callback (stream_session_t * s)
+echo_clients_session_create_callback (session_t * s)
 {
   return 0;
 }
 
 static void
-echo_clients_session_disconnect_callback (stream_session_t * s)
+echo_clients_session_disconnect_callback (session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -454,7 +454,7 @@ echo_clients_session_disconnect_callback (stream_session_t * s)
 }
 
 void
-echo_clients_session_disconnect (stream_session_t * s)
+echo_clients_session_disconnect (session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -464,7 +464,7 @@ echo_clients_session_disconnect (stream_session_t * s)
 }
 
 static int
-echo_clients_rx_callback (stream_session_t * s)
+echo_clients_rx_callback (session_t * s)
 {
   echo_client_main_t *ecm = &echo_client_main;
   eclient_session_t *sp;
@@ -475,15 +475,13 @@ echo_clients_rx_callback (stream_session_t * s)
       return -1;
     }
 
-  sp = pool_elt_at_index (ecm->sessions,
-			  s->server_rx_fifo->client_session_index);
+  sp = pool_elt_at_index (ecm->sessions, s->rx_fifo->client_session_index);
   receive_data_chunk (ecm, sp);
 
-  if (svm_fifo_max_dequeue (s->server_rx_fifo))
+  if (svm_fifo_max_dequeue (s->rx_fifo))
     {
-      if (svm_fifo_set_event (s->server_rx_fifo))
-	session_send_io_evt_to_thread (s->server_rx_fifo,
-				       FIFO_EVENT_BUILTIN_RX);
+      if (svm_fifo_set_event (s->rx_fifo))
+	session_send_io_evt_to_thread (s->rx_fifo, FIFO_EVENT_BUILTIN_RX);
     }
   return 0;
 }

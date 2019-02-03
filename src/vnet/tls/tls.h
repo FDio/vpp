@@ -101,8 +101,8 @@ typedef struct tls_engine_vft_
   tls_ctx_t *(*ctx_get_w_thread) (u32 ctx_index, u8 thread_index);
   int (*ctx_init_client) (tls_ctx_t * ctx);
   int (*ctx_init_server) (tls_ctx_t * ctx);
-  int (*ctx_read) (tls_ctx_t * ctx, stream_session_t * tls_session);
-  int (*ctx_write) (tls_ctx_t * ctx, stream_session_t * app_session);
+  int (*ctx_read) (tls_ctx_t * ctx, session_t * tls_session);
+  int (*ctx_write) (tls_ctx_t * ctx, session_t * app_session);
     u8 (*ctx_handshake_is_over) (tls_ctx_t * ctx);
   int (*ctx_start_listen) (tls_ctx_t * ctx);
   int (*ctx_stop_listen) (tls_ctx_t * ctx);
@@ -119,13 +119,13 @@ typedef enum tls_engine_type_
 tls_main_t *vnet_tls_get_main (void);
 void tls_register_engine (const tls_engine_vft_t * vft,
 			  tls_engine_type_t type);
-int tls_add_vpp_q_rx_evt (stream_session_t * s);
-int tls_add_vpp_q_tx_evt (stream_session_t * s);
-int tls_add_vpp_q_builtin_tx_evt (stream_session_t * s);
-int tls_add_vpp_q_builtin_rx_evt (stream_session_t * s);
+int tls_add_vpp_q_rx_evt (session_t * s);
+int tls_add_vpp_q_tx_evt (session_t * s);
+int tls_add_vpp_q_builtin_tx_evt (session_t * s);
+int tls_add_vpp_q_builtin_rx_evt (session_t * s);
 int tls_notify_app_accept (tls_ctx_t * ctx);
 int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
-void tls_notify_app_enqueue (tls_ctx_t * ctx, stream_session_t * app_session);
+void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 #endif /* SRC_VNET_TLS_TLS_H_ */
 /*
  * fd.io coding-style-patch-verification: ON
