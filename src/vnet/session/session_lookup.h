@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -17,9 +17,11 @@
 #define SRC_VNET_SESSION_SESSION_LOOKUP_H_
 
 #include <vnet/session/session_table.h>
-#include <vnet/session/stream_session.h>
+#include <vnet/session/session_types.h>
 #include <vnet/session/transport.h>
 #include <vnet/session/application_namespace.h>
+
+#define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 
 typedef enum session_lookup_result_
 {
@@ -28,12 +30,12 @@ typedef enum session_lookup_result_
   SESSION_LOOKUP_RESULT_FILTERED
 } session_lookup_result_t;
 
-stream_session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
-					ip4_address_t * rmt, u16 lcl_port,
-					u16 rmt_port, u8 proto);
-stream_session_t *session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl,
-					ip6_address_t * rmt, u16 lcl_port,
-					u16 rmt_port, u8 proto);
+session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
+				 ip4_address_t * rmt, u16 lcl_port,
+				 u16 rmt_port, u8 proto);
+session_t *session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl,
+				 ip6_address_t * rmt, u16 lcl_port,
+				 u16 rmt_port, u8 proto);
 transport_connection_t *session_lookup_connection_wt4 (u32 fib_index,
 						       ip4_address_t * lcl,
 						       ip4_address_t * rmt,
@@ -58,27 +60,26 @@ transport_connection_t *session_lookup_connection6 (u32 fib_index,
 						    ip6_address_t * rmt,
 						    u16 lcl_port,
 						    u16 rmt_port, u8 proto);
-stream_session_t *session_lookup_listener4 (u32 fib_index,
-					    ip4_address_t * lcl, u16 lcl_port,
-					    u8 proto);
-stream_session_t *session_lookup_listener6 (u32 fib_index,
-					    ip6_address_t * lcl, u16 lcl_port,
-					    u8 proto);
-stream_session_t *session_lookup_listener (u32 table_index,
-					   session_endpoint_t * sep);
+session_t *session_lookup_listener4 (u32 fib_index,
+				     ip4_address_t * lcl, u16 lcl_port,
+				     u8 proto);
+session_t *session_lookup_listener6 (u32 fib_index,
+				     ip6_address_t * lcl, u16 lcl_port,
+				     u8 proto);
+session_t *session_lookup_listener (u32 table_index,
+				    session_endpoint_t * sep);
 int session_lookup_add_connection (transport_connection_t * tc, u64 value);
 int session_lookup_del_connection (transport_connection_t * tc);
 u64 session_lookup_endpoint_listener (u32 table_index,
 				      session_endpoint_t * sepi,
 				      u8 use_rules);
 u64 session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep);
-stream_session_t *session_lookup_global_session_endpoint (session_endpoint_t
-							  *);
+session_t *session_lookup_global_session_endpoint (session_endpoint_t *);
 int session_lookup_add_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep, u64 value);
 int session_lookup_del_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep);
-int session_lookup_del_session (stream_session_t * s);
+int session_lookup_del_session (session_t * s);
 int session_lookup_del_half_open (transport_connection_t * tc);
 int session_lookup_add_half_open (transport_connection_t * tc, u64 value);
 u64 session_lookup_half_open_handle (transport_connection_t * tc);
