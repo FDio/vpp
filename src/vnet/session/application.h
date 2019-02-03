@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -37,23 +37,23 @@ typedef struct _stream_session_cb_vft
   int (*del_segment_callback) (u32 api_client_index, u64 segment_handle);
 
   /** Notify server of newly accepted session */
-  int (*session_accept_callback) (stream_session_t * new_session);
+  int (*session_accept_callback) (session_t * new_session);
 
   /** Connection request callback */
   int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     stream_session_t * s, u8 code);
+				     session_t * s, u8 code);
 
   /** Notify app that session is closing */
-  void (*session_disconnect_callback) (stream_session_t * s);
+  void (*session_disconnect_callback) (session_t * s);
 
   /** Notify app that session was reset */
-  void (*session_reset_callback) (stream_session_t * s);
+  void (*session_reset_callback) (session_t * s);
 
   /** Direct RX callback for built-in application */
-  int (*builtin_app_rx_callback) (stream_session_t * session);
+  int (*builtin_app_rx_callback) (session_t * session);
 
   /** Direct TX callback for built-in application */
-  int (*builtin_app_tx_callback) (stream_session_t * session);
+  int (*builtin_app_tx_callback) (session_t * session);
 
 } session_cb_vft_t;
 
@@ -225,24 +225,23 @@ int app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk);
 app_worker_t *app_worker_get (u32 wrk_index);
 app_worker_t *app_worker_get_if_valid (u32 wrk_index);
 application_t *app_worker_get_app (u32 wrk_index);
-int app_worker_own_session (app_worker_t * app_wrk, stream_session_t * s);
+int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
 int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
 			     u32 api_context);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
-							  stream_session_t *);
+							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
 segment_manager_t
   * app_worker_get_or_alloc_connect_segment_manager (app_worker_t *);
 int app_worker_alloc_connects_segment_manager (app_worker_t * app);
 int app_worker_add_segment_notify (u32 app_or_wrk, u64 segment_handle);
 u32 app_worker_n_listeners (app_worker_t * app);
-stream_session_t *app_worker_first_listener (app_worker_t * app,
-					     u8 fib_proto,
-					     u8 transport_proto);
+session_t *app_worker_first_listener (app_worker_t * app,
+				      u8 fib_proto, u8 transport_proto);
 u8 app_worker_application_is_builtin (app_worker_t * app_wrk);
-int app_worker_send_event (app_worker_t * app, stream_session_t * s, u8 evt);
-int app_worker_lock_and_send_event (app_worker_t * app, stream_session_t * s,
+int app_worker_send_event (app_worker_t * app, session_t * s, u8 evt);
+int app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				    u8 evt_type);
 clib_error_t *vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
@@ -262,7 +261,7 @@ application_t *application_lookup (u32 api_client_index);
 application_t *application_lookup_name (const u8 * name);
 app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
 app_worker_t *application_get_default_worker (application_t * app);
-app_worker_t *application_listener_select_worker (stream_session_t * ls,
+app_worker_t *application_listener_select_worker (session_t * ls,
 						  u8 is_local);
 
 int application_is_proxy (application_t * app);
