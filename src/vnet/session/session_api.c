@@ -223,8 +223,8 @@ send_session_accept_callback (stream_session_t * s)
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
   mp->context = server_wrk->wrk_index;
-  mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-  mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+  mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
+  mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
 
   if (session_has_transport (s))
     {
@@ -365,8 +365,8 @@ send_session_connected_callback (u32 app_wrk_index, u32 api_context,
       clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
       mp->is_ip4 = tc->is_ip4;
       mp->lcl_port = tc->lcl_port;
-      mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
     }
   else
     {
@@ -375,8 +375,8 @@ send_session_connected_callback (u32 app_wrk_index, u32 api_context,
       mp->lcl_port = ls->port;
       mp->vpp_event_queue_address = ls->server_evt_q;
       mp->client_event_queue_address = ls->client_evt_q;
-      mp->server_rx_fifo = pointer_to_uword (s->server_tx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->server_rx_fifo);
+      mp->server_rx_fifo = pointer_to_uword (s->tx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->rx_fifo);
     }
 
 done:
@@ -438,8 +438,8 @@ mq_send_session_accepted_cb (stream_session_t * s)
   mp = (session_accepted_msg_t *) evt->data;
   clib_memset (mp, 0, sizeof (*mp));
   mp->context = app->app_index;
-  mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-  mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+  mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
+  mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
   mp->segment_handle = session_segment_handle (s);
 
   if (session_has_transport (s))
@@ -556,8 +556,8 @@ mq_send_session_disconnected_cb (stream_session_t * s)
   mq_send_session_close_evt (app_wrk, session_handle (s),
 			     SESSION_CTRL_EVT_DISCONNECTED);
 
-  if (svm_fifo_n_subscribers (s->server_rx_fifo))
-    mq_notify_close_subscribers (app_wrk->app_index, sh, s->server_rx_fifo,
+  if (svm_fifo_n_subscribers (s->rx_fifo))
+    mq_notify_close_subscribers (app_wrk->app_index, sh, s->rx_fifo,
 				 SESSION_CTRL_EVT_DISCONNECTED);
 }
 
@@ -570,8 +570,8 @@ mq_send_local_session_disconnected_cb (u32 app_wrk_index,
 
   mq_send_session_close_evt (app_wrk, sh, SESSION_CTRL_EVT_DISCONNECTED);
 
-  if (svm_fifo_n_subscribers (ls->server_rx_fifo))
-    mq_notify_close_subscribers (app_wrk->app_index, sh, ls->server_rx_fifo,
+  if (svm_fifo_n_subscribers (ls->rx_fifo))
+    mq_notify_close_subscribers (app_wrk->app_index, sh, ls->rx_fifo,
 				 SESSION_CTRL_EVT_DISCONNECTED);
 }
 
@@ -583,8 +583,8 @@ mq_send_session_reset_cb (stream_session_t * s)
 
   mq_send_session_close_evt (app_wrk, sh, SESSION_CTRL_EVT_RESET);
 
-  if (svm_fifo_n_subscribers (s->server_rx_fifo))
-    mq_notify_close_subscribers (app_wrk->app_index, sh, s->server_rx_fifo,
+  if (svm_fifo_n_subscribers (s->rx_fifo))
+    mq_notify_close_subscribers (app_wrk->app_index, sh, s->rx_fifo,
 				 SESSION_CTRL_EVT_RESET);
 }
 
@@ -638,8 +638,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
       mp->is_ip4 = tc->is_ip4;
       mp->lcl_port = tc->lcl_port;
-      mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
     }
   else
     {
@@ -657,8 +657,8 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
       mp->client_event_queue_address = ls->client_evt_q;
       mp->server_event_queue_address = ls->server_evt_q;
-      mp->server_rx_fifo = pointer_to_uword (s->server_tx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->server_rx_fifo);
+      mp->server_rx_fifo = pointer_to_uword (s->tx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->rx_fifo);
     }
 
 done:
@@ -726,8 +726,8 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
 
   if (ls && session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
-      mp->rx_fifo = pointer_to_uword (ls->server_rx_fifo);
-      mp->tx_fifo = pointer_to_uword (ls->server_tx_fifo);
+      mp->rx_fifo = pointer_to_uword (ls->rx_fifo);
+      mp->tx_fifo = pointer_to_uword (ls->tx_fifo);
     }
 
 done:
@@ -933,8 +933,8 @@ done:
               clib_memcpy_fast (rmp->lcl_ip, &tc->lcl_ip, sizeof(tc->lcl_ip));
               if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
                 {
-                  rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
-                  rmp->tx_fifo = pointer_to_uword (s->server_tx_fifo);
+                  rmp->rx_fifo = pointer_to_uword (s->rx_fifo);
+                  rmp->tx_fifo = pointer_to_uword (s->tx_fifo);
                   vpp_evt_q = session_manager_get_vpp_event_queue (0);
                   rmp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
                 }
@@ -1238,8 +1238,8 @@ done:
             clib_memcpy_fast (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
             if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
               {
-        	rmp->rx_fifo = pointer_to_uword (s->server_rx_fifo);
-        	rmp->tx_fifo = pointer_to_uword (s->server_tx_fifo);
+        	rmp->rx_fifo = pointer_to_uword (s->rx_fifo);
+        	rmp->tx_fifo = pointer_to_uword (s->tx_fifo);
         	vpp_evt_q = session_manager_get_vpp_event_queue (0);
         	rmp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
               }

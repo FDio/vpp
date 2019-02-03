@@ -592,8 +592,8 @@ http_server_session_accept_callback (stream_session_t * s)
   hs = http_server_session_alloc (s->thread_index);
   http_server_session_lookup_add (s->thread_index, s->session_index,
 				  hs->session_index);
-  hs->rx_fifo = s->server_rx_fifo;
-  hs->tx_fifo = s->server_tx_fifo;
+  hs->rx_fifo = s->rx_fifo;
+  hs->tx_fifo = s->tx_fifo;
   hs->vpp_session_index = s->session_index;
   hs->vpp_session_handle = session_handle (s);
   hs->session_state = HTTP_STATE_ESTABLISHED;

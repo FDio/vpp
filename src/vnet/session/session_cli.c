@@ -23,22 +23,22 @@ format_session_fifos (u8 * s, va_list * args)
   session_event_t _e, *e = &_e;
   u8 found;
 
-  if (!ss->server_rx_fifo || !ss->server_tx_fifo)
+  if (!ss->rx_fifo || !ss->tx_fifo)
     return s;
 
-  s = format (s, " Rx fifo: %U", format_svm_fifo, ss->server_rx_fifo,
+  s = format (s, " Rx fifo: %U", format_svm_fifo, ss->rx_fifo,
 	      verbose);
-  if (verbose > 2 && ss->server_rx_fifo->has_event)
+  if (verbose > 2 && ss->rx_fifo->has_event)
     {
-      found = session_node_lookup_fifo_event (ss->server_rx_fifo, e);
+      found = session_node_lookup_fifo_event (ss->rx_fifo, e);
       s = format (s, " session node event: %s\n",
 		  found ? "found" : "not found");
     }
-  s = format (s, " Tx fifo: %U", format_svm_fifo, ss->server_tx_fifo,
+  s = format (s, " Tx fifo: %U", format_svm_fifo, ss->tx_fifo,
 	      verbose);
-  if (verbose > 2 && ss->server_tx_fifo->has_event)
+  if (verbose > 2 && ss->tx_fifo->has_event)
     {
-      found = session_node_lookup_fifo_event (ss->server_tx_fifo, e);
+      found = session_node_lookup_fifo_event (ss->tx_fifo, e);
       s = format (s, " session node event: %s\n",
 		  found ? "found" : "not found");
     }
@@ -73,8 +73,8 @@ format_stream_session (u8 * s, va_list * args)
       u8 hasf = post_accept | session_tx_is_dgram (ss);
       u32 rxf, txf;
 
-      rxf = hasf ? svm_fifo_max_dequeue (ss->server_rx_fifo) : 0;
-      txf = hasf ? svm_fifo_max_dequeue (ss->server_tx_fifo) : 0;
+      rxf = hasf ? svm_fifo_max_dequeue (ss->rx_fifo) : 0;
+      txf = hasf ? svm_fifo_max_dequeue (ss->tx_fifo) : 0;
       str = format (0, "%-10u%-10u", rxf, txf);
     }
 
@@ -467,8 +467,8 @@ show_session_fifo_trace_command_fn (vlib_main_t * vm,
     }
 
   str = is_rx ?
-    svm_fifo_dump_trace (str, s->server_rx_fifo) :
-    svm_fifo_dump_trace (str, s->server_tx_fifo);
+    svm_fifo_dump_trace (str, s->rx_fifo) :
+    svm_fifo_dump_trace (str, s->tx_fifo);
 
   vlib_cli_output (vm, "%v", str);
   return 0;
@@ -514,8 +514,8 @@ session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   str = is_rx ?
-    svm_fifo_replay (str, s->server_rx_fifo, 0, 1) :
-    svm_fifo_replay (str, s->server_tx_fifo, 0, 1);
+    svm_fifo_replay (str, s->rx_fifo, 0, 1) :
+    svm_fifo_replay (str, s->tx_fifo, 0, 1);
 
   vlib_cli_output (vm, "%v", str);
   return 0;

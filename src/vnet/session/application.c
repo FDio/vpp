@@ -686,7 +686,7 @@ app_worker_start_listen (app_worker_t * app_wrk, stream_session_t * ls)
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
 	    segment_manager_index (sm));
 
-  if (!ls->server_rx_fifo
+  if (!ls->rx_fifo
       && session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
       if (session_alloc_fifos (sm, ls))
@@ -761,14 +761,14 @@ app_worker_own_session (app_worker_t * app_wrk, stream_session_t * s)
 
   s->app_wrk_index = app_wrk->wrk_index;
 
-  rxf = s->server_rx_fifo;
-  txf = s->server_tx_fifo;
+  rxf = s->rx_fifo;
+  txf = s->tx_fifo;
 
   if (!rxf || !txf)
     return 0;
 
-  s->server_rx_fifo = 0;
-  s->server_tx_fifo = 0;
+  s->rx_fifo = 0;
+  s->tx_fifo = 0;
 
   sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
   if (session_alloc_fifos (sm, s))
@@ -776,18 +776,18 @@ app_worker_own_session (app_worker_t * app_wrk, stream_session_t * s)
 
   if (!svm_fifo_is_empty (rxf))
     {
-      clib_memcpy_fast (s->server_rx_fifo->data, rxf->data, rxf->nitems);
-      s->server_rx_fifo->head = rxf->head;
-      s->server_rx_fifo->tail = rxf->tail;
-      s->server_rx_fifo->cursize = rxf->cursize;
+      clib_memcpy_fast (s->rx_fifo->data, rxf->data, rxf->nitems);
+      s->rx_fifo->head = rxf->head;
+      s->rx_fifo->tail = rxf->tail;
+      s->rx_fifo->cursize = rxf->cursize;
     }
 
   if (!svm_fifo_is_empty (txf))
     {
-      clib_memcpy_fast (s->server_tx_fifo->data, txf->data, txf->nitems);
-      s->server_tx_fifo->head = txf->head;
-      s->server_tx_fifo->tail = txf->tail;
-      s->server_tx_fifo->cursize = txf->cursize;
+      clib_memcpy_fast (s->tx_fifo->data, txf->data, txf->nitems);
+      s->tx_fifo->head = txf->head;
+      s->tx_fifo->tail = txf->tail;
+      s->tx_fifo->cursize = txf->cursize;
     }
 
   segment_manager_dealloc_fifos (rxf->segment_index, rxf, txf);
@@ -1341,7 +1341,7 @@ app_send_io_evt_rx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
     {
       /* Session is closed so app will never clean up. Flush rx fifo */
       if (s->session_state == SESSION_STATE_CLOSED)
-	svm_fifo_dequeue_drop_all (s->server_rx_fifo);
+	svm_fifo_dequeue_drop_all (s->rx_fifo);
       return 0;
     }
 
@@ -1351,8 +1351,8 @@ app_send_io_evt_rx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
       return app->cb_fns.builtin_app_rx_callback (s);
     }
 
-  if (svm_fifo_has_event (s->server_rx_fifo)
-      || svm_fifo_is_empty (s->server_rx_fifo))
+  if (svm_fifo_has_event (s->rx_fifo)
+      || svm_fifo_is_empty (s->rx_fifo))
     return 0;
 
   mq = app_wrk->event_queue;
@@ -1371,10 +1371,10 @@ app_send_io_evt_rx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
   ASSERT (!svm_msg_q_msg_is_invalid (&msg));
 
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->fifo = s->server_rx_fifo;
+  evt->fifo = s->rx_fifo;
   evt->event_type = FIFO_EVENT_APP_RX;
 
-  (void) svm_fifo_set_event (s->server_rx_fifo);
+  (void) svm_fifo_set_event (s->rx_fifo);
 
   if (app_enqueue_evt (mq, &msg, lock))
     return -1;
@@ -1408,7 +1408,7 @@ app_send_io_evt_tx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
 
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->event_type = FIFO_EVENT_APP_TX;
-  evt->fifo = s->server_tx_fifo;
+  evt->fifo = s->tx_fifo;
 
   return app_enqueue_evt (mq, &msg, lock);
 }
@@ -1727,8 +1727,8 @@ application_local_session_connect (app_worker_t * client_wrk,
   ls->client_evt_q = pointer_to_uword (cq);
   rv = segment_manager_try_alloc_fifos (seg, props->rx_fifo_size,
 					props->tx_fifo_size,
-					&ls->server_rx_fifo,
-					&ls->server_tx_fifo);
+					&ls->rx_fifo,
+					&ls->tx_fifo);
   if (rv)
     {
       clib_warning ("failed to add fifos in cut-through segment");
@@ -1736,12 +1736,12 @@ application_local_session_connect (app_worker_t * client_wrk,
       goto failed;
     }
   sm_index = segment_manager_index (sm);
-  ls->server_rx_fifo->ct_session_index = ls->session_index;
-  ls->server_tx_fifo->ct_session_index = ls->session_index;
-  ls->server_rx_fifo->segment_manager = sm_index;
-  ls->server_tx_fifo->segment_manager = sm_index;
-  ls->server_rx_fifo->segment_index = seg_index;
-  ls->server_tx_fifo->segment_index = seg_index;
+  ls->rx_fifo->ct_session_index = ls->session_index;
+  ls->tx_fifo->ct_session_index = ls->session_index;
+  ls->rx_fifo->segment_manager = sm_index;
+  ls->tx_fifo->segment_manager = sm_index;
+  ls->rx_fifo->segment_index = seg_index;
+  ls->tx_fifo->segment_index = seg_index;
   ls->svm_segment_index = seg_index;
   ls->listener_index = ll->session_index;
   ls->client_wrk_index = client_wrk->wrk_index;

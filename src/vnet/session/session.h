@@ -450,7 +450,7 @@ session_segment_handle (stream_session_t * s)
   if (s->session_state == SESSION_STATE_LISTENING)
     return SESSION_INVALID_HANDLE;
 
-  f = s->server_rx_fifo;
+  f = s->rx_fifo;
   return segment_manager_make_segment_handle (f->segment_manager,
 					      f->segment_index);
 }
@@ -521,35 +521,35 @@ always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_enqueue (s->server_rx_fifo);
+  return svm_fifo_max_enqueue (s->rx_fifo);
 }
 
 always_inline u32
 transport_max_tx_dequeue (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_dequeue (s->server_tx_fifo);
+  return svm_fifo_max_dequeue (s->tx_fifo);
 }
 
 always_inline u32
 transport_rx_fifo_size (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return s->server_rx_fifo->nitems;
+  return s->rx_fifo->nitems;
 }
 
 always_inline u32
 transport_tx_fifo_size (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return s->server_tx_fifo->nitems;
+  return s->tx_fifo->nitems;
 }
 
 always_inline u8
 transport_rx_fifo_has_ooo_data (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->c_index, tc->thread_index);
-  return svm_fifo_has_ooo_data (s->server_rx_fifo);
+  return svm_fifo_has_ooo_data (s->rx_fifo);
 }
 
 always_inline f64
@@ -650,9 +650,9 @@ always_inline void
 transport_add_tx_event (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  if (svm_fifo_has_event (s->server_tx_fifo))
+  if (svm_fifo_has_event (s->tx_fifo))
     return;
-  session_send_io_evt_to_thread (s->server_tx_fifo, FIFO_EVENT_APP_TX);
+  session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
 }
 
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);

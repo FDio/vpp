@@ -176,8 +176,8 @@ session_free (stream_session_t * s)
 void
 session_free_w_fifos (stream_session_t * s)
 {
-  segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
-				 s->server_tx_fifo);
+  segment_manager_dealloc_fifos (s->svm_segment_index, s->rx_fifo,
+				 s->tx_fifo);
   session_free (s);
 }
 
@@ -216,8 +216,8 @@ session_alloc_fifos (segment_manager_t * sm, stream_session_t * s)
   server_tx_fifo->master_session_index = s->session_index;
   server_tx_fifo->master_thread_index = s->thread_index;
 
-  s->server_rx_fifo = server_rx_fifo;
-  s->server_tx_fifo = server_tx_fifo;
+  s->rx_fifo = server_rx_fifo;
+  s->tx_fifo = server_tx_fifo;
   s->svm_segment_index = fifo_segment_index;
   return 0;
 }
@@ -332,7 +332,7 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
 	continue;
       if (is_in_order)
 	{
-	  rv = svm_fifo_enqueue_nowait (s->server_rx_fifo, len, data);
+	  rv = svm_fifo_enqueue_nowait (s->rx_fifo, len, data);
 	  if (rv == len)
 	    {
 	      written += rv;
@@ -355,7 +355,7 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
 	}
       else
 	{
-	  rv = svm_fifo_enqueue_with_offset (s->server_rx_fifo, offset, len,
+	  rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset, len,
 					     data);
 	  if (rv)
 	    {
@@ -400,7 +400,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
 
   if (is_in_order)
     {
-      enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo,
+      enqueued = svm_fifo_enqueue_nowait (s->rx_fifo,
 					  b->current_length,
 					  vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -414,7 +414,7 @@ session_enqueue_stream_connection (transport_connection_t * tc,
     }
   else
     {
-      rv = svm_fifo_enqueue_with_offset (s->server_rx_fifo, offset,
+      rv = svm_fifo_enqueue_with_offset (s->rx_fifo, offset,
 					 b->current_length,
 					 vlib_buffer_get_current (b));
       if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && !rv))
@@ -448,12 +448,12 @@ session_enqueue_dgram_connection (stream_session_t * s,
 {
   int enqueued = 0, rv, in_order_off;
 
-  ASSERT (svm_fifo_max_enqueue (s->server_rx_fifo)
+  ASSERT (svm_fifo_max_enqueue (s->rx_fifo)
 	  >= b->current_length + sizeof (*hdr));
 
-  svm_fifo_enqueue_nowait (s->server_rx_fifo, sizeof (session_dgram_hdr_t),
+  svm_fifo_enqueue_nowait (s->rx_fifo, sizeof (session_dgram_hdr_t),
 			   (u8 *) hdr);
-  enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
+  enqueued = svm_fifo_enqueue_nowait (s->rx_fifo, b->current_length,
 				      vlib_buffer_get_current (b));
   if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
     {
@@ -488,7 +488,7 @@ stream_session_no_space (transport_connection_t * tc, u32 thread_index,
   if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY))
     return 1;
 
-  if (data_len > svm_fifo_max_enqueue (s->server_rx_fifo))
+  if (data_len > svm_fifo_max_enqueue (s->rx_fifo))
     return 1;
 
   return 0;
@@ -498,9 +498,9 @@ u32
 session_tx_fifo_max_dequeue (transport_connection_t * tc)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  if (!s->server_tx_fifo)
+  if (!s->tx_fifo)
     return 0;
-  return svm_fifo_max_dequeue (s->server_tx_fifo);
+  return svm_fifo_max_dequeue (s->tx_fifo);
 }
 
 int
@@ -508,14 +508,14 @@ stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			   u32 offset, u32 max_bytes)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_peek (s->server_tx_fifo, offset, max_bytes, buffer);
+  return svm_fifo_peek (s->tx_fifo, offset, max_bytes, buffer);
 }
 
 u32
 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
   stream_session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_dequeue_drop (s->server_tx_fifo, max_bytes);
+  return svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
 }
 
 static inline int
@@ -565,7 +565,7 @@ session_enqueue_notify (stream_session_t * s)
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
       ed->data[0] = FIFO_EVENT_APP_RX;
-      ed->data[1] = svm_fifo_max_dequeue (s->server_rx_fifo);
+      ed->data[1] = svm_fifo_max_dequeue (s->rx_fifo);
   }));
   /* *INDENT-ON* */
 
@@ -573,9 +573,9 @@ session_enqueue_notify (stream_session_t * s)
 						     FIFO_EVENT_APP_RX)))
     return -1;
 
-  if (PREDICT_FALSE (svm_fifo_n_subscribers (s->server_rx_fifo)))
+  if (PREDICT_FALSE (svm_fifo_n_subscribers (s->rx_fifo)))
     return session_notify_subscribers (app_wrk->app_index, s,
-				       s->server_rx_fifo, FIFO_EVENT_APP_RX);
+				       s->rx_fifo, FIFO_EVENT_APP_RX);
 
   return 0;
 }
@@ -593,11 +593,11 @@ session_dequeue_notify (stream_session_t * s)
 						     FIFO_EVENT_APP_TX)))
     return -1;
 
-  if (PREDICT_FALSE (s->server_tx_fifo->n_subscribers))
+  if (PREDICT_FALSE (s->tx_fifo->n_subscribers))
     return session_notify_subscribers (app_wrk->app_index, s,
-				       s->server_tx_fifo, FIFO_EVENT_APP_TX);
+				       s->tx_fifo, FIFO_EVENT_APP_TX);
 
-  svm_fifo_clear_tx_ntf (s->server_tx_fifo);
+  svm_fifo_clear_tx_ntf (s->tx_fifo);
 
   return 0;
 }
@@ -660,8 +660,8 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
 {
   stream_session_t *s;
   s = session_get (tc->s_index, tc->thread_index);
-  svm_fifo_init_pointers (s->server_rx_fifo, rx_pointer);
-  svm_fifo_init_pointers (s->server_tx_fifo, tx_pointer);
+  svm_fifo_init_pointers (s->rx_fifo, rx_pointer);
+  svm_fifo_init_pointers (s->tx_fifo, tx_pointer);
 }
 
 int
@@ -758,8 +758,8 @@ session_switch_pool (void *cb_args)
   stream_session_t *s;
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
-  s->server_tx_fifo->master_session_index = args->new_session_index;
-  s->server_tx_fifo->master_thread_index = args->new_thread_index;
+  s->tx_fifo->master_session_index = args->new_session_index;
+  s->tx_fifo->master_thread_index = args->new_thread_index;
   tp = session_get_transport_proto (s);
   tp_vfts[tp].cleanup (s->connection_index, s->thread_index);
   session_free (s);
@@ -782,8 +782,8 @@ session_dgram_connect_notify (transport_connection_t * tc,
    */
   new_s = session_clone_safe (tc->s_index, old_thread_index);
   new_s->connection_index = tc->c_index;
-  new_s->server_rx_fifo->master_session_index = new_s->session_index;
-  new_s->server_rx_fifo->master_thread_index = new_s->thread_index;
+  new_s->rx_fifo->master_session_index = new_s->session_index;
+  new_s->rx_fifo->master_thread_index = new_s->thread_index;
   new_s->session_state = SESSION_STATE_READY;
   session_lookup_add_connection (tc, session_handle (new_s));
 
@@ -864,7 +864,7 @@ session_transport_delete_notify (transport_connection_t * tc)
     return;
 
   /* Make sure we don't try to send anything more */
-  svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+  svm_fifo_dequeue_drop_all (s->tx_fifo);
 
   switch (s->session_state)
     {
@@ -938,7 +938,7 @@ session_transport_reset_notify (transport_connection_t * tc)
   app_worker_t *app_wrk;
   application_t *app;
   s = session_get (tc->s_index, tc->thread_index);
-  svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+  svm_fifo_dequeue_drop_all (s->tx_fifo);
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return;
   s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
@@ -1177,7 +1177,7 @@ session_close (stream_session_t * s)
 
       /* Session already closed. Clear the tx fifo */
       if (s->session_state == SESSION_STATE_CLOSED)
-	svm_fifo_dequeue_drop_all (s->server_tx_fifo);
+	svm_fifo_dequeue_drop_all (s->tx_fifo);
       return;
     }
 
@@ -1208,7 +1208,7 @@ session_transport_close (stream_session_t * s)
    * point, either after sending everything or after a timeout, call delete
    * notify. This will finally lead to the complete cleanup of the session.
    */
-  if (svm_fifo_max_dequeue (s->server_tx_fifo))
+  if (svm_fifo_max_dequeue (s->tx_fifo))
     s->session_state = SESSION_STATE_CLOSED_WAITING;
   else
     s->session_state = SESSION_STATE_CLOSED;

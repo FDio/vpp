@@ -137,7 +137,7 @@ test_bytes (echo_server_main_t * esm, int actual_transfer)
 int
 echo_server_builtin_server_rx_callback_no_echo (stream_session_t * s)
 {
-  svm_fifo_t *rx_fifo = s->server_rx_fifo;
+  svm_fifo_t *rx_fifo = s->rx_fifo;
   svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue (rx_fifo));
   return 0;
 }
@@ -154,8 +154,8 @@ echo_server_rx_callback (stream_session_t * s)
 
   ASSERT (s->thread_index == thread_index);
 
-  rx_fifo = s->server_rx_fifo;
-  tx_fifo = s->server_tx_fifo;
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
 
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);

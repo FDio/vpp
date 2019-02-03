@@ -393,9 +393,9 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
   session_index = session - ecm->sessions;
   session->bytes_to_send = ecm->bytes_to_send;
   session->bytes_to_receive = ecm->no_return ? 0ULL : ecm->bytes_to_send;
-  session->data.rx_fifo = s->server_rx_fifo;
+  session->data.rx_fifo = s->rx_fifo;
   session->data.rx_fifo->client_session_index = session_index;
-  session->data.tx_fifo = s->server_tx_fifo;
+  session->data.tx_fifo = s->tx_fifo;
   session->data.tx_fifo->client_session_index = session_index;
   session->data.vpp_evt_q = ecm->vpp_event_queue[thread_index];
   session->vpp_session_handle = session_handle (s);
@@ -476,13 +476,13 @@ echo_clients_rx_callback (stream_session_t * s)
     }
 
   sp = pool_elt_at_index (ecm->sessions,
-			  s->server_rx_fifo->client_session_index);
+			  s->rx_fifo->client_session_index);
   receive_data_chunk (ecm, sp);
 
-  if (svm_fifo_max_dequeue (s->server_rx_fifo))
+  if (svm_fifo_max_dequeue (s->rx_fifo))
     {
-      if (svm_fifo_set_event (s->server_rx_fifo))
-	session_send_io_evt_to_thread (s->server_rx_fifo,
+      if (svm_fifo_set_event (s->rx_fifo))
+	session_send_io_evt_to_thread (s->rx_fifo,
 				       FIFO_EVENT_BUILTIN_RX);
     }
   return 0;
