@@ -60,7 +60,7 @@ vcl_mq_dequeue_batch (vcl_worker_t * wrk, svm_msg_q_t * mq)
 }
 
 const char *
-vppcom_session_state_str (session_state_t state)
+vppcom_session_state_str (vcl_session_state_t state)
 {
   char *st;
 
@@ -684,7 +684,7 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 
 static int
 vppcom_wait_for_session_state_change (u32 session_index,
-				      session_state_t state,
+				      vcl_session_state_t state,
 				      f64 wait_for_time)
 {
   vcl_worker_t *wrk = vcl_worker_get_current ();
@@ -730,7 +730,7 @@ vppcom_wait_for_session_state_change (u32 session_index,
 static void
 vcl_handle_pending_wrk_updates (vcl_worker_t * wrk)
 {
-  session_state_t state;
+  vcl_session_state_t state;
   vcl_session_t *s;
   u32 *sip;
 
@@ -840,7 +840,7 @@ vppcom_session_disconnect (u32 session_handle)
   vcl_worker_t *wrk = vcl_worker_get_current ();
   svm_msg_q_t *vpp_evt_q;
   vcl_session_t *session;
-  session_state_t state;
+  vcl_session_state_t state;
   u64 vpp_handle;
 
   session = vcl_session_get_w_handle (wrk, session_handle);
@@ -1027,7 +1027,7 @@ int
 vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 		     vcl_session_handle_t sh, u8 do_disconnect)
 {
-  session_state_t state;
+  vcl_session_state_t state;
   u32 next_sh, vep_sh;
   int rv = VPPCOM_OK;
   u64 vpp_handle;

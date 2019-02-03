@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -120,7 +120,7 @@ int
 api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
-  stream_session_t *pool;
+  session_t *pool;
 
   *thread_index = handle & 0xFFFFFFFF;
   *session_index = handle >> 32;
@@ -245,7 +245,7 @@ vnet_bind_inline (vnet_bind_args_t * a)
   if (ll_handle != SESSION_INVALID_HANDLE)
     {
       local_session_t *ll;
-      stream_session_t *tl;
+      session_t *tl;
       ll = application_get_local_listener_w_handle (ll_handle);
       tl = listen_session_get_from_handle (a->handle);
       if (ll->transport_listener_index == ~0)
@@ -287,7 +287,7 @@ application_connect (vnet_connect_args_t * a)
 {
   app_worker_t *server_wrk, *client_wrk;
   u32 table_index, server_index, li;
-  stream_session_t *listener;
+  session_t *listener;
   application_t *client, *server;
   local_session_t *ll;
   u8 fib_proto;
@@ -326,7 +326,7 @@ application_connect (vnet_connect_args_t * a)
 	{
 	  server = application_get (server_index);
 	  ll = application_get_local_listen_session (server, li);
-	  listener = (stream_session_t *) ll;
+	  listener = (session_t *) ll;
 	  server_wrk = application_listener_select_worker (listener,
 							   1 /* is_local */ );
 	  return application_local_session_connect (client_wrk,
@@ -603,7 +603,7 @@ int
 vnet_unbind_uri (vnet_unbind_args_t * a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
-  stream_session_t *listener;
+  session_t *listener;
   u32 table_index;
   int rv;
 
@@ -657,7 +657,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   else
     {
       app_worker_t *app_wrk;
-      stream_session_t *s;
+      session_t *s;
 
       s = session_get_from_handle_if_valid (a->handle);
       if (!s)

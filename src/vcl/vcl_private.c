@@ -404,7 +404,7 @@ vcl_session_read_ready (vcl_session_t * session)
 
   if (PREDICT_FALSE (!(session->session_state & (STATE_OPEN | STATE_LISTEN))))
     {
-      session_state_t state = session->session_state;
+      vcl_session_state_t state = session->session_state;
       int rv;
 
       rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
@@ -442,7 +442,7 @@ vcl_session_write_ready (vcl_session_t * session)
 
   if (PREDICT_FALSE (!(session->session_state & STATE_OPEN)))
     {
-      session_state_t state = session->session_state;
+      vcl_session_state_t state = session->session_state;
       int rv;
 
       rv = ((state & STATE_DISCONNECT) ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN);
