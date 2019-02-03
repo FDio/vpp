@@ -72,7 +72,7 @@ typedef enum
   STATE_FAILED = 0x20,
   STATE_UPDATED = 0x40,
   STATE_LISTEN_NO_MQ = 0x80,
-} session_state_t;
+} vcl_session_state_t;
 
 #define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)
 #define CLIENT_STATE_OPEN  (STATE_CONNECT|STATE_VPP_CLOSING)
@@ -496,7 +496,7 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 listener_handle)
   return session;
 }
 
-const char *vppcom_session_state_str (session_state_t state);
+const char *vppcom_session_state_str (vcl_session_state_t state);
 
 static inline u8
 vcl_session_is_ct (vcl_session_t * s)

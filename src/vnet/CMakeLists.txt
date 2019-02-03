@@ -1049,7 +1049,7 @@ list(APPEND VNET_HEADERS
   session/session.h
   session/session_table.h
   session/session_rules_table.h
-  session/stream_session.h
+  session/session_types.h
   session/session_lookup.h
   session/application.h
   session/transport.h

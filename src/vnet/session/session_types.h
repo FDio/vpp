@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -37,7 +37,7 @@ typedef enum
   SESSION_STATE_TRANSPORT_CLOSED,
   SESSION_STATE_CLOSED,
   SESSION_STATE_N_STATES,
-} stream_session_state_t;
+} session_state_t;
 
 typedef struct generic_session_
 {
@@ -48,11 +48,17 @@ typedef struct generic_session_
   u32 session_index;		/**< index in owning pool */
 } generic_session_t;
 
-typedef struct _stream_session_t
+#define foreach_session_base_attr				\
+  _(svm_fifo_t, *rx_fifo)					\
+  _(svm_fifo_t, *tx_fifo)					\
+  _(u32, session_index)						\
+  _(u32, app_wrk_index)						\
+
+typedef struct session_
 {
   /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 
   /** Type */
   session_type_t session_type;
@@ -99,13 +105,13 @@ typedef struct _stream_session_t
   };
 
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
-} stream_session_t;
+} session_t;
 
 typedef struct local_session_
 {
   /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
+  svm_fifo_t *rx_fifo;
+  svm_fifo_t *tx_fifo;
 
   /** Type */
   session_type_t session_type;
