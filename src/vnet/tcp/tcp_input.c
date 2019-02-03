@@ -1798,7 +1798,7 @@ static int
 tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
-  stream_session_t *s0;
+  session_t *s0;
   int rv, offset;
 
   ASSERT (seq_gt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
@@ -1828,15 +1828,15 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
       s0 = session_get (tc->c_s_index, tc->c_thread_index);
 
       /* Get the newest segment from the fifo */
-      newest = svm_fifo_newest_ooo_segment (s0->server_rx_fifo);
+      newest = svm_fifo_newest_ooo_segment (s0->rx_fifo);
       if (newest)
 	{
-	  offset = ooo_segment_offset (s0->server_rx_fifo, newest);
+	  offset = ooo_segment_offset (s0->rx_fifo, newest);
 	  ASSERT (offset <= vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt);
 	  start = tc->rcv_nxt + offset;
-	  end = start + ooo_segment_length (s0->server_rx_fifo, newest);
+	  end = start + ooo_segment_length (s0->rx_fifo, newest);
 	  tcp_update_sack_list (tc, start, end);
-	  svm_fifo_newest_ooo_segment_reset (s0->server_rx_fifo);
+	  svm_fifo_newest_ooo_segment_reset (s0->rx_fifo);
 	  TCP_EVT_DBG (TCP_EVT_CC_SACKS, tc);
 	}
     }
