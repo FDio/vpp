@@ -1,6 +1,6 @@
-/* 
+/*
  *------------------------------------------------------------------
- * Copyright (c) 2005-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2005-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -24,10 +24,11 @@
 #include <string.h>
 #include <vppinfra/format.h>
 #include <vppinfra/elog.h>
+#include <math.h>
 
 /*
  * The main event display view.
- * 
+ *
  * Important variables:
  *
  * "da" -- the drawing area, aka the screen representation of the
@@ -39,7 +40,7 @@
  *         the backing store onto the screen.
  *
  * "s_v1" -- pointer to the current v1_geometry_t object.
- * 
+ *
  * Box heirarchy:
  * s_view1_vbox
  *     s_view1_hbox
@@ -74,7 +75,7 @@ static boolean color_mode   = FALSE; /* start out in monochrome mode   */
  * Locals
  */
 
-/* 
+/*
  * user_data values passed to view1_button_click_callback,
  * which is used by the various action buttons noted above
  */
@@ -84,6 +85,9 @@ enum view1_button_click {
     START_BUTTON,
     ZOOMIN_BUTTON,
     SEARCH_BUTTON,
+    ANOMALY_BUTTON,
+    ANOMALY_NEXT_BUTTON,
+    ANOMALY_THRESHOLD_BUTTON,
     SEARCH_AGAIN_BUTTON,
     ZOOMOUT_BUTTON,
     END_BUTTON,
@@ -144,18 +148,24 @@ typedef struct v1_geometry {
     int total_height;           /* total height of da, see configure_event */
     int total_width;            /* ditto, for width */
     double last_time_interval;  /* last time interval, in f64 seconds */
-    
+    double anomaly_threshold_stddevs; /* Anomaly detection threshold */
+
     /* Derived values */
     int first_pid_index;        /* Index of first displayed PID */
     int npids;                  /* Max number of displayed pids */
     ulonglong minvistime;       /* in usec */
     ulonglong maxvistime;       /* in usec */
+
+    /* Anomaly detection statistics */
+    f64 *means, *variances, *two_stddevs;
+    u32 *matches;
+
 } v1_geometry_t;
 
 
 /* The active geometry object */
-static v1_geometry_t s_v1record; 
-static v1_geometry_t *s_v1 = &s_v1record; 
+static v1_geometry_t s_v1record;
+static v1_geometry_t *s_v1 = &s_v1record;
 
 /* The color array */
 static GdkColor *s_color;
@@ -182,8 +192,8 @@ static event_t *s_last_selected_event;
 
 /*
  * various widgets, see the box heirarchy chart above
- * The toolkit keeps track of these things, we could lose many of 
- * these pointers. 
+ * The toolkit keeps track of these things, we could lose many of
+ * these pointers.
  */
 static GtkWidget *s_view1_vmenubox;
 static GtkWidget *s_view1_topbutton;
@@ -197,6 +207,8 @@ static GtkWidget *s_view1_startbutton;
 static GtkWidget *s_view1_zoominbutton;
 static GtkWidget *s_view1_searchbutton;
 static GtkWidget *s_view1_srchagainbutton;
+static GtkWidget *s_view1_anomalybutton;
+static GtkWidget *s_view1_anomalynextbutton;
 static GtkWidget *s_view1_zoomoutbutton;
 static GtkWidget *s_view1_endbutton;
 
@@ -218,6 +230,8 @@ static GtkWidget *s_view1_nosummary_button;
 static GtkWidget *s_view1_time_slew_right_button;
 static GtkWidget *s_view1_time_slew_left_button;
 
+static GtkWidget *s_view1_anomalythresholdbutton;
+
 static GtkWidget *s_view1_hscroll;
 static GtkObject *s_view1_hsadj;
 
@@ -227,9 +241,10 @@ static GtkObject *s_view1_vsadj;
 static GtkWidget *s_view1_label;
 
 /*
- * Search context 
+ * Search context
  */
 static ulong s_srchcode;        /* search event code */
+static ulong s_anomalycode;     /* anomaly event code */
 static int s_srchindex;         /* last hit was at this event index */
 static boolean s_result_up;     /* The SEARCH RESULT dongle is displayed */
 static boolean s_srchfail_up;   /* The status line "Search Failed" is up */
@@ -237,10 +252,10 @@ static int srch_chase_dir;      /* search/chase dir, 0=>forward */
 
 
 /*
- * Print context 
+ * Print context
  */
 static int s_print_offset;      /* Magic offset added to line, tbox fn codes */
-static FILE *s_printfp;         
+static FILE *s_printfp;
 
 /*
  * Forward reference prototypes
@@ -294,7 +309,7 @@ static unsigned char zi_bkgd[] = {
 static GdkCursor *zi_cursor;
 static GdkPixmap *zi_source, *zi_mask;
 
-/* 
+/*
  * Frequently-used small computations, best
  * done correctly once and instantiated.
  */
@@ -334,7 +349,7 @@ void set_window_title (const char *filename)
 /****************************************************************************
 * recompute_hscrollbar
 * Adjust the horizontal scrollbar's adjustment object.
-* 
+*
 * GtkAdjustments are really cool, but have to be set up exactly
 * right or the various client objects screw up completely.
 *
@@ -357,7 +372,7 @@ static void recompute_hscrollbar (void)
 
     adj = GTK_ADJUSTMENT(s_view1_hsadj);
 
-    /* 
+    /*
      * Structure member decoder ring
      * -----------------------------
      * lower             the minimum possible value
@@ -368,7 +383,7 @@ static void recompute_hscrollbar (void)
      * page_size         size of currently visible area
      */
 
-    adj->lower = (gfloat)0.00;  
+    adj->lower = (gfloat)0.00;
     adj->value = (gfloat)s_v1->minvistime;
 
     /* Minor click: move about 1/6 of a page */
@@ -382,8 +397,8 @@ static void recompute_hscrollbar (void)
     adj->page_size = (gfloat)(current_width);
 
     /*
-     * Tell all clients (e.g. the visible scrollbar) to 
-     * make themselves look right 
+     * Tell all clients (e.g. the visible scrollbar) to
+     * make themselves look right
      */
     gtk_adjustment_changed(adj);
     gtk_adjustment_value_changed(adj);
@@ -428,7 +443,7 @@ void format_popbox_string (char *tmpbuf, int len, event_t *ep, event_def_t *edp)
         u8 *s;
 
         eep = get_clib_event (ep->datum);
-        
+
         s = format (0, "%U", format_elog_event, &elog_main, eep);
         memcpy (tmpbuf, s, vec_len(s));
         tmpbuf[vec_len(s)] = 0;
@@ -444,10 +459,10 @@ void format_popbox_string (char *tmpbuf, int len, event_t *ep, event_def_t *edp)
             snprintf(tmpbuf+strlen(tmpbuf), len - strlen(tmpbuf), ": ");
             /* %s only supported for cpel files */
             if (fp[1] == 's') {
-                snprintf(tmpbuf+strlen(tmpbuf), len - strlen(tmpbuf), 
+                snprintf(tmpbuf+strlen(tmpbuf), len - strlen(tmpbuf),
                          edp->format, strtab_ref(ep->datum));
             } else {
-                snprintf(tmpbuf+strlen(tmpbuf), len - strlen(tmpbuf), 
+                snprintf(tmpbuf+strlen(tmpbuf), len - strlen(tmpbuf),
                         edp->format, ep->datum);
             }
             return;
@@ -497,10 +512,10 @@ static void next_snapshot(void)
     pid_data_t *pp;
 
     if (!s_snapshots) {
-        infobox("No snapshots", "\nNo snapshots in the ring...\n");        
+        infobox("No snapshots", "\nNo snapshots in the ring...\n");
         return;
     }
-    
+
     next = s_cursnap->next;
     if (next == 0)
         next = s_snapshots;
@@ -550,7 +565,7 @@ static void del_snapshot(void)
     snapshot_t *this;
 
     if (!s_snapshots) {
-        infobox("No snapshots", "\nNo snapshots to delete...\n");        
+        infobox("No snapshots", "\nNo snapshots to delete...\n");
         return;
     }
 
@@ -563,10 +578,10 @@ static void del_snapshot(void)
     }
 
     if (this != s_cursnap) {
-        infobox("BUG", "\nSnapshot AWOL!\n");        
+        infobox("BUG", "\nSnapshot AWOL!\n");
         return;
     }
- 
+
     s_cursnap = this->next;
 
     /* middle of the list? */
@@ -579,7 +594,7 @@ static void del_snapshot(void)
         g_free(this->pidvec);
         g_free(this);
     }
-    
+
     /* Note: both will be NULL after last delete */
     if (s_cursnap == NULL)
         s_cursnap = s_snapshots;
@@ -597,7 +612,7 @@ static void write_snapshot(void)
     snapshot_t *snap;
     char *error = NULL;
     int records = 0;
-    
+
     if (s_snapshots == NULL) {
         error = "No snapshots defined";
         errno = 0;
@@ -615,17 +630,17 @@ static void write_snapshot(void)
      * world. Don't come running to me if you try to read it and crash.
      */
     for (snap = s_snapshots; !error && snap != NULL; snap = snap->next) {
-        if (fwrite(&snap->geometry, 
+        if (fwrite(&snap->geometry,
                    sizeof(snap->geometry), 1, file) != 1 ||
-            fwrite(&snap->show_event, 
+            fwrite(&snap->show_event,
                    sizeof(snap->show_event), 1, file) != 1 ||
-            fwrite(snap->pidvec, 
+            fwrite(snap->pidvec,
                    sizeof(pid_sort_t) * g_npids, 1, file) != 1 ||
-            fwrite(&snap->vscroll_value, 
+            fwrite(&snap->vscroll_value,
                    sizeof(snap->vscroll_value), 1, file) != 1 ||
-            fwrite(&snap->summary_mode,  
+            fwrite(&snap->summary_mode,
                    sizeof(snap->summary_mode),   1, file) != 1 ||
-            fwrite(&snap->color_mode,  
+            fwrite(&snap->color_mode,
                    sizeof(snap->color_mode),   1, file) != 1) {
             error = "Error writing data";
         }
@@ -642,7 +657,7 @@ static void write_snapshot(void)
         infobox(error, strerror(errno));
     } else {
         char buf[64];
-        snprintf(buf, sizeof(buf), "Wrote %d snapshots to snapshots.g2", 
+        snprintf(buf, sizeof(buf), "Wrote %d snapshots to snapshots.g2",
                  records);
         message_line(buf);
     }
@@ -701,11 +716,11 @@ static void read_snapshot(void)
             error = "Problem reading third item from file";
             break;
         }
-        if (fread(&snap->vscroll_value, 
+        if (fread(&snap->vscroll_value,
                   sizeof(snap->vscroll_value), 1, file) != 1 ||
-            fread(&snap->summary_mode,  
+            fread(&snap->summary_mode,
                   sizeof(snap->summary_mode),  1, file) != 1 ||
-            fread(&snap->color_mode,  
+            fread(&snap->color_mode,
                   sizeof(snap->color_mode),  1, file) != 1) {
             error = "Problem reading final items from file";
             break;
@@ -739,7 +754,7 @@ static void read_snapshot(void)
             error = "Unable to close file";
         }
     }
-        
+
     if (error) {
         /*
          * Problem - clear up any detritus
@@ -759,7 +774,7 @@ static void read_snapshot(void)
             g_free(snap->pidvec);
             g_free(snap);
         }
-        
+
         s_cursnap = s_snapshots = new_snaps;
     }
 
@@ -767,7 +782,7 @@ static void read_snapshot(void)
         infobox(error, strerror(errno));
     } else {
         char buf[64];
-        snprintf(buf, sizeof(buf), 
+        snprintf(buf, sizeof(buf),
                  "Read %d snapshots from snapshots.g2", records);
         message_line(buf);
     }
@@ -785,13 +800,13 @@ static void set_color(int pid_index)
     pid_sort_t *psp;
 
     psp = (g_pids + pid_index);
-    
+
     if (psp->selected)
         gdk_gc_set_foreground(da->style->black_gc, &s_color[0]);
     else if (pid_index == COLOR_DEFAULT || !color_mode) {
         gdk_gc_set_foreground(da->style->black_gc, &fg_black);
     } else {
-        gdk_gc_set_foreground(da->style->black_gc, 
+        gdk_gc_set_foreground(da->style->black_gc,
                               &s_color[g_pids[pid_index].color_index]);
     }
 }
@@ -822,8 +837,8 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
     /* Too far right? */
     if (start_index >= g_nevents)
         return 0;
-    
-    /* 
+
+    /*
      * To see if the mouse hit a visible event, use a variant
      * of the event display loop.
      */
@@ -832,13 +847,13 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
     hit_rect.y = (int)event->y;
     hit_rect.width = 1;
     hit_rect.height = 1;
-    
+
     ep = (g_events + start_index);
-    
-    while ((ep->time < vp->maxvistime) && 
+
+    while ((ep->time < vp->maxvistime) &&
            (ep < (g_events + g_nevents))) {
         pid_index = ep->pid->pid_index;
-        
+
         /* First filter: pid out of range */
         if ((pid_index < vp->first_pid_index) ||
             (pid_index >= vp->first_pid_index + vp->npids)) {
@@ -852,22 +867,22 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
             ep++;
             continue;
         }
-        
-        /* 
+
+        /*
          * At this point, we know that the point is at least on the
-         * screen. See if the mouse hit within the bounding box 
+         * screen. See if the mouse hit within the bounding box
          */
 
-        /* 
+        /*
          * $$$$ maybe keep looping until off the edge,
          * maintain a "best hit", then declare that one the winner?
          */
 
         pid_index -= vp->first_pid_index;
-        
+
         y = pid_index*vp->strip_height + vp->event_offset;
-        
-        x = vp->pid_ax_width + 
+
+        x = vp->pid_ax_width +
             (int)(((double)(ep->time - vp->minvistime)) / time_per_pixel);
 
         /* Perhaps we're trying to toggle the detail box? */
@@ -880,7 +895,7 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
                 view1_display_when_idle();
                 return 0;
             }
-        } 
+        }
 
         sprintf(tmpbuf, "%ld", ep->code);
 
@@ -915,14 +930,14 @@ static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
 * toggle_track_select
 ****************************************************************************/
 
-static void toggle_track_select (GdkEventButton *event, 
+static void toggle_track_select (GdkEventButton *event,
                                  v1_geometry_t  *vp)
 {
     int i;
     int pid_index;
     int y, delta_y;
     pid_sort_t *psp;
-    
+
     if (g_nevents == 0)
         return;
 
@@ -939,7 +954,7 @@ static void toggle_track_select (GdkEventButton *event,
     }
     infobox("NOTE", "\nNo PID/Track In Range\nPlease Try Again");
     return;
-    
+
  found:
     pid_index = i + vp->first_pid_index;
     psp = (g_pids + pid_index);
@@ -966,7 +981,7 @@ static void deselect_tracks (void)
 
 typedef enum { MOVE_TOP, MOVE_BOTTOM } move_type;
 
-static void move_current_track(GdkEventButton *event, 
+static void move_current_track(GdkEventButton *event,
                                v1_geometry_t  *vp,
                                move_type       type)
 {
@@ -994,7 +1009,7 @@ static void move_current_track(GdkEventButton *event,
     }
     infobox("NOTE", "\nNo PID/Track In Range\nPlease Try Again");
     return;
-    
+
  found:
     pid_index = i + vp->first_pid_index;
 
@@ -1026,7 +1041,7 @@ static void move_current_track(GdkEventButton *event,
     g_pids = new_pidvec;
 
     /*
-     * Revert the pid_index mapping to an identity map, 
+     * Revert the pid_index mapping to an identity map,
      */
     psp = g_pids;
 
@@ -1040,7 +1055,7 @@ static void move_current_track(GdkEventButton *event,
 
 /****************************************************************************
 * zoom_event
-* Process a zoom gesture. The use of doubles is required to avoid 
+* Process a zoom gesture. The use of doubles is required to avoid
 * truncating the various variable values, which in turn would lead to
 * some pretty random-looking zoom responses.
 ****************************************************************************/
@@ -1053,15 +1068,15 @@ void zoom_event(GdkEventButton *e1, GdkEventButton *e2, v1_geometry_t *vp)
     double center_on_time, width_in_time;
     double center_on_pixel;
 
-    /* 
-     * Clip the zoom area to the event display area. 
+    /*
+     * Clip the zoom area to the event display area.
      * Otherwise, center_on_time - width_in_time is in hyperspace
-     * to the left of zero 
+     * to the left of zero
      */
-       
+
     if (e1->x < vp->pid_ax_width)
 	e1->x = vp->pid_ax_width;
-    
+
     if (e2->x < vp->pid_ax_width)
 	e2->x = vp->pid_ax_width;
 
@@ -1078,20 +1093,20 @@ void zoom_event(GdkEventButton *e1, GdkEventButton *e2, v1_geometry_t *vp)
     width_in_time = width_in_pixels * time_per_pixel;
 
     /* Center the screen on the center of the zoom area */
-    center_on_pixel = (double)((e2->x + e1->x) / 2.00) - 
+    center_on_pixel = (double)((e2->x + e1->x) / 2.00) -
         (double)vp->pid_ax_width;
     center_on_time = center_on_pixel*time_per_pixel + (double)vp->minvistime;
 
     /*
      * Transform back to 64-bit integer microseconds, reset the
-     * scrollbar, schedule a repaint. 
+     * scrollbar, schedule a repaint.
      */
     vp->minvistime = (ulonglong)(center_on_time - width_in_time);
     vp->maxvistime = (ulonglong)(center_on_time + width_in_time);
 
 loser_zoom_repaint:
     recompute_hscrollbar();
-    
+
     view1_display_when_idle();
 }
 
@@ -1108,7 +1123,7 @@ static void scroll_y(int delta)
         new_index = g_npids - s_v1->npids;
     if (new_index < 0)
         new_index = 0;
-    
+
     if (new_index != s_v1->first_pid_index) {
         s_v1->first_pid_index = new_index;
         GTK_ADJUSTMENT(s_view1_vsadj)->value = (gdouble)new_index;
@@ -1238,9 +1253,9 @@ view1_handle_key_press_event (GtkWidget *widget, GdkEventKey *event)
 * Relevant definitions in: /usr/include/gtk-1.2/gdk/gdktypes.h
 *
 * This routine implements three functions: zoom-to-area, time ruler, and
-* show/hide event detail popup. 
+* show/hide event detail popup.
 *
-* The left mouse button (button 1) has two simultaneous functions: event 
+* The left mouse button (button 1) has two simultaneous functions: event
 * detail popup, and zoom-to-area. If the press and release events occur
 * within a small delta-x, it's a detail popup event.  Otherwise, it's
 * an area zoom.
@@ -1336,19 +1351,19 @@ button_press_event (GtkWidget *widget, GdkEventButton *event)
             /* Fence, cursor already set */
             if (zoom_bar_up)
                 return(TRUE);
-            
+
             xdelta = (int)(press1_event.x - event->x);
             if (xdelta < 0)
                 xdelta = -xdelta;
-            
+
             /* Haven't moved enough to declare a zoom sequence yet */
-            if (xdelta < 10) 
+            if (xdelta < 10)
                 return(TRUE);
-            
+
             /* Draw the zoom fence, use the key-down X coordinate */
             time_ax_y = s_v1->npids * s_v1->strip_height + s_v1->pid_ax_offset;
-            
-            line((int)(press1_event.x), s_v1->pop_offset, 
+
+            line((int)(press1_event.x), s_v1->pop_offset,
                  (int)(press1_event.x), time_ax_y, LINE_DRAW_BLACK);
             tbox("Zoom From Here...", (int)(press1_event.x), s_v1->pop_offset,
                  TBOX_DRAW_BOXED);
@@ -1361,7 +1376,7 @@ button_press_event (GtkWidget *widget, GdkEventButton *event)
 
             gdk_window_set_cursor(da->window, zi_cursor);
 
-            /* 
+            /*
              * Some filtration is needed on Solaris, or the server will hang
              */
             if (event->time - last_truler_time < 75)
@@ -1369,23 +1384,23 @@ button_press_event (GtkWidget *widget, GdkEventButton *event)
 
             last_truler_time = event->time;
 
-            line((int)(press3_event.x), s_v1->pop_offset, 
+            line((int)(press3_event.x), s_v1->pop_offset,
                  (int)(press3_event.x), time_ax_y, LINE_DRAW_BLACK);
 
             xdelta = (int)(press3_event.x - event->x);
             if (xdelta < 0)
                 xdelta = -xdelta;
-            
-            time_per_pixel = ((double)(s_v1->maxvistime - s_v1->minvistime)) / 
-                ((double)(s_v1->total_width - s_v1->pid_ax_width)); 
+
+            time_per_pixel = ((double)(s_v1->maxvistime - s_v1->minvistime)) /
+                ((double)(s_v1->total_width - s_v1->pid_ax_width));
 
             time_ax_y = s_v1->npids * s_v1->strip_height + s_v1->pid_ax_offset;
 
-            line((int)(press3_event.x), s_v1->pop_offset, 
+            line((int)(press3_event.x), s_v1->pop_offset,
                  (int)(press3_event.x), time_ax_y, LINE_DRAW_BLACK);
             /*
              * Note: use a fixed-width format so it looks like we're
-             * erasing and redrawing the box. 
+             * erasing and redrawing the box.
              */
             nsec = ((double)xdelta)*time_per_pixel;
             if (nsec >1e9) {
@@ -1441,7 +1456,7 @@ configure_event (GtkWidget *widget, GdkEventConfigure *event)
     /* Toss the previous drawing area backing store pixmap */
     if (pm)
         gdk_pixmap_unref(pm);
-    
+
     /* Create a new pixmap, paint it */
     pm = gdk_pixmap_new(widget->window,
                         widget->allocation.width,
@@ -1457,7 +1472,7 @@ configure_event (GtkWidget *widget, GdkEventConfigure *event)
     /* Reset the view geometry parameters, as required */
     s_v1->total_width = widget->allocation.width;
     s_v1->total_height = widget->allocation.height;
-    s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) / 
+    s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) /
         s_v1->strip_height;
 
     /* Schedule a repaint */
@@ -1477,7 +1492,7 @@ static gint expose_event (GtkWidget *widget, GdkEventExpose *event)
                     event->area.x, event->area.y,
                     event->area.x, event->area.y,
                     event->area.width, event->area.height);
-    
+
     return(FALSE);
 }
 
@@ -1504,7 +1519,7 @@ boolean event_search_internal (void)
     ep = (g_events + s_srchindex);
     ep->flags &= ~EVENT_FLAG_SEARCHRSLT;
 
-    /* 
+    /*
      * Assume the user wants to search [plus or minus]
      * from where they are.
      */
@@ -1517,27 +1532,27 @@ boolean event_search_internal (void)
         index = (srch_chase_dir == SRCH_CHASE_BACKWARD) ?
             (s_srchindex - i) % g_nevents :
             (i + s_srchindex) % g_nevents;
-        
+
         ep = (g_events + index);
-        
+
         if (ep->code == s_srchcode) {
             if (s_srchfail_up)
                 message_line("");
             s_srchindex = index;
             pid_index = ep->pid->pid_index;
-            
+
             /* Need a vertical scroll? */
             if ((pid_index < s_v1->first_pid_index) ||
                 (pid_index >= s_v1->first_pid_index + s_v1->npids)) {
                 if (pid_index > (g_npids - s_v1->npids))
                     pid_index = (g_npids - s_v1->npids);
                 s_v1->first_pid_index = pid_index;
-                GTK_ADJUSTMENT(s_view1_vsadj)->value = 
+                GTK_ADJUSTMENT(s_view1_vsadj)->value =
                     (gdouble)s_v1->first_pid_index;
                 gtk_adjustment_value_changed(GTK_ADJUSTMENT(s_view1_vsadj));
                 full_redisplay = TRUE;
             }
-            
+
             /* Need a horizontal scroll? */
             if (ep->time < s_v1->minvistime || ep->time > s_v1->maxvistime) {
                 current_width = (s_v1->maxvistime - s_v1->minvistime);
@@ -1559,10 +1574,10 @@ boolean event_search_internal (void)
                 if (!s_result_up) {
                     s_result_up = TRUE;
                     time_per_pixel = dtime_per_pixel(s_v1);
-                    
+
                     y = pid_index*s_v1->strip_height + s_v1->event_offset;
-                    x = s_v1->pid_ax_width + 
-                        (int)(((double)(ep->time - s_v1->minvistime)) / 
+                    x = s_v1->pid_ax_width +
+                        (int)(((double)(ep->time - s_v1->minvistime)) /
                               time_per_pixel);
                     sprintf(tmpbuf, "SEARCH RESULT");
                     tbox(tmpbuf, x, y - s_v1->pop_offset, TBOX_DRAW_BOXED);
@@ -1595,11 +1610,256 @@ boolean event_search_callback (char *s)
         return(TRUE);
 
     s_srchcode = atol(s);
-    
+
     if (s_srchcode == 0)
         return(FALSE);
 
     return(event_search_internal());
+}
+
+
+/****************************************************************************
+* anomaly_statistics_init
+****************************************************************************/
+
+static int anomaly_statistics_init (void)
+{
+    elog_event_t *eep;
+    u32 data;
+    event_t *ep;
+    pid_data_t *pid;
+    int i;
+    int index;
+    int pid_index;
+    f64 fdata;
+
+    /* Gather summary statistics... */
+    ep = g_events;
+
+    vec_reset_length (s_v1->means);
+    vec_reset_length (s_v1->matches);
+    vec_reset_length (s_v1->variances);
+    vec_reset_length (s_v1->two_stddevs);
+
+    for (i = 0; i < g_nevents; i++) {
+        if (ep->code != s_anomalycode) {
+            ep++;
+            continue;
+        }
+        pid = ep->pid;
+        vec_validate_init_empty (s_v1->means, pid->pid_index, 0);
+        vec_validate_init_empty (s_v1->matches, pid->pid_index, 0);
+        eep = get_clib_event (ep->datum);
+        data = clib_mem_unaligned (eep->data, u32);
+        fdata = data;
+        s_v1->means[pid->pid_index] += fdata;
+        s_v1->matches[pid->pid_index] += 1;
+        ep++;
+    }
+    if (vec_len (s_v1->matches) == 0)
+        return -1;
+
+    /* Compute s_v1->means */
+    for (i = 0; i < vec_len (s_v1->means); i++)
+        s_v1->means[i] = s_v1->matches[i]
+            ? (s_v1->means[i] / (f64) s_v1->matches[i]) : 0.0;
+
+    /* Compute s_v1->variances */
+    ep = g_events;
+    for (i = 0; i < g_nevents; i++) {
+        if (ep->code != s_anomalycode) {
+            ep++;
+            continue;
+        }
+        pid = ep->pid;
+        vec_validate_init_empty (s_v1->variances, pid->pid_index, 0);
+        eep = get_clib_event (ep->datum);
+        data = clib_mem_unaligned (eep->data, u32);
+        fdata = data;
+        s_v1->variances[pid->pid_index] +=
+            (fdata - s_v1->means[pid->pid_index])
+            * (fdata - s_v1->means[pid->pid_index]);
+        ep++;
+    }
+
+    /* Normalize variances */
+    for (i = 0; i < vec_len (s_v1->variances); i++)
+        s_v1->variances[i] = s_v1->matches[i]
+            ? (s_v1->variances[i] / (f64) s_v1->matches[i]) : 0.0;
+
+    /* Compute the anomaly threshold, by default 2.5*stddev */
+    for (i = 0; i < vec_len (s_v1->variances); i++)
+        vec_add1 (s_v1->two_stddevs,
+                  s_v1->anomaly_threshold_stddevs * sqrt(s_v1->variances[i]));
+    return 0;
+}
+
+/****************************************************************************
+* anomaly_search_internal
+* This routine searches forward from s_srchindex, looking for s_srchcode;
+* wraps at the end of the buffer.
+****************************************************************************/
+
+boolean anomaly_search_internal (void)
+{
+    elog_event_t *eep;
+    u32 data;
+    event_t *ep;
+    pid_data_t *pid;
+    int i;
+    int index;
+    int pid_index;
+    boolean full_redisplay = FALSE;
+    ulonglong current_width;
+    char tmpbuf [64];
+    f64 fdata;
+
+    if (vec_len (s_v1->matches) == 0)
+        anomaly_statistics_init();
+
+    ep = (g_events + s_srchindex);
+    ep->flags &= ~EVENT_FLAG_SEARCHRSLT;
+
+    /*
+     * If the user rearranged the screen, start from the minimum
+     * visible time
+     */
+    if (ep->time < s_v1->minvistime)
+        s_srchindex = find_event_index (s_v1->minvistime);
+
+    for (i = 1; i <= g_nevents; i++) {
+        index = (i + s_srchindex) % g_nevents;
+
+        ep = (g_events + index);
+        if (ep->code != s_anomalycode)
+            continue;
+        pid = ep->pid;
+
+        eep = get_clib_event (ep->datum);
+        data = clib_mem_unaligned (eep->data, u32);
+        fdata = data;
+
+        /*
+         * Found an anomaly? Define an anomaly as a datum
+         * greater than 2*stddev above average.
+         */
+        if ((fdata - s_v1->means[pid->pid_index]) >
+            s_v1->two_stddevs[pid->pid_index]) {
+            u8 *s;
+
+            s = format (0, "%.1f*stddev {mean,threshold}: ",
+                        s_v1->anomaly_threshold_stddevs);
+
+            for (i = 0; i < vec_len (s_v1->means); i++) {
+                s = format (s, "{%.0f, %.0f} ",
+                            s_v1->means[i],
+                            s_v1->means[i]+s_v1->two_stddevs[i]);
+            }
+
+            message_line ((char *)s);
+            vec_free (s);
+
+            s_srchindex = index;
+            pid_index = ep->pid->pid_index;
+
+            /* Need a vertical scroll? */
+            if ((pid_index < s_v1->first_pid_index) ||
+                (pid_index >= s_v1->first_pid_index + s_v1->npids)) {
+                if (pid_index > (g_npids - s_v1->npids))
+                    pid_index = (g_npids - s_v1->npids);
+                s_v1->first_pid_index = pid_index;
+                GTK_ADJUSTMENT(s_view1_vsadj)->value =
+                    (gdouble)s_v1->first_pid_index;
+                gtk_adjustment_value_changed(GTK_ADJUSTMENT(s_view1_vsadj));
+                full_redisplay = TRUE;
+            }
+
+            /* Need a horizontal scroll? */
+            if (ep->time < s_v1->minvistime || ep->time > s_v1->maxvistime) {
+                current_width = (s_v1->maxvistime - s_v1->minvistime);
+                if (ep->time < ((current_width+1) / 2)) {
+                    s_v1->minvistime = 0ll;
+                    s_v1->maxvistime = current_width;
+                } else {
+                    s_v1->minvistime = ep->time - ((current_width+1)/2);
+                    s_v1->maxvistime = ep->time + ((current_width+1)/2);
+                }
+                recompute_hscrollbar();
+                full_redisplay = TRUE;
+            }
+            ep->flags |= EVENT_FLAG_SEARCHRSLT;
+            full_redisplay = TRUE;
+
+            if (full_redisplay)
+                view1_display_when_idle();
+
+            return(TRUE);
+        }
+    }
+    sprintf (tmpbuf, "Search for an anomalous event %ld failed...\n",
+             s_anomalycode);
+    message_line(tmpbuf);
+    s_srchfail_up = TRUE;
+    return(TRUE);
+}
+
+/****************************************************************************
+* anomaly_search_callback
+****************************************************************************/
+
+boolean anomaly_search_callback (char *s)
+{
+    ulong new_anomalycode;
+
+    /* No events yet?  Act like the search worked, to avoid a loop */
+    if (g_nevents == 0)
+        return(TRUE);
+
+    new_anomalycode = atol(s);
+
+    if (new_anomalycode == 0)
+        return(FALSE);
+
+    if (new_anomalycode != s_anomalycode ||
+        vec_len (s_v1->matches) == 0) {
+        s_anomalycode = new_anomalycode;
+        if (anomaly_statistics_init()) {
+            u8 *s;
+
+            s = format (0, "Search for an anomalous event %ld failed...\n",
+                        s_anomalycode);
+            message_line ((char *) s);
+            vec_free (s);
+            return (TRUE);
+        }
+    }
+    return(anomaly_search_internal());
+}
+
+/****************************************************************************
+* anomaly_threshold_callback
+****************************************************************************/
+
+boolean anomaly_threshold_callback (char *s)
+{
+    f64 new_threshold;
+
+    /* No events yet?  Act like the search worked, to avoid a loop */
+    if (g_nevents == 0)
+        return(TRUE);
+
+    new_threshold = atof (s);
+
+    if (new_threshold == 0.0 || new_threshold > 10.0)
+        return(FALSE);
+
+    s_v1->anomaly_threshold_stddevs = new_threshold;
+
+    vec_reset_length (s_v1->means);
+    vec_reset_length (s_v1->matches);
+    vec_reset_length (s_v1->variances);
+    vec_reset_length (s_v1->two_stddevs);
+    return (TRUE);
 }
 
 /****************************************************************************
@@ -1611,6 +1871,28 @@ static void event_search (void)
     modal_dialog ("Event Search: Please Enter Event Code",
                   "Invalid: Please Reenter Event Code", NULL,
                   event_search_callback);
+}
+
+/****************************************************************************
+* anomaly_search
+****************************************************************************/
+
+static void anomaly_search (void)
+{
+    modal_dialog ("Anomaly Search: Please Enter Event Code",
+                  "Invalid: Please Reenter Event Code", NULL,
+                  anomaly_search_callback);
+}
+
+/****************************************************************************
+* anomaly_threshold
+****************************************************************************/
+
+static void anomaly_threshold (void)
+{
+    modal_dialog ("Anomaly Threshold: Please Enter Threshold",
+                  "Invalid: Please Reenter Threshold in Standard Deviations",
+                  NULL, anomaly_threshold_callback);
 }
 
 /****************************************************************************
@@ -1631,10 +1913,10 @@ static void init_track_colors(void)
      * However, it's easier just to allocate everything from fresh. As a nod in
      * the direction of politeness towards our poor abused X server, we at
      * least mop up the previously allocated GCs first, although in practice
-     * even omitting this didn't seem to cause a problem. 
+     * even omitting this didn't seem to cause a problem.
      */
     if (s_color != NULL ) {
-        gdk_colormap_free_colors(gtk_widget_get_colormap(da), 
+        gdk_colormap_free_colors(gtk_widget_get_colormap(da),
                                  s_color, g_npids);
         clib_memset(s_color, 0, sizeof(GdkColor) * g_npids);
     } else {
@@ -1701,7 +1983,7 @@ static void init_track_colors(void)
      * Actually allocate the colors in one bulk operation. We ignore the return
      * values.
      */
-    gdk_colormap_alloc_colors(gtk_widget_get_colormap(da), 
+    gdk_colormap_alloc_colors(gtk_widget_get_colormap(da),
                               s_color, g_npids+1, FALSE, TRUE, dont_care);
 }
 
@@ -1725,7 +2007,7 @@ static void chase_event_etc(enum chase_mode mode)
     int winner;
 
     if (!s_last_selected_event) {
-        infobox("No selected event", 
+        infobox("No selected event",
                 "\nPlease select an event and try again...\n");
         return;
     }
@@ -1818,10 +2100,10 @@ static void chase_event_etc(enum chase_mode mode)
 
     g_free (g_pids);
     g_pids = new_pidvec;
-    
+
     /*
      * The new g_pids vector contains the "chase" sort, so we revert
-     * the pid_index mapping to an identity map 
+     * the pid_index mapping to an identity map
      */
     psp = g_pids;
 
@@ -1849,7 +2131,7 @@ static void unchase_event_etc(void)
     pid_sort_t *psp;
     pid_data_t *pp;
 
-    memcpy (g_pids, g_original_pids, sizeof(pid_sort_t)*g_npids); 
+    memcpy (g_pids, g_original_pids, sizeof(pid_sort_t)*g_npids);
 
     /* Fix the pid structure index mappings */
     psp = g_pids;
@@ -1886,7 +2168,7 @@ static void print_ps_header (v1_geometry_t *vp, char *filename)
     fprintf(s_printfp, "%%%%CreationDate: %s", ctime(&now));
     fprintf(s_printfp, "%%%%DocumentData: Clean7Bit\n");
     fprintf(s_printfp, "%%%%Origin: 0 0\n");
-    fprintf(s_printfp, "%%%%BoundingBox: 0 0 %d %d\n", vp->total_height, 
+    fprintf(s_printfp, "%%%%BoundingBox: 0 0 %d %d\n", vp->total_height,
            vp->total_width);
     fprintf(s_printfp, "%%%%LanguageLevel: 2\n");
     fprintf(s_printfp, "%%%%Pages: 1\n");
@@ -1902,9 +2184,9 @@ static void print_ps_header (v1_geometry_t *vp, char *filename)
 * xrt
 * Xcoordinate rotate and translate.  We need to emit postscript that
 * has a reasonable aspect ratio for printing.  To do that, we rotate the
-* intended picture by 90 degrees, using the standard 2D rotation 
+* intended picture by 90 degrees, using the standard 2D rotation
 * formula:
-* 
+*
 *     Xr = x*cos(theta) - y*sin(theta);
 *     Yr = x*sin(theta) + y*cos(theta);
 *
@@ -1982,7 +2264,7 @@ static void slew_tracks (v1_geometry_t *vp, enum view1_button_click which)
     pid_sort_t *pp;
     int pid_index;
     ulonglong delta;
-    
+
     delta = (ulonglong) (vp->last_time_interval);
 
     /* Make sure we don't push events to the left of the big bang */
@@ -1990,10 +2272,10 @@ static void slew_tracks (v1_geometry_t *vp, enum view1_button_click which)
         for (ep = g_events; ep < (g_events + g_nevents); ep++) {
             pid_index = ep->pid->pid_index;
             pp = (g_pids + pid_index);
-            
+
             if (pp->selected) {
                 if (ep->time < delta) {
-                    infobox("Slew Range Error", 
+                    infobox("Slew Range Error",
                             "\nCan't slew selected data left that far..."
                             "\nEvents would preceed the Big Bang (t=0)...");
                     goto out;
@@ -2025,7 +2307,7 @@ out:
 }
 
 /****************************************************************************
-* view1_button_click_callback 
+* view1_button_click_callback
 ****************************************************************************/
 
 static void view1_button_click_callback(GtkButton *item, gpointer data)
@@ -2112,6 +2394,21 @@ static void view1_button_click_callback(GtkButton *item, gpointer data)
         event_search();
         break;
 
+    case ANOMALY_THRESHOLD_BUTTON:
+        anomaly_threshold();
+        break;
+
+    case ANOMALY_NEXT_BUTTON:
+        if (s_anomalycode) {
+            anomaly_search_internal();
+            break;
+        }
+        /* NOTE FALLTHROUGH */
+
+    case ANOMALY_BUTTON:
+        anomaly_search();
+        break;
+
     case ZOOMOUT_BUTTON:
         if (zoom_delta == 0LL)
             zoom_delta = 1;
@@ -2123,14 +2420,14 @@ static void view1_button_click_callback(GtkButton *item, gpointer data)
             s_v1->minvistime = 0;
             s_v1->maxvistime += zoom_delta*2;
         }
-        
-        if ((s_v1->maxvistime - s_v1->minvistime) * 8 > 
+
+        if ((s_v1->maxvistime - s_v1->minvistime) * 8 >
             g_events[g_nevents-1].time * 9) {
             s_v1->minvistime = 0;
             s_v1->maxvistime = g_events[g_nevents-1].time * 9 / 8;
             /* Single event? Make window 1s wide... */
             if (g_nevents == 1)
-                s_v1->maxvistime = 1000000;                
+                s_v1->maxvistime = 1000000;
 
         }
         recompute_hscrollbar();
@@ -2154,7 +2451,7 @@ static void view1_button_click_callback(GtkButton *item, gpointer data)
 	}
 
 	/* Recalculate the number of strips on the screen */
-	s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) / 
+	s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) /
 	    s_v1->strip_height;
 	recompute_vscrollbar();
 	break;
@@ -2167,7 +2464,7 @@ static void view1_button_click_callback(GtkButton *item, gpointer data)
 	}
 
 	/* Recalculate the number of strips on the screen */
-	s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) / 
+	s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) /
 	    s_v1->strip_height;
 	recompute_vscrollbar();
 	break;
@@ -2199,7 +2496,7 @@ static void view1_button_click_callback(GtkButton *item, gpointer data)
     case SLEW_LEFT_BUTTON:
     case SLEW_RIGHT_BUTTON:
         if (s_v1->last_time_interval < 10e-9) {
-            infobox("slew", "\nNo time interval set...\n");        
+            infobox("slew", "\nNo time interval set...\n");
             break;
         }
         slew_tracks (s_v1, click);
@@ -2232,7 +2529,7 @@ static void view1_hscroll (GtkAdjustment *adj, GtkWidget *notused)
 
     s_v1->minvistime = (ulonglong)(adj->value);
     s_v1->maxvistime = s_v1->minvistime + current_width;
-    
+
     view1_display_when_idle();
 
 #ifdef NOTDEF
@@ -2267,7 +2564,6 @@ void set_pid_ax_width(int width)
 
 void view1_init(void)
 {
-
     c_view1_draw_width = atol(getprop_default("drawbox_width", "700"));
     c_view1_draw_height = atol(getprop_default("drawbox_height", "400"));
 
@@ -2281,8 +2577,9 @@ void view1_init(void)
     s_v1->total_height = c_view1_draw_height;
     s_v1->total_width = c_view1_draw_width;
     s_v1->first_pid_index = 0;
-
-    s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) / 
+    s_v1->anomaly_threshold_stddevs =
+        atof(getprop_default("anomaly_threshold_stddevs", "2.5"));
+    s_v1->npids = (s_v1->total_height - s_v1->time_ax_height) /
         s_v1->strip_height;
 
     s_v1->minvistime = 0;
@@ -2293,9 +2590,9 @@ void view1_init(void)
     s_view1_hbox = gtk_hbox_new(FALSE, 5);
 
     da = gtk_drawing_area_new();
-    gtk_drawing_area_size(GTK_DRAWING_AREA(da), c_view1_draw_width, 
+    gtk_drawing_area_size(GTK_DRAWING_AREA(da), c_view1_draw_width,
                           c_view1_draw_height);
-    
+
 #ifdef NOTDEF
     gtk_signal_connect (GTK_OBJECT (da), "motion_notify_event",
                         (GtkSignalFunc) motion_notify_event, NULL);
@@ -2309,15 +2606,15 @@ void view1_init(void)
 
     gtk_signal_connect (GTK_OBJECT (da), "button_press_event",
                         (GtkSignalFunc) button_press_event, NULL);
-    
+
     gtk_signal_connect (GTK_OBJECT (da), "button_release_event",
                         (GtkSignalFunc) button_press_event, NULL);
-    
+
     gtk_signal_connect (GTK_OBJECT (da), "motion_notify_event",
                         (GtkSignalFunc) button_press_event, NULL);
-    
-    gtk_widget_set_events (da, GDK_BUTTON_PRESS_MASK 
-                           | GDK_BUTTON_RELEASE_MASK | GDK_EXPOSURE_MASK 
+
+    gtk_widget_set_events (da, GDK_BUTTON_PRESS_MASK
+                           | GDK_BUTTON_RELEASE_MASK | GDK_EXPOSURE_MASK
                            | GDK_BUTTON_MOTION_MASK);
 
 
@@ -2332,40 +2629,40 @@ void view1_init(void)
     /* PID axis menu */
     s_view1_vmenubox = gtk_vbox_new(FALSE, 5);
 
-    s_view1_vsadj = gtk_adjustment_new(0.0 /* initial value */, 
+    s_view1_vsadj = gtk_adjustment_new(0.0 /* initial value */,
                                        0.0 /* minimum value */,
                                        2000.0 /* maximum value */,
-                                       0.1 /* step increment */, 
-                                       10.0/* page increment */, 
+                                       0.1 /* step increment */,
+                                       10.0/* page increment */,
                                        10.0/* page size */);
 
     s_view1_vscroll = gtk_vscrollbar_new (GTK_ADJUSTMENT(s_view1_vsadj));
 
     gtk_signal_connect (GTK_OBJECT (s_view1_vsadj), "value-changed",
-                        GTK_SIGNAL_FUNC (view1_vscroll), 
+                        GTK_SIGNAL_FUNC (view1_vscroll),
                         (gpointer)s_view1_vscroll);
 
     s_view1_topbutton = gtk_button_new_with_label("Top");
     s_view1_bottombutton = gtk_button_new_with_label("Bottom");
 
     gtk_signal_connect (GTK_OBJECT(s_view1_topbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) TOP_BUTTON);
-    
+
     gtk_signal_connect (GTK_OBJECT(s_view1_bottombutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) BOTTOM_BUTTON);
 
     /* More Traces button and Less Traces button */
     s_view1_more_traces_button = gtk_button_new_with_label("More Traces");
     s_view1_less_traces_button = gtk_button_new_with_label("Less Traces");
     gtk_signal_connect (GTK_OBJECT(s_view1_more_traces_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) MORE_TRACES_BUTTON);
     gtk_signal_connect (GTK_OBJECT(s_view1_less_traces_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) LESS_TRACES_BUTTON);
-    
+
 #ifdef NOTDEF
     /* Trick to bottom-justify the menu: */
     s_view1_pad1 = gtk_vbox_new(FALSE, 0);
@@ -2373,76 +2670,92 @@ void view1_init(void)
                         TRUE, FALSE, 0);
 
 #endif
-    
+
     gtk_box_pack_start (GTK_BOX(s_view1_vmenubox), s_view1_topbutton,
                         FALSE, FALSE, 0);
 
     gtk_box_pack_start (GTK_BOX(s_view1_vmenubox), s_view1_vscroll,
                         TRUE, TRUE, 0);
-    
+
     gtk_box_pack_start (GTK_BOX(s_view1_vmenubox), s_view1_bottombutton,
                         FALSE, FALSE, 0);
 
     gtk_box_pack_start (GTK_BOX(s_view1_vmenubox), s_view1_more_traces_button,
                         FALSE, FALSE, 0);
-    
+
     gtk_box_pack_start (GTK_BOX(s_view1_vmenubox), s_view1_less_traces_button,
                         FALSE, FALSE, 0);
-    
+
     gtk_box_pack_start (GTK_BOX(s_view1_hbox), s_view1_vmenubox,
                         FALSE, FALSE, 0);
 
     /* Time axis menu */
 
     s_view1_hmenubox = gtk_hbox_new(FALSE, 5);
-    
+
     s_view1_startbutton = gtk_button_new_with_label("Start");
 
     s_view1_zoominbutton = gtk_button_new_with_label("ZoomIn");
 
     s_view1_searchbutton = gtk_button_new_with_label("Search");
-
     s_view1_srchagainbutton = gtk_button_new_with_label("Search Again");
+
+    s_view1_anomalybutton = gtk_button_new_with_label("Anomaly");
+    s_view1_anomalynextbutton = gtk_button_new_with_label("Next Anomaly");
+    s_view1_anomalythresholdbutton =
+        gtk_button_new_with_label ("Anomaly Threshold");
 
     s_view1_zoomoutbutton = gtk_button_new_with_label("ZoomOut");
 
     s_view1_endbutton = gtk_button_new_with_label("End");
 
     gtk_signal_connect (GTK_OBJECT(s_view1_startbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) START_BUTTON);
-    
+
     gtk_signal_connect (GTK_OBJECT(s_view1_zoominbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) ZOOMIN_BUTTON);
-    
+
     gtk_signal_connect (GTK_OBJECT(s_view1_searchbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) SEARCH_BUTTON);
-    
+
     gtk_signal_connect (GTK_OBJECT(s_view1_srchagainbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) SEARCH_AGAIN_BUTTON);
-    
+
+    gtk_signal_connect (GTK_OBJECT(s_view1_anomalybutton), "clicked",
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
+                        (gpointer) ANOMALY_BUTTON);
+
+    gtk_signal_connect (GTK_OBJECT(s_view1_anomalynextbutton), "clicked",
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
+                        (gpointer) ANOMALY_NEXT_BUTTON);
+
+    gtk_signal_connect (GTK_OBJECT(s_view1_anomalythresholdbutton),
+                        "clicked", GTK_SIGNAL_FUNC(view1_button_click_callback),
+                        (gpointer) ANOMALY_THRESHOLD_BUTTON);
+
     gtk_signal_connect (GTK_OBJECT(s_view1_zoomoutbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) ZOOMOUT_BUTTON);
-    
+
     gtk_signal_connect (GTK_OBJECT(s_view1_endbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) END_BUTTON);
-    
-    s_view1_hsadj = gtk_adjustment_new(0.0 /* initial value */, 
+
+    s_view1_hsadj = gtk_adjustment_new(0.0 /* initial value */,
                                        0.0 /* minimum value */,
                                        2000.0 /* maximum value */,
-                                       0.1 /* step increment */, 
-                                       10.0/* page increment */, 
+                                       0.1 /* step increment */,
+                                       10.0/* page increment */,
                                        10.0/* page size */);
 
     s_view1_hscroll = gtk_hscrollbar_new (GTK_ADJUSTMENT(s_view1_hsadj));
 
     gtk_signal_connect (GTK_OBJECT (s_view1_hsadj), "value-changed",
-                        GTK_SIGNAL_FUNC (view1_hscroll), 
+                        GTK_SIGNAL_FUNC (view1_hscroll),
                         (gpointer)s_view1_hscroll);
 
     gtk_box_pack_start (GTK_BOX(s_view1_hmenubox), s_view1_startbutton,
@@ -2457,6 +2770,10 @@ void view1_init(void)
     gtk_box_pack_start (GTK_BOX(s_view1_hmenubox), s_view1_zoominbutton,
                         FALSE, FALSE, 0);
 
+    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox), s_view1_anomalybutton,
+                        FALSE, FALSE, 0);
+    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox), s_view1_anomalynextbutton,
+                        FALSE, FALSE, 0);
     gtk_box_pack_start (GTK_BOX(s_view1_hmenubox), s_view1_searchbutton,
                         FALSE, FALSE, 0);
 
@@ -2466,7 +2783,7 @@ void view1_init(void)
     gtk_box_pack_start (GTK_BOX(s_view1_hmenubox), s_view1_zoomoutbutton,
                         FALSE, FALSE, 0);
 
-    gtk_box_pack_start (GTK_BOX(s_view1_vbox), s_view1_hbox, 
+    gtk_box_pack_start (GTK_BOX(s_view1_vbox), s_view1_hbox,
                         TRUE, TRUE, 0);
 
     gtk_box_pack_start (GTK_BOX(s_view1_vbox), s_view1_hmenubox,
@@ -2499,60 +2816,60 @@ void view1_init(void)
     s_view1_time_slew_right_button = gtk_button_new_with_label("TimeSlew->");
 
     gtk_signal_connect (GTK_OBJECT(s_view1_snapbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) SNAP_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_nextbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) NEXT_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_delbutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) DEL_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_chase_event_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) CHASE_EVENT_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_chase_datum_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) CHASE_DATUM_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_chase_track_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) CHASE_TRACK_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_unchasebutton), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) UNCHASE_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_forward_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) FORWARD_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_backward_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) BACKWARD_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_summary_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) SUMMARY_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_nosummary_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) NOSUMMARY_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_time_slew_left_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) SLEW_LEFT_BUTTON);
 
     gtk_signal_connect (GTK_OBJECT(s_view1_time_slew_right_button), "clicked",
-                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        GTK_SIGNAL_FUNC(view1_button_click_callback),
                         (gpointer) SLEW_RIGHT_BUTTON);
 
     gtk_box_pack_start (GTK_BOX(s_view1_vbox), s_view1_hmenubox2,
                         FALSE, FALSE, 0);
-    
+
     gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2), s_view1_snapbutton,
                         FALSE, FALSE, 0);
 
@@ -2586,12 +2903,16 @@ void view1_init(void)
     gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2), s_view1_nosummary_button,
                         FALSE, FALSE, 0);
 
-    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2), 
+    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2),
                         s_view1_time_slew_left_button,
                         FALSE, FALSE, 0);
 
-    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2), 
+    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2),
                         s_view1_time_slew_right_button,
+                        FALSE, FALSE, 0);
+
+    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2),
+                        s_view1_anomalythresholdbutton,
                         FALSE, FALSE, 0);
 
     s_view1_label = gtk_label_new(NULL);
@@ -2610,12 +2931,12 @@ void view1_init(void)
     gtk_widget_hide (summary_mode ? s_view1_summary_button
                                   : s_view1_nosummary_button);
 
-    zi_source = gdk_bitmap_create_from_data (NULL, (char *)zi_bits, zi_width, 
+    zi_source = gdk_bitmap_create_from_data (NULL, (char *)zi_bits, zi_width,
                                              zi_height);
     zi_mask = gdk_bitmap_create_from_data (NULL, (char *)zi_bkgd, zi_width,
                                            zi_height);
 
-    zi_cursor = (GdkCursor *) gdk_cursor_new_from_pixmap (zi_source, 
+    zi_cursor = (GdkCursor *) gdk_cursor_new_from_pixmap (zi_source,
                                                           zi_mask, &fg_black,
                                                           &bg_white, zi_x_hot,
                                                           zi_y_hot);
@@ -2632,7 +2953,7 @@ void view1_init(void)
 void line_print (int x1, int y1, int x2, int y2)
 {
     fprintf(s_printfp, "newpath\n");
-    fprintf(s_printfp, "%d %d moveto\n", xrt(x1, s_v1->total_height - y1), 
+    fprintf(s_printfp, "%d %d moveto\n", xrt(x1, s_v1->total_height - y1),
             yrt(x1, s_v1->total_height - y1));
 
     fprintf(s_printfp, "%d %d lineto\n", xrt (x2, s_v1->total_height - y2),
@@ -2656,23 +2977,23 @@ GdkRectangle *tbox_print (char *s, int x, int y, enum view1_tbox_fn function,
 
         fprintf(s_printfp, "newpath\n");
         fprintf(s_printfp, "0 setlinewidth\n");
-        fprintf(s_printfp, "%d %d moveto\n", 
+        fprintf(s_printfp, "%d %d moveto\n",
                 xrt(rp->x, s_v1->total_height - rp->y),
                 yrt(rp->x, s_v1->total_height - rp->y));
-        
-        fprintf(s_printfp, "%d %d lineto\n", 
+
+        fprintf(s_printfp, "%d %d lineto\n",
                 xrt (rp->x+rp->width, s_v1->total_height - rp->y),
                 yrt (rp->x+rp->width, s_v1->total_height - rp->y));
 
-        fprintf(s_printfp, "%d %d lineto\n", 
+        fprintf(s_printfp, "%d %d lineto\n",
                 xrt(rp->x+rp->width, s_v1->total_height - (rp->y+rp->height)),
                 yrt(rp->x+rp->width, s_v1->total_height - (rp->y+rp->height)));
 
-        fprintf(s_printfp, "%d %d lineto\n", 
+        fprintf(s_printfp, "%d %d lineto\n",
                 xrt(rp->x, s_v1->total_height - (rp->y+rp->height)),
                 yrt(rp->x, s_v1->total_height - (rp->y+rp->height)));
 
-        fprintf(s_printfp, "%d %d lineto\n", 
+        fprintf(s_printfp, "%d %d lineto\n",
                 xrt(rp->x, s_v1->total_height - rp->y),
                 yrt(rp->x, s_v1->total_height - rp->y));
 
@@ -2683,7 +3004,7 @@ GdkRectangle *tbox_print (char *s, int x, int y, enum view1_tbox_fn function,
 	(function == TBOX_PRINT_PLAIN)) {
 
         fprintf(s_printfp, "newpath\n");
-        fprintf(s_printfp, "%d %d moveto\n", 
+        fprintf(s_printfp, "%d %d moveto\n",
                 xrt(x, s_v1->total_height - (y-2)),
                 yrt(x, s_v1->total_height - (y-2)));
         fprintf(s_printfp, "gsave\n");
@@ -2693,10 +3014,10 @@ GdkRectangle *tbox_print (char *s, int x, int y, enum view1_tbox_fn function,
     }
 
     return(rp);
-}    
+}
 
 /****************************************************************************
-* tbox - draws an optionally boxed string whose lower lefthand 
+* tbox - draws an optionally boxed string whose lower lefthand
 * corner is at (x, y).  As usual, Y is backwards.
 ****************************************************************************/
 
@@ -2723,17 +3044,17 @@ GdkRectangle *tbox (char *s, int x, int y, enum view1_tbox_fn function)
 	    /* Nothing */
 	}
     }
-    
+
     switch (function) {
     case TBOX_DRAW_BOXED:
         gdk_draw_rectangle (pm, da->style->white_gc, TRUE,
-                            x, y - (ascent+descent+3), width + 2, 
+                            x, y - (ascent+descent+3), width + 2,
                             ascent + descent + 3);
-        
+
         gdk_draw_rectangle (pm, da->style->black_gc, FALSE,
-                            x, y - (ascent+descent+3), width + 2, 
+                            x, y - (ascent+descent+3), width + 2,
                             ascent + descent + 3);
-        
+
         gdk_draw_string (pm, g_font, da->style->black_gc,
                          x + 1, y - 1, (const gchar *)s);
         /* NOTE FALLTHROUGH */
@@ -2759,10 +3080,10 @@ GdkRectangle *tbox (char *s, int x, int y, enum view1_tbox_fn function)
         if (function == TBOX_DRAW_EVENT)
             gtk_widget_draw (da, &update_rect);
 	break;
-		
-        
+
+
     case TBOX_DRAW_PLAIN:
-        
+
         gdk_draw_string (pm, g_font, da->style->black_gc,
                          x + 1, y - 1, (const gchar *)s);
         /* NOTE FALLTHROUGH */
@@ -2900,7 +3221,7 @@ static void display_pid_axis(v1_geometry_t *vp)
     pid_sort_t *pp;
     int pid_index;
     char *label_fmt;
-    char tmpbuf [128];    
+    char tmpbuf [128];
 
     /* No pids yet? Outta here */
     if (g_pids == NULL)
@@ -2968,7 +3289,7 @@ void view1_read_events_callback(void)
     max_vis_index = 300;
     if (max_vis_index > g_nevents)
         max_vis_index = g_nevents-1;
-    
+
     s_v1->minvistime = 0LL;
     s_v1->maxvistime = (g_events[g_nevents - 1].time * 9)/ 8;
     /* Single event? Make the initial display 1s wide */
@@ -3026,7 +3347,7 @@ static void display_event_data(v1_geometry_t *vp)
            (ep->time < vp->maxvistime)) {
         pid_index = ep->pid->pid_index;
         set_color(pid_index);
-    
+
         /* First filter: pid out of range */
         if ((pid_index < vp->first_pid_index) ||
             (pid_index >= vp->first_pid_index + vp->npids)) {
@@ -3040,14 +3361,14 @@ static void display_event_data(v1_geometry_t *vp)
             ep++;
             continue;
         }
-        
+
         /* Display it... */
 
         pid_index -= vp->first_pid_index;
-        
+
         y = pid_index*vp->strip_height + vp->event_offset;
-        
-        x = vp->pid_ax_width + 
+
+        x = vp->pid_ax_width +
             (int)(((double)(ep->time - vp->minvistime)) / time_per_pixel);
 
         if (last_x_used != NULL && x < last_x_used[pid_index]) {
@@ -3066,12 +3387,12 @@ static void display_event_data(v1_geometry_t *vp)
             } else {
                 sprintf(tmpbuf, "SEARCH RESULT");
             }
-            print_rect = tbox(tmpbuf, x, y - vp->pop_offset, 
+            print_rect = tbox(tmpbuf, x, y - vp->pop_offset,
                               TBOX_DRAW_BOXED+s_print_offset);
             line(x, y-vp->pop_offset, x, y, LINE_DRAW_BLACK+s_print_offset);
             if (last_x_used != NULL)
                 last_x_used[pid_index] = x + print_rect->width;
-        } 
+        }
         if (summary_mode) {
             int delta = vp->strip_height / 3;
             if (delta < 1)
@@ -3138,7 +3459,7 @@ static void display_time_axis(v1_geometry_t *vp)
 
     units = "ns";
     unit_divisor = 1.00;
-        
+
     if ((vp->maxvistime / unit_divisor) > 1000) {
         units = "us";
         unit_divisor = 1000.00;
@@ -3157,7 +3478,7 @@ static void display_time_axis(v1_geometry_t *vp)
     line(x, y, vp->total_width, y, LINE_DRAW_BLACK+s_print_offset);
 
     xoffset = 0;
-    
+
     for (i = 0; i < nticks; i++) {
         /* Tick mark */
         line(x+xoffset, y-3, x+xoffset, y+3, LINE_DRAW_BLACK+s_print_offset);
@@ -3170,7 +3491,7 @@ static void display_time_axis(v1_geometry_t *vp)
         sprintf (tmpbuf, "%.2f%s", time, units);
 
         tbox(tmpbuf, x+xoffset, y+15, TBOX_DRAW_PLAIN+s_print_offset);
-        
+
         xoffset += vp->time_ax_spacing;
     }
 }
@@ -3234,7 +3555,7 @@ void view1_about (char *tmpbuf)
 
     sprintf(tmpbuf+strlen(tmpbuf), "Minvistime %lld\nMaxvistime %lld\n",
             s_v1->minvistime, s_v1->maxvistime);
-    sprintf(tmpbuf+strlen(tmpbuf), "Strip Height %d\n", 
+    sprintf(tmpbuf+strlen(tmpbuf), "Strip Height %d\n",
             s_v1->strip_height);
 
     for (nsnaps = 0, snaps = s_snapshots; snaps; snaps = snaps->next) {
