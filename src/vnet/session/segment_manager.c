@@ -379,7 +379,7 @@ void
 segment_manager_del_sessions (segment_manager_t * sm)
 {
   svm_fifo_segment_private_t *fifo_segment;
-  stream_session_t *session;
+  session_t *session;
   svm_fifo_t *fifo;
 
   ASSERT (pool_elts (sm->segments) != 0);

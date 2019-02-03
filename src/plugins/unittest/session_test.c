@@ -41,7 +41,7 @@
 }
 
 void
-dummy_session_reset_callback (stream_session_t * s)
+dummy_session_reset_callback (session_t * s)
 {
   clib_warning ("called...");
 }
@@ -50,7 +50,7 @@ volatile u32 connected_session_index = ~0;
 volatile u32 connected_session_thread = ~0;
 int
 dummy_session_connected_callback (u32 app_index, u32 api_context,
-				  stream_session_t * s, u8 is_fail)
+				  session_t * s, u8 is_fail)
 {
   if (s)
     {
@@ -77,7 +77,7 @@ dummy_del_segment_callback (u32 client_index, u64 segment_handle)
 }
 
 void
-dummy_session_disconnect_callback (stream_session_t * s)
+dummy_session_disconnect_callback (session_t * s)
 {
   clib_warning ("called...");
 }
@@ -87,7 +87,7 @@ volatile u32 accepted_session_index;
 volatile u32 accepted_session_thread;
 
 int
-dummy_session_accept_callback (stream_session_t * s)
+dummy_session_accept_callback (session_t * s)
 {
   dummy_accept = 1;
   accepted_session_index = s->session_index;
@@ -97,7 +97,7 @@ dummy_session_accept_callback (stream_session_t * s)
 }
 
 int
-dummy_server_rx_callback (stream_session_t * s)
+dummy_server_rx_callback (session_t * s)
 {
   clib_warning ("called...");
   return -1;
@@ -276,7 +276,7 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   ip4_address_t intf_addr[3];
   transport_connection_t *tc;
-  stream_session_t *s;
+  session_t *s;
   clib_error_t *error;
   u8 *appns_id;
 
@@ -428,7 +428,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   u8 *ns_id = format (0, "appns1");
   app_namespace_t *app_ns;
   application_t *server;
-  stream_session_t *s;
+  session_t *s;
   u64 handle;
   int code;
 
@@ -1025,7 +1025,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   u32 dummy_port = 1111;
   clib_error_t *error = 0;
   u8 is_filtered = 0, *ns_id = format (0, "appns1");
-  stream_session_t *listener, *s;
+  session_t *listener, *s;
   app_namespace_t *default_ns = app_namespace_get_default ();
   u32 local_ns_index = default_ns->local_table_index;
   int verbose = 0, rv;
@@ -1589,7 +1589,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   clib_error_t *error = 0;
   u8 is_filtered = 0;
-  stream_session_t *s;
+  session_t *s;
   transport_connection_t *tc;
   u16 lcl_port = 1234, rmt_port = 4321;
   app_namespace_t *app_ns;
