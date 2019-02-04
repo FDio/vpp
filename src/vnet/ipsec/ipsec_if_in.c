@@ -49,7 +49,7 @@ typedef struct
   u32 seq;
 } ipsec_if_input_trace_t;
 
-u8 *
+static u8 *
 format_ipsec_if_input_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
