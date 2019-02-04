@@ -119,7 +119,10 @@ typedef struct
 {
   /* pool of tunnel instances */
   ipsec_spd_t *spds;
+  /* Pool of security associations */
   ipsec_sa_t *sad;
+  /* pool of policies */
+  ipsec_policy_t *policies;
 
   /* pool of tunnel interfaces */
   ipsec_tunnel_if_t *tunnel_interfaces;
@@ -175,9 +178,6 @@ typedef struct
   u32 ah_default_backend;
   /* index of default esp backend */
   u32 esp_default_backend;
-
-  /* helper for sort function */
-  ipsec_spd_t *spd_to_sort;
 } ipsec_main_t;
 
 extern ipsec_main_t ipsec_main;

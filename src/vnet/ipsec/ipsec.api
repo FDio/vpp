@@ -96,7 +96,6 @@ typedef ipsec_spd_entry
   u8 protocol;
 
   // Selector
-  u8 is_ip_any;
   vl_api_address_t remote_address_start;
   vl_api_address_t remote_address_stop;
   vl_api_address_t local_address_start;
@@ -115,12 +114,25 @@ typedef ipsec_spd_entry
     @param is_add - add SPD if non-zero, else delete
     @param entry - Description of the entry to add/dell
 */
-autoreply define ipsec_spd_entry_add_del
+define ipsec_spd_entry_add_del
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   vl_api_ipsec_spd_entry_t entry;
+};
+
+/** \brief IPsec: Reply Add/delete Security Policy Database entry
+
+    @param context - sender context, to match reply w/ request
+    @param retval - success/fail rutrun code
+    @param stat_index - An index for the policy in the stats segment @ /net/ipec/policy
+*/
+define ipsec_spd_entry_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stat_index;
 };
 
 /** \brief Dump IPsec all SPD IDs
@@ -165,8 +177,6 @@ define ipsec_spd_dump {
 define ipsec_spd_details {
     u32 context;
     vl_api_ipsec_spd_entry_t entry;
-    u64 bytes;
-    u64 packets;
 };
 
 /*

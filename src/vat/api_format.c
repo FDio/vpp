@@ -14924,7 +14924,6 @@ api_ipsec_spd_entry_add_del (vat_main_t * vam)
   mp->entry.remote_port_stop = ntohs ((u16) rport_stop);
   mp->entry.policy = (u8) policy;
   mp->entry.sa_id = ntohl (sa_id);
-  mp->entry.is_ip_any = is_ip_any;
 
   S (mp);
   W (ret);

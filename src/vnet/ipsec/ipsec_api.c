@@ -143,6 +143,7 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_spd_entry_add_del_reply_t *rmp;
   ip46_type_t itype;
+  u32 stat_index;
   int rv;
 
 #if WITH_LIBSSL > 0
@@ -181,22 +182,22 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
     }
   p.sa_id = ntohl (mp->entry.sa_id);
 
-  rv = ipsec_add_del_policy (vm, &p, mp->is_add);
+  rv = ipsec_add_del_policy (vm, &p, mp->is_add, &stat_index);
   if (rv)
     goto out;
 
-  if (mp->entry.is_ip_any)
-    {
-      p.is_ipv6 = 1;
-      rv = ipsec_add_del_policy (vm, &p, mp->is_add);
-    }
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
   goto out;
 #endif
 
 out:
-  REPLY_MACRO (VL_API_IPSEC_SPD_ENTRY_ADD_DEL_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IPSEC_SPD_ENTRY_ADD_DEL_REPLY,
+  ({
+    rmp->stat_index = ntohl(stat_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static int
@@ -340,6 +341,7 @@ send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
 			 u32 context)
 {
   vl_api_ipsec_spds_details_t *mp;
+  u32 n_policies = 0;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
@@ -347,7 +349,10 @@ send_ipsec_spds_details (ipsec_spd_t * spd, vl_api_registration_t * reg,
   mp->context = context;
 
   mp->spd_id = htonl (spd->id);
-  mp->npolicies = htonl (pool_len (spd->policies));
+#define _(s, n) n_policies += vec_len (spd->policies[IPSEC_SPD_POLICY_##s]);
+  foreach_ipsec_spd_policy_type
+#undef _
+    mp->npolicies = htonl (n_policies);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
@@ -420,9 +425,6 @@ send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
   mp->entry.policy = ipsec_spd_action_encode (p->policy);
   mp->entry.sa_id = htonl (p->sa_id);
 
-  mp->bytes = clib_host_to_net_u64 (p->counter.bytes);
-  mp->packets = clib_host_to_net_u64 (p->counter.packets);
-
   vl_api_send_msg (reg, (u8 *) mp);
 }
 
@@ -431,10 +433,11 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
 {
   vl_api_registration_t *reg;
   ipsec_main_t *im = &ipsec_main;
+  ipsec_spd_policy_t ptype;
   ipsec_policy_t *policy;
   ipsec_spd_t *spd;
   uword *p;
-  u32 spd_index;
+  u32 spd_index, *ii;
 #if WITH_LIBSSL > 0
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -448,12 +451,15 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
   spd = pool_elt_at_index (im->spds, spd_index);
 
   /* *INDENT-OFF* */
-  pool_foreach (policy, spd->policies,
-  ({
-    if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == policy->sa_id)
-      send_ipsec_spd_details (policy, reg,
-                              mp->context);}
-    ));
+  FOR_EACH_IPSEC_SPD_POLICY_TYPE(ptype) {
+    vec_foreach(ii, spd->policies[ptype])
+      {
+        policy = pool_elt_at_index(im->policies, *ii);
+
+        if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == policy->sa_id)
+          send_ipsec_spd_details (policy, reg, mp->context);
+      }
+  }
   /* *INDENT-ON* */
 #else
   clib_warning ("unimplemented");

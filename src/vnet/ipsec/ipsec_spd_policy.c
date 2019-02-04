@@ -15,16 +15,81 @@
 
 #include <vnet/ipsec/ipsec.h>
 
+/**
+ * @brief
+ * Policy packet & bytes counters
+ */
+vlib_combined_counter_main_t ipsec_spd_policy_counters = {
+  .name = "policy",
+  .stat_segment_name = "/net/ipsec/policy",
+};
+
+static int
+ipsec_policy_is_equal (ipsec_policy_t * p1, ipsec_policy_t * p2)
+{
+  if (p1->priority != p2->priority)
+    return 0;
+  if (p1->is_outbound != p2->is_outbound)
+    return (0);
+  if (p1->policy != p2->policy)
+    return (0);
+  if (p1->sa_id != p2->sa_id)
+    return (0);
+  if (p1->protocol != p2->protocol)
+    return (0);
+  if (p1->lport.start != p2->lport.start)
+    return (0);
+  if (p1->lport.stop != p2->lport.stop)
+    return (0);
+  if (p1->rport.start != p2->rport.start)
+    return (0);
+  if (p1->rport.stop != p2->rport.stop)
+    return (0);
+  if (p1->is_ipv6 != p2->is_ipv6)
+    return (0);
+  if (p2->is_ipv6)
+    {
+      if (p1->laddr.start.ip6.as_u64[0] != p2->laddr.start.ip6.as_u64[0])
+	return (0);
+      if (p1->laddr.start.ip6.as_u64[1] != p2->laddr.start.ip6.as_u64[1])
+	return (0);
+      if (p1->laddr.stop.ip6.as_u64[0] != p2->laddr.stop.ip6.as_u64[0])
+	return (0);
+      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
+	return (0);
+      if (p1->raddr.start.ip6.as_u64[0] != p2->raddr.start.ip6.as_u64[0])
+	return (0);
+      if (p1->raddr.start.ip6.as_u64[1] != p2->raddr.start.ip6.as_u64[1])
+	return (0);
+      if (p1->raddr.stop.ip6.as_u64[0] != p2->raddr.stop.ip6.as_u64[0])
+	return (0);
+      if (p1->laddr.stop.ip6.as_u64[1] != p2->laddr.stop.ip6.as_u64[1])
+	return (0);
+    }
+  else
+    {
+      if (p1->laddr.start.ip4.as_u32 != p2->laddr.start.ip4.as_u32)
+	return (0);
+      if (p1->laddr.stop.ip4.as_u32 != p2->laddr.stop.ip4.as_u32)
+	return (0);
+      if (p1->raddr.start.ip4.as_u32 != p2->raddr.start.ip4.as_u32)
+	return (0);
+      if (p1->raddr.stop.ip4.as_u32 != p2->raddr.stop.ip4.as_u32)
+	return (0);
+    }
+  return (1);
+}
+
 static int
 ipsec_spd_entry_sort (void *a1, void *a2)
 {
+  ipsec_main_t *im = &ipsec_main;
   u32 *id1 = a1;
   u32 *id2 = a2;
-  ipsec_spd_t *spd = ipsec_main.spd_to_sort;
   ipsec_policy_t *p1, *p2;
 
-  p1 = pool_elt_at_index (spd->policies, *id1);
-  p2 = pool_elt_at_index (spd->policies, *id2);
+  p1 = pool_elt_at_index (im->policies, *id1);
+  p2 = pool_elt_at_index (im->policies, *id2);
   if (p1 && p2)
     return p2->priority - p1->priority;
 
@@ -32,13 +97,14 @@ ipsec_spd_entry_sort (void *a1, void *a2)
 }
 
 int
-ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
+ipsec_add_del_policy (vlib_main_t * vm,
+		      ipsec_policy_t * policy, int is_add, u32 * stat_index)
 {
   ipsec_main_t *im = &ipsec_main;
   ipsec_spd_t *spd = 0;
   ipsec_policy_t *vp;
-  uword *p;
   u32 spd_index;
+  uword *p;
 
   clib_warning ("policy-id %u priority %d is_outbound %u", policy->id,
 		policy->priority, policy->is_outbound);
@@ -65,24 +131,30 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
     {
       u32 policy_index;
 
-      pool_get (spd->policies, vp);
+      pool_get (im->policies, vp);
       clib_memcpy (vp, policy, sizeof (*vp));
-      policy_index = vp - spd->policies;
+      policy_index = vp - im->policies;
 
-      ipsec_main.spd_to_sort = spd;
+      vlib_validate_combined_counter (&ipsec_spd_policy_counters,
+				      policy_index);
+      vlib_zero_combined_counter (&ipsec_spd_policy_counters, policy_index);
 
       if (policy->is_outbound)
 	{
 	  if (policy->is_ipv6)
 	    {
-	      vec_add1 (spd->ipv6_outbound_policies, policy_index);
-	      vec_sort_with_function (spd->ipv6_outbound_policies,
+	      vec_add1 (spd->policies[IPSEC_SPD_POLICY_IP6_OUTBOUND],
+			policy_index);
+	      vec_sort_with_function (spd->policies
+				      [IPSEC_SPD_POLICY_IP6_OUTBOUND],
 				      ipsec_spd_entry_sort);
 	    }
 	  else
 	    {
-	      vec_add1 (spd->ipv4_outbound_policies, policy_index);
-	      vec_sort_with_function (spd->ipv4_outbound_policies,
+	      vec_add1 (spd->policies[IPSEC_SPD_POLICY_IP4_OUTBOUND],
+			policy_index);
+	      vec_sort_with_function (spd->policies
+				      [IPSEC_SPD_POLICY_IP4_OUTBOUND],
 				      ipsec_spd_entry_sort);
 	    }
 	}
@@ -92,19 +164,20 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 	    {
 	      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
 		{
-		  vec_add1 (spd->ipv6_inbound_protect_policy_indices,
+		  vec_add1 (spd->policies
+			    [IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT],
 			    policy_index);
-		  vec_sort_with_function
-		    (spd->ipv6_inbound_protect_policy_indices,
-		     ipsec_spd_entry_sort);
+		  vec_sort_with_function (spd->policies
+					  [IPSEC_SPD_POLICY_IP6_INBOUND_PROTECT],
+					  ipsec_spd_entry_sort);
 		}
 	      else
 		{
 		  vec_add1
-		    (spd->ipv6_inbound_policy_discard_and_bypass_indices,
+		    (spd->policies[IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS],
 		     policy_index);
 		  vec_sort_with_function
-		    (spd->ipv6_inbound_policy_discard_and_bypass_indices,
+		    (spd->policies[IPSEC_SPD_POLICY_IP6_INBOUND_BYPASS],
 		     ipsec_spd_entry_sort);
 		}
 	    }
@@ -112,146 +185,45 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
 	    {
 	      if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
 		{
-		  vec_add1 (spd->ipv4_inbound_protect_policy_indices,
+		  vec_add1 (spd->policies
+			    [IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT],
 			    policy_index);
-		  vec_sort_with_function
-		    (spd->ipv4_inbound_protect_policy_indices,
-		     ipsec_spd_entry_sort);
+		  vec_sort_with_function (spd->policies
+					  [IPSEC_SPD_POLICY_IP4_INBOUND_PROTECT],
+					  ipsec_spd_entry_sort);
 		}
 	      else
 		{
 		  vec_add1
-		    (spd->ipv4_inbound_policy_discard_and_bypass_indices,
+		    (spd->policies[IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS],
 		     policy_index);
 		  vec_sort_with_function
-		    (spd->ipv4_inbound_policy_discard_and_bypass_indices,
+		    (spd->policies[IPSEC_SPD_POLICY_IP4_INBOUND_BYPASS],
 		     ipsec_spd_entry_sort);
 		}
 	    }
 	}
-
-      ipsec_main.spd_to_sort = NULL;
+      *stat_index = policy_index;
     }
   else
     {
-      u32 i, j;
-      /* *INDENT-OFF* */
-      pool_foreach_index(i, spd->policies, ({
-        vp = pool_elt_at_index(spd->policies, i);
-        if (vp->priority != policy->priority)
-          continue;
-        if (vp->is_outbound != policy->is_outbound)
-          continue;
-        if (vp->policy != policy->policy)
-          continue;
-        if (vp->sa_id != policy->sa_id)
-          continue;
-        if (vp->protocol != policy->protocol)
-          continue;
-        if (vp->lport.start != policy->lport.start)
-          continue;
-        if (vp->lport.stop != policy->lport.stop)
-          continue;
-        if (vp->rport.start != policy->rport.start)
-          continue;
-        if (vp->rport.stop != policy->rport.stop)
-          continue;
-        if (vp->is_ipv6 != policy->is_ipv6)
-          continue;
-        if (policy->is_ipv6)
-          {
-            if (vp->laddr.start.ip6.as_u64[0] != policy->laddr.start.ip6.as_u64[0])
-              continue;
-            if (vp->laddr.start.ip6.as_u64[1] != policy->laddr.start.ip6.as_u64[1])
-              continue;
-            if (vp->laddr.stop.ip6.as_u64[0] != policy->laddr.stop.ip6.as_u64[0])
-              continue;
-            if (vp->laddr.stop.ip6.as_u64[1] != policy->laddr.stop.ip6.as_u64[1])
-              continue;
-            if (vp->raddr.start.ip6.as_u64[0] != policy->raddr.start.ip6.as_u64[0])
-              continue;
-            if (vp->raddr.start.ip6.as_u64[1] != policy->raddr.start.ip6.as_u64[1])
-              continue;
-            if (vp->raddr.stop.ip6.as_u64[0] != policy->raddr.stop.ip6.as_u64[0])
-              continue;
-           if (vp->laddr.stop.ip6.as_u64[1] != policy->laddr.stop.ip6.as_u64[1])
-              continue;
-           if (policy->is_outbound)
-             {
-               vec_foreach_index(j, spd->ipv6_outbound_policies) {
-                 if (vec_elt(spd->ipv6_outbound_policies, j) == i) {
-                   vec_del1 (spd->ipv6_outbound_policies, j);
-                   break;
-                 }
-               }
-             }
-           else
-             {
-               if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-                 {
-                   vec_foreach_index(j, spd->ipv6_inbound_protect_policy_indices) {
-                     if (vec_elt(spd->ipv6_inbound_protect_policy_indices, j) == i) {
-                       vec_del1 (spd->ipv6_inbound_protect_policy_indices, j);
-                       break;
-                     }
-                   }
-                 }
-               else
-                 {
-                   vec_foreach_index(j, spd->ipv6_inbound_policy_discard_and_bypass_indices) {
-                     if (vec_elt(spd->ipv6_inbound_policy_discard_and_bypass_indices, j) == i) {
-                       vec_del1 (spd->ipv6_inbound_policy_discard_and_bypass_indices, j);
-                       break;
-                     }
-                   }
-                 }
-             }
-          }
-        else
-          {
-            if (vp->laddr.start.ip4.as_u32 != policy->laddr.start.ip4.as_u32)
-              continue;
-            if (vp->laddr.stop.ip4.as_u32 != policy->laddr.stop.ip4.as_u32)
-              continue;
-            if (vp->raddr.start.ip4.as_u32 != policy->raddr.start.ip4.as_u32)
-              continue;
-            if (vp->raddr.stop.ip4.as_u32 != policy->raddr.stop.ip4.as_u32)
-              continue;
-            if (policy->is_outbound)
-              {
-                vec_foreach_index(j, spd->ipv4_outbound_policies) {
-                  if (vec_elt(spd->ipv4_outbound_policies, j) == i) {
-                    vec_del1 (spd->ipv4_outbound_policies, j);
-                    break;
-                  }
-                }
-              }
-            else
-              {
-                if (policy->policy == IPSEC_POLICY_ACTION_PROTECT)
-                  {
-                    vec_foreach_index(j, spd->ipv4_inbound_protect_policy_indices) {
-                      if (vec_elt(spd->ipv4_inbound_protect_policy_indices, j) == i) {
-                        vec_del1 (spd->ipv4_inbound_protect_policy_indices, j);
-                        break;
-                      }
-                    }
-                  }
-                else
-                  {
-                    vec_foreach_index(j, spd->ipv4_inbound_policy_discard_and_bypass_indices) {
-                      if (vec_elt(spd->ipv4_inbound_policy_discard_and_bypass_indices, j) == i) {
-                        vec_del1 (spd->ipv4_inbound_policy_discard_and_bypass_indices, j);
-                        break;
-                      }
-                    }
-                  }
-              }
-          }
-          pool_put (spd->policies, vp);
-          break;
-      }));
-      /* *INDENT-ON* */
+      ipsec_spd_policy_t ptype;
+      u32 ii;
+
+      FOR_EACH_IPSEC_SPD_POLICY_TYPE (ptype)
+      {
+	vec_foreach_index (ii, (spd->policies[ptype]))
+	{
+	  vp = pool_elt_at_index (im->policies, spd->policies[ptype][ii]);
+	  if (ipsec_policy_is_equal (vp, policy))
+	    {
+	      vec_del1 (spd->policies[ptype], ii);
+	      pool_put (im->policies, vp);
+	      goto done;
+	    }
+	}
+      }
+    done:;
     }
 
   return 0;
