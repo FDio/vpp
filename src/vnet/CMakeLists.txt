@@ -1038,6 +1038,7 @@ list(APPEND VNET_SOURCES
   session/session_node.c
   session/transport.c
   session/application.c
+  session/application_worker.c
   session/session_cli.c
   session/application_interface.c
   session/application_namespace.c

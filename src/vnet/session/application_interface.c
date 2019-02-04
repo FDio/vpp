@@ -329,9 +329,9 @@ application_connect (vnet_connect_args_t * a)
 	  listener = (session_t *) ll;
 	  server_wrk = application_listener_select_worker (listener,
 							   1 /* is_local */ );
-	  return application_local_session_connect (client_wrk,
-						    server_wrk, ll,
-						    a->api_context);
+	  return app_worker_local_session_connect (client_wrk,
+						   server_wrk, ll,
+						   a->api_context);
 	}
     }
 
@@ -355,8 +355,8 @@ global_scope:
       server_wrk = application_listener_select_worker (listener,
 						       0 /* is_local */ );
       ll = (local_session_t *) listener;
-      return application_local_session_connect (client_wrk, server_wrk, ll,
-						a->api_context);
+      return app_worker_local_session_connect (client_wrk, server_wrk, ll,
+					       a->api_context);
     }
 
   /*
@@ -545,7 +545,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
     return clib_error_return_code (0, rv, 0, "app init: %d", rv);
 
   app = application_get (a->app_index);
-  if ((rv = app_worker_alloc_and_init (app, &app_wrk)))
+  if ((rv = application_alloc_worker_and_init (app, &app_wrk)))
     return clib_error_return_code (0, rv, 0, "app default wrk init: %d", rv);
 
   a->app_evt_q = app_wrk->event_queue;
@@ -649,10 +649,10 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
       /* Disconnect reply came to worker 1 not main thread */
       app_interface_check_thread_and_barrier (vnet_disconnect_session, a);
 
-      if (!(ls = application_get_local_session_from_handle (a->handle)))
+      if (!(ls = app_worker_get_local_session_from_handle (a->handle)))
 	return 0;
 
-      return application_local_session_disconnect (a->app_index, ls);
+      return app_worker_local_session_disconnect (a->app_index, ls);
     }
   else
     {
