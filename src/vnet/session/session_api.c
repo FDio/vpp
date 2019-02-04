@@ -1144,14 +1144,14 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
 
   if (session_handle_is_local (mp->handle))
     {
-      ls = application_get_local_session_from_handle (mp->handle);
+      ls = app_worker_get_local_session_from_handle (mp->handle);
       if (!ls || ls->app_wrk_index != mp->context)
 	{
 	  clib_warning ("server %u doesn't own local handle %llu",
 			mp->context, mp->handle);
 	  return;
 	}
-      if (application_local_session_connect_notify (ls))
+      if (app_worker_local_session_connect_notify (ls))
 	return;
       ls->session_state = SESSION_STATE_READY;
     }

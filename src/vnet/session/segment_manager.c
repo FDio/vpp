@@ -399,7 +399,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
 	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
 	  {
 	    svm_fifo_t *next = fifo->next;
-	    application_local_session_disconnect_w_index (sm->app_wrk_index,
+	    app_worker_local_session_disconnect_w_index (sm->app_wrk_index,
 	                                                  fifo->ct_session_index);
 	    fifo = next;
 	    continue;
