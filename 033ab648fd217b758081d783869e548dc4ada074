@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6e71ee39_4f3e2c55",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-04T17:50:05Z",
+      "side": 1,
+      "message": "Why call send and expect and throw away the result?  Seems like its the wrong method to be calling.",
+      "range": {
+        "startLine": 233,
+        "startChar": 8,
+        "endLine": 233,
+        "endChar": 61
+      },
+      "revId": "033ab648fd217b758081d783869e548dc4ada074",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
