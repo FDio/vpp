@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0ed89ad6_108e7c26",
+        "filename": "test/framework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-04T16:02:59Z",
+      "side": 1,
+      "message": "Either log \"finished\", or log before calling the superclass teardown.",
+      "range": {
+        "startLine": 555,
+        "startChar": 56,
+        "endLine": 555,
+        "endChar": 62
+      },
+      "revId": "8d991d923b52a2692370bfa33902d29ff5d2f826",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e608318a_c4b3417f",
+        "filename": "test/framework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-04T16:02:59Z",
+      "side": 1,
+      "message": "Log before superclass setup is called.",
+      "range": {
+        "startLine": 583,
+        "startChar": 53,
+        "endLine": 583,
+        "endChar": 59
+      },
+      "revId": "8d991d923b52a2692370bfa33902d29ff5d2f826",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
