@@ -331,7 +331,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   struct rte_crypto_sym_xform auth_xform = { 0 };
   struct rte_crypto_sym_xform *xfs;
   struct rte_cryptodev_sym_session **s;
-  clib_error_t *erorr = 0;
+  clib_error_t *error = 0;
 
 
   sa = pool_elt_at_index (im->sad, sa_idx);
@@ -376,7 +376,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
       if (!session[0])
 	{
 	  data->session_h_failed += 1;
-	  erorr = clib_error_return (0, "failed to create session header");
+	  error = clib_error_return (0, "failed to create session header");
 	  goto done;
 	}
       hash_set (data->session_by_sa_index, sa_idx, session[0]);
@@ -393,7 +393,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   if (ret)
     {
       data->session_drv_failed[res->drv_id] += 1;
-      erorr = clib_error_return (0, "failed to init session for drv %u",
+      error = clib_error_return (0, "failed to init session for drv %u",
 				 res->drv_id);
       goto done;
     }
@@ -402,7 +402,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 
 done:
   clib_spinlock_unlock_if_init (&data->lockp);
-  return erorr;
+  return error;
 }
 
 static void __attribute__ ((unused)) clear_and_free_obj (void *obj)
@@ -644,8 +644,8 @@ crypto_parse_capabilities (crypto_dev_t * dev,
 static clib_error_t *
 crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
 {
-  struct rte_cryptodev_config dev_conf;
-  struct rte_cryptodev_qp_conf qp_conf;
+  struct rte_cryptodev_config dev_conf = { 0 };
+  struct rte_cryptodev_qp_conf qp_conf = { 0 };
   i32 ret;
   u16 qp;
   char *error_str;
@@ -683,7 +683,7 @@ crypto_scan_devs (u32 n_mains)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   struct rte_cryptodev *cryptodev;
-  struct rte_cryptodev_info info;
+  struct rte_cryptodev_info info = { 0 };
   crypto_dev_t *dev;
   crypto_resource_t *res;
   clib_error_t *error;
@@ -895,10 +895,15 @@ crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
 
   elt_size = rte_cryptodev_sym_get_header_session_size ();
 
-  mp =
-    rte_mempool_create ((char *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
-			elt_size, 512, 0, NULL, NULL, NULL, NULL, numa, 0);
-
+#if RTE_VERSION < RTE_VERSION_NUM(19, 2, 0, 0)
+  mp = rte_mempool_create ((char *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
+			   elt_size, 512, 0, NULL, NULL, NULL, NULL, numa, 0);
+#else
+  /* XXX Experimental tag in DPDK 19.02 */
+  mp = rte_cryptodev_sym_session_pool_create ((char *) pool_name,
+					      DPDK_CRYPTO_NB_SESS_OBJS,
+					      elt_size, 512, 0, numa);
+#endif
   vec_free (pool_name);
 
   if (!mp)
