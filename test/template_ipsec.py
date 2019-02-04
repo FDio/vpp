@@ -353,6 +353,7 @@ class IpsecTun4Tests(object):
                                               dst=self.pg1.remote_ip4,
                                               count=count)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
+
             for recv_pkt in recv_pkts:
                 self.assert_equal(recv_pkt[IP].src, p.remote_tun_if_host)
                 self.assert_equal(recv_pkt[IP].dst, self.pg1.remote_ip4)
@@ -376,6 +377,10 @@ class IpsecTun4Tests(object):
                     except:
                         pass
                     raise
+
+            if (hasattr(p, "spd_policy_in_any")):
+                self.assertEqual(p.spd_policy_in_any.get_stats()['packets'],
+                                 count)
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))

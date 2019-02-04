@@ -110,15 +110,19 @@ class TemplateIpsecEsp(TemplateIpsec):
                    self.tun_if.remote_addr[addr_type],
                    self.tun_if.local_addr[addr_type]).add_vpp_config()
 
-        VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
-                         addr_any, addr_bcast,
-                         addr_any, addr_bcast,
-                         socket.IPPROTO_ESP).add_vpp_config()
-        VppIpsecSpdEntry(self, self.tun_spd, scapy_tun_sa_id,
-                         addr_any, addr_bcast,
-                         addr_any, addr_bcast,
-                         socket.IPPROTO_ESP,
-                         is_outbound=0).add_vpp_config()
+        params.spd_policy_in_any = VppIpsecSpdEntry(self, self.tun_spd,
+                                                    scapy_tun_sa_id,
+                                                    addr_any, addr_bcast,
+                                                    addr_any, addr_bcast,
+                                                    socket.IPPROTO_ESP)
+        params.spd_policy_in_any.add_vpp_config()
+        params.spd_policy_out_any = VppIpsecSpdEntry(self, self.tun_spd,
+                                                     scapy_tun_sa_id,
+                                                     addr_any, addr_bcast,
+                                                     addr_any, addr_bcast,
+                                                     socket.IPPROTO_ESP,
+                                                     is_outbound=0)
+        params.spd_policy_out_any.add_vpp_config()
 
         VppIpsecSpdEntry(self, self.tun_spd, vpp_tun_sa_id,
                          remote_tun_if_host, remote_tun_if_host,
