@@ -42,12 +42,10 @@ ipsec_add_del_spd (vlib_main_t * vm, u32 spd_id, int is_add)
       }));
       /* *INDENT-ON* */
       hash_unset (im->spd_index_by_spd_id, spd_id);
-      pool_free (spd->policies);
-      vec_free (spd->ipv4_outbound_policies);
-      vec_free (spd->ipv6_outbound_policies);
-      vec_free (spd->ipv4_inbound_protect_policy_indices);
-      vec_free (spd->ipv4_inbound_policy_discard_and_bypass_indices);
-      pool_put (im->spds, spd);
+#define _(s,v) vec_free(spd->policies[IPSEC_SPD_POLICY_##s]);
+      foreach_ipsec_spd_policy_type
+#undef _
+	pool_put (im->spds, spd);
     }
   else				/* create new SPD */
     {

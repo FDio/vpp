@@ -111,7 +111,7 @@ class VppIpsecSpdEntry(VppObject):
         self.remote_port_stop = remote_port_stop
 
     def add_vpp_config(self):
-        self.test.vapi.ipsec_spd_entry_add_del(
+        rv = self.test.vapi.ipsec_spd_entry_add_del(
             self.spd.id,
             self.sa_id,
             self.local_start,
@@ -127,6 +127,7 @@ class VppIpsecSpdEntry(VppObject):
             local_port_stop=self.local_port_stop,
             remote_port_start=self.remote_port_start,
             remote_port_stop=self.remote_port_stop)
+        self.stat_index = rv.stat_index
         self.test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
@@ -170,6 +171,10 @@ class VppIpsecSpdEntry(VppObject):
                s.entry.remote_port_start == self.remote_port_start:
                 return True
         return False
+
+    def get_stats(self):
+        c = self.test.statistics.get_counter("/net/ipsec/policy")
+        return c[0][self.stat_index]
 
 
 class VppIpsecSA(VppObject):

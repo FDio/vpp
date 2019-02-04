@@ -86,19 +86,16 @@ u8
 ipsec_is_sa_used (u32 sa_index)
 {
   ipsec_main_t *im = &ipsec_main;
-  ipsec_spd_t *spd;
-  ipsec_policy_t *p;
   ipsec_tunnel_if_t *t;
+  ipsec_policy_t *p;
 
   /* *INDENT-OFF* */
-  pool_foreach(spd, im->spds, ({
-    pool_foreach(p, spd->policies, ({
-      if (p->policy == IPSEC_POLICY_ACTION_PROTECT)
-        {
-          if (p->sa_index == sa_index)
-            return 1;
-        }
-    }));
+  pool_foreach(p, im->policies, ({
+     if (p->policy == IPSEC_POLICY_ACTION_PROTECT)
+       {
+         if (p->sa_index == sa_index)
+           return 1;
+       }
   }));
 
   pool_foreach(t, im->tunnel_interfaces, ({
