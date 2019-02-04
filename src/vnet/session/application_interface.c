@@ -545,7 +545,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
     return clib_error_return_code (0, rv, 0, "app init: %d", rv);
 
   app = application_get (a->app_index);
-  if ((rv = app_worker_alloc_and_init (app, &app_wrk)))
+  if ((rv = application_alloc_worker_and_init (app, &app_wrk)))
     return clib_error_return_code (0, rv, 0, "app default wrk init: %d", rv);
 
   a->app_evt_q = app_wrk->event_queue;
