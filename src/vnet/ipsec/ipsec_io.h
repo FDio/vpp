@@ -18,11 +18,7 @@
 #define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
 
 #define foreach_ipsec_output_next  \
-  _ (DROP, "error-drop")           \
-  _ (ESP4_ENCRYPT, "esp4-encrypt") \
-  _ (AH4_ENCRYPT, "ah4-encrypt")   \
-  _ (ESP6_ENCRYPT, "esp6-encrypt") \
-  _ (AH6_ENCRYPT, "ah6-encrypt")
+  _ (DROP, "error-drop")
 
 #define _(v, s) IPSEC_OUTPUT_NEXT_##v,
 typedef enum
@@ -33,11 +29,7 @@ typedef enum
 } ipsec_output_next_t;
 
 #define foreach_ipsec_input_next   \
-  _ (DROP, "error-drop")           \
-  _ (ESP4_DECRYPT, "esp4-decrypt") \
-  _ (AH4_DECRYPT, "ah4-decrypt")   \
-  _ (ESP6_DECRYPT, "esp6-decrypt") \
-  _ (AH6_DECRYPT, "ah6-decrypt")
+  _ (DROP, "error-drop")
 
 #define _(v, s) IPSEC_INPUT_NEXT_##v,
 typedef enum

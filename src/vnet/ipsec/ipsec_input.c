@@ -25,8 +25,8 @@
 #include <vnet/ipsec/ah.h>
 
 #define foreach_ipsec_input_error                   \
- _(RX_PKTS, "IPSEC pkts received")                  \
- _(DECRYPTION_FAILED, "IPSEC decryption failed")
+_(RX_PKTS, "IPSEC pkts received")		\
+_(RX_MATCH_PKTS, "IPSEC pkts matched")
 
 typedef enum
 {
@@ -180,6 +180,8 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 {
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
+  u32 ipsec_processed = 0;
+  u32 ipsec_matched = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -222,6 +224,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	      (ip0->protocol == IP_PROTOCOL_IPSEC_ESP
 	       || ip0->protocol == IP_PROTOCOL_UDP))
 	    {
+	      ipsec_processed += 1;
 #if 0
 	      clib_warning
 		("packet received from %U to %U spi %u size %u spd_id %u",
@@ -251,6 +254,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
 	      if (PREDICT_TRUE (p0 != 0))
 		{
+		  ipsec_matched += 1;
 		  p0->counter.packets++;
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
@@ -280,8 +284,10 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 	    }
 
 
-	  if (PREDICT_TRUE (ip0->protocol == IP_PROTOCOL_IPSEC_AH))
+	  if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IPSEC_AH))
 	    {
+	      ipsec_processed += 1;
+
 	      ah0 = (ah_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 	      p0 = ipsec_input_protect_policy_match (spd0,
 						     clib_net_to_host_u32
@@ -295,6 +301,7 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 
 	      if (PREDICT_TRUE (p0 != 0))
 		{
+		  ipsec_matched += 1;
 		  p0->counter.packets++;
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
@@ -326,9 +333,11 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vlib_node_increment_counter (vm, ipsec4_input_node.index,
-			       IPSEC_INPUT_ERROR_RX_PKTS,
-			       from_frame->n_vectors);
+			       IPSEC_INPUT_ERROR_RX_PKTS, ipsec_processed);
 
+  vlib_node_increment_counter (vm, ipsec4_input_node.index,
+			       IPSEC_INPUT_ERROR_RX_MATCH_PKTS,
+			       ipsec_matched);
   return from_frame->n_vectors;
 }
 
@@ -339,10 +348,8 @@ VLIB_REGISTER_NODE (ipsec4_input_node,static) = {
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-
   .n_errors = ARRAY_LEN(ipsec_input_error_strings),
   .error_strings = ipsec_input_error_strings,
-
   .n_next_nodes = IPSEC_INPUT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [IPSEC_INPUT_NEXT_##s] = n,
@@ -361,6 +368,8 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 {
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
+  u32 ipsec_processed = 0;
+  u32 ipsec_matched = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -404,6 +413,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE (ip0->protocol == IP_PROTOCOL_IPSEC_ESP))
 	    {
+	      ipsec_processed += 1;
 #if 0
 	      clib_warning
 		("packet received from %U to %U spi %u size %u spd_id %u",
@@ -420,6 +430,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 
 	      if (PREDICT_TRUE (p0 != 0))
 		{
+		  ipsec_matched += 1;
 		  p0->counter.packets++;
 		  p0->counter.bytes +=
 		    clib_net_to_host_u16 (ip0->payload_length);
@@ -433,6 +444,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 	    }
 	  else if (ip0->protocol == IP_PROTOCOL_IPSEC_AH)
 	    {
+	      ipsec_processed += 1;
 	      p0 = ipsec6_input_protect_policy_match (spd0,
 						      &ip0->src_address,
 						      &ip0->dst_address,
@@ -441,6 +453,7 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 
 	      if (PREDICT_TRUE (p0 != 0))
 		{
+		  ipsec_matched += 1;
 		  p0->counter.packets++;
 		  p0->counter.bytes +=
 		    clib_net_to_host_u16 (ip0->payload_length);
@@ -473,8 +486,11 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vlib_node_increment_counter (vm, ipsec6_input_node.index,
-			       IPSEC_INPUT_ERROR_RX_PKTS,
-			       from_frame->n_vectors);
+			       IPSEC_INPUT_ERROR_RX_PKTS, ipsec_processed);
+
+  vlib_node_increment_counter (vm, ipsec6_input_node.index,
+			       IPSEC_INPUT_ERROR_RX_MATCH_PKTS,
+			       ipsec_matched);
 
   return from_frame->n_vectors;
 }
@@ -486,11 +502,14 @@ VLIB_REGISTER_NODE (ipsec6_input_node,static) = {
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_input_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-
   .n_errors = ARRAY_LEN(ipsec_input_error_strings),
   .error_strings = ipsec_input_error_strings,
-
-  .sibling_of = "ipsec4-input-feature",
+  .n_next_nodes = IPSEC_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [IPSEC_INPUT_NEXT_##s] = n,
+    foreach_ipsec_input_next
+#undef _
+  },
 };
 /* *INDENT-ON* */
 
