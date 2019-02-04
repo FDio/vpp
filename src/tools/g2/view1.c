@@ -158,6 +158,7 @@ typedef struct v1_geometry {
 
     /* Anomaly detection statistics */
     f64 *means, *variances, *two_stddevs;
+    f64 *mins, *maxes;
     u32 *matches;
 
 } v1_geometry_t;
@@ -1640,6 +1641,8 @@ static int anomaly_statistics_init (void)
     vec_reset_length (s_v1->matches);
     vec_reset_length (s_v1->variances);
     vec_reset_length (s_v1->two_stddevs);
+    vec_reset_length (s_v1->mins);
+    vec_reset_length (s_v1->maxes);
 
     for (i = 0; i < g_nevents; i++) {
         if (ep->code != s_anomalycode) {
@@ -1647,13 +1650,26 @@ static int anomaly_statistics_init (void)
             continue;
         }
         pid = ep->pid;
-        vec_validate_init_empty (s_v1->means, pid->pid_index, 0);
         vec_validate_init_empty (s_v1->matches, pid->pid_index, 0);
+        vec_validate_init_empty (s_v1->means, pid->pid_index, 0.0);
+        vec_validate_init_empty (s_v1->mins, pid->pid_index, 0.0);
+        vec_validate_init_empty (s_v1->maxes, pid->pid_index, 0.0);
         eep = get_clib_event (ep->datum);
         data = clib_mem_unaligned (eep->data, u32);
         fdata = data;
         s_v1->means[pid->pid_index] += fdata;
         s_v1->matches[pid->pid_index] += 1;
+        /* First data point? set min, max */
+        if (PREDICT_FALSE(s_v1->matches[pid->pid_index] == 1)) {
+            s_v1->mins[pid->pid_index] = fdata;
+            s_v1->maxes[pid->pid_index] = fdata;
+        } else {
+            s_v1->mins[pid->pid_index] = (fdata < s_v1->mins[pid->pid_index]) ?
+                fdata : s_v1->mins[pid->pid_index];
+            s_v1->maxes[pid->pid_index] =
+                (fdata > s_v1->maxes[pid->pid_index]) ?
+                fdata : s_v1->maxes[pid->pid_index];
+        }
         ep++;
     }
     if (vec_len (s_v1->matches) == 0)
@@ -1747,13 +1763,17 @@ boolean anomaly_search_internal (void)
             s_v1->two_stddevs[pid->pid_index]) {
             u8 *s;
 
-            s = format (0, "%.1f*stddev {mean,threshold}: ",
+            s = format (0, "%.1f*stddev {min,max,mean,threshold}: ",
                         s_v1->anomaly_threshold_stddevs);
 
             for (i = 0; i < vec_len (s_v1->means); i++) {
-                s = format (s, "{%.0f, %.0f} ",
-                            s_v1->means[i],
-                            s_v1->means[i]+s_v1->two_stddevs[i]);
+                if (s_v1->matches[i] > 0)
+                    s = format (s, "{%.0f, %.0f, %.0f, %.0f} ",
+                                s_v1->mins[i], s_v1->maxes[i],
+                                s_v1->means[i],
+                                s_v1->means[i]+s_v1->two_stddevs[i]);
+                else
+                    s = format (s, "{no match} ");
             }
 
             message_line ((char *)s);
