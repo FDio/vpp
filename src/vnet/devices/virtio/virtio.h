@@ -153,7 +153,12 @@ typedef struct
     int tap_fd;
     u32 pci_dev_handle;
   };
+  union
+  {
   virtio_vring_t *vrings;
+  virtio_vring_t *rxq_vrings;
+  };
+  virtio_vring_t *txq_vrings;
 
   u64 features, remote_features;
 
