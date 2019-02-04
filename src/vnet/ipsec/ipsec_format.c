@@ -132,6 +132,82 @@ format_ipsec_replay_window (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_ipsec_policy (u8 * s, va_list * args)
+{
+  u32 pi = va_arg (*args, u32);
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_t *p;
+  vlib_counter_t counts;
+
+  p = pool_elt_at_index (im->policies, pi);
+
+  s = format (s, "  [%d] priority %d action %U protocol ",
+	      pi, p->priority, format_ipsec_policy_action, p->policy);
+  if (p->protocol)
+    {
+      s = format (s, "%U", format_ip_protocol, p->protocol);
+    }
+  else
+    {
+      s = format (s, "any");
+    }
+  if (p->policy == IPSEC_POLICY_ACTION_PROTECT)
+    {
+      s = format (s, " sa %u", p->sa_id);
+    }
+  if (p->is_ipv6)
+    {
+      s = format (s, "\n     local addr range %U - %U port range %u - %u",
+		  format_ip6_address, &p->laddr.start.ip6,
+		  format_ip6_address, &p->laddr.stop.ip6,
+		  p->lport.start, p->lport.stop);
+      s = format (s, "\n     remote addr range %U - %U port range %u - %u",
+		  format_ip6_address, &p->raddr.start.ip6,
+		  format_ip6_address, &p->raddr.stop.ip6,
+		  p->rport.start, p->rport.stop);
+    }
+  else
+    {
+      s = format (s, "\n     local addr range %U - %U port range %u - %u",
+		  format_ip4_address, &p->laddr.start.ip4,
+		  format_ip4_address, &p->laddr.stop.ip4,
+		  p->lport.start, p->lport.stop);
+      s = format (s, "\n     remote addr range %U - %U port range %u - %u",
+		  format_ip4_address, &p->raddr.start.ip4,
+		  format_ip4_address, &p->raddr.stop.ip4,
+		  p->rport.start, p->rport.stop);
+    }
+  vlib_get_combined_counter (&ipsec_spd_policy_counters, pi, &counts);
+  s = format (s, "\n     packets %u bytes %u", counts.packets, counts.bytes);
+
+  return (s);
+}
+
+u8 *
+format_ipsec_spd (u8 * s, va_list * args)
+{
+  u32 si = va_arg (*args, u32);
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_spd_t *spd;
+  u32 *i;
+
+  spd = pool_elt_at_index (im->spds, si);
+
+  s = format (s, "spd %u", spd->id);
+
+#define _(v, n)                                                 \
+  s = format (s, "\n %s:", n);                                  \
+  vec_foreach(i, spd->policies[IPSEC_SPD_POLICY_##v])           \
+  {                                                             \
+    s = format (s, "\n %U", format_ipsec_policy, *i);           \
+  }
+  foreach_ipsec_spd_policy_type;
+#undef _
+
+  return (s);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

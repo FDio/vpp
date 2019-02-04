@@ -43,6 +43,12 @@ typedef struct
 } port_range_t;
 
 /**
+ * @brief
+ * Policy packet & bytes counters
+ */
+extern vlib_combined_counter_main_t ipsec_spd_policy_counters;
+
+/**
  * @brief A Secruity Policy. An entry in an SPD
  */
 typedef struct ipsec_policy_t_
@@ -63,17 +69,16 @@ typedef struct ipsec_policy_t_
   ipsec_policy_action_t policy;
   u32 sa_id;
   u32 sa_index;
-
-  // Counter
-  vlib_counter_t counter;
 } ipsec_policy_t;
 
 /**
  * @brief Add/Delete a SPD
  */
 extern int ipsec_add_del_policy (vlib_main_t * vm,
-				 ipsec_policy_t * policy, int is_add);
+				 ipsec_policy_t * policy,
+				 int is_add, u32 * stat_index);
 
+extern u8 *format_ipsec_policy (u8 * s, va_list * args);
 extern u8 *format_ipsec_policy_action (u8 * s, va_list * args);
 extern uword unformat_ipsec_policy_action (unformat_input_t * input,
 					   va_list * args);

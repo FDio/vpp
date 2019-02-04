@@ -258,9 +258,8 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_policy_t p;
-  int is_add = 0;
-  int is_ip_any = 1;
-  u32 tmp, tmp2;
+  int rv, is_add = 0;
+  u32 tmp, tmp2, stat_index;
   clib_error_t *error = NULL;
 
   clib_memset (&p, 0, sizeof (p));
@@ -304,24 +303,22 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "local-ip-range %U - %U",
 			 unformat_ip4_address, &p.laddr.start.ip4,
 			 unformat_ip4_address, &p.laddr.stop.ip4))
-	is_ip_any = 0;
+	;
       else if (unformat (line_input, "remote-ip-range %U - %U",
 			 unformat_ip4_address, &p.raddr.start.ip4,
 			 unformat_ip4_address, &p.raddr.stop.ip4))
-	is_ip_any = 0;
+	;
       else if (unformat (line_input, "local-ip-range %U - %U",
 			 unformat_ip6_address, &p.laddr.start.ip6,
 			 unformat_ip6_address, &p.laddr.stop.ip6))
 	{
 	  p.is_ipv6 = 1;
-	  is_ip_any = 0;
 	}
       else if (unformat (line_input, "remote-ip-range %U - %U",
 			 unformat_ip6_address, &p.raddr.start.ip6,
 			 unformat_ip6_address, &p.raddr.stop.ip6))
 	{
 	  p.is_ipv6 = 1;
-	  is_ip_any = 0;
 	}
       else if (unformat (line_input, "local-port-range %u - %u", &tmp, &tmp2))
 	{
@@ -363,12 +360,12 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
-  ipsec_add_del_policy (vm, &p, is_add);
-  if (is_ip_any)
-    {
-      p.is_ipv6 = 1;
-      ipsec_add_del_policy (vm, &p, is_add);
-    }
+  rv = ipsec_add_del_policy (vm, &p, is_add, &stat_index);
+
+  if (!rv)
+    vlib_cli_output (vm, "policy-index:%d", stat_index);
+  else
+    vlib_cli_output (vm, "error:%d", rv);
 
 done:
   unformat_free (line_input);
@@ -451,11 +448,9 @@ static clib_error_t *
 show_ipsec_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  ipsec_spd_t *spd;
   ipsec_sa_t *sa;
-  ipsec_policy_t *p;
   ipsec_main_t *im = &ipsec_main;
-  u32 *i;
+  u32 i;
   ipsec_tunnel_if_t *t;
   vnet_hw_interface_t *hi;
   u8 *protocol = NULL;
@@ -494,174 +489,8 @@ show_ipsec_command_fn (vlib_main_t * vm,
   /* *INDENT-ON* */
 
   /* *INDENT-OFF* */
-  pool_foreach (spd, im->spds, ({
-    vlib_cli_output(vm, "spd %u", spd->id);
-
-    vlib_cli_output(vm, " outbound policies");
-    vec_foreach(i, spd->ipv4_outbound_policies)
-      {
-        p = pool_elt_at_index(spd->policies, *i);
-	vec_reset_length(protocol);
-	vec_reset_length(policy);
-	if (p->protocol) {
-	  protocol = format(protocol, "%U", format_ip_protocol, p->protocol);
-	} else {
-	  protocol = format(protocol, "any");
-	}
-	if (p->policy == IPSEC_POLICY_ACTION_PROTECT) {
-	  policy = format(policy, " sa %u", p->sa_id);
-	}
-
-        vlib_cli_output(vm, "  priority %d action %U protocol %v%v",
-                        p->priority, format_ipsec_policy_action, p->policy,
-			protocol, policy);
-        vlib_cli_output(vm, "   local addr range %U - %U port range %u - %u",
-                        format_ip4_address, &p->laddr.start.ip4,
-                        format_ip4_address, &p->laddr.stop.ip4,
-                        p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
-                        format_ip4_address, &p->raddr.start.ip4,
-                        format_ip4_address, &p->raddr.stop.ip4,
-                        p->rport.start, p->rport.stop);
-        vlib_cli_output(vm, "   packets %u bytes %u", p->counter.packets,
-                        p->counter.bytes);
-      };
-    vec_foreach(i, spd->ipv6_outbound_policies)
-      {
-        p = pool_elt_at_index(spd->policies, *i);
-	vec_reset_length(protocol);
-	vec_reset_length(policy);
-	if (p->protocol) {
-	  protocol = format(protocol, "%U", format_ip_protocol, p->protocol);
-	} else {
-	  protocol = format(protocol, "any");
-	}
-	if (p->policy == IPSEC_POLICY_ACTION_PROTECT) {
-	  policy = format(policy, " sa %u", p->sa_id);
-	}
-        vlib_cli_output(vm, "  priority %d action %U protocol %v%v",
-                        p->priority, format_ipsec_policy_action, p->policy,
-			protocol, policy);
-        vlib_cli_output(vm, "   local addr range %U - %U port range %u - %u",
-                        format_ip6_address, &p->laddr.start.ip6,
-                        format_ip6_address, &p->laddr.stop.ip6,
-                        p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
-                        format_ip6_address, &p->raddr.start.ip6,
-                        format_ip6_address, &p->raddr.stop.ip6,
-                        p->rport.start, p->rport.stop);
-        vlib_cli_output(vm, "   packets %u bytes %u", p->counter.packets,
-                        p->counter.bytes);
-      };
-    vlib_cli_output(vm, " inbound policies");
-    vec_foreach(i, spd->ipv4_inbound_protect_policy_indices)
-      {
-        p = pool_elt_at_index(spd->policies, *i);
-	vec_reset_length(protocol);
-	vec_reset_length(policy);
-	if (p->protocol) {
-	  protocol = format(protocol, "%U", format_ip_protocol, p->protocol);
-	} else {
-	  protocol = format(protocol, "any");
-	}
-	if (p->policy == IPSEC_POLICY_ACTION_PROTECT) {
-	  policy = format(policy, " sa %u", p->sa_id);
-	}
-        vlib_cli_output(vm, "  priority %d action %U protocol %v%v",
-                        p->priority, format_ipsec_policy_action, p->policy,
-			protocol, policy);
-        vlib_cli_output(vm, "   local addr range %U - %U port range %u - %u",
-                        format_ip4_address, &p->laddr.start.ip4,
-                        format_ip4_address, &p->laddr.stop.ip4,
-                        p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
-                        format_ip4_address, &p->raddr.start.ip4,
-                        format_ip4_address, &p->raddr.stop.ip4,
-                        p->rport.start, p->rport.stop);
-        vlib_cli_output(vm, "   packets %u bytes %u", p->counter.packets,
-                        p->counter.bytes);
-      };
-    vec_foreach(i, spd->ipv4_inbound_policy_discard_and_bypass_indices)
-      {
-        p = pool_elt_at_index(spd->policies, *i);
-	vec_reset_length(protocol);
-	vec_reset_length(policy);
-	if (p->protocol) {
-	  protocol = format(protocol, "%U", format_ip_protocol, p->protocol);
-	} else {
-	  protocol = format(protocol, "any");
-	}
-	if (p->policy == IPSEC_POLICY_ACTION_PROTECT) {
-	  policy = format(policy, " sa %u", p->sa_id);
-	}
-        vlib_cli_output(vm, "  priority %d action %U protocol %v%v",
-                        p->priority, format_ipsec_policy_action, p->policy,
-			protocol, policy);
-        vlib_cli_output(vm, "   local addr range %U - %U port range %u - %u",
-                        format_ip4_address, &p->laddr.start.ip4,
-                        format_ip4_address, &p->laddr.stop.ip4,
-                        p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
-                        format_ip4_address, &p->raddr.start.ip4,
-                        format_ip4_address, &p->raddr.stop.ip4,
-                        p->rport.start, p->rport.stop);
-        vlib_cli_output(vm, "   packets %u bytes %u", p->counter.packets,
-                        p->counter.bytes);
-      };
-    vec_foreach(i, spd->ipv6_inbound_protect_policy_indices)
-      {
-        p = pool_elt_at_index(spd->policies, *i);
-	vec_reset_length(protocol);
-	vec_reset_length(policy);
-	if (p->protocol) {
-	  protocol = format(protocol, "%U", format_ip_protocol, p->protocol);
-	} else {
-	  protocol = format(protocol, "any");
-	}
-	if (p->policy == IPSEC_POLICY_ACTION_PROTECT) {
-	  policy = format(policy, " sa %u", p->sa_id);
-	}
-        vlib_cli_output(vm, "  priority %d action %U protocol %v%v",
-                        p->priority, format_ipsec_policy_action, p->policy,
-			protocol, policy);
-        vlib_cli_output(vm, "   local addr range %U - %U port range %u - %u",
-                        format_ip6_address, &p->laddr.start.ip6,
-                        format_ip6_address, &p->laddr.stop.ip6,
-                        p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
-                        format_ip6_address, &p->raddr.start.ip6,
-                        format_ip6_address, &p->raddr.stop.ip6,
-                        p->rport.start, p->rport.stop);
-        vlib_cli_output(vm, "   packets %u bytes %u", p->counter.packets,
-                        p->counter.bytes);
-      };
-    vec_foreach(i, spd->ipv6_inbound_policy_discard_and_bypass_indices)
-      {
-        p = pool_elt_at_index(spd->policies, *i);
-	vec_reset_length(protocol);
-	vec_reset_length(policy);
-	if (p->protocol) {
-	  protocol = format(protocol, "%U", format_ip_protocol, p->protocol);
-	} else {
-	  protocol = format(protocol, "any");
-	}
-	if (p->policy == IPSEC_POLICY_ACTION_PROTECT) {
-	  policy = format(policy, " sa %u", p->sa_id);
-	}
-        vlib_cli_output(vm, "  priority %d action %U protocol %v%v",
-                        p->priority, format_ipsec_policy_action, p->policy,
-			protocol, policy);
-        vlib_cli_output(vm, "   local addr range %U - %U port range %u - %u",
-                        format_ip6_address, &p->laddr.start.ip6,
-                        format_ip6_address, &p->laddr.stop.ip6,
-                        p->lport.start, p->lport.stop);
-        vlib_cli_output(vm, "   remote addr range %U - %U port range %u - %u",
-                        format_ip6_address, &p->raddr.start.ip6,
-                        format_ip6_address, &p->raddr.stop.ip6,
-                        p->rport.start, p->rport.stop);
-        vlib_cli_output(vm, "   packets %u bytes %u", p->counter.packets,
-                        p->counter.bytes);
-      };
+  pool_foreach_index (i, im->spds, ({
+    vlib_cli_output(vm, "%U", format_ipsec_spd, i);
   }));
   /* *INDENT-ON* */
 
@@ -866,19 +695,9 @@ clear_ipsec_counters_command_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
-  ipsec_main_t *im = &ipsec_main;
-  ipsec_spd_t *spd;
-  ipsec_policy_t *p;
+  vlib_clear_combined_counters (&ipsec_spd_policy_counters);
 
-  /* *INDENT-OFF* */
-  pool_foreach (spd, im->spds, ({
-    pool_foreach(p, spd->policies, ({
-      p->counter.packets = p->counter.bytes = 0;
-    }));
-  }));
-  /* *INDENT-ON* */
-
-  return 0;
+  return (NULL);
 }
 
 /* *INDENT-OFF* */
