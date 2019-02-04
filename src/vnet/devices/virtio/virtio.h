@@ -135,6 +135,7 @@ typedef struct
   u32 dev_instance;
   u32 hw_if_index;
   u32 sw_if_index;
+  u32 numa_node;
   u16 virtio_net_hdr_sz;
   virtio_if_type_t type;
   union
@@ -153,7 +154,12 @@ typedef struct
     int tap_fd;
     u32 pci_dev_handle;
   };
-  virtio_vring_t *vrings;
+  union
+  {
+    virtio_vring_t *vrings;
+    virtio_vring_t *rxq_vrings;
+  };
+  virtio_vring_t *txq_vrings;
 
   u64 features, remote_features;
 

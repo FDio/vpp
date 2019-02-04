@@ -272,7 +272,7 @@ virtio_pci_set_mac (vlib_main_t * vm, virtio_if_t * vif)
 static u32
 virtio_pci_get_mac (vlib_main_t * vm, virtio_if_t * vif)
 {
-  if (vif->remote_features & VIRTIO_FEATURE (VIRTIO_NET_F_MAC))
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MAC))
     {
       virtio_pci_legacy_read_config (vm, vif, vif->mac_addr,
 				     sizeof (vif->mac_addr), 0);
@@ -288,7 +288,7 @@ virtio_pci_is_link_up (vlib_main_t * vm, virtio_if_t * vif)
    * Minimal driver: assumes link is up
    */
   u16 status = 1;
-  if (vif->remote_features & VIRTIO_FEATURE (VIRTIO_NET_F_STATUS))
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_STATUS))
     virtio_pci_legacy_read_config (vm, vif, &status, sizeof (status),	/* mac */
 				   6);
   return status;
@@ -462,7 +462,7 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx)
   virtio_vring_t *vring;
   struct vring vr;
   u32 i = 0;
-  void *ptr;
+  void *ptr = NULL;
 
   queue_size = virtio_pci_legacy_get_queue_num (vm, vif, idx);
   if (!virtio_pci_queue_size_valid (queue_size))
@@ -476,14 +476,26 @@ virtio_pci_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx)
 
   if (queue_size == 0)
     queue_size = 256;
-
-  vec_validate_aligned (vif->vrings, idx, CLIB_CACHE_LINE_BYTES);
-  vring = vec_elt_at_index (vif->vrings, idx);
-
+  if (idx % 2)
+    {
+      vec_validate_aligned (vif->txq_vrings, (idx / 2) + 1,
+			    CLIB_CACHE_LINE_BYTES);
+      vring = vec_elt_at_index (vif->txq_vrings, (idx / 2) + 1);
+    }
+  else
+    {
+      vec_validate_aligned (vif->rxq_vrings, (idx / 2),
+			    CLIB_CACHE_LINE_BYTES);
+      vring = vec_elt_at_index (vif->rxq_vrings, (idx / 2));
+    }
   i = vring_size (queue_size, VIRTIO_PCI_VRING_ALIGN);
   i = round_pow2 (i, VIRTIO_PCI_VRING_ALIGN);
-  ptr = vlib_physmem_alloc_aligned (vm, i, VIRTIO_PCI_VRING_ALIGN);
-  memset (ptr, 0, i);
+  ptr =
+    vlib_physmem_alloc_aligned_on_numa (vm, i, VIRTIO_PCI_VRING_ALIGN,
+					vif->numa_node);
+  if (!ptr)
+    return vlib_physmem_last_error (vm);
+  clib_memset (ptr, 0, i);
   vring_init (&vr, queue_size, ptr, VIRTIO_PCI_VRING_ALIGN);
   vring->desc = vr.desc;
   vring->avail = vr.avail;
@@ -531,6 +543,7 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
     | VIRTIO_FEATURE (VIRTIO_NET_F_MAC)
     | VIRTIO_FEATURE (VIRTIO_NET_F_MRG_RXBUF)
     | VIRTIO_FEATURE (VIRTIO_NET_F_STATUS)
+    | VIRTIO_FEATURE (VIRTIO_NET_F_MQ)
     | VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY)
     | VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT)
     | VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC);
@@ -542,8 +555,7 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
 
   vif->features = req_features & vif->remote_features & supported_features;
 
-  if (vif->
-      remote_features & vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MTU))
+  if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_MTU))
     {
       virtio_net_config_t config;
       virtio_pci_legacy_read_config (vm, vif, &config.mtu,
@@ -702,7 +714,7 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   u8 status = 0;
 
   if ((error = virtio_pci_read_caps (vm, vif)))
-    clib_error_return (error, "Device not supported");
+    clib_error_return (error, "Device is not supported");
 
   if (virtio_pci_reset_device (vm, vif) < 0)
     {
@@ -746,11 +758,16 @@ virtio_pci_device_init (vlib_main_t * vm, virtio_if_t * vif,
   if ((error = virtio_pci_get_max_virtqueue_pairs (vm, vif)))
     goto error;
 
-  if ((error = virtio_pci_vring_init (vm, vif, 0)))
-    goto error;
+  for (int i = 0; i < vif->max_queue_pairs; i++)
+    {
+      if ((error = virtio_pci_vring_init (vm, vif, i * 2)))
+	virtio_log_warning (vim, vif, "%s (%u) %s", "error in rxq-queue",
+			    i * 2, "initialization");
 
-  if ((error = virtio_pci_vring_init (vm, vif, 1)))
-    goto error;
+      if ((error = virtio_pci_vring_init (vm, vif, (i * 2) + 1)))
+	virtio_log_warning (vim, vif, "%s (%u) %s", "error in txq-queue",
+			    i * 2 + 1, "initialization");
+    }
 
   if (vif->msix_enabled == VIRTIO_MSIX_ENABLED)
     {
@@ -831,6 +848,7 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
     }
   vif->pci_dev_handle = h;
   vlib_pci_set_private_data (vm, h, vif->dev_instance);
+  vif->numa_node = vlib_pci_get_numa_node (vm, h);
 
   if ((error = vlib_pci_bus_master_enable (vm, h)))
     {
@@ -931,11 +949,15 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_input_node (vnm, vif->hw_if_index,
 				    virtio_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, 0, ~0);
-  virtio_vring_set_numa_node (vm, vif, 0);
-
-  vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, 0,
-				 VNET_HW_INTERFACE_RX_MODE_POLLING);
+  u32 i = 0;
+  vec_foreach_index (i, vif->rxq_vrings)
+  {
+    vnet_hw_interface_assign_rx_thread (vnm, vif->hw_if_index, i, ~0);
+    virtio_vring_set_numa_node (vm, vif, i);
+    /* Set default rx mode to POLLING */
+    vnet_hw_interface_set_rx_mode (vnm, vif->hw_if_index, i,
+				   VNET_HW_INTERFACE_RX_MODE_POLLING);
+  }
   if (virtio_pci_is_link_up (vm, vif) & VIRTIO_NET_S_LINK_UP)
     {
       vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
@@ -964,31 +986,48 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
 
   vlib_pci_intr_disable (vm, vif->pci_dev_handle);
 
-  virtio_pci_legacy_del_queue (vm, vif, 0);
-  virtio_pci_legacy_del_queue (vm, vif, 1);
+  for (i = 0; i < vif->max_queue_pairs; i++)
+    {
+      virtio_pci_legacy_del_queue (vm, vif, i * 2);
+      virtio_pci_legacy_del_queue (vm, vif, (i * 2) + 1);
+    }
 
   virtio_pci_legacy_reset (vm, vif);
 
   if (vif->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, vif->hw_if_index, 0);
-      vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, 0);
+      vec_foreach_index (i, vif->rxq_vrings)
+      {
+	vnet_hw_interface_unassign_rx_thread (vnm, vif->hw_if_index, i);
+      }
       ethernet_delete_interface (vnm, vif->hw_if_index);
     }
 
   vlib_pci_device_close (vm, vif->pci_dev_handle);
 
-  vec_foreach_index (i, vif->vrings)
+  vec_foreach_index (i, vif->rxq_vrings)
   {
-    virtio_vring_t *vring = vec_elt_at_index (vif->vrings, i);
+    virtio_vring_t *vring = vec_elt_at_index (vif->rxq_vrings, i);
     if (vring->kick_fd != -1)
       close (vring->kick_fd);
     if (vring->used)
       {
-	if ((i & 1) == 1)
-	  virtio_free_used_desc (vm, vring);
-	else
-	  virtio_free_rx_buffers (vm, vring);
+	virtio_free_rx_buffers (vm, vring);
+      }
+    vec_free (vring->buffers);
+    vec_free (vring->indirect_buffers);
+    vlib_physmem_free (vm, vring->desc);
+  }
+
+  vec_foreach_index (i, vif->txq_vrings)
+  {
+    virtio_vring_t *vring = vec_elt_at_index (vif->txq_vrings, i);
+    if (vring->kick_fd != -1)
+      close (vring->kick_fd);
+    if (vring->used)
+      {
+	virtio_free_used_desc (vm, vring);
       }
     if (vring->queue_id % 2)
       {
@@ -999,7 +1038,8 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
     vlib_physmem_free (vm, vring->desc);
   }
 
-  vec_free (vif->vrings);
+  vec_free (vif->rxq_vrings);
+  vec_free (vif->txq_vrings);
 
   if (vif->fd != -1)
     vif->fd = -1;
