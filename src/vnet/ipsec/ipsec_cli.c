@@ -922,12 +922,16 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "instance %u", &a.show_instance))
 	a.renumber = 1;
-      else if (unformat (line_input, "del"))
-	a.is_add = 0;
       else if (unformat (line_input, "udp-encap"))
 	a.udp_encap = 1;
+      else if (unformat (line_input, "use-esn"))
+	a.esn = 1;
+      else if (unformat (line_input, "use-anti-replay"))
+	a.anti_replay = 1;
       else if (unformat (line_input, "tx-table %u", &a.tx_table_id))
 	;
+      else if (unformat (line_input, "del"))
+	a.is_add = 0;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -971,7 +975,7 @@ done:
 VLIB_CLI_COMMAND (create_ipsec_tunnel_command, static) = {
   .path = "create ipsec tunnel",
   .short_help = "create ipsec tunnel local-ip <addr> local-spi <spi> "
-      "remote-ip <addr> remote-spi <spi> [instance <inst_num>] [udp-encap] "
+      "remote-ip <addr> remote-spi <spi> [instance <inst_num>] [udp-encap] [use-esn] [use-anti-replay] "
       "[tx-table <table-id>]",
   .function = create_ipsec_tunnel_command_fn,
 };
