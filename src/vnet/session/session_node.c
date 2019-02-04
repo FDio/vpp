@@ -45,7 +45,7 @@ session_mq_accepted_reply_handler (void *data)
 
   if (session_handle_is_local (mp->handle))
     {
-      ls = application_get_local_session_from_handle (mp->handle);
+      ls = app_worker_get_local_session_from_handle (mp->handle);
       if (!ls)
 	{
 	  clib_warning ("unknown local handle 0x%lx", mp->handle);
@@ -58,7 +58,7 @@ session_mq_accepted_reply_handler (void *data)
 			mp->context, mp->handle);
 	  return;
 	}
-      if (application_local_session_connect_notify (ls))
+      if (app_worker_local_session_connect_notify (ls))
 	return;
       ls->session_state = SESSION_STATE_READY;
     }
