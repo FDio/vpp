@@ -331,7 +331,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   struct rte_crypto_sym_xform auth_xform = { 0 };
   struct rte_crypto_sym_xform *xfs;
   struct rte_cryptodev_sym_session **s;
-  clib_error_t *erorr = 0;
+  clib_error_t *error = 0;
 
 
   sa = pool_elt_at_index (im->sad, sa_idx);
@@ -644,8 +644,8 @@ crypto_parse_capabilities (crypto_dev_t * dev,
 static clib_error_t *
 crypto_dev_conf (u8 dev, u16 n_qp, u8 numa)
 {
-  struct rte_cryptodev_config dev_conf;
-  struct rte_cryptodev_qp_conf qp_conf;
+  struct rte_cryptodev_config dev_conf = { 0 };
+  struct rte_cryptodev_qp_conf qp_conf = { 0 };
   i32 ret;
   u16 qp;
   char *error_str;
@@ -683,7 +683,7 @@ crypto_scan_devs (u32 n_mains)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   struct rte_cryptodev *cryptodev;
-  struct rte_cryptodev_info info;
+  struct rte_cryptodev_info info = { 0 };
   crypto_dev_t *dev;
   crypto_resource_t *res;
   clib_error_t *error;
