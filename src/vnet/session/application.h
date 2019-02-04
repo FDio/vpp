@@ -175,11 +175,6 @@ typedef struct app_main_
   application_t *app_pool;
 
   /**
-   * Pool of workers associated to apps
-   */
-  app_worker_t *workers;
-
-  /**
    * Hash table of apps by api client index
    */
   uword *app_by_api_client_index;
@@ -221,7 +216,8 @@ typedef struct _vnet_app_worker_add_del_args
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
 app_worker_t *app_worker_alloc (application_t * app);
-int app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk);
+int application_alloc_worker_and_init (application_t * app,
+				       app_worker_t ** wrk);
 app_worker_t *app_worker_get (u32 wrk_index);
 app_worker_t *app_worker_get_if_valid (u32 wrk_index);
 application_t *app_worker_get_app (u32 wrk_index);
@@ -229,6 +225,8 @@ int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
 int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
 			     u32 api_context);
+int app_worker_start_listen (app_worker_t * app_wrk, session_t * ls);
+int app_worker_stop_listen (app_worker_t * app_wrk, session_handle_t handle);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
@@ -250,6 +248,7 @@ int application_start_listen (application_t * app,
 			      session_handle_t * handle);
 int application_stop_listen (u32 app_index, u32 app_or_wrk,
 			     session_handle_t handle);
+int application_change_listener_owner (session_t * s, app_worker_t * app_wrk);
 
 application_t *application_alloc (void);
 int application_alloc_and_init (app_init_args_t * args);
