@@ -503,7 +503,7 @@ session_rx_request (http_session_t * hs)
   int n_read;
 
   cursize = vec_len (hs->rx_buf);
-  max_dequeue = svm_fifo_max_dequeue (hs->rx_fifo);
+  max_dequeue = svm_fifo_max_dequeue_cons (hs->rx_fifo);
   if (PREDICT_FALSE (max_dequeue == 0))
     return -1;
 
@@ -511,7 +511,7 @@ session_rx_request (http_session_t * hs)
   n_read = app_recv_stream_raw (hs->rx_fifo, hs->rx_buf + cursize,
 				max_dequeue, 0, 0 /* peek */ );
   ASSERT (n_read == max_dequeue);
-  if (svm_fifo_is_empty (hs->rx_fifo))
+  if (svm_fifo_is_empty_cons (hs->rx_fifo))
     svm_fifo_unset_event (hs->rx_fifo);
 
   _vec_len (hs->rx_buf) = cursize + n_read;

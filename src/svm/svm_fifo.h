@@ -1,5 +1,9 @@
 /*
  * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2019 Arm Limited
+ * Copyright (c) 2010-2017 Intel Corporation and/or its affiliates.
+ * Copyright (c) 2007-2009 Kip Macy kmacy@freebsd.org
+ * Inspired from DPDK rte_ring.h (SPSC only) (derived from freebsd bufring.h).
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -59,8 +63,9 @@ typedef struct
 typedef struct _svm_fifo
 {
   CLIB_CACHE_LINE_ALIGN_MARK (shared_first);
-  volatile u32 cursize;		/**< current fifo size */
-  u32 nitems;
+  u32 size;			/**< size of the fifo(must be power of 2) */
+  u32 mask;			/**< mask(size-1) used for % ops using & */
+  u32 nitems;			/**< usable size(size-1) */
 
     CLIB_CACHE_LINE_ALIGN_MARK (shared_second);
   volatile u32 has_event;	/**< non-zero if deq event exists */
@@ -125,28 +130,141 @@ typedef struct svm_fifo_segment_
 u8 *svm_fifo_dump_trace (u8 * s, svm_fifo_t * f);
 u8 *svm_fifo_replay (u8 * s, svm_fifo_t * f, u8 no_read, u8 verbose);
 
+/* internal function */
+static inline void
+f_load_head_tail_cons (svm_fifo_t * f, u32 * head, u32 * tail)
+{
+  /* load-relaxed: consumer owned index */
+  *head = f->head;
+  /* load-acq: consumer foreign index (paired with store-rel in producer) */
+  *tail = clib_atomic_load_acq_n (&f->tail);
+}
+
+/* internal function */
+static inline void
+f_load_head_tail_prod (svm_fifo_t * f, u32 * head, u32 * tail)
+{
+  /* load relaxed: producer owned index */
+  *tail = f->tail;
+  /* load-acq: producer foreign index (paired with store-rel in consumer) */
+  *head = clib_atomic_load_acq_n (&f->head);
+}
+
+/* producer consumer role independent */
+/* internal function */
+static inline void
+f_load_head_tail_all_acq (svm_fifo_t * f, u32 * head, u32 * tail)
+{
+  /* load-acq : consumer foreign index (paired with store-rel) */
+  *tail = clib_atomic_load_acq_n (&f->tail);
+  /* load-acq : producer foriegn index (paired with store-rel) */
+  *head = clib_atomic_load_acq_n (&f->head);
+}
+
+/* internal function */
+static inline u32
+f_free_count (svm_fifo_t * f, u32 head, u32 tail)
+{
+  return (f->nitems + head - tail);
+}
+
+/* internal function */
+static inline u32
+f_cursize (svm_fifo_t * f, u32 head, u32 tail)
+{
+  return (f->nitems - f_free_count (f, head, tail));
+}
+
+/* used by consumer */
+static inline u32
+svm_fifo_max_dequeue_cons (svm_fifo_t * f)
+{
+  u32 tail, head;
+  f_load_head_tail_cons (f, &head, &tail);
+  return f_cursize (f, head, tail);
+}
+
+/* used by producer*/
+static inline u32
+svm_fifo_max_dequeue_prod (svm_fifo_t * f)
+{
+  u32 tail, head;
+  f_load_head_tail_prod (f, &head, &tail);
+  return f_cursize (f, head, tail);
+}
+
+/* use producer or consumer specific functions for perfomance.
+ * svm_fifo_max_dequeue_cons (svm_fifo_t *f)
+ * svm_fifo_max_dequeue_prod (svm_fifo_t *f)
+ */
 static inline u32
 svm_fifo_max_dequeue (svm_fifo_t * f)
 {
-  return clib_atomic_load_acq_n (&f->cursize);
+  u32 tail, head;
+  f_load_head_tail_all_acq (f, &head, &tail);
+  return f_cursize (f, head, tail);
 }
 
+/* used by producer */
+static inline int
+svm_fifo_is_full_prod (svm_fifo_t * f)
+{
+  return (svm_fifo_max_dequeue_prod (f) == f->nitems);
+}
+
+/* use producer or consumer specific functions for perfomance.
+ * svm_fifo_is_full_prod (svm_fifo_t * f)
+ * add cons version if needed
+ */
 static inline int
 svm_fifo_is_full (svm_fifo_t * f)
 {
-  return (clib_atomic_load_acq_n (&f->cursize) == f->nitems);
+  return (svm_fifo_max_dequeue (f) == f->nitems);
 }
 
+/* used by consumer */
+static inline int
+svm_fifo_is_empty_cons (svm_fifo_t * f)
+{
+  return (svm_fifo_max_dequeue_cons (f) == 0);
+}
+
+/* used by producer */
+static inline int
+svm_fifo_is_empty_prod (svm_fifo_t * f)
+{
+  return (svm_fifo_max_dequeue_prod (f) == 0);
+}
+
+/* use producer or consumer specific functions for perfomance.
+ * svm_fifo_is_empty_cons (svm_fifo_t * f)
+ * svm_fifo_is_empty_prod (svm_fifo_t * f)
+ */
 static inline int
 svm_fifo_is_empty (svm_fifo_t * f)
 {
-  return (clib_atomic_load_acq_n (&f->cursize) == 0);
+  return (svm_fifo_max_dequeue (f) == 0);
 }
 
+/* used by producer*/
+static inline u32
+svm_fifo_max_enqueue_prod (svm_fifo_t * f)
+{
+  u32 head, tail;
+  f_load_head_tail_prod (f, &head, &tail);
+  return f_free_count (f, head, tail);
+}
+
+/* use producer or consumer specfic functions for perfomance.
+ * svm_fifo_max_enqueue_prod (svm_fifo_t *f)
+ * add consumer specific version if needed.
+ */
 static inline u32
 svm_fifo_max_enqueue (svm_fifo_t * f)
 {
-  return f->nitems - svm_fifo_max_dequeue (f);
+  u32 head, tail;
+  f_load_head_tail_all_acq (f, &head, &tail);
+  return f_free_count (f, head, tail);
 }
 
 static inline int
@@ -164,7 +282,7 @@ svm_fifo_has_ooo_data (svm_fifo_t * f)
 /**
  * Sets fifo event flag.
  *
- * Also acts as a release barrier.
+ * Also acts as a release ordering.
  *
  * @return 1 if flag was not set.
  */
@@ -202,6 +320,7 @@ void svm_fifo_dequeue_drop_all (svm_fifo_t * f);
 int svm_fifo_segments (svm_fifo_t * f, svm_fifo_segment_t * fs);
 void svm_fifo_segments_free (svm_fifo_t * f, svm_fifo_segment_t * fs);
 void svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer);
+void svm_fifo_clone (svm_fifo_t * df, svm_fifo_t * sf);
 void svm_fifo_overwrite_head (svm_fifo_t * f, u8 * data, u32 len);
 void svm_fifo_add_subscriber (svm_fifo_t * f, u8 subscriber);
 void svm_fifo_del_subscriber (svm_fifo_t * f, u8 subscriber);
@@ -213,7 +332,12 @@ format_function_t format_svm_fifo;
 always_inline u32
 svm_fifo_max_read_chunk (svm_fifo_t * f)
 {
-  return ((f->tail > f->head) ? (f->tail - f->head) : (f->nitems - f->head));
+  u32 head, tail;
+  u32 head_idx, tail_idx;
+  f_load_head_tail_cons (f, &head, &tail);
+  head_idx = head & f->mask;
+  tail_idx = tail & f->mask;
+  return tail_idx > head_idx ? (tail_idx - head_idx) : (f->size - head_idx);
 }
 
 /**
@@ -222,7 +346,12 @@ svm_fifo_max_read_chunk (svm_fifo_t * f)
 always_inline u32
 svm_fifo_max_write_chunk (svm_fifo_t * f)
 {
-  return ((f->tail >= f->head) ? (f->nitems - f->tail) : (f->head - f->tail));
+  u32 head, tail;
+  u32 head_idx, tail_idx;
+  f_load_head_tail_prod (f, &head, &tail);
+  head_idx = head & f->mask;
+  tail_idx = tail & f->mask;
+  return tail_idx >= head_idx ? (f->size - tail_idx) : (head_idx - tail_idx);
 }
 
 /**
@@ -233,27 +362,26 @@ svm_fifo_max_write_chunk (svm_fifo_t * f)
 always_inline void
 svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 bytes)
 {
-  ASSERT (bytes <= svm_fifo_max_enqueue (f));
-  f->tail = (f->tail + bytes) % f->nitems;
-  clib_atomic_fetch_add_rel (&f->cursize, bytes);
+  ASSERT (bytes <= svm_fifo_max_enqueue_prod (f));
+  /* load-relaxed: producer owned index */
+  u32 tail = f->tail;
+  tail += bytes;
+  /* store-rel: producer owned index (paired with load-acq in consumer) */
+  clib_atomic_store_rel_n (&f->tail, tail);
 }
 
 always_inline u8 *
 svm_fifo_head (svm_fifo_t * f)
 {
-  return (f->data + f->head);
+  /* load-relaxed: consumer owned index */
+  return (f->data + (f->head & f->mask));
 }
 
 always_inline u8 *
 svm_fifo_tail (svm_fifo_t * f)
 {
-  return (f->data + f->tail);
-}
-
-always_inline u32
-svm_fifo_nitems (svm_fifo_t * f)
-{
-  return f->nitems;
+  /* load-relaxed: producer owned index */
+  return (f->data + (f->tail & f->mask));
 }
 
 static inline void
@@ -293,8 +421,8 @@ svm_fifo_needs_tx_ntf (svm_fifo_t * f, u32 n_last_deq)
     return 1;
   else if (want_ntf & SVM_FIFO_WANT_TX_NOTIF_IF_FULL)
     {
-      u32 max_deq = svm_fifo_max_dequeue (f);
-      u32 nitems = svm_fifo_nitems (f);
+      u32 max_deq = svm_fifo_max_dequeue_cons (f);
+      u32 nitems = f->nitems;
       if (!f->has_tx_ntf && max_deq < nitems
 	  && max_deq + n_last_deq >= nitems)
 	return 1;
@@ -328,31 +456,25 @@ svm_fifo_newest_ooo_segment_reset (svm_fifo_t * f)
 }
 
 always_inline u32
-ooo_segment_distance_from_tail (svm_fifo_t * f, u32 pos)
+ooo_segment_distance_from_tail (svm_fifo_t * f, u32 pos, u32 tail)
 {
-  /* Ambiguous. Assumption is that ooo segments don't touch tail */
-  if (PREDICT_FALSE (pos == f->tail && f->tail == f->head))
-    return f->nitems;
-
-  return (((f->nitems + pos) - f->tail) % f->nitems);
+  return ((pos - tail) & f->mask);
 }
 
 always_inline u32
-ooo_segment_distance_to_tail (svm_fifo_t * f, u32 pos)
+ooo_segment_distance_to_tail (svm_fifo_t * f, u32 pos, u32 tail)
 {
-  return (((f->nitems + f->tail) - pos) % f->nitems);
+  return ((tail - pos) & f->mask);
 }
 
 always_inline u32
-ooo_segment_offset (svm_fifo_t * f, ooo_segment_t * s)
+ooo_segment_offset_prod (svm_fifo_t * f, ooo_segment_t * s)
 {
-  return ooo_segment_distance_from_tail (f, s->start);
-}
+  u32 tail;
+  /* load-relaxed: producer owned index */
+  tail = f->tail;
 
-always_inline u32
-ooo_segment_end_offset (svm_fifo_t * f, ooo_segment_t * s)
-{
-  return ooo_segment_distance_from_tail (f, s->start) + s->length;
+  return ooo_segment_distance_from_tail (f, s->start, tail);
 }
 
 always_inline u32

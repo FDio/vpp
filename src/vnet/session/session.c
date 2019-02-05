@@ -411,7 +411,7 @@ session_enqueue_dgram_connection (session_t * s,
 {
   int enqueued = 0, rv, in_order_off;
 
-  ASSERT (svm_fifo_max_enqueue (s->rx_fifo)
+  ASSERT (svm_fifo_max_enqueue_prod (s->rx_fifo)
 	  >= b->current_length + sizeof (*hdr));
 
   svm_fifo_enqueue_nowait (s->rx_fifo, sizeof (session_dgram_hdr_t),
@@ -503,7 +503,7 @@ session_enqueue_notify_inline (session_t * s)
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
       ed->data[0] = SESSION_IO_EVT_RX;
-      ed->data[1] = svm_fifo_max_dequeue (s->rx_fifo);
+      ed->data[1] = svm_fifo_max_dequeue_prod (s->rx_fifo);
   }));
   /* *INDENT-ON* */
 
@@ -1107,7 +1107,7 @@ session_transport_close (session_t * s)
    * point, either after sending everything or after a timeout, call delete
    * notify. This will finally lead to the complete cleanup of the session.
    */
-  if (svm_fifo_max_dequeue (s->tx_fifo))
+  if (svm_fifo_max_dequeue_cons (s->tx_fifo))
     s->session_state = SESSION_STATE_CLOSED_WAITING;
   else
     s->session_state = SESSION_STATE_CLOSED;
