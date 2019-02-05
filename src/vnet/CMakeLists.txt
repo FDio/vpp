@@ -1054,7 +1054,7 @@ list(APPEND VNET_HEADERS
   session/session_lookup.h
   session/application.h
   session/transport.h
-  session/transport_interface.h
+  session/transport_types.h
   session/application_interface.h
   session/application_namespace.h
   session/session_debug.h
