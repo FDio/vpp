@@ -139,7 +139,7 @@ int
 echo_server_builtin_server_rx_callback_no_echo (session_t * s)
 {
   svm_fifo_t *rx_fifo = s->rx_fifo;
-  svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue (rx_fifo));
+  svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue_cons (rx_fifo));
   return 0;
 }
 
@@ -161,10 +161,10 @@ echo_server_rx_callback (session_t * s)
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);
 
-  max_enqueue = svm_fifo_max_enqueue (tx_fifo);
+  max_enqueue = svm_fifo_max_enqueue_prod (tx_fifo);
   if (!esm->is_dgram)
     {
-      max_dequeue = svm_fifo_max_dequeue (rx_fifo);
+      max_dequeue = svm_fifo_max_dequeue_cons (rx_fifo);
     }
   else
     {
@@ -255,7 +255,7 @@ echo_server_rx_callback (session_t * s)
   if (n_written != max_transfer)
     clib_warning ("short trout! written %u read %u", n_written, max_transfer);
 
-  if (PREDICT_FALSE (svm_fifo_max_dequeue (rx_fifo)))
+  if (PREDICT_FALSE (svm_fifo_max_dequeue_cons (rx_fifo)))
     goto rx_event;
 
   return 0;

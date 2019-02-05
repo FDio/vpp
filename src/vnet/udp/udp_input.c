@@ -229,7 +229,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (!uc0->is_connected)
 	    {
-	      if (svm_fifo_max_enqueue (s0->rx_fifo)
+	      if (svm_fifo_max_enqueue_prod (s0->rx_fifo)
 		  < b0->current_length + sizeof (session_dgram_hdr_t))
 		{
 		  error0 = UDP_ERROR_FIFO_FULL;
@@ -255,7 +255,8 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (svm_fifo_max_enqueue (s0->rx_fifo) < b0->current_length)
+	      if (svm_fifo_max_enqueue_prod (s0->rx_fifo) <
+		  b0->current_length)
 		{
 		  error0 = UDP_ERROR_FIFO_FULL;
 		  goto trace0;
