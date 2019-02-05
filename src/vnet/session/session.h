@@ -17,15 +17,11 @@
 
 #include <vnet/session/session_types.h>
 #include <vnet/session/session_lookup.h>
-#include <vnet/session/transport_interface.h>
 #include <vnet/session/session_debug.h>
 #include <vnet/session/segment_manager.h>
 #include <svm/message_queue.h>
 
 #define SESSION_PROXY_LISTENER_INDEX ((u8)~0 - 1)
-
-/* TODO decide how much since we have pre-data as well */
-#define MAX_HDRS_LEN    100	/* Max number of bytes for headers */
 
 typedef enum
 {
