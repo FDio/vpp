@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "33f449ce_64941903",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-02-05T10:21:06Z",
+      "side": 1,
+      "message": "A suggestion:\nthis is mutually exclusive to the clause above, so \u0027else if\u0027.\nthen a final else clause could do ipsec_processed--, on a value set to the frame size at the start.",
+      "revId": "796e279e3b313ab5e09497eea1f2a318a57f8594",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
