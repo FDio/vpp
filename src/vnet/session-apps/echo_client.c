@@ -60,7 +60,7 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
       if (ecm->no_copy)
 	{
 	  svm_fifo_t *f = s->data.tx_fifo;
-	  rv = clib_min (svm_fifo_max_enqueue (f), bytes_this_chunk);
+	  rv = clib_min (svm_fifo_max_enqueue_prod (f), bytes_this_chunk);
 	  svm_fifo_enqueue_nocopy (f, rv);
 	  session_send_io_evt_to_thread_custom (&f->master_session_index,
 						s->thread_index,
@@ -77,7 +77,7 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  session_dgram_hdr_t hdr;
 	  svm_fifo_t *f = s->data.tx_fifo;
 	  app_session_transport_t *at = &s->data.transport;
-	  u32 max_enqueue = svm_fifo_max_enqueue (f);
+	  u32 max_enqueue = svm_fifo_max_enqueue_prod (f);
 
 	  if (max_enqueue <= sizeof (session_dgram_hdr_t))
 	    return;
@@ -151,7 +151,7 @@ receive_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
     }
   else
     {
-      n_read = svm_fifo_max_dequeue (rx_fifo);
+      n_read = svm_fifo_max_dequeue_cons (rx_fifo);
       svm_fifo_dequeue_drop (rx_fifo, n_read);
     }
 
@@ -480,7 +480,7 @@ echo_clients_rx_callback (session_t * s)
   sp = pool_elt_at_index (ecm->sessions, s->rx_fifo->client_session_index);
   receive_data_chunk (ecm, sp);
 
-  if (svm_fifo_max_dequeue (s->rx_fifo))
+  if (svm_fifo_max_dequeue_cons (s->rx_fifo))
     {
       if (svm_fifo_set_event (s->rx_fifo))
 	session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);

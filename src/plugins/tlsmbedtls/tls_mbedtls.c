@@ -443,12 +443,12 @@ mbedtls_ctx_write (tls_ctx_t * ctx, session_t * app_session)
 
   ASSERT (mc->ssl.state == MBEDTLS_SSL_HANDSHAKE_OVER);
 
-  deq_max = svm_fifo_max_dequeue (app_session->tx_fifo);
+  deq_max = svm_fifo_max_dequeue_cons (app_session->tx_fifo);
   if (!deq_max)
     return 0;
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
-  enq_max = svm_fifo_max_enqueue (tls_session->tx_fifo);
+  enq_max = svm_fifo_max_enqueue_prod (tls_session->tx_fifo);
   deq_now = clib_min (deq_max, TLS_CHUNK_SIZE);
 
   if (PREDICT_FALSE (enq_max == 0))
@@ -493,12 +493,12 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
       return 0;
     }
 
-  deq_max = svm_fifo_max_dequeue (tls_session->rx_fifo);
+  deq_max = svm_fifo_max_dequeue_cons (tls_session->rx_fifo);
   if (!deq_max)
     return 0;
 
   app_session = session_get_from_handle (ctx->app_session_handle);
-  enq_max = svm_fifo_max_enqueue (app_session->rx_fifo);
+  enq_max = svm_fifo_max_enqueue_prod (app_session->rx_fifo);
   enq_now = clib_min (enq_max, TLS_CHUNK_SIZE);
 
   if (PREDICT_FALSE (enq_now == 0))
@@ -520,7 +520,7 @@ mbedtls_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
   ASSERT (enq == read);
   vec_reset_length (mm->rx_bufs[thread_index]);
 
-  if (svm_fifo_max_dequeue (tls_session->rx_fifo))
+  if (svm_fifo_max_dequeue_cons (tls_session->rx_fifo))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
   if (enq > 0)

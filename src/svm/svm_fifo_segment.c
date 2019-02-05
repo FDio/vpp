@@ -385,7 +385,13 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * fs,
 	  fsh->free_fifos[freelist_index] = f->next;
 	  /* (re)initialize the fifo, as in svm_fifo_create */
 	  clib_memset (f, 0, sizeof (*f));
-	  f->nitems = data_size_in_bytes;
+	  f->size = (1 << (max_log2 (data_size_in_bytes)));
+	  f->mask = f->size - 1;
+	  /*
+	   * usable size of the fifo set to rounded_data_size - 1
+	   * to differentiate between free fifo and empty fifo.
+	   */
+	  f->nitems = f->mask;
 	  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
 	  f->ct_session_index = SVM_FIFO_INVALID_SESSION_INDEX;
 	  f->refcnt = 1;
