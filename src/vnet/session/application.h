@@ -316,50 +316,6 @@ int app_worker_local_session_disconnect_w_index (u32 app_or_wrk,
 void app_worker_format_local_sessions (app_worker_t * app_wrk, int verbose);
 void app_worker_format_local_connects (app_worker_t * app, int verbose);
 
-always_inline u32
-local_session_id (local_session_t * ls)
-{
-  ASSERT (ls->session_index < (2 << 16));
-  u32 app_or_wrk_index;
-
-  if (ls->session_state == SESSION_STATE_LISTENING)
-    {
-      ASSERT (ls->app_index < (2 << 16));
-      app_or_wrk_index = ls->app_index;
-    }
-  else
-    {
-      ASSERT (ls->app_wrk_index < (2 << 16));
-      app_or_wrk_index = ls->app_wrk_index;
-    }
-
-  return ((u32) app_or_wrk_index << 16 | (u32) ls->session_index);
-}
-
-always_inline void
-local_session_parse_id (u32 ls_id, u32 * app_or_wrk, u32 * session_index)
-{
-  *app_or_wrk = ls_id >> 16;
-  *session_index = ls_id & 0xFF;
-}
-
-always_inline void
-local_session_parse_handle (session_handle_t handle, u32 * app_or_wrk_index,
-			    u32 * session_index)
-{
-  u32 bottom;
-  ASSERT ((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX);
-  bottom = (handle & 0xFFFFFFFF);
-  local_session_parse_id (bottom, app_or_wrk_index, session_index);
-}
-
-always_inline session_handle_t
-application_local_session_handle (local_session_t * ls)
-{
-  return ((u64) SESSION_LOCAL_HANDLE_PREFIX << 32)
-    | (u64) local_session_id (ls);
-}
-
 always_inline local_session_t *
 application_get_local_listen_session (application_t * app, u32 session_index)
 {

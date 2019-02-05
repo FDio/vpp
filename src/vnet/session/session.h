@@ -23,7 +23,6 @@
 #include <svm/message_queue.h>
 
 #define SESSION_PROXY_LISTENER_INDEX ((u8)~0 - 1)
-#define SESSION_LOCAL_HANDLE_PREFIX 0x7FFFFFFF
 
 /* TODO decide how much since we have pre-data as well */
 #define MAX_HDRS_LEN    100	/* Max number of bytes for headers */
@@ -105,8 +104,6 @@ typedef struct
   void *fp;
   void *arg;
 } session_rpc_args_t;
-
-typedef u64 session_handle_t;
 
 /* *INDENT-OFF* */
 typedef struct
@@ -358,32 +355,6 @@ session_get_if_valid (u64 si, u32 thread_index)
 			    si);
 }
 
-always_inline session_handle_t
-session_handle (session_t * s)
-{
-  return ((u64) s->thread_index << 32) | (u64) s->session_index;
-}
-
-always_inline u32
-session_index_from_handle (session_handle_t handle)
-{
-  return handle & 0xFFFFFFFF;
-}
-
-always_inline u32
-session_thread_from_handle (session_handle_t handle)
-{
-  return handle >> 32;
-}
-
-always_inline void
-session_parse_handle (session_handle_t handle, u32 * index,
-		      u32 * thread_index)
-{
-  *index = session_index_from_handle (handle);
-  *thread_index = session_thread_from_handle (handle);
-}
-
 always_inline session_t *
 session_get_from_handle (session_handle_t handle)
 {
@@ -401,45 +372,6 @@ session_get_from_handle_if_valid (session_handle_t handle)
   return session_get_if_valid (session_index, thread_index);
 }
 
-always_inline u8
-session_handle_is_local (session_handle_t handle)
-{
-  if ((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX)
-    return 1;
-  return 0;
-}
-
-always_inline transport_proto_t
-session_type_transport_proto (session_type_t st)
-{
-  return (st >> 1);
-}
-
-always_inline u8
-session_type_is_ip4 (session_type_t st)
-{
-  return (st & 1);
-}
-
-always_inline transport_proto_t
-session_get_transport_proto (session_t * s)
-{
-  return (s->session_type >> 1);
-}
-
-always_inline fib_protocol_t
-session_get_fib_proto (session_t * s)
-{
-  u8 is_ip4 = s->session_type & 1;
-  return (is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
-}
-
-always_inline session_type_t
-session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
-{
-  return (proto << 1 | is_ip4);
-}
-
 always_inline u64
 session_segment_handle (session_t * s)
 {
@@ -452,16 +384,6 @@ session_segment_handle (session_t * s)
   return segment_manager_make_segment_handle (f->segment_manager,
 					      f->segment_index);
 }
-
-always_inline u8
-session_has_transport (session_t * s)
-{
-  return (session_get_transport_proto (s) != TRANSPORT_PROTO_NONE);
-}
-
-transport_service_type_t session_transport_service_type (session_t *);
-transport_tx_fn_type_t session_transport_tx_fn_type (session_t *);
-u8 session_tx_is_dgram (session_t * s);
 
 /**
  * Acquires a lock that blocks a session pool from expanding.
