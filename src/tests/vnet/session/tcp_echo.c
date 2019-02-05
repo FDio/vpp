@@ -507,7 +507,7 @@ recv_data_chunk (echo_main_t * em, echo_session_t * s, u8 * rx_buf)
 {
   int n_to_read, n_read;
 
-  n_to_read = svm_fifo_max_dequeue (s->rx_fifo);
+  n_to_read = svm_fifo_max_dequeue_cons (s->rx_fifo);
   if (!n_to_read)
     return;
 
@@ -1063,7 +1063,7 @@ server_handle_rx (echo_main_t * em, session_event_t * e)
    * message queue */
   svm_fifo_unset_event (s->rx_fifo);
 
-  max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
+  max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
   if (PREDICT_FALSE (!max_dequeue))
     return;
 

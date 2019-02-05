@@ -346,9 +346,9 @@ vcl_session_read_ready (vcl_session_t * session)
     return clib_fifo_elts (session->accept_evts_fifo);
 
   if (vcl_session_is_ct (session))
-    return svm_fifo_max_dequeue (session->ct_rx_fifo);
+    return svm_fifo_max_dequeue_cons (session->ct_rx_fifo);
 
-  return svm_fifo_max_dequeue (session->rx_fifo);
+  return svm_fifo_max_dequeue_cons (session->rx_fifo);
 }
 
 int
@@ -365,7 +365,7 @@ vcl_session_write_ready (vcl_session_t * session)
   if (PREDICT_FALSE (session->session_state & STATE_LISTEN))
     {
       if (session->tx_fifo)
-	return svm_fifo_max_enqueue (session->tx_fifo);
+	return svm_fifo_max_enqueue_prod (session->tx_fifo);
       else
 	return VPPCOM_EBADFD;
     }
@@ -383,9 +383,9 @@ vcl_session_write_ready (vcl_session_t * session)
     }
 
   if (vcl_session_is_ct (session))
-    return svm_fifo_max_enqueue (session->ct_tx_fifo);
+    return svm_fifo_max_enqueue_prod (session->ct_tx_fifo);
 
-  return svm_fifo_max_enqueue (session->tx_fifo);
+  return svm_fifo_max_enqueue_prod (session->tx_fifo);
 }
 
 /*
