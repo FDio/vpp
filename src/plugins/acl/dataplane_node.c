@@ -452,26 +452,19 @@ process_established_session (vlib_main_t * vm, acl_main_t * am,
 #define ACL_PLUGIN_VECTOR_SIZE 4
 #define ACL_PLUGIN_PREFETCH_GAP 3
 
-always_inline uword
-acl_fa_inner_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame,
-		      int is_ip6, int is_input, int is_l2_path,
-		      int with_stateful_datapath, int node_trace_on,
-		      int reclassify_sessions)
+always_inline void
+acl_fa_node_common_prepare_fn (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame, int is_ip6, int is_input,
+			       int is_l2_path, int with_stateful_datapath)
+	/* , int node_trace_on,
+	   int reclassify_sessions) */
 {
   u32 n_left, *from;
-  u32 pkts_exist_session = 0;
-  u32 pkts_new_session = 0;
-  u32 pkts_acl_permit = 0;
-  u32 trace_bitmap = 0;
   acl_main_t *am = &acl_main;
-  vlib_node_runtime_t *error_node;
-  vlib_error_t no_error_existing_session;
-  u64 now = clib_cpu_time_now ();
   uword thread_index = os_get_thread_index ();
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
-  u16 *next;
   vlib_buffer_t **b;
   u32 *sw_if_index;
   fa_5tuple_t *fa_5tuple;
@@ -480,15 +473,10 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
 
 
   from = vlib_frame_vector_args (frame);
-  error_node = vlib_node_get_runtime (vm, node->node_index);
-  no_error_existing_session =
-    error_node->errors[ACL_FA_ERROR_ACL_EXIST_SESSION];
-
   vlib_get_buffers (vm, from, pw->bufs, frame->n_vectors);
 
   /* set the initial values for the current buffer the next pointers */
   b = pw->bufs;
-  next = pw->nexts;
   sw_if_index = pw->sw_if_indices;
   fa_5tuple = pw->fa_5tuples;
   hash = pw->hashes;
@@ -550,6 +538,38 @@ acl_fa_inner_node_fn (vlib_main_t * vm,
       sw_if_index += vec_sz;
       hash += vec_sz;
     }
+}
+
+
+always_inline uword
+acl_fa_inner_node_fn (vlib_main_t * vm,
+		      vlib_node_runtime_t * node, vlib_frame_t * frame,
+		      int is_ip6, int is_input, int is_l2_path,
+		      int with_stateful_datapath, int node_trace_on,
+		      int reclassify_sessions)
+{
+  u32 n_left, *from;
+  u32 pkts_exist_session = 0;
+  u32 pkts_new_session = 0;
+  u32 pkts_acl_permit = 0;
+  u32 trace_bitmap = 0;
+  acl_main_t *am = &acl_main;
+  vlib_node_runtime_t *error_node;
+  vlib_error_t no_error_existing_session;
+  u64 now = clib_cpu_time_now ();
+  uword thread_index = os_get_thread_index ();
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
+
+  u16 *next;
+  vlib_buffer_t **b;
+  u32 *sw_if_index;
+  fa_5tuple_t *fa_5tuple;
+  u64 *hash;
+
+  from = vlib_frame_vector_args (frame);
+  error_node = vlib_node_get_runtime (vm, node->node_index);
+  no_error_existing_session =
+    error_node->errors[ACL_FA_ERROR_ACL_EXIST_SESSION];
 
   b = pw->bufs;
   next = pw->nexts;
@@ -775,33 +795,35 @@ always_inline uword
 acl_fa_outer_node_fn (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame,
 		      int is_ip6, int is_input, int is_l2_path,
-		      int do_reclassify)
+		      int do_stateful_datapath)
 {
   acl_main_t *am = &acl_main;
 
-  if (am->fa_sessions_hash_is_initialized)
+  acl_fa_node_common_prepare_fn (vm, node, frame, is_ip6, is_input,
+				 is_l2_path, do_stateful_datapath);
+
+  if (am->reclassify_sessions)
     {
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, 1 /* stateful */ ,
+				     is_l2_path, do_stateful_datapath,
 				     1 /* trace */ ,
-				     do_reclassify);
+				     1 /* reclassify */ );
       else
 	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, 1 /* stateful */ , 0,
-				     do_reclassify);
+				     is_l2_path, do_stateful_datapath, 0,
+				     1 /* reclassify */ );
     }
   else
     {
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, 0 /* no state */ ,
+				     is_l2_path, do_stateful_datapath,
 				     1 /* trace */ ,
-				     do_reclassify);
+				     0);
       else
 	return acl_fa_inner_node_fn (vm, node, frame, is_ip6, is_input,
-				     is_l2_path, 0 /* no state */ , 0,
-				     do_reclassify);
+				     is_l2_path, do_stateful_datapath, 0, 0);
     }
 }
 
@@ -813,7 +835,7 @@ acl_fa_node_fn (vlib_main_t * vm,
   /* select the reclassify/no-reclassify version of the datapath */
   acl_main_t *am = &acl_main;
 
-  if (am->reclassify_sessions)
+  if (am->fa_sessions_hash_is_initialized)
     return acl_fa_outer_node_fn (vm, node, frame, is_ip6, is_input,
 				 is_l2_path, 1);
   else
@@ -821,63 +843,6 @@ acl_fa_node_fn (vlib_main_t * vm,
 				 is_l2_path, 0);
 }
 
-VLIB_NODE_FN (acl_in_l2_ip6_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 1, 1, 1);
-}
-
-VLIB_NODE_FN (acl_in_l2_ip4_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 0, 1, 1);
-}
-
-VLIB_NODE_FN (acl_out_l2_ip6_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 1, 0, 1);
-}
-
-VLIB_NODE_FN (acl_out_l2_ip4_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 0, 0, 1);
-}
-
-/**** L3 processing path nodes ****/
-
-VLIB_NODE_FN (acl_in_fa_ip6_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 1, 1, 0);
-}
-
-VLIB_NODE_FN (acl_in_fa_ip4_node) (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 0, 1, 0);
-}
-
-VLIB_NODE_FN (acl_out_fa_ip6_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 1, 0, 0);
-}
-
-VLIB_NODE_FN (acl_out_fa_ip4_node) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
-{
-  return acl_fa_node_fn (vm, node, frame, 0, 0, 0);
-}
 
 static u8 *
 format_fa_5tuple (u8 * s, va_list * args)
@@ -954,6 +919,64 @@ static char *acl_fa_error_strings[] = {
   foreach_acl_fa_error
 #undef _
 };
+
+VLIB_NODE_FN (acl_in_l2_ip6_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 1, 1, 1);
+}
+
+VLIB_NODE_FN (acl_in_l2_ip4_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 0, 1, 1);
+}
+
+VLIB_NODE_FN (acl_out_l2_ip6_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 1, 0, 1);
+}
+
+VLIB_NODE_FN (acl_out_l2_ip4_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 0, 0, 1);
+}
+
+/**** L3 processing path nodes ****/
+
+VLIB_NODE_FN (acl_in_fa_ip6_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 1, 1, 0);
+}
+
+VLIB_NODE_FN (acl_in_fa_ip4_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 0, 1, 0);
+}
+
+VLIB_NODE_FN (acl_out_fa_ip6_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 1, 0, 0);
+}
+
+VLIB_NODE_FN (acl_out_fa_ip4_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
+{
+  return acl_fa_node_fn (vm, node, frame, 0, 0, 0);
+}
 
 VLIB_REGISTER_NODE (acl_in_l2_ip6_node) =
 {
