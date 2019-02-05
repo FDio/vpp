@@ -112,7 +112,7 @@ openssl_try_handshake_read (openssl_ctx_t * oc, session_t * tls_session)
   int wrote, rv;
 
   f = tls_session->rx_fifo;
-  deq_max = svm_fifo_max_dequeue (f);
+  deq_max = svm_fifo_max_dequeue_cons (f);
   if (!deq_max)
     return 0;
 
@@ -146,7 +146,7 @@ openssl_try_handshake_write (openssl_ctx_t * oc, session_t * tls_session)
     return 0;
 
   f = tls_session->tx_fifo;
-  enq_max = svm_fifo_max_enqueue (f);
+  enq_max = svm_fifo_max_enqueue_prod (f);
   if (!enq_max)
     return 0;
 
@@ -306,7 +306,7 @@ openssl_ctx_write (tls_ctx_t * ctx, session_t * app_session)
   svm_fifo_t *f;
 
   f = app_session->tx_fifo;
-  deq_max = svm_fifo_max_dequeue (f);
+  deq_max = svm_fifo_max_dequeue_cons (f);
   if (!deq_max)
     goto check_tls_fifo;
 
@@ -342,7 +342,7 @@ check_tls_fifo:
 
   tls_session = session_get_from_handle (ctx->tls_session_handle);
   f = tls_session->tx_fifo;
-  enq_max = svm_fifo_max_enqueue (f);
+  enq_max = svm_fifo_max_enqueue_prod (f);
   if (!enq_max)
     {
       tls_add_vpp_q_builtin_tx_evt (app_session);
@@ -390,7 +390,7 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
     }
 
   f = tls_session->rx_fifo;
-  deq_max = svm_fifo_max_dequeue (f);
+  deq_max = svm_fifo_max_dequeue_cons (f);
   max_space = max_buf - BIO_ctrl_pending (oc->wbio);
   max_space = max_space < 0 ? 0 : max_space;
   deq_now = clib_min (deq_max, max_space);
@@ -415,7 +415,7 @@ openssl_ctx_read (tls_ctx_t * ctx, session_t * tls_session)
 	  wrote += rv;
 	}
     }
-  if (svm_fifo_max_dequeue (f))
+  if (svm_fifo_max_dequeue_cons (f))
     tls_add_vpp_q_builtin_rx_evt (tls_session);
 
 check_app_fifo:
@@ -425,7 +425,7 @@ check_app_fifo:
 
   app_session = session_get_from_handle (ctx->app_session_handle);
   f = app_session->rx_fifo;
-  enq_max = svm_fifo_max_enqueue (f);
+  enq_max = svm_fifo_max_enqueue_prod (f);
   if (!enq_max)
     {
       tls_add_vpp_q_builtin_rx_evt (tls_session);
