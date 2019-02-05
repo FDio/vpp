@@ -447,7 +447,7 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
   b->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->current_data = 0;
 
-  data0 = vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  data0 = vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
   len_to_deq = clib_min (ctx->left_to_snd, ctx->deq_per_first_buf);
 
   if (peek_data)
@@ -606,12 +606,13 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
     }
 
   n_bytes_per_buf = VLIB_BUFFER_DATA_SIZE;
-  ASSERT (n_bytes_per_buf > MAX_HDRS_LEN);
-  n_bytes_per_seg = MAX_HDRS_LEN + ctx->snd_mss;
+  ASSERT (n_bytes_per_buf > TRANSPORT_MAX_HDRS_LEN);
+  n_bytes_per_seg = TRANSPORT_MAX_HDRS_LEN + ctx->snd_mss;
   ctx->n_bufs_per_seg = ceil ((f64) n_bytes_per_seg / n_bytes_per_buf);
   ctx->deq_per_buf = clib_min (ctx->snd_mss, n_bytes_per_buf);
   ctx->deq_per_first_buf = clib_min (ctx->snd_mss,
-				     n_bytes_per_buf - MAX_HDRS_LEN);
+				     n_bytes_per_buf -
+				     TRANSPORT_MAX_HDRS_LEN);
 }
 
 always_inline int

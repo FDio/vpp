@@ -340,9 +340,9 @@ session_lookup_del_connection (transport_connection_t * tc)
 int
 session_lookup_del_session (session_t * s)
 {
-  transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *ts;
-  ts = tp_vfts[tp].get_connection (s->connection_index, s->thread_index);
+  ts = transport_get_connection (session_get_transport_proto (s),
+				 s->connection_index, s->thread_index);
   return session_lookup_del_connection (ts);
 }
 
@@ -812,12 +812,10 @@ session_lookup_half_open_handle (transport_connection_t * tc)
 transport_connection_t *
 session_lookup_half_open_connection (u64 handle, u8 proto, u8 is_ip4)
 {
-  u32 sst;
-
   if (handle != HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
-      sst = session_type_from_proto_and_ip (proto, is_ip4);
-      return tp_vfts[sst].get_half_open (handle & 0xFFFFFFFF);
+      u32 sst = session_type_from_proto_and_ip (proto, is_ip4);
+      return transport_get_half_open (sst, handle & 0xFFFFFFFF);
     }
   return 0;
 }
@@ -877,8 +875,8 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
 	  return 0;
 	}
       s = session_get (kv4.value & 0xFFFFFFFFULL, thread_index);
-      return tp_vfts[proto].get_connection (s->connection_index,
-					    thread_index);
+      return transport_get_connection (proto, s->connection_index,
+				       thread_index);
     }
 
   /*
@@ -886,7 +884,7 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
    */
   rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
   if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv4.value & 0xFFFFFFFF);
+    return transport_get_half_open (proto, kv4.value & 0xFFFFFFFF);
 
   /*
    * Check the session rules table
@@ -902,7 +900,7 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
 	}
       if ((s = session_lookup_action_to_session (action_index,
 						 FIB_PROTOCOL_IP4, proto)))
-	return tp_vfts[proto].get_listener (s->connection_index);
+	return transport_get_listener (proto, s->connection_index);
       return 0;
     }
 
@@ -911,7 +909,7 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
    */
   s = session_lookup_listener4_i (st, lcl, lcl_port, proto, 1);
   if (s)
-    return tp_vfts[proto].get_listener (s->connection_index);
+    return transport_get_listener (proto, s->connection_index);
 
   return 0;
 }
@@ -954,8 +952,8 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
   if (rv == 0)
     {
       s = session_get_from_handle (kv4.value);
-      return tp_vfts[proto].get_connection (s->connection_index,
-					    s->thread_index);
+      return transport_get_connection (proto, s->connection_index,
+				       s->thread_index);
     }
 
   /*
@@ -963,7 +961,7 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
    */
   rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
   if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv4.value & 0xFFFFFFFF);
+    return transport_get_half_open (proto, kv4.value & 0xFFFFFFFF);
 
   /*
    * Check the session rules table
@@ -976,7 +974,7 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
 	return 0;
       if ((s = session_lookup_action_to_session (action_index,
 						 FIB_PROTOCOL_IP4, proto)))
-	return tp_vfts[proto].get_listener (s->connection_index);
+	return transport_get_listener (proto, s->connection_index);
       return 0;
     }
 
@@ -985,7 +983,7 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
    */
   s = session_lookup_listener4_i (st, lcl, lcl_port, proto, 1);
   if (s)
-    return tp_vfts[proto].get_listener (s->connection_index);
+    return transport_get_listener (proto, s->connection_index);
 
   return 0;
 }
@@ -1099,14 +1097,14 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
 	  return 0;
 	}
       s = session_get (kv6.value & 0xFFFFFFFFULL, thread_index);
-      return tp_vfts[proto].get_connection (s->connection_index,
-					    thread_index);
+      return transport_get_connection (proto, s->connection_index,
+				       thread_index);
     }
 
   /* Try half-open connections */
   rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
   if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv6.value & 0xFFFFFFFF);
+    return transport_get_half_open (proto, kv6.value & 0xFFFFFFFF);
 
   /* Check the session rules table */
   action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
@@ -1120,14 +1118,14 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
 	}
       if ((s = session_lookup_action_to_session (action_index,
 						 FIB_PROTOCOL_IP6, proto)))
-	return tp_vfts[proto].get_listener (s->connection_index);
+	return transport_get_listener (proto, s->connection_index);
       return 0;
     }
 
   /* If nothing is found, check if any listener is available */
   s = session_lookup_listener6_i (st, lcl, lcl_port, proto, 1);
   if (s)
-    return tp_vfts[proto].get_listener (s->connection_index);
+    return transport_get_listener (proto, s->connection_index);
 
   return 0;
 }
@@ -1168,14 +1166,14 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
   if (rv == 0)
     {
       s = session_get_from_handle (kv6.value);
-      return tp_vfts[proto].get_connection (s->connection_index,
-					    s->thread_index);
+      return transport_get_connection (proto, s->connection_index,
+				       s->thread_index);
     }
 
   /* Try half-open connections */
   rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
   if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv6.value & 0xFFFFFFFF);
+    return transport_get_half_open (proto, kv6.value & 0xFFFFFFFF);
 
   /* Check the session rules table */
   action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
@@ -1186,14 +1184,14 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
 	return 0;
       if ((s = session_lookup_action_to_session (action_index,
 						 FIB_PROTOCOL_IP6, proto)))
-	return tp_vfts[proto].get_listener (s->connection_index);
+	return transport_get_listener (proto, s->connection_index);
       return 0;
     }
 
   /* If nothing is found, check if any listener is available */
   s = session_lookup_listener6_i (st, lcl, lcl_port, proto, 1);
   if (s)
-    return tp_vfts[proto].get_listener (s->connection_index);
+    return transport_get_listener (proto, s->connection_index);
 
   return 0;
 }

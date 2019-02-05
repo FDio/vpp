@@ -264,7 +264,7 @@ sctp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   vnet_buffer (b)->sctp.subconn_idx = MAX_SCTP_CONNECTIONS;
 
   /* Leave enough space for headers */
-  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
 always_inline void *
@@ -277,7 +277,7 @@ sctp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   vnet_buffer (b)->sctp.subconn_idx = MAX_SCTP_CONNECTIONS;
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   /* Leave enough space for headers */
-  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
 always_inline int
