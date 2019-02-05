@@ -22,6 +22,30 @@
       "revId": "033ab648fd217b758081d783869e548dc4ada074",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b257974b_d0f21a31",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-05T10:03:00Z",
+      "side": 1,
+      "message": "because this test doesn\u0027t verify the common code path - that\u0027s the job of other tests. this operation here is just to verify that the packet with sequence number 1 made the round trip and the test case is primed for the latter part",
+      "parentUuid": "6e71ee39_4f3e2c55",
+      "range": {
+        "startLine": 233,
+        "startChar": 8,
+        "endLine": 233,
+        "endChar": 61
+      },
+      "revId": "033ab648fd217b758081d783869e548dc4ada074",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
