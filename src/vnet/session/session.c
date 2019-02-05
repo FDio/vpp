@@ -1235,28 +1235,6 @@ session_transport_cleanup (session_t * s)
   session_free_w_fifos (s);
 }
 
-transport_service_type_t
-session_transport_service_type (session_t * s)
-{
-  transport_proto_t tp;
-  tp = session_get_transport_proto (s);
-  return transport_protocol_service_type (tp);
-}
-
-transport_tx_fn_type_t
-session_transport_tx_fn_type (session_t * s)
-{
-  transport_proto_t tp;
-  tp = session_get_transport_proto (s);
-  return transport_protocol_tx_fn_type (tp);
-}
-
-u8
-session_tx_is_dgram (session_t * s)
-{
-  return (session_transport_tx_fn_type (s) == TRANSPORT_TX_DGRAM);
-}
-
 /**
  * Allocate event queues in the shared-memory segment
  *
@@ -1385,30 +1363,27 @@ session_register_transport (transport_proto_t transport_proto,
 transport_connection_t *
 session_get_transport (session_t * s)
 {
-  transport_proto_t tp;
   if (s->session_state != SESSION_STATE_LISTENING)
-    {
-      tp = session_get_transport_proto (s);
-      return tp_vfts[tp].get_connection (s->connection_index,
-					 s->thread_index);
-    }
-  return 0;
+    return transport_get_connection (session_get_transport_proto (s),
+				     s->connection_index, s->thread_index);
+  else
+    return transport_get_listener (session_get_transport_proto (s),
+				   s->connection_index);
 }
 
 transport_connection_t *
 listen_session_get_transport (session_t * s)
 {
-  transport_proto_t tp = session_get_transport_proto (s);
-  return tp_vfts[tp].get_listener (s->connection_index);
+  return transport_get_listener (session_get_transport_proto (s),
+				 s->connection_index);
 }
 
 int
 listen_session_get_local_session_endpoint (session_t * listener,
 					   session_endpoint_t * sep)
 {
-  transport_proto_t tp = session_get_transport_proto (listener);
   transport_connection_t *tc;
-  tc = tp_vfts[tp].get_listener (listener->connection_index);
+  tc = listen_session_get_transport (listener);
   if (!tc)
     {
       clib_warning ("no transport");
