@@ -295,6 +295,9 @@ endif
 else ifneq ("$(wildcard /etc/redhat-release)","")
 ifeq ($(OS_ID),rhel)
 	@sudo -E yum-config-manager --enable rhel-server-rhscl-7-rpms
+	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
+	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
+	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs mbedtls-devel zlib
 else ifeq ($(OS_ID),centos)
 	@sudo -E yum install $(CONFIRM) centos-release-scl-rh epel-release
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
