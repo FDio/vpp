@@ -20,6 +20,23 @@
 #include <vnet/ip/ip.h>
 #include <vnet/tcp/tcp_debug.h>
 
+typedef enum transport_dequeue_type_
+{
+  TRANSPORT_TX_PEEK,		/**< reliable transport protos */
+  TRANSPORT_TX_DEQUEUE,		/**< unreliable transport protos */
+  TRANSPORT_TX_INTERNAL,	/**< apps acting as transports */
+  TRANSPORT_TX_DGRAM,		/**< datagram mode */
+  TRANSPORT_TX_N_FNS
+} transport_tx_fn_type_t;
+
+typedef enum transport_service_type_
+{
+  TRANSPORT_SERVICE_VC,		/**< virtual circuit service */
+  TRANSPORT_SERVICE_CL,		/**< connectionless service */
+  TRANSPORT_SERVICE_APP,	/**< app transport service */
+  TRANSPORT_N_SERVICES
+} transport_service_type_t;
+
 typedef struct _transport_stats
 {
   u64 tx_bytes;
@@ -169,6 +186,8 @@ int transport_alloc_local_endpoint (u8 proto, transport_endpoint_cfg_t * rmt,
 				    u16 * lcl_port);
 void transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port);
 u8 transport_protocol_is_cl (transport_proto_t tp);
+transport_service_type_t transport_protocol_service_type (transport_proto_t);
+transport_tx_fn_type_t transport_protocol_tx_fn_type (transport_proto_t tp);
 void transport_init (void);
 
 #endif /* VNET_VNET_URI_TRANSPORT_H_ */

@@ -271,6 +271,19 @@ transport_protocol_tx_fn_type (transport_proto_t tp)
   return tp_vfts[tp].tx_type;
 }
 
+transport_connection_t *
+transport_get_connection (transport_proto_t tp, u32 conn_index,
+			  u8 thread_index)
+{
+  return tp_vfts[tp].get_connection (conn_index, thread_index);
+}
+
+transport_connection_t *
+transport_get_listener (transport_proto_t tp, u32 conn_index)
+{
+  return tp_vfts[tp].get_listener (conn_index);
+}
+
 u8
 transport_protocol_is_cl (transport_proto_t tp)
 {
