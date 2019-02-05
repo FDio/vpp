@@ -378,14 +378,14 @@ always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_enqueue (s->rx_fifo);
+  return svm_fifo_max_enqueue_prod (s->rx_fifo);
 }
 
 always_inline u32
 transport_max_tx_dequeue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  return svm_fifo_max_dequeue (s->tx_fifo);
+  return svm_fifo_max_dequeue_cons (s->tx_fifo);
 }
 
 always_inline u32

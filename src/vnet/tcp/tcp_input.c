@@ -1854,7 +1854,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
       newest = svm_fifo_newest_ooo_segment (s0->rx_fifo);
       if (newest)
 	{
-	  offset = ooo_segment_offset (s0->rx_fifo, newest);
+	  offset = ooo_segment_offset_prod (s0->rx_fifo, newest);
 	  ASSERT (offset <= vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt);
 	  start = tc->rcv_nxt + offset;
 	  end = start + ooo_segment_length (s0->rx_fifo, newest);
