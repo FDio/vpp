@@ -17,6 +17,7 @@
 #define __VOM_NAT_BINDING_H__
 
 #include "vom/hw.hpp"
+#include "vom/inspect.hpp"
 #include "vom/interface.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"

@@ -14,7 +14,6 @@
  */
 
 #include "vom/nat_binding.hpp"
-#include "vom/cmd.hpp"
 #include "vom/nat_binding_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
