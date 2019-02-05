@@ -14,7 +14,6 @@
  */
 
 #include <vnet/tcp/tcp.h>
-#include <vnet/lisp-cp/packets.h>
 #include <math.h>
 
 vlib_node_registration_t tcp4_output_node;
@@ -477,7 +476,7 @@ tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   vnet_buffer (b)->tcp.flags = 0;
 
   /* Leave enough space for headers */
-  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
 static void *
@@ -490,7 +489,7 @@ tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   vnet_buffer (b)->tcp.flags = 0;
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   /* Leave enough space for headers */
-  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
 /**
@@ -1290,7 +1289,7 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   int n_bytes = 0;
   u8 *data;
 
-  seg_size = max_deq_bytes + MAX_HDRS_LEN;
+  seg_size = max_deq_bytes + TRANSPORT_MAX_HDRS_LEN;
 
   /*
    * Prepare options
@@ -1339,7 +1338,8 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
       *b = vlib_get_buffer (vm, wrk->tx_buffers[--n_bufs]);
       data = tcp_init_buffer (vm, *b);
       n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
-					   bytes_per_buffer - MAX_HDRS_LEN);
+					   bytes_per_buffer -
+					   TRANSPORT_MAX_HDRS_LEN);
       b[0]->current_length = n_bytes;
       b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       b[0]->total_length_not_including_first_buffer = 0;
@@ -1710,9 +1710,10 @@ tcp_timer_persist_handler (u32 index)
 
   tcp_validate_txf_size (tc, offset);
   tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
-  max_snd_bytes = clib_min (tc->snd_mss, tm->bytes_per_buffer - MAX_HDRS_LEN);
-  n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
-				       max_snd_bytes);
+  max_snd_bytes =
+    clib_min (tc->snd_mss, tm->bytes_per_buffer - TRANSPORT_MAX_HDRS_LEN);
+  n_bytes =
+    stream_session_peek_bytes (&tc->connection, data, offset, max_snd_bytes);
   b->current_length = n_bytes;
   ASSERT (n_bytes != 0 && (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)
 			   || tc->snd_nxt == tc->snd_una_max

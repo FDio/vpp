@@ -18,7 +18,6 @@
 
 #include <vnet/session/session_table.h>
 #include <vnet/session/session_types.h>
-#include <vnet/session/transport.h>
 #include <vnet/session/application_namespace.h>
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)

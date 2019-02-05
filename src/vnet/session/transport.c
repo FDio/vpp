@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/session/transport_interface.h>
+#include <vnet/session/transport.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 
@@ -271,17 +271,35 @@ transport_protocol_tx_fn_type (transport_proto_t tp)
   return tp_vfts[tp].tx_type;
 }
 
-transport_connection_t *
-transport_get_connection (transport_proto_t tp, u32 conn_index,
-			  u8 thread_index)
+void
+transport_cleanup (transport_proto_t tp, u32 conn_index, u8 thread_index)
 {
-  return tp_vfts[tp].get_connection (conn_index, thread_index);
+  tp_vfts[tp].cleanup (conn_index, thread_index);
 }
 
-transport_connection_t *
-transport_get_listener (transport_proto_t tp, u32 conn_index)
+int
+transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep)
 {
-  return tp_vfts[tp].get_listener (conn_index);
+  return tp_vfts[tp].connect (tep);
+}
+
+void
+transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index)
+{
+  tp_vfts[tp].close (conn_index, thread_index);
+}
+
+u32
+transport_start_listen (transport_proto_t tp, u32 session_index,
+			transport_endpoint_t * tep)
+{
+  return tp_vfts[tp].start_listen (session_index, tep);
+}
+
+u32
+transport_stop_listen (transport_proto_t tp, u32 conn_index)
+{
+  return tp_vfts[tp].stop_listen (conn_index);
 }
 
 u8

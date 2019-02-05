@@ -17,15 +17,11 @@
 
 #include <vnet/session/session_types.h>
 #include <vnet/session/session_lookup.h>
-#include <vnet/session/transport_interface.h>
 #include <vnet/session/session_debug.h>
 #include <vnet/session/segment_manager.h>
 #include <svm/message_queue.h>
 
 #define SESSION_PROXY_LISTENER_INDEX ((u8)~0 - 1)
-
-/* TODO decide how much since we have pre-data as well */
-#define MAX_HDRS_LEN    100	/* Max number of bytes for headers */
 
 typedef enum
 {
@@ -298,21 +294,6 @@ extern vlib_node_registration_t session_queue_process_node;
 #define SESSION_Q_PROCESS_FLUSH_FRAMES	1
 #define SESSION_Q_PROCESS_STOP		2
 
-/*
- * Session manager function
- */
-always_inline session_manager_main_t *
-vnet_get_session_manager_main ()
-{
-  return &session_manager_main;
-}
-
-always_inline session_manager_worker_t *
-session_manager_get_worker (u32 thread_index)
-{
-  return &session_manager_main.wrk[thread_index];
-}
-
 always_inline u8
 stream_session_is_valid (u32 si, u8 thread_index)
 {
@@ -438,6 +419,88 @@ session_get_from_handle_safe (u64 handle)
 }
 
 always_inline u32
+session_get_index (session_t * s)
+{
+  return (s - session_manager_main.wrk[s->thread_index].sessions);
+}
+
+always_inline session_t *
+session_clone_safe (u32 session_index, u32 thread_index)
+{
+  session_t *old_s, *new_s;
+  u32 current_thread_index = vlib_get_thread_index ();
+
+  /* If during the memcpy pool is reallocated AND the memory allocator
+   * decides to give the old chunk of memory to somebody in a hurry to
+   * scribble something on it, we have a problem. So add this thread as
+   * a session pool peeker.
+   */
+  session_pool_add_peeker (thread_index);
+  new_s = session_alloc (current_thread_index);
+  old_s = session_manager_main.wrk[thread_index].sessions + session_index;
+  clib_memcpy_fast (new_s, old_s, sizeof (*new_s));
+  session_pool_remove_peeker (thread_index);
+  new_s->thread_index = current_thread_index;
+  new_s->session_index = session_get_index (new_s);
+  return new_s;
+}
+
+int session_open (u32 app_index, session_endpoint_t * tep, u32 opaque);
+int session_listen (session_t * s, session_endpoint_cfg_t * sep);
+int session_stop_listen (session_t * s);
+void session_close (session_t * s);
+void session_transport_close (session_t * s);
+void session_transport_cleanup (session_t * s);
+int session_send_io_evt_to_thread (svm_fifo_t * f,
+				   session_evt_type_t evt_type);
+int session_dequeue_notify (session_t * s);
+int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
+					  session_evt_type_t evt_type);
+void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
+				     void *rpc_args);
+transport_connection_t *session_get_transport (session_t * s);
+
+
+u8 *format_stream_session (u8 * s, va_list * args);
+uword unformat_stream_session (unformat_input_t * input, va_list * args);
+uword unformat_transport_connection (unformat_input_t * input,
+				     va_list * args);
+
+/*
+ * Interface to transport protos
+ */
+
+int session_enqueue_stream_connection (transport_connection_t * tc,
+				       vlib_buffer_t * b, u32 offset,
+				       u8 queue_event, u8 is_in_order);
+int session_enqueue_dgram_connection (session_t * s,
+				      session_dgram_hdr_t * hdr,
+				      vlib_buffer_t * b, u8 proto,
+				      u8 queue_event);
+int stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
+			       u32 offset, u32 max_bytes);
+u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
+
+int session_stream_connect_notify (transport_connection_t * tc, u8 is_fail);
+int session_dgram_connect_notify (transport_connection_t * tc,
+				  u32 old_thread_index,
+				  session_t ** new_session);
+void stream_session_init_fifos_pointers (transport_connection_t * tc,
+					 u32 rx_pointer, u32 tx_pointer);
+
+int stream_session_accept_notify (transport_connection_t * tc);
+void session_transport_closing_notify (transport_connection_t * tc);
+void session_transport_delete_notify (transport_connection_t * tc);
+void session_transport_closed_notify (transport_connection_t * tc);
+void session_transport_reset_notify (transport_connection_t * tc);
+int stream_session_accept (transport_connection_t * tc, u32 listener_index,
+			   u8 notify);
+u32 session_tx_fifo_max_dequeue (transport_connection_t * tc);
+void session_register_transport (transport_proto_t transport_proto,
+				 const transport_proto_vft_t * vft, u8 is_ip4,
+				 u32 output_node);
+
+always_inline u32
 transport_max_rx_enqueue (transport_connection_t * tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
@@ -484,88 +547,6 @@ transport_time_now (u32 thread_index)
   return session_manager_main.wrk[thread_index].last_vlib_time;
 }
 
-always_inline u32
-session_get_index (session_t * s)
-{
-  return (s - session_manager_main.wrk[s->thread_index].sessions);
-}
-
-always_inline session_t *
-session_clone_safe (u32 session_index, u32 thread_index)
-{
-  session_t *old_s, *new_s;
-  u32 current_thread_index = vlib_get_thread_index ();
-
-  /* If during the memcpy pool is reallocated AND the memory allocator
-   * decides to give the old chunk of memory to somebody in a hurry to
-   * scribble something on it, we have a problem. So add this thread as
-   * a session pool peeker.
-   */
-  session_pool_add_peeker (thread_index);
-  new_s = session_alloc (current_thread_index);
-  old_s = session_manager_main.wrk[thread_index].sessions + session_index;
-  clib_memcpy_fast (new_s, old_s, sizeof (*new_s));
-  session_pool_remove_peeker (thread_index);
-  new_s->thread_index = current_thread_index;
-  new_s->session_index = session_get_index (new_s);
-  return new_s;
-}
-
-transport_connection_t *session_get_transport (session_t * s);
-
-u32 session_tx_fifo_max_dequeue (transport_connection_t * tc);
-
-int
-session_enqueue_stream_connection (transport_connection_t * tc,
-				   vlib_buffer_t * b, u32 offset,
-				   u8 queue_event, u8 is_in_order);
-int session_enqueue_dgram_connection (session_t * s,
-				      session_dgram_hdr_t * hdr,
-				      vlib_buffer_t * b, u8 proto,
-				      u8 queue_event);
-int stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
-			       u32 offset, u32 max_bytes);
-u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
-
-int session_stream_connect_notify (transport_connection_t * tc, u8 is_fail);
-int session_dgram_connect_notify (transport_connection_t * tc,
-				  u32 old_thread_index,
-				  session_t ** new_session);
-int session_dequeue_notify (session_t * s);
-void stream_session_init_fifos_pointers (transport_connection_t * tc,
-					 u32 rx_pointer, u32 tx_pointer);
-
-int stream_session_accept_notify (transport_connection_t * tc);
-void session_transport_closing_notify (transport_connection_t * tc);
-void session_transport_delete_notify (transport_connection_t * tc);
-void session_transport_closed_notify (transport_connection_t * tc);
-void session_transport_reset_notify (transport_connection_t * tc);
-int stream_session_accept (transport_connection_t * tc, u32 listener_index,
-			   u8 notify);
-int session_open (u32 app_index, session_endpoint_t * tep, u32 opaque);
-int session_listen (session_t * s, session_endpoint_cfg_t * sep);
-int session_stop_listen (session_t * s);
-void session_close (session_t * s);
-void session_transport_close (session_t * s);
-void session_transport_cleanup (session_t * s);
-int session_send_io_evt_to_thread (svm_fifo_t * f,
-				   session_evt_type_t evt_type);
-int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
-					  session_evt_type_t evt_type);
-void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
-				     void *rpc_args);
-
-ssvm_private_t *session_manager_get_evt_q_segment (void);
-
-u8 *format_stream_session (u8 * s, va_list * args);
-uword unformat_stream_session (unformat_input_t * input, va_list * args);
-uword unformat_transport_connection (unformat_input_t * input,
-				     va_list * args);
-
-void session_register_transport (transport_proto_t transport_proto,
-				 const transport_proto_vft_t * vft, u8 is_ip4,
-				 u32 output_node);
-
 always_inline void
 transport_add_tx_event (transport_connection_t * tc)
 {
@@ -575,16 +556,9 @@ transport_add_tx_event (transport_connection_t * tc)
   session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
 }
 
-clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
-
-always_inline svm_msg_q_t *
-session_manager_get_vpp_event_queue (u32 thread_index)
-{
-  return session_manager_main.wrk[thread_index].vpp_event_queue;
-}
-
-int session_manager_flush_enqueue_events (u8 proto, u32 thread_index);
-int session_manager_flush_all_enqueue_events (u8 transport_proto);
+/*
+ * Listen sessions
+ */
 
 always_inline u64
 listen_session_get_handle (session_t * s)
@@ -634,7 +608,27 @@ int
 listen_session_get_local_session_endpoint (session_t * listener,
 					   session_endpoint_t * sep);
 
-void session_flush_frames_main_thread (vlib_main_t * vm);
+/*
+ * Session manager functions
+ */
+
+always_inline session_manager_main_t *
+vnet_get_session_manager_main ()
+{
+  return &session_manager_main;
+}
+
+always_inline session_manager_worker_t *
+session_manager_get_worker (u32 thread_index)
+{
+  return &session_manager_main.wrk[thread_index];
+}
+
+always_inline svm_msg_q_t *
+session_manager_get_vpp_event_queue (u32 thread_index)
+{
+  return session_manager_main.wrk[thread_index].vpp_event_queue;
+}
 
 always_inline u8
 session_manager_is_enabled ()
@@ -648,7 +642,12 @@ do {									\
       return clib_error_return(0, "session layer is not enabled");	\
 } while (0)
 
+int session_manager_flush_enqueue_events (u8 proto, u32 thread_index);
+int session_manager_flush_all_enqueue_events (u8 transport_proto);
+void session_flush_frames_main_thread (vlib_main_t * vm);
+ssvm_private_t *session_manager_get_evt_q_segment (void);
 void session_node_enable_disable (u8 is_en);
+clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
 #endif /* __included_session_h__ */
 

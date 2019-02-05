@@ -20,12 +20,10 @@
 #include <vnet/session/session.h>
 #include <vnet/session/session_debug.h>
 #include <vnet/session/application.h>
-#include <vlibmemory/api.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 
 session_manager_main_t session_manager_main;
-extern transport_proto_vft_t *tp_vfts;
 
 static inline int
 session_send_evt_to_thread (void *data, void *args, u32 thread_index,
@@ -752,14 +750,13 @@ static void
 session_switch_pool (void *cb_args)
 {
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
-  transport_proto_t tp;
   session_t *s;
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
   s->tx_fifo->master_session_index = args->new_session_index;
   s->tx_fifo->master_thread_index = args->new_thread_index;
-  tp = session_get_transport_proto (s);
-  tp_vfts[tp].cleanup (s->connection_index, s->thread_index);
+  transport_cleanup (session_get_transport_proto (s), s->connection_index,
+		     s->thread_index);
   session_free (s);
   clib_mem_free (cb_args);
 }
@@ -989,14 +986,14 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   int rv;
 
   tep = session_endpoint_to_transport_cfg (rmt);
-  rv = tp_vfts[rmt->transport_proto].open (tep);
+  rv = transport_connect (rmt->transport_proto, tep);
   if (rv < 0)
     {
       SESSION_DBG ("Transport failed to open connection.");
       return VNET_API_ERROR_SESSION_CONNECT;
     }
 
-  tc = tp_vfts[rmt->transport_proto].get_half_open ((u32) rv);
+  tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
   /* For dgram type of service, allocate session and fifos now.
    */
@@ -1024,14 +1021,14 @@ session_open_vc (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   int rv;
 
   tep = session_endpoint_to_transport_cfg (rmt);
-  rv = tp_vfts[rmt->transport_proto].open (tep);
+  rv = transport_connect (rmt->transport_proto, tep);
   if (rv < 0)
     {
       SESSION_DBG ("Transport failed to open connection.");
       return VNET_API_ERROR_SESSION_CONNECT;
     }
 
-  tc = tp_vfts[rmt->transport_proto].get_half_open ((u32) rv);
+  tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
   /* If transport offers a stream service, only allocate session once the
    * connection has been established.
@@ -1059,7 +1056,7 @@ session_open_app (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
   sep->app_wrk_index = app_wrk_index;
   sep->opaque = opaque;
 
-  return tp_vfts[rmt->transport_proto].open (tep_cfg);
+  return transport_connect (rmt->transport_proto, tep_cfg);
 }
 
 typedef int (*session_open_service_fn) (u32, session_endpoint_t *, u32);
@@ -1088,7 +1085,8 @@ static session_open_service_fn session_open_srv_fns[TRANSPORT_N_SERVICES] = {
 int
 session_open (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
-  transport_service_type_t tst = tp_vfts[rmt->transport_proto].service_type;
+  transport_service_type_t tst;
+  tst = transport_protocol_service_type (rmt->transport_proto);
   return session_open_srv_fns[tst] (app_wrk_index, rmt, opaque);
 }
 
@@ -1110,7 +1108,7 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
   /* Transport bind/listen */
   tep = session_endpoint_to_transport (sep);
   s_index = ls->session_index;
-  tc_index = tp_vfts[sep->transport_proto].bind (s_index, tep);
+  tc_index = transport_start_listen (sep->transport_proto, s_index, tep);
 
   if (tc_index == (u32) ~ 0)
     return -1;
@@ -1120,7 +1118,7 @@ session_listen (session_t * ls, session_endpoint_cfg_t * sep)
   ls->connection_index = tc_index;
 
   /* Add to the main lookup table after transport was initialized */
-  tc = tp_vfts[sep->transport_proto].get_listener (tc_index);
+  tc = transport_get_listener (sep->transport_proto, tc_index);
   session_lookup_add_connection (tc, s_index);
   return 0;
 }
@@ -1135,21 +1133,16 @@ session_stop_listen (session_t * s)
 {
   transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *tc;
-  if (s->session_state != SESSION_STATE_LISTENING)
-    {
-      clib_warning ("not a listening session");
-      return -1;
-    }
 
-  tc = tp_vfts[tp].get_listener (s->connection_index);
+  if (s->session_state != SESSION_STATE_LISTENING)
+    return -1;
+
+  tc = transport_get_listener (tp, s->connection_index);
   if (!tc)
-    {
-      clib_warning ("no transport");
-      return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
-    }
+    return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
   session_lookup_del_connection (tc);
-  tp_vfts[tp].unbind (s->connection_index);
+  transport_stop_listen (tp, s->connection_index);
   return 0;
 }
 
@@ -1210,8 +1203,8 @@ session_transport_close (session_t * s)
   else
     s->session_state = SESSION_STATE_CLOSED;
 
-  tp_vfts[session_get_transport_proto (s)].close (s->connection_index,
-						  s->thread_index);
+  transport_close (session_get_transport_proto (s), s->connection_index,
+		   s->thread_index);
 }
 
 /**
@@ -1228,8 +1221,8 @@ session_transport_cleanup (session_t * s)
 
   /* Delete from main lookup table before we axe the the transport */
   session_lookup_del_session (s);
-  tp_vfts[session_get_transport_proto (s)].cleanup (s->connection_index,
-						    s->thread_index);
+  transport_cleanup (session_get_transport_proto (s), s->connection_index,
+		     s->thread_index);
   /* Since we called cleanup, no delete notification will come. So, make
    * sure the session is properly freed. */
   session_free_w_fifos (s);

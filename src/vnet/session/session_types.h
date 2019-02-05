@@ -17,7 +17,7 @@
 #define SRC_VNET_SESSION_SESSION_TYPES_H_
 
 #include <svm/svm_fifo.h>
-#include <vnet/session/transport.h>
+#include <vnet/session/transport_types.h>
 
 #define SESSION_LOCAL_HANDLE_PREFIX 0x7FFFFFFF
 
