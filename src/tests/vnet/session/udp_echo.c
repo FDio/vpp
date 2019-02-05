@@ -454,7 +454,7 @@ cut_through_thread_fn (void *arg)
 	  else
 	    {
 	      /* We don't do anything with the data, drop it */
-	      actual_transfer = svm_fifo_max_dequeue (rx_fifo);
+	      actual_transfer = svm_fifo_max_dequeue_cons (rx_fifo);
 	      svm_fifo_dequeue_drop (rx_fifo, actual_transfer);
 	    }
 	}
@@ -724,7 +724,7 @@ send_test_chunk (udp_echo_main_t * utm, app_session_t * s, u32 bytes)
   test_buf_offset = utm->bytes_sent % test_buf_len;
   bytes_this_chunk = clib_min (test_buf_len - test_buf_offset,
 			       utm->bytes_to_send);
-  enq_space = svm_fifo_max_enqueue (s->tx_fifo);
+  enq_space = svm_fifo_max_enqueue_prod (s->tx_fifo);
   bytes_this_chunk = clib_min (bytes_this_chunk, enq_space);
 
   written = app_send (s, test_data + test_buf_offset, bytes_this_chunk,
@@ -975,7 +975,8 @@ server_handle_fifo_event_rx (udp_echo_main_t * utm, u32 session_index)
   rx_fifo = session->rx_fifo;
   tx_fifo = session->tx_fifo;
 
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
+
+  max_dequeue = svm_fifo_max_dequeue_cons (rx_fifo);
   /* Allow enqueuing of a new event */
   svm_fifo_unset_event (rx_fifo);
 

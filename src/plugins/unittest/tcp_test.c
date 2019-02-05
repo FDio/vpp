@@ -1221,8 +1221,7 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 
   /* manually set head and tail pointers to validate modular arithmetic */
   fifo_initial_offset = fifo_initial_offset % fifo_size;
-  f->head = fifo_initial_offset;
-  f->tail = fifo_initial_offset;
+  svm_fifo_init_pointers (f, fifo_initial_offset);
 
   for (i = !randomize; i < vec_len (generate); i++)
     {

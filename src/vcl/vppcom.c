@@ -1496,14 +1496,14 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
   s->has_rx_evt = 0;
 
-  if (svm_fifo_is_empty (rx_fifo))
+  if (svm_fifo_is_empty_cons (rx_fifo))
     {
       if (is_nonblocking)
 	{
 	  svm_fifo_unset_event (s->rx_fifo);
 	  return VPPCOM_EWOULDBLOCK;
 	}
-      while (svm_fifo_is_empty (rx_fifo))
+      while (svm_fifo_is_empty_cons (rx_fifo))
 	{
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
@@ -1527,7 +1527,7 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
   else
     n_read = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
 
-  if (svm_fifo_is_empty (rx_fifo))
+  if (svm_fifo_is_empty_cons (rx_fifo))
     svm_fifo_unset_event (s->rx_fifo);
 
   VDBG (2, "session %u[0x%llx]: read %d bytes from (%p)", s->session_index,
@@ -1577,14 +1577,14 @@ vppcom_session_read_segments (uint32_t session_handle,
   if (is_ct)
     svm_fifo_unset_event (s->rx_fifo);
 
-  if (svm_fifo_is_empty (rx_fifo))
+  if (svm_fifo_is_empty_cons (rx_fifo))
     {
       if (is_nonblocking)
 	{
 	  svm_fifo_unset_event (rx_fifo);
 	  return VPPCOM_EWOULDBLOCK;
 	}
-      while (svm_fifo_is_empty (rx_fifo))
+      while (svm_fifo_is_empty_cons (rx_fifo))
 	{
 	  if (vcl_session_is_closing (s))
 	    return vcl_session_closing_error (s);
@@ -1681,14 +1681,15 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   is_ct = vcl_session_is_ct (s);
   tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
   is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
+
   mq = wrk->app_event_queue;
-  if (svm_fifo_is_full (tx_fifo))
+  if (svm_fifo_is_full_prod (tx_fifo))
     {
       if (is_nonblocking)
 	{
 	  return VPPCOM_EWOULDBLOCK;
 	}
-      while (svm_fifo_is_full (tx_fifo))
+      while (svm_fifo_is_full_prod (tx_fifo))
 	{
 	  svm_fifo_add_want_tx_ntf (tx_fifo, SVM_FIFO_WANT_TX_NOTIF);
 	  if (vcl_session_is_closing (s))
@@ -2003,7 +2004,7 @@ vppcom_select (int n_bits, vcl_si_set * read_map, vcl_si_set * write_map,
         continue;
       }
 
-    rv = svm_fifo_is_full (session->tx_fifo);
+    rv = svm_fifo_is_full_prod (session->tx_fifo);
     if (!rv)
       {
         clib_bitmap_set_no_check ((uword*)write_map, sid, 1);
