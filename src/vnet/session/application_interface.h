@@ -459,7 +459,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   session_dgram_hdr_t hdr;
   int rv;
 
-  max_enqueue = svm_fifo_max_enqueue (f);
+  max_enqueue = svm_fifo_max_enqueue_prod (f);
   if (max_enqueue <= sizeof (session_dgram_hdr_t))
     return 0;
 
@@ -533,7 +533,7 @@ app_recv_dgram_raw (svm_fifo_t * f, u8 * buf, u32 len,
   u32 max_deq;
   int rv;
 
-  max_deq = svm_fifo_max_dequeue (f);
+  max_deq = svm_fifo_max_dequeue_cons (f);
   if (max_deq < sizeof (session_dgram_hdr_t))
     {
       if (clear_evt)

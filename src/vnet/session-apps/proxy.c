@@ -227,7 +227,7 @@ proxy_rx_callback (session_t * s)
       ASSERT (rx_fifo->master_thread_index == thread_index);
       ASSERT (tx_fifo->master_thread_index == thread_index);
 
-      max_dequeue = svm_fifo_max_dequeue (s->rx_fifo);
+      max_dequeue = svm_fifo_max_dequeue_cons (s->rx_fifo);
 
       if (PREDICT_FALSE (max_dequeue == 0))
 	return 0;
