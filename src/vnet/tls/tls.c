@@ -739,12 +739,12 @@ format_tls_half_open (u8 * s, va_list * args)
 
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tls_proto = {
-  .open = tls_connect,
+  .connect = tls_connect,
   .close = tls_disconnect,
-  .bind = tls_start_listen,
+  .start_listen = tls_start_listen,
+  .stop_listen = tls_stop_listen,
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
-  .unbind = tls_stop_listen,
   .tx_type = TRANSPORT_TX_INTERNAL,
   .service_type = TRANSPORT_SERVICE_APP,
   .format_connection = format_tls_connection,

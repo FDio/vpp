@@ -201,7 +201,6 @@ static int
 send_session_accept_callback (session_t * s)
 {
   app_worker_t *server_wrk = app_worker_get (s->app_wrk_index);
-  transport_proto_vft_t *tp_vft;
   vl_api_accept_session_t *mp;
   vl_api_registration_t *reg;
   transport_connection_t *tc;
@@ -241,8 +240,8 @@ send_session_accept_callback (session_t * s)
       vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->handle = session_handle (s);
-      tp_vft = transport_protocol_get_vft (session_get_transport_proto (s));
-      tc = tp_vft->get_connection (s->connection_index, s->thread_index);
+      tc = transport_get_connection (session_get_transport_proto (s),
+				     s->connection_index, s->thread_index);
       mp->port = tc->rmt_port;
       mp->is_ip4 = tc->is_ip4;
       clib_memcpy_fast (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
@@ -420,7 +419,6 @@ mq_send_session_accepted_cb (session_t * s)
   app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *vpp_queue, *app_mq;
-  transport_proto_vft_t *tp_vft;
   transport_connection_t *tc;
   session_t *listener;
   session_accepted_msg_t *mp;
@@ -457,8 +455,8 @@ mq_send_session_accepted_cb (session_t * s)
       vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->handle = session_handle (s);
-      tp_vft = transport_protocol_get_vft (session_get_transport_proto (s));
-      tc = tp_vft->get_connection (s->connection_index, s->thread_index);
+      tc = transport_get_connection (session_get_transport_proto (s),
+				     s->connection_index, s->thread_index);
       mp->port = tc->rmt_port;
       mp->is_ip4 = tc->is_ip4;
       clib_memcpy_fast (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
