@@ -489,6 +489,7 @@ vlib_buffer_pool_create (vlib_main_t * vm, u8 index, char *name,
   vlib_physmem_map_t *m = vlib_physmem_get_map (vm, physmem_map_index);
   uword start = pointer_to_uword (m->base);
   uword size = (uword) m->n_pages << m->log2_page_size;
+  uword i, j;
   u32 alloc_size, n_alloc_per_page;;
 
   vec_validate_aligned (bm->buffer_pools, index, CLIB_CACHE_LINE_BYTES);
@@ -549,28 +550,24 @@ vlib_buffer_pool_create (vlib_main_t * vm, u8 index, char *name,
 
   clib_spinlock_init (&bp->lock);
 
-  while (1)
-    {
-      u8 *p;
-      u32 bi;
+  for (j = 0; j < m->n_pages; j++)
+    for (i = 0; i < n_alloc_per_page; i++)
+      {
+	u8 *p;
+	u32 bi;
 
-      p = vlib_physmem_alloc_from_map (vm, bp->physmem_map_index, alloc_size,
-				       CLIB_CACHE_LINE_BYTES);
+	p = m->base + (j << m->log2_page_size) + i * alloc_size;
+	p += bm->ext_hdr_size;
 
-      if (p == 0)
-	break;
+	vlib_buffer_copy_template ((vlib_buffer_t *) p, &bp->buffer_template);
 
-      p += bm->ext_hdr_size;
+	bi = vlib_get_buffer_index (vm, (vlib_buffer_t *) p);
 
-      vlib_buffer_copy_template ((vlib_buffer_t *) p, &bp->buffer_template);
+	vec_add1_aligned (bp->buffers, bi, CLIB_CACHE_LINE_BYTES);
+	vlib_get_buffer (vm, bi);
+      }
 
-      bi = vlib_get_buffer_index (vm, (vlib_buffer_t *) p);
-
-      vec_add1_aligned (bp->buffers, bi, CLIB_CACHE_LINE_BYTES);
-      vlib_get_buffer (vm, bi);
-
-      bp->n_buffers += 1;
-    }
+  bp->n_buffers = vec_len (bp->buffers);
 
   return 0;
 }
