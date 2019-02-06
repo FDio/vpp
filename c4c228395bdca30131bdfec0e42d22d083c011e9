@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6d58fab6_c6b9f11e",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-06T19:53:17Z",
+      "side": 1,
+      "message": "The original lines 401-402 should be wrapped in a method, something like get_tempdir? That new method should be overridden in your subclass.",
+      "range": {
+        "startLine": 401,
+        "startChar": 0,
+        "endLine": 405,
+        "endChar": 65
+      },
+      "revId": "c4c228395bdca30131bdfec0e42d22d083c011e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f0df0400_f7635bc6",
+        "filename": "test/hook.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-06T19:53:17Z",
+      "side": 1,
+      "message": "While you\u0027re in there, would you mind expanding this to kick out back traces?  It\u0027s been on my todo list for a while. \n\nIf you have the time, you can see examples here: https://stackoverflow.com/questions/20179153/gdb-backtrace-with-no-user-input",
+      "range": {
+        "startLine": 86,
+        "startChar": 7,
+        "endLine": 86,
+        "endChar": 61
+      },
+      "revId": "c4c228395bdca30131bdfec0e42d22d083c011e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a5a6da2b_70a9e4ff",
+        "filename": "test/remote_test.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-06T19:53:17Z",
+      "side": 1,
+      "message": "Good to match the signature of the method.\nThe thing is, in python __del__ isn\u0027t a destructor (inverse of __init__) . it is a finalizer and not guaranteed to be called when the object is deleted.\n\nhttps://docs.python.org/3/reference/datamodel.html#object.__del__\n\nSo, this is still broken, just less so.",
+      "range": {
+        "startLine": 356,
+        "startChar": 0,
+        "endLine": 359,
+        "endChar": 38
+      },
+      "revId": "c4c228395bdca30131bdfec0e42d22d083c011e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e9a32404_97473a45",
+        "filename": "test/remote_test.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-06T19:53:17Z",
+      "side": 1,
+      "message": "This class is broken and I removed it from my tests for the time being.  A subclass may not modify the signature of an overridden method.",
+      "range": {
+        "startLine": 361,
+        "startChar": 0,
+        "endLine": 362,
+        "endChar": 33
+      },
+      "revId": "c4c228395bdca30131bdfec0e42d22d083c011e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9142e17d_4f6ba7d3",
+        "filename": "test/util.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-06T19:53:17Z",
+      "side": 1,
+      "message": "Can we try to keep these in lexicographic order by stdlib, 3rd party libs, local imports?\nIt just makes is easier with git and doing code reviews.",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 14
+      },
+      "revId": "c4c228395bdca30131bdfec0e42d22d083c011e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7dd93ec6_785379d5",
+        "filename": "test/util.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-06T19:53:17Z",
+      "side": 1,
+      "message": "This is a welcome addition.  The profiler measured get_core_pattern() being called 17MM times across all the tests.  Thank you!",
+      "range": {
+        "startLine": 87,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 33
+      },
+      "revId": "c4c228395bdca30131bdfec0e42d22d083c011e9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
