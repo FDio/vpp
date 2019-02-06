@@ -19,6 +19,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session_rules_table.h>
 #include <vnet/session/session_table.h>
+#include <vnet/session/session.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -888,7 +889,7 @@ static void
 vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
 {
   transport_connection_t *tc = 0;
-  vnet_bind_args_t _a, *a = &_a;
+  vnet_listen_args_t _a, *a = &_a;
   vl_api_bind_uri_reply_t *rmp;
   session_t *s;
   application_t *app = 0;
@@ -1181,7 +1182,7 @@ static void
 vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
 {
   vl_api_bind_sock_reply_t *rmp;
-  vnet_bind_args_t _a, *a = &_a;
+  vnet_listen_args_t _a, *a = &_a;
   int rv = 0;
   clib_error_t *error;
   application_t *app = 0;
@@ -1215,7 +1216,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
-  if ((error = vnet_bind (a)))
+  if ((error = vnet_listen (a)))
     {
       rv = clib_error_get_code (error);
       clib_error_report (error);
@@ -1276,7 +1277,7 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
       a->app_index = app->app_index;
       a->handle = mp->handle;
       a->wrk_map_index = mp->wrk_index;
-      if ((error = vnet_unbind (a)))
+      if ((error = vnet_unlisten (a)))
 	{
 	  rv = clib_error_get_code (error);
 	  clib_error_report (error);
