@@ -1,12 +1,9 @@
 """ test framework utilities """
 
-import abc
+import fnmatch
 import socket
 from socket import AF_INET6
-import six
-import sys
-import os.path
-
+import os
 import scapy.compat
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP
@@ -17,6 +14,7 @@ from scapy.utils import hexdump
 from scapy.utils6 import in6_mactoifaceid
 
 from io import BytesIO
+from subprocess import check_output, CalledProcessError, STDOUT
 from vpp_papi import mac_pton
 
 
@@ -68,12 +66,16 @@ def ip6_normalize(ip6):
                             socket.inet_pton(socket.AF_INET6, ip6))
 
 
-def get_core_path(tempdir):
-    return "%s/%s" % (tempdir, get_core_pattern())
+def get_dumped_core_paths(tempdir):
+    core_paths = []
+    for dirpath, _, filenames in os.walk(tempdir):
+        core_paths.extend(os.path.join(dirpath, x) for x in
+                          fnmatch.filter(filenames, _core_pattern))
+    return core_paths
 
 
 def is_core_present(tempdir):
-    return os.path.isfile(get_core_path(tempdir))
+    return get_dumped_core_paths(tempdir)
 
 
 def get_core_pattern():
@@ -82,9 +84,43 @@ def get_core_pattern():
     return corefmt
 
 
-def check_core_path(logger, core_path):
-    corefmt = get_core_pattern()
-    if corefmt.startswith("|"):
+_core_pattern = get_core_pattern()
+
+
+def check_core(logger, vpp_binary, core_path):
+    logger.error("Core file present in test temporary directory, "
+                 "debug with: gdb %s %s" % (vpp_binary, core_path))
+    logger.debug("Running `file %s':" % core_path)
+    try:
+        info = check_output(["file", core_path], stderr=STDOUT)
+        logger.debug(info)
+    except CalledProcessError as e:
+        logger.error("Could not run 'file' utility on core-file, rc=%s"
+                     % e.returncode)
+
+    try:
+        info = check_output(["gdb", "--batch", "--quiet",
+                             "-ex", "thread apply all bt full",
+                             "-ex", "q",
+                             vpp_binary, core_path], stderr=STDOUT)
+        logger.debug(info)
+    except CalledProcessError as e:
+        logger.error(
+            "Subprocess returned with error running `file' utility on "
+            "core-file, "
+            "rc=%s",  e.returncode)
+    except OSError as e:
+        logger.error(
+            "Subprocess returned OS error running `file' utility on "
+            "core-file, "
+            "oserror=(%s) %s", e.errno, e.strerror)
+    except Exception as e:
+        logger.error(
+            "Subprocess returned unanticipated error running `file' "
+            "utility on core-file, "
+            "%s", e)
+
+    if _core_pattern.startswith("|"):
         logger.error(
             "WARNING: redirecting the core dump through a"
             " filter may result in truncated dumps.")
@@ -93,7 +129,7 @@ def check_core_path(logger, core_path):
             " or uninstall it and edit the"
             " /proc/sys/kernel/core_pattern accordingly.")
         logger.error(
-            "   current core pattern is: %s" % corefmt)
+            "   current core pattern is: %s" % _core_pattern)
 
 
 class NumericConstant(object):

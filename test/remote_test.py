@@ -2,15 +2,15 @@
 
 import inspect
 import os
-import unittest
-from multiprocessing import Process, Pipe
-from pickle import dumps
-
 import six
 from six import moves
+import tempfile
+import unittest
 
-from framework import VppTestCase
 from enum import Enum
+from framework import VppTestCase
+from multiprocessing import Process, Pipe
+from pickle import dumps
 
 
 class SerializableClassCopy(object):
@@ -388,6 +388,11 @@ class RemoteVppTestCase(VppTestCase):
             if self.vpp.returncode is None:
                 self.vpp.terminate()
                 self.vpp.communicate()
+
+    @classmethod
+    def get_tempdir(cls):
+        return tempfile.mkdtemp(prefix='%svpp-unittest-%s-' %
+                                       (cls.tempdir_prefix, cls.__name__))
 
     @classmethod
     def setUpClass(cls, tempdir):
