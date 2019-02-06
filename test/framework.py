@@ -386,6 +386,14 @@ class VppTestCase(unittest.TestCase):
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
 
     @classmethod
+    def get_tempdir(cls):
+        """
+        Set the temporary directory prefix. This allows subclasses to override
+        this method and use their custom prefixes.
+        """
+        return tempfile.mkdtemp(prefix='vpp-unittest-%s-' % cls.__name__)
+
+    @classmethod
     def setUpClass(cls):
         """
         Perform class setup before running the testcase
@@ -398,8 +406,7 @@ class VppTestCase(unittest.TestCase):
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
-        cls.tempdir = tempfile.mkdtemp(
-            prefix='vpp-unittest-%s-' % cls.__name__)
+        cls.tempdir = cls.get_tempdir()
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(

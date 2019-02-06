@@ -2,6 +2,7 @@
 
 import inspect
 import os
+import tempfile
 import unittest
 from multiprocessing import Process, Pipe
 from pickle import dumps
@@ -353,10 +354,15 @@ class RemoteVppTestCase(VppTestCase):
 
     def __del__(self):
         if hasattr(self, "vpp"):
-            cls.vpp.poll()
-            if cls.vpp.returncode is None:
-                cls.vpp.terminate()
-                cls.vpp.communicate()
+            self.vpp.poll()
+            if self.vpp.returncode is None:
+                self.vpp.terminate()
+                self.vpp.communicate()
+
+    @classmethod
+    def get_tempdir(cls):
+        return tempfile.mkdtemp(prefix='%svpp-unittest-%s-' %
+                                       (cls.tempdir_prefix, cls.__name__))
 
     @classmethod
     def setUpClass(cls, tempdir):
