@@ -4,8 +4,7 @@ import sys
 import traceback
 from log import RED, single_line_delim, double_line_delim
 import ipaddress
-from subprocess import check_output, CalledProcessError
-from util import check_core_path, get_core_path
+from util import get_dumped_core_paths, check_core
 try:
     text_type = unicode
 except NameError:
@@ -84,17 +83,7 @@ class PollHook(Hook):
         super(PollHook, self).__init__(test)
 
     def on_crash(self, core_path):
-        self.logger.error("Core file present, debug with: gdb %s %s" %
-                          (self.test.vpp_bin, core_path))
-        check_core_path(self.logger, core_path)
-        self.logger.error("Running `file %s':" % core_path)
-        try:
-            info = check_output(["file", core_path])
-            self.logger.error(info)
-        except CalledProcessError as e:
-            self.logger.error(
-                "Could not run `file' utility on core-file, "
-                "rc=%s" % e.returncode)
+        check_core(self.logger, self.test.vpp_bin, core_path)
 
     def poll_vpp(self):
         """
@@ -118,8 +107,8 @@ class PollHook(Hook):
             msg = "VPP subprocess died unexpectedly with returncode %d [%s]." \
                   % (self.test.vpp.returncode, s)
             self.logger.critical(msg)
-            core_path = get_core_path(self.test.tempdir)
-            if os.path.isfile(core_path):
+            core_paths = get_dumped_core_paths(self.test.tempdir)
+            for core_path in core_paths:
                 self.on_crash(core_path)
             self.test.vpp_dead = True
             raise VppDiedError(msg)
