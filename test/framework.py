@@ -1,39 +1,40 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import gc
-import sys
-import os
-import select
-import unittest
-import tempfile
-import time
-import faulthandler
-import random
 import copy
-import psutil
-import platform
 from collections import deque
-from threading import Thread, Event
+import faulthandler
+import gc
 from inspect import getdoc, isclass
-from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
+import os
+import platform
+import psutil
+import random
+import select
+import sys
+import tempfile
+from threading import Thread, Event
+import time
+from traceback import format_exception
+import unittest
 
 import scapy.compat
-from scapy.packet import Raw
-from hook import StepHook, PollHook, VppDiedError
-from vpp_pg_interface import VppPGInterface
-from vpp_sub_interface import VppSubInterface
-from vpp_lo_interface import VppLoInterface
-from vpp_papi_provider import VppPapiProvider
-from vpp_papi.vpp_stats import VPPStats
-from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
-    get_logger, colorize
-from vpp_object import VppObjectRegistry
-from util import ppp, is_core_present
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply
+from scapy.packet import Raw
+
+from hook import StepHook, PollHook, VppDiedError
+from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
+    get_logger, colorize
+from util import ppp, is_core_present
+from vpp_lo_interface import VppLoInterface
+from vpp_object import VppObjectRegistry
+from vpp_papi_provider import VppPapiProvider
+from vpp_papi.vpp_stats import VPPStats
+from vpp_pg_interface import VppPGInterface
+from vpp_sub_interface import VppSubInterface
 
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
@@ -397,6 +398,14 @@ class VppTestCase(unittest.TestCase):
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
 
     @classmethod
+    def get_tempdir(cls):
+        """
+        Set the temporary directory prefix. This allows subclasses to override
+        this method and use their custom prefixes.
+        """
+        return tempfile.mkdtemp(prefix='vpp-unittest-%s-' % cls.__name__)
+
+    @classmethod
     def setUpClass(cls):
         """
         Perform class setup before running the testcase
@@ -409,8 +418,7 @@ class VppTestCase(unittest.TestCase):
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
-        cls.tempdir = tempfile.mkdtemp(
-            prefix='vpp-unittest-%s-' % cls.__name__)
+        cls.tempdir = cls.get_tempdir()
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(

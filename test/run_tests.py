@@ -1,28 +1,29 @@
 #!/usr/bin/env python
 
-import sys
-import shutil
-import os
-import fnmatch
-import unittest
 import argparse
+import fnmatch
+from multiprocessing import Process, Pipe, cpu_count
+from multiprocessing.managers import BaseManager
+from multiprocessing.queues import Queue
+import os
+import re
+import shutil
+import signal
+import sys
 import time
 import threading
-import signal
+import unittest
+
 import psutil
-import re
-from multiprocessing import Process, Pipe, cpu_count
-from multiprocessing.queues import Queue
-from multiprocessing.managers import BaseManager
+
+from debug import spawn_gdb
+from discover_tests import discover_tests
+from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
+    colorize, single_line_delim
 from framework import VppTestRunner, running_extended_tests, VppTestCase, \
     get_testcase_doc_name, get_test_description, PASS, FAIL, ERROR, SKIP, \
     TEST_RUN
-from debug import spawn_gdb
-from log import get_parallel_logger, double_line_delim, RED, YELLOW, GREEN, \
-    colorize, single_line_delim
-from discover_tests import discover_tests
-from subprocess import check_output, CalledProcessError
-from util import check_core_path, get_core_path, is_core_present
+from util import get_dumped_core_paths, is_core_present, check_core
 
 # timeout which controls how long the child has to finish after seeing
 # a core dump in test temporary directory. If this is exceeded, parent assumes
@@ -166,7 +167,7 @@ class TestCaseWrapper(object):
         self.last_heard = time.time()
         self.core_detected_at = None
         self.testcases_by_id = {}
-        self.testclasess_with_core = {}
+        self.core_dumped = False
         for testcase in self.testcase_suite:
             self.testcases_by_id[testcase.id()] = testcase
         self.result = TestResult(testcase_suite, self.testcases_by_id)
@@ -186,22 +187,15 @@ class TestCaseWrapper(object):
         else:
             self._last_test = test_id
 
-    def add_testclass_with_core(self):
+    def get_last_test_name(self):
         if self.last_test_id in self.testcases_by_id:
             test = self.testcases_by_id[self.last_test_id]
-            class_name = unittest.util.strclass(test.__class__)
             test_name = "'{}' ({})".format(get_test_description(descriptions,
                                                                 test),
                                            self.last_test_id)
         else:
             test_name = self.last_test_id
-            class_name = re.match(r'((tearDownClass)|(setUpClass)) '
-                                  r'\((.+\..+)\)', test_name).groups()[3]
-        if class_name not in self.testclasess_with_core:
-            self.testclasess_with_core[class_name] = (
-                test_name,
-                self.last_test_vpp_binary,
-                self.last_test_temp_dir)
+        return test_name
 
     def close_pipes(self):
         self.keep_alive_child_end.close()
@@ -235,7 +229,7 @@ def stdouterr_reader_wrapper(unread_testcases, finished_unread_testcases,
             read_testcase = None
 
 
-def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
+def handle_failed_suite(logger, vpp_binary, last_test_temp_dir, vpp_pid):
     if last_test_temp_dir:
         # Need to create link in case of a timeout or core dump without failure
         lttd = os.path.basename(last_test_temp_dir)
@@ -247,29 +241,9 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
                      % (link_path, lttd))
 
         # Report core existence
-        core_path = get_core_path(last_test_temp_dir)
-        if os.path.exists(core_path):
-            logger.error(
-                "Core-file exists in test temporary directory: %s!" %
-                core_path)
-            check_core_path(logger, core_path)
-            logger.debug("Running 'file %s':" % core_path)
-            try:
-                info = check_output(["file", core_path])
-                logger.debug(info)
-            except CalledProcessError as e:
-                logger.error("Subprocess returned with return code "
-                             "while running `file' utility on core-file "
-                             "returned: "
-                             "rc=%s", e.returncode)
-            except OSError as e:
-                logger.error("Subprocess returned with OS error while "
-                             "running 'file' utility "
-                             "on core-file: "
-                             "(%s) %s", e.errno, e.strerror)
-            except Exception as e:
-                logger.exception("Unexpected error running `file' utility "
-                                 "on core-file")
+        core_paths = get_dumped_core_paths(last_test_temp_dir)
+        for core_path in core_paths:
+            check_core(logger, vpp_binary, core_path)
 
     if vpp_pid:
         # Copy api post mortem
@@ -281,21 +255,22 @@ def handle_failed_suite(logger, last_test_temp_dir, vpp_pid):
 
 
 def check_and_handle_core(vpp_binary, tempdir, core_crash_test):
-    if is_core_present(tempdir):
+    core_paths = get_dumped_core_paths(tempdir)
+    for core_path in core_paths:
         print('VPP core detected in %s. Last test running was %s' %
               (tempdir, core_crash_test))
         print(single_line_delim)
-        spawn_gdb(vpp_binary, get_core_path(tempdir))
+        spawn_gdb(vpp_binary, core_path)
         print(single_line_delim)
 
 
 def handle_cores(failed_testcases):
     if debug_core:
         for failed_testcase in failed_testcases:
-            tcs_with_core = failed_testcase.testclasess_with_core
-            if tcs_with_core:
-                for test, vpp_binary, tempdir in tcs_with_core.values():
-                    check_and_handle_core(vpp_binary, tempdir, test)
+            if failed_testcase.core_dumped:
+                check_and_handle_core(failed_testcase.last_test_vpp_binary,
+                                      failed_testcase.last_test_temp_dir,
+                                      failed_testcase.get_last_test_name())
 
 
 def process_finished_testsuite(wrapped_testcase_suite,
@@ -311,6 +286,7 @@ def process_finished_testsuite(wrapped_testcase_suite,
     if not wrapped_testcase_suite.was_successful():
         failed_wrapped_testcases.add(wrapped_testcase_suite)
         handle_failed_suite(wrapped_testcase_suite.logger,
+                            wrapped_testcase_suite.last_test_vpp_binary,
                             wrapped_testcase_suite.last_test_temp_dir,
                             wrapped_testcase_suite.vpp_pid)
 
@@ -393,7 +369,7 @@ def run_forked(testcase_suites):
                         wrapped_testcase_suite.last_test_vpp_binary:
                     if is_core_present(
                             wrapped_testcase_suite.last_test_temp_dir):
-                        wrapped_testcase_suite.add_testclass_with_core()
+                        wrapped_testcase_suite.core_dumped = True
                         if wrapped_testcase_suite.core_detected_at is None:
                             wrapped_testcase_suite.core_detected_at = \
                                 time.time()
