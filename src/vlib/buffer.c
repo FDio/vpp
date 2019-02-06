@@ -192,9 +192,9 @@ vlib_validate_buffer_helper (vlib_main_t * vm,
   if ((signed) b->current_data < (signed) -VLIB_BUFFER_PRE_DATA_SIZE)
     return format (0, "current data %d before pre-data", b->current_data);
 
-  if (b->current_data + b->current_length > VLIB_BUFFER_DATA_SIZE)
+  if (b->current_data + b->current_length > vlib_bufer_get_default_size (vm))
     return format (0, "%d-%d beyond end of buffer %d", b->current_data,
-		   b->current_length, VLIB_BUFFER_DATA_SIZE);
+		   b->current_length, vlib_bufer_get_default_size (vm));
 
   if (follow_buffer_next && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
     {
@@ -407,7 +407,7 @@ vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
 
   d = data;
   n_left = n_data_bytes;
-  n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
+  n_buffer_bytes = vlib_bufer_get_default_size (vm);
 
   b = vlib_get_buffer (vm, bi);
   b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -455,7 +455,7 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
 					  u16 data_len)
 {
   vlib_buffer_t *l = *last;
-  u32 n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
+  u32 n_buffer_bytes = vlib_bufer_get_default_size (vm);
   u16 copied = 0;
   ASSERT (n_buffer_bytes >= l->current_length + l->current_data);
   while (data_len)
@@ -655,7 +655,7 @@ vlib_buffer_main_init_numa_node (struct vlib_main_t *vm, u32 numa_node)
   u32 buffers_per_numa;
   u32 buffer_size = CLIB_CACHE_LINE_ROUND (bm->ext_hdr_size +
 					   sizeof (vlib_buffer_t) +
-					   VLIB_BUFFER_DATA_SIZE);
+					   vlib_bufer_get_default_size (vm));
   u8 *name;
 
   pagesize = clib_mem_get_default_hugepage_size ();
@@ -690,7 +690,21 @@ retry:
   name = format (name, "default-numa-%d%c", numa_node, 0);
 
   return vlib_buffer_pool_create (vm, numa_node, (char *) name,
-				  VLIB_BUFFER_DATA_SIZE, physmem_map_index);
+				  vlib_bufer_get_default_size (vm),
+				  physmem_map_index);
+}
+
+void
+vlib_buffer_main_alloc (vlib_main_t * vm)
+{
+  vlib_buffer_main_t *bm;
+
+  if (vm->buffer_main)
+    return;
+
+  vm->buffer_main = bm = clib_mem_alloc (sizeof (bm[0]));
+  clib_memset (vm->buffer_main, 0, sizeof (bm[0]));
+  bm->default_data_size = VLIB_BUFFER_DEFAULT_DATA_SIZE;
 }
 
 clib_error_t *
@@ -701,11 +715,7 @@ vlib_buffer_main_init (struct vlib_main_t *vm)
   clib_bitmap_t *bmp = 0;
   u32 numa_node;
 
-  if (vm->buffer_main == 0)
-    {
-      vm->buffer_main = clib_mem_alloc (sizeof (bm[0]));
-      clib_memset (vm->buffer_main, 0, sizeof (bm[0]));
-    }
+  vlib_buffer_main_alloc (vm);
 
   bm = vm->buffer_main;
   bm->log_default = vlib_log_register_class ("buffer", 0);
@@ -741,17 +751,16 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
 {
   vlib_buffer_main_t *bm;
 
-  if (vm->buffer_main == 0)
-    {
-      vm->buffer_main = clib_mem_alloc (sizeof (bm[0]));
-      clib_memset (vm->buffer_main, 0, sizeof (bm[0]));
-    }
+  vlib_buffer_main_alloc (vm);
 
   bm = vm->buffer_main;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "buffers-per-numa %u", &bm->buffers_per_numa))
+	;
+      else if (unformat (input, "default data-size %u",
+			 &bm->default_data_size))
 	;
       else
 	return unformat_parse_error (input);

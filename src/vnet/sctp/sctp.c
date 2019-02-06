@@ -892,7 +892,7 @@ sctp_main_enable (vlib_main_t * vm)
   vec_validate (tm->ip_lookup_tx_frames[0], num_threads - 1);
   vec_validate (tm->ip_lookup_tx_frames[1], num_threads - 1);
 
-  tm->bytes_per_buffer = VLIB_BUFFER_DATA_SIZE;
+  tm->bytes_per_buffer = vlib_bufer_get_default_size (vm);
 
   vec_validate (tm->time_now, num_threads - 1);
   return error;

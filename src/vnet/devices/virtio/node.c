@@ -120,7 +120,7 @@ more:
 	((vif->type == VIRTIO_IF_TYPE_PCI) ? vlib_buffer_get_current_pa (vm,
 									 b) :
 	 pointer_to_uword (vlib_buffer_get_current (b)));
-      d->len = VLIB_BUFFER_DATA_SIZE + hdr_sz;
+      d->len = vlib_bufer_get_default_size (vm) + hdr_sz;
       d->flags = VRING_DESC_F_WRITE;
       vring->avail->ring[avail & mask] = next;
       avail++;
