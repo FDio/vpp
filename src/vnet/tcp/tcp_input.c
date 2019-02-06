@@ -3147,7 +3147,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       child0->rto = TCP_RTO_MIN;
       TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0, 1);
 
-      if (stream_session_accept (&child0->connection, lc0->c_s_index,
+      if (session_stream_accept (&child0->connection, lc0->c_s_index,
 				 0 /* notify */ ))
 	{
 	  tcp_connection_cleanup (child0);

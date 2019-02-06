@@ -19,7 +19,8 @@
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport_types.h>
 
-#define SESSION_LOCAL_HANDLE_PREFIX 0x7FFFFFFF
+#define SESSION_LOCAL_HANDLE_PREFIX 	0x7FFFFFFF
+#define SESSION_LISTENER_PREFIX		0x5FFFFFFF
 
 #define foreach_session_endpoint_fields				\
   foreach_transport_endpoint_cfg_fields				\
@@ -89,6 +90,19 @@ always_inline u8
 session_endpoint_fib_proto (session_endpoint_t * sep)
 {
   return sep->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+}
+
+static inline u8
+session_endpoint_is_local (session_endpoint_t * sep)
+{
+  return (ip_is_zero (&sep->ip, sep->is_ip4)
+	  || ip_is_local_host (&sep->ip, sep->is_ip4));
+}
+
+static inline u8
+session_endpoint_is_zero (session_endpoint_t * sep)
+{
+  return ip_is_zero (&sep->ip, sep->is_ip4);
 }
 
 typedef u8 session_type_t;
@@ -164,8 +178,8 @@ typedef struct session_
     /** Transport app index for apps acting as transports */
     u32 t_app_index;
 
-    /** Index in listener app's listener db */
-    u32 listener_db_index;
+    /** App listener index */
+    u32 al_index;
 
     /** Opaque, for general use */
     u32 opaque;
@@ -303,7 +317,7 @@ typedef struct local_session_
     u32 app_index;
   };
 
-  u32 listener_db_index;
+  u32 al_index;
 
   /** Has transport embedded when listener not purely local */
   session_type_t listener_session_type;
@@ -364,6 +378,108 @@ application_local_session_handle (local_session_t * ls)
     | (u64) local_session_id (ls);
 }
 
+typedef enum
+{
+  FIFO_EVENT_APP_RX,
+  SESSION_IO_EVT_CT_RX,
+  FIFO_EVENT_APP_TX,
+  SESSION_IO_EVT_CT_TX,
+  SESSION_IO_EVT_TX_FLUSH,
+  FIFO_EVENT_DISCONNECT,
+  FIFO_EVENT_BUILTIN_RX,
+  FIFO_EVENT_BUILTIN_TX,
+  FIFO_EVENT_RPC,
+  SESSION_CTRL_EVT_BOUND,
+  SESSION_CTRL_EVT_ACCEPTED,
+  SESSION_CTRL_EVT_ACCEPTED_REPLY,
+  SESSION_CTRL_EVT_CONNECTED,
+  SESSION_CTRL_EVT_CONNECTED_REPLY,
+  SESSION_CTRL_EVT_DISCONNECTED,
+  SESSION_CTRL_EVT_DISCONNECTED_REPLY,
+  SESSION_CTRL_EVT_RESET,
+  SESSION_CTRL_EVT_RESET_REPLY,
+  SESSION_CTRL_EVT_REQ_WORKER_UPDATE,
+  SESSION_CTRL_EVT_WORKER_UPDATE,
+  SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
+} session_evt_type_t;
+
+static inline const char *
+fifo_event_type_str (session_evt_type_t et)
+{
+  switch (et)
+    {
+    case FIFO_EVENT_APP_RX:
+      return "FIFO_EVENT_APP_RX";
+    case FIFO_EVENT_APP_TX:
+      return "FIFO_EVENT_APP_TX";
+    case FIFO_EVENT_DISCONNECT:
+      return "FIFO_EVENT_DISCONNECT";
+    case FIFO_EVENT_BUILTIN_RX:
+      return "FIFO_EVENT_BUILTIN_RX";
+    case FIFO_EVENT_RPC:
+      return "FIFO_EVENT_RPC";
+    default:
+      return "UNKNOWN FIFO EVENT";
+    }
+}
+
+typedef enum
+{
+  SESSION_MQ_IO_EVT_RING,
+  SESSION_MQ_CTRL_EVT_RING,
+  SESSION_MQ_N_RINGS
+} session_mq_rings_e;
+
+typedef struct
+{
+  void *fp;
+  void *arg;
+} session_rpc_args_t;
+
+/* *INDENT-OFF* */
+typedef struct
+{
+  u8 event_type;
+  u8 postponed;
+  union
+  {
+    svm_fifo_t *fifo;
+    session_handle_t session_handle;
+    session_rpc_args_t rpc_args;
+    struct
+    {
+      u8 data[0];
+    };
+  };
+} __clib_packed session_event_t;
+/* *INDENT-ON* */
+
+#define SESSION_MSG_NULL { }
+
+typedef struct session_dgram_pre_hdr_
+{
+  u32 data_length;
+  u32 data_offset;
+} session_dgram_pre_hdr_t;
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct session_dgram_header_
+{
+  u32 data_length;
+  u32 data_offset;
+  ip46_address_t rmt_ip;
+  ip46_address_t lcl_ip;
+  u16 rmt_port;
+  u16 lcl_port;
+  u8 is_ip4;
+}) session_dgram_hdr_t;
+/* *INDENT-ON* */
+
+#define SESSION_CONN_ID_LEN 37
+#define SESSION_CONN_HDR_LEN 45
+
+STATIC_ASSERT (sizeof (session_dgram_hdr_t) == (SESSION_CONN_ID_LEN + 8),
+	       "session conn id wrong length");
 #endif /* SRC_VNET_SESSION_SESSION_TYPES_H_ */
 
 /*

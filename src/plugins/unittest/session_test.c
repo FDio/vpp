@@ -182,36 +182,36 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
   vec_free (attach_args.name);
 
   server_sep.is_ip4 = 1;
-  vnet_bind_args_t bind_args = {
+  vnet_listen_args_t bind_args = {
     .sep = server_sep,
     .app_index = 0,
   };
 
   bind_args.app_index = server_index;
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "server bind4 should work");
   bind4_handle = bind_args.handle;
 
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error != 0), "double server bind4 should not work");
 
   bind_args.sep.is_ip4 = 0;
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "server bind6 should work");
   bind6_handle = bind_args.handle;
 
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error != 0), "double server bind6 should not work");
 
   vnet_unbind_args_t unbind_args = {
     .handle = bind4_handle,
     .app_index = server_index,
   };
-  error = vnet_unbind (&unbind_args);
+  error = vnet_unlisten (&unbind_args);
   SESSION_TEST ((error == 0), "unbind4 should work");
 
   unbind_args.handle = bind6_handle;
-  error = vnet_unbind (&unbind_args);
+  error = vnet_unlisten (&unbind_args);
   SESSION_TEST ((error == 0), "unbind6 should work");
 
   vnet_app_detach_args_t detach_args = {
@@ -340,11 +340,11 @@ session_test_endpoint_cfg (vlib_main_t * vm, unformat_input_t * input)
 
   server_sep.is_ip4 = 1;
   server_sep.port = dummy_server_port;
-  vnet_bind_args_t bind_args = {
+  vnet_listen_args_t bind_args = {
     .sep = server_sep,
     .app_index = server_index,
   };
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "server bind should work");
 
   /*
@@ -447,7 +447,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
     .name = format (0, "session_test"),
   };
 
-  vnet_bind_args_t bind_args = {
+  vnet_listen_args_t bind_args = {
     .sep = server_sep,
     .app_index = 0,
   };
@@ -530,7 +530,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 		"server should be in the default ns");
 
   bind_args.app_index = server_index;
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "server bind should work");
 
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
@@ -544,7 +544,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   unbind_args.app_index = server_index;
   unbind_args.handle = bind_args.handle;
-  error = vnet_unbind (&unbind_args);
+  error = vnet_unlisten (&unbind_args);
   SESSION_TEST ((error == 0), "unbind should work");
 
   s = session_lookup_listener (server_st_index, &server_sep);
@@ -570,7 +570,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 		"server should be in the right ns");
 
   bind_args.app_index = server_index;
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "bind should work");
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
   s = session_lookup_listener (server_st_index, &server_sep);
@@ -627,7 +627,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
    */
   unbind_args.handle = bind_args.handle;
   unbind_args.app_index = server_index;
-  error = vnet_unbind (&unbind_args);
+  error = vnet_unlisten (&unbind_args);
   SESSION_TEST ((error == 0), "unbind should work");
 
   s = session_lookup_listener (server_st_index, &server_sep);
@@ -650,7 +650,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 		"app should be in the right ns");
 
   bind_args.app_index = server_index;
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "bind should work");
 
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
@@ -662,7 +662,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 		"listener should exist in local table");
 
   unbind_args.handle = bind_args.handle;
-  error = vnet_unbind (&unbind_args);
+  error = vnet_unlisten (&unbind_args);
   SESSION_TEST ((error == 0), "unbind should work");
 
   handle = session_lookup_local_endpoint (server_local_st_index, &server_sep);
@@ -697,7 +697,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   session_create_lookpback (0, &sw_if_index, &intf_addr);
 
   /*
-   * Update namespace
+   * Update namespace with interface
    */
   ns_args.sw_if_index = sw_if_index;
   error = vnet_app_namespace_add_del (&ns_args);
@@ -719,7 +719,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   server_wrk_index = application_get_default_worker (server)->wrk_index;
 
   bind_args.app_index = server_index;
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   server_st_index = application_session_table (server, FIB_PROTOCOL_IP4);
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s == 0), "zero listener should not exist in global table");
@@ -1030,6 +1030,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   u32 local_ns_index = default_ns->local_table_index;
   int verbose = 0, rv;
   app_namespace_t *app_ns;
+  app_listener_t *al;
   u64 handle;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1056,7 +1057,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
     .name = format (0, "session_test"),
   };
 
-  vnet_bind_args_t bind_args = {
+  vnet_listen_args_t bind_args = {
     .sep = server_sep,
     .app_index = 0,
   };
@@ -1074,10 +1075,11 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   server_index = attach_args.app_index;
 
   bind_args.app_index = server_index;
-  error = vnet_bind (&bind_args);
+  error = vnet_listen (&bind_args);
   SESSION_TEST ((error == 0), "server bound to %U/%d", format_ip46_address,
 		&server_sep.ip, 1, server_sep.port);
-  listener = listen_session_get_from_handle (bind_args.handle);
+  al = app_listener_get_w_handle (bind_args.handle);
+  listener = app_listener_get_session (al);
   ip4_address_t lcl_ip = {
     .as_u32 = clib_host_to_net_u32 (0x01020304),
   };

@@ -20,6 +20,16 @@
 
 static app_main_t app_main;
 
+static void
+application_local_listener_session_endpoint (local_session_t * ll,
+					     session_endpoint_t * sep)
+{
+  sep->transport_proto =
+    session_type_transport_proto (ll->listener_session_type);
+  sep->port = ll->port;
+  sep->is_ip4 = ll->listener_session_type & 1;
+}
+
 static app_listener_t *
 app_listener_alloc (application_t * app)
 {
@@ -27,10 +37,13 @@ app_listener_alloc (application_t * app)
   pool_get (app->listeners, app_listener);
   clib_memset (app_listener, 0, sizeof (*app_listener));
   app_listener->al_index = app_listener - app->listeners;
+  app_listener->app_index = app->app_index;
+  app_listener->session_index = SESSION_INVALID_INDEX;
+  app_listener->local_index = SESSION_INVALID_INDEX;
   return app_listener;
 }
 
-static app_listener_t *
+app_listener_t *
 app_listener_get (application_t * app, u32 app_listener_index)
 {
   return pool_elt_at_index (app->listeners, app_listener_index);
@@ -45,29 +58,242 @@ app_listener_free (application_t * app, app_listener_t * app_listener)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
 }
 
-static app_listener_t *
-app_local_listener_alloc (application_t * app)
+local_session_t *
+application_local_listen_session_alloc (application_t * app)
 {
-  app_listener_t *app_listener;
-  pool_get (app->local_listeners, app_listener);
-  clib_memset (app_listener, 0, sizeof (*app_listener));
-  app_listener->al_index = app_listener - app->local_listeners;
-  return app_listener;
+  local_session_t *ll;
+  pool_get_zero (app->local_listen_sessions, ll);
+  ll->session_index = ll - app->local_listen_sessions;
+  ll->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
+  ll->app_index = app->app_index;
+  return ll;
 }
 
-static app_listener_t *
-app_local_listener_get (application_t * app, u32 app_listener_index)
+void
+application_local_listen_session_free (application_t * app,
+				       local_session_t * ll)
 {
-  return pool_elt_at_index (app->local_listeners, app_listener_index);
+  pool_put (app->local_listen_sessions, ll);
+  if (CLIB_DEBUG)
+    clib_memset (ll, 0xfb, sizeof (*ll));
+}
+
+static u32
+app_listener_id (app_listener_t * al)
+{
+  ASSERT (al->app_index < 1 << 16 && al->al_index < 1 << 16);
+  return (al->app_index << 16 | al->al_index);
+}
+
+session_handle_t
+app_listener_handle (app_listener_t * al)
+{
+  return ((u64) SESSION_LISTENER_PREFIX << 32 | (u64) app_listener_id (al));
 }
 
 static void
-app_local_listener_free (application_t * app, app_listener_t * app_listener)
+app_listener_id_parse (u32 listener_id, u32 * app_index,
+		       u32 * app_listener_index)
 {
-  clib_bitmap_free (app_listener->workers);
-  pool_put (app->local_listeners, app_listener);
-  if (CLIB_DEBUG)
-    clib_memset (app_listener, 0xfa, sizeof (*app_listener));
+  *app_index = listener_id >> 16;
+  *app_listener_index = listener_id & 0xFFFF;
+}
+
+void
+app_listener_handle_parse (session_handle_t handle, u32 * app_index,
+			   u32 * app_listener_index)
+{
+  app_listener_id_parse (handle & 0xFFFFFFFF, app_index, app_listener_index);
+}
+
+static app_listener_t *
+app_listener_get_w_id (u32 listener_id)
+{
+  u32 app_index, app_listener_index;
+  application_t *app;
+
+  app_listener_id_parse (listener_id, &app_index, &app_listener_index);
+  app = application_get_if_valid (app_index);
+  if (!app)
+    return 0;
+  return app_listener_get (app, app_listener_index);
+}
+
+app_listener_t *
+app_listener_get_w_session (session_t * ls)
+{
+  application_t *app;
+
+  app = application_get_if_valid (ls->app_index);
+  if (!app)
+    return 0;
+  return app_listener_get (app, ls->al_index);
+}
+
+app_listener_t *
+app_listener_get_w_handle (session_handle_t handle)
+{
+
+  if (handle >> 32 != SESSION_LISTENER_PREFIX)
+    return 0;
+
+  return app_listener_get_w_id (handle & 0xFFFFFFFF);
+}
+
+app_listener_t *
+app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
+{
+  u32 table_index, fib_proto;
+  session_endpoint_t *sep;
+  session_handle_t handle;
+  local_session_t *ll;
+  session_t *ls;
+
+  sep = (session_endpoint_t *) sep_ext;
+  if (application_has_local_scope (app) && session_endpoint_is_local (sep))
+    {
+      table_index = application_local_session_table (app);
+      handle = session_lookup_endpoint_listener (table_index, sep, 1);
+      if (handle != SESSION_INVALID_HANDLE)
+	{
+	  ll = application_get_local_listener_w_handle (handle);
+	  return app_listener_get_w_session ((session_t *) ll);
+	}
+    }
+
+  fib_proto = session_endpoint_fib_proto (sep);
+  table_index = application_session_table (app, fib_proto);
+  handle = session_lookup_endpoint_listener (table_index, sep, 1);
+  if (handle != SESSION_INVALID_HANDLE)
+    {
+      ls = listen_session_get_from_handle (handle);
+      return app_listener_get_w_session ((session_t *) ls);
+    }
+
+  return 0;
+}
+
+int
+app_listener_alloc_and_init (application_t * app,
+			     session_endpoint_cfg_t * sep,
+			     app_listener_t ** listener)
+{
+  app_listener_t *app_listener;
+  local_session_t *ll = 0;
+  session_handle_t lh;
+  session_type_t st;
+  session_t *ls = 0;
+  int rv;
+
+  app_listener = app_listener_alloc (app);
+  st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
+
+  /*
+   * Add session endpoint to local session table. Only binds to "inaddr_any"
+   * (i.e., zero address) are added to local scope table.
+   */
+  if (application_has_local_scope (app)
+      && session_endpoint_is_local ((session_endpoint_t *) sep))
+    {
+      u32 table_index;
+
+      ll = application_local_listen_session_alloc (app);
+      ll->port = sep->port;
+      /* Store the original session type for the unbind */
+      ll->listener_session_type = st;
+      table_index = application_local_session_table (app);
+      lh = application_local_session_handle (ll);
+      session_lookup_add_session_endpoint (table_index,
+					   (session_endpoint_t *) sep, lh);
+      app_listener->local_index = ll->session_index;
+      ll->al_index = app_listener->al_index;
+    }
+
+  if (application_has_global_scope (app))
+    {
+      /*
+       * Start listening on local endpoint for requested transport and scope.
+       * Creates a stream session with state LISTENING to be used in session
+       * lookups, prior to establishing connection. Requests transport to
+       * build it's own specific listening connection.
+       */
+      ls = listen_session_new (0, st);
+      ls->app_index = app->app_index;
+      ls->app_wrk_index = sep->app_wrk_index;
+
+      /* Listen pool can be reallocated if the transport is
+       * recursive (tls) */
+      lh = session_handle (ls);
+
+      if ((rv = session_listen (ls, sep)))
+	{
+	  ls = session_get_from_handle (lh);
+	  session_free (ls);
+	  return rv;
+	}
+      app_listener->session_index = ls->session_index;
+      ls->al_index = app_listener->al_index;
+    }
+
+  if (!ll && !ls)
+    {
+      app_listener_free (app, app_listener);
+      return -1;
+    }
+
+  *listener = app_listener;
+  return 0;
+}
+
+void
+app_listener_cleanup (app_listener_t * al)
+{
+  application_t *app = application_get (al->app_index);
+
+  if (al->session_index != SESSION_INVALID_INDEX)
+    {
+      session_t *ls = session_get (al->session_index, 0);
+      session_stop_listen (ls);
+      listen_session_del (ls);
+    }
+  if (al->local_index != SESSION_INVALID_INDEX)
+    {
+      session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+      local_session_t *ll;
+      u32 table_index;
+
+      table_index = application_local_session_table (app);
+      ll = application_get_local_listen_session (app, al->local_index);
+      application_local_listener_session_endpoint (ll, &sep);
+      session_lookup_del_session_endpoint (table_index, &sep);
+      application_local_listen_session_free (app, ll);
+    }
+  app_listener_free (app, al);
+}
+
+app_worker_t *
+app_listener_select_worker (app_listener_t * al)
+{
+  application_t *app;
+  u32 wrk_index;
+
+  app = application_get (al->app_index);
+  wrk_index = clib_bitmap_next_set (al->workers, al->accept_rotor + 1);
+  if (wrk_index == ~0)
+    wrk_index = clib_bitmap_first_set (al->workers);
+
+  ASSERT (wrk_index != ~0);
+  al->accept_rotor = wrk_index;
+  return application_get_worker (app, wrk_index);
+}
+
+session_t *
+app_listener_get_session (app_listener_t * al)
+{
+  if (al->session_index == SESSION_INVALID_INDEX)
+    return 0;
+
+  return listen_session_get (al->session_index);
 }
 
 static app_worker_map_t *
@@ -128,16 +354,6 @@ application_local_session_table (application_t * app)
     return APP_INVALID_INDEX;
   app_ns = app_namespace_get (app->ns_index);
   return app_ns->local_table_index;
-}
-
-static void
-application_local_listener_session_endpoint (local_session_t * ll,
-					     session_endpoint_t * sep)
-{
-  sep->transport_proto =
-    session_type_transport_proto (ll->listener_session_type);
-  sep->port = ll->port;
-  sep->is_ip4 = ll->listener_session_type & 1;
 }
 
 /**
@@ -475,26 +691,12 @@ application_n_workers (application_t * app)
 }
 
 app_worker_t *
-application_listener_select_worker (session_t * ls, u8 is_local)
+application_listener_select_worker (session_t * ls)
 {
-  app_listener_t *app_listener;
-  application_t *app;
-  u32 wrk_index;
+  app_listener_t *al;
 
-  app = application_get (ls->app_index);
-  if (!is_local)
-    app_listener = app_listener_get (app, ls->listener_db_index);
-  else
-    app_listener = app_local_listener_get (app, ls->listener_db_index);
-
-  wrk_index = clib_bitmap_next_set (app_listener->workers,
-				    app_listener->accept_rotor + 1);
-  if (wrk_index == ~0)
-    wrk_index = clib_bitmap_first_set (app_listener->workers);
-
-  ASSERT (wrk_index != ~0);
-  app_listener->accept_rotor = wrk_index;
-  return application_get_worker (app, wrk_index);
+  al = app_listener_get_w_session (ls);
+  return app_listener_select_worker (al);
 }
 
 int
@@ -545,88 +747,6 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   return 0;
 }
 
-/**
- * Start listening local transport endpoint for requested transport.
- *
- * Creates a 'dummy' stream session with state LISTENING to be used in session
- * lookups, prior to establishing connection. Requests transport to build
- * it's own specific listening connection.
- */
-int
-application_start_listen (application_t * app,
-			  session_endpoint_cfg_t * sep_ext,
-			  session_handle_t * res)
-{
-  app_listener_t *app_listener;
-  u32 table_index, fib_proto;
-  session_endpoint_t *sep;
-  app_worker_t *app_wrk;
-  session_t *ls;
-  session_handle_t lh;
-  session_type_t sst;
-
-  /*
-   * Check if sep is already listened on
-   */
-  sep = (session_endpoint_t *) sep_ext;
-  fib_proto = session_endpoint_fib_proto (sep);
-  table_index = application_session_table (app, fib_proto);
-  lh = session_lookup_endpoint_listener (table_index, sep, 1);
-  if (lh != SESSION_INVALID_HANDLE)
-    {
-      ls = listen_session_get_from_handle (lh);
-      if (ls->app_index != app->app_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      app_wrk = app_worker_get (sep_ext->app_wrk_index);
-      if (ls->app_wrk_index == app_wrk->wrk_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      if (app_worker_start_listen (app_wrk, ls))
-	return -1;
-
-      app_listener = app_listener_get (app, ls->listener_db_index);
-      app_listener->workers = clib_bitmap_set (app_listener->workers,
-					       app_wrk->wrk_map_index, 1);
-
-      *res = listen_session_get_handle (ls);
-      return 0;
-    }
-
-  /*
-   * Allocate new listener for application
-   */
-  sst = session_type_from_proto_and_ip (sep_ext->transport_proto,
-					sep_ext->is_ip4);
-  ls = listen_session_new (0, sst);
-  ls->app_index = app->app_index;
-  lh = listen_session_get_handle (ls);
-  if (session_listen (ls, sep_ext))
-    goto err;
-
-
-  ls = listen_session_get_from_handle (lh);
-  app_listener = app_listener_alloc (app);
-  ls->listener_db_index = app_listener->al_index;
-
-  /*
-   * Setup app worker as a listener
-   */
-  app_wrk = app_worker_get (sep_ext->app_wrk_index);
-  ls->app_wrk_index = app_wrk->wrk_index;
-  if (app_worker_start_listen (app_wrk, ls))
-    goto err;
-  app_listener->workers = clib_bitmap_set (app_listener->workers,
-					   app_wrk->wrk_map_index, 1);
-
-  *res = lh;
-  return 0;
-
-err:
-  listen_session_del (ls);
-  return -1;
-}
-
 int
 application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
 {
@@ -643,65 +763,20 @@ application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
     segment_manager_dealloc_fifos (s->rx_fifo->segment_index, s->rx_fifo,
 				   s->tx_fifo);
 
-  if (app_worker_start_listen (app_wrk, s))
-    return -1;
-
-  s->app_wrk_index = app_wrk->wrk_index;
-
   app = application_get (old_wrk->app_index);
   if (!app)
     return -1;
 
-  app_listener = app_listener_get (app, s->listener_db_index);
-  app_listener->workers = clib_bitmap_set (app_listener->workers,
-					   app_wrk->wrk_map_index, 1);
+  app_listener = app_listener_get (app, s->al_index);
+
+  /* Only remove from lb for now */
   app_listener->workers = clib_bitmap_set (app_listener->workers,
 					   old_wrk->wrk_map_index, 0);
-  return 0;
-}
 
-/**
- * Stop listening on session associated to handle
- *
- * @param handle	listener handle
- * @param app_index	index of the app owning the handle.
- * @param app_wrk_index	index of the worker requesting the stop
- */
-int
-application_stop_listen (u32 app_index, u32 app_wrk_index,
-			 session_handle_t handle)
-{
-  app_listener_t *app_listener;
-  session_t *listener;
-  app_worker_t *app_wrk;
-  application_t *app;
+  if (app_worker_start_listen (app_wrk, app_listener))
+    return -1;
 
-  listener = listen_session_get_from_handle (handle);
-  app = application_get (app_index);
-  if (PREDICT_FALSE (!app || app->app_index != listener->app_index))
-    {
-      clib_warning ("app doesn't own handle %llu!", handle);
-      return -1;
-    }
-
-  app_listener = app_listener_get (app, listener->listener_db_index);
-  if (!clib_bitmap_get (app_listener->workers, app_wrk_index))
-    {
-      clib_warning ("worker %u not listening on handle %lu", app_wrk_index,
-		    handle);
-      return 0;
-    }
-
-  app_wrk = application_get_worker (app, app_wrk_index);
-  app_worker_stop_listen (app_wrk, handle);
-  clib_bitmap_set_no_check (app_listener->workers, app_wrk_index, 0);
-
-  if (clib_bitmap_is_zero (app_listener->workers))
-    {
-      session_stop_listen (listener);
-      app_listener_free (app, app_listener);
-      listen_session_del (listener);
-    }
+  s->app_wrk_index = app_wrk->wrk_index;
 
   return 0;
 }
@@ -803,8 +878,9 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   transport_connection_t *tc;
   app_worker_t *app_wrk;
+  app_listener_t *al;
   session_t *s;
-  u64 handle;
+  u32 flags;
 
   /* TODO decide if we want proxy to be enabled for all workers */
   app_wrk = application_get_default_worker (app);
@@ -818,8 +894,15 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 	  sep.sw_if_index = app_ns->sw_if_index;
 	  sep.transport_proto = transport_proto;
 	  sep.app_wrk_index = app_wrk->wrk_index;	/* only default */
-	  application_start_listen (app, &sep, &handle);
-	  s = listen_session_get_from_handle (handle);
+
+	  /* force global scope listener */
+	  flags = app->flags;
+	  app->flags &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+	  app_listener_alloc_and_init (app, &sep, &al);
+	  app->flags = flags;
+
+	  app_worker_start_listen (app_wrk, al);
+	  s = listen_session_get (al->session_index);
 	  s->enqueue_epoch = SESSION_PROXY_LISTENER_INDEX;
 	}
     }
@@ -937,165 +1020,6 @@ application_get_segment_manager_properties (u32 app_index)
 {
   application_t *app = application_get (app_index);
   return &app->sm_properties;
-}
-
-local_session_t *
-application_local_listen_session_alloc (application_t * app)
-{
-  local_session_t *ll;
-  pool_get (app->local_listen_sessions, ll);
-  clib_memset (ll, 0, sizeof (*ll));
-  return ll;
-}
-
-u32
-application_local_listener_index (application_t * app, local_session_t * ll)
-{
-  return (ll - app->local_listen_sessions);
-}
-
-void
-application_local_listen_session_free (application_t * app,
-				       local_session_t * ll)
-{
-  pool_put (app->local_listen_sessions, ll);
-  if (CLIB_DEBUG)
-    clib_memset (ll, 0xfb, sizeof (*ll));
-}
-
-int
-application_start_local_listen (application_t * app,
-				session_endpoint_cfg_t * sep_ext,
-				session_handle_t * handle)
-{
-  app_listener_t *app_listener;
-  session_endpoint_t *sep;
-  app_worker_t *app_wrk;
-  session_handle_t lh;
-  local_session_t *ll;
-  u32 table_index;
-
-  sep = (session_endpoint_t *) sep_ext;
-  table_index = application_local_session_table (app);
-  app_wrk = app_worker_get (sep_ext->app_wrk_index);
-
-  /* An exact sep match, as opposed to session_lookup_local_listener */
-  lh = session_lookup_endpoint_listener (table_index, sep, 1);
-  if (lh != SESSION_INVALID_HANDLE)
-    {
-      ll = application_get_local_listener_w_handle (lh);
-      if (ll->app_index != app->app_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      if (ll->app_wrk_index == app_wrk->wrk_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      app_listener = app_local_listener_get (app, ll->listener_db_index);
-      app_listener->workers = clib_bitmap_set (app_listener->workers,
-					       app_wrk->wrk_map_index, 1);
-      *handle = application_local_session_handle (ll);
-      return 0;
-    }
-
-  ll = application_local_listen_session_alloc (app);
-  ll->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
-  ll->app_wrk_index = app_wrk->app_index;
-  ll->session_index = application_local_listener_index (app, ll);
-  ll->port = sep_ext->port;
-  /* Store the original session type for the unbind */
-  ll->listener_session_type =
-    session_type_from_proto_and_ip (sep_ext->transport_proto,
-				    sep_ext->is_ip4);
-  ll->transport_listener_index = ~0;
-  ll->app_index = app->app_index;
-
-  app_listener = app_local_listener_alloc (app);
-  ll->listener_db_index = app_listener->al_index;
-  app_listener->workers = clib_bitmap_set (app_listener->workers,
-					   app_wrk->wrk_map_index, 1);
-
-  *handle = application_local_session_handle (ll);
-  session_lookup_add_session_endpoint (table_index, sep, *handle);
-
-  return 0;
-}
-
-/**
- * Clean up local session table. If we have a listener session use it to
- * find the port and proto. If not, the handle must be a local table handle
- * so parse it.
- */
-int
-application_stop_local_listen (u32 app_index, u32 wrk_map_index,
-			       session_handle_t lh)
-{
-  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
-  u32 table_index, ll_index, server_index;
-  app_listener_t *app_listener;
-  app_worker_t *server_wrk;
-  session_t *sl = 0;
-  local_session_t *ll, *ls;
-  application_t *server;
-
-  server = application_get (app_index);
-  table_index = application_local_session_table (server);
-
-  /* We have both local and global table binds. Figure from global what
-   * sep we should be cleaning up.
-   */
-  if (!session_handle_is_local (lh))
-    {
-      sl = listen_session_get_from_handle (lh);
-      if (!sl || listen_session_get_local_session_endpoint (sl, &sep))
-	{
-	  clib_warning ("broken listener");
-	  return -1;
-	}
-      lh = session_lookup_endpoint_listener (table_index, &sep, 0);
-      if (lh == SESSION_INVALID_HANDLE)
-	return -1;
-    }
-
-  local_session_parse_handle (lh, &server_index, &ll_index);
-  if (PREDICT_FALSE (server_index != app_index))
-    {
-      clib_warning ("app %u does not own local handle 0x%lx", app_index, lh);
-      return -1;
-    }
-
-  ll = application_get_local_listen_session (server, ll_index);
-  if (PREDICT_FALSE (!ll))
-    {
-      clib_warning ("no local listener");
-      return -1;
-    }
-
-  app_listener = app_local_listener_get (server, ll->listener_db_index);
-  if (!clib_bitmap_get (app_listener->workers, wrk_map_index))
-    {
-      clib_warning ("app wrk %u not listening on handle %lu", wrk_map_index,
-		    lh);
-      return -1;
-    }
-
-  server_wrk = application_get_worker (server, wrk_map_index);
-  /* *INDENT-OFF* */
-  pool_foreach (ls, server_wrk->local_sessions, ({
-    if (ls->listener_index == ll->session_index)
-      app_worker_local_session_disconnect (server_wrk->app_index, ls);
-  }));
-  /* *INDENT-ON* */
-
-  clib_bitmap_set_no_check (app_listener->workers, wrk_map_index, 0);
-  if (clib_bitmap_is_zero (app_listener->workers))
-    {
-      app_local_listener_free (server, app_listener);
-      application_local_listener_session_endpoint (ll, &sep);
-      session_lookup_del_session_endpoint (table_index, &sep);
-      application_local_listen_session_free (server, ll);
-    }
-
-  return 0;
 }
 
 clib_error_t *
