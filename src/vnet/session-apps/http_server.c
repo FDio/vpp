@@ -727,7 +727,7 @@ static int
 http_server_listen ()
 {
   http_server_main_t *hsm = &http_server_main;
-  vnet_bind_args_t _a, *a = &_a;
+  vnet_listen_args_t _a, *a = &_a;
   clib_memset (a, 0, sizeof (*a));
   a->app_index = hsm->app_index;
   a->uri = "tcp://0.0.0.0/80";
