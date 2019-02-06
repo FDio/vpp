@@ -249,6 +249,6 @@ class VppIpsecSA(VppObject):
     def query_vpp_config(self):
         bs = self.test.vapi.ipsec_sa_dump()
         for b in bs:
-            if b.sa_id == self.id:
+            if b.entry.sad_id == self.id:
                 return True
         return False
