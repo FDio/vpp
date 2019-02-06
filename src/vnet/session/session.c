@@ -945,7 +945,7 @@ session_transport_reset_notify (transport_connection_t * tc)
  * Accept a stream session. Optionally ping the server by callback.
  */
 int
-stream_session_accept (transport_connection_t * tc, u32 listener_index,
+session_stream_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 notify)
 {
   session_t *s, *listener;
@@ -955,7 +955,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 
   /* Find the server */
   listener = listen_session_get (listener_index);
-  app_wrk = application_listener_select_worker (listener, 0);
+  app_wrk = application_listener_select_worker (listener);
 
   sm = app_worker_get_listen_segment_manager (app_wrk, listener);
   if ((rv = session_alloc_and_init (sm, tc, 1, &s)))
