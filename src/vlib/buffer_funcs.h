@@ -56,16 +56,11 @@ vlib_buffer_validate (vlib_main_t * vm, vlib_buffer_t * b)
   /* reference count in allocated buffer always must be 1 or higher */
   ASSERT (b->ref_count > 0);
 
-  /* verify that buffer pointer is from buffer memory range */
-  ASSERT (pointer_to_uword (b) >= bm->buffer_mem_start);
-  ASSERT (pointer_to_uword (b) < bm->buffer_mem_start + bm->buffer_mem_size -
-	  VLIB_BUFFER_DATA_SIZE);
-
   /* verify that buffer pool index is valid */
   bp = vec_elt_at_index (bm->buffer_pools, b->buffer_pool_index);
   ASSERT (pointer_to_uword (b) >= bp->start);
   ASSERT (pointer_to_uword (b) < bp->start + bp->size -
-	  VLIB_BUFFER_DATA_SIZE);
+	  (bp->data_size + sizeof (vlib_buffer_t)));
 }
 
 always_inline void *
@@ -91,6 +86,12 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
   b = vlib_buffer_ptr_from_index (bm->buffer_mem_start, buffer_index, 0);
   vlib_buffer_validate (vm, b);
   return b;
+}
+
+static_always_inline u32
+vlib_bufer_get_default_size (vlib_main_t * vm)
+{
+  return vm->buffer_main->default_data_size;
 }
 
 static_always_inline void
@@ -1161,7 +1162,7 @@ vlib_buffer_chain_append_data (vlib_main_t * vm,
 			       vlib_buffer_t * first,
 			       vlib_buffer_t * last, void *data, u16 data_len)
 {
-  u32 n_buffer_bytes = VLIB_BUFFER_DATA_SIZE;
+  u32 n_buffer_bytes = vlib_bufer_get_default_size (vm);
   ASSERT (n_buffer_bytes >= last->current_length + last->current_data);
   u16 len = clib_min (data_len,
 		      n_buffer_bytes - last->current_length -
@@ -1236,7 +1237,7 @@ vlib_buffer_chain_compress (vlib_main_t * vm,
     }
 
   u32 want_first_size = clib_min (VLIB_BUFFER_CLONE_HEAD_SIZE,
-				  VLIB_BUFFER_DATA_SIZE -
+				  vlib_bufer_get_default_size (vm) -
 				  first->current_data);
   do
     {
@@ -1283,7 +1284,7 @@ always_inline int
 vlib_buffer_chain_linearize (vlib_main_t * vm, vlib_buffer_t * first)
 {
   vlib_buffer_t *b = first;
-  u32 buf_len = VLIB_BUFFER_DATA_SIZE;
+  u32 buf_len = vlib_bufer_get_default_size (vm);
   // free buffer chain starting from the second buffer
   int free_count = (b->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
   u32 chain_to_free = b->next_buffer;

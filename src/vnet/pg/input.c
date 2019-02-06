@@ -1199,6 +1199,7 @@ pg_stream_fill_replay (pg_main_t * pg, pg_stream_t * s, u32 n_alloc)
   u32 *buffers;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
+  u32 buf_sz = vlib_bufer_get_default_size (vm);
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si;
 
@@ -1216,8 +1217,7 @@ pg_stream_fill_replay (pg_main_t * pg, pg_stream_t * s, u32 n_alloc)
       u8 *d0;
 
       d0 = vec_elt (s->replay_packet_templates, i);
-      buffer_alloc_request += (vec_len (d0) + (VLIB_BUFFER_DATA_SIZE - 1))
-	/ VLIB_BUFFER_DATA_SIZE;
+      buffer_alloc_request += (vec_len (d0) + (buf_sz - 1)) / buf_sz;
 
       i = ((i + 1) == l) ? 0 : i + 1;
       n_left--;
@@ -1261,7 +1261,7 @@ pg_stream_fill_replay (pg_main_t * pg, pg_stream_t * s, u32 n_alloc)
       /* Copy the data */
       while (bytes_to_copy)
 	{
-	  bytes_this_chunk = clib_min (bytes_to_copy, VLIB_BUFFER_DATA_SIZE);
+	  bytes_this_chunk = clib_min (bytes_to_copy, buf_sz);
 	  ASSERT (current_buffer_index < vec_len (buffers));
 	  b = vlib_get_buffer (vm, buffers[current_buffer_index]);
 	  clib_memcpy_fast (b->data, d0 + data_offset, bytes_this_chunk);

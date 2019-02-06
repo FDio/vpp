@@ -48,8 +48,9 @@
 #include <vlib/error.h>		/* for vlib_error_t */
 
 #include <vlib/config.h>	/* for __PRE_DATA_SIZE */
-#define VLIB_BUFFER_DATA_SIZE		(2048)
 #define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
+
+#define VLIB_BUFFER_DEFAULT_DATA_SIZE (2048)
 
 /* Minimum buffer chain segment size. Does not apply to last buffer in chain.
    Dataplane code can safely asume that specified amount of data is not split
@@ -413,6 +414,7 @@ typedef struct
   /* config */
   u32 buffers_per_numa;
   u16 ext_hdr_size;
+  u32 default_data_size;
 
   /* logging */
   vlib_log_class_t log_default;

@@ -74,7 +74,7 @@ dpdk_buffer_pool_init (vlib_main_t * vm, vlib_buffer_pool_t * bp)
 
   /* Call the mempool priv initializer */
   priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
-    VLIB_BUFFER_DATA_SIZE;
+    vlib_bufer_get_default_size (vm);
   priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
   rte_pktmbuf_pool_init (mp, &priv);
   rte_pktmbuf_pool_init (nmp, &priv);
