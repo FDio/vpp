@@ -69,6 +69,30 @@
       "revId": "91bfa6e2666c56f79cc97407c929d188cb34e90f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a4519909_6b330407",
+        "filename": "src/plugins/map/lpm.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-06T17:35:00Z",
+      "side": 1,
+      "message": "Just going through my low-priority e-mail backlog while waiting for a test run to finish.\nI can stop commenting on trailing whitespace if that is spamming you.",
+      "parentUuid": "ffa4ea01_1ac4173a",
+      "range": {
+        "startLine": 151,
+        "startChar": 77,
+        "endLine": 151,
+        "endChar": 78
+      },
+      "revId": "91bfa6e2666c56f79cc97407c929d188cb34e90f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
