@@ -227,7 +227,7 @@ app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
 app_worker_t *application_get_default_worker (application_t * app);
 app_worker_t *application_listener_select_worker (session_t * ls,
 						  u8 is_local);
-int application_start_listen (application_t * app,
+int application_start_listen_w_table (application_t * app,
 			      session_endpoint_cfg_t * tep,
 			      session_handle_t * handle);
 int application_stop_listen (u32 app_index, u32 app_or_wrk,

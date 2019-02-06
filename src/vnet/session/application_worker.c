@@ -184,7 +184,7 @@ app_worker_free (app_worker_t * app_wrk)
       a->wrk_map_index = app_wrk->wrk_map_index;
       a->handle = handles[i];
       /* seg manager is removed when unbind completes */
-      vnet_unbind (a);
+      vnet_unlisten (a);
     }
 
   /*
@@ -1040,6 +1040,7 @@ void
 app_worker_format_local_sessions (app_worker_t * app_wrk, int verbose)
 {
   vlib_main_t *vm = vlib_get_main ();
+  app_worker_t *client_wrk;
   local_session_t *ls;
   transport_proto_t tp;
   u8 *conn = 0;
@@ -1061,8 +1062,9 @@ app_worker_format_local_sessions (app_worker_t * app_wrk, int verbose)
     tp = session_type_transport_proto(ls->listener_session_type);
     conn = format (0, "[L][%U] *:%u", format_transport_proto_short, tp,
                    ls->port);
-    vlib_cli_output (vm, "%-40v%-15u%-20u", conn, ls->app_wrk_index,
-                     ls->client_wrk_index);
+    client_wrk = app_worker_get (ls->client_wrk_index);
+    vlib_cli_output (vm, "%-40v%-15u%-20u", conn, ls->app_index,
+                     client_wrk->app_index);
     vec_reset_length (conn);
   }));
   /* *INDENT-ON* */

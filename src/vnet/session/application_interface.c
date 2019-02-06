@@ -188,7 +188,7 @@ session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
 }
 
 static inline int
-vnet_bind_inline (vnet_bind_args_t * a)
+vnet_listen_inline (vnet_listen_args_t * a)
 {
   u64 ll_handle = SESSION_INVALID_HANDLE;
   app_worker_t *app_wrk;
@@ -197,10 +197,8 @@ vnet_bind_inline (vnet_bind_args_t * a)
 
   app = application_get_if_valid (a->app_index);
   if (!app)
-    {
-      SESSION_DBG ("app not attached");
-      return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
-    }
+    return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+
   app_wrk = application_get_worker (app, a->wrk_map_index);
   a->sep_ext.app_wrk_index = app_wrk->wrk_index;
 
@@ -229,7 +227,7 @@ vnet_bind_inline (vnet_bind_args_t * a)
    */
 
   /* Setup listen path down to transport */
-  rv = application_start_listen (app, &a->sep_ext, &a->handle);
+  rv = application_start_listen_w_table (app, &a->sep_ext, &a->handle);
   if (rv && ll_handle != SESSION_INVALID_HANDLE)
     {
       application_stop_local_listen (a->app_index, a->wrk_map_index,
@@ -586,7 +584,7 @@ vnet_application_detach (vnet_app_detach_args_t * a)
 }
 
 int
-vnet_bind_uri (vnet_bind_args_t * a)
+vnet_bind_uri (vnet_listen_args_t * a)
 {
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   int rv;
@@ -596,7 +594,7 @@ vnet_bind_uri (vnet_bind_args_t * a)
     return rv;
   sep.app_wrk_index = 0;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
-  return vnet_bind_inline (a);
+  return vnet_listen_inline (a);
 }
 
 int
@@ -675,16 +673,16 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
 }
 
 clib_error_t *
-vnet_bind (vnet_bind_args_t * a)
+vnet_listen (vnet_listen_args_t * a)
 {
   int rv;
-  if ((rv = vnet_bind_inline (a)))
+  if ((rv = vnet_listen_inline (a)))
     return clib_error_return_code (0, rv, 0, "bind failed: %d", rv);
   return 0;
 }
 
 clib_error_t *
-vnet_unbind (vnet_unbind_args_t * a)
+vnet_unlisten (vnet_unbind_args_t * a)
 {
   int rv;
   if ((rv = vnet_unbind_inline (a)))
