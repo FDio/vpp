@@ -1785,7 +1785,7 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
 
       TCP_EVT_DBG (TCP_EVT_OPEN, tc0);
 
-      if (stream_session_accept (&tc0->connection, 0 /* listener index */ ,
+      if (session_stream_accept (&tc0->connection, 0 /* listener index */ ,
 				 0 /* notify */ ))
 	clib_warning ("stream_session_accept failed");
 

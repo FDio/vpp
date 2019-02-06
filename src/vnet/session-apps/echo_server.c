@@ -362,7 +362,7 @@ static int
 echo_server_listen ()
 {
   echo_server_main_t *esm = &echo_server_main;
-  vnet_bind_args_t _a, *a = &_a;
+  vnet_listen_args_t _a, *a = &_a;
   clib_memset (a, 0, sizeof (*a));
   a->app_index = esm->app_index;
   a->uri = esm->server_uri;

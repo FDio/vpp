@@ -19,6 +19,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session_rules_table.h>
 #include <vnet/session/session_table.h>
+#include <vnet/session/session.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -207,6 +208,7 @@ send_session_accept_callback (session_t * s)
   session_t *listener;
   svm_msg_q_t *vpp_queue;
   application_t *server;
+  app_listener_t *al;
 
   server = application_get (server_wrk->app_index);
   reg =
@@ -228,7 +230,8 @@ send_session_accept_callback (session_t * s)
   if (session_has_transport (s))
     {
       listener = listen_session_get (s->listener_index);
-      mp->listener_handle = listen_session_get_handle (listener);
+      al = app_listener_get (server, listener->al_index);
+      mp->listener_handle = app_listener_handle (al);
       if (application_is_proxy (server))
 	{
 	  listener =
@@ -253,22 +256,16 @@ send_session_accept_callback (session_t * s)
       if (application_local_session_listener_has_transport (ls))
 	{
 	  listener = listen_session_get (ls->listener_index);
-	  mp->listener_handle = listen_session_get_handle (listener);
+	  al = app_listener_get (server, listener->al_index);
+	  mp->listener_handle = app_listener_handle (al);
 	  mp->is_ip4 = session_type_is_ip4 (listener->session_type);
 	}
       else
 	{
 	  ll = application_get_local_listen_session (server,
 						     ls->listener_index);
-	  if (ll->transport_listener_index != ~0)
-	    {
-	      listener = listen_session_get (ll->transport_listener_index);
-	      mp->listener_handle = listen_session_get_handle (listener);
-	    }
-	  else
-	    {
-	      mp->listener_handle = application_local_session_handle (ll);
-	    }
+	  al = app_listener_get (server, ll->al_index);
+	  mp->listener_handle = app_listener_handle (al);
 	  mp->is_ip4 = session_type_is_ip4 (ll->listener_session_type);
 	}
       mp->handle = application_local_session_handle (ls);
@@ -424,6 +421,7 @@ mq_send_session_accepted_cb (session_t * s)
   session_accepted_msg_t *mp;
   session_event_t *evt;
   application_t *app;
+  app_listener_t *al;
 
   app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
@@ -443,7 +441,8 @@ mq_send_session_accepted_cb (session_t * s)
   if (session_has_transport (s))
     {
       listener = listen_session_get (s->listener_index);
-      mp->listener_handle = listen_session_get_handle (listener);
+      al = app_listener_get (app, listener->al_index);
+      mp->listener_handle = app_listener_handle (al);
       if (application_is_proxy (app))
 	{
 	  listener =
@@ -475,21 +474,15 @@ mq_send_session_accepted_cb (session_t * s)
       if (application_local_session_listener_has_transport (ls))
 	{
 	  listener = listen_session_get (ls->listener_index);
-	  mp->listener_handle = listen_session_get_handle (listener);
+	  al = app_listener_get (app, listener->al_index);
+	  mp->listener_handle = app_listener_handle (al);
 	  mp->is_ip4 = session_type_is_ip4 (listener->session_type);
 	}
       else
 	{
 	  ll = application_get_local_listen_session (app, ls->listener_index);
-	  if (ll->transport_listener_index != ~0)
-	    {
-	      listener = listen_session_get (ll->transport_listener_index);
-	      mp->listener_handle = listen_session_get_handle (listener);
-	    }
-	  else
-	    {
-	      mp->listener_handle = application_local_session_handle (ll);
-	    }
+	  al = app_listener_get (app, ll->al_index);
+	  mp->listener_handle = app_listener_handle (al);
 	  mp->is_ip4 = session_type_is_ip4 (ll->listener_session_type);
 	}
       mp->handle = application_local_session_handle (ls);
@@ -674,11 +667,12 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   svm_msg_q_msg_t _msg, *msg = &_msg;
   svm_msg_q_t *app_mq, *vpp_evt_q;
   transport_connection_t *tc;
-  session_t *ls = 0;
   session_bound_msg_t *mp;
   app_worker_t *app_wrk;
   session_event_t *evt;
   application_t *app;
+  app_listener_t *al;
+  session_t *ls = 0;
 
   app_wrk = app_worker_get (app_wrk_index);
   app = application_get (app_wrk->app_index);
@@ -705,7 +699,8 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   mp->handle = handle;
   if (application_has_global_scope (app))
     {
-      ls = listen_session_get_from_handle (handle);
+      al = app_listener_get_w_handle (handle);
+      ls = app_listener_get_session (al);
       tc = listen_session_get_transport (ls);
       mp->lcl_port = tc->lcl_port;
       mp->lcl_is_ip4 = tc->is_ip4;
@@ -888,7 +883,7 @@ static void
 vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
 {
   transport_connection_t *tc = 0;
-  vnet_bind_args_t _a, *a = &_a;
+  vnet_listen_args_t _a, *a = &_a;
   vl_api_bind_uri_reply_t *rmp;
   session_t *s;
   application_t *app = 0;
@@ -1180,16 +1175,17 @@ vl_api_map_another_segment_reply_t_handler (vl_api_map_another_segment_reply_t
 static void
 vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
 {
+  vnet_listen_args_t _a, *a = &_a;
+  transport_connection_t *tc = 0;
   vl_api_bind_sock_reply_t *rmp;
-  vnet_bind_args_t _a, *a = &_a;
-  int rv = 0;
-  clib_error_t *error;
+  svm_msg_q_t *vpp_evt_q;
   application_t *app = 0;
   app_worker_t *app_wrk;
-  session_t *s;
-  transport_connection_t *tc = 0;
   ip46_address_t *ip46;
-  svm_msg_q_t *vpp_evt_q;
+  clib_error_t *error;
+  app_listener_t *al;
+  session_t *s;
+  int rv = 0;
 
   if (session_manager_is_enabled () == 0)
     {
@@ -1215,7 +1211,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
-  if ((error = vnet_bind (a)))
+  if ((error = vnet_listen (a)))
     {
       rv = clib_error_get_code (error);
       clib_error_report (error);
@@ -1231,7 +1227,8 @@ done:
 	rmp->lcl_is_ip4 = mp->is_ip4;
 	if (app && application_has_global_scope (app))
 	  {
-	    s = listen_session_get_from_handle (a->handle);
+	    al = app_listener_get_w_handle (a->handle);
+	    s = app_listener_get_session (al);
 	    tc = listen_session_get_transport (s);
             clib_memcpy_fast (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
             if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL)
@@ -1276,7 +1273,7 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
       a->app_index = app->app_index;
       a->handle = mp->handle;
       a->wrk_map_index = mp->wrk_index;
-      if ((error = vnet_unbind (a)))
+      if ((error = vnet_unlisten (a)))
 	{
 	  rv = clib_error_get_code (error);
 	  clib_error_report (error);
