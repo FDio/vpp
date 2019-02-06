@@ -14,6 +14,7 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/fib/fib_table.h>
 
 static clib_error_t *
 ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
@@ -35,6 +36,29 @@ ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
       break;
     }
   return 0;
+}
+
+/**
+ * 'stack' (resolve the recursion for) the SA tunnel destination
+ */
+void
+ipsec_sa_stack (ipsec_sa_t * sa)
+{
+  fib_forward_chain_type_t fct;
+  dpo_id_t tmp = DPO_INVALID;
+  vlib_node_t *node;
+
+  fct = fib_forw_chain_type_from_fib_proto ((sa->is_tunnel_ip6 ?
+					     FIB_PROTOCOL_IP6 :
+					     FIB_PROTOCOL_IP4));
+
+  fib_entry_contribute_forwarding (sa->fib_entry_index, fct, &tmp);
+
+  node = vlib_get_node_by_name (vlib_get_main (),
+				(sa->is_tunnel_ip6 ?
+				 (u8 *) "ah6-encrypt" :
+				 (u8 *) "ah4-encrypt"));
+  dpo_stack_from_node (node->index, &sa->dpo, &tmp);
 }
 
 int
@@ -67,17 +91,44 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       err = ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
       if (err)
 	return VNET_API_ERROR_SYSCALL_ERROR_1;
+      if (sa->is_tunnel)
+	{
+	  fib_entry_child_remove (sa->fib_entry_index, sa->sibling);
+	  fib_table_entry_special_remove
+	    (sa->tx_fib_index,
+	     fib_entry_get_prefix (sa->fib_entry_index), FIB_SOURCE_RR);
+	  dpo_reset (&sa->dpo);
+	}
       pool_put (im->sad, sa);
     }
   else				/* create new SA */
     {
       pool_get (im->sad, sa);
       clib_memcpy (sa, new_sa, sizeof (*sa));
+      fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
       err = ipsec_call_add_del_callbacks (im, sa, sa_index, 1);
       if (err)
 	return VNET_API_ERROR_SYSCALL_ERROR_1;
+
+      if (sa->is_tunnel)
+	{
+	  fib_prefix_t pfx = {
+	    .fp_addr = sa->tunnel_dst_addr,
+	    .fp_len = (sa->is_tunnel_ip6 ? 128 : 32),
+	    .fp_proto = (sa->is_tunnel_ip6 ?
+			 FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
+	  };
+	  sa->fib_entry_index = fib_table_entry_special_add (sa->tx_fib_index,
+							     &pfx,
+							     FIB_SOURCE_RR,
+							     FIB_ENTRY_FLAG_NONE);
+	  sa->sibling = fib_entry_child_add (sa->fib_entry_index,
+					     FIB_NODE_TYPE_IPSEC_SA,
+					     sa_index);
+	  ipsec_sa_stack (sa);
+	}
     }
   return 0;
 }
@@ -161,6 +212,75 @@ ipsec_get_sa_index_by_sa_id (u32 sa_id)
 
   return p[0];
 }
+
+/**
+ * Function definition to get a FIB node from its index
+ */
+static fib_node_t *
+ipsec_sa_fib_node_get (fib_node_index_t index)
+{
+  ipsec_main_t *im;
+  ipsec_sa_t *sa;
+
+  im = &ipsec_main;
+  sa = pool_elt_at_index (im->sad, index);
+
+  return (&sa->node);
+}
+
+/**
+ * Function definition to inform the FIB node that its last lock has gone.
+ */
+static void
+ipsec_sa_last_lock_gone (fib_node_t * node)
+{
+  /*
+   * The ipsec SA is a root of the graph. As such
+   * it never has children and thus is never locked.
+   */
+  ASSERT (0);
+}
+
+static ipsec_sa_t *
+ipsec_sa_from_fib_node (fib_node_t * node)
+{
+  ASSERT (FIB_NODE_TYPE_IPSEC_SA == node->fn_type);
+  return ((ipsec_sa_t *) (((char *) node) -
+			  STRUCT_OFFSET_OF (ipsec_sa_t, node)));
+
+}
+
+/**
+ * Function definition to backwalk a FIB node
+ */
+static fib_node_back_walk_rc_t
+ipsec_sa_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+{
+  ipsec_sa_stack (ipsec_sa_from_fib_node (node));
+
+  return (FIB_NODE_BACK_WALK_CONTINUE);
+}
+
+/*
+ * Virtual function table registered by MPLS GRE tunnels
+ * for participation in the FIB object graph.
+ */
+const static fib_node_vft_t ipsec_sa_vft = {
+  .fnv_get = ipsec_sa_fib_node_get,
+  .fnv_last_lock = ipsec_sa_last_lock_gone,
+  .fnv_back_walk = ipsec_sa_back_walk,
+};
+
+/* force inclusion from application's main.c */
+clib_error_t *
+ipsec_sa_interface_init (vlib_main_t * vm)
+{
+  fib_node_register_type (FIB_NODE_TYPE_IPSEC_SA, &ipsec_sa_vft);
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ipsec_sa_interface_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -62,6 +62,7 @@ static char *esp_encrypt_error_strings[] = {
 
 typedef struct
 {
+  u32 sa_index;
   u32 spi;
   u32 seq;
   u8 udp_encap;
@@ -77,8 +78,8 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_encrypt_trace_t *t = va_arg (*args, esp_encrypt_trace_t *);
 
-  s = format (s, "esp: spi %u seq %u crypto %U integrity %U%s",
-	      t->spi, t->seq,
+  s = format (s, "esp: sa-index %d spi %u seq %u crypto %U integrity %U%s",
+	      t->sa_index, t->spi, t->seq,
 	      format_ipsec_crypto_alg, t->crypto_alg,
 	      format_ipsec_integ_alg, t->integ_alg,
 	      t->udp_encap ? " udp-encap-enabled" : "");
@@ -279,7 +280,9 @@ esp_encrypt_inline (vlib_main_t * vm,
 	      oh0->ip4.src_address.as_u32 = sa0->tunnel_src_addr.ip4.as_u32;
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
 
+	      next0 = sa0->dpo.dpoi_next_node;
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = sa0->tx_fib_index;
+	      vnet_buffer (i_b0)->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
 	    }
 	  else if (is_ip6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
 	    {
@@ -292,7 +295,9 @@ esp_encrypt_inline (vlib_main_t * vm,
 	      oh6_0->ip6.dst_address.as_u64[1] =
 		sa0->tunnel_dst_addr.ip6.as_u64[1];
 
+	      next0 = sa0->dpo.dpoi_next_node;
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = sa0->tx_fib_index;
+	      vnet_buffer (i_b0)->ip.adj_index[VLIB_TX] = sa0->dpo.dpoi_index;
 	    }
 	  else
 	    {
@@ -412,6 +417,7 @@ esp_encrypt_inline (vlib_main_t * vm,
 		  o_b0->trace_index = i_b0->trace_index;
 		  esp_encrypt_trace_t *tr =
 		    vlib_add_trace (vm, node, o_b0, sizeof (*tr));
+		  tr->sa_index = sa_index0;
 		  tr->spi = sa0->spi;
 		  tr->seq = sa0->seq - 1;
 		  tr->udp_encap = sa0->udp_encap;

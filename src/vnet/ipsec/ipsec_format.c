@@ -208,6 +208,44 @@ format_ipsec_spd (u8 * s, va_list * args)
   return (s);
 }
 
+u8 *
+format_ipsec_sa (u8 * s, va_list * args)
+{
+  u32 sai = va_arg (*args, u32);
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
+
+  sa = pool_elt_at_index (im->sad, sai);
+
+  s = format (s, "sa %u spi %u mode %s protocol %s%s%s%s", sa->id, sa->spi,
+	      sa->is_tunnel ? "tunnel" : "transport",
+	      sa->protocol ? "esp" : "ah",
+	      sa->udp_encap ? " udp-encap-enabled" : "",
+	      sa->use_anti_replay ? " anti-replay" : "",
+	      sa->use_esn ? " extended-sequence-number" : "");
+  if (sa->protocol == IPSEC_PROTOCOL_ESP)
+    {
+      s = format (s, "\n  crypto alg %U%s%U integrity alg %U%s%U",
+		  format_ipsec_crypto_alg, sa->crypto_alg,
+		  sa->crypto_alg ? " key " : "",
+		  format_hex_bytes, sa->crypto_key, sa->crypto_key_len,
+		  format_ipsec_integ_alg, sa->integ_alg,
+		  sa->integ_alg ? " key " : "",
+		  format_hex_bytes, sa->integ_key, sa->integ_key_len);
+    }
+  if (sa->is_tunnel)
+    {
+      s = format (s, "\n  tunnel src %U dst %U",
+		  format_ip46_address, &sa->tunnel_src_addr, IP46_TYPE_ANY,
+		  format_ip46_address, &sa->tunnel_dst_addr, IP46_TYPE_ANY);
+      s = format (s, "\n   resovle via fib-entry: %d", sa->fib_entry_index);
+      s = format (s, "\n   stacked on:");
+      s = format (s, "\n     %U", format_dpo_id, &sa->dpo, 6);
+    }
+
+  return (s);
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

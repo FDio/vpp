@@ -17,6 +17,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_types.h>
 
 #define foreach_ipsec_crypto_alg    \
   _ (0, NONE, "none")               \
@@ -65,6 +66,7 @@ typedef enum
 
 typedef struct
 {
+  fib_node_t node;
   u32 id;
   u32 spi;
   ipsec_protocol_t protocol;
@@ -85,6 +87,10 @@ typedef struct
   u8 udp_encap;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
+
+  fib_node_index_t fib_entry_index;
+  u32 sibling;
+  dpo_id_t dpo;
 
   u32 tx_fib_index;
   u32 salt;
@@ -108,6 +114,7 @@ extern u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
 
 extern u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
 extern u8 *format_ipsec_integ_alg (u8 * s, va_list * args);
+extern u8 *format_ipsec_sa (u8 * s, va_list * args);
 extern uword unformat_ipsec_crypto_alg (unformat_input_t * input,
 					va_list * args);
 extern uword unformat_ipsec_integ_alg (unformat_input_t * input,

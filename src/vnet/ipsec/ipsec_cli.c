@@ -448,61 +448,31 @@ static clib_error_t *
 show_ipsec_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  ipsec_sa_t *sa;
   ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
   u32 i;
   ipsec_tunnel_if_t *t;
   vnet_hw_interface_t *hi;
   u8 *protocol = NULL;
   u8 *policy = NULL;
-  u32 tx_table_id, spd_id, sw_if_index;
+  u32 tx_table_id, spd_id, sw_if_index, sai;
 
   /* *INDENT-OFF* */
-  pool_foreach (sa, im->sad, ({
-    if (sa->id) {
-      vlib_cli_output(vm, "sa %u spi %u mode %s protocol %s%s%s%s", sa->id, sa->spi,
-                      sa->is_tunnel ? "tunnel" : "transport",
-                      sa->protocol ? "esp" : "ah",
-		      sa->udp_encap ? " udp-encap-enabled" : "",
-                      sa->use_anti_replay ? " anti-replay" : "",
-                      sa->use_esn ? " extended-sequence-number" : "");
-      if (sa->protocol == IPSEC_PROTOCOL_ESP) {
-        vlib_cli_output(vm, "  crypto alg %U%s%U integrity alg %U%s%U",
-                        format_ipsec_crypto_alg, sa->crypto_alg,
-                        sa->crypto_alg ? " key " : "",
-                        format_hex_bytes, sa->crypto_key, sa->crypto_key_len,
-                        format_ipsec_integ_alg, sa->integ_alg,
-                        sa->integ_alg ? " key " : "",
-                        format_hex_bytes, sa->integ_key, sa->integ_key_len);
-      }
-      if (sa->is_tunnel && sa->is_tunnel_ip6) {
-        vlib_cli_output(vm, "  tunnel src %U dst %U",
-                        format_ip6_address, &sa->tunnel_src_addr.ip6,
-                        format_ip6_address, &sa->tunnel_dst_addr.ip6);
-      } else if (sa->is_tunnel) {
-        vlib_cli_output(vm, "  tunnel src %U dst %U",
-                        format_ip4_address, &sa->tunnel_src_addr.ip4,
-                        format_ip4_address, &sa->tunnel_dst_addr.ip4);
-      }
-    }
+  pool_foreach_index (sai, im->sad, ({
+     vlib_cli_output(vm, "%U", format_ipsec_sa, sai);
   }));
-  /* *INDENT-ON* */
-
-  /* *INDENT-OFF* */
   pool_foreach_index (i, im->spds, ({
     vlib_cli_output(vm, "%U", format_ipsec_spd, i);
   }));
-  /* *INDENT-ON* */
 
   vlib_cli_output (vm, "SPD Bindings:");
-  /* *INDENT-OFF* */
+
   hash_foreach(sw_if_index, spd_id, im->spd_index_by_sw_if_index, ({
-        vlib_cli_output (vm, "  %d -> %U", spd_id,
-                         format_vnet_sw_if_index_name, im->vnet_main,
-                         sw_if_index);
+    vlib_cli_output (vm, "  %d -> %U", spd_id,
+                     format_vnet_sw_if_index_name, im->vnet_main,
+                     sw_if_index);
   }));
   /* *INDENT-ON* */
-
 
   vlib_cli_output (vm, "tunnel interfaces");
   /* *INDENT-OFF* */
