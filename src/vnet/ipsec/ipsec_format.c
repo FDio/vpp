@@ -19,6 +19,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
 #include <vnet/interface.h>
+#include <vnet/fib/fib_table.h>
 
 #include <vnet/ipsec/ipsec.h>
 
@@ -204,6 +205,77 @@ format_ipsec_spd (u8 * s, va_list * args)
   }
   foreach_ipsec_spd_policy_type;
 #undef _
+
+  return (s);
+}
+
+u8 *
+format_ipsec_key (u8 * s, va_list * args)
+{
+  ipsec_key_t *key = va_arg (*args, ipsec_key_t *);
+
+  return (format (s, "%U", format_hex_bytes, key->data, key->len));
+}
+
+uword
+unformat_ipsec_key (unformat_input_t * input, va_list * args)
+{
+  ipsec_key_t *key = va_arg (*args, ipsec_key_t *);
+  u8 *data;
+
+  if (unformat (input, "%U", unformat_hex_string, &data))
+    {
+      ipsec_mk_key (key, data, vec_len (data));
+      vec_free (data);
+    }
+  else
+    return 0;
+  return 1;
+}
+
+u8 *
+format_ipsec_sa (u8 * s, va_list * args)
+{
+  u32 sai = va_arg (*args, u32);
+  ipsec_main_t *im = &ipsec_main;
+  u32 tx_table_id;
+  ipsec_sa_t *sa;
+
+  sa = pool_elt_at_index (im->sad, sai);
+
+  s = format (s, "[%d] sa %u spi %u mode %s%s protocol %s%s%s%s",
+	      sai, sa->id, sa->spi,
+	      sa->is_tunnel ? "tunnel" : "transport",
+	      sa->is_tunnel_ip6 ? "-ip6" : "",
+	      sa->protocol ? "esp" : "ah",
+	      sa->udp_encap ? " udp-encap-enabled" : "",
+	      sa->use_anti_replay ? " anti-replay" : "",
+	      sa->use_esn ? " extended-sequence-number" : "");
+  s = format (s, "\n   last-seq %u last-seq-hi %u  window %U",
+	      sa->last_seq, sa->last_seq_hi,
+	      format_ipsec_replay_window, sa->replay_window);
+  s = format (s, "\n   crypto alg %U%s%U",
+	      format_ipsec_crypto_alg, sa->crypto_alg,
+	      sa->crypto_alg ? " key " : "",
+	      format_ipsec_key, &sa->crypto_key);
+  s = format (s, "\n   integrity alg %U%s%U",
+	      format_ipsec_integ_alg, sa->integ_alg,
+	      sa->integ_alg ? " key " : "", format_ipsec_key, &sa->integ_key);
+
+  if (sa->is_tunnel)
+    {
+      tx_table_id = fib_table_get_table_id (sa->tx_fib_index,
+					    FIB_PROTOCOL_IP4);
+      s = format (s, "\n   table-ID %d tunnel src %U dst %U",
+		  tx_table_id,
+		  format_ip46_address, &sa->tunnel_src_addr, IP46_TYPE_ANY,
+		  format_ip46_address, &sa->tunnel_dst_addr, IP46_TYPE_ANY);
+      s = format (s, "\n    resovle via fib-entry: %d", sa->fib_entry_index);
+      s = format (s, "\n    stacked on:");
+      s =
+	format (s, "\n      %U", format_dpo_id, &sa->dpo[IPSEC_PROTOCOL_ESP],
+		6);
+    }
 
   return (s);
 }

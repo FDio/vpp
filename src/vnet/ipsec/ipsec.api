@@ -232,6 +232,10 @@ enum ipsec_sad_flags
   IPSEC_API_SAD_FLAG_IS_TUNNEL_V6 = 0x08,
   /* enable UDP encapsulation for NAT traversal */
   IPSEC_API_SAD_FLAG_UDP_ENCAP = 0x10,
+
+  /* come-on Ole please fix this */
+  IPSEC_API_SAD_COMBO_12 = 12,
+  IPSEC_API_SAD_COMBO_20 = 20,
 };
 
 enum ipsec_proto
@@ -261,6 +265,7 @@ typedef key
     @param integrity_key - integrity keying material
     @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
     @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
+    @param tx_table_id - the FIB id used for encapsulated packets
  */
 typedef ipsec_sad_entry
 {
@@ -280,6 +285,7 @@ typedef ipsec_sad_entry
 
   vl_api_address_t tunnel_src;
   vl_api_address_t tunnel_dst;
+  u32 tx_table_id;
 };
 
 /** \brief IPsec: Add/delete Security Association Database entry
@@ -687,41 +693,18 @@ define ipsec_sa_dump {
     @param replay_window - bit map of seq nums received relative to last_seq if using anti-replay
     @param total_data_size - total bytes sent or received
     @param udp_encap - 1 if UDP encap enabled, 0 otherwise
-    @param tx_table_id - the FIB id used for encapsulated packets
 */
 define ipsec_sa_details {
   u32 context;
-  u32 sa_id;
+  vl_api_ipsec_sad_entry_t entry;
+
   u32 sw_if_index;
-
-  u32 spi;
-  u8 protocol;
-
-  u8 crypto_alg;
-  u8 crypto_key_len;
-  u8 crypto_key[128];
-
-  u8 integ_alg;
-  u8 integ_key_len;
-  u8 integ_key[128];
-
-  u8 use_esn;
-  u8 use_anti_replay;
-
-  u8 is_tunnel;
-  u8 is_tunnel_ip6;
-  u8 tunnel_src_addr[16];
-  u8 tunnel_dst_addr[16];
-
   u32 salt;
   u64 seq_outbound;
   u64 last_seq_inbound;
   u64 replay_window;
 
   u64 total_data_size;
-  u8 udp_encap;
-
-  u32 tx_table_id;
 };
 
 /** \brief Set key on IPsec interface

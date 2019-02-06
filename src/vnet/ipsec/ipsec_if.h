@@ -41,7 +41,7 @@ typedef struct
   u8 is_add;
   u8 esn;
   u8 anti_replay;
-  ip4_address_t local_ip, remote_ip;
+  ip46_address_t local_ip, remote_ip;
   u32 local_spi;
   u32 remote_spi;
   ipsec_crypto_alg_t crypto_alg;

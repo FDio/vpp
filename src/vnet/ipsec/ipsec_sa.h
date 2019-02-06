@@ -17,6 +17,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_node.h>
 
 #define foreach_ipsec_crypto_alg    \
   _ (0, NONE, "none")               \
@@ -63,19 +64,50 @@ typedef enum
   IPSEC_PROTOCOL_ESP = 1
 } ipsec_protocol_t;
 
+#define IPSEC_N_PROTOCOLS (IPSEC_PROTOCOL_ESP+1)
+
+#define IPSEC_KEY_MAX_LEN 128
+typedef struct ipsec_key_t_
+{
+  u8 len;
+  u8 data[IPSEC_KEY_MAX_LEN];
+} ipsec_key_t;
+
+/*
+ * Enable extended sequence numbers
+ * Enable Anti-replay
+ * IPsec tunnel mode if non-zero, else transport mode
+ * IPsec tunnel mode is IPv6 if non-zero,
+ * else IPv4 tunnel only valid if is_tunnel is non-zero
+ * enable UDP encapsulation for NAT traversal
+ */
+#define foreach_ipsec_sa_flags                            \
+  _ (0, NONE, "none")                                     \
+  _ (1, USE_EXTENDED_SEQ_NUM, "esn")                      \
+  _ (2, USE_ANTI_REPLAY, "anti-replay")                   \
+  _ (4, IS_TUNNEL, "tunnel")                              \
+  _ (8, IS_TUNNEL_V6, "tunnel-v6")                        \
+  _ (16, UDP_ENCAP, "udp-encap")                          \
+
+typedef enum ipsec_sad_flags_t_
+{
+#define _(v, f, s) IPSEC_SA_FLAG_##f = v,
+  foreach_ipsec_sa_flags
+#undef _
+} ipsec_sa_flags_t;
+
 typedef struct
 {
+  fib_node_t node;
   u32 id;
   u32 spi;
   ipsec_protocol_t protocol;
 
   ipsec_crypto_alg_t crypto_alg;
-  u8 crypto_key_len;
-  u8 crypto_key[128];
+  ipsec_key_t crypto_key;
 
   ipsec_integ_alg_t integ_alg;
-  u8 integ_key_len;
-  u8 integ_key[128];
+  ipsec_key_t integ_key;
 
   u8 use_esn;
   u8 use_anti_replay;
@@ -85,6 +117,10 @@ typedef struct
   u8 udp_encap;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
+
+  fib_node_index_t fib_entry_index;
+  u32 sibling;
+  dpo_id_t dpo[IPSEC_N_PROTOCOLS];
 
   u32 tx_fib_index;
   u32 salt;
@@ -100,18 +136,36 @@ typedef struct
   u64 total_data_size;
 } ipsec_sa_t;
 
-extern int ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa,
-			     int is_add);
+extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
+
+extern int ipsec_sa_add (u32 id,
+			 u32 spi,
+			 ipsec_protocol_t proto,
+			 ipsec_crypto_alg_t crypto_alg,
+			 const ipsec_key_t * ck,
+			 ipsec_integ_alg_t integ_alg,
+			 const ipsec_key_t * ik,
+			 ipsec_sa_flags_t flags,
+			 u32 tx_table_id,
+			 const ip46_address_t * tunnel_src_addr,
+			 const ip46_address_t * tunnel_dst_addr,
+			 u32 * sa_index);
+extern u32 ipsec_sa_del (u32 id);
+
 extern u8 ipsec_is_sa_used (u32 sa_index);
-extern int ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update);
+extern int ipsec_set_sa_key (u32 id,
+			     const ipsec_key_t * ck, const ipsec_key_t * ik);
 extern u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
 
 extern u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
 extern u8 *format_ipsec_integ_alg (u8 * s, va_list * args);
+extern u8 *format_ipsec_sa (u8 * s, va_list * args);
+extern u8 *format_ipsec_key (u8 * s, va_list * args);
 extern uword unformat_ipsec_crypto_alg (unformat_input_t * input,
 					va_list * args);
 extern uword unformat_ipsec_integ_alg (unformat_input_t * input,
 				       va_list * args);
+extern uword unformat_ipsec_key (unformat_input_t * input, va_list * args);
 
 #endif /* __IPSEC_SPD_SA_H__ */
 

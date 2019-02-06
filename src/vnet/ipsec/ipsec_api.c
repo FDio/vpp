@@ -217,6 +217,19 @@ ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
+static vl_api_ipsec_proto_t
+ipsec_proto_encode (ipsec_protocol_t p)
+{
+  switch (p)
+    {
+    case IPSEC_PROTOCOL_ESP:
+      return clib_host_to_net_u32 (IPSEC_API_PROTO_ESP);
+    case IPSEC_PROTOCOL_AH:
+      return clib_host_to_net_u32 (IPSEC_API_PROTO_AH);
+    }
+  return (VNET_API_ERROR_UNIMPLEMENTED);
+}
+
 static int
 ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
 			  ipsec_crypto_alg_t * out)
@@ -234,6 +247,23 @@ ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
+static vl_api_ipsec_crypto_alg_t
+ipsec_crypto_algo_encode (ipsec_crypto_alg_t c)
+{
+  switch (c)
+    {
+#define _(v,f,s) case IPSEC_CRYPTO_ALG_##f:                     \
+      return clib_host_to_net_u32(IPSEC_API_CRYPTO_ALG_##f);
+      foreach_ipsec_crypto_alg
+#undef _
+    case IPSEC_CRYPTO_N_ALG:
+      break;
+    }
+  ASSERT (0);
+  return (VNET_API_ERROR_UNIMPLEMENTED);
+}
+
+
 static int
 ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
 {
@@ -250,86 +280,122 @@ ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
   return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
-static void
-vl_api_ipsec_key_decode (const vl_api_key_t * key, u8 * len, u8 out[128])
+static vl_api_ipsec_integ_alg_t
+ipsec_integ_algo_encode (ipsec_integ_alg_t i)
 {
-  *len = key->length;
-  clib_memcpy (out, key->data, key->length);
+  switch (i)
+    {
+#define _(v,f,s) case IPSEC_INTEG_ALG_##f:                      \
+      return (clib_host_to_net_u32(IPSEC_API_INTEG_ALG_##f));
+      foreach_ipsec_integ_alg
+#undef _
+    case IPSEC_INTEG_N_ALG:
+      break;
+    }
+  ASSERT (0);
+  return (VNET_API_ERROR_UNIMPLEMENTED);
 }
 
 static void
-vl_api_ipsec_sad_flags_decode (vl_api_ipsec_sad_flags_t in, ipsec_sa_t * sa)
+ipsec_key_decode (const vl_api_key_t * key, ipsec_key_t * out)
 {
+  ipsec_mk_key (out, key->data, key->length);
+}
+
+static void
+ipsec_key_encode (const ipsec_key_t * in, vl_api_key_t * out)
+{
+  out->length = in->len;
+  clib_memcpy (out->data, in->data, out->length);
+}
+
+static ipsec_sa_flags_t
+ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
+{
+  ipsec_sa_flags_t flags = IPSEC_SA_FLAG_NONE;
   in = clib_net_to_host_u32 (in);
 
-  if (in & IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM)
-    sa->use_esn = 1;
-  if (in & IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY)
-    sa->use_anti_replay = 1;
-  if (in & IPSEC_API_SAD_FLAG_IS_TUNNEL)
-    sa->is_tunnel = 1;
-  if (in & IPSEC_API_SAD_FLAG_IS_TUNNEL_V6)
-    sa->is_tunnel_ip6 = 1;
-  if (in & IPSEC_API_SAD_FLAG_UDP_ENCAP)
-    sa->udp_encap = 1;
+#define _(v,f,s) if (in & IPSEC_API_SAD_FLAG_##f)    \
+    flags |= IPSEC_SA_FLAG_##f;
+  foreach_ipsec_sa_flags
+#undef _
+    return (flags);
 }
 
+static vl_api_ipsec_sad_flags_t
+ipsec_sad_flags_encode (const ipsec_sa_t * sa)
+{
+  vl_api_ipsec_sad_flags_t flags = IPSEC_API_SAD_FLAG_NONE;
+
+  if (sa->use_esn)
+    flags |= IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM;
+  if (sa->use_anti_replay)
+    flags |= IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY;
+  if (sa->is_tunnel)
+    flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL;
+  if (sa->is_tunnel_ip6)
+    flags |= IPSEC_API_SAD_FLAG_IS_TUNNEL_V6;
+  if (sa->udp_encap)
+    flags |= IPSEC_API_SAD_FLAG_UDP_ENCAP;
+
+  return clib_host_to_net_u32 (flags);
+}
 
 static void vl_api_ipsec_sad_entry_add_del_t_handler
   (vl_api_ipsec_sad_entry_add_del_t * mp)
 {
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_sad_entry_add_del_reply_t *rmp;
+  ip46_address_t tun_src = { }, tun_dst =
+  {
+  };
+  ipsec_key_t crypto_key, integ_key;
+  ipsec_crypto_alg_t crypto_alg;
+  ipsec_integ_alg_t integ_alg;
+  ipsec_protocol_t proto;
+  ipsec_sa_flags_t flags;
+  u32 id, spi;
   int rv;
+
 #if WITH_LIBSSL > 0
-  ipsec_main_t *im = &ipsec_main;
-  ipsec_sa_t sa;
 
-  clib_memset (&sa, 0, sizeof (sa));
+  id = ntohl (mp->entry.sad_id);
+  spi = ntohl (mp->entry.spi);
 
-  sa.id = ntohl (mp->entry.sad_id);
-  sa.spi = ntohl (mp->entry.spi);
-
-  rv = ipsec_proto_decode (mp->entry.protocol, &sa.protocol);
+  rv = ipsec_proto_decode (mp->entry.protocol, &proto);
 
   if (rv)
     goto out;
 
-  rv = ipsec_crypto_algo_decode (mp->entry.crypto_algorithm, &sa.crypto_alg);
+  rv = ipsec_crypto_algo_decode (mp->entry.crypto_algorithm, &crypto_alg);
 
   if (rv)
     goto out;
 
-  rv = ipsec_integ_algo_decode (mp->entry.integrity_algorithm, &sa.integ_alg);
+  rv = ipsec_integ_algo_decode (mp->entry.integrity_algorithm, &integ_alg);
 
   if (rv)
     goto out;
 
-  vl_api_ipsec_key_decode (&mp->entry.crypto_key,
-			   &sa.crypto_key_len, sa.crypto_key);
-  vl_api_ipsec_key_decode (&mp->entry.integrity_key,
-			   &sa.integ_key_len, sa.integ_key);
+  ipsec_key_decode (&mp->entry.crypto_key, &crypto_key);
+  ipsec_key_decode (&mp->entry.integrity_key, &integ_key);
 
-  vl_api_ipsec_sad_flags_decode (mp->entry.flags, &sa);
+  flags = ipsec_sa_flags_decode (mp->entry.flags);
 
-  if (sa.is_tunnel_ip6 || sa.is_tunnel)
-    {
-      ip_address_decode (&mp->entry.tunnel_src, &sa.tunnel_src_addr);
-      ip_address_decode (&mp->entry.tunnel_dst, &sa.tunnel_dst_addr);
-    }
+  ip_address_decode (&mp->entry.tunnel_src, &tun_src);
+  ip_address_decode (&mp->entry.tunnel_dst, &tun_dst);
 
-  clib_error_t *err = ipsec_check_support_cb (im, &sa);
-  if (err)
-    {
-      clib_warning ("%s", err->what);
-      rv = VNET_API_ERROR_UNIMPLEMENTED;
-      goto out;
-    }
 
-  rv = ipsec_add_del_sa (vm, &sa, mp->is_add);
+  if (mp->is_add)
+    rv = ipsec_sa_add (id, spi, proto,
+		       crypto_alg, &crypto_key,
+		       integ_alg, &integ_key, flags,
+		       0, &tun_src, &tun_dst, NULL);
+  else
+    rv = ipsec_sa_del (id);
+
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
-  goto out;
 #endif
 
 out:
@@ -525,17 +591,17 @@ vl_api_ipsec_sa_set_key_t_handler (vl_api_ipsec_sa_set_key_t * mp)
 {
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_sa_set_key_reply_t *rmp;
+  ipsec_key_t ck, ik;
+  u32 id;
   int rv;
 #if WITH_LIBSSL > 0
-  ipsec_sa_t sa;
-  sa.id = ntohl (mp->sa_id);
 
-  vl_api_ipsec_key_decode (&mp->crypto_key,
-			   &sa.crypto_key_len, sa.crypto_key);
-  vl_api_ipsec_key_decode (&mp->integrity_key,
-			   &sa.integ_key_len, sa.integ_key);
+  id = ntohl (mp->sa_id);
 
-  rv = ipsec_set_sa_key (vm, &sa);
+  ipsec_key_decode (&mp->crypto_key, &ck);
+  ipsec_key_decode (&mp->integrity_key, &ik);
+
+  rv = ipsec_set_sa_key (id, &ck, &ik);
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
@@ -571,8 +637,8 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   tun.remote_integ_key_len = mp->remote_integ_key_len;
   tun.udp_encap = mp->udp_encap;
   tun.tx_table_id = ntohl (mp->tx_table_id);
-  memcpy (&tun.local_ip, mp->local_ip, 4);
-  memcpy (&tun.remote_ip, mp->remote_ip, 4);
+  memcpy (&tun.local_ip.ip4, mp->local_ip, 4);
+  memcpy (&tun.remote_ip.ip4, mp->remote_ip, 4);
   memcpy (&tun.local_crypto_key, &mp->local_crypto_key,
 	  mp->local_crypto_key_len);
   memcpy (&tun.remote_crypto_key, &mp->remote_crypto_key,
@@ -590,11 +656,12 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
 
-  REPLY_MACRO2 (VL_API_IPSEC_TUNNEL_IF_ADD_DEL_REPLY, (
-							{
-							rmp->sw_if_index =
-							htonl (sw_if_index);
-							}));
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IPSEC_TUNNEL_IF_ADD_DEL_REPLY,
+  ({
+    rmp->sw_if_index = htonl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -608,40 +675,29 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   mp->_vl_msg_id = ntohs (VL_API_IPSEC_SA_DETAILS);
   mp->context = context;
 
-  mp->sa_id = htonl (sa->id);
-  mp->sw_if_index = htonl (sw_if_index);
+  mp->entry.sad_id = htonl (sa->id);
+  mp->entry.spi = htonl (sa->spi);
+  mp->entry.protocol = ipsec_proto_encode (sa->protocol);
+  mp->entry.tx_table_id =
+    htonl (fib_table_get_table_id (sa->tx_fib_index, FIB_PROTOCOL_IP4));
 
-  mp->spi = htonl (sa->spi);
-  mp->protocol = sa->protocol;
+  mp->entry.crypto_algorithm = ipsec_crypto_algo_encode (sa->crypto_alg);
+  ipsec_key_encode (&sa->crypto_key, &mp->entry.crypto_key);
 
-  mp->crypto_alg = sa->crypto_alg;
-  mp->crypto_key_len = sa->crypto_key_len;
-  memcpy (mp->crypto_key, sa->crypto_key, sa->crypto_key_len);
+  mp->entry.integrity_algorithm = ipsec_integ_algo_encode (sa->integ_alg);
+  ipsec_key_encode (&sa->integ_key, &mp->entry.integrity_key);
 
-  mp->integ_alg = sa->integ_alg;
-  mp->integ_key_len = sa->integ_key_len;
-  memcpy (mp->integ_key, sa->integ_key, sa->integ_key_len);
-
-  mp->use_esn = sa->use_esn;
-  mp->use_anti_replay = sa->use_anti_replay;
-
-  mp->is_tunnel = sa->is_tunnel;
-  mp->is_tunnel_ip6 = sa->is_tunnel_ip6;
+  mp->entry.flags = ipsec_sad_flags_encode (sa);
 
   if (sa->is_tunnel)
     {
-      if (sa->is_tunnel_ip6)
-	{
-	  memcpy (mp->tunnel_src_addr, &sa->tunnel_src_addr.ip6, 16);
-	  memcpy (mp->tunnel_dst_addr, &sa->tunnel_dst_addr.ip6, 16);
-	}
-      else
-	{
-	  memcpy (mp->tunnel_src_addr, &sa->tunnel_src_addr.ip4, 4);
-	  memcpy (mp->tunnel_dst_addr, &sa->tunnel_dst_addr.ip4, 4);
-	}
+      ip_address_encode (&sa->tunnel_src_addr, IP46_TYPE_ANY,
+			 &mp->entry.tunnel_src);
+      ip_address_encode (&sa->tunnel_dst_addr, IP46_TYPE_ANY,
+			 &mp->entry.tunnel_dst);
     }
 
+  mp->sw_if_index = htonl (sw_if_index);
   mp->salt = clib_host_to_net_u32 (sa->salt);
   mp->seq_outbound = clib_host_to_net_u64 (((u64) sa->seq));
   mp->last_seq_inbound = clib_host_to_net_u64 (((u64) sa->last_seq));
@@ -653,10 +709,6 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   if (sa->use_anti_replay)
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
   mp->total_data_size = clib_host_to_net_u64 (sa->total_data_size);
-  mp->udp_encap = sa->udp_encap;
-
-  mp->tx_table_id =
-    htonl (fib_table_get_table_id (sa->tx_fib_index, FIB_PROTOCOL_IP4));
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
