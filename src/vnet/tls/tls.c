@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -586,7 +586,7 @@ tls_disconnect (u32 ctx_handle, u32 thread_index)
 u32
 tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 {
-  vnet_bind_args_t _bargs, *args = &_bargs;
+  vnet_listen_args_t _bargs, *args = &_bargs;
   app_worker_t *app_wrk;
   tls_main_t *tm = &tls_main;
   session_handle_t tls_handle;
@@ -612,7 +612,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   clib_memset (args, 0, sizeof (*args));
   args->app_index = tm->app_index;
   args->sep_ext = *sep;
-  if (vnet_bind (args))
+  if (vnet_listen (args))
     return -1;
 
   tls_handle = args->handle;
@@ -648,7 +648,7 @@ tls_stop_listen (u32 lctx_index)
     .app_index = tls_main.app_index,
     .wrk_map_index = 0		/* default wrk */
   };
-  if (vnet_unbind (&a))
+  if (vnet_unlisten (&a))
     clib_warning ("unbind returned");
 
   engine_type = lctx->tls_ctx_engine;

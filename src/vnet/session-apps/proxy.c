@@ -463,7 +463,7 @@ static int
 proxy_server_listen ()
 {
   proxy_main_t *pm = &proxy_main;
-  vnet_bind_args_t _a, *a = &_a;
+  vnet_listen_args_t _a, *a = &_a;
   clib_memset (a, 0, sizeof (*a));
   a->app_index = pm->server_app_index;
   a->uri = (char *) pm->server_uri;
