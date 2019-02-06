@@ -117,6 +117,30 @@
       "revId": "91bfa6e2666c56f79cc97407c929d188cb34e90f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d29054c3_50163526",
+        "filename": "src/plugins/map/lpm.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-06T18:00:20Z",
+      "side": 1,
+      "message": "\u003e what you want me to do\n\nThe primary goal of my whitespace comment is to make contributors aware that such (minor) errors can happen, and that Gerrit highlights them (so contributors can see them before merge).\n\nThis particular patch is merged, but you can always create another Change fixing the whitespace issue where you see fit.\n\nPersonally, I would use a script to remove trailing whitespaces everywhere, but I am not sure which files (such as .patch) need them.",
+      "parentUuid": "7eeb6e13_8af3e2ad",
+      "range": {
+        "startLine": 151,
+        "startChar": 77,
+        "endLine": 151,
+        "endChar": 78
+      },
+      "revId": "91bfa6e2666c56f79cc97407c929d188cb34e90f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
