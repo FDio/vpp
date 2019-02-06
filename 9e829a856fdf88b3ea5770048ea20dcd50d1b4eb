@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "642d651c_1c8803dd",
+        "filename": "src/vnet/mfib/ip4_mfib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-06T17:08:39Z",
+      "side": 1,
+      "message": "If it ends in a full stop, it is a sentence, thus it should start with capital letter.\nAlso applies to other comment blocks.",
+      "range": {
+        "startLine": 236,
+        "startChar": 7,
+        "endLine": 236,
+        "endChar": 8
+      },
+      "revId": "9e829a856fdf88b3ea5770048ea20dcd50d1b4eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39900e49_c6316329",
+        "filename": "src/vnet/mfib/mfib_entry_cover.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-06T17:08:39Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 61,
+        "startChar": 71,
+        "endLine": 61,
+        "endChar": 79
+      },
+      "revId": "9e829a856fdf88b3ea5770048ea20dcd50d1b4eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d31b5f1a_1150c71e",
+        "filename": "src/vnet/mfib/mfib_table.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-06T17:08:39Z",
+      "side": 1,
+      "message": "single space",
+      "range": {
+        "startLine": 176,
+        "startChar": 11,
+        "endLine": 176,
+        "endChar": 13
+      },
+      "revId": "9e829a856fdf88b3ea5770048ea20dcd50d1b4eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
