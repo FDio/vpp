@@ -25,7 +25,8 @@
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_input_error				  \
 _(RX, "good packets received")					  \
-_(DISABLED, "ipsec packets received on disabled interface")
+_(DISABLED, "ipsec packets received on disabled interface")       \
+_(NO_TUNNEL, "no matching tunnel")
 
 static char *ipsec_if_input_error_strings[] = {
 #define _(sym,string) string,
@@ -76,7 +77,7 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
   ipsec_sa_t *sa0;
   vlib_combined_counter_main_t *rx_counter;
   vlib_combined_counter_main_t *drop_counter;
-  u32 n_disabled = 0;
+  u32 n_disabled = 0, n_no_tunnel = 0;
 
   rx_counter = vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
   drop_counter = vim->combined_sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
@@ -181,6 +182,11 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 	      vlib_buffer_advance (b0, ip4_header_bytes (ip0));
 	      next0 = im->esp4_decrypt_next_index;
 	    }
+	  else
+	    {
+	      b0->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+	      n_no_tunnel++;
+	    }
 
 	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -216,6 +222,8 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 
   vlib_node_increment_counter (vm, ipsec_if_input_node.index,
 			       IPSEC_IF_INPUT_ERROR_DISABLED, n_disabled);
+  vlib_node_increment_counter (vm, ipsec_if_input_node.index,
+			       IPSEC_IF_INPUT_ERROR_DISABLED, n_no_tunnel);
 
   return from_frame->n_vectors;
 }
