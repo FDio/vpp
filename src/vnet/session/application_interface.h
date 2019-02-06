@@ -16,7 +16,7 @@
 #define __included_uri_h__
 
 #include <svm/svm_fifo_segment.h>
-#include <vnet/session/session.h>
+#include <vnet/session/session_types.h>
 #include <vnet/session/application.h>
 #include <vnet/session/transport.h>
 #include <vnet/tls/tls.h>
@@ -56,7 +56,7 @@ typedef struct _vnet_bind_args_t
   u32 segment_name_length;
   u64 server_event_queue_address;
   u64 handle;
-} vnet_bind_args_t;
+} vnet_listen_args_t;
 
 typedef struct _vnet_unbind_args_t
 {
@@ -167,14 +167,14 @@ typedef enum session_fd_flag_
 #undef _
 } session_fd_flag_t;
 
-int vnet_bind_uri (vnet_bind_args_t *);
+int vnet_bind_uri (vnet_listen_args_t *);
 int vnet_unbind_uri (vnet_unbind_args_t * a);
 clib_error_t *vnet_connect_uri (vnet_connect_args_t * a);
 
 clib_error_t *vnet_application_attach (vnet_app_attach_args_t * a);
-clib_error_t *vnet_bind (vnet_bind_args_t * a);
+clib_error_t *vnet_listen (vnet_listen_args_t * a);
 clib_error_t *vnet_connect (vnet_connect_args_t * a);
-clib_error_t *vnet_unbind (vnet_unbind_args_t * a);
+clib_error_t *vnet_unlisten (vnet_unbind_args_t * a);
 int vnet_application_detach (vnet_app_detach_args_t * a);
 int vnet_disconnect_session (vnet_disconnect_args_t * a);
 

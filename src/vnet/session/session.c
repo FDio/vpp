@@ -945,7 +945,7 @@ session_transport_reset_notify (transport_connection_t * tc)
  * Accept a stream session. Optionally ping the server by callback.
  */
 int
-stream_session_accept (transport_connection_t * tc, u32 listener_index,
+session_stream_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 notify)
 {
   session_t *s, *listener;

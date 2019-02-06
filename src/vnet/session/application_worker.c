@@ -184,7 +184,7 @@ app_worker_free (app_worker_t * app_wrk)
       a->wrk_map_index = app_wrk->wrk_map_index;
       a->handle = handles[i];
       /* seg manager is removed when unbind completes */
-      vnet_unbind (a);
+      vnet_unlisten (a);
     }
 
   /*
@@ -252,24 +252,31 @@ app_worker_alloc_segment_manager (app_worker_t * app_wrk)
 }
 
 int
-app_worker_start_listen (app_worker_t * app_wrk, session_t * ls)
+app_worker_start_listen (app_worker_t * app_wrk, app_listener_t *app_listener)
 {
   segment_manager_t *sm;
+  session_t *ls;
+
+  app_listener->workers = clib_bitmap_set (app_listener->workers,
+					   app_wrk->wrk_map_index, 1);
+
+  if (app_listener->session_index == SESSION_INVALID_INDEX)
+    return 0;
+
+  ls = session_get (app_listener->session_index, 0);
 
   /* Allocate segment manager. All sessions derived out of a listen session
    * have fifos allocated by the same segment manager. */
   if (!(sm = app_worker_alloc_segment_manager (app_wrk)))
     return -1;
 
-  /* Add to app's listener table. Useful to find all child listeners
-   * when app goes down, although, just for unbinding this is not needed */
+  /* Keep track of the segment manager for the listener or this worker */
   hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
 	    segment_manager_index (sm));
 
-  if (!ls->rx_fifo
-      && session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
+  if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
-      if (session_alloc_fifos (sm, ls))
+      if (!ls->rx_fifo && session_alloc_fifos (sm, ls))
 	return -1;
     }
   return 0;
@@ -350,7 +357,7 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 }
 
 int
-app_worker_open_session (app_worker_t * app, session_endpoint_t * sep,
+app_worker_connect_session (app_worker_t * app, session_endpoint_t * sep,
 			 u32 api_context)
 {
   int rv;
@@ -1040,6 +1047,7 @@ void
 app_worker_format_local_sessions (app_worker_t * app_wrk, int verbose)
 {
   vlib_main_t *vm = vlib_get_main ();
+  app_worker_t *client_wrk;
   local_session_t *ls;
   transport_proto_t tp;
   u8 *conn = 0;
@@ -1061,8 +1069,9 @@ app_worker_format_local_sessions (app_worker_t * app_wrk, int verbose)
     tp = session_type_transport_proto(ls->listener_session_type);
     conn = format (0, "[L][%U] *:%u", format_transport_proto_short, tp,
                    ls->port);
-    vlib_cli_output (vm, "%-40v%-15u%-20u", conn, ls->app_wrk_index,
-                     ls->client_wrk_index);
+    client_wrk = app_worker_get (ls->client_wrk_index);
+    vlib_cli_output (vm, "%-40v%-15u%-20u", conn, ls->app_index,
+                     client_wrk->app_index);
     vec_reset_length (conn);
   }));
   /* *INDENT-ON* */

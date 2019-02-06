@@ -116,6 +116,9 @@ typedef struct app_listener_
   clib_bitmap_t *workers;	/**< workers accepting connections */
   u32 accept_rotor;		/**< last worker to accept a connection */
   u32 al_index;
+  u32 app_index;
+  u32 local_index;
+  u32 session_index;
 } app_listener_t;
 
 typedef struct application_
@@ -227,11 +230,13 @@ app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
 app_worker_t *application_get_default_worker (application_t * app);
 app_worker_t *application_listener_select_worker (session_t * ls,
 						  u8 is_local);
+app_worker_t *app_listener_select_worker (app_listener_t *al);
 int application_start_listen (application_t * app,
-			      session_endpoint_cfg_t * tep,
-			      session_handle_t * handle);
+			      session_endpoint_cfg_t * sep);
 int application_stop_listen (u32 app_index, u32 app_or_wrk,
 			     session_handle_t handle);
+session_t *app_listen_session_get_w_handle (application_t * app,
+					    session_handle_t handle);
 int application_change_listener_owner (session_t * s, app_worker_t * app_wrk);
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
@@ -263,9 +268,9 @@ app_worker_t *app_worker_get_if_valid (u32 wrk_index);
 application_t *app_worker_get_app (u32 wrk_index);
 int app_worker_own_session (app_worker_t * app_wrk, session_t * s);
 void app_worker_free (app_worker_t * app_wrk);
-int app_worker_open_session (app_worker_t * app, session_endpoint_t * tep,
+int app_worker_connect_session (app_worker_t * app, session_endpoint_t * tep,
 			     u32 api_context);
-int app_worker_start_listen (app_worker_t * app_wrk, session_t * ls);
+int app_worker_start_listen (app_worker_t * app_wrk, app_listener_t *lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, session_handle_t handle);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
@@ -298,11 +303,6 @@ local_session_t *app_worker_get_local_session (app_worker_t * app,
 					       u32 session_index);
 local_session_t *app_worker_get_local_session_from_handle (session_handle_t
 							   handle);
-local_session_t
-  * application_get_local_listen_session_from_handle (session_handle_t lh);
-int application_start_local_listen (application_t * server,
-				    session_endpoint_cfg_t * sep,
-				    session_handle_t * handle);
 int application_stop_local_listen (u32 app_index, u32 app_or_wrk,
 				   session_handle_t lh);
 int app_worker_local_session_connect (app_worker_t * client,
