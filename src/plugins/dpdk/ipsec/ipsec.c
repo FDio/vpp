@@ -252,7 +252,7 @@ crypto_set_aead_xform (struct rte_crypto_sym_xform *xform,
 
   xform->type = RTE_CRYPTO_SYM_XFORM_AEAD;
   xform->aead.algo = c->alg;
-  xform->aead.key.data = sa->crypto_key;
+  xform->aead.key.data = sa->crypto_key.data;
   xform->aead.key.length = c->key_len;
   xform->aead.iv.offset =
     crypto_op_get_priv_offset () + offsetof (dpdk_op_priv_t, cb);
@@ -280,7 +280,7 @@ crypto_set_cipher_xform (struct rte_crypto_sym_xform *xform,
 
   xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
   xform->cipher.algo = c->alg;
-  xform->cipher.key.data = sa->crypto_key;
+  xform->cipher.key.data = sa->crypto_key.data;
   xform->cipher.key.length = c->key_len;
   xform->cipher.iv.offset =
     crypto_op_get_priv_offset () + offsetof (dpdk_op_priv_t, cb);
@@ -306,7 +306,7 @@ crypto_set_auth_xform (struct rte_crypto_sym_xform *xform,
 
   xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
   xform->auth.algo = a->alg;
-  xform->auth.key.data = sa->integ_key;
+  xform->auth.key.data = sa->integ_key.data;
   xform->auth.key.length = a->key_len;
   xform->auth.digest_length = a->trunc_size;
   xform->next = NULL;
@@ -511,7 +511,8 @@ add_del_sa_session (u32 sa_index, u8 is_add)
 	case IPSEC_CRYPTO_ALG_AES_GCM_128:
 	case IPSEC_CRYPTO_ALG_AES_GCM_192:
 	case IPSEC_CRYPTO_ALG_AES_GCM_256:
-	  clib_memcpy (&sa->salt, &sa->crypto_key[sa->crypto_key_len - 4], 4);
+	  clib_memcpy (&sa->salt,
+		       &sa->crypto_key.data[sa->crypto_key.len - 4], 4);
 	  break;
 	default:
 	  seed = (u32) clib_cpu_time_now ();

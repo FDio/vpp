@@ -59,6 +59,7 @@ static char *ah_encrypt_error_strings[] = {
 
 typedef struct
 {
+  u32 sa_index;
   u32 spi;
   u32 seq;
   ipsec_integ_alg_t integ_alg;
@@ -72,8 +73,9 @@ format_ah_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ah_encrypt_trace_t *t = va_arg (*args, ah_encrypt_trace_t *);
 
-  s = format (s, "ah: spi %u seq %u integrity %U",
-	      t->spi, t->seq, format_ipsec_integ_alg, t->integ_alg);
+  s = format (s, "ah: sa-index %d spi %u seq %u integrity %U",
+	      t->sa_index, t->spi, t->seq,
+	      format_ipsec_integ_alg, t->integ_alg);
   return s;
 }
 
@@ -237,8 +239,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      oh0->ip4.src_address.as_u32 = sa0->tunnel_src_addr.ip4.as_u32;
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
 
-	      next0 = AH_ENCRYPT_NEXT_IP4_LOOKUP;
-	      vnet_buffer (i_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      next0 = sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_next_node;
+	      vnet_buffer (i_b0)->ip.adj_index[VLIB_TX] =
+		sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_index;
 	    }
 	  else if (is_ip6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
 	    {
@@ -251,8 +254,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      oh6_0->ip6.dst_address.as_u64[1] =
 		sa0->tunnel_dst_addr.ip6.as_u64[1];
 
-	      next0 = AH_ENCRYPT_NEXT_IP6_LOOKUP;
-	      vnet_buffer (i_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      next0 = sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_next_node;
+	      vnet_buffer (i_b0)->ip.adj_index[VLIB_TX] =
+		sa0->dpo[IPSEC_PROTOCOL_AH].dpoi_index;
 	    }
 
 	  u8 sig[64];
@@ -262,8 +266,8 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    sizeof (ah_header_t);
 	  clib_memset (digest, 0, icv_size);
 
-	  unsigned size = hmac_calc (sa0->integ_alg, sa0->integ_key,
-				     sa0->integ_key_len,
+	  unsigned size = hmac_calc (sa0->integ_alg, sa0->integ_key.data,
+				     sa0->integ_key.len,
 				     vlib_buffer_get_current (i_b0),
 				     i_b0->current_length, sig, sa0->use_esn,
 				     sa0->seq_hi);
@@ -297,6 +301,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      tr->spi = sa0->spi;
 	      tr->seq = sa0->seq - 1;
 	      tr->integ_alg = sa0->integ_alg;
+	      tr->sa_index = sa_index0;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

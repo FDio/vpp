@@ -200,9 +200,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  icv_padding_len =
 		    ah_calc_icv_padding_len (icv_size, 0 /* is_ipv6 */ );
 		}
-	      hmac_calc (sa0->integ_alg, sa0->integ_key, sa0->integ_key_len,
-			 (u8 *) ih4, i_b0->current_length, sig, sa0->use_esn,
-			 sa0->seq_hi);
+	      hmac_calc (sa0->integ_alg, sa0->integ_key.data,
+			 sa0->integ_key.len, (u8 *) ih4, i_b0->current_length,
+			 sig, sa0->use_esn, sa0->seq_hi);
 
 	      if (PREDICT_FALSE (memcmp (digest, sig, icv_size)))
 		{
