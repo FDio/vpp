@@ -297,6 +297,27 @@ ipip_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
+static int
+ipip_tunnel_desc (u32 sw_if_index,
+		  ip46_address_t * src,
+		  ip46_address_t * dst, u32 * decap_node_index)
+{
+  ipip_tunnel_t *t;
+
+  t = ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
+  if (!t)
+    return -1;
+
+  *src = t->tunnel_src;
+  *dst = t->tunnel_dst;
+  if (ip46_address_is_ip4 (src))
+    *decap_node_index = ipip4_tun_decap_node.index;
+  else
+    *decap_node_index = ipip6_tun_decap_node.index;
+
+  return (0);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS(ipip_device_class) = {
     .name = "IPIP tunnel device",
@@ -316,11 +337,12 @@ VNET_HW_INTERFACE_CLASS(ipip_hw_interface_class) = {
     .build_rewrite = ipip_build_rewrite,
     .update_adjacency = ipip_update_adj,
     .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+    .tun_desc = ipip_tunnel_desc,
 };
 /* *INDENT-ON* */
 
 ipip_tunnel_t *
-ipip_tunnel_db_find (ipip_tunnel_key_t * key)
+ipip_tunnel_db_find (const ipip_tunnel_key_t * key)
 {
   ipip_main_t *gm = &ipip_main;
   uword *p;
@@ -344,7 +366,7 @@ ipip_tunnel_db_find_by_sw_if_index (u32 sw_if_index)
 }
 
 void
-ipip_tunnel_db_add (ipip_tunnel_t * t, ipip_tunnel_key_t * key)
+ipip_tunnel_db_add (ipip_tunnel_t * t, const ipip_tunnel_key_t * key)
 {
   ipip_main_t *gm = &ipip_main;
 

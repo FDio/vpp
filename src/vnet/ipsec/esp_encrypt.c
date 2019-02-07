@@ -405,12 +405,18 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip_hdr = payload - hdr_len;
 
 	  /* L2 header */
-	  l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
-	  hdr_len += l2_len;
-	  l2_hdr = payload - hdr_len;
+	  if (!is_tun)
+	    {
+	      l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
+	      hdr_len += l2_len;
+	      l2_hdr = payload - hdr_len;
 
-	  /* copy l2 and ip header */
-	  clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	      /* copy l2 and ip header */
+	      clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	    }
+	  else
+	    l2_len = 0;
+
 	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
 
 	  if (is_ip6)
@@ -437,7 +443,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 0);
 	    }
 
-	  next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	  if (!is_tun)
+	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	}
 
       esp->spi = spi;

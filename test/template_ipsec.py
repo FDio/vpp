@@ -442,7 +442,7 @@ class IpsecTra4(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -495,7 +495,7 @@ class IpsecTra6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -598,7 +598,7 @@ class IpsecTun4(object):
 
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         self.verify_counters(p, count)
 
@@ -636,7 +636,7 @@ class IpsecTun4(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         self.verify_counters(p, count)
 
@@ -667,8 +667,33 @@ class IpsecTun6(object):
         self.assert_packet_counter_equal(self.tun6_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tun6_decrypt_node_name, count)
 
-    def verify_tun_66(self, p, count=1):
-        """ ipsec 6o6 tunnel basic test """
+    def verify_decrypted6(self, p, rxs):
+        for rx in rxs:
+            self.assert_equal(rx[IPv6].src, p.remote_tun_if_host)
+            self.assert_equal(rx[IPv6].dst, self.pg1.remote_ip6)
+            self.assert_packet_checksums_valid(rx)
+
+    def verify_encrypted6(self, p, sa, rxs):
+        for rx in rxs:
+            self.assert_packet_checksums_valid(rx)
+            self.assertEqual(len(rx) - len(Ether()) - len(IPv6()),
+                             rx[IPv6].plen)
+            try:
+                decrypt_pkt = p.vpp_tun_sa.decrypt(rx[IPv6])
+                if not decrypt_pkt.haslayer(IPv6):
+                    decrypt_pkt = IPv6(decrypt_pkt[Raw].load)
+                self.assert_packet_checksums_valid(decrypt_pkt)
+                self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip6)
+                self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
+            except:
+                self.logger.debug(ppp("Unexpected packet:", rx))
+                try:
+                    self.logger.debug(ppp("Decrypted packet:", decrypt_pkt))
+                except:
+                    pass
+                raise
+
+    def verify_tun_66(self, p, count=1, payload_size=64):
         self.vapi.cli("clear errors")
         try:
             config_tun_params(p, self.encryption_type, self.tun_if)
@@ -677,35 +702,19 @@ class IpsecTun6(object):
                                                dst=self.pg1.remote_ip6,
                                                count=count)
             recv_pkts = self.send_and_expect(self.tun_if, send_pkts, self.pg1)
-            for recv_pkt in recv_pkts:
-                self.assert_equal(recv_pkt[IPv6].src, p.remote_tun_if_host)
-                self.assert_equal(recv_pkt[IPv6].dst, self.pg1.remote_ip6)
-                self.assert_packet_checksums_valid(recv_pkt)
+            self.verify_decrypted6(p, recv_pkts)
+
             send_pkts = self.gen_pkts6(self.pg1, src=self.pg1.remote_ip6,
-                                       dst=p.remote_tun_if_host,
-                                       count=count)
-            recv_pkts = self.send_and_expect(self.pg1, send_pkts, self.tun_if)
-            for recv_pkt in recv_pkts:
-                self.assertEqual(len(recv_pkt) - len(Ether()) - len(IPv6()),
-                                 recv_pkt[IPv6].plen)
-                try:
-                    decrypt_pkt = p.vpp_tun_sa.decrypt(recv_pkt[IPv6])
-                    if not decrypt_pkt.haslayer(IPv6):
-                        decrypt_pkt = IPv6(decrypt_pkt[Raw].load)
-                    self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip6)
-                    self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
-                    self.assert_packet_checksums_valid(decrypt_pkt)
-                except:
-                    self.logger.debug(ppp("Unexpected packet:", recv_pkt))
-                    try:
-                        self.logger.debug(
-                            ppp("Decrypted packet:", decrypt_pkt))
-                    except:
-                        pass
-                    raise
+                                       dst=p.remote_tun_if_host, count=count,
+                                       payload_size=payload_size)
+            recv_pkts = self.send_and_expect(self.pg1, send_pkts,
+                                             self.tun_if)
+            self.verify_encrypted6(p, p.vpp_tun_sa, recv_pkts)
+
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
+
         self.verify_counters(p, count)
 
     def verify_tun_46(self, p, count=1):
@@ -744,7 +753,7 @@ class IpsecTun6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
         self.verify_counters(p, count)
 
 
