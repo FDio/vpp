@@ -47,7 +47,7 @@
 struct vnet_main_t;
 struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
-struct ip46_address_t;
+union ip46_address_t_;
 
 typedef enum
 {
@@ -174,6 +174,14 @@ static __clib_unused void * __clib_unused_##f = f;
 #define VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION_PRIO(f,p)     	\
   _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,sw_interface_admin_up_down, p)
 
+/**
+ * Tunnel description parameters
+ */
+typedef int (*vnet_dev_class_ip_tunnel_desc_t) (u32 sw_if_index,
+						union ip46_address_t_ * src,
+						union ip46_address_t_ * dst,
+						u8 * is_l2);
+
 /* A class of hardware interface devices. */
 typedef struct _vnet_device_class
 {
@@ -234,6 +242,8 @@ typedef struct _vnet_device_class
 
   /* Format flow offload entry */
   format_function_t *format_flow;
+
+  vnet_dev_class_ip_tunnel_desc_t ip_tun_desc;
 
   /* Function to clear hardware counters for device. */
   void (*clear_counters) (u32 dev_class_instance);
