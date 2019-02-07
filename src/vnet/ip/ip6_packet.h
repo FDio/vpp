@@ -75,7 +75,7 @@ typedef enum
 } ip46_type_t;
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (union {
+typedef CLIB_PACKED (union ip46_address_t_ {
   struct {
     u32 pad[3];
     ip4_address_t ip4;

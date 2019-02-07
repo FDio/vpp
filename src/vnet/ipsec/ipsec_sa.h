@@ -98,6 +98,7 @@ typedef struct ipsec_key_t_
   _ (32, IS_GRE, "GRE")                                   \
   _ (64, IS_INBOUND, "inboud")                            \
   _ (128, IS_AEAD, "aead")                                \
+  _ (256, PROTECT, "protect")                              \
 
 typedef enum ipsec_sad_flags_t_
 {
@@ -106,7 +107,7 @@ typedef enum ipsec_sad_flags_t_
 #undef _
 } __clib_packed ipsec_sa_flags_t;
 
-STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 1, "IPSEC SA flags > 1 byte");
+STATIC_ASSERT (sizeof (ipsec_sa_flags_t) == 2, "IPSEC SA flags > 1 byte");
 
 typedef struct
 {
@@ -114,6 +115,7 @@ typedef struct
 
   /* flags */
   ipsec_sa_flags_t flags;
+  vnet_crypto_op_id_t integ_op_id:16;
 
   u8 crypto_iv_size;
   u8 crypto_block_size;
@@ -125,9 +127,8 @@ typedef struct
   u32 last_seq_hi;
   u64 replay_window;
 
-  vnet_crypto_op_id_t crypto_enc_op_id;
-  vnet_crypto_op_id_t crypto_dec_op_id;
-  vnet_crypto_op_id_t integ_op_id;
+  vnet_crypto_op_id_t crypto_enc_op_id:16;
+  vnet_crypto_op_id_t crypto_dec_op_id:16;
 
   dpo_id_t dpo[IPSEC_N_PROTOCOLS];
 
