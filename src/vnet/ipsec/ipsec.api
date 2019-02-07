@@ -324,6 +324,29 @@ autoreply define ipsec_sa_set_key
   vl_api_key_t integrity_key;
 };
 
+/** \brief Add or Update Protection for a tunnel with IPSEC
+
+    Tunnel protection directly associates an SA with all packets
+    ingress and egress on the tunnel. This could also be achieved by
+    assigning an SPD to the tunnel, but that would incur an unnessccary
+    SPD entry lookup .
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_id_index - Tunnel interface to protect
+    @param sa_in - The ID of inbound SA
+    @param sa_out - The ID of outbound SA
+*/
+autoreply define ipsec_tunnel_protect_update
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sw_if_index;
+  u32 sa_in;
+  u32 sa_out;
+};
+
 /** \brief IPsec: Get SPD interfaces
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

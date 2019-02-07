@@ -384,6 +384,14 @@ ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
   /* *INDENT-ON* */
 }
 
+ipsec_sa_t*
+ipsec_get_sa (u32 sa_index)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  return (pool_elt_at_index (im->sad, sa_index));
+}
+
 /**
  * Function definition to get a FIB node from its index
  */
