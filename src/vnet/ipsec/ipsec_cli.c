@@ -22,6 +22,7 @@
 #include <vnet/fib/fib.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 static clib_error_t *
 set_interface_spd_command_fn (vlib_main_t * vm,
@@ -103,7 +104,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (line_input, "spi %u", &spi))
 	;
-      else if (unformat (line_input, "salt %u", &salt))
+      else if (unformat (line_input, "salt 0x%x", &salt))
 	;
       else if (unformat (line_input, "esp"))
 	proto = IPSEC_PROTOCOL_ESP;
@@ -970,6 +971,88 @@ VLIB_CLI_COMMAND (set_interface_key_command, static) = {
     .short_help =
     "set interface ipsec key <int> <local|remote> <crypto|integ> <key type> <key>",
     .function = set_interface_key_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ipsec_tun_protect_cmd (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index, is_del, sa_in, sa_out;
+  vnet_main_t *vnm;
+
+  is_del = 0;
+  sw_if_index = ~0;
+  vnm = vnet_get_main ();
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "del"))
+	is_del = 1;
+      else if (unformat (line_input, "add"))
+	is_del = 0;
+      else if (unformat (line_input, " input-sa %d", &sa_in))
+	;
+      else if (unformat (line_input, " output-sa %d", &sa_out))
+	;
+      else if (unformat (line_input, "%U",
+			 unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else
+	return (clib_error_return (0, "unknown input '%U'",
+				   format_unformat_error, line_input));
+    }
+
+  if (!is_del)
+    ipsec_tun_protect_update (sw_if_index, sa_in, sa_out);
+
+  unformat_free (line_input);
+  return NULL;
+}
+
+/**
+ * Protect tunnel with IPSEC
+ */
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_tun_protect_cmd_node, static) =
+{
+  .path = "ipsec tunnel protect",
+  .function = ipsec_tun_protect_cmd,
+  .short_help = "ipsec tunnel protect <interface> input-sa <SA> output-sa <SA>",
+    // this is not MP safe
+};
+/* *INDENT-ON* */
+
+static walk_rc_t
+ipsec_tun_protect_show_one (index_t itpi, void *ctx)
+{
+  vlib_cli_output (ctx, "%U", format_ipsec_tun_protect, itpi);
+
+  return (WALK_CONTINUE);
+}
+
+static clib_error_t *
+ipsec_tun_protect_show (vlib_main_t * vm,
+			unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  ipsec_tun_protect_walk (ipsec_tun_protect_show_one, vm);
+
+  return NULL;
+}
+
+/**
+ * show IPSEC tunnel protection
+ */
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ipsec_tun_protect_show_node, static) =
+{
+  .path = "show ipsec protect",
+  .function = ipsec_tun_protect_show,
+  .short_help =  "show ipsec protect",
 };
 /* *INDENT-ON* */
 

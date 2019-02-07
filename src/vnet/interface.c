@@ -518,6 +518,30 @@ vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
      VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE);
 }
 
+void
+vnet_sw_interface_admin_up (vnet_main_t * vnm, u32 sw_if_index)
+{
+  u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
+
+  if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+    {
+      flags |= VNET_SW_INTERFACE_FLAG_ADMIN_UP;
+      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
+    }
+}
+
+void
+vnet_sw_interface_admin_down (vnet_main_t * vnm, u32 sw_if_index)
+{
+  u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
+
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    {
+      flags &= ~(VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+      vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
+    }
+}
+
 static u32
 vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
 				       vnet_sw_interface_t * template)

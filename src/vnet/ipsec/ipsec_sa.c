@@ -17,6 +17,7 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/udp/udp.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 /**
  * @brief
@@ -307,6 +308,7 @@ u8
 ipsec_is_sa_used (u32 sa_index)
 {
   ipsec_main_t *im = &ipsec_main;
+  ipsec_protect_t *itp;
   ipsec_tunnel_if_t *t;
   ipsec_policy_t *p;
 
@@ -325,6 +327,15 @@ ipsec_is_sa_used (u32 sa_index)
     if (t->output_sa_index == sa_index)
       return 1;
   }));
+
+  pool_foreach(itp, ipsec_protect_pool, ({
+    if (itp->itp_sa[IPSEC_PROTECT_DIR_INBOUND] == sa_index)
+      return 1;
+    if (itp->itp_sa[IPSEC_PROTECT_DIR_OUTBOUND] == sa_index)
+      return 1;
+  }));
+
+
   /* *INDENT-ON* */
 
   return 0;

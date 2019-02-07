@@ -30,9 +30,9 @@ typedef enum
   _ (PUNT, "punt-dispatch")        \
   _ (DROP, "error-drop")
 
-#define _(v, s) IPSEC_INPUT_NEXT_##v,
 typedef enum
 {
+#define _(v, s) IPSEC_INPUT_NEXT_##v,
   foreach_ipsec_input_next
 #undef _
     IPSEC_INPUT_N_NEXT,

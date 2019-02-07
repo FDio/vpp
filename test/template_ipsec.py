@@ -442,7 +442,7 @@ class IpsecTra4(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -495,7 +495,7 @@ class IpsecTra6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         pkts = p.tra_sa_in.get_stats()['packets']
         self.assertEqual(pkts, count,
@@ -598,7 +598,7 @@ class IpsecTun4(object):
 
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         self.verify_counters(p, count)
 
@@ -636,7 +636,7 @@ class IpsecTun4(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
 
         self.verify_counters(p, count)
 
@@ -705,7 +705,7 @@ class IpsecTun6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
         self.verify_counters(p, count)
 
     def verify_tun_46(self, p, count=1):
@@ -744,7 +744,7 @@ class IpsecTun6(object):
                     raise
         finally:
             self.logger.info(self.vapi.ppcli("show error"))
-            self.logger.info(self.vapi.ppcli("show ipsec"))
+            self.logger.info(self.vapi.ppcli("show ipsec all"))
         self.verify_counters(p, count)
 
 
