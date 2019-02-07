@@ -412,6 +412,8 @@ class IpsecTra4(object):
             recv_pkts = self.send_and_expect(self.tra_if, send_pkts,
                                              self.tra_if)
             for rx in recv_pkts:
+                self.assertEqual(len(rx) - len(Ether()), rx[IP].len)
+                self.assert_packet_checksums_valid(rx)
                 try:
                     decrypted = p.vpp_tra_sa.decrypt(rx[IP])
                     self.assert_packet_checksums_valid(decrypted)

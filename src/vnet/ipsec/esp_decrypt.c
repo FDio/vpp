@@ -22,6 +22,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ipsec_io.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
@@ -92,7 +93,7 @@ typedef struct
     {
       u8 icv_sz;
       u8 iv_sz;
-      ipsec_sa_flags_t flags:8;
+      ipsec_sa_flags_t flags;
       u32 sa_index;
     };
     u64 sa_data;
@@ -435,6 +436,15 @@ esp_decrypt_inline (vlib_main_t * vm,
 
       if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
 	next[0] = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
+      if (PREDICT_FALSE (ipsec_sa_is_set_PROTECT (sa0)))
+	{
+	  ipsec_protect_t *itp0;
+
+	  itp0 = pool_elt_at_index (ipsec_protect_pool,
+				    vnet_buffer (b[0])->ipsec.protect_index);
+
+	  next[0] = itp0->it_edge;
+	}
 
     trace:
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))

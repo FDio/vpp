@@ -47,7 +47,7 @@
 struct vnet_main_t;
 struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
-struct ip46_address_t;
+union ip46_address_t_;
 
 typedef enum
 {
@@ -347,6 +347,14 @@ typedef enum vnet_link_t_
 extern vnet_l3_packet_type_t vnet_link_to_l3_proto (vnet_link_t link);
 
 /**
+ * Tunnel description parameters
+ */
+typedef int (*vnet_hw_interface_tunnel_desc_t) (u32 sw_if_index,
+						union ip46_address_t_ * src,
+						union ip46_address_t_ * dst,
+						u32 * decap_node_index);
+
+/**
  * @brief Attributes assignable to a HW interface Class.
  */
 typedef enum vnet_hw_interface_class_flags_t_
@@ -419,6 +427,7 @@ typedef struct _vnet_hw_interface_class
   void (*hw_class_change) (struct vnet_main_t * vnm, u32 hw_if_index,
 			   u32 old_class_index, u32 new_class_index);
 
+  vnet_hw_interface_tunnel_desc_t tun_desc;
   /* List of hw interface classes, built by constructors */
   struct _vnet_hw_interface_class *next_class_registration;
 

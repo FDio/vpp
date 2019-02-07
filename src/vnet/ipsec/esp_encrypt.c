@@ -112,19 +112,26 @@ esp_add_footer_and_icv (vlib_buffer_t * b, u8 block_size, u8 icv_sz)
 static_always_inline void
 esp_update_ip4_hdr (ip4_header_t * ip4, u16 len, int is_transport, int is_udp)
 {
-  ip_csum_t sum = ip4->checksum;
-  u16 old_len = 0;
+  ip_csum_t sum;
+  u16 old_len;
+
+  len = clib_net_to_host_u16 (len);
+  old_len = ip4->length;
 
   if (is_transport)
     {
       u8 prot = is_udp ? IP_PROTOCOL_UDP : IP_PROTOCOL_IPSEC_ESP;
-      old_len = ip4->length;
-      sum = ip_csum_update (sum, ip4->protocol, prot, ip4_header_t, protocol);
-      ip4->protocol = prot;
-    }
 
-  ip4->length = len = clib_net_to_host_u16 (len);
-  sum = ip_csum_update (ip4->checksum, old_len, len, ip4_header_t, length);
+      sum = ip_csum_update (ip4->checksum, ip4->protocol,
+			    prot, ip4_header_t, protocol);
+      ip4->protocol = prot;
+
+      sum = ip_csum_update (sum, old_len, len, ip4_header_t, length);
+    }
+  else
+    sum = ip_csum_update (ip4->checksum, old_len, len, ip4_header_t, length);
+
+  ip4->length = len;
   ip4->checksum = ip_csum_fold (sum);
 }
 
@@ -241,7 +248,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left > 0)
     {
-      u32 sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
+      u32 sa_index0;
       dpo_id_t *dpo;
       esp_header_t *esp;
       u8 *payload, *next_hdr_ptr;
@@ -389,12 +396,18 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip_hdr = payload - hdr_len;
 
 	  /* L2 header */
-	  l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
-	  hdr_len += l2_len;
-	  l2_hdr = payload - hdr_len;
+	  if (!is_tun)
+	    {
+	      l2_len = vnet_buffer (b[0])->ip.save_rewrite_length;
+	      hdr_len += l2_len;
+	      l2_hdr = payload - hdr_len;
 
-	  /* copy l2 and ip header */
-	  clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	      /* copy l2 and ip header */
+	      clib_memcpy_le32 (l2_hdr, old_ip_hdr - l2_len, l2_len);
+	    }
+	  else
+	    l2_len = 0;
+
 	  clib_memcpy_le64 (ip_hdr, old_ip_hdr, ip_len);
 
 	  if (is_ip6)
@@ -402,14 +415,16 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      ip6_header_t *ip6 = (ip6_header_t *) (ip_hdr);
 	      *next_hdr_ptr = ip6->protocol;
 	      ip6->protocol = IP_PROTOCOL_IPSEC_ESP;
-	      ip6->payload_length = payload_len + hdr_len - l2_len - ip_len;
+	      ip6->payload_length =
+		clib_host_to_net_u16 (payload_len + hdr_len - l2_len -
+				      ip_len);
 	    }
 	  else
 	    {
 	      u16 len;
 	      ip4_header_t *ip4 = (ip4_header_t *) (ip_hdr);
 	      *next_hdr_ptr = ip4->protocol;
-	      len = payload_len + hdr_len + l2_len;
+	      len = payload_len + hdr_len - l2_len;
 	      if (udp)
 		{
 		  esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 1);
@@ -419,7 +434,8 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		esp_update_ip4_hdr (ip4, len, /* is_transport */ 1, 0);
 	    }
 
-	  next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
+	  if (!is_tun)
+	    next[0] = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	}
 
       esp->spi = spi;

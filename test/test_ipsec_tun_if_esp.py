@@ -10,8 +10,9 @@ from template_ipsec import TemplateIpsec, IpsecTun4Tests, IpsecTun6Tests, \
     IpsecTun4, IpsecTun6,  IpsecTcpTests,  config_tun_params
 from vpp_ipsec_tun_interface import VppIpsecTunInterface, \
     VppIpsecGRETunInterface
+from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
-from vpp_ipsec import VppIpsecSA
+from vpp_ipsec import VppIpsecSA, VppIpsecTunProtect
 from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort
 from util import ppp
 from vpp_papi import VppEnum
@@ -37,11 +38,11 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
 
         p = self.ipv4_params
 
-        p.tun_if = VppIpsecTunInterface(self, self.pg0, p.vpp_tun_spi,
-                                        p.scapy_tun_spi, p.crypt_algo_vpp_id,
-                                        p.crypt_key, p.crypt_key,
-                                        p.auth_algo_vpp_id, p.auth_key,
-                                        p.auth_key)
+        p.tun_if = VppIpIpTunInterface(self, self.pg0, p.vpp_tun_spi,
+                                       p.scapy_tun_spi, p.crypt_algo_vpp_id,
+                                       p.crypt_key, p.crypt_key,
+                                       p.auth_algo_vpp_id, p.auth_key,
+                                       p.auth_key)
         p.tun_if.add_vpp_config()
         p.tun_if.admin_up()
         p.tun_if.config_ip4()
@@ -551,6 +552,141 @@ class TestIpsecGRETunIfEsp1(TemplateIpsecGRETunIfEsp, IpsecTun4Tests):
     """ Ipsec GRE ESP - TUN tests """
     tun4_encrypt_node_name = "esp4-encrypt"
     tun4_decrypt_node_name = "esp4-decrypt"
+
+
+class TestIpsec4TunProtect(TemplateIpsec, IpsecTun4):
+    """ IPsec IPv4 Tunnel protect """
+
+    encryption_type = ESP
+    tun4_encrypt_node_name = "esp4-encrypt"
+    tun4_decrypt_node_name = "esp4-decrypt"
+
+    def setUp(self):
+        super(TestIpsec4TunProtect, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv4_params
+
+        config_tun_params(p, self.encryption_type, self.tun_if)
+
+        p.tun_if = VppIpIpTunInterface(self, self.pg0,
+                                       self.pg0.local_ip4,
+                                       self.pg0.remote_ip4)
+        p.tun_if.add_vpp_config()
+        p.tun_if.admin_up()
+        p.tun_if.config_ip4()
+
+        p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+                                  p.auth_algo_vpp_id, p.auth_key,
+                                  p.crypt_algo_vpp_id, p.crypt_key,
+                                  self.vpp_esp_protocol)
+        p.tun_sa_out.add_vpp_config()
+
+        p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+                                 p.auth_algo_vpp_id, p.auth_key,
+                                 p.crypt_algo_vpp_id, p.crypt_key,
+                                 self.vpp_esp_protocol)
+        p.tun_sa_in.add_vpp_config()
+
+        p.tun_protect = VppIpsecTunProtect(self,
+                                           p.tun_if,
+                                           p.tun_sa_in,
+                                           p.tun_sa_out)
+        p.tun_protect.add_vpp_config()
+
+        VppIpRoute(self, p.remote_tun_if_host, 32,
+                   [VppRoutePath(p.tun_if.remote_ip4,
+                                 0xffffffff)]).add_vpp_config()
+
+        self.logger.error(self.vapi.cli("sh ipsec prot"))
+
+    def tearDown(self):
+        if not self.vpp_dead:
+            self.vapi.cli("show hardware")
+        super(TestIpsec4TunProtect, self).tearDown()
+
+    def test_tun_44(self):
+        """IPSEC tunnel protect """
+
+        p = self.ipv4_params
+
+        self.verify_tun_44(p, count=127)
+        c = p.tun_if.get_rx_stats()
+        self.assertEqual(c['packets'], 127)
+        c = p.tun_if.get_tx_stats()
+        self.assertEqual(c['packets'], 127)
+
+
+class TestIpsec6TunProtect(TemplateIpsec, IpsecTun6):
+    """ IPsec IPv4 Tunnel protect """
+
+    encryption_type = ESP
+    tun6_encrypt_node_name = "esp6-encrypt"
+    tun6_decrypt_node_name = "esp6-decrypt"
+
+    def setUp(self):
+        super(TestIpsec6TunProtect, self).setUp()
+
+        self.tun_if = self.pg0
+
+        p = self.ipv6_params
+
+        config_tun_params(p, self.encryption_type, self.tun_if)
+
+        p.tun_if = VppIpIpTunInterface(self, self.pg0,
+                                       self.pg0.local_ip6,
+                                       self.pg0.remote_ip6)
+        p.tun_if.add_vpp_config()
+        p.tun_if.admin_up()
+        p.tun_if.config_ip6()
+
+        p.tun_sa_out = VppIpsecSA(self, p.scapy_tun_sa_id, p.scapy_tun_spi,
+                                  p.auth_algo_vpp_id, p.auth_key,
+                                  p.crypt_algo_vpp_id, p.crypt_key,
+                                  self.vpp_esp_protocol)
+        p.tun_sa_out.add_vpp_config()
+
+        p.tun_sa_in = VppIpsecSA(self, p.vpp_tun_sa_id, p.vpp_tun_spi,
+                                 p.auth_algo_vpp_id, p.auth_key,
+                                 p.crypt_algo_vpp_id, p.crypt_key,
+                                 self.vpp_esp_protocol)
+        p.tun_sa_in.add_vpp_config()
+
+        p.tun_protect = VppIpsecTunProtect(self,
+                                           p.tun_if,
+                                           p.tun_sa_in,
+                                           p.tun_sa_out)
+        p.tun_protect.add_vpp_config()
+
+        VppIpRoute(self, p.remote_tun_if_host, 128,
+                   [VppRoutePath(p.tun_if.remote_ip6,
+                                 0xffffffff,
+                                 proto=DpoProto.DPO_PROTO_IP6)],
+                   is_ip6=1).add_vpp_config()
+
+        print p.remote_tun_if_host
+        self.logger.error(self.vapi.cli("sh ipsec prot"))
+        # self.logger.error(self.vapi.cli("sh ip6 fib"))
+
+    def tearDown(self):
+        if not self.vpp_dead:
+            self.vapi.cli("show hardware")
+        super(TestIpsec6TunProtect, self).tearDown()
+
+    def test_tun_44(self):
+        """IPSEC tunnel protect """
+
+        p = self.ipv6_params
+
+        self.verify_tun_66(p, count=127)
+        self.logger.error(self.vapi.cli("sh int"))
+
+        c = p.tun_if.get_rx_stats()
+        self.assertEqual(c['packets'], 127)
+        c = p.tun_if.get_tx_stats()
+        self.assertEqual(c['packets'], 127)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
