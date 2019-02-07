@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 #include <vppinfra/lock.h>
@@ -128,6 +127,7 @@ int tls_notify_app_accept (tls_ctx_t * ctx);
 int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
 void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 #endif /* SRC_VNET_TLS_TLS_H_ */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
