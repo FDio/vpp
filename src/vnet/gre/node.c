@@ -20,6 +20,7 @@
 #include <vnet/gre/gre.h>
 #include <vnet/mpls/mpls.h>
 #include <vppinfra/sparse_vec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 #define foreach_gre_input_next			\
 _(PUNT, "error-punt")                           \
@@ -126,7 +127,7 @@ gre_tunnel_get (const gre_main_t * gm, vlib_node_runtime_t * node,
 always_inline uword
 gre_input (vlib_main_t * vm,
 	   vlib_node_runtime_t * node, vlib_frame_t * frame,
-	   const int is_ipv6)
+	   const int is_ipv6, int is_tun_decap)
 {
   gre_main_t *gm = &gre_main;
   u32 *from, n_left_from;
@@ -277,27 +278,46 @@ gre_input (vlib_main_t * vm,
 			&tun_sw_if_index[1], &cached_tun_sw_if_index,
 			is_ipv6);
 
-      if (PREDICT_TRUE (next[0] > GRE_INPUT_NEXT_DROP))
+      if (is_tun_decap)
 	{
-	  vlib_increment_combined_counter (&gm->vnet_main->
-					   interface_main.combined_sw_if_counters
-					   [VNET_INTERFACE_COUNTER_RX],
-					   vm->thread_index,
-					   tun_sw_if_index[0],
-					   1 /* packets */ ,
-					   len[0] /* bytes */ );
-	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = tun_sw_if_index[0];
+	  ipsec_protect_t *itp[2];
+	  u32 itpi[2];
+
+	  itpi[0] = vnet_buffer (b[0])->ipsec.protect_index;
+	  itpi[1] = vnet_buffer (b[1])->ipsec.protect_index;
+
+	  itp[0] = pool_elt_at_index (ipsec_protect_pool, itpi[0]);
+	  itp[1] = pool_elt_at_index (ipsec_protect_pool, itpi[1]);
+
+	  if (tun_sw_if_index[0] != itp[0]->itp_sw_if_index)
+	    next[0] = GRE_INPUT_NEXT_DROP;
+	  if (tun_sw_if_index[1] != itp[1]->itp_sw_if_index)
+	    next[1] = GRE_INPUT_NEXT_DROP;
 	}
-      if (PREDICT_TRUE (next[1] > GRE_INPUT_NEXT_DROP))
+      else
 	{
-	  vlib_increment_combined_counter (&gm->vnet_main->
-					   interface_main.combined_sw_if_counters
-					   [VNET_INTERFACE_COUNTER_RX],
-					   vm->thread_index,
-					   tun_sw_if_index[1],
-					   1 /* packets */ ,
-					   len[1] /* bytes */ );
-	  vnet_buffer (b[1])->sw_if_index[VLIB_RX] = tun_sw_if_index[1];
+	  if (PREDICT_TRUE (next[0] > GRE_INPUT_NEXT_DROP))
+	    {
+	      vlib_increment_combined_counter (&gm->vnet_main->
+					       interface_main.combined_sw_if_counters
+					       [VNET_INTERFACE_COUNTER_RX],
+					       vm->thread_index,
+					       tun_sw_if_index[0],
+					       1 /* packets */ ,
+					       len[0] /* bytes */ );
+	      vnet_buffer (b[0])->sw_if_index[VLIB_RX] = tun_sw_if_index[0];
+	    }
+	  if (PREDICT_TRUE (next[1] > GRE_INPUT_NEXT_DROP))
+	    {
+	      vlib_increment_combined_counter (&gm->vnet_main->
+					       interface_main.combined_sw_if_counters
+					       [VNET_INTERFACE_COUNTER_RX],
+					       vm->thread_index,
+					       tun_sw_if_index[1],
+					       1 /* packets */ ,
+					       len[1] /* bytes */ );
+	      vnet_buffer (b[1])->sw_if_index[VLIB_RX] = tun_sw_if_index[1];
+	    }
 	}
 
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -319,7 +339,7 @@ gre_input (vlib_main_t * vm,
       const gre_header_t *gre[1];
       u32 nidx[1];
       next_info_t ni[1];
-      u8 type[1];
+      gre_tunnel_type_t type[1];
       u16 version[1];
       u32 len[1];
       gre_tunnel_key_t key[1];
@@ -433,15 +453,30 @@ VLIB_NODE_FN (gre4_input_node) (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
 {
-  return gre_input (vm, node, from_frame, /* is_ip6 */ 0);
+  return gre_input (vm, node, from_frame, /* is_ip6 */ 0, 0);
 }
 
 VLIB_NODE_FN (gre6_input_node) (vlib_main_t * vm,
 				vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
 {
-  return gre_input (vm, node, from_frame, /* is_ip6 */ 1);
+  return gre_input (vm, node, from_frame, /* is_ip6 */ 1, 0);
 }
+
+VLIB_NODE_FN (gre4_tun_decap_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * from_frame)
+{
+  return gre_input (vm, node, from_frame, /* is_ip6 */ 0, 1);
+}
+
+VLIB_NODE_FN (gre6_tun_decap_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * from_frame)
+{
+  return gre_input (vm, node, from_frame, 1, 1);
+}
+
 
 static char *gre_error_strings[] = {
 #define gre_error(n,s) s,
@@ -470,12 +505,50 @@ VLIB_REGISTER_NODE (gre4_input_node) = {
   .unformat_buffer = unformat_gre_header,
 };
 
+VLIB_REGISTER_NODE (gre4_tun_decap_node) = {
+  .name = "gre4-tun-decap",
+  .vector_size = sizeof (u32),
+
+  .n_errors = GRE_N_ERROR,
+  .error_strings = gre_error_strings,
+
+  .n_next_nodes = GRE_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [GRE_INPUT_NEXT_##s] = n,
+    foreach_gre_input_next
+#undef _
+  },
+
+  .format_buffer = format_gre_header_with_length,
+  .format_trace = format_gre_rx_trace,
+  .unformat_buffer = unformat_gre_header,
+};
+
 VLIB_REGISTER_NODE (gre6_input_node) = {
   .name = "gre6-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
 
   .runtime_data_bytes = sizeof (gre_input_runtime_t),
+
+  .n_errors = GRE_N_ERROR,
+  .error_strings = gre_error_strings,
+
+  .n_next_nodes = GRE_INPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [GRE_INPUT_NEXT_##s] = n,
+    foreach_gre_input_next
+#undef _
+  },
+
+  .format_buffer = format_gre_header_with_length,
+  .format_trace = format_gre_rx_trace,
+  .unformat_buffer = unformat_gre_header,
+};
+
+VLIB_REGISTER_NODE (gre6_tun_decap_node) = {
+  .name = "gre6-tun-decap",
+  .vector_size = sizeof (u32),
 
   .n_errors = GRE_N_ERROR,
   .error_strings = gre_error_strings,

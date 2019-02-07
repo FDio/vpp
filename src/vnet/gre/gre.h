@@ -55,7 +55,7 @@ typedef enum gre_tunnel_type_t_
    * receiving ERSPAN packets from a GRE ERSPAN tunnel in VPP.
    */
   GRE_TUNNEL_TYPE_ERSPAN = 2,
-} gre_tunnel_type_t;
+} __attribute__ ((packed)) gre_tunnel_type_t;
 
 #define GRE_TUNNEL_TYPE_N (GRE_TUNNEL_TYPE_ERSPAN + 1)
 
@@ -228,7 +228,7 @@ typedef struct
 typedef struct
 {
   u8 next_index;
-  u8 tunnel_type;
+  gre_tunnel_type_t tunnel_type;
 } next_info_t;
 
 /**
@@ -326,6 +326,8 @@ format_function_t format_gre_header_with_length;
 extern vlib_node_registration_t gre4_input_node;
 extern vlib_node_registration_t gre6_input_node;
 extern vlib_node_registration_t gre_encap_node;
+extern vlib_node_registration_t gre4_tun_decap_node;
+extern vlib_node_registration_t gre6_tun_decap_node;
 extern vnet_device_class_t gre_device_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.
@@ -361,7 +363,8 @@ extern int vnet_gre_tunnel_add_del (vnet_gre_tunnel_add_del_args_t * a,
 static inline void
 gre_mk_key4 (ip4_address_t src,
 	     ip4_address_t dst,
-	     u32 fib_index, u8 ttype, u16 session_id, gre_tunnel_key4_t * key)
+	     u32 fib_index,
+	     gre_tunnel_type_t ttype, u16 session_id, gre_tunnel_key4_t * key)
 {
   key->gtk_src = src;
   key->gtk_dst = dst;
@@ -380,7 +383,8 @@ gre_match_key4 (const gre_tunnel_key4_t * key1,
 static inline void
 gre_mk_key6 (const ip6_address_t * src,
 	     const ip6_address_t * dst,
-	     u32 fib_index, u8 ttype, u16 session_id, gre_tunnel_key6_t * key)
+	     u32 fib_index,
+	     gre_tunnel_type_t ttype, u16 session_id, gre_tunnel_key6_t * key)
 {
   key->gtk_src = *src;
   key->gtk_dst = *dst;
