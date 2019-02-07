@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c0090e6_2e444936",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-07T14:47:38Z",
+      "side": 1,
+      "message": "Add the missing description.",
+      "range": {
+        "startLine": 131,
+        "startChar": 24,
+        "endLine": 131,
+        "endChar": 25
+      },
+      "revId": "f34597fc86c64d054073bf614761beea020c2244",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
