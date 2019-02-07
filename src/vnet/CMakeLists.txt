@@ -1093,6 +1093,7 @@ list(APPEND VNET_SOURCES
 
 list(APPEND VNET_HEADERS
   tls/tls.h
+  tls/tls_test.h
 )
 
 ##############################################################################
