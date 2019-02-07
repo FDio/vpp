@@ -501,7 +501,8 @@ vhost_user_if_input (vlib_main_t * vm,
 
 	  /* Get more output if necessary. Or end of packet. */
 	  if (PREDICT_FALSE
-	      (b_current->current_length == vlib_bufer_get_default_size (vm)))
+	      (b_current->current_length ==
+	       vlib_buffer_get_default_size (vm)))
 	    {
 	      if (PREDICT_FALSE (cpu->rx_buffers_len == 0))
 		{
@@ -535,7 +536,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  copy_len++;
 	  u32 desc_data_l = desc_table[desc_current].len - desc_data_offset;
 	  cpy->len =
-	    vlib_bufer_get_default_size (vm) - b_current->current_length;
+	    vlib_buffer_get_default_size (vm) - b_current->current_length;
 	  cpy->len = (cpy->len > desc_data_l) ? desc_data_l : cpy->len;
 	  cpy->dst = (uword) (vlib_buffer_get_current (b_current) +
 			      b_current->current_length);
