@@ -1897,6 +1897,13 @@ class VppPapiProvider(object):
                         {'spd_id': spd_id,
                          'sa_id': sa_id})
 
+    def ipsec_tunnel_protect_update(self, sw_if_index, sa_in, sa_out):
+        return self.api(
+            self.papi.ipsec_tunnel_protect_update,
+            {'sw_if_index': sw_if_index,
+             'sa_in': sa_in,
+             'sa_out': sa_out})
+
     def ipsec_tunnel_if_add_del(self, local_ip, remote_ip, local_spi,
                                 remote_spi, crypto_alg, local_crypto_key,
                                 remote_crypto_key, integ_alg, local_integ_key,
@@ -1926,19 +1933,6 @@ class VppPapiProvider(object):
                 'show_instance': show_instance,
                 'salt': salt
             })
-
-    def ipsec_gre_tunnel_add_del(self, local_ip, remote_ip,
-                                 sa_out, sa_in, is_add=1):
-        return self.api(self.papi.ipsec_gre_tunnel_add_del,
-                        {
-                            'is_add': is_add,
-                            'tunnel': {
-                                'src': local_ip,
-                                'dst': remote_ip,
-                                'local_sa_id': sa_out,
-                                'remote_sa_id': sa_in
-                            }
-                        })
 
     def ipsec_select_backend(self, protocol, index):
         return self.api(self.papi.ipsec_select_backend,
@@ -2305,4 +2299,15 @@ class VppPapiProvider(object):
                             'table_id': table_id,
                             'sw_if_index': sw_if_index,
                             'is_enable': is_enable,
+                        })
+
+    def ipsec_tunnel_protect_update(self, sw_if_index, sa_in, sa_out):
+        return self.api(self.papi.ipsec_tunnel_protect_update,
+                        {
+                            'tunnel':
+                            {
+                                'sw_if_index': sw_if_index,
+                                'sa_in': sa_in,
+                                'sa_out': sa_out
+                            }
                         })

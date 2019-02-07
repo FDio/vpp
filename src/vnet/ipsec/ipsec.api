@@ -17,6 +17,7 @@
 option version = "3.0.0";
 
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 /** \brief IPsec: Add/delete Security Policy Database
     @param client_index - opaque cookie to identify the sender
@@ -325,6 +326,79 @@ autoreply define ipsec_sa_set_key
   vl_api_key_t crypto_key;
   vl_api_key_t integrity_key;
 };
+
+/** \brief Add or Update Protection for a tunnel with IPSEC
+
+    Tunnel protection directly associates an SA with all packets
+    ingress and egress on the tunnel. This could also be achieved by
+    assigning an SPD to the tunnel, but that would incur an unnessccary
+    SPD entry lookup.
+
+    For tunnels the ESP acts on the post-encapsulated packet. So if this
+    packet:
+      +---------+------+
+      | Payload | O-IP |
+      +---------+------+
+    where O-IP is the overlay IP addrees that was routed into the tunnel,
+    the resulting encapsulated packet will be:
+      +---------+------+------+
+      | Payload | O-IP | T-IP |
+      +---------+------+------+
+    where T-IP is the tunnel's src.dst IP addresses.
+    If the SAs used for protection are in transport mode then the ESP is
+    inserted before T-IP, i.e.:
+      +---------+------+-----+------+
+      | Payload | O-IP | ESP | T-IP |
+      +---------+------+-----+------+
+    If the SAs used for protection are in tunnel mode then another
+    encapsulation occurs, i.e.:
+      +---------+------+------+-----+------+
+      | Payload | O-IP | T-IP | ESP | C-IP |
+      +---------+------+------+-----+------+
+    where C-IP are the crypto endpoint IP addresses defined as the tunnel
+    endpoints in the SA.
+    The mode for the inbound and outbound SA must be the same.
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_id_index - Tunnel interface to protect
+    @param sa_in - The ID of inbound SA
+    @param sa_out - The ID of outbound SA
+*/
+typedef ipsec_tunnel_protect
+{
+  vl_api_interface_index_t sw_if_index;
+  u32 sa_in;
+  u32 sa_out;
+};
+
+autoreply define ipsec_tunnel_protect_update
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_ipsec_tunnel_protect_t tunnel;
+};
+
+autoreply define ipsec_tunnel_protect_del
+{
+  u32 client_index;
+  u32 context;
+
+  vl_api_interface_index_t sw_if_index;
+};
+
+define ipsec_tunnel_protect_dump
+{
+  u32 client_index;
+  u32 context;
+};
+define ipsec_tunnel_protect_details
+{
+  u32 context;
+  vl_api_ipsec_tunnel_protect_t tun;
+};
+
 
 /** \brief IPsec: Get SPD interfaces
     @param client_index - opaque cookie to identify the sender

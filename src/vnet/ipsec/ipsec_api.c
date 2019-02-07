@@ -30,6 +30,7 @@
 
 #if WITH_LIBSSL > 0
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 #endif /* IPSEC */
 
 #define vl_typedefs		/* define message structures */
@@ -62,7 +63,10 @@ _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)             \
 _(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)             \
 _(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)               \
 _(IPSEC_SELECT_BACKEND, ipsec_select_backend)                   \
-_(IPSEC_BACKEND_DUMP, ipsec_backend_dump)
+_(IPSEC_BACKEND_DUMP, ipsec_backend_dump)                       \
+_(IPSEC_TUNNEL_PROTECT_UPDATE, ipsec_tunnel_protect_update)     \
+_(IPSEC_TUNNEL_PROTECT_DEL, ipsec_tunnel_protect_del)           \
+_(IPSEC_TUNNEL_PROTECT_DUMP, ipsec_tunnel_protect_dump)
 
 static void
 vl_api_ipsec_spd_add_del_t_handler (vl_api_ipsec_spd_add_del_t * mp)
@@ -104,6 +108,107 @@ static void vl_api_ipsec_interface_add_del_spd_t_handler
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_IPSEC_INTERFACE_ADD_DEL_SPD_REPLY);
+}
+
+static void vl_api_ipsec_tunnel_protect_update_t_handler
+  (vl_api_ipsec_tunnel_protect_update_t * mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_tunnel_protect_update_reply_t *rmp;
+  int rv;
+  u32 sw_if_index;
+
+  sw_if_index = ntohl (mp->tunnel.sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (&(mp->tunnel));
+
+#if WITH_LIBSSL > 0
+  rv = ipsec_tun_protect_update (sw_if_index,
+				 ntohl (mp->tunnel.sa_in),
+				 ntohl (mp->tunnel.sa_out));
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_PROTECT_UPDATE_REPLY);
+}
+
+static void vl_api_ipsec_tunnel_protect_del_t_handler
+  (vl_api_ipsec_tunnel_protect_del_t * mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_tunnel_protect_del_reply_t *rmp;
+  int rv;
+  u32 sw_if_index;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+#if WITH_LIBSSL > 0
+  rv = ipsec_tun_protect_del (sw_if_index);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_PROTECT_DEL_REPLY);
+}
+
+typedef struct ipsec_tunnel_protect_walk_ctx_t_
+{
+  vl_api_registration_t *reg;
+  u32 context;
+} ipsec_tunnel_protect_walk_ctx_t;
+
+static walk_rc_t
+send_ipsec_tunnel_protect_details (index_t itpi, void *arg)
+{
+  ipsec_tunnel_protect_walk_ctx_t *ctx = arg;
+  vl_api_ipsec_tunnel_protect_details_t *mp;
+  ipsec_protect_t *itp;
+
+  itp = ipsec_tun_protect_get (itpi);
+
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IPSEC_TUNNEL_PROTECT_DETAILS);
+  mp->context = ctx->context;
+
+  mp->tun.sw_if_index = htonl (itp->itp_sw_if_index);
+  mp->tun.sa_in = htonl (itp->itp_sa[INBOUND]);
+  mp->tun.sa_out = htonl (itp->itp_sa[OUTBOUND]);
+
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
+
+  return (WALK_CONTINUE);
+}
+
+static void
+vl_api_ipsec_tunnel_protect_dump_t_handler (vl_api_ipsec_tunnel_protect_dump_t
+					    * mp)
+{
+  vl_api_registration_t *reg;
+
+#if WITH_LIBSSL > 0
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+
+  ipsec_tunnel_protect_walk_ctx_t ctx = {
+    .reg = reg,
+    .context = mp->context,
+  };
+
+  ipsec_tun_protect_walk (send_ipsec_tunnel_protect_details, &ctx);
+
+#else
+  clib_warning ("unimplemented");
+#endif
 }
 
 static int

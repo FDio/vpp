@@ -22,12 +22,12 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ipsec_io.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input-no-checksum")           \
-_(IP6_INPUT, "ip6-input")                       \
-_(IPSEC_GRE_INPUT, "ipsec-gre-input")
+_(IP6_INPUT, "ip6-input")
 
 #define _(v, s) ESP_DECRYPT_NEXT_##v,
 typedef enum
@@ -93,7 +93,7 @@ typedef struct
     {
       u8 icv_sz;
       u8 iv_sz;
-      ipsec_sa_flags_t flags:8;
+      ipsec_sa_flags_t flags;
       u32 sa_index;
     };
     u64 sa_data;
@@ -111,7 +111,7 @@ STATIC_ASSERT_SIZEOF (esp_decrypt_packet_data_t, 2 * sizeof (u64));
 always_inline uword
 esp_decrypt_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame,
-		    int is_ip6)
+		    int is_ip6, int is_tun)
 {
   ipsec_main_t *im = &ipsec_main;
   u32 thread_index = vm->thread_index;
@@ -369,7 +369,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       sa0 = vec_elt_at_index (im->sad, pd->sa_index);
       u8 *payload = b[0]->data + pd->current_data;
 
-      ipsec_sa_anti_replay_advance (sa0, &((esp_header_t *) payload)->seq);
+      ipsec_sa_anti_replay_advance (sa0, ((esp_header_t *) payload)->seq);
 
       esp_footer_t *f = (esp_footer_t *) (b[0]->data + pd->current_data +
 					  pd->current_length - sizeof (*f) -
@@ -377,7 +377,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       u16 adv = pd->iv_sz + esp_sz;
       u16 tail = sizeof (esp_footer_t) + f->pad_length + pd->icv_sz;
 
-      if ((pd->flags & tun_flags) == 0)	/* transport mode */
+      if ((pd->flags & tun_flags) == 0 && !is_tun)	/* transport mode */
 	{
 	  u8 udp_sz = (is_ip6 == 0 && pd->flags & IPSEC_SA_FLAG_UDP_ENCAP) ?
 	    sizeof (udp_header_t) : 0;
@@ -437,10 +437,19 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      next[0] = ESP_DECRYPT_NEXT_DROP;
 	      b[0]->error = node->errors[ESP_DECRYPT_ERROR_DECRYPTION_FAILED];
 	    }
-	}
+	  if (is_tun)
+	    {
+	      if (ipsec_sa_is_set_IS_PROTECT (sa0))
+		{
+		  const ipsec_protect_t *itp0;
 
-      if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
-	next[0] = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
+		  itp0 = pool_elt_at_index (ipsec_protect_pool,
+					    vnet_buffer (b[0])->
+					    ipsec.protect_index);
+		  next[0] = itp0->itp_edge;
+		}
+	    }
+	}
 
     trace:
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -476,7 +485,7 @@ VLIB_NODE_FN (esp4_decrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_decrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ );
+  return esp_decrypt_inline (vm, node, from_frame, 0 /* is_ip6 */ , 1);
 }
 
 /* *INDENT-OFF* */
@@ -502,12 +511,64 @@ VLIB_NODE_FN (esp6_decrypt_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_decrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ );
+  return esp_decrypt_inline (vm, node, from_frame, 1 /* is_ip6 */ , 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (esp6_decrypt_node) = {
   .name = "esp6-decrypt",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_decrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
+  .error_strings = esp_decrypt_error_strings,
+
+  .n_next_nodes = ESP_DECRYPT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+    foreach_esp_decrypt_next
+#undef _
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp4_decrypt_tun_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
+{
+  return esp_decrypt_inline (vm, node, from_frame, 0, 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
+  .name = "esp4-decrypt-tun",
+  .vector_size = sizeof (u32),
+  .format_trace = format_esp_decrypt_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(esp_decrypt_error_strings),
+  .error_strings = esp_decrypt_error_strings,
+
+  .n_next_nodes = ESP_DECRYPT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [ESP_DECRYPT_NEXT_##s] = n,
+    foreach_esp_decrypt_next
+#undef _
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FN (esp6_decrypt_tun_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
+{
+  return esp_decrypt_inline (vm, node, from_frame, 1, 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
+  .name = "esp6-decrypt-tun",
   .vector_size = sizeof (u32),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,

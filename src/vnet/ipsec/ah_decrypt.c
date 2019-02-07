@@ -27,8 +27,7 @@
 #define foreach_ah_decrypt_next \
   _ (DROP, "error-drop")        \
   _ (IP4_INPUT, "ip4-input")    \
-  _ (IP6_INPUT, "ip6-input")    \
-  _ (IPSEC_GRE_INPUT, "ipsec-gre-input")
+  _ (IP6_INPUT, "ip6-input")
 
 #define _(v, s) AH_DECRYPT_NEXT_##v,
 typedef enum
@@ -200,7 +199,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 
-	      ipsec_sa_anti_replay_advance (sa0, &ah0->seq_no);
+	      ipsec_sa_anti_replay_advance (sa0, ah0->seq_no);
 	    }
 
 	  vlib_buffer_advance (i_b0,
@@ -257,10 +256,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  oh4->checksum = ip4_header_checksum (oh4);
 		}
 	    }
-
-	  /* for IPSec-GRE tunnel next node is ipsec-gre-input */
-	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
-	    next0 = AH_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
 	  vnet_buffer (i_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	trace:
