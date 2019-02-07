@@ -178,10 +178,10 @@ retest: verify-test-dir sanity reset
 shell: verify-test-dir $(PAPI_INSTALL_DONE)
 	@echo "source $(VENV_PATH)/bin/activate;\
 		echo '***';\
-		echo _BUILD_DIR=$(VPP_BUILD_DIR);\
-		echo _BIN=$(VPP_BIN);\
-		echo _PLUGIN_PATH=$(VPP_PLUGIN_PATH);\
-		echo _INSTALL_PATH=$(VPP_INSTALL_PATH);\
+		echo VPP_BUILD_DIR=$(VPP_BUILD_DIR);\
+		echo VPP_BIN=$(VPP_BIN);\
+		echo VPP_PLUGIN_PATH=$(VPP_PLUGIN_PATH);\
+		echo VPP_INSTALL_PATH=$(VPP_INSTALL_PATH);\
 		echo EXTERN_TESTS=$(EXTERN_TESTS);\
 		echo EXTERN_PLUGINS=$(EXTERN_PLUGINS);\
                 echo EXTERN_COV_DIR=$(EXTERN_COV_DIR);\
@@ -213,11 +213,11 @@ wipe-doc:
 	@make -C doc wipe BR=$(BR)
 
 cov: wipe-cov reset ext verify-test-dir $(PAPI_INSTALL_DONE)
-	@lcov --zerocounters --directory $(_BUILD_DIR)
+	@lcov --zerocounters --directory $(VPP_BUILD_DIR)
 	@test -z "$(EXTERN_COV_DIR)" || lcov --zerocounters --directory $(EXTERN_COV_DIR)
 	$(call retest-func)
 	@mkdir $(BUILD_COV_DIR)
-	@lcov --capture --directory $(_BUILD_DIR) --output-file $(BUILD_COV_DIR)/coverage.info
+	@lcov --capture --directory $(VPP_BUILD_DIR) --output-file $(BUILD_COV_DIR)/coverage.info
 	@test -z "$(EXTERN_COV_DIR)" || lcov --capture --directory $(EXTERN_COV_DIR) --output-file $(BUILD_COV_DIR)/extern-coverage.info
 	@genhtml $(BUILD_COV_DIR)/coverage.info --output-directory $(BUILD_COV_DIR)/html
 	@test -z "$(EXTERN_COV_DIR)" || genhtml $(BUILD_COV_DIR)/extern-coverage.info --output-directory $(BUILD_COV_DIR)/extern-html
