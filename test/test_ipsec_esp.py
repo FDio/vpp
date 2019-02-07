@@ -3,7 +3,7 @@ import unittest
 from scapy.layers.ipsec import ESP
 from scapy.layers.inet import UDP
 
-from framework import VppTestRunner
+from framework import VppTestRunner, is_skip_aarch64_set, is_platform_aarch64
 from template_ipsec import IpsecTra46Tests, IpsecTun46Tests, TemplateIpsec, \
     IpsecTcpTests, IpsecTun4Tests, IpsecTra4Tests, config_tra_params, \
     IPsecIPv4Params, IPsecIPv6Params, \
@@ -13,6 +13,8 @@ from vpp_ipsec import VppIpsecSpd, VppIpsecSpdEntry, VppIpsecSA,\
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_ip import DpoProto
 from vpp_papi import VppEnum
+
+NUM_PKTS = 67
 
 
 class ConfigIpsecESP(TemplateIpsec):
@@ -350,6 +352,8 @@ class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests):
     pass
 
 
+@unittest.skipIf(is_skip_aarch64_set and is_platform_aarch64,
+                 "test doesn't work on aarch64")
 class TestIpsecEspAll(ConfigIpsecESP,
                       IpsecTra4, IpsecTra6,
                       IpsecTun4, IpsecTun6):
@@ -470,10 +474,12 @@ class TestIpsecEspAll(ConfigIpsecESP,
                     #  An exhautsive 4o6, 6o4 is not necessary
                     #  for each algo
                     #
-                    self.verify_tra_basic6(count=17)
-                    self.verify_tra_basic4(count=17)
-                    self.verify_tun_66(self.params[socket.AF_INET6], 17)
-                    self.verify_tun_44(self.params[socket.AF_INET], 17)
+                    self.verify_tra_basic6(count=NUM_PKTS)
+                    self.verify_tra_basic4(count=NUM_PKTS)
+                    self.verify_tun_66(self.params[socket.AF_INET6],
+                                       count=NUM_PKTS)
+                    self.verify_tun_44(self.params[socket.AF_INET],
+                                       count=NUM_PKTS)
 
                     #
                     # remove the SPDs, SAs, etc
