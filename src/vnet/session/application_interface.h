@@ -19,7 +19,7 @@
 #include <vnet/session/session_types.h>
 #include <vnet/session/application.h>
 #include <vnet/session/transport.h>
-#include <vnet/tls/tls.h>
+#include <vnet/tls/tls_test.h>
 
 typedef struct _vnet_app_attach_args_t
 {
@@ -102,6 +102,14 @@ typedef struct _vnet_application_add_tls_key_args_t
   u8 *key;
 } vnet_app_add_tls_key_args_t;
 
+typedef enum tls_engine_type_
+{
+  TLS_ENGINE_NONE,
+  TLS_ENGINE_MBEDTLS,
+  TLS_ENGINE_OPENSSL,
+  TLS_N_ENGINES
+} tls_engine_type_t;
+
 /* Application attach options */
 typedef enum
 {
@@ -180,11 +188,6 @@ int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
 clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);
 clib_error_t *vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a);
-
-extern const char test_srv_crt_rsa[];
-extern const u32 test_srv_crt_rsa_len;
-extern const char test_srv_key_rsa[];
-extern const u32 test_srv_key_rsa_len;
 
 typedef struct app_session_transport_
 {
