@@ -530,6 +530,34 @@ format_gre_device (u8 * s, va_list * args)
   return s;
 }
 
+static int
+gre_tunnel_desc (u32 sw_if_index,
+		 ip46_address_t * src,
+		 ip46_address_t * dst, u8 * is_l2, u32 * decap_node_index)
+{
+  gre_main_t *gm = &gre_main;
+  gre_tunnel_t *t;
+  u32 ti;
+
+  ti = gm->tunnel_index_by_sw_if_index[sw_if_index];
+
+  if (~0 == ti)
+    /* not one of ours */
+    return -1;
+
+  t = pool_elt_at_index (gm->tunnels, ti);
+
+  *src = t->tunnel_src;
+  *dst = t->tunnel_dst.fp_addr;
+  *is_l2 = t->type == GRE_TUNNEL_TYPE_TEB;
+  if (ip46_address_is_ip4 (src))
+    *decap_node_index = gre4_tun_decap_node.index;
+  else
+    *decap_node_index = gre6_tun_decap_node.index;
+
+  return (0);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (gre_device_class) = {
   .name = "GRE tunnel device",
@@ -537,6 +565,7 @@ VNET_DEVICE_CLASS (gre_device_class) = {
   .format_device = format_gre_device,
   .format_tx_trace = format_gre_tx_trace,
   .admin_up_down_function = gre_interface_admin_up_down,
+  .tun_desc = gre_tunnel_desc,
 #ifdef SOON
   .clear counter = 0;
 #endif
