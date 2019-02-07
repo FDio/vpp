@@ -247,3 +247,49 @@ class VppIpsecSA(VppObject):
     def get_stats(self):
         c = self.test.statistics.get_counter("/net/ipsec/sa")
         return c[0][self.stat_index]
+
+
+class VppIpsecTunProtect(VppObject):
+    """
+    VPP IPSEC tunnel protection
+    """
+
+    def __init__(self, test, itf, sa_out, sas_in):
+        self.test = test
+        self.itf = itf
+        self.sas_in = []
+        for sa in sas_in:
+            self.sas_in.append(sa.id)
+        self.sa_out = sa_out.id
+
+    def update_vpp_config(self, sa_out, sas_in):
+        self.sas_in = []
+        for sa in sas_in:
+            self.sas_in.append(sa.id)
+        self.sa_out = sa_out.id
+        self.test.vapi.ipsec_tunnel_protect_update(
+            self.itf._sw_if_index,
+            self.sa_out,
+            self.sas_in)
+
+    def object_id(self):
+        return "ipsec-tun-protect-%s" % self.itf
+
+    def add_vpp_config(self):
+        self.test.vapi.ipsec_tunnel_protect_update(
+            self.itf._sw_if_index,
+            self.sa_out,
+            self.sas_in)
+        self.test.registry.register(self, self.test.logger)
+
+    def remove_vpp_config(self):
+        self.test.vapi.ipsec_tunnel_protect_del(
+            sw_if_index=self.itf.sw_if_index)
+
+    def query_vpp_config(self):
+        bs = self.test.vapi.ipsec_tunnel_protect_dump(
+            sw_if_index=self.itf.sw_if_index)
+        for b in bs:
+            if b.tun.sw_if_index == self.itf.sw_if_index:
+                return True
+        return False

@@ -356,6 +356,9 @@ clib_error_t *vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
 clib_error_t *vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
 					   vnet_sw_interface_flags_t flags);
 
+void vnet_sw_interface_admin_up (vnet_main_t * vnm, u32 sw_if_index);
+void vnet_sw_interface_admin_down (vnet_main_t * vnm, u32 sw_if_index);
+
 /* Change interface class. */
 clib_error_t *vnet_hw_interface_set_class (vnet_main_t * vnm, u32 hw_if_index,
 					   u32 new_hw_class_index);
