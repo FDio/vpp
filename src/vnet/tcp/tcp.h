@@ -616,7 +616,7 @@ void tcp_make_ack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
-			   u8 is_ip4);
+			   u32 thread_index, u8 is_ip4);
 void tcp_send_reset (tcp_connection_t * tc);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_synack (tcp_connection_t * tc);
