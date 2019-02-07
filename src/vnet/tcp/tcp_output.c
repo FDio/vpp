@@ -777,9 +777,10 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
  *  It extracts connection info out of original packet
  */
 void
-tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
+tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
+		      u32 thread_index, u8 is_ip4)
 {
-  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
   vlib_main_t *vm = wrk->vm;
   vlib_buffer_t *b;
   u32 bi, sw_if_index, fib_index;
