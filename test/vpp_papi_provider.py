@@ -1920,16 +1920,15 @@ class VppPapiProvider(object):
                 'salt': salt
             })
 
-    def ipsec_gre_tunnel_add_del(self, local_ip, remote_ip,
-                                 sa_out, sa_in, is_add=1):
-        return self.api(self.papi.ipsec_gre_tunnel_add_del,
+    def ipsec_tunnel_protect_update(self, sw_if_index, sa_out, sas_in):
+        return self.api(self.papi.ipsec_tunnel_protect_update,
                         {
-                            'is_add': is_add,
-                            'tunnel': {
-                                'src': local_ip,
-                                'dst': remote_ip,
-                                'local_sa_id': sa_out,
-                                'remote_sa_id': sa_in
+                            'tunnel':
+                            {
+                                'sw_if_index': sw_if_index,
+                                'n_sa_in': len(sas_in),
+                                'sa_in': sas_in,
+                                'sa_out': sa_out
                             }
                         })
 

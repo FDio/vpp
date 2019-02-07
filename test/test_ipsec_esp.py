@@ -465,8 +465,8 @@ class TestIpsecEspAll(ConfigIpsecESP,
                     #
                     self.verify_tra_basic6(count=17)
                     self.verify_tra_basic4(count=17)
-                    self.verify_tun_66(self.params[socket.AF_INET6], 17)
-                    self.verify_tun_44(self.params[socket.AF_INET], 17)
+                    self.verify_tun_66(self.params[socket.AF_INET6], count=17)
+                    self.verify_tun_44(self.params[socket.AF_INET], count=17)
 
                     #
                     # remove the SPDs, SAs, etc
