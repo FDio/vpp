@@ -3324,40 +3324,6 @@ static void *vl_api_ipsec_tunnel_if_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_ipsec_gre_tunnel_add_del_t_print
-  (vl_api_ipsec_gre_tunnel_add_del_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: ipsec_gre_tunnel_add_del ");
-
-  s = format (s, "dst %U ", format_vl_api_ip4_address, mp->tunnel.dst);
-
-  s = format (s, "src %U ", format_vl_api_ip4_address, mp->tunnel.src);
-
-  s = format (s, "local_sa %d ", ntohl (mp->tunnel.local_sa_id));
-
-  s = format (s, "remote_sa %d ", ntohl (mp->tunnel.remote_sa_id));
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_ipsec_gre_tunnel_dump_t_print
-  (vl_api_ipsec_gre_tunnel_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: ipsec_gre_tunnel_dump ");
-
-  if (mp->sw_if_index != ~0)
-    s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
-
-  FINISH;
-}
-
 static void *vl_api_l2_interface_pbb_tag_rewrite_t_print
   (vl_api_l2_interface_pbb_tag_rewrite_t * mp, void *handle)
 {
@@ -3916,8 +3882,6 @@ _(SHOW_LISP_MAP_REGISTER_STATE, show_lisp_map_register_state)           \
 _(LISP_RLOC_PROBE_ENABLE_DISABLE, lisp_rloc_probe_enable_disable)       \
 _(LISP_MAP_REGISTER_ENABLE_DISABLE, lisp_map_register_enable_disable)   \
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
-_(IPSEC_GRE_TUNNEL_ADD_DEL, ipsec_gre_tunnel_add_del)                   \
-_(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
 _(SET_PUNT, set_punt)                                                   \

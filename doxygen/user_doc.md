@@ -10,7 +10,6 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage dhcp6_pd_doc
 - @subpage flowprobe_plugin_doc
 - @subpage ioam_plugin_doc
-- @subpage ipsec_gre_doc
 - @subpage kp_plugin_doc
 - @subpage lacp_plugin_doc
 - @subpage lb_plugin_doc

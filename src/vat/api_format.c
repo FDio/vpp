@@ -5059,41 +5059,6 @@ static void vl_api_policer_classify_details_t_handler_json
   vat_json_object_add_uint (node, "table_index", ntohl (mp->table_index));
 }
 
-static void vl_api_ipsec_gre_tunnel_add_del_reply_t_handler
-  (vl_api_ipsec_gre_tunnel_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-  vam->regenerate_interface_table = 1;
-}
-
-static void vl_api_ipsec_gre_tunnel_add_del_reply_t_handler_json
-  (vl_api_ipsec_gre_tunnel_add_del_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-}
-
 static void vl_api_flow_classify_details_t_handler
   (vl_api_flow_classify_details_t * mp)
 {
@@ -5577,8 +5542,6 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL_REPLY,                         \
  ip_source_and_port_range_check_add_del_reply)                          \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL_REPLY,               \
  ip_source_and_port_range_check_interface_add_del_reply)                \
-_(IPSEC_GRE_TUNNEL_ADD_DEL_REPLY, ipsec_gre_tunnel_add_del_reply)       \
-_(IPSEC_GRE_TUNNEL_DETAILS, ipsec_gre_tunnel_details)                   \
 _(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
 _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
 _(SET_PUNT_REPLY, set_punt_reply)                                       \
@@ -20319,52 +20282,6 @@ api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
 }
 
 static int
-api_ipsec_gre_tunnel_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_ipsec_gre_tunnel_add_del_t *mp;
-  u32 local_sa_id = 0;
-  u32 remote_sa_id = 0;
-  vl_api_ip4_address_t src_address;
-  vl_api_ip4_address_t dst_address;
-  u8 is_add = 1;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "local_sa %d", &local_sa_id))
-	;
-      else if (unformat (i, "remote_sa %d", &remote_sa_id))
-	;
-      else
-	if (unformat (i, "src %U", unformat_vl_api_ip4_address, &src_address))
-	;
-      else
-	if (unformat (i, "dst %U", unformat_vl_api_ip4_address, &dst_address))
-	;
-      else if (unformat (i, "del"))
-	is_add = 0;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  M (IPSEC_GRE_TUNNEL_ADD_DEL, mp);
-
-  mp->tunnel.local_sa_id = ntohl (local_sa_id);
-  mp->tunnel.remote_sa_id = ntohl (remote_sa_id);
-  clib_memcpy (mp->tunnel.src, &src_address, sizeof (src_address));
-  clib_memcpy (mp->tunnel.dst, &dst_address, sizeof (dst_address));
-  mp->is_add = is_add;
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
 api_set_punt (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -20404,18 +20321,6 @@ api_set_punt (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_ipsec_gre_tunnel_details_t_handler
-  (vl_api_ipsec_gre_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-
-  print (vam->ofp, "%11d%15U%15U%14d%14d",
-	 ntohl (mp->tunnel.sw_if_index),
-	 format_vl_api_ip4_address, mp->tunnel.src,
-	 format_vl_api_ip4_address, mp->tunnel.dst,
-	 ntohl (mp->tunnel.local_sa_id), ntohl (mp->tunnel.remote_sa_id));
-}
-
 static void
 vat_json_object_add_vl_api_ip4 (vat_json_node_t * node,
 				const char *name,
@@ -20425,77 +20330,6 @@ vat_json_object_add_vl_api_ip4 (vat_json_node_t * node,
 
   clib_memcpy (&ip4, addr, sizeof (ip4));
   vat_json_object_add_ip4 (node, name, ip4);
-}
-
-static void vl_api_ipsec_gre_tunnel_details_t_handler_json
-  (vl_api_ipsec_gre_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  struct in_addr ip4;
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "sw_if_index",
-			    ntohl (mp->tunnel.sw_if_index));
-  vat_json_object_add_vl_api_ip4 (node, "src", mp->tunnel.src);
-  vat_json_object_add_vl_api_ip4 (node, "src", mp->tunnel.dst);
-  vat_json_object_add_uint (node, "local_sa_id",
-			    ntohl (mp->tunnel.local_sa_id));
-  vat_json_object_add_uint (node, "remote_sa_id",
-			    ntohl (mp->tunnel.remote_sa_id));
-}
-
-static int
-api_ipsec_gre_tunnel_dump (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_ipsec_gre_tunnel_dump_t *mp;
-  vl_api_control_ping_t *mp_ping;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      sw_if_index = ~0;
-    }
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%11s%15s%15s%14s%14s",
-	     "sw_if_index", "src_address", "dst_address",
-	     "local_sa_id", "remote_sa_id");
-    }
-
-  /* Get list of gre-tunnel interfaces */
-  M (IPSEC_GRE_TUNNEL_DUMP, mp);
-
-  mp->sw_if_index = htonl (sw_if_index);
-
-  S (mp);
-
-  /* Use a control ping for synchronization */
-  MPING (CONTROL_PING, mp_ping);
-  S (mp_ping);
-
-  W (ret);
-  return ret;
 }
 
 static int
@@ -22643,9 +22477,6 @@ _(ip_source_and_port_range_check_add_del,                               \
 _(ip_source_and_port_range_check_interface_add_del,                     \
   "<intf> | sw_if_index <nn> [tcp-out-vrf <id>] [tcp-in-vrf <id>]"      \
   "[udp-in-vrf <id>] [udp-out-vrf <id>]")                               \
-_(ipsec_gre_tunnel_add_del,                                             \
-  "src <addr> dst <addr> local_sa <sa-id> remote_sa <sa-id> [del]")     \
-_(ipsec_gre_tunnel_dump, "[sw_if_index <nn>]")                          \
 _(delete_subif,"<intfc> | sw_if_index <nn>")                            \
 _(l2_interface_pbb_tag_rewrite,                                         \
   "<intfc> | sw_if_index <nn> \n"                                       \
