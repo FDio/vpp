@@ -129,19 +129,6 @@ esp_encrypt_inline (vlib_main_t * vm,
   ipsec_main_t *im = &ipsec_main;
   ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 *recycle = 0;
-  u32 thread_index = vm->thread_index;
-
-  ipsec_alloc_empty_buffers (vm, im);
-
-  u32 *empty_buffers = im->empty_buffers[thread_index];
-
-  if (PREDICT_FALSE (vec_len (empty_buffers) < n_left_from))
-    {
-      vlib_node_increment_counter (vm, node->node_index,
-				   ESP_ENCRYPT_ERROR_NO_BUFFER, n_left_from);
-      clib_warning ("not enough empty buffers. discarding frame");
-      goto free_buffers_and_exit;
-    }
 
   next_index = node->cached_next_index;
 
@@ -160,7 +147,6 @@ esp_encrypt_inline (vlib_main_t * vm,
 	  ip4_and_esp_header_t *oh0 = 0;
 	  ip6_and_esp_header_t *ih6_0, *oh6_0 = 0;
 	  ip4_and_udp_and_esp_header_t *iuh0, *ouh0 = 0;
-	  uword last_empty_buffer;
 	  esp_header_t *o_esp0;
 	  esp_footer_t *f0;
 	  u8 ip_udp_hdr_size;
@@ -195,16 +181,19 @@ esp_encrypt_inline (vlib_main_t * vm,
 	  sa0->total_data_size += i_b0->current_length;
 
 	  /* grab free buffer */
-	  last_empty_buffer = vec_len (empty_buffers) - 1;
-	  o_bi0 = empty_buffers[last_empty_buffer];
+	  if (1 != vlib_buffer_alloc (vm, &o_bi0, 1))
+	    {
+	      vlib_node_increment_counter (vm, node->node_index,
+					   ESP_ENCRYPT_ERROR_NO_BUFFER, 1);
+	      o_bi0 = i_bi0;
+	      to_next[0] = i_bi0;
+	      to_next += 1;
+	      goto trace;
+	    }
 	  o_b0 = vlib_get_buffer (vm, o_bi0);
 	  o_b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  o_b0->current_data = sizeof (ethernet_header_t);
 	  iuh0 = vlib_buffer_get_current (i_b0);
-	  vlib_prefetch_buffer_with_index (vm,
-					   empty_buffers[last_empty_buffer -
-							 1], STORE);
-	  _vec_len (empty_buffers) = last_empty_buffer;
 	  to_next[0] = o_bi0;
 	  to_next += 1;
 
@@ -430,7 +419,6 @@ esp_encrypt_inline (vlib_main_t * vm,
 			       ESP_ENCRYPT_ERROR_RX_PKTS,
 			       from_frame->n_vectors);
 
-free_buffers_and_exit:
   if (recycle)
     vlib_buffer_free (vm, recycle, vec_len (recycle));
   vec_free (recycle);
