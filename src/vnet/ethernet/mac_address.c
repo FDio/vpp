@@ -39,9 +39,9 @@ unformat_mac_address_t (unformat_input_t * input, va_list * args)
   mac_address_t *mac = va_arg (*args, mac_address_t *);
   u32 i, a[3];
 
-  if (unformat (input, "%_%x:%x:%x:%x:%x:%x%_",
-		&mac->bytes[0], &mac->bytes[1], &mac->bytes[2],
-		&mac->bytes[3], &mac->bytes[4], &mac->bytes[5]))
+  if (unformat (input, "%_%X:%X:%X:%X:%X:%X%_",
+		1, &mac->bytes[0], 1, &mac->bytes[1], 1, &mac->bytes[2],
+		1, &mac->bytes[3], 1, &mac->bytes[4], 1, &mac->bytes[5]))
     return (1);
   else if (unformat (input, "%_%x.%x.%x%_", &a[0], &a[1], &a[2]))
     {
