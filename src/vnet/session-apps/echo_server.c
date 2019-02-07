@@ -17,6 +17,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
+#include <vnet/session/session.h>
 
 typedef struct
 {
