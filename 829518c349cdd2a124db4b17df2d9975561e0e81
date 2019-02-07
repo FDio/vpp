@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "68414fe2_fe4f2df4",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-07T16:15:36Z",
+      "side": 1,
+      "message": "Can I suggest that you do cls.tempdir \u003d \u003cyour_method\u003e We shouldn\u0027t go through this effort and then force the subclasser from staying so tightly coupled.  We want to implement open/closed and IOC where we can. If you want to see more about this abstraction in general, you can look at the template method in:  https://stackoverflow.com/questions/669271/what-is-the-difference-between-the-template-method-and-the-strategy-patterns/669366#669366\n\nHypothetically, let\u0027s say the remote test subclass that you are working on implemented logging on the remote system to be able to complete if there were communication problems, then you wouldn\u0027t want to force a filename generated from one system into another.  While that\u0027s not exactly the case here, you can get the idea.",
+      "range": {
+        "startLine": 409,
+        "startChar": 8,
+        "endLine": 409,
+        "endChar": 71
+      },
+      "revId": "829518c349cdd2a124db4b17df2d9975561e0e81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d3260c5b_ec660dd2",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-07T16:15:36Z",
+      "side": 1,
+      "message": "Thank you!",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 17,
+        "endChar": 63
+      },
+      "revId": "829518c349cdd2a124db4b17df2d9975561e0e81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c13e2868_44424f75",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-07T16:15:36Z",
+      "side": 1,
+      "message": "Thank you!",
+      "range": {
+        "startLine": 97,
+        "startChar": 0,
+        "endLine": 106,
+        "endChar": 35
+      },
+      "revId": "829518c349cdd2a124db4b17df2d9975561e0e81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
