@@ -276,6 +276,7 @@ typedef struct
     struct
     {
       u32 sad_index;
+      u32 protect_index;
     } ipsec;
 
     /* MAP */

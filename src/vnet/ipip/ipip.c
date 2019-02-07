@@ -297,6 +297,23 @@ ipip_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
+static int
+ipip_tunnel_desc (u32 sw_if_index,
+		  ip46_address_t * src, ip46_address_t * dst, u8 * is_l2)
+{
+  ipip_tunnel_t *t;
+
+  t = ipip_tunnel_db_find_by_sw_if_index (sw_if_index);
+  if (!t)
+    return -1;
+
+  *src = t->tunnel_src;
+  *dst = t->tunnel_dst;
+  *is_l2 = 0;
+
+  return (0);
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS(ipip_device_class) = {
     .name = "IPIP tunnel device",
@@ -304,6 +321,7 @@ VNET_DEVICE_CLASS(ipip_device_class) = {
     .format_device = format_ipip_device,
     .format_tx_trace = format_ipip_tx_trace,
     .admin_up_down_function = ipip_interface_admin_up_down,
+    .ip_tun_desc = ipip_tunnel_desc,
 #ifdef SOON
     .clear counter = 0;
 #endif

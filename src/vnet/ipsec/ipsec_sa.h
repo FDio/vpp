@@ -95,7 +95,7 @@ typedef struct ipsec_key_t_
   _ (4, IS_TUNNEL, "tunnel")                              \
   _ (8, IS_TUNNEL_V6, "tunnel-v6")                        \
   _ (16, UDP_ENCAP, "udp-encap")                          \
-  _ (32, IS_GRE, "GRE")                                   \
+  _ (32, IS_PROTECT, "Protect")                           \
   _ (64, IS_INBOUND, "inboud")                            \
   _ (128, IS_AEAD, "aead")                                \
 
@@ -186,6 +186,13 @@ foreach_ipsec_sa_flags
   }
   foreach_ipsec_sa_flags
 #undef _
+#define _(a,v,s)                                                        \
+  always_inline int                                                     \
+  ipsec_sa_unset_##v (ipsec_sa_t *sa) {                                 \
+    return (sa->flags &= ~IPSEC_SA_FLAG_##v);                           \
+  }
+  foreach_ipsec_sa_flags
+#undef _
 /**
  * @brief
  * SA packet & bytes counters
@@ -208,6 +215,7 @@ extern int ipsec_sa_add (u32 id,
 			 const ip46_address_t * tunnel_dst_addr,
 			 u32 * sa_index);
 extern u32 ipsec_sa_del (u32 id);
+extern void ipsec_sa_clear (index_t sai);
 extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
 				     ipsec_crypto_alg_t crypto_alg);
 extern void ipsec_sa_set_integ_alg (ipsec_sa_t * sa,

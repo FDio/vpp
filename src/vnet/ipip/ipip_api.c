@@ -150,7 +150,9 @@ vl_api_ipip_tunnel_dump_t_handler (vl_api_ipip_tunnel_dump_t * mp)
     {
     /* *INDENT-OFF* */
     pool_foreach(t, gm->tunnels,
-                 ({ send_ipip_tunnel_details(t, reg, mp->context); }));
+    ({
+      send_ipip_tunnel_details(t, reg, mp->context);
+    }));
     /* *INDENT-ON* */
     }
   else
