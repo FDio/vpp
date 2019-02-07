@@ -126,7 +126,6 @@ typedef struct
 
   /* pool of tunnel interfaces */
   ipsec_tunnel_if_t *tunnel_interfaces;
-  u32 *free_tunnel_if_indices;
 
   u32 **empty_buffers;
 
@@ -135,9 +134,6 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-
-  /* next node indices */
-  u32 feature_next_node_index[32];
 
   /* hashes */
   uword *spd_index_by_spd_id;
