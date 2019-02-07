@@ -22,6 +22,7 @@
 #include <vnet/fib/fib_table.h>
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 u8 *
 format_ipsec_policy_action (u8 * s, va_list * args)
@@ -360,6 +361,29 @@ format_ipsec_tunnel (u8 * s, va_list * args)
   s = format (s, "    in-bound sa: ");
   s = format (s, "%U\n", format_ipsec_sa, t->input_sa_index,
 	      IPSEC_FORMAT_BRIEF);
+
+done:
+  return (s);
+}
+
+u8 *
+format_ipsec_tun_protect (u8 * s, va_list * args)
+{
+  u32 itpi = va_arg (*args, u32);
+  ipsec_protect_t *itp;
+
+  if (pool_is_free_index (ipsec_protect_pool, itpi))
+    {
+      s = format (s, "No such tunnel index: %d", itpi);
+      goto done;
+    }
+
+  itp = pool_elt_at_index (ipsec_protect_pool, itpi);
+
+  s = format (s, "%U", format_vnet_sw_if_index_name,
+	      vnet_get_main (), itp->itp_sw_if_index);
+  s = format (s, " in:%d", itp->itp_sa[INBOUND]);
+  s = format (s, " out:%d", itp->itp_sa[OUTBOUND]);
 
 done:
   return (s);

@@ -17,6 +17,7 @@
 #include <vnet/ipsec/esp.h>
 #include <vnet/udp/udp.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 /**
  * @brief
@@ -286,7 +287,7 @@ ipsec_sa_del (u32 id)
     {
       clib_warning ("sa_id %u used in policy", sa->id);
       /* sa used in policy */
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
+      return VNET_API_ERROR_RSRC_IN_USE;
     }
   hash_unset (im->sa_index_by_sa_id, sa->id);
   err = ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
@@ -308,10 +309,17 @@ ipsec_sa_del (u32 id)
   return 0;
 }
 
+void
+ipsec_sa_clear (index_t sai)
+{
+  vlib_zero_combined_counter (&ipsec_sa_counters, sai);
+}
+
 u8
 ipsec_is_sa_used (u32 sa_index)
 {
   ipsec_main_t *im = &ipsec_main;
+  ipsec_protect_t *itp;
   ipsec_tunnel_if_t *t;
   ipsec_policy_t *p;
 
@@ -330,6 +338,15 @@ ipsec_is_sa_used (u32 sa_index)
     if (t->output_sa_index == sa_index)
       return 1;
   }));
+
+  pool_foreach(itp, ipsec_protect_pool, ({
+    if (itp->itp_sa[INBOUND] == sa_index)
+      return 1;
+    if (itp->itp_sa[OUTBOUND] == sa_index)
+      return 1;
+  }));
+
+
   /* *INDENT-ON* */
 
   return 0;
@@ -456,7 +473,7 @@ ipsec_sa_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
 }
 
 /*
- * Virtual function table registered by MPLS GRE tunnels
+ * Virtual function table registered by SAs
  * for participation in the FIB object graph.
  */
 const static fib_node_vft_t ipsec_sa_vft = {

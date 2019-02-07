@@ -21,6 +21,7 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/sparse_vec.h>
+#include <vnet/ipsec/ipsec_tun.h>
 
 #define foreach_ipip_input_next                                                \
   _(PUNT, "error-punt")                                                        \
@@ -58,6 +59,61 @@ format_ipip_rx_trace (u8 * s, va_list * args)
   return s;
 }
 
+always_inline int
+ipip_mk_key (vlib_node_runtime_t * node,
+	     vlib_buffer_t * b0,
+	     ipip_tunnel_key_t * key0,
+	     ip4_header_t ** ip40_out, ip6_header_t ** ip60_out, bool is_ipv6)
+{
+  ip4_header_t *ip40;
+  ip6_header_t *ip60;
+  u8 inner_protocol0;
+
+  if (is_ipv6)
+    {
+      ip60 = vlib_buffer_get_current (b0);
+      /* Check for outer fragmentation */
+      if (ip60->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	{
+	  b0->error = node->errors[IPIP_ERROR_FRAGMENTED_PACKET];
+	  return IPIP_INPUT_NEXT_DROP;
+	}
+
+      vlib_buffer_advance (b0, sizeof (*ip60));
+      ip_set (&key0->dst, &ip60->src_address, false);
+      ip_set (&key0->src, &ip60->dst_address, false);
+      inner_protocol0 = ip60->protocol;
+      key0->transport = IPIP_TRANSPORT_IP6;
+      *ip60_out = ip60;
+    }
+  else
+    {
+      ip40 = vlib_buffer_get_current (b0);
+      /* Check for outer fragmentation */
+      if (ip40->flags_and_fragment_offset &
+	  clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS))
+	{
+	  b0->error = node->errors[IPIP_ERROR_FRAGMENTED_PACKET];
+	  return IPIP_INPUT_NEXT_DROP;
+	}
+      vlib_buffer_advance (b0, sizeof (*ip40));
+      ip_set (&key0->dst, &ip40->src_address, true);
+      ip_set (&key0->src, &ip40->dst_address, true);
+      inner_protocol0 = ip40->protocol;
+      key0->transport = IPIP_TRANSPORT_IP4;
+      *ip40_out = ip40;
+    }
+
+  key0->fib_index = vnet_buffer (b0)->ip.fib_index;
+
+  if (inner_protocol0 == IP_PROTOCOL_IPV6)
+    return IPIP_INPUT_NEXT_IP6_INPUT;
+  else if (inner_protocol0 == IP_PROTOCOL_IP_IN_IP)
+    return IPIP_INPUT_NEXT_IP4_INPUT;
+
+  return IPIP_INPUT_NEXT_DROP;
+}
+
 always_inline uword
 ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    vlib_frame_t * from_frame, bool is_ipv6)
@@ -83,10 +139,7 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip40;
 	  ip6_header_t *ip60;
 	  u32 next0 = IPIP_INPUT_NEXT_DROP;
-	  ip46_address_t src0 = ip46_address_initializer, dst0 =
-	    ip46_address_initializer;
-	  ipip_transport_t transport0;
-	  u8 inner_protocol0;
+	  ipip_tunnel_key_t key0 = { };
 
 	  bi0 = to_next[0] = from[0];
 	  from += 1;
@@ -95,51 +148,11 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  next0 = ipip_mk_key (node, b0, &key0, &ip40, &ip60, is_ipv6);
 
-	  if (is_ipv6)
-	    {
-	      ip60 = vlib_buffer_get_current (b0);
-	      /* Check for outer fragmentation */
-	      if (ip60->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
-		{
-		  next0 = IPIP_INPUT_NEXT_DROP;
-		  b0->error = node->errors[IPIP_ERROR_FRAGMENTED_PACKET];
-		  goto drop;
-		}
+	  if (IPIP_INPUT_NEXT_DROP == next0)
+	    goto drop;
 
-	      vlib_buffer_advance (b0, sizeof (*ip60));
-	      ip_set (&src0, &ip60->src_address, false);
-	      ip_set (&dst0, &ip60->dst_address, false);
-	      inner_protocol0 = ip60->protocol;
-	      transport0 = IPIP_TRANSPORT_IP6;
-	    }
-	  else
-	    {
-	      ip40 = vlib_buffer_get_current (b0);
-	      /* Check for outer fragmentation */
-	      if (ip40->flags_and_fragment_offset &
-		  clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS))
-		{
-		  next0 = IPIP_INPUT_NEXT_DROP;
-		  b0->error = node->errors[IPIP_ERROR_FRAGMENTED_PACKET];
-		  goto drop;
-		}
-	      vlib_buffer_advance (b0, sizeof (*ip40));
-	      ip_set (&src0, &ip40->src_address, true);
-	      ip_set (&dst0, &ip40->dst_address, true);
-	      inner_protocol0 = ip40->protocol;
-	      transport0 = IPIP_TRANSPORT_IP4;
-	    }
-
-	  /*
-	   * Find tunnel. First a lookup for P2P tunnels, then a lookup
-	   * for multipoint tunnels
-	   */
-	  ipip_tunnel_key_t key0 = {.transport = transport0,
-	    .fib_index = vnet_buffer (b0)->ip.fib_index,
-	    .src = dst0,
-	    .dst = src0
-	  };
 	  ipip_tunnel_t *t0 = ipip_tunnel_db_find (&key0);
 	  if (!t0)
 	    {
@@ -156,11 +169,6 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  len = vlib_buffer_length_in_chain (vm, b0);
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
-
-	  if (inner_protocol0 == IP_PROTOCOL_IPV6)
-	    next0 = IPIP_INPUT_NEXT_IP6_INPUT;
-	  else if (inner_protocol0 == IP_PROTOCOL_IP_IN_IP)
-	    next0 = IPIP_INPUT_NEXT_IP4_INPUT;
 
 	  if (!is_ipv6 && t0->mode == IPIP_MODE_6RD
 	      && t0->sixrd.security_check)
@@ -228,6 +236,104 @@ VLIB_NODE_FN (ipip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
   return ipip_input (vm, node, from_frame, /* is_ip6 */ true);
 }
 
+always_inline uword
+ipip_tun_decap (vlib_main_t * vm,
+		vlib_node_runtime_t * node,
+		vlib_frame_t * from_frame, bool is_ipv6)
+{
+  u32 n_left_from, next_index, *from, *to_next, n_left_to_next;
+  u32 tunnel_sw_if_index = ~0;
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  ipip_tunnel_key_t key0 = { };
+	  ipsec_protect_t *itp0;
+	  u32 bi0, itpi0;
+	  vlib_buffer_t *b0;
+	  ip4_header_t *ip40;
+	  ip6_header_t *ip60;
+	  u32 next0 = IPIP_INPUT_NEXT_DROP;
+
+	  bi0 = to_next[0] = from[0];
+	  from += 1;
+	  n_left_from -= 1;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  itpi0 = vnet_buffer (b0)->ipsec.protect_index;
+	  next0 = ipip_mk_key (node, b0, &key0, &ip40, &ip60, is_ipv6);
+
+	  if (IPIP_INPUT_NEXT_DROP == next0)
+	    goto drop;
+
+	  ipip_tunnel_t *t0 = ipip_tunnel_db_find (&key0);
+	  if (!t0)
+	    goto drop;
+
+	  tunnel_sw_if_index = t0->sw_if_index;
+
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
+
+	  itp0 = pool_elt_at_index (ipsec_protect_pool, itpi0);
+
+	  /*
+	   * if the tunnel we retreive from the packet's IP address
+	   * is not the same as we derived from the cyrpto addresses
+	   * then some-ones trying to fool us.
+	   */
+	  if (tunnel_sw_if_index != itp0->itp_sw_if_index)
+	    next0 = IPIP_INPUT_NEXT_DROP;
+
+	drop:
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ipip_rx_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->tunnel_id = tunnel_sw_if_index;
+	      if (is_ipv6)
+		tr->length = ip60->payload_length;
+	      else
+		tr->length = ip40->length;
+	      ip46_address_copy (&tr->src, &key0.src);
+	      ip46_address_copy (&tr->dst, &key0.dst);
+	    }
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+  vlib_node_increment_counter (vm,
+			       !is_ipv6 ? ipip4_input_node.index :
+			       ipip6_input_node.index, IPIP_ERROR_DECAP_PKTS,
+			       from_frame->n_vectors);
+  return from_frame->n_vectors;
+}
+
+VLIB_NODE_FN (ipip4_tun_decap_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * from_frame)
+{
+  return ipip_tun_decap (vm, node, from_frame, false);
+}
+
+VLIB_NODE_FN (ipip6_tun_decap_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * from_frame)
+{
+  return ipip_tun_decap (vm, node, from_frame, true);
+}
+
 static char *ipip_error_strings[] = {
 #define _(sym,string) string,
   foreach_ipip_error
@@ -251,8 +357,40 @@ VLIB_REGISTER_NODE(ipip4_input_node) = {
     .format_trace = format_ipip_rx_trace,
 };
 
+VLIB_REGISTER_NODE(ipip4_tun_decap_node) = {
+    .name = "ipip4-tun-decap",
+    /* Takes a vector of packets. */
+    .vector_size = sizeof(u32),
+    .n_errors = IPIP_N_ERROR,
+    .error_strings = ipip_error_strings,
+    .n_next_nodes = IPIP_INPUT_N_NEXT,
+    .next_nodes =
+        {
+#define _(s, n) [IPIP_INPUT_NEXT_##s] = n,
+            foreach_ipip_input_next
+#undef _
+        },
+    .format_trace = format_ipip_rx_trace,
+};
+
 VLIB_REGISTER_NODE(ipip6_input_node) = {
     .name = "ipip6-input",
+    /* Takes a vector of packets. */
+    .vector_size = sizeof(u32),
+    .n_errors = IPIP_N_ERROR,
+    .error_strings = ipip_error_strings,
+    .n_next_nodes = IPIP_INPUT_N_NEXT,
+    .next_nodes =
+        {
+#define _(s, n) [IPIP_INPUT_NEXT_##s] = n,
+            foreach_ipip_input_next
+#undef _
+        },
+    .format_trace = format_ipip_rx_trace,
+};
+
+VLIB_REGISTER_NODE(ipip6_tun_decap_node) = {
+    .name = "ipip6-tun-decap",
     /* Takes a vector of packets. */
     .vector_size = sizeof(u32),
     .n_errors = IPIP_N_ERROR,

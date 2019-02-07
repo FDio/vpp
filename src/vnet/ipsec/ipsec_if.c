@@ -84,7 +84,7 @@ ipsec_if_tunnel_stack (adj_index_t ai)
 }
 
 /**
- * @brief Call back when restacking all adjacencies on a GRE interface
+ * @brief Call back when restacking all adjacencies on a IPSec interface
  */
 static adj_walk_rc_t
 ipsec_if_adj_walk_cb (adj_index_t ai, void *ctx)
@@ -100,7 +100,7 @@ ipsec_if_tunnel_restack (ipsec_tunnel_if_t * it)
   fib_protocol_t proto;
 
   /*
-   * walk all the adjacencies on th GRE interface and restack them
+   * walk all the adjacencies on the IPSec interface and restack them
    */
   FOR_EACH_FIB_IP_PROTOCOL (proto)
   {
@@ -430,86 +430,6 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
   if (sw_if_index)
     *sw_if_index = hi->sw_if_index;
 
-  return 0;
-}
-
-int
-ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
-				const ipsec_gre_tunnel_add_del_args_t * args)
-{
-  ipsec_tunnel_if_t *t = 0;
-  ipsec_main_t *im = &ipsec_main;
-  uword *p;
-  ipsec_sa_t *sa;
-  ipsec4_tunnel_key_t key;
-  u32 isa, osa;
-
-  p = hash_get (im->sa_index_by_sa_id, args->local_sa_id);
-  if (!p)
-    return VNET_API_ERROR_INVALID_VALUE;
-  osa = p[0];
-  sa = pool_elt_at_index (im->sad, p[0]);
-  ipsec_sa_set_IS_GRE (sa);
-
-  p = hash_get (im->sa_index_by_sa_id, args->remote_sa_id);
-  if (!p)
-    return VNET_API_ERROR_INVALID_VALUE;
-  isa = p[0];
-  sa = pool_elt_at_index (im->sad, p[0]);
-  ipsec_sa_set_IS_GRE (sa);
-
-  /* we form the key from the input/remote SA whose tunnel is srouce
-   * at the remote end */
-  if (ipsec_sa_is_set_IS_TUNNEL (sa))
-    {
-      key.remote_ip = sa->tunnel_src_addr.ip4.as_u32;
-      key.spi = clib_host_to_net_u32 (sa->spi);
-    }
-  else
-    {
-      key.remote_ip = args->src.as_u32;
-      key.spi = clib_host_to_net_u32 (sa->spi);
-    }
-
-  p = hash_get (im->ipsec4_if_pool_index_by_key, key.as_u64);
-
-  if (args->is_add)
-    {
-      /* check if same src/dst pair exists */
-      if (p)
-	return VNET_API_ERROR_INVALID_VALUE;
-
-      pool_get_aligned (im->tunnel_interfaces, t, CLIB_CACHE_LINE_BYTES);
-      clib_memset (t, 0, sizeof (*t));
-
-      t->input_sa_index = isa;
-      t->output_sa_index = osa;
-      t->hw_if_index = ~0;
-      hash_set (im->ipsec4_if_pool_index_by_key, key.as_u64,
-		t - im->tunnel_interfaces);
-
-      /*1st interface, register protocol */
-      if (pool_elts (im->tunnel_interfaces) == 1)
-	{
-	  ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
-				 ipsec4_if_input_node.index);
-	  /* TBD, GRE IPSec6
-	   *
-	   ip6_register_protocol (IP_PROTOCOL_IPSEC_ESP,
-	   ipsec6_if_input_node.index);
-	   */
-	}
-    }
-  else
-    {
-      /* check if exists */
-      if (!p)
-	return VNET_API_ERROR_INVALID_VALUE;
-
-      t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
-      hash_unset (im->ipsec4_if_pool_index_by_key, key.as_u64);
-      pool_put (im->tunnel_interfaces, t);
-    }
   return 0;
 }
 
