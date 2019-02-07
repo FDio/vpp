@@ -75,7 +75,7 @@ typedef enum
 } ip46_type_t;
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (union {
+typedef CLIB_PACKED (union ip46_address_t_ {
   struct {
     u32 pad[3];
     ip4_address_t ip4;
@@ -94,6 +94,21 @@ typedef CLIB_PACKED (union {
 #define ip46_address_is_equal(a1, a2)	(((a1)->as_u64[0] == (a2)->as_u64[0]) \
                                          && ((a1)->as_u64[1] == (a2)->as_u64[1]))
 #define ip46_address_initializer {{{ 0 }}}
+
+static_always_inline int
+ip46_address_is_equal_v4 (const ip46_address_t * ip46,
+			  const ip4_address_t * ip4)
+{
+  return (ip46->ip4.as_u32 == ip4->as_u32);
+}
+
+static_always_inline int
+ip46_address_is_equal_v6 (const ip46_address_t * ip46,
+			  const ip6_address_t * ip6)
+{
+  return ((ip46->ip6.as_u64[0] == ip6->as_u64[0]) &&
+	  (ip46->ip6.as_u64[1] == ip6->as_u64[1]));
+}
 
 static_always_inline void
 ip46_address_copy (ip46_address_t * dst, const ip46_address_t * src)
