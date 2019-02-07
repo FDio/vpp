@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2015-2017 Cisco and/or its affiliates.
+* Copyright (c) 2015-2019 Cisco and/or its affiliates.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at:
@@ -16,6 +16,7 @@
 #include <vnet/vnet.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
+#include <vnet/session/session.h>
 
 typedef enum
 {
