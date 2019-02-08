@@ -223,6 +223,90 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   return 0;
 }
 
+static void
+ipsec_proto_init (void)
+{
+  ipsec_proto_main_t *em = &ipsec_proto_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  clib_memset (em, 0, sizeof (em[0]));
+
+  vec_validate (em->ipsec_proto_main_crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].type =
+    EVP_aes_128_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].type =
+    EVP_aes_192_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].type =
+    EVP_aes_256_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].iv_size = 16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].iv_size = 16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].iv_size = 16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].block_size =
+    16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].block_size =
+    16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].block_size =
+    16;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].type =
+    EVP_des_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].type =
+    EVP_des_ede3_cbc ();
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].block_size = 8;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].block_size = 8;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].iv_size = 8;
+  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].iv_size = 8;
+
+  vec_validate (em->ipsec_proto_main_integ_algs, IPSEC_INTEG_N_ALG - 1);
+  ipsec_proto_main_integ_alg_t *i;
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA1_96];
+  i->md = EVP_sha1 ();
+  i->trunc_size = 12;
+  i->padding_len[0] = ah_calc_icv_padding_len (i->trunc_size, 0);
+  i->padding_len[1] = ah_calc_icv_padding_len (i->trunc_size, 1);
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_96];
+  i->md = EVP_sha256 ();
+  i->trunc_size = 12;
+  i->padding_len[0] = ah_calc_icv_padding_len (i->trunc_size, 0);
+  i->padding_len[1] = ah_calc_icv_padding_len (i->trunc_size, 1);
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_128];
+  i->md = EVP_sha256 ();
+  i->trunc_size = 16;
+  i->padding_len[0] = ah_calc_icv_padding_len (i->trunc_size, 0);
+  i->padding_len[1] = ah_calc_icv_padding_len (i->trunc_size, 1);
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
+  i->md = EVP_sha384 ();
+  i->trunc_size = 24;
+  i->padding_len[0] = ah_calc_icv_padding_len (i->trunc_size, 0);
+  i->padding_len[1] = ah_calc_icv_padding_len (i->trunc_size, 1);
+
+  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
+  i->md = EVP_sha512 ();
+  i->trunc_size = 32;
+  i->padding_len[0] = ah_calc_icv_padding_len (i->trunc_size, 0);
+  i->padding_len[1] = ah_calc_icv_padding_len (i->trunc_size, 1);
+
+  vec_validate_aligned (em->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  int thread_id;
+
+  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
+    {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      em->per_thread_data[thread_id].encrypt_ctx = EVP_CIPHER_CTX_new ();
+      em->per_thread_data[thread_id].decrypt_ctx = EVP_CIPHER_CTX_new ();
+      em->per_thread_data[thread_id].hmac_ctx = HMAC_CTX_new ();
+#else
+      EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].encrypt_ctx));
+      EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].decrypt_ctx));
+      HMAC_CTX_init (&(em->per_thread_data[thread_id].hmac_ctx));
+#endif
+    }
+}
+
 static clib_error_t *
 ipsec_init (vlib_main_t * vm)
 {

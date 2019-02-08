@@ -79,6 +79,8 @@ typedef struct
 {
   const EVP_MD *md;
   u8 trunc_size;
+  /* Padding lengths for v4 [0] and v6 [1] */
+  u8 padding_len[2];
 } ipsec_proto_main_integ_alg_t;
 
 typedef struct

@@ -168,6 +168,10 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  sa0->total_data_size += i_b0->current_length;
 	  icv_size =
 	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	  icv_padding_len =
+	    em->ipsec_proto_main_integ_algs[sa0->
+					    integ_alg].padding_len[is_ip6];
+
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	    {
 	      u8 sig[64];
@@ -186,8 +190,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  ih6->ip_version_traffic_class_and_flow_label = 0x60;
 		  ih6->hop_limit = 0;
 		  nexthdr = ah0->nexthdr;
-		  icv_padding_len =
-		    ah_calc_icv_padding_len (icv_size, 1 /* is_ipv6 */ );
 		}
 	      else
 		{
@@ -197,8 +199,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  ih4->ttl = 0;
 		  ih4->checksum = 0;
 		  ih4->flags_and_fragment_offset = 0;
-		  icv_padding_len =
-		    ah_calc_icv_padding_len (icv_size, 0 /* is_ipv6 */ );
 		}
 	      hmac_calc (sa0->integ_alg, sa0->integ_key, sa0->integ_key_len,
 			 (u8 *) ih4, i_b0->current_length, sig, sa0->use_esn,

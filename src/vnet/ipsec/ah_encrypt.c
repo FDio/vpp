@@ -152,7 +152,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 
 	  icv_size =
 	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
-	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
+	  const u8 padding_len =
+	    em->ipsec_proto_main_integ_algs[sa0->
+					    integ_alg].padding_len[is_ip6];
 	  adv -= padding_len;
 	  /* transport mode save the eth header before it is overwritten */
 	  if (PREDICT_FALSE (!sa0->is_tunnel))
