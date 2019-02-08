@@ -77,7 +77,6 @@ endif
 
 PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
-BUILD_COV_DIR=$(TEST_DIR)/coverage
 
 GET_PIP_SCRIPT=$(TEST_RUN_DIR)/get-pip.py
 PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install.done
@@ -307,6 +306,7 @@ help:
 	@echo ""
 	@echo "Creating test code coverage report"
 	@echo " test-cov            - generate code coverage report for test framework"
+	@echo " test-all-cov        - same as test-cov, but runs all tests"
 	@echo " test-wipe-cov       - wipe code coverage report for test framework"
 	@echo ""
 	@echo "Verifying code-style"

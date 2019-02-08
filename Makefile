@@ -221,7 +221,9 @@ help:
 	@echo " test-doc            - generate documentation for test framework"
 	@echo " test-wipe-doc       - wipe documentation for test framework"
 	@echo " test-cov            - generate code coverage report for test framework"
-	@echo " test-wipe-cov       - wipe code coverage report for test framework"
+	@echo " test-all-cov            - same as test-cov, but runs all tests"
+	@echo " test-wipe-cov       - wipe test-cov code coverage report for test framework"
+	@echo " test-wipe-all-cov       - wipe test-cov-all code coverage report for test framework"
 	@echo " test-checkstyle     - check PEP8 compliance for test framework"
 	@echo ""
 	@echo "Make Arguments:"
@@ -391,6 +393,7 @@ define test
 	  VPP_INSTALL_PATH=$(BR)/install-$(2)-native/ \
 	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
+	  BUILD_COV_DIR=$(BUILD_COV_DIR) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \
 	  CACHE_OUTPUT=$(CACHE_OUTPUT) \
@@ -435,11 +438,20 @@ test-wipe-doc:
 	@make -C test wipe-doc
 
 test-cov:
+	$(eval BUILD_COV_DIR=$(TEST_DIR)/coverage)
+	$(call test,vpp,vpp_gcov,cov)
+
+test-all-cov:
 	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install japi-install
+	$(eval BUILD_COV_DIR=$(TEST_DIR)/coverage-all)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
 test-wipe-cov:
+	@make -C test wipe-cov
+
+test-wipe-all-cov:
+	$(eval EXTENDED_TESTS=yes)
 	@make -C test wipe-cov
 
 test-checkstyle:
