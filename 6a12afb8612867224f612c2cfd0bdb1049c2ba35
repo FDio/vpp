@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8e0115f6_cf001261",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 448,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-08T15:17:20Z",
+      "side": 1,
+      "message": "Don\u0027t you now need a test-wipe-cov-all target?",
+      "range": {
+        "startLine": 447,
+        "startChar": 0,
+        "endLine": 448,
+        "endChar": 23
+      },
+      "revId": "6a12afb8612867224f612c2cfd0bdb1049c2ba35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
