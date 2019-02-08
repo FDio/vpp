@@ -237,6 +237,8 @@ help:
 	@echo " docs                 - Build the Sphinx documentation"
 	@echo " docs-venv            - Build the virtual environment for the Sphinx docs"
 	@echo " docs-clean           - Remove the generated files from the Sphinx docs"
+	@echo " docs-venv         - Build the virtual environment for the Sphinx docs"
+	@echo " docs-clean        - Remove the generated files from the Sphinx docs"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]                  - set build verbosity level"
@@ -423,6 +425,7 @@ define test
 	  VPP_INSTALL_PATH=$(BR)/install-$(2)-native/ \
 	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
+	  BUILD_COV_DIR=$(BUILD_COV_DIR) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \
 	  RND_SEED=$(RND_SEED) \
@@ -497,6 +500,12 @@ test-wipe-doc:
 .PHONY: test-cov
 test-cov:
 	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install
+	$(eval BUILD_COV_DIR=$(TEST_DIR)/coverage)
+	$(call test,vpp,vpp_gcov,cov)
+
+test-all-cov:
+	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install
+	$(eval BUILD_COV_DIR=$(TEST_DIR)/coverage-all)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
@@ -507,6 +516,11 @@ test-wipe-cov:
 .PHONY: test-wipe-all
 test-wipe-all:
 	@make -C test wipe-all
+
+.PHONY: test-wipe-all-cov
+test-wipe-all-cov:
+	$(eval EXTENDED_TESTS=yes)
+	@make -C test wipe-cov
 
 .PHONY: test-checkstyle
 test-checkstyle:

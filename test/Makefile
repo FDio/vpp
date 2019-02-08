@@ -411,6 +411,7 @@ help:
 	@echo ""
 	@echo "Creating test code coverage report"
 	@echo " test-cov               - generate code coverage report for test framework"
+	@echo " test-all-cov           - same as test-cov, but runs all tests"
 	@echo " test-wipe-cov          - wipe code coverage report for test framework"
 	@echo ""
 	@echo "Verifying code-style"
