@@ -20,6 +20,7 @@
 /test/run/
 /test/build/
 /test/coverage/
+/test/coverage-all/
 /build-config.mk
 /build/external/*.tar.gz
 /build/external/*.tar.xz
