@@ -390,6 +390,7 @@ define test
 	  VPP_INSTALL_PATH=$(BR)/install-$(2)-native/ \
 	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
+	  BUILD_COV_DIR=$(BUILD_COV_DIR) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \
 	  CACHE_OUTPUT=$(CACHE_OUTPUT) \
@@ -434,7 +435,12 @@ test-wipe-doc:
 	@make -C test wipe-doc
 
 test-cov:
+	$(eval BUILD_COV_DIR=$(TEST_DIR)/coverage)
+	$(call test,vpp,vpp_gcov,cov)
+
+test-all-cov:
 	@make -C $(BR) PLATFORM=vpp TAG=vpp_gcov vom-install japi-install
+	$(eval BUILD_COV_DIR=$(TEST_DIR)/coverage-all)
 	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
