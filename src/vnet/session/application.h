@@ -16,9 +16,10 @@
 #ifndef SRC_VNET_SESSION_APPLICATION_H_
 #define SRC_VNET_SESSION_APPLICATION_H_
 
+#include <vnet/session/application_interface.h>
+#include <vnet/session/application_namespace.h>
 #include <vnet/session/session_types.h>
 #include <vnet/session/segment_manager.h>
-#include <vnet/session/application_namespace.h>
 
 #define APP_DEBUG 0
 
@@ -27,35 +28,6 @@
 #else
 #define APP_DBG(_fmt, _args...)
 #endif
-
-typedef struct _stream_session_cb_vft
-{
-  /** Notify server of new segment */
-  int (*add_segment_callback) (u32 api_client_index, u64 segment_handle);
-
-  /** Notify server of new segment */
-  int (*del_segment_callback) (u32 api_client_index, u64 segment_handle);
-
-  /** Notify server of newly accepted session */
-  int (*session_accept_callback) (session_t * new_session);
-
-  /** Connection request callback */
-  int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     session_t * s, u8 code);
-
-  /** Notify app that session is closing */
-  void (*session_disconnect_callback) (session_t * s);
-
-  /** Notify app that session was reset */
-  void (*session_reset_callback) (session_t * s);
-
-  /** Direct RX callback for built-in application */
-  int (*builtin_app_rx_callback) (session_t * session);
-
-  /** Direct TX callback for built-in application */
-  int (*builtin_app_tx_callback) (session_t * session);
-
-} session_cb_vft_t;
 
 typedef struct app_worker_
 {
@@ -188,14 +160,6 @@ typedef struct app_main_
   uword *app_by_name;
 } app_main_t;
 
-#define foreach_app_init_args			\
-  _(u32, api_client_index)			\
-  _(u8 *, name)					\
-  _(u64 *, options)				\
-  _(u8 *, namespace_id)				\
-  _(session_cb_vft_t *, session_cb_vft)		\
-  _(u32, app_index)				\
-
 typedef struct app_init_args_
 {
 #define _(_type, _name) _type _name;
@@ -217,6 +181,13 @@ typedef struct _vnet_app_worker_add_del_args
 #define APP_INVALID_INDEX ((u32)~0)
 #define APP_NS_INVALID_INDEX ((u32)~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
+
+#define app_interface_check_thread_and_barrier(_fn, _arg)		\
+  if (PREDICT_FALSE (!vlib_thread_is_main_w_barrier ()))		\
+    {									\
+      vlib_rpc_call_main_thread (_fn, (u8 *) _arg, sizeof(*_arg));	\
+      return 0;								\
+    }
 
 app_listener_t *app_listener_get (application_t * app, u32 al_index);
 int app_listener_alloc_and_init (application_t * app,
@@ -242,6 +213,9 @@ application_t *application_lookup_name (const u8 * name);
 app_worker_t *application_get_worker (application_t * app, u32 wrk_index);
 app_worker_t *application_get_default_worker (application_t * app);
 app_worker_t *application_listener_select_worker (session_t * ls);
+int vnet_listen_inline (vnet_listen_args_t * a);
+int application_connect (vnet_connect_args_t * a);
+int vnet_unlisten_inline (vnet_unbind_args_t * a);
 int application_change_listener_owner (session_t * s, app_worker_t * app_wrk);
 int application_is_proxy (application_t * app);
 int application_is_builtin (application_t * app);
