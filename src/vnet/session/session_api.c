@@ -757,7 +757,6 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   ssvm_private_t *segp, *evt_q_segment;
   vnet_app_attach_args_t _a, *a = &_a;
   vl_api_registration_t *reg;
-  clib_error_t *error = 0;
   u8 fd_flags = 0;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -796,10 +795,9 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 			mp->namespace_id_len);
     }
 
-  if ((error = vnet_application_attach (a)))
+  if ((rv = vnet_application_attach (a)))
     {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
+      clib_warning ("attach returned: %d", rv);
       vec_free (a->namespace_id);
       goto done;
     }
@@ -950,7 +948,7 @@ vl_api_unbind_uri_t_handler (vl_api_unbind_uri_t * mp)
 {
   vl_api_unbind_uri_reply_t *rmp;
   application_t *app;
-  vnet_unbind_args_t _a, *a = &_a;
+  vnet_unlisten_args_t _a, *a = &_a;
   int rv;
 
   if (session_manager_is_enabled () == 0)
@@ -981,7 +979,6 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   vl_api_connect_session_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
   application_t *app;
-  clib_error_t *error = 0;
   int rv = 0;
 
   if (session_manager_is_enabled () == 0)
@@ -997,11 +994,8 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
       a->uri = (char *) mp->uri;
       a->api_context = mp->context;
       a->app_index = app->app_index;
-      if ((error = vnet_connect_uri (a)))
-	{
-	  rv = clib_error_get_code (error);
-	  clib_error_report (error);
-	}
+      if ((rv = vnet_connect_uri (a)))
+	clib_warning ("connect_uri returned: %d", rv);
     }
   else
     {
@@ -1182,7 +1176,6 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   application_t *app = 0;
   app_worker_t *app_wrk;
   ip46_address_t *ip46;
-  clib_error_t *error;
   app_listener_t *al;
   session_t *s;
   int rv = 0;
@@ -1211,11 +1204,8 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   a->app_index = app->app_index;
   a->wrk_map_index = mp->wrk_index;
 
-  if ((error = vnet_listen (a)))
-    {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
-    }
+  if ((rv = vnet_listen (a)))
+    clib_warning ("listen returned: %d", rv);
 
 done:
   /* *INDENT-OFF* */
@@ -1256,9 +1246,8 @@ static void
 vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
 {
   vl_api_unbind_sock_reply_t *rmp;
-  vnet_unbind_args_t _a, *a = &_a;
+  vnet_unlisten_args_t _a, *a = &_a;
   application_t *app;
-  clib_error_t *error;
   int rv = 0;
 
   if (session_manager_is_enabled () == 0)
@@ -1273,11 +1262,8 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
       a->app_index = app->app_index;
       a->handle = mp->handle;
       a->wrk_map_index = mp->wrk_index;
-      if ((error = vnet_unlisten (a)))
-	{
-	  rv = clib_error_get_code (error);
-	  clib_error_report (error);
-	}
+      if ((rv = vnet_unlisten (a)))
+	clib_warning ("unlisten returned: %d", rv);
     }
 
 done:
@@ -1290,7 +1276,6 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   vl_api_connect_session_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
   application_t *app = 0;
-  clib_error_t *error = 0;
   int rv = 0;
 
   if (session_manager_is_enabled () == 0)
@@ -1323,11 +1308,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       a->api_context = mp->context;
       a->app_index = app->app_index;
       a->wrk_map_index = mp->wrk_index;
-      if ((error = vnet_connect (a)))
-	{
-	  rv = clib_error_get_code (error);
-	  clib_error_report (error);
-	}
+      if ((rv = vnet_connect (a)))
+	clib_warning ("connect returned: %u", rv);
       vec_free (a->sep_ext.hostname);
     }
   else
@@ -1356,7 +1338,6 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
   int rv = 0, fds[SESSION_N_FD_TYPE], n_fds = 0;
   vl_api_app_worker_add_del_reply_t *rmp;
   vl_api_registration_t *reg;
-  clib_error_t *error = 0;
   application_t *app;
   u8 fd_flags = 0;
 
@@ -1383,11 +1364,10 @@ vl_api_app_worker_add_del_t_handler (vl_api_app_worker_add_del_t * mp)
     .api_client_index = mp->client_index,
     .is_add = mp->is_add
   };
-  error = vnet_app_worker_add_del (&args);
-  if (error)
+  rv = vnet_app_worker_add_del (&args);
+  if (rv)
     {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
+      clib_warning ("app worker add/del returned: %d", rv);
       goto done;
     }
 
@@ -1437,7 +1417,6 @@ static void
 vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
 {
   vl_api_app_namespace_add_del_reply_t *rmp;
-  clib_error_t *error = 0;
   u32 appns_index = 0;
   u8 *ns_id = 0;
   int rv = 0;
@@ -1463,13 +1442,8 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
     .ip6_fib_id = clib_net_to_host_u32 (mp->ip6_fib_id),
     .is_add = 1
   };
-  error = vnet_app_namespace_add_del (&args);
-  if (error)
-    {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
-    }
-  else
+  rv = vnet_app_namespace_add_del (&args);
+  if (!rv)
     {
       appns_index = app_namespace_index_from_id (ns_id);
       if (appns_index == APP_NAMESPACE_INVALID_INDEX)
@@ -1495,7 +1469,6 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   vl_api_session_rule_add_del_reply_t *rmp;
   session_rule_add_del_args_t args;
   session_rule_table_add_del_args_t *table_args = &args.table_args;
-  clib_error_t *error;
   u8 fib_proto;
   int rv = 0;
 
@@ -1520,12 +1493,9 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   clib_memset (&table_args->rmt.fp_addr, 0, sizeof (table_args->rmt.fp_addr));
   ip_set (&table_args->lcl.fp_addr, mp->lcl_ip, mp->is_ip4);
   ip_set (&table_args->rmt.fp_addr, mp->rmt_ip, mp->is_ip4);
-  error = vnet_session_rule_add_del (&args);
-  if (error)
-    {
-      rv = clib_error_get_code (error);
-      clib_error_report (error);
-    }
+  rv = vnet_session_rule_add_del (&args);
+  if (rv)
+    clib_warning ("rule add del returned: %d", rv);
   vec_free (table_args->tag);
   REPLY_MACRO (VL_API_SESSION_RULE_ADD_DEL_REPLY);
 }

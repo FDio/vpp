@@ -529,10 +529,10 @@ tls_connect (transport_endpoint_cfg_t * tep)
   tls_engine_type_t engine_type;
   tls_main_t *tm = &tls_main;
   app_worker_t *app_wrk;
-  clib_error_t *error;
   application_t *app;
   tls_ctx_t *ctx;
   u32 ctx_index;
+  int rv;
 
   sep = (session_endpoint_cfg_t *) tep;
   app_wrk = app_worker_get (sep->app_wrk_index);
@@ -563,8 +563,8 @@ tls_connect (transport_endpoint_cfg_t * tep)
   cargs->sep.transport_proto = TRANSPORT_PROTO_TCP;
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_index;
-  if ((error = vnet_connect (cargs)))
-    return clib_error_get_code (error);
+  if ((rv = vnet_connect (cargs)))
+    return rv;
 
   TLS_DBG (1, "New connect request %u engine %d", ctx_index, engine_type);
   return 0;
@@ -641,15 +641,16 @@ tls_stop_listen (u32 lctx_index)
 {
   tls_engine_type_t engine_type;
   tls_ctx_t *lctx;
+  int rv;
 
   lctx = tls_listener_ctx_get (lctx_index);
-  vnet_unbind_args_t a = {
+  vnet_unlisten_args_t a = {
     .handle = lctx->tls_session_handle,
     .app_index = tls_main.app_index,
     .wrk_map_index = 0		/* default wrk */
   };
-  if (vnet_unlisten (&a))
-    clib_warning ("unbind returned");
+  if ((rv = vnet_unlisten (&a)))
+    clib_warning ("unlisten returned %d", rv);
 
   engine_type = lctx->tls_ctx_engine;
   tls_vfts[engine_type].ctx_stop_listen (lctx);

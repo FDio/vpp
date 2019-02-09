@@ -61,7 +61,7 @@ app_namespace_alloc (u8 * ns_id)
   return app_ns;
 }
 
-clib_error_t *
+int
 vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 {
   app_namespace_t *app_ns;
@@ -71,9 +71,8 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
     {
       if (a->sw_if_index != APP_NAMESPACE_INVALID_INDEX
 	  && !vnet_get_sw_interface_safe (vnet_get_main (), a->sw_if_index))
-	return clib_error_return_code (0, VNET_API_ERROR_INVALID_SW_IF_INDEX,
-				       0, "sw_if_index %u doesn't exist",
-				       a->sw_if_index);
+	return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
 
       if (a->sw_if_index != APP_NAMESPACE_INVALID_INDEX)
 	{
@@ -86,9 +85,8 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	}
       if (a->sw_if_index == APP_NAMESPACE_INVALID_INDEX
 	  && a->ip4_fib_id == APP_NAMESPACE_INVALID_INDEX)
-	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
-				       "sw_if_index or fib_id must be "
-				       "configured");
+	return VNET_API_ERROR_INVALID_VALUE;
+
       app_ns = app_namespace_get_from_id (a->ns_id);
       if (!app_ns)
 	{
@@ -109,8 +107,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
     }
   else
     {
-      return clib_error_return_code (0, VNET_API_ERROR_UNIMPLEMENTED, 0,
-				     "namespace deletion not supported");
+      return VNET_API_ERROR_UNIMPLEMENTED;
     }
   return 0;
 }
@@ -184,6 +181,7 @@ app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 sw_if_index, fib_id = APP_NAMESPACE_INVALID_INDEX;
   u64 secret;
   clib_error_t *error = 0;
+  int rv;
 
   session_cli_return_if_not_enabled ();
 
@@ -228,7 +226,8 @@ app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
 	.ip4_fib_id = fib_id,
 	.is_add = 1
       };
-      error = vnet_app_namespace_add_del (&args);
+      if ((rv = vnet_app_namespace_add_del (&args)))
+	return clib_error_return (0, "app namespace add del returned %d", rv);
     }
 
   return error;

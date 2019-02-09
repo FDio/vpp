@@ -511,7 +511,7 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   echo_client_main_t *ecm = &echo_client_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u64 options[16];
-  clib_error_t *error = 0;
+  int rv;
 
   clib_memset (a, 0, sizeof (*a));
   clib_memset (options, 0, sizeof (options));
@@ -541,8 +541,8 @@ echo_clients_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   a->options = options;
   a->namespace_id = appns_id;
 
-  if ((error = vnet_application_attach (a)))
-    return error;
+  if ((rv = vnet_application_attach (a)))
+    return clib_error_return (0, "attach returned %d", rv);
 
   ecm->app_index = a->app_index;
   return 0;
@@ -592,8 +592,7 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 {
   echo_client_main_t *ecm = &echo_client_main;
   vnet_connect_args_t _a, *a = &_a;
-  clib_error_t *error = 0;
-  int i;
+  int i, rv;
 
   clib_memset (a, 0, sizeof (*a));
   for (i = 0; i < n_clients; i++)
@@ -602,8 +601,8 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
       a->api_context = i;
       a->app_index = ecm->app_index;
 
-      if ((error = vnet_connect_uri (a)))
-	return error;
+      if ((rv = vnet_connect_uri (a)))
+	return clib_error_return (0, "connect returned: %d", rv);
 
       /* Crude pacing for call setups  */
       if ((i % 4) == 0)

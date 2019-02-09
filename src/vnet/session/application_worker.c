@@ -160,7 +160,7 @@ void
 app_worker_free (app_worker_t * app_wrk)
 {
   application_t *app = application_get (app_wrk->app_index);
-  vnet_unbind_args_t _a, *a = &_a;
+  vnet_unlisten_args_t _a, *a = &_a;
   u64 handle, *handles = 0;
   segment_manager_t *sm;
   u32 sm_index;
@@ -188,7 +188,7 @@ app_worker_free (app_worker_t * app_wrk)
       a->wrk_map_index = app_wrk->wrk_map_index;
       a->handle = handles[i];
       /* seg manager is removed when unbind completes */
-      vnet_unlisten (a);
+      (void) vnet_unlisten (a);
     }
 
   /*
