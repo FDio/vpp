@@ -14,6 +14,7 @@
  */
 
 #include <vnet/session/application_interface.h>
+#include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <vppinfra/lock.h>
 

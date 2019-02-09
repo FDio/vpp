@@ -15,11 +15,48 @@
 #ifndef __included_uri_h__
 #define __included_uri_h__
 
+#include <vlibmemory/api.h>
+#include <svm/message_queue.h>
 #include <svm/svm_fifo_segment.h>
 #include <vnet/session/session_types.h>
-#include <vnet/session/application.h>
-#include <vnet/session/transport.h>
 #include <vnet/tls/tls_test.h>
+
+typedef struct _stream_session_cb_vft
+{
+  /** Notify server of new segment */
+  int (*add_segment_callback) (u32 api_client_index, u64 segment_handle);
+
+  /** Notify server of new segment */
+  int (*del_segment_callback) (u32 api_client_index, u64 segment_handle);
+
+  /** Notify server of newly accepted session */
+  int (*session_accept_callback) (session_t * new_session);
+
+  /** Connection request callback */
+  int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
+				     session_t * s, u8 code);
+
+  /** Notify app that session is closing */
+  void (*session_disconnect_callback) (session_t * s);
+
+  /** Notify app that session was reset */
+  void (*session_reset_callback) (session_t * s);
+
+  /** Direct RX callback for built-in application */
+  int (*builtin_app_rx_callback) (session_t * session);
+
+  /** Direct TX callback for built-in application */
+  int (*builtin_app_tx_callback) (session_t * session);
+
+} session_cb_vft_t;
+
+#define foreach_app_init_args			\
+  _(u32, api_client_index)			\
+  _(u8 *, name)					\
+  _(u64 *, options)				\
+  _(u8 *, namespace_id)				\
+  _(session_cb_vft_t *, session_cb_vft)		\
+  _(u32, app_index)				\
 
 typedef struct _vnet_app_attach_args_t
 {
@@ -67,7 +104,7 @@ typedef struct _vnet_unbind_args_t
   };
   u32 app_index;		/**< Owning application index */
   u32 wrk_map_index;		/**< App's local pool worker index */
-} vnet_unbind_args_t;
+} vnet_unlisten_args_t;
 
 typedef struct _vnet_connect_args
 {
@@ -176,14 +213,14 @@ typedef enum session_fd_flag_
 } session_fd_flag_t;
 
 int vnet_bind_uri (vnet_listen_args_t *);
-int vnet_unbind_uri (vnet_unbind_args_t * a);
-clib_error_t *vnet_connect_uri (vnet_connect_args_t * a);
+int vnet_unbind_uri (vnet_unlisten_args_t * a);
+int vnet_connect_uri (vnet_connect_args_t * a);
 
-clib_error_t *vnet_application_attach (vnet_app_attach_args_t * a);
-clib_error_t *vnet_listen (vnet_listen_args_t * a);
-clib_error_t *vnet_connect (vnet_connect_args_t * a);
-clib_error_t *vnet_unlisten (vnet_unbind_args_t * a);
+int vnet_application_attach (vnet_app_attach_args_t * a);
 int vnet_application_detach (vnet_app_detach_args_t * a);
+int vnet_listen (vnet_listen_args_t * a);
+int vnet_connect (vnet_connect_args_t * a);
+int vnet_unlisten (vnet_unlisten_args_t * a);
 int vnet_disconnect_session (vnet_disconnect_args_t * a);
 
 clib_error_t *vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a);

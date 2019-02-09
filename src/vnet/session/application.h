@@ -16,9 +16,10 @@
 #ifndef SRC_VNET_SESSION_APPLICATION_H_
 #define SRC_VNET_SESSION_APPLICATION_H_
 
+#include <vnet/session/application_interface.h>
+#include <vnet/session/application_namespace.h>
 #include <vnet/session/session_types.h>
 #include <vnet/session/segment_manager.h>
-#include <vnet/session/application_namespace.h>
 
 #define APP_DEBUG 0
 
@@ -27,35 +28,6 @@
 #else
 #define APP_DBG(_fmt, _args...)
 #endif
-
-typedef struct _stream_session_cb_vft
-{
-  /** Notify server of new segment */
-  int (*add_segment_callback) (u32 api_client_index, u64 segment_handle);
-
-  /** Notify server of new segment */
-  int (*del_segment_callback) (u32 api_client_index, u64 segment_handle);
-
-  /** Notify server of newly accepted session */
-  int (*session_accept_callback) (session_t * new_session);
-
-  /** Connection request callback */
-  int (*session_connected_callback) (u32 app_wrk_index, u32 opaque,
-				     session_t * s, u8 code);
-
-  /** Notify app that session is closing */
-  void (*session_disconnect_callback) (session_t * s);
-
-  /** Notify app that session was reset */
-  void (*session_reset_callback) (session_t * s);
-
-  /** Direct RX callback for built-in application */
-  int (*builtin_app_rx_callback) (session_t * session);
-
-  /** Direct TX callback for built-in application */
-  int (*builtin_app_tx_callback) (session_t * session);
-
-} session_cb_vft_t;
 
 typedef struct app_worker_
 {
@@ -188,14 +160,6 @@ typedef struct app_main_
   uword *app_by_name;
 } app_main_t;
 
-#define foreach_app_init_args			\
-  _(u32, api_client_index)			\
-  _(u8 *, name)					\
-  _(u64 *, options)				\
-  _(u8 *, namespace_id)				\
-  _(session_cb_vft_t *, session_cb_vft)		\
-  _(u32, app_index)				\
-
 typedef struct app_init_args_
 {
 #define _(_type, _name) _type _name;
@@ -231,10 +195,6 @@ app_listener_t *app_listener_get_w_session (session_t * ls);
 app_worker_t *app_listener_select_worker (app_listener_t * al);
 session_t *app_listener_get_session (app_listener_t * al);
 
-application_t *application_alloc (void);
-int application_alloc_and_init (app_init_args_t * args);
-void application_free (application_t * app);
-void application_detach_process (application_t * app, u32 api_client_index);
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
@@ -296,7 +256,7 @@ session_t *app_worker_proxy_listener (app_worker_t * app, u8 fib_proto,
 u8 *format_app_worker (u8 * s, va_list * args);
 u8 *format_app_worker_listener (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
-clib_error_t *vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
+int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
 
 /*
  * Local session

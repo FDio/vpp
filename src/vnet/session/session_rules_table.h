@@ -111,9 +111,8 @@ void session_rules_table_show_rule (vlib_main_t * vm,
 				    ip46_address_t * lcl_ip, u16 lcl_port,
 				    ip46_address_t * rmt_ip, u16 rmt_port,
 				    u8 is_ip4);
-clib_error_t *session_rules_table_add_del (session_rules_table_t * srt,
-					   session_rule_table_add_del_args_t *
-					   args);
+int session_rules_table_add_del (session_rules_table_t * srt,
+				 session_rule_table_add_del_args_t * args);
 u8 *session_rules_table_rule_tag (session_rules_table_t * srt, u32 ri,
 				  u8 is_ip4);
 void session_rules_table_init (session_rules_table_t * srt);
