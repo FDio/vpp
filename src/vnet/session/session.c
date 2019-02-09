@@ -1243,7 +1243,7 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
   u32 evt_q_length = 2048, evt_size = sizeof (session_event_t);
   ssvm_private_t *eqs = &smm->evt_qs_segment;
   api_main_t *am = &api_main;
-  u64 eqs_size = 64 << 20;
+  uword eqs_size = 64 << 20;
   pid_t vpp_pid = getpid ();
   void *oldheap;
   int i;
@@ -1280,7 +1280,7 @@ session_vpp_event_queues_allocate (session_manager_main_t * smm)
       svm_msg_q_ring_cfg_t rc[SESSION_MQ_N_RINGS] = {
 	{evt_q_length, evt_size, 0}
 	,
-	{evt_q_length << 1, 256, 0}
+	{evt_q_length >> 1, 256, 0}
       };
       cfg->consumer_pid = 0;
       cfg->n_rings = 2;
@@ -1636,6 +1636,9 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "evt_qs_memfd_seg"))
 	smm->evt_qs_use_memfd_seg = 1;
+      else if (unformat (input, "evt_qs_seg_size %U", unformat_memory_size,
+			 &smm->evt_qs_segment_size))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
