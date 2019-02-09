@@ -188,7 +188,7 @@ app_worker_free (app_worker_t * app_wrk)
       a->wrk_map_index = app_wrk->wrk_map_index;
       a->handle = handles[i];
       /* seg manager is removed when unbind completes */
-      vnet_unlisten (a);
+      (void) vnet_unlisten (a);
     }
 
   /*

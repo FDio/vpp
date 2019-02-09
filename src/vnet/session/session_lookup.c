@@ -1240,7 +1240,7 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
   return 0;
 }
 
-clib_error_t *
+int
 vnet_session_rule_add_del (session_rule_add_del_args_t * args)
 {
   app_namespace_t *app_ns = app_namespace_get (args->appns_index);
@@ -1248,29 +1248,26 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
   session_table_t *st;
   u32 fib_index;
   u8 fib_proto;
-  clib_error_t *error;
+  int rv = 0;
 
   if (!app_ns)
-    return clib_error_return_code (0, VNET_API_ERROR_APP_INVALID_NS, 0,
-				   "invalid app ns");
+    return VNET_API_ERROR_APP_INVALID_NS;
+
   if (args->scope > 3)
-    return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
-				   "invalid scope");
+    return VNET_API_ERROR_INVALID_VALUE;
+
   if (args->transport_proto != TRANSPORT_PROTO_TCP
       && args->transport_proto != TRANSPORT_PROTO_UDP)
-    return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
-				   "invalid transport proto");
+    return VNET_API_ERROR_INVALID_VALUE;
+
   if ((args->scope & SESSION_RULE_SCOPE_GLOBAL) || args->scope == 0)
     {
       fib_proto = args->table_args.rmt.fp_proto;
       fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
       st = session_table_get_for_fib_index (fib_proto, fib_index);
       srt = &st->session_rules[args->transport_proto];
-      if ((error = session_rules_table_add_del (srt, &args->table_args)))
-	{
-	  clib_error_report (error);
-	  return error;
-	}
+      if ((rv = session_rules_table_add_del (srt, &args->table_args)))
+	return rv;
     }
   if (args->scope & SESSION_RULE_SCOPE_LOCAL)
     {
@@ -1279,9 +1276,9 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
       args->table_args.lcl_port = 0;
       st = app_namespace_get_local_table (app_ns);
       srt = &st->session_rules[args->transport_proto];
-      error = session_rules_table_add_del (srt, &args->table_args);
+      rv = session_rules_table_add_del (srt, &args->table_args);
     }
-  return error;
+  return rv;
 }
 
 /**
@@ -1388,7 +1385,7 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 fib_proto, is_add = 1, *ns_id = 0;
   u8 *tag = 0;
   app_namespace_t *app_ns;
-  clib_error_t *error;
+  int rv;
 
   clib_memset (&lcl_ip, 0, sizeof (lcl_ip));
   clib_memset (&rmt_ip, 0, sizeof (rmt_ip));
@@ -1485,9 +1482,11 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
     .appns_index = appns_index,
     .scope = scope,
   };
-  error = vnet_session_rule_add_del (&args);
+  if ((rv = vnet_session_rule_add_del (&args)))
+    return clib_error_return (0, "rule add del returned %u", rv);
+
   vec_free (tag);
-  return error;
+  return 0;
 }
 
 /* *INDENT-OFF* */
