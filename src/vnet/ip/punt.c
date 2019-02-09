@@ -497,7 +497,7 @@ format_punt_trace (u8 * s, va_list * va)
 static uword
 punt_socket_rx_fd (vlib_main_t * vm, vlib_node_runtime_t * node, u32 fd)
 {
-  const uword buffer_size = vlib_bufer_get_default_size (vm);
+  const uword buffer_size = vlib_buffer_get_default_data_size (vm);
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 next = node->cached_next_index;
   u32 n_left_to_next, next_index;

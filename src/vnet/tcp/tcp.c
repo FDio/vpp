@@ -1476,7 +1476,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_initialize_timer_wheels (tm);
   tcp_initialize_iss_seed (tm);
 
-  tm->bytes_per_buffer = vlib_bufer_get_default_size (vm);
+  tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
 
   return error;
 }

@@ -121,7 +121,7 @@ send_template_packet (flow_report_main_t * frm,
   /* Initialize the buffer */
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
-  ASSERT (vec_len (fr->rewrite) < vlib_bufer_get_default_size (vm));
+  ASSERT (vec_len (fr->rewrite) < vlib_buffer_get_default_data_size (vm));
 
   clib_memcpy_fast (b0->data, fr->rewrite, vec_len (fr->rewrite));
   b0->current_data = 0;

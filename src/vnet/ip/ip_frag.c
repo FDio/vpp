@@ -106,7 +106,7 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
 
   rem = clib_net_to_host_u16 (ip4->length) - sizeof (ip4_header_t);
   max =
-    (clib_min (mtu, vlib_bufer_get_default_size (vm)) -
+    (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) -
      sizeof (ip4_header_t)) & ~0x7;
 
   if (rem >

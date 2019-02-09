@@ -243,7 +243,7 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   tuntap_main_t *tm = &tuntap_main;
   vlib_buffer_t *b;
   u32 bi;
-  const uword buffer_size = vlib_bufer_get_default_size (vm);
+  const uword buffer_size = vlib_buffer_get_default_data_size (vm);
   u16 thread_index = vm->thread_index;
 
   /** Make sure we have some RX buffers. */
@@ -490,7 +490,7 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
   u8 *name;
   int flags = IFF_TUN | IFF_NO_PI;
   int is_enabled = 0, is_ether = 0, have_normal_interface = 0;
-  const uword buffer_size = vlib_bufer_get_default_size (vm);
+  const uword buffer_size = vlib_buffer_get_default_data_size (vm);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

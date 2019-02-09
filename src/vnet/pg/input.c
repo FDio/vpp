@@ -1199,7 +1199,7 @@ pg_stream_fill_replay (pg_main_t * pg, pg_stream_t * s, u32 n_alloc)
   u32 *buffers;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
-  u32 buf_sz = vlib_bufer_get_default_size (vm);
+  u32 buf_sz = vlib_buffer_get_default_data_size (vm);
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si;
 

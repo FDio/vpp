@@ -258,6 +258,7 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 n_left_to_next, *to_next;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_trace = vlib_get_trace_count (vm, node);
+  u32 buffer_data_size = vlib_buffer_get_default_data_size (vm);
   u32 map_hint = 0;
   vhost_cpu_t *cpu = &vum->cpus[vm->thread_index];
   u16 copy_len = 0;
@@ -500,8 +501,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	    }
 
 	  /* Get more output if necessary. Or end of packet. */
-	  if (PREDICT_FALSE
-	      (b_current->current_length == vlib_bufer_get_default_size (vm)))
+	  if (PREDICT_FALSE (b_current->current_length == buffer_data_size))
 	    {
 	      if (PREDICT_FALSE (cpu->rx_buffers_len == 0))
 		{
@@ -534,8 +534,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  vhost_copy_t *cpy = &cpu->copy[copy_len];
 	  copy_len++;
 	  u32 desc_data_l = desc_table[desc_current].len - desc_data_offset;
-	  cpy->len =
-	    vlib_bufer_get_default_size (vm) - b_current->current_length;
+	  cpy->len = buffer_data_size - b_current->current_length;
 	  cpy->len = (cpy->len > desc_data_l) ? desc_data_l : cpy->len;
 	  cpy->dst = (uword) (vlib_buffer_get_current (b_current) +
 			      b_current->current_length);

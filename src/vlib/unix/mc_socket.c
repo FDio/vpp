@@ -165,7 +165,7 @@ recvmsg_helper (mc_socket_main_t * msm,
   vlib_main_t *vm = msm->mc_main.vlib_main;
   vlib_buffer_t *b;
   uword n_left, n_alloc, n_mtu, i, i_rx;
-  const uword buffer_size = vlib_bufer_get_default_size (vm);
+  const uword buffer_size = vlib_buffer_get_default_data_size (vm);
   word n_bytes_left;
 
   /* Make sure we have at least a MTU worth of buffers. */
@@ -1012,9 +1012,9 @@ mc_socket_main_init (mc_socket_main_t * msm, char **intfc_probe_list,
 
   msm->rx_mtu_n_bytes = mtu;
   msm->rx_mtu_n_buffers =
-    msm->rx_mtu_n_bytes / vlib_bufer_get_default_size (vm);
+    msm->rx_mtu_n_bytes / vlib_buffer_get_default_data_size (vm);
   msm->rx_mtu_n_buffers +=
-    (msm->rx_mtu_n_bytes % vlib_bufer_get_default_size (vm)) != 0;
+    (msm->rx_mtu_n_bytes % vlib_buffer_get_default_data_size (vm)) != 0;
 
   error = socket_setup (msm);
   if (error)

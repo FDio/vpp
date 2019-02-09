@@ -192,9 +192,10 @@ vlib_validate_buffer_helper (vlib_main_t * vm,
   if ((signed) b->current_data < (signed) -VLIB_BUFFER_PRE_DATA_SIZE)
     return format (0, "current data %d before pre-data", b->current_data);
 
-  if (b->current_data + b->current_length > vlib_bufer_get_default_size (vm))
+  if (b->current_data + b->current_length >
+      vlib_buffer_get_default_data_size (vm))
     return format (0, "%d-%d beyond end of buffer %d", b->current_data,
-		   b->current_length, vlib_bufer_get_default_size (vm));
+		   b->current_length, vlib_buffer_get_default_data_size (vm));
 
   if (follow_buffer_next && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
     {
@@ -407,7 +408,7 @@ vlib_buffer_add_data (vlib_main_t * vm, u32 * buffer_index, void *data,
 
   d = data;
   n_left = n_data_bytes;
-  n_buffer_bytes = vlib_bufer_get_default_size (vm);
+  n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
 
   b = vlib_get_buffer (vm, bi);
   b->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -455,7 +456,7 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
 					  u16 data_len)
 {
   vlib_buffer_t *l = *last;
-  u32 n_buffer_bytes = vlib_bufer_get_default_size (vm);
+  u32 n_buffer_bytes = vlib_buffer_get_default_data_size (vm);
   u16 copied = 0;
   ASSERT (n_buffer_bytes >= l->current_length + l->current_data);
   while (data_len)
@@ -655,7 +656,8 @@ vlib_buffer_main_init_numa_node (struct vlib_main_t *vm, u32 numa_node)
   u32 buffers_per_numa;
   u32 buffer_size = CLIB_CACHE_LINE_ROUND (bm->ext_hdr_size +
 					   sizeof (vlib_buffer_t) +
-					   vlib_bufer_get_default_size (vm));
+					   vlib_buffer_get_default_data_size
+					   (vm));
   u8 *name;
 
   pagesize = clib_mem_get_default_hugepage_size ();
@@ -690,7 +692,7 @@ retry:
   name = format (name, "default-numa-%d%c", numa_node, 0);
 
   return vlib_buffer_pool_create (vm, numa_node, (char *) name,
-				  vlib_bufer_get_default_size (vm),
+				  vlib_buffer_get_default_data_size (vm),
 				  physmem_map_index);
 }
 

@@ -437,7 +437,7 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   {
     int n;
 
-    s->buffer_bytes = vlib_bufer_get_default_size (vm);
+    s->buffer_bytes = vlib_buffer_get_default_data_size (vm);
     n = s->max_packet_bytes / s->buffer_bytes;
     n += (s->max_packet_bytes % s->buffer_bytes) != 0;
 

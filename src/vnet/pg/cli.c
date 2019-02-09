@@ -341,7 +341,7 @@ new_stream (vlib_main_t * vm,
   s.sw_if_index[VLIB_RX] = s.sw_if_index[VLIB_TX] = ~0;
   s.node_index = ~0;
   s.max_packet_bytes = s.min_packet_bytes = 64;
-  s.buffer_bytes = vlib_bufer_get_default_size (vm);
+  s.buffer_bytes = vlib_buffer_get_default_data_size (vm);
   s.if_id = 0;
   pcap_file_name = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
