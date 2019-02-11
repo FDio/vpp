@@ -112,8 +112,7 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 
 	  next0 = IPSEC_INPUT_NEXT_DROP;
 
-	  u64 key = (u64) ip0->src_address.as_u32 << 32 |
-	    (u64) clib_net_to_host_u32 (esp0->spi);
+	  u64 key = (u64) ip0->src_address.as_u32 << 32 | (u64) esp0->spi;
 
 	  p = hash_get (im->ipsec_if_pool_index_by_key, key);
 
