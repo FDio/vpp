@@ -441,6 +441,12 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
   if (PREDICT_FALSE (dm->pcap[VLIB_RX].pcap_enable))
     {
       u32 bi0;
+
+      if (single_next)
+	vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs,
+					     ptd->buffers, n_rx_packets,
+					     sizeof (struct rte_mbuf));
+
       n_left = n_rx_packets;
       buffers = ptd->buffers;
       while (n_left)
