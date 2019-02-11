@@ -280,7 +280,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
   ipsec_sa_flags_t flags;
   int rv;
 
-  u64 key = (u64) args->remote_ip.ip4.as_u32 << 32 | (u64) args->remote_spi;
+  u64 key = ((u64) args->remote_ip.ip4.as_u32 << 32 |
+	     (u64) clib_host_to_net_u32 (args->remote_spi));
   p = hash_get (im->ipsec_if_pool_index_by_key, key);
 
   if (args->is_add)
@@ -436,9 +437,11 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
   sa = pool_elt_at_index (im->sad, p[0]);
 
   if (sa->is_tunnel)
-    key = (u64) sa->tunnel_dst_addr.ip4.as_u32 << 32 | (u64) sa->spi;
+    key = ((u64) sa->tunnel_dst_addr.ip4.as_u32 << 32 |
+	   (u64) clib_host_to_net_u32 (sa->spi));
   else
-    key = (u64) args->remote_ip.as_u32 << 32 | (u64) sa->spi;
+    key = ((u64) args->remote_ip.as_u32 << 32 |
+	   (u64) clib_host_to_net_u32 (sa->spi));
 
   p = hash_get (im->ipsec_if_pool_index_by_key, key);
 
@@ -563,15 +566,16 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
       old_sa = pool_elt_at_index (im->sad, old_sa_index);
 
       /* unset old inbound hash entry. packets should stop arriving */
-      key =
-	(u64) old_sa->tunnel_src_addr.ip4.as_u32 << 32 | (u64) old_sa->spi;
+      key = ((u64) old_sa->tunnel_src_addr.ip4.as_u32 << 32 |
+	     (u64) clib_host_to_net_u32 (old_sa->spi));
       p = hash_get (im->ipsec_if_pool_index_by_key, key);
       if (p)
 	hash_unset (im->ipsec_if_pool_index_by_key, key);
 
       /* set new inbound SA, then set new hash entry */
       t->input_sa_index = sa_index;
-      key = (u64) sa->tunnel_src_addr.ip4.as_u32 << 32 | (u64) sa->spi;
+      key = ((u64) sa->tunnel_src_addr.ip4.as_u32 << 32 |
+	     (u64) clib_host_to_net_u32 (sa->spi));
       hash_set (im->ipsec_if_pool_index_by_key, key, hi->dev_instance);
     }
   else
