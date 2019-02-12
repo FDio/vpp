@@ -137,7 +137,6 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 		    {
 		      vlib_increment_combined_counter
 			(drop_counter, thread_index, sw_if_index0, 1, len0);
-		      b0->error = node->errors[IPSEC_IF_INPUT_ERROR_DISABLED];
 		      n_disabled++;
 		      goto trace;
 		    }
@@ -163,7 +162,7 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 		      if (last_t)
 			{
 			  vlib_increment_combined_counter
-			    (rx_counter, thread_index, sw_if_index0,
+			    (rx_counter, thread_index, last_sw_if_index,
 			     n_packets, n_bytes);
 			}
 
@@ -183,7 +182,6 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      b0->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
 	      n_no_tunnel++;
 	    }
 
@@ -218,11 +216,10 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
   vlib_node_increment_counter (vm, ipsec_if_input_node.index,
 			       IPSEC_IF_INPUT_ERROR_RX,
 			       from_frame->n_vectors - n_disabled);
-
   vlib_node_increment_counter (vm, ipsec_if_input_node.index,
 			       IPSEC_IF_INPUT_ERROR_DISABLED, n_disabled);
   vlib_node_increment_counter (vm, ipsec_if_input_node.index,
-			       IPSEC_IF_INPUT_ERROR_DISABLED, n_no_tunnel);
+			       IPSEC_IF_INPUT_ERROR_NO_TUNNEL, n_no_tunnel);
 
   return from_frame->n_vectors;
 }
