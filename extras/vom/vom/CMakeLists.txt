@@ -146,6 +146,8 @@ list(APPEND VOM_SOURCES
   ip_unnumbered.cpp
   l2_binding_cmds.cpp
   l2_binding.cpp
+  l2_vtr.cpp
+  l2_vtr_cmds.cpp
   l2_xconnect_cmds.cpp
   l2_xconnect.cpp
   l3_binding_cmds.cpp
@@ -252,6 +254,7 @@ list(APPEND VOM_HEADERS
   ip_punt_redirect.hpp
   ip_unnumbered.hpp
   l2_binding.hpp
+  l2_vtr.hpp
   l2_xconnect.hpp
   l3_binding.hpp
   lldp_binding.hpp

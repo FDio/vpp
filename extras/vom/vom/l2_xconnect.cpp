@@ -14,6 +14,7 @@
  */
 
 #include "vom/l2_xconnect.hpp"
+#include "vom/l2_vtr_cmds.hpp"
 #include "vom/l2_xconnect_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -33,6 +34,8 @@ l2_xconnect::l2_xconnect(const interface& east_itf, const interface& west_itf)
   , m_west_itf(west_itf.singular())
   , m_xconnect_east(0)
   , m_xconnect_west(0)
+  , m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET)
+  , m_vtr_op_tag(0)
 {
 }
 
@@ -41,6 +44,8 @@ l2_xconnect::l2_xconnect(const l2_xconnect& o)
   , m_west_itf(o.m_west_itf)
   , m_xconnect_east(o.m_xconnect_east)
   , m_xconnect_west(o.m_xconnect_west)
+  , m_vtr_op(o.m_vtr_op)
+  , m_vtr_op_tag(o.m_vtr_op_tag)
 {
 }
 
@@ -90,6 +95,11 @@ l2_xconnect::replay()
     HW::enqueue(new l2_xconnect_cmds::bind_cmd(
       m_xconnect_west, m_west_itf->handle(), m_east_itf->handle()));
   }
+
+  if (m_vtr_op && handle_t::INVALID != m_east_itf->handle()) {
+    HW::enqueue(
+      new set_vtr_op_cmd(m_vtr_op, m_east_itf->handle(), m_vtr_op_tag));
+  }
 }
 
 l2_xconnect::~l2_xconnect()
@@ -112,6 +122,15 @@ l2_xconnect::to_string() const
 }
 
 void
+l2_xconnect::set(const l2_vtr_op_t& op, uint16_t tag)
+{
+  assert(rc_t::UNSET == m_vtr_op.rc());
+  m_vtr_op.set(rc_t::NOOP);
+  m_vtr_op.update(op);
+  m_vtr_op_tag = tag;
+}
+
+void
 l2_xconnect::update(const l2_xconnect& desired)
 {
   /*
@@ -122,6 +141,14 @@ l2_xconnect::update(const l2_xconnect& desired)
       m_xconnect_east, m_east_itf->handle(), m_west_itf->handle()));
     HW::enqueue(new l2_xconnect_cmds::bind_cmd(
       m_xconnect_west, m_west_itf->handle(), m_east_itf->handle()));
+  }
+
+  /*
+   * set the VTR operation if request
+   */
+  if (m_vtr_op.update(desired.m_vtr_op)) {
+    HW::enqueue(
+      new set_vtr_op_cmd(m_vtr_op, m_east_itf->handle(), m_vtr_op_tag));
   }
 }
 
