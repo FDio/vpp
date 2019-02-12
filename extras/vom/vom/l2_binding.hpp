@@ -20,6 +20,7 @@
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/interface.hpp"
+#include "vom/l2_vtr.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
 #include "vom/singular_db.hpp"
@@ -36,25 +37,6 @@ public:
    * Key type for an L2 binding in the singular DB
    */
   typedef interface::key_t key_t;
-
-  struct l2_vtr_op_t : public enum_base<l2_vtr_op_t>
-  {
-    l2_vtr_op_t(const l2_vtr_op_t& l) = default;
-    ~l2_vtr_op_t() = default;
-
-    const static l2_vtr_op_t L2_VTR_DISABLED;
-    const static l2_vtr_op_t L2_VTR_PUSH_1;
-    const static l2_vtr_op_t L2_VTR_PUSH_2;
-    const static l2_vtr_op_t L2_VTR_POP_1;
-    const static l2_vtr_op_t L2_VTR_POP_2;
-    const static l2_vtr_op_t L2_VTR_TRANSLATE_1_1;
-    const static l2_vtr_op_t L2_VTR_TRANSLATE_1_2;
-    const static l2_vtr_op_t L2_VTR_TRANSLATE_2_1;
-    const static l2_vtr_op_t L2_VTR_TRANSLATE_2_2;
-
-  private:
-    l2_vtr_op_t(int v, const std::string s);
-  };
 
   struct l2_port_type_t : public enum_base<l2_port_type_t>
   {
