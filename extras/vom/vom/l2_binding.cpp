@@ -15,6 +15,7 @@
 
 #include "vom/l2_binding.hpp"
 #include "vom/l2_binding_cmds.hpp"
+#include "vom/l2_vtr_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
 namespace VOM {
@@ -24,36 +25,6 @@ namespace VOM {
 singular_db<l2_binding::key_t, l2_binding> l2_binding::m_db;
 
 l2_binding::event_handler l2_binding::m_evh;
-
-/*
- * Make sure these are in sync with the smae enum in VPP
- */
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_DISABLED(
-  0,
-  "disabled");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_PUSH_1(1,
-                                                                     "push-1");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_PUSH_2(2,
-                                                                     "push-2");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_POP_1(3, "pop-1");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_POP_2(4, "pop-2");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_1_1(
-  5,
-  "translate-1-1");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_1_2(
-  6,
-  "translate-1-2");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_2_1(
-  7,
-  "translate-2-1");
-const l2_binding::l2_vtr_op_t l2_binding::l2_vtr_op_t::L2_VTR_TRANSLATE_2_2(
-  5,
-  "translate-2-2");
-
-l2_binding::l2_vtr_op_t::l2_vtr_op_t(int v, const std::string s)
-  : enum_base<l2_binding::l2_vtr_op_t>(v, s)
-{
-}
 
 const l2_binding::l2_port_type_t
   l2_binding::l2_port_type_t::L2_PORT_TYPE_NORMAL(0, "normal");
@@ -65,8 +36,7 @@ const l2_binding::l2_port_type_t
 
 l2_binding::l2_port_type_t::l2_port_type_t(int v, const std::string s)
   : enum_base<l2_binding::l2_port_type_t>(v, s)
-{
-}
+{}
 
 /**
  * Construct a new object matching the desried state
@@ -95,8 +65,7 @@ l2_binding::l2_binding(const interface& itf,
   , m_binding(0)
   , m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET)
   , m_vtr_op_tag(0)
-{
-}
+{}
 
 l2_binding::l2_binding(const l2_binding& o)
   : m_itf(o.m_itf)
@@ -105,8 +74,7 @@ l2_binding::l2_binding(const l2_binding& o)
   , m_binding(0)
   , m_vtr_op(o.m_vtr_op)
   , m_vtr_op_tag(o.m_vtr_op_tag)
-{
-}
+{}
 
 const l2_binding::key_t&
 l2_binding::key() const
@@ -131,8 +99,8 @@ void
 l2_binding::sweep()
 {
   if (m_binding && handle_t::INVALID != m_itf->handle()) {
-    HW::enqueue(new l2_binding_cmds::unbind_cmd(m_binding, m_itf->handle(),
-                                                m_bd->id(), m_port_type));
+    HW::enqueue(new l2_binding_cmds::unbind_cmd(
+      m_binding, m_itf->handle(), m_bd->id(), m_port_type));
   }
 
   // no need to undo the VTR operation.
@@ -143,13 +111,12 @@ void
 l2_binding::replay()
 {
   if (m_binding && handle_t::INVALID != m_itf->handle()) {
-    HW::enqueue(new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(),
-                                              m_bd->id(), m_port_type));
+    HW::enqueue(new l2_binding_cmds::bind_cmd(
+      m_binding, m_itf->handle(), m_bd->id(), m_port_type));
   }
 
   if (m_vtr_op && handle_t::INVALID != m_itf->handle()) {
-    HW::enqueue(new l2_binding_cmds::set_vtr_op_cmd(m_vtr_op, m_itf->handle(),
-                                                    m_vtr_op_tag));
+    HW::enqueue(new set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
   }
 }
 
@@ -187,25 +154,24 @@ l2_binding::update(const l2_binding& desired)
    * the desired state is always that the interface should be created
    */
   if (rc_t::OK != m_binding.rc()) {
-    HW::enqueue(new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(),
-                                              m_bd->id(), m_port_type));
+    HW::enqueue(new l2_binding_cmds::bind_cmd(
+      m_binding, m_itf->handle(), m_bd->id(), m_port_type));
   } else if (!(*m_bd == *desired.m_bd)) {
     /*
      * re-binding to a different BD. do unbind, bind.
      */
-    HW::enqueue(new l2_binding_cmds::unbind_cmd(m_binding, m_itf->handle(),
-                                                m_bd->id(), m_port_type));
+    HW::enqueue(new l2_binding_cmds::unbind_cmd(
+      m_binding, m_itf->handle(), m_bd->id(), m_port_type));
     m_bd = desired.m_bd;
-    HW::enqueue(new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(),
-                                              m_bd->id(), m_port_type));
+    HW::enqueue(new l2_binding_cmds::bind_cmd(
+      m_binding, m_itf->handle(), m_bd->id(), m_port_type));
   }
 
   /*
    * set the VTR operation if request
    */
   if (m_vtr_op.update(desired.m_vtr_op)) {
-    HW::enqueue(new l2_binding_cmds::set_vtr_op_cmd(m_vtr_op, m_itf->handle(),
-                                                    m_vtr_op_tag));
+    HW::enqueue(new set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
   }
 }
 
