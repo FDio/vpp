@@ -122,10 +122,12 @@ ipsec_if_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      vlib_increment_combined_counter (vim->combined_sw_if_counters +
-					       VNET_INTERFACE_COUNTER_TX,
-					       thread_index, sw_if_index0,
-					       n_packets, n_bytes);
+	      if (n_packets)
+		vlib_increment_combined_counter (vim->combined_sw_if_counters
+						 + VNET_INTERFACE_COUNTER_TX,
+						 thread_index,
+						 last_sw_if_index, n_packets,
+						 n_bytes);
 	      last_sw_if_index = sw_if_index0;
 	      n_packets = 1;
 	      n_bytes = len0;
