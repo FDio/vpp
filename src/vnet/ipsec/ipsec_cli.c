@@ -118,14 +118,14 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 			 unformat_ipsec_integ_alg, &integ_alg))
 	;
       else if (unformat (line_input, "tunnel-src %U",
-			 unformat_ip46_address, &tun_src))
+			 unformat_ip46_address, &tun_src, IP46_TYPE_ANY))
 	{
 	  flags |= IPSEC_SA_FLAG_IS_TUNNEL;
 	  if (!ip46_address_is_ip4 (&tun_src))
 	    flags |= IPSEC_SA_FLAG_IS_TUNNEL_V6;
 	}
       else if (unformat (line_input, "tunnel-dst %U",
-			 unformat_ip46_address, &tun_dst))
+			 unformat_ip46_address, &tun_dst, IP46_TYPE_ANY))
 	;
       else if (unformat (line_input, "udp-encap"))
 	flags |= IPSEC_SA_FLAG_UDP_ENCAP;
@@ -615,6 +615,8 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   ipsec_add_del_tunnel_args_t a;
   int rv;
   u32 num_m_args = 0;
+  u8 ipv4_set = 0;
+  u8 ipv6_set = 0;
   clib_error_t *error = NULL;
 
   clib_memset (&a, 0, sizeof (a));
@@ -627,12 +629,21 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
-	  (line_input, "local-ip %U", unformat_ip4_address, &a.local_ip))
-	num_m_args++;
+	  (line_input, "local-ip %U", unformat_ip46_address, &a.local_ip,
+	   IP46_TYPE_ANY))
+	{
+	  ip46_address_is_ip4 (&a.local_ip) ? (ipv4_set = 1) : (ipv6_set = 1);
+	  num_m_args++;
+	}
       else
 	if (unformat
-	    (line_input, "remote-ip %U", unformat_ip4_address, &a.remote_ip))
-	num_m_args++;
+	    (line_input, "remote-ip %U", unformat_ip46_address, &a.remote_ip,
+	     IP46_TYPE_ANY))
+	{
+	  ip46_address_is_ip4 (&a.remote_ip) ? (ipv4_set = 1) : (ipv6_set =
+								 1);
+	  num_m_args++;
+	}
       else if (unformat (line_input, "local-spi %u", &a.local_spi))
 	num_m_args++;
       else if (unformat (line_input, "remote-spi %u", &a.remote_spi))
@@ -662,6 +673,12 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
       error = clib_error_return (0, "mandatory argument(s) missing");
       goto done;
     }
+
+  if (ipv6_set)
+    return clib_error_return (0, "currently only IPv4 supported");
+
+  if (ipv4_set && ipv6_set)
+    return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
 
   rv = ipsec_add_del_tunnel_if (&a);
 
