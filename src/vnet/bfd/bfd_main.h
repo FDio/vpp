@@ -345,7 +345,7 @@ typedef struct
   u8 data[400];
 } bfd_input_trace_t;
 
-enum
+typedef enum
 {
   BFD_EVENT_RESCHEDULE = 1,
   BFD_EVENT_NEW_SESSION,
