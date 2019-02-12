@@ -214,7 +214,7 @@ ipsec_proto_decode (vl_api_ipsec_proto_t in, ipsec_protocol_t * out)
       *out = IPSEC_PROTOCOL_AH;
       return (0);
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_UNIMPLEMENTED_PROTO);
 }
 
 static vl_api_ipsec_proto_t
@@ -227,7 +227,7 @@ ipsec_proto_encode (ipsec_protocol_t p)
     case IPSEC_PROTOCOL_AH:
       return clib_host_to_net_u32 (IPSEC_API_PROTO_AH);
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_UNIMPLEMENTED_PROTO);
 }
 
 static int
@@ -244,7 +244,7 @@ ipsec_crypto_algo_decode (vl_api_ipsec_crypto_alg_t in,
       foreach_ipsec_crypto_alg
 #undef _
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_UNIMPLEMENTED_CRYPTO_ALG);
 }
 
 static vl_api_ipsec_crypto_alg_t
@@ -260,7 +260,7 @@ ipsec_crypto_algo_encode (ipsec_crypto_alg_t c)
       break;
     }
   ASSERT (0);
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_UNIMPLEMENTED_CRYPTO_ALG);
 }
 
 
@@ -277,7 +277,7 @@ ipsec_integ_algo_decode (vl_api_ipsec_integ_alg_t in, ipsec_integ_alg_t * out)
       foreach_ipsec_integ_alg
 #undef _
     }
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_UNIMPLEMENTED_INTEG_ALG);
 }
 
 static vl_api_ipsec_integ_alg_t
@@ -293,7 +293,7 @@ ipsec_integ_algo_encode (ipsec_integ_alg_t i)
       break;
     }
   ASSERT (0);
-  return (VNET_API_ERROR_UNIMPLEMENTED);
+  return (VNET_API_ERROR_UNIMPLEMENTED_INTEG_ALG);
 }
 
 static void
