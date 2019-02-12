@@ -131,7 +131,7 @@ typedef struct
   u8 data[400];
 } lldp_input_trace_t;
 
-enum
+typedef enum
 {
   LLDP_EVENT_RESCHEDULE = 1,
 } lldp_process_event_t;

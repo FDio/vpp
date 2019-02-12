@@ -900,7 +900,9 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip4_sw_interface_add_del);
 
 /* Global IP4 main. */
+#ifndef CLIB_MARCH_VARIANT
 ip4_main_t ip4_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 ip4_lookup_init (vlib_main_t * vm)

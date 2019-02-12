@@ -2074,7 +2074,9 @@ VLIB_REGISTER_NODE (ip6_mcast_midchain_node) =
 /*
  * Hop-by-Hop handling
  */
+#ifndef CLIB_MARCH_VARIANT
 ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_ip6_hop_by_hop_error \
 _(PROCESSED, "pkts with ip6 hop-by-hop options") \
@@ -2102,7 +2104,7 @@ typedef struct
   u8 option_data[256];
 } ip6_hop_by_hop_trace_t;
 
-vlib_node_registration_t ip6_hop_by_hop_node;
+extern vlib_node_registration_t ip6_hop_by_hop_node;
 
 static char *ip6_hop_by_hop_error_strings[] = {
 #define _(sym,string) string,

@@ -255,7 +255,7 @@ extern memif_main_t memif_main;
 extern vnet_device_class_t memif_device_class;
 extern vlib_node_registration_t memif_input_node;
 
-enum
+typedef enum
 {
   MEMIF_PROCESS_EVENT_START = 1,
   MEMIF_PROCESS_EVENT_STOP = 2,

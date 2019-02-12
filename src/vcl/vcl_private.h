@@ -115,7 +115,7 @@ typedef struct vcl_session_msg
   u32 flags;
 } vcl_session_msg_t;
 
-enum
+typedef enum
 {
   VCL_SESS_ATTR_SERVER,
   VCL_SESS_ATTR_CUT_THRU,
