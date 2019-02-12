@@ -168,7 +168,7 @@ typedef struct
 
 #define AVF_RX_VECTOR_SZ VLIB_FRAME_SIZE
 
-enum
+typedef enum
 {
   AVF_PROCESS_EVENT_START = 1,
   AVF_PROCESS_EVENT_STOP = 2,

@@ -23,7 +23,9 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
+#ifndef CLIB_MARCH_VARIANT
 ipsec_proto_main_t ipsec_proto_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \

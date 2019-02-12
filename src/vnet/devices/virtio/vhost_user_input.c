@@ -65,7 +65,7 @@
  */
 #define VHOST_USER_RX_COPY_THRESHOLD 64
 
-vlib_node_registration_t vhost_user_input_node;
+extern vlib_node_registration_t vhost_user_input_node;
 
 #define foreach_vhost_user_input_func_error      \
   _(NO_ERROR, "no error")  \
