@@ -70,7 +70,7 @@ typedef enum
 #undef _
 } bond_load_balance_t;
 
-enum
+typedef enum
 {
   BOND_SEND_GARP_NA = 1,
 } bond_send_garp_na_process_event_t;
