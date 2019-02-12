@@ -177,7 +177,7 @@ __VA_ARGS__ vlib_cli_command_t x
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
 #define VLIB_CLI_COMMAND(x,...)                                         \
-static __clib_unused vlib_cli_command_t __clib_unused_##x
+static __clib_unused __clib_discard vlib_cli_command_t __clib_unused_##x
 #endif
 
 #define VLIB_CLI_PARSE_RULE(x) \

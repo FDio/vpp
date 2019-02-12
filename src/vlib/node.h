@@ -187,7 +187,9 @@ static void __vlib_rm_node_registration_##x (void)                      \
 __VA_ARGS__ vlib_node_registration_t x
 #else
 #define VLIB_REGISTER_NODE(x,...)                                       \
-static __clib_unused vlib_node_registration_t __clib_unused_##x
+extern vlib_node_registration_t x;                                      \
+static __clib_unused __clib_discard                                     \
+vlib_node_registration_t __clib_unused_##x
 #endif
 
 #ifndef CLIB_MARCH_VARIANT

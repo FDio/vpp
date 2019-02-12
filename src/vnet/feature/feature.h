@@ -182,16 +182,19 @@ __VA_ARGS__ vnet_feature_constraint_registration_t vnet_feature_constraint_##x
 
 #else
 #define VNET_FEATURE_ARC_INIT(x,...)				\
-extern vnet_feature_arc_registration_t __clib_unused vnet_feat_arc_##x; \
-static vnet_feature_arc_registration_t __clib_unused __clib_unused_vnet_feat_arc_##x
+extern vnet_feature_arc_registration_t vnet_feat_arc_##x;       \
+static __clib_unused __clib_discard                             \
+vnet_feature_arc_registration_t __clib_unused_vnet_feat_arc_##x
 #define VNET_FEATURE_INIT(x,...)				\
-extern vnet_feature_registration_t __clib_unused vnet_feat_##x; \
-static vnet_feature_registration_t __clib_unused __clib_unused_vnet_feat_##x
+extern vnet_feature_registration_t vnet_feat_##x;               \
+static __clib_unused __clib_discard                             \
+vnet_feature_registration_t __clib_unused_vnet_feat_##x
 
 #define VNET_FEATURE_ARC_ORDER(x,...)                           \
 extern vnet_feature_constraint_registration_t                   \
-__clib_unused vnet_feature_constraint_##x;                      \
-static vnet_feature_constraint_registration_t __clib_unused 	\
+vnet_feature_constraint_##x;                                    \
+static __clib_unused __clib_discard                             \
+vnet_feature_constraint_registration_t                          \
 __clib_unused_vnet_feature_constraint_##x
 
 

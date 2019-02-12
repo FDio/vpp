@@ -38,16 +38,17 @@ name of the node function **MUST** match the name of the graph node.
     			    0 /* is_trace */ );
     }   
 
-We need to generate *precisely one copy* of the
-vlib_node_registration_t, error strings, and packet trace decode function.
-
-Simply bracket these items with "#ifndef CLIB_MARCH_VARIANT...#endif":
+Note that multiarch variants will use weak symbol declarations: in case of
+multiple declaration of global symbols, the non-multiarch variant will take
+precedence. This should be the appropriate behaviour in most cases, but if you
+still need to have specific code compiled only in the non-multiarch variant,
+simply bracket these items with "#ifndef CLIB_MARCH_VARIANT...#endif":
 
 ::
 
     #ifndef CLIB_MARCH_VARIANT
     static u8 *
-    format_sdp_trace (u8 * s, va_list * args)
+    my_function (u8 * s, va_list * args)
     {
        <snip>
     }
@@ -56,14 +57,15 @@ Simply bracket these items with "#ifndef CLIB_MARCH_VARIANT...#endif":
     ...
 
     #ifndef CLIB_MARCH_VARIANT
-    static char *sdp_error_strings[] = {
-    #define _(sym,string) string,
-      foreach_sdp_error
-    #undef _
+    static char *my_array[] = {
+       <snip>
     };
     #endif
 
-    ...
+Declare the node as usual *except* for the node function (note how the node
+symbol matches the node function symbol):
+
+::
 
     #ifndef CLIB_MARCH_VARIANT
     VLIB_REGISTER_NODE (ip4_sdp_node) =

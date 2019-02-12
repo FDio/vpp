@@ -97,6 +97,11 @@ macro(vpp_library_set_multiarch_sources lib)
     separate_arguments(VARIANT_FLAGS)
     target_compile_options(${l} PUBLIC ${VARIANT_FLAGS})
     target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${l}>)
+    add_custom_command(TARGET ${lib} PRE_LINK
+      COMMAND sh -c "echo -n '$<TARGET_OBJECTS:${l}>' | xargs -n1 -d';' ${CMAKE_OBJCOPY} --preserve-dates --weaken"
+      VERBATIM
+      COMMENT "Default ${l} syms to weak"
+    )
   endforeach()
 endmacro()
 

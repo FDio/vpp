@@ -153,7 +153,7 @@ static void __vnet_interface_function_deinit_##tag##_##f (void)         \
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
 #define _VNET_INTERFACE_FUNCTION_DECL_PRIO(f,tag,p)                    \
-static __clib_unused void * __clib_unused_##f = f;
+static __clib_unused __clib_discard void * __clib_unused_##f = f;
 #endif
 
 #define _VNET_INTERFACE_FUNCTION_DECL(f,tag)                            \
@@ -281,7 +281,7 @@ __VA_ARGS__ vnet_device_class_t x
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
 #define VNET_DEVICE_CLASS(x,...)                                        \
-static __clib_unused vnet_device_class_t __clib_unused_##x
+static __clib_unused __clib_discard vnet_device_class_t __clib_unused_##x
 #endif
 
 #define VNET_DEVICE_CLASS_TX_FN(devclass)				\

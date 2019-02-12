@@ -157,7 +157,8 @@ static void __vlib_rm_##tag##_function_##x (void)               \
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
 #define VLIB_DECLARE_INIT_FUNCTION(x, tag)                      \
-static __clib_unused void * __clib_unused_##tag##_##x = x;
+static __clib_unused __clib_discard                             \
+void * __clib_unused_##tag##_##x = x;
 #endif
 
 #define VLIB_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,init)
@@ -203,7 +204,8 @@ static void __vlib_rm_config_function_##x (void)                \
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
 #define VLIB_CONFIG_FUNCTION(x,n,...)                           \
-  static __clib_unused vlib_config_function_runtime_t           \
+  static __clib_unused __clib_discard                           \
+  vlib_config_function_runtime_t                                \
     VLIB_CONFIG_FUNCTION_SYMBOL (__clib_unused_##x)             \
   = {                                                           \
     .name = n,                                                  \
@@ -247,7 +249,8 @@ static void __vlib_rm_config_function_##x (void)                \
 /* create unused pointer to silence compiler warnings and get whole
    function optimized out */
 #define VLIB_EARLY_CONFIG_FUNCTION(x,n,...)                     \
-  static __clib_unused vlib_config_function_runtime_t           \
+  static __clib_unused __clib_discard                           \
+  vlib_config_function_runtime_t                                \
     VLIB_CONFIG_FUNCTION_SYMBOL (__clib_unused_##x)             \
   = {                                                           \
     .name = n,                                                  \
