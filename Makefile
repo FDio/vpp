@@ -204,6 +204,7 @@ help:
 	@echo " test-help           - show help on test framework"
 	@echo " run-vat             - run vpp-api-test tool"
 	@echo " pkg-deb             - build DEB packages"
+	@echo " vom-pkg-deb         - build vom DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
 	@echo " install-ext-deps    - install external development dependencies"
 	@echo " ctags               - (re)generate ctags database"
@@ -494,8 +495,16 @@ run-vat:
 pkg-deb:
 	$(call make,$(PLATFORM),vpp-package-deb)
 
+vom-pkg-deb:
+	$(call make,$(PLATFORM),vpp-package-deb)
+	$(call make,$(PLATFORM),vom-package-deb)
+
 pkg-deb-debug:
 	$(call make,$(PLATFORM)_debug,vpp-package-deb)
+
+vom-pkg-deb-debug:
+	$(call make,$(PLATFORM)_debug,vpp-package-deb)
+	$(call make,$(PLATFORM)_debug,vom-package-deb)
 
 pkg-rpm: dist
 	make -C extras/rpm
