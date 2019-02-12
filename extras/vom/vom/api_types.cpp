@@ -17,6 +17,34 @@
 
 namespace VOM {
 
+vapi_enum_ip_neighbor_flags
+to_api(const neighbour::flags_t& f)
+{
+  vapi_enum_ip_neighbor_flags out = IP_API_NEIGHBOR_FLAG_NONE;
+
+  if (f & neighbour::flags_t::STATIC)
+    out = static_cast<vapi_enum_ip_neighbor_flags>(out |
+                                                   IP_API_NEIGHBOR_FLAG_STATIC);
+  if (f & neighbour::flags_t::NO_FIB_ENTRY)
+    out = static_cast<vapi_enum_ip_neighbor_flags>(
+      out | IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY);
+
+  return (out);
+}
+
+const neighbour::flags_t
+from_api(vapi_enum_ip_neighbor_flags f)
+{
+  neighbour::flags_t out = neighbour::flags_t::NONE;
+
+  if (f & IP_API_NEIGHBOR_FLAG_STATIC)
+    out |= neighbour::flags_t::STATIC;
+  if (f & IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY)
+    out |= neighbour::flags_t::NO_FIB_ENTRY;
+
+  return out;
+}
+
 void
 to_api(const boost::asio::ip::address_v4& a, vapi_type_ip4_address& v)
 {

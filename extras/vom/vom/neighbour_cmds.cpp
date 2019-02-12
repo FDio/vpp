@@ -21,11 +21,13 @@ namespace neighbour_cmds {
 create_cmd::create_cmd(HW::item<bool>& item,
                        handle_t itf,
                        const mac_address_t& mac,
-                       const boost::asio::ip::address& ip_addr)
+                       const boost::asio::ip::address& ip_addr,
+                       const neighbour::flags_t& flags)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_mac(mac)
   , m_ip_addr(ip_addr)
+  , m_flags(flags)
 {
 }
 
@@ -33,7 +35,7 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_mac == other.m_mac) && (m_ip_addr == other.m_ip_addr) &&
-          (m_itf == other.m_itf));
+          (m_itf == other.m_itf) && (m_flags == other.m_flags));
 }
 
 rc_t
@@ -44,10 +46,10 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.neighbor.sw_if_index = m_itf.value();
-  payload.neighbor.flags = IP_API_NEIGHBOR_FLAG_STATIC;
 
   to_api(m_mac, payload.neighbor.mac_address);
   to_api(m_ip_addr, payload.neighbor.ip_address);
+  payload.neighbor.flags = to_api(m_flags);
 
   VAPI_CALL(req.execute());
 
@@ -68,11 +70,13 @@ create_cmd::to_string() const
 delete_cmd::delete_cmd(HW::item<bool>& item,
                        handle_t itf,
                        const mac_address_t& mac,
-                       const boost::asio::ip::address& ip_addr)
+                       const boost::asio::ip::address& ip_addr,
+                       const neighbour::flags_t& flags)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_mac(mac)
   , m_ip_addr(ip_addr)
+  , m_flags(flags)
 {
 }
 
@@ -91,10 +95,10 @@ delete_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
   payload.neighbor.sw_if_index = m_itf.value();
-  payload.neighbor.flags = IP_API_NEIGHBOR_FLAG_STATIC;
 
   to_api(m_mac, payload.neighbor.mac_address);
   to_api(m_ip_addr, payload.neighbor.ip_address);
+  payload.neighbor.flags = to_api(m_flags);
 
   VAPI_CALL(req.execute());
 

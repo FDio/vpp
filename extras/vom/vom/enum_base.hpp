@@ -52,6 +52,27 @@ public:
   }
 
   /**
+   * bitwise or assignemnt
+   */
+  enum_base& operator|=(const enum_base& e)
+  {
+    m_value += e.m_value;
+    m_desc += ":" + e.m_desc;
+
+    return *this;
+  }
+
+  /**
+   * bitwise or
+   */
+  enum_base operator|(const enum_base& e1) const
+  {
+    enum_base e = *this;
+    e |= e1;
+    return e;
+  }
+
+  /**
    * Comparison operator
    */
   bool operator!=(const enum_base& e) const { return (e.m_value != m_value); }
