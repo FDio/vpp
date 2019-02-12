@@ -272,7 +272,10 @@ ipsec_set_sa_key (u32 id, const ipsec_key_t * ck, const ipsec_key_t * ik)
     {
       err = ipsec_call_add_del_callbacks (im, sa, sa_index, 0);
       if (err)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
+	{
+	  clib_error_free (err);
+	  return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
     }
 
   return 0;
