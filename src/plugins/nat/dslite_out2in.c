@@ -94,9 +94,9 @@ done:
   return n;
 }
 
-static uword
-dslite_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_out2in_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   dslite_out2in_next_t next_index;
@@ -270,7 +270,6 @@ dslite_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_out2in_node) = {
-  .function = dslite_out2in_node_fn,
   .name = "dslite-out2in",
   .vector_size = sizeof (u32),
   .format_trace = format_dslite_trace,
@@ -286,8 +285,6 @@ VLIB_REGISTER_NODE (dslite_out2in_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (dslite_out2in_node, dslite_out2in_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

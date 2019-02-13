@@ -418,16 +418,15 @@ nat44_classify_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-nat44_classify_node_fn (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_classify_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   return nat44_classify_node_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_classify_node) = {
-  .function = nat44_classify_node_fn,
   .name = "nat44-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_classify_trace,
@@ -443,17 +442,15 @@ VLIB_REGISTER_NODE (nat44_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_classify_node, nat44_classify_node_fn);
-static uword
-nat44_ed_classify_node_fn (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_classify_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return nat44_classify_node_fn_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_ed_classify_node) = {
-  .function = nat44_ed_classify_node_fn,
   .name = "nat44-ed-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_classify_trace,
@@ -467,19 +464,15 @@ VLIB_REGISTER_NODE (nat44_ed_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_ed_classify_node,
-			      nat44_ed_classify_node_fn);
-
-static uword
-nat44_det_classify_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_det_classify_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   return nat44_classify_node_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_det_classify_node) = {
-  .function = nat44_det_classify_node_fn,
   .name = "nat44-det-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_classify_trace,
@@ -493,20 +486,15 @@ VLIB_REGISTER_NODE (nat44_det_classify_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_det_classify_node,
-			      nat44_det_classify_node_fn);
-
-static uword
-nat44_handoff_classify_node_fn (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_handoff_classify_node) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
 {
   return nat44_classify_node_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
-  .function = nat44_handoff_classify_node_fn,
   .name = "nat44-handoff-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_classify_trace,
@@ -519,8 +507,6 @@ VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_handoff_classify_node,
-                              nat44_handoff_classify_node_fn);
 /* *INDENT-ON* */
 
 /*

@@ -218,9 +218,9 @@ out:
   return next0;
 }
 
-static uword
-snat_det_out2in_node_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_det_out2in_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat_det_out2in_next_t next_index;
@@ -688,7 +688,6 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_det_out2in_node) = {
-  .function = snat_det_out2in_node_fn,
   .name = "nat44-det-out2in",
   .vector_size = sizeof (u32),
   .format_trace = format_nat_det_out2in_trace,
@@ -705,8 +704,6 @@ VLIB_REGISTER_NODE (snat_det_out2in_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (snat_det_out2in_node, snat_det_out2in_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

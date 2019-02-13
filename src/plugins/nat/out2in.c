@@ -688,9 +688,9 @@ nat_out2in_sm_unknown_proto (snat_main_t * sm,
   return 0;
 }
 
-static uword
-snat_out2in_node_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_out2in_next_t next_index;
@@ -1325,7 +1325,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_out2in_node) = {
-  .function = snat_out2in_node_fn,
   .name = "nat44-out2in",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_out2in_trace,
@@ -1348,11 +1347,9 @@ VLIB_REGISTER_NODE (snat_out2in_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_node, snat_out2in_node_fn);
-
-static uword
-nat44_out2in_reass_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_out2in_reass_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_out2in_next_t next_index;
@@ -1663,7 +1660,6 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_out2in_reass_node) = {
-  .function = nat44_out2in_reass_node_fn,
   .name = "nat44-out2in-reass",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_reass_trace,
@@ -1684,12 +1680,9 @@ VLIB_REGISTER_NODE (nat44_out2in_reass_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_out2in_reass_node,
-			      nat44_out2in_reass_node_fn);
-
-static uword
-snat_out2in_fast_node_fn (vlib_main_t * vm,
-			  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_out2in_next_t next_index;
@@ -1855,7 +1848,6 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_out2in_fast_node) = {
-  .function = snat_out2in_fast_node_fn,
   .name = "nat44-out2in-fast",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_out2in_fast_trace,
@@ -1877,9 +1869,6 @@ VLIB_REGISTER_NODE (snat_out2in_fast_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_fast_node,
-			      snat_out2in_fast_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON
