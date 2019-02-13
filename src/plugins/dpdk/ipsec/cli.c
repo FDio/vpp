@@ -18,6 +18,24 @@
 #include <dpdk/ipsec/ipsec.h>
 
 static u8 *
+format_crypto_resource (u8 * s, va_list * args)
+{
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+
+  u32 indent = va_arg (*args, u32);
+  u32 res_idx = va_arg (*args, u32);
+
+  crypto_resource_t *res = vec_elt_at_index (dcm->resource, res_idx);
+
+  s =
+    format (s, "%U numa %2u thr_id %3d qp %2u inflight %u\n",
+	    format_white_space, indent, res->numa, (i16) res->thread_idx,
+	    res->qp_id, res->inflights);
+
+  return s;
+}
+
+static u8 *
 format_crypto (u8 * s, va_list * args)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
@@ -67,10 +85,78 @@ format_crypto (u8 * s, va_list * args)
 	s = format (s, "%s%s", pre, dcm->auth_algs[i].name);
 	pre = ", ";
       }
-  s = format (s, "\n\n");
+  s = format (s, "\n");
+
+  struct rte_cryptodev_stats stats;
+  rte_cryptodev_stats_get (dev->id, &stats);
+
+  s =
+    format (s,
+	    "  enqueue %-10lu dequeue %-10lu enqueue_err %-10lu dequeue_err %-10lu \n",
+	    stats.enqueued_count, stats.dequeued_count,
+	    stats.enqueue_err_count, stats.dequeue_err_count);
+
+  u16 *res_idx;
+  s = format (s, "  free_resources %u :", vec_len (dev->free_resources));
+
+  u32 indent = format_get_indent (s);
+  s = format (s, "\n");
+
+  /* *INDENT-OFF* */
+  vec_foreach (res_idx, dev->free_resources)
+    s = format (s, "%U", format_crypto_resource, indent, res_idx[0]);
+  /* *INDENT-ON* */
+
+  s = format (s, "  used_resources %u :", vec_len (dev->used_resources));
+  indent = format_get_indent (s);
+
+  s = format (s, "\n");
+
+  /* *INDENT-OFF* */
+  vec_foreach (res_idx, dev->used_resources)
+    s = format (s, "%U", format_crypto_resource, indent, res_idx[0]);
+  /* *INDENT-ON* */
+
+  s = format (s, "\n");
 
   return s;
 }
+
+
+static clib_error_t *
+clear_crypto_stats_fn (vlib_main_t * vm, unformat_input_t * input,
+		       vlib_cli_command_t * cmd)
+{
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+  crypto_dev_t *dev;
+
+  /* *INDENT-OFF* */
+  vec_foreach (dev, dcm->dev)
+    rte_cryptodev_stats_reset (dev->id);
+  /* *INDENT-ON* */
+
+  return NULL;
+}
+
+/*?
+ * This command is used to clear the DPDK Crypto device statistics.
+ *
+ * @cliexpar
+ * Example of how to clear the DPDK Crypto device statistics:
+ * @cliexsart{clear dpdk crypto devices statistics}
+ * vpp# clear dpdk crypto devices statistics
+ * @cliexend
+ * Example of clearing the DPDK Crypto device statistic data:
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (clear_dpdk_crypto_stats, static) = {
+    .path = "clear dpdk crypto devices statistics",
+    .short_help = "clear dpdk crypto devices statistics",
+    .function = clear_crypto_stats_fn,
+};
+/* *INDENT-ON* */
+
 
 static clib_error_t *
 show_dpdk_crypto_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -538,7 +624,7 @@ show_dpdk_crypto_pools_fn (vlib_main_t * vm,
     struct rte_mempool **mp;
     vec_foreach (mp, data->session_drv)
       if (mp[0])
-	vlib_cli_output (vm, "%U\n", format_dpdk_mempool, mp[0]);
+        vlib_cli_output (vm, "%U\n", format_dpdk_mempool, mp[0]);
   }
   /* *INDENT-ON* */
 
