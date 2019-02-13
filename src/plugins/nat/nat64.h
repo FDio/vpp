@@ -89,8 +89,6 @@ typedef struct
   /** Pool of static BIB entries to be added/deleted in worker threads */
   nat64_static_bib_to_update_t *static_bibs;
 
-  u32 error_node_index;
-
   /** config parameters */
   u32 bib_buckets;
   u32 bib_memory_size;
@@ -111,6 +109,16 @@ typedef struct
   /* counters/gauges */
   vlib_simple_counter_main_t total_bibs;
   vlib_simple_counter_main_t total_sessions;
+
+  /** node index **/
+  u32 error_node_index;
+
+  u32 in2out_node_index;
+  u32 in2out_slowpath_node_index;
+  u32 in2out_reass_node_index;
+
+  u32 out2in_node_index;
+  u32 out2in_reass_node_index;
 
   ip4_main_t *ip4_main;
   snat_main_t *sm;

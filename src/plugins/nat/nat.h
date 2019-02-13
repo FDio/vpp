@@ -493,11 +493,34 @@ typedef struct snat_main_s
   u32 fq_in2out_output_index;
   u32 fq_out2in_index;
 
-  /* in2out and out2in node index */
+  /* node indexes */
+  u32 error_node_index;
+
   u32 in2out_node_index;
   u32 in2out_output_node_index;
+  u32 in2out_fast_node_index;
+  u32 in2out_slowpath_node_index;
+  u32 in2out_slowpath_output_node_index;
+  u32 in2out_reass_node_index;
+  u32 ed_in2out_node_index;
+  u32 ed_in2out_slowpath_node_index;
+  u32 ed_in2out_reass_node_index;
   u32 out2in_node_index;
-  u32 error_node_index;
+  u32 out2in_fast_node_index;
+  u32 out2in_reass_node_index;
+  u32 ed_out2in_node_index;
+  u32 ed_out2in_slowpath_node_index;
+  u32 ed_out2in_reass_node_index;
+  u32 det_in2out_node_index;
+  u32 det_out2in_node_index;
+
+  u32 hairpinning_node_index;
+  u32 hairpin_dst_node_index;
+  u32 hairpin_src_node_index;
+  u32 ed_hairpinning_node_index;
+  u32 ed_hairpin_dst_node_index;
+  u32 ed_hairpin_src_node_index;
+
 
   /* Deterministic NAT mappings */
   snat_det_map_t *det_maps;

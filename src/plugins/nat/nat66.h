@@ -55,6 +55,9 @@ typedef struct
   clib_bihash_24_8_t sm_e;
   /** Session counters */
   vlib_combined_counter_main_t session_counters;
+  /** node index **/
+  u32 in2out_node_index;
+  u32 out2in_node_index;
 
   u32 outside_vrf_id;
   u32 outside_fib_index;
@@ -64,7 +67,7 @@ extern nat66_main_t nat66_main;
 extern vlib_node_registration_t nat66_in2out_node;
 extern vlib_node_registration_t nat66_out2in_node;
 
-void nat66_init (void);
+void nat66_init (vlib_main_t * vm);
 typedef int (*nat66_interface_walk_fn_t) (snat_interface_t * i, void *ctx);
 void nat66_interfaces_walk (nat66_interface_walk_fn_t fn, void *ctx);
 int nat66_interface_add_del (u32 sw_if_index, u8 is_inside, u8 is_add);

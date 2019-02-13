@@ -62,8 +62,6 @@ static char *nat_det_out2in_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t snat_det_out2in_node;
-
 static u8 *
 format_nat_det_out2in_trace (u8 * s, va_list * args)
 {
@@ -78,6 +76,7 @@ format_nat_det_out2in_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /**
  * Get address and port values to be used for ICMP packet translation
  * and create session if needed
@@ -217,10 +216,11 @@ out:
     *(snat_det_map_t **) e = dm0;
   return next0;
 }
+#endif
 
-static uword
-snat_det_out2in_node_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_det_out2in_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat_det_out2in_next_t next_index;
@@ -680,7 +680,7 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, snat_det_out2in_node.index,
+  vlib_node_increment_counter (vm, sm->det_out2in_node_index,
 			       NAT_DET_OUT2IN_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
   return frame->n_vectors;
@@ -688,7 +688,6 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_det_out2in_node) = {
-  .function = snat_det_out2in_node_fn,
   .name = "nat44-det-out2in",
   .vector_size = sizeof (u32),
   .format_trace = format_nat_det_out2in_trace,
@@ -705,8 +704,6 @@ VLIB_REGISTER_NODE (snat_det_out2in_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (snat_det_out2in_node, snat_det_out2in_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -49,6 +49,25 @@ add_vpp_plugin(nat
   nat_format.c
   nat_syslog.c
 
+  MULTIARCH_SOURCES
+  dslite_ce_decap.c
+  dslite_ce_encap.c
+  dslite_in2out.c
+  dslite_out2in.c
+  in2out.c
+  in2out_ed.c
+  nat44_classify.c
+  nat44_hairpinning.c
+  nat44_handoff.c
+  nat64_in2out.c
+  nat64_out2in.c
+  nat66_in2out.c
+  nat66_out2in.c
+  nat_det_in2out.c
+  nat_det_out2in.c
+  out2in.c
+  out2in_ed.c
+
   API_FILES
   nat.api
 

@@ -50,10 +50,6 @@ static char *nat44_handoff_error_strings[] = {
 };
 
 
-vlib_node_registration_t snat_in2out_worker_handoff_node;
-vlib_node_registration_t snat_in2out_output_worker_handoff_node;
-vlib_node_registration_t snat_out2in_worker_handoff_node;
-
 static u8 *
 format_nat44_handoff_trace (u8 * s, va_list * args)
 {
@@ -152,17 +148,15 @@ nat44_worker_handoff_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-snat_in2out_worker_handoff_fn (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_worker_handoff_node) (vlib_main_t * vm,
+						vlib_node_runtime_t * node,
+						vlib_frame_t * frame)
 {
   return nat44_worker_handoff_fn_inline (vm, node, frame, 0, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
-  .function = snat_in2out_worker_handoff_fn,
   .name = "nat44-in2out-worker-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_handoff_trace,
@@ -176,20 +170,16 @@ VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_worker_handoff_node,
-			      snat_in2out_worker_handoff_fn);
-
-static uword
-snat_in2out_output_worker_handoff_fn (vlib_main_t * vm,
-				      vlib_node_runtime_t * node,
-				      vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_output_worker_handoff_node) (vlib_main_t * vm,
+						       vlib_node_runtime_t *
+						       node,
+						       vlib_frame_t * frame)
 {
   return nat44_worker_handoff_fn_inline (vm, node, frame, 1, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_output_worker_handoff_node) = {
-  .function = snat_in2out_output_worker_handoff_fn,
   .name = "nat44-in2out-output-worker-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_handoff_trace,
@@ -203,20 +193,15 @@ VLIB_REGISTER_NODE (snat_in2out_output_worker_handoff_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_worker_handoff_node,
-			      snat_in2out_output_worker_handoff_fn);
-
-static uword
-snat_out2in_worker_handoff_fn (vlib_main_t * vm,
-			       vlib_node_runtime_t * node,
-			       vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_worker_handoff_node) (vlib_main_t * vm,
+						vlib_node_runtime_t * node,
+						vlib_frame_t * frame)
 {
   return nat44_worker_handoff_fn_inline (vm, node, frame, 0, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_out2in_worker_handoff_node) = {
-  .function = snat_out2in_worker_handoff_fn,
   .name = "nat44-out2in-worker-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_handoff_trace,
@@ -229,9 +214,6 @@ VLIB_REGISTER_NODE (snat_out2in_worker_handoff_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_worker_handoff_node,
-			      snat_out2in_worker_handoff_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

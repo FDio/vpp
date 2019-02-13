@@ -16,9 +16,6 @@
 #include <nat/nat_inlines.h>
 #include <nat/nat_syslog.h>
 
-vlib_node_registration_t dslite_in2out_node;
-vlib_node_registration_t dslite_in2out_slowpath_node;
-
 typedef enum
 {
   DSLITE_IN2OUT_NEXT_IP4_LOOKUP,
@@ -249,8 +246,8 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   dslite_main_t *dm = &dslite_main;
 
   node_index =
-    is_slow_path ? dslite_in2out_slowpath_node.
-    index : dslite_in2out_node.index;
+    is_slow_path ? dm->dslite_in2out_slowpath_node_index :
+    dm->dslite_in2out_node_index;
 
   error_node = vlib_node_get_runtime (vm, node_index);
 
@@ -445,16 +442,15 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-dslite_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_in2out_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return dslite_in2out_node_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_in2out_node) = {
-  .function = dslite_in2out_node_fn,
   .name = "dslite-in2out",
   .vector_size = sizeof (u32),
   .format_trace = format_dslite_trace,
@@ -472,18 +468,15 @@ VLIB_REGISTER_NODE (dslite_in2out_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dslite_in2out_node, dslite_in2out_node_fn);
-
-static uword
-dslite_in2out_slowpath_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_in2out_slowpath_node) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
 {
   return dslite_in2out_node_fn_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_in2out_slowpath_node) = {
-  .function = dslite_in2out_slowpath_node_fn,
   .name = "dslite-in2out-slowpath",
   .vector_size = sizeof (u32),
   .format_trace = format_dslite_trace,
@@ -500,9 +493,6 @@ VLIB_REGISTER_NODE (dslite_in2out_slowpath_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (dslite_in2out_slowpath_node,
-			      dslite_in2out_slowpath_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON
