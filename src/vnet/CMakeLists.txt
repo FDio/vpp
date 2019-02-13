@@ -434,7 +434,11 @@ list(APPEND VNET_API_FILES
   ip/punt.api
 )
 
-list(APPEND VNET_MULTIARCH_SOURCES ip/ip4_forward.c ip/ip4_input.c)
+list(APPEND VNET_MULTIARCH_SOURCES
+  ip/ip4_forward.c
+  ip/ip6_forward.c
+  ip/ip4_input.c
+)
 
 ##############################################################################
 # Layer 2/3 ARP

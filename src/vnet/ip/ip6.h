@@ -394,14 +394,34 @@ serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 void ip6_ethernet_update_adjacency (vnet_main_t * vnm,
 				    u32 sw_if_index, u32 ai);
 
-
-void
+always_inline void
 ip6_link_local_address_from_ethernet_mac_address (ip6_address_t * ip,
-						  u8 * mac);
+						  u8 * mac)
+{
+  ip->as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
+  /* Invert the "u" bit */
+  ip->as_u8[8] = mac[0] ^ (1 << 1);
+  ip->as_u8[9] = mac[1];
+  ip->as_u8[10] = mac[2];
+  ip->as_u8[11] = 0xFF;
+  ip->as_u8[12] = 0xFE;
+  ip->as_u8[13] = mac[3];
+  ip->as_u8[14] = mac[4];
+  ip->as_u8[15] = mac[5];
+}
 
-void
+always_inline void
 ip6_ethernet_mac_address_from_link_local_address (u8 * mac,
-						  ip6_address_t * ip);
+						  ip6_address_t * ip)
+{
+  /* Invert the previously inverted "u" bit */
+  mac[0] = ip->as_u8[8] ^ (1 << 1);
+  mac[1] = ip->as_u8[9];
+  mac[2] = ip->as_u8[10];
+  mac[3] = ip->as_u8[13];
+  mac[4] = ip->as_u8[14];
+  mac[5] = ip->as_u8[15];
+}
 
 int vnet_set_ip6_flow_hash (u32 table_id,
 			    flow_hash_config_t flow_hash_config);

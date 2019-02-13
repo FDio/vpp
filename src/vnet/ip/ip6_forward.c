@@ -50,7 +50,9 @@
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
 
+#ifndef CLIB_MARCH_VARIANT
 #include <vppinfra/bihash_template.c>
+#endif
 #include <vnet/ip/ip6_forward.h>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
@@ -138,6 +140,7 @@ ip6_del_interface_routes (ip6_main_t * im,
   fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 {
@@ -326,7 +329,9 @@ done:
   return error;
 }
 
-clib_error_t *
+#endif
+
+static clib_error_t *
 ip6_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
   ip6_main_t *im = &ip6_main;
@@ -493,7 +498,7 @@ VNET_FEATURE_INIT (ip6_interface_output, static) = {
 };
 /* *INDENT-ON* */
 
-clib_error_t *
+static clib_error_t *
 ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   ip6_main_t *im = &ip6_main;
@@ -533,9 +538,9 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip6_sw_interface_add_del);
 
-static uword
-ip6_lookup (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_lookup_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   return ip6_lookup_inline (vm, node, frame);
 }
@@ -545,7 +550,6 @@ static u8 *format_ip6_lookup_trace (u8 * s, va_list * args);
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_lookup_node) =
 {
-  .function = ip6_lookup,
   .name = "ip6-lookup",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_lookup_trace,
@@ -554,11 +558,9 @@ VLIB_REGISTER_NODE (ip6_lookup_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_lookup_node, ip6_lookup);
-
-static uword
-ip6_load_balance (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
@@ -776,15 +778,12 @@ ip6_load_balance (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_load_balance_node) =
 {
-  .function = ip6_load_balance,
   .name = "ip6-load-balance",
   .vector_size = sizeof (u32),
   .sibling_of = "ip6-lookup",
   .format_trace = format_ip6_lookup_trace,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_load_balance_node, ip6_load_balance);
 
 typedef struct
 {
@@ -798,6 +797,7 @@ typedef struct
 }
 ip6_forward_next_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_ip6_forward_next_trace (u8 * s, va_list * args)
 {
@@ -811,6 +811,7 @@ format_ip6_forward_next_trace (u8 * s, va_list * args)
 	      format_ip6_header, t->packet_data, sizeof (t->packet_data));
   return s;
 }
+#endif
 
 static u8 *
 format_ip6_lookup_trace (u8 * s, va_list * args)
@@ -848,6 +849,7 @@ format_ip6_rewrite_trace (u8 * s, va_list * args)
 }
 
 /* Common trace function for all ip6-forward next nodes. */
+#ifndef CLIB_MARCH_VARIANT
 void
 ip6_forward_next_trace (vlib_main_t * vm,
 			vlib_node_runtime_t * node,
@@ -1045,6 +1047,7 @@ ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 
   return p0->flags;
 }
+#endif
 
 /**
  * @brief returns number of links on which src is reachable.
@@ -1403,16 +1406,15 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_local_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip6_local_inline (vm, node, frame, 1 /* head of feature arc */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_local_node, static) =
+VLIB_REGISTER_NODE (ip6_local_node) =
 {
-  .function = ip6_local,
   .name = "ip6-local",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
@@ -1428,19 +1430,15 @@ VLIB_REGISTER_NODE (ip6_local_node, static) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_local_node, ip6_local);
-
-
-static uword
-ip6_local_end_of_arc (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_local_end_of_arc_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return ip6_local_inline (vm, node, frame, 0 /* head of feature arc */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_local_end_of_arc_node,static) = {
-  .function = ip6_local_end_of_arc,
+VLIB_REGISTER_NODE (ip6_local_end_of_arc_node) = {
   .name = "ip6-local-end-of-arc",
   .vector_size = sizeof (u32),
 
@@ -1448,14 +1446,17 @@ VLIB_REGISTER_NODE (ip6_local_end_of_arc_node,static) = {
   .sibling_of = "ip6-local",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_local_end_of_arc_node, ip6_local_end_of_arc)
-
 VNET_FEATURE_INIT (ip6_local_end_of_arc, static) = {
   .arc_name = "ip6-local",
   .node_name = "ip6-local-end-of-arc",
   .runs_before = 0, /* not before any other features */
 };
 /* *INDENT-ON* */
+
+#ifdef CLIB_MARCH_VARIANT
+extern vlib_node_registration_t ip6_local_node;
+
+#else
 
 void
 ip6_register_protocol (u32 protocol, u32 node_index)
@@ -1576,6 +1577,7 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index,
   adj_unlock (ai);
   return /* no error */ 0;
 }
+#endif
 
 typedef enum
 {
@@ -1969,9 +1971,9 @@ ip6_rewrite_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip6_rewrite (vlib_main_t * vm,
-	     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_rewrite_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip6_rewrite_inline (vm, node, frame, 1, 0, 0);
@@ -1979,9 +1981,9 @@ ip6_rewrite (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
-static uword
-ip6_rewrite_bcast (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_rewrite_bcast_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip6_rewrite_inline (vm, node, frame, 1, 0, 0);
@@ -1989,9 +1991,9 @@ ip6_rewrite_bcast (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
-static uword
-ip6_rewrite_mcast (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_rewrite_mcast_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip6_rewrite_inline (vm, node, frame, 1, 0, 1);
@@ -1999,9 +2001,9 @@ ip6_rewrite_mcast (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 0, 1);
 }
 
-static uword
-ip6_midchain (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_midchain_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip6_rewrite_inline (vm, node, frame, 1, 1, 0);
@@ -2009,9 +2011,9 @@ ip6_midchain (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 1, 0);
 }
 
-static uword
-ip6_mcast_midchain (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_mcast_midchain_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
     return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
@@ -2022,18 +2024,14 @@ ip6_mcast_midchain (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_midchain_node) =
 {
-  .function = ip6_midchain,
   .name = "ip6-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
   .sibling_of = "ip6-rewrite",
   };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_midchain_node, ip6_midchain);
-
 VLIB_REGISTER_NODE (ip6_rewrite_node) =
 {
-  .function = ip6_rewrite,
   .name = "ip6-rewrite",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
@@ -2046,39 +2044,31 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite);
-
 VLIB_REGISTER_NODE (ip6_rewrite_bcast_node) = {
-  .function = ip6_rewrite_bcast,
   .name = "ip6-rewrite-bcast",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_bcast_node, ip6_rewrite_bcast)
 
 VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) =
 {
-  .function = ip6_rewrite_mcast,
   .name = "ip6-rewrite-mcast",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast);
 
-VLIB_REGISTER_NODE (ip6_mcast_midchain_node, static) =
+VLIB_REGISTER_NODE (ip6_mcast_midchain_node) =
 {
-  .function = ip6_mcast_midchain,
   .name = "ip6-mcast-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mcast_midchain_node, ip6_mcast_midchain);
 /* *INDENT-ON* */
 
 /*
@@ -2120,6 +2110,7 @@ static char *ip6_hop_by_hop_error_strings[] = {
 #undef _
 };
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args)
 {
@@ -2163,6 +2154,7 @@ format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args)
     }
   return s;
 }
+#endif
 
 static u8 *
 format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
@@ -2290,9 +2282,9 @@ ip6_scan_hbh_options (vlib_buffer_t * b0,
 /*
  * Process the Hop-by-Hop Options header
  */
-static uword
-ip6_hop_by_hop (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_hop_by_hop_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_hop_by_hop_node.index);
@@ -2530,7 +2522,6 @@ ip6_hop_by_hop (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_hop_by_hop_node) =
 {
-  .function = ip6_hop_by_hop,
   .name = "ip6-hop-by-hop",
   .sibling_of = "ip6-lookup",
   .vector_size = sizeof (u32),
@@ -2541,8 +2532,6 @@ VLIB_REGISTER_NODE (ip6_hop_by_hop_node) =
   .n_next_nodes = 0,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_hop_by_hop_node, ip6_hop_by_hop);
 
 static clib_error_t *
 ip6_hop_by_hop_init (vlib_main_t * vm)
@@ -2556,6 +2545,7 @@ ip6_hop_by_hop_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_init);
 
+#ifndef CLIB_MARCH_VARIANT
 void
 ip6_hbh_set_next_override (uword next)
 {
@@ -2622,6 +2612,7 @@ ip6_hbh_unregister_option (u8 option)
 
 /* Global IP6 main. */
 ip6_main_t ip6_main;
+#endif
 
 static clib_error_t *
 ip6_lookup_init (vlib_main_t * vm)
@@ -2717,35 +2708,6 @@ ip6_lookup_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (ip6_lookup_init);
 
-void
-ip6_link_local_address_from_ethernet_mac_address (ip6_address_t * ip,
-						  u8 * mac)
-{
-  ip->as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
-  /* Invert the "u" bit */
-  ip->as_u8[8] = mac[0] ^ (1 << 1);
-  ip->as_u8[9] = mac[1];
-  ip->as_u8[10] = mac[2];
-  ip->as_u8[11] = 0xFF;
-  ip->as_u8[12] = 0xFE;
-  ip->as_u8[13] = mac[3];
-  ip->as_u8[14] = mac[4];
-  ip->as_u8[15] = mac[5];
-}
-
-void
-ip6_ethernet_mac_address_from_link_local_address (u8 * mac,
-						  ip6_address_t * ip)
-{
-  /* Invert the previously inverted "u" bit */
-  mac[0] = ip->as_u8[8] ^ (1 << 1);
-  mac[1] = ip->as_u8[9];
-  mac[2] = ip->as_u8[10];
-  mac[3] = ip->as_u8[13];
-  mac[4] = ip->as_u8[14];
-  mac[5] = ip->as_u8[15];
-}
-
 static clib_error_t *
 test_ip6_link_command_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -2785,6 +2747,7 @@ VLIB_CLI_COMMAND (test_link_command, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 int
 vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
 {
@@ -2800,6 +2763,7 @@ vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
 
   return 0;
 }
+#endif
 
 static clib_error_t *
 set_ip6_flow_hash_command_fn (vlib_main_t * vm,
@@ -2977,6 +2941,7 @@ VLIB_CLI_COMMAND (show_ip6_local, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 int
 vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 			     u32 table_index)
@@ -3036,6 +3001,7 @@ vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 
   return 0;
 }
+#endif
 
 static clib_error_t *
 set_ip6_classify_command_fn (vlib_main_t * vm,
