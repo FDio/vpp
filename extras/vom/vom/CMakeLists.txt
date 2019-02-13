@@ -283,6 +283,7 @@ list(APPEND VOM_HEADERS
 
 add_definitions(-Wall -Werror -std=gnu++11)
 add_library(vom SHARED ${VOM_SOURCES})
+set_target_properties(vom PROPERTIES SOVERSION ${VOM_LIB_VERSION})
 target_link_libraries(vom ${VPPAPICLIENT_LIB} ${VAPICLIENT_LIB} Threads::Threads
     ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} m rt)
 install(TARGETS vom DESTINATION lib COMPONENT vom)
