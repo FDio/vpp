@@ -58,6 +58,7 @@ typedef struct
 typedef struct
 {
   u32 next;
+  u32 bi;
   dpdk_gcm_cnt_blk cb __attribute__ ((aligned (16)));
   u8 aad[16];
   u8 icv[32];
