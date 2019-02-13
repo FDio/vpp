@@ -33,7 +33,12 @@ extensions = [
     'sphinx.ext.autodoc',
 ]
 autodoc_mock_imports = ['objgraph',
+                        'parameterized',
+                        'pexpect',
+                        'psutil',
                         'pympler',
+                        'scapy',
+                        'syslog_rfc5424_parser',
                         'vpp_papi']
 
 # Add any paths that contain templates here, relative to this directory.
