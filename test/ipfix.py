@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # IPFIX support for Scapy (RFC7011)
 
-from scapy.all import *
+from scapy.all import bind_layers, FieldLenField, IntField, Packet, \
+    PacketListField, ShortEnumField, ShortField, StrLenField
+from scapy.layers.inet import UDP
 
 
 # IPFIX Information Elements http://www.iana.org/assignments/ipfix/ipfix.xhtml
