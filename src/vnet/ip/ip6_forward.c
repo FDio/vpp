@@ -533,8 +533,7 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip6_sw_interface_add_del);
 
-static uword
-ip6_lookup (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_lookup_node) (vlib_main_t * vm,
 	    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return ip6_lookup_inline (vm, node, frame);
@@ -545,7 +544,6 @@ static u8 *format_ip6_lookup_trace (u8 * s, va_list * args);
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_lookup_node) =
 {
-  .function = ip6_lookup,
   .name = "ip6-lookup",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_lookup_trace,
@@ -554,10 +552,7 @@ VLIB_REGISTER_NODE (ip6_lookup_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_lookup_node, ip6_lookup);
-
-static uword
-ip6_load_balance (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_load_balance_node) (vlib_main_t * vm,
 		  vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
@@ -776,15 +771,12 @@ ip6_load_balance (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_load_balance_node) =
 {
-  .function = ip6_load_balance,
   .name = "ip6-load-balance",
   .vector_size = sizeof (u32),
   .sibling_of = "ip6-lookup",
   .format_trace = format_ip6_lookup_trace,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_load_balance_node, ip6_load_balance);
 
 typedef struct
 {
@@ -1090,7 +1082,7 @@ VNET_FEATURE_ARC_INIT (ip6_local) =
 };
 /* *INDENT-ON* */
 
-static uword
+always_inline uword
 ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vlib_frame_t * frame, int head_of_feature_arc)
 {
@@ -1403,16 +1395,14 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_local_node) (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return ip6_local_inline (vm, node, frame, 1 /* head of feature arc */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_local_node, static) =
+VLIB_REGISTER_NODE (ip6_local_node) =
 {
-  .function = ip6_local,
   .name = "ip6-local",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
@@ -1428,27 +1418,20 @@ VLIB_REGISTER_NODE (ip6_local_node, static) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_local_node, ip6_local);
-
-
-static uword
-ip6_local_end_of_arc (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_local_end_of_arc_node) (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return ip6_local_inline (vm, node, frame, 0 /* head of feature arc */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_local_end_of_arc_node,static) = {
-  .function = ip6_local_end_of_arc,
+VLIB_REGISTER_NODE (ip6_local_end_of_arc_node) = {
   .name = "ip6-local-end-of-arc",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip6_forward_next_trace,
   .sibling_of = "ip6-local",
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_local_end_of_arc_node, ip6_local_end_of_arc)
 
 VNET_FEATURE_INIT (ip6_local_end_of_arc, static) = {
   .arc_name = "ip6-local",
@@ -1969,8 +1952,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip6_rewrite (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_rewrite_node) (vlib_main_t * vm,
 	     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
@@ -1979,8 +1961,7 @@ ip6_rewrite (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
-static uword
-ip6_rewrite_bcast (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_rewrite_bcast_node) (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
@@ -1989,8 +1970,7 @@ ip6_rewrite_bcast (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
-static uword
-ip6_rewrite_mcast (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_rewrite_mcast_node) (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
@@ -1999,8 +1979,7 @@ ip6_rewrite_mcast (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 0, 1);
 }
 
-static uword
-ip6_midchain (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_midchain_node) (vlib_main_t * vm,
 	      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
@@ -2009,8 +1988,7 @@ ip6_midchain (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 1, 0);
 }
 
-static uword
-ip6_mcast_midchain (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mcast_midchain_node) (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   if (adj_are_counters_enabled ())
@@ -2022,18 +2000,14 @@ ip6_mcast_midchain (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_midchain_node) =
 {
-  .function = ip6_midchain,
   .name = "ip6-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_forward_next_trace,
   .sibling_of = "ip6-rewrite",
   };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_midchain_node, ip6_midchain);
-
 VLIB_REGISTER_NODE (ip6_rewrite_node) =
 {
-  .function = ip6_rewrite,
   .name = "ip6-rewrite",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
@@ -2046,39 +2020,30 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite);
-
 VLIB_REGISTER_NODE (ip6_rewrite_bcast_node) = {
-  .function = ip6_rewrite_bcast,
   .name = "ip6-rewrite-bcast",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_bcast_node, ip6_rewrite_bcast)
 
 VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) =
 {
-  .function = ip6_rewrite_mcast,
   .name = "ip6-rewrite-mcast",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast);
-
-VLIB_REGISTER_NODE (ip6_mcast_midchain_node, static) =
+VLIB_REGISTER_NODE (ip6_mcast_midchain_node) =
 {
-  .function = ip6_mcast_midchain,
   .name = "ip6-mcast-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mcast_midchain_node, ip6_mcast_midchain);
 /* *INDENT-ON* */
 
 /*
@@ -2290,8 +2255,7 @@ ip6_scan_hbh_options (vlib_buffer_t * b0,
 /*
  * Process the Hop-by-Hop Options header
  */
-static uword
-ip6_hop_by_hop (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_hop_by_hop_node) (vlib_main_t * vm,
 		vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   vlib_node_runtime_t *error_node =
@@ -2530,7 +2494,6 @@ ip6_hop_by_hop (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_hop_by_hop_node) =
 {
-  .function = ip6_hop_by_hop,
   .name = "ip6-hop-by-hop",
   .sibling_of = "ip6-lookup",
   .vector_size = sizeof (u32),
@@ -2541,8 +2504,6 @@ VLIB_REGISTER_NODE (ip6_hop_by_hop_node) =
   .n_next_nodes = 0,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_hop_by_hop_node, ip6_hop_by_hop);
 
 static clib_error_t *
 ip6_hop_by_hop_init (vlib_main_t * vm)
