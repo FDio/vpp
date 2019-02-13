@@ -80,14 +80,29 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   clib_error_t *error;
   vl_api_registration_t *reg;
 
-  error = 0;
-  vnet_punt_socket_add (vm, ntohl (mp->header_version),
-			mp->punt.ipv, mp->punt.l4_protocol,
-			ntohs (mp->punt.l4_port), (char *) mp->pathname);
-  if (error)
+  if (mp->punt.ipv == 4 || mp->punt.ipv == (u8) ~ 0)
     {
-      rv = -1;
-      clib_error_report (error);
+      error = vnet_punt_socket_add (vm, ntohl (mp->header_version),
+				    1, mp->punt.l4_protocol,
+				    ntohs (mp->punt.l4_port),
+				    (char *) mp->pathname);
+      if (error)
+	{
+	  rv = -1;
+	  clib_error_report (error);
+	}
+    }
+  if (mp->punt.ipv == 6 || mp->punt.ipv == (u8) ~ 0)
+    {
+      error = vnet_punt_socket_add (vm, ntohl (mp->header_version),
+				    0, mp->punt.l4_protocol,
+				    ntohs (mp->punt.l4_port),
+				    (char *) mp->pathname);
+      if (error)
+	{
+	  rv = -1;
+	  clib_error_report (error);
+	}
     }
 
   reg = vl_api_client_index_to_registration (mp->client_index);
@@ -155,12 +170,25 @@ vl_api_punt_socket_deregister_t_handler (vl_api_punt_socket_deregister_t * mp)
   clib_error_t *error;
   vl_api_registration_t *reg;
 
-  error = vnet_punt_socket_del (vm, mp->punt.ipv, mp->punt.l4_protocol,
-				ntohs (mp->punt.l4_port));
-  if (error)
+  if (mp->punt.ipv == 4 || mp->punt.ipv == (u8) ~ 0)
     {
-      rv = -1;
-      clib_error_report (error);
+      error = vnet_punt_socket_del (vm, 1, mp->punt.l4_protocol,
+				    ntohs (mp->punt.l4_port));
+      if (error)
+	{
+	  rv = -1;
+	  clib_error_report (error);
+	}
+    }
+  if (mp->punt.ipv == 6 || mp->punt.ipv == (u8) ~ 0)
+    {
+      error = vnet_punt_socket_del (vm, 0, mp->punt.l4_protocol,
+				    ntohs (mp->punt.l4_port));
+      if (error)
+	{
+	  rv = -1;
+	  clib_error_report (error);
+	}
     }
 
   reg = vl_api_client_index_to_registration (mp->client_index);
