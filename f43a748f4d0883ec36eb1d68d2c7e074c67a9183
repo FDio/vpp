@@ -16,6 +16,24 @@
       "revId": "f43a748f4d0883ec36eb1d68d2c7e074c67a9183",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0ce8c6ab_b6d47d49",
+        "filename": "src/plugins/perfmon/perfmon_periodic.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-13T08:58:57Z",
+      "side": 1,
+      "message": "You want to change all of these \u0027clib_unix_warning\u0027 or just this one?\n\nAnd I got a question here:\n\nThe reason I add HW_CACHE eventss is that I expected the L1d load-misses could help us better tuning performance. Unfortuantely it does not. \n\nI can observe the clock cycles difference when I change the code layout of node function by \u0027set pmc cpu-cycles cache-misses\u0027, but, cache-misses show no difference at all. Then I suspect it must be l1 or l2 cache-misses which cause the cycle difference. However, as I can see, l1d-load-misses does not show too much difference. I also tried the processor l2 events, got almost the same result.\n\nAny comments that HW cache events could help somehow?",
+      "parentUuid": "abd28178_9d52b11c",
+      "revId": "f43a748f4d0883ec36eb1d68d2c7e074c67a9183",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
