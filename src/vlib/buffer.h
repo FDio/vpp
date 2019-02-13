@@ -232,6 +232,15 @@ vlib_buffer_get_current_va (vlib_buffer_t * b)
   return vlib_buffer_get_va (b) + b->current_data;
 }
 
+always_inline void
+vlib_buffer_advance_no_chain_seg_assert (vlib_buffer_t * b, word l)
+{
+  ASSERT (b->current_length >= l);
+
+  b->current_data += l;
+  b->current_length -= l;
+}
+
 /** \brief Advance current data pointer by the supplied (signed!) amount
 
     @param b - (vlib_buffer_t *) pointer to the buffer
@@ -240,9 +249,7 @@ vlib_buffer_get_current_va (vlib_buffer_t * b)
 always_inline void
 vlib_buffer_advance (vlib_buffer_t * b, word l)
 {
-  ASSERT (b->current_length >= l);
-  b->current_data += l;
-  b->current_length -= l;
+  vlib_buffer_advance_no_chain_seg_assert(b, l);
 
   ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
 	  b->current_length >= VLIB_BUFFER_MIN_CHAIN_SEG_SIZE);
