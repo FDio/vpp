@@ -188,35 +188,54 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # configure a punt socket
         #
-        self.vapi.punt_socket_register(1111, self.tempdir+"/socket_punt_1111")
-        self.vapi.punt_socket_register(2222, self.tempdir+"/socket_punt_2222")
+        self.vapi.punt_socket_register(1111, self.tempdir+"/socket_punt_1111",
+                                       ipv=4)
+        self.vapi.punt_socket_register(2222, self.tempdir+"/socket_punt_2222",
+                                       ipv=4)
         punts = self.vapi.punt_socket_dump(is_ip6=0)
         self.assertEqual(len(punts), 2)
         self.assertEqual(punts[0].punt.l4_port, 1111)
+        self.assertEqual(punts[0].punt.ipv, 4)
         self.assertEqual(punts[1].punt.l4_port, 2222)
+        self.assertEqual(punts[1].punt.ipv, 4)
 
         #
         # deregister a punt socket
         #
-        self.vapi.punt_socket_deregister(1111)
+        self.vapi.punt_socket_deregister(1111, ipv=4)
         punts = self.vapi.punt_socket_dump(is_ip6=0)
         self.assertEqual(len(punts), 1)
+        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.assertEqual(len(punts), 0)
 
         #
         # configure a punt socket again
         #
         self.vapi.punt_socket_register(1111, self.tempdir+"/socket_punt_1111")
-        self.vapi.punt_socket_register(3333, self.tempdir+"/socket_punt_3333")
+        self.vapi.punt_socket_register(3333, self.tempdir+"/socket_punt_3333",
+                                       ipv=4)
         punts = self.vapi.punt_socket_dump(is_ip6=0)
         self.assertEqual(len(punts), 3)
+        self.assertEqual(punts[0].punt.l4_port, 1111)
+        self.assertEqual(punts[0].punt.ipv, 4)
+        self.assertEqual(punts[1].punt.l4_port, 2222)
+        self.assertEqual(punts[1].punt.ipv, 4)
+        self.assertEqual(punts[2].punt.l4_port, 3333)
+        self.assertEqual(punts[2].punt.ipv, 4)
+        punts = self.vapi.punt_socket_dump(is_ip6=1)
+        self.assertEqual(len(punts), 1)
+        self.assertEqual(punts[0].punt.l4_port, 1111)
+        self.assertEqual(punts[0].punt.ipv, 6)
 
         #
         # deregister all punt socket
         #
         self.vapi.punt_socket_deregister(1111)
-        self.vapi.punt_socket_deregister(2222)
-        self.vapi.punt_socket_deregister(3333)
+        self.vapi.punt_socket_deregister(2222, ipv=4)
+        self.vapi.punt_socket_deregister(3333, ipv=4)
         punts = self.vapi.punt_socket_dump(is_ip6=0)
+        self.assertEqual(len(punts), 0)
+        punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 0)
 
     def test_punt_socket_traffic_single_port_single_socket(self):
@@ -254,7 +273,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         self.socket_client_create(self.tempdir+"/socket_" + str(port))
         self.vapi.punt_socket_register(port, self.tempdir+"/socket_" +
-                                       str(port))
+                                       str(port), ipv=4)
         punts = self.vapi.punt_socket_dump(is_ip6=0)
         self.assertEqual(len(punts), 1)
 
@@ -276,7 +295,7 @@ class TestIP4PuntSocket(TestPuntSocket):
         #
         # remove punt socket. expect ICMP - port unreachable for all packets
         #
-        self.vapi.punt_socket_deregister(port)
+        self.vapi.punt_socket_deregister(port, ipv=4)
         punts = self.vapi.punt_socket_dump(is_ip6=0)
         self.assertEqual(len(punts), 0)
         self.pg0.add_stream(pkts)
@@ -432,36 +451,51 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # configure a punt socket
         #
-        self.vapi.punt_socket_register(1111, self.tempdir+"/socket_1111",
-                                       is_ip4=0)
-        self.vapi.punt_socket_register(2222, self.tempdir+"/socket_2222",
-                                       is_ip4=0)
+        self.vapi.punt_socket_register(1111, self.tempdir+"/socket_punt_1111",
+                                       ipv=6)
+        self.vapi.punt_socket_register(2222, self.tempdir+"/socket_punt_2222",
+                                       ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 2)
         self.assertEqual(punts[0].punt.l4_port, 1111)
+        self.assertEqual(punts[0].punt.ipv, 6)
         self.assertEqual(punts[1].punt.l4_port, 2222)
+        self.assertEqual(punts[1].punt.ipv, 6)
 
         #
         # deregister a punt socket
         #
-        self.vapi.punt_socket_deregister(1111, is_ip4=0)
+        self.vapi.punt_socket_deregister(1111, ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 1)
 
         #
         # configure a punt socket again
         #
-        self.vapi.punt_socket_register(1111, self.tempdir+"/socket_1111",
-                                       is_ip4=0)
+        self.vapi.punt_socket_register(1111, self.tempdir+"/socket_punt_1111")
+        self.vapi.punt_socket_register(3333, self.tempdir+"/socket_punt_3333",
+                                       ipv=6)
+        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        self.assertEqual(len(punts), 1)
+        self.assertEqual(punts[0].punt.l4_port, 1111)
+        self.assertEqual(punts[0].punt.ipv, 4)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
-        self.assertEqual(len(punts), 2)
+        self.assertEqual(len(punts), 3)
+        self.assertEqual(punts[0].punt.l4_port, 1111)
+        self.assertEqual(punts[0].punt.ipv, 6)
+        self.assertEqual(punts[1].punt.l4_port, 2222)
+        self.assertEqual(punts[1].punt.ipv, 6)
+        self.assertEqual(punts[2].punt.l4_port, 3333)
+        self.assertEqual(punts[2].punt.ipv, 6)
 
         #
         # deregister all punt socket
         #
-        self.vapi.punt_socket_deregister(1111, is_ip4=0)
-        self.vapi.punt_socket_deregister(2222, is_ip4=0)
-        self.vapi.punt_socket_deregister(3333, is_ip4=0)
+        self.vapi.punt_socket_deregister(1111)
+        self.vapi.punt_socket_deregister(2222, ipv=6)
+        self.vapi.punt_socket_deregister(3333, ipv=6)
+        punts = self.vapi.punt_socket_dump(is_ip6=0)
+        self.assertEqual(len(punts), 0)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 0)
 
@@ -500,7 +534,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         self.socket_client_create(self.tempdir+"/socket_" + str(port))
         self.vapi.punt_socket_register(port, self.tempdir+"/socket_" +
-                                       str(port), is_ip4=0)
+                                       str(port), ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 1)
 
@@ -522,7 +556,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         #
         # remove punt socket. expect ICMP - dest. unreachable for all packets
         #
-        self.vapi.punt_socket_deregister(port, is_ip4=0)
+        self.vapi.punt_socket_deregister(port, ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 0)
         self.pg0.add_stream(pkts)
@@ -563,7 +597,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         for p in self.ports:
             self.socket_client_create(self.tempdir+"/socket_" + str(p))
             self.vapi.punt_socket_register(p, self.tempdir+"/socket_" + str(p),
-                                           is_ip4=0)
+                                           ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), len(self.ports))
 
@@ -585,7 +619,7 @@ class TestIP6PuntSocket(TestPuntSocket):
 
         for p in self.ports:
             self.assertEqual(self.portsCheck[p], 0)
-            self.vapi.punt_socket_deregister(p, is_ip4=0)
+            self.vapi.punt_socket_deregister(p, ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 0)
 
@@ -622,7 +656,7 @@ class TestIP6PuntSocket(TestPuntSocket):
         self.socket_client_create(self.tempdir+"/socket_multi")
         for p in self.ports:
             self.vapi.punt_socket_register(p, self.tempdir+"/socket_multi",
-                                           is_ip4=0)
+                                           ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), len(self.ports))
 
@@ -643,7 +677,7 @@ class TestIP6PuntSocket(TestPuntSocket):
 
         for p in self.ports:
             self.assertEqual(self.portsCheck[p], 0)
-            self.vapi.punt_socket_deregister(p, is_ip4=0)
+            self.vapi.punt_socket_deregister(p, ipv=6)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 0)
 

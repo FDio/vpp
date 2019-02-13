@@ -91,7 +91,7 @@ typedef struct punt_socket_detail_t_
   u8 pathname[108];
 } punt_socket_detail_t;
 
-punt_socket_detail_t *punt_socket_entries (u8 ipv);
+punt_socket_detail_t *punt_socket_entries (u8 is_ipv6);
 #endif
 
 /*

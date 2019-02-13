@@ -955,14 +955,14 @@ VLIB_CLI_COMMAND (punt_socket_deregister_command, static) =
 /* *INDENT-ON* */
 
 punt_socket_detail_t *
-punt_socket_entries (u8 ipv)
+punt_socket_entries (u8 is_ipv6)
 {
   punt_main_t *pm = &punt_main;
   punt_client_t *pc;
   punt_socket_detail_t *ps = 0;
   bool is_valid;
 
-  punt_client_t *v = !ipv ? pm->clients_by_dst_port4 :
+  punt_client_t *v = !is_ipv6 ? pm->clients_by_dst_port4 :
     pm->clients_by_dst_port6;
 
   vec_foreach (pc, v)
@@ -972,12 +972,12 @@ punt_socket_entries (u8 ipv)
 	is_valid = false;
 	if (pc->protocol == IP_PROTOCOL_UDP)
 	  {
-	    is_valid = udp_is_valid_dst_port (pc->port, !ipv);
+	    is_valid = udp_is_valid_dst_port (pc->port, !is_ipv6);
 	  }
 	if (is_valid)
 	  {
 	    punt_socket_detail_t detail = {
-	      .ipv = ipv,
+	      .ipv = (is_ipv6) ? 6 : 4,
 	      .l4_protocol = pc->protocol,
 	      .l4_port = pc->port
 	    };
