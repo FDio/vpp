@@ -42,6 +42,10 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/fifo.h>
+#include <vlib/buffer.h>
+#include <vlib/physmem_funcs.h>
+#include <vlib/main.h>
+#include <vlib/node.h>
 
 /** \file
     vlib buffer access methods.
@@ -1216,60 +1220,108 @@ vlib_packet_template_free (vlib_main_t * vm, vlib_packet_template_t * t)
   vec_free (t->packet_data);
 }
 
+always_inline u32
+space_left_at_buffer_end (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  return b->data + vlib_buffer_get_default_data_size (vm) -
+    ((u8 *) vlib_buffer_get_current (b) + b->current_length);
+}
+
+always_inline vlib_buffer_t *
+vlib_buffer_chain_find_free_space (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  while (b && b->current_data <= 0 && !space_left_at_buffer_end (vm, b))
+    {
+      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	}
+      else
+	{
+	  b = NULL;
+	}
+    }
+  return b;
+}
+
+always_inline vlib_buffer_t *
+vlib_buffer_chain_find_data (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  while (b && 0 == b->current_length)
+    {
+      if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	}
+      else
+	{
+	  b = NULL;
+	}
+    }
+  return b;
+}
+
 /**
- * @brief compress buffer chain in a way where the first buffer is at least
- * VLIB_BUFFER_CLONE_HEAD_SIZE long
+ * @brief compress buffer chain so that the first all the buffers apart from
+ * last buffer contain as much data as possible
  *
  * @param[in] vm - vlib_main
  * @param[in,out] first - first buffer in chain
  * @param[in,out] discard_vector - vector of buffer indexes which were removed
- * from the chain
+ * from the chain - if NULL, removed buffers are automatically freed
  */
 always_inline void
-vlib_buffer_chain_compress (vlib_main_t * vm,
-			    vlib_buffer_t * first, u32 ** discard_vector)
+vlib_buffer_chain_compress (vlib_main_t * vm, vlib_buffer_t * first,
+			    u32 ** discard_vector)
 {
-  if (first->current_length >= VLIB_BUFFER_CLONE_HEAD_SIZE ||
-      !(first->flags & VLIB_BUFFER_NEXT_PRESENT))
+  if (!(first->flags & VLIB_BUFFER_NEXT_PRESENT))
     {
-      /* this is already big enough or not a chain */
+      /* this is not a chain */
       return;
     }
-
-  u32 want_first_size = clib_min (VLIB_BUFFER_CLONE_HEAD_SIZE,
-				  vlib_buffer_get_default_data_size (vm) -
-				  first->current_data);
-  do
+  vlib_buffer_t *dst = vlib_buffer_chain_find_free_space (vm, first);
+  if (!(dst->flags & VLIB_BUFFER_NEXT_PRESENT))
     {
-      vlib_buffer_t *second = vlib_get_buffer (vm, first->next_buffer);
-      u32 need = want_first_size - first->current_length;
-      u32 amount_to_copy = clib_min (need, second->current_length);
-      clib_memcpy_fast (((u8 *) vlib_buffer_get_current (first)) +
-			first->current_length,
-			vlib_buffer_get_current (second), amount_to_copy);
-      first->current_length += amount_to_copy;
-      second->current_data += amount_to_copy;
-      second->current_length -= amount_to_copy;
-      if (first->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
+      /* already compressed */
+      return;
+    }
+  vlib_buffer_t *src =
+    vlib_buffer_chain_find_data (vm, vlib_get_buffer (vm, dst->next_buffer));
+  size_t total_length = first->current_length;
+  while (src)
+    {
+      if (dst->current_data > 0)
 	{
-	  first->total_length_not_including_first_buffer -= amount_to_copy;
+	  memmove (dst->data, vlib_buffer_get_current (dst),
+		   dst->current_length);
+	  dst->current_data = 0;
 	}
-      if (!second->current_length)
+      const size_t copy_len =
+	clib_min (space_left_at_buffer_end (vm, dst), src->current_length);
+      total_length += copy_len;
+      void *dst_data = vlib_buffer_put_uninit (dst, copy_len);
+      clib_memcpy_fast (dst_data, vlib_buffer_get_current (src), copy_len);
+      vlib_buffer_advance_no_chain_seg_assert (src, copy_len);
+      src = vlib_buffer_chain_find_data (vm, src);
+      dst = vlib_buffer_chain_find_free_space (vm, dst);
+    }
+  first->total_length_not_including_first_buffer =
+    total_length - first->current_length;
+  first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  if (discard_vector)
+    {
+      while (dst->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
-	  vec_add1 (*discard_vector, first->next_buffer);
-	  if (second->flags & VLIB_BUFFER_NEXT_PRESENT)
-	    {
-	      first->next_buffer = second->next_buffer;
-	    }
-	  else
-	    {
-	      first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-	    }
-	  second->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	  dst->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	  vec_add1 (*discard_vector, dst->next_buffer);
+	  dst = vlib_get_buffer (vm, dst->next_buffer);
 	}
     }
-  while ((first->current_length < want_first_size) &&
-	 (first->flags & VLIB_BUFFER_NEXT_PRESENT));
+  else if (dst->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      vlib_buffer_free_one (vm, dst->next_buffer);
+      dst->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+    }
 }
 
 /**

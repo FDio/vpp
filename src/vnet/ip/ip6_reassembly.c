@@ -924,7 +924,7 @@ ip6_reassembly_inline (vlib_main_t * vm,
 	{
 	  u32 bi = vec_pop (vec_drop_compress);
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-	  b->error = node->errors[IP6_ERROR_NONE];
+	  b->error = node->errors[IP6_ERROR_REASS_COMPRESS];
 	  to_next[0] = bi;
 	  to_next += 1;
 	  n_left_to_next -= 1;
