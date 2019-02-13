@@ -181,6 +181,14 @@ ipsec_register_esp_backend (vlib_main_t * vm, ipsec_main_t * im,
   return b - im->esp_backends;
 }
 
+static walk_rc_t
+ipsec_sa_restack (ipsec_sa_t * sa, void *ctx)
+{
+  ipsec_sa_stack (sa);
+
+  return (WALK_CONTINUE);
+}
+
 int
 ipsec_select_ah_backend (ipsec_main_t * im, u32 backend_idx)
 {
@@ -199,6 +207,8 @@ ipsec_select_ah_backend (ipsec_main_t * im, u32 backend_idx)
   im->ah6_decrypt_node_index = b->ah6_decrypt_node_index;
   im->ah6_encrypt_next_index = b->ah6_encrypt_next_index;
   im->ah6_decrypt_next_index = b->ah6_decrypt_next_index;
+
+  ipsec_sa_walk (ipsec_sa_restack, NULL);
   return 0;
 }
 
@@ -220,6 +230,8 @@ ipsec_select_esp_backend (ipsec_main_t * im, u32 backend_idx)
   im->esp6_decrypt_node_index = b->esp6_decrypt_node_index;
   im->esp6_encrypt_next_index = b->esp6_encrypt_next_index;
   im->esp6_decrypt_next_index = b->esp6_decrypt_next_index;
+
+  ipsec_sa_walk (ipsec_sa_restack, NULL);
   return 0;
 }
 

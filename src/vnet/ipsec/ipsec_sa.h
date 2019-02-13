@@ -151,11 +151,15 @@ extern int ipsec_sa_add (u32 id,
 			 const ip46_address_t * tunnel_dst_addr,
 			 u32 * sa_index);
 extern u32 ipsec_sa_del (u32 id);
+extern void ipsec_sa_stack (ipsec_sa_t * sa);
 
 extern u8 ipsec_is_sa_used (u32 sa_index);
 extern int ipsec_set_sa_key (u32 id,
 			     const ipsec_key_t * ck, const ipsec_key_t * ik);
 extern u32 ipsec_get_sa_index_by_sa_id (u32 sa_id);
+
+typedef walk_rc_t (*ipsec_sa_walk_cb_t) (ipsec_sa_t * sa, void *ctx);
+extern void ipsec_sa_walk (ipsec_sa_walk_cb_t cd, void *ctx);
 
 extern u8 *format_ipsec_crypto_alg (u8 * s, va_list * args);
 extern u8 *format_ipsec_integ_alg (u8 * s, va_list * args);

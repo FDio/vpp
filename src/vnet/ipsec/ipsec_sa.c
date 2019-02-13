@@ -54,12 +54,12 @@ ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len)
 /**
  * 'stack' (resolve the recursion for) the SA tunnel destination
  */
-static void
+void
 ipsec_sa_stack (ipsec_sa_t * sa)
 {
+  ipsec_main_t *im = &ipsec_main;
   fib_forward_chain_type_t fct;
   dpo_id_t tmp = DPO_INVALID;
-  vlib_node_t *node;
 
   fct = fib_forw_chain_type_from_fib_proto ((sa->is_tunnel_ip6 ?
 					     FIB_PROTOCOL_IP6 :
@@ -67,17 +67,15 @@ ipsec_sa_stack (ipsec_sa_t * sa)
 
   fib_entry_contribute_forwarding (sa->fib_entry_index, fct, &tmp);
 
-  node = vlib_get_node_by_name (vlib_get_main (),
-				(sa->is_tunnel_ip6 ?
-				 (u8 *) "ah6-encrypt" :
-				 (u8 *) "ah4-encrypt"));
-  dpo_stack_from_node (node->index, &sa->dpo[IPSEC_PROTOCOL_AH], &tmp);
-
-  node = vlib_get_node_by_name (vlib_get_main (),
-				(sa->is_tunnel_ip6 ?
-				 (u8 *) "esp6-encrypt" :
-				 (u8 *) "esp4-encrypt"));
-  dpo_stack_from_node (node->index, &sa->dpo[IPSEC_PROTOCOL_ESP], &tmp);
+  dpo_stack_from_node ((sa->is_tunnel_ip6 ?
+			im->ah6_encrypt_node_index :
+			im->ah4_encrypt_node_index),
+		       &sa->dpo[IPSEC_PROTOCOL_AH], &tmp);
+  dpo_stack_from_node ((sa->is_tunnel_ip6 ?
+			im->esp6_encrypt_node_index :
+			im->esp4_encrypt_node_index),
+		       &sa->dpo[IPSEC_PROTOCOL_ESP], &tmp);
+  dpo_reset (&tmp);
 }
 
 int
@@ -289,6 +287,21 @@ ipsec_get_sa_index_by_sa_id (u32 sa_id)
     return ~0;
 
   return p[0];
+}
+
+void
+ipsec_sa_walk (ipsec_sa_walk_cb_t cb, void *ctx)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_sa_t *sa;
+
+  /* *INDENT-OFF* */
+  pool_foreach (sa, im->sad,
+  ({
+    if (WALK_CONTINUE != cb(sa, ctx))
+      break;
+  }));
+  /* *INDENT-ON* */
 }
 
 /**
