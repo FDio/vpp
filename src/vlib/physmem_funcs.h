@@ -40,6 +40,11 @@
 #ifndef included_vlib_physmem_funcs_h
 #define included_vlib_physmem_funcs_h
 
+#include <vppinfra/clib.h>
+#include <vppinfra/clib_error.h>
+#include <vlib/physmem.h>
+#include <vlib/main.h>
+
 clib_error_t *vlib_physmem_init (vlib_main_t * vm);
 clib_error_t *vlib_physmem_shared_map_create (vlib_main_t * vm, char *name,
 					      uword size, u32 log2_page_sz,

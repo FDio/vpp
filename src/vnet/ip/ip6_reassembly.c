@@ -579,7 +579,10 @@ ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip->payload_length =
     clib_host_to_net_u16 (total_length + first_b->current_length -
 			  sizeof (*ip));
-  vlib_buffer_chain_compress (vm, first_b, vec_drop_compress);
+  if (vlib_buffer_chain_compress (vm, first_b, vec_drop_compress) < 0)
+    {
+      return IP6_REASS_RC_INTERNAL_ERROR;
+    }
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
     {
       ip6_reass_add_trace (vm, node, rm, reass, reass->first_bi, FINALIZE, 0);
@@ -924,7 +927,7 @@ ip6_reassembly_inline (vlib_main_t * vm,
 	{
 	  u32 bi = vec_pop (vec_drop_compress);
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-	  b->error = node->errors[IP6_ERROR_NONE];
+	  b->error = node->errors[IP6_ERROR_REASS_COMPRESS];
 	  to_next[0] = bi;
 	  to_next += 1;
 	  n_left_to_next -= 1;

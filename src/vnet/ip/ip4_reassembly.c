@@ -32,7 +32,7 @@
 #define IP4_REASS_MAX_REASSEMBLIES_DEFAULT 1024
 #define IP4_REASS_HT_LOAD_FACTOR (0.75)
 
-#define IP4_REASS_DEBUG_BUFFERS 0
+#define IP4_REASS_DEBUG_BUFFERS 1
 #if IP4_REASS_DEBUG_BUFFERS
 #define IP4_REASS_DEBUG_BUFFER(bi, what)             \
   do                                                 \
@@ -519,7 +519,10 @@ ip4_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip->length = clib_host_to_net_u16 (first_b->current_length + total_length);
   ip->checksum = ip4_header_checksum (ip);
   u32 before = vec_len (*vec_drop_compress);
-  vlib_buffer_chain_compress (vm, first_b, vec_drop_compress);
+  if (vlib_buffer_chain_compress (vm, first_b, vec_drop_compress) < 0)
+    {
+      return IP4_REASS_RC_INTERNAL_ERROR;
+    }
   rt->buffers_n += vec_len (*vec_drop_compress) - before;
 
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
@@ -964,7 +967,7 @@ ip4_reassembly_inline (vlib_main_t * vm,
 	{
 	  u32 bi = vec_pop (vec_drop_compress);
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
-	  b->error = node->errors[IP4_ERROR_NONE];
+	  b->error = node->errors[IP4_ERROR_REASS_COMPRESS];
 	  to_next[0] = bi;
 	  to_next += 1;
 	  n_left_to_next -= 1;
@@ -1412,8 +1415,6 @@ ip4_reass_walk_expired (vlib_main_t * vm,
 
   return 0;
 }
-
-static vlib_node_registration_t ip4_reass_expire_node;
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_reass_expire_node, static) = {
