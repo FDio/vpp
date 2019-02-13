@@ -232,16 +232,31 @@ nat64_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   ip4_add_del_interface_address_callback_t cb4;
   ip4_main_t *im = &ip4_main;
-  vlib_node_t *error_drop_node =
-    vlib_get_node_by_name (vm, (u8 *) "error-drop");
+  nm->sm = &snat_main;
+  vlib_node_t *node;
 
   vec_validate (nm->db, tm->n_vlib_mains - 1);
 
-  nm->sm = &snat_main;
-
   nm->fq_in2out_index = ~0;
   nm->fq_out2in_index = ~0;
-  nm->error_node_index = error_drop_node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
+  nm->error_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat64-in2out");
+  nm->in2out_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat64-in2out-slowpath");
+  nm->in2out_slowpath_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat64-in2out-reass");
+  nm->in2out_reass_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat64-out2in");
+  nm->out2in_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat64-out2in-reass");
+  nm->out2in_reass_node_index = node->index;
 
   /* set session timeouts to default values */
   nm->udp_timeout = SNAT_UDP_TIMEOUT;

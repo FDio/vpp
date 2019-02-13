@@ -91,6 +91,11 @@ typedef struct
   vlib_simple_counter_main_t total_b4s;
   vlib_simple_counter_main_t total_sessions;
 
+  /* node index */
+  u32 dslite_in2out_node_index;
+  u32 dslite_in2out_slowpath_node_index;
+  u32 dslite_out2in_node_index;
+
   /* If set then the DSLite component behaves as CPE/B4
    * otherwise it behaves as AFTR */
   u8 is_ce;

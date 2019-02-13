@@ -25,11 +25,21 @@ dslite_init (vlib_main_t * vm)
   vlib_thread_registration_t *tr;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword *p;
+  vlib_node_t *node;
   dslite_per_thread_data_t *td;
   u32 translation_buckets = 1024;
   u32 translation_memory_size = 128 << 20;
   u32 b4_buckets = 128;
   u32 b4_memory_size = 64 << 20;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "dslite-in2out");
+  dm->dslite_in2out_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "dslite-in2out-slowpath");
+  dm->dslite_in2out_slowpath_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "dslite-out2in");
+  dm->dslite_out2in_node_index = node->index;
 
   dm->first_worker_index = 0;
   dm->num_workers = 0;

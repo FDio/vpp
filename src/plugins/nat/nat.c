@@ -2240,7 +2240,7 @@ snat_init (vlib_main_t * vm)
   uword *bitmap = 0;
   u32 i;
   ip4_add_del_interface_address_callback_t cb4;
-  vlib_node_t *error_drop_node;
+  vlib_node_t *node;
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
@@ -2262,9 +2262,62 @@ snat_init (vlib_main_t * vm)
   sm->addr_and_port_alloc_alg = NAT_ADDR_AND_PORT_ALLOC_ALG_DEFAULT;
   sm->forwarding_enabled = 0;
   sm->log_class = vlib_log_register_class ("nat", 0);
-  error_drop_node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
-  sm->error_node_index = error_drop_node->index;
   sm->mss_clamping = 0;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
+  sm->error_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out");
+  sm->in2out_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-output");
+  sm->in2out_output_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-fast");
+  sm->in2out_fast_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-slowpath");
+  sm->in2out_slowpath_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-output-slowpath");
+  sm->in2out_slowpath_output_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-in2out-reass");
+  sm->in2out_reass_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out");
+  sm->ed_in2out_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-slowpath");
+  sm->ed_in2out_slowpath_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-in2out-reass");
+  sm->ed_in2out_reass_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-out2in");
+  sm->out2in_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-out2in-fast");
+  sm->out2in_fast_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-out2in-reass");
+  sm->out2in_reass_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in");
+  sm->ed_out2in_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in-slowpath");
+  sm->ed_out2in_slowpath_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-out2in-reass");
+  sm->ed_out2in_reass_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-det-in2out");
+  sm->det_in2out_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-det-out2in");
+  sm->det_out2in_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-hairpinning");
+  sm->hairpinning_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-hairpin-dst");
+  sm->hairpin_dst_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-hairpin-src");
+  sm->hairpin_src_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-hairpinning");
+  sm->ed_hairpinning_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-hairpin-dst");
+  sm->ed_hairpin_dst_node_index = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "nat44-ed-hairpin-src");
+  sm->ed_hairpin_src_node_index = node->index;
 
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   if (p)
@@ -2329,7 +2382,7 @@ snat_init (vlib_main_t * vm)
 
   dslite_init (vm);
 
-  nat66_init ();
+  nat66_init (vm);
 
   ip4_table_bind_callback_t cbt4 = {
     .function = snat_ip4_table_bind,

@@ -67,9 +67,6 @@ format_nat64_out2in_reass_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t nat64_out2in_node;
-vlib_node_registration_t nat64_out2in_reass_node;
-vlib_node_registration_t nat64_out2in_handoff_node;
 
 #define foreach_nat64_out2in_error                       \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")          \
@@ -433,12 +430,13 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   return 0;
 }
 
-static uword
-nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * frame)
+VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
+  nat64_main_t *nm = &nat64_main;
   u32 pkts_processed = 0;
   u32 thread_index = vm->thread_index;
   u32 tcp_packets = 0, udp_packets = 0, icmp_packets = 0, other_packets =
@@ -557,19 +555,19 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
-  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_TCP_PACKETS, tcp_packets);
-  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_UDP_PACKETS, tcp_packets);
-  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_ICMP_PACKETS, icmp_packets);
-  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_OTHER_PACKETS,
 			       other_packets);
-  vlib_node_increment_counter (vm, nat64_out2in_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_node_index,
 			       NAT64_OUT2IN_ERROR_FRAGMENTS, fragments);
 
   return frame->n_vectors;
@@ -577,7 +575,6 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_node) = {
-  .function = nat64_out2in_node_fn,
   .name = "nat64-out2in",
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_out2in_trace,
@@ -594,8 +591,6 @@ VLIB_REGISTER_NODE (nat64_out2in_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_node, nat64_out2in_node_fn);
 
 typedef struct nat64_out2in_frag_set_ctx_t_
 {
@@ -695,9 +690,9 @@ nat64_out2in_frag_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
   return 0;
 }
 
-static uword
-nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (nat64_out2in_reass_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
@@ -916,10 +911,10 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, nat64_out2in_reass_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_reass_node_index,
 			       NAT64_OUT2IN_ERROR_PROCESSED_FRAGMENTS,
 			       pkts_processed);
-  vlib_node_increment_counter (vm, nat64_out2in_reass_node.index,
+  vlib_node_increment_counter (vm, nm->out2in_reass_node_index,
 			       NAT64_OUT2IN_ERROR_CACHED_FRAGMENTS,
 			       cached_fragments);
 
@@ -934,7 +929,6 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_reass_node) = {
-  .function = nat64_out2in_reass_node_fn,
   .name = "nat64-out2in-reass",
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_out2in_reass_trace,
@@ -951,9 +945,6 @@ VLIB_REGISTER_NODE (nat64_out2in_reass_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_reass_node,
-			      nat64_out2in_reass_node_fn);
 
 #define foreach_nat64_out2in_handoff_error                       \
 _(CONGESTION_DROP, "congestion drop")                            \
@@ -993,9 +984,9 @@ format_nat64_out2in_handoff_trace (u8 * s, va_list * args)
   return s;
 }
 
-static inline uword
-nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vlib_frame_t * frame)
+VLIB_NODE_FN (nat64_out2in_handoff_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   nat64_main_t *nm = &nat64_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -1060,7 +1051,6 @@ nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
-  .function = nat64_out2in_handoff_node_fn,
   .name = "nat64-out2in-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_out2in_handoff_trace,
@@ -1076,8 +1066,6 @@ VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_handoff_node,
-			      nat64_out2in_handoff_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *

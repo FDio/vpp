@@ -69,10 +69,6 @@ format_snat_out2in_fast_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t snat_out2in_node;
-vlib_node_registration_t snat_out2in_fast_node;
-vlib_node_registration_t nat44_out2in_reass_node;
-
 #define foreach_snat_out2in_error                       \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
 _(OUT2IN_PACKETS, "good out2in packets processed")      \
@@ -114,6 +110,7 @@ typedef enum
   SNAT_OUT2IN_N_NEXT,
 } snat_out2in_next_t;
 
+#ifndef CLIB_MARCH_VARIANT
 int
 nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
 {
@@ -156,6 +153,7 @@ nat44_o2i_is_idle_session_cb (clib_bihash_kv_8_8_t * kv, void *arg)
 
   return 0;
 }
+#endif
 
 /**
  * @brief Create session for static mapping.
@@ -297,6 +295,7 @@ static_always_inline
   return -1;			/* success */
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /**
  * Get address and port values to be used for ICMP packet translation
  * and create session if needed
@@ -425,7 +424,9 @@ out:
     *(snat_session_t **) d = s0;
   return next0;
 }
+#endif
 
+#ifndef CLIB_MARCH_VARIANT
 /**
  * Get address and port values to be used for ICMP packet translation
  *
@@ -499,7 +500,9 @@ out2:
   *p_dont_translate = dont_translate;
   return next0;
 }
+#endif
 
+#ifndef CLIB_MARCH_VARIANT
 u32
 icmp_out2in (snat_main_t * sm,
 	     vlib_buffer_t * b0,
@@ -629,7 +632,7 @@ icmp_out2in (snat_main_t * sm,
 out:
   return next0;
 }
-
+#endif
 
 static inline u32
 icmp_out2in_slow_path (snat_main_t * sm,
@@ -688,9 +691,9 @@ nat_out2in_sm_unknown_proto (snat_main_t * sm,
   return 0;
 }
 
-static uword
-snat_out2in_node_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_out2in_next_t next_index;
@@ -1305,19 +1308,19 @@ snat_out2in_node_fn (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, snat_out2in_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_node_index,
 			       SNAT_OUT2IN_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
-  vlib_node_increment_counter (vm, snat_out2in_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_node_index,
 			       SNAT_OUT2IN_ERROR_TCP_PACKETS, tcp_packets);
-  vlib_node_increment_counter (vm, snat_out2in_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_node_index,
 			       SNAT_OUT2IN_ERROR_UDP_PACKETS, udp_packets);
-  vlib_node_increment_counter (vm, snat_out2in_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_node_index,
 			       SNAT_OUT2IN_ERROR_ICMP_PACKETS, icmp_packets);
-  vlib_node_increment_counter (vm, snat_out2in_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_node_index,
 			       SNAT_OUT2IN_ERROR_OTHER_PACKETS,
 			       other_packets);
-  vlib_node_increment_counter (vm, snat_out2in_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_node_index,
 			       SNAT_OUT2IN_ERROR_FRAGMENTS, fragments);
 
   return frame->n_vectors;
@@ -1325,7 +1328,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_out2in_node) = {
-  .function = snat_out2in_node_fn,
   .name = "nat44-out2in",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_out2in_trace,
@@ -1348,11 +1350,9 @@ VLIB_REGISTER_NODE (snat_out2in_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_node, snat_out2in_node_fn);
-
-static uword
-nat44_out2in_reass_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_out2in_reass_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_out2in_next_t next_index;
@@ -1645,10 +1645,10 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, nat44_out2in_reass_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_reass_node_index,
 			       SNAT_OUT2IN_ERROR_PROCESSED_FRAGMENTS,
 			       pkts_processed);
-  vlib_node_increment_counter (vm, nat44_out2in_reass_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_reass_node_index,
 			       SNAT_OUT2IN_ERROR_CACHED_FRAGMENTS,
 			       cached_fragments);
 
@@ -1663,7 +1663,6 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_out2in_reass_node) = {
-  .function = nat44_out2in_reass_node_fn,
   .name = "nat44-out2in-reass",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_reass_trace,
@@ -1684,12 +1683,9 @@ VLIB_REGISTER_NODE (nat44_out2in_reass_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_out2in_reass_node,
-			      nat44_out2in_reass_node_fn);
-
-static uword
-snat_out2in_fast_node_fn (vlib_main_t * vm,
-			  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_out2in_fast_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_out2in_next_t next_index;
@@ -1847,7 +1843,7 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, snat_out2in_fast_node.index,
+  vlib_node_increment_counter (vm, sm->out2in_fast_node_index,
 			       SNAT_OUT2IN_ERROR_OUT2IN_PACKETS,
 			       pkts_processed);
   return frame->n_vectors;
@@ -1855,7 +1851,6 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_out2in_fast_node) = {
-  .function = snat_out2in_fast_node_fn,
   .name = "nat44-out2in-fast",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_out2in_fast_trace,
@@ -1877,9 +1872,6 @@ VLIB_REGISTER_NODE (snat_out2in_fast_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (snat_out2in_fast_node,
-			      snat_out2in_fast_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

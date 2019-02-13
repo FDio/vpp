@@ -40,11 +40,18 @@ VNET_FEATURE_INIT (nat66_out2in, static) = {
 
 
 void
-nat66_init (void)
+nat66_init (vlib_main_t * vm)
 {
   nat66_main_t *nm = &nat66_main;
+  vlib_node_t *node;
   u32 static_mapping_buckets = 1024;
   uword static_mapping_memory_size = 64 << 20;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat66-in2out");
+  nm->in2out_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "nat66-out2in");
+  nm->out2in_node_index = node->index;
 
   clib_bihash_init_24_8 (&nm->sm_l, "nat66-static-map-by-local",
 			 static_mapping_buckets, static_mapping_memory_size);

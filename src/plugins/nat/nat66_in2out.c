@@ -41,8 +41,6 @@ format_nat66_in2out_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t nat66_in2out_node;
-
 #define foreach_nat66_in2out_error                       \
 _(IN2OUT_PACKETS, "good in2out packets processed")       \
 _(NO_TRANSLATION, "no translation")                      \
@@ -109,9 +107,9 @@ nat66_not_translate (u32 rx_fib_index, ip6_address_t ip6_addr)
   return 1;
 }
 
-static inline uword
-nat66_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * frame)
+VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat66_in2out_next_t next_index;
@@ -232,7 +230,7 @@ nat66_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, nat66_in2out_node.index,
+  vlib_node_increment_counter (vm, nm->in2out_node_index,
 			       NAT66_IN2OUT_ERROR_IN2OUT_PACKETS,
 			       pkts_processed);
   return frame->n_vectors;
@@ -240,7 +238,6 @@ nat66_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat66_in2out_node) = {
-  .function = nat66_in2out_node_fn,
   .name = "nat66-in2out",
   .vector_size = sizeof (u32),
   .format_trace = format_nat66_in2out_trace,
@@ -255,8 +252,6 @@ VLIB_REGISTER_NODE (nat66_in2out_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (nat66_in2out_node, nat66_in2out_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

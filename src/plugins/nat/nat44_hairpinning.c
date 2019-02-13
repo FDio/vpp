@@ -57,13 +57,6 @@ static char *nat44_hairpin_error_strings[] = {
 #undef _
 };
 
-vlib_node_registration_t snat_hairpin_dst_node;
-vlib_node_registration_t snat_hairpin_src_node;
-vlib_node_registration_t nat44_hairpinning_node;
-vlib_node_registration_t nat44_ed_hairpin_dst_node;
-vlib_node_registration_t nat44_ed_hairpin_src_node;
-vlib_node_registration_t nat44_ed_hairpinning_node;
-
 extern vnet_feature_arc_registration_t vnet_feat_arc_ip4_local;
 
 static_always_inline int
@@ -92,6 +85,7 @@ is_hairpinning (snat_main_t * sm, ip4_address_t * dst_addr)
   return 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 int
 snat_hairpinning (snat_main_t * sm,
 		  vlib_buffer_t * b0,
@@ -198,7 +192,9 @@ snat_hairpinning (snat_main_t * sm,
     }
   return 0;
 }
+#endif
 
+#ifndef CLIB_MARCH_VARIANT
 u32
 snat_icmp_hairpinning (snat_main_t * sm,
 		       vlib_buffer_t * b0,
@@ -352,7 +348,9 @@ change_addr:
     }
   return 0;
 }
+#endif
 
+#ifndef CLIB_MARCH_VARIANT
 void
 nat_hairpinning_sm_unknown_proto (snat_main_t * sm,
 				  vlib_buffer_t * b, ip4_header_t * ip)
@@ -377,7 +375,9 @@ nat_hairpinning_sm_unknown_proto (snat_main_t * sm,
   if (vnet_buffer (b)->sw_if_index[VLIB_TX] == ~0)
     vnet_buffer (b)->sw_if_index[VLIB_TX] = m->fib_index;
 }
+#endif
 
+#ifndef CLIB_MARCH_VARIANT
 void
 nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
 				    vlib_buffer_t * b, ip4_header_t * ip)
@@ -422,7 +422,9 @@ nat44_ed_hairpinning_unknown_proto (snat_main_t * sm,
   sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
   ip->checksum = ip_csum_fold (sum);
 }
+#endif
 
+#ifndef CLIB_MARCH_VARIANT
 void
 nat44_reass_hairpinning (snat_main_t * sm,
 			 vlib_buffer_t * b0,
@@ -533,6 +535,7 @@ nat44_reass_hairpinning (snat_main_t * sm,
 	}
     }
 }
+#endif
 
 static inline uword
 nat44_hairpinning_fn_inline (vlib_main_t * vm,
@@ -547,8 +550,8 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
   u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
 
-  stats_node_index = is_ed ? nat44_ed_hairpinning_node.index :
-    nat44_hairpinning_node.index;
+  stats_node_index = is_ed ? sm->ed_hairpinning_node_index :
+    sm->hairpinning_node_index;
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -606,16 +609,15 @@ nat44_hairpinning_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-nat44_hairpinning_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_hairpinning_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return nat44_hairpinning_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_hairpinning_node) = {
-  .function = nat44_hairpinning_fn,
   .name = "nat44-hairpinning",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -629,18 +631,15 @@ VLIB_REGISTER_NODE (nat44_hairpinning_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_hairpinning_node, nat44_hairpinning_fn);
-
-static uword
-nat44_ed_hairpinning_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_hairpinning_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return nat44_hairpinning_fn_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_ed_hairpinning_node) = {
-  .function = nat44_ed_hairpinning_fn,
   .name = "nat44-ed-hairpinning",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -654,9 +653,6 @@ VLIB_REGISTER_NODE (nat44_ed_hairpinning_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_ed_hairpinning_node,
-			      nat44_ed_hairpinning_fn);
-
 static inline uword
 snat_hairpin_dst_fn_inline (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
@@ -667,8 +663,8 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
   u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
 
-  stats_node_index = is_ed ? nat44_ed_hairpin_dst_node.index :
-    snat_hairpin_dst_node.index;
+  stats_node_index = is_ed ? sm->ed_hairpin_dst_node_index :
+    sm->hairpin_dst_node_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -745,16 +741,15 @@ snat_hairpin_dst_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-snat_hairpin_dst_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_hairpin_dst_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   return snat_hairpin_dst_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_hairpin_dst_node) = {
-  .function = snat_hairpin_dst_fn,
   .name = "nat44-hairpin-dst",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -768,18 +763,15 @@ VLIB_REGISTER_NODE (snat_hairpin_dst_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_hairpin_dst_node, snat_hairpin_dst_fn);
-
-static uword
-nat44_ed_hairpin_dst_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_hairpin_dst_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return snat_hairpin_dst_fn_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_ed_hairpin_dst_node) = {
-  .function = nat44_ed_hairpin_dst_fn,
   .name = "nat44-ed-hairpin-dst",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -793,9 +785,6 @@ VLIB_REGISTER_NODE (nat44_ed_hairpin_dst_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_ed_hairpin_dst_node,
-			      nat44_ed_hairpin_dst_fn);
-
 static inline uword
 snat_hairpin_src_fn_inline (vlib_main_t * vm,
 			    vlib_node_runtime_t * node,
@@ -806,8 +795,8 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
   u32 pkts_processed = 0;
   snat_main_t *sm = &snat_main;
 
-  stats_node_index = is_ed ? nat44_ed_hairpin_src_node.index :
-    snat_hairpin_src_node.index;
+  stats_node_index = is_ed ? sm->ed_hairpin_src_node_index :
+    sm->hairpin_src_node_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -874,16 +863,15 @@ snat_hairpin_src_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-snat_hairpin_src_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_hairpin_src_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   return snat_hairpin_src_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_hairpin_src_node) = {
-  .function = snat_hairpin_src_fn,
   .name = "nat44-hairpin-src",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -899,18 +887,15 @@ VLIB_REGISTER_NODE (snat_hairpin_src_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_hairpin_src_node, snat_hairpin_src_fn);
-
-static uword
-nat44_ed_hairpin_src_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_ed_hairpin_src_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return snat_hairpin_src_fn_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_ed_hairpin_src_node) = {
-  .function = nat44_ed_hairpin_src_fn,
   .name = "nat44-ed-hairpin-src",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -925,9 +910,6 @@ VLIB_REGISTER_NODE (nat44_ed_hairpin_src_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_ed_hairpin_src_node,
-			      nat44_ed_hairpin_src_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON
