@@ -18,6 +18,24 @@
 #include <dpdk/ipsec/ipsec.h>
 
 static u8 *
+format_crypto_resource (u8 * s, va_list * args)
+{
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+
+  u32 indent = va_arg (*args, u32);
+  u32 res_idx = va_arg (*args, u32);
+
+  crypto_resource_t *res = vec_elt_at_index (dcm->resource, res_idx);
+
+  s =
+    format (s, "%U thr_id %3d qp %2u inflight %u\n",
+	    format_white_space, indent, (i16) res->thread_idx,
+	    res->qp_id, res->inflights);
+
+  return s;
+}
+
+static u8 *
 format_crypto (u8 * s, va_list * args)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
@@ -30,8 +48,6 @@ format_crypto (u8 * s, va_list * args)
   s = format (s, "%-25s%-20s%-10s\n", dev->name, drv->name,
 	      rte_cryptodevs[dev->id].data->dev_started ? "up" : "down");
   s = format (s, "  numa_node %u, max_queues %u\n", dev->numa, dev->max_qp);
-  s = format (s, "  free_resources %u, used_resources %u\n",
-	      vec_len (dev->free_resources), vec_len (dev->used_resources));
 
   if (dev->features)
     {
@@ -67,10 +83,78 @@ format_crypto (u8 * s, va_list * args)
 	s = format (s, "%s%s", pre, dcm->auth_algs[i].name);
 	pre = ", ";
       }
-  s = format (s, "\n\n");
+  s = format (s, "\n");
+
+  struct rte_cryptodev_stats stats;
+  rte_cryptodev_stats_get (dev->id, &stats);
+
+  s =
+    format (s,
+	    "  enqueue %-10lu dequeue %-10lu enqueue_err %-10lu dequeue_err %-10lu \n",
+	    stats.enqueued_count, stats.dequeued_count,
+	    stats.enqueue_err_count, stats.dequeue_err_count);
+
+  u16 *res_idx;
+  s = format (s, "  free_resources %u :", vec_len (dev->free_resources));
+
+  u32 indent = format_get_indent (s);
+  s = format (s, "\n");
+
+  /* *INDENT-OFF* */
+  vec_foreach (res_idx, dev->free_resources)
+    s = format (s, "%U", format_crypto_resource, indent, res_idx[0]);
+  /* *INDENT-ON* */
+
+  s = format (s, "  used_resources %u :", vec_len (dev->used_resources));
+  indent = format_get_indent (s);
+
+  s = format (s, "\n");
+
+  /* *INDENT-OFF* */
+  vec_foreach (res_idx, dev->used_resources)
+    s = format (s, "%U", format_crypto_resource, indent, res_idx[0]);
+  /* *INDENT-ON* */
+
+  s = format (s, "\n");
 
   return s;
 }
+
+
+static clib_error_t *
+clear_crypto_stats_fn (vlib_main_t * vm, unformat_input_t * input,
+		       vlib_cli_command_t * cmd)
+{
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+  crypto_dev_t *dev;
+
+  /* *INDENT-OFF* */
+  vec_foreach (dev, dcm->dev)
+    rte_cryptodev_stats_reset (dev->id);
+  /* *INDENT-ON* */
+
+  return NULL;
+}
+
+/*?
+ * This command is used to clear the DPDK Crypto device statistics.
+ *
+ * @cliexpar
+ * Example of how to clear the DPDK Crypto device statistics:
+ * @cliexsart{clear dpdk crypto devices statistics}
+ * vpp# clear dpdk crypto devices statistics
+ * @cliexend
+ * Example of clearing the DPDK Crypto device statistic data:
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (clear_dpdk_crypto_stats, static) = {
+    .path = "clear dpdk crypto devices statistics",
+    .short_help = "clear dpdk crypto devices statistics",
+    .function = clear_crypto_stats_fn,
+};
+/* *INDENT-ON* */
+
 
 static clib_error_t *
 show_dpdk_crypto_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -94,19 +178,18 @@ show_dpdk_crypto_fn (vlib_main_t * vm, unformat_input_t * input,
  * Example of how to display the DPDK Crypto device information:
  * @cliexsart{show dpdk crypto devices}
  * vpp# show dpdk crypto devices
- *   cryptodev_aesni_mb_pmd   crypto_aesni_mb     down
- *   numa_node 1, max_queues 8
- *   free_resources 2, used_resources 2
- *   SYMMETRIC_CRYPTO, SYM_OPERATION_CHAINING, CPU_AVX2, CPU_AESNI
- *   Cipher: aes-cbc-128, aes-cbc-192, aes-cbc-256, aes-ctr-128, aes-ctr-192, aes-ctr-256
- *   Auth: md5-96, sha1-96, sha-256-128, sha-384-192, sha-512-256
- *
- * cryptodev_aesni_gcm_pmd  crypto_aesni_gcm    down
- *   numa_node 1, max_queues 8
- *   free_resources 2, used_resources 2
- *   SYMMETRIC_CRYPTO, SYM_OPERATION_CHAINING, CPU_AVX2, CPU_AESNI, MBUF_SCATTER_GATHER
- *   Cipher: aes-gcm-128, aes-gcm-192, aes-gcm-256
- *   Auth:
+ *  aesni_mb0		  crypto_aesni_mb     up
+ *  numa_node 0, max_queues 4
+ *  SYMMETRIC_CRYPTO, SYM_OPERATION_CHAINING, CPU_AVX2, CPU_AESNI
+ *  Cipher: aes-cbc-128, aes-cbc-192, aes-cbc-256, aes-ctr-128, aes-ctr-192, aes-ctr-256, aes-gcm-128, aes-gcm-192, aes-gcm-256
+ *  Auth: md5-96, sha1-96, sha-256-128, sha-384-192, sha-512-256
+ *  enqueue 2	      dequeue 2 	 enqueue_err 0		dequeue_err 0
+ *  free_resources 3 :
+ *		      thr_id  -1 qp  3 inflight 0
+ *		      thr_id  -1 qp  2 inflight 0
+ *		      thr_id  -1 qp  1 inflight 0
+ *  used_resources 1 :
+ *		      thr_id   1 qp  0 inflight 0
  * @cliexend
  * Example of displaying the DPDK Crypto device data when enabled:
  * @cliexend
@@ -538,7 +621,7 @@ show_dpdk_crypto_pools_fn (vlib_main_t * vm,
     struct rte_mempool **mp;
     vec_foreach (mp, data->session_drv)
       if (mp[0])
-	vlib_cli_output (vm, "%U\n", format_dpdk_mempool, mp[0]);
+        vlib_cli_output (vm, "%U\n", format_dpdk_mempool, mp[0]);
   }
   /* *INDENT-ON* */
 

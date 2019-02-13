@@ -192,6 +192,8 @@ dpdk_esp_encrypt_inline (vlib_main_t * vm,
 	  ASSERT (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED);
 
 	  dpdk_op_priv_t *priv = crypto_op_get_priv (op);
+	  /* store bi in op private */
+	  priv->bi = bi0;
 
 	  u16 op_len =
 	    sizeof (op[0]) + sizeof (op[0].sym[0]) + sizeof (priv[0]);
