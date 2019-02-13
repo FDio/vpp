@@ -445,16 +445,15 @@ dslite_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-dslite_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		       vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_in2out_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return dslite_in2out_node_fn_inline (vm, node, frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_in2out_node) = {
-  .function = dslite_in2out_node_fn,
   .name = "dslite-in2out",
   .vector_size = sizeof (u32),
   .format_trace = format_dslite_trace,
@@ -472,18 +471,15 @@ VLIB_REGISTER_NODE (dslite_in2out_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (dslite_in2out_node, dslite_in2out_node_fn);
-
-static uword
-dslite_in2out_slowpath_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_in2out_slowpath_node) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
 {
   return dslite_in2out_node_fn_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_in2out_slowpath_node) = {
-  .function = dslite_in2out_slowpath_node_fn,
   .name = "dslite-in2out-slowpath",
   .vector_size = sizeof (u32),
   .format_trace = format_dslite_trace,
@@ -500,9 +496,6 @@ VLIB_REGISTER_NODE (dslite_in2out_slowpath_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (dslite_in2out_slowpath_node,
-			      dslite_in2out_slowpath_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

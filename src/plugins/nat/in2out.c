@@ -1552,9 +1552,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-snat_in2out_fast_path_fn (vlib_main_t * vm,
-			  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   return snat_in2out_node_fn_inline (vm, node, frame, 0 /* is_slow_path */ ,
 				     0);
@@ -1562,7 +1562,6 @@ snat_in2out_fast_path_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_node) = {
-  .function = snat_in2out_fast_path_fn,
   .name = "nat44-in2out",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_trace,
@@ -1586,12 +1585,9 @@ VLIB_REGISTER_NODE (snat_in2out_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_node, snat_in2out_fast_path_fn);
-
-static uword
-snat_in2out_output_fast_path_fn (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_output_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   return snat_in2out_node_fn_inline (vm, node, frame, 0 /* is_slow_path */ ,
 				     1);
@@ -1599,7 +1595,6 @@ snat_in2out_output_fast_path_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_output_node) = {
-  .function = snat_in2out_output_fast_path_fn,
   .name = "nat44-in2out-output",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_trace,
@@ -1623,12 +1618,9 @@ VLIB_REGISTER_NODE (snat_in2out_output_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_node,
-			      snat_in2out_output_fast_path_fn);
-
-static uword
-snat_in2out_slow_path_fn (vlib_main_t * vm,
-			  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_slowpath_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return snat_in2out_node_fn_inline (vm, node, frame, 1 /* is_slow_path */ ,
 				     0);
@@ -1636,7 +1628,6 @@ snat_in2out_slow_path_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_slowpath_node) = {
-  .function = snat_in2out_slow_path_fn,
   .name = "nat44-in2out-slowpath",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_trace,
@@ -1660,13 +1651,9 @@ VLIB_REGISTER_NODE (snat_in2out_slowpath_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_slowpath_node,
-			      snat_in2out_slow_path_fn);
-
-static uword
-snat_in2out_output_slow_path_fn (vlib_main_t * vm,
-				 vlib_node_runtime_t * node,
-				 vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_output_slowpath_node) (vlib_main_t * vm,
+						 vlib_node_runtime_t * node,
+						 vlib_frame_t * frame)
 {
   return snat_in2out_node_fn_inline (vm, node, frame, 1 /* is_slow_path */ ,
 				     1);
@@ -1674,7 +1661,6 @@ snat_in2out_output_slow_path_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_output_slowpath_node) = {
-  .function = snat_in2out_output_slow_path_fn,
   .name = "nat44-in2out-output-slowpath",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_trace,
@@ -1698,12 +1684,9 @@ VLIB_REGISTER_NODE (snat_in2out_output_slowpath_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_slowpath_node,
-			      snat_in2out_output_slow_path_fn);
-
-static uword
-nat44_in2out_reass_node_fn (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (nat44_in2out_reass_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_in2out_next_t next_index;
@@ -1978,7 +1961,6 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat44_in2out_reass_node) = {
-  .function = nat44_in2out_reass_node_fn,
   .name = "nat44-in2out-reass",
   .vector_size = sizeof (u32),
   .format_trace = format_nat44_reass_trace,
@@ -1998,13 +1980,9 @@ VLIB_REGISTER_NODE (nat44_in2out_reass_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat44_in2out_reass_node,
-			      nat44_in2out_reass_node_fn);
-
-static uword
-snat_in2out_fast_static_map_fn (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (snat_in2out_fast_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   snat_in2out_next_t next_index;
@@ -2177,7 +2155,6 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (snat_in2out_fast_node) = {
-  .function = snat_in2out_fast_static_map_fn,
   .name = "nat44-in2out-fast",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_fast_trace,
@@ -2200,9 +2177,6 @@ VLIB_REGISTER_NODE (snat_in2out_fast_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_fast_node,
-			      snat_in2out_fast_static_map_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

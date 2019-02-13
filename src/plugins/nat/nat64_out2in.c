@@ -433,9 +433,9 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   return 0;
 }
 
-static uword
-nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * frame)
+VLIB_NODE_FN (nat64_out2in_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
@@ -577,7 +577,6 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_node) = {
-  .function = nat64_out2in_node_fn,
   .name = "nat64-out2in",
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_out2in_trace,
@@ -594,8 +593,6 @@ VLIB_REGISTER_NODE (nat64_out2in_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_node, nat64_out2in_node_fn);
 
 typedef struct nat64_out2in_frag_set_ctx_t_
 {
@@ -695,9 +692,9 @@ nat64_out2in_frag_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
   return 0;
 }
 
-static uword
-nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame)
+VLIB_NODE_FN (nat64_out2in_reass_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
@@ -934,7 +931,6 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_reass_node) = {
-  .function = nat64_out2in_reass_node_fn,
   .name = "nat64-out2in-reass",
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_out2in_reass_trace,
@@ -951,9 +947,6 @@ VLIB_REGISTER_NODE (nat64_out2in_reass_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_reass_node,
-			      nat64_out2in_reass_node_fn);
 
 #define foreach_nat64_out2in_handoff_error                       \
 _(CONGESTION_DROP, "congestion drop")                            \
@@ -993,9 +986,9 @@ format_nat64_out2in_handoff_trace (u8 * s, va_list * args)
   return s;
 }
 
-static inline uword
-nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      vlib_frame_t * frame)
+VLIB_NODE_FN (nat64_out2in_handoff_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   nat64_main_t *nm = &nat64_main;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
@@ -1060,7 +1053,6 @@ nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
-  .function = nat64_out2in_handoff_node_fn,
   .name = "nat64-out2in-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_out2in_handoff_trace,
@@ -1076,8 +1068,6 @@ VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_handoff_node,
-			      nat64_out2in_handoff_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *

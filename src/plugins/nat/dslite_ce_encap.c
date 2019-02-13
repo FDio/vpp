@@ -30,9 +30,9 @@ static char *dslite_ce_encap_error_strings[] = {
 #undef _
 };
 
-static uword
-dslite_ce_encap_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 vlib_frame_t * frame)
+VLIB_NODE_FN (dslite_ce_encap_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   dslite_ce_encap_next_t next_index;
@@ -112,7 +112,6 @@ dslite_ce_encap_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
-  .function = dslite_ce_encap_node_fn,
   .name = "dslite-ce-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_dslite_ce_trace,
@@ -127,8 +126,6 @@ VLIB_REGISTER_NODE (dslite_ce_encap_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (dslite_ce_encap_node, dslite_ce_encap_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

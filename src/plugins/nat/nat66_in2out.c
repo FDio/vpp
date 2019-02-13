@@ -109,9 +109,9 @@ nat66_not_translate (u32 rx_fib_index, ip6_address_t ip6_addr)
   return 1;
 }
 
-static inline uword
-nat66_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * frame)
+VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   nat66_in2out_next_t next_index;
@@ -240,7 +240,6 @@ nat66_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat66_in2out_node) = {
-  .function = nat66_in2out_node_fn,
   .name = "nat66-in2out",
   .vector_size = sizeof (u32),
   .format_trace = format_nat66_in2out_trace,
@@ -255,8 +254,6 @@ VLIB_REGISTER_NODE (nat66_in2out_node) = {
   },
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (nat66_in2out_node, nat66_in2out_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON
