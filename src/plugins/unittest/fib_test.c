@@ -4195,6 +4195,81 @@ fib_test_v4 (void)
     dpo_reset(&dvr_dpo);
 
     /*
+     * add the default route via a next-hop that will form a loop
+     */
+    fib_prefix_t pfx_conn = {
+        .fp_len = 24,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            /* 30.30.30.30 */
+            .ip4.as_u32 = clib_host_to_net_u32(0x1e1e1e1e),
+        },
+    };
+
+    dfrt = fib_table_entry_path_add(fib_index,
+                                    &pfx_0_0_0_0_s_0,
+                                    FIB_SOURCE_API,
+                                    FIB_ENTRY_FLAG_NONE,
+                                    DPO_PROTO_IP4,
+                                    &pfx_conn.fp_addr,
+                                    ~0,
+                                    fib_index,
+                                    1,
+                                    NULL,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+    /*
+     * the default route is a drop, since it's looped
+     */
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(dfrt)),
+             "Default route is DROP");
+
+    /*
+     * add a connected cover for the next-hop, this breaks the recursion loop
+     * for the default route
+     */
+    fib_table_entry_path_add(fib_index,
+                             &pfx_conn,
+                             FIB_SOURCE_API,
+                             (FIB_ENTRY_FLAG_CONNECTED |
+                              FIB_ENTRY_FLAG_ATTACHED),
+                             DPO_PROTO_IP4,
+                             NULL,
+                             tm->hw[0]->sw_if_index,
+                             ~0,
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
+    pfx_conn.fp_len = 32;
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_conn);
+
+    u32 ai_30 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                    VNET_LINK_IP4,
+                                    &pfx_conn.fp_addr,
+                                    tm->hw[0]->sw_if_index);
+
+    fib_test_lb_bucket_t ip_o_30_30_30_30 = {
+        .type = FT_LB_ADJ,
+        .adj = {
+            .adj = ai_30,
+        },
+    };
+    FIB_TEST(!fib_test_validate_entry(fei,
+                                      FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                      1,
+                                      &ip_o_30_30_30_30),
+             "30.30.30.30 via adj");
+    FIB_TEST_REC_FORW(&pfx_0_0_0_0_s_0, &pfx_conn, 0);
+
+    pfx_conn.fp_len = 24;
+    fib_table_entry_delete(fib_index,
+                           &pfx_conn,
+                           FIB_SOURCE_API);
+    fib_table_entry_delete(fib_index,
+                           &pfx_0_0_0_0_s_0,
+                           FIB_SOURCE_API);
+    adj_unlock(ai_30);
+
+    /*
      * CLEANUP
      *    remove adj-fibs:
      */
