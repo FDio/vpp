@@ -677,7 +677,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   vlib_buffer_t bpi_vec = {.buffer_pool_index = ~0 };
   vlib_buffer_t flags_refs_mask = {
     .flags = VLIB_BUFFER_NEXT_PRESENT,
-    .ref_count = ~0
+    .ref_count = ~1
   };
 #endif
 
@@ -767,18 +767,19 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 
       if (PREDICT_FALSE (buffer_pool_index != b[0]->buffer_pool_index))
 	{
-	  buffer_pool_index = b[0]->buffer_pool_index;
-#if defined(CLIB_HAVE_VEC128) && !__aarch64__
-	  bpi_vec.buffer_pool_index = buffer_pool_index;
-#endif
-	  bp = vlib_get_buffer_pool (vm, buffer_pool_index);
-	  vlib_buffer_copy_template (&bt, &bp->buffer_template);
 
 	  if (n_queue)
 	    {
 	      vlib_buffer_pool_put (vm, buffer_pool_index, queue, n_queue);
 	      n_queue = 0;
 	    }
+
+	  buffer_pool_index = b[0]->buffer_pool_index;
+#if defined(CLIB_HAVE_VEC128) && !__aarch64__
+	  bpi_vec.buffer_pool_index = buffer_pool_index;
+#endif
+	  bp = vlib_get_buffer_pool (vm, buffer_pool_index);
+	  vlib_buffer_copy_template (&bt, &bp->buffer_template);
 	}
 
       vlib_buffer_validate (vm, b[0]);
