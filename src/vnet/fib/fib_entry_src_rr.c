@@ -215,6 +215,17 @@ fib_entry_src_rr_cover_change (fib_entry_src_t *src,
     if (src->u.rr.fesr_cover != fib_table_get_less_specific(fib_entry->fe_fib_index,
 							  &fib_entry->fe_prefix))
     {
+
+        if(src->u.rr.fesr_cover != FIB_NODE_INDEX_INVALID)
+        {
+            fib_entry_t *cover = fib_entry_get(src->u.rr.fesr_cover);
+            if (!(FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover)))
+            {            
+                fib_node_index_t *entries = NULL;
+                fib_path_list_recursive_loop_detect(cover->fe_parent, &entries);            
+                vec_free(entries);
+            }     
+        }
 	fib_entry_src_rr_deactivate(src, fib_entry);
 	fib_entry_src_rr_activate(src, fib_entry);
 
