@@ -350,7 +350,9 @@ fib_walk_advance (fib_node_index_t fwi)
 
         while (ii < n_ctxs)
         {
-	    wrc = fib_node_back_walk_one(&sibling, &fwalk->fw_ctx[ii]);
+            fib_node_back_walk_ctx_t ctx = fwalk->fw_ctx[ii];
+
+	    wrc = fib_node_back_walk_one(&sibling, &ctx);
 
             ii++;
 	    fwalk = fib_walk_get(fwi);
