@@ -179,9 +179,18 @@ fib_entry_src_rr_deactivate (fib_entry_src_t *src,
      */
     if (FIB_NODE_INDEX_INVALID != src->u.rr.fesr_cover)
     {
+        fib_node_index_t *entries = NULL;
+
 	cover = fib_entry_get(src->u.rr.fesr_cover);
 	fib_entry_cover_untrack(cover, src->u.rr.fesr_sibling);
 	src->u.rr.fesr_cover = FIB_NODE_INDEX_INVALID;
+
+        if (FIB_NODE_INDEX_INVALID != cover->fe_parent)
+        {
+            fib_path_list_recursive_loop_detect(cover->fe_parent, &entries);
+
+            vec_free(entries);
+        }
     }
 
     fib_path_list_unlock(src->fes_pl);
