@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "533c4fbd_54424d31",
+        "filename": "src/vnet/fib/fib_entry_src_rr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-02-14T09:44:37Z",
+      "side": 1,
+      "message": "that you for the patch.\n\ni moved this (without the red blocks ;) ) into the deactivate function. and wrote a UT.\nnormally i wouldn\u0027t change a review like this, but I started working on it once I saw your bug report. and thanks for that too.",
+      "revId": "d579f0ec368724e0864c2a805d85f4a06712de41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
