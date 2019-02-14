@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "799b4c3f_c4d9c8cf",
+        "filename": "src/vnet/ip/punt_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-14T13:59:15Z",
+      "side": 1,
+      "message": "Do you want to use a different rv here?  when ipv \u003d\u003d ~0, it is not clear to the api which method failed.",
+      "range": {
+        "startLine": 103,
+        "startChar": 8,
+        "endLine": 103,
+        "endChar": 10
+      },
+      "revId": "bed6450dc39b4f15e376aba12aa2ecf0f42be3e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f7cc52d_3b8ac233",
+        "filename": "test/test_punt.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 200,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-14T13:59:15Z",
+      "side": 1,
+      "message": "Can you include assert messages?\nThese can also be consolidated as         self.assertEqual((punts[0].punt.l4_port,\n                            punts[0].punt.ipv), (1111, 4)",
+      "range": {
+        "startLine": 197,
+        "startChar": 0,
+        "endLine": 200,
+        "endChar": 46
+      },
+      "revId": "bed6450dc39b4f15e376aba12aa2ecf0f42be3e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ef5f747_acdbcb5a",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3539,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-14T13:59:15Z",
+      "side": 1,
+      "message": "Is (u8) ~0 used to indicate ADDRESS_ANY or ADDRESS_INVALID?\nShould be be using magic values of [46] here or should these be:\nvpp_papi.vpp_format.ADDRESS_IP4, \nvpp_papi.vpp_format.ADDRESS_IP6?\nCould you please update the docstring to indicate the valid values?",
+      "range": {
+        "startLine": 3539,
+        "startChar": 47,
+        "endLine": 3539,
+        "endChar": 55
+      },
+      "revId": "bed6450dc39b4f15e376aba12aa2ecf0f42be3e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
