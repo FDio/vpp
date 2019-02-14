@@ -1093,316 +1093,257 @@ VNET_FEATURE_ARC_INIT (ip6_local) =
 };
 /* *INDENT-ON* */
 
-static uword
+always_inline uword
 ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vlib_frame_t * frame, int head_of_feature_arc)
 {
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_local_next_t next_index;
-  u32 *from, *to_next, n_left_from, n_left_to_next;
+  u32 *from, n_left_from;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_input_node.index);
   u8 arc_index = vnet_feat_arc_ip6_local.feature_arc_index;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u16 nexts[VLIB_FRAME_SIZE], *next;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
-  next_index = node->cached_next_index;
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
     ip6_forward_next_trace (vm, node, frame, VLIB_TX);
 
-  while (n_left_from > 0)
+  vlib_get_buffers (vm, from, bufs, n_left_from);
+  b = bufs;
+  next = nexts;
+
+#define N  2
+#define xN for (int n=0; n<N; n++)
+
+  while (n_left_from > N)
     {
-      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      /* Prefetch next iteration. */
+      if (n_left_from >= 3 * N)
 	{
-	  vlib_buffer_t *p0, *p1;
-	  ip6_header_t *ip0, *ip1;
-	  udp_header_t *udp0, *udp1;
-	  u32 pi0, ip_len0, udp_len0, flags0, next0;
-	  u32 pi1, ip_len1, udp_len1, flags1, next1;
-	  i32 len_diff0, len_diff1;
-	  u8 error0, type0, good_l4_csum0, is_tcp_udp0;
-	  u8 error1, type1, good_l4_csum1, is_tcp_udp1;
-	  u32 udp_offset0, udp_offset1;
+	  xN vlib_prefetch_buffer_header (b[2 * N + n], STORE);
+	  xN vlib_prefetch_buffer_data (b[1 * N + n], LOAD);
+	}
 
-	  pi0 = to_next[0] = from[0];
-	  pi1 = to_next[1] = from[1];
-	  from += 2;
-	  n_left_from -= 2;
-	  to_next += 2;
-	  n_left_to_next -= 2;
+      u8 error[N];
+      xN error[n] = IP6_ERROR_UNKNOWN_PROTOCOL;
 
-	  error0 = error1 = IP6_ERROR_UNKNOWN_PROTOCOL;
+      ip6_header_t *ip[N];
+      xN ip[n] = vlib_buffer_get_current (b[n]);
 
-	  p0 = vlib_get_buffer (vm, pi0);
-	  p1 = vlib_get_buffer (vm, pi1);
+      if (head_of_feature_arc)
+	{
+	  xN vnet_buffer (b[n])->l3_hdr_offset = b[n]->current_data;
 
-	  ip0 = vlib_buffer_get_current (p0);
-	  ip1 = vlib_buffer_get_current (p1);
+	  u8 type[N];
+	  xN type[n] = lm->builtin_protocol_by_ip_protocol[ip[n]->protocol];
 
-	  if (head_of_feature_arc == 0)
-	    goto skip_checks;
+	  u32 flags[N];
+	  xN flags[n] = b[n]->flags;
 
-	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
-	  vnet_buffer (p1)->l3_hdr_offset = p1->current_data;
+	  u32 good_l4_csum[N];
+	  xN good_l4_csum[n] =
+	    flags[n] & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+			VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+			VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
 
-	  type0 = lm->builtin_protocol_by_ip_protocol[ip0->protocol];
-	  type1 = lm->builtin_protocol_by_ip_protocol[ip1->protocol];
-
-	  flags0 = p0->flags;
-	  flags1 = p1->flags;
-
-	  is_tcp_udp0 = ip6_next_proto_is_tcp_udp (p0, ip0, &udp_offset0);
-	  is_tcp_udp1 = ip6_next_proto_is_tcp_udp (p1, ip1, &udp_offset1);
-
-	  good_l4_csum0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-			   || (flags0 & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-			       || flags0 & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
-	    != 0;
-	  good_l4_csum1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-			   || (flags1 & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-			       || flags1 & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
-	    != 0;
-	  len_diff0 = 0;
-	  len_diff1 = 0;
-
-	  if (PREDICT_TRUE (is_tcp_udp0))
+	  u32 udp_offset[N];
+	  u8 is_tcp_udp[N];
+	  xN is_tcp_udp[n] =
+	    ip6_next_proto_is_tcp_udp (b[n], ip[n], &udp_offset[n]);
+	  i16 len_diff[N] = { 0 };
+	  xN if (PREDICT_TRUE (is_tcp_udp[n]))
 	    {
-	      udp0 = (udp_header_t *) ((u8 *) ip0 + udp_offset0);
-	      /* Don't verify UDP checksum for packets with explicit zero checksum. */
-	      good_l4_csum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP
-		&& udp0->checksum == 0;
-	      /* Verify UDP length. */
-	      if (is_tcp_udp0 == IP_PROTOCOL_UDP)
-		{
-		  ip_len0 = clib_net_to_host_u16 (ip0->payload_length);
-		  udp_len0 = clib_net_to_host_u16 (udp0->length);
-		  len_diff0 = ip_len0 - udp_len0;
-		}
-	    }
-	  if (PREDICT_TRUE (is_tcp_udp1))
-	    {
-	      udp1 = (udp_header_t *) ((u8 *) ip1 + udp_offset1);
-	      /* Don't verify UDP checksum for packets with explicit zero checksum. */
-	      good_l4_csum1 |= type1 == IP_BUILTIN_PROTOCOL_UDP
-		&& udp1->checksum == 0;
-	      /* Verify UDP length. */
-	      if (is_tcp_udp1 == IP_PROTOCOL_UDP)
-		{
-		  ip_len1 = clib_net_to_host_u16 (ip1->payload_length);
-		  udp_len1 = clib_net_to_host_u16 (udp1->length);
-		  len_diff1 = ip_len1 - udp_len1;
-		}
+	      udp_header_t *udp =
+		(udp_header_t *) ((u8 *) ip[n] + udp_offset[n]);
+	      good_l4_csum[n] |= type[n] == IP_BUILTIN_PROTOCOL_UDP
+		&& udp->checksum == 0;
+	      /* optimistically verify UDP length. */
+	      u16 ip_len, udp_len;
+	      ip_len = clib_net_to_host_u16 (ip[n]->payload_length);
+	      udp_len = clib_net_to_host_u16 (udp->length);
+	      len_diff[n] = ip_len - udp_len;
 	    }
 
-	  good_l4_csum0 |= type0 == IP_BUILTIN_PROTOCOL_UNKNOWN;
-	  good_l4_csum1 |= type1 == IP_BUILTIN_PROTOCOL_UNKNOWN;
+	  xN good_l4_csum[n] |= type[n] == IP_BUILTIN_PROTOCOL_UNKNOWN;
+	  xN len_diff[n] =
+	    type[n] == IP_BUILTIN_PROTOCOL_UDP ? len_diff[n] : 0;
 
-	  len_diff0 = type0 == IP_BUILTIN_PROTOCOL_UDP ? len_diff0 : 0;
-	  len_diff1 = type1 == IP_BUILTIN_PROTOCOL_UDP ? len_diff1 : 0;
-
-	  if (PREDICT_FALSE (type0 != IP_BUILTIN_PROTOCOL_UNKNOWN
-			     && !good_l4_csum0
-			     && !(flags0 &
-				  VNET_BUFFER_F_L4_CHECKSUM_COMPUTED)))
+	  u8 need_csum[N];
+	  xN need_csum[n] = type[n] != IP_BUILTIN_PROTOCOL_UNKNOWN
+	    && !good_l4_csum[n]
+	    && !(flags[n] & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  xN if (PREDICT_FALSE (need_csum[n]))
 	    {
-	      flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, p0);
-	      good_l4_csum0 =
-		(flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-	    }
-	  if (PREDICT_FALSE (type1 != IP_BUILTIN_PROTOCOL_UNKNOWN
-			     && !good_l4_csum1
-			     && !(flags1 &
-				  VNET_BUFFER_F_L4_CHECKSUM_COMPUTED)))
-	    {
-	      flags1 = ip6_tcp_udp_icmp_validate_checksum (vm, p1);
-	      good_l4_csum1 =
-		(flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+	      flags[n] = ip6_tcp_udp_icmp_validate_checksum (vm, b[n]);
+	      good_l4_csum[n] = flags[n] & VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
 	    }
 
-	  error0 = error1 = IP6_ERROR_UNKNOWN_PROTOCOL;
-	  error0 = len_diff0 < 0 ? IP6_ERROR_UDP_LENGTH : error0;
-	  error1 = len_diff1 < 0 ? IP6_ERROR_UDP_LENGTH : error1;
+	  xN error[n] = IP6_ERROR_UNKNOWN_PROTOCOL;
+	  xN error[n] = len_diff[n] < 0 ? IP6_ERROR_UDP_LENGTH : error[n];
 
-	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP ==
-		  IP6_ERROR_UDP_CHECKSUM);
-	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP ==
-		  IP6_ERROR_ICMP_CHECKSUM);
-	  error0 = (!good_l4_csum0 ? IP6_ERROR_UDP_CHECKSUM + type0 : error0);
-	  error1 = (!good_l4_csum1 ? IP6_ERROR_UDP_CHECKSUM + type1 : error1);
+	  STATIC_ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP ==
+			 IP6_ERROR_UDP_CHECKSUM,
+			 "Wrong IP6 errors constants");
+	  STATIC_ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP ==
+			 IP6_ERROR_ICMP_CHECKSUM,
+			 "Wrong IP6 errors constants");
+
+	  xN error[n] =
+	    !good_l4_csum[n] ? IP6_ERROR_UDP_CHECKSUM + type[n] : error[n];
 
 	  /* Drop packets from unroutable hosts. */
 	  /* If this is a neighbor solicitation (ICMP), skip source RPF check */
-	  if (error0 == IP6_ERROR_UNKNOWN_PROTOCOL &&
-	      type0 != IP_BUILTIN_PROTOCOL_ICMP &&
-	      !ip6_address_is_link_local_unicast (&ip0->src_address))
+	  u8 unroutable[N];
+	  xN unroutable[n] = error[n] == IP6_ERROR_UNKNOWN_PROTOCOL
+	    && type[n] != IP_BUILTIN_PROTOCOL_ICMP
+	    && !ip6_address_is_link_local_unicast (&ip[n]->src_address);
+	  xN if (PREDICT_FALSE (unroutable[n]))
 	    {
-	      error0 = (!ip6_urpf_loose_check (im, p0, ip0)
-			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
-	    }
-	  if (error1 == IP6_ERROR_UNKNOWN_PROTOCOL &&
-	      type1 != IP_BUILTIN_PROTOCOL_ICMP &&
-	      !ip6_address_is_link_local_unicast (&ip1->src_address))
-	    {
-	      error1 = (!ip6_urpf_loose_check (im, p1, ip1)
-			? IP6_ERROR_SRC_LOOKUP_MISS : error1);
+	      error[n] =
+		!ip6_urpf_loose_check (im, b[n],
+				       ip[n]) ? IP6_ERROR_SRC_LOOKUP_MISS
+		: error[n];
 	    }
 
-	  vnet_buffer (p0)->ip.fib_index =
-	    vnet_buffer (p0)->sw_if_index[VLIB_TX] != ~0 ?
-	    vnet_buffer (p0)->sw_if_index[VLIB_TX] :
-	    vnet_buffer (p0)->ip.fib_index;
+	  xN vnet_buffer (b[n])->ip.fib_index =
+	    vnet_buffer (b[n])->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (b[n])->sw_if_index[VLIB_TX] :
+	    vnet_buffer (b[n])->ip.fib_index;
+	}			/* head_of_feature_arc */
 
-	  vnet_buffer (p1)->ip.fib_index =
-	    vnet_buffer (p1)->sw_if_index[VLIB_TX] != ~0 ?
-	    vnet_buffer (p1)->sw_if_index[VLIB_TX] :
-	    vnet_buffer (p1)->ip.fib_index;
+      xN next[n] = lm->local_next_by_ip_protocol[ip[n]->protocol];
+      xN next[n] =
+	error[n] != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next[n];
 
-	skip_checks:
+      xN b[n]->error = error_node->errors[n];
 
-	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
-	  next1 = lm->local_next_by_ip_protocol[ip1->protocol];
-
-	  next0 =
-	    error0 != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
-	  next1 =
-	    error1 != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next1;
-
-	  p0->error = error_node->errors[error0];
-	  p1->error = error_node->errors[error1];
-
-	  if (head_of_feature_arc)
-	    {
-	      if (PREDICT_TRUE (error0 == (u8) IP6_ERROR_UNKNOWN_PROTOCOL))
-		vnet_feature_arc_start (arc_index,
-					vnet_buffer (p0)->sw_if_index
-					[VLIB_RX], &next0, p0);
-	      if (PREDICT_TRUE (error1 == (u8) IP6_ERROR_UNKNOWN_PROTOCOL))
-		vnet_feature_arc_start (arc_index,
-					vnet_buffer (p1)->sw_if_index
-					[VLIB_RX], &next1, p1);
-	    }
-
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, pi1, next0, next1);
-	}
-
-      while (n_left_from > 0 && n_left_to_next > 0)
+      if (head_of_feature_arc)
 	{
-	  vlib_buffer_t *p0;
-	  ip6_header_t *ip0;
-	  udp_header_t *udp0;
-	  u32 pi0, ip_len0, udp_len0, flags0, next0;
-	  i32 len_diff0;
-	  u8 error0, type0, good_l4_csum0;
-	  u32 udp_offset0;
-	  u8 is_tcp_udp0;
-
-	  pi0 = to_next[0] = from[0];
-	  from += 1;
-	  n_left_from -= 1;
-	  to_next += 1;
-	  n_left_to_next -= 1;
-
-	  error0 = IP6_ERROR_UNKNOWN_PROTOCOL;
-
-	  p0 = vlib_get_buffer (vm, pi0);
-	  ip0 = vlib_buffer_get_current (p0);
-
-	  if (head_of_feature_arc == 0)
-	    goto skip_check;
-
-	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
-
-	  type0 = lm->builtin_protocol_by_ip_protocol[ip0->protocol];
-	  flags0 = p0->flags;
-	  is_tcp_udp0 = ip6_next_proto_is_tcp_udp (p0, ip0, &udp_offset0);
-	  good_l4_csum0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-			   || (flags0 & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-			       || flags0 & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
-	    != 0;
-
-	  len_diff0 = 0;
-	  if (PREDICT_TRUE (is_tcp_udp0))
+	  u8 ip6_unknown[N];
+	  xN ip6_unknown[n] = error[n] == (u8) IP6_ERROR_UNKNOWN_PROTOCOL;
+	  xN if (PREDICT_TRUE (ip6_unknown[n]))
 	    {
-	      udp0 = (udp_header_t *) ((u8 *) ip0 + udp_offset0);
-	      /* Don't verify UDP checksum for packets with explicit zero
-	       * checksum. */
-	      good_l4_csum0 |= type0 == IP_BUILTIN_PROTOCOL_UDP
-		&& udp0->checksum == 0;
-	      /* Verify UDP length. */
-	      if (is_tcp_udp0 == IP_PROTOCOL_UDP)
-		{
-		  ip_len0 = clib_net_to_host_u16 (ip0->payload_length);
-		  udp_len0 = clib_net_to_host_u16 (udp0->length);
-		  len_diff0 = ip_len0 - udp_len0;
-		}
+	      u32 next32 = next[n];
+	      vnet_feature_arc_start (arc_index,
+				      vnet_buffer (b[n])->sw_if_index
+				      [VLIB_RX], &next32, b[n]);
+	      next[n] = next32;
 	    }
-
-	  good_l4_csum0 |= type0 == IP_BUILTIN_PROTOCOL_UNKNOWN;
-	  len_diff0 = type0 == IP_BUILTIN_PROTOCOL_UDP ? len_diff0 : 0;
-
-	  if (PREDICT_FALSE (type0 != IP_BUILTIN_PROTOCOL_UNKNOWN
-			     && !good_l4_csum0
-			     && !(flags0 &
-				  VNET_BUFFER_F_L4_CHECKSUM_COMPUTED)))
-	    {
-	      flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, p0);
-	      good_l4_csum0 =
-		(flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-	    }
-
-	  error0 = IP6_ERROR_UNKNOWN_PROTOCOL;
-	  error0 = len_diff0 < 0 ? IP6_ERROR_UDP_LENGTH : error0;
-
-	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP ==
-		  IP6_ERROR_UDP_CHECKSUM);
-	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP ==
-		  IP6_ERROR_ICMP_CHECKSUM);
-	  error0 = (!good_l4_csum0 ? IP6_ERROR_UDP_CHECKSUM + type0 : error0);
-
-	  /* If this is a neighbor solicitation (ICMP), skip src RPF check */
-	  if (error0 == IP6_ERROR_UNKNOWN_PROTOCOL &&
-	      type0 != IP_BUILTIN_PROTOCOL_ICMP &&
-	      !ip6_address_is_link_local_unicast (&ip0->src_address))
-	    {
-	      error0 = (!ip6_urpf_loose_check (im, p0, ip0)
-			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
-	    }
-
-	  vnet_buffer (p0)->ip.fib_index =
-	    vnet_buffer (p0)->sw_if_index[VLIB_TX] != ~0 ?
-	    vnet_buffer (p0)->sw_if_index[VLIB_TX] :
-	    vnet_buffer (p0)->ip.fib_index;
-
-	skip_check:
-
-	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
-	  next0 =
-	    error0 != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
-
-	  p0->error = error_node->errors[error0];
-
-	  if (head_of_feature_arc)
-	    {
-	      if (PREDICT_TRUE (error0 == (u8) IP6_ERROR_UNKNOWN_PROTOCOL))
-		vnet_feature_arc_start (arc_index,
-					vnet_buffer (p0)->sw_if_index
-					[VLIB_RX], &next0, p0);
-	    }
-
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   pi0, next0);
 	}
 
-      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+      /* next */
+      b += N;
+      next += N;
+      n_left_from -= N;
+    }
+#undef xN
+#undef N
+  while (n_left_from)
+    {
+      u8 error;
+      error = IP6_ERROR_UNKNOWN_PROTOCOL;
+
+      ip6_header_t *ip;
+      ip = vlib_buffer_get_current (b[0]);
+
+      if (head_of_feature_arc)
+	{
+	  vnet_buffer (b[0])->l3_hdr_offset = b[0]->current_data;
+	  u8 type = lm->builtin_protocol_by_ip_protocol[ip->protocol];
+
+	  u32 flags = b[0]->flags;
+	  u32 good_l4_csum =
+	    flags & (VNET_BUFFER_F_L4_CHECKSUM_CORRECT |
+		     VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+		     VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
+
+	  u32 udp_offset;
+	  i16 len_diff = 0;
+	  u8 is_tcp_udp = ip6_next_proto_is_tcp_udp (b[0], ip, &udp_offset);
+	  if (PREDICT_TRUE (is_tcp_udp))
+	    {
+	      udp_header_t *udp = (udp_header_t *) ((u8 *) ip + udp_offset);
+	      /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	      good_l4_csum |= type == IP_BUILTIN_PROTOCOL_UDP
+		&& udp->checksum == 0;
+	      /* optimistically verify UDP length. */
+	      u16 ip_len, udp_len;
+	      ip_len = clib_net_to_host_u16 (ip->payload_length);
+	      udp_len = clib_net_to_host_u16 (udp->length);
+	      len_diff = ip_len - udp_len;
+	    }
+
+	  good_l4_csum |= type == IP_BUILTIN_PROTOCOL_UNKNOWN;
+	  len_diff = type == IP_BUILTIN_PROTOCOL_UDP ? len_diff : 0;
+
+	  u8 need_csum = type != IP_BUILTIN_PROTOCOL_UNKNOWN && !good_l4_csum
+	    && !(flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
+	  if (PREDICT_FALSE (need_csum))
+	    {
+	      flags = ip6_tcp_udp_icmp_validate_checksum (vm, b[0]);
+	      good_l4_csum = flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+	    }
+
+	  error = IP6_ERROR_UNKNOWN_PROTOCOL;
+	  error = len_diff < 0 ? IP6_ERROR_UDP_LENGTH : error;
+
+	  STATIC_ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_UDP ==
+			 IP6_ERROR_UDP_CHECKSUM,
+			 "Wrong IP6 errors constants");
+	  STATIC_ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP ==
+			 IP6_ERROR_ICMP_CHECKSUM,
+			 "Wrong IP6 errors constants");
+
+	  error = !good_l4_csum ? IP6_ERROR_UDP_CHECKSUM + type : error;
+
+	  /* Drop packets from unroutable hosts. */
+	  /* If this is a neighbor solicitation (ICMP), skip source RPF check */
+	  u8 unroutable = error == IP6_ERROR_UNKNOWN_PROTOCOL
+	    && type != IP_BUILTIN_PROTOCOL_ICMP
+	    && !ip6_address_is_link_local_unicast (&ip->src_address);
+	  if (PREDICT_FALSE (unroutable))
+	    {
+	      error =
+		!ip6_urpf_loose_check (im, b[0],
+				       ip) ? IP6_ERROR_SRC_LOOKUP_MISS :
+		error;
+	    }
+
+	  vnet_buffer (b[0])->ip.fib_index =
+	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] != ~0 ?
+	    vnet_buffer (b[0])->sw_if_index[VLIB_TX] :
+	    vnet_buffer (b[0])->ip.fib_index;
+	}			/* head_of_feature_arc */
+
+      next[0] = lm->local_next_by_ip_protocol[ip->protocol];
+      next[0] =
+	error != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next[0];
+
+      b[0]->error = error_node->errors[0];
+
+      if (head_of_feature_arc)
+	{
+	  if (PREDICT_TRUE (error == (u8) IP6_ERROR_UNKNOWN_PROTOCOL))
+	    {
+	      u32 next32 = next[0];
+	      vnet_feature_arc_start (arc_index,
+				      vnet_buffer (b[0])->sw_if_index
+				      [VLIB_RX], &next32, b[0]);
+	      next[0] = next32;
+	    }
+	}
+
+      /* next */
+      b += 1;
+      next += 1;
+      n_left_from -= 1;
     }
 
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
 
