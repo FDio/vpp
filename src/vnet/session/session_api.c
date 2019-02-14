@@ -917,7 +917,8 @@ done:
         rmp->handle = a->handle;
         if (app && application_has_global_scope (app))
             {
-              s = listen_session_get_from_handle (a->handle);
+              app_listener_t* al = app_listener_get_w_handle(a->handle);
+              s = app_listener_get_session(al);
               tc = listen_session_get_transport (s);
               rmp->lcl_is_ip4 = tc->is_ip4;
               rmp->lcl_port = tc->lcl_port;
