@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "69e39dc9_a8f83d05",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 680,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-02-14T15:49:44Z",
+      "side": 1,
+      "message": "This is mask, ref count can be any number from 1 to 255.",
+      "range": {
+        "startLine": 680,
+        "startChar": 0,
+        "endLine": 680,
+        "endChar": 19
+      },
+      "revId": "7e786a0beb9fa58982099ec7f42f325f4aac31cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
