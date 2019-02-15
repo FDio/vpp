@@ -193,6 +193,24 @@
       "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "054329b0_bc4e8b2d",
+        "filename": "src/plugins/dpdk/ipsec/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2019-02-15T14:10:28Z",
+      "side": 1,
+      "message": "Sure, I understand how that is information you would care about.\nThe point I tried to make in another comment is regarding free resources.\nWhat is the value of showing this information for free resources?\n\nIs it mostly for debugging? ie. to check that free resources have no inflights?",
+      "parentUuid": "ec494875_5a41d089",
+      "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
