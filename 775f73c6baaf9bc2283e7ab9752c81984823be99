@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2357013f_fb6b6cab",
+        "filename": "src/vnet/fib/fib_path.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2681,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-15T14:18:13Z",
+      "side": 1,
+      "message": "Please do not introduce trailing whitespace.",
+      "range": {
+        "startLine": 2681,
+        "startChar": 60,
+        "endLine": 2681,
+        "endChar": 61
+      },
+      "revId": "775f73c6baaf9bc2283e7ab9752c81984823be99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

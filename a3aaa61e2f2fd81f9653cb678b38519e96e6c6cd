@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d601614_23c59a39",
+        "filename": "src/vnet/fib/fib_path_list.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 750,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-15T14:18:13Z",
+      "side": 0,
+      "message": "Thank you for removing trailing whitespace.",
+      "range": {
+        "startLine": 750,
+        "startChar": 27,
+        "endLine": 750,
+        "endChar": 28
+      },
+      "revId": "a3aaa61e2f2fd81f9653cb678b38519e96e6c6cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
