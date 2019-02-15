@@ -97,6 +97,54 @@
     },
     {
       "key": {
+        "uuid": "edc6ec2d_864747a9",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T02:01:17Z",
+      "side": 1,
+      "message": "spi, it means nothing but an id.",
+      "parentUuid": "a5cffeec_24978409",
+      "range": {
+        "startLine": 63,
+        "startChar": 53,
+        "endLine": 63,
+        "endChar": 54
+      },
+      "revId": "e15a512bb60f07ea0b224aa4558fd55291cbb7ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d7bf827f_8db13d63",
+        "filename": "src/vnet/ipsec/ipsec_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T02:01:17Z",
+      "side": 1,
+      "message": "sure, please.",
+      "parentUuid": "53caa58f_999493ae",
+      "range": {
+        "startLine": 63,
+        "startChar": 53,
+        "endLine": 63,
+        "endChar": 54
+      },
+      "revId": "e15a512bb60f07ea0b224aa4558fd55291cbb7ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7378f4bc_92f10566",
         "filename": "src/vnet/ipsec/ipsec_input.c",
         "patchSetId": 1
@@ -231,6 +279,24 @@
       "side": 1,
       "message": "i moved the counter increment up and the prefetch as early as possible.",
       "parentUuid": "e53df377_e6e9a415",
+      "revId": "e15a512bb60f07ea0b224aa4558fd55291cbb7ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fb99b64f_a14a34f5",
+        "filename": "src/vnet/ipsec/ipsec_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T02:01:17Z",
+      "side": 1,
+      "message": "ok. \n\nStill wonder if the prefetch helps. the counter will be incremented very soon unless ip/udp/tcp checksum has to be re-calculated, which is a really rare case.\n\nAnyway, it is ok, no harm.",
+      "parentUuid": "8121f3f3_7ffd4539",
       "revId": "e15a512bb60f07ea0b224aa4558fd55291cbb7ba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
