@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1b9ee216_3058c2ab",
+        "filename": "src/vnet/ipsec/ah.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0d37a8c8_9481e2de",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "14c1928f_47d2c199",
         "filename": "src/vnet/ipsec/ah.c",
         "patchSetId": 11
@@ -30,6 +48,24 @@
       "writtenOn": "2019-02-13T16:23:44Z",
       "side": 1,
       "message": "both lookup indices are unused.",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fd7090b9_93d58817",
+        "filename": "src/vnet/ipsec/ah.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "14c1928f_47d2c199",
       "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "146f4439_2de51b96",
+        "filename": "src/vnet/ipsec/ah.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "645bf5f3_f489a7c0",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6138ec40_f5b1736c",
         "filename": "src/vnet/ipsec/ah.c",
         "patchSetId": 11
@@ -64,6 +118,24 @@
       "writtenOn": "2019-02-13T16:23:44Z",
       "side": 1,
       "message": "is this assert always true? can there be other extension headers between the IP header and the AH?",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8368a738_d750c47f",
+        "filename": "src/vnet/ipsec/ah.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "this is in line with what previous code did\nI tried to make this change as small as possible\nI would suggest filing a bug to fix this later",
+      "parentUuid": "6138ec40_f5b1736c",
       "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "8670ed00_425a9c92",
+        "filename": "src/vnet/ipsec/ah.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "448eb831_fb8b8f92",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "50023e22_f0db70f9",
         "filename": "src/vnet/ipsec/ah.c",
         "patchSetId": 11
@@ -98,6 +188,24 @@
       "writtenOn": "2019-02-13T16:23:44Z",
       "side": 1,
       "message": "is it valid to be here if algo \u003d\u003d NONE?\nif it is then is aglo\u003dNONE a valid job?",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dd0c9a2a_4618b305",
+        "filename": "src/vnet/ipsec/ah.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "50023e22_f0db70f9",
       "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -121,6 +229,24 @@
     },
     {
       "key": {
+        "uuid": "6c98667d_fd3f45e1",
+        "filename": "src/vnet/ipsec/ah.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2dcfb6f7_906ad2f4",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a44b030_390352d9",
         "filename": "src/vnet/ipsec/esp.c",
         "patchSetId": 11
@@ -132,6 +258,24 @@
       "writtenOn": "2019-02-13T16:23:44Z",
       "side": 1,
       "message": "this generic function probably belongs in a different file.\nand inline too maybe so we can const optimse out the is_encrypt?",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dd76726d_5b26d0ea",
+        "filename": "src/vnet/ipsec/esp.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 530,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "moved and optimized\nI don\u0027t like code in headers very much, that\u0027s why avoid it",
+      "parentUuid": "1a44b030_390352d9",
       "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -155,6 +299,24 @@
     },
     {
       "key": {
+        "uuid": "dbe1590a_f35f0e50",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c5a68500_a35f6a96",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f76dbc3c_07af39fb",
         "filename": "src/vnet/ipsec/ipsec.h",
         "patchSetId": 11
@@ -166,6 +328,24 @@
       "writtenOn": "2019-02-13T16:23:44Z",
       "side": 1,
       "message": "vlib_buffer_space_left \n  and in vnet_buffer_funcs.h maybe..",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d731d059_d2ddcac3",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 340,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f76dbc3c_07af39fb",
       "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -189,6 +369,24 @@
     },
     {
       "key": {
+        "uuid": "20801fd3_af2ff3b9",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c266ee7d_13d7b73d",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "91b1287d_4a5e387e",
         "filename": "src/vnet/ipsec/ipsec.h",
         "patchSetId": 11
@@ -200,6 +398,24 @@
       "writtenOn": "2019-02-13T16:23:44Z",
       "side": 1,
       "message": "unused",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "85823792_1271edc5",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "91b1287d_4a5e387e",
       "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -223,6 +439,24 @@
     },
     {
       "key": {
+        "uuid": "a8588402_69537b98",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 490,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "382f7a32_1cf5ff32",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "27ff5668_4b6b8b71",
         "filename": "src/vnet/ipsec/ipsec.h",
         "patchSetId": 11
@@ -240,6 +474,24 @@
     },
     {
       "key": {
+        "uuid": "20919841_20906783",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "I don\u0027t understand the while next present? The whole (old) chain here is freed if it\u0027s not a single buffer. Where would the other buffers come from?\n\nThe second one is a complication and while surely doable, I don\u0027t think it\u0027s necessary right now right here. This is already a huge change and the code is tested. I would advise to optimize with a patch later on ...",
+      "parentUuid": "27ff5668_4b6b8b71",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "378e4bf9_8b4f51f8",
         "filename": "src/vnet/ipsec/ipsec.h",
         "patchSetId": 11
@@ -251,6 +503,24 @@
       "writtenOn": "2019-02-13T16:23:44Z",
       "side": 1,
       "message": "i appreciate this is not changed code, only moved. but, is this thread safe? is a given SA accessed only by 1 worker? i think not...",
+      "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "212cf053_c477c8fd",
+        "filename": "src/vnet/ipsec/ipsec.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 760,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2019-02-15T13:35:06Z",
+      "side": 1,
+      "message": "I am going to reiterate that this is a big change and the aim is not to solve all the problems at once ...",
+      "parentUuid": "378e4bf9_8b4f51f8",
       "revId": "1156f5232e4b41c99ffcc09fd6a2d39a81ed8cc8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
