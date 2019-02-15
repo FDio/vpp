@@ -2882,7 +2882,7 @@ vl_api_dslite_get_b4_addr_t_handler (vl_api_dslite_get_b4_addr_t * mp)
   int rv = 0;
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_DSLITE_GET_AFTR_ADDR_REPLY,
+  REPLY_MACRO2 (VL_API_DSLITE_GET_B4_ADDR_REPLY,
   ({
     memcpy (rmp->ip4_addr, &dm->b4_ip4_addr.as_u8, 4);
     memcpy (rmp->ip6_addr, &dm->b4_ip6_addr.as_u8, 16);
