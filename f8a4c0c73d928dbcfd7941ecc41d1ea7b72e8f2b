@@ -89,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "2e6c1548_12d91c7f",
+        "filename": "src/plugins/dpdk/ipsec/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2019-02-15T13:04:15Z",
+      "side": 1,
+      "message": "I really don\u0027t have strong feelings about this, I was really wondering if you see any value in this information.",
+      "parentUuid": "5c1907a2_534bbddc",
+      "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "655a30c3_2e0903c1",
         "filename": "src/plugins/dpdk/ipsec/cli.c",
         "patchSetId": 2
@@ -118,6 +136,24 @@
       "side": 1,
       "message": "Done",
       "parentUuid": "655a30c3_2e0903c1",
+      "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ed46b92_a635474b",
+        "filename": "src/plugins/dpdk/ipsec/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2019-02-15T13:04:15Z",
+      "side": 1,
+      "message": "Seems to be the same as before? I was expecting to see here the output of the extra information you added to format_crypto",
+      "parentUuid": "41713fcd_d04d3bf1",
       "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
