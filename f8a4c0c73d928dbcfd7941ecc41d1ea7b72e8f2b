@@ -175,6 +175,24 @@
       "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ec494875_5a41d089",
+        "filename": "src/plugins/dpdk/ipsec/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T13:57:37Z",
+      "side": 1,
+      "message": "I\u0027d like to see the allocation and placement of resources by format_crypto_resource, plus the buffers infilght. This is somewhat useful when doing peformance test. We then know how many packets are in the fly.",
+      "parentUuid": "3ed46b92_a635474b",
+      "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
