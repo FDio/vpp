@@ -22,6 +22,30 @@
       "revId": "7e786a0beb9fa58982099ec7f42f325f4aac31cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "769248f8_b1d1c1da",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 680,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T01:57:55Z",
+      "side": 1,
+      "message": "Yes. setting to ~1 means that all buffers with ref_count 0 or 1 will be masked to 0 by \n\nr |\u003d (p0 | p1 | p2 | p3) \u0026 flags_refs_mask.as_u8x16[0];\n\nthen r is all zero, fast path. This is somewhat different from the C code \u0027sum +\u003d b[0]-\u003eref_count - 1;\u0027 which only applies to ref_count 1. But it works, at minimum cost.",
+      "parentUuid": "69e39dc9_a8f83d05",
+      "range": {
+        "startLine": 680,
+        "startChar": 0,
+        "endLine": 680,
+        "endChar": 19
+      },
+      "revId": "7e786a0beb9fa58982099ec7f42f325f4aac31cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
