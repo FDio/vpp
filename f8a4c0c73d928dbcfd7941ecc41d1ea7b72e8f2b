@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "594eaacb_860d2648",
+        "filename": "src/plugins/dpdk/ipsec/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T12:50:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5100f052_9773dcb7",
+      "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "6a5b37d8_f60b64f7",
         "filename": "src/plugins/dpdk/ipsec/cli.c",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2019-02-14T08:22:52Z",
       "side": 1,
       "message": "free_resources and used_resources are already displayed, see line #51",
+      "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff28c57a_64063c9c",
+        "filename": "src/plugins/dpdk/ipsec/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T12:50:53Z",
+      "side": 1,
+      "message": "remove line #51",
+      "parentUuid": "6a5b37d8_f60b64f7",
       "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -64,6 +100,24 @@
       "writtenOn": "2019-02-14T08:22:52Z",
       "side": 1,
       "message": "It would be great to get an updated comment here with the stats .",
+      "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "41713fcd_d04d3bf1",
+        "filename": "src/plugins/dpdk/ipsec/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-02-15T12:50:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "655a30c3_2e0903c1",
       "revId": "f8a4c0c73d928dbcfd7941ecc41d1ea7b72e8f2b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
