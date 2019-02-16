@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -330,6 +330,26 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
   if (!tcp_segment_in_rcv_wnd (tc0, vnet_buffer (b0)->tcp.seq_number,
 			       vnet_buffer (b0)->tcp.seq_end))
     {
+      /* SYN/SYN-ACK retransmit */
+      if (tcp_syn (th0)
+	  && vnet_buffer (b0)->tcp.seq_number == tc0->rcv_nxt - 1)
+	{
+	  tcp_options_parse (th0, &tc0->rcv_opts, 1);
+	  if (tc0->state == TCP_STATE_SYN_RCVD)
+	    {
+	      tcp_send_synack (tc0);
+	      TCP_EVT_DBG (TCP_EVT_SYN_RCVD, tc0, 0);
+	      *error0 = TCP_ERROR_SYNS_RCVD;
+	    }
+	  else
+	    {
+	      tcp_program_ack (wrk, tc0);
+	      TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, tc0);
+	      *error0 = TCP_ERROR_SYN_ACKS_RCVD;
+	    }
+	  goto error;
+	}
+
       *error0 = TCP_ERROR_RCV_WND;
       /* If our window is 0 and the packet is in sequence, let it pass
        * through for ack processing. It should be dropped later. */
@@ -356,22 +376,11 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 
   /* 3rd: check security and precedence (skip) */
 
-  /* 4th: check the SYN bit */
+  /* 4th: check the SYN bit (in window) */
   if (PREDICT_FALSE (tcp_syn (th0)))
     {
-      *error0 = tcp_ack (th0) ? TCP_ERROR_SYN_ACKS_RCVD : TCP_ERROR_SYNS_RCVD;
-      /* TODO implement RFC 5961 */
-      if (tc0->state == TCP_STATE_SYN_RCVD)
-	{
-	  tcp_options_parse (th0, &tc0->rcv_opts, 1);
-	  tcp_send_synack (tc0);
-	  TCP_EVT_DBG (TCP_EVT_SYN_RCVD, tc0, 0);
-	}
-      else
-	{
-	  tcp_program_ack (wrk, tc0);
-	  TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, tc0);
-	}
+      *error0 = TCP_ERROR_SPURIOUS_SYN;
+      tcp_send_reset (tc0);
       goto error;
     }
 
