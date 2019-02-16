@@ -330,6 +330,26 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
   if (!tcp_segment_in_rcv_wnd (tc0, vnet_buffer (b0)->tcp.seq_number,
 			       vnet_buffer (b0)->tcp.seq_end))
     {
+      if (tcp_syn (th0)
+	  && vnet_buffer (b0)->tcp.seq_number == tc0->rcv_nxt - 1)
+	{
+	  tcp_options_parse (th0, &tc0->rcv_opts, 1);
+	  if (tc0->state == TCP_STATE_SYN_RCVD)
+	    {
+	      tcp_send_synack (tc0);
+	      TCP_EVT_DBG (TCP_EVT_SYN_RCVD, tc0, 0);
+	      *error0 = TCP_ERROR_SYNS_RCVD;
+	    }
+	  else if (tcp_ack (th0))
+	    {
+	      *error0 = TCP_ERROR_SYN_ACKS_RCVD;
+	      tcp_program_ack (wrk, tc0);
+	      TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, tc0);
+	    }
+	  goto error;
+	}
+      clib_warning ("not in rcv wnd conn %u state %u", tc0->c_c_index,
+		    tc0->state);
       *error0 = TCP_ERROR_RCV_WND;
       /* If our window is 0 and the packet is in sequence, let it pass
        * through for ack processing. It should be dropped later. */
@@ -2363,6 +2383,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (tcp0->dst_port != tc0->c_lcl_port
 			 || tcp0->src_port != tc0->c_rmt_port))
 	{
+	  clib_warning ("synsent conn check fails");
 	  error0 = TCP_ERROR_INVALID_CONNECTION;
 	  goto drop;
 	}
@@ -2393,6 +2414,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  if (seq_leq (ack0, tc0->iss) || seq_gt (ack0, tc0->snd_nxt))
 	    {
+	      clib_warning ("syn-ack ack not acceptable");
 	      if (!tcp_rst (tcp0))
 		tcp_send_reset_w_pkt (tc0, b0, my_thread_index, is_ip4);
 	      error0 = TCP_ERROR_RCV_WND;
@@ -2413,6 +2435,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (tcp_rst (tcp0))
 	{
+	  clib_warning ("reset received %u", tc0->c_c_index);
 	  /* If ACK is acceptable, signal client that peer is not
 	   * willing to accept connection and drop connection*/
 	  if (tcp_ack (tcp0))
@@ -2432,6 +2455,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* No SYN flag. Drop. */
       if (!tcp_syn (tcp0))
 	{
+	  ASSERT (0);
 	  clib_warning ("not synack");
 	  error0 = TCP_ERROR_SEGMENT_INVALID;
 	  goto drop;
@@ -2658,6 +2682,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				thread_index);
       if (PREDICT_FALSE (tc0 == 0))
 	{
+	  ASSERT (0);
 	  error0 = TCP_ERROR_INVALID_CONNECTION;
 	  goto drop;
 	}
