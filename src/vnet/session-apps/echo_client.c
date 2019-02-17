@@ -610,7 +610,7 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
       ASSERT (i + 1 >= ecm->ready_connections);
       while (i + 1 - ecm->ready_connections > 1000)
 	{
-	  vlib_process_suspend (vm, 100e-6);
+	  vlib_process_suspend (vm, 1e-3);
 	}
     }
   return 0;

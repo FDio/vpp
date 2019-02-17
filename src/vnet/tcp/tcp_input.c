@@ -340,7 +340,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 	      TCP_EVT_DBG (TCP_EVT_SYN_RCVD, tc0, 0);
 	      *error0 = TCP_ERROR_SYNS_RCVD;
 	    }
-	  else if (tcp_ack (th0))
+	  else
 	    {
 	      *error0 = TCP_ERROR_SYN_ACKS_RCVD;
 	      tcp_program_ack (wrk, tc0);
@@ -525,6 +525,9 @@ tcp_estimate_initial_rtt (tcp_connection_t * tc)
     {
       mrtt = tcp_time_now_w_thread (thread_index) - tc->rcv_opts.tsecr;
       mrtt = clib_max (mrtt, 1);
+      /* Due to retransmits we don't know the initial mrtt */
+      if (tc->rto_boff && mrtt > 1 * THZ)
+	mrtt = 1 * THZ;
       tc->mrtt_us = (f64) mrtt *TCP_TICK;
     }
 
@@ -2424,6 +2427,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Make sure ACK is valid */
 	  if (seq_gt (tc0->snd_una, ack0))
 	    {
+	      clib_error ("ack failed");
 	      error0 = TCP_ERROR_ACK_INVALID;
 	      goto drop;
 	    }
@@ -2455,7 +2459,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* No SYN flag. Drop. */
       if (!tcp_syn (tcp0))
 	{
-	  ASSERT (0);
 	  clib_warning ("not synack");
 	  error0 = TCP_ERROR_SEGMENT_INVALID;
 	  goto drop;
@@ -2530,6 +2533,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    transport_tx_fifo_size (&new_tc0->connection);
 	  /* Update rtt with the syn-ack sample */
 	  tcp_estimate_initial_rtt (new_tc0);
+	  ASSERT (new_tc0->srtt != 0);
 	  TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, new_tc0);
 	  error0 = TCP_ERROR_SYN_ACKS_RCVD;
 	}
@@ -2697,6 +2701,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       is_ip4);
 	  if (tmp->state != tc0->state)
 	    {
+	      clib_warning ("state mismatch");
 	      if (tc0->state != TCP_STATE_CLOSED)
 		clib_warning ("state changed");
 	      goto drop;
@@ -3691,6 +3696,9 @@ do {                                                       	\
   _(SYN_SENT, TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT, TCP_ERROR_NONE);
   _(SYN_SENT, TCP_FLAG_RST, TCP_INPUT_NEXT_SYN_SENT, TCP_ERROR_NONE);
   _(SYN_SENT, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT,
+    TCP_ERROR_NONE);
+  _(SYN_SENT, TCP_FLAG_FIN, TCP_INPUT_NEXT_SYN_SENT, TCP_ERROR_NONE);
+  _(SYN_SENT, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT,
     TCP_ERROR_NONE);
   /* ACK for for established connection -> tcp-established. */
   _(ESTABLISHED, TCP_FLAG_ACK, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
