@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -587,11 +587,6 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   tcp_options_write ((u8 *) (th + 1), snd_opts);
 
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
-
-  /* Init retransmit timer. Use update instead of set because of
-   * retransmissions */
-  tcp_retransmit_timer_force_update (tc);
-  TCP_EVT_DBG (TCP_EVT_SYNACK_SENT, tc);
 }
 
 always_inline void
@@ -951,7 +946,10 @@ tcp_send_syn (tcp_connection_t * tc)
 		    tc->rto * TCP_TO_TIMER_TICK);
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
-    return;
+    {
+      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+      return;
+    }
 
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
@@ -975,14 +973,20 @@ tcp_send_synack (tcp_connection_t * tc)
   vlib_buffer_t *b;
   u32 bi;
 
+  tcp_retransmit_timer_force_update (tc);
+
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
-    return;
+    {
+      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
+      return;
+    }
 
   tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
   tcp_make_synack (tc, b);
   tcp_enqueue_to_output (wrk, b, bi, tc->c_is_ip4);
+  TCP_EVT_DBG (TCP_EVT_SYNACK_SENT, tc);
 }
 
 /**
@@ -1050,6 +1054,9 @@ tcp_send_fin (tcp_connection_t * tc)
       tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
       if (fin_snt)
 	tc->snd_nxt = tc->snd_una_max;
+      else
+	/* Make sure retransmit retries a fin not data */
+	tc->flags |= TCP_CONN_FINSNT;
       return;
     }
 
@@ -1195,7 +1202,10 @@ tcp_send_ack (tcp_connection_t * tc)
   u32 bi;
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
-    return;
+    {
+      tcp_update_rcv_wnd (tc);
+      return;
+    }
   b = vlib_get_buffer (vm, bi);
   tcp_init_buffer (vm, b);
   tcp_make_ack (tc, b);
@@ -1458,6 +1468,8 @@ tcp_rxt_timeout_cc (tcp_connection_t * tc)
       scoreboard_clear (&tc->sack_sb);
       tcp_cc_fastrecovery_exit (tc);
     }
+  else
+    tc->rcv_dupacks = 0;
 
   /* Start again from the beginning */
   tc->cc_algo->congestion (tc);
@@ -1504,7 +1516,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2);
 
       /* Lost FIN, retransmit and return */
-      if (tcp_is_lost_fin (tc))
+      if (tc->flags & TCP_CONN_FINSNT)
 	{
 	  tcp_send_fin (tc);
 	  tc->rto_boff += 1;
@@ -1553,7 +1565,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       n_bytes = tcp_prepare_retransmit_segment (wrk, tc, 0, tc->snd_mss, &b);
       if (!n_bytes)
 	{
-	  tcp_retransmit_timer_force_update (tc);
+	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
 	}
 
@@ -1591,7 +1603,10 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 			tc->rto * TCP_TO_TIMER_TICK);
 
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
-	return;
+	{
+	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN, 1);
+	  return;
+	}
 
       b = vlib_get_buffer (vm, bi);
       tcp_init_buffer (vm, b);
@@ -1614,9 +1629,11 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tc->rtt_ts = 0;
 
+      tcp_retransmit_timer_force_update (tc);
+
       if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
 	{
-	  tcp_retransmit_timer_force_update (tc);
+	  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, 1);
 	  return;
 	}
 

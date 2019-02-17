@@ -605,13 +605,11 @@ echo_clients_connect (vlib_main_t * vm, u32 n_clients)
 	return clib_error_return (0, "connect returned: %d", rv);
 
       /* Crude pacing for call setups  */
-      if ((i % 4) == 0)
-	vlib_process_suspend (vm, 10e-6);
+      if ((i % 16) == 0)
+	vlib_process_suspend (vm, 100e-6);
       ASSERT (i + 1 >= ecm->ready_connections);
-      while (i + 1 - ecm->ready_connections > 1000)
-	{
-	  vlib_process_suspend (vm, 100e-6);
-	}
+      while (i + 1 - ecm->ready_connections > 128)
+	vlib_process_suspend (vm, 1e-3);
     }
   return 0;
 }
