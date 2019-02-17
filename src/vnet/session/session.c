@@ -862,6 +862,12 @@ session_transport_delete_notify (transport_connection_t * tc)
 
   switch (s->session_state)
     {
+    case SESSION_STATE_CREATED:
+      /* Session was created but accept notification was not yet sent to the
+       * app. Cleanup everything. */
+      session_lookup_del_session (s);
+      session_free_w_fifos (s);
+      break;
     case SESSION_STATE_ACCEPTING:
     case SESSION_STATE_TRANSPORT_CLOSING:
       /* If transport finishes or times out before we get a reply
@@ -963,6 +969,7 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 
   s->app_wrk_index = app_wrk->wrk_index;
   s->listener_index = listener_index;
+  s->session_state = SESSION_STATE_CREATED;
 
   /* Shoulder-tap the server */
   if (notify)
