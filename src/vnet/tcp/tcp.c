@@ -341,6 +341,7 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_RCVD:
+      clib_warning ("rto_boff %u", tc->rto_boff);
       tcp_connection_timers_reset (tc);
       tcp_send_fin (tc);
       tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
@@ -1246,9 +1247,11 @@ tcp_timer_establish_handler (u32 conn_index)
   ASSERT (tc->state == TCP_STATE_SYN_RCVD);
   /* Start cleanup. App wasn't notified yet so use delete notify as
    * opposed to delete to cleanup session layer state. */
-  session_transport_delete_notify (&tc->connection);
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
-  tcp_connection_cleanup (tc);
+  tcp_connection_close (tc);
+//  tc->state = TCP_STATE_CLOSED;
+//  session_transport_delete_notify (&tc->connection);
+//  tcp_connection_cleanup (tc);
 }
 
 static void

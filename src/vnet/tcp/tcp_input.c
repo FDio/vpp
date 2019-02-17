@@ -2424,6 +2424,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Make sure ACK is valid */
 	  if (seq_gt (tc0->snd_una, ack0))
 	    {
+	      clib_error ("ack failed");
 	      error0 = TCP_ERROR_ACK_INVALID;
 	      goto drop;
 	    }
@@ -2455,7 +2456,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* No SYN flag. Drop. */
       if (!tcp_syn (tcp0))
 	{
-	  ASSERT (0);
 	  clib_warning ("not synack");
 	  error0 = TCP_ERROR_SEGMENT_INVALID;
 	  goto drop;
@@ -2697,6 +2697,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				       is_ip4);
 	  if (tmp->state != tc0->state)
 	    {
+	      clib_warning ("state mismatch");
 	      if (tc0->state != TCP_STATE_CLOSED)
 		clib_warning ("state changed");
 	      goto drop;
@@ -3691,6 +3692,9 @@ do {                                                       	\
   _(SYN_SENT, TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT, TCP_ERROR_NONE);
   _(SYN_SENT, TCP_FLAG_RST, TCP_INPUT_NEXT_SYN_SENT, TCP_ERROR_NONE);
   _(SYN_SENT, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT,
+    TCP_ERROR_NONE);
+  _(SYN_SENT, TCP_FLAG_FIN, TCP_INPUT_NEXT_SYN_SENT, TCP_ERROR_NONE);
+  _(SYN_SENT, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT,
     TCP_ERROR_NONE);
   /* ACK for for established connection -> tcp-established. */
   _(ESTABLISHED, TCP_FLAG_ACK, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
