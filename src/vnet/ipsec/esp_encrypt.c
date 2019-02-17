@@ -182,6 +182,9 @@ esp_encrypt_inline (vlib_main_t * vm,
 	  sa_index0 = vnet_buffer (i_b0)->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 
+	  vlib_prefetch_combined_counter
+	    (&ipsec_sa_counters, thread_index, sa_index0);
+
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
 	    {
 	      clib_warning ("sequence number counter has cycled SPI %u",
@@ -194,8 +197,6 @@ esp_encrypt_inline (vlib_main_t * vm,
 	      to_next += 1;
 	      goto trace;
 	    }
-
-	  sa0->total_data_size += i_b0->current_length;
 
 	  /* grab free buffer */
 	  last_empty_buffer = vec_len (empty_buffers) - 1;
@@ -330,6 +331,9 @@ esp_encrypt_inline (vlib_main_t * vm,
 	    }
 
 	  ASSERT (sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);
+	  vlib_increment_combined_counter
+	    (&ipsec_sa_counters, thread_index, sa_index0,
+	     1, i_b0->current_length);
 
 	  if (PREDICT_TRUE (sa0->crypto_alg != IPSEC_CRYPTO_ALG_NONE))
 	    {

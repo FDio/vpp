@@ -101,6 +101,7 @@ typedef struct
   fib_node_t node;
   u32 id;
   u32 spi;
+  u32 stat_index;
   ipsec_protocol_t protocol;
 
   ipsec_crypto_alg_t crypto_alg;
@@ -131,10 +132,13 @@ typedef struct
   u32 last_seq;
   u32 last_seq_hi;
   u64 replay_window;
-
-  /* lifetime data */
-  u64 total_data_size;
 } ipsec_sa_t;
+
+/**
+ * @brief
+ * SA packet & bytes counters
+ */
+extern vlib_combined_counter_main_t ipsec_sa_counters;
 
 extern void ipsec_mk_key (ipsec_key_t * key, const u8 * data, u8 len);
 

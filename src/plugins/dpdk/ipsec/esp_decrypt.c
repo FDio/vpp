@@ -97,7 +97,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 			 vlib_node_runtime_t * node,
 			 vlib_frame_t * from_frame, int is_ip6)
 {
-  u32 n_left_from, *from, *to_next, next_index;
+  u32 n_left_from, *from, *to_next, next_index, thread_index;
   ipsec_main_t *im = &ipsec_main;
   u32 thread_idx = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
@@ -114,6 +114,7 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  thread_index = vm->thread_index;
 
   ret = crypto_alloc_ops (numa, ops, n_left_from);
   if (ret)
@@ -173,6 +174,8 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	  CLIB_PREFETCH (op, op_len, STORE);
 
 	  sa_index0 = vnet_buffer (b0)->ipsec.sad_index;
+	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
+					  thread_index, sa_index0);
 
 	  if (sa_index0 != last_sa_index)
 	    {
@@ -266,7 +269,9 @@ dpdk_esp_decrypt_inline (vlib_main_t * vm,
 	    priv->next = DPDK_CRYPTO_INPUT_NEXT_DECRYPT4_POST;
 
 	  /* FIXME multi-seg */
-	  sa0->total_data_size += b0->current_length;
+	  vlib_increment_combined_counter
+	    (&ipsec_sa_counters, thread_index, sa_index0,
+	     1, b0->current_length);
 
 	  res->ops[res->n_ops] = op;
 	  res->bi[res->n_ops] = bi0;

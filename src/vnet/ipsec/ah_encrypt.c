@@ -84,13 +84,14 @@ ah_encrypt_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * from_frame,
 		   int is_ip6)
 {
-  u32 n_left_from, *from, *to_next = 0, next_index;
+  u32 n_left_from, *from, *to_next = 0, next_index, thread_index;
   int icv_size = 0;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   ipsec_main_t *im = &ipsec_main;
   ipsec_proto_main_t *em = &ipsec_proto_main;
   next_index = node->cached_next_index;
+  thread_index = vm->thread_index;
 
   while (n_left_from > 0)
     {
@@ -131,9 +132,9 @@ ah_encrypt_inline (vlib_main_t * vm,
 					   AH_ENCRYPT_ERROR_SEQ_CYCLED, 1);
 	      goto trace;
 	    }
-
-
-	  sa0->total_data_size += i_b0->current_length;
+	  vlib_increment_combined_counter
+	    (&ipsec_sa_counters, thread_index, sa_index0,
+	     1, i_b0->current_length);
 
 	  ssize_t adv;
 	  ih0 = vlib_buffer_get_current (i_b0);

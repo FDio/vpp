@@ -238,6 +238,7 @@ format_ipsec_sa (u8 * s, va_list * args)
 {
   u32 sai = va_arg (*args, u32);
   ipsec_main_t *im = &ipsec_main;
+  vlib_counter_t counts;
   u32 tx_table_id;
   ipsec_sa_t *sa;
 
@@ -261,6 +262,8 @@ format_ipsec_sa (u8 * s, va_list * args)
   s = format (s, "\n   integrity alg %U%s%U",
 	      format_ipsec_integ_alg, sa->integ_alg,
 	      sa->integ_alg ? " key " : "", format_ipsec_key, &sa->integ_key);
+  vlib_get_combined_counter (&ipsec_sa_counters, sai, &counts);
+  s = format (s, "\n   packets %u bytes %u", counts.packets, counts.bytes);
 
   if (sa->is_tunnel)
     {

@@ -81,7 +81,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * from_frame,
 		   int is_ip6)
 {
-  u32 n_left_from, *from, next_index, *to_next;
+  u32 n_left_from, *from, next_index, *to_next, thread_index;
   ipsec_main_t *im = &ipsec_main;
   ipsec_proto_main_t *em = &ipsec_proto_main;
   from = vlib_frame_vector_args (from_frame);
@@ -89,6 +89,7 @@ ah_decrypt_inline (vlib_main_t * vm,
   int icv_size = 0;
 
   next_index = node->cached_next_index;
+  thread_index = vm->thread_index;
 
   while (n_left_from > 0)
     {
@@ -131,6 +132,9 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  sa_index0 = vnet_buffer (i_b0)->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 
+	  vlib_prefetch_combined_counter (&ipsec_sa_counters,
+					  thread_index, sa_index0);
+
 	  if (is_ip6)
 	    {
 	      ip6_ext_header_t *prev = NULL;
@@ -164,8 +168,10 @@ ah_decrypt_inline (vlib_main_t * vm,
 		}
 	    }
 
+	  vlib_increment_combined_counter
+	    (&ipsec_sa_counters, thread_index, sa_index0,
+	     1, i_b0->current_length);
 
-	  sa0->total_data_size += i_b0->current_length;
 	  icv_size =
 	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))

@@ -354,7 +354,7 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ipsec_integ_alg_t integ_alg;
   ipsec_protocol_t proto;
   ipsec_sa_flags_t flags;
-  u32 id, spi;
+  u32 id, spi, sa_index;
   int rv;
 
 #if WITH_LIBSSL > 0
@@ -390,7 +390,7 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
     rv = ipsec_sa_add (id, spi, proto,
 		       crypto_alg, &crypto_key,
 		       integ_alg, &integ_key, flags,
-		       0, &tun_src, &tun_dst, NULL);
+		       0, &tun_src, &tun_dst, &sa_index);
   else
     rv = ipsec_sa_del (id);
 
@@ -399,7 +399,12 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
 #endif
 
 out:
-  REPLY_MACRO (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_IPSEC_SAD_ENTRY_ADD_DEL_REPLY,
+  {
+    rmp->stat_index = htonl (sa_index);
+  });
+  /* *INDENT-ON* */
 }
 
 static void
@@ -708,7 +713,6 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
     }
   if (sa->use_anti_replay)
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
-  mp->total_data_size = clib_host_to_net_u64 (sa->total_data_size);
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
