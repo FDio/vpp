@@ -304,6 +304,15 @@ class IpsecTraTests(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
+        pkts = p.tra_sa_in.get_stats()['packets']
+        self.assertEqual(pkts, count,
+                         "incorrect SA in counts: expected %d != %d" %
+                         (count, pkts))
+        pkts = p.tra_sa_out.get_stats()['packets']
+        self.assertEqual(pkts, count,
+                         "incorrect SA out counts: expected %d != %d" %
+                         (count, pkts))
+
         self.assert_packet_counter_equal(self.tra4_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tra4_decrypt_node_name, count)
 
@@ -333,6 +342,14 @@ class IpsecTraTests(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
+        pkts = p.tra_sa_in.get_stats()['packets']
+        self.assertEqual(pkts, count,
+                         "incorrect SA in counts: expected %d != %d" %
+                         (count, pkts))
+        pkts = p.tra_sa_out.get_stats()['packets']
+        self.assertEqual(pkts, count,
+                         "incorrect SA out counts: expected %d != %d" %
+                         (count, pkts))
         self.assert_packet_counter_equal(self.tra6_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tra6_decrypt_node_name, count)
 
@@ -385,6 +402,17 @@ class IpsecTun4Tests(object):
             self.assertEqual(pkts, count,
                              "incorrect SPD any policy: expected %d != %d" %
                              (count, pkts))
+
+        if (hasattr(p, "tun_sa_in")):
+            pkts = p.tun_sa_in.get_stats()['packets']
+            self.assertEqual(pkts, count,
+                             "incorrect SA in counts: expected %d != %d" %
+                             (count, pkts))
+            pkts = p.tun_sa_out.get_stats()['packets']
+            self.assertEqual(pkts, count,
+                             "incorrect SA out counts: expected %d != %d" %
+                             (count, pkts))
+
         self.assert_packet_counter_equal(self.tun4_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tun4_decrypt_node_name, count)
 
@@ -433,6 +461,14 @@ class IpsecTun6Tests(object):
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show ipsec"))
 
+        pkts = p.tun_sa_in.get_stats()['packets']
+        self.assertEqual(pkts, count,
+                         "incorrect SA in counts: expected %d != %d" %
+                         (count, pkts))
+        pkts = p.tun_sa_out.get_stats()['packets']
+        self.assertEqual(pkts, count,
+                         "incorrect SA out counts: expected %d != %d" %
+                         (count, pkts))
         self.assert_packet_counter_equal(self.tun6_encrypt_node_name, count)
         self.assert_packet_counter_equal(self.tun6_decrypt_node_name, count)
 

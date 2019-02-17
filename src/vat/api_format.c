@@ -15218,7 +15218,7 @@ vl_api_ipsec_sa_details_t_handler (vl_api_ipsec_sa_details_t * mp)
 	 "crypto_key %U integ_alg %u integ_key %U flags %x "
 	 "tunnel_src_addr %U tunnel_dst_addr %U "
 	 "salt %u seq_outbound %lu last_seq_inbound %lu "
-	 "replay_window %lu total_data_size %lu\n",
+	 "replay_window %lu\n",
 	 ntohl (mp->entry.sad_id),
 	 ntohl (mp->sw_if_index),
 	 ntohl (mp->entry.spi),
@@ -15232,8 +15232,7 @@ vl_api_ipsec_sa_details_t_handler (vl_api_ipsec_sa_details_t * mp)
 	 &mp->entry.tunnel_dst, ntohl (mp->salt),
 	 clib_net_to_host_u64 (mp->seq_outbound),
 	 clib_net_to_host_u64 (mp->last_seq_inbound),
-	 clib_net_to_host_u64 (mp->replay_window),
-	 clib_net_to_host_u64 (mp->total_data_size));
+	 clib_net_to_host_u64 (mp->replay_window));
 }
 
 #define vl_api_ipsec_sa_details_t_endian vl_noop_handler
@@ -15302,8 +15301,6 @@ static void vl_api_ipsec_sa_details_t_handler_json
   vat_json_object_add_address (node, &mp->entry.tunnel_dst);
   vat_json_object_add_uint (node, "replay_window",
 			    clib_net_to_host_u64 (mp->replay_window));
-  vat_json_object_add_uint (node, "total_data_size",
-			    clib_net_to_host_u64 (mp->total_data_size));
 }
 
 static int

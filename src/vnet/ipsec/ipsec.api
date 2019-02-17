@@ -293,12 +293,18 @@ typedef ipsec_sad_entry
     @param context - sender context, to match reply w/ request
     @param entry - Entry to add or delete
  */
-autoreply define ipsec_sad_entry_add_del
+define ipsec_sad_entry_add_del
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   vl_api_ipsec_sad_entry_t entry;
+};
+define ipsec_sad_entry_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 stat_index;
 };
 
 /** \brief IPsec: Update Security Association keys

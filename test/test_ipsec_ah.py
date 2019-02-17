@@ -86,18 +86,20 @@ class TemplateIpsecAh(TemplateIpsec):
         addr_bcast = params.addr_bcast
         e = VppEnum.vl_api_ipsec_spd_action_t
 
-        VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
-                   auth_algo_vpp_id, auth_key,
-                   crypt_algo_vpp_id, crypt_key,
-                   self.vpp_ah_protocol,
-                   self.tun_if.local_addr[addr_type],
-                   self.tun_if.remote_addr[addr_type]).add_vpp_config()
-        VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
-                   auth_algo_vpp_id, auth_key,
-                   crypt_algo_vpp_id, crypt_key,
-                   self.vpp_ah_protocol,
-                   self.tun_if.remote_addr[addr_type],
-                   self.tun_if.local_addr[addr_type]).add_vpp_config()
+        params.tun_sa_in = VppIpsecSA(self, scapy_tun_sa_id, scapy_tun_spi,
+                                      auth_algo_vpp_id, auth_key,
+                                      crypt_algo_vpp_id, crypt_key,
+                                      self.vpp_ah_protocol,
+                                      self.tun_if.local_addr[addr_type],
+                                      self.tun_if.remote_addr[addr_type])
+        params.tun_sa_in.add_vpp_config()
+        params.tun_sa_out = VppIpsecSA(self, vpp_tun_sa_id, vpp_tun_spi,
+                                       auth_algo_vpp_id, auth_key,
+                                       crypt_algo_vpp_id, crypt_key,
+                                       self.vpp_ah_protocol,
+                                       self.tun_if.remote_addr[addr_type],
+                                       self.tun_if.local_addr[addr_type])
+        params.tun_sa_out.add_vpp_config()
 
         params.spd_policy_in_any = VppIpsecSpdEntry(self, self.tun_spd,
                                                     vpp_tun_sa_id,
@@ -161,16 +163,18 @@ class TemplateIpsecAh(TemplateIpsec):
                  IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY)
         e = VppEnum.vl_api_ipsec_spd_action_t
 
-        VppIpsecSA(self, scapy_tra_sa_id, scapy_tra_spi,
-                   auth_algo_vpp_id, auth_key,
-                   crypt_algo_vpp_id, crypt_key,
-                   self.vpp_ah_protocol,
-                   flags=flags).add_vpp_config()
-        VppIpsecSA(self, vpp_tra_sa_id, vpp_tra_spi,
-                   auth_algo_vpp_id, auth_key,
-                   crypt_algo_vpp_id, crypt_key,
-                   self.vpp_ah_protocol,
-                   flags=flags).add_vpp_config()
+        params.tra_sa_in = VppIpsecSA(self, scapy_tra_sa_id, scapy_tra_spi,
+                                      auth_algo_vpp_id, auth_key,
+                                      crypt_algo_vpp_id, crypt_key,
+                                      self.vpp_ah_protocol,
+                                      flags=flags)
+        params.tra_sa_in.add_vpp_config()
+        params.tra_sa_out = VppIpsecSA(self, vpp_tra_sa_id, vpp_tra_spi,
+                                       auth_algo_vpp_id, auth_key,
+                                       crypt_algo_vpp_id, crypt_key,
+                                       self.vpp_ah_protocol,
+                                       flags=flags)
+        params.tra_sa_out.add_vpp_config()
 
         VppIpsecSpdEntry(self, self.tra_spd, vpp_tra_sa_id,
                          addr_any, addr_bcast,

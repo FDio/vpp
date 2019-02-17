@@ -3376,6 +3376,7 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
   ikev2_sa_t *fsa = 0;
   ikev2_child_sa_t *fchild = 0;
   f64 now = vlib_time_now (vm);
+  vlib_counter_t counts;
 
   /* Search for the SA and child SA */
   vec_foreach (tkm, km->per_thread_data)
@@ -3394,11 +3395,13 @@ ikev2_mngr_process_ipsec_sa (ipsec_sa_t * ipsec_sa)
     }));
     /* *INDENT-ON* */
   }
+  vlib_get_combined_counter (&ipsec_sa_counters,
+			     ipsec_sa->stat_index, &counts);
 
   if (fchild && fsa && fsa->profile && fsa->profile->lifetime_maxdata)
     {
       if (!fchild->is_expired
-	  && ipsec_sa->total_data_size > fsa->profile->lifetime_maxdata)
+	  && counts.bytes > fsa->profile->lifetime_maxdata)
 	{
 	  fchild->time_to_expiration = now;
 	}

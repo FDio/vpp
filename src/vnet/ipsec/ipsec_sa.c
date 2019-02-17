@@ -16,6 +16,16 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/fib/fib_table.h>
 
+/**
+ * @brief
+ * SA packet & bytes counters
+ */
+vlib_combined_counter_main_t ipsec_sa_counters = {
+  .name = "SA",
+  .stat_segment_name = "/net/ipsec/sa",
+};
+
+
 static clib_error_t *
 ipsec_call_add_del_callbacks (ipsec_main_t * im, ipsec_sa_t * sa,
 			      u32 sa_index, int is_add)
@@ -106,8 +116,12 @@ ipsec_sa_add (u32 id,
   fib_node_init (&sa->node, FIB_NODE_TYPE_IPSEC_SA);
   sa_index = sa - im->sad;
 
+  vlib_validate_combined_counter (&ipsec_sa_counters, sa_index);
+  vlib_zero_combined_counter (&ipsec_sa_counters, sa_index);
+
   sa->id = id;
   sa->spi = spi;
+  sa->stat_index = sa_index;
   sa->protocol = proto;
   sa->crypto_alg = crypto_alg;
   clib_memcpy (&sa->crypto_key, ck, sizeof (sa->crypto_key));

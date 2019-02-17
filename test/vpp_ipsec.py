@@ -213,7 +213,7 @@ class VppIpsecSA(VppObject):
             self.tun_dst = ip_address(text_type(tun_dst))
 
     def add_vpp_config(self):
-        self.test.vapi.ipsec_sad_entry_add_del(
+        r = self.test.vapi.ipsec_sad_entry_add_del(
             self.id,
             self.spi,
             self.integ_alg,
@@ -224,6 +224,7 @@ class VppIpsecSA(VppObject):
             (self.tun_src if self.tun_src else []),
             (self.tun_dst if self.tun_dst else []),
             flags=self.flags)
+        self.stat_index = r.stat_index
         self.test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
@@ -252,3 +253,7 @@ class VppIpsecSA(VppObject):
             if b.entry.sad_id == self.id:
                 return True
         return False
+
+    def get_stats(self):
+        c = self.test.statistics.get_counter("/net/ipsec/sa")
+        return c[0][self.stat_index]
