@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2016-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -1244,11 +1244,13 @@ tcp_timer_establish_handler (u32 conn_index)
   if (PREDICT_FALSE (tc == 0))
     return;
   ASSERT (tc->state == TCP_STATE_SYN_RCVD);
+  tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
+  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
   /* Start cleanup. App wasn't notified yet so use delete notify as
    * opposed to delete to cleanup session layer state. */
+  tcp_connection_timers_reset (tc);
   session_transport_delete_notify (&tc->connection);
-  tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
-  tcp_connection_cleanup (tc);
+  tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 }
 
 static void
