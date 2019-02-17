@@ -73,6 +73,7 @@ application_local_listen_session_alloc (application_t * app)
   ll->session_index = ll - app->local_listen_sessions;
   ll->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
   ll->app_index = app->app_index;
+  ll->session_state = SESSION_STATE_LISTENING;
   return ll;
 }
 
