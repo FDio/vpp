@@ -250,6 +250,7 @@ create_session_for_static_mapping (snat_main_t * sm,
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 static_always_inline
   snat_out2in_error_t icmp_get_key (ip4_header_t * ip0,
 				    snat_session_key_t * p_key0)
@@ -295,7 +296,6 @@ static_always_inline
   return -1;			/* success */
 }
 
-#ifndef CLIB_MARCH_VARIANT
 /**
  * Get address and port values to be used for ICMP packet translation
  * and create session if needed
