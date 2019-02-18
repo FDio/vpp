@@ -138,20 +138,35 @@ nat64_get_worker_out2in (ip4_header_t * ip)
       if (PREDICT_FALSE (nat_reass_is_drop_frag (0)))
 	return vlib_get_thread_index ();
 
-      if (PREDICT_TRUE (!ip4_is_first_fragment (ip)))
+      nat_reass_ip4_t *reass;
+      reass = nat_ip4_reass_find (ip->src_address, ip->dst_address,
+				  ip->fragment_id, ip->protocol);
+
+      if (reass && (reass->thread_index != (u32) ~ 0))
+	return reass->thread_index;
+
+      if (ip4_is_first_fragment (ip))
 	{
-	  nat_reass_ip4_t *reass;
+	  reass =
+	    nat_ip4_reass_create (ip->src_address, ip->dst_address,
+				  ip->fragment_id, ip->protocol);
+	  if (!reass)
+	    goto no_reass;
 
-	  reass = nat_ip4_reass_find (ip->src_address, ip->dst_address,
-				      ip->fragment_id, ip->protocol);
-
-	  if (reass && (reass->thread_index != (u32) ~ 0))
-	    return reass->thread_index;
+	  port = clib_net_to_host_u16 (port);
+	  if (port > 1024)
+	    reass->thread_index =
+	      nm->sm->first_worker_index +
+	      ((port - 1024) / sm->port_per_thread);
 	  else
-	    return vlib_get_thread_index ();
+	    reass->thread_index = vlib_get_thread_index ();
+	  return reass->thread_index;
 	}
+      else
+	return vlib_get_thread_index ();
     }
 
+no_reass:
   /* unknown protocol */
   if (PREDICT_FALSE (proto == ~0))
     {

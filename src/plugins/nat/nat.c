@@ -2862,20 +2862,47 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
       if (PREDICT_FALSE (nat_reass_is_drop_frag (0)))
 	return vlib_get_thread_index ();
 
-      if (PREDICT_TRUE (!ip4_is_first_fragment (ip0)))
+      nat_reass_ip4_t *reass;
+      reass = nat_ip4_reass_find (ip0->src_address, ip0->dst_address,
+				  ip0->fragment_id, ip0->protocol);
+
+      if (reass && (reass->thread_index != (u32) ~ 0))
+	return reass->thread_index;
+
+      if (ip4_is_first_fragment (ip0))
 	{
-	  nat_reass_ip4_t *reass;
+	  reass =
+	    nat_ip4_reass_create (ip0->src_address, ip0->dst_address,
+				  ip0->fragment_id, ip0->protocol);
+	  if (!reass)
+	    goto no_reass;
 
-	  reass = nat_ip4_reass_find (ip0->src_address, ip0->dst_address,
-				      ip0->fragment_id, ip0->protocol);
-
-	  if (reass && (reass->thread_index != (u32) ~ 0))
-	    return reass->thread_index;
-	  else
-	    return vlib_get_thread_index ();
+	  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
+	    {
+	      m_key.addr = ip0->dst_address;
+	      m_key.port = clib_net_to_host_u16 (port);
+	      m_key.protocol = proto;
+	      m_key.fib_index = rx_fib_index0;
+	      kv.key = m_key.as_u64;
+	      if (!clib_bihash_search_8_8
+		  (&sm->static_mapping_by_external, &kv, &value))
+		{
+		  m = pool_elt_at_index (sm->static_mappings, value.value);
+		  reass->thread_index = m->workers[0];
+		  return reass->thread_index;
+		}
+	    }
+	  reass->thread_index = sm->first_worker_index;
+	  reass->thread_index +=
+	    sm->workers[(clib_net_to_host_u16 (port) - 1024) /
+			sm->port_per_thread];
+	  return reass->thread_index;
 	}
+      else
+	return vlib_get_thread_index ();
     }
 
+no_reass:
   /* unknown protocol */
   if (PREDICT_FALSE (proto == ~0))
     {

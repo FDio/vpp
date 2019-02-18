@@ -217,6 +217,60 @@ nat_ip4_reass_find (ip4_address_t src, ip4_address_t dst, u16 frag_id,
 }
 
 nat_reass_ip4_t *
+nat_ip4_reass_create (ip4_address_t src, ip4_address_t dst, u16 frag_id,
+		      u8 proto)
+{
+  nat_reass_main_t *srm = &nat_reass_main;
+  nat_reass_ip4_t *reass = 0;
+  dlist_elt_t *elt, *per_reass_list_head_elt;
+  u32 elt_index;
+  f64 now = vlib_time_now (srm->vlib_main);
+  nat_reass_ip4_key_t k;
+  clib_bihash_kv_16_8_t kv;
+
+  clib_spinlock_lock_if_init (&srm->ip4_reass_lock);
+
+  if (srm->ip4_reass_n >= srm->ip4_max_reass)
+    {
+      nat_log_warn ("no free resassembly slot");
+      goto unlock;
+    }
+
+  pool_get (srm->ip4_reass_pool, reass);
+  pool_get (srm->ip4_reass_lru_list_pool, elt);
+  reass->lru_list_index = elt_index = elt - srm->ip4_reass_lru_list_pool;
+  clib_dlist_init (srm->ip4_reass_lru_list_pool, elt_index);
+  elt->value = reass - srm->ip4_reass_pool;
+  clib_dlist_addtail (srm->ip4_reass_lru_list_pool,
+		      srm->ip4_reass_head_index, elt_index);
+  pool_get (srm->ip4_frags_list_pool, per_reass_list_head_elt);
+  reass->frags_per_reass_list_head_index =
+    per_reass_list_head_elt - srm->ip4_frags_list_pool;
+  clib_dlist_init (srm->ip4_frags_list_pool,
+		   reass->frags_per_reass_list_head_index);
+  srm->ip4_reass_n++;
+  k.src.as_u32 = src.as_u32;
+  k.dst.as_u32 = dst.as_u32;
+  k.frag_id = frag_id;
+  k.proto = proto;
+  reass->key.as_u64[0] = kv.key[0] = k.as_u64[0];
+  reass->key.as_u64[1] = kv.key[1] = k.as_u64[1];
+  kv.value = reass - srm->ip4_reass_pool;
+  reass->sess_index = (u32) ~ 0;
+  reass->thread_index = (u32) ~ 0;
+  reass->last_heard = now;
+  reass->frag_n = 0;
+  reass->flags = 0;
+  reass->classify_next = NAT_REASS_IP4_CLASSIFY_NONE;
+  if (clib_bihash_add_del_16_8 (&srm->ip4_reass_hash, &kv, 1))
+    nat_log_warn ("ip4_reass_hash add key failed");
+
+unlock:
+  clib_spinlock_unlock_if_init (&srm->ip4_reass_lock);
+  return reass;
+}
+
+nat_reass_ip4_t *
 nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
 			      u16 frag_id, u8 proto, u8 reset_timeout,
 			      u32 ** bi_to_drop)
