@@ -20,7 +20,6 @@ override_dh_clean:
 	make $(MAKE_ARGS) clean
 
 override_dh_auto_configure:
-	make $(MAKE_ARGS) config
 
 override_dh_install:
 	make $(MAKE_ARGS) install
