@@ -1,0 +1,4 @@
+set logging class rdma level debug
+create interface rdma name ens1f0
+set int state rdma-0 up
+set int ip address rdma-0 172.16.0.1/24
