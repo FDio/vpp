@@ -237,6 +237,11 @@ int app_worker_connect_session (app_worker_t * app, session_endpoint_t * tep,
 				u32 api_context);
 int app_worker_start_listen (app_worker_t * app_wrk, app_listener_t * lstnr);
 int app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al);
+int app_worker_init_accepted (session_t * s);
+int app_worker_accept_notify (app_worker_t * app_wrk, session_t * s);
+int app_worker_init_connected (app_worker_t * app_wrk, session_t * s);
+int app_worker_connect_notify (app_worker_t * app_wrk, session_t * s,
+			       u32 opaque);
 segment_manager_t *app_worker_get_listen_segment_manager (app_worker_t *,
 							  session_t *);
 segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
