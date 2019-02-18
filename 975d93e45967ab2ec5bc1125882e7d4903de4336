@@ -46,6 +46,30 @@
       "revId": "975d93e45967ab2ec5bc1125882e7d4903de4336",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "92d65d93_1277bc9f",
+        "filename": "extras/vom/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-18T18:47:47Z",
+      "side": 1,
+      "message": "Can you use ${VPP_GIT_TOPLEVEL_DIR} here?",
+      "parentUuid": "7bbf66a1_65c2db7b",
+      "range": {
+        "startLine": 23,
+        "startChar": 10,
+        "endLine": 23,
+        "endChar": 35
+      },
+      "revId": "975d93e45967ab2ec5bc1125882e7d4903de4336",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
