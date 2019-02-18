@@ -39,7 +39,7 @@ typedef enum
 #undef _
 } nat64_tcp_ses_state_t;
 
-enum
+typedef enum
 {
   NAT64_CLEANER_RESCHEDULE = 1,
 } nat64_cleaner_process_event_e;
