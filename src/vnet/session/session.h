@@ -206,7 +206,6 @@ stream_session_is_valid (u32 si, u8 thread_index)
 }
 
 session_t *session_alloc (u32 thread_index);
-int session_alloc_fifos (segment_manager_t * sm, session_t * s);
 void session_free (session_t * s);
 void session_free_w_fifos (session_t * s);
 
@@ -385,7 +384,7 @@ int session_dgram_connect_notify (transport_connection_t * tc,
 void stream_session_init_fifos_pointers (transport_connection_t * tc,
 					 u32 rx_pointer, u32 tx_pointer);
 
-int stream_session_accept_notify (transport_connection_t * tc);
+int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);
 void session_transport_delete_notify (transport_connection_t * tc);
 void session_transport_closed_notify (transport_connection_t * tc);
