@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f7ffb432_8579d4ef",
+        "filename": "extras/vom/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-02-18T16:44:13Z",
+      "side": 1,
+      "message": "again :)",
+      "range": {
+        "startLine": 23,
+        "startChar": 10,
+        "endLine": 23,
+        "endChar": 35
+      },
+      "revId": "975d93e45967ab2ec5bc1125882e7d4903de4336",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
