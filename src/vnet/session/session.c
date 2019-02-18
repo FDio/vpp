@@ -195,30 +195,6 @@ session_delete (session_t * s)
   session_free_w_fifos (s);
 }
 
-int
-session_alloc_fifos (segment_manager_t * sm, session_t * s)
-{
-  svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
-  u32 fifo_segment_index;
-  int rv;
-
-  if ((rv = segment_manager_alloc_session_fifos (sm, &server_rx_fifo,
-						 &server_tx_fifo,
-						 &fifo_segment_index)))
-    return rv;
-  /* Initialize backpointers */
-  server_rx_fifo->master_session_index = s->session_index;
-  server_rx_fifo->master_thread_index = s->thread_index;
-
-  server_tx_fifo->master_session_index = s->session_index;
-  server_tx_fifo->master_thread_index = s->thread_index;
-
-  s->rx_fifo = server_rx_fifo;
-  s->tx_fifo = server_tx_fifo;
-  s->svm_segment_index = fifo_segment_index;
-  return 0;
-}
-
 static session_t *
 session_alloc_for_connection (transport_connection_t * tc)
 {
@@ -237,28 +213,6 @@ session_alloc_for_connection (transport_connection_t * tc)
   s->connection_index = tc->c_index;
   tc->s_index = s->session_index;
   return s;
-}
-
-static int
-session_alloc_and_init (segment_manager_t * sm, transport_connection_t * tc,
-			u8 alloc_fifos, session_t ** ret_s)
-{
-  session_t *s;
-  int rv;
-
-  s = session_alloc_for_connection (tc);
-  if (alloc_fifos && (rv = session_alloc_fifos (sm, s)))
-    {
-      session_free (s);
-      *ret_s = 0;
-      return rv;
-    }
-
-  /* Add to the main lookup table */
-  session_lookup_add_connection (tc, session_handle (s));
-
-  *ret_s = s;
-  return 0;
 }
 
 /**
@@ -664,19 +618,15 @@ int
 session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
 {
   u32 opaque = 0, new_ti, new_si;
-  session_t *new_s = 0;
-  segment_manager_t *sm;
   app_worker_t *app_wrk;
-  application_t *app;
-  u8 alloc_fifos;
-  int error = 0;
-  u64 handle;
+  session_t *s = 0;
+  u64 ho_handle;
 
   /*
    * Find connection handle and cleanup half-open table
    */
-  handle = session_lookup_half_open_handle (tc);
-  if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
+  ho_handle = session_lookup_half_open_handle (tc);
+  if (ho_handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
       SESSION_DBG ("half-open was removed!");
       return -1;
@@ -686,56 +636,40 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
   /* Get the app's index from the handle we stored when opening connection
    * and the opaque (api_context for external apps) from transport session
    * index */
-  app_wrk = app_worker_get_if_valid (handle >> 32);
+  app_wrk = app_worker_get_if_valid (ho_handle >> 32);
   if (!app_wrk)
     return -1;
+
   opaque = tc->s_index;
-  app = application_get (app_wrk->app_index);
 
-  /*
-   * Allocate new session with fifos (svm segments are allocated if needed)
-   */
-  if (!is_fail)
+  if (is_fail)
+    return app_worker_connect_notify (app_wrk, s, opaque);
+
+  s = session_alloc_for_connection (tc);
+  s->session_state = SESSION_STATE_CONNECTING;
+  s->app_wrk_index = app_wrk->wrk_index;
+  new_si = s->session_index;
+  new_ti = s->thread_index;
+
+  if (app_worker_init_connected (app_wrk, s))
     {
-      sm = app_worker_get_connect_segment_manager (app_wrk);
-      alloc_fifos = !application_is_builtin_proxy (app);
-      if (session_alloc_and_init (sm, tc, alloc_fifos, &new_s))
-	{
-	  is_fail = 1;
-	  error = -1;
-	}
-      else
-	{
-	  new_s->session_state = SESSION_STATE_CONNECTING;
-	  new_s->app_wrk_index = app_wrk->wrk_index;
-	  new_si = new_s->session_index;
-	  new_ti = new_s->thread_index;
-	}
+      session_free (s);
+      app_worker_connect_notify (app_wrk, 0, opaque);
+      return -1;
     }
 
-  /*
-   * Notify client application
-   */
-  if (app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
-					      new_s, is_fail))
+  if (app_worker_connect_notify (app_wrk, s, opaque))
     {
-      SESSION_DBG ("failed to notify app");
-      if (!is_fail)
-	{
-	  new_s = session_get (new_si, new_ti);
-	  session_transport_close (new_s);
-	}
-    }
-  else
-    {
-      if (!is_fail)
-	{
-	  new_s = session_get (new_si, new_ti);
-	  new_s->session_state = SESSION_STATE_READY;
-	}
+      s = session_get (new_si, new_ti);
+      session_free_w_fifos (s);
+      return -1;
     }
 
-  return error;
+  s = session_get (new_si, new_ti);
+  s->session_state = SESSION_STATE_READY;
+  session_lookup_add_connection (tc, session_handle (s));
+
+  return 0;
 }
 
 typedef struct _session_switch_pool_args
@@ -797,22 +731,6 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->connection_index = tc->c_index;
   *new_session = new_s;
   return 0;
-}
-
-int
-stream_session_accept_notify (transport_connection_t * tc)
-{
-  app_worker_t *app_wrk;
-  application_t *app;
-  session_t *s;
-
-  s = session_get (tc->s_index, tc->thread_index);
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (!app_wrk)
-    return -1;
-  s->session_state = SESSION_STATE_ACCEPTING;
-  app = application_get (app_wrk->app_index);
-  return app->cb_fns.session_accept_callback (s);
 }
 
 /**
@@ -947,6 +865,20 @@ session_transport_reset_notify (transport_connection_t * tc)
   app->cb_fns.session_reset_callback (s);
 }
 
+int
+session_stream_accept_notify (transport_connection_t * tc)
+{
+  app_worker_t *app_wrk;
+  session_t *s;
+
+  s = session_get (tc->s_index, tc->thread_index);
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    return -1;
+  s->session_state = SESSION_STATE_ACCEPTING;
+  return app_worker_accept_notify (app_wrk, s);
+}
+
 /**
  * Accept a stream session. Optionally ping the server by callback.
  */
@@ -954,28 +886,23 @@ int
 session_stream_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 notify)
 {
-  session_t *s, *listener;
-  app_worker_t *app_wrk;
-  segment_manager_t *sm;
+  session_t *s;
   int rv;
 
-  /* Find the server */
-  listener = listen_session_get (listener_index);
-  app_wrk = application_listener_select_worker (listener);
-
-  sm = app_worker_get_listen_segment_manager (app_wrk, listener);
-  if ((rv = session_alloc_and_init (sm, tc, 1, &s)))
-    return rv;
-
-  s->app_wrk_index = app_wrk->wrk_index;
+  s = session_alloc_for_connection (tc);
   s->listener_index = listener_index;
   s->session_state = SESSION_STATE_CREATED;
+
+  if ((rv = app_worker_init_accepted (s)))
+    return rv;
+
+  session_lookup_add_connection (tc, session_handle (s));
 
   /* Shoulder-tap the server */
   if (notify)
     {
-      application_t *app = application_get (app_wrk->app_index);
-      return app->cb_fns.session_accept_callback (s);
+      app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+      return app_worker_accept_notify (app_wrk, s);
     }
 
   return 0;
@@ -986,10 +913,8 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
   transport_endpoint_cfg_t *tep;
-  segment_manager_t *sm;
   app_worker_t *app_wrk;
   session_t *s;
-  application_t *app;
   int rv;
 
   tep = session_endpoint_to_transport_cfg (rmt);
@@ -1002,21 +927,18 @@ session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 
   tc = transport_get_half_open (rmt->transport_proto, (u32) rv);
 
-  /* For dgram type of service, allocate session and fifos now.
-   */
+  /* For dgram type of service, allocate session and fifos now */
   app_wrk = app_worker_get (app_wrk_index);
-  sm = app_worker_get_connect_segment_manager (app_wrk);
-
-  if (session_alloc_and_init (sm, tc, 1, &s))
-    return -1;
+  s = session_alloc_for_connection (tc);
   s->app_wrk_index = app_wrk->wrk_index;
   s->session_state = SESSION_STATE_OPENED;
+  if (app_worker_init_connected (app_wrk, s))
+    {
+      session_free (s);
+      return -1;
+    }
 
-  /* Tell the app about the new event fifo for this session */
-  app = application_get (app_wrk->app_index);
-  app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque, s, 0);
-
-  return 0;
+  return app_worker_connect_notify (app_wrk, s, opaque);
 }
 
 int

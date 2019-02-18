@@ -191,9 +191,11 @@ app_listener_alloc_and_init (application_t * app,
   session_handle_t lh;
   session_type_t st;
   session_t *ls = 0;
+  u32 al_index;
   int rv;
 
   app_listener = app_listener_alloc (app);
+  al_index = app_listener->al_index;
   st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
 
   /*
@@ -239,8 +241,10 @@ app_listener_alloc_and_init (application_t * app,
 	  session_free (ls);
 	  return rv;
 	}
+      ls = session_get_from_handle (lh);
+      app_listener = app_listener_get (app, al_index);
       app_listener->session_index = ls->session_index;
-      ls->al_index = app_listener->al_index;
+      ls->al_index = al_index;
     }
 
   if (!ll && !ls)
