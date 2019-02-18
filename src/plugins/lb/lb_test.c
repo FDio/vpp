@@ -126,26 +126,45 @@ foreach_standard_reply_retval_handler;
  * we just generated
  */
 #define foreach_vpe_api_reply_msg                               \
-  _(LB_CONF_REPLY, lb_conf_reply)                                     \
-  _(LB_ADD_DEL_VIP_REPLY, lb_add_del_vip_reply)                       \
+  _(LB_CONF_REPLY, lb_conf_reply)                               \
+  _(LB_ADD_DEL_VIP_REPLY, lb_add_del_vip_reply)                 \
   _(LB_ADD_DEL_AS_REPLY, lb_add_del_as_reply)
 
 static int api_lb_conf (vat_main_t * vam)
 {
-  unformat_input_t *i = vam->input;
-  vl_api_lb_conf_t mps, *mp;
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_conf_t *mp;
+  u32 ip4_src_address = 0xffffffff;
+  ip46_address_t ip6_src_address;
+  u32 sticky_buckets_per_core = LB_DEFAULT_PER_CPU_STICKY_BUCKETS;
+  u32 flow_timeout = LB_DEFAULT_FLOW_TIMEOUT;
   int ret;
 
-  if (!unformat(i, "%U %U %u %u",
-               unformat_ip4_address, &mps.ip4_src_address,
-               unformat_ip6_address, mps.ip6_src_address,
-               &mps.sticky_buckets_per_core,
-               &mps.flow_timeout)) {
-    errmsg ("invalid arguments\n");
-    return -99;
+  ip6_src_address.as_u64[0] = 0xffffffffffffffffL;
+  ip6_src_address.as_u64[1] = 0xffffffffffffffffL;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "ip4-src-address %U", unformat_ip4_address, &ip4_src_address))
+      ;
+    else if (unformat(line_input, "ip6-src-address %U", unformat_ip6_address, &ip6_src_address))
+      ;
+    else if (unformat(line_input, "buckets %d", &sticky_buckets_per_core))
+      ;
+    else if (unformat(line_input, "timeout %d", &flow_timeout))
+      ;
+    else {
+        errmsg ("invalid arguments\n");
+        return -99;
+    }
   }
 
   M(LB_CONF, mp);
+  clib_memcpy (&(mp->ip4_src_address), &ip4_src_address, sizeof (ip4_src_address));
+  clib_memcpy (mp->ip6_src_address, &ip6_src_address, sizeof (ip6_src_address));
+  mp->sticky_buckets_per_core = htonl (sticky_buckets_per_core);
+  mp->flow_timeout = htonl (flow_timeout);
+
   S(mp);
   W (ret);
   return ret;
@@ -153,43 +172,89 @@ static int api_lb_conf (vat_main_t * vam)
 
 static int api_lb_add_del_vip (vat_main_t * vam)
 {
-  unformat_input_t * i = vam->input;
-  vl_api_lb_add_del_vip_t mps, *mp;
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_add_del_vip_t *mp;
   int ret;
-  mps.is_del = 0;
-  mps.encap = LB_ENCAP_TYPE_GRE4;
+  ip46_address_t ip_prefix;
+  u8 prefix_length = 0;
+  u8 protocol;
+  u32 port = 0;
+  u32 encap = 0;
+  u32 dscp = ~0;
+  u32 srv_type = LB_SRV_TYPE_CLUSTERIP;
+  u32 target_port = 0;
+  u32 new_length = 1024;
 
-  if (!unformat(i, "%U",
-                unformat_ip46_prefix, mps.ip_prefix, &mps.prefix_length, IP46_TYPE_ANY)) {
-    errmsg ("invalid prefix\n");
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &ip_prefix,
+                &prefix_length, IP46_TYPE_ANY, &prefix_length)) {
+    errmsg ("lb_add_del_vip: invalid vip prefix\n");
     return -99;
   }
 
-  if (unformat(i, "gre4")) {
-    mps.encap = LB_ENCAP_TYPE_GRE4;
-  } else if (unformat(i, "gre6")) {
-    mps.encap = LB_ENCAP_TYPE_GRE6;
-  } else if (unformat(i, "l3dsr")) {
-    mps.encap = LB_ENCAP_TYPE_L3DSR;
-  } else if (unformat(i, "nat4")) {
-    mps.encap = LB_ENCAP_TYPE_NAT4;
-  } else if (unformat(i, "nat6")) {
-    mps.encap = LB_ENCAP_TYPE_NAT6;
-  } else {
-    errmsg ("no encap\n");
-    return -99;
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "new_len %d", &new_length))
+      ;
+    else if (unformat(line_input, "del"))
+      mp->is_del = 1;
+    else if (unformat(line_input, "protocol tcp"))
+      {
+        protocol = IP_PROTOCOL_TCP;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+        protocol = IP_PROTOCOL_UDP;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
+    else if (unformat(line_input, "encap gre4"))
+      encap = LB_ENCAP_TYPE_GRE4;
+    else if (unformat(line_input, "encap gre6"))
+      encap = LB_ENCAP_TYPE_GRE6;
+    else if (unformat(line_input, "encap l3dsr"))
+      encap = LB_ENCAP_TYPE_L3DSR;
+    else if (unformat(line_input, "encap nat4"))
+      encap = LB_ENCAP_TYPE_NAT4;
+    else if (unformat(line_input, "encap nat6"))
+      encap = LB_ENCAP_TYPE_NAT6;
+    else if (unformat(line_input, "dscp %d", &dscp))
+      ;
+    else if (unformat(line_input, "type clusterip"))
+      srv_type = LB_SRV_TYPE_CLUSTERIP;
+    else if (unformat(line_input, "type nodeport"))
+      srv_type = LB_SRV_TYPE_NODEPORT;
+    else if (unformat(line_input, "target_port %d", &target_port))
+      ;
+    else {
+        errmsg ("invalid arguments\n");
+        return -99;
+    }
   }
 
-  if (!unformat(i, "%d", &mps.new_flows_table_length)) {
-    errmsg ("no table lentgh\n");
-    return -99;
-  }
+  if ((encap != LB_ENCAP_TYPE_L3DSR) && (dscp != ~0))
+    {
+      errmsg("lb_vip_add error: should not configure dscp for none L3DSR.");
+      return -99;
+    }
 
-  if (unformat(i, "del")) {
-    mps.is_del = 1;
-  }
+  if ((encap == LB_ENCAP_TYPE_L3DSR) && (dscp >= 64))
+    {
+      errmsg("lb_vip_add error: dscp for L3DSR should be less than 64.");
+      return -99;
+    }
 
   M(LB_ADD_DEL_VIP, mp);
+  clib_memcpy (mp->ip_prefix, &ip_prefix, sizeof (ip_prefix));
+  mp->prefix_length = prefix_length;
+  mp->protocol = (u8)protocol;
+  mp->port = htons((u16)port);
+  mp->encap = (u8)encap;
+  mp->dscp = (u8)dscp;
+  mp->type = (u8)srv_type;
+  mp->target_port = htons((u16)target_port);
+  mp->node_port = htons((u16)target_port);
+  mp->new_flows_table_length = htonl(new_length);
+
   S(mp);
   W (ret);
   return ret;
@@ -197,23 +262,71 @@ static int api_lb_add_del_vip (vat_main_t * vam)
 
 static int api_lb_add_del_as (vat_main_t * vam)
 {
-  unformat_input_t * i = vam->input;
-  vl_api_lb_add_del_as_t mps, *mp;
-  int ret;
-  mps.is_del = 0;
 
-  if (!unformat(i, "%U %U",
-                unformat_ip46_prefix, mps.vip_ip_prefix, &mps.vip_prefix_length, IP46_TYPE_ANY,
-                unformat_ip46_address, mps.as_address)) {
-    errmsg ("invalid prefix or address\n");
+  unformat_input_t *line_input = vam->input;
+  vl_api_lb_add_del_as_t *mp;
+  int ret;
+  ip46_address_t vip_prefix, as_addr;
+  u8 vip_plen;
+  ip46_address_t *as_array = 0;
+  u32 vip_index;
+  u32 port = 0;
+  u8 protocol = 0;
+  u8 is_del = 0;
+  u8 is_flush = 0;
+
+  if (!unformat(line_input, "%U", unformat_ip46_prefix,
+                &vip_prefix, &vip_plen, IP46_TYPE_ANY))
+  {
+      errmsg ("lb_add_del_as: invalid vip prefix\n");
+      return -99;
+  }
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  {
+    if (unformat(line_input, "%U", unformat_ip46_address,
+                 &as_addr, IP46_TYPE_ANY))
+      {
+        vec_add1(as_array, as_addr);
+      }
+    else if (unformat(line_input, "del"))
+      {
+        is_del = 1;
+      }
+    else if (unformat(line_input, "flush"))
+      {
+        is_flush = 1;
+      }
+    else if (unformat(line_input, "protocol tcp"))
+      {
+          protocol = IP_PROTOCOL_TCP;
+      }
+    else if (unformat(line_input, "protocol udp"))
+      {
+          protocol = IP_PROTOCOL_UDP;
+      }
+    else if (unformat(line_input, "port %d", &port))
+      ;
+    else {
+        errmsg ("invalid arguments\n");
+        return -99;
+    }
+  }
+
+  if (!vec_len(as_array)) {
+    errmsg ("No AS address provided \n");
     return -99;
   }
 
-  if (unformat(i, "del")) {
-    mps.is_del = 1;
-  }
-
   M(LB_ADD_DEL_AS, mp);
+  clib_memcpy (mp->vip_ip_prefix, &vip_prefix, sizeof (vip_prefix));
+  mp->vip_prefix_length = vip_plen;
+  mp->protocol = (u8)protocol;
+  mp->port = htons((u16)port);
+  clib_memcpy (mp->as_address, &as_addr, sizeof (as_addr));
+  mp->is_del = is_del;
+  mp->is_flush = is_flush;
+
   S(mp);
   W (ret);
   return ret;
@@ -224,11 +337,16 @@ static int api_lb_add_del_as (vat_main_t * vam)
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg                             \
-_(lb_conf, "<ip4-src-addr> <ip6-src-address> <sticky_buckets_per_core> <flow_timeout>") \
-_(lb_add_del_vip, "<ip-prefix> [gre4|gre6|l3dsr|nat4|nat6] " \
-                  "<dscp> <port> <target_port> " \
-                  "<new_table_len> [del]") \
-_(lb_add_del_as, "<vip-ip-prefix> <address> [del]")
+_(lb_conf, "[ip4-src-address <addr>] [ip6-src-address <addr>] " \
+           "[buckets <n>] [timeout <s>]")  \
+_(lb_add_del_vip, "<prefix> "  \
+                  "[protocol (tcp|udp) port <n>] "  \
+                  "[encap (gre6|gre4|l3dsr|nat4|nat6)] " \
+                  "[dscp <n>] "  \
+                  "[type (nodeport|clusterip) target_port <n>] " \
+                  "[new_len <n>] [del]")  \
+_(lb_add_del_as, "<vip-prefix> [protocol (tcp|udp) port <n>] "  \
+                 "[<address>] [del] [flush]")
 
 static void 
 lb_vat_api_hookup (vat_main_t *vam)
