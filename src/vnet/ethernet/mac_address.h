@@ -70,6 +70,17 @@ ethernet_mac_address_is_zero (const u8 * mac)
   return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
 }
 
+static inline void
+ethernet_mac_address_generate (u8 * mac)
+{
+  u32 rnd = clib_cpu_time_now ();
+  rnd = random_u32 (&rnd);
+
+  memcpy (mac + 2, &rnd, sizeof (rnd));
+  mac[0] = 2;
+  mac[1] = 0xfe;
+}
+
 static inline int
 ethernet_mac_address_equal (const u8 * a, const u8 * b)
 {
