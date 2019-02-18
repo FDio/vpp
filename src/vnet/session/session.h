@@ -385,7 +385,7 @@ int session_dgram_connect_notify (transport_connection_t * tc,
 void stream_session_init_fifos_pointers (transport_connection_t * tc,
 					 u32 rx_pointer, u32 tx_pointer);
 
-int stream_session_accept_notify (transport_connection_t * tc);
+int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);
 void session_transport_delete_notify (transport_connection_t * tc);
 void session_transport_closed_notify (transport_connection_t * tc);

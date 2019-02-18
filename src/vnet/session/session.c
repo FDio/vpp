@@ -665,11 +665,8 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
 {
   u32 opaque = 0, new_ti, new_si;
   session_t *new_s = 0;
-  segment_manager_t *sm;
   app_worker_t *app_wrk;
-  application_t *app;
-  u8 alloc_fifos;
-  int error = 0;
+//  application_t *app;
   u64 handle;
 
   /*
@@ -690,52 +687,30 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
   if (!app_wrk)
     return -1;
   opaque = tc->s_index;
-  app = application_get (app_wrk->app_index);
+//  app = application_get (app_wrk->app_index);
 
-  /*
-   * Allocate new session with fifos (svm segments are allocated if needed)
-   */
   if (!is_fail)
     {
-      sm = app_worker_get_connect_segment_manager (app_wrk);
-      alloc_fifos = !application_is_builtin_proxy (app);
-      if (session_alloc_and_init (sm, tc, alloc_fifos, &new_s))
-	{
-	  is_fail = 1;
-	  error = -1;
-	}
-      else
-	{
-	  new_s->session_state = SESSION_STATE_CONNECTING;
-	  new_s->app_wrk_index = app_wrk->wrk_index;
-	  new_si = new_s->session_index;
-	  new_ti = new_s->thread_index;
-	}
+      new_s = session_alloc_for_connection (tc);
+      new_s->session_state = SESSION_STATE_CONNECTING;
+      new_s->app_wrk_index = app_wrk->wrk_index;
+      new_si = new_s->session_index;
+      new_ti = new_s->thread_index;
     }
 
-  /*
-   * Notify client application
-   */
-  if (app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
-					      new_s, is_fail))
+  if (app_worker_connect_notify (app_wrk, new_s, opaque))
     {
-      SESSION_DBG ("failed to notify app");
       if (!is_fail)
 	{
 	  new_s = session_get (new_si, new_ti);
 	  session_transport_close (new_s);
 	}
-    }
-  else
-    {
-      if (!is_fail)
-	{
-	  new_s = session_get (new_si, new_ti);
-	  new_s->session_state = SESSION_STATE_READY;
-	}
+      return -1;
     }
 
-  return error;
+  new_s = session_get (new_si, new_ti);
+  new_s->session_state = SESSION_STATE_READY;
+  return 0;
 }
 
 typedef struct _session_switch_pool_args
@@ -797,22 +772,6 @@ session_dgram_connect_notify (transport_connection_t * tc,
   new_s->connection_index = tc->c_index;
   *new_session = new_s;
   return 0;
-}
-
-int
-stream_session_accept_notify (transport_connection_t * tc)
-{
-  app_worker_t *app_wrk;
-  application_t *app;
-  session_t *s;
-
-  s = session_get (tc->s_index, tc->thread_index);
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (!app_wrk)
-    return -1;
-  s->session_state = SESSION_STATE_ACCEPTING;
-  app = application_get (app_wrk->app_index);
-  return app->cb_fns.session_accept_callback (s);
 }
 
 /**
@@ -947,6 +906,20 @@ session_transport_reset_notify (transport_connection_t * tc)
   app->cb_fns.session_reset_callback (s);
 }
 
+int
+session_stream_accept_notify (transport_connection_t * tc)
+{
+  app_worker_t *app_wrk;
+  session_t *s;
+
+  s = session_get (tc->s_index, tc->thread_index);
+  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (!app_wrk)
+    return -1;
+  s->session_state = SESSION_STATE_ACCEPTING;
+  return app_worker_accept_notify (app_wrk, s);
+}
+
 /**
  * Accept a stream session. Optionally ping the server by callback.
  */
@@ -954,28 +927,23 @@ int
 session_stream_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 notify)
 {
-  session_t *s, *listener;
-  app_worker_t *app_wrk;
-  segment_manager_t *sm;
+  session_t *s;
   int rv;
 
-  /* Find the server */
-  listener = listen_session_get (listener_index);
-  app_wrk = application_listener_select_worker (listener);
-
-  sm = app_worker_get_listen_segment_manager (app_wrk, listener);
-  if ((rv = session_alloc_and_init (sm, tc, 1, &s)))
-    return rv;
-
-  s->app_wrk_index = app_wrk->wrk_index;
+  s = session_alloc_for_connection (tc);
   s->listener_index = listener_index;
   s->session_state = SESSION_STATE_CREATED;
+
+  if ((rv = app_worker_accept_session (s)))
+    return rv;
+
+  session_lookup_add_connection (tc, session_handle (s));
 
   /* Shoulder-tap the server */
   if (notify)
     {
-      application_t *app = application_get (app_wrk->app_index);
-      return app->cb_fns.session_accept_callback (s);
+      app_worker_t *app_wrk = app_worker_get (s->app_wrk_index);
+      return app_worker_accept_notify (app_wrk, s);
     }
 
   return 0;
