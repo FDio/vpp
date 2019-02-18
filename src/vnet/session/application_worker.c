@@ -255,6 +255,29 @@ app_worker_alloc_segment_manager (app_worker_t * app_wrk)
   return sm;
 }
 
+static int
+app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
+{
+  svm_fifo_t *rx_fifo = 0, *tx_fifo = 0;
+  u32 fifo_segment_index;
+  int rv;
+
+  if ((rv = segment_manager_alloc_session_fifos (sm, &rx_fifo, &tx_fifo,
+						 &fifo_segment_index)))
+    return rv;
+
+  rx_fifo->master_session_index = s->session_index;
+  rx_fifo->master_thread_index = s->thread_index;
+
+  tx_fifo->master_session_index = s->session_index;
+  tx_fifo->master_thread_index = s->thread_index;
+
+  s->rx_fifo = rx_fifo;
+  s->tx_fifo = tx_fifo;
+  s->svm_segment_index = fifo_segment_index;
+  return 0;
+}
+
 int
 app_worker_start_listen (app_worker_t * app_wrk,
 			 app_listener_t * app_listener)
@@ -284,7 +307,7 @@ app_worker_start_listen (app_worker_t * app_wrk,
 
   if (session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
     {
-      if (!ls->rx_fifo && session_alloc_fifos (sm, ls))
+      if (!ls->rx_fifo && app_worker_alloc_session_fifos (sm, ls))
 	return -1;
     }
   return 0;
@@ -352,6 +375,51 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
 }
 
 int
+app_worker_init_accepted (session_t * s)
+{
+  app_worker_t *app_wrk;
+  segment_manager_t *sm;
+  session_t *listener;
+
+  listener = listen_session_get (s->listener_index);
+  app_wrk = application_listener_select_worker (listener);
+  s->app_wrk_index = app_wrk->wrk_index;
+  sm = app_worker_get_listen_segment_manager (app_wrk, listener);
+  return app_worker_alloc_session_fifos (sm, s);
+}
+
+int
+app_worker_accept_notify (app_worker_t * app_wrk, session_t * s)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  return app->cb_fns.session_accept_callback (s);
+}
+
+int
+app_worker_init_connected (app_worker_t * app_wrk, session_t * s)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  segment_manager_t *sm;
+
+  /* Allocate fifos for session, unless the app is a builtin proxy */
+  if (!application_is_builtin_proxy (app))
+    {
+      sm = app_worker_get_connect_segment_manager (app_wrk);
+      if (app_worker_alloc_session_fifos (sm, s))
+	return -1;
+    }
+  return 0;
+}
+
+int
+app_worker_connect_notify (app_worker_t * app_wrk, session_t * s, u32 opaque)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  return app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
+						 s, s == 0 /* is_fail */ );
+}
+
+int
 app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 {
   segment_manager_t *sm;
@@ -372,7 +440,7 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
   s->tx_fifo = 0;
 
   sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
-  if (session_alloc_fifos (sm, s))
+  if (app_worker_alloc_session_fifos (sm, s))
     return -1;
 
   if (!svm_fifo_is_empty (rxf))
