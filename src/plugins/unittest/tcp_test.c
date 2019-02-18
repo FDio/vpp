@@ -1789,7 +1789,7 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
 				 0 /* notify */ ))
 	clib_warning ("stream_session_accept failed");
 
-      stream_session_accept_notify (&tc0->connection);
+      session_stream_accept_notify (&tc0->connection);
     }
   else
     {

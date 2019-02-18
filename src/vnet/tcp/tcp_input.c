@@ -2763,7 +2763,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	  tcp_retransmit_timer_reset (tc0);
 	  tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
-	  if (stream_session_accept_notify (&tc0->connection))
+	  if (session_stream_accept_notify (&tc0->connection))
 	    {
 	      error0 = TCP_ERROR_MSG_QUEUE_FULL;
 	      tcp_connection_reset (tc0);
