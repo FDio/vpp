@@ -436,7 +436,6 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 		  u32 ci0;
 
 		  c0 = vlib_buffer_copy (vm, b0);
-		  vlib_buffer_copy_trace_flag (vm, c0, bi0);
 		  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (c0);
 		  ci0 = vlib_get_buffer_index (vm, c0);
 		  server = &proxy->dhcp_servers[ii];
@@ -461,6 +460,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 		    {
 		      dhcpv6_proxy_trace_t *tr;
 
+		      vlib_buffer_copy_trace_flag (vm, b0, ci0);
 		      tr = vlib_add_trace (vm, node, c0, sizeof (*tr));
 		      tr->which = 0;	/* to server */
 		      tr->error = error0;
