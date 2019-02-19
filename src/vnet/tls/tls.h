@@ -39,7 +39,7 @@
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct tls_cxt_id_
 {
-  u32 parent_app_index;
+  u32 parent_app_wrk_index;
   union {
     session_handle_t app_session_handle;
     u32 parent_app_api_ctx;
@@ -61,7 +61,7 @@ typedef struct tls_ctx_
     transport_connection_t connection;
     tls_ctx_id_t c_tls_ctx_id;
   };
-#define parent_app_index c_tls_ctx_id.parent_app_index
+#define parent_app_wrk_index c_tls_ctx_id.parent_app_wrk_index
 #define app_session_handle c_tls_ctx_id.app_session_handle
 #define tls_session_handle c_tls_ctx_id.tls_session_handle
 #define listener_ctx_index c_tls_ctx_id.listener_ctx_index
