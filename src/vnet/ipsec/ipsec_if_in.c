@@ -197,6 +197,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
+		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
 		  n_no_tunnel++;
 		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto pkt1;
@@ -224,6 +225,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
+		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
 		  n_no_tunnel++;
 		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto pkt1;
@@ -236,7 +238,6 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_TRUE (t0->hw_if_index != ~0))
 	{
-	  vnet_buffer (b[0])->ipsec.flags = 0;
 	  sw_if_index0 = t0->sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = sw_if_index0;
 
@@ -245,6 +246,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_increment_combined_counter
 		(drop_counter, thread_index, sw_if_index0, 1, len0);
 	      n_disabled++;
+	      b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_DISABLED];
 	      next[0] = IPSEC_INPUT_NEXT_DROP;
 	      goto pkt1;
 	    }
@@ -267,10 +269,6 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_packets = 1;
 	      n_bytes = len0;
 	    }
-	}
-      else
-	{
-	  vnet_buffer (b[0])->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
 	}
 
     pkt1:
@@ -295,6 +293,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
+		  b[1]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
 		  n_no_tunnel++;
 		  next[1] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace1;
@@ -322,6 +321,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
+		  b[1]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
 		  n_no_tunnel++;
 		  next[1] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace1;
@@ -334,7 +334,6 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_TRUE (t1->hw_if_index != ~0))
 	{
-	  vnet_buffer (b[1])->ipsec.flags = 0;
 	  sw_if_index1 = t1->sw_if_index;
 	  vnet_buffer (b[1])->sw_if_index[VLIB_RX] = sw_if_index1;
 
@@ -343,6 +342,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_increment_combined_counter
 		(drop_counter, thread_index, sw_if_index1, 1, len1);
 	      n_disabled++;
+	      b[1]->error = node->errors[IPSEC_IF_INPUT_ERROR_DISABLED];
 	      next[1] = IPSEC_INPUT_NEXT_DROP;
 	      goto trace1;
 	    }
@@ -365,10 +365,6 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_packets = 1;
 	      n_bytes = len1;
 	    }
-	}
-      else
-	{
-	  vnet_buffer (b[1])->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
 	}
 
     trace1:
@@ -460,6 +456,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
+		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
 		  n_no_tunnel++;
 		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace00;
@@ -487,6 +484,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      else
 		{
+		  b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
 		  n_no_tunnel++;
 		  next[0] = IPSEC_INPUT_NEXT_DROP;
 		  goto trace00;
@@ -499,7 +497,6 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (PREDICT_TRUE (t0->hw_if_index != ~0))
 	{
-	  vnet_buffer (b[0])->ipsec.flags = 0;
 	  sw_if_index0 = t0->sw_if_index;
 	  vnet_buffer (b[0])->sw_if_index[VLIB_RX] = sw_if_index0;
 
@@ -508,6 +505,7 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vlib_increment_combined_counter
 		(drop_counter, thread_index, sw_if_index0, 1, len0);
 	      n_disabled++;
+	      b[0]->error = node->errors[IPSEC_IF_INPUT_ERROR_DISABLED];
 	      next[0] = IPSEC_INPUT_NEXT_DROP;
 	      goto trace00;
 	    }
@@ -530,10 +528,6 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_packets = 1;
 	      n_bytes = len0;
 	    }
-	}
-      else
-	{
-	  vnet_buffer (b[0])->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
 	}
 
     trace00:
@@ -563,11 +557,8 @@ ipsec_if_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_IF_INPUT_ERROR_RX,
-			       from_frame->n_vectors - n_disabled);
-  vlib_node_increment_counter (vm, node->node_index,
-			       IPSEC_IF_INPUT_ERROR_DISABLED, n_disabled);
-  vlib_node_increment_counter (vm, node->node_index,
-			       IPSEC_IF_INPUT_ERROR_NO_TUNNEL, n_no_tunnel);
+			       from_frame->n_vectors - (n_disabled +
+							n_no_tunnel));
 
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, from_frame->n_vectors);
 

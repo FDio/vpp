@@ -308,11 +308,18 @@ ipsec_sa_flags_decode (vl_api_ipsec_sad_flags_t in)
   ipsec_sa_flags_t flags = IPSEC_SA_FLAG_NONE;
   in = clib_net_to_host_u32 (in);
 
-#define _(v,f,s) if (in & IPSEC_API_SAD_FLAG_##f)    \
-    flags |= IPSEC_SA_FLAG_##f;
-  foreach_ipsec_sa_flags
-#undef _
-    return (flags);
+  if (in & IPSEC_API_SAD_FLAG_USE_EXTENDED_SEQ_NUM)
+    flags |= IPSEC_SA_FLAG_USE_EXTENDED_SEQ_NUM;
+  if (in & IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY)
+    flags |= IPSEC_SA_FLAG_USE_ANTI_REPLAY;
+  if (in & IPSEC_API_SAD_FLAG_IS_TUNNEL)
+    flags |= IPSEC_SA_FLAG_IS_TUNNEL;
+  if (in & IPSEC_API_SAD_FLAG_IS_TUNNEL_V6)
+    flags |= IPSEC_SA_FLAG_IS_TUNNEL_V6;
+  if (in & IPSEC_API_SAD_FLAG_UDP_ENCAP)
+    flags |= IPSEC_SA_FLAG_UDP_ENCAP;
+
+  return (flags);
 }
 
 static vl_api_ipsec_sad_flags_t

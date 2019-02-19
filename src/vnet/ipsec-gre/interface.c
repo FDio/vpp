@@ -86,31 +86,23 @@ VLIB_INIT_FUNCTION (ipsec_gre_interface_init);
 /**
  * @brief Add or delete ipsec-gre tunnel interface.
  *
- * @param *a vnet_ipsec_gre_add_del_tunnel_args_t - tunnel interface parameters
+ * @param *a vnet_ipsec_gre_tunnel_add_del_args_t - tunnel interface parameters
  * @param *sw_if_indexp u32 - software interface index
  * @return int - 0 if success otherwise <code>VNET_API_ERROR_</code>
  */
 int
-vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
+vnet_ipsec_gre_tunnel_add_del (const ipsec_gre_tunnel_add_del_args_t * a,
 			       u32 * sw_if_indexp)
 {
   ipsec_gre_main_t *igm = &ipsec_gre_main;
   vnet_main_t *vnm = igm->vnet_main;
-  ip4_main_t *im = &ip4_main;
+  ipsec_main_t *im = &ipsec_main;
   ipsec_gre_tunnel_t *t;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, sw_if_index;
   u32 slot;
   uword *p;
   u64 key;
-  ipsec_add_del_ipsec_gre_tunnel_args_t args;
-
-  clib_memset (&args, 0, sizeof (args));
-  args.is_add = a->is_add;
-  args.local_sa_id = a->lsa;
-  args.remote_sa_id = a->rsa;
-  args.local_ip.as_u32 = a->src.as_u32;
-  args.remote_ip.as_u32 = a->dst.as_u32;
 
   key = (u64) a->src.as_u32 << 32 | (u64) a->dst.as_u32;
   p = hash_get (igm->tunnel_by_key, key);
@@ -160,18 +152,16 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
 
       t->hw_if_index = hw_if_index;
       t->sw_if_index = sw_if_index;
-      t->local_sa_id = a->lsa;
-      t->remote_sa_id = a->rsa;
-      t->local_sa = ipsec_get_sa_index_by_sa_id (a->lsa);
-      t->remote_sa = ipsec_get_sa_index_by_sa_id (a->rsa);
+      t->local_sa_id = a->local_sa_id;
+      t->remote_sa_id = a->remote_sa_id;
+      t->local_sa = ipsec_get_sa_index_by_sa_id (t->local_sa_id);
+      t->remote_sa = ipsec_get_sa_index_by_sa_id (t->remote_sa_id);
 
       ip4_sw_interface_enable_disable (sw_if_index, 1);
 
       vec_validate_init_empty (igm->tunnel_index_by_sw_if_index,
 			       sw_if_index, ~0);
       igm->tunnel_index_by_sw_if_index[sw_if_index] = t - igm->tunnels;
-
-      vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
 
       hi->min_packet_bytes = 64 + sizeof (gre_header_t) +
 	sizeof (ip4_header_t) + sizeof (esp_header_t) + sizeof (esp_footer_t);
@@ -185,12 +175,11 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
 
       hash_set (igm->tunnel_by_key, key, t - igm->tunnels);
 
-      slot = vlib_node_add_named_next_with_slot
-	(vnm->vlib_main, hi->tx_node_index, "esp4-encrypt",
+      slot = vlib_node_add_next_with_slot
+	(vnm->vlib_main, hi->tx_node_index, im->esp4_encrypt_node_index,
 	 IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT);
 
       ASSERT (slot == IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT);
-
     }
   else
     {				/* !is_add => delete */
@@ -216,7 +205,7 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
   if (sw_if_indexp)
     *sw_if_indexp = sw_if_index;
 
-  return ipsec_add_del_ipsec_gre_tunnel (vnm, &args);
+  return ipsec_add_del_ipsec_gre_tunnel (vnm, a);
 }
 
 static clib_error_t *
@@ -225,14 +214,14 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
 				    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u8 is_add = 1;
   u32 num_m_args = 0;
-  ip4_address_t src, dst;
-  u32 lsa = 0, rsa = 0;
-  vnet_ipsec_gre_add_del_tunnel_args_t _a, *a = &_a;
+  ipsec_gre_tunnel_add_del_args_t _a, *a = &_a;
   int rv;
   u32 sw_if_index;
   clib_error_t *error = NULL;
+
+  clib_memset (a, 0, sizeof (*a));
+  a->is_add = 1;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -241,14 +230,14 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "del"))
-	is_add = 0;
-      else if (unformat (line_input, "src %U", unformat_ip4_address, &src))
+	a->is_add = 0;
+      else if (unformat (line_input, "src %U", unformat_ip4_address, &a->src))
 	num_m_args++;
-      else if (unformat (line_input, "dst %U", unformat_ip4_address, &dst))
+      else if (unformat (line_input, "dst %U", unformat_ip4_address, &a->dst))
 	num_m_args++;
-      else if (unformat (line_input, "local-sa %d", &lsa))
+      else if (unformat (line_input, "local-sa %d", &a->local_sa_id))
 	num_m_args++;
-      else if (unformat (line_input, "remote-sa %d", &rsa))
+      else if (unformat (line_input, "remote-sa %d", &a->remote_sa_id))
 	num_m_args++;
       else
 	{
@@ -264,20 +253,13 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  if (memcmp (&src, &dst, sizeof (src)) == 0)
+  if (memcmp (&a->src, &a->dst, sizeof (a->src)) == 0)
     {
       error = clib_error_return (0, "src and dst are identical");
       goto done;
     }
 
-  clib_memset (a, 0, sizeof (*a));
-  a->is_add = is_add;
-  a->lsa = lsa;
-  a->rsa = rsa;
-  clib_memcpy (&a->src, &src, sizeof (src));
-  clib_memcpy (&a->dst, &dst, sizeof (dst));
-
-  rv = vnet_ipsec_gre_add_del_tunnel (a, &sw_if_index);
+  rv = vnet_ipsec_gre_tunnel_add_del (a, &sw_if_index);
 
   switch (rv)
     {
@@ -290,7 +272,7 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     default:
       error = clib_error_return (0,
-				 "vnet_ipsec_gre_add_del_tunnel returned %d",
+				 "vnet_ipsec_gre_tunnel_add_del returned %d",
 				 rv);
       goto done;
     }
