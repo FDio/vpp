@@ -486,9 +486,7 @@ format_vnet_buffer_opaque (u8 * s, va_list * args)
   s = format (s, "policer.index: %d", o->policer.index);
   vec_add1 (s, '\n');
 
-  s = format (s,
-	      "ipsec.flags: 0x%x, ipsec.sad_index: %d",
-	      o->ipsec.flags, o->ipsec.sad_index);
+  s = format (s, "ipsec.sad_index: %d", o->ipsec.sad_index);
   vec_add1 (s, '\n');
 
   s = format (s, "map.mtu: %d", (u32) (o->map.mtu));
