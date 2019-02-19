@@ -22,6 +22,30 @@
       "revId": "90f31b228347ae1c59f97aca07aa91f5d7dc3d02",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f9901f38_6fa57730",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 772
+      },
+      "writtenOn": "2019-02-19T18:20:21Z",
+      "side": 1,
+      "message": "fine with the +\u003d  that was just a carry over.\ngcc6 installs fine for me on leap15 not sure if I just have additional repos that you dont.\nhaving said that I have NO PROBLEM dropping or altering that gcc6 to something else.   It was also just a no-change for me from what was there before.",
+      "parentUuid": "d8391021_819a26c1",
+      "range": {
+        "startLine": 132,
+        "startChar": 1,
+        "endLine": 132,
+        "endChar": 72
+      },
+      "revId": "90f31b228347ae1c59f97aca07aa91f5d7dc3d02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
