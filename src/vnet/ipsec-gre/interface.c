@@ -96,7 +96,7 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
 {
   ipsec_gre_main_t *igm = &ipsec_gre_main;
   vnet_main_t *vnm = igm->vnet_main;
-  ip4_main_t *im = &ip4_main;
+  ipsec_main_t *im = &ipsec_main;
   ipsec_gre_tunnel_t *t;
   vnet_hw_interface_t *hi;
   u32 hw_if_index, sw_if_index;
@@ -171,8 +171,6 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
 			       sw_if_index, ~0);
       igm->tunnel_index_by_sw_if_index[sw_if_index] = t - igm->tunnels;
 
-      vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-
       hi->min_packet_bytes = 64 + sizeof (gre_header_t) +
 	sizeof (ip4_header_t) + sizeof (esp_header_t) + sizeof (esp_footer_t);
 
@@ -185,12 +183,11 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
 
       hash_set (igm->tunnel_by_key, key, t - igm->tunnels);
 
-      slot = vlib_node_add_named_next_with_slot
-	(vnm->vlib_main, hi->tx_node_index, "esp4-encrypt",
+      slot = vlib_node_add_next_with_slot
+	(vnm->vlib_main, hi->tx_node_index, im->esp4_encrypt_node_index,
 	 IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT);
 
       ASSERT (slot == IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT);
-
     }
   else
     {				/* !is_add => delete */
