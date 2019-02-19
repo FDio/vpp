@@ -1510,6 +1510,14 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   deadline = now + BARRIER_SYNC_TIMEOUT;
 
+  /*
+   * Note when we let go of the barrier.
+   * Workers can use this to derive a reasonably accurate
+   * time offset. See vlib_time_now(...)
+   */
+  vm->time_last_barrier_release = vlib_time_now (vm);
+  CLIB_MEMORY_STORE_BARRIER ();
+
   *vlib_worker_threads->wait_at_barrier = 0;
 
   while (*vlib_worker_threads->workers_at_barrier > 0)
@@ -1807,6 +1815,45 @@ threads_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (threads_init);
+
+
+static clib_error_t *
+show_clock_command_fn (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  int i;
+  f64 now;
+
+  now = vlib_time_now (vm);
+
+  vlib_cli_output (vm, "Time now %.9f", now);
+
+  if (vec_len (vlib_mains) == 1)
+    return 0;
+
+  vlib_cli_output (vm, "Time last barrier release %.9f",
+		   vm->time_last_barrier_release);
+
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    {
+      if (vlib_mains[i] == 0)
+	continue;
+      vlib_cli_output (vm, "Thread %d offset %.9f error %.9f", i,
+		       vlib_mains[i]->time_offset,
+		       vm->time_last_barrier_release -
+		       vlib_mains[i]->time_last_barrier_release);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (f_command, static) =
+{
+  .path = "show clock",
+  .short_help = "show clock",
+  .function = show_clock_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
