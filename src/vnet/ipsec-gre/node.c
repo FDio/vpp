@@ -161,7 +161,7 @@ ipsec_gre_input (vlib_main_t * vm,
 
           protocol0 = clib_net_to_host_u16 (h0->protocol);
           protocol1 = clib_net_to_host_u16 (h1->protocol);
-          if (PREDICT_TRUE(protocol0 == 0x0001))
+          if (PREDICT_TRUE(protocol0 == GRE_PROTOCOL_teb))
             {
               next0 = IPSEC_GRE_INPUT_NEXT_L2_INPUT;
               b0->error = node->errors[IPSEC_GRE_ERROR_NONE];
@@ -171,7 +171,7 @@ ipsec_gre_input (vlib_main_t * vm,
               b0->error = node->errors[IPSEC_GRE_ERROR_UNKNOWN_PROTOCOL];
               next0 = IPSEC_GRE_INPUT_NEXT_DROP;
             }
-          if (PREDICT_TRUE(protocol1 == 0x0001))
+          if (PREDICT_TRUE(protocol1 == GRE_PROTOCOL_teb))
             {
               next1 = IPSEC_GRE_INPUT_NEXT_L2_INPUT;
               b1->error = node->errors[IPSEC_GRE_ERROR_NONE];
@@ -315,7 +315,7 @@ drop1:
 	  h0 = vlib_buffer_get_current (b0);
 
           protocol0 = clib_net_to_host_u16 (h0->protocol);
-          if (PREDICT_TRUE(protocol0 == 0x0001))
+          if (PREDICT_TRUE(protocol0 == GRE_PROTOCOL_teb))
             {
               next0 = IPSEC_GRE_INPUT_NEXT_L2_INPUT;
               b0->error = node->errors[IPSEC_GRE_ERROR_NONE];
@@ -333,7 +333,7 @@ drop1:
           next0 = verr0 ? IPSEC_GRE_INPUT_NEXT_DROP : next0;
 
           /* For L2 payload set input sw_if_index to GRE tunnel for learning */
-          if (PREDICT_FALSE(next0 == IPSEC_GRE_INPUT_NEXT_L2_INPUT))
+          if (PREDICT_TRUE(next0 == IPSEC_GRE_INPUT_NEXT_L2_INPUT))
             {
               u64 key = ((u64)(tun_dst0) << 32) | (u64)(tun_src0);
 

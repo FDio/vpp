@@ -102,8 +102,7 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   ipsec_gre_tunnel_t *t = pool_elt_at_index (igm->tunnels, rd->dev_instance);
 
-  /* use an ethertype of 0x01 for l2-gre */
-  u16 l2_gre_protocol_ethertype = clib_net_to_host_u16 (0x01);
+  u16 l2_gre_protocol_ethertype = clib_net_to_host_u16 (GRE_PROTOCOL_teb);
 
   /* Vector of buffer / pkt indices we're supposed to process */
   from = vlib_frame_vector_args (frame);

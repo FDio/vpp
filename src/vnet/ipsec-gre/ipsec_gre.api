@@ -18,8 +18,8 @@ option version = "1.0.0";
 /** \brief Add / del ipsec gre tunnel request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param local_sa_id - local SA id
-    @param remote_sa_id - remote SA id
+    @param local_sa_id - local/output SA id
+    @param remote_sa_id - remote/input SA id
     @param is_add - 1 if adding the tunnel, 0 if deleting
     @param src_address - tunnel source address
     @param dst_address - tunnel destination address

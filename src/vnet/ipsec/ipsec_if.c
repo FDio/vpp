@@ -443,12 +443,12 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
   p = hash_get (im->sa_index_by_sa_id, args->local_sa_id);
   if (!p)
     return VNET_API_ERROR_INVALID_VALUE;
-  isa = p[0];
+  osa = p[0];
 
   p = hash_get (im->sa_index_by_sa_id, args->remote_sa_id);
   if (!p)
     return VNET_API_ERROR_INVALID_VALUE;
-  osa = p[0];
+  isa = p[0];
   sa = pool_elt_at_index (im->sad, p[0]);
 
   if (sa->is_tunnel)

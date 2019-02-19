@@ -3483,6 +3483,21 @@ class VppPapiProvider(object):
              'show_instance': show_instance
              })
 
+    def ipsec_gre_tunnel_add_del(self, local_ip, remote_ip,
+                                 sa_in, sa_out, is_add=1):
+        return self.api(self.papi.ipsec_gre_add_del_tunnel,
+                        {
+                            'is_add': is_add,
+                            'src_address': local_ip,
+                            'dst_address': remote_ip,
+                            'local_sa_id': sa_in,
+                            'remote_sa_id': sa_out
+                        })
+
+    def ipsec_gre_tunnel_dump(self, sw_if_index=0xffffffff):
+        return self.api(self.papi.ipsec_gre_tunnel_dump,
+                        {'sw_if_index': sw_if_index})
+
     def ipsec_select_backend(self, protocol, index):
         return self.api(self.papi.ipsec_select_backend,
                         {'protocol': protocol, 'index': index})

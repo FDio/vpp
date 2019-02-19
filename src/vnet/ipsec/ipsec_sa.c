@@ -188,6 +188,14 @@ ipsec_sa_add (u32 id,
   return (0);
 }
 
+ipsec_sa_t *
+ipsec_sa_get (u32 sa_index)
+{
+  ipsec_main_t *im = &ipsec_main;
+
+  return (pool_elt_at_index (im->sad, sa_index));
+}
+
 u32
 ipsec_sa_del (u32 id)
 {
