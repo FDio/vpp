@@ -441,10 +441,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
-	      if (l.link_speed == 40000)
-		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-	      else
-		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
+	      xd->port_type = port_type_from_link_speed (l.link_speed);
 	      break;
 
 	      /* Intel Red Rock Canyon */
