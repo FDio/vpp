@@ -146,6 +146,8 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
   u32 stat_index;
   int rv;
 
+  stat_index = ~0;
+
 #if WITH_LIBSSL > 0
   ipsec_policy_t p;
 
