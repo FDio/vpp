@@ -245,6 +245,12 @@ mpls_tunnel_stack (adj_index_t ai)
     if (NULL == mt)
         return;
 
+    if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
+    {
+        adj_nbr_midchain_unstack(ai);
+        return;
+    }
+
     /*
      * while we're stacking the adj, remove the tunnel from the child list
      * of the path list. this breaks a circular dependency of walk updates
