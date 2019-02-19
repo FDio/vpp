@@ -263,10 +263,11 @@ avf_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (PREDICT_FALSE (ad->per_interface_next_index != ~0))
     next_index = ad->per_interface_next_index;
-  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
   if (PREDICT_FALSE (vnet_device_input_have_features (ad->sw_if_index)))
     vnet_feature_start_device_input_x1 (ad->sw_if_index, &next_index, bt);
+
+  vlib_get_new_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
   /* fetch up to AVF_RX_VECTOR_SZ from the rx ring, unflatten them and
      copy needed data from descriptor to rx vector */
