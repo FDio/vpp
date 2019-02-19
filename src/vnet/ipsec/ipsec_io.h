@@ -15,8 +15,6 @@
 #ifndef __IPSEC_IO_H__
 #define __IPSEC_IO_H__
 
-#define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
-
 #define foreach_ipsec_output_next  \
   _ (DROP, "error-drop")
 

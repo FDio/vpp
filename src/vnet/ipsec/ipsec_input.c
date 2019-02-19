@@ -253,7 +253,6 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		     clib_net_to_host_u16 (ip0->length));
 
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = im->esp4_decrypt_next_index;
 		  vlib_buffer_advance (b0, ((u8 *) esp0 - (u8 *) ip0));
 		  goto trace0;
@@ -304,7 +303,6 @@ VLIB_NODE_FN (ipsec4_input_node) (vlib_main_t * vm,
 		     clib_net_to_host_u16 (ip0->length));
 
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = im->ah4_decrypt_next_index;
 		  goto trace1;
 		}
@@ -450,7 +448,6 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 		     header_size);
 
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = im->esp6_decrypt_next_index;
 		  vlib_buffer_advance (b0, header_size);
 		  goto trace0;
@@ -479,7 +476,6 @@ VLIB_NODE_FN (ipsec6_input_node) (vlib_main_t * vm,
 		     header_size);
 
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
-		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = im->ah6_decrypt_next_index;
 		  goto trace0;
 		}

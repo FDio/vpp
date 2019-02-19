@@ -291,9 +291,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    }
 
 	  /* for IPSec-GRE tunnel next node is ipsec-gre-input */
-	  if (PREDICT_FALSE
-	      ((vnet_buffer (ib[0])->ipsec.flags) &
-	       IPSEC_FLAG_IPSEC_GRE_TUNNEL))
+	  if (PREDICT_FALSE (ipsec_sa_is_set_IS_GRE (sa0)))
 	    next[0] = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
 	  vnet_buffer (ob[0])->sw_if_index[VLIB_TX] = (u32) ~ 0;
