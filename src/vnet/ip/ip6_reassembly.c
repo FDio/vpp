@@ -315,8 +315,8 @@ ip6_reass_drop_all (vlib_main_t * vm, ip6_reass_main_t * rm,
 
 always_inline void
 ip6_reass_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      ip6_reass_main_t * rm, ip6_reass_t * reass,
-		      u32 * icmp_bi, u32 ** vec_timeout)
+		      ip6_reass_main_t * rm, ip6_reass_per_thread_t * rt,
+		      ip6_reass_t * reass, u32 * icmp_bi, u32 ** vec_timeout)
 {
   if (~0 == reass->first_bi)
     {
@@ -342,6 +342,7 @@ ip6_reass_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  reass->first_bi = vnet_buffer (b)->ip.reass.next_range_bi;
 	}
+      --rt->buffers_n;
       icmp6_error_set_vnet_buffer (b, ICMP6_time_exceeded,
 				   ICMP6_time_exceeded_fragment_reassembly_time_exceeded,
 				   0);
@@ -370,7 +371,8 @@ ip6_reass_find_or_create (vlib_main_t * vm, vlib_node_runtime_t * node,
       reass = pool_elt_at_index (rt->pool, value.value);
       if (now > reass->last_heard + rm->timeout)
 	{
-	  ip6_reass_on_timeout (vm, node, rm, reass, icmp_bi, vec_timeout);
+	  ip6_reass_on_timeout (vm, node, rm, rt, reass, icmp_bi,
+				vec_timeout);
 	  ip6_reass_free (rm, rt, reass);
 	  reass = NULL;
 	}
@@ -580,6 +582,7 @@ ip6_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
     clib_host_to_net_u16 (total_length + first_b->current_length -
 			  sizeof (*ip));
   vlib_buffer_chain_compress (vm, first_b, vec_drop_compress);
+  rt->buffers_n -= buf_cnt - vec_len (*vec_drop_compress);
   if (PREDICT_FALSE (first_b->flags & VLIB_BUFFER_IS_TRACED))
     {
       ip6_reass_add_trace (vm, node, rm, reass, reass->first_bi, FINALIZE, 0);
@@ -1345,13 +1348,12 @@ ip6_reass_walk_expired (vlib_main_t * vm,
                     b->flags &= ~VLIB_BUFFER_IS_TRACED;
                   }
               }
-            ip6_reass_on_timeout (vm, node, rm, reass, &icmp_bi, &vec_timeout);
+            ip6_reass_on_timeout (vm, node, rm, rt, reass, &icmp_bi, &vec_timeout);
             u32 after = vec_len (vec_timeout);
             rt->buffers_n -= (after - before);
             if (~0 != icmp_bi)
               {
                 vec_add1 (vec_icmp_bi, icmp_bi);
-                --rt->buffers_n;
               }
             ip6_reass_free (rm, rt, reass);
           }
