@@ -1478,7 +1478,7 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
 	  __SOCKADDR_ARG addr, socklen_t * __restrict addr_len)
 {
   vls_handle_t sid;
-  ssize_t size;
+  ssize_t size, rv;
 
   if ((errno = -ldp_init ()))
     return -1;
@@ -1495,7 +1495,11 @@ recvfrom (int fd, void *__restrict buf, size_t n, int flags,
 	  size = vls_recvfrom (sid, buf, n, flags, &ep);
 
 	  if (size > 0)
-	    size = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
+	    {
+	      rv = ldp_copy_ep_to_sockaddr (addr, addr_len, &ep);
+	      if (rv < 0)
+		size = rv;
+	    }
 	}
       else
 	size = vls_recvfrom (sid, buf, n, flags, NULL);
