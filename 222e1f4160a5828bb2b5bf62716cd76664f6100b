@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "72149f5f_7623a423",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-19T15:22:57Z",
+      "side": 0,
+      "message": "Why is \"env\" being removed? Does \"env\" have any downsides?\nI know about upsides:\nhttps://en.wikipedia.org/wiki/Shebang_%28Unix%29#Portability",
+      "range": {
+        "startLine": 1,
+        "startChar": 11,
+        "endLine": 1,
+        "endChar": 14
+      },
+      "revId": "222e1f4160a5828bb2b5bf62716cd76664f6100b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

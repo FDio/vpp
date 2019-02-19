@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a14f49b_e0afe383",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-19T15:22:57Z",
+      "side": 1,
+      "message": "Deleting the spaces would be less surprising, and it would also save space.",
+      "range": {
+        "startLine": 168,
+        "startChar": 44,
+        "endLine": 168,
+        "endChar": 56
+      },
+      "revId": "f4647ed885c47a72d94dd63e0903b6c1ae649813",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
