@@ -57,6 +57,7 @@ class TestIPv4Reassembly(VppTestCase):
     def tearDown(self):
         super(TestIPv4Reassembly, self).tearDown()
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_sizes, packet_count=test_packet_count):
@@ -486,10 +487,12 @@ class TestIPv6Reassembly(VppTestCase):
         self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
                                     expire_walk_interval_ms=10000, is_ip6=1)
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
 
     def tearDown(self):
         super(TestIPv6Reassembly, self).tearDown()
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_sizes, packet_count=test_packet_count):
@@ -881,6 +884,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
     def tearDown(self):
         super(TestIPv4ReassemblyLocalNode, self).tearDown()
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
     def create_stream(cls, packet_count=test_packet_count):
@@ -1008,6 +1012,7 @@ class TestFIFReassembly(VppTestCase):
     def tearDown(self):
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
         super(TestFIFReassembly, self).tearDown()
 
     def verify_capture(self, capture, ip_class, dropped_packet_indexes=[]):
