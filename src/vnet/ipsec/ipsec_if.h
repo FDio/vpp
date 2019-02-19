@@ -97,17 +97,18 @@ typedef struct
   u8 is_add;
   u32 local_sa_id;
   u32 remote_sa_id;
-  ip4_address_t local_ip;
-  ip4_address_t remote_ip;
-} ipsec_add_del_ipsec_gre_tunnel_args_t;
+  ip4_address_t src;
+  ip4_address_t dst;
+} ipsec_gre_tunnel_add_del_args_t;
 
 extern int ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 					     ipsec_add_del_tunnel_args_t *
 					     args, u32 * sw_if_index);
 extern int ipsec_add_del_tunnel_if (ipsec_add_del_tunnel_args_t * args);
 extern int ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
-					   ipsec_add_del_ipsec_gre_tunnel_args_t
-					   * args);
+					   const
+					   ipsec_gre_tunnel_add_del_args_t *
+					   args);
 
 extern int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 				    ipsec_if_set_key_type_t type,

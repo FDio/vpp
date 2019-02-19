@@ -429,7 +429,7 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 
 int
 ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
-				ipsec_add_del_ipsec_gre_tunnel_args_t * args)
+				const ipsec_gre_tunnel_add_del_args_t * args)
 {
   ipsec_tunnel_if_t *t = 0;
   ipsec_main_t *im = &ipsec_main;
@@ -441,22 +441,27 @@ ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
   p = hash_get (im->sa_index_by_sa_id, args->local_sa_id);
   if (!p)
     return VNET_API_ERROR_INVALID_VALUE;
-  isa = p[0];
+  osa = p[0];
+  sa = pool_elt_at_index (im->sad, p[0]);
+  ipsec_sa_set_IS_GRE (sa);
 
   p = hash_get (im->sa_index_by_sa_id, args->remote_sa_id);
   if (!p)
     return VNET_API_ERROR_INVALID_VALUE;
-  osa = p[0];
+  isa = p[0];
   sa = pool_elt_at_index (im->sad, p[0]);
+  ipsec_sa_set_IS_GRE (sa);
 
+  /* we form the key from the input/remote SA whose tunnel is srouce
+   * at the remote end */
   if (ipsec_sa_is_set_IS_TUNNEL (sa))
     {
-      key.remote_ip = sa->tunnel_dst_addr.ip4.as_u32;
+      key.remote_ip = sa->tunnel_src_addr.ip4.as_u32;
       key.spi = clib_host_to_net_u32 (sa->spi);
     }
   else
     {
-      key.remote_ip = args->remote_ip.as_u32;
+      key.remote_ip = args->src.as_u32;
       key.spi = clib_host_to_net_u32 (sa->spi);
     }
 
