@@ -562,15 +562,20 @@ openssl_start_listen (tls_ctx_t * lctx)
   EVP_PKEY *pkey;
   u32 olc_index;
   openssl_listen_ctx_t *olc;
+  app_worker_t *app_wrk;
 
   long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
   openssl_main_t *om = &openssl_main;
 
-  app = application_get (lctx->parent_app_index);
+  app_wrk = app_worker_get (lctx->parent_app_wrk_index);
+  if (!app_wrk)
+    return -1;
+
+  app = application_get (app_wrk->app_index);
   if (!app->tls_cert || !app->tls_key)
     {
       TLS_DBG (1, "tls cert and/or key not configured %d",
-	       lctx->parent_app_index);
+	       lctx->parent_app_wrk_index);
       return -1;
     }
 

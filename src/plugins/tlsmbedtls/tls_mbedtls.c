@@ -275,6 +275,7 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
 {
   mbedtls_ctx_t *mc = (mbedtls_ctx_t *) ctx;
   mbedtls_main_t *mm = &mbedtls_main;
+  app_worker_t *app_wrk;
   application_t *app;
   void *ctx_ptr;
   int rv;
@@ -287,11 +288,15 @@ mbedtls_ctx_init_server (tls_ctx_t * ctx)
   /*
    * 1. Cert
    */
-  app = application_get (ctx->parent_app_index);
+  app_wrk = app_worker_get (ctx->parent_app_wrk_index);
+  if (!app_wrk)
+    return -1;
+
+  app = application_get (app_wrk->app_index);
   if (!app->tls_cert || !app->tls_key)
     {
       TLS_DBG (1, " failed\n  ! tls cert and/or key not configured %d",
-	       ctx->parent_app_index);
+	       ctx->parent_app_wrk_index);
       return -1;
     }
 
