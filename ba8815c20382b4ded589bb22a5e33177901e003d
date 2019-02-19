@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ce501446_86a19226",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-19T14:18:14Z",
+      "side": 1,
+      "message": "Please add a code comment on why this is needed.",
+      "range": {
+        "startLine": 30,
+        "startChar": 8,
+        "endLine": 30,
+        "endChar": 21
+      },
+      "revId": "ba8815c20382b4ded589bb22a5e33177901e003d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ed2e7c73_73a4e930",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-19T14:18:14Z",
+      "side": 1,
+      "message": "Why is this a 1-tuple?\nDirect OSError would be shorter and less surprising.",
+      "range": {
+        "startLine": 41,
+        "startChar": 15,
+        "endLine": 41,
+        "endChar": 25
+      },
+      "revId": "ba8815c20382b4ded589bb22a5e33177901e003d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bb6d68f7_54a60103",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-19T14:18:14Z",
+      "side": 1,
+      "message": "Perhaps not worth the space, but I like exception chaining.\nSee [0] (and PEP 3134 mentioned therein).\n\n[0] https://python-future.org/compatible_idioms.html#raising-exceptions",
+      "range": {
+        "startLine": 42,
+        "startChar": 12,
+        "endLine": 42,
+        "endChar": 17
+      },
+      "revId": "ba8815c20382b4ded589bb22a5e33177901e003d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
