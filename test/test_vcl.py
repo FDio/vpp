@@ -422,6 +422,42 @@ class VCLThruHostStackEcho(VCLTestCase):
         super(VCLThruHostStackEcho, self).tearDown()
 
 
+class VCLThruHostStackTLS(VCLTestCase):
+    """ VCL Thru Host Stack TLS """
+
+    @classmethod
+    def setUpClass(cls):
+        super(VCLThruHostStackTLS, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(VCLThruHostStackTLS, cls).tearDownClass()
+
+    def setUp(self):
+        super(VCLThruHostStackTLS, self).setUp()
+
+        self.thru_host_stack_setup()
+        self.client_uni_dir_tls_timeout = 20
+        self.server_tls_args = ["-S", self.server_port]
+        self.client_uni_dir_tls_test_args = ["-N", "1000", "-U", "-X", "-S",
+                                             self.loop0.local_ip4,
+                                             self.server_port]
+
+    def test_vcl_thru_host_stack_tls_uni_dir(self):
+        """ run VCL thru host stack uni-directional TLS test """
+
+        self.timeout = self.client_uni_dir_tls_timeout
+        self.thru_host_stack_test("vcl_test_server", self.server_tls_args,
+                                  "vcl_test_client",
+                                  self.client_uni_dir_tls_test_args)
+
+    def tearDown(self):
+        self.logger.debug(self.vapi.cli("show app server"))
+        self.logger.debug(self.vapi.cli("show session verbose"))
+        self.thru_host_stack_tear_down()
+        super(VCLThruHostStackTLS, self).tearDown()
+
+
 class VCLThruHostStackBidirNsock(VCLTestCase):
     """ VCL Thru Host Stack Bidir Nsock """
 
