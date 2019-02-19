@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8391021_819a26c1",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-19T17:53:18Z",
+      "side": 1,
+      "message": "see: https://gerrit.fd.io/r/#/c/17251/21/Makefile L:166\n\nI had issues with gcc6. It is not officially supported by suse.\nSee: https://software.opensuse.org/package/gcc6\n\"There is no official package available for openSUSE Leap 15.0\"\nAlso, the line above needs to be \"+\u003d\"",
+      "range": {
+        "startLine": 132,
+        "startChar": 1,
+        "endLine": 132,
+        "endChar": 72
+      },
+      "revId": "90f31b228347ae1c59f97aca07aa91f5d7dc3d02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
