@@ -718,13 +718,9 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       // starting a new reassembly
       ip6_reass_insert_range_in_chain (vm, rm, rt, reass, prev_range_bi,
 				       *bi0);
-      if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
-	{
-	  ip6_reass_add_trace (vm, node, rm, reass, *bi0, RANGE_NEW, 0);
-	}
       reass->min_fragment_length = clib_net_to_host_u16 (fip->payload_length);
-      *bi0 = ~0;
-      return IP6_REASS_RC_OK;
+      consumed = 1;
+      goto check_if_done_maybe;
     }
   reass->min_fragment_length =
     clib_min (clib_net_to_host_u16 (fip->payload_length),
@@ -777,6 +773,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       break;
     }
+check_if_done_maybe:
   if (consumed)
     {
       if (PREDICT_FALSE (fb->flags & VLIB_BUFFER_IS_TRACED))
