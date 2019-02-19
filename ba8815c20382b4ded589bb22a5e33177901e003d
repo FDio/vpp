@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "d80a4c5c_f40137ea",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-19T15:27:45Z",
+      "side": 1,
+      "message": "Removing.  Not needed. Thanks!",
+      "parentUuid": "ce501446_86a19226",
+      "range": {
+        "startLine": 30,
+        "startChar": 8,
+        "endLine": 30,
+        "endChar": 21
+      },
+      "revId": "ba8815c20382b4ded589bb22a5e33177901e003d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ed2e7c73_73a4e930",
         "filename": "test/test_jvpp.py",
         "patchSetId": 5
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "e0a9a93b_4db17246",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-19T15:27:45Z",
+      "side": 1,
+      "message": "Once you get used to it, it\u0027s not so surprising anymore. ;)\n\nIt makes it easier to expand and the exceptions can change with PY2 vs PY3.",
+      "parentUuid": "ed2e7c73_73a4e930",
+      "range": {
+        "startLine": 41,
+        "startChar": 15,
+        "endLine": 41,
+        "endChar": 25
+      },
+      "revId": "ba8815c20382b4ded589bb22a5e33177901e003d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bb6d68f7_54a60103",
         "filename": "test/test_jvpp.py",
         "patchSetId": 5
@@ -59,6 +107,30 @@
       "writtenOn": "2019-02-19T14:18:14Z",
       "side": 1,
       "message": "Perhaps not worth the space, but I like exception chaining.\nSee [0] (and PEP 3134 mentioned therein).\n\n[0] https://python-future.org/compatible_idioms.html#raising-exceptions",
+      "range": {
+        "startLine": 42,
+        "startChar": 12,
+        "endLine": 42,
+        "endChar": 17
+      },
+      "revId": "ba8815c20382b4ded589bb22a5e33177901e003d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f553311f_4a47c71f",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-19T15:27:45Z",
+      "side": 1,
+      "message": "On my roadmap as part of the PY3 migration.",
+      "parentUuid": "bb6d68f7_54a60103",
       "range": {
         "startLine": 42,
         "startChar": 12,
