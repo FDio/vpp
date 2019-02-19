@@ -25,11 +25,12 @@ index 4f491d2..661a5da 100644
      fields_desc = [ ShortField("address_family",0),
 --- a/scapy/layers/l2.py
 +++ b/scapy/layers/l2.py
-@@ -427,6 +427,7 @@ bind_layers( Dot1AD,        Dot1AD,        type=0x88a8)
+@@ -427,6 +427,8 @@ bind_layers( Dot1AD,        Dot1AD,        type=0x88a8)
  bind_layers( Dot1AD,        Dot1Q,         type=0x8100)
  bind_layers( Dot1Q,         Dot1AD,        type=0x88a8)
  bind_layers( Ether,         Ether,         type=1)
 +bind_layers( GRE,           ERSPAN,        proto=0x88be, seqnum_present=1)
++bind_layers( GRE,           Ether,         proto=01)
  bind_layers( Ether,         ARP,           type=2054)
  bind_layers( CookedLinux,   LLC,           proto=122)
  bind_layers( CookedLinux,   Dot1Q,         proto=33024)
