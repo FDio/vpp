@@ -1158,7 +1158,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
 			VNET_BUFFER_F_OFFLOAD_UDP_CKSUM);
 
-	  u32 udp_offset[2];
+	  u32 udp_offset[2] = { };
 	  u8 is_tcp_udp[2];
 	  is_tcp_udp[0] =
 	    ip6_next_proto_is_tcp_udp (b[0], ip[0], &udp_offset[0]);
