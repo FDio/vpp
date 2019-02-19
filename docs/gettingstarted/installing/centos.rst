@@ -72,56 +72,6 @@ provided.
 
    $ sudo yum --showduplicates list vpp* | expand
 
-VPP Stable Branch
-"""""""""""""""""""
-
-To allow *yum* access to the build artifacts for a VPP stable branch, create
-the file *'/etc/yum.repos.d/fdio-release.repo'* with the following content.
-
-.. code-block:: console
-
-   $ cat /etc/yum.repos.d/fdio-release.repo
-   [fdio_1810]
-   name=fdio_1810
-   baseurl=https://packagecloud.io/fdio/1810/el/7/$basearch
-   repo_gpgcheck=1
-   gpgcheck=0
-   enabled=1
-   gpgkey=https://packagecloud.io/fdio/1810/gpgkey
-   sslverify=1
-   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
-   metadata_expire=300
-
-   [fdio_1810-source]
-   name=fdio_1810-source
-   baseurl=https://packagecloud.io/fdio/1810/el/7/SRPMS
-   repo_gpgcheck=1
-   gpgcheck=0
-   enabled=1
-   gpgkey=https://packagecloud.io/fdio/1810/gpgkey
-   sslverify=1
-   sslcacert=/etc/pki/tls/certs/ca-bundle.crt
-   metadata_expire=300
-
-For other stable branches, replace the *'1810'* from the above content with the
-desired release. Examples: 1606, 1609, 1701, 1704, 1707, 1710, 1804, 1807
-
-Update your local yum cache.
-
-.. code-block:: console
-
-   $ sudo yum clean all
-   $ sudo yum -q makecache -y --disablerepo='*' --enablerepo='fdio_1810'
-
-The *'yum install vpp'* command will install the most recent build on the
-branch, not the latest offical release. Run the following command to get the
-list of images produce by the branch:
-
-.. code-block:: console
-
-   $ sudo yum --showduplicates list vpp* | expand
-
-
 VPP Master Branch
 """""""""""""""""""
 
@@ -193,7 +143,7 @@ needed:
 
 .. code-block:: console
 
-   $ sudo yum install vpp-plugins vpp-devel vpp-api-python vpp-api-lua
+   $ sudo yum install vpp-plugins vpp-ext-deps vpp-devel vpp-api-python vpp-api-lua vpp-api-java vpp-debuginfo vpp-devel libvpp0
 
 Starting VPP
 ============

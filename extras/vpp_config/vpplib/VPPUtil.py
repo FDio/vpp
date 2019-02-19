@@ -22,6 +22,16 @@ import requests
 
 from collections import Counter
 
+ubuntu_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua', 'vpp-api-python',
+                           'vpp-dbg', 'vpp-dev'],
+               'master': ['vpp', 'vpp-plugin-core', 'vpp-ext-deps', 'vpp-api-python',
+                          'vpp-dbg', 'vpp-dev', 'vpp-plugin-dpdk']}
+
+centos_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua',
+                           'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0'],
+               'master': ['vpp', 'vpp-plugins', 'vpp-ext-deps', 'vpp-api-java', 'vpp-api-lua',
+                          'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0']}
+
 
 class VPPUtil(object):
     """General class for any VPP related methods/functions."""
@@ -59,7 +69,7 @@ class VPPUtil(object):
             for line in lines:
                 if type(line) != str:
                     line = line.decode()
-                logging.warn("  {}".format(line.strip('\n')))
+                logging.warning("  {}".format(line.strip('\n')))
                 err += line
 
         ret = prc.wait()
@@ -85,38 +95,6 @@ class VPPUtil(object):
                 if ret != 0:
                     logging.debug(stderr)
 
-    def _install_vpp_pkg_ubuntu(self, node, pkg):
-        """
-        Install the VPP packages
-
-        :param node: Node dictionary
-        :param pkg: The vpp packages
-        :type node: dict
-        :type pkg: string
-        """
-
-        cmd = 'apt-get -y install {}'.format(pkg)
-        (ret, stdout, stderr) = self.exec_command(cmd)
-        if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.format(
-                cmd, node['host'], stdout, stderr))
-
-    def _install_vpp_pkg_centos(self, node, pkg):
-        """
-        Install the VPP packages
-
-        :param node: Node dictionary
-        :param pkg: The vpp packages
-        :type node: dict
-        :type pkg: string
-        """
-
-        cmd = 'yum -y install {}'.format(pkg)
-        (ret, stdout, stderr) = self.exec_command(cmd)
-        if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.format(
-                cmd, node['host'], stdout, stderr))
-
     def _install_vpp_ubuntu(self, node, branch, ubuntu_version='xenial'):
         """
         Install the VPP packages
@@ -136,7 +114,7 @@ class VPPUtil(object):
         self._autoconfig_backup_file(sfile)
 
         reps = 'deb [trusted=yes] https://packagecloud.io/fdio/'
-        reps += '{}/ubuntu {} main ./\n'.format(branch, ubuntu_version)
+        reps += '{}/ubuntu {} main\n'.format(branch, ubuntu_version)
 
         with open(sfile, 'w') as sfd:
             sfd.write(reps)
@@ -163,13 +141,16 @@ class VPPUtil(object):
                 node['host'],
                 stderr))
 
-        self._install_vpp_pkg_ubuntu(node, 'vpp-lib')
-        self._install_vpp_pkg_ubuntu(node, 'vpp')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-plugins')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-api-python')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-api-lua')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-dev')
-        self._install_vpp_pkg_ubuntu(node, 'vpp-dbg')
+        # Get the package list
+        pkgstr = ''
+        for ps in ubuntu_pkgs[branch]:
+            pkgstr += ps + ' '
+
+        cmd = 'apt-get -y install {}'.format(pkgstr)
+        (ret, stdout, stderr) = self.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.format(
+                cmd, node['host'], stdout, stderr))
 
     def _install_vpp_centos(self, node, branch):
         """
@@ -261,15 +242,16 @@ class VPPUtil(object):
                 node['host'],
                 stderr))
 
-        # Install the packages
-        self._install_vpp_pkg_centos(node, 'vpp-selinux-policy')
-        self._install_vpp_pkg_centos(node, 'vpp-lib')
-        self._install_vpp_pkg_centos(node, 'vpp')
-        self._install_vpp_pkg_centos(node, 'vpp-plugins')
-        self._install_vpp_pkg_centos(node, 'vpp-api-python')
-        self._install_vpp_pkg_centos(node, 'vpp-api-lua')
-        self._install_vpp_pkg_centos(node, 'vpp-devel')
-        self._install_vpp_pkg_centos(node, 'vpp-debuginfo')
+        # Get the package list
+        pkgstr = ''
+        for ps in centos_pkgs[branch]:
+            pkgstr += ps + ' '
+
+        cmd = 'yum -y install {}'.format(pkgstr)
+        (ret, stdout, stderr) = self.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.format(
+                cmd, node['host'], stdout, stderr))
 
     def install_vpp(self, node, branch):
         """
@@ -294,36 +276,6 @@ class VPPUtil(object):
             self._install_vpp_centos(node, branch)
         return
 
-    def _uninstall_vpp_pkg_ubuntu(self, node, pkg):
-        """
-        Uninstall the VPP packages
-
-        :param node: Node dictionary
-        :param pkg: The vpp packages
-        :type node: dict
-        :type pkg: string
-        """
-        cmd = 'dpkg --purge {}'.format(pkg)
-        (ret, stdout, stderr) = self.exec_command(cmd)
-        if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.format(
-                cmd, node['host'], stdout, stderr))
-
-    def _uninstall_vpp_pkg_centos(self, node, pkg):
-        """
-        Uninstall the VPP packages
-
-        :param node: Node dictionary
-        :param pkg: The vpp packages
-        :type node: dict
-        :type pkg: string
-        """
-        cmd = 'yum -y remove {}'.format(pkg)
-        (ret, stdout, stderr) = self.exec_command(cmd)
-        if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.format(
-                cmd, node['host'], stdout, stderr))
-
     def _uninstall_vpp_ubuntu(self, node):
         """
         Uninstall the VPP packages
@@ -331,24 +283,19 @@ class VPPUtil(object):
         :param node: Node dictionary with cpuinfo.
         :type node: dict
         """
-        pkgs = self.get_installed_vpp_pkgs()
 
-        if len(pkgs) > 0:
-            if 'version' in pkgs[0]:
-                logging.info("Uninstall Ubuntu Packages")
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dbg')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-dev')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-python')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-api-lua')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-plugins')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp')
-                self._uninstall_vpp_pkg_ubuntu(node, 'vpp-lib')
-            else:
-                logging.info("Uninstall locally installed Ubuntu Packages")
-                for pkg in pkgs:
-                    self._uninstall_vpp_pkg_ubuntu(node, pkg['name'])
-        else:
-            logging.error("There are no Ubuntu packages installed")
+        # get the package list
+        pkgstr = ''
+        pkgs = self.get_installed_vpp_pkgs()
+        for pkg in pkgs:
+            pkgname = pkg['name']
+            pkgstr += pkgname + ' '
+
+        cmd = 'dpkg --purge {}'.format(pkgstr)
+        (ret, stdout, stderr) = self.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.format(
+                cmd, node['host'], stdout, stderr))
 
     def _uninstall_vpp_centos(self, node):
         """
@@ -356,27 +303,20 @@ class VPPUtil(object):
 
         :param node: Node dictionary with cpuinfo.
         :type node: dict
-            """
+        """
 
+        pkgstr = ''
         pkgs = self.get_installed_vpp_pkgs()
+        for pkg in pkgs:
+            pkgname = pkg['name']
+            pkgstr += pkgname + ' '
 
-        if len(pkgs) > 0:
-            if 'version' in pkgs[0]:
-                logging.info("Uninstall CentOS Packages")
-                self._install_vpp_pkg_centos(node, 'vpp-debuginfo')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-devel')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-api-python')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-api-lua')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-plugins')
-                self._uninstall_vpp_pkg_centos(node, 'vpp')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-lib')
-                self._uninstall_vpp_pkg_centos(node, 'vpp-selinux-policy')
-            else:
-                logging.info("Uninstall locally installed CentOS Packages")
-                for pkg in pkgs:
-                    self._uninstall_vpp_pkg_centos(node, pkg['name'])
-        else:
-            logging.error("There are no CentOS packages installed")
+        logging.info("Uninstalling {}".format(pkgstr))
+        cmd = 'yum -y remove {}'.format(pkgstr)
+        (ret, stdout, stderr) = self.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.format(
+                cmd, node['host'], stdout, stderr))
 
     def uninstall_vpp(self, node):
         """
@@ -388,7 +328,6 @@ class VPPUtil(object):
 
         # First stop VPP
         self.stop(node)
-
         distro = self.get_linux_distro()
         if distro[0] == 'Ubuntu':
             logging.info("Uninstall Ubuntu")
@@ -442,7 +381,7 @@ class VPPUtil(object):
 
         vmdict = {}
 
-        print ("Need to implement get vms")
+        print("Need to implement get vms")
 
         return vmdict
 
@@ -535,6 +474,7 @@ class VPPUtil(object):
                 interfaces[name]['carrier'] = spl[1]
 
             # Socket
+            spl = ''
             rfall = re.findall(r'numa \d+', line)
             if rfall:
                 spl = rfall[0].split()
@@ -557,13 +497,11 @@ class VPPUtil(object):
 
         return interfaces
 
-    def _get_installed_vpp_pkgs_ubuntu(self, distro):
+    def _get_installed_vpp_pkgs_ubuntu(self):
         """
         Get the VPP hardware information and return it in a
         dictionary
 
-        :param distro: The linux distro
-        :type distro: dict
         :returns: List of the packages installed
         :rtype: list
         """
@@ -625,7 +563,7 @@ class VPPUtil(object):
 
         distro = self.get_linux_distro()
         if distro[0] == 'Ubuntu':
-            pkgs = self._get_installed_vpp_pkgs_ubuntu(distro)
+            pkgs = self._get_installed_vpp_pkgs_ubuntu()
         elif distro[0] == 'CentOS Linux':
             pkgs = self._get_installed_vpp_pkgs_centos()
         else:
@@ -826,7 +764,7 @@ class VPPUtil(object):
         bridges = []
         for line in lines:
             if line == 'no bridge-domains in use':
-                print (line)
+                print(line)
                 return ifaces
             if len(line) == 0:
                 continue
@@ -850,5 +788,5 @@ class VPPUtil(object):
                 ifcidx = {'name': iface[0], 'index': line.split()[1]}
                 ifaces.append(ifcidx)
 
-        print (stdout)
+        print(stdout)
         return ifaces
