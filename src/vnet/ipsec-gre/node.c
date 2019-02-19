@@ -168,7 +168,6 @@ ipsec_gre_input (vlib_main_t * vm,
             }
           else
             {
-              clib_warning("unknown GRE protocol: %d", protocol0);
               b0->error = node->errors[IPSEC_GRE_ERROR_UNKNOWN_PROTOCOL];
               next0 = IPSEC_GRE_INPUT_NEXT_DROP;
             }
@@ -179,7 +178,6 @@ ipsec_gre_input (vlib_main_t * vm,
             }
           else
             {
-              clib_warning("unknown GRE protocol: %d", protocol1);
               b1->error = node->errors[IPSEC_GRE_ERROR_UNKNOWN_PROTOCOL];
               next1 = IPSEC_GRE_INPUT_NEXT_DROP;
             }
@@ -324,7 +322,6 @@ drop1:
             }
           else
             {
-              clib_warning("unknown GRE protocol: %d", protocol0);
               b0->error = node->errors[IPSEC_GRE_ERROR_UNKNOWN_PROTOCOL];
               next0 = IPSEC_GRE_INPUT_NEXT_DROP;
             }
