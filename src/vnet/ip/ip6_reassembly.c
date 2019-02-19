@@ -770,6 +770,7 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  *next0 = IP6_REASSEMBLY_NEXT_DROP;
 	  *error0 = IP6_ERROR_REASS_OVERLAPPING_FRAGMENT;
+	  return IP6_REASS_RC_OK;
 	}
       break;
     }
@@ -795,7 +796,6 @@ ip6_reass_update (vlib_main_t * vm, vlib_node_runtime_t * node,
       else
 	{
 	  *next0 = IP6_REASSEMBLY_NEXT_DROP;
-	  ;
 	  *error0 = IP6_ERROR_REASS_DUPLICATE_FRAGMENT;
 	}
     }
