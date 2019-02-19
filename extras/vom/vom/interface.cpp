@@ -394,8 +394,6 @@ interface::set(const admin_state_t& state)
 void
 interface::set(const l2_address_t& addr)
 {
-  assert(rc_t::UNSET == m_l2_address.rc());
-  m_l2_address.set(rc_t::NOOP);
   m_l2_address.update(addr);
 }
 

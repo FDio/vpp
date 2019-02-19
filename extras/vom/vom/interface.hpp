@@ -266,6 +266,9 @@ public:
 
   /**
    * Set the admin state of the interface
+   *
+   * N.B. All set function change only the attibute of the object on whcih
+   * they act, they do not make changes in VPP
    */
   void set(const admin_state_t& state);
 
