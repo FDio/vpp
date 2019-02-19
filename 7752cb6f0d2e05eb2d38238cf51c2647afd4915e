@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "92131b90_0b16ed95",
+        "filename": "extras/vom/vom/interface.hpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 270,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-19T17:41:41Z",
+      "side": 1,
+      "message": "which",
+      "range": {
+        "startLine": 270,
+        "startChar": 69,
+        "endLine": 270,
+        "endChar": 74
+      },
+      "revId": "7752cb6f0d2e05eb2d38238cf51c2647afd4915e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
