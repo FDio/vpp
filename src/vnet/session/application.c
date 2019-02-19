@@ -955,14 +955,8 @@ session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
 
   /* App is a transport proto, so fetch the calling app's ns */
   if (app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP)
-    {
-      app_worker_t *owner_wrk;
-      application_t *owner_app;
+    ns_index = sep->ns_index;
 
-      owner_wrk = app_worker_get (sep->app_wrk_index);
-      owner_app = application_get (owner_wrk->app_index);
-      ns_index = owner_app->ns_index;
-    }
   app_ns = app_namespace_get (ns_index);
   if (!app_ns)
     return;
