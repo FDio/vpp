@@ -203,6 +203,7 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   app_session->session_type = app_listener->session_type;
   app_session->listener_index = app_listener->session_index;
   app_session->t_app_index = tls_main.app_index;
+  app_session->session_state = SESSION_STATE_ACCEPTING;
 
   if ((rv = app_worker_init_accepted (app_session)))
     {
@@ -546,6 +547,7 @@ tls_connect (transport_endpoint_cfg_t * tep)
   cargs->sep.transport_proto = TRANSPORT_PROTO_TCP;
   cargs->app_index = tm->app_index;
   cargs->api_context = ctx_index;
+  cargs->sep_ext.ns_index = app->ns_index;
   if ((rv = vnet_connect (cargs)))
     return rv;
 
@@ -596,6 +598,7 @@ tls_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   clib_memset (args, 0, sizeof (*args));
   args->app_index = tm->app_index;
   args->sep_ext = *sep;
+  args->sep_ext.ns_index = app->ns_index;
   if (vnet_listen (args))
     return -1;
 
@@ -704,6 +707,7 @@ u8 *
 format_tls_listener (u8 * s, va_list * args)
 {
   u32 tc_index = va_arg (*args, u32);
+  u32 __clib_unused verbose = va_arg (*args, u32);
   tls_ctx_t *ctx = tls_listener_ctx_get (tc_index);
   u32 listener_index, thread_index;
 
@@ -767,6 +771,7 @@ tls_init (vlib_main_t * vm)
   a->options = options;
   a->name = format (0, "tls");
   a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = segment_size;
   a->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
