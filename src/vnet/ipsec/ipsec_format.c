@@ -244,6 +244,19 @@ unformat_ipsec_key (unformat_input_t * input, va_list * args)
 }
 
 u8 *
+format_ipsec_sa_flags (u8 * s, va_list * args)
+{
+  ipsec_sa_flags_t flags = va_arg (*args, int);
+
+  if (0)
+    ;
+#define _(v, f, str) else if (flags & IPSEC_SA_FLAG_##f) s = format(s, "%s ", str);
+  foreach_ipsec_sa_flags
+#undef _
+    return (s);
+}
+
+u8 *
 format_ipsec_sa (u8 * s, va_list * args)
 {
   u32 sai = va_arg (*args, u32);
@@ -254,15 +267,11 @@ format_ipsec_sa (u8 * s, va_list * args)
 
   sa = pool_elt_at_index (im->sad, sai);
 
-  s = format (s, "[%d] sa 0x%x spi %u mode %s%s protocol %s%s%s%s",
+  s = format (s, "[%d] sa 0x%x spi %u mode %s%s protocol %s %U",
 	      sai, sa->id, sa->spi,
 	      ipsec_sa_is_set_IS_TUNNEL (sa) ? "tunnel" : "transport",
 	      ipsec_sa_is_set_IS_TUNNEL_V6 (sa) ? "-ip6" : "",
-	      sa->protocol ? "esp" : "ah",
-	      ipsec_sa_is_set_UDP_ENCAP (sa) ? " udp-encap-enabled" : "",
-	      ipsec_sa_is_set_USE_ANTI_REPLAY (sa) ? " anti-replay" : "",
-	      ipsec_sa_is_set_USE_ESN (sa) ?
-	      " extended-sequence-number" : "");
+	      sa->protocol ? "esp" : "ah", format_ipsec_sa_flags, sa->flags);
   s = format (s, "\n   seq %u seq-hi %u", sa->seq, sa->seq_hi);
   s = format (s, "\n   last-seq %u last-seq-hi %u window %U",
 	      sa->last_seq, sa->last_seq_hi,
