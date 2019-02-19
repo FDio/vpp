@@ -86,7 +86,7 @@ extern vlib_node_registration_t ipsec_gre_input_node;
 extern vnet_device_class_t ipsec_gre_device_class;
 
 /* manually added to the interface output node in ipsec_gre.c */
-#define IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT 1
+#define IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT 0
 
 /**
  * @brief IPSec-GRE tunnel add/del arguments.
