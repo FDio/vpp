@@ -1007,12 +1007,12 @@ main (int argc, char **argv)
 
   if (vcm->proto == VPPCOM_PROTO_TLS)
     {
+      vtinf ("Adding tls certs ...");
       vppcom_session_tls_add_cert (ctrl->fd, vcl_test_crt_rsa,
 				   vcl_test_crt_rsa_len);
       vppcom_session_tls_add_key (ctrl->fd, vcl_test_key_rsa,
 				  vcl_test_key_rsa_len);
     }
-
 
   vtinf ("Connecting to server...");
   rv = vppcom_session_connect (ctrl->fd, &vcm->server_endpt);
