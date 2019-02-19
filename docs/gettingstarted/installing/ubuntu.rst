@@ -2,7 +2,7 @@
 
 .. toctree::
  
-Ubuntu 16.04 - Setup the FD.io Repository
+Ubuntu 18.04 - Setup the FD.io Repository
 ==========================================
 
 FD.io VPP is installed using Package Cloud. For a complete set of
@@ -37,29 +37,13 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the follow
 
 .. code-block:: console
 
-   deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu xenial main ./
+   deb [trusted=yes] https://packagecloud.io/fdio/release/ubuntu xenial main
 
 Get the key:
 
 .. code-block:: console
 
   curl -L https://packagecloud.io/fdio/release/gpgkey | sudo apt-key add -
-
-VPP 1810 Branch
-^^^^^^^^^^^^^^^^
-
-Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the following contents:
-
-.. code-block:: console
-
-   deb [trusted=yes] https://packagecloud.io/fdio/1810/ubuntu xenial main ./
-
-Get the key:
-
-.. code-block:: console
-
-  curl -L https://packagecloud.io/fdio/1810/gpgkey | sudo apt-key add -
-
 
 VPP master Branch
 ^^^^^^^^^^^^^^^^^^^^
@@ -68,7 +52,7 @@ Create the file **/etc/apt/sources.list.d/99fd.io.list** that contain the follow
 
 .. code-block:: console
 
-   deb [trusted=yes] https://packagecloud.io/fdio/master/ubuntu xenial main ./
+   deb [trusted=yes] https://packagecloud.io/fdio/master/ubuntu xenial main
 
 Get the key:
 
@@ -85,7 +69,7 @@ Install the mandatory packages by running the following commands:
 .. code-block:: console
 
   sudo apt-get update
-  sudo apt-get install vpp-lib vpp vpp-plugins
+  sudo apt-get install vpp
 
   
 Install the Optional Packages
@@ -93,10 +77,17 @@ Install the Optional Packages
 
 Install the optional packages by running the following command:
 
+For the release packages:
+
 .. code-block:: console
 
-  sudo apt-get install vpp-dbg vpp-dev vpp-api-python vpp-api-lua
+  sudo apt-get install vpp-plugins vpp-api-java vpp-api-lua vpp-api-python vpp-dbg vpp-dev
 
+For the master packages:
+
+.. code-block:: console
+
+  sudo apt-get install vpp-plugin-core vpp-ext-deps vpp-api-python vpp-dbg vpp-dev vpp-plugin-dpdk
 
 Uninstall the Packages
 ======================
