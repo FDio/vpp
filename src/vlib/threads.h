@@ -422,6 +422,16 @@ vlib_worker_thread_barrier_check (void)
 	}
       while (*vlib_worker_threads->wait_at_barrier)
 	;
+
+      /*
+       * Recompute the offset from thread-0 time.
+       * Note that vlib_time_now adds vm->time_offset, so
+       * clear it first.
+       */
+      vm->time_offset = 0.0;
+      vm->time_offset = vlib_global_main.time_last_barrier_release -
+	vlib_time_now (vm);
+
       if (CLIB_DEBUG > 0)
 	vm->parked_at_barrier = 0;
       clib_atomic_fetch_add (vlib_worker_threads->workers_at_barrier, -1);
