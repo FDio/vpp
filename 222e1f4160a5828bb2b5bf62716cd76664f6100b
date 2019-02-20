@@ -70,6 +70,30 @@
       "revId": "222e1f4160a5828bb2b5bf62716cd76664f6100b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "544b53af_83d12a20",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-20T15:33:31Z",
+      "side": 0,
+      "message": "The python3 loader is venv aware. env is not needed, \nhttps://www.python.org/dev/peps/pep-0486/\nvenv sets VIRTUAL_ENV, which is used to select the proper interpreter.\nWe want this file to run under python3 regardless of the venv settings (That is, the venv can only select the version of python3.  It cannot be used to switch this file back to running under python2.)",
+      "parentUuid": "cf837969_b7e1607d",
+      "range": {
+        "startLine": 1,
+        "startChar": 11,
+        "endLine": 1,
+        "endChar": 14
+      },
+      "revId": "222e1f4160a5828bb2b5bf62716cd76664f6100b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
