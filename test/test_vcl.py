@@ -453,7 +453,7 @@ class VCLThruHostStackTLS(VCLTestCase):
 
     def tearDown(self):
         self.logger.debug(self.vapi.cli("show app server"))
-        self.logger.debug(self.vapi.cli("show session verbose"))
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(VCLThruHostStackTLS, self).tearDown()
 
@@ -638,6 +638,7 @@ class LDPThruHostStackIperf(VCLTestCase):
         self.server_iperf3_args = ["-V4d", "-s"]
 
     def tearDown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(LDPThruHostStackIperf, self).tearDown()
 
