@@ -387,6 +387,10 @@ vlib_get_next_frame_internal (vlib_main_t * vm,
       f->flags = 0;
     }
 
+  /* Always allocate new frame if scalar data exists or user flags are set */
+  if (f->scalar_size || f->flags)
+    allocate_new_next_frame = 1;
+
   /* Allocate new frame if current one is already full. */
   n_used = f->n_vectors;
   if (n_used >= VLIB_FRAME_SIZE || (allocate_new_next_frame && n_used > 0))
