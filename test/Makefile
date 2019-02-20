@@ -79,7 +79,6 @@ PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
 SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
 BUILD_COV_DIR=$(TEST_DIR)/coverage
 
-GET_PIP_SCRIPT=$(TEST_RUN_DIR)/get-pip.py
 PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install.done
 PIP_PATCH_DONE=$(TEST_RUN_DIR)/pip-patch.done
 PAPI_INSTALL_DONE=$(TEST_RUN_DIR)/papi-install.done
@@ -92,11 +91,8 @@ else
 PYTHON_INTERP=$(PYTHON)
 endif
 
-$(GET_PIP_SCRIPT):
+$(PIP_INSTALL_DONE):
 	@mkdir -p $(TEST_RUN_DIR)
-	@bash -c "cd $(TEST_RUN_DIR) && curl -O https://bootstrap.pypa.io/get-pip.py"
-
-$(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
 	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS)"
 	@touch $@
@@ -111,7 +107,7 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@touch $@
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(VENV_PATH)/bin/activate && cd $(WS_ROOT)/src/vpp-api/python && $(PYTHON_INTERP) setup.py install"
+	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -e $(WS_ROOT)/src/vpp-api/python"
 	@touch $@
 
 define retest-func
