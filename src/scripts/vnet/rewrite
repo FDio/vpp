@@ -26,7 +26,6 @@ cle run
 packet-generator new {
   name toport
   limit 2
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {
@@ -38,7 +37,6 @@ packet-generator new {
 packet-generator new {
   name tovlan
   limit 2
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {
@@ -50,7 +48,6 @@ packet-generator new {
 packet-generator new {
   name toqinq
   limit 2
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {

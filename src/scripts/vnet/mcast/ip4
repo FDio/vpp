@@ -3,7 +3,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 512-512
-  no-recycle
   data {
     ICMP: 1.0.0.2 -> 232.1.1.1
     ICMP echo_request

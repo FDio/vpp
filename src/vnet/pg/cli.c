@@ -267,8 +267,6 @@ pg_pcap_read (pg_stream_t * s, char *file_name)
   s->min_packet_bytes = pm.min_packet_bytes;
   s->max_packet_bytes = pm.max_packet_bytes;
   s->buffer_bytes = pm.max_packet_bytes;
-  /* For PCAP buffers we never re-use buffers. */
-  s->flags |= PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE;
 
   if (s->n_packets_limit == 0)
     s->n_packets_limit = vec_len (pm.packets_read);
@@ -386,9 +384,6 @@ new_stream (vlib_main_t * vm,
 
       else if (unformat_user (input, unformat_pg_stream_parameter, &s))
 	;
-
-      else if (unformat (input, "no-recycle"))
-	s.flags |= PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE;
 
       else
 	{

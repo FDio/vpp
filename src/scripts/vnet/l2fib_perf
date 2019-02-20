@@ -20,7 +20,6 @@ cle run
 packet-generator new {
   name perf
   limit 9111003
-  no-recycle
   node ethernet-input 
   interface GigabitEthernet2/2/0.1 
   size 98-98

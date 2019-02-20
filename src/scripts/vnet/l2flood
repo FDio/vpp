@@ -30,7 +30,6 @@ clear int
 packet-generator new {
   name flood
   limit 1
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {

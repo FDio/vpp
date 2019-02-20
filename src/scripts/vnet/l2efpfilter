@@ -48,7 +48,6 @@ clear int
 packet-generator new {
   name pre_vtr_fail
   limit 10
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {
@@ -60,7 +59,6 @@ packet-generator new {
 packet-generator new {
   name post_vtr_pass
   limit 20
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {
@@ -72,7 +70,6 @@ packet-generator new {
 packet-generator new {
   name post_vtr_fail
   limit 50
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {

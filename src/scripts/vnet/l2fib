@@ -28,7 +28,6 @@ clear int
 packet-generator new {
   name new_input_if_index_mac_move
   limit 4
-  no-recycle
   node ethernet-input 
   interface GigabitEthernet2/1/0
   size 98-98
@@ -38,7 +37,6 @@ packet-generator new {
 packet-generator new {
   name dmac_hit
   limit 7
-  no-recycle
   node ethernet-input 
   interface GigabitEthernet2/2/0
   size 98-98

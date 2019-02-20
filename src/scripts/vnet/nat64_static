@@ -6,7 +6,6 @@ packet-generator new {
   limit 10
   node ip4-input
   size 64-64
-  no-recycle
   worker 0
   interface pg1
   data {
@@ -22,7 +21,6 @@ packet-generator new {
   limit 10
   node ip4-input
   size 64-64
-  no-recycle
   interface pg1
   worker 1
   data {
