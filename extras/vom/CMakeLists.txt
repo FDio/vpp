@@ -18,6 +18,14 @@ project(vom)
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
+unset (VOM_LIB_VERSION)
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMAND bash -c "git describe | cut -f1 -d- | cut -dv -f2"
+  OUTPUT_VARIABLE VOM_LIB_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_MESSAGE NEVER)
