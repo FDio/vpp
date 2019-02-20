@@ -48,7 +48,6 @@ clear int
 packet-generator new {
   name post_vtr_pass
   limit 9111003
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {

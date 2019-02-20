@@ -41,7 +41,6 @@ cle run
 packet-generator new {
   name bvi_to_l2 
   limit 100
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/1/0
   data {
@@ -53,7 +52,6 @@ packet-generator new {
 packet-generator new {
   name l2_to_bvi
   limit 50
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/2/0
   data {
@@ -65,7 +63,6 @@ packet-generator new {
 packet-generator new {
   name l2_to_bvi_via_flood
   limit 25
-  no-recycle
   node ethernet-input
   interface GigabitEthernet2/2/0
   data {

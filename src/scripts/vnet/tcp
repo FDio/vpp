@@ -8,7 +8,6 @@ packet-generator new {
   node ip4-input
   size 100-100
   interface loop0
-  no-recycle
   data {
     TCP: 192.168.1.2 -> 192.168.1.1
     TCP: 32415 -> 80

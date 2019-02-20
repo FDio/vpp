@@ -3,7 +3,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     ICMP: 1.0.0.2 -> 2.0.0.2
     ICMP echo_request
@@ -15,7 +14,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     ICMP: 1.0.0.2 -> 2.0.1.2
     ICMP echo_request
@@ -27,7 +25,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     ICMP: 1.0.0.2 -> 2.0.2.2
     ICMP echo_request
@@ -39,7 +36,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     ICMP: 1.0.0.2 -> 2.0.3.2
     ICMP echo_request

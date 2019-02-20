@@ -3,7 +3,6 @@ packet-generator new {
   limit 1
   node ip6-input
   size 64-64
-  no-recycle
   data {
     ICMP6: 2000::2 -> 2001::2
     ICMP echo_request

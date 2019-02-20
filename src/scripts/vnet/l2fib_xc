@@ -22,7 +22,6 @@ clear int
 packet-generator new {
   name xc
   limit 11
-  no-recycle
   node ethernet-input 
   interface GigabitEthernet2/1/0
   size 98-98

@@ -6,7 +6,6 @@ packet-generator new {
   limit 1
   node ip6-input
   size 48-48
-  no-recycle
   data {
     IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
     hex 0x3B00010403040506
@@ -18,7 +17,6 @@ packet-generator new {
   limit 1
   node ip6-input
   size 48-48
-  no-recycle
   data {
     IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
     hex 0x3B00C10403040506
@@ -31,7 +29,6 @@ packet-generator new {
   limit 1
   node ip6-input
   size 48-48
-  no-recycle
   data {
     IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
     hex 0x3BffC10403040506
@@ -44,7 +41,6 @@ packet-generator new {
   limit 1
   node ip6-input
   size 64-64
-  no-recycle
   data {
     IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
     hex 0x3BffC10403040506
@@ -57,7 +53,6 @@ packet-generator new {
   limit 1
   node ip6-input
   size 56-56
-  no-recycle
   data {
     IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
     length 16
@@ -71,7 +66,6 @@ packet-generator new {
   limit 1
   node ip6-input
   size 56-56
-  no-recycle
   data {
     IP6_HOP_BY_HOP_OPTIONS: 1::2 -> 1::2
     length 16

@@ -100,7 +100,6 @@ typedef struct pg_stream_t
 
   /* Stream is currently enabled. */
 #define PG_STREAM_FLAGS_IS_ENABLED (1 << 0)
-#define PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE (1 << 1)
 
   /* Edit groups are created by each protocol level (e.g. ethernet,
      ip4, tcp, ...). */

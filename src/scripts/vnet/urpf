@@ -9,7 +9,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     UDP: 1.2.3.4 -> 2.2.2.2
     UDP: 3000 -> 3001
@@ -22,7 +21,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     UDP: 1.1.1.1 -> 2.2.2.2
     UDP: 3000 -> 3001
@@ -35,7 +33,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     UDP: 11.11.12.13 -> 2.2.2.2
     UDP: 6000 -> 6001
@@ -48,7 +45,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     UDP: 11.11.12.13 -> 10.10.10.10
     UDP: 6000 -> 6001
@@ -61,7 +57,6 @@ packet-generator new {
   limit 1
   node ip4-input
   size 64-64
-  no-recycle
   data {
     UDP: 1.1.1.1 -> 10.10.10.10
     UDP: 3000 -> 3001
