@@ -46,6 +46,30 @@
       "revId": "222e1f4160a5828bb2b5bf62716cd76664f6100b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf837969_b7e1607d",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-20T11:49:21Z",
+      "side": 0,
+      "message": "\u003e https://www.python.org/dev/peps/pep-0394/\n\nThat compares python2, python3 and python. It says nothing about \"env\" command.\n\nI would understand if you changed \"#!/usr/bin/env python3\" to \"#!/usr/bin/env python\".\nBut the only consequence of setting \"#!/usr/bin/python3\" is that this script stops working on systems which install python3 into a directory other than /usr/bin/.\n\nI also suspect that if a user creates and activates a virtualenv with python3 interpreter of different version than what system uses, the user wants this script to be executed with that virtualenv interpreter (what \"env\" would do), instead of the system one (what the shebang without env would do).",
+      "parentUuid": "c506039f_5d550399",
+      "range": {
+        "startLine": 1,
+        "startChar": 11,
+        "endLine": 1,
+        "endChar": 14
+      },
+      "revId": "222e1f4160a5828bb2b5bf62716cd76664f6100b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
