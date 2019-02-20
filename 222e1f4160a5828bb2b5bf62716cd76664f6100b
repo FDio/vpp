@@ -94,6 +94,30 @@
       "revId": "222e1f4160a5828bb2b5bf62716cd76664f6100b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fdd07dcd_f2a60990",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-20T15:46:59Z",
+      "side": 0,
+      "message": "\u003e https://www.python.org/dev/peps/pep-0486/\n\nYes, much more relevant PEP.\nI have not read all of it yet, I just found the following sentence:\n\n\"As activating a virtualenv means that it is added to PATH, no special handling is needed to run scripts with the active virtualenv - they just need to use the #!/usr/bin/env python shebang line, exactly as on Unix.\"\n\nThe sentence talks about \"python\", we want to swapt that with \"python3\". But it still mentions \"env\".\nNot sure how your \"env is not needed\" can be compatible with the sentence.",
+      "parentUuid": "544b53af_83d12a20",
+      "range": {
+        "startLine": 1,
+        "startChar": 11,
+        "endLine": 1,
+        "endChar": 14
+      },
+      "revId": "222e1f4160a5828bb2b5bf62716cd76664f6100b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
