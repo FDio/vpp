@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "b5e2faa2_7bc93055",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1390,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-02-20T14:01:47Z",
+      "side": 1,
+      "message": "my typing skills are legendary :/",
+      "parentUuid": "06a5d3ca_ff4af76c",
+      "range": {
+        "startLine": 1390,
+        "startChar": 66,
+        "endLine": 1390,
+        "endChar": 76
+      },
+      "revId": "a1d6dd990d9c696f208820bea32a3e6034d6b181",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e1569438_3276d7a6",
         "filename": "test/test_neighbor.py",
         "patchSetId": 2
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "9e1d8468_c82e4180",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1391,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-02-20T14:01:47Z",
+      "side": 1,
+      "message": "i don\u0027t know what you mean by that.\nthe reason for this fix is that VPP does not support adding addresses that to interfaces that overlap.",
+      "parentUuid": "e1569438_3276d7a6",
+      "range": {
+        "startLine": 1391,
+        "startChar": 10,
+        "endLine": 1391,
+        "endChar": 39
+      },
+      "revId": "a1d6dd990d9c696f208820bea32a3e6034d6b181",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2850dc2e_4aaf1128",
         "filename": "test/vpp_ip_route.py",
         "patchSetId": 2
@@ -59,6 +107,30 @@
       "writtenOn": "2019-01-30T20:20:19Z",
       "side": 1,
       "message": "Do these belong under the if?\nWe should probably also log a message that/why we\u0027re not updating in an else:.  What do you think?",
+      "range": {
+        "startLine": 429,
+        "startChar": 0,
+        "endLine": 430,
+        "endChar": 61
+      },
+      "revId": "a1d6dd990d9c696f208820bea32a3e6034d6b181",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2eaeddfd_8d3199f4",
+        "filename": "test/vpp_ip_route.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-02-20T14:01:47Z",
+      "side": 1,
+      "message": "they belong outside the if block. the stats_index will be the same for each path added.",
+      "parentUuid": "2850dc2e_4aaf1128",
       "range": {
         "startLine": 429,
         "startChar": 0,
