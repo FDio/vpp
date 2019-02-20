@@ -1,0 +1,21 @@
+#!/bin/sh -e
+
+removed=
+
+# Unbind user-mode PCI drivers
+pci_dirs=`find /sys/bus/pci/drivers -type d -name igb_uio -o -name uio_pci_generic -o -name vfio-pci`
+for d in $pci_dirs; do
+    for f in ${d}/*; do
+        [ -e "${f}/config" ] || continue
+        echo ${f##*/} > ${d}/unbind
+        basename `dirname ${f}` | xargs echo -n "Removing driver"; echo " for PCI ID" `basename ${f}`
+        removed=y
+    done
+done
+if [ -n "${removed}" ]; then
+    echo "There are changes in PCI drivers, rescaning"
+    echo 1 > /sys/bus/pci/rescan
+else
+    echo "There weren't PCI devices binded"
+fi
+

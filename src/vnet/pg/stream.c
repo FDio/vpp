@@ -437,7 +437,7 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   {
     int n;
 
-    s->buffer_bytes = VLIB_BUFFER_DATA_SIZE;
+    s->buffer_bytes = vlib_buffer_get_default_data_size (vm);
     n = s->max_packet_bytes / s->buffer_bytes;
     n += (s->max_packet_bytes % s->buffer_bytes) != 0;
 
@@ -481,6 +481,31 @@ pg_stream_del (pg_main_t * pg, uword index)
 
   pg_stream_free (s);
   pool_put (pg->streams, s);
+}
+
+void
+pg_stream_change (pg_main_t * pg, pg_stream_t * s)
+{
+  /* Determine packet size. */
+  switch (s->packet_size_edit_type)
+    {
+    case PG_EDIT_INCREMENT:
+    case PG_EDIT_RANDOM:
+      if (s->min_packet_bytes == s->max_packet_bytes)
+	s->packet_size_edit_type = PG_EDIT_FIXED;
+    case PG_EDIT_FIXED:
+      break;
+
+    default:
+      /* Get packet size from fixed edits. */
+      s->packet_size_edit_type = PG_EDIT_FIXED;
+      if (!s->replay_packet_templates)
+	s->min_packet_bytes = s->max_packet_bytes =
+	  vec_len (s->fixed_packet_data);
+      break;
+    }
+
+  s->last_increment_packet_size = s->min_packet_bytes;
 }
 
 

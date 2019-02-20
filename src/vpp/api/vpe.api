@@ -26,7 +26,6 @@ option version = "1.1.0";
  * If you're looking for interface APIs, please
  * see .../src/vnet/{interface.api,interface_api.c}
  * IP APIs: see .../src/vnet/ip/{ip.api, ip_api.c}
- * TAP APIs: see .../src/vnet/unix/{tap.api, tap_api.c}
  * VXLAN APIs: see .../src/vnet/vxlan/{vxlan.api, vxlan_api.c}
  * GENEVE APIs: see .../src/vnet/geneve/{geneve.api, geneve_api.c}
  * LLDP APIs: see .../src/vnet/lldp/{lldp.api, lldp_api.c}

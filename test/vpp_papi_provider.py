@@ -1,24 +1,11 @@
-import fnmatch
 import os
 import time
 from collections import deque
 
 from six import moves
-from vpp_papi import mac_pton
+from vpp_papi import VPP, mac_pton
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
-
-# Sphinx creates auto-generated documentation by importing the python source
-# files and collecting the docstrings from them. The NO_VPP_PAPI flag allows
-# the vpp_papi_provider.py file to be importable without having to build
-# the whole vpp api if the user only wishes to generate the test documentation.
-
-try:
-    from vpp_papi import VPP
-except ImportError:
-    if not os.getenv("NO_VPP_PAPI") == 1:
-        raise
-    pass
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -69,7 +56,7 @@ class VppPapiProvider(object):
     _zero, _negative = range(2)
 
     def __init__(self, name, shm_prefix, test_class, read_timeout):
-        self.hook = Hook("vpp-papi-provider")
+        self.hook = Hook(test_class)
         self.name = name
         self.shm_prefix = shm_prefix
         self.test_class = test_class
@@ -350,9 +337,9 @@ class VppPapiProvider(object):
                          'reverse': reverse,
                          'is_ipv6': is_ip6})
 
-    def ip6_nd_proxy(self, address, sw_if_index, is_del=0):
+    def ip6_nd_proxy(self, ip, sw_if_index, is_del=0):
         return self.api(self.papi.ip6nd_proxy_add_del,
-                        {'address': address,
+                        {'ip': ip,
                          'sw_if_index': sw_if_index,
                          'is_del': is_del})
 
@@ -380,8 +367,10 @@ class VppPapiProvider(object):
                                    pref_lifetime=0xffffffff):
         return self.api(self.papi.sw_interface_ip6nd_ra_prefix,
                         {'sw_if_index': sw_if_index,
-                         'address': address,
-                         'address_length': address_length,
+                         'prefix': {
+                             'address': address,
+                             'address_length': address_length,
+                         },
                          'use_default': use_default,
                          'no_advertise': no_advertise,
                          'off_link': off_link,
@@ -503,16 +492,16 @@ class VppPapiProvider(object):
         return self.api(self.papi.bd_ip_mac_dump,
                         {'bd_id': bd_id})
 
-    def want_ip4_arp_events(self, enable_disable=1, address=0):
+    def want_ip4_arp_events(self, enable_disable=1, ip="0.0.0.0"):
         return self.api(self.papi.want_ip4_arp_events,
                         {'enable_disable': enable_disable,
-                         'address': address,
+                         'ip': ip,
                          'pid': os.getpid(), })
 
-    def want_ip6_nd_events(self, enable_disable=1, address=0):
+    def want_ip6_nd_events(self, enable_disable=1, ip="::"):
         return self.api(self.papi.want_ip6_nd_events,
                         {'enable_disable': enable_disable,
-                         'address': address,
+                         'ip': ip,
                          'pid': os.getpid(), })
 
     def want_ip6_ra_events(self, enable_disable=1):
@@ -1018,32 +1007,28 @@ class VppPapiProvider(object):
     def ip_neighbor_add_del(self,
                             sw_if_index,
                             mac_address,
-                            dst_address,
+                            ip_address,
                             is_add=1,
-                            is_ipv6=0,
-                            is_static=0,
-                            is_no_adj_fib=0,
-                            ):
+                            flags=0):
         """ Add neighbor MAC to IPv4 or IPv6 address.
 
         :param sw_if_index:
         :param mac_address:
         :param dst_address:
         :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param is_static:  (Default value = 0)
-        :param is_no_adj_fib:  (Default value = 0)
+        :param flags:  (Default value = 0/NONE)
         """
         return self.api(
             self.papi.ip_neighbor_add_del,
-            {'sw_if_index': sw_if_index,
-             'is_add': is_add,
-             'is_ipv6': is_ipv6,
-             'is_static': is_static,
-             'is_no_adj_fib': is_no_adj_fib,
-             'mac_address': mac_address,
-             'dst_address': dst_address
-             }
+            {
+                'is_add': is_add,
+                'neighbor': {
+                    'sw_if_index': sw_if_index,
+                    'flags': flags,
+                    'mac_address': mac_address,
+                    'ip_address': ip_address
+                }
+            }
         )
 
     def ip_neighbor_dump(self,
@@ -1063,9 +1048,9 @@ class VppPapiProvider(object):
         )
 
     def proxy_arp_add_del(self,
-                          low_address,
-                          hi_address,
-                          vrf_id=0,
+                          low,
+                          hi,
+                          table_id=0,
                           is_add=1):
         """ Config Proxy Arp Range.
 
@@ -1078,9 +1063,9 @@ class VppPapiProvider(object):
             self.papi.proxy_arp_add_del,
             {'proxy':
              {
-                 'vrf_id': vrf_id,
-                 'low_address': low_address,
-                 'hi_address': hi_address,
+                 'table_id': table_id,
+                 'low': low,
+                 'hi': hi,
              },
              'is_add': is_add})
 
@@ -3359,6 +3344,9 @@ class VppPapiProvider(object):
             self.papi.ipsec_spd_add_del, {
                 'spd_id': spd_id, 'is_add': is_add})
 
+    def ipsec_spds_dump(self):
+        return self.api(self.papi.ipsec_spds_dump, {})
+
     def ipsec_interface_add_del_spd(self, spd_id, sw_if_index, is_add=1):
         """ IPSEC interface SPD add/del - \
              Wrapper to associate/disassociate SPD to interface in VPP
@@ -3375,7 +3363,12 @@ class VppPapiProvider(object):
             self.papi.ipsec_interface_add_del_spd,
             {'spd_id': spd_id, 'sw_if_index': sw_if_index, 'is_add': is_add})
 
-    def ipsec_sad_add_del_entry(self,
+    def ipsec_spd_interface_dump(self, spd_index=None):
+        return self.api(self.papi.ipsec_spd_interface_dump,
+                        {'spd_index': spd_index if spd_index else 0,
+                         'spd_index_valid': 1 if spd_index else 0})
+
+    def ipsec_sad_entry_add_del(self,
                                 sad_id,
                                 spi,
                                 integrity_algorithm,
@@ -3385,12 +3378,8 @@ class VppPapiProvider(object):
                                 protocol,
                                 tunnel_src_address='',
                                 tunnel_dst_address='',
-                                is_tunnel=1,
-                                is_tunnel_ipv6=0,
-                                is_add=1,
-                                udp_encap=0,
-                                use_anti_replay=0,
-                                use_extended_sequence_number=0):
+                                flags=0,
+                                is_add=1):
         """ IPSEC SA add/del
         :param sad_id: security association ID
         :param spi: security param index of the SA in decimal
@@ -3407,27 +3396,35 @@ class VppPapiProvider(object):
              crypto and ipsec algorithms
         """
         return self.api(
-            self.papi.ipsec_sad_add_del_entry,
-            {'sad_id': sad_id,
-             'spi': spi,
-             'tunnel_src_address': tunnel_src_address,
-             'tunnel_dst_address': tunnel_dst_address,
-             'protocol': protocol,
-             'integrity_algorithm': integrity_algorithm,
-             'integrity_key_length': len(integrity_key),
-             'integrity_key': integrity_key,
-             'crypto_algorithm': crypto_algorithm,
-             'crypto_key_length': len(crypto_key) if crypto_key is not None
-             else 0,
-             'crypto_key': crypto_key,
-             'is_add': is_add,
-             'is_tunnel': is_tunnel,
-             'is_tunnel_ipv6': is_tunnel_ipv6,
-             'udp_encap': udp_encap,
-             'use_extended_sequence_number': use_extended_sequence_number,
-             'use_anti_replay': use_anti_replay})
+            self.papi.ipsec_sad_entry_add_del,
+            {
+                'is_add': is_add,
+                'entry':
+                {
+                    'sad_id': sad_id,
+                    'spi': spi,
+                    'tunnel_src': tunnel_src_address,
+                    'tunnel_dst': tunnel_dst_address,
+                    'protocol': protocol,
+                    'integrity_algorithm': integrity_algorithm,
+                    'integrity_key': {
+                        'length': len(integrity_key),
+                        'data': integrity_key,
+                    },
+                    'crypto_algorithm': crypto_algorithm,
+                    'crypto_key': {
+                        'length': len(crypto_key),
+                        'data': crypto_key,
+                    },
+                    'flags': flags,
+                }
+            })
 
-    def ipsec_spd_add_del_entry(self,
+    def ipsec_sa_dump(self, sa_id=None):
+        return self.api(self.papi.ipsec_sa_dump,
+                        {'sa_id': sa_id if sa_id else 0xffffffff})
+
+    def ipsec_spd_entry_add_del(self,
                                 spd_id,
                                 sa_id,
                                 local_address_start,
@@ -3466,24 +3463,33 @@ class VppPapiProvider(object):
         :param is_add: (Default value = 1)
         """
         return self.api(
-            self.papi.ipsec_spd_add_del_entry,
-            {'spd_id': spd_id,
-             'sa_id': sa_id,
-             'local_address_start': local_address_start,
-             'local_address_stop': local_address_stop,
-             'remote_address_start': remote_address_start,
-             'remote_address_stop': remote_address_stop,
-             'local_port_start': local_port_start,
-             'local_port_stop': local_port_stop,
-             'remote_port_start': remote_port_start,
-             'remote_port_stop': remote_port_stop,
-             'is_add': is_add,
-             'protocol': protocol,
-             'policy': policy,
-             'priority': priority,
-             'is_outbound': is_outbound,
-             'is_ipv6': is_ipv6,
-             'is_ip_any': is_ip_any})
+            self.papi.ipsec_spd_entry_add_del,
+            {
+                'is_add': is_add,
+                'entry':
+                {
+                    'spd_id': spd_id,
+                    'sa_id': sa_id,
+                    'local_address_start': local_address_start,
+                    'local_address_stop': local_address_stop,
+                    'remote_address_start': remote_address_start,
+                    'remote_address_stop': remote_address_stop,
+                    'local_port_start': local_port_start,
+                    'local_port_stop': local_port_stop,
+                    'remote_port_start': remote_port_start,
+                    'remote_port_stop': remote_port_stop,
+                    'protocol': protocol,
+                    'policy': policy,
+                    'priority': priority,
+                    'is_outbound': is_outbound,
+                    'is_ip_any': is_ip_any
+                }
+            })
+
+    def ipsec_spd_dump(self, spd_id, sa_id=0xffffffff):
+        return self.api(self.papi.ipsec_spd_dump,
+                        {'spd_id': spd_id,
+                         'sa_id': sa_id})
 
     def ipsec_tunnel_if_add_del(self, local_ip, remote_ip, local_spi,
                                 remote_spi, crypto_alg, local_crypto_key,
@@ -3599,7 +3605,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_endpoint_dump,
                         {'_no_type_conversion': True})
 
-    def gbp_endpoint_group_add(self, epg, bd,
+    def gbp_endpoint_group_add(self, epg, sclass, bd,
                                rd, uplink_sw_if_index):
         """ GBP endpoint group Add """
         return self.api(self.papi.gbp_endpoint_group_add,
@@ -3608,7 +3614,8 @@ class VppPapiProvider(object):
                              'uplink_sw_if_index': uplink_sw_if_index,
                              'bd_id': bd,
                              'rd_id': rd,
-                             'epg_id': epg
+                             'epg_id': epg,
+                             'sclass': sclass
                          }})
 
     def gbp_endpoint_group_del(self, epg):
@@ -3622,7 +3629,8 @@ class VppPapiProvider(object):
 
     def gbp_bridge_domain_add(self, bd_id, flags,
                               bvi_sw_if_index,
-                              uu_fwd_sw_if_index):
+                              uu_fwd_sw_if_index,
+                              bm_flood_sw_if_index):
         """ GBP bridge-domain Add """
         return self.api(self.papi.gbp_bridge_domain_add,
                         {'bd':
@@ -3630,6 +3638,7 @@ class VppPapiProvider(object):
                              'flags': flags,
                              'bvi_sw_if_index': bvi_sw_if_index,
                              'uu_fwd_sw_if_index': uu_fwd_sw_if_index,
+                             'bm_flood_sw_if_index': bm_flood_sw_if_index,
                              'bd_id': bd_id
                          }})
 

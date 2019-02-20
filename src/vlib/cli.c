@@ -1465,7 +1465,8 @@ elog_trace_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   int enable = 1;
-  int api = 0, cli = 0, barrier = 0;
+  int api = 0, cli = 0, barrier = 0, dispatch = 0, circuit = 0;
+  u32 circuit_node_index;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     goto print_status;
@@ -1474,6 +1475,11 @@ elog_trace_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "api"))
 	api = 1;
+      else if (unformat (line_input, "dispatch"))
+	dispatch = 1;
+      else if (unformat (line_input, "circuit-node %U",
+			 unformat_vlib_node, vm, &circuit_node_index))
+	circuit = 1;
       else if (unformat (line_input, "cli"))
 	cli = 1;
       else if (unformat (line_input, "barrier"))
@@ -1489,8 +1495,28 @@ elog_trace_command_fn (vlib_main_t * vm,
 
   vm->elog_trace_api_messages = api ? enable : vm->elog_trace_api_messages;
   vm->elog_trace_cli_commands = cli ? enable : vm->elog_trace_cli_commands;
+  vm->elog_trace_graph_dispatch = dispatch ?
+    enable : vm->elog_trace_graph_dispatch;
+  vm->elog_trace_graph_circuit = circuit ?
+    enable : vm->elog_trace_graph_circuit;
   vlib_worker_threads->barrier_elog_enabled =
     barrier ? enable : vlib_worker_threads->barrier_elog_enabled;
+  vm->elog_trace_graph_circuit_node_index = circuit_node_index;
+
+  /*
+   * Set up start-of-buffer logic-analyzer trigger
+   * for main loop event logs, which are fairly heavyweight.
+   * See src/vlib/main/vlib_elog_main_loop_event(...), which
+   * will fully disable the scheme when the elog buffer fills.
+   */
+  if (dispatch || circuit)
+    {
+      elog_main_t *em = &vm->elog_main;
+
+      em->n_total_events_disable_limit =
+	em->n_total_events + vec_len (em->event_ring);
+    }
+
 
 print_status:
   vlib_cli_output (vm, "Current status:");
@@ -1502,6 +1528,16 @@ print_status:
   vlib_cli_output
     (vm, "    Barrier sync trace: %s",
      vlib_worker_threads->barrier_elog_enabled ? "on" : "off");
+  vlib_cli_output
+    (vm, "    Graph Dispatch: %s",
+     vm->elog_trace_graph_dispatch ? "on" : "off");
+  vlib_cli_output
+    (vm, "    Graph Circuit: %s",
+     vm->elog_trace_graph_circuit ? "on" : "off");
+  if (vm->elog_trace_graph_circuit)
+    vlib_cli_output
+      (vm, "                   node %U",
+       format_vlib_node_name, vm, vm->elog_trace_graph_circuit_node_index);
 
   return 0;
 }
@@ -1515,6 +1551,8 @@ print_status:
  * @clistart
  * elog trace api cli barrier
  * elog trace api cli barrier disable
+ * elog trace dispatch
+ * elog trace circuit-node ethernet-input
  * elog trace
  * @cliend
  * @cliexcmd{elog trace [api][cli][barrier][disable]}
@@ -1523,7 +1561,8 @@ print_status:
 VLIB_CLI_COMMAND (elog_trace_command, static) =
 {
   .path = "elog trace",
-  .short_help = "elog trace [api][cli][barrier][disable]",
+  .short_help = "elog trace [api][cli][barrier][dispatch]\n"
+  "[circuit-node <name> e.g. ethernet-input][disable]",
   .function = elog_trace_command_fn,
 };
 /* *INDENT-ON* */

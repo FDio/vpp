@@ -49,7 +49,7 @@ format_l2_patch_trace (u8 * s, va_list * args)
   return s;
 }
 
-l2_patch_main_t l2_patch_main;
+static l2_patch_main_t l2_patch_main;
 
 static vlib_node_registration_t l2_patch_node;
 

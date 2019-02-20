@@ -261,7 +261,12 @@ ldp_init (void)
 	}
     }
 
-  clib_time_init (&ldpw->clib_time);
+  /* *INDENT-OFF* */
+  pool_foreach (ldpw, ldp->workers, ({
+    clib_memset (&ldpw->clib_time, 0, sizeof (ldpw->clib_time));
+  }));
+  /* *INDENT-ON* */
+
   LDBG (0, "LDP initialization: done!");
 
   return 0;
@@ -668,6 +673,9 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       return -1;
     }
 
+  if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
+    clib_time_init (&ldpw->clib_time);
+
   if (timeout)
     {
       time_out = (timeout->tv_sec == 0 && timeout->tv_nsec == 0) ?
@@ -739,10 +747,9 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
 			      vec_len (ldpw->ex_bitmap) *
 			      sizeof (clib_bitmap_t));
 
-	  rv = vppcom_select (si_bits, readfds ? ldpw->rd_bitmap : NULL,
-			      writefds ? ldpw->wr_bitmap : NULL,
-			      exceptfds ? ldpw->ex_bitmap : NULL,
-			      vcl_timeout);
+	  rv = vls_select (si_bits, readfds ? ldpw->rd_bitmap : NULL,
+			   writefds ? ldpw->wr_bitmap : NULL,
+			   exceptfds ? ldpw->ex_bitmap : NULL, vcl_timeout);
 	  if (rv < 0)
 	    {
 	      errno = -rv;
@@ -2142,7 +2149,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 		 int timeout, const sigset_t * sigmask)
 {
   ldp_worker_ctx_t *ldpw = ldp_worker_get_current ();
-  double time_to_wait = (double) 0, time_out, now = 0;
+  double time_to_wait = (double) 0, max_time;
   int libc_epfd, rv = 0;
   vls_handle_t ep_vlsh;
 
@@ -2166,8 +2173,10 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
       return -1;
     }
 
+  if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
+    clib_time_init (&ldpw->clib_time);
   time_to_wait = ((timeout >= 0) ? (double) timeout / 1000 : 0);
-  time_out = clib_time_now (&ldpw->clib_time) + time_to_wait;
+  max_time = clib_time_now (&ldpw->clib_time) + time_to_wait;
 
   libc_epfd = vls_attr (ep_vlsh, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
   if (PREDICT_FALSE (libc_epfd < 0))
@@ -2179,8 +2188,7 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 
   LDBG (2, "epfd %d: vep_idx %d, libc_epfd %d, events %p, maxevents %d, "
 	"timeout %d, sigmask %p: time_to_wait %.02f", epfd, ep_vlsh,
-	libc_epfd, events, maxevents, timeout, sigmask, time_to_wait,
-	time_out);
+	libc_epfd, events, maxevents, timeout, sigmask, time_to_wait);
   do
     {
       if (!ldpw->epoll_wait_vcl)
@@ -2207,11 +2215,8 @@ ldp_epoll_pwait (int epfd, struct epoll_event *events, int maxevents,
 	  if (rv != 0)
 	    goto done;
 	}
-
-      if (timeout != -1)
-	now = clib_time_now (&ldpw->clib_time);
     }
-  while (now < time_out);
+  while ((timeout == -1) || (clib_time_now (&ldpw->clib_time) < max_time));
 
 done:
   return rv;
@@ -2237,14 +2242,15 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
   int rv, i, n_revents = 0;
   vls_handle_t vlsh;
   vcl_poll_t *vp;
-  double wait_for_time;
+  double max_time;
 
   LDBG (3, "fds %p, nfds %d, timeout %d", fds, nfds, timeout);
 
-  if (timeout >= 0)
-    wait_for_time = (f64) timeout / 1000;
-  else
-    wait_for_time = -1;
+  if (PREDICT_FALSE (ldpw->clib_time.init_cpu_time == 0))
+    clib_time_init (&ldpw->clib_time);
+
+  max_time = (timeout >= 0) ? (f64) timeout / 1000 : 0;
+  max_time += clib_time_now (&ldpw->clib_time);
 
   for (i = 0; i < nfds; i++)
     {
@@ -2304,8 +2310,7 @@ poll (struct pollfd *fds, nfds_t nfds, int timeout)
 	  goto done;
 	}
     }
-  while ((wait_for_time == -1) ||
-	 (clib_time_now (&ldpw->clib_time) < wait_for_time));
+  while ((timeout < 0) || (clib_time_now (&ldpw->clib_time) < max_time));
   rv = 0;
 
 done:
@@ -2374,16 +2379,18 @@ ldp_constructor (void)
 void
 ldp_destructor (void)
 {
-  swrap_destructor ();
-  if (ldp->init)
-    ldp->init = 0;
+  /*
+     swrap_destructor ();
+     if (ldp->init)
+     ldp->init = 0;
+   */
 
   /* Don't use clib_warning() here because that calls writev()
    * which will call ldp_init().
    */
   if (LDP_DEBUG > 0)
-    printf ("%s:%d: LDP<%d>: LDP destructor: done!\n",
-	    __func__, __LINE__, getpid ());
+    fprintf (stderr, "%s:%d: LDP<%d>: LDP destructor: done!\n",
+	     __func__, __LINE__, getpid ());
 }
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -20,6 +20,23 @@
 
 static app_main_t app_main;
 
+#define app_interface_check_thread_and_barrier(_fn, _arg)		\
+  if (PREDICT_FALSE (!vlib_thread_is_main_w_barrier ()))		\
+    {									\
+      vlib_rpc_call_main_thread (_fn, (u8 *) _arg, sizeof(*_arg));	\
+      return 0;								\
+    }
+
+static void
+application_local_listener_session_endpoint (local_session_t * ll,
+					     session_endpoint_t * sep)
+{
+  sep->transport_proto =
+    session_type_transport_proto (ll->listener_session_type);
+  sep->port = ll->port;
+  sep->is_ip4 = ll->listener_session_type & 1;
+}
+
 static app_listener_t *
 app_listener_alloc (application_t * app)
 {
@@ -27,10 +44,13 @@ app_listener_alloc (application_t * app)
   pool_get (app->listeners, app_listener);
   clib_memset (app_listener, 0, sizeof (*app_listener));
   app_listener->al_index = app_listener - app->listeners;
+  app_listener->app_index = app->app_index;
+  app_listener->session_index = SESSION_INVALID_INDEX;
+  app_listener->local_index = SESSION_INVALID_INDEX;
   return app_listener;
 }
 
-static app_listener_t *
+app_listener_t *
 app_listener_get (application_t * app, u32 app_listener_index)
 {
   return pool_elt_at_index (app->listeners, app_listener_index);
@@ -45,29 +65,242 @@ app_listener_free (application_t * app, app_listener_t * app_listener)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
 }
 
-static app_listener_t *
-app_local_listener_alloc (application_t * app)
+local_session_t *
+application_local_listen_session_alloc (application_t * app)
 {
-  app_listener_t *app_listener;
-  pool_get (app->local_listeners, app_listener);
-  clib_memset (app_listener, 0, sizeof (*app_listener));
-  app_listener->al_index = app_listener - app->local_listeners;
-  return app_listener;
+  local_session_t *ll;
+  pool_get_zero (app->local_listen_sessions, ll);
+  ll->session_index = ll - app->local_listen_sessions;
+  ll->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
+  ll->app_index = app->app_index;
+  return ll;
 }
 
-static app_listener_t *
-app_local_listener_get (application_t * app, u32 app_listener_index)
+void
+application_local_listen_session_free (application_t * app,
+				       local_session_t * ll)
 {
-  return pool_elt_at_index (app->local_listeners, app_listener_index);
+  pool_put (app->local_listen_sessions, ll);
+  if (CLIB_DEBUG)
+    clib_memset (ll, 0xfb, sizeof (*ll));
+}
+
+static u32
+app_listener_id (app_listener_t * al)
+{
+  ASSERT (al->app_index < 1 << 16 && al->al_index < 1 << 16);
+  return (al->app_index << 16 | al->al_index);
+}
+
+session_handle_t
+app_listener_handle (app_listener_t * al)
+{
+  return ((u64) SESSION_LISTENER_PREFIX << 32 | (u64) app_listener_id (al));
 }
 
 static void
-app_local_listener_free (application_t * app, app_listener_t * app_listener)
+app_listener_id_parse (u32 listener_id, u32 * app_index,
+		       u32 * app_listener_index)
 {
-  clib_bitmap_free (app_listener->workers);
-  pool_put (app->local_listeners, app_listener);
-  if (CLIB_DEBUG)
-    clib_memset (app_listener, 0xfa, sizeof (*app_listener));
+  *app_index = listener_id >> 16;
+  *app_listener_index = listener_id & 0xFFFF;
+}
+
+void
+app_listener_handle_parse (session_handle_t handle, u32 * app_index,
+			   u32 * app_listener_index)
+{
+  app_listener_id_parse (handle & 0xFFFFFFFF, app_index, app_listener_index);
+}
+
+static app_listener_t *
+app_listener_get_w_id (u32 listener_id)
+{
+  u32 app_index, app_listener_index;
+  application_t *app;
+
+  app_listener_id_parse (listener_id, &app_index, &app_listener_index);
+  app = application_get_if_valid (app_index);
+  if (!app)
+    return 0;
+  return app_listener_get (app, app_listener_index);
+}
+
+app_listener_t *
+app_listener_get_w_session (session_t * ls)
+{
+  application_t *app;
+
+  app = application_get_if_valid (ls->app_index);
+  if (!app)
+    return 0;
+  return app_listener_get (app, ls->al_index);
+}
+
+app_listener_t *
+app_listener_get_w_handle (session_handle_t handle)
+{
+
+  if (handle >> 32 != SESSION_LISTENER_PREFIX)
+    return 0;
+
+  return app_listener_get_w_id (handle & 0xFFFFFFFF);
+}
+
+app_listener_t *
+app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
+{
+  u32 table_index, fib_proto;
+  session_endpoint_t *sep;
+  session_handle_t handle;
+  local_session_t *ll;
+  session_t *ls;
+
+  sep = (session_endpoint_t *) sep_ext;
+  if (application_has_local_scope (app) && session_endpoint_is_local (sep))
+    {
+      table_index = application_local_session_table (app);
+      handle = session_lookup_endpoint_listener (table_index, sep, 1);
+      if (handle != SESSION_INVALID_HANDLE)
+	{
+	  ll = application_get_local_listener_w_handle (handle);
+	  return app_listener_get_w_session ((session_t *) ll);
+	}
+    }
+
+  fib_proto = session_endpoint_fib_proto (sep);
+  table_index = application_session_table (app, fib_proto);
+  handle = session_lookup_endpoint_listener (table_index, sep, 1);
+  if (handle != SESSION_INVALID_HANDLE)
+    {
+      ls = listen_session_get_from_handle (handle);
+      return app_listener_get_w_session ((session_t *) ls);
+    }
+
+  return 0;
+}
+
+int
+app_listener_alloc_and_init (application_t * app,
+			     session_endpoint_cfg_t * sep,
+			     app_listener_t ** listener)
+{
+  app_listener_t *app_listener;
+  local_session_t *ll = 0;
+  session_handle_t lh;
+  session_type_t st;
+  session_t *ls = 0;
+  int rv;
+
+  app_listener = app_listener_alloc (app);
+  st = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
+
+  /*
+   * Add session endpoint to local session table. Only binds to "inaddr_any"
+   * (i.e., zero address) are added to local scope table.
+   */
+  if (application_has_local_scope (app)
+      && session_endpoint_is_local ((session_endpoint_t *) sep))
+    {
+      u32 table_index;
+
+      ll = application_local_listen_session_alloc (app);
+      ll->port = sep->port;
+      /* Store the original session type for the unbind */
+      ll->listener_session_type = st;
+      table_index = application_local_session_table (app);
+      lh = application_local_session_handle (ll);
+      session_lookup_add_session_endpoint (table_index,
+					   (session_endpoint_t *) sep, lh);
+      app_listener->local_index = ll->session_index;
+      ll->al_index = app_listener->al_index;
+    }
+
+  if (application_has_global_scope (app))
+    {
+      /*
+       * Start listening on local endpoint for requested transport and scope.
+       * Creates a stream session with state LISTENING to be used in session
+       * lookups, prior to establishing connection. Requests transport to
+       * build it's own specific listening connection.
+       */
+      ls = listen_session_new (0, st);
+      ls->app_index = app->app_index;
+      ls->app_wrk_index = sep->app_wrk_index;
+
+      /* Listen pool can be reallocated if the transport is
+       * recursive (tls) */
+      lh = session_handle (ls);
+
+      if ((rv = session_listen (ls, sep)))
+	{
+	  ls = session_get_from_handle (lh);
+	  session_free (ls);
+	  return rv;
+	}
+      app_listener->session_index = ls->session_index;
+      ls->al_index = app_listener->al_index;
+    }
+
+  if (!ll && !ls)
+    {
+      app_listener_free (app, app_listener);
+      return -1;
+    }
+
+  *listener = app_listener;
+  return 0;
+}
+
+void
+app_listener_cleanup (app_listener_t * al)
+{
+  application_t *app = application_get (al->app_index);
+
+  if (al->session_index != SESSION_INVALID_INDEX)
+    {
+      session_t *ls = session_get (al->session_index, 0);
+      session_stop_listen (ls);
+      listen_session_del (ls);
+    }
+  if (al->local_index != SESSION_INVALID_INDEX)
+    {
+      session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+      local_session_t *ll;
+      u32 table_index;
+
+      table_index = application_local_session_table (app);
+      ll = application_get_local_listen_session (app, al->local_index);
+      application_local_listener_session_endpoint (ll, &sep);
+      session_lookup_del_session_endpoint (table_index, &sep);
+      application_local_listen_session_free (app, ll);
+    }
+  app_listener_free (app, al);
+}
+
+app_worker_t *
+app_listener_select_worker (app_listener_t * al)
+{
+  application_t *app;
+  u32 wrk_index;
+
+  app = application_get (al->app_index);
+  wrk_index = clib_bitmap_next_set (al->workers, al->accept_rotor + 1);
+  if (wrk_index == ~0)
+    wrk_index = clib_bitmap_first_set (al->workers);
+
+  ASSERT (wrk_index != ~0);
+  al->accept_rotor = wrk_index;
+  return application_get_worker (app, wrk_index);
+}
+
+session_t *
+app_listener_get_session (app_listener_t * al)
+{
+  if (al->session_index == SESSION_INVALID_INDEX)
+    return 0;
+
+  return listen_session_get (al->session_index);
 }
 
 static app_worker_map_t *
@@ -130,16 +363,6 @@ application_local_session_table (application_t * app)
   return app_ns->local_table_index;
 }
 
-static void
-application_local_listener_session_endpoint (local_session_t * ll,
-					     session_endpoint_t * sep)
-{
-  sep->transport_proto =
-    session_type_transport_proto (ll->listener_session_type);
-  sep->port = ll->port;
-  sep->is_ip4 = ll->listener_session_type & 1;
-}
-
 /**
  * Returns app name for app-index
  */
@@ -199,7 +422,7 @@ application_lookup_name (const u8 * name)
   return 0;
 }
 
-application_t *
+static application_t *
 application_alloc (void)
 {
   application_t *app;
@@ -266,7 +489,7 @@ application_verify_cfg (ssvm_segment_type_t st)
     return 1;
 }
 
-int
+static int
 application_alloc_and_init (app_init_args_t * a)
 {
   ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
@@ -351,7 +574,7 @@ application_alloc_and_init (app_init_args_t * a)
   return 0;
 }
 
-void
+static void
 application_free (application_t * app)
 {
   app_worker_map_t *wrk_map;
@@ -408,7 +631,7 @@ application_free (application_t * app)
   pool_put (app_main.app_pool, app);
 }
 
-void
+static void
 application_detach_process (application_t * app, u32 api_client_index)
 {
   vnet_app_worker_add_del_args_t _args = { 0 }, *args = &_args;
@@ -475,126 +698,16 @@ application_n_workers (application_t * app)
 }
 
 app_worker_t *
-application_listener_select_worker (stream_session_t * ls, u8 is_local)
+application_listener_select_worker (session_t * ls)
 {
-  app_listener_t *app_listener;
-  application_t *app;
-  u32 wrk_index;
+  app_listener_t *al;
 
-  app = application_get (ls->app_index);
-  if (!is_local)
-    app_listener = app_listener_get (app, ls->listener_db_index);
-  else
-    app_listener = app_local_listener_get (app, ls->listener_db_index);
-
-  wrk_index = clib_bitmap_next_set (app_listener->workers,
-				    app_listener->accept_rotor + 1);
-  if (wrk_index == ~0)
-    wrk_index = clib_bitmap_first_set (app_listener->workers);
-
-  ASSERT (wrk_index != ~0);
-  app_listener->accept_rotor = wrk_index;
-  return application_get_worker (app, wrk_index);
-}
-
-app_worker_t *
-app_worker_alloc (application_t * app)
-{
-  app_worker_t *app_wrk;
-  pool_get (app_main.workers, app_wrk);
-  clib_memset (app_wrk, 0, sizeof (*app_wrk));
-  app_wrk->wrk_index = app_wrk - app_main.workers;
-  app_wrk->app_index = app->app_index;
-  app_wrk->wrk_map_index = ~0;
-  app_wrk->connects_seg_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
-  app_wrk->first_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
-  app_wrk->local_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
-  APP_DBG ("New app %v worker %u", app_get_name (app), app_wrk->wrk_index);
-  return app_wrk;
-}
-
-app_worker_t *
-app_worker_get (u32 wrk_index)
-{
-  return pool_elt_at_index (app_main.workers, wrk_index);
-}
-
-app_worker_t *
-app_worker_get_if_valid (u32 wrk_index)
-{
-  if (pool_is_free_index (app_main.workers, wrk_index))
-    return 0;
-  return pool_elt_at_index (app_main.workers, wrk_index);
-}
-
-void
-app_worker_free (app_worker_t * app_wrk)
-{
-  application_t *app = application_get (app_wrk->app_index);
-  vnet_unbind_args_t _a, *a = &_a;
-  u64 handle, *handles = 0;
-  segment_manager_t *sm;
-  u32 sm_index;
-  int i;
-
-  /*
-   *  Listener cleanup
-   */
-
-  /* *INDENT-OFF* */
-  hash_foreach (handle, sm_index, app_wrk->listeners_table,
-  ({
-    vec_add1 (handles, handle);
-    sm = segment_manager_get (sm_index);
-    sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
-  }));
-  /* *INDENT-ON* */
-
-  for (i = 0; i < vec_len (handles); i++)
-    {
-      a->app_index = app->app_index;
-      a->wrk_map_index = app_wrk->wrk_map_index;
-      a->handle = handles[i];
-      /* seg manager is removed when unbind completes */
-      vnet_unbind (a);
-    }
-
-  /*
-   * Connects segment manager cleanup
-   */
-
-  if (app_wrk->connects_seg_manager != APP_INVALID_SEGMENT_MANAGER_INDEX)
-    {
-      sm = segment_manager_get (app_wrk->connects_seg_manager);
-      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
-      segment_manager_init_del (sm);
-    }
-
-  /* If first segment manager is used by a listener */
-  if (app_wrk->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
-      && app_wrk->first_segment_manager != app_wrk->connects_seg_manager)
-    {
-      sm = segment_manager_get (app_wrk->first_segment_manager);
-      sm->first_is_protected = 0;
-      sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
-      /* .. and has no fifos, e.g. it might be used for redirected sessions,
-       * remove it */
-      if (!segment_manager_has_fifos (sm))
-	segment_manager_del (sm);
-    }
-
-  /*
-   * Local sessions
-   */
-  app_worker_local_sessions_free (app_wrk);
-
-  pool_put (app_main.workers, app_wrk);
-  if (CLIB_DEBUG)
-    clib_memset (app_wrk, 0xfe, sizeof (*app_wrk));
+  al = app_listener_get_w_session (ls);
+  return app_listener_select_worker (al);
 }
 
 int
-app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk)
+application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
 {
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
@@ -641,315 +754,7 @@ app_worker_alloc_and_init (application_t * app, app_worker_t ** wrk)
   return 0;
 }
 
-application_t *
-app_worker_get_app (u32 wrk_index)
-{
-  app_worker_t *app_wrk;
-  app_wrk = app_worker_get_if_valid (wrk_index);
-  if (!app_wrk)
-    return 0;
-  return application_get_if_valid (app_wrk->app_index);
-}
-
-static segment_manager_t *
-app_worker_alloc_segment_manager (app_worker_t * app_wrk)
-{
-  segment_manager_t *sm = 0;
-
-  /* If the first segment manager is not in use, don't allocate a new one */
-  if (app_wrk->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
-      && app_wrk->first_segment_manager_in_use == 0)
-    {
-      sm = segment_manager_get (app_wrk->first_segment_manager);
-      app_wrk->first_segment_manager_in_use = 1;
-      return sm;
-    }
-
-  sm = segment_manager_new ();
-  sm->app_wrk_index = app_wrk->wrk_index;
-
-  return sm;
-}
-
 int
-app_worker_start_listen (app_worker_t * app_wrk, stream_session_t * ls)
-{
-  segment_manager_t *sm;
-
-  /* Allocate segment manager. All sessions derived out of a listen session
-   * have fifos allocated by the same segment manager. */
-  if (!(sm = app_worker_alloc_segment_manager (app_wrk)))
-    return -1;
-
-  /* Add to app's listener table. Useful to find all child listeners
-   * when app goes down, although, just for unbinding this is not needed */
-  hash_set (app_wrk->listeners_table, listen_session_get_handle (ls),
-	    segment_manager_index (sm));
-
-  if (!ls->server_rx_fifo
-      && session_transport_service_type (ls) == TRANSPORT_SERVICE_CL)
-    {
-      if (session_alloc_fifos (sm, ls))
-	return -1;
-    }
-  return 0;
-}
-
-int
-app_worker_stop_listen (app_worker_t * app_wrk, session_handle_t handle)
-{
-  segment_manager_t *sm;
-  uword *sm_indexp;
-
-  sm_indexp = hash_get (app_wrk->listeners_table, handle);
-  if (PREDICT_FALSE (!sm_indexp))
-    {
-      clib_warning ("listener handle was removed %llu!", handle);
-      return -1;
-    }
-
-  sm = segment_manager_get (*sm_indexp);
-  if (app_wrk->first_segment_manager == *sm_indexp)
-    {
-      /* Delete sessions but don't remove segment manager */
-      app_wrk->first_segment_manager_in_use = 0;
-      segment_manager_del_sessions (sm);
-    }
-  else
-    {
-      segment_manager_init_del (sm);
-    }
-  hash_unset (app_wrk->listeners_table, handle);
-
-  return 0;
-}
-
-int
-app_worker_own_session (app_worker_t * app_wrk, stream_session_t * s)
-{
-  segment_manager_t *sm;
-  svm_fifo_t *rxf, *txf;
-
-  s->app_wrk_index = app_wrk->wrk_index;
-
-  rxf = s->server_rx_fifo;
-  txf = s->server_tx_fifo;
-
-  if (!rxf || !txf)
-    return 0;
-
-  s->server_rx_fifo = 0;
-  s->server_tx_fifo = 0;
-
-  sm = app_worker_get_or_alloc_connect_segment_manager (app_wrk);
-  if (session_alloc_fifos (sm, s))
-    return -1;
-
-  if (!svm_fifo_is_empty (rxf))
-    {
-      clib_memcpy_fast (s->server_rx_fifo->data, rxf->data, rxf->nitems);
-      s->server_rx_fifo->head = rxf->head;
-      s->server_rx_fifo->tail = rxf->tail;
-      s->server_rx_fifo->cursize = rxf->cursize;
-    }
-
-  if (!svm_fifo_is_empty (txf))
-    {
-      clib_memcpy_fast (s->server_tx_fifo->data, txf->data, txf->nitems);
-      s->server_tx_fifo->head = txf->head;
-      s->server_tx_fifo->tail = txf->tail;
-      s->server_tx_fifo->cursize = txf->cursize;
-    }
-
-  segment_manager_dealloc_fifos (rxf->segment_index, rxf, txf);
-
-  return 0;
-}
-
-/**
- * Start listening local transport endpoint for requested transport.
- *
- * Creates a 'dummy' stream session with state LISTENING to be used in session
- * lookups, prior to establishing connection. Requests transport to build
- * it's own specific listening connection.
- */
-int
-application_start_listen (application_t * app,
-			  session_endpoint_cfg_t * sep_ext,
-			  session_handle_t * res)
-{
-  app_listener_t *app_listener;
-  u32 table_index, fib_proto;
-  session_endpoint_t *sep;
-  app_worker_t *app_wrk;
-  stream_session_t *ls;
-  session_handle_t lh;
-  session_type_t sst;
-
-  /*
-   * Check if sep is already listened on
-   */
-  sep = (session_endpoint_t *) sep_ext;
-  fib_proto = session_endpoint_fib_proto (sep);
-  table_index = application_session_table (app, fib_proto);
-  lh = session_lookup_endpoint_listener (table_index, sep, 1);
-  if (lh != SESSION_INVALID_HANDLE)
-    {
-      ls = listen_session_get_from_handle (lh);
-      if (ls->app_index != app->app_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      app_wrk = app_worker_get (sep_ext->app_wrk_index);
-      if (ls->app_wrk_index == app_wrk->wrk_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      if (app_worker_start_listen (app_wrk, ls))
-	return -1;
-
-      app_listener = app_listener_get (app, ls->listener_db_index);
-      app_listener->workers = clib_bitmap_set (app_listener->workers,
-					       app_wrk->wrk_map_index, 1);
-
-      *res = listen_session_get_handle (ls);
-      return 0;
-    }
-
-  /*
-   * Allocate new listener for application
-   */
-  sst = session_type_from_proto_and_ip (sep_ext->transport_proto,
-					sep_ext->is_ip4);
-  ls = listen_session_new (0, sst);
-  ls->app_index = app->app_index;
-  lh = listen_session_get_handle (ls);
-  if (session_listen (ls, sep_ext))
-    goto err;
-
-
-  ls = listen_session_get_from_handle (lh);
-  app_listener = app_listener_alloc (app);
-  ls->listener_db_index = app_listener->al_index;
-
-  /*
-   * Setup app worker as a listener
-   */
-  app_wrk = app_worker_get (sep_ext->app_wrk_index);
-  ls->app_wrk_index = app_wrk->wrk_index;
-  if (app_worker_start_listen (app_wrk, ls))
-    goto err;
-  app_listener->workers = clib_bitmap_set (app_listener->workers,
-					   app_wrk->wrk_map_index, 1);
-
-  *res = lh;
-  return 0;
-
-err:
-  listen_session_del (ls);
-  return -1;
-}
-
-/**
- * Stop listening on session associated to handle
- *
- * @param handle	listener handle
- * @param app_index	index of the app owning the handle.
- * @param app_wrk_index	index of the worker requesting the stop
- */
-int
-application_stop_listen (u32 app_index, u32 app_wrk_index,
-			 session_handle_t handle)
-{
-  app_listener_t *app_listener;
-  stream_session_t *listener;
-  app_worker_t *app_wrk;
-  application_t *app;
-
-  listener = listen_session_get_from_handle (handle);
-  app = application_get (app_index);
-  if (PREDICT_FALSE (!app || app->app_index != listener->app_index))
-    {
-      clib_warning ("app doesn't own handle %llu!", handle);
-      return -1;
-    }
-
-  app_listener = app_listener_get (app, listener->listener_db_index);
-  if (!clib_bitmap_get (app_listener->workers, app_wrk_index))
-    {
-      clib_warning ("worker %u not listening on handle %lu", app_wrk_index,
-		    handle);
-      return 0;
-    }
-
-  app_wrk = application_get_worker (app, app_wrk_index);
-  app_worker_stop_listen (app_wrk, handle);
-  clib_bitmap_set_no_check (app_listener->workers, app_wrk_index, 0);
-
-  if (clib_bitmap_is_zero (app_listener->workers))
-    {
-      session_stop_listen (listener);
-      app_listener_free (app, app_listener);
-      listen_session_del (listener);
-    }
-
-  return 0;
-}
-
-int
-app_worker_open_session (app_worker_t * app, session_endpoint_t * sep,
-			 u32 api_context)
-{
-  int rv;
-
-  /* Make sure we have a segment manager for connects */
-  app_worker_alloc_connects_segment_manager (app);
-
-  if ((rv = session_open (app->wrk_index, sep, api_context)))
-    return rv;
-
-  return 0;
-}
-
-int
-app_worker_alloc_connects_segment_manager (app_worker_t * app_wrk)
-{
-  segment_manager_t *sm;
-
-  if (app_wrk->connects_seg_manager == APP_INVALID_SEGMENT_MANAGER_INDEX)
-    {
-      sm = app_worker_alloc_segment_manager (app_wrk);
-      if (sm == 0)
-	return -1;
-      app_wrk->connects_seg_manager = segment_manager_index (sm);
-    }
-  return 0;
-}
-
-segment_manager_t *
-app_worker_get_connect_segment_manager (app_worker_t * app)
-{
-  ASSERT (app->connects_seg_manager != (u32) ~ 0);
-  return segment_manager_get (app->connects_seg_manager);
-}
-
-segment_manager_t *
-app_worker_get_or_alloc_connect_segment_manager (app_worker_t * app_wrk)
-{
-  if (app_wrk->connects_seg_manager == (u32) ~ 0)
-    app_worker_alloc_connects_segment_manager (app_wrk);
-  return segment_manager_get (app_wrk->connects_seg_manager);
-}
-
-segment_manager_t *
-app_worker_get_listen_segment_manager (app_worker_t * app,
-				       stream_session_t * listener)
-{
-  uword *smp;
-  smp = hash_get (app->listeners_table, listen_session_get_handle (listener));
-  ASSERT (smp != 0);
-  return segment_manager_get (*smp);
-}
-
-clib_error_t *
 vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 {
   svm_fifo_segment_private_t *fs;
@@ -961,13 +766,12 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
 
   app = application_get (a->app_index);
   if (!app)
-    return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
-				   "App %u does not exist", a->app_index);
+    return VNET_API_ERROR_INVALID_VALUE;
 
   if (a->is_add)
     {
-      if ((rv = app_worker_alloc_and_init (app, &app_wrk)))
-	return clib_error_return_code (0, rv, 0, "app wrk init: %d", rv);
+      if ((rv = application_alloc_worker_and_init (app, &app_wrk)))
+	return rv;
 
       /* Map worker api index to the app */
       app_wrk->api_client_index = a->api_client_index;
@@ -985,13 +789,12 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
     {
       wrk_map = app_worker_map_get (app, a->wrk_map_index);
       if (!wrk_map)
-	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
-				       "App %u does not have worker %u",
-				       app->app_index, a->wrk_map_index);
+	return VNET_API_ERROR_INVALID_VALUE;
+
       app_wrk = app_worker_get (wrk_map->wrk_index);
       if (!app_wrk)
-	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
-				       "No worker %u", a->wrk_map_index);
+	return VNET_API_ERROR_INVALID_VALUE;
+
       application_api_table_del (app_wrk->api_client_index);
       app_worker_free (app_wrk);
       app_worker_map_free (app, wrk_map);
@@ -1001,23 +804,420 @@ vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a)
   return 0;
 }
 
-segment_manager_t *
-application_get_local_segment_manager (app_worker_t * app)
+static int
+app_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
 {
-  return segment_manager_get (app->local_segment_manager);
+  app_namespace_t *app_ns;
+  if (vec_len (namespace_id) == 0)
+    {
+      /* Use default namespace */
+      *app_ns_index = 0;
+      return 0;
+    }
+
+  *app_ns_index = app_namespace_index_from_id (namespace_id);
+  if (*app_ns_index == APP_NAMESPACE_INVALID_INDEX)
+    return VNET_API_ERROR_APP_INVALID_NS;
+  app_ns = app_namespace_get (*app_ns_index);
+  if (!app_ns)
+    return VNET_API_ERROR_APP_INVALID_NS;
+  if (app_ns->ns_secret != secret)
+    return VNET_API_ERROR_APP_WRONG_NS_SECRET;
+  return 0;
 }
 
-segment_manager_t *
-application_get_local_segment_manager_w_session (app_worker_t * app,
-						 local_session_t * ls)
+static u8 *
+app_name_from_api_index (u32 api_client_index)
 {
-  stream_session_t *listener;
-  if (application_local_session_listener_has_transport (ls))
+  vl_api_registration_t *regp;
+  regp = vl_api_client_index_to_registration (api_client_index);
+  if (regp)
+    return format (0, "%s%c", regp->name, 0);
+
+  clib_warning ("api client index %u does not have an api registration!",
+		api_client_index);
+  return format (0, "unknown%c", 0);
+}
+
+/**
+ * Attach application to vpp
+ *
+ * Allocates a vpp app, i.e., a structure that keeps back pointers
+ * to external app and a segment manager for shared memory fifo based
+ * communication with the external app.
+ */
+int
+vnet_application_attach (vnet_app_attach_args_t * a)
+{
+  svm_fifo_segment_private_t *fs;
+  application_t *app = 0;
+  app_worker_t *app_wrk;
+  segment_manager_t *sm;
+  u32 app_ns_index = 0;
+  u8 *app_name = 0;
+  u64 secret;
+  int rv;
+
+  if (a->api_client_index != APP_INVALID_INDEX)
+    app = application_lookup (a->api_client_index);
+  else if (a->name)
+    app = application_lookup_name (a->name);
+  else
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  if (app)
+    return VNET_API_ERROR_APP_ALREADY_ATTACHED;
+
+  if (a->api_client_index != APP_INVALID_INDEX)
     {
-      listener = listen_session_get (ls->listener_index);
-      return app_worker_get_listen_segment_manager (app, listener);
+      app_name = app_name_from_api_index (a->api_client_index);
+      a->name = app_name;
     }
-  return segment_manager_get (app->local_segment_manager);
+
+  secret = a->options[APP_OPTIONS_NAMESPACE_SECRET];
+  if ((rv = app_validate_namespace (a->namespace_id, secret, &app_ns_index)))
+    return rv;
+  a->options[APP_OPTIONS_NAMESPACE] = app_ns_index;
+
+  if ((rv = application_alloc_and_init ((app_init_args_t *) a)))
+    return rv;
+
+  app = application_get (a->app_index);
+  if ((rv = application_alloc_worker_and_init (app, &app_wrk)))
+    return rv;
+
+  a->app_evt_q = app_wrk->event_queue;
+  app_wrk->api_client_index = a->api_client_index;
+  sm = segment_manager_get (app_wrk->first_segment_manager);
+  fs = segment_manager_get_segment_w_lock (sm, 0);
+
+  if (application_is_proxy (app))
+    application_setup_proxy (app);
+
+  ASSERT (vec_len (fs->ssvm.name) <= 128);
+  a->segment = &fs->ssvm;
+  a->segment_handle = segment_manager_segment_handle (sm, fs);
+
+  segment_manager_segment_reader_unlock (sm);
+  vec_free (app_name);
+  return 0;
+}
+
+/**
+ * Detach application from vpp
+ */
+int
+vnet_application_detach (vnet_app_detach_args_t * a)
+{
+  application_t *app;
+
+  app = application_get_if_valid (a->app_index);
+  if (!app)
+    {
+      clib_warning ("app not attached");
+      return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+    }
+
+  app_interface_check_thread_and_barrier (vnet_application_detach, a);
+  application_detach_process (app, a->api_client_index);
+  return 0;
+}
+
+
+static u8
+session_endpoint_in_ns (session_endpoint_t * sep)
+{
+  u8 is_lep = session_endpoint_is_local (sep);
+  if (!is_lep && sep->sw_if_index != ENDPOINT_INVALID_INDEX
+      && !ip_interface_has_address (sep->sw_if_index, &sep->ip, sep->is_ip4))
+    {
+      clib_warning ("sw_if_index %u not configured with ip %U",
+		    sep->sw_if_index, format_ip46_address, &sep->ip,
+		    sep->is_ip4);
+      return 0;
+    }
+  return (is_lep || ip_is_local (sep->fib_index, &sep->ip, sep->is_ip4));
+}
+
+static void
+session_endpoint_update_for_app (session_endpoint_cfg_t * sep,
+				 application_t * app, u8 is_connect)
+{
+  app_namespace_t *app_ns;
+  u32 ns_index, fib_index;
+
+  ns_index = app->ns_index;
+
+  /* App is a transport proto, so fetch the calling app's ns */
+  if (app->flags & APP_OPTIONS_FLAGS_IS_TRANSPORT_APP)
+    {
+      app_worker_t *owner_wrk;
+      application_t *owner_app;
+
+      owner_wrk = app_worker_get (sep->app_wrk_index);
+      owner_app = application_get (owner_wrk->app_index);
+      ns_index = owner_app->ns_index;
+    }
+  app_ns = app_namespace_get (ns_index);
+  if (!app_ns)
+    return;
+
+  /* Ask transport and network to bind to/connect using local interface
+   * that "supports" app's namespace. This will fix our local connection
+   * endpoint.
+   */
+
+  /* If in default namespace and user requested a fib index use it */
+  if (ns_index == 0 && sep->fib_index != ENDPOINT_INVALID_INDEX)
+    fib_index = sep->fib_index;
+  else
+    fib_index = sep->is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+  sep->peer.fib_index = fib_index;
+  sep->fib_index = fib_index;
+
+  if (!is_connect)
+    {
+      sep->sw_if_index = app_ns->sw_if_index;
+    }
+  else
+    {
+      if (app_ns->sw_if_index != APP_NAMESPACE_INVALID_INDEX
+	  && sep->peer.sw_if_index != ENDPOINT_INVALID_INDEX
+	  && sep->peer.sw_if_index != app_ns->sw_if_index)
+	clib_warning ("Local sw_if_index different from app ns sw_if_index");
+
+      sep->peer.sw_if_index = app_ns->sw_if_index;
+    }
+}
+
+int
+vnet_listen (vnet_listen_args_t * a)
+{
+  app_listener_t *app_listener;
+  app_worker_t *app_wrk;
+  application_t *app;
+  int rv;
+
+  app = application_get_if_valid (a->app_index);
+  if (!app)
+    return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+
+  app_wrk = application_get_worker (app, a->wrk_map_index);
+  if (!app_wrk)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  a->sep_ext.app_wrk_index = app_wrk->wrk_index;
+
+  session_endpoint_update_for_app (&a->sep_ext, app, 0 /* is_connect */ );
+  if (!session_endpoint_in_ns (&a->sep))
+    return VNET_API_ERROR_INVALID_VALUE_2;
+
+  /*
+   * Check if we already have an app listener
+   */
+  app_listener = app_listener_lookup (app, &a->sep_ext);
+  if (app_listener)
+    {
+      if (app_listener->app_index != app->app_index)
+	return VNET_API_ERROR_ADDRESS_IN_USE;
+      if (app_worker_start_listen (app_wrk, app_listener))
+	return -1;
+      a->handle = app_listener_handle (app_listener);
+      return 0;
+    }
+
+  /*
+   * Create new app listener
+   */
+  if ((rv = app_listener_alloc_and_init (app, &a->sep_ext, &app_listener)))
+    return rv;
+
+  if ((rv = app_worker_start_listen (app_wrk, app_listener)))
+    {
+      app_listener_cleanup (app_listener);
+      return rv;
+    }
+
+  a->handle = app_listener_handle (app_listener);
+  return 0;
+}
+
+int
+vnet_connect (vnet_connect_args_t * a)
+{
+  app_worker_t *server_wrk, *client_wrk;
+  application_t *client;
+  local_session_t *ll;
+  app_listener_t *al;
+  u32 table_index;
+  session_t *ls;
+  u8 fib_proto;
+  u64 lh;
+
+  if (session_endpoint_is_zero (&a->sep))
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  client = application_get (a->app_index);
+  session_endpoint_update_for_app (&a->sep_ext, client, 1 /* is_connect */ );
+  client_wrk = application_get_worker (client, a->wrk_map_index);
+
+  /*
+   * First check the local scope for locally attached destinations.
+   * If we have local scope, we pass *all* connects through it since we may
+   * have special policy rules even for non-local destinations, think proxy.
+   */
+  if (application_has_local_scope (client))
+    {
+      table_index = application_local_session_table (client);
+      lh = session_lookup_local_endpoint (table_index, &a->sep);
+      if (lh == SESSION_DROP_HANDLE)
+	return VNET_API_ERROR_APP_CONNECT_FILTERED;
+
+      if (lh == SESSION_INVALID_HANDLE)
+	goto global_scope;
+
+      ll = application_get_local_listener_w_handle (lh);
+      al = app_listener_get_w_session ((session_t *) ll);
+
+      /*
+       * Break loop if rule in local table points to connecting app. This
+       * can happen if client is a generic proxy. Route connect through
+       * global table instead.
+       */
+      if (al->app_index == a->app_index)
+	goto global_scope;
+
+      server_wrk = app_listener_select_worker (al);
+      return app_worker_local_session_connect (client_wrk, server_wrk, ll,
+					       a->api_context);
+    }
+
+  /*
+   * If nothing found, check the global scope for locally attached
+   * destinations. Make sure first that we're allowed to.
+   */
+
+global_scope:
+  if (session_endpoint_is_local (&a->sep))
+    return VNET_API_ERROR_SESSION_CONNECT;
+
+  if (!application_has_global_scope (client))
+    return VNET_API_ERROR_APP_CONNECT_SCOPE;
+
+  fib_proto = session_endpoint_fib_proto (&a->sep);
+  table_index = application_session_table (client, fib_proto);
+  ls = session_lookup_listener (table_index, &a->sep);
+  if (ls)
+    {
+      al = app_listener_get_w_session (ls);
+      server_wrk = app_listener_select_worker (al);
+      ll = (local_session_t *) ls;
+      return app_worker_local_session_connect (client_wrk, server_wrk, ll,
+					       a->api_context);
+    }
+
+  /*
+   * Not connecting to a local server, propagate to transport
+   */
+  if (app_worker_connect_session (client_wrk, &a->sep, a->api_context))
+    return VNET_API_ERROR_SESSION_CONNECT;
+  return 0;
+}
+
+int
+vnet_unlisten (vnet_unlisten_args_t * a)
+{
+  app_worker_t *app_wrk;
+  app_listener_t *al;
+  application_t *app;
+
+  if (!(app = application_get_if_valid (a->app_index)))
+    return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+
+  al = app_listener_get_w_handle (a->handle);
+  if (al->app_index != app->app_index)
+    {
+      clib_warning ("app doesn't own handle %llu!", a->handle);
+      return -1;
+    }
+
+  app_wrk = application_get_worker (app, a->wrk_map_index);
+  if (!app_wrk)
+    {
+      clib_warning ("no app %u worker %u", app->app_index, a->wrk_map_index);
+      return -1;
+    }
+
+  return app_worker_stop_listen (app_wrk, al);
+}
+
+int
+vnet_disconnect_session (vnet_disconnect_args_t * a)
+{
+  if (session_handle_is_local (a->handle))
+    {
+      local_session_t *ls;
+
+      /* Disconnect reply came to worker 1 not main thread */
+      app_interface_check_thread_and_barrier (vnet_disconnect_session, a);
+
+      if (!(ls = app_worker_get_local_session_from_handle (a->handle)))
+	return 0;
+
+      return app_worker_local_session_disconnect (a->app_index, ls);
+    }
+  else
+    {
+      app_worker_t *app_wrk;
+      session_t *s;
+
+      s = session_get_from_handle_if_valid (a->handle);
+      if (!s)
+	return VNET_API_ERROR_INVALID_VALUE;
+      app_wrk = app_worker_get (s->app_wrk_index);
+      if (app_wrk->app_index != a->app_index)
+	return VNET_API_ERROR_INVALID_VALUE;
+
+      /* We're peeking into another's thread pool. Make sure */
+      ASSERT (s->session_index == session_index_from_handle (a->handle));
+
+      session_close (s);
+    }
+  return 0;
+}
+
+int
+application_change_listener_owner (session_t * s, app_worker_t * app_wrk)
+{
+  app_worker_t *old_wrk = app_worker_get (s->app_wrk_index);
+  app_listener_t *app_listener;
+  application_t *app;
+
+  if (!old_wrk)
+    return -1;
+
+  hash_unset (old_wrk->listeners_table, listen_session_get_handle (s));
+  if (session_transport_service_type (s) == TRANSPORT_SERVICE_CL
+      && s->rx_fifo)
+    segment_manager_dealloc_fifos (s->rx_fifo->segment_index, s->rx_fifo,
+				   s->tx_fifo);
+
+  app = application_get (old_wrk->app_index);
+  if (!app)
+    return -1;
+
+  app_listener = app_listener_get (app, s->al_index);
+
+  /* Only remove from lb for now */
+  app_listener->workers = clib_bitmap_set (app_listener->workers,
+					   old_wrk->wrk_map_index, 0);
+
+  if (app_worker_start_listen (app_wrk, app_listener))
+    return -1;
+
+  s->app_wrk_index = app_wrk->wrk_index;
+
+  return 0;
 }
 
 int
@@ -1056,78 +1256,6 @@ application_use_mq_for_ctrl (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
 }
 
-/**
- * Send an API message to the external app, to map new segment
- */
-int
-app_worker_add_segment_notify (u32 app_wrk_index, u64 segment_handle)
-{
-  app_worker_t *app_wrk = app_worker_get (app_wrk_index);
-  application_t *app = application_get (app_wrk->app_index);
-  return app->cb_fns.add_segment_callback (app_wrk->api_client_index,
-					   segment_handle);
-}
-
-u32
-application_n_listeners (app_worker_t * app)
-{
-  return hash_elts (app->listeners_table);
-}
-
-stream_session_t *
-app_worker_first_listener (app_worker_t * app, u8 fib_proto,
-			   u8 transport_proto)
-{
-  stream_session_t *listener;
-  u64 handle;
-  u32 sm_index;
-  u8 sst;
-
-  sst = session_type_from_proto_and_ip (transport_proto,
-					fib_proto == FIB_PROTOCOL_IP4);
-
-  /* *INDENT-OFF* */
-   hash_foreach (handle, sm_index, app->listeners_table, ({
-     listener = listen_session_get_from_handle (handle);
-     if (listener->session_type == sst
-	 && listener->enqueue_epoch != SESSION_PROXY_LISTENER_INDEX)
-       return listener;
-   }));
-  /* *INDENT-ON* */
-
-  return 0;
-}
-
-u8
-app_worker_application_is_builtin (app_worker_t * app_wrk)
-{
-  return app_wrk->app_is_builtin;
-}
-
-stream_session_t *
-application_proxy_listener (app_worker_t * app, u8 fib_proto,
-			    u8 transport_proto)
-{
-  stream_session_t *listener;
-  u64 handle;
-  u32 sm_index;
-  u8 sst;
-
-  sst = session_type_from_proto_and_ip (transport_proto,
-					fib_proto == FIB_PROTOCOL_IP4);
-
-  /* *INDENT-OFF* */
-   hash_foreach (handle, sm_index, app->listeners_table, ({
-     listener = listen_session_get_from_handle (handle);
-     if (listener->session_type == sst
-	 && listener->enqueue_epoch == SESSION_PROXY_LISTENER_INDEX)
-       return listener;
-   }));
-  /* *INDENT-ON* */
-
-  return 0;
-}
-
 static clib_error_t *
 application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 					u8 transport_proto, u8 is_start)
@@ -1137,8 +1265,9 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
   session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
   transport_connection_t *tc;
   app_worker_t *app_wrk;
-  stream_session_t *s;
-  u64 handle;
+  app_listener_t *al;
+  session_t *s;
+  u32 flags;
 
   /* TODO decide if we want proxy to be enabled for all workers */
   app_wrk = application_get_default_worker (app);
@@ -1152,14 +1281,21 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 	  sep.sw_if_index = app_ns->sw_if_index;
 	  sep.transport_proto = transport_proto;
 	  sep.app_wrk_index = app_wrk->wrk_index;	/* only default */
-	  application_start_listen (app, &sep, &handle);
-	  s = listen_session_get_from_handle (handle);
+
+	  /* force global scope listener */
+	  flags = app->flags;
+	  app->flags &= ~APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+	  app_listener_alloc_and_init (app, &sep, &al);
+	  app->flags = flags;
+
+	  app_worker_start_listen (app_wrk, al);
+	  s = listen_session_get (al->session_index);
 	  s->enqueue_epoch = SESSION_PROXY_LISTENER_INDEX;
 	}
     }
   else
     {
-      s = application_proxy_listener (app_wrk, fib_proto, transport_proto);
+      s = app_worker_proxy_listener (app_wrk, fib_proto, transport_proto);
       ASSERT (s);
     }
 
@@ -1273,705 +1409,6 @@ application_get_segment_manager_properties (u32 app_index)
   return &app->sm_properties;
 }
 
-static inline int
-app_enqueue_evt (svm_msg_q_t * mq, svm_msg_q_msg_t * msg, u8 lock)
-{
-  if (PREDICT_FALSE (svm_msg_q_is_full (mq)))
-    {
-      clib_warning ("evt q full");
-      svm_msg_q_free_msg (mq, msg);
-      if (lock)
-	svm_msg_q_unlock (mq);
-      return -1;
-    }
-
-  if (lock)
-    {
-      svm_msg_q_add_and_unlock (mq, msg);
-      return 0;
-    }
-
-  /* Even when not locking the ring, we must wait for queue mutex */
-  if (svm_msg_q_add (mq, msg, SVM_Q_WAIT))
-    {
-      clib_warning ("msg q add returned");
-      return -1;
-    }
-  return 0;
-}
-
-static inline int
-app_send_io_evt_rx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
-{
-  session_event_t *evt;
-  svm_msg_q_msg_t msg;
-  svm_msg_q_t *mq;
-
-  if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY
-		     && s->session_state != SESSION_STATE_LISTENING))
-    {
-      /* Session is closed so app will never clean up. Flush rx fifo */
-      if (s->session_state == SESSION_STATE_CLOSED)
-	svm_fifo_dequeue_drop_all (s->server_rx_fifo);
-      return 0;
-    }
-
-  if (app_worker_application_is_builtin (app_wrk))
-    {
-      application_t *app = application_get (app_wrk->app_index);
-      return app->cb_fns.builtin_app_rx_callback (s);
-    }
-
-  if (svm_fifo_has_event (s->server_rx_fifo)
-      || svm_fifo_is_empty (s->server_rx_fifo))
-    return 0;
-
-  mq = app_wrk->event_queue;
-  if (lock)
-    svm_msg_q_lock (mq);
-
-  if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
-    {
-      clib_warning ("evt q rings full");
-      if (lock)
-	svm_msg_q_unlock (mq);
-      return -1;
-    }
-
-  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  ASSERT (!svm_msg_q_msg_is_invalid (&msg));
-
-  evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->fifo = s->server_rx_fifo;
-  evt->event_type = FIFO_EVENT_APP_RX;
-
-  (void) svm_fifo_set_event (s->server_rx_fifo);
-
-  if (app_enqueue_evt (mq, &msg, lock))
-    return -1;
-  return 0;
-}
-
-static inline int
-app_send_io_evt_tx (app_worker_t * app_wrk, stream_session_t * s, u8 lock)
-{
-  svm_msg_q_t *mq;
-  session_event_t *evt;
-  svm_msg_q_msg_t msg;
-
-  if (app_worker_application_is_builtin (app_wrk))
-    return 0;
-
-  mq = app_wrk->event_queue;
-  if (lock)
-    svm_msg_q_lock (mq);
-
-  if (PREDICT_FALSE (svm_msg_q_ring_is_full (mq, SESSION_MQ_IO_EVT_RING)))
-    {
-      clib_warning ("evt q rings full");
-      if (lock)
-	svm_msg_q_unlock (mq);
-      return -1;
-    }
-
-  msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
-  ASSERT (!svm_msg_q_msg_is_invalid (&msg));
-
-  evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->event_type = FIFO_EVENT_APP_TX;
-  evt->fifo = s->server_tx_fifo;
-
-  return app_enqueue_evt (mq, &msg, lock);
-}
-
-/* *INDENT-OFF* */
-typedef int (app_send_evt_handler_fn) (app_worker_t *app,
-				       stream_session_t *s,
-				       u8 lock);
-static app_send_evt_handler_fn * const app_send_evt_handler_fns[3] = {
-    app_send_io_evt_rx,
-    0,
-    app_send_io_evt_tx,
-};
-/* *INDENT-ON* */
-
-/**
- * Send event to application
- *
- * Logic from queue perspective is non-blocking. If there's
- * not enough space to enqueue a message, we return.
- */
-int
-app_worker_send_event (app_worker_t * app, stream_session_t * s, u8 evt_type)
-{
-  ASSERT (app && evt_type <= FIFO_EVENT_APP_TX);
-  return app_send_evt_handler_fns[evt_type] (app, s, 0 /* lock */ );
-}
-
-/**
- * Send event to application
- *
- * Logic from queue perspective is blocking. However, if queue is full,
- * we return.
- */
-int
-app_worker_lock_and_send_event (app_worker_t * app, stream_session_t * s,
-				u8 evt_type)
-{
-  return app_send_evt_handler_fns[evt_type] (app, s, 1 /* lock */ );
-}
-
-local_session_t *
-application_local_session_alloc (app_worker_t * app_wrk)
-{
-  local_session_t *s;
-  pool_get (app_wrk->local_sessions, s);
-  clib_memset (s, 0, sizeof (*s));
-  s->app_wrk_index = app_wrk->wrk_index;
-  s->session_index = s - app_wrk->local_sessions;
-  s->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
-  return s;
-}
-
-void
-application_local_session_free (app_worker_t * app, local_session_t * s)
-{
-  pool_put (app->local_sessions, s);
-  if (CLIB_DEBUG)
-    clib_memset (s, 0xfc, sizeof (*s));
-}
-
-local_session_t *
-application_get_local_session (app_worker_t * app_wrk, u32 session_index)
-{
-  if (pool_is_free_index (app_wrk->local_sessions, session_index))
-    return 0;
-  return pool_elt_at_index (app_wrk->local_sessions, session_index);
-}
-
-local_session_t *
-application_get_local_session_from_handle (session_handle_t handle)
-{
-  app_worker_t *server_wrk;
-  u32 session_index, server_wrk_index;
-  local_session_parse_handle (handle, &server_wrk_index, &session_index);
-  server_wrk = app_worker_get_if_valid (server_wrk_index);
-  if (!server_wrk)
-    return 0;
-  return application_get_local_session (server_wrk, session_index);
-}
-
-local_session_t *
-application_local_listen_session_alloc (application_t * app)
-{
-  local_session_t *ll;
-  pool_get (app->local_listen_sessions, ll);
-  clib_memset (ll, 0, sizeof (*ll));
-  return ll;
-}
-
-u32
-application_local_listener_index (application_t * app, local_session_t * ll)
-{
-  return (ll - app->local_listen_sessions);
-}
-
-void
-application_local_listen_session_free (application_t * app,
-				       local_session_t * ll)
-{
-  pool_put (app->local_listen_sessions, ll);
-  if (CLIB_DEBUG)
-    clib_memset (ll, 0xfb, sizeof (*ll));
-}
-
-int
-application_start_local_listen (application_t * app,
-				session_endpoint_cfg_t * sep_ext,
-				session_handle_t * handle)
-{
-  app_listener_t *app_listener;
-  session_endpoint_t *sep;
-  app_worker_t *app_wrk;
-  session_handle_t lh;
-  local_session_t *ll;
-  u32 table_index;
-
-  sep = (session_endpoint_t *) sep_ext;
-  table_index = application_local_session_table (app);
-  app_wrk = app_worker_get (sep_ext->app_wrk_index);
-
-  /* An exact sep match, as opposed to session_lookup_local_listener */
-  lh = session_lookup_endpoint_listener (table_index, sep, 1);
-  if (lh != SESSION_INVALID_HANDLE)
-    {
-      ll = application_get_local_listener_w_handle (lh);
-      if (ll->app_index != app->app_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      if (ll->app_wrk_index == app_wrk->wrk_index)
-	return VNET_API_ERROR_ADDRESS_IN_USE;
-
-      app_listener = app_local_listener_get (app, ll->listener_db_index);
-      app_listener->workers = clib_bitmap_set (app_listener->workers,
-					       app_wrk->wrk_map_index, 1);
-      *handle = application_local_session_handle (ll);
-      return 0;
-    }
-
-  ll = application_local_listen_session_alloc (app);
-  ll->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
-  ll->app_wrk_index = app_wrk->app_index;
-  ll->session_index = application_local_listener_index (app, ll);
-  ll->port = sep_ext->port;
-  /* Store the original session type for the unbind */
-  ll->listener_session_type =
-    session_type_from_proto_and_ip (sep_ext->transport_proto,
-				    sep_ext->is_ip4);
-  ll->transport_listener_index = ~0;
-  ll->app_index = app->app_index;
-
-  app_listener = app_local_listener_alloc (app);
-  ll->listener_db_index = app_listener->al_index;
-  app_listener->workers = clib_bitmap_set (app_listener->workers,
-					   app_wrk->wrk_map_index, 1);
-
-  *handle = application_local_session_handle (ll);
-  session_lookup_add_session_endpoint (table_index, sep, *handle);
-
-  return 0;
-}
-
-/**
- * Clean up local session table. If we have a listener session use it to
- * find the port and proto. If not, the handle must be a local table handle
- * so parse it.
- */
-int
-application_stop_local_listen (u32 app_index, u32 wrk_map_index,
-			       session_handle_t lh)
-{
-  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
-  u32 table_index, ll_index, server_index;
-  app_listener_t *app_listener;
-  app_worker_t *server_wrk;
-  stream_session_t *sl = 0;
-  local_session_t *ll, *ls;
-  application_t *server;
-
-  server = application_get (app_index);
-  table_index = application_local_session_table (server);
-
-  /* We have both local and global table binds. Figure from global what
-   * the sep we should be cleaning up is.
-   */
-  if (!session_handle_is_local (lh))
-    {
-      sl = listen_session_get_from_handle (lh);
-      if (!sl || listen_session_get_local_session_endpoint (sl, &sep))
-	{
-	  clib_warning ("broken listener");
-	  return -1;
-	}
-      lh = session_lookup_endpoint_listener (table_index, &sep, 0);
-      if (lh == SESSION_INVALID_HANDLE)
-	return -1;
-    }
-
-  local_session_parse_handle (lh, &server_index, &ll_index);
-  if (PREDICT_FALSE (server_index != app_index))
-    {
-      clib_warning ("app %u does not own local handle 0x%lx", app_index, lh);
-      return -1;
-    }
-
-  ll = application_get_local_listen_session (server, ll_index);
-  if (PREDICT_FALSE (!ll))
-    {
-      clib_warning ("no local listener");
-      return -1;
-    }
-
-  app_listener = app_local_listener_get (server, ll->listener_db_index);
-  if (!clib_bitmap_get (app_listener->workers, wrk_map_index))
-    {
-      clib_warning ("app wrk %u not listening on handle %lu", wrk_map_index,
-		    lh);
-      return -1;
-    }
-
-  server_wrk = application_get_worker (server, wrk_map_index);
-  /* *INDENT-OFF* */
-  pool_foreach (ls, server_wrk->local_sessions, ({
-    if (ls->listener_index == ll->session_index)
-      application_local_session_disconnect (server_wrk->app_index, ls);
-  }));
-  /* *INDENT-ON* */
-
-  clib_bitmap_set_no_check (app_listener->workers, wrk_map_index, 0);
-  if (clib_bitmap_is_zero (app_listener->workers))
-    {
-      app_local_listener_free (server, app_listener);
-      application_local_listener_session_endpoint (ll, &sep);
-      session_lookup_del_session_endpoint (table_index, &sep);
-      application_local_listen_session_free (server, ll);
-    }
-
-  return 0;
-}
-
-static void
-application_local_session_fix_eventds (svm_msg_q_t * sq, svm_msg_q_t * cq)
-{
-  int fd;
-
-  /*
-   * segment manager initializes only the producer eventds, since vpp is
-   * typically the producer. But for local sessions, we also pass to the
-   * apps the mqs they listen on for events from peer apps, so they are also
-   * consumer fds.
-   */
-  fd = svm_msg_q_get_producer_eventfd (sq);
-  svm_msg_q_set_consumer_eventfd (sq, fd);
-  fd = svm_msg_q_get_producer_eventfd (cq);
-  svm_msg_q_set_consumer_eventfd (cq, fd);
-}
-
-int
-application_local_session_connect (app_worker_t * client_wrk,
-				   app_worker_t * server_wrk,
-				   local_session_t * ll, u32 opaque)
-{
-  u32 seg_size, evt_q_sz, evt_q_elts, margin = 16 << 10;
-  u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index;
-  segment_manager_properties_t *props, *cprops;
-  int rv, has_transport, seg_index;
-  svm_fifo_segment_private_t *seg;
-  application_t *server, *client;
-  segment_manager_t *sm;
-  local_session_t *ls;
-  svm_msg_q_t *sq, *cq;
-  u64 segment_handle;
-
-  ls = application_local_session_alloc (server_wrk);
-  server = application_get (server_wrk->app_index);
-  client = application_get (client_wrk->app_index);
-
-  props = application_segment_manager_properties (server);
-  cprops = application_segment_manager_properties (client);
-  evt_q_elts = props->evt_q_size + cprops->evt_q_size;
-  evt_q_sz = segment_manager_evt_q_expected_size (evt_q_elts);
-  round_rx_fifo_sz = 1 << max_log2 (props->rx_fifo_size);
-  round_tx_fifo_sz = 1 << max_log2 (props->tx_fifo_size);
-  seg_size = round_rx_fifo_sz + round_tx_fifo_sz + evt_q_sz + margin;
-
-  has_transport = session_has_transport ((stream_session_t *) ll);
-  if (!has_transport)
-    {
-      /* Local sessions don't have backing transport */
-      ls->port = ll->port;
-      sm = application_get_local_segment_manager (server_wrk);
-    }
-  else
-    {
-      stream_session_t *sl = (stream_session_t *) ll;
-      transport_connection_t *tc;
-      tc = listen_session_get_transport (sl);
-      ls->port = tc->lcl_port;
-      sm = app_worker_get_listen_segment_manager (server_wrk, sl);
-    }
-
-  seg_index = segment_manager_add_segment (sm, seg_size);
-  if (seg_index < 0)
-    {
-      clib_warning ("failed to add new cut-through segment");
-      return seg_index;
-    }
-  seg = segment_manager_get_segment_w_lock (sm, seg_index);
-  sq = segment_manager_alloc_queue (seg, props);
-  cq = segment_manager_alloc_queue (seg, cprops);
-
-  if (props->use_mq_eventfd)
-    application_local_session_fix_eventds (sq, cq);
-
-  ls->server_evt_q = pointer_to_uword (sq);
-  ls->client_evt_q = pointer_to_uword (cq);
-  rv = segment_manager_try_alloc_fifos (seg, props->rx_fifo_size,
-					props->tx_fifo_size,
-					&ls->server_rx_fifo,
-					&ls->server_tx_fifo);
-  if (rv)
-    {
-      clib_warning ("failed to add fifos in cut-through segment");
-      segment_manager_segment_reader_unlock (sm);
-      goto failed;
-    }
-  sm_index = segment_manager_index (sm);
-  ls->server_rx_fifo->ct_session_index = ls->session_index;
-  ls->server_tx_fifo->ct_session_index = ls->session_index;
-  ls->server_rx_fifo->segment_manager = sm_index;
-  ls->server_tx_fifo->segment_manager = sm_index;
-  ls->server_rx_fifo->segment_index = seg_index;
-  ls->server_tx_fifo->segment_index = seg_index;
-  ls->svm_segment_index = seg_index;
-  ls->listener_index = ll->session_index;
-  ls->client_wrk_index = client_wrk->wrk_index;
-  ls->client_opaque = opaque;
-  ls->listener_session_type = ll->session_type;
-  ls->session_state = SESSION_STATE_READY;
-
-  segment_handle = segment_manager_segment_handle (sm, seg);
-  if ((rv = server->cb_fns.add_segment_callback (server_wrk->api_client_index,
-						 segment_handle)))
-    {
-      clib_warning ("failed to notify server of new segment");
-      segment_manager_segment_reader_unlock (sm);
-      goto failed;
-    }
-  segment_manager_segment_reader_unlock (sm);
-  if ((rv = server->cb_fns.session_accept_callback ((stream_session_t *) ls)))
-    {
-      clib_warning ("failed to send accept cut-through notify to server");
-      goto failed;
-    }
-  if (server->flags & APP_OPTIONS_FLAGS_IS_BUILTIN)
-    application_local_session_connect_notify (ls);
-
-  return 0;
-
-failed:
-  if (!has_transport)
-    segment_manager_del_segment (sm, seg);
-  return rv;
-}
-
-static u64
-application_client_local_connect_key (local_session_t * ls)
-{
-  return (((u64) ls->app_wrk_index) << 32 | (u64) ls->session_index);
-}
-
-static void
-application_client_local_connect_key_parse (u64 key, u32 * app_wrk_index,
-					    u32 * session_index)
-{
-  *app_wrk_index = key >> 32;
-  *session_index = key & 0xFFFFFFFF;
-}
-
-int
-application_local_session_connect_notify (local_session_t * ls)
-{
-  svm_fifo_segment_private_t *seg;
-  app_worker_t *client_wrk, *server_wrk;
-  segment_manager_t *sm;
-  application_t *client;
-  int rv, is_fail = 0;
-  u64 segment_handle;
-  u64 client_key;
-
-  client_wrk = app_worker_get (ls->client_wrk_index);
-  server_wrk = app_worker_get (ls->app_wrk_index);
-  client = application_get (client_wrk->app_index);
-
-  sm = application_get_local_segment_manager_w_session (server_wrk, ls);
-  seg = segment_manager_get_segment_w_lock (sm, ls->svm_segment_index);
-  segment_handle = segment_manager_segment_handle (sm, seg);
-  if ((rv = client->cb_fns.add_segment_callback (client_wrk->api_client_index,
-						 segment_handle)))
-    {
-      clib_warning ("failed to notify client %u of new segment",
-		    ls->client_wrk_index);
-      segment_manager_segment_reader_unlock (sm);
-      application_local_session_disconnect (ls->client_wrk_index, ls);
-      is_fail = 1;
-    }
-  else
-    {
-      segment_manager_segment_reader_unlock (sm);
-    }
-
-  client->cb_fns.session_connected_callback (client_wrk->wrk_index,
-					     ls->client_opaque,
-					     (stream_session_t *) ls,
-					     is_fail);
-
-  client_key = application_client_local_connect_key (ls);
-  hash_set (client_wrk->local_connects, client_key, client_key);
-  return 0;
-}
-
-int
-application_local_session_cleanup (app_worker_t * client_wrk,
-				   app_worker_t * server_wrk,
-				   local_session_t * ls)
-{
-  svm_fifo_segment_private_t *seg;
-  stream_session_t *listener;
-  segment_manager_t *sm;
-  u64 client_key;
-  u8 has_transport;
-
-  /* Retrieve listener transport type as it is the one that decides where
-   * the fifos are allocated */
-  has_transport = application_local_session_listener_has_transport (ls);
-  if (!has_transport)
-    sm = application_get_local_segment_manager_w_session (server_wrk, ls);
-  else
-    {
-      listener = listen_session_get (ls->listener_index);
-      sm = app_worker_get_listen_segment_manager (server_wrk, listener);
-    }
-
-  seg = segment_manager_get_segment (sm, ls->svm_segment_index);
-  if (client_wrk)
-    {
-      client_key = application_client_local_connect_key (ls);
-      hash_unset (client_wrk->local_connects, client_key);
-    }
-
-  if (!has_transport)
-    {
-      application_t *server = application_get (server_wrk->app_index);
-      u64 segment_handle = segment_manager_segment_handle (sm, seg);
-      server->cb_fns.del_segment_callback (server_wrk->api_client_index,
-					   segment_handle);
-      if (client_wrk)
-	{
-	  application_t *client = application_get (client_wrk->app_index);
-	  client->cb_fns.del_segment_callback (client_wrk->api_client_index,
-					       segment_handle);
-	}
-      segment_manager_del_segment (sm, seg);
-    }
-
-  application_local_session_free (server_wrk, ls);
-
-  return 0;
-}
-
-int
-application_local_session_disconnect (u32 app_index, local_session_t * ls)
-{
-  app_worker_t *client_wrk, *server_wrk;
-  u8 is_server = 0, is_client = 0;
-  application_t *app;
-
-  app = application_get_if_valid (app_index);
-  if (!app)
-    return 0;
-
-  client_wrk = app_worker_get_if_valid (ls->client_wrk_index);
-  server_wrk = app_worker_get (ls->app_wrk_index);
-
-  if (server_wrk->app_index == app_index)
-    is_server = 1;
-  else if (client_wrk && client_wrk->app_index == app_index)
-    is_client = 1;
-
-  if (!is_server && !is_client)
-    {
-      clib_warning ("app %u is neither client nor server for session 0x%lx",
-		    app_index, application_local_session_handle (ls));
-      return VNET_API_ERROR_INVALID_VALUE;
-    }
-
-  if (ls->session_state == SESSION_STATE_CLOSED)
-    return application_local_session_cleanup (client_wrk, server_wrk, ls);
-
-  if (app_index == ls->client_wrk_index)
-    {
-      mq_send_local_session_disconnected_cb (ls->app_wrk_index, ls);
-    }
-  else
-    {
-      if (!client_wrk)
-	{
-	  return application_local_session_cleanup (client_wrk, server_wrk,
-						    ls);
-	}
-      else if (ls->session_state < SESSION_STATE_READY)
-	{
-	  application_t *client = application_get (client_wrk->app_index);
-	  client->cb_fns.session_connected_callback (client_wrk->wrk_index,
-						     ls->client_opaque,
-						     (stream_session_t *) ls,
-						     1 /* is_fail */ );
-	  ls->session_state = SESSION_STATE_CLOSED;
-	  return application_local_session_cleanup (client_wrk, server_wrk,
-						    ls);
-	}
-      else
-	{
-	  mq_send_local_session_disconnected_cb (client_wrk->wrk_index, ls);
-	}
-    }
-
-  ls->session_state = SESSION_STATE_CLOSED;
-
-  return 0;
-}
-
-int
-application_local_session_disconnect_w_index (u32 app_wrk_index, u32 ls_index)
-{
-  app_worker_t *app_wrk;
-  local_session_t *ls;
-  app_wrk = app_worker_get (app_wrk_index);
-  ls = application_get_local_session (app_wrk, ls_index);
-  return application_local_session_disconnect (app_wrk_index, ls);
-}
-
-void
-app_worker_local_sessions_free (app_worker_t * app_wrk)
-{
-  u32 index, server_wrk_index, session_index;
-  u64 handle, *handles = 0;
-  app_worker_t *server_wrk;
-  segment_manager_t *sm;
-  local_session_t *ls;
-  int i;
-
-  /*
-   * Local sessions
-   */
-  if (app_wrk->local_sessions)
-    {
-      /* *INDENT-OFF* */
-      pool_foreach (ls, app_wrk->local_sessions, ({
-	application_local_session_disconnect (app_wrk->wrk_index, ls);
-      }));
-      /* *INDENT-ON* */
-    }
-
-  /*
-   * Local connects
-   */
-  vec_reset_length (handles);
-  /* *INDENT-OFF* */
-  hash_foreach (handle, index, app_wrk->local_connects, ({
-    vec_add1 (handles, handle);
-  }));
-  /* *INDENT-ON* */
-
-  for (i = 0; i < vec_len (handles); i++)
-    {
-      application_client_local_connect_key_parse (handles[i],
-						  &server_wrk_index,
-						  &session_index);
-      server_wrk = app_worker_get_if_valid (server_wrk_index);
-      if (server_wrk)
-	{
-	  ls = application_get_local_session (server_wrk, session_index);
-	  application_local_session_disconnect (app_wrk->wrk_index, ls);
-	}
-    }
-
-  sm = segment_manager_get (app_wrk->local_segment_manager);
-  sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
-  segment_manager_del (sm);
-}
-
 clib_error_t *
 vnet_app_add_tls_cert (vnet_app_add_tls_cert_args_t * a)
 {
@@ -1994,45 +1431,6 @@ vnet_app_add_tls_key (vnet_app_add_tls_key_args_t * a)
 				   0, "app %u doesn't exist", a->app_index);
   app->tls_key = vec_dup (a->key);
   return 0;
-}
-
-u8 *
-format_app_worker_listener (u8 * s, va_list * args)
-{
-  app_worker_t *app_wrk = va_arg (*args, app_worker_t *);
-  u64 handle = va_arg (*args, u64);
-  u32 sm_index = va_arg (*args, u32);
-  int verbose = va_arg (*args, int);
-  stream_session_t *listener;
-  const u8 *app_name;
-  u8 *str;
-
-  if (!app_wrk)
-    {
-      if (verbose)
-	s = format (s, "%-40s%-25s%=10s%-15s%-15s%-10s", "Connection", "App",
-		    "Wrk", "API Client", "ListenerID", "SegManager");
-      else
-	s = format (s, "%-40s%-25s%=10s", "Connection", "App", "Wrk");
-
-      return s;
-    }
-
-  app_name = application_name_from_index (app_wrk->app_index);
-  listener = listen_session_get_from_handle (handle);
-  str = format (0, "%U", format_stream_session, listener, verbose);
-
-  if (verbose)
-    {
-      char buf[32];
-      sprintf (buf, "%u(%u)", app_wrk->wrk_map_index, app_wrk->wrk_index);
-      s = format (s, "%-40s%-25s%=10s%-15u%-15u%-10u", str, app_name,
-		  buf, app_wrk->api_client_index, handle, sm_index);
-    }
-  else
-    s = format (s, "%-40s%-25s%=10u", str, app_name, app_wrk->wrk_map_index);
-
-  return s;
 }
 
 static void
@@ -2065,69 +1463,6 @@ application_format_listeners (application_t * app, int verbose)
 }
 
 static void
-app_worker_format_connects (app_worker_t * app_wrk, int verbose)
-{
-  svm_fifo_segment_private_t *fifo_segment;
-  vlib_main_t *vm = vlib_get_main ();
-  segment_manager_t *sm;
-  const u8 *app_name;
-  u8 *s = 0;
-
-  /* Header */
-  if (!app_wrk)
-    {
-      if (verbose)
-	vlib_cli_output (vm, "%-40s%-20s%-15s%-10s", "Connection", "App",
-			 "API Client", "SegManager");
-      else
-	vlib_cli_output (vm, "%-40s%-20s", "Connection", "App");
-      return;
-    }
-
-  if (app_wrk->connects_seg_manager == (u32) ~ 0)
-    return;
-
-  app_name = application_name_from_index (app_wrk->app_index);
-
-  /* Across all fifo segments */
-  sm = segment_manager_get (app_wrk->connects_seg_manager);
-
-  /* *INDENT-OFF* */
-  segment_manager_foreach_segment_w_lock (fifo_segment, sm, ({
-    svm_fifo_t *fifo;
-    u8 *str;
-
-    fifo = svm_fifo_segment_get_fifo_list (fifo_segment);
-    while (fifo)
-      {
-        u32 session_index, thread_index;
-        stream_session_t *session;
-
-        session_index = fifo->master_session_index;
-        thread_index = fifo->master_thread_index;
-
-        session = session_get (session_index, thread_index);
-        str = format (0, "%U", format_stream_session, session, verbose);
-
-        if (verbose)
-          s = format (s, "%-40s%-20s%-15u%-10u", str, app_name,
-                      app_wrk->api_client_index, app_wrk->connects_seg_manager);
-        else
-          s = format (s, "%-40s%-20s", str, app_name);
-
-        vlib_cli_output (vm, "%v", s);
-        vec_reset_length (s);
-        vec_free (str);
-
-        fifo = fifo->next;
-      }
-    vec_free (s);
-  }));
-  /* *INDENT-ON* */
-
-}
-
-static void
 application_format_connects (application_t * app, int verbose)
 {
   app_worker_map_t *wrk_map;
@@ -2145,40 +1480,6 @@ application_format_connects (application_t * app, int verbose)
     app_worker_format_connects (app_wrk, verbose);
   }));
   /* *INDENT-ON* */
-}
-
-static void
-app_worker_format_local_sessions (app_worker_t * app_wrk, int verbose)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  local_session_t *ls;
-  transport_proto_t tp;
-  u8 *conn = 0;
-
-  /* Header */
-  if (app_wrk == 0)
-    {
-      vlib_cli_output (vm, "%-40s%-15s%-20s", "Connection", "ServerApp",
-		       "ClientApp");
-      return;
-    }
-
-  if (!pool_elts (app_wrk->local_sessions)
-      && !pool_elts (app_wrk->local_connects))
-    return;
-
-  /* *INDENT-OFF* */
-  pool_foreach (ls, app_wrk->local_sessions, ({
-    tp = session_type_transport_proto(ls->listener_session_type);
-    conn = format (0, "[L][%U] *:%u", format_transport_proto_short, tp,
-                   ls->port);
-    vlib_cli_output (vm, "%-40v%-15u%-20u", conn, ls->app_wrk_index,
-                     ls->client_wrk_index);
-    vec_reset_length (conn);
-  }));
-  /* *INDENT-ON* */
-
-  vec_free (conn);
 }
 
 static void
@@ -2223,43 +1524,6 @@ application_format_local_sessions (application_t * app, int verbose)
 }
 
 static void
-app_worker_format_local_connects (app_worker_t * app, int verbose)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  u32 app_wrk_index, session_index;
-  app_worker_t *server_wrk;
-  local_session_t *ls;
-  u64 client_key;
-  u64 value;
-
-  /* Header */
-  if (app == 0)
-    {
-      if (verbose)
-	vlib_cli_output (vm, "%-40s%-15s%-20s%-10s", "Connection", "App",
-			 "Peer App", "SegManager");
-      else
-	vlib_cli_output (vm, "%-40s%-15s%-20s", "Connection", "App",
-			 "Peer App");
-      return;
-    }
-
-  if (!app->local_connects)
-    return;
-
-  /* *INDENT-OFF* */
-  hash_foreach (client_key, value, app->local_connects, ({
-    application_client_local_connect_key_parse (client_key, &app_wrk_index,
-                                                &session_index);
-    server_wrk = app_worker_get (app_wrk_index);
-    ls = application_get_local_session (server_wrk, session_index);
-    vlib_cli_output (vm, "%-40s%-15s%-20s", "TODO", ls->app_wrk_index,
-                     ls->client_wrk_index);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
 application_format_local_connects (application_t * app, int verbose)
 {
   app_worker_map_t *wrk_map;
@@ -2277,19 +1541,6 @@ application_format_local_connects (application_t * app, int verbose)
     app_worker_format_local_connects (app_wrk, verbose);
   }));
   /* *INDENT-ON* */
-}
-
-u8 *
-format_application_worker (u8 * s, va_list * args)
-{
-  app_worker_t *app_wrk = va_arg (*args, app_worker_t *);
-  u32 indent = 1;
-
-  s = format (s, "%U wrk-index %u app-index %u map-index %u "
-	      "api-client-index %d\n", format_white_space, indent,
-	      app_wrk->wrk_index, app_wrk->app_index, app_wrk->wrk_map_index,
-	      app_wrk->api_client_index);
-  return s;
 }
 
 u8 *
@@ -2329,7 +1580,7 @@ format_application (u8 * s, va_list * args)
   /* *INDENT-OFF* */
   pool_foreach (wrk_map, app->worker_maps, ({
       app_wrk = app_worker_get (wrk_map->wrk_index);
-      s = format (s, "%U", format_application_worker, app_wrk);
+      s = format (s, "%U", format_app_worker, app_wrk);
   }));
   /* *INDENT-ON* */
 

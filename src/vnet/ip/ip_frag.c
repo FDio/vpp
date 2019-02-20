@@ -78,9 +78,6 @@ frag_buffer_alloc (vlib_buffer_t * org_b, u32 * bi)
     return 0;
 
   vlib_buffer_t *b = vlib_get_buffer (vm, *bi);
-  vlib_buffer_free_list_t *fl =
-    vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-  vlib_buffer_init_for_free_list (b, fl);
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   vlib_buffer_copy_trace_flag (vm, org_b, *bi);
 
@@ -109,7 +106,8 @@ ip4_frag_do_fragment (vlib_main_t * vm, u32 from_bi, u32 ** buffer,
 
   rem = clib_net_to_host_u16 (ip4->length) - sizeof (ip4_header_t);
   max =
-    (clib_min (mtu, VLIB_BUFFER_DATA_SIZE) - sizeof (ip4_header_t)) & ~0x7;
+    (clib_min (mtu, vlib_buffer_get_default_data_size (vm)) -
+     sizeof (ip4_header_t)) & ~0x7;
 
   if (rem >
       (vlib_buffer_length_in_chain (vm, from_b) - sizeof (ip4_header_t)))

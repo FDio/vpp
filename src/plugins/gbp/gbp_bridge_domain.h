@@ -58,6 +58,11 @@ typedef struct gbp_bridge_domain_t_
   u32 gb_uu_fwd_sw_if_index;
 
   /**
+   * The BD's interface to sned Broadcast and multicast packets
+   */
+  u32 gb_bm_flood_sw_if_index;
+
+  /**
    * The BD's VNI interface on which packets from unkown endpoints
    * arrive
    */
@@ -73,7 +78,9 @@ typedef struct gbp_bridge_domain_t_
 extern int gbp_bridge_domain_add_and_lock (u32 bd_id,
 					   gbp_bridge_domain_flags_t flags,
 					   u32 bvi_sw_if_index,
-					   u32 uu_fwd_sw_if_index);
+					   u32 uu_fwd_sw_if_index,
+					   u32 bm_flood_sw_if_index);
+
 extern void gbp_bridge_domain_unlock (index_t gbi);
 extern index_t gbp_bridge_domain_find_and_lock (u32 bd_id);
 extern int gbp_bridge_domain_delete (u32 bd_id);

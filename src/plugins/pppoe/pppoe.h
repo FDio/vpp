@@ -96,7 +96,7 @@ typedef enum
 
 
 #define MTU 1500
-#define MTU_BUFFERS ((MTU + VLIB_BUFFER_DATA_SIZE - 1) / VLIB_BUFFER_DATA_SIZE)
+#define MTU_BUFFERS ((MTU + vlib_buffer_get_default_data_size(vm) - 1) / vlib_buffer_get_default_data_size(vm))
 #define NUM_BUFFERS_TO_ALLOC 32
 
 /*

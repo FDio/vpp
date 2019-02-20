@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -379,7 +379,7 @@ void
 segment_manager_del_sessions (segment_manager_t * sm)
 {
   svm_fifo_segment_private_t *fifo_segment;
-  stream_session_t *session;
+  session_t *session;
   svm_fifo_t *fifo;
 
   ASSERT (pool_elts (sm->segments) != 0);
@@ -399,7 +399,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
 	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
 	  {
 	    svm_fifo_t *next = fifo->next;
-	    application_local_session_disconnect_w_index (sm->app_wrk_index,
+	    app_worker_local_session_disconnect_w_index (sm->app_wrk_index,
 	                                                  fifo->ct_session_index);
 	    fifo = next;
 	    continue;
@@ -598,6 +598,9 @@ segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
 {
   svm_fifo_segment_private_t *fifo_segment;
   segment_manager_t *sm;
+
+  if (!rx_fifo || !tx_fifo)
+    return;
 
   /* It's possible to have no segment manager if the session was removed
    * as result of a detach. */

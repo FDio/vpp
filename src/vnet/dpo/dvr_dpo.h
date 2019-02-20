@@ -54,7 +54,7 @@ extern void dvr_dpo_module_init(void);
 /**
  * @brief pool of all interface DPOs
  */
-dvr_dpo_t *dvr_dpo_pool;
+extern dvr_dpo_t *dvr_dpo_pool;
 
 static inline dvr_dpo_t *
 dvr_dpo_get (index_t index)

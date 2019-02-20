@@ -98,7 +98,6 @@ $(GET_PIP_SCRIPT):
 
 $(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
 	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) $(GET_PIP_SCRIPT)"
 	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install $(PYTHON_DEPENDS)"
 	@touch $@
 
@@ -179,10 +178,10 @@ retest: verify-test-dir sanity reset
 shell: verify-test-dir $(PAPI_INSTALL_DONE)
 	@echo "source $(VENV_PATH)/bin/activate;\
 		echo '***';\
-		echo _BUILD_DIR=$(VPP_BUILD_DIR);\
-		echo _BIN=$(VPP_BIN);\
-		echo _PLUGIN_PATH=$(VPP_PLUGIN_PATH);\
-		echo _INSTALL_PATH=$(VPP_INSTALL_PATH);\
+		echo VPP_BUILD_DIR=$(VPP_BUILD_DIR);\
+		echo VPP_BIN=$(VPP_BIN);\
+		echo VPP_PLUGIN_PATH=$(VPP_PLUGIN_PATH);\
+		echo VPP_INSTALL_PATH=$(VPP_INSTALL_PATH);\
 		echo EXTERN_TESTS=$(EXTERN_TESTS);\
 		echo EXTERN_PLUGINS=$(EXTERN_PLUGINS);\
                 echo EXTERN_COV_DIR=$(EXTERN_COV_DIR);\
@@ -204,9 +203,9 @@ wipe: reset
 	@rm -f $(PAPI_INSTALL_FLAGS)
 
 doc: verify-test-dir $(PIP_PATCH_DONE)
-	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install sphinx sphinx-rtd-theme"
-	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
+	@virtualenv $(VENV_PATH) -p python3
+	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install sphinx sphinx-rtd-theme"
+	@bash -c "source $(VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) html"
 
 .PHONY: wipe-doc
 
@@ -214,11 +213,11 @@ wipe-doc:
 	@make -C doc wipe BR=$(BR)
 
 cov: wipe-cov reset ext verify-test-dir $(PAPI_INSTALL_DONE)
-	@lcov --zerocounters --directory $(_BUILD_DIR)
+	@lcov --zerocounters --directory $(VPP_BUILD_DIR)
 	@test -z "$(EXTERN_COV_DIR)" || lcov --zerocounters --directory $(EXTERN_COV_DIR)
 	$(call retest-func)
 	@mkdir $(BUILD_COV_DIR)
-	@lcov --capture --directory $(_BUILD_DIR) --output-file $(BUILD_COV_DIR)/coverage.info
+	@lcov --capture --directory $(VPP_BUILD_DIR) --output-file $(BUILD_COV_DIR)/coverage.info
 	@test -z "$(EXTERN_COV_DIR)" || lcov --capture --directory $(EXTERN_COV_DIR) --output-file $(BUILD_COV_DIR)/extern-coverage.info
 	@genhtml $(BUILD_COV_DIR)/coverage.info --output-directory $(BUILD_COV_DIR)/html
 	@test -z "$(EXTERN_COV_DIR)" || genhtml $(BUILD_COV_DIR)/extern-coverage.info --output-directory $(BUILD_COV_DIR)/extern-html
@@ -233,10 +232,10 @@ wipe-cov: wipe
 
 .PHONY: checkstyle
 checkstyle: verify-test-dir
-	@virtualenv $(VENV_PATH) -p $(PYTHON_INTERP)
-	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install pycodestyle"
+	@virtualenv $(VENV_PATH) -p python3
+	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 -v $(WS_ROOT)/test/*.py ||\
+		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
 	         echo \"*******************************************************************\" &&\
@@ -260,6 +259,7 @@ help:
 	@echo ""
 	@echo "Arguments controlling test runs:"
 	@echo " V=[0|1|2]            - set test verbosity level"
+	@echo "                        0=ERROR, 1=INFO, 2=DEBUG"
 	@echo " TEST_JOBS=[<n>|auto] - use <n> parallel processes for test execution or automatic discovery of maximum acceptable processes (default: 1)"
 	@echo " CACHE_OUTPUT=[0|1]   - cache VPP stdout/stderr and log as one block after test finishes (default: 1)"
 	@echo " FAILFAST=[0|1]       - fail fast if 1, complete all tests if 0"

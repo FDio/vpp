@@ -104,7 +104,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip40;
 	  ip6_header_t *ip60;
 	  u8 *data0;
-	  stream_session_t *s0;
+	  session_t *s0;
 	  udp_connection_t *uc0, *child0, *new_uc0;
 	  transport_connection_t *tc0;
 	  int wrote0;
@@ -207,7 +207,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  child0->c_rmt_port = udp0->src_port;
 		  child0->c_is_ip4 = is_ip4;
 
-		  if (stream_session_accept (&child0->connection,
+		  if (session_stream_accept (&child0->connection,
 					     tc0->s_index, 1))
 		    {
 		      error0 = UDP_ERROR_CREATE_SESSION;
@@ -229,7 +229,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (!uc0->is_connected)
 	    {
-	      if (svm_fifo_max_enqueue (s0->server_rx_fifo)
+	      if (svm_fifo_max_enqueue (s0->rx_fifo)
 		  < b0->current_length + sizeof (session_dgram_hdr_t))
 		{
 		  error0 = UDP_ERROR_FIFO_FULL;
@@ -255,8 +255,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (svm_fifo_max_enqueue (s0->server_rx_fifo)
-		  < b0->current_length)
+	      if (svm_fifo_max_enqueue (s0->rx_fifo) < b0->current_length)
 		{
 		  error0 = UDP_ERROR_FIFO_FULL;
 		  goto trace0;

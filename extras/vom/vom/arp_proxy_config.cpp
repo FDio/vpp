@@ -14,6 +14,7 @@
  */
 
 #include "vom/arp_proxy_config.hpp"
+#include "vom/api_types.hpp"
 #include "vom/arp_proxy_config_cmds.hpp"
 #include "vom/prefix.hpp"
 #include "vom/singular_db_funcs.hpp"
@@ -125,8 +126,8 @@ arp_proxy_config::event_handler::handle_populate(const client_db::key_t& key)
   for (auto& record : *cmd) {
     auto& payload = record.get_payload();
 
-    boost::asio::ip::address lo = from_bytes(0, payload.proxy.low_address);
-    boost::asio::ip::address hi = from_bytes(0, payload.proxy.hi_address);
+    boost::asio::ip::address lo = from_api(payload.proxy.low);
+    boost::asio::ip::address hi = from_api(payload.proxy.hi);
 
     arp_proxy_config ap(lo.to_v4(), hi.to_v4());
     OM::commit(key, ap);

@@ -180,7 +180,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   memif_main_t *mm = &memif_main;
   memif_ring_t *ring;
   memif_queue_t *mq;
-  u16 buffer_size = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES;
+  u16 buffer_size = vlib_buffer_get_default_data_size (vm);
   uword n_trace = vlib_get_trace_count (vm, node);
   u16 nexts[MEMIF_RX_VECTOR_SZ], *next = nexts;
   u32 _to_next_bufs[MEMIF_RX_VECTOR_SZ], *to_next_bufs = _to_next_bufs, *bi;
@@ -190,7 +190,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 thread_index = vm->thread_index;
   memif_per_thread_data_t *ptd = vec_elt_at_index (mm->per_thread_data,
 						   thread_index);
-  vlib_buffer_t *bt = &ptd->buffer_template;
+  vlib_buffer_t bt;
   u16 cur_slot, last_slot, ring_size, n_slots, mask;
   i16 start_offset;
   u16 n_buffers = 0, n_alloc;
@@ -280,7 +280,8 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* allocate free buffers */
   vec_validate_aligned (ptd->buffers, n_buffers - 1, CLIB_CACHE_LINE_BYTES);
-  n_alloc = vlib_buffer_alloc (vm, ptd->buffers, n_buffers);
+  n_alloc = vlib_buffer_alloc_from_pool (vm, ptd->buffers, n_buffers,
+					 mq->buffer_pool_index);
   if (PREDICT_FALSE (n_alloc != n_buffers))
     {
       if (n_alloc)
@@ -338,10 +339,13 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* prepare buffer template and next indices */
-  vnet_buffer (bt)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-  vnet_buffer (bt)->feature_arc_index = 0;
-  bt->current_data = start_offset;
-  bt->current_config_index = 0;
+  vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_RX] =
+    mif->sw_if_index;
+  vnet_buffer (&ptd->buffer_template)->feature_arc_index = 0;
+  ptd->buffer_template.current_data = start_offset;
+  ptd->buffer_template.current_config_index = 0;
+  ptd->buffer_template.buffer_pool_index = mq->buffer_pool_index;
+  ptd->buffer_template.ref_count = 1;
 
   if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
     {
@@ -350,7 +354,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	next_index = mif->per_interface_next_index;
       else
 	vnet_feature_start_device_input_x1 (mif->sw_if_index, &next_index,
-					    bt);
+					    &ptd->buffer_template);
 
       vlib_get_new_next_frame (vm, node, next_index, to_next_bufs,
 			       n_left_to_next);
@@ -374,12 +378,16 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   po = ptd->packet_ops;
   bi = to_next_bufs;
 
+  /* copy template into local variable - will save per packet load */
+  vlib_buffer_copy_template (&bt, &ptd->buffer_template);
+
   while (n_from >= 8)
     {
-      b0 = vlib_get_buffer (vm, po[4].first_buffer_vec_index);
-      b1 = vlib_get_buffer (vm, po[5].first_buffer_vec_index);
-      b2 = vlib_get_buffer (vm, po[6].first_buffer_vec_index);
-      b3 = vlib_get_buffer (vm, po[7].first_buffer_vec_index);
+      b0 = vlib_get_buffer (vm, ptd->buffers[po[0].first_buffer_vec_index]);
+      b1 = vlib_get_buffer (vm, ptd->buffers[po[1].first_buffer_vec_index]);
+      b2 = vlib_get_buffer (vm, ptd->buffers[po[2].first_buffer_vec_index]);
+      b3 = vlib_get_buffer (vm, ptd->buffers[po[3].first_buffer_vec_index]);
+
       vlib_prefetch_buffer_header (b0, STORE);
       vlib_prefetch_buffer_header (b1, STORE);
       vlib_prefetch_buffer_header (b2, STORE);
@@ -402,7 +410,10 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       b2 = vlib_get_buffer (vm, bi[2]);
       b3 = vlib_get_buffer (vm, bi[3]);
 
-      clib_memcpy64_x4 (b0, b1, b2, b3, bt);
+      vlib_buffer_copy_template (b0, &bt);
+      vlib_buffer_copy_template (b1, &bt);
+      vlib_buffer_copy_template (b2, &bt);
+      vlib_buffer_copy_template (b3, &bt);
 
       b0->current_length = po[0].packet_len;
       n_rx_bytes += b0->current_length;
@@ -439,7 +450,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       fbvi[0] = po[0].first_buffer_vec_index;
       bi[0] = ptd->buffers[fbvi[0]];
       b0 = vlib_get_buffer (vm, bi[0]);
-      clib_memcpy_fast (b0, bt, 64);
+      vlib_buffer_copy_template (b0, &bt);
       b0->current_length = po->packet_len;
       n_rx_bytes += b0->current_length;
 
@@ -559,7 +570,7 @@ memif_device_input_zc_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* asume that somebody will want to add ethernet header on the packet
      so start with IP header at offset 14 */
   start_offset = (mode == MEMIF_INTERFACE_MODE_IP) ? 14 : 0;
-  buffer_length = VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES - start_offset;
+  buffer_length = vlib_buffer_get_default_data_size (vm) - start_offset;
 
   cur_slot = mq->last_tail;
   last_slot = ring->tail;
@@ -776,8 +787,9 @@ refill:
   clib_memset (dt, 0, sizeof (memif_desc_t));
   dt->length = buffer_length;
 
-  n_alloc = vlib_buffer_alloc_to_ring (vm, mq->buffers, head & mask,
-				       ring_size, n_slots);
+  n_alloc = vlib_buffer_alloc_to_ring_from_pool (vm, mq->buffers, head & mask,
+						 ring_size, n_slots,
+						 mq->buffer_pool_index);
 
   if (PREDICT_FALSE (n_alloc != n_slots))
     {

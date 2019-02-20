@@ -176,6 +176,7 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
     rv = clib_mem_alloc (nbytes);
 
   rv->q = 0;
+  rv->gc_mark_timestamp = 0;
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&am->vlib_rp->mutex);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Copyright (c) 2017-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/session/transport_interface.h>
+#include <vnet/session/transport.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 
@@ -125,14 +125,13 @@ u8 *
 format_transport_listen_connection (u8 * s, va_list * args)
 {
   u32 transport_proto = va_arg (*args, u32);
-  u32 listen_index = va_arg (*args, u32);
   transport_proto_vft_t *tp_vft;
 
   tp_vft = transport_protocol_get_vft (transport_proto);
   if (!tp_vft)
     return s;
 
-  s = format (s, "%U", tp_vft->format_listener, listen_index);
+  s = (tp_vft->format_listener) (s, args);
   return s;
 }
 
@@ -270,6 +269,37 @@ transport_tx_fn_type_t
 transport_protocol_tx_fn_type (transport_proto_t tp)
 {
   return tp_vfts[tp].tx_type;
+}
+
+void
+transport_cleanup (transport_proto_t tp, u32 conn_index, u8 thread_index)
+{
+  tp_vfts[tp].cleanup (conn_index, thread_index);
+}
+
+int
+transport_connect (transport_proto_t tp, transport_endpoint_cfg_t * tep)
+{
+  return tp_vfts[tp].connect (tep);
+}
+
+void
+transport_close (transport_proto_t tp, u32 conn_index, u8 thread_index)
+{
+  tp_vfts[tp].close (conn_index, thread_index);
+}
+
+u32
+transport_start_listen (transport_proto_t tp, u32 session_index,
+			transport_endpoint_t * tep)
+{
+  return tp_vfts[tp].start_listen (session_index, tep);
+}
+
+u32
+transport_stop_listen (transport_proto_t tp, u32 conn_index)
+{
+  return tp_vfts[tp].stop_listen (conn_index);
 }
 
 u8

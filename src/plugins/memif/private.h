@@ -123,6 +123,7 @@ typedef struct
   u16 last_head;
   u16 last_tail;
   u32 *buffers;
+  u8 buffer_pool_index;
 
   /* interrupts */
   int int_fd;
@@ -254,7 +255,7 @@ extern memif_main_t memif_main;
 extern vnet_device_class_t memif_device_class;
 extern vlib_node_registration_t memif_input_node;
 
-enum
+typedef enum
 {
   MEMIF_PROCESS_EVENT_START = 1,
   MEMIF_PROCESS_EVENT_STOP = 2,

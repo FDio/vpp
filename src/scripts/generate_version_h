@@ -22,7 +22,7 @@ cat > ${1} << __EOF__
 #define VPP_BUILD_DATE "$(date)"
 #define VPP_BUILD_USER "$(whoami)"
 #define VPP_BUILD_HOST "$(hostname)"
-#define VPP_BUILD_TOPDIR "$(git rev-parse --show-toplevel)"
+#define VPP_BUILD_TOPDIR "$(git rev-parse --show-toplevel 2> /dev/null)"
 #define VPP_BUILD_VER "$(scripts/version)"
 #endif
 __EOF__

@@ -63,15 +63,16 @@ typedef enum
 
 typedef enum
 {
-  STATE_START = 0x01,
-  STATE_CONNECT = 0x02,
-  STATE_LISTEN = 0x04,
-  STATE_ACCEPT = 0x08,
-  STATE_VPP_CLOSING = 0x10,
-  STATE_DISCONNECT = 0x20,
-  STATE_FAILED = 0x40,
-  STATE_UPDATED = 0x80,
-} session_state_t;
+  STATE_START = 0,
+  STATE_CONNECT = 0x01,
+  STATE_LISTEN = 0x02,
+  STATE_ACCEPT = 0x04,
+  STATE_VPP_CLOSING = 0x08,
+  STATE_DISCONNECT = 0x10,
+  STATE_FAILED = 0x20,
+  STATE_UPDATED = 0x40,
+  STATE_LISTEN_NO_MQ = 0x80,
+} vcl_session_state_t;
 
 #define SERVER_STATE_OPEN  (STATE_ACCEPT|STATE_VPP_CLOSING)
 #define CLIENT_STATE_OPEN  (STATE_CONNECT|STATE_VPP_CLOSING)
@@ -114,7 +115,7 @@ typedef struct vcl_session_msg
   u32 flags;
 } vcl_session_msg_t;
 
-enum
+typedef enum
 {
   VCL_SESS_ATTR_SERVER,
   VCL_SESS_ATTR_CUT_THRU,
@@ -181,7 +182,6 @@ typedef struct
   svm_msg_q_t *our_evt_q;
   u64 options[16];
   vcl_session_msg_t *accept_evts_fifo;
-  u32 shared_index;
 #if VCL_ELOG
   elog_track_t elog_track;
 #endif
@@ -371,7 +371,6 @@ vcl_session_alloc (vcl_worker_t * wrk)
   pool_get (wrk->sessions, s);
   memset (s, 0, sizeof (*s));
   s->session_index = s - wrk->sessions;
-  s->shared_index = ~0;
   return s;
 }
 
@@ -389,11 +388,17 @@ vcl_session_get (vcl_worker_t * wrk, u32 session_index)
   return pool_elt_at_index (wrk->sessions, session_index);
 }
 
-static inline int
+static inline vcl_session_handle_t
+vcl_session_handle_from_index (u32 session_index)
+{
+  ASSERT (session_index < 2 << 24);
+  return (vcl_get_worker_index () << 24 | session_index);
+}
+
+static inline vcl_session_handle_t
 vcl_session_handle (vcl_session_t * s)
 {
-  ASSERT (s->session_index < 2 << 24);
-  return (vcl_get_worker_index () << 24 | s->session_index);
+  return vcl_session_handle_from_index (s->session_index);
 }
 
 static inline void
@@ -487,16 +492,44 @@ vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 listener_handle)
     }
 
   session = pool_elt_at_index (wrk->sessions, p[0]);
-  ASSERT (session->session_state & STATE_LISTEN);
+  ASSERT (session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ));
   return session;
 }
 
-const char *vppcom_session_state_str (session_state_t state);
+const char *vppcom_session_state_str (vcl_session_state_t state);
 
 static inline u8
 vcl_session_is_ct (vcl_session_t * s)
 {
   return (s->our_evt_q != 0);
+}
+
+static inline u8
+vcl_session_is_open (vcl_session_t * s)
+{
+  return ((s->session_state & STATE_OPEN)
+	  || (s->session_state == STATE_LISTEN
+	      && s->session_type == VPPCOM_PROTO_UDP));
+}
+
+static inline u8
+vcl_session_is_closing (vcl_session_t * s)
+{
+  return (s->session_state == STATE_VPP_CLOSING
+	  || s->session_state == STATE_DISCONNECT);
+}
+
+static inline int
+vcl_session_closing_error (vcl_session_t * s)
+{
+  return s->session_state == STATE_DISCONNECT ? VPPCOM_ECONNRESET : 0;
+}
+
+static inline int
+vcl_session_closed_error (vcl_session_t * s)
+{
+  return s->session_state == STATE_DISCONNECT
+    ? VPPCOM_ECONNRESET : VPPCOM_ENOTCONN;
 }
 
 /*
@@ -529,11 +562,18 @@ int vcl_worker_set_bapi (void);
 void vcl_worker_share_sessions (vcl_worker_t * parent_wrk);
 int vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s);
 vcl_shared_session_t *vcl_shared_session_get (u32 ss_index);
-int vcl_session_get_refcnt (vcl_session_t * s);
+
+void vcl_flush_mq_events (void);
+void vcl_cleanup_bapi (void);
+int vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
+			 vcl_session_handle_t sh, u8 do_disconnect);
 
 void vcl_segment_table_add (u64 segment_handle, u32 svm_segment_index);
 u32 vcl_segment_table_lookup (u64 segment_handle);
 void vcl_segment_table_del (u64 segment_handle);
+
+int vcl_session_read_ready (vcl_session_t * session);
+int vcl_session_write_ready (vcl_session_t * session);
 
 static inline vcl_worker_t *
 vcl_worker_get (u32 wrk_index)
@@ -553,6 +593,12 @@ static inline vcl_worker_t *
 vcl_worker_get_current (void)
 {
   return vcl_worker_get (vcl_get_worker_index ());
+}
+
+static inline u8
+vcl_n_workers (void)
+{
+  return pool_elts (vcm->workers);
 }
 
 static inline svm_msg_q_t *
@@ -577,7 +623,7 @@ void vppcom_app_send_detach (void);
 void vppcom_send_connect_sock (vcl_session_t * session);
 void vppcom_send_disconnect_session (u64 vpp_handle);
 void vppcom_send_bind_sock (vcl_session_t * session);
-void vppcom_send_unbind_sock (u64 vpp_handle);
+void vppcom_send_unbind_sock (vcl_worker_t * wrk, u64 vpp_handle);
 void vppcom_api_hookup (void);
 void vppcom_send_application_tls_cert_add (vcl_session_t * session,
 					   char *cert, u32 cert_len);

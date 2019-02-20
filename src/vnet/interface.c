@@ -837,7 +837,7 @@ vnet_register_interface (vnet_main_t * vnm,
       /* The new class may differ from the old one.
        * Functions have to be updated. */
       node = vlib_get_node (vm, hw->output_node_index);
-      node->function = vnet_interface_output_node_multiarch_select ();
+      node->function = vnet_interface_output_node;
       node->format_trace = format_vnet_interface_output_trace;
       /* *INDENT-OFF* */
       foreach_vlib_main ({
@@ -887,7 +887,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
       r.flags = 0;
       r.name = output_node_name;
-      r.function = vnet_interface_output_node_multiarch_select ();
+      r.function = vnet_interface_output_node;
       r.format_trace = format_vnet_interface_output_trace;
 
       {

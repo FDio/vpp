@@ -174,7 +174,8 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
       if (snat_is_unk_proto_session (s))
 	goto delete;
 
-      snat_ipfix_logging_nat44_ses_delete (s->in2out.addr.as_u32,
+      snat_ipfix_logging_nat44_ses_delete (ctx->thread_index,
+					   s->in2out.addr.as_u32,
 					   s->out2in.addr.as_u32,
 					   s->in2out.protocol,
 					   s->in2out.port,
@@ -318,7 +319,8 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 					       &ctx))
     nat_log_notice ("in2out-ed key add failed");
 
-  snat_ipfix_logging_nat44_ses_create (s->in2out.addr.as_u32,
+  snat_ipfix_logging_nat44_ses_create (thread_index,
+				       s->in2out.addr.as_u32,
 				       s->out2in.addr.as_u32,
 				       s->in2out.protocol,
 				       s->in2out.port,
@@ -1819,7 +1821,7 @@ nat44_ed_out2in_reass_node_fn (vlib_main_t * vm,
 	      if (PREDICT_FALSE (reass0->sess_index == (u32) ~ 0))
 		{
 		  if (nat_ip4_reass_add_fragment
-		      (reass0, bi0, &fragments_to_drop))
+		      (thread_index, reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[NAT_OUT2IN_ED_ERROR_MAX_FRAG];
 		      nat_log_notice

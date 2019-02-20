@@ -138,6 +138,9 @@ alloc_chunk_from_page (clib_pmalloc_main_t * pm, clib_pmalloc_page_t * pp,
       pp->n_free_chunks = a->subpages_per_page;
     }
 
+  if (pp->n_free_blocks < n_blocks)
+    return 0;
+
   alloc_chunk_index = pp->first_chunk_index;
 
 next_chunk:

@@ -128,7 +128,13 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    {
+      rv = snat_ipfix_logging_enable_disable (enable, domain_id,
+					      (u16) src_port);
+      if (rv)
+	return clib_error_return (0, "ipfix logging enable failed");
+      return 0;
+    }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {

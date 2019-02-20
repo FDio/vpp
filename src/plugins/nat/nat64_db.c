@@ -50,7 +50,8 @@ nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
 }
 
 nat64_db_bib_entry_t *
-nat64_db_bib_entry_create (nat64_db_t * db, ip6_address_t * in_addr,
+nat64_db_bib_entry_create (u32 thread_index, nat64_db_t * db,
+			   ip6_address_t * in_addr,
 			   ip4_address_t * out_addr, u16 in_port,
 			   u16 out_port, u32 fib_index, u8 proto,
 			   u8 is_static)
@@ -63,7 +64,7 @@ nat64_db_bib_entry_create (nat64_db_t * db, ip6_address_t * in_addr,
   if (db->bib.bib_entries_num >= db->bib.limit)
     {
       db->free_addr_port_cb (db, out_addr, out_port, proto);
-      nat_ipfix_logging_max_bibs (db->bib.limit);
+      nat_ipfix_logging_max_bibs (thread_index, db->bib.limit);
       return 0;
     }
 
@@ -119,13 +120,14 @@ nat64_db_bib_entry_create (nat64_db_t * db, ip6_address_t * in_addr,
   clib_bihash_add_del_24_8 (&db->bib.out2in, &kv, 1);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_bib (in_addr, out_addr, proto, in_port, out_port,
-			       fib->ft_table_id, 1);
+  nat_ipfix_logging_nat64_bib (thread_index, in_addr, out_addr, proto,
+			       in_port, out_port, fib->ft_table_id, 1);
   return bibe;
 }
 
 void
-nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
+nat64_db_bib_entry_free (u32 thread_index, nat64_db_t * db,
+			 nat64_db_bib_entry_t * bibe)
 {
   nat64_db_bib_entry_key_t bibe_key;
   clib_bihash_kv_24_8_t kv;
@@ -164,7 +166,8 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
 			       vec_add1 (ste_to_be_free, ste - st);}
 		    ));
       vec_foreach (ste_index, ste_to_be_free)
-	nat64_db_st_entry_free (db, pool_elt_at_index (st, ste_index[0]));
+	nat64_db_st_entry_free (thread_index, db,
+				pool_elt_at_index (st, ste_index[0]));
       vec_free (ste_to_be_free);
     }
 
@@ -193,8 +196,8 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
     db->free_addr_port_cb (db, &bibe->out_addr, bibe->out_port, bibe->proto);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_bib (&bibe->in_addr, &bibe->out_addr, bibe->proto,
-			       bibe->in_port, bibe->out_port,
+  nat_ipfix_logging_nat64_bib (thread_index, &bibe->in_addr, &bibe->out_addr,
+			       bibe->proto, bibe->in_port, bibe->out_port,
 			       fib->ft_table_id, 0);
 
   /* delete from pool */
@@ -370,7 +373,8 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
 }
 
 nat64_db_st_entry_t *
-nat64_db_st_entry_create (nat64_db_t * db, nat64_db_bib_entry_t * bibe,
+nat64_db_st_entry_create (u32 thread_index, nat64_db_t * db,
+			  nat64_db_bib_entry_t * bibe,
 			  ip6_address_t * in_r_addr,
 			  ip4_address_t * out_r_addr, u16 r_port)
 {
@@ -382,7 +386,7 @@ nat64_db_st_entry_create (nat64_db_t * db, nat64_db_bib_entry_t * bibe,
 
   if (db->st.st_entries_num >= db->st.limit)
     {
-      nat_ipfix_logging_max_sessions (db->st.limit);
+      nat_ipfix_logging_max_sessions (thread_index, db->st.limit);
       return 0;
     }
 
@@ -452,8 +456,9 @@ nat64_db_st_entry_create (nat64_db_t * db, nat64_db_bib_entry_t * bibe,
   clib_bihash_add_del_48_8 (&db->st.out2in, &kv, 1);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_session (&bibe->in_addr, &bibe->out_addr,
-				   bibe->proto, bibe->in_port, bibe->out_port,
+  nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
+				   &bibe->out_addr, bibe->proto,
+				   bibe->in_port, bibe->out_port,
 				   &ste->in_r_addr, &ste->out_r_addr,
 				   ste->r_port, ste->r_port, fib->ft_table_id,
 				   1);
@@ -464,7 +469,8 @@ nat64_db_st_entry_create (nat64_db_t * db, nat64_db_bib_entry_t * bibe,
 }
 
 void
-nat64_db_st_entry_free (nat64_db_t * db, nat64_db_st_entry_t * ste)
+nat64_db_st_entry_free (u32 thread_index,
+			nat64_db_t * db, nat64_db_st_entry_t * ste)
 {
   nat64_db_st_entry_t *st;
   nat64_db_bib_entry_t *bib, *bibe;
@@ -526,8 +532,9 @@ nat64_db_st_entry_free (nat64_db_t * db, nat64_db_st_entry_t * ste)
   clib_bihash_add_del_48_8 (&db->st.out2in, &kv, 0);
 
   fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
-  nat_ipfix_logging_nat64_session (&bibe->in_addr, &bibe->out_addr,
-				   bibe->proto, bibe->in_port, bibe->out_port,
+  nat_ipfix_logging_nat64_session (thread_index, &bibe->in_addr,
+				   &bibe->out_addr, bibe->proto,
+				   bibe->in_port, bibe->out_port,
 				   &ste->in_r_addr, &ste->out_r_addr,
 				   ste->r_port, ste->r_port, fib->ft_table_id,
 				   0);
@@ -543,7 +550,7 @@ nat64_db_st_entry_free (nat64_db_t * db, nat64_db_st_entry_t * ste)
 
   /* delete BIB entry if last session and dynamic */
   if (!bibe->is_static && !bibe->ses_num)
-    nat64_db_bib_entry_free (db, bibe);
+    nat64_db_bib_entry_free (thread_index, db, bibe);
 }
 
 nat64_db_st_entry_t *
@@ -641,7 +648,7 @@ nat64_db_st_entry_by_index (nat64_db_t * db, u8 proto, u32 ste_index)
 }
 
 void
-nad64_db_st_free_expired (nat64_db_t * db, u32 now)
+nad64_db_st_free_expired (u32 thread_index, nat64_db_t * db, u32 now)
 {
   u32 *ste_to_be_free = 0, *ste_index;
   nat64_db_st_entry_t *st, *ste;
@@ -656,7 +663,8 @@ nad64_db_st_free_expired (nat64_db_t * db, u32 now)
       vec_add1 (ste_to_be_free, ste - st); \
   })); \
   vec_foreach (ste_index, ste_to_be_free) \
-    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0])); \
+    nat64_db_st_entry_free (thread_index, db, \
+                            pool_elt_at_index(st, ste_index[0])); \
   vec_free (ste_to_be_free); \
   ste_to_be_free = 0;
   foreach_snat_protocol
@@ -667,13 +675,15 @@ nad64_db_st_free_expired (nat64_db_t * db, u32 now)
       vec_add1 (ste_to_be_free, ste - st);
   }));
   vec_foreach (ste_index, ste_to_be_free)
-    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0]));
+    nat64_db_st_entry_free (thread_index, db,
+                            pool_elt_at_index(st, ste_index[0]));
   vec_free (ste_to_be_free);
 /* *INDENT-ON* */
 }
 
 void
-nat64_db_free_out_addr (nat64_db_t * db, ip4_address_t * out_addr)
+nat64_db_free_out_addr (u32 thread_index,
+			nat64_db_t * db, ip4_address_t * out_addr)
 {
   u32 *ste_to_be_free = 0, *ste_index;
   nat64_db_st_entry_t *st, *ste;
@@ -689,7 +699,8 @@ nat64_db_free_out_addr (nat64_db_t * db, ip4_address_t * out_addr)
       vec_add1 (ste_to_be_free, ste - st); \
   })); \
   vec_foreach (ste_index, ste_to_be_free) \
-    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0])); \
+    nat64_db_st_entry_free (thread_index, db, \
+                            pool_elt_at_index(st, ste_index[0])); \
   vec_free (ste_to_be_free); \
   ste_to_be_free = 0;
   foreach_snat_protocol
@@ -701,7 +712,8 @@ nat64_db_free_out_addr (nat64_db_t * db, ip4_address_t * out_addr)
       vec_add1 (ste_to_be_free, ste - st);
   }));
   vec_foreach (ste_index, ste_to_be_free)
-    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0]));
+    nat64_db_st_entry_free (thread_index, db,
+                            pool_elt_at_index(st, ste_index[0]));
   vec_free (ste_to_be_free);
   db->addr_free = 0;
 /* *INDENT-ON* */

@@ -1048,7 +1048,7 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
   map_main_t *mm = &map_main;
   map_domain_t *d;
   int domains = 0, rules = 0, domaincount = 0, rulecount = 0;
-  if (pool_elts (mm->domains) == 0)
+  if (pool_elts (mm->domains) <= 1)
     {
       vlib_cli_output (vm, "No MAP domains are configured...");
       return 0;

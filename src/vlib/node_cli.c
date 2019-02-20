@@ -37,6 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
 
@@ -85,6 +88,81 @@ VLIB_CLI_COMMAND (show_node_graph_command, static) = {
   .path = "show vlib graph",
   .short_help = "Show packet processing node graph",
   .function = show_node_graph,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_node_graphviz (vlib_main_t * vm,
+		    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  vlib_node_main_t *nm = &vm->node_main;
+  u8 *chroot_filename = 0;
+  int fd;
+  vlib_node_t **nodes = 0;
+  uword i, j;
+
+  if (!unformat_user (input, unformat_vlib_tmpfile, &chroot_filename))
+    {
+      fd = -1;
+    }
+  else
+    {
+      fd =
+	open ((char *) chroot_filename, O_CREAT | O_TRUNC | O_WRONLY, 0664);
+    }
+
+#define format__(vm__, fd__, ...) \
+  if ((fd) < 0) \
+    { \
+      vlib_cli_output((vm__), ## __VA_ARGS__); \
+    } \
+  else \
+    { \
+      fdformat((fd__), ## __VA_ARGS__); \
+    }
+
+  format__ (vm, fd, "%s", "digraph {\n");
+
+  nodes = vec_dup (nm->nodes);
+  vec_sort_with_function (nodes, node_cmp);
+
+  for (i = 0; i < vec_len (nodes); i++)
+    {
+      for (j = 0; j < vec_len (nodes[i]->next_nodes); j++)
+	{
+	  vlib_node_t *x;
+
+	  if (nodes[i]->next_nodes[j] == VLIB_INVALID_NODE_INDEX)
+	    continue;
+
+	  x = vec_elt (nm->nodes, nodes[i]->next_nodes[j]);
+	  format__ (vm, fd, "  \"%v\" -> \"%v\"\n", nodes[i]->name, x->name);
+	}
+    }
+
+  format__ (vm, fd, "%s", "}");
+
+  if (fd >= 0)
+    {
+      vlib_cli_output (vm,
+		       "vlib graph dumped into `%s'. Run eg. `fdp -Tsvg -O %s'.",
+		       chroot_filename, chroot_filename);
+    }
+
+  vec_free (nodes);
+  vec_free (chroot_filename);
+  vec_free (nodes);
+  if (fd >= 0)
+    close (fd);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_node_graphviz_command, static) = {
+  .path = "show vlib graphviz",
+  .short_help = "Dump packet processing node graph as a graphviz dotfile",
+  .function = show_node_graphviz,
 };
 /* *INDENT-ON* */
 
@@ -148,8 +226,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
   f64 maxc, maxcn;
   u32 maxn;
   u32 indent;
-  u64 pmc_ticks;
-  f64 pmc_ticks_per_packet;
 
   if (!n)
     {
@@ -163,9 +239,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
 		    "%=30s%=12s%=16s%=16s%=16s%=16s%=16s",
 		    "Name", "State", "Calls", "Vectors", "Suspends",
 		    "Clocks", "Vectors/Call");
-      if (vm->perf_counter_id)
-	s = format (s, "%=16s", "Perf Ticks");
-
       return s;
     }
 
@@ -181,13 +254,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
     maxcn = (f64) n->stats_total.max_clock / (f64) maxn;
   else
     maxcn = 0.0;
-
-  pmc_ticks = n->stats_total.perf_counter_ticks -
-    n->stats_last_clear.perf_counter_ticks;
-  if (p > 0)
-    pmc_ticks_per_packet = (f64) pmc_ticks / (f64) p;
-  else
-    pmc_ticks_per_packet = 0.0;
 
   /* Clocks per packet, per call or per suspend. */
   x = 0;
@@ -220,9 +286,6 @@ format_vlib_node_stats (u8 * s, va_list * va)
   else
     s = format (s, "%-30v%=12U%16Ld%16Ld%16Ld%16.2e%16.2f", ns,
 		format_vlib_node_state, vm, n, c, p, d, x, v);
-
-  if (pmc_ticks_per_packet > 0.0)
-    s = format (s, "%16.2e", pmc_ticks_per_packet);
 
   if (ns != n->name)
     vec_free (ns);

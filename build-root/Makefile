@@ -625,6 +625,10 @@ configure_check_timestamp =						\
   mkdir -p $(PACKAGE_INSTALL_DIR) ;					\
   conf="$(TIMESTAMP_DIR)/$(CONFIGURE_TIMESTAMP)" ;			\
   dirs="$(call package_mk_fn,$(PACKAGE))				\
+	$(SOURCE_PATH_BUILD_DATA_DIRS)/platforms/$(PLATFORM).mk		\
+	$(wildcard $(call find_source_fn,$(PACKAGE_SOURCE))/cmake)	\
+	$(shell find $(call find_source_fn,$(PACKAGE_SOURCE))		\
+			-name CMakeLists.txt)				\
 	$(wildcard $(call find_source_fn,				\
 	             $(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)/configure)	\
        $(MU_BUILD_ROOT_DIR)/config.site" ;				\

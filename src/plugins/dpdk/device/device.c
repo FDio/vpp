@@ -19,8 +19,8 @@
 #include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
-
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
@@ -127,11 +127,9 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
       mb->pkt_len = b->current_length;
       mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
       first_mb->nb_segs++;
-      if (PREDICT_FALSE (b->n_add_refs))
-	{
-	  rte_mbuf_refcnt_update (mb, b->n_add_refs);
-	  b->n_add_refs = 0;
-	}
+      if (PREDICT_FALSE (b->ref_count > 1))
+	mb->pool =
+	  dpdk_no_cache_mempool_by_buffer_pool_index[b->buffer_pool_index];
     }
 }
 
@@ -168,6 +166,7 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
+#if 0
       if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
 	{
 	  /* no wrap, transmit in one burst */
@@ -180,7 +179,9 @@ static_always_inline
 	  n_sent = rte_ring_sp_enqueue_burst (hqos->swq, (void **) mb,
 					      n_left, 0);
 	}
-      else if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
+      else
+#endif
+      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
 	  /* no wrap, transmit in one burst */
 	  n_sent = rte_eth_tx_burst (xd->port_id, queue_id, mb, n_left);

@@ -15,6 +15,7 @@
 
 #include <sstream>
 
+#include "vom/api_types.hpp"
 #include "vom/ra_prefix.hpp"
 
 namespace VOM {
@@ -37,9 +38,7 @@ ra_prefix::ra_prefix(const route::prefix_t& pfx,
 void
 ra_prefix::to_vpp(vapi_payload_sw_interface_ip6nd_ra_prefix& ra_prefix) const
 {
-  uint8_t is_ipv6 = 0;
-
-  m_pfx.to_vpp(&is_ipv6, ra_prefix.address, &ra_prefix.address_length);
+  ra_prefix.prefix = to_api(m_pfx);
 
   ra_prefix.use_default = m_use_default;
   ra_prefix.no_advertise = m_no_advertise;

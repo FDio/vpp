@@ -232,6 +232,8 @@ vlib_log_register_class (char *class, char *subclass)
   vlib_log_class_data_t *tmp;
   vec_foreach (tmp, lm->classes)
   {
+    if (vec_len (tmp->name) != strlen (class))
+      continue;
     if (!memcmp (class, tmp->name, vec_len (tmp->name)))
       {
 	c = tmp;
@@ -689,7 +691,7 @@ test_log_class_subclass (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_test_log, static) = {
   .path = "test log",
-  .short_help = "test log <class> <subclass> <level> <message",
+  .short_help = "test log <level> <class> <subclass> <message>",
   .function = test_log_class_subclass,
 };
 /* *INDENT-ON* */

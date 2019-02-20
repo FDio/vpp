@@ -15,7 +15,7 @@ nasm_version            := 2.13.03
 nasm_tarball            := nasm-$(nasm_version).tar.xz
 nasm_tarball_md5sum     := d5ca2ad7121ccbae69dd606b1038532c
 nasm_tarball_strip_dirs := 1
-nasm_url                := http://www.nasm.us/pub/nasm/releasebuilds/$(nasm_version)/$(nasm_tarball)
+nasm_url                := https://ftp.osuosl.org/pub/blfs/conglomeration/nasm/$(nasm_tarball)
 nasm_cflags             := -Wno-implicit-fallthrough -std=c11
 
 $(eval $(call package,nasm))

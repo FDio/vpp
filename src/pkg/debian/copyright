@@ -1,0 +1,9 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: optional.
+Upstream-Contact: optional.
+Source: optional.
+Disclaimer: optional.
+Comment: optional.
+License: Apache-2.0
+Copyright: 2015 Cisco and/or its affiliates and others.
+

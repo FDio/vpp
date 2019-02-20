@@ -37,7 +37,8 @@ public:
   create_cmd(HW::item<bool>& item,
              handle_t itf,
              const mac_address_t& mac,
-             const boost::asio::ip::address& ip_addr);
+             const boost::asio::ip::address& ip_addr,
+             const neighbour::flags_t &flags);
 
   /**
    * Issue the command to VPP/HW
@@ -58,6 +59,7 @@ private:
   handle_t m_itf;
   mac_address_t m_mac;
   boost::asio::ip::address m_ip_addr;
+  const neighbour::flags_t &m_flags;
 };
 
 /**
@@ -73,7 +75,8 @@ public:
   delete_cmd(HW::item<bool>& item,
              handle_t itf,
              const mac_address_t& mac,
-             const boost::asio::ip::address& ip_addr);
+             const boost::asio::ip::address& ip_addr,
+             const neighbour::flags_t &flags);
 
   /**
    * Issue the command to VPP/HW
@@ -94,6 +97,7 @@ private:
   handle_t m_itf;
   mac_address_t m_mac;
   boost::asio::ip::address m_ip_addr;
+  const neighbour::flags_t &m_flags;
 };
 
 /**

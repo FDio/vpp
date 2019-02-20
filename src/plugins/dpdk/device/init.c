@@ -22,6 +22,7 @@
 #include <vlib/log.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vlib/pci/pci.h>
 #include <vlib/vmbus/vmbus.h>
@@ -150,68 +151,10 @@ dpdk_device_lock_init (dpdk_device_t * xd)
     }
 }
 
-static struct rte_mempool_ops *
-get_ops_by_name (char *ops_name)
-{
-  u32 i;
-
-  for (i = 0; i < rte_mempool_ops_table.num_ops; i++)
-    {
-      if (!strcmp (ops_name, rte_mempool_ops_table.ops[i].name))
-	return &rte_mempool_ops_table.ops[i];
-    }
-
-  return 0;
-}
-
-static int
-dpdk_ring_alloc (struct rte_mempool *mp)
-{
-  u32 rg_flags = 0, count;
-  i32 ret;
-  char rg_name[RTE_RING_NAMESIZE];
-  struct rte_ring *r;
-
-  ret = snprintf (rg_name, sizeof (rg_name), RTE_MEMPOOL_MZ_FORMAT, mp->name);
-  if (ret < 0 || ret >= (i32) sizeof (rg_name))
-    return -ENAMETOOLONG;
-
-  /* ring flags */
-  if (mp->flags & MEMPOOL_F_SP_PUT)
-    rg_flags |= RING_F_SP_ENQ;
-  if (mp->flags & MEMPOOL_F_SC_GET)
-    rg_flags |= RING_F_SC_DEQ;
-
-  count = rte_align32pow2 (mp->size + 1);
-  /*
-   * Allocate the ring that will be used to store objects.
-   * Ring functions will return appropriate errors if we are
-   * running as a secondary process etc., so no checks made
-   * in this function for that condition.
-   */
-  /* XXX can we get memory from the right socket? */
-  r = clib_mem_alloc_aligned (rte_ring_get_memsize (count),
-			      CLIB_CACHE_LINE_BYTES);
-
-  /* XXX rte_ring_lookup will not work */
-
-  ret = rte_ring_init (r, rg_name, count, rg_flags);
-  if (ret)
-    return ret;
-
-  mp->pool_data = r;
-
-  return 0;
-}
-
 static int
 dpdk_port_crc_strip_enabled (dpdk_device_t * xd)
 {
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-  return ! !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_CRC_STRIP);
-#else
   return !(xd->port_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC);
-#endif
 }
 
 static clib_error_t *
@@ -219,7 +162,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 {
   u32 nports;
   u32 mtu, max_rx_frame;
-  u32 nb_desc = 0;
   int i;
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
@@ -273,11 +215,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 			CLIB_CACHE_LINE_BYTES);
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
-      vlib_buffer_free_list_t *fl;
       dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data, i);
-      fl = vlib_buffer_get_free_list (vm,
-				      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      vlib_buffer_init_for_free_list (&ptd->buffer_template, fl);
+      clib_memset (&ptd->buffer_template, 0, sizeof (vlib_buffer_t));
       ptd->buffer_template.flags = dm->buffer_flags_template;
       vnet_buffer (&ptd->buffer_template)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
@@ -478,16 +417,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBEVF:
 	    case VNET_DPDK_PMD_I40EVF:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-#endif
 	      break;
 
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-#endif
 
 	      if (dm->conf->no_tx_checksum_offload == 0)
 		{
@@ -517,9 +450,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Intel Red Rock Canyon */
 	    case VNET_DPDK_PMD_FM10K:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
-#if RTE_VERSION < RTE_VERSION_NUM(18, 11, 0, 0)
-	      xd->port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-#endif
 	      break;
 
 	      /* virtio */
@@ -632,9 +562,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  dq->device = xd->device_index;
 	  dq->queue_id = 0;
 	}
-
-      /* count the number of descriptors used for this device */
-      nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
 
       error = ethernet_register_interface
 	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
@@ -812,10 +739,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       rte_eth_dev_set_mtu (xd->port_id, mtu);
     }
   /* *INDENT-ON* */
-
-  if (nb_desc > dm->conf->num_mbufs)
-    dpdk_log_err ("%d mbufs allocated but total rx/tx ring size is %d\n",
-		  dm->conf->num_mbufs, nb_desc);
 
   return 0;
 }
@@ -1026,7 +949,9 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
 
   devconf->pci_addr.as_u32 = pci_addr.as_u32;
   devconf->hqos_enabled = 0;
+#if 0
   dpdk_device_config_hqos_default (&devconf->hqos);
+#endif
 
   if (!input)
     return 0;
@@ -1211,7 +1136,8 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "num-mem-channels %d", &conf->nchannels))
 	conf->nchannels_set_manually = 0;
-      else if (unformat (input, "num-mbufs %d", &conf->num_mbufs))
+      else if (unformat (input, "num-crypto-mbufs %d",
+			 &conf->num_crypto_mbufs))
 	;
       else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
 	;
@@ -1454,35 +1380,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   if (ret < 0)
     return clib_error_return (0, "rte_eal_init returned %d", ret);
 
-  /* set custom ring memory allocator */
-  {
-    struct rte_mempool_ops *ops = NULL;
-
-    ops = get_ops_by_name ("ring_sp_sc");
-    ops->alloc = dpdk_ring_alloc;
-
-    ops = get_ops_by_name ("ring_mp_sc");
-    ops->alloc = dpdk_ring_alloc;
-
-    ops = get_ops_by_name ("ring_sp_mc");
-    ops->alloc = dpdk_ring_alloc;
-
-    ops = get_ops_by_name ("ring_mp_mc");
-    ops->alloc = dpdk_ring_alloc;
-  }
-
   /* main thread 1st */
-  error = dpdk_buffer_pool_create (vm, conf->num_mbufs, rte_socket_id ());
-  if (error)
+  if ((error = dpdk_buffer_pools_create (vm)))
     return error;
-
-  for (i = 0; i < RTE_MAX_LCORE; i++)
-    {
-      error = dpdk_buffer_pool_create (vm, conf->num_mbufs,
-				       rte_lcore_to_socket_id (i));
-      if (error)
-	return error;
-    }
 
 done:
   return error;
@@ -1770,7 +1670,6 @@ dpdk_init (vlib_main_t * vm)
   dm->conf = &dpdk_config_main;
 
   dm->conf->nchannels = 4;
-  dm->conf->num_mbufs = dm->conf->num_mbufs ? dm->conf->num_mbufs : NB_MBUF;
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
   vec_add1 (dm->conf->eal_init_args, (u8 *) "--in-memory");
 

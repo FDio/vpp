@@ -23,6 +23,7 @@ from syslog_rfc5424_parser import SyslogMessage, ParseError
 from syslog_rfc5424_parser.constants import SyslogFacility, SyslogSeverity
 from vpp_papi_provider import SYSLOG_SEVERITY
 from io import BytesIO
+from vpp_papi import VppEnum
 
 
 class MethodHolder(VppTestCase):
@@ -48,12 +49,13 @@ class MethodHolder(VppTestCase):
                 is_add=0)
 
             for intf in [self.pg7, self.pg8]:
-                neighbors = self.vapi.ip_neighbor_dump(intf.sw_if_index)
-                for n in neighbors:
-                    self.vapi.ip_neighbor_add_del(intf.sw_if_index,
-                                                  n.mac_address,
-                                                  n.ip_address,
-                                                  is_add=0)
+                self.vapi.ip_neighbor_add_del(
+                    intf.sw_if_index,
+                    intf.remote_mac,
+                    intf.remote_ip4,
+                    flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                           IP_API_NEIGHBOR_FLAG_STATIC),
+                    is_add=0)
 
             if self.pg7.has_ip4_config:
                 self.pg7.unconfig_ip4()
@@ -1043,6 +1045,10 @@ class MethodHolder(VppTestCase):
         message = data.decode('utf-8')
         try:
             message = SyslogMessage.parse(message)
+        except ParseError as e:
+            self.logger.error(e)
+            raise
+        else:
             self.assertEqual(message.severity, SyslogSeverity.info)
             self.assertEqual(message.appname, 'NAT')
             self.assertEqual(message.msgid, 'APMADD' if is_add else 'APMDEL')
@@ -1057,13 +1063,15 @@ class MethodHolder(VppTestCase):
             self.assertEqual(sd_params.get('PROTO'), "%d" % IP_PROTOS.tcp)
             self.assertTrue(sd_params.get('SSUBIX') is not None)
             self.assertEqual(sd_params.get('SVLAN'), '0')
-        except ParseError as e:
-            self.logger.error(e)
 
     def verify_syslog_sess(self, data, is_add=True, is_ip6=False):
         message = data.decode('utf-8')
         try:
             message = SyslogMessage.parse(message)
+        except ParseError as e:
+            self.logger.error(e)
+            raise
+        else:
             self.assertEqual(message.severity, SyslogSeverity.info)
             self.assertEqual(message.appname, 'NAT')
             self.assertEqual(message.msgid, 'SADD' if is_add else 'SDEL')
@@ -1085,8 +1093,6 @@ class MethodHolder(VppTestCase):
             self.assertEqual(sd_params.get('XDADDR'), self.pg1.remote_ip4)
             self.assertEqual(sd_params.get('XDPORT'),
                              "%d" % self.tcp_external_port)
-        except ParseError as e:
-            self.logger.error(e)
 
     def verify_mss_value(self, pkt, mss):
         """
@@ -2960,14 +2966,18 @@ class TestNAT44(MethodHolder):
     def test_dynamic_ipless_interfaces(self):
         """ NAT44 interfaces without configured IP address """
 
-        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mac_pton(self.pg7.remote_mac),
-                                      self.pg7.remote_ip4n,
-                                      is_static=1)
-        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mac_pton(self.pg8.remote_mac),
-                                      self.pg8.remote_ip4n,
-                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(
+            self.pg7.sw_if_index,
+            self.pg7.remote_mac,
+            self.pg7.remote_ip4,
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
+        self.vapi.ip_neighbor_add_del(
+            self.pg8.sw_if_index,
+            self.pg8.remote_mac,
+            self.pg8.remote_ip4,
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
 
         self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
                                    dst_address_length=32,
@@ -3002,14 +3012,18 @@ class TestNAT44(MethodHolder):
     def test_static_ipless_interfaces(self):
         """ NAT44 interfaces without configured IP address - 1:1 NAT """
 
-        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mac_pton(self.pg7.remote_mac),
-                                      self.pg7.remote_ip4n,
-                                      is_static=1)
-        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mac_pton(self.pg8.remote_mac),
-                                      self.pg8.remote_ip4n,
-                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(
+            self.pg7.sw_if_index,
+            self.pg7.remote_mac,
+            self.pg7.remote_ip4,
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
+        self.vapi.ip_neighbor_add_del(
+            self.pg8.sw_if_index,
+            self.pg8.remote_mac,
+            self.pg8.remote_ip4,
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
 
         self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
                                    dst_address_length=32,
@@ -3048,14 +3062,18 @@ class TestNAT44(MethodHolder):
         self.udp_port_out = 30607
         self.icmp_id_out = 30608
 
-        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      mac_pton(self.pg7.remote_mac),
-                                      self.pg7.remote_ip4n,
-                                      is_static=1)
-        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      mac_pton(self.pg8.remote_mac),
-                                      self.pg8.remote_ip4n,
-                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(
+            self.pg7.sw_if_index,
+            self.pg7.remote_mac,
+            self.pg7.remote_ip4,
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
+        self.vapi.ip_neighbor_add_del(
+            self.pg8.sw_if_index,
+            self.pg8.remote_mac,
+            self.pg8.remote_ip4,
+            flags=(VppEnum.vl_api_ip_neighbor_flags_t.
+                   IP_API_NEIGHBOR_FLAG_STATIC))
 
         self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
                                    dst_address_length=32,
@@ -8165,6 +8183,9 @@ class TestDSlite(MethodHolder):
         message = data.decode('utf-8')
         try:
             message = SyslogMessage.parse(message)
+        except ParseError as e:
+            self.logger.error(e)
+        else:
             self.assertEqual(message.severity, SyslogSeverity.info)
             self.assertEqual(message.appname, 'NAT')
             self.assertEqual(message.msgid, 'APMADD')
@@ -8179,8 +8200,6 @@ class TestDSlite(MethodHolder):
             self.assertEqual(sd_params.get('PROTO'), "%d" % proto)
             self.assertTrue(sd_params.get('SSUBIX') is not None)
             self.assertEqual(sd_params.get('SV6ENC'), sv6enc)
-        except ParseError as e:
-            self.logger.error(e)
 
     def test_dslite(self):
         """ Test DS-Lite """

@@ -185,6 +185,7 @@ memif_int_fd_read_ready (clib_file_t * uf)
 clib_error_t *
 memif_connect (memif_if_t * mif)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   clib_file_t template = { 0 };
   memif_region_t *mr;
@@ -235,6 +236,7 @@ memif_connect (memif_if_t * mif)
   vec_foreach_index (i, mif->rx_queues)
     {
       memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
+      u32 ti;
       int rv;
 
       mq->ring = mif->regions[mq->region].shm + mq->offset;
@@ -254,6 +256,9 @@ memif_connect (memif_if_t * mif)
 	  memif_file_add (&mq->int_clib_file_index, &template);
 	}
       vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
+      ti = vnet_get_device_input_thread_index (vnm, mif->hw_if_index, i);
+      mq->buffer_pool_index =
+	vlib_buffer_pool_get_default_for_numa (vm, vlib_mains[ti]->numa_node);
       rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
 					  VNET_HW_INTERFACE_RX_MODE_DEFAULT);
       if (rv)
@@ -338,7 +343,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
     {
       vlib_buffer_pool_t *bp;
       /* *INDENT-OFF* */
-      vec_foreach (bp, buffer_main.buffer_pools)
+      vec_foreach (bp, vm->buffer_main->buffer_pools)
 	{
 	  vlib_physmem_map_t *pm;
 	  pm = vlib_physmem_get_map (vm, bp->physmem_map_index);
@@ -848,19 +853,16 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   if (mm->per_thread_data == 0)
     {
       int i;
-      vlib_buffer_free_list_t *fl;
 
       vec_validate_aligned (mm->per_thread_data, tm->n_vlib_mains - 1,
 			    CLIB_CACHE_LINE_BYTES);
 
-      fl =
-	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
       for (i = 0; i < tm->n_vlib_mains; i++)
 	{
 	  memif_per_thread_data_t *ptd =
 	    vec_elt_at_index (mm->per_thread_data, i);
 	  vlib_buffer_t *bt = &ptd->buffer_template;
-	  vlib_buffer_init_for_free_list (bt, fl);
+	  clib_memset (bt, 0, sizeof (vlib_buffer_t));
 	  bt->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  bt->total_length_not_including_first_buffer = 0;
 	  vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;

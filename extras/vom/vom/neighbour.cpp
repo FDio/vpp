@@ -14,6 +14,7 @@
  */
 
 #include "vom/neighbour.hpp"
+#include "vom/api_types.hpp"
 #include "vom/neighbour_cmds.hpp"
 #include "vom/singular_db_funcs.hpp"
 
@@ -21,21 +22,33 @@ namespace VOM {
 singular_db<neighbour::key_t, neighbour> neighbour::m_db;
 neighbour::event_handler neighbour::m_evh;
 
+const neighbour::flags_t neighbour::flags_t::NONE(0, "");
+const neighbour::flags_t neighbour::flags_t::STATIC(1, "static");
+const neighbour::flags_t neighbour::flags_t::NO_FIB_ENTRY(2, "no-fib-entry");
+
+neighbour::flags_t::flags_t(int v, const std::string s)
+  : enum_base(v, s)
+{
+}
+
 neighbour::neighbour(const interface& itf,
                      const boost::asio::ip::address& ip_addr,
-                     const mac_address_t& mac)
+                     const mac_address_t& mac,
+                     const flags_t flags)
   : m_hw(false)
   , m_itf(itf.singular())
   , m_ip_addr(ip_addr)
   , m_mac(mac)
+  , m_flags(flags)
 {
 }
 
-neighbour::neighbour(const neighbour& bde)
-  : m_hw(bde.m_hw)
-  , m_itf(bde.m_itf)
-  , m_ip_addr(bde.m_ip_addr)
-  , m_mac(bde.m_mac)
+neighbour::neighbour(const neighbour& n)
+  : m_hw(n.m_hw)
+  , m_itf(n.m_itf)
+  , m_ip_addr(n.m_ip_addr)
+  , m_mac(n.m_mac)
+  , m_flags(n.m_flags)
 {
 }
 
@@ -63,8 +76,8 @@ void
 neighbour::sweep()
 {
   if (m_hw) {
-    HW::enqueue(
-      new neighbour_cmds::delete_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
+    HW::enqueue(new neighbour_cmds::delete_cmd(m_hw, m_itf->handle(), m_mac,
+                                               m_ip_addr, m_flags));
   }
   HW::write();
 }
@@ -73,8 +86,8 @@ void
 neighbour::replay()
 {
   if (m_hw) {
-    HW::enqueue(
-      new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
+    HW::enqueue(new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac,
+                                               m_ip_addr, m_flags));
   }
 }
 
@@ -83,7 +96,7 @@ neighbour::to_string() const
 {
   std::ostringstream s;
   s << "neighbour:[" << m_itf->to_string() << ", " << m_mac.to_string() << ", "
-    << m_ip_addr.to_string() << "]";
+    << m_ip_addr.to_string() << " " << m_flags.to_string() << "]";
 
   return (s.str());
 }
@@ -95,8 +108,8 @@ neighbour::update(const neighbour& r)
  * create the table if it is not yet created
  */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(
-      new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
+    HW::enqueue(new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac,
+                                               m_ip_addr, m_flags));
   }
 }
 
@@ -165,13 +178,15 @@ neighbour::populate_i(const client_db::key_t& key,
      */
     auto& payload = record.get_payload();
 
-    mac_address_t mac(payload.mac_address);
-    boost::asio::ip::address ip_addr =
-      from_bytes(payload.is_ipv6, payload.ip_address);
-    neighbour n(*itf, ip_addr, mac);
+    mac_address_t mac = from_api(payload.neighbor.mac_address);
+    boost::asio::ip::address ip_addr = from_api(payload.neighbor.ip_address);
+    neighbour::flags_t f = from_api(payload.neighbor.flags);
+    neighbour n(*itf, ip_addr, mac, f);
+    ;
 
-    VOM_LOG(log_level_t::DEBUG) << "neighbour-dump: " << itf->to_string()
-                                << mac.to_string() << ip_addr.to_string();
+    VOM_LOG(log_level_t::DEBUG) << "neighbour-dump: " << itf->to_string() << " "
+                                << mac.to_string() << " " << ip_addr.to_string()
+                                << " " << f.to_string();
 
     /*
      * Write each of the discovered interfaces into the OM,

@@ -171,7 +171,7 @@ extern void bier_fmask_encode (index_t bfmi,
 /*
  * provided for fast data-path access
  */
-bier_fmask_t *bier_fmask_pool;
+extern bier_fmask_t *bier_fmask_pool;
 
 static inline bier_fmask_t *
 bier_fmask_get (u32 index)

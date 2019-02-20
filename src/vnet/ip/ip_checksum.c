@@ -120,34 +120,13 @@ do {									\
  * function which uses the function pointer we set up in
  * ip_checksum_init().
  */
-#if CLIB_DEBUG > 0
-#define IP_INCREMENTAL_CHECKSUM_CLONE_TEMPLATE(arch, fn)
-#define IP_INCREMENTAL_CHECKSUM_MULTIARCH_CLONE(fn)
-#else
-#define IP_INCREMENTAL_CHECKSUM_CLONE_TEMPLATE(arch, fn, tgt)   \
-  uword                                                         \
-  __attribute__ ((flatten))                                     \
-  __attribute__ ((target (tgt)))                                \
-  CLIB_CPU_OPTIMIZED                                            \
-  fn ## _ ## arch (ip_csum_t sum,                               \
-                   void *_data,                                 \
-                   uword n_bytes)                               \
-  { return fn (sum, _data, n_bytes); }
-
-#define IP_INCREMENTAL_CHECKSUM_MULTIARCH_CLONE(fn) \
-  foreach_march_variant(IP_INCREMENTAL_CHECKSUM_CLONE_TEMPLATE,fn)
-#endif
-
-IP_INCREMENTAL_CHECKSUM_MULTIARCH_CLONE (_ip_incremental_checksum);
-
-CLIB_MULTIARCH_SELECT_FN (_ip_incremental_checksum, static inline);
 
 ip_csum_t (*vnet_incremental_checksum_fp) (ip_csum_t, void *, uword);
 
 static clib_error_t *
 ip_checksum_init (vlib_main_t * vm)
 {
-  vnet_incremental_checksum_fp = _ip_incremental_checksum_multiarch_select ();
+  vnet_incremental_checksum_fp = _ip_incremental_checksum;
   return 0;
 }
 

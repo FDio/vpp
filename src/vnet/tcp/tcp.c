@@ -920,8 +920,12 @@ static u8 *
 format_tcp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
   tcp_connection_t *tc = tcp_listener_get (tci);
-  return format (s, "%U", format_tcp_connection_id, tc);
+  s = format (s, "%-50U", format_tcp_connection_id, tc);
+  if (verbose)
+    s = format (s, "%-15U", format_tcp_state, tc->state);
+  return s;
 }
 
 static u8 *
@@ -1169,13 +1173,13 @@ tcp_session_flush_data (transport_connection_t * tconn)
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
-  .bind = tcp_session_bind,
-  .unbind = tcp_session_unbind,
+  .start_listen = tcp_session_bind,
+  .stop_listen = tcp_session_unbind,
   .push_header = tcp_session_push_header,
   .get_connection = tcp_session_get_transport,
   .get_listener = tcp_session_get_listener,
   .get_half_open = tcp_half_open_session_get_transport,
-  .open = tcp_session_open,
+  .connect = tcp_session_open,
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
   .send_mss = tcp_session_send_mss,
@@ -1472,7 +1476,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_initialize_timer_wheels (tm);
   tcp_initialize_iss_seed (tm);
 
-  tm->bytes_per_buffer = VLIB_BUFFER_DATA_SIZE;
+  tm->bytes_per_buffer = vlib_buffer_get_default_data_size (vm);
 
   return error;
 }

@@ -241,7 +241,7 @@ typedef enum {
 } acl_fa_next_t;
 
 
-enum
+typedef enum
 {
   ACL_FA_CLEANER_RESCHEDULE = 1,
   ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX,

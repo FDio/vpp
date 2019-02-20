@@ -333,8 +333,7 @@ srp_topology_packet (vlib_main_t * vm, u32 sw_if_index, u8 ** contents)
     u32 * to_next;
     u32 bi = ~0;
 
-    if (vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
-                              /* buffer to append to */ &bi,
+    if (vlib_buffer_add_data (vm, /* buffer to append to */ &bi,
                               *contents, vec_len (*contents)))
       {
         /* complete or partial buffer allocation failure */
@@ -628,9 +627,8 @@ static void tx_ips_packet (srp_interface_t * si,
     = ~ip_csum_fold (ip_incremental_checksum (0, &i->control,
 					      sizeof (i[0]) - STRUCT_OFFSET_OF (srp_ips_header_t, control)));
 
-  if (vlib_buffer_add_data (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX,
-                            /* buffer to append to */ &bi,
-                            i, sizeof (i[0])))
+  if (vlib_buffer_add_data (vm, /* buffer to append to */ &bi, i,
+			    sizeof (i[0])))
     {
       /* complete or partial allocation failure */
       if (bi != ~0)

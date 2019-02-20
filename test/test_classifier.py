@@ -267,7 +267,7 @@ class TestClassifier(VppTestCase):
             miss_next_index=0,
             current_data_flag=1,
             current_data_offset=data_offset)
-        self.assertIsNotNone(r, msg='No response msg for add_del_table')
+        self.assertIsNotNone(r, 'No response msg for add_del_table')
         self.acl_tbl_idx[key] = r.new_table_index
 
     def create_classify_session(self, table_index, match, pbr_option=0,
@@ -288,7 +288,7 @@ class TestClassifier(VppTestCase):
             opaque_index=0,
             action=pbr_option,
             metadata=vrfid)
-        self.assertIsNotNone(r, msg='No response msg for add_del_session')
+        self.assertIsNotNone(r, 'No response msg for add_del_session')
 
     def input_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Input ACL interface
@@ -302,7 +302,7 @@ class TestClassifier(VppTestCase):
             is_add,
             intf.sw_if_index,
             ip4_table_index=table_index)
-        self.assertIsNotNone(r, msg='No response msg for acl_set_interface')
+        self.assertIsNotNone(r, 'No response msg for acl_set_interface')
 
     def output_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Output ACL interface
@@ -316,7 +316,7 @@ class TestClassifier(VppTestCase):
             is_add,
             intf.sw_if_index,
             ip4_table_index=table_index)
-        self.assertIsNotNone(r, msg='No response msg for acl_set_interface')
+        self.assertIsNotNone(r, 'No response msg for acl_set_interface')
 
 
 # Tests split to different test case classes because of issue reported in

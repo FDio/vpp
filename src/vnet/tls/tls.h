@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-
 #include <vnet/session/application_interface.h>
+#include <vnet/session/application.h>
+#include <vnet/session/session.h>
 #include <vppinfra/lock.h>
 
 #ifndef SRC_VNET_TLS_TLS_H_
@@ -39,7 +40,10 @@
 typedef CLIB_PACKED (struct tls_cxt_id_
 {
   u32 parent_app_index;
-  session_handle_t app_session_handle;
+  union {
+    session_handle_t app_session_handle;
+    u32 parent_app_api_ctx;
+  };
   session_handle_t tls_session_handle;
   u32 ssl_ctx;
   u32 listener_ctx_index;
@@ -67,7 +71,7 @@ typedef struct tls_ctx_
 #define tls_ctx_handle c_c_index
   /* Temporary storage for session open opaque. Overwritten once
    * underlying tcp connection is established */
-#define parent_app_api_context c_s_index
+#define parent_app_api_context c_tls_ctx_id.parent_app_api_ctx
 
   u8 is_passive_close;
   u8 resume;
@@ -98,32 +102,25 @@ typedef struct tls_engine_vft_
   tls_ctx_t *(*ctx_get_w_thread) (u32 ctx_index, u8 thread_index);
   int (*ctx_init_client) (tls_ctx_t * ctx);
   int (*ctx_init_server) (tls_ctx_t * ctx);
-  int (*ctx_read) (tls_ctx_t * ctx, stream_session_t * tls_session);
-  int (*ctx_write) (tls_ctx_t * ctx, stream_session_t * app_session);
+  int (*ctx_read) (tls_ctx_t * ctx, session_t * tls_session);
+  int (*ctx_write) (tls_ctx_t * ctx, session_t * app_session);
     u8 (*ctx_handshake_is_over) (tls_ctx_t * ctx);
   int (*ctx_start_listen) (tls_ctx_t * ctx);
   int (*ctx_stop_listen) (tls_ctx_t * ctx);
 } tls_engine_vft_t;
 
-typedef enum tls_engine_type_
-{
-  TLS_ENGINE_NONE,
-  TLS_ENGINE_MBEDTLS,
-  TLS_ENGINE_OPENSSL,
-  TLS_N_ENGINES
-} tls_engine_type_t;
-
 tls_main_t *vnet_tls_get_main (void);
 void tls_register_engine (const tls_engine_vft_t * vft,
 			  tls_engine_type_t type);
-int tls_add_vpp_q_rx_evt (stream_session_t * s);
-int tls_add_vpp_q_tx_evt (stream_session_t * s);
-int tls_add_vpp_q_builtin_tx_evt (stream_session_t * s);
-int tls_add_vpp_q_builtin_rx_evt (stream_session_t * s);
+int tls_add_vpp_q_rx_evt (session_t * s);
+int tls_add_vpp_q_tx_evt (session_t * s);
+int tls_add_vpp_q_builtin_tx_evt (session_t * s);
+int tls_add_vpp_q_builtin_rx_evt (session_t * s);
 int tls_notify_app_accept (tls_ctx_t * ctx);
 int tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed);
-void tls_notify_app_enqueue (tls_ctx_t * ctx, stream_session_t * app_session);
+void tls_notify_app_enqueue (tls_ctx_t * ctx, session_t * app_session);
 #endif /* SRC_VNET_TLS_TLS_H_ */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

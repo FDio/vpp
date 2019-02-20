@@ -147,8 +147,9 @@ snat_det_find_ses_by_in (snat_det_map_t * dm, ip4_address_t * in_addr,
 }
 
 always_inline snat_det_session_t *
-snat_det_ses_create (snat_det_map_t * dm, ip4_address_t * in_addr,
-		     u16 in_port, snat_det_out_key_t * out)
+snat_det_ses_create (u32 thread_index, snat_det_map_t * dm,
+		     ip4_address_t * in_addr, u16 in_port,
+		     snat_det_out_key_t * out)
 {
   u32 user_offset;
   u16 i;
@@ -171,7 +172,8 @@ snat_det_ses_create (snat_det_map_t * dm, ip4_address_t * in_addr,
 	}
     }
 
-  snat_ipfix_logging_max_entries_per_user (SNAT_DET_SES_PER_USER,
+  snat_ipfix_logging_max_entries_per_user (thread_index,
+					   SNAT_DET_SES_PER_USER,
 					   in_addr->as_u32);
   return 0;
 }

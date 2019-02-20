@@ -53,7 +53,7 @@
  */
 #define VHOST_USER_TX_COPY_THRESHOLD (VHOST_USER_COPY_ARRAY_N - 40)
 
-vnet_device_class_t vhost_user_device_class;
+extern vnet_device_class_t vhost_user_device_class;
 
 #define foreach_vhost_user_tx_func_error      \
   _(NONE, "no error")  \

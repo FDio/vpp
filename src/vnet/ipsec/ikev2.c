@@ -1492,16 +1492,16 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
   a.is_add = 1;
   if (sa->is_initiator)
     {
-      a.local_ip.as_u32 = sa->iaddr.as_u32;
-      a.remote_ip.as_u32 = sa->raddr.as_u32;
+      a.local_ip.ip4.as_u32 = sa->iaddr.as_u32;
+      a.remote_ip.ip4.as_u32 = sa->raddr.as_u32;
       proposals = child->i_proposals;
       a.local_spi = child->r_proposals[0].spi;
       a.remote_spi = child->i_proposals[0].spi;
     }
   else
     {
-      a.local_ip.as_u32 = sa->raddr.as_u32;
-      a.remote_ip.as_u32 = sa->iaddr.as_u32;
+      a.local_ip.ip4.as_u32 = sa->raddr.as_u32;
+      a.remote_ip.ip4.as_u32 = sa->iaddr.as_u32;
       proposals = child->r_proposals;
       a.local_spi = child->i_proposals[0].spi;
       a.remote_spi = child->r_proposals[0].spi;
@@ -1642,8 +1642,8 @@ ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	return 0;
 
       a.is_add = 0;
-      a.local_ip.as_u32 = sa->iaddr.as_u32;
-      a.remote_ip.as_u32 = sa->raddr.as_u32;
+      a.local_ip.ip4.as_u32 = sa->iaddr.as_u32;
+      a.remote_ip.ip4.as_u32 = sa->raddr.as_u32;
       a.local_spi = child->r_proposals[0].spi;
       a.remote_spi = child->i_proposals[0].spi;
     }
@@ -1653,8 +1653,8 @@ ikev2_delete_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	return 0;
 
       a.is_add = 0;
-      a.local_ip.as_u32 = sa->raddr.as_u32;
-      a.remote_ip.as_u32 = sa->iaddr.as_u32;
+      a.local_ip.ip4.as_u32 = sa->raddr.as_u32;
+      a.remote_ip.ip4.as_u32 = sa->iaddr.as_u32;
       a.local_spi = child->i_proposals[0].spi;
       a.remote_spi = child->r_proposals[0].spi;
     }

@@ -33,7 +33,7 @@ IPv4 and IPv6 virtual reassembly support the following configuration:
     map params reassembly [ip4 | ip6] [lifetime <lifetime-ms>] [pool-size <pool-size>] [buffers <buffers>] [ht-ratio <ht-ratio>]
 
 lifetime: 
-	The time in milliseconds a reassembly structure is considered valid. The longer, the more reliable is reassembly, but the more likely it is to exhaust the pool of reassembly structures. IPv4 standard suggests a lifetime of 15 seconds. IPv6 specifies a lifetime of 60 people. Those values are not realistic for high-throughput cases.
+	The time in milliseconds a reassembly structure is considered valid. The longer, the more reliable is reassembly, but the more likely it is to exhaust the pool of reassembly structures. IPv4 standard suggests a lifetime of 15 seconds. IPv6 specifies a lifetime of 60 seconds. Those values are not realistic for high-throughput cases.
 
 buffers:
 	The upper limit of buffers that are allowed to be cached. It can be used to protect against fragmentation attacks which would aim to exhaust the global buffers pool.

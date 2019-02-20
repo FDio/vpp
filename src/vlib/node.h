@@ -217,31 +217,9 @@ CLIB_MARCH_SFX (node##_multiarch_register) (void)			\
 }									\
 uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (node##_fn)
 
-#if CLIB_DEBUG > 0
-#define VLIB_NODE_FUNCTION_CLONE_TEMPLATE(arch, fn)
-#define VLIB_NODE_FUNCTION_MULTIARCH_CLONE(fn)
+
+/* FIXME to be removed */
 #define VLIB_NODE_FUNCTION_MULTIARCH(node, fn)
-#else
-#define VLIB_NODE_FUNCTION_CLONE_TEMPLATE(arch, fn, tgt)		\
-  uword									\
-  __attribute__ ((flatten))						\
-  __attribute__ ((target (tgt)))					\
-  CLIB_CPU_OPTIMIZED							\
-  fn ## _ ## arch ( struct vlib_main_t * vm,				\
-                   struct vlib_node_runtime_t * node,			\
-                   struct vlib_frame_t * frame)				\
-  { return fn (vm, node, frame); }
-
-#define VLIB_NODE_FUNCTION_MULTIARCH_CLONE(fn)				\
-  foreach_march_variant(VLIB_NODE_FUNCTION_CLONE_TEMPLATE, fn)
-
-#define VLIB_NODE_FUNCTION_MULTIARCH(node, fn)				\
-  VLIB_NODE_FUNCTION_MULTIARCH_CLONE(fn)				\
-  CLIB_MULTIARCH_SELECT_FN(fn, static inline)				\
-  static void __attribute__((__constructor__))				\
-  __vlib_node_function_multiarch_select_##node (void)			\
-  { node.function = fn ## _multiarch_select(); }
-#endif
 
 always_inline vlib_node_registration_t *
 vlib_node_next_registered (vlib_node_registration_t * c)
@@ -258,7 +236,8 @@ typedef struct
   u64 calls, vectors, clocks, suspends;
   u64 max_clock;
   u64 max_clock_n;
-  u64 perf_counter_ticks;
+  u64 perf_counter0_ticks;
+  u64 perf_counter1_ticks;
   u64 perf_counter_vectors;
 } vlib_node_stats_t;
 
@@ -507,7 +486,8 @@ typedef struct vlib_node_runtime_t
   u32 vectors_since_last_overflow;	/**< Number of vector elements
 					  processed by this node. */
 
-  u32 perf_counter_ticks_since_last_overflow; /**< Perf counter ticks */
+  u32 perf_counter0_ticks_since_last_overflow; /**< Perf counter 0 ticks */
+  u32 perf_counter1_ticks_since_last_overflow; /**< Perf counter 1 ticks */
   u32 perf_counter_vectors_since_last_overflow;	/**< Perf counter vectors */
 
   u32 next_frame_index;			/**< Start of next frames for this

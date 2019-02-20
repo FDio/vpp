@@ -44,3 +44,10 @@ vpp_configure = \
 #vpp_make_args = --no-print-directory
 vpp_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR)
 vpp_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install | grep -v 'Set runtime path'
+
+vpp-package-deb: vpp-install
+	@$(CMAKE) --build $(PACKAGE_BUILD_DIR)/vpp -- package-deb
+	@find $(PACKAGE_BUILD_DIR) \
+          -maxdepth 1 \
+          \( -name '*.changes' -o -name '*.deb' -o -name '*.buildinfo' \) \
+          -exec mv {} $(CURDIR) \;

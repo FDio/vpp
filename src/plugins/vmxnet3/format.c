@@ -58,9 +58,11 @@ format_vmxnet3_device (u8 * s, va_list * args)
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   vmxnet3_device_t *vd = vec_elt_at_index (vmxm->devices, i);
   u32 indent = format_get_indent (s);
-  vmxnet3_queues *q = &vd->dma->queues;
   vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, 0);
   vmxnet3_txq_t *txq = vec_elt_at_index (vd->txqs, 0);
+  vmxnet3_tx_queue *tx = VMXNET3_TX_START (vd);
+  vmxnet3_rx_queue *rx = VMXNET3_RX_START (vd);
+  u16 qid;
 
   s = format (s, "flags: %U", format_vmxnet3_device_flags, vd);
   s = format (s, "\n%Urx queues %u, rx desc %u, tx queues %u, tx desc %u",
@@ -72,69 +74,81 @@ format_vmxnet3_device (u8 * s, va_list * args)
 
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
 
-  s = format (s, "\n%UTX:", format_white_space, indent);
-  s = format (s, "\n%U  TSO packets                         %llu",
-	      format_white_space, indent,
-	      q->tx.stats.tso_pkts - vd->tx_stats.tso_pkts);
-  s = format (s, "\n%U  TSO bytes                           %llu",
-	      format_white_space, indent,
-	      q->tx.stats.tso_bytes - vd->tx_stats.tso_bytes);
-  s = format (s, "\n%U  ucast packets                       %llu",
-	      format_white_space, indent,
-	      q->tx.stats.ucast_pkts - vd->tx_stats.ucast_pkts);
-  s = format (s, "\n%U  ucast bytes                         %llu",
-	      format_white_space, indent,
-	      q->tx.stats.ucast_bytes - vd->tx_stats.ucast_bytes);
-  s = format (s, "\n%U  mcast packets                       %llu",
-	      format_white_space, indent,
-	      q->tx.stats.mcast_pkts - vd->tx_stats.mcast_pkts);
-  s = format (s, "\n%U  mcast bytes                         %llu",
-	      format_white_space, indent,
-	      q->tx.stats.mcast_bytes - vd->tx_stats.mcast_bytes);
-  s = format (s, "\n%U  bcast packets                       %llu",
-	      format_white_space, indent,
-	      q->tx.stats.bcast_pkts - vd->tx_stats.bcast_pkts);
-  s = format (s, "\n%U  bcast bytes                         %llu",
-	      format_white_space, indent,
-	      q->tx.stats.bcast_bytes - vd->tx_stats.bcast_bytes);
-  s = format (s, "\n%U  Errors packets                      %llu",
-	      format_white_space, indent,
-	      q->tx.stats.error_pkts - vd->tx_stats.error_pkts);
-  s = format (s, "\n%U  Discard packets                     %llu",
-	      format_white_space, indent,
-	      q->tx.stats.discard_pkts - vd->tx_stats.discard_pkts);
+  vec_foreach_index (qid, vd->txqs)
+  {
+    vmxnet3_tx_stats *txs = vec_elt_at_index (vd->tx_stats, qid);
 
-  s = format (s, "\n%URX:", format_white_space, indent);
-  s = format (s, "\n%U  LRO packets                         %llu",
-	      format_white_space, indent,
-	      q->rx.stats.lro_pkts - vd->rx_stats.lro_pkts);
-  s = format (s, "\n%U  LRO bytes                           %llu",
-	      format_white_space, indent,
-	      q->rx.stats.lro_bytes - vd->rx_stats.lro_bytes);
-  s = format (s, "\n%U  ucast packets                       %llu",
-	      format_white_space, indent,
-	      q->rx.stats.ucast_pkts - vd->rx_stats.ucast_pkts);
-  s = format (s, "\n%U  ucast bytes                         %llu",
-	      format_white_space, indent,
-	      q->rx.stats.ucast_bytes - vd->rx_stats.ucast_bytes);
-  s = format (s, "\n%U  mcast packets                       %llu",
-	      format_white_space, indent,
-	      q->rx.stats.mcast_pkts - vd->rx_stats.mcast_pkts);
-  s = format (s, "\n%U  mcast bytes                         %llu",
-	      format_white_space, indent,
-	      q->rx.stats.mcast_bytes - vd->rx_stats.mcast_bytes);
-  s = format (s, "\n%U  bcast packets                       %llu",
-	      format_white_space, indent,
-	      q->rx.stats.bcast_pkts - vd->rx_stats.bcast_pkts);
-  s = format (s, "\n%U  bcast bytes                         %llu",
-	      format_white_space, indent,
-	      q->rx.stats.bcast_bytes - vd->rx_stats.bcast_bytes);
-  s = format (s, "\n%U  No Bufs                             %llu",
-	      format_white_space, indent,
-	      q->rx.stats.nobuf_pkts - vd->rx_stats.nobuf_pkts);
-  s = format (s, "\n%U  Error packets                       %llu",
-	      format_white_space, indent,
-	      q->rx.stats.error_pkts - vd->rx_stats.error_pkts);
+    s = format (s, "\n%UTX Queue %u:", format_white_space, indent, qid);
+    s = format (s, "\n%U  TSO packets                         %llu",
+		format_white_space, indent,
+		tx->stats.tso_pkts - txs->tso_pkts);
+    s = format (s, "\n%U  TSO bytes                           %llu",
+		format_white_space, indent,
+		tx->stats.tso_bytes - txs->tso_bytes);
+    s = format (s, "\n%U  ucast packets                       %llu",
+		format_white_space, indent,
+		tx->stats.ucast_pkts - txs->ucast_pkts);
+    s = format (s, "\n%U  ucast bytes                         %llu",
+		format_white_space, indent,
+		tx->stats.ucast_bytes - txs->ucast_bytes);
+    s = format (s, "\n%U  mcast packets                       %llu",
+		format_white_space, indent,
+		tx->stats.mcast_pkts - txs->mcast_pkts);
+    s = format (s, "\n%U  mcast bytes                         %llu",
+		format_white_space, indent,
+		tx->stats.mcast_bytes - txs->mcast_bytes);
+    s = format (s, "\n%U  bcast packets                       %llu",
+		format_white_space, indent,
+		tx->stats.bcast_pkts - txs->bcast_pkts);
+    s = format (s, "\n%U  bcast bytes                         %llu",
+		format_white_space, indent,
+		tx->stats.bcast_bytes - txs->bcast_bytes);
+    s = format (s, "\n%U  Errors packets                      %llu",
+		format_white_space, indent,
+		tx->stats.error_pkts - txs->error_pkts);
+    s = format (s, "\n%U  Discard packets                     %llu",
+		format_white_space, indent,
+		tx->stats.discard_pkts - txs->discard_pkts);
+    tx++;
+  }
+
+  vec_foreach_index (qid, vd->rxqs)
+  {
+    vmxnet3_rx_stats *rxs = vec_elt_at_index (vd->rx_stats, qid);
+
+    s = format (s, "\n%URX Queue %u:", format_white_space, indent, qid);
+    s = format (s, "\n%U  LRO packets                         %llu",
+		format_white_space, indent,
+		rx->stats.lro_pkts - rxs->lro_pkts);
+    s = format (s, "\n%U  LRO bytes                           %llu",
+		format_white_space, indent,
+		rx->stats.lro_bytes - rxs->lro_bytes);
+    s = format (s, "\n%U  ucast packets                       %llu",
+		format_white_space, indent,
+		rx->stats.ucast_pkts - rxs->ucast_pkts);
+    s = format (s, "\n%U  ucast bytes                         %llu",
+		format_white_space, indent,
+		rx->stats.ucast_bytes - rxs->ucast_bytes);
+    s = format (s, "\n%U  mcast packets                       %llu",
+		format_white_space, indent,
+		rx->stats.mcast_pkts - rxs->mcast_pkts);
+    s = format (s, "\n%U  mcast bytes                         %llu",
+		format_white_space, indent,
+		rx->stats.mcast_bytes - rxs->mcast_bytes);
+    s = format (s, "\n%U  bcast packets                       %llu",
+		format_white_space, indent,
+		rx->stats.bcast_pkts - rxs->bcast_pkts);
+    s = format (s, "\n%U  bcast bytes                         %llu",
+		format_white_space, indent,
+		rx->stats.bcast_bytes - rxs->bcast_bytes);
+    s = format (s, "\n%U  No Bufs                             %llu",
+		format_white_space, indent,
+		rx->stats.nobuf_pkts - rxs->nobuf_pkts);
+    s = format (s, "\n%U  Error packets                       %llu",
+		format_white_space, indent,
+		rx->stats.error_pkts - rxs->error_pkts);
+    rx++;
+  }
   return s;
 }
 

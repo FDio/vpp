@@ -17,6 +17,45 @@
 
 namespace VOM {
 
+vapi_enum_ip_neighbor_flags
+to_api(const neighbour::flags_t& f)
+{
+  vapi_enum_ip_neighbor_flags out = IP_API_NEIGHBOR_FLAG_NONE;
+
+  if (f & neighbour::flags_t::STATIC)
+    out = static_cast<vapi_enum_ip_neighbor_flags>(out |
+                                                   IP_API_NEIGHBOR_FLAG_STATIC);
+  if (f & neighbour::flags_t::NO_FIB_ENTRY)
+    out = static_cast<vapi_enum_ip_neighbor_flags>(
+      out | IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY);
+
+  return (out);
+}
+
+const neighbour::flags_t
+from_api(vapi_enum_ip_neighbor_flags f)
+{
+  neighbour::flags_t out = neighbour::flags_t::NONE;
+
+  if (f & IP_API_NEIGHBOR_FLAG_STATIC)
+    out |= neighbour::flags_t::STATIC;
+  if (f & IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY)
+    out |= neighbour::flags_t::NO_FIB_ENTRY;
+
+  return out;
+}
+
+void
+to_api(const boost::asio::ip::address_v4& a, vapi_type_ip4_address& v)
+{
+  std::copy_n(std::begin(a.to_bytes()), a.to_bytes().size(), v);
+}
+void
+to_api(const boost::asio::ip::address_v6& a, vapi_type_ip6_address& v)
+{
+  std::copy_n(std::begin(a.to_bytes()), a.to_bytes().size(), v);
+}
+
 void
 to_api(const ip_address_t& a, vapi_type_address& v)
 {
@@ -43,10 +82,24 @@ to_api(const ip_address_t& a,
   }
 }
 
-void
-to_api(const boost::asio::ip::address& a, vapi_type_ip4_address& v)
+boost::asio::ip::address_v6
+from_api(const vapi_type_ip6_address& v)
 {
-  memcpy(v, a.to_v4().to_bytes().data(), 4);
+  std::array<uint8_t, 16> a;
+  std::copy(v, v + 16, std::begin(a));
+  boost::asio::ip::address_v6 v6(a);
+
+  return v6;
+}
+
+boost::asio::ip::address_v4
+from_api(const vapi_type_ip4_address& v)
+{
+  std::array<uint8_t, 4> a;
+  std::copy(v, v + 4, std::begin(a));
+  boost::asio::ip::address_v4 v4(a);
+
+  return v4;
 }
 
 ip_address_t

@@ -14,6 +14,7 @@
  */
 
 #include "vom/arp_proxy_config_cmds.hpp"
+#include "vom/api_types.hpp"
 
 namespace VOM {
 namespace arp_proxy_config_cmds {
@@ -41,10 +42,8 @@ config_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
 
-  std::copy_n(std::begin(m_low.to_bytes()), m_low.to_bytes().size(),
-              payload.proxy.low_address);
-  std::copy_n(std::begin(m_high.to_bytes()), m_high.to_bytes().size(),
-              payload.proxy.hi_address);
+  to_api(m_low, payload.proxy.low);
+  to_api(m_high, payload.proxy.hi);
 
   VAPI_CALL(req.execute());
 
@@ -86,10 +85,8 @@ unconfig_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
 
-  std::copy_n(std::begin(m_low.to_bytes()), m_low.to_bytes().size(),
-              payload.proxy.low_address);
-  std::copy_n(std::begin(m_high.to_bytes()), m_high.to_bytes().size(),
-              payload.proxy.hi_address);
+  to_api(m_low, payload.proxy.low);
+  to_api(m_high, payload.proxy.hi);
 
   VAPI_CALL(req.execute());
 

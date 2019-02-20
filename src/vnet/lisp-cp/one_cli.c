@@ -178,6 +178,8 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    }
 	  locator_set_index = p[0];
 	}
+      else if (unformat (line_input, "authoritative"))
+	a->authoritative = 1;
       else
 	{
 	  error = unformat_parse_error (line_input);
@@ -1719,6 +1721,7 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
 			 &locator.weight))
 	{
 	  locator.local = 1;
+	  locator.state = 1;
 	  vec_add1 (locators, locator);
 	}
       else

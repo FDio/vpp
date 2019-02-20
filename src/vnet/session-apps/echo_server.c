@@ -17,6 +17,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
+#include <vnet/session/session.h>
 
 typedef struct
 {
@@ -55,7 +56,7 @@ typedef struct
 echo_server_main_t echo_server_main;
 
 int
-echo_server_session_accept_callback (stream_session_t * s)
+echo_server_session_accept_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
 
@@ -70,7 +71,7 @@ echo_server_session_accept_callback (stream_session_t * s)
 }
 
 void
-echo_server_session_disconnect_callback (stream_session_t * s)
+echo_server_session_disconnect_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -81,7 +82,7 @@ echo_server_session_disconnect_callback (stream_session_t * s)
 }
 
 void
-echo_server_session_reset_callback (stream_session_t * s)
+echo_server_session_reset_callback (session_t * s)
 {
   echo_server_main_t *esm = &echo_server_main;
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
@@ -93,7 +94,7 @@ echo_server_session_reset_callback (stream_session_t * s)
 
 int
 echo_server_session_connected_callback (u32 app_index, u32 api_context,
-					stream_session_t * s, u8 is_fail)
+					session_t * s, u8 is_fail)
 {
   clib_warning ("called...");
   return -1;
@@ -135,15 +136,15 @@ test_bytes (echo_server_main_t * esm, int actual_transfer)
  * If no-echo, just drop the data and be done with it.
  */
 int
-echo_server_builtin_server_rx_callback_no_echo (stream_session_t * s)
+echo_server_builtin_server_rx_callback_no_echo (session_t * s)
 {
-  svm_fifo_t *rx_fifo = s->server_rx_fifo;
+  svm_fifo_t *rx_fifo = s->rx_fifo;
   svm_fifo_dequeue_drop (rx_fifo, svm_fifo_max_dequeue (rx_fifo));
   return 0;
 }
 
 int
-echo_server_rx_callback (stream_session_t * s)
+echo_server_rx_callback (session_t * s)
 {
   u32 n_written, max_dequeue, max_enqueue, max_transfer;
   int actual_transfer;
@@ -154,8 +155,8 @@ echo_server_rx_callback (stream_session_t * s)
 
   ASSERT (s->thread_index == thread_index);
 
-  rx_fifo = s->server_rx_fifo;
-  tx_fifo = s->server_tx_fifo;
+  rx_fifo = s->rx_fifo;
+  tx_fifo = s->tx_fifo;
 
   ASSERT (rx_fifo->master_thread_index == thread_index);
   ASSERT (tx_fifo->master_thread_index == thread_index);
@@ -362,7 +363,7 @@ static int
 echo_server_listen ()
 {
   echo_server_main_t *esm = &echo_server_main;
-  vnet_bind_args_t _a, *a = &_a;
+  vnet_listen_args_t _a, *a = &_a;
   clib_memset (a, 0, sizeof (*a));
   a->app_index = esm->app_index;
   a->uri = esm->server_uri;

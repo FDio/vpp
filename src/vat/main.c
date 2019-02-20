@@ -15,6 +15,7 @@
 #include "vat.h"
 #include "plugin.h"
 #include <signal.h>
+#include <limits.h>
 
 vat_main_t vat_main;
 
@@ -283,6 +284,37 @@ setup_signal_handlers (void)
     }
 }
 
+static void
+vat_find_plugin_path ()
+{
+  extern char *vat_plugin_path;
+  char *p, path[PATH_MAX];
+  int rv;
+  u8 *s;
+
+  /* find executable path */
+  if ((rv = readlink ("/proc/self/exe", path, PATH_MAX - 1)) == -1)
+    return;
+
+  /* readlink doesn't provide null termination */
+  path[rv] = 0;
+
+  /* strip filename */
+  if ((p = strrchr (path, '/')) == 0)
+    return;
+  *p = 0;
+
+  /* strip bin/ */
+  if ((p = strrchr (path, '/')) == 0)
+    return;
+  *p = 0;
+
+  s = format (0, "%s/lib/" CLIB_TARGET_TRIPLET "/vpp_api_test_plugins:"
+	      "%s/lib/vpp_api_test_plugins", path, path);
+  vec_add1 (s, 0);
+  vat_plugin_path = (char *) s;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -308,6 +340,8 @@ main (int argc, char **argv)
   init_error_string_table (vam);
   vec_validate (vam->cmd_reply, 0);
   vec_reset_length (vam->cmd_reply);
+
+  vat_find_plugin_path ();
 
   unformat_init_command_line (a, argv);
 

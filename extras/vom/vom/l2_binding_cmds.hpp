@@ -117,47 +117,6 @@ private:
   const l2_binding::l2_port_type_t& m_port_type;
 };
 
-/**
- * A cmd class sets the VTR operation
- */
-class set_vtr_op_cmd : public rpc_cmd<HW::item<l2_binding::l2_vtr_op_t>,
-                                      vapi::L2_interface_vlan_tag_rewrite>
-{
-public:
-  /**
-   * Constructor
-   */
-  set_vtr_op_cmd(HW::item<l2_binding::l2_vtr_op_t>& item,
-                 const handle_t& itf,
-                 uint16_t tag);
-
-  /**
-   * Issue the command to VPP/HW
-   */
-  rc_t issue(connection& con);
-
-  /**
-   * convert to string format for debug purposes
-   */
-  std::string to_string() const;
-
-  /**
-   * Comparison operator - only used for UT
-   */
-  bool operator==(const set_vtr_op_cmd& i) const;
-
-private:
-  /**
-   * The interface to bind
-   */
-  const handle_t m_itf;
-
-  /**
-   * The tag for the operation
-   */
-  uint16_t m_tag;
-};
-
 }; // namespace l2_binding_cmds
 }; // namespace VOM
 

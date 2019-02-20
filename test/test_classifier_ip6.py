@@ -236,7 +236,7 @@ class TestClassifier(VppTestCase):
             miss_next_index=0,
             current_data_flag=1,
             current_data_offset=data_offset)
-        self.assertIsNotNone(r, msg='No response msg for add_del_table')
+        self.assertIsNotNone(r, 'No response msg for add_del_table')
         self.acl_tbl_idx[key] = r.new_table_index
 
     def create_classify_session(self, table_index, match, vrfid=0, is_add=1):
@@ -254,7 +254,7 @@ class TestClassifier(VppTestCase):
             binascii.unhexlify(match),
             opaque_index=0,
             metadata=vrfid)
-        self.assertIsNotNone(r, msg='No response msg for add_del_session')
+        self.assertIsNotNone(r, 'No response msg for add_del_session')
 
     def input_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Input ACL interface
@@ -268,7 +268,7 @@ class TestClassifier(VppTestCase):
             is_add,
             intf.sw_if_index,
             ip6_table_index=table_index)
-        self.assertIsNotNone(r, msg='No response msg for acl_set_interface')
+        self.assertIsNotNone(r, 'No response msg for acl_set_interface')
 
     def output_acl_set_interface(self, intf, table_index, is_add=1):
         """Configure Output ACL interface
@@ -282,7 +282,7 @@ class TestClassifier(VppTestCase):
             is_add,
             intf.sw_if_index,
             ip6_table_index=table_index)
-        self.assertIsNotNone(r, msg='No response msg for acl_set_interface')
+        self.assertIsNotNone(r, 'No response msg for acl_set_interface')
 
 
 class TestClassifierIP6(TestClassifier):

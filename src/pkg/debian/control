@@ -1,0 +1,74 @@
+Source: vpp
+Section: net
+Priority: extra
+Maintainer: fd.io VPP Packaging Team <vpp-dev@fd.io>
+Build-Depends: debhelper (>= 9),
+               dh-systemd,
+	       dh-python,
+	       python-all
+Standards-Version: 3.9.4
+
+Package: vpp
+Architecture: any
+Depends: libvppinfra (= ${source:Version}),
+         ${shlibs:Depends},
+	 ${misc:Depends}
+Description: Vector Packet Processing--executables
+ This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
+ vpp - the vector packet engine
+ vpp_api_test - vector packet engine API test tool
+ vpp_json_test - vector packet engine JSON test tool
+
+Package: vpp-dbg
+Architecture: any
+Depends: ${misc:Depends}
+Description: Vector Packet Processing--debug symbols
+
+Package: vpp-dev
+Architecture: any
+Depends: libvppinfra-dev (= ${source:Version}),
+         ${misc:Depends},
+	 ${python:Depends}
+Description: Vector Packet Processing--development support
+ This package contains development support files for the VPP libraries
+ .
+
+Package: libvppinfra
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: Vector Packet Processing--runtime libraries
+ This package contains the VPP shared libraries, including:
+ .
+
+Package: libvppinfra-dev
+Architecture: any
+Depends: ${misc:Depends}
+Description: Vector Packet Processing--runtime libraries
+ This package contains the VPP shared libraries, including:
+ .
+
+Package: vpp-plugin-core
+Architecture: any
+Depends: vpp (= ${source:Version}),
+         ${shlibs:Depends}
+Description: Vector Packet Processing--runtime core plugins
+ This package contains VPP core plugins
+ .
+
+Package: vpp-plugin-dpdk
+Architecture: any
+Depends: vpp (= ${source:Version}),
+         ${shlibs:Depends}
+Description: Vector Packet Processing--runtime dpdk plugin
+ This package contains the VPP dpdk plugin
+ .
+
+Package: vpp-api-python
+Architecture: any
+Depends: vpp (= ${source:Version}),
+         ${python:Depends},
+	 ${misc:Depends}
+Description: VPP Python API bindings
+  This package contains VPP python api bindings
+  .

@@ -146,6 +146,8 @@ list(APPEND VOM_SOURCES
   ip_unnumbered.cpp
   l2_binding_cmds.cpp
   l2_binding.cpp
+  l2_vtr.cpp
+  l2_vtr_cmds.cpp
   l2_xconnect_cmds.cpp
   l2_xconnect.cpp
   l3_binding_cmds.cpp
@@ -252,6 +254,7 @@ list(APPEND VOM_HEADERS
   ip_punt_redirect.hpp
   ip_unnumbered.hpp
   l2_binding.hpp
+  l2_vtr.hpp
   l2_xconnect.hpp
   l3_binding.hpp
   lldp_binding.hpp
@@ -279,17 +282,11 @@ list(APPEND VOM_HEADERS
 )
 
 add_definitions(-Wall -Werror -std=gnu++11)
-
-add_vpp_library(vom
-  SOURCES ${VOM_SOURCES}
-
-  INSTALL_HEADERS ${VOM_HEADERS}
-
-  LINK_LIBRARIES ${VPPAPICLIENT_LIB} ${VAPICLIENT_LIB} Threads::Threads
-    ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} m rt
-
-  COMPONENT libvom
-)
+add_library(vom SHARED ${VOM_SOURCES})
+target_link_libraries(vom ${VPPAPICLIENT_LIB} ${VAPICLIENT_LIB} Threads::Threads
+    ${Boost_SYSTEM_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} m rt)
+install(TARGETS vom DESTINATION lib COMPONENT vom)
+install(FILES ${VOM_HEADERS} DESTINATION include/vom COMPONENT vom)
 
 if (Boost_FOUND)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

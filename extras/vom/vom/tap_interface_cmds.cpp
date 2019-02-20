@@ -15,10 +15,8 @@
 
 #include "vom/tap_interface_cmds.hpp"
 
-#include <vapi/tap.api.vapi.hpp>
 #include <vapi/tapv2.api.vapi.hpp>
 
-DEFINE_VAPI_MSG_IDS_TAP_API_JSON;
 DEFINE_VAPI_MSG_IDS_TAPV2_API_JSON;
 
 namespace VOM {

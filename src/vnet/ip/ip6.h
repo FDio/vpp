@@ -42,6 +42,7 @@
 
 #include <vlib/buffer.h>
 #include <vnet/ethernet/packet.h>
+#include <vnet/ethernet/mac_address.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
@@ -393,14 +394,34 @@ serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 void ip6_ethernet_update_adjacency (vnet_main_t * vnm,
 				    u32 sw_if_index, u32 ai);
 
-
-void
+always_inline void
 ip6_link_local_address_from_ethernet_mac_address (ip6_address_t * ip,
-						  u8 * mac);
+						  u8 * mac)
+{
+  ip->as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
+  /* Invert the "u" bit */
+  ip->as_u8[8] = mac[0] ^ (1 << 1);
+  ip->as_u8[9] = mac[1];
+  ip->as_u8[10] = mac[2];
+  ip->as_u8[11] = 0xFF;
+  ip->as_u8[12] = 0xFE;
+  ip->as_u8[13] = mac[3];
+  ip->as_u8[14] = mac[4];
+  ip->as_u8[15] = mac[5];
+}
 
-void
+always_inline void
 ip6_ethernet_mac_address_from_link_local_address (u8 * mac,
-						  ip6_address_t * ip);
+						  ip6_address_t * ip)
+{
+  /* Invert the previously inverted "u" bit */
+  mac[0] = ip->as_u8[8] ^ (1 << 1);
+  mac[1] = ip->as_u8[9];
+  mac[2] = ip->as_u8[10];
+  mac[3] = ip->as_u8[13];
+  mac[4] = ip->as_u8[14];
+  mac[5] = ip->as_u8[15];
+}
 
 int vnet_set_ip6_flow_hash (u32 table_id,
 			    flow_hash_config_t flow_hash_config);
@@ -415,8 +436,13 @@ clib_error_t *set_ip6_link_local_address (vlib_main_t * vm,
 					  u32 sw_if_index,
 					  ip6_address_t * address);
 
+typedef int (*ip6_nd_change_event_cb_t) (u32 pool_index,
+					 const mac_address_t * new_mac,
+					 u32 sw_if_index,
+					 const ip6_address_t * address);
+
 int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
-				      void *data_callback,
+				      ip6_nd_change_event_cb_t data_callback,
 				      u32 pid,
 				      void *address_arg,
 				      uword node_index,

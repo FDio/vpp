@@ -282,7 +282,7 @@ class VppGbpEndpointGroup(VppObject):
     GBP Endpoint Group
     """
 
-    def __init__(self, test, epg, rd, bd, uplink,
+    def __init__(self, test, epg, sclass, rd, bd, uplink,
                  bvi, bvi_ip4, bvi_ip6=None):
         self._test = test
         self.uplink = uplink
@@ -292,10 +292,14 @@ class VppGbpEndpointGroup(VppObject):
         self.epg = epg
         self.bd = bd
         self.rd = rd
+        self.sclass = sclass
+        if 0 == self.sclass:
+            self.sclass = 0xffff
 
     def add_vpp_config(self):
         self._test.vapi.gbp_endpoint_group_add(
             self.epg,
+            self.sclass,
             self.bd.bd.bd_id,
             self.rd.rd_id,
             self.uplink.sw_if_index if self.uplink else INDEX_INVALID)
@@ -324,10 +328,12 @@ class VppGbpBridgeDomain(VppObject):
     GBP Bridge Domain
     """
 
-    def __init__(self, test, bd, bvi, uu_flood=None, learn=True):
+    def __init__(self, test, bd, bvi, uu_fwd=None,
+                 bm_flood=None, learn=True):
         self._test = test
         self.bvi = bvi
-        self.uu_flood = uu_flood
+        self.uu_fwd = uu_fwd
+        self.bm_flood = bm_flood
         self.bd = bd
 
         e = VppEnum.vl_api_gbp_bridge_domain_flags_t
@@ -341,7 +347,8 @@ class VppGbpBridgeDomain(VppObject):
             self.bd.bd_id,
             self.learn,
             self.bvi.sw_if_index,
-            self.uu_flood.sw_if_index if self.uu_flood else INDEX_INVALID)
+            self.uu_fwd.sw_if_index if self.uu_fwd else INDEX_INVALID,
+            self.bm_flood.sw_if_index if self.bm_flood else INDEX_INVALID)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
@@ -731,23 +738,23 @@ class TestGBP(VppTestCase):
         # 3 EPGs, 2 of which share a BD.
         # 2 NAT EPGs, one for floating-IP subnets, the other for internet
         #
-        epgs = [VppGbpEndpointGroup(self, 220, rd0, gbd1, self.pg4,
+        epgs = [VppGbpEndpointGroup(self, 220, 0, rd0, gbd1, self.pg4,
                                     self.loop0,
                                     "10.0.0.128",
                                     "2001:10::128"),
-                VppGbpEndpointGroup(self, 221, rd0, gbd1, self.pg5,
+                VppGbpEndpointGroup(self, 221, 0, rd0, gbd1, self.pg5,
                                     self.loop0,
                                     "10.0.1.128",
                                     "2001:10:1::128"),
-                VppGbpEndpointGroup(self, 222, rd0, gbd2, self.pg6,
+                VppGbpEndpointGroup(self, 222, 0, rd0, gbd2, self.pg6,
                                     self.loop1,
                                     "10.0.2.128",
                                     "2001:10:2::128"),
-                VppGbpEndpointGroup(self, 333, rd20, gbd20, self.pg7,
+                VppGbpEndpointGroup(self, 333, 0, rd20, gbd20, self.pg7,
                                     self.loop2,
                                     "11.0.0.128",
                                     "3001::128"),
-                VppGbpEndpointGroup(self, 444, rd20, gbd20, self.pg8,
+                VppGbpEndpointGroup(self, 444, 0, rd20, gbd20, self.pg8,
                                     self.loop2,
                                     "11.0.0.129",
                                     "3001::129")]
@@ -1485,11 +1492,19 @@ class TestGBP(VppTestCase):
         self.pg4.resolve_arp()
 
         #
+        # Add a mcast destination VXLAN-GBP tunnel for B&M traffic
+        #
+        tun_bm = VppVxlanGbpTunnel(self, self.pg4.local_ip4,
+                                   "239.1.1.1", 88,
+                                   mcast_itf=self.pg4)
+        tun_bm.add_vpp_config()
+
+        #
         # a GBP bridge domain with a BVI and a UU-flood interface
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, self.pg3)
+        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, self.pg3, tun_bm)
         gbd1.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
@@ -1502,12 +1517,12 @@ class TestGBP(VppTestCase):
         #
         # The Endpoint-group in which we are learning endpoints
         #
-        epg_220 = VppGbpEndpointGroup(self, 220, rd1, gbd1,
+        epg_220 = VppGbpEndpointGroup(self, 220, 112, rd1, gbd1,
                                       None, self.loop0,
                                       "10.0.0.128",
                                       "2001:10::128")
         epg_220.add_vpp_config()
-        epg_330 = VppGbpEndpointGroup(self, 330, rd1, gbd1,
+        epg_330 = VppGbpEndpointGroup(self, 330, 113, rd1, gbd1,
                                       None, self.loop1,
                                       "10.0.1.128",
                                       "2001:11::128")
@@ -1569,7 +1584,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=220, flags=0x88) /
+                 VXLAN(vni=99, gpid=112, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -1618,7 +1633,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=220, flags=0x88, gpflags="D") /
+                 VXLAN(vni=99, gpid=112, flags=0x88, gpflags="D") /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -1641,7 +1656,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=220, flags=0x88) /
+                 VXLAN(vni=99, gpid=112, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -1670,7 +1685,7 @@ class TestGBP(VppTestCase):
                 self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[1].ip4)
                 self.assertEqual(rx[UDP].dport, 48879)
                 # the UDP source port is a random value for hashing
-                self.assertEqual(rx[VXLAN].gpid, 220)
+                self.assertEqual(rx[VXLAN].gpid, 112)
                 self.assertEqual(rx[VXLAN].vni, 99)
                 self.assertTrue(rx[VXLAN].flags.G)
                 self.assertTrue(rx[VXLAN].flags.Instance)
@@ -1693,7 +1708,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=330, flags=0x88, gpflags='A') /
+                 VXLAN(vni=99, gpid=113, flags=0x88, gpflags='A') /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -1726,7 +1741,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=330, flags=0x88, gpflags='A') /
+                 VXLAN(vni=99, gpid=113, flags=0x88, gpflags='A') /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -1773,18 +1788,7 @@ class TestGBP(VppTestCase):
                 IP(dst="10.0.0.133", src=ep.ip4.address) /
                 UDP(sport=1234, dport=1234) /
                 Raw('\xa5' * 100))
-        rxs = self.send_and_expect(ep.itf, [p_uu], gbd1.uu_flood)
-
-        #
-        # Add a mcast destination VXLAN-GBP tunnel for B&M traffic
-        #
-        tun_bm = VppVxlanGbpTunnel(self, self.pg4.local_ip4,
-                                   "239.1.1.1", 88,
-                                   mcast_itf=self.pg4)
-        tun_bm.add_vpp_config()
-        bp_bm = VppBridgeDomainPort(self, bd1, tun_bm,
-                                    port_type=L2_PORT_TYPE.NORMAL)
-        bp_bm.add_vpp_config()
+        rxs = self.send_and_expect(ep.itf, [p_uu], gbd1.uu_fwd)
 
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
 
@@ -1793,6 +1797,18 @@ class TestGBP(VppTestCase):
                 UDP(sport=1234, dport=1234) /
                 Raw('\xa5' * 100))
         rxs = self.send_and_expect_only(ep.itf, [p_bm], tun_bm.mcast_itf)
+
+        for rx in rxs:
+            self.assertEqual(rx[IP].src, self.pg4.local_ip4)
+            self.assertEqual(rx[IP].dst, "239.1.1.1")
+            self.assertEqual(rx[UDP].dport, 48879)
+            # the UDP source port is a random value for hashing
+            self.assertEqual(rx[VXLAN].gpid, 112)
+            self.assertEqual(rx[VXLAN].vni, 88)
+            self.assertTrue(rx[VXLAN].flags.G)
+            self.assertTrue(rx[VXLAN].flags.Instance)
+            self.assertFalse(rx[VXLAN].gpflags.A)
+            self.assertFalse(rx[VXLAN].gpflags.D)
 
         #
         # Check v6 Endpoints
@@ -1804,7 +1820,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=330, flags=0x88, gpflags='A') /
+                 VXLAN(vni=99, gpid=113, flags=0x88, gpflags='A') /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IPv6(src=l['ip6'], dst=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
@@ -1907,7 +1923,7 @@ class TestGBP(VppTestCase):
         #
         # The Endpoint-group in which we are learning endpoints
         #
-        epg_220 = VppGbpEndpointGroup(self, 220, rd1, gbd1,
+        epg_220 = VppGbpEndpointGroup(self, 220, 441, rd1, gbd1,
                                       None, self.loop0,
                                       "10.0.0.128",
                                       "2001:10::128")
@@ -1945,7 +1961,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=99, gpid=220, flags=0x88) /
+                 VXLAN(vni=99, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst=ep.mac) /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -1993,7 +2009,7 @@ class TestGBP(VppTestCase):
                 self.assertEqual(rx[IP].dst, self.pg3.remote_ip4)
                 self.assertEqual(rx[UDP].dport, 48879)
                 # the UDP source port is a random value for hashing
-                self.assertEqual(rx[VXLAN].gpid, 220)
+                self.assertEqual(rx[VXLAN].gpid, 441)
                 self.assertEqual(rx[VXLAN].vni, 116)
                 self.assertTrue(rx[VXLAN].flags.G)
                 self.assertTrue(rx[VXLAN].flags.Instance)
@@ -2087,7 +2103,7 @@ class TestGBP(VppTestCase):
         #
         # The Endpoint-group in which we are learning endpoints
         #
-        epg_220 = VppGbpEndpointGroup(self, 220, rd1, gbd1,
+        epg_220 = VppGbpEndpointGroup(self, 220, 441, rd1, gbd1,
                                       None, self.loop0,
                                       "10.0.0.128",
                                       "2001:10::128")
@@ -2123,7 +2139,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=101, gpid=220, flags=0x88) /
+                 VXLAN(vni=101, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -2160,7 +2176,7 @@ class TestGBP(VppTestCase):
                 self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[1].ip4)
                 self.assertEqual(rx[UDP].dport, 48879)
                 # the UDP source port is a random value for hashing
-                self.assertEqual(rx[VXLAN].gpid, 220)
+                self.assertEqual(rx[VXLAN].gpid, 441)
                 self.assertEqual(rx[VXLAN].vni, 101)
                 self.assertTrue(rx[VXLAN].flags.G)
                 self.assertTrue(rx[VXLAN].flags.Instance)
@@ -2190,7 +2206,7 @@ class TestGBP(VppTestCase):
                  IP(src=self.pg2.remote_hosts[1].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=101, gpid=220, flags=0x88) /
+                 VXLAN(vni=101, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
                  IPv6(src=l['ip6'], dst=ep.ip6.address) /
                  UDP(sport=1234, dport=1234) /
@@ -2233,7 +2249,7 @@ class TestGBP(VppTestCase):
                 self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[1].ip4)
                 self.assertEqual(rx[UDP].dport, 48879)
                 # the UDP source port is a random value for hashing
-                self.assertEqual(rx[VXLAN].gpid, 220)
+                self.assertEqual(rx[VXLAN].gpid, 441)
                 self.assertEqual(rx[VXLAN].vni, 101)
                 self.assertTrue(rx[VXLAN].flags.G)
                 self.assertTrue(rx[VXLAN].flags.Instance)
@@ -2281,7 +2297,7 @@ class TestGBP(VppTestCase):
             self.assertEqual(rx[IP].dst, self.pg4.remote_ip4)
             self.assertEqual(rx[UDP].dport, 48879)
             # the UDP source port is a random value for hashing
-            self.assertEqual(rx[VXLAN].gpid, 220)
+            self.assertEqual(rx[VXLAN].gpid, 441)
             self.assertEqual(rx[VXLAN].vni, 114)
             self.assertTrue(rx[VXLAN].flags.G)
             self.assertTrue(rx[VXLAN].flags.Instance)
@@ -2297,10 +2313,10 @@ class TestGBP(VppTestCase):
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
-                 IP(src=self.pg2.remote_hosts[1].ip4,
+                 IP(src=self.pg2.remote_hosts[2].ip4,
                     dst=self.pg2.local_ip4) /
                  UDP(sport=1234, dport=48879) /
-                 VXLAN(vni=101, gpid=220, flags=0x88) /
+                 VXLAN(vni=101, gpid=441, flags=0x88) /
                  Ether(src=l['mac'], dst="00:00:00:11:11:11") /
                  IP(src=l['ip'], dst=ep.ip4.address) /
                  UDP(sport=1234, dport=1234) /
@@ -2312,7 +2328,7 @@ class TestGBP(VppTestCase):
             tep1_sw_if_index = find_vxlan_gbp_tunnel(
                 self,
                 self.pg2.local_ip4,
-                self.pg2.remote_hosts[1].ip4,
+                self.pg2.remote_hosts[2].ip4,
                 vx_tun_l3.vni)
             self.assertNotEqual(INDEX_INVALID, tep1_sw_if_index)
 
@@ -2372,7 +2388,7 @@ class TestGBP(VppTestCase):
                 self.assertEqual(rx[IP].dst, self.pg2.remote_hosts[1].ip4)
                 self.assertEqual(rx[UDP].dport, 48879)
                 # the UDP source port is a random value for hashing
-                self.assertEqual(rx[VXLAN].gpid, 220)
+                self.assertEqual(rx[VXLAN].gpid, 441)
                 self.assertEqual(rx[VXLAN].vni, 101)
                 self.assertTrue(rx[VXLAN].flags.G)
                 self.assertTrue(rx[VXLAN].flags.Instance)
@@ -2425,7 +2441,7 @@ class TestGBP(VppTestCase):
              IP(src=self.pg2.remote_hosts[1].ip4,
                 dst=self.pg2.local_ip4) /
              UDP(sport=1234, dport=48879) /
-             VXLAN(vni=101, gpid=220, flags=0x88) /
+             VXLAN(vni=101, gpid=441, flags=0x88) /
              Ether(src=l['mac'], dst="00:00:00:11:11:11") /
              IP(src=learnt[1]['ip'], dst=ep.ip4.address) /
              UDP(sport=1234, dport=1234) /
@@ -2519,17 +2535,17 @@ class TestGBP(VppTestCase):
         #
         # The Endpoint-groups in which we are learning endpoints
         #
-        epg_220 = VppGbpEndpointGroup(self, 220, rd1, gbd1,
+        epg_220 = VppGbpEndpointGroup(self, 220, 440, rd1, gbd1,
                                       None, gbd1.bvi,
                                       "10.0.0.128",
                                       "2001:10::128")
         epg_220.add_vpp_config()
-        epg_221 = VppGbpEndpointGroup(self, 221, rd1, gbd2,
+        epg_221 = VppGbpEndpointGroup(self, 221, 441, rd1, gbd2,
                                       None, gbd2.bvi,
                                       "10.0.1.128",
                                       "2001:11::128")
         epg_221.add_vpp_config()
-        epg_222 = VppGbpEndpointGroup(self, 222, rd1, gbd1,
+        epg_222 = VppGbpEndpointGroup(self, 222, 442, rd1, gbd1,
                                       None, gbd1.bvi,
                                       "10.0.2.128",
                                       "2001:12::128")
@@ -2557,12 +2573,12 @@ class TestGBP(VppTestCase):
         #
         # EPGs in which the service endpoints exist
         #
-        epg_320 = VppGbpEndpointGroup(self, 320, rd1, gbd3,
+        epg_320 = VppGbpEndpointGroup(self, 320, 550, rd1, gbd3,
                                       None, gbd1.bvi,
                                       "12.0.0.128",
                                       "4001:10::128")
         epg_320.add_vpp_config()
-        epg_321 = VppGbpEndpointGroup(self, 321, rd1, gbd4,
+        epg_321 = VppGbpEndpointGroup(self, 321, 551, rd1, gbd4,
                                       None, gbd2.bvi,
                                       "12.0.1.128",
                                       "4001:11::128")
@@ -2915,7 +2931,7 @@ class TestGBP(VppTestCase):
              IP(src=self.pg7.remote_ip4,
                 dst=self.pg7.local_ip4) /
              UDP(sport=1234, dport=48879) /
-             VXLAN(vni=444, gpid=221, flags=0x88) /
+             VXLAN(vni=444, gpid=441, flags=0x88) /
              Ether(src="00:22:22:22:22:33", dst=str(self.router_mac)) /
              IP(src="10.0.0.88", dst=ep1.ip4.address) /
              UDP(sport=1234, dport=1234) /
@@ -2933,7 +2949,7 @@ class TestGBP(VppTestCase):
              IP(src=self.pg7.remote_ip4,
                 dst=self.pg7.local_ip4) /
              UDP(sport=1234, dport=48879) /
-             VXLAN(vni=444, gpid=221, flags=0x88) /
+             VXLAN(vni=444, gpid=441, flags=0x88) /
              Ether(src="00:22:22:22:22:33", dst=str(self.router_mac)) /
              IPv6(src="2001:10::88", dst=ep1.ip6.address) /
              UDP(sport=1234, dport=1234) /
@@ -3053,17 +3069,25 @@ class TestGBP(VppTestCase):
         self.pg7.resolve_arp()
 
         #
+        # a multicast vxlan-gbp tunnel for broadcast in the BD
+        #
+        tun_bm = VppVxlanGbpTunnel(self, self.pg7.local_ip4,
+                                   "239.1.1.1", 88,
+                                   mcast_itf=self.pg7)
+        tun_bm.add_vpp_config()
+
+        #
         # a GBP external bridge domains for the EPs
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0)
+        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, None, tun_bm)
         gbd1.add_vpp_config()
 
         #
         # The Endpoint-groups in which the external endpoints exist
         #
-        epg_220 = VppGbpEndpointGroup(self, 220, rd1, gbd1,
+        epg_220 = VppGbpEndpointGroup(self, 220, 113, rd1, gbd1,
                                       None, gbd1.bvi,
                                       "10.0.0.128",
                                       "2001:10::128")
@@ -3079,7 +3103,7 @@ class TestGBP(VppTestCase):
         l3o_1 = VppGbpSubnet(
             self, rd1, "10.0.0.0", 24,
             VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
-            epg=200)
+            epg=220)
         l3o_1.add_vpp_config()
 
         #
@@ -3092,18 +3116,7 @@ class TestGBP(VppTestCase):
         ext_itf.add_vpp_config()
 
         #
-        # a multicast vxlan-gbp tunnel for broadcast in the BD
-        #
-        tun_bm = VppVxlanGbpTunnel(self, self.pg7.local_ip4,
-                                   "239.1.1.1", 88,
-                                   mcast_itf=self.pg7)
-        tun_bm.add_vpp_config()
-        bp_bm = VppBridgeDomainPort(self, bd1, tun_bm,
-                                    port_type=L2_PORT_TYPE.NORMAL)
-        bp_bm.add_vpp_config()
-
-        #
-        # an unicast vxlan-gbp for inter-BD traffic
+        # an unicast vxlan-gbp for inter-RD traffic
         #
         vx_tun_l3 = VppGbpVxlanTunnel(
             self, 444, rd1.rd_id,
@@ -3136,7 +3149,7 @@ class TestGBP(VppTestCase):
             self.assertTrue(rx[VXLAN].flags.G)
             self.assertTrue(rx[VXLAN].flags.Instance)
             # policy was applied to the original IP packet
-            self.assertEqual(rx[VXLAN].gpid, 200)
+            self.assertEqual(rx[VXLAN].gpid, 113)
             self.assertTrue(rx[VXLAN].gpflags.A)
             self.assertFalse(rx[VXLAN].gpflags.D)
 
@@ -3175,7 +3188,7 @@ class TestGBP(VppTestCase):
              IP(src=self.pg7.remote_ip4,
                 dst=self.pg7.local_ip4) /
              UDP(sport=1234, dport=48879) /
-             VXLAN(vni=444, gpid=220, flags=0x88) /
+             VXLAN(vni=444, gpid=113, flags=0x88) /
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.0.0.101", dst="10.0.0.1") /
              UDP(sport=1234, dport=1234) /
@@ -3203,109 +3216,13 @@ class TestGBP(VppTestCase):
              IP(src=self.pg7.remote_ip4,
                 dst=self.pg7.local_ip4) /
              UDP(sport=1234, dport=48879) /
-             VXLAN(vni=444, gpid=220, flags=0x88) /
+             VXLAN(vni=444, gpid=113, flags=0x88) /
              Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
              IP(src="10.0.0.101", dst="10.220.0.1") /
              UDP(sport=1234, dport=1234) /
              Raw('\xa5' * 100))
 
         rxs = self.send_and_expect(self.pg7, p * 1, self.pg0)
-
-        #
-        # another external subnet, this time in a different EPG
-        #
-        ip_200 = VppIpRoute(self, "10.200.0.0", 24,
-                            [VppRoutePath(eep.ip4.address,
-                                          eep.epg.bvi.sw_if_index)],
-                            table_id=t4.table_id)
-        ip_200.add_vpp_config()
-
-        l3o_200 = VppGbpSubnet(
-            self, rd1, "10.200.0.0", 24,
-            VppEnum.vl_api_gbp_subnet_type_t.GBP_API_SUBNET_L3_OUT,
-            epg=200)
-        l3o_200.add_vpp_config()
-
-        p = (Ether(src=self.pg7.remote_mac,
-                   dst=self.pg7.local_mac) /
-             IP(src=self.pg7.remote_ip4,
-                dst=self.pg7.local_ip4) /
-             UDP(sport=1234, dport=48879) /
-             VXLAN(vni=444, gpid=220, flags=0x88) /
-             Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
-             IP(src="10.0.0.101", dst="10.200.0.1") /
-             UDP(sport=1234, dport=1234) /
-             Raw('\xa5' * 100))
-
-        #
-        # packets dropped due to lack of contract.
-        #
-        rxs = self.send_and_assert_no_replies(self.pg7, p * 1)
-
-        #
-        # from the the subnet in EPG 220 beyond the external to remote
-        #
-        p4 = (Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
-              Dot1Q(vlan=100) /
-              IP(src="10.220.0.1", dst=rep.ip4.address) /
-              UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
-
-        rxs = self.send_and_expect(self.pg0, p4 * 1, self.pg7)
-
-        for rx in rxs:
-            self.assertEqual(rx[Ether].src, self.pg7.local_mac)
-            self.assertEqual(rx[Ether].dst, self.pg7.remote_mac)
-            self.assertEqual(rx[IP].src, self.pg7.local_ip4)
-            self.assertEqual(rx[IP].dst, self.pg7.remote_ip4)
-            self.assertEqual(rx[VXLAN].vni, 444)
-            self.assertTrue(rx[VXLAN].flags.G)
-            self.assertTrue(rx[VXLAN].flags.Instance)
-            self.assertTrue(rx[VXLAN].gpflags.A)
-            self.assertFalse(rx[VXLAN].gpflags.D)
-
-        #
-        # from the the subnet in EPG 200 beyond the external to remote
-        # dropped due to no contract
-        #
-        p4 = (Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
-              Dot1Q(vlan=100) /
-              IP(src="10.200.0.1", dst=rep.ip4.address) /
-              UDP(sport=1234, dport=1234) /
-              Raw('\xa5' * 100))
-
-        rxs = self.send_and_assert_no_replies(self.pg0, p4 * 1)
-
-        #
-        # add a contract
-        #
-        acl = VppGbpAcl(self)
-        rule = acl.create_rule(permit_deny=1, proto=17)
-        rule2 = acl.create_rule(is_ipv6=1, permit_deny=1, proto=17)
-        acl_index = acl.add_vpp_config([rule, rule2])
-        c1 = VppGbpContract(
-            self, 200, 220, acl_index,
-            [VppGbpContractRule(
-                VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
-                []),
-             VppGbpContractRule(
-                 VppEnum.vl_api_gbp_rule_action_t.GBP_API_RULE_PERMIT,
-                 [])],
-            [ETH_P_IP, ETH_P_IPV6])
-        c1.add_vpp_config()
-
-        rxs = self.send_and_expect(self.pg0, p4 * 1, self.pg7)
-
-        for rx in rxs:
-            self.assertEqual(rx[Ether].src, self.pg7.local_mac)
-            self.assertEqual(rx[Ether].dst, self.pg7.remote_mac)
-            self.assertEqual(rx[IP].src, self.pg7.local_ip4)
-            self.assertEqual(rx[IP].dst, self.pg7.remote_ip4)
-            self.assertEqual(rx[VXLAN].vni, 444)
-            self.assertTrue(rx[VXLAN].flags.G)
-            self.assertTrue(rx[VXLAN].flags.Instance)
-            self.assertTrue(rx[VXLAN].gpflags.A)
-            self.assertFalse(rx[VXLAN].gpflags.D)
 
         #
         # cleanup

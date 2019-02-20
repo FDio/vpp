@@ -14,7 +14,10 @@
 ##############################################################################
 # Cache line size detection
 ##############################################################################
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
+if(CMAKE_CROSSCOMPILING)
+  message(STATUS "Cross-compiling - cache line size detection disabled")
+  set(VPP_LOG2_CACHE_LINE_SIZE 6)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   file(READ "/proc/cpuinfo" cpuinfo)
   string(REPLACE "\n" ";" cpuinfo ${cpuinfo})
   foreach(l ${cpuinfo})
@@ -90,7 +93,7 @@ macro(vpp_library_set_multiarch_sources lib)
     set(l ${lib}_${VARIANT})
     add_library(${l} OBJECT ${ARGN})
     set_target_properties(${l} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    target_compile_options(${l} PUBLIC "-DCLIB_MARCH_VARIANT=${VARIANT}")
+    target_compile_options(${l} PUBLIC "-DCLIB_MARCH_VARIANT=${VARIANT}" -Wall -fno-common)
     separate_arguments(VARIANT_FLAGS)
     target_compile_options(${l} PUBLIC ${VARIANT_FLAGS})
     target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${l}>)

@@ -36,7 +36,7 @@
 #undef vl_printfun
 
 #include <vlibapi/api_helper_macros.h>
-vpe_api_main_t vpe_api_main;
+extern vpe_api_main_t vpe_api_main;
 
 #define foreach_vpe_api_msg                                     \
   _(PIPE_CREATE, pipe_create)                                   \

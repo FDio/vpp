@@ -221,6 +221,10 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
             super(TestVxlanGpe, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestVxlanGpe, cls).tearDownClass()
+
     @unittest.skip("test disabled for vxlan-gpe")
     def test_mcast_flood(self):
         """ inherited from BridgeDomain """

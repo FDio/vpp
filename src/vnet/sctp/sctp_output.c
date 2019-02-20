@@ -264,21 +264,20 @@ sctp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   vnet_buffer (b)->sctp.subconn_idx = MAX_SCTP_CONNECTIONS;
 
   /* Leave enough space for headers */
-  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
 always_inline void *
 sctp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
   ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
-  b->flags &= VLIB_BUFFER_NON_DEFAULT_FREELIST;
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->total_length_not_including_first_buffer = 0;
   vnet_buffer (b)->sctp.flags = 0;
   vnet_buffer (b)->sctp.subconn_idx = MAX_SCTP_CONNECTIONS;
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   /* Leave enough space for headers */
-  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
 always_inline int

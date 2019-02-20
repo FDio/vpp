@@ -14,6 +14,7 @@
  */
 
 #include <boost/asio/ip/address.hpp>
+#include <vom/neighbour.hpp>
 #include <vom/prefix.hpp>
 #include <vom/types.hpp>
 
@@ -23,14 +24,19 @@ namespace VOM {
 
 typedef boost::asio::ip::address ip_address_t;
 
+vapi_enum_ip_neighbor_flags to_api(const neighbour::flags_t& f);
+const neighbour::flags_t from_api(vapi_enum_ip_neighbor_flags f);
+
 void to_api(const ip_address_t& a, vapi_type_address& v);
-void to_api(const boost::asio::ip::address& a, vapi_type_ip4_address& v);
+void to_api(const boost::asio::ip::address_v4& a, vapi_type_ip4_address& v);
+void to_api(const boost::asio::ip::address_v6& a, vapi_type_ip6_address& v);
 void to_api(const boost::asio::ip::address& a,
             vapi_union_address_union& u,
             vapi_enum_address_family& af);
 
+boost::asio::ip::address_v4 from_api(const vapi_type_ip4_address& v);
+boost::asio::ip::address_v6 from_api(const vapi_type_ip6_address& v);
 ip_address_t from_api(const vapi_type_address& v);
-ip_address_t from_api(const vapi_type_ip4_address& v);
 ip_address_t from_api(const vapi_union_address_union& u,
                       vapi_enum_address_family af);
 

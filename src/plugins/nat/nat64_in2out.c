@@ -217,8 +217,9 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 	    return -1;
 
 	  bibe =
-	    nat64_db_bib_entry_create (db, &ip6->src_address, &out_addr,
-				       sport, out_port, fib_index, proto, 0);
+	    nat64_db_bib_entry_create (ctx->thread_index, db,
+				       &ip6->src_address, &out_addr, sport,
+				       out_port, fib_index, proto, 0);
 	  if (!bibe)
 	    return -1;
 
@@ -228,8 +229,8 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
       ste =
-	nat64_db_st_entry_create (db, bibe, &ip6->dst_address,
-				  &daddr.ip4, dport);
+	nat64_db_st_entry_create (ctx->thread_index, db, bibe,
+				  &ip6->dst_address, &daddr.ip4, dport);
       if (!ste)
 	return -1;
 
@@ -313,9 +314,10 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 		return -1;
 
 	      bibe =
-		nat64_db_bib_entry_create (db, &ip6->src_address,
-					   &out_addr, in_id, out_id,
-					   fib_index, IP_PROTOCOL_ICMP, 0);
+		nat64_db_bib_entry_create (ctx->thread_index, db,
+					   &ip6->src_address, &out_addr,
+					   in_id, out_id, fib_index,
+					   IP_PROTOCOL_ICMP, 0);
 	      if (!bibe)
 		return -1;
 
@@ -325,8 +327,8 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 
 	  nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
 	  ste =
-	    nat64_db_st_entry_create (db, bibe, &ip6->dst_address,
-				      &daddr.ip4, 0);
+	    nat64_db_st_entry_create (ctx->thread_index, db, bibe,
+				      &ip6->dst_address, &daddr.ip4, 0);
 	  if (!ste)
 	    return -1;
 
@@ -556,9 +558,9 @@ nat64_in2out_unk_proto_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 	    return -1;
 
 	  bibe =
-	    nat64_db_bib_entry_create (db, &ip6->src_address,
-				       &ctx.out_addr, 0, 0, fib_index, proto,
-				       0);
+	    nat64_db_bib_entry_create (s_ctx->thread_index, db,
+				       &ip6->src_address, &ctx.out_addr,
+				       0, 0, fib_index, proto, 0);
 	  if (!bibe)
 	    return -1;
 
@@ -568,7 +570,8 @@ nat64_in2out_unk_proto_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
       ste =
-	nat64_db_st_entry_create (db, bibe, &ip6->dst_address, &daddr.ip4, 0);
+	nat64_db_st_entry_create (s_ctx->thread_index, db, bibe,
+				  &ip6->dst_address, &daddr.ip4, 0);
       if (!ste)
 	return -1;
 
@@ -649,8 +652,9 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 	    return -1;
 
 	  bibe =
-	    nat64_db_bib_entry_create (db, &ip6->src_address, &out_addr,
-				       sport, out_port, fib_index, proto, 0);
+	    nat64_db_bib_entry_create (thread_index, db, &ip6->src_address,
+				       &out_addr, sport, out_port, fib_index,
+				       proto, 0);
 	  if (!bibe)
 	    return -1;
 
@@ -660,7 +664,7 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
       ste =
-	nat64_db_st_entry_create (db, bibe, &ip6->dst_address,
+	nat64_db_st_entry_create (thread_index, db, bibe, &ip6->dst_address,
 				  &daddr.ip4, dport);
       if (!ste)
 	return -1;
@@ -909,7 +913,7 @@ nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 	    return -1;
 
 	  bibe =
-	    nat64_db_bib_entry_create (db, &ip6->src_address,
+	    nat64_db_bib_entry_create (thread_index, db, &ip6->src_address,
 				       &ctx.out_addr, 0, 0, fib_index, proto,
 				       0);
 	  if (!bibe)
@@ -921,7 +925,8 @@ nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 
       nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
       ste =
-	nat64_db_st_entry_create (db, bibe, &ip6->dst_address, &daddr.ip4, 0);
+	nat64_db_st_entry_create (thread_index, db, bibe, &ip6->dst_address,
+				  &daddr.ip4, 0);
       if (!ste)
 	return -1;
 
@@ -1485,7 +1490,7 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
 	      if (PREDICT_FALSE (reass0->sess_index == (u32) ~ 0))
 		{
 		  if (nat_ip6_reass_add_fragment
-		      (reass0, bi0, &fragments_to_drop))
+		      (thread_index, reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[NAT64_IN2OUT_ERROR_MAX_FRAG];
 		      next0 = NAT64_IN2OUT_NEXT_DROP;
@@ -1528,7 +1533,7 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
 			}
 
 		      bibe0 =
-			nat64_db_bib_entry_create (db,
+			nat64_db_bib_entry_create (thread_index, db,
 						   &ip60->src_address,
 						   &out_addr0, udp0->src_port,
 						   out_port0, fib_index0,
@@ -1546,7 +1551,7 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
 		  nat64_extract_ip4 (&ip60->dst_address, &daddr0.ip4,
 				     fib_index0);
 		  ste0 =
-		    nat64_db_st_entry_create (db, bibe0,
+		    nat64_db_st_entry_create (thread_index, db, bibe0,
 					      &ip60->dst_address, &daddr0.ip4,
 					      udp0->dst_port);
 		  if (!ste0)

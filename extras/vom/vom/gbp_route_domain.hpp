@@ -96,7 +96,7 @@ public:
    */
   std::string to_string() const;
 
-  const std::shared_ptr<route_domain> get_route_domain();
+  const std::shared_ptr<route_domain> get_route_domain() const;
 
 private:
   /**

@@ -58,7 +58,7 @@ extern void interface_rx_dpo_module_init(void);
 /**
  * @brief pool of all interface DPOs
  */
-interface_rx_dpo_t *interface_rx_dpo_pool;
+extern interface_rx_dpo_t *interface_rx_dpo_pool;
 
 static inline interface_rx_dpo_t *
 interface_rx_dpo_get (index_t index)

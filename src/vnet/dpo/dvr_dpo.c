@@ -18,6 +18,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
+dvr_dpo_t *dvr_dpo_pool;
+
 /**
  * The 'DB' of DVR DPOs.
  * There is one per-interface per-L3 proto, so this is a per-interface vector

@@ -7,6 +7,10 @@ import logging
 from ipaddress import ip_address
 from socket import AF_INET, AF_INET6
 from vpp_papi import VppEnum
+try:
+    text_type = unicode
+except NameError:
+    text_type = str
 
 _log = logging.getLogger(__name__)
 
@@ -26,7 +30,7 @@ INVALID_INDEX = 0xffffffff
 class VppIpAddressUnion():
     def __init__(self, addr):
         self.addr = addr
-        self.ip_addr = ip_address(unicode(self.addr))
+        self.ip_addr = ip_address(text_type(self.addr))
 
     def encode(self):
         if self.version == 6:
@@ -191,8 +195,8 @@ class VppIpMPrefix():
         self.saddr = saddr
         self.gaddr = gaddr
         self.len = len
-        self.ip_saddr = ip_address(unicode(self.saddr))
-        self.ip_gaddr = ip_address(unicode(self.gaddr))
+        self.ip_saddr = ip_address(text_type(self.saddr))
+        self.ip_gaddr = ip_address(text_type(self.gaddr))
         if self.ip_saddr.version != self.ip_gaddr.version:
             raise ValueError('Source and group addresses must be of the '
                              'same address family.')

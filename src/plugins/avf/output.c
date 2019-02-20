@@ -66,7 +66,7 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	goto one_by_one;
 
-      clib_memcpy_fast (txq->bufs + next, buffers, sizeof (u32) * 4);
+      vlib_buffer_copy_indices (txq->bufs + next, buffers, 4);
 
       if (use_va_dma)
 	{

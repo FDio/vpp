@@ -1239,7 +1239,6 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    {
 	      b0->current_data = 0;
 	      b0->current_length = 0;
-	      clib_memset (vnet_buffer (b0), 0, sizeof (*vnet_buffer (b0)));
 	      bfd_init_final_control_frame (vm, b0, bfd_udp_main.bfd_main, bs,
 					    0);
 	      if (is_ipv6)

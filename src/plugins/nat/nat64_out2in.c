@@ -164,7 +164,8 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 
       nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
       ste =
-	nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, sport);
+	nat64_db_st_entry_create (ctx->thread_index, db, bibe, &ip6_saddr,
+				  &saddr.ip4, sport);
 
       if (!ste)
 	return -1;
@@ -245,7 +246,8 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
 
 	  nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
 	  ste =
-	    nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, 0);
+	    nat64_db_st_entry_create (ctx->thread_index, db,
+				      bibe, &ip6_saddr, &saddr.ip4, 0);
 
 	  if (!ste)
 	    return -1;
@@ -408,7 +410,8 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 	return -1;
 
       nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
-      ste = nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, 0);
+      ste = nat64_db_st_entry_create (ctx->thread_index, db,
+				      bibe, &ip6_saddr, &saddr.ip4, 0);
 
       if (!ste)
 	return -1;
@@ -810,7 +813,8 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  nat64_compose_ip6 (&ip6_saddr0, &ip40->src_address,
 				     bibe0->fib_index);
 		  ste0 =
-		    nat64_db_st_entry_create (db, bibe0, &ip6_saddr0,
+		    nat64_db_st_entry_create (thread_index,
+					      db, bibe0, &ip6_saddr0,
 					      &saddr0.ip4, udp0->src_port);
 
 		  if (!ste0)
@@ -836,7 +840,7 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (PREDICT_FALSE (reass0->sess_index == (u32) ~ 0))
 		{
 		  if (nat_ip4_reass_add_fragment
-		      (reass0, bi0, &fragments_to_drop))
+		      (thread_index, reass0, bi0, &fragments_to_drop))
 		    {
 		      b0->error = node->errors[NAT64_OUT2IN_ERROR_MAX_FRAG];
 		      next0 = NAT64_OUT2IN_NEXT_DROP;

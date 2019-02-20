@@ -284,7 +284,6 @@ This function creates the packet header for an ipfix data packet
      vlib_buffer_t *b0 = 0;
      u32 bi0 = ~0;
      u32 offset;
-     vlib_buffer_free_list_t *fl;
 
      b0 = mlm->buffers_by_thread[thread_index];
 
@@ -300,9 +299,6 @@ This function creates the packet header for an ipfix data packet
    	}
 
          b0 = vlib_get_buffer (vm, bi0);
-         fl =
-   	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-         vlib_buffer_init_for_free_list (b0, fl);
          VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
          offset = 0;
          mlm->buffers_by_thread[thread_index] = b0;

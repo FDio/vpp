@@ -12,7 +12,6 @@
 # limitations under the License.
 
 find_package(PythonInterp 2.7)
-find_package(PythonLibs 2.7)
 
 if(PYTHONINTERP_FOUND)
   install(

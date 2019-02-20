@@ -20,6 +20,8 @@
 #define included_ip6_neighbor_h
 
 #include <vnet/fib/fib_types.h>
+#include <vnet/ethernet/mac_address.h>
+#include <vnet/ip/ip_neighbor.h>
 
 typedef struct
 {
@@ -28,18 +30,11 @@ typedef struct
   u32 pad;
 } ip6_neighbor_key_t;
 
-typedef enum ip6_neighbor_flags_t_
-{
-  IP6_NEIGHBOR_FLAG_STATIC = (1 << 0),
-  IP6_NEIGHBOR_FLAG_DYNAMIC = (1 << 1),
-  IP6_NEIGHBOR_FLAG_NO_FIB_ENTRY = (1 << 2),
-} __attribute__ ((packed)) ip6_neighbor_flags_t;
-
 typedef struct
 {
   ip6_neighbor_key_t key;
-  u8 link_layer_address[8];
-  ip6_neighbor_flags_t flags;
+  mac_address_t mac;
+  ip_neighbor_flags_t flags;
   f64 time_last_updated;
   fib_node_index_t fib_entry_index;
 } ip6_neighbor_t;
@@ -81,10 +76,8 @@ extern void vnet_register_ip6_neighbor_resolution_event (vnet_main_t * vnm,
 extern int vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 					   u32 sw_if_index,
 					   const ip6_address_t * a,
-					   const u8 * link_layer_address,
-					   uword n_bytes_link_layer_address,
-					   int is_static,
-					   int is_no_fib_entry);
+					   const mac_address_t * mac,
+					   ip_neighbor_flags_t flags);
 
 extern int vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 					     u32 sw_if_index,
@@ -99,7 +92,7 @@ typedef struct
 {
   u32 sw_if_index;
   ip6_address_t ip6;
-  u8 mac[6];
+  mac_address_t mac;
 } wc_nd_report_t;
 
 void wc_nd_set_publisher_node (uword node_index, uword event_type);
@@ -119,8 +112,7 @@ void icmp6_send_router_solicitation (vlib_main_t * vm, u32 sw_if_index,
 
 typedef struct
 {
-  ip6_address_t dst_address;
-  u8 dst_address_length;
+  fib_prefix_t prefix;
   u8 flags;
   u32 valid_time;
   u32 preferred_time;
@@ -129,7 +121,7 @@ typedef struct
 typedef struct
 {
   u32 sw_if_index;
-  u8 router_address[16];
+  ip6_address_t router_address;
   u8 current_hop_limit;
   u8 flags;
   u16 router_lifetime_in_sec;

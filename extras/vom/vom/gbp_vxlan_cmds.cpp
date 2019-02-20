@@ -15,8 +15,6 @@
 
 #include "vom/gbp_vxlan_cmds.hpp"
 
-#include <vapi/tap.api.vapi.hpp>
-
 namespace VOM {
 namespace gbp_vxlan_cmds {
 create_cmd::create_cmd(HW::item<handle_t>& item,

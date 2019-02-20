@@ -1,0 +1,4 @@
+#!/bin/sh -e
+
+# Add the vpp group
+groupadd -f -r vpp

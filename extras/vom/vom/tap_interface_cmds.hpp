@@ -22,7 +22,6 @@
 #include "vom/rpc_cmd.hpp"
 
 #include <vapi/interface.api.vapi.hpp>
-#include <vapi/tap.api.vapi.hpp>
 #include <vapi/tapv2.api.vapi.hpp>
 
 namespace VOM {

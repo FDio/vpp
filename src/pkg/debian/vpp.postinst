@@ -1,0 +1,8 @@
+#!/bin/sh -e
+
+# try to set the required values now. This may or may not work.
+sysctl --system
+
+#DEBHELPER#
+
+exit 0

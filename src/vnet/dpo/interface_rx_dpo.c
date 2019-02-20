@@ -17,6 +17,8 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/l2/l2_input.h>
 
+interface_rx_dpo_t *interface_rx_dpo_pool;
+
 /*
  * The 'DB' of interface DPOs.
  * There is only one  per-interface per-protocol, so this is a per-interface

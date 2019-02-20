@@ -612,7 +612,6 @@ tcp_half_open_connection_get (u32 conn_index)
   return tc;
 }
 
-void tcp_make_ack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,

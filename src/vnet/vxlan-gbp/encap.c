@@ -260,9 +260,9 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	  vxlan_gbp0->gpflags = vnet_buffer2 (b0)->gbp.flags;
 	  vxlan_gbp1->gpflags = vnet_buffer2 (b1)->gbp.flags;
 	  vxlan_gbp0->sclass =
-	    clib_host_to_net_u16 (vnet_buffer2 (b0)->gbp.src_epg);
+	    clib_host_to_net_u16 (vnet_buffer2 (b0)->gbp.sclass);
 	  vxlan_gbp1->sclass =
-	    clib_host_to_net_u16 (vnet_buffer2 (b1)->gbp.src_epg);
+	    clib_host_to_net_u16 (vnet_buffer2 (b1)->gbp.sclass);
 
 	  if (csum_offload)
 	    {
@@ -324,7 +324,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->tunnel_index = t0 - vxm->tunnels;
 	      tr->vni = t0->vni;
-	      tr->sclass = vnet_buffer2 (b0)->gbp.src_epg;
+	      tr->sclass = vnet_buffer2 (b0)->gbp.sclass;
 	      tr->flags = vnet_buffer2 (b0)->gbp.flags;
 	    }
 
@@ -334,7 +334,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b1, sizeof (*tr));
 	      tr->tunnel_index = t1 - vxm->tunnels;
 	      tr->vni = t1->vni;
-	      tr->sclass = vnet_buffer2 (b1)->gbp.src_epg;
+	      tr->sclass = vnet_buffer2 (b1)->gbp.sclass;
 	      tr->flags = vnet_buffer2 (b1)->gbp.flags;
 	    }
 
@@ -426,7 +426,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 	  /* set source class and gpflags */
 	  vxlan_gbp0->gpflags = vnet_buffer2 (b0)->gbp.flags;
 	  vxlan_gbp0->sclass =
-	    clib_host_to_net_u16 (vnet_buffer2 (b0)->gbp.src_epg);
+	    clib_host_to_net_u16 (vnet_buffer2 (b0)->gbp.sclass);
 
 	  if (csum_offload)
 	    {
@@ -469,7 +469,7 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->tunnel_index = t0 - vxm->tunnels;
 	      tr->vni = t0->vni;
-	      tr->sclass = vnet_buffer2 (b0)->gbp.src_epg;
+	      tr->sclass = vnet_buffer2 (b0)->gbp.sclass;
 	      tr->flags = vnet_buffer2 (b0)->gbp.flags;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

@@ -52,7 +52,7 @@ extern void l3_proxy_dpo_module_init(void);
 /**
  * @brief pool of all l3_proxy DPOs
  */
-l3_proxy_dpo_t *l3_proxy_dpo_pool;
+extern l3_proxy_dpo_t *l3_proxy_dpo_pool;
 
 static inline l3_proxy_dpo_t *
 l3_proxy_dpo_get (index_t index)

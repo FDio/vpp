@@ -57,8 +57,7 @@ typedef struct openssl_tls_callback_
   void *arg;
 } openssl_tls_callback_t;
 
-typedef int openssl_resume_handler (tls_ctx_t * ctx,
-				    stream_session_t * tls_session);
+typedef int openssl_resume_handler (tls_ctx_t * ctx, session_t * tls_session);
 
 tls_ctx_t *openssl_ctx_get_w_thread (u32 ctx_index, u8 thread_index);
 openssl_tls_callback_t *vpp_add_async_pending_event (tls_ctx_t * ctx,

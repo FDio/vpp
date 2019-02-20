@@ -391,6 +391,7 @@ class VppTestCase(unittest.TestCase):
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
+        super(VppTestCase, cls).setUpClass()
         gc.collect()  # run garbage collection first
         random.seed()
         cls.logger = get_logger(cls.__name__)
@@ -532,7 +533,7 @@ class VppTestCase(unittest.TestCase):
             stderr_log(single_line_delim)
             stderr_log('VPP output to stderr while running %s:', cls.__name__)
             stderr_log(single_line_delim)
-            vpp_output = "".join(str(cls.vpp_stderr_deque))
+            vpp_output = "".join(cls.vpp_stderr_deque)
             with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
                 f.write(vpp_output)
             stderr_log('\n%s', vpp_output)
@@ -550,6 +551,7 @@ class VppTestCase(unittest.TestCase):
 
     def tearDown(self):
         """ Show various debug prints after each test """
+        super(VppTestCase, self).tearDown()
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
@@ -576,6 +578,7 @@ class VppTestCase(unittest.TestCase):
 
     def setUp(self):
         """ Clear trace before running each test"""
+        super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
         self.logger.debug("--- setUp() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
@@ -1034,7 +1037,8 @@ class VppTestResult(unittest.TestResult):
     core_crash_test_cases_info = set()
     current_test_case_info = None
 
-    def __init__(self, stream, descriptions, verbosity, runner):
+    def __init__(self, stream=None, descriptions=None, verbosity=None,
+                 runner=None):
         """
         :param stream File descriptor to store where to report test results.
             Set to the standard error stream by default.
@@ -1279,12 +1283,12 @@ class VppTestRunner(unittest.TextTestRunner):
 
     def __init__(self, keep_alive_pipe=None, descriptions=True, verbosity=1,
                  result_pipe=None, failfast=False, buffer=False,
-                 resultclass=None, print_summary=True):
+                 resultclass=None, print_summary=True, **kwargs):
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
                                             verbosity, failfast, buffer,
-                                            resultclass)
+                                            resultclass, **kwargs)
         KeepAliveReporter.pipe = keep_alive_pipe
 
         self.orig_stream = self.stream

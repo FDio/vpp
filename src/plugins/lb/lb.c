@@ -984,10 +984,15 @@ static int lb_vip_del_port_filter(lb_main_t *lbm, lb_vip_t *vip)
   key.vip_prefix_index = vip->vip_prefix_index;
   key.protocol = vip->protocol;
   key.port = clib_host_to_net_u16(vip->port);
+  key.rsv = 0;
 
   kv.key = key.as_u64;
-  if(clib_bihash_search_8_8(&lbm->vip_index_per_port, &kv, &value) == 0)
-    m = pool_elt_at_index (lbm->vips, value.value);
+  if(clib_bihash_search_8_8(&lbm->vip_index_per_port, &kv, &value) != 0)
+    {
+      clib_warning("looking up vip_index_per_port failed.");
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+  m = pool_elt_at_index (lbm->vips, value.value);
   ASSERT (m);
 
   kv.value = m - lbm->vips;
@@ -1190,10 +1195,11 @@ int lb_vip_del(u32 vip_index)
 {
   lb_main_t *lbm = &lb_main;
   lb_vip_t *vip;
+  int rv = 0;
 
   /* Does not remove default vip, i.e. vip_index = 0 */
   if (vip_index == 0)
-    return 0;
+    return VNET_API_ERROR_INVALID_VALUE;
 
   lb_get_writer_lock();
   if (!(vip = lb_vip_get_by_index(vip_index))) {
@@ -1225,14 +1231,14 @@ int lb_vip_del(u32 vip_index)
   //Delete per-port vip filtering entry
   if (vip->port != 0)
     {
-      lb_vip_del_port_filter(lbm, vip);
+      rv = lb_vip_del_port_filter(lbm, vip);
     }
 
   //Set the VIP as unused
   vip->flags &= ~LB_VIP_FLAGS_USED;
 
   lb_put_writer_lock();
-  return 0;
+  return rv;
 }
 
 /* *INDENT-OFF* */

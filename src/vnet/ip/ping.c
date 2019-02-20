@@ -388,7 +388,7 @@ init_icmp46_echo_request (vlib_main_t * vm, vlib_buffer_t * b0,
   int l34_len =
     l4_header_offset + sizeof (icmp46_header_t) +
     offsetof (icmp46_echo_request_t, data);
-  int max_data_len = VLIB_BUFFER_DATA_SIZE - l34_len;
+  int max_data_len = vlib_buffer_get_default_data_size (vm) - l34_len;
 
   int first_buf_data_len = data_len < max_data_len ? data_len : max_data_len;
 
@@ -403,9 +403,9 @@ init_icmp46_echo_request (vlib_main_t * vm, vlib_buffer_t * b0,
     {
       int this_buf_data_len =
 	remaining_data_len <
-	VLIB_BUFFER_DATA_SIZE ? remaining_data_len : VLIB_BUFFER_DATA_SIZE;
-      int n_alloc = vlib_buffer_alloc_from_free_list (vm, &b0->next_buffer, 1,
-						      hb->free_list_index);
+	vlib_buffer_get_default_data_size (vm) ? remaining_data_len :
+	vlib_buffer_get_default_data_size (vm);
+      int n_alloc = vlib_buffer_alloc (vm, &b0->next_buffer, 1);
       if (n_alloc < 1)
 	{
 	  /* That is how much we have so far - return it... */
@@ -746,15 +746,12 @@ send_ip46_ping (vlib_main_t * vm,
   u32 bi0 = 0;
   int n_buf0 = 0;
   vlib_buffer_t *b0;
-  vlib_buffer_free_list_t *fl;
 
   n_buf0 = vlib_buffer_alloc (vm, &bi0, 1);
   if (n_buf0 < 1)
     ERROR_OUT (SEND_PING_ALLOC_FAIL);
 
   b0 = vlib_get_buffer (vm, bi0);
-  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-  vlib_buffer_init_for_free_list (b0, fl);
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
   /*

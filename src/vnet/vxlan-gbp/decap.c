@@ -334,7 +334,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	    }
 
 	  vnet_buffer2 (b0)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
-	  vnet_buffer2 (b0)->gbp.src_epg = vxlan_gbp_get_sclass (vxlan_gbp0);
+	  vnet_buffer2 (b0)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
 
 
 	  if (PREDICT_FALSE
@@ -369,7 +369,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	    }
 
 	  vnet_buffer2 (b1)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp1);
-	  vnet_buffer2 (b1)->gbp.src_epg = vxlan_gbp_get_sclass (vxlan_gbp1);
+	  vnet_buffer2 (b1)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp1);
 
 	  vnet_update_l2_len (b0);
 	  vnet_update_l2_len (b1);
@@ -473,7 +473,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 		(rx_counter, thread_index, stats_t0->sw_if_index, 1, len0);
 	    }
 	  vnet_buffer2 (b0)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
-	  vnet_buffer2 (b0)->gbp.src_epg = vxlan_gbp_get_sclass (vxlan_gbp0);
+	  vnet_buffer2 (b0)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
 
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
 	  vnet_update_l2_len (b0);

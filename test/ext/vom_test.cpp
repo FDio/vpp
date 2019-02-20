@@ -1773,7 +1773,9 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     HW::item<bool> hw_neighbour(true, rc_t::OK);
     mac_address_t mac_n({0,1,2,4,5,6});
     neighbour *ne = new neighbour(itf1, nh_10, mac_n);
-    ADD_EXPECT(neighbour_cmds::create_cmd(hw_neighbour, hw_ifh.data(), mac_n, nh_10));
+    ADD_EXPECT(neighbour_cmds::create_cmd(hw_neighbour, hw_ifh.data(),
+                                          mac_n, nh_10,
+                                          neighbour::flags_t::STATIC));
     TRY_CHECK_RC(OM::write(ian, *ne));
 
     /*
@@ -1829,7 +1831,9 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     delete mp1;
     delete mp2;
 
-    ADD_EXPECT(neighbour_cmds::delete_cmd(hw_neighbour, hw_ifh.data(), mac_n, nh_10));
+    ADD_EXPECT(neighbour_cmds::delete_cmd(hw_neighbour, hw_ifh.data(),
+                                          mac_n, nh_10,
+                                          neighbour::flags_t::STATIC));
     ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_dvr, 0, pfx_6, *path_l2));
     ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5, *path_11));
     ADD_EXPECT(route::ip_route_cmds::delete_cmd(hw_route_5_2, 1, pfx_5, *path_12));
