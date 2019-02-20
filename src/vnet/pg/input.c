@@ -1632,7 +1632,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	  int i;
 	  vlib_buffer_t *b;
 
-	  for (i = 0; i < VLIB_FRAME_SIZE - n_left; i++)
+	  for (i = 0; i < n_this_frame; i++)
 	    {
 	      b = vlib_get_buffer (vm, to_next[i]);
 	      ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0 ||
