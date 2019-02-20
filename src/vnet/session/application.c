@@ -1155,7 +1155,9 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
 {
   if (session_handle_is_local (a->handle))
     {
+      app_worker_t *client_wrk, *server_wrk;
       local_session_t *ls;
+      u32 wrk_index = ~0;
 
       /* Disconnect reply came to worker 1 not main thread */
       app_interface_check_thread_and_barrier (vnet_disconnect_session, a);
@@ -1163,7 +1165,22 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
       if (!(ls = app_worker_get_local_session_from_handle (a->handle)))
 	return 0;
 
-      return app_worker_local_session_disconnect (a->app_index, ls);
+      client_wrk = app_worker_get_if_valid (ls->client_wrk_index);
+      server_wrk = app_worker_get (ls->app_wrk_index);
+
+      if (server_wrk->app_index == a->app_index)
+	wrk_index = server_wrk->wrk_index;
+      else if (client_wrk && client_wrk->app_index == a->app_index)
+	wrk_index = client_wrk->wrk_index;
+
+      if (wrk_index == ~0)
+	{
+	  clib_warning ("app %u does not own session 0x%lx", a->app_index,
+			application_local_session_handle (ls));
+	  return VNET_API_ERROR_INVALID_VALUE;
+	}
+
+      return app_worker_local_session_disconnect (wrk_index, ls);
     }
   else
     {

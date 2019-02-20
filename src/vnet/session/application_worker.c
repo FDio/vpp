@@ -362,7 +362,7 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
       /* *INDENT-OFF* */
       pool_foreach (ls, app_wrk->local_sessions, ({
         if (ls->listener_index == ll->session_index)
-          app_worker_local_session_disconnect (app_wrk->app_index, ls);
+          app_worker_local_session_disconnect (app_wrk->wrk_index, ls);
       }));
       /* *INDENT-ON* */
     }
@@ -966,35 +966,17 @@ app_worker_local_session_connect_notify (local_session_t * ls)
 }
 
 int
-app_worker_local_session_disconnect (u32 app_index, local_session_t * ls)
+app_worker_local_session_disconnect (u32 app_wrk_index, local_session_t * ls)
 {
   app_worker_t *client_wrk, *server_wrk;
-  u8 is_server = 0, is_client = 0;
-  application_t *app;
-
-  app = application_get_if_valid (app_index);
-  if (!app)
-    return 0;
 
   client_wrk = app_worker_get_if_valid (ls->client_wrk_index);
   server_wrk = app_worker_get (ls->app_wrk_index);
 
-  if (server_wrk->app_index == app_index)
-    is_server = 1;
-  else if (client_wrk && client_wrk->app_index == app_index)
-    is_client = 1;
-
-  if (!is_server && !is_client)
-    {
-      clib_warning ("app %u is neither client nor server for session 0x%lx",
-		    app_index, application_local_session_handle (ls));
-      return VNET_API_ERROR_INVALID_VALUE;
-    }
-
   if (ls->session_state == SESSION_STATE_CLOSED)
     return app_worker_local_session_cleanup (client_wrk, server_wrk, ls);
 
-  if (app_index == ls->client_wrk_index)
+  if (app_wrk_index == ls->client_wrk_index)
     {
       mq_send_local_session_disconnected_cb (ls->app_wrk_index, ls);
     }
