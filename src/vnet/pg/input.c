@@ -1450,16 +1450,14 @@ format_pg_input_trace (u8 * s, va_list * va)
 
 static void
 pg_input_trace (pg_main_t * pg,
-		vlib_node_runtime_t * node,
-		pg_stream_t * s, u32 * buffers, u32 n_buffers)
+		vlib_node_runtime_t * node, u32 stream_index, u32 next_index,
+		u32 * buffers, u32 n_buffers)
 {
   vlib_main_t *vm = vlib_get_main ();
-  u32 *b, n_left, stream_index, next_index;
+  u32 *b, n_left;
 
   n_left = n_buffers;
   b = buffers;
-  stream_index = s - pg->streams;
-  next_index = s->next_index;
 
   while (n_left >= 2)
     {
@@ -1621,7 +1619,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
       if (n_trace > 0)
 	{
 	  u32 n = clib_min (n_trace, n_this_frame);
-	  pg_input_trace (pg, node, s, to_next, n);
+	  pg_input_trace (pg, node, s - pg->streams, next_index, to_next, n);
 	  vlib_set_trace_count (vm, node, n_trace - n);
 	}
       n_packets_to_generate -= n_this_frame;
