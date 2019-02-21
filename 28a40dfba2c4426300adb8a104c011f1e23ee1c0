@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "05b16281_07dec152",
+        "filename": "extras/vpp_config/vpplib/VPPUtil.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-02-21T12:28:10Z",
+      "side": 1,
+      "message": "This is not official vpp package, it is just developer helper...",
+      "range": {
+        "startLine": 27,
+        "startChar": 53,
+        "endLine": 27,
+        "endChar": 65
+      },
+      "revId": "28a40dfba2c4426300adb8a104c011f1e23ee1c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
