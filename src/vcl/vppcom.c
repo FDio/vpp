@@ -533,6 +533,30 @@ vcl_session_bound_handler (vcl_worker_t * wrk, session_bound_msg_t * mp)
   return sid;
 }
 
+static void
+vcl_session_unlisten_reply_handler (vcl_worker_t * wrk, void *data)
+{
+  session_unlisten_reply_msg_t *mp = (session_unlisten_reply_msg_t *) data;
+  vcl_session_t *s;
+
+  s = vcl_session_get_w_vpp_handle (wrk, mp->handle);
+  if (!s || s->session_state != STATE_DISCONNECT)
+    {
+      VDBG (0, "Unlisten reply with wrong handle %llx", mp->handle);
+      return;
+    }
+
+  if (mp->retval)
+    VDBG (0, "ERROR: session %u [0xllx]: unlisten failed: %U",
+	  s->session_index, mp->handle, format_api_error, ntohl (mp->retval));
+
+  if (mp->context != wrk->wrk_index)
+    VDBG (0, "wrong context");
+
+  vcl_session_table_del_vpp_handle (wrk, mp->handle);
+  vcl_session_free (wrk, s);
+}
+
 static vcl_session_t *
 vcl_session_accepted (vcl_worker_t * wrk, session_accepted_msg_t * msg)
 {
@@ -669,6 +693,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
       break;
     case SESSION_CTRL_EVT_BOUND:
       vcl_session_bound_handler (wrk, (session_bound_msg_t *) e->data);
+      break;
+    case SESSION_CTRL_EVT_UNLISTEN_REPLY:
+      vcl_session_unlisten_reply_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);
@@ -821,7 +848,6 @@ vppcom_session_unbind (u32 session_handle)
     return VPPCOM_EBADFD;
 
   vpp_handle = session->vpp_handle;
-  vcl_session_table_del_listener (wrk, vpp_handle);
   session->vpp_handle = ~0;
   session->session_state = STATE_DISCONNECT;
 
@@ -1079,6 +1105,7 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 	    VDBG (0, "session %u [0x%llx]: listener unbind failed! "
 		  "rv %d (%s)", session->session_index, vpp_handle, rv,
 		  vppcom_retval_str (rv));
+	  return rv;
 	}
       else if (state & STATE_OPEN)
 	{
@@ -1937,6 +1964,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  *bits_set += 1;
 	}
       break;
+    case SESSION_CTRL_EVT_UNLISTEN_REPLY:
+      vcl_session_unlisten_reply_handler (wrk, e->data);
+      break;
     case SESSION_CTRL_EVT_WORKER_UPDATE_REPLY:
       vcl_session_worker_update_reply_handler (wrk, e->data);
       break;
@@ -2557,6 +2587,9 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       add_event = 1;
       events[*num_ev].events |= EPOLLHUP | EPOLLRDHUP;
       session_evt_data = session->vep.ev.data.u64;
+      break;
+    case SESSION_CTRL_EVT_UNLISTEN_REPLY:
+      vcl_session_unlisten_reply_handler (wrk, e->data);
       break;
     case SESSION_CTRL_EVT_REQ_WORKER_UPDATE:
       vcl_session_req_worker_update_handler (wrk, e->data);

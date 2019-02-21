@@ -95,7 +95,7 @@ typedef struct _vnet_bind_args_t
   u64 handle;
 } vnet_listen_args_t;
 
-typedef struct _vnet_unbind_args_t
+typedef struct _vnet_unlisten_args_t
 {
   union
   {
@@ -267,6 +267,13 @@ typedef struct session_bound_msg_
   u8 segment_name_length;
   u8 segment_name[128];
 } __clib_packed session_bound_msg_t;
+
+typedef struct session_unlisten_reply_msg_
+{
+  u32 context;
+  u64 handle;
+  i32 retval;
+} __clib_packed session_unlisten_reply_msg_t;
 
 typedef struct session_accepted_msg_
 {
