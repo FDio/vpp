@@ -59,7 +59,7 @@ pmalloc_validate_numa_node (u32 * numa_node)
 }
 
 int
-clib_pmalloc_init (clib_pmalloc_main_t * pm, uword size)
+clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size)
 {
   uword off, pagesize;
   u64 *pt = 0;
@@ -82,8 +82,8 @@ clib_pmalloc_init (clib_pmalloc_main_t * pm, uword size)
   pm->max_pages = size >> pm->def_log2_page_sz;
 
   /* reserve VA space for future growth */
-  pm->base = mmap (0, size + pagesize, PROT_NONE,
-		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  pm->base = mmap (uword_to_pointer (base_addr, void *), size + pagesize,
+		   PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
   if (pm->base == MAP_FAILED)
     {

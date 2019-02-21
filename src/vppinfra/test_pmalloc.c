@@ -44,7 +44,7 @@ test_palloc (test_main_t * tm)
   int i;
   uword *va;
 
-  if (clib_pmalloc_init (pm, 0) != 0)
+  if (clib_pmalloc_init (pm, 0, 0) != 0)
     return clib_error_return (0, "pmalloc init failure");
 
   fformat (stdout, "Allocate %d items...\n", tm->nitems);
