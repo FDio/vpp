@@ -235,7 +235,7 @@ svm_fifo_enqueue_nocopy (svm_fifo_t * f, u32 bytes)
 {
   ASSERT (bytes <= svm_fifo_max_enqueue (f));
   f->tail = (f->tail + bytes) % f->nitems;
-  f->cursize += bytes;
+  clib_atomic_fetch_add_rel (&f->cursize, bytes);
 }
 
 always_inline u8 *
