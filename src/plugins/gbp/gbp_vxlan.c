@@ -721,7 +721,7 @@ gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
 	  gb = gbp_bridge_domain_get (gbi);
 
 	  gt->gt_gbd = gbi;
-	  gt->gt_bd_index = gb->gb_bd_id;
+	  gt->gt_bd_index = gb->gb_bd_index;
 	  gb->gb_vni_sw_if_index = gt->gt_sw_if_index;
 	  /* set it up as a GBP interface */
 	  gt->gt_itf = gbp_itf_add_and_lock (gt->gt_sw_if_index,
