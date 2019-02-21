@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "69da7c19_63f3d1b7",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 14
+      },
+      "lineNbr": 143,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-21T13:16:21Z",
+      "side": 1,
+      "message": "Please consider removing this from these methods.  They come so close to being idempotent. functional methods.  It is no more difficult to pass in self.payload in the method call.\nThe if payload is None is a great step forward, thank you.  Can we take it another step further and remove that final indirection?",
+      "range": {
+        "startLine": 142,
+        "startChar": 0,
+        "endLine": 143,
+        "endChar": 34
+      },
+      "revId": "9e46a5c326fad66c360d9639d26871d15f64f5d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
