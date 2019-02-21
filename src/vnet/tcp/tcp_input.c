@@ -564,7 +564,7 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 	continue;
 
       /* Dequeue the newly ACKed bytes */
-      stream_session_dequeue_drop (&tc->connection, tc->burst_acked);
+      session_dequeue_drop (&tc->connection, tc->burst_acked);
       tc->burst_acked = 0;
       tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
 
@@ -2806,8 +2806,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Don't try to deq the FIN acked */
 	      if (tc0->burst_acked > 1)
-		stream_session_dequeue_drop (&tc0->connection,
-					     tc0->burst_acked - 1);
+		session_dequeue_drop (&tc0->connection, tc0->burst_acked - 1);
 	      tc0->burst_acked = 0;
 	    }
 	  break;
@@ -2950,8 +2949,17 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	case TCP_STATE_FIN_WAIT_1:
 	  tc0->rcv_nxt += 1;
 	  tcp_connection_set_state (tc0, TCP_STATE_CLOSING);
-	  tcp_program_ack (wrk, tc0);
-	  /* Wait for ACK but not forever */
+	  if (tc0->flags & TCP_CONN_FINPNDG)
+	    {
+	      /* Drop all outstanding tx data. */
+	      session_dequeue_drop (&tc0->connection,
+				    transport_max_tx_dequeue
+				    (&tc0->connection));
+	      tcp_send_fin (tc0);
+	    }
+	  else
+	    tcp_program_ack (wrk, tc0);
+	  /* Wait for ACK for our FIN but not forever */
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	  break;
 	case TCP_STATE_FIN_WAIT_2:

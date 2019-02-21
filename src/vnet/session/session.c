@@ -462,7 +462,7 @@ stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 }
 
 u32
-stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
+session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_dequeue_drop (s->tx_fifo, max_bytes);
