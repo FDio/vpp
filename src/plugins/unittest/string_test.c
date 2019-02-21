@@ -500,8 +500,6 @@ test_clib_strncmp (vlib_main_t * vm, unformat_input_t * input)
   v_indicator = strncmp (s1, "Every moment is a fresh beginning", s1len + 1);
   if (v_indicator != 0)
     return -1;
-  if (v_indicator != indicator)
-    return -1;
 
   /* unterminated s1 */
   s1[s1len] = 0x1;
