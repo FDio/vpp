@@ -242,6 +242,12 @@ vlib_get_frame (vlib_main_t * vm, uword frame_index)
   return f;
 }
 
+always_inline void
+vlib_frame_seal (vlib_frame_t * f)
+{
+  f->frame_flags |= VLIB_FRAME_IS_SEALED;
+}
+
 always_inline u32
 vlib_frame_index (vlib_main_t * vm, vlib_frame_t * f)
 {
