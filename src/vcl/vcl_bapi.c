@@ -340,12 +340,11 @@ static void
 vl_api_unbind_sock_reply_t_handler (vl_api_unbind_sock_reply_t * mp)
 {
   if (mp->retval)
-    clib_warning ("VCL<%d>: ERROR: sid %u: unbind failed: %U",
-		  getpid (), mp->context, format_api_error,
-		  ntohl (mp->retval));
+    VDBG (0, "ERROR: sid %u: unbind failed: %U", mp->context,
+          format_api_error, ntohl (mp->retval));
 
-  else
-    VDBG (1, "VCL<%d>: sid %u: unbind succeeded!", getpid (), mp->context);
+  VDBG (1, "sid %u: unbind succeeded!", mp->context);
+
 }
 
 static void
