@@ -375,7 +375,7 @@ int session_enqueue_dgram_connection (session_t * s,
 				      u8 queue_event);
 int stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			       u32 offset, u32 max_bytes);
-u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
+u32 session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
 
 int session_stream_connect_notify (transport_connection_t * tc, u8 is_fail);
 int session_dgram_connect_notify (transport_connection_t * tc,
