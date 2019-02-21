@@ -103,7 +103,7 @@ typedef struct
 } clib_pmalloc_main_t;
 
 
-int clib_pmalloc_init (clib_pmalloc_main_t * pm, uword size);
+int clib_pmalloc_init (clib_pmalloc_main_t * pm, uword base_addr, uword size);
 void *clib_pmalloc_alloc_aligned_on_numa (clib_pmalloc_main_t * pm,
 					  uword size, uword align,
 					  u32 numa_node);
