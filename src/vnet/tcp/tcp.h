@@ -575,6 +575,8 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 always_inline void
 tcp_connection_set_state (tcp_connection_t * tc, tcp_state_t state)
 {
+  if (tc->c_c_index == 0)
+    clib_warning ("conn 0 went from %u to %u", tc->state, state);
   tc->state = state;
   TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 }
