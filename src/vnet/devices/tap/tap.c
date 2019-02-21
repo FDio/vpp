@@ -93,6 +93,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
   clib_error_t *err = 0;
+  int fd = -1;
 
   if (args->id != ~0)
     {
@@ -194,8 +195,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
      after we change our net namespace */
   if (args->host_namespace)
     {
-      int fd;
-      int rc;
       old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
       if ((fd = open_netns_fd ((char *) args->host_namespace)) == -1)
 	{
@@ -211,9 +210,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	  goto error;
 	}
-      rc = setns (fd, CLONE_NEWNET);
-      close (fd);
-      if (rc == -1)
+      if (setns (fd, CLONE_NEWNET) == -1)
 	{
 	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
 	  args->error = clib_error_return_unix (0, "setns '%s'",
@@ -436,6 +433,8 @@ done:
     clib_mem_free (vhost_mem);
   if (old_netns_fd != -1)
     close (old_netns_fd);
+  if (fd != -1)
+    close (fd);
 }
 
 int
