@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "931983f7_8a6b8ef3",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 377,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-21T13:24:13Z",
+      "side": 1,
+      "message": "I know you just refactored this code, but this should be:\nexcept (IndexError, AssertionError)",
+      "range": {
+        "startLine": 377,
+        "startChar": 12,
+        "endLine": 377,
+        "endChar": 19
+      },
+      "revId": "41e9c81c3377130f1da4a549b14c146812f791f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ad7aa8e1_62285b5b",
+        "filename": "test/test_ipsec_tun_if_esp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-21T13:24:13Z",
+      "side": 1,
+      "message": "except (IndexError, AssertionError)",
+      "range": {
+        "startLine": 88,
+        "startChar": 12,
+        "endLine": 88,
+        "endChar": 19
+      },
+      "revId": "41e9c81c3377130f1da4a549b14c146812f791f9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
