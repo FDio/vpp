@@ -199,6 +199,7 @@ app_worker_free (app_worker_t * app_wrk)
     {
       sm = segment_manager_get (app_wrk->connects_seg_manager);
       sm->app_wrk_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+      sm->first_is_protected = 0;
       segment_manager_init_del (sm);
     }
 
