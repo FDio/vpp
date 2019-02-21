@@ -403,6 +403,7 @@ vhost_user_if_input (vlib_main_t * vm,
       ef = vlib_frame_scalar_args (f);
       ef->sw_if_index = vui->sw_if_index;
       ef->hw_if_index = vui->hw_if_index;
+      vlib_frame_no_append (f);
     }
 
   while (n_left > 0)

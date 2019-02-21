@@ -425,6 +425,7 @@ no_more_desc:
 
       if ((or_qw1 & AVF_RXD_ERROR_IPE) == 0)
 	f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
+      vlib_frame_no_append (f);
     }
 
   n_left_to_next -= n_rx_packets;

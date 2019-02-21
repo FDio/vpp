@@ -417,6 +417,9 @@ typedef struct
 #define VLIB_FRAME_NO_FREE_AFTER_DISPATCH \
   VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
 
+  /* Don't append this frame */
+#define VLIB_FRAME_NO_APPEND (1 << 14)
+
   /* This next frame owns enqueue to node
      corresponding to node_runtime_index. */
 #define VLIB_FRAME_OWNER (1 << 15)

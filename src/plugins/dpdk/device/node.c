@@ -390,6 +390,7 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
 	  if (xd->flags & DPDK_DEVICE_FLAG_RX_IP4_CKSUM &&
 	      (or_flags & PKT_RX_IP_CKSUM_BAD) == 0)
 	    f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
+	  vlib_frame_no_append (f);
 	}
       n_left_to_next -= n_rx_packets;
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);

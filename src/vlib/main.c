@@ -233,7 +233,7 @@ vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f)
 	ASSERT (nf->frame_index != frame_index);
     }
 
-  f->frame_flags &= ~VLIB_FRAME_IS_ALLOCATED;
+  f->frame_flags &= ~(VLIB_FRAME_IS_ALLOCATED | VLIB_FRAME_NO_APPEND);
 
   vec_add1 (fs->free_frame_indices, frame_index);
   ASSERT (fs->n_alloc_frames > 0);
@@ -387,9 +387,11 @@ vlib_get_next_frame_internal (vlib_main_t * vm,
       f->flags = 0;
     }
 
-  /* Allocate new frame if current one is already full. */
+  /* Allocate new frame if current one is marked as no-append or
+     it is already full. */
   n_used = f->n_vectors;
-  if (n_used >= VLIB_FRAME_SIZE || (allocate_new_next_frame && n_used > 0))
+  if (n_used >= VLIB_FRAME_SIZE || (allocate_new_next_frame && n_used > 0) ||
+      (f->frame_flags & VLIB_FRAME_NO_APPEND))
     {
       /* Old frame may need to be freed after dispatch, since we'll have
          two redundant frames from node -> next node. */
@@ -1370,7 +1372,7 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
 				   VLIB_NODE_STATE_POLLING,
 				   f, last_time_stamp);
 
-  f->frame_flags &= ~VLIB_FRAME_PENDING;
+  f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND);
 
   /* Frame is ready to be used again, so restore it. */
   if (restore_frame_index != ~0)

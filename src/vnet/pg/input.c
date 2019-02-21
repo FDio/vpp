@@ -1575,6 +1575,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 	  pi = pool_elt_at_index (pg->interfaces, s->pg_if_index);
 	  ef->sw_if_index = pi->sw_if_index;
 	  ef->hw_if_index = pi->hw_if_index;
+	  vlib_frame_no_append (f);
 	}
       else
 	vlib_get_next_frame (vm, node, next_index, to_next, n_left);
