@@ -457,41 +457,35 @@ static inline void
 vcl_session_table_add_listener (vcl_worker_t * wrk, u64 listener_handle,
 				u32 value)
 {
-  /* Session and listener handles have different formats. The latter has
-   * the thread index in the upper 32 bits while the former has the session
-   * type. Knowing that, for listeners we just flip the MSB to 1 */
-  listener_handle |= 1ULL << 63;
   hash_set (wrk->session_index_by_vpp_handles, listener_handle, value);
 }
 
 static inline void
 vcl_session_table_del_listener (vcl_worker_t * wrk, u64 listener_handle)
 {
-  listener_handle |= 1ULL << 63;
   hash_unset (wrk->session_index_by_vpp_handles, listener_handle);
 }
 
 static inline vcl_session_t *
-vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 listener_handle)
+vcl_session_table_lookup_listener (vcl_worker_t * wrk, u64 handle)
 {
   uword *p;
-  u64 handle = listener_handle | (1ULL << 63);
   vcl_session_t *session;
 
   p = hash_get (wrk->session_index_by_vpp_handles, handle);
   if (!p)
     {
-      clib_warning ("VCL<%d>: couldn't find listen session: unknown vpp "
-		    "listener handle %llx", getpid (), listener_handle);
+      VDBG (0, "could not find listen session: unknown vpp listener handle"
+	    " %llx", handle);
       return 0;
     }
-  if (pool_is_free_index (wrk->sessions, p[0]))
+  session = vcl_session_get (wrk, p[0]);
+  if (!session)
     {
-      VDBG (1, "VCL<%d>: invalid listen session, sid (%u)", getpid (), p[0]);
+      VDBG (1, "invalid listen session index (%u)", p[0]);
       return 0;
     }
 
-  session = pool_elt_at_index (wrk->sessions, p[0]);
   ASSERT (session->session_state & (STATE_LISTEN | STATE_LISTEN_NO_MQ));
   return session;
 }

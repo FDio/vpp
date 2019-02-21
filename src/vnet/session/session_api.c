@@ -1248,7 +1248,8 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
 {
   vl_api_unbind_sock_reply_t *rmp;
   vnet_unlisten_args_t _a, *a = &_a;
-  application_t *app;
+  app_worker_t *app_wrk;
+  application_t *app = 0;
   int rv = 0;
 
   if (session_manager_is_enabled () == 0)
@@ -1269,6 +1270,34 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
 
 done:
   REPLY_MACRO (VL_API_UNBIND_SOCK_REPLY);
+
+  /*
+   * Send reply over msg queue
+   */
+  svm_msg_q_msg_t _msg, *msg = &_msg;
+  session_unlisten_reply_msg_t *ump;
+  svm_msg_q_t *app_mq;
+  session_event_t *evt;
+
+  if (!app)
+    return;
+
+  app_wrk = application_get_worker (app, a->wrk_map_index);
+  if (!app_wrk)
+    return;
+
+  app_mq = app_wrk->event_queue;
+  if (mq_try_lock_and_alloc_msg (app_mq, msg))
+    return;
+
+  evt = svm_msg_q_msg_data (app_mq, msg);
+  clib_memset (evt, 0, sizeof (*evt));
+  evt->event_type = SESSION_CTRL_EVT_UNLISTEN_REPLY;
+  ump = (session_unlisten_reply_msg_t *) evt->data;
+  ump->context = mp->context;
+  ump->handle = mp->handle;
+  ump->retval = rv;
+  svm_msg_q_add_and_unlock (app_mq, msg);
 }
 
 static void
