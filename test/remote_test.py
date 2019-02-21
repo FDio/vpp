@@ -10,6 +10,7 @@ import six
 from six import moves
 
 from framework import VppTestCase
+from enum import Enum
 
 
 class SerializableClassCopy(object):
@@ -221,7 +222,22 @@ class RemoteClass(Process):
         """
         if self._serializable(obj):
             return obj  # already serializable
+
         copy = SerializableClassCopy()
+
+        """
+        Dictionaries can hold complex values, so we split keys and values into
+        separate lists and serialize them individually.
+        """
+        if (type(obj) is dict):
+            copy.type = type(obj)
+            copy.k_list = list()
+            copy.v_list = list()
+            for k, v in obj.items():
+                copy.k_list.append(self._make_serializable(k))
+                copy.v_list.append(self._make_serializable(v))
+            return copy
+
         # copy at least serializable attributes and properties
         for name, member in inspect.getmembers(obj):
             if name[0] == '_':  # skip private members
@@ -245,10 +261,18 @@ class RemoteClass(Process):
             if type(obj) is tuple:
                 rv = tuple(rv)
             return rv
+        elif (isinstance(obj, Enum)):
+            return obj.value
         else:
             return self._make_obj_serializable(obj)
 
     def _deserialize_obj(self, obj):
+        if (hasattr(obj, 'type')):
+            if obj.type is dict:
+                _obj = dict()
+                for k, v in zip(obj.k_list, obj.v_list):
+                    _obj[self._deserialize(k)] = self._deserialize(v)
+            return _obj
         return obj
 
     def _deserialize(self, obj):
