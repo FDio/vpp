@@ -16,7 +16,7 @@
 #ifndef __VOM_GBP_CONTRACT_H__
 #define __VOM_GBP_CONTRACT_H__
 
-#include "vom/acl_list.hpp"
+#include "vom/acl_l3_list.hpp"
 #include "vom/gbp_endpoint.hpp"
 #include "vom/gbp_rule.hpp"
 #include "vom/interface.hpp"

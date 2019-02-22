@@ -16,7 +16,8 @@
 #ifndef __VOM_ACL_LIST_CMDS_H__
 #define __VOM_ACL_LIST_CMDS_H__
 
-#include "vom/acl_list.hpp"
+#include "vom/acl_l2_list.hpp"
+#include "vom/acl_l3_list.hpp"
 #include "vom/dump_cmd.hpp"
 #include "vom/rpc_cmd.hpp"
 
@@ -28,12 +29,12 @@ namespace list_cmds {
 /**
  * A command class that Create the list
  */
-template <typename RULE, typename UPDATE>
+template <typename LIST, typename UPDATE>
 class update_cmd : public rpc_cmd<HW::item<handle_t>, UPDATE>
 {
 public:
-  typedef typename list<RULE>::rules_t cmd_rules_t;
-  typedef typename list<RULE>::key_t cmd_key_t;
+  typedef typename LIST::rules_t cmd_rules_t;
+  typedef typename LIST::key_t cmd_key_t;
 
   /**
    * Constructor
@@ -78,7 +79,7 @@ public:
   void succeeded()
   {
     rpc_cmd<HW::item<handle_t>, UPDATE>::succeeded();
-    list<RULE>::add(m_key, this->item());
+    LIST::add(m_key, this->item());
   }
 
   /**
@@ -106,7 +107,7 @@ private:
   /**
    * add the created acl to the DB
    */
-  void insert_acl() { list<RULE>::add(m_key, this->item()); }
+  void insert_acl() { LIST::add(m_key, this->item()); }
 
   /**
    * The key.
@@ -122,7 +123,7 @@ private:
 /**
  * A cmd class that Deletes an ACL
  */
-template <typename RULE, typename DELETE>
+template <typename LIST, typename DELETE>
 class delete_cmd : public rpc_cmd<HW::item<handle_t>, DELETE>
 {
 public:
@@ -162,7 +163,7 @@ private:
   /**
    * remove the acl from the DB
    */
-  void remove_acl() { list<RULE>::remove(this->item()); }
+  void remove_acl() { LIST::remove(this->item()); }
 };
 
 /**
@@ -196,15 +197,15 @@ public:
 /**
  * Typedef the L3 ACL commands
  */
-typedef update_cmd<l3_rule, vapi::Acl_add_replace> l3_update_cmd;
-typedef delete_cmd<l3_rule, vapi::Acl_del> l3_delete_cmd;
+typedef update_cmd<l3_list, vapi::Acl_add_replace> l3_update_cmd;
+typedef delete_cmd<l3_list, vapi::Acl_del> l3_delete_cmd;
 typedef dump_cmd<vapi::Acl_dump> l3_dump_cmd;
 
 /**
  * Typedef the L2 ACL commands
  */
-typedef update_cmd<l2_rule, vapi::Macip_acl_add> l2_update_cmd;
-typedef delete_cmd<l2_rule, vapi::Macip_acl_del> l2_delete_cmd;
+typedef update_cmd<l2_list, vapi::Macip_acl_add> l2_update_cmd;
+typedef delete_cmd<l2_list, vapi::Macip_acl_del> l2_delete_cmd;
 typedef dump_cmd<vapi::Macip_acl_dump> l2_dump_cmd;
 
 }; // namespace list_cmds

@@ -50,10 +50,11 @@ if(ACL_FILE)
     acl_binding.cpp
     acl_ethertype_cmds.cpp
     acl_ethertype.cpp
+    acl_l2_list.cpp
     acl_l2_rule.cpp
+    acl_l3_list.cpp
     acl_l3_rule.cpp
     acl_list_cmds.cpp
-    acl_list.cpp
     acl_types.cpp
   )
 endif()
@@ -189,7 +190,8 @@ if(ACL_FILE)
     acl_ethertype.hpp
     acl_l2_rule.hpp
     acl_l3_rule.hpp
-    acl_list.hpp
+    acl_l3_list.hpp
+    acl_l2_list.hpp
     acl_types.hpp
   )
 endif()

@@ -13,12 +13,11 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_ACL_LIST_H__
-#define __VOM_ACL_LIST_H__
+#ifndef __VOM_ACL_L3_LIST_H__
+#define __VOM_ACL_L3_LIST_H__
 
 #include <set>
 
-#include "vom/acl_l2_rule.hpp"
 #include "vom/acl_l3_rule.hpp"
 #include "vom/acl_types.hpp"
 #include "vom/hw.hpp"
@@ -29,12 +28,11 @@
 namespace VOM {
 namespace ACL {
 /**
- * An ACL list comprises a set of match actions rules to be applied to
+ * An L3 ACL list comprises a set of match actions rules to be applied to
  * packets.
  * A list is bound to a given interface.
  */
-template <typename RULE>
-class list : public object_base
+class l3_list : public object_base
 {
 public:
   /**
@@ -47,126 +45,72 @@ public:
   /**
    * The rule container type
    */
-  typedef std::multiset<RULE> rules_t;
+  typedef std::multiset<l3_rule> rules_t;
 
   /**
    * Construct a new object matching the desried state
    */
-  list(const key_t& key)
-    : m_hdl(handle_t::INVALID)
-    , m_key(key)
-  {
-  }
+  l3_list(const key_t& key);
 
-  list(const handle_t& hdl, const key_t& key)
-    : m_hdl(hdl)
-    , m_key(key)
-  {
-  }
+  l3_list(const handle_t& hdl, const key_t& key);
 
-  list(const key_t& key, const rules_t& rules)
-    : m_hdl(handle_t::INVALID)
-    , m_key(key)
-    , m_rules(rules)
-  {
-  }
+  l3_list(const key_t& key, const rules_t& rules);
 
   /**
    * Copy Constructor
    */
-  list(const list& o)
-    : m_hdl(o.m_hdl)
-    , m_key(o.m_key)
-    , m_rules(o.m_rules)
-  {
-  }
+  l3_list(const l3_list& o);
 
   /**
    * Destructor
    */
-  ~list()
-  {
-    sweep();
-    m_db.release(m_key, this);
-  }
+  ~l3_list();
 
   /**
    * Return the 'sigular instance' of the ACL that matches this object
    */
-  std::shared_ptr<list> singular() const { return find_or_add(*this); }
+  std::shared_ptr<l3_list> singular() const;
 
   /**
    * Dump all ACLs into the stream provided
    */
-  static void dump(std::ostream& os) { m_db.dump(os); }
+  static void dump(std::ostream& os);
 
   /**
    * convert to string format for debug purposes
    */
-  std::string to_string() const
-  {
-    std::ostringstream s;
-    s << "acl-list:[" << m_key << " " << m_hdl.to_string() << " rules:[";
-
-    for (auto rule : m_rules) {
-      s << rule.to_string() << " ";
-    }
-
-    s << "]]";
-
-    return (s.str());
-  }
+  std::string to_string() const;
 
   /**
    * Insert priority sorted a rule into the list
    */
-  void insert(const RULE& rule) { m_rules.insert(rule); }
+  void insert(const l3_rule& rule);
 
   /**
    * Remove a rule from the list
    */
-  void remove(const RULE& rule) { m_rules.erase(rule); }
+  void remove(const l3_rule& rule);
 
   /**
    * Return the VPP assign handle
    */
-  const handle_t& handle() const { return (singular()->handle_i()); }
+  const handle_t& handle() const;
 
-  static std::shared_ptr<list> find(const handle_t& handle)
-  {
-    return (m_hdl_db[handle].lock());
-  }
+  static std::shared_ptr<l3_list> find(const handle_t& handle);
 
-  static std::shared_ptr<list> find(const key_t& key)
-  {
-    return (m_db.find(key));
-  }
+  static std::shared_ptr<l3_list> find(const key_t& key);
+  static void add(const key_t& key, const HW::item<handle_t>& item);
 
-  static void add(const key_t& key, const HW::item<handle_t>& item)
-  {
-    std::shared_ptr<list> sp = find(key);
+  static void remove(const HW::item<handle_t>& item);
 
-    if (sp && item) {
-      m_hdl_db[item.data()] = sp;
-    }
-  }
+  const key_t& key() const;
 
-  static void remove(const HW::item<handle_t>& item)
-  {
-    m_hdl_db.erase(item.data());
-  }
-
-  const key_t& key() const { return m_key; }
-
-  const rules_t& rules() const { return m_rules; }
+  const rules_t& rules() const;
 
   /**
    * Comparison operator - for UT
    */
-  bool operator==(const list& l) const
-  {
-    return (key() == l.key() && rules() == l.rules());
-  }
+  bool operator==(const l3_list& l) const;
 
 private:
   /**
@@ -187,7 +131,7 @@ private:
     /**
      * Handle a replay event
      */
-    void handle_replay() { m_db.replay(); }
+    void handle_replay();
 
     /**
      * Show the object in the Singular DB
@@ -197,7 +141,7 @@ private:
     /**
      * Get the sortable Id of the listener
      */
-    dependency_t order() const { return (dependency_t::ACL); }
+    dependency_t order() const;
   };
 
   /**
@@ -208,7 +152,7 @@ private:
   /**
    * Enqueue commands to the VPP command Q for the update
    */
-  void update(const list& obj);
+  void update(const l3_list& obj);
 
   /**
    * HW assigned handle
@@ -218,15 +162,12 @@ private:
   /**
    * Find or add the sigular instance in the DB
    */
-  static std::shared_ptr<list> find_or_add(const list& temp)
-  {
-    return (m_db.find_or_add(temp.key(), temp));
-  }
+  static std::shared_ptr<l3_list> find_or_add(const l3_list& temp);
 
   /**
    * return the acl-list's handle in the singular instance
    */
-  const handle_t& handle_i() const { return (m_hdl.data()); }
+  const handle_t& handle_i() const;
 
   /*
    * It's the VOM::OM class that updates call update
@@ -236,7 +177,7 @@ private:
   /**
    * It's the VOM::singular_db class that calls replay()
    */
-  friend class singular_db<key_t, list>;
+  friend class singular_db<key_t, l3_list>;
 
   /**
    * Sweep/reap the object if still stale
@@ -251,12 +192,12 @@ private:
   /**
    * A map of all ACL's against the client's key
    */
-  static singular_db<key_t, list> m_db;
+  static singular_db<key_t, l3_list> m_db;
 
   /**
    * A map of all ACLs keyed against VPP's handle
    */
-  static std::map<handle_t, std::weak_ptr<list>> m_hdl_db;
+  static std::map<handle_t, std::weak_ptr<l3_list>> m_hdl_db;
 
   /**
    * The Key is a user defined identifer for this ACL
@@ -269,32 +210,8 @@ private:
   rules_t m_rules;
 };
 
-/**
- * Typedef the L3 ACL type
- */
-typedef list<l3_rule> l3_list;
-
-/**
- * Typedef the L2 ACL type
- */
-typedef list<l2_rule> l2_list;
-
-/**
- * Definition of the static singular_db for ACL Lists
- */
-template <typename RULE>
-singular_db<typename ACL::list<RULE>::key_t, ACL::list<RULE>> list<RULE>::m_db;
-
-/**
- * Definition of the static per-handle DB for ACL Lists
- */
-template <typename RULE>
-std::map<handle_t, std::weak_ptr<ACL::list<RULE>>> list<RULE>::m_hdl_db;
-
-template <typename RULE>
-typename ACL::list<RULE>::event_handler list<RULE>::m_evh;
-};
-};
+}; // namesace ACL
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

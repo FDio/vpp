@@ -18,7 +18,8 @@
 
 #include <ostream>
 
-#include "vom/acl_list.hpp"
+#include "vom/acl_l2_list.hpp"
+#include "vom/acl_l3_list.hpp"
 #include "vom/acl_types.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
