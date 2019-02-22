@@ -16,6 +16,7 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
+#include <vnet/session/application_local.h>
 
 segment_manager_main_t segment_manager_main;
 
