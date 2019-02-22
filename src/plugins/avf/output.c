@@ -45,6 +45,9 @@ avf_tx_enqueue (vlib_main_t * vm, avf_txq_t * txq, u32 * buffers,
   /* avoid ring wrap */
   n_desc_left = txq->size - clib_max (txq->next, txq->n_enqueued + 8);
 
+  if (n_desc_left == 0)
+    return 0;
+
   while (n_packets_left && n_desc_left)
     {
       u32 or_flags;
@@ -140,7 +143,7 @@ VNET_DEVICE_CLASS_TX_FN (avf_device_class) (vlib_main_t * vm,
   avf_txq_t *txq = vec_elt_at_index (ad->txqs, qid % ad->num_queue_pairs);
   u32 *buffers = vlib_frame_vector_args (frame);
   u16 n_enq, n_left;
-  u16 n_retry = 5;
+  u16 n_retry = 2;
 
   clib_spinlock_lock_if_init (&txq->lock);
 
@@ -158,9 +161,10 @@ retry:
 	  if (slot == 0)
 	    break;
 
-	  complete_slot = slot[0];
-	  if (avf_tx_desc_get_dtyp (txq->descs + complete_slot) != 0x0F)
+	  if (avf_tx_desc_get_dtyp (txq->descs + slot[0]) != 0x0F)
 	    break;
+
+	  complete_slot = slot[0];
 
 	  clib_ring_deq (txq->rs_slots);
 	}
