@@ -1052,6 +1052,7 @@ list(APPEND VNET_SOURCES
   session/application_worker.c
   session/session_cli.c
   session/application_interface.c
+  session/application_local.c
   session/application_namespace.c
   session/segment_manager.c
   session/session_api.c
@@ -1067,6 +1068,7 @@ list(APPEND VNET_HEADERS
   session/transport.h
   session/transport_types.h
   session/application_interface.h
+  session/application_local.h
   session/application_namespace.h
   session/session_debug.h
   session/segment_manager.h
