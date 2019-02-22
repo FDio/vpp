@@ -435,6 +435,7 @@ vls_mt_acq_locks (vcl_locked_session_t * vls, vls_mt_ops_t op, int *locks_acq)
 	}
       break;
     case VLS_MT_OP_WRITE:
+      ASSERT (s);
       if (!is_nonblk)
 	is_nonblk = vcl_session_write_ready (s) != 0;
       if (!is_nonblk)
