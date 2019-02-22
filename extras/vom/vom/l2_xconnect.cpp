@@ -34,7 +34,7 @@ l2_xconnect::l2_xconnect(const interface& east_itf, const interface& west_itf)
   , m_west_itf(west_itf.singular())
   , m_xconnect_east(0)
   , m_xconnect_west(0)
-  , m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET)
+  , m_vtr_op(l2_vtr::option_t::DISABLED, rc_t::UNSET)
   , m_vtr_op_tag(0)
 {
 }
@@ -98,7 +98,7 @@ l2_xconnect::replay()
 
   if (m_vtr_op && handle_t::INVALID != m_east_itf->handle()) {
     HW::enqueue(
-      new set_vtr_op_cmd(m_vtr_op, m_east_itf->handle(), m_vtr_op_tag));
+      new l2_vtr_cmds::set_cmd(m_vtr_op, m_east_itf->handle(), m_vtr_op_tag));
   }
 }
 
@@ -122,7 +122,7 @@ l2_xconnect::to_string() const
 }
 
 void
-l2_xconnect::set(const l2_vtr_op_t& op, uint16_t tag)
+l2_xconnect::set(const l2_vtr::option_t& op, uint16_t tag)
 {
   assert(rc_t::UNSET == m_vtr_op.rc());
   m_vtr_op.set(rc_t::NOOP);
@@ -148,7 +148,7 @@ l2_xconnect::update(const l2_xconnect& desired)
    */
   if (m_vtr_op.update(desired.m_vtr_op)) {
     HW::enqueue(
-      new set_vtr_op_cmd(m_vtr_op, m_east_itf->handle(), m_vtr_op_tag));
+      new l2_vtr_cmds::set_cmd(m_vtr_op, m_east_itf->handle(), m_vtr_op_tag));
   }
 }
 

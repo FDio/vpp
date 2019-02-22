@@ -394,7 +394,7 @@ interface::set(const admin_state_t& state)
 void
 interface::set(const l2_address_t& addr)
 {
-  m_l2_address.update(addr);
+  m_l2_address = { addr, rc_t::NOOP };
 }
 
 void

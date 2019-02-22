@@ -81,7 +81,7 @@ public:
   /**
    * Set the VTR operation on the binding/interface
    */
-  void set(const l2_vtr_op_t& op, uint16_t tag);
+  void set(const l2_vtr::option_t& op, uint16_t tag);
 
   /**
    * Static function to find the bridge_domain in the model
@@ -183,7 +183,7 @@ private:
   /**
    * HW configuration for the VTR option
    */
-  HW::item<l2_vtr_op_t> m_vtr_op;
+  HW::item<l2_vtr::option_t> m_vtr_op;
 
   /**
    * The Dot1q tag for the VTR operation

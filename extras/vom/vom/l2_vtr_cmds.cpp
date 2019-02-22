@@ -16,10 +16,11 @@
 #include "vom/l2_vtr_cmds.hpp"
 
 namespace VOM {
+namespace l2_vtr_cmds {
 
-set_vtr_op_cmd::set_vtr_op_cmd(HW::item<l2_vtr_op_t>& item,
-                               const handle_t& itf,
-                               uint16_t tag)
+set_cmd::set_cmd(HW::item<l2_vtr::option_t>& item,
+                 const handle_t& itf,
+                 uint16_t tag)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_tag(tag)
@@ -27,7 +28,7 @@ set_vtr_op_cmd::set_vtr_op_cmd(HW::item<l2_vtr_op_t>& item,
 }
 
 bool
-set_vtr_op_cmd::operator==(const set_vtr_op_cmd& other) const
+set_cmd::operator==(const set_cmd& other) const
 {
   return (
     (m_hw_item.data() == other.m_hw_item.data() && m_itf == other.m_itf) &&
@@ -35,7 +36,7 @@ set_vtr_op_cmd::operator==(const set_vtr_op_cmd& other) const
 }
 
 rc_t
-set_vtr_op_cmd::issue(connection& con)
+set_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -51,15 +52,16 @@ set_vtr_op_cmd::issue(connection& con)
 }
 
 std::string
-set_vtr_op_cmd::to_string() const
+set_cmd::to_string() const
 {
   std::ostringstream s;
-  s << "L2-set-vtr-op: " << m_hw_item.to_string()
-    << " itf:" << m_itf.to_string() << " tag:" << m_tag;
+  s << "L2-vtr-set: " << m_hw_item.to_string() << " itf:" << m_itf.to_string()
+    << " tag:" << m_tag;
 
   return (s.str());
 }
 
+}; // namespace vtr_cmds
 }; // namespace VOM
 
 /*
