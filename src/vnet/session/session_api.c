@@ -17,6 +17,7 @@
 #include <vlibmemory/api.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
+#include <vnet/session/application_local.h>
 #include <vnet/session/session_rules_table.h>
 #include <vnet/session/session_table.h>
 #include <vnet/session/session.h>
