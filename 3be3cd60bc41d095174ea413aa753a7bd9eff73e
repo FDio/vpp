@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "80ecc880_845ff313",
+        "filename": "src/plugins/unittest/string_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 499,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-22T09:21:59Z",
+      "side": 1,
+      "message": "Mention that we have removed the actual verification.\nFor example by stating that coverity thinks such an obviously passing negative test is bad code. :)",
+      "range": {
+        "startLine": 499,
+        "startChar": 5,
+        "endLine": 499,
+        "endChar": 11
+      },
+      "revId": "3be3cd60bc41d095174ea413aa753a7bd9eff73e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
