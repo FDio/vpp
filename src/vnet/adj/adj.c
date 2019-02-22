@@ -431,10 +431,12 @@ adj_mtu_update_walk_cb (adj_index_t ai,
     return (ADJ_WALK_RC_CONTINUE);
 }
 
-static void
+static clib_error_t *
 adj_mtu_update (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
   adj_walk (sw_if_index, adj_mtu_update_walk_cb, NULL);
+
+  return (NULL);
 }
 
 VNET_SW_INTERFACE_MTU_CHANGE_FUNCTION(adj_mtu_update);

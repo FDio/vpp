@@ -131,7 +131,7 @@ static void __vnet_interface_function_deinit_##tag##_##f (void)         \
 {                                                                       \
  vnet_main_t * vnm = vnet_get_main();                                   \
  _vnet_interface_function_list_elt_t *next;                             \
- if (vnm->tag##_functions[p]->fp == (void *) &f)                        \
+ if (vnm->tag##_functions[p]->fp == f)                                  \
     {                                                                   \
       vnm->tag##_functions[p] =                                         \
         vnm->tag##_functions[p]->next_interface_function;               \
@@ -140,7 +140,7 @@ static void __vnet_interface_function_deinit_##tag##_##f (void)         \
   next = vnm->tag##_functions[p];                                       \
   while (next->next_interface_function)                                 \
     {                                                                   \
-      if (next->next_interface_function->fp == (void *) &f)             \
+      if (next->next_interface_function->fp == f)                       \
         {                                                               \
           next->next_interface_function =                               \
             next->next_interface_function->next_interface_function;     \
