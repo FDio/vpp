@@ -343,7 +343,6 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 			      next0 = gpd0->gpd_dpo.dpoi_next_node;
 			      break;
 			    case GBP_RULE_DENY:
-			      ASSERT (0);
 			      next0 = 0;
 			      break;
 			    case GBP_RULE_REDIRECT:

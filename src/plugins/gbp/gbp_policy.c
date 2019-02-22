@@ -288,7 +288,6 @@ gbp_policy_inline (vlib_main_t * vm,
 				      L2OUTPUT_FEAT_GBP_POLICY_MAC));
 				  break;
 				case GBP_RULE_DENY:
-				  ASSERT (0);
 				  next0 = 0;
 				  break;
 				case GBP_RULE_REDIRECT:
