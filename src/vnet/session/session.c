@@ -1030,25 +1030,23 @@ session_open (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 int
 session_listen (session_t * ls, session_endpoint_cfg_t * sep)
 {
-  transport_connection_t *tc;
   transport_endpoint_t *tep;
   u32 tc_index, s_index;
 
   /* Transport bind/listen */
   tep = session_endpoint_to_transport (sep);
   s_index = ls->session_index;
-  tc_index = transport_start_listen (sep->transport_proto, s_index, tep);
+  tc_index = transport_start_listen (session_get_transport_proto (ls),
+				     s_index, tep);
 
   if (tc_index == (u32) ~ 0)
     return -1;
 
-  /* Attach transport to session */
+  /* Attach transport to session. Lookup tables are populated by the app
+   * worker because local tables (for ct sessions) are not backed by a fib */
   ls = listen_session_get (s_index);
   ls->connection_index = tc_index;
 
-  /* Add to the main lookup table after transport was initialized */
-  tc = transport_get_listener (sep->transport_proto, tc_index);
-  session_lookup_add_connection (tc, listen_session_get_handle (ls));
   return 0;
 }
 

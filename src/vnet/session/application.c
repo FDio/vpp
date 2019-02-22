@@ -124,7 +124,6 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
   u32 table_index, fib_proto;
   session_endpoint_t *sep;
   session_handle_t handle;
-  local_session_t *ll;
   session_t *ls;
 
   sep = (session_endpoint_t *) sep_ext;
@@ -134,8 +133,8 @@ app_listener_lookup (application_t * app, session_endpoint_cfg_t * sep_ext)
       handle = session_lookup_endpoint_listener (table_index, sep, 1);
       if (handle != SESSION_INVALID_HANDLE)
 	{
-	  ll = application_get_local_listener_w_handle (handle);
-	  return app_listener_get_w_session ((session_t *) ll);
+	  ls = listen_session_get_from_handle (handle);
+	  return app_listener_get_w_session (ls);
 	}
     }
 
@@ -157,6 +156,7 @@ app_listener_alloc_and_init (application_t * app,
 			     app_listener_t ** listener)
 {
   app_listener_t *app_listener;
+  transport_connection_t *tc;
   local_session_t *ll = 0;
   session_handle_t lh;
   session_type_t st;
@@ -175,18 +175,31 @@ app_listener_alloc_and_init (application_t * app,
   if (application_has_local_scope (app)
       && session_endpoint_is_local ((session_endpoint_t *) sep))
     {
+      session_type_t local_st;
       u32 table_index;
 
-      ll = application_local_listen_session_alloc (app);
-      ll->port = sep->port;
-      /* Store the original session type for the unbind */
-      ll->listener_session_type = st;
+      local_st = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
+						 sep->is_ip4);
+      ls = listen_session_alloc (0, local_st);
+      ls->app_index = app->app_index;
+      ls->app_wrk_index = sep->app_wrk_index;
+      lh = session_handle (ls);
+
+      if ((rv = session_listen (ls, sep)))
+	{
+	  ls = session_get_from_handle (lh);
+	  session_free (ls);
+	  return rv;
+	}
+
+      ls = session_get_from_handle (lh);
+      app_listener = app_listener_get (app, al_index);
+      app_listener->local_index = ls->session_index;
+      ls->al_index = al_index;
+
       table_index = application_local_session_table (app);
-      lh = application_local_session_handle (ll);
       session_lookup_add_session_endpoint (table_index,
 					   (session_endpoint_t *) sep, lh);
-      app_listener->local_index = ll->session_index;
-      ll->al_index = app_listener->al_index;
     }
 
   if (application_has_global_scope (app))
@@ -203,18 +216,26 @@ app_listener_alloc_and_init (application_t * app,
 
       /* Listen pool can be reallocated if the transport is
        * recursive (tls) */
-      lh = session_handle (ls);
+      lh = listen_session_get_handle (ls);
 
       if ((rv = session_listen (ls, sep)))
 	{
-	  ls = session_get_from_handle (lh);
+	  ls = listen_session_get_from_handle (lh);
 	  session_free (ls);
 	  return rv;
 	}
-      ls = session_get_from_handle (lh);
+      ls = listen_session_get_from_handle (lh);
       app_listener = app_listener_get (app, al_index);
       app_listener->session_index = ls->session_index;
       ls->al_index = al_index;
+
+      /* Add to the global lookup table after transport was initialized.
+       * Lookup table needs to be populated only now because sessions
+       * with cut-through transport are are added to app local tables that
+       * are not related to network fibs, i.e., cannot be added as
+       * connections */
+      tc = session_get_transport (ls);
+      session_lookup_add_connection (tc, lh);
     }
 
   if (!ll && !ls)
@@ -231,24 +252,24 @@ void
 app_listener_cleanup (app_listener_t * al)
 {
   application_t *app = application_get (al->app_index);
+  session_t *ls;
 
   if (al->session_index != SESSION_INVALID_INDEX)
     {
-      session_t *ls = session_get (al->session_index, 0);
+      ls = session_get (al->session_index, 0);
       session_stop_listen (ls);
       listen_session_free (ls);
     }
   if (al->local_index != SESSION_INVALID_INDEX)
     {
       session_endpoint_t sep = SESSION_ENDPOINT_NULL;
-      local_session_t *ll;
       u32 table_index;
 
       table_index = application_local_session_table (app);
-      ll = application_get_local_listen_session (app, al->local_index);
-      application_local_listener_session_endpoint (ll, &sep);
+      ls = listen_session_get (al->local_index);
+      application_local_listener_session_endpoint (ls, &sep);
       session_lookup_del_session_endpoint (table_index, &sep);
-      application_local_listen_session_free (app, ll);
+      listen_session_free (ls);
     }
   app_listener_free (app, al);
 }
@@ -276,6 +297,14 @@ app_listener_get_session (app_listener_t * al)
     return 0;
 
   return listen_session_get (al->session_index);
+}
+
+session_t *
+app_listener_get_local_session (app_listener_t * al)
+{
+  if (al->local_index == SESSION_INVALID_INDEX)
+    return 0;
+  return listen_session_get (al->local_index);
 }
 
 static app_worker_map_t *
@@ -554,9 +583,6 @@ application_free (application_t * app)
 {
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
-  u32 table_index;
-  local_session_t *ll;
-  session_endpoint_t sep;
 
   /*
    * The app event queue allocated in first segment is cleared with
@@ -579,21 +605,6 @@ application_free (application_t * app)
   }));
   /* *INDENT-ON* */
   pool_free (app->worker_maps);
-
-  /*
-   * Free local listeners. Global table unbinds stop local listeners
-   * as well, but if we have only local binds, these won't be cleaned up.
-   * Don't bother with local accepted sessions, we clean them when
-   * cleaning up the worker.
-   */
-  table_index = application_local_session_table (app);
-  /* *INDENT-OFF* */
-  pool_foreach (ll, app->local_listen_sessions, ({
-    application_local_listener_session_endpoint (ll, &sep);
-    session_lookup_del_session_endpoint (table_index, &sep);
-  }));
-  /* *INDENT-ON* */
-  pool_free (app->local_listen_sessions);
 
   /*
    * Cleanup remaining state
@@ -1016,12 +1027,11 @@ vnet_connect (vnet_connect_args_t * a)
 {
   app_worker_t *server_wrk, *client_wrk;
   application_t *client;
-  local_session_t *ll;
   app_listener_t *al;
   u32 table_index;
   session_t *ls;
   u8 fib_proto;
-  u64 lh;
+  session_handle_t lh;
 
   if (session_endpoint_is_zero (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE;
@@ -1045,8 +1055,8 @@ vnet_connect (vnet_connect_args_t * a)
       if (lh == SESSION_INVALID_HANDLE)
 	goto global_scope;
 
-      ll = application_get_local_listener_w_handle (lh);
-      al = app_listener_get_w_session ((session_t *) ll);
+      ls = listen_session_get_from_handle (lh);
+      al = app_listener_get_w_session (ls);
 
       /*
        * Break loop if rule in local table points to connecting app. This
@@ -1057,7 +1067,7 @@ vnet_connect (vnet_connect_args_t * a)
 	goto global_scope;
 
       server_wrk = app_listener_select_worker (al);
-      return app_worker_local_session_connect (client_wrk, server_wrk, ll,
+      return app_worker_local_session_connect (client_wrk, server_wrk, ls,
 					       a->api_context);
     }
 
@@ -1080,8 +1090,7 @@ global_scope:
     {
       al = app_listener_get_w_session (ls);
       server_wrk = app_listener_select_worker (al);
-      ll = (local_session_t *) ls;
-      return app_worker_local_session_connect (client_wrk, server_wrk, ll,
+      return app_worker_local_session_connect (client_wrk, server_wrk, ls,
 					       a->api_context);
     }
 
@@ -1471,32 +1480,14 @@ application_format_connects (application_t * app, int verbose)
 static void
 application_format_local_sessions (application_t * app, int verbose)
 {
-  vlib_main_t *vm = vlib_get_main ();
   app_worker_map_t *wrk_map;
   app_worker_t *app_wrk;
-  transport_proto_t tp;
-  local_session_t *ls;
-  u8 *conn = 0;
 
   if (!app)
     {
       app_worker_format_local_sessions (0, verbose);
       return;
     }
-
-  /*
-   * Format local listeners
-   */
-
-  /* *INDENT-OFF* */
-  pool_foreach (ls, app->local_listen_sessions, ({
-    tp = session_type_transport_proto (ls->listener_session_type);
-    conn = format (0, "[L][%U] *:%u", format_transport_proto_short, tp,
-                   ls->port);
-    vlib_cli_output (vm, "%-40v%-15u%-20s", conn, ls->app_wrk_index, "*");
-    vec_reset_length (conn);
-  }));
-  /* *INDENT-ON* */
 
   /*
    * Format local accepted/connected sessions
