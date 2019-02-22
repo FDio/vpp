@@ -214,15 +214,8 @@ vlib_map_stat_segment_init (void)
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header;
   stat_segment_directory_entry_t *ep;
-
-  f64 *scalar_data;
-  u8 *name;
   void *oldheap;
-  u32 *lock;
-  int rv;
   ssize_t memory_size;
-
-
   int mfd;
   char *mem_name = "stat_segment_test";
   void *memaddr;
@@ -282,6 +275,7 @@ vlib_map_stat_segment_init (void)
     /* Save the vector offset in the shared segment, for clients */
     shared_header->directory_offset =
     stat_segment_offset (shared_header, sm->directory_vector);
+  sm->gauges_fns = 0;
 
   clib_mem_set_heap (oldheap);
 
@@ -514,6 +508,12 @@ do_stat_segment_updates (stat_segment_main_t * sm)
   if (sm->node_counters_enabled)
     update_node_counters (sm);
 
+  for (i = 0; i < vec_len (sm->gauges_fns); i++)
+    {
+      if (sm->gauges_fns[i])
+	sm->gauges_fns[i] (&sm->directory_vector[i]);
+    }
+
   /* Heartbeat, so clients detect we're still here */
   sm->directory_vector[STAT_COUNTER_HEARTBEAT].value++;
 }
@@ -616,6 +616,39 @@ statseg_init (vlib_main_t * vm)
     stats_segment_socket_init ();
 
   return 0;
+}
+
+clib_error_t *
+stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn)
+{
+  stat_segment_main_t *sm = &stat_segment_main;
+  stat_segment_shared_header_t *shared_header = sm->shared_header;
+  void *oldheap;
+  stat_segment_directory_entry_t e;
+  u32 index;
+
+  ASSERT (shared_header);
+
+  oldheap = vlib_stats_push_heap ();
+  vlib_stat_segment_lock ();
+
+  memset (&e, 0, sizeof (e));
+  e.type = STAT_DIR_TYPE_SCALAR_INDEX;
+
+  memcpy (e.name, name, vec_len (name));
+  index = vec_len (sm->directory_vector);
+  vec_add1 (sm->directory_vector, e);
+
+  shared_header->directory_offset =
+    stat_segment_offset (shared_header, sm->directory_vector);
+
+  vlib_stat_segment_unlock ();
+  clib_mem_set_heap (oldheap);
+
+  vec_validate (sm->gauges_fns, index);
+  sm->gauges_fns[index] = update_fn;
+
+  return NULL;
 }
 
 static clib_error_t *

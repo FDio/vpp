@@ -46,6 +46,7 @@
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vpp/stats/stat_segment.h>
 
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA 16384
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV 8192
@@ -709,13 +710,84 @@ vlib_buffer_main_alloc (vlib_main_t * vm)
   bm->default_data_size = VLIB_BUFFER_DEFAULT_DATA_SIZE;
 }
 
+static u32
+buffer_get_cached (vlib_buffer_pool_t * bp)
+{
+  u32 cached = 0;
+  vlib_buffer_pool_thread_t *bpt;
+
+  /* *INDENT-OFF* */
+  vec_foreach (bpt, bp->threads)
+    cached += vec_len (bpt->cached_buffers);
+  /* *INDENT-ON* */
+
+  return cached;
+}
+
+static vlib_buffer_pool_t *
+buffer_get_by_name (vlib_buffer_main_t * bm, char *name)
+{
+  vlib_buffer_pool_t *bp;
+  vec_foreach (bp, bm->buffer_pools)
+  {
+    if (!strcmp ((char *) bp->name, name))
+      return bp;
+  }
+
+  return 0;
+}
+
+static void
+buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_pool_t *bp;
+
+  bp = buffer_get_by_name (vm->buffer_main,
+			   &e->name[sizeof ("/buffer/used/") - 1]);
+  if (!bp)
+    return;
+
+  e->value = bp->n_buffers - vec_len (bp->buffers) - buffer_get_cached (bp);
+}
+
+static void
+buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_pool_t *bp;
+
+  bp = buffer_get_by_name (vm->buffer_main,
+			   &e->name[sizeof ("/buffer/available/") - 1]);
+  if (!bp)
+    return;
+
+  e->value = vec_len (bp->buffers);
+}
+
+static void
+buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_pool_t *bp;
+
+  bp = buffer_get_by_name (vm->buffer_main,
+			   &e->name[sizeof ("/buffer/cached/") - 1]);
+  if (!bp)
+    return;
+
+  e->value = buffer_get_cached (bp);
+}
+
 clib_error_t *
-vlib_buffer_main_init (struct vlib_main_t *vm)
+vlib_buffer_main_init (struct vlib_main_t * vm)
 {
   vlib_buffer_main_t *bm;
   clib_error_t *err;
   clib_bitmap_t *bmp = 0;
   u32 numa_node;
+  vlib_buffer_pool_t *bp;
+  u8 *name;
 
   vlib_buffer_main_alloc (vm);
 
@@ -742,6 +814,20 @@ vlib_buffer_main_init (struct vlib_main_t *vm)
   /* *INDENT-ON* */
 
   bm->n_numa_nodes = clib_bitmap_last_set (bmp) + 1;
+
+  vec_foreach (bp, bm->buffer_pools)
+  {
+    name = format (0, "/buffer/cached/%s%c", bp->name, 0);
+    stat_segment_register_gauge (name, buffer_gauges_update_cached_fn);
+    vec_free (name);
+    name = format (0, "/buffer/used/%s%c", bp->name, 0);
+    stat_segment_register_gauge (name, buffer_gauges_update_used_fn);
+    vec_free (name);
+    name = format (0, "/buffer/available/%s%c", bp->name, 0);
+    stat_segment_register_gauge (name, buffer_gauges_update_available_fn);
+    vec_free (name);
+  }
+
 
 done:
   vec_free (bmp);
