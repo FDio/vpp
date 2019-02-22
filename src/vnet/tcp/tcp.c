@@ -223,6 +223,9 @@ tcp_connection_cleanup (tcp_connection_t * tc)
       if (!tc->c_is_ip4 && ip6_address_is_link_local_unicast (&tc->c_rmt_ip6))
 	tcp_add_del_adjacency (tc, 0);
 
+      vec_free (tc->snd_sacks);
+      vec_free (tc->snd_sacks_fl);
+
       /* Poison the entry */
       if (CLIB_DEBUG > 0)
 	clib_memset (tc, 0xFA, sizeof (*tc));
