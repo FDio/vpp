@@ -365,6 +365,37 @@ failed:
   return rv;
 }
 
+typedef struct app_ct_transport_
+{
+  transport_connection_t connection;
+  u32 client_wrk;
+  u32 server_wrk;
+  u32 transport_listener_index;
+  session_type_t listener_session_type;
+} app_ct_transport_t;
+
+app_ct_transport_t *connections;
+
+app_ct_transport_t *
+ct_transport_alloc (void)
+{
+  app_ct_transport_t *ct;
+
+  pool_get_zero (connections, ct);
+  ct->client_wrk = ~0;
+  ct->server_wrk = ~0;
+  return ct;
+}
+
+int
+app_local_connect_handler (application_t *app, session_endpoint_cfg_t *sep,
+                           session_handle_t lh)
+{
+  local_session_t *ll;
+  ll = application_get_local_listener_w_handle (lh);
+  /* XXXXX */
+}
+
 int
 app_worker_local_session_disconnect (u32 app_wrk_index, local_session_t * ls)
 {
@@ -491,6 +522,51 @@ app_worker_format_local_connects (app_worker_t * app, int verbose)
   }));
   /* *INDENT-ON* */
 }
+
+u32
+ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
+{
+  session_endpoint_cfg_t *sep;
+  app_ct_transport_t *ct;
+  session_type_t listener_st;
+
+  sep = (session_endpoint_cfg_t *) tep;
+  ct = ct_transport_alloc ();
+  ct->server_wrk = sep->app_wrk_index;
+  ct->c_is_ip4 = sep->is_ip4;
+  clib_memcpy (&ct->c_lcl_ip, sep->ip, sizeof (sep->ip));
+  ct->c_lcl_port = sep->port;
+  /* Store the original session type for the unbind */
+  listener_st = session_type_from_proto_and_ip (sep->transport_proto,
+                                                sep->is_ip4);
+  ct->listener_session_type = listener_st;
+}
+
+/* *INDENT-OFF* */
+const static transport_proto_vft_t cut_thru_proto = {
+  .connect = ct_connect,
+  .close = ct_disconnect,
+  .start_listen = ct_start_listen,
+  .stop_listen = ct_stop_listen,
+  .get_connection = ct_connection_get,
+  .get_listener = ct_listener_get,
+  .tx_type = TRANSPORT_TX_INTERNAL,
+  .service_type = TRANSPORT_SERVICE_APP,
+  .format_connection = format_ct_connection,
+  .format_half_open = format_ct_half_open,
+  .format_listener = format_ct_listener,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ct_transport_init (vlib_main_t * vm)
+{
+  transport_register_protocol (TRANSPORT_PROTO_NONE, &cut_thru_proto,
+			       FIB_PROTOCOL_IP4, ~0);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ct_transport_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
