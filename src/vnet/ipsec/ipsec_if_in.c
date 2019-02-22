@@ -21,6 +21,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
+#include <vnet/ipsec/ipsec_io.h>
 
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_input_error				  \

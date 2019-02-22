@@ -23,6 +23,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
+#include <vnet/ipsec/ipsec_io.h>
 
 #define foreach_ipsec_input_error               \
 _(RX_PKTS, "IPSEC pkts received")		\
