@@ -16,6 +16,7 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application_namespace.h>
+#include <vnet/session/application_local.h>
 #include <vnet/session/session.h>
 
 static app_main_t app_main;
@@ -26,16 +27,6 @@ static app_main_t app_main;
       vlib_rpc_call_main_thread (_fn, (u8 *) _arg, sizeof(*_arg));	\
       return 0;								\
     }
-
-static void
-application_local_listener_session_endpoint (local_session_t * ll,
-					     session_endpoint_t * sep)
-{
-  sep->transport_proto =
-    session_type_transport_proto (ll->listener_session_type);
-  sep->port = ll->port;
-  sep->is_ip4 = ll->listener_session_type & 1;
-}
 
 static app_listener_t *
 app_listener_alloc (application_t * app)
@@ -63,27 +54,6 @@ app_listener_free (application_t * app, app_listener_t * app_listener)
   pool_put (app->listeners, app_listener);
   if (CLIB_DEBUG)
     clib_memset (app_listener, 0xfa, sizeof (*app_listener));
-}
-
-local_session_t *
-application_local_listen_session_alloc (application_t * app)
-{
-  local_session_t *ll;
-  pool_get_zero (app->local_listen_sessions, ll);
-  ll->session_index = ll - app->local_listen_sessions;
-  ll->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
-  ll->app_index = app->app_index;
-  ll->session_state = SESSION_STATE_LISTENING;
-  return ll;
-}
-
-void
-application_local_listen_session_free (application_t * app,
-				       local_session_t * ll)
-{
-  pool_put (app->local_listen_sessions, ll);
-  if (CLIB_DEBUG)
-    clib_memset (ll, 0xfb, sizeof (*ll));
 }
 
 static u32
@@ -227,7 +197,7 @@ app_listener_alloc_and_init (application_t * app,
        * lookups, prior to establishing connection. Requests transport to
        * build it's own specific listening connection.
        */
-      ls = listen_session_new (0, st);
+      ls = listen_session_alloc (0, st);
       ls->app_index = app->app_index;
       ls->app_wrk_index = sep->app_wrk_index;
 
@@ -266,7 +236,7 @@ app_listener_cleanup (app_listener_t * al)
     {
       session_t *ls = session_get (al->session_index, 0);
       session_stop_listen (ls);
-      listen_session_del (ls);
+      listen_session_free (ls);
     }
   if (al->local_index != SESSION_INVALID_INDEX)
     {

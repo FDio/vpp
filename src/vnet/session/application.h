@@ -262,54 +262,12 @@ u8 *format_app_worker (u8 * s, va_list * args);
 u8 *format_app_worker_listener (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
 int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
+segment_manager_t *app_worker_get_local_segment_manager (app_worker_t *
+							 app_worker);
+segment_manager_t
+  * app_worker_get_local_segment_manager_w_session (app_worker_t * app_wrk,
+						    local_session_t * ls);
 
-/*
- * Local session
- */
-
-local_session_t *app_worker_local_session_alloc (app_worker_t * app);
-void app_worker_local_session_free (app_worker_t * app, local_session_t * ls);
-local_session_t *app_worker_get_local_session (app_worker_t * app,
-					       u32 session_index);
-local_session_t *app_worker_get_local_session_from_handle (session_handle_t
-							   handle);
-int app_worker_local_session_connect (app_worker_t * client,
-				      app_worker_t * server,
-				      local_session_t * ls, u32 opaque);
-int app_worker_local_session_connect_notify (local_session_t * ls);
-int app_worker_local_session_disconnect (u32 app_or_wrk,
-					 local_session_t * ls);
-int app_worker_local_session_disconnect_w_index (u32 app_or_wrk,
-						 u32 ls_index);
-void app_worker_format_local_sessions (app_worker_t * app_wrk, int verbose);
-void app_worker_format_local_connects (app_worker_t * app, int verbose);
-
-always_inline local_session_t *
-application_get_local_listen_session (application_t * app, u32 session_index)
-{
-  return pool_elt_at_index (app->local_listen_sessions, session_index);
-}
-
-always_inline local_session_t *
-application_get_local_listener_w_handle (session_handle_t handle)
-{
-  u32 server_index, session_index;
-  application_t *app;
-  local_session_parse_handle (handle, &server_index, &session_index);
-  app = application_get (server_index);
-  return application_get_local_listen_session (app, session_index);
-}
-
-always_inline u8
-application_local_session_listener_has_transport (local_session_t * ls)
-{
-  transport_proto_t tp;
-  tp = session_type_transport_proto (ls->listener_session_type);
-  return (tp != TRANSPORT_PROTO_NONE);
-}
-
-void mq_send_local_session_disconnected_cb (u32 app_or_wrk,
-					    local_session_t * ls);
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 

@@ -21,6 +21,7 @@
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
+#include <vnet/session/application_local.h>
 #include <vnet/session/session_debug.h>
 #include <svm/queue.h>
 
