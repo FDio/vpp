@@ -492,6 +492,32 @@ app_worker_format_local_connects (app_worker_t * app, int verbose)
   /* *INDENT-ON* */
 }
 
+/* *INDENT-OFF* */
+const static transport_proto_vft_t cut_thru_proto = {
+  .connect = ct_connect,
+  .close = ct_disconnect,
+  .start_listen = ct_start_listen,
+  .stop_listen = ct_stop_listen,
+  .get_connection = ct_connection_get,
+  .get_listener = ct_listener_get,
+  .tx_type = TRANSPORT_TX_INTERNAL,
+  .service_type = TRANSPORT_SERVICE_APP,
+  .format_connection = format_ct_connection,
+  .format_half_open = format_ct_half_open,
+  .format_listener = format_ct_listener,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ct_transport_init (vlib_main_t * vm)
+{
+  transport_register_protocol (TRANSPORT_PROTO_NONE, &cut_thru_proto,
+			       FIB_PROTOCOL_IP4, ~0);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ct_transport_init);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
