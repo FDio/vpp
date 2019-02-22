@@ -909,6 +909,14 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 }
 
 int
+session_app_accept (transport_connection_t * tc, u32 listener_index,
+		    u8 notify)
+{
+
+  return 0;
+}
+
+int
 session_open_cl (u32 app_wrk_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
