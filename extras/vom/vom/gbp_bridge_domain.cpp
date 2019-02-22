@@ -79,6 +79,12 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
   , m_bm_flood(bm_flood)
   , m_flags(flags)
 {
+  if (m_bvi)
+    m_bvi = m_bvi->singular();
+  if (m_uu_fwd)
+    m_uu_fwd = m_uu_fwd->singular();
+  if (m_bm_flood)
+    m_bm_flood = m_bm_flood->singular();
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
@@ -93,6 +99,10 @@ gbp_bridge_domain::gbp_bridge_domain(const bridge_domain& bd,
   , m_bm_flood(bm_flood)
   , m_flags(flags)
 {
+  if (m_uu_fwd)
+    m_uu_fwd = m_uu_fwd->singular();
+  if (m_bm_flood)
+    m_bm_flood = m_bm_flood->singular();
 }
 
 gbp_bridge_domain::gbp_bridge_domain(const gbp_bridge_domain& bd)
