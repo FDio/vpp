@@ -20,25 +20,27 @@
 #include "vom/om.hpp"
 
 namespace VOM {
-struct l2_vtr_op_t : public enum_base<l2_vtr_op_t>
+namespace l2_vtr {
+struct option_t : public enum_base<option_t>
 {
-  l2_vtr_op_t(const l2_vtr_op_t& l) = default;
-  ~l2_vtr_op_t() = default;
+  option_t(const option_t& l) = default;
+  ~option_t() = default;
 
-  const static l2_vtr_op_t L2_VTR_DISABLED;
-  const static l2_vtr_op_t L2_VTR_PUSH_1;
-  const static l2_vtr_op_t L2_VTR_PUSH_2;
-  const static l2_vtr_op_t L2_VTR_POP_1;
-  const static l2_vtr_op_t L2_VTR_POP_2;
-  const static l2_vtr_op_t L2_VTR_TRANSLATE_1_1;
-  const static l2_vtr_op_t L2_VTR_TRANSLATE_1_2;
-  const static l2_vtr_op_t L2_VTR_TRANSLATE_2_1;
-  const static l2_vtr_op_t L2_VTR_TRANSLATE_2_2;
+  const static option_t DISABLED;
+  const static option_t PUSH_1;
+  const static option_t PUSH_2;
+  const static option_t POP_1;
+  const static option_t POP_2;
+  const static option_t TRANSLATE_1_1;
+  const static option_t TRANSLATE_1_2;
+  const static option_t TRANSLATE_2_1;
+  const static option_t TRANSLATE_2_2;
 
 private:
-  l2_vtr_op_t(int v, const std::string s);
+  option_t(int v, const std::string s);
 };
-};
+}; // namespace l2_vtr
+}; // namesapce VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

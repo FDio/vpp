@@ -20,23 +20,20 @@
 #include "vom/rpc_cmd.hpp"
 
 #include <vapi/l2.api.vapi.hpp>
-#include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
-
+namespace l2_vtr_cmds {
 /**
  * A cmd class sets the VTR operation
  */
-class set_vtr_op_cmd
-  : public rpc_cmd<HW::item<l2_vtr_op_t>, vapi::L2_interface_vlan_tag_rewrite>
+class set_cmd : public rpc_cmd<HW::item<l2_vtr::option_t>,
+                               vapi::L2_interface_vlan_tag_rewrite>
 {
 public:
   /**
    * Constructor
    */
-  set_vtr_op_cmd(HW::item<l2_vtr_op_t>& item,
-                 const handle_t& itf,
-                 uint16_t tag);
+  set_cmd(HW::item<l2_vtr::option_t>& item, const handle_t& itf, uint16_t tag);
 
   /**
    * Issue the command to VPP/HW
@@ -51,7 +48,7 @@ public:
   /**
    * Comparison operator - only used for UT
    */
-  bool operator==(const set_vtr_op_cmd& i) const;
+  bool operator==(const set_cmd& i) const;
 
 private:
   /**
@@ -65,6 +62,7 @@ private:
   uint16_t m_tag;
 };
 
+}; // namespace vtr_cmds
 }; // namespace VOM
 
 /*

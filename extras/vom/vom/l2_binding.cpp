@@ -47,7 +47,7 @@ l2_binding::l2_binding(const interface& itf, const bridge_domain& bd)
   , m_bd(bd.singular())
   , m_port_type(l2_port_type_t::L2_PORT_TYPE_NORMAL)
   , m_binding(0)
-  , m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET)
+  , m_vtr_op(l2_vtr::option_t::DISABLED, rc_t::UNSET)
   , m_vtr_op_tag(0)
 {
   if (interface::type_t::BVI == m_itf->type())
@@ -64,7 +64,7 @@ l2_binding::l2_binding(const interface& itf,
   , m_bd(bd.singular())
   , m_port_type(port_type)
   , m_binding(0)
-  , m_vtr_op(l2_vtr_op_t::L2_VTR_DISABLED, rc_t::UNSET)
+  , m_vtr_op(l2_vtr::option_t::DISABLED, rc_t::UNSET)
   , m_vtr_op_tag(0)
 {
 }
@@ -119,7 +119,8 @@ l2_binding::replay()
   }
 
   if (m_vtr_op && handle_t::INVALID != m_itf->handle()) {
-    HW::enqueue(new set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
+    HW::enqueue(
+      new l2_vtr_cmds::set_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
   }
 }
 
@@ -142,7 +143,7 @@ l2_binding::to_string() const
 }
 
 void
-l2_binding::set(const l2_vtr_op_t& op, uint16_t tag)
+l2_binding::set(const l2_vtr::option_t& op, uint16_t tag)
 {
   assert(rc_t::UNSET == m_vtr_op.rc());
   m_vtr_op.set(rc_t::NOOP);
@@ -174,7 +175,8 @@ l2_binding::update(const l2_binding& desired)
    * set the VTR operation if request
    */
   if (m_vtr_op.update(desired.m_vtr_op)) {
-    HW::enqueue(new set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
+    HW::enqueue(
+      new l2_vtr_cmds::set_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
   }
 }
 
