@@ -326,8 +326,9 @@ format_gbp_endpoint_group (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
 
   if (NULL != gg)
-    s = format (s, "%d, bd:[%d,%d], rd:[%d] uplink:%U locks:%d",
+    s = format (s, "%d, sclass:%d bd:[%d,%d], rd:[%d] uplink:%U locks:%d",
                 gg->gg_id,
+                gg->gg_sclass,
                 gbp_endpoint_group_get_bd_id(gg), gg->gg_bd_index,
                 gg->gg_rd,
                 format_vnet_sw_if_index_name, vnm, gg->gg_uplink_sw_if_index,
