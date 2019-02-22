@@ -46,6 +46,7 @@
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vpp/stats/stat_segment.h>
 
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA 16384
 #define VLIB_BUFFER_DEFAULT_BUFFERS_PER_NUMA_UNPRIV 8192
@@ -709,6 +710,48 @@ vlib_buffer_main_alloc (vlib_main_t * vm)
   bm->default_data_size = VLIB_BUFFER_DEFAULT_DATA_SIZE;
 }
 
+static void
+buffer_gauges_update_fn (stat_segment_directory_entry_t * e)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_main_t *bm;
+  u8 *name = 0, *stat = 0;
+  u8 found = 0;
+  vlib_buffer_pool_t *bp;
+  vlib_buffer_pool_thread_t *bpt;
+  u32 cached = 0;
+  unformat_input_t input;
+
+  unformat_init_cstring (&input, e->name);
+  bm = vm->buffer_main;
+
+  if (!unformat (&input, "/buffer/%s/%s", &stat, &name))
+    return;
+
+  vec_foreach (bp, bm->buffer_pools)
+  {
+    if (!strcmp ((char *) bp->name, (char *) name))
+      {
+          /* *INDENT-OFF* */
+          vec_foreach (bpt, bp->threads)
+            cached += vec_len (bpt->cached_buffers);
+          /* *INDENT-ON* */
+	found = 1;
+	break;
+      }
+  }
+
+  if (!found)
+    return;
+
+  if (!strcmp ((char *) stat, "available"))
+    e->value = vec_len (bp->buffers);
+  else if (!strcmp ((char *) stat, "cached"))
+    e->value = cached;
+  else if (!strcmp ((char *) stat, "used"))
+    e->value = bp->n_buffers - vec_len (bp->buffers) - cached;
+}
+
 clib_error_t *
 vlib_buffer_main_init (struct vlib_main_t *vm)
 {
@@ -716,6 +759,8 @@ vlib_buffer_main_init (struct vlib_main_t *vm)
   clib_error_t *err;
   clib_bitmap_t *bmp = 0;
   u32 numa_node;
+  vlib_buffer_pool_t *bp;
+  u8 *name;
 
   vlib_buffer_main_alloc (vm);
 
@@ -742,6 +787,20 @@ vlib_buffer_main_init (struct vlib_main_t *vm)
   /* *INDENT-ON* */
 
   bm->n_numa_nodes = clib_bitmap_last_set (bmp) + 1;
+
+  vec_foreach (bp, bm->buffer_pools)
+  {
+    name = format (0, "/buffer/cached/%s%c", bp->name, 0);
+    stat_segment_register_gauge (name, buffer_gauges_update_fn);
+    vec_free (name);
+    name = format (0, "/buffer/used/%s%c", bp->name, 0);
+    stat_segment_register_gauge (name, buffer_gauges_update_fn);
+    vec_free (name);
+    name = format (0, "/buffer/available/%s%c", bp->name, 0);
+    stat_segment_register_gauge (name, buffer_gauges_update_fn);
+    vec_free (name);
+  }
+
 
 done:
   vec_free (bmp);
