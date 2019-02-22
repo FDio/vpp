@@ -177,22 +177,9 @@ app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
 }
 
 int
-app_worker_start_listen (app_worker_t * app_wrk,
-			 app_listener_t * app_listener)
+app_worker_init_listener (app_worker_t * app_wrk, session_t * ls)
 {
   segment_manager_t *sm;
-  session_t *ls;
-
-  if (clib_bitmap_get (app_listener->workers, app_wrk->wrk_map_index))
-    return VNET_API_ERROR_ADDRESS_IN_USE;
-
-  app_listener->workers = clib_bitmap_set (app_listener->workers,
-					   app_wrk->wrk_map_index, 1);
-
-  if (app_listener->session_index == SESSION_INVALID_INDEX)
-    return 0;
-
-  ls = session_get (app_listener->session_index, 0);
 
   /* Allocate segment manager. All sessions derived out of a listen session
    * have fifos allocated by the same segment manager. */
@@ -212,19 +199,47 @@ app_worker_start_listen (app_worker_t * app_wrk,
 }
 
 int
+app_worker_start_listen (app_worker_t * app_wrk,
+			 app_listener_t * app_listener)
+{
+  session_t *ls;
+
+  if (clib_bitmap_get (app_listener->workers, app_wrk->wrk_map_index))
+    return VNET_API_ERROR_ADDRESS_IN_USE;
+
+  app_listener->workers = clib_bitmap_set (app_listener->workers,
+					   app_wrk->wrk_map_index, 1);
+
+  if (app_listener->session_index != SESSION_INVALID_INDEX)
+    {
+      ls = session_get (app_listener->session_index, 0);
+      if (app_worker_init_listener (app_wrk, ls))
+	return -1;
+    }
+
+  if (app_listener->local_index != SESSION_INVALID_INDEX)
+    {
+      ls = session_get (app_listener->local_index, 0);
+      if (app_worker_init_listener (app_wrk, ls))
+	return -1;
+    }
+
+  return 0;
+}
+
+int
 app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
 {
   session_handle_t handle;
   segment_manager_t *sm;
   uword *sm_indexp;
+  session_t *ls;
 
   if (!clib_bitmap_get (al->workers, app_wrk->wrk_map_index))
     return 0;
 
   if (al->session_index != SESSION_INVALID_INDEX)
     {
-      session_t *ls;
-
       ls = listen_session_get (al->session_index);
       handle = listen_session_get_handle (ls);
 
@@ -251,18 +266,33 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
 
   if (al->local_index != SESSION_INVALID_INDEX)
     {
-      local_session_t *ll, *ls;
-      application_t *app;
-
-      app = application_get (app_wrk->app_index);
-      ll = application_get_local_listen_session (app, al->local_index);
+      local_session_t *local;
+      ls = listen_session_get (al->local_index);
+      handle = listen_session_get_handle (ls);
 
       /* *INDENT-OFF* */
-      pool_foreach (ls, app_wrk->local_sessions, ({
-        if (ls->listener_index == ll->session_index)
-          app_worker_local_session_disconnect (app_wrk->wrk_index, ls);
+      pool_foreach (local, app_wrk->local_sessions, ({
+        if (local->listener_index == ls->session_index)
+          app_worker_local_session_disconnect (app_wrk->wrk_index, local);
       }));
       /* *INDENT-ON* */
+
+      sm_indexp = hash_get (app_wrk->listeners_table, handle);
+      if (PREDICT_FALSE (!sm_indexp))
+	return -1;
+
+      sm = segment_manager_get (*sm_indexp);
+      if (app_wrk->first_segment_manager == *sm_indexp)
+	{
+	  /* Delete sessions but don't remove segment manager */
+	  app_wrk->first_segment_manager_in_use = 0;
+	  segment_manager_del_sessions (sm);
+	}
+      else
+	{
+	  segment_manager_init_del (sm);
+	}
+      hash_unset (app_wrk->listeners_table, handle);
     }
 
   clib_bitmap_set_no_check (al->workers, app_wrk->wrk_map_index, 0);

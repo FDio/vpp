@@ -121,12 +121,6 @@ typedef struct application_
   /** Pool of listeners for the app */
   app_listener_t *listeners;
 
-  /** Pool of local listeners for app */
-  app_listener_t *local_listeners;
-
-  /** Pool of local listen sessions */
-  local_session_t *local_listen_sessions;
-
   /*
    * TLS Specific
    */
@@ -194,6 +188,7 @@ app_listener_t *app_listener_get_w_handle (session_handle_t handle);
 app_listener_t *app_listener_get_w_session (session_t * ls);
 app_worker_t *app_listener_select_worker (app_listener_t * al);
 session_t *app_listener_get_session (app_listener_t * al);
+session_t *app_listener_get_local_session (app_listener_t * al);
 
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);

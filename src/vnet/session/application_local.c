@@ -16,35 +16,55 @@
 #include <vnet/session/application_local.h>
 #include <vnet/session/session.h>
 
-local_session_t *
-application_local_listen_session_alloc (application_t * app)
+typedef struct ct_connection_
 {
-  local_session_t *ll;
-  pool_get_zero (app->local_listen_sessions, ll);
-  ll->session_index = ll - app->local_listen_sessions;
-  ll->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE, 0);
-  ll->app_index = app->app_index;
-  ll->session_state = SESSION_STATE_LISTENING;
-  return ll;
+  transport_connection_t connection;
+  u32 client_wrk;
+  u32 server_wrk;
+  u32 transport_listener_index;
+  transport_proto_t actual_tp;
+} ct_connection_t;
+
+ct_connection_t *connections;
+
+ct_connection_t *
+ct_connection_alloc (void)
+{
+  ct_connection_t *ct;
+
+  pool_get_zero (connections, ct);
+  ct->c_c_index = ct - connections;
+  ct->c_thread_index = 0;
+  ct->client_wrk = ~0;
+  ct->server_wrk = ~0;
+  return ct;
+}
+
+ct_connection_t *
+ct_connection_get (u32 ct_index)
+{
+  if (pool_is_free_index (connections, ct_index))
+    return 0;
+  return pool_elt_at_index (connections, ct_index);
 }
 
 void
-application_local_listen_session_free (application_t * app,
-				       local_session_t * ll)
+ct_connection_free (ct_connection_t * ct)
 {
-  pool_put (app->local_listen_sessions, ll);
   if (CLIB_DEBUG)
-    clib_memset (ll, 0xfb, sizeof (*ll));
+    memset (ct, 0xfc, sizeof (*ct));
+  pool_put (connections, ct);
 }
 
 void
-application_local_listener_session_endpoint (local_session_t * ll,
+application_local_listener_session_endpoint (session_t * ll,
 					     session_endpoint_t * sep)
 {
-  sep->transport_proto =
-    session_type_transport_proto (ll->listener_session_type);
-  sep->port = ll->port;
-  sep->is_ip4 = ll->listener_session_type & 1;
+  ct_connection_t *ct;
+  ct = (ct_connection_t *) session_get_transport (ll);
+  sep->transport_proto = ct->actual_tp;
+  sep->port = ct->c_lcl_port;
+  sep->is_ip4 = ct->c_is_ip4;
 }
 
 local_session_t *
@@ -261,7 +281,7 @@ application_local_session_fix_eventds (svm_msg_q_t * sq, svm_msg_q_t * cq)
 int
 app_worker_local_session_connect (app_worker_t * client_wrk,
 				  app_worker_t * server_wrk,
-				  local_session_t * ll, u32 opaque)
+				  session_t * ll, u32 opaque)
 {
   u32 seg_size, evt_q_sz, evt_q_elts, margin = 16 << 10;
   u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index;
@@ -286,11 +306,13 @@ app_worker_local_session_connect (app_worker_t * client_wrk,
   round_tx_fifo_sz = 1 << max_log2 (props->tx_fifo_size);
   seg_size = round_rx_fifo_sz + round_tx_fifo_sz + evt_q_sz + margin;
 
-  has_transport = session_has_transport ((session_t *) ll);
+  has_transport = session_has_transport (ll);
   if (!has_transport)
     {
       /* Local sessions don't have backing transport */
-      ls->port = ll->port;
+      transport_connection_t *tc;
+      tc = session_get_transport (ll);
+      ls->port = tc->lcl_port;
       sm = app_worker_get_local_segment_manager (server_wrk);
     }
   else
@@ -491,6 +513,96 @@ app_worker_format_local_connects (app_worker_t * app, int verbose)
   }));
   /* *INDENT-ON* */
 }
+
+u32
+ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
+{
+  session_endpoint_cfg_t *sep;
+  ct_connection_t *ct;
+
+  sep = (session_endpoint_cfg_t *) tep;
+  ct = ct_connection_alloc ();
+  ct->server_wrk = sep->app_wrk_index;
+  ct->c_is_ip4 = sep->is_ip4;
+  clib_memcpy (&ct->c_lcl_ip, &sep->ip, sizeof (sep->ip));
+  ct->c_lcl_port = sep->port;
+  ct->actual_tp = sep->transport_proto;
+  return ct->c_c_index;
+}
+
+u32
+ct_stop_listen (u32 ct_index)
+{
+  ct_connection_t *ct;
+  ct = ct_connection_get (ct_index);
+  ct_connection_free (ct);
+  return 0;
+}
+
+transport_connection_t *
+ct_listener_get (u32 ct_index)
+{
+  return (transport_connection_t *) ct_connection_get (ct_index);
+}
+
+static u8 *
+format_ct_connection_id (u8 * s, va_list * args)
+{
+  ct_connection_t *ct = va_arg (*args, ct_connection_t *);
+  if (!ct)
+    return s;
+  if (ct->c_is_ip4)
+    {
+      s = format (s, "[%d:%d][CT:%U] %U:%d->%U:%d", ct->c_thread_index,
+		  ct->c_s_index, format_transport_proto_short, ct->actual_tp,
+		  format_ip4_address, &ct->c_lcl_ip4,
+		  clib_net_to_host_u16 (ct->c_lcl_port), format_ip4_address,
+		  &ct->c_rmt_ip4, clib_net_to_host_u16 (ct->c_rmt_port));
+    }
+  else
+    {
+      s = format (s, "[%d:%d][CT:%U] %U:%d->%U:%d", ct->c_thread_index,
+		  ct->c_s_index, format_transport_proto_short, ct->actual_tp,
+		  format_ip6_address, &ct->c_lcl_ip6,
+		  clib_net_to_host_u16 (ct->c_lcl_port), format_ip6_address,
+		  &ct->c_rmt_ip6, clib_net_to_host_u16 (ct->c_rmt_port));
+    }
+
+  return s;
+}
+
+u8 *
+format_ct_listener (u8 * s, va_list * args)
+{
+  u32 tc_index = va_arg (*args, u32);
+  u32 __clib_unused verbose = va_arg (*args, u32);
+  ct_connection_t *ct = ct_connection_get (tc_index);
+  s = format (s, "%-50U", format_ct_connection_id, ct);
+  if (verbose)
+    s = format (s, "%-15s", "LISTEN");
+  return s;
+}
+
+/* *INDENT-OFF* */
+const static transport_proto_vft_t cut_thru_proto = {
+  .start_listen = ct_start_listen,
+  .stop_listen = ct_stop_listen,
+  .get_listener = ct_listener_get,
+  .tx_type = TRANSPORT_TX_INTERNAL,
+  .service_type = TRANSPORT_SERVICE_APP,
+  .format_listener = format_ct_listener,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ct_transport_init (vlib_main_t * vm)
+{
+  transport_register_protocol (TRANSPORT_PROTO_NONE, &cut_thru_proto,
+			       FIB_PROTOCOL_IP4, ~0);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ct_transport_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
