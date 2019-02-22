@@ -365,6 +365,140 @@ failed:
   return rv;
 }
 
+typedef struct app_ct_transport_
+{
+  transport_connection_t connection;
+  u32 client_wrk;
+  u32 server_wrk;
+  u32 transport_listener_index;
+  session_type_t listener_session_type;
+} app_ct_transport_t;
+
+app_ct_transport_t *connections;
+
+app_ct_transport_t *
+ct_transport_alloc (void)
+{
+  app_ct_transport_t *ct;
+
+  pool_get_zero (connections, ct);
+  ct->client_wrk = ~0;
+  ct->server_wrk = ~0;
+  return ct;
+}
+
+int
+app_local_connect_handler (application_t *app, session_endpoint_cfg_t *sep,
+                           session_handle_t lh)
+{
+  u32 seg_size, evt_q_sz, evt_q_elts, margin = 16 << 10;
+  u32 round_rx_fifo_sz, round_tx_fifo_sz, sm_index;
+  segment_manager_properties_t *props, *cprops;
+  int rv, has_transport, seg_index;
+  svm_fifo_segment_private_t *seg;
+  application_t *server, *client;
+  segment_manager_t *sm;
+  local_session_t *ls;
+  svm_msg_q_t *sq, *cq;
+  u64 segment_handle;
+
+  session_t *ll;
+  ll = listen_session_get_from_handle (lh);
+
+  session_connect_notify ();
+  /* XXXXX */
+
+
+  server = application_get (server_wrk->app_index);
+  client = application_get (client_wrk->app_index);
+
+  props = application_segment_manager_properties (server);
+  cprops = application_segment_manager_properties (client);
+  evt_q_elts = props->evt_q_size + cprops->evt_q_size;
+  evt_q_sz = segment_manager_evt_q_expected_size (evt_q_elts);
+  round_rx_fifo_sz = 1 << max_log2 (props->rx_fifo_size);
+  round_tx_fifo_sz = 1 << max_log2 (props->tx_fifo_size);
+  seg_size = round_rx_fifo_sz + round_tx_fifo_sz + evt_q_sz + margin;
+
+  has_transport = session_has_transport ((session_t *) ll);
+  if (!has_transport)
+    {
+      /* Local sessions don't have backing transport */
+      ls->port = ll->port;
+      sm = app_worker_get_local_segment_manager (server_wrk);
+    }
+  else
+    {
+      session_t *sl = (session_t *) ll;
+      transport_connection_t *tc;
+      tc = listen_session_get_transport (sl);
+      ls->port = tc->lcl_port;
+      sm = app_worker_get_listen_segment_manager (server_wrk, sl);
+    }
+
+  seg_index = segment_manager_add_segment (sm, seg_size);
+  if (seg_index < 0)
+    {
+      clib_warning ("failed to add new cut-through segment");
+      return seg_index;
+    }
+  seg = segment_manager_get_segment_w_lock (sm, seg_index);
+  sq = segment_manager_alloc_queue (seg, props);
+  cq = segment_manager_alloc_queue (seg, cprops);
+
+  if (props->use_mq_eventfd)
+    application_local_session_fix_eventds (sq, cq);
+
+  ls->server_evt_q = pointer_to_uword (sq);
+  ls->client_evt_q = pointer_to_uword (cq);
+  rv = segment_manager_try_alloc_fifos (seg, props->rx_fifo_size,
+					props->tx_fifo_size,
+					&ls->rx_fifo, &ls->tx_fifo);
+  if (rv)
+    {
+      clib_warning ("failed to add fifos in cut-through segment");
+      segment_manager_segment_reader_unlock (sm);
+      goto failed;
+    }
+  sm_index = segment_manager_index (sm);
+  ls->rx_fifo->ct_session_index = ls->session_index;
+  ls->tx_fifo->ct_session_index = ls->session_index;
+  ls->rx_fifo->segment_manager = sm_index;
+  ls->tx_fifo->segment_manager = sm_index;
+  ls->rx_fifo->segment_index = seg_index;
+  ls->tx_fifo->segment_index = seg_index;
+  ls->svm_segment_index = seg_index;
+  ls->listener_index = ll->session_index;
+  ls->client_wrk_index = client_wrk->wrk_index;
+  ls->client_opaque = opaque;
+  ls->listener_session_type = ll->session_type;
+  ls->session_state = SESSION_STATE_READY;
+
+  segment_handle = segment_manager_segment_handle (sm, seg);
+  if ((rv = server->cb_fns.add_segment_callback (server_wrk->api_client_index,
+						 segment_handle)))
+    {
+      clib_warning ("failed to notify server of new segment");
+      segment_manager_segment_reader_unlock (sm);
+      goto failed;
+    }
+  segment_manager_segment_reader_unlock (sm);
+  if ((rv = server->cb_fns.session_accept_callback ((session_t *) ls)))
+    {
+      clib_warning ("failed to send accept cut-through notify to server");
+      goto failed;
+    }
+  if (server->flags & APP_OPTIONS_FLAGS_IS_BUILTIN)
+    app_worker_local_session_connect_notify (ls);
+
+  return 0;
+
+failed:
+  if (!has_transport)
+    segment_manager_del_segment (sm, seg);
+  return rv;
+}
+
 int
 app_worker_local_session_disconnect (u32 app_wrk_index, local_session_t * ls)
 {
@@ -491,6 +625,51 @@ app_worker_format_local_connects (app_worker_t * app, int verbose)
   }));
   /* *INDENT-ON* */
 }
+
+u32
+ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
+{
+  session_endpoint_cfg_t *sep;
+  app_ct_transport_t *ct;
+  session_type_t listener_st;
+
+  sep = (session_endpoint_cfg_t *) tep;
+  ct = ct_transport_alloc ();
+  ct->server_wrk = sep->app_wrk_index;
+  ct->c_is_ip4 = sep->is_ip4;
+  clib_memcpy (&ct->c_lcl_ip, sep->ip, sizeof (sep->ip));
+  ct->c_lcl_port = sep->port;
+  /* Store the original session type for the unbind */
+  listener_st = session_type_from_proto_and_ip (sep->transport_proto,
+                                                sep->is_ip4);
+  ct->listener_session_type = listener_st;
+}
+
+/* *INDENT-OFF* */
+const static transport_proto_vft_t cut_thru_proto = {
+  .connect = ct_connect,
+  .close = ct_disconnect,
+  .start_listen = ct_start_listen,
+  .stop_listen = ct_stop_listen,
+  .get_connection = ct_connection_get,
+  .get_listener = ct_listener_get,
+  .tx_type = TRANSPORT_TX_INTERNAL,
+  .service_type = TRANSPORT_SERVICE_APP,
+  .format_connection = format_ct_connection,
+  .format_half_open = format_ct_half_open,
+  .format_listener = format_ct_listener,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+ct_transport_init (vlib_main_t * vm)
+{
+  transport_register_protocol (TRANSPORT_PROTO_NONE, &cut_thru_proto,
+			       FIB_PROTOCOL_IP4, ~0);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (ct_transport_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
