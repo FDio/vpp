@@ -85,8 +85,13 @@ stat_segment_pointer (void *start, uint64_t offset)
   return ((char *) start + offset);
 }
 
+typedef void (*stat_segment_update_fn)(stat_segment_directory_entry_t * e);
+
 typedef struct
 {
+  /* internal, does not point to shared memory */
+  stat_segment_update_fn *gauges_fns;
+
   /* statistics segment */
   uword *directory_vector_by_name;
   stat_segment_directory_entry_t *directory_vector;
@@ -103,5 +108,8 @@ typedef struct
 } stat_segment_main_t;
 
 extern stat_segment_main_t stat_segment_main;
+
+clib_error_t *
+stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn);
 
 #endif

@@ -1979,6 +1979,12 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
       goto done;
     }
 
+  if ((error = vlib_map_stat_segment_init (vm)))
+    {
+      clib_error_report (error);
+      goto done;
+    }
+
   if ((error = vlib_buffer_main_init (vm)))
     {
       clib_error_report (error);
@@ -1986,12 +1992,6 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     }
 
   if ((error = vlib_thread_init (vm)))
-    {
-      clib_error_report (error);
-      goto done;
-    }
-
-  if ((error = vlib_map_stat_segment_init (vm)))
     {
       clib_error_report (error);
       goto done;
