@@ -2613,7 +2613,7 @@ send_ip4_garp_w_addr (vlib_main_t * vm,
 /*
  * Remove any arp entries asociated with the specificed interface
  */
-void
+static clib_error_t *
 vnet_arp_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   if (!is_add && sw_if_index != ~0)
@@ -2632,6 +2632,8 @@ vnet_arp_delete_sw_interface (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
       }));
       /* *INDENT-ON* */
     }
+
+  return (NULL);
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (vnet_arp_delete_sw_interface);
