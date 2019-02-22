@@ -372,9 +372,13 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
       if (vec_len (tc->snd_sacks))
 	{
 	  opts->flags |= TCP_OPTS_FLAG_SACK;
-	  opts->sacks = tc->snd_sacks;
-	  opts->n_sack_blocks = clib_min (vec_len (tc->snd_sacks),
+	  if (tc->snd_sack_pos > vec_len (tc->snd_sacks))
+	    tc->snd_sack_pos = 0;
+	  opts->sacks = &tc->snd_sacks[tc->snd_sack_pos];
+	  opts->n_sack_blocks = vec_len (tc->snd_sacks) - tc->snd_sack_pos;
+	  opts->n_sack_blocks = clib_min (opts->n_sack_blocks,
 					  TCP_OPTS_MAX_SACK_BLOCKS);
+	  tc->snd_sack_pos += opts->n_sack_blocks;
 	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
 	}
     }
@@ -1250,11 +1254,22 @@ tcp_send_acks (tcp_worker_ctx_t * wrk)
     {
       tc = tcp_connection_get (pending_acks[i], thread_index);
       tc->flags &= ~TCP_CONN_SNDACK;
-      n_acks = clib_max (1, tc->pending_dupacks);
+      if (!tc->pending_dupacks)
+	{
+	  tcp_send_ack (tc);
+	  continue;
+	}
+
       /* If we're supposed to send dupacks but have no ooo data
        * send only one ack */
       if (tc->pending_dupacks && !vec_len (tc->snd_sacks))
-	n_acks = 1;
+	{
+	  tcp_send_ack (tc);
+	  continue;
+	}
+
+      n_acks = vec_len (tc->snd_sacks) / TCP_OPTS_MAX_SACK_BLOCKS;
+      n_acks = clib_max (n_acks, clib_min (tc->pending_dupacks, 3));
       for (j = 0; j < n_acks; j++)
 	tcp_send_ack (tc);
       tc->pending_dupacks = 0;
