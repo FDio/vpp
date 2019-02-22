@@ -1714,7 +1714,7 @@ tcp_sack_vector_is_sane (sack_block_t * sacks)
 void
 tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 {
-  sack_block_t *new_list = 0, *block = 0;
+  sack_block_t *new_list = tc->snd_sacks_fl, *block = 0;
   int i;
 
   /* If the first segment is ooo add it to the list. Last write might've moved
@@ -1758,7 +1758,8 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
   ASSERT (vec_len (new_list) <= TCP_MAX_SACK_BLOCKS);
 
   /* Replace old vector with new one */
-  vec_free (tc->snd_sacks);
+  vec_reset_length (tc->snd_sacks);
+  tc->snd_sacks_fl = tc->snd_sacks;
   tc->snd_sacks = new_list;
 
   /* Segments should not 'touch' */
