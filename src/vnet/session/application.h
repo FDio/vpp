@@ -121,12 +121,6 @@ typedef struct application_
   /** Pool of listeners for the app */
   app_listener_t *listeners;
 
-  /** Pool of local listeners for app */
-  app_listener_t *local_listeners;
-
-  /** Pool of local listen sessions */
-  local_session_t *local_listen_sessions;
-
   /*
    * TLS Specific
    */
