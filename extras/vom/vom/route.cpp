@@ -707,7 +707,7 @@ ip_mroute::event_handler::handle_populate(const client_db::key_t& key)
       ip_r.add(from_vpp(p.path, nh_proto_t::IPV6),
                itf_flags_t::from_vpp(p.itf_flags));
     }
-    VOM_LOG(log_level_t::INFO) << "ip-mroute-dump: " << ip_r.to_string();
+    VOM_LOG(log_level_t::DEBUG) << "ip-mroute-dump: " << ip_r.to_string();
 
     /*
      * Write each of the discovered interfaces into the OM,
