@@ -253,22 +253,22 @@ send_session_accept_callback (session_t * s)
   else
     {
       local_session_t *ls = (local_session_t *) s;
-      local_session_t *ll;
-      if (application_local_session_listener_has_transport (ls))
-	{
+//      local_session_t *ll;
+//      if (application_local_session_listener_has_transport (ls))
+//	{
 	  listener = listen_session_get (ls->listener_index);
 	  al = app_listener_get (server, listener->al_index);
 	  mp->listener_handle = app_listener_handle (al);
 	  mp->is_ip4 = session_type_is_ip4 (listener->session_type);
-	}
-      else
-	{
-	  ll = application_get_local_listen_session (server,
-						     ls->listener_index);
-	  al = app_listener_get (server, ll->al_index);
-	  mp->listener_handle = app_listener_handle (al);
-	  mp->is_ip4 = session_type_is_ip4 (ll->listener_session_type);
-	}
+//	}
+//      else
+//	{
+//	  ll = application_get_local_listen_session (server,
+//						     ls->listener_index);
+//	  al = app_listener_get (server, ll->al_index);
+//	  mp->listener_handle = app_listener_handle (al);
+//	  mp->is_ip4 = session_type_is_ip4 (ll->listener_session_type);
+//	}
       mp->handle = application_local_session_handle (ls);
       mp->port = ls->port;
       mp->vpp_event_queue_address = ls->client_evt_q;
@@ -464,7 +464,7 @@ mq_send_session_accepted_cb (session_t * s)
   else
     {
       local_session_t *ls = (local_session_t *) s;
-      local_session_t *ll;
+//      local_session_t *ll;
       u8 main_thread = vlib_num_workers ()? 1 : 0;
 
       send_app_cut_through_registration_add (app_wrk->api_client_index,
@@ -472,20 +472,20 @@ mq_send_session_accepted_cb (session_t * s)
 					     ls->server_evt_q,
 					     ls->client_evt_q);
 
-      if (application_local_session_listener_has_transport (ls))
-	{
+//      if (application_local_session_listener_has_transport (ls))
+//	{
 	  listener = listen_session_get (ls->listener_index);
 	  al = app_listener_get (app, listener->al_index);
 	  mp->listener_handle = app_listener_handle (al);
 	  mp->is_ip4 = session_type_is_ip4 (listener->session_type);
-	}
-      else
-	{
-	  ll = application_get_local_listen_session (app, ls->listener_index);
-	  al = app_listener_get (app, ll->al_index);
-	  mp->listener_handle = app_listener_handle (al);
-	  mp->is_ip4 = session_type_is_ip4 (ll->listener_session_type);
-	}
+//	}
+//      else
+//	{
+//	  ll = application_get_local_listen_session (app, ls->listener_index);
+//	  al = app_listener_get (app, ll->al_index);
+//	  mp->listener_handle = app_listener_handle (al);
+//	  mp->is_ip4 = session_type_is_ip4 (ll->listener_session_type);
+//	}
       mp->handle = application_local_session_handle (ls);
       mp->port = ls->port;
       vpp_queue = session_manager_get_vpp_event_queue (main_thread);
@@ -671,12 +671,12 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   session_bound_msg_t *mp;
   app_worker_t *app_wrk;
   session_event_t *evt;
-  application_t *app;
+//  application_t *app;
   app_listener_t *al;
   session_t *ls = 0;
 
   app_wrk = app_worker_get (app_wrk_index);
-  app = application_get (app_wrk->app_index);
+//  app = application_get (app_wrk->app_index);
   app_mq = app_wrk->event_queue;
   if (!app_mq)
     {
@@ -698,24 +698,23 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
     goto done;
 
   mp->handle = handle;
-  if (application_has_global_scope (app))
-    {
-      al = app_listener_get_w_handle (handle);
-      ls = app_listener_get_session (al);
-      tc = listen_session_get_transport (ls);
-      mp->lcl_port = tc->lcl_port;
-      mp->lcl_is_ip4 = tc->is_ip4;
-      clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
-    }
-  else
-    {
-      local_session_t *local;
-      app_listener_t *al;
-      al = app_listener_get_w_handle (handle);
-      local = application_get_local_listen_session (app, al->local_index);
-      mp->lcl_port = local->port;
-      mp->lcl_is_ip4 = session_type_is_ip4 (local->session_type);
-    }
+//  if (application_has_global_scope (app))
+//    {
+  al = app_listener_get_w_handle (handle);
+  ls = app_listener_get_session (al);
+  tc = listen_session_get_transport (ls);
+  mp->lcl_port = tc->lcl_port;
+  mp->lcl_is_ip4 = tc->is_ip4;
+  clib_memcpy_fast (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+//    }
+//  else
+//    {
+//      al = app_listener_get_w_handle (handle);
+//      ls = listen_session_get (al->local_index);
+//      tc = listen_session_get_transport (ls);
+//      mp->lcl_port = tc->lcl_port;
+//      mp->lcl_is_ip4 = tc->is_ip4;
+//    }
 
   vpp_evt_q = session_manager_get_vpp_event_queue (0);
   mp->vpp_evt_q = pointer_to_uword (vpp_evt_q);
