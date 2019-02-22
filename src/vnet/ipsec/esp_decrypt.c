@@ -21,6 +21,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
+#include <vnet/ipsec/ipsec_io.h>
 
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \

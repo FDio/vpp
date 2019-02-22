@@ -518,6 +518,10 @@ list(APPEND VNET_SOURCES
 
 list(APPEND VNET_HEADERS
   ipsec/ipsec.h
+  ipsec/ipsec_spd.h
+  ipsec/ipsec_spd_policy.h
+  ipsec/ipsec_sa.h
+  ipsec/ipsec_if.h
   ipsec/esp.h
   ipsec/ah.h
   ipsec/ikev2.h
