@@ -570,7 +570,7 @@ close_session:
   return 0;
 
 postpone:
-  svm_fifo_set_event (hs->rx_fifo);
+  (void) svm_fifo_set_event (hs->rx_fifo);
   session_send_io_evt_to_thread (hs->rx_fifo, FIFO_EVENT_BUILTIN_RX);
   return 0;
 

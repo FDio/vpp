@@ -646,6 +646,9 @@ ldp_select_libc_map_merge (clib_bitmap_t * result, fd_set * __restrict libcb)
 {
   uword fd;
 
+  if (!libcb)
+    return;
+
   /* *INDENT-OFF* */
   clib_bitmap_foreach (fd, result, ({
     FD_SET ((int)fd, libcb);
@@ -728,7 +731,8 @@ ldp_pselect (int nfds, fd_set * __restrict readfds,
       goto done;
     }
 
-  libc_tspec = si_bits ? libc_tspec : *timeout;
+  if (!si_bits)
+    libc_tspec = timeout ? *timeout : libc_tspec;
 
   do
     {
