@@ -477,7 +477,7 @@ listen_session_parse_handle (session_handle_t handle, u32 * index,
 }
 
 always_inline session_t *
-listen_session_new (u8 thread_index, session_type_t type)
+listen_session_alloc (u8 thread_index, session_type_t type)
 {
   session_t *s;
   s = session_alloc (thread_index);
@@ -487,13 +487,13 @@ listen_session_new (u8 thread_index, session_type_t type)
 }
 
 always_inline session_t *
-listen_session_get (u32 index)
+listen_session_get (u32 ls_index)
 {
-  return session_get (index, 0);
+  return session_get (ls_index, 0);
 }
 
 always_inline void
-listen_session_del (session_t * s)
+listen_session_free (session_t * s)
 {
   session_free (s);
 }
