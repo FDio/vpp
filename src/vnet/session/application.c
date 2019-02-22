@@ -157,6 +157,7 @@ app_listener_alloc_and_init (application_t * app,
 			     app_listener_t ** listener)
 {
   app_listener_t *app_listener;
+  transport_connection_t *tc;
   local_session_t *ll = 0;
   session_handle_t lh;
   session_type_t st;
@@ -175,18 +176,47 @@ app_listener_alloc_and_init (application_t * app,
   if (application_has_local_scope (app)
       && session_endpoint_is_local ((session_endpoint_t *) sep))
     {
+      session_type_t local_st;
       u32 table_index;
 
-      ll = application_local_listen_session_alloc (app);
-      ll->port = sep->port;
-      /* Store the original session type for the unbind */
-      ll->listener_session_type = st;
+      local_st = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
+						 sep->is_ip4);
+      ls = listen_session_alloc (0, local_st);
+      ls->app_index = app->app_index;
+      ls->app_wrk_index = sep->app_wrk_index;
+      lh = session_handle (ls);
+
+      if ((rv = session_listen (ls, sep)))
+	{
+	  ls = session_get_from_handle (lh);
+	  session_free (ls);
+	  return rv;
+	}
+
+      ls = session_get_from_handle (lh);
+      app_listener = app_listener_get (app, al_index);
+      app_listener->session_index = ls->session_index;
+      ls->al_index = al_index;
+
       table_index = application_local_session_table (app);
-      lh = application_local_session_handle (ll);
       session_lookup_add_session_endpoint (table_index,
 					   (session_endpoint_t *) sep, lh);
-      app_listener->local_index = ll->session_index;
-      ll->al_index = app_listener->al_index;
+
+      tc = session_get_transport (ls);
+      session_lookup_add_connection (tc, listen_session_get_handle (ls));
+
+
+//      ll = application_local_listen_session_alloc (app);
+//      ll->port = sep->port;
+//      /* Store the original session type for the unbind */
+//      ll->listener_session_type = st;
+
+//      table_index = application_local_session_table (app);
+//      lh = application_local_session_handle (ll);
+//      session_lookup_add_session_endpoint (table_index,
+//                                         (session_endpoint_t *) sep, lh);
+//      app_listener->local_index = ll->session_index;
+//      ll->al_index = app_listener->al_index;
     }
 
   if (application_has_global_scope (app))
@@ -203,18 +233,22 @@ app_listener_alloc_and_init (application_t * app,
 
       /* Listen pool can be reallocated if the transport is
        * recursive (tls) */
-      lh = session_handle (ls);
+      lh = listen_session_get_handle (ls);
 
       if ((rv = session_listen (ls, sep)))
 	{
-	  ls = session_get_from_handle (lh);
+	  ls = listen_session_get_from_handle (lh);
 	  session_free (ls);
 	  return rv;
 	}
-      ls = session_get_from_handle (lh);
+      ls = listen_session_get_from_handle (lh);
       app_listener = app_listener_get (app, al_index);
       app_listener->session_index = ls->session_index;
       ls->al_index = al_index;
+
+      /* Add to the main lookup table after transport was initialized */
+      tc = session_get_transport (ls);
+      session_lookup_add_connection (tc, lh);
     }
 
   if (!ll && !ls)
@@ -1021,7 +1055,7 @@ vnet_connect (vnet_connect_args_t * a)
   u32 table_index;
   session_t *ls;
   u8 fib_proto;
-  u64 lh;
+  session_handle_t lh;
 
   if (session_endpoint_is_zero (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE;
