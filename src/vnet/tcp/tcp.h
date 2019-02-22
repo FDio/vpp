@@ -303,6 +303,7 @@ typedef struct _tcp_connection
   tcp_options_t rcv_opts;	/**< Rx options for connection */
 
   sack_block_t *snd_sacks;	/**< Vector of SACKs to send. XXX Fixed size? */
+  u8 snd_sack_pos;		/**< Position in vec of first block to send */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
 
   u16 rcv_dupacks;	/**< Number of DUPACKs received */
