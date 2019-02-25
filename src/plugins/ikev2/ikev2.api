@@ -1,0 +1,293 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+
+/** \brief Get the plugin version
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ikev2_plugin_get_version
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the plugin version
+    @param context - returned sender context, to match reply w/ request
+    @param major - Incremented every time a known breaking behavior change is introduced
+    @param minor - Incremented with small changes, may be used to avoid buggy versions
+*/
+define ikev2_plugin_get_version_reply
+{
+  u32 context;
+  u32 major;
+  u32 minor;
+};
+
+/** \brief IKEv2: Add/delete profile
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_add - Add IKEv2 profile if non-zero, else delete
+*/
+autoreply define ikev2_profile_add_del
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 is_add;
+};
+
+/** \brief IKEv2: Set IKEv2 profile authentication method
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param auth_method - IKEv2 authentication method (shared-key-mic/rsa-sig)
+    @param is_hex - Authentication data in hex format if non-zero, else string
+    @param data_len - Authentication data length
+    @param data - Authentication data (for rsa-sig cert file path)
+*/
+autoreply define ikev2_profile_set_auth
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 auth_method;
+  u8 is_hex;
+  u32 data_len;
+  u8 data[data_len];
+};
+
+/** \brief IKEv2: Set IKEv2 profile local/remote identification
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_local - Identification is local if non-zero, else remote
+    @param id_type - Identification type
+    @param data_len - Identification data length
+    @param data - Identification data
+*/
+autoreply define ikev2_profile_set_id
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 is_local;
+  u8 id_type;
+  u32 data_len;
+  u8 data[data_len];
+};
+
+/** \brief IKEv2: Set IKEv2 profile traffic selector parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_local - Traffic selector is local if non-zero, else remote
+    @param proto - Traffic selector IP protocol (if zero not relevant)
+    @param start_port - The smallest port number allowed by traffic selector
+    @param end_port - The largest port number allowed by traffic selector
+    @param start_addr - The smallest address included in traffic selector
+    @param end_addr - The largest address included in traffic selector
+*/
+autoreply define ikev2_profile_set_ts
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 is_local;
+  u8 proto;
+  u16 start_port;
+  u16 end_port;
+  u32 start_addr;
+  u32 end_addr;
+};
+
+/** \brief IKEv2: Set IKEv2 local RSA private key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param key_file - Key file absolute path
+*/
+autoreply define ikev2_set_local_key
+{
+  u32 client_index;
+  u32 context;
+
+  u8 key_file[256];
+};
+
+/** \brief IKEv2: Set IKEv2 responder interface and IP address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param sw_if_index - interface index
+    @param address - interface address
+*/
+autoreply define ikev2_set_responder
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u32 sw_if_index;
+  u8 address[4];
+};
+
+/** \brief IKEv2: Set IKEv2 IKE transforms in SA_INIT proposal (RFC 7296)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param crypto_alg - encryption algorithm
+    @param crypto_key_size - encryption key size
+    @param integ_alg - integrity algorithm
+    @param dh_group - Diffie-Hellman group
+    
+*/
+autoreply define ikev2_set_ike_transforms
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u32 crypto_alg;
+  u32 crypto_key_size;
+  u32 integ_alg;
+  u32 dh_group;
+};
+
+/** \brief IKEv2: Set IKEv2 ESP transforms in SA_INIT proposal (RFC 7296)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param crypto_alg - encryption algorithm
+    @param crypto_key_size - encryption key size
+    @param integ_alg - integrity algorithm
+    @param dh_group - Diffie-Hellman group
+    
+*/
+autoreply define ikev2_set_esp_transforms
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u32 crypto_alg;
+  u32 crypto_key_size;
+  u32 integ_alg;
+  u32 dh_group;
+};
+
+/** \brief IKEv2: Set Child SA lifetime, limited by time and/or data
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param lifetime - SA maximum life time in seconds (0 to disable)
+    @param lifetime_jitter - Jitter added to prevent simultaneous rekeying
+    @param handover - Hand over time
+    @param lifetime_maxdata - SA maximum life time in bytes (0 to disable)
+    
+*/
+autoreply define ikev2_set_sa_lifetime
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u64 lifetime;
+  u32 lifetime_jitter;
+  u32 handover;
+  u64 lifetime_maxdata;
+};
+
+/** \brief IKEv2: Initiate the SA_INIT exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    
+*/
+autoreply define ikev2_initiate_sa_init
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+};
+
+/** \brief IKEv2: Initiate the delete IKE SA exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param ispi - IKE SA initiator SPI
+    
+*/
+autoreply define ikev2_initiate_del_ike_sa
+{
+  u32 client_index;
+  u32 context;
+
+  u64 ispi;
+};
+
+/** \brief IKEv2: Initiate the delete Child SA exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param ispi - Child SA initiator SPI
+    
+*/
+autoreply define ikev2_initiate_del_child_sa
+{
+  u32 client_index;
+  u32 context;
+
+  u32 ispi;
+};
+
+/** \brief IKEv2: Initiate the rekey Child SA exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param ispi - Child SA initiator SPI
+    
+*/
+autoreply define ikev2_initiate_rekey_child_sa
+{
+  u32 client_index;
+  u32 context;
+
+  u32 ispi;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
+ 

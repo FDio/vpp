@@ -21,43 +21,42 @@
 #include <vnet/interface.h>
 
 #include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/ikev2_priv.h>
+#include <plugins/ikev2/ikev2.h>
+#include <plugins/ikev2/ikev2_priv.h>
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-		     {
-		     u8 nextpayload;
-		     u8 flags;
-		     u16 length;
-		     u8 protocol_id;
-		     u8 spi_size;
-		     u16 msg_type;
-		     u8 payload[0];}) ike_notify_payload_header_t;
+typedef CLIB_PACKED (struct {
+  u8 nextpayload;
+  u8 flags;
+  u16 length;
+  u8 protocol_id;
+  u8 spi_size;
+  u16 msg_type;
+  u8 payload[0];
+}) ike_notify_payload_header_t;
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-		     {
-		     u8 ts_type;
-		     u8 protocol_id;
-		     u16 selector_len;
-		     u16 start_port;
-		     u16 end_port;
-		     ip4_address_t start_addr;
-		     ip4_address_t end_addr;}) ikev2_ts_payload_entry_t;
+typedef CLIB_PACKED (struct {
+  u8 ts_type;
+  u8 protocol_id;
+  u16 selector_len;
+  u16 start_port;
+  u16 end_port;
+  ip4_address_t start_addr;
+  ip4_address_t end_addr;
+}) ikev2_ts_payload_entry_t;
 /* *INDENT-OFF* */
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (struct
-		     {
-		     u8 nextpayload;
-		     u8 flags;
-		     u16 length;
-		     u8 num_ts;
-		     u8 reserved[3];
-		     ikev2_ts_payload_entry_t ts[0];})
-  ike_ts_payload_header_t;
+typedef CLIB_PACKED (struct {
+  u8 nextpayload;
+  u8 flags;
+  u16 length;
+  u8 num_ts;
+  u8 reserved[3];
+  ikev2_ts_payload_entry_t ts[0];
+}) ike_ts_payload_header_t;
 /* *INDENT-OFF* */
 
 /* *INDENT-OFF* */

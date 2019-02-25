@@ -14,14 +14,16 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/unix/plugin.h>
+#include <vpp/app/version.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vppinfra/random.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/ikev2_priv.h>
+#include <plugins/ikev2/ikev2.h>
+#include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/sha.h>
 
 ikev2_main_t ikev2_main;
@@ -3297,6 +3299,9 @@ ikev2_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int thread_id;
 
+  if ((error = vlib_call_init_function (vm, ipsec_init)))
+    return error;
+
   clib_memset (km, 0, sizeof (ikev2_main_t));
   km->vnet_main = vnet_get_main ();
   km->vlib_main = vm;
@@ -3323,6 +3328,7 @@ ikev2_init (vlib_main_t * vm)
   return 0;
 }
 
+VLIB_INIT_FUNCTION (ikev2_init);
 
 static u8
 ikev2_mngr_process_child_sa (ikev2_sa_t * sa, ikev2_child_sa_t * csa)
@@ -3466,6 +3472,10 @@ VLIB_REGISTER_NODE (ikev2_mngr_process_node, static) = {
     "ikev2-manager-process",
 };
 
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .description = "IKEv2",
+};
 /* *INDENT-ON* */
 
 /*
