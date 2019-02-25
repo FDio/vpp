@@ -532,16 +532,33 @@ always_inline void *
 ip6_ext_next_header (ip6_ext_header_t *ext_hdr )
 { return (void *)((u8 *) ext_hdr + ip6_ext_header_len(ext_hdr)); }
 
+always_inline int
+vlib_object_within_buffer_data (vlib_main_t *vm, vlib_buffer_t *b, void *obj,
+                                size_t len)
+{
+  u8 *o = obj;
+  if (o < b->data ||
+      o + len > b->data + vlib_buffer_get_default_data_size (vm))
+    return 0;
+  return 1;
+}
+
 /*
- * Macro to find the IPv6 ext header of type t
+ * Macro to find the IPv6 ext header of type t within a buffer b
+ *
  * I is the IPv6 header
  * P is the previous IPv6 ext header (NULL if none)
  * M is the matched IPv6 ext header of type t
  */
-#define ip6_ext_header_find_t(i, p, m, t)               \
+#define ip6_ext_header_find_t(vm, b, i, p, m, t)        \
 if ((i)->protocol == t)                                 \
 {                                                       \
   (m) = (void *)((i)+1);                                \
+  if(!vlib_object_within_buffer_data(                   \
+      vm, b, (m), ip6_ext_header_len(m)))               \
+    {                                                   \
+      (m) = NULL;                                       \
+    }                                                   \
   (p) = NULL;                                           \
 }                                                       \
 else                                                    \
@@ -552,10 +569,22 @@ else                                                    \
     ((ip6_ext_header_t *)(p))->next_hdr != (t))         \
   {                                                     \
     (p) = ip6_ext_next_header((p));                     \
+    if(!vlib_object_within_buffer_data(                 \
+        vm, b, (p), ip6_ext_header_len(p)))             \
+      {                                                 \
+	(p) = NULL;                                     \
+	(m) = NULL;                                     \
+	break;                                          \
+      }                                                 \
   }                                                     \
-  if ( ((p)->next_hdr) == (t))                          \
+  if ((p) && (((p)->next_hdr) == (t)))                  \
   {                                                     \
     (m) = (void *)(ip6_ext_next_header((p)));           \
+    if(!vlib_object_within_buffer_data(                 \
+        vm, b, (m), ip6_ext_header_len(m)))             \
+      {                                                 \
+        (m) = NULL;                                     \
+      }                                                 \
   }                                                     \
 }
 
