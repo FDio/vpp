@@ -16,6 +16,24 @@
       "revId": "e973c8cc3ef5967528a126f5650a7b1d99b8919f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e93a2c44_79e8f292",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T22:12:15Z",
+      "side": 1,
+      "message": "No.  This is for py2/py3 compat.\nIn python3, unicode no longer exists, it is just str.",
+      "parentUuid": "97b7cb6d_f86fb178",
+      "revId": "e973c8cc3ef5967528a126f5650a7b1d99b8919f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
