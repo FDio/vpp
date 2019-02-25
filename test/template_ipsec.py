@@ -1,7 +1,7 @@
 import unittest
 import socket
 
-from scapy.layers.inet import IP, ICMP, TCP
+from scapy.layers.inet import IP, ICMP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
@@ -41,6 +41,8 @@ class IPsecIPv4Params(object):
                                   IPSEC_API_CRYPTO_ALG_AES_CBC_128)
         self.crypt_algo = 'AES-CBC'  # scapy name
         self.crypt_key = 'JPjyOWBeVEQiMe7h'
+        self.flags = 0
+        self.nat_header = None
 
 
 class IPsecIPv6Params(object):
@@ -73,6 +75,8 @@ class IPsecIPv6Params(object):
                                   IPSEC_API_CRYPTO_ALG_AES_CBC_256)
         self.crypt_algo = 'AES-CBC'  # scapy name
         self.crypt_key = 'JPjyOWBeVEQiMe7hJPjyOWBeVEQiMe7h'
+        self.flags = 0
+        self.nat_header = None
 
 
 class TemplateIpsec(VppTestCase):
@@ -168,29 +172,35 @@ class TemplateIpsec(VppTestCase):
             auth_algo=params.auth_algo, auth_key=params.auth_key,
             tunnel_header=ip_class_by_addr_type[params.addr_type](
                 src=self.tun_if.remote_addr[params.addr_type],
-                dst=self.tun_if.local_addr[params.addr_type]))
+                dst=self.tun_if.local_addr[params.addr_type]),
+            nat_t_header=params.nat_header)
         vpp_tun_sa = SecurityAssociation(
             self.encryption_type, spi=params.scapy_tun_spi,
             crypt_algo=params.crypt_algo, crypt_key=params.crypt_key,
             auth_algo=params.auth_algo, auth_key=params.auth_key,
             tunnel_header=ip_class_by_addr_type[params.addr_type](
                 dst=self.tun_if.remote_addr[params.addr_type],
-                src=self.tun_if.local_addr[params.addr_type]))
+                src=self.tun_if.local_addr[params.addr_type]),
+            nat_t_header=params.nat_header)
         return vpp_tun_sa, scapy_tun_sa
 
     def configure_sa_tra(self, params):
-        params.scapy_tra_sa = SecurityAssociation(self.encryption_type,
-                                                  spi=params.vpp_tra_spi,
-                                                  crypt_algo=params.crypt_algo,
-                                                  crypt_key=params.crypt_key,
-                                                  auth_algo=params.auth_algo,
-                                                  auth_key=params.auth_key)
-        params.vpp_tra_sa = SecurityAssociation(self.encryption_type,
-                                                spi=params.scapy_tra_spi,
-                                                crypt_algo=params.crypt_algo,
-                                                crypt_key=params.crypt_key,
-                                                auth_algo=params.auth_algo,
-                                                auth_key=params.auth_key)
+        params.scapy_tra_sa = SecurityAssociation(
+            self.encryption_type,
+            spi=params.vpp_tra_spi,
+            crypt_algo=params.crypt_algo,
+            crypt_key=params.crypt_key,
+            auth_algo=params.auth_algo,
+            auth_key=params.auth_key,
+            nat_t_header=params.nat_header)
+        params.vpp_tra_sa = SecurityAssociation(
+            self.encryption_type,
+            spi=params.scapy_tra_spi,
+            crypt_algo=params.crypt_algo,
+            crypt_key=params.crypt_key,
+            auth_algo=params.auth_algo,
+            auth_key=params.auth_key,
+            nat_t_header=params.nat_header)
 
 
 class IpsecTcpTests(object):
@@ -210,7 +220,7 @@ class IpsecTcpTests(object):
         self.assert_packet_checksums_valid(decrypted)
 
 
-class IpsecTraTests(object):
+class IpsecTra4Tests(object):
     def test_tra_anti_replay(self, count=1):
         """ ipsec v4 transport anti-reply test """
         p = self.params[socket.AF_INET]
@@ -320,6 +330,8 @@ class IpsecTraTests(object):
         """ ipsec v4 transport burst test """
         self.test_tra_basic(count=257)
 
+
+class IpsecTra6Tests(object):
     def test_tra_basic6(self, count=1):
         """ ipsec v6 transport basic test """
         self.vapi.cli("clear errors")
@@ -356,6 +368,10 @@ class IpsecTraTests(object):
     def test_tra_burst6(self):
         """ ipsec v6 transport burst test """
         self.test_tra_basic6(count=257)
+
+
+class IpsecTra46Tests(IpsecTra4Tests, IpsecTra6Tests):
+    pass
 
 
 class IpsecTun4Tests(object):
@@ -477,7 +493,7 @@ class IpsecTun6Tests(object):
         self.test_tun_basic66(count=257)
 
 
-class IpsecTunTests(IpsecTun4Tests, IpsecTun6Tests):
+class IpsecTun46Tests(IpsecTun4Tests, IpsecTun6Tests):
     pass
 
 

@@ -4,7 +4,7 @@ import unittest
 from scapy.layers.ipsec import AH
 
 from framework import VppTestRunner
-from template_ipsec import TemplateIpsec, IpsecTraTests, IpsecTunTests
+from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests
 from template_ipsec import IpsecTcpTests
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
         VppIpsecSpdItfBinding
@@ -203,7 +203,7 @@ class TemplateIpsecAh(TemplateIpsec):
                          priority=10).add_vpp_config()
 
 
-class TestIpsecAh1(TemplateIpsecAh, IpsecTraTests, IpsecTunTests):
+class TestIpsecAh1(TemplateIpsecAh, IpsecTra46Tests, IpsecTun46Tests):
     """ Ipsec AH - TUN & TRA tests """
     tra4_encrypt_node_name = "ah4-encrypt"
     tra4_decrypt_node_name = "ah4-decrypt"

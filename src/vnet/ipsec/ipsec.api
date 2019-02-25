@@ -235,6 +235,7 @@ enum ipsec_sad_flags
 
   /* come-on Ole please fix this */
   IPSEC_API_SAD_COMBO_12 = 12,
+  IPSEC_API_SAD_COMBO_18 = 18,
   IPSEC_API_SAD_COMBO_20 = 20,
 };
 
