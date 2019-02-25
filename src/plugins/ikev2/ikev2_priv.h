@@ -19,7 +19,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
-#include <vnet/ipsec/ikev2.h>
+#include <plugins/ikev2/ikev2.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/elog.h>
@@ -290,6 +290,8 @@ typedef struct
 
   ikev2_main_per_thread_data_t *per_thread_data;
 
+  /* API message ID base */
+  u16 msg_id_base;
 } ikev2_main_t;
 
 extern ikev2_main_t ikev2_main;

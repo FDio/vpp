@@ -30,7 +30,6 @@
 
 #if WITH_LIBSSL > 0
 #include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
 #endif /* IPSEC */
 
 #define vl_typedefs		/* define message structures */
@@ -62,19 +61,6 @@ _(IPSEC_SPD_INTERFACE_DUMP, ipsec_spd_interface_dump)		\
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)             \
 _(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)             \
 _(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)               \
-_(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                 \
-_(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)               \
-_(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                   \
-_(IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts)                   \
-_(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key)                     \
-_(IKEV2_SET_RESPONDER, ikev2_set_responder)                     \
-_(IKEV2_SET_IKE_TRANSFORMS, ikev2_set_ike_transforms)           \
-_(IKEV2_SET_ESP_TRANSFORMS, ikev2_set_esp_transforms)           \
-_(IKEV2_SET_SA_LIFETIME, ikev2_set_sa_lifetime)                 \
-_(IKEV2_INITIATE_SA_INIT, ikev2_initiate_sa_init)               \
-_(IKEV2_INITIATE_DEL_IKE_SA, ikev2_initiate_del_ike_sa)         \
-_(IKEV2_INITIATE_DEL_CHILD_SA, ikev2_initiate_del_child_sa)     \
-_(IKEV2_INITIATE_REKEY_CHILD_SA, ikev2_initiate_rekey_child_sa) \
 _(IPSEC_SELECT_BACKEND, ipsec_select_backend)                   \
 _(IPSEC_BACKEND_DUMP, ipsec_backend_dump)
 
@@ -841,329 +827,6 @@ vl_api_ipsec_tunnel_if_set_sa_t_handler (vl_api_ipsec_tunnel_if_set_sa_t * mp)
   REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_SA_REPLY);
 }
 
-
-static void
-vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
-{
-  vl_api_ikev2_profile_add_del_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-  u8 *tmp = format (0, "%s", mp->name);
-  error = ikev2_add_del_profile (vm, tmp, mp->is_add);
-  vec_free (tmp);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_PROFILE_ADD_DEL_REPLY);
-}
-
-static void
-  vl_api_ikev2_profile_set_auth_t_handler
-  (vl_api_ikev2_profile_set_auth_t * mp)
-{
-  vl_api_ikev2_profile_set_auth_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-  int data_len = ntohl (mp->data_len);
-  u8 *tmp = format (0, "%s", mp->name);
-  u8 *data = vec_new (u8, data_len);
-  clib_memcpy (data, mp->data, data_len);
-  error = ikev2_set_profile_auth (vm, tmp, mp->auth_method, data, mp->is_hex);
-  vec_free (tmp);
-  vec_free (data);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_AUTH_REPLY);
-}
-
-static void
-vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
-{
-  vl_api_ikev2_profile_add_del_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-  u8 *tmp = format (0, "%s", mp->name);
-  int data_len = ntohl (mp->data_len);
-  u8 *data = vec_new (u8, data_len);
-  clib_memcpy (data, mp->data, data_len);
-  error = ikev2_set_profile_id (vm, tmp, mp->id_type, data, mp->is_local);
-  vec_free (tmp);
-  vec_free (data);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_ID_REPLY);
-}
-
-static void
-vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
-{
-  vl_api_ikev2_profile_set_ts_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-  u8 *tmp = format (0, "%s", mp->name);
-  error = ikev2_set_profile_ts (vm, tmp, mp->proto, mp->start_port,
-				mp->end_port, (ip4_address_t) mp->start_addr,
-				(ip4_address_t) mp->end_addr, mp->is_local);
-  vec_free (tmp);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_TS_REPLY);
-}
-
-static void
-vl_api_ikev2_set_local_key_t_handler (vl_api_ikev2_set_local_key_t * mp)
-{
-  vl_api_ikev2_profile_set_ts_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  error = ikev2_set_local_key (vm, mp->key_file);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_SET_LOCAL_KEY_REPLY);
-}
-
-static void
-vl_api_ikev2_set_responder_t_handler (vl_api_ikev2_set_responder_t * mp)
-{
-  vl_api_ikev2_set_responder_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  u8 *tmp = format (0, "%s", mp->name);
-  ip4_address_t ip4;
-  clib_memcpy (&ip4, mp->address, sizeof (ip4));
-
-  error = ikev2_set_profile_responder (vm, tmp, mp->sw_if_index, ip4);
-  vec_free (tmp);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_SET_RESPONDER_REPLY);
-}
-
-static void
-vl_api_ikev2_set_ike_transforms_t_handler (vl_api_ikev2_set_ike_transforms_t *
-					   mp)
-{
-  vl_api_ikev2_set_ike_transforms_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  u8 *tmp = format (0, "%s", mp->name);
-
-  error =
-    ikev2_set_profile_ike_transforms (vm, tmp, mp->crypto_alg, mp->integ_alg,
-				      mp->dh_group, mp->crypto_key_size);
-  vec_free (tmp);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_SET_IKE_TRANSFORMS_REPLY);
-}
-
-static void
-vl_api_ikev2_set_esp_transforms_t_handler (vl_api_ikev2_set_esp_transforms_t *
-					   mp)
-{
-  vl_api_ikev2_set_esp_transforms_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  u8 *tmp = format (0, "%s", mp->name);
-
-  error =
-    ikev2_set_profile_esp_transforms (vm, tmp, mp->crypto_alg, mp->integ_alg,
-				      mp->dh_group, mp->crypto_key_size);
-  vec_free (tmp);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_SET_ESP_TRANSFORMS_REPLY);
-}
-
-static void
-vl_api_ikev2_set_sa_lifetime_t_handler (vl_api_ikev2_set_sa_lifetime_t * mp)
-{
-  vl_api_ikev2_set_sa_lifetime_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  u8 *tmp = format (0, "%s", mp->name);
-
-  error =
-    ikev2_set_profile_sa_lifetime (vm, tmp, mp->lifetime, mp->lifetime_jitter,
-				   mp->handover, mp->lifetime_maxdata);
-  vec_free (tmp);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_SET_SA_LIFETIME_REPLY);
-}
-
-static void
-vl_api_ikev2_initiate_sa_init_t_handler (vl_api_ikev2_initiate_sa_init_t * mp)
-{
-  vl_api_ikev2_initiate_sa_init_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  u8 *tmp = format (0, "%s", mp->name);
-
-  error = ikev2_initiate_sa_init (vm, tmp);
-  vec_free (tmp);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_INITIATE_SA_INIT_REPLY);
-}
-
-static void
-vl_api_ikev2_initiate_del_ike_sa_t_handler (vl_api_ikev2_initiate_del_ike_sa_t
-					    * mp)
-{
-  vl_api_ikev2_initiate_del_ike_sa_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  error = ikev2_initiate_delete_ike_sa (vm, mp->ispi);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_INITIATE_DEL_IKE_SA_REPLY);
-}
-
-static void
-  vl_api_ikev2_initiate_del_child_sa_t_handler
-  (vl_api_ikev2_initiate_del_child_sa_t * mp)
-{
-  vl_api_ikev2_initiate_del_child_sa_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  error = ikev2_initiate_delete_child_sa (vm, mp->ispi);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_INITIATE_DEL_CHILD_SA_REPLY);
-}
-
-static void
-  vl_api_ikev2_initiate_rekey_child_sa_t_handler
-  (vl_api_ikev2_initiate_rekey_child_sa_t * mp)
-{
-  vl_api_ikev2_initiate_rekey_child_sa_reply_t *rmp;
-  int rv = 0;
-
-#if WITH_LIBSSL > 0
-  vlib_main_t *vm = vlib_get_main ();
-  clib_error_t *error;
-
-  error = ikev2_initiate_rekey_child_sa (vm, mp->ispi);
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
-
-  REPLY_MACRO (VL_API_IKEV2_INITIATE_REKEY_CHILD_SA_REPLY);
-}
-
-/*
- * ipsec_api_hookup
- * Add vpe's API message handlers to the table.
- * vlib has already mapped shared memory and
- * added the client registration handlers.
- * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
- */
-#define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
-#undef vl_msg_name_crc_list
-
-static void
-setup_message_id_table (api_main_t * am)
-{
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_ipsec;
-#undef _
-}
-
 static void
 vl_api_ipsec_backend_dump_t_handler (vl_api_ipsec_backend_dump_t * mp)
 {
@@ -1255,6 +918,25 @@ vl_api_ipsec_select_backend_t_handler (vl_api_ipsec_select_backend_t * mp)
 #endif
 done:
   REPLY_MACRO (VL_API_IPSEC_SELECT_BACKEND_REPLY);
+}
+
+/*
+ * ipsec_api_hookup
+ * Add vpe's API message handlers to the table.
+ * vlib has already mapped shared memory and
+ * added the client registration handlers.
+ * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
+ */
+#define vl_msg_name_crc_list
+#include <vnet/vnet_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (api_main_t * am)
+{
+#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+  foreach_vl_msg_name_crc_ipsec;
+#undef _
 }
 
 static clib_error_t *

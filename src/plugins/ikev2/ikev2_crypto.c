@@ -18,8 +18,8 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vnet/udp/udp.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/ikev2_priv.h>
+#include <plugins/ikev2/ikev2.h>
+#include <plugins/ikev2/ikev2_priv.h>
 #include <openssl/obj_mac.h>
 #include <openssl/ec.h>
 #include <openssl/x509.h>
