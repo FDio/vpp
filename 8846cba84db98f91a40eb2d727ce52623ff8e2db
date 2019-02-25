@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9af51c18_be736db2",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-02-25T19:34:15Z",
+      "side": 1,
+      "message": "Wouldn\u0027t this break is pip is not installed? Shouldn\u0027t we be check for the presence of pip and only install it if it\u0027s not present?",
+      "revId": "8846cba84db98f91a40eb2d727ce52623ff8e2db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
