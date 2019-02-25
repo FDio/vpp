@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "799c6994_d20fc63e",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 1339,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-02-25T19:30:15Z",
+      "side": 1,
+      "message": "Let\u0027s remove chain, make it shorter...",
+      "range": {
+        "startLine": 1339,
+        "startChar": 12,
+        "endLine": 1339,
+        "endChar": 18
+      },
+      "revId": "cf056d3eb7bb906cacde65bcab15363c9aa59d87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
