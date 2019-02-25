@@ -963,29 +963,54 @@ ethernet_input_trace (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * from_frame)
 {
   u32 *from, n_left;
-  if ((node->flags & VLIB_NODE_FLAG_TRACE) == 0)
-    return;
-
-  from = vlib_frame_vector_args (from_frame);
-  n_left = from_frame->n_vectors;
-
-  while (n_left)
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) == 0))
     {
-      ethernet_input_trace_t *t0;
-      vlib_buffer_t *b0 = vlib_get_buffer (vm, from[0]);
+      from = vlib_frame_vector_args (from_frame);
+      n_left = from_frame->n_vectors;
 
-      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+      while (n_left)
 	{
-	  t0 = vlib_add_trace (vm, node, b0, sizeof (ethernet_input_trace_t));
-	  clib_memcpy_fast (t0->packet_data, b0->data + b0->current_data,
-			    sizeof (t0->packet_data));
-	  t0->frame_flags = from_frame->flags;
-	  clib_memcpy_fast (&t0->frame_data,
-			    vlib_frame_scalar_args (from_frame),
-			    sizeof (ethernet_input_frame_t));
+	  ethernet_input_trace_t *t0;
+	  vlib_buffer_t *b0 = vlib_get_buffer (vm, from[0]);
+
+	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
+	    {
+	      t0 = vlib_add_trace (vm, node, b0,
+				   sizeof (ethernet_input_trace_t));
+	      clib_memcpy_fast (t0->packet_data, b0->data + b0->current_data,
+				sizeof (t0->packet_data));
+	      t0->frame_flags = from_frame->flags;
+	      clib_memcpy_fast (&t0->frame_data,
+				vlib_frame_scalar_args (from_frame),
+				sizeof (ethernet_input_frame_t));
+	    }
+	  from += 1;
+	  n_left -= 1;
 	}
-      from += 1;
-      n_left -= 1;
+    }
+
+  /* rx pcap capture if enabled */
+  if (PREDICT_FALSE (vm->pcap[VLIB_RX].pcap_enable))
+    {
+      u32 bi0;
+
+      from = vlib_frame_vector_args (from_frame);
+      n_left = from_frame->n_vectors;
+      while (n_left > 0)
+	{
+	  vlib_buffer_t *b0;
+	  bi0 = from[0];
+	  from++;
+	  b0 = vlib_get_buffer (vm, bi0);
+
+	  if (vm->pcap[VLIB_RX].pcap_sw_if_index == 0 ||
+	      vm->pcap[VLIB_RX].pcap_sw_if_index
+	      == vnet_buffer (b0)->sw_if_index[VLIB_RX])
+	    {
+	      pcap_add_buffer (&vm->pcap[VLIB_RX].pcap_main, vm, bi0, 512);
+	    }
+	  n_left--;
+	}
     }
 }
 

@@ -44,7 +44,6 @@
 #include <rte_bus_pci.h>
 #include <rte_flow.h>
 
-#include <vppinfra/pcap.h>
 #include <vnet/devices/devices.h>
 
 #if CLIB_DEBUG > 0
@@ -399,13 +398,6 @@ typedef struct
 
 typedef struct
 {
-  int pcap_enable;
-  u32 pcap_sw_if_index;
-  pcap_main_t pcap_main;
-} dpdk_pcap_t;
-
-typedef struct
-{
 
   /* Devices */
   dpdk_device_t *devices;
@@ -414,15 +406,6 @@ typedef struct
 
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
   u32 buffer_flags_template;
-
-  /* pcap tracing */
-  dpdk_pcap_t pcap[VLIB_N_RX_TX];
-
-  int pcap_enable;
-  pcap_main_t pcap_main;
-  u8 *pcap_filename;
-  u32 pcap_sw_if_index;
-  u32 pcap_pkts_to_capture;
 
   /*
    * flag indicating that a posted admin up/down

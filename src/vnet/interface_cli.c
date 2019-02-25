@@ -1705,6 +1705,292 @@ VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
     .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
+
+static inline clib_error_t *
+pcap_trace_command_internal (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd, int rx_tx)
+{
+#define PCAP_DEF_PKT_TO_CAPTURE (1000)
+
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 *filename;
+  u8 *chroot_filename = 0;
+  u32 max = 0;
+  int enabled = 0;
+  int errorFlag = 0;
+  clib_error_t *error = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	{
+	  if (vm->pcap[rx_tx].pcap_enable == 0)
+	    {
+	      enabled = 1;
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm, "pcap tx capture already on...");
+	      errorFlag = 1;
+	      break;
+	    }
+	}
+      else if (unformat (line_input, "off"))
+	{
+	  if (vm->pcap[rx_tx].pcap_enable)
+	    {
+	      vlib_cli_output
+		(vm, "captured %d pkts...",
+		 vm->pcap[rx_tx].pcap_main.n_packets_captured);
+	      if (vm->pcap[rx_tx].pcap_main.n_packets_captured)
+		{
+		  vm->pcap[rx_tx].pcap_main.n_packets_to_capture =
+		    vm->pcap[rx_tx].pcap_main.n_packets_captured;
+		  error = pcap_write (&vm->pcap[rx_tx].pcap_main);
+		  if (error)
+		    clib_error_report (error);
+		  else
+		    vlib_cli_output (vm, "saved to %s...",
+				     vm->pcap[rx_tx].pcap_main.file_name);
+		}
+
+	      vm->pcap[rx_tx].pcap_enable = 0;
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm, "pcap tx capture already off...");
+	      errorFlag = 1;
+	      break;
+	    }
+	}
+      else if (unformat (line_input, "max %d", &max))
+	{
+	  if (vm->pcap[rx_tx].pcap_enable)
+	    {
+	      vlib_cli_output
+		(vm,
+		 "can't change max value while pcap tx capture active...");
+	      errorFlag = 1;
+	      break;
+	    }
+	  vm->pcap[rx_tx].pcap_main.n_packets_to_capture = max;
+	}
+      else if (unformat (line_input, "intfc %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &vm->pcap[rx_tx].pcap_sw_if_index))
+	;
+
+      else if (unformat (line_input, "intfc any"))
+	{
+	  vm->pcap[rx_tx].pcap_sw_if_index = 0;
+	}
+      else if (unformat (line_input, "file %s", &filename))
+	{
+	  if (vm->pcap[rx_tx].pcap_enable)
+	    {
+	      vlib_cli_output
+		(vm, "can't change file while pcap tx capture active...");
+	      errorFlag = 1;
+	      break;
+	    }
+
+	  /* Brain-police user path input */
+	  if (strstr ((char *) filename, "..")
+	      || index ((char *) filename, '/'))
+	    {
+	      vlib_cli_output (vm, "illegal characters in filename '%s'",
+			       filename);
+	      vlib_cli_output (vm, "Hint: .. and / are not allowed.");
+	      vec_free (filename);
+	      errorFlag = 1;
+	      break;
+	    }
+
+	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
+	  vec_free (filename);
+	}
+      else if (unformat (line_input, "status"))
+	{
+	  if (vm->pcap[rx_tx].pcap_sw_if_index == 0)
+	    {
+	      vlib_cli_output
+		(vm, "max is %d for any interface to file %s",
+		 vm->pcap[rx_tx].pcap_main.n_packets_to_capture ?
+		 vm->pcap[rx_tx].pcap_main.n_packets_to_capture
+		 : PCAP_DEF_PKT_TO_CAPTURE,
+		 vm->pcap[rx_tx].pcap_main.file_name ?
+		 (u8 *) vm->pcap[rx_tx].pcap_main.file_name :
+		 (u8 *) "/tmp/vpe.pcap");
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm, "max is %d for interface %U to file %s",
+			       vm->pcap[rx_tx].pcap_main.n_packets_to_capture
+			       ? vm->pcap[rx_tx].
+			       pcap_main.n_packets_to_capture :
+			       PCAP_DEF_PKT_TO_CAPTURE,
+			       format_vnet_sw_if_index_name, vnm,
+			       vm->pcap_sw_if_index,
+			       vm->pcap[rx_tx].
+			       pcap_main.file_name ? (u8 *) vm->pcap[rx_tx].
+			       pcap_main.file_name : (u8 *) "/tmp/vpe.pcap");
+	    }
+
+	  if (vm->pcap[rx_tx].pcap_enable == 0)
+	    {
+	      vlib_cli_output (vm, "pcap %s capture is off...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx");
+	    }
+	  else
+	    {
+	      vlib_cli_output (vm, "pcap %s capture is on: %d of %d pkts...",
+			       (rx_tx == VLIB_RX) ? "rx" : "tx",
+			       vm->pcap[rx_tx].pcap_main.n_packets_captured,
+			       vm->pcap[rx_tx].
+			       pcap_main.n_packets_to_capture);
+	    }
+	  break;
+	}
+
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  errorFlag = 1;
+	  break;
+	}
+    }
+  unformat_free (line_input);
+
+
+  if (errorFlag == 0)
+    {
+      /* Since no error, save configured values. */
+      if (chroot_filename)
+	{
+	  if (vm->pcap[rx_tx].pcap_main.file_name)
+	    vec_free (vm->pcap[rx_tx].pcap_main.file_name);
+	  vec_add1 (chroot_filename, 0);
+	  vm->pcap[rx_tx].pcap_main.file_name = (char *) chroot_filename;
+	}
+
+      if (max)
+	vm->pcap[rx_tx].pcap_main.n_packets_to_capture = max;
+
+      if (enabled)
+	{
+	  if (vm->pcap[rx_tx].pcap_main.file_name == 0)
+	    vm->pcap[rx_tx].pcap_main.file_name
+	      = (char *) format (0, "/tmp/vpe.pcap%c", 0);
+
+	  vm->pcap[rx_tx].pcap_main.n_packets_captured = 0;
+	  vm->pcap[rx_tx].pcap_main.packet_type = PCAP_PACKET_TYPE_ethernet;
+	  if (vm->pcap[rx_tx].pcap_main.lock == 0)
+	    clib_spinlock_init (&(vm->pcap[rx_tx].pcap_main.lock));
+	  vm->pcap[rx_tx].pcap_enable = 1;
+	  vlib_cli_output (vm, "pcap %s capture on...",
+			   rx_tx == VLIB_RX ? "rx" : "tx");
+	}
+    }
+  else if (chroot_filename)
+    vec_free (chroot_filename);
+
+  return error;
+}
+
+static clib_error_t *
+pcap_rx_trace_command_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  return pcap_trace_command_internal (vm, input, cmd, VLIB_RX);
+}
+
+static clib_error_t *
+pcap_tx_trace_command_fn (vlib_main_t * vm,
+			  unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  return pcap_trace_command_internal (vm, input, cmd, VLIB_TX);
+}
+
+
+/*?
+ * This command is used to start or stop a packet capture, or show
+ * the status of packet capture. Note that both "pcap rx trace" and
+ * "pcap tx trace" are implemented. The command syntax is identical,
+ * simply substitute rx for tx as needed.
+ *
+ * This command has the following optional parameters:
+ *
+ * - <b>on|off</b> - Used to start or stop a packet capture.
+ *
+ * - <b>max <nn></b> - Depth of local buffer. Once '<em>nn</em>' number
+ *   of packets have been received, buffer is flushed to file. Once another
+ *   '<em>nn</em>' number of packets have been received, buffer is flushed
+ *   to file, overwriting previous write. If not entered, value defaults
+ *   to 100. Can only be updated if packet capture is off.
+ *
+ * - <b>intfc <interface>|any</b> - Used to specify a given interface,
+ *   or use '<em>any</em>' to run packet capture on all interfaces.
+ *   '<em>any</em>' is the default if not provided. Settings from a previous
+ *   packet capture are preserved, so '<em>any</em>' can be used to reset
+ *   the interface setting.
+ *
+ * - <b>file <name></b> - Used to specify the output filename. The file will
+ *   be placed in the '<em>/tmp</em>' directory, so only the filename is
+ *   supported. Directory should not be entered. If file already exists, file
+ *   will be overwritten. If no filename is provided, '<em>/tmp/vpe.pcap</em>'
+ *   will be used. Can only be updated if packet capture is off.
+ *
+ * - <b>status</b> - Displays the current status and configured attributes
+ *   associated with a packet capture. If packet capture is in progress,
+ *   '<em>status</em>' also will return the number of packets currently in
+ *   the local buffer. All additional attributes entered on command line
+ *   with '<em>status</em>' will be ignored and not applied.
+ *
+ * @cliexpar
+ * Example of how to display the status of a tx packet capture when off:
+ * @cliexstart{pcap tx trace status}
+ * max is 100, for any interface to file /tmp/vpe.pcap
+ * pcap tx capture is off...
+ * @cliexend
+ * Example of how to start a tx packet capture:
+ * @cliexstart{pcap tx trace on max 35 intfc GigabitEthernet0/8/0 file vppTest.pcap}
+ * pcap tx capture on...
+ * @cliexend
+ * Example of how to display the status of a tx packet capture in progress:
+ * @cliexstart{pcap tx trace status}
+ * max is 35, for interface GigabitEthernet0/8/0 to file /tmp/vppTest.pcap
+ * pcap tx capture is on: 20 of 35 pkts...
+ * @cliexend
+ * Example of how to stop a tx packet capture:
+ * @cliexstart{vppctl pcap tx trace off}
+ * captured 21 pkts...
+ * saved to /tmp/vppTest.pcap...
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+
+VLIB_CLI_COMMAND (pcap_tx_trace_command, static) = {
+    .path = "pcap tx trace",
+    .short_help =
+    "pcap tx trace [on|off] [max <nn>] [intfc <interface>|any] [file <name>] [status]",
+    .function = pcap_tx_trace_command_fn,
+};
+VLIB_CLI_COMMAND (pcap_rx_trace_command, static) = {
+    .path = "pcap rx trace",
+    .short_help =
+    "pcap rx trace [on|off] [max <nn>] [intfc <interface>|any] [file <name>] [status]",
+    .function = pcap_rx_trace_command_fn,
+};
+/* *INDENT-ON* */
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
