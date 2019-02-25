@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9e58bdc9_9a0bdeb1",
+        "filename": "test/test_punt.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T19:13:47Z",
+      "side": 1,
+      "message": "@classmethod\n    def setUpClass(cls):\n        super(TestPunt, cls).setUpClass()\n\n    @classmethod\n    def tearDownClass(cls):\n        super(TestPunt, cls).tearDownClass()",
+      "revId": "befbf900560ba1f71022b8d6c61afe13279faa9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
