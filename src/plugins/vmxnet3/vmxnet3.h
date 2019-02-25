@@ -57,6 +57,19 @@ enum
 #undef _
 };
 
+#define foreach_vmxnet3_feature_flags \
+  _(0, RXCSUM, "rx checksum") \
+  _(1, RSS, "RSS")	   \
+  _(2, RXVLAN, "rx VLAN") \
+  _(3, LRO, "LRO")
+
+enum
+{
+#define _(a, b, c) VMXNET3_F_##b = (1 << a),
+  foreach_vmxnet3_feature_flags
+#undef _
+};
+
 #define VMXNET3_TXQ_MAX 8
 #define VMXNET3_TX_START(vd) ((vd)->queues)
 #define VMXNET3_RX_START(vd) \
@@ -86,14 +99,41 @@ enum
 
 #define VMXNET3_RXF_BTYPE (1 << 14)	/* rx body buffer type */
 #define VMXNET3_RXF_GEN   (1 << 31)	/* rx generation */
+
+#define VMXNET3_RXCF_CKSUM_MASK (0xFFFF)	/* rx checksum mask */
+#define VMXNET3_RXCF_TUC  (1 << 16)	/* rx udp/tcp checksum correct */
+#define VMXNET3_RXCF_UDP  (1 << 17)	/* rx udp packet */
+#define VMXNET3_RXCF_TCP  (1 << 18)	/* rx tcp packet */
+#define VMXNET3_RXCF_IPC  (1 << 19)	/* rx ip checksum correct */
 #define VMXNET3_RXCF_IP6  (1 << 20)	/* rx ip6 packet */
 #define VMXNET3_RXCF_IP4  (1 << 21)	/* rx ip4 packet */
+#define VMXNET3_RXCF_CT   (0x7F << 24)	/* rx completion type 24-30, 7 bits */
 #define VMXNET3_RXCF_GEN  (1 << 31)	/* rx completion generation */
+
 #define VMXNET3_RXC_INDEX (0xFFF)	/* rx completion index mask */
 
+#define foreach_vmxnet3_offload \
+  _(0, NONE, "none") \
+  _(2, CSUM, "checksum") \
+  _(3, TSO, "tso")
+
+enum
+{
+#define _(a, b, c) VMXNET3_OM_##b = (a),
+  foreach_vmxnet3_offload
+#undef _
+};
+
+/* tx desc flag 0 */
 #define VMXNET3_TXF_GEN  (1 << 14)	/* tx generation */
+
+/* tx desc flag 1 */
+#define VMXNET3_TXF_OM(x) ((x) << 10)	/* tx offload mode */
+#define VMXNET3_TXF_MSSCOF(x) ((x) << 18)	/* tx MSS checksum offset, flags */
 #define VMXNET3_TXF_EOP  (1 << 12)	/* tx end of packet */
 #define VMXNET3_TXF_CQ   (1 << 13)	/* tx completion request */
+
+/* tx completion flag */
 #define VMXNET3_TXCF_GEN (1 << 31)	/* tx completion generation */
 #define VMXNET3_TXC_INDEX (0xFFF)	/* tx completion index mask */
 
@@ -116,10 +156,17 @@ enum
 #define VMXNET3_GOS_TYPE_LINUX  (1 << 2)
 #define VMXNET3_RXCL_LEN_MASK   (0x3FFF)	// 14 bits
 #define VMXNET3_RXCL_ERROR      (1 << 14)
-#define VMXNET3_RXCI_EOP        (1 << 14)
-#define VMXNET3_RXCI_SOP        (1 << 15)
 
-#define foreach_vmxnet3_device_flags \
+#define VMXNET3_RXCI_EOP        (1 << 14)	/* end of packet */
+#define VMXNET3_RXCI_SOP        (1 << 15)	/* start of packet */
+#define VMXNET3_RXCI_CNC        (1 << 30)	/* Checksum not calculated */
+
+#define VMXNET3_RXCOMP_TYPE     (3 << 24)	/* RX completion descriptor */
+#define VMXNET3_RXCOMP_TYPE_LRO (4 << 24)	/* RX completion descriptor for LRO */
+
+#define VMXNET3_RXECF_MSS_MASK  (0xFFFF)	// 16 bits
+
+#define foreach_vmxnet3_device_flags		\
   _(0, INITIALIZED, "initialized") \
   _(1, ERROR, "error")		   \
   _(2, ADMIN_UP, "admin-up") \
@@ -203,9 +250,8 @@ typedef CLIB_PACKED (struct
 
 typedef CLIB_PACKED (struct
 		     {
-		     u32 mode;
-		     u16 multicast_len;
-		     u16 pad; u64 multicast_address; u8 vlan_filter[512];
+		     u32 mode; u16 multicast_len; u16 pad;
+		     u64 multicast_address; u8 vlan_filter[512];
 		     }) vmxnet3_rx_filter_config;
 
 typedef CLIB_PACKED (struct
@@ -246,9 +292,9 @@ typedef CLIB_PACKED (struct
 		     u64 data_address;
 		     u64 comp_address; u64 driver_data_address; u64 pad;
 		     u32 num_desc;
-		     u32 num_data;
-		     u32 num_comp; u32 driver_data_len; u8 intr_index;
-		     u8 pad1[7];
+		     u32 num_data; u32 num_comp; u32 driver_data_len;
+		     u8 intr_index;
+		     u8 pad1; u16 data_address_size; u8 pad2[4];
 		     }) vmxnet3_tx_queue_config;
 
 typedef CLIB_PACKED (struct
@@ -278,10 +324,11 @@ typedef CLIB_PACKED (struct
 typedef CLIB_PACKED (struct
 		     {
 		     u64 desc_address[2];
-		     u64 comp_address; u64 driver_data_address; u64 pad;
-		     u32 num_desc[2];
-		     u32 num_comp; u32 driver_data_len; u8 intr_index;
-		     u8 pad1[7];
+		     u64 comp_address; u64 driver_data_address;
+		     u64 data_address; u32 num_desc[2];
+		     u32 num_comp;
+		     u32 driver_data_len; u8 intr_index; u8 pad1;
+		     u16 data_address_size; u8 pad2[4];
 		     }) vmxnet3_rx_queue_config;
 
 typedef CLIB_PACKED (struct
@@ -355,6 +402,27 @@ typedef CLIB_PACKED (struct
 		     u32 len;
 		     u32 flags;
 		     }) vmxnet3_rx_comp;
+
+/*
+ * flags:
+ *   mss                     -- bits 0 - 15
+ *   tcp/udp checksum correct-- bit  16
+ *   udp packet              -- bit  17
+ *   tcp packet              -- bit  18
+ *   ip checksum correct     -- bit  19
+ *   ipv6                    -- bit  20
+ *   ipv4                    -- bit  21
+ *   ip fragment             -- bit  22
+ *   frame crc correct       -- bit  23
+ *   completion type         -- bits 24-30
+ *   generation              -- bit  31
+ */
+typedef CLIB_PACKED (struct
+		     {
+		     u32 dword1;
+		     u8 seg_cnt; u8 dup_ack_cnt; u16 ts_delta; u32 dword2;
+		     u32 flags;
+		     }) vmxnet3_rx_comp_ext;
 
 /*
  * index:
@@ -486,6 +554,7 @@ typedef struct
   void *queues;
 
   u32 link_speed;
+  u8 lro_enable;
   vmxnet3_tx_stats *tx_stats;
   vmxnet3_rx_stats *rx_stats;
 } vmxnet3_device_t;
@@ -495,6 +564,7 @@ typedef struct
   vmxnet3_device_t *devices;
   u16 msg_id_base;
   vlib_log_class_t log_default;
+  u8 lro_configured;
 } vmxnet3_main_t;
 
 extern vmxnet3_main_t vmxnet3_main;

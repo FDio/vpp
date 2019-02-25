@@ -205,6 +205,7 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
   if (!hw_if_indices)
     return;
 
+  vlib_cli_output (vm, "LRO/TSO configured: %u", vmxm->lro_configured);
   for (i = 0; i < vec_len (hw_if_indices); i++)
     {
       hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
@@ -213,6 +214,7 @@ show_vmxnet3 (vlib_main_t * vm, u32 * hw_if_indices, u8 show_descr,
 		       format_vnet_hw_if_index_name, vnm, hw_if_indices[i],
 		       hw_if_indices[i]);
       vlib_cli_output (vm, "  Version: %u", vd->version);
+      vlib_cli_output (vm, "  LRO/TSO enable: %u", vd->lro_enable);
       vlib_cli_output (vm, "  PCI Address: %U", format_vlib_pci_addr,
 		       &vd->pci_addr);
       vlib_cli_output (vm, "  Mac Address: %U", format_ethernet_address,
@@ -579,6 +581,26 @@ vmxnet3_cli_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (vmxnet3_cli_init);
+
+static clib_error_t *
+vmxnet3_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "lro"))
+	vmxm->lro_configured = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  return 0;
+}
+
+/* vmxnet3 { ... } configuration. */
+VLIB_CONFIG_FUNCTION (vmxnet3_config, "vmxnet3");
 
 /*
  * fd.io coding-style-patch-verification: ON

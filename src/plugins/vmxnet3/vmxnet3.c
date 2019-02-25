@@ -218,6 +218,10 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
     shared->misc.guest_info = VMXNET3_GOS_BITS_64;
   shared->misc.guest_info |= VMXNET3_GOS_TYPE_LINUX;
   shared->misc.version_support = VMXNET3_VERSION_SELECT;
+  shared->misc.upt_features = VMXNET3_F_RXCSUM;
+  if (vd->lro_enable)
+    shared->misc.upt_features |= VMXNET3_F_LRO;
+  shared->misc.max_num_rx_sg = 0;
   shared->misc.upt_version_support = VMXNET3_UPT_VERSION_SELECT;
   shared->misc.queue_desc_address = vmxnet3_dma_addr (vm, vd, vd->queues);
   shared->misc.queue_desc_len = sizeof (*tx) * vd->num_tx_queues +
@@ -359,6 +363,8 @@ static clib_error_t *
 vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 		     vmxnet3_create_if_args_t * args)
 {
+  vnet_main_t *vnm = vnet_get_main ();
+  vmxnet3_main_t *vmxm = &vmxnet3_main;
   clib_error_t *error = 0;
   u32 ret, i, size;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -405,6 +411,13 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
       return error;
     }
 
+  /* LRO is only supported for version >= 3 */
+  if ((vmxm->lro_configured) && (vd->version >= 3))
+    {
+      vd->lro_enable = 1;
+      vnm->interface_main.gso_interface_count++;
+    }
+
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_GET_LINK);
   ret = vmxnet3_reg_read (vd, 1, VMXNET3_REG_CMD);
   if (ret & 1)
@@ -413,9 +426,7 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
       vd->link_speed = ret >> 16;
     }
   else
-    {
-      vd->flags &= ~VMXNET3_DEVICE_F_LINK_UP;
-    }
+    vd->flags &= ~VMXNET3_DEVICE_F_LINK_UP;
 
   /* Get the mac address */
   ret = vmxnet3_reg_read (vd, 1, VMXNET3_REG_MACL);
@@ -698,6 +709,9 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, vd->hw_if_index);
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  if (vd->lro_enable)
+    hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_GSO;
+
   vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
 				    vmxnet3_input_node.index);
   vnet_hw_interface_assign_rx_thread (vnm, vd->hw_if_index, 0, ~0);
@@ -794,6 +808,9 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   clib_error_free (vd->error);
   clib_memset (vd, 0, sizeof (*vd));
   pool_put (vmxm->devices, vd);
+
+  if (vd->lro_enable)
+    vnm->interface_main.gso_interface_count--;
 }
 
 /*
