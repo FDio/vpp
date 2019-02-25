@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "97b7cb6d_f86fb178",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-02-25T19:31:26Z",
+      "side": 1,
+      "message": "Is there a problem if we consistently use unicode and eliminate str?",
+      "revId": "e973c8cc3ef5967528a126f5650a7b1d99b8919f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
