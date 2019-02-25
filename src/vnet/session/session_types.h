@@ -368,8 +368,7 @@ local_session_parse_handle (session_handle_t handle, u32 * app_or_wrk_index,
 			    u32 * session_index)
 {
   u32 bottom;
-  ASSERT (((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX)
-	  || ((handle >> 32) == SESSION_LISTENER_PREFIX));
+  ASSERT (((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX));
   bottom = (handle & 0xFFFFFFFF);
   local_session_parse_id (bottom, app_or_wrk_index, session_index);
 }
