@@ -438,54 +438,6 @@ dpdk_device_input (vlib_main_t * vm, dpdk_main_t * dm, dpdk_device_t * xd,
       vlib_set_trace_count (vm, node, n_trace);
     }
 
-  /* rx pcap capture if enabled */
-  if (PREDICT_FALSE (dm->pcap[VLIB_RX].pcap_enable))
-    {
-      u32 bi0;
-
-      if (single_next)
-	vlib_get_buffer_indices_with_offset (vm, (void **) ptd->mbufs,
-					     ptd->buffers, n_rx_packets,
-					     sizeof (struct rte_mbuf));
-
-      n_left = n_rx_packets;
-      buffers = ptd->buffers;
-      while (n_left)
-	{
-	  bi0 = buffers[0];
-	  b0 = vlib_get_buffer (vm, bi0);
-	  buffers++;
-
-	  if (dm->pcap[VLIB_RX].pcap_sw_if_index == 0 ||
-	      dm->pcap[VLIB_RX].pcap_sw_if_index
-	      == vnet_buffer (b0)->sw_if_index[VLIB_RX])
-	    {
-	      struct rte_mbuf *mb;
-	      i16 data_start;
-	      i32 temp_advance;
-
-	      /*
-	       * Note: current_data will have advanced
-	       * when we skip ethernet input.
-	       * Temporarily back up to the original DMA
-	       * target, so we capture a valid ethernet frame
-	       */
-	      mb = rte_mbuf_from_vlib_buffer (b0);
-
-	      /* Figure out the original data_start */
-	      data_start = (mb->buf_addr + mb->data_off) - (void *) b0->data;
-	      /* Back up that far */
-	      temp_advance = b0->current_data - data_start;
-	      vlib_buffer_advance (b0, -temp_advance);
-	      /* Trace the packet */
-	      pcap_add_buffer (&dm->pcap[VLIB_RX].pcap_main, vm, bi0, 512);
-	      /* and advance again */
-	      vlib_buffer_advance (b0, temp_advance);
-	    }
-	  n_left--;
-	}
-    }
-
   vlib_increment_combined_counter
     (vnet_get_main ()->interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX, thread_index, xd->sw_if_index,

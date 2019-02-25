@@ -271,7 +271,6 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, rd->dev_instance);
   u32 n_packets = f->n_vectors;
   u32 n_left;
-  u32 *from;
   u32 thread_index = vm->thread_index;
   int queue_id = thread_index;
   u32 tx_pkts = 0, all_or_flags = 0;
@@ -280,33 +279,13 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   struct rte_mbuf **mb;
   vlib_buffer_t *b[4];
 
-  from = vlib_frame_vector_args (f);
-
   ASSERT (n_packets <= VLIB_FRAME_SIZE);
-
-  /* TX PCAP tracing */
-  if (PREDICT_FALSE (dm->pcap[VLIB_TX].pcap_enable))
-    {
-      n_left = n_packets;
-      while (n_left > 0)
-	{
-	  u32 bi0 = from[0];
-	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
-	  if (dm->pcap[VLIB_TX].pcap_sw_if_index == 0 ||
-	      dm->pcap[VLIB_TX].pcap_sw_if_index
-	      == vnet_buffer (b0)->sw_if_index[VLIB_TX])
-	    pcap_add_buffer (&dm->pcap[VLIB_TX].pcap_main, vm, bi0, 512);
-	  from++;
-	  n_left--;
-	}
-    }
 
   /* calculate rte_mbuf pointers out of buffer indices */
   vlib_get_buffers_with_offset (vm, vlib_frame_vector_args (f),
 				(void **) ptd->mbufs, n_packets,
 				-(i32) sizeof (struct rte_mbuf));
 
-  from = vlib_frame_vector_args (f);
   n_left = n_packets;
   mb = ptd->mbufs;
 
