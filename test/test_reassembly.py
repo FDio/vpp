@@ -11,7 +11,7 @@ from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP, ICMP
 from util import ppp, fragment_rfc791, fragment_rfc8200
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
-    ICMPv6TimeExceeded
+    ICMPv6TimeExceeded, IPv6ExtHdrHopByHop, HBHOptUnknown
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -586,6 +586,22 @@ class TestIPv6Reassembly(VppTestCase):
         self.verify_capture(packets)
         self.src_if.assert_nothing_captured()
 
+    def test_buffer_boundary(self):
+        """ fragment header crossing buffer boundary """
+
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IPv6(src=self.src_if.remote_ip6,
+                  dst=self.src_if.local_ip6) /
+             IPv6ExtHdrHopByHop(
+                 options=[HBHOptUnknown(otype=0xff, optlen=0)] * 1000) /
+             IPv6ExtHdrFragment(m=1) /
+             UDP(sport=1234, dport=5678) /
+             Raw())
+        self.pg_enable_capture()
+        self.src_if.add_stream([p])
+        self.pg_start()
+        self.src_if.get_capture(expected_count=1)
+
     def test_reversed(self):
         """ reverse order reassembly """
 
@@ -1091,16 +1107,14 @@ class TestFIFReassembly(VppTestCase):
         fragments = [x for _, p in six.iteritems(self._packet_infos)
                      for x in fragment_rfc791(p.data, 400)]
 
-        encapped_fragments = \
-            [Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
-             IP(src=self.tun_ip4, dst=self.src_if.local_ip4) /
-                GRE() /
-                p
-                for p in fragments]
+        encapped_fragments = [Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+                              IP(src=self.tun_ip4, dst=self.src_if.local_ip4) /
+                              GRE() /
+                              p
+                              for p in fragments]
 
-        fragmented_encapped_fragments = \
-            [x for p in encapped_fragments
-             for x in fragment_rfc791(p, 200)]
+        fragmented_encapped_fragments = [x for p in encapped_fragments
+                                         for x in fragment_rfc791(p, 200)]
 
         self.src_if.add_stream(fragmented_encapped_fragments)
 
@@ -1156,24 +1170,22 @@ class TestFIFReassembly(VppTestCase):
 
         fragments = [x for _, i in six.iteritems(self._packet_infos)
                      for x in fragment_rfc8200(
-                         i.data, i.index, 400)]
+            i.data, i.index, 400)]
 
-        encapped_fragments = \
-            [Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
-             IPv6(src=self.tun_ip6, dst=self.src_if.local_ip6) /
-                GRE() /
-                p
-                for p in fragments]
+        encapped_fragments = [Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+                              IPv6(src=self.tun_ip6, dst=self.src_if.local_ip6) /
+                              GRE() /
+                              p
+                              for p in fragments]
 
-        fragmented_encapped_fragments = \
-            [x for p in encapped_fragments for x in (
-                fragment_rfc8200(
-                    p,
-                    2 * len(self._packet_infos) + p[IPv6ExtHdrFragment].id,
-                    200)
-                if IPv6ExtHdrFragment in p else [p]
-            )
-            ]
+        fragmented_encapped_fragments = [x for p in encapped_fragments for x in (
+            fragment_rfc8200(
+                p,
+                2 * len(self._packet_infos) + p[IPv6ExtHdrFragment].id,
+                200)
+            if IPv6ExtHdrFragment in p else [p]
+        )
+        ]
 
         self.src_if.add_stream(fragmented_encapped_fragments)
 

@@ -2985,13 +2985,13 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2_encap = vlib_buffer_get_current (b2);
 	  ip3_encap = vlib_buffer_get_current (b3);
 
-	  ip6_ext_header_find_t (ip0_encap, prev0, sr0,
+	  ip6_ext_header_find_t (vm, b0, ip0_encap, prev0, sr0,
 				 IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip1_encap, prev1, sr1,
+	  ip6_ext_header_find_t (vm, b1, ip1_encap, prev1, sr1,
 				 IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip2_encap, prev2, sr2,
+	  ip6_ext_header_find_t (vm, b2, ip2_encap, prev2, sr2,
 				 IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip3_encap, prev3, sr3,
+	  ip6_ext_header_find_t (vm, b3, ip3_encap, prev3, sr3,
 				 IP_PROTOCOL_IPV6_ROUTE);
 
 	  end_bsid_encaps_srh_processing (node, b0, ip0_encap, sr0, &next0);
@@ -3098,7 +3098,7 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vec_len (sl0->rewrite));
 
 	  ip0_encap = vlib_buffer_get_current (b0);
-	  ip6_ext_header_find_t (ip0_encap, prev0, sr0,
+	  ip6_ext_header_find_t (vm, b0, ip0_encap, prev0, sr0,
 				 IP_PROTOCOL_IPV6_ROUTE);
 	  end_bsid_encaps_srh_processing (node, b0, ip0_encap, sr0, &next0);
 
