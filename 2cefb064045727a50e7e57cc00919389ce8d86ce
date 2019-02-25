@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "eea474bd_5f537d73",
+        "filename": "docs/gettingstarted/installing/ubuntu.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-25T11:09:00Z",
+      "side": 1,
+      "message": "bionic?",
+      "range": {
+        "startLine": 40,
+        "startChar": 65,
+        "endLine": 40,
+        "endChar": 71
+      },
+      "revId": "2cefb064045727a50e7e57cc00919389ce8d86ce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
