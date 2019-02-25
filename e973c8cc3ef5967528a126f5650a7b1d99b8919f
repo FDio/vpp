@@ -34,6 +34,24 @@
       "revId": "e973c8cc3ef5967528a126f5650a7b1d99b8919f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "33f8a5ce_25ab1eca",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-02-25T22:50:04Z",
+      "side": 1,
+      "message": "How about using six.text_type, which is the compatibility type for representing (Unicode) textual data? This is unicode() in Python 2 and str in Python 3.",
+      "parentUuid": "e93a2c44_79e8f292",
+      "revId": "e973c8cc3ef5967528a126f5650a7b1d99b8919f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
