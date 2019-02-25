@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "59b1b9b0_a8ca2cb9",
+        "filename": "test/template_ipsec.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T18:53:39Z",
+      "side": 1,
+      "message": "Do we need this?  If we do, can we call it IpsecTra46Tests?\nI think one would assume that IpsecTraTests was the parent class of IpsecTra4Tests.",
+      "range": {
+        "startLine": 373,
+        "startChar": 0,
+        "endLine": 374,
+        "endChar": 8
+      },
+      "revId": "df7e36bb39329a4769e63f1dbbb16b19d01ede27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "20d57a4e_1676d1ef",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T18:53:39Z",
+      "side": 1,
+      "message": "if you do:\n    config_esp_tun \u003d config_esp_tun\n    config_esp_tun \u003d config_esp_tun\nyou likely don\u0027t need to change L:194, L:204",
+      "revId": "df7e36bb39329a4769e63f1dbbb16b19d01ede27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a19bc71_925a60e1",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T18:53:39Z",
+      "side": 1,
+      "message": "Should this inherit from TemplateIpsecEsp?",
+      "range": {
+        "startLine": 238,
+        "startChar": 26,
+        "endLine": 238,
+        "endChar": 40
+      },
+      "revId": "df7e36bb39329a4769e63f1dbbb16b19d01ede27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "251dd088_438089cb",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T18:53:39Z",
+      "side": 1,
+      "message": "The mro goes the other way. The mixins first, then the base class.\n(IpsecTra4Tests, IpsecTun4Tests, TemplateIpsecEspUdp)\nFor more info, see: https://www.ianlewis.org/en/mixins-and-python.\n\nWhen I have time, I want to rename these classes with a Mixin suffix and add documentation about the MRO order.  It\u0027s not intuitive coming from other languages. On my list of todos. ;)",
+      "range": {
+        "startLine": 283,
+        "startChar": 22,
+        "endLine": 283,
+        "endChar": 73
+      },
+      "revId": "df7e36bb39329a4769e63f1dbbb16b19d01ede27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5d636cb1_316cdb2e",
+        "filename": "test/test_ipsec_esp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T18:53:39Z",
+      "side": 1,
+      "message": "not needed.",
+      "range": {
+        "startLine": 289,
+        "startChar": 4,
+        "endLine": 289,
+        "endChar": 8
+      },
+      "revId": "df7e36bb39329a4769e63f1dbbb16b19d01ede27",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
