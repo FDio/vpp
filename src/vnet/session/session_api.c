@@ -710,7 +710,9 @@ mq_send_session_bound_cb (u32 app_wrk_index, u32 api_context,
   else
     {
       local_session_t *local;
-      local = application_get_local_listener_w_handle (handle);
+      app_listener_t *al;
+      al = app_listener_get_w_handle (handle);
+      local = application_get_local_listen_session (app, al->local_index);
       mp->lcl_port = local->port;
       mp->lcl_is_ip4 = session_type_is_ip4 (local->session_type);
     }
