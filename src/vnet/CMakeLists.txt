@@ -492,11 +492,6 @@ list(APPEND VNET_SOURCES
   ipsec/esp_decrypt.c
   ipsec/ah_decrypt.c
   ipsec/ah_encrypt.c
-  ipsec/ikev2.c
-  ipsec/ikev2_crypto.c
-  ipsec/ikev2_cli.c
-  ipsec/ikev2_payload.c
-  ipsec/ikev2_format.c
   ipsec/ipsec_api.c
 )
 
@@ -524,8 +519,6 @@ list(APPEND VNET_HEADERS
   ipsec/ipsec_if.h
   ipsec/esp.h
   ipsec/ah.h
-  ipsec/ikev2.h
-  ipsec/ikev2_priv.h
 )
 
 ##############################################################################

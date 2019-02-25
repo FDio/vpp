@@ -18,8 +18,8 @@
 #include <vnet/interface.h>
 
 #include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/ikev2_priv.h>
+#include <plugins/ikev2/ikev2.h>
+#include <plugins/ikev2/ikev2_priv.h>
 
 u8 *
 format_ikev2_sa_transform (u8 * s, va_list * args)

@@ -22,7 +22,6 @@
 #include <vnet/udp/udp.h>
 
 #include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
 #include <vnet/ipsec/esp.h>
 #include <vnet/ipsec/ah.h>
 
@@ -292,9 +291,6 @@ ipsec_init (vlib_main_t * vm)
     return error;
 
   ipsec_proto_init ();
-
-  if ((error = ikev2_init (vm)))
-    return error;
 
   return 0;
 }
