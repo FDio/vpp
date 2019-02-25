@@ -77,7 +77,7 @@ gbp_route_domain::key() const
   return (m_rd->key());
 }
 
-uint32_t
+route::table_id_t
 gbp_route_domain::id() const
 {
   return (m_rd->table_id());

@@ -43,6 +43,8 @@ create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
 
   payload.rd.rd_id = m_hw_item.data();
+  payload.rd.ip4_table_id = m_hw_item.data();
+  payload.rd.ip6_table_id = m_hw_item.data();
   payload.rd.ip4_uu_sw_if_index = m_ip4_uu_fwd.value();
   payload.rd.ip6_uu_sw_if_index = m_ip6_uu_fwd.value();
 

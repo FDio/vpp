@@ -64,7 +64,7 @@ public:
   /**
    * Return the route domain's VPP ID
    */
-  uint32_t id() const;
+  route::table_id_t id() const;
 
   /**
    * comparison operator
