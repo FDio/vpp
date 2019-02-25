@@ -20,6 +20,9 @@
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/udp/udp_packet.h>
 
 #include <vmxnet3/vmxnet3.h>
 
@@ -71,6 +74,126 @@ vmxnet3_rx_comp_ring_advance_next (vmxnet3_rxq_t * rxq)
     }
 }
 
+static_always_inline void
+vmxnet3_handle_offload (vmxnet3_rx_comp * rx_comp, vlib_buffer_t * hb,
+			u16 * next, u16 gso_size)
+{
+  u8 l4_hdr_sz = 0;
+
+  if (gso_size)
+    {
+      if (rx_comp->flags & VMXNET3_RXCF_TCP)
+	{
+	  tcp_header_t *tcp =
+	    (tcp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
+	  l4_hdr_sz = tcp_header_bytes (tcp);
+	}
+      else if (rx_comp->flags & VMXNET3_RXCF_UDP)
+	{
+	  udp_header_t *udp =
+	    (udp_header_t *) (hb->data + vnet_buffer (hb)->l4_hdr_offset);
+	  l4_hdr_sz = sizeof (*udp);
+	}
+    }
+
+  if (rx_comp->flags & VMXNET3_RXCF_IP4)
+    {
+      ip4_header_t *ip4 = (ip4_header_t *) (hb->data +
+					    sizeof (ethernet_header_t));
+
+      vnet_buffer (hb)->l2_hdr_offset = 0;
+      vnet_buffer (hb)->l3_hdr_offset = sizeof (ethernet_header_t);
+      vnet_buffer (hb)->l4_hdr_offset = sizeof (ethernet_header_t) +
+	ip4_header_bytes (ip4);
+      hb->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+	VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP4;
+      next[0] = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
+
+      /* checksum offload */
+      if (!(rx_comp->index & VMXNET3_RXCI_CNC))
+	{
+	  if (!(rx_comp->flags & VMXNET3_RXCF_IPC))
+	    {
+	      hb->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+	      ip4->checksum = 0;
+	    }
+	  if (!(rx_comp->flags & VMXNET3_RXCF_TUC))
+	    {
+	      if (rx_comp->flags & VMXNET3_RXCF_TCP)
+		{
+		  tcp_header_t *tcp =
+		    (tcp_header_t *) (hb->data +
+				      vnet_buffer (hb)->l4_hdr_offset);
+		  hb->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+		  tcp->checksum = 0;
+		}
+	      else if (rx_comp->flags & VMXNET3_RXCF_UDP)
+		{
+		  udp_header_t *udp =
+		    (udp_header_t *) (hb->data +
+				      vnet_buffer (hb)->l4_hdr_offset);
+		  hb->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		  udp->checksum = 0;
+		}
+	    }
+	}
+
+      if (gso_size)
+	{
+	  vnet_buffer2 (hb)->gso_size = gso_size;
+	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
+	  hb->flags |= VNET_BUFFER_F_GSO;
+	}
+      vlib_buffer_advance (hb, device_input_next_node_advance[next[0]]);
+    }
+  else if (rx_comp->flags & VMXNET3_RXCF_IP6)
+    {
+      vnet_buffer (hb)->l2_hdr_offset = 0;
+      vnet_buffer (hb)->l3_hdr_offset = sizeof (ethernet_header_t);
+      vnet_buffer (hb)->l4_hdr_offset = sizeof (ethernet_header_t) +
+	sizeof (ip6_header_t);
+      hb->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+	VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
+	VNET_BUFFER_F_L4_HDR_OFFSET_VALID | VNET_BUFFER_F_IS_IP6;
+      next[0] = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+
+      /* checksum offload */
+      if (!(rx_comp->index & VMXNET3_RXCI_CNC))
+	{
+	  if (!(rx_comp->flags & VMXNET3_RXCF_TUC))
+	    {
+	      if (rx_comp->flags & VMXNET3_RXCF_TCP)
+		{
+		  tcp_header_t *tcp =
+		    (tcp_header_t *) (hb->data +
+				      vnet_buffer (hb)->l4_hdr_offset);
+		  hb->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+		  tcp->checksum = 0;
+		}
+	      else if (rx_comp->flags & VMXNET3_RXCF_UDP)
+		{
+		  udp_header_t *udp =
+		    (udp_header_t *) (hb->data +
+				      vnet_buffer (hb)->l4_hdr_offset);
+		  hb->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		  udp->checksum = 0;
+		}
+	    }
+	}
+
+      if (gso_size)
+	{
+	  vnet_buffer2 (hb)->gso_size = gso_size;
+	  vnet_buffer2 (hb)->gso_l4_hdr_sz = l4_hdr_sz;
+	  hb->flags |= VNET_BUFFER_F_GSO;
+	}
+      vlib_buffer_advance (hb, device_input_next_node_advance[next[0]]);
+    }
+  else
+    next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+}
+
 static_always_inline uword
 vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     vlib_frame_t * frame, vmxnet3_device_t * vd,
@@ -93,6 +216,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 known_next = 0, got_packet = 0;
   vmxnet3_rx_desc *rxd;
   clib_error_t *error;
+  u16 gso_size = 0;
 
   rxq = vec_elt_at_index (vd->rxqs, qid);
   comp_ring = &rxq->rx_comp_ring;
@@ -164,6 +288,14 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  ASSERT (!(rxd->flags & VMXNET3_RXF_BTYPE));
 	  /* start segment */
+	  if ((vd->lro_enable) &&
+	      (rx_comp->flags & VMXNET3_RXCF_CT) == VMXNET3_RXCOMP_TYPE_LRO)
+	    {
+	      vmxnet3_rx_comp_ext *lro = (vmxnet3_rx_comp_ext *) rx_comp;
+
+	      gso_size = lro->flags & VMXNET3_RXECF_MSS_MASK;
+	    }
+
 	  hb = b0;
 	  bi[0] = bi0;
 	  if (!(rx_comp->index & VMXNET3_RXCI_EOP))
@@ -232,8 +364,6 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       if (got_packet)
 	{
-	  ethernet_header_t *e = (ethernet_header_t *) hb->data;
-
 	  if (PREDICT_FALSE (vd->per_interface_next_index != ~0))
 	    {
 	      next_index = vd->per_interface_next_index;
@@ -254,31 +384,12 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
+	      ethernet_header_t *e = (ethernet_header_t *) hb->data;
+
 	      if (ethernet_frame_is_tagged (e->type))
 		next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 	      else
-		{
-		  if (rx_comp->flags & VMXNET3_RXCF_IP4)
-		    {
-		      next[0] = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
-		      hb->flags |= VNET_BUFFER_F_IS_IP4;
-		      vlib_buffer_advance (hb,
-					   device_input_next_node_advance
-					   [next[0]]);
-		    }
-		  else if (rx_comp->flags & VMXNET3_RXCF_IP6)
-		    {
-		      next[0] = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
-		      hb->flags |= VNET_BUFFER_F_IS_IP6;
-		      vlib_buffer_advance (hb,
-					   device_input_next_node_advance
-					   [next[0]]);
-		    }
-		  else
-		    {
-		      next[0] = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-		    }
-		}
+		vmxnet3_handle_offload (rx_comp, hb, next, gso_size);
 	    }
 
 	  n_rx_packets++;
@@ -286,6 +397,7 @@ vmxnet3_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  bi++;
 	  hb = 0;
 	  got_packet = 0;
+	  gso_size = 0;
 	}
 
     next:
