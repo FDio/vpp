@@ -16,6 +16,24 @@
       "revId": "8846cba84db98f91a40eb2d727ce52623ff8e2db",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fcbc35e2_91e6a55e",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-25T22:21:25Z",
+      "side": 1,
+      "message": "No. We install pip globally in the main Makefile via rpm/deb packages for py2 and py3.\n\nIn a venv, the venv installs pip.\n\n$ virtualenv foo\nRunning virtualenv with interpreter /usr/bin/python2\nNew python executable in /vpp/src/vtl/foo/bin/python2\nAlso creating executable in /vpp/src/vtl/foo/bin/python\nInstalling setuptools, pkg_resources, pip, wheel...done.",
+      "parentUuid": "9af51c18_be736db2",
+      "revId": "8846cba84db98f91a40eb2d727ce52623ff8e2db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
