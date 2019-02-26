@@ -11,23 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
+
+stdlib_enum = sys.version_info >= (3, 4)
 
 try:
     from setuptools import setup, find_packages
 except ImportError:
     from distutils.core import setup, find_packages
 
-setup(name='vpp_papi',
-      version='1.6.2',
-      description='VPP Python binding',
-      author='Ole Troan',
-      author_email='ot@cisco.com',
-      url='https://wiki.fd.io/view/VPP/Python_API',
-      license='Apache-2.0',
-      test_suite='vpp_papi.tests',
-      # Add when we don't need to support 2.7.5
-      # 'enum34;python_version<"3.4"'],
-      install_requires=['cffi >= 1.6', 'enum34'],
-      packages=find_packages(),
-      long_description='''VPP Python language binding.''',
-      zip_safe=True)
+setup(
+    name='vpp_papi',
+    version='1.6.2',
+    description='VPP Python binding',
+    author='Ole Troan',
+    author_email='ot@cisco.com',
+    url='https://wiki.fd.io/view/VPP/Python_API',
+    license='Apache-2.0',
+    test_suite='vpp_papi.tests',
+    install_requires=['cffi >= 1.6'] if stdlib_enum else
+        ['cffi >= 1.6', 'enum34'],
+    packages=find_packages(),
+    long_description='''VPP Python language binding.''',
+    zip_safe=True)
