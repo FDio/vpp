@@ -34,6 +34,9 @@
 
 gtpu_main_t gtpu_main;
 
+vlib_node_registration_t gtpu4_input_node;
+vlib_node_registration_t gtpu6_input_node;
+
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_gtpu_bypass, static) = {
   .arc_name = "ip4-unicast",
@@ -47,6 +50,18 @@ VNET_FEATURE_INIT (ip6_gtpu_bypass, static) = {
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
 /* *INDENT-on* */
+
+u8 * format_gtpu_encap_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  gtpu_encap_trace_t * t
+      = va_arg (*args, gtpu_encap_trace_t *);
+
+  s = format (s, "GTPU encap to gtpu_tunnel%d teid %d",
+	      t->tunnel_index, t->teid);
+  return s;
+}
 
 static u8 *
 format_decap_next (u8 * s, va_list * args)
