@@ -14,8 +14,11 @@
 add_vpp_plugin(nsh
   SOURCES
   nsh.c
+  nsh_node.c
   nsh_output.c
   nsh_pop.c
+  nsh_cli.c
+  nsh_api.c
   nsh-md2-ioam/nsh_md2_ioam.c
   nsh-md2-ioam/nsh_md2_ioam_api.c
   nsh-md2-ioam/md2_ioam_transit.c
@@ -23,6 +26,11 @@ add_vpp_plugin(nsh
   nsh-md2-ioam/export-nsh-md2-ioam/nsh_md2_ioam_export.c
   nsh-md2-ioam/export-nsh-md2-ioam/nsh_md2_ioam_export_thread.c
   nsh-md2-ioam/export-nsh-md2-ioam/nsh_md2_ioam_node.c
+
+  MULTIARCH_SOURCES
+  nsh_node.c
+  nsh_output.c
+  nsh_pop.c
 
   API_FILES
   nsh.api

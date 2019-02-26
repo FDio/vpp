@@ -159,13 +159,16 @@ typedef struct {
   u8 input_feature_arc_index;
   u8 output_feature_arc_index;
 
+  u32 nsh_input_node_index;
+  u32 nsh_proxy_node_index;
+  u32 nsh_classifier_node_index;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
 } nsh_main_t;
 
-nsh_main_t nsh_main;
-
+extern nsh_main_t nsh_main;
 extern vlib_node_registration_t nsh_aware_vnf_proxy_node;
 extern vlib_node_registration_t nsh_eth_output_node;
 
@@ -267,5 +270,26 @@ typedef struct _nsh_main_dummy
 {
   u8 output_feature_arc_index;
 } nsh_main_dummy_t;
+
+int
+nsh_add_del_map (nsh_add_del_map_args_t * a, u32 * map_indexp);
+
+int
+nsh_add_del_proxy_session (nsh_add_del_map_args_t * a);
+
+nsh_option_map_t *
+nsh_md2_lookup_option (u16 class, u8 type);
+
+int
+nsh_add_del_entry (nsh_add_del_entry_args_t * a, u32 * entry_indexp);
+
+u8 *
+format_nsh_node_map_trace (u8 * s, va_list * args);
+
+u8 *
+format_nsh_header (u8 * s, va_list * args);
+
+clib_error_t *
+nsh_api_init (vlib_main_t * vm, nsh_main_t * nm);
 
 #endif /* included_nsh_h */
