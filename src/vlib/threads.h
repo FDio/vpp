@@ -201,7 +201,12 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 #define BARRIER_SYNC_TIMEOUT (1.0)
 #endif
 
-#define vlib_worker_thread_barrier_sync(X) {vlib_worker_threads[0].barrier_caller=__FUNCTION__;vlib_worker_thread_barrier_sync_int(X);}
+#define vlib_worker_thread_barrier_sync(X) \
+        if (vec_len (vlib_mains) > 1) \
+          {\
+            vlib_worker_threads[0].barrier_caller=__FUNCTION__;\
+            vlib_worker_thread_barrier_sync_int(X);\
+          }
 
 void vlib_worker_thread_barrier_sync_int (vlib_main_t * vm);
 void vlib_worker_thread_barrier_release (vlib_main_t * vm);
