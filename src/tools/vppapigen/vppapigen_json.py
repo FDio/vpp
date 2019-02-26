@@ -64,6 +64,7 @@ def run(filename, s, file_crc):
     j['unions'] = walk_defs([o for o in s['types'] if o.__class__.__name__ == 'Union'])
     j['enums'] = walk_enums([o for o in s['types'] if o.__class__.__name__ == 'Enum'])
     j['services'] = walk_services(s['Service'])
+    j['options'] = s['Option']
     j['aliases'] = s['Alias']
     j['vl_api_version'] = hex(file_crc)
     return json.dumps(j, indent=4, separators=(',', ': '))
