@@ -1380,7 +1380,7 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
 #endif
 
 void
-vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
+vlib_worker_thread_barrier_sync_int (vlib_main_t * vm, const char *func_name)
 {
   f64 deadline;
   f64 now;
@@ -1394,6 +1394,7 @@ vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
 
   ASSERT (vlib_get_thread_index () == 0);
 
+  vlib_worker_threads[0].barrier_caller = func_name;
   count = vec_len (vlib_mains) - 1;
 
   /* Record entry relative to last close */
