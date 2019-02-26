@@ -101,6 +101,12 @@ gbp_contract::to_string() const
       ++it;
     }
   }
+  if (m_allowed_ethertypes.size()) {
+    s << "[ethertype:";
+    for (auto e : m_allowed_ethertypes)
+      s << " " << e;
+    s << "]";
+  }
   s << "]";
 
   return (s.str());
