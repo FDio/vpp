@@ -275,7 +275,6 @@ vlib_map_stat_segment_init (void)
     /* Save the vector offset in the shared segment, for clients */
     shared_header->directory_offset =
     stat_segment_offset (shared_header, sm->directory_vector);
-  sm->gauges_fns = 0;
 
   clib_mem_set_heap (oldheap);
 
@@ -508,11 +507,13 @@ do_stat_segment_updates (stat_segment_main_t * sm)
   if (sm->node_counters_enabled)
     update_node_counters (sm);
 
-  for (i = 0; i < vec_len (sm->gauges_fns); i++)
-    {
-      if (sm->gauges_fns[i])
-	sm->gauges_fns[i] (&sm->directory_vector[i]);
-    }
+  /* *INDENT-OFF* */
+  stat_segment_gauges_pool_t *g;
+  pool_foreach(g, sm->gauges,
+  ({
+    g->fn(&sm->directory_vector[g->directory_index], g->caller_index);
+  }));
+  /* *INDENT-ON* */
 
   /* Heartbeat, so clients detect we're still here */
   sm->directory_vector[STAT_COUNTER_HEARTBEAT].value++;
@@ -619,13 +620,15 @@ statseg_init (vlib_main_t * vm)
 }
 
 clib_error_t *
-stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn)
+stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn,
+			     u32 caller_index)
 {
   stat_segment_main_t *sm = &stat_segment_main;
   stat_segment_shared_header_t *shared_header = sm->shared_header;
   void *oldheap;
   stat_segment_directory_entry_t e;
   u32 index;
+  stat_segment_gauges_pool_t *gauge;
 
   ASSERT (shared_header);
 
@@ -645,8 +648,11 @@ stat_segment_register_gauge (u8 * name, stat_segment_update_fn update_fn)
   vlib_stat_segment_unlock ();
   clib_mem_set_heap (oldheap);
 
-  vec_validate (sm->gauges_fns, index);
-  sm->gauges_fns[index] = update_fn;
+  /* Back on our own heap */
+  pool_get (sm->gauges, gauge);
+  gauge->fn = update_fn;
+  gauge->caller_index = caller_index;
+  gauge->directory_index = index;
 
   return NULL;
 }

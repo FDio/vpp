@@ -85,12 +85,18 @@ stat_segment_pointer (void *start, uint64_t offset)
   return ((char *) start + offset);
 }
 
-typedef void (*stat_segment_update_fn)(stat_segment_directory_entry_t * e);
+typedef void (*stat_segment_update_fn)(stat_segment_directory_entry_t * e, u32 i);
+
+typedef struct {
+  u32 directory_index;
+  stat_segment_update_fn fn;
+  u32 caller_index;
+} stat_segment_gauges_pool_t;
 
 typedef struct
 {
   /* internal, does not point to shared memory */
-  stat_segment_update_fn *gauges_fns;
+  stat_segment_gauges_pool_t *gauges;
 
   /* statistics segment */
   uword *directory_vector_by_name;
@@ -104,12 +110,12 @@ typedef struct
   stat_segment_shared_header_t *shared_header;	/* pointer to shared memory segment */
   int memfd;
 
-  u64 last_input_packets;
+  u64 last_input_packets; // OLE REMOVE?
 } stat_segment_main_t;
 
 extern stat_segment_main_t stat_segment_main;
 
 clib_error_t *
-stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn);
+stat_segment_register_gauge (u8 *names, stat_segment_update_fn update_fn, u32 index);
 
 #endif
