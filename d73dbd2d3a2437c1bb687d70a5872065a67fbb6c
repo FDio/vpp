@@ -70,6 +70,30 @@
       "revId": "d73dbd2d3a2437c1bb687d70a5872065a67fbb6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8dda8a2_16d125ea",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-26T16:28:33Z",
+      "side": 1,
+      "message": "I think we are on the same page, just thinking about different points in the lifecycle.  \n\nLet me explain.  For a fresh container build, vpp will not build. Period.\nTo run \u0027make install-deps\u0027 you need to bootstrap a system by installing, say: \nRUN zypper --non-interactive install \\\n    git \\\n    make \\\n    sudo  \nmake install-deps installs known versions of bootstrap python/pip/virtualenv.\n\nYou may be thinking about a constraints file.  I\u0027m not ready to introduce that yet.  The change is here if you are interested:\nhttps://gerrit.fd.io/r/#/c/17251/",
+      "parentUuid": "f4506d75_18e3957b",
+      "range": {
+        "startLine": 9,
+        "startChar": 35,
+        "endLine": 10,
+        "endChar": 40
+      },
+      "revId": "d73dbd2d3a2437c1bb687d70a5872065a67fbb6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
