@@ -28,6 +28,7 @@ typedef enum
   STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE,
   STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED,
   STAT_DIR_TYPE_ERROR_INDEX,
+  STAT_DIR_TYPE_NAME_VECTOR,
 } stat_directory_type_t;
 
 /* Default socket to exchange segment fd */
@@ -45,6 +46,7 @@ typedef struct
     uint64_t error_value;
     counter_t **simple_counter_vec;
     vlib_counter_t **combined_counter_vec;
+    uint8_t **name_vector;
   };
 } stat_segment_data_t;
 
