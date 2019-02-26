@@ -34,6 +34,9 @@
 
 gtpu_main_t gtpu_main;
 
+vlib_node_registration_t gtpu4_input_node;
+vlib_node_registration_t gtpu6_input_node;
+
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_gtpu_bypass, static) = {
   .arc_name = "ip4-unicast",
