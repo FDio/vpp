@@ -416,6 +416,33 @@ update_node_counters (stat_segment_main_t * sm)
       stat_validate_counter_vector (&sm->directory_vector
 				    [STAT_COUNTER_NODE_SUSPENDS], l);
 
+      vec_validate (sm->nodes, l);
+      stat_segment_directory_entry_t *ep;
+      ep = &sm->directory_vector[STAT_COUNTER_NODE_NAMES];
+      ep->offset = stat_segment_offset (shared_header, sm->nodes);
+
+      int i;
+      u64 *offset_vector =
+	ep->offset_vector ? stat_segment_pointer (shared_header,
+						  ep->offset_vector) : 0;
+      /* Update names dictionary */
+      vec_validate (offset_vector, l);
+      vlib_node_t **nodes = node_dups[0];
+      for (i = 0; i < vec_len (nodes); i++)
+	{
+	  vlib_node_t *n = nodes[i];
+	  u8 *s = 0;
+	  s = format (s, "%v%c", n->name, 0);
+	  if (sm->nodes[n->index])
+	    vec_free (sm->nodes[n->index]);
+	  sm->nodes[n->index] = s;
+	  offset_vector[i] =
+	    sm->nodes[i] ? stat_segment_offset (shared_header,
+						sm->nodes[i]) : 0;
+
+	}
+      ep->offset_vector = stat_segment_offset (shared_header, offset_vector);
+
       vlib_stat_segment_unlock ();
       clib_mem_set_heap (oldheap);
       no_max_nodes = l;
