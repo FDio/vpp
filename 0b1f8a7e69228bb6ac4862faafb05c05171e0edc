@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "45aafb26_f79f7544",
+        "filename": "test/remote_test.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-26T12:01:18Z",
+      "side": 1,
+      "message": "I wonder what is the purpose of this library.\n\nLast time I needed to serialize something non-trivial (a closure) in order to send it to over multiprocessing.Pipe, I searched for a third party library (dill [0]) and it just worked.\n\n[0] https://pypi.org/project/dill/",
+      "revId": "0b1f8a7e69228bb6ac4862faafb05c05171e0edc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
