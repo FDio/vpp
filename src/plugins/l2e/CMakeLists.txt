@@ -13,8 +13,12 @@
 
 add_vpp_plugin(l2e
   SOURCES
+  l2e_node.c
   l2e_api.c
   l2e.c
+
+  MULTIARCH_SOURCES
+  l2e_node.c
 
   API_FILES
   l2e.api
