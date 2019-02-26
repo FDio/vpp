@@ -323,8 +323,7 @@ typedef enum nsh_midchain_next_t_
     NSH_MIDCHAIN_NEXT_DROP,
 } nsh_midchain_next_t;
 
-static inline uword
-nsh_eth_output (vlib_main_t * vm,
+VLIB_NODE_FN (nsh_eth_output) (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
 {
@@ -332,7 +331,6 @@ nsh_eth_output (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (nsh_eth_output_node) = {
-  .function = nsh_eth_output,
   .name = "nsh-eth-output",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -346,10 +344,7 @@ VLIB_REGISTER_NODE (nsh_eth_output_node) = {
   .format_trace = format_nsh_output_trace,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (nsh_eth_output_node, nsh_eth_output)
-
-static inline uword
-nsh_midchain (vlib_main_t * vm,
+VLIB_NODE_FN (nsh_midchain) (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
@@ -357,7 +352,6 @@ nsh_midchain (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (nsh_midchain_node) = {
-  .function = nsh_midchain,
   .name = "nsh-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_nsh_output_trace,
@@ -366,8 +360,6 @@ VLIB_REGISTER_NODE (nsh_midchain_node) = {
       [NSH_MIDCHAIN_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (nsh_midchain_node, nsh_midchain)
 
 /* Built-in nsh tx feature path definition */
 VNET_FEATURE_INIT (nsh_interface_output, static) = {
@@ -423,8 +415,7 @@ typedef struct nsh_adj_incomplete_trace_t_
  * We pay a cost for this 'routing' node, but an incomplete adj is the
  * exception case.
  */
-static inline uword
-nsh_adj_incomplete (vlib_main_t * vm,
+VLIB_NODE_FN (nsh_adj_incomplete) (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
@@ -503,7 +494,6 @@ format_nsh_adj_incomplete_trace (u8 * s, va_list * args)
 }
 
 VLIB_REGISTER_NODE (nsh_adj_incomplete_node) = {
-  .function = nsh_adj_incomplete,
   .name = "nsh-adj-incomplete",
   .format_trace = format_nsh_adj_incomplete_trace,
   /* Takes a vector of packets. */
@@ -516,5 +506,3 @@ VLIB_REGISTER_NODE (nsh_adj_incomplete_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (nsh_adj_incomplete_node,
-                              nsh_adj_incomplete)

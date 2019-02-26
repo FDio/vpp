@@ -30,20 +30,8 @@ extern nsh_option_map_t * nsh_md2_lookup_option (u16 class, u8 type);
 
 extern u8 * format_nsh_header (u8 * s, va_list * args);
 extern u8 * format_nsh_node_map_trace (u8 * s, va_list * args);
-
-/* format from network order */
-u8 * format_nsh_pop_header (u8 * s, va_list * args)
-{
-  return format_nsh_header(s, args);
-}
-
-
-
-u8 * format_nsh_pop_node_map_trace (u8 * s, va_list * args)
-{
-  return format_nsh_node_map_trace(s, args);
-}
-
+extern u8 * format_nsh_pop_header (u8 * s, va_list * args);
+extern u8 * format_nsh_pop_node_map_trace (u8 * s, va_list * args);
 
 static uword
 nsh_pop_inline (vlib_main_t * vm,
@@ -326,8 +314,7 @@ nsh_pop_inline (vlib_main_t * vm,
  * @return from_frame->n_vectors
  *
  */
-static uword
-nsh_pop (vlib_main_t * vm, vlib_node_runtime_t * node,
+VLIB_NODE_FN (nsh_pop) (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * from_frame)
 {
   return nsh_pop_inline (vm, node, from_frame);
@@ -341,7 +328,6 @@ static char * nsh_pop_node_error_strings[] = {
 
 /* register nsh-input node */
 VLIB_REGISTER_NODE (nsh_pop_node) = {
-  .function = nsh_pop,
   .name = "nsh-pop",
   .vector_size = sizeof (u32),
   .format_trace = format_nsh_pop_node_map_trace,
@@ -359,7 +345,4 @@ VLIB_REGISTER_NODE (nsh_pop_node) = {
 #undef _
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (nsh_pop_node, nsh_pop);
-
 
