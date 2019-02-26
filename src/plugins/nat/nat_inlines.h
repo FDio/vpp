@@ -21,6 +21,7 @@
 
 #include <vnet/fib/ip4_fib.h>
 #include <nat/nat.h>
+#include <nat/nat_ha.h>
 
 always_inline u32
 ip_proto_to_snat_proto (u8 ip_proto)
@@ -228,7 +229,7 @@ nat44_set_tcp_session_state_i2o (snat_main_t * sm, snat_session_t * ses,
     {
       nat_log_debug ("TCP close connection %U", format_snat_session,
 		     &sm->per_thread_data[thread_index], ses);
-      nat_free_session_data (sm, ses, thread_index);
+      nat_free_session_data (sm, ses, thread_index, 0);
       nat44_delete_session (sm, ses, thread_index);
       return 1;
     }
@@ -262,7 +263,7 @@ nat44_set_tcp_session_state_o2i (snat_main_t * sm, snat_session_t * ses,
     {
       nat_log_debug ("TCP close connection %U", format_snat_session,
 		     &sm->per_thread_data[thread_index], ses);
-      nat_free_session_data (sm, ses, thread_index);
+      nat_free_session_data (sm, ses, thread_index, 0);
       nat44_delete_session (sm, ses, thread_index);
       return 1;
     }
@@ -293,11 +294,16 @@ nat44_session_get_timeout (snat_main_t * sm, snat_session_t * s)
 }
 
 always_inline void
-nat44_session_update_counters (snat_session_t * s, f64 now, uword bytes)
+nat44_session_update_counters (snat_session_t * s, f64 now, uword bytes,
+			       u32 thread_index)
 {
   s->last_heard = now;
   s->total_pkts++;
   s->total_bytes += bytes;
+  nat_ha_sref (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
+	       s->ext_host_port, s->out2in.protocol, s->out2in.fib_index,
+	       s->total_pkts, s->total_bytes, thread_index,
+	       &s->ha_last_refreshed, now);
 }
 
 /** \brief Per-user LRU list maintenance */
