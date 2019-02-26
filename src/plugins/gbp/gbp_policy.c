@@ -232,7 +232,7 @@ gbp_policy_inline (vlib_main_t * vm,
 
 		      ether_type0 = *(u16 *) (h0 + l2_len0 - 2);
 
-		      if (!gbp_policy_is_ethertype_allowed (gc0, ether_type0))
+		      if (!gbp_policy_is_ethertype_allowed (gc0, clib_net_to_host_u16(ether_type0)))
 			{
 			  /*
 			   * black list model so drop
