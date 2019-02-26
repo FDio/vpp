@@ -30,6 +30,7 @@
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_syslog.h>
+#include <nat/nat_ha.h>
 
 #define foreach_nat_out2in_ed_error                     \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
@@ -116,7 +117,7 @@ icmp_out2in_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
-				     (sm->vlib_main, b0));
+				     (sm->vlib_main, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -185,6 +186,10 @@ nat44_o2i_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 			     &s->out2in.addr, s->out2in.port,
 			     &s->ext_host_addr, s->ext_host_port,
 			     s->in2out.protocol, is_twice_nat_session (s));
+
+      nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
+		   s->ext_host_port, s->out2in.protocol, s->out2in.fib_index,
+		   ctx->thread_index);
 
       if (is_twice_nat_session (s))
 	{
@@ -324,12 +329,18 @@ create_session_for_static_mapping_ed (snat_main_t * sm,
 				       s->in2out.port,
 				       s->out2in.port, s->in2out.fib_index);
 
-  nat_syslog_nat44_sdel (s->user_index, s->in2out.fib_index,
+  nat_syslog_nat44_sadd (s->user_index, s->in2out.fib_index,
 			 &s->in2out.addr, s->in2out.port,
 			 &s->ext_host_nat_addr, s->ext_host_nat_port,
 			 &s->out2in.addr, s->out2in.port,
 			 &s->ext_host_addr, s->ext_host_port,
 			 s->in2out.protocol, is_twice_nat_session (s));
+
+  nat_ha_sadd (&s->in2out.addr, s->in2out.port, &s->out2in.addr,
+	       s->out2in.port, &s->ext_host_addr, s->ext_host_port,
+	       &s->ext_host_nat_addr, s->ext_host_nat_port,
+	       s->in2out.protocol, s->in2out.fib_index, s->flags,
+	       thread_index, 0);
 
   return s;
 }
@@ -483,7 +494,7 @@ create_bypass_for_fwd (snat_main_t * sm, ip4_header_t * ip, u32 rx_fib_index,
     }
 
   /* Accounting */
-  nat44_session_update_counters (s, now, 0);
+  nat44_session_update_counters (s, now, 0, thread_index);
   /* Per-user LRU list maintenance */
   nat44_session_update_lru (sm, s, thread_index);
 }
@@ -703,7 +714,8 @@ nat44_ed_out2in_unknown_proto (snat_main_t * sm,
   vnet_buffer (b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
 
   /* Accounting */
-  nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b));
+  nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b),
+				 thread_index);
   /* Per-user LRU list maintenance */
   nat44_session_update_lru (sm, s, thread_index);
 
@@ -996,8 +1008,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  /* Accounting */
 	  nat44_session_update_counters (s0, now,
-					 vlib_buffer_length_in_chain (vm,
-								      b0));
+					 vlib_buffer_length_in_chain (vm, b0),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s0, thread_index);
 
@@ -1230,8 +1242,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  /* Accounting */
 	  nat44_session_update_counters (s1, now,
-					 vlib_buffer_length_in_chain (vm,
-								      b1));
+					 vlib_buffer_length_in_chain (vm, b1),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s1, thread_index);
 
@@ -1498,8 +1510,8 @@ nat44_ed_out2in_node_fn_inline (vlib_main_t * vm,
 
 	  /* Accounting */
 	  nat44_session_update_counters (s0, now,
-					 vlib_buffer_length_in_chain (vm,
-								      b0));
+					 vlib_buffer_length_in_chain (vm, b0),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s0, thread_index);
 
@@ -1884,8 +1896,8 @@ VLIB_NODE_FN (nat44_ed_out2in_reass_node) (vlib_main_t * vm,
 
 	  /* Accounting */
 	  nat44_session_update_counters (s0, now,
-					 vlib_buffer_length_in_chain (vm,
-								      b0));
+					 vlib_buffer_length_in_chain (vm, b0),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s0, thread_index);
 

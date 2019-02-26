@@ -25,6 +25,7 @@
 #include <nat/dslite.h>
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
+#include <nat/nat_ha.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
@@ -626,6 +627,203 @@ vl_api_nat_get_mss_clamping_t_print (vl_api_nat_get_mss_clamping_t * mp,
   u8 *s;
 
   s = format (0, "SCRIPT: nat_get_mss_clamping");
+
+  FINISH;
+}
+
+static void
+vl_api_nat_ha_set_listener_t_handler (vl_api_nat_ha_set_listener_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_ha_set_listener_reply_t *rmp;
+  ip4_address_t addr;
+  int rv;
+
+  memcpy (&addr, &mp->ip_address, sizeof (addr));
+  rv =
+    nat_ha_set_listener (&addr, clib_net_to_host_u16 (mp->port),
+			 clib_net_to_host_u32 (mp->path_mtu));
+
+  REPLY_MACRO (VL_API_NAT_HA_SET_LISTENER_REPLY);
+}
+
+static void *
+vl_api_nat_ha_set_listener_t_print (vl_api_nat_ha_set_listener_t * mp,
+				    void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_ha_set_listener ");
+  s = format (s, "ip_address %U ", format_ip4_address, mp->ip_address);
+  s = format (s, "port %d ", clib_net_to_host_u16 (mp->port));
+  s = format (s, "path_mtu %d", clib_net_to_host_u32 (mp->path_mtu));
+
+  FINISH;
+}
+
+static void
+vl_api_nat_ha_get_listener_t_handler (vl_api_nat_ha_get_listener_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_ha_get_listener_reply_t *rmp;
+  int rv = 0;
+  ip4_address_t addr;
+  u16 port;
+  u32 path_mtu;
+
+  nat_ha_get_listener (&addr, &port, &path_mtu);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_NAT_HA_GET_LISTENER_REPLY,
+  ({
+    clib_memcpy (rmp->ip_address, &addr, sizeof (ip4_address_t));
+    rmp->port = clib_host_to_net_u16 (port);
+    rmp->path_mtu = clib_host_to_net_u32 (path_mtu);
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_nat_ha_get_listener_t_print (vl_api_nat_ha_get_listener_t * mp,
+				    void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_ha_get_listener");
+
+  FINISH;
+}
+
+static void
+vl_api_nat_ha_set_failover_t_handler (vl_api_nat_ha_set_failover_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_ha_set_failover_reply_t *rmp;
+  ip4_address_t addr;
+  int rv;
+
+  memcpy (&addr, &mp->ip_address, sizeof (addr));
+  rv =
+    nat_ha_set_failover (&addr, clib_net_to_host_u16 (mp->port),
+			 clib_net_to_host_u32 (mp->session_refresh_interval));
+
+  REPLY_MACRO (VL_API_NAT_HA_SET_FAILOVER_REPLY);
+}
+
+static void *
+vl_api_nat_ha_set_failover_t_print (vl_api_nat_ha_set_failover_t * mp,
+				    void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_ha_set_failover ");
+  s = format (s, "ip_address %U ", format_ip4_address, mp->ip_address);
+  s = format (s, "port %d ", clib_net_to_host_u16 (mp->port));
+
+  FINISH;
+}
+
+static void
+vl_api_nat_ha_get_failover_t_handler (vl_api_nat_ha_get_failover_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_ha_get_failover_reply_t *rmp;
+  int rv = 0;
+  ip4_address_t addr;
+  u16 port;
+  u32 session_refresh_interval;
+
+  nat_ha_get_failover (&addr, &port, &session_refresh_interval);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_NAT_HA_GET_FAILOVER_REPLY,
+  ({
+    clib_memcpy (rmp->ip_address, &addr, sizeof (ip4_address_t));
+    rmp->port = clib_host_to_net_u16 (port);
+    rmp->session_refresh_interval = clib_host_to_net_u32 (session_refresh_interval);
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_nat_ha_get_failover_t_print (vl_api_nat_ha_get_failover_t * mp,
+				    void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_ha_get_failover");
+
+  FINISH;
+}
+
+static void
+vl_api_nat_ha_flush_t_handler (vl_api_nat_ha_flush_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_ha_flush_reply_t *rmp;
+  int rv = 0;
+
+  nat_ha_flush (0);
+
+  REPLY_MACRO (VL_API_NAT_HA_FLUSH_REPLY);
+}
+
+static void *
+vl_api_nat_ha_flush_t_print (vl_api_nat_ha_flush_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_ha_flush ");
+
+  FINISH;
+}
+
+static void
+nat_ha_resync_completed_event_cb (u32 client_index, u32 pid, u32 missed_count)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_registration_t *reg;
+  vl_api_nat_ha_resync_completed_event_t *mp;
+
+  reg = vl_api_client_index_to_registration (client_index);
+  if (!reg)
+    return;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->client_index = client_index;
+  mp->pid = pid;
+  mp->missed_count = clib_host_to_net_u32 (missed_count);
+  mp->_vl_msg_id =
+    ntohs (VL_API_NAT_HA_RESYNC_COMPLETED_EVENT + sm->msg_id_base);
+
+  vl_api_send_msg (reg, (u8 *) mp);
+}
+
+static void
+vl_api_nat_ha_resync_t_handler (vl_api_nat_ha_resync_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat_ha_resync_reply_t *rmp;
+  int rv;
+
+  rv =
+    nat_ha_resync (mp->client_index, mp->pid,
+		   mp->want_resync_event ? nat_ha_resync_completed_event_cb :
+		   NULL);
+
+  REPLY_MACRO (VL_API_NAT_HA_RESYNC_REPLY);
+}
+
+static void *
+vl_api_nat_ha_resync_t_print (vl_api_nat_ha_resync_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat_ha_resync ");
+  s =
+    format (s, "want_resync_event %d pid %d", mp->want_resync_event,
+	    clib_host_to_net_u32 (mp->pid));
 
   FINISH;
 }
@@ -1846,7 +2044,7 @@ static void
         vec_foreach (ses_index, ses_to_be_removed)
         {
           s = pool_elt_at_index(tsm->sessions, ses_index[0]);
-          nat_free_session_data (sm, s, tsm - sm->per_thread_data);
+          nat_free_session_data (sm, s, tsm - sm->per_thread_data, 0);
           nat44_delete_session (sm, s, tsm - sm->per_thread_data);
         }
         vec_free (ses_to_be_removed);
@@ -3198,6 +3396,12 @@ _(NAT_SET_ADDR_AND_PORT_ALLOC_ALG, nat_set_addr_and_port_alloc_alg)     \
 _(NAT_GET_ADDR_AND_PORT_ALLOC_ALG, nat_get_addr_and_port_alloc_alg)     \
 _(NAT_SET_MSS_CLAMPING, nat_set_mss_clamping)                           \
 _(NAT_GET_MSS_CLAMPING, nat_get_mss_clamping)                           \
+_(NAT_HA_SET_LISTENER, nat_ha_set_listener)                             \
+_(NAT_HA_SET_FAILOVER, nat_ha_set_failover)                             \
+_(NAT_HA_GET_LISTENER, nat_ha_get_listener)                             \
+_(NAT_HA_GET_FAILOVER, nat_ha_get_failover)                             \
+_(NAT_HA_FLUSH, nat_ha_flush)                                           \
+_(NAT_HA_RESYNC, nat_ha_resync)                                         \
 _(NAT44_ADD_DEL_ADDRESS_RANGE, nat44_add_del_address_range)             \
 _(NAT44_INTERFACE_ADD_DEL_FEATURE, nat44_interface_add_del_feature)     \
 _(NAT44_ADD_DEL_STATIC_MAPPING, nat44_add_del_static_mapping)           \

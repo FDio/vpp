@@ -29,6 +29,7 @@
 #include <nat/nat_reass.h>
 #include <nat/nat_inlines.h>
 #include <nat/nat_syslog.h>
+#include <nat/nat_ha.h>
 
 #define foreach_nat_in2out_ed_error                     \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")         \
@@ -209,6 +210,10 @@ nat44_i2o_ed_is_idle_session_cb (clib_bihash_kv_16_8_t * kv, void *arg)
 			     &s->ext_host_addr, s->ext_host_port,
 			     s->in2out.protocol, is_twice_nat_session (s));
 
+      nat_ha_sdel (&s->out2in.addr, s->out2in.port, &s->ext_host_addr,
+		   s->ext_host_port, s->out2in.protocol, s->out2in.fib_index,
+		   ctx->thread_index);
+
       if (is_twice_nat_session (s))
 	{
 	  for (i = 0; i < vec_len (sm->twice_nat_addresses); i++)
@@ -255,7 +260,7 @@ icmp_in2out_ed_slow_path (snat_main_t * sm, vlib_buffer_t * b0,
       /* Accounting */
       nat44_session_update_counters (s0, now,
 				     vlib_buffer_length_in_chain
-				     (sm->vlib_main, b0));
+				     (sm->vlib_main, b0), thread_index);
       /* Per-user LRU list maintenance */
       nat44_session_update_lru (sm, s0, thread_index);
     }
@@ -431,6 +436,12 @@ slow_path_ed (snat_main_t * sm,
 			 &s->ext_host_addr, s->ext_host_port,
 			 s->in2out.protocol, 0);
 
+  nat_ha_sadd (&s->in2out.addr, s->in2out.port, &s->out2in.addr,
+	       s->out2in.port, &s->ext_host_addr, s->ext_host_port,
+	       &s->ext_host_nat_addr, s->ext_host_nat_port,
+	       s->in2out.protocol, s->in2out.fib_index, s->flags,
+	       thread_index, 0);
+
   return next;
 }
 
@@ -517,7 +528,8 @@ nat_not_translate_output_feature_fwd (snat_main_t * sm, ip4_header_t * ip,
 	    }
 	  /* Accounting */
 	  nat44_session_update_counters (s, now,
-					 vlib_buffer_length_in_chain (vm, b));
+					 vlib_buffer_length_in_chain (vm, b),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s, thread_index);
 	  return 1;
@@ -552,7 +564,7 @@ nat44_ed_not_translate_output_feature (snat_main_t * sm, ip4_header_t * ip,
 	{
 	  nat_log_debug ("TCP close connection %U", format_snat_session,
 			 &sm->per_thread_data[thread_index], s);
-	  nat_free_session_data (sm, s, thread_index);
+	  nat_free_session_data (sm, s, thread_index, 0);
 	  nat44_delete_session (sm, s, thread_index);
 	}
       else
@@ -881,7 +893,8 @@ nat44_ed_in2out_unknown_proto (snat_main_t * sm,
   ip->checksum = ip_csum_fold (sum);
 
   /* Accounting */
-  nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b));
+  nat44_session_update_counters (s, now, vlib_buffer_length_in_chain (vm, b),
+				 thread_index);
   /* Per-user LRU list maintenance */
   nat44_session_update_lru (sm, s, thread_index);
 
@@ -1153,7 +1166,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 	  /* Accounting */
 	  nat44_session_update_counters (s0, now,
 					 vlib_buffer_length_in_chain (vm,
-								      b0));
+								      b0),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s0, thread_index);
 
@@ -1361,8 +1375,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 
 	  /* Accounting */
 	  nat44_session_update_counters (s1, now,
-					 vlib_buffer_length_in_chain (vm,
-								      b1));
+					 vlib_buffer_length_in_chain (vm, b1),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s1, thread_index);
 
@@ -1599,8 +1613,8 @@ nat44_ed_in2out_node_fn_inline (vlib_main_t * vm,
 
 	  /* Accounting */
 	  nat44_session_update_counters (s0, now,
-					 vlib_buffer_length_in_chain (vm,
-								      b0));
+					 vlib_buffer_length_in_chain (vm, b0),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s0, thread_index);
 
@@ -2024,8 +2038,8 @@ nat44_ed_in2out_reass_node_fn_inline (vlib_main_t * vm,
 
 	  /* Accounting */
 	  nat44_session_update_counters (s0, now,
-					 vlib_buffer_length_in_chain (vm,
-								      b0));
+					 vlib_buffer_length_in_chain (vm, b0),
+					 thread_index);
 	  /* Per-user LRU list maintenance */
 	  nat44_session_update_lru (sm, s0, thread_index);
 

@@ -14,6 +14,7 @@
  */
 
 option version = "4.1.0";
+import "vnet/ip/ip_types.api";
 
 /**
  * @file nat.api
@@ -365,6 +366,127 @@ define nat_get_mss_clamping_reply {
   i32 retval;
   u16 mss_value;
   u8 enable;
+};
+
+/** \brief Set HA listener (local settings)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_address - local IP4 address
+    @param port - local UDP port number
+    @param path_mtu - path MTU between local and failover
+*/
+autoreply define nat_ha_set_listener {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t ip_address;
+  u16 port;
+  u32 path_mtu;
+};
+
+/** \brief Set HA failover (remote settings)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip_address - failover IP4 address
+    @param port - failvoer UDP port number
+    @param session_refresh_interval - number of seconds after which to send
+                                      session counters refresh
+*/
+autoreply define nat_ha_set_failover {
+  u32 client_index;
+  u32 context;
+  vl_api_ip4_address_t ip_address;
+  u16 port;
+  u32 session_refresh_interval;
+};
+
+/** \brief Get HA listener/local configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_ha_get_listener {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get HA listener/local configuration reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip_address - local IP4 address
+    @param port - local UDP port number
+    @param path_mtu - Path MTU between local and failover
+*/
+define nat_ha_get_listener_reply {
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t ip_address;
+  u16 port;
+  u32 path_mtu;
+};
+
+/** \brief Get HA failover/remote settings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_ha_get_failover {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get HA failover/remote settings reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip_address - failover IP4 address
+    @param port - failvoer UDP port number
+    @param session_refresh_interval - number of seconds after which to send
+                                      session counters refresh
+*/
+define nat_ha_get_failover_reply {
+  u32 context;
+  i32 retval;
+  vl_api_ip4_address_t ip_address;
+  u16 port;
+  u32 session_refresh_interval;
+};
+
+/** \brief Flush the current HA data (for testing)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define nat_ha_flush {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Resync HA (resend existing sessions to new failover)
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param want_resync_event - resync completed event sent to the sender via
+                               nat_ha_resync_completed_event API message if
+                               non-zero
+    @param pid - sender's pid
+*/
+autoreply define nat_ha_resync
+{
+  u32 client_index;
+  u32 context;
+  u8 want_resync_event;
+  u32 pid;
+};
+
+/** \brief Tell client about a HA resync completion event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param missed_count - number of missed (not ACKed) messages
+*/
+define nat_ha_resync_completed_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 missed_count;
+};
+
+service {
+  rpc nat_ha_resync returns nat_ha_resync_reply events nat_ha_resync_completed_event;
 };
 
 /*

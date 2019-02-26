@@ -2201,6 +2201,50 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat66_static_mapping_dump, {})
 
+    def nat_ha_set_listener(self, addr, port, path_mtu=512):
+        """Set HA listener (local settings)
+
+        :param addr: local IP4 address
+        :param port: local UDP port number
+        :param path_mtu: path MTU (Default value = 512)
+        """
+        return self.api(self.papi.nat_ha_set_listener,
+                        {'ip_address': addr,
+                         'port': port,
+                         'path_mtu': path_mtu})
+
+    def nat_ha_get_listener(self):
+        """Get HA listener/local configuration"""
+        return self.api(self.papi.nat_ha_get_listener, {})
+
+    def nat_ha_set_failover(self, addr, port, refresh=10):
+        """Set HA failover (remote settings)
+
+        :param addr: failover IP4 address
+        :param port: failvoer UDP port number
+        :param refresh: number of seconds after which to send session refresh
+        """
+        return self.api(self.papi.nat_ha_set_failover,
+                        {'ip_address': addr,
+                         'port': port,
+                         'session_refresh_interval': refresh})
+
+    def nat_ha_get_failover(self):
+        """Get HA failover/remote settings reply"""
+        return self.api(self.papi.nat_ha_get_failover, {})
+
+    def nat_ha_flush(self):
+        """Flush the current HA data"""
+        return self.api(self.papi.nat_ha_flush, {})
+
+    def nat_ha_resync(self, want_resync_event=1):
+        """Resync HA (resend existing sessions to new failover)
+        :param want_resync_event: if non-zero resync completed event sent
+        """
+        return self.api(self.papi.nat_ha_resync,
+                        {'want_resync_event': want_resync_event,
+                         'pid': os.getpid()})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 

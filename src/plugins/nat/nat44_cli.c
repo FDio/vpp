@@ -24,6 +24,7 @@
 #include <nat/nat_inlines.h>
 #include <nat/nat_affinity.h>
 #include <vnet/fib/fib_table.h>
+#include <nat/nat_ha.h>
 
 #define UNSUPPORTED_IN_DET_MODE_STR \
   "This command is unsupported in deterministic mode"
@@ -345,6 +346,143 @@ nat_show_mss_clamping_command_fn (vlib_main_t * vm, unformat_input_t * input,
     vlib_cli_output (vm, "mss-clamping disabled");
 
   return 0;
+}
+
+static clib_error_t *
+nat_ha_failover_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip4_address_t addr;
+  u32 port, session_refresh_interval = 10;
+  int rv;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U:%u", unformat_ip4_address, &addr, &port))
+	;
+      else
+	if (unformat
+	    (line_input, "refresh-intervval %u", &session_refresh_interval))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  rv = nat_ha_set_failover (&addr, (u16) port, session_refresh_interval);
+  if (rv)
+    error = clib_error_return (0, "set HA failover failed");
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+nat_ha_listener_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip4_address_t addr;
+  u32 port, path_mtu = 512;
+  int rv;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U:%u", unformat_ip4_address, &addr, &port))
+	;
+      else if (unformat (line_input, "path-mtu %u", &path_mtu))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  rv = nat_ha_set_listener (&addr, (u16) port, path_mtu);
+  if (rv)
+    error = clib_error_return (0, "set HA listener failed");
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+nat_show_ha_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			vlib_cli_command_t * cmd)
+{
+  ip4_address_t addr;
+  u16 port;
+  u32 path_mtu, session_refresh_interval, resync_ack_missed;
+  u8 in_resync;
+
+  nat_ha_get_listener (&addr, &port, &path_mtu);
+  if (!port)
+    {
+      vlib_cli_output (vm, "NAT HA disabled\n");
+      return 0;
+    }
+
+  vlib_cli_output (vm, "LISTENER:\n");
+  vlib_cli_output (vm, "  %U:%u path-mtu %u\n",
+		   format_ip4_address, &addr, port, path_mtu);
+
+  nat_ha_get_failover (&addr, &port, &session_refresh_interval);
+  vlib_cli_output (vm, "FAILOVER:\n");
+  if (port)
+    vlib_cli_output (vm, "  %U:%u refresh-intervval %usec\n",
+		     format_ip4_address, &addr, port,
+		     session_refresh_interval);
+  else
+    vlib_cli_output (vm, "  NA\n");
+
+  nat_ha_get_resync_status (&in_resync, &resync_ack_missed);
+  vlib_cli_output (vm, "RESYNC:\n");
+  if (in_resync)
+    vlib_cli_output (vm, "  in progress\n");
+  else
+    vlib_cli_output (vm, "  completed (%d ACK missed)\n", resync_ack_missed);
+
+  return 0;
+}
+
+static clib_error_t *
+nat_ha_flush_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			 vlib_cli_command_t * cmd)
+{
+  nat_ha_flush (0);
+  return 0;
+}
+
+static clib_error_t *
+nat_ha_resync_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			  vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+
+  if (nat_ha_resync (0, 0, 0))
+    error = clib_error_return (0, "NAT HA resync already running");
+
+  return error;
 }
 
 static clib_error_t *
@@ -1858,6 +1996,7 @@ VLIB_CLI_COMMAND (nat44_show_alloc_addr_and_port_alg_command, static) = {
  *  vpp# nat mss-clamping 1452
  * To disbale TCP MSS rewriting use:
  *  vpp# nat mss-clamping disable
+ * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat_set_mss_clamping_command, static) = {
     .path = "nat mss-clamping",
@@ -1867,13 +2006,74 @@ VLIB_CLI_COMMAND (nat_set_mss_clamping_command, static) = {
 
 /*?
  * @cliexpar
- * @cliexstart{nat mss-clamping}
+ * @cliexstart{show nat mss-clamping}
  * Show TCP MSS rewriting configuration
+ * @cliexend
 ?*/
 VLIB_CLI_COMMAND (nat_show_mss_clamping_command, static) = {
     .path = "show nat mss-clamping",
     .short_help = "show nat mss-clamping",
     .function = nat_show_mss_clamping_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat ha failover}
+ * Set HA failover (remote settings)
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat_ha_failover_command, static) = {
+    .path = "nat ha failover",
+    .short_help = "nat ha failover <ip4-address>:<port> [refresh-intervval <sec>]",
+    .function = nat_ha_failover_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat ha listener}
+ * Set HA listener (local settings)
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat_ha_listener_command, static) = {
+    .path = "nat ha listener",
+    .short_help = "nat ha listener <ip4-address>:<port> [path-mtu <path-mtu>]",
+    .function = nat_ha_listener_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{show nat ha}
+ * Show HA configuration/status
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat_show_ha_command, static) = {
+    .path = "show nat ha",
+    .short_help = "show nat ha",
+    .function = nat_show_ha_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat ha flush}
+ * Flush the current HA data (for testing)
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat_ha_flush_command, static) = {
+    .path = "nat ha flush",
+    .short_help = "nat ha flush",
+    .function = nat_ha_flush_command_fn,
+};
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat ha resync}
+ * Resync HA (resend existing sessions to new failover)
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat_ha_resync_command, static) = {
+    .path = "nat ha resync",
+    .short_help = "nat ha resync",
+    .function = nat_ha_resync_command_fn,
 };
 
 /*?

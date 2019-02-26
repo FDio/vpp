@@ -206,6 +206,9 @@ typedef CLIB_PACKED(struct
   /* Last heard timer */
   f64 last_heard;
 
+  /* Last HA refresh */
+  f64 ha_last_refreshed;
+
   /* Counters */
   u64 total_bytes;
   u32 total_pkts;
@@ -971,9 +974,10 @@ int nat44_del_ed_session (snat_main_t * sm, ip4_address_t * addr, u16 port,
  *
  * @param s            NAT session
  * @param thread_index thread index
+ * @param is_ha        is HA event
  */
 void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
-			    u32 thread_index);
+			    u32 thread_index, u8 is_ha);
 
 /**
  * @brief Find or create NAT user
@@ -997,7 +1001,7 @@ snat_user_t *nat_user_get_or_create (snat_main_t * sm, ip4_address_t * addr,
  */
 snat_session_t *nat_session_alloc_or_recycle (snat_main_t * sm,
 					      snat_user_t * u,
-					      u32 thread_index);
+					      u32 thread_index, f64 now);
 
 /**
  * @brief Allocate NAT endpoint-dependent session
@@ -1101,7 +1105,6 @@ int snat_static_mapping_match (snat_main_t * sm,
  */
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
 			       u8 p_len, u32 sw_if_index, int is_add);
-
 
 /*
  * Why is this here? Because we don't need to touch this layer to

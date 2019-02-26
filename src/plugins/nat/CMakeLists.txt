@@ -48,6 +48,7 @@ add_vpp_plugin(nat
   nat_affinity.c
   nat_format.c
   nat_syslog.c
+  nat_ha.c
 
   MULTIARCH_SOURCES
   dslite_ce_decap.c
