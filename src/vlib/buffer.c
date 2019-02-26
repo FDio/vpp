@@ -725,26 +725,22 @@ buffer_get_cached (vlib_buffer_pool_t * bp)
 }
 
 static vlib_buffer_pool_t *
-buffer_get_by_name (vlib_buffer_main_t * bm, char *name)
+buffer_get_by_index (vlib_buffer_main_t * bm, u32 index)
 {
   vlib_buffer_pool_t *bp;
-  vec_foreach (bp, bm->buffer_pools)
-  {
-    if (!strcmp ((char *) bp->name, name))
-      return bp;
-  }
-
-  return 0;
+  if (!bm->buffer_pools || vec_len (bm->buffer_pools) < index)
+    return 0;
+  bp = vec_elt_at_index (bm->buffer_pools, index);
+  if (!bp)
+    return 0;
+  return bp;
 }
 
 static void
-buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e)
+buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_pool_t *bp;
-
-  bp = buffer_get_by_name (vm->buffer_main,
-			   &e->name[sizeof ("/buffer/used/") - 1]);
+  vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
   if (!bp)
     return;
 
@@ -752,13 +748,11 @@ buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e)
 }
 
 static void
-buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e)
+buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e,
+				   u32 index)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_pool_t *bp;
-
-  bp = buffer_get_by_name (vm->buffer_main,
-			   &e->name[sizeof ("/buffer/available/") - 1]);
+  vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
   if (!bp)
     return;
 
@@ -766,13 +760,10 @@ buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e)
 }
 
 static void
-buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e)
+buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e, u32 index)
 {
   vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_pool_t *bp;
-
-  bp = buffer_get_by_name (vm->buffer_main,
-			   &e->name[sizeof ("/buffer/cached/") - 1]);
+  vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
   if (!bp)
     return;
 
@@ -818,13 +809,16 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   vec_foreach (bp, bm->buffer_pools)
   {
     name = format (0, "/buffer/cached/%s%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_cached_fn);
+    stat_segment_register_gauge (name, buffer_gauges_update_cached_fn,
+				 bp - bm->buffer_pools);
     vec_free (name);
     name = format (0, "/buffer/used/%s%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_used_fn);
+    stat_segment_register_gauge (name, buffer_gauges_update_used_fn,
+				 bp - bm->buffer_pools);
     vec_free (name);
     name = format (0, "/buffer/available/%s%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_available_fn);
+    stat_segment_register_gauge (name, buffer_gauges_update_available_fn,
+				 bp - bm->buffer_pools);
     vec_free (name);
   }
 
