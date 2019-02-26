@@ -20,6 +20,47 @@
 #include <vnet/vnet.h>
 
 /**
+ * Per-interface L2 configuration
+ */
+typedef struct l2_emulation_t_
+{
+  /**
+   * Enabled or Disabled.
+   *  this is required since one L3 protocl can be enabled, but others not
+   */
+  u8 enabled;
+} l2_emulation_t;
+
+/**
+ * per-packet trace data
+ */
+typedef struct l2_emulation_trace_t_
+{
+  /* per-pkt trace data */
+  u8 extracted;
+} l2_emulation_trace_t;
+
+/**
+ * Grouping of global data for the L2 emulation feature
+ */
+typedef struct l2_emulation_main_t_
+{
+  u16 msg_id_base;
+
+  u32 l2_emulation_node_index;
+
+  /**
+   * Per-interface vector of emulation configs
+   */
+  l2_emulation_t *l2_emulations;
+
+  /**
+   * Next nodes for L2 output features
+   */
+  u32 l2_input_feat_next[32];
+} l2_emulation_main_t;
+
+/**
  * L2 Emulation is a feautre that is applied to L2 ports to 'extract'
  * IP packets from the L2 path and inject them into the L3 path (i.e.
  * into the appropriate ip[4|6]_input node).
@@ -29,6 +70,8 @@
  */
 extern void l2_emulation_enable (u32 sw_if_index);
 extern void l2_emulation_disable (u32 sw_if_index);
+
+extern l2_emulation_main_t l2_emulation_main;
 
 #endif
 

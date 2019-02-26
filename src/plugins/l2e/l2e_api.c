@@ -56,21 +56,12 @@
 #define foreach_l2e_api_msg                                 \
 _(L2_EMULATION, l2_emulation)
 
-/**
- * L2 Emulation Main
- */
-typedef struct l2_emulation_main_t_
-{
-  u16 msg_id_base;
-} l2_emulation_main_t;
-
-static l2_emulation_main_t l2_emulation_main;
-
-#define L2E_MSG_BASE l2_emulation_main.msg_id_base
+#define L2E_MSG_BASE l2em->msg_id_base
 
 static void
 vl_api_l2_emulation_t_handler (vl_api_l2_emulation_t * mp)
 {
+  l2_emulation_main_t *l2em = &l2_emulation_main;
   vl_api_l2_emulation_reply_t *rmp;
   int rv = 0;
 
@@ -102,6 +93,7 @@ vl_api_l2_emulation_t_handler (vl_api_l2_emulation_t * mp)
 static void
 setup_message_id_table (api_main_t * am)
 {
+  l2_emulation_main_t *l2em = &l2_emulation_main;
 #define _(id,n,crc)                                     \
   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + L2E_MSG_BASE);
   foreach_vl_msg_name_crc_l2e;
@@ -111,6 +103,7 @@ setup_message_id_table (api_main_t * am)
 static void
 l2e_api_hookup (vlib_main_t * vm)
 {
+  l2_emulation_main_t *l2em = &l2_emulation_main;
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N + L2E_MSG_BASE,          \
                             #n,                                 \
