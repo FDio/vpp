@@ -79,6 +79,7 @@ stat_reader::read()
       case STAT_DIR_TYPE_ERROR_INDEX:
       case STAT_DIR_TYPE_SCALAR_INDEX:
       case STAT_DIR_TYPE_ILLEGAL:
+      case STAT_DIR_TYPE_NAME_VECTOR:
         break;
 
       case STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE: {
