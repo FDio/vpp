@@ -78,6 +78,7 @@ stat_reader::read()
     switch (sde.type()) {
       case STAT_DIR_TYPE_ERROR_INDEX:
       case STAT_DIR_TYPE_SCALAR_INDEX:
+      case STAT_DIR_TYPE_NAME_VECTOR:
       case STAT_DIR_TYPE_ILLEGAL:
         break;
 

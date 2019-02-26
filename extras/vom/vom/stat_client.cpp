@@ -34,6 +34,8 @@ stat_client::stat_data_t::stat_data_t(const stat_segment_data_t& stat_seg_data)
     case STAT_DIR_TYPE_ERROR_INDEX:
       m_error_value = stat_seg_data.error_value;
       break;
+    case STAT_DIR_TYPE_NAME_VECTOR:
+      break;
     case STAT_DIR_TYPE_ILLEGAL:
       break;
   }
