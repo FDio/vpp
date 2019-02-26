@@ -220,6 +220,15 @@ reconnect:
 	      fformat (stdout, "%.2f %s\n", res[i].scalar_value, res[i].name);
 	      break;
 
+	    case STAT_DIR_TYPE_NAME_VECTOR:
+	      if (res[i].name_vector == 0)
+		continue;
+	      for (k = 0; k < vec_len (res[i].name_vector); k++)
+		if (res[i].name_vector[k])
+		  fformat (stdout, "[%d]: %s %s\n", k, res[i].name_vector[k],
+			   res[i].name);
+	      break;
+
 	    default:
 	      ;
 	    }
