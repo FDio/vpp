@@ -46,6 +46,30 @@
       "revId": "d73dbd2d3a2437c1bb687d70a5872065a67fbb6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f4506d75_18e3957b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-26T16:04:16Z",
+      "side": 1,
+      "message": "\u003e packages installed via the make install-deps, or by calling virtualenv.\n\nThose do not necessarily upgrade pip version to what the requirements assume.\n\n\u003e python -m pip install -U -r requirements.txt\n\nThis is the pip commannd invocation I was suggesting to split into two.",
+      "parentUuid": "89ef1c80_747be9ad",
+      "range": {
+        "startLine": 9,
+        "startChar": 35,
+        "endLine": 10,
+        "endChar": 40
+      },
+      "revId": "d73dbd2d3a2437c1bb687d70a5872065a67fbb6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
