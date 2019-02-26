@@ -258,7 +258,7 @@ abf_itf_detach (fib_protocol_t fproto, u32 policy_id, u32 sw_if_index)
   aia = abf_itf_attach_db_find (policy_id, sw_if_index);
 
   if (NULL == aia)
-    return (VNET_API_ERROR_ENTRY_ALREADY_EXISTS);
+    return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
   /*
    * first remove from the interface's vector
