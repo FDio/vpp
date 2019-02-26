@@ -88,6 +88,24 @@
       "revId": "e973c8cc3ef5967528a126f5650a7b1d99b8919f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ec2e61c_7d7e1020",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 8
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-26T00:22:00Z",
+      "side": 1,
+      "message": "Yes.  It is my preference not to depend on it further.\nThe last month or so has demonstrated that relying on 3rd party projects creates ongoing maintenance work.   \n\nThank you for taking the time to review this!",
+      "parentUuid": "eb051ddc_094b2923",
+      "revId": "e973c8cc3ef5967528a126f5650a7b1d99b8919f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
