@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d7a3ff5_9d716e22",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-26T16:39:54Z",
+      "side": 1,
+      "message": "What distro are you testing against?  I just build fresh containers and the distro provided python34-*.",
+      "range": {
+        "startLine": 103,
+        "startChar": 0,
+        "endLine": 103,
+        "endChar": 43
+      },
+      "revId": "3498a42307621c5c3f194c166ff3610126506e81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5b3e4214_6e073dc9",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-26T16:39:54Z",
+      "side": 1,
+      "message": "If there are no differences, move to common code at say L:89",
+      "range": {
+        "startLine": 106,
+        "startChar": 1,
+        "endLine": 106,
+        "endChar": 29
+      },
+      "revId": "3498a42307621c5c3f194c166ff3610126506e81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
