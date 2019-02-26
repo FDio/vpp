@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <linux/mempolicy.h>
 #include <linux/memfd.h>
 
@@ -263,6 +264,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
   int old_mpol = -1;
   long unsigned int mask[16] = { 0 };
   long unsigned int old_mask[16] = { 0 };
+  uword page_size = 1 << a->log2_subpage_sz;
   uword size = (uword) n_pages << pm->def_log2_page_sz;
 
   clib_error_free (pm->error);
@@ -333,6 +335,25 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
 					  "fd %d numa %d flags 0x%x", n_pages,
 					  va, a->fd, numa_node, mmap_flags);
       goto error;
+    }
+
+  /* Check if huge page is not allocated,
+     wrong allocation will generate the SIGBUS */
+  if (a->log2_subpage_sz != pm->sys_log2_page_sz)
+    {
+      for (int i = 0; i < n_pages; i++)
+	{
+	  unsigned char flag;
+	  mincore (va + i * page_size, 1, &flag);
+	  // flag is 1 if the page was successfully allocated and in memory
+	  if (!flag)
+	    {
+	      pm->error =
+		clib_error_return_unix (0,
+					"Unable to fulfill huge page allocation request");
+	      goto error;
+	    }
+	}
     }
 
   clib_memset (va, 0, size);
