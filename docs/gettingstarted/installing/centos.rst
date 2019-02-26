@@ -143,7 +143,7 @@ needed:
 
 .. code-block:: console
 
-   $ sudo yum install vpp-plugins vpp-ext-deps vpp-devel vpp-api-python vpp-api-lua vpp-api-java vpp-debuginfo vpp-devel libvpp0
+   $ sudo yum install vpp-plugins vpp-devel vpp-api-python vpp-api-lua vpp-api-java vpp-debuginfo vpp-devel libvpp0
 
 Starting VPP
 ============

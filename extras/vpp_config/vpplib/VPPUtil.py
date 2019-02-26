@@ -24,12 +24,12 @@ from collections import Counter
 
 ubuntu_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua', 'vpp-api-python',
                            'vpp-dbg', 'vpp-dev'],
-               'master': ['vpp', 'vpp-plugin-core', 'vpp-ext-deps', 'vpp-api-python',
+               'master': ['vpp', 'vpp-plugin-core', 'vpp-api-python',
                           'vpp-dbg', 'vpp-dev', 'vpp-plugin-dpdk']}
 
 centos_pkgs = {'release': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua',
                            'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0'],
-               'master': ['vpp', 'vpp-plugins', 'vpp-ext-deps', 'vpp-api-java', 'vpp-api-lua',
+               'master': ['vpp', 'vpp-plugins', 'vpp-api-java', 'vpp-api-lua',
                           'vpp-api-python', 'vpp-debuginfo', 'vpp-devel', 'libvpp0']}
 
 

@@ -87,7 +87,7 @@ For the master packages:
 
 .. code-block:: console
 
-  sudo apt-get install vpp-plugin-core vpp-ext-deps vpp-api-python vpp-dbg vpp-dev vpp-plugin-dpdk
+  sudo apt-get install vpp-plugin-core vpp-api-python vpp-dbg vpp-dev vpp-plugin-dpdk
 
 Uninstall the Packages
 ======================
