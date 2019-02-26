@@ -22,6 +22,30 @@
       "revId": "d73dbd2d3a2437c1bb687d70a5872065a67fbb6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "89ef1c80_747be9ad",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-26T14:05:03Z",
+      "side": 1,
+      "message": "Thanks!\n\nYes. There are 2 invocations of pip install, if you want to look at it that way.  Once from the packages installed via the make install-deps, or by calling virtualenv.  That can be used to then do \npython -m pip install -U -r requirements.txt if we need a specific pip version.  We control the initial version and can control the final version as well.\n\nAnother nice side effect is that it shortens build time/bandwidth requirements and tests can be run without having to be online. ;)",
+      "parentUuid": "974e8975_32c3d0e5",
+      "range": {
+        "startLine": 9,
+        "startChar": 35,
+        "endLine": 10,
+        "endChar": 40
+      },
+      "revId": "d73dbd2d3a2437c1bb687d70a5872065a67fbb6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
