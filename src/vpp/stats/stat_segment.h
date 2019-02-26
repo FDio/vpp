@@ -32,6 +32,7 @@ typedef enum
  STAT_COUNTER_NODE_VECTORS,
  STAT_COUNTER_NODE_CALLS,
  STAT_COUNTER_NODE_SUSPENDS,
+ STAT_COUNTER_SYMLINK_INTERFACES,
  STAT_COUNTERS
 } stat_segment_counter_t;
 
@@ -44,7 +45,8 @@ typedef enum
   _(NODE_CLOCKS, COUNTER_VECTOR_SIMPLE, clocks, /node)		\
   _(NODE_VECTORS, COUNTER_VECTOR_SIMPLE, vectors, /node)	\
   _(NODE_CALLS, COUNTER_VECTOR_SIMPLE, calls, /node)		\
-  _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /node)
+  _(NODE_SUSPENDS, COUNTER_VECTOR_SIMPLE, suspends, /node)      \
+  _(SYMLINK_INTERFACES, NAME_VECTOR, interfaces, /symlink)
 
 typedef struct
 {
@@ -101,6 +103,8 @@ typedef struct
   /* statistics segment */
   uword *directory_vector_by_name;
   stat_segment_directory_entry_t *directory_vector;
+  u8 **interfaces;
+
   clib_spinlock_t *stat_segment_lockp;
   clib_socket_t *socket;
   u8 *socket_name;
