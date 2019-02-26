@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "852e6312_a14197c4",
+        "filename": "test/test_nat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-26T17:50:51Z",
+      "side": 1,
+      "message": "Please do not use wildcard imports.  It confuses 3rd party tools like sphinx.",
+      "range": {
+        "startLine": 27,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 23
+      },
+      "revId": "865026c30593620dd48a9db07fd06f8f6c0fe911",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b73b6f09_50f92ec0",
+        "filename": "test/test_nat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3884,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-26T17:50:51Z",
+      "side": 1,
+      "message": "This code can raise an index error.",
+      "range": {
+        "startLine": 3872,
+        "startChar": 0,
+        "endLine": 3884,
+        "endChar": 48
+      },
+      "revId": "865026c30593620dd48a9db07fd06f8f6c0fe911",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
