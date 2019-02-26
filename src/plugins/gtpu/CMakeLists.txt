@@ -18,6 +18,10 @@ add_vpp_plugin(gtpu
   gtpu_decap.c
   gtpu_encap.c
 
+  MULTIARCH_SOURCES
+  gtpu_decap.c
+  gtpu_encap.c
+
   API_FILES
   gtpu.api
 
