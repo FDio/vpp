@@ -735,11 +735,28 @@ vl_mem_api_handle_rpc (vlib_main_t * vm, vlib_node_runtime_t * node)
   vm->pending_rpc_requests = tmp;
   clib_spinlock_unlock_if_init (&vm->pending_rpc_lock);
 
-  for (i = 0; i < vec_len (vm->processing_rpc_requests); i++)
+  /*
+   * RPCs are used to reflect function calls to thread 0
+   * when the underlying code is not thread-safe.
+   *
+   * Grabbing the thread barrier across a set of RPCs
+   * greatly increases efficiency, and avoids
+   * running afoul of the barrier sync holddown timer.
+   * The barrier sync code supports recursive locking.
+   *
+   * We really need to rewrite RPC-based code...
+   */
+  if (PREDICT_TRUE (vec_len (vm->processing_rpc_requests)))
     {
-      mp = vm->processing_rpc_requests[i];
-      vl_msg_api_handler_with_vm_node (am, (void *) mp, vm, node);
+      vl_msg_api_barrier_sync ();
+      for (i = 0; i < vec_len (vm->processing_rpc_requests); i++)
+	{
+	  mp = vm->processing_rpc_requests[i];
+	  vl_msg_api_handler_with_vm_node (am, (void *) mp, vm, node);
+	}
+      vl_msg_api_barrier_release ();
     }
+
   return 0;
 }
 

@@ -1021,6 +1021,10 @@ show_ip6_neighbors (vlib_main_t * vm,
   ip6_neighbor_t *n, *ns;
   clib_error_t *error = 0;
   u32 sw_if_index;
+  int verbose = 0;
+
+  if (unformat (input, "verbose"))
+    verbose = 1;
 
   /* Filter entries by interface if given. */
   sw_if_index = ~0;
@@ -1029,13 +1033,29 @@ show_ip6_neighbors (vlib_main_t * vm,
   ns = ip6_neighbors_entries (sw_if_index);
   if (ns)
     {
-      vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, 0);
-      vec_foreach (n, ns)
-      {
-	vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, n);
-      }
+      /*
+       * Show the entire table if it's not too big, otherwise just
+       * show the size of the table.
+       */
+      if (vec_len (ns) < 50)
+	verbose = 1;
+      if (verbose)
+	{
+	  vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, 0);
+	  vec_foreach (n, ns)
+	  {
+	    vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, n);
+	  }
+	}
+      else
+	vlib_cli_output
+	  (vm, "There are %u ip6 neighbors, "
+	   "'show ip6 neighbors verbose' to display the entire table...",
+	   vec_len (ns));
       vec_free (ns);
     }
+  else
+    vlib_cli_output (vm, "No ip6 neighbors");
 
   return error;
 }
