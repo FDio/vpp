@@ -256,6 +256,12 @@ typedef struct
 int vnet_gtpu_add_del_tunnel
   (vnet_gtpu_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
 
+typedef struct
+{
+  u32 tunnel_index;
+  u32 teid;
+} gtpu_encap_trace_t;
+
 void vnet_int_gtpu_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 #endif /* included_vnet_gtpu_h */
 

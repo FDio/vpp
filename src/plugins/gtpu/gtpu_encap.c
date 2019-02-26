@@ -48,23 +48,6 @@ typedef enum {
     GTPU_ENCAP_N_NEXT,
 } gtpu_encap_next_t;
 
-typedef struct {
-  u32 tunnel_index;
-  u32 teid;
-} gtpu_encap_trace_t;
-
-u8 * format_gtpu_encap_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  gtpu_encap_trace_t * t
-      = va_arg (*args, gtpu_encap_trace_t *);
-
-  s = format (s, "GTPU encap to gtpu_tunnel%d teid %d",
-	      t->tunnel_index, t->teid);
-  return s;
-}
-
 
 #define foreach_fixed_header4_offset            \
     _(0) _(1) _(2) _(3)
@@ -662,16 +645,14 @@ gtpu_encap_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-gtpu4_encap (vlib_main_t * vm,
+VLIB_NODE_FN (gtpu4_encap_node) (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
   return gtpu_encap_inline (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
-static uword
-gtpu6_encap (vlib_main_t * vm,
+VLIB_NODE_FN (gtpu6_encap_node) (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
@@ -679,7 +660,6 @@ gtpu6_encap (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (gtpu4_encap_node) = {
-  .function = gtpu4_encap,
   .name = "gtpu4-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_gtpu_encap_trace,
@@ -694,10 +674,7 @@ VLIB_REGISTER_NODE (gtpu4_encap_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gtpu4_encap_node, gtpu4_encap)
-
 VLIB_REGISTER_NODE (gtpu6_encap_node) = {
-  .function = gtpu6_encap,
   .name = "gtpu6-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_gtpu_encap_trace,
@@ -711,6 +688,4 @@ VLIB_REGISTER_NODE (gtpu6_encap_node) = {
 #undef _
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gtpu6_encap_node, gtpu6_encap)
 
