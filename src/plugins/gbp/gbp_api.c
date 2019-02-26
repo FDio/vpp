@@ -959,7 +959,7 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
       for (ii = 0; ii < n_et; ii++)
 	{
 	  /* leave the ether types in network order */
-	  allowed_ethertypes[ii] = et[ii];
+	  allowed_ethertypes[ii] = ntohs (et[ii]);
 	}
 
       rv = gbp_contract_update (ntohs (mp->contract.src_epg),
