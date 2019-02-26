@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "974e8975_32c3d0e5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-02-26T13:10:56Z",
+      "side": 1,
+      "message": "I seriously doubt specifing pip version within requirements.txt would affect which version of pip is installing the other packages specified in the same requirements file.\n\nI mean, I like idempotence, but for that we would need (at least) two invocations of \"pip install\". One for pip (and related stuff, such as setuptools), the other one for the rest.\n\nBut this Change moves in the right direction.",
+      "range": {
+        "startLine": 9,
+        "startChar": 35,
+        "endLine": 10,
+        "endChar": 40
+      },
+      "revId": "d73dbd2d3a2437c1bb687d70a5872065a67fbb6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
