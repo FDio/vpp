@@ -41,6 +41,7 @@ typedef struct _session_endpoint_cfg
   u32 app_wrk_index;
   u32 opaque;
   u32 ns_index;
+  u8 original_tp;
   u8 *hostname;
 } session_endpoint_cfg_t;
 

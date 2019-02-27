@@ -257,11 +257,11 @@ u8 *format_app_worker (u8 * s, va_list * args);
 u8 *format_app_worker_listener (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
 int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
-segment_manager_t *app_worker_get_local_segment_manager (app_worker_t *
-							 app_worker);
-segment_manager_t
-  * app_worker_get_local_segment_manager_w_session (app_worker_t * app_wrk,
-						    local_session_t * ls);
+//segment_manager_t *app_worker_get_local_segment_manager (app_worker_t *
+//							 app_worker);
+//segment_manager_t
+//  * app_worker_get_local_segment_manager_w_session (app_worker_t * app_wrk,
+//						    local_session_t * ls);
 
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
