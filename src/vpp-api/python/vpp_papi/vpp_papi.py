@@ -21,6 +21,7 @@ import os
 import logging
 import collections
 import struct
+import functools
 import json
 import threading
 import fnmatch
@@ -38,17 +39,23 @@ else:
     import queue as queue
 
 
+def metaclass(metaclass):
+    @functools.wraps(metaclass)
+    def wrapper(cls):
+        return metaclass(cls.__name__, cls.__bases__, cls.__dict__.copy())
+
+    return wrapper
+
+
 class VppEnumType(type):
     def __getattr__(cls, name):
         t = vpp_get_type(name)
         return t.enum
 
 
-# Python3
-# class VppEnum(metaclass=VppEnumType):
-#    pass
+@metaclass(VppEnumType)
 class VppEnum(object):
-    __metaclass__ = VppEnumType
+    pass
 
 
 def vpp_atexit(vpp_weakref):
