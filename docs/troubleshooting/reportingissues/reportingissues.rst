@@ -5,15 +5,15 @@
 Reporting Bugs
 ==============
 
-Although every situation is different, this page describes how to
+Although every situation is different, this section describes how to
 collect data which will help make efficient use of everyone's time
 when dealing with vpp bugs.
 
 Before you press the Jira button to create a bug report - or email
 vpp-dev@lists.fd.io - please ask yourself whether there's enough
-information for someone else to understand and possibly to reproduce
-the issue given a reasonable amount of effort. **Unicast emails to
-maintainers, committers, and the project PTL are strongly discouraged.**
+information for someone else to understand and to reproduce the issue
+given a reasonable amount of effort. **Unicast emails to maintainers,
+committers, and the project PTL are strongly discouraged.**
 
 A good strategy for clear-cut bugs: file a detailed Jira ticket, and
 then send a short description of the issue to vpp-dev@lists.fd.io,
@@ -39,7 +39,7 @@ Please make sure to include the vpp image version and command-line arguments.
     Compile location:         /scratch/vpp-showversion
     Compiler:                 GCC 7.3.0
     Current PID:              5211
-    Command line arguments:  
+    Command line arguments:
       /scratch/vpp-showversion/build-root/install-vpp_debug-native/vpp/bin/vpp
       unix
       interactive
@@ -48,7 +48,7 @@ With respect to the operating environment: if misbehavior involving a
 specific VM / container / bare-metal environment is involved, please
 describe the environment in detail:
 
-* Linux Distro (e.g. Ubuntu 14.04.3 LTS, CentOS-7, etc.)
+* Linux Distro (e.g. Ubuntu 18.04.2 LTS, CentOS-7, etc.)
 * NIC type(s) (ixgbe, i40e, enic, etc. etc.), vhost-user, tuntap
 * NUMA configuration if applicable
 
@@ -60,15 +60,24 @@ unmodified master/latest software.
 "Show" command output
 ---------------------
 
-Every situation is different. If the issue involves a sequence of debug CLI command, please enable CLI command logging, and send the sequence involved. Note that the debug CLI is a developer's tool - **no warranty express or implied** - and that we may choose not to fix debug CLI bugs.
+Every situation is different. If the issue involves a sequence of
+debug CLI command, please enable CLI command logging, and send the
+sequence involved. Note that the debug CLI is a developer's tool -
+**no warranty express or implied** - and that we may choose not to fix
+debug CLI bugs.
 
-Please include "show error" [error counter] output. It's often helpful to "clear error", send a bit of traffic, then "show error" particularly when running vpp on a noisy networks.
+Please include "show error" [error counter] output. It's often helpful
+to "clear error", send a bit of traffic, then "show error"
+particularly when running vpp on noisy networks.
 
-Please include ip4 / ip6 / mpls FIB contents ("show ip fib", "show ip6 fib", "show mpls fib", "show mpls tunnel").
+Please include ip4 / ip6 / mpls FIB contents ("show ip fib", "show ip6
+fib", "show mpls fib", "show mpls tunnel").
 
-Please include "show hardware", "show interface", and "show interface address" output
+Please include "show hardware", "show interface", and "show interface
+address" output
 
-Here is a consolidated set of commands that are generally useful before/after sending traffic.  Before sending traffic.
+Here is a consolidated set of commands that are generally useful
+before/after sending traffic.  Before sending traffic:
 
 .. code-block:: console
 
@@ -78,7 +87,7 @@ Here is a consolidated set of commands that are generally useful before/after se
     vppctl clear run
 
 Send some traffic and then issue the following commands.
- 
+
 .. code-block:: console
 
     vppctl show version verbose
@@ -95,13 +104,13 @@ sense.  Only include those features which have been configured.
 
      vppctl show l2fib
      vppctl show bridge-domain
- 
+
      vppctl show ip fib
      vppctl show ip arp
- 
+
      vppctl show ip6 fib
      vppctl show ip6 neighbors
- 
+
      vppctl show mpls fib
      vppctl show mpls tunnel
 
@@ -154,7 +163,7 @@ Binary API Trace
 If the issue involves a sequence of control-plane API messages - even
 a very long sequence - please enable control-plane API
 tracing. Control-plane API post-mortem traces end up in
-/tmp/api_post_mortem.<pid>. 
+/tmp/api_post_mortem.<pid>.
 
 Please remember to put post-mortem binary api traces in accessible
 places.
@@ -180,7 +189,7 @@ will capture usable vpp core files in /tmp/dumps.
 .. code-block:: console
 
     # mkdir -p /tmp/dumps
-    # sysctl -w debug.exception-trace=1 
+    # sysctl -w debug.exception-trace=1
     # sysctl -w kernel.core_pattern="/tmp/dumps/%e-%t"
     # ulimit -c unlimited
     # echo 2 > /proc/sys/fs/suid_dumpable
@@ -196,21 +205,39 @@ Make sure to leave the default stanza "... unix { ... full-coredump
 /etc/vpp/startup.conf, or to include it in the command line arguments
 passed by orchestration software.
 
-Core files from private, modified images are discouraged. If it's
-necessary to go that route, please copy the **exact** Debian
-packages (or RPMs) corresponding to the core file to the same public
-place as the core file. In particular.
+Core files from private images require special handling. If it's
+necessary to go that route, copy the **exact** Debian packages (or
+RPMs) which correspond to the core file to the same public place as
+the core file. A no-excuses-allowed, hard-and-fast requirement.
 
-* vpp_<version>_<arch>.deb         # the vpp executable
-* vpp-dbg_<version>_<arch>.deb     # debug symbols
-* vpp-dev_<version>_<arch>.deb     # development package 
-* vpp-lib_<version>_<arch>.deb     # shared libraries
-* vpp-plugins_<version>_<arch>.deb # plugins
+In particular:
 
-Please include the full commit-ID the Jira ticket.
+.. code-block:: console
+
+  libvppinfra_<version>_<arch>.deb # vppinfra library
+  libvppinfra-dev_<version>_<arch>.deb # vppinfra library development pkg
+  vpp_<version>_<arch>.deb         # the vpp executable
+  vpp-dbg_<version>_<arch>.deb     # debug symbols
+  vpp-dev_<version>_<arch>.deb     # vpp development pkg
+  vpp-lib_<version>_<arch>.deb     # shared libraries
+  vpp-plugin-core_<version>_<arch>.deb # core plugins
+  vpp-plugin-dpdk_<version>_<arch>.deb # dpdk plugin
+
+For reference, please include git commit-ID, branch, and git repo
+information [for repos other than gerrit.fd.io] in the Jira ticket.
+
+Note that git commit-ids are crypto sums of the head [latest]
+**merged** patch. They say **nothing whatsoever** about local
+workspace modifications, branching, or the git repo in question.
+
+Even given a byte-for-byte identical source tree, it's easy to build
+dramatically different binary artifacts. All it takes is a different
+toolchain version.
+
+Bottom line: please follow core file handling instructions to the
+letter. It's not complicated. Simply copy the exact Debian packages or
+RPMs which correspond to core files to accessible locations.
 
 If we go through the setup process only to discover that the image and
-core files don't match, it will simply delay resolution of the
-issue. And it will annoy the heck out of the engineer who just wasted
-their time. Exact means **exact**, not "oh, gee, I added a few lines
-of debug scaffolding since then..."
+core files don't match, it will simply delay resolution of the issue;
+to say nothing of irritating the person who just wasted their time.
