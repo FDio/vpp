@@ -123,6 +123,12 @@ session_program_transport_close (session_t * s)
   session_manager_worker_t *wrk;
   session_event_t *evt;
 
+  if (!session_has_transport (s))
+    {
+      session_transport_close (s);
+      return;
+    }
+
   /* If we are in the handler thread, or being called with the worker barrier
    * held, just append a new event to pending disconnects vector. */
   if (vlib_thread_is_main_w_barrier () || thread_index == s->thread_index)
@@ -895,8 +901,6 @@ session_stream_accept (transport_connection_t * tc, u32 listener_index,
 
   if ((rv = app_worker_init_accepted (s)))
     return rv;
-
-  session_lookup_add_connection (tc, session_handle (s));
 
   /* Shoulder-tap the server */
   if (notify)

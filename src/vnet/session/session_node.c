@@ -32,7 +32,6 @@ session_mq_accepted_reply_handler (void *data)
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
   session_state_t old_state;
   app_worker_t *app_wrk;
-  local_session_t *ls;
   session_t *s;
 
   /* Server isn't interested, kill the session */
@@ -44,38 +43,25 @@ session_mq_accepted_reply_handler (void *data)
       return;
     }
 
-  if (session_handle_is_local (mp->handle))
+  s = session_get_from_handle_if_valid (mp->handle);
+  if (!s)
+    return;
+
+  app_wrk = app_worker_get (s->app_wrk_index);
+  if (app_wrk->app_index != mp->context)
     {
-      ls = app_worker_get_local_session_from_handle (mp->handle);
-      if (!ls)
-	{
-	  clib_warning ("unknown local handle 0x%lx", mp->handle);
-	  return;
-	}
-      app_wrk = app_worker_get (ls->app_wrk_index);
-      if (app_wrk->app_index != mp->context)
-	{
-	  clib_warning ("server %u doesn't own local handle 0x%lx",
-			mp->context, mp->handle);
-	  return;
-	}
-      if (app_worker_local_session_connect_notify (ls))
+      clib_warning("app doesn't own session");
+      return;
+    }
+
+  if (!session_has_transport (s))
+    {
+      if (app_worker_local_session_connect_notify (s))
 	return;
-      ls->session_state = SESSION_STATE_READY;
+      s->session_state = SESSION_STATE_READY;
     }
   else
     {
-      s = session_get_from_handle_if_valid (mp->handle);
-      if (!s)
-	return;
-
-      app_wrk = app_worker_get (s->app_wrk_index);
-      if (app_wrk->app_index != mp->context)
-	{
-	  clib_warning ("app doesn't own session");
-	  return;
-	}
-
       old_state = s->session_state;
       s->session_state = SESSION_STATE_READY;
       if (!svm_fifo_is_empty (s->rx_fifo))
