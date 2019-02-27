@@ -2105,15 +2105,12 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 				      unformat_input_t * input,
 				      vlib_cli_command_t * cmd, int rx_tx)
 {
-#define PCAP_DEF_PKT_TO_CAPTURE (100)
-
   unformat_input_t _line_input, *line_input = &_line_input;
   pcap_main_t *pm = &vm->dispatch_pcap_main;
-  u8 *filename;
-  u8 *chroot_filename = 0;
-  u32 max = 0;
+  u8 *filename = 0;
+  u32 max = 1000;
   int enabled = 0;
-  int errorFlag = 0;
+  int is_error = 0;
   clib_error_t *error = 0;
   u32 node_index, add;
   vlib_trace_main_t *tm;
@@ -2134,7 +2131,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	  else
 	    {
 	      vlib_cli_output (vm, "pcap dispatch capture already on...");
-	      errorFlag = 1;
+	      is_error = 1;
 	      break;
 	    }
 	}
@@ -2158,7 +2155,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	  else
 	    {
 	      vlib_cli_output (vm, "pcap tx capture already off...");
-	      errorFlag = 1;
+	      is_error = 1;
 	      break;
 	    }
 	}
@@ -2169,7 +2166,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	      vlib_cli_output
 		(vm,
 		 "can't change max value while pcap tx capture active...");
-	      errorFlag = 1;
+	      is_error = 1;
 	      break;
 	    }
 	  pm->n_packets_to_capture = max;
@@ -2182,7 +2179,7 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	    {
 	      vlib_cli_output
 		(vm, "can't change file while pcap tx capture active...");
-	      errorFlag = 1;
+	      is_error = 1;
 	      break;
 	    }
 	}
@@ -2227,32 +2224,27 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, line_input);
-	  errorFlag = 1;
+	  is_error = 1;
 	  break;
 	}
     }
   unformat_free (line_input);
 
-
-  if (errorFlag == 0)
+  if (is_error == 0)
     {
-      /* Since no error, save configured values. */
-      if (chroot_filename)
-	{
-	  if (pm->file_name)
-	    vec_free (pm->file_name);
-	  vec_add1 (chroot_filename, 0);
-	  pm->file_name = (char *) chroot_filename;
-	}
+      /* Clean up from previous run */
+      vec_free (pm->file_name);
+      vec_free (pm->pcap_data);
 
-      if (max)
-	pm->n_packets_to_capture = max;
+      memset (pm, 0, sizeof (*pm));
+      pm->n_packets_to_capture = max;
 
       if (enabled)
 	{
-	  if (pm->file_name == 0)
-	    pm->file_name = (char *) format (0, "/tmp/dispatch.pcap%c", 0);
+	  if (filename == 0)
+	    filename = format (0, "/tmp/dispatch.pcap%c", 0);
 
+	  pm->file_name = (char *) filename;
 	  pm->n_packets_captured = 0;
 	  pm->packet_type = PCAP_PACKET_TYPE_vpp;
 	  if (pm->lock == 0)
@@ -2261,8 +2253,6 @@ pcap_dispatch_trace_command_internal (vlib_main_t * vm,
 	  vlib_cli_output (vm, "pcap dispatch capture on...");
 	}
     }
-  else if (chroot_filename)
-    vec_free (chroot_filename);
 
   return error;
 }
