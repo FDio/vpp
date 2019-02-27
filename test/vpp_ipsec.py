@@ -1,11 +1,7 @@
+import six
 from vpp_object import *
 from ipaddress import ip_address
 from vpp_papi import VppEnum
-
-try:
-    text_type = unicode
-except NameError:
-    text_type = str
 
 
 class VppIpsecSpd(VppObject):
@@ -92,10 +88,10 @@ class VppIpsecSpdEntry(VppObject):
         self.test = test
         self.spd = spd
         self.sa_id = sa_id
-        self.local_start = ip_address(text_type(local_start))
-        self.local_stop = ip_address(text_type(local_stop))
-        self.remote_start = ip_address(text_type(remote_start))
-        self.remote_stop = ip_address(text_type(remote_stop))
+        self.local_start = ip_address(six.text_type(local_start))
+        self.local_stop = ip_address(six.text_type(local_stop))
+        self.remote_start = ip_address(six.text_type(remote_start))
+        self.remote_stop = ip_address(six.text_type(remote_stop))
         self.proto = proto
         self.is_outbound = is_outbound
         self.priority = priority
@@ -205,12 +201,12 @@ class VppIpsecSA(VppObject):
         else:
             self.flags = flags
         if (tun_src):
-            self.tun_src = ip_address(text_type(tun_src))
+            self.tun_src = ip_address(six.text_type(tun_src))
             self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL
             if (self.tun_src.version == 6):
                 self.flags = self.flags | e.IPSEC_API_SAD_FLAG_IS_TUNNEL_V6
         if (tun_dst):
-            self.tun_dst = ip_address(text_type(tun_dst))
+            self.tun_dst = ip_address(six.text_type(tun_dst))
 
     def add_vpp_config(self):
         r = self.test.vapi.ipsec_sad_entry_add_del(
