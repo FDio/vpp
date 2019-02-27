@@ -442,8 +442,6 @@ test_clib_strncmp (vlib_main_t * vm, unformat_input_t * input)
   v_indicator = strncmp (s1, "Every moment is a fresh beginning", s1len);
   if (v_indicator != 0)
     return -1;
-  if (v_indicator != indicator)
-    return -1;
 
   /* s1 > s2, 0 is expected since comparison is no more than n character */
   indicator = clib_strncmp (s1, "Every moment is a fresh begin",
@@ -454,8 +452,6 @@ test_clib_strncmp (vlib_main_t * vm, unformat_input_t * input)
   v_indicator = strncmp (s1, "Every moment is a fresh begin",
 			 sizeof ("Every moment is a fresh begin") - 1);
   if (v_indicator != 0)
-    return -1;
-  if (v_indicator != indicator)
     return -1;
 
   /* s1 < s2, < 0 is expected */
