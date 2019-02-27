@@ -116,7 +116,7 @@ app_worker_free (app_worker_t * app_wrk)
   /*
    * Local sessions
    */
-  app_worker_local_sessions_free (app_wrk);
+//  app_worker_local_sessions_free (app_wrk);
 
   pool_put (app_workers, app_wrk);
   if (CLIB_DEBUG)
@@ -270,12 +270,12 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
       ls = listen_session_get (al->local_index);
       handle = listen_session_get_handle (ls);
 
-      /* *INDENT-OFF* */
-      pool_foreach (local, app_wrk->local_sessions, ({
-        if (local->listener_index == ls->session_index)
-          app_worker_local_session_disconnect (app_wrk->wrk_index, local);
-      }));
-      /* *INDENT-ON* */
+//      /* *INDENT-OFF* */
+//      pool_foreach (local, app_wrk->local_sessions, ({
+//        if (local->listener_index == ls->session_index)
+//          app_worker_local_session_disconnect (app_wrk->wrk_index, local);
+//      }));
+//      /* *INDENT-ON* */
 
       sm_indexp = hash_get (app_wrk->listeners_table, handle);
       if (sm_indexp)
@@ -303,8 +303,18 @@ app_worker_init_accepted (session_t * s)
   listener = listen_session_get (s->listener_index);
   app_wrk = application_listener_select_worker (listener);
   s->app_wrk_index = app_wrk->wrk_index;
+
+  /* sessions with ct transport get fifos later */
+  if (!session_has_transport (s))
+    return 0;
+
   sm = app_worker_get_listen_segment_manager (app_wrk, listener);
-  return app_worker_alloc_session_fifos (sm, s);
+  if (app_worker_alloc_session_fifos (sm, s))
+    return -1;
+
+  session_lookup_add_connection (session_get_transport (s),
+                                 session_handle (s));
+  return 0;
 }
 
 int
