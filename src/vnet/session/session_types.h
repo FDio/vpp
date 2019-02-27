@@ -19,7 +19,6 @@
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport_types.h>
 
-#define SESSION_LOCAL_HANDLE_PREFIX 	0x7FFFFFFF
 #define SESSION_LISTENER_PREFIX		0x5FFFFFFF
 
 #define foreach_session_endpoint_fields				\
@@ -41,6 +40,7 @@ typedef struct _session_endpoint_cfg
   u32 app_wrk_index;
   u32 opaque;
   u32 ns_index;
+  u8 original_tp;
   u8 *hostname;
 } session_endpoint_cfg_t;
 
@@ -273,111 +273,6 @@ session_parse_handle (session_handle_t handle, u32 * index,
 {
   *index = session_index_from_handle (handle);
   *thread_index = session_thread_from_handle (handle);
-}
-
-always_inline u8
-session_handle_is_local (session_handle_t handle)
-{
-  if ((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX)
-    return 1;
-  return 0;
-}
-
-typedef struct local_session_
-{
-  /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *rx_fifo;
-  svm_fifo_t *tx_fifo;
-
-  /** Type */
-  session_type_t session_type;
-
-  /** State */
-  volatile u8 session_state;
-
-  /** Session index */
-  u32 session_index;
-
-  /** Server index */
-  u32 app_wrk_index;
-
-  /** Port for connection. Overlaps thread_index/enqueue_epoch */
-  u16 port;
-
-  /** Partly overlaps enqueue_epoch */
-  u8 pad_epoch[7];
-
-  /** Segment index where fifos were allocated */
-  u32 svm_segment_index;
-
-  /** Transport listener index. Overlaps connection index */
-  u32 transport_listener_index;
-
-  union
-  {
-    u32 listener_index;
-    u32 app_index;
-  };
-
-  u32 al_index;
-
-  /** Has transport embedded when listener not purely local */
-  session_type_t listener_session_type;
-
-  /**
-   * Client data
-   */
-  u32 client_wrk_index;
-  u32 client_opaque;
-
-  u64 server_evt_q;
-  u64 client_evt_q;
-
-    CLIB_CACHE_LINE_ALIGN_MARK (pad);
-} local_session_t;
-
-always_inline u32
-local_session_id (local_session_t * ls)
-{
-  ASSERT (ls->session_index < (2 << 16));
-  u32 app_or_wrk_index;
-
-  if (ls->session_state == SESSION_STATE_LISTENING)
-    {
-      ASSERT (ls->app_index < (2 << 16));
-      app_or_wrk_index = ls->app_index;
-    }
-  else
-    {
-      ASSERT (ls->app_wrk_index < (2 << 16));
-      app_or_wrk_index = ls->app_wrk_index;
-    }
-
-  return ((u32) app_or_wrk_index << 16 | (u32) ls->session_index);
-}
-
-always_inline void
-local_session_parse_id (u32 ls_id, u32 * app_or_wrk, u32 * session_index)
-{
-  *app_or_wrk = ls_id >> 16;
-  *session_index = ls_id & 0xFF;
-}
-
-always_inline void
-local_session_parse_handle (session_handle_t handle, u32 * app_or_wrk_index,
-			    u32 * session_index)
-{
-  u32 bottom;
-  ASSERT (((handle >> 32) == SESSION_LOCAL_HANDLE_PREFIX));
-  bottom = (handle & 0xFFFFFFFF);
-  local_session_parse_id (bottom, app_or_wrk_index, session_index);
-}
-
-always_inline session_handle_t
-application_local_session_handle (local_session_t * ls)
-{
-  return ((u64) SESSION_LOCAL_HANDLE_PREFIX << 32)
-    | (u64) local_session_id (ls);
 }
 
 typedef enum
