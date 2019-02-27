@@ -29,22 +29,22 @@
 #include <plugins/ikev2/ikev2_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
-#include <ikev2/ikev2.api.h>
+#include <ikev2/ikev2_all_api.h>
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <ikev2/ikev2.api.h>
+#include <ikev2/ikev2_all_api.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <ikev2/ikev2.api.h>
+#include <ikev2/ikev2_all_api.h>
 #undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ikev2/ikev2.api.h>
+#include <ikev2/ikev2_all_api.h>
 #undef vl_api_version
 
 extern ikev2_main_t ikev2_main;
@@ -405,7 +405,7 @@ static void
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 #define vl_msg_name_crc_list
-#include <ikev2/ikev2.api.h>
+#include <ikev2/ikev2_all_api.h>
 #undef vl_msg_name_crc_list
 
 static void
