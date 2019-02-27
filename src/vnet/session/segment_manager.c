@@ -16,7 +16,6 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application.h>
-#include <vnet/session/application_local.h>
 
 segment_manager_main_t segment_manager_main;
 
@@ -380,6 +379,7 @@ void
 segment_manager_del_sessions (segment_manager_t * sm)
 {
   svm_fifo_segment_private_t *fifo_segment;
+  session_handle_t *handles = 0, *handle;
   session_t *session;
   svm_fifo_t *fifo;
 
@@ -398,16 +398,11 @@ segment_manager_del_sessions (segment_manager_t * sm)
     while (fifo)
       {
 	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
-	  {
-	    svm_fifo_t *next = fifo->next;
-	    app_worker_local_session_disconnect_w_index (sm->app_wrk_index,
-	                                                  fifo->ct_session_index);
-	    fifo = next;
-	    continue;
-	  }
-	session = session_get (fifo->master_session_index,
-	                       fifo->master_thread_index);
-	session_close (session);
+	  session = session_get (fifo->ct_session_index, 0);
+	else
+	  session = session_get (fifo->master_session_index,
+	                         fifo->master_thread_index);
+	vec_add1 (handles, session_handle (session));
 	fifo = fifo->next;
       }
 
@@ -416,6 +411,9 @@ segment_manager_del_sessions (segment_manager_t * sm)
      */
   }));
   /* *INDENT-ON* */
+
+  vec_foreach (handle, handles)
+    session_close (session_get_from_handle (*handle));
 }
 
 /**
@@ -553,9 +551,10 @@ alloc_check:
 
       if (added_a_segment)
 	{
+	  app_worker_t *app_wrk;
 	  segment_handle = segment_manager_segment_handle (sm, fifo_segment);
-	  rv = app_worker_add_segment_notify (sm->app_wrk_index,
-					      segment_handle);
+	  app_wrk = app_worker_get (sm->app_wrk_index);
+	  rv = app_worker_add_segment_notify (app_wrk, segment_handle);
 	}
       /* Drop the lock after app is notified */
       segment_manager_segment_reader_unlock (sm);
