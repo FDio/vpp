@@ -47,6 +47,11 @@ endif()
 add_vpp_library(vlib
   SOURCES
   buffer.c
+  cdb/cli.c
+  cdb/main.c
+  cdb/types.c
+  cdb/cdb.c
+  cdb/format.c
   cli.c
   counter.c
   error.c
@@ -79,6 +84,7 @@ add_vpp_library(vlib
   buffer.h
   buffer_node.h
   cli_funcs.h
+  cdb/cdb.h
   cli.h
   counter.h
   counter_types.h

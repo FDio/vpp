@@ -45,6 +45,7 @@
 
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
+#include <vlib/cdb/cdb.h>
 #include <vlib/unix/unix.h>
 #include <vpp/stats/stat_segment.h>
 
@@ -854,6 +855,18 @@ vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (vlib_buffers_configure, "buffers");
 
+/* *INDENT-OFF* */
+VLIB_REGISTER_CDB_CLASS (buffers) = {
+  .name = "buffers",
+};
+
+VLIB_REGISTER_CDB_CLASS_ITEM (buffers_per_numa) = {
+  .class = "buffers",
+  .name = "buffers-per-numa",
+  .type = "u32",
+  .description = "number of buffers per numa node",
+};
+/* *INDENT-ON* */
 
 /** @endcond */
 /*

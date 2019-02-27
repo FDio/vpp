@@ -36,6 +36,7 @@ list(APPEND VNET_SOURCES
   interface_format.c
   interface_output.c
   interface_stats.c
+  interface_cdb.c
   misc.c
 )
 
@@ -399,6 +400,7 @@ list(APPEND VNET_SOURCES
   ip/ping.c
   ip/punt_api.c
   ip/punt.c
+  ip/ip_cdb.c
 )
 
 list(APPEND VNET_HEADERS
