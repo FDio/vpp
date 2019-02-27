@@ -42,6 +42,10 @@ endif
 DPDK_PLATFORM_TARGET=$(strip $($(PLATFORM)_dpdk_target))
 ifneq ($(DPDK_PLATFORM_TARGET),)
 DPDK_MAKE_ARGS += DPDK_TARGET=$(DPDK_PLATFORM_TARGET)
+else
+ifneq (,$(findstring package,$(MAKECMDGOALS)))
+DPDK_MAKE_ARGS += DPDK_TARGET_GENERIC=y
+endif
 endif
 
 DPDK_MAKE_EXTRA_ARGS = $(strip $($(PLATFORM)_dpdk_make_extra_args))
