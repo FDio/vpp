@@ -2,6 +2,7 @@
 
 import unittest
 import random
+import six
 import socket
 from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
@@ -14,10 +15,6 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
-try:
-    text_type = unicode
-except NameError:
-    text_type = str
 
 #
 # The number of packets to sent.
@@ -85,10 +82,10 @@ class TestECMP(VppTestCase):
         :return: Random IPv4 or IPv6 address from required range.
         """
         try:
-            ip_addr = IPv4Address(text_type(ip_addr_start))
+            ip_addr = IPv4Address(six.text_type(ip_addr_start))
             ip_max_len = 32
         except (AttributeError, AddressValueError):
-            ip_addr = IPv6Address(text_type(ip_addr_start))
+            ip_addr = IPv6Address(six.text_type(ip_addr_start))
             ip_max_len = 128
 
         return str(ip_addr +

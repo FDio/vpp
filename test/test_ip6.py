@@ -27,13 +27,9 @@ from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_pg_interface import is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from ipaddress import IPv6Network, IPv4Network
+import six
 
 AF_INET6 = socket.AF_INET6
-
-try:
-    text_type = unicode
-except NameError:
-    text_type = str
 
 
 def mk_ll_addr(mac):
@@ -1065,9 +1061,9 @@ class TestIPv6RD(TestIPv6ND):
 
     def verify_prefix_info(self, reported_prefix, prefix_option):
         prefix = IPv6Network(
-            text_type(prefix_option.getfieldval("prefix") +
-                      "/" +
-                      text_type(prefix_option.getfieldval("prefixlen"))),
+            six.text_type(prefix_option.getfieldval("prefix") +
+            "/" +
+            six.text_type(prefix_option.getfieldval("prefixlen"))),
             strict=False)
         self.assert_equal(reported_prefix.prefix.network_address,
                           prefix.network_address)
