@@ -451,24 +451,25 @@ mq_send_session_accepted_cb (session_t * s)
     }
   else
     {
-      local_session_t *ls = (local_session_t *) s;
       u8 main_thread = vlib_num_workers ()? 1 : 0;
+      ct_connection_t *ct;
 
+      ct = (ct_connection_t *) session_get_transport (s);
       send_app_cut_through_registration_add (app_wrk->api_client_index,
 					     app_wrk->wrk_map_index,
-					     ls->server_evt_q,
-					     ls->client_evt_q);
+					     ct->server_evt_q,
+					     ct->client_evt_q);
 
-      listener = listen_session_get (ls->listener_index);
+      listener = listen_session_get (s->listener_index);
       al = app_listener_get (app, listener->al_index);
       mp->listener_handle = app_listener_handle (al);
       mp->is_ip4 = session_type_is_ip4 (listener->session_type);
-      mp->handle = application_local_session_handle (ls);
-      mp->port = ls->port;
+      mp->handle = session_handle (s);
+      mp->port = ct->c_rmt_port;
       vpp_queue = session_manager_get_vpp_event_queue (main_thread);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
-      mp->client_event_queue_address = ls->client_evt_q;
-      mp->server_event_queue_address = ls->server_evt_q;
+      mp->client_event_queue_address = ct->client_evt_q;
+      mp->server_event_queue_address = ct->server_evt_q;
     }
   svm_msg_q_add_and_unlock (app_mq, msg);
 
@@ -612,20 +613,21 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
   else
     {
-      local_session_t *ls = (local_session_t *) s;
       u8 main_thread = vlib_num_workers ()? 1 : 0;
+      ct_connection_t *cct;
 
+      cct = (ct_connection_t *) session_get_transport (s);
       send_app_cut_through_registration_add (app_wrk->api_client_index,
 					     app_wrk->wrk_map_index,
-					     ls->client_evt_q,
-					     ls->server_evt_q);
+					     cct->client_evt_q,
+					     cct->server_evt_q);
 
-      mp->handle = application_local_session_handle (ls);
-      mp->lcl_port = ls->port;
+      mp->handle = session_handle (s);
+      mp->lcl_port = cct->c_lcl_port;
       vpp_mq = session_manager_get_vpp_event_queue (main_thread);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
-      mp->client_event_queue_address = ls->client_evt_q;
-      mp->server_event_queue_address = ls->server_evt_q;
+      mp->client_event_queue_address = cct->client_evt_q;
+      mp->server_event_queue_address = cct->server_evt_q;
       mp->server_rx_fifo = pointer_to_uword (s->tx_fifo);
       mp->server_tx_fifo = pointer_to_uword (s->rx_fifo);
     }
@@ -1087,7 +1089,6 @@ static void
 vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
 {
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
-  local_session_t *ls;
   session_t *s;
 
   /* Server isn't interested, kill the session */
@@ -1099,21 +1100,21 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
       return;
     }
 
-  if (session_handle_is_local (mp->handle))
-    {
-      ls = app_worker_get_local_session_from_handle (mp->handle);
-      if (!ls || ls->app_wrk_index != mp->context)
-	{
-	  clib_warning ("server %u doesn't own local handle %llu",
-			mp->context, mp->handle);
-	  return;
-	}
-      if (app_worker_local_session_connect_notify (ls))
-	return;
-      ls->session_state = SESSION_STATE_READY;
-    }
-  else
-    {
+//  if (session_handle_is_local (mp->handle))
+//    {
+//      ls = app_worker_get_local_session_from_handle (mp->handle);
+//      if (!ls || ls->app_wrk_index != mp->context)
+//	{
+//	  clib_warning ("server %u doesn't own local handle %llu",
+//			mp->context, mp->handle);
+//	  return;
+//	}
+//      if (app_worker_local_session_connect_notify (ls))
+//	return;
+//      ls->session_state = SESSION_STATE_READY;
+//    }
+//  else
+//    {
       s = session_get_from_handle_if_valid (mp->handle);
       if (!s)
 	{
@@ -1126,7 +1127,10 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
 	  return;
 	}
       s->session_state = SESSION_STATE_READY;
-    }
+
+      if (!session_has_transport (s))
+	app_worker_local_session_connect_notify (s);
+//    }
 }
 
 static void
