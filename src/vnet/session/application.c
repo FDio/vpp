@@ -1058,8 +1058,8 @@ vnet_connect (vnet_connect_args_t * a)
       if (al->app_index == a->app_index)
 	goto global_scope;
 
-      server_wrk = app_listener_select_worker (al);
-      return app_worker_local_session_connect (client_wrk, server_wrk, ls,
+//      server_wrk = app_listener_select_worker (al);
+      return app_worker_local_session_connect (client_wrk, ls, &a->sep_ext,
 					       a->api_context);
     }
 
