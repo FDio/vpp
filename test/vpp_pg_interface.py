@@ -12,8 +12,13 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr, ICMPv6ND_RA, RouterAlert, \
     IPv6ExtHdrHopByHop
 from util import ppp, ppc
+from scapy.pton_ntop import inet_pton, inet_ntop
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
-from scapy.utils import inet_pton, inet_ntop
+
+# scapy 2.4.2 removed these attributes.
+
+ARP.who_has = 1
+ARP.is_at = 2
 
 
 class CaptureTimeoutError(Exception):
@@ -375,7 +380,7 @@ class VppPGInterface(VppInterface):
     def create_arp_req(self):
         """Create ARP request applicable for this interface"""
         return (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.remote_mac) /
-                ARP(op=ARP.who_has, pdst=self.local_ip4,
+                ARP(op="who-has", pdst=self.local_ip4,
                     psrc=self.remote_ip4, hwsrc=self.remote_mac))
 
     def create_ndp_req(self):

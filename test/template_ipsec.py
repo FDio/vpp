@@ -3,9 +3,9 @@ import socket
 
 from scapy.layers.inet import IP, ICMP, TCP
 from scapy.layers.ipsec import SecurityAssociation
-from scapy.layers.l2 import Ether, Raw
+from scapy.layers.l2 import Ether
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
-
+from scapy.packet import Raw
 from framework import VppTestCase, VppTestRunner
 from util import ppp
 from vpp_papi import VppEnum

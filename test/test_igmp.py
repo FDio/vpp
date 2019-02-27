@@ -3,12 +3,12 @@
 import unittest
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_igmp import *
+import vpp_igmp
+from vpp_igmp import IGMP_FILTER, IGMP_MODE, IgmpSG, IgmpRecord
 
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP
-from scapy.contrib.igmpv3 import *
-from scapy.contrib.igmp import *
+from scapy.layers.inet import IP, IPOption
+from scapy.contrib.igmpv3 import IGMPv3, IGMPv3gr, IGMPv3mq, IGMPv3mr
 from vpp_ip_route import find_mroute, VppIpTable
 
 
@@ -136,10 +136,10 @@ class TestIgmp(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        hs = VppHostState(self,
-                          IGMP_FILTER.INCLUDE,
-                          itf.sw_if_index,
-                          sg)
+        hs = vpp_igmp.VppHostState(self,
+                                   IGMP_FILTER.INCLUDE,
+                                   itf.sw_if_index,
+                                   sg)
         hs.add_vpp_config()
 
         capture = itf.get_capture(n_pkts, timeout=10)
@@ -181,8 +181,8 @@ class TestIgmp(VppTestCase):
         # search for the corresponding state created in VPP
         dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 1)
-        self.assertTrue(find_igmp_state(dump, self.pg0,
-                                        "239.1.1.1", "1.1.1.1"))
+        self.assertTrue(vpp_igmp.find_igmp_state(
+            dump, self.pg0, "239.1.1.1", "1.1.1.1"))
 
         #
         # Send a general query (to the all router's address)
@@ -297,8 +297,8 @@ class TestIgmp(VppTestCase):
         dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 3)
         for s in h2.sg.saddrs:
-            self.assertTrue(find_igmp_state(dump, self.pg0,
-                                            "239.1.1.1", s))
+            self.assertTrue(vpp_igmp.find_igmp_state(
+                dump, self.pg0, "239.1.1.1", s))
         #
         # Send a general query (to the all router's address)
         # expect VPP to respond with a membership report will all sources
@@ -438,10 +438,10 @@ class TestIgmp(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        h10 = VppHostState(self,
-                           IGMP_FILTER.INCLUDE,
-                           self.pg0.sw_if_index,
-                           IgmpSG("238.1.1.3", src_list))
+        h10 = vpp_igmp.VppHostState(self,
+                                    IGMP_FILTER.INCLUDE,
+                                    self.pg0.sw_if_index,
+                                    IgmpSG("238.1.1.3", src_list))
         h10.add_vpp_config()
 
         capture = self.pg0.get_capture(2, timeout=10)
@@ -530,26 +530,26 @@ class TestIgmp(VppTestCase):
         #
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.1", 1))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.2", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.1", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.2", 1))
         dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
-        self.assertTrue(find_igmp_state(dump, self.pg0,
-                                        "239.1.1.1", "10.1.1.1"))
-        self.assertTrue(find_igmp_state(dump, self.pg0,
-                                        "239.1.1.1", "10.1.1.2"))
+        self.assertTrue(vpp_igmp.find_igmp_state(
+            dump, self.pg0, "239.1.1.1", "10.1.1.1"))
+        self.assertTrue(vpp_igmp.find_igmp_state(
+            dump, self.pg0, "239.1.1.1", "10.1.1.2"))
 
         #
         # wait for the per-source timer to expire
         # the state should be reaped
         # VPP sends a notification that the group has been left
         #
-        self.assertTrue(wait_for_igmp_event(self, 4, self.pg0,
-                                            "239.1.1.1", "10.1.1.1", 0))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.2", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 4, self.pg0, "239.1.1.1", "10.1.1.1", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.2", 0))
         self.assertFalse(self.vapi.igmp_dump())
 
         #
@@ -560,10 +560,10 @@ class TestIgmp(VppTestCase):
         # expired in 3 seconds.
         #
         self.send(self.pg0, p_j)
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.1", 1))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.2", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.1", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.2", 1))
         dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
 
@@ -585,19 +585,19 @@ class TestIgmp(VppTestCase):
         self.sleep(2)
         dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
-        self.assertTrue(find_igmp_state(dump, self.pg0,
-                                        "239.1.1.1", "10.1.1.1"))
-        self.assertTrue(find_igmp_state(dump, self.pg0,
-                                        "239.1.1.1", "10.1.1.2"))
+        self.assertTrue(vpp_igmp.find_igmp_state(dump, self.pg0,
+                                                 "239.1.1.1", "10.1.1.1"))
+        self.assertTrue(vpp_igmp.find_igmp_state(dump, self.pg0,
+                                                 "239.1.1.1", "10.1.1.2"))
 
         #
         # wait for the per-source timer to expire
         # the state should be reaped
         #
-        self.assertTrue(wait_for_igmp_event(self, 4, self.pg0,
-                                            "239.1.1.1", "10.1.1.1", 0))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.2", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 4, self.pg0, "239.1.1.1", "10.1.1.1", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.2", 0))
         self.assertFalse(self.vapi.igmp_dump())
 
         #
@@ -606,10 +606,10 @@ class TestIgmp(VppTestCase):
         #
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.1", 1))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.2", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.1", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.2", 1))
         dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
         self.assertEqual(len(dump), 2)
 
@@ -621,10 +621,10 @@ class TestIgmp(VppTestCase):
         #
         # the group specific query drops the timeout to leave (=1) seconds
         #
-        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
-                                            "239.1.1.1", "10.1.1.1", 0))
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.1", "10.1.1.2", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 2, self.pg0, "239.1.1.1", "10.1.1.1", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.1", "10.1.1.2", 0))
         self.assertFalse(self.vapi.igmp_dump())
         self.assertFalse(self.vapi.igmp_dump())
 
@@ -641,8 +641,8 @@ class TestIgmp(VppTestCase):
 
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.2", "0.0.0.0", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.2", "0.0.0.0", 1))
 
         p_j = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
@@ -654,8 +654,8 @@ class TestIgmp(VppTestCase):
 
         self.send(self.pg0, p_j)
 
-        self.assertTrue(wait_for_igmp_event(self, 1, self.pg0,
-                                            "239.1.1.3", "0.0.0.0", 1))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 1, self.pg0, "239.1.1.3", "0.0.0.0", 1))
 
         #
         # A 'allow sourcees' for {} should be ignored as it should
@@ -672,12 +672,12 @@ class TestIgmp(VppTestCase):
         self.send(self.pg0, p_j)
 
         dump = self.vapi.igmp_dump(self.pg0.sw_if_index)
-        self.assertTrue(find_igmp_state(dump, self.pg0,
-                                        "239.1.1.2", "0.0.0.0"))
-        self.assertTrue(find_igmp_state(dump, self.pg0,
-                                        "239.1.1.3", "0.0.0.0"))
-        self.assertFalse(find_igmp_state(dump, self.pg0,
-                                         "239.1.1.4", "0.0.0.0"))
+        self.assertTrue(vpp_igmp.find_igmp_state(
+            dump, self.pg0, "239.1.1.2", "0.0.0.0"))
+        self.assertTrue(vpp_igmp.find_igmp_state(
+            dump, self.pg0, "239.1.1.3", "0.0.0.0"))
+        self.assertFalse(vpp_igmp.find_igmp_state(
+            dump, self.pg0, "239.1.1.4", "0.0.0.0"))
 
         #
         # a TO_IN({}) and IS_IN({}) are treated like a (*,G) leave
@@ -692,8 +692,8 @@ class TestIgmp(VppTestCase):
                IGMPv3gr(rtype="Change To Include Mode", maddr="239.1.1.2"))
 
         self.send(self.pg0, p_l)
-        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
-                                            "239.1.1.2", "0.0.0.0", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 2, self.pg0, "239.1.1.2", "0.0.0.0", 0))
 
         p_l = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
                IP(src=self.pg0.remote_ip4, dst="224.0.0.22", tos=0xc0, ttl=1,
@@ -705,8 +705,8 @@ class TestIgmp(VppTestCase):
 
         self.send(self.pg0, p_l)
 
-        self.assertTrue(wait_for_igmp_event(self, 2, self.pg0,
-                                            "239.1.1.3", "0.0.0.0", 0))
+        self.assertTrue(vpp_igmp.wait_for_igmp_event(
+            self, 2, self.pg0, "239.1.1.3", "0.0.0.0", 0))
         self.assertFalse(self.vapi.igmp_dump(self.pg0.sw_if_index))
 
         #

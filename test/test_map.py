@@ -7,9 +7,10 @@ from framework import VppTestCase, VppTestRunner
 from vpp_ip import *
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from ipaddress import IPv6Network, IPv4Network
-from scapy.layers.l2 import Ether, Raw
+from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP, TCP, fragment
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded
+from scapy.packet import Raw
 
 
 class TestMAP(VppTestCase):

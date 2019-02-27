@@ -1,0 +1,12 @@
+diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
+index 964c7a61..ff58708e 100644
+--- a/scapy/layers/inet6.py
++++ b/scapy/layers/inet6.py
+@@ -1070,6 +1070,7 @@ def defragment6(packets):
+     q = res[0]
+     nh = q[IPv6ExtHdrFragment].nh
+     q[IPv6ExtHdrFragment].underlayer.nh = nh
++    q[IPv6ExtHdrFragment].underlayer.plen = len(fragmentable)
+     del q[IPv6ExtHdrFragment].underlayer.payload
+     q /= conf.raw_layer(load=fragmentable)
+     del(q.plen)

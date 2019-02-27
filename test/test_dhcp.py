@@ -2,6 +2,7 @@
 
 import unittest
 import socket
+from socket import AF_INET, AF_INET6
 import struct
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
@@ -16,8 +17,7 @@ from scapy.layers.dhcp import DHCP, BOOTP, DHCPTypes
 from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
     DHCP6_RelayReply, DHCP6_Advertise, DHCP6OptRelayMsg, DHCP6OptIfaceId, \
     DHCP6OptStatusCode, DHCP6OptVSS, DHCP6OptClientLinkLayerAddr, DHCP6_Request
-from socket import AF_INET, AF_INET6
-from scapy.utils import inet_pton, inet_ntop
+from scapy.pton_ntop import inet_pton, inet_ntop
 from scapy.utils6 import in6_ptop
 from vpp_papi import mac_pton
 

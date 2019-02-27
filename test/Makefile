@@ -76,7 +76,9 @@ PYTHON_EXTRA_DEPENDS=
 endif
 
 PYTHON_DEPENDS=$(PYTHON_EXTRA_DEPENDS) -r requirements.txt
-SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
+# SCAPY_SOURCE=$(shell find $(VENV_PATH)/lib/$(PYTHON) -name site-packages)
+SCAPY_SOURCE=$(CURDIR)/run/venv/src/scapy
+
 BUILD_COV_DIR=$(TEST_DIR)/coverage
 
 PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install.done
@@ -100,7 +102,7 @@ $(PIP_INSTALL_DONE):
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@echo --- patching ---
 	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
-	for f in $(CURDIR)/patches/scapy-2.4/*.patch ; do \
+	for f in $(CURDIR)/patches/scapy-2.4.2/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
 		patch -p1 -d $(SCAPY_SOURCE) < $$f ; \
 	done
