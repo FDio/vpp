@@ -15,7 +15,6 @@
 
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
-#include <vnet/session/application_local.h>
 #include <vnet/session/session.h>
 
 /**
@@ -34,7 +33,6 @@ app_worker_alloc (application_t * app)
   app_wrk->wrk_map_index = ~0;
   app_wrk->connects_seg_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
   app_wrk->first_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
-  app_wrk->local_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
   APP_DBG ("New app %v worker %u", app_get_name (app), app_wrk->wrk_index);
   return app_wrk;
 }
@@ -112,11 +110,6 @@ app_worker_free (app_worker_t * app_wrk)
       if (!segment_manager_has_fifos (sm))
 	segment_manager_del (sm);
     }
-
-  /*
-   * Local sessions
-   */
-  app_worker_local_sessions_free (app_wrk);
 
   pool_put (app_workers, app_wrk);
   if (CLIB_DEBUG)
@@ -227,12 +220,35 @@ app_worker_start_listen (app_worker_t * app_wrk,
   return 0;
 }
 
-int
-app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
+static void
+app_worker_stop_listen_session (app_worker_t * app_wrk, session_t * ls)
 {
   session_handle_t handle;
   segment_manager_t *sm;
   uword *sm_indexp;
+
+  handle = listen_session_get_handle (ls);
+  sm_indexp = hash_get (app_wrk->listeners_table, handle);
+  if (PREDICT_FALSE (!sm_indexp))
+    return;
+
+  sm = segment_manager_get (*sm_indexp);
+  if (app_wrk->first_segment_manager == *sm_indexp)
+    {
+      /* Delete sessions but don't remove segment manager */
+      app_wrk->first_segment_manager_in_use = 0;
+      segment_manager_del_sessions (sm);
+    }
+  else
+    {
+      segment_manager_init_del (sm);
+    }
+  hash_unset (app_wrk->listeners_table, handle);
+}
+
+int
+app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
+{
   session_t *ls;
 
   if (!clib_bitmap_get (al->workers, app_wrk->wrk_map_index))
@@ -241,58 +257,13 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
   if (al->session_index != SESSION_INVALID_INDEX)
     {
       ls = listen_session_get (al->session_index);
-      handle = listen_session_get_handle (ls);
-
-      sm_indexp = hash_get (app_wrk->listeners_table, handle);
-      if (PREDICT_FALSE (!sm_indexp))
-	{
-	  clib_warning ("listener handle was removed %llu!", handle);
-	  return -1;
-	}
-
-      sm = segment_manager_get (*sm_indexp);
-      if (app_wrk->first_segment_manager == *sm_indexp)
-	{
-	  /* Delete sessions but don't remove segment manager */
-	  app_wrk->first_segment_manager_in_use = 0;
-	  segment_manager_del_sessions (sm);
-	}
-      else
-	{
-	  segment_manager_init_del (sm);
-	}
-      hash_unset (app_wrk->listeners_table, handle);
+      app_worker_stop_listen_session (app_wrk, ls);
     }
 
   if (al->local_index != SESSION_INVALID_INDEX)
     {
-      local_session_t *local;
       ls = listen_session_get (al->local_index);
-      handle = listen_session_get_handle (ls);
-
-      /* *INDENT-OFF* */
-      pool_foreach (local, app_wrk->local_sessions, ({
-        if (local->listener_index == ls->session_index)
-          app_worker_local_session_disconnect (app_wrk->wrk_index, local);
-      }));
-      /* *INDENT-ON* */
-
-      sm_indexp = hash_get (app_wrk->listeners_table, handle);
-      if (PREDICT_FALSE (!sm_indexp))
-	return -1;
-
-      sm = segment_manager_get (*sm_indexp);
-      if (app_wrk->first_segment_manager == *sm_indexp)
-	{
-	  /* Delete sessions but don't remove segment manager */
-	  app_wrk->first_segment_manager_in_use = 0;
-	  segment_manager_del_sessions (sm);
-	}
-      else
-	{
-	  segment_manager_init_del (sm);
-	}
-      hash_unset (app_wrk->listeners_table, handle);
+      app_worker_stop_listen_session (app_wrk, ls);
     }
 
   clib_bitmap_set_no_check (al->workers, app_wrk->wrk_map_index, 0);
@@ -312,8 +283,12 @@ app_worker_init_accepted (session_t * s)
   listener = listen_session_get (s->listener_index);
   app_wrk = application_listener_select_worker (listener);
   s->app_wrk_index = app_wrk->wrk_index;
+
   sm = app_worker_get_listen_segment_manager (app_wrk, listener);
-  return app_worker_alloc_session_fifos (sm, s);
+  if (app_worker_alloc_session_fifos (sm, s))
+    return -1;
+
+  return 0;
 }
 
 int
@@ -499,11 +474,18 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
  * Send an API message to the external app, to map new segment
  */
 int
-app_worker_add_segment_notify (u32 app_wrk_index, u64 segment_handle)
+app_worker_add_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
 {
-  app_worker_t *app_wrk = app_worker_get (app_wrk_index);
   application_t *app = application_get (app_wrk->app_index);
   return app->cb_fns.add_segment_callback (app_wrk->api_client_index,
+					   segment_handle);
+}
+
+int
+app_worker_del_segment_notify (app_worker_t * app_wrk, u64 segment_handle)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  return app->cb_fns.del_segment_callback (app_wrk->api_client_index,
 					   segment_handle);
 }
 
@@ -658,25 +640,6 @@ app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
 				u8 evt_type)
 {
   return app_send_evt_handler_fns[evt_type] (app, s, 1 /* lock */ );
-}
-
-segment_manager_t *
-app_worker_get_local_segment_manager (app_worker_t * app_worker)
-{
-  return segment_manager_get (app_worker->local_segment_manager);
-}
-
-segment_manager_t *
-app_worker_get_local_segment_manager_w_session (app_worker_t * app_wrk,
-						local_session_t * ls)
-{
-  session_t *listener;
-  if (application_local_session_listener_has_transport (ls))
-    {
-      listener = listen_session_get (ls->listener_index);
-      return app_worker_get_listen_segment_manager (app_wrk, listener);
-    }
-  return segment_manager_get (app_wrk->local_segment_manager);
 }
 
 u8 *

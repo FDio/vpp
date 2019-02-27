@@ -59,19 +59,6 @@ typedef struct app_worker_
   u32 first_segment_manager;
   u8 first_segment_manager_in_use;
 
-  /*
-   * Local "cut through" connections specific
-   */
-
-  /** Segment manager used for incoming "cut through" connects */
-  u32 local_segment_manager;
-
-  /** Pool of local sessions the app owns (as a server) */
-  local_session_t *local_sessions;
-
-  /** Hash table of the app's local connects */
-  uword *local_connects;
-
   /** API index for the worker. Needed for multi-process apps */
   u32 api_client_index;
 
@@ -243,7 +230,10 @@ segment_manager_t *app_worker_get_connect_segment_manager (app_worker_t *);
 segment_manager_t
   * app_worker_get_or_alloc_connect_segment_manager (app_worker_t *);
 int app_worker_alloc_connects_segment_manager (app_worker_t * app);
-int app_worker_add_segment_notify (u32 app_or_wrk, u64 segment_handle);
+int app_worker_add_segment_notify (app_worker_t * app_wrk,
+				   u64 segment_handle);
+int app_worker_del_segment_notify (app_worker_t * app_wrk,
+				   u64 segment_handle);
 u32 app_worker_n_listeners (app_worker_t * app);
 session_t *app_worker_first_listener (app_worker_t * app,
 				      u8 fib_proto, u8 transport_proto);
@@ -257,12 +247,6 @@ u8 *format_app_worker (u8 * s, va_list * args);
 u8 *format_app_worker_listener (u8 * s, va_list * args);
 void app_worker_format_connects (app_worker_t * app_wrk, int verbose);
 int vnet_app_worker_add_del (vnet_app_worker_add_del_args_t * a);
-segment_manager_t *app_worker_get_local_segment_manager (app_worker_t *
-							 app_worker);
-segment_manager_t
-  * app_worker_get_local_segment_manager_w_session (app_worker_t * app_wrk,
-						    local_session_t * ls);
-
 
 uword unformat_application_proto (unformat_input_t * input, va_list * args);
 
