@@ -33,9 +33,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
       set(CPU_PART ${value})
     endif()
   endforeach()
+  if(DEFINED VPP_LOG2_CACHE_LINE_SIZE)
+    message(STATUS "Generic image for all aarch64 variants - set cache-line size to 2**${VPP_LOG2_CACHE_LINE_SIZE}")
   # Implementer 0x43 - Cavium
   #  Part 0x0af - ThunderX2 is 64B, rest all are 128B
-  if (${CPU_IMPLEMENTER} STREQUAL "0x43")
+  elseif (${CPU_IMPLEMENTER} STREQUAL "0x43")
     if (${CPU_PART} STREQUAL "0x0af")
       set(VPP_LOG2_CACHE_LINE_SIZE 6)
     else()
