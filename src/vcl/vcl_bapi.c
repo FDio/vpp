@@ -333,7 +333,7 @@ vl_api_bind_sock_reply_t_handler (vl_api_bind_sock_reply_t * mp)
 {
   /* Expecting a similar message on mq. So ignore this */
   VDBG (0, "bapi msg vpp handle 0x%llx, sid %u: bind retval: %u!",
-	getpid (), mp->handle, mp->context, mp->retval);
+	mp->handle, mp->context, mp->retval);
 }
 
 static void
