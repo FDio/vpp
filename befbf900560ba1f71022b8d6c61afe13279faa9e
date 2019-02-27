@@ -16,6 +16,24 @@
       "revId": "befbf900560ba1f71022b8d6c61afe13279faa9e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "95ceb194_96e14723",
+        "filename": "test/test_punt.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-02-27T12:32:47Z",
+      "side": 1,
+      "message": "If all they do is call the super, why have them?",
+      "parentUuid": "9e58bdc9_9a0bdeb1",
+      "revId": "befbf900560ba1f71022b8d6c61afe13279faa9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
