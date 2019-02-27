@@ -148,61 +148,6 @@ nsh_md2_unregister_option (u16 class,
 }
 
 /**
- * @brief Naming for NSH tunnel
- *
- * @param *s formatting string
- * @param *args
- *
- * @return *s formatted string
- *
- */
-static u8 *
-format_nsh_name (u8 * s, va_list * args)
-{
-  u32 dev_instance = va_arg (*args, u32);
-  return format (s, "nsh_tunnel%d", dev_instance);
-}
-
-/**
- * @brief CLI function for NSH admin up/down
- *
- * @param *vnm
- * @param nsh_hw_if
- * @param flag
- *
- * @return *rc
- *
- */
-static clib_error_t *
-nsh_interface_admin_up_down (vnet_main_t * vnm, u32 nsh_hw_if, u32 flags)
-{
-  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-    vnet_hw_interface_set_flags (vnm, nsh_hw_if,
-				 VNET_HW_INTERFACE_FLAG_LINK_UP);
-  else
-    vnet_hw_interface_set_flags (vnm, nsh_hw_if, 0);
-
-  return 0;
-}
-
-static uword
-dummy_interface_tx (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  clib_warning ("you shouldn't be here, leaking buffers...");
-  return frame->n_vectors;
-}
-
-/* *INDENT-OFF* */
-VNET_DEVICE_CLASS (nsh_device_class, static) = {
-  .name = "NSH",
-  .format_device_name = format_nsh_name,
-  .tx_function = dummy_interface_tx,
-  .admin_up_down_function = nsh_interface_admin_up_down,
-};
-/* *INDENT-ON* */
-
-/**
  * @brief Formatting function for tracing VXLAN GPE with length
  *
  * @param *s

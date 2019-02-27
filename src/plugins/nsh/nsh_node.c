@@ -835,8 +835,8 @@ nsh_input_map (vlib_main_t * vm,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_INPUT_TYPE);
 }
@@ -852,8 +852,8 @@ VLIB_NODE_FN (nsh_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_proxy) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			  vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_proxy_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_PROXY_TYPE);
 }
@@ -869,8 +869,9 @@ VLIB_NODE_FN (nsh_proxy) (vlib_main_t * vm, vlib_node_runtime_t * node,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_classifier) (vlib_main_t * vm, vlib_node_runtime_t * node,
-			       vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_classifier_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_CLASSIFIER_TYPE);
 }
@@ -886,9 +887,9 @@ VLIB_NODE_FN (nsh_classifier) (vlib_main_t * vm, vlib_node_runtime_t * node,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_aware_vnf_proxy) (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * from_frame)
+VLIB_NODE_FN (nsh_aware_vnf_proxy_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * from_frame)
 {
   return nsh_input_map (vm, node, from_frame, NSH_AWARE_VNF_PROXY_TYPE);
 }
