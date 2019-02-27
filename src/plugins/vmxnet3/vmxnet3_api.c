@@ -112,8 +112,8 @@ reply:
 
 static void
 send_vmxnet3_details (vl_api_registration_t * reg, vmxnet3_device_t * vd,
-		      vmxnet3_rxq_t * rxq, vnet_sw_interface_t * swif,
-		      u8 * interface_name, u32 context)
+		      vnet_sw_interface_t * swif, u8 * interface_name,
+		      u32 context)
 {
   vl_api_vmxnet3_details_t *mp;
   vnet_main_t *vnm = vnet_get_main ();
@@ -141,15 +141,23 @@ send_vmxnet3_details (vl_api_registration_t * reg, vmxnet3_device_t * vd,
   mp->pci_addr = ntohl (vd->pci_addr.as_u32);
   mp->admin_up_down = (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
 
-  mp->rx_qsize = htons (rxq->size);
-  mp->rx_next = htons (rxq->rx_comp_ring.next);
-  for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
-    {
-      ring = &rxq->rx_ring[rid];
-      mp->rx_fill[rid] = htons (ring->fill);
-      mp->rx_produce[rid] = htons (ring->produce);
-      mp->rx_consume[rid] = htons (ring->consume);
-    }
+  mp->rx_count = clib_min (vec_len (vd->rxqs), VMXNET3_RXQ_MAX);
+  vec_foreach_index (qid, vd->rxqs)
+  {
+    vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
+    vl_api_vmxnet3_rx_list_t *rx_list = &mp->rx_list[qid];
+
+    ASSERT (qid < VMXNET3_RXQ_MAX);
+    rx_list->rx_qsize = htons (rxq->size);
+    rx_list->rx_next = htons (rxq->rx_comp_ring.next);
+    for (rid = 0; rid < VMXNET3_RX_RING_SIZE; rid++)
+      {
+	ring = &rxq->rx_ring[rid];
+	rx_list->rx_fill[rid] = htons (ring->fill);
+	rx_list->rx_produce[rid] = htons (ring->produce);
+	rx_list->rx_consume[rid] = htons (ring->consume);
+      }
+  }
 
   mp->tx_count = clib_min (vec_len (vd->txqs), VMXNET3_TXQ_MAX);
   vec_foreach_index (qid, vd->txqs)
@@ -180,8 +188,6 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
   vmxnet3_device_t *vd;
   u8 *if_name = 0;
   vl_api_registration_t *reg;
-  vmxnet3_rxq_t *rxq;
-  u16 qid = 0;
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
@@ -193,8 +199,7 @@ vl_api_vmxnet3_dump_t_handler (vl_api_vmxnet3_dump_t * mp)
       swif = vnet_get_sw_interface (vnm, vd->sw_if_index);
       if_name = format (if_name, "%U%c", format_vnet_sw_interface_name, vnm,
 			swif, 0);
-      rxq = vec_elt_at_index (vd->rxqs, qid);
-      send_vmxnet3_details (reg, vd, rxq, swif, if_name, mp->context);
+      send_vmxnet3_details (reg, vd, swif, if_name, mp->context);
       _vec_len (if_name) = 0;
     }));
   /* *INDENT-ON* */

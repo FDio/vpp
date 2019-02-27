@@ -70,7 +70,25 @@ enum
 #undef _
 };
 
+#define foreach_vmxnet3_rss_hash_type \
+  _(0, IPV4, "ipv4")	   \
+  _(1, TCP_IPV4, "tcp ipv4") \
+  _(2, IPV6, "ipv6") \
+  _(3, TCP_IPV6, "tcp ipv6")
+
+enum
+{
+#define _(a, b, c) VMXNET3_RSS_HASH_TYPE_##b = (1 << a),
+  foreach_vmxnet3_rss_hash_type
+#undef _
+};
+
+#define VMXNET3_RSS_HASH_FUNC_TOEPLITZ	1
+#define VMXNET3_RSS_MAX_KEY_SZ		40
+#define VMXNET3_RSS_MAX_IND_TABLE_SZ	128
+
 #define VMXNET3_TXQ_MAX 8
+#define VMXNET3_RXQ_MAX 16
 #define VMXNET3_TX_START(vd) ((vd)->queues)
 #define VMXNET3_RX_START(vd) \
   ((vd)->queues + (vd)->num_tx_queues * sizeof (vmxnet3_tx_queue))
@@ -464,6 +482,16 @@ typedef CLIB_PACKED (struct
 		     u32 flags[2];
 		     }) vmxnet3_tx_desc;
 
+typedef CLIB_PACKED (struct
+		     {
+		     u16 hash_type;
+		     u16 hash_func;
+		     u16 hash_key_sz;
+		     u16 ind_table_sz;
+		     u8 hash_key[VMXNET3_RSS_MAX_KEY_SZ];
+		     u8 ind_table[VMXNET3_RSS_MAX_IND_TABLE_SZ];
+		     }) vmxnet3_rss_shared;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -487,6 +515,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u16 size;
   u8 int_mode;
+  u8 buffer_pool_index;
   vmxnet3_rx_ring rx_ring[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_desc *rx_desc[VMXNET3_RX_RING_SIZE];
   vmxnet3_rx_comp *rx_comp;
@@ -547,12 +576,11 @@ typedef struct
   u8 version;
   u8 mac_addr[6];
 
-  /* error */
   clib_error_t *error;
 
   vmxnet3_shared *driver_shared;
   void *queues;
-
+  vmxnet3_rss_shared *rss;
   u32 link_speed;
   u8 lro_enable;
   vmxnet3_tx_stats *tx_stats;
@@ -574,6 +602,7 @@ typedef struct
   vlib_pci_addr_t addr;
   u32 enable_elog;
   u16 rxq_size;
+  u16 rxq_num;
   u16 txq_size;
   u16 txq_num;
   /* return */
@@ -670,8 +699,9 @@ vmxnet3_rxq_refill_ring0 (vlib_main_t * vm, vmxnet3_device_t * vd,
     return 0;
 
   n_alloc =
-    vlib_buffer_alloc_to_ring (vm, ring->bufs, ring->produce, rxq->size,
-			       n_refill);
+    vlib_buffer_alloc_to_ring_from_pool (vm, ring->bufs, ring->produce,
+					 rxq->size, n_refill,
+					 rxq->buffer_pool_index);
   if (PREDICT_FALSE (n_alloc != n_refill))
     {
       if (n_alloc)
@@ -715,8 +745,9 @@ vmxnet3_rxq_refill_ring1 (vlib_main_t * vm, vmxnet3_device_t * vd,
     return 0;
 
   n_alloc =
-    vlib_buffer_alloc_to_ring (vm, ring->bufs, ring->produce, rxq->size,
-			       n_refill);
+    vlib_buffer_alloc_to_ring_from_pool (vm, ring->bufs, ring->produce,
+					 rxq->size, n_refill,
+					 rxq->buffer_pool_index);
   if (PREDICT_FALSE (n_alloc != n_refill))
     {
       if (n_alloc)

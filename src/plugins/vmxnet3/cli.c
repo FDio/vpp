@@ -50,6 +50,8 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "num-tx-queues %u", &args.txq_num))
 	;
+      else if (unformat (line_input, "num-rx-queues %u", &args.rxq_num))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -67,7 +69,7 @@ VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
   .path = "create interface vmxnet3",
   .short_help = "create interface vmxnet3 <pci-address>"
                 "[rx-queue-size <size>] [tx-queue-size <size>]"
-                "[num-tx-queues <number>]",
+                "[num-tx-queues <number>] [num-rx-queues <number>]",
   .function = vmxnet3_create_command_fn,
 };
 /* *INDENT-ON* */

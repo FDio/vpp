@@ -25,6 +25,7 @@ option version = "1.0.0";
 		      ddddddddddddddddbbbbbbbbsssssfff
     @param enable_elog - turn on elog (optional - default is off)
     @param rxq_size - receive queue size (optional - default is 1024)
+    @param rxq_num - number of receive queues (optional - default is 1)
     @param txq_size - transmit queue size (optional - default is 1024)
     @param txq_num - number of transmit queues (optional - default is 1)
 */
@@ -37,6 +38,7 @@ define vmxnet3_create
   u32 pci_addr;
   i32 enable_elog;
   u16 rxq_size;
+  u16 rxq_num;
   u16 txq_size;
   u16 txq_num;
 };
@@ -83,6 +85,23 @@ typeonly define vmxnet3_tx_list
   u16 tx_consume;
 };
 
+/** \brief vmxnet3_rx_list structure
+    @param rx_qsize - rx queue size
+    @param rx_fill - rx fill count
+    @param rx_next - rx next index
+    @param rx_produce - rx produce index
+    @param rx_consume - rx consume index
+*/
+
+typeonly define vmxnet3_rx_list
+{
+  u16 rx_qsize;
+  u16 rx_fill[2];
+  u16 rx_next;
+  u16 rx_produce[2];
+  u16 rx_consume[2];
+};
+
 /** \brief Memory interface details structure
     @param context - sender context, to match reply w/ request (memif_dump)
     @param sw_if_index - index of the interface
@@ -91,12 +110,9 @@ typeonly define vmxnet3_tx_list
     @param pci_addr - pci address of the interface
     @param version - vmxnet3 hardware version
     @param admin_up_down - interface administrative status
-    @param rx_qsize - rx queue size
-    @param rx_fill - rx fill count
-    @param rx_next - rx next index
-    @param rx_produce - rx produce index
-    @param rx_consume - rx consume index
-    @param tx_count - number of of elements in tx_list
+    @param rx_count - number of elements in rx_list
+    @param rx_list - list of vmxnet3_rx_list
+    @param tx_count - number of elements in tx_list
     @param tx_list - list of vmnxnet3_tx_list
 */
 define vmxnet3_details
@@ -110,11 +126,8 @@ define vmxnet3_details
   u8 version;
   u8 admin_up_down;
 
-  u16 rx_qsize;
-  u16 rx_fill[2];
-  u16 rx_next;
-  u16 rx_produce[2];
-  u16 rx_consume[2];
+  u8 rx_count;
+  vl_api_vmxnet3_rx_list_t rx_list[16];
 
   u8 tx_count;
   vl_api_vmxnet3_tx_list_t tx_list[8];

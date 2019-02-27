@@ -206,6 +206,7 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
       }
     rx->cfg.comp_address = vmxnet3_dma_addr (vm, vd, rxq->rx_comp);
     rx->cfg.num_comp = rxq->size;
+    rx->cfg.intr_index = qid;
     rx++;
   }
 
@@ -221,6 +222,13 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
   shared->misc.upt_features = VMXNET3_F_RXCSUM;
   if (vd->lro_enable)
     shared->misc.upt_features |= VMXNET3_F_LRO;
+  if (vd->num_rx_queues > 1)
+    {
+      shared->misc.upt_features |= VMXNET3_F_RSS;
+      shared->rss.version = 1;
+      shared->rss.address = vmxnet3_dma_addr (vm, vd, vd->rss);
+      shared->rss.length = sizeof (*vd->rss);
+    }
   shared->misc.max_num_rx_sg = 0;
   shared->misc.upt_version_support = VMXNET3_UPT_VERSION_SELECT;
   shared->misc.queue_desc_address = vmxnet3_dma_addr (vm, vd, vd->queues);
@@ -230,7 +238,7 @@ vmxnet3_provision_driver_shared (vlib_main_t * vm, vmxnet3_device_t * vd)
   shared->misc.num_tx_queues = vd->num_tx_queues;
   shared->misc.num_rx_queues = vd->num_rx_queues;
   shared->interrupt.num_intrs = vd->num_intrs;
-  shared->interrupt.event_intr_index = 1;
+  shared->interrupt.event_intr_index = vd->num_rx_queues;
   shared->interrupt.control = VMXNET3_IC_DISABLE_ALL;
   shared->rx_filter.mode = VMXNET3_RXMODE_UCAST | VMXNET3_RXMODE_BCAST |
     VMXNET3_RXMODE_ALL_MULTI | VMXNET3_RXMODE_PROMISC;
@@ -359,6 +367,40 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   return 0;
 }
 
+static const u8 vmxnet3_rss_key[VMXNET3_RSS_MAX_KEY_SZ] = {
+  0x3b, 0x56, 0xd1, 0x56, 0x13, 0x4a, 0xe7, 0xac,
+  0xe8, 0x79, 0x09, 0x75, 0xe8, 0x65, 0x79, 0x28,
+  0x35, 0x12, 0xb9, 0x56, 0x7c, 0x76, 0x4b, 0x70,
+  0xd8, 0x56, 0xa3, 0x18, 0x9b, 0x0a, 0xee, 0xf3,
+  0x96, 0xa6, 0x9f, 0x8f, 0x9e, 0x8c, 0x90, 0xc9,
+};
+
+static clib_error_t *
+vmxnet3_rss_init (vlib_main_t * vm, vmxnet3_device_t * vd)
+{
+  vmxnet3_rss_shared *rss;
+  size_t size = sizeof (*rss);
+  u8 i;
+
+  vd->rss = vlib_physmem_alloc_aligned_on_numa (vm, size, 512, vd->numa_node);
+  if (vd->rss == 0)
+    return vlib_physmem_last_error (vm);
+
+  clib_memset (vd->rss, 0, size);
+  rss = vd->rss;
+  rss->hash_type =
+    VMXNET3_RSS_HASH_TYPE_IPV4 | VMXNET3_RSS_HASH_TYPE_TCP_IPV4 |
+    VMXNET3_RSS_HASH_TYPE_IPV6 | VMXNET3_RSS_HASH_TYPE_TCP_IPV6;
+  rss->hash_func = VMXNET3_RSS_HASH_FUNC_TOEPLITZ;
+  rss->hash_key_sz = VMXNET3_RSS_MAX_KEY_SZ;
+  rss->ind_table_sz = VMXNET3_RSS_MAX_IND_TABLE_SZ;
+  clib_memcpy (rss->hash_key, vmxnet3_rss_key, VMXNET3_RSS_MAX_KEY_SZ);
+  for (i = 0; i < rss->ind_table_sz; i++)
+    rss->ind_table[i] = i % vd->num_rx_queues;
+
+  return 0;
+}
+
 static clib_error_t *
 vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 		     vmxnet3_create_if_args_t * args)
@@ -444,9 +486,19 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
 
   clib_memset (vd->queues, 0, size);
 
-  error = vmxnet3_rxq_init (vm, vd, 0, args->rxq_size);
-  if (error)
-    return error;
+  if (vd->num_rx_queues > 1)
+    {
+      error = vmxnet3_rss_init (vm, vd);
+      if (error)
+	return error;
+    }
+
+  for (i = 0; i < vd->num_rx_queues; i++)
+    {
+      error = vmxnet3_rxq_init (vm, vd, i, args->rxq_size);
+      if (error)
+	return error;
+    }
 
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
@@ -471,25 +523,11 @@ vmxnet3_device_init (vlib_main_t * vm, vmxnet3_device_t * vd,
       return error;
     }
 
-  /* Disable interrupts */
-  vmxnet3_disable_interrupt (vd);
-
-  vec_foreach_index (i, vd->rxqs)
-  {
-    vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, i);
-
-    vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
-    vmxnet3_rxq_refill_ring1 (vm, vd, rxq);
-  }
-  vd->flags |= VMXNET3_DEVICE_F_INITIALIZED;
-
-  vmxnet3_enable_interrupt (vd);
-
   return error;
 }
 
 static void
-vmxnet3_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
+vmxnet3_rxq_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
@@ -502,7 +540,8 @@ vmxnet3_irq_0_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
 }
 
 static void
-vmxnet3_irq_1_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h, u16 line)
+vmxnet3_event_irq_handler (vlib_main_t * vm, vlib_pci_dev_handle_t h,
+			   u16 line)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
@@ -539,11 +578,19 @@ vmxnet3_queue_size_valid (u16 qsz)
 }
 
 static u8
-vmxnet3_queue_num_valid (u16 num)
+vmxnet3_tx_queue_num_valid (u16 num)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   if ((num > VMXNET3_TXQ_MAX) || (num > tm->n_vlib_mains))
+    return 0;
+  return 1;
+}
+
+static u8
+vmxnet3_rx_queue_num_valid (u16 num)
+{
+  if (num > VMXNET3_RXQ_MAX)
     return 0;
   return 1;
 }
@@ -556,19 +603,35 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
   vmxnet3_device_t *vd;
   vlib_pci_dev_handle_t h;
   clib_error_t *error = 0;
+  u16 qid;
+  u32 num_intr;
 
   if (args->txq_num == 0)
     args->txq_num = 1;
-  if (!vmxnet3_queue_num_valid (args->txq_num))
+  if (args->rxq_num == 0)
+    args->rxq_num = 1;
+  if (!vmxnet3_rx_queue_num_valid (args->rxq_num))
+    {
+      args->rv = VNET_API_ERROR_INVALID_VALUE;
+      args->error =
+	clib_error_return (error, "number of rx queues must be <= %u",
+			   VMXNET3_RXQ_MAX);
+      vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
+		format_vlib_pci_addr, &args->addr,
+		"number of rx queues must be <= %u", VMXNET3_RXQ_MAX);
+      return;
+    }
+
+  if (!vmxnet3_tx_queue_num_valid (args->txq_num))
     {
       args->rv = VNET_API_ERROR_INVALID_VALUE;
       args->error =
 	clib_error_return (error,
-			   "number of queues must be <= %u and <= number of "
+			   "number of tx queues must be <= %u and <= number of "
 			   "CPU's assigned to VPP", VMXNET3_TXQ_MAX);
       vlib_log (VLIB_LOG_LEVEL_ERR, vmxm->log_default, "%U: %s",
 		format_vlib_pci_addr, &args->addr,
-		"number of queues must be <= %u and <= number of "
+		"number of tx queues must be <= %u and <= number of "
 		"CPU's assigned to VPP", VMXNET3_TXQ_MAX);
       return;
     }
@@ -607,6 +670,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 
   pool_get (vmxm->devices, vd);
   vd->num_tx_queues = args->txq_num;
+  vd->num_rx_queues = args->rxq_num;
   vd->dev_instance = vd - vmxm->devices;
   vd->per_interface_next_index = ~0;
   vd->pci_addr = args->addr;
@@ -634,8 +698,7 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
    */
   vd->pci_dev_handle = h;
   vd->numa_node = vlib_pci_get_numa_node (vm, h);
-  vd->num_rx_queues = 1;
-  vd->num_intrs = 2;
+  vd->num_intrs = vd->num_rx_queues + 1;	// +1 for the event interrupt
 
   vlib_pci_set_private_data (vm, h, vd->dev_instance);
 
@@ -657,23 +720,31 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
       goto error;
     }
 
-  if ((error = vlib_pci_register_msix_handler (vm, h, 0, 1,
-					       &vmxnet3_irq_0_handler)))
+  num_intr = vlib_pci_get_num_msix_interrupts (vm, h);
+  if (num_intr < vd->num_rx_queues + 1)
+    {
+      vmxnet3_log_error (vd,
+			 "No sufficient interrupt lines (%u) for rx queues",
+			 num_intr);
+      goto error;
+    }
+  if ((error = vlib_pci_register_msix_handler (vm, h, 0, vd->num_rx_queues,
+					       &vmxnet3_rxq_irq_handler)))
     {
       vmxnet3_log_error (vd,
 			 "error encountered on pci register msix handler 0");
       goto error;
     }
 
-  if ((error = vlib_pci_register_msix_handler (vm, h, 1, 1,
-					       &vmxnet3_irq_1_handler)))
+  if ((error = vlib_pci_register_msix_handler (vm, h, vd->num_rx_queues, 1,
+					       &vmxnet3_event_irq_handler)))
     {
       vmxnet3_log_error (vd,
 			 "error encountered on pci register msix handler 1");
       goto error;
     }
 
-  if ((error = vlib_pci_enable_msix_irq (vm, h, 0, 2)))
+  if ((error = vlib_pci_enable_msix_irq (vm, h, 0, vd->num_rx_queues + 1)))
     {
       vmxnet3_log_error (vd, "error encountered on pci enable msix irq");
       goto error;
@@ -714,7 +785,26 @@ vmxnet3_create_if (vlib_main_t * vm, vmxnet3_create_if_args_t * args)
 
   vnet_hw_interface_set_input_node (vnm, vd->hw_if_index,
 				    vmxnet3_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, vd->hw_if_index, 0, ~0);
+  /* Disable interrupts */
+  vmxnet3_disable_interrupt (vd);
+  vec_foreach_index (qid, vd->rxqs)
+  {
+    vmxnet3_rxq_t *rxq = vec_elt_at_index (vd->rxqs, qid);
+    u32 thread_index;
+    u32 numa_node;
+
+    vnet_hw_interface_assign_rx_thread (vnm, vd->hw_if_index, qid, ~0);
+    thread_index = vnet_get_device_input_thread_index (vnm, vd->hw_if_index,
+						       qid);
+    numa_node = vlib_mains[thread_index]->numa_node;
+    rxq->buffer_pool_index =
+      vlib_buffer_pool_get_default_for_numa (vm, numa_node);
+    vmxnet3_rxq_refill_ring0 (vm, vd, rxq);
+    vmxnet3_rxq_refill_ring1 (vm, vd, rxq);
+  }
+  vd->flags |= VMXNET3_DEVICE_F_INITIALIZED;
+  vmxnet3_enable_interrupt (vd);
+
   vnet_hw_interface_set_link_speed (vnm, vd->hw_if_index,
 				    vd->link_speed * 1000);
   if (vd->flags & VMXNET3_DEVICE_F_LINK_UP)
@@ -736,7 +826,7 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   vnet_main_t *vnm = vnet_get_main ();
   vmxnet3_main_t *vmxm = &vmxnet3_main;
   u32 i, bi;
-  u16 desc_idx;
+  u16 desc_idx, qid;
 
   /* Quiesce the device */
   vmxnet3_reg_write (vd, 1, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
@@ -747,7 +837,8 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
   if (vd->hw_if_index)
     {
       vnet_hw_interface_set_flags (vnm, vd->hw_if_index, 0);
-      vnet_hw_interface_unassign_rx_thread (vnm, vd->hw_if_index, 0);
+      vec_foreach_index (qid, vd->rxqs)
+	vnet_hw_interface_unassign_rx_thread (vnm, vd->hw_if_index, qid);
       ethernet_delete_interface (vnm, vd->hw_if_index);
     }
 
@@ -804,6 +895,7 @@ vmxnet3_delete_if (vlib_main_t * vm, vmxnet3_device_t * vd)
 
   vlib_physmem_free (vm, vd->driver_shared);
   vlib_physmem_free (vm, vd->queues);
+  vlib_physmem_free (vm, vd->rss);
 
   clib_error_free (vd->error);
   clib_memset (vd, 0, sizeof (*vd));

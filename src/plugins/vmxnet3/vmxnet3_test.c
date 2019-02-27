@@ -248,21 +248,27 @@ vl_api_vmxnet3_details_t_handler (vl_api_vmxnet3_details_t * mp)
   fformat (vam->ofp, "%s: sw_if_index %u mac %U\n"
 	   "   version: %u\n"
 	   "   PCI Address: %U\n"
-	   "   state %s\n"
-	   "   RX Queue 0\n"
-	   "     RX completion next index %u\n"
-	   "     ring 0 size %u fill %u consume %u produce %u\n"
-	   "     ring 1 size %u fill %u consume %u produce %u\n",
+	   "   state %s\n",
 	   mp->if_name, ntohl (mp->sw_if_index), format_ethernet_address,
 	   mp->hw_addr, mp->version,
-	   format_pci_addr, &pci_addr,
-	   mp->admin_up_down ? "up" : "down",
-	   ntohs (mp->rx_next),
-	   ntohs (mp->rx_qsize), ntohs (mp->rx_fill[0]),
-	   ntohs (mp->rx_consume[0]),
-	   ntohs (mp->rx_produce[0]),
-	   ntohs (mp->rx_qsize), ntohs (mp->rx_fill[1]),
-	   ntohs (mp->rx_consume[1]), ntohs (mp->rx_produce[1]));
+	   format_pci_addr, &pci_addr, mp->admin_up_down ? "up" : "down");
+  for (qid = 0; qid < mp->rx_count; qid++)
+    {
+      vl_api_vmxnet3_rx_list_t *rx_list = &mp->rx_list[qid];
+      fformat (vam->ofp,
+	       "   RX Queue %u\n"
+	       "     RX completion next index %u\n"
+	       "     ring 0 size %u fill %u consume %u produce %u\n"
+	       "     ring 1 size %u fill %u consume %u produce %u\n",
+	       qid,
+	       ntohs (rx_list->rx_next),
+	       ntohs (rx_list->rx_qsize), ntohs (rx_list->rx_fill[0]),
+	       ntohs (rx_list->rx_consume[0]),
+	       ntohs (rx_list->rx_produce[0]),
+	       ntohs (rx_list->rx_qsize), ntohs (rx_list->rx_fill[1]),
+	       ntohs (rx_list->rx_consume[1]),
+	       ntohs (rx_list->rx_produce[1]));
+    }
   for (qid = 0; qid < mp->tx_count; qid++)
     {
       vl_api_vmxnet3_tx_list_t *tx_list = &mp->tx_list[qid];
