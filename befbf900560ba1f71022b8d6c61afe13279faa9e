@@ -34,6 +34,24 @@
       "revId": "befbf900560ba1f71022b8d6c61afe13279faa9e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e3fbfca4_f5205986",
+        "filename": "test/test_punt.py",
+        "patchSetId": 11
+      },
+      "lineNbr": 656,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-02-27T13:10:42Z",
+      "side": 1,
+      "message": "Without them, the corresponding VppTestCase classmethods are not called.\nhttps://docs.python.org/2/library/unittest.html#setupclass-and-teardownclass",
+      "parentUuid": "95ceb194_96e14723",
+      "revId": "befbf900560ba1f71022b8d6c61afe13279faa9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
