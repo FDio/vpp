@@ -323,7 +323,7 @@ typedef enum nsh_midchain_next_t_
     NSH_MIDCHAIN_NEXT_DROP,
 } nsh_midchain_next_t;
 
-VLIB_NODE_FN (nsh_eth_output) (vlib_main_t * vm,
+VLIB_NODE_FN (nsh_eth_output_node) (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * from_frame)
 {
@@ -344,7 +344,7 @@ VLIB_REGISTER_NODE (nsh_eth_output_node) = {
   .format_trace = format_nsh_output_trace,
 };
 
-VLIB_NODE_FN (nsh_midchain) (vlib_main_t * vm,
+VLIB_NODE_FN (nsh_midchain_node) (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
@@ -415,7 +415,7 @@ typedef struct nsh_adj_incomplete_trace_t_
  * We pay a cost for this 'routing' node, but an incomplete adj is the
  * exception case.
  */
-VLIB_NODE_FN (nsh_adj_incomplete) (vlib_main_t * vm,
+VLIB_NODE_FN (nsh_adj_incomplete_node) (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
