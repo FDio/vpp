@@ -12,9 +12,10 @@
 # limitations under the License.
 
 DPDK_PKTMBUF_HEADROOM        ?= 128
-DPDK_CACHE_LINE_SIZE         ?= 64
+DPDK_CACHE_LINE_SIZE         ?= 128
 DPDK_DOWNLOAD_DIR            ?= $(DL_CACHE_DIR)
 DPDK_DEBUG                   ?= n
+DPDK_TARGET_GENERIC          ?= n
 DPDK_MLX4_PMD                ?= n
 DPDK_MLX5_PMD                ?= n
 DPDK_MLX_IBVERBS_DLOPEN      ?= n
@@ -69,6 +70,9 @@ DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= armv8a
 DPDK_TUNE             ?= generic
 
+# assign aarch64 variant specific options
+ifeq (n, $(DPDK_TARGET_GENERIC))
+
 CPU_IMP_ARM                     = 0x41
 CPU_IMP_CAVIUM                  = 0x43
 
@@ -111,6 +115,9 @@ DPDK_CACHE_LINE_SIZE := 128
 else
 $(warning Unknown Cavium CPU)
 endif
+endif
+
+# finish of assigning aarch64 variant specific options
 endif
 
 ##############################################################################
