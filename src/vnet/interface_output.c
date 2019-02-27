@@ -383,7 +383,8 @@ tso_segment_buffer (vlib_main_t * vm, vnet_interface_per_thread_data_t * ptd,
       int nloops = 2000;
       while (total_src_left)
 	{
-	  ASSERT (nloops-- > 0);
+	  if (nloops-- <= 0)
+	    clib_panic ("infinite loop detected");
 	  u16 bytes_to_copy = clib_min (src_left, dst_left);
 
 	  clib_memcpy_fast (dst_ptr, src_ptr, bytes_to_copy);
