@@ -135,6 +135,9 @@ session_program_transport_close (session_t * s)
     }
   else
     session_send_ctrl_evt_to_thread (s, FIFO_EVENT_DISCONNECT);
+
+  if (!session_has_transport (s))
+    session_flush_frames_main_thread (vlib_get_main ());
 }
 
 session_t *
