@@ -157,7 +157,6 @@ app_listener_alloc_and_init (application_t * app,
 {
   app_listener_t *app_listener;
   transport_connection_t *tc;
-  local_session_t *ll = 0;
   session_handle_t lh;
   session_type_t st;
   session_t *ls = 0;
@@ -238,7 +237,7 @@ app_listener_alloc_and_init (application_t * app,
       session_lookup_add_connection (tc, lh);
     }
 
-  if (!ll && !ls)
+  if (!ls)
     {
       app_listener_free (app, app_listener);
       return -1;
@@ -267,8 +266,9 @@ app_listener_cleanup (app_listener_t * al)
 
       table_index = application_local_session_table (app);
       ls = listen_session_get (al->local_index);
-      application_local_listener_session_endpoint (ls, &sep);
+      ct_session_endpoint (ls, &sep);
       session_lookup_del_session_endpoint (table_index, &sep);
+      session_stop_listen (ls);
       listen_session_free (ls);
     }
   app_listener_free (app, al);
@@ -727,14 +727,6 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   app_wrk->event_queue = segment_manager_event_queue (sm);
   app_wrk->app_is_builtin = application_is_builtin (app);
 
-  /*
-   * Segment manager for local sessions
-   */
-  sm = segment_manager_new ();
-  sm->app_wrk_index = app_wrk->wrk_index;
-  app_wrk->local_segment_manager = segment_manager_index (sm);
-  app_wrk->local_connects = hash_create (0, sizeof (u64));
-
   *wrk = app_wrk;
 
   return 0;
@@ -1025,13 +1017,8 @@ vnet_listen (vnet_listen_args_t * a)
 int
 vnet_connect (vnet_connect_args_t * a)
 {
-  app_worker_t *server_wrk, *client_wrk;
+  app_worker_t *client_wrk;
   application_t *client;
-  app_listener_t *al;
-  u32 table_index;
-  session_t *ls;
-  u8 fib_proto;
-  session_handle_t lh;
 
   if (session_endpoint_is_zero (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE;
@@ -1047,53 +1034,14 @@ vnet_connect (vnet_connect_args_t * a)
    */
   if (application_has_local_scope (client))
     {
-      table_index = application_local_session_table (client);
-      lh = session_lookup_local_endpoint (table_index, &a->sep);
-      if (lh == SESSION_DROP_HANDLE)
-	return VNET_API_ERROR_APP_CONNECT_FILTERED;
+      int rv;
 
-      if (lh == SESSION_INVALID_HANDLE)
-	goto global_scope;
-
-      ls = listen_session_get_from_handle (lh);
-      al = app_listener_get_w_session (ls);
-
-      /*
-       * Break loop if rule in local table points to connecting app. This
-       * can happen if client is a generic proxy. Route connect through
-       * global table instead.
-       */
-      if (al->app_index == a->app_index)
-	goto global_scope;
-
-      server_wrk = app_listener_select_worker (al);
-      return app_worker_local_session_connect (client_wrk, server_wrk, ls,
-					       a->api_context);
+      a->sep_ext.original_tp = a->sep_ext.transport_proto;
+      a->sep_ext.transport_proto = TRANSPORT_PROTO_NONE;
+      rv = app_worker_connect_session (client_wrk, &a->sep, a->api_context);
+      if (rv <= 0)
+	return rv;
     }
-
-  /*
-   * If nothing found, check the global scope for locally attached
-   * destinations. Make sure first that we're allowed to.
-   */
-
-global_scope:
-  if (session_endpoint_is_local (&a->sep))
-    return VNET_API_ERROR_SESSION_CONNECT;
-
-  if (!application_has_global_scope (client))
-    return VNET_API_ERROR_APP_CONNECT_SCOPE;
-
-  fib_proto = session_endpoint_fib_proto (&a->sep);
-  table_index = application_session_table (client, fib_proto);
-  ls = session_lookup_listener (table_index, &a->sep);
-  if (ls)
-    {
-      al = app_listener_get_w_session (ls);
-      server_wrk = app_listener_select_worker (al);
-      return app_worker_local_session_connect (client_wrk, server_wrk, ls,
-					       a->api_context);
-    }
-
   /*
    * Not connecting to a local server, propagate to transport
    */
@@ -1132,52 +1080,20 @@ vnet_unlisten (vnet_unlisten_args_t * a)
 int
 vnet_disconnect_session (vnet_disconnect_args_t * a)
 {
-  if (session_handle_is_local (a->handle))
-    {
-      app_worker_t *client_wrk, *server_wrk;
-      local_session_t *ls;
-      u32 wrk_index = ~0;
+  app_worker_t *app_wrk;
+  session_t *s;
 
-      /* Disconnect reply came to worker 1 not main thread */
-      app_interface_check_thread_and_barrier (vnet_disconnect_session, a);
+  s = session_get_from_handle_if_valid (a->handle);
+  if (!s)
+    return VNET_API_ERROR_INVALID_VALUE;
+  app_wrk = app_worker_get (s->app_wrk_index);
+  if (app_wrk->app_index != a->app_index)
+    return VNET_API_ERROR_INVALID_VALUE;
 
-      if (!(ls = app_worker_get_local_session_from_handle (a->handle)))
-	return 0;
+  /* We're peeking into another's thread pool. Make sure */
+  ASSERT (s->session_index == session_index_from_handle (a->handle));
 
-      client_wrk = app_worker_get_if_valid (ls->client_wrk_index);
-      server_wrk = app_worker_get (ls->app_wrk_index);
-
-      if (server_wrk->app_index == a->app_index)
-	wrk_index = server_wrk->wrk_index;
-      else if (client_wrk && client_wrk->app_index == a->app_index)
-	wrk_index = client_wrk->wrk_index;
-
-      if (wrk_index == ~0)
-	{
-	  clib_warning ("app %u does not own session 0x%lx", a->app_index,
-			application_local_session_handle (ls));
-	  return VNET_API_ERROR_INVALID_VALUE;
-	}
-
-      return app_worker_local_session_disconnect (wrk_index, ls);
-    }
-  else
-    {
-      app_worker_t *app_wrk;
-      session_t *s;
-
-      s = session_get_from_handle_if_valid (a->handle);
-      if (!s)
-	return VNET_API_ERROR_INVALID_VALUE;
-      app_wrk = app_worker_get (s->app_wrk_index);
-      if (app_wrk->app_index != a->app_index)
-	return VNET_API_ERROR_INVALID_VALUE;
-
-      /* We're peeking into another's thread pool. Make sure */
-      ASSERT (s->session_index == session_index_from_handle (a->handle));
-
-      session_close (s);
-    }
+  session_close (s);
   return 0;
 }
 
@@ -1477,49 +1393,6 @@ application_format_connects (application_t * app, int verbose)
   /* *INDENT-ON* */
 }
 
-static void
-application_format_local_sessions (application_t * app, int verbose)
-{
-  app_worker_map_t *wrk_map;
-  app_worker_t *app_wrk;
-
-  if (!app)
-    {
-      app_worker_format_local_sessions (0, verbose);
-      return;
-    }
-
-  /*
-   * Format local accepted/connected sessions
-   */
-  /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps, ({
-    app_wrk = app_worker_get (wrk_map->wrk_index);
-    app_worker_format_local_sessions (app_wrk, verbose);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
-application_format_local_connects (application_t * app, int verbose)
-{
-  app_worker_map_t *wrk_map;
-  app_worker_t *app_wrk;
-
-  if (!app)
-    {
-      app_worker_format_local_connects (0, verbose);
-      return;
-    }
-
-  /* *INDENT-OFF* */
-  pool_foreach (wrk_map, app->worker_maps, ({
-    app_wrk = app_worker_get (wrk_map->wrk_index);
-    app_worker_format_local_connects (app_wrk, verbose);
-  }));
-  /* *INDENT-ON* */
-}
-
 u8 *
 format_application (u8 * s, va_list * args)
 {
@@ -1565,7 +1438,7 @@ format_application (u8 * s, va_list * args)
 }
 
 void
-application_format_all_listeners (vlib_main_t * vm, int do_local, int verbose)
+application_format_all_listeners (vlib_main_t * vm, int verbose)
 {
   application_t *app;
 
@@ -1575,29 +1448,17 @@ application_format_all_listeners (vlib_main_t * vm, int do_local, int verbose)
       return;
     }
 
-  if (do_local)
-    {
-      application_format_local_sessions (0, verbose);
-      /* *INDENT-OFF* */
-      pool_foreach (app, app_main.app_pool, ({
-        application_format_local_sessions (app, verbose);
-      }));
-      /* *INDENT-ON* */
-    }
-  else
-    {
-      application_format_listeners (0, verbose);
+  application_format_listeners (0, verbose);
 
-      /* *INDENT-OFF* */
-      pool_foreach (app, app_main.app_pool, ({
-        application_format_listeners (app, verbose);
-      }));
-      /* *INDENT-ON* */
-    }
+  /* *INDENT-OFF* */
+  pool_foreach (app, app_main.app_pool, ({
+    application_format_listeners (app, verbose);
+  }));
+  /* *INDENT-ON* */
 }
 
 void
-application_format_all_clients (vlib_main_t * vm, int do_local, int verbose)
+application_format_all_clients (vlib_main_t * vm, int verbose)
 {
   application_t *app;
 
@@ -1607,33 +1468,20 @@ application_format_all_clients (vlib_main_t * vm, int do_local, int verbose)
       return;
     }
 
-  if (do_local)
-    {
-      application_format_local_connects (0, verbose);
+  application_format_connects (0, verbose);
 
-      /* *INDENT-OFF* */
-      pool_foreach (app, app_main.app_pool, ({
-	application_format_local_connects (app, verbose);
-      }));
-      /* *INDENT-ON* */
-    }
-  else
-    {
-      application_format_connects (0, verbose);
-
-      /* *INDENT-OFF* */
-      pool_foreach (app, app_main.app_pool, ({
-        application_format_connects (app, verbose);
-      }));
-      /* *INDENT-ON* */
-    }
+  /* *INDENT-OFF* */
+  pool_foreach (app, app_main.app_pool, ({
+    application_format_connects (app, verbose);
+  }));
+  /* *INDENT-ON* */
 }
 
 static clib_error_t *
 show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
-  int do_server = 0, do_client = 0, do_local = 0;
+  int do_server = 0, do_client = 0;
   application_t *app;
   u32 app_index = ~0;
   int verbose = 0;
@@ -1646,8 +1494,6 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	do_server = 1;
       else if (unformat (input, "client"))
 	do_client = 1;
-      else if (unformat (input, "local"))
-	do_local = 1;
       else if (unformat (input, "%u", &app_index))
 	;
       else if (unformat (input, "verbose"))
@@ -1659,13 +1505,13 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (do_server)
     {
-      application_format_all_listeners (vm, do_local, verbose);
+      application_format_all_listeners (vm, verbose);
       return 0;
     }
 
   if (do_client)
     {
-      application_format_all_clients (vm, do_local, verbose);
+      application_format_all_clients (vm, verbose);
       return 0;
     }
 
