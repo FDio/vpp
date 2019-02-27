@@ -397,14 +397,14 @@ segment_manager_del_sessions (segment_manager_t * sm)
      */
     while (fifo)
       {
-	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
-	  {
-	    svm_fifo_t *next = fifo->next;
-	    app_worker_local_session_disconnect_w_index (sm->app_wrk_index,
-	                                                  fifo->ct_session_index);
-	    fifo = next;
-	    continue;
-	  }
+//	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
+//	  {
+//	    svm_fifo_t *next = fifo->next;
+//	    app_worker_local_session_disconnect_w_index (sm->app_wrk_index,
+//	                                                  fifo->ct_session_index);
+//	    fifo = next;
+//	    continue;
+//	  }
 	session = session_get (fifo->master_session_index,
 	                       fifo->master_thread_index);
 	session_close (session);
@@ -553,9 +553,10 @@ alloc_check:
 
       if (added_a_segment)
 	{
+	  app_worker_t *app_wrk;
 	  segment_handle = segment_manager_segment_handle (sm, fifo_segment);
-	  rv = app_worker_add_segment_notify (sm->app_wrk_index,
-					      segment_handle);
+	  app_wrk = app_worker_get (sm->app_wrk_index);
+	  rv = app_worker_add_segment_notify (app_wrk, segment_handle);
 	}
       /* Drop the lock after app is notified */
       segment_manager_segment_reader_unlock (sm);

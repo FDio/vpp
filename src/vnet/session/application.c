@@ -157,7 +157,6 @@ app_listener_alloc_and_init (application_t * app,
 {
   app_listener_t *app_listener;
   transport_connection_t *tc;
-  local_session_t *ll = 0;
   session_handle_t lh;
   session_type_t st;
   session_t *ls = 0;
@@ -238,7 +237,7 @@ app_listener_alloc_and_init (application_t * app,
       session_lookup_add_connection (tc, lh);
     }
 
-  if (!ll && !ls)
+  if (!ls)
     {
       app_listener_free (app, app_listener);
       return -1;
@@ -732,8 +731,8 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
    */
   sm = segment_manager_new ();
   sm->app_wrk_index = app_wrk->wrk_index;
-  app_wrk->local_segment_manager = segment_manager_index (sm);
-  app_wrk->local_connects = hash_create (0, sizeof (u64));
+//  app_wrk->local_segment_manager = segment_manager_index (sm);
+//  app_wrk->local_connects = hash_create (0, sizeof (u64));
 
   *wrk = app_wrk;
 
@@ -1025,13 +1024,8 @@ vnet_listen (vnet_listen_args_t * a)
 int
 vnet_connect (vnet_connect_args_t * a)
 {
-  app_worker_t *server_wrk, *client_wrk;
+  app_worker_t *client_wrk;
   application_t *client;
-  app_listener_t *al;
-  u32 table_index;
-  session_t *ls;
-  u8 fib_proto;
-  session_handle_t lh;
 
   if (session_endpoint_is_zero (&a->sep))
     return VNET_API_ERROR_INVALID_VALUE;
@@ -1047,53 +1041,14 @@ vnet_connect (vnet_connect_args_t * a)
    */
   if (application_has_local_scope (client))
     {
-      table_index = application_local_session_table (client);
-      lh = session_lookup_local_endpoint (table_index, &a->sep);
-      if (lh == SESSION_DROP_HANDLE)
-	return VNET_API_ERROR_APP_CONNECT_FILTERED;
+      int rv;
 
-      if (lh == SESSION_INVALID_HANDLE)
-	goto global_scope;
-
-      ls = listen_session_get_from_handle (lh);
-      al = app_listener_get_w_session (ls);
-
-      /*
-       * Break loop if rule in local table points to connecting app. This
-       * can happen if client is a generic proxy. Route connect through
-       * global table instead.
-       */
-      if (al->app_index == a->app_index)
-	goto global_scope;
-
-      server_wrk = app_listener_select_worker (al);
-      return app_worker_local_session_connect (client_wrk, server_wrk, ls,
-					       a->api_context);
+      a->sep_ext.original_tp = a->sep_ext.transport_proto;
+      a->sep_ext.transport_proto = TRANSPORT_PROTO_NONE;
+      rv = app_worker_connect_session (client_wrk, &a->sep, a->api_context);
+      if (rv <= 0)
+	return rv;
     }
-
-  /*
-   * If nothing found, check the global scope for locally attached
-   * destinations. Make sure first that we're allowed to.
-   */
-
-global_scope:
-  if (session_endpoint_is_local (&a->sep))
-    return VNET_API_ERROR_SESSION_CONNECT;
-
-  if (!application_has_global_scope (client))
-    return VNET_API_ERROR_APP_CONNECT_SCOPE;
-
-  fib_proto = session_endpoint_fib_proto (&a->sep);
-  table_index = application_session_table (client, fib_proto);
-  ls = session_lookup_listener (table_index, &a->sep);
-  if (ls)
-    {
-      al = app_listener_get_w_session (ls);
-      server_wrk = app_listener_select_worker (al);
-      return app_worker_local_session_connect (client_wrk, server_wrk, ls,
-					       a->api_context);
-    }
-
   /*
    * Not connecting to a local server, propagate to transport
    */
@@ -1132,37 +1087,37 @@ vnet_unlisten (vnet_unlisten_args_t * a)
 int
 vnet_disconnect_session (vnet_disconnect_args_t * a)
 {
-  if (session_handle_is_local (a->handle))
-    {
-      app_worker_t *client_wrk, *server_wrk;
-      local_session_t *ls;
-      u32 wrk_index = ~0;
-
-      /* Disconnect reply came to worker 1 not main thread */
-      app_interface_check_thread_and_barrier (vnet_disconnect_session, a);
-
-      if (!(ls = app_worker_get_local_session_from_handle (a->handle)))
-	return 0;
-
-      client_wrk = app_worker_get_if_valid (ls->client_wrk_index);
-      server_wrk = app_worker_get (ls->app_wrk_index);
-
-      if (server_wrk->app_index == a->app_index)
-	wrk_index = server_wrk->wrk_index;
-      else if (client_wrk && client_wrk->app_index == a->app_index)
-	wrk_index = client_wrk->wrk_index;
-
-      if (wrk_index == ~0)
-	{
-	  clib_warning ("app %u does not own session 0x%lx", a->app_index,
-			application_local_session_handle (ls));
-	  return VNET_API_ERROR_INVALID_VALUE;
-	}
-
-      return app_worker_local_session_disconnect (wrk_index, ls);
-    }
-  else
-    {
+//  if (session_handle_is_local (a->handle))
+//    {
+//      app_worker_t *client_wrk, *server_wrk;
+//      local_session_t *ls;
+//      u32 wrk_index = ~0;
+//
+//      /* Disconnect reply came to worker 1 not main thread */
+//      app_interface_check_thread_and_barrier (vnet_disconnect_session, a);
+//
+//      if (!(ls = app_worker_get_local_session_from_handle (a->handle)))
+//	return 0;
+//
+//      client_wrk = app_worker_get_if_valid (ls->client_wrk_index);
+//      server_wrk = app_worker_get (ls->app_wrk_index);
+//
+//      if (server_wrk->app_index == a->app_index)
+//	wrk_index = server_wrk->wrk_index;
+//      else if (client_wrk && client_wrk->app_index == a->app_index)
+//	wrk_index = client_wrk->wrk_index;
+//
+//      if (wrk_index == ~0)
+//	{
+//	  clib_warning ("app %u does not own session 0x%lx", a->app_index,
+//			application_local_session_handle (ls));
+//	  return VNET_API_ERROR_INVALID_VALUE;
+//	}
+//
+//      return app_worker_local_session_disconnect (wrk_index, ls);
+//    }
+//  else
+//    {
       app_worker_t *app_wrk;
       session_t *s;
 
@@ -1177,7 +1132,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
       ASSERT (s->session_index == session_index_from_handle (a->handle));
 
       session_close (s);
-    }
+//    }
   return 0;
 }
 
