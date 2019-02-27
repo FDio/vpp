@@ -41,6 +41,7 @@ typedef struct _session_endpoint_cfg
   u32 app_wrk_index;
   u32 opaque;
   u32 ns_index;
+  u8 original_tp;
   u8 *hostname;
 } session_endpoint_cfg_t;
 
@@ -373,12 +374,12 @@ local_session_parse_handle (session_handle_t handle, u32 * app_or_wrk_index,
   local_session_parse_id (bottom, app_or_wrk_index, session_index);
 }
 
-always_inline session_handle_t
-application_local_session_handle (local_session_t * ls)
-{
-  return ((u64) SESSION_LOCAL_HANDLE_PREFIX << 32)
-    | (u64) local_session_id (ls);
-}
+//always_inline session_handle_t
+//application_local_session_handle (local_session_t * ls)
+//{
+//  return ((u64) SESSION_LOCAL_HANDLE_PREFIX << 32)
+//    | (u64) local_session_id (ls);
+//}
 
 typedef enum
 {
