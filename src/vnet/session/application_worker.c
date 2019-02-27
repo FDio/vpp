@@ -116,7 +116,7 @@ app_worker_free (app_worker_t * app_wrk)
   /*
    * Local sessions
    */
-  app_worker_local_sessions_free (app_wrk);
+//  app_worker_local_sessions_free (app_wrk);
 
   pool_put (app_workers, app_wrk);
   if (CLIB_DEBUG)
@@ -266,16 +266,16 @@ app_worker_stop_listen (app_worker_t * app_wrk, app_listener_t * al)
 
   if (al->local_index != SESSION_INVALID_INDEX)
     {
-      local_session_t *local;
+//      local_session_t *local;
       ls = listen_session_get (al->local_index);
       handle = listen_session_get_handle (ls);
 
-      /* *INDENT-OFF* */
-      pool_foreach (local, app_wrk->local_sessions, ({
-        if (local->listener_index == ls->session_index)
-          app_worker_local_session_disconnect (app_wrk->wrk_index, local);
-      }));
-      /* *INDENT-ON* */
+//      /* *INDENT-OFF* */
+//      pool_foreach (local, app_wrk->local_sessions, ({
+//        if (local->listener_index == ls->session_index)
+//          app_worker_local_session_disconnect (app_wrk->wrk_index, local);
+//      }));
+//      /* *INDENT-ON* */
 
       sm_indexp = hash_get (app_wrk->listeners_table, handle);
       if (PREDICT_FALSE (!sm_indexp))
@@ -312,8 +312,12 @@ app_worker_init_accepted (session_t * s)
   listener = listen_session_get (s->listener_index);
   app_wrk = application_listener_select_worker (listener);
   s->app_wrk_index = app_wrk->wrk_index;
+
   sm = app_worker_get_listen_segment_manager (app_wrk, listener);
-  return app_worker_alloc_session_fifos (sm, s);
+  if (app_worker_alloc_session_fifos (sm, s))
+    return -1;
+
+  return 0;
 }
 
 int
@@ -499,9 +503,8 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
  * Send an API message to the external app, to map new segment
  */
 int
-app_worker_add_segment_notify (u32 app_wrk_index, u64 segment_handle)
+app_worker_add_segment_notify (app_worker_t *app_wrk, u64 segment_handle)
 {
-  app_worker_t *app_wrk = app_worker_get (app_wrk_index);
   application_t *app = application_get (app_wrk->app_index);
   return app->cb_fns.add_segment_callback (app_wrk->api_client_index,
 					   segment_handle);
@@ -660,24 +663,24 @@ app_worker_lock_and_send_event (app_worker_t * app, session_t * s,
   return app_send_evt_handler_fns[evt_type] (app, s, 1 /* lock */ );
 }
 
-segment_manager_t *
-app_worker_get_local_segment_manager (app_worker_t * app_worker)
-{
-  return segment_manager_get (app_worker->local_segment_manager);
-}
+//segment_manager_t *
+//app_worker_get_local_segment_manager (app_worker_t * app_worker)
+//{
+//  return segment_manager_get (app_worker->local_segment_manager);
+//}
 
-segment_manager_t *
-app_worker_get_local_segment_manager_w_session (app_worker_t * app_wrk,
-						local_session_t * ls)
-{
-  session_t *listener;
-  if (application_local_session_listener_has_transport (ls))
-    {
-      listener = listen_session_get (ls->listener_index);
-      return app_worker_get_listen_segment_manager (app_wrk, listener);
-    }
-  return segment_manager_get (app_wrk->local_segment_manager);
-}
+//segment_manager_t *
+//app_worker_get_local_segment_manager_w_session (app_worker_t * app_wrk,
+//						local_session_t * ls)
+//{
+//  session_t *listener;
+//  if (application_local_session_listener_has_transport (ls))
+//    {
+//      listener = listen_session_get (ls->listener_index);
+//      return app_worker_get_listen_segment_manager (app_wrk, listener);
+//    }
+//  return segment_manager_get (app_wrk->local_segment_manager);
+//}
 
 u8 *
 format_app_worker_listener (u8 * s, va_list * args)
