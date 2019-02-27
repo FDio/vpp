@@ -314,7 +314,7 @@ nsh_pop_inline (vlib_main_t * vm,
  * @return from_frame->n_vectors
  *
  */
-VLIB_NODE_FN (nsh_pop) (vlib_main_t * vm, vlib_node_runtime_t * node,
+VLIB_NODE_FN (nsh_pop_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
                   vlib_frame_t * from_frame)
 {
   return nsh_pop_inline (vm, node, from_frame);
