@@ -17,6 +17,8 @@
 if(CMAKE_CROSSCOMPILING)
   message(STATUS "Cross-compiling - cache line size detection disabled")
   set(VPP_LOG2_CACHE_LINE_SIZE 6)
+elseif(DEFINED VPP_LOG2_CACHE_LINE_SIZE)
+  # Cache line size assigned via cmake args
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*)")
   file(READ "/proc/cpuinfo" cpuinfo)
   string(REPLACE "\n" ";" cpuinfo ${cpuinfo})
