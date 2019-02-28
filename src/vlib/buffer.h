@@ -394,6 +394,8 @@ typedef struct
   vlib_buffer_t buffer_template;
 } vlib_buffer_pool_t;
 
+#define VLIB_BUFFER_MAX_NUMA_NODES 32
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -409,7 +411,7 @@ typedef struct
      has never been allocated. */
   uword *buffer_known_hash;
   clib_spinlock_t buffer_known_hash_lockp;
-  u32 n_numa_nodes;
+  u8 default_buffer_pool_index_for_numa[VLIB_BUFFER_MAX_NUMA_NODES];
 
   /* config */
   u32 buffers_per_numa;
