@@ -53,13 +53,13 @@ format_gbp_recirc (u8 * s, va_list * args)
   gbp_recirc_t *gr = va_arg (*args, gbp_recirc_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
-  return format (s, "  %U, epg:%d, ext:%d",
+  return format (s, "  %U, sclass:%d, ext:%d",
 		 format_vnet_sw_if_index_name, vnm,
-		 gr->gr_sw_if_index, gr->gr_epg, gr->gr_is_ext);
+		 gr->gr_sw_if_index, gr->gr_sclass, gr->gr_is_ext);
 }
 
 int
-gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
+gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext)
 {
   gbp_recirc_t *gr;
   index_t gri;
@@ -74,7 +74,7 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
       fib_protocol_t fproto;
       index_t ggi;
 
-      ggi = gbp_endpoint_group_find (epg_id);
+      ggi = gbp_endpoint_group_find (sclass);
 
       if (INDEX_INVALID == ggi)
 	return (VNET_API_ERROR_NO_SUCH_ENTRY);
@@ -83,7 +83,7 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
       pool_get_zero (gbp_recirc_pool, gr);
       gri = gr - gbp_recirc_pool;
 
-      gr->gr_epg = epg_id;
+      gr->gr_sclass = sclass;
       gr->gr_is_ext = is_ext;
       gr->gr_sw_if_index = sw_if_index;
 
@@ -135,7 +135,7 @@ gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext)
 	  gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
 					gr->gr_sw_if_index,
 					NULL, &mac, INDEX_INVALID,
-					INDEX_INVALID, gr->gr_epg,
+					INDEX_INVALID, gr->gr_sclass,
 					GBP_ENDPOINT_FLAG_NONE,
 					NULL, NULL, &gr->gr_ep);
 	  vnet_feature_enable_disable ("ip4-unicast",

@@ -170,7 +170,7 @@ VLIB_INIT_FUNCTION (gbp_fwd_dpo_module_init);
 
 typedef struct gbp_fwd_dpo_trace_t_
 {
-  u32 src_epg;
+  u32 sclass;
   u32 dpo_index;
 } gbp_fwd_dpo_trace_t;
 
@@ -203,7 +203,7 @@ gbp_fwd_dpo_inline (vlib_main_t * vm,
 	{
 	  const dpo_id_t *next_dpo0;
 	  vlib_buffer_t *b0;
-	  epg_id_t src_epg0;
+	  sclass_t sclass0;
 	  u32 bi0, next0;
 
 	  bi0 = from[0];
@@ -215,8 +215,8 @@ gbp_fwd_dpo_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  src_epg0 = vnet_buffer2 (b0)->gbp.src_epg;
-	  next_dpo0 = gbp_epg_dpo_lookup (src_epg0, fproto);
+	  sclass0 = vnet_buffer2 (b0)->gbp.sclass;
+	  next_dpo0 = gbp_epg_dpo_lookup (sclass0, fproto);
 
 	  if (PREDICT_TRUE (NULL != next_dpo0))
 	    {
@@ -233,7 +233,7 @@ gbp_fwd_dpo_inline (vlib_main_t * vm,
 	      gbp_fwd_dpo_trace_t *tr;
 
 	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->src_epg = src_epg0;
+	      tr->sclass = sclass0;
 	      tr->dpo_index = (NULL != next_dpo0 ?
 			       next_dpo0->dpoi_index : ~0);
 	    }
@@ -253,7 +253,7 @@ format_gbp_fwd_dpo_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_fwd_dpo_trace_t *t = va_arg (*args, gbp_fwd_dpo_trace_t *);
 
-  s = format (s, " epg:%d dpo:%d", t->src_epg, t->dpo_index);
+  s = format (s, " sclass:%d dpo:%d", t->sclass, t->dpo_index);
 
   return s;
 }

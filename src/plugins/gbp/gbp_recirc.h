@@ -30,7 +30,7 @@ typedef struct gpb_recirc_t_
   /**
    * EPG ID that packets will classify to when they arrive on this recirc
    */
-  epg_id_t gr_epg;
+  sclass_t gr_sclass;
 
   /**
    * The index of the EPG
@@ -59,7 +59,7 @@ typedef struct gpb_recirc_t_
   index_t gr_ep;
 } gbp_recirc_t;
 
-extern int gbp_recirc_add (u32 sw_if_index, epg_id_t epg_id, u8 is_ext);
+extern int gbp_recirc_add (u32 sw_if_index, sclass_t sclass, u8 is_ext);
 extern int gbp_recirc_delete (u32 sw_if_index);
 
 typedef walk_rc_t (*gbp_recirc_cb_t) (gbp_recirc_t * gbpe, void *ctx);

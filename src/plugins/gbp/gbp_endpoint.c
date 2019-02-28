@@ -636,7 +636,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
   if (INDEX_INVALID != gel->gel_epg)
     {
       gg = gbp_endpoint_group_get (gel->gel_epg);
-      gef->gef_epg_id = gg->gg_id;
+      gef->gef_sclass = gg->gg_sclass;
     }
   else
     {
@@ -757,7 +757,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
 	     * is applied
 	     */
 	    gbp_policy_dpo_add_or_lock (fib_proto_to_dpo (pfx->fp_proto),
-					gg->gg_id, ~0, &policy_dpo);
+					gg->gg_sclass, ~0, &policy_dpo);
 
 	    fib_table_entry_special_dpo_add (fib_index, pfx,
 					     FIB_SOURCE_PLUGIN_HI,
@@ -818,7 +818,8 @@ gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
 			      u32 sw_if_index,
 			      const ip46_address_t * ips,
 			      const mac_address_t * mac,
-			      index_t gbdi, index_t grdi, epg_id_t epg_id,
+			      index_t gbdi, index_t grdi,
+			      sclass_t sclass,
 			      gbp_endpoint_flags_t flags,
 			      const ip46_address_t * tun_src,
 			      const ip46_address_t * tun_dst, u32 * handle)
@@ -842,9 +843,9 @@ gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
    * we need to determine the bridge-domain, either from the EPG or
    * the BD passed
    */
-  if (EPG_INVALID != epg_id)
+  if (SCLASS_INVALID != sclass)
     {
-      ggi = gbp_endpoint_group_find (epg_id);
+      ggi = gbp_endpoint_group_find (sclass);
 
       if (INDEX_INVALID == ggi)
 	return (VNET_API_ERROR_NO_SUCH_ENTRY);
@@ -1074,7 +1075,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
   ip46_address_t ip = ip46_address_initializer, *ips = NULL;
   mac_address_t mac = ZERO_MAC_ADDRESS;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 epg_id = EPG_INVALID;
+  u32 sclass = SCLASS_INVALID;
   u32 handle = INDEX_INVALID;
   u32 sw_if_index = ~0;
   u8 add = 1;
@@ -1091,7 +1092,7 @@ gbp_endpoint_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "epg %d", &epg_id))
+      else if (unformat (input, "sclass %d", &sclass))
 	;
       else if (unformat (input, "handle %d", &handle))
 	;
@@ -1109,14 +1110,14 @@ gbp_endpoint_cli (vlib_main_t * vm,
     {
       if (~0 == sw_if_index)
 	return clib_error_return (0, "interface must be specified");
-      if (EPG_INVALID == epg_id)
-	return clib_error_return (0, "EPG-ID must be specified");
+      if (SCLASS_INVALID == sclass)
+	return clib_error_return (0, "SCLASS must be specified");
 
       rv =
 	gbp_endpoint_update_and_lock (GBP_ENDPOINT_SRC_CP,
 				      sw_if_index, ips, &mac,
 				      INDEX_INVALID, INDEX_INVALID,
-				      epg_id,
+				      sclass,
 				      GBP_ENDPOINT_FLAG_NONE,
 				      NULL, NULL, &handle);
 

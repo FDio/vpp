@@ -25,8 +25,8 @@ namespace VOM {
 namespace gbp_endpoint_cmds {
 
 /**
-* A command class that creates or updates the GBP endpoint
-*/
+ * A command class that creates or updates the GBP endpoint
+ */
 class create_cmd : public rpc_cmd<HW::item<handle_t>, vapi::Gbp_endpoint_add>
 {
 public:
@@ -37,7 +37,7 @@ public:
              const handle_t& itf,
              const std::vector<boost::asio::ip::address>& ip_addrs,
              const mac_address_t& mac,
-             epg_id_t epg_id);
+             sclass_t sclass);
 
   /**
    * Issue the command to VPP/HW
@@ -60,7 +60,7 @@ private:
   const handle_t m_itf;
   const std::vector<boost::asio::ip::address> m_ip_addrs;
   const mac_address_t m_mac;
-  const epg_id_t m_epg_id;
+  const sclass_t m_sclass;
 };
 
 /**

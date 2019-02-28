@@ -120,7 +120,7 @@ gbp_subnet::replay()
     HW::enqueue(new gbp_subnet_cmds::create_cmd(
       m_hw, m_rd->id(), m_prefix, m_type,
       (m_recirc ? m_recirc->handle() : handle_t::INVALID),
-      (m_epg ? m_epg->id() : ~0)));
+      (m_epg ? m_epg->sclass() : ~0)));
   }
 }
 
@@ -147,7 +147,7 @@ gbp_subnet::update(const gbp_subnet& r)
     HW::enqueue(new gbp_subnet_cmds::create_cmd(
       m_hw, m_rd->id(), m_prefix, m_type,
       (m_recirc ? m_recirc->handle() : handle_t::INVALID),
-      (m_epg ? m_epg->id() : ~0)));
+      (m_epg ? m_epg->sclass() : ~0)));
   } else {
     if (m_type != r.m_type) {
       m_epg = r.m_epg;
@@ -157,7 +157,7 @@ gbp_subnet::update(const gbp_subnet& r)
       HW::enqueue(new gbp_subnet_cmds::create_cmd(
         m_hw, m_rd->id(), m_prefix, m_type,
         (m_recirc ? m_recirc->handle() : handle_t::INVALID),
-        (m_epg ? m_epg->id() : ~0)));
+        (m_epg ? m_epg->sclass() : ~0)));
     }
   }
 }
@@ -230,7 +230,7 @@ gbp_subnet::event_handler::handle_populate(const client_db::key_t& key)
         }
         case GBP_API_SUBNET_L3_OUT: {
           std::shared_ptr<gbp_endpoint_group> epg =
-            gbp_endpoint_group::find(payload.subnet.epg_id);
+            gbp_endpoint_group::find(payload.subnet.sclass);
 
           gbp_subnet gs(*rd, pfx, *epg);
           OM::commit(key, gs);
@@ -241,7 +241,7 @@ gbp_subnet::event_handler::handle_populate(const client_db::key_t& key)
           std::shared_ptr<interface> itf =
             interface::find(payload.subnet.sw_if_index);
           std::shared_ptr<gbp_endpoint_group> epg =
-            gbp_endpoint_group::find(payload.subnet.epg_id);
+            gbp_endpoint_group::find(payload.subnet.sclass);
 
           if (itf && epg) {
             std::shared_ptr<gbp_recirc> recirc = gbp_recirc::find(itf->key());
