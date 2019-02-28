@@ -642,6 +642,8 @@ vlib_buffer_worker_init (vlib_main_t * vm)
     }
   /* *INDENT-ON* */
 
+  bm->threads_initialized = 1;
+
   return 0;
 }
 
@@ -740,6 +742,9 @@ static void
 buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index)
 {
   vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  if (!bm->threads_initialized)
+    return;
   vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
   if (!bp)
     return;
@@ -752,6 +757,10 @@ buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e,
 				   u32 index)
 {
   vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  if (!bm->threads_initialized)
+    return;
+
   vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
   if (!bp)
     return;
@@ -763,6 +772,10 @@ static void
 buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e, u32 index)
 {
   vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  if (!bm->threads_initialized)
+    return;
+
   vlib_buffer_pool_t *bp = buffer_get_by_index (vm->buffer_main, index);
   if (!bp)
     return;
