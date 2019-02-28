@@ -19,6 +19,10 @@ add_vpp_plugin(pppoe
   pppoe_cp_node.c
   pppoe_decap.c
 
+  MULTIARCH_SOURCES
+  pppoe_cp_node.c
+  pppoe_decap.c
+
   API_FILES
   pppoe.api
 

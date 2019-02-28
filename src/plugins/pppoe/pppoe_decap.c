@@ -46,8 +46,7 @@ static u8 * format_pppoe_rx_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-pppoe_input (vlib_main_t * vm,
+VLIB_NODE_FN (pppoe_input_node) (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
@@ -399,7 +398,6 @@ static char * pppoe_error_strings[] = {
 };
 
 VLIB_REGISTER_NODE (pppoe_input_node) = {
-  .function = pppoe_input,
   .name = "pppoe-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -416,7 +414,5 @@ VLIB_REGISTER_NODE (pppoe_input_node) = {
 
   .format_trace = format_pppoe_rx_trace,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (pppoe_input_node, pppoe_input)
 
 
