@@ -18,7 +18,7 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
 from six import moves
 
 from framework import VppTestCase, VppTestRunner
-from util import ppp, ip6_normalize
+from util import ppp, ip6_normalize, mk_ll_addr
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
@@ -34,12 +34,6 @@ try:
     text_type = unicode
 except NameError:
     text_type = str
-
-
-def mk_ll_addr(mac):
-    euid = in6_mactoifaceid(mac)
-    addr = "fe80::" + euid
-    return addr
 
 
 class TestIPv6ND(VppTestCase):
