@@ -418,6 +418,7 @@ typedef struct
 
   /* logging */
   vlib_log_class_t log_default;
+
 } vlib_buffer_main_t;
 
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);

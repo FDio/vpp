@@ -63,6 +63,17 @@ STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
 
 u16 __vlib_buffer_external_hdr_size = 0;
 
+static void
+buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e,
+				u32 index);
+
+static void
+buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e,
+				   u32 index);
+
+static void
+buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index);
+
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
 				       vlib_buffer_t * b_first)
@@ -716,6 +727,9 @@ buffer_get_cached (vlib_buffer_pool_t * bp)
   u32 cached = 0;
   vlib_buffer_pool_thread_t *bpt;
 
+  if (!bp->threads)
+    return 0;
+
   /* *INDENT-OFF* */
   vec_foreach (bpt, bp->threads)
     cached += vec_len (bpt->cached_buffers);
@@ -821,7 +835,6 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
 				 bp - bm->buffer_pools);
     vec_free (name);
   }
-
 
 done:
   vec_free (bmp);
