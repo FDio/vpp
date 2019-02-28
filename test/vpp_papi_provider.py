@@ -41,6 +41,11 @@ class SYSLOG_SEVERITY:
     INFO = 6
     DBG = 7
 
+#
+# Dictionary keyed on message name to override default values for
+# named parameters
+#
+defaultmapping = {}
 
 class UnexpectedApiReturnValueError(Exception):
     """ exception raised when the API return value is unexpected """
@@ -144,6 +149,40 @@ class VppPapiProvider(object):
         # FIXME #2 if this throws, it is eaten silently, Ole?
         self.test_class.logger.debug("New event: %s: %s" % (name, event))
         self._events.append(event)
+
+    def factory(self, name, apifn):
+        def f(*a, **ka):
+            if not a and ka:
+                return self.api(apifn, ka)
+            fields = apifn._func.msg.fields
+
+            # Map a to dictionary
+            d = ka
+            i = 0
+
+            # Default override
+            if name in defaultmapping:
+                for k, v in defaultmapping[name].items():
+                    try:
+                        d[k] = a[i]
+                    except:
+                        if v:
+                            d[k] = v
+                    i += 1
+            else:
+                for i, o in enumerate(fields[3:]):
+                    try:
+                        d[o] = a[i]
+                    except:
+                        break
+            return self.api(apifn, d)
+        return f
+
+    def __getattr__(self, name):
+        try:
+            return getattr(self, name)
+        except:
+            return self.factory(name, getattr(self.papi, name))
 
     def connect(self):
         """Connect the API to VPP"""
@@ -2752,36 +2791,6 @@ class VppPapiProvider(object):
             self.papi.lisp_adjacencies_get,
             {
                 'vni': vni
-            })
-
-    def map_add_domain(self,
-                       ip6_prefix,
-                       ip6_src,
-                       ip4_prefix,
-                       ea_bits_len=0,
-                       psid_offset=0,
-                       psid_length=0,
-                       mtu=1280):
-
-        return self.api(
-            self.papi.map_add_domain,
-            {
-                'ip6_prefix': ip6_prefix,
-                'ip4_prefix': ip4_prefix,
-                'ip6_src': ip6_src,
-                'ea_bits_len': ea_bits_len,
-                'psid_offset': psid_offset,
-                'psid_length': psid_length,
-                'mtu': mtu
-            })
-
-    def map_if_enable_disable(self, is_enable, sw_if_index, is_translation):
-        return self.api(
-            self.papi.map_if_enable_disable,
-            {
-                'is_enable': is_enable,
-                'sw_if_index': sw_if_index,
-                'is_translation': is_translation,
             })
 
     def map_param_set_tcp(self, tcp_mss):
