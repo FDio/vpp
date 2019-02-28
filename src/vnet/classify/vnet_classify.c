@@ -564,10 +564,11 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 
   if (new_v == 0)
     {
-    try_resplit:
-      resplit_once = 1;
+    mark_resplit:
       new_log2_pages++;
 
+    try_resplit:
+      resplit_once = 1;
       new_v = split_and_rehash (t, working_copy, old_log2_pages,
 				new_log2_pages);
       if (new_v == 0)
