@@ -22,6 +22,7 @@ add_vpp_plugin(gbp
   gbp_ext_itf.c
   gbp_fwd.c
   gbp_fwd_dpo.c
+  gbp_fwd_node.c
   gbp_itf.c
   gbp_learn.c
   gbp_policy.c
@@ -32,6 +33,17 @@ add_vpp_plugin(gbp
   gbp_sclass.c
   gbp_subnet.c
   gbp_vxlan.c
+  gbp_vxlan_node.c
+
+  MULTIARCH_SOURCES
+  gbp_fwd_node.c
+  gbp_policy.c
+  gbp_learn.c
+  gbp_policy_dpo.c
+  gbp_fwd_dpo.c
+  gbp_vxlan_node.c
+  gbp_sclass.c
+  gbp_classify.c
 
   API_FILES
   gbp.api

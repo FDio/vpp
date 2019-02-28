@@ -146,44 +146,44 @@ gbp_sclass_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-uword
-l2_gbp_id_2_sclass (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_gbp_id_2_sclass_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 1, 1));
 }
 
-uword
-l2_gbp_sclass_2_id (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_gbp_sclass_2_id_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 0, 1));
 }
 
-uword
-ip4_gbp_id_2_sclass (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_gbp_id_2_sclass_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 1, 0));
 }
 
-uword
-ip4_gbp_sclass_2_id (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_gbp_sclass_2_id_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 0, 0));
 }
 
-uword
-ip6_gbp_id_2_sclass (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_gbp_id_2_sclass_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 1, 0));
 }
 
-uword
-ip6_gbp_sclass_2_id (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_gbp_sclass_2_id_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
 {
   return (gbp_sclass_inline (vm, node, frame, 0, 0));
 }
@@ -203,7 +203,6 @@ format_gbp_sclass_trace (u8 * s, va_list * args)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_gbp_id_2_sclass_node) = {
-  .function = l2_gbp_id_2_sclass,
   .name = "l2-gbp-id-2-sclass",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_sclass_trace,
@@ -216,7 +215,6 @@ VLIB_REGISTER_NODE (l2_gbp_id_2_sclass_node) = {
   },
 };
 VLIB_REGISTER_NODE (l2_gbp_sclass_2_id_node) = {
-  .function = l2_gbp_sclass_2_id,
   .name = "l2-gbp-sclass-2-id",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_sclass_trace,
@@ -230,7 +228,6 @@ VLIB_REGISTER_NODE (l2_gbp_sclass_2_id_node) = {
 };
 
 VLIB_REGISTER_NODE (ip4_gbp_id_2_sclass_node) = {
-  .function = ip4_gbp_id_2_sclass,
   .name = "ip4-gbp-id-2-sclass",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_sclass_trace,
@@ -243,7 +240,6 @@ VLIB_REGISTER_NODE (ip4_gbp_id_2_sclass_node) = {
   },
 };
 VLIB_REGISTER_NODE (ip4_gbp_sclass_2_id_node) = {
-  .function = ip4_gbp_sclass_2_id,
   .name = "ip4-gbp-sclass-2-id",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_sclass_trace,
@@ -257,7 +253,6 @@ VLIB_REGISTER_NODE (ip4_gbp_sclass_2_id_node) = {
 };
 
 VLIB_REGISTER_NODE (ip6_gbp_id_2_sclass_node) = {
-  .function = ip6_gbp_id_2_sclass,
   .name = "ip6-gbp-id-2-sclass",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_sclass_trace,
@@ -270,7 +265,6 @@ VLIB_REGISTER_NODE (ip6_gbp_id_2_sclass_node) = {
   },
 };
 VLIB_REGISTER_NODE (ip6_gbp_sclass_2_id_node) = {
-  .function = ip6_gbp_sclass_2_id,
   .name = "ip6-gbp-sclass-2-id",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_sclass_trace,
@@ -283,13 +277,6 @@ VLIB_REGISTER_NODE (ip6_gbp_sclass_2_id_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2_gbp_id_2_sclass_node, l2_gbp_id_2_sclass);
-VLIB_NODE_FUNCTION_MULTIARCH (l2_gbp_sclass_2_id_node, l2_gbp_sclass_2_id);
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_gbp_id_2_sclass_node, ip4_gbp_id_2_sclass);
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_gbp_sclass_2_id_node, ip4_gbp_sclass_2_id);
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_id_2_sclass_node, ip6_gbp_id_2_sclass);
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_sclass_2_id_node, ip6_gbp_sclass_2_id);
 
 VNET_FEATURE_INIT (ip4_gbp_sclass_2_id_feat, static) =
 {
@@ -315,6 +302,7 @@ VNET_FEATURE_INIT (ip6_gbp_id_2_sclass_feat, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 void
 gbp_sclass_enable_l2 (u32 sw_if_index)
 {
@@ -354,20 +342,24 @@ gbp_sclass_disable_ip (u32 sw_if_index)
   vnet_feature_enable_disable ("ip6-output",
 			       "ip6-gbp-id-2-sclass", sw_if_index, 0, 0, 0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 gbp_sclass_init (vlib_main_t * vm)
 {
   gbp_sclass_main_t *glm = &gbp_sclass_main;
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "l2-gbp-sclass-2-id");
 
   /* Initialize the feature next-node indices */
   feat_bitmap_init_next_nodes (vm,
-			       l2_gbp_sclass_2_id_node.index,
+			       node->index,
 			       L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       glm->gel_l2_input_feat_next);
+
+  node = vlib_get_node_by_name (vm, (u8 *) "l2-gbp-id-2-sclass");
   feat_bitmap_init_next_nodes (vm,
-			       l2_gbp_id_2_sclass_node.index,
+			       node->index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
 			       glm->gel_l2_output_feat_next);

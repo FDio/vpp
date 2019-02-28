@@ -21,6 +21,7 @@
 #include <plugins/gbp/gbp_policy_dpo.h>
 #include <plugins/gbp/gbp_recirc.h>
 
+#ifndef CLIB_MARCH_VARIANT
 /**
  * DPO pool
  */
@@ -206,6 +207,7 @@ gbp_policy_dpo_module_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (gbp_policy_dpo_module_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct gbp_policy_dpo_trace_t_
 {
@@ -394,23 +396,22 @@ format_gbp_policy_dpo_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-ip4_gbp_policy_dpo (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip4_gbp_policy_dpo_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * from_frame)
 {
   return (gbp_policy_dpo_inline (vm, node, from_frame, 0));
 }
 
-static uword
-ip6_gbp_policy_dpo (vlib_main_t * vm,
-		    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip6_gbp_policy_dpo_node) (vlib_main_t * vm,
+					vlib_node_runtime_t * node,
+					vlib_frame_t * from_frame)
 {
   return (gbp_policy_dpo_inline (vm, node, from_frame, 1));
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_gbp_policy_dpo_node) = {
-    .function = ip4_gbp_policy_dpo,
     .name = "ip4-gbp-policy-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_gbp_policy_dpo_trace,
@@ -421,7 +422,6 @@ VLIB_REGISTER_NODE (ip4_gbp_policy_dpo_node) = {
     }
 };
 VLIB_REGISTER_NODE (ip6_gbp_policy_dpo_node) = {
-    .function = ip6_gbp_policy_dpo,
     .name = "ip6-gbp-policy-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_gbp_policy_dpo_trace,
@@ -431,9 +431,6 @@ VLIB_REGISTER_NODE (ip6_gbp_policy_dpo_node) = {
         [GBP_POLICY_DROP] = "ip6-drop",
     }
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_gbp_policy_dpo_node, ip4_gbp_policy_dpo)
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_policy_dpo_node, ip6_gbp_policy_dpo)
 /* *INDENT-ON* */
 
 /*
