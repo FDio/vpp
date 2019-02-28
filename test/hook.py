@@ -6,10 +6,6 @@ from log import RED, single_line_delim, double_line_delim
 import ipaddress
 from subprocess import check_output, CalledProcessError
 from util import check_core_path, get_core_path
-try:
-    text_type = unicode
-except NameError:
-    text_type = str
 
 
 class Hook(object):
