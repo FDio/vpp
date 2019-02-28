@@ -564,10 +564,11 @@ vnet_classify_add_del (vnet_classify_table_t * t,
 
   if (new_v == 0)
     {
+    mark_resplit:      
+      new_log2_pages++;
+      
     try_resplit:
       resplit_once = 1;
-      new_log2_pages++;
-
       new_v = split_and_rehash (t, working_copy, old_log2_pages,
 				new_log2_pages);
       if (new_v == 0)
@@ -622,7 +623,7 @@ vnet_classify_add_del (vnet_classify_table_t * t,
   new_log2_pages++;
 
   if (resplit_once)
-    goto mark_linear;
+    goto linear_resplit;
   else
     goto try_resplit;
 
