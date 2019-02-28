@@ -8,11 +8,12 @@ This chapter contains a sample of the many ways FD.io VPP can be used. It is by 
 extensive list, but should give a sampling of the many features contained in FD.io VPP.
 
 .. toctree::
-  
+
    containers
    simpleperf/index.rst
    vhost/index.rst
    vmxnet3
+   vppcloud
    homegateway
    contiv/index.rst
    networksim
