@@ -317,7 +317,6 @@ class VppRoutePath(object):
     def encode(self):
         return {'next_hop': self.nh_addr,
                 'weight': 1,
-                'afi': 0,
                 'preference': 0,
                 'table_id': self.nh_table_id,
                 'next_hop_id': self.next_hop_id,
