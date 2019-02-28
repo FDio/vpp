@@ -1094,7 +1094,7 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "socket %s", &socket_path))
-	strncpy (pm->sun_path, socket_path, UNIX_PATH_MAX - 1);
+	clib_strncpy (pm->sun_path, socket_path, UNIX_PATH_MAX - 1);
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -1115,12 +1115,12 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
   if (*socket_path == '\0')
     {
       *addr.sun_path = '\0';
-      strncpy (addr.sun_path + 1, socket_path + 1,
-	       sizeof (addr.sun_path) - 2);
+      clib_strncpy (addr.sun_path + 1, socket_path + 1,
+		    sizeof (addr.sun_path) - 2);
     }
   else
     {
-      strncpy (addr.sun_path, socket_path, sizeof (addr.sun_path) - 1);
+      clib_strncpy (addr.sun_path, socket_path, sizeof (addr.sun_path) - 1);
       unlink (socket_path);
     }
 

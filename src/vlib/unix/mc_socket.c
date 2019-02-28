@@ -945,7 +945,7 @@ find_interface_ip4_address (char *if_name, u32 * ip4_address, u32 * mtu)
     }
 
   ifr.ifr_addr.sa_family = AF_INET;
-  strncpy (ifr.ifr_name, if_name, sizeof (ifr.ifr_name) - 1);
+  clib_strncpy (ifr.ifr_name, if_name, sizeof (ifr.ifr_name) - 1);
   if (ioctl (fd, SIOCGIFADDR, &ifr) < 0)
     {
       clib_unix_error ("ioctl(SIOCFIGADDR)");

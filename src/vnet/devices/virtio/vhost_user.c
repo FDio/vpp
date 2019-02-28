@@ -1131,8 +1131,8 @@ vhost_user_process (vlib_main_t * vm,
 		    }
 
 		  /* try to connect */
-		  strncpy (sun.sun_path, (char *) vui->sock_filename,
-			   sizeof (sun.sun_path) - 1);
+		  clib_strncpy (sun.sun_path, (char *) vui->sock_filename,
+				sizeof (sun.sun_path) - 1);
 
 		  /* Avoid hanging VPP if the other end does not accept */
 		  if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0)
@@ -1331,8 +1331,8 @@ vhost_user_init_server_sock (const char *sock_filename, int *sock_fd)
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
   un.sun_family = AF_UNIX;
-  strncpy ((char *) un.sun_path, (char *) sock_filename,
-	   sizeof (un.sun_path) - 1);
+  clib_strncpy ((char *) un.sun_path, (char *) sock_filename,
+		sizeof (un.sun_path) - 1);
 
   /* remove if exists */
   unlink ((char *) sock_filename);
@@ -1423,8 +1423,8 @@ vhost_user_vui_init (vnet_main_t * vnm,
     }
 
   vui->sw_if_index = sw->sw_if_index;
-  strncpy (vui->sock_filename, sock_filename,
-	   ARRAY_LEN (vui->sock_filename) - 1);
+  clib_strncpy (vui->sock_filename, sock_filename,
+		ARRAY_LEN (vui->sock_filename) - 1);
   vui->sock_errno = 0;
   vui->is_ready = 0;
   vui->feature_mask = feature_mask;
@@ -1714,13 +1714,13 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
       vuid->num_regions = vui->nregions;
       vuid->is_server = vui->unix_server_index != ~0;
       vuid->sock_errno = vui->sock_errno;
-      strncpy ((char *) vuid->sock_filename, (char *) vui->sock_filename,
-	       sizeof (vuid->sock_filename));
+      clib_strncpy ((char *) vuid->sock_filename, (char *) vui->sock_filename,
+		    sizeof (vuid->sock_filename));
       vuid->sock_filename[ARRAY_LEN (vuid->sock_filename) - 1] = '\0';
       s = format (s, "%v%c", hi->name, 0);
 
-      strncpy ((char *) vuid->if_name, (char *) s,
-	       ARRAY_LEN (vuid->if_name) - 1);
+      clib_strncpy ((char *) vuid->if_name, (char *) s,
+		    ARRAY_LEN (vuid->if_name) - 1);
       _vec_len (s) = 0;
     }
 

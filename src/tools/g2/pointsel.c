@@ -274,7 +274,7 @@ char *sxerox (char *s)
 
     /* Note: g_malloc does or dies... */
     rv = (char *)g_malloc(strlen(s)+1);
-    strcpy (rv, s);
+    clib_strcpy (rv, s);
     return (rv);
 }
 

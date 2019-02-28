@@ -175,7 +175,7 @@ vlib_vmbus_raise_lower (int fd, const char *upper_name)
       if (strncmp (e->d_name, "lower_", 6))
 	continue;
 
-      strncpy (ifr.ifr_name, e->d_name + 6, IFNAMSIZ - 1);
+      clib_strncpy (ifr.ifr_name, e->d_name + 6, IFNAMSIZ - 1);
       break;
     }
   closedir (dir);
@@ -250,7 +250,7 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
 
 
   clib_memset (&ifr, 0, sizeof (ifr));
-  strncpy (ifr.ifr_name, ifname, IFNAMSIZ - 1);
+  clib_strncpy (ifr.ifr_name, ifname, IFNAMSIZ - 1);
 
   /* read up/down flags */
   fd = socket (PF_INET, SOCK_DGRAM, 0);
