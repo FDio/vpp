@@ -5,7 +5,7 @@
 """
 
 from ipaddress import ip_address
-from vpp_object import *
+from vpp_object import VppObject
 from vpp_papi import mac_pton, VppEnum
 try:
     text_type = unicode

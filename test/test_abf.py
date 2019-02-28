@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
+from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
+import unittest
+
 from framework import VppTestCase, VppTestRunner
-from vpp_udp_encap import *
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP
+from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
-from scapy.contrib.mpls import MPLS
 
-from vpp_object import *
-from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
+from vpp_object import VppObject
 
 
 def find_abf_policy(test, id):

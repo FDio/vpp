@@ -1,21 +1,17 @@
 #!/usr/bin/env python
 
+import socket
 import unittest
-from logging import *
-
-from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath
-from vpp_pppoe_interface import VppPppoeInterface
-from vpp_papi_provider import L2_VTR_OP
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.ppp import PPPoE, PPPoED, PPP
-from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import IPv6
-from scapy.volatile import RandMAC, RandIP
+from scapy.layers.inet import IP
+
+from framework import VppTestCase, VppTestRunner
+from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_pppoe_interface import VppPppoeInterface
 from util import ppp, ppc
-import socket
 
 
 class TestPPPoE(VppTestCase):

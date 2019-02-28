@@ -4,11 +4,11 @@ from __future__ import print_function
 """
 import binascii
 import random
+from socket import inet_ntop, inet_pton, AF_INET, AF_INET6
+from struct import pack, unpack
 import re
 import unittest
 
-from socket import inet_ntop, inet_pton, AF_INET, AF_INET6
-from struct import *
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
