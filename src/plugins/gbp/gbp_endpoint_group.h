@@ -37,7 +37,7 @@ typedef struct gpb_endpoint_group_t_
   /**
    * ID
    */
-  epg_id_t gg_id;
+  vnid_t gg_vnid;
 
   /**
    * Sclass. Could be unset => ~0
@@ -86,18 +86,18 @@ typedef struct gpb_endpoint_group_t_
  */
 typedef struct gbp_endpoint_group_db_t_
 {
-  uword *gg_hash;
+  uword *gg_hash_sclass;
 } gbp_endpoint_group_db_t;
 
-extern int gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
+extern int gbp_endpoint_group_add_and_lock (vnid_t vnid,
 					    u16 sclass,
 					    u32 bd_id,
 					    u32 rd_id,
 					    u32 uplink_sw_if_index,
 					    const gbp_endpoint_retention_t *
 					    retention);
-extern index_t gbp_endpoint_group_find (epg_id_t epg_id);
-extern int gbp_endpoint_group_delete (epg_id_t epg_id);
+extern index_t gbp_endpoint_group_find (sclass_t sclass);
+extern int gbp_endpoint_group_delete (sclass_t sclass);
 extern void gbp_endpoint_group_unlock (index_t index);
 extern void gbp_endpoint_group_lock (index_t index);
 extern u32 gbp_endpoint_group_get_bd_id (const gbp_endpoint_group_t *);
@@ -120,24 +120,12 @@ extern gbp_endpoint_group_db_t gbp_endpoint_group_db;
 extern gbp_endpoint_group_t *gbp_endpoint_group_pool;
 extern uword *gbp_epg_sclass_db;
 
-always_inline gbp_endpoint_group_t *
-gbp_epg_get (epg_id_t epg)
-{
-  uword *p;
-
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg);
-
-  if (NULL != p)
-    return (pool_elt_at_index (gbp_endpoint_group_pool, p[0]));
-  return (NULL);
-}
-
 always_inline u32
-gbp_epg_itf_lookup (epg_id_t epg)
+gbp_epg_itf_lookup_sclass (sclass_t sclass)
 {
   uword *p;
 
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg);
+  p = hash_get (gbp_endpoint_group_db.gg_hash_sclass, sclass);
 
   if (NULL != p)
     {
@@ -149,26 +137,12 @@ gbp_epg_itf_lookup (epg_id_t epg)
   return (~0);
 }
 
-always_inline epg_id_t
-gbp_epg_sclass_2_id (u16 sclass)
-{
-  uword *p;
-
-  p = hash_get (gbp_epg_sclass_db, sclass);
-
-  if (NULL != p)
-    {
-      return (p[0]);
-    }
-  return (EPG_INVALID);
-}
-
 always_inline const dpo_id_t *
-gbp_epg_dpo_lookup (epg_id_t epg, fib_protocol_t fproto)
+gbp_epg_dpo_lookup (sclass_t sclass, fib_protocol_t fproto)
 {
   uword *p;
 
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg);
+  p = hash_get (gbp_endpoint_group_db.gg_hash_sclass, sclass);
 
   if (NULL != p)
     {

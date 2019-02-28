@@ -49,7 +49,7 @@ typedef enum
 typedef struct gbp_policy_trace_t_
 {
   /* per-pkt trace data */
-  u32 src_epg;
+  u32 sclass;
   u32 dst_epg;
   u32 acl_index;
   u32 allowed;
@@ -175,14 +175,14 @@ gbp_policy_inline (vlib_main_t * vm,
 					 vnet_buffer (b0)->l2.bd_index);
 
 	  if (NULL != ge0)
-	    key0.gck_dst = ge0->ge_fwd.gef_epg_id;
+	    key0.gck_dst = ge0->ge_fwd.gef_sclass;
 	  else
 	    /* If you cannot determine the destination EP then drop */
 	    goto trace;
 
-	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
+	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
 
-	  if (EPG_INVALID != key0.gck_src)
+	  if (SCLASS_INVALID != key0.gck_src)
 	    {
 	      if (PREDICT_FALSE (key0.gck_src == key0.gck_dst))
 		{
@@ -305,7 +305,7 @@ gbp_policy_inline (vlib_main_t * vm,
 	    {
 	      gbp_policy_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->src_epg = key0.gck_src;
+	      t->sclass = key0.gck_src;
 	      t->dst_epg = key0.gck_dst;
 	      t->acl_index = (gc0 ? gc0->gc_acl_index : ~0),
 		t->allowed = (next0 != GBP_POLICY_NEXT_DENY);
@@ -346,8 +346,8 @@ format_gbp_policy_trace (u8 * s, va_list * args)
   gbp_policy_trace_t *t = va_arg (*args, gbp_policy_trace_t *);
 
   s =
-    format (s, "src:%d, dst:%d, acl:%d allowed:%d",
-	    t->src_epg, t->dst_epg, t->acl_index, t->allowed);
+    format (s, "sclass:%d, dst:%d, acl:%d allowed:%d",
+	    t->sclass, t->dst_epg, t->acl_index, t->allowed);
 
   return s;
 }

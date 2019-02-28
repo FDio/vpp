@@ -28,7 +28,8 @@ namespace VOM {
 /**
  * EPG IDs are 32 bit integers
  */
-typedef uint32_t epg_id_t;
+typedef uint32_t vnid_t;
+typedef uint16_t sclass_t;
 
 /**
  * A entry in the ARP termination table of a Bridge Domain
@@ -59,25 +60,21 @@ public:
   /**
    * The key for a GBP endpoint group is its ID
    */
-  typedef epg_id_t key_t;
+  typedef sclass_t key_t;
 
   /**
    * Construct a GBP endpoint_group
    */
-  gbp_endpoint_group(epg_id_t epg_id,
+  gbp_endpoint_group(vnid_t vnid,
+                     sclass_t sclass,
                      const interface& itf,
                      const gbp_route_domain& rd,
                      const gbp_bridge_domain& bd);
-  gbp_endpoint_group(epg_id_t epg_id,
+  gbp_endpoint_group(vnid_t vnid,
+                     sclass_t sclass,
                      const gbp_route_domain& rd,
                      const gbp_bridge_domain& bd);
-  gbp_endpoint_group(epg_id_t epg_id,
-                     uint16_t sclass,
-                     const interface& itf,
-                     const gbp_route_domain& rd,
-                     const gbp_bridge_domain& bd);
-  gbp_endpoint_group(epg_id_t epg_id,
-                     uint16_t sclass,
+  gbp_endpoint_group(sclass_t sclass,
                      const gbp_route_domain& rd,
                      const gbp_bridge_domain& bd);
 
@@ -129,7 +126,8 @@ public:
   /**
    * Get the ID of the EPG
    */
-  epg_id_t id() const;
+  vnid_t vnid() const;
+  sclass_t sclass() const;
 
   const std::shared_ptr<gbp_route_domain> get_route_domain() const;
   const std::shared_ptr<gbp_bridge_domain> get_bridge_domain() const;
@@ -206,7 +204,7 @@ private:
   /**
    * The EPG ID
    */
-  epg_id_t m_epg_id;
+  vnid_t m_vnid;
 
   /**
    * The SClass on the wire

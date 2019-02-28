@@ -92,7 +92,7 @@ gbp_policy_dpo_get_urpf (const dpo_id_t * dpo)
 
 void
 gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
-			    epg_id_t epg, u32 sw_if_index, dpo_id_t * dpo)
+			    sclass_t sclass, u32 sw_if_index, dpo_id_t * dpo)
 {
   gbp_policy_dpo_t *gpd;
   dpo_id_t parent = DPO_INVALID;
@@ -101,7 +101,7 @@ gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
 
   gpd->gpd_proto = dproto;
   gpd->gpd_sw_if_index = sw_if_index;
-  gpd->gpd_epg = epg;
+  gpd->gpd_sclass = sclass;
 
   if (~0 != sw_if_index)
     {
@@ -127,9 +127,9 @@ format_gbp_policy_dpo (u8 * s, va_list * ap)
   gbp_policy_dpo_t *gpd = gbp_policy_dpo_get (index);
   vnet_main_t *vnm = vnet_get_main ();
 
-  s = format (s, "gbp-policy-dpo: %U, epg:%d out:%U",
+  s = format (s, "gbp-policy-dpo: %U, sclass:%d out:%U",
 	      format_dpo_proto, gpd->gpd_proto,
-	      gpd->gpd_epg,
+	      (int) gpd->gpd_sclass,
 	      format_vnet_sw_if_index_name, vnm, gpd->gpd_sw_if_index);
   s = format (s, "\n%U", format_white_space, indent + 2);
   s = format (s, "%U", format_dpo_id, &gpd->gpd_dpo, indent + 4);
@@ -150,7 +150,7 @@ gbp_policy_dpo_interpose (const dpo_id_t * original,
   gpd = gbp_policy_dpo_get (original->dpoi_index);
 
   gpd_clone->gpd_proto = gpd->gpd_proto;
-  gpd_clone->gpd_epg = gpd->gpd_epg;
+  gpd_clone->gpd_sclass = gpd->gpd_sclass;
   gpd_clone->gpd_sw_if_index = gpd->gpd_sw_if_index;
 
   dpo_stack (gbp_policy_dpo_type,
@@ -290,10 +290,10 @@ gbp_policy_dpo_inline (vlib_main_t * vm,
 	      goto trace;
 	    }
 
-	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
-	  key0.gck_dst = gpd0->gpd_epg;
+	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
+	  key0.gck_dst = gpd0->gpd_sclass;
 
-	  if (EPG_INVALID != key0.gck_src)
+	  if (SCLASS_INVALID != key0.gck_src)
 	    {
 	      if (PREDICT_FALSE (key0.gck_src == key0.gck_dst))
 		{

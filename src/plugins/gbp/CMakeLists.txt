@@ -33,8 +33,6 @@ add_vpp_plugin(gbp
   gbp_recirc.c
   gbp_route_domain.c
   gbp_scanner.c
-  gbp_sclass.c
-  gbp_sclass_node.c
   gbp_subnet.c
   gbp_vxlan.c
   gbp_vxlan_node.c
@@ -47,7 +45,6 @@ add_vpp_plugin(gbp
   gbp_policy_dpo.c
   gbp_policy_node.c
   gbp_vxlan_node.c
-  gbp_sclass_node.c
 
   API_FILES
   gbp.api

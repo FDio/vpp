@@ -27,7 +27,7 @@ typedef struct gbp_fwd_main_t_
   u32 l2_input_feat_next[32];
 } gbp_fwd_main_t;
 
-static gbp_fwd_main_t gbp_fwd_main;
+gbp_fwd_main_t gbp_fwd_main;
 
 static clib_error_t *
 gbp_fwd_init (vlib_main_t * vm)

@@ -18,7 +18,6 @@
 #include <plugins/gbp/gbp_learn.h>
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
-#include <plugins/gbp/gbp_sclass.h>
 
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 #include <vlibmemory/api.h>
@@ -169,9 +168,8 @@ gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
 	  vxr->vxr_itf = gbp_itf_add_and_lock (vxr->vxr_sw_if_index,
 					       gt->gt_bd_index);
 
-	  ofeat = (L2OUTPUT_FEAT_GBP_POLICY_MAC |
-		   L2OUTPUT_FEAT_GBP_ID_2_SCLASS);
-	  ifeat = L2INPUT_FEAT_GBP_SCLASS_2_ID;
+	  ofeat = L2OUTPUT_FEAT_GBP_POLICY_MAC;
+	  ifeat = L2INPUT_FEAT_NONE;
 
 	  if (!(gbd->gb_flags & GBP_BD_FLAG_DO_NOT_LEARN))
 	    ifeat |= L2INPUT_FEAT_GBP_LEARN;
@@ -193,7 +191,6 @@ gdb_vxlan_dep_add (gbp_vxlan_tunnel_t * gt,
 			   grd->grd_table_id[fproto], 1);
 
 	  gbp_learn_enable (vxr->vxr_sw_if_index, GBP_LEARN_MODE_L3);
-	  gbp_sclass_enable_ip (vxr->vxr_sw_if_index);
 	}
     }
 
@@ -283,7 +280,6 @@ gdb_vxlan_dep_del (index_t vxri)
 
       FOR_EACH_FIB_IP_PROTOCOL (fproto)
 	ip_table_bind (fproto, vxr->vxr_sw_if_index, 0, 0);
-      gbp_sclass_disable_ip (vxr->vxr_sw_if_index);
       gbp_learn_disable (vxr->vxr_sw_if_index, GBP_LEARN_MODE_L3);
     }
 
@@ -541,7 +537,6 @@ gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
 	  gt->gt_itf = gbp_itf_add_and_lock (gt->gt_sw_if_index,
 					     gt->gt_bd_index);
 	  gbp_learn_enable (gt->gt_sw_if_index, GBP_LEARN_MODE_L2);
-	  gbp_sclass_enable_l2 (gt->gt_sw_if_index);
 	}
       else
 	{
@@ -554,7 +549,6 @@ gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
 	  grd->grd_vni_sw_if_index = gt->gt_sw_if_index;
 
 	  gbp_learn_enable (gt->gt_sw_if_index, GBP_LEARN_MODE_L3);
-	  gbp_sclass_enable_ip (gt->gt_sw_if_index);
 
 	  ip4_sw_interface_enable_disable (gt->gt_sw_if_index, 1);
 	  ip6_sw_interface_enable_disable (gt->gt_sw_if_index, 1);
@@ -620,7 +614,6 @@ gbp_vxlan_tunnel_del (u32 vni)
       if (GBP_VXLAN_TUN_L2 == gt->gt_layer)
 	{
 	  gbp_learn_disable (gt->gt_sw_if_index, GBP_LEARN_MODE_L2);
-	  gbp_sclass_disable_l2 (gt->gt_sw_if_index);
 	  gbp_itf_unlock (gt->gt_itf);
 	  gbp_bridge_domain_unlock (gt->gt_gbd);
 	}
@@ -635,7 +628,6 @@ gbp_vxlan_tunnel_del (u32 vni)
 	  ip6_sw_interface_enable_disable (gt->gt_sw_if_index, 0);
 
 	  gbp_learn_disable (gt->gt_sw_if_index, GBP_LEARN_MODE_L3);
-	  gbp_sclass_disable_ip (gt->gt_sw_if_index);
 	  gbp_route_domain_unlock (gt->gt_grd);
 	}
 

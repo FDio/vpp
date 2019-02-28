@@ -36,7 +36,7 @@ public:
   create_cmd(HW::item<bool>& item,
              const handle_t& itf,
              bool is_ext,
-             epg_id_t epg_id);
+             sclass_t sclass);
 
   /**
    * Issue the command to VPP/HW
@@ -56,7 +56,7 @@ public:
 private:
   const handle_t m_itf;
   bool m_is_ext;
-  const epg_id_t m_epg_id;
+  const sclass_t m_sclass;
 };
 
 /**

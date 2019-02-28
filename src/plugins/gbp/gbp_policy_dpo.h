@@ -33,9 +33,9 @@ typedef struct gbp_policy_dpo_t_
   dpo_proto_t gpd_proto;
 
   /**
-   * EPG
+   * SClass
    */
-  epg_id_t gpd_epg;
+  sclass_t gpd_sclass;
 
   /**
    * output sw_if_index
@@ -54,7 +54,7 @@ typedef struct gbp_policy_dpo_t_
 } gbp_policy_dpo_t;
 
 extern void gbp_policy_dpo_add_or_lock (dpo_proto_t dproto,
-					epg_id_t epg,
+					sclass_t sclass,
 					u32 sw_if_index, dpo_id_t * dpo);
 
 extern dpo_type_t gbp_policy_dpo_get_type (void);

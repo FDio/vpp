@@ -17,7 +17,6 @@
 #include <plugins/gbp/gbp_learn.h>
 #include <plugins/gbp/gbp_bridge_domain.h>
 #include <plugins/gbp/gbp_route_domain.h>
-#include <plugins/gbp/gbp_sclass.h>
 
 #include <vnet/vxlan-gbp/vxlan_gbp.h>
 #include <vlibmemory/api.h>

@@ -377,7 +377,7 @@ gbp_contract_next_hop_resolve (index_t gui, index_t gnhi)
 				     gbd->gb_uu_fwd_sw_if_index,
 				     ips,
 				     &gnh->gnh_mac,
-				     gnh->gnh_bd, gnh->gnh_rd, EPG_INVALID,
+				     gnh->gnh_bd, gnh->gnh_rd, SCLASS_INVALID,
 				     GBP_ENDPOINT_FLAG_NONE, NULL, NULL,
 				     &gnh->gnh_ge);
 
@@ -433,8 +433,8 @@ gbp_contract_mk_lbs (index_t * guis)
 }
 
 int
-gbp_contract_update (epg_id_t src_epg,
-		     epg_id_t dst_epg,
+gbp_contract_update (sclass_t sclass,
+		     sclass_t dclass,
 		     u32 acl_index, index_t * rules, u16 * allowed_ethertypes)
 {
   gbp_main_t *gm = &gbp_main;
@@ -444,8 +444,8 @@ gbp_contract_update (epg_id_t src_epg,
   uword *p;
 
   gbp_contract_key_t key = {
-    .gck_src = src_epg,
-    .gck_dst = dst_epg,
+    .gck_src = sclass,
+    .gck_dst = dclass,
   };
 
   if (~0 == gm->gbp_acl_user_id)
@@ -483,7 +483,7 @@ gbp_contract_update (epg_id_t src_epg,
   gc->gc_acl_index = acl_index;
   gc->gc_lc_index =
     gm->acl_plugin.get_lookup_context_index (gm->gbp_acl_user_id,
-					     src_epg, dst_epg);
+					     sclass, dclass);
 
   vec_add1 (acl_vec, gc->gc_acl_index);
   gm->acl_plugin.set_acl_vec_for_context (gc->gc_lc_index, acl_vec);
@@ -493,11 +493,11 @@ gbp_contract_update (epg_id_t src_epg,
 }
 
 int
-gbp_contract_delete (epg_id_t src_epg, epg_id_t dst_epg)
+gbp_contract_delete (sclass_t sclass, sclass_t dclass)
 {
   gbp_contract_key_t key = {
-    .gck_src = src_epg,
-    .gck_dst = dst_epg,
+    .gck_src = sclass,
+    .gck_dst = dclass,
   };
   gbp_contract_t *gc;
   uword *p;
@@ -538,7 +538,7 @@ static clib_error_t *
 gbp_contract_cli (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  epg_id_t src_epg_id = EPG_INVALID, dst_epg_id = EPG_INVALID;
+  sclass_t sclass = SCLASS_INVALID, dclass = SCLASS_INVALID;
   u32 acl_index = ~0;
   u8 add = 1;
 
@@ -548,9 +548,9 @@ gbp_contract_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "src-epg %d", &src_epg_id))
+      else if (unformat (input, "src-epg %d", &sclass))
 	;
-      else if (unformat (input, "dst-epg %d", &dst_epg_id))
+      else if (unformat (input, "dst-epg %d", &dclass))
 	;
       else if (unformat (input, "acl-index %d", &acl_index))
 	;
@@ -558,18 +558,18 @@ gbp_contract_cli (vlib_main_t * vm,
 	break;
     }
 
-  if (EPG_INVALID == src_epg_id)
+  if (SCLASS_INVALID == sclass)
     return clib_error_return (0, "Source EPG-ID must be specified");
-  if (EPG_INVALID == dst_epg_id)
+  if (SCLASS_INVALID == dclass)
     return clib_error_return (0, "Destination EPG-ID must be specified");
 
   if (add)
     {
-      gbp_contract_update (src_epg_id, dst_epg_id, acl_index, NULL, NULL);
+      gbp_contract_update (sclass, dclass, acl_index, NULL, NULL);
     }
   else
     {
-      gbp_contract_delete (src_epg_id, dst_epg_id);
+      gbp_contract_delete (sclass, dclass);
     }
 
   return (NULL);
