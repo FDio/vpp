@@ -2,7 +2,7 @@ import os
 import time
 from collections import deque
 
-from six import moves
+from six import moves, iteritems
 from vpp_papi import VPP, mac_pton
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
@@ -40,6 +40,14 @@ class SYSLOG_SEVERITY:
     NOTICE = 5
     INFO = 6
     DBG = 7
+
+#
+# Dictionary keyed on message name to override default values for
+# named parameters
+#
+defaultmapping = {'map_add_domain': {'mtu': 1280},
+                  'syslog_set_sender': {'collector_port': 514,
+                                        'max_msg_size': 480}}
 
 
 class UnexpectedApiReturnValueError(Exception):
@@ -144,6 +152,33 @@ class VppPapiProvider(object):
         # FIXME #2 if this throws, it is eaten silently, Ole?
         self.test_class.logger.debug("New event: %s: %s" % (name, event))
         self._events.append(event)
+
+    def factory(self, name, apifn):
+        def f(*a, **ka):
+            fields = apifn._func.msg.fields
+
+            # add positional and kw arguments
+            d = ka
+            for i, o in enumerate(fields[3:]):
+                try:
+                    d[o] = a[i]
+                except:
+                    break
+
+            # Default override
+            if name in defaultmapping:
+                for k, v in iteritems(defaultmapping[name]):
+                    if k in d:
+                        continue
+                    d[k] = v
+            return self.api(apifn, d)
+        return f
+
+    def __getattr__(self, name):
+        try:
+            return getattr(self, name)
+        except:
+            return self.factory(name, getattr(self.papi, name))
 
     def connect(self):
         """Connect the API to VPP"""
@@ -2754,43 +2789,6 @@ class VppPapiProvider(object):
                 'vni': vni
             })
 
-    def map_add_domain(self,
-                       ip6_prefix,
-                       ip6_src,
-                       ip4_prefix,
-                       ea_bits_len=0,
-                       psid_offset=0,
-                       psid_length=0,
-                       mtu=1280):
-
-        return self.api(
-            self.papi.map_add_domain,
-            {
-                'ip6_prefix': ip6_prefix,
-                'ip4_prefix': ip4_prefix,
-                'ip6_src': ip6_src,
-                'ea_bits_len': ea_bits_len,
-                'psid_offset': psid_offset,
-                'psid_length': psid_length,
-                'mtu': mtu
-            })
-
-    def map_if_enable_disable(self, is_enable, sw_if_index, is_translation):
-        return self.api(
-            self.papi.map_if_enable_disable,
-            {
-                'is_enable': is_enable,
-                'sw_if_index': sw_if_index,
-                'is_translation': is_translation,
-            })
-
-    def map_param_set_tcp(self, tcp_mss):
-        return self.api(
-            self.papi.map_param_set_tcp,
-            {
-                'tcp_mss': tcp_mss,
-            })
-
     def gtpu_add_del_tunnel(
             self,
             src_addr,
@@ -4163,40 +4161,3 @@ class VppPapiProvider(object):
 
     def svs_dump(self):
         return self.api(self.papi.svs_dump, {})
-
-    def syslog_set_sender(
-            self,
-            collector,
-            src,
-            collector_port=514,
-            vrf_id=0,
-            max_msg_size=480):
-        """Set syslog sender configuration
-
-        :param collector: colector IP address
-        :param src: source IP address
-        :param collector_port: collector UDP port (Default value = 514)
-        :param vrf_id: VRF id (Default value = 0)
-        :param max_msg_size: maximum message length (Default value = 480)
-        """
-        return self.api(self.papi.syslog_set_sender,
-                        {'collector_address': collector,
-                         'src_address': src,
-                         'collector_port': collector_port,
-                         'vrf_id': vrf_id,
-                         'max_msg_size': max_msg_size})
-
-    def syslog_get_sender(self):
-        """Return syslog sender configuration"""
-        return self.api(self.papi.syslog_get_sender, {})
-
-    def syslog_set_filter(self, severity):
-        """Set syslog filter parameters
-
-        :param severity: severity filter (specified severity and greater match)
-        """
-        return self.api(self.papi.syslog_set_filter, {'severity': severity})
-
-    def syslog_get_filter(self):
-        """Return syslog filter parameters"""
-        return self.api(self.papi.syslog_get_filter, {})
