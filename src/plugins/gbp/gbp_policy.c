@@ -18,19 +18,6 @@
 
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
 
-/**
- * Grouping of global data for the GBP source EPG classification feature
- */
-typedef struct gbp_policy_main_t_
-{
-  /**
-   * Next nodes for L2 output features
-   */
-  u32 l2_output_feat_next[2][32];
-} gbp_policy_main_t;
-
-static gbp_policy_main_t gbp_policy_main;
-
 #define foreach_gbp_policy                      \
   _(DENY,    "deny")
 
@@ -336,16 +323,16 @@ gbp_policy_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-gbp_policy_port (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_policy_port_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   return (gbp_policy_inline (vm, node, frame, 1));
 }
 
-static uword
-gbp_policy_mac (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_policy_mac_node) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   return (gbp_policy_inline (vm, node, frame, 0));
 }
@@ -367,7 +354,6 @@ format_gbp_policy_trace (u8 * s, va_list * args)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_policy_port_node) = {
-  .function = gbp_policy_port,
   .name = "gbp-policy-port",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_policy_trace,
@@ -383,18 +369,13 @@ VLIB_REGISTER_NODE (gbp_policy_port_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_policy_port_node, gbp_policy_port);
-
 VLIB_REGISTER_NODE (gbp_policy_mac_node) = {
-  .function = gbp_policy_mac,
   .name = "gbp-policy-mac",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_policy_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "gbp-policy-port",
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_policy_mac_node, gbp_policy_mac);
 
 /* *INDENT-ON* */
 
@@ -404,14 +385,18 @@ gbp_policy_init (vlib_main_t * vm)
   gbp_policy_main_t *gpm = &gbp_policy_main;
   clib_error_t *error = 0;
 
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "gbp-policy-port");
+
   /* Initialize the feature next-node indexes */
   feat_bitmap_init_next_nodes (vm,
-			       gbp_policy_port_node.index,
+			       node->index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
 			       gpm->l2_output_feat_next[1]);
+
+  node = vlib_get_node_by_name (vm, (u8 *) "gbp-policy-mac");
   feat_bitmap_init_next_nodes (vm,
-			       gbp_policy_mac_node.index,
+			       node->index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
 			       gpm->l2_output_feat_next[0]);

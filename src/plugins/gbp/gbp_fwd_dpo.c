@@ -18,6 +18,8 @@
 
 #include <vnet/ethernet/ethernet.h>
 
+
+#ifndef CLIB_MARCH_VARIANT
 /**
  * The 'DB' of GBP FWD DPOs.
  * There is one per-proto
@@ -164,6 +166,7 @@ gbp_fwd_dpo_module_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (gbp_fwd_dpo_module_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct gbp_fwd_dpo_trace_t_
 {
@@ -255,23 +258,22 @@ format_gbp_fwd_dpo_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-ip4_gbp_fwd_dpo (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip4_gbp_fwd_dpo_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * from_frame)
 {
   return (gbp_fwd_dpo_inline (vm, node, from_frame, FIB_PROTOCOL_IP4));
 }
 
-static uword
-ip6_gbp_fwd_dpo (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (ip6_gbp_fwd_dpo_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * from_frame)
 {
   return (gbp_fwd_dpo_inline (vm, node, from_frame, FIB_PROTOCOL_IP6));
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_gbp_fwd_dpo_node) = {
-    .function = ip4_gbp_fwd_dpo,
     .name = "ip4-gbp-fwd-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_gbp_fwd_dpo_trace,
@@ -283,7 +285,6 @@ VLIB_REGISTER_NODE (ip4_gbp_fwd_dpo_node) = {
     }
 };
 VLIB_REGISTER_NODE (ip6_gbp_fwd_dpo_node) = {
-    .function = ip6_gbp_fwd_dpo,
     .name = "ip6-gbp-fwd-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_gbp_fwd_dpo_trace,
@@ -294,9 +295,6 @@ VLIB_REGISTER_NODE (ip6_gbp_fwd_dpo_node) = {
         [GBP_FWD_FWD] = "ip6-dvr-dpo",
     }
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_gbp_fwd_dpo_node, ip4_gbp_fwd_dpo)
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_gbp_fwd_dpo_node, ip6_gbp_fwd_dpo)
 /* *INDENT-ON* */
 
 /*

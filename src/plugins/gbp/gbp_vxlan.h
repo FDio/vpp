@@ -122,6 +122,7 @@ extern void gbp_vxlan_walk (gbp_vxlan_cb_t cb, void *ctx);
 extern u8 *format_gbp_vxlan_tunnel (u8 * s, va_list * args);
 extern u8 *format_gbp_vxlan_tunnel_layer (u8 * s, va_list * args);
 
+extern gbp_vxlan_tunnel_t *gbp_vxlan_tunnel_get (index_t gti);
 #endif
 
 /*
