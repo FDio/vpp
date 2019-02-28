@@ -28,7 +28,8 @@ namespace VOM {
 /**
  * EPG IDs are 32 bit integers
  */
-typedef uint32_t epg_id_t;
+typedef uint16_t epg_id_t;
+typedef uint16_t sclass_t;
 
 /**
  * A entry in the ARP termination table of a Bridge Domain
@@ -59,25 +60,18 @@ public:
   /**
    * The key for a GBP endpoint group is its ID
    */
-  typedef epg_id_t key_t;
+  typedef sclass_t key_t;
 
   /**
    * Construct a GBP endpoint_group
    */
   gbp_endpoint_group(epg_id_t epg_id,
+                     sclass_t sclass,
                      const interface& itf,
                      const gbp_route_domain& rd,
                      const gbp_bridge_domain& bd);
   gbp_endpoint_group(epg_id_t epg_id,
-                     const gbp_route_domain& rd,
-                     const gbp_bridge_domain& bd);
-  gbp_endpoint_group(epg_id_t epg_id,
-                     uint16_t sclass,
-                     const interface& itf,
-                     const gbp_route_domain& rd,
-                     const gbp_bridge_domain& bd);
-  gbp_endpoint_group(epg_id_t epg_id,
-                     uint16_t sclass,
+                     sclass_t sclass,
                      const gbp_route_domain& rd,
                      const gbp_bridge_domain& bd);
 
@@ -130,6 +124,7 @@ public:
    * Get the ID of the EPG
    */
   epg_id_t id() const;
+  sclass_t sclass() const;
 
   const std::shared_ptr<gbp_route_domain> get_route_domain() const;
   const std::shared_ptr<gbp_bridge_domain> get_bridge_domain() const;
@@ -140,7 +135,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();

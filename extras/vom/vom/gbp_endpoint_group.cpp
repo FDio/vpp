@@ -46,34 +46,7 @@ gbp_endpoint_group::retention_t::to_string() const
 }
 
 gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       const interface& itf,
-                                       const gbp_route_domain& rd,
-                                       const gbp_bridge_domain& bd)
-  : m_hw(false)
-  , m_epg_id(epg_id)
-  , m_sclass(0xffff)
-  , m_itf(itf.singular())
-  , m_rd(rd.singular())
-  , m_bd(bd.singular())
-  , m_retention()
-{
-}
-
-gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       const gbp_route_domain& rd,
-                                       const gbp_bridge_domain& bd)
-  : m_hw(false)
-  , m_epg_id(epg_id)
-  , m_sclass(0xffff)
-  , m_itf()
-  , m_rd(rd.singular())
-  , m_bd(bd.singular())
-  , m_retention()
-{
-}
-
-gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       uint16_t sclass,
+                                       sclass_t sclass,
                                        const interface& itf,
                                        const gbp_route_domain& rd,
                                        const gbp_bridge_domain& bd)
@@ -88,7 +61,7 @@ gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
 }
 
 gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       uint16_t sclass,
+                                       sclass_t sclass,
                                        const gbp_route_domain& rd,
                                        const gbp_bridge_domain& bd)
   : m_hw(false)
@@ -121,7 +94,7 @@ gbp_endpoint_group::~gbp_endpoint_group()
 const gbp_endpoint_group::key_t
 gbp_endpoint_group::key() const
 {
-  return (m_epg_id);
+  return (m_sclass);
 }
 
 epg_id_t
@@ -136,10 +109,16 @@ gbp_endpoint_group::set(const retention_t& retention)
   m_retention = retention;
 }
 
+sclass_t
+gbp_endpoint_group::sclass() const
+{
+  return (m_sclass);
+}
+
 bool
 gbp_endpoint_group::operator==(const gbp_endpoint_group& gg) const
 {
-  return (key() == gg.key() && (m_sclass == gg.m_sclass) &&
+  return (key() == gg.key() && (m_epg_id == gg.m_epg_id) &&
           (m_retention == gg.m_retention) && (m_itf == gg.m_itf) &&
           (m_rd == gg.m_rd) && (m_bd == gg.m_bd));
 }
@@ -225,8 +204,8 @@ gbp_endpoint_group::get_bridge_domain() const
 gbp_endpoint_group::event_handler::event_handler()
 {
   OM::register_listener(this);
-  inspect::register_handler({ "gbp-endpoint-group" }, "GBP Endpoint_Groups",
-                            this);
+  inspect::register_handler(
+    { "gbp-endpoint-group" }, "GBP Endpoint_Groups", this);
 }
 
 void
@@ -254,13 +233,13 @@ gbp_endpoint_group::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<gbp_bridge_domain> bd =
       gbp_bridge_domain::find(payload.epg.bd_id);
 
-    VOM_LOG(log_level_t::DEBUG) << "data: [" << payload.epg.uplink_sw_if_index
-                                << ", " << payload.epg.rd_id << ", "
-                                << payload.epg.bd_id << "]";
+    VOM_LOG(log_level_t::DEBUG)
+      << "data: [" << payload.epg.uplink_sw_if_index << ", "
+      << payload.epg.rd_id << ", " << payload.epg.bd_id << "]";
 
     if (itf && bd && rd) {
-      gbp_endpoint_group gbpe(payload.epg.epg_id, payload.epg.sclass, *itf, *rd,
-                              *bd);
+      gbp_endpoint_group gbpe(
+        payload.epg.epg_id, payload.epg.sclass, *itf, *rd, *bd);
       OM::commit(key, gbpe);
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
@@ -270,9 +249,9 @@ gbp_endpoint_group::event_handler::handle_populate(const client_db::key_t& key)
 
       VOM_LOG(log_level_t::DEBUG) << "read: " << gbpe.to_string();
     } else {
-      VOM_LOG(log_level_t::ERROR) << "no itf:" << payload.epg.uplink_sw_if_index
-                                  << " or BD:" << payload.epg.bd_id
-                                  << " or RD:" << payload.epg.rd_id;
+      VOM_LOG(log_level_t::ERROR)
+        << "no itf:" << payload.epg.uplink_sw_if_index
+        << " or BD:" << payload.epg.bd_id << " or RD:" << payload.epg.rd_id;
     }
   }
 }

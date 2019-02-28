@@ -391,11 +391,7 @@ typedef struct
   {
     u8 __unused;
     u8 flags;
-    union
-    {
-      u16 src_epg;
-      u16 sclass;
-    };
+    u16 sclass;
   } gbp;
 
   /**
