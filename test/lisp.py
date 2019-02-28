@@ -1,5 +1,6 @@
-from scapy.fields import *
-from vpp_object import *
+import socket
+
+from vpp_object import VppObject
 
 
 class VppLispLocatorSet(VppObject):

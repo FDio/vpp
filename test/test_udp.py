@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import unittest
 from framework import VppTestCase, VppTestRunner
-from vpp_udp_encap import *
+from vpp_udp_encap import find_udp_encap, VppUdpEncap
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, VppMplsLabel
 
 from scapy.packet import Raw

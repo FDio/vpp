@@ -4,9 +4,9 @@
   object abstractions for representing IP routes in VPP
 """
 
-from vpp_object import *
+from vpp_object import VppObject
 from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
-from vpp_ip import *
+from vpp_ip import DpoProto, VppIpPrefix
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
