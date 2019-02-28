@@ -1552,8 +1552,8 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
     {
       /* When we entered recovery, we reset snd_nxt to snd_una. Seems peer
        * still has the data so accept the ack */
-      if (tcp_in_recovery (tc)
-	  && seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_congestion))
+      if (tcp_in_cong_recovery (tc) && seq_leq (vnet_buffer (b)->tcp.ack_number,
+					   tc->snd_una + tc->snd_wnd))
 	{
 	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
 	  if (seq_gt (tc->snd_nxt, tc->snd_una_max))
@@ -1566,6 +1566,10 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
        * drop it */
       if (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max))
 	{
+	  clib_warning ("future conn %u flags %u: una %u nxt %u max %u "
+			"congestion %u", tc->c_c_index, tc->flags, tc->snd_una - tc->iss,
+			tc->snd_nxt - tc->iss, tc->snd_una_max - tc->iss,
+			tc->snd_congestion - tc->iss);
 	  tcp_program_ack (wrk, tc);
 	  *error = TCP_ERROR_ACK_FUTURE;
 	  TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 0,
@@ -1573,10 +1577,18 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 	  return -1;
 	}
 
+      clib_warning ("accepted conn %u flags %u: una %u nxt %u max %u "
+                    "congestion %u", tc->c_c_index, tc->flags, tc->snd_una - tc->iss,
+                    tc->snd_nxt - tc->iss, tc->snd_una_max - tc->iss,
+                    tc->snd_congestion - tc->iss);
       TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 2,
 		   vnet_buffer (b)->tcp.ack_number);
 
       tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+      if (seq_gt(tc->snd_nxt, tc->snd_una_max))
+	tc->snd_una_max = tc->snd_nxt;
+
+      goto process_ack;
     }
 
   /* If old ACK, probably it's an old dupack */
