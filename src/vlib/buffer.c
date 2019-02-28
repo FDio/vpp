@@ -63,6 +63,17 @@ STATIC_ASSERT_OFFSET_OF (vlib_buffer_t, template_end, 64);
 
 u16 __vlib_buffer_external_hdr_size = 0;
 
+static void
+buffer_gauges_update_cached_fn (stat_segment_directory_entry_t * e,
+				u32 index);
+
+static void
+buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e,
+				   u32 index);
+
+static void
+buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index);
+
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
 				       vlib_buffer_t * b_first)
@@ -631,6 +642,7 @@ vlib_buffer_worker_init (vlib_main_t * vm)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *bp;
+  u8 *name;
 
   /* *INDENT-OFF* */
   vec_foreach (bp, bm->buffer_pools)
@@ -638,6 +650,20 @@ vlib_buffer_worker_init (vlib_main_t * vm)
       clib_spinlock_lock (&bp->lock);
       vec_validate_aligned (bp->threads, vec_len (vlib_mains) - 1,
 			    CLIB_CACHE_LINE_BYTES);
+
+      name = format (0, "/buffer/cached/%s%c", bp->name, 0);
+      stat_segment_register_gauge (name, buffer_gauges_update_cached_fn,
+           bp - bm->buffer_pools);
+      vec_free (name);
+      name = format (0, "/buffer/used/%s%c", bp->name, 0);
+      stat_segment_register_gauge (name, buffer_gauges_update_used_fn,
+           bp - bm->buffer_pools);
+      vec_free (name);
+      name = format (0, "/buffer/available/%s%c", bp->name, 0);
+      stat_segment_register_gauge (name, buffer_gauges_update_available_fn,
+           bp - bm->buffer_pools);
+      vec_free (name);
+
       clib_spinlock_unlock (&bp->lock);
     }
   /* *INDENT-ON* */
@@ -777,8 +803,6 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   clib_error_t *err;
   clib_bitmap_t *bmp = 0;
   u32 numa_node;
-  vlib_buffer_pool_t *bp;
-  u8 *name;
 
   vlib_buffer_main_alloc (vm);
 
@@ -805,23 +829,6 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   /* *INDENT-ON* */
 
   bm->n_numa_nodes = clib_bitmap_last_set (bmp) + 1;
-
-  vec_foreach (bp, bm->buffer_pools)
-  {
-    name = format (0, "/buffer/cached/%s%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_cached_fn,
-				 bp - bm->buffer_pools);
-    vec_free (name);
-    name = format (0, "/buffer/used/%s%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_used_fn,
-				 bp - bm->buffer_pools);
-    vec_free (name);
-    name = format (0, "/buffer/available/%s%c", bp->name, 0);
-    stat_segment_register_gauge (name, buffer_gauges_update_available_fn,
-				 bp - bm->buffer_pools);
-    vec_free (name);
-  }
-
 
 done:
   vec_free (bmp);
