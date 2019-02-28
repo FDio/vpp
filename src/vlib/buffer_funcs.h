@@ -126,8 +126,8 @@ vlib_buffer_copy_template (vlib_buffer_t * b, vlib_buffer_t * bt)
 always_inline u8
 vlib_buffer_pool_get_default_for_numa (vlib_main_t * vm, u32 numa_node)
 {
-  ASSERT (numa_node < vm->buffer_main->n_numa_nodes);
-  return numa_node;
+  ASSERT (numa_node < VLIB_BUFFER_MAX_NUMA_NODES);
+  return vm->buffer_main->default_buffer_pool_index_for_numa[numa_node];
 }
 
 /** \brief Translate array of buffer indices into buffer pointers with offset
