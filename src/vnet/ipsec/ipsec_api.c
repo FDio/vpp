@@ -557,8 +557,11 @@ send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
   mp->total_data_size = clib_host_to_net_u64 (sa->total_data_size);
   mp->udp_encap = sa->udp_encap;
 
-  mp->tx_table_id =
-    htonl (fib_table_get_table_id (sa->tx_fib_index, FIB_PROTOCOL_IP4));
+  if (~0 != sa->tx_fib_index)
+    mp->tx_table_id =
+      htonl (fib_table_get_table_id (sa->tx_fib_index, FIB_PROTOCOL_IP4));
+  else
+    mp->tx_table_id = ~0;
 
   vl_api_send_msg (reg, (u8 *) mp);
 }
