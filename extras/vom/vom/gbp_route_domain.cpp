@@ -89,6 +89,18 @@ gbp_route_domain::get_route_domain() const
   return m_rd;
 }
 
+const std::shared_ptr<interface>
+gbp_route_domain::get_ip4_uu_fwd() const
+{
+  return m_ip4_uu_fwd;
+}
+
+const std::shared_ptr<interface>
+gbp_route_domain::get_ip6_uu_fwd() const
+{
+  return m_ip6_uu_fwd;
+}
+
 bool
 gbp_route_domain::operator==(const gbp_route_domain& b) const
 {
