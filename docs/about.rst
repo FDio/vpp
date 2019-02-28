@@ -4,6 +4,6 @@
 About
 =====
 
-**VPP Version:** 19.04-rc0~276-g3bce8eb
+**VPP Version:** 19.04-rc0~295-ga28d6fb
 
-**Built on:** Tue Feb 26 14:00:03 GMT 2019
+**Built on:** Thu Apr 25 16:22:14 GMT 2019
