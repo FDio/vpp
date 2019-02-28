@@ -373,7 +373,7 @@ dpdk_buffer_pools_create (vlib_main_t * vm)
 
   struct rte_mempool_ops ops = { };
 
-  strncpy (ops.name, "vpp", 4);
+  clib_strncpy (ops.name, "vpp", 4);
   ops.alloc = dpdk_ops_vpp_alloc;
   ops.free = dpdk_ops_vpp_free;
   ops.get_count = dpdk_ops_vpp_get_count;
@@ -381,7 +381,7 @@ dpdk_buffer_pools_create (vlib_main_t * vm)
   ops.dequeue = CLIB_MARCH_FN_POINTER (dpdk_ops_vpp_dequeue);
   rte_mempool_register_ops (&ops);
 
-  strncpy (ops.name, "vpp-no-cache", 13);
+  clib_strncpy (ops.name, "vpp-no-cache", 13);
   ops.get_count = dpdk_ops_vpp_get_count_no_cache;
   ops.enqueue = CLIB_MARCH_FN_POINTER (dpdk_ops_vpp_enqueue_no_cache);
   ops.dequeue = dpdk_ops_vpp_dequeue_no_cache;

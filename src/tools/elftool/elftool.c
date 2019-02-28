@@ -178,7 +178,7 @@ set_rpath_for_section (elf_main_t * em, elf_section_t * s, char * new_rpath)
 	  if (old_len < new_len)
 	    return clib_error_return (0, "rpath of `%s' does not fit (old rpath `%s')",
 				      new_rpath, old_rpath);
-	  strcpy (old_rpath, new_rpath);
+	  clib_strcpy (old_rpath, new_rpath);
 	  break;
 
 	default:

@@ -351,7 +351,7 @@ vmxnet3_txq_init (vlib_main_t * vm, vmxnet3_device_t * vd, u16 qid, u16 qsz)
   if (txq->tx_desc == 0)
     return vlib_physmem_last_error (vm);
 
-  memset (txq->tx_desc, 0, size);
+  clib_memset (txq->tx_desc, 0, size);
 
   size = qsz * sizeof (*txq->tx_comp);
   txq->tx_comp =

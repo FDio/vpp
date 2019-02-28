@@ -112,7 +112,7 @@ vlib_stats_pop_heap (void *cm_arg, void *oldheap, stat_directory_type_t type)
   /* Update the vector */
   if (vector_index == next_vector_index)
     {				/* New */
-      strncpy (e.name, stat_segment_name, 128 - 1);
+      clib_strncpy (e.name, stat_segment_name, 128 - 1);
       e.type = type;
       vec_add1 (sm->directory_vector, e);
     }
@@ -268,7 +268,7 @@ vlib_map_stat_segment_init (void)
   /* Scalar stats and node counters */
   vec_validate (sm->directory_vector, STAT_COUNTERS - 1);
 #define _(E,t,n,p)							\
-  strcpy(sm->directory_vector[STAT_COUNTER_##E].name,  #p "/" #n); \
+  clib_strcpy(sm->directory_vector[STAT_COUNTER_##E].name,  #p "/" #n); \
   sm->directory_vector[STAT_COUNTER_##E].type = STAT_DIR_TYPE_##t;
   foreach_stat_segment_counter_name
 #undef _

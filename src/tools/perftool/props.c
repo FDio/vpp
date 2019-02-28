@@ -113,7 +113,7 @@ void addprop (char *name, char *value)
 static char *sxerox (char *s)
 {
     char *rv = (char *) malloc (strlen (s) + 1);
-    strcpy (rv, s);
+    clib_strcpy (rv, s);
     return rv;
 }
 

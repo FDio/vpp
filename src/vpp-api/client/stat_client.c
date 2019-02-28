@@ -119,7 +119,7 @@ stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
 
   struct sockaddr_un un = { 0 };
   un.sun_family = AF_UNIX;
-  strncpy ((char *) un.sun_path, socket_name, sizeof (un.sun_path) - 1);
+  clib_strncpy ((char *) un.sun_path, socket_name, sizeof (un.sun_path) - 1);
   if (connect (sock, (struct sockaddr *) &un, sizeof (struct sockaddr_un)) <
       0)
     {
