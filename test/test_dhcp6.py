@@ -1,3 +1,5 @@
+from socket import AF_INET6
+
 from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
     DHCP6OptStatusCode, DHCP6OptPref, DHCP6OptIA_PD, DHCP6OptIAPrefix, \
     DHCP6OptServerId, DHCP6_Solicit, DHCP6_Reply, DHCP6_Request, DHCP6_Renew, \
@@ -6,18 +8,13 @@ from scapy.layers.dhcp6 import DHCP6_Advertise, DHCP6OptClientId, \
 from scapy.layers.inet6 import IPv6, Ether, UDP
 from scapy.utils6 import in6_mactoifaceid
 from scapy.utils import inet_ntop, inet_pton
-from socket import AF_INET6
+
 from framework import VppTestCase
+import util
 
 
 def ip6_normalize(ip6):
     return inet_ntop(AF_INET6, inet_pton(AF_INET6, ip6))
-
-
-def mk_ll_addr(mac):
-    euid = in6_mactoifaceid(mac)
-    addr = "fe80::" + euid
-    return addr
 
 
 class TestDHCPv6DataPlane(VppTestCase):
@@ -88,7 +85,7 @@ class TestDHCPv6DataPlane(VppTestCase):
             ia_na_opts = DHCP6OptIAAddress(addr='7:8::2', preflft=60,
                                            validlft=120)
             p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                 IPv6(src=mk_ll_addr(self.pg0.remote_mac),
+                 IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
                       dst=self.pg0.local_ip6_ll) /
                  UDP(sport=547, dport=546) /
                  DHCP6_Advertise(trid=trid) /
@@ -165,7 +162,7 @@ class TestDHCPv6DataPlane(VppTestCase):
             ia_pd_opts = DHCP6OptIAPrefix(prefix='7:8::', plen=56, preflft=60,
                                           validlft=120)
             p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-                 IPv6(src=mk_ll_addr(self.pg0.remote_mac),
+                 IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
                       dst=self.pg0.local_ip6_ll) /
                  UDP(sport=547, dport=546) /
                  DHCP6_Advertise(trid=trid) /
@@ -317,7 +314,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
         else:
             opt_ia_na = DHCP6OptIA_NA(iaid=1, T1=t1, T2=t2, ianaopts=ianaopts)
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IPv6(src=mk_ll_addr(self.pg0.remote_mac),
+             IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
                   dst=self.pg0.local_ip6_ll) /
              UDP(sport=547, dport=546) /
              msg_type(trid=self.trid) /
@@ -569,7 +566,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
         else:
             opt_ia_pd = DHCP6OptIA_PD(iaid=1, T1=t1, T2=t2, iapdopt=iapdopt)
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
-             IPv6(src=mk_ll_addr(self.pg0.remote_mac),
+             IPv6(src=util.mk_ll_addr(self.pg0.remote_mac),
                   dst=self.pg0.local_ip6_ll) /
              UDP(sport=547, dport=546) /
              msg_type(trid=self.trid) /
