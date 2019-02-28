@@ -1550,10 +1550,11 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
   if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
     {
-      /* When we entered recovery, we reset snd_nxt to snd_una. Seems peer
-       * still has the data so accept the ack */
-      if (tcp_in_recovery (tc)
-	  && seq_leq (vnet_buffer (b)->tcp.ack_number, tc->snd_congestion))
+      /* When we entered cong recovery, we reset snd_nxt to snd_una. Seems
+       * peer still has the data so accept the ack */
+      if (tcp_in_cong_recovery (tc)
+	  && seq_leq (vnet_buffer (b)->tcp.ack_number,
+		      tc->snd_una + tc->snd_wnd))
 	{
 	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
 	  if (seq_gt (tc->snd_nxt, tc->snd_una_max))
@@ -1577,6 +1578,10 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
 		   vnet_buffer (b)->tcp.ack_number);
 
       tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+      if (seq_gt (tc->snd_nxt, tc->snd_una_max))
+	tc->snd_una_max = tc->snd_nxt;
+
+      goto process_ack;
     }
 
   /* If old ACK, probably it's an old dupack */
