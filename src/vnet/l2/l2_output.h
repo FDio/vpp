@@ -81,7 +81,6 @@ extern vlib_node_registration_t l2output_node;
 #define foreach_l2output_feat \
  _(OUTPUT,            "interface-output")           \
  _(SPAN,              "span-l2-output")             \
- _(GBP_ID_2_SCLASS,   "l2-gbp-id-2-sclass")          \
  _(GBP_POLICY_PORT,   "gbp-policy-port")            \
  _(GBP_POLICY_MAC,    "gbp-policy-mac")             \
  _(CFM,               "feature-bitmap-drop")        \

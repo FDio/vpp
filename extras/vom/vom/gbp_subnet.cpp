@@ -22,8 +22,7 @@ namespace VOM {
 
 gbp_subnet::type_t::type_t(int v, const std::string s)
   : enum_base<gbp_subnet::type_t>(v, s)
-{
-}
+{}
 
 const gbp_subnet::type_t gbp_subnet::type_t::STITCHED_INTERNAL(
   0,
@@ -47,8 +46,7 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
   , m_type(type)
   , m_recirc(nullptr)
   , m_epg(nullptr)
-{
-}
+{}
 
 gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
                        const route::prefix_t& prefix,
@@ -60,8 +58,7 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
   , m_type(type_t::STITCHED_EXTERNAL)
   , m_recirc(recirc.singular())
   , m_epg(epg.singular())
-{
-}
+{}
 
 gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
                        const route::prefix_t& prefix,
@@ -72,8 +69,7 @@ gbp_subnet::gbp_subnet(const gbp_route_domain& rd,
   , m_type(type_t::L3_OUT)
   , m_recirc(nullptr)
   , m_epg(epg.singular())
-{
-}
+{}
 
 gbp_subnet::gbp_subnet(const gbp_subnet& o)
   : m_hw(o.m_hw)
@@ -82,8 +78,7 @@ gbp_subnet::gbp_subnet(const gbp_subnet& o)
   , m_type(o.m_type)
   , m_recirc(o.m_recirc)
   , m_epg(o.m_epg)
-{
-}
+{}
 
 gbp_subnet::~gbp_subnet()
 {
@@ -118,7 +113,10 @@ gbp_subnet::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_subnet_cmds::create_cmd(
-      m_hw, m_rd->id(), m_prefix, m_type,
+      m_hw,
+      m_rd->id(),
+      m_prefix,
+      m_type,
       (m_recirc ? m_recirc->handle() : handle_t::INVALID),
       (m_epg ? m_epg->id() : ~0)));
   }
@@ -145,7 +143,10 @@ gbp_subnet::update(const gbp_subnet& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_subnet_cmds::create_cmd(
-      m_hw, m_rd->id(), m_prefix, m_type,
+      m_hw,
+      m_rd->id(),
+      m_prefix,
+      m_type,
       (m_recirc ? m_recirc->handle() : handle_t::INVALID),
       (m_epg ? m_epg->id() : ~0)));
   } else {
@@ -155,7 +156,10 @@ gbp_subnet::update(const gbp_subnet& r)
       m_type = r.m_type;
 
       HW::enqueue(new gbp_subnet_cmds::create_cmd(
-        m_hw, m_rd->id(), m_prefix, m_type,
+        m_hw,
+        m_rd->id(),
+        m_prefix,
+        m_type,
         (m_recirc ? m_recirc->handle() : handle_t::INVALID),
         (m_epg ? m_epg->id() : ~0)));
     }
@@ -230,7 +234,7 @@ gbp_subnet::event_handler::handle_populate(const client_db::key_t& key)
         }
         case GBP_API_SUBNET_L3_OUT: {
           std::shared_ptr<gbp_endpoint_group> epg =
-            gbp_endpoint_group::find(payload.subnet.epg_id);
+            gbp_endpoint_group::find(payload.subnet.sclass);
 
           gbp_subnet gs(*rd, pfx, *epg);
           OM::commit(key, gs);
@@ -241,7 +245,7 @@ gbp_subnet::event_handler::handle_populate(const client_db::key_t& key)
           std::shared_ptr<interface> itf =
             interface::find(payload.subnet.sw_if_index);
           std::shared_ptr<gbp_endpoint_group> epg =
-            gbp_endpoint_group::find(payload.subnet.epg_id);
+            gbp_endpoint_group::find(payload.subnet.sclass);
 
           if (itf && epg) {
             std::shared_ptr<gbp_recirc> recirc = gbp_recirc::find(itf->key());

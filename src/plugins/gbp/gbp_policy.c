@@ -188,12 +188,12 @@ gbp_policy_inline (vlib_main_t * vm,
 					 vnet_buffer (b0)->l2.bd_index);
 
 	  if (NULL != ge0)
-	    key0.gck_dst = ge0->ge_fwd.gef_epg_id;
+	    key0.gck_dst = ge0->ge_fwd.gef_sclass;
 	  else
 	    /* If you cannot determine the destination EP then drop */
 	    goto trace;
 
-	  key0.gck_src = vnet_buffer2 (b0)->gbp.src_epg;
+	  key0.gck_src = vnet_buffer2 (b0)->gbp.sclass;
 
 	  if (EPG_INVALID != key0.gck_src)
 	    {

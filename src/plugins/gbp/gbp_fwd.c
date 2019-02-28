@@ -61,7 +61,7 @@ typedef enum
 typedef struct gbp_fwd_trace_t_
 {
   /* per-pkt trace data */
-  epg_id_t src_epg;
+  sclass_t sclass;
   u32 sw_if_index;
 } gbp_fwd_trace_t;
 
@@ -83,9 +83,10 @@ gbp_fwd (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, sw_if_index0, src_epg;
+	  u32 bi0, sw_if_index0;
 	  gbp_fwd_next_t next0;
 	  vlib_buffer_t *b0;
+	  sclass_t sclass0;
 
 	  next0 = GBP_FWD_NEXT_DROP;
 	  bi0 = from[0];
@@ -100,9 +101,9 @@ gbp_fwd (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /*
 	   * lookup the uplink based on src EPG
 	   */
-	  src_epg = vnet_buffer2 (b0)->gbp.src_epg;
+	  sclass0 = vnet_buffer2 (b0)->gbp.sclass;
 
-	  sw_if_index0 = gbp_epg_itf_lookup (src_epg);
+	  sw_if_index0 = gbp_epg_itf_lookup_sclass (sclass0);
 
 	  if (~0 != sw_if_index0)
 	    {
@@ -118,7 +119,7 @@ gbp_fwd (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      gbp_fwd_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->src_epg = src_epg;
+	      t->sclass = sclass0;
 	      t->sw_if_index = sw_if_index0;
 	    }
 
@@ -142,7 +143,7 @@ format_gbp_fwd_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_fwd_trace_t *t = va_arg (*args, gbp_fwd_trace_t *);
 
-  s = format (s, "src-epg:%d", t->src_epg);
+  s = format (s, "sclass:%d", t->sclass);
 
   return s;
 }

@@ -114,7 +114,7 @@ typedef gbp_endpoint_tun
 typedef gbp_endpoint
 {
   u32 sw_if_index;
-  u16 epg_id;
+  u16 sclass;
   vl_api_gbp_endpoint_flags_t flags;
   vl_api_mac_address_t mac;
   vl_api_gbp_endpoint_tun_t tun;
@@ -230,7 +230,7 @@ typeonly define gbp_subnet
 {
   u32 rd_id;
   u32 sw_if_index;
-  u16 epg_id;
+  u16 sclass;
   vl_api_gbp_subnet_type_t type;
   vl_api_prefix_t prefix;
 };
@@ -292,8 +292,8 @@ typedef gbp_rule
 
 typedef gbp_contract
 {
-  u16 src_epg;
-  u16 dst_epg;
+  u16 sclass;
+  u16 dclass;
   u32 acl_index;
   u8  n_rules;
   vl_api_gbp_rule_t rules[n_rules];

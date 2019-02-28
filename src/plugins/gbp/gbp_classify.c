@@ -54,7 +54,7 @@ static gbp_src_classify_main_t gbp_src_classify_main;
 typedef struct gbp_classify_trace_t_
 {
   /* per-pkt trace data */
-  epg_id_t src_epg;
+  sclass_t sclass;
 } gbp_classify_trace_t;
 
 /*
@@ -82,7 +82,7 @@ gbp_classify_inline (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 next0, bi0, src_epg, sw_if_index0;
+	  u32 next0, bi0, sclass0, sw_if_index0;
 	  const gbp_endpoint_t *ge0;
 	  vlib_buffer_t *b0;
 
@@ -100,7 +100,7 @@ gbp_classify_inline (vlib_main_t * vm,
 
 	  if (GBP_SRC_CLASSIFY_NULL == type)
 	    {
-	      src_epg = EPG_INVALID;
+	      sclass0 = SCLASS_INVALID;
 	      next0 =
 		vnet_l2_feature_next (b0, gscm->l2_input_feat_next[type],
 				      L2INPUT_FEAT_GBP_NULL_CLASSIFY);
@@ -160,18 +160,18 @@ gbp_classify_inline (vlib_main_t * vm,
 		}
 
 	      if (PREDICT_TRUE (NULL != ge0))
-		src_epg = ge0->ge_fwd.gef_epg_id;
+		sclass0 = ge0->ge_fwd.gef_sclass;
 	      else
-		src_epg = EPG_INVALID;
+		sclass0 = SCLASS_INVALID;
 	    }
 
-	  vnet_buffer2 (b0)->gbp.src_epg = src_epg;
+	  vnet_buffer2 (b0)->gbp.sclass = sclass0;
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      gbp_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->src_epg = src_epg;
+	      t->sclass = sclass0;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -226,7 +226,7 @@ format_gbp_classify_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_classify_trace_t *t = va_arg (*args, gbp_classify_trace_t *);
 
-  s = format (s, "src-epg:%d", t->src_epg);
+  s = format (s, "sclass:%d", t->sclass);
 
   return s;
 }
@@ -375,7 +375,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	  ip4_header_t *ip4_0;
 	  ip6_header_t *ip6_0;
 	  vlib_buffer_t *b0;
-	  epg_id_t src_epg0;
+	  sclass_t sclass0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -416,7 +416,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 		  break;
 		default:
 		  /* not IP so no LPM classify possible */
-		  src_epg0 = EPG_INVALID;
+		  sclass0 = SCLASS_INVALID;
 		  goto trace;
 		}
 	    }
@@ -451,7 +451,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	  else
 	    {
 	      /* not IP so no LPM classify possible */
-	      src_epg0 = EPG_INVALID;
+	      sclass0 = SCLASS_INVALID;
 	      goto trace;
 	    }
 	  lb0 = load_balance_get (lbi0);
@@ -460,23 +460,23 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	  if (gbp_policy_dpo_type == dpo0->dpoi_type)
 	    {
 	      gpd0 = gbp_policy_dpo_get (dpo0->dpoi_index);
-	      src_epg0 = gpd0->gpd_epg;
+	      sclass0 = gpd0->gpd_sclass;
 	    }
 	  else
 	    {
 	      /* could not classify => drop */
-	      src_epg0 = EPG_INVALID;
+	      sclass0 = SCLASS_INVALID;
 	      next0 = GPB_LPM_CLASSIFY_DROP;
 	    }
 
 	trace:
-	  vnet_buffer2 (b0)->gbp.src_epg = src_epg0;
+	  vnet_buffer2 (b0)->gbp.sclass = sclass0;
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      gbp_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->src_epg = src_epg0;
+	      t->sclass = sclass0;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
