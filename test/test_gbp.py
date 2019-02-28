@@ -1,20 +1,7 @@
 #!/usr/bin/env python
 
+from socket import AF_INET, AF_INET6
 import unittest
-
-from framework import VppTestCase, VppTestRunner
-from vpp_object import VppObject
-from vpp_neighbor import VppNeighbor
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
-    VppIpInterfaceAddress, VppIpInterfaceBind, find_route
-from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
-    VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port
-from vpp_vxlan_gbp_tunnel import *
-from vpp_sub_interface import VppDot1QSubint
-
-from vpp_ip import *
-from vpp_papi_provider import L2_PORT_TYPE
-from vpp_papi import VppEnum, MACAddress
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
@@ -24,10 +11,21 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS,  ICMPv6NDOptSrcLLAddr, \
 from scapy.utils6 import in6_getnsma, in6_getnsmac
 from scapy.layers.vxlan import VXLAN
 from scapy.data import ETH_P_IP, ETH_P_IPV6
-
-from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
+
+from framework import VppTestCase, VppTestRunner
+from vpp_object import VppObject
+from vpp_interface import VppInterface
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
+    VppIpInterfaceAddress, VppIpInterfaceBind, find_route
+from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
+    VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port
+from vpp_sub_interface import VppDot1QSubint
+from vpp_ip import VppIpAddress, VppIpPrefix
+from vpp_papi import VppEnum, MACAddress
 from vpp_papi_provider import L2_VTR_OP
+from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
+    VppVxlanGbpTunnel
 
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):

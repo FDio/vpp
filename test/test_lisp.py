@@ -10,7 +10,8 @@ from scapy.layers.inet import IP, UDP, Ether
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner
-from lisp import *
+from lisp import VppLocalMapping, VppLispAdjacency, VppLispLocator, \
+    VppLispLocatorSet, VppRemoteMapping
 from util import ppp, ForeignAddressFactory
 
 # From py_lispnetworking.lisp.py:  # GNU General Public License v2.0

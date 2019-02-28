@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
 import unittest
-import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip import *
+from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
-from ipaddress import IPv6Network, IPv4Network
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP, ICMP, TCP, fragment
 from scapy.layers.inet6 import IPv6, ICMPv6TimeExceeded

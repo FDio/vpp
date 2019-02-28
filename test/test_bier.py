@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 
 import unittest
-import socket
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
+from vpp_ip_route import VppIpRoute, VppRoutePath, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
     MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, \
     VppMplsLabel
-from vpp_bier import *
-from vpp_udp_encap import *
+from vpp_bier import BIER_HDR_PAYLOAD, VppBierImp, VppBierDispEntry, \
+    VppBierDispTable, VppBierTable, VppBierTableID, VppBierRoute
+from vpp_udp_encap import VppUdpEncap
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, ICMP
+from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
-from scapy.contrib.bier import *
+from scapy.contrib.bier import BIER, BIERLength, BIFT
 
 
 class TestBFIB(VppTestCase):
