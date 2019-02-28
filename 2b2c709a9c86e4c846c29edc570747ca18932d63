@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9922dffd_06de861e",
+        "filename": "src/vnet/fib/fib_api.c",
+        "patchSetId": 29
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-02-28T16:03:34Z",
+      "side": 1,
+      "message": "typo",
+      "range": {
+        "startLine": 183,
+        "startChar": 40,
+        "endLine": 183,
+        "endChar": 48
+      },
+      "revId": "2b2c709a9c86e4c846c29edc570747ca18932d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ad930689_8dc6ce43",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 29
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-02-28T16:03:34Z",
+      "side": 1,
+      "message": "Will need to be bumped, right?",
+      "range": {
+        "startLine": 23,
+        "startChar": 16,
+        "endLine": 23,
+        "endChar": 24
+      },
+      "revId": "2b2c709a9c86e4c846c29edc570747ca18932d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4f32e4bc_f1d57d0d",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 29
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-02-28T16:03:34Z",
+      "side": 1,
+      "message": "Please update to match actual definition.",
+      "range": {
+        "startLine": 69,
+        "startChar": 3,
+        "endLine": 74,
+        "endChar": 2
+      },
+      "revId": "2b2c709a9c86e4c846c29edc570747ca18932d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "03359f9c_b5ba7e56",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 29
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-02-28T16:03:34Z",
+      "side": 1,
+      "message": "What is this field?",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 90,
+        "endChar": 18
+      },
+      "revId": "2b2c709a9c86e4c846c29edc570747ca18932d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "14867b49_58cc1bd3",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 29
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-02-28T16:03:34Z",
+      "side": 1,
+      "message": "Should this be a full table, or just (table_id, AF)?\nSpecifically, is the table name[] field needed/used?",
+      "range": {
+        "startLine": 127,
+        "startChar": 0,
+        "endLine": 127,
+        "endChar": 26
+      },
+      "revId": "2b2c709a9c86e4c846c29edc570747ca18932d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8c4af7ab_782263c5",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 29
+      },
+      "lineNbr": 485,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-02-28T16:03:34Z",
+      "side": 1,
+      "message": "Same question:  Full table, or just (table_id,AF) needed?",
+      "range": {
+        "startLine": 485,
+        "startChar": 0,
+        "endLine": 485,
+        "endChar": 26
+      },
+      "revId": "2b2c709a9c86e4c846c29edc570747ca18932d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "13bc7069_b18ea92e",
+        "filename": "src/vnet/ip/ip.api",
+        "patchSetId": 29
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-02-28T16:03:34Z",
+      "side": 1,
+      "message": "should these be vl_api_prefix_t now?",
+      "range": {
+        "startLine": 500,
+        "startChar": 0,
+        "endLine": 501,
+        "endChar": 19
+      },
+      "revId": "2b2c709a9c86e4c846c29edc570747ca18932d63",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
