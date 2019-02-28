@@ -2838,7 +2838,7 @@ class TestNAT44(MethodHolder):
     def test_syslog_apmap(self):
         """ Test syslog address and port mapping creation and deletion """
         self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
-        self.vapi.syslog_set_sender(self.pg3.remote_ip4n, self.pg3.local_ip4n)
+        self.vapi.syslog_set_sender(self.pg3.local_ip4n, self.pg3.remote_ip4n)
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
@@ -6382,7 +6382,7 @@ class TestNAT44EndpointDependent(MethodHolder):
     def test_syslog_sess(self):
         """ Test syslog session creation and deletion """
         self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
-        self.vapi.syslog_set_sender(self.pg2.remote_ip4n, self.pg2.local_ip4n)
+        self.vapi.syslog_set_sender(self.pg2.local_ip4n, self.pg2.remote_ip4n)
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
@@ -8407,7 +8407,7 @@ class TestNAT64(MethodHolder):
         self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
         self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
         self.vapi.syslog_set_filter(SYSLOG_SEVERITY.INFO)
-        self.vapi.syslog_set_sender(self.pg3.remote_ip4n, self.pg3.local_ip4n)
+        self.vapi.syslog_set_sender(self.pg3.local_ip4n, self.pg3.remote_ip4n)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IPv6(src=self.pg0.remote_ip6, dst=remote_host_ip6) /
@@ -8562,7 +8562,7 @@ class TestDSlite(MethodHolder):
         aftr_ip6 = '2001:db8:85a3::8a2e:370:1'
         aftr_ip6_n = socket.inet_pton(socket.AF_INET6, aftr_ip6)
         self.vapi.dslite_set_aftr_addr(aftr_ip6_n, aftr_ip4_n)
-        self.vapi.syslog_set_sender(self.pg2.remote_ip4n, self.pg2.local_ip4n)
+        self.vapi.syslog_set_sender(self.pg2.local_ip4n, self.pg2.remote_ip4n)
 
         # UDP
         p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
