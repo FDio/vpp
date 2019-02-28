@@ -96,7 +96,12 @@ public:
    */
   std::string to_string() const;
 
+  /**
+   * Accessors for children
+   */
   const std::shared_ptr<route_domain> get_route_domain() const;
+  const std::shared_ptr<interface> get_ip4_uu_fwd() const;
+  const std::shared_ptr<interface> get_ip6_uu_fwd() const;
 
 private:
   /**
