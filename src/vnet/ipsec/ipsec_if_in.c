@@ -68,14 +68,11 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
   vnet_interface_main_t *vim = &vnm->interface_main;
-  ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 *from, *to_next = 0, next_index;
   u32 n_left_from, last_sw_if_index = ~0;
   u32 thread_index = vm->thread_index;
   u64 n_bytes = 0, n_packets = 0;
-  u8 icv_len;
-  ipsec_tunnel_if_t *last_t = NULL;
-  ipsec_sa_t *sa0;
+  const ipsec_tunnel_if_t *last_t = NULL;
   vlib_combined_counter_main_t *rx_counter;
   vlib_combined_counter_main_t *drop_counter;
   u32 n_disabled = 0, n_no_tunnel = 0;
@@ -96,9 +93,9 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0, next0, sw_if_index0;
+	  const esp_header_t *esp0;
+	  const ip4_header_t *ip0;
 	  vlib_buffer_t *b0;
-	  ip4_header_t *ip0;
-	  esp_header_t *esp0;
 	  uword *p;
 	  u32 len0;
 
@@ -109,7 +106,7 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
-	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	  esp0 = (const esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 
 	  next0 = IPSEC_INPUT_NEXT_DROP;
 
@@ -117,24 +114,26 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 
 	  p = hash_get (im->ipsec_if_pool_index_by_key, key);
 
+	  /* stats for the tunnel include all the data after the IP header
+	     just like a norml IP-IP tunnel */
+	  vlib_buffer_advance (b0, ip4_header_bytes (ip0));
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
-	  if (p)
+	  if (PREDICT_TRUE (NULL != p))
 	    {
-	      ipsec_tunnel_if_t *t;
-	      t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
-	      vnet_buffer (b0)->ipsec.sad_index = t->input_sa_index;
-	      if (t->hw_if_index != ~0)
-		{
-		  vnet_hw_interface_t *hi;
+	      const ipsec_tunnel_if_t *t0;
 
+	      t0 = pool_elt_at_index (im->tunnel_interfaces, p[0]);
+	      vnet_buffer (b0)->ipsec.sad_index = t0->input_sa_index;
+
+	      if (PREDICT_TRUE (t0->hw_if_index != ~0))
+		{
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  hi = vnet_get_hw_interface (vnm, t->hw_if_index);
-		  sw_if_index0 = hi->sw_if_index;
+		  sw_if_index0 = t0->sw_if_index;
 		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
 		  if (PREDICT_FALSE
-		      (!(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)))
+		      (!(t0->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)))
 		    {
 		      vlib_increment_combined_counter
 			(drop_counter, thread_index, sw_if_index0, 1, len0);
@@ -150,17 +149,6 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 		    }
 		  else
 		    {
-		      sa0 = pool_elt_at_index (im->sad, t->input_sa_index);
-		      icv_len =
-			em->ipsec_proto_main_integ_algs[sa0->
-							integ_alg].trunc_size;
-
-		      /* length = packet length - ESP/tunnel overhead */
-		      n_bytes -= n_packets * (sizeof (ip4_header_t) +
-					      sizeof (esp_header_t) +
-					      sizeof (esp_footer_t) +
-					      16 /* aes-cbc IV */  + icv_len);
-
 		      if (last_t)
 			{
 			  vlib_increment_combined_counter
@@ -169,7 +157,7 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 			}
 
 		      last_sw_if_index = sw_if_index0;
-		      last_t = t;
+		      last_t = t0;
 		      n_packets = 1;
 		      n_bytes = len0;
 		    }
@@ -179,7 +167,6 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 		  vnet_buffer (b0)->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
 		}
 
-	      vlib_buffer_advance (b0, ip4_header_bytes (ip0));
 	      next0 = im->esp4_decrypt_next_index;
 	    }
 	  else
@@ -205,12 +192,6 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 
   if (last_t)
     {
-      sa0 = pool_elt_at_index (im->sad, last_t->input_sa_index);
-      icv_len = em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
-
-      n_bytes -= n_packets * (sizeof (ip4_header_t) + sizeof (esp_header_t) +
-			      sizeof (esp_footer_t) + 16 /* aes-cbc IV */  +
-			      icv_len);
       vlib_increment_combined_counter (rx_counter,
 				       thread_index,
 				       last_sw_if_index, n_packets, n_bytes);

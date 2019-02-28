@@ -33,6 +33,8 @@ typedef struct
   u32 input_sa_index;
   u32 output_sa_index;
   u32 hw_if_index;
+  u32 sw_if_index;
+  vnet_hw_interface_flags_t flags;
   u32 show_instance;
 } ipsec_tunnel_if_t;
 
