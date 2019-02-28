@@ -95,7 +95,8 @@ class TestSyslog(VppTestCase):
 
     def test_syslog(self):
         """ Syslog Protocol test """
-        self.vapi.syslog_set_sender(self.pg0.remote_ip4n, self.pg0.local_ip4n)
+        self.vapi.syslog_set_sender(src_address=self.pg0.local_ip4n,
+                                    collector_address=self.pg0.remote_ip4n)
         config = self.vapi.syslog_get_sender()
         self.assertEqual(str(config.collector_address),
                          self.pg0.remote_ip4)
@@ -167,8 +168,8 @@ class TestSyslog(VppTestCase):
                            sd1,
                            msg)
 
-        self.vapi.syslog_set_sender(self.pg0.remote_ip4n,
-                                    self.pg0.local_ip4n,
+        self.vapi.syslog_set_sender(self.pg0.local_ip4n,
+                                    self.pg0.remote_ip4n,
                                     collector_port=12345)
         config = self.vapi.syslog_get_sender()
         self.assertEqual(config.collector_port, 12345)

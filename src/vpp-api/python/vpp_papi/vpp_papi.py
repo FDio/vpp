@@ -417,6 +417,8 @@ class VPP(object):
         f.__doc__ = ", ".join(["%s %s" %
                                (msg.fieldtypes[j], k)
                                for j, k in enumerate(msg.fields)])
+        f.msg = msg
+
         return f
 
     def _register_functions(self, do_async=False):
