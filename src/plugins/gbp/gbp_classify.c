@@ -185,33 +185,33 @@ gbp_classify_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-gbp_src_classify (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_src_classify_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   return (gbp_classify_inline (vm, node, frame,
 			       GBP_SRC_CLASSIFY_PORT, DPO_PROTO_ETHERNET));
 }
 
-static uword
-gbp_null_classify (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_null_classify_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return (gbp_classify_inline (vm, node, frame,
 			       GBP_SRC_CLASSIFY_NULL, DPO_PROTO_ETHERNET));
 }
 
-static uword
-gbp_ip4_src_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_ip4_src_classify_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return (gbp_classify_inline (vm, node, frame,
 			       GBP_SRC_CLASSIFY_PORT, DPO_PROTO_IP4));
 }
 
-static uword
-gbp_ip6_src_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_ip6_src_classify_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return (gbp_classify_inline (vm, node, frame,
 			       GBP_SRC_CLASSIFY_PORT, DPO_PROTO_IP6));
@@ -233,7 +233,6 @@ format_gbp_classify_trace (u8 * s, va_list * args)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_null_classify_node) = {
-  .function = gbp_null_classify,
   .name = "gbp-null-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
@@ -243,10 +242,7 @@ VLIB_REGISTER_NODE (gbp_null_classify_node) = {
   .n_next_nodes = 0,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_null_classify_node, gbp_null_classify);
-
 VLIB_REGISTER_NODE (gbp_src_classify_node) = {
-  .function = gbp_src_classify,
   .name = "gbp-src-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
@@ -256,10 +252,7 @@ VLIB_REGISTER_NODE (gbp_src_classify_node) = {
   .n_next_nodes = 0,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_src_classify_node, gbp_src_classify);
-
 VLIB_REGISTER_NODE (gbp_ip4_src_classify_node) = {
-  .function = gbp_ip4_src_classify,
   .name = "ip4-gbp-src-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
@@ -272,10 +265,7 @@ VLIB_REGISTER_NODE (gbp_ip4_src_classify_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip4_src_classify_node, gbp_ip4_src_classify);
-
 VLIB_REGISTER_NODE (gbp_ip6_src_classify_node) = {
-  .function = gbp_ip6_src_classify,
   .name = "ip6-gbp-src-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
@@ -287,8 +277,6 @@ VLIB_REGISTER_NODE (gbp_ip6_src_classify_node) = {
     [0] = "ip6-lookup"
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip6_src_classify_node, gbp_ip6_src_classify);
 
 VNET_FEATURE_INIT (gbp_ip4_src_classify_feat_node, static) =
 {
@@ -490,30 +478,29 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-gbp_ip4_lpm_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_ip4_lpm_classify_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return (gbp_lpm_classify_inline (vm, node, frame, DPO_PROTO_IP4, 1));
 }
 
-static uword
-gbp_ip6_lpm_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_ip6_lpm_classify_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return (gbp_lpm_classify_inline (vm, node, frame, DPO_PROTO_IP6, 1));
 }
 
-static uword
-gbp_l2_lpm_classify (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_l2_lpm_classify_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
 {
   return (gbp_lpm_classify_inline (vm, node, frame, DPO_PROTO_ETHERNET, 0));
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_ip4_lpm_classify_node) = {
-  .function = gbp_ip4_lpm_classify,
   .name = "ip4-gbp-lpm-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
@@ -526,10 +513,7 @@ VLIB_REGISTER_NODE (gbp_ip4_lpm_classify_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip4_lpm_classify_node, gbp_ip4_lpm_classify);
-
 VLIB_REGISTER_NODE (gbp_ip6_lpm_classify_node) = {
-  .function = gbp_ip6_lpm_classify,
   .name = "ip6-gbp-lpm-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
@@ -542,10 +526,7 @@ VLIB_REGISTER_NODE (gbp_ip6_lpm_classify_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_ip6_lpm_classify_node, gbp_ip6_lpm_classify);
-
 VLIB_REGISTER_NODE (gbp_l2_lpm_classify_node) = {
-  .function = gbp_l2_lpm_classify,
   .name = "l2-gbp-lpm-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_classify_trace,
@@ -557,8 +538,6 @@ VLIB_REGISTER_NODE (gbp_l2_lpm_classify_node) = {
     [GPB_LPM_CLASSIFY_DROP] = "error-drop"
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_l2_lpm_classify_node, gbp_l2_lpm_classify);
 
 VNET_FEATURE_INIT (gbp_ip4_lpm_classify_feat_node, static) =
 {
@@ -580,19 +559,25 @@ gbp_src_classify_init (vlib_main_t * vm)
 {
   gbp_src_classify_main_t *em = &gbp_src_classify_main;
 
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "gbp-src-classify");
+
   /* Initialize the feature next-node indexes */
   feat_bitmap_init_next_nodes (vm,
-			       gbp_src_classify_node.index,
+			       node->index,
 			       L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       em->l2_input_feat_next[GBP_SRC_CLASSIFY_NULL]);
+
+  node = vlib_get_node_by_name (vm, (u8 *) "gbp-null-classify");
   feat_bitmap_init_next_nodes (vm,
-			       gbp_null_classify_node.index,
+			       node->index,
 			       L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       em->l2_input_feat_next[GBP_SRC_CLASSIFY_PORT]);
+
+  node = vlib_get_node_by_name (vm, (u8 *) "l2-gbp-lpm-classify");
   feat_bitmap_init_next_nodes (vm,
-			       gbp_l2_lpm_classify_node.index,
+			       node->index,
 			       L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       em->l2_input_feat_next[GBP_SRC_CLASSIFY_LPM]);

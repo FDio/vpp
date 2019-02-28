@@ -48,6 +48,19 @@ typedef struct
 
 extern gbp_main_t gbp_main;
 
+/**
+ * Grouping of global data for the GBP source EPG classification feature
+ */
+typedef struct gbp_policy_main_t_
+{
+  /**
+   * Next nodes for L2 output features
+   */
+  u32 l2_output_feat_next[2][32];
+} gbp_policy_main_t;
+
+extern gbp_policy_main_t gbp_policy_main;
+
 #endif
 
 /*

@@ -16,19 +16,6 @@
 #include <plugins/gbp/gbp.h>
 #include <vnet/l2/l2_input.h>
 
-/**
- * Grouping of global data for the GBP source EPG classification feature
- */
-typedef struct gbp_fwd_main_t_
-{
-  /**
-   * Next nodes for L2 output features
-   */
-  u32 l2_input_feat_next[32];
-} gbp_fwd_main_t;
-
-static gbp_fwd_main_t gbp_fwd_main;
-
 #define foreach_gbp_fwd                      \
   _(DROP,    "drop")                         \
   _(OUTPUT,  "output")
@@ -65,8 +52,8 @@ typedef struct gbp_fwd_trace_t_
   u32 sw_if_index;
 } gbp_fwd_trace_t;
 
-static uword
-gbp_fwd (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_fwd_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   u32 next_index;
@@ -149,7 +136,6 @@ format_gbp_fwd_trace (u8 * s, va_list * args)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_fwd_node) = {
-  .function = gbp_fwd,
   .name = "gbp-fwd",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_fwd_trace,
@@ -165,27 +151,7 @@ VLIB_REGISTER_NODE (gbp_fwd_node) = {
     [GBP_FWD_NEXT_OUTPUT] = "l2-output",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_fwd_node, gbp_fwd);
-
 /* *INDENT-ON* */
-
-static clib_error_t *
-gbp_fwd_init (vlib_main_t * vm)
-{
-  gbp_fwd_main_t *gpm = &gbp_fwd_main;
-
-  /* Initialize the feature next-node indices */
-  feat_bitmap_init_next_nodes (vm,
-			       gbp_fwd_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       gpm->l2_input_feat_next);
-
-  return 0;
-}
-
-VLIB_INIT_FUNCTION (gbp_fwd_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

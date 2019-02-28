@@ -211,9 +211,9 @@ gbp_learn_get_outer (const ethernet_header_t * eh0,
   *outer_dst = ip0->dst_address;
 }
 
-static uword
-gbp_learn_l2 (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index, seed;
   gbp_learn_main_t *glm;
@@ -379,7 +379,6 @@ format_gbp_learn_l2_trace (u8 * s, va_list * args)
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
-  .function = gbp_learn_l2,
   .name = "gbp-learn-l2",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_learn_l2_trace,
@@ -394,8 +393,6 @@ VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
     [GBP_LEARN_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_learn_l2_node, gbp_learn_l2);
 /* *INDENT-ON* */
 
 typedef struct gbp_learn_l3_t_
@@ -653,30 +650,27 @@ format_gbp_learn_l3_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-gbp_learn_ip4 (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_learn_ip4_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return (gbp_learn_l3 (vm, node, frame, FIB_PROTOCOL_IP4));
 }
 
-static uword
-gbp_learn_ip6 (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gbp_learn_ip6_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   return (gbp_learn_l3 (vm, node, frame, FIB_PROTOCOL_IP6));
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gbp_learn_ip4_node) = {
-  .function = gbp_learn_ip4,
   .name = "gbp-learn-ip4",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_learn_l3_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_learn_ip4_node, gbp_learn_ip4);
 
 VNET_FEATURE_INIT (gbp_learn_ip4, static) =
 {
@@ -685,14 +679,11 @@ VNET_FEATURE_INIT (gbp_learn_ip4, static) =
 };
 
 VLIB_REGISTER_NODE (gbp_learn_ip6_node) = {
-  .function = gbp_learn_ip6,
   .name = "gbp-learn-ip6",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_learn_l3_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gbp_learn_ip6_node, gbp_learn_ip6);
 
 VNET_FEATURE_INIT (gbp_learn_ip6, static) =
 {
@@ -702,47 +693,17 @@ VNET_FEATURE_INIT (gbp_learn_ip6, static) =
 
 /* *INDENT-ON* */
 
-void
-gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode)
-{
-  if (GBP_LEARN_MODE_L2 == mode)
-    {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 1);
-    }
-  else
-    {
-      vnet_feature_enable_disable ("ip4-unicast",
-				   "gbp-learn-ip4", sw_if_index, 1, 0, 0);
-      vnet_feature_enable_disable ("ip6-unicast",
-				   "gbp-learn-ip6", sw_if_index, 1, 0, 0);
-    }
-}
-
-void
-gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode)
-{
-  if (GBP_LEARN_MODE_L2 == mode)
-    {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_GBP_LEARN, 0);
-    }
-  else
-    {
-      vnet_feature_enable_disable ("ip4-unicast",
-				   "gbp-learn-ip4", sw_if_index, 0, 0, 0);
-      vnet_feature_enable_disable ("ip6-unicast",
-				   "gbp-learn-ip6", sw_if_index, 0, 0, 0);
-    }
-}
-
 static clib_error_t *
 gbp_learn_init (vlib_main_t * vm)
 {
   gbp_learn_main_t *glm = &gbp_learn_main;
   vlib_thread_main_t *tm = &vlib_thread_main;
 
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "gbp-learn-l2");
+
   /* Initialize the feature next-node indices */
   feat_bitmap_init_next_nodes (vm,
-			       gbp_learn_l2_node.index,
+			       node->index,
 			       L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
 			       glm->gl_l2_input_feat_next);
