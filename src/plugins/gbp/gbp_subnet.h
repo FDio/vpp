@@ -29,7 +29,7 @@ typedef enum gbp_subnet_type_t_
 extern int gbp_subnet_add (u32 rd_id,
 			   const fib_prefix_t * pfx,
 			   gbp_subnet_type_t type,
-			   u32 sw_if_index, epg_id_t epg);
+			   u32 sw_if_index, sclass_t sclass);
 
 extern int gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx);
 
@@ -37,7 +37,7 @@ typedef walk_rc_t (*gbp_subnet_cb_t) (u32 rd_id,
 				      const fib_prefix_t * pfx,
 				      gbp_subnet_type_t type,
 				      u32 sw_if_index,
-				      epg_id_t epg, void *ctx);
+				      sclass_t sclass, void *ctx);
 
 extern void gbp_subnet_walk (gbp_subnet_cb_t cb, void *ctx);
 

@@ -24,22 +24,21 @@ create_cmd::create_cmd(HW::item<bool>& item,
                        const route::prefix_t& prefix,
                        const gbp_subnet::type_t& type,
                        const handle_t& itf,
-                       epg_id_t epg_id)
+                       sclass_t sclass)
   : rpc_cmd(item)
   , m_rd(rd)
   , m_prefix(prefix)
   , m_type(type)
   , m_itf(itf)
-  , m_epg_id(epg_id)
-{
-}
+  , m_sclass(sclass)
+{}
 
 bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_rd == other.m_rd) &&
           (m_prefix == other.m_prefix) && (m_type == other.m_type) &&
-          (m_itf == other.m_itf) && (m_epg_id == other.m_epg_id));
+          (m_itf == other.m_itf) && (m_sclass == other.m_sclass));
 }
 
 static vapi_enum_gbp_subnet_type
@@ -65,7 +64,7 @@ create_cmd::issue(connection& con)
   payload.subnet.type = gbp_subnet_type_to_api(m_type);
   payload.subnet.rd_id = m_rd;
   payload.subnet.sw_if_index = m_itf.value();
-  payload.subnet.epg_id = m_epg_id;
+  payload.subnet.sclass = m_sclass;
   payload.subnet.prefix = to_api(m_prefix);
 
   VAPI_CALL(req.execute());
@@ -79,7 +78,7 @@ create_cmd::to_string() const
   std::ostringstream s;
   s << "gbp-subnet-create: " << m_hw_item.to_string() << "type:" << m_type
     << ", " << m_rd << ":" << m_prefix.to_string() << " itf:" << m_itf
-    << " epg-id:" << m_epg_id;
+    << " sclass:" << m_sclass;
 
   return (s.str());
 }
@@ -90,8 +89,7 @@ delete_cmd::delete_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_rd(rd)
   , m_prefix(prefix)
-{
-}
+{}
 
 bool
 delete_cmd::operator==(const delete_cmd& other) const
@@ -124,9 +122,7 @@ delete_cmd::to_string() const
   return (s.str());
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const

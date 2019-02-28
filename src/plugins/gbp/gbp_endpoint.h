@@ -164,9 +164,9 @@ typedef struct gbp_endpoint_fwd_t_
   index_t *gef_adjs;
 
   /**
-   * Endpoint Group's ID. cached for fast DP access.
+   * Endpoint Group's sclass. cached for fast DP access.
    */
-  epg_id_t gef_epg_id;
+  sclass_t gef_sclass;
 
   gbp_endpoint_flags_t gef_flags;
 } gbp_endpoint_fwd_t;
@@ -222,7 +222,7 @@ extern int gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
 					 const ip46_address_t * ip,
 					 const mac_address_t * mac,
 					 index_t gbd, index_t grd,
-					 epg_id_t epg_id,
+					 sclass_t sclass,
 					 gbp_endpoint_flags_t flags,
 					 const ip46_address_t * tun_src,
 					 const ip46_address_t * tun_dst,

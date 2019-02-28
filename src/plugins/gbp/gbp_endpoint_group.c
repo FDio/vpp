@@ -64,7 +64,20 @@ gbp_endpoint_group_find (epg_id_t epg_id)
 {
   uword *p;
 
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg_id);
+  p = hash_get (gbp_endpoint_group_db.gg_hash_epg_id, epg_id);
+
+  if (NULL != p)
+    return p[0];
+
+  return (INDEX_INVALID);
+}
+
+index_t
+gbp_endpoint_group_find_sclass (sclass_t sclass)
+{
+  uword *p;
+
+  p = hash_get (gbp_endpoint_group_db.gg_hash_sclass, sclass);
 
   if (NULL != p)
     return p[0];
@@ -141,9 +154,10 @@ gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
 				      L2INPUT_FEAT_GBP_NULL_CLASSIFY, 1);
 	}
 
-      hash_set (gbp_endpoint_group_db.gg_hash,
+      hash_set (gbp_endpoint_group_db.gg_hash_epg_id,
 		gg->gg_id, gg - gbp_endpoint_group_pool);
-
+      hash_set (gbp_endpoint_group_db.gg_hash_sclass,
+		gg->gg_sclass, gg - gbp_endpoint_group_pool);
     }
   else
     {
@@ -192,7 +206,8 @@ gbp_endpoint_group_unlock (index_t ggi)
 
       if (SCLASS_INVALID != gg->gg_sclass)
 	hash_unset (gbp_epg_sclass_db, gg->gg_sclass);
-      hash_unset (gbp_endpoint_group_db.gg_hash, gg->gg_id);
+      hash_unset (gbp_endpoint_group_db.gg_hash_epg_id, gg->gg_id);
+      hash_unset (gbp_endpoint_group_db.gg_hash_sclass, gg->gg_sclass);
 
       pool_put (gbp_endpoint_group_pool, gg);
     }

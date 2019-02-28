@@ -72,7 +72,8 @@ typedef struct gpb_endpoint_group_t_
  */
 typedef struct gbp_endpoint_group_db_t_
 {
-  uword *gg_hash;
+  uword *gg_hash_epg_id;
+  uword *gg_hash_sclass;
 } gbp_endpoint_group_db_t;
 
 extern int gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
@@ -81,6 +82,7 @@ extern int gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
 					    u32 rd_id,
 					    u32 uplink_sw_if_index);
 extern index_t gbp_endpoint_group_find (epg_id_t epg_id);
+extern index_t gbp_endpoint_group_find_sclass (sclass_t sclass);
 extern int gbp_endpoint_group_delete (epg_id_t epg_id);
 extern void gbp_endpoint_group_unlock (index_t index);
 extern void gbp_endpoint_group_lock (index_t index);
@@ -109,7 +111,7 @@ gbp_epg_get (epg_id_t epg)
 {
   uword *p;
 
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg);
+  p = hash_get (gbp_endpoint_group_db.gg_hash_epg_id, epg);
 
   if (NULL != p)
     return (pool_elt_at_index (gbp_endpoint_group_pool, p[0]));
@@ -117,11 +119,11 @@ gbp_epg_get (epg_id_t epg)
 }
 
 always_inline u32
-gbp_epg_itf_lookup (epg_id_t epg)
+gbp_epg_itf_lookup_sclass (sclass_t sclass)
 {
   uword *p;
 
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg);
+  p = hash_get (gbp_endpoint_group_db.gg_hash_sclass, sclass);
 
   if (NULL != p)
     {
@@ -148,11 +150,11 @@ gbp_epg_sclass_2_id (u16 sclass)
 }
 
 always_inline const dpo_id_t *
-gbp_epg_dpo_lookup (epg_id_t epg, fib_protocol_t fproto)
+gbp_epg_dpo_lookup (sclass_t sclass, fib_protocol_t fproto)
 {
   uword *p;
 
-  p = hash_get (gbp_endpoint_group_db.gg_hash, epg);
+  p = hash_get (gbp_endpoint_group_db.gg_hash_sclass, sclass);
 
   if (NULL != p)
     {
