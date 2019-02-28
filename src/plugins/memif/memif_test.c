@@ -166,8 +166,8 @@ api_memif_socket_filename_add_del (vat_main_t * vam)
 
   mp->is_add = is_add;
   mp->socket_id = htonl (socket_id);
-  strncpy ((char *) mp->socket_filename,
-	   (char *) socket_filename, sizeof (mp->socket_filename) - 1);
+  clib_strncpy ((char *) mp->socket_filename,
+		(char *) socket_filename, sizeof (mp->socket_filename) - 1);
 
   vec_free (socket_filename);
 
@@ -269,7 +269,7 @@ api_memif_create (vat_main_t * vam)
   mp->socket_id = clib_host_to_net_u32 (socket_id);
   if (secret != 0)
     {
-      strncpy ((char *) mp->secret, (char *) secret, 16);
+      clib_strncpy ((char *) mp->secret, (char *) secret, 16);
       vec_free (secret);
     }
   memcpy (mp->hw_addr, hw_addr, 6);

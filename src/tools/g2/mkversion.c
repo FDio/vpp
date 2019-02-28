@@ -57,7 +57,7 @@ int main (int argc, char **argv)
     
     username = (char *) cuserid (0);
 
-    strcpy(timestr, ctime(&now));
+    clib_strcpy(timestr, ctime(&now));
     
     cp = timestr;
 
