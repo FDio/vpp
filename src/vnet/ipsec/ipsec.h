@@ -140,6 +140,7 @@ typedef struct
   uword *sa_index_by_sa_id;
   uword *ipsec_if_pool_index_by_key;
   uword *ipsec_if_real_dev_by_show_dev;
+  u32 *ipsec_if_by_sw_if_index;
 
   /* node indices */
   u32 error_drop_node_index;
