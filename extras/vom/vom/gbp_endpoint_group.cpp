@@ -46,34 +46,7 @@ gbp_endpoint_group::retention_t::to_string() const
 }
 
 gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       const interface& itf,
-                                       const gbp_route_domain& rd,
-                                       const gbp_bridge_domain& bd)
-  : m_hw(false)
-  , m_epg_id(epg_id)
-  , m_sclass(0xffff)
-  , m_itf(itf.singular())
-  , m_rd(rd.singular())
-  , m_bd(bd.singular())
-  , m_retention()
-{
-}
-
-gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       const gbp_route_domain& rd,
-                                       const gbp_bridge_domain& bd)
-  : m_hw(false)
-  , m_epg_id(epg_id)
-  , m_sclass(0xffff)
-  , m_itf()
-  , m_rd(rd.singular())
-  , m_bd(bd.singular())
-  , m_retention()
-{
-}
-
-gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       uint16_t sclass,
+                                       sclass_t sclass,
                                        const interface& itf,
                                        const gbp_route_domain& rd,
                                        const gbp_bridge_domain& bd)
@@ -88,7 +61,7 @@ gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
 }
 
 gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
-                                       uint16_t sclass,
+                                       sclass_t sclass,
                                        const gbp_route_domain& rd,
                                        const gbp_bridge_domain& bd)
   : m_hw(false)
@@ -121,7 +94,7 @@ gbp_endpoint_group::~gbp_endpoint_group()
 const gbp_endpoint_group::key_t
 gbp_endpoint_group::key() const
 {
-  return (m_epg_id);
+  return (m_sclass);
 }
 
 epg_id_t
@@ -136,10 +109,16 @@ gbp_endpoint_group::set(const retention_t& retention)
   m_retention = retention;
 }
 
+sclass_t
+gbp_endpoint_group::sclass() const
+{
+  return (m_sclass);
+}
+
 bool
 gbp_endpoint_group::operator==(const gbp_endpoint_group& gg) const
 {
-  return (key() == gg.key() && (m_sclass == gg.m_sclass) &&
+  return (key() == gg.key() && (m_epg_id == gg.m_epg_id) &&
           (m_retention == gg.m_retention) && (m_itf == gg.m_itf) &&
           (m_rd == gg.m_rd) && (m_bd == gg.m_bd));
 }

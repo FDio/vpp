@@ -25,12 +25,12 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
                        const handle_t& itf,
                        const std::vector<boost::asio::ip::address>& ip_addrs,
                        const mac_address_t& mac,
-                       epg_id_t epg_id)
+                       sclass_t sclass)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_ip_addrs(ip_addrs)
   , m_mac(mac)
-  , m_epg_id(epg_id)
+  , m_sclass(sclass)
 {
 }
 
@@ -38,7 +38,7 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_ip_addrs == other.m_ip_addrs) &&
-          (m_mac == other.m_mac) && (m_epg_id == other.m_epg_id));
+          (m_mac == other.m_mac) && (m_sclass == other.m_sclass));
 }
 
 rc_t
@@ -50,7 +50,7 @@ create_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.endpoint.sw_if_index = m_itf.value();
-  payload.endpoint.epg_id = m_epg_id;
+  payload.endpoint.sclass = m_sclass;
   payload.endpoint.n_ips = m_ip_addrs.size();
 
   for (n = 0; n < payload.endpoint.n_ips; n++) {
@@ -93,7 +93,7 @@ create_cmd::to_string() const
     s << ip.to_string();
 
   s << "] mac:" << m_mac;
-  s << " epg-id:" << m_epg_id;
+  s << " slcass:" << m_sclass;
 
   return (s.str());
 }

@@ -3553,7 +3553,7 @@ class VppPapiProvider(object):
                          'enable_ip6': 1 if enable_ip6 else 0,
                          })
 
-    def gbp_endpoint_add(self, sw_if_index, ips, mac, epg, flags,
+    def gbp_endpoint_add(self, sw_if_index, ips, mac, sclass, flags,
                          tun_src, tun_dst):
         """ GBP endpoint Add """
         return self.api(self.papi.gbp_endpoint_add,
@@ -3562,7 +3562,7 @@ class VppPapiProvider(object):
                             'ips': ips,
                             'n_ips': len(ips),
                             'mac': mac,
-                            'epg_id': epg,
+                            'sclass': sclass,
                             'flags': flags,
                             'tun': {
                                 'src': tun_src,
@@ -3681,14 +3681,14 @@ class VppPapiProvider(object):
     def gbp_subnet_add_del(self, is_add, rd_id,
                            prefix, type,
                            sw_if_index=0xffffffff,
-                           epg_id=0xffff):
+                           sclass=0xffff):
         """ GBP Subnet Add/Del """
         return self.api(self.papi.gbp_subnet_add_del,
                         {'is_add': is_add,
                          'subnet': {
                              'type': type,
                              'sw_if_index': sw_if_index,
-                             'epg_id': epg_id,
+                             'sclass': sclass,
                              'prefix': prefix,
                              'rd_id': rd_id}})
 
@@ -3697,15 +3697,15 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_subnet_dump,
                         {'_no_type_conversion': True})
 
-    def gbp_contract_add_del(self, is_add, src_epg, dst_epg, acl_index,
+    def gbp_contract_add_del(self, is_add, sclass, dclass, acl_index,
                              rules, allowed_ethertypes):
         """ GBP contract Add/Del """
         return self.api(self.papi.gbp_contract_add_del,
                         {'is_add': is_add,
                          'contract': {
                              'acl_index': acl_index,
-                             'src_epg': src_epg,
-                             'dst_epg': dst_epg,
+                             'sclass': sclass,
+                             'dclass': dclass,
                              'n_rules': len(rules),
                              'rules': rules,
                              'n_ether_types': len(allowed_ethertypes),

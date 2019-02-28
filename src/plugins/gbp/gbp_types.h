@@ -20,6 +20,8 @@
 
 typedef u16 epg_id_t;
 #define EPG_INVALID ((u16)~0)
+
+typedef u16 sclass_t;
 #define SCLASS_INVALID ((u16)~0)
 
 #endif

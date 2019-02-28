@@ -578,8 +578,8 @@ format_vnet_buffer_opaque2 (u8 * s, va_list * args)
   s = format (s, "loop_counter: %d", o->loop_counter);
   vec_add1 (s, '\n');
 
-  s = format (s, "gbp.flags: %x, gbp.src_epg: %d",
-	      (u32) (o->gbp.flags), (u32) (o->gbp.src_epg));
+  s = format (s, "gbp.flags: %x, gbp.sclass: %d",
+	      (u32) (o->gbp.flags), (u32) (o->gbp.sclass));
   vec_add1 (s, '\n');
 
   s = format (s, "pg_replay_timestamp: %llu", (u32) (o->pg_replay_timestamp));

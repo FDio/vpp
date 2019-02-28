@@ -160,7 +160,7 @@ gbp_endpoint::event_handler::handle_populate(const client_db::key_t& key)
     std::shared_ptr<interface> itf =
       interface::find(payload.endpoint.sw_if_index);
     std::shared_ptr<gbp_endpoint_group> epg =
-      gbp_endpoint_group::find(payload.endpoint.epg_id);
+      gbp_endpoint_group::find(payload.endpoint.sclass);
     mac_address_t mac = from_api(payload.endpoint.mac);
 
     VOM_LOG(log_level_t::DEBUG) << "data: " << payload.endpoint.sw_if_index;
@@ -173,7 +173,7 @@ gbp_endpoint::event_handler::handle_populate(const client_db::key_t& key)
     } else {
       VOM_LOG(log_level_t::ERROR)
         << "no interface:" << payload.endpoint.sw_if_index
-        << "or epg:" << payload.endpoint.epg_id;
+        << "or sclass:" << payload.endpoint.sclass;
     }
   }
 }
