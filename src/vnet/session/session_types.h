@@ -277,15 +277,15 @@ session_parse_handle (session_handle_t handle, u32 * index,
 
 typedef enum
 {
-  FIFO_EVENT_APP_RX,
+  SESSION_IO_EVT_RX,
   SESSION_IO_EVT_CT_RX,
-  FIFO_EVENT_APP_TX,
+  SESSION_IO_EVT_TX,
   SESSION_IO_EVT_CT_TX,
   SESSION_IO_EVT_TX_FLUSH,
-  FIFO_EVENT_DISCONNECT,
-  FIFO_EVENT_BUILTIN_RX,
-  FIFO_EVENT_BUILTIN_TX,
-  FIFO_EVENT_RPC,
+  SESSION_IO_EVT_BUILTIN_RX,
+  SESSION_IO_EVT_BUILTIN_TX,
+  SESSION_CTRL_EVT_RPC,
+  SESSION_CTRL_EVT_CLOSE,
   SESSION_CTRL_EVT_BOUND,
   SESSION_CTRL_EVT_UNLISTEN_REPLY,
   SESSION_CTRL_EVT_ACCEPTED,
@@ -301,25 +301,12 @@ typedef enum
   SESSION_CTRL_EVT_WORKER_UPDATE_REPLY,
 } session_evt_type_t;
 
-static inline const char *
-fifo_event_type_str (session_evt_type_t et)
-{
-  switch (et)
-    {
-    case FIFO_EVENT_APP_RX:
-      return "FIFO_EVENT_APP_RX";
-    case FIFO_EVENT_APP_TX:
-      return "FIFO_EVENT_APP_TX";
-    case FIFO_EVENT_DISCONNECT:
-      return "FIFO_EVENT_DISCONNECT";
-    case FIFO_EVENT_BUILTIN_RX:
-      return "FIFO_EVENT_BUILTIN_RX";
-    case FIFO_EVENT_RPC:
-      return "FIFO_EVENT_RPC";
-    default:
-      return "UNKNOWN FIFO EVENT";
-    }
-}
+/* Deprecated and will be removed. Use types above */
+#define FIFO_EVENT_APP_RX SESSION_IO_EVT_RX
+#define FIFO_EVENT_APP_TX SESSION_IO_EVT_TX
+#define FIFO_EVENT_DISCONNECT SESSION_CTRL_EVT_CLOSE
+#define FIFO_EVENT_BUILTIN_RX SESSION_IO_EVT_BUILTIN_RX
+#define FIFO_EVENT_BUILTIN_TX SESSION_IO_EVT_BUILTIN_TX
 
 typedef enum
 {

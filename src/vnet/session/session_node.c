@@ -83,7 +83,7 @@ session_mq_accepted_reply_handler (void *data)
       old_state = s->session_state;
       s->session_state = SESSION_STATE_READY;
       if (!svm_fifo_is_empty (s->rx_fifo))
-	app_worker_lock_and_send_event (app_wrk, s, FIFO_EVENT_APP_RX);
+	app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
 
       /* Closed while waiting for app to reply. Resend disconnect */
       if (old_state >= SESSION_STATE_TRANSPORT_CLOSING)
@@ -283,10 +283,10 @@ session_mq_worker_update_handler (void *data)
    * Retransmit messages that may have been lost
    */
   if (s->tx_fifo && !svm_fifo_is_empty (s->tx_fifo))
-    session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
+    session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
 
   if (s->rx_fifo && !svm_fifo_is_empty (s->rx_fifo))
-    app_worker_lock_and_send_event (app_wrk, s, FIFO_EVENT_APP_RX);
+    app_worker_lock_and_send_event (app_wrk, s, SESSION_IO_EVT_RX);
 
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     app->cb_fns.session_disconnect_callback (s);
@@ -510,7 +510,7 @@ session_tx_fill_buffer (vlib_main_t * vm, session_tx_context_t * ctx,
 
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_DEQ, ctx->s, ({
-	ed->data[0] = FIFO_EVENT_APP_TX;
+	ed->data[0] = SESSION_IO_EVT_TX;
 	ed->data[1] = ctx->max_dequeue;
 	ed->data[2] = len_to_deq;
 	ed->data[3] = ctx->left_to_snd;
@@ -916,7 +916,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       switch (e->event_type)
 	{
 	case SESSION_IO_EVT_TX_FLUSH:
-	case FIFO_EVENT_APP_TX:
+	case SESSION_IO_EVT_TX:
 	  /* Don't try to send more that one frame per dispatch cycle */
 	  if (n_tx_packets == VLIB_FRAME_SIZE)
 	    {
@@ -949,7 +949,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      continue;
 	    }
 	  break;
-	case FIFO_EVENT_DISCONNECT:
+	case SESSION_CTRL_EVT_CLOSE:
 	  s = session_get_from_handle_if_valid (e->session_handle);
 	  if (PREDICT_FALSE (!s))
 	    break;
@@ -968,7 +968,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  session_transport_close (s);
 	  break;
-	case FIFO_EVENT_BUILTIN_RX:
+	case SESSION_IO_EVT_BUILTIN_RX:
 	  s = session_event_get_session (e, thread_index);
 	  if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
 	    continue;
@@ -977,14 +977,14 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  app = application_get (app_wrk->app_index);
 	  app->cb_fns.builtin_app_rx_callback (s);
 	  break;
-	case FIFO_EVENT_BUILTIN_TX:
+	case SESSION_IO_EVT_BUILTIN_TX:
 	  s = session_get_from_handle_if_valid (e->session_handle);
 	  wrk->ctx.s = s;
 	  if (PREDICT_TRUE (s != 0))
 	    session_tx_fifo_dequeue_internal (vm, node, wrk, e,
 					      &n_tx_packets);
 	  break;
-	case FIFO_EVENT_RPC:
+	case SESSION_CTRL_EVT_RPC:
 	  fp = e->rpc_args.fp;
 	  (*fp) (e->rpc_args.arg);
 	  break;
@@ -1059,23 +1059,23 @@ dump_thread_0_event_queue (void)
 
       switch (e->event_type)
 	{
-	case FIFO_EVENT_APP_TX:
+	case SESSION_IO_EVT_TX:
 	  s0 = session_event_get_session (e, my_thread_index);
 	  fformat (stdout, "[%04d] TX session %d\n", i, s0->session_index);
 	  break;
 
-	case FIFO_EVENT_DISCONNECT:
+	case SESSION_CTRL_EVT_CLOSE:
 	  s0 = session_get_from_handle (e->session_handle);
 	  fformat (stdout, "[%04d] disconnect session %d\n", i,
 		   s0->session_index);
 	  break;
 
-	case FIFO_EVENT_BUILTIN_RX:
+	case SESSION_IO_EVT_BUILTIN_RX:
 	  s0 = session_event_get_session (e, my_thread_index);
 	  fformat (stdout, "[%04d] builtin_rx %d\n", i, s0->session_index);
 	  break;
 
-	case FIFO_EVENT_RPC:
+	case SESSION_CTRL_EVT_RPC:
 	  fformat (stdout, "[%04d] RPC call %llx with %llx\n",
 		   i, (u64) (uword) (e->rpc_args.fp),
 		   (u64) (uword) (e->rpc_args.arg));
@@ -1100,15 +1100,15 @@ session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
   session_t *s;
   switch (e->event_type)
     {
-    case FIFO_EVENT_APP_RX:
-    case FIFO_EVENT_APP_TX:
-    case FIFO_EVENT_BUILTIN_RX:
+    case SESSION_IO_EVT_RX:
+    case SESSION_IO_EVT_TX:
+    case SESSION_IO_EVT_BUILTIN_RX:
       if (e->fifo == f)
 	return 1;
       break;
-    case FIFO_EVENT_DISCONNECT:
+    case SESSION_CTRL_EVT_CLOSE:
       break;
-    case FIFO_EVENT_RPC:
+    case SESSION_CTRL_EVT_RPC:
       s = session_get_from_handle (e->session_handle);
       if (!s)
 	{
