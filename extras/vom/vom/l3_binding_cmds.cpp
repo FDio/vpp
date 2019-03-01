@@ -25,8 +25,7 @@ bind_cmd::bind_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_pfx(pfx)
-{
-}
+{}
 
 bool
 bind_cmd::operator==(const bind_cmd& other) const
@@ -44,7 +43,9 @@ bind_cmd::issue(connection& con)
   payload.is_add = 1;
   payload.del_all = 0;
 
-  m_pfx.to_vpp(&payload.is_ipv6, payload.address, &payload.address_length);
+  m_pfx.to_vpp((uint8_t*)&payload.prefix.address.af,
+               (uint8_t*)&payload.prefix.address,
+               (uint8_t*)&payload.prefix.address_length);
 
   VAPI_CALL(req.execute());
 
@@ -67,8 +68,7 @@ unbind_cmd::unbind_cmd(HW::item<bool>& item,
   : rpc_cmd(item)
   , m_itf(itf)
   , m_pfx(pfx)
-{
-}
+{}
 
 bool
 unbind_cmd::operator==(const unbind_cmd& other) const
@@ -86,7 +86,9 @@ unbind_cmd::issue(connection& con)
   payload.is_add = 0;
   payload.del_all = 0;
 
-  m_pfx.to_vpp(&payload.is_ipv6, payload.address, &payload.address_length);
+  m_pfx.to_vpp((uint8_t*)&payload.prefix.address.af,
+               (uint8_t*)&payload.prefix.address,
+               (uint8_t*)&payload.prefix.address_length);
 
   VAPI_CALL(req.execute());
 
@@ -108,13 +110,11 @@ unbind_cmd::to_string() const
 
 dump_v4_cmd::dump_v4_cmd(const handle_t& hdl)
   : m_itf(hdl)
-{
-}
+{}
 
 dump_v4_cmd::dump_v4_cmd(const dump_v4_cmd& d)
   : m_itf(d.m_itf)
-{
-}
+{}
 
 bool
 dump_v4_cmd::operator==(const dump_v4_cmd& other) const

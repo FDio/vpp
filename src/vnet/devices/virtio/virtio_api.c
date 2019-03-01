@@ -97,8 +97,7 @@ virtio_pci_send_sw_interface_event_deleted (vpe_api_main_t * am,
   mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_EVENT);
   mp->sw_if_index = htonl (sw_if_index);
 
-  mp->admin_up_down = 0;
-  mp->link_up_down = 0;
+  mp->flags = 0;
   mp->deleted = 1;
   vl_api_send_msg (reg, (u8 *) mp);
 }

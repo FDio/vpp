@@ -26,8 +26,7 @@ namespace interface_cmds {
 loopback_create_cmd::loopback_create_cmd(HW::item<handle_t>& item,
                                          const std::string& name)
   : create_cmd(item, name)
-{
-}
+{}
 
 rc_t
 loopback_create_cmd::issue(connection& con)
@@ -56,8 +55,7 @@ loopback_create_cmd::to_string() const
 af_packet_create_cmd::af_packet_create_cmd(HW::item<handle_t>& item,
                                            const std::string& name)
   : create_cmd(item, name)
-{
-}
+{}
 
 rc_t
 af_packet_create_cmd::issue(connection& con)
@@ -68,7 +66,8 @@ af_packet_create_cmd::issue(connection& con)
 
   payload.use_random_hw_addr = 1;
   memset(payload.host_if_name, 0, sizeof(payload.host_if_name));
-  memcpy(payload.host_if_name, m_name.c_str(),
+  memcpy(payload.host_if_name,
+         m_name.c_str(),
          std::min(m_name.length(), sizeof(payload.host_if_name)));
 
   VAPI_CALL(req.execute());
@@ -95,8 +94,7 @@ vhost_create_cmd::vhost_create_cmd(HW::item<handle_t>& item,
                                    const std::string& tag)
   : create_cmd(item, name)
   , m_tag(tag)
-{
-}
+{}
 
 rc_t
 vhost_create_cmd::issue(connection& con)
@@ -105,12 +103,14 @@ vhost_create_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   memset(payload.sock_filename, 0, sizeof(payload.sock_filename));
-  memcpy(payload.sock_filename, m_name.c_str(),
+  memcpy(payload.sock_filename,
+         m_name.c_str(),
          std::min(m_name.length(), sizeof(payload.sock_filename)));
   memset(payload.tag, 0, sizeof(payload.tag));
 
   if (!m_tag.empty())
-    memcpy(payload.tag, m_tag.c_str(),
+    memcpy(payload.tag,
+           m_tag.c_str(),
            std::min(m_tag.length(), sizeof(payload.tag)));
 
   payload.is_server = 0;
@@ -140,8 +140,7 @@ vhost_create_cmd::to_string() const
 
 loopback_delete_cmd::loopback_delete_cmd(HW::item<handle_t>& item)
   : delete_cmd(item)
-{
-}
+{}
 
 rc_t
 loopback_delete_cmd::issue(connection& con)
@@ -172,8 +171,7 @@ loopback_delete_cmd::to_string() const
 af_packet_delete_cmd::af_packet_delete_cmd(HW::item<handle_t>& item,
                                            const std::string& name)
   : delete_cmd(item, name)
-{
-}
+{}
 
 rc_t
 af_packet_delete_cmd::issue(connection& con)
@@ -182,7 +180,8 @@ af_packet_delete_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   memset(payload.host_if_name, 0, sizeof(payload.host_if_name));
-  memcpy(payload.host_if_name, m_name.c_str(),
+  memcpy(payload.host_if_name,
+         m_name.c_str(),
          std::min(m_name.length(), sizeof(payload.host_if_name)));
 
   VAPI_CALL(req.execute());
@@ -205,8 +204,7 @@ af_packet_delete_cmd::to_string() const
 vhost_delete_cmd::vhost_delete_cmd(HW::item<handle_t>& item,
                                    const std::string& name)
   : delete_cmd(item, name)
-{
-}
+{}
 
 rc_t
 vhost_delete_cmd::issue(connection& con)
@@ -236,8 +234,7 @@ state_change_cmd::state_change_cmd(HW::item<interface::admin_state_t>& state,
                                    const HW::item<handle_t>& hdl)
   : rpc_cmd(state)
   , m_hdl(hdl)
-{
-}
+{}
 
 bool
 state_change_cmd::operator==(const state_change_cmd& other) const
@@ -252,7 +249,7 @@ state_change_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_hdl.data().value();
-  payload.admin_up_down = m_hw_item.data().value();
+  payload.flags = (vapi_enum_if_status_flags)m_hw_item.data().value();
 
   VAPI_CALL(req.execute());
 
@@ -274,8 +271,7 @@ set_table_cmd::set_table_cmd(HW::item<route::table_id_t>& table,
   : rpc_cmd(table)
   , m_hdl(hdl)
   , m_proto(proto)
-{
-}
+{}
 
 bool
 set_table_cmd::operator==(const set_table_cmd& other) const
@@ -312,8 +308,7 @@ set_mac_cmd::set_mac_cmd(HW::item<l2_address_t>& mac,
                          const HW::item<handle_t>& hdl)
   : rpc_cmd(mac)
   , m_hdl(hdl)
-{
-}
+{}
 
 bool
 set_mac_cmd::operator==(const set_mac_cmd& other) const
@@ -351,8 +346,7 @@ collect_detail_stats_change_cmd::collect_detail_stats_change_cmd(
   : rpc_cmd(item)
   , m_hdl(hdl)
   , m_enable(enable)
-{
-}
+{}
 
 bool
 collect_detail_stats_change_cmd::operator==(
@@ -387,8 +381,7 @@ collect_detail_stats_change_cmd::to_string() const
 events_cmd::events_cmd(interface::event_listener& el)
   : event_cmd(el.status())
   , m_listener(el)
-{
-}
+{}
 
 bool
 events_cmd::operator==(const events_cmd& other) const
@@ -450,8 +443,8 @@ events_cmd::notify()
     std::shared_ptr<interface> sp = interface::find(handle);
 
     if (sp) {
-      interface::oper_state_t oper_state =
-        interface::oper_state_t::from_int(payload.link_up_down);
+      interface::oper_state_t oper_state = interface::oper_state_t::from_int(
+        payload.flags & vapi_enum_if_status_flags::IF_STATUS_API_FLAG_LINK_UP);
 
       VOM_LOG(log_level_t::DEBUG) << "Interface Event: " << sp->to_string()
                                   << " state: " << oper_state.to_string();
@@ -472,9 +465,7 @@ events_cmd::to_string() const
   return ("itf-events");
 }
 
-dump_cmd::dump_cmd()
-{
-}
+dump_cmd::dump_cmd() {}
 
 bool
 dump_cmd::operator==(const dump_cmd& other) const
@@ -503,9 +494,7 @@ dump_cmd::to_string() const
   return ("itf-dump");
 }
 
-vhost_dump_cmd::vhost_dump_cmd()
-{
-}
+vhost_dump_cmd::vhost_dump_cmd() {}
 
 bool
 vhost_dump_cmd::operator==(const vhost_dump_cmd& other) const
@@ -558,8 +547,7 @@ af_packet_dump_cmd::to_string() const
 set_tag::set_tag(HW::item<handle_t>& item, const std::string& name)
   : rpc_cmd(item)
   , m_name(name)
-{
-}
+{}
 
 rc_t
 set_tag::issue(connection& con)
@@ -569,8 +557,8 @@ set_tag::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.sw_if_index = m_hw_item.data().value();
-  memset(payload.tag, 0, sizeof(payload.tag));
-  memcpy(payload.tag, m_name.c_str(), m_name.length());
+  memset(payload.tag.buf, 0, payload.tag.length);
+  memcpy(payload.tag.buf, m_name.c_str(), m_name.length());
 
   VAPI_CALL(req.execute());
 
