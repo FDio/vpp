@@ -16,6 +16,24 @@
       "revId": "ebf4e50571b440a3ac3209b4ba6ea63721e69256",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d96ee647_ee7887e6",
+        "filename": "src/plugins/gbp/gbp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-03-01T16:27:37Z",
+      "side": 1,
+      "message": "the original file gbp_fwd.c is marked as MULTIARCH so it\u0027s compiled multiple times and these definitions caused multiple definition issue so they have either to be moved elsewhere or kept in original place but guarded with #ifdef. I just find this approach cleaner.",
+      "parentUuid": "0d9c9565_efac33c3",
+      "revId": "ebf4e50571b440a3ac3209b4ba6ea63721e69256",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
