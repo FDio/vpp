@@ -214,7 +214,7 @@ proxy_rx_callback (session_t * s)
 	  u32 ao_thread_index = active_open_tx_fifo->master_thread_index;
 	  if (session_send_io_evt_to_thread_custom (active_open_tx_fifo,
 						    ao_thread_index,
-						    FIFO_EVENT_APP_TX))
+						    SESSION_IO_EVT_TX))
 	    clib_warning ("failed to enqueue tx evt");
 	}
     }
@@ -320,7 +320,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
    */
   ASSERT (s->thread_index == thread_index);
   if (svm_fifo_set_event (s->tx_fifo))
-    session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
+    session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
 
   return 0;
 }
@@ -358,7 +358,7 @@ active_open_rx_callback (session_t * s)
       u8 thread_index = proxy_tx_fifo->master_thread_index;
       return session_send_io_evt_to_thread_custom (proxy_tx_fifo,
 						   thread_index,
-						   FIFO_EVENT_APP_TX);
+						   SESSION_IO_EVT_TX);
     }
 
   return 0;

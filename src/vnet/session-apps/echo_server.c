@@ -195,7 +195,8 @@ echo_server_rx_callback (session_t * s)
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
-	  if (session_send_io_evt_to_thread (rx_fifo, FIFO_EVENT_BUILTIN_RX))
+	  if (session_send_io_evt_to_thread (rx_fifo,
+					     SESSION_IO_EVT_BUILTIN_RX))
 	    clib_warning ("failed to enqueue self-tap");
 
 	  vec_validate (esm->rx_retries[s->thread_index], s->session_index);
@@ -239,14 +240,14 @@ echo_server_rx_callback (session_t * s)
       n_written = app_send_stream_raw (tx_fifo,
 				       esm->vpp_queue[thread_index],
 				       esm->rx_buf[thread_index],
-				       actual_transfer, FIFO_EVENT_APP_TX, 0);
+				       actual_transfer, SESSION_IO_EVT_TX, 0);
     }
   else
     {
       n_written = app_send_dgram_raw (tx_fifo, &at,
 				      esm->vpp_queue[s->thread_index],
 				      esm->rx_buf[thread_index],
-				      actual_transfer, FIFO_EVENT_APP_TX, 0);
+				      actual_transfer, SESSION_IO_EVT_TX, 0);
     }
 
   if (n_written != max_transfer)

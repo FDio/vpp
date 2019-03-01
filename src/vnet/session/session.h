@@ -449,7 +449,7 @@ transport_add_tx_event (transport_connection_t * tc)
   session_t *s = session_get (tc->s_index, tc->thread_index);
   if (svm_fifo_has_event (s->tx_fifo))
     return;
-  session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
+  session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
 }
 
 /*

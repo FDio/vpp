@@ -564,7 +564,7 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s, u8 lock)
 
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->fifo = s->rx_fifo;
-  evt->event_type = FIFO_EVENT_APP_RX;
+  evt->event_type = SESSION_IO_EVT_RX;
 
   (void) svm_fifo_set_event (s->rx_fifo);
 
@@ -599,7 +599,7 @@ app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s, u8 lock)
   ASSERT (!svm_msg_q_msg_is_invalid (&msg));
 
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->event_type = FIFO_EVENT_APP_TX;
+  evt->event_type = SESSION_IO_EVT_TX;
   evt->fifo = s->tx_fifo;
 
   return app_enqueue_evt (mq, &msg, lock);
@@ -625,7 +625,7 @@ static app_send_evt_handler_fn * const app_send_evt_handler_fns[3] = {
 int
 app_worker_send_event (app_worker_t * app, session_t * s, u8 evt_type)
 {
-  ASSERT (app && evt_type <= FIFO_EVENT_APP_TX);
+  ASSERT (app && evt_type <= SESSION_IO_EVT_TX);
   return app_send_evt_handler_fns[evt_type] (app, s, 0 /* lock */ );
 }
 
