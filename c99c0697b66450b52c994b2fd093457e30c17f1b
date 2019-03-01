@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9bf6ba61_c9b0eed2",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-01T21:49:37Z",
+      "side": 1,
+      "message": "Not big deal but we are trying to keep variable definitions at the beginning of the block...",
+      "range": {
+        "startLine": 319,
+        "startChar": 0,
+        "endLine": 321,
+        "endChar": 17
+      },
+      "revId": "c99c0697b66450b52c994b2fd093457e30c17f1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2a83b524_06034533",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-01T21:49:37Z",
+      "side": 1,
+      "message": "Have you considered caching result. as sparse vector lookup can be costly...",
+      "range": {
+        "startLine": 322,
+        "startChar": 0,
+        "endLine": 322,
+        "endChar": 74
+      },
+      "revId": "c99c0697b66450b52c994b2fd093457e30c17f1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "edfb79c9_5b23640c",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-01T21:49:37Z",
+      "side": 1,
+      "message": "What about replacing:\n\n  static inline int\n  gre_match_key4 (const gre_tunnel_key4_t * key1,\n                  const gre_tunnel_key4_t * key2)\n  {\n    return ((key1-\u003egtk_as_u64 \u003d\u003d key2-\u003egtk_as_u64) \u0026\u0026\n            (key1-\u003egtk_fidx_ssid_type \u003d\u003d key2-\u003egtk_fidx_ssid_type));\n  }\n\nwith:\n\n  static inline int\n  gre_match_key4 (const gre_tunnel_key4_t * key1,\n                  const gre_tunnel_key4_t * key2)\n  {\n    return ! ((key1-\u003egtk_as_u64 ^ key2-\u003egtk_as_u64) |\n            (key1-\u003egtk_fidx_ssid_type ^ key2-\u003egtk_fidx_ssid_type));\n  }\n\nto avoid branching....",
+      "range": {
+        "startLine": 358,
+        "startChar": 16,
+        "endLine": 358,
+        "endChar": 30
+      },
+      "revId": "c99c0697b66450b52c994b2fd093457e30c17f1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
