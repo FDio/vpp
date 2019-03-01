@@ -973,7 +973,7 @@ static void vl_api_sw_interface_details_t_handler_json
   vat_json_object_add_bytes (node, "l2_address", mp->l2_address,
 			     sizeof (mp->l2_address));
   vat_json_object_add_string_copy (node, "interface_name",
-				   mp->interface_name);
+				   mp->interface_name.buf);
   vat_json_object_add_uint (node, "admin_up_down", mp->admin_up_down);
   vat_json_object_add_uint (node, "link_up_down", mp->link_up_down);
   vat_json_object_add_uint (node, "link_duplex", mp->link_duplex);
@@ -6294,14 +6294,15 @@ api_sw_interface_add_del_address (vat_main_t * vam)
   mp->del_all = del_all;
   if (v6_address_set)
     {
-      mp->is_ipv6 = 1;
-      clib_memcpy (mp->address, &v6address, sizeof (v6address));
+      mp->prefix.address.af = ADDRESS_IP6;
+      clib_memcpy (mp->prefix.address.un.ip6, &v6address, sizeof (v6address));
     }
   else
     {
-      clib_memcpy (mp->address, &v4address, sizeof (v4address));
+      mp->prefix.address.af = ADDRESS_IP4;
+      clib_memcpy (mp->prefix.address.un.ip4, &v4address, sizeof (v4address));
     }
-  mp->address_length = address_length;
+  mp->prefix.address_length = address_length;
 
   /* send it... */
   S (mp);

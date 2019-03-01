@@ -1,6 +1,7 @@
 import socket
 
 from vpp_object import VppObject
+from vpp_ip import VppIpPrefix
 
 
 class MEMIF_ROLE:
@@ -84,8 +85,7 @@ class VppMemif(VppObject):
         self.buffer_size = buffer_size
         self.hw_addr = hw_addr
         self.sw_if_index = None
-        self.ip4_addr = "192.168.%d.%d" % (self.if_id + 1, self.role + 1)
-        self.ip4_addr_len = 24
+        self.ip_prefix = VppIpPrefix("192.168.%d.%d" % (self.if_id + 1, self.role + 1), 24)
 
     def add_vpp_config(self):
         rv = self._test.vapi.memif_create(self.role, self.mode, self.rx_queues,
@@ -118,8 +118,7 @@ class VppMemif(VppObject):
 
     def config_ip4(self):
         return self._test.vapi.sw_interface_add_del_address(
-            self.sw_if_index, socket.inet_pton(
-                socket.AF_INET, self.ip4_addr), self.ip4_addr_len)
+            self.sw_if_index, self.ip_prefix.encode())
 
     def remove_vpp_config(self):
         self._test.vapi.memif_delete(self.sw_if_index)

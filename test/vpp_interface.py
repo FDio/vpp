@@ -7,6 +7,7 @@ from six import moves
 
 from util import Host, mk_ll_addr
 from vpp_papi import mac_ntop
+from vpp_ip import VppIpAddress, VppIpPrefix
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -37,22 +38,25 @@ class VppInterface(object):
         return self._remote_addr
 
     @property
-    def local_addr_n(self):
-        return self._local_addr_n
-
-    @property
-    def remote_addr_n(self):
-        return self._remote_addr_n
-
-    @property
     def local_ip4(self):
         """Local IPv4 address on VPP interface (string)."""
+        return self._local_ip4.address
+
+    @property
+    def local_ip4_prefix_len(self):
+        """Local IPv4 prefix length """
+        return self._local_ip4.len
+
+    @property
+    def local_ip4_prefix(self):
+        """Local IPv4 prefix """
         return self._local_ip4
 
     @property
     def local_ip4n(self):
+        """DEPRECATED """
         """Local IPv4 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET, self._local_ip4)
+        return socket.inet_pton(socket.AF_INET, self._local_ip4.address)
 
     @property
     def remote_ip4(self):
@@ -61,18 +65,30 @@ class VppInterface(object):
 
     @property
     def remote_ip4n(self):
-        """IPv4 address of remote peer - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET, self.remote_ip4)
+        """DEPRECATED """
+        """Local IPv6 address - raw, suitable as API parameter."""
+        return socket.inet_pton(socket.AF_INET, self._remote_hosts[0].ip4)
 
     @property
     def local_ip6(self):
         """Local IPv6 address on VPP interface (string)."""
+        return self._local_ip6.address
+
+    @property
+    def local_ip6_prefix_len(self):
+        """Local IPv6 prefix length """
+        return self._local_ip6.len
+
+    @property
+    def local_ip6_prefix(self):
+        """Local IPv6 prefix """
         return self._local_ip6
 
     @property
     def local_ip6n(self):
+        """DEPRECATED """
         """Local IPv6 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET6, self.local_ip6)
+        return socket.inet_pton(socket.AF_INET6, self._local_ip6.address)
 
     @property
     def remote_ip6(self):
@@ -81,18 +97,20 @@ class VppInterface(object):
 
     @property
     def remote_ip6n(self):
-        """IPv6 address of remote peer - raw, suitable as API parameter"""
-        return socket.inet_pton(socket.AF_INET6, self.remote_ip6)
+        """DEPRECATED """
+        """Local IPv6 address - raw, suitable as API parameter."""
+        return socket.inet_pton(socket.AF_INET6, self._remote_hosts[0].ip6)
 
     @property
     def local_ip6_ll(self):
         """Local IPv6 link-local address on VPP interface (string)."""
-        return self._local_ip6_ll
+        return self._local_ip6_ll.address
 
     @property
     def local_ip6n_ll(self):
-        """Local IPv6 link-local address - raw, suitable as API parameter."""
-        return self._local_ip6n_ll
+        """DEPRECATED """
+        """Local IPv6 link-local address on VPP interface (string)."""
+        return socket.inet_pton(socket.AF_INET6, self._local_ip6_ll.address)
 
     @property
     def remote_ip6_ll(self):
@@ -102,9 +120,9 @@ class VppInterface(object):
 
     @property
     def remote_ip6n_ll(self):
-        """Link-local IPv6 address of remote peer
-        - raw, suitable as API parameter"""
-        return self._remote_ip6n_ll
+        """DEPRECATED """
+        """Local IPv6 link-local address on VPP interface (string)."""
+        return socket.inet_pton(socket.AF_INET6, self._remote_ip6_ll)
 
     @property
     def name(self):
@@ -193,7 +211,7 @@ class VppInterface(object):
 
     def set_mac(self, mac):
         self._local_mac = str(mac)
-        self._local_ip6_ll = mk_ll_addr(self._local_mac)
+        self._local_ip6_ll = VppIpAddress(mk_ll_addr(self._local_mac))
         self.test.vapi.sw_interface_set_mac_address(
             self.sw_if_index, mac.packed)
 
@@ -202,32 +220,20 @@ class VppInterface(object):
 
         self.generate_remote_hosts()
 
-        self._local_ip4 = "172.16.%u.1" % self.sw_if_index
-        self._local_ip4n = socket.inet_pton(socket.AF_INET, self.local_ip4)
+        self._local_ip4 = VppIpPrefix("172.16.%u.1" % self.sw_if_index, 24)
         self._local_ip4_subnet = "172.16.%u.0" % self.sw_if_index
-        self._local_ip4n_subnet = socket.inet_pton(socket.AF_INET,
-                                                   self._local_ip4_subnet)
         self._local_ip4_bcast = "172.16.%u.255" % self.sw_if_index
-        self._local_ip4n_bcast = socket.inet_pton(socket.AF_INET,
-                                                  self._local_ip4_bcast)
-        self.local_ip4_prefix_len = 24
         self.has_ip4_config = False
         self.ip4_table_id = 0
 
-        self._local_ip6 = "fd01:%x::1" % self.sw_if_index
-        self._local_ip6n = socket.inet_pton(socket.AF_INET6, self.local_ip6)
-        self.local_ip6_prefix_len = 64
+        self._local_ip6 = VppIpPrefix("fd01:%x::1" % self.sw_if_index, 64)
         self.has_ip6_config = False
         self.ip6_table_id = 0
 
         self._local_addr = {socket.AF_INET: self.local_ip4,
                             socket.AF_INET6: self.local_ip6}
-        self._local_addr_n = {socket.AF_INET: self.local_ip4n,
-                              socket.AF_INET6: self.local_ip6n}
         self._remote_addr = {socket.AF_INET: self.remote_ip4,
                              socket.AF_INET6: self.remote_ip6}
-        self._remote_addr_n = {socket.AF_INET: self.remote_ip4n,
-                               socket.AF_INET6: self.remote_ip6n}
 
         r = self.test.vapi.sw_interface_dump()
         for intf in r:
@@ -242,17 +248,13 @@ class VppInterface(object):
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
                 (self.sw_if_index, moves.reprlib.repr(r)))
-        self._local_ip6_ll = mk_ll_addr(self.local_mac)
-        self._local_ip6n_ll = socket.inet_pton(socket.AF_INET6,
-                                               self.local_ip6_ll)
+        self._local_ip6_ll = VppIpAddress(mk_ll_addr(self.local_mac))
         self._remote_ip6_ll = mk_ll_addr(self.remote_mac)
-        self._remote_ip6n_ll = socket.inet_pton(socket.AF_INET6,
-                                                self.remote_ip6_ll)
 
     def config_ip4(self):
         """Configure IPv4 address on the VPP interface."""
         self.test.vapi.sw_interface_add_del_address(
-            self.sw_if_index, self.local_ip4n, self.local_ip4_prefix_len)
+            self.sw_if_index, self._local_ip4.encode())
         self.has_ip4_config = True
 
     def unconfig_ip4(self):
@@ -261,9 +263,7 @@ class VppInterface(object):
             if self.has_ip4_config:
                 self.test.vapi.sw_interface_add_del_address(
                     self.sw_if_index,
-                    self.local_ip4n,
-                    self.local_ip4_prefix_len,
-                    is_add=0)
+                    self._local_ip4.encode(), is_add=0)
         except AttributeError:
             self.has_ip4_config = False
         self.has_ip4_config = False
@@ -281,8 +281,7 @@ class VppInterface(object):
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
         self.test.vapi.sw_interface_add_del_address(
-            self.sw_if_index, self._local_ip6n, self.local_ip6_prefix_len,
-            is_ipv6=1)
+            self.sw_if_index, self._local_ip6.encode())
         self.has_ip6_config = True
 
     def unconfig_ip6(self):
@@ -290,10 +289,7 @@ class VppInterface(object):
         try:
             if self.has_ip6_config:
                 self.test.vapi.sw_interface_add_del_address(
-                    self.sw_if_index,
-                    self.local_ip6n,
-                    self.local_ip6_prefix_len,
-                    is_ipv6=1, is_add=0)
+                    self.sw_if_index, self._local_ip6.encode(), is_add=0)
         except AttributeError:
             self.has_ip6_config = False
         self.has_ip6_config = False

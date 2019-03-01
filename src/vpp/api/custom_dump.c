@@ -179,17 +179,18 @@ static void *vl_api_sw_interface_add_del_address_t_print
   (vl_api_sw_interface_add_del_address_t * mp, void *handle)
 {
   u8 *s;
+  ip46_address_t address;
 
   s = format (0, "SCRIPT: sw_interface_add_del_address ");
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
-  if (mp->is_ipv6)
+  if (ip_address_decode (&mp->prefix.address, &address) == IP46_TYPE_IP6)
     s = format (s, "%U/%d ", format_ip6_address,
-		(ip6_address_t *) mp->address, mp->address_length);
+		(ip6_address_t *) &address.ip6, mp->prefix.address_length);
   else
     s = format (s, "%U/%d ", format_ip4_address,
-		(ip4_address_t *) mp->address, mp->address_length);
+		(ip4_address_t *) &address.ip4, mp->prefix.address_length);
 
   if (mp->is_add == 0)
     s = format (s, "del ");

@@ -31,6 +31,11 @@
 #include <vnet/fib/fib_api.h>
 #include <vnet/mfib/mfib_table.h>
 
+#include <vlibapi/api_types.h>
+
+#include <vnet/ip/ip_types_api.h>
+#include <vnet/ethernet/ethernet_types_api.h>
+
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
@@ -193,7 +198,8 @@ send_sw_interface_details (vpe_api_main_t * am,
   vnet_hw_interface_t *hi =
     vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
 
-  vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
+  uint32_t if_name_len = strlen ((char *) interface_name);
+  vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp) + if_name_len);
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_DETAILS);
   mp->sw_if_index = ntohl (swif->sw_if_index);
@@ -211,8 +217,7 @@ send_sw_interface_details (vpe_api_main_t * am,
 
   mp->context = context;
 
-  strncpy ((char *) mp->interface_name,
-	   (char *) interface_name, ARRAY_LEN (mp->interface_name) - 1);
+  vl_api_to_api_string (if_name_len, (char *) interface_name, &mp->interface_name);
 
   /* Send the L2 address for ethernet physical intfcs */
   if (swif->sup_sw_if_index == swif->sw_if_index
@@ -273,10 +278,8 @@ send_sw_interface_details (vpe_api_main_t * am,
 		  &vtr_op, &outer_tag, &eth_hdr, &b_vlanid, &i_sid))
     {
       mp->sub_dot1ah = 1;
-      clib_memcpy (mp->b_dmac, eth_hdr.dst_address,
-		   sizeof (eth_hdr.dst_address));
-      clib_memcpy (mp->b_smac, eth_hdr.src_address,
-		   sizeof (eth_hdr.src_address));
+      mac_address_encode ((mac_address_t *) eth_hdr.dst_address, mp->b_dmac);
+      mac_address_encode ((mac_address_t *) eth_hdr.src_address, mp->b_smac);
       mp->b_vlanid = b_vlanid;
       mp->i_sid = i_sid;
     }
@@ -307,8 +310,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   u8 *filter = 0, *name = 0;
   if (mp->name_filter_valid)
     {
-      mp->name_filter[ARRAY_LEN (mp->name_filter) - 1] = 0;
-      filter = format (0, "%s%c", mp->name_filter, 0);
+      filter = format (0, "%s%c", vl_api_from_api_string_c (&mp->name_filter), 0);
     }
 
   char *strcasestr (char *, char *);	/* lnx hdr file botch */
@@ -342,6 +344,7 @@ static void
   int rv = 0;
   u32 is_del;
   clib_error_t *error = 0;
+  ip46_address_t address;
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -350,14 +353,14 @@ static void
 
   if (mp->del_all)
     ip_del_all_interface_addresses (vm, ntohl (mp->sw_if_index));
-  else if (mp->is_ipv6)
+  else if (ip_address_decode (&mp->prefix.address, &address) == IP46_TYPE_IP6)
     error = ip6_add_del_interface_address (vm, ntohl (mp->sw_if_index),
-					   (void *) mp->address,
-					   mp->address_length, is_del);
+					   (void *) &address.ip6,
+					   mp->prefix.address_length, is_del);
   else
     error = ip4_add_del_interface_address (vm, ntohl (mp->sw_if_index),
-					   (void *) mp->address,
-					   mp->address_length, is_del);
+					   (void *) &address.ip4,
+					   mp->prefix.address_length, is_del);
 
   if (error)
     {
@@ -875,12 +878,13 @@ static void vl_api_sw_interface_set_mac_address_t_handler
   vnet_sw_interface_t *si;
   clib_error_t *error;
   int rv = 0;
+  mac_address_t mac;
 
   VALIDATE_SW_IF_INDEX (mp);
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
-  error = vnet_hw_interface_change_mac_address (vnm, si->hw_if_index,
-						mp->mac_address);
+  mac_address_decode (mp->mac_address, &mac);
+  error = vnet_hw_interface_change_mac_address (vnm, si->hw_if_index,(u8 *) &mac);
   if (error)
     {
       rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -920,7 +924,7 @@ static void vl_api_sw_interface_get_mac_address_t_handler
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
   if (!rv && eth_if)
-    memcpy (rmp->mac_address, eth_if->address, 6);
+    mac_address_encode ((mac_address_t *) eth_if->address, rmp->mac_address);
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
@@ -1281,8 +1285,10 @@ vl_api_create_loopback_t_handler (vl_api_create_loopback_t * mp)
   vl_api_create_loopback_reply_t *rmp;
   u32 sw_if_index;
   int rv;
+  mac_address_t mac;
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address, 0, 0);
+  mac_address_decode (mp->mac_address, &mac);
+  rv = vnet_create_loopback_interface (&sw_if_index,(u8 *) &mac, 0, 0);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_LOOPBACK_REPLY,
@@ -1300,8 +1306,10 @@ static void vl_api_create_loopback_instance_t_handler
   u8 is_specified = mp->is_specified;
   u32 user_instance = ntohl (mp->user_instance);
   int rv;
+  mac_address_t mac;
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address,
+  mac_address_decode (mp->mac_address, &mac);
+  rv = vnet_create_loopback_interface (&sw_if_index,(u8 *) &mac,
 				       is_specified, user_instance);
 
   /* *INDENT-OFF* */

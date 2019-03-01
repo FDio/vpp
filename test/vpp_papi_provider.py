@@ -230,7 +230,7 @@ class VppPapiProvider(object):
 
         """
         if filter is not None:
-            args = {"name_filter_valid": 1, "name_filter": filter}
+            args = {"name_filter_valid": 1, "name_filter": {"length": len(filter), "buf": filter}}
         else:
             args = {}
         return self.api(self.papi.sw_interface_dump, args)
@@ -258,8 +258,8 @@ class VppPapiProvider(object):
         return self.api(self.papi.sw_interface_get_table,
                         {'sw_if_index': sw_if_index, 'is_ipv6': is_ipv6})
 
-    def sw_interface_add_del_address(self, sw_if_index, addr, addr_len,
-                                     is_ipv6=0, is_add=1, del_all=0):
+    def sw_interface_add_del_address(self, sw_if_index, prefix,
+                                     is_add=1, del_all=0):
         """
 
         :param addr: param is_ipv6:  (Default value = 0)
@@ -273,10 +273,8 @@ class VppPapiProvider(object):
         return self.api(self.papi.sw_interface_add_del_address,
                         {'sw_if_index': sw_if_index,
                          'is_add': is_add,
-                         'is_ipv6': is_ipv6,
                          'del_all': del_all,
-                         'address_length': addr_len,
-                         'address': addr})
+                         'prefix': prefix})
 
     def ip_address_dump(self, sw_if_index, is_ipv6=0):
         return self.api(self.papi.ip_address_dump,
