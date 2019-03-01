@@ -17,7 +17,7 @@ def find_nbr(test, sw_if_index, nbr_addr, is_static=0, mac=None):
     ip_addr = ip_address(text_type(nbr_addr))
     e = VppEnum.vl_api_ip_neighbor_flags_t
     nbrs = test.vapi.ip_neighbor_dump(sw_if_index,
-                                      is_ipv6=(6 is ip_addr.version))
+                                      is_ipv6=(6 == ip_addr.version))
 
     for n in nbrs:
         if ip_addr == n.neighbor.ip_address and \

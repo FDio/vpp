@@ -36,7 +36,7 @@ class MplsLspMode:
 
 
 def ip_to_dpo_proto(addr):
-    if addr.version is 6:
+    if addr.version == 6:
         return DpoProto.DPO_PROTO_IP6
     else:
         return DpoProto.DPO_PROTO_IP4
