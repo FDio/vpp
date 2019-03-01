@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "face339b_69aa771d",
+        "filename": "docs/usecases/ConnectingVPC.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-01T00:21:04Z",
+      "side": 1,
+      "message": "Does this need to re-verified for the current code?",
+      "range": {
+        "startLine": 107,
+        "startChar": 37,
+        "endLine": 107,
+        "endChar": 42
+      },
+      "revId": "70f5e091bab05c0acc810d334b34dbf4303338e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0adfb40a_80fdfa22",
+        "filename": "docs/usecases/vppinaws.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-01T00:21:04Z",
+      "side": 1,
+      "message": "PCI addresses",
+      "range": {
+        "startLine": 44,
+        "startChar": 98,
+        "endLine": 44,
+        "endChar": 102
+      },
+      "revId": "70f5e091bab05c0acc810d334b34dbf4303338e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2365500a_34fe8433",
+        "filename": "docs/usecases/vppinaws.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-01T00:21:04Z",
+      "side": 1,
+      "message": "PCI addresses",
+      "range": {
+        "startLine": 53,
+        "startChar": 4,
+        "endLine": 53,
+        "endChar": 8
+      },
+      "revId": "70f5e091bab05c0acc810d334b34dbf4303338e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "45d045a3_74d92120",
+        "filename": "docs/usecases/vppinaws.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-01T00:21:04Z",
+      "side": 1,
+      "message": "Is this correct?  Shouldn\u0027t we use the dpdk based on the vpp parches?",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 93,
+        "endChar": 46
+      },
+      "revId": "70f5e091bab05c0acc810d334b34dbf4303338e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
