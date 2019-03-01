@@ -205,6 +205,9 @@ typedef struct
   u32 ip6_hbh_pop_node_index;
   u32 error_node_index;
   u32 cleanup_process_node_index;
+
+  u32 ip6_add_from_cache_hbh_node_index;
+  u32 ip6_reset_ts_hbh_node_index;
 } ioam_cache_main_t;
 
 extern ioam_cache_main_t ioam_cache_main;
