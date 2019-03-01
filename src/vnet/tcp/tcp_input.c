@@ -2187,7 +2187,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       tcp_inc_err_counter (err_counters, error0, 1);
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+  errors = session_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 						 thread_index);
   err_counters[TCP_ERROR_MSG_QUEUE_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
@@ -2584,7 +2584,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+  errors = session_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 						 my_thread_index);
   tcp_inc_counter (syn_sent, TCP_ERROR_MSG_QUEUE_FULL, errors);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
@@ -2990,7 +2990,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+  errors = session_flush_enqueue_events (TRANSPORT_PROTO_TCP,
 						 thread_index);
   tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);

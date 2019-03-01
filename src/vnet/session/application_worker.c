@@ -666,7 +666,7 @@ format_app_worker_listener (u8 * s, va_list * args)
 
   app_name = application_name_from_index (app_wrk->app_index);
   listener = listen_session_get_from_handle (handle);
-  str = format (0, "%U", format_stream_session, listener, verbose);
+  str = format (0, "%U", format_session, listener, verbose);
 
   if (verbose)
     {
@@ -737,7 +737,7 @@ app_worker_format_connects (app_worker_t * app_wrk, int verbose)
         thread_index = fifo->master_thread_index;
 
         session = session_get (session_index, thread_index);
-        str = format (0, "%U", format_stream_session, session, verbose);
+        str = format (0, "%U", format_session, session, verbose);
 
         if (verbose)
           s = format (s, "%-40s%-20s%-15u%-10u", str, app_name,
