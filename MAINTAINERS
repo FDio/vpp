@@ -191,6 +191,7 @@ F:      src/plugins/nsh.am
 
 Test Infrastructure
 M:	Klement Sekera <ksekera@cisco.com>
+M:  Paul Vinciguerra <pvinci@vinciconsulting.com>
 F:	test/
 
 SVM Library
