@@ -126,6 +126,24 @@
     },
     {
       "key": {
+        "uuid": "389c361b_70ecb5d1",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-01T22:38:46Z",
+      "side": 1,
+      "message": "Okay, so since it\u0027s a mixin class and does not have state, you\u0027ll still need to pass the stream. But you can have different signatures for the mixin methods, if you\u0027d like and eliminate the None parameters. \nJust an option. So the function will look like this as an example:\n\n@parameterized.expand([(IP, )])\n    def test_disabled(self, family):\n\nThe empty arguments with None are gone but everything else remains the same. It\u0027s entirely up to you, otherwise your code is fine as it is.",
+      "parentUuid": "5ec384d1_34a3c6dd",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d03164c4_6f24a5c8",
         "filename": "test/test_reassembly.py",
         "patchSetId": 1
