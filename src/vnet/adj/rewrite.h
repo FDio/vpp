@@ -131,8 +131,8 @@ vnet_rewrite_set_data_internal (vnet_rewrite_header_t * rw,
   ASSERT ((data_bytes >= 0) && (data_bytes < max_size));
 
   rw->data_bytes = data_bytes;
-  clib_memcpy_fast (rw->data + max_size - data_bytes, data, data_bytes);
-  clib_memset (rw->data, 0xfe, max_size - data_bytes);
+  clib_memcpy_fast (rw->data, data, data_bytes);
+  clib_memset (rw->data + data_bytes, 0xfe, max_size - data_bytes);
 }
 
 #define vnet_rewrite_set_data(rw,data,data_bytes)		\
@@ -145,76 +145,28 @@ always_inline void *
 vnet_rewrite_get_data_internal (vnet_rewrite_header_t * rw, int max_size)
 {
   ASSERT (rw->data_bytes <= max_size);
-  return rw->data + max_size - rw->data_bytes;
+  return rw->data;
 }
 
 #define vnet_rewrite_get_data(rw) \
   vnet_rewrite_get_data_internal (&((rw).rewrite_header), sizeof ((rw).rewrite_data))
 
 always_inline void
-vnet_rewrite_copy_one (vnet_rewrite_data_t * p0, vnet_rewrite_data_t * rw0,
-		       int i)
-{
-  p0[-i] = rw0[-i];
-}
-
-void vnet_rewrite_copy_slow_path (vnet_rewrite_data_t * p0,
-				  vnet_rewrite_data_t * rw0,
-				  word n_left, uword most_likely_size);
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
-  u64 a;
-  u32 b;
-  u16 c;
-}) eh_copy_t;
-/* *INDENT-ON* */
-
-always_inline void
 _vnet_rewrite_one_header (vnet_rewrite_header_t * h0,
 			  void *packet0, int max_size, int most_likely_size)
 {
-  vnet_rewrite_data_t *p0 = packet0;
-  vnet_rewrite_data_t *rw0 = (vnet_rewrite_data_t *) (h0->data + max_size);
-  word n_left0;
-
   /* 0xfefe => poisoned adjacency => crash */
   ASSERT (h0->data_bytes != 0xfefe);
-
-  if (PREDICT_TRUE (h0->data_bytes == sizeof (eh_copy_t)))
+  if (PREDICT_TRUE (most_likely_size == h0->data_bytes))
     {
-      eh_copy_t *s, *d;
-      s = (eh_copy_t *) (h0->data + max_size - sizeof (eh_copy_t));
-      d = (eh_copy_t *) (((u8 *) packet0) - sizeof (eh_copy_t));
-      clib_memcpy (d, s, sizeof (eh_copy_t));
-      return;
+      clib_memcpy_fast ((u8 *) packet0 - most_likely_size,
+			h0->data, most_likely_size);
     }
-  /*
-   * Stop now if the data_bytes field is zero, to avoid the cache
-   * miss consequences of spraying [functionally harmless] junk into
-   * un-prefetched rewrite space.
-   */
-  if (PREDICT_FALSE (h0->data_bytes == 0))
-    return;
-
-#define _(i)								\
-  do {									\
-    if (most_likely_size > ((i)-1)*sizeof (vnet_rewrite_data_t))	\
-      vnet_rewrite_copy_one (p0, rw0, (i));				\
-  } while (0)
-
-  _(4);
-  _(3);
-  _(2);
-  _(1);
-
-#undef _
-
-  n_left0 = (int)
-    (((int) h0->data_bytes - most_likely_size) + (sizeof (rw0[0]) - 1))
-    / (int) sizeof (rw0[0]);
-  if (PREDICT_FALSE (n_left0 > 0))
-    vnet_rewrite_copy_slow_path (p0, rw0, n_left0, most_likely_size);
+  else
+    {
+      clib_memcpy_fast ((u8 *) packet0 - h0->data_bytes,
+			h0->data, h0->data_bytes);
+    }
 }
 
 always_inline void
@@ -223,68 +175,24 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 			   void *packet0,
 			   void *packet1, int max_size, int most_likely_size)
 {
-  vnet_rewrite_data_t *p0 = packet0;
-  vnet_rewrite_data_t *p1 = packet1;
-  vnet_rewrite_data_t *rw0 = (vnet_rewrite_data_t *) (h0->data + max_size);
-  vnet_rewrite_data_t *rw1 = (vnet_rewrite_data_t *) (h1->data + max_size);
-  word n_left0, n_left1;
-  int slow_path;
-
   /* 0xfefe => poisoned adjacency => crash */
   ASSERT (h0->data_bytes != 0xfefe);
   ASSERT (h1->data_bytes != 0xfefe);
-
-  /* Arithmetic calculation: bytes0 == bytes1 == 14 */
-  slow_path = h0->data_bytes ^ h1->data_bytes;
-  slow_path += h0->data_bytes ^ sizeof (eh_copy_t);
-
-  if (PREDICT_TRUE (slow_path == 0))
+  if (PREDICT_TRUE
+      (most_likely_size == h0->data_bytes
+       && most_likely_size == h1->data_bytes))
     {
-      eh_copy_t *s0, *d0, *s1, *d1;
-      s0 = (eh_copy_t *) (h0->data + max_size - sizeof (eh_copy_t));
-      d0 = (eh_copy_t *) (((u8 *) packet0) - sizeof (eh_copy_t));
-      clib_memcpy (d0, s0, sizeof (eh_copy_t));
-      s1 = (eh_copy_t *) (h1->data + max_size - sizeof (eh_copy_t));
-      d1 = (eh_copy_t *) (((u8 *) packet1) - sizeof (eh_copy_t));
-      clib_memcpy (d1, s1, sizeof (eh_copy_t));
-      return;
+      clib_memcpy_fast ((u8 *) packet0 - most_likely_size,
+			h0->data, most_likely_size);
+      clib_memcpy_fast ((u8 *) packet1 - most_likely_size,
+			h1->data, most_likely_size);
     }
-
-  /*
-   * Stop now if both rewrite data_bytes fields are zero, to avoid the cache
-   * miss consequences of spraying [functionally harmless] junk into
-   * un-prefetched rewrite space.
-   */
-  if (PREDICT_FALSE (h0->data_bytes + h1->data_bytes == 0))
-    return;
-
-#define _(i)								\
-  do {									\
-    if (most_likely_size > ((i)-1)*sizeof (vnet_rewrite_data_t))	\
-      {									\
-	vnet_rewrite_copy_one (p0, rw0, (i));				\
-	vnet_rewrite_copy_one (p1, rw1, (i));				\
-      }									\
-  } while (0)
-
-  _(4);
-  _(3);
-  _(2);
-  _(1);
-
-#undef _
-
-  n_left0 = (int)
-    (((int) h0->data_bytes - most_likely_size) + (sizeof (rw0[0]) - 1))
-    / (int) sizeof (rw0[0]);
-  n_left1 = (int)
-    (((int) h1->data_bytes - most_likely_size) + (sizeof (rw1[0]) - 1))
-    / (int) sizeof (rw1[0]);
-
-  if (PREDICT_FALSE (n_left0 > 0 || n_left1 > 0))
+  else
     {
-      vnet_rewrite_copy_slow_path (p0, rw0, n_left0, most_likely_size);
-      vnet_rewrite_copy_slow_path (p1, rw1, n_left1, most_likely_size);
+      clib_memcpy_fast ((u8 *) packet0 - h0->data_bytes,
+			h0->data, h0->data_bytes);
+      clib_memcpy_fast ((u8 *) packet1 - h1->data_bytes,
+			h1->data, h1->data_bytes);
     }
 }
 
