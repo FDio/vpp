@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ab6cbe68_10336f68",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-01T19:39:16Z",
+      "side": 1,
+      "message": "It would be good not to reorder existing imports, unless there is a valid reason.",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f032ec8d_a58d360f",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-01T19:39:16Z",
+      "side": 1,
+      "message": "What is the need for passing in None as parameter values. You could remove these parameters from the parameterized.expand. These params are assigned values inside the function.",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d03164c4_6f24a5c8",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 608,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-01T19:39:16Z",
+      "side": 1,
+      "message": "Inconsistent use. In some places self.fragments_400 is used.",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
