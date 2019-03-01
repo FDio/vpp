@@ -22,6 +22,30 @@
       "revId": "2885b38993305e87f889860cfff44388c547c161",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5587f21a_1473ef4c",
+        "filename": "MAINTAINERS",
+        "patchSetId": 2
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-01T12:02:43Z",
+      "side": 1,
+      "message": "I mean 6 spaces here, 8 char indentation in general.",
+      "parentUuid": "54c62e9f_c2f22256",
+      "range": {
+        "startLine": 194,
+        "startChar": 2,
+        "endLine": 194,
+        "endChar": 4
+      },
+      "revId": "2885b38993305e87f889860cfff44388c547c161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
