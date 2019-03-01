@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "accafb7a_46214e33",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-01T20:27:44Z",
+      "side": 1,
+      "message": "thanks",
+      "parentUuid": "8cc7dba1_440a66a3",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f032ec8d_a58d360f",
         "filename": "test/test_reassembly.py",
         "patchSetId": 1
@@ -72,6 +90,24 @@
     },
     {
       "key": {
+        "uuid": "2c751fc8_bc0ecbab",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-01T20:27:44Z",
+      "side": 1,
+      "message": "ok. Another approach would be to adjust the parent methods to handle the stream value in self.fragments_400. It\u0027s a constant that\u0027s set once at the class level. So, why pass it around in each method.",
+      "parentUuid": "8e5e77df_a25cd495",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d03164c4_6f24a5c8",
         "filename": "test/test_reassembly.py",
         "patchSetId": 1
@@ -101,6 +137,24 @@
       "side": 1,
       "message": "Good observation.  They are defined in a class method and should be self.__class__...\nThanks",
       "parentUuid": "d03164c4_6f24a5c8",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5effb4f2_ac4a4215",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 608,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-01T20:27:44Z",
+      "side": 1,
+      "message": "Not an issue but even the self.fragments_400 would work in the object even if defined in the parent method.",
+      "parentUuid": "34378d7d_0e9f7cb9",
       "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
