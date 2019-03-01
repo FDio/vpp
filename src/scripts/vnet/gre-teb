@@ -1,0 +1,39 @@
+create packet-generator interface pg0
+create packet-generator interface pg1
+set int ip address pg1 192.168.2.1/24
+set ip arp pg1 192.168.2.2 6:5:4:3:2:1 static
+create gre tunnel dst 192.168.2.2 src 192.168.2.1 teb
+
+set int state pg0 up
+set int state pg1 up
+set int state gre0 up
+set int l2 xconnect pg0 gre0
+set int l2 xconnect gre0 pg0
+
+packet-generator new {
+  name tx
+  limit -1
+  node ethernet-input
+  size 64-64
+  interface pg0
+  data {
+    0x8881: 4:4:4:4:4:4 -> 5:5:5:5:5:5
+    incrementing 100
+  }
+}
+
+packet-generator new {
+  name rx
+  limit -1
+  node ip4-input
+  size 72-72
+  interface pg1
+  data {
+    GRE: 192.168.2.2 -> 192.168.2.1
+      teb
+        0x8881: 4:4:4:4:4:4 -> 5:5:5:5:5:5
+        incrementing 100
+  }
+}
+
+packet-generator enable

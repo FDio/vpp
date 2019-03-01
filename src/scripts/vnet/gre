@@ -1,0 +1,85 @@
+comment { overlay interface }
+create packet-generator interface pg0
+set int ip address pg0 192.168.1.1/24
+set int ip address pg0 192:168:1::1/64
+set ip arp pg0 192.168.1.2 1:2:3:4:5:6 static
+set ip6 neighbor pg0 192:168:1::2 1:2:3:4:5:6 static
+set int state pg0 up
+
+comment { underlay interface }
+create packet-generator interface pg1
+set int ip address pg1 192.168.2.1/24
+set int ip address pg1 192:168:2::1/64
+set ip arp pg1 192.168.2.2 6:5:4:3:2:1 static
+set ip6 neighbor pg1 192:168:2::2 6:5:4:3:2:1 static
+set int state pg1 up
+
+comment { gre4 over ipv6 }
+create gre tunnel dst 192:168:2::2 src 192:168:2::1
+set int ip address gre0 127.1.0.1/32
+ip route add 192.168.3.0/24 via gre0
+set int state gre0 up
+
+comment { gre6 over ipv4 }
+create gre tunnel dst 192.168.2.2 src 192.168.2.1
+set int ip address gre1 ::2/128
+ip route add 192:168:3::0/64 via gre1
+set int state gre1 up
+
+packet-generator new {
+  name gre4-tx
+  limit -1
+  node ip4-input
+  size 64-64
+  interface pg0
+  data {
+    UDP: 192.168.1.2 -> 192.168.3.1
+    UDP: 4321 -> 1234
+      length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name gre4-rx
+  limit -1
+  node ip6-input
+  size 72-72
+  interface pg1
+  data {
+    GRE: 192:168:2::2 -> 192:168:2::1
+      ip4
+        UDP: 192.168.3.1 -> 192.168.1.2
+        UDP: 1234 -> 4321
+          length 128 checksum 0 incrementing 1
+ }
+}
+
+packet-generator new {
+  name gre6-tx
+  limit -1
+  node ip6-input
+  size 64-64
+  interface pg0
+  data {
+    UDP: 192:168:1::2 -> 192:168:3::1
+    UDP: 4321 -> 1234
+      length 128 checksum 0 incrementing 1
+  }
+}
+
+packet-generator new {
+  name gre6-rx
+  limit -1
+  node ip4-input
+  size 72-72
+  interface pg1
+  data {
+    GRE: 192.168.2.2 -> 192.168.2.1
+      ip6
+        UDP: 192:168:3::1 -> 192:168:1::2
+        UDP: 1234 -> 4321
+          length 128 checksum 0 incrementing 1
+ }
+}
+
+packet-generator enable
