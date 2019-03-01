@@ -49,6 +49,7 @@ add_vpp_library(vlib
   buffer.c
   cli.c
   counter.c
+  drop.c
   error.c
   format.c
   i2c.c
