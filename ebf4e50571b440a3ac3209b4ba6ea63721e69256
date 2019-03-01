@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0d9c9565_efac33c3",
+        "filename": "src/plugins/gbp/gbp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T16:15:56Z",
+      "side": 1,
+      "message": "why move all these module specific types and functions to a new generic file?",
+      "revId": "ebf4e50571b440a3ac3209b4ba6ea63721e69256",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
