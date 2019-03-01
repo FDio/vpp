@@ -987,43 +987,27 @@ VLIB_NODE_FN (vnet_per_buffer_interface_output_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-always_inline u32
-counter_index (vlib_main_t * vm, vlib_error_t e)
+typedef struct vnet_error_trace_t_
 {
-  vlib_node_t *n;
-  u32 ci, ni;
+  u32 sw_if_index;
+} vnet_error_trace_t;
 
-  ni = vlib_error_get_node (e);
-  n = vlib_get_node (vm, ni);
-
-  ci = vlib_error_get_code (e);
-  ASSERT (ci < n->n_errors);
-
-  ci += n->error_heap_index;
-
-  return ci;
-}
 
 static u8 *
 format_vnet_error_trace (u8 * s, va_list * va)
 {
-  vlib_main_t *vm = va_arg (*va, vlib_main_t *);
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  vlib_error_t *e = va_arg (*va, vlib_error_t *);
-  vlib_node_t *error_node;
-  vlib_error_main_t *em = &vm->error_main;
-  u32 i;
+  vnet_error_trace_t *t = va_arg (*va, vnet_error_trace_t *);
 
-  error_node = vlib_get_node (vm, vlib_error_get_node (e[0]));
-  i = counter_index (vm, e[0]);
-  s = format (s, "%v: %s", error_node->name, em->error_strings_heap[i]);
+  s = format (s, " rx:%d", t->sw_if_index);
 
   return s;
 }
 
 static void
-trace_errors_with_buffers (vlib_main_t * vm,
-			   vlib_node_runtime_t * node, vlib_frame_t * frame)
+interface_trace_buffers (vlib_main_t * vm,
+			 vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left, *buffers;
 
@@ -1034,7 +1018,7 @@ trace_errors_with_buffers (vlib_main_t * vm,
     {
       u32 bi0, bi1;
       vlib_buffer_t *b0, *b1;
-      vlib_error_t *t0, *t1;
+      vnet_error_trace_t *t0, *t1;
 
       /* Prefetch next iteration. */
       vlib_prefetch_buffer_with_index (vm, buffers[2], LOAD);
@@ -1049,12 +1033,12 @@ trace_errors_with_buffers (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0[0] = b0->error;
+	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	}
       if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
-	  t1[0] = b1->error;
+	  t1->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 	}
       buffers += 2;
       n_left -= 2;
@@ -1064,7 +1048,7 @@ trace_errors_with_buffers (vlib_main_t * vm,
     {
       u32 bi0;
       vlib_buffer_t *b0;
-      vlib_error_t *t0;
+      vnet_error_trace_t *t0;
 
       bi0 = buffers[0];
 
@@ -1073,50 +1057,11 @@ trace_errors_with_buffers (vlib_main_t * vm,
       if (b0->flags & VLIB_BUFFER_IS_TRACED)
 	{
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-	  t0[0] = b0->error;
+	  t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	}
       buffers += 1;
       n_left -= 1;
     }
-}
-
-static u8 *
-validate_error (vlib_main_t * vm, vlib_error_t * e, u32 index)
-{
-  uword node_index = vlib_error_get_node (e[0]);
-  uword code = vlib_error_get_code (e[0]);
-  vlib_node_t *n;
-
-  if (node_index >= vec_len (vm->node_main.nodes))
-    return format (0, "[%d], node index out of range 0x%x, error 0x%x",
-		   index, node_index, e[0]);
-
-  n = vlib_get_node (vm, node_index);
-  if (code >= n->n_errors)
-    return format (0, "[%d], code %d out of range for node %v",
-		   index, code, n->name);
-
-  return 0;
-}
-
-static u8 *
-validate_error_frame (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * f)
-{
-  u32 *buffers = vlib_frame_vector_args (f);
-  vlib_buffer_t *b;
-  u8 *msg = 0;
-  uword i;
-
-  for (i = 0; i < f->n_vectors; i++)
-    {
-      b = vlib_get_buffer (vm, buffers[i]);
-      msg = validate_error (vm, &b->error, i);
-      if (msg)
-	return msg;
-    }
-
-  return msg;
 }
 
 typedef enum
@@ -1126,206 +1071,94 @@ typedef enum
   VNET_ERROR_N_DISPOSITION,
 } vnet_error_disposition_t;
 
-always_inline void
-do_packet (vlib_main_t * vm, vlib_error_t a)
-{
-  vlib_error_main_t *em = &vm->error_main;
-  u32 i = counter_index (vm, a);
-  em->counters[i] += 1;
-  vlib_error_elog_count (vm, i, 1);
-}
-
 static_always_inline uword
-process_drop_punt (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame, vnet_error_disposition_t disposition)
+interface_drop_punt (vlib_main_t * vm,
+		     vlib_node_runtime_t * node,
+		     vlib_frame_t * frame,
+		     vnet_error_disposition_t disposition)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_error_main_t *em = &vm->error_main;
-  u32 *buffers, *first_buffer;
-  vlib_error_t current_error;
-  u32 current_counter_index, n_errors_left;
-  u32 current_sw_if_index, n_errors_current_sw_if_index;
-  u64 current_counter;
+  u32 *from, n_left, thread_index, *sw_if_index;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b;
+  u32 sw_if_indices[VLIB_FRAME_SIZE];
   vlib_simple_counter_main_t *cm;
-  u32 thread_index = vm->thread_index;
+  u16 nexts[VLIB_FRAME_SIZE];
+  vnet_main_t *vnm;
 
-  static vlib_error_t memory[VNET_ERROR_N_DISPOSITION];
-  static char memory_init[VNET_ERROR_N_DISPOSITION];
+  vnm = vnet_get_main ();
+  thread_index = vm->thread_index;
+  from = vlib_frame_vector_args (frame);
+  n_left = frame->n_vectors;
+  b = bufs;
+  sw_if_index = sw_if_indices;
 
-  buffers = vlib_frame_vector_args (frame);
-  first_buffer = buffers;
-
-  {
-    vlib_buffer_t *b = vlib_get_buffer (vm, first_buffer[0]);
-
-    if (!memory_init[disposition])
-      {
-	memory_init[disposition] = 1;
-	memory[disposition] = b->error;
-      }
-
-    current_sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-    n_errors_current_sw_if_index = 0;
-  }
-
-  current_error = memory[disposition];
-  current_counter_index = counter_index (vm, memory[disposition]);
-  current_counter = em->counters[current_counter_index];
+  vlib_get_buffers (vm, from, bufs, n_left);
 
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    trace_errors_with_buffers (vm, node, frame);
+    interface_trace_buffers (vm, node, frame);
 
-  n_errors_left = frame->n_vectors;
+  /* All going to drop regardless, this is just a counting exercise */
+  clib_memset (nexts, 0, sizeof (nexts));
+
   cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			 (disposition == VNET_ERROR_DISPOSITION_PUNT
 			  ? VNET_INTERFACE_COUNTER_PUNT
 			  : VNET_INTERFACE_COUNTER_DROP));
 
-  while (n_errors_left >= 2)
+  /* collect the array of interfaces first ... */
+  while (n_left >= 4)
     {
-      vlib_buffer_t *b0, *b1;
-      vnet_sw_interface_t *sw_if0, *sw_if1;
-      vlib_error_t e0, e1;
-      u32 bi0, bi1;
-      u32 sw_if_index0, sw_if_index1;
-
-      bi0 = buffers[0];
-      bi1 = buffers[1];
-
-      buffers += 2;
-      n_errors_left -= 2;
-
-      b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
-
-      e0 = b0->error;
-      e1 = b1->error;
-
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-
-      /* Speculate that sw_if_index == sw_if_index[01]. */
-      n_errors_current_sw_if_index += 2;
-
-      /* Speculatively assume all 2 (node, code) pairs are equal
-         to current (node, code). */
-      current_counter += 2;
-
-      if (PREDICT_FALSE (e0 != current_error
-			 || e1 != current_error
-			 || sw_if_index0 != current_sw_if_index
-			 || sw_if_index1 != current_sw_if_index))
+      if (n_left >= 12)
 	{
-	  current_counter -= 2;
-	  n_errors_current_sw_if_index -= 2;
-
-	  vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
-	  vlib_increment_simple_counter (cm, thread_index, sw_if_index1, 1);
-
-	  /* Increment super-interface drop/punt counters for
-	     sub-interfaces. */
-	  sw_if0 = vnet_get_sw_interface (vnm, sw_if_index0);
-	  vlib_increment_simple_counter
-	    (cm, thread_index, sw_if0->sup_sw_if_index,
-	     sw_if0->sup_sw_if_index != sw_if_index0);
-
-	  sw_if1 = vnet_get_sw_interface (vnm, sw_if_index1);
-	  vlib_increment_simple_counter
-	    (cm, thread_index, sw_if1->sup_sw_if_index,
-	     sw_if1->sup_sw_if_index != sw_if_index1);
-
-	  em->counters[current_counter_index] = current_counter;
-	  do_packet (vm, e0);
-	  do_packet (vm, e1);
-
-	  /* For 2 repeated errors, change current error. */
-	  if (e0 == e1 && e1 != current_error)
-	    {
-	      current_error = e0;
-	      current_counter_index = counter_index (vm, e0);
-	    }
-	  current_counter = em->counters[current_counter_index];
+	  /* Prefetch 8 ahead - there's not much going on in each iteration */
+	  vlib_prefetch_buffer_header (b[4], LOAD);
+	  vlib_prefetch_buffer_header (b[5], LOAD);
+	  vlib_prefetch_buffer_header (b[6], LOAD);
+	  vlib_prefetch_buffer_header (b[7], LOAD);
 	}
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+      sw_if_index[1] = vnet_buffer (b[1])->sw_if_index[VLIB_RX];
+      sw_if_index[2] = vnet_buffer (b[2])->sw_if_index[VLIB_RX];
+      sw_if_index[3] = vnet_buffer (b[3])->sw_if_index[VLIB_RX];
+
+      sw_if_index += 4;
+      n_left -= 4;
+      b += 4;
+    }
+  while (n_left)
+    {
+      sw_if_index[0] = vnet_buffer (b[0])->sw_if_index[VLIB_RX];
+
+      sw_if_index += 1;
+      n_left -= 1;
+      b += 1;
     }
 
-  while (n_errors_left >= 1)
+  /* ... then count against them in blocks */
+  n_left = frame->n_vectors;
+
+  while (n_left)
     {
-      vlib_buffer_t *b0;
       vnet_sw_interface_t *sw_if0;
-      vlib_error_t e0;
-      u32 bi0, sw_if_index0;
+      u16 off, count;
 
-      bi0 = buffers[0];
+      off = frame->n_vectors - n_left;
 
-      buffers += 1;
-      n_errors_left -= 1;
-      current_counter += 1;
+      sw_if_index = sw_if_indices + off;
 
-      b0 = vlib_get_buffer (vm, bi0);
-      e0 = b0->error;
+      count = clib_count_equal_u32 (sw_if_index, n_left);
+      n_left -= count;
 
-      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      vlib_increment_simple_counter (cm, thread_index, sw_if_index[0], count);
 
-      /* Increment drop/punt counters. */
-      vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
-
-      /* Increment super-interface drop/punt counters for sub-interfaces. */
-      sw_if0 = vnet_get_sw_interface (vnm, sw_if_index0);
-      vlib_increment_simple_counter (cm, thread_index,
-				     sw_if0->sup_sw_if_index,
-				     sw_if0->sup_sw_if_index != sw_if_index0);
-
-      if (PREDICT_FALSE (e0 != current_error))
-	{
-	  current_counter -= 1;
-
-	  vlib_error_elog_count (vm, current_counter_index,
-				 (current_counter
-				  - em->counters[current_counter_index]));
-
-	  em->counters[current_counter_index] = current_counter;
-
-	  do_packet (vm, e0);
-	  current_error = e0;
-	  current_counter_index = counter_index (vm, e0);
-	  current_counter = em->counters[current_counter_index];
-	}
+      /* Increment super-interface drop/punt counters for
+         sub-interfaces. */
+      sw_if0 = vnet_get_sw_interface (vnm, sw_if_index[0]);
+      if (sw_if0->sup_sw_if_index != sw_if_index[0])
+	vlib_increment_simple_counter
+	  (cm, thread_index, sw_if0->sup_sw_if_index, count);
     }
 
-  if (n_errors_current_sw_if_index > 0)
-    {
-      vnet_sw_interface_t *si;
-
-      vlib_increment_simple_counter (cm, thread_index, current_sw_if_index,
-				     n_errors_current_sw_if_index);
-
-      si = vnet_get_sw_interface (vnm, current_sw_if_index);
-      if (si->sup_sw_if_index != current_sw_if_index)
-	vlib_increment_simple_counter (cm, thread_index, si->sup_sw_if_index,
-				       n_errors_current_sw_if_index);
-    }
-
-  vlib_error_elog_count (vm, current_counter_index,
-			 (current_counter
-			  - em->counters[current_counter_index]));
-
-  /* Return cached counter. */
-  em->counters[current_counter_index] = current_counter;
-
-  /* Save memory for next iteration. */
-  memory[disposition] = current_error;
-
-  if (disposition == VNET_ERROR_DISPOSITION_DROP || !vm->os_punt_frame)
-    {
-      vlib_buffer_free (vm, first_buffer, frame->n_vectors);
-
-      /* If there is no punt function, free the frame as well. */
-      if (disposition == VNET_ERROR_DISPOSITION_PUNT && !vm->os_punt_frame)
-	vlib_frame_free (vm, node, frame);
-    }
-  else
-    vm->os_punt_frame (vm, node, frame);
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
 
   return frame->n_vectors;
 }
@@ -1398,41 +1231,46 @@ vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add)
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-VLIB_NODE_FN (drop_buffers) (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (interface_drop) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
 
   if (PREDICT_FALSE (im->drop_pcap_enable))
     pcap_drop_trace (vm, im, frame);
 
-  return process_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_DROP);
+  return interface_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_DROP);
 }
 
-VLIB_NODE_FN (punt_buffers) (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (interface_punt) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
-  return process_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_PUNT);
+  return interface_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_PUNT);
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (drop_buffers) = {
+VLIB_REGISTER_NODE (interface_drop) = {
   .name = "error-drop",
-  .flags = VLIB_NODE_FLAG_IS_DROP,
   .vector_size = sizeof (u32),
   .format_trace = format_vnet_error_trace,
-  .validate_frame = validate_error_frame,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "drop",
+  },
 };
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (punt_buffers) = {
-  .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
-	    | VLIB_NODE_FLAG_IS_PUNT),
+VLIB_REGISTER_NODE (interface_punt) = {
   .name = "error-punt",
   .vector_size = sizeof (u32),
   .format_trace = format_vnet_error_trace,
-  .validate_frame = validate_error_frame,
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "punt",
+  },
 };
 /* *INDENT-ON* */
 
@@ -1440,37 +1278,6 @@ VLIB_REGISTER_NODE (punt_buffers) = {
 VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node) = {
   .name = "interface-output",
   .vector_size = sizeof (u32),
-};
-/* *INDENT-ON* */
-
-/* Convenience node to drop a vector of buffers with a "misc error". */
-static uword
-misc_drop_buffers (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame),
-				  /* buffer stride */ 1,
-				  frame->n_vectors,
-				  /* next */ 0,
-				  node->node_index,
-				  /* error */ 0);
-}
-
-static char *misc_drop_buffers_error_strings[] = {
-  [0] = "misc. errors",
-};
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (misc_drop_buffers_node,static) = {
-  .function = misc_drop_buffers,
-  .name = "misc-drop-buffers",
-  .vector_size = sizeof (u32),
-  .n_errors = 1,
-  .n_next_nodes = 1,
-  .next_nodes = {
-      "error-drop",
-  },
-  .error_strings = misc_drop_buffers_error_strings,
 };
 /* *INDENT-ON* */
 
