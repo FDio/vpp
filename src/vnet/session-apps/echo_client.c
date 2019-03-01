@@ -380,7 +380,7 @@ echo_clients_session_connected_callback (u32 app_index, u32 api_context,
 
   if (!ecm->vpp_event_queue[thread_index])
     ecm->vpp_event_queue[thread_index] =
-      session_manager_get_vpp_event_queue (thread_index);
+      session_main_get_vpp_event_queue (thread_index);
 
   /*
    * Setup session
@@ -428,7 +428,7 @@ echo_clients_session_reset_callback (session_t * s)
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
   if (s->session_state == SESSION_STATE_READY)
-    clib_warning ("Reset active connection %U", format_stream_session, s, 2);
+    clib_warning ("Reset active connection %U", format_session, s, 2);
 
   a->handle = session_handle (s);
   a->app_index = ecm->app_index;

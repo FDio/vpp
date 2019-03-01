@@ -585,7 +585,7 @@ http_server_session_accept_callback (session_t * s)
   http_session_t *hs;
 
   hsm->vpp_queue[s->thread_index] =
-    session_manager_get_vpp_event_queue (s->thread_index);
+    session_main_get_vpp_event_queue (s->thread_index);
 
   if (!hsm->is_static)
     http_server_sessions_writer_lock ();

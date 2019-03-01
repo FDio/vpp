@@ -1970,8 +1970,8 @@ sctp46_established_phase_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_SCTP,
-						 my_thread_index);
+  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_SCTP,
+					      my_thread_index);
 
   sctp_node_inc_counter (vm, is_ip4, sctp4_established_phase_node.index,
 			 sctp6_established_phase_node.index,

@@ -477,14 +477,14 @@ application_verify_cfg (ssvm_segment_type_t st)
   u8 is_valid;
   if (st == SSVM_SEGMENT_MEMFD)
     {
-      is_valid = (session_manager_get_evt_q_segment () != 0);
+      is_valid = (session_main_get_evt_q_segment () != 0);
       if (!is_valid)
 	clib_warning ("memfd seg: vpp's event qs IN binary api svm region");
       return is_valid;
     }
   else if (st == SSVM_SEGMENT_SHM)
     {
-      is_valid = (session_manager_get_evt_q_segment () == 0);
+      is_valid = (session_main_get_evt_q_segment () == 0);
       if (!is_valid)
 	clib_warning ("shm seg: vpp's event qs NOT IN binary api svm region");
       return is_valid;

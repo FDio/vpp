@@ -350,7 +350,7 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_ESTABLISHED:
-      if (!session_tx_fifo_max_dequeue (&tc->connection))
+      if (!transport_max_tx_dequeue (&tc->connection))
 	tcp_send_fin (tc);
       else
 	tc->flags |= TCP_CONN_FINPNDG;
@@ -361,7 +361,7 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_FINWAIT1_TIME);
       break;
     case TCP_STATE_CLOSE_WAIT:
-      if (!session_tx_fifo_max_dequeue (&tc->connection))
+      if (!transport_max_tx_dequeue (&tc->connection))
 	{
 	  tcp_send_fin (tc);
 	  tcp_connection_timers_reset (tc);

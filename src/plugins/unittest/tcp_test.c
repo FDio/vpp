@@ -1635,7 +1635,7 @@ tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
 static int
 tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
 {
-  session_manager_main_t *smm = &session_manager_main;
+  session_main_t *smm = &session_main;
   tcp_main_t *tm = &tcp_main;
   transport_connection_t _tc1, *tc1 = &_tc1, _tc2, *tc2 = &_tc2, *tconn;
   tcp_connection_t *tc;

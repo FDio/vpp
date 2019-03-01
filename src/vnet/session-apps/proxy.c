@@ -163,7 +163,7 @@ proxy_disconnect_callback (session_t * s)
 static void
 proxy_reset_callback (session_t * s)
 {
-  clib_warning ("Reset session %U", format_stream_session, s, 2);
+  clib_warning ("Reset session %U", format_session, s, 2);
   delete_proxy_session (s, 0 /* is_active_open */ );
 }
 
@@ -507,12 +507,11 @@ proxy_server_create (vlib_main_t * vm)
 
   for (i = 0; i < num_threads; i++)
     {
-      pm->active_open_event_queue[i] =
-	session_manager_get_vpp_event_queue (i);
+      pm->active_open_event_queue[i] = session_main_get_vpp_event_queue (i);
 
       ASSERT (pm->active_open_event_queue[i]);
 
-      pm->server_event_queue[i] = session_manager_get_vpp_event_queue (i);
+      pm->server_event_queue[i] = session_main_get_vpp_event_queue (i);
     }
 
   return 0;

@@ -365,11 +365,11 @@ session_tx_fifo_chain_tail (vlib_main_t * vm, session_tx_context_t * ctx,
 {
   vlib_buffer_t *chain_b, *prev_b;
   u32 chain_bi0, to_deq, left_from_seg;
-  session_manager_worker_t *wrk;
+  session_worker_t *wrk;
   u16 len_to_deq, n_bytes_read;
   u8 *data, j;
 
-  wrk = session_manager_get_worker (ctx->s->thread_index);
+  wrk = session_main_get_worker (ctx->s->thread_index);
   b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   b->total_length_not_including_first_buffer = 0;
 
@@ -622,13 +622,13 @@ session_tx_set_dequeue_params (vlib_main_t * vm, session_tx_context_t * ctx,
 
 always_inline int
 session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
-				session_manager_worker_t * wrk,
+				session_worker_t * wrk,
 				session_event_t * e, int *n_tx_packets,
 				u8 peek_data)
 {
   u32 next_index, next0, next1, *to_next, n_left_to_next, n_left, pbi;
   u32 n_trace = vlib_get_trace_count (vm, node), n_bufs_needed = 0;
-  session_manager_main_t *smm = &session_manager_main;
+  session_main_t *smm = &session_main;
   session_tx_context_t *ctx = &wrk->ctx;
   transport_proto_t tp;
   vlib_buffer_t *pb;
@@ -798,7 +798,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 int
 session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
-			      session_manager_worker_t * wrk,
+			      session_worker_t * wrk,
 			      session_event_t * e, int *n_tx_pkts)
 {
   return session_tx_fifo_read_and_snd_i (vm, node, wrk, e, n_tx_pkts, 1);
@@ -806,7 +806,7 @@ session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 int
 session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
-				 session_manager_worker_t * wrk,
+				 session_worker_t * wrk,
 				 session_event_t * e, int *n_tx_pkts)
 {
   return session_tx_fifo_read_and_snd_i (vm, node, wrk, e, n_tx_pkts, 0);
@@ -815,7 +815,7 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 int
 session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
-				  session_manager_worker_t * wrk,
+				  session_worker_t * wrk,
 				  session_event_t * e, int *n_tx_pkts)
 {
   session_t *s = wrk->ctx.s;
@@ -835,7 +835,7 @@ session_event_get_session (session_event_t * e, u8 thread_index)
 }
 
 static void
-session_update_dispatch_period (session_manager_worker_t * wrk, f64 now,
+session_update_dispatch_period (session_worker_t * wrk, f64 now,
 				u32 thread_index)
 {
   if (wrk->last_tx_packets)
@@ -850,9 +850,9 @@ static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  session_main_t *smm = vnet_get_session_main ();
   u32 thread_index = vm->thread_index, n_to_dequeue, n_events;
-  session_manager_worker_t *wrk = &smm->wrk[thread_index];
+  session_worker_t *wrk = &smm->wrk[thread_index];
   session_event_t *e, *fifo_events;
   svm_msg_q_msg_t _msg, *msg = &_msg;
   f64 now = vlib_time_now (vm);
@@ -1038,7 +1038,7 @@ VLIB_REGISTER_NODE (session_queue_node) =
 void
 dump_thread_0_event_queue (void)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  session_main_t *smm = vnet_get_session_main ();
   vlib_main_t *vm = &vlib_global_main;
   u32 my_thread_index = vm->thread_index;
   session_event_t _e, *e = &_e;
@@ -1128,7 +1128,7 @@ u8
 session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
 {
   session_event_t *pending_event_vector, *evt;
-  session_manager_worker_t *wrk;
+  session_worker_t *wrk;
   int i, index, found = 0;
   svm_msg_q_msg_t *msg;
   svm_msg_q_ring_t *ring;
@@ -1137,7 +1137,7 @@ session_node_lookup_fifo_event (svm_fifo_t * f, session_event_t * e)
 
   ASSERT (e);
   thread_index = f->master_thread_index;
-  wrk = session_manager_get_worker (thread_index);
+  wrk = session_main_get_worker (thread_index);
 
   /*
    * Search evt queue

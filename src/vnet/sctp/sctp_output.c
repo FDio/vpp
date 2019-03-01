@@ -1483,7 +1483,7 @@ sctp_prepare_data_retransmit (sctp_connection_t * sctp_conn,
    * Make sure we can retransmit something
    */
   available_bytes =
-    session_tx_fifo_max_dequeue (&sctp_conn->sub_conn[idx].connection);
+    transport_max_tx_dequeue (&sctp_conn->sub_conn[idx].connection);
   ASSERT (available_bytes >= offset);
   available_bytes -= offset;
   if (!available_bytes)
@@ -1506,8 +1506,8 @@ sctp_prepare_data_retransmit (sctp_connection_t * sctp_conn,
   if (PREDICT_TRUE (seg_size <= tm->bytes_per_buffer))
     {
       n_bytes =
-	stream_session_peek_bytes (&sctp_conn->sub_conn[idx].connection, data,
-				   offset, max_deq_bytes);
+	session_tx_fifo_peek_bytes (&sctp_conn->sub_conn[idx].connection,
+				    data, offset, max_deq_bytes);
       ASSERT (n_bytes == max_deq_bytes);
       b[0]->current_length = n_bytes;
       sctp_push_hdr_i (sctp_conn, *b, sctp_conn->state);
