@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54c62e9f_c2f22256",
+        "filename": "MAINTAINERS",
+        "patchSetId": 2
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-01T12:01:35Z",
+      "side": 1,
+      "message": "8 spaces, or preferably 1 tab.",
+      "range": {
+        "startLine": 194,
+        "startChar": 2,
+        "endLine": 194,
+        "endChar": 4
+      },
+      "revId": "2885b38993305e87f889860cfff44388c547c161",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
