@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "54dff2c8_975e4ff4",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 421,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-01T20:25:02Z",
+      "side": 1,
+      "message": "please remove",
+      "range": {
+        "startLine": 421,
+        "startChar": 0,
+        "endLine": 421,
+        "endChar": 0
+      },
+      "revId": "a71bf7fe351d70b3a48e1ab71c0c47493a442dd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
