@@ -34,6 +34,24 @@
       "revId": "ebf4e50571b440a3ac3209b4ba6ea63721e69256",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39ebe5dd_fa535581",
+        "filename": "src/plugins/gbp/gbp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T16:30:54Z",
+      "side": 1,
+      "message": "i\u0027d rather you kept the modular approach. so leave them there, or create gbp_XX.c and gbp_XX_node.c.",
+      "parentUuid": "d96ee647_ee7887e6",
+      "revId": "ebf4e50571b440a3ac3209b4ba6ea63721e69256",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
