@@ -436,22 +436,6 @@ session_enqueue_dgram_connection (session_t * s,
   return enqueued;
 }
 
-/** Check if we have space in rx fifo to push more bytes */
-u8
-stream_session_no_space (transport_connection_t * tc, u32 thread_index,
-			 u16 data_len)
-{
-  session_t *s = session_get (tc->s_index, thread_index);
-
-  if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY))
-    return 1;
-
-  if (data_len > svm_fifo_max_enqueue (s->rx_fifo))
-    return 1;
-
-  return 0;
-}
-
 u32
 session_tx_fifo_max_dequeue (transport_connection_t * tc)
 {
@@ -462,8 +446,8 @@ session_tx_fifo_max_dequeue (transport_connection_t * tc)
 }
 
 int
-stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
-			   u32 offset, u32 max_bytes)
+session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
+			    u32 offset, u32 max_bytes)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_peek (s->tx_fifo, offset, max_bytes, buffer);
@@ -605,21 +589,6 @@ session_manager_flush_all_enqueue_events (u8 transport_proto)
   for (i = 0; i < 1 + vtm->n_threads; i++)
     errors += session_manager_flush_enqueue_events (transport_proto, i);
   return errors;
-}
-
-/**
- * Init fifo tail and head pointers
- *
- * Useful if transport uses absolute offsets for tracking ooo segments.
- */
-void
-stream_session_init_fifos_pointers (transport_connection_t * tc,
-				    u32 rx_pointer, u32 tx_pointer)
-{
-  session_t *s;
-  s = session_get (tc->s_index, tc->thread_index);
-  svm_fifo_init_pointers (s->rx_fifo, rx_pointer);
-  svm_fifo_init_pointers (s->tx_fifo, tx_pointer);
 }
 
 int

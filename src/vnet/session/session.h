@@ -373,16 +373,14 @@ int session_enqueue_dgram_connection (session_t * s,
 				      session_dgram_hdr_t * hdr,
 				      vlib_buffer_t * b, u8 proto,
 				      u8 queue_event);
-int stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
-			       u32 offset, u32 max_bytes);
+int session_tx_fifo_peek_bytes (transport_connection_t * tc, u8 * buffer,
+				u32 offset, u32 max_bytes);
 u32 session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
 
 int session_stream_connect_notify (transport_connection_t * tc, u8 is_fail);
 int session_dgram_connect_notify (transport_connection_t * tc,
 				  u32 old_thread_index,
 				  session_t ** new_session);
-void stream_session_init_fifos_pointers (transport_connection_t * tc,
-					 u32 rx_pointer, u32 tx_pointer);
 
 int session_stream_accept_notify (transport_connection_t * tc);
 void session_transport_closing_notify (transport_connection_t * tc);

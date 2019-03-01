@@ -1340,8 +1340,8 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	return 0;
       *b = vlib_get_buffer (vm, bi);
       data = tcp_init_buffer (vm, *b);
-      n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
-					   max_deq_bytes);
+      n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
+					    max_deq_bytes);
       ASSERT (n_bytes == max_deq_bytes);
       b[0]->current_length = n_bytes;
       tcp_push_hdr_i (tc, *b, tc->state, /* compute opts */ 0, /* burst */ 0);
@@ -1370,9 +1370,9 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 
       *b = vlib_get_buffer (vm, wrk->tx_buffers[--n_bufs]);
       data = tcp_init_buffer (vm, *b);
-      n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
-					   bytes_per_buffer -
-					   TRANSPORT_MAX_HDRS_LEN);
+      n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
+					    bytes_per_buffer -
+					    TRANSPORT_MAX_HDRS_LEN);
       b[0]->current_length = n_bytes;
       b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       b[0]->total_length_not_including_first_buffer = 0;
@@ -1387,8 +1387,9 @@ tcp_prepare_segment (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  chain_b = vlib_get_buffer (vm, chain_bi);
 	  chain_b->current_data = 0;
 	  data = vlib_buffer_get_current (chain_b);
-	  n_peeked = stream_session_peek_bytes (&tc->connection, data,
-						offset + n_bytes, len_to_deq);
+	  n_peeked = session_tx_fifo_peek_bytes (&tc->connection, data,
+						 offset + n_bytes,
+						 len_to_deq);
 	  ASSERT (n_peeked == len_to_deq);
 	  n_bytes += n_peeked;
 	  chain_b->current_length = n_peeked;
@@ -1753,7 +1754,7 @@ tcp_timer_persist_handler (u32 index)
   max_snd_bytes =
     clib_min (tc->snd_mss, tm->bytes_per_buffer - TRANSPORT_MAX_HDRS_LEN);
   n_bytes =
-    stream_session_peek_bytes (&tc->connection, data, offset, max_snd_bytes);
+    session_tx_fifo_peek_bytes (&tc->connection, data, offset, max_snd_bytes);
   b->current_length = n_bytes;
   ASSERT (n_bytes != 0 && (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)
 			   || tc->snd_nxt == tc->snd_una_max
