@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "d83703ce_8634e374",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T09:56:21Z",
+      "side": 1,
+      "message": "introduce a proto enum for these choices.",
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4ba21fb0_e4523533",
         "filename": "src/vnet/interface.api",
         "patchSetId": 1
@@ -25,6 +42,57 @@
     },
     {
       "key": {
+        "uuid": "536e90d6_f872b27e",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T09:56:21Z",
+      "side": 1,
+      "message": "enum flags {\n  ADMIN_UP,\n   LINK_UP\n   ...\n}\nvarious places to use this.",
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a2189edd_328dd20c",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T09:56:21Z",
+      "side": 1,
+      "message": "enum duplex\n{\n HALF,\n FULL\n}",
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86ac9ba8_38402716",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T09:56:21Z",
+      "side": 1,
+      "message": "use the proto enum.",
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "81195513_97e46ab2",
         "filename": "src/vnet/interface.api",
         "patchSetId": 1
@@ -42,6 +110,40 @@
         "endLine": 179,
         "endChar": 16
       },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2a9d1a96_bb768127",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T09:56:21Z",
+      "side": 1,
+      "message": "enum sub_type { ... }",
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1c7b5d03_59b439d4",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T09:56:21Z",
+      "side": 1,
+      "message": "i think these APIs belong in ip.api.\nas ip_table_bind_unbind..",
       "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -111,6 +213,23 @@
         "endLine": 375,
         "endChar": 12
       },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ecffb53_4140de87",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 434,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-01T09:56:21Z",
+      "side": 1,
+      "message": "enum",
       "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
