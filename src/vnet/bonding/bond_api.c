@@ -63,8 +63,7 @@ bond_send_sw_interface_event_deleted (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_EVENT);
   mp->sw_if_index = ntohl (sw_if_index);
 
-  mp->admin_up_down = 0;
-  mp->link_up_down = 0;
+  mp->flags = 0;
   mp->deleted = 1;
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
