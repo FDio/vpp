@@ -217,8 +217,6 @@ format_ip6_add_from_cache_hbh_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ip6_add_from_cache_hbh_node;
-
 #define foreach_ip6_add_from_cache_hbh_error \
 _(PROCESSED, "Pkts w/ added ip6 hop-by-hop options")
 
@@ -249,10 +247,9 @@ typedef enum
 } ip6_ioam_cache_input_next_t;
 
 
-static uword
-ip6_add_from_cache_hbh_node_fn (vlib_main_t * vm,
-				vlib_node_runtime_t * node,
-				vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_add_from_cache_hbh_node) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
 {
   ioam_cache_main_t *cm = &ioam_cache_main;
   u32 n_left_from, *from, *to_next;
@@ -384,7 +381,7 @@ ip6_add_from_cache_hbh_node_fn (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, ip6_add_from_cache_hbh_node.index,
+  vlib_node_increment_counter (vm, cm->ip6_add_from_cache_hbh_node_index,
 			       IP6_ADD_FROM_CACHE_HBH_ERROR_PROCESSED,
 			       processed);
   return frame->n_vectors;
@@ -392,7 +389,6 @@ ip6_add_from_cache_hbh_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_add_from_cache_hbh_node) =
 {
-  .function = ip6_add_from_cache_hbh_node_fn,
   .name = "ip6-add-from-cache-hop-by-hop",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_add_from_cache_hbh_trace,
@@ -410,8 +406,6 @@ VLIB_REGISTER_NODE (ip6_add_from_cache_hbh_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_add_from_cache_hbh_node,
-			      ip6_add_from_cache_hbh_node_fn)
 /*
  * fd.io coding-style-patch-verification: ON
  *

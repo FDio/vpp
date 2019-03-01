@@ -275,8 +275,6 @@ format_ip6_reset_ts_hbh_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ip6_reset_ts_hbh_node;
-
 #define foreach_ip6_reset_ts_hbh_error \
 _(PROCESSED, "iOAM Syn/Ack Pkts processed") \
 _(SAVED, "iOAM Syn Pkts state saved") \
@@ -309,9 +307,9 @@ typedef enum
 } ip6_ioam_cache_ts_input_next_t;
 
 
-static uword
-ip6_reset_ts_hbh_node_fn (vlib_main_t * vm,
-			  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_reset_ts_hbh_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   ioam_cache_main_t *cm = &ioam_cache_main;
   u32 n_left_from, *from, *to_next;
@@ -617,9 +615,9 @@ ip6_reset_ts_hbh_node_fn (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_node_increment_counter (vm, ip6_reset_ts_hbh_node.index,
+  vlib_node_increment_counter (vm, cm->ip6_reset_ts_hbh_node_index,
 			       IP6_RESET_TS_HBH_ERROR_PROCESSED, processed);
-  vlib_node_increment_counter (vm, ip6_reset_ts_hbh_node.index,
+  vlib_node_increment_counter (vm, cm->ip6_reset_ts_hbh_node_index,
 			       IP6_RESET_TS_HBH_ERROR_SAVED, cache_ts_added);
 
   return frame->n_vectors;
@@ -628,7 +626,6 @@ ip6_reset_ts_hbh_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_reset_ts_hbh_node) =
 {
-  .function = ip6_reset_ts_hbh_node_fn,
   .name = "ip6-add-syn-hop-by-hop",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_reset_ts_hbh_trace,
@@ -645,10 +642,11 @@ VLIB_REGISTER_NODE (ip6_reset_ts_hbh_node) =
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_reset_ts_hbh_node, ip6_reset_ts_hbh_node_fn)
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 vlib_node_registration_t ioam_cache_ts_timer_tick_node;
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef struct
 {
@@ -686,6 +684,7 @@ static char *ioam_cache_ts_timer_tick_error_strings[] = {
 #undef _
 };
 
+#ifndef CLIB_MARCH_VARIANT
 void
 ioam_cache_ts_timer_node_enable (vlib_main_t * vm, u8 enable)
 {
@@ -717,6 +716,7 @@ expired_cache_ts_timer_callback (u32 * expired_timers)
 			       ioam_cache_ts_timer_tick_node.index,
 			       IOAM_CACHE_TS_TIMER_TICK_ERROR_TIMER, count);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static uword
 ioam_cache_ts_timer_tick_node_fn (vlib_main_t * vm,

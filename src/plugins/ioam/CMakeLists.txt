@@ -65,6 +65,10 @@ add_vpp_plugin(ioam
   udp-ping/udp_ping_export.c
   udp-ping/udp_ping_api.c
 
+  MULTIARCH_SOURCES
+  ip6/ioam_cache_node.c
+  ip6/ioam_cache_tunnel_select_node.c
+
   API_FILES
   lib-pot/pot.api
   export/ioam_export.api

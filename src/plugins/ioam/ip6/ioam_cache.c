@@ -371,6 +371,7 @@ VLIB_CLI_COMMAND (show_ioam_cache_command, static) =
 static clib_error_t *
 ioam_cache_init (vlib_main_t * vm)
 {
+  vlib_node_t *node;
   ioam_cache_main_t *em = &ioam_cache_main;
   clib_error_t *error = 0;
   u8 *name;
@@ -404,6 +405,12 @@ ioam_cache_init (vlib_main_t * vm)
   error_node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   em->error_node_index = error_node->index;
   em->vlib_main = vm;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-add-from-cache-hop-by-hop");
+  em->ip6_add_from_cache_hbh_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-add-syn-hop-by-hop");
+  em->ip6_reset_ts_hbh_node_index = node->index;
 
   vec_free (name);
 
