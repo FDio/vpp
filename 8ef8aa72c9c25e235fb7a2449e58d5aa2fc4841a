@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "00e7b7c2_b2d2514a",
+        "filename": "src/vnet/ipsec/ipsec_if.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-01T08:43:41Z",
+      "side": 1,
+      "message": "Don\u0027t you think hash_get is slower?\n\nAnd if you really want to make this change, probably you should also change ipsec-if-inout node.",
+      "range": {
+        "startLine": 124,
+        "startChar": 10,
+        "endLine": 124,
+        "endChar": 40
+      },
+      "revId": "8ef8aa72c9c25e235fb7a2449e58d5aa2fc4841a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
