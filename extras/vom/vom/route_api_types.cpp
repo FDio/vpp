@@ -62,6 +62,8 @@ to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
 void
 to_vpp(const route::path& p, vapi_payload_ip_mroute_add_del& payload)
 {
+  payload.next_hop_afi = p.nh_proto();
+
   if (route::path::special_t::STANDARD == p.type()) {
     uint8_t path_v6;
     to_bytes(p.nh(), &path_v6, payload.nh_address);
@@ -71,6 +73,8 @@ to_vpp(const route::path& p, vapi_payload_ip_mroute_add_del& payload)
     }
 
     payload.next_hop_afi = p.nh_proto();
+  } else if (route::path::special_t::LOCAL == p.type()) {
+    payload.is_local = 1;
   }
 }
 

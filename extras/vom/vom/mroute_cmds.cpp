@@ -52,7 +52,7 @@ update_cmd::issue(connection& con)
   payload.table_id = m_id;
   payload.is_add = 1;
 
-  m_mprefix.to_vpp(&payload.is_ipv6, payload.grp_address, payload.src_address,
+  m_mprefix.to_vpp(&payload.is_ipv6, payload.src_address, payload.grp_address,
                    &payload.grp_address_length);
 
   to_vpp(m_path, payload);

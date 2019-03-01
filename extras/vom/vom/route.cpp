@@ -47,8 +47,8 @@ path::flags_t::flags_t(int v, const std::string& s)
 }
 
 const itf_flags_t itf_flags_t::NONE(0, "none");
-const itf_flags_t itf_flags_t::ACCEPT((1 << 2), "accept");
-const itf_flags_t itf_flags_t::FORWARD((1 << 3), "forward");
+const itf_flags_t itf_flags_t::ACCEPT((1 << 1), "accept");
+const itf_flags_t itf_flags_t::FORWARD((1 << 2), "forward");
 
 itf_flags_t::itf_flags_t(int v, const std::string& s)
   : enum_base<itf_flags_t>(v, s)
@@ -63,9 +63,9 @@ itf_flags_t::from_vpp(uint32_t val)
     return itf_flags_t::FORWARD;
 }
 
-path::path(special_t special)
+path::path(special_t special, const nh_proto_t& proto)
   : m_type(special)
-  , m_nh_proto(nh_proto_t::IPV4)
+  , m_nh_proto(proto)
   , m_flags(flags_t::NONE)
   , m_nh()
   , m_rd(nullptr)

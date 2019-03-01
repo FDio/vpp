@@ -97,7 +97,7 @@ public:
   /**
    * constructor for special paths
    */
-  path(special_t special);
+  path(special_t special, const nh_proto_t& proto = nh_proto_t::IPV4);
 
   /**
    * Constructor for standard non-recursive paths
