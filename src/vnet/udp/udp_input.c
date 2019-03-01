@@ -289,7 +289,7 @@ udp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_manager_flush_all_enqueue_events (TRANSPORT_PROTO_UDP);
+  errors = session_main_flush_all_enqueue_events (TRANSPORT_PROTO_UDP);
   udp_input_inc_counter (vm, is_ip4, UDP_ERROR_EVENT_FIFO_FULL, errors);
   return frame->n_vectors;
 }

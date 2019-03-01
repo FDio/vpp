@@ -564,7 +564,7 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
 	continue;
 
       /* Dequeue the newly ACKed bytes */
-      session_dequeue_drop (&tc->connection, tc->burst_acked);
+      session_tx_fifo_dequeue_drop (&tc->connection, tc->burst_acked);
       tc->burst_acked = 0;
       tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
 
@@ -2192,8 +2192,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       tcp_inc_err_counter (err_counters, error0, 1);
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-						 thread_index);
+  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+					      thread_index);
   err_counters[TCP_ERROR_MSG_QUEUE_FULL] = errors;
   tcp_store_err_counters (established, err_counters);
   tcp_handle_postponed_dequeues (wrk);
@@ -2589,8 +2589,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-						 my_thread_index);
+  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+					      my_thread_index);
   tcp_inc_counter (syn_sent, TCP_ERROR_MSG_QUEUE_FULL, errors);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);
 
@@ -2795,7 +2795,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tc0->flags & TCP_CONN_FINPNDG)
 	    {
 	      /* TX fifo finally drained */
-	      max_dequeue = session_tx_fifo_max_dequeue (&tc0->connection);
+	      max_dequeue = transport_max_tx_dequeue (&tc0->connection);
 	      if (max_dequeue <= tc0->burst_acked)
 		tcp_send_fin (tc0);
 	    }
@@ -2812,7 +2812,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Don't try to deq the FIN acked */
 	      if (tc0->burst_acked > 1)
-		session_dequeue_drop (&tc0->connection, tc0->burst_acked - 1);
+		session_tx_fifo_dequeue_drop (&tc0->connection,
+					      tc0->burst_acked - 1);
 	      tc0->burst_acked = 0;
 	    }
 	  break;
@@ -2832,7 +2833,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tc0->flags & TCP_CONN_FINPNDG)
 	    {
 	      /* TX fifo finally drained */
-	      if (!session_tx_fifo_max_dequeue (&tc0->connection))
+	      if (!transport_max_tx_dequeue (&tc0->connection))
 		{
 		  tcp_send_fin (tc0);
 		  tcp_connection_timers_reset (tc0);
@@ -2958,9 +2959,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tc0->flags & TCP_CONN_FINPNDG)
 	    {
 	      /* Drop all outstanding tx data. */
-	      session_dequeue_drop (&tc0->connection,
-				    transport_max_tx_dequeue
-				    (&tc0->connection));
+	      session_tx_fifo_dequeue_drop (&tc0->connection,
+					    transport_max_tx_dequeue
+					    (&tc0->connection));
 	      tcp_send_fin (tc0);
 	    }
 	  else
@@ -2995,8 +2996,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
     }
 
-  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
-						 thread_index);
+  errors = session_main_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+					      thread_index);
   tcp_inc_counter (rcv_process, TCP_ERROR_MSG_QUEUE_FULL, errors);
   tcp_handle_postponed_dequeues (wrk);
   vlib_buffer_free (vm, first_buffer, from_frame->n_vectors);

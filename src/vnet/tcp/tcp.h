@@ -934,7 +934,7 @@ tcp_timer_is_active (tcp_connection_t * tc, tcp_timers_e timer)
 
 #define tcp_validate_txf_size(_tc, _a) 					\
   ASSERT(_tc->state != TCP_STATE_ESTABLISHED 				\
-	 || session_tx_fifo_max_dequeue (&_tc->connection) >= _a)
+	 || transport_max_tx_dequeue (&_tc->connection) >= _a)
 
 void tcp_rcv_sacks (tcp_connection_t * tc, u32 ack);
 u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);

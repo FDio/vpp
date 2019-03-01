@@ -677,7 +677,7 @@ void
 transport_init (void)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  session_main_t *smm = vnet_get_session_main ();
   u32 num_threads;
 
   if (smm->local_endpoints_table_buckets == 0)
