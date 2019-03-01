@@ -490,7 +490,7 @@ always_inline int
 app_send_dgram (app_session_t * s, u8 * data, u32 len, u8 noblock)
 {
   return app_send_dgram_raw (s->tx_fifo, &s->transport, s->vpp_evt_q, data,
-			     len, FIFO_EVENT_APP_TX, noblock);
+			     len, SESSION_IO_EVT_TX, noblock);
 }
 
 always_inline int
@@ -511,7 +511,7 @@ always_inline int
 app_send_stream (app_session_t * s, u8 * data, u32 len, u8 noblock)
 {
   return app_send_stream_raw (s->tx_fifo, s->vpp_evt_q, data, len,
-			      FIFO_EVENT_APP_TX, noblock);
+			      SESSION_IO_EVT_TX, noblock);
 }
 
 always_inline int

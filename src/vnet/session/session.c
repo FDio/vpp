@@ -59,17 +59,17 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
   evt->event_type = evt_type;
   switch (evt_type)
     {
-    case FIFO_EVENT_RPC:
+    case SESSION_CTRL_EVT_RPC:
       evt->rpc_args.fp = data;
       evt->rpc_args.arg = args;
       break;
-    case FIFO_EVENT_APP_TX:
+    case SESSION_IO_EVT_TX:
     case SESSION_IO_EVT_TX_FLUSH:
-    case FIFO_EVENT_BUILTIN_RX:
+    case SESSION_IO_EVT_BUILTIN_RX:
       evt->fifo = data;
       break;
-    case FIFO_EVENT_BUILTIN_TX:
-    case FIFO_EVENT_DISCONNECT:
+    case SESSION_IO_EVT_BUILTIN_TX:
+    case SESSION_CTRL_EVT_CLOSE:
       evt->session_handle = session_handle ((session_t *) data);
       break;
     default:
@@ -99,16 +99,17 @@ int
 session_send_ctrl_evt_to_thread (session_t * s, session_evt_type_t evt_type)
 {
   /* only event supported for now is disconnect */
-  ASSERT (evt_type == FIFO_EVENT_DISCONNECT);
+  ASSERT (evt_type == SESSION_CTRL_EVT_CLOSE);
   return session_send_evt_to_thread (s, 0, s->thread_index,
-				     FIFO_EVENT_DISCONNECT);
+				     SESSION_CTRL_EVT_CLOSE);
 }
 
 void
 session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
 {
   if (thread_index != vlib_get_thread_index ())
-    session_send_evt_to_thread (fp, rpc_args, thread_index, FIFO_EVENT_RPC);
+    session_send_evt_to_thread (fp, rpc_args, thread_index,
+				SESSION_CTRL_EVT_RPC);
   else
     {
       void (*fnp) (void *) = fp;
@@ -138,10 +139,10 @@ session_program_transport_close (session_t * s)
       vec_add2 (wrk->pending_disconnects, evt, 1);
       clib_memset (evt, 0, sizeof (*evt));
       evt->session_handle = session_handle (s);
-      evt->event_type = FIFO_EVENT_DISCONNECT;
+      evt->event_type = SESSION_CTRL_EVT_CLOSE;
     }
   else
-    session_send_ctrl_evt_to_thread (s, FIFO_EVENT_DISCONNECT);
+    session_send_ctrl_evt_to_thread (s, SESSION_CTRL_EVT_CLOSE);
 }
 
 session_t *
@@ -521,18 +522,18 @@ session_enqueue_notify (session_t * s)
 
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
-      ed->data[0] = FIFO_EVENT_APP_RX;
+      ed->data[0] = SESSION_IO_EVT_RX;
       ed->data[1] = svm_fifo_max_dequeue (s->rx_fifo);
   }));
   /* *INDENT-ON* */
 
   if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
-						     FIFO_EVENT_APP_RX)))
+						     SESSION_IO_EVT_RX)))
     return -1;
 
   if (PREDICT_FALSE (svm_fifo_n_subscribers (s->rx_fifo)))
     return session_notify_subscribers (app_wrk->app_index, s,
-				       s->rx_fifo, FIFO_EVENT_APP_RX);
+				       s->rx_fifo, SESSION_IO_EVT_RX);
 
   return 0;
 }
@@ -547,12 +548,12 @@ session_dequeue_notify (session_t * s)
     return -1;
 
   if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
-						     FIFO_EVENT_APP_TX)))
+						     SESSION_IO_EVT_TX)))
     return -1;
 
   if (PREDICT_FALSE (s->tx_fifo->n_subscribers))
     return session_notify_subscribers (app_wrk->app_index, s,
-				       s->tx_fifo, FIFO_EVENT_APP_TX);
+				       s->tx_fifo, SESSION_IO_EVT_TX);
 
   svm_fifo_clear_tx_ntf (s->tx_fifo);
 
