@@ -113,13 +113,15 @@ vxlan_tunnel::vxlan_tunnel(const vxlan_tunnel& o)
   : interface(o)
   , m_tep(o.m_tep)
   , m_mode(o.m_mode)
+  , m_mcast_itf(o.m_mcast_itf)
 {
 }
 
 bool
 vxlan_tunnel::operator==(const vxlan_tunnel& other) const
 {
-  return ((m_tep == other.m_tep) && (m_mode == other.m_mode));
+  return ((m_tep == other.m_tep) && (m_mode == other.m_mode) &&
+          (m_mcast_itf == other.m_mcast_itf));
 }
 
 const handle_t&
@@ -173,6 +175,8 @@ vxlan_tunnel::to_string() const
   std::ostringstream s;
   s << "vxlan-tunnel: " << m_hdl.to_string() << " " << m_mode.to_string() << " "
     << m_tep.to_string();
+  if (m_mcast_itf)
+    s << " " << m_mcast_itf->to_string();
 
   return (s.str());
 }
