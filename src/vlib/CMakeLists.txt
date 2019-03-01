@@ -49,6 +49,7 @@ add_vpp_library(vlib
   buffer.c
   cli.c
   counter.c
+  drop.c
   error.c
   format.c
   i2c.c
@@ -73,6 +74,9 @@ add_vpp_library(vlib
   unix/util.c
   vmbus/vmbus.c
   ${VMBUS_SOURCE}
+
+  MULTIARCH_SOURCES
+  drop.c
 
   INSTALL_HEADERS
   buffer_funcs.h
