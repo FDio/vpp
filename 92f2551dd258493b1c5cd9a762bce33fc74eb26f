@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "8cc7dba1_440a66a3",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-01T19:57:31Z",
+      "side": 1,
+      "message": "Agreed.\nOnce we get them to pep8, I completely agree.",
+      "parentUuid": "ab6cbe68_10336f68",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f032ec8d_a58d360f",
         "filename": "test/test_reassembly.py",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "8e5e77df_a25cd495",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-01T19:57:31Z",
+      "side": 1,
+      "message": "The method signatures need to match the parent class.",
+      "parentUuid": "f032ec8d_a58d360f",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d03164c4_6f24a5c8",
         "filename": "test/test_reassembly.py",
         "patchSetId": 1
@@ -47,6 +83,24 @@
       "writtenOn": "2019-03-01T19:39:16Z",
       "side": 1,
       "message": "Inconsistent use. In some places self.fragments_400 is used.",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "34378d7d_0e9f7cb9",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 608,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-01T19:57:31Z",
+      "side": 1,
+      "message": "Good observation.  They are defined in a class method and should be self.__class__...\nThanks",
+      "parentUuid": "d03164c4_6f24a5c8",
       "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
