@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4ba21fb0_e4523533",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-01T09:32:33Z",
+      "side": 1,
+      "message": "This one is curious? Is it a MAC address (and guaranteed to be? Or is it something else? Given the length restriction of 8, I suggest making it a mac_address_t",
+      "range": {
+        "startLine": 153,
+        "startChar": 2,
+        "endLine": 155,
+        "endChar": 19
+      },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "81195513_97e46ab2",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-01T09:32:33Z",
+      "side": 1,
+      "message": "enums or enum flags?",
+      "range": {
+        "startLine": 176,
+        "startChar": 2,
+        "endLine": 179,
+        "endChar": 16
+      },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "172a4e72_703323f3",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 288,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-01T09:32:33Z",
+      "side": 1,
+      "message": "vl_api_interface_index_t",
+      "range": {
+        "startLine": 288,
+        "startChar": 2,
+        "endLine": 288,
+        "endChar": 29
+      },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2606da16_03bf0a60",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-01T09:32:33Z",
+      "side": 1,
+      "message": "It says \"ascii tag\" so I assume this is a string?",
+      "range": {
+        "startLine": 317,
+        "startChar": 3,
+        "endLine": 317,
+        "endChar": 15
+      },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a0b7fde2_f08c07d7",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-01T09:32:33Z",
+      "side": 1,
+      "message": "enum?",
+      "range": {
+        "startLine": 375,
+        "startChar": 3,
+        "endLine": 375,
+        "endChar": 12
+      },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d43ac5a3_bf391f2f",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 457,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-01T09:32:33Z",
+      "side": 1,
+      "message": "Could be an enum?",
+      "range": {
+        "startLine": 457,
+        "startChar": 2,
+        "endLine": 457,
+        "endChar": 12
+      },
+      "revId": "6b46aedcfb7400ea32bfe14bc629e55e625e507e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
