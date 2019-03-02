@@ -356,7 +356,7 @@ class TestIPv4Reassembly(VppTestCase):
                 # received by vpp after reassembly is finished, otherwise
                 # new reassemblies will be started and packet generator will
                 # freak out when it detects unfreed buffers
-                zipped = zip(frags_300, frags_200)
+                zipped = list(zip(frags_300, frags_200))
                 for i, j in zipped[:-1]:
                     fragments.extend(i)
                     fragments.extend(j)
@@ -686,7 +686,7 @@ class TestIPv6Reassembly(VppTestCase):
                 # received by vpp after reassembly is finished, otherwise
                 # new reassemblies will be started and packet generator will
                 # freak out when it detects unfreed buffers
-                zipped = zip(frags_400, frags_300)
+                zipped = list(zip(frags_400, frags_300))
                 for i, j in zipped[:-1]:
                     fragments.extend(i)
                     fragments.extend(j)
