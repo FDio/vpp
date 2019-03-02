@@ -450,10 +450,10 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
                 # new reassemblies will be started and packet generator will
                 # freak out when it detects unfreed buffers
                 zipped = zip(frags_300, frags_200)
-                for i, j in zipped[:-1]:
+                for i, j in zipped:
                     fragments.extend(i)
                     fragments.extend(j)
-                fragments.append(zipped[-1][0])
+                fragments.pop()
 
         self.pg_enable_capture()
         self.src_if.add_stream(fragments)
@@ -685,10 +685,10 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
                 # new reassemblies will be started and packet generator will
                 # freak out when it detects unfreed buffers
                 zipped = zip(frags_400, frags_300)
-                for i, j in zipped[:-1]:
+                for i, j in zipped:
                     fragments.extend(i)
                     fragments.extend(j)
-                fragments.append(zipped[-1][0])
+                fragments.pop()
 
         dropped_packet_indexes = set(
             index for (index, _, frags) in self.pkt_infos if len(frags) > 1
