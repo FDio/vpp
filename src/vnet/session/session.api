@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.5.0";
+option version = "1.6.0";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -142,6 +142,7 @@ define bind_uri {
   u32 accept_cookie;
   u8 uri[128];
 };
+
 /** *** Will be DEPRECATED. Use message queue instead. *** */
 define bind_uri_reply {
   u32 context;
@@ -186,49 +187,6 @@ autoreply define connect_uri {
   u8 uri[128];
 };
 
-/** \brief vpp->client, accept this session
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param listener_handle - tells client which listener this pertains to
-    @param handle - unique session identifier
-    @param rx_fifo_address - rx (vpp -> vpp-client) fifo address 
-    @param tx_fifo_address - tx (vpp-client -> vpp) fifo address 
-    @param vpp_event_queue_address - vpp's event queue address or client's
-    									event queue for cut through
-    @param server_event_queue_address - server's event queue address for
-    									   cut through sessions
-    @param port - remote port
-    @param is_ip4 - 1 if the ip is ip4
-    @param ip - remote ip
-*/
-define accept_session {
-  u32 client_index;
-  u32 context;
-  u64 listener_handle;
-  u64 handle; 
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
-  u64 vpp_event_queue_address;
-  u64 server_event_queue_address;
-  u16 port;
-  u8 is_ip4;
-  u8 ip[16];
-};
-
-/** \brief client->vpp, reply to an accept message
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param session_index - session index from accept_session / connect_reply
-    @param session_thread_index - thread index from accept_session /
-                                  connect_reply
-*/
-define accept_session_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-};
-
 /** \brief bidirectional disconnect API
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
@@ -255,31 +213,6 @@ define disconnect_session_reply {
   u64 handle;
 };
 
-/** \brief vpp->client reset session API
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param client_index - opaque cookie to identify the sender
-                          client to vpp direction only
-    @param context - sender context, to match reply w/ request
-    @param handle - session handle obtained via accept/connects
-*/
-define reset_session {
-  u32 client_index;
-  u32 context;
-  u64 handle;
-};
-
-/** \brief client->vpp reset session reply
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param handle - session handle obtained via accept/connect
-*/
-define reset_session_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-};
-
 /** \brief Bind to an ip:port pair for a given transport protocol
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -291,7 +224,7 @@ define reset_session_reply {
     @param proto - protocol 0 - TCP 1 - UDP
     @param options - socket options, fifo sizes, etc.
 */
-define bind_sock {
+autoreply define bind_sock {
   u32 client_index;
   u32 context;
   u32 wrk_index;
@@ -345,77 +278,6 @@ autoreply define connect_sock {
   u8 proto;
   u8 hostname_len;
   u8 hostname[hostname_len];
-};
-
-/** \brief Bind reply
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param handle - bind handle
-    @param retval - return code for the request
-    @param lcl_is_ip4 - local ip address type
-    @param lcl_ip6 - local ip address
-    @param lcl_port - local port
-    @param rx_fifo - rx fifo address if allocated (connectionless)
-    @param tx_fifo - tx fifo address if allocated (connectionless) 
-    @param vpp_evt_q - vpp event queue address (connectionless)
-    @param segment_name_length - length of segment name 
-    @param segment_name - name of segment client needs to attach to
-*/
-define bind_sock_reply {
-  u32 context;
-  u64 handle;
-  i32 retval;
-  u8 lcl_is_ip4;
-  u8 lcl_ip[16];
-  u16 lcl_port;
-  u64 rx_fifo;
-  u64 tx_fifo;
-  u64 vpp_evt_q;
-  u32 segment_size;
-  u8 segment_name_length;
-  u8 segment_name[128];
-};
-
-/* Dummy connect message -- needed to satisfy api generators
-*
-*  NEVER USED, doxygen tags elided on purpose.
-*/
-define connect_session {
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief vpp/server->client, connect reply -- used for all connect_* messages
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param handle - connection handle
-    @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
-    @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
-    @param vpp_event_queue_address - vpp's event queue address
-    @param client_event_queue_address - client's event queue address
-    @param segment_size - size of segment to be attached. Only for redirects.
-    @param segment_name_length - non-zero if the client needs to attach to 
-                                 the fifo segment
-    @param segment_name - set if the client needs to attach to the segment
-    @param lcl_ip - local ip for connection
-    @param is_ip4 - flag to indicate if ip is v4 or v6
-    @param lcl_port - local port
-*/
-define connect_session_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
-  u64 vpp_event_queue_address;
-  u64 client_event_queue_address;
-  u32 segment_size;
-  u8 segment_name_length;
-  u8 segment_name[128];
-  u8 lcl_ip[16];
-  u8 is_ip4;
-  u16 lcl_port;
 };
 
 /** \brief ask app to add a new cut-through registration
