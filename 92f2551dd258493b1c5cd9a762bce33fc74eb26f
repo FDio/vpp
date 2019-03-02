@@ -180,6 +180,24 @@
     },
     {
       "key": {
+        "uuid": "abdf7a75_23cb4b8b",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-02T01:24:26Z",
+      "side": 1,
+      "message": "No. It\u0027s not being uncomfortable. \nFrom the python docs:\nhttps://docs.python.org/3/library/functions.html#super\n\n\"Good design dictates that this method have the same calling signature in every case (because the order of calls is determined at runtime, because that order adapts to changes in the class hierarchy, and because that order can include sibling classes that are unknown prior to runtime).\"\n\nIt\u0027s a LSP violation to change the signature.  The parent shouldn\u0027t be a mixin, because it\u0027s not testable, but we have to get the test developers to stop copy/pasting code.",
+      "parentUuid": "ed943786_c389d74d",
+      "revId": "92f2551dd258493b1c5cd9a762bce33fc74eb26f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d03164c4_6f24a5c8",
         "filename": "test/test_reassembly.py",
         "patchSetId": 1
