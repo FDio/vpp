@@ -174,7 +174,6 @@ typedef enum
   _(IS_PROXY, "Application is proxying")			\
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
   _(USE_LOCAL_SCOPE, "App can use local session scope")		\
-  _(USE_MQ_FOR_CTRL_MSGS, "Use message queue for ctr msgs")	\
   _(EVT_MQ_USE_EVENTFD, "Use eventfds for signaling")		\
 
 typedef enum _app_options

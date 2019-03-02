@@ -233,7 +233,6 @@ application_send_attach (echo_main_t * em)
   bmp->context = ntohl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ADD_SEGMENT;
-  bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
   bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = em->fifo_size;
   bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = em->fifo_size;
