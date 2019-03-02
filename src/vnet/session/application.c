@@ -47,6 +47,14 @@ app_listener_get (application_t * app, u32 app_listener_index)
   return pool_elt_at_index (app->listeners, app_listener_index);
 }
 
+static app_listener_t *
+app_listener_get_if_valid (application_t * app, u32 app_listener_index)
+{
+  if (pool_is_free_index (app->listeners, app_listener_index))
+    return 0;
+  return pool_elt_at_index (app->listeners, app_listener_index);
+}
+
 static void
 app_listener_free (application_t * app, app_listener_t * app_listener)
 {
@@ -94,7 +102,7 @@ app_listener_get_w_id (u32 listener_id)
   app = application_get_if_valid (app_index);
   if (!app)
     return 0;
-  return app_listener_get (app, app_listener_index);
+  return app_listener_get_if_valid (app, app_listener_index);
 }
 
 app_listener_t *
@@ -1060,7 +1068,9 @@ vnet_unlisten (vnet_unlisten_args_t * a)
   if (!(app = application_get_if_valid (a->app_index)))
     return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
 
-  al = app_listener_get_w_handle (a->handle);
+  if (!(al = app_listener_get_w_handle (a->handle)))
+    return -1;
+
   if (al->app_index != app->app_index)
     {
       clib_warning ("app doesn't own handle %llu!", a->handle);
