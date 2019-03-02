@@ -77,7 +77,18 @@ segment_manager_del_segment (segment_manager_t * sm,
   segment_manager_main_t *smm = &segment_manager_main;
 
   if (ssvm_type (&fs->ssvm) != SSVM_SEGMENT_PRIVATE)
-    clib_valloc_free (&smm->va_allocator, fs->ssvm.requested_va);
+    {
+      clib_valloc_free (&smm->va_allocator, fs->ssvm.requested_va);
+
+      if (sm->app_wrk_index != SEGMENT_MANAGER_INVALID_APP_INDEX)
+	{
+	  app_worker_t *app_wrk;
+	  u64 segment_handle;
+	  app_wrk = app_worker_get (sm->app_wrk_index);
+	  segment_handle = segment_manager_segment_handle (sm, fs);
+	  app_worker_del_segment_notify (app_wrk, segment_handle);
+	}
+    }
 
   ssvm_delete (&fs->ssvm);
 
