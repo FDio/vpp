@@ -1171,12 +1171,6 @@ application_has_global_scope (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 }
 
-u8
-application_use_mq_for_ctrl (application_t * app)
-{
-  return app->flags & APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
-}
-
 static clib_error_t *
 application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 					u8 transport_proto, u8 is_start)

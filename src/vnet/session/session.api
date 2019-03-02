@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Copyright (c) 2015-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "1.5.0";
+option version = "1.6.0";
 
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
@@ -136,23 +136,11 @@ autoreply define unmap_segment {
                  "tcp://::/0/80" [ipv6] etc.
     @param options - socket options, fifo sizes, etc.
 */
-define bind_uri {
+autoreply define bind_uri {
   u32 client_index;
   u32 context;
   u32 accept_cookie;
   u8 uri[128];
-};
-/** *** Will be DEPRECATED. Use message queue instead. *** */
-define bind_uri_reply {
-  u32 context;
-  u64 handle;
-  i32 retval;
-  u64 rx_fifo;
-  u64 tx_fifo;
-  u8 lcl_is_ip4;
-  u8 lcl_ip[16];
-  u16 lcl_port;
-  u64 vpp_evt_q;
 };
 
 /** \brief Unbind a given URI
@@ -186,49 +174,6 @@ autoreply define connect_uri {
   u8 uri[128];
 };
 
-/** \brief vpp->client, accept this session
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param listener_handle - tells client which listener this pertains to
-    @param handle - unique session identifier
-    @param rx_fifo_address - rx (vpp -> vpp-client) fifo address 
-    @param tx_fifo_address - tx (vpp-client -> vpp) fifo address 
-    @param vpp_event_queue_address - vpp's event queue address or client's
-    									event queue for cut through
-    @param server_event_queue_address - server's event queue address for
-    									   cut through sessions
-    @param port - remote port
-    @param is_ip4 - 1 if the ip is ip4
-    @param ip - remote ip
-*/
-define accept_session {
-  u32 client_index;
-  u32 context;
-  u64 listener_handle;
-  u64 handle; 
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
-  u64 vpp_event_queue_address;
-  u64 server_event_queue_address;
-  u16 port;
-  u8 is_ip4;
-  u8 ip[16];
-};
-
-/** \brief client->vpp, reply to an accept message
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param session_index - session index from accept_session / connect_reply
-    @param session_thread_index - thread index from accept_session /
-                                  connect_reply
-*/
-define accept_session_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-};
-
 /** \brief bidirectional disconnect API
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
@@ -242,7 +187,6 @@ define disconnect_session {
 };
 
 /** \brief bidirectional disconnect reply API
-	*** Will be DEPRECATED. Use message queue instead. ***
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
@@ -250,31 +194,6 @@ define disconnect_session {
     @param handle - session handle
 */
 define disconnect_session_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-};
-
-/** \brief vpp->client reset session API
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param client_index - opaque cookie to identify the sender
-                          client to vpp direction only
-    @param context - sender context, to match reply w/ request
-    @param handle - session handle obtained via accept/connects
-*/
-define reset_session {
-  u32 client_index;
-  u32 context;
-  u64 handle;
-};
-
-/** \brief client->vpp reset session reply
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param handle - session handle obtained via accept/connect
-*/
-define reset_session_reply {
   u32 context;
   i32 retval;
   u64 handle;
@@ -291,7 +210,7 @@ define reset_session_reply {
     @param proto - protocol 0 - TCP 1 - UDP
     @param options - socket options, fifo sizes, etc.
 */
-define bind_sock {
+autoreply define bind_sock {
   u32 client_index;
   u32 context;
   u32 wrk_index;
@@ -345,77 +264,6 @@ autoreply define connect_sock {
   u8 proto;
   u8 hostname_len;
   u8 hostname[hostname_len];
-};
-
-/** \brief Bind reply
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param handle - bind handle
-    @param retval - return code for the request
-    @param lcl_is_ip4 - local ip address type
-    @param lcl_ip6 - local ip address
-    @param lcl_port - local port
-    @param rx_fifo - rx fifo address if allocated (connectionless)
-    @param tx_fifo - tx fifo address if allocated (connectionless) 
-    @param vpp_evt_q - vpp event queue address (connectionless)
-    @param segment_name_length - length of segment name 
-    @param segment_name - name of segment client needs to attach to
-*/
-define bind_sock_reply {
-  u32 context;
-  u64 handle;
-  i32 retval;
-  u8 lcl_is_ip4;
-  u8 lcl_ip[16];
-  u16 lcl_port;
-  u64 rx_fifo;
-  u64 tx_fifo;
-  u64 vpp_evt_q;
-  u32 segment_size;
-  u8 segment_name_length;
-  u8 segment_name[128];
-};
-
-/* Dummy connect message -- needed to satisfy api generators
-*
-*  NEVER USED, doxygen tags elided on purpose.
-*/
-define connect_session {
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief vpp/server->client, connect reply -- used for all connect_* messages
-	*** Will be DEPRECATED. Use message queue instead. ***
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param handle - connection handle
-    @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
-    @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
-    @param vpp_event_queue_address - vpp's event queue address
-    @param client_event_queue_address - client's event queue address
-    @param segment_size - size of segment to be attached. Only for redirects.
-    @param segment_name_length - non-zero if the client needs to attach to 
-                                 the fifo segment
-    @param segment_name - set if the client needs to attach to the segment
-    @param lcl_ip - local ip for connection
-    @param is_ip4 - flag to indicate if ip is v4 or v6
-    @param lcl_port - local port
-*/
-define connect_session_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
-  u64 vpp_event_queue_address;
-  u64 client_event_queue_address;
-  u32 segment_size;
-  u8 segment_name_length;
-  u8 segment_name[128];
-  u8 lcl_ip[16];
-  u8 is_ip4;
-  u16 lcl_port;
 };
 
 /** \brief ask app to add a new cut-through registration
@@ -499,13 +347,13 @@ autoreply define session_enable_disable {
     @param client_index - opaque cookie to identify the sender
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
-    @param secret - secret shared between app and vpp 
+    @param secret - secret shared between app and vpp
     @param sw_if_index - local interface that "supports" namespace. Set to
-    						~0 if no preference
-    @param ip4_fib_id - id of ip4 fib that "supports" the namespace. Ignored 
-    						if sw_if_index set.
-    @param ip6_fib_id - id of ip6 fib that "supports" the namespace. Ignored 
-    						if sw_if_index set.
+                         ~0 if no preference
+    @param ip4_fib_id - id of ip4 fib that "supports" the namespace. Ignored
+                        if sw_if_index set.
+    @param ip6_fib_id - id of ip6 fib that "supports" the namespace. Ignored
+                        if sw_if_index set.
     @param namespace_id_len - length of namespace id lower
     @param namespace_id - namespace id
 */
@@ -544,14 +392,12 @@ define app_namespace_add_del_reply
     @param rmt_ple - remote prefix length
     @param lcl_port - local port
     @param rmt_port - remote port
-    @param action_index - the only action defined now is forward to 
-    						  application with index action_index
-    	@param is_add - flag to indicate if add or del
-    	@param appns_index - application namespace where rule is to be applied
-    						 to
-    	@param scope - flag that indicates scope of the rule: global or local.
-    				   If 0, default is global, 1 is global 2 is local, 3 is
-    				   both
+    @param action_index - the only action defined now is forward to
+                          application with index action_index
+    @param is_add - flag to indicate if add or del
+    @param appns_index - application namespace where rule is to be applied to
+    @param scope - flag that indicates scope of the rule: global or local.
+                   If 0, default is global, 1 is global 2 is local, 3 is both
 */
 autoreply define session_rule_add_del {
   u32 client_index;
@@ -582,7 +428,7 @@ define session_rules_dump
 };
 
 /** \brief Session rules details
-	@param context - sender context, to match reply w/ request
+    @param context - sender context, to match reply w/ request
     @param transport_proto - transport protocol (0 - tcp 1 - udp)
     @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
     @param lcl_ip - local ip
@@ -592,12 +438,10 @@ define session_rules_dump
     @param lcl_port - local port
     @param rmt_port - remote port
     @param action_index - the only action defined now is forward to
-    						  application with index action_index
-    	@param appns_index - application namespace where rule is to be applied
-    						 to
-    	@param scope - flag that indicates scope of the rule: global or local.
-    				   If 0, default is global, 1 is global 2 is local, 3 is
-    				   both
+                          application with index action_index
+    @param appns_index - application namespace where rule is to be applied to
+    @param scope - flag that indicates scope of the rule: global or local.
+                   If 0, default is global, 1 is global 2 is local, 3 is both
   */
 define session_rules_details
 {

@@ -308,7 +308,6 @@ application_send_attach (udp_echo_main_t * utm)
   bmp->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_ADD_SEGMENT;
   bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
-  bmp->options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_MQ_FOR_CTRL_MSGS;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 2;
   bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = utm->fifo_size;
   bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = utm->fifo_size;
@@ -875,41 +874,6 @@ client_test (udp_echo_main_t * utm)
 }
 
 static void
-vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
-{
-  udp_echo_main_t *utm = &udp_echo_main;
-  svm_fifo_t *rx_fifo, *tx_fifo;
-  app_session_t *session;
-  u32 session_index;
-
-  if (mp->retval)
-    {
-      clib_warning ("bind failed: %d", mp->retval);
-      utm->state = STATE_FAILED;
-      return;
-    }
-
-  rx_fifo = uword_to_pointer (mp->rx_fifo, svm_fifo_t *);
-  tx_fifo = uword_to_pointer (mp->tx_fifo, svm_fifo_t *);
-
-  pool_get (utm->sessions, session);
-  clib_memset (session, 0, sizeof (*session));
-  session_index = session - utm->sessions;
-
-  rx_fifo->client_session_index = session_index;
-  tx_fifo->client_session_index = session_index;
-  session->rx_fifo = rx_fifo;
-  session->tx_fifo = tx_fifo;
-  clib_memcpy_fast (&session->transport.lcl_ip, mp->lcl_ip,
-		    sizeof (ip46_address_t));
-  session->transport.is_ip4 = mp->lcl_is_ip4;
-  session->transport.lcl_port = mp->lcl_port;
-  session->vpp_evt_q = uword_to_pointer (mp->vpp_evt_q, svm_msg_q_t *);
-
-  utm->state = utm->is_connected ? STATE_BOUND : STATE_READY;
-}
-
-static void
 vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
@@ -977,7 +941,6 @@ static void
 }
 
 #define foreach_tcp_echo_msg                         			\
-_(BIND_URI_REPLY, bind_uri_reply)               			\
 _(UNBIND_URI_REPLY, unbind_uri_reply)           			\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)				\
 _(UNMAP_SEGMENT, unmap_segment)						\
