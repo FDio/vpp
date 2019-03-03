@@ -165,7 +165,6 @@ app_worker_alloc_session_fifos (segment_manager_t * sm, session_t * s)
 
   s->rx_fifo = rx_fifo;
   s->tx_fifo = tx_fifo;
-  s->svm_segment_index = fifo_segment_index;
   return 0;
 }
 
@@ -362,7 +361,7 @@ app_worker_own_session (app_worker_t * app_wrk, session_t * s)
       s->tx_fifo->cursize = txf->cursize;
     }
 
-  segment_manager_dealloc_fifos (rxf->segment_index, rxf, txf);
+  segment_manager_dealloc_fifos (rxf, txf);
 
   return 0;
 }

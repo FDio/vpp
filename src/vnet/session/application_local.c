@@ -210,7 +210,6 @@ ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
   ls->tx_fifo->segment_manager = sm_index;
   ls->rx_fifo->segment_index = seg_index;
   ls->tx_fifo->segment_index = seg_index;
-  ls->svm_segment_index = seg_index;
 
   segment_handle = segment_manager_segment_handle (sm, seg);
   if ((rv = app_worker_add_segment_notify (server_wrk, segment_handle)))
