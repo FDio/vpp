@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c29e6a14_8e0f6def",
+        "filename": "src/vnet/ip/ip4_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1107,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "can you make this shorter?",
+      "range": {
+        "startLine": 1107,
+        "startChar": 49,
+        "endLine": 1107,
+        "endChar": 79
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b484a428_a701d16f",
+        "filename": "src/vnet/ip/ip4_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1485,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "lowercase please",
+      "range": {
+        "startLine": 1485,
+        "startChar": 16,
+        "endLine": 1485,
+        "endChar": 38
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9628faa9_226f384e",
+        "filename": "src/vnet/ip/ip4_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1573,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "deprecated, you can use VLIB_NODE_FN() instead (if needed)",
+      "range": {
+        "startLine": 1573,
+        "startChar": 0,
+        "endLine": 1573,
+        "endChar": 28
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a4afb2c3_49f3656e",
+        "filename": "src/vnet/ip/ip4_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1605,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "deprecated, you can use VLIB_NODE_FN() instead (if needed)",
+      "range": {
+        "startLine": 1605,
+        "startChar": 0,
+        "endLine": 1605,
+        "endChar": 28
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bdf0648b_24d08a0a",
+        "filename": "src/vnet/ip/ip6_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 388,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "please use, vm-\u003ethread_index instead",
+      "range": {
+        "startLine": 388,
+        "startChar": 21,
+        "endLine": 388,
+        "endChar": 40
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e9341c32_7e52e6e5",
+        "filename": "src/vnet/ip/ip6_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "deprecated, you can use VLIB_NODE_FN() instead (if needed)",
+      "range": {
+        "startLine": 1104,
+        "startChar": 0,
+        "endLine": 1104,
+        "endChar": 28
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "47233e08_e82cc767",
+        "filename": "src/vnet/ip/ip6_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1536,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "lowercase please...",
+      "range": {
+        "startLine": 1536,
+        "startChar": 16,
+        "endLine": 1536,
+        "endChar": 38
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "106dc9b0_646b8340",
+        "filename": "src/vnet/ip/ip6_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1621,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "deprecated, you can use VLIB_NODE_FN() instead (if needed)",
+      "range": {
+        "startLine": 1621,
+        "startChar": 0,
+        "endLine": 1621,
+        "endChar": 83
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0baaddb7_369a69ec",
+        "filename": "src/vnet/ip/ip6_reassembly.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1651,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-03T13:24:16Z",
+      "side": 1,
+      "message": "deprecated, please use VLIB_NODE_FN() instead...",
+      "range": {
+        "startLine": 1650,
+        "startChar": 0,
+        "endLine": 1651,
+        "endChar": 41
+      },
+      "revId": "9de946c0c29cd5ab4640e1b7575f2ee6020d5eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
