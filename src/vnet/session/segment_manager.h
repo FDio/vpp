@@ -157,7 +157,7 @@ int segment_manager_try_alloc_fifos (svm_fifo_segment_private_t * fs,
 				     u32 rx_fifo_size, u32 tx_fifo_size,
 				     svm_fifo_t ** rx_fifo,
 				     svm_fifo_t ** tx_fifo);
-void segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
+void segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo,
 				    svm_fifo_t * tx_fifo);
 u32 segment_manager_evt_q_expected_size (u32 q_size);
 svm_msg_q_t *segment_manager_alloc_queue (svm_fifo_segment_private_t * fs,

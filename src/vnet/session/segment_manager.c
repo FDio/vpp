@@ -604,11 +604,11 @@ alloc_check:
 }
 
 void
-segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
-			       svm_fifo_t * tx_fifo)
+segment_manager_dealloc_fifos (svm_fifo_t * rx_fifo, svm_fifo_t * tx_fifo)
 {
   svm_fifo_segment_private_t *fifo_segment;
   segment_manager_t *sm;
+  u32 segment_index;
 
   if (!rx_fifo || !tx_fifo)
     return;
@@ -618,6 +618,7 @@ segment_manager_dealloc_fifos (u32 segment_index, svm_fifo_t * rx_fifo,
   if (!(sm = segment_manager_get_if_valid (rx_fifo->segment_manager)))
     return;
 
+  segment_index = rx_fifo->segment_index;
   fifo_segment = segment_manager_get_segment_w_lock (sm, segment_index);
   svm_fifo_segment_free_fifo (fifo_segment, rx_fifo,
 			      FIFO_SEGMENT_RX_FREELIST);

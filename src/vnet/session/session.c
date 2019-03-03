@@ -181,8 +181,7 @@ session_free (session_t * s)
 void
 session_free_w_fifos (session_t * s)
 {
-  segment_manager_dealloc_fifos (s->svm_segment_index, s->rx_fifo,
-				 s->tx_fifo);
+  segment_manager_dealloc_fifos (s->rx_fifo, s->tx_fifo);
   session_free (s);
 }
 
