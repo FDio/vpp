@@ -162,6 +162,9 @@ typedef struct
   u64 vpp_handle;
   u32 vpp_thread_index;
 
+  svm_fifo_t *ct_rx_fifo;
+  svm_fifo_t *ct_tx_fifo;
+
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
@@ -481,7 +484,7 @@ const char *vppcom_session_state_str (vcl_session_state_t state);
 static inline u8
 vcl_session_is_ct (vcl_session_t * s)
 {
-  return (s->our_evt_q != 0);
+  return (s->ct_tx_fifo != 0);
 }
 
 static inline u8

@@ -273,7 +273,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 						      mp->listener_handle);
   if (!listen_session)
     {
-      svm_msg_q_t *evt_q;
+//      svm_msg_q_t *evt_q;
       evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
       clib_warning ("VCL<%d>: ERROR: couldn't find listen session: "
 		    "unknown vpp listener handle %llx",
@@ -287,28 +287,36 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
 
-  if (mp->server_event_queue_address)
+//  if (mp->server_event_queue_address)
+//    {
+//      session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					     svm_msg_q_t *);
+//      session->our_evt_q = uword_to_pointer (mp->server_event_queue_address,
+//					     svm_msg_q_t *);
+//      if (vcl_wait_for_segment (mp->segment_handle))
+//	{
+//	  clib_warning ("segment for session %u couldn't be mounted!",
+//			session->session_index);
+//	  return VCL_INVALID_SESSION_INDEX;
+//	}
+//      rx_fifo->master_session_index = session->session_index;
+//      tx_fifo->master_session_index = session->session_index;
+//      rx_fifo->master_thread_index = vcl_get_worker_index ();
+//      tx_fifo->master_thread_index = vcl_get_worker_index ();
+//      vec_validate (wrk->vpp_event_queues, 0);
+//      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
+//      wrk->vpp_event_queues[0] = evt_q;
+//    }
+//  else
+//    {
+
+  if (vcl_wait_for_segment (mp->segment_handle))
     {
-      session->vpp_evt_q = uword_to_pointer (mp->client_event_queue_address,
-					     svm_msg_q_t *);
-      session->our_evt_q = uword_to_pointer (mp->server_event_queue_address,
-					     svm_msg_q_t *);
-      if (vcl_wait_for_segment (mp->segment_handle))
-	{
-	  clib_warning ("segment for session %u couldn't be mounted!",
-			session->session_index);
-	  return VCL_INVALID_SESSION_INDEX;
-	}
-      rx_fifo->master_session_index = session->session_index;
-      tx_fifo->master_session_index = session->session_index;
-      rx_fifo->master_thread_index = vcl_get_worker_index ();
-      tx_fifo->master_thread_index = vcl_get_worker_index ();
-      vec_validate (wrk->vpp_event_queues, 0);
-      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
-      wrk->vpp_event_queues[0] = evt_q;
+      clib_warning("segment for session %u couldn't be mounted!",
+	           session->session_index);
+      return VCL_INVALID_SESSION_INDEX;
     }
-  else
-    {
+
       session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					     svm_msg_q_t *);
       rx_fifo->client_session_index = session->session_index;
@@ -318,7 +326,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
       vpp_wrk_index = tx_fifo->master_thread_index;
       vec_validate (wrk->vpp_event_queues, vpp_wrk_index);
       wrk->vpp_event_queues[vpp_wrk_index] = session->vpp_evt_q;
-    }
+//    }
 
   session->vpp_handle = mp->handle;
   session->vpp_thread_index = rx_fifo->master_thread_index;
@@ -356,7 +364,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   u32 session_index, vpp_wrk_index;
   svm_fifo_t *rx_fifo, *tx_fifo;
   vcl_session_t *session = 0;
-  svm_msg_q_t *evt_q;
+//  svm_msg_q_t *evt_q;
 
   session_index = mp->context;
   session = vcl_session_get (wrk, session_index);
@@ -390,24 +398,36 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   rx_fifo->client_thread_index = vcl_get_worker_index ();
   tx_fifo->client_thread_index = vcl_get_worker_index ();
 
-  if (mp->client_event_queue_address)
-    {
-      session->vpp_evt_q = uword_to_pointer (mp->server_event_queue_address,
-					     svm_msg_q_t *);
-      session->our_evt_q = uword_to_pointer (mp->client_event_queue_address,
-					     svm_msg_q_t *);
-
-      vec_validate (wrk->vpp_event_queues, 0);
-      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
-      wrk->vpp_event_queues[0] = evt_q;
-    }
-  else
-    {
+//  if (mp->client_event_queue_address)
+//    {
+//      session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					     svm_msg_q_t *);
+//      session->our_evt_q = uword_to_pointer (mp->client_event_queue_address,
+//					     svm_msg_q_t *);
+//
+//      vec_validate (wrk->vpp_event_queues, 0);
+//      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
+//      wrk->vpp_event_queues[0] = evt_q;
+//    }
+//  else
+//    {
       session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					     svm_msg_q_t *);
       vpp_wrk_index = tx_fifo->master_thread_index;
       vec_validate (wrk->vpp_event_queues, vpp_wrk_index);
       wrk->vpp_event_queues[vpp_wrk_index] = session->vpp_evt_q;
+//    }
+
+  if (mp->ct_rx_fifo)
+    {
+      session->ct_rx_fifo = uword_to_pointer (mp->ct_rx_fifo, svm_fifo_t *);
+      session->ct_tx_fifo = uword_to_pointer (mp->ct_tx_fifo, svm_fifo_t *);
+      if (vcl_wait_for_segment (mp->ct_segment_handle))
+	{
+	  clib_warning ("segment for session %u couldn't be mounted!",
+		        session->session_index);
+	  return VCL_INVALID_SESSION_INDEX;
+	}
     }
 
   session->rx_fifo = rx_fifo;
@@ -671,6 +691,9 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
     case FIFO_EVENT_APP_TX:
     case SESSION_IO_EVT_CT_RX:
     case SESSION_IO_EVT_CT_TX:
+      session = vcl_session_get (wrk, e->fifo->client_session_index);
+      if (!(session->session_state & STATE_OPEN))
+	break;
       vec_add1 (wrk->unhandled_evts_vector, *e);
       break;
     case SESSION_CTRL_EVT_ACCEPTED:
@@ -1123,22 +1146,22 @@ vcl_session_cleanup (vcl_worker_t * wrk, vcl_session_t * session,
 	}
     }
 
-  if (vcl_session_is_ct (session))
-    {
-      vcl_cut_through_registration_t *ctr;
-      uword mq_addr;
-
-      mq_addr = pointer_to_uword (session->our_evt_q);
-      ctr = vcl_ct_registration_lock_and_lookup (wrk, mq_addr);
-      ASSERT (ctr);
-      if (ctr->epoll_evt_conn_index != ~0)
-	vcl_mq_epoll_del_evfd (wrk, ctr->epoll_evt_conn_index);
-      VDBG (0, "Removing ct registration %u",
-	    vcl_ct_registration_index (wrk, ctr));
-      vcl_ct_registration_del (wrk, ctr);
-      vcl_ct_registration_lookup_del (wrk, mq_addr);
-      vcl_ct_registration_unlock (wrk);
-    }
+//  if (vcl_session_is_ct (session))
+//    {
+//      vcl_cut_through_registration_t *ctr;
+//      uword mq_addr;
+//
+//      mq_addr = pointer_to_uword (session->our_evt_q);
+//      ctr = vcl_ct_registration_lock_and_lookup (wrk, mq_addr);
+//      ASSERT (ctr);
+//      if (ctr->epoll_evt_conn_index != ~0)
+//	vcl_mq_epoll_del_evfd (wrk, ctr->epoll_evt_conn_index);
+//      VDBG (0, "Removing ct registration %u",
+//	    vcl_ct_registration_index (wrk, ctr));
+//      vcl_ct_registration_del (wrk, ctr);
+//      vcl_ct_registration_lookup_del (wrk, mq_addr);
+//      vcl_ct_registration_unlock (wrk);
+//    }
 
   VDBG (0, "session %u [0x%llx] removed", session->session_index, vpp_handle);
 
@@ -1411,10 +1434,10 @@ handle:
 			  sizeof (ip6_address_t));
     }
 
-  if (accepted_msg.server_event_queue_address)
-    vpp_evt_q = uword_to_pointer (accepted_msg.vpp_event_queue_address,
-				  svm_msg_q_t *);
-  else
+//  if (accepted_msg.server_event_queue_address)
+//    vpp_evt_q = uword_to_pointer (accepted_msg.vpp_event_queue_address,
+//				  svm_msg_q_t *);
+//  else
     vpp_evt_q = client_session->vpp_evt_q;
 
   vcl_send_session_accepted_reply (vpp_evt_q, client_session->client_context,
@@ -1533,11 +1556,11 @@ vppcom_session_connect (uint32_t session_handle, vppcom_endpt_t * server_ep)
 static u8
 vcl_is_rx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
 {
-  if (!is_ct)
-    return (e->event_type == FIFO_EVENT_APP_RX
+//  if (!is_ct)
+    return (e->event_type == SESSION_IO_EVT_TX
 	    && e->fifo->client_session_index == sid);
-  else
-    return (e->event_type == SESSION_IO_EVT_CT_TX);
+//  else
+//    return (e->event_type == SESSION_IO_EVT_CT_TX);
 }
 
 static inline int
@@ -1570,8 +1593,9 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 
   is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
   is_ct = vcl_session_is_ct (s);
-  mq = is_ct ? s->our_evt_q : wrk->app_event_queue;
-  rx_fifo = s->rx_fifo;
+//  mq = is_ct ? s->our_evt_q : wrk->app_event_queue;
+  mq = wrk->app_event_queue;
+  rx_fifo = is_ct ? s->ct_rx_fifo : s->rx_fifo;
   s->has_rx_evt = 0;
 
   if (svm_fifo_is_empty (rx_fifo))
@@ -1595,7 +1619,10 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
 	  e = svm_msg_q_msg_data (mq, &msg);
 	  svm_msg_q_unlock (mq);
 	  if (!vcl_is_rx_evt_for_session (e, s->session_index, is_ct))
-	    vcl_handle_mq_event (wrk, e);
+	    {
+	      clib_warning ("THIS ONE type %u", e->event_type);
+	      vcl_handle_mq_event (wrk, e);
+	    }
 	  svm_msg_q_free_msg (mq, &msg);
 	}
     }
@@ -1606,14 +1633,18 @@ vppcom_session_read_internal (uint32_t session_handle, void *buf, int n,
     n_read = app_recv_stream_raw (rx_fifo, buf, n, 0, peek);
 
   if (svm_fifo_is_empty (rx_fifo))
-    svm_fifo_unset_event (rx_fifo);
-
-  if (is_ct && svm_fifo_needs_tx_ntf (rx_fifo, n_read))
     {
-      svm_fifo_clear_tx_ntf (s->rx_fifo);
-      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo, SESSION_IO_EVT_CT_RX,
-			      SVM_Q_WAIT);
+      svm_fifo_unset_event (rx_fifo);
+      if (is_ct)
+	svm_fifo_unset_event (s->rx_fifo);
     }
+
+//  if (is_ct && svm_fifo_needs_tx_ntf (rx_fifo, n_read))
+//    {
+//      svm_fifo_clear_tx_ntf (s->rx_fifo);
+//      app_send_io_evt_to_vpp (s->vpp_evt_q, s->rx_fifo, SESSION_IO_EVT_CT_RX,
+//			      SVM_Q_WAIT);
+//    }
 
   VDBG (2, "vpp handle 0x%llx, sid %u: read %d bytes from (%p)",
 	s->vpp_handle, session_handle, n_read, rx_fifo);
@@ -1729,11 +1760,11 @@ vppcom_data_segment_copy (void *buf, vppcom_data_segments_t ds, u32 max_bytes)
 static u8
 vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
 {
-  if (!is_ct)
+//  if (!is_ct)
     return (e->event_type == FIFO_EVENT_APP_TX
 	    && e->fifo->client_session_index == sid);
-  else
-    return (e->event_type == SESSION_IO_EVT_CT_RX);
+//  else
+//    return (e->event_type == SESSION_IO_EVT_CT_RX);
 }
 
 static inline int
@@ -1772,10 +1803,11 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
       return vcl_session_closed_error (s);;
     }
 
-  tx_fifo = s->tx_fifo;
   is_ct = vcl_session_is_ct (s);
+  tx_fifo = is_ct ? s->ct_tx_fifo : s->tx_fifo;
   is_nonblocking = VCL_SESS_ATTR_TEST (s->attr, VCL_SESS_ATTR_NONBLOCK);
-  mq = is_ct ? s->our_evt_q : wrk->app_event_queue;
+//  mq = is_ct ? s->our_evt_q : wrk->app_event_queue;
+  mq = wrk->app_event_queue;
   if (svm_fifo_is_full (tx_fifo))
     {
       if (is_nonblocking)
@@ -1801,17 +1833,21 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 	}
     }
 
-  ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
-  et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
-  if (is_flush && !vcl_session_is_ct (s))
+//  ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
+//  et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
+  et = SESSION_IO_EVT_TX;
+  if (is_flush && !is_ct)
     et = SESSION_IO_EVT_TX_FLUSH;
 
   if (s->is_dgram)
     n_write = app_send_dgram_raw (tx_fifo, &s->transport,
 				  s->vpp_evt_q, buf, n, et, SVM_Q_WAIT);
   else
-    n_write = app_send_stream_raw (tx_fifo, s->vpp_evt_q, buf, n, et,
-				   SVM_Q_WAIT);
+    n_write = app_send_stream_raw1 (tx_fifo, s->vpp_evt_q, buf, n, et,
+				   !is_ct /* do_evt */, SVM_Q_WAIT);
+
+  if (is_ct && svm_fifo_set_event (s->tx_fifo))
+    app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo, et, SVM_Q_WAIT);
 
   ASSERT (n_write > 0);
 
@@ -1836,30 +1872,30 @@ vppcom_session_write_msg (uint32_t session_handle, void *buf, size_t n)
 }
 
 
-static vcl_session_t *
-vcl_ct_session_get_from_fifo (vcl_worker_t * wrk, svm_fifo_t * f, u8 type)
-{
-  vcl_session_t *s;
-  s = vcl_session_get (wrk, f->client_session_index);
-  if (s)
-    {
-      /* rx fifo */
-      if (type == 0 && s->rx_fifo == f)
-	return s;
-      /* tx fifo */
-      if (type == 1 && s->tx_fifo == f)
-	return s;
-    }
-  s = vcl_session_get (wrk, f->master_session_index);
-  if (s)
-    {
-      if (type == 0 && s->rx_fifo == f)
-	return s;
-      if (type == 1 && s->tx_fifo == f)
-	return s;
-    }
-  return 0;
-}
+//static vcl_session_t *
+//vcl_ct_session_get_from_fifo (vcl_worker_t * wrk, svm_fifo_t * f, u8 type)
+//{
+//  vcl_session_t *s;
+//  s = vcl_session_get (wrk, f->client_session_index);
+//  if (s)
+//    {
+//      /* rx fifo */
+//      if (type == 0 && s->rx_fifo == f)
+//	return s;
+//      /* tx fifo */
+//      if (type == 1 && s->tx_fifo == f)
+//	return s;
+//    }
+//  s = vcl_session_get (wrk, f->master_session_index);
+//  if (s)
+//    {
+//      if (type == 0 && s->rx_fifo == f)
+//	return s;
+//      if (type == 1 && s->tx_fifo == f)
+//	return s;
+//    }
+//  return 0;
+//}
 
 #define vcl_fifo_rx_evt_valid_or_break(_fifo)			\
 if (PREDICT_FALSE (svm_fifo_is_empty (_fifo)))			\
@@ -1905,29 +1941,29 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  *bits_set += 1;
 	}
       break;
-    case SESSION_IO_EVT_CT_TX:
-      vcl_fifo_rx_evt_valid_or_break (e->fifo);
-      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
-      if (!session)
-	break;
-      sid = session->session_index;
-      if (sid < n_bits && read_map)
-	{
-	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
-	  *bits_set += 1;
-	}
-      break;
-    case SESSION_IO_EVT_CT_RX:
-      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 1);
-      if (!session)
-	break;
-      sid = session->session_index;
-      if (sid < n_bits && write_map)
-	{
-	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
-	  *bits_set += 1;
-	}
-      break;
+//    case SESSION_IO_EVT_CT_TX:
+//      vcl_fifo_rx_evt_valid_or_break (e->fifo);
+//      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
+//      if (!session)
+//	break;
+//      sid = session->session_index;
+//      if (sid < n_bits && read_map)
+//	{
+//	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
+//	  *bits_set += 1;
+//	}
+//      break;
+//    case SESSION_IO_EVT_CT_RX:
+//      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 1);
+//      if (!session)
+//	break;
+//      sid = session->session_index;
+//      if (sid < n_bits && write_map)
+//	{
+//	  clib_bitmap_set_no_check ((uword *) write_map, sid, 1);
+//	  *bits_set += 1;
+//	}
+//      break;
     case SESSION_CTRL_EVT_ACCEPTED:
       session = vcl_session_accepted (wrk,
 				      (session_accepted_msg_t *) e->data);
@@ -2038,29 +2074,29 @@ vppcom_select_condvar (vcl_worker_t * wrk, int n_bits,
 		       vcl_si_set * except_map, double time_to_wait,
 		       u32 * bits_set)
 {
-  double total_wait = 0, wait_slice;
-  vcl_cut_through_registration_t *cr;
+//  double total_wait = 0, wait_slice;
+//  vcl_cut_through_registration_t *cr;
 
-  time_to_wait = (time_to_wait == -1) ? 1e6 : time_to_wait;
-  wait_slice = wrk->cut_through_registrations ? 10e-6 : time_to_wait;
-  do
-    {
-      vcl_ct_registration_lock (wrk);
-      /* *INDENT-OFF* */
-      pool_foreach (cr, wrk->cut_through_registrations, ({
-	vcl_select_handle_mq (wrk, cr->mq, n_bits, read_map, write_map, except_map,
-	                      0, bits_set);
-      }));
-      /* *INDENT-ON* */
-      vcl_ct_registration_unlock (wrk);
+//  time_to_wait = (time_to_wait == -1) ? 1e6 : time_to_wait;
+//  wait_slice = wrk->cut_through_registrations ? 10e-6 : time_to_wait;
+//  do
+//    {
+//      vcl_ct_registration_lock (wrk);
+//      /* *INDENT-OFF* */
+//      pool_foreach (cr, wrk->cut_through_registrations, ({
+//	vcl_select_handle_mq (wrk, cr->mq, n_bits, read_map, write_map, except_map,
+//	                      0, bits_set);
+//      }));
+//      /* *INDENT-ON* */
+//      vcl_ct_registration_unlock (wrk);
 
       vcl_select_handle_mq (wrk, wrk->app_event_queue, n_bits, read_map,
-			    write_map, except_map, wait_slice, bits_set);
-      total_wait += wait_slice;
+			    write_map, except_map, time_to_wait, bits_set);
+//      total_wait += wait_slice;
       if (*bits_set)
 	return *bits_set;
-    }
-  while (total_wait < time_to_wait);
+//    }
+//  while (total_wait < time_to_wait);
 
   return 0;
 }
@@ -2503,33 +2539,33 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
       session_evt_data = session->vep.ev.data.u64;
       svm_fifo_reset_tx_ntf (session->tx_fifo);
       break;
-    case SESSION_IO_EVT_CT_TX:
-      vcl_fifo_rx_evt_valid_or_break (e->fifo);
-      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
-      if (PREDICT_FALSE (!session))
-	break;
-      sid = session->session_index;
-      session_events = session->vep.ev.events;
-      if (!(EPOLLIN & session->vep.ev.events) || session->has_rx_evt)
-	break;
-      add_event = 1;
-      events[*num_ev].events |= EPOLLIN;
-      session_evt_data = session->vep.ev.data.u64;
-      session->has_rx_evt = 1;
-      break;
-    case SESSION_IO_EVT_CT_RX:
-      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 1);
-      if (PREDICT_FALSE (!session))
-	break;
-      sid = session->session_index;
-      session_events = session->vep.ev.events;
-      if (!(EPOLLOUT & session_events))
-	break;
-      add_event = 1;
-      events[*num_ev].events |= EPOLLOUT;
-      session_evt_data = session->vep.ev.data.u64;
-      svm_fifo_reset_tx_ntf (session->tx_fifo);
-      break;
+//    case SESSION_IO_EVT_CT_TX:
+//      vcl_fifo_rx_evt_valid_or_break (e->fifo);
+//      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
+//      if (PREDICT_FALSE (!session))
+//	break;
+//      sid = session->session_index;
+//      session_events = session->vep.ev.events;
+//      if (!(EPOLLIN & session->vep.ev.events) || session->has_rx_evt)
+//	break;
+//      add_event = 1;
+//      events[*num_ev].events |= EPOLLIN;
+//      session_evt_data = session->vep.ev.data.u64;
+//      session->has_rx_evt = 1;
+//      break;
+//    case SESSION_IO_EVT_CT_RX:
+//      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 1);
+//      if (PREDICT_FALSE (!session))
+//	break;
+//      sid = session->session_index;
+//      session_events = session->vep.ev.events;
+//      if (!(EPOLLOUT & session_events))
+//	break;
+//      add_event = 1;
+//      events[*num_ev].events |= EPOLLOUT;
+//      session_evt_data = session->vep.ev.data.u64;
+//      svm_fifo_reset_tx_ntf (session->tx_fifo);
+//      break;
     case SESSION_CTRL_EVT_ACCEPTED:
       session = vcl_session_accepted (wrk,
 				      (session_accepted_msg_t *) e->data);
