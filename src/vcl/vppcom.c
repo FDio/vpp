@@ -2216,11 +2216,9 @@ vep_verify_epoll_chain (vcl_worker_t * wrk, u32 vep_idx)
 		"   is_vep         = %u\n"
 		"   is_vep_session = %u\n"
 		"   next_sid       = 0x%x (%u)\n"
-		"   wait_cont_idx  = 0x%x (%u)\n"
 		"}\n", getpid (), vep_idx,
 		session->is_vep, session->is_vep_session,
-		vep->next_sh, vep->next_sh,
-		session->wait_cont_idx, session->wait_cont_idx);
+		vep->next_sh, vep->next_sh);
 
   for (sid = vep->next_sh; sid != ~0; sid = vep->next_sh)
     {
@@ -2280,7 +2278,6 @@ vppcom_epoll_create (void)
   vep_session->vep.vep_sh = ~0;
   vep_session->vep.next_sh = ~0;
   vep_session->vep.prev_sh = ~0;
-  vep_session->wait_cont_idx = ~0;
   vep_session->vpp_handle = ~0;
 
   vcl_evt (VCL_EVT_EPOLL_CREATE, vep_session, vep_session->session_index);
@@ -2412,10 +2409,6 @@ vppcom_epoll_ctl (uint32_t vep_handle, int op, uint32_t session_handle,
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
-
-      vep_session->wait_cont_idx =
-	(vep_session->wait_cont_idx == session_handle) ?
-	session->vep.next_sh : vep_session->wait_cont_idx;
 
       if (session->vep.prev_sh == vep_handle)
 	vep_session->vep.next_sh = session->vep.next_sh;
