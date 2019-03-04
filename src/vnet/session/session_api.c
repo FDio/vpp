@@ -268,7 +268,7 @@ mq_send_session_accepted_cb (session_t * s)
     }
   else
     {
-      u8 main_thread = vlib_num_workers ()? 1 : 0;
+//      u8 main_thread = vlib_num_workers ()? 1 : 0;
       ct_connection_t *ct;
 
       ct = (ct_connection_t *) session_get_transport (s);
@@ -283,7 +283,7 @@ mq_send_session_accepted_cb (session_t * s)
       mp->is_ip4 = session_type_is_ip4 (listener->session_type);
       mp->handle = session_handle (s);
       mp->port = ct->c_rmt_port;
-      vpp_queue = session_main_get_vpp_event_queue (main_thread);
+      vpp_queue = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->client_event_queue_address = ct->client_evt_q;
       mp->server_event_queue_address = ct->server_evt_q;
@@ -415,7 +415,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
   else
     {
-      u8 main_thread = vlib_num_workers ()? 1 : 0;
+//      u8 main_thread = vlib_num_workers ()? 1 : 0;
       ct_connection_t *cct;
       session_t *ss;
 
@@ -427,7 +427,7 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
 
       mp->handle = session_handle (s);
       mp->lcl_port = cct->c_lcl_port;
-      vpp_mq = session_main_get_vpp_event_queue (main_thread);
+      vpp_mq = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
       mp->client_event_queue_address = cct->client_evt_q;
       mp->server_event_queue_address = cct->server_evt_q;
@@ -505,11 +505,20 @@ done:
   return 0;
 }
 
+static int
+mq_app_tx_callback (session_t * s)
+{
+  if (session_has_transport (s))
+    return 0;
+  return ct_session_tx (s);
+}
+
 static session_cb_vft_t session_mq_cb_vft = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
   .session_connected_callback = mq_send_session_connected_cb,
   .session_reset_callback = mq_send_session_reset_cb,
+  .builtin_app_tx_callback = mq_app_tx_callback,
   .add_segment_callback = send_add_segment_callback,
   .del_segment_callback = send_del_segment_callback,
 };

@@ -37,6 +37,7 @@ typedef struct ct_connection_
 session_t *ct_session_get_peer (session_t * s);
 void ct_session_endpoint (session_t * ll, session_endpoint_t * sep);
 int ct_session_connect_notify (session_t * ls);
+int ct_session_tx (session_t *s);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_LOCAL_H_ */
 

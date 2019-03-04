@@ -273,7 +273,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
 						      mp->listener_handle);
   if (!listen_session)
     {
-      svm_msg_q_t *evt_q;
+//      svm_msg_q_t *evt_q;
       evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
       clib_warning ("VCL<%d>: ERROR: couldn't find listen session: "
 		    "unknown vpp listener handle %llx",
@@ -287,28 +287,36 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
 
-  if (mp->server_event_queue_address)
+//  if (mp->server_event_queue_address)
+//    {
+//      session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					     svm_msg_q_t *);
+//      session->our_evt_q = uword_to_pointer (mp->server_event_queue_address,
+//					     svm_msg_q_t *);
+//      if (vcl_wait_for_segment (mp->segment_handle))
+//	{
+//	  clib_warning ("segment for session %u couldn't be mounted!",
+//			session->session_index);
+//	  return VCL_INVALID_SESSION_INDEX;
+//	}
+//      rx_fifo->master_session_index = session->session_index;
+//      tx_fifo->master_session_index = session->session_index;
+//      rx_fifo->master_thread_index = vcl_get_worker_index ();
+//      tx_fifo->master_thread_index = vcl_get_worker_index ();
+//      vec_validate (wrk->vpp_event_queues, 0);
+//      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
+//      wrk->vpp_event_queues[0] = evt_q;
+//    }
+//  else
+//    {
+
+  if (vcl_wait_for_segment (mp->segment_handle))
     {
-      session->vpp_evt_q = uword_to_pointer (mp->client_event_queue_address,
-					     svm_msg_q_t *);
-      session->our_evt_q = uword_to_pointer (mp->server_event_queue_address,
-					     svm_msg_q_t *);
-      if (vcl_wait_for_segment (mp->segment_handle))
-	{
-	  clib_warning ("segment for session %u couldn't be mounted!",
-			session->session_index);
-	  return VCL_INVALID_SESSION_INDEX;
-	}
-      rx_fifo->master_session_index = session->session_index;
-      tx_fifo->master_session_index = session->session_index;
-      rx_fifo->master_thread_index = vcl_get_worker_index ();
-      tx_fifo->master_thread_index = vcl_get_worker_index ();
-      vec_validate (wrk->vpp_event_queues, 0);
-      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
-      wrk->vpp_event_queues[0] = evt_q;
+      clib_warning("segment for session %u couldn't be mounted!",
+	           session->session_index);
+      return VCL_INVALID_SESSION_INDEX;
     }
-  else
-    {
+
       session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					     svm_msg_q_t *);
       rx_fifo->client_session_index = session->session_index;
@@ -318,7 +326,7 @@ vcl_session_accepted_handler (vcl_worker_t * wrk, session_accepted_msg_t * mp)
       vpp_wrk_index = tx_fifo->master_thread_index;
       vec_validate (wrk->vpp_event_queues, vpp_wrk_index);
       wrk->vpp_event_queues[vpp_wrk_index] = session->vpp_evt_q;
-    }
+//    }
 
   session->vpp_handle = mp->handle;
   session->vpp_thread_index = rx_fifo->master_thread_index;
@@ -356,7 +364,7 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   u32 session_index, vpp_wrk_index;
   svm_fifo_t *rx_fifo, *tx_fifo;
   vcl_session_t *session = 0;
-  svm_msg_q_t *evt_q;
+//  svm_msg_q_t *evt_q;
 
   session_index = mp->context;
   session = vcl_session_get (wrk, session_index);
@@ -390,25 +398,25 @@ vcl_session_connected_handler (vcl_worker_t * wrk,
   rx_fifo->client_thread_index = vcl_get_worker_index ();
   tx_fifo->client_thread_index = vcl_get_worker_index ();
 
-  if (mp->client_event_queue_address)
-    {
-      session->vpp_evt_q = uword_to_pointer (mp->server_event_queue_address,
-					     svm_msg_q_t *);
-      session->our_evt_q = uword_to_pointer (mp->client_event_queue_address,
-					     svm_msg_q_t *);
-
-      vec_validate (wrk->vpp_event_queues, 0);
-      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
-      wrk->vpp_event_queues[0] = evt_q;
-    }
-  else
-    {
+//  if (mp->client_event_queue_address)
+//    {
+//      session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
+//					     svm_msg_q_t *);
+//      session->our_evt_q = uword_to_pointer (mp->client_event_queue_address,
+//					     svm_msg_q_t *);
+//
+//      vec_validate (wrk->vpp_event_queues, 0);
+//      evt_q = uword_to_pointer (mp->vpp_event_queue_address, svm_msg_q_t *);
+//      wrk->vpp_event_queues[0] = evt_q;
+//    }
+//  else
+//    {
       session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					     svm_msg_q_t *);
       vpp_wrk_index = tx_fifo->master_thread_index;
       vec_validate (wrk->vpp_event_queues, vpp_wrk_index);
       wrk->vpp_event_queues[vpp_wrk_index] = session->vpp_evt_q;
-    }
+//    }
 
   session->rx_fifo = rx_fifo;
   session->tx_fifo = tx_fifo;
@@ -1411,10 +1419,10 @@ handle:
 			  sizeof (ip6_address_t));
     }
 
-  if (accepted_msg.server_event_queue_address)
-    vpp_evt_q = uword_to_pointer (accepted_msg.vpp_event_queue_address,
-				  svm_msg_q_t *);
-  else
+//  if (accepted_msg.server_event_queue_address)
+//    vpp_evt_q = uword_to_pointer (accepted_msg.vpp_event_queue_address,
+//				  svm_msg_q_t *);
+//  else
     vpp_evt_q = client_session->vpp_evt_q;
 
   vcl_send_session_accepted_reply (vpp_evt_q, client_session->client_context,
@@ -1801,8 +1809,9 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 	}
     }
 
-  ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
-  et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
+//  ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
+//  et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
+  et = SESSION_IO_EVT_TX;
   if (is_flush && !vcl_session_is_ct (s))
     et = SESSION_IO_EVT_TX_FLUSH;
 
