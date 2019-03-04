@@ -318,6 +318,9 @@ ipsec_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ipsec_tunnel_if_init)))
     return error;
 
+  im->esp4_encrypt_tun_post_node_index =
+    vlib_get_node_by_name (vm, (u8 *) "esp4-encrypt-tun-post")->index;
+
   vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
 
   a = im->crypto_algs + IPSEC_CRYPTO_ALG_DES_CBC;
