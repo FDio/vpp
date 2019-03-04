@@ -545,7 +545,6 @@ vppcom_send_connect_sock (vcl_session_t * session)
   clib_memcpy_fast (cmp->ip, &session->transport.rmt_ip, sizeof (cmp->ip));
   cmp->port = session->transport.rmt_port;
   cmp->proto = session->session_type;
-  clib_memcpy_fast (cmp->options, session->options, sizeof (cmp->options));
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & cmp);
 }
 
@@ -584,7 +583,6 @@ vppcom_send_bind_sock (vcl_session_t * session)
   clib_memcpy_fast (bmp->ip, &session->transport.lcl_ip, sizeof (bmp->ip));
   bmp->port = session->transport.lcl_port;
   bmp->proto = session->session_type;
-  clib_memcpy_fast (bmp->options, session->options, sizeof (bmp->options));
   vl_msg_api_send_shmem (wrk->vl_input_queue, (u8 *) & bmp);
 }
 

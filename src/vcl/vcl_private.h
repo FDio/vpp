@@ -165,8 +165,6 @@ typedef struct
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
   u32 user_mss;			// VPP-TBD: Hack until support setsockopt(TCP_MAXSEG)
-  u8 *segment_name;
-  u32 sm_seg_index;
   u32 client_context;
   u64 vpp_handle;
   u32 vpp_thread_index;
@@ -176,11 +174,9 @@ typedef struct
   u8 is_vep_session;
   u8 has_rx_evt;
   u32 attr;
-  u32 wait_cont_idx;
   vppcom_epoll_t vep;
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
-  u64 options[16];
   vcl_session_msg_t *accept_evts_fifo;
 #if VCL_ELOG
   elog_track_t elog_track;
