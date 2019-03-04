@@ -407,7 +407,7 @@ app_send_ctrl_evt_to_vpp (svm_msg_q_t * mq, app_session_evt_t * app_evt)
  * @return		0 if success, negative integer otherwise
  */
 static inline int
-app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
+app_send_io_evt_to_vpp (svm_msg_q_t * mq, u32 session_index, u8 evt_type,
 			u8 noblock)
 {
   session_event_t *evt;
@@ -429,7 +429,7 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 	  return -2;
 	}
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-      evt->fifo = f;
+      evt->session_index = session_index;
       evt->event_type = evt_type;
       svm_msg_q_add_and_unlock (mq, &msg);
       return 0;
@@ -441,7 +441,7 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 	svm_msg_q_wait (mq);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-      evt->fifo = f;
+      evt->session_index = session_index;
       evt->event_type = evt_type;
       if (svm_msg_q_is_full (mq))
 	svm_msg_q_wait (mq);
@@ -478,7 +478,8 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
   if ((rv = svm_fifo_enqueue_nowait (f, actual_write, data)) > 0)
     {
       if (do_evt && svm_fifo_set_event (f))
-	app_send_io_evt_to_vpp (vpp_evt_q, f, evt_type, noblock);
+	app_send_io_evt_to_vpp (vpp_evt_q, f->master_session_index, evt_type,
+				noblock);
     }
   ASSERT (rv);
   return rv;
@@ -501,7 +502,8 @@ app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
   if ((rv = svm_fifo_enqueue_nowait (f, len, data)) > 0)
     {
       if (do_evt && svm_fifo_set_event (f))
-	app_send_io_evt_to_vpp (vpp_evt_q, f, evt_type, noblock);
+	app_send_io_evt_to_vpp (vpp_evt_q, f->master_session_index, evt_type,
+				noblock);
     }
   return rv;
 }

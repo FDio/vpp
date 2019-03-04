@@ -821,7 +821,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
   session_t *s = wrk->ctx.s;
   application_t *app;
 
-  if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
+  if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
   app = application_get (s->t_app_index);
   svm_fifo_unset_event (s->tx_fifo);
@@ -831,7 +831,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 always_inline session_t *
 session_event_get_session (session_event_t * e, u8 thread_index)
 {
-  return session_get_if_valid (e->fifo->master_session_index, thread_index);
+  return session_get_if_valid (e->session_index, thread_index);
 }
 
 static void
@@ -1103,7 +1103,7 @@ session_node_cmp_event (session_event_t * e, svm_fifo_t * f)
     case SESSION_IO_EVT_RX:
     case SESSION_IO_EVT_TX:
     case SESSION_IO_EVT_BUILTIN_RX:
-      if (e->fifo == f)
+      if (e->session_index == f->master_session_index)
 	return 1;
       break;
     case SESSION_CTRL_EVT_CLOSE:
