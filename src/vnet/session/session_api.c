@@ -150,54 +150,6 @@ send_del_segment_callback (u32 api_client_index, u64 segment_handle)
 }
 
 static int
-send_app_cut_through_registration_add (u32 api_client_index,
-				       u32 wrk_map_index, u64 mq_addr,
-				       u64 peer_mq_addr)
-{
-  vl_api_app_cut_through_registration_add_t *mp;
-  vl_api_registration_t *reg;
-  svm_msg_q_t *mq, *peer_mq;
-  int fds[2];
-
-  reg = vl_mem_api_client_index_to_registration (api_client_index);
-  if (!reg)
-    {
-      clib_warning ("no registration: %u", api_client_index);
-      return -1;
-    }
-
-  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
-  clib_memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id =
-    clib_host_to_net_u16 (VL_API_APP_CUT_THROUGH_REGISTRATION_ADD);
-
-  mp->evt_q_address = mq_addr;
-  mp->peer_evt_q_address = peer_mq_addr;
-  mp->wrk_index = wrk_map_index;
-
-  mq = uword_to_pointer (mq_addr, svm_msg_q_t *);
-  peer_mq = uword_to_pointer (peer_mq_addr, svm_msg_q_t *);
-
-  if (svm_msg_q_get_producer_eventfd (mq) != -1)
-    {
-      mp->fd_flags |= SESSION_FD_F_MQ_EVENTFD;
-      mp->n_fds = 2;
-      /* app will overwrite exactly the fds we pass here. So
-       * when we swap mq with peer_mq (accept vs connect) the
-       * fds will still be valid */
-      fds[0] = svm_msg_q_get_consumer_eventfd (mq);
-      fds[1] = svm_msg_q_get_producer_eventfd (peer_mq);
-    }
-
-  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
-
-  if (mp->n_fds != 0)
-    session_send_fds (reg, fds, mp->n_fds);
-
-  return 0;
-}
-
-static int
 mq_try_lock_and_alloc_msg (svm_msg_q_t * app_mq, svm_msg_q_msg_t * msg)
 {
   int rv;
@@ -268,25 +220,17 @@ mq_send_session_accepted_cb (session_t * s)
     }
   else
     {
-      u8 main_thread = vlib_num_workers ()? 1 : 0;
       ct_connection_t *ct;
 
       ct = (ct_connection_t *) session_get_transport (s);
-      send_app_cut_through_registration_add (app_wrk->api_client_index,
-					     app_wrk->wrk_map_index,
-					     ct->server_evt_q,
-					     ct->client_evt_q);
-
       listener = listen_session_get (s->listener_index);
       al = app_listener_get (app, listener->al_index);
       mp->listener_handle = app_listener_handle (al);
       mp->is_ip4 = session_type_is_ip4 (listener->session_type);
       mp->handle = session_handle (s);
       mp->port = ct->c_rmt_port;
-      vpp_queue = session_main_get_vpp_event_queue (main_thread);
+      vpp_queue = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
-      mp->client_event_queue_address = ct->client_evt_q;
-      mp->server_event_queue_address = ct->server_evt_q;
     }
   svm_msg_q_add_and_unlock (app_mq, msg);
 
@@ -415,26 +359,22 @@ mq_send_session_connected_cb (u32 app_wrk_index, u32 api_context,
     }
   else
     {
-      u8 main_thread = vlib_num_workers ()? 1 : 0;
       ct_connection_t *cct;
       session_t *ss;
 
       cct = (ct_connection_t *) session_get_transport (s);
-      send_app_cut_through_registration_add (app_wrk->api_client_index,
-					     app_wrk->wrk_map_index,
-					     cct->client_evt_q,
-					     cct->server_evt_q);
-
       mp->handle = session_handle (s);
       mp->lcl_port = cct->c_lcl_port;
-      vpp_mq = session_main_get_vpp_event_queue (main_thread);
+      mp->is_ip4 = cct->c_is_ip4;
+      vpp_mq = session_main_get_vpp_event_queue (0);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_mq);
-      mp->client_event_queue_address = cct->client_evt_q;
-      mp->server_event_queue_address = cct->server_evt_q;
+      mp->server_rx_fifo = pointer_to_uword (s->rx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->tx_fifo);
+      mp->segment_handle = session_segment_handle (s);
       ss = ct_session_get_peer (s);
-      mp->server_rx_fifo = pointer_to_uword (ss->tx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (ss->rx_fifo);
-      mp->segment_handle = session_segment_handle (ss);
+      mp->ct_rx_fifo = pointer_to_uword (ss->tx_fifo);
+      mp->ct_tx_fifo = pointer_to_uword (ss->rx_fifo);
+      mp->ct_segment_handle = session_segment_handle (ss);
     }
 
 done:
@@ -505,11 +445,20 @@ done:
   return 0;
 }
 
+static int
+mq_app_tx_callback (session_t * s)
+{
+  if (session_has_transport (s))
+    return 0;
+  return ct_session_tx (s);
+}
+
 static session_cb_vft_t session_mq_cb_vft = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
   .session_connected_callback = mq_send_session_connected_cb,
   .session_reset_callback = mq_send_session_reset_cb,
+  .builtin_app_tx_callback = mq_app_tx_callback,
   .add_segment_callback = send_add_segment_callback,
   .del_segment_callback = send_del_segment_callback,
 };
