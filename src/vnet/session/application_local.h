@@ -27,16 +27,18 @@ typedef struct ct_connection_
   u32 server_wrk;
   u32 transport_listener_index;
   transport_proto_t actual_tp;
-  u64 server_evt_q;
-  u64 client_evt_q;
   u32 client_opaque;
   u32 peer_index;
   u64 segment_handle;
+  svm_fifo_t *client_rx_fifo;
+  svm_fifo_t *client_tx_fifo;
+  u8 is_client;
 } ct_connection_t;
 
 session_t *ct_session_get_peer (session_t * s);
 void ct_session_endpoint (session_t * ll, session_endpoint_t * sep);
 int ct_session_connect_notify (session_t * ls);
+int ct_session_tx (session_t * s);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_LOCAL_H_ */
 

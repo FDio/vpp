@@ -259,8 +259,8 @@ class LDPCutThruTestCase(VCLTestCase):
                                               self.server_port]
 
     def tearDown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.cut_thru_tear_down()
-
         super(LDPCutThruTestCase, self).tearDown()
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")

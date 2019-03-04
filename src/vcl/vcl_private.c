@@ -68,75 +68,6 @@ vcl_wait_for_app_state_change (app_state_t app_state)
   return VPPCOM_ETIMEDOUT;
 }
 
-vcl_cut_through_registration_t *
-vcl_ct_registration_lock_and_alloc (vcl_worker_t * wrk)
-{
-  vcl_cut_through_registration_t *cr;
-  clib_spinlock_lock (&wrk->ct_registration_lock);
-  pool_get (wrk->cut_through_registrations, cr);
-  memset (cr, 0, sizeof (*cr));
-  cr->epoll_evt_conn_index = -1;
-  return cr;
-}
-
-u32
-vcl_ct_registration_index (vcl_worker_t * wrk,
-			   vcl_cut_through_registration_t * ctr)
-{
-  return (ctr - wrk->cut_through_registrations);
-}
-
-void
-vcl_ct_registration_lock (vcl_worker_t * wrk)
-{
-  clib_spinlock_lock (&wrk->ct_registration_lock);
-}
-
-void
-vcl_ct_registration_unlock (vcl_worker_t * wrk)
-{
-  clib_spinlock_unlock (&wrk->ct_registration_lock);
-}
-
-vcl_cut_through_registration_t *
-vcl_ct_registration_get (vcl_worker_t * wrk, u32 ctr_index)
-{
-  if (pool_is_free_index (wrk->cut_through_registrations, ctr_index))
-    return 0;
-  return pool_elt_at_index (wrk->cut_through_registrations, ctr_index);
-}
-
-vcl_cut_through_registration_t *
-vcl_ct_registration_lock_and_lookup (vcl_worker_t * wrk, uword mq_addr)
-{
-  uword *p;
-  clib_spinlock_lock (&wrk->ct_registration_lock);
-  p = hash_get (wrk->ct_registration_by_mq, mq_addr);
-  if (!p)
-    return 0;
-  return vcl_ct_registration_get (wrk, p[0]);
-}
-
-void
-vcl_ct_registration_lookup_add (vcl_worker_t * wrk, uword mq_addr,
-				u32 ctr_index)
-{
-  hash_set (wrk->ct_registration_by_mq, mq_addr, ctr_index);
-}
-
-void
-vcl_ct_registration_lookup_del (vcl_worker_t * wrk, uword mq_addr)
-{
-  hash_unset (wrk->ct_registration_by_mq, mq_addr);
-}
-
-void
-vcl_ct_registration_del (vcl_worker_t * wrk,
-			 vcl_cut_through_registration_t * ctr)
-{
-  pool_put (wrk->cut_through_registrations, ctr);
-}
-
 vcl_mq_evt_conn_t *
 vcl_mq_evt_conn_alloc (vcl_worker_t * wrk)
 {
@@ -235,8 +166,6 @@ vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp)
   if (wrk->mqs_epfd > 0)
     close (wrk->mqs_epfd);
   hash_free (wrk->session_index_by_vpp_handles);
-  hash_free (wrk->ct_registration_by_mq);
-  clib_spinlock_free (&wrk->ct_registration_lock);
   vec_free (wrk->mq_events);
   vec_free (wrk->mq_msg_vector);
   vcl_worker_free (wrk);
@@ -286,8 +215,6 @@ vcl_worker_alloc_and_init ()
     }
 
   wrk->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
-  wrk->ct_registration_by_mq = hash_create (0, sizeof (uword));
-  clib_spinlock_init (&wrk->ct_registration_lock);
   clib_time_init (&wrk->clib_time);
   vec_validate (wrk->mq_events, 64);
   vec_validate (wrk->mq_msg_vector, 128);
@@ -418,6 +345,9 @@ vcl_session_read_ready (vcl_session_t * session)
   if (session->session_state & STATE_LISTEN)
     return clib_fifo_elts (session->accept_evts_fifo);
 
+  if (vcl_session_is_ct (session))
+    return svm_fifo_max_dequeue (session->ct_rx_fifo);
+
   return svm_fifo_max_dequeue (session->rx_fifo);
 }
 
@@ -451,6 +381,9 @@ vcl_session_write_ready (vcl_session_t * session)
 	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
       return rv;
     }
+
+  if (vcl_session_is_ct (session))
+    return svm_fifo_max_enqueue (session->ct_tx_fifo);
 
   return svm_fifo_max_enqueue (session->tx_fifo);
 }

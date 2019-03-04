@@ -187,6 +187,7 @@ typedef struct session_main_
 extern session_main_t session_main;
 extern vlib_node_registration_t session_queue_node;
 extern vlib_node_registration_t session_queue_process_node;
+extern vlib_node_registration_t session_queue_pre_input_node;
 
 #define SESSION_Q_PROCESS_FLUSH_FRAMES	1
 #define SESSION_Q_PROCESS_STOP		2
@@ -196,6 +197,9 @@ session_is_valid (u32 si, u8 thread_index)
 {
   session_t *s;
   s = pool_elt_at_index (session_main.wrk[thread_index].sessions, si);
+  if (s->session_state == SESSION_STATE_CLOSED)
+    return 1;
+
   if (s->thread_index != thread_index || s->session_index != si)
     return 0;
   return 1;
@@ -331,6 +335,7 @@ void session_transport_close (session_t * s);
 void session_transport_cleanup (session_t * s);
 int session_send_io_evt_to_thread (svm_fifo_t * f,
 				   session_evt_type_t evt_type);
+int session_enqueue_notify (session_t * s);
 int session_dequeue_notify (session_t * s);
 int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 					  session_evt_type_t evt_type);
