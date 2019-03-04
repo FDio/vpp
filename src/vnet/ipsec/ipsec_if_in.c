@@ -90,6 +90,192 @@ VLIB_NODE_FN (ipsec_if_input_node) (vlib_main_t * vm,
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+	{
+	  u32 bi0, bi1, next0, next1, sw_if_index0, sw_if_index1;
+	  const esp_header_t *esp0, *esp1;
+	  const ip4_header_t *ip0, *ip1;
+	  vlib_buffer_t *b0, *b1;
+	  uword *p0, *p1;
+	  u32 len0, len1;
+	  u64 key0, key1;
+
+	  /* Prefetch next iteration. */
+	  {
+	    vlib_buffer_t *p2, *p3;
+
+	    p2 = vlib_get_buffer (vm, from[2]);
+	    p3 = vlib_get_buffer (vm, from[3]);
+
+	    vlib_prefetch_buffer_header (p2, STORE);
+	    vlib_prefetch_buffer_header (p3, STORE);
+
+	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), STORE);
+	    CLIB_PREFETCH (p3->data, sizeof (ip0[0]), STORE);
+	  }
+
+	  bi0 = to_next[0] = from[0];
+	  bi1 = to_next[1] = from[1];
+
+	  from += 2;
+	  n_left_from -= 2;
+	  to_next += 2;
+	  n_left_to_next -= 2;
+	  next0 = next1 = IPSEC_INPUT_NEXT_DROP;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+	  ip0 = vlib_buffer_get_current (b0);
+	  ip1 = vlib_buffer_get_current (b1);
+	  esp0 = (const esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
+	  esp1 = (const esp_header_t *) ((u8 *) ip1 + ip4_header_bytes (ip1));
+
+	  key0 = (u64) ip0->src_address.as_u32 << 32 | (u64) esp0->spi;
+	  key1 = (u64) ip1->src_address.as_u32 << 32 | (u64) esp1->spi;
+
+	  p0 = hash_get (im->ipsec_if_pool_index_by_key, key0);
+	  p1 = hash_get (im->ipsec_if_pool_index_by_key, key1);
+
+	  /* stats for the tunnel include all the data after the IP header
+	     just like a norml IP-IP tunnel */
+	  vlib_buffer_advance (b0, ip4_header_bytes (ip0));
+	  vlib_buffer_advance (b1, ip4_header_bytes (ip1));
+	  len0 = vlib_buffer_length_in_chain (vm, b0);
+	  len1 = vlib_buffer_length_in_chain (vm, b1);
+
+	  if (PREDICT_TRUE (NULL != p0))
+	    {
+	      const ipsec_tunnel_if_t *t0;
+
+	      t0 = pool_elt_at_index (im->tunnel_interfaces, p0[0]);
+	      vnet_buffer (b0)->ipsec.sad_index = t0->input_sa_index;
+
+	      if (PREDICT_TRUE (t0->hw_if_index != ~0))
+		{
+		  vnet_buffer (b0)->ipsec.flags = 0;
+		  sw_if_index0 = t0->sw_if_index;
+		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+
+		  if (PREDICT_FALSE
+		      (!(t0->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)))
+		    {
+		      vlib_increment_combined_counter
+			(drop_counter, thread_index, sw_if_index0, 1, len0);
+		      b0->error = node->errors[IPSEC_IF_INPUT_ERROR_DISABLED];
+		      n_disabled++;
+		      goto pkt1;
+		    }
+
+		  if (PREDICT_TRUE (sw_if_index0 == last_sw_if_index))
+		    {
+		      n_packets++;
+		      n_bytes += len0;
+		    }
+		  else
+		    {
+		      if (last_t)
+			{
+			  vlib_increment_combined_counter
+			    (rx_counter, thread_index, sw_if_index0,
+			     n_packets, n_bytes);
+			}
+
+		      last_sw_if_index = sw_if_index0;
+		      last_t = t0;
+		      n_packets = 1;
+		      n_bytes = len0;
+		    }
+		}
+	      else
+		{
+		  vnet_buffer (b0)->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
+		}
+
+	      next0 = im->esp4_decrypt_next_index;
+	    }
+	  else
+	    {
+	      b0->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+	      n_no_tunnel++;
+	    }
+
+	pkt1:
+	  if (PREDICT_TRUE (NULL != p1))
+	    {
+	      const ipsec_tunnel_if_t *t1;
+
+	      t1 = pool_elt_at_index (im->tunnel_interfaces, p1[0]);
+	      vnet_buffer (b1)->ipsec.sad_index = t1->input_sa_index;
+
+	      if (PREDICT_TRUE (t1->hw_if_index != ~0))
+		{
+		  vnet_buffer (b1)->ipsec.flags = 0;
+		  sw_if_index1 = t1->sw_if_index;
+		  vnet_buffer (b1)->sw_if_index[VLIB_RX] = sw_if_index1;
+
+		  if (PREDICT_FALSE
+		      (!(t1->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)))
+		    {
+		      vlib_increment_combined_counter
+			(drop_counter, thread_index, sw_if_index1, 1, len1);
+		      b1->error = node->errors[IPSEC_IF_INPUT_ERROR_DISABLED];
+		      n_disabled++;
+		      goto trace1;
+		    }
+
+		  if (PREDICT_TRUE (sw_if_index1 == last_sw_if_index))
+		    {
+		      n_packets++;
+		      n_bytes += len1;
+		    }
+		  else
+		    {
+		      if (last_t)
+			{
+			  vlib_increment_combined_counter
+			    (rx_counter, thread_index, sw_if_index1,
+			     n_packets, n_bytes);
+			}
+
+		      last_sw_if_index = sw_if_index1;
+		      last_t = t1;
+		      n_packets = 1;
+		      n_bytes = len1;
+		    }
+		}
+	      else
+		{
+		  vnet_buffer (b1)->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
+		}
+
+	      next1 = im->esp4_decrypt_next_index;
+	    }
+	  else
+	    {
+	      b1->error = node->errors[IPSEC_IF_INPUT_ERROR_NO_TUNNEL];
+	      n_no_tunnel++;
+	    }
+
+	trace1:
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ipsec_if_input_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->spi = clib_host_to_net_u32 (esp0->spi);
+	      tr->seq = clib_host_to_net_u32 (esp0->seq);
+	    }
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      ipsec_if_input_trace_t *tr =
+		vlib_add_trace (vm, node, b1, sizeof (*tr));
+	      tr->spi = clib_host_to_net_u32 (esp1->spi);
+	      tr->seq = clib_host_to_net_u32 (esp1->seq);
+	    }
+
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next,
+					   bi0, bi1, next0, next1);
+	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0, next0, sw_if_index0;
