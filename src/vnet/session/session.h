@@ -187,6 +187,7 @@ typedef struct session_main_
 extern session_main_t session_main;
 extern vlib_node_registration_t session_queue_node;
 extern vlib_node_registration_t session_queue_process_node;
+extern vlib_node_registration_t session_queue_pre_input_node;
 
 #define SESSION_Q_PROCESS_FLUSH_FRAMES	1
 #define SESSION_Q_PROCESS_STOP		2

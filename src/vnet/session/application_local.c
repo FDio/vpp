@@ -18,7 +18,26 @@
 
 ct_connection_t *connections;
 
-ct_connection_t *
+static void
+ct_check_main_input (u8 is_add)
+{
+  u32 n_conns;
+
+  n_conns = pool_elts (connections);
+  if (n_conns > 2)
+    return;
+
+  if (n_conns > 0 && is_add)
+    vlib_node_set_state (vlib_get_main (),
+                         session_queue_pre_input_node.index,
+                         VLIB_NODE_STATE_POLLING);
+  else if (n_conns == 0)
+    vlib_node_set_state (vlib_get_main (),
+                         session_queue_pre_input_node.index,
+                         VLIB_NODE_STATE_DISABLED);
+}
+
+static ct_connection_t *
 ct_connection_alloc (void)
 {
   ct_connection_t *ct;
@@ -31,7 +50,7 @@ ct_connection_alloc (void)
   return ct;
 }
 
-ct_connection_t *
+static ct_connection_t *
 ct_connection_get (u32 ct_index)
 {
   if (pool_is_free_index (connections, ct_index))
@@ -39,7 +58,7 @@ ct_connection_get (u32 ct_index)
   return pool_elt_at_index (connections, ct_index);
 }
 
-void
+static void
 ct_connection_free (ct_connection_t * ct)
 {
   if (CLIB_DEBUG)
@@ -152,7 +171,7 @@ ct_session_fix_eventds (svm_msg_q_t * sq, svm_msg_q_t * cq)
   svm_msg_q_set_consumer_eventfd (cq, fd);
 }
 
-int
+static int
 ct_init_local_session (app_worker_t * client_wrk, app_worker_t * server_wrk,
 		       ct_connection_t * ct, session_t * ls, session_t * ll)
 {
@@ -228,7 +247,7 @@ failed:
   return rv;
 }
 
-int
+static int
 ct_connect (app_worker_t * client_wrk, session_t * ll,
 	    session_endpoint_cfg_t * sep)
 {
@@ -309,11 +328,11 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
   cct->client_evt_q = sct->client_evt_q;
   cct->server_evt_q = sct->server_evt_q;
   cct->segment_handle = sct->segment_handle;
-
+  ct_check_main_input (1 /* is_add */);
   return 0;
 }
 
-u32
+static u32
 ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
 {
   session_endpoint_cfg_t *sep;
@@ -326,25 +345,27 @@ ct_start_listen (u32 app_listener_index, transport_endpoint_t * tep)
   clib_memcpy (&ct->c_lcl_ip, &sep->ip, sizeof (sep->ip));
   ct->c_lcl_port = sep->port;
   ct->actual_tp = sep->transport_proto;
+  ct_check_main_input (1 /* is_add */);
   return ct->c_c_index;
 }
 
-u32
+static u32
 ct_stop_listen (u32 ct_index)
 {
   ct_connection_t *ct;
   ct = ct_connection_get (ct_index);
   ct_connection_free (ct);
+  ct_check_main_input (0 /* is_add */);
   return 0;
 }
 
-transport_connection_t *
+static transport_connection_t *
 ct_listener_get (u32 ct_index)
 {
   return (transport_connection_t *) ct_connection_get (ct_index);
 }
 
-int
+static int
 ct_session_connect (transport_endpoint_cfg_t * tep)
 {
   session_endpoint_cfg_t *sep_ext;
@@ -407,7 +428,7 @@ global_scope:
   return 1;
 }
 
-void
+static void
 ct_session_close (u32 ct_index, u32 thread_index)
 {
   ct_connection_t *ct, *peer_ct;
@@ -426,9 +447,10 @@ ct_session_close (u32 ct_index, u32 thread_index)
 				 ct->segment_handle);
   session_free_w_fifos (s);
   ct_connection_free (ct);
+  ct_check_main_input (0 /* is_add */);
 }
 
-transport_connection_t *
+static transport_connection_t *
 ct_session_get (u32 ct_index, u32 thread_index)
 {
   return (transport_connection_t *) ct_connection_get (ct_index);
@@ -460,7 +482,7 @@ format_ct_connection_id (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_ct_listener (u8 * s, va_list * args)
 {
   u32 tc_index = va_arg (*args, u32);
@@ -472,7 +494,7 @@ format_ct_listener (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_ct_connection (u8 * s, va_list * args)
 {
   ct_connection_t *ct = va_arg (*args, ct_connection_t *);
@@ -492,7 +514,7 @@ format_ct_connection (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_ct_session (u8 * s, va_list * args)
 {
   u32 ct_index = va_arg (*args, u32);
