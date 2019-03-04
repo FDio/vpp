@@ -18,6 +18,47 @@
 #include <vnet/crypto/crypto.h>
 
 static clib_error_t *
+set_crypto_async_mode_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  u8 is_enabled = 1;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	is_enabled = 1;
+      else if (unformat (line_input, "off"))
+	is_enabled = 0;
+      else
+	{
+	  error = clib_error_return (0, "invalid params");
+	  goto done;
+	}
+    }
+
+  vnet_crypto_async_mode_enable_disable (is_enabled);
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_crypto_async_mode_command, static) =
+{
+  .path = "set crypto async mode",
+  .short_help = "set crypto async mode [on|off]",
+  .function = set_crypto_async_mode_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
 show_crypto_engines_command_fn (vlib_main_t * vm,
 				unformat_input_t * input,
 				vlib_cli_command_t * cmd)
