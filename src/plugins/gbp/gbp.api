@@ -344,6 +344,7 @@ typedef gbp_vxlan_tunnel
   u32 vni;
   vl_api_gbp_vxlan_tunnel_mode_t mode;
   u32 bd_rd_id;
+  vl_api_ip4_address_t src;
 };
 
 define gbp_vxlan_tunnel_add

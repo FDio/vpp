@@ -3715,14 +3715,15 @@ class VppPapiProvider(object):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
 
-    def gbp_vxlan_tunnel_add(self, vni, bd_rd_id, mode):
+    def gbp_vxlan_tunnel_add(self, vni, bd_rd_id, mode, src):
         """ GBP VXLAN tunnel add """
         return self.api(self.papi.gbp_vxlan_tunnel_add,
                         {
                             'tunnel': {
                                 'vni': vni,
                                 'mode': mode,
-                                'bd_rd_id': bd_rd_id
+                                'bd_rd_id': bd_rd_id,
+                                'src': src
                             }
                         })
 

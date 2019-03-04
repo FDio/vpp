@@ -14,15 +14,18 @@
  */
 
 #include "vom/gbp_vxlan_cmds.hpp"
+#include "vom/api_types.hpp"
 
 namespace VOM {
 namespace gbp_vxlan_cmds {
 create_cmd::create_cmd(HW::item<handle_t>& item,
                        const std::string& name,
+                       const boost::asio::ip::address_v4& src,
                        uint32_t vni,
                        bool is_l2,
                        uint32_t bd_rd)
   : interface::create_cmd<vapi::Gbp_vxlan_tunnel_add>(item, name)
+  , m_src(src)
   , m_vni(vni)
   , m_is_l2(is_l2)
   , m_bd_rd(bd_rd)
@@ -42,6 +45,7 @@ create_cmd::issue(connection& con)
     payload.tunnel.mode = GBP_VXLAN_TUNNEL_MODE_L2;
   else
     payload.tunnel.mode = GBP_VXLAN_TUNNEL_MODE_L3;
+  to_api(m_src, payload.tunnel.src);
 
   VAPI_CALL(req.execute());
 
