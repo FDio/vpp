@@ -294,41 +294,6 @@ vl_api_unmap_segment_t_handler (vl_api_unmap_segment_t * mp)
 }
 
 static void
-  vl_api_app_cut_through_registration_add_t_handler
-  (vl_api_app_cut_through_registration_add_t * mp)
-{
-  vcl_cut_through_registration_t *ctr;
-  u32 mqc_index = ~0;
-  vcl_worker_t *wrk;
-  int *fds = 0;
-
-  if (mp->n_fds)
-    {
-      ASSERT (mp->n_fds == 2);
-      vec_validate (fds, mp->n_fds);
-      vl_socket_client_recv_fd_msg (fds, mp->n_fds, 5);
-    }
-
-  wrk = vcl_worker_get (mp->wrk_index);
-  ctr = vcl_ct_registration_lock_and_alloc (wrk);
-  ctr->mq = uword_to_pointer (mp->evt_q_address, svm_msg_q_t *);
-  ctr->peer_mq = uword_to_pointer (mp->peer_evt_q_address, svm_msg_q_t *);
-  VDBG (0, "Adding ct registration %u", vcl_ct_registration_index (wrk, ctr));
-
-  if (mp->n_fds && (mp->fd_flags & SESSION_FD_F_MQ_EVENTFD))
-    {
-      svm_msg_q_set_consumer_eventfd (ctr->mq, fds[0]);
-      svm_msg_q_set_producer_eventfd (ctr->peer_mq, fds[1]);
-      mqc_index = vcl_mq_epoll_add_evfd (wrk, ctr->mq);
-      ctr->epoll_evt_conn_index = mqc_index;
-      vec_free (fds);
-    }
-  vcl_ct_registration_lookup_add (wrk, mp->evt_q_address,
-				  vcl_ct_registration_index (wrk, ctr));
-  vcl_ct_registration_unlock (wrk);
-}
-
-static void
 vl_api_bind_sock_reply_t_handler (vl_api_bind_sock_reply_t * mp)
 {
   /* Expecting a similar message on mq. So ignore this */
@@ -400,7 +365,6 @@ _(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)  	\
 _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)  	\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)                     	\
 _(UNMAP_SEGMENT, unmap_segment)						\
-_(APP_CUT_THROUGH_REGISTRATION_ADD, app_cut_through_registration_add)	\
 _(APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)			\
 
 void

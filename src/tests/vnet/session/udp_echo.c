@@ -510,39 +510,14 @@ session_accepted_handler (session_accepted_msg_t * mp)
   session_index = session - utm->sessions;
   session->session_index = session_index;
 
-  /* Cut-through case */
-  if (mp->server_event_queue_address)
-    {
-      clib_warning ("cut-through session");
-      session->vpp_evt_q = uword_to_pointer (mp->client_event_queue_address,
-					     svm_msg_q_t *);
-      sleep (1);
-      rx_fifo->master_session_index = session_index;
-      tx_fifo->master_session_index = session_index;
-      utm->cut_through_session_index = session_index;
-      session->rx_fifo = rx_fifo;
-      session->tx_fifo = tx_fifo;
-      session->is_dgram = 0;
-
-      rv = pthread_create (&utm->cut_through_thread_handle,
-			   NULL /*attr */ , cut_through_thread_fn, 0);
-      if (rv)
-	{
-	  clib_warning ("pthread_create returned %d", rv);
-	  rv = VNET_API_ERROR_SYSCALL_ERROR_1;
-	}
-    }
-  else
-    {
-      rx_fifo->client_session_index = session_index;
-      tx_fifo->client_session_index = session_index;
-      session->rx_fifo = rx_fifo;
-      session->tx_fifo = tx_fifo;
-      clib_memcpy_fast (&session->transport.rmt_ip, mp->ip,
-			sizeof (ip46_address_t));
-      session->transport.is_ip4 = mp->is_ip4;
-      session->transport.rmt_port = mp->port;
-    }
+  rx_fifo->client_session_index = session_index;
+  tx_fifo->client_session_index = session_index;
+  session->rx_fifo = rx_fifo;
+  session->tx_fifo = tx_fifo;
+  clib_memcpy_fast (&session->transport.rmt_ip, mp->ip,
+		    sizeof (ip46_address_t));
+  session->transport.is_ip4 = mp->is_ip4;
+  session->transport.rmt_port = mp->port;
 
   hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
   if (pool_elts (utm->sessions) && (pool_elts (utm->sessions) % 20000) == 0)
@@ -623,18 +598,17 @@ session_connected_handler (session_connected_msg_t * mp)
   session->tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
 
   /* Cut-through case */
-  if (mp->client_event_queue_address)
+  if (mp->ct_rx_fifo)
     {
       clib_warning ("cut-through session");
-      session->vpp_evt_q = uword_to_pointer (mp->server_event_queue_address,
+      session->vpp_evt_q = uword_to_pointer (mp->vpp_event_queue_address,
 					     svm_msg_q_t *);
-      utm->ct_event_queue = uword_to_pointer (mp->client_event_queue_address,
-					      svm_msg_q_t *);
       utm->cut_through_session_index = session->session_index;
       session->is_dgram = 0;
       sleep (1);
       session->rx_fifo->client_session_index = session->session_index;
       session->tx_fifo->client_session_index = session->session_index;
+      /* TODO use ct fifos */
     }
   else
     {
@@ -1087,10 +1061,8 @@ server_handle_event_queue (udp_echo_main_t * utm)
       e = svm_msg_q_msg_data (mq, &msg);
       switch (e->event_type)
 	{
-	case FIFO_EVENT_APP_RX:
+	case SESSION_IO_EVT_RX:
 	  server_handle_fifo_event_rx (utm, e->fifo->client_session_index);
-	  break;
-	case SESSION_IO_EVT_CT_TX:
 	  break;
 
 	default:
