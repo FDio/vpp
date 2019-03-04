@@ -525,13 +525,15 @@ application_alloc_and_init (app_init_args_t * a)
     }
   else
     {
-      if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
-	{
-	  clib_warning ("mq eventfds can only be used if socket transport is "
-			"used for api");
-	  return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
-	}
       seg_type = SSVM_SEGMENT_PRIVATE;
+    }
+
+  if ((options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_EVT_MQ_USE_EVENTFD)
+      && seg_type != SSVM_SEGMENT_MEMFD)
+    {
+      clib_warning ("mq eventfds can only be used if socket transport is "
+		    "used for binary api");
+      return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
     }
 
   if (!application_verify_cfg (seg_type))
