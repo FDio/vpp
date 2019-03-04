@@ -1,0 +1,62 @@
+
+loop create
+loop create
+loop create
+loop create
+
+pipe create
+
+create bridge 1
+create bridge 2
+
+set int l2 bridge loop1 1 bvi
+set int l2 bridge loop2 2 bvi
+set int l2 bridge pipe0.0 1
+set int l2 bridge pipe0.1 2
+
+ip table add 1
+set int ip table loop2 1
+set int ip table loop3 1
+
+set int ip address loop0 192.168.0.1/24
+set int ip address loop3 192.168.1.1/24
+
+set int ip address loop1 10.0.0.1/24
+set int ip address loop2 10.0.0.2/24
+
+set int state loop0 up
+set int state loop1 up
+set int state loop2 up
+set int state loop3 up
+set int state pipe0 up
+
+create ipsec tunnel local-ip 10.0.0.1 remote-ip 10.0.0.2 local-spi 100 remote-spi 101 local-crypto-key A11E51E5B1E0 remote-crypto-key A11E51E5B1E0 crypto-alg aes-cbc-128
+
+set int state ipsec0 up
+set int unnum ipsec0 use loop0
+
+create ipsec tunnel local-ip 10.0.0.2 remote-ip 10.0.0.1 local-spi 101 remote-spi 100 tx-table 1 local-crypto-key A11E51E5B1E0 remote-crypto-key A11E51E5B1E0 crypto-alg aes-cbc-128 
+
+set int state ipsec1 up
+set int ip table ipsec1 1
+set int unnum ipsec1 use loop1
+
+ip route add 192.168.1.0/24 via ipsec0
+set ip arp loop3 192.168.1.2 00:11:22:33:44:55
+
+trace add pg-input 100
+
+packet-generator new {
+  name udp
+  limit 1
+  rate 1e4
+  node ip4-input
+  size 100-100
+  interface loop0
+  data {
+   UDP: 192.168.0.2 -> 192.168.1.2
+   UDP: 4321 -> 1234
+    length 72
+    incrementing 100
+  }
+}
