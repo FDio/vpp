@@ -1892,9 +1892,9 @@ class TestGBP(VppTestCase):
         #
         vlan_11 = VppDot1QSubint(self, self.pg0, 11)
         vlan_11.admin_up()
-        self.vapi.sw_interface_set_l2_tag_rewrite(vlan_11.sw_if_index,
-                                                  L2_VTR_OP.L2_POP_1,
-                                                  11)
+        self.vapi.l2_interface_vlan_tag_rewrite(vlan_11.sw_if_index,
+                                                L2_VTR_OP.L2_POP_1,
+                                                11)
 
         bd_uu_fwd = VppVxlanGbpTunnel(self, self.pg3.local_ip4,
                                       self.pg3.remote_ip4, 116)

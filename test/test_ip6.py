@@ -1345,7 +1345,7 @@ class IPv6NDProxyTest(TestIPv6ND):
         #
         # Add proxy support for the host
         #
-        self.vapi.ip6_nd_proxy(
+        self.vapi.ip6nd_proxy_add_del(
             inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
             self.pg1.sw_if_index)
 
@@ -1412,7 +1412,7 @@ class IPv6NDProxyTest(TestIPv6ND):
                   ICMPv6NDOptSrcLLAddr(
                       lladdr=self.pg0._remote_hosts[2].mac))
 
-        self.vapi.ip6_nd_proxy(
+        self.vapi.ip6nd_proxy_add_del(
             inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
             self.pg2.sw_if_index)
 
@@ -1452,11 +1452,11 @@ class IPv6NDProxyTest(TestIPv6ND):
         #
         # remove the proxy configs
         #
-        self.vapi.ip6_nd_proxy(
+        self.vapi.ip6nd_proxy_add_del(
             inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
             self.pg1.sw_if_index,
             is_del=1)
-        self.vapi.ip6_nd_proxy(
+        self.vapi.ip6nd_proxy_add_del(
             inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
             self.pg2.sw_if_index,
             is_del=1)

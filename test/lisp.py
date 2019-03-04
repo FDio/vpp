@@ -19,7 +19,7 @@ class VppLispLocatorSet(VppObject):
         return self._ls_name
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_locator_set(ls_name=self._ls_name)
+        self.test.vapi.lisp_add_del_locator_set(ls_name=self._ls_name)
         self._test.registry.register(self, self.test.logger)
 
     def get_lisp_locator_sets_dump_entry(self):
@@ -33,7 +33,8 @@ class VppLispLocatorSet(VppObject):
         return self.get_lisp_locator_sets_dump_entry() is not None
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_locator_set(ls_name=self._ls_name, is_add=0)
+        self.test.vapi.lisp_add_del_locator_set(ls_name=self._ls_name,
+                                                is_add=0)
 
     def object_id(self):
         return 'lisp-locator-set-%s' % self._ls_name
@@ -72,10 +73,10 @@ class VppLispLocator(VppObject):
         return self._weight
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_locator(ls_name=self._ls_name,
-                                    sw_if_index=self._sw_if_index,
-                                    priority=self._priority,
-                                    weight=self._weight)
+        self.test.vapi.lisp_add_del_locator(ls_name=self._ls_name,
+                                            sw_if_index=self._sw_if_index,
+                                            priority=self._priority,
+                                            weight=self._weight)
         self._test.registry.register(self, self.test.logger)
 
     def get_lisp_locator_dump_entry(self):
@@ -91,7 +92,7 @@ class VppLispLocator(VppObject):
         return locator is not None
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_locator(
+        self.test.vapi.lisp_add_del_locator(
                 ls_name=self._ls_name, sw_if_index=self._sw_if_index,
                 priority=self._priority, weight=self._weight, is_add=0)
         self._test.registry.register(self, self.test.logger)
@@ -212,14 +213,14 @@ class VppLocalMapping(VppLispMapping):
         return self._key
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_local_mapping(
+        self.test.vapi.lisp_add_del_local_eid(
                 ls_name=self._ls_name, eid_type=self._eid.eid_type,
                 eid=str(self._eid), prefix_len=self._eid.prefix_length,
                 vni=self._vni, key_id=self._key_id, key=self._key)
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_local_mapping(
+        self.test.vapi.lisp_add_del_local_eid(
                 ls_name=self._ls_name, eid_type=self._eid.eid_type,
                 eid=str(self._eid), prefix_len=self._eid.prefix_length,
                 vni=self._vni, is_add=0)
@@ -240,14 +241,14 @@ class VppRemoteMapping(VppLispMapping):
         return self._rlocs
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_remote_mapping(
+        self.test.vapi.lisp_add_del_remote_mapping(
                 rlocs=self._rlocs, eid_type=self._eid.eid_type,
                 eid=str(self._eid), eid_prefix_len=self._eid.prefix_length,
                 vni=self._vni, rlocs_num=len(self._rlocs))
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_remote_mapping(
+        self.test.vapi.lisp_add_del_remote_mapping(
                 eid_type=self._eid.eid_type, eid=str(self._eid),
                 eid_prefix_len=self._eid.prefix_length, vni=self._vni,
                 is_add=0, rlocs_num=0)
@@ -284,7 +285,7 @@ class VppLispAdjacency(VppObject):
         return self._vni
 
     def add_vpp_config(self):
-        self.test.vapi.lisp_adjacency(
+        self.test.vapi.lisp_add_del_adjacency(
                 leid=str(self._leid),
                 reid=str(self._reid), eid_type=self._leid.eid_type,
                 leid_len=self._leid.prefix_length,
@@ -316,7 +317,7 @@ class VppLispAdjacency(VppObject):
         return False
 
     def remove_vpp_config(self):
-        self.test.vapi.lisp_adjacency(
+        self.test.vapi.lisp_add_del_adjacency(
                 leid=str(self._leid),
                 reid=str(self._reid), eid_type=self._leid.eid_type,
                 leid_len=self._leid.prefix_length,

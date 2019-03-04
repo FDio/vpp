@@ -1213,7 +1213,7 @@ class TestDHCP(VppTestCase):
         #
         # Configure DHCP client on PG3 and capture the discover sent
         #
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname)
 
         rx = self.pg3.get_capture(1)
 
@@ -1283,7 +1283,7 @@ class TestDHCP(VppTestCase):
         #
         # remove the DHCP config
         #
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname, is_add=0)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname, is_add=0)
 
         #
         # and now the route should be gone
@@ -1297,8 +1297,8 @@ class TestDHCP(VppTestCase):
         self.pg3.admin_down()
         self.sleep(1)
         self.pg3.admin_up()
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname,
-                              client_id=self.pg3.local_mac)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname,
+                                     client_id=self.pg3.local_mac)
 
         rx = self.pg3.get_capture(1)
 
@@ -1355,7 +1355,7 @@ class TestDHCP(VppTestCase):
         #
         # remove the DHCP config
         #
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname, is_add=0)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname, is_add=0)
 
         self.assertFalse(find_route(self, self.pg3.local_ip4, 32))
         self.assertFalse(find_route(self, self.pg3.local_ip4, 24))
@@ -1367,8 +1367,8 @@ class TestDHCP(VppTestCase):
         #
         # Configure DHCP client on PG3 and capture the discover sent
         #
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname,
-                              set_broadcast_flag=0)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname,
+                                     set_broadcast_flag=0)
 
         rx = self.pg3.get_capture(1)
 
@@ -1462,7 +1462,7 @@ class TestDHCP(VppTestCase):
         #
         # remove the DHCP config
         #
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname, is_add=0)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname, is_add=0)
 
         #
         # and now the route should be gone
@@ -1476,7 +1476,7 @@ class TestDHCP(VppTestCase):
         self.pg3.admin_down()
         self.sleep(1)
         self.pg3.admin_up()
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname)
 
         rx = self.pg3.get_capture(1)
 
@@ -1553,7 +1553,7 @@ class TestDHCP(VppTestCase):
         #
         # remove the DHCP config
         #
-        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname, is_add=0)
+        self.vapi.dhcp_client_config(self.pg3.sw_if_index, hostname, is_add=0)
 
 
 if __name__ == '__main__':

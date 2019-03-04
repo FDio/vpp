@@ -333,25 +333,29 @@ class VppInterface(object):
 
     def disable_ipv6_ra(self):
         """Configure IPv6 RA suppress on the VPP interface."""
-        self.test.vapi.sw_interface_ra_suppress(self.sw_if_index)
+        self.test.vapi.sw_interface_ip6nd_ra_config(
+            sw_if_index=self.sw_if_index,
+            suppress=1)
 
     def ip6_ra_config(self, no=0, suppress=0, send_unicast=0):
         """Configure IPv6 RA suppress on the VPP interface."""
-        self.test.vapi.ip6_sw_interface_ra_config(self.sw_if_index,
-                                                  no,
-                                                  suppress,
-                                                  send_unicast)
+        self.test.vapi.sw_interface_ip6nd_ra_config(
+            sw_if_index=self.sw_if_index,
+            is_no=no,
+            suppress=suppress,
+            send_unicast=send_unicast)
 
     def ip6_ra_prefix(self, address, address_length, is_no=0,
                       off_link=0, no_autoconfig=0, use_default=0):
         """Configure IPv6 RA suppress on the VPP interface."""
-        self.test.vapi.ip6_sw_interface_ra_prefix(self.sw_if_index,
-                                                  address,
-                                                  address_length,
-                                                  is_no=is_no,
-                                                  off_link=off_link,
-                                                  no_autoconfig=no_autoconfig,
-                                                  use_default=use_default)
+        self.test.vapi.sw_interface_ip6nd_ra_prefix(
+            self.sw_if_index,
+            address,
+            address_length,
+            is_no=is_no,
+            off_link=off_link,
+            no_autoconfig=no_autoconfig,
+            use_default=use_default)
 
     def admin_up(self):
         """Put interface ADMIN-UP."""
@@ -365,12 +369,12 @@ class VppInterface(object):
 
     def ip6_enable(self):
         """IPv6 Enable interface"""
-        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index,
+        self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index,
                                                        enable=1)
 
     def ip6_disable(self):
         """Put interface ADMIN-DOWN."""
-        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index,
+        self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index,
                                                        enable=0)
 
     def add_sub_if(self, sub_if):
@@ -388,12 +392,12 @@ class VppInterface(object):
 
     def enable_mpls(self):
         """Enable MPLS on the VPP interface."""
-        self.test.vapi.sw_interface_enable_disable_mpls(
+        self.test.vapi.sw_interface_set_mpls_enable(
             self.sw_if_index)
 
     def disable_mpls(self):
         """Enable MPLS on the VPP interface."""
-        self.test.vapi.sw_interface_enable_disable_mpls(
+        self.test.vapi.sw_interface_set_mpls_enable(
             self.sw_if_index, 0)
 
     def is_ip4_entry_in_fib_dump(self, dump):

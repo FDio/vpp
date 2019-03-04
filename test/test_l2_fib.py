@@ -482,7 +482,7 @@ class TestL2fib(VppTestCase):
         bd1 = 1
         hosts = self.create_hosts(10, subnet=39)
 
-        self.vapi.want_macs_learn_events()
+        self.vapi.want_l2_macs_events()
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
@@ -493,7 +493,7 @@ class TestL2fib(VppTestCase):
             if e.mac[i].action == MAC_EVENT_ACTION_ADD}
         macs = {h.bin_mac for swif in self.bd_ifs(bd1)
                 for h in hosts[self.pg_interfaces[swif].sw_if_index]}
-        self.vapi.want_macs_learn_events(enable_disable=0)
+        self.vapi.want_l2_macs_events(enable_disable=0)
         self.assertEqual(len(learned_macs ^ macs), 0)
 
     def test_l2_fib_macs_learn_max(self):
@@ -503,13 +503,13 @@ class TestL2fib(VppTestCase):
         hosts = self.create_hosts(10, subnet=40)
 
         ev_macs = 1
-        self.vapi.want_macs_learn_events(max_macs_in_event=ev_macs)
+        self.vapi.want_l2_macs_events(max_macs_in_event=ev_macs)
         self.learn_hosts(bd1, hosts)
 
         self.sleep(1)
         self.logger.info(self.vapi.ppcli("show l2fib"))
         evs = self.vapi.collect_events()
-        self.vapi.want_macs_learn_events(enable_disable=0)
+        self.vapi.want_l2_macs_events(enable_disable=0)
 
         self.assertGreater(len(evs), 0)
         learned_macs = {

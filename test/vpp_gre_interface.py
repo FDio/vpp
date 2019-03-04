@@ -21,7 +21,7 @@ class VppGreInterface(VppInterface):
     def add_vpp_config(self):
         s = socket.inet_pton(socket.AF_INET, self.t_src)
         d = socket.inet_pton(socket.AF_INET, self.t_dst)
-        r = self.test.vapi.gre_tunnel_add_del(s, d,
+        r = self.test.vapi.gre_add_del_tunnel(s, d,
                                               outer_fib_id=self.t_outer_fib,
                                               tunnel_type=self.t_type,
                                               session_id=self.t_session)
@@ -33,7 +33,7 @@ class VppGreInterface(VppInterface):
         s = socket.inet_pton(socket.AF_INET, self.t_src)
         d = socket.inet_pton(socket.AF_INET, self.t_dst)
         self.unconfig()
-        self.test.vapi.gre_tunnel_add_del(s, d,
+        self.test.vapi.gre_add_del_tunnel(s, d,
                                           outer_fib_id=self.t_outer_fib,
                                           tunnel_type=self.t_type,
                                           session_id=self.t_session,
@@ -64,7 +64,7 @@ class VppGre6Interface(VppInterface):
     def add_vpp_config(self):
         s = socket.inet_pton(socket.AF_INET6, self.t_src)
         d = socket.inet_pton(socket.AF_INET6, self.t_dst)
-        r = self.test.vapi.gre_tunnel_add_del(s, d,
+        r = self.test.vapi.gre_add_del_tunnel(s, d,
                                               outer_fib_id=self.t_outer_fib,
                                               tunnel_type=self.t_type,
                                               session_id=self.t_session,
@@ -77,7 +77,7 @@ class VppGre6Interface(VppInterface):
         s = socket.inet_pton(socket.AF_INET6, self.t_src)
         d = socket.inet_pton(socket.AF_INET6, self.t_dst)
         self.unconfig()
-        self.test.vapi.gre_tunnel_add_del(s, d,
+        self.test.vapi.gre_add_del_tunnel(s, d,
                                           outer_fib_id=self.t_outer_fib,
                                           tunnel_type=self.t_type,
                                           session_id=self.t_session,

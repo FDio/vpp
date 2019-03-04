@@ -37,8 +37,8 @@ class P2PEthernetAPI(VppTestCase):
         self.p2p_sub_ifs.append(p2p)
 
     def delete_p2p_ethernet(self, parent_if, remote_mac):
-        self.vapi.delete_p2pethernet_subif(parent_if.sw_if_index,
-                                           mac_pton(remote_mac))
+        self.vapi.p2p_ethernet_del(parent_if.sw_if_index,
+                                   mac_pton(remote_mac))
 
     def test_api(self):
         """delete/create p2p subif"""
@@ -78,9 +78,9 @@ class P2PEthernetAPI(VppTestCase):
         for i in range(1, clients+1):
             try:
                 macs.append(':'.join(re.findall('..', '{:02x}'.format(mac+i))))
-                self.vapi.create_p2pethernet_subif(self.pg2.sw_if_index,
-                                                   mac_pton(macs[i-1]),
-                                                   i)
+                self.vapi.p2p_ethernet_add(self.pg2.sw_if_index,
+                                           mac_pton(macs[i-1]),
+                                           i)
             except Exception:
                 self.logger.info("Failed to create subif %d %s" % (
                     i, macs[i-1]))
@@ -153,8 +153,8 @@ class P2PEthernetIPV6(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip6()
         p2p.admin_down()
-        self.vapi.delete_p2pethernet_subif(p2p.parent.sw_if_index,
-                                           p2p.p2p_remote_mac)
+        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
+                                   p2p.p2p_remote_mac)
 
     def create_stream(self, src_mac=None, dst_mac=None,
                       src_ip=None, dst_ip=None, size=None):
@@ -397,8 +397,8 @@ class P2PEthernetIPV4(VppTestCase):
     def delete_p2p_ethernet(self, p2p):
         p2p.unconfig_ip4()
         p2p.admin_down()
-        self.vapi.delete_p2pethernet_subif(p2p.parent.sw_if_index,
-                                           p2p.p2p_remote_mac)
+        self.vapi.p2p_ethernet_del(p2p.parent.sw_if_index,
+                                   p2p.p2p_remote_mac)
 
     def test_ip4_rx_p2p_subif(self):
         """receive ipv4 packet via p2p subinterface"""

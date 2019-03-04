@@ -103,12 +103,13 @@ class MethodHolder(VppTestCase):
 
         interfaces = self.vapi.nat44_interface_addr_dump()
         for intf in interfaces:
-            self.vapi.nat44_add_interface_addr(intf.sw_if_index,
-                                               twice_nat=intf.twice_nat,
-                                               is_add=0)
+            self.vapi.nat44_add_del_interface_addr(intf.sw_if_index,
+                                                   twice_nat=intf.twice_nat,
+                                                   is_add=0)
 
-        self.vapi.nat_ipfix(enable=0, src_port=self.ipfix_src_port,
-                            domain_id=self.ipfix_domain_id)
+        self.vapi.nat_ipfix_enable_disable(enable=0,
+                                           src_port=self.ipfix_src_port,
+                                           domain_id=self.ipfix_domain_id)
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
 
@@ -2577,7 +2578,7 @@ class TestNAT44(MethodHolder):
 
     def test_interface_addr(self):
         """ Acquire NAT44 addresses from interface """
-        self.vapi.nat44_add_interface_addr(self.pg7.sw_if_index)
+        self.vapi.nat44_add_del_interface_addr(self.pg7.sw_if_index)
 
         # no address in NAT pool
         adresses = self.vapi.nat44_address_dump()
@@ -2598,7 +2599,7 @@ class TestNAT44(MethodHolder):
         """ Static mapping with addresses from interface """
         tag = "testTAG"
 
-        self.vapi.nat44_add_interface_addr(self.pg7.sw_if_index)
+        self.vapi.nat44_add_del_interface_addr(self.pg7.sw_if_index)
         self.nat44_add_static_mapping(
             '1.2.3.4',
             external_sw_if_index=self.pg7.sw_if_index,
@@ -2658,7 +2659,7 @@ class TestNAT44(MethodHolder):
         """ Identity NAT with addresses from interface """
 
         port = 53053
-        self.vapi.nat44_add_interface_addr(self.pg7.sw_if_index)
+        self.vapi.nat44_add_del_interface_addr(self.pg7.sw_if_index)
         self.vapi.nat44_add_del_identity_mapping(
             sw_if_index=self.pg7.sw_if_index,
             port=port,
@@ -2707,8 +2708,8 @@ class TestNAT44(MethodHolder):
                                      path_mtu=512,
                                      template_interval=10,
                                      collector_port=colector_port)
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -2746,8 +2747,8 @@ class TestNAT44(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -2804,8 +2805,8 @@ class TestNAT44(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -3532,7 +3533,7 @@ class TestNAT44(MethodHolder):
 
     def test_frag_forwarding(self):
         """ NAT44 forwarding fragment test """
-        self.vapi.nat44_add_interface_addr(self.pg1.sw_if_index)
+        self.vapi.nat44_add_del_interface_addr(self.pg1.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
@@ -3663,8 +3664,8 @@ class TestNAT44(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         data = "A" * 4 + "B" * 16 + "C" * 3
         self.tcp_port_in = random.randint(1025, 65535)
@@ -5448,7 +5449,8 @@ class TestNAT44EndpointDependent(MethodHolder):
 
     def test_twice_nat_interface_addr(self):
         """ Acquire twice NAT44 addresses from interface """
-        self.vapi.nat44_add_interface_addr(self.pg3.sw_if_index, twice_nat=1)
+        self.vapi.nat44_add_del_interface_addr(self.pg3.sw_if_index,
+                                               twice_nat=1)
 
         # no address in NAT pool
         adresses = self.vapi.nat44_address_dump()
@@ -6340,8 +6342,8 @@ class TestNAT44EndpointDependent(MethodHolder):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
 
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -7043,7 +7045,7 @@ class TestDeterministicNAT(MethodHolder):
                                      src_address=self.pg2.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix()
+        self.vapi.nat_ipfix_enable_disable()
 
         pkts = []
         for port in range(1025, 2025):
@@ -7103,7 +7105,7 @@ class TestDeterministicNAT(MethodHolder):
         """
         Clear deterministic NAT configuration.
         """
-        self.vapi.nat_ipfix(enable=0)
+        self.vapi.nat_ipfix_enable_disable(enable=0)
         self.vapi.nat_set_timeouts()
         deterministic_mappings = self.vapi.nat_det_map_dump()
         for dsm in deterministic_mappings:
@@ -8160,7 +8162,7 @@ class TestNAT64(MethodHolder):
 
     def test_interface_addr(self):
         """ Acquire NAT64 pool addresses from interface """
-        self.vapi.nat64_add_interface_addr(self.pg4.sw_if_index)
+        self.vapi.nat64_add_del_interface_addr(self.pg4.sw_if_index)
 
         # no address in NAT64 pool
         adresses = self.vapi.nat44_address_dump()
@@ -8212,8 +8214,8 @@ class TestNAT64(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IPv6(src=src, dst=remote_host_ip6) /
@@ -8277,8 +8279,8 @@ class TestNAT64(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         data = 'a' * 200
         pkts = self.create_stream_frag_ip6(self.pg0, self.pg1.remote_ip4,
@@ -8325,8 +8327,8 @@ class TestNAT64(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.nat_ipfix(domain_id=self.ipfix_domain_id,
-                            src_port=self.ipfix_src_port)
+        self.vapi.nat_ipfix_enable_disable(domain_id=self.ipfix_domain_id,
+                                           src_port=self.ipfix_src_port)
 
         # Create
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
@@ -8439,8 +8441,9 @@ class TestNAT64(MethodHolder):
         """
         Clear NAT64 configuration.
         """
-        self.vapi.nat_ipfix(enable=0, src_port=self.ipfix_src_port,
-                            domain_id=self.ipfix_domain_id)
+        self.vapi.nat_ipfix_enable_disable(enable=0,
+                                           src_port=self.ipfix_src_port,
+                                           domain_id=self.ipfix_domain_id)
         self.ipfix_src_port = 4739
         self.ipfix_domain_id = 1
 

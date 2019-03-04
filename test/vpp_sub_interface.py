@@ -119,7 +119,7 @@ class VppSubInterface(VppPGInterface):
             self._tag2 = inner
             self._push1q = push1q
 
-        self.test.vapi.sw_interface_set_l2_tag_rewrite(
+        self.test.vapi.l2_interface_vlan_tag_rewrite(
             self.sw_if_index, vtr, push=self._push1q,
             tag1=self._tag1, tag2=self._tag2)
         self._vtr = vtr
@@ -198,8 +198,8 @@ class VppP2PSubint(VppSubInterface):
 
     def __init__(self, test, parent, sub_id, remote_mac):
         super(VppP2PSubint, self).__init__(test, parent, sub_id)
-        r = test.vapi.create_p2pethernet_subif(parent.sw_if_index,
-                                               remote_mac, sub_id)
+        r = test.vapi.p2p_ethernet_add(parent.sw_if_index,
+                                       remote_mac, sub_id)
         self.set_sw_if_index(r.sw_if_index)
         self.parent_sw_if_index = parent.sw_if_index
         self.p2p_remote_mac = remote_mac

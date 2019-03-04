@@ -91,12 +91,14 @@ class TestDVR(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(self.loop0.sw_if_index, 1,
                                              port_type=L2_PORT_TYPE.BVI)
 
-        self.vapi.sw_interface_set_l2_tag_rewrite(sub_if_on_pg2.sw_if_index,
-                                                  L2_VTR_OP.L2_POP_1,
-                                                  92)
-        self.vapi.sw_interface_set_l2_tag_rewrite(sub_if_on_pg3.sw_if_index,
-                                                  L2_VTR_OP.L2_POP_1,
-                                                  93)
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sub_if_on_pg2.sw_if_index,
+            L2_VTR_OP.L2_POP_1,
+            92)
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sub_if_on_pg3.sw_if_index,
+            L2_VTR_OP.L2_POP_1,
+            93)
 
         #
         # Add routes to bridge the traffic via a tagged an nontagged interface
@@ -291,12 +293,14 @@ class TestDVR(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index, 1)
         self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg2.sw_if_index, 1)
         self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg3.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_tag_rewrite(sub_if_on_pg2.sw_if_index,
-                                                  L2_VTR_OP.L2_POP_1,
-                                                  92)
-        self.vapi.sw_interface_set_l2_tag_rewrite(sub_if_on_pg3.sw_if_index,
-                                                  L2_VTR_OP.L2_POP_1,
-                                                  93)
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sub_if_on_pg2.sw_if_index,
+            L2_VTR_OP.L2_POP_1,
+            92)
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sub_if_on_pg3.sw_if_index,
+            L2_VTR_OP.L2_POP_1,
+            93)
 
         #
         # Disable UU flooding, learning and ARP terminaation. makes this test
@@ -326,10 +330,10 @@ class TestDVR(VppTestCase):
         #
         # Enable L3 extraction on pgs
         #
-        self.vapi.sw_interface_set_l2_emulation(self.pg0.sw_if_index)
-        self.vapi.sw_interface_set_l2_emulation(self.pg1.sw_if_index)
-        self.vapi.sw_interface_set_l2_emulation(sub_if_on_pg2.sw_if_index)
-        self.vapi.sw_interface_set_l2_emulation(sub_if_on_pg3.sw_if_index)
+        self.vapi.l2_emulation(self.pg0.sw_if_index)
+        self.vapi.l2_emulation(self.pg1.sw_if_index)
+        self.vapi.l2_emulation(sub_if_on_pg2.sw_if_index)
+        self.vapi.l2_emulation(sub_if_on_pg3.sw_if_index)
 
         #
         # now we expect the packet forward according to the DVR route
@@ -358,14 +362,14 @@ class TestDVR(VppTestCase):
         #
         # cleanup
         #
-        self.vapi.sw_interface_set_l2_emulation(self.pg0.sw_if_index,
-                                                enable=0)
-        self.vapi.sw_interface_set_l2_emulation(self.pg1.sw_if_index,
-                                                enable=0)
-        self.vapi.sw_interface_set_l2_emulation(sub_if_on_pg2.sw_if_index,
-                                                enable=0)
-        self.vapi.sw_interface_set_l2_emulation(sub_if_on_pg3.sw_if_index,
-                                                enable=0)
+        self.vapi.l2_emulation(self.pg0.sw_if_index,
+                               enable=0)
+        self.vapi.l2_emulation(self.pg1.sw_if_index,
+                               enable=0)
+        self.vapi.l2_emulation(sub_if_on_pg2.sw_if_index,
+                               enable=0)
+        self.vapi.l2_emulation(sub_if_on_pg3.sw_if_index,
+                               enable=0)
 
         self.vapi.sw_interface_set_l2_bridge(self.pg0.sw_if_index,
                                              1, enable=0)
