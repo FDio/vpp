@@ -11,19 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_vpp_plugin(unittest
+add_vpp_plugin(crypto_openssl
   SOURCES
-  bier_test.c
-  bihash_test.c
-  crypto_test.c
-  crypto/aes_cbc.c
-  crypto/rfc2202.c
-  crypto/rfc4231.c
-  fib_test.c
-  interface_test.c
-  mfib_test.c
-  session_test.c
-  string_test.c
-  tcp_test.c
-  unittest.c
+  main.c
+  plugin.c
 )

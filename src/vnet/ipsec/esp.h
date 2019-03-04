@@ -16,6 +16,7 @@
 #define __ESP_H__
 
 #include <vnet/ip/ip.h>
+#include <vnet/crypto/crypto.h>
 #include <vnet/ipsec/ipsec.h>
 
 typedef struct
@@ -202,106 +203,25 @@ esp_seq_advance (ipsec_sa_t * sa)
   return 0;
 }
 
-always_inline void
-ipsec_proto_init ()
-{
-  ipsec_proto_main_t *em = &ipsec_proto_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  clib_memset (em, 0, sizeof (em[0]));
-
-  vec_validate (em->ipsec_proto_main_crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].type =
-    EVP_aes_128_cbc ();
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].type =
-    EVP_aes_192_cbc ();
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].type =
-    EVP_aes_256_cbc ();
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].iv_size = 16;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].iv_size = 16;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].iv_size = 16;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_128].block_size =
-    16;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_192].block_size =
-    16;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_AES_CBC_256].block_size =
-    16;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].type =
-    EVP_des_cbc ();
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].type =
-    EVP_des_ede3_cbc ();
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].block_size = 8;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].block_size = 8;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_DES_CBC].iv_size = 8;
-  em->ipsec_proto_main_crypto_algs[IPSEC_CRYPTO_ALG_3DES_CBC].iv_size = 8;
-
-  vec_validate (em->ipsec_proto_main_integ_algs, IPSEC_INTEG_N_ALG - 1);
-  ipsec_proto_main_integ_alg_t *i;
-
-  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA1_96];
-  i->md = EVP_sha1 ();
-  i->trunc_size = 12;
-
-  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_96];
-  i->md = EVP_sha256 ();
-  i->trunc_size = 12;
-
-  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_256_128];
-  i->md = EVP_sha256 ();
-  i->trunc_size = 16;
-
-  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
-  i->md = EVP_sha384 ();
-  i->trunc_size = 24;
-
-  i = &em->ipsec_proto_main_integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
-  i->md = EVP_sha512 ();
-  i->trunc_size = 32;
-
-  vec_validate_aligned (em->per_thread_data, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-  int thread_id;
-
-  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
-    {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      em->per_thread_data[thread_id].encrypt_ctx = EVP_CIPHER_CTX_new ();
-      em->per_thread_data[thread_id].decrypt_ctx = EVP_CIPHER_CTX_new ();
-      em->per_thread_data[thread_id].hmac_ctx = HMAC_CTX_new ();
-#else
-      EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].encrypt_ctx));
-      EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].decrypt_ctx));
-      HMAC_CTX_init (&(em->per_thread_data[thread_id].hmac_ctx));
-#endif
-    }
-}
 
 always_inline unsigned int
-hmac_calc (ipsec_integ_alg_t alg,
-	   u8 * key,
-	   int key_len,
+hmac_calc (vlib_main_t * vm, ipsec_integ_alg_t alg, u8 * key, int key_len,
 	   u8 * data, int data_len, u8 * signature, u8 use_esn, u32 seq_hi)
 {
-  ipsec_proto_main_t *em = &ipsec_proto_main;
-  u32 thread_index = vlib_get_thread_index ();
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  HMAC_CTX *ctx = em->per_thread_data[thread_index].hmac_ctx;
-#else
-  HMAC_CTX *ctx = &(em->per_thread_data[thread_index].hmac_ctx);
-#endif
-  const EVP_MD *md = NULL;
-  unsigned int len;
-
+  ipsec_main_t *im = &ipsec_main;
+  vnet_crypto_op_t _op, *op = &_op;
   ASSERT (alg < IPSEC_INTEG_N_ALG);
 
-  if (PREDICT_FALSE (em->ipsec_proto_main_integ_algs[alg].md == 0))
+  if (PREDICT_FALSE (im->integ_algs[alg].op_type == 0))
     return 0;
 
-  if (PREDICT_FALSE (alg != em->per_thread_data[thread_index].last_integ_alg))
-    {
-      md = em->ipsec_proto_main_integ_algs[alg].md;
-      em->per_thread_data[thread_index].last_integ_alg = alg;
-    }
+  op->op = im->integ_algs[alg].op_type;
+  op->key = key;
+  op->key_len = key_len;
+  op->src = data;
+  op->len = data_len;
+  op->dst = signature;
+#if 0
 
   HMAC_Init_ex (ctx, key, key_len, md, NULL);
 
@@ -311,7 +231,9 @@ hmac_calc (ipsec_integ_alg_t alg,
     HMAC_Update (ctx, (u8 *) & seq_hi, sizeof (seq_hi));
   HMAC_Final (ctx, signature, &len);
 
-  return em->ipsec_proto_main_integ_algs[alg].trunc_size;
+#endif
+  vnet_crypto_process_ops (vm, op, 1);
+  return im->integ_algs[alg].trunc_size;
 }
 
 #endif /* __ESP_H__ */

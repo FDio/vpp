@@ -84,7 +84,6 @@ ah_decrypt_inline (vlib_main_t * vm,
 {
   u32 n_left_from, *from, next_index, *to_next, thread_index;
   ipsec_main_t *im = &ipsec_main;
-  ipsec_proto_main_t *em = &ipsec_proto_main;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   int icv_size;
@@ -173,8 +172,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	    (&ipsec_sa_counters, thread_index, sa_index0,
 	     1, i_b0->current_length);
 
-	  icv_size =
-	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	  icv_size = im->integ_algs[sa0->integ_alg].trunc_size;
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	    {
 	      u8 sig[64];
@@ -205,7 +203,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 		  icv_padding_len =
 		    ah_calc_icv_padding_len (icv_size, 0 /* is_ipv6 */ );
 		}
-	      hmac_calc (sa0->integ_alg, sa0->integ_key.data,
+	      hmac_calc (vm, sa0->integ_alg, sa0->integ_key.data,
 			 sa0->integ_key.len, (u8 *) ih4, i_b0->current_length,
 			 sig, sa0->use_esn, sa0->seq_hi);
 

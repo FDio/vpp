@@ -15,14 +15,8 @@
 #ifndef __AH_H__
 #define __AH_H__
 
-
 #include <vnet/ip/ip.h>
 #include <vnet/ipsec/ipsec.h>
-
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/evp.h>
-
 
 typedef struct
 {
