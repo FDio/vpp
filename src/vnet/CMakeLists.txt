@@ -39,6 +39,11 @@ list(APPEND VNET_SOURCES
   misc.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  interface_output.c
+  interface_stats.c
+)
+
 list(APPEND VNET_HEADERS
   api_errno.h
   buffer.h
