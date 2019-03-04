@@ -87,6 +87,8 @@ if(GBP_FILE)
     gbp_endpoint_group.cpp
     gbp_ext_itf.cpp
     gbp_ext_itf_cmds.cpp
+    gbp_global.cpp
+    gbp_global_cmds.cpp
     gbp_recirc_cmds.cpp
     gbp_recirc.cpp
     gbp_route_domain_cmds.cpp
@@ -216,6 +218,7 @@ if(GBP_FILE)
     gbp_endpoint.hpp
     gbp_endpoint_group.hpp
     gbp_ext_itf.hpp
+    gbp_global.hpp
     gbp_recirc.hpp
     gbp_route_domain.hpp
     gbp_rule.hpp
