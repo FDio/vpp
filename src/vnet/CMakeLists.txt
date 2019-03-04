@@ -1235,6 +1235,11 @@ list(APPEND VNET_SOURCES
   adj/adj_delegate.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  adj/adj_nsh.c
+  adj/adj_l2.c
+)
+
 list(APPEND VNET_HEADERS
   adj/adj.h
   adj/adj_types.h
