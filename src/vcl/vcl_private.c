@@ -418,6 +418,9 @@ vcl_session_read_ready (vcl_session_t * session)
   if (session->session_state & STATE_LISTEN)
     return clib_fifo_elts (session->accept_evts_fifo);
 
+  if (vcl_session_is_ct (session))
+    return svm_fifo_max_dequeue (session->ct_rx_fifo);
+
   return svm_fifo_max_dequeue (session->rx_fifo);
 }
 
@@ -451,6 +454,9 @@ vcl_session_write_ready (vcl_session_t * session)
 	    vppcom_session_state_str (state), rv, vppcom_retval_str (rv));
       return rv;
     }
+
+  if (vcl_session_is_ct (session))
+    return svm_fifo_max_enqueue (session->ct_tx_fifo);
 
   return svm_fifo_max_enqueue (session->tx_fifo);
 }

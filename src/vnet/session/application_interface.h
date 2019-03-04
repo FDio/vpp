@@ -309,6 +309,9 @@ typedef struct session_connected_msg_
   uword server_rx_fifo;
   uword server_tx_fifo;
   u64 segment_handle;
+  uword ct_rx_fifo;
+  uword ct_tx_fifo;
+  u64 ct_segment_handle;
   uword vpp_event_queue_address;
   uword client_event_queue_address;
   uword server_event_queue_address;
