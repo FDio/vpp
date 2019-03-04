@@ -371,37 +371,6 @@ class VCLCutThruTestCase(VCLTestCase):
                            self.client_bi_dir_nsock_test_args)
 
 
-class LDPThruHostStackEcho(VCLTestCase):
-    """ LDP Thru Host Stack Echo """
-
-    @classmethod
-    def setUpClass(cls):
-        super(LDPThruHostStackEcho, cls).setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(LDPThruHostStackEcho, cls).tearDownClass()
-
-    def setUp(self):
-        super(LDPThruHostStackEcho, self).setUp()
-
-        self.thru_host_stack_setup()
-        self.client_echo_test_args = ["-E", self.echo_phrase, "-X",
-                                      self.loop0.local_ip4,
-                                      self.server_port]
-
-    def tearDown(self):
-        self.thru_host_stack_tear_down()
-        super(LDPThruHostStackEcho, self).tearDown()
-
-    def test_ldp_thru_host_stack_echo(self):
-        """ run LDP thru host stack echo test """
-
-        self.thru_host_stack_test("sock_test_server", self.server_args,
-                                  "sock_test_client",
-                                  self.client_echo_test_args)
-
-
 class VCLThruHostStackEcho(VCLTestCase):
     """ VCL Thru Host Stack Echo """
 
@@ -494,6 +463,7 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
                                       self.server_port]
 
     def tearDown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(VCLThruHostStackBidirNsock, self).tearDown()
 
@@ -537,6 +507,7 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
                                                   self.server_port]
 
     def tearDown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(LDPThruHostStackBidirNsock, self).tearDown()
 
