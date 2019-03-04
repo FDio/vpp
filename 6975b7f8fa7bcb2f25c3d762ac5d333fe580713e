@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "94e1fda4_ced615ab",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 1240
+      },
+      "writtenOn": "2019-03-04T12:51:15Z",
+      "side": 1,
+      "message": "I think this needs ntohs() from API call.",
+      "range": {
+        "startLine": 123,
+        "startChar": 47,
+        "endLine": 123,
+        "endChar": 55
+      },
+      "revId": "6975b7f8fa7bcb2f25c3d762ac5d333fe580713e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e706ef54_f7925358",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 1240
+      },
+      "writtenOn": "2019-03-04T12:51:15Z",
+      "side": 1,
+      "message": "same above.",
+      "range": {
+        "startLine": 315,
+        "startChar": 39,
+        "endLine": 315,
+        "endChar": 47
+      },
+      "revId": "6975b7f8fa7bcb2f25c3d762ac5d333fe580713e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "70376554_4453c7dd",
+        "filename": "src/plugins/lb/api.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 400,
+      "author": {
+        "id": 1240
+      },
+      "writtenOn": "2019-03-04T12:51:15Z",
+      "side": 1,
+      "message": "Does this need ntohs() from API call?",
+      "range": {
+        "startLine": 400,
+        "startChar": 24,
+        "endLine": 400,
+        "endChar": 38
+      },
+      "revId": "6975b7f8fa7bcb2f25c3d762ac5d333fe580713e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
