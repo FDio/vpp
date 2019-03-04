@@ -1087,10 +1087,8 @@ server_handle_event_queue (udp_echo_main_t * utm)
       e = svm_msg_q_msg_data (mq, &msg);
       switch (e->event_type)
 	{
-	case FIFO_EVENT_APP_RX:
+	case SESSION_IO_EVT_RX:
 	  server_handle_fifo_event_rx (utm, e->fifo->client_session_index);
-	  break;
-	case SESSION_IO_EVT_CT_TX:
 	  break;
 
 	default:

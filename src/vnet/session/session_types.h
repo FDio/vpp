@@ -278,9 +278,7 @@ session_parse_handle (session_handle_t handle, u32 * index,
 typedef enum
 {
   SESSION_IO_EVT_RX,
-  SESSION_IO_EVT_CT_RX,
   SESSION_IO_EVT_TX,
-  SESSION_IO_EVT_CT_TX,
   SESSION_IO_EVT_TX_FLUSH,
   SESSION_IO_EVT_BUILTIN_RX,
   SESSION_IO_EVT_BUILTIN_TX,
