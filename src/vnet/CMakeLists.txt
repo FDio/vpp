@@ -1350,7 +1350,14 @@ list(APPEND VNET_SOURCES
   qos/qos_api.c
   qos/qos_egress_map.c
   qos/qos_record.c
+  qos/qos_record_node.c
   qos/qos_mark.c
+  qos/qos_mark_node.c
+)
+
+list(APPEND VNET_MULTIARCH_SOURCES
+  qos/qos_record_node.c
+  qos/qos_mark_node.c
 )
 
 list(APPEND VNET_API_FILES qos/qos.api)
