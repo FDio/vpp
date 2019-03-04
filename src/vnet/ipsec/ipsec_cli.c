@@ -619,6 +619,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
   clib_error_t *error = NULL;
+  ipsec_key_t rck, lck, lik, rik;
 
   clib_memset (&a, 0, sizeof (a));
   a.is_add = 1;
@@ -659,6 +660,28 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 	a.anti_replay = 1;
       else if (unformat (line_input, "tx-table %u", &a.tx_table_id))
 	;
+      else
+	if (unformat
+	    (line_input, "local-crypto-key %U", unformat_ipsec_key, &lck))
+	;
+      else
+	if (unformat
+	    (line_input, "remote-crypto-key %U", unformat_ipsec_key, &rck))
+	;
+      else if (unformat (line_input, "crypto-alg %U",
+			 unformat_ipsec_crypto_alg, &a.crypto_alg))
+	;
+      else
+	if (unformat
+	    (line_input, "local-integ-key %U", unformat_ipsec_key, &lik))
+	;
+      else
+	if (unformat
+	    (line_input, "rmote-integ-key %U", unformat_ipsec_key, &rik))
+	;
+      else if (unformat (line_input, "integ-alg %U",
+			 unformat_ipsec_integ_alg, &a.integ_alg))
+	;
       else if (unformat (line_input, "del"))
 	a.is_add = 0;
       else
@@ -680,6 +703,16 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
 
   if (ipv4_set && ipv6_set)
     return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
+
+  clib_memcpy (a.local_crypto_key, lck.data, lck.len);
+  a.local_crypto_key_len = lck.len;
+  clib_memcpy (a.remote_crypto_key, rck.data, rck.len);
+  a.remote_crypto_key_len = rck.len;
+
+  clib_memcpy (a.local_integ_key, lck.data, lck.len);
+  a.local_integ_key_len = lck.len;
+  clib_memcpy (a.remote_integ_key, rck.data, rck.len);
+  a.remote_integ_key_len = rck.len;
 
   rv = ipsec_add_del_tunnel_if (&a);
 
