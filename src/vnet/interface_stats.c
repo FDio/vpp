@@ -20,6 +20,7 @@
 #include <vnet/feature/feature.h>
 #include <vnet/ethernet/ethernet.h>
 
+#ifndef CLIB_MARCH_VARIANT
 int
 vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index, u8 enable)
 {
@@ -54,6 +55,7 @@ vnet_sw_interface_stats_collect_enable_disable (u32 sw_if_index, u8 enable)
 
   return (0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static u8 *
 format_stats_collect_trace (u8 * s, va_list * args)
@@ -154,16 +156,16 @@ stats_collect_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-stats_collect_rx (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (stats_collect_rx_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   return stats_collect_inline (vm, node, frame, VLIB_RX);
 }
 
-static uword
-stats_collect_tx (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (stats_collect_tx_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * frame)
 {
   return stats_collect_inline (vm, node, frame, VLIB_TX);
 }
@@ -175,7 +177,6 @@ VLIB_REGISTER_NODE (stats_collect_rx_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
   .n_next_nodes = 0,
-  .function = stats_collect_rx,
   .name = "stats-collect-rx",
 };
 
@@ -185,12 +186,8 @@ VLIB_REGISTER_NODE (stats_collect_tx_node) = {
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = 0,
   .n_next_nodes = 0,
-  .function = stats_collect_tx,
   .name = "stats-collect-tx",
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (stats_collect_rx_node, stats_collect_rx);
-VLIB_NODE_FUNCTION_MULTIARCH (stats_collect_tx_node, stats_collect_tx);
 
 VNET_FEATURE_INIT (stats_collect_rx_node, static) = {
   .arc_name = "device-input",

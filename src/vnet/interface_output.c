@@ -54,6 +54,7 @@ typedef struct
 }
 interface_output_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_vnet_interface_output_trace (u8 * s, va_list * va)
 {
@@ -802,6 +803,7 @@ vnet_interface_output_node_inline_gso (vlib_main_t * vm,
 				   rt->sw_if_index, n_packets, n_bytes);
   return n_buffers;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static_always_inline void vnet_interface_pcap_tx_trace
   (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame,
@@ -840,6 +842,7 @@ static_always_inline void vnet_interface_pcap_tx_trace
     }
 }
 
+#ifndef CLIB_MARCH_VARIANT
 static_always_inline uword
 vnet_interface_output_node_inline (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,
@@ -889,12 +892,13 @@ vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
     return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
 					      /* do_tx_offloads */ 1);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /* Use buffer's sw_if_index[VNET_TX] to choose output interface. */
-static uword
-vnet_per_buffer_interface_output (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+VLIB_NODE_FN (vnet_per_buffer_interface_output_node) (vlib_main_t * vm,
+						      vlib_node_runtime_t *
+						      node,
+						      vlib_frame_t * frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 n_left_to_next, *from, *to_next;
@@ -1378,6 +1382,7 @@ pcap_drop_trace (vlib_main_t * vm,
     }
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add)
 {
@@ -1391,10 +1396,10 @@ vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add)
   else
     hash_unset (im->pcap_drop_filter_hash, error_index);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
-static uword
-process_drop (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (drop_buffers) (vlib_main_t * vm,
+			     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
 
@@ -1404,16 +1409,14 @@ process_drop (vlib_main_t * vm,
   return process_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_DROP);
 }
 
-static uword
-process_punt (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (punt_buffers) (vlib_main_t * vm,
+			     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   return process_drop_punt (vm, node, frame, VNET_ERROR_DISPOSITION_PUNT);
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (drop_buffers,static) = {
-  .function = process_drop,
+VLIB_REGISTER_NODE (drop_buffers) = {
   .name = "error-drop",
   .flags = VLIB_NODE_FLAG_IS_DROP,
   .vector_size = sizeof (u32),
@@ -1422,11 +1425,8 @@ VLIB_REGISTER_NODE (drop_buffers,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (drop_buffers, process_drop);
-
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (punt_buffers,static) = {
-  .function = process_punt,
+VLIB_REGISTER_NODE (punt_buffers) = {
   .flags = (VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH
 	    | VLIB_NODE_FLAG_IS_PUNT),
   .name = "error-punt",
@@ -1436,11 +1436,8 @@ VLIB_REGISTER_NODE (punt_buffers,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (punt_buffers, process_punt);
-
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node,static) = {
-  .function = vnet_per_buffer_interface_output,
+VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node) = {
   .name = "interface-output",
   .vector_size = sizeof (u32),
 };
@@ -1476,9 +1473,6 @@ VLIB_REGISTER_NODE (misc_drop_buffers_node,static) = {
   .error_strings = misc_drop_buffers_error_strings,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (vnet_per_buffer_interface_output_node,
-			      vnet_per_buffer_interface_output);
 
 static uword
 interface_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -1564,6 +1558,7 @@ VNET_FEATURE_INIT (interface_tx, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 clib_error_t *
 vnet_per_buffer_interface_output_hw_interface_add_del (vnet_main_t * vnm,
 						       u32 hw_if_index,
@@ -1597,6 +1592,7 @@ vnet_set_interface_output_node (vnet_main_t * vnm,
   hi->output_node_next_index = next_index;
   hi->output_node_index = node_index;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static clib_error_t *
 pcap_drop_trace_command_fn (vlib_main_t * vm,
