@@ -1801,8 +1801,9 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
 	}
     }
 
-  ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
-  et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
+//  ASSERT (FIFO_EVENT_APP_TX + 1 == SESSION_IO_EVT_CT_TX);
+//  et = FIFO_EVENT_APP_TX + vcl_session_is_ct (s);
+  et = SESSION_IO_EVT_TX;
   if (is_flush && !vcl_session_is_ct (s))
     et = SESSION_IO_EVT_TX_FLUSH;
 
