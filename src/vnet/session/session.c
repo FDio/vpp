@@ -483,7 +483,7 @@ session_notify_subscribers (u32 app_index, session_t * s,
  * @return 0 on success or negative number if failed to send notification.
  */
 static inline int
-session_enqueue_notify (session_t * s)
+session_enqueue_notify_inline (session_t * s)
 {
   app_worker_t *app_wrk;
 
@@ -510,6 +510,12 @@ session_enqueue_notify (session_t * s)
 				       s->rx_fifo, SESSION_IO_EVT_RX);
 
   return 0;
+}
+
+int
+session_enqueue_notify (session_t * s)
+{
+  return session_enqueue_notify_inline (s);
 }
 
 int
@@ -560,7 +566,11 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 	  errors++;
 	  continue;
 	}
-      if (PREDICT_FALSE (session_enqueue_notify (s)))
+
+      if (svm_fifo_is_empty (s->rx_fifo))
+        continue;
+
+      if (PREDICT_FALSE (session_enqueue_notify_inline (s)))
 	errors++;
     }
 
