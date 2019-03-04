@@ -144,6 +144,14 @@ typedef struct
   uword user_data;
 } vnet_crypto_op_t;
 
+typedef struct vnet_async_crypto_op_t_
+{
+  vnet_crypto_op_t data;
+  u16 next_node;
+  u16 next_index;
+  struct vnet_async_crypto_op_t_ *next;
+} vnet_async_crypto_op_t;
+
 typedef struct
 {
   vnet_crypto_op_type_t type;
@@ -154,11 +162,26 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 head;
+  u32 tail;
+  u32 size;
+  vnet_crypto_alg_t alg:8;
+  vnet_crypto_op_type_t op:8;
+  vnet_async_crypto_op_t *jobs[0];
+} vnet_crypto_queue_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_bitmap_t *act_queues;
+  vnet_crypto_queue_t *queues[VNET_CRYPTO_N_OP_IDS];
+  vnet_crypto_queue_t **jobs_done;
 } vnet_crypto_thread_t;
 
 typedef u32 vnet_crypto_key_index_t;
 
+typedef vnet_async_crypto_op_t * (vnet_crypto_queue_handler_t) (vlib_main_t * vm,
+					   vnet_crypto_queue_t * q);
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
 					 vnet_crypto_op_t * ops[], u32 n_ops);
 
@@ -174,6 +197,16 @@ void vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
 				       vnet_crypto_ops_handler_t * oph);
 void vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
 				       vnet_crypto_key_handler_t * keyh);
+
+u32 vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
+				 char *desc);
+
+vlib_error_t *vnet_crypto_register_async_queue_handler (vlib_main_t * vm,
+							u32 provider_index,
+							vnet_crypto_op_id_t
+							opt,
+							vnet_crypto_queue_handler_t
+							* f);
 
 typedef struct
 {
@@ -194,11 +227,12 @@ typedef struct
   vnet_crypto_key_t *keys;
   uword *engine_index_by_name;
   uword *alg_index_by_name;
+  vnet_crypto_queue_handler_t **queue_handlers;
 } vnet_crypto_main_t;
 
 extern vnet_crypto_main_t crypto_main;
 
-u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
+u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_async_crypto_op_t ** jobs,
 			    u32 n_jobs);
 
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
@@ -241,6 +275,29 @@ vnet_crypto_get_key (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   return vec_elt_at_index (cm->keys, index);
+}
+
+static_always_inline u32
+vnet_crypto_queue_index (vnet_crypto_alg_t alg, vnet_crypto_op_type_t op)
+{
+  return VNET_CRYPTO_N_OP_IDS * alg + op;
+}
+
+static_always_inline vnet_async_crypto_op_t *
+vnet_crypto_dequeue_one_job (vnet_crypto_queue_t * q)
+{
+  vnet_async_crypto_op_t *j;
+  u32 mask = q->size - 1;
+  u32 tail = q->tail & mask;
+
+  j = q->jobs[tail];
+
+  if (clib_atomic_cmp_and_swap (&q->jobs[tail], j, 0))
+    {
+      tail = clib_atomic_add_fetch (&q->tail, 1);
+      return j;
+    }
+  return 0;
 }
 
 #endif /* included_vnet_crypto_crypto_h */
