@@ -165,6 +165,9 @@ typedef struct
   /* crypto integ data */
   ipsec_main_integ_alg_t *integ_algs;
 
+  /* next nodes indices for async mode */
+  u32 esp4_encrypt_tun_post_node_index;
+
   /* per-thread data */
   ipsec_per_thread_data_t *ptd;
 } ipsec_main_t;
