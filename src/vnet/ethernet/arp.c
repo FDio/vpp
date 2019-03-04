@@ -2410,6 +2410,9 @@ arp_term_l2bd (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE (!macp0))
 	    goto next_l2_feature;	/* MAC not found */
+	  if (PREDICT_FALSE (arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+			     arp0->ip4_over_ethernet[1].ip4.as_u32))
+	    goto next_l2_feature;	/* GARP */
 
 	  /* MAC found, send ARP reply -
 	     Convert ARP request packet to ARP reply */
