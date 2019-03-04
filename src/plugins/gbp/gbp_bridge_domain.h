@@ -63,10 +63,10 @@ typedef struct gbp_bridge_domain_t_
   u32 gb_bm_flood_sw_if_index;
 
   /**
-   * The BD's VNI interface on which packets from unkown endpoints
-   * arrive
+   * The index of the BD's VNI interface on which packets from
+   * unkown endpoints arrive
    */
-  u32 gb_vni_sw_if_index;
+  u32 gb_vni;
 
   /**
    * locks/references to the BD so it does not get deleted (from the API)
