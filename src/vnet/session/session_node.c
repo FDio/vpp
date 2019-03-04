@@ -1234,6 +1234,26 @@ VLIB_REGISTER_NODE (session_queue_process_node) =
 };
 /* *INDENT-ON* */
 
+static_always_inline uword
+session_queue_pre_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+                                vlib_frame_t * frame)
+{
+  session_main_t *sm = &session_main;
+  if (!sm->wrk[0].vpp_event_queue)
+    return 0;
+  return session_queue_node_fn (vm, node, frame);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (session_queue_pre_input_node) =
+{
+  .function = session_queue_pre_input_inline,
+  .type = VLIB_NODE_TYPE_PRE_INPUT,
+  .name = "session-queue-main",
+  .state = VLIB_NODE_STATE_DISABLED,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
