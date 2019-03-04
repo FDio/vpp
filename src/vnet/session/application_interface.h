@@ -283,8 +283,6 @@ typedef struct session_accepted_msg_
   uword server_tx_fifo;
   u64 segment_handle;
   uword vpp_event_queue_address;
-  uword server_event_queue_address;
-  uword client_event_queue_address;
   u16 port;
   u8 is_ip4;
   u8 ip[16];
@@ -309,9 +307,10 @@ typedef struct session_connected_msg_
   uword server_rx_fifo;
   uword server_tx_fifo;
   u64 segment_handle;
+  uword ct_rx_fifo;
+  uword ct_tx_fifo;
+  u64 ct_segment_handle;
   uword vpp_event_queue_address;
-  uword client_event_queue_address;
-  uword server_event_queue_address;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[64];
@@ -454,7 +453,7 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 always_inline int
 app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
 		    svm_msg_q_t * vpp_evt_q, u8 * data, u32 len, u8 evt_type,
-		    u8 noblock)
+		    u8 do_evt, u8 noblock)
 {
   u32 max_enqueue, actual_write;
   session_dgram_hdr_t hdr;
@@ -478,7 +477,7 @@ app_send_dgram_raw (svm_fifo_t * f, app_session_transport_t * at,
 
   if ((rv = svm_fifo_enqueue_nowait (f, actual_write, data)) > 0)
     {
-      if (svm_fifo_set_event (f))
+      if (do_evt && svm_fifo_set_event (f))
 	app_send_io_evt_to_vpp (vpp_evt_q, f, evt_type, noblock);
     }
   ASSERT (rv);
@@ -489,18 +488,19 @@ always_inline int
 app_send_dgram (app_session_t * s, u8 * data, u32 len, u8 noblock)
 {
   return app_send_dgram_raw (s->tx_fifo, &s->transport, s->vpp_evt_q, data,
-			     len, SESSION_IO_EVT_TX, noblock);
+			     len, SESSION_IO_EVT_TX, 1 /* do_evt */ ,
+			     noblock);
 }
 
 always_inline int
 app_send_stream_raw (svm_fifo_t * f, svm_msg_q_t * vpp_evt_q, u8 * data,
-		     u32 len, u8 evt_type, u8 noblock)
+		     u32 len, u8 evt_type, u8 do_evt, u8 noblock)
 {
   int rv;
 
   if ((rv = svm_fifo_enqueue_nowait (f, len, data)) > 0)
     {
-      if (svm_fifo_set_event (f))
+      if (do_evt && svm_fifo_set_event (f))
 	app_send_io_evt_to_vpp (vpp_evt_q, f, evt_type, noblock);
     }
   return rv;
@@ -510,7 +510,7 @@ always_inline int
 app_send_stream (app_session_t * s, u8 * data, u32 len, u8 noblock)
 {
   return app_send_stream_raw (s->tx_fifo, s->vpp_evt_q, data, len,
-			      SESSION_IO_EVT_TX, noblock);
+			      SESSION_IO_EVT_TX, 1 /* do_evt */ , noblock);
 }
 
 always_inline int

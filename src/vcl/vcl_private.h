@@ -162,6 +162,9 @@ typedef struct
   u64 vpp_handle;
   u32 vpp_thread_index;
 
+  svm_fifo_t *ct_rx_fifo;
+  svm_fifo_t *ct_tx_fifo;
+
   /* Socket configuration state */
   u8 is_vep;
   u8 is_vep_session;
@@ -269,15 +272,6 @@ typedef struct vcl_worker_
 
   /** For deadman timers */
   clib_time_t clib_time;
-
-  /** Pool of cut through registrations */
-  vcl_cut_through_registration_t *cut_through_registrations;
-
-  /** Lock for accessing ct registration pool */
-  clib_spinlock_t ct_registration_lock;
-
-  /** Cut-through registration by mq address hash table */
-  uword *ct_registration_by_mq;
 
   /** Vector acting as buffer for mq messages */
   svm_msg_q_msg_t *mq_msg_vector;
@@ -481,7 +475,7 @@ const char *vppcom_session_state_str (vcl_session_state_t state);
 static inline u8
 vcl_session_is_ct (vcl_session_t * s)
 {
-  return (s->our_evt_q != 0);
+  return (s->ct_tx_fifo != 0);
 }
 
 static inline u8
@@ -516,19 +510,6 @@ vcl_session_closed_error (vcl_session_t * s)
  * Helpers
  */
 int vcl_wait_for_app_state_change (app_state_t app_state);
-vcl_cut_through_registration_t
-  * vcl_ct_registration_lock_and_alloc (vcl_worker_t * wrk);
-void vcl_ct_registration_del (vcl_worker_t * wrk,
-			      vcl_cut_through_registration_t * ctr);
-u32 vcl_ct_registration_index (vcl_worker_t * wrk,
-			       vcl_cut_through_registration_t * ctr);
-void vcl_ct_registration_lock (vcl_worker_t * wrk);
-void vcl_ct_registration_unlock (vcl_worker_t * wrk);
-vcl_cut_through_registration_t
-  * vcl_ct_registration_lock_and_lookup (vcl_worker_t * wrk, uword mq_addr);
-void vcl_ct_registration_lookup_add (vcl_worker_t * wrk, uword mq_addr,
-				     u32 ctr_index);
-void vcl_ct_registration_lookup_del (vcl_worker_t * wrk, uword mq_addr);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_alloc (vcl_worker_t * wrk);
 u32 vcl_mq_evt_conn_index (vcl_worker_t * wrk, vcl_mq_evt_conn_t * mqc);
 vcl_mq_evt_conn_t *vcl_mq_evt_conn_get (vcl_worker_t * wrk, u32 mq_conn_idx);
@@ -581,10 +562,7 @@ vcl_n_workers (void)
 static inline svm_msg_q_t *
 vcl_session_vpp_evt_q (vcl_worker_t * wrk, vcl_session_t * s)
 {
-  if (vcl_session_is_ct (s))
-    return wrk->vpp_event_queues[0];
-  else
-    return wrk->vpp_event_queues[s->vpp_thread_index];
+  return wrk->vpp_event_queues[s->vpp_thread_index];
 }
 
 void vcl_send_session_worker_update (vcl_worker_t * wrk, vcl_session_t * s,
