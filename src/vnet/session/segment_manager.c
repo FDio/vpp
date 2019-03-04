@@ -408,12 +408,10 @@ segment_manager_del_sessions (segment_manager_t * sm)
      */
     while (fifo)
       {
-	if (fifo->ct_session_index != SVM_FIFO_INVALID_SESSION_INDEX)
-	  session = session_get (fifo->ct_session_index, 0);
-	else
-	  session = session_get (fifo->master_session_index,
-	                         fifo->master_thread_index);
-	vec_add1 (handles, session_handle (session));
+	session = session_get_if_valid (fifo->master_session_index,
+	                                fifo->master_thread_index);
+	if (session)
+	  vec_add1 (handles, session_handle (session));
 	fifo = fifo->next;
       }
 
