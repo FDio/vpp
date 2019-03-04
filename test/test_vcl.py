@@ -494,6 +494,7 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
                                       self.server_port]
 
     def tearDown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(VCLThruHostStackBidirNsock, self).tearDown()
 
@@ -537,6 +538,7 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
                                                   self.server_port]
 
     def tearDown(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(LDPThruHostStackBidirNsock, self).tearDown()
 
