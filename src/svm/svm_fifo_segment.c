@@ -437,7 +437,6 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
 {
   ssvm_shared_header_t *sh;
   svm_fifo_segment_header_t *fsh;
-  void *oldheap;
   int freelist_index;
 
   ASSERT (f->refcnt > 0);
@@ -453,7 +452,6 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
   ASSERT (freelist_index < vec_len (fsh->free_fifos));
 
   ssvm_lock_non_recursive (sh, 2);
-  oldheap = ssvm_push_heap (sh);
 
   switch (list_index)
     {
@@ -487,7 +485,6 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
     }
 
   fsh->n_active_fifos--;
-  ssvm_pop_heap (oldheap);
   ssvm_unlock_non_recursive (sh);
 }
 
