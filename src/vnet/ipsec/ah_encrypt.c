@@ -89,7 +89,6 @@ ah_encrypt_inline (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   ipsec_main_t *im = &ipsec_main;
-  ipsec_proto_main_t *em = &ipsec_proto_main;
   next_index = node->cached_next_index;
   thread_index = vm->thread_index;
 
@@ -153,8 +152,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	      adv = -sizeof (ah_header_t);
 	    }
 
-	  icv_size =
-	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	  icv_size = im->integ_algs[sa0->integ_alg].trunc_size;
 	  const u8 padding_len = ah_calc_icv_padding_len (icv_size, is_ip6);
 	  adv -= padding_len;
 	  /* transport mode save the eth header before it is overwritten */
