@@ -212,7 +212,8 @@ proxy_rx_callback (session_t * s)
       if (svm_fifo_set_event (active_open_tx_fifo))
 	{
 	  u32 ao_thread_index = active_open_tx_fifo->master_thread_index;
-	  if (session_send_io_evt_to_thread_custom (active_open_tx_fifo,
+	  u32 ao_session_index = active_open_tx_fifo->master_session_index;
+	  if (session_send_io_evt_to_thread_custom (&ao_session_index,
 						    ao_thread_index,
 						    SESSION_IO_EVT_TX))
 	    clib_warning ("failed to enqueue tx evt");
@@ -356,7 +357,8 @@ active_open_rx_callback (session_t * s)
   if (svm_fifo_set_event (proxy_tx_fifo))
     {
       u8 thread_index = proxy_tx_fifo->master_thread_index;
-      return session_send_io_evt_to_thread_custom (proxy_tx_fifo,
+      u32 session_index = proxy_tx_fifo->master_session_index;
+      return session_send_io_evt_to_thread_custom (&session_index,
 						   thread_index,
 						   SESSION_IO_EVT_TX);
     }
