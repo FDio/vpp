@@ -82,35 +82,28 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
 }
 
 always_inline void
-esp_decrypt_cbc (ipsec_crypto_alg_t alg,
+esp_decrypt_cbc (vlib_main_t * vm, ipsec_crypto_alg_t alg,
 		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
 {
-  ipsec_proto_main_t *em = &ipsec_proto_main;
-  u32 thread_index = vlib_get_thread_index ();
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *ctx = em->per_thread_data[thread_index].decrypt_ctx;
-#else
-  EVP_CIPHER_CTX *ctx = &(em->per_thread_data[thread_index].decrypt_ctx);
-#endif
-  const EVP_CIPHER *cipher = NULL;
-  int out_len;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_crypto_alg_t *a;
+  vnet_crypto_op_t _op, *op = &_op;
 
   ASSERT (alg < IPSEC_CRYPTO_N_ALG);
 
-  if (PREDICT_FALSE (em->ipsec_proto_main_crypto_algs[alg].type == 0))
+  a = &im->crypto_algs[alg];
+
+  if (PREDICT_FALSE (a->dec_op_type == VNET_CRYPTO_OP_NONE))
     return;
 
-  if (PREDICT_FALSE
-      (alg != em->per_thread_data[thread_index].last_decrypt_alg))
-    {
-      cipher = em->ipsec_proto_main_crypto_algs[alg].type;
-      em->per_thread_data[thread_index].last_decrypt_alg = alg;
-    }
+  op->op = a->dec_op_type;
+  op->iv = iv;
+  op->src = in;
+  op->dst = out;
+  op->len = in_len;
+  op->key = key;
 
-  EVP_DecryptInit_ex (ctx, cipher, NULL, key, iv);
-
-  EVP_DecryptUpdate (ctx, out, &out_len, in, in_len);
-  EVP_DecryptFinal_ex (ctx, out + out_len, &out_len);
+  vnet_crypto_run (vm, &op, 1);
 }
 
 always_inline uword
@@ -119,7 +112,6 @@ esp_decrypt_inline (vlib_main_t * vm,
 		    int is_ip6)
 {
   ipsec_main_t *im = &ipsec_main;
-  ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left_from = from_frame->n_vectors;
   u32 new_bufs[VLIB_FRAME_SIZE];
@@ -189,11 +181,9 @@ esp_decrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	{
 	  u8 sig[64];
-	  int icv_size =
-	    em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
+	  int icv_size = im->integ_algs[sa0->integ_alg].trunc_size;
 	  clib_memset (sig, 0, sizeof (sig));
-	  u8 *icv =
-	    vlib_buffer_get_current (ib[0]) + ib[0]->current_length -
+	  u8 *icv = vlib_buffer_get_current (ib[0]) + ib[0]->current_length -
 	    icv_size;
 	  ib[0]->current_length -= icv_size;
 
@@ -227,10 +217,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  (sa0->crypto_alg >= IPSEC_CRYPTO_ALG_DES_CBC &&
 	   sa0->crypto_alg <= IPSEC_CRYPTO_ALG_3DES_CBC))
 	{
-	  const int BLOCK_SIZE =
-	    em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].block_size;;
-	  const int IV_SIZE =
-	    em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size;
+	  const int BLOCK_SIZE = im->crypto_algs[sa0->crypto_alg].block_size;
+	  const int IV_SIZE = im->crypto_algs[sa0->crypto_alg].iv_size;
 	  esp_footer_t *f0;
 	  u8 ip_hdr_size = 0;
 
@@ -263,7 +251,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  esp_decrypt_cbc (sa0->crypto_alg,
+	  esp_decrypt_cbc (vm, sa0->crypto_alg,
 			   esp0->data + IV_SIZE,
 			   (u8 *) vlib_buffer_get_current (ob[0]) +
 			   ip_hdr_size, BLOCK_SIZE * blocks,
