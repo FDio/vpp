@@ -287,14 +287,14 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
   /* tell uio_hv_generic about netvsc device type */
   if (uio_new_id_needed)
     {
-      uio_new_id_needed = 0;
-
       vec_reset_length (s);
       s = format (s, "%s/%s/new_id%c", sysfs_vmbus_drv_path, uio_drv_name, 0);
       error = clib_sysfs_write ((char *) s, "%s", netvsc_uuid);
 
       if (error)
 	goto done;
+
+      uio_new_id_needed = 0;
 
     }
 
