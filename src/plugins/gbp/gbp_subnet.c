@@ -117,6 +117,9 @@ gbp_subnet_transport_add (gbp_subnet_t * gs)
   fproto = gs->gs_key->gsk_pfx.fp_proto;
   grd = gbp_route_domain_get (gs->gs_rd);
 
+  if (~0 == grd->grd_uu_sw_if_index[fproto])
+    return (VNET_API_ERROR_INVALID_SW_IF_INDEX);
+
   gs->gs_fei = fib_table_entry_update_one_path (gs->gs_key->gsk_fib_index,
 						&gs->gs_key->gsk_pfx,
 						FIB_SOURCE_PLUGIN_HI,
