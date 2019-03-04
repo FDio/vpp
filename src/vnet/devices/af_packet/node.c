@@ -345,9 +345,9 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-static uword
-af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame)
+VLIB_NODE_FN (af_packet_input_node) (vlib_main_t * vm,
+				     vlib_node_runtime_t * node,
+				     vlib_frame_t * frame)
 {
   u32 n_rx_packets = 0;
   af_packet_main_t *apm = &af_packet_main;
@@ -367,7 +367,6 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (af_packet_input_node) = {
-  .function = af_packet_input_fn,
   .name = "af-packet-input",
   .sibling_of = "device-input",
   .format_trace = format_af_packet_input_trace,
@@ -376,8 +375,6 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (af_packet_input_node, af_packet_input_fn)
 /* *INDENT-ON* */
 
 
