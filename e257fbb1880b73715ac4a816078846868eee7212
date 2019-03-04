@@ -16,6 +16,29 @@
       "revId": "e257fbb1880b73715ac4a816078846868eee7212",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "44b5a349_5360be2c",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 363,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-04T23:23:09Z",
+      "side": 1,
+      "message": "Remember this is not my code.  ;) \nBecause we can\u0027t slice/index an iterator.",
+      "range": {
+        "startLine": 360,
+        "startChar": 16,
+        "endLine": 363,
+        "endChar": 47
+      },
+      "revId": "e257fbb1880b73715ac4a816078846868eee7212",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
