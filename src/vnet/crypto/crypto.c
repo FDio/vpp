@@ -19,6 +19,13 @@
 
 vnet_crypto_main_t crypto_main;
 
+void
+vnet_crypto_async_mode_enable_disable (u8 is_enabled)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  cm->async_mode = is_enabled;
+}
+
 static_always_inline u32
 vnet_crypto_process_ops_call_handler (vlib_main_t * vm,
 				      vnet_crypto_main_t * cm,
@@ -72,6 +79,71 @@ vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[], u32 n_ops)
   rv += vnet_crypto_process_ops_call_handler (vm, cm, current_op_type,
 					      op_queue, n_op_queue);
   return rv;
+}
+
+u32
+vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
+			u32 n_jobs)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_thread_t *ct = vec_elt_at_index (cm->threads, vm->thread_index);
+  u32 n_enq = 0;
+  u32 head = 0, mask = 0;
+  vnet_crypto_queue_t *q = 0;
+  vnet_crypto_op_id_t last_opt = ~0;
+
+  while (n_enq < n_jobs)
+    {
+      vnet_crypto_op_t *j = jobs[n_enq];
+      vnet_crypto_op_id_t opt = j->op;
+
+      if (opt != last_opt)
+	{
+	  if (q)
+	    {
+	      CLIB_MEMORY_STORE_BARRIER ();
+	      q->head = head;
+	      clib_bitmap_set_no_check (ct->act_queues, opt, 1);
+	    }
+
+	  q = ct->queues[opt];
+	  head = q->head;
+	  mask = q->size - 1;
+	  last_opt = opt;
+	}
+
+      /* job is not taken from the queue if pointer is still set */
+      if (q->jobs[head & mask])
+	break;
+
+      q->jobs[head & mask] = j;
+      head += 1;
+      n_enq += 1;
+    }
+
+  if (n_enq)
+    {
+      CLIB_MEMORY_STORE_BARRIER ();
+      q->head = head;
+      clib_bitmap_set_no_check (ct->act_queues, last_opt, 1);
+    }
+  return n_enq;
+}
+
+vnet_crypto_op_t *
+vnet_crypto_no_handler_handler (vlib_main_t * vm, vnet_crypto_queue_t * q)
+{
+  vnet_crypto_op_t *j;
+  if ((j = vnet_crypto_dequeue_one_job (q)))
+    {
+      clib_atomic_store_rel_n (&j->status, VNET_CRYPTO_OP_STATUS_COMPLETED);
+      clib_warning ("got one %U %U on thread %u",
+		    format_vnet_crypto_alg, q->alg,
+		    format_vnet_crypto_op, q->op, vm->thread_index);
+      return j;
+    }
+
+  return 0;
 }
 
 u32
@@ -135,6 +207,21 @@ vnet_crypto_is_set_handler (vnet_crypto_alg_t alg)
   vnet_crypto_main_t *cm = &crypto_main;
 
   return (NULL != cm->ops_handlers[alg]);
+}
+
+vlib_error_t *
+vnet_crypto_register_async_queue_handler (vlib_main_t * vm,
+					  u32 engine_index,
+					  vnet_crypto_op_id_t opt,
+					  vnet_crypto_queue_handler_t * fn)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vec_validate_init_empty_aligned (cm->queue_handlers,
+				   VNET_CRYPTO_N_OP_IDS - 1,
+				   vnet_crypto_no_handler_handler,
+				   CLIB_CACHE_LINE_BYTES);
+  cm->queue_handlers[opt] = fn;
+  return 0;
 }
 
 void
@@ -314,7 +401,42 @@ vnet_crypto_init (vlib_main_t * vm)
 			      VNET_CRYPTO_OP_##n##_HMAC, "hmac-" s);
   foreach_crypto_hmac_alg;
 #undef _
+
+  vnet_crypto_queue_t *q = 0;
+  vnet_crypto_thread_t *ct;
+  u32 sz =
+    VNET_CRYPTO_RING_SIZE * sizeof (void *) + sizeof (vnet_crypto_queue_t);
+
+  vec_foreach (ct, cm->threads)
+  {
+    for (int opt = 0; opt < VNET_CRYPTO_N_OP_IDS; opt++)
+      {
+	q = clib_mem_alloc_aligned (sz, CLIB_CACHE_LINE_BYTES);
+	ct->queues[opt] = q;
+	clib_memset_u8 (q, 0, sz);
+	q->size = VNET_CRYPTO_RING_SIZE;
+	q->op = opt;
+      }
+    clib_bitmap_vec_validate (ct->act_queues, VNET_CRYPTO_N_OP_IDS);
+  }
   return 0;
+}
+
+u32
+crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+
+  u32 index = cm->n_crypto_dispatch_next_nodes;
+
+  vlib_node_add_named_next_with_slot (vm,
+				      vlib_get_node_by_name (vm,
+							     (u8 *)
+							     "crypto-dispatch")->index,
+				      post_node_name, index);
+
+  cm->n_crypto_dispatch_next_nodes++;
+  return index;
 }
 
 VLIB_INIT_FUNCTION (vnet_crypto_init);
