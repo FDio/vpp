@@ -19,6 +19,7 @@
 #include <vnet/gre/gre.h>
 #include <vnet/adj/adj_midchain.h>
 
+#ifndef CLIB_MARCH_VARIANT
 gre_main_t gre_main;
 
 typedef struct
@@ -38,6 +39,7 @@ typedef struct
     u64 as_u64[3];
   };
 } ip6_and_gre_union_t;
+#endif /* CLIB_MARCH_VARIANT */
 
 
 /* Packet trace structure */
@@ -54,7 +56,7 @@ typedef struct
   ip46_address_t dst;
 } gre_tx_trace_t;
 
-u8 *
+static u8 *
 format_gre_tx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -68,6 +70,7 @@ format_gre_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_gre_protocol (u8 * s, va_list * args)
 {
@@ -319,6 +322,7 @@ gre_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
 
   gre_tunnel_stack (ai);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 
 typedef enum
@@ -331,9 +335,9 @@ typedef enum
  * @brief TX function. Only called for L2 payload including TEB or ERSPAN.
  *        L3 traffic uses the adj-midchains.
  */
-static uword
-gre_interface_tx (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (gre_encap_node) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   gre_main_t *gm = &gre_main;
   vnet_main_t *vnm = gm->vnet_main;
@@ -513,7 +517,6 @@ static char *gre_error_strings[] = {
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gre_encap_node) =
 {
-  .function = gre_interface_tx,
   .name = "gre-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_gre_tx_trace,
@@ -525,8 +528,6 @@ VLIB_REGISTER_NODE (gre_encap_node) =
     [GRE_ENCAP_NEXT_L2_MIDCHAIN] = "adj-l2-midchain",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gre_encap_node, gre_interface_tx)
 /* *INDENT-ON* */
 
 static u8 *
@@ -565,6 +566,7 @@ VNET_DEVICE_CLASS (gre_device_class) = {
 #endif
 };
 
+#ifndef CLIB_MARCH_VARIANT
 VNET_HW_INTERFACE_CLASS (gre_hw_interface_class) = {
   .name = "GRE",
   .format_header = format_gre_header_with_length,
@@ -634,6 +636,8 @@ gre_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (gre_init);
+
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

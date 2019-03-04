@@ -46,7 +46,7 @@ typedef struct
   u8 is_ipv6;
 } gre_rx_trace_t;
 
-u8 *
+static u8 *
 format_gre_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -551,16 +551,16 @@ gre_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-gre4_input (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (gre4_input_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return gre_input (vm, node, from_frame, /* is_ip6 */ 0);
 }
 
-static uword
-gre6_input (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (gre6_input_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return gre_input (vm, node, from_frame, /* is_ip6 */ 1);
 }
@@ -573,7 +573,6 @@ static char *gre_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (gre4_input_node) = {
-  .function = gre4_input,
   .name = "gre4-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -594,7 +593,6 @@ VLIB_REGISTER_NODE (gre4_input_node) = {
 };
 
 VLIB_REGISTER_NODE (gre6_input_node) = {
-  .function = gre6_input,
   .name = "gre6-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -615,11 +613,9 @@ VLIB_REGISTER_NODE (gre6_input_node) = {
   .format_trace = format_gre_rx_trace,
   .unformat_buffer = unformat_gre_header,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (gre4_input_node, gre4_input)
-VLIB_NODE_FUNCTION_MULTIARCH (gre6_input_node, gre6_input)
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 void
 gre_register_input_protocol (vlib_main_t * vm,
 			     gre_protocol_t protocol, u32 node_index,
@@ -711,6 +707,7 @@ gre_input_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (gre_input_init);
 
+#endif /* CLIB_MARCH_VARIANT */
 /*
  * fd.io coding-style-patch-verification: ON
  *
