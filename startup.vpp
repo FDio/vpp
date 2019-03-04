@@ -1,0 +1,31 @@
+pipe create
+create interface avf 0000:af:02.0 name eth0
+create interface avf 0000:af:0a.0 name eth1
+
+ip table add 1
+set int ip table eth1 1
+set int ip table pipe0.1 1
+
+set int ip address eth0 172.16.0.1/24
+set int ip address eth1 172.16.1.1/24
+set int ip address pipe0.0 10.0.0.1/24
+set int ip address pipe0.1 10.0.0.2/24
+set int state eth0 up
+set int state eth1 up
+set int state pipe0 up
+
+create ipsec tunnel local-ip 10.0.0.1 remote-ip 10.0.0.2 local-spi 100 remote-spi 101
+set interface ipsec key ipsec0 local crypto aes-cbc-128 A11E51E5B1E0
+set interface ipsec key ipsec0 remote crypto aes-cbc-128 A11E51E5B1E0
+set int state ipsec0 up
+set int unnum ipsec0 use eth0
+
+create ipsec tunnel local-ip 10.0.0.2 remote-ip 10.0.0.1 local-spi 101 remote-spi 100 tx-table 1
+set interface ipsec key ipsec1 local crypto aes-cbc-128 A11E51E5B1E0
+set interface ipsec key ipsec1 remote crypto aes-cbc-128 A11E51E5B1E0
+set int state ipsec1 up
+set int ip table ipsec1 1
+set int unnum ipsec1 use eth1
+
+ip route add 172.16.1.0/24 via ipsec0
+ip route add 172.16.0.0/24 table 1 via ipsec1

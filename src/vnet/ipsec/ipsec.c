@@ -26,7 +26,6 @@
 #include <vnet/ipsec/ah.h>
 
 ipsec_main_t ipsec_main;
-ipsec_proto_main_t ipsec_proto_main;
 
 static void
 ipsec_rand_seed (void)
@@ -240,6 +239,9 @@ ipsec_init (vlib_main_t * vm)
 {
   clib_error_t *error;
   ipsec_main_t *im = &ipsec_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  ipsec_main_crypto_alg_t *a;
+  int thread_id;
 
   ipsec_rand_seed ();
 
@@ -287,7 +289,67 @@ ipsec_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ipsec_tunnel_if_init)))
     return error;
 
-  ipsec_proto_init ();
+  vec_validate (im->crypto_algs, IPSEC_CRYPTO_N_ALG - 1);
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_DES_CBC;
+  a->enc_op_type = VNET_CRYPTO_OP_DES_CBC_ENC;
+  a->dec_op_type = VNET_CRYPTO_OP_DES_CBC_DEC;
+  a->iv_size = a->block_size = 8;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_3DES_CBC;
+  a->enc_op_type = VNET_CRYPTO_OP_3DES_CBC_ENC;
+  a->dec_op_type = VNET_CRYPTO_OP_3DES_CBC_DEC;
+  a->iv_size = a->block_size = 8;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_CBC_128;
+  a->enc_op_type = VNET_CRYPTO_OP_AES_128_CBC_ENC;
+  a->dec_op_type = VNET_CRYPTO_OP_AES_128_CBC_DEC;
+  a->iv_size = a->block_size = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_CBC_192;
+  a->enc_op_type = VNET_CRYPTO_OP_AES_192_CBC_ENC;
+  a->dec_op_type = VNET_CRYPTO_OP_AES_192_CBC_DEC;
+  a->iv_size = a->block_size = 16;
+
+  a = im->crypto_algs + IPSEC_CRYPTO_ALG_AES_CBC_256;
+  a->enc_op_type = VNET_CRYPTO_OP_AES_256_CBC_ENC;
+  a->dec_op_type = VNET_CRYPTO_OP_AES_256_CBC_DEC;
+  a->iv_size = a->block_size = 16;
+
+  vec_validate (im->integ_algs, IPSEC_INTEG_N_ALG - 1);
+  ipsec_main_integ_alg_t *i;
+
+  i = &im->integ_algs[IPSEC_INTEG_ALG_SHA1_96];
+  i->md = EVP_sha1 ();
+  i->trunc_size = 12;
+
+  i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_256_96];
+  i->md = EVP_sha256 ();
+  i->trunc_size = 12;
+
+  i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_256_128];
+  i->md = EVP_sha256 ();
+  i->trunc_size = 16;
+
+  i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_384_192];
+  i->md = EVP_sha384 ();
+  i->trunc_size = 24;
+
+  i = &im->integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
+  i->md = EVP_sha512 ();
+  i->trunc_size = 32;
+
+  vec_validate_aligned (im->per_thread_data, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
+    {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      im->per_thread_data[thread_id].hmac_ctx = HMAC_CTX_new ();
+#else
+      HMAC_CTX_init (&(im->per_thread_data[thread_id].hmac_ctx));
+#endif
+    }
 
   return 0;
 }
