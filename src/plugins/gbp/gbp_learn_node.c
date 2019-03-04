@@ -162,6 +162,7 @@ typedef struct gbp_learn_l2_trace_t_
   u32 throttled;
   u32 epg;
   u32 d_bit;
+  gbp_bridge_domain_flags_t gb_flags;
 } gbp_learn_l2_trace_t;
 
 always_inline void
@@ -317,6 +318,7 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 	      t->throttled = t0;
 	      t->sw_if_index = sw_if_index0;
 	      t->epg = epg0;
+	      t->gb_flags = gb0->gb_flags;
 	      t->d_bit = ! !(vnet_buffer2 (b0)->gbp.flags &
 			     VXLAN_GBP_GPFLAGS_D);
 	    }
@@ -341,9 +343,11 @@ format_gbp_learn_l2_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_learn_l2_trace_t *t = va_arg (*args, gbp_learn_l2_trace_t *);
 
-  s = format (s, "new:%d throttled:%d d-bit:%d mac:%U itf:%d epg:%d",
+  s = format (s, "new:%d throttled:%d d-bit:%d mac:%U itf:%d epg:%d"
+	      " gb-flags:%U",
 	      t->new, t->throttled, t->d_bit,
-	      format_mac_address_t, &t->mac, t->sw_if_index, t->epg);
+	      format_mac_address_t, &t->mac, t->sw_if_index, t->epg,
+	      format_gbp_bridge_domain_flags, t->gb_flags);
 
   return s;
 }

@@ -113,6 +113,23 @@ gbp_bridge_domain_db_remove (gbp_bridge_domain_t * gb)
   gbp_bridge_domain_db.gbd_by_bd_index[gb->gb_bd_index] = INDEX_INVALID;
 }
 
+u8 *
+format_gbp_bridge_domain_flags (u8 * s, va_list * args)
+{
+  gbp_bridge_domain_flags_t gf = va_arg (*args, gbp_bridge_domain_flags_t);
+
+  if (gf)
+    {
+      if (gf & GBP_BD_FLAG_DO_NOT_LEARN)
+	s = format (s, "do-not-learn");
+    }
+  else
+    {
+      s = format (s, "noe");
+    }
+  return (s);
+}
+
 static u8 *
 format_gbp_bridge_domain_ptr (u8 * s, va_list * args)
 {
@@ -120,13 +137,13 @@ format_gbp_bridge_domain_ptr (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
 
   if (NULL != gb)
-    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U locks:%d",
+    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U flags:%U locks:%d",
 		gb - gbp_bridge_domain_pool,
 		gb->gb_bd_id,
 		gb->gb_bd_index,
 		format_vnet_sw_if_index_name, vnm, gb->gb_bvi_sw_if_index,
 		format_vnet_sw_if_index_name, vnm, gb->gb_uu_fwd_sw_if_index,
-		gb->gb_locks);
+		format_gbp_bridge_domain_flags, gb->gb_flags, gb->gb_locks);
   else
     s = format (s, "NULL");
 

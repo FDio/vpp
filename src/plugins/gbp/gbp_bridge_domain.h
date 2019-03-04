@@ -91,6 +91,7 @@ typedef int (*gbp_bridge_domain_cb_t) (gbp_bridge_domain_t * gb, void *ctx);
 extern void gbp_bridge_domain_walk (gbp_bridge_domain_cb_t bgpe, void *ctx);
 
 extern u8 *format_gbp_bridge_domain (u8 * s, va_list * args);
+extern u8 *format_gbp_bridge_domain_flags (u8 * s, va_list * args);
 
 /**
  * DB of bridge_domains
