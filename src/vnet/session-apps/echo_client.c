@@ -62,7 +62,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  svm_fifo_t *f = s->data.tx_fifo;
 	  rv = clib_min (svm_fifo_max_enqueue (f), bytes_this_chunk);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  session_send_io_evt_to_thread_custom (f, s->thread_index,
+	  session_send_io_evt_to_thread_custom (&f->master_session_index,
+						s->thread_index,
 						SESSION_IO_EVT_TX);
 	}
       else
@@ -95,7 +96,8 @@ send_data_chunk (echo_client_main_t * ecm, eclient_session_t * s)
 	  hdr.lcl_port = at->lcl_port;
 	  svm_fifo_enqueue_nowait (f, sizeof (hdr), (u8 *) & hdr);
 	  svm_fifo_enqueue_nocopy (f, rv);
-	  session_send_io_evt_to_thread_custom (f, s->thread_index,
+	  session_send_io_evt_to_thread_custom (&f->master_session_index,
+						s->thread_index,
 						SESSION_IO_EVT_TX);
 	}
       else

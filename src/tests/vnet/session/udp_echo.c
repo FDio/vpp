@@ -1014,7 +1014,8 @@ server_handle_fifo_event_rx (udp_echo_main_t * utm, u32 session_index)
 
 	  /* If event wasn't set, add one */
 	  if (svm_fifo_set_event (tx_fifo))
-	    app_send_io_evt_to_vpp (session->vpp_evt_q, tx_fifo,
+	    app_send_io_evt_to_vpp (session->vpp_evt_q,
+				    tx_fifo->master_session_index,
 				    SESSION_IO_EVT_TX, SVM_Q_WAIT);
 	}
     }
@@ -1043,7 +1044,7 @@ server_handle_event_queue (udp_echo_main_t * utm)
       switch (e->event_type)
 	{
 	case SESSION_IO_EVT_RX:
-	  server_handle_fifo_event_rx (utm, e->fifo->client_session_index);
+	  server_handle_fifo_event_rx (utm, e->session_index);
 	  break;
 
 	default:
