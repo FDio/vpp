@@ -465,7 +465,8 @@ VNET_HW_INTERFACE_CLASS (gbp_vxlan_hw_interface_class) = {
 
 int
 gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
-		      u32 bd_rd_id, u32 * sw_if_indexp)
+		      u32 bd_rd_id,
+		      const ip4_address_t * src, u32 * sw_if_indexp)
 {
   gbp_vxlan_tunnel_t *gt;
   index_t gti;
@@ -512,6 +513,7 @@ gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
       gt->gt_vni = vni;
       gt->gt_layer = layer;
       gt->gt_bd_rd_id = bd_rd_id;
+      gt->gt_src.ip4.as_u32 = src->as_u32;
       gt->gt_hw_if_index = vnet_register_interface (vnm,
 						    gbp_vxlan_device_class.index,
 						    gti,
@@ -534,7 +536,7 @@ gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
 
 	  gt->gt_gbd = gbi;
 	  gt->gt_bd_index = gb->gb_bd_index;
-	  gb->gb_vni_sw_if_index = gt->gt_sw_if_index;
+	  gb->gb_vni = gti;
 	  /* set it up as a GBP interface */
 	  gt->gt_itf = gbp_itf_add_and_lock (gt->gt_sw_if_index,
 					     gt->gt_bd_index);
@@ -571,7 +573,8 @@ gbp_vxlan_tunnel_add (u32 vni, gbp_vxlan_tunnel_layer_t layer,
        */
       hash_set (gv_db, vni, gti);
 
-      vec_validate (gbp_vxlan_tunnel_db, gt->gt_sw_if_index);
+      vec_validate_init_empty (gbp_vxlan_tunnel_db,
+			       gt->gt_sw_if_index, INDEX_INVALID);
       gbp_vxlan_tunnel_db[gt->gt_sw_if_index] = gti;
 
       if (sw_if_indexp)

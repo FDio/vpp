@@ -22,6 +22,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
+#include <vnet/ethernet/arp_packet.h>
 
 #define GBP_LEARN_DBG(...)                                      \
     vlib_log_debug (gbp_learn_main.gl_logger, __VA_ARGS__);
@@ -72,10 +73,8 @@ gbp_learn_l2_cp (const gbp_learn_l2_t * gl2)
 		 format_mac_address_t, &gl2->mac,
 		 format_ip46_address, &gl2->ip, IP46_TYPE_ANY, gl2->epg);
 
-  vec_add1 (ips, gl2->ip);
-
-  ASSERT (!ip46_address_is_zero (&gl2->outer_src));
-  ASSERT (!ip46_address_is_zero (&gl2->outer_dst));
+  if (!ip46_address_is_zero (&gl2->ip))
+    vec_add1 (ips, gl2->ip);
 
   /*
    * flip the source and dst, since that's how it was received, this API
@@ -106,9 +105,6 @@ gbp_learn_l2_ip4_dp (const u8 * mac, const ip4_address_t * ip,
     .outer_dst.ip4 = *outer_dst,
   };
   mac_address_from_bytes (&gl2.mac, mac);
-
-  ASSERT (!ip46_address_is_zero (&gl2.outer_src));
-  ASSERT (!ip46_address_is_zero (&gl2.outer_dst));
 
   vl_api_rpc_call_main_thread (gbp_learn_l2_cp, (u8 *) & gl2, sizeof (gl2));
 }
@@ -260,6 +256,12 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 		{
 		  gbp_learn_get_outer (eh0, &outer_src, &outer_dst);
 
+		  if (outer_src.as_u32 == 0 || outer_dst.as_u32 == 0)
+		    {
+		      t0 = 2;
+		      goto trace;
+		    }
+
 		  switch (clib_net_to_host_u16 (eh0->type))
 		    {
 		    case ETHERNET_TYPE_IP4:
@@ -288,6 +290,19 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 					     sw_if_index0, epg0,
 					     &outer_src, &outer_dst);
 
+			break;
+		      }
+		    case ETHERNET_TYPE_ARP:
+		      {
+			const ethernet_arp_header_t *arp0;
+
+			arp0 = (ethernet_arp_header_t *) (eh0 + 1);
+
+			gbp_learn_l2_ip4_dp (eh0->src_address,
+					     &arp0->ip4_over_ethernet[0].ip4,
+					     vnet_buffer (b0)->l2.bd_index,
+					     sw_if_index0, epg0,
+					     &outer_src, &outer_dst);
 			break;
 		      }
 		    default:

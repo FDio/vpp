@@ -32,6 +32,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/ip/ip_neighbor.h>
 #include <vnet/fib/fib_walk.h>
+#include <vnet/vxlan-gbp/vxlan_gbp.h>
 
 static const char *gbp_endpoint_attr_names[] = GBP_ENDPOINT_ATTR_NAMES;
 
@@ -473,6 +474,7 @@ gbp_endpoint_n_learned (int n)
 
 static void
 gbp_endpoint_loc_update (gbp_endpoint_loc_t * gel,
+			 const gbp_bridge_domain_t * gb,
 			 u32 sw_if_index,
 			 index_t ggi,
 			 gbp_endpoint_flags_t flags,
@@ -507,6 +509,24 @@ gbp_endpoint_loc_update (gbp_endpoint_loc_t * gel,
 	ip46_address_copy (&gel->tun.gel_src, tun_src);
       if (NULL != tun_dst)
 	ip46_address_copy (&gel->tun.gel_dst, tun_dst);
+
+      if (ip46_address_is_multicast (&gel->tun.gel_src))
+	{
+	  /*
+	   * we learnt the EP from the multicast tunnel.
+	   * Create a unicast TEP from the packet's source
+	   * and the fixed address of the BD's parent tunnel
+	   */
+	  const gbp_vxlan_tunnel_t *gt;
+
+	  gt = gbp_vxlan_tunnel_get (gb->gb_vni);
+
+	  if (NULL != gt)
+	    {
+	      ip46_address_copy (&gel->tun.gel_src, &gt->gt_src);
+	      sw_if_index = gt->gt_sw_if_index;
+	    }
+	}
 
       /*
        * the input interface may be the parent GBP-vxlan interface,
@@ -862,7 +882,8 @@ gbp_endpoint_update_and_lock (gbp_endpoint_src_t src,
   gei = gbp_endpoint_index (ge);
   gel = gbp_endpoint_loc_find_or_add (ge, src);
 
-  gbp_endpoint_loc_update (gel, sw_if_index, ggi, flags, tun_src, tun_dst);
+  gbp_endpoint_loc_update (gel, gbd, sw_if_index, ggi, flags, tun_src,
+			   tun_dst);
 
   if (src <= best)
     {

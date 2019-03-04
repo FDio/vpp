@@ -505,18 +505,20 @@ class VppGbpVxlanTunnel(VppInterface):
     GBP VXLAN tunnel
     """
 
-    def __init__(self, test, vni, bd_rd_id, mode):
+    def __init__(self, test, vni, bd_rd_id, mode, src):
         super(VppGbpVxlanTunnel, self).__init__(test)
         self._test = test
         self.vni = vni
         self.bd_rd_id = bd_rd_id
         self.mode = mode
+        self.src = src
 
     def add_vpp_config(self):
         r = self._test.vapi.gbp_vxlan_tunnel_add(
             self.vni,
             self.bd_rd_id,
-            self.mode)
+            self.mode,
+            self.src)
         self.set_sw_if_index(r.sw_if_index)
         self._test.registry.register(self, self._test.logger)
 
@@ -527,7 +529,7 @@ class VppGbpVxlanTunnel(VppInterface):
         return self.object_id()
 
     def object_id(self):
-        return "gbp-vxlan:%d" % (self.vni)
+        return "gbp-vxlan:%d" % (self.sw_if_index)
 
     def query_vpp_config(self):
         return find_gbp_vxlan(self._test, self.vni)
@@ -1538,7 +1540,8 @@ class TestGBP(VppTestCase):
         #
         vx_tun_l2_1 = VppGbpVxlanTunnel(
             self, 99, bd1.bd_id,
-            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L2)
+            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L2,
+            self.pg2.local_ip4)
         vx_tun_l2_1.add_vpp_config()
 
         #
@@ -1580,6 +1583,9 @@ class TestGBP(VppTestCase):
         # epg is not learnt, becasue the EPG is unknwon
         self.assertEqual(len(self.vapi.gbp_endpoint_dump()), 1)
 
+        #
+        # Learn new EPs from IP packets
+        #
         for ii, l in enumerate(learnt):
             # a packet with an sclass from a knwon EPG
             # arriving on an unknown TEP
@@ -1617,11 +1623,100 @@ class TestGBP(VppTestCase):
 
         self.logger.info(self.vapi.cli("show gbp endpoint"))
         self.logger.info(self.vapi.cli("show gbp vxlan"))
-        self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli("show ip mfib"))
 
         #
         # If we sleep for the threshold time, the learnt endpoints should
         # age out
+        #
+        for l in learnt:
+            self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
+                                     mac=l['mac'])
+
+        #
+        # Learn new EPs from GARP packets received on the BD's mcast tunnel
+        #
+        for ii, l in enumerate(learnt):
+            # a packet with an sclass from a knwon EPG
+            # arriving on an unknown TEP
+            p = (Ether(src=self.pg2.remote_mac,
+                       dst=self.pg2.local_mac) /
+                 IP(src=self.pg2.remote_hosts[1].ip4,
+                    dst="239.1.1.1") /
+                 UDP(sport=1234, dport=48879) /
+                 VXLAN(vni=88, gpid=112, flags=0x88) /
+                 Ether(src=l['mac'], dst="ff:ff:ff:ff:ff:ff") /
+                 ARP(op="who-has",
+                     psrc=l['ip'], pdst=l['ip'],
+                     hwsrc=l['mac'], hwdst="ff:ff:ff:ff:ff:ff"))
+
+            rx = self.send_and_expect(self.pg4, [p], self.pg0)
+
+            # the new TEP
+            tep1_sw_if_index = find_vxlan_gbp_tunnel(
+                self,
+                self.pg2.local_ip4,
+                self.pg2.remote_hosts[1].ip4,
+                99)
+            self.assertNotEqual(INDEX_INVALID, tep1_sw_if_index)
+
+            #
+            # the EP is learnt via the learnt TEP
+            # both from its MAC and its IP
+            #
+            self.assertTrue(find_gbp_endpoint(self,
+                                              vx_tun_l2_1.sw_if_index,
+                                              mac=l['mac']))
+            self.assertTrue(find_gbp_endpoint(self,
+                                              vx_tun_l2_1.sw_if_index,
+                                              ip=l['ip']))
+
+        #
+        # wait for the learnt endpoints to age out
+        #
+        for l in learnt:
+            self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
+                                     mac=l['mac'])
+
+        #
+        # Learn new EPs from L2 packets
+        #
+        for ii, l in enumerate(learnt):
+            # a packet with an sclass from a knwon EPG
+            # arriving on an unknown TEP
+            p = (Ether(src=self.pg2.remote_mac,
+                       dst=self.pg2.local_mac) /
+                 IP(src=self.pg2.remote_hosts[1].ip4,
+                    dst=self.pg2.local_ip4) /
+                 UDP(sport=1234, dport=48879) /
+                 VXLAN(vni=99, gpid=112, flags=0x88) /
+                 Ether(src=l['mac'], dst=ep.mac) /
+                 Raw('\xa5' * 100))
+
+            rx = self.send_and_expect(self.pg2, [p], self.pg0)
+
+            # the new TEP
+            tep1_sw_if_index = find_vxlan_gbp_tunnel(
+                self,
+                self.pg2.local_ip4,
+                self.pg2.remote_hosts[1].ip4,
+                99)
+            self.assertNotEqual(INDEX_INVALID, tep1_sw_if_index)
+
+            #
+            # the EP is learnt via the learnt TEP
+            # both from its MAC and its IP
+            #
+            self.assertTrue(find_gbp_endpoint(self,
+                                              vx_tun_l2_1.sw_if_index,
+                                              mac=l['mac']))
+
+        self.logger.info(self.vapi.cli("show gbp endpoint"))
+        self.logger.info(self.vapi.cli("show gbp vxlan"))
+        self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
+
+        #
+        # wait for the learnt endpoints to age out
         #
         for l in learnt:
             self.wait_for_ep_timeout(vx_tun_l2_1.sw_if_index,
@@ -1934,7 +2029,8 @@ class TestGBP(VppTestCase):
         #
         vx_tun_l2_1 = VppGbpVxlanTunnel(
             self, 99, bd1.bd_id,
-            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L2)
+            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L2,
+            self.pg2.local_ip4)
         vx_tun_l2_1.add_vpp_config()
 
         #
@@ -2109,7 +2205,8 @@ class TestGBP(VppTestCase):
         #
         vx_tun_l3 = VppGbpVxlanTunnel(
             self, 101, rd1.rd_id,
-            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L3)
+            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L3,
+            self.pg2.local_ip4)
         vx_tun_l3.add_vpp_config()
 
         #
@@ -2905,7 +3002,8 @@ class TestGBP(VppTestCase):
         #
         vx_tun_l3 = VppGbpVxlanTunnel(
             self, 444, rd1.rd_id,
-            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L3)
+            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L3,
+            self.pg2.local_ip4)
         vx_tun_l3.add_vpp_config()
 
         c4 = VppGbpContract(
@@ -3114,7 +3212,8 @@ class TestGBP(VppTestCase):
         #
         vx_tun_l3 = VppGbpVxlanTunnel(
             self, 444, rd1.rd_id,
-            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L3)
+            VppEnum.vl_api_gbp_vxlan_tunnel_mode_t.GBP_VXLAN_TUNNEL_MODE_L3,
+            self.pg2.local_ip4)
         vx_tun_l3.add_vpp_config()
 
         #

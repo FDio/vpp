@@ -1036,9 +1036,11 @@ vl_api_gbp_vxlan_tunnel_add_t_handler (vl_api_gbp_vxlan_tunnel_add_t * mp)
 {
   vl_api_gbp_vxlan_tunnel_add_reply_t *rmp;
   gbp_vxlan_tunnel_layer_t layer;
+  ip4_address_t src;
   u32 sw_if_index;
   int rv = 0;
 
+  ip4_address_decode (mp->tunnel.src, &src);
   rv = gbp_vxlan_tunnel_mode_2_layer (mp->tunnel.mode, &layer);
 
   if (0 != rv)
@@ -1046,7 +1048,7 @@ vl_api_gbp_vxlan_tunnel_add_t_handler (vl_api_gbp_vxlan_tunnel_add_t * mp)
 
   rv = gbp_vxlan_tunnel_add (ntohl (mp->tunnel.vni),
 			     layer,
-			     ntohl (mp->tunnel.bd_rd_id), &sw_if_index);
+			     ntohl (mp->tunnel.bd_rd_id), &src, &sw_if_index);
 
 out:
   /* *INDENT-OFF* */

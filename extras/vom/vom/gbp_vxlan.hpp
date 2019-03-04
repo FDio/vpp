@@ -38,8 +38,12 @@ public:
   /**
    * Construct a new object matching the desried state
    */
-  gbp_vxlan(uint32_t vni, const gbp_bridge_domain& gbd);
-  gbp_vxlan(uint32_t vni, const gbp_route_domain& grd);
+  gbp_vxlan(uint32_t vni,
+            const gbp_bridge_domain& gbd,
+            const boost::asio::ip::address_v4& src);
+  gbp_vxlan(uint32_t vni,
+            const gbp_route_domain& grd,
+            const boost::asio::ip::address_v4& src);
 
   /*
    * Destructor
@@ -161,6 +165,7 @@ private:
   uint32_t m_vni;
   std::shared_ptr<gbp_bridge_domain> m_gbd;
   std::shared_ptr<gbp_route_domain> m_grd;
+  boost::asio::ip::address_v4 m_src;
 
   /**
    * A map of all VLAN tunnela against thier key
