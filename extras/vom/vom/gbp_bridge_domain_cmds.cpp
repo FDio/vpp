@@ -65,7 +65,8 @@ create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "gbp-bridge-domain: " << m_hw_item.to_string()
-    << " bvi:" << m_bvi.to_string() << " uu-fwd:" << m_uu_fwd.to_string();
+    << " flags:" << m_flags.to_string() << " bvi:" << m_bvi.to_string()
+    << " uu-fwd:" << m_uu_fwd.to_string();
 
   return (s.str());
 }

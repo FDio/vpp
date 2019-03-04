@@ -23,7 +23,7 @@ namespace VOM {
 
 const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::NONE(0, "none");
 const gbp_bridge_domain::flags_t gbp_bridge_domain::flags_t::DO_NOT_LEARN(
-  0,
+  1,
   "do-not-learn");
 
 gbp_bridge_domain::flags_t::flags_t(int v, const std::string& s)
@@ -200,7 +200,8 @@ std::string
 gbp_bridge_domain::to_string() const
 {
   std::ostringstream s;
-  s << "gbp-bridge-domain:[" << m_bd->to_string();
+  s << "gbp-bridge-domain:[" << m_bd->to_string()
+    << " flags:" << m_flags.to_string();
 
   if (m_bvi)
     s << " bvi:" << m_bvi->to_string();
