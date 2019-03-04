@@ -1043,7 +1043,7 @@ server_handle_event_queue (udp_echo_main_t * utm)
       switch (e->event_type)
 	{
 	case SESSION_IO_EVT_RX:
-	  server_handle_fifo_event_rx (utm, e->fifo->client_session_index);
+	  server_handle_fifo_event_rx (utm, e->session_index);
 	  break;
 
 	default:

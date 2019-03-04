@@ -66,7 +66,7 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
     case SESSION_IO_EVT_TX:
     case SESSION_IO_EVT_TX_FLUSH:
     case SESSION_IO_EVT_BUILTIN_RX:
-      evt->fifo = data;
+      evt->session_index = *(u32 *)data;
       break;
     case SESSION_IO_EVT_BUILTIN_TX:
     case SESSION_CTRL_EVT_CLOSE:
@@ -85,7 +85,8 @@ session_send_evt_to_thread (void *data, void *args, u32 thread_index,
 int
 session_send_io_evt_to_thread (svm_fifo_t * f, session_evt_type_t evt_type)
 {
-  return session_send_evt_to_thread (f, 0, f->master_thread_index, evt_type);
+  return session_send_evt_to_thread (&f->master_session_index, 0,
+                                     f->master_thread_index, evt_type);
 }
 
 int

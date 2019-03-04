@@ -327,6 +327,7 @@ typedef struct
   union
   {
     svm_fifo_t *fifo;
+    u32 session_index;
     session_handle_t session_handle;
     session_rpc_args_t rpc_args;
     struct
