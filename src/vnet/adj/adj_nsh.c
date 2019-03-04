@@ -17,7 +17,9 @@
 #include <vnet/adj/adj_nsh.h>
 #include <vnet/ip/ip.h>
 
+#ifndef CLIB_MARCH_VARIANT
 nsh_main_dummy_t nsh_main_dummy;
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * @brief Trace data for a NSH Midchain
@@ -149,16 +151,14 @@ adj_nsh_rewrite_inline (vlib_main_t * vm,
     return frame->n_vectors;
 }
 
-static uword
-adj_nsh_rewrite (vlib_main_t * vm,
+VLIB_NODE_FN (adj_nsh_rewrite_node) (vlib_main_t * vm,
                 vlib_node_runtime_t * node,
                 vlib_frame_t * frame)
 {
     return adj_nsh_rewrite_inline (vm, node, frame, 0);
 }
 
-static uword
-adj_nsh_midchain (vlib_main_t * vm,
+VLIB_NODE_FN (adj_nsh_midchain_node) (vlib_main_t * vm,
                  vlib_node_runtime_t * node,
                  vlib_frame_t * frame)
 {
@@ -166,7 +166,6 @@ adj_nsh_midchain (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (adj_nsh_rewrite_node) = {
-    .function = adj_nsh_rewrite,
     .name = "adj-nsh-rewrite",
     .vector_size = sizeof (u32),
 
@@ -178,10 +177,7 @@ VLIB_REGISTER_NODE (adj_nsh_rewrite_node) = {
     },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (adj_nsh_rewrite_node, adj_nsh_rewrite)
-
 VLIB_REGISTER_NODE (adj_nsh_midchain_node) = {
-    .function = adj_nsh_midchain,
     .name = "adj-nsh-midchain",
     .vector_size = sizeof (u32),
 
@@ -192,8 +188,6 @@ VLIB_REGISTER_NODE (adj_nsh_midchain_node) = {
         [ADJ_NSH_REWRITE_NEXT_DROP] = "error-drop",
     },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (adj_nsh_midchain_node, adj_nsh_midchain)
 
 /* Built-in ip4 tx feature path definition */
 /* *INDENT-OFF* */
