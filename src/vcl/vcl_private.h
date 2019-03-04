@@ -149,13 +149,6 @@ do {                                            \
 #define VCL_SESS_ATTR_TEST(ATTR, VAL)           \
   ((ATTR) & (1 << (VAL)) ? 1 : 0)
 
-typedef struct vcl_shared_session_
-{
-  u32 ss_index;
-  u32 *workers;
-  u32 session_index;
-} vcl_shared_session_t;
-
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -165,8 +158,6 @@ typedef struct
   u32 sndbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_SNDBUF)
   u32 rcvbuf_size;		// VPP-TBD: Hack until support setsockopt(SO_RCVBUF)
   u32 user_mss;			// VPP-TBD: Hack until support setsockopt(TCP_MAXSEG)
-  u8 *segment_name;
-  u32 sm_seg_index;
   u32 client_context;
   u64 vpp_handle;
   u32 vpp_thread_index;
@@ -176,11 +167,9 @@ typedef struct
   u8 is_vep_session;
   u8 has_rx_evt;
   u32 attr;
-  u32 wait_cont_idx;
   vppcom_epoll_t vep;
   int libc_epfd;
   svm_msg_q_t *our_evt_q;
-  u64 options[16];
   vcl_session_msg_t *accept_evts_fifo;
 #if VCL_ELOG
   elog_track_t elog_track;
@@ -335,9 +324,6 @@ typedef struct vppcom_main_t_
 
   /** Lock to protect worker registrations */
   clib_spinlock_t workers_lock;
-
-  /** Pool of shared sessions */
-  vcl_shared_session_t *shared_sessions;
 
   /** Lock to protect segment hash table */
   clib_rwlock_t segment_table_lock;
@@ -553,9 +539,6 @@ vcl_worker_t *vcl_worker_alloc_and_init (void);
 void vcl_worker_cleanup (vcl_worker_t * wrk, u8 notify_vpp);
 int vcl_worker_register_with_vpp (void);
 int vcl_worker_set_bapi (void);
-void vcl_worker_share_sessions (vcl_worker_t * parent_wrk);
-int vcl_worker_unshare_session (vcl_worker_t * wrk, vcl_session_t * s);
-vcl_shared_session_t *vcl_shared_session_get (u32 ss_index);
 
 void vcl_flush_mq_events (void);
 void vcl_cleanup_bapi (void);
