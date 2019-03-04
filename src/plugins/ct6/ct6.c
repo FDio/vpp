@@ -1,0 +1,274 @@
+/*
+ * ct6.c - skeleton vpp engine plug-in
+ *
+ * Copyright (c) <current-year> <your-organization>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <vnet/vnet.h>
+#include <vnet/plugin/plugin.h>
+#include <ct6/ct6.h>
+
+#include <vlibapi/api.h>
+#include <vlibmemory/api.h>
+#include <vpp/app/version.h>
+
+/* define message IDs */
+#include <ct6/ct6_msg_enum.h>
+
+/* define message structures */
+#define vl_typedefs
+#include <ct6/ct6_all_api_h.h>
+#undef vl_typedefs
+
+/* define generated endian-swappers */
+#define vl_endianfun
+#include <ct6/ct6_all_api_h.h>
+#undef vl_endianfun
+
+/* instantiate all the print functions we know about */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define vl_printfun
+#include <ct6/ct6_all_api_h.h>
+#undef vl_printfun
+
+/* Get the API version number */
+#define vl_api_version(n,v) static u32 api_version=(v);
+#include <ct6/ct6_all_api_h.h>
+#undef vl_api_version
+
+#define REPLY_MSG_ID_BASE cmp->msg_id_base
+#include <vlibapi/api_helper_macros.h>
+
+ct6_main_t ct6_main;
+
+/* List of message types that this plugin understands */
+
+#define foreach_ct6_plugin_api_msg                           \
+_(CT6_ENABLE_DISABLE, ct6_enable_disable)
+
+/* Action function shared between message handler and debug CLI */
+
+static void
+ct6_feature_init (ct6_main_t * cmp)
+{
+  u32 nworkers = vlib_num_workers ();
+
+  clib_bihash_init_48_8 (&cmp->session_hash, "ct6 session table",
+			 cmp->session_hash_buckets, cmp->session_hash_memory);
+  cmp->feature_initialized = 1;
+  vec_validate (cmp->sessions, nworkers);
+  vec_validate_init_empty (cmp->first_index, nworkers, ~0);
+  vec_validate_init_empty (cmp->last_index, nworkers, ~0);
+}
+
+int
+ct6_enable_disable (ct6_main_t * cmp, u32 sw_if_index, int enable_disable)
+{
+  vnet_sw_interface_t *sw;
+  int rv = 0;
+
+  if (!cmp->feature_initialized)
+    ct6_feature_init (cmp);
+
+  /* Utterly wrong? */
+  if (pool_is_free_index (cmp->vnet_main->interface_main.sw_interfaces,
+			  sw_if_index))
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  /* Not a physical port? */
+  sw = vnet_get_sw_interface (cmp->vnet_main, sw_if_index);
+  if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  vnet_feature_enable_disable ("device-input", "ct6",
+			       sw_if_index, enable_disable, 0, 0);
+
+  return rv;
+}
+
+static clib_error_t *
+ct6_enable_disable_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  ct6_main_t *cmp = &ct6_main;
+  u32 sw_if_index = ~0;
+  int enable_disable = 1;
+
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "disable"))
+	enable_disable = 0;
+      else if (unformat (input, "%U", unformat_vnet_sw_interface,
+			 cmp->vnet_main, &sw_if_index))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    return clib_error_return (0, "Please specify an interface...");
+
+  rv = ct6_enable_disable (cmp, sw_if_index, enable_disable);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    case VNET_API_ERROR_INVALID_SW_IF_INDEX:
+      return clib_error_return
+	(0, "Invalid interface, only works on physical ports");
+      break;
+
+    case VNET_API_ERROR_UNIMPLEMENTED:
+      return clib_error_return (0,
+				"Device driver doesn't support redirection");
+      break;
+
+    default:
+      return clib_error_return (0, "ct6_enable_disable returned %d", rv);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ct6_enable_disable_command, static) =
+{
+  .path = "ct6 enable-disable",
+  .short_help =
+  "ct6 enable-disable <interface-name> [disable]",
+  .function = ct6_enable_disable_command_fn,
+};
+/* *INDENT-ON* */
+
+/* API message handler */
+static void vl_api_ct6_enable_disable_t_handler
+  (vl_api_ct6_enable_disable_t * mp)
+{
+  vl_api_ct6_enable_disable_reply_t *rmp;
+  ct6_main_t *cmp = &ct6_main;
+  int rv;
+
+  rv = ct6_enable_disable (cmp, ntohl (mp->sw_if_index),
+			   (int) (mp->enable_disable));
+
+  REPLY_MACRO (VL_API_CT6_ENABLE_DISABLE_REPLY);
+}
+
+/* Set up the API message handling tables */
+static clib_error_t *
+ct6_plugin_api_hookup (vlib_main_t * vm)
+{
+  ct6_main_t *cmp = &ct6_main;
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers((VL_API_##N + cmp->msg_id_base),     \
+                           #n,					\
+                           vl_api_##n##_t_handler,              \
+                           vl_noop_handler,                     \
+                           vl_api_##n##_t_endian,               \
+                           vl_api_##n##_t_print,                \
+                           sizeof(vl_api_##n##_t), 1);
+  foreach_ct6_plugin_api_msg;
+#undef _
+
+  return 0;
+}
+
+#define vl_msg_name_crc_list
+#include <ct6/ct6_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (ct6_main_t * cmp, api_main_t * am)
+{
+#define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n  #crc, id + cmp->msg_id_base);
+  foreach_vl_msg_name_crc_ct6;
+#undef _
+}
+
+static clib_error_t *
+ct6_init (vlib_main_t * vm)
+{
+  ct6_main_t *cmp = &ct6_main;
+  clib_error_t *error = 0;
+  u8 *name;
+
+  cmp->vlib_main = vm;
+  cmp->vnet_main = vnet_get_main ();
+
+  name = format (0, "ct6_%08x%c", api_version, 0);
+
+  /* Ask for a correctly-sized block of API message decode slots */
+  cmp->msg_id_base = vl_msg_api_get_msg_ids
+    ((char *) name, VL_MSG_FIRST_AVAILABLE);
+
+  error = ct6_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (cmp, &api_main);
+
+  vec_free (name);
+
+  /*
+   * Set default parameters...
+   * 256K sessions
+   * 64K buckets
+   * 2 minute inactivity timer
+   * $$$$ add config fn
+   */
+  cmp->session_hash_memory = 16ULL << 20;
+  cmp->session_hash_buckets = 64 << 10;
+  cmp->session_timeout_interval = 120.0;
+
+  return error;
+}
+
+VLIB_INIT_FUNCTION (ct6_init);
+
+/* *INDENT-OFF* */
+VNET_FEATURE_INIT (ct6out2in, static) =
+{
+  .arc_name = "ip6-input",
+  .node_name = "ct6out2in",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
+};
+/* *INDENT-ON */
+
+/* *INDENT-OFF* */
+VNET_FEATURE_INIT (ct6in2out, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "ct6in2out",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+/* *INDENT-ON */
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () =
+{
+  .version = VPP_BUILD_VER,
+  .description = "ipv6 connection tracker",
+};
+/* *INDENT-ON* */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
