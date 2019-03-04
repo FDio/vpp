@@ -667,7 +667,7 @@ vcl_handle_mq_event (vcl_worker_t * wrk, session_event_t * e)
 
   switch (e->event_type)
     {
-    case FIFO_EVENT_APP_RX:
+    case SESSION_IO_EVT_RX:
     case FIFO_EVENT_APP_TX:
     case SESSION_IO_EVT_CT_RX:
     case SESSION_IO_EVT_CT_TX:
@@ -1534,8 +1534,8 @@ static u8
 vcl_is_rx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
 {
   if (!is_ct)
-    return (e->event_type == FIFO_EVENT_APP_RX
-	    && e->fifo->client_session_index == sid);
+    return (e->event_type == SESSION_IO_EVT_RX
+	    && e->session_index == sid);
   else
     return (e->event_type == SESSION_IO_EVT_CT_TX);
 }
@@ -1731,7 +1731,7 @@ vcl_is_tx_evt_for_session (session_event_t * e, u32 sid, u8 is_ct)
 {
   if (!is_ct)
     return (e->event_type == FIFO_EVENT_APP_TX
-	    && e->fifo->client_session_index == sid);
+	    && e->session_index == sid);
   else
     return (e->event_type == SESSION_IO_EVT_CT_RX);
 }
@@ -1882,10 +1882,10 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 
   switch (e->event_type)
     {
-    case FIFO_EVENT_APP_RX:
-      vcl_fifo_rx_evt_valid_or_break (e->fifo);
-      sid = e->fifo->client_session_index;
+    case SESSION_IO_EVT_RX:
+      sid = e->session_index;
       session = vcl_session_get (wrk, sid);
+      vcl_fifo_rx_evt_valid_or_break (session->rx_fifo);
       if (!session)
 	break;
       if (sid < n_bits && read_map)
@@ -1895,7 +1895,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	}
       break;
     case FIFO_EVENT_APP_TX:
-      sid = e->fifo->client_session_index;
+      sid = e->session_index;
       session = vcl_session_get (wrk, sid);
       if (!session)
 	break;
@@ -1906,10 +1906,10 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	}
       break;
     case SESSION_IO_EVT_CT_TX:
-      vcl_fifo_rx_evt_valid_or_break (e->fifo);
-      session = vcl_ct_session_get_from_fifo (wrk, e->fifo, 0);
+      session = vcl_ct_session_get_from_fifo (wrk, e->session_index, 0);
       if (!session)
 	break;
+      vcl_fifo_rx_evt_valid_or_break (e->fifo);
       sid = session->session_index;
       if (sid < n_bits && read_map)
 	{
@@ -2477,7 +2477,7 @@ vcl_epoll_wait_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 
   switch (e->event_type)
     {
-    case FIFO_EVENT_APP_RX:
+    case SESSION_IO_EVT_RX:
       ASSERT (e->fifo->client_thread_index == vcl_get_worker_index ());
       vcl_fifo_rx_evt_valid_or_break (e->fifo);
       sid = e->fifo->client_session_index;

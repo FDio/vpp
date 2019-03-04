@@ -562,7 +562,7 @@ app_send_io_evt_rx (app_worker_t * app_wrk, session_t * s, u8 lock)
   ASSERT (!svm_msg_q_msg_is_invalid (&msg));
 
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-  evt->fifo = s->rx_fifo;
+  evt->session_index = s->rx_fifo->client_session_index;
   evt->event_type = SESSION_IO_EVT_RX;
 
   (void) svm_fifo_set_event (s->rx_fifo);
@@ -599,7 +599,7 @@ app_send_io_evt_tx (app_worker_t * app_wrk, session_t * s, u8 lock)
 
   evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
   evt->event_type = SESSION_IO_EVT_TX;
-  evt->fifo = s->tx_fifo;
+  evt->session_index = s->tx_fifo->client_session_index;
 
   return app_enqueue_evt (mq, &msg, lock);
 }

@@ -430,7 +430,7 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 	  return -2;
 	}
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-      evt->fifo = f;
+      evt->session_index = f->master_session_index;
       evt->event_type = evt_type;
       svm_msg_q_add_and_unlock (mq, &msg);
       return 0;
@@ -442,7 +442,7 @@ app_send_io_evt_to_vpp (svm_msg_q_t * mq, svm_fifo_t * f, u8 evt_type,
 	svm_msg_q_wait (mq);
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
-      evt->fifo = f;
+      evt->session_index = f->master_session_index;
       evt->event_type = evt_type;
       if (svm_msg_q_is_full (mq))
 	svm_msg_q_wait (mq);
