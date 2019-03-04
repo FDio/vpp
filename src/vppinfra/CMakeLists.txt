@@ -137,6 +137,7 @@ set(VPPINFRA_HEADERS
   mheap_bootstrap.h
   mheap.h
   mpcap.h
+  mpsc.h
   os.h
   pcap.h
   pcap_funcs.h

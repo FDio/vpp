@@ -224,6 +224,31 @@ decrypt:
   return n_ops;
 }
 
+static vnet_async_crypto_op_t *
+aesni_queue_enc_aes_cbc_128 (vlib_main_t * vm, vnet_crypto_queue_t * q)
+{
+  vnet_async_crypto_op_t *aj;
+  if ((aj = vnet_crypto_dequeue_one_job (q)))
+    {
+      __m128i k[11];
+
+      vnet_crypto_op_t *sj = &aj->data;
+
+      ASSERT (sj->op == VNET_CRYPTO_OP_AES_128_CBC_ENC);
+      vnet_crypto_key_t *key = vnet_crypto_get_key (sj->key_index);
+      aes_key_expand (k, key->data, AESNI_KEY_128);
+      aesni_ops_enc_aes_cbc (vm, &sj, 1, AESNI_KEY_128);
+      if (aj->next)
+	{
+	  clib_warning ("chained op not supported!");
+	  aj->next->data.status = VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER;
+	}
+      return aj;
+    }
+
+  return 0;
+}
+
 static_always_inline void *
 aesni_cbc_key_exp (vnet_crypto_key_t * key, aesni_key_size_t ks)
 {
@@ -295,6 +320,9 @@ crypto_ia32_aesni_cbc_init_sse42 (vlib_main_t * vm)
   foreach_aesni_cbc_handler_type;
 #undef _
 
+  vnet_crypto_register_async_queue_handler (vm, cm->crypto_engine_index,
+					    VNET_CRYPTO_OP_AES_128_CBC_ENC,
+					    aesni_queue_enc_aes_cbc_128);
 error:
   close (fd);
   return err;
