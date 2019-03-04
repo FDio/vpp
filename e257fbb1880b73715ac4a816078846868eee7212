@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3387f99b_0faf3f33",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 359,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-04T22:07:24Z",
+      "side": 1,
+      "message": "An iterator is just fine for using inside a for loop and is memory efficient. What\u0027s the need to expand it into a list and waste memory?",
+      "revId": "e257fbb1880b73715ac4a816078846868eee7212",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
