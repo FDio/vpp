@@ -16,9 +16,11 @@
 #ifndef included_vnet_crypto_crypto_h
 #define included_vnet_crypto_crypto_h
 
-#define VNET_CRYPTO_RING_SIZE 512
+#define VNET_CRYPTO_LOG2_RING_SIZE 9
+#define VNET_CRYPTO_RING_SIZE (1 << VNET_CRYPTO_LOG2_RING_SIZE)
 
 #include <vlib/vlib.h>
+#include <vnet/buffer.h>
 
 /* CRYPTO_ID, PRETTY_NAME, KEY_LENGTH_IN_BYTES */
 #define foreach_crypto_cipher_alg \
@@ -63,6 +65,7 @@ typedef enum
 
 #define foreach_crypto_op_status \
   _(PENDING, "pending") \
+  _(WORK_IN_PROGRESS, "work in progress") \
   _(COMPLETED, "completed") \
   _(FAIL_NO_HANDLER, "no-handler") \
   _(FAIL_BAD_HMAC, "bad-hmac")
@@ -126,7 +129,7 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_crypto_op_id_t op:16;
-  vnet_crypto_op_status_t status:8;
+  vnet_crypto_op_status_t status;
   u8 flags;
 #define VNET_CRYPTO_OP_FLAG_INIT_IV (1 << 0)
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
@@ -141,6 +144,9 @@ typedef struct
   u8 *tag;
   u8 *digest;
   uword user_data;
+  /* for async mode */
+  u16 next_node;
+  u16 next_index;
 } vnet_crypto_op_t;
 
 typedef struct
@@ -153,10 +159,25 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  u32 head;
+  u32 tail;
+  u32 size;
+  vnet_crypto_alg_t alg:8;
+  vnet_crypto_op_type_t op:8;
+  vnet_crypto_op_t *jobs[0];
+} vnet_crypto_queue_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_bitmap_t *act_queues;
+  vnet_crypto_queue_t *queues[VNET_CRYPTO_N_OP_IDS];
 } vnet_crypto_thread_t;
 
 typedef u32 vnet_crypto_key_index_t;
+
+typedef vnet_crypto_op_t *
+  (vnet_crypto_queue_handler_t) (vlib_main_t * vm, vnet_crypto_queue_t * q);
 
 typedef u32 (vnet_crypto_ops_handler_t) (vlib_main_t * vm,
 					 vnet_crypto_op_t * ops[], u32 n_ops);
@@ -173,6 +194,16 @@ void vnet_crypto_register_ops_handler (vlib_main_t * vm, u32 engine_index,
 				       vnet_crypto_ops_handler_t * oph);
 void vnet_crypto_register_key_handler (vlib_main_t * vm, u32 engine_index,
 				       vnet_crypto_key_handler_t * keyh);
+
+u32 vnet_crypto_register_engine (vlib_main_t * vm, char *name, int prio,
+				 char *desc);
+
+vlib_error_t *vnet_crypto_register_async_queue_handler (vlib_main_t * vm,
+							u32 provider_index,
+							vnet_crypto_op_id_t
+							opt,
+							vnet_crypto_queue_handler_t
+							* f);
 
 typedef struct
 {
@@ -193,12 +224,39 @@ typedef struct
   vnet_crypto_key_t *keys;
   uword *engine_index_by_name;
   uword *alg_index_by_name;
+  vnet_crypto_queue_handler_t **queue_handlers;
+  int async_mode;
+  u32 n_crypto_dispatch_next_nodes;
 } vnet_crypto_main_t;
+
+typedef struct
+{
+  u32 next_index;
+} crypto_buffer_opaque_t;
+
+STATIC_ASSERT (sizeof (crypto_buffer_opaque_t) <=
+	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, unused),
+	       "Custom meta-data too large for vnet_buffer_opaque_t");
+
+#define crypto_buffer_opaque(b) \
+    ((crypto_buffer_opaque_t *)((u8 *)((b)->opaque) \
+        + STRUCT_OFFSET_OF (vnet_buffer_opaque_t, unused)))
+
+u32 crypto_register_post_node (vlib_main_t * vm, char *post_node_name);
 
 extern vnet_crypto_main_t crypto_main;
 
-u32 vnet_crypto_submit_ops (vlib_main_t * vm, vnet_crypto_op_t ** jobs,
-			    u32 n_jobs);
+static_always_inline int
+vnet_crypto_is_async_mode ()
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  return cm->async_mode;
+}
+
+void vnet_crypto_async_mode_enable_disable (u8 is_enabled);
+
+u32 vnet_crypto_submit_ops (vlib_main_t * vm,
+			    vnet_crypto_op_t ** jobs, u32 n_jobs);
 
 u32 vnet_crypto_process_ops (vlib_main_t * vm, vnet_crypto_op_t ops[],
 			     u32 n_ops);
@@ -222,6 +280,7 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
 {
   if (CLIB_DEBUG > 0)
     clib_memset (op, 0xfe, sizeof (*op));
+  op->status = VNET_CRYPTO_OP_STATUS_PENDING;
   op->op = type;
   op->flags = 0;
   op->key_index = ~0;
@@ -240,6 +299,31 @@ vnet_crypto_get_key (vnet_crypto_key_index_t index)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   return vec_elt_at_index (cm->keys, index);
+}
+
+static_always_inline vnet_crypto_op_t *
+vnet_crypto_dequeue_one_job (vnet_crypto_queue_t * q)
+{
+  u32 i;
+  vnet_crypto_op_t *j;
+  u32 mask = q->size - 1;
+  u32 tail = q->tail;
+  u32 head = q->head;
+
+  for (i = tail; i < head; i++)
+    {
+      j = q->jobs[i & mask];
+      if (!j)
+	continue;
+
+      if (clib_atomic_bool_cmp_and_swap (&j->status,
+					 VNET_CRYPTO_OP_STATUS_PENDING,
+					 VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS))
+	{
+	  return j;
+	}
+    }
+  return 0;
 }
 
 #endif /* included_vnet_crypto_crypto_h */

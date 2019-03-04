@@ -84,7 +84,10 @@ test_crypto (vlib_main_t * vm, crypto_test_main_t * tm)
 
   /* no tests registered */
   if (n_ops == 0)
-    return 0;
+    {
+      vec_free (rv);
+      return 0;
+    }
 
   vec_sort_with_function (rv, sort_registrations);
 
