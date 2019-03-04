@@ -353,9 +353,9 @@ refill:
   return n_rx_packets;
 }
 
-static uword
-virtio_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * frame)
+VLIB_NODE_FN (virtio_input_node) (vlib_main_t * vm,
+				  vlib_node_runtime_t * node,
+				  vlib_frame_t * frame)
 {
   u32 n_rx = 0;
   virtio_main_t *nm = &virtio_main;
@@ -382,7 +382,6 @@ virtio_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (virtio_input_node) = {
-  .function = virtio_input_fn,
   .name = "virtio-input",
   .sibling_of = "device-input",
   .format_trace = format_virtio_input_trace,
@@ -391,8 +390,6 @@ VLIB_REGISTER_NODE (virtio_input_node) = {
   .n_errors = VIRTIO_INPUT_N_ERROR,
   .error_strings = virtio_input_error_strings,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (virtio_input_node, virtio_input_fn)
 /* *INDENT-ON* */
 
 /*

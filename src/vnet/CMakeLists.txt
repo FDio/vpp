@@ -992,6 +992,9 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_MULTIARCH_SOURCES
   devices/virtio/vhost_user_input.c
   devices/virtio/vhost_user_output.c
+  devices/netmap/node.c
+  devices/virtio/node.c
+  devices/af_packet/node.c
 )
 
 list(APPEND VNET_API_FILES
