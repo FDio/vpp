@@ -47,7 +47,7 @@ lacp_tx_action_transmit (void *p1, void *p2)
     return 0;
 
   // No more than 3 LACPDUs per fast interval
-  if (now <= (sif->last_lacpdu_time + 0.333))
+  if (now <= (sif->last_lacpdu_sent_time + 0.333))
     return 0;
 
   if (sif->ntt)
@@ -97,9 +97,6 @@ lacp_init_tx_machine (vlib_main_t * vm, slave_if_t * sif)
 {
   lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_BEGIN,
 			 &sif->tx_state);
-  if (sif->is_passive == 0)
-    lacp_machine_dispatch (&lacp_tx_machine, vm, sif, LACP_TX_EVENT_NTT,
-			   &sif->tx_state);
 }
 
 /*

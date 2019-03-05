@@ -108,6 +108,8 @@ send_ethernet_marker_response_pdu (slave_if_t * sif)
   f->n_vectors = 1;
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
+  sif->last_marker_pdu_sent_time = vlib_time_now (lm->vlib_main);
+  sif->marker_pdu_sent++;
 }
 
 static int
@@ -153,6 +155,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   marker = (marker_pdu_t *) (b0->data + b0->current_data);
   if (marker->subtype == MARKER_SUBTYPE)
     {
+      sif->last_marker_pdu_recd_time = vlib_time_now (lm->vlib_main);
       if (sif->last_marker_pkt)
 	_vec_len (sif->last_marker_pkt) = 0;
       vec_validate (sif->last_marker_pkt,
@@ -160,8 +163,13 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       nbytes = vlib_buffer_contents (vm, bi0, sif->last_marker_pkt);
       ASSERT (nbytes <= vec_len (sif->last_marker_pkt));
       if (nbytes < sizeof (lacp_pdu_t))
-	return LACP_ERROR_TOO_SMALL;
-      return (handle_marker_protocol (vm, sif));
+	{
+	  sif->marker_bad_pdu_received++;
+	  return LACP_ERROR_TOO_SMALL;
+	}
+      e = handle_marker_protocol (vm, sif);
+      sif->marker_pdu_received++;
+      return e;
     }
 
   /*
@@ -185,8 +193,10 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
   nbytes = vlib_buffer_contents (vm, bi0, sif->last_rx_pkt);
   ASSERT (nbytes <= vec_len (sif->last_rx_pkt));
 
+  sif->last_lacpdu_recd_time = vlib_time_now (lm->vlib_main);
   if (nbytes < sizeof (lacp_pdu_t))
     {
+      sif->bad_pdu_received++;
       return LACP_ERROR_TOO_SMALL;
     }
 
@@ -209,6 +219,7 @@ lacp_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
       sif->last_packet_signature_valid = 1;
       sif->last_packet_signature = last_packet_signature;
     }
+  sif->pdu_received++;
 
   if (sif->last_rx_pkt)
     _vec_len (sif->last_rx_pkt) = 0;
