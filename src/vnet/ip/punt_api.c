@@ -80,10 +80,10 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   clib_error_t *error;
   vl_api_registration_t *reg;
 
-  error = 0;
-  vnet_punt_socket_add (vm, ntohl (mp->header_version),
-			mp->punt.ipv, mp->punt.l4_protocol,
-			ntohs (mp->punt.l4_port), (char *) mp->pathname);
+  error = vnet_punt_socket_add (vm, ntohl (mp->header_version),
+				mp->punt.ipv, mp->punt.l4_protocol,
+				ntohs (mp->punt.l4_port),
+				(char *) mp->pathname);
   if (error)
     {
       rv = -1;
