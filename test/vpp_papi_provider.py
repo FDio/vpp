@@ -177,7 +177,7 @@ class VppPapiProvider(object):
     def __getattr__(self, name):
         try:
             return getattr(self, name)
-        except:
+        except (AttributeError, ):
             return self.factory(name, getattr(self.papi, name))
 
     def connect(self):
