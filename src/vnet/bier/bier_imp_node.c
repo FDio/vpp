@@ -185,8 +185,7 @@ format_bier_imp_trace (u8 * s, va_list * args)
     return (s);
 }
 
-static uword
-bier_imp_ip4 (vlib_main_t * vm,
+VLIB_NODE_FN (bier_imp_ip4_node) (vlib_main_t * vm,
               vlib_node_runtime_t * node,
               vlib_frame_t * frame)
 {
@@ -196,7 +195,6 @@ bier_imp_ip4 (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (bier_imp_ip4_node) = {
-    .function = bier_imp_ip4,
     .name = "bier-imp-ip4",
     .vector_size = sizeof (u32),
 
@@ -206,10 +204,8 @@ VLIB_REGISTER_NODE (bier_imp_ip4_node) = {
         [0] = "bier-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (bier_imp_ip4_node, bier_imp_ip4)
 
-static uword
-bier_imp_ip6 (vlib_main_t * vm,
+VLIB_NODE_FN (bier_imp_ip6_node) (vlib_main_t * vm,
               vlib_node_runtime_t * node,
               vlib_frame_t * frame)
 {
@@ -219,7 +215,6 @@ bier_imp_ip6 (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (bier_imp_ip6_node) = {
-    .function = bier_imp_ip6,
     .name = "bier-imp-ip6",
     .vector_size = sizeof (u32),
 
@@ -229,4 +224,3 @@ VLIB_REGISTER_NODE (bier_imp_ip6_node) = {
         [0] = "error-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (bier_imp_ip6_node, bier_imp_ip6)

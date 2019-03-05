@@ -1388,6 +1388,12 @@ list(APPEND VNET_SOURCES
   bier/bier_bift_table.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  bier/bier_disp_dispatch_node.c
+  bier/bier_disp_lookup_node.c
+  bier/bier_imp_node.c
+)
+
 list(APPEND VNET_HEADERS
   bier/bier_types.h
   bier/bier_entry.h
