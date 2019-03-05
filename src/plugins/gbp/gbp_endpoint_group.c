@@ -75,7 +75,10 @@ gbp_endpoint_group_find (epg_id_t epg_id)
 int
 gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
 				 u16 sclass,
-				 u32 bd_id, u32 rd_id, u32 uplink_sw_if_index)
+				 u32 bd_id,
+				 u32 rd_id,
+				 u32 uplink_sw_if_index,
+				 const gbp_endpoint_retention_t * retention)
 {
   gbp_endpoint_group_t *gg;
   index_t ggi;
@@ -113,6 +116,7 @@ gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
       gg->gg_uplink_sw_if_index = uplink_sw_if_index;
       gg->gg_locks = 1;
       gg->gg_sclass = sclass;
+      gg->gg_retention = *retention;
 
       if (SCLASS_INVALID != gg->gg_sclass)
 	hash_set (gbp_epg_sclass_db, gg->gg_sclass, gg->gg_id);
@@ -256,6 +260,7 @@ static clib_error_t *
 gbp_endpoint_group_cli (vlib_main_t * vm,
 			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  gbp_endpoint_retention_t retention = { 0 };
   epg_id_t epg_id = EPG_INVALID, sclass;
   vnet_main_t *vnm = vnet_get_main ();
   u32 uplink_sw_if_index = ~0;
@@ -297,7 +302,7 @@ gbp_endpoint_group_cli (vlib_main_t * vm,
 	return clib_error_return (0, "route-domain must be specified");
 
       gbp_endpoint_group_add_and_lock (epg_id, sclass, bd_id, rd_id,
-				       uplink_sw_if_index);
+				       uplink_sw_if_index, &retention);
     }
   else
     gbp_endpoint_group_delete (epg_id);

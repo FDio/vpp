@@ -56,8 +56,6 @@ extern gbp_learn_main_t gbp_learn_main;
 extern void gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode);
 extern void gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode);
 
-extern void gbp_learn_set_inactive_threshold (u32 max_age);
-
 #endif
 
 /*

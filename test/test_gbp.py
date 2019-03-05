@@ -275,13 +275,22 @@ class VppGbpSubnet(VppObject):
         return False
 
 
+class VppGbpEndpointRetention(object):
+    def __init__(self, remote_ep_timeout=0xffffffff):
+        self.remote_ep_timeout = remote_ep_timeout
+
+    def encode(self):
+        return {'remote_ep_timeout': self.remote_ep_timeout}
+
+
 class VppGbpEndpointGroup(VppObject):
     """
     GBP Endpoint Group
     """
 
     def __init__(self, test, epg, sclass, rd, bd, uplink,
-                 bvi, bvi_ip4, bvi_ip6=None):
+                 bvi, bvi_ip4, bvi_ip6=None,
+                 retention=VppGbpEndpointRetention()):
         self._test = test
         self.uplink = uplink
         self.bvi = bvi
@@ -293,6 +302,7 @@ class VppGbpEndpointGroup(VppObject):
         self.sclass = sclass
         if 0 == self.sclass:
             self.sclass = 0xffff
+        self.retention = retention
 
     def add_vpp_config(self):
         self._test.vapi.gbp_endpoint_group_add(
@@ -300,12 +310,12 @@ class VppGbpEndpointGroup(VppObject):
             self.sclass,
             self.bd.bd.bd_id,
             self.rd.rd_id,
-            self.uplink.sw_if_index if self.uplink else INDEX_INVALID)
+            self.uplink.sw_if_index if self.uplink else INDEX_INVALID,
+            self.retention.encode())
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.gbp_endpoint_group_del(
-            self.epg)
+        self._test.vapi.gbp_endpoint_group_del(self.epg)
 
     def __str__(self):
         return self.object_id()
@@ -1459,12 +1469,6 @@ class TestGBP(VppTestCase):
                    'ip6': '2001:10::3'}]
 
         #
-        # lower the inactive threshold so these tests pass in a
-        # reasonable amount of time
-        #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
-
-        #
         # IP tables
         #
         gt4 = VppIpTable(self, 1)
@@ -1518,12 +1522,14 @@ class TestGBP(VppTestCase):
         epg_220 = VppGbpEndpointGroup(self, 220, 112, rd1, gbd1,
                                       None, self.loop0,
                                       "10.0.0.128",
-                                      "2001:10::128")
+                                      "2001:10::128",
+                                      VppGbpEndpointRetention(2))
         epg_220.add_vpp_config()
         epg_330 = VppGbpEndpointGroup(self, 330, 113, rd1, gbd1,
                                       None, self.loop1,
                                       "10.0.1.128",
-                                      "2001:11::128")
+                                      "2001:11::128",
+                                      VppGbpEndpointRetention(2))
         epg_330.add_vpp_config()
 
         #
@@ -1861,12 +1867,6 @@ class TestGBP(VppTestCase):
                    'ip6': '2001:10::3'}]
 
         #
-        # lower the inactive threshold so these tests pass in a
-        # reasonable amount of time
-        #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
-
-        #
         # IP tables
         #
         gt4 = VppIpTable(self, 1)
@@ -1924,7 +1924,8 @@ class TestGBP(VppTestCase):
         epg_220 = VppGbpEndpointGroup(self, 220, 441, rd1, gbd1,
                                       None, self.loop0,
                                       "10.0.0.128",
-                                      "2001:10::128")
+                                      "2001:10::128",
+                                      VppGbpEndpointRetention(2))
         epg_220.add_vpp_config()
 
         #
@@ -2034,12 +2035,6 @@ class TestGBP(VppTestCase):
                    'ip6': '2001:10::3'}]
 
         #
-        # lower the inactive threshold so these tests pass in a
-        # reasonable amount of time
-        #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
-
-        #
         # IP tables
         #
         t4 = VppIpTable(self, 1)
@@ -2104,7 +2099,8 @@ class TestGBP(VppTestCase):
         epg_220 = VppGbpEndpointGroup(self, 220, 441, rd1, gbd1,
                                       None, self.loop0,
                                       "10.0.0.128",
-                                      "2001:10::128")
+                                      "2001:10::128",
+                                      VppGbpEndpointRetention(2))
         epg_220.add_vpp_config()
 
         #
@@ -2477,12 +2473,6 @@ class TestGBP(VppTestCase):
                    'ip6': '2001:10::3'}]
 
         #
-        # lower the inactive threshold so these tests pass in a
-        # reasonable amount of time
-        #
-        self.vapi.gbp_endpoint_learn_set_inactive_threshold(2)
-
-        #
         # IP tables
         #
         t4 = VppIpTable(self, 1)
@@ -2536,17 +2526,20 @@ class TestGBP(VppTestCase):
         epg_220 = VppGbpEndpointGroup(self, 220, 440, rd1, gbd1,
                                       None, gbd1.bvi,
                                       "10.0.0.128",
-                                      "2001:10::128")
+                                      "2001:10::128",
+                                      VppGbpEndpointRetention(2))
         epg_220.add_vpp_config()
         epg_221 = VppGbpEndpointGroup(self, 221, 441, rd1, gbd2,
                                       None, gbd2.bvi,
                                       "10.0.1.128",
-                                      "2001:11::128")
+                                      "2001:11::128",
+                                      VppGbpEndpointRetention(2))
         epg_221.add_vpp_config()
         epg_222 = VppGbpEndpointGroup(self, 222, 442, rd1, gbd1,
                                       None, gbd1.bvi,
                                       "10.0.2.128",
-                                      "2001:12::128")
+                                      "2001:12::128",
+                                      VppGbpEndpointRetention(2))
         epg_222.add_vpp_config()
 
         #
@@ -2574,12 +2567,14 @@ class TestGBP(VppTestCase):
         epg_320 = VppGbpEndpointGroup(self, 320, 550, rd1, gbd3,
                                       None, gbd1.bvi,
                                       "12.0.0.128",
-                                      "4001:10::128")
+                                      "4001:10::128",
+                                      VppGbpEndpointRetention(2))
         epg_320.add_vpp_config()
         epg_321 = VppGbpEndpointGroup(self, 321, 551, rd1, gbd4,
                                       None, gbd2.bvi,
                                       "12.0.1.128",
-                                      "4001:11::128")
+                                      "4001:11::128",
+                                      VppGbpEndpointRetention(2))
         epg_321.add_vpp_config()
 
         #
@@ -3088,7 +3083,8 @@ class TestGBP(VppTestCase):
         epg_220 = VppGbpEndpointGroup(self, 220, 113, rd1, gbd1,
                                       None, gbd1.bvi,
                                       "10.0.0.128",
-                                      "2001:10::128")
+                                      "2001:10::128",
+                                      VppGbpEndpointRetention(2))
         epg_220.add_vpp_config()
 
         # the BVIs have the subnets applied ...

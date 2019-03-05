@@ -21,6 +21,15 @@
 #include <vnet/fib/fib_types.h>
 
 /**
+ * Endpoint Retnetion Policy
+ */
+typedef struct gbp_endpoint_retention_t_
+{
+  /** Aging timeout for remote endpoints */
+  u32 remote_ep_timeout;
+} gbp_endpoint_retention_t;
+
+/**
  * An Endpoint Group representation
  */
 typedef struct gpb_endpoint_group_t_
@@ -65,6 +74,11 @@ typedef struct gpb_endpoint_group_t_
    * Locks/references to this EPG
    */
   u32 gg_locks;
+
+  /**
+   * EP retention policy
+   */
+  gbp_endpoint_retention_t gg_retention;
 } gbp_endpoint_group_t;
 
 /**
@@ -79,7 +93,9 @@ extern int gbp_endpoint_group_add_and_lock (epg_id_t epg_id,
 					    u16 sclass,
 					    u32 bd_id,
 					    u32 rd_id,
-					    u32 uplink_sw_if_index);
+					    u32 uplink_sw_if_index,
+					    const gbp_endpoint_retention_t *
+					    retention);
 extern index_t gbp_endpoint_group_find (epg_id_t epg_id);
 extern int gbp_endpoint_group_delete (epg_id_t epg_id);
 extern void gbp_endpoint_group_unlock (index_t index);

@@ -23,6 +23,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
                        uint16_t sclass,
                        uint32_t bd_id,
                        route::table_id_t rd_id,
+                       const gbp_endpoint_group::retention_t& retention,
                        const handle_t& itf)
   : rpc_cmd(item)
   , m_epg_id(epg_id)
@@ -30,6 +31,7 @@ create_cmd::create_cmd(HW::item<bool>& item,
   , m_bd_id(bd_id)
   , m_rd_id(rd_id)
   , m_itf(itf)
+  , m_retention(retention)
 {
 }
 
@@ -37,7 +39,8 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_bd_id == other.m_bd_id) &&
-          (m_rd_id == other.m_rd_id) && (m_epg_id == other.m_epg_id));
+          (m_rd_id == other.m_rd_id) && (m_epg_id == other.m_epg_id) &&
+          (m_retention == other.m_retention));
 }
 
 rc_t
@@ -51,6 +54,7 @@ create_cmd::issue(connection& con)
   payload.epg.sclass = m_sclass;
   payload.epg.bd_id = m_bd_id;
   payload.epg.rd_id = m_rd_id;
+  payload.epg.retention.remote_ep_timeout = m_retention.remote_ep_timeout;
 
   VAPI_CALL(req.execute());
 

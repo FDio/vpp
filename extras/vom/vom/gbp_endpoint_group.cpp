@@ -24,6 +24,27 @@ singular_db<gbp_endpoint_group::key_t, gbp_endpoint_group>
 
 gbp_endpoint_group::event_handler gbp_endpoint_group::m_evh;
 
+gbp_endpoint_group::retention_t::retention_t()
+  : remote_ep_timeout(0xffffffff)
+{
+}
+gbp_endpoint_group::retention_t::retention_t(uint32_t remote_ep_timeout_)
+  : remote_ep_timeout(remote_ep_timeout_)
+{
+}
+
+bool
+gbp_endpoint_group::retention_t::operator==(const retention_t& o) const
+{
+  return (remote_ep_timeout == o.remote_ep_timeout);
+}
+
+std::string
+gbp_endpoint_group::retention_t::to_string() const
+{
+  return std::to_string(remote_ep_timeout);
+}
+
 gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
                                        const interface& itf,
                                        const gbp_route_domain& rd,
@@ -34,6 +55,7 @@ gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
   , m_itf(itf.singular())
   , m_rd(rd.singular())
   , m_bd(bd.singular())
+  , m_retention()
 {
 }
 
@@ -46,6 +68,7 @@ gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
   , m_itf()
   , m_rd(rd.singular())
   , m_bd(bd.singular())
+  , m_retention()
 {
 }
 
@@ -60,6 +83,7 @@ gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
   , m_itf(itf.singular())
   , m_rd(rd.singular())
   , m_bd(bd.singular())
+  , m_retention()
 {
 }
 
@@ -73,6 +97,7 @@ gbp_endpoint_group::gbp_endpoint_group(epg_id_t epg_id,
   , m_itf()
   , m_rd(rd.singular())
   , m_bd(bd.singular())
+  , m_retention()
 {
 }
 
@@ -83,6 +108,7 @@ gbp_endpoint_group::gbp_endpoint_group(const gbp_endpoint_group& epg)
   , m_itf(epg.m_itf)
   , m_rd(epg.m_rd)
   , m_bd(epg.m_bd)
+  , m_retention(epg.m_retention)
 {
 }
 
@@ -104,11 +130,18 @@ gbp_endpoint_group::id() const
   return (m_epg_id);
 }
 
+void
+gbp_endpoint_group::set(const retention_t& retention)
+{
+  m_retention = retention;
+}
+
 bool
 gbp_endpoint_group::operator==(const gbp_endpoint_group& gg) const
 {
   return (key() == gg.key() && (m_sclass == gg.m_sclass) &&
-          (m_itf == gg.m_itf) && (m_rd == gg.m_rd) && (m_bd == gg.m_bd));
+          (m_retention == gg.m_retention) && (m_itf == gg.m_itf) &&
+          (m_rd == gg.m_rd) && (m_bd == gg.m_bd));
 }
 
 void
@@ -125,7 +158,7 @@ gbp_endpoint_group::replay()
 {
   if (m_hw) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_epg_id, m_sclass, m_bd->id(), m_rd->id(),
+      m_hw, m_epg_id, m_sclass, m_bd->id(), m_rd->id(), m_retention,
       (m_itf ? m_itf->handle() : handle_t::INVALID)));
   }
 }
@@ -136,6 +169,7 @@ gbp_endpoint_group::to_string() const
   std::ostringstream s;
   s << "gbp-endpoint-group:["
     << "epg:" << m_epg_id << ", sclass:" << m_sclass << ", "
+    << "retention:[" << m_retention.to_string() << "], "
     << (m_itf ? m_itf->to_string() : "NULL") << ", " << m_bd->to_string()
     << ", " << m_rd->to_string() << "]";
 
@@ -147,7 +181,7 @@ gbp_endpoint_group::update(const gbp_endpoint_group& r)
 {
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new gbp_endpoint_group_cmds::create_cmd(
-      m_hw, m_epg_id, m_sclass, m_bd->id(), m_rd->id(),
+      m_hw, m_epg_id, m_sclass, m_bd->id(), m_rd->id(), m_retention,
       (m_itf ? m_itf->handle() : handle_t::INVALID)));
   }
 }

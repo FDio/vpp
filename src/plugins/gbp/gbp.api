@@ -157,6 +157,11 @@ define gbp_endpoint_details
   vl_api_gbp_endpoint_t endpoint;
 };
 
+typedef gbp_endpoint_retention
+{
+  u32 remote_ep_timeout;
+};
+
 typeonly define gbp_endpoint_group
 {
   u16 epg_id;
@@ -164,6 +169,7 @@ typeonly define gbp_endpoint_group
   u32 bd_id;
   u32 rd_id;
   u32 uplink_sw_if_index;
+  vl_api_gbp_endpoint_retention_t retention;
 };
 
 autoreply define gbp_endpoint_group_add
@@ -319,18 +325,6 @@ define gbp_contract_details
 {
   u32 context;
   vl_api_gbp_contract_t contract;
-};
-
-/**
- * @brief Set the time throeshold after which an endpoint is
-          considered inative and is aged/reaped by the scanner
- * @param threshold In seconds
- */
-autoreply define gbp_endpoint_learn_set_inactive_threshold
-{
-  u32 client_index;
-  u32 context;
-  u32 threshold;
 };
 
 /**
