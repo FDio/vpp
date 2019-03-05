@@ -45,7 +45,7 @@ typedef struct
   u8 is_ipv6;
 } ipip_rx_trace_t;
 
-u8 *
+static u8 *
 format_ipip_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -216,16 +216,14 @@ ipip_input (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-ipip4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipip4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return ipip_input (vm, node, from_frame, /* is_ip6 */ false);
 }
 
-static uword
-ipip6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     vlib_frame_t * from_frame)
+VLIB_NODE_FN (ipip6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return ipip_input (vm, node, from_frame, /* is_ip6 */ true);
 }
@@ -238,7 +236,6 @@ static char *ipip_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE(ipip4_input_node) = {
-    .function = ipip4_input,
     .name = "ipip4-input",
     /* Takes a vector of packets. */
     .vector_size = sizeof(u32),
@@ -255,7 +252,6 @@ VLIB_REGISTER_NODE(ipip4_input_node) = {
 };
 
 VLIB_REGISTER_NODE(ipip6_input_node) = {
-    .function = ipip6_input,
     .name = "ipip6-input",
     /* Takes a vector of packets. */
     .vector_size = sizeof(u32),
@@ -271,8 +267,6 @@ VLIB_REGISTER_NODE(ipip6_input_node) = {
     .format_trace = format_ipip_rx_trace,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH(ipip4_input_node, ipip4_input)
-VLIB_NODE_FUNCTION_MULTIARCH(ipip6_input_node, ipip6_input)
 /* *INDENT-ON* */
 
 /*

@@ -643,6 +643,10 @@ list(APPEND VNET_SOURCES
   ipip/ipip_cli.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  ipip/node.c
+)
+
 list(APPEND VNET_HEADERS
   ipip/ipip.h
 )
