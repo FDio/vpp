@@ -70,46 +70,47 @@ typedef vxlan4_gbp_tunnel_key_t last_tunnel_cache4;
 always_inline vxlan_gbp_tunnel_t *
 vxlan4_gbp_find_tunnel (vxlan_gbp_main_t * vxm, last_tunnel_cache4 * cache,
 			u32 fib_index, ip4_header_t * ip4_0,
-			vxlan_gbp_header_t * vxlan_gbp0,
-			vxlan_gbp_tunnel_t ** stats_t0)
+			vxlan_gbp_header_t * vxlan_gbp0)
 {
-  /* Make sure VXLAN_GBP tunnel exist according to packet SIP and VNI */
+  /*
+   * Check unicast first since that's where most of the traffic comes from
+   *  Make sure VXLAN_GBP tunnel exist according to packet SIP, DIP and VNI
+   */
   vxlan4_gbp_tunnel_key_t key4;
+  int rv;
+
   key4.key[1] = ((u64) fib_index << 32) | vxlan_gbp0->vni_reserved;
+  key4.key[0] = (((u64) ip4_0->dst_address.as_u32 << 32) |
+		 ip4_0->src_address.as_u32);
 
-  if (PREDICT_FALSE (key4.key[1] != cache->key[1] ||
-		     ip4_0->src_address.as_u32 != (u32) cache->key[0]))
+  if (PREDICT_FALSE (key4.key[0] != cache->key[0] ||
+		     key4.key[1] != cache->key[1]))
     {
-      key4.key[0] = ip4_0->src_address.as_u32;
-      int rv = clib_bihash_search_inline_16_8 (&vxm->vxlan4_gbp_tunnel_by_key,
-					       &key4);
-      if (PREDICT_FALSE (rv != 0))
-	return 0;
-
-      *cache = key4;
+      rv = clib_bihash_search_inline_16_8 (&vxm->vxlan4_gbp_tunnel_by_key,
+					   &key4);
+      if (PREDICT_FALSE (rv == 0))
+	{
+	  *cache = key4;
+	  return (pool_elt_at_index (vxm->tunnels, cache->value));
+	}
     }
-  vxlan_gbp_tunnel_t *t0 = pool_elt_at_index (vxm->tunnels, cache->value);
-
-  /* Validate VXLAN_GBP tunnel SIP against packet DIP */
-  if (PREDICT_TRUE (ip4_0->dst_address.as_u32 == t0->src.ip4.as_u32))
-    *stats_t0 = t0;
   else
     {
-      /* try multicast */
-      if (PREDICT_TRUE (!ip4_address_is_multicast (&ip4_0->dst_address)))
-	return 0;
-
-      key4.key[0] = ip4_0->dst_address.as_u32;
-      /* Make sure mcast VXLAN_GBP tunnel exist by packet DIP and VNI */
-      int rv = clib_bihash_search_inline_16_8 (&vxm->vxlan4_gbp_tunnel_by_key,
-					       &key4);
-      if (PREDICT_FALSE (rv != 0))
-	return 0;
-
-      *stats_t0 = pool_elt_at_index (vxm->tunnels, key4.value);
+      return (pool_elt_at_index (vxm->tunnels, cache->value));
     }
 
-  return t0;
+  /* No unicast match - try multicast */
+  if (PREDICT_TRUE (!ip4_address_is_multicast (&ip4_0->dst_address)))
+    return (NULL);
+
+  key4.key[0] = ip4_0->dst_address.as_u32;
+  /* Make sure mcast VXLAN_GBP tunnel exist by packet DIP and VNI */
+  rv = clib_bihash_search_inline_16_8 (&vxm->vxlan4_gbp_tunnel_by_key, &key4);
+
+  if (PREDICT_FALSE (rv != 0))
+    return (NULL);
+
+  return (pool_elt_at_index (vxm->tunnels, key4.value));
 }
 
 typedef vxlan6_gbp_tunnel_key_t last_tunnel_cache6;
@@ -117,8 +118,7 @@ typedef vxlan6_gbp_tunnel_key_t last_tunnel_cache6;
 always_inline vxlan_gbp_tunnel_t *
 vxlan6_gbp_find_tunnel (vxlan_gbp_main_t * vxm, last_tunnel_cache6 * cache,
 			u32 fib_index, ip6_header_t * ip6_0,
-			vxlan_gbp_header_t * vxlan_gbp0,
-			vxlan_gbp_tunnel_t ** stats_t0)
+			vxlan_gbp_header_t * vxlan_gbp0)
 {
   /* Make sure VXLAN_GBP tunnel exist according to packet SIP and VNI */
   vxlan6_gbp_tunnel_key_t key6 = {
@@ -128,23 +128,23 @@ vxlan6_gbp_find_tunnel (vxlan_gbp_main_t * vxm, last_tunnel_cache6 * cache,
 	    [2] = (((u64) fib_index) << 32) | vxlan_gbp0->vni_reserved,
 	    }
   };
+  int rv;
 
   if (PREDICT_FALSE
       (clib_bihash_key_compare_24_8 (key6.key, cache->key) == 0))
     {
-      int rv = clib_bihash_search_inline_24_8 (&vxm->vxlan6_gbp_tunnel_by_key,
-					       &key6);
+      rv = clib_bihash_search_inline_24_8 (&vxm->vxlan6_gbp_tunnel_by_key,
+					   &key6);
       if (PREDICT_FALSE (rv != 0))
-	return 0;
+	return NULL;
 
       *cache = key6;
     }
   vxlan_gbp_tunnel_t *t0 = pool_elt_at_index (vxm->tunnels, cache->value);
 
   /* Validate VXLAN_GBP tunnel SIP against packet DIP */
-  if (PREDICT_TRUE (ip6_address_is_equal (&ip6_0->dst_address, &t0->src.ip6)))
-    *stats_t0 = t0;
-  else
+  if (PREDICT_FALSE
+      (!ip6_address_is_equal (&ip6_0->dst_address, &t0->src.ip6)))
     {
       /* try multicast */
       if (PREDICT_TRUE (!ip6_address_is_multicast (&ip6_0->dst_address)))
@@ -153,12 +153,11 @@ vxlan6_gbp_find_tunnel (vxlan_gbp_main_t * vxm, last_tunnel_cache6 * cache,
       /* Make sure mcast VXLAN_GBP tunnel exist by packet DIP and VNI */
       key6.key[0] = ip6_0->dst_address.as_u64[0];
       key6.key[1] = ip6_0->dst_address.as_u64[1];
-      int rv = clib_bihash_search_inline_24_8 (&vxm->vxlan6_gbp_tunnel_by_key,
-					       &key6);
+      rv = clib_bihash_search_inline_24_8 (&vxm->vxlan6_gbp_tunnel_by_key,
+					   &key6);
       if (PREDICT_FALSE (rv != 0))
 	return 0;
 
-      *stats_t0 = pool_elt_at_index (vxm->tunnels, key6.value);
     }
 
   return t0;
@@ -269,25 +268,20 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  u32 fi0 = buf_fib_index (b0, is_ip4);
 	  u32 fi1 = buf_fib_index (b1, is_ip4);
 
-	  vxlan_gbp_tunnel_t *t0, *stats_t0 = 0;
-	  vxlan_gbp_tunnel_t *t1, *stats_t1 = 0;
+	  vxlan_gbp_tunnel_t *t0, *t1;
 	  if (is_ip4)
 	    {
 	      t0 =
-		vxlan4_gbp_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan_gbp0,
-					&stats_t0);
+		vxlan4_gbp_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan_gbp0);
 	      t1 =
-		vxlan4_gbp_find_tunnel (vxm, &last4, fi1, ip4_1, vxlan_gbp1,
-					&stats_t1);
+		vxlan4_gbp_find_tunnel (vxm, &last4, fi1, ip4_1, vxlan_gbp1);
 	    }
 	  else
 	    {
 	      t0 =
-		vxlan6_gbp_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan_gbp0,
-					&stats_t0);
+		vxlan6_gbp_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan_gbp0);
 	      t1 =
-		vxlan6_gbp_find_tunnel (vxm, &last6, fi1, ip6_1, vxlan_gbp1,
-					&stats_t1);
+		vxlan6_gbp_find_tunnel (vxm, &last6, fi1, ip6_1, vxlan_gbp1);
 	    }
 
 	  u32 len0 = vlib_buffer_length_in_chain (vm, b0);
@@ -304,15 +298,15 @@ vxlan_gbp_input (vlib_main_t * vm,
 
 	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
 	  if (PREDICT_FALSE
-	      (t0 == 0 || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
+	      (t0 == NULL
+	       || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {
-	      if (t0 != 0
+	      if (t0 != NULL
 		  && flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
 		{
 		  error0 = VXLAN_GBP_ERROR_BAD_FLAGS;
 		  vlib_increment_combined_counter
-		    (drop_counter, thread_index, stats_t0->sw_if_index, 1,
-		     len0);
+		    (drop_counter, thread_index, t0->sw_if_index, 1, len0);
 		  next0 = VXLAN_GBP_INPUT_NEXT_DROP;
 		}
 	      else
@@ -329,7 +323,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
 	      vlib_increment_combined_counter
-		(rx_counter, thread_index, stats_t0->sw_if_index, 1, len0);
+		(rx_counter, thread_index, t0->sw_if_index, 1, len0);
 	      pkts_decapsulated++;
 	    }
 
@@ -345,8 +339,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 		{
 		  error1 = VXLAN_GBP_ERROR_BAD_FLAGS;
 		  vlib_increment_combined_counter
-		    (drop_counter, thread_index, stats_t1->sw_if_index, 1,
-		     len1);
+		    (drop_counter, thread_index, t1->sw_if_index, 1, len1);
 		  next1 = VXLAN_GBP_INPUT_NEXT_DROP;
 		}
 	      else
@@ -365,7 +358,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      pkts_decapsulated++;
 
 	      vlib_increment_combined_counter
-		(rx_counter, thread_index, stats_t1->sw_if_index, 1, len1);
+		(rx_counter, thread_index, t1->sw_if_index, 1, len1);
 	    }
 
 	  vnet_buffer2 (b1)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp1);
@@ -424,15 +417,11 @@ vxlan_gbp_input (vlib_main_t * vm,
 
 	  u32 fi0 = buf_fib_index (b0, is_ip4);
 
-	  vxlan_gbp_tunnel_t *t0, *stats_t0 = 0;
+	  vxlan_gbp_tunnel_t *t0;
 	  if (is_ip4)
-	    t0 =
-	      vxlan4_gbp_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan_gbp0,
-				      &stats_t0);
+	    t0 = vxlan4_gbp_find_tunnel (vxm, &last4, fi0, ip4_0, vxlan_gbp0);
 	  else
-	    t0 =
-	      vxlan6_gbp_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan_gbp0,
-				      &stats_t0);
+	    t0 = vxlan6_gbp_find_tunnel (vxm, &last6, fi0, ip6_0, vxlan_gbp0);
 
 	  uword len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -444,15 +433,15 @@ vxlan_gbp_input (vlib_main_t * vm,
 	  vlib_buffer_advance (b0, sizeof (*vxlan_gbp0));
 	  /* Validate VXLAN_GBP tunnel encap-fib index against packet */
 	  if (PREDICT_FALSE
-	      (t0 == 0 || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
+	      (t0 == NULL
+	       || flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G)))
 	    {
-	      if (t0 != 0
+	      if (t0 != NULL
 		  && flags0 != (VXLAN_GBP_FLAGS_I | VXLAN_GBP_FLAGS_G))
 		{
 		  error0 = VXLAN_GBP_ERROR_BAD_FLAGS;
 		  vlib_increment_combined_counter
-		    (drop_counter, thread_index, stats_t0->sw_if_index, 1,
-		     len0);
+		    (drop_counter, thread_index, t0->sw_if_index, 1, len0);
 		  next0 = VXLAN_GBP_INPUT_NEXT_DROP;
 		}
 	      else
@@ -470,7 +459,7 @@ vxlan_gbp_input (vlib_main_t * vm,
 	      pkts_decapsulated++;
 
 	      vlib_increment_combined_counter
-		(rx_counter, thread_index, stats_t0->sw_if_index, 1, len0);
+		(rx_counter, thread_index, t0->sw_if_index, 1, len0);
 	    }
 	  vnet_buffer2 (b0)->gbp.flags = vxlan_gbp_get_gpflags (vxlan_gbp0);
 	  vnet_buffer2 (b0)->gbp.sclass = vxlan_gbp_get_sclass (vxlan_gbp0);
