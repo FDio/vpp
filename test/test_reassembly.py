@@ -361,6 +361,7 @@ class TestIPv4Reassembly(VppTestCase):
                     fragments.extend(i)
                     fragments.extend(j)
                 fragments.append(zipped[-1][0])
+                fragments.append(zipped[-1][0])
 
         self.pg_enable_capture()
         self.src_if.add_stream(fragments)
@@ -690,6 +691,7 @@ class TestIPv6Reassembly(VppTestCase):
                 for i, j in zipped[:-1]:
                     fragments.extend(i)
                     fragments.extend(j)
+                fragments.append(zipped[-1][0])
                 fragments.append(zipped[-1][0])
 
         dropped_packet_indexes = set(
