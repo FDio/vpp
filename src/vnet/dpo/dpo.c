@@ -16,7 +16,7 @@
  * @brief
  * A Data-Path Object is an object that represents actions that are
  * applied to packets are they are switched through VPP.
- * 
+ *
  * The DPO is a base class that is specialised by other objects to provide
  * concreate actions
  *

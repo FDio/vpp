@@ -1,0 +1,49 @@
+
+FROM ubuntu:18.04
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+    inetutils-traceroute \
+    ca-certificates \
+    build-essential \
+    git gdb sudo \
+    iputils-ping \
+    net-tools \
+    iproute2 \
+    tcpdump \
+    netcat; \
+    rm -rf /var/lib/apt/lists/*; \
+    mv /usr/sbin/tcpdump /usr/bin/tcpdump
+
+RUN set -eux; \
+    mkdir -p {{vpp_path}}
+
+COPY . / {{vpp_path}}/
+
+WORKDIR {{vpp_path}}
+
+RUN set -eux; \
+    export UNATTENDED=y; \
+    make install-dep; \
+    rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    export UNATTENDED=y; \
+    make wipe; \
+    make build; \
+    make pkg-deb; \
+    rm -rf .ccache; \
+    find . -type f -name '*.o' -exec rm -rf '{}' \;
+
+WORKDIR {{vpp_path}}/build-root
+
+RUN set -eux; \
+    dpkg -i vpp-lib_*.deb vpp_*.deb vpp-dev_*.deb vpp-plugins_*.deb vpp-dbg_*.deb
+
+WORKDIR /usr/share/vpp/plugins/perfmon
+
+RUN tar Jxf PerfmonTables.tar.xz
+ 
+CMD vpp -c {{vpp_path}}/startup.conf
+
