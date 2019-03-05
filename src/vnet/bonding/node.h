@@ -266,7 +266,16 @@ typedef struct
   f64 actor_churn_timer;
 
   /* time last lacpdu was sent */
-  f64 last_lacpdu_time;
+  f64 last_lacpdu_sent_time;
+
+  /* time last lacpdu was received */
+  f64 last_lacpdu_recd_time;
+
+  /* time last marker pdu was sent */
+  f64 last_marker_pdu_sent_time;
+
+  /* time last marker pdu was received */
+  f64 last_marker_pdu_recd_time;
 
   /* timer used to generate periodic transmission */
   f64 periodic_timer;
@@ -294,6 +303,24 @@ typedef struct
 
   /* bond mode */
   u8 mode;
+
+  /* good lacp pdu received */
+  u64 pdu_received;
+
+  /* bad lacp pdu received */
+  u64 bad_pdu_received;
+
+  /* pdu sent */
+  u64 pdu_sent;
+
+  /* good marker pdu received */
+  u64 marker_pdu_received;
+
+  /* bad marker pdu received */
+  u64 marker_bad_pdu_received;
+
+  /* pdu sent */
+  u64 marker_pdu_sent;
 } slave_if_t;
 
 typedef void (*lacp_enable_disable_func) (vlib_main_t * vm, bond_if_t * bif,
