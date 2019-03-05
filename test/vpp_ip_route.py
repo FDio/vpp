@@ -53,8 +53,8 @@ def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     route_addr = inet_pton(inet, ip_addr)
     for e in routes:
         if route_addr == e.address[:s] \
-           and len == e.address_length \
-           and table_id == e.table_id:
+                and len == e.address_length \
+                and table_id == e.table_id:
             return True
     return False
 
@@ -71,9 +71,9 @@ def find_mroute(test, grp_addr, src_addr, grp_addr_len,
     saddr = inet_pton(inet, src_addr)
     for e in routes:
         if gaddr == e.grp_address[:s] \
-           and grp_addr_len == e.address_length \
-           and saddr == e.src_address[:s] \
-           and table_id == e.table_id:
+                and grp_addr_len == e.address_length \
+                and saddr == e.src_address[:s] \
+                and table_id == e.table_id:
             return True
     return False
 
@@ -82,8 +82,8 @@ def find_mpls_route(test, table_id, label, eos_bit, paths=None):
     dump = test.vapi.mpls_fib_dump()
     for e in dump:
         if label == e.label \
-           and eos_bit == e.eos_bit \
-           and table_id == e.table_id:
+                and eos_bit == e.eos_bit \
+                and table_id == e.table_id:
             if not paths:
                 return True
             else:
@@ -107,8 +107,8 @@ def fib_interface_ip_prefix(test, address, length, sw_if_index):
 
     for a in addrs:
         if a.prefix_length == length and \
-           a.sw_if_index == sw_if_index and \
-           a.ip[:n] == vp.bytes:
+                a.sw_if_index == sw_if_index and \
+                a.ip[:n] == vp.bytes:
             return True
     return False
 
@@ -124,17 +124,13 @@ class VppIpTable(VppObject):
         self.is_ip6 = is_ip6
 
     def add_vpp_config(self):
-        self._test.vapi.ip_table_add_del(
-            self.table_id,
-            is_ipv6=self.is_ip6,
-            is_add=1)
+        self._test.vapi.ip_table_add_del(is_ipv6=self.is_ip6, is_add=1,
+                                         table_id=self.table_id)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.ip_table_add_del(
-            self.table_id,
-            is_ipv6=self.is_ip6,
-            is_add=0)
+        self._test.vapi.ip_table_add_del(is_ipv6=self.is_ip6, is_add=0,
+                                         table_id=self.table_id)
 
     def query_vpp_config(self):
         if self.table_id == 0:
@@ -165,20 +161,16 @@ class VppIpInterfaceAddress(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
-            self.intf.sw_if_index,
-            self.prefix.bytes,
-            self.prefix.length,
-            is_add=1,
-            is_ipv6=self.prefix.is_ip6)
+            sw_if_index=self.intf.sw_if_index, address=self.prefix.bytes,
+            address_length=self.prefix.length, is_ipv6=self.prefix.is_ip6,
+            is_add=1)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
-            self.intf.sw_if_index,
-            self.prefix.bytes,
-            self.prefix.length,
-            is_add=0,
-            is_ipv6=self.prefix.is_ip6)
+            sw_if_index=self.intf.sw_if_index, address=self.prefix.bytes,
+            address_length=self.prefix.length, is_ipv6=self.prefix.is_ip6,
+            is_add=0)
 
     def query_vpp_config(self):
         return fib_interface_ip_prefix(self._test,
@@ -674,7 +666,7 @@ class VppMplsIpBind(VppObject):
         dump = self._test.vapi.mpls_fib_dump()
         for e in dump:
             if self.local_label == e.label \
-               and self.table_id == e.table_id:
+                    and self.table_id == e.table_id:
                 return True
         return False
 
@@ -782,7 +774,7 @@ class VppMplsRoute(VppObject):
         return ("%d:%s/%d"
                 % (self.table_id,
                    self.local_label,
-                   20+self.eos_bit))
+                   20 + self.eos_bit))
 
     def get_stats_to(self):
         c = self._test.statistics.get_counter("/net/route/to")

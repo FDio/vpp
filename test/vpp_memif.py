@@ -118,8 +118,9 @@ class VppMemif(VppObject):
 
     def config_ip4(self):
         return self._test.vapi.sw_interface_add_del_address(
-            self.sw_if_index, socket.inet_pton(
-                socket.AF_INET, self.ip4_addr), self.ip4_addr_len)
+            sw_if_index=self.sw_if_index, address=socket.inet_pton(
+                socket.AF_INET, self.ip4_addr),
+            address_length=self.ip4_addr_len)
 
     def remove_vpp_config(self):
         self._test.vapi.memif_delete(self.sw_if_index)

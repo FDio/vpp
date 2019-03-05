@@ -62,7 +62,7 @@ class HANATStateSync(Packet):
                    IntField("sequence_number", 1),
                    IntField("thread_index", 0),
                    PacketListField("events", [], Event,
-                                   count_from=lambda pkt:pkt.count)]
+                                   count_from=lambda pkt: pkt.count)]
 
 
 class MethodHolder(VppTestCase):
@@ -1520,8 +1520,8 @@ class TestNAT44(MethodHolder):
             cls.pg1.configure_ipv4_neighbors()
 
             cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
-            cls.vapi.ip_table_add_del(10, is_add=1)
-            cls.vapi.ip_table_add_del(20, is_add=1)
+            cls.vapi.ip_table_add_del(is_add=1, table_id=10)
+            cls.vapi.ip_table_add_del(is_add=1, table_id=20)
 
             cls.pg4._local_ip4 = "172.16.255.1"
             cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
@@ -1546,9 +1546,9 @@ class TestNAT44(MethodHolder):
             cls.pg9.generate_remote_hosts(2)
             cls.pg9.config_ip4()
             ip_addr_n = socket.inet_pton(socket.AF_INET, "10.0.0.1")
-            cls.vapi.sw_interface_add_del_address(cls.pg9.sw_if_index,
-                                                  ip_addr_n,
-                                                  24)
+            cls.vapi.sw_interface_add_del_address(
+                sw_if_index=cls.pg9.sw_if_index, address=ip_addr_n,
+                address_length=24)
             cls.pg9.admin_up()
             cls.pg9.resolve_arp()
             cls.pg9._remote_hosts[1]._ip4 = cls.pg9._remote_hosts[0]._ip4
@@ -2933,8 +2933,8 @@ class TestNAT44(MethodHolder):
 
         self.pg0.unconfig_ip4()
         self.pg1.unconfig_ip4()
-        self.vapi.ip_table_add_del(vrf_id1, is_add=1)
-        self.vapi.ip_table_add_del(vrf_id2, is_add=1)
+        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id1)
+        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id2)
         self.pg0.set_table_ip4(vrf_id1)
         self.pg1.set_table_ip4(vrf_id2)
         self.pg0.config_ip4()
@@ -2975,8 +2975,8 @@ class TestNAT44(MethodHolder):
             self.pg1.config_ip4()
             self.pg0.resolve_arp()
             self.pg1.resolve_arp()
-            self.vapi.ip_table_add_del(vrf_id1, is_add=0)
-            self.vapi.ip_table_add_del(vrf_id2, is_add=0)
+            self.vapi.ip_table_add_del(is_add=0, table_id=vrf_id1)
+            self.vapi.ip_table_add_del(is_add=0, table_id=vrf_id2)
 
     def test_vrf_feature_independent(self):
         """ NAT44 tenant VRF independent address pool mode """
@@ -3708,8 +3708,8 @@ class TestNAT44(MethodHolder):
 
         self.pg1.unconfig_ip4()
         self.pg2.unconfig_ip4()
-        self.vapi.ip_table_add_del(vrf_id1, is_add=1)
-        self.vapi.ip_table_add_del(vrf_id2, is_add=1)
+        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id1)
+        self.vapi.ip_table_add_del(is_add=1, table_id=vrf_id2)
         self.pg1.set_table_ip4(vrf_id1)
         self.pg2.set_table_ip4(vrf_id2)
         self.pg1.config_ip4()
@@ -4211,16 +4211,16 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg4.generate_remote_hosts(2)
             cls.pg4.config_ip4()
             ip_addr_n = socket.inet_pton(socket.AF_INET, "10.0.0.1")
-            cls.vapi.sw_interface_add_del_address(cls.pg4.sw_if_index,
-                                                  ip_addr_n,
-                                                  24)
+            cls.vapi.sw_interface_add_del_address(
+                sw_if_index=cls.pg4.sw_if_index, address=ip_addr_n,
+                address_length=24)
             cls.pg4.admin_up()
             cls.pg4.resolve_arp()
             cls.pg4._remote_hosts[1]._ip4 = cls.pg4._remote_hosts[0]._ip4
             cls.pg4.resolve_arp()
 
             zero_ip4n = socket.inet_pton(socket.AF_INET, "0.0.0.0")
-            cls.vapi.ip_table_add_del(1, is_add=1)
+            cls.vapi.ip_table_add_del(is_add=1, table_id=1)
 
             cls.pg5._local_ip4 = "10.1.1.1"
             cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET,
@@ -5286,8 +5286,8 @@ class TestNAT44EndpointDependent(MethodHolder):
                 port_in1 = port_in
                 port_in2 = port_in
             else:
-                port_in1 = port_in+1
-                port_in2 = port_in+2
+                port_in1 = port_in + 1
+                port_in2 = port_in + 2
 
         port_out = 80
         eh_port_out = 4567
@@ -5966,9 +5966,9 @@ class TestNAT44EndpointDependent(MethodHolder):
                                       local_port, external_port, vrf_id=1,
                                       proto=IP_PROTOS.tcp, out2in_only=1)
         self.nat44_add_static_mapping(
-             self.pg0.remote_ip4, external_sw_if_index=self.pg0.sw_if_index,
-             local_port=local_port, vrf_id=0, external_port=external_port,
-             proto=IP_PROTOS.tcp, out2in_only=1)
+            self.pg0.remote_ip4, external_sw_if_index=self.pg0.sw_if_index,
+            local_port=local_port, vrf_id=0, external_port=external_port,
+            proto=IP_PROTOS.tcp, out2in_only=1)
 
         # from client to service (both VRF1)
         p = (Ether(src=self.pg6.remote_mac, dst=self.pg6.local_mac) /
@@ -6455,7 +6455,7 @@ class TestNAT44Out2InDPO(MethodHolder):
             cls.pg1.config_ip6()
             cls.pg1.resolve_ndp()
 
-            cls.vapi.ip_add_del_route(is_ipv6=True, dst_address='\x00'*16,
+            cls.vapi.ip_add_del_route(is_ipv6=True, dst_address='\x00' * 16,
                                       dst_address_length=0,
                                       next_hop_address=cls.pg1.remote_ip6n,
                                       next_hop_sw_if_index=cls.pg1.sw_if_index)
@@ -7168,7 +7168,8 @@ class TestNAT64(MethodHolder):
             cls.ip6_interfaces.append(cls.pg_interfaces[2])
             cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
 
-            cls.vapi.ip_table_add_del(cls.vrf1_id, is_add=1, is_ipv6=1)
+            cls.vapi.ip_table_add_del(is_ipv6=1, is_add=1,
+                                      table_id=cls.vrf1_id)
 
             cls.pg_interfaces[2].set_table_ip6(cls.vrf1_id)
 

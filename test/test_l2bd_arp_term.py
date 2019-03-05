@@ -70,11 +70,8 @@ class TestL2bdArpTerm(VppTestCase):
     def add_del_arp_term_hosts(self, entries, bd_id=1, is_add=1, is_ipv6=0):
         for e in entries:
             ip = e.ip4 if is_ipv6 == 0 else e.ip6
-            self.vapi.bd_ip_mac_add_del(bd_id=bd_id,
-                                        mac=e.mac,
-                                        ip=ip,
-                                        is_ipv6=is_ipv6,
-                                        is_add=is_add)
+            self.vapi.bd_ip_mac_add_del(bd_id=bd_id, is_add=is_add, ip=ip,
+                                        mac=e.mac)
 
     @classmethod
     def mac_list(cls, b6_range):

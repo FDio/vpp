@@ -65,9 +65,9 @@ class TestBondInterface(VppTestCase):
         bond0.add_vpp_config()
         bond0.admin_up()
         bond0_addr = socket.inet_pton(socket.AF_INET, "10.10.10.1")
-        self.vapi.sw_interface_add_del_address(bond0.sw_if_index,
-                                               bond0_addr,
-                                               24)
+        self.vapi.sw_interface_add_del_address(sw_if_index=bond0.sw_if_index,
+                                               address=bond0_addr,
+                                               address_length=24)
 
         self.pg2.config_ip4()
         self.pg2.resolve_arp()

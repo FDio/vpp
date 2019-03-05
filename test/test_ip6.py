@@ -1346,8 +1346,8 @@ class IPv6NDProxyTest(TestIPv6ND):
         # Add proxy support for the host
         #
         self.vapi.ip6nd_proxy_add_del(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
-            self.pg1.sw_if_index)
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
+            sw_if_index=self.pg1.sw_if_index)
 
         #
         # try that NS again. this time we expect an NA back
@@ -1413,8 +1413,8 @@ class IPv6NDProxyTest(TestIPv6ND):
                       lladdr=self.pg0._remote_hosts[2].mac))
 
         self.vapi.ip6nd_proxy_add_del(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
-            self.pg2.sw_if_index)
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
+            sw_if_index=self.pg2.sw_if_index)
 
         self.send_and_expect_na(self.pg2, ns_pg2,
                                 "NS to proxy entry other interface",
@@ -1453,13 +1453,11 @@ class IPv6NDProxyTest(TestIPv6ND):
         # remove the proxy configs
         #
         self.vapi.ip6nd_proxy_add_del(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
-            self.pg1.sw_if_index,
-            is_del=1)
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[2].ip6),
+            sw_if_index=self.pg1.sw_if_index, is_del=1)
         self.vapi.ip6nd_proxy_add_del(
-            inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
-            self.pg2.sw_if_index,
-            is_del=1)
+            ip=inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
+            sw_if_index=self.pg2.sw_if_index, is_del=1)
 
         self.assertFalse(find_nbr(self,
                                   self.pg2.sw_if_index,

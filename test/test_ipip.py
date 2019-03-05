@@ -10,7 +10,6 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable
 from socket import AF_INET, AF_INET6, inet_pton
 from util import reassemble4
 
-
 """ Testipip is a subclass of  VPPTestCase classes.
 
 IPIP tests.
@@ -77,8 +76,8 @@ class TestIPIP(VppTestCase):
         # Set interface up and enable IP on it
         self.vapi.sw_interface_set_flags(sw_if_index, 1)
         self.vapi.sw_interface_set_unnumbered(
-            ip_sw_if_index=self.pg0.sw_if_index,
-            sw_if_index=sw_if_index)
+            sw_if_index=self.pg0.sw_if_index,
+            unnumbered_sw_if_index=sw_if_index)
 
         # Add IPv4 and IPv6 routes via tunnel interface
         ip4_via_tunnel = VppIpRoute(
@@ -102,7 +101,7 @@ class TestIPIP(VppTestCase):
         p6_reply = (IP(src=self.pg0.local_ip4, dst=self.pg1.remote_ip4,
                        proto='ipv6', id=0, tos=42) / p_inner_ip6 / p_payload)
         p6_reply.ttl -= 1
-        rx = self.send_and_expect(self.pg0, p6*10, self.pg1)
+        rx = self.send_and_expect(self.pg0, p6 * 10, self.pg1)
         for p in rx:
             self.validate(p[1], p6_reply)
 
@@ -115,7 +114,7 @@ class TestIPIP(VppTestCase):
                     p_ip4_inner / p_payload)
         p4_reply.ttl -= 1
         p4_reply.id = 0
-        rx = self.send_and_expect(self.pg0, p4*10, self.pg1)
+        rx = self.send_and_expect(self.pg0, p4 * 10, self.pg1)
         for p in rx:
             self.validate(p[1], p4_reply)
 
@@ -128,7 +127,7 @@ class TestIPIP(VppTestCase):
                            dst=self.pg0.local_ip4) / p_ip4 / p_payload)
         p4_reply = (p_ip4 / p_payload)
         p4_reply.ttl -= 1
-        rx = self.send_and_expect(self.pg1, p4*10, self.pg0)
+        rx = self.send_and_expect(self.pg1, p4 * 10, self.pg0)
         for p in rx:
             self.validate(p[1], p4_reply)
 
@@ -142,7 +141,7 @@ class TestIPIP(VppTestCase):
                            dst=self.pg0.local_ip4) / p_ip6 / p_payload)
         p6_reply = (p_ip6 / p_payload)
         p6_reply.hlim = 63
-        rx = self.send_and_expect(self.pg1, p6*10, self.pg0)
+        rx = self.send_and_expect(self.pg1, p6 * 10, self.pg0)
         for p in rx:
             self.validate(p[1], p6_reply)
 
@@ -279,7 +278,8 @@ class TestIPIP6(VppTestCase):
         self.tunnel_if_index = sw_if_index
         self.vapi.sw_interface_set_flags(sw_if_index, 1)
         self.vapi.sw_interface_set_unnumbered(
-            ip_sw_if_index=self.pg0.sw_if_index, sw_if_index=sw_if_index)
+            sw_if_index=self.pg0.sw_if_index,
+            unnumbered_sw_if_index=sw_if_index)
 
         # Add IPv4 and IPv6 routes via tunnel interface
         ip4_via_tunnel = VppIpRoute(
@@ -349,7 +349,7 @@ class TestIPIP6(VppTestCase):
                          hlim=64, tc=42) /
                     p_ip6 / p_payload)
         p6_reply[1].hlim -= 1
-        rx = self.send_and_expect(self.pg0, p6*11, self.pg1)
+        rx = self.send_and_expect(self.pg0, p6 * 11, self.pg1)
         for p in rx:
             self.validate(p[1], p6_reply)
 
@@ -359,7 +359,7 @@ class TestIPIP6(VppTestCase):
                          dst=self.pg1.remote_ip6, hlim=64, tc=42) /
                     p_ip4 / p_payload)
         p4_reply[1].ttl -= 1
-        rx = self.send_and_expect(self.pg0, p4*11, self.pg1)
+        rx = self.send_and_expect(self.pg0, p4 * 11, self.pg1)
         for p in rx:
             self.validate(p[1], p4_reply)
 
@@ -378,7 +378,7 @@ class TestIPIP6(VppTestCase):
                              dst=self.pg0.local_ip6) / p_ip4 / p_payload)
         p4_reply = (p_ip4 / p_payload)
         p4_reply.ttl -= 1
-        rx = self.send_and_expect(self.pg1, p4*11, self.pg0)
+        rx = self.send_and_expect(self.pg1, p4 * 11, self.pg0)
         for p in rx:
             self.validate(p[1], p4_reply)
 
@@ -388,7 +388,7 @@ class TestIPIP6(VppTestCase):
                              dst=self.pg0.local_ip6) / p_ip6 / p_payload)
         p6_reply = (p_ip6 / p_payload)
         p6_reply.hlim = 63
-        rx = self.send_and_expect(self.pg1, p6*11, self.pg0)
+        rx = self.send_and_expect(self.pg1, p6 * 11, self.pg0)
         for p in rx:
             self.validate(p[1], p6_reply)
 

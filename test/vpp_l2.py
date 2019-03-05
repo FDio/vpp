@@ -51,7 +51,7 @@ def find_bridge_domain_arp_entry(test, bd_id, mac, ip):
     for arp in arps:
         # do IP addr comparison too once .api is fixed...
         if vmac.packed == arp.mac_address and \
-           vip.bytes == arp.ip_address[:n]:
+                vip.bytes == arp.ip_address[:n]:
             return True
     return False
 
@@ -147,19 +147,15 @@ class VppBridgeDomainArpEntry(VppObject):
         self.ip = VppIpAddress(ip)
 
     def add_vpp_config(self):
-        self._test.vapi.bd_ip_mac_add_del(
-            self.bd.bd_id,
-            self.mac.packed,
-            self.ip.encode(),
-            is_add=1)
+        self._test.vapi.bd_ip_mac_add_del(bd_id=self.bd.bd_id, is_add=1,
+                                          ip=self.ip.encode(),
+                                          mac=self.mac.packed)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        self._test.vapi.bd_ip_mac_add_del(
-            self.bd.bd_id,
-            self.mac.packed,
-            self.ip.encode(),
-            is_add=0)
+        self._test.vapi.bd_ip_mac_add_del(bd_id=self.bd.bd_id, is_add=0,
+                                          ip=self.ip.encode(),
+                                          mac=self.mac.packed)
 
     def query_vpp_config(self):
         return find_bridge_domain_arp_entry(self._test,
