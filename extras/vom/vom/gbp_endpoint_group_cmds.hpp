@@ -38,6 +38,7 @@ public:
              uint16_t sclass,
              uint32_t bd_id,
              route::table_id_t rd_id,
+             const gbp_endpoint_group::retention_t& retention,
              const handle_t& itf);
 
   /**
@@ -61,6 +62,7 @@ private:
   const uint32_t m_bd_id;
   const route::table_id_t m_rd_id;
   const handle_t m_itf;
+  const gbp_endpoint_group::retention_t m_retention;
 };
 
 /**

@@ -80,9 +80,8 @@
   _(GBP_EXT_ITF_DUMP, gbp_ext_itf_dump)                     \
   _(GBP_CONTRACT_ADD_DEL, gbp_contract_add_del)             \
   _(GBP_CONTRACT_DUMP, gbp_contract_dump)                   \
-  _(GBP_ENDPOINT_LEARN_SET_INACTIVE_THRESHOLD, gbp_endpoint_learn_set_inactive_threshold) \
-  _(GBP_VXLAN_TUNNEL_ADD, gbp_vxlan_tunnel_add)                         \
-  _(GBP_VXLAN_TUNNEL_DEL, gbp_vxlan_tunnel_del)                         \
+  _(GBP_VXLAN_TUNNEL_ADD, gbp_vxlan_tunnel_add)             \
+  _(GBP_VXLAN_TUNNEL_DEL, gbp_vxlan_tunnel_del)             \
   _(GBP_VXLAN_TUNNEL_DUMP, gbp_vxlan_tunnel_dump)
 
 gbp_main_t gbp_main;
@@ -199,19 +198,6 @@ vl_api_gbp_endpoint_del_t_handler (vl_api_gbp_endpoint_del_t * mp)
   REPLY_MACRO (VL_API_GBP_ENDPOINT_DEL_REPLY + GBP_MSG_BASE);
 }
 
-static void
-  vl_api_gbp_endpoint_learn_set_inactive_threshold_t_handler
-  (vl_api_gbp_endpoint_learn_set_inactive_threshold_t * mp)
-{
-  vl_api_gbp_endpoint_learn_set_inactive_threshold_reply_t *rmp;
-  int rv = 0;
-
-  gbp_learn_set_inactive_threshold (ntohl (mp->threshold));
-
-  REPLY_MACRO (VL_API_GBP_ENDPOINT_LEARN_SET_INACTIVE_THRESHOLD_REPLY +
-	       GBP_MSG_BASE);
-}
-
 typedef struct gbp_walk_ctx_t_
 {
   vl_api_registration_t *reg;
@@ -291,17 +277,28 @@ vl_api_gbp_endpoint_dump_t_handler (vl_api_gbp_endpoint_dump_t * mp)
 }
 
 static void
+gbp_retention_decode (const vl_api_gbp_endpoint_retention_t * in,
+		      gbp_endpoint_retention_t * out)
+{
+  out->remote_ep_timeout = ntohl (in->remote_ep_timeout);
+}
+
+static void
   vl_api_gbp_endpoint_group_add_t_handler
   (vl_api_gbp_endpoint_group_add_t * mp)
 {
   vl_api_gbp_endpoint_group_add_reply_t *rmp;
+  gbp_endpoint_retention_t retention;
   int rv = 0;
+
+  gbp_retention_decode (&mp->epg.retention, &retention);
 
   rv = gbp_endpoint_group_add_and_lock (ntohs (mp->epg.epg_id),
 					ntohs (mp->epg.sclass),
 					ntohl (mp->epg.bd_id),
 					ntohl (mp->epg.rd_id),
-					ntohl (mp->epg.uplink_sw_if_index));
+					ntohl (mp->epg.uplink_sw_if_index),
+					&retention);
 
   REPLY_MACRO (VL_API_GBP_ENDPOINT_GROUP_ADD_REPLY + GBP_MSG_BASE);
 }

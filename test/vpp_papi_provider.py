@@ -3576,7 +3576,8 @@ class VppPapiProvider(object):
                         {'_no_type_conversion': True})
 
     def gbp_endpoint_group_add(self, epg, sclass, bd,
-                               rd, uplink_sw_if_index):
+                               rd, uplink_sw_if_index,
+                               retention):
         """ GBP endpoint group Add """
         return self.api(self.papi.gbp_endpoint_group_add,
                         {'epg':
@@ -3585,7 +3586,8 @@ class VppPapiProvider(object):
                              'bd_id': bd,
                              'rd_id': rd,
                              'epg_id': epg,
-                             'sclass': sclass
+                             'sclass': sclass,
+                             'retention': retention
                          }})
 
     def gbp_endpoint_group_del(self, epg):
@@ -3708,11 +3710,6 @@ class VppPapiProvider(object):
     def gbp_contract_dump(self):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
-
-    def gbp_endpoint_learn_set_inactive_threshold(self, threshold):
-        """ GBP set inactive threshold """
-        return self.api(self.papi.gbp_endpoint_learn_set_inactive_threshold,
-                        {'threshold': threshold})
 
     def gbp_vxlan_tunnel_add(self, vni, bd_rd_id, mode):
         """ GBP VXLAN tunnel add """

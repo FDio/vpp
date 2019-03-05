@@ -51,13 +51,6 @@ vlib_log_class_t gbp_ep_logger;
     vlib_log_notice (gbp_ep_logger, __VA_ARGS__);
 
 /**
- * GBP Endpoint inactive timeout (in seconds)
- * If a dynamically learned Endpoint has not been heard from in this
- * amount of time it is considered inactive and discarded
- */
-static u32 GBP_ENDPOINT_INACTIVE_TIME = 30;
-
-/**
  * Pool of GBP endpoints
  */
 gbp_endpoint_t *gbp_endpoint_pool;
@@ -1340,16 +1333,22 @@ VLIB_CLI_COMMAND (gbp_endpoint_show_node, static) = {
 static void
 gbp_endpoint_check (index_t gei, f64 start_time)
 {
+  gbp_endpoint_group_t *gg;
   gbp_endpoint_loc_t *gel;
   gbp_endpoint_t *ge;
 
   ge = gbp_endpoint_get (gei);
   gel = gbp_endpoint_loc_find (ge, GBP_ENDPOINT_SRC_DP);
 
-  if ((NULL != gel) &&
-      ((start_time - ge->ge_last_time) > GBP_ENDPOINT_INACTIVE_TIME))
+  if (NULL != gel)
     {
-      gbp_endpoint_unlock (GBP_ENDPOINT_SRC_DP, gei);
+      gg = gbp_endpoint_group_get (gel->gel_epg);
+
+      if ((start_time - ge->ge_last_time) >
+	  gg->gg_retention.remote_ep_timeout)
+	{
+	  gbp_endpoint_unlock (GBP_ENDPOINT_SRC_DP, gei);
+	}
     }
 }
 
@@ -1462,22 +1461,6 @@ gbp_endpoint_scan (vlib_main_t * vm)
 {
   gbp_endpoint_scan_l2 (vm);
   gbp_endpoint_scan_l3 (vm);
-}
-
-void
-gbp_learn_set_inactive_threshold (u32 threshold)
-{
-  GBP_ENDPOINT_INACTIVE_TIME = threshold;
-
-  vlib_process_signal_event (vlib_get_main (),
-			     gbp_scanner_node.index,
-			     GBP_ENDPOINT_SCAN_SET_TIME, 0);
-}
-
-f64
-gbp_endpoint_scan_threshold (void)
-{
-  return (GBP_ENDPOINT_INACTIVE_TIME);
 }
 
 static fib_node_t *

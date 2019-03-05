@@ -37,6 +37,26 @@ class gbp_endpoint_group : public object_base
 {
 public:
   /**
+   * Endpoint Retention Policy Settings
+   */
+  struct retention_t
+  {
+    retention_t();
+    retention_t(uint32_t remote_ep_timeout);
+
+    retention_t(const retention_t&) = default;
+    retention_t& operator=(const retention_t&) = default;
+
+    bool operator==(const retention_t& o) const;
+    std::string to_string() const;
+
+    /**
+     * Remote Endpoint timeout/ageing
+     */
+    uint32_t remote_ep_timeout;
+  };
+
+  /**
    * The key for a GBP endpoint group is its ID
    */
   typedef epg_id_t key_t;
@@ -113,6 +133,8 @@ public:
 
   const std::shared_ptr<gbp_route_domain> get_route_domain() const;
   const std::shared_ptr<gbp_bridge_domain> get_bridge_domain() const;
+
+  void set(const retention_t& retention);
 
 private:
   /**
@@ -205,6 +227,11 @@ private:
    * The bridge-domain the EPG uses
    */
   std::shared_ptr<gbp_bridge_domain> m_bd;
+
+  /**
+   * The Group's EP retention Policy
+   */
+  retention_t m_retention;
 
   /**
    * A map of all bridge_domains

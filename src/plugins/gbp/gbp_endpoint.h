@@ -236,7 +236,6 @@ extern void gbp_endpoint_child_remove (index_t gei, u32 sibling);
 typedef walk_rc_t (*gbp_endpoint_cb_t) (index_t gbpei, void *ctx);
 extern void gbp_endpoint_walk (gbp_endpoint_cb_t cb, void *ctx);
 extern void gbp_endpoint_scan (vlib_main_t * vm);
-extern f64 gbp_endpoint_scan_threshold (void);
 extern int gbp_endpoint_is_remote (const gbp_endpoint_t * ge);
 extern int gbp_endpoint_is_local (const gbp_endpoint_t * ge);
 extern int gbp_endpoint_is_external (const gbp_endpoint_t * ge);
