@@ -53,6 +53,7 @@ typedef struct
   u8 flags;
 } vxlan_gbp_encap_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_vxlan_gbp_encap_trace (u8 * s, va_list * args)
 {
@@ -66,6 +67,7 @@ format_vxlan_gbp_encap_trace (u8 * s, va_list * args)
 	    t->tunnel_index, t->vni, t->sclass, t->flags);
   return s;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 always_inline uword
 vxlan_gbp_encap_inline (vlib_main_t * vm,
@@ -488,9 +490,9 @@ vxlan_gbp_encap_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-vxlan4_gbp_encap (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan4_gbp_encap_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   /* Disable chksum offload as setup overhead in tx node is not worthwhile
      for ip4 header checksum only, unless udp checksum is also required */
@@ -498,9 +500,9 @@ vxlan4_gbp_encap (vlib_main_t * vm,
 				 /* csum_offload */ 0);
 }
 
-static uword
-vxlan6_gbp_encap (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan6_gbp_encap_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   /* Enable checksum offload for ip6 as udp checksum is mandatory, */
   return vxlan_gbp_encap_inline (vm, node, from_frame, /* is_ip4 */ 0,
@@ -510,7 +512,6 @@ vxlan6_gbp_encap (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_gbp_encap_node) =
 {
-  .function = vxlan4_gbp_encap,
   .name = "vxlan4-gbp-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_vxlan_gbp_encap_trace,
@@ -523,11 +524,8 @@ VLIB_REGISTER_NODE (vxlan4_gbp_encap_node) =
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_gbp_encap_node, vxlan4_gbp_encap)
-
 VLIB_REGISTER_NODE (vxlan6_gbp_encap_node) =
 {
-  .function = vxlan6_gbp_encap,
   .name = "vxlan6-gbp-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_vxlan_gbp_encap_trace,
@@ -539,8 +537,6 @@ VLIB_REGISTER_NODE (vxlan6_gbp_encap_node) =
     [VXLAN_GBP_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_gbp_encap_node, vxlan6_gbp_encap)
 /* *INDENT-ON* */
 
 /*

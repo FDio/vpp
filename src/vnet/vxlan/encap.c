@@ -49,6 +49,7 @@ typedef struct {
   u32 vni;
 } vxlan_encap_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -60,6 +61,7 @@ u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
 	      t->tunnel_index, t->vni);
   return s;
 }
+#endif
 
 always_inline uword
 vxlan_encap_inline (vlib_main_t * vm,
@@ -460,8 +462,7 @@ vxlan_encap_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-vxlan4_encap (vlib_main_t * vm,
+VLIB_NODE_FN (vxlan4_encap_node) (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
@@ -471,8 +472,7 @@ vxlan4_encap (vlib_main_t * vm,
 			     /* csum_offload */ 0);
 }
 
-static uword
-vxlan6_encap (vlib_main_t * vm,
+VLIB_NODE_FN (vxlan6_encap_node) (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
@@ -482,7 +482,6 @@ vxlan6_encap (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (vxlan4_encap_node) = {
-  .function = vxlan4_encap,
   .name = "vxlan4-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_vxlan_encap_trace,
@@ -495,10 +494,7 @@ VLIB_REGISTER_NODE (vxlan4_encap_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_encap_node, vxlan4_encap)
-
 VLIB_REGISTER_NODE (vxlan6_encap_node) = {
-  .function = vxlan6_encap,
   .name = "vxlan6-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_vxlan_encap_trace,
@@ -510,6 +506,4 @@ VLIB_REGISTER_NODE (vxlan6_encap_node) = {
         [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_encap_node, vxlan6_encap)
 
