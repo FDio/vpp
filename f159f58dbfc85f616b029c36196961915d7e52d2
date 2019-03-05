@@ -69,6 +69,30 @@
       "revId": "f159f58dbfc85f616b029c36196961915d7e52d2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ee928fbb_ff6644d7",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-05T15:49:06Z",
+      "side": 1,
+      "message": "https://gerrit.fd.io/r/#/c/18021/2 looks good,\nso no need for discussing pros and cons of excepting RuntimeError(\"maximum recursion depth exceeded\") here.",
+      "parentUuid": "da2731f9_4b13c8fd",
+      "range": {
+        "startLine": 180,
+        "startChar": 14,
+        "endLine": 180,
+        "endChar": 15
+      },
+      "revId": "f159f58dbfc85f616b029c36196961915d7e52d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
