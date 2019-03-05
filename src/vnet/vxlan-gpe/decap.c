@@ -24,8 +24,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 
-vlib_node_registration_t vxlan_gpe_input_node;
-
 /**
  * @brief Struct for VXLAN GPE decap packet tracing
  *
@@ -116,7 +114,8 @@ vxlan_gpe_input (vlib_main_t * vm,
   u32 last_tunnel_index = ~0;
   vxlan4_gpe_tunnel_key_t last_key4;
   vxlan6_gpe_tunnel_key_t last_key6;
-  u32 pkts_decapsulated = 0;
+  u32 ip4_pkts_decapsulated = 0;
+  u32 ip6_pkts_decapsulated = 0;
   u32 thread_index = vm->thread_index;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
@@ -346,7 +345,11 @@ vxlan_gpe_input (vlib_main_t * vm,
        */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
 
-	  pkts_decapsulated++;
+	  if (is_ip4)
+	    ip4_pkts_decapsulated++;
+	  else
+	    ip6_pkts_decapsulated++;
+
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
 
@@ -437,7 +440,11 @@ vxlan_gpe_input (vlib_main_t * vm,
 	   */
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = t1->decap_fib_index;
 
-	  pkts_decapsulated++;
+	  if (is_ip4)
+	    ip4_pkts_decapsulated++;
+	  else
+	    ip6_pkts_decapsulated++;
+
 	  stats_n_packets += 1;
 	  stats_n_bytes += len1;
 
@@ -609,7 +616,11 @@ vxlan_gpe_input (vlib_main_t * vm,
 	   */
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = t0->decap_fib_index;
 
-	  pkts_decapsulated++;
+	  if (is_ip4)
+	    ip4_pkts_decapsulated++;
+	  else
+	    ip6_pkts_decapsulated++;
+
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
 
@@ -647,9 +658,12 @@ vxlan_gpe_input (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, vxlan_gpe_input_node.index,
+  vlib_node_increment_counter (vm, vxlan4_gpe_input_node.index,
 			       VXLAN_GPE_ERROR_DECAPSULATED,
-			       pkts_decapsulated);
+			       ip4_pkts_decapsulated);
+  vlib_node_increment_counter (vm, vxlan6_gpe_input_node.index,
+			       VXLAN_GPE_ERROR_DECAPSULATED,
+			       ip6_pkts_decapsulated);
   /* Increment any remaining batch stats */
   if (stats_n_packets)
     {
@@ -673,14 +687,14 @@ vxlan_gpe_input (vlib_main_t * vm,
  * @return from_frame->n_vectors
  *
  */
-static uword
-vxlan4_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan4_gpe_input_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   return vxlan_gpe_input (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
-
+#ifndef CLIB_MARCH_VARIANT
 void
 vxlan_gpe_register_decap_protocol (u8 protocol_id, uword next_node_index)
 {
@@ -696,7 +710,7 @@ vxlan_gpe_unregister_decap_protocol (u8 protocol_id, uword next_node_index)
   hm->decap_next_node_list[protocol_id] = VXLAN_GPE_INPUT_NEXT_DROP;
   return;
 }
-
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * @brief Graph processing dispatch function for IPv6 VXLAN GPE
@@ -709,9 +723,9 @@ vxlan_gpe_unregister_decap_protocol (u8 protocol_id, uword next_node_index)
  * @return from_frame->n_vectors - uword
  *
  */
-static uword
-vxlan6_gpe_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * from_frame)
+VLIB_NODE_FN (vxlan6_gpe_input_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   return vxlan_gpe_input (vm, node, from_frame, /* is_ip4 */ 0);
 }
@@ -728,7 +742,6 @@ static char *vxlan_gpe_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_gpe_input_node) = {
-  .function = vxlan4_gpe_input,
   .name = "vxlan4-gpe-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -749,11 +762,8 @@ VLIB_REGISTER_NODE (vxlan4_gpe_input_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_gpe_input_node, vxlan4_gpe_input);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan6_gpe_input_node) = {
-  .function = vxlan6_gpe_input,
   .name = "vxlan6-gpe-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -774,7 +784,6 @@ VLIB_REGISTER_NODE (vxlan6_gpe_input_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_gpe_input_node, vxlan6_gpe_input);
 typedef enum
 {
   IP_VXLAN_BYPASS_NEXT_DROP,
@@ -1174,16 +1183,15 @@ ip_vxlan_gpe_bypass_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_vxlan_gpe_bypass (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_vxlan_gpe_bypass_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return ip_vxlan_gpe_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_vxlan_gpe_bypass_node) = {
-  .function = ip4_vxlan_gpe_bypass,
   .name = "ip4-vxlan-gpe-bypass",
   .vector_size = sizeof (u32),
 
@@ -1198,25 +1206,26 @@ VLIB_REGISTER_NODE (ip4_vxlan_gpe_bypass_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_vxlan_gpe_bypass_node, ip4_vxlan_gpe_bypass)
+#ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
-     clib_error_t *ip4_vxlan_gpe_bypass_init (vlib_main_t * vm)
+clib_error_t *
+ip4_vxlan_gpe_bypass_init (vlib_main_t * vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (ip4_vxlan_gpe_bypass_init);
+#endif /* CLIB_MARCH_VARIANT */
 
-static uword
-ip6_vxlan_gpe_bypass (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_vxlan_gpe_bypass_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return ip_vxlan_gpe_bypass_inline (vm, node, frame, /* is_ip4 */ 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_vxlan_gpe_bypass_node) = {
-  .function = ip6_vxlan_gpe_bypass,
   .name = "ip6-vxlan-gpe-bypass",
   .vector_size = sizeof (u32),
 
@@ -1231,14 +1240,16 @@ VLIB_REGISTER_NODE (ip6_vxlan_gpe_bypass_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_vxlan_gpe_bypass_node, ip6_vxlan_gpe_bypass)
+#ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
-     clib_error_t *ip6_vxlan_gpe_bypass_init (vlib_main_t * vm)
+clib_error_t *
+ip6_vxlan_gpe_bypass_init (vlib_main_t * vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (ip6_vxlan_gpe_bypass_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

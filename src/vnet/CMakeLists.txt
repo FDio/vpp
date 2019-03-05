@@ -268,6 +268,10 @@ list(APPEND VNET_SOURCES
   vxlan/vxlan_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  vxlan/encap.c
+)
+
 list(APPEND VNET_HEADERS
   vxlan/vxlan.h
   vxlan/vxlan_packet.h
@@ -719,6 +723,11 @@ list(APPEND VNET_SOURCES
   vxlan-gbp/vxlan_gbp_packet.c
 )
 
+list (APPEND VNET_MULTIARCH_SOURCES
+  vxlan-gbp/decap.c
+  vxlan-gbp/encap.c
+)
+
 list(APPEND VNET_HEADERS
   vxlan-gbp/vxlan_gbp.h
   vxlan-gbp/vxlan_gbp_packet.h
@@ -736,6 +745,10 @@ list(APPEND VNET_SOURCES
   vxlan-gpe/encap.c
   vxlan-gpe/decap.c
   vxlan-gpe/vxlan_gpe_api.c
+)
+
+list (APPEND VNET_MULTIARCH_SOURCES
+  vxlan-gpe/decap.c
 )
 
 list(APPEND VNET_HEADERS
