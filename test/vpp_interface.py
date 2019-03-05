@@ -392,34 +392,29 @@ class VppInterface(object):
 
     def enable_mpls(self):
         """Enable MPLS on the VPP interface."""
-        self.test.vapi.sw_interface_set_mpls_enable(
-            self.sw_if_index)
+        self.test.vapi.sw_interface_set_mpls_enable(self.sw_if_index)
 
     def disable_mpls(self):
         """Enable MPLS on the VPP interface."""
-        self.test.vapi.sw_interface_set_mpls_enable(
-            self.sw_if_index, 0)
+        self.test.vapi.sw_interface_set_mpls_enable(self.sw_if_index, 0)
 
     def is_ip4_entry_in_fib_dump(self, dump):
         for i in dump:
             if i.address == self.local_ip4n and \
-               i.address_length == self.local_ip4_prefix_len and \
-               i.table_id == self.ip4_table_id:
+                    i.address_length == self.local_ip4_prefix_len and \
+                    i.table_id == self.ip4_table_id:
                 return True
         return False
 
     def set_unnumbered(self, ip_sw_if_index):
         """ Set the interface to unnumbered via ip_sw_if_index """
-        self.test.vapi.sw_interface_set_unnumbered(
-            self.sw_if_index,
-            ip_sw_if_index)
+        self.test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                   self.sw_if_index)
 
     def unset_unnumbered(self, ip_sw_if_index):
         """ Unset the interface to unnumbered via ip_sw_if_index """
-        self.test.vapi.sw_interface_set_unnumbered(
-            self.sw_if_index,
-            ip_sw_if_index,
-            is_add=0)
+        self.test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                   self.sw_if_index, is_add=0)
 
     def set_proxy_arp(self, enable=1):
         """ Set the interface to enable/disable Proxy ARP """
@@ -434,7 +429,7 @@ class VppInterface(object):
     def get_interface_config_from_dump(self, dump):
         for i in dump:
             if i.interface_name.rstrip(' \t\r\n\0') == self.name and \
-               i.sw_if_index == self.sw_if_index:
+                    i.sw_if_index == self.sw_if_index:
                 return i
         else:
             return None

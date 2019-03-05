@@ -52,10 +52,10 @@ class VppPipe(VppInterface):
         return False
 
     def set_unnumbered(self, ip_sw_if_index, is_add=True):
-        res = self._test.vapi.sw_interface_set_unnumbered(
-            self.east, ip_sw_if_index, is_add)
-        res = self._test.vapi.sw_interface_set_unnumbered(
-            self.west, ip_sw_if_index, is_add)
+        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                          self.east, is_add)
+        res = self._test.vapi.sw_interface_set_unnumbered(ip_sw_if_index,
+                                                          self.west, is_add)
 
 
 class TestPipe(VppTestCase):
