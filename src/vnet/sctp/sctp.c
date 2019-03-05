@@ -970,6 +970,12 @@ sctp_init (vlib_main_t * vm)
   sctp_main_t *tm = vnet_get_sctp_main ();
   ip_main_t *im = &ip_main;
   ip_protocol_info_t *pi;
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "sctp4-established");
+  tm->sctp4_established_phase_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "sctp6-established");
+  tm->sctp6_established_phase_node_index = node->index;
+
   /* Session layer, and by implication SCTP, are disabled by default */
   tm->is_enabled = 0;
 
