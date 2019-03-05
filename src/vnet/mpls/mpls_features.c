@@ -37,8 +37,7 @@ mpls_terminate (vlib_main_t * vm,
   return n_packets;
 }
 
-static uword
-mpls_punt (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_punt_node) (vlib_main_t * vm,
            vlib_node_runtime_t * node,
            vlib_frame_t * frame)
 {
@@ -46,7 +45,6 @@ mpls_punt (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_punt_node) = {
-  .function = mpls_punt,
   .name = "mpls-punt",
   .vector_size = sizeof (u32),
 
@@ -56,10 +54,7 @@ VLIB_REGISTER_NODE (mpls_punt_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_punt_node, mpls_punt)
-
-static uword
-mpls_drop (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_drop_node) (vlib_main_t * vm,
            vlib_node_runtime_t * node,
            vlib_frame_t * frame)
 {
@@ -67,7 +62,6 @@ mpls_drop (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_drop_node) = {
-  .function = mpls_drop,
   .name = "mpls-drop",
   .vector_size = sizeof (u32),
 
@@ -77,10 +71,7 @@ VLIB_REGISTER_NODE (mpls_drop_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_drop_node, mpls_drop)
-
-static uword
-mpls_not_enabled (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_not_enabled_node) (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * frame)
 {
@@ -88,7 +79,6 @@ mpls_not_enabled (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_not_enabled_node) = {
-  .function = mpls_not_enabled,
   .name = "mpls-not-enabled",
   .vector_size = sizeof (u32),
 
@@ -97,8 +87,6 @@ VLIB_REGISTER_NODE (mpls_not_enabled_node) = {
     [0] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_not_enabled_node, mpls_not_enabled)
 
 VNET_FEATURE_ARC_INIT (mpls_input, static) =
 {
