@@ -16,6 +16,24 @@
       "revId": "3204085114cdbd61afbf3db3c34a646b88d7f488",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fe3c79ce_a14f934b",
+        "filename": "src/vnet/geneve/geneve.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2019-03-05T14:57:01Z",
+      "side": 1,
+      "message": "the decap trace fn is static thus used only in the file where it\u0027s used. This function is used also in geneve.c",
+      "parentUuid": "5a720e49_0ffc06a9",
+      "revId": "3204085114cdbd61afbf3db3c34a646b88d7f488",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
