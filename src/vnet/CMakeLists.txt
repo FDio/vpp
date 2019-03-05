@@ -948,6 +948,10 @@ list(APPEND VNET_SOURCES
   span/node.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  span/node.c
+)
+
 list(APPEND VNET_HEADERS
   span/span.h
 )
