@@ -43,25 +43,6 @@ typedef enum
   GENEVE_ENCAP_N_NEXT,
 } geneve_encap_next_t;
 
-typedef struct
-{
-  u32 tunnel_index;
-  u32 vni;
-} geneve_encap_trace_t;
-
-u8 *
-format_geneve_encap_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  geneve_encap_trace_t *t = va_arg (*args, geneve_encap_trace_t *);
-
-  s = format (s, "GENEVE encap to geneve_tunnel%d vni %d",
-	      t->tunnel_index, t->vni);
-  return s;
-}
-
-
 #define foreach_fixed_header4_offset            \
     _(0) _(1) _(2) _(3)
 
@@ -543,23 +524,22 @@ geneve_encap_inline (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-geneve4_encap (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (geneve4_encap_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return geneve_encap_inline (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
-static uword
-geneve6_encap (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (geneve6_encap_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return geneve_encap_inline (vm, node, from_frame, /* is_ip4 */ 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (geneve4_encap_node) = {
-  .function = geneve4_encap,
   .name = "geneve4-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_geneve_encap_trace,
@@ -572,10 +552,7 @@ VLIB_REGISTER_NODE (geneve4_encap_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (geneve4_encap_node, geneve4_encap)
-
 VLIB_REGISTER_NODE (geneve6_encap_node) = {
-  .function = geneve6_encap,
   .name = "geneve6-encap",
   .vector_size = sizeof (u32),
   .format_trace = format_geneve_encap_trace,
@@ -587,8 +564,6 @@ VLIB_REGISTER_NODE (geneve6_encap_node) = {
         [GENEVE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (geneve6_encap_node, geneve6_encap)
 /* *INDENT-ON* */
 
 /*

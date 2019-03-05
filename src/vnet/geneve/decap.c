@@ -17,9 +17,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/geneve/geneve.h>
 
-vlib_node_registration_t geneve4_input_node;
-vlib_node_registration_t geneve6_input_node;
-
 typedef struct
 {
   u32 next_index;
@@ -797,16 +794,16 @@ geneve_input (vlib_main_t * vm,
   return from_frame->n_vectors;
 }
 
-static uword
-geneve4_input (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (geneve4_input_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return geneve_input (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
-static uword
-geneve6_input (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (geneve6_input_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return geneve_input (vm, node, from_frame, /* is_ip4 */ 0);
 }
@@ -820,7 +817,6 @@ static char *geneve_error_strings[] = {
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (geneve4_input_node) = {
-  .function = geneve4_input,
   .name = "geneve4-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -838,10 +834,7 @@ VLIB_REGISTER_NODE (geneve4_input_node) = {
   // $$$$ .unformat_buffer = unformat_geneve_header,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (geneve4_input_node, geneve4_input)
-
 VLIB_REGISTER_NODE (geneve6_input_node) = {
-  .function = geneve6_input,
   .name = "geneve6-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -857,8 +850,6 @@ VLIB_REGISTER_NODE (geneve6_input_node) = {
   .format_trace = format_geneve_rx_trace,
   // $$$$ .unformat_buffer = unformat_geneve_header,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (geneve6_input_node, geneve6_input)
 /* *INDENT-ON* */
 
 typedef enum
@@ -1264,9 +1255,9 @@ ip_geneve_bypass_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_geneve_bypass (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_geneve_bypass_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return ip_geneve_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
 }
@@ -1274,7 +1265,7 @@ ip4_geneve_bypass (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_geneve_bypass_node) =
 {
-  .function = ip4_geneve_bypass,.name = "ip4-geneve-bypass",.vector_size =
+  .name = "ip4-geneve-bypass",.vector_size =
     sizeof (u32),.n_next_nodes = IP_GENEVE_BYPASS_N_NEXT,.next_nodes =
   {
   [IP_GENEVE_BYPASS_NEXT_DROP] = "error-drop",
@@ -1282,7 +1273,7 @@ VLIB_REGISTER_NODE (ip4_geneve_bypass_node) =
 ,.format_buffer = format_ip4_header,.format_trace =
     format_ip4_forward_next_trace,};
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_geneve_bypass_node, ip4_geneve_bypass)
+#ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
      clib_error_t *ip4_geneve_bypass_init (vlib_main_t * vm)
 {
@@ -1291,10 +1282,11 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip4_geneve_bypass_node, ip4_geneve_bypass)
 
 VLIB_INIT_FUNCTION (ip4_geneve_bypass_init);
 /* *INDENT-ON* */
+#endif /* CLIB_MARCH_VARIANT */
 
-static uword
-ip6_geneve_bypass (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_geneve_bypass_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return ip_geneve_bypass_inline (vm, node, frame, /* is_ip4 */ 0);
 }
@@ -1302,7 +1294,7 @@ ip6_geneve_bypass (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_geneve_bypass_node) =
 {
-  .function = ip6_geneve_bypass,.name = "ip6-geneve-bypass",.vector_size =
+  .name = "ip6-geneve-bypass",.vector_size =
     sizeof (u32),.n_next_nodes = IP_GENEVE_BYPASS_N_NEXT,.next_nodes =
   {
   [IP_GENEVE_BYPASS_NEXT_DROP] = "error-drop",
@@ -1311,14 +1303,16 @@ VLIB_REGISTER_NODE (ip6_geneve_bypass_node) =
     format_ip6_forward_next_trace,};
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_geneve_bypass_node, ip6_geneve_bypass)
+#ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
-     clib_error_t *ip6_geneve_bypass_init (vlib_main_t * vm)
+clib_error_t *
+ip6_geneve_bypass_init (vlib_main_t * vm)
 {
   return 0;
 }
 
 VLIB_INIT_FUNCTION (ip6_geneve_bypass_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON
