@@ -93,6 +93,12 @@ list(APPEND VNET_SOURCES
   cop/cop_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  cop/node1.c
+  cop/ip4_whitelist.c
+  cop/ip6_whitelist.c
+)
+
 list(APPEND VNET_HEADERS
   cop/cop.h
 )
