@@ -20,7 +20,7 @@
 #include <lacp/machine.h>
 
 #define foreach_lacp_ptx_event          \
-  _(0, BEGIN, "begin")                  \
+  _(0, NO_PERIODIC, "no periodic")      \
   _(1, LONG_TIMEOUT, "long tiemout")    \
   _(2, TIMER_EXPIRED, "timer expired")  \
   _(3, SHORT_TIMEOUT, "short timeout")
@@ -84,6 +84,16 @@ lacp_schedule_periodic_timer (vlib_main_t * vm, slave_if_t * sif)
     lacp_start_periodic_timer (vm, sif, LACP_FAST_PERIODIC_TIMER);
   else
     lacp_start_periodic_timer (vm, sif, LACP_SLOW_PERIODIC_TIMER);
+}
+
+static inline void
+lacp_ptx_post_short_timeout_event (vlib_main_t * vm, slave_if_t * sif)
+{
+  if (sif->lacp_enabled && sif->port_enabled &&
+      ((sif->partner.state & LACP_STATE_LACP_ACTIVITY) ||
+       (sif->actor.state & LACP_STATE_LACP_ACTIVITY)))
+    lacp_machine_dispatch (&lacp_ptx_machine, vm, sif,
+			   LACP_PTX_EVENT_SHORT_TIMEOUT, &sif->ptx_state);
 }
 
 #endif /* __LACP_PTX_MACHINE_H__ */
