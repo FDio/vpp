@@ -288,6 +288,11 @@ list(APPEND VNET_SOURCES
   geneve/geneve_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  geneve/encap.c
+  geneve/decap.c
+)
+
 list(APPEND VNET_HEADERS
   geneve/geneve.h
   geneve/geneve_packet.h

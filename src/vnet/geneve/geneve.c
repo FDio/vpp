@@ -37,6 +37,18 @@
 
 geneve_main_t geneve_main;
 
+u8 *
+format_geneve_encap_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  geneve_encap_trace_t *t = va_arg (*args, geneve_encap_trace_t *);
+
+  s = format (s, "GENEVE encap to geneve_tunnel%d vni %d",
+	      t->tunnel_index, t->vni);
+  return s;
+}
+
 static u8 *
 format_decap_next (u8 * s, va_list * args)
 {
