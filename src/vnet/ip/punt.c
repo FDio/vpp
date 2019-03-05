@@ -807,7 +807,6 @@ punt_cli (vlib_main_t * vm,
   if (error)
     {
       clib_error_report (error);
-      goto done;
     }
 
 done:
@@ -877,10 +876,6 @@ punt_socket_register_cmd (vlib_main_t * vm,
   error =
     vnet_punt_socket_add (vm, 1, is_ipv4, protocol, port,
 			  (char *) socket_name);
-  if (error)
-    {
-      goto done;
-    }
 done:
   return error;
 }
@@ -931,10 +926,6 @@ punt_socket_deregister_cmd (vlib_main_t * vm,
     }
 
   error = vnet_punt_socket_del (vm, is_ipv4, protocol, port);
-  if (error)
-    {
-      goto done;
-    }
 done:
   return error;
 }
