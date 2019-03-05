@@ -174,11 +174,15 @@ class VppPapiProvider(object):
             return self.api(apifn, d)
         return f
 
-    def __getattr__(self, name):
+    def __getattribute__(self, name):
         try:
-            return getattr(self, name)
-        except:
-            return self.factory(name, getattr(self.papi, name))
+            method = super(VppPapiProvider, self).__getattribute__(name)
+        except AttributeError:
+            method = self.factory(name, getattr(self.papi, name))
+            # lazily load the method so we don't need to call factory
+            # again for this name.
+            setattr(self, name, method)
+        return method
 
     def connect(self):
         """Connect the API to VPP"""
