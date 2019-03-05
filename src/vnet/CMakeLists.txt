@@ -590,7 +590,13 @@ list(APPEND VNET_SOURCES
   sctp/sctp_pg.c
   sctp/sctp_input.c
   sctp/sctp_output.c
+  sctp/sctp_output_node.c
   sctp/sctp_format.c
+)
+
+list(APPEND VNET_MULTIARCH_SOURCES
+  sctp/sctp_output_node.c
+  sctp/sctp_input.c
 )
 
 list(APPEND VNET_HEADERS

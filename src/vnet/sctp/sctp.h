@@ -530,6 +530,8 @@ typedef struct _sctp_main
   u8 punt_unknown4;
   u8 punt_unknown6;
 
+  u32 sctp4_established_phase_node_index;
+  u32 sctp6_established_phase_node_index;
 } sctp_main_t;
 
 extern sctp_main_t sctp_main;
