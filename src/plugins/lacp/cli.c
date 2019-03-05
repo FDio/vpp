@@ -159,6 +159,29 @@ show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
 	continue;
       vlib_cli_output (vm, "  %U", format_vnet_sw_if_index_name,
 		       vnet_get_main (), sif->sw_if_index);
+      vlib_cli_output (vm, "    Good LACP PDUs received: %llu",
+		       sif->pdu_received);
+      vlib_cli_output (vm, "    Bad LACP PDUs received: %llu",
+		       sif->bad_pdu_received);
+      vlib_cli_output (vm, "    LACP PDUs sent: %llu", sif->pdu_sent);
+      if (lacp_timer_is_running (sif->last_lacpdu_recd_time))
+	vlib_cli_output (vm,
+			 "    last LACP PDU received: %10.2f seconds ago",
+			 now - sif->last_lacpdu_recd_time);
+      if (lacp_timer_is_running (sif->last_lacpdu_sent_time))
+	vlib_cli_output (vm, "    last LACP PDU sent: %10.2f seconds ago",
+			 now - sif->last_lacpdu_sent_time);
+      vlib_cli_output (vm, "    Good Marker PDUs received: %llu",
+		       sif->marker_pdu_received);
+      vlib_cli_output (vm, "    Bad Marker PDUs received: %llu",
+		       sif->marker_bad_pdu_received);
+      if (lacp_timer_is_running (sif->last_marker_pdu_recd_time))
+	vlib_cli_output (vm,
+			 "    last Marker PDU received: %10.2f seconds ago",
+			 now - sif->last_marker_pdu_recd_time);
+      if (lacp_timer_is_running (sif->last_marker_pdu_sent_time))
+	vlib_cli_output (vm, "    last Marker PDU sent: %10.2f seconds ago",
+			 now - sif->last_marker_pdu_sent_time);
       vlib_cli_output (vm, "    debug: %d", sif->debug);
       vlib_cli_output (vm, "    loopback port: %d", sif->loopback_port);
       vlib_cli_output (vm, "    port moved: %d", sif->port_moved);
@@ -209,17 +232,17 @@ show_lacp_details (vlib_main_t * vm, u32 * sw_if_indices)
       if (!lacp_timer_is_running (sif->wait_while_timer))
 	vlib_cli_output (vm, "      wait while timer: not running");
       else
-	vlib_cli_output (vm, "      wait while timer: %=10.2f seconds",
+	vlib_cli_output (vm, "      wait while timer: %10.2f seconds",
 			 sif->wait_while_timer - now);
       if (!lacp_timer_is_running (sif->current_while_timer))
 	vlib_cli_output (vm, "      current while timer: not running");
       else
-	vlib_cli_output (vm, "      current while timer: %=10.2f seconds",
+	vlib_cli_output (vm, "      current while timer: %10.2f seconds",
 			 sif->current_while_timer - now);
       if (!lacp_timer_is_running (sif->periodic_timer))
 	vlib_cli_output (vm, "      periodic timer: not running");
       else
-	vlib_cli_output (vm, "      periodic timer: %=10.2f seconds",
+	vlib_cli_output (vm, "      periodic timer: %10.2f seconds",
 			 sif->periodic_timer - now);
       vlib_cli_output (vm, "    RX-state: %U", format_rx_sm_state,
 		       sif->rx_state);

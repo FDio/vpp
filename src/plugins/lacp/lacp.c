@@ -89,7 +89,8 @@ lacp_send_ethernet_lacp_pdu (slave_if_t * sif)
 
   vlib_put_frame_to_node (vm, hw->output_node_index, f);
 
-  sif->last_lacpdu_time = vlib_time_now (lm->vlib_main);
+  sif->last_lacpdu_sent_time = vlib_time_now (lm->vlib_main);
+  sif->pdu_sent++;
 }
 
 /*
@@ -307,7 +308,10 @@ lacp_init_neighbor (slave_if_t * sif, u8 * hw_address, u16 port_number,
   lacp_stop_timer (&sif->actor_churn_timer);
   lacp_stop_timer (&sif->partner_churn_timer);
   lacp_stop_timer (&sif->periodic_timer);
-  lacp_stop_timer (&sif->last_lacpdu_time);
+  lacp_stop_timer (&sif->last_lacpdu_sent_time);
+  lacp_stop_timer (&sif->last_lacpdu_recd_time);
+  lacp_stop_timer (&sif->last_marker_pdu_sent_time);
+  lacp_stop_timer (&sif->last_marker_pdu_recd_time);
   sif->lacp_enabled = 1;
   sif->loopback_port = 0;
   sif->ready = 0;
@@ -331,7 +335,7 @@ lacp_init_neighbor (slave_if_t * sif, u8 * hw_address, u16 port_number,
   sif->partner.port_number = htons (port_number);
   sif->partner.port_priority = htons (LACP_DEFAULT_PORT_PRIORITY);
   sif->partner.key = htons (group);
-  sif->partner.state = LACP_STATE_LACP_ACTIVITY;
+  sif->partner.state = 0;
 
   sif->actor_admin = sif->actor;
   sif->partner_admin = sif->partner;
