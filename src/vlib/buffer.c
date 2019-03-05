@@ -746,8 +746,7 @@ buffer_get_by_index (vlib_buffer_main_t * bm, u32 index)
   if (!bm->buffer_pools || vec_len (bm->buffer_pools) < index)
     return 0;
   bp = vec_elt_at_index (bm->buffer_pools, index);
-  if (!bp)
-    return 0;
+
   return bp;
 }
 
