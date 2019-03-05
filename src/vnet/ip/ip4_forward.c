@@ -2331,9 +2331,10 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  next[1] = next_index;
 	}
 
-      /* Guess we are only writing on simple Ethernet header. */
-      vnet_rewrite_two_headers (adj0[0], adj1[0],
-				ip0, ip1, sizeof (ethernet_header_t));
+      if (rw_len0 && rw_len1)
+	/* Guess we are only writing on simple Ethernet header. */
+	vnet_rewrite_two_headers (adj0[0], adj1[0],
+				  ip0, ip1, sizeof (ethernet_header_t));
 
       /*
        * Bump the per-adjacency counters
@@ -2439,8 +2440,10 @@ ip4_rewrite_inline_with_gso (vlib_main_t * vm,
 	  next[0] = next_index;
 	}
 
-      /* Guess we are only writing on simple Ethernet header. */
-      vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+      if (rw_len0)
+
+	/* Guess we are only writing on simple Ethernet header. */
+	vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
 
       if (do_counters)
 	vlib_increment_combined_counter
