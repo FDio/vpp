@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2fc1afd1_4ec2f5c2",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-05T01:52:23Z",
+      "side": 1,
+      "message": "Do you need to append frags_300[-1] ? It is already there in fragments because you iterated though the entire sequence and popped the last element of frags_200.",
+      "revId": "90cf255f2a2d72d7a132f302734c473d7bf99054",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
