@@ -45,6 +45,30 @@
       "revId": "f159f58dbfc85f616b029c36196961915d7e52d2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da2731f9_4b13c8fd",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-05T12:57:06Z",
+      "side": 1,
+      "message": "-1:  See:\nhttps://jenkins.fd.io/job/vpp-beta-verify-master-ubuntu1804/5633/consoleFull",
+      "parentUuid": "71b56fe9_ebdde2f7",
+      "range": {
+        "startLine": 180,
+        "startChar": 14,
+        "endLine": 180,
+        "endChar": 15
+      },
+      "revId": "f159f58dbfc85f616b029c36196961915d7e52d2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
