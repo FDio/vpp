@@ -313,8 +313,7 @@ static char * mpls_error_strings[] = {
 #undef mpls_error
 };
 
-static inline uword
-mpls_output (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_output_node) (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
@@ -322,7 +321,6 @@ mpls_output (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_output_node) = {
-  .function = mpls_output,
   .name = "mpls-output",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -339,10 +337,7 @@ VLIB_REGISTER_NODE (mpls_output_node) = {
   .format_trace = format_mpls_output_trace,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_output_node, mpls_output)
-
-static inline uword
-mpls_midchain (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_midchain_node) (vlib_main_t * vm,
                vlib_node_runtime_t * node,
                vlib_frame_t * from_frame)
 {
@@ -350,7 +345,6 @@ mpls_midchain (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (mpls_midchain_node) = {
-  .function = mpls_midchain,
   .name = "mpls-midchain",
   .vector_size = sizeof (u32),
 
@@ -358,8 +352,6 @@ VLIB_REGISTER_NODE (mpls_midchain_node) = {
 
   .sibling_of = "mpls-output",
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_midchain_node, mpls_midchain)
 
 /**
  * @brief Next index values from the MPLS incomplete adj node
@@ -393,8 +385,7 @@ typedef struct mpls_adj_incomplete_trace_t_
  * We pay a cost for this 'routing' node, but an incomplete adj is the
  * exception case.
  */
-static inline uword
-mpls_adj_incomplete (vlib_main_t * vm,
+VLIB_NODE_FN (mpls_adj_incomplete_node) (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
@@ -473,7 +464,6 @@ format_mpls_adj_incomplete_trace (u8 * s, va_list * args)
 }
 
 VLIB_REGISTER_NODE (mpls_adj_incomplete_node) = {
-  .function = mpls_adj_incomplete,
   .name = "mpls-adj-incomplete",
   .format_trace = format_mpls_adj_incomplete_trace,
   /* Takes a vector of packets. */
@@ -489,5 +479,3 @@ VLIB_REGISTER_NODE (mpls_adj_incomplete_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_adj_incomplete_node,
-                              mpls_adj_incomplete)

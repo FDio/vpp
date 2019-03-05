@@ -676,6 +676,13 @@ list(APPEND VNET_SOURCES
   mpls/mpls_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  mpls/mpls_output.c
+  mpls/mpls_input.c
+  mpls/mpls_lookup.c
+  mpls/mpls_features.c
+)
+
 list(APPEND VNET_HEADERS
   mpls/mpls.h
   mpls/mpls_types.h
