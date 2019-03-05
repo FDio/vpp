@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a720e49_0ffc06a9",
+        "filename": "src/vnet/geneve/geneve.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-05T12:36:31Z",
+      "side": 1,
+      "message": "you didn\u0027t move the decap trace. why the discrepancy?",
+      "revId": "3204085114cdbd61afbf3db3c34a646b88d7f488",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
