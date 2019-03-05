@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "02a4bdbc_28531ad9",
+        "filename": "test/test_gbp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-05T22:35:49Z",
+      "side": 1,
+      "message": "Should this be: \"vxlan_gbp_tunnel%s\" % self._sw_if_index)",
+      "range": {
+        "startLine": 532,
+        "startChar": 8,
+        "endLine": 532,
+        "endChar": 42
+      },
+      "revId": "9b20fbc6d7d0f22237a5b6027f25421d6f9d1650",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
