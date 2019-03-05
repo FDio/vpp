@@ -16,6 +16,24 @@
       "revId": "90cf255f2a2d72d7a132f302734c473d7bf99054",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "28dc02a8_165e9a4c",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-05T02:30:40Z",
+      "side": 1,
+      "message": "Look at line 363 on the left panel. zipped[-1][0] \u003d\u003d frags_300[-1], yes?",
+      "parentUuid": "2fc1afd1_4ec2f5c2",
+      "revId": "90cf255f2a2d72d7a132f302734c473d7bf99054",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
