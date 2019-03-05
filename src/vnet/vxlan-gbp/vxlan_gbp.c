@@ -394,7 +394,9 @@ int vnet_vxlan_gbp_tunnel_add_del
   int not_found;
   if (!is_ip6)
     {
-      key4.key[0] = a->dst.ip4.as_u32;
+      key4.key[0] = ip46_address_is_multicast (&a->dst) ?
+	a->dst.ip4.as_u32 :
+	a->dst.ip4.as_u32 | (((u64) a->src.ip4.as_u32) << 32);
       key4.key[1] = (((u64) a->encap_fib_index) << 32)
 	| clib_host_to_net_u32 (a->vni << 8);
       not_found =
