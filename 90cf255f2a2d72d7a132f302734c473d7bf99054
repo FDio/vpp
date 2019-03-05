@@ -34,6 +34,24 @@
       "revId": "90cf255f2a2d72d7a132f302734c473d7bf99054",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "86735c18_a3f84bef",
+        "filename": "test/test_reassembly.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 440
+      },
+      "writtenOn": "2019-03-05T04:05:48Z",
+      "side": 1,
+      "message": "Line 360 on the left iterates through all elements in zipped except the last one. Then in line 363 on the left, it appends the first item of the last tuple and skips the last item. I am not sure why the developer decided to skip the last element.\nNow, line 360 on the right, iterates through the entire zipped and pops out the last element. So, line 364 here is not required because the first item of the last tuple is already present in the zipped. Makes sense?",
+      "parentUuid": "28dc02a8_165e9a4c",
+      "revId": "90cf255f2a2d72d7a132f302734c473d7bf99054",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
