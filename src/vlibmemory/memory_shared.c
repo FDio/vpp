@@ -552,7 +552,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
 	  while (nanosleep (&ts, &tsrem) < 0)
 	    ts = tsrem;
 	  tfd = open ((char *) api_name, O_RDWR);
-	  if (tfd > 0)
+	  if (tfd >= 0)
 	    break;
 	}
       vec_free (api_name);
