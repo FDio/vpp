@@ -715,18 +715,14 @@ void
 session_transport_closing_notify (transport_connection_t * tc)
 {
   app_worker_t *app_wrk;
-  application_t *app;
   session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
   if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
     return;
   s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
-  app_wrk = app_worker_get_if_valid (s->app_wrk_index);
-  if (!app_wrk)
-    return;
-  app = application_get (app_wrk->app_index);
-  app->cb_fns.session_disconnect_callback (s);
+  app_wrk = app_worker_get (s->app_wrk_index);
+  app_worker_close_notify (app_wrk, s);
 }
 
 /**
