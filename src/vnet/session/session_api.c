@@ -445,20 +445,11 @@ done:
   return 0;
 }
 
-static int
-mq_app_tx_callback (session_t * s)
-{
-  if (session_has_transport (s))
-    return 0;
-  return ct_session_tx (s);
-}
-
 static session_cb_vft_t session_mq_cb_vft = {
   .session_accept_callback = mq_send_session_accepted_cb,
   .session_disconnect_callback = mq_send_session_disconnected_cb,
   .session_connected_callback = mq_send_session_connected_cb,
   .session_reset_callback = mq_send_session_reset_cb,
-  .builtin_app_tx_callback = mq_app_tx_callback,
   .add_segment_callback = send_add_segment_callback,
   .del_segment_callback = send_del_segment_callback,
 };

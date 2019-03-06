@@ -819,13 +819,11 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
 				  session_event_t * e, int *n_tx_pkts)
 {
   session_t *s = wrk->ctx.s;
-  application_t *app;
 
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
-  app = application_get (s->t_app_index);
   svm_fifo_unset_event (s->tx_fifo);
-  return app->cb_fns.builtin_app_tx_callback (s);
+  return transport_custom_tx (session_get_transport_proto (s), s);
 }
 
 always_inline session_t *
