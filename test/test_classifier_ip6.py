@@ -126,7 +126,7 @@ class TestClassifier(VppTestCase):
             try:
                 ip6_received = packet[IPv6]
                 proto_received = packet[proto_l]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug(

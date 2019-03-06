@@ -746,16 +746,18 @@ class VppTestCase(unittest.TestCase):
                                    info.ip, info.proto)
 
     @staticmethod
-    def payload_to_info(payload):
+    def payload_to_info(payload, payload_field='load'):
         """
         Convert packet payload to _PacketInfo object
 
         :param payload: packet payload
-
+        :type:  <class 'scapy.packet.Raw'>
+        :param: payload_field: packet fieldname of payload "load" for
+                <class 'scapy.packet.Raw'>
         :returns: _PacketInfo object containing de-serialized data from payload
 
         """
-        numbers = payload.split()
+        numbers = getattr(payload, payload_field).split()
         info = _PacketInfo()
         info.index = int(numbers[0])
         info.src = int(numbers[1])

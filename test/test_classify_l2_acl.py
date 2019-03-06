@@ -396,7 +396,7 @@ class TestClassifyAcl(VppTestCase):
                         packet[ICMPv6EchoRequest].data)
                     payload = packet[ICMPv6EchoRequest]
                 else:
-                    payload_info = self.payload_to_info(str(packet[Raw]))
+                    payload_info = self.payload_to_info(packet[Raw])
                     payload = packet[self.proto_map[payload_info.proto]]
             except:
                 self.logger.error(ppp("Unexpected or invalid packet "
