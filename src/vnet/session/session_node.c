@@ -821,6 +821,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
   session_t *s = wrk->ctx.s;
 
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
+//  if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
     return 0;
   svm_fifo_unset_event (s->tx_fifo);
   return transport_custom_tx (session_get_transport_proto (s), s);

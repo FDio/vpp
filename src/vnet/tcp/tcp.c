@@ -354,6 +354,8 @@ tcp_connection_close (tcp_connection_t * tc)
 	tcp_send_fin (tc);
       else
 	tc->flags |= TCP_CONN_FINPNDG;
+      if (tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	clib_warning ("closed with persist");
       tcp_connection_set_state (tc, TCP_STATE_FIN_WAIT_1);
       /* Set a timer in case the peer stops responding. Otherwise the
        * connection will be stuck here forever. */

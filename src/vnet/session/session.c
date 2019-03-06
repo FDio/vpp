@@ -1056,6 +1056,8 @@ session_close (session_t * s)
   if (!s)
     return;
 
+  clib_warning ("closing %u state %u", s->session_index, s->session_state);
+
   if (s->session_state >= SESSION_STATE_CLOSING)
     {
       /* Session will only be removed once both app and transport

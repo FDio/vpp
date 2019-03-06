@@ -363,9 +363,11 @@ void
 tls_session_disconnect_callback (session_t * tls_session)
 {
   session_t *app_session;
-  tls_ctx_t *ctx;
   app_worker_t *app_wrk;
-  application_t *app;
+  tls_ctx_t *ctx;
+
+  TLS_DBG (1, "TCP disconnecting handle %x session %u", tls_session->opaque,
+           tls_session->session_index);
 
   ctx = tls_ctx_get (tls_session->opaque);
   if (!tls_ctx_handshake_is_over (ctx))
@@ -374,10 +376,12 @@ tls_session_disconnect_callback (session_t * tls_session)
       return;
     }
   ctx->is_passive_close = 1;
-  app_wrk = app_worker_get (ctx->parent_app_wrk_index);
-  app = application_get (app_wrk->app_index);
   app_session = session_get_from_handle (ctx->app_session_handle);
-  app->cb_fns.session_disconnect_callback (app_session);
+  app_wrk = app_worker_get (ctx->parent_app_wrk_index);
+  if (app_wrk)
+    app_worker_close_notify (app_wrk, app_session);
+  else
+    session_close (app_session);
 }
 
 int
@@ -654,7 +658,8 @@ tls_custom_tx_callback (void *session)
 {
   session_t *app_session = (session_t *) session;
   tls_ctx_t *ctx;
-  if (PREDICT_FALSE (app_session->session_state == SESSION_STATE_CLOSED))
+  /* XXX */
+  if (PREDICT_FALSE (app_session->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
   ctx = tls_ctx_get (app_session->connection_index);
   tls_ctx_write (ctx, app_session);
@@ -664,16 +669,18 @@ tls_custom_tx_callback (void *session)
 u8 *
 format_tls_ctx (u8 * s, va_list * args)
 {
+  u32 child_si, child_ti, ctx_index, ctx_engine;
   tls_ctx_t *ctx = va_arg (*args, tls_ctx_t *);
   u32 thread_index = va_arg (*args, u32);
-  u32 child_si, child_ti;
 
   session_parse_handle (ctx->tls_session_handle, &child_si, &child_ti);
   if (thread_index != child_ti)
     clib_warning ("app and tls sessions are on different threads!");
 
-  s = format (s, "[#%d][TLS] app %u child %u", child_ti,
-	      ctx->parent_app_wrk_index, child_si);
+  tls_ctx_parse_handle (ctx->tls_ctx_handle, &ctx_index, &ctx_engine);
+  s = format (s, "[%d:%d][TLS] app_wrk %u app session %u tcp session %u",
+              thread_index, ctx_index, ctx->parent_app_wrk_index,
+              session_index_from_handle (ctx->app_session_handle), child_si);
   return s;
 }
 

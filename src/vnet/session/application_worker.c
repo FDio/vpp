@@ -322,6 +322,14 @@ app_worker_connect_notify (app_worker_t * app_wrk, session_t * s, u32 opaque)
 }
 
 int
+app_worker_close_notify (app_worker_t * app_wrk, session_t * s)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  app->cb_fns.session_disconnect_callback (s);
+  return 0;
+}
+
+int
 app_worker_own_session (app_worker_t * app_wrk, session_t * s)
 {
   segment_manager_t *sm;
