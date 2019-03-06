@@ -369,6 +369,11 @@ list(APPEND VNET_SOURCES
   classify/classify_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  classify/ip_classify.c
+  classify/flow_classify_node.c
+)
+
 list(APPEND VNET_HEADERS
   classify/vnet_classify.h
   classify/in_out_acl.h
