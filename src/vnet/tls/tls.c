@@ -54,7 +54,7 @@ int
 tls_add_vpp_q_rx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->rx_fifo))
-    session_send_io_evt_to_thread (s->rx_fifo, FIFO_EVENT_APP_RX);
+    session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_RX);
   return 0;
 }
 
@@ -62,7 +62,7 @@ int
 tls_add_vpp_q_builtin_rx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->rx_fifo))
-    session_send_io_evt_to_thread (s->rx_fifo, FIFO_EVENT_BUILTIN_RX);
+    session_send_io_evt_to_thread (s->rx_fifo, SESSION_IO_EVT_BUILTIN_RX);
   return 0;
 }
 
@@ -70,7 +70,7 @@ int
 tls_add_vpp_q_tx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->tx_fifo))
-    session_send_io_evt_to_thread (s->tx_fifo, FIFO_EVENT_APP_TX);
+    session_send_io_evt_to_thread (s->tx_fifo, SESSION_IO_EVT_TX);
   return 0;
 }
 
@@ -79,14 +79,14 @@ tls_add_vpp_q_builtin_tx_evt (session_t * s)
 {
   if (svm_fifo_set_event (s->tx_fifo))
     session_send_io_evt_to_thread_custom (s, s->thread_index,
-					  FIFO_EVENT_BUILTIN_TX);
+					  SESSION_IO_EVT_BUILTIN_TX);
   return 0;
 }
 
 static inline int
 tls_add_app_q_evt (app_worker_t * app, session_t * app_session)
 {
-  return app_worker_lock_and_send_event (app, app_session, FIFO_EVENT_APP_RX);
+  return app_worker_lock_and_send_event (app, app_session, SESSION_IO_EVT_RX);
 }
 
 u32

@@ -1819,7 +1819,7 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
 	  *bits_set += 1;
 	}
       break;
-    case FIFO_EVENT_APP_TX:
+    case SESSION_IO_EVT_TX:
       sid = e->session_index;
       session = vcl_session_get (wrk, sid);
       if (!session)
