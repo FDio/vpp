@@ -94,7 +94,7 @@ class TestLB(VppTestCase):
         self.assertEqual(gre.flags, 0)
         self.assertEqual(gre.version, 0)
         inner = IPver(str(gre.payload))
-        payload_info = self.payload_to_info(str(inner[Raw]))
+        payload_info = self.payload_to_info(inner[Raw])
         self.info = self.packet_infos[payload_info.index]
         self.assertEqual(payload_info.src, self.pg0.sw_if_index)
         self.assertEqual(str(inner), str(self.info.data[IPver]))

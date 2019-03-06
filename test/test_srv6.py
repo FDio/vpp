@@ -2080,7 +2080,7 @@ class TestSRv6(VppTestCase):
         # but packet[Raw] gives the complete payload
         # (incl L2 header) for the T.Encaps L2 case
         try:
-            payload_info = self.payload_to_info(str(packet[Raw]))
+            payload_info = self.payload_to_info(packet[Raw])
 
         except:
             # remote L2 header from packet[Raw]:

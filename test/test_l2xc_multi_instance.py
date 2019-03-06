@@ -235,7 +235,7 @@ class TestL2xcMultiInst(VppTestCase):
             last_info[i.sw_if_index] = None
         dst_sw_if_index = pg_if.sw_if_index
         for packet in capture:
-            payload_info = self.payload_to_info(str(packet[Raw]))
+            payload_info = self.payload_to_info(packet[Raw])
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
