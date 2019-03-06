@@ -569,6 +569,12 @@ list(APPEND VNET_SOURCES
   tcp/tcp.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  tcp/tcp_input.c
+  tcp/tcp_output.c
+  tcp/tcp_syn_filter4.c
+)
+
 list(APPEND VNET_HEADERS
   tcp/tcp_packet.h
   tcp/tcp_timer.h

@@ -79,9 +79,6 @@ typedef enum _tcp_state_next
 #define tcp_next_drop(is_ip4) (is_ip4 ? TCP_NEXT_DROP4                  \
                                       : TCP_NEXT_DROP6)
 
-vlib_node_registration_t tcp4_established_node;
-vlib_node_registration_t tcp6_established_node;
-
 /**
  * Validate segment sequence number. As per RFC793:
  *
@@ -447,12 +444,14 @@ tcp_estimate_rtt (tcp_connection_t * tc, u32 mrtt)
     }
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 tcp_update_rto (tcp_connection_t * tc)
 {
   tc->rto = clib_min (tc->srtt + (tc->rttvar << 2), TCP_RTO_MAX);
   tc->rto = clib_max (tc->rto, TCP_RTO_MIN);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * Update RTT estimate and RTO timer
@@ -625,6 +624,7 @@ tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
   return ((*is_dack || tcp_in_cong_recovery (tc)) && !tcp_is_lost_fin (tc));
 }
 
+#ifndef CLIB_MARCH_VARIANT
 static u32
 scoreboard_hole_index (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
 {
@@ -749,7 +749,9 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 
   return hole;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
+#ifndef CLIB_MARCH_VARIANT
 static void
 scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
 {
@@ -853,6 +855,7 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 
   return hole;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static void
 scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
@@ -868,6 +871,7 @@ scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 snd_una)
   sb->rescue_rxt = snd_una - 1;
 }
 
+#ifndef  CLIB_MARCH_VARIANT
 void
 scoreboard_init (sack_scoreboard_t * sb)
 {
@@ -895,6 +899,7 @@ scoreboard_clear (sack_scoreboard_t * sb)
   sb->lost_bytes = 0;
   sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * Test that scoreboard is sane after recovery
@@ -911,6 +916,7 @@ tcp_scoreboard_is_sane_post_recovery (tcp_connection_t * tc)
 		    && seq_lt (hole->end, tc->snd_una_max)));
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 {
@@ -1089,6 +1095,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  || sb->holes[sb->head].start == ack + sb->snd_una_adv);
   TCP_EVT_DBG (TCP_EVT_CC_SCOREBOARD, tc);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * Try to update snd_wnd based on feedback received from peer.
@@ -1128,6 +1135,7 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
     }
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /**
  * Init loss recovery/fast recovery.
  *
@@ -1146,6 +1154,7 @@ tcp_cc_init_congestion (tcp_connection_t * tc)
   tc->cc_algo->congestion (tc);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 4);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static void
 tcp_cc_recovery_exit (tcp_connection_t * tc)
@@ -1159,6 +1168,7 @@ tcp_cc_recovery_exit (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
 {
@@ -1174,6 +1184,7 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static void
 tcp_cc_congestion_undo (tcp_connection_t * tc)
@@ -1268,6 +1279,7 @@ tcp_should_fastrecover (tcp_connection_t * tc)
 	  || tcp_should_fastrecover_sack (tc));
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 tcp_program_fastretransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 {
@@ -1336,6 +1348,7 @@ tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
   _vec_len (ongoing_fast_rxt) = 0;
   wrk->ongoing_fast_rxt = ongoing_fast_rxt;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * One function to rule them all ... and in the darkness bind them
@@ -1693,6 +1706,7 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   *error = TCP_ERROR_FIN_RCVD;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 static u8
 tcp_sack_vector_is_sane (sack_block_t * sacks)
 {
@@ -1779,6 +1793,7 @@ tcp_sack_list_bytes (tcp_connection_t * tc)
     bytes += tc->snd_sacks[i].end - tc->snd_sacks[i].start;
   return bytes;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /** Enqueue data for delivery to application */
 static int
@@ -2203,16 +2218,16 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-tcp4_established (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp4_established_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   return tcp46_established_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-tcp6_established (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp6_established_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   return tcp46_established_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -2220,7 +2235,6 @@ tcp6_established (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_established_node) =
 {
-  .function = tcp4_established,
   .name = "tcp4-established",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2237,12 +2251,9 @@ VLIB_REGISTER_NODE (tcp4_established_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_established_node, tcp4_established);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_established_node) =
 {
-  .function = tcp6_established,
   .name = "tcp6-established",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2259,11 +2270,6 @@ VLIB_REGISTER_NODE (tcp6_established_node) =
 };
 /* *INDENT-ON* */
 
-
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_established_node, tcp6_established);
-
-vlib_node_registration_t tcp4_syn_sent_node;
-vlib_node_registration_t tcp6_syn_sent_node;
 
 static u8
 tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
@@ -2597,16 +2603,16 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-tcp4_syn_sent (vlib_main_t * vm, vlib_node_runtime_t * node,
-	       vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp4_syn_sent_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return tcp46_syn_sent_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-tcp6_syn_sent_rcv (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp6_syn_sent_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * from_frame)
 {
   return tcp46_syn_sent_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -2614,7 +2620,6 @@ tcp6_syn_sent_rcv (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
 {
-  .function = tcp4_syn_sent,
   .name = "tcp4-syn-sent",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2631,12 +2636,9 @@ VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_syn_sent_node, tcp4_syn_sent);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
 {
-  .function = tcp6_syn_sent_rcv,
   .name = "tcp6-syn-sent",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2652,11 +2654,6 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_syn_sent_node, tcp6_syn_sent_rcv);
-
-vlib_node_registration_t tcp4_rcv_process_node;
-vlib_node_registration_t tcp6_rcv_process_node;
 
 /**
  * Handles reception for all states except LISTEN, SYN-SENT and ESTABLISHED
@@ -3005,16 +3002,16 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-tcp4_rcv_process (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp4_rcv_process_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   return tcp46_rcv_process_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-tcp6_rcv_process (vlib_main_t * vm, vlib_node_runtime_t * node,
-		  vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp6_rcv_process_node) (vlib_main_t * vm,
+				      vlib_node_runtime_t * node,
+				      vlib_frame_t * from_frame)
 {
   return tcp46_rcv_process_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -3022,7 +3019,6 @@ tcp6_rcv_process (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_rcv_process_node) =
 {
-  .function = tcp4_rcv_process,
   .name = "tcp4-rcv-process",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -3039,12 +3035,9 @@ VLIB_REGISTER_NODE (tcp4_rcv_process_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_rcv_process_node, tcp4_rcv_process);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
 {
-  .function = tcp6_rcv_process,
   .name = "tcp6-rcv-process",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -3060,11 +3053,6 @@ VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_rcv_process_node, tcp6_rcv_process);
-
-vlib_node_registration_t tcp4_listen_node;
-vlib_node_registration_t tcp6_listen_node;
 
 /**
  * LISTEN state processing as per RFC 793 p. 65
@@ -3219,16 +3207,14 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-tcp4_listen (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp4_listen_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return tcp46_listen_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-tcp6_listen (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp6_listen_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return tcp46_listen_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -3236,7 +3222,6 @@ tcp6_listen (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_listen_node) =
 {
-  .function = tcp4_listen,
   .name = "tcp4-listen",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -3253,12 +3238,9 @@ VLIB_REGISTER_NODE (tcp4_listen_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_listen_node, tcp4_listen);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_listen_node) =
 {
-  .function = tcp6_listen,
   .name = "tcp6-listen",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -3274,11 +3256,6 @@ VLIB_REGISTER_NODE (tcp6_listen_node) =
   .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_listen_node, tcp6_listen);
-
-vlib_node_registration_t tcp4_input_node;
-vlib_node_registration_t tcp6_input_node;
 
 typedef enum _tcp_input_next
 {
@@ -3568,16 +3545,14 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-tcp4_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp4_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return tcp46_input_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-tcp6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
-	    vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp6_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return tcp46_input_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -3585,7 +3560,6 @@ tcp6_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_input_node) =
 {
-  .function = tcp4_input,
   .name = "tcp4-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -3603,12 +3577,9 @@ VLIB_REGISTER_NODE (tcp4_input_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_input_node, tcp4_input);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_input_node) =
 {
-  .function = tcp6_input,
   .name = "tcp6-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -3626,8 +3597,7 @@ VLIB_REGISTER_NODE (tcp6_input_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_input_node, tcp6_input);
-
+#ifndef CLIB_MARCH_VARIANT
 static void
 tcp_dispatch_table_init (tcp_main_t * tm)
 {
@@ -3872,6 +3842,8 @@ tcp_input_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (tcp_input_init);
+
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON
