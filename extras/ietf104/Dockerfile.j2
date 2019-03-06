@@ -39,7 +39,8 @@ RUN set -eux; \
 WORKDIR {{vpp_path}}/build-root
 
 RUN set -eux; \
-    dpkg -i vpp-lib_*.deb vpp_*.deb vpp-dev_*.deb vpp-plugins_*.deb vpp-dbg_*.deb
+    rm vpp-api-python_*.deb; \
+    dpkg -i *.deb
 
 WORKDIR /usr/share/vpp/plugins/perfmon
 

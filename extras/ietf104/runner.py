@@ -137,7 +137,8 @@ class Networks(object):
 class Program(object):
 
     image = "ietf104-image"
-    prefix = "hck"
+
+    name_prefix = "hck"
 
     instance_names = [
         "vpp-1",
@@ -155,15 +156,15 @@ class Program(object):
     def __init__(self, image=None, prefix=None):
         self.path = dirname(realpath(__file__))
 
+        if image:
+            self.image = image
+        if prefix is not None:
+            self.name_prefix = prefix
+        
         client = from_env()
         self.containers = Containers(client, self.image)
         self.networks = Networks(client)
-
-        if prefix is not None:
-            self.prefix = prefix
-        if image:
-            self.image = image
-
+        
         self.logger = getLogger(__name__)
 
     @property
@@ -171,9 +172,9 @@ class Program(object):
         return split(split(self.path)[0])[0]
 
     def get_name(self, name):
-        if not self.prefix:
+        if not self.name_prefix:
             return name
-        return "{}-{}".format(self.prefix, name)
+        return "{}-{}".format(self.name_prefix, name)
 
     def stop_containers(self):
 
