@@ -757,11 +757,12 @@ class VppTestCase(unittest.TestCase):
         """
         numbers = payload.split()
         info = _PacketInfo()
-        info.index = int(numbers[0])
-        info.src = int(numbers[1])
-        info.dst = int(numbers[2])
-        info.ip = int(numbers[3])
-        info.proto = int(numbers[4])
+        # payload is bytes under python3. Coerce to string for int(str).
+        info.index = int('%s' % numbers[0])
+        info.src = int('%s' % numbers[1])
+        info.dst = int('%s' % numbers[2])
+        info.ip = int('%s' % numbers[3])
+        info.proto = int('%s' % numbers[4])
         return info
 
     def get_next_packet_info(self, info):
@@ -1163,7 +1164,7 @@ class VppTestResult(unittest.TestResult):
                     if isinstance(test, unittest.suite._ErrorHolder):
                         test_name = str(test)
                     else:
-                        test_name = "'{}' ({})".format(
+                        test_name = "'{!s}' ({!s})".format(
                             get_testcase_doc_name(test), test.id())
                     self.current_test_case_info.core_crash_test = test_name
                 self.core_crash_test_cases_info.add(

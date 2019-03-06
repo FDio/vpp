@@ -135,7 +135,7 @@ class LispEID(object):
             self.prefix_length = 0
             self.data_length = 6
         else:
-            raise Exception('Unsupported EID format {}!'.format(eid))
+            raise Exception('Unsupported EID format {!s}!'.format(eid))
 
     def __str__(self):
         if self.eid_type == LispEIDType.IP4:
@@ -144,7 +144,7 @@ class LispEID(object):
             return socket.inet_pton(socket.AF_INET6, self.eid_address)
         elif self.eid_type == LispEIDType.MAC:
             return Exception('Unimplemented')
-        raise Exception('Unknown EID type {}!'.format(self.eid_type))
+        raise Exception('Unknown EID type {!s}!'.format(self.eid_type))
 
 
 class VppLispMapping(VppObject):

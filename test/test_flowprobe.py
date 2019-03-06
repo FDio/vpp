@@ -450,12 +450,12 @@ class Flowprobe(MethodHolder):
             # src ip
             self.assertEqual('.'.join(re.findall('..', record[8].encode(
                                       'hex'))),
-                             '.'.join('{:02x}'.format(int(n)) for n in
+                             '.'.join('{!s:02x}'.format(int(n)) for n in
                                       self.pg7.remote_ip4.split('.')))
             # dst ip
             self.assertEqual('.'.join(re.findall('..', record[12].encode(
                                       'hex'))),
-                             '.'.join('{:02x}'.format(int(n)) for n in
+                             '.'.join('{!s:02x}'.format(int(n)) for n in
                                       "9.0.0.100".split('.')))
             # protocol (TCP)
             self.assertEqual(int(binascii.hexlify(record[4]), 16), 6)

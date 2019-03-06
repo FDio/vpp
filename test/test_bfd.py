@@ -2325,7 +2325,7 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_no_response(
             "bfd key set conf-key-id %s type keyed-sha1 secret %s" %
             (k.conf_key_id,
-                "".join("{:02x}".format(ord(c)) for c in k.key)))
+                "".join("{!s:02x}".format(ord(c)) for c in k.key)))
         self.assertTrue(k.query_vpp_config())
         self.vpp_session = VppBFDUDPSession(
             self, self.pg0, self.pg0.remote_ip4, sha1_key=k)
@@ -2342,7 +2342,7 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_response(
             "bfd key set conf-key-id %s type keyed-sha1 secret %s" %
             (k.conf_key_id,
-                "".join("{:02x}".format(ord(c)) for c in k2.key)),
+                "".join("{!s:02x}".format(ord(c)) for c in k2.key)),
             "bfd key set: `bfd_auth_set_key' API call failed, "
             "rv=-103:BFD object in use")
         # manipulating the session using old secret should still work
@@ -2361,7 +2361,7 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_no_response(
             "bfd key set conf-key-id %s type meticulous-keyed-sha1 secret %s" %
             (k.conf_key_id,
-                "".join("{:02x}".format(ord(c)) for c in k.key)))
+                "".join("{!s:02x}".format(ord(c)) for c in k.key)))
         self.assertTrue(k.query_vpp_config())
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip6, af=AF_INET6,
@@ -2380,7 +2380,7 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_response(
             "bfd key set conf-key-id %s type keyed-sha1 secret %s" %
             (k.conf_key_id,
-                "".join("{:02x}".format(ord(c)) for c in k2.key)),
+                "".join("{!s:02x}".format(ord(c)) for c in k2.key)),
             "bfd key set: `bfd_auth_set_key' API call failed, "
             "rv=-103:BFD object in use")
         # manipulating the session using old secret should still work

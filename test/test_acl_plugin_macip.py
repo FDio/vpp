@@ -234,10 +234,11 @@ class MethodHolder(VppTestCase):
                 if mac_type == self.WILD_MAC:
                     mac = "00:00:00:00:00:00"
                 elif mac_type == self.OUI_MAC:
-                    mac = ':'.join(re.findall('..', '{:02x}'.format(
+                    mac = ':'.join(re.findall('..', '{!s:02x}'.format(
                         src_mac))[:3])+":00:00:00"
                 else:
-                    mac = ':'.join(re.findall('..', '{:02x}'.format(src_mac)))
+                    mac = ':'.join(re.findall(
+                        '..', '{!s:02x}'.format(src_mac)))
 
                 if ip_type == self.EXACT_IP:
                     ip4[3] = random.randint(100, 200)
