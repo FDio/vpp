@@ -16,9 +16,6 @@
 #include <vnet/tcp/tcp.h>
 #include <math.h>
 
-vlib_node_registration_t tcp4_output_node;
-vlib_node_registration_t tcp6_output_node;
-
 typedef enum _tcp_output_next
 {
   TCP_OUTPUT_NEXT_DROP,
@@ -52,9 +49,11 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u16 dummy_mtu = 1460;
+#endif /* CLIB_MARCH_VARIANT */
 
-u8 *
+static u8 *
 format_tcp_tx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -70,6 +69,7 @@ format_tcp_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 static u8
 tcp_window_compute_scale (u32 window)
 {
@@ -464,6 +464,7 @@ tcp_init_mss (tcp_connection_t * tc)
   if (tcp_opts_tstamp (&tc->rcv_opts))
     tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static void *
 tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
@@ -481,6 +482,7 @@ tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   return vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 static void *
 tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
@@ -688,6 +690,7 @@ tcp_enqueue_to_output_now (tcp_worker_ctx_t * wrk, vlib_buffer_t * b, u32 bi,
 {
   tcp_enqueue_to_output_i (wrk, b, bi, is_ip4, 1);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static int
 tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
@@ -768,6 +771,7 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
   return 0;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 /**
  *  Send reset without reusing existing buffer
  *
@@ -2015,6 +2019,7 @@ tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   else
     return tcp_fast_retransmit_no_sack (wrk, tc, burst_size);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static void
 tcp_output_handle_link_local (tcp_connection_t * tc0, vlib_buffer_t * b0,
@@ -2200,16 +2205,14 @@ tcp46_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return frame->n_vectors;
 }
 
-static uword
-tcp4_output (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp4_output_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return tcp46_output_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-tcp6_output (vlib_main_t * vm, vlib_node_runtime_t * node,
-	     vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp6_output_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * from_frame)
 {
   return tcp46_output_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
@@ -2217,7 +2220,6 @@ tcp6_output (vlib_main_t * vm, vlib_node_runtime_t * node,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_output_node) =
 {
-  .function = tcp4_output,
   .name = "tcp4-output",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2235,12 +2237,9 @@ VLIB_REGISTER_NODE (tcp4_output_node) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_output_node, tcp4_output);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_output_node) =
 {
-  .function = tcp6_output,
   .name = "tcp6-output",
     /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -2257,8 +2256,6 @@ VLIB_REGISTER_NODE (tcp6_output_node) =
   .format_trace = format_tcp_tx_trace,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_output_node, tcp6_output);
 
 typedef enum _tcp_reset_next
 {
@@ -2345,23 +2342,20 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return from_frame->n_vectors;
 }
 
-static uword
-tcp4_send_reset (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp4_reset_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return tcp46_send_reset_inline (vm, node, from_frame, 1);
 }
 
-static uword
-tcp6_send_reset (vlib_main_t * vm, vlib_node_runtime_t * node,
-		 vlib_frame_t * from_frame)
+VLIB_NODE_FN (tcp6_reset_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return tcp46_send_reset_inline (vm, node, from_frame, 0);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_reset_node) = {
-  .function = tcp4_send_reset,
   .name = "tcp4-reset",
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
@@ -2376,11 +2370,8 @@ VLIB_REGISTER_NODE (tcp4_reset_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_reset_node, tcp4_send_reset);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_reset_node) = {
-  .function = tcp6_send_reset,
   .name = "tcp6-reset",
   .vector_size = sizeof (u32),
   .n_errors = TCP_N_ERROR,
@@ -2394,8 +2385,6 @@ VLIB_REGISTER_NODE (tcp6_reset_node) = {
   .format_trace = format_tcp_tx_trace,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_reset_node, tcp6_send_reset);
 
 /*
  * fd.io coding-style-patch-verification: ON
