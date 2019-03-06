@@ -688,8 +688,9 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip6_header_t *ip = vlib_buffer_get_current (first_b);
   u16 ip6_frag_hdr_offset = first_b_vnb->ip.reass.ip6_frag_hdr_offset;
   ip6_ext_header_t *prev_hdr;
-  ip6_ext_header_find_t (ip, prev_hdr, frag_hdr,
-			 IP_PROTOCOL_IPV6_FRAGMENTATION);
+  frag_hdr =
+    ip6_ext_header_find (vm, first_b, ip, IP_PROTOCOL_IPV6_FRAGMENTATION,
+			 &prev_hdr);
   if (prev_hdr)
     {
       prev_hdr->next_hdr = frag_hdr->next_hdr;
@@ -1040,8 +1041,10 @@ ip6_full_reassembly_inline (vlib_main_t * vm,
 	  ip6_ext_header_t *prev_hdr;
 	  if (ip6_ext_hdr (ip0->protocol))
 	    {
-	      ip6_ext_header_find_t (ip0, prev_hdr, frag_hdr,
-				     IP_PROTOCOL_IPV6_FRAGMENTATION);
+	      frag_hdr =
+		ip6_ext_header_find (vm, b0, ip0,
+				     IP_PROTOCOL_IPV6_FRAGMENTATION,
+				     &prev_hdr);
 	    }
 	  if (!frag_hdr)
 	    {
