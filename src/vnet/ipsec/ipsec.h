@@ -126,8 +126,6 @@ typedef struct
   /* pool of tunnel interfaces */
   ipsec_tunnel_if_t *tunnel_interfaces;
 
-  u32 **empty_buffers;
-
   uword *tunnel_index_by_key;
 
   /* convenience */
@@ -200,27 +198,6 @@ u8 *format_ipsec_replay_window (u8 * s, va_list * args);
 /*
  *  inline functions
  */
-
-always_inline void
-ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
-{
-  u32 thread_index = vm->thread_index;
-  uword l = vec_len (im->empty_buffers[thread_index]);
-  uword n_alloc = 0;
-
-  if (PREDICT_FALSE (l < VLIB_FRAME_SIZE))
-    {
-      if (!im->empty_buffers[thread_index])
-	{
-	  vec_alloc (im->empty_buffers[thread_index], 2 * VLIB_FRAME_SIZE);
-	}
-
-      n_alloc = vlib_buffer_alloc (vm, im->empty_buffers[thread_index] + l,
-				   2 * VLIB_FRAME_SIZE - l);
-
-      _vec_len (im->empty_buffers[thread_index]) = l + n_alloc;
-    }
-}
 
 static_always_inline u32
 get_next_output_feature_node_index (vlib_buffer_t * b,
