@@ -293,14 +293,14 @@ class TestUDP(VppTestCase):
                               "uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         error = self.vapi.cli("test echo client mbytes 10 appns 1 " +
                               "fifo-size 4 no-output test-bytes " +
                               "syn-timeout 2 no-return uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()

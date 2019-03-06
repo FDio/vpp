@@ -68,14 +68,14 @@ class TestSession(VppTestCase):
                               "private-segment-size 1m uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         error = self.vapi.cli("test echo client nclients 100 appns 1 " +
                               "no-output fifo-size 64 syn-timeout 2 " +
                               "private-segment-size 1m uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         if self.vpp_dead:
             self.assert_equal(0)
@@ -98,7 +98,7 @@ class TestSessionUnitTests(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
+        self.assertNotIn("failed", error)
 
     def tearDown(self):
         super(TestSessionUnitTests, self).tearDown()

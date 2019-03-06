@@ -66,14 +66,14 @@ class TestTCP(VppTestCase):
                               uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         error = self.vapi.cli("test echo client mbytes 10 appns 1 " +
                               "fifo-size 4 no-output test-bytes " +
                               "syn-timeout 2 uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
@@ -97,7 +97,7 @@ class TestTCPUnitTests(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
+        self.assertNotIn("failed", error)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

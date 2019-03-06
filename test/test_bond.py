@@ -228,8 +228,8 @@ class TestBondInterface(VppTestCase):
 
         # verify both interfaces in the show
         ifs = self.vapi.cli("show interface")
-        self.assertNotEqual(ifs.find('BondEthernet0'), -1)
-        self.assertNotEqual(ifs.find('BondEthernet1'), -1)
+        self.assertIn('BondEthernet0', ifs)
+        self.assertIn('BondEthernet1', ifs)
 
         # verify they are in the dump also
         if_dump = self.vapi.sw_interface_bond_dump()
@@ -244,10 +244,10 @@ class TestBondInterface(VppTestCase):
 
         ifs = self.vapi.cli("show interface")
         # verify BondEthernet0 still in the show
-        self.assertNotEqual(ifs.find('BondEthernet0'), -1)
+        self.assertIn('BondEthernet0', ifs)
 
         # verify BondEthernet1 not in the show
-        self.assertEqual(ifs.find('BondEthernet1'), -1)
+        self.assertNotIn('BondEthernet1', ifs)
 
         # verify BondEthernet1 is not in the dump
         if_dump = self.vapi.sw_interface_bond_dump()
@@ -264,7 +264,7 @@ class TestBondInterface(VppTestCase):
 
         # verify BondEthernet0 not in the show
         ifs = self.vapi.cli("show interface")
-        self.assertEqual(ifs.find('BondEthernet0'), -1)
+        self.assertNotIn('BondEthernet0', ifs)
 
         # verify BondEthernet0 is not in the dump
         if_dump = self.vapi.sw_interface_bond_dump()

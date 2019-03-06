@@ -7285,9 +7285,9 @@ class TestNAT64(MethodHolder):
         self.assertTrue(pg1_found)
 
         features = self.vapi.cli("show interface features pg0")
-        self.assertNotEqual(features.find('nat64-in2out'), -1)
+        self.assertIn('nat64-in2out', features)
         features = self.vapi.cli("show interface features pg1")
-        self.assertNotEqual(features.find('nat64-out2in'), -1)
+        self.assertIn('nat64-out2in', features)
 
         self.vapi.nat64_add_del_interface(self.pg0.sw_if_index, is_add=0)
         self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_add=0)

@@ -48,22 +48,22 @@ class P2PEthernetAPI(VppTestCase):
         self.create_p2p_ethernet(self.pg0, 2, "de:ad:00:00:00:02")
         intfs = self.vapi.cli("show interface")
 
-        self.assertNotEqual(intfs.find('pg0.1'), -1)
-        self.assertNotEqual(intfs.find('pg0.2'), -1)
-        self.assertEqual(intfs.find('pg0.5'), -1)
+        self.assertIn('pg0.1', intfs)
+        self.assertIn('pg0.2', intfs)
+        self.assertNotIn('pg0.5', intfs)
 
         # create pg2.5 subif
         self.create_p2p_ethernet(self.pg0, 5, "de:ad:00:00:00:ff")
         intfs = self.vapi.cli("show interface")
-        self.assertNotEqual(intfs.find('pg0.5'), -1)
+        self.assertIn('pg0.5', intfs)
         # delete pg2.5 subif
         self.delete_p2p_ethernet(self.pg0, "de:ad:00:00:00:ff")
 
         intfs = self.vapi.cli("show interface")
 
-        self.assertNotEqual(intfs.find('pg0.1'), -1)
-        self.assertNotEqual(intfs.find('pg0.2'), -1)
-        self.assertEqual(intfs.find('pg0.5'), -1)
+        self.assertIn('pg0.1', intfs)
+        self.assertIn('pg0.2', intfs)
+        self.assertNotIn('pg0.5', intfs)
 
         self.logger.info("FFP_TEST_FINISH_0000")
 

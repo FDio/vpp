@@ -34,7 +34,7 @@ class TestMFIB(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("Failed"), -1)
+        self.assertNotIn("Failed", error)
 
 
 class TestIPMcast(VppTestCase):

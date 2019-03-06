@@ -25,7 +25,7 @@ class TestBihash(VppTestCase):
 
         if error:
             self.logger.critical(error)
-        self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn('failed', error)
 
     def test_bihash_thread(self):
         """ Bihash Thread Test """
@@ -34,7 +34,7 @@ class TestBihash(VppTestCase):
 
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn('failed', error)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
