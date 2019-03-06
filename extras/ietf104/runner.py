@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from os.path import dirname, realpath, split, join
-from os import remove
+from os import remove, system
 from logging import getLogger, basicConfig, DEBUG, \
         INFO, ERROR
 from argparse import ArgumentParser
@@ -10,7 +10,7 @@ from atexit import register
 import sys
 
 from jinja2 import Environment, FileSystemLoader
-from docker.errors import NotFound
+from docker.errors import NotFound, APIError
 from docker import from_env
 
 
@@ -22,6 +22,8 @@ verbose_levels = {
 
 class Container(object):
 
+    cmd = "vppctl -s 0:5002"
+
     def __init__(self, ref, name):
         self._name = name
         self._ref = ref
@@ -30,14 +32,26 @@ class Container(object):
     def name(self):
         return self._name
 
+    def disconnect_all(self):
+        status = False
+        for net in self._ref.client.networks.list():
+            try:
+                net.disconnect(self._ref)
+            except APIError:
+                continue
+            status = True 
+        return status 
+
     @classmethod
     def new(cls, client, image, name):
         ref = client.containers.run(detach=True,
                 remove=True, auto_remove=True,
                 image=image, name=name,
-                network_mode=None,
-                command="sleep 300")
-        return cls(ref, name)
+                privileged=True)
+        # hack disconnect all default networks
+        obj = cls(ref, name)
+        obj.disconnect_all()
+        return obj
 
     @classmethod
     def get(cls, client, name):
@@ -50,6 +64,30 @@ class Container(object):
 
     def rem(self):
         self._ref.kill()
+
+    def vppctl(self):
+        system("docker exec -it {} {}".format(self.name, self.cmd))
+
+    def vppctl_exec(self, cmd):
+        ec, resp = self._ref.exec_run(cmd="{} {}".format(self.cmd, cmd))
+        assert(ec == 0)
+
+    def setup_host_interface(self, name, ip):
+        self.vppctl_exec("create host-interface name {}".format(name))
+        self.vppctl_exec("set int ip addr host-{} {}".format(name, ip))
+        self.vppctl_exec("set int state host-{} up".format(name))
+
+    # TODO:
+    def setup_pg_interface(self):
+        pass
+
+    def set_ipv6_route(self, out_if_name, next_hop_ip, subnet):
+        self.vppctl_exec("ip route add {} via host-{} {}".format(
+            subnet, out_if_name, next_hop_ip))
+
+    def set_ipv6_default_route(self, out_if_name, next_hop_ip):
+        self.vppctl_exec("ip route add ::/0 via host-{} {}".format(
+            out_if_name, next_hop_ip))
 
 
 class Containers(object):
@@ -87,6 +125,10 @@ class Containers(object):
 
     def get(self, name):
         return Container.get(self.client, name)
+
+    def vppctl(self, name):
+        container = self.get(name)
+        container.vppctl()
 
 
 class Network(object):
@@ -213,16 +255,46 @@ class Program(object):
         n3.connect(c3)
         n3.connect(c4)
 
-        # TODO:
-        # 1) connect networks to vpp instances (default + pg interface)
-        # 2) configure ipv6 addresses for each network interface
+        c1.setup_host_interface("eth1", "A1::1/120")
+        c2.setup_host_interface("eth1", "A1::2/120")
 
-        # TODO: we need to somehow map pg_interface from vpp instance
-        # in container to localhost so we can programatically access
-        # it and write/read packets directly from the interface
+        c2.setup_host_interface("eth2", "A2::1/120")
+        c3.setup_host_interface("eth1", "A2::2/120")
+
+        c3.setup_host_interface("eth2", "A3::1/120")
+        c4.setup_host_interface("eth1", "A3::2/120")
+
+        c1.set_ipv6_default_route("eth1", "A1::2")
+        c2.set_ipv6_default_route("eth2", "A2::2")
+        c3.set_ipv6_default_route("eth1", "A2::1")
+        c4.set_ipv6_default_route("eth1", "A3::1")
+
+        c2.set_ipv6_route("eth1", "A1::1", "172.20.0.1/32")
+        c3.set_ipv6_route("eth2", "A3::2", "B::1/128")
 
         # TODO:
-        # 3) send ping over pg_interface
+
+        # pg interface on c1 172.20.0.1
+        # pg interface on c4 B::1/120
+
+        c4.vppctl_exec("create loopback interface")
+        c4.vppctl_exec("set int ip addr loop0 B::1/120")
+
+    def status_containers(self):
+
+        print("containers:")
+
+        for name in self.instance_names:
+            name = self.get_name(name)
+            print("\t{} - {}".format(name,
+                "running" if self.containers.get(name) else "missing"))
+
+        print("networks:")
+
+        for name in self.network_names:
+            name = self.get_name(name)
+            print("\t{} - {}".format(name,
+                "running" if self.networks.get(name) else "missing"))
 
     def restart_containers(self):
         self.stop_containers()
@@ -232,6 +304,9 @@ class Program(object):
         # TODO: run make wipe & other commands on the repo
         # before calling docker build
         self.containers.build(self.path, self.vpp_path)
+
+    def vppctl(self, name):
+        self.containers.vppctl(name)
 
 
 def get_args():
@@ -245,15 +320,15 @@ def get_args():
     p1 = subparsers.add_parser("infra")
 
     p1.add_argument("op", choices=[
-        'stop', 'start', 'restart', 'build'])
+        'stop', 'start', 'status', 'restart', 'build'])
     
     p1.add_argument("--prefix")
     p1.add_argument("--image")
 
-    p2 = subparsers.add_parser("vpp")
+    p2 = subparsers.add_parser("ct")
 
     p2.add_argument("op", choices=[
-        'connect'])
+        'vppctl'])
     p2.add_argument("name")
     
     return vars(parser.parse_args())
@@ -273,13 +348,12 @@ def main(op, image=None, prefix=None, verbose=None, name=None):
             program.stop_containers()
         elif op == 'start':
             program.start_containers()
+        elif op == 'status':
+            program.status_containers()
         elif op == 'restart':
             program.restart_containers()
-        elif op == 'connect':
-            # TODO: connect to the vpp name shell
-            # if we don't have name list all vpps
-            # and let the user choose
-            pass
+        elif op == 'vppctl':
+            program.vppctl(name)
 
     except Exception:
         program.logger.exception("")
