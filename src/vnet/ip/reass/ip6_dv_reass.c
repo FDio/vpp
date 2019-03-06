@@ -701,8 +701,10 @@ ip6_dv_reassembly_inline (vlib_main_t * vm,
 	  ip6_ext_header_t *prev_hdr;
 	  if (ip6_ext_hdr (ip0->protocol))
 	    {
-	      ip6_ext_header_find_t (ip0, prev_hdr, frag_hdr,
-				     IP_PROTOCOL_IPV6_FRAGMENTATION);
+	      frag_hdr =
+		ip6_ext_header_find (vm, b0, ip0,
+				     IP_PROTOCOL_IPV6_FRAGMENTATION,
+				     &prev_hdr);
 	    }
 	  if (!frag_hdr)
 	    {
