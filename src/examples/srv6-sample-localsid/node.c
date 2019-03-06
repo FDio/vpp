@@ -188,7 +188,6 @@ srv6_localsid_sample_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
       vlib_buffer_t * b0;
       ip6_header_t * ip0 = 0;
       ip6_sr_header_t * sr0;
-      ip6_ext_header_t *prev0
       u32 next0 = SRV6_SAMPLE_LOCALSID_NEXT_IP6LOOKUP;
       ip6_sr_localsid_t *ls0;
       srv6_localsid_sample_per_sid_memory_t *ls0_mem;
@@ -209,7 +208,7 @@ srv6_localsid_sample_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
       ls0_mem = ls0->plugin_mem;
 
       /* SRH processing */
-      ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
+      sr0 = ip6_ext_header_find (vm, b0, ip0, IP_PROTOCOL_IPV6_ROUTE, NULL);
       end_decaps_srh_processing (node, b0, ip0, sr0, ls0, &next0);
 
       /* ==================================================================== */
