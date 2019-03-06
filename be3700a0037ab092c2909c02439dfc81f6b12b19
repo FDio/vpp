@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "15964bae_5975990f",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-06T11:59:21Z",
+      "side": 1,
+      "message": "i don\u0027t think we want IPSEC code in here. can we not handle this rewind in the node we register to accept the packet after this node?",
+      "revId": "be3700a0037ab092c2909c02439dfc81f6b12b19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
