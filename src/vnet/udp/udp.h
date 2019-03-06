@@ -143,6 +143,8 @@ typedef struct
   clib_spinlock_t *peekers_write_locks;
   udp_connection_t *listener_pool;
 
+  u32 udp4_local_node_index;
+  u32 udp6_local_node_index;
 } udp_main_t;
 
 extern udp_main_t udp_main;
