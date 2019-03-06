@@ -114,6 +114,10 @@ create_cmd::to_string() const
   s << "gbp-contract-create: " << m_hw_item.to_string()
     << " src-epg-id:" << m_src_epg_id << " dst-epg-id:" << m_dst_epg_id
     << " acl:" << m_acl;
+  s << "[ethertype:";
+  for (auto e : m_allowed_ethertypes)
+    s << " " << e;
+  s << "]";
 
   return (s.str());
 }
