@@ -71,6 +71,7 @@ class Container(object):
     def vppctl_exec(self, cmd):
         ec, resp = self._ref.exec_run(cmd="{} {}".format(self.cmd, cmd))
         assert(ec == 0)
+        return resp
 
     def setup_host_interface(self, name, ip):
         self.vppctl_exec("create host-interface name {}".format(name))
@@ -126,9 +127,12 @@ class Containers(object):
     def get(self, name):
         return Container.get(self.client, name)
 
-    def vppctl(self, name):
+    def vppctl(self, name, command=None):
         container = self.get(name)
-        container.vppctl()
+        if not command:
+            container.vppctl()
+        else:
+            print(container.vppctl_exec(command).decode())
 
 
 class Network(object):
@@ -246,6 +250,7 @@ class Program(object):
 
         c1, c2, c3, c4 = instances
 
+        # setup network between instances
         n1.connect(c1)
         n1.connect(c2)
 
@@ -255,21 +260,28 @@ class Program(object):
         n3.connect(c3)
         n3.connect(c4)
 
+        # c1 & c2 link
         c1.setup_host_interface("eth1", "A1::1/120")
         c2.setup_host_interface("eth1", "A1::2/120")
 
+        # c2 & c3 link
         c2.setup_host_interface("eth2", "A2::1/120")
         c3.setup_host_interface("eth1", "A2::2/120")
 
+        # c3 & c4 link
         c3.setup_host_interface("eth2", "A3::1/120")
         c4.setup_host_interface("eth1", "A3::2/120")
 
+        # c1 > c2 default route
         c1.set_ipv6_default_route("eth1", "A1::2")
+        # c2 > c3 default route
         c2.set_ipv6_default_route("eth2", "A2::2")
+        # c3 > c2 default route
         c3.set_ipv6_default_route("eth1", "A2::1")
+        # c4 > c3 default route
         c4.set_ipv6_default_route("eth1", "A3::1")
 
-        c2.set_ipv6_route("eth1", "A1::1", "172.20.0.1/32")
+        # c3 > c4 static route for address B::1/128
         c3.set_ipv6_route("eth2", "A3::2", "B::1/128")
 
         # TODO:
@@ -277,23 +289,24 @@ class Program(object):
         # pg interface on c1 172.20.0.1
         # pg interface on c4 B::1/120
 
+        # TODO: remove (only used for testing purposes)
         c4.vppctl_exec("create loopback interface")
         c4.vppctl_exec("set int ip addr loop0 B::1/120")
 
     def status_containers(self):
 
-        print("containers:")
+        print("Instances:")
 
-        for name in self.instance_names:
+        for i, name in enumerate(self.instance_names):
             name = self.get_name(name)
-            print("\t{} - {}".format(name,
+            print("\t[{}] {} - {}".format(i, name,
                 "running" if self.containers.get(name) else "missing"))
 
-        print("networks:")
+        print("Networks:")
 
-        for name in self.network_names:
+        for i, name in enumerate(self.network_names):
             name = self.get_name(name)
-            print("\t{} - {}".format(name,
+            print("\t[{}] {} - {}".format(i, name,
                 "running" if self.networks.get(name) else "missing"))
 
     def restart_containers(self):
@@ -301,12 +314,16 @@ class Program(object):
         self.start_containers()
 
     def build_image(self):
-        # TODO: run make wipe & other commands on the repo
-        # before calling docker build
+        # TODO: build process should be optimized (speed and size)
         self.containers.build(self.path, self.vpp_path)
 
-    def vppctl(self, name):
-        self.containers.vppctl(name)
+    def vppctl(self, index, command=None):
+        if index >= len(self.instance_names):
+            return
+        name = self.get_name(
+            self.instance_names[index])
+        self.logger.error("connecting to: {}".format(name))
+        self.containers.vppctl(name, command)
 
 
 def get_args():
@@ -317,7 +334,8 @@ def get_args():
 
     subparsers = parser.add_subparsers()
 
-    p1 = subparsers.add_parser("infra")
+    p1 = subparsers.add_parser("infra",
+            help="Infrastructure related commands.")
 
     p1.add_argument("op", choices=[
         'stop', 'start', 'status', 'restart', 'build'])
@@ -325,16 +343,21 @@ def get_args():
     p1.add_argument("--prefix")
     p1.add_argument("--image")
 
-    p2 = subparsers.add_parser("ct")
+    p2 = subparsers.add_parser("cmd",
+            help="Instance related commands.")
 
     p2.add_argument("op", choices=[
         'vppctl'])
-    p2.add_argument("name")
-    
+
+    p2.add_argument("index", type=int,
+            help="Container instance index. (./runner.py infra status)")
+
+    p2.add_argument("--command")
+
     return vars(parser.parse_args())
 
 
-def main(op, image=None, prefix=None, verbose=None, name=None):
+def main(op, image=None, prefix=None, verbose=None, index=None, command=None):
 
     if verbose:
         basicConfig(level=verbose_levels[verbose])
@@ -353,13 +376,12 @@ def main(op, image=None, prefix=None, verbose=None, name=None):
         elif op == 'restart':
             program.restart_containers()
         elif op == 'vppctl':
-            program.vppctl(name)
+            program.vppctl(index, command)
 
     except Exception:
         program.logger.exception("")
         rc = 1
     else:
-        program.logger.info("operation {} done".format(op))
         rc = 0
 
     return rc
