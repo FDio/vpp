@@ -9,11 +9,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP, ICMP
 
-from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
-    ICMPv6TimeExceeded
+from scapy.layers.inet6 import HBHOptUnknown, ICMPv6ParamProblem,\
+        ICMPv6TimeExceeded, IPv6, IPv6ExtHdrFragment, IPv6ExtHdrHopByHop
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp, fragment_rfc791, fragment_rfc8200
+
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
@@ -607,6 +608,24 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
         """ basic reassembly """
         stream = self.__class__.fragments_400
         super(TestIPv6Reassembly, self).test_reassembly(family, stream)
+
+    @unittest.skip("test fails until ipv6-sanitize node is implemented")
+    def test_buffer_boundary(self):
+        """ fragment header crossing buffer boundary """
+
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IPv6(src=self.src_if.remote_ip6,
+                  dst=self.src_if.local_ip6) /
+             IPv6ExtHdrHopByHop(
+                 options=[HBHOptUnknown(otype=0xff, optlen=0)] * 1000) /
+             IPv6ExtHdrFragment(m=1) /
+             UDP(sport=1234, dport=5678) /
+             Raw())
+        self.pg_enable_capture()
+        self.src_if.add_stream([p])
+        self.pg_start()
+        self.src_if.assert_nothing_captured()
+        self.dst_if.assert_nothing_captured()
 
     @parameterized.expand([(IPv6, None)])
     def test_reversed(self, family, stream):
