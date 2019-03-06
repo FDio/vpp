@@ -412,6 +412,8 @@ segment_manager_del_sessions (segment_manager_t * sm)
 	                                fifo->master_thread_index);
 	if (session)
 	  vec_add1 (handles, session_handle (session));
+	else
+	  clib_warning ("what do you know?!?");
 	fifo = fifo->next;
       }
 
