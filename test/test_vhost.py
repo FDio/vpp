@@ -35,8 +35,8 @@ class TesVhostInterface(VppTestCase):
 
         # verify both interfaces in the show
         ifs = self.vapi.cli("show interface")
-        self.assertNotEqual(ifs.find('VirtualEthernet0/0/0'), -1)
-        self.assertNotEqual(ifs.find('VirtualEthernet0/0/1'), -1)
+        self.assertIn('VirtualEthernet0/0/0', ifs)
+        self.assertIn('VirtualEthernet0/0/1', ifs)
 
         # verify they are in the dump also
         if_dump = self.vapi.sw_interface_vhost_user_dump()
@@ -51,10 +51,10 @@ class TesVhostInterface(VppTestCase):
 
         ifs = self.vapi.cli("show interface")
         # verify VirtualEthernet0/0/0 still in the show
-        self.assertNotEqual(ifs.find('VirtualEthernet0/0/0'), -1)
+        self.assertIn('VirtualEthernet0/0/0', ifs)
 
         # verify VirtualEthernet0/0/1 not in the show
-        self.assertEqual(ifs.find('VirtualEthernet0/0/1'), -1)
+        self.assertNotIn('VirtualEthernet0/0/1', ifs)
 
         # verify VirtualEthernet0/0/1 is not in the dump
         if_dump = self.vapi.sw_interface_vhost_user_dump()
@@ -71,7 +71,7 @@ class TesVhostInterface(VppTestCase):
 
         # verify VirtualEthernet0/0/0 not in the show
         ifs = self.vapi.cli("show interface")
-        self.assertEqual(ifs.find('VirtualEthernet0/0/0'), -1)
+        self.assertNotIn('VirtualEthernet0/0/0', ifs)
 
         # verify VirtualEthernet0/0/0 is not in the dump
         if_dump = self.vapi.sw_interface_vhost_user_dump()

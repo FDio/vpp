@@ -66,7 +66,7 @@ class TestSCTP(VppTestCase):
                               "no-echo uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         error = self.vapi.cli("test echo client mbytes 10 no-return " +
                               " appns 1" +
@@ -76,7 +76,7 @@ class TestSCTP(VppTestCase):
                               " uri " + uri)
         if error:
             self.logger.critical(error)
-            self.assertEqual(error.find("failed"), -1)
+            self.assertNotIn("failed", error)
 
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
