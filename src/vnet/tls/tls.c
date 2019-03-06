@@ -415,17 +415,6 @@ tls_session_accept_callback (session_t * tls_session)
 }
 
 int
-tls_app_tx_callback (session_t * app_session)
-{
-  tls_ctx_t *ctx;
-  if (PREDICT_FALSE (app_session->session_state == SESSION_STATE_CLOSED))
-    return 0;
-  ctx = tls_ctx_get (app_session->connection_index);
-  tls_ctx_write (ctx, app_session);
-  return 0;
-}
-
-int
 tls_app_rx_callback (session_t * tls_session)
 {
   tls_ctx_t *ctx;
@@ -501,7 +490,6 @@ static session_cb_vft_t tls_app_cb_vft = {
   .add_segment_callback = tls_add_segment_callback,
   .del_segment_callback = tls_del_segment_callback,
   .builtin_app_rx_callback = tls_app_rx_callback,
-  .builtin_app_tx_callback = tls_app_tx_callback,
 };
 /* *INDENT-ON* */
 
@@ -663,6 +651,18 @@ tls_listener_get (u32 listener_index)
   return &ctx->connection;
 }
 
+int
+tls_custom_tx_callback (void *session)
+{
+  session_t *app_session = (session_t *) session;
+  tls_ctx_t *ctx;
+  if (PREDICT_FALSE (app_session->session_state == SESSION_STATE_CLOSED))
+    return 0;
+  ctx = tls_ctx_get (app_session->connection_index);
+  tls_ctx_write (ctx, app_session);
+  return 0;
+}
+
 u8 *
 format_tls_ctx (u8 * s, va_list * args)
 {
@@ -735,6 +735,7 @@ const static transport_proto_vft_t tls_proto = {
   .stop_listen = tls_stop_listen,
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
+  .custom_tx = tls_custom_tx_callback,
   .tx_type = TRANSPORT_TX_INTERNAL,
   .service_type = TRANSPORT_SERVICE_APP,
   .format_connection = format_tls_connection,

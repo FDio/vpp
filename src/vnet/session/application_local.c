@@ -464,6 +464,15 @@ format_ct_connection_id (u8 * s, va_list * args)
   return s;
 }
 
+static int
+ct_custom_tx (void *session)
+{
+  session_t *s = (session_t *) session;
+  if (session_has_transport (s))
+    return 0;
+  return ct_session_tx (s);
+}
+
 static u8 *
 format_ct_listener (u8 * s, va_list * args)
 {
@@ -523,6 +532,7 @@ const static transport_proto_vft_t cut_thru_proto = {
   .connect = ct_session_connect,
   .close = ct_session_close,
   .get_connection = ct_session_get,
+  .custom_tx = ct_custom_tx,
   .tx_type = TRANSPORT_TX_INTERNAL,
   .service_type = TRANSPORT_SERVICE_APP,
   .format_listener = format_ct_listener,
