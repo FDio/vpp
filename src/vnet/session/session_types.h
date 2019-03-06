@@ -110,7 +110,7 @@ typedef u8 session_type_t;
 typedef u64 session_handle_t;
 
 /*
- * Application session state
+ * Session states
  */
 typedef enum
 {
@@ -128,61 +128,47 @@ typedef enum
   SESSION_STATE_N_STATES,
 } session_state_t;
 
-typedef struct generic_session_
-{
-  svm_fifo_t *rx_fifo;		/**< rx fifo */
-  svm_fifo_t *tx_fifo;		/**< tx fifo */
-  session_type_t session_type;	/**< session type */
-  volatile u8 session_state;	/**< session state */
-  u32 session_index;		/**< index in owning pool */
-} generic_session_t;
-
 typedef struct session_
 {
-  /** fifo pointers. Once allocated, these do not move */
+  /** Pointers to rx/tx buffers. Once allocated, these do not move */
   svm_fifo_t *rx_fifo;
   svm_fifo_t *tx_fifo;
 
-  /** Type */
+  /** Type built from transport and network protocol types */
   session_type_t session_type;
 
-  /** State */
+  /** State in session layer state machine. See @ref session_state_t */
   volatile u8 session_state;
 
-  /** Session index in per_thread pool */
+  /** Index in thread pool where session was allocated */
   u32 session_index;
 
-  /** App worker pool index */
+  /** Index of the app worker that owns the session */
   u32 app_wrk_index;
 
+  /** Index of the thread that allocated the session */
   u8 thread_index;
 
-  /** To avoid n**2 "one event per frame" check */
+  /** Tracks last enqueue epoch to avoid generating multiple enqueue events */
   u64 enqueue_epoch;
 
-  /** svm segment index where fifos were allocated */
-  u32 svm_segment_index;
-
-  /** Transport specific */
+  /** Index of the transport connection associated to the session */
   u32 connection_index;
 
+  /** Index of application that owns the listener. Set only if a listener */
+  u32 app_index;
+
   union
   {
-    /** Parent listener session if the result of an accept */
+    /** Parent listener session index if the result of an accept */
     u32 listener_index;
 
-    /** Application index if a listener */
-    u32 app_index;
-  };
-
-  union
-  {
-    /** App listener index */
+    /** App listener index in app's listener pool if a listener */
     u32 al_index;
-
-    /** Opaque, for general use */
-    u32 opaque;
   };
+
+  /** Opaque, for general use */
+  u32 opaque;
 
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } session_t;
@@ -316,7 +302,6 @@ typedef struct
   void *arg;
 } session_rpc_args_t;
 
-/* *INDENT-OFF* */
 typedef struct
 {
   u8 event_type;
@@ -332,7 +317,6 @@ typedef struct
     };
   };
 } __clib_packed session_event_t;
-/* *INDENT-ON* */
 
 #define SESSION_MSG_NULL { }
 
@@ -342,8 +326,7 @@ typedef struct session_dgram_pre_hdr_
   u32 data_offset;
 } session_dgram_pre_hdr_t;
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct session_dgram_header_
+typedef struct session_dgram_header_
 {
   u32 data_length;
   u32 data_offset;
@@ -352,8 +335,7 @@ typedef CLIB_PACKED (struct session_dgram_header_
   u16 rmt_port;
   u16 lcl_port;
   u8 is_ip4;
-}) session_dgram_hdr_t;
-/* *INDENT-ON* */
+} __clib_packed session_dgram_hdr_t;
 
 #define SESSION_CONN_ID_LEN 37
 #define SESSION_CONN_HDR_LEN 45
