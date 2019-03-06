@@ -139,7 +139,8 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  if (is_ip6)
 	    {
 	      ip6_ext_header_t *prev = NULL;
-	      ip6_ext_header_find_t (ih6, prev, ah0, IP_PROTOCOL_IPSEC_AH);
+	      ip6_ext_header_find_t (vm, i_b0, ih6, prev, ah0,
+				     IP_PROTOCOL_IPSEC_AH);
 	      ip_hdr_size = sizeof (ip6_header_t);
 	      ASSERT ((u8 *) ah0 - (u8 *) ih6 == ip_hdr_size);
 	    }

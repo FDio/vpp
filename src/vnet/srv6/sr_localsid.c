@@ -959,10 +959,14 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2 = vlib_buffer_get_current (b2);
 	  ip3 = vlib_buffer_get_current (b3);
 
-	  ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip1, prev1, sr1, IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip2, prev2, sr2, IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip3, prev3, sr3, IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b0, ip0, prev0, sr0,
+				 IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b1, ip1, prev1, sr1,
+				 IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b2, ip2, prev2, sr2,
+				 IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b3, ip3, prev3, sr3,
+				 IP_PROTOCOL_IPV6_ROUTE);
 
 	  end_decaps_srh_processing (node, b0, ip0, sr0, ls0, &next0);
 	  end_decaps_srh_processing (node, b1, ip1, sr1, ls1, &next1);
@@ -1117,7 +1121,8 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
 	  /* Find SRH as well as previous header */
-	  ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b0, ip0, prev0, sr0,
+				 IP_PROTOCOL_IPV6_ROUTE);
 
 	  /* SRH processing and End variants */
 	  end_decaps_srh_processing (node, b0, ip0, sr0, ls0, &next0);
@@ -1249,10 +1254,14 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip2 = vlib_buffer_get_current (b2);
 	  ip3 = vlib_buffer_get_current (b3);
 
-	  ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip1, prev1, sr1, IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip2, prev2, sr2, IP_PROTOCOL_IPV6_ROUTE);
-	  ip6_ext_header_find_t (ip3, prev3, sr3, IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b0, ip0, prev0, sr0,
+				 IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b1, ip1, prev1, sr1,
+				 IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b2, ip2, prev2, sr2,
+				 IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b3, ip3, prev3, sr3,
+				 IP_PROTOCOL_IPV6_ROUTE);
 
 	  ls0 =
 	    pool_elt_at_index (sm->localsids,
@@ -1417,7 +1426,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip0 = vlib_buffer_get_current (b0);
-	  ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
+	  ip6_ext_header_find_t (vm, b0, ip0, prev0, sr0,
+				 IP_PROTOCOL_IPV6_ROUTE);
 
 	  /* Lookup the SR End behavior based on IP DA (adj) */
 	  ls0 =
