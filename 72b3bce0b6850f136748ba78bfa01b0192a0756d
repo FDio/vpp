@@ -16,6 +16,24 @@
       "revId": "72b3bce0b6850f136748ba78bfa01b0192a0756d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5045fc0d_3d1cf054",
+        "filename": "src/vnet/ipsec/ipsec_if_in.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 1335
+      },
+      "writtenOn": "2019-03-06T15:46:29Z",
+      "side": 0,
+      "message": "because these error will be handled by process_error_drop if they are marked here. As you also increment them in this node, you will see error counts doubled counted.",
+      "parentUuid": "f95b935f_e9233ab9",
+      "revId": "72b3bce0b6850f136748ba78bfa01b0192a0756d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
