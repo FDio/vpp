@@ -395,7 +395,7 @@ class TestIPv4FibCrud(VppTestCase):
 
         for ip in ips:
             self.assertTrue(_ip_in_route_dump(ip, fib_dump),
-                            'IP {} is not in fib dump.'.format(ip))
+                            'IP {!s} is not in fib dump.'.format(ip))
 
     def verify_not_in_route_dump(self, fib_dump, ips):
 
@@ -406,7 +406,7 @@ class TestIPv4FibCrud(VppTestCase):
 
         for ip in ips:
             self.assertFalse(_ip_in_route_dump(ip, fib_dump),
-                             'IP {} is in fib dump.'.format(ip))
+                             'IP {!s} is in fib dump.'.format(ip))
 
     @classmethod
     def setUpClass(cls):

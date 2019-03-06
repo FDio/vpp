@@ -237,7 +237,8 @@ class MethodHolder(VppTestCase):
                     mac = ':'.join(re.findall('..', '{:02x}'.format(
                         src_mac))[:3])+":00:00:00"
                 else:
-                    mac = ':'.join(re.findall('..', '{:02x}'.format(src_mac)))
+                    mac = ':'.join(re.findall(
+                        '..', '{:02x}'.format(src_mac)))
 
                 if ip_type == self.EXACT_IP:
                     ip4[3] = random.randint(100, 200)

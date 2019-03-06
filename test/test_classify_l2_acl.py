@@ -174,8 +174,8 @@ class TestClassifyAcl(VppTestCase):
         :param str ether_type: ethernet type <0-ffff>
         """
 
-        return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                                              ether_type)).rstrip('0')
+        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
+            dst_mac, src_mac, ether_type)).rstrip('0')
 
     @staticmethod
     def build_mac_match(dst_mac='', src_mac='', ether_type=''):
@@ -190,8 +190,8 @@ class TestClassifyAcl(VppTestCase):
         if src_mac:
             src_mac = src_mac.replace(':', '')
 
-        return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                                              ether_type)).rstrip('0')
+        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
+            dst_mac, src_mac, ether_type)).rstrip('0')
 
     def create_classify_table(self, key, mask, data_offset=0, is_add=1):
         """Create Classify Table

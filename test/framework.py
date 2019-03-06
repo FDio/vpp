@@ -1163,7 +1163,7 @@ class VppTestResult(unittest.TestResult):
                     if isinstance(test, unittest.suite._ErrorHolder):
                         test_name = str(test)
                     else:
-                        test_name = "'{}' ({})".format(
+                        test_name = "'{!s}' ({!s})".format(
                             get_testcase_doc_name(test), test.id())
                     self.current_test_case_info.core_crash_test = test_name
                 self.core_crash_test_cases_info.add(

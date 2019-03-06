@@ -168,7 +168,7 @@ class TestClassifier(VppTestCase):
         :param str dst_port: destination port number <0-ffff>
         """
 
-        return ('{:0>14}{:0>34}{:0>32}{:0>4}{:0>4}'.format(
+        return ('{!s:0>14}{!s:0>34}{!s:0>32}{!s:0>4}{!s:0>4}'.format(
             nh, src_ip, dst_ip, src_port, dst_port)).rstrip('0')
 
     @staticmethod
@@ -190,7 +190,7 @@ class TestClassifier(VppTestCase):
             dst_ip = binascii.hexlify(socket.inet_pton(
                 socket.AF_INET6, dst_ip))
 
-        return ('{:0>14}{:0>34}{:0>32}{:0>4}{:0>4}'.format(
+        return ('{!s:0>14}{!s:0>34}{!s:0>32}{!s:0>4}{!s:0>4}'.format(
             hex(nh)[2:], src_ip, dst_ip, hex(src_port)[2:],
             hex(dst_port)[2:])).rstrip('0')
 
@@ -203,8 +203,8 @@ class TestClassifier(VppTestCase):
         :param str ether_type: ethernet type <0-ffff>
         """
 
-        return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                                              ether_type)).rstrip('0')
+        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
+            dst_mac, src_mac, ether_type)).rstrip('0')
 
     @staticmethod
     def build_mac_match(dst_mac='', src_mac='', ether_type=''):
@@ -219,8 +219,8 @@ class TestClassifier(VppTestCase):
         if src_mac:
             src_mac = src_mac.replace(':', '')
 
-        return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                                              ether_type)).rstrip('0')
+        return ('{!s:0>12}{!s:0>12}{!s:0>4}'.format(
+            dst_mac, src_mac, ether_type)).rstrip('0')
 
     def create_classify_table(self, key, mask, data_offset=0):
         """Create Classify Table
