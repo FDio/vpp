@@ -508,6 +508,15 @@ typedef struct _tcp_main
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
 
+  u32 tcp4_syn_sent_node_index;
+  u32 tcp4_rcv_process_node_index;
+  u32 tcp4_listen_node_index;
+  u32 tcp4_established_node_index;
+
+  u32 tcp6_syn_sent_node_index;
+  u32 tcp6_rcv_process_node_index;
+  u32 tcp6_listen_node_index;
+  u32 tcp6_established_node_index;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
