@@ -19,6 +19,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib.h>
+#include <vnet/udp/udp.h>
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
@@ -222,6 +223,65 @@ ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   return /* no error */ 0;
 }
 
+u8 *
+ipsec_if_build_rewrite (vnet_main_t * vnm,
+			u32 sw_if_index,
+			vnet_link_t link_type, const void *dst_address)
+{
+  ipsec_main_t *im = &ipsec_main;
+  ip4_and_udp_and_esp_header_t *iuh;
+  const ipsec_tunnel_if_t *t;
+  ip4_and_esp_header_t *ieh;
+  const ipsec_sa_t *sa;
+  u8 *rewrite;
+  ip4_header_t *ip4;
+  esp_header_t *esp;
+
+  rewrite = NULL;
+  t = ipsec_tun_get_by_sw_if_index (sw_if_index);
+  sa = pool_elt_at_index (im->sad, t->output_sa_index);
+
+  if (sa->udp_encap)
+    {
+      vec_validate (rewrite, sizeof (*iuh) - 1);
+
+      iuh = (ip4_and_udp_and_esp_header_t *) rewrite;
+      ip4 = &iuh->ip4;
+      esp = &iuh->esp;
+    }
+  else
+    {
+      vec_validate (rewrite, sizeof (*ieh) - 1);
+
+      ieh = (ip4_and_esp_header_t *) rewrite;
+      ip4 = &ieh->ip4;
+      esp = &ieh->esp;
+    }
+
+  ip4->ip_version_and_header_length = 0x45;
+  ip4->ttl = 64;
+  /* fixup ip4 header length, protocol and checksum after-the-fact */
+  ip4->src_address.as_u32 = sa->tunnel_src_addr.ip4.as_u32;
+  ip4->dst_address.as_u32 = sa->tunnel_dst_addr.ip4.as_u32;
+  ip4->protocol = IP_PROTOCOL_IPSEC_ESP;
+  ip4->checksum = ip4_header_checksum (&ieh->ip4);
+
+  if (sa->udp_encap)
+    {
+      iuh->udp.src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+      iuh->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+      iuh->udp.checksum = 0;
+      ip4->protocol = IP_PROTOCOL_UDP;
+    }
+  else
+    {
+      ip4->protocol = IP_PROTOCOL_IPSEC_ESP;
+    }
+  ip4->checksum = ip4_header_checksum (ip4);
+  esp->spi = clib_net_to_host_u32 (sa->spi);
+
+  return (rewrite);
+}
 
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (ipsec_device_class, static) =
@@ -240,7 +300,7 @@ VNET_DEVICE_CLASS (ipsec_device_class, static) =
 VNET_HW_INTERFACE_CLASS (ipsec_hw_class) =
 {
   .name = "IPSec",
-  .build_rewrite = default_build_rewrite,
+  .build_rewrite = ipsec_if_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 /* *INDENT-ON* */
