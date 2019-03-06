@@ -916,7 +916,7 @@ clients_run (echo_main_t * em)
 	    continue;
 	  }
 	e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-	if (e->event_type != FIFO_EVENT_APP_RX)
+	if (e->event_type != SESSION_IO_EVT_RX)
 	  handle_mq_event (e);
 	svm_msg_q_free_msg (em->our_event_queue, &msg);
       }
