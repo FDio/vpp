@@ -173,7 +173,6 @@ app_listener_t *app_listener_lookup (application_t * app,
 				     session_endpoint_cfg_t * sep);
 app_listener_t *app_listener_get_w_handle (session_handle_t handle);
 app_listener_t *app_listener_get_w_session (session_t * ls);
-app_worker_t *app_listener_select_worker (app_listener_t * al);
 session_t *app_listener_get_session (app_listener_t * al);
 session_t *app_listener_get_local_session (app_listener_t * al);
 
