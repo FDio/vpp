@@ -63,6 +63,7 @@ app_worker_free (app_worker_t * app_wrk)
   app_listener_t *al;
   session_t *ls;
 
+  clib_warning ("app worker %u to be freed", app_wrk->wrk_index);
   /*
    *  Listener cleanup
    */
@@ -319,6 +320,22 @@ app_worker_connect_notify (app_worker_t * app_wrk, session_t * s, u32 opaque)
   application_t *app = application_get (app_wrk->app_index);
   return app->cb_fns.session_connected_callback (app_wrk->wrk_index, opaque,
 						 s, s == 0 /* is_fail */ );
+}
+
+int
+app_worker_close_notify (app_worker_t * app_wrk, session_t * s)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  app->cb_fns.session_disconnect_callback (s);
+  return 0;
+}
+
+int
+app_worker_builtin_rx (app_worker_t * app_wrk, session_t * s)
+{
+  application_t *app = application_get (app_wrk->app_index);
+  app->cb_fns.builtin_app_rx_callback (s);
+  return 0;
 }
 
 int

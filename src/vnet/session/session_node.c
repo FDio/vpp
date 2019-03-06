@@ -856,7 +856,6 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   f64 now = vlib_time_now (vm);
   int n_tx_packets = 0, i, rv;
   app_worker_t *app_wrk;
-  application_t *app;
   svm_msg_q_t *mq;
   void (*fp) (void *);
 
@@ -969,12 +968,11 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  break;
 	case SESSION_IO_EVT_BUILTIN_RX:
 	  s = session_event_get_session (e, thread_index);
-	  if (PREDICT_FALSE (!s || s->session_state >= SESSION_STATE_CLOSING))
+	  if (PREDICT_FALSE (!s))
 	    continue;
 	  svm_fifo_unset_event (s->rx_fifo);
 	  app_wrk = app_worker_get (s->app_wrk_index);
-	  app = application_get (app_wrk->app_index);
-	  app->cb_fns.builtin_app_rx_callback (s);
+	  app_worker_builtin_rx (app_wrk, s);
 	  break;
 	case SESSION_IO_EVT_BUILTIN_TX:
 	  s = session_get_from_handle_if_valid (e->session_handle);

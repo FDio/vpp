@@ -715,7 +715,6 @@ void
 session_transport_closing_notify (transport_connection_t * tc)
 {
   app_worker_t *app_wrk;
-  application_t *app;
   session_t *s;
 
   s = session_get (tc->s_index, tc->thread_index);
@@ -724,9 +723,11 @@ session_transport_closing_notify (transport_connection_t * tc)
   s->session_state = SESSION_STATE_TRANSPORT_CLOSING;
   app_wrk = app_worker_get_if_valid (s->app_wrk_index);
   if (!app_wrk)
-    return;
-  app = application_get (app_wrk->app_index);
-  app->cb_fns.session_disconnect_callback (s);
+    {
+      session_close (s);
+      return;
+    }
+  app_worker_close_notify (app_wrk, s);
 }
 
 /**
@@ -1055,6 +1056,8 @@ session_close (session_t * s)
 {
   if (!s)
     return;
+
+  clib_warning ("closing %u state %u", s->session_index, s->session_state);
 
   if (s->session_state >= SESSION_STATE_CLOSING)
     {

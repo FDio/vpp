@@ -21,7 +21,7 @@
 #ifndef SRC_VNET_TLS_TLS_H_
 #define SRC_VNET_TLS_TLS_H_
 
-#define TLS_DEBUG 		0
+#define TLS_DEBUG 		1
 #define TLS_DEBUG_LEVEL_CLIENT 	0
 #define TLS_DEBUG_LEVEL_SERVER 	0
 
