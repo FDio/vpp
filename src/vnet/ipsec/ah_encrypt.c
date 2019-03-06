@@ -261,7 +261,7 @@ ah_encrypt_inline (vlib_main_t * vm,
 	    }
 
 	  u8 sig[64];
-	  clib_memset (sig, 0, sizeof (sig));
+
 	  u8 *digest =
 	    vlib_buffer_get_current (i_b0) + ip_hdr_size +
 	    sizeof (ah_header_t);
@@ -296,7 +296,6 @@ ah_encrypt_inline (vlib_main_t * vm,
 	trace:
 	  if (PREDICT_FALSE (i_b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      i_b0->flags |= VLIB_BUFFER_IS_TRACED;
 	      ah_encrypt_trace_t *tr =
 		vlib_add_trace (vm, node, i_b0, sizeof (*tr));
 	      tr->spi = sa0->spi;

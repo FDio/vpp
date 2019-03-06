@@ -25,7 +25,7 @@
 
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
-_(IP4_INPUT, "ip4-input")                       \
+_(IP4_INPUT, "ip4-input-no-checksum")           \
 _(IP6_INPUT, "ip6-input")                       \
 _(IPSEC_GRE_INPUT, "ipsec-gre-input")
 

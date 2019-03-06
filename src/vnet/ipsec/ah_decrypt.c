@@ -87,7 +87,7 @@ ah_decrypt_inline (vlib_main_t * vm,
   ipsec_proto_main_t *em = &ipsec_proto_main;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
-  int icv_size = 0;
+  int icv_size;
 
   next_index = node->cached_next_index;
   thread_index = vm->thread_index;
@@ -178,9 +178,7 @@ ah_decrypt_inline (vlib_main_t * vm,
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	    {
 	      u8 sig[64];
-	      u8 digest[64];
-	      clib_memset (sig, 0, sizeof (sig));
-	      clib_memset (digest, 0, sizeof (digest));
+	      u8 digest[icv_size];
 	      u8 *icv = ah0->auth_data;
 	      memcpy (digest, icv, icv_size);
 	      clib_memset (icv, 0, icv_size);
