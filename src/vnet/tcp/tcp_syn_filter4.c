@@ -80,9 +80,9 @@ typedef enum
 
 extern vnet_feature_arc_registration_t vnet_feat_arc_ip4_local;
 
-static uword
-syn_filter4_node_fn (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (syn_filter4_node) (vlib_main_t * vm,
+				 vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   syn_filter_next_t next_index;
@@ -402,7 +402,6 @@ syn_filter4_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (syn_filter4_node, static) =
 {
-  .function = syn_filter4_node_fn,
   .name = "syn-filter-4",
   .vector_size = sizeof (u32),
   .format_trace = format_syn_filter4_trace,
@@ -421,8 +420,6 @@ VLIB_REGISTER_NODE (syn_filter4_node, static) =
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (syn_filter4_node, syn_filter4_node_fn);
-
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (syn_filter_4, static) =
 {
@@ -432,6 +429,7 @@ VNET_FEATURE_INIT (syn_filter_4, static) =
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 int
 syn_filter_enable_disable (u32 sw_if_index, int enable_disable)
 {
@@ -535,6 +533,7 @@ VLIB_CLI_COMMAND (sr_content_command, static) =
   .function = syn_filter_enable_disable_command_fn,
 };
 /* *INDENT-ON* */
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON
