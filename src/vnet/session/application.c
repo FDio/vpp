@@ -282,10 +282,9 @@ app_listener_cleanup (app_listener_t * al)
   app_listener_free (app, al);
 }
 
-app_worker_t *
-app_listener_select_worker (app_listener_t * al)
+static app_worker_t *
+app_listener_select_worker (application_t * app, app_listener_t * al)
 {
-  application_t *app;
   u32 wrk_index;
 
   app = application_get (al->app_index);
@@ -696,10 +695,12 @@ application_n_workers (application_t * app)
 app_worker_t *
 application_listener_select_worker (session_t * ls)
 {
+  application_t *app;
   app_listener_t *al;
 
-  al = app_listener_get_w_session (ls);
-  return app_listener_select_worker (al);
+  app = application_get (ls->app_index);
+  al = app_listener_get (app, ls->al_index);
+  return app_listener_select_worker (app, al);
 }
 
 int
