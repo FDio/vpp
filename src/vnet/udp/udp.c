@@ -22,6 +22,8 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 
+udp_main_t udp_main;
+
 udp_connection_t *
 udp_connection_alloc (u32 thread_index)
 {

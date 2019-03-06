@@ -599,6 +599,11 @@ list(APPEND VNET_SOURCES
   udp/udp_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  udp/udp_local.c
+  udp/udp_encap_node.c
+)
+
 list(APPEND VNET_HEADERS
   udp/udp_error.def
   udp/udp.h

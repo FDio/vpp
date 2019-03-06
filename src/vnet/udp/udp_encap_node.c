@@ -247,23 +247,22 @@ udp_encap_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-udp4_encap (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (udp4_encap_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   return udp_encap_inline (vm, node, frame, 0);
 }
 
-static uword
-udp6_encap (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (udp6_encap_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * frame)
 {
   return udp_encap_inline (vm, node, frame, 1);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_encap_node) = {
-  .function = udp4_encap,
   .name = "udp4-encap",
   .vector_size = sizeof (u32),
 
@@ -271,10 +270,8 @@ VLIB_REGISTER_NODE (udp4_encap_node) = {
 
   .n_next_nodes = 0,
 };
-VLIB_NODE_FUNCTION_MULTIARCH (udp4_encap_node, udp4_encap);
 
 VLIB_REGISTER_NODE (udp6_encap_node) = {
-  .function = udp6_encap,
   .name = "udp6-encap",
   .vector_size = sizeof (u32),
 
@@ -282,7 +279,6 @@ VLIB_REGISTER_NODE (udp6_encap_node) = {
 
   .n_next_nodes = 0,
 };
-VLIB_NODE_FUNCTION_MULTIARCH (udp6_encap_node, udp6_encap);
 /* *INDENT-ON* */
 
 

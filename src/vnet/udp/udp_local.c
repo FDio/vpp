@@ -21,8 +21,6 @@
 #include <vnet/udp/udp_packet.h>
 #include <vppinfra/sparse_vec.h>
 
-udp_main_t udp_main;
-
 #define foreach_udp_local_next                  \
   _ (PUNT4, "ip4-punt")                         \
   _ (PUNT6, "ip6-punt")                         \
@@ -49,6 +47,7 @@ typedef struct
   u8 bound;
 } udp_local_rx_trace_t;
 
+#ifndef CLIB_MARCH_VARIANT
 u8 *
 format_udp_rx_trace (u8 * s, va_list * args)
 {
@@ -62,9 +61,7 @@ format_udp_rx_trace (u8 * s, va_list * args)
 	      t->bound ? "" : " (no listener)");
   return s;
 }
-
-vlib_node_registration_t udp4_local_node;
-vlib_node_registration_t udp6_local_node;
+#endif /* CLIB_MARCH_VARIANT */
 
 always_inline uword
 udp46_local_inline (vlib_main_t * vm,
@@ -404,23 +401,22 @@ static char *udp_error_strings[] = {
 #undef udp_error
 };
 
-static uword
-udp4_local (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp4_local_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return udp46_local_inline (vm, node, from_frame, 1 /* is_ip4 */ );
 }
 
-static uword
-udp6_local (vlib_main_t * vm,
-	    vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+VLIB_NODE_FN (udp6_local_node) (vlib_main_t * vm,
+				vlib_node_runtime_t * node,
+				vlib_frame_t * from_frame)
 {
   return udp46_local_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp4_local_node) = {
-  .function = udp4_local,
   .name = "ip4-udp-lookup",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -441,11 +437,8 @@ VLIB_REGISTER_NODE (udp4_local_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (udp4_local_node, udp4_local);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (udp6_local_node) = {
-  .function = udp6_local,
   .name = "ip6-udp-lookup",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -466,8 +459,7 @@ VLIB_REGISTER_NODE (udp6_local_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (udp6_local_node, udp6_local);
-
+#ifndef CLIB_MARCH_VARIANT
 static void
 add_dst_port (udp_main_t * um,
 	      udp_dst_port_t dst_port, char *dst_port_name, u8 is_ip4)
@@ -666,6 +658,7 @@ udp_local_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (udp_local_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

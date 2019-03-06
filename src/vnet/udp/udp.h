@@ -148,6 +148,8 @@ typedef struct
 extern udp_main_t udp_main;
 extern vlib_node_registration_t udp4_input_node;
 extern vlib_node_registration_t udp6_input_node;
+extern vlib_node_registration_t udp4_local_node;
+extern vlib_node_registration_t udp6_local_node;
 
 always_inline udp_connection_t *
 udp_connection_get (u32 conn_index, u32 thread_index)
