@@ -1224,7 +1224,7 @@ class TestSRv6(VppTestCase):
 
         # add classify table
         # mask on dst ip address prefix a7::/8
-        mask = '{:0<16}'.format('ff')
+        mask = '{!s:0<16}'.format('ff')
         r = self.vapi.classify_add_del_table(
             1,
             binascii.unhexlify(mask),
@@ -1239,7 +1239,7 @@ class TestSRv6(VppTestCase):
                                     'sr-pl-rewrite-insert')
         inacl_next_node_index = r.node_index
 
-        match = '{:0<16}'.format('a7')
+        match = '{!s:0<16}'.format('a7')
         r = self.vapi.classify_add_del_session(
             1,
             table_index,

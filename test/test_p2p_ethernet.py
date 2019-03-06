@@ -77,7 +77,8 @@ class P2PEthernetAPI(VppTestCase):
 
         for i in range(1, clients+1):
             try:
-                macs.append(':'.join(re.findall('..', '{:02x}'.format(mac+i))))
+                macs.append(':'.join(re.findall('..', '{:02x}'.format(
+                    mac+i))))
                 self.vapi.p2p_ethernet_add(self.pg2.sw_if_index,
                                            mac_pton(macs[i-1]),
                                            i)
