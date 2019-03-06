@@ -296,7 +296,7 @@ class TestIp4VrfMultiInst(VppTestCase):
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
