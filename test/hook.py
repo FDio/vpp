@@ -30,7 +30,7 @@ class Hook(object):
             if not isinstance(val, str):
                 return val
             if len(val) == 6:
-                return '{!s} ({!s})'.format(val, ':'.join(['{:02x}'.format(
+                return '{!s} ({!s})'.format(val, ':'.join([':02x}'.format(
                     ord(x)) for x in val]))
             try:
                 # we don't call test_type(val) because it is a packed value.
