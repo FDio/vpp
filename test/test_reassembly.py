@@ -52,7 +52,7 @@ class TestIPReassemblyMixin(object):
                 self.logger.debug(ppp("Got packet:", packet))
                 ip = packet[scapy_ip_family]
                 udp = packet[UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertTrue(
                     packet_index not in dropped_packet_indexes,
@@ -899,7 +899,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
                 self.logger.debug(ppp("Got packet:", packet))
                 ip = packet[IP]
                 icmp = packet[ICMP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 if packet_index in seen:
                     raise Exception(ppp("Duplicate packet received", packet))
@@ -997,7 +997,7 @@ class TestFIFReassembly(VppTestCase):
                 self.logger.debug(ppp("Got packet:", packet))
                 ip = packet[ip_class]
                 udp = packet[UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertTrue(
                     packet_index not in dropped_packet_indexes,
