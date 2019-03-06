@@ -272,14 +272,15 @@ vnet_policer_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-uword
-vnet_policer_by_sw_if_index (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (policer_by_sw_if_index_node) (vlib_main_t * vm,
+					    vlib_node_runtime_t * node,
+					    vlib_frame_t * frame)
 {
   return vnet_policer_inline (vm, node, frame,
 			      VNET_POLICER_INDEX_BY_SW_IF_INDEX);
 }
 
+#ifndef CLIB_MARCH_VARIANT
 uword
 vnet_policer_by_opaque (vlib_main_t * vm,
 			vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -298,6 +299,7 @@ void
 vnet_policer_node_funcs_reference (void)
 {
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 
 #define TEST_CODE 1
@@ -305,8 +307,7 @@ vnet_policer_node_funcs_reference (void)
 #ifdef TEST_CODE
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (policer_by_sw_if_index_node, static) = {
-  .function = vnet_policer_by_sw_if_index,
+VLIB_REGISTER_NODE (policer_by_sw_if_index_node) = {
   .name = "policer-by-sw-if-index",
   .vector_size = sizeof (u32),
   .format_trace = format_policer_trace,
@@ -323,12 +324,10 @@ VLIB_REGISTER_NODE (policer_by_sw_if_index_node, static) = {
     [VNET_POLICER_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (policer_by_sw_if_index_node,
-			      vnet_policer_by_sw_if_index);
 /* *INDENT-ON* */
 
 
+#ifndef CLIB_MARCH_VARIANT
 int
 test_policer_add_del (u32 rx_sw_if_index, u8 * config_name, int is_add)
 {
@@ -462,6 +461,7 @@ VLIB_CLI_COMMAND (test_patch_command, static) = {
     .function = test_policer_command_fn,
 };
 /* *INDENT-ON* */
+#endif /* CLIB_MARCH_VARIANT */
 
 #endif /* TEST_CODE */
 
@@ -781,9 +781,9 @@ policer_classify_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_policer_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_policer_classify_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return policer_classify_inline (vm, node, frame,
 				  POLICER_CLASSIFY_TABLE_IP4);
@@ -791,7 +791,6 @@ ip4_policer_classify (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
-  .function = ip4_policer_classify,
   .name = "ip4-policer-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_policer_classify_trace,
@@ -802,13 +801,11 @@ VLIB_REGISTER_NODE (ip4_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_policer_classify_node, ip4_policer_classify);
 /* *INDENT-ON* */
 
-static uword
-ip6_policer_classify (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_policer_classify_node) (vlib_main_t * vm,
+					  vlib_node_runtime_t * node,
+					  vlib_frame_t * frame)
 {
   return policer_classify_inline (vm, node, frame,
 				  POLICER_CLASSIFY_TABLE_IP6);
@@ -816,7 +813,6 @@ ip6_policer_classify (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
-  .function = ip6_policer_classify,
   .name = "ip6-policer-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_policer_classify_trace,
@@ -827,20 +823,17 @@ VLIB_REGISTER_NODE (ip6_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_policer_classify_node, ip6_policer_classify);
 /* *INDENT-ON* */
 
-static uword
-l2_policer_classify (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_policer_classify_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
 {
   return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2);
 }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_policer_classify_node) = {
-  .function = l2_policer_classify,
   .name = "l2-policer-classify",
   .vector_size = sizeof (u32),
   .format_trace = format_policer_classify_trace,
@@ -851,10 +844,9 @@ VLIB_REGISTER_NODE (l2_policer_classify_node) = {
     [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (l2_policer_classify_node, l2_policer_classify);
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 static clib_error_t *
 policer_classify_init (vlib_main_t * vm)
 {
@@ -875,6 +867,7 @@ policer_classify_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (policer_classify_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

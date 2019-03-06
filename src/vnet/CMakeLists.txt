@@ -79,6 +79,10 @@ list(APPEND VNET_SOURCES
   policer/policer_api.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  policer/node_funcs.c
+)
+
 list(APPEND VNET_HEADERS
   policer/police.h
   policer/policer.h
