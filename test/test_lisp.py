@@ -154,7 +154,7 @@ class TestLisp(VppTestCase):
 
         self.deid_ip4_net = self.faf.net
         self.deid_ip4 = self.faf.get_ip4()
-        self.seid_ip4 = '{}/{}'.format(self.pg0.local_ip4, 32)
+        self.seid_ip4 = '{!s}/{!s}'.format(self.pg0.local_ip4, 32)
         self.rloc_ip4 = self.pg1.remote_ip4n
 
         test_cases = [
