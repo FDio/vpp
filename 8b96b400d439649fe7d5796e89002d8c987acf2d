@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53b4c721_58404771",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3842,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-03-06T15:55:11Z",
+      "side": 1,
+      "message": "Hm, can\u0027t we avoid this? Did you try declare all the nodes as external in tcp.h and then define them in tcp_input.c protected by CLIB_MARCH_VARIANT ifdef?",
+      "range": {
+        "startLine": 3842,
+        "startChar": 0,
+        "endLine": 3842,
+        "endChar": 60
+      },
+      "revId": "8b96b400d439649fe7d5796e89002d8c987acf2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
