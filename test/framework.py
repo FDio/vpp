@@ -751,11 +751,12 @@ class VppTestCase(unittest.TestCase):
         Convert packet payload to _PacketInfo object
 
         :param payload: packet payload
+        :type:  <class 'scapy.packet.Raw'>
 
         :returns: _PacketInfo object containing de-serialized data from payload
 
         """
-        numbers = payload.split()
+        numbers = payload.load.split()
         info = _PacketInfo()
         info.index = int(numbers[0])
         info.src = int(numbers[1])

@@ -168,7 +168,7 @@ class TestIPv4(VppTestCase):
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug(
@@ -351,8 +351,8 @@ class TestIPv4FibCrud(VppTestCase):
 
     def _find_ip_match(self, find_in, pkt):
         for p in find_in:
-            if self.payload_to_info(str(p[Raw])) == \
-                    self.payload_to_info(str(pkt[Raw])):
+            if self.payload_to_info(p[Raw]) == \
+                    self.payload_to_info(pkt[Raw]):
                 if p[IP].src != pkt[IP].src:
                     break
                 if p[IP].dst != pkt[IP].dst:

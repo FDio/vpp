@@ -152,7 +152,7 @@ class TestIpIrb(VppTestCase):
         for packet in capture:
             ip = packet[IP]
             udp = packet[IP][UDP]
-            payload_info = self.payload_to_info(str(packet[IP][UDP][Raw]))
+            payload_info = self.payload_to_info(packet[IP][UDP][Raw])
 
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)
 
@@ -188,7 +188,7 @@ class TestIpIrb(VppTestCase):
         for packet in capture:
             ip = packet[IP]
             udp = packet[IP][UDP]
-            payload_info = self.payload_to_info(str(packet[IP][UDP][Raw]))
+            payload_info = self.payload_to_info(packet[IP][UDP][Raw])
             packet_index = payload_info.index
 
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)

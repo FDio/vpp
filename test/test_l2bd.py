@@ -184,7 +184,7 @@ class TestL2bd(VppTestCase):
             last_info[i.sw_if_index] = None
         dst_sw_if_index = pg_if.sw_if_index
         for packet in capture:
-            payload_info = self.payload_to_info(str(packet[Raw]))
+            payload_info = self.payload_to_info(packet[Raw])
             src_sw_if_index = payload_info.src
             src_if = None
             for ifc in self.pg_interfaces:

@@ -318,7 +318,7 @@ class TestIPv6(TestIPv6ND):
             try:
                 ip = packet[IPv6]
                 udp = packet[inet6.UDP]
-                payload_info = self.payload_to_info(str(packet[Raw]))
+                payload_info = self.payload_to_info(packet[Raw])
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
                 self.logger.debug(
