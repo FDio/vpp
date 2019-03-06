@@ -515,6 +515,14 @@ extern vlib_node_registration_t tcp4_input_node;
 extern vlib_node_registration_t tcp6_input_node;
 extern vlib_node_registration_t tcp4_output_node;
 extern vlib_node_registration_t tcp6_output_node;
+extern vlib_node_registration_t tcp4_established_node;
+extern vlib_node_registration_t tcp6_established_node;
+extern vlib_node_registration_t tcp4_syn_sent_node;
+extern vlib_node_registration_t tcp6_syn_sent_node;
+extern vlib_node_registration_t tcp4_rcv_process_node;
+extern vlib_node_registration_t tcp6_rcv_process_node;
+extern vlib_node_registration_t tcp4_listen_node;
+extern vlib_node_registration_t tcp6_listen_node;
 
 always_inline tcp_main_t *
 vnet_get_tcp_main ()
