@@ -177,9 +177,6 @@ typedef struct session_
 
   union
   {
-    /** Transport app index for apps acting as transports */
-    u32 t_app_index;
-
     /** App listener index */
     u32 al_index;
 

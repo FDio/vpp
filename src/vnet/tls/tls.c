@@ -202,7 +202,6 @@ tls_notify_app_accept (tls_ctx_t * ctx)
   app_session->connection_index = ctx->tls_ctx_handle;
   app_session->session_type = app_listener->session_type;
   app_session->listener_index = app_listener->session_index;
-  app_session->t_app_index = tls_main.app_index;
   app_session->session_state = SESSION_STATE_ACCEPTING;
 
   if ((rv = app_worker_init_accepted (app_session)))
@@ -240,7 +239,6 @@ tls_notify_app_connected (tls_ctx_t * ctx, u8 is_failed)
   app_session->connection_index = ctx->tls_ctx_handle;
   app_session->session_type =
     session_type_from_proto_and_ip (TRANSPORT_PROTO_TLS, ctx->tcp_is_ip4);
-  app_session->t_app_index = tls_main.app_index;
 
   if (app_worker_init_connected (app_wrk, app_session))
     goto failed;

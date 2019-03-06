@@ -129,7 +129,6 @@ ct_session_connect_notify (session_t * ss)
   cs->session_state = SESSION_STATE_CONNECTING;
   cs->app_wrk_index = client_wrk->wrk_index;
   cs->connection_index = cct->c_c_index;
-  cs->t_app_index = client_wrk->app_index;
 
   cct->c_s_index = cs->session_index;
   cct->client_rx_fifo = ss->tx_fifo;
@@ -282,7 +281,6 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
 
   server_wrk = application_listener_select_worker (ll);
   ss->app_wrk_index = server_wrk->wrk_index;
-  ss->t_app_index = server_wrk->app_index;
 
   sct->c_s_index = ss->session_index;
   sct->server_wrk = ss->app_wrk_index;
