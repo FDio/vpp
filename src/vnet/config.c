@@ -242,7 +242,7 @@ vnet_config_add_feature (vlib_main_t * vm,
 			 void *feature_config, u32 n_feature_config_bytes)
 {
   vnet_config_t *old, *new;
-  vnet_config_feature_t *new_features, *f;
+  vnet_config_feature_t *new_features, *f, *check;
   u32 n_feature_config_u32s;
   u32 node_index = vec_elt (cm->node_index_by_feature_index, feature_index);
 
@@ -259,10 +259,33 @@ vnet_config_add_feature (vlib_main_t * vm,
       u32 *p = vnet_get_config_heap (cm, config_string_heap_index);
       old = pool_elt_at_index (cm->config_pool, p[-1]);
       new_features = old->features;
-      if (new_features)
-	new_features = duplicate_feature_vector (new_features);
     }
 
+  /*check the to_enable feature whether had already been enabled in the arc or not */
+  if (old)
+    {
+      n_feature_config_u32s =
+	round_pow2 (n_feature_config_bytes,
+		    sizeof (check->feature_config[0])) /
+	sizeof (check->feature_config[0]);
+
+      vec_foreach (check, old->features)
+      {
+	if (check->feature_index == feature_index
+	    && vec_len (check->feature_config) == n_feature_config_u32s
+	    && (n_feature_config_u32s == 0
+		|| !memcmp (check->feature_config, feature_config,
+			    n_feature_config_bytes)))
+	  break;
+      }
+
+      /*feature has already been enabled in the arc */
+      if (check < vec_end (old->features))
+	return ~0;
+    }
+
+  if (new_features)
+    new_features = duplicate_feature_vector (new_features);
   vec_add2 (new_features, f, 1);
   f->feature_index = feature_index;
   f->node_index = node_index;
