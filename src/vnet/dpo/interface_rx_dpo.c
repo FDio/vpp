@@ -17,6 +17,7 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/l2/l2_input.h>
 
+#ifndef CLIB_MARCH_VARIANT
 interface_rx_dpo_t *interface_rx_dpo_pool;
 
 /*
@@ -109,6 +110,7 @@ interface_rx_dpo_add_or_lock (dpo_proto_t proto,
 
     dpo_set(dpo, DPO_INTERFACE_RX, proto, interface_rx_dpo_get_index(ido));
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 
 static clib_error_t *
@@ -149,7 +151,8 @@ interface_rx_dpo_interface_delete (vnet_main_t * vnm,
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION(
     interface_rx_dpo_interface_delete);
 
-u8*
+#ifndef CLIB_MARCH_VARIANT
+static u8*
 format_interface_rx_dpo (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
@@ -219,6 +222,7 @@ interface_rx_dpo_module_init (void)
                  &interface_rx_dpo_vft,
                  interface_rx_dpo_nodes);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * @brief Interface DPO trace data
@@ -377,24 +381,21 @@ format_interface_rx_dpo_trace (u8 * s, va_list * args)
     return s;
 }
 
-static uword
-interface_rx_dpo_ip4 (vlib_main_t * vm,
+VLIB_NODE_FN (interface_rx_dpo_ip4_node) (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
     return (interface_rx_dpo_inline(vm, node, from_frame, 0));
 }
 
-static uword
-interface_rx_dpo_ip6 (vlib_main_t * vm,
+VLIB_NODE_FN (interface_rx_dpo_ip6_node) (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
     return (interface_rx_dpo_inline(vm, node, from_frame, 0));
 }
 
-static uword
-interface_rx_dpo_l2 (vlib_main_t * vm,
+VLIB_NODE_FN (interface_rx_dpo_l2_node) (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
@@ -402,7 +403,6 @@ interface_rx_dpo_l2 (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (interface_rx_dpo_ip4_node) = {
-    .function = interface_rx_dpo_ip4,
     .name = "interface-rx-dpo-ip4",
     .vector_size = sizeof (u32),
     .format_trace = format_interface_rx_dpo_trace,
@@ -414,11 +414,8 @@ VLIB_REGISTER_NODE (interface_rx_dpo_ip4_node) = {
     },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (interface_rx_dpo_ip4_node,
-                              interface_rx_dpo_ip4)
 
 VLIB_REGISTER_NODE (interface_rx_dpo_ip6_node) = {
-    .function = interface_rx_dpo_ip6,
     .name = "interface-rx-dpo-ip6",
     .vector_size = sizeof (u32),
     .format_trace = format_interface_rx_dpo_trace,
@@ -430,11 +427,8 @@ VLIB_REGISTER_NODE (interface_rx_dpo_ip6_node) = {
     },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (interface_rx_dpo_ip6_node,
-                              interface_rx_dpo_ip6)
 
 VLIB_REGISTER_NODE (interface_rx_dpo_l2_node) = {
-    .function = interface_rx_dpo_l2,
     .name = "interface-rx-dpo-l2",
     .vector_size = sizeof (u32),
     .format_trace = format_interface_rx_dpo_trace,
@@ -446,5 +440,3 @@ VLIB_REGISTER_NODE (interface_rx_dpo_l2_node) = {
     },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (interface_rx_dpo_l2_node,
-                              interface_rx_dpo_l2)

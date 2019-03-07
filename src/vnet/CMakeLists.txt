@@ -1351,6 +1351,14 @@ list(APPEND VNET_SOURCES
   dpo/dvr_dpo.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  dpo/lookup_dpo.h
+  dpo/mpls_disposition.c
+  dpo/dvr_dpo.c
+  dpo/mpls_label_dpo.c
+  dpo/interface_rx_dpo.c
+)
+
 list(APPEND VNET_HEADERS
   dpo/load_balance.h
   dpo/drop_dpo.h
