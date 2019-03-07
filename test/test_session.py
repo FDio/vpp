@@ -104,5 +104,6 @@ class TestSessionUnitTests(VppTestCase):
         super(TestSessionUnitTests, self).tearDown()
         self.vapi.session_enable_disable(is_enabled=0)
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

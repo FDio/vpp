@@ -145,7 +145,7 @@ class TestPPPoE(VppTestCase):
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -169,7 +169,7 @@ class TestPPPoE(VppTestCase):
 
                 self.assertEqual(rx_pppoe.sessionid, session_id)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -596,6 +596,7 @@ class TestPPPoE(VppTestCase):
 
         # Delete a route that resolves the server's destination
         route_sever_dst.remove_vpp_config()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

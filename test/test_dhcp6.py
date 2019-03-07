@@ -278,7 +278,7 @@ class TestDHCPv6IANAControlPlane(VppTestCase):
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
-        except:
+        except Exception:
             packet.show()
             raise
 
@@ -530,7 +530,7 @@ class TestDHCPv6PDControlPlane(VppTestCase):
                 self.assertNotEqual(elapsed_time.elapsedtime, 0)
             else:
                 self.assertEqual(elapsed_time.elapsedtime, 0)
-        except:
+        except Exception:
             packet.show()
             raise
 

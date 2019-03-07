@@ -52,6 +52,7 @@ def to_acl_rule(self, is_permit, wildcard_sport=False):
          }
     return new_rule
 
+
 Packet.to_acl_rule = to_acl_rule
 
 
@@ -175,7 +176,7 @@ class ACLPluginConnTestCase(VppTestCase):
         # now try to send a packet on the reflected side
         try:
             p2 = conn1.send_through(1).command()
-        except:
+        except Exception:
             # If we asserted while waiting, it's good.
             # the conn should have timed out.
             p2 = None
@@ -200,7 +201,7 @@ class ACLPluginConnTestCase(VppTestCase):
             conn1.send_through(1)
         try:
             p2 = conn2.send_through(1).command()
-        except:
+        except Exception:
             # If we asserted while waiting, it's good.
             # the conn should have timed out.
             p2 = None
@@ -224,7 +225,7 @@ class ACLPluginConnTestCase(VppTestCase):
         # now try to send a packet on the reflected side
         try:
             p2 = conn1.send_through(1).command()
-        except:
+        except Exception:
             # If we asserted while waiting, it's good.
             # the conn should have timed out.
             p2 = None
@@ -242,7 +243,7 @@ class ACLPluginConnTestCase(VppTestCase):
         # ensure conn times out
         try:
             p2 = conn1.send_through(1).command()
-        except:
+        except Exception:
             # If we asserted while waiting, it's good.
             # the conn should have timed out.
             p2 = None
@@ -267,7 +268,7 @@ class ACLPluginConnTestCase(VppTestCase):
             pass
         try:
             p2 = conn1.send_through(1).command()
-        except:
+        except Exception:
             # If we asserted while waiting, it's good.
             # the conn should have timed out.
             p2 = None
@@ -295,7 +296,7 @@ class ACLPluginConnTestCase(VppTestCase):
         # Now it should have timed out already
         try:
             p2 = conn1.send_through(1).command()
-        except:
+        except Exception:
             # If we asserted while waiting, it's good.
             # the conn should have timed out.
             p2 = None

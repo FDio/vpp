@@ -119,7 +119,7 @@ class TestSRMPLS(VppTestCase):
                 else:
                     self.assertEqual(rx_ip.ttl, ip_ttl)
 
-        except:
+        except Exception:
             raise
 
     def verify_capture_tunneled_ip4(self, src_if, capture, sent, mpls_labels):
@@ -141,7 +141,7 @@ class TestSRMPLS(VppTestCase):
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
-        except:
+        except Exception:
             raise
 
     def test_sr_mpls(self):

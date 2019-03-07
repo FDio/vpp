@@ -25,6 +25,8 @@ class LISP_GPE_Header(Packet):
         ByteField("next_proto", 0),
         IntField("iid", 0),
     ]
+
+
 bind_layers(UDP, LISP_GPE_Header, dport=4341)
 bind_layers(UDP, LISP_GPE_Header, sport=4341)
 bind_layers(LISP_GPE_Header, IP, next_proto=1)
@@ -103,7 +105,7 @@ class SimpleDriver(Driver):
                                   "unexpected source EID!")
             self.test.assertEqual(ih.dst, self.test.deid_ip4,
                                   "unexpected dest EID!")
-        except:
+        except Exception:
             self.test.logger.error(ppp("Unexpected or invalid packet:",
                                    packet))
             raise

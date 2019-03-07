@@ -710,7 +710,7 @@ class BFD4TestCase(VppTestCase):
             self.vpp_session.add_vpp_config()
             self.vpp_session.admin_up()
             self.test_session = BFDTestSession(self, self.pg0, AF_INET)
-        except:
+        except Exception:
             self.vapi.want_bfd_events(enable_disable=0)
             raise
 
@@ -1522,7 +1522,7 @@ class BFD6TestCase(VppTestCase):
             self.vpp_session.admin_up()
             self.test_session = BFDTestSession(self, self.pg0, AF_INET6)
             self.logger.debug(self.vapi.cli("show adj nbr"))
-        except:
+        except Exception:
             self.vapi.want_bfd_events(enable_disable=0)
             raise
 
@@ -2671,6 +2671,7 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_no_response(cli_del)
         self.cli_verify_response("show bfd echo-source",
                                  "UDP echo source is not set.")
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

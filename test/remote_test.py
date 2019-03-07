@@ -212,7 +212,7 @@ class RemoteClass(Process):
         try:
             dumps(obj)
             return True
-        except:
+        except Exception:
             return False
 
     def _make_obj_serializable(self, obj):

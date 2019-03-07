@@ -270,5 +270,6 @@ class TestBondInterface(VppTestCase):
         if_dump = self.vapi.sw_interface_bond_dump()
         self.assertFalse(bond0.is_interface_config_in_dump(if_dump))
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

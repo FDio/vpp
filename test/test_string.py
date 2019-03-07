@@ -37,5 +37,6 @@ class TestString(VppTestCase):
                 self.logger.critical("FAILURE in the " + name + " test")
                 self.assertEqual(error.find("failed"), -1)
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

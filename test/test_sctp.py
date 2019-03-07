@@ -82,5 +82,6 @@ class TestSCTP(VppTestCase):
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

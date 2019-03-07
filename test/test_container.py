@@ -61,7 +61,7 @@ class ContainerIntegrationTestCase(VppTestCase):
         conn1 = Conn(self, self.pg0, self.pg1, af, UDP, 42001, 4242)
         try:
             p2 = conn1.send_through(0).command()
-        except:
+        except Exception:
             # If we asserted while waiting, it's good.
             # the conn should have timed out.
             p2 = None

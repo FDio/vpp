@@ -129,7 +129,7 @@ class TestSyslog(VppTestCase):
             self.assertEqual(capture[0][IP].dst, self.pg0.remote_ip4)
             self.assertEqual(capture[0][UDP].dport, 514)
             self.assert_packet_checksums_valid(capture[0], False)
-        except:
+        except Exception:
             self.logger.error(ppp("invalid packet:", capture[0]))
             raise
         self.syslog_verify(capture[0][Raw].load,
@@ -184,7 +184,7 @@ class TestSyslog(VppTestCase):
         capture = self.pg0.get_capture(1)
         try:
             self.assertEqual(capture[0][UDP].dport, 12345)
-        except:
+        except Exception:
             self.logger.error(ppp("invalid packet:", capture[0]))
             raise
         self.syslog_verify(capture[0][Raw].load,

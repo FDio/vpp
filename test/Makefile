@@ -82,6 +82,7 @@ BUILD_COV_DIR=$(TEST_DIR)/coverage
 PIP_INSTALL_DONE=$(TEST_RUN_DIR)/pip-install.done
 PIP_PATCH_DONE=$(TEST_RUN_DIR)/pip-patch.done
 PAPI_INSTALL_DONE=$(TEST_RUN_DIR)/papi-install.done
+PEP8_CHECK_DONE=$(TEST_RUN_DIR)/pep8-check.done
 
 PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
 
@@ -108,6 +109,10 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@bash -c "source $(VENV_PATH)/bin/activate && $(PYTHON_INTERP) -m pip install -e $(WS_ROOT)/src/vpp-api/python"
+	@touch $@
+
+$(PEP8_CHECK_DONE):
+	@make checkstyle
 	@touch $@
 
 define retest-func
@@ -165,7 +170,7 @@ ext:
 
 test-dep: verify-test-dir $(PAPI_INSTALL_DONE)
 
-test: verify-test-dir $(PAPI_INSTALL_DONE) ext sanity reset
+test: verify-test-dir $(PAPI_INSTALL_DONE) ext sanity reset $(PEP8_CHECK_DONE)
 	$(call retest-func)
 
 retest: verify-test-dir sanity reset
@@ -231,7 +236,7 @@ checkstyle: verify-test-dir
 	@virtualenv $(VENV_PATH) -p python3
 	@bash -c "source $(VENV_PATH)/bin/activate && python3 -m pip install pycodestyle"
 	@bash -c "source $(VENV_PATH)/bin/activate &&\
-		pycodestyle --show-source --ignore=W504,E126,E241,E226,E305,E704,E741,E722 --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py ||\
+		pycodestyle --show-source --exclude=$(WS_ROOT)/test/_*.py -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
 	         echo \"*******************************************************************\" &&\

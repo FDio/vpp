@@ -32,7 +32,7 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
             for i in cls.pg_interfaces:
                 i.config_ip4()
                 i.resolve_arp()
-        except:
+        except Exception:
             cls.tearDownClass()
             raise
 

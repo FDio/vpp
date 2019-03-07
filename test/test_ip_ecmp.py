@@ -153,7 +153,7 @@ class TestECMP(VppTestCase):
                 host_counters[packet.dst] += 1
                 self._packet_infos.pop(packet_index)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 

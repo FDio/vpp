@@ -104,7 +104,7 @@ class serverSocketThread(threading.Thread):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         try:
             os.unlink(self.sockName)
-        except:
+        except Exception:
             pass
         self.sock.bind(self.sockName)
 
@@ -646,6 +646,7 @@ class TestIP6PuntSocket(TestPuntSocket):
             self.vapi.punt_socket_deregister(p, is_ip4=0)
         punts = self.vapi.punt_socket_dump(is_ip6=1)
         self.assertEqual(len(punts), 0)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

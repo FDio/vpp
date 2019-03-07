@@ -139,7 +139,7 @@ class TestIPMcast(VppTestCase):
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
-        except:
+        except Exception:
             raise
 
     def verify_capture_ip6(self, rx_if, sent):

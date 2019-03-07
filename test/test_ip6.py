@@ -340,7 +340,7 @@ class TestIPv6(TestIPv6ND):
                     udp.sport, saved_packet[inet6.UDP].sport)
                 self.assertEqual(
                     udp.dport, saved_packet[inet6.UDP].dport)
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.interfaces:

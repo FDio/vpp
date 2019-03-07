@@ -186,7 +186,7 @@ class TestIPv4(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IP].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.interfaces:

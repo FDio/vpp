@@ -24,9 +24,11 @@ class ColorFormatter(logging.Formatter):
         if hasattr(record, 'color'):
             message = colorize(message, record.color)
         return message
+
+
 try:
     verbose = int(os.getenv("V", 0))
-except:
+except Exception:
     verbose = 0
 
 # 40 = ERROR, 30 = WARNING, 20 = INFO, 10 = DEBUG, 0 = NOTSET (all messages)
@@ -65,6 +67,7 @@ def get_parallel_logger(stream):
     handler.setLevel(log_level)
     logger.addHandler(handler)
     return logger
+
 
 # Static variables to store color formatting strings.
 #

@@ -117,7 +117,7 @@ class VppPGInterface(VppInterface):
                 self.test.logger.debug("Renaming %s->%s" %
                                        (self.out_path, name))
                 os.rename(self.out_path, name)
-        except:
+        except Exception:
             pass
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
@@ -141,7 +141,7 @@ class VppPGInterface(VppInterface):
                 self.test.logger.debug("Renaming %s->%s" %
                                        (self.in_path, name))
                 os.rename(self.in_path, name)
-        except:
+        except Exception:
             pass
         wrpcap(self.in_path, pkts)
         self.test.register_capture(self.cap_name)
@@ -171,7 +171,7 @@ class VppPGInterface(VppInterface):
                 return None
             output = rdpcap(self.out_path)
             self.test.logger.debug("Capture has %s packets" % len(output.res))
-        except:
+        except Exception:
             self.test.logger.debug("Exception in scapy.rdpcap (%s): %s" %
                                    (self.out_path, format_exc()))
             return None
@@ -255,7 +255,7 @@ class VppPGInterface(VppInterface):
                 if not capture or len(capture.res) == 0:
                     # junk filtered out, we're good
                     return
-            except:
+            except Exception:
                 pass
             self.generate_debug_aid("empty-assert")
             if remark:
@@ -337,7 +337,7 @@ class VppPGInterface(VppInterface):
                 try:
                     self._pcap_reader = PcapReader(self.out_path)
                     break
-                except:
+                except Exception:
                     self.test.logger.debug(
                         "Exception in scapy.PcapReader(%s): %s" %
                         (self.out_path, format_exc()))
@@ -406,7 +406,7 @@ class VppPGInterface(VppInterface):
         self.test.logger.info(self.test.vapi.cli("show trace"))
         try:
             captured_packet = pg_interface.wait_for_packet(1)
-        except:
+        except Exception:
             self.test.logger.info("No ARP received on port %s" %
                                   pg_interface.name)
             return
@@ -423,7 +423,7 @@ class VppPGInterface(VppInterface):
             else:
                 self.test.logger.info("No ARP received on port %s" %
                                       pg_interface.name)
-        except:
+        except Exception:
             self.test.logger.error(
                 ppp("Unexpected response to ARP request:", captured_packet))
             raise
@@ -453,7 +453,7 @@ class VppPGInterface(VppInterface):
             try:
                 captured_packet = pg_interface.wait_for_packet(
                     deadline - now, filter_out_fn=None)
-            except:
+            except Exception:
                 self.test.logger.error(
                     "Timeout while waiting for NDP response")
                 raise
@@ -471,7 +471,7 @@ class VppPGInterface(VppInterface):
                 self.test.logger.debug(self.test.vapi.cli("show trace"))
                 # we now have the MAC we've been after
                 return
-            except:
+            except Exception:
                 self.test.logger.info(
                     ppp("Unexpected response to NDP request:",
                         captured_packet))

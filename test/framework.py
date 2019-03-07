@@ -141,11 +141,13 @@ def pump_output(testclass):
 def _is_skip_aarch64_set():
     return os.getenv('SKIP_AARCH64', 'n').lower() in ('yes', 'y', '1')
 
+
 is_skip_aarch64_set = _is_skip_aarch64_set()
 
 
 def _is_platform_aarch64():
     return platform.machine() == 'aarch64'
+
 
 is_platform_aarch64 = _is_platform_aarch64()
 
@@ -154,12 +156,14 @@ def _running_extended_tests():
     s = os.getenv("EXTENDED_TESTS", "n")
     return True if s.lower() in ("y", "yes", "1") else False
 
+
 running_extended_tests = _running_extended_tests()
 
 
 def _running_on_centos():
     os_id = os.getenv("OS_ID", "")
     return True if "centos" in os_id.lower() else False
+
 
 running_on_centos = _running_on_centos
 
@@ -1356,6 +1360,7 @@ class Worker(Thread):
         self.logger.info(err)
         self.logger.info(single_line_delim)
         self.result = self.process.returncode
+
 
 if __name__ == '__main__':
     pass

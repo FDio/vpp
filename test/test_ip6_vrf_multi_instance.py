@@ -326,7 +326,7 @@ class TestIP6VrfMultiInst(VppTestCase):
                 self.assertEqual(ip.dst, saved_packet[IPv6].dst)
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:

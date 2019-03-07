@@ -99,5 +99,6 @@ class TestTCPUnitTests(VppTestCase):
             self.logger.critical(error)
         self.assertEqual(error.find("failed"), -1)
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

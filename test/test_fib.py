@@ -16,5 +16,6 @@ class TestFIB(VppTestCase):
             self.logger.critical(error)
         self.assertEqual(error.find("Failed"), -1)
 
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

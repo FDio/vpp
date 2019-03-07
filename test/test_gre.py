@@ -196,7 +196,7 @@ class TestGRE(VppTestCase):
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -223,7 +223,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -250,7 +250,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -277,7 +277,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -309,7 +309,7 @@ class TestGRE(VppTestCase):
                 # bridged, not L3 forwarded, so no TTL decrement
                 self.assertEqual(rx_ip.ttl, tx_ip.ttl)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -318,7 +318,7 @@ class TestGRE(VppTestCase):
                                tunnel_src, tunnel_dst, vlan):
         try:
             self.assertEqual(len(capture), len(sent))
-        except:
+        except Exception:
             ppc("Unexpected packets captured:", capture)
             raise
 
@@ -349,7 +349,7 @@ class TestGRE(VppTestCase):
                 # bridged, not L3 forwarded, so no TTL decrement
                 self.assertEqual(rx_ip.ttl, tx_ip.ttl)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -372,7 +372,7 @@ class TestGRE(VppTestCase):
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise
@@ -394,7 +394,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
                 self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Rx:", rx))
                 self.logger.error(ppp("Tx:", tx))
                 raise

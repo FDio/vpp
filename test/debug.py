@@ -15,8 +15,8 @@ def spawn_gdb(binary_path, core_path):
         gdb.interact()
         try:
             gdb.terminate(True)
-        except:
-            pass
+        except Exception as e:
+            sys.stderr.write("An exception occurred: {0}\n".format(e))
         if gdb.isalive():
             raise Exception("GDB refused to die...")
     else:

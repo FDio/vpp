@@ -385,7 +385,7 @@ class TestACLplugin(VppTestCase):
                 else:
                     payload_info = self.payload_to_info(packet[Raw])
                     payload = packet[self.proto_map[payload_info.proto]]
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet "
                                       "(outside network):", packet))
                 raise
@@ -400,7 +400,7 @@ class TestACLplugin(VppTestCase):
                     else:
                         self.assertEqual(payload.type, self.icmp6_type)
                         self.assertEqual(payload.code, self.icmp6_code)
-                except:
+                except Exception:
                     self.logger.error(ppp("Unexpected or invalid packet "
                                           "(outside network):", packet))
                     raise
@@ -438,7 +438,7 @@ class TestACLplugin(VppTestCase):
                             UDP].sport)
                         self.assertEqual(udp.dport, saved_packet[
                             UDP].dport)
-                except:
+                except Exception:
                     self.logger.error(ppp("Unexpected or invalid packet:",
                                           packet))
                     raise
@@ -1479,6 +1479,7 @@ class TestACLplugin(VppTestCase):
         intf[0].remove_vpp_config()
 
         self.logger.info("ACLP_TEST_FINISH_0315")
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

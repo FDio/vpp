@@ -177,7 +177,7 @@ class TestLB(VppTestCase):
                     udp = UDP(str(p[IPv6].payload))
                     self.assertEqual(udp.dport, 3307)
                 load[asid] += 1
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet:", p))
                 raise
 

@@ -35,5 +35,5 @@ def on_tear_down_class(cls):
             for r in refs:
                 try:
                     f.write("%s\n" % pp.pformat(r))
-                except:
+                except Exception:
                     f.write("%s\n" % type(r))

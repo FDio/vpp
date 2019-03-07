@@ -338,25 +338,25 @@ def fragment_rfc8200(packet, identification, fragsize, _logger=None):
     upper_layer = None
     seen_ipv6 = False
     ipv6_nr = -1
-    l = packet.getlayer(counter)
-    while l is not None:
-        if l.__class__ is IPv6:
+    layer = packet.getlayer(counter)
+    while layer is not None:
+        if layer.__class__ is IPv6:
             if seen_ipv6:
                 # ignore 2nd IPv6 header and everything below..
                 break
             ipv6_nr = counter
             seen_ipv6 = True
-        elif l.__class__ is IPv6ExtHdrFragment:
+        elif layer.__class__ is IPv6ExtHdrFragment:
             raise Exception("Already fragmented")
-        elif l.__class__ is IPv6ExtHdrRouting:
+        elif layer.__class__ is IPv6ExtHdrRouting:
             routing_hdr = counter
-        elif l.__class__ is IPv6ExtHdrHopByHop:
+        elif layer.__class__ is IPv6ExtHdrHopByHop:
             hop_by_hop_hdr = counter
         elif seen_ipv6 and not upper_layer and \
-                not l.__class__.__name__.startswith('IPv6ExtHdr'):
+                not layer.__class__.__name__.startswith('IPv6ExtHdr'):
             upper_layer = counter
         counter = counter + 1
-        l = packet.getlayer(counter)
+        layer = packet.getlayer(counter)
 
     logger.debug(
         "Layers seen: IPv6(#%s), Routing(#%s), HopByHop(#%s), upper(#%s)" %

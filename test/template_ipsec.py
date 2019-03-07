@@ -307,7 +307,7 @@ class IpsecTra4Tests(object):
                 try:
                     decrypted = p.vpp_tra_sa.decrypt(rx[IP])
                     self.assert_packet_checksums_valid(decrypted)
-                except:
+                except Exception:
                     self.logger.debug(ppp("Unexpected packet:", rx))
                     raise
         finally:
@@ -347,7 +347,7 @@ class IpsecTra6Tests(object):
                 try:
                     decrypted = p.vpp_tra_sa.decrypt(rx[IPv6])
                     self.assert_packet_checksums_valid(decrypted)
-                except:
+                except Exception:
                     self.logger.debug(ppp("Unexpected packet:", rx))
                     raise
         finally:
@@ -401,12 +401,12 @@ class IpsecTun4Tests(object):
                     self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip4)
                     self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
                     self.assert_packet_checksums_valid(decrypt_pkt)
-                except:
+                except Exception:
                     self.logger.debug(ppp("Unexpected packet:", recv_pkt))
                     try:
                         self.logger.debug(
                             ppp("Decrypted packet:", decrypt_pkt))
-                    except:
+                    except Exception:
                         pass
                     raise
         finally:
@@ -465,12 +465,12 @@ class IpsecTun6Tests(object):
                     self.assert_equal(decrypt_pkt.src, self.pg1.remote_ip6)
                     self.assert_equal(decrypt_pkt.dst, p.remote_tun_if_host)
                     self.assert_packet_checksums_valid(decrypt_pkt)
-                except:
+                except Exception:
                     self.logger.debug(ppp("Unexpected packet:", recv_pkt))
                     try:
                         self.logger.debug(
                             ppp("Decrypted packet:", decrypt_pkt))
-                    except:
+                    except Exception:
                         pass
                     raise
         finally:

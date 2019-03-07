@@ -322,7 +322,7 @@ class VppPapiProvider(object):
             for i, o in enumerate(fields[3:]):
                 try:
                     d[o] = a[i]
-                except:
+                except Exception:
                     break
 
             # Default override

@@ -146,7 +146,7 @@ class TestClassifier(VppTestCase):
                 self.assertEqual(ip6_received.dst, ip_saved.dst)
                 self.assertEqual(proto_received.sport, proto_saved.sport)
                 self.assertEqual(proto_received.dport, proto_saved.dport)
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.interfaces:

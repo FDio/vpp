@@ -223,7 +223,7 @@ class TestMPLS(VppTestCase):
                     self.assertEqual(rx_ip.src, tx_ip.dst)
                     self.assertEqual(rx_ip.dst, tx_ip.src)
 
-        except:
+        except Exception:
             raise
 
     def verify_capture_labelled_ip4(self, src_if, capture, sent,
@@ -249,7 +249,7 @@ class TestMPLS(VppTestCase):
                 else:
                     self.assertEqual(rx_ip.ttl, ip_ttl)
 
-        except:
+        except Exception:
             raise
 
     def verify_capture_labelled_ip6(self, src_if, capture, sent,
@@ -275,7 +275,7 @@ class TestMPLS(VppTestCase):
                 else:
                     self.assertEqual(rx_ip.hlim, ip_ttl)
 
-        except:
+        except Exception:
             raise
 
     def verify_capture_tunneled_ip4(self, src_if, capture, sent, mpls_labels):
@@ -297,7 +297,7 @@ class TestMPLS(VppTestCase):
                 # IP processing post pop has decremented the TTL
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
-        except:
+        except Exception:
             raise
 
     def verify_capture_labelled(self, src_if, capture, sent,
@@ -310,7 +310,7 @@ class TestMPLS(VppTestCase):
             for i in range(len(capture)):
                 rx = capture[i]
                 verify_mpls_stack(self, rx, mpls_labels)
-        except:
+        except Exception:
             raise
 
     def verify_capture_ip6(self, src_if, capture, sent,
@@ -338,7 +338,7 @@ class TestMPLS(VppTestCase):
                 else:
                     self.assertEqual(rx_ip.hlim, ip_hlim)
 
-        except:
+        except Exception:
             raise
 
     def verify_capture_ip6_icmp(self, src_if, capture, sent):
@@ -364,7 +364,7 @@ class TestMPLS(VppTestCase):
 
                 icmp = rx[ICMPv6TimeExceeded]
 
-        except:
+        except Exception:
             raise
 
     def test_swap(self):
@@ -2032,6 +2032,7 @@ class TestMPLSL2(VppTestCase):
         self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index,
                                              bd_id=1,
                                              enable=0)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

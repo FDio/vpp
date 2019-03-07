@@ -11,6 +11,7 @@ class SanityTestCase(VppTestCase):
     """ Sanity test case - verify whether VPP is able to start """
     pass
 
+
 if __name__ == '__main__':
     rc = 0
     tc = SanityTestCase
@@ -24,7 +25,7 @@ if __name__ == '__main__':
     else:
         try:
             tc.tearDownClass()
-        except:
+        except Exception:
             pass
     x.close()
     y.close()

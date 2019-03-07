@@ -731,7 +731,7 @@ class TestSRv6(VppTestCase):
         try:
             payload_info = self.payload_to_info(packet[Raw])
 
-        except:
+        except Exception:
             # remote L2 header from packet[Raw]:
             # take packet[Raw], convert it to an Ether layer
             # and then extract Raw from it
@@ -792,7 +792,7 @@ class TestSRv6(VppTestCase):
                 # compare rcvd packet with expected packet using compare_func
                 compare_func(txed_packet, packet)
 
-            except:
+            except Exception:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
