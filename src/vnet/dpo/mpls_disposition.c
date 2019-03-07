@@ -18,6 +18,7 @@
 #include <vnet/dpo/mpls_disposition.h>
 #include <vnet/mpls/mpls.h>
 
+#ifndef CLIB_MARCH_VARIANT
 /*
  * pool of all MPLS Label DPOs
  */
@@ -123,6 +124,7 @@ mpls_disp_dpo_unlock (dpo_id_t *dpo)
 	pool_put(mpls_disp_dpo_pool, mdd);
     }
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * @brief A struct to hold tracing information for the MPLS label disposition
@@ -405,8 +407,7 @@ format_mpls_label_disposition_trace (u8 * s, va_list * args)
     return (s);
 }
 
-static uword
-ip4_mpls_label_disposition_pipe (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mpls_label_disposition_pipe_node) (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
@@ -415,7 +416,6 @@ ip4_mpls_label_disposition_pipe (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE(ip4_mpls_label_disposition_pipe_node) = {
-    .function = ip4_mpls_label_disposition_pipe,
     .name = "ip4-mpls-label-disposition-pipe",
     .vector_size = sizeof(u32),
 
@@ -424,11 +424,8 @@ VLIB_REGISTER_NODE(ip4_mpls_label_disposition_pipe_node) = {
     .n_errors = IP4_N_ERROR,
     .error_strings = ip4_error_strings,
 };
-VLIB_NODE_FUNCTION_MULTIARCH(ip4_mpls_label_disposition_pipe_node,
-                              ip4_mpls_label_disposition_pipe)
 
-static uword
-ip6_mpls_label_disposition_pipe (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mpls_label_disposition_pipe_node) (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
@@ -437,7 +434,6 @@ ip6_mpls_label_disposition_pipe (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE(ip6_mpls_label_disposition_pipe_node) = {
-    .function = ip6_mpls_label_disposition_pipe,
     .name = "ip6-mpls-label-disposition-pipe",
     .vector_size = sizeof(u32),
 
@@ -446,11 +442,8 @@ VLIB_REGISTER_NODE(ip6_mpls_label_disposition_pipe_node) = {
     .n_errors = IP6_N_ERROR,
     .error_strings = ip6_error_strings,
 };
-VLIB_NODE_FUNCTION_MULTIARCH(ip6_mpls_label_disposition_pipe_node,
-                             ip6_mpls_label_disposition_pipe)
 
-static uword
-ip4_mpls_label_disposition_uniform (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
                                  vlib_node_runtime_t * node,
                                  vlib_frame_t * frame)
 {
@@ -459,7 +452,6 @@ ip4_mpls_label_disposition_uniform (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE(ip4_mpls_label_disposition_uniform_node) = {
-    .function = ip4_mpls_label_disposition_uniform,
     .name = "ip4-mpls-label-disposition-uniform",
     .vector_size = sizeof(u32),
 
@@ -468,11 +460,8 @@ VLIB_REGISTER_NODE(ip4_mpls_label_disposition_uniform_node) = {
     .n_errors = IP4_N_ERROR,
     .error_strings = ip4_error_strings,
 };
-VLIB_NODE_FUNCTION_MULTIARCH(ip4_mpls_label_disposition_uniform_node,
-                             ip4_mpls_label_disposition_uniform)
 
-static uword
-ip6_mpls_label_disposition_uniform (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mpls_label_disposition_uniform_node) (vlib_main_t * vm,
                                     vlib_node_runtime_t * node,
                                     vlib_frame_t * frame)
 {
@@ -481,7 +470,6 @@ ip6_mpls_label_disposition_uniform (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE(ip6_mpls_label_disposition_uniform_node) = {
-    .function = ip6_mpls_label_disposition_uniform,
     .name = "ip6-mpls-label-disposition-uniform",
     .vector_size = sizeof(u32),
 
@@ -490,9 +478,8 @@ VLIB_REGISTER_NODE(ip6_mpls_label_disposition_uniform_node) = {
     .n_errors = IP6_N_ERROR,
     .error_strings = ip6_error_strings,
 };
-VLIB_NODE_FUNCTION_MULTIARCH(ip6_mpls_label_disposition_uniform_node,
-                             ip6_mpls_label_disposition_uniform)
 
+#ifndef CLIB_MARCH_VARIANT
 static void
 mpls_disp_dpo_mem_show (void)
 {
@@ -550,3 +537,4 @@ mpls_disp_dpo_module_init(void)
     dpo_register(DPO_MPLS_DISPOSITION_UNIFORM, &mdd_vft,
                  mpls_label_disp_uniform_nodes);
 }
+#endif /* CLIB_MARCH_VARIANT */
