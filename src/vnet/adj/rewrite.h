@@ -189,7 +189,13 @@ _vnet_rewrite_one_header (vnet_rewrite_header_t * h0,
       clib_memcpy (d, s, sizeof (eh_copy_t));
       return;
     }
-
+  /*
+   * Stop now if the data_bytes field is zero, to avoid the cache
+   * miss consequences of spraying [functionally harmless] junk into
+   * un-prefetched rewrite space.
+   */
+  if (PREDICT_FALSE (h0->data_bytes == 0))
+    return;
 
 #define _(i)								\
   do {									\
@@ -243,6 +249,14 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
       clib_memcpy (d1, s1, sizeof (eh_copy_t));
       return;
     }
+
+  /*
+   * Stop now if both rewrite data_bytes fields are zero, to avoid the cache
+   * miss consequences of spraying [functionally harmless] junk into
+   * un-prefetched rewrite space.
+   */
+  if (PREDICT_FALSE (h0->data_bytes + h1->data_bytes == 0))
+    return;
 
 #define _(i)								\
   do {									\
