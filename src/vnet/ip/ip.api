@@ -114,7 +114,6 @@ enum ip_neighbor_flags
   IP_API_NEIGHBOR_FLAG_NONE = 0,
   IP_API_NEIGHBOR_FLAG_STATIC = 0x1,
   IP_API_NEIGHBOR_FLAG_NO_FIB_ENTRY = 0x2,
-  IP_API_NEIGHBOR_FLAG_FIX_ME_OLE = 0x3,
 };
 
 /** \brief IP neighbor
