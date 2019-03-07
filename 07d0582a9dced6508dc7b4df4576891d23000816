@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "83f0144a_512ae82c",
+        "filename": "src/vnet/ip/ip6_packet.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 553,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-07T10:57:45Z",
+      "side": 1,
+      "message": "Can this be converted into inline function?",
+      "range": {
+        "startLine": 553,
+        "startChar": 29,
+        "endLine": 553,
+        "endChar": 30
+      },
+      "revId": "07d0582a9dced6508dc7b4df4576891d23000816",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
