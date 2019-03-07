@@ -369,17 +369,17 @@ class TestACLpluginL2L3(VppTestCase):
         shuffle(all_rules)
         reply = self.vapi.acl_add_replace(acl_index=4294967295,
                                           r=all_rules[::2],
-                                          tag="shuffle 1. acl")
+                                          tag=b"shuffle 1. acl")
         shuffle_acl_1 = reply.acl_index
         shuffle(all_rules)
         reply = self.vapi.acl_add_replace(acl_index=4294967295,
                                           r=all_rules[::3],
-                                          tag="shuffle 2. acl")
+                                          tag=b"shuffle 2. acl")
         shuffle_acl_2 = reply.acl_index
         shuffle(all_rules)
         reply = self.vapi.acl_add_replace(acl_index=4294967295,
                                           r=all_rules[::2],
-                                          tag="shuffle 3. acl")
+                                          tag=b"shuffle 3. acl")
         shuffle_acl_3 = reply.acl_index
 
         # apply the shuffle ACLs in front
@@ -404,15 +404,15 @@ class TestACLpluginL2L3(VppTestCase):
             shuffle(all_rules)
             reply = self.vapi.acl_add_replace(acl_index=shuffle_acl_1,
                                               r=all_rules[::1+(i % 2)],
-                                              tag="shuffle 1. acl")
+                                              tag=b"shuffle 1. acl")
             shuffle(all_rules)
             reply = self.vapi.acl_add_replace(acl_index=shuffle_acl_2,
                                               r=all_rules[::1+(i % 3)],
-                                              tag="shuffle 2. acl")
+                                              tag=b"shuffle 2. acl")
             shuffle(all_rules)
             reply = self.vapi.acl_add_replace(acl_index=shuffle_acl_2,
                                               r=all_rules[::1+(i % 5)],
-                                              tag="shuffle 3. acl")
+                                              tag=b"shuffle 3. acl")
 
         # restore to how it was before and clean up
         self.vapi.acl_interface_set_acl_list(sw_if_index=sw_if_index,
@@ -429,10 +429,10 @@ class TestACLpluginL2L3(VppTestCase):
         r_permit_reflect = stream_dict['permit_and_reflect_rules']
         r_action = r_permit_reflect if is_reflect else r
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_action,
-                                          tag="act. acl")
+                                          tag=b"act. acl")
         action_acl_index = reply.acl_index
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_permit,
-                                          tag="perm. acl")
+                                          tag=b"perm. acl")
         permit_acl_index = reply.acl_index
         return {'L2': action_acl_index if test_l2_action else permit_acl_index,
                 'L3': permit_acl_index if test_l2_action else action_acl_index,
