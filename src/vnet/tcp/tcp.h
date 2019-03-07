@@ -820,7 +820,8 @@ tcp_set_time_now (tcp_worker_ctx_t * wrk)
   return wrk->time_now;
 }
 
-u32 tcp_push_header (tcp_connection_t * tconn, vlib_buffer_t * b);
+u32 tcp_session_push_header (transport_connection_t * tconn,
+			     vlib_buffer_t * b);
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
