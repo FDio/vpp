@@ -23,6 +23,7 @@ verbose_levels = {
 class Container(object):
 
     cmd = "vppctl -s 0:5002"
+    cmd_bash = "/bin/bash"
 
     def __init__(self, ref, name):
         self._name = name
@@ -68,10 +69,16 @@ class Container(object):
     def vppctl(self):
         system("docker exec -it {} {}".format(self.name, self.cmd))
 
+    def bash(self):
+        system("docker exec -it {} {}".format(self.name, self.cmd_bash))
+
     def vppctl_exec(self, cmd):
         ec, resp = self._ref.exec_run(cmd="{} {}".format(self.cmd, cmd))
         assert(ec == 0)
         return resp
+
+    def bash_exec(self, cmd):
+        pass
 
     def setup_host_interface(self, name, ip):
         self.vppctl_exec("create host-interface name {}".format(name))
@@ -133,6 +140,14 @@ class Containers(object):
             container.vppctl()
         else:
             print(container.vppctl_exec(command).decode())
+
+    def bash(self, name, command=None):
+        container = self.get(name)
+        if not command:
+            container.bash()
+        else:
+            print(container.bash_exec(command).decode())
+
 
 
 class Network(object):
@@ -329,6 +344,14 @@ class Program(object):
         self.logger.error("connecting to: {}".format(name))
         self.containers.vppctl(name, command)
 
+    def bash(self, index, command=None):
+        if index >= len(self.instance_names):
+            return
+        name = self.get_name(
+            self.instance_names[index])
+        self.logger.error("connecting to: {}".format(name))
+        self.containers.bash(name, command)
+
 
 def get_args():
     parser = ArgumentParser()
@@ -351,7 +374,7 @@ def get_args():
             help="Instance related commands.")
 
     p2.add_argument("op", choices=[
-        'vppctl'])
+        'vppctl', 'bash'])
 
     p2.add_argument("index", type=int,
             help="Container instance index. (./runner.py infra status)")
@@ -361,12 +384,16 @@ def get_args():
     return vars(parser.parse_args())
 
 
-def main(op, image=None, prefix=None, verbose=None, index=None, command=None):
+def main(op=None, image=None, prefix=None, verbose=None, index=None, command=None):
 
     if verbose:
         basicConfig(level=verbose_levels[verbose])
 
     program = Program(image, prefix)
+
+    # TODO: return help msg
+    if op is None:
+        return 1
 
     try:
         if op == 'build':
@@ -381,6 +408,8 @@ def main(op, image=None, prefix=None, verbose=None, index=None, command=None):
             program.restart_containers()
         elif op == 'vppctl':
             program.vppctl(index, command)
+        elif op == 'bash':
+            program.bash(index, command)
 
     except Exception:
         program.logger.exception("")
