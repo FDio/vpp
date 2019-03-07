@@ -1746,12 +1746,12 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   if (s->is_dgram)
     n_write = app_send_dgram_raw (tx_fifo, &s->transport,
 				  s->vpp_evt_q, buf, n, et,
-				  !is_ct /* do_evt */ , SVM_Q_WAIT);
+				  0 /* do_evt */ , SVM_Q_WAIT);
   else
     n_write = app_send_stream_raw (tx_fifo, s->vpp_evt_q, buf, n, et,
-				   !is_ct /* do_evt */ , SVM_Q_WAIT);
+				   0 /* do_evt */ , SVM_Q_WAIT);
 
-  if (is_ct && svm_fifo_set_event (s->tx_fifo))
+  if (svm_fifo_set_event (s->tx_fifo))
     app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
 			    et, SVM_Q_WAIT);
 
