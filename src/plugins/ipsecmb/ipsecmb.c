@@ -276,22 +276,24 @@ static uword
 ipsecmb_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   ipsec_main_t *im = &ipsec_main;
-  ipsec_register_ah_backend (vm, im, "ipsecmb backend",
-			     "ah4-encrypt-ipsecmb",
-			     "ah4-decrypt-ipsecmb",
-			     "ah6-encrypt-ipsecmb",
-			     "ah6-decrypt-ipsecmb",
-			     ipsecmb_check_ah_support,
-			     ipsecmb_add_del_sa_session);
+  u32 ah_idx = ipsec_register_ah_backend (vm, im, "ipsecmb backend",
+					  "ah4-encrypt-ipsecmb",
+					  "ah4-decrypt-ipsecmb",
+					  "ah6-encrypt-ipsecmb",
+					  "ah6-decrypt-ipsecmb",
+					  ipsecmb_check_ah_support,
+					  ipsecmb_add_del_sa_session);
 
-  ipsec_register_esp_backend (vm, im, "ipsecmb backend",
-			      "esp4-encrypt-ipsecmb",
-			      "esp4-decrypt-ipsecmb",
-			      "esp6-encrypt-ipsecmb",
-			      "esp6-decrypt-ipsecmb",
-			      ipsecmb_check_esp_support,
-			      ipsecmb_add_del_sa_session);
+  u32 esp_idx = ipsec_register_esp_backend (vm, im, "ipsecmb backend",
+					    "esp4-encrypt-ipsecmb",
+					    "esp4-decrypt-ipsecmb",
+					    "esp6-encrypt-ipsecmb",
+					    "esp6-decrypt-ipsecmb",
+					    ipsecmb_check_esp_support,
+					    ipsecmb_add_del_sa_session);
 
+  ipsec_select_ah_backend (im, ah_idx);
+  ipsec_select_esp_backend (im, esp_idx);
   return 0;
 }
 
