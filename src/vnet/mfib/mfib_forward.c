@@ -42,7 +42,7 @@ format_mfib_forward_lookup_trace (u8 * s, va_list * args)
 }
 
 /* Common trace function for all ip4-forward next nodes. */
-void
+static void
 mfib_forward_lookup_trace (vlib_main_t * vm,
                            vlib_node_runtime_t * node,
                            vlib_frame_t * frame)
@@ -184,16 +184,14 @@ mfib_forward_lookup (vlib_main_t * vm,
     return frame->n_vectors;
 }
 
-static uword
-ip4_mfib_forward_lookup (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mfib_forward_lookup_node) (vlib_main_t * vm,
                          vlib_node_runtime_t * node,
                          vlib_frame_t * frame)
 {
     return (mfib_forward_lookup (vm, node, frame, 1));
 }
 
-VLIB_REGISTER_NODE (ip4_mfib_forward_lookup_node, static) = {
-    .function = ip4_mfib_forward_lookup,
+VLIB_REGISTER_NODE (ip4_mfib_forward_lookup_node) = {
     .name = "ip4-mfib-forward-lookup",
     .vector_size = sizeof (u32),
 
@@ -205,19 +203,14 @@ VLIB_REGISTER_NODE (ip4_mfib_forward_lookup_node, static) = {
     },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_mfib_forward_lookup_node,
-                              ip4_mfib_forward_lookup)
-
-static uword
-ip6_mfib_forward_lookup (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mfib_forward_lookup_node) (vlib_main_t * vm,
                          vlib_node_runtime_t * node,
                          vlib_frame_t * frame)
 {
     return (mfib_forward_lookup (vm, node, frame, 0));
 }
 
-VLIB_REGISTER_NODE (ip6_mfib_forward_lookup_node, static) = {
-    .function = ip6_mfib_forward_lookup,
+VLIB_REGISTER_NODE (ip6_mfib_forward_lookup_node) = {
     .name = "ip6-mfib-forward-lookup",
     .vector_size = sizeof (u32),
 
@@ -228,9 +221,6 @@ VLIB_REGISTER_NODE (ip6_mfib_forward_lookup_node, static) = {
         [MFIB_FORWARD_LOOKUP_NEXT_RPF] = "ip6-mfib-forward-rpf",
     },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mfib_forward_lookup_node,
-                              ip6_mfib_forward_lookup)
 
 
 typedef struct mfib_forward_rpf_trace_t_ {
@@ -483,8 +473,7 @@ mfib_forward_rpf (vlib_main_t * vm,
     return frame->n_vectors;
 }
 
-static uword
-ip4_mfib_forward_rpf (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_mfib_forward_rpf_node) (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * frame)
 {
@@ -492,8 +481,7 @@ ip4_mfib_forward_rpf (vlib_main_t * vm,
 }
 
 
-VLIB_REGISTER_NODE (ip4_mfib_forward_rpf_node, static) = {
-    .function = ip4_mfib_forward_rpf,
+VLIB_REGISTER_NODE (ip4_mfib_forward_rpf_node) = {
     .name = "ip4-mfib-forward-rpf",
     .vector_size = sizeof (u32),
 
@@ -505,11 +493,7 @@ VLIB_REGISTER_NODE (ip4_mfib_forward_rpf_node, static) = {
     },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_mfib_forward_rpf_node,
-                              ip4_mfib_forward_rpf)
-
-static uword
-ip6_mfib_forward_rpf (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_mfib_forward_rpf_node) (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * frame)
 {
@@ -517,8 +501,7 @@ ip6_mfib_forward_rpf (vlib_main_t * vm,
 }
 
 
-VLIB_REGISTER_NODE (ip6_mfib_forward_rpf_node, static) = {
-    .function = ip6_mfib_forward_rpf,
+VLIB_REGISTER_NODE (ip6_mfib_forward_rpf_node) = {
     .name = "ip6-mfib-forward-rpf",
     .vector_size = sizeof (u32),
 
@@ -529,7 +512,4 @@ VLIB_REGISTER_NODE (ip6_mfib_forward_rpf_node, static) = {
         [MFIB_FORWARD_RPF_NEXT_DROP] = "ip6-drop",
     },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_mfib_forward_rpf_node,
-                              ip6_mfib_forward_rpf)
 

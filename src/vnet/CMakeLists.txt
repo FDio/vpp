@@ -1383,6 +1383,10 @@ list(APPEND VNET_SOURCES
   mfib/mfib_table.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  mfib/mfib_forward.c
+)
+
 list(APPEND VNET_HEADERS
   mfib/ip4_mfib.h
   mfib/mfib_types.h
