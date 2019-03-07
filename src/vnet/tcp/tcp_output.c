@@ -1096,18 +1096,14 @@ tcp_make_state_flags (tcp_connection_t * tc, tcp_state_t next_state)
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_TIME_WAIT:
     case TCP_STATE_FIN_WAIT_2:
+    case TCP_STATE_CLOSING:
+    case TCP_STATE_LAST_ACK:
+    case TCP_STATE_FIN_WAIT_1:
       return TCP_FLAG_ACK;
     case TCP_STATE_SYN_RCVD:
       return TCP_FLAG_SYN | TCP_FLAG_ACK;
     case TCP_STATE_SYN_SENT:
       return TCP_FLAG_SYN;
-    case TCP_STATE_LAST_ACK:
-    case TCP_STATE_FIN_WAIT_1:
-    case TCP_STATE_CLOSING:
-      if (tc->snd_nxt + 1 < tc->snd_una_max)
-	return TCP_FLAG_ACK;
-      else
-	return TCP_FLAG_FIN;
     default:
       clib_warning ("Shouldn't be here!");
     }
@@ -1710,7 +1706,6 @@ tcp_timer_persist_handler (u32 index)
   u8 *data;
 
   tc = tcp_connection_get_if_valid (index, thread_index);
-
   if (!tc)
     return;
 
@@ -1718,8 +1713,8 @@ tcp_timer_persist_handler (u32 index)
   tc->timers[TCP_TIMER_PERSIST] = TCP_TIMER_HANDLE_INVALID;
 
   /* Problem already solved or worse */
-  if (tc->state == TCP_STATE_CLOSED || tc->state > TCP_STATE_ESTABLISHED
-      || tc->snd_wnd > tc->snd_mss)
+  if (tc->state == TCP_STATE_CLOSED || tc->snd_wnd > tc->snd_mss
+      || (tc->flags & TCP_CONN_FINSNT))
     return;
 
   available_bytes = transport_max_tx_dequeue (&tc->connection);
@@ -1756,10 +1751,10 @@ tcp_timer_persist_handler (u32 index)
 
   tcp_validate_txf_size (tc, offset);
   tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
-  max_snd_bytes =
-    clib_min (tc->snd_mss, tm->bytes_per_buffer - TRANSPORT_MAX_HDRS_LEN);
-  n_bytes =
-    session_tx_fifo_peek_bytes (&tc->connection, data, offset, max_snd_bytes);
+  max_snd_bytes = clib_min (tc->snd_mss,
+			    tm->bytes_per_buffer - TRANSPORT_MAX_HDRS_LEN);
+  n_bytes = session_tx_fifo_peek_bytes (&tc->connection, data, offset,
+					max_snd_bytes);
   b->current_length = n_bytes;
   ASSERT (n_bytes != 0 && (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)
 			   || tc->snd_nxt == tc->snd_una_max
