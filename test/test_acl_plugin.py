@@ -238,7 +238,7 @@ class TestACLplugin(VppTestCase):
                  'dst_ip_addr': d_ip})
         return rule
 
-    def apply_rules(self, rules, tag=''):
+    def apply_rules(self, rules, tag=b''):
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=rules,
                                           tag=tag)
         self.logger.info("Dumped ACL: " + str(
@@ -250,7 +250,7 @@ class TestACLplugin(VppTestCase):
                                                  acls=[reply.acl_index])
         return
 
-    def apply_rules_to(self, rules, tag='', sw_if_index=0xFFFFFFFF):
+    def apply_rules_to(self, rules, tag=b'', sw_if_index=0xFFFFFFFF):
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=rules,
                                           tag=tag)
         self.logger.info("Dumped ACL: " + str(
@@ -549,7 +549,7 @@ class TestACLplugin(VppTestCase):
               'dst_ip_prefix_len': 0}]
         # Test 1: add a new ACL
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r,
-                                          tag="permit 1234")
+                                          tag=b"permit 1234")
         self.assertEqual(reply.retval, 0)
         # The very first ACL gets #0
         self.assertEqual(reply.acl_index, 0)
@@ -588,7 +588,7 @@ class TestACLplugin(VppTestCase):
                    'dst_ip_prefix_len': 0}]
 
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_deny,
-                                          tag="deny 1234;permit all")
+                                          tag=b"deny 1234;permit all")
         self.assertEqual(reply.retval, 0)
         # The second ACL gets #1
         self.assertEqual(reply.acl_index, 1)
@@ -596,7 +596,7 @@ class TestACLplugin(VppTestCase):
 
         # Test 2: try to modify a nonexistent ACL
         reply = self.vapi.acl_add_replace(acl_index=432, r=r,
-                                          tag="FFFF:FFFF", expected_retval=-6)
+                                          tag=b"FFFF:FFFF", expected_retval=-6)
         self.assertEqual(reply.retval, -6)
         # The ACL number should pass through
         self.assertEqual(reply.acl_index, 432)
