@@ -18,7 +18,9 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
+#ifndef CLIB_MARCH_VARIANT
 dvr_dpo_t *dvr_dpo_pool;
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * The 'DB' of DVR DPOs.
@@ -26,6 +28,7 @@ dvr_dpo_t *dvr_dpo_pool;
  */
 static index_t *dvr_dpo_db[DPO_PROTO_NUM];
 
+#ifndef CLIB_MARCH_VARIANT
 static dvr_dpo_t *
 dvr_dpo_alloc (void)
 {
@@ -35,6 +38,7 @@ dvr_dpo_alloc (void)
 
     return (dd);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 static inline dvr_dpo_t *
 dvr_dpo_get_from_dpo (const dpo_id_t *dpo)
@@ -85,6 +89,7 @@ dvr_dpo_unlock (dpo_id_t *dpo)
     }
 }
 
+#ifndef CLIB_MARCH_VARIANT
 void
 dvr_dpo_add_or_lock (u32 sw_if_index,
                      dpo_proto_t dproto,
@@ -124,6 +129,7 @@ dvr_dpo_add_or_lock (u32 sw_if_index,
 
     dpo_set(dpo, DPO_DVR, dproto, dvr_dpo_get_index(dd));
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 
 static clib_error_t *
@@ -164,7 +170,7 @@ dvr_dpo_interface_delete (vnet_main_t * vnm,
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION(
     dvr_dpo_interface_delete);
 
-u8*
+static u8*
 format_dvr_dpo (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
@@ -219,6 +225,7 @@ const static char* const * const dvr_dpo_nodes[DPO_PROTO_NUM] =
     [DPO_PROTO_IP6]  = dvr_dpo_ip6_nodes,
 };
 
+#ifndef CLIB_MARCH_VARIANT
 void
 dvr_dpo_module_init (void)
 {
@@ -226,6 +233,7 @@ dvr_dpo_module_init (void)
                  &dvr_dpo_vft,
                  dvr_dpo_nodes);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * @brief Interface DPO trace data
@@ -397,16 +405,14 @@ format_dvr_dpo_trace (u8 * s, va_list * args)
     return s;
 }
 
-static uword
-ip4_dvr_dpo (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_dvr_dpo_node) (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
     return (dvr_dpo_inline(vm, node, from_frame, 0));
 }
 
-static uword
-ip6_dvr_dpo (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_dvr_dpo_node) (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
@@ -414,22 +420,17 @@ ip6_dvr_dpo (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip4_dvr_dpo_node) = {
-    .function = ip4_dvr_dpo,
     .name = "ip4-dvr-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_dvr_dpo_trace,
     .sibling_of = "ip4-rewrite",
 };
 VLIB_REGISTER_NODE (ip6_dvr_dpo_node) = {
-    .function = ip6_dvr_dpo,
     .name = "ip6-dvr-dpo",
     .vector_size = sizeof (u32),
     .format_trace = format_dvr_dpo_trace,
     .sibling_of = "ip6-rewrite",
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_dvr_dpo_node, ip4_dvr_dpo)
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_dvr_dpo_node, ip6_dvr_dpo)
 
 typedef enum dvr_reinject_next_t_
 {
@@ -538,16 +539,14 @@ dvr_reinject_inline (vlib_main_t * vm,
     return from_frame->n_vectors;
 }
 
-static uword
-ip4_dvr_reinject (vlib_main_t * vm,
+VLIB_NODE_FN (ip4_dvr_reinject_node) (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * from_frame)
 {
     return (dvr_reinject_inline(vm, node, from_frame));
 }
 
-static uword
-ip6_dvr_reinject (vlib_main_t * vm,
+VLIB_NODE_FN (ip6_dvr_reinject_node) (vlib_main_t * vm,
                   vlib_node_runtime_t * node,
                   vlib_frame_t * from_frame)
 {
@@ -555,7 +554,6 @@ ip6_dvr_reinject (vlib_main_t * vm,
 }
 
 VLIB_REGISTER_NODE (ip4_dvr_reinject_node) = {
-    .function = ip4_dvr_reinject,
     .name = "ip4-dvr-reinject",
     .vector_size = sizeof (u32),
     .format_trace = format_dvr_dpo_trace,
@@ -567,7 +565,6 @@ VLIB_REGISTER_NODE (ip4_dvr_reinject_node) = {
 };
 
 VLIB_REGISTER_NODE (ip6_dvr_reinject_node) = {
-    .function = ip6_dvr_reinject,
     .name = "ip6-dvr-reinject",
     .vector_size = sizeof (u32),
     .format_trace = format_dvr_dpo_trace,
@@ -592,5 +589,3 @@ VNET_FEATURE_INIT (ip6_dvr_reinject_feat_node, static) =
   .runs_after = VNET_FEATURES ("acl-plugin-out-ip6-fa"),
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_dvr_reinject_node, ip4_dvr_reinject)
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_dvr_reinject_node, ip6_dvr_reinject)
