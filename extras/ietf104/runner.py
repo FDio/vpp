@@ -186,6 +186,10 @@ class Program(object):
 
     name_prefix = "hck"
 
+    # TODO: add description to these instances
+    # for exmaple what the vpp is supposed to be
+    # in our topoloty overview
+
     instance_names = [
         "vpp-1",
         "vpp-2",
