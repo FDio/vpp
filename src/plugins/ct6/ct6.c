@@ -293,7 +293,7 @@ VNET_FEATURE_INIT (ct6in2out, static) =
 {
   .arc_name = "interface-output",
   .node_name = "ct6-in2out",
-  .runs_before = VNET_FEATURES ("interface-output"),
+  .runs_before = VNET_FEATURES ("interface-tx"),
 };
 /* *INDENT-ON */
 
@@ -316,12 +316,12 @@ format_ct6_session (u8 * s, va_list * args)
 
   if (s0 == 0)
     {
-      s = format (s, "\n%6s%6s%20s%6s%20s%6s",
+      s = format (s, "\n%6s%6s%40s%6s%40s%6s",
 		  "Sess", "Prot", "Src", "Sport", "Dst", "Dport");
       return s;
     }
 
-  s = format (s, "\n%6d%6d%20U%6u%20U%6u",
+  s = format (s, "\n%6d%6d%40U%6u%40U%6u",
 	      s0 - cmp->sessions[i], s0->key.proto,
 	      format_ip6_address, &s0->key.src,
 	      clib_net_to_host_u16 (s0->key.sport),
