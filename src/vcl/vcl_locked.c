@@ -862,6 +862,9 @@ vls_unshare_vcl_worker_sessions (vcl_worker_t * wrk)
   vcl_locked_session_t *vls;
   vcl_session_t *s;
 
+  if (pool_elts (vcm->workers) <= 1)
+    return;
+
   current_wrk = vcl_get_worker_index ();
   is_current = current_wrk == wrk->wrk_index;
   vls_table_wlock ();
