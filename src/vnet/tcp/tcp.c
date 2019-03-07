@@ -1156,13 +1156,6 @@ tcp_update_time (f64 now, u8 thread_index)
   tcp_flush_frames_to_output (wrk);
 }
 
-static u32
-tcp_session_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
-{
-  tcp_connection_t *tc = (tcp_connection_t *) tconn;
-  return tcp_push_header (tc, b);
-}
-
 static void
 tcp_session_flush_data (transport_connection_t * tconn)
 {
@@ -1178,7 +1171,7 @@ const static transport_proto_vft_t tcp_proto = {
   .enable = vnet_tcp_enable_disable,
   .start_listen = tcp_session_bind,
   .stop_listen = tcp_session_unbind,
-  .push_header = tcp_session_push_header,
+  .push_header = tcp_push_header,
   .get_connection = tcp_session_get_transport,
   .get_listener = tcp_session_get_listener,
   .get_half_open = tcp_half_open_session_get_transport,

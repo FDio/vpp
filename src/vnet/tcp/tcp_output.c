@@ -1177,8 +1177,9 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
 }
 
 u32
-tcp_push_header (tcp_connection_t * tc, vlib_buffer_t * b)
+tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 {
+  tcp_connection_t *tc = (tcp_connection_t *) tconn;
   tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, /* compute opts */ 0,
 		  /* burst */ 1);
   tc->snd_una_max = tc->snd_nxt;

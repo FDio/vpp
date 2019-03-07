@@ -1681,9 +1681,9 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   vcl_worker_t *wrk = vcl_worker_get_current ();
   int n_write, is_nonblocking;
   vcl_session_t *s = 0;
-  svm_fifo_t *tx_fifo = 0;
   session_evt_type_t et;
   svm_msg_q_msg_t msg;
+  svm_fifo_t *tx_fifo;
   session_event_t *e;
   svm_msg_q_t *mq;
   u8 is_ct;
@@ -1746,12 +1746,12 @@ vppcom_session_write_inline (uint32_t session_handle, void *buf, size_t n,
   if (s->is_dgram)
     n_write = app_send_dgram_raw (tx_fifo, &s->transport,
 				  s->vpp_evt_q, buf, n, et,
-				  !is_ct /* do_evt */ , SVM_Q_WAIT);
+				  0 /* do_evt */ , SVM_Q_WAIT);
   else
     n_write = app_send_stream_raw (tx_fifo, s->vpp_evt_q, buf, n, et,
-				   !is_ct /* do_evt */ , SVM_Q_WAIT);
+				   0 /* do_evt */ , SVM_Q_WAIT);
 
-  if (is_ct && svm_fifo_set_event (s->tx_fifo))
+  if (svm_fifo_set_event (s->tx_fifo))
     app_send_io_evt_to_vpp (s->vpp_evt_q, s->tx_fifo->master_session_index,
 			    et, SVM_Q_WAIT);
 
@@ -1940,11 +1940,28 @@ vppcom_select_condvar (vcl_worker_t * wrk, int n_bits,
 		       vcl_si_set * except_map, double time_to_wait,
 		       u32 * bits_set)
 {
-  time_to_wait = (time_to_wait == -1) ? 1e6 : time_to_wait;
-  vcl_select_handle_mq (wrk, wrk->app_event_queue, n_bits, read_map,
-			write_map, except_map, (bits_set ? 0 : time_to_wait),
-			bits_set);
-  return *bits_set;
+  double wait = 0, start = 0;
+
+  if (!*bits_set)
+    {
+      wait = time_to_wait;
+      start = clib_time_now (&wrk->clib_time);
+    }
+
+  do
+    {
+      vcl_select_handle_mq (wrk, wrk->app_event_queue, n_bits, read_map,
+			    write_map, except_map, wait, bits_set);
+      if (*bits_set)
+	return *bits_set;
+      if (wait == -1)
+	continue;
+
+      wait = wait - (clib_time_now (&wrk->clib_time) - start);
+    }
+  while (wait > 0);
+
+  return 0;
 }
 
 static int
@@ -2517,10 +2534,28 @@ static int
 vppcom_epoll_wait_condvar (vcl_worker_t * wrk, struct epoll_event *events,
 			   int maxevents, u32 n_evts, double wait_for_time)
 {
-  wait_for_time = (wait_for_time == -1) ? (double) 1e6 : wait_for_time;
-  vcl_epoll_wait_handle_mq (wrk, wrk->app_event_queue, events, maxevents,
-			    (n_evts ? 0 : wait_for_time), &n_evts);
-  return n_evts;
+  double wait = 0, start = 0;
+
+  if (!n_evts)
+    {
+      wait = wait_for_time;
+      start = clib_time_now (&wrk->clib_time);
+    }
+
+  do
+    {
+      vcl_epoll_wait_handle_mq (wrk, wrk->app_event_queue, events, maxevents,
+				wait, &n_evts);
+      if (n_evts)
+	return n_evts;
+      if (wait == -1)
+	continue;
+
+      wait = wait - (clib_time_now (&wrk->clib_time) - start);
+    }
+  while (wait > 0);
+
+  return 0;
 }
 
 static int
