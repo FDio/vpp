@@ -928,6 +928,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_warning ("session was freed!");
 	      continue;
 	    }
+	  CLIB_PREFETCH (s->tx_fifo, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  wrk->ctx.s = s;
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
