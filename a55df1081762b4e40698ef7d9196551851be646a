@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c542ffe5_89b0606c",
+        "filename": "src/plugins/ct6/CMakeLists.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-07T09:21:32Z",
+      "side": 1,
+      "message": "Replace with specific values everywhere.",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "a55df1081762b4e40698ef7d9196551851be646a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
