@@ -13,7 +13,7 @@
 # limitations under the License.
 import sys
 
-stdlib_enum = sys.version_info >= (3, 4)
+stdlib_enum = sys.version_info >= (3, 6)
 
 try:
     from setuptools import setup, find_packages

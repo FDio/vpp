@@ -16,10 +16,17 @@
 import struct
 import collections
 import sys
-if sys.version[0] == '2':
-    from aenum import IntEnum, IntFlag
+
+if sys.version_info <= (3, 4):
+    from aenum import IntEnum
 else:
-    from enum import IntEnum, IntFlag
+    from enum import IntEnum
+
+if sys.version_info <= (3, 6):
+    from aenum import IntFlag
+else:
+    from enum import IntFlag
+
 import logging
 from . import vpp_format
 import ipaddress
