@@ -235,7 +235,10 @@ ct6_in2out_inline (vlib_main_t * vm,
 
       /*
        * This is an output feature which runs at the last possible
-       * moment. Assume an ethernet header.
+       * moment. Assume an ethernet header. Make sure the packet is
+       * actually ipv6 before we do anything else.
+       *
+       * Unfortunately, we have to re-parse the L2 header.
        */
 
       e0 = vlib_buffer_get_current (b[0]);
@@ -244,6 +247,18 @@ ct6_in2out_inline (vlib_main_t * vm,
 	? 4 : 0;
       delta0 += (e0->type == clib_net_to_host_u16 (ETHERNET_TYPE_DOT1AD))
 	? 8 : 0;
+
+      if (PREDICT_TRUE (delta0 == sizeof (*e0)))
+	{
+	  if (e0->type != clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
+	    goto trace0;
+	}
+      else
+	{
+	  u16 *tagged_etype_ptr = vlib_buffer_get_current (b[0]) + delta0 - 2;
+	  if (*tagged_etype_ptr != clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
+	    goto trace0;
+	}
 
       ip0 = (ip6_header_t *) (vlib_buffer_get_current (b[0]) + delta0);
 
