@@ -1128,6 +1128,7 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
 
   clib_memset (&template, 0, sizeof (template));
   template.type = VNET_SW_INTERFACE_TYPE_SUB;
+  template.flood_class = VNET_FLOOD_CLASS_NORMAL;
   template.sup_sw_if_index = hi->sw_if_index;
   template.sub.id = id;
   template.sub.eth.raw_flags = 0;
@@ -1208,6 +1209,7 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
 
   clib_memset (&template, 0, sizeof (template));
   template.type = VNET_SW_INTERFACE_TYPE_SUB;
+  template.flood_class = VNET_FLOOD_CLASS_NORMAL;
   template.sup_sw_if_index = sw_if_index;
   template.sub.id = sub_id;
   template.sub.eth.flags.no_tags = mp->no_tags;
