@@ -349,7 +349,7 @@ tcp_segment_validate (tcp_worker_ctx_t * wrk, tcp_connection_t * tc0,
 
       /* If our window is 0 and the packet is in sequence, let it pass
        * through for ack processing. It should be dropped later. */
-      if (tc0->rcv_wnd == 0
+      if (tc0->rcv_wnd < tc0->snd_mss
 	  && tc0->rcv_nxt == vnet_buffer (b0)->tcp.seq_number)
 	goto check_reset;
 
