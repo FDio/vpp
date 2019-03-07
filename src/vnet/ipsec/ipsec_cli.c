@@ -82,7 +82,8 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   ipsec_protocol_t proto;
   ipsec_sa_flags_t flags;
   clib_error_t *error;
-  ipsec_key_t ck, ik;
+  ipsec_key_t ck = { 0 };
+  ipsec_key_t ik = { 0 };
   int is_add, rv;
   u32 id, spi;
 
@@ -619,7 +620,10 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
   clib_error_t *error = NULL;
-  ipsec_key_t rck, lck, lik, rik;
+  ipsec_key_t rck = { 0 };
+  ipsec_key_t lck = { 0 };
+  ipsec_key_t lik = { 0 };
+  ipsec_key_t rik = { 0 };
 
   clib_memset (&a, 0, sizeof (a));
   a.is_add = 1;
@@ -709,9 +713,9 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   clib_memcpy (a.remote_crypto_key, rck.data, rck.len);
   a.remote_crypto_key_len = rck.len;
 
-  clib_memcpy (a.local_integ_key, lck.data, lck.len);
+  clib_memcpy (a.local_integ_key, lik.data, lik.len);
   a.local_integ_key_len = lck.len;
-  clib_memcpy (a.remote_integ_key, rck.data, rck.len);
+  clib_memcpy (a.remote_integ_key, rik.data, rik.len);
   a.remote_integ_key_len = rck.len;
 
   rv = ipsec_add_del_tunnel_if (&a);
