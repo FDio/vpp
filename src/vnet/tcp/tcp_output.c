@@ -172,7 +172,7 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
   /* Make sure we have a multiple of rcv_wscale */
   if (wnd && tc->rcv_wscale)
     {
-      wnd &= ~(1 << tc->rcv_wscale);
+      wnd &= ~((1 << tc->rcv_wscale) - 1);
       if (wnd == 0)
 	wnd = 1 << tc->rcv_wscale;
     }
