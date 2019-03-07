@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "23df398c_ce9ab6bb",
+        "filename": "src/vnet/ipsec-gre/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 1230
+      },
+      "writtenOn": "2019-03-07T03:23:53Z",
+      "side": 1,
+      "message": "Where is GRE_PROTOCOL_teb defined ?\nI dont know much about this code but how is this changed from 0x0001 mapped to 0x6558 ?\ndefine foreach_gre_protocol\t\t\t\\\n_ (0x0800, ip4)                                 \\\n_ (0x86DD, ip6)                                 \\\n_ (0x6558, teb)                                 \\\n_ (0x0806, arp)\t\t\t\t\t\\\n_ (0x8847, mpls_unicast)\t\t\t\\\n_ (0x88BE, erspan)\t\t\t\t\\\n_ (0x894F, nsh)\n\ntypedef enum\n{\n#define _(n,f) GRE_PROTOCOL_##f \u003d n,\n  foreach_gre_protocol\n#undef _\n} gre_protocol_t;",
+      "revId": "3b2f398ded5c65a1079c47e060496f0372d204c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
