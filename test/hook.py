@@ -81,7 +81,7 @@ class PollHook(Hook):
 
     def on_crash(self, core_path):
         self.logger.error("Core file present, debug with: gdb %s %s",
-                          self.testcase.vpp_bin, core_path)
+                          self.test.vpp_bin, core_path)
         check_core_path(self.logger, core_path)
         self.logger.error("Running `file %s':", core_path)
         try:
