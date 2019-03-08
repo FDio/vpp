@@ -91,6 +91,42 @@ vlib_frame_find_magic (vlib_frame_t * f, vlib_node_t * node)
   return p;
 }
 
+void
+vlib_create_frame_heap (vlib_main_t * vm, int nframes)
+{
+  u8 *frame_heap_base;
+  uword size;
+  u32 pagesize = clib_mem_get_page_size ();
+  size = nframes * vlib_frame_bytes (0 /* scalar size */ ,
+				     4 /* vector elt size */ );
+
+  /* Round to pagesize */
+  size = (size + pagesize - 1) & ~(pagesize - 1);
+
+  frame_heap_base = mmap (0, size, PROT_READ | PROT_WRITE,
+			  MAP_PRIVATE | MAP_ANONYMOUS, -1 /* no FD */ , 0);
+
+  if (frame_heap_base == MAP_FAILED)
+    {
+      clib_warning ("frame heap map failure");
+      abort ();
+    }
+
+#if USE_DLMALLOC == 0
+  mheap_t *heap_header;
+  vm->frame_heap = mheap_alloc_with_flags ((void *) (frame_heap_base), size,
+					   MHEAP_FLAG_DISABLE_VM);
+  heap_header = mheap_header (vm->frame_heap);
+  heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
+#else
+  vm->frame_heap = create_mspace_with_base (frame_heap_base, size,
+					    1 /* locked */ );
+  mspace_disable_expand (vm->frame_heap);
+#endif
+
+  vm->frame_heap_base = frame_heap_base;
+}
+
 static vlib_frame_size_t *
 get_frame_size_info (vlib_node_main_t * nm,
 		     u32 n_scalar_bytes, u32 n_vector_bytes)
@@ -137,7 +173,9 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
     }
   else
     {
+      void *oldheap = clib_mem_set_heap (vm->frame_heap);
       f = clib_mem_alloc_aligned_no_fail (n, VLIB_FRAME_ALIGN);
+      clib_mem_set_heap (oldheap);
       fi = vlib_frame_index_no_check (vm, f);
     }
 
@@ -1654,11 +1692,8 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   u32 *last_node_runtime_indices = 0;
 
   /* Initialize pending node vector. */
-  if (is_main)
-    {
-      vec_resize (nm->pending_frames, 32);
-      _vec_len (nm->pending_frames) = 0;
-    }
+  vec_resize (nm->pending_frames, 32);
+  _vec_len (nm->pending_frames) = 0;
 
   /* Mark time of main loop start. */
   if (is_main)

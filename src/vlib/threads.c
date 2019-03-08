@@ -681,6 +681,8 @@ start_workers (vlib_main_t * vm)
     clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
   vm->elog_main.lock[0] = 0;
 
+  vlib_create_frame_heap (vm, 256 * n_vlib_mains);
+
   if (n_vlib_mains > 1)
     {
       /* Replace hand-crafted length-1 vector with a real vector */
@@ -771,8 +773,6 @@ start_workers (vlib_main_t * vm)
 
 	      vm_clone->thread_index = worker_thread_index;
 	      vm_clone->heap_base = w->thread_mheap;
-	      vm_clone->heap_aligned_base = (void *)
-		(((uword) w->thread_mheap) & ~(VLIB_FRAME_ALIGN - 1));
 	      vm_clone->init_functions_called =
 		hash_create (0, /* value bytes */ 0);
 	      vm_clone->pending_rpc_requests = 0;
@@ -801,8 +801,6 @@ start_workers (vlib_main_t * vm)
 
 	      /* fork the frame dispatch queue */
 	      nm_clone->pending_frames = 0;
-	      vec_validate (nm_clone->pending_frames, 10);	/* $$$$$?????? */
-	      _vec_len (nm_clone->pending_frames) = 0;
 
 	      /* fork nodes */
 	      nm_clone->nodes = 0;

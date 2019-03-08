@@ -110,8 +110,10 @@ typedef struct vlib_main_t
   /* Start of the heap. */
   void *heap_base;
 
-  /* Truncated version, to create frame indices */
-  void *heap_aligned_base;
+  /* The frame heap */
+  void *frame_heap;
+  /* base address, aligned to at least 4K */
+  void *frame_heap_base;
 
   /* Size of the heap */
   uword heap_size;
@@ -371,6 +373,7 @@ extern u8 **vlib_thread_stacks;
 u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 
 extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
+extern void vlib_create_frame_heap (vlib_main_t * vm, int nframes);
 
 #define VLIB_PCAP_MAJOR_VERSION 1
 #define VLIB_PCAP_MINOR_VERSION 0
