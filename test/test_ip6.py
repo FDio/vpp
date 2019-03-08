@@ -972,7 +972,7 @@ class TestICMPv6Echo(VppTestCase):
 
         icmpv6_id = 0xb
         icmpv6_seq = 5
-        icmpv6_data = '\x0a' * 18
+        icmpv6_data = b'\x0a' * 18
         p_echo_request = (Ether(src=self.pg0.remote_mac,
                                 dst=self.pg0.local_mac) /
                           IPv6(src=self.pg0.remote_ip6,
@@ -1951,7 +1951,7 @@ class TestIP6Punt(VppTestCase):
         #
         # add a policer
         #
-        policer = self.vapi.policer_add_del("ip6-punt", 400, 0, 10, 0,
+        policer = self.vapi.policer_add_del(b"ip6-punt", 400, 0, 10, 0,
                                             rate_type=1)
         self.vapi.ip_punt_police(policer.policer_index, is_ip6=1)
 
@@ -1972,7 +1972,7 @@ class TestIP6Punt(VppTestCase):
         # remove the policer. back to full rx
         #
         self.vapi.ip_punt_police(policer.policer_index, is_add=0, is_ip6=1)
-        self.vapi.policer_add_del("ip6-punt", 400, 0, 10, 0,
+        self.vapi.policer_add_del(b"ip6-punt", 400, 0, 10, 0,
                                   rate_type=1, is_add=0)
         self.send_and_expect(self.pg0, pkts, self.pg1)
 

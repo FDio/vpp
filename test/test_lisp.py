@@ -160,12 +160,12 @@ class TestLisp(VppTestCase):
         test_cases = [
             {
                 'name': 'basic ip4 over ip4',
-                'locator-sets': [VppLispLocatorSet(self, 'ls-4o4')],
+                'locator-sets': [VppLispLocatorSet(self, b'ls-4o4')],
                 'locators': [
-                    VppLispLocator(self, self.pg1.sw_if_index, 'ls-4o4')
+                    VppLispLocator(self, self.pg1.sw_if_index, b'ls-4o4')
                 ],
                 'local-mappings': [
-                    VppLocalMapping(self, self.seid_ip4, 'ls-4o4')
+                    VppLocalMapping(self, self.seid_ip4, b'ls-4o4')
                 ],
                 'remote-mappings': [
                     VppRemoteMapping(self, self.deid_ip4_net,

@@ -1866,7 +1866,7 @@ class TestNAT44(MethodHolder):
                                                   is_inside=0)
         sm = self.vapi.nat44_static_mapping_dump()
         self.assertEqual(len(sm), 1)
-        self.assertEqual((sm[0].tag).split('\0', 1)[0], '')
+        self.assertEqual((sm[0].tag).split(b'\0', 1)[0], b'')
         self.assertEqual(sm[0].protocol, 0)
         self.assertEqual(sm[0].local_port, 0)
         self.assertEqual(sm[0].external_port, 0)
@@ -1894,7 +1894,7 @@ class TestNAT44(MethodHolder):
         self.tcp_port_out = 6303
         self.udp_port_out = 6304
         self.icmp_id_out = 6305
-        tag = "testTAG"
+        tag = b"testTAG"
 
         self.nat44_add_static_mapping(self.pg0.remote_ip4, nat_ip, tag=tag)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
@@ -1902,7 +1902,7 @@ class TestNAT44(MethodHolder):
                                                   is_inside=0)
         sm = self.vapi.nat44_static_mapping_dump()
         self.assertEqual(len(sm), 1)
-        self.assertEqual((sm[0].tag).split('\0', 1)[0], tag)
+        self.assertEqual((sm[0].tag).split(b'\0', 1)[0], tag)
 
         # out2in
         pkts = self.create_stream_out(self.pg1, nat_ip)
@@ -2600,7 +2600,7 @@ class TestNAT44(MethodHolder):
 
     def test_interface_addr_static_mapping(self):
         """ Static mapping with addresses from interface """
-        tag = "testTAG"
+        tag = b"testTAG"
 
         self.vapi.nat44_add_del_interface_addr(self.pg7.sw_if_index)
         self.nat44_add_static_mapping(
@@ -2613,7 +2613,7 @@ class TestNAT44(MethodHolder):
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          static_mappings[0].external_sw_if_index)
-        self.assertEqual((static_mappings[0].tag).split('\0', 1)[0], tag)
+        self.assertEqual((static_mappings[0].tag).split(b'\0', 1)[0], tag)
 
         # configure interface address and check static mappings
         self.pg7.config_ip4()
@@ -2624,7 +2624,7 @@ class TestNAT44(MethodHolder):
             if sm.external_sw_if_index == 0xFFFFFFFF:
                 self.assertEqual(sm.external_ip_address[0:4],
                                  self.pg7.local_ip4n)
-                self.assertEqual((sm.tag).split('\0', 1)[0], tag)
+                self.assertEqual((sm.tag).split(b'\0', 1)[0], tag)
                 resolved = True
         self.assertTrue(resolved)
 
@@ -2634,7 +2634,7 @@ class TestNAT44(MethodHolder):
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(self.pg7.sw_if_index,
                          static_mappings[0].external_sw_if_index)
-        self.assertEqual((static_mappings[0].tag).split('\0', 1)[0], tag)
+        self.assertEqual((static_mappings[0].tag).split(b'\0', 1)[0], tag)
 
         # configure interface address again and check static mappings
         self.pg7.config_ip4()
@@ -2645,7 +2645,7 @@ class TestNAT44(MethodHolder):
             if sm.external_sw_if_index == 0xFFFFFFFF:
                 self.assertEqual(sm.external_ip_address[0:4],
                                  self.pg7.local_ip4n)
-                self.assertEqual((sm.tag).split('\0', 1)[0], tag)
+                self.assertEqual((sm.tag).split(b'\0', 1)[0], tag)
                 resolved = True
         self.assertTrue(resolved)
 
@@ -6458,7 +6458,7 @@ class TestNAT44Out2InDPO(MethodHolder):
             cls.pg1.config_ip6()
             cls.pg1.resolve_ndp()
 
-            cls.vapi.ip_add_del_route(is_ipv6=True, dst_address='\x00' * 16,
+            cls.vapi.ip_add_del_route(is_ipv6=True, dst_address=b'\x00' * 16,
                                       dst_address_length=0,
                                       next_hop_address=cls.pg1.remote_ip6n,
                                       next_hop_sw_if_index=cls.pg1.sw_if_index)

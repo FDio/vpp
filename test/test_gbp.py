@@ -545,8 +545,8 @@ class VppGbpAcl(VppObject):
         self.acl_index = 4294967295
 
     def create_rule(self, is_ipv6=0, permit_deny=0, proto=-1,
-                    s_prefix=0, s_ip='\x00\x00\x00\x00', sport_from=0,
-                    sport_to=65535, d_prefix=0, d_ip='\x00\x00\x00\x00',
+                    s_prefix=0, s_ip=b'\x00\x00\x00\x00', sport_from=0,
+                    sport_to=65535, d_prefix=0, d_ip=b'\x00\x00\x00\x00',
                     dport_from=0, dport_to=65535):
         if proto == -1 or proto == 0:
             sport_to = 0
@@ -569,7 +569,7 @@ class VppGbpAcl(VppObject):
 
         reply = self._test.vapi.acl_add_replace(self.acl_index,
                                                 r=rules,
-                                                tag='GBPTest')
+                                                tag=b'GBPTest')
         self.acl_index = reply.acl_index
         return self.acl_index
 
