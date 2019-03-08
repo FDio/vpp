@@ -1,6 +1,8 @@
 
 FROM ubuntu:18.04
 
+ARG VPP_PATH={{vpp_path}}
+
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
@@ -17,11 +19,14 @@ RUN set -eux; \
     mv /usr/sbin/tcpdump /usr/bin/tcpdump
 
 RUN set -eux; \
-    mkdir -p {{vpp_path}}
+    mkdir -p $VPP_PATH
 
-COPY . / {{vpp_path}}/
+COPY . / $VPP_PATH/
 
-WORKDIR {{vpp_path}}
+WORKDIR $VPP_PATH
+
+RUN set -eux; \
+    make wipe
 
 RUN set -eux; \
     export UNATTENDED=y; \
@@ -30,13 +35,12 @@ RUN set -eux; \
 
 RUN set -eux; \
     export UNATTENDED=y; \
-    make wipe; \
     make build; \
     make pkg-deb; \
     rm -rf .ccache; \
     find . -type f -name '*.o' -exec rm -rf '{}' \;
 
-WORKDIR {{vpp_path}}/build-root
+WORKDIR $VPP_PATH/build-root
 
 RUN set -eux; \
     rm vpp-api-python_*.deb; \
@@ -46,5 +50,5 @@ WORKDIR /usr/share/vpp/plugins/perfmon
 
 RUN tar Jxf PerfmonTables.tar.xz
  
-CMD vpp -c {{vpp_path}}/startup.conf
+CMD vpp -c $VPP_PATH/startup.conf
 
