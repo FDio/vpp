@@ -49,6 +49,8 @@ class Container(object):
                 remove=True, auto_remove=True,
                 image=image, name=name,
                 privileged=True)
+        # TODO: bug if container exits, we don't know about it
+        #       we should test if it is still running
         # hack disconnect all default networks
         obj = cls(ref, name)
         obj.disconnect_all()
