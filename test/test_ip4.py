@@ -1145,7 +1145,7 @@ class TestIPPunt(VppTestCase):
         #
         # add a policer
         #
-        policer = self.vapi.policer_add_del("ip4-punt", 400, 0, 10, 0,
+        policer = self.vapi.policer_add_del(b"ip4-punt", 400, 0, 10, 0,
                                             rate_type=1)
         self.vapi.ip_punt_police(policer.policer_index)
 
@@ -1166,7 +1166,7 @@ class TestIPPunt(VppTestCase):
         # remove the poilcer. back to full rx
         #
         self.vapi.ip_punt_police(policer.policer_index, is_add=0)
-        self.vapi.policer_add_del("ip4-punt", 400, 0, 10, 0,
+        self.vapi.policer_add_del(b"ip4-punt", 400, 0, 10, 0,
                                   rate_type=1, is_add=0)
         self.send_and_expect(self.pg0, pkts, self.pg1)
 

@@ -133,7 +133,7 @@ defaultmapping = {
                             'is_add': 1, },
     'mpls_tunnel_dump': {'sw_if_index': 4294967295, },
     'nat44_add_del_address_range': {'is_add': 1, 'vrf_id': 4294967295, },
-    'nat44_add_del_identity_mapping': {'ip': '0', 'sw_if_index': 4294967295,
+    'nat44_add_del_identity_mapping': {'ip': b'0', 'sw_if_index': 4294967295,
                                        'addr_only': 1, 'is_add': 1, },
     'nat44_add_del_interface_addr': {'is_add': 1, },
     'nat44_add_del_lb_static_mapping': {'is_add': 1, },
@@ -1247,7 +1247,7 @@ class VppPapiProvider(object):
 
     def nat44_add_del_identity_mapping(
             self,
-            ip='0',
+            ip=b'0',
             sw_if_index=0xFFFFFFFF,
             port=0,
             addr_only=1,

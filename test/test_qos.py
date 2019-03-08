@@ -53,7 +53,7 @@ class TestQOS(VppTestCase):
         output = [chr(0)] * 256
         for i in range(0, 255):
             output[i] = chr(255 - i)
-        os = ''.join(output)
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -65,7 +65,7 @@ class TestQOS(VppTestCase):
         # For table 2 (and up) use the value n for everything
         #
         output = [chr(2)] * 256
-        os = ''.join(output)
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -74,7 +74,7 @@ class TestQOS(VppTestCase):
         self.vapi.qos_egress_map_update(2, rows)
 
         output = [chr(3)] * 256
-        os = ''.join(output)
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -83,7 +83,7 @@ class TestQOS(VppTestCase):
         self.vapi.qos_egress_map_update(3, rows)
 
         output = [chr(4)] * 256
-        os = ''.join(output)
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},
@@ -449,7 +449,7 @@ class TestQOS(VppTestCase):
         output = [chr(0)] * 256
         for i in range(0, 255):
             output[i] = chr(255 - i)
-        os = ''.join(output)
+        os = b''.join(output)
         rows = [{'outputs': os},
                 {'outputs': os},
                 {'outputs': os},

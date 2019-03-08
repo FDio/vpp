@@ -25,7 +25,7 @@ class VppLispLocatorSet(VppObject):
     def get_lisp_locator_sets_dump_entry(self):
         result = self.test.vapi.lisp_locator_set_dump()
         for ls in result:
-            if ls.ls_name.strip('\x00') == self._ls_name:
+            if ls.ls_name.strip(b'\x00') == self._ls_name:
                 return ls
         return None
 
@@ -137,7 +137,8 @@ class LispEID(object):
         else:
             raise Exception('Unsupported EID format {!s}!'.format(eid))
 
-    def __str__(self):
+    @property
+    def packed(self):
         if self.eid_type == LispEIDType.IP4:
             return socket.inet_pton(socket.AF_INET, self.eid_address)
         elif self.eid_type == LispEIDType.IP6:
@@ -179,8 +180,9 @@ class VppLispMapping(VppObject):
 
     def get_lisp_mapping_dump_entry(self):
         return self.test.vapi.lisp_eid_table_dump(
-                eid_set=1, prefix_length=self._eid.prefix_length,
-                vni=self._vni, eid_type=self._eid.eid_type, eid=str(self._eid))
+            eid_set=1, prefix_length=self._eid.prefix_length,
+            vni=self._vni, eid_type=self._eid.eid_type,
+            eid=self._eid.packed)
 
     def query_vpp_config(self):
         mapping = self.get_lisp_mapping_dump_entry()
@@ -215,14 +217,14 @@ class VppLocalMapping(VppLispMapping):
     def add_vpp_config(self):
         self.test.vapi.lisp_add_del_local_eid(
                 ls_name=self._ls_name, eid_type=self._eid.eid_type,
-                eid=str(self._eid), prefix_len=self._eid.prefix_length,
+                eid=self._eid.packed, prefix_len=self._eid.prefix_length,
                 vni=self._vni, key_id=self._key_id, key=self._key)
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
         self.test.vapi.lisp_add_del_local_eid(
                 ls_name=self._ls_name, eid_type=self._eid.eid_type,
-                eid=str(self._eid), prefix_len=self._eid.prefix_length,
+                eid=self._eid.packed, prefix_len=self._eid.prefix_length,
                 vni=self._vni, is_add=0)
 
     def object_id(self):
@@ -243,13 +245,13 @@ class VppRemoteMapping(VppLispMapping):
     def add_vpp_config(self):
         self.test.vapi.lisp_add_del_remote_mapping(
                 rlocs=self._rlocs, eid_type=self._eid.eid_type,
-                eid=str(self._eid), eid_prefix_len=self._eid.prefix_length,
+                eid=self._eid.packed, eid_prefix_len=self._eid.prefix_length,
                 vni=self._vni, rlocs_num=len(self._rlocs))
         self._test.registry.register(self, self.test.logger)
 
     def remove_vpp_config(self):
         self.test.vapi.lisp_add_del_remote_mapping(
-                eid_type=self._eid.eid_type, eid=str(self._eid),
+                eid_type=self._eid.eid_type, eid=self._eid.packed,
                 eid_prefix_len=self._eid.prefix_length, vni=self._vni,
                 is_add=0, rlocs_num=0)
 
@@ -286,8 +288,8 @@ class VppLispAdjacency(VppObject):
 
     def add_vpp_config(self):
         self.test.vapi.lisp_add_del_adjacency(
-                leid=str(self._leid),
-                reid=str(self._reid), eid_type=self._leid.eid_type,
+                leid=self._leid.packed,
+                reid=self._reid.packed, eid_type=self._leid.eid_type,
                 leid_len=self._leid.prefix_length,
                 reid_len=self._reid.prefix_length, vni=self._vni)
         self._test.registry.register(self, self.test.logger)
@@ -301,7 +303,7 @@ class VppLispAdjacency(VppObject):
             if eid.prefix_length != prefix_len:
                 return False
 
-        if str(eid) != eid_data[0:eid.data_length]:
+        if eid.packed != eid_data[0:eid.data_length]:
             return False
 
         return True
@@ -318,8 +320,8 @@ class VppLispAdjacency(VppObject):
 
     def remove_vpp_config(self):
         self.test.vapi.lisp_add_del_adjacency(
-                leid=str(self._leid),
-                reid=str(self._reid), eid_type=self._leid.eid_type,
+                leid=self._leid.packed,
+                reid=self._reid.packed, eid_type=self._leid.eid_type,
                 leid_len=self._leid.prefix_length,
                 reid_len=self._reid.prefix_length, vni=self._vni, is_add=0)
 

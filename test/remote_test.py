@@ -116,7 +116,7 @@ class RemoteClass(Process):
         if attr[0] == '_' or not self.is_alive():
             if hasattr(super(RemoteClass, self), '__getattr__'):
                 return super(RemoteClass, self).__getattr__(attr)
-            raise AttributeError
+            raise AttributeError("Attribute Error retrieving '%s'" % attr)
         return RemoteClassAttr(self, attr)
 
     def __setattr__(self, attr, val):
