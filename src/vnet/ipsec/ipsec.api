@@ -232,11 +232,6 @@ enum ipsec_sad_flags
   IPSEC_API_SAD_FLAG_IS_TUNNEL_V6 = 0x08,
   /* enable UDP encapsulation for NAT traversal */
   IPSEC_API_SAD_FLAG_UDP_ENCAP = 0x10,
-
-  /* come-on Ole please fix this */
-  IPSEC_API_SAD_COMBO_12 = 12,
-  IPSEC_API_SAD_COMBO_18 = 18,
-  IPSEC_API_SAD_COMBO_20 = 20,
 };
 
 enum ipsec_proto
