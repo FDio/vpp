@@ -599,7 +599,7 @@ nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
         case SNAT_PROTOCOL_##N: \
           ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
                   port_host_byte_order) == 1); \
-          clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, port, 0); \
+          clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, port_host_byte_order, 0); \
           a->busy_##n##_ports--; \
           a->busy_##n##_ports_per_thread[thread_index]--; \
           break;
