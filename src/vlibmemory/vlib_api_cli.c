@@ -818,6 +818,7 @@ vl_api_trace_command (vlib_main_t * vm,
       else if (unformat (input, "on"))
 	{
 	  vl_msg_api_trace_onoff (am, VL_API_TRACE_RX, 1);
+          vl_msg_api_trace_onoff (am, VL_API_TRACE_TX, 1);
 	}
       else if (unformat (input, "off"))
 	{
@@ -861,8 +862,8 @@ configure:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (trace, static) =
 {
-  .path = "set api-trace [on][on tx][on rx][off][free][debug on][debug off]",
-  .short_help = "API trace",
+  .path = "set api-trace",
+  .short_help = "API trace [on][on tx][on rx][off][free][debug on][debug off]",
   .function = vl_api_trace_command,
 };
 /* *INDENT-ON* */
