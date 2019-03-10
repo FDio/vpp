@@ -314,9 +314,6 @@ svm_msg_q_lock (svm_msg_q_t * mq)
 static inline void
 svm_msg_q_unlock (svm_msg_q_t * mq)
 {
-  /* The other side of the connection is not polling */
-  if (mq->q->cursize < (mq->q->maxsize / 8))
-    (void) pthread_cond_broadcast (&mq->q->condvar);
   pthread_mutex_unlock (&mq->q->mutex);
 }
 
