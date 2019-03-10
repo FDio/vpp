@@ -151,6 +151,7 @@ stat_segment_connect_r (const char *socket_name, stat_client_main_t * sm)
       return -5;
     }
 
+  close (mfd);
   sm->memory_size = st.st_size;
   sm->shared_header = memaddr;
   sm->directory_vector =
