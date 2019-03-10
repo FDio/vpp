@@ -11,6 +11,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsLabel, MplsLspMode, find_mpls_route
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP
@@ -1873,7 +1874,7 @@ class TestMPLSL2(VppTestCase):
             verify_mpls_stack(self, rx, mpls_labels)
 
             tx_eth = tx[Ether]
-            rx_eth = Ether(str(rx[MPLS].payload))
+            rx_eth = Ether(scapy.compat.raw(rx[MPLS].payload))
 
             self.assertEqual(rx_eth.src, tx_eth.src)
             self.assertEqual(rx_eth.dst, tx_eth.dst)

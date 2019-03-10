@@ -9,6 +9,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
     VppIpTable, DpoProto
 from vpp_papi import VppEnum
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP
@@ -1178,8 +1179,9 @@ class ARPTestCase(VppTestCase):
         #
         # change the interface's MAC
         #
-        mac = [chr(0x00), chr(0x00), chr(0x00),
-               chr(0x33), chr(0x33), chr(0x33)]
+        mac = [scapy.compat.chb(0x00), scapy.compat.chb(0x00),
+               scapy.compat.chb(0x00), scapy.compat.chb(0x33),
+               scapy.compat.chb(0x33), scapy.compat.chb(0x33)]
         mac_string = ''.join(mac)
 
         self.vapi.sw_interface_set_mac_address(self.pg1.sw_if_index,

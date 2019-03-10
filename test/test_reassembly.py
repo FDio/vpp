@@ -5,6 +5,7 @@ import six
 import unittest
 
 from parameterized import parameterized
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
 from scapy.layers.inet import IP, UDP, ICMP
@@ -258,7 +259,8 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         cls.pkt_infos = []
         for index, info in six.iteritems(infos):
             p = info.data
-            # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            # cls.logger.debug(ppp("Packet:",
+            #                      p.__class__(scapy.compat.raw(p))))
             fragments_400 = fragment_rfc791(p, 400)
             fragments_300 = fragment_rfc791(p, 300)
             fragments_200 = [
@@ -589,7 +591,8 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
         cls.pkt_infos = []
         for index, info in six.iteritems(infos):
             p = info.data
-            # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            # cls.logger.debug(ppp("Packet:",
+            #                      p.__class__(scapy.compat.raw(p))))
             fragments_400 = fragment_rfc8200(p, info.index, 400)
             fragments_300 = fragment_rfc8200(p, info.index, 300)
             cls.pkt_infos.append((index, fragments_400, fragments_300))
@@ -772,7 +775,7 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
              Raw())
         self.extend_packet(p, 1000, self.padding)
         fragments = fragment_rfc8200(p, 1, 500)
-        bad_fragment = p.__class__(str(fragments[1]))
+        bad_fragment = p.__class__(scapy.compat.raw(fragments[1]))
         bad_fragment[IPv6ExtHdrFragment].nh = 59
         bad_fragment[IPv6ExtHdrFragment].offset = 0
         self.pg_enable_capture()
@@ -880,7 +883,8 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
         cls.pkt_infos = []
         for index, info in six.iteritems(infos):
             p = info.data
-            # cls.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            # cls.logger.debug(ppp("Packet:",
+            #                      p.__class__(scapy.compat.raw(p))))
             fragments_300 = fragment_rfc791(p, 300)
             cls.pkt_infos.append((index, fragments_300))
         cls.fragments_300 = [x for (_, frags) in cls.pkt_infos for x in frags]

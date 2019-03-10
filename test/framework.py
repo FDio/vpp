@@ -18,6 +18,8 @@ from threading import Thread, Event
 from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
+
+import scapy.compat
 from scapy.packet import Raw
 from hook import StepHook, PollHook, VppDiedError
 from vpp_pg_interface import VppPGInterface
@@ -511,7 +513,11 @@ class VppTestCase(unittest.TestCase):
 
         if hasattr(cls, 'vpp'):
             if hasattr(cls, 'vapi'):
+                cls.logger.debug("Disconnecting class vapi client on %s",
+                                 cls.__name__)
                 cls.vapi.disconnect()
+                cls.logger.debug("Deleting class vapi attribute on %s",
+                                 cls.__name__)
                 del cls.vapi
             cls.vpp.poll()
             if cls.vpp.returncode is None:
@@ -519,6 +525,8 @@ class VppTestCase(unittest.TestCase):
                 cls.vpp.kill()
                 cls.logger.debug("Waiting for vpp to die")
                 cls.vpp.communicate()
+            cls.logger.debug("Deleting class vpp attribute on %s",
+                             cls.__name__)
             del cls.vpp
 
         if cls.vpp_startup_failed:
@@ -560,7 +568,6 @@ class VppTestCase(unittest.TestCase):
 
     def tearDown(self):
         """ Show various debug prints after each test """
-        super(VppTestCase, self).tearDown()
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
@@ -848,14 +855,14 @@ class VppTestCase(unittest.TestCase):
 
     def assert_packet_checksums_valid(self, packet,
                                       ignore_zero_udp_checksums=True):
-        received = packet.__class__(str(packet))
+        received = packet.__class__(scapy.compat.raw(packet))
         self.logger.debug(
             ppp("Verifying packet checksums for packet:", received))
         udp_layers = ['UDP', 'UDPerror']
         checksum_fields = ['cksum', 'chksum']
         checksums = []
         counter = 0
-        temp = received.__class__(str(received))
+        temp = received.__class__(scapy.compat.raw(received))
         while True:
             layer = temp.getlayer(counter)
             if layer:
@@ -872,7 +879,7 @@ class VppTestCase(unittest.TestCase):
             counter = counter + 1
         if 0 == len(checksums):
             return
-        temp = temp.__class__(str(temp))
+        temp = temp.__class__(scapy.compat.raw(temp))
         for layer, cf in checksums:
             calc_sum = getattr(temp[layer], cf)
             self.assert_equal(
@@ -889,9 +896,10 @@ class VppTestCase(unittest.TestCase):
         received_packet_checksum = getattr(received_packet[layer], field_name)
         if ignore_zero_checksum and 0 == received_packet_checksum:
             return
-        recalculated = received_packet.__class__(str(received_packet))
+        recalculated = received_packet.__class__(
+            scapy.compat.raw(received_packet))
         delattr(recalculated[layer], field_name)
-        recalculated = recalculated.__class__(str(recalculated))
+        recalculated = recalculated.__class__(scapy.compat.raw(recalculated))
         self.assert_equal(received_packet_checksum,
                           getattr(recalculated[layer], field_name),
                           "packet checksum on layer: %s" % layer)

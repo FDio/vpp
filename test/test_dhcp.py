@@ -8,6 +8,7 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
+import scapy.compat
 from scapy.layers.l2 import Ether, getmacbyip, ARP
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, in6_getnsmac
@@ -490,7 +491,7 @@ class TestDHCP(VppTestCase):
         #
         # 1. not our IP address = not checked by VPP? so offer is replayed
         #    to client
-        bad_ip = option_82[0:8] + chr(33) + option_82[9:]
+        bad_ip = option_82[0:8] + scapy.compat.chb(33) + option_82[9:]
 
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
@@ -504,7 +505,7 @@ class TestDHCP(VppTestCase):
                                         "DHCP offer option 82 bad address")
 
         # 2. Not a sw_if_index VPP knows
-        bad_if_index = option_82[0:2] + chr(33) + option_82[3:]
+        bad_if_index = option_82[0:2] + scapy.compat.chb(33) + option_82[3:]
 
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /

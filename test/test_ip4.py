@@ -4,6 +4,7 @@ import random
 import socket
 import unittest
 
+import scapy.compat
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
 from scapy.layers.l2 import Ether, Dot1Q, ARP
@@ -310,7 +311,7 @@ class TestIPv4FibCrud(VppTestCase):
         dest_addr_len = 32
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):
-            n_dest_addr = '{:08x}'.format(dest_addr).decode('hex')
+            n_dest_addr = binascii.unhexlify('{:08x}'.format(dest_addr))
             self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
                                        n_next_hop_addr)
             added_ips.append(socket.inet_ntoa(n_dest_addr))
@@ -325,7 +326,7 @@ class TestIPv4FibCrud(VppTestCase):
         dest_addr_len = 32
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):
-            n_dest_addr = '{:08x}'.format(dest_addr).decode('hex')
+            n_dest_addr = binascii.unhexlify('{:08x}'.format(dest_addr))
             self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
                                        n_next_hop_addr, is_add=0)
             removed_ips.append(socket.inet_ntoa(n_dest_addr))
