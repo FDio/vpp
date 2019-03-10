@@ -446,6 +446,8 @@ class VPPType(object):
             kwargs = data
         b = bytes()
 
+        from sys import stderr
+
         # Try one of the format functions
         if data and conversion_required(data, self.name):
             return conversion_packer(data, self.name)
@@ -464,10 +466,10 @@ class VPPType(object):
                 arg = data[a]
                 kwarg = kwargs[a] if a in kwargs else None
             if isinstance(self.packers[i], VPPType):
-                b += self.packers[i].pack(arg, kwarg)
+                x = self.packers[i].pack(arg, kwarg)
             else:
-                b += self.packers[i].pack(arg, kwargs)
-
+                x =  self.packers[i].pack(arg, kwargs)
+            b += x
         return b
 
     def unpack(self, data, offset=0, result=None, ntc=False):

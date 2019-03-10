@@ -1035,56 +1035,6 @@ class VppPapiProvider(object):
             self.papi.nat44_forwarding_enable_disable,
             {'enable': enable})
 
-    def nat_det_add_del_map(
-            self,
-            in_addr,
-            in_plen,
-            out_addr,
-            out_plen,
-            is_add=1):
-        """Add/delete deterministic NAT mapping
-
-        :param is_add - 1 if add, 0 if delete
-        :param in_addr - inside IP address
-        :param in_plen - inside IP address prefix length
-        :param out_addr - outside IP address
-        :param out_plen - outside IP address prefix length
-        """
-        return self.api(
-            self.papi.nat_det_add_del_map,
-            {'is_add': is_add,
-             'is_nat44': 1,
-             'in_addr': in_addr,
-             'in_plen': in_plen,
-             'out_addr': out_addr,
-             'out_plen': out_plen})
-
-    def nat_det_forward(
-            self,
-            in_addr):
-        """Get outside address and port range from inside address
-
-        :param in_addr - inside IP address
-        """
-        return self.api(
-            self.papi.nat_det_forward,
-            {'in_addr': in_addr,
-             'is_nat44': 1})
-
-    def nat_det_reverse(
-            self,
-            out_addr,
-            out_port):
-        """Get inside address from outside address and port
-
-        :param out_addr - outside IP address
-        :param out_port - outside port
-        """
-        return self.api(
-            self.papi.nat_det_reverse,
-            {'out_addr': out_addr,
-             'out_port': out_port})
-
     def nat_det_map_dump(self):
         """Dump deterministic NAT mappings
 
@@ -1101,40 +1051,6 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.nat_set_mss_clamping,
             {'enable': enable, 'mss_value': mss_value})
-
-    def nat_det_close_session_in(
-            self,
-            in_addr,
-            in_port,
-            ext_addr,
-            ext_port):
-        """Close deterministic NAT session using inside address and port
-
-        :param in_addr - inside IP address
-        :param in_port - inside port
-        :param ext_addr - external host IP address
-        :param ext_port - external host port
-        """
-        return self.api(
-            self.papi.nat_det_close_session_in,
-            {'in_addr': in_addr,
-             'in_port': in_port,
-             'ext_addr': ext_addr,
-             'ext_port': ext_port,
-             'is_nat44': 1})
-
-    def nat_det_session_dump(
-            self,
-            user_addr):
-        """Dump deterministic NAT sessions belonging to a user
-
-        :param user_addr - inside IP address of the user
-        :return: Dictionary of deterministic NAT sessions
-        """
-        return self.api(
-            self.papi.nat_det_session_dump,
-            {'is_nat44': 1,
-             'user_addr': user_addr})
 
     def nat64_add_del_interface(
             self,
@@ -1197,7 +1113,7 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat64_st_dump, {'proto': protocol})
 
-    def nat64_add_del_prefix(self, prefix, plen, vrf_id=0, is_add=1):
+    def nat64_add_del_prefix(self, prefix, vrf_id=0, is_add=1):
         """Add/del NAT64 prefix
 
         :param prefix: NAT64 prefix
@@ -1208,7 +1124,6 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.nat64_add_del_prefix,
             {'prefix': prefix,
-             'prefix_len': plen,
              'vrf_id': vrf_id,
              'is_add': is_add})
 

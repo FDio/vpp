@@ -473,7 +473,7 @@ static void vl_api_nat44_interface_details_t_handler
   vat_main_t *vam = sm->vat_main;
 
   fformat (vam->ofp, "sw_if_index %d %s\n", ntohl (mp->sw_if_index),
-           mp->is_inside ? "in" : "out");
+           mp->applied_to ? "in" : "out");
 }
 
 static int api_nat44_interface_dump(vat_main_t * vam)
