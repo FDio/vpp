@@ -52,17 +52,17 @@ class VppInterface(object):
     @property
     def local_ip4n(self):
         """Local IPv4 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET, self._local_ip4)
+        return self._local_ip4n
 
     @property
     def remote_ip4(self):
         """IPv4 address of remote peer "connected" to this interface."""
-        return self._remote_hosts[0].ip4
+        return self._remote_ip4
 
     @property
     def remote_ip4n(self):
         """IPv4 address of remote peer - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET, self.remote_ip4)
+        return self._remote_ip4n
 
     @property
     def local_ip6(self):
@@ -72,17 +72,17 @@ class VppInterface(object):
     @property
     def local_ip6n(self):
         """Local IPv6 address - raw, suitable as API parameter."""
-        return socket.inet_pton(socket.AF_INET6, self.local_ip6)
+        return self._local_ip6n
 
     @property
     def remote_ip6(self):
         """IPv6 address of remote peer "connected" to this interface."""
-        return self._remote_hosts[0].ip6
+        return self._remote_ip6
 
     @property
     def remote_ip6n(self):
         """IPv6 address of remote peer - raw, suitable as API parameter"""
-        return socket.inet_pton(socket.AF_INET6, self.remote_ip6)
+        return self._remote_ip6n
 
     @property
     def local_ip6_ll(self):
@@ -182,6 +182,18 @@ class VppInterface(object):
             self._hosts_by_ip4[ip4] = host
             self._hosts_by_ip6[ip6] = host
 
+        self._remote_ip4 = self._remote_hosts[0].ip4
+        self._remote_ip4n = socket.inet_pton(socket.AF_INET,
+                                             self._remote_hosts[0].ip4)
+
+        self._remote_ip6 = self._remote_hosts[0].ip6
+        self._remote_ip6n = socket.inet_pton(socket.AF_INET6, self._remote_ip6)
+
+        self._remote_addr = {socket.AF_INET: self._remote_ip4,
+                             socket.AF_INET6: self._remote_ip6}
+        self._remote_addr_n = {socket.AF_INET: self._remote_ip4n,
+                               socket.AF_INET6: self._remote_ip6n}
+
     @abc.abstractmethod
     def __init__(self, test):
         self._test = test
@@ -203,7 +215,7 @@ class VppInterface(object):
         self.generate_remote_hosts()
 
         self._local_ip4 = "172.16.%u.1" % self.sw_if_index
-        self._local_ip4n = socket.inet_pton(socket.AF_INET, self.local_ip4)
+        self._local_ip4n = socket.inet_pton(socket.AF_INET, self._local_ip4)
         self._local_ip4_subnet = "172.16.%u.0" % self.sw_if_index
         self._local_ip4n_subnet = socket.inet_pton(socket.AF_INET,
                                                    self._local_ip4_subnet)
@@ -215,19 +227,15 @@ class VppInterface(object):
         self.ip4_table_id = 0
 
         self._local_ip6 = "fd01:%x::1" % self.sw_if_index
-        self._local_ip6n = socket.inet_pton(socket.AF_INET6, self.local_ip6)
+        self._local_ip6n = socket.inet_pton(socket.AF_INET6, self._local_ip6)
         self.local_ip6_prefix_len = 64
         self.has_ip6_config = False
         self.ip6_table_id = 0
 
-        self._local_addr = {socket.AF_INET: self.local_ip4,
-                            socket.AF_INET6: self.local_ip6}
-        self._local_addr_n = {socket.AF_INET: self.local_ip4n,
-                              socket.AF_INET6: self.local_ip6n}
-        self._remote_addr = {socket.AF_INET: self.remote_ip4,
-                             socket.AF_INET6: self.remote_ip6}
-        self._remote_addr_n = {socket.AF_INET: self.remote_ip4n,
-                               socket.AF_INET6: self.remote_ip6n}
+        self._local_addr = {socket.AF_INET: self._local_ip4,
+                            socket.AF_INET6: self._local_ip6}
+        self._local_addr_n = {socket.AF_INET: self._local_ip4n,
+                              socket.AF_INET6: self._local_ip6n}
 
         r = self.test.vapi.sw_interface_dump()
         for intf in r:
