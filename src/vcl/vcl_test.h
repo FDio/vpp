@@ -509,6 +509,7 @@ vcl_test_write (int fd, uint8_t * buf, uint32_t nbytes,
       if (tx_bytes != nbytes)
 	{
 	  nbytes_left = nbytes_left - rv;
+	  buf += rv;
 	  if (stats)
 	    stats->tx_incomp++;
 	}
