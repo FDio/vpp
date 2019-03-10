@@ -3457,7 +3457,7 @@ _(NAT66_STATIC_MAPPING_DUMP, nat66_static_mapping_dump)
 static clib_error_t *
 snat_plugin_api_hookup (vlib_main_t * vm)
 {
-  snat_main_t *sm __attribute__ ((unused)) = &snat_main;
+  snat_main_t *sm __attribute__((unused)) = &snat_main;
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
                            #n,					\

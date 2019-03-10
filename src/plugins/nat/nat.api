@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-option version = "4.1.0";
+option version = "4.2.0";
 import "vnet/ip/ip_types.api";
+import "vnet/interface_types.api";
 
 /**
  * @file nat.api
@@ -505,8 +506,8 @@ service {
 autoreply define nat44_add_del_address_range {
   u32 client_index;
   u32 context;
-  u8 first_ip_address[4];
-  u8 last_ip_address[4];
+  vl_api_ip4_address_t first_ip_address;
+  vl_api_ip4_address_t last_ip_address;
   u32 vrf_id;
   u8 twice_nat;
   u8 is_add;
@@ -529,7 +530,7 @@ define nat44_address_dump {
 */
 define nat44_address_details {
   u32 context;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
   u8 twice_nat;
   u32 vrf_id;
 };
@@ -546,7 +547,7 @@ autoreply define nat44_interface_add_del_feature {
   u32 context;
   u8 is_add;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump interfaces with NAT44 feature
@@ -566,7 +567,7 @@ define nat44_interface_dump {
 define nat44_interface_details {
   u32 context;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Enable/disbale NAT44 as an interface output feature (postrouting
@@ -582,7 +583,7 @@ autoreply define nat44_interface_add_del_output_feature {
   u32 context;
   u8 is_add;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump interfaces with NAT44 output feature
@@ -602,7 +603,7 @@ define nat44_interface_output_feature_dump {
 define nat44_interface_output_feature_details {
   u32 context;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Add/delete NAT44 static mapping
@@ -632,12 +633,12 @@ autoreply define nat44_add_del_static_mapping {
   u32 context;
   u8 is_add;
   u8 addr_only;
-  u8 local_ip_address[4];
-  u8 external_ip_address[4];
+  vl_api_ip4_address_t local_ip_address;
+  vl_api_ip4_address_t external_ip_address;
   u8 protocol;
   u16 local_port;
   u16 external_port;
-  u32 external_sw_if_index;
+  vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
   u8 twice_nat;
   u8 self_twice_nat;
@@ -674,12 +675,12 @@ define nat44_static_mapping_dump {
 define nat44_static_mapping_details {
   u32 context;
   u8 addr_only;
-  u8 local_ip_address[4];
-  u8 external_ip_address[4];
+  vl_api_ip4_address_t local_ip_address;
+  vl_api_ip4_address_t external_ip_address;
   u8 protocol;
   u16 local_port;
   u16 external_port;
-  u32 external_sw_if_index;
+  vl_api_interface_index_t external_sw_if_index;
   u32 vrf_id;
   u8 twice_nat;
   u8 self_twice_nat;
@@ -705,10 +706,10 @@ autoreply define nat44_add_del_identity_mapping {
   u32 context;
   u8 is_add;
   u8 addr_only;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
   u8 protocol;
   u16 port;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
   u8 tag[64];
 };
@@ -735,10 +736,10 @@ define nat44_identity_mapping_dump {
 define nat44_identity_mapping_details {
   u32 context;
   u8 addr_only;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
   u8 protocol;
   u16 port;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u32 vrf_id;
   u8 tag[64];
 };
@@ -755,7 +756,7 @@ autoreply define nat44_add_del_interface_addr {
   u32 context;
   u8 is_add;
   u8 twice_nat;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump NAT44 pool addresses interfaces
@@ -774,7 +775,7 @@ define nat44_interface_addr_dump {
 */
 define nat44_interface_addr_details {
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 twice_nat;
 };
 
@@ -797,7 +798,7 @@ define nat44_user_dump {
 define nat44_user_details {
   u32 context;
   u32 vrf_id;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
   u32 nsessions;
   u32 nstaticsessions;
 };
@@ -805,14 +806,13 @@ define nat44_user_details {
 /** \brief NAT44 user's sessions
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_ip4 - 1 if address type is IPv4
-    @param user_ip - IP address of the user to dump
+    @param ip_address - IPv4 address of the user to dump
     @param vrf_id - VRF_ID
 */
 define nat44_user_session_dump {
   u32 client_index;
   u32 context;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
   u32 vrf_id;
 };
 
@@ -838,9 +838,9 @@ define nat44_user_session_dump {
 */
 define nat44_user_session_details {
   u32 context;
-  u8 outside_ip_address[4];
+  vl_api_ip4_address_t outside_ip_address;
   u16 outside_port;
-  u8 inside_ip_address[4];
+  vl_api_ip4_address_t inside_ip_address;
   u16 inside_port;
   u16 protocol;
   u8 is_static;
@@ -849,9 +849,9 @@ define nat44_user_session_details {
   u32 total_pkts;
   u8 is_twicenat;
   u8 ext_host_valid;
-  u8 ext_host_address[4];
+  vl_api_ip4_address_t ext_host_address;
   u16 ext_host_port;
-  u8 ext_host_nat_address[4];
+  vl_api_ip4_address_t ext_host_nat_address;
   u16 ext_host_nat_port;
 };
 
@@ -861,7 +861,7 @@ define nat44_user_session_details {
     @param probability - probability of the internal node to be randomly matched
 */
 typeonly manual_endian define nat44_lb_addr_port {
-  u8 addr[4];
+  vl_api_ip4_address_t addr;
   u16 port;
   u8 probability;
   u32 vrf_id;
@@ -889,7 +889,7 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u32 client_index;
   u32 context;
   u8 is_add;
-  u8 external_addr[4];
+  vl_api_ip4_address_t external_addr;
   u16 external_port;
   u8 protocol;
   u8 twice_nat;
@@ -914,7 +914,7 @@ autoreply define nat44_lb_static_mapping_add_del_local {
   u32 client_index;
   u32 context;
   u8 is_add;
-  u8 external_addr[4];
+  vl_api_ip4_address_t external_addr;
   u16 external_port;
   u8 protocol;
   vl_api_nat44_lb_addr_port_t local;
@@ -948,7 +948,7 @@ define nat44_lb_static_mapping_dump {
 */
 manual_endian define nat44_lb_static_mapping_details {
   u32 context;
-  u8 external_addr[4];
+  vl_api_ip4_address_t external_addr;
   u16 external_port;
   u8 protocol;
   u8 twice_nat;
@@ -976,12 +976,12 @@ autoreply define nat44_del_session {
   u32 client_index;
   u32 context;
   u8 is_in;
-  u8 address[4];
+  vl_api_ip4_address_t address;
   u8 protocol;
   u16 port;
   u32 vrf_id;
   u8 ext_host_valid;
-  u8 ext_host_address[4];
+  vl_api_ip4_address_t ext_host_address;
   u16 ext_host_port;
 };
 
@@ -1039,7 +1039,7 @@ autoreply define nat_det_add_del_map {
   u8 addr_only;
   u8 in_addr[16];
   u8 in_plen;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
   u8 out_plen;
 };
 
@@ -1068,7 +1068,7 @@ define nat_det_forward_reply {
   i32 retval;
   u16 out_port_lo;
   u16 out_port_hi;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
 };
 
 /** \brief Get inside address from outside address and port
@@ -1081,7 +1081,7 @@ define nat_det_reverse {
   u32 client_index;
   u32 context;
   u16 out_port;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
 };
 
 /** \brief Get inside address from outside address and port reply
@@ -1122,7 +1122,7 @@ define nat_det_map_details {
   u8 is_nat44;
   u8 in_addr[16];
   u8 in_plen;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
   u8 out_plen;
   u32 sharing_ratio;
   u16 ports_per_host;
@@ -1140,9 +1140,9 @@ define nat_det_map_details {
 autoreply define nat_det_close_session_out {
   u32 client_index;
   u32 context;
-  u8 out_addr[4];
+  vl_api_ip4_address_t out_addr;
   u16 out_port;
-  u8 ext_addr[4];
+  vl_api_ip4_address_t ext_addr;
   u16 ext_port;
 };
 
@@ -1181,7 +1181,7 @@ define nat_det_session_dump {
 /** \brief Deterministic NAT sessions reply
     @param context - sender context, to match reply w/ request
     @param in_port - inside port
-    @param ext_addr - external host address
+    @param ext_addr - external host IPv4 address
     @param ext_port - external host port
     @param out_port - outside NAT port
     @param state - session state
@@ -1190,7 +1190,7 @@ define nat_det_session_dump {
 define nat_det_session_details {
   u32 context;
   u16 in_port;
-  u8 ext_addr[4];
+  vl_api_ip4_address_t ext_addr;
   u16 ext_port;
   u16 out_port;
   u8 state;
@@ -1204,16 +1204,16 @@ define nat_det_session_details {
 /** \brief Add/delete address range to NAT64 pool
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param start_addr - start address of the range
-    @param end_addr - end address of the range
+    @param start_addr - start IPv4 address of the range
+    @param end_addr - end IPv4 address of the range
     @param vrf_id - VRF id of tenant, ~0 means independent of VRF
     @param is_add - 1 if add, 0 if delete
 */
 autoreply define nat64_add_del_pool_addr_range {
   u32 client_index;
   u32 context;
-  u8 start_addr[4];
-  u8 end_addr[4];
+  vl_api_ip4_address_t start_addr;
+  vl_api_ip4_address_t end_addr;
   u32 vrf_id;
   u8 is_add;
 };
@@ -1234,7 +1234,7 @@ define nat64_pool_addr_dump {
 */
 define nat64_pool_addr_details {
   u32 context;
-  u8 address[4];
+  vl_api_ip4_address_t address;
   u32 vrf_id;
 };
 
@@ -1248,7 +1248,7 @@ define nat64_pool_addr_details {
 autoreply define nat64_add_del_interface {
   u32 client_index;
   u32 context;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
   u8 is_inside;
   u8 is_add;
 };
@@ -1270,7 +1270,7 @@ define nat64_interface_dump {
 define nat64_interface_details {
   u32 context;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Add/delete NAT64 static BIB entry
@@ -1287,8 +1287,8 @@ define nat64_interface_details {
  autoreply define nat64_add_del_static_bib {
   u32 client_index;
   u32 context;
-  u8 i_addr[16];
-  u8 o_addr[4];
+  vl_api_ip6_address_t i_addr;
+  vl_api_ip4_address_t o_addr;
   u16 i_port;
   u16 o_port;
   u32 vrf_id;
@@ -1324,8 +1324,8 @@ define nat64_bib_dump {
 */
 define nat64_bib_details {
   u32 context;
-  u8 i_addr[16];
-  u8 o_addr[4];
+  vl_api_ip6_address_t i_addr;
+  vl_api_ip4_address_t o_addr;
   u16 i_port;
   u16 o_port;
   u32 vrf_id;
@@ -1363,12 +1363,12 @@ define nat64_st_dump {
 */
 define nat64_st_details {
   u32 context;
-  u8 il_addr[16];
-  u8 ol_addr[4];
+  vl_api_ip6_address_t il_addr;
+  vl_api_ip4_address_t ol_addr;
   u16 il_port;
   u16 ol_port;
-  u8 ir_addr[16];
-  u8 or_addr[4];
+  vl_api_ip6_address_t ir_addr;
+  vl_api_ip4_address_t or_addr;
   u16 r_port;
   u32 vrf_id;
   u8 proto;
@@ -1378,14 +1378,14 @@ define nat64_st_details {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param prefix - NAT64 prefix
-    @param prefix - NAT64 prefix length
+    @param prefix_len - NAT64 prefix length
     @param vrf_id - VRF id of tenant
     @param is_add - 1 if add, 0 if delete
 */
 autoreply define nat64_add_del_prefix {
   u32 client_index;
   u32 context;
-  u8 prefix[16];
+  vl_api_ip6_address_t prefix;
   u8 prefix_len;
   u32 vrf_id;
   u8 is_add;
@@ -1403,12 +1403,12 @@ define nat64_prefix_dump {
 /** \brief Dump NAT64 prefix details response
     @param context - sender context, to match reply w/ request
     @param prefix - NAT64 prefix
-    @param prefix - NAT64 prefix length
+    @param prefix_len - NAT64 prefix length
     @param vrf_id - VRF id of tenant
 */
 define nat64_prefix_details {
   u32 context;
-  u8 prefix[16];
+  vl_api_ip6_address_t prefix;
   u8 prefix_len;
   u32 vrf_id;
 };
@@ -1424,7 +1424,7 @@ autoreply define nat64_add_del_interface_addr {
   u32 context;
   u8 is_add;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 
@@ -1435,15 +1435,15 @@ autoreply define nat64_add_del_interface_addr {
 /** \brief Add/delete address range to DS-Lite pool
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param start_addr - start address of the range
-    @param end_addr - end address of the range
+    @param start_addr - start IPv4 address of the range
+    @param end_addr - end IPv4 address of the range
     @param is_add - 1 if add, 0 if delete
 */
 autoreply define dslite_add_del_pool_addr_range {
   u32 client_index;
   u32 context;
-  u8 start_addr[4];
-  u8 end_addr[4];
+  vl_api_ip4_address_t start_addr;
+  vl_api_ip4_address_t end_addr;
   u8 is_add;
 };
 
@@ -1462,7 +1462,7 @@ define dslite_address_dump {
 */
 define dslite_address_details {
   u32 context;
-  u8 ip_address[4];
+  vl_api_ip4_address_t ip_address;
 };
 
 /** \brief Set AFTR IPv6 and IPv4 addresses
@@ -1474,8 +1474,8 @@ define dslite_address_details {
 autoreply define dslite_set_aftr_addr {
   u32 client_index;
   u32 context;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /** \brief Get AFTR IPv6 and IPv4 addresses
@@ -1496,8 +1496,8 @@ define dslite_get_aftr_addr {
 define dslite_get_aftr_addr_reply {
   u32 context;
   i32 retval;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /** \brief Set B4 IPv6 and IPv4 addresses
@@ -1509,8 +1509,8 @@ define dslite_get_aftr_addr_reply {
 autoreply define dslite_set_b4_addr {
   u32 client_index;
   u32 context;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /** \brief Get B4 IPv6 and IPv4 addresses
@@ -1531,8 +1531,8 @@ define dslite_get_b4_addr {
 define dslite_get_b4_addr_reply {
   u32 context;
   i32 retval;
-  u8 ip4_addr[4];
-  u8 ip6_addr[16];
+  vl_api_ip4_address_t ip4_addr;
+  vl_api_ip6_address_t ip6_addr;
 };
 
 /*
@@ -1550,7 +1550,7 @@ autoreply define nat66_add_del_interface {
   u32 context;
   u8 is_add;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Dump interfaces with NAT66 feature
@@ -1570,7 +1570,7 @@ define nat66_interface_dump {
 define nat66_interface_details {
   u32 context;
   u8 is_inside;
-  u32 sw_if_index;
+  vl_api_interface_index_t sw_if_index;
 };
 
 /** \brief Add/delete 1:1 NAT66
@@ -1585,8 +1585,8 @@ autoreply define nat66_add_del_static_mapping {
   u32 client_index;
   u32 context;
   u8 is_add;
-  u8 local_ip_address[16];
-  u8 external_ip_address[16];
+  vl_api_ip6_address_t local_ip_address;
+  vl_api_ip6_address_t external_ip_address;
   u32 vrf_id;
 };
 
@@ -1609,8 +1609,8 @@ define nat66_static_mapping_dump {
 */
 define nat66_static_mapping_details {
   u32 context;
-  u8 local_ip_address[16];
-  u8 external_ip_address[16];
+  vl_api_ip6_address_t local_ip_address;
+  vl_api_ip6_address_t external_ip_address;
   u32 vrf_id;
   u64 total_bytes;
   u64 total_pkts;
