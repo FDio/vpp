@@ -4,6 +4,7 @@ import socket
 import unittest
 
 from parameterized import parameterized
+import scapy.compat
 import scapy.layers.inet6 as inet6
 from scapy.contrib.mpls import MPLS
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_RS, \

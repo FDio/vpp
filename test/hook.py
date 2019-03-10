@@ -5,6 +5,9 @@ import traceback
 from log import RED, single_line_delim, double_line_delim
 import ipaddress
 from subprocess import check_output, CalledProcessError
+
+import scapy.compat
+
 from util import check_core_path, get_core_path
 
 
@@ -31,7 +34,7 @@ class Hook(object):
                 return val
             if len(val) == 6:
                 return '{!s} ({!s})'.format(val, ':'.join(['{:02x}'.format(
-                    ord(x)) for x in val]))
+                    scapy.compat.orb(x)) for x in val]))
             try:
                 # we don't call test_type(val) because it is a packed value.
                 return '{!s} ({!s})'.format(val, str(

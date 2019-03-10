@@ -2,9 +2,11 @@
 
 import socket
 
+import scapy.compat
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import ICMP, IP, TCP, UDP
 from scapy.layers.ipsec import SecurityAssociation, ESP
+
 from util import ppp, ppc
 from template_ipsec import TemplateIpsec
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
@@ -126,9 +128,9 @@ class IPSecNATTestCase(TemplateIpsec):
     def verify_capture_encrypted(self, capture, sa):
         for packet in capture:
             try:
-                copy = packet.__class__(str(packet))
+                copy = packet.__class__(scapy.compat.raw(packet))
                 del copy[UDP].len
-                copy = packet.__class__(str(copy))
+                copy = packet.__class__(scapy.compat.raw(copy))
                 self.assert_equal(packet[UDP].len, copy[UDP].len,
                                   "UDP header length")
                 self.assert_packet_checksums_valid(packet)

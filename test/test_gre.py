@@ -2,6 +2,7 @@
 
 import unittest
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.layers.inet import IP, UDP
@@ -146,7 +147,8 @@ class TestGRE(VppTestCase):
                  GRE() /
                  Ether(dst=RandMAC('*:*:*:*:*:*'),
                        src=RandMAC('*:*:*:*:*:*')) /
-                 IP(src=str(RandIP()), dst=str(RandIP())) /
+                 IP(src=scapy.compat.raw(RandIP()),
+                    dst=scapy.compat.raw(RandIP())) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
@@ -165,7 +167,8 @@ class TestGRE(VppTestCase):
                  Ether(dst=RandMAC('*:*:*:*:*:*'),
                        src=RandMAC('*:*:*:*:*:*')) /
                  Dot1Q(vlan=vlan) /
-                 IP(src=str(RandIP()), dst=str(RandIP())) /
+                 IP(src=scapy.compat.raw(RandIP()),
+                    dst=scapy.compat.raw(RandIP())) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
@@ -217,7 +220,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.src, tunnel_src)
                 self.assertEqual(rx_ip.dst, tunnel_dst)
 
-                rx_gre = GRE(str(rx_ip[IPv6].payload))
+                rx_gre = GRE(scapy.compat.raw(rx_ip[IPv6].payload))
                 rx_ip = rx_gre[IPv6]
 
                 self.assertEqual(rx_ip.src, tx_ip.src)
@@ -243,7 +246,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.src, tunnel_src)
                 self.assertEqual(rx_ip.dst, tunnel_dst)
 
-                rx_gre = GRE(str(rx_ip[IPv6].payload))
+                rx_gre = GRE(scapy.compat.raw(rx_ip[IPv6].payload))
                 tx_ip = tx[IP]
                 rx_ip = rx_gre[IP]
 
@@ -270,7 +273,7 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.src, tunnel_src)
                 self.assertEqual(rx_ip.dst, tunnel_dst)
 
-                rx_gre = GRE(str(rx_ip[IP].payload))
+                rx_gre = GRE(scapy.compat.raw(rx_ip[IP].payload))
                 rx_ip = rx_gre[IPv6]
                 tx_ip = tx[IPv6]
 

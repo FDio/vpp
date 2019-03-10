@@ -3,6 +3,8 @@ import time
 import socket
 import struct
 from traceback import format_exc, format_stack
+
+import scapy.compat
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
 from vpp_interface import VppInterface
@@ -414,7 +416,7 @@ class VppPGInterface(VppInterface):
         # Make Dot1AD packet content recognizable to scapy
         if arp_reply.type == 0x88a8:
             arp_reply.type = 0x8100
-            arp_reply = Ether(str(arp_reply))
+            arp_reply = Ether(scapy.compat.raw(arp_reply))
         try:
             if arp_reply[ARP].op == ARP.is_at:
                 self.test.logger.info("VPP %s MAC address is %s " %
@@ -460,8 +462,11 @@ class VppPGInterface(VppInterface):
             ndp_reply = captured_packet.copy()  # keep original for exception
             # Make Dot1AD packet content recognizable to scapy
             if ndp_reply.type == 0x88a8:
+                self._test.logger.info(
+                    "Replacing EtherType: 0x88a8 with "
+                    "0x8100 and regenerating Ethernet header. ")
                 ndp_reply.type = 0x8100
-                ndp_reply = Ether(str(ndp_reply))
+                ndp_reply = Ether(scapy.compat.raw(ndp_reply))
             try:
                 ndp_na = ndp_reply[ICMPv6ND_NA]
                 opt = ndp_na[ICMPv6NDOptDstLLAddr]
