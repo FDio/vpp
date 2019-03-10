@@ -46,6 +46,30 @@
       "revId": "be90b41ccf66d18955de58f67571a02e38bf682e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f5ade169_914021d3",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 965,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-03-10T19:11:33Z",
+      "side": 1,
+      "message": "Hi Paul,\n\nYou\u0027re much more experienced with python than I am, so whatever you think works, works for me :-)\n\nMy comment was purely a cosmetic one. That is, instead of doing self.sleep(0) to yield the cpu in the tests, I was thinking we could do self.yield(). Then, underneath, do what you\u0027re proposing above, at least until we complete the transition to python3.",
+      "parentUuid": "a80cda70_86cc2aca",
+      "range": {
+        "startLine": 959,
+        "startChar": 0,
+        "endLine": 965,
+        "endChar": 18
+      },
+      "revId": "be90b41ccf66d18955de58f67571a02e38bf682e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
