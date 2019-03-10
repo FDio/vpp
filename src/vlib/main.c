@@ -91,10 +91,11 @@ vlib_frame_find_magic (vlib_frame_t * f, vlib_node_t * node)
   return p;
 }
 
-static vlib_frame_size_t *
+static inline vlib_frame_size_t *
 get_frame_size_info (vlib_node_main_t * nm,
 		     u32 n_scalar_bytes, u32 n_vector_bytes)
 {
+#ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
   uword key = (n_scalar_bytes << 16) | n_vector_bytes;
   uword *p, i;
 
@@ -109,6 +110,11 @@ get_frame_size_info (vlib_node_main_t * nm,
     }
 
   return vec_elt_at_index (nm->frame_sizes, i);
+#else
+  ASSERT (vlib_frame_bytes (n_scalar_bytes, n_vector_bytes)
+	  == (vlib_frame_bytes (0, 4)));
+  return vec_elt_at_index (nm->frame_sizes, 0);
+#endif
 }
 
 static u32

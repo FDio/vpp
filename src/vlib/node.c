@@ -635,7 +635,9 @@ vlib_node_main_init (vlib_main_t * vm)
   vlib_node_t *n;
   uword ni;
 
+#ifdef VLIB_SUPPORTS_ARBITRARY_SCALAR_SIZES
   nm->frame_size_hash = hash_create (0, sizeof (uword));
+#endif
   nm->flags |= VLIB_NODE_MAIN_RUNTIME_STARTED;
 
   /* Generate sibling relationships */
