@@ -1065,7 +1065,7 @@ class BFD4TestCase(VppTestCase):
             / USEC_IN_SEC
         count = 0
         for dummy in range(self.test_session.detect_mult * 2):
-            time.sleep(transmit_time)
+            self.sleep(transmit_time)
             self.test_session.send_packet(demand)
             try:
                 p = wait_for_bfd_packet(self, timeout=0)
@@ -1448,7 +1448,7 @@ class BFD4TestCase(VppTestCase):
             / USEC_IN_SEC
         count = 0
         for dummy in range(self.test_session.detect_mult * 2):
-            time.sleep(transmit_time)
+            self.sleep(transmit_time)
             self.test_session.send_packet(demand)
             try:
                 p = wait_for_bfd_packet(self, timeout=0)

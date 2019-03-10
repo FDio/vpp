@@ -390,7 +390,7 @@ class VppTestCase(unittest.TestCase):
             if os.path.exists(cls.stats_sock):
                 ok = True
                 break
-            time.sleep(0.8)
+            cls.sleep(0.8)
         if not ok:
             cls.logger.critical("Couldn't stat : {}".format(cls.stats_sock))
 
@@ -951,13 +951,26 @@ class VppTestCase(unittest.TestCase):
 
     @classmethod
     def sleep(cls, timeout, remark=None):
+
+        # /* Allow sleep(0) to maintain win32 semantics, and as decreed
+        #  * by Guido, only the main thread can be interrupted.
+        # */
+        # https://github.com/python/cpython/blob/6673decfa0fb078f60587f5cb5e98460eea137c2/Modules/timemodule.c#L1892  # noqa
+        if timeout == 0:
+            # yield quantum
+            if hasattr(os, 'sched_yield'):
+                os.sched_yield()
+            else:
+                time.sleep(0)
+            return
+
         if hasattr(cls, 'logger'):
             cls.logger.debug("Starting sleep for %es (%s)", timeout, remark)
         before = time.time()
         time.sleep(timeout)
         after = time.time()
         if hasattr(cls, 'logger') and after - before > 2 * timeout:
-            cls.logger.error("unexpected time.sleep() result - "
+            cls.logger.error("unexpected self.sleep() result - "
                              "slept for %es instead of ~%es!",
                              after - before, timeout)
         if hasattr(cls, 'logger'):
