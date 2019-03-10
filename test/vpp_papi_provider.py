@@ -1051,7 +1051,6 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.nat_det_add_del_map,
             {'is_add': is_add,
-             'is_nat44': 1,
              'in_addr': in_addr,
              'in_plen': in_plen,
              'out_addr': out_addr,
@@ -1066,8 +1065,7 @@ class VppPapiProvider(object):
         """
         return self.api(
             self.papi.nat_det_forward,
-            {'in_addr': in_addr,
-             'is_nat44': 1})
+            {'in_addr': in_addr})
 
     def nat_det_reverse(
             self,
@@ -1118,8 +1116,7 @@ class VppPapiProvider(object):
             {'in_addr': in_addr,
              'in_port': in_port,
              'ext_addr': ext_addr,
-             'ext_port': ext_port,
-             'is_nat44': 1})
+             'ext_port': ext_port})
 
     def nat_det_session_dump(
             self,
@@ -1131,8 +1128,7 @@ class VppPapiProvider(object):
         """
         return self.api(
             self.papi.nat_det_session_dump,
-            {'is_nat44': 1,
-             'user_addr': user_addr})
+            {'user_addr': user_addr})
 
     def nat64_add_del_interface(
             self,
@@ -1195,7 +1191,7 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat64_st_dump, {'proto': protocol})
 
-    def nat64_add_del_prefix(self, prefix, plen, vrf_id=0, is_add=1):
+    def nat64_add_del_prefix(self, prefix, vrf_id=0, is_add=1):
         """Add/del NAT64 prefix
 
         :param prefix: NAT64 prefix
@@ -1206,7 +1202,6 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.nat64_add_del_prefix,
             {'prefix': prefix,
-             'prefix_len': plen,
              'vrf_id': vrf_id,
              'is_add': is_add})
 
