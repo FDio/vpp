@@ -285,7 +285,7 @@ class VppPGInterface(VppInterface):
         while time.time() < deadline:
             if os.path.isfile(self.out_path):
                 break
-            time.sleep(0)  # yield
+            self._test.sleep(0)  # yield
         if os.path.isfile(self.out_path):
             self.test.logger.debug("Capture file appeared after %fs" %
                                    (time.time() - (deadline - timeout)))
@@ -353,7 +353,7 @@ class VppPGInterface(VppInterface):
             self.test.logger.debug("Polling for packet")
         while time.time() < deadline or poll:
             if not self.verify_enough_packet_data_in_pcap():
-                time.sleep(0)  # yield
+                self._test.sleep(0)  # yield
                 poll = False
                 continue
             p = self._pcap_reader.recv()
@@ -367,7 +367,7 @@ class VppPGInterface(VppInterface):
                         "Packet received after %fs" %
                         (time.time() - (deadline - timeout)))
                     return p
-            time.sleep(0)  # yield
+            self._test.sleep(0)  # yield
             poll = False
         self.test.logger.debug("Timeout - no packets received")
         raise CaptureTimeoutError("Packet didn't arrive within timeout")

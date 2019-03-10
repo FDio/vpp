@@ -303,7 +303,7 @@ class VppPapiProvider(object):
                 self.test_class.logger.debug("Returning event %s:%s" %
                                              (name, e))
                 return e
-            time.sleep(0)  # yield
+            self.test_class.sleep(0)  # yield
         raise Exception("Event did not occur within timeout")
 
     def __call__(self, name, event):
