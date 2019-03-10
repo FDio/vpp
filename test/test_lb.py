@@ -1,5 +1,6 @@
 import socket
 
+import scapy.compat
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
@@ -93,11 +94,12 @@ class TestLB(VppTestCase):
         self.assertEqual(gre.proto, 0x0800 if isv4 else 0x86DD)
         self.assertEqual(gre.flags, 0)
         self.assertEqual(gre.version, 0)
-        inner = IPver(str(gre.payload))
+        inner = IPver(scapy.compat.raw(gre.payload))
         payload_info = self.payload_to_info(inner[Raw])
         self.info = self.packet_infos[payload_info.index]
         self.assertEqual(payload_info.src, self.pg0.sw_if_index)
-        self.assertEqual(str(inner), str(self.info.data[IPver]))
+        self.assertEqual(scapy.compat.raw(inner),
+                         scapy.compat.raw(self.info.data[IPver]))
 
     def checkCapture(self, encap, isv4):
         self.pg0.assert_nothing_captured()
@@ -135,7 +137,7 @@ class TestLB(VppTestCase):
                     )
                     self.assertEqual(ip.nh, 47)
                     # self.assertEqual(len(ip.options), 0)
-                    gre = GRE(str(p[IPv6].payload))
+                    gre = GRE(scapy.compat.raw(p[IPv6].payload))
                     self.checkInner(gre, isv4)
                 elif (encap == 'l3dsr'):
                     ip = p[IP]
@@ -174,7 +176,7 @@ class TestLB(VppTestCase):
                     )
                     self.assertEqual(ip.nh, 17)
                     self.assertGreaterEqual(ip.hlim, 63)
-                    udp = UDP(str(p[IPv6].payload))
+                    udp = UDP(scapy.compat.raw(p[IPv6].payload))
                     self.assertEqual(udp.dport, 3307)
                 load[asid] += 1
             except:

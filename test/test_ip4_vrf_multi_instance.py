@@ -66,6 +66,7 @@ import unittest
 import random
 import socket
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ARP
@@ -344,7 +345,8 @@ class TestIp4VrfMultiInst(VppTestCase):
                     if found:
                         break
                     for host in pg_if.remote_hosts:
-                        if str(addr) == str(host.ip4):
+                        if scapy.compat.raw(addr) == \
+                                scapy.compat.raw(host.ip4):
                             vrf_count += 1
                             found = True
                             break

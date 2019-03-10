@@ -3207,7 +3207,7 @@ class TestGBP(VppTestCase):
         vx_tun_l3.add_vpp_config()
 
         #
-        # packets destined to unkown addresses in the BVI's subnet
+        # packets destined to unknown addresses in the BVI's subnet
         # are ARP'd for
         #
         p4 = (Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /

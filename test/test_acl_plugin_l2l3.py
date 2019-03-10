@@ -28,6 +28,7 @@ from socket import inet_pton, AF_INET, AF_INET6
 from random import choice, shuffle
 from pprint import pprint
 
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP, TCP
@@ -308,12 +309,14 @@ class TestACLpluginL2L3(VppTestCase):
             # Scapy IPv6 stuff is too smart for its own good.
             # So we do this and coerce the ICMP into unknown type
             if packet.haslayer(UDP):
-                data = str(packet[UDP][Raw])
+                data = scapy.compat.raw(packet[UDP][Raw])
             else:
                 if l3 == IP:
-                    data = str(ICMP(str(packet[l3].payload))[Raw])
+                    data = scapy.compat.raw(ICMP(
+                        scapy.compat.raw(packet[l3].payload))[Raw])
                 else:
-                    data = str(ICMPv6Unknown(str(packet[l3].payload)).msgbody)
+                    data = scapy.compat.raw(ICMPv6Unknown(
+                        scapy.compat.raw(packet[l3].payload)).msgbody)
             udp_or_icmp = packet[l3].payload
             payload_info = self.payload_to_info(data)
             packet_index = payload_info.index

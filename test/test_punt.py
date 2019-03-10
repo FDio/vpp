@@ -11,6 +11,7 @@ import struct
 from struct import unpack, unpack_from
 from util import ppp, ppc
 from re import compile
+import scapy.compat
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP
@@ -20,12 +21,12 @@ from framework import VppTestCase, VppTestRunner
 
 # Format MAC Address
 def get_mac_addr(bytes_addr):
-    return ':'.join('%02x' % ord(b) for b in bytes_addr)
+    return ':'.join('%02x' % scapy.compat.orb(b) for b in bytes_addr)
 
 
 # Format IP Address
 def ipv4(bytes_addr):
-    return '.'.join('%d' % ord(b) for b in bytes_addr)
+    return '.'.join('%d' % scapy.compat.orb(b) for b in bytes_addr)
 
 
 # Unpack Ethernet Frame
