@@ -22,6 +22,30 @@
       "revId": "be90b41ccf66d18955de58f67571a02e38bf682e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a80cda70_86cc2aca",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 965,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-10T18:52:59Z",
+      "side": 1,
+      "message": "Hi Florin,\n\nThere are solutions that use cffi to access it natively, but I think the desired end state is to use python3\u0027s async.sleep(0), once we can.  I think the os.sched_yield comes close enough for that for now.\n\nWhat do you think?",
+      "parentUuid": "0e5c1fa3_ec9f62be",
+      "range": {
+        "startLine": 959,
+        "startChar": 0,
+        "endLine": 965,
+        "endChar": 18
+      },
+      "revId": "be90b41ccf66d18955de58f67571a02e38bf682e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
