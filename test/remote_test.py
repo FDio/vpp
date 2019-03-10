@@ -375,12 +375,14 @@ class RemoteVppTestCase(VppTestCase):
     def __init__(self):
         super(RemoteVppTestCase, self).__init__("emptyTest")
 
+    # Note: __del__ is a 'Finalizer" not a 'Destructor'.
+    # https://docs.python.org/3/reference/datamodel.html#object.__del__
     def __del__(self):
         if hasattr(self, "vpp"):
-            cls.vpp.poll()
-            if cls.vpp.returncode is None:
-                cls.vpp.terminate()
-                cls.vpp.communicate()
+            self.vpp.poll()
+            if self.vpp.returncode is None:
+                self.vpp.terminate()
+                self.vpp.communicate()
 
     @classmethod
     def setUpClass(cls, tempdir):
