@@ -274,7 +274,8 @@ ct_connect (app_worker_t * client_wrk, session_t * ll,
    */
   ss = session_alloc (0);
   ll = listen_session_get (ll_index);
-  ss->session_type = ll->session_type;
+  ss->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_NONE,
+						     sct->c_is_ip4);
   ss->connection_index = sct->c_c_index;
   ss->listener_index = ll->session_index;
   ss->session_state = SESSION_STATE_CREATED;
@@ -394,7 +395,7 @@ global_scope:
 
   fib_proto = session_endpoint_fib_proto (sep);
   table_index = application_session_table (app, fib_proto);
-  ll = session_lookup_listener (table_index, sep);
+  ll = session_lookup_listener_wildcard (table_index, sep);
 
   if (ll)
     return ct_connect (app_wrk, ll, sep_ext);
