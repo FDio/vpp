@@ -34,13 +34,13 @@ typedef gbp_bridge_domain
   u32 bm_flood_sw_if_index;
 };
 
-autoreply define gbp_bridge_domain_add
+manual_print autoreply define gbp_bridge_domain_add
 {
   u32 client_index;
   u32 context;
   vl_api_gbp_bridge_domain_t bd;
 };
-autoreply define gbp_bridge_domain_del
+manual_print autoreply define gbp_bridge_domain_del
 {
   u32 client_index;
   u32 context;
@@ -66,13 +66,13 @@ typedef gbp_route_domain
   u32 ip6_uu_sw_if_index;
 };
 
-autoreply define gbp_route_domain_add
+manual_print autoreply define gbp_route_domain_add
 {
   u32 client_index;
   u32 context;
   vl_api_gbp_route_domain_t rd;
 };
-autoreply define gbp_route_domain_del
+manual_print autoreply define gbp_route_domain_del
 {
   u32 client_index;
   u32 context;
@@ -120,7 +120,7 @@ typedef gbp_endpoint
   vl_api_address_t ips[n_ips];
 };
 
-define gbp_endpoint_add
+manual_print define gbp_endpoint_add
 {
   u32 client_index;
   u32 context;
@@ -134,7 +134,7 @@ define gbp_endpoint_add_reply
   u32 handle;
 };
 
-autoreply define gbp_endpoint_del
+manual_print autoreply define gbp_endpoint_del
 {
   u32 client_index;
   u32 context;
@@ -170,13 +170,13 @@ typeonly define gbp_endpoint_group
   vl_api_gbp_endpoint_retention_t retention;
 };
 
-autoreply define gbp_endpoint_group_add
+manual_print autoreply define gbp_endpoint_group_add
 {
   u32 client_index;
   u32 context;
   vl_api_gbp_endpoint_group_t epg;
 };
-autoreply define gbp_endpoint_group_del
+manual_print autoreply define gbp_endpoint_group_del
 {
   u32 client_index;
   u32 context;
@@ -202,7 +202,7 @@ typeonly define gbp_recirc
   u8  is_ext;
 };
 
-autoreply define gbp_recirc_add_del
+manual_print autoreply define gbp_recirc_add_del
 {
   u32 client_index;
   u32 context;
@@ -239,7 +239,7 @@ typeonly define gbp_subnet
   vl_api_prefix_t prefix;
 };
 
-autoreply define gbp_subnet_add_del
+manual_print autoreply define gbp_subnet_add_del
 {
   u32 client_index;
   u32 context;
@@ -305,7 +305,7 @@ typedef gbp_contract
   vl_api_gbp_rule_t rules[n_rules];
 };
 
-autoreply define gbp_contract_add_del
+manual_print autoreply define gbp_contract_add_del
 {
   u32 client_index;
   u32 context;
@@ -345,7 +345,7 @@ typedef gbp_vxlan_tunnel
   vl_api_ip4_address_t src;
 };
 
-define gbp_vxlan_tunnel_add
+manual_print define gbp_vxlan_tunnel_add
 {
   u32 client_index;
   u32 context;
@@ -359,7 +359,7 @@ define gbp_vxlan_tunnel_add_reply
   u32 sw_if_index;
 };
 
-autoreply define gbp_vxlan_tunnel_del
+manual_print autoreply define gbp_vxlan_tunnel_del
 {
   u32 client_index;
   u32 context;
@@ -385,7 +385,7 @@ typeonly define gbp_ext_itf
   u32 rd_id;
 };
 
-autoreply define gbp_ext_itf_add_del
+manual_print autoreply define gbp_ext_itf_add_del
 {
   u32 client_index;
   u32 context;
