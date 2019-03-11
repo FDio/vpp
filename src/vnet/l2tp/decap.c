@@ -236,9 +236,9 @@ done:
 
 #include <vnet/pipeline.h>
 
-static uword
-l2t_decap_node_fn (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2t_decap_node) (vlib_main_t * vm,
+			       vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return dispatch_pipeline (vm, node, frame);
 }
@@ -251,7 +251,6 @@ l2t_decap_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_decap_node) = {
-  .function = l2t_decap_node_fn,
   .name = "l2tp-decap",
   .vector_size = sizeof (u32),
   .format_trace = format_l2t_trace,
@@ -270,7 +269,8 @@ VLIB_REGISTER_NODE (l2t_decap_node) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2t_decap_node, l2t_decap_node_fn);
+extern vlib_node_function_t l2t_decap_node_fn;
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2t_decap_local_node) = {
   .function = l2t_decap_node_fn,
@@ -292,11 +292,13 @@ VLIB_REGISTER_NODE (l2t_decap_local_node) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 void
 l2tp_decap_init (void)
 {
   ip6_register_protocol (IP_PROTOCOL_L2TP, l2t_decap_local_node.index);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON
