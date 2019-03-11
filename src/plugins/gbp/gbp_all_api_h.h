@@ -15,3 +15,7 @@
 /* Include the generated file, see BUILT_SOURCES in Makefile.am */
 #include <gbp/gbp.api.h>
 
+#ifdef vl_printfun
+#include <gbp/gbp_api_print.h>
+#endif
+
