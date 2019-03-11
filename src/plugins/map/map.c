@@ -229,7 +229,7 @@ map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 
 #ifdef MAP_SKIP_IP6_LOOKUP
 /**
- * Pre-resolvd per-protocol global next-hops
+ * Pre-resolved per-protocol global next-hops
  */
 map_main_pre_resolved_t pre_resolved[FIB_PROTOCOL_MAX];
 
@@ -351,14 +351,17 @@ map_fib_unresolve (map_main_pre_resolved_t * pr,
     .fp_addr = *addr,
   };
 
-  fib_entry_child_remove (pr->fei, pr->sibling);
+  if (pr->fei != FIB_NODE_INDEX_INVALID)
+    {
+      fib_entry_child_remove (pr->fei, pr->sibling);
 
-  fib_table_entry_special_remove (0,	// default fib
-				  &pfx, FIB_SOURCE_RR);
-  dpo_reset (&pr->dpo);
+      fib_table_entry_special_remove (0,	// default fib
+				      &pfx, FIB_SOURCE_RR);
+      dpo_reset (&pr->dpo);
 
-  pr->fei = FIB_NODE_INDEX_INVALID;
-  pr->sibling = FIB_NODE_INDEX_INVALID;
+      pr->fei = FIB_NODE_INDEX_INVALID;
+      pr->sibling = FIB_NODE_INDEX_INVALID;
+    }
 }
 
 void
