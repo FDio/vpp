@@ -43,7 +43,7 @@ typedef struct {
   ip4_address_t dst;
 } ipsec_gre_rx_trace_t;
 
-u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
+static u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -83,8 +83,7 @@ u8 * format_ipsec_gre_rx_trace (u8 * s, va_list * args)
  * <em>Next Index:</em>
  * - Dispatches the packet to the l2-input node.
 */
-static uword
-ipsec_gre_input (vlib_main_t * vm,
+VLIB_NODE_FN (ipsec_gre_input_node) (vlib_main_t * vm,
                  vlib_node_runtime_t * node,
                  vlib_frame_t * from_frame)
 {
@@ -395,7 +394,6 @@ static char * ipsec_gre_error_strings[] = {
 };
 
 VLIB_REGISTER_NODE (ipsec_gre_input_node) = {
-  .function = ipsec_gre_input,
   .name = "ipsec-gre-input",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -412,8 +410,6 @@ VLIB_REGISTER_NODE (ipsec_gre_input_node) = {
 
   .format_trace = format_ipsec_gre_rx_trace,
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_gre_input_node, ipsec_gre_input)
 
 static clib_error_t * ipsec_gre_input_init (vlib_main_t * vm)
 {
