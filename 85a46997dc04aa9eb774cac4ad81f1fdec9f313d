@@ -22,6 +22,30 @@
       "revId": "85a46997dc04aa9eb774cac4ad81f1fdec9f313d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2af961c2_62347a1d",
+        "filename": "src/vpp-api/client/stat_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T08:07:16Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d7f02c1f_bb4a2ca8",
+      "range": {
+        "startLine": 154,
+        "startChar": 2,
+        "endLine": 154,
+        "endChar": 7
+      },
+      "revId": "85a46997dc04aa9eb774cac4ad81f1fdec9f313d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
