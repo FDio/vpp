@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d7f02c1f_bb4a2ca8",
+        "filename": "src/vpp-api/client/stat_client.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2019-03-11T01:16:26Z",
+      "side": 1,
+      "message": "Don\u0027t you want to close it in the two error cases above as well?",
+      "range": {
+        "startLine": 154,
+        "startChar": 2,
+        "endLine": 154,
+        "endChar": 7
+      },
+      "revId": "85a46997dc04aa9eb774cac4ad81f1fdec9f313d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
