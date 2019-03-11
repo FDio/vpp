@@ -274,19 +274,17 @@ ip4_source_check_inline (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-static uword
-ip4_source_check_reachable_via_any (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_check_source_reachable_via_any) (vlib_main_t * vm,
+						   vlib_node_runtime_t * node,
+						   vlib_frame_t * frame)
 {
   return ip4_source_check_inline (vm, node, frame,
 				  IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
 }
 
-static uword
-ip4_source_check_reachable_via_rx (vlib_main_t * vm,
-				   vlib_node_runtime_t * node,
-				   vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_check_source_reachable_via_rx) (vlib_main_t * vm,
+						  vlib_node_runtime_t * node,
+						  vlib_frame_t * frame)
 {
   return ip4_source_check_inline (vm, node, frame,
 				  IP4_SOURCE_CHECK_REACHABLE_VIA_RX);
@@ -294,7 +292,6 @@ ip4_source_check_reachable_via_rx (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_check_source_reachable_via_any) = {
-  .function = ip4_source_check_reachable_via_any,
   .name = "ip4-source-check-via-any",
   .vector_size = sizeof (u32),
 
@@ -308,12 +305,8 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_any) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_check_source_reachable_via_any,
-			      ip4_source_check_reachable_via_any);
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_check_source_reachable_via_rx) = {
-  .function = ip4_source_check_reachable_via_rx,
   .name = "ip4-source-check-via-rx",
   .vector_size = sizeof (u32),
 
@@ -326,9 +319,6 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_rx) = {
   .format_trace = format_ip4_source_check_trace,
 };
 /* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_check_source_reachable_via_rx,
-			      ip4_source_check_reachable_via_rx);
 
 static clib_error_t *
 set_ip_source_check (vlib_main_t * vm,
@@ -535,6 +525,7 @@ VLIB_CLI_COMMAND (ip_source_check_accept_command, static) = {
 /* *INDENT-ON* */
 
 
+#ifndef CLIB_MARCH_VARIANT
 /* Dummy init function to get us linked in. */
 clib_error_t *
 ip4_source_check_init (vlib_main_t * vm)
@@ -543,6 +534,7 @@ ip4_source_check_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ip4_source_check_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON
