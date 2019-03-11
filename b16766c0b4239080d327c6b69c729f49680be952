@@ -1,0 +1,257 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "71dc42a7_95b1a68f",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "These could be bool.\nOr change to a \"flags\" enum",
+      "range": {
+        "startLine": 512,
+        "startChar": 2,
+        "endLine": 513,
+        "endChar": 12
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "de17b474_8153f142",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "bool?",
+      "range": {
+        "startLine": 534,
+        "startChar": 2,
+        "endLine": 534,
+        "endChar": 15
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "819c38f9_37d26110",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "bools",
+      "range": {
+        "startLine": 548,
+        "startChar": 1,
+        "endLine": 549,
+        "endChar": 15
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a59b94c5_8f29a5fa",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 569,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 569,
+        "startChar": 2,
+        "endLine": 569,
+        "endChar": 15
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2299adf9_e9682c27",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "bool",
+      "range": {
+        "startLine": 584,
+        "startChar": 1,
+        "endLine": 585,
+        "endChar": 15
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fac439ba_1eaf7e79",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 638,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "enum?\n\n(And I didn\u0027t both commenting on all the u8 -\u003e bool)",
+      "range": {
+        "startLine": 638,
+        "startChar": 1,
+        "endLine": 638,
+        "endChar": 14
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2f9b5819_bf91d3ec",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "Is this not a string?",
+      "range": {
+        "startLine": 646,
+        "startChar": 2,
+        "endLine": 646,
+        "endChar": 13
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6683bc29_7cef7f89",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 714,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "string?",
+      "range": {
+        "startLine": 714,
+        "startChar": 2,
+        "endLine": 714,
+        "endChar": 13
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "025cf220_44e8c273",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 744,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "string?",
+      "range": {
+        "startLine": 744,
+        "startChar": 1,
+        "endLine": 744,
+        "endChar": 13
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6da42194_fe9596cb",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 898,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "string?",
+      "range": {
+        "startLine": 898,
+        "startChar": 1,
+        "endLine": 898,
+        "endChar": 13
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d062e84e_15b29575",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 1123,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-11T09:00:03Z",
+      "side": 1,
+      "message": "v6? v4? both?",
+      "range": {
+        "startLine": 1123,
+        "startChar": 1,
+        "endLine": 1123,
+        "endChar": 17
+      },
+      "revId": "b16766c0b4239080d327c6b69c729f49680be952",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
