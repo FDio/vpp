@@ -1734,8 +1734,12 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (!is_main)
 	{
 	  vlib_worker_thread_barrier_check ();
-	  vec_foreach (fqm, tm->frame_queue_mains)
-	    vlib_frame_queue_dequeue (vm, fqm);
+	  if (PREDICT_FALSE (vm->check_frame_queues))
+	    {
+	      clib_atomic_release (&vm->check_frame_queues);
+	      vec_foreach (fqm, tm->frame_queue_mains)
+		vlib_frame_queue_dequeue (vm, fqm);
+	    }
 	  if (PREDICT_FALSE (vm->worker_thread_main_loop_callback != 0))
 	    ((void (*)(vlib_main_t *)) vm->worker_thread_main_loop_callback)
 	      (vm);

@@ -500,6 +500,8 @@ vlib_buffer_enqueue_to_thread (vlib_main_t * vm, u32 frame_queue_index,
 
   fqm = vec_elt_at_index (tm->frame_queue_mains, frame_queue_index);
   ptd = vec_elt_at_index (fqm->per_thread_data, vm->thread_index);
+  clib_atomic_test_and_set (&vlib_mains
+			    [frame_queue_index]->check_frame_queues);
 
   while (n_left)
     {
