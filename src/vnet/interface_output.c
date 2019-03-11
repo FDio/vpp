@@ -1398,8 +1398,9 @@ vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add)
 }
 #endif /* CLIB_MARCH_VARIANT */
 
-VLIB_NODE_FN (drop_buffers) (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+static uword
+drop_buffers_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		 vlib_frame_t * frame)
 {
   vnet_interface_main_t *im = &vnet_get_main ()->interface_main;
 
@@ -1417,6 +1418,7 @@ VLIB_NODE_FN (punt_buffers) (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (drop_buffers) = {
+  .function = drop_buffers_fn,
   .name = "error-drop",
   .flags = VLIB_NODE_FLAG_IS_DROP,
   .vector_size = sizeof (u32),
