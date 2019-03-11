@@ -120,7 +120,7 @@ class VppSubInterface(VppPGInterface):
             self._push1q = push1q
 
         self.test.vapi.l2_interface_vlan_tag_rewrite(
-            self.sw_if_index, vtr, push=self._push1q,
+            sw_if_index=self.sw_if_index, vtr_op=vtr, push_dot1q=self._push1q,
             tag1=self._tag1, tag2=self._tag2)
         self._vtr = vtr
 
@@ -171,9 +171,10 @@ class VppDot1ADSubint(VppSubInterface):
 
     def __init__(self, test, parent, sub_id, outer_vlan, inner_vlan):
         super(VppDot1ADSubint, self).__init__(test, parent, sub_id)
-        r = test.vapi.create_subif(parent.sw_if_index, sub_id, outer_vlan,
-                                   inner_vlan, dot1ad=1, two_tags=1,
-                                   exact_match=1)
+        r = test.vapi.create_subif(sw_if_index=parent.sw_if_index,
+                                   sub_id=sub_id, outer_vlan_id=outer_vlan,
+                                   inner_vlan_id=inner_vlan, two_tags=1,
+                                   dot1ad=1, exact_match=1)
         self.set_sw_if_index(r.sw_if_index)
         self._outer_vlan = outer_vlan
         self._inner_vlan = inner_vlan

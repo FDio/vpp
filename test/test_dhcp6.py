@@ -52,8 +52,10 @@ class TestDHCPv6DataPlane(VppTestCase):
         address = {'address': address_bin,
                    'preferred_time': 60,
                    'valid_time': 120}
-        self.vapi.dhcp6_send_client_message(1, self.pg0.sw_if_index,
-                                            T1=20, T2=40, addresses=[address])
+        self.vapi.dhcp6_send_client_message(msg_type=1,
+                                            sw_if_index=self.pg0.sw_if_index,
+                                            T1=20, T2=40, addresses=[address],
+                                            n_addresses=len([address]))
         rx_list = self.pg0.get_capture(1)
         self.assertEqual(len(rx_list), 1)
         packet = rx_list[0]

@@ -117,12 +117,12 @@ class TestL2fib(VppTestCase):
             for bd_id in n_brs:
                 # Create BD with MAC learning and unknown unicast flooding
                 # disabled and put interfaces to this BD
-                cls.vapi.bridge_domain_add_del(
-                    bd_id=bd_id, uu_flood=0, learn=0)
+                cls.vapi.bridge_domain_add_del(bd_id=bd_id, uu_flood=0,
+                                               learn=0)
                 ifs = [cls.pg_interfaces[i] for i in cls.bd_ifs(bd_id)]
                 for pg_if in ifs:
-                    cls.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
-                                                        bd_id=bd_id)
+                    cls.vapi.sw_interface_set_l2_bridge(
+                        rx_sw_if_index=pg_if.sw_if_index, bd_id=bd_id)
 
             # Set up all interfaces
             for i in cls.pg_interfaces:
@@ -183,7 +183,7 @@ class TestL2fib(VppTestCase):
         :param int bd_id: BD to teach
         :param dict hosts: dict of hosts per interface
         """
-        self.vapi.bridge_flags(bd_id, 1, 1)
+        self.vapi.bridge_flags(bd_id=bd_id, is_set=1, flags=1)
         ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
         for pg_if in ifs:
             swif = pg_if.sw_if_index
@@ -343,7 +343,7 @@ class TestL2fib(VppTestCase):
             if pkts:
                 i.add_stream(pkts)
 
-        self.vapi.bridge_flags(bd_id, 0, 1)
+        self.vapi.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()
@@ -371,7 +371,7 @@ class TestL2fib(VppTestCase):
             if pkts:
                 i.add_stream(pkts)
 
-        self.vapi.bridge_flags(bd_id, 0, 1)
+        self.vapi.bridge_flags(bd_id=bd_id, is_set=0, flags=1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()

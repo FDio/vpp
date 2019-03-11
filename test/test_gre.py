@@ -827,12 +827,12 @@ class TestGRE(VppTestCase):
         # Configure both to pop thier respective VLAN tags,
         # so that during the x-coonect they will subsequently push
         #
-        self.vapi.l2_interface_vlan_tag_rewrite(gre_if_12.sw_if_index,
-                                                L2_VTR_OP.L2_POP_1,
-                                                12)
-        self.vapi.l2_interface_vlan_tag_rewrite(gre_if_11.sw_if_index,
-                                                L2_VTR_OP.L2_POP_1,
-                                                11)
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sw_if_index=gre_if_12.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=12)
+        self.vapi.l2_interface_vlan_tag_rewrite(
+            sw_if_index=gre_if_11.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=11)
 
         #
         # Send traffic in both directiond - expect the VLAN tags to

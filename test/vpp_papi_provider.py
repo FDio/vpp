@@ -123,9 +123,11 @@ defaultmapping = {
     'macip_acl_dump': {'acl_index': 4294967295, },
     'macip_acl_interface_add_del': {'is_add': 1, },
     'mpls_ip_bind_unbind': {'is_ip4': 1, 'is_bind': 1, },
-    'mpls_route_add_del': {'next_hop_sw_if_index': 4294967295,
-                           'next_hop_weight': 1, 'next_hop_via_label': 1048576,
-                           'is_add': 1, 'classify_table_index': 4294967295, },
+    'mpls_route_add_del': {'mr_next_hop_sw_if_index': 4294967295,
+                           'mr_next_hop_weight': 1,
+                           'mr_next_hop_via_label': 1048576,
+                           'mr_is_add': 1,
+                           'mr_classify_table_index': 4294967295, },
     'mpls_table_add_del': {'is_add': 1, },
     'mpls_tunnel_add_del': {'next_hop_sw_if_index': 4294967295,
                             'next_hop_weight': 1,
@@ -410,145 +412,6 @@ class VppPapiProvider(object):
         """
         return cli + "\n" + str(self.cli(cli))
 
-    def set_ip_flow_hash(self,
-                         table_id,
-                         src=1,
-                         dst=1,
-                         sport=1,
-                         dport=1,
-                         proto=1,
-                         reverse=0,
-                         is_ip6=0):
-        return self.api(self.papi.set_ip_flow_hash,
-                        {'vrf_id': table_id,
-                         'src': src,
-                         'dst': dst,
-                         'dport': dport,
-                         'sport': sport,
-                         'proto': proto,
-                         'reverse': reverse,
-                         'is_ipv6': is_ip6})
-
-    def sw_interface_ip6nd_ra_prefix(self,
-                                     sw_if_index,
-                                     address,
-                                     address_length,
-                                     use_default=0,
-                                     no_advertise=0,
-                                     off_link=0,
-                                     no_autoconfig=0,
-                                     no_onlink=0,
-                                     is_no=0,
-                                     val_lifetime=0xffffffff,
-                                     pref_lifetime=0xffffffff):
-        return self.api(self.papi.sw_interface_ip6nd_ra_prefix,
-                        {'sw_if_index': sw_if_index,
-                         'prefix': {
-                             'address': address,
-                             'address_length': address_length,
-                         },
-                         'use_default': use_default,
-                         'no_advertise': no_advertise,
-                         'off_link': off_link,
-                         'no_autoconfig': no_autoconfig,
-                         'no_onlink': no_onlink,
-                         'is_no': is_no,
-                         'val_lifetime': val_lifetime,
-                         'pref_lifetime': pref_lifetime})
-
-    def vxlan_add_del_tunnel(
-            self,
-            src_addr,
-            dst_addr,
-            mcast_sw_if_index=0xFFFFFFFF,
-            is_add=1,
-            is_ipv6=0,
-            encap_vrf_id=0,
-            decap_next_index=0xFFFFFFFF,
-            vni=0,
-            instance=0xFFFFFFFF):
-        """
-
-        :param dst_addr:
-        :param src_addr:
-        :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param encap_vrf_id:  (Default value = 0)
-        :param decap_next_index:  (Default value = 0xFFFFFFFF)
-        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vni:  (Default value = 0)
-        :param instance:  (Default value = 0xFFFFFFFF)
-
-        """
-        return self.api(self.papi.vxlan_add_del_tunnel,
-                        {'is_add': is_add,
-                         'is_ipv6': is_ipv6,
-                         'src_address': src_addr,
-                         'dst_address': dst_addr,
-                         'mcast_sw_if_index': mcast_sw_if_index,
-                         'encap_vrf_id': encap_vrf_id,
-                         'decap_next_index': decap_next_index,
-                         'vni': vni,
-                         'instance': instance})
-
-    def geneve_add_del_tunnel(
-            self,
-            local_addr,
-            remote_addr,
-            mcast_sw_if_index=0xFFFFFFFF,
-            is_add=1,
-            is_ipv6=0,
-            encap_vrf_id=0,
-            decap_next_index=0xFFFFFFFF,
-            vni=0):
-        """
-
-        :param remote_addr:
-        :param local_addr:
-        :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param encap_vrf_id:  (Default value = 0)
-        :param decap_next_index:  (Default value = 0xFFFFFFFF)
-        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vni:  (Default value = 0)
-
-        """
-        return self.api(self.papi.geneve_add_del_tunnel,
-                        {'is_add': is_add,
-                         'is_ipv6': is_ipv6,
-                         'local_address': local_addr,
-                         'remote_address': remote_addr,
-                         'mcast_sw_if_index': mcast_sw_if_index,
-                         'encap_vrf_id': encap_vrf_id,
-                         'decap_next_index': decap_next_index,
-                         'vni': vni})
-
-    def bridge_domain_add_del(self, bd_id, flood=1, uu_flood=1, forward=1,
-                              learn=1, arp_term=0, is_add=1):
-        """Create/delete bridge domain.
-
-        :param int bd_id: Bridge domain index.
-        :param int flood: Enable/disable bcast/mcast flooding in the BD.
-            (Default value = 1)
-        :param int uu_flood: Enable/disable unknown unicast flood in the BD.
-            (Default value = 1)
-        :param int forward: Enable/disable forwarding on all interfaces in
-            the BD. (Default value = 1)
-        :param int learn: Enable/disable learning on all interfaces in the BD.
-            (Default value = 1)
-        :param int arp_term: Enable/disable arp termination in the BD.
-            (Default value = 1)
-        :param int is_add: Add or delete flag. (Default value = 1)
-        """
-        return self.api(self.papi.bridge_domain_add_del,
-                        {'bd_id': bd_id,
-                         'flood': flood,
-                         'uu_flood': uu_flood,
-                         'forward': forward,
-                         'learn': learn,
-                         'arp_term': arp_term,
-                         'is_add': is_add})
-
     def want_ip4_arp_events(self, enable_disable=1, ip="0.0.0.0"):
         return self.api(self.papi.want_ip4_arp_events,
                         {'enable_disable': enable_disable,
@@ -599,24 +462,6 @@ class VppPapiProvider(object):
                         {'enable_disable': enable_disable,
                          'pid': os.getpid()})
 
-    def dhcp6_send_client_message(self, msg_type, sw_if_index, T1, T2,
-                                  addresses, server_index=0xFFFFFFFF,
-                                  irt=0, mrt=0, mrc=1, mrd=0, stop=0,
-                                  ):
-        return self.api(self.papi.dhcp6_send_client_message,
-                        {'sw_if_index': sw_if_index,
-                         'server_index': server_index,
-                         'irt': irt,
-                         'mrt': mrt,
-                         'mrc': mrc,
-                         'mrd': mrd,
-                         'stop': stop,
-                         'msg_type': msg_type,
-                         'T1': T1,
-                         'T2': T2,
-                         'n_addresses': len(addresses),
-                         'addresses': addresses})
-
     def dhcp6_pd_send_client_message(self, msg_type, sw_if_index, T1, T2,
                                      prefixes, server_index=0xFFFFFFFF,
                                      irt=0, mrt=0, mrc=1, mrd=0, stop=0,
@@ -658,106 +503,10 @@ class VppPapiProvider(object):
                          'prefix_length': prefix_length,
                          'is_add': is_add})
 
-    def sw_interface_set_l2_bridge(self, sw_if_index, bd_id,
-                                   shg=0, port_type=L2_PORT_TYPE.NORMAL,
-                                   enable=1):
-        """Add/remove interface to/from bridge domain.
-
-        :param int sw_if_index: Software interface index of the interface.
-        :param int bd_id: Bridge domain index.
-        :param int shg: Split-horizon group index. (Default value = 0)
-        :param int bvi: Set interface as a bridge group virtual interface.
-            (Default value = 0)
-        :param int enable: Add or remove interface. (Default value = 1)
-        """
-        return self.api(self.papi.sw_interface_set_l2_bridge,
-                        {'rx_sw_if_index': sw_if_index,
-                         'bd_id': bd_id,
-                         'shg': shg,
-                         'port_type': port_type,
-                         'enable': enable})
-
-    def bridge_flags(self, bd_id, is_set, feature_bitmap):
-        """Enable/disable required feature of the bridge domain with defined
-        ID.
-
-        :param int bd_id: Bridge domain ID.
-        :param int is_set: Set to 1 to enable, set to 0 to disable the feature.
-        :param int flags: Bitmap value of the feature to be set:
-            - learn (1 << 0),
-            - forward (1 << 1),
-            - flood (1 << 2),
-            - uu-flood (1 << 3) or
-            - arp-term (1 << 4).
-        """
-        return self.api(self.papi.bridge_flags,
-                        {'bd_id': bd_id,
-                         'is_set': is_set,
-                         'flags': feature_bitmap})
-
-    def l2_interface_vlan_tag_rewrite(
-            self,
-            sw_if_index,
-            vtr_oper,
-            push=0,
-            tag1=0,
-            tag2=0):
-        """L2 interface vlan tag rewrite configure request
-        :param client_index - opaque cookie to identify the sender
-        :param context - sender context, to match reply w/ request
-        :param sw_if_index - interface the operation is applied to
-        :param vtr_op - Choose from l2_vtr_op_t enum values
-        :param push_dot1q - first pushed flag dot1q id set, else dot1ad
-        :param tag1 - Needed for any push or translate vtr op
-        :param tag2 - Needed for any push 2 or translate x-2 vtr ops
-
-        """
-        return self.api(self.papi.l2_interface_vlan_tag_rewrite,
-                        {'sw_if_index': sw_if_index,
-                         'vtr_op': vtr_oper,
-                         'push_dot1q': push,
-                         'tag1': tag1,
-                         'tag2': tag2})
-
     def sw_interface_set_mac_address(self, sw_if_index, mac):
         return self.api(self.papi.sw_interface_set_mac_address,
                         {'sw_if_index': sw_if_index,
                          'mac_address': mac})
-
-    def create_subif(self, sw_if_index, sub_id, outer_vlan, inner_vlan,
-                     no_tags=0, one_tag=0, two_tags=0, dot1ad=0, exact_match=0,
-                     default_sub=0, outer_vlan_id_any=0, inner_vlan_id_any=0):
-        """Create subinterface
-        from vpe.api: set dot1ad = 0 for dot1q, set dot1ad = 1 for dot1ad
-
-        :param sub_id: param inner_vlan:
-        :param sw_if_index:
-        :param outer_vlan:
-        :param inner_vlan:
-        :param no_tags:  (Default value = 0)
-        :param one_tag:  (Default value = 0)
-        :param two_tags:  (Default value = 0)
-        :param dot1ad:  (Default value = 0)
-        :param exact_match:  (Default value = 0)
-        :param default_sub:  (Default value = 0)
-        :param outer_vlan_id_any:  (Default value = 0)
-        :param inner_vlan_id_any:  (Default value = 0)
-
-        """
-        return self.api(
-            self.papi.create_subif,
-            {'sw_if_index': sw_if_index,
-             'sub_id': sub_id,
-             'no_tags': no_tags,
-             'one_tag': one_tag,
-             'two_tags': two_tags,
-             'dot1ad': dot1ad,
-             'exact_match': exact_match,
-             'default_sub': default_sub,
-             'outer_vlan_id_any': outer_vlan_id_any,
-             'inner_vlan_id_any': inner_vlan_id_any,
-             'outer_vlan_id': outer_vlan,
-             'inner_vlan_id': inner_vlan})
 
     def p2p_ethernet_add(self, sw_if_index, remote_mac, subif_id):
         """Create p2p ethernet subinterface
@@ -802,85 +551,6 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.create_loopback,
                         {'mac_address': mac})
-
-    def ip_add_del_route(
-            self,
-            dst_address,
-            dst_address_length,
-            next_hop_address,
-            next_hop_sw_if_index=0xFFFFFFFF,
-            table_id=0,
-            next_hop_table_id=0,
-            next_hop_weight=1,
-            next_hop_n_out_labels=0,
-            next_hop_out_label_stack=[],
-            next_hop_via_label=MPLS_LABEL_INVALID,
-            next_hop_id=0xFFFFFFFF,
-            is_resolve_host=0,
-            is_resolve_attached=0,
-            classify_table_index=0xFFFFFFFF,
-            is_add=1,
-            is_drop=0,
-            is_unreach=0,
-            is_prohibit=0,
-            is_ipv6=0,
-            is_local=0,
-            is_classify=0,
-            is_multipath=0,
-            is_dvr=0,
-            is_udp_encap=0,
-            is_source_lookup=0):
-        """
-
-        :param dst_address_length:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param dst_address:
-        :param next_hop_address:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vrf_id:  (Default value = 0)
-        :param lookup_in_vrf:  (Default value = 0)
-        :param classify_table_index:  (Default value = 0xFFFFFFFF)
-        :param is_add:  (Default value = 1)
-        :param is_drop:  (Default value = 0)
-        :param is_ipv6:  (Default value = 0)
-        :param is_local:  (Default value = 0)
-        :param is_classify:  (Default value = 0)
-        :param is_multipath:  (Default value = 0)
-        :param is_resolve_host:  (Default value = 0)
-        :param is_resolve_attached:  (Default value = 0)
-        :param is_dvr:  (Default value = 0)
-        :param is_source_lookup:  (Default value = 0)
-        :param next_hop_weight:  (Default value = 1)
-
-        """
-
-        return self.api(
-            self.papi.ip_add_del_route,
-            {'next_hop_sw_if_index': next_hop_sw_if_index,
-             'table_id': table_id,
-             'classify_table_index': classify_table_index,
-             'next_hop_table_id': next_hop_table_id,
-             'is_add': is_add,
-             'is_drop': is_drop,
-             'is_unreach': is_unreach,
-             'is_prohibit': is_prohibit,
-             'is_ipv6': is_ipv6,
-             'is_local': is_local,
-             'is_classify': is_classify,
-             'is_multipath': is_multipath,
-             'is_resolve_host': is_resolve_host,
-             'is_resolve_attached': is_resolve_attached,
-             'is_dvr': is_dvr,
-             'is_source_lookup': is_source_lookup,
-             'is_udp_encap': is_udp_encap,
-             'next_hop_weight': next_hop_weight,
-             'dst_address_length': dst_address_length,
-             'dst_address': dst_address,
-             'next_hop_id': next_hop_id,
-             'next_hop_address': next_hop_address,
-             'next_hop_n_out_labels': next_hop_n_out_labels,
-             'next_hop_via_label': next_hop_via_label,
-             'next_hop_out_label_stack': next_hop_out_label_stack})
 
     def ip_neighbor_add_del(self,
                             sw_if_index,
@@ -1021,74 +691,6 @@ class VppPapiProvider(object):
             self.papi.mpls_table_add_del,
             {'mt_table_id': table_id,
              'mt_is_add': is_add})
-
-    def mpls_route_add_del(
-            self,
-            label,
-            eos,
-            next_hop_proto,
-            next_hop_address,
-            next_hop_sw_if_index=0xFFFFFFFF,
-            table_id=0,
-            next_hop_table_id=0,
-            next_hop_weight=1,
-            next_hop_n_out_labels=0,
-            next_hop_out_label_stack=[],
-            next_hop_via_label=MPLS_LABEL_INVALID,
-            is_resolve_host=0,
-            is_resolve_attached=0,
-            is_interface_rx=0,
-            is_rpf_id=0,
-            is_multicast=0,
-            is_add=1,
-            is_drop=0,
-            is_multipath=0,
-            classify_table_index=0xFFFFFFFF,
-            is_classify=0):
-        """
-
-        :param dst_address_length:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param dst_address:
-        :param next_hop_address:
-        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param vrf_id:  (Default value = 0)
-        :param lookup_in_vrf:  (Default value = 0)
-        :param classify_table_index:  (Default value = 0xFFFFFFFF)
-        :param is_add:  (Default value = 1)
-        :param is_drop:  (Default value = 0)
-        :param is_ipv6:  (Default value = 0)
-        :param is_local:  (Default value = 0)
-        :param is_classify:  (Default value = 0)
-        :param is_multipath:  (Default value = 0)
-        :param is_multicast:  (Default value = 0)
-        :param is_resolve_host:  (Default value = 0)
-        :param is_resolve_attached:  (Default value = 0)
-        :param next_hop_weight:  (Default value = 1)
-
-        """
-        return self.api(
-            self.papi.mpls_route_add_del,
-            {'mr_label': label,
-             'mr_eos': eos,
-             'mr_table_id': table_id,
-             'mr_classify_table_index': classify_table_index,
-             'mr_is_add': is_add,
-             'mr_is_classify': is_classify,
-             'mr_is_multipath': is_multipath,
-             'mr_is_multicast': is_multicast,
-             'mr_is_resolve_host': is_resolve_host,
-             'mr_is_resolve_attached': is_resolve_attached,
-             'mr_is_interface_rx': is_interface_rx,
-             'mr_is_rpf_id': is_rpf_id,
-             'mr_next_hop_proto': next_hop_proto,
-             'mr_next_hop_weight': next_hop_weight,
-             'mr_next_hop': next_hop_address,
-             'mr_next_hop_n_out_labels': next_hop_n_out_labels,
-             'mr_next_hop_sw_if_index': next_hop_sw_if_index,
-             'mr_next_hop_table_id': next_hop_table_id,
-             'mr_next_hop_via_label': next_hop_via_label,
-             'mr_next_hop_out_label_stack': next_hop_out_label_stack})
 
     def mpls_ip_bind_unbind(
             self,

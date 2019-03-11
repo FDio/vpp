@@ -108,8 +108,8 @@ class TestL2bdArpTerm(VppTestCase):
             self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
         for swif in self.bd_swifs(bd_id):
             swif_idx = swif.sw_if_index
-            self.vapi.sw_interface_set_l2_bridge(
-                swif_idx, bd_id=bd_id, enable=is_add)
+            self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=swif_idx,
+                                                 bd_id=bd_id, enable=is_add)
         if not is_add:
             self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
 
@@ -226,7 +226,8 @@ class TestL2bdArpTerm(VppTestCase):
             else:
                 raise ValueError("Unknown feature used: %s" % flag)
             is_set = 1 if args[flag] else 0
-            self.vapi.bridge_flags(bd_id, is_set, feature_bitmap)
+            self.vapi.bridge_flags(bd_id=bd_id, is_set=is_set,
+                                   flags=feature_bitmap)
         self.logger.info("Bridge domain ID %d updated" % bd_id)
 
     def verify_arp(self, src_host, req_hosts, resp_hosts, bd_id=1):

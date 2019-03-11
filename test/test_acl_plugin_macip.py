@@ -95,16 +95,16 @@ class MethodHolder(VppTestCase):
 
             # Create BD with MAC learning enabled and put interfaces to this BD
             cls.vapi.sw_interface_set_l2_bridge(
-                cls.loop0.sw_if_index, bd_id=cls.bd_id,
+                rx_sw_if_index=cls.loop0.sw_if_index, bd_id=cls.bd_id,
                 port_type=L2_PORT_TYPE.BVI)
             cls.vapi.sw_interface_set_l2_bridge(
-                cls.pg0.sw_if_index, bd_id=cls.bd_id)
+                rx_sw_if_index=cls.pg0.sw_if_index, bd_id=cls.bd_id)
             cls.vapi.sw_interface_set_l2_bridge(
-                cls.pg1.sw_if_index, bd_id=cls.bd_id)
+                rx_sw_if_index=cls.pg1.sw_if_index, bd_id=cls.bd_id)
             cls.vapi.sw_interface_set_l2_bridge(
-                cls.subifs[0].sw_if_index, bd_id=cls.bd_id)
+                rx_sw_if_index=cls.subifs[0].sw_if_index, bd_id=cls.bd_id)
             cls.vapi.sw_interface_set_l2_bridge(
-                cls.subifs[1].sw_if_index, bd_id=cls.bd_id)
+                rx_sw_if_index=cls.subifs[1].sw_if_index, bd_id=cls.bd_id)
 
             # Configure IPv4/6 addresses on loop interface and routed interface
             cls.loop0.config_ip4()

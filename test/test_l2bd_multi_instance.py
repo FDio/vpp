@@ -187,8 +187,8 @@ class TestL2bdMultiInst(VppTestCase):
                 self.bd_deleted_list.remove(b)
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
-                self.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
-                                                     bd_id=b)
+                self.vapi.sw_interface_set_l2_bridge(
+                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b)
                 self.logger.info("pg-interface %s added to bridge domain ID %d"
                                  % (pg_if.name, b))
                 self.pg_in_bd.append(pg_if)
@@ -212,8 +212,8 @@ class TestL2bdMultiInst(VppTestCase):
         for b in range(start, start + count):
             for j in self.bd_if_range(b):
                 pg_if = self.pg_interfaces[j]
-                self.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
-                                                     bd_id=b, enable=0)
+                self.vapi.sw_interface_set_l2_bridge(
+                    rx_sw_if_index=pg_if.sw_if_index, bd_id=b, enable=0)
                 self.pg_in_bd.remove(pg_if)
             self.vapi.bridge_domain_add_del(bd_id=b, is_add=0)
             self.bd_list.remove(b)
@@ -316,7 +316,8 @@ class TestL2bdMultiInst(VppTestCase):
             else:
                 raise ValueError("Unknown feature used: %s" % flag)
             is_set = 1 if args[flag] else 0
-            self.vapi.bridge_flags(bd_id, is_set, feature_bitmap)
+            self.vapi.bridge_flags(bd_id=bd_id, is_set=is_set,
+                                   flags=feature_bitmap)
         self.logger.info("Bridge domain ID %d updated" % bd_id)
 
     def verify_bd(self, bd_id, **args):

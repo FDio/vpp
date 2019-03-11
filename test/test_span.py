@@ -53,10 +53,8 @@ class TestSpan(VppTestCase):
             i.resolve_arp()
 
         cls.vxlan = cls.vapi.vxlan_add_del_tunnel(
-            src_addr=cls.pg2.local_ip4n,
-            dst_addr=cls.pg2.remote_ip4n,
-            vni=1111,
-            is_add=1)
+            src_address=cls.pg2.local_ip4n, dst_address=cls.pg2.remote_ip4n,
+            is_add=1, vni=1111)
 
     def setUp(self):
         super(TestSpan, self).setUp()
@@ -72,8 +70,8 @@ class TestSpan(VppTestCase):
         self.vapi.sw_interface_set_l2_xconnect(b, a, enable=is_add)
 
     def bridge(self, sw_if_index, is_add=1):
-        self.vapi.sw_interface_set_l2_bridge(
-            sw_if_index, bd_id=self.bd_id, enable=is_add)
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
+                                             bd_id=self.bd_id, enable=is_add)
 
     def _remove_tag(self, packet, vlan, tag_type):
         self.assertEqual(packet.type, tag_type)
@@ -526,9 +524,9 @@ class TestSpan(VppTestCase):
 
         # Create bi-directional cross-connects between pg0 and pg1
         self.vapi.sw_interface_set_l2_bridge(
-            self.sub_if.sw_if_index, bd_id=99, enable=1)
+            rx_sw_if_index=self.sub_if.sw_if_index, bd_id=99, enable=1)
         self.vapi.sw_interface_set_l2_bridge(
-            self.pg1.sw_if_index, bd_id=99, enable=1)
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=99, enable=1)
 
         # Create incoming packet streams for packet-generator interfaces
         pg0_pkts = self.create_stream(
@@ -558,9 +556,9 @@ class TestSpan(VppTestCase):
 
         self.bridge(self.pg2.sw_if_index, is_add=0)
         self.vapi.sw_interface_set_l2_bridge(
-            self.sub_if.sw_if_index, bd_id=99, enable=0)
+            rx_sw_if_index=self.sub_if.sw_if_index, bd_id=99, enable=0)
         self.vapi.sw_interface_set_l2_bridge(
-            self.pg1.sw_if_index, bd_id=99, enable=0)
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=99, enable=0)
         # Disable SPAN on pg0 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
