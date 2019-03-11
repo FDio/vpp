@@ -84,21 +84,24 @@ class TestDVR(VppTestCase):
         #
         # Put all the interfaces into a new bridge domain
         #
-        self.vapi.sw_interface_set_l2_bridge(self.pg0.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg2.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg3.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(self.loop0.sw_if_index, 1,
-                                             port_type=L2_PORT_TYPE.BVI)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.loop0.sw_if_index, bd_id=1,
+            port_type=L2_PORT_TYPE.BVI)
 
         self.vapi.l2_interface_vlan_tag_rewrite(
-            sub_if_on_pg2.sw_if_index,
-            L2_VTR_OP.L2_POP_1,
-            92)
+            sw_if_index=sub_if_on_pg2.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=92)
         self.vapi.l2_interface_vlan_tag_rewrite(
-            sub_if_on_pg3.sw_if_index,
-            L2_VTR_OP.L2_POP_1,
-            93)
+            sw_if_index=sub_if_on_pg3.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=93)
 
         #
         # Add routes to bridge the traffic via a tagged an nontagged interface
@@ -202,17 +205,17 @@ class TestDVR(VppTestCase):
                                              0, [])
         self.vapi.acl_del(acl.acl_index)
 
-        self.vapi.sw_interface_set_l2_bridge(self.pg0.sw_if_index, 1,
-                                             enable=0)
-        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index, 1,
-                                             enable=0)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg2.sw_if_index,
-                                             1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg3.sw_if_index,
-                                             1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(self.loop0.sw_if_index,
-                                             1, port_type=L2_PORT_TYPE.BVI,
-                                             enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.loop0.sw_if_index, bd_id=1,
+            port_type=L2_PORT_TYPE.BVI, enable=0)
 
         #
         # Do a FIB dump to make sure the paths are correctly reported as DVR
@@ -289,24 +292,27 @@ class TestDVR(VppTestCase):
         #
         # Put all the interfaces into a new bridge domain
         #
-        self.vapi.sw_interface_set_l2_bridge(self.pg0.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg2.sw_if_index, 1)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg3.sw_if_index, 1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1)
         self.vapi.l2_interface_vlan_tag_rewrite(
-            sub_if_on_pg2.sw_if_index,
-            L2_VTR_OP.L2_POP_1,
-            92)
+            sw_if_index=sub_if_on_pg2.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=92)
         self.vapi.l2_interface_vlan_tag_rewrite(
-            sub_if_on_pg3.sw_if_index,
-            L2_VTR_OP.L2_POP_1,
-            93)
+            sw_if_index=sub_if_on_pg3.sw_if_index, vtr_op=L2_VTR_OP.L2_POP_1,
+            push_dot1q=93)
 
         #
         # Disable UU flooding, learning and ARP terminaation. makes this test
         # easier as unicast packets are dropped if not extracted.
         #
-        self.vapi.bridge_flags(1, 0, (1 << 0) | (1 << 3) | (1 << 4))
+        self.vapi.bridge_flags(bd_id=1, is_set=0,
+                               flags=(1 << 0) | (1 << 3) | (1 << 4))
 
         #
         # Add a DVR route to steer traffic at L3
@@ -371,14 +377,14 @@ class TestDVR(VppTestCase):
         self.vapi.l2_emulation(sub_if_on_pg3.sw_if_index,
                                enable=0)
 
-        self.vapi.sw_interface_set_l2_bridge(self.pg0.sw_if_index,
-                                             1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index,
-                                             1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg2.sw_if_index,
-                                             1, enable=0)
-        self.vapi.sw_interface_set_l2_bridge(sub_if_on_pg3.sw_if_index,
-                                             1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg0.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg2.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=sub_if_on_pg3.sw_if_index, bd_id=1, enable=0)
 
         route_1.remove_vpp_config()
         route_2.remove_vpp_config()

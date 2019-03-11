@@ -96,8 +96,9 @@ class TestIPv4(VppTestCase):
         for i in self.interfaces:
             next_hop_address = i.local_ip4n
             for j in range(count / n_int):
-                self.vapi.ip_add_del_route(
-                    dest_addr, dest_addr_len, next_hop_address)
+                self.vapi.ip_add_del_route(dst_address=dest_addr,
+                                           dst_address_length=dest_addr_len,
+                                           next_hop_address=next_hop_address)
                 counter += 1
                 if counter / count * 100 > percent:
                     self.logger.info("Configure %d FIB entries .. %d%% done" %
@@ -312,8 +313,9 @@ class TestIPv4FibCrud(VppTestCase):
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):
             n_dest_addr = binascii.unhexlify('{:08x}'.format(dest_addr))
-            self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
-                                       n_next_hop_addr)
+            self.vapi.ip_add_del_route(dst_address=n_dest_addr,
+                                       dst_address_length=dest_addr_len,
+                                       next_hop_address=n_next_hop_addr)
             added_ips.append(socket.inet_ntoa(n_dest_addr))
             dest_addr += 1
         return added_ips
@@ -327,8 +329,10 @@ class TestIPv4FibCrud(VppTestCase):
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):
             n_dest_addr = binascii.unhexlify('{:08x}'.format(dest_addr))
-            self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
-                                       n_next_hop_addr, is_add=0)
+            self.vapi.ip_add_del_route(dst_address=n_dest_addr,
+                                       dst_address_length=dest_addr_len,
+                                       next_hop_address=n_next_hop_addr,
+                                       is_add=0)
             removed_ips.append(socket.inet_ntoa(n_dest_addr))
             dest_addr += 1
         return removed_ips
@@ -976,7 +980,7 @@ class TestIPLoadBalance(VppTestCase):
         #  - now only the stream with differing source address will
         #    load-balance
         #
-        self.vapi.set_ip_flow_hash(0, src=1, dst=1, sport=0, dport=0)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=0, dport=0)
 
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
@@ -988,7 +992,7 @@ class TestIPLoadBalance(VppTestCase):
         #
         # change the flow hash config back to defaults
         #
-        self.vapi.set_ip_flow_hash(0, src=1, dst=1, sport=1, dport=1)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=1, dport=1)
 
         #
         # Recursive prefixes

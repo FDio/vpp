@@ -52,8 +52,11 @@ class TestLB(VppTestCase):
                 i.resolve_ndp()
             dst4 = socket.inet_pton(socket.AF_INET, "10.0.0.0")
             dst6 = socket.inet_pton(socket.AF_INET6, "2002::")
-            cls.vapi.ip_add_del_route(dst4, 24, cls.pg1.remote_ip4n)
-            cls.vapi.ip_add_del_route(dst6, 16, cls.pg1.remote_ip6n, is_ipv6=1)
+            cls.vapi.ip_add_del_route(dst_address=dst4, dst_address_length=24,
+                                      next_hop_address=cls.pg1.remote_ip4n)
+            cls.vapi.ip_add_del_route(dst_address=dst6, dst_address_length=16,
+                                      next_hop_address=cls.pg1.remote_ip6n,
+                                      is_ipv6=1)
             cls.vapi.cli("lb conf ip4-src-address 39.40.41.42")
             cls.vapi.cli("lb conf ip6-src-address 2004::1")
         except Exception:

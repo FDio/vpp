@@ -105,8 +105,8 @@ class TestClassifyAcl(VppTestCase):
             cls.vapi.bridge_domain_add_del(bd_id=cls.bd_id, uu_flood=1,
                                            learn=1)
             for pg_if in cls.pg_interfaces:
-                cls.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
-                                                    bd_id=cls.bd_id)
+                cls.vapi.sw_interface_set_l2_bridge(
+                    rx_sw_if_index=pg_if.sw_if_index, bd_id=cls.bd_id)
 
             # Set up all interfaces
             for i in cls.pg_interfaces:

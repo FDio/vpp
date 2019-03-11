@@ -4236,9 +4236,9 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg5.admin_up()
             cls.vapi.ip_add_del_route(dst_address=cls.pg5.remote_ip4n,
                                       dst_address_length=32,
-                                      table_id=1,
+                                      next_hop_address=zero_ip4n,
                                       next_hop_sw_if_index=cls.pg5.sw_if_index,
-                                      next_hop_address=zero_ip4n)
+                                      table_id=1)
 
             cls.pg6._local_ip4 = "10.1.2.1"
             cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET,
@@ -4251,25 +4251,23 @@ class TestNAT44EndpointDependent(MethodHolder):
             cls.pg6.admin_up()
             cls.vapi.ip_add_del_route(dst_address=cls.pg6.remote_ip4n,
                                       dst_address_length=32,
-                                      table_id=1,
+                                      next_hop_address=zero_ip4n,
                                       next_hop_sw_if_index=cls.pg6.sw_if_index,
-                                      next_hop_address=zero_ip4n)
+                                      table_id=1)
 
             cls.vapi.ip_add_del_route(dst_address=cls.pg6.remote_ip4n,
                                       dst_address_length=16,
-                                      next_hop_address=zero_ip4n,
-                                      table_id=0,
+                                      next_hop_address=zero_ip4n, table_id=0,
                                       next_hop_table_id=1)
             cls.vapi.ip_add_del_route(dst_address=zero_ip4n,
                                       dst_address_length=0,
-                                      next_hop_address=zero_ip4n,
-                                      table_id=1,
+                                      next_hop_address=zero_ip4n, table_id=1,
                                       next_hop_table_id=0)
             cls.vapi.ip_add_del_route(dst_address=zero_ip4n,
                                       dst_address_length=0,
-                                      table_id=0,
+                                      next_hop_address=cls.pg1.local_ip4n,
                                       next_hop_sw_if_index=cls.pg1.sw_if_index,
-                                      next_hop_address=cls.pg1.local_ip4n)
+                                      table_id=0)
 
             cls.pg5.resolve_arp()
             cls.pg6.resolve_arp()
@@ -6458,10 +6456,11 @@ class TestNAT44Out2InDPO(MethodHolder):
             cls.pg1.config_ip6()
             cls.pg1.resolve_ndp()
 
-            cls.vapi.ip_add_del_route(is_ipv6=True, dst_address=b'\x00' * 16,
+            cls.vapi.ip_add_del_route(dst_address=b'\x00' * 16,
                                       dst_address_length=0,
                                       next_hop_address=cls.pg1.remote_ip6n,
-                                      next_hop_sw_if_index=cls.pg1.sw_if_index)
+                                      next_hop_sw_if_index=cls.pg1.sw_if_index,
+                                      is_ipv6=True)
 
         except Exception:
             super(TestNAT44Out2InDPO, cls).tearDownClass()

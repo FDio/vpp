@@ -49,7 +49,7 @@ class TestVtr(VppTestCase):
             for pg_if in cls.pg_interfaces:
                 sw_if_index = pg_if.sub_if.sw_if_index \
                     if hasattr(pg_if, 'sub_if') else pg_if.sw_if_index
-                cls.vapi.sw_interface_set_l2_bridge(sw_if_index,
+                cls.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=sw_if_index,
                                                     bd_id=cls.bd_id)
 
             # setup all interfaces
@@ -168,8 +168,8 @@ class TestVtr(VppTestCase):
             return
 
         i = VppDot1QSubint(self, self.pg0, tags[0].vlan)
-        self.vapi.sw_interface_set_l2_bridge(
-            i.sw_if_index, bd_id=self.bd_id, enable=1)
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                             bd_id=self.bd_id, enable=1)
         i.admin_up()
 
         p = self.create_packet(self.pg0, swif, do_dot1=False)
@@ -181,8 +181,8 @@ class TestVtr(VppTestCase):
         swif.sub_if.remove_dot1_layer(rx[0])
         self.assertTrue(Dot1Q not in rx[0])
 
-        self.vapi.sw_interface_set_l2_bridge(
-            i.sw_if_index, bd_id=self.bd_id, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
+                                             bd_id=self.bd_id, enable=0)
         i.remove_vpp_config()
 
     def test_1ad_vtr_pop_1(self):

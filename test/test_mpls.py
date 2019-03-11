@@ -1972,10 +1972,10 @@ class TestMPLSL2(VppTestCase):
         #
         # add to tunnel to the customers bridge-domain
         #
-        self.vapi.sw_interface_set_l2_bridge(mpls_tun.sw_if_index,
-                                             bd_id=1)
-        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index,
-                                             bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=mpls_tun.sw_if_index, bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1)
 
         #
         # Packet from the customer interface and from the core
@@ -2027,12 +2027,10 @@ class TestMPLSL2(VppTestCase):
         #
         # remove interfaces from customers bridge-domain
         #
-        self.vapi.sw_interface_set_l2_bridge(mpls_tun.sw_if_index,
-                                             bd_id=1,
-                                             enable=0)
-        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index,
-                                             bd_id=1,
-                                             enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=mpls_tun.sw_if_index, bd_id=1, enable=0)
+        self.vapi.sw_interface_set_l2_bridge(
+            rx_sw_if_index=self.pg1.sw_if_index, bd_id=1, enable=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

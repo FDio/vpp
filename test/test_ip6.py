@@ -246,8 +246,10 @@ class TestIPv6(TestIPv6ND):
         for i in self.interfaces:
             next_hop_address = i.local_ip6n
             for j in range(count / n_int):
-                self.vapi.ip_add_del_route(
-                    dest_addr, dest_addr_len, next_hop_address, is_ipv6=1)
+                self.vapi.ip_add_del_route(dst_address=dest_addr,
+                                           dst_address_length=dest_addr_len,
+                                           next_hop_address=next_hop_address,
+                                           is_ipv6=1)
                 counter += 1
                 if counter / count * 100 > percent:
                     self.logger.info("Configure %d FIB entries .. %d%% done" %
@@ -1804,7 +1806,8 @@ class TestIP6LoadBalance(VppTestCase):
         #  - now only the stream with differing source address will
         #    load-balance
         #
-        self.vapi.set_ip_flow_hash(0, is_ip6=1, src=1, dst=1, sport=0, dport=0)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=0, dport=0,
+                                   is_ipv6=1)
 
         self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
@@ -1815,7 +1818,8 @@ class TestIP6LoadBalance(VppTestCase):
         #
         # change the flow hash config back to defaults
         #
-        self.vapi.set_ip_flow_hash(0, is_ip6=1, src=1, dst=1, sport=1, dport=1)
+        self.vapi.set_ip_flow_hash(vrf_id=0, src=1, dst=1, sport=1, dport=1,
+                                   is_ipv6=1)
 
         #
         # Recursive prefixes
