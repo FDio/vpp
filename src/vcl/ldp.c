@@ -161,6 +161,14 @@ ldp_fd_to_vlsh (int fd)
   return (fd - ldp->vlsh_bit_val);
 }
 
+static void
+ldp_alloc_workers (void)
+{
+  if (ldp->workers)
+    return;
+  pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
+}
+
 static inline int
 ldp_init (void)
 {
@@ -184,7 +192,7 @@ ldp_init (void)
       return rv;
     }
   ldp->vcl_needs_real_epoll = 0;
-  pool_alloc (ldp->workers, LDP_MAX_NWORKERS);
+  ldp_alloc_workers ();
   ldpw = ldp_worker_get_current ();
 
   char *env_var_str = getenv (LDP_ENV_DEBUG);
@@ -2040,6 +2048,12 @@ epoll_create1 (int flags)
 
   if (ldp->vcl_needs_real_epoll)
     {
+      /* Make sure workers have been allocated */
+      if (!ldp->workers)
+	{
+	  ldp_alloc_workers ();
+	  ldpw = ldp_worker_get_current ();
+	}
       rv = libc_epoll_create1 (flags);
       ldp->vcl_needs_real_epoll = 0;
       ldpw->vcl_mq_epfd = rv;
