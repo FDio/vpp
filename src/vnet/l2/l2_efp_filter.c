@@ -22,6 +22,7 @@
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_output.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/l2/l2_efp_filter.h>
 
 #include <vppinfra/error.h>
 #include <vppinfra/cache.h>
@@ -80,9 +81,11 @@ format_l2_efp_filter_trace (u8 * s, va_list * args)
   return s;
 }
 
-l2_efp_filter_main_t l2_efp_filter_main;
+extern l2_efp_filter_main_t l2_efp_filter_main;
 
-static vlib_node_registration_t l2_efp_filter_node;
+#ifndef CLIB_MARCH_VARIANT
+l2_efp_filter_main_t l2_efp_filter_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_l2_efp_filter_error			\
 _(L2_EFP_FILTER, "L2 EFP filter packets")		\
@@ -169,9 +172,9 @@ extract_keys (vnet_main_t * vnet_main,
  * The post-rewrite check is performed here.
  */
 
-static uword
-l2_efp_filter_node_fn (vlib_main_t * vm,
-		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_efp_filter_node) (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_efp_filter_next_t next_index;
@@ -457,8 +460,7 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_efp_filter_node,static) = {
-  .function = l2_efp_filter_node_fn,
+VLIB_REGISTER_NODE (l2_efp_filter_node) = {
   .name = "l2-efp-filter",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_efp_filter_trace,
@@ -476,8 +478,9 @@ VLIB_REGISTER_NODE (l2_efp_filter_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2_efp_filter_node, l2_efp_filter_node_fn)
-     clib_error_t *l2_efp_filter_init (vlib_main_t * vm)
+#ifndef CLIB_MARCH_VARIANT
+clib_error_t *
+l2_efp_filter_init (vlib_main_t * vm)
 {
   l2_efp_filter_main_t *mp = &l2_efp_filter_main;
 
@@ -562,6 +565,7 @@ VLIB_CLI_COMMAND (int_l2_efp_filter_cli, static) = {
 };
 /* *INDENT-ON* */
 
+#endif /* CLIB_MARCH_VARIANT */
 
 /*
  * fd.io coding-style-patch-verification: ON

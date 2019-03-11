@@ -22,6 +22,8 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
+extern vlib_node_registration_t l2_efp_filter_node;
+
 #endif
 
 /*

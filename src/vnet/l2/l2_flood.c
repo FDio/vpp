@@ -87,9 +87,11 @@ format_l2flood_trace (u8 * s, va_list * args)
   return s;
 }
 
-l2flood_main_t l2flood_main;
+extern l2flood_main_t l2flood_main;
 
-static vlib_node_registration_t l2flood_node;
+#ifndef CLIB_MARCH_VARIANT
+l2flood_main_t l2flood_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_l2flood_error					\
 _(L2FLOOD,           "L2 flood packets")			\
@@ -134,9 +136,8 @@ typedef enum
  * could be turned into an ICMP reply. If BVI processing is not performed
  * last, the modified packet would be replicated to the remaining members.
  */
-static uword
-l2flood_node_fn (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2flood_node) (vlib_main_t * vm,
+			     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2flood_next_t next_index;
@@ -362,8 +363,7 @@ l2flood_node_fn (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2flood_node,static) = {
-  .function = l2flood_node_fn,
+VLIB_REGISTER_NODE (l2flood_node) = {
   .name = "l2-flood",
   .vector_size = sizeof (u32),
   .format_trace = format_l2flood_trace,
@@ -380,10 +380,9 @@ VLIB_REGISTER_NODE (l2flood_node,static) = {
         [L2FLOOD_NEXT_DROP] = "error-drop",
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (l2flood_node, l2flood_node_fn)
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 clib_error_t *
 l2flood_init (vlib_main_t * vm)
 {
@@ -421,6 +420,7 @@ l2flood_register_input_type (vlib_main_t * vm,
 
   next_by_ethertype_register (&mp->l3_next, type, next_index);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 
 /**
