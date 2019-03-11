@@ -319,11 +319,14 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  gbp_bridge_domain_flags_t flags;
   u32 bm_flood_sw_if_index = ~0;
   u32 uu_fwd_sw_if_index = ~0;
   u32 bvi_sw_if_index = ~0;
   u32 bd_id = ~0;
   u8 add = 1;
+
+  flags = GBP_BD_FLAG_NONE;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -340,6 +343,8 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
+      else if (unformat (input, "flags &d", &flags))
+	add = 0;
       else if (unformat (input, "bd %d", &bd_id))
 	;
       else
@@ -347,14 +352,14 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
     }
 
   if (~0 == bd_id)
-    return clib_error_return (0, "EPG-ID must be specified");
+    return clib_error_return (0, "BD-ID must be specified");
 
   if (add)
     {
       if (~0 == bvi_sw_if_index)
 	return clib_error_return (0, "interface must be specified");
 
-      gbp_bridge_domain_add_and_lock (bd_id, GBP_BD_FLAG_NONE,
+      gbp_bridge_domain_add_and_lock (bd_id, flags,
 				      bvi_sw_if_index,
 				      uu_fwd_sw_if_index,
 				      bm_flood_sw_if_index);
@@ -375,7 +380,7 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_bridge_domain_cli_node, static) = {
   .path = "gbp bridge-domain",
-  .short_help = "gbp bridge-domain [del] epg bd <ID> bvi <interface> uu-flood <interface>",
+  .short_help = "gbp bridge-domain [del] bd <ID> bvi <interface> uu-flood <interface>",
   .function = gbp_bridge_domain_cli,
 };
 
