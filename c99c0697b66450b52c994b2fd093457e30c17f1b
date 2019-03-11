@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "930299d7_1547ac4d",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-03-11T17:37:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9bf6ba61_c9b0eed2",
+      "range": {
+        "startLine": 319,
+        "startChar": 0,
+        "endLine": 321,
+        "endChar": 17
+      },
+      "revId": "c99c0697b66450b52c994b2fd093457e30c17f1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "2a83b524_06034533",
         "filename": "src/vnet/gre/node.c",
         "patchSetId": 1
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "f1bb06ce_0d1b12c3",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 322,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-03-11T17:37:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "2a83b524_06034533",
+      "range": {
+        "startLine": 322,
+        "startChar": 0,
+        "endLine": 322,
+        "endChar": 74
+      },
+      "revId": "c99c0697b66450b52c994b2fd093457e30c17f1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "edfb79c9_5b23640c",
         "filename": "src/vnet/gre/node.c",
         "patchSetId": 1
@@ -59,6 +107,30 @@
       "writtenOn": "2019-03-01T21:49:37Z",
       "side": 1,
       "message": "What about replacing:\n\n  static inline int\n  gre_match_key4 (const gre_tunnel_key4_t * key1,\n                  const gre_tunnel_key4_t * key2)\n  {\n    return ((key1-\u003egtk_as_u64 \u003d\u003d key2-\u003egtk_as_u64) \u0026\u0026\n            (key1-\u003egtk_fidx_ssid_type \u003d\u003d key2-\u003egtk_fidx_ssid_type));\n  }\n\nwith:\n\n  static inline int\n  gre_match_key4 (const gre_tunnel_key4_t * key1,\n                  const gre_tunnel_key4_t * key2)\n  {\n    return ! ((key1-\u003egtk_as_u64 ^ key2-\u003egtk_as_u64) |\n            (key1-\u003egtk_fidx_ssid_type ^ key2-\u003egtk_fidx_ssid_type));\n  }\n\nto avoid branching....",
+      "range": {
+        "startLine": 358,
+        "startChar": 16,
+        "endLine": 358,
+        "endChar": 30
+      },
+      "revId": "c99c0697b66450b52c994b2fd093457e30c17f1b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e5fb6e7e_a8fe43e7",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2019-03-11T17:37:28Z",
+      "side": 1,
+      "message": "I tried this but it seems to degrade perf slightly to my surprise. That said it is in the measurement noise, so it is hard to conclude. This is why I decided to not change it so far. Any advise?",
+      "parentUuid": "edfb79c9_5b23640c",
       "range": {
         "startLine": 358,
         "startChar": 16,
