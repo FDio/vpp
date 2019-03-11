@@ -61,6 +61,10 @@ typedef struct
   u32 ip6_rewrite_idx;
   /* log class */
   vlib_log_class_t log_class;
+  /* number of active udp4 sessions */
+  u32 udp4_sessions_count;
+  /* number of active udp6 sessions */
+  u32 udp6_sessions_count;
 } bfd_udp_main_t;
 
 static vlib_node_registration_t bfd_udp4_input_node;
@@ -457,8 +461,8 @@ bfd_udp_key_init (bfd_udp_key_t * key, u32 sw_if_index,
 }
 
 static vnet_api_error_t
-bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
-			      u32 desired_min_tx_usec,
+bfd_udp_add_session_internal (vlib_main_t * vm, bfd_udp_main_t * bum,
+			      u32 sw_if_index, u32 desired_min_tx_usec,
 			      u32 required_min_rx_usec, u8 detect_mult,
 			      const ip46_address_t * local_addr,
 			      const ip46_address_t * peer_addr,
@@ -503,6 +507,14 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
       BFD_DBG ("adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, VNET_LINK_IP4, %U, %d) "
 	       "returns %d", format_ip46_address, &key->peer_addr,
 	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
+      ++bum->udp4_sessions_count;
+      if (1 == bum->udp4_sessions_count)
+	{
+	  udp_register_dst_port (vm, UDP_DST_PORT_bfd4,
+				 bfd_udp4_input_node.index, 1);
+	  udp_register_dst_port (vm, UDP_DST_PORT_bfd_echo4,
+				 bfd_udp_echo4_input_node.index, 1);
+	}
     }
   else
     {
@@ -512,6 +524,14 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
       BFD_DBG ("adj_nbr_add_or_lock(FIB_PROTOCOL_IP6, VNET_LINK_IP6, %U, %d) "
 	       "returns %d", format_ip46_address, &key->peer_addr,
 	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
+      ++bum->udp6_sessions_count;
+      if (1 == bum->udp6_sessions_count)
+	{
+	  udp_register_dst_port (vm, UDP_DST_PORT_bfd6,
+				 bfd_udp6_input_node.index, 0);
+	  udp_register_dst_port (vm, UDP_DST_PORT_bfd_echo6,
+				 bfd_udp_echo6_input_node.index, 0);
+	}
     }
   *bs_out = bs;
   return bfd_session_set_params (bum->bfd_main, bs, desired_min_tx_usec,
@@ -654,12 +674,31 @@ bfd_api_verify_common (u32 sw_if_index, u32 desired_min_tx_usec,
 }
 
 static void
-bfd_udp_del_session_internal (bfd_session_t * bs)
+bfd_udp_del_session_internal (vlib_main_t * vm, bfd_session_t * bs)
 {
   bfd_udp_main_t *bum = &bfd_udp_main;
   BFD_DBG ("free bfd-udp session, bs_idx=%d", bs->bs_idx);
   mhash_unset (&bum->bfd_session_idx_by_bfd_key, &bs->udp.key, NULL);
   adj_unlock (bs->udp.adj_index);
+  switch (bs->transport)
+    {
+    case BFD_TRANSPORT_UDP4:
+      --bum->udp4_sessions_count;
+      if (!bum->udp4_sessions_count)
+	{
+	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd4, 1);
+	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd_echo4, 1);
+	}
+      break;
+    case BFD_TRANSPORT_UDP6:
+      --bum->udp6_sessions_count;
+      if (!bum->udp6_sessions_count)
+	{
+	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd6, 0);
+	  udp_unregister_dst_port (vm, UDP_DST_PORT_bfd_echo6, 0);
+	}
+      break;
+    }
   bfd_put_session (bum->bfd_main, bs);
 }
 
@@ -681,8 +720,8 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
   if (!rv)
     {
       rv =
-	bfd_udp_add_session_internal (&bfd_udp_main, sw_if_index,
-				      desired_min_tx_usec,
+	bfd_udp_add_session_internal (vlib_get_main (), &bfd_udp_main,
+				      sw_if_index, desired_min_tx_usec,
 				      required_min_rx_usec, detect_mult,
 				      local_addr, peer_addr, &bs);
     }
@@ -698,7 +737,7 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
 #endif
       if (rv)
 	{
-	  bfd_udp_del_session_internal (bs);
+	  bfd_udp_del_session_internal (vlib_get_main (), bs);
 	}
     }
   if (!rv)
@@ -753,7 +792,7 @@ bfd_udp_del_session (u32 sw_if_index,
       bfd_unlock (bm);
       return rv;
     }
-  bfd_udp_del_session_internal (bs);
+  bfd_udp_del_session_internal (vlib_get_main (), bs);
   bfd_unlock (bm);
   return 0;
 }
@@ -1511,7 +1550,7 @@ bfd_udp_sw_if_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_create)
 		     "removal of sw_if_index=%u forces removal of bfd session "
 		     "with bs_idx=%u", sw_if_index, (*bs)->bs_idx);
     bfd_session_set_flags (*bs, 0);
-    bfd_udp_del_session_internal (*bs);
+    bfd_udp_del_session_internal (vlib_get_main (), *bs);
   }
   return 0;
 }
@@ -1524,16 +1563,12 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bfd_udp_sw_if_add_del);
 static clib_error_t *
 bfd_udp_init (vlib_main_t * vm)
 {
+  bfd_udp_main.udp4_sessions_count = 0;
+  bfd_udp_main.udp6_sessions_count = 0;
   mhash_init (&bfd_udp_main.bfd_session_idx_by_bfd_key, sizeof (uword),
 	      sizeof (bfd_udp_key_t));
   bfd_udp_main.bfd_main = &bfd_main;
   bfd_udp_main.vnet_main = vnet_get_main ();
-  udp_register_dst_port (vm, UDP_DST_PORT_bfd4, bfd_udp4_input_node.index, 1);
-  udp_register_dst_port (vm, UDP_DST_PORT_bfd6, bfd_udp6_input_node.index, 0);
-  udp_register_dst_port (vm, UDP_DST_PORT_bfd_echo4,
-			 bfd_udp_echo4_input_node.index, 1);
-  udp_register_dst_port (vm, UDP_DST_PORT_bfd_echo6,
-			 bfd_udp_echo6_input_node.index, 0);
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip4-arp");
   ASSERT (node);
   bfd_udp_main.ip4_arp_idx = node->index;
