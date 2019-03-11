@@ -151,7 +151,11 @@ typedef struct
 
 } ip6_reass_main_t;
 
+extern ip6_reass_main_t ip6_reass_main;
+
+#ifndef CLIB_MARCH_VARIANT
 ip6_reass_main_t ip6_reass_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum
 {
@@ -1046,16 +1050,14 @@ static char *ip6_reassembly_error_strings[] = {
 #undef _
 };
 
-static uword
-ip6_reassembly (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_reass_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip6_reassembly_inline (vm, node, frame, false /* is_feature */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_reass_node, static) = {
-    .function = ip6_reassembly,
+VLIB_REGISTER_NODE (ip6_reass_node) = {
     .name = "ip6-reassembly",
     .vector_size = sizeof (u32),
     .format_trace = format_ip6_reass_trace,
@@ -1072,18 +1074,15 @@ VLIB_REGISTER_NODE (ip6_reass_node, static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_reass_node, ip6_reassembly);
-
-static uword
-ip6_reassembly_feature (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip6_reass_node_feature) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return ip6_reassembly_inline (vm, node, frame, true /* is_feature */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_reass_node_feature, static) = {
-    .function = ip6_reassembly_feature,
+VLIB_REGISTER_NODE (ip6_reass_node_feature) = {
     .name = "ip6-reassembly-feature",
     .vector_size = sizeof (u32),
     .format_trace = format_ip6_reass_trace,
@@ -1100,8 +1099,6 @@ VLIB_REGISTER_NODE (ip6_reass_node_feature, static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_reass_node_feature, ip6_reassembly_feature);
-
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip6_reassembly_feature, static) = {
     .arc_name = "ip6-unicast",
@@ -1111,6 +1108,7 @@ VNET_FEATURE_INIT (ip6_reassembly_feature, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 static u32
 ip6_reass_get_nbuckets ()
 {
@@ -1127,12 +1125,14 @@ ip6_reass_get_nbuckets ()
 
   return nbuckets;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum
 {
   IP6_EVENT_CONFIG_CHANGED = 1,
 } ip6_reass_event_t;
 
+#ifndef CLIB_MARCH_VARIANT
 typedef struct
 {
   int failure;
@@ -1256,6 +1256,7 @@ ip6_reass_init_function (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ip6_reass_init_function);
+#endif /* CLIB_MARCH_VARIANT */
 
 static uword
 ip6_reass_walk_expired (vlib_main_t * vm,
@@ -1379,8 +1380,6 @@ ip6_reass_walk_expired (vlib_main_t * vm,
   return 0;
 }
 
-static vlib_node_registration_t ip6_reass_expire_node;
-
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_reass_expire_node, static) = {
     .function = ip6_reass_walk_expired,
@@ -1493,12 +1492,14 @@ VLIB_CLI_COMMAND (show_ip6_reassembly_cmd, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
 ip6_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
   return vnet_feature_enable_disable ("ip6-unicast", "ip6-reassembly-feature",
 				      sw_if_index, enable_disable, 0, 0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_ip6_reassembly_handoff_error                       \
 _(CONGESTION_DROP, "congestion drop")
