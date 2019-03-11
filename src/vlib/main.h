@@ -236,6 +236,9 @@ typedef struct vlib_main_t
   /* Earliest barrier can be closed again */
   f64 barrier_no_close_before;
 
+  /* Need to check the frame queues */
+  volatile uword check_frame_queues;
+
   /* RPC requests, main thread only */
   uword *pending_rpc_requests;
   uword *processing_rpc_requests;
