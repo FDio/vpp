@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3b404a12_e9c26568",
+        "filename": "test/run_tests.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 576
+      },
+      "writtenOn": "2019-03-11T12:52:32Z",
+      "side": 1,
+      "message": "What ordering should I use within import groups (std, 3rd party, local)? import first followed by from ... import or mixed (both alphabetically sorted)?",
+      "parentUuid": "486ae1b6_26b909e9",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 13
+      },
+      "revId": "e5f133ccd151f2e80405dd232ddc165327dd0bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4d166aa5_7fc78684",
         "filename": "test/run_tests.py",
         "patchSetId": 4
