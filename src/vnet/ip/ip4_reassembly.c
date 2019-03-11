@@ -171,7 +171,11 @@ typedef struct
 
 } ip4_reass_main_t;
 
+extern ip4_reass_main_t ip4_reass_main;
+
+#ifndef CLIB_MARCH_VARIANT
 ip4_reass_main_t ip4_reass_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum
 {
@@ -212,6 +216,9 @@ typedef struct
   u32 total_data_len;
 } ip4_reass_trace_t;
 
+extern vlib_node_registration_t ip4_reass_node;
+extern vlib_node_registration_t ip4_reass_node_feature;
+
 static void
 ip4_reass_trace_details (vlib_main_t * vm, u32 bi,
 			 ip4_reass_range_trace_t * trace)
@@ -235,7 +242,7 @@ format_ip4_reass_range_trace (u8 * s, va_list * args)
   return s;
 }
 
-u8 *
+static u8 *
 format_ip4_reass_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -351,7 +358,7 @@ ip4_reass_on_timeout (vlib_main_t * vm, ip4_reass_main_t * rm,
   vec_free (to_free);
 }
 
-ip4_reass_t *
+static ip4_reass_t *
 ip4_reass_find_or_create (vlib_main_t * vm, ip4_reass_main_t * rm,
 			  ip4_reass_per_thread_t * rt, ip4_reass_kv_t * kv,
 			  u8 * do_handoff)
@@ -1055,16 +1062,14 @@ static char *ip4_reassembly_error_strings[] = {
 #undef _
 };
 
-static uword
-ip4_reassembly (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_reass_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
 {
   return ip4_reassembly_inline (vm, node, frame, false /* is_feature */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_reass_node, static) = {
-    .function = ip4_reassembly,
+VLIB_REGISTER_NODE (ip4_reass_node) = {
     .name = "ip4-reassembly",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_reass_trace,
@@ -1081,18 +1086,15 @@ VLIB_REGISTER_NODE (ip4_reass_node, static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_reass_node, ip4_reassembly);
-
-static uword
-ip4_reassembly_feature (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (ip4_reass_node_feature) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   return ip4_reassembly_inline (vm, node, frame, true /* is_feature */ );
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_reass_node_feature, static) = {
-    .function = ip4_reassembly_feature,
+VLIB_REGISTER_NODE (ip4_reass_node_feature) = {
     .name = "ip4-reassembly-feature",
     .vector_size = sizeof (u32),
     .format_trace = format_ip4_reass_trace,
@@ -1108,8 +1110,6 @@ VLIB_REGISTER_NODE (ip4_reass_node_feature, static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_reass_node_feature, ip4_reassembly_feature);
-
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (ip4_reassembly_feature, static) = {
     .arc_name = "ip4-unicast",
@@ -1119,6 +1119,7 @@ VNET_FEATURE_INIT (ip4_reassembly_feature, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 always_inline u32
 ip4_reass_get_nbuckets ()
 {
@@ -1135,6 +1136,7 @@ ip4_reass_get_nbuckets ()
 
   return nbuckets;
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 typedef enum
 {
@@ -1147,6 +1149,7 @@ typedef struct
   clib_bihash_16_8_t *new_hash;
 } ip4_rehash_cb_ctx;
 
+#ifndef CLIB_MARCH_VARIANT
 static void
 ip4_rehash_cb (clib_bihash_kv_16_8_t * kv, void *_ctx)
 {
@@ -1257,6 +1260,7 @@ ip4_reass_init_function (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ip4_reass_init_function);
+#endif /* CLIB_MARCH_VARIANT */
 
 static uword
 ip4_reass_walk_expired (vlib_main_t * vm,
@@ -1440,6 +1444,7 @@ VLIB_CLI_COMMAND (show_ip4_reassembly_cmd, static) = {
 };
 /* *INDENT-ON* */
 
+#ifndef CLIB_MARCH_VARIANT
 vnet_api_error_t
 ip4_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 {
@@ -1447,6 +1452,7 @@ ip4_reass_enable_disable (u32 sw_if_index, u8 enable_disable)
 				      "ip4-reassembly-feature", sw_if_index,
 				      enable_disable, 0, 0);
 }
+#endif /* CLIB_MARCH_VARIANT */
 
 
 #define foreach_ip4_reassembly_handoff_error                       \

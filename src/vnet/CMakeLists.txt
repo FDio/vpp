@@ -430,6 +430,18 @@ list(APPEND VNET_SOURCES
   ip/punt.c
 )
 
+list(APPEND VNET_MULTIARCH_SOURCES
+  ip/ip4_source_check.c
+  ip/ip4_punt_drop.c
+  ip/ip4_reassembly.c
+  ip/ip6_hop_by_hop.c
+  ip/ip6_reassembly.c
+  ip/ip6_input.c
+  ip/ip6_punt_drop.c
+  ip/punt.c
+  ip/ip_in_out_acl.c
+)
+
 list(APPEND VNET_HEADERS
   ip/format.h
   ip/icmp46_packet.h
