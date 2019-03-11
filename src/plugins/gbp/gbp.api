@@ -34,7 +34,7 @@ typedef gbp_bridge_domain
   u32 bm_flood_sw_if_index;
 };
 
-autoreply define gbp_bridge_domain_add
+manual_print autoreply define gbp_bridge_domain_add
 {
   u32 client_index;
   u32 context;
