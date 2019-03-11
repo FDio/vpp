@@ -976,6 +976,27 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   return fd;
 }
 
+/* duplicate first buffer in chain */
+always_inline vlib_buffer_t *
+vlib_buffer_copy_no_chain (vlib_main_t * vm, vlib_buffer_t * b, u32 * di)
+{
+  vlib_buffer_t *d;
+
+  if ((vlib_buffer_alloc (vm, di, 1)) != 1)
+    return 0;
+
+  d = vlib_get_buffer (vm, *di);
+  /* 1st segment */
+  d->current_data = b->current_data;
+  d->current_length = b->current_length;
+  clib_memcpy_fast (d->opaque, b->opaque, sizeof (b->opaque));
+  clib_memcpy_fast (d->opaque2, b->opaque2, sizeof (b->opaque2));
+  clib_memcpy_fast (vlib_buffer_get_current (d),
+		    vlib_buffer_get_current (b), b->current_length);
+
+  return d;
+}
+
 /** \brief Create a maximum of 256 clones of buffer and store them
     in the supplied array
 
