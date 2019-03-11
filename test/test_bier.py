@@ -583,10 +583,12 @@ class TestBier(VppTestCase):
                           proto=DpoProto.DPO_PROTO_BIER,
                           nh_table_id=8)])
         bier_route_1.add_vpp_config()
-        bier_route_max = VppBierRoute(self, bti, max_bp,
-                                      [VppRoutePath("0.0.0.0",
-                                                    0xffffffff,
-                                                    nh_table_id=8)])
+        bier_route_max = VppBierRoute(
+            self, bti, max_bp,
+            [VppRoutePath("0.0.0.0",
+                          0xffffffff,
+                          nh_table_id=8,
+                          proto=DpoProto.DPO_PROTO_BIER)])
         bier_route_max.add_vpp_config()
 
         #
