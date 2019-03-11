@@ -181,6 +181,17 @@ list(APPEND VNET_MULTIARCH_SOURCES
   l2/l2_learn.c
   l2/l2_output.c
   l2/l2_patch.c
+  l2/l2_in_out_feat_arc.c
+  l2/l2_input_classify.c
+  l2/l2_input.c
+  l2/l2_output_classify.c
+  l2/l2_flood.c
+  l2/l2_uu_fwd.c
+  l2/l2_efp_filter.c
+  l2/l2_rw.c
+  l2/l2_xcrw.c
+  l2/l2_in_out_acl.c
+  l2/l2_input_vtr.c
 )
 
 list(APPEND VNET_HEADERS

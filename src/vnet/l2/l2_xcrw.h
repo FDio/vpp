@@ -80,6 +80,8 @@ typedef enum
     L2_XCRW_N_ERROR,
 } l2_xcrw_error_t;
 
+extern vlib_node_registration_t l2_xcrw_node;
+
 #endif /* __included_l2_xcrw_h__ */
 
 /*

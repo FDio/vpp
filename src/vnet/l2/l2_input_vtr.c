@@ -57,9 +57,9 @@ format_l2_invtr_trace (u8 * s, va_list * args)
   return s;
 }
 
+#ifndef CLIB_MARCH_VARIANT
 l2_invtr_main_t l2_invtr_main;
-
-static vlib_node_registration_t l2_invtr_node;
+#endif /* CLIB_MARCH_VARIANT */
 
 #define foreach_l2_invtr_error			\
 _(L2_INVTR,    "L2 inverter packets")		\
@@ -86,9 +86,9 @@ typedef enum
 } l2_invtr_next_t;
 
 
-static uword
-l2_invtr_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+VLIB_NODE_FN (l2_invtr_node) (vlib_main_t * vm,
+			      vlib_node_runtime_t * node,
+			      vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2_invtr_next_t next_index;
@@ -320,8 +320,7 @@ l2_invtr_node_fn (vlib_main_t * vm,
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_invtr_node,static) = {
-  .function = l2_invtr_node_fn,
+VLIB_REGISTER_NODE (l2_invtr_node) = {
   .name = "l2-input-vtr",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_invtr_trace,
@@ -339,8 +338,9 @@ VLIB_REGISTER_NODE (l2_invtr_node,static) = {
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2_invtr_node, l2_invtr_node_fn)
-     clib_error_t *l2_invtr_init (vlib_main_t * vm)
+#ifndef CLIB_MARCH_VARIANT
+clib_error_t *
+l2_invtr_init (vlib_main_t * vm)
 {
   l2_invtr_main_t *mp = &l2_invtr_main;
 
@@ -358,6 +358,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_invtr_node, l2_invtr_node_fn)
 }
 
 VLIB_INIT_FUNCTION (l2_invtr_init);
+#endif /* CLIB_MARCH_VARIANT */
 
 
 /*
