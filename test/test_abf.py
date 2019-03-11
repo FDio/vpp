@@ -5,7 +5,7 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip import DpoProto
-from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsLabel, VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -144,9 +144,9 @@ class TestAbf(VppTestCase):
     def setUp(self):
         super(TestAbf, self).setUp()
 
-        self.create_pg_interfaces(range(4))
+        self.create_pg_interfaces(range(5))
 
-        for i in self.pg_interfaces:
+        for i in self.pg_interfaces[:4]:
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
@@ -265,6 +265,30 @@ class TestAbf(VppTestCase):
         attach_4.remove_vpp_config()
 
         self.send_and_assert_no_replies(self.pg1, p_2 * 65, "Detached")
+
+        #
+        # Swap to route via a next-hop in the non-default table
+        #
+        table_20 = VppIpTable(self, 20)
+        table_20.add_vpp_config()
+
+        self.pg4.set_table_ip4(table_20.table_id)
+        self.pg4.admin_up()
+        self.pg4.config_ip4()
+        self.pg4.resolve_arp()
+
+        abf_13 = VppAbfPolicy(self, 13, acl_1,
+                              [VppRoutePath(self.pg4.remote_ip4,
+                                            0xffffffff,
+                                            nh_table_id=table_20.table_id)])
+        abf_13.add_vpp_config()
+        attach_5 = VppAbfAttach(self, 13, self.pg0.sw_if_index, 30)
+        attach_5.add_vpp_config()
+
+        self.send_and_expect(self.pg0, p_1*65, self.pg4)
+
+        self.pg4.unconfig_ip4()
+        self.pg4.set_table_ip4(0)
 
     def test_abf6(self):
         """ IPv6 ACL Based Forwarding
