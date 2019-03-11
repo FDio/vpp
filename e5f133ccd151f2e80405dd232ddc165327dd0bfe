@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "486ae1b6_26b909e9",
+        "filename": "test/run_tests.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-11T12:14:28Z",
+      "side": 1,
+      "message": "Not a stdlib.  Should go beneath unittest.",
+      "range": {
+        "startLine": 6,
+        "startChar": 0,
+        "endLine": 6,
+        "endChar": 13
+      },
+      "revId": "e5f133ccd151f2e80405dd232ddc165327dd0bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d166aa5_7fc78684",
+        "filename": "test/run_tests.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-11T12:14:28Z",
+      "side": 1,
+      "message": "stdlib. Goes above os.",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 40
+      },
+      "revId": "e5f133ccd151f2e80405dd232ddc165327dd0bfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
