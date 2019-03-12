@@ -712,7 +712,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
   u8 buffer_pool_index = ~0;
   u32 n_queue = 0, queue[queue_size + 4];
   vlib_buffer_t bt = { };
-#if defined(CLIB_HAVE_VEC128) && !__aarch64__
+#if defined(CLIB_HAVE_VEC128)
   vlib_buffer_t bpi_mask = {.buffer_pool_index = ~0 };
   vlib_buffer_t bpi_vec = {.buffer_pool_index = ~0 };
   vlib_buffer_t flags_refs_mask = {
@@ -737,7 +737,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
       vlib_prefetch_buffer_header (b[6], LOAD);
       vlib_prefetch_buffer_header (b[7], LOAD);
 
-#if defined(CLIB_HAVE_VEC128) && !__aarch64__
+#if defined(CLIB_HAVE_VEC128)
       u8x16 p0, p1, p2, p3, r;
       p0 = u8x16_load_unaligned (b[0]);
       p1 = u8x16_load_unaligned (b[1]);
@@ -815,7 +815,7 @@ vlib_buffer_free_inline (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	    }
 
 	  buffer_pool_index = b[0]->buffer_pool_index;
-#if defined(CLIB_HAVE_VEC128) && !__aarch64__
+#if defined(CLIB_HAVE_VEC128)
 	  bpi_vec.buffer_pool_index = buffer_pool_index;
 #endif
 	  bp = vlib_get_buffer_pool (vm, buffer_pool_index);
