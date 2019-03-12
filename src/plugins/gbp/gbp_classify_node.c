@@ -308,6 +308,28 @@ ethertype_to_dpo_proto (const ethernet_header_t * eh0)
   return (DPO_PROTO_NONE);
 }
 
+/**
+ * per-packet trace data
+ */
+typedef struct gbp_lpm_classify_trace_t_
+{
+  sclass_t sclass;
+  index_t lbi;
+} gbp_lpm_classify_trace_t;
+
+/* packet trace format function */
+static u8 *
+format_gbp_lpm_classify_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  gbp_lpm_classify_trace_t *t = va_arg (*args, gbp_lpm_classify_trace_t *);
+
+  s = format (s, "sclass:%d lb:%d", t->sclass, t->lbi);
+
+  return s;
+}
+
 /*
  * Determine the SRC EPG from a LPM
  */
@@ -335,8 +357,9 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	{
 	  u32 bi0, sw_if_index0, fib_index0, lbi0;
 	  gbp_lpm_classify_next_t next0;
+	  const ethernet_header_t *eh0;
 	  const gbp_policy_dpo_t *gpd0;
-	  const gbp_ext_itf_t *gx0;
+	  const gbp_endpoint_t *ge0;
 	  const gbp_recirc_t *gr0;
 	  const dpo_id_t *dpo0;
 	  load_balance_t *lb0;
@@ -355,6 +378,8 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	  ip6_0 = NULL;
 	  next0 = GPB_LPM_CLASSIFY_DROP;
 
+	  lbi0 = ~0;
+	  eh0 = NULL;
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -366,8 +391,6 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	    ip6_0 = vlib_buffer_get_current (b0);
 	  else if (DPO_PROTO_ETHERNET == dproto)
 	    {
-	      const ethernet_header_t *eh0;
-
 	      eh0 = vlib_buffer_get_current (b0);
 
 	      dproto = ethertype_to_dpo_proto (eh0);
@@ -393,17 +416,61 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	    {
 	      gr0 = gbp_recirc_get (sw_if_index0);
 	      fib_index0 = gr0->gr_fib_index[dproto];
+	      ge0 = NULL;
 
 	      vnet_feature_next (&next0, b0);
 	    }
 	  else
 	    {
-	      gx0 = gbp_ext_itf_get (sw_if_index0);
-	      fib_index0 = gx0->gx_fib_index[dproto];
+	      if (NULL == eh0)
+		{
+		  /* packet should be l2 */
+		  sclass0 = SCLASS_INVALID;
+		  goto trace;
+		}
+
+	      ge0 = gbp_endpoint_find_mac (eh0->src_address,
+					   vnet_buffer (b0)->l2.bd_index);
+
+	      if (NULL == ge0)
+		{
+		  /* packet must have come from an EP's mac */
+		  sclass0 = SCLASS_INVALID;
+		  goto trace;
+		}
+
+	      fib_index0 = ge0->ge_fwd.gef_fib_index;
+
+	      if (~0 == fib_index0)
+		{
+		  sclass0 = SCLASS_INVALID;
+		  goto trace;
+		}
+
+	      if (DPO_PROTO_IP4 == dproto)
+		{
+		  ge0 =
+		    gbp_endpoint_find_ip4 (&ip4_0->src_address, fib_index0);
+		}
+	      else if (DPO_PROTO_IP6 == dproto)
+		{
+		  ge0 =
+		    gbp_endpoint_find_ip6 (&ip6_0->src_address, fib_index0);
+		}
 
 	      next0 = vnet_l2_feature_next
 		(b0, gscm->l2_input_feat_next[GBP_SRC_CLASSIFY_LPM],
 		 L2INPUT_FEAT_GBP_LPM_CLASSIFY);
+
+	      /*
+	       * if we found the EP by IP lookup, it must be from the EP
+	       * not a network behind it
+	       */
+	      if (NULL != ge0)
+		{
+		  sclass0 = ge0->ge_fwd.gef_sclass;
+		  goto trace;
+		}
 	    }
 
 	  if (DPO_PROTO_IP4 == dproto)
@@ -420,6 +487,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	    {
 	      /* not IP so no LPM classify possible */
 	      sclass0 = SCLASS_INVALID;
+	      next0 = GPB_LPM_CLASSIFY_DROP;
 	      goto trace;
 	    }
 	  lb0 = load_balance_get (lbi0);
@@ -434,7 +502,7 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	    {
 	      /* could not classify => drop */
 	      sclass0 = SCLASS_INVALID;
-	      next0 = GPB_LPM_CLASSIFY_DROP;
+	      goto trace;
 	    }
 
 	trace:
@@ -442,9 +510,10 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      gbp_classify_trace_t *t =
+	      gbp_lpm_classify_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sclass = sclass0;
+	      t->lbi = lbi0;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -483,7 +552,7 @@ VLIB_NODE_FN (gbp_l2_lpm_classify_node) (vlib_main_t * vm,
 VLIB_REGISTER_NODE (gbp_ip4_lpm_classify_node) = {
   .name = "ip4-gbp-lpm-classify",
   .vector_size = sizeof (u32),
-  .format_trace = format_gbp_classify_trace,
+  .format_trace = format_gbp_lpm_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = 0,
@@ -496,7 +565,7 @@ VLIB_REGISTER_NODE (gbp_ip4_lpm_classify_node) = {
 VLIB_REGISTER_NODE (gbp_ip6_lpm_classify_node) = {
   .name = "ip6-gbp-lpm-classify",
   .vector_size = sizeof (u32),
-  .format_trace = format_gbp_classify_trace,
+  .format_trace = format_gbp_lpm_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = 0,
@@ -509,7 +578,7 @@ VLIB_REGISTER_NODE (gbp_ip6_lpm_classify_node) = {
 VLIB_REGISTER_NODE (gbp_l2_lpm_classify_node) = {
   .name = "l2-gbp-lpm-classify",
   .vector_size = sizeof (u32),
-  .format_trace = format_gbp_classify_trace,
+  .format_trace = format_gbp_lpm_classify_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
   .n_errors = 0,
