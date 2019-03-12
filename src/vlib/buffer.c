@@ -552,9 +552,9 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
   n_alloc_per_page = (1ULL << m->log2_page_size) / alloc_size;
 
   /* preallocate buffer indices memory */
-  vec_validate_aligned (bp->buffers, m->n_pages * n_alloc_per_page,
-			CLIB_CACHE_LINE_BYTES);
-  vec_reset_length (bp->buffers);
+  bp->n_buffers = m->n_pages * n_alloc_per_page;
+  bp->buffers = clib_mem_alloc_aligned (bp->n_buffers * sizeof (u32),
+					CLIB_CACHE_LINE_BYTES);
 
   clib_spinlock_init (&bp->lock);
 
@@ -571,11 +571,11 @@ vlib_buffer_pool_create (vlib_main_t * vm, char *name, u32 data_size,
 
 	bi = vlib_get_buffer_index (vm, (vlib_buffer_t *) p);
 
-	vec_add1_aligned (bp->buffers, bi, CLIB_CACHE_LINE_BYTES);
+	bp->buffers[bp->n_avail++] = bi;
+
 	vlib_get_buffer (vm, bi);
       }
 
-  bp->n_buffers = vec_len (bp->buffers);
   return bp->index;
 }
 
@@ -594,14 +594,14 @@ format_vlib_buffer_pool (u8 * s, va_list * va)
 
   /* *INDENT-OFF* */
   vec_foreach (bpt, bp->threads)
-    cached += vec_len (bpt->cached_buffers);
+    cached += bpt->n_cached;
   /* *INDENT-ON* */
 
   s = format (s, "%-20s%=6d%=6d%=6u%=11u%=6u%=8u%=8u%=8u",
 	      bp->name, bp->index, bp->numa_node, bp->data_size +
 	      sizeof (vlib_buffer_t) + vm->buffer_main->ext_hdr_size,
-	      bp->data_size, bp->n_buffers, vec_len (bp->buffers), cached,
-	      bp->n_buffers - vec_len (bp->buffers) - cached);
+	      bp->data_size, bp->n_buffers, bp->n_avail, cached,
+	      bp->n_buffers - bp->n_avail - cached);
 
   return s;
 }
@@ -736,7 +736,7 @@ buffer_get_cached (vlib_buffer_pool_t * bp)
 
   /* *INDENT-OFF* */
   vec_foreach (bpt, bp->threads)
-    cached += vec_len (bpt->cached_buffers);
+    cached += bpt->n_cached;
   /* *INDENT-ON* */
 
   clib_spinlock_unlock (&bp->lock);
@@ -763,7 +763,7 @@ buffer_gauges_update_used_fn (stat_segment_directory_entry_t * e, u32 index)
   if (!bp)
     return;
 
-  e->value = bp->n_buffers - vec_len (bp->buffers) - buffer_get_cached (bp);
+  e->value = bp->n_buffers - bp->n_avail - buffer_get_cached (bp);
 }
 
 static void
@@ -775,7 +775,7 @@ buffer_gauges_update_available_fn (stat_segment_directory_entry_t * e,
   if (!bp)
     return;
 
-  e->value = vec_len (bp->buffers);
+  e->value = bp->n_avail;
 }
 
 static void
