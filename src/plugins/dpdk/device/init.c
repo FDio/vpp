@@ -842,7 +842,8 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         (d->device_id == 0x0443 || d->device_id == 0x37c9 || d->device_id == 0x19e3))
       ;
     /* Cisco VIC */
-    else if (d->vendor_id == 0x1137 && d->device_id == 0x0043)
+    else if (d->vendor_id == 0x1137 &&
+        (d->device_id == 0x0043 || d->device_id == 0x0071))
       ;
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
