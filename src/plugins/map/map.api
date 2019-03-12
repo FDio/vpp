@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-option version = "3.0.0";
+option version = "3.1.0";
 
 import "vnet/ip/ip_types.api";
 
@@ -27,6 +27,7 @@ import "vnet/ip/ip_types.api";
     @param psid_offset - Port Set Identifider (PSID) offset
     @param psid_length - PSID length
     @param mtu - MTU
+    @param tag - A user field stored with the MAP
 */
 define map_add_domain
 {
@@ -39,6 +40,7 @@ define map_add_domain
   u8 psid_offset;
   u8 psid_length;
   u16 mtu;
+  string tag;
 };
 
 /** \brief Reply for MAP domain add
@@ -94,6 +96,19 @@ define map_domain_dump
   u32 context;
 };
 
+/** \brief Details about a single MAP domain
+    @param context - returned sender context, to match reply w/ request
+    @param domain_index - MAP domain index
+    @param ip6_prefix - Rule IPv6 prefix
+    @param ip4_prefix - Rule IPv4 prefix
+    @param ip6_src - MAP domain IPv6 BR address / Tunnel source
+    @param ea_bits_len - Embedded Address bits length
+    @param psid_offset - Port Set Identifider (PSID) offset
+    @param psid_length - PSID length
+    @param flags -
+    @param mtu - MTU
+    @param tag - The user field stored with the MAP at creation time
+*/
 define map_domain_details
 {
   u32 context;
@@ -106,6 +121,7 @@ define map_domain_details
   u8 psid_length;
   u8 flags;
   u16 mtu;
+  string tag;
 };
 
 define map_rule_dump
