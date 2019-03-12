@@ -36,7 +36,7 @@ int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 		       ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		       ip6_address_t * ip6_src, u8 ip6_src_len,
 		       u8 ea_bits_len, u8 psid_offset, u8 psid_length,
-		       u32 * map_domain_index, u16 mtu, u8 flags);
+		       u32 * map_domain_index, u16 mtu, u8 flags, char *tag);
 int map_delete_domain (u32 map_domain_index);
 int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      bool is_add);
@@ -97,7 +97,8 @@ typedef enum
 
 /*
  * This structure _MUST_ be no larger than a single cache line (64 bytes).
- * If more space is needed make a union of ip6_prefix and *rules, those are mutually exclusive.
+ * If more space is needed make a union of ip6_prefix and *rules, as
+ * those are mutually exclusive.
  */
 typedef struct
 {
@@ -128,6 +129,16 @@ typedef struct
 
 STATIC_ASSERT ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
 	       "MAP domain fits in one cacheline");
+
+/*
+ * Extra data about a domain that doesn't need to be time/space critical.
+ * This structure is in a vector parallel to the main map_domain_t,
+ * and indexed by the same map-domain-index values.
+ */
+typedef struct
+{
+  char *tag;			/* Probably a user-assigned domain name. */
+} map_domain_extra_t;
 
 #define MAP_REASS_INDEX_NONE ((u16)0xffff)
 
@@ -251,6 +262,7 @@ extern map_main_pre_resolved_t pre_resolved[FIB_PROTOCOL_MAX];
 typedef struct {
   /* pool of MAP domains */
   map_domain_t *domains;
+  map_domain_extra_t *domain_extras;
 
   /* MAP Domain packet/byte counters indexed by map domain index */
   vlib_simple_counter_main_t *simple_domain_counters;
