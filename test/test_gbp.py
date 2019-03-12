@@ -461,6 +461,8 @@ class VppGbpContract(VppObject):
         self.dst_epg = dst_epg
         self.rules = rules
         self.allowed_ethertypes = allowed_ethertypes
+        while (len(self.allowed_ethertypes) < 16):
+            self.allowed_ethertypes.append(0)
 
     def add_vpp_config(self):
         rules = []
@@ -481,7 +483,8 @@ class VppGbpContract(VppObject):
             self.src_epg.sclass,
             self.dst_epg.sclass,
             self.acl_index,
-            [], [])
+            [],
+            self.allowed_ethertypes)
 
     def __str__(self):
         return self.object_id()

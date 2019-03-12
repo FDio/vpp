@@ -42,23 +42,32 @@ create_cmd::operator==(const create_cmd& other) const
           (m_allowed_ethertypes == other.m_allowed_ethertypes));
 }
 
+#define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
+
 rc_t
 create_cmd::issue(connection& con)
 {
   size_t n_rules = m_gbp_rules.size();
-  size_t n_et_rules = 0;
+  uint32_t ii = 0;
 
-  msg_t req(con.ctx(), n_rules, n_et_rules, std::ref(*this));
+  msg_t req(con.ctx(), n_rules, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.contract.acl_index = m_acl.value();
   payload.contract.sclass = m_sclass;
   payload.contract.dclass = m_dclass;
-
-  uint32_t ii = 0;
   payload.contract.n_rules = n_rules;
+  payload.contract.n_ether_types = m_allowed_ethertypes.size();
 
+  for (auto tt : m_allowed_ethertypes) {
+    payload.contract.allowed_ethertypes[ii] = tt.value();
+    ii++;
+    if (ii == ARRAY_LEN(payload.contract.allowed_ethertypes))
+      break;
+  }
+
+  ii = 0;
   for (auto rule : m_gbp_rules) {
     if (rule.action() == gbp_rule::action_t::REDIRECT)
       payload.contract.rules[ii].action = GBP_API_RULE_REDIRECT;
@@ -86,19 +95,6 @@ create_cmd::issue(connection& con)
       jj++;
     }
     ++ii;
-  }
-
-  u8* data;
-  u16* et;
-
-  data = (((u8*)&payload.contract.n_ether_types) +
-          (sizeof(payload.contract.rules[0]) * payload.contract.n_rules));
-  *data = m_allowed_ethertypes.size();
-  et = (u16*)(++data);
-  ii = 0;
-  for (auto tt : m_allowed_ethertypes) {
-    et[ii] = tt.value();
-    ii++;
   }
 
   VAPI_CALL(req.execute());
@@ -136,7 +132,7 @@ delete_cmd::operator==(const delete_cmd& other) const
 rc_t
 delete_cmd::issue(connection& con)
 {
-  msg_t req(con.ctx(), 0, 0, std::ref(*this));
+  msg_t req(con.ctx(), 0, std::ref(*this));
 
   auto& payload = req.get_request().get_payload();
   payload.is_add = 0;
@@ -154,7 +150,7 @@ delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "gbp-contract-delete: " << m_hw_item.to_string()
-    << " src-epg-id:" << m_sclass << " dst-epg-id:" << m_dclass;
+    << " sclass:" << m_sclass << " dclass:" << m_dclass;
 
   return (s.str());
 }
