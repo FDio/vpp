@@ -5,7 +5,7 @@ import unittest
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS,  ICMPv6NDOptSrcLLAddr, \
     ICMPv6ND_NA
 from scapy.utils6 import in6_getnsma, in6_getnsmac
@@ -19,7 +19,7 @@ from vpp_interface import VppInterface
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpTable, \
     VppIpInterfaceAddress, VppIpInterfaceBind, find_route
 from vpp_l2 import VppBridgeDomain, VppBridgeDomainPort, \
-    VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port
+    VppBridgeDomainArpEntry, VppL2FibEntry, find_bridge_domain_port, VppL2Vtr
 from vpp_sub_interface import VppDot1QSubint
 from vpp_ip import VppIpAddress, VppIpPrefix
 from vpp_papi import VppEnum, MACAddress
@@ -66,10 +66,6 @@ class VppGbpEndpoint(VppObject):
     @property
     def mac(self):
         return str(self.vmac)
-
-    @property
-    def mac(self):
-        return self.itf.remote_mac
 
     @property
     def ip4(self):
@@ -3194,7 +3190,12 @@ class TestGBP(VppTestCase):
         #
         vlan_100 = VppDot1QSubint(self, self.pg0, 100)
         vlan_100.admin_up()
-        ext_itf = VppGbpExtItf(self, vlan_100, bd1, rd1)
+        VppL2Vtr(self, vlan_100, L2_VTR_OP.L2_POP_1).add_vpp_config()
+        vlan_101 = VppDot1QSubint(self, self.pg0, 101)
+        vlan_101.admin_up()
+        VppL2Vtr(self, vlan_101, L2_VTR_OP.L2_POP_1).add_vpp_config()
+
+        ext_itf = VppGbpExtItf(self, self.loop0, bd1, rd1)
         ext_itf.add_vpp_config()
 
         #
@@ -3207,15 +3208,44 @@ class TestGBP(VppTestCase):
         vx_tun_l3.add_vpp_config()
 
         #
+        # External Endpoints
+        #
+        eep1 = VppGbpEndpoint(self, vlan_100,
+                              epg_220, None,
+                              "10.0.0.1", "11.0.0.1",
+                              "2001:10::1", "3001::1",
+                              ep_flags.GBP_API_ENDPOINT_FLAG_EXTERNAL)
+        eep1.add_vpp_config()
+        eep2 = VppGbpEndpoint(self, vlan_101,
+                              epg_220, None,
+                              "10.0.0.2", "11.0.0.2",
+                              "2001:10::2", "3001::2",
+                              ep_flags.GBP_API_ENDPOINT_FLAG_EXTERNAL)
+        eep2.add_vpp_config()
+
+        #
+        # A remote endpoint
+        #
+        rep = VppGbpEndpoint(self, vx_tun_l3,
+                             epg_220, None,
+                             "10.0.0.101", "11.0.0.101",
+                             "2001:10::101", "3001::101",
+                             ep_flags.GBP_API_ENDPOINT_FLAG_REMOTE,
+                             self.pg7.local_ip4,
+                             self.pg7.remote_ip4,
+                             mac=None)
+        rep.add_vpp_config()
+
+        #
         # packets destined to unknown addresses in the BVI's subnet
         # are ARP'd for
         #
-        p4 = (Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
+        p4 = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=100) /
               IP(src="10.0.0.1", dst="10.0.0.88") /
               UDP(sport=1234, dport=1234) /
               Raw('\xa5' * 100))
-        p6 = (Ether(src=self.pg0.remote_mac, dst=str(self.router_mac)) /
+        p6 = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
               Dot1Q(vlan=100) /
               IPv6(src="2001:10::1", dst="2001:10::88") /
               UDP(sport=1234, dport=1234) /
@@ -3241,29 +3271,6 @@ class TestGBP(VppTestCase):
             self.assertTrue(inner.haslayer(ARP))
 
         #
-        # An external Endpoint
-        #
-        eep = VppGbpEndpoint(self, vlan_100,
-                             epg_220, None,
-                             "10.0.0.1", "11.0.0.1",
-                             "2001:10::1", "3001::1",
-                             ep_flags.GBP_API_ENDPOINT_FLAG_EXTERNAL)
-        eep.add_vpp_config()
-
-        #
-        # A remote endpoint
-        #
-        rep = VppGbpEndpoint(self, vx_tun_l3,
-                             epg_220, None,
-                             "10.0.0.101", "11.0.0.101",
-                             "2001:10::101", "3001::101",
-                             ep_flags.GBP_API_ENDPOINT_FLAG_REMOTE,
-                             self.pg7.local_ip4,
-                             self.pg7.remote_ip4,
-                             mac=None)
-        rep.add_vpp_config()
-
-        #
         # remote to external
         #
         p = (Ether(src=self.pg7.remote_mac,
@@ -3280,11 +3287,41 @@ class TestGBP(VppTestCase):
         rxs = self.send_and_expect(self.pg7, p * 1, self.pg0)
 
         #
+        # local EP pings router
+        #
+        p = (Ether(src=eep1.mac, dst=str(self.router_mac)) /
+             Dot1Q(vlan=100) /
+             IP(src=eep1.ip4.address, dst="10.0.0.128") /
+             ICMP(type='echo-request'))
+
+        rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, str(self.router_mac))
+            self.assertEqual(rx[Ether].dst, eep1.mac)
+            self.assertEqual(rx[Dot1Q].vlan, 100)
+
+        #
+        # local EP pings other local EP
+        #
+        p = (Ether(src=eep1.mac, dst=eep2.mac) /
+             Dot1Q(vlan=100) /
+             IP(src=eep1.ip4.address, dst=eep2.ip4.address) /
+             ICMP(type='echo-request'))
+
+        rxs = self.send_and_expect(self.pg0, p * 1, self.pg0)
+
+        for rx in rxs:
+            self.assertEqual(rx[Ether].src, eep1.mac)
+            self.assertEqual(rx[Ether].dst, eep2.mac)
+            self.assertEqual(rx[Dot1Q].vlan, 101)
+
+        #
         # A subnet reachable through the external EP
         #
         ip_220 = VppIpRoute(self, "10.220.0.0", 24,
-                            [VppRoutePath(eep.ip4.address,
-                                          eep.epg.bvi.sw_if_index)],
+                            [VppRoutePath(eep1.ip4.address,
+                                          eep1.epg.bvi.sw_if_index)],
                             table_id=t4.table_id)
         ip_220.add_vpp_config()
 
@@ -3311,6 +3348,7 @@ class TestGBP(VppTestCase):
         # cleanup
         #
         self.pg7.unconfig_ip4()
+        vlan_100.set_vtr(L2_VTR_OP.L2_DISABLED)
 
 
 if __name__ == '__main__':

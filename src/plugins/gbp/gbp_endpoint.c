@@ -254,7 +254,8 @@ gbp_endpoint_alloc (const ip46_address_t * ips,
   fib_node_init (&ge->ge_node, gbp_endpoint_fib_type);
   gei = gbp_endpoint_index (ge);
   ge->ge_key.gek_gbd =
-    ge->ge_key.gek_grd = ge->ge_fwd.gef_itf = INDEX_INVALID;
+    ge->ge_key.gek_grd =
+    ge->ge_fwd.gef_itf = ge->ge_fwd.gef_fib_index = INDEX_INVALID;
   ge->ge_last_time = vlib_time_now (vlib_get_main ());
   ge->ge_key.gek_gbd = gbp_bridge_domain_index (gbd);
 
@@ -602,7 +603,7 @@ gbb_endpoint_fwd_reset (gbp_endpoint_t * ge)
     {
       l2fib_del_entry (ge->ge_key.gek_mac.bytes,
 		       gbd->gb_bd_index, gef->gef_itf);
-      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, (L2INPUT_FEAT_NONE));
+      gbp_itf_set_l2_input_feature (gef->gef_itf, gei, L2INPUT_FEAT_NONE);
       gbp_itf_set_l2_output_feature (gef->gef_itf, gei, L2OUTPUT_FEAT_NONE);
 
       gbp_itf_unlock (gef->gef_itf);
@@ -681,6 +682,7 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
     rewrite = NULL;
     grd = gbp_route_domain_get (ge->ge_key.gek_grd);
     fib_index = grd->grd_fib_index[pfx->fp_proto];
+    gef->gef_fib_index = fib_index;
 
     bd_add_del_ip_mac (gbd->gb_bd_index, fib_proto_to_ip46 (pfx->fp_proto),
 		       &pfx->fp_addr, &ge->ge_key.gek_mac, 1);
@@ -786,7 +788,12 @@ gbb_endpoint_fwd_recalc (gbp_endpoint_t * ge)
       }
   }
 
-  if (gbp_endpoint_is_local (ge) && !gbp_endpoint_is_external (ge))
+  if (gbp_endpoint_is_external (ge))
+    {
+      gbp_itf_set_l2_input_feature (gef->gef_itf, gei,
+				    L2INPUT_FEAT_GBP_LPM_CLASSIFY);
+    }
+  else if (gbp_endpoint_is_local (ge))
     {
       /*
        * non-remote endpoints (i.e. those not arriving on iVXLAN
