@@ -1838,6 +1838,55 @@ static void *vl_api_vxlan_tunnel_dump_t_print
   FINISH;
 }
 
+static void *vl_api_vxlan_gbp_tunnel_add_del_t_print
+  (vl_api_vxlan_gbp_tunnel_add_del_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: vxlan_gbp_tunnel_add_del ");
+
+  if (mp->is_add)
+    s = format (s, "add ");
+  else
+    s = format (s, "del ");
+
+  s = format (s, "instance %d ", ntohl (mp->tunnel.instance));
+  s = format (s, "src %U ", format_vl_api_address, &mp->tunnel.src);
+  s = format (s, "dst %U ", format_vl_api_address, &mp->tunnel.dst);
+  s =
+    format (s, "mcast_sw_if_index %d ", ntohl (mp->tunnel.mcast_sw_if_index));
+  s = format (s, "encap_table_id %d ", ntohl (mp->tunnel.encap_table_id));
+  s = format (s, "vni %d ", ntohl (mp->tunnel.vni));
+  s = format (s, "sw_if_index %d ", ntohl (mp->tunnel.sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_vxlan_gbp_tunnel_dump_t_print
+  (vl_api_vxlan_gbp_tunnel_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: vxlan_gbp_tunnel_dump ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_sw_interface_set_vxlan_gbp_bypass_t_print
+  (vl_api_sw_interface_set_vxlan_gbp_bypass_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_vxlan_gbp_bypass ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "%s ", (mp->is_ipv6 != 0) ? "ipv6" : "ipv4");
+  s = format (s, "%s ", (mp->enable != 0) ? "enable" : "disable");
+
+  FINISH;
+}
+
 static void *vl_api_geneve_add_del_tunnel_t_print
   (vl_api_geneve_add_del_tunnel_t * mp, void *handle)
 {
