@@ -931,8 +931,7 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
   u16 *allowed_ethertypes;
   index_t *rules;
   int ii, rv = 0;
-  u8 *data, n_et;
-  u16 *et;
+  u8 n_et;
 
   if (mp->is_add)
     {
@@ -944,19 +943,15 @@ vl_api_gbp_contract_add_del_t_handler (vl_api_gbp_contract_add_del_t * mp)
       allowed_ethertypes = NULL;
 
       /*
-       * move past the variable legnth array of rules to get to the
        * allowed ether types
        */
-      data = (((u8 *) & mp->contract.n_ether_types) +
-	      (sizeof (mp->contract.rules[0]) * mp->contract.n_rules));
-      n_et = *data;
-      et = (u16 *) (++data);
+      n_et = mp->contract.n_ether_types;
       vec_validate (allowed_ethertypes, n_et - 1);
 
       for (ii = 0; ii < n_et; ii++)
 	{
 	  /* leave the ether types in network order */
-	  allowed_ethertypes[ii] = et[ii];
+	  allowed_ethertypes[ii] = mp->contract.allowed_ethertypes[ii];
 	}
 
       rv = gbp_contract_update (ntohs (mp->contract.sclass),

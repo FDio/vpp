@@ -299,10 +299,10 @@ typedef gbp_contract
   u16 sclass;
   u16 dclass;
   u32 acl_index;
+  u8 n_ether_types;
+  u16 allowed_ethertypes[16];
   u8  n_rules;
   vl_api_gbp_rule_t rules[n_rules];
-  u8 n_ether_types;
-  u16 allowed_ethertypes[n_ether_types];
 };
 
 autoreply define gbp_contract_add_del
