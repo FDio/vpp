@@ -133,6 +133,16 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
     }
 }
 
+static_always_inline int
+get_queue_id (vlib_main_t * vm)
+{
+  int queue_id = vm->thread_index;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  if (PREDICT_TRUE (tm->n_vlib_mains > 1 && vm->thread_index > 0))
+    queue_id = vm->thread_index - 1;
+  return queue_id;
+}
+
 /*
  * This function calls the dpdk's tx_burst function to transmit the packets.
  * It manages a lock per-device if the device does not
@@ -142,15 +152,14 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 static_always_inline
   u32 tx_burst_vector_internal (vlib_main_t * vm,
 				dpdk_device_t * xd,
-				struct rte_mbuf **mb, u32 n_left)
+				struct rte_mbuf ** mb, u32 n_left)
 {
   dpdk_main_t *dm = &dpdk_main;
   u32 n_retry;
   int n_sent = 0;
-  int queue_id;
+  int queue_id = get_queue_id (vm);
 
   n_retry = 16;
-  queue_id = vm->thread_index;
 
   do
     {
@@ -272,7 +281,7 @@ VNET_DEVICE_CLASS_TX_FN (dpdk_device_class) (vlib_main_t * vm,
   u32 n_packets = f->n_vectors;
   u32 n_left;
   u32 thread_index = vm->thread_index;
-  int queue_id = thread_index;
+  int queue_id = get_queue_id (vm);
   u32 tx_pkts = 0, all_or_flags = 0;
   dpdk_per_thread_data_t *ptd = vec_elt_at_index (dm->per_thread_data,
 						  thread_index);
