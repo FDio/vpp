@@ -248,7 +248,7 @@ static inline int
 clib_cpu_march_priority_avx2 ()
 {
   if (clib_cpu_supports_avx2 ())
-    return 10;
+    return 50;
   return -1;
 }
 
