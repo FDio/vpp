@@ -612,8 +612,8 @@ format_gbp_contract (u8 * s, va_list * args)
 
   gc = gbp_contract_get (gci);
 
-  s = format (s, "%U: acl-index:%d",
-	      format_gbp_contract_key, &gc->gc_key, gc->gc_acl_index);
+  s = format (s, "[%d] %U: acl-index:%d",
+	      gci, format_gbp_contract_key, &gc->gc_key, gc->gc_acl_index);
 
   vec_foreach (gui, gc->gc_rules)
   {
@@ -624,7 +624,8 @@ format_gbp_contract (u8 * s, va_list * args)
   vec_foreach (et, gc->gc_allowed_ethertypes)
   {
     int host_et = clib_net_to_host_u16 (*et);
-    s = format (s, "0x%x, ", host_et);
+    if (0 != host_et)
+      s = format (s, "0x%x, ", host_et);
   }
   s = format (s, "]");
 
@@ -635,14 +636,47 @@ static clib_error_t *
 gbp_contract_show (vlib_main_t * vm,
 		   unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  gbp_contract_t *gc;
+  u32 src, dst;
   index_t gci;
+
+  src = dst = SCLASS_INVALID;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "src %d", &src))
+	;
+      else if (unformat (input, "dst %d", &dst))
+	;
+      else
+	break;
+    }
 
   vlib_cli_output (vm, "Contracts:");
 
   /* *INDENT-OFF* */
-  pool_foreach_index (gci, gbp_contract_pool,
+  pool_foreach (gc, gbp_contract_pool,
   ({
-    vlib_cli_output (vm, "  [%d] %U", gci, format_gbp_contract, gci);
+    gci = gc - gbp_contract_pool;
+
+    if (SCLASS_INVALID != src && SCLASS_INVALID != dst)
+      {
+        if (gc->gc_key.gck_src == src &&
+            gc->gc_key.gck_dst == dst)
+          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+      }
+    else if (SCLASS_INVALID != src)
+      {
+        if (gc->gc_key.gck_src == src)
+          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+      }
+    else if (SCLASS_INVALID != dst)
+      {
+        if (gc->gc_key.gck_dst == dst)
+          vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
+      }
+    else
+      vlib_cli_output (vm, "  %U", format_gbp_contract, gci);
   }));
   /* *INDENT-ON* */
 
@@ -659,7 +693,7 @@ gbp_contract_show (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (gbp_contract_show_node, static) = {
   .path = "show gbp contract",
-  .short_help = "show gbp contract\n",
+  .short_help = "show gbp contract [src <SRC>] [dst <DST>]\n",
   .function = gbp_contract_show,
 };
 /* *INDENT-ON* */
