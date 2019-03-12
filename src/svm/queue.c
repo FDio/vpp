@@ -140,10 +140,10 @@ svm_queue_wait_inline (svm_queue_t * q)
       /* Fake a wait for event. We could use epoll but that would mean
        * using yet another fd. Should do for now */
       u32 cursize = q->cursize;
-      pthread_mutex_unlock (&q->mutex);
+      svm_queue_unlock (q);
       while (q->cursize == cursize)
 	CLIB_PAUSE ();
-      pthread_mutex_lock (&q->mutex);
+      svm_queue_lock (q);
     }
 }
 
@@ -170,11 +170,11 @@ svm_queue_timedwait_inline (svm_queue_t * q, double timeout)
       u32 cursize = q->cursize;
       int rv;
 
-      pthread_mutex_unlock (&q->mutex);
+      svm_queue_unlock (q);
       while (q->cursize == cursize && unix_time_now () < max_time)
 	CLIB_PAUSE ();
       rv = unix_time_now () < max_time ? 0 : ETIMEDOUT;
-      pthread_mutex_lock (&q->mutex);
+      svm_queue_unlock (q);
       return rv;
     }
 }
@@ -250,13 +250,13 @@ svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
 	}
     }
   else
-    pthread_mutex_lock (&q->mutex);
+    svm_queue_lock (q);
 
   if (PREDICT_FALSE (q->cursize == q->maxsize))
     {
       if (nowait)
 	{
-	  pthread_mutex_unlock (&q->mutex);
+	  svm_queue_unlock (q);
 	  return (-2);
 	}
       while (q->cursize == q->maxsize)
@@ -277,7 +277,7 @@ svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
   if (need_broadcast)
     svm_queue_send_signal (q, 1);
 
-  pthread_mutex_unlock (&q->mutex);
+  svm_queue_unlock (q);
 
   return 0;
 }
@@ -300,13 +300,13 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
 	}
     }
   else
-    pthread_mutex_lock (&q->mutex);
+    svm_queue_lock (q);
 
   if (PREDICT_FALSE (q->cursize + 1 == q->maxsize))
     {
       if (nowait)
 	{
-	  pthread_mutex_unlock (&q->mutex);
+	  svm_queue_unlock (q);
 	  return (-2);
 	}
       while (q->cursize + 1 == q->maxsize)
@@ -336,7 +336,7 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
   if (need_broadcast)
     svm_queue_send_signal (q, 1);
 
-  pthread_mutex_unlock (&q->mutex);
+  svm_queue_unlock (q);
 
   return 0;
 }
@@ -361,13 +361,13 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
 	}
     }
   else
-    pthread_mutex_lock (&q->mutex);
+    svm_queue_lock (q);
 
   if (PREDICT_FALSE (q->cursize == 0))
     {
       if (cond == SVM_Q_NOWAIT)
 	{
-	  pthread_mutex_unlock (&q->mutex);
+	  svm_queue_unlock (q);
 	  return (-2);
 	}
       else if (cond == SVM_Q_TIMEDWAIT)
@@ -377,7 +377,7 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
 
 	  if (rc == ETIMEDOUT)
 	    {
-	      pthread_mutex_unlock (&q->mutex);
+	      svm_queue_unlock (q);
 	      return ETIMEDOUT;
 	    }
 	}
@@ -404,7 +404,7 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
   if (need_broadcast)
     svm_queue_send_signal (q, 0);
 
-  pthread_mutex_unlock (&q->mutex);
+  svm_queue_unlock (q);
 
   return 0;
 }
@@ -415,10 +415,10 @@ svm_queue_sub2 (svm_queue_t * q, u8 * elem)
   int need_broadcast;
   i8 *headp;
 
-  pthread_mutex_lock (&q->mutex);
+  svm_queue_lock (q);
   if (q->cursize == 0)
     {
-      pthread_mutex_unlock (&q->mutex);
+      svm_queue_unlock (q);
       return -1;
     }
 
@@ -431,7 +431,7 @@ svm_queue_sub2 (svm_queue_t * q, u8 * elem)
 
   if (PREDICT_FALSE (q->head == q->maxsize))
     q->head = 0;
-  pthread_mutex_unlock (&q->mutex);
+  svm_queue_unlock (q);
 
   if (need_broadcast)
     svm_queue_send_signal (q, 0);
