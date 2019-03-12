@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <linux/vfio.h>
 #include <sys/ioctl.h>
+#include <sys/utsname.h>
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
@@ -81,7 +82,48 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 {
   dpdk_main_t * dm = &dpdk_main;
   clib_error_t * error = 0;
+  int fd;
+  u8 * mod_fname;
+  struct stat st;
+  void *mod_image;
 
+  // Load ib_uverbs linux module for MLX support
+  struct utsname un;
+  if (uname(&un) < 0)
+    goto error;
+
+  mod_fname = format (0, "/lib/modules/%s/kernel/drivers/infiniband/core/ib_uverbs.ko", un.release);
+  fd = open((char *) mod_fname, O_RDONLY);
+
+  if (fd < 0){
+    goto error;
+  }
+
+  fstat(fd, &st);
+  mod_image = malloc(st.st_size);
+
+  {
+    int rs = read(fd, mod_image, st.st_size);
+    int ec = -1;
+    if (rs >= 0)
+      syscall(SYS_init_module, mod_image, st.st_size, "");
+
+    close(fd);
+    free(mod_image);
+
+    if (ec != 0){
+      // Module is not initialized
+      if (errno != EEXIST)
+        goto error;
+    }
+  }
+
+  goto ok;
+
+error:
+  clib_unix_warning("Cannot initialize ib_uverbs kernel module. Some physical network interfaces may not be supported");
+
+ok:
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
 
