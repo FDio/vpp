@@ -168,6 +168,11 @@ typedef struct gbp_endpoint_fwd_t_
    */
   sclass_t gef_sclass;
 
+  /**
+   * FIB index the EP is in
+   */
+  u32 gef_fib_index;
+
   gbp_endpoint_flags_t gef_flags;
 } gbp_endpoint_fwd_t;
 

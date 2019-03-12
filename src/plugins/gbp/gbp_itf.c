@@ -194,14 +194,47 @@ format_gbp_itf (u8 * s, va_list * args)
 
   gi = gbp_itf_get (gii);
 
-  s = format (s, "%U locks:%d input-feats:%U output-feats:%U",
+  s = format (s, "%U locks:%d bd-index:%d input-feats:%U output-feats:%U",
 	      format_vnet_sw_if_index_name, vnet_get_main (),
 	      gi->gi_sw_if_index, gi->gi_locks,
+	      gi->gi_bd_index,
 	      format_l2_input_features, gi->gi_l2_input_fb, 0,
 	      format_l2_output_features, gi->gi_l2_output_fb, 0);
 
   return (s);
 }
+
+static clib_error_t *
+gbp_itf_show (vlib_main_t * vm,
+	      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u32 gii;
+
+  vlib_cli_output (vm, "Interfaces:");
+
+  vec_foreach_index (gii, gbp_itfs)
+  {
+    vlib_cli_output (vm, "  [%d] %U", gii, format_gbp_itf, gii);
+  }
+
+  return (NULL);
+}
+
+/*?
+ * Show Group Based Interfaces
+ *
+ * @cliexpar
+ * @cliexstart{show gbp contract}
+ * @cliexend
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (gbp_contract_show_node, static) = {
+  .path = "show gbp interface",
+  .short_help = "show gbp interface\n",
+  .function = gbp_itf_show,
+};
+/* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

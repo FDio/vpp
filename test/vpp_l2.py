@@ -208,3 +208,32 @@ class VppL2FibEntry(VppObject):
 
     def object_id(self):
         return "L2-Fib-Entry-%s-%s-%s" % (self.bd, self.mac, self.itf)
+
+
+class VppL2Vtr(VppObject):
+
+    def __init__(self, test, itf, op):
+        self._test = test
+        self.itf = itf
+        self.op = op
+
+    def add_vpp_config(self):
+        self.itf.set_vtr(self.op)
+        self._test.registry.register(self, self._test.logger)
+
+    def remove_vpp_config(self):
+        self.itf.set_vtr(L2_VTR_OP.L2_DISABLED)
+
+    def query_vpp_config(self):
+        ds = self._test.vapi.sw_interface_dump()
+        d = self.itf.get_interface_config_from_dump(ds)
+
+        if d is not None:
+            return (d.vtr_op == self.op)
+        return False
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return "L2-vtr-%s-%d" % (str(self.itf), self.op)
