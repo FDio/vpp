@@ -24,10 +24,7 @@ DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 	INSTALL_DIR=$(PACKAGE_INSTALL_DIR) \
 	DPDK_DEBUG=$(DPDK_DEBUG)
 
-DPDK_MLX5_PMD=$(strip $($(PLATFORM)_uses_dpdk_mlx5_pmd))
-ifneq ($(DPDK_MLX5_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX5_PMD=y
-endif
 
 DPDK_MLX_IBVERBS_DLOPEN=$(strip $($(PLATFORM)_uses_dpdk_ibverbs_link_dlopen))
 ifneq ($(DPDK_MLX_IBVERBS_DLOPEN),)

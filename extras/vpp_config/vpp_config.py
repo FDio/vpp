@@ -669,7 +669,7 @@ def autoconfig_setup(ask_questions=True):
             autoconfig_cp(node, VPP_REAL_GRUB_FILE, '{}'.format(rootdir + VPP_GRUB_FILE))
 
         # Be sure the uio_pci_generic driver is installed
-        cmd = 'modprobe uio_pci_generic'
+        cmd = 'modprobe -a uio_pci_generic ib_uverbs'
         (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
         if ret != 0:
             logging.warning('{} failed on node {} {}'. format(cmd, node['host'], stderr))

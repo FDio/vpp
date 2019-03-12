@@ -67,7 +67,7 @@ DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python3-all python3-setuptools python-dev
 DEB_DEPENDS += python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev libffi-dev python3-ply libmbedtls-dev
-DEB_DEPENDS += cmake ninja-build uuid-dev
+DEB_DEPENDS += cmake ninja-build uuid-dev libmnl-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
@@ -88,6 +88,7 @@ RPM_DEPENDS += selinux-policy selinux-policy-devel
 RPM_DEPENDS += ninja-build
 RPM_DEPENDS += libuuid-devel
 RPM_DEPENDS += mbedtls-devel
+RPM_DEPENDS += libmnl-devel rdma-core-devel
 
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += dnf-utils
@@ -102,7 +103,7 @@ else
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel python34-ply
 	RPM_DEPENDS += python34-devel python34-pip
-	RPM_DEPENDS += python-virtualenv
+	RPM_DEPENDS += python-virtualenv python-ply
 	RPM_DEPENDS += devtoolset-7
 	RPM_DEPENDS += cmake3
 	RPM_DEPENDS_GROUPS = 'Development Tools'

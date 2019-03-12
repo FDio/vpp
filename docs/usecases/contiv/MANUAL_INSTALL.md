@@ -49,6 +49,31 @@ DPDK setup must be completed **on each node** as follows:
   # at boot time, one per line. Lines beginning with "#" are ignored.
   uio_pci_generic
   ```
+#### Mellanox NICs support
+DPDK setup must be completed **on each node** as follows:
+- Load the ib_uverbs module:
+  ```
+  $ sudo modprobe ib_uverbs
+  ```
+
+- Verify that the module has loaded successfully:
+  ```
+  $ lsmod | grep ib_uverbs
+  ib_uverbs              86016  0
+  ib_core               225280  1 ib_uverbs
+  ```
+
+  Please note that this driver needs to be loaded upon each server bootup,
+  so you may want to add `ib_uverbs` into the `/etc/modules` file, 
+  or a file in the `/etc/modules-load.d/` directory. For example, the 
+  `/etc/modules` file could look as follows:
+  ```
+  # /etc/modules: kernel modules to load at boot time.
+  #
+  # This file contains the names of kernel modules that should be loaded
+  # at boot time, one per line. Lines beginning with "#" are ignored.
+  ib_uverbs
+  ```
 #### Determining Network Adapter PCI Addresses
 You need the PCI address of the network interface that VPP will use for the multi-node pod interconnect. On Debian-based
 distributions, you can use `lshw`(*):

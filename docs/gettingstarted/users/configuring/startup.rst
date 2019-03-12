@@ -94,7 +94,7 @@ CentOS: /usr/lib/systemd/system/vpp.service). See *'ExecStart'* below:
     [Service]
     Type=simple
     ExecStartPre=-/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
-    ExecStartPre=-/sbin/modprobe uio_pci_generic
+    ExecStartPre=-/sbin/modprobe -a uio_pci_generic ib_uverbs
     ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
     ExecStopPost=/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
     Restart=always
