@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "22424535_5fd3dc3c",
+        "filename": "test/framework.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 754,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-12T13:01:16Z",
+      "side": 1,
+      "message": ":type payload:",
+      "range": {
+        "startLine": 754,
+        "startChar": 8,
+        "endLine": 754,
+        "endChar": 14
+      },
+      "revId": "eaea421e1fefedc47325f970475c5d48c899433c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "be6e258b_2008c4a0",
+        "filename": "test/framework.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-12T13:01:16Z",
+      "side": 1,
+      "message": ":type payload_field: str",
+      "range": {
+        "startLine": 756,
+        "startChar": 41,
+        "endLine": 756,
+        "endChar": 42
+      },
+      "revId": "eaea421e1fefedc47325f970475c5d48c899433c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
