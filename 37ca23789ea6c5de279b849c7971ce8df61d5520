@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ec7a4b00_a237cf91",
+        "filename": "src/pkg/debian/control",
+        "patchSetId": 2
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2019-03-12T12:32:45Z",
+      "side": 1,
+      "message": "Is this necessary at runtime?",
+      "revId": "37ca23789ea6c5de279b849c7971ce8df61d5520",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
