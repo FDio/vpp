@@ -69,11 +69,13 @@ map_create_domain (ip4_address_t * ip4_prefix,
 		   u8 ip6_src_len,
 		   u8 ea_bits_len,
 		   u8 psid_offset,
-		   u8 psid_length, u32 * map_domain_index, u16 mtu, u8 flags)
+		   u8 psid_length,
+		   u32 * map_domain_index, u16 mtu, u8 flags, u8 * tag)
 {
   u8 suffix_len, suffix_shift;
   map_main_t *mm = &map_main;
   map_domain_t *d;
+  map_domain_extra_t *de;
 
   /* How many, and which bits to grab from the IPv4 DA */
   if (ip4_prefix_len + ea_bits_len < 32)
@@ -103,6 +105,10 @@ map_create_domain (ip4_address_t * ip4_prefix,
   clib_memset (d, 0, sizeof (*d));
   *map_domain_index = d - mm->domains;
 
+  vec_validate (mm->domain_extras, *map_domain_index);
+  de = vec_elt_at_index (mm->domain_extras, *map_domain_index);
+  clib_memset (de, 0, sizeof (*de));
+
   /* Init domain struct */
   d->ip4_prefix.as_u32 = ip4_prefix->as_u32;
   d->ip4_prefix_len = ip4_prefix_len;
@@ -121,6 +127,16 @@ map_create_domain (ip4_address_t * ip4_prefix,
   d->psid_shift = 16 - psid_length - psid_offset;
   d->psid_mask = (1 << d->psid_length) - 1;
   d->ea_shift = 64 - ip6_prefix_len - suffix_len - d->psid_length;
+
+  if (tag)
+    {
+      if (vec_len (tag) >= sizeof (de->tag))
+	{
+	  tag[sizeof (de->tag) - 1] = 0;
+	  _vec_len (tag) = sizeof (de->tag);
+	}
+      clib_memcpy (de->tag, tag, vec_len (tag));
+    }
 
   /* MAP longest match lookup table (input feature / FIB) */
   mm->ip4_prefix_tbl->add (mm->ip4_prefix_tbl, &d->ip4_prefix,
@@ -159,6 +175,7 @@ map_delete_domain (u32 map_domain_index)
 {
   map_main_t *mm = &map_main;
   map_domain_t *d;
+  map_domain_extra_t *de;
 
   if (pool_is_free_index (mm->domains, map_domain_index))
     {
@@ -172,6 +189,9 @@ map_delete_domain (u32 map_domain_index)
 			      d->ip4_prefix_len);
   mm->ip6_src_prefix_tbl->delete (mm->ip6_src_prefix_tbl, &d->ip6_src,
 				  d->ip6_src_len);
+
+  de = vec_elt_at_index (mm->domain_extras, map_domain_index);
+  clib_memset (de, 0, sizeof (*de));	/* Also clear domain extras. */
 
   /* Deleting rules */
   if (d->rules)
@@ -476,6 +496,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
   u32 ea_bits_len = 0, psid_offset = 0, psid_length = 0;
   u32 mtu = 0;
   u8 flags = 0;
+  u8 *tag = 0;
   ip6_src_len = 128;
   clib_error_t *error = NULL;
 
@@ -511,6 +532,8 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "mtu %d", &mtu))
 	num_m_args++;
+      else if (unformat (line_input, "tag %s", &tag))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -528,7 +551,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
   map_create_domain (&ip4_prefix, ip4_prefix_len,
 		     &ip6_prefix, ip6_prefix_len, &ip6_src, ip6_src_len,
 		     ea_bits_len, psid_offset, psid_length, &map_domain_index,
-		     mtu, flags);
+		     mtu, flags, tag);
 
 done:
   unformat_free (line_input);
@@ -870,16 +893,20 @@ format_map_domain (u8 * s, va_list * args)
   bool counters = va_arg (*args, int);
   map_main_t *mm = &map_main;
   ip6_address_t ip6_prefix;
+  u32 map_domain_index = d - mm->domains;
+  map_domain_extra_t *de;
 
   if (d->rules)
     clib_memset (&ip6_prefix, 0, sizeof (ip6_prefix));
   else
     ip6_prefix = d->ip6_prefix;
 
+  de = vec_elt_at_index (mm->domain_extras, map_domain_index);
+
   s = format (s,
-	      "[%d] ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d ea-bits-len %d "
-	      "psid-offset %d psid-len %d mtu %d %s",
-	      d - mm->domains,
+	      "[%d] tag {%s} ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d "
+	      "ea-bits-len %d psid-offset %d psid-len %d mtu %d %s",
+	      map_domain_index, de->tag,
 	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
 	      format_ip6_address, &ip6_prefix, d->ip6_prefix_len,
 	      format_ip6_address, &d->ip6_src, d->ip6_src_len,
@@ -891,10 +918,10 @@ format_map_domain (u8 * s, va_list * args)
       map_domain_counter_lock (mm);
       vlib_counter_t v;
       vlib_get_combined_counter (&mm->domain_counters[MAP_DOMAIN_COUNTER_TX],
-				 d - mm->domains, &v);
+				 map_domain_index, &v);
       s = format (s, "  TX: %lld/%lld", v.packets, v.bytes);
       vlib_get_combined_counter (&mm->domain_counters[MAP_DOMAIN_COUNTER_RX],
-				 d - mm->domains, &v);
+				 map_domain_index, &v);
       s = format (s, "  RX: %lld/%lld", v.packets, v.bytes);
       map_domain_counter_unlock (mm);
     }
@@ -2078,7 +2105,8 @@ VLIB_CLI_COMMAND(map_fragment_command, static) = {
  ?*/
 VLIB_CLI_COMMAND(map_add_domain_command, static) = {
   .path = "map add domain",
-  .short_help = "map add domain ip4-pfx <ip4-pfx> ip6-pfx <ip6-pfx> "
+  .short_help = "map add domain [tag <tag>] ip4-pfx <ip4-pfx> "
+      "ip6-pfx <ip6-pfx> "
       "ip6-src <ip6-pfx> ea-bits-len <n> psid-offset <n> psid-len <n> "
       "[map-t] [mtu <mtu>]",
   .function = map_add_domain_command_fn,
