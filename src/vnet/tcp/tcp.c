@@ -811,15 +811,14 @@ format_tcp_congestion (u8 * s, va_list * args)
   u32 indent = format_get_indent (s);
 
   s = format (s, "%U ", format_tcp_congestion_status, tc);
-  s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
-	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
-  s = format (s, "%Ucc space %u prev_ssthresh %u snd_congestion %u"
-	      " dupack %u\n", format_white_space, indent,
-	      tcp_available_cc_snd_space (tc), tc->prev_ssthresh,
-	      tc->snd_congestion - tc->iss, tc->rcv_dupacks);
-  s = format (s, "%Utsecr %u tsecr_last_ack %u limited_transmit %u\n",
-	      format_white_space, indent, tc->rcv_opts.tsecr,
-	      tc->tsecr_last_ack, tc->limited_transmit - tc->iss);
+  s = format (s, "algo %s cwnd %u ssthresh %u bytes_acked %u\n",
+	      tc->cc_algo->name, tc->cwnd, tc->ssthresh, tc->bytes_acked);
+  s = format (s, "%Ucc space %u prev_cwnd %u prev_ssthresh %u rtx_bytes %u\n",
+	      format_white_space, indent, tcp_available_cc_snd_space (tc),
+	      tc->prev_cwnd, tc->prev_ssthresh, tc->snd_rxt_bytes);
+  s = format (s, "%Usnd_congestion %u dupack %u limited_transmit %u\n",
+	      format_white_space, indent, tc->snd_congestion - tc->iss,
+	      tc->rcv_dupacks, tc->limited_transmit - tc->iss);
   return s;
 }
 
@@ -838,10 +837,12 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->snd_wnd, tc->rcv_wnd, tc->rcv_wscale);
   s = format (s, "snd_wl1 %u snd_wl2 %u\n", tc->snd_wl1 - tc->irs,
 	      tc->snd_wl2 - tc->iss);
-  s = format (s, " flight size %u out space %u rcv_wnd_av %u\n",
+  s = format (s, " flight size %u out space %u rcv_wnd_av %u",
 	      tcp_flight_size (tc), tcp_available_output_snd_space (tc),
 	      tcp_rcv_wnd_available (tc));
-  s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
+  s = format (s, " tsval_recent %u\n", tc->tsval_recent);
+  s = format (s, " tsecr %u tsecr_last_ack %u tsval_recent_age %u\n",
+	      tc->rcv_opts.tsecr, tc->tsecr_last_ack,
 	      tcp_time_now () - tc->tsval_recent_age);
   s = format (s, " rto %u rto_boff %u srtt %u us %.3f rttvar %u rtt_ts %.4f",
 	      tc->rto, tc->rto_boff, tc->srtt, tc->mrtt_us * 1000, tc->rttvar,
