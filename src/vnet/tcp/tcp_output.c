@@ -1087,38 +1087,16 @@ tcp_send_fin (tcp_connection_t * tc)
     }
 }
 
-always_inline u8
-tcp_make_state_flags (tcp_connection_t * tc, tcp_state_t next_state)
-{
-  switch (next_state)
-    {
-    case TCP_STATE_ESTABLISHED:
-    case TCP_STATE_CLOSE_WAIT:
-    case TCP_STATE_TIME_WAIT:
-    case TCP_STATE_FIN_WAIT_2:
-    case TCP_STATE_CLOSING:
-    case TCP_STATE_LAST_ACK:
-    case TCP_STATE_FIN_WAIT_1:
-      return TCP_FLAG_ACK;
-    case TCP_STATE_SYN_RCVD:
-      return TCP_FLAG_SYN | TCP_FLAG_ACK;
-    case TCP_STATE_SYN_SENT:
-      return TCP_FLAG_SYN;
-    default:
-      clib_warning ("Shouldn't be here!");
-    }
-  return 0;
-}
-
 /**
- * Push TCP header and update connection variables
+ * Push TCP header and update connection variables. Should only be called
+ * for segments with data, not for 'control' packets.
  */
 always_inline void
 tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
 		tcp_state_t next_state, u8 compute_opts, u8 maybe_burst)
 {
+  u8 tcp_hdr_opts_len, flags = TCP_FLAG_ACK;
   u32 advertise_wnd, data_len;
-  u8 tcp_hdr_opts_len, flags;
   tcp_main_t *tm = &tcp_main;
   tcp_header_t *th;
 
@@ -1139,7 +1117,6 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   else
     advertise_wnd = tcp_window_to_advertise (tc, next_state);
 
-  flags = tcp_make_state_flags (tc, next_state);
   if (PREDICT_FALSE (tc->flags & TCP_CONN_PSH_PENDING))
     {
       if (seq_geq (tc->psh_seq, tc->snd_nxt)
