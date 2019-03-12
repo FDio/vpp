@@ -594,7 +594,7 @@ format_vlib_buffer_pool (u8 * s, va_list * va)
 
   /* *INDENT-OFF* */
   vec_foreach (bpt, bp->threads)
-    cached += vec_len (bpt->cached_buffers);
+    cached += bpt->n_cached;
   /* *INDENT-ON* */
 
   s = format (s, "%-20s%=6d%=6d%=6u%=11u%=6u%=8u%=8u%=8u",
@@ -731,7 +731,7 @@ buffer_get_cached (vlib_buffer_pool_t * bp)
 
   /* *INDENT-OFF* */
   vec_foreach (bpt, bp->threads)
-    cached += vec_len (bpt->cached_buffers);
+    cached += bpt->n_cached;
   /* *INDENT-ON* */
 
   clib_spinlock_unlock (&bp->lock);
