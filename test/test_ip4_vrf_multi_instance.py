@@ -148,6 +148,10 @@ class TestIp4VrfMultiInst(VppTestCase):
             super(TestIp4VrfMultiInst, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIp4VrfMultiInst, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.

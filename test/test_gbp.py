@@ -575,6 +575,14 @@ class VppGbpAcl(VppObject):
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestGBP, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGBP, cls).tearDownClass()
+
     def setUp(self):
         super(TestGBP, self).setUp()
 
@@ -1563,7 +1571,7 @@ class TestGBP(VppTestCase):
                                                self.pg2.remote_hosts[0].ip4,
                                                99))
 
-        # epg is not learnt, because the EPG is unknwon
+        # epg is not learnt, because the EPG is unknown
         self.assertEqual(len(self.vapi.gbp_endpoint_dump()), 1)
 
         #

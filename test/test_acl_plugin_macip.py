@@ -151,6 +151,10 @@ class MethodHolder(VppTestCase):
             super(MethodHolder, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(MethodHolder, cls).tearDownClass()
+
     def setUp(self):
         super(MethodHolder, self).setUp()
         self.reset_packet_infos()
@@ -708,6 +712,14 @@ class MethodHolder(VppTestCase):
 class TestMACIP_IP4(MethodHolder):
     """MACIP with IP4 traffic"""
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestMACIP_IP4, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMACIP_IP4, cls).tearDownClass()
+
     def test_acl_bridged_ip4_exactMAC_exactIP(self):
         """ IP4 MACIP exactMAC|exactIP ACL bridged traffic
         """
@@ -841,6 +853,14 @@ class TestMACIP_IP4(MethodHolder):
 
 class TestMACIP_IP6(MethodHolder):
     """MACIP with IP6 traffic"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMACIP_IP6, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMACIP_IP6, cls).tearDownClass()
 
     def test_acl_bridged_ip6_exactMAC_exactIP(self):
         """ IP6 MACIP exactMAC|exactIP ACL bridged traffic
@@ -979,6 +999,14 @@ class TestMACIP_IP6(MethodHolder):
 
 class TestMACIP(MethodHolder):
     """MACIP Tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMACIP, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMACIP, cls).tearDownClass()
 
     def test_acl_1_2(self):
         """ MACIP ACL with 2 entries
@@ -1156,6 +1184,14 @@ class TestMACIP(MethodHolder):
 class TestACL_dot1q_bridged(MethodHolder):
     """ACL on dot1q bridged subinterfaces Tests"""
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestACL_dot1q_bridged, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestACL_dot1q_bridged, cls).tearDownClass()
+
     def test_acl_bridged_ip4_subif_dot1q(self):
         """ IP4 ACL SubIf Dot1Q bridged traffic"""
         self.run_traffic(self.EXACT_MAC, self.EXACT_IP, self.BRIDGED,
@@ -1170,6 +1206,14 @@ class TestACL_dot1q_bridged(MethodHolder):
 class TestACL_dot1ad_bridged(MethodHolder):
     """ACL on dot1ad bridged subinterfaces Tests"""
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestACL_dot1ad_bridged, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestACL_dot1ad_bridged, cls).tearDownClass()
+
     def test_acl_bridged_ip4_subif_dot1ad(self):
         """ IP4 ACL SubIf Dot1AD bridged traffic"""
         self.run_traffic(self.EXACT_MAC, self.EXACT_IP, self.BRIDGED,
@@ -1183,6 +1227,14 @@ class TestACL_dot1ad_bridged(MethodHolder):
 
 class TestACL_dot1q_routed(MethodHolder):
     """ACL on dot1q routed subinterfaces Tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestACL_dot1q_routed, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestACL_dot1q_routed, cls).tearDownClass()
 
     def test_acl_routed_ip4_subif_dot1q(self):
         """ IP4 ACL SubIf Dot1Q routed traffic"""
@@ -1209,6 +1261,14 @@ class TestACL_dot1q_routed(MethodHolder):
 
 class TestACL_dot1ad_routed(MethodHolder):
     """ACL on dot1ad routed subinterfaces Tests"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestACL_dot1ad_routed, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestACL_dot1ad_routed, cls).tearDownClass()
 
     def test_acl_routed_ip6_subif_dot1ad(self):
         """ IP6 ACL SubIf Dot1AD routed traffic"""

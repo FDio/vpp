@@ -32,6 +32,10 @@ class P2PEthernetAPI(VppTestCase):
         for i in cls.pg_interfaces:
             i.admin_up()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(P2PEthernetAPI, cls).tearDownClass()
+
     def create_p2p_ethernet(self, parent_if, sub_id, remote_mac):
         p2p = VppP2PSubint(self, parent_if, sub_id, mac_pton(remote_mac))
         self.p2p_sub_ifs.append(p2p)
@@ -124,6 +128,10 @@ class P2PEthernetIPV6(VppTestCase):
         cls.pg1.generate_remote_hosts(3)
         cls.pg1.configure_ipv6_neighbors()
         cls.pg1.disable_ipv6_ra()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(P2PEthernetIPV6, cls).tearDownClass()
 
     def setUp(self):
         super(P2PEthernetIPV6, self).setUp()
@@ -349,6 +357,10 @@ class P2PEthernetIPV4(VppTestCase):
         cls.pg1.config_ip4()
         cls.pg1.generate_remote_hosts(5)
         cls.pg1.configure_ipv4_neighbors()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(P2PEthernetIPV4, cls).tearDownClass()
 
     def setUp(self):
         super(P2PEthernetIPV4, self).setUp()

@@ -156,6 +156,10 @@ class TestVxlanGbp(VppTestCase):
             super(TestVxlanGbp, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestVxlanGbp, cls).tearDownClass()
+
     def assert_eq_pkts(self, pkt1, pkt2):
         """ Verify the Ether, IP, UDP, payload are equal in both
         packets

@@ -20,6 +20,14 @@ class TemplateIpsec4TunIfEsp(TemplateIpsec):
 
     encryption_type = ESP
 
+    @classmethod
+    def setUpClass(cls):
+        super(TemplateIpsec4TunIfEsp, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TemplateIpsec4TunIfEsp, cls).tearDownClass()
+
     def setUp(self):
         super(TemplateIpsec4TunIfEsp, self).setUp()
 

@@ -145,6 +145,10 @@ class TestLisp(VppTestCase):
             i.config_ip4()  # configure IPv4 address on the interface
             i.resolve_arp()  # resolve ARP, so that we know VPP MAC
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLisp, cls).tearDownClass()
+
     def setUp(self):
         super(TestLisp, self).setUp()
         self.vapi.lisp_enable_disable(is_enabled=1)

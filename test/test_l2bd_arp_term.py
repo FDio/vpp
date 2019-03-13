@@ -51,6 +51,10 @@ class TestL2bdArpTerm(VppTestCase):
             super(TestL2bdArpTerm, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2bdArpTerm, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.

@@ -15,6 +15,14 @@ from scapy.layers.inet import IP, UDP
 class TestL2Flood(VppTestCase):
     """ L2-flood """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestL2Flood, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2Flood, cls).tearDownClass()
+
     def setUp(self):
         super(TestL2Flood, self).setUp()
 
