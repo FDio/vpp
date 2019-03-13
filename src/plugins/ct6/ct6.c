@@ -196,6 +196,8 @@ static void vl_api_ct6_enable_disable_t_handler
   ct6_main_t *cmp = &ct6_main;
   int rv;
 
+  VALIDATE_SW_IF_INDEX (mp);
+
   if (mp->is_inside)
     rv = ct6_in2out_enable_disable (cmp, ntohl (mp->sw_if_index),
 				    (int) (mp->enable_disable));
@@ -203,6 +205,7 @@ static void vl_api_ct6_enable_disable_t_handler
     rv = ct6_out2in_enable_disable (cmp, ntohl (mp->sw_if_index),
 				    (int) (mp->enable_disable));
 
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_CT6_ENABLE_DISABLE_REPLY);
 }
 

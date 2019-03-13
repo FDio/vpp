@@ -342,7 +342,7 @@ static void vl_api_ipsec_sad_entry_add_del_t_handler
   ipsec_integ_alg_t integ_alg;
   ipsec_protocol_t proto;
   ipsec_sa_flags_t flags;
-  u32 id, spi, sa_index;
+  u32 id, spi, sa_index = ~0;
   int rv;
 
 #if WITH_LIBSSL > 0

@@ -1782,6 +1782,9 @@ session_test_mq (vlib_main_t * vm, unformat_input_t * input)
   options[APP_OPTIONS_EVT_QUEUE_SIZE] = 2048;
 
   reg = vl_api_client_index_to_registration (api_index);
+  /* Shut up coverity */
+  if (reg == 0)
+    abort ();
   if (!session_main.evt_qs_use_memfd_seg)
     reg->clib_file_index = VL_API_INVALID_FI;
 

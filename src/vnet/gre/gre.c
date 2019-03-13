@@ -343,8 +343,8 @@ VLIB_NODE_FN (gre_encap_node) (vlib_main_t * vm,
   vnet_main_t *vnm = gm->vnet_main;
   u32 next_index;
   u32 *from, *to_next, n_left_from, n_left_to_next;
-  u32 sw_if_index0 = 0;
-  u32 sw_if_index1 = 0;
+  u32 sw_if_index0 = ~0;
+  u32 sw_if_index1 = ~0;
   adj_index_t adj_index0 = ADJ_INDEX_INVALID;
   adj_index_t adj_index1 = ADJ_INDEX_INVALID;
   gre_tunnel_t *gt0 = NULL;

@@ -299,7 +299,10 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
       error = clib_sysfs_write ((char *) s, "%s", netvsc_uuid);
 
       if (error)
-	goto done;
+	{
+	  close (fd);
+	  goto done;
+	}
 
       uio_new_id_needed = 0;
 
