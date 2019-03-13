@@ -200,7 +200,7 @@ vhost_user_rx_discard_packet (vlib_main_t * vm,
   u16 last_used_idx = txvq->last_used_idx;
   while (discarded_packets != discard_max)
     {
-      if (avail_idx == txvq->last_avail_idx)
+      if (avail_idx == last_avail_idx)
 	goto out;
 
       u16 desc_chain_head = txvq->avail->ring[last_avail_idx & mask];
