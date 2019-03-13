@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3596696b_393d8441",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-13T14:58:53Z",
+      "side": 1,
+      "message": "Should there be self.name?",
+      "range": {
+        "startLine": 370,
+        "startChar": 63,
+        "endLine": 370,
+        "endChar": 72
+      },
+      "revId": "16d5a9389a86a9f4ed5d04deac55d899f3a1572f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
