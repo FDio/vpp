@@ -161,19 +161,20 @@ class MethodHolder(VppTestCase):
         Show various debug prints after each test.
         """
         super(MethodHolder, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show interface address"))
-            self.logger.info(self.vapi.ppcli("show hardware"))
-            self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
-            self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
-            self.logger.info(self.vapi.ppcli("sh classify tables verbose"))
-            self.logger.info(self.vapi.ppcli("sh acl-plugin acl"))
-            self.logger.info(self.vapi.ppcli("sh acl-plugin interface"))
-            self.logger.info(self.vapi.ppcli("sh acl-plugin tables"))
-            # print(self.vapi.ppcli("show interface address"))
-            # print(self.vapi.ppcli("show hardware"))
-            # print(self.vapi.ppcli("sh acl-plugin macip interface"))
-            # print(self.vapi.ppcli("sh acl-plugin macip acl"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show interface address"))
+        self.logger.info(self.vapi.ppcli("show hardware"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
+        self.logger.info(self.vapi.ppcli("sh classify tables verbose"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin acl"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin interface"))
+        self.logger.info(self.vapi.ppcli("sh acl-plugin tables"))
+        # print(self.vapi.ppcli("show interface address"))
+        # print(self.vapi.ppcli("show hardware"))
+        # print(self.vapi.ppcli("sh acl-plugin macip interface"))
+        # print(self.vapi.ppcli("sh acl-plugin macip acl"))
         self.delete_acls()
 
     def macip_acl_dump_debug(self):

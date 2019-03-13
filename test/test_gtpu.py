@@ -283,13 +283,14 @@ class TestGtpu(BridgeDomain, VppTestCase):
     #  @param self The object pointer.
     def tearDown(self):
         super(TestGtpu, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show bridge-domain 11 detail"))
-            self.logger.info(self.vapi.cli("show bridge-domain 12 detail"))
-            self.logger.info(self.vapi.cli("show bridge-domain 13 detail"))
-            self.logger.info(self.vapi.cli("show int"))
-            self.logger.info(self.vapi.cli("show gtpu tunnel"))
-            self.logger.info(self.vapi.cli("show trace"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show bridge-domain 11 detail"))
+        self.logger.info(self.vapi.cli("show bridge-domain 12 detail"))
+        self.logger.info(self.vapi.cli("show bridge-domain 13 detail"))
+        self.logger.info(self.vapi.cli("show int"))
+        self.logger.info(self.vapi.cli("show gtpu tunnel"))
+        self.logger.info(self.vapi.cli("show trace"))
 
 
 if __name__ == '__main__':

@@ -39,15 +39,16 @@ class TestPPPoE(VppTestCase):
     def tearDown(self):
         super(TestPPPoE, self).tearDown()
 
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def tearDown_show_commands(self):
         self.logger.info(self.vapi.cli("show int"))
         self.logger.info(self.vapi.cli("show pppoe fib"))
         self.logger.info(self.vapi.cli("show pppoe session"))
         self.logger.info(self.vapi.cli("show ip fib"))
         self.logger.info(self.vapi.cli("show trace"))
-
-        for i in self.pg_interfaces:
-            i.unconfig_ip4()
-            i.admin_down()
 
     def create_stream_pppoe_discovery(self, src_if, dst_if,
                                       client_mac, count=1):

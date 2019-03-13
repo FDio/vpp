@@ -71,10 +71,6 @@ class TestClassifier(VppTestCase):
     def tearDown(self):
         """Run standard test teardown and acl related log."""
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show inacl type ip4"))
-            self.logger.info(self.vapi.ppcli("show outacl type ip4"))
-            self.logger.info(self.vapi.cli("show classify table verbose"))
-            self.logger.info(self.vapi.cli("show ip fib"))
             if self.acl_active_table == 'ip_out':
                 self.output_acl_set_interface(
                     self.pg0, self.acl_tbl_idx.get(self.acl_active_table), 0)
@@ -88,6 +84,12 @@ class TestClassifier(VppTestCase):
                 intf.admin_down()
 
         super(TestClassifier, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show inacl type ip4"))
+        self.logger.info(self.vapi.ppcli("show outacl type ip4"))
+        self.logger.info(self.vapi.cli("show classify table verbose"))
+        self.logger.info(self.vapi.cli("show ip fib"))
 
     def config_pbr_fib_entry(self, intf, is_add=1):
         """Configure fib entry to route traffic toward PBR VRF table

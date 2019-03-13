@@ -32,9 +32,10 @@ class TemplateIpsecTunIfEsp(TemplateIpsec):
                                  0xffffffff)]).add_vpp_config()
 
     def tearDown(self):
-        if not self.vpp_dead:
-            self.vapi.cli("show hardware")
         super(TemplateIpsecTunIfEsp, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show hardware"))
 
 
 class TestIpsecTunIfEsp1(TemplateIpsecTunIfEsp, IpsecTun4Tests):

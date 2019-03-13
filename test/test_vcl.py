@@ -259,9 +259,11 @@ class LDPCutThruTestCase(VCLTestCase):
                                               self.server_port]
 
     def tearDown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.cut_thru_tear_down()
         super(LDPCutThruTestCase, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
 
     @unittest.skipUnless(running_extended_tests, "part of extended tests")
     def test_ldp_cut_thru_echo(self):
@@ -396,10 +398,12 @@ class VCLThruHostStackEcho(VCLTestCase):
                                       self.server_port]
 
     def tearDown(self):
-        self.logger.debug(self.vapi.cli("show app server"))
-        self.logger.debug(self.vapi.cli("show session verbose"))
         self.thru_host_stack_tear_down()
         super(VCLThruHostStackEcho, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.debug(self.vapi.cli("show app server"))
+        self.logger.debug(self.vapi.cli("show session verbose"))
 
 
 class VCLThruHostStackTLS(VCLTestCase):
@@ -432,10 +436,12 @@ class VCLThruHostStackTLS(VCLTestCase):
                                   self.client_uni_dir_tls_test_args)
 
     def tearDown(self):
-        self.logger.debug(self.vapi.cli("show app server"))
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(VCLThruHostStackTLS, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.debug(self.vapi.cli("show app server"))
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
 
 
 class VCLThruHostStackBidirNsock(VCLTestCase):
@@ -463,9 +469,11 @@ class VCLThruHostStackBidirNsock(VCLTestCase):
                                       self.server_port]
 
     def tearDown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(VCLThruHostStackBidirNsock, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
 
     def test_vcl_thru_host_stack_bi_dir_nsock(self):
         """ run VCL thru host stack bi-directional (multiple sockets) test """
@@ -507,9 +515,11 @@ class LDPThruHostStackBidirNsock(VCLTestCase):
                                                   self.server_port]
 
     def tearDown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(LDPThruHostStackBidirNsock, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
 
     def test_ldp_thru_host_stack_bi_dir_nsock(self):
         """ run LDP thru host stack bi-directional (multiple sockets) test """
@@ -620,9 +630,11 @@ class LDPThruHostStackIperf(VCLTestCase):
         self.server_iperf3_args = ["-V4d", "-s"]
 
     def tearDown(self):
-        self.logger.debug(self.vapi.cli("show session verbose 2"))
         self.thru_host_stack_tear_down()
         super(LDPThruHostStackIperf, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.debug(self.vapi.cli("show session verbose 2"))
 
     def test_ldp_thru_host_stack_iperf3(self):
         """ run LDP thru host stack iperf3 test """

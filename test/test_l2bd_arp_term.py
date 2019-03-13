@@ -63,9 +63,10 @@ class TestL2bdArpTerm(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestL2bdArpTerm, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain 1 detail"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
+        self.logger.info(self.vapi.ppcli("show bridge-domain 1 detail"))
 
     def add_del_arp_term_hosts(self, entries, bd_id=1, is_add=1, is_ipv6=0):
         for e in entries:
