@@ -199,6 +199,16 @@ done:
   return error;
 }
 
+static int
+directory_exists (char *path)
+{
+  struct stat s = { 0 };
+  if (stat (path, &s) == -1)
+    return 0;
+
+  return S_ISDIR (s.st_mode);
+}
+
 clib_error_t *
 vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
 {
@@ -221,6 +231,10 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
 
   /* skip if not using the Linux kernel netvsc driver */
   if (!driver_name || strcmp ("hv_netvsc", (char *) driver_name) != 0)
+    goto done;
+
+  /* if uio_hv_generic is not loaded, then can't use native DPDK driver. */
+  if (!directory_exists ("/sys/module/uio_hv_generic"))
     goto done;
 
   s = format (s, "%v/net%c", dev_dir_name, 0);
@@ -277,13 +291,6 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
       goto done;
     }
 
-  error = vlib_vmbus_raise_lower (fd, ifname);
-  close (fd);
-
-  if (error)
-    goto done;
-
-
   /* tell uio_hv_generic about netvsc device type */
   if (uio_new_id_needed)
     {
@@ -297,6 +304,12 @@ vlib_vmbus_bind_to_uio (vlib_vmbus_addr_t * addr)
       uio_new_id_needed = 0;
 
     }
+
+  error = vlib_vmbus_raise_lower (fd, ifname);
+  close (fd);
+
+  if (error)
+    goto done;
 
   /* prefer the simplier driver_override model */
   vec_reset_length (s);
