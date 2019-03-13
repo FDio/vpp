@@ -1563,40 +1563,14 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   TCP_EVT_DBG (TCP_EVT_CC_STAT, tc);
 
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
-  if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
+  if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max)))
     {
-      /* When we entered cong recovery, we reset snd_nxt to snd_una. Seems
-       * peer still has the data so accept the ack */
-      if (tcp_in_cong_recovery (tc)
-	  && seq_leq (vnet_buffer (b)->tcp.ack_number,
-		      tc->snd_una + tc->snd_wnd))
-	{
-	  tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
-	  if (seq_gt (tc->snd_nxt, tc->snd_una_max))
-	    tc->snd_una_max = tc->snd_nxt;
-	  goto process_ack;
-	}
-
-      /* If we have outstanding data and this is within the window, accept it,
-       * probably retransmit has timed out. Otherwise ACK segment and then
-       * drop it */
-      if (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max))
-	{
-	  tcp_program_ack (wrk, tc);
-	  *error = TCP_ERROR_ACK_FUTURE;
-	  TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 0,
-		       vnet_buffer (b)->tcp.ack_number);
-	  return -1;
-	}
-
-      TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 2,
-		   vnet_buffer (b)->tcp.ack_number);
-
-      tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
-      if (seq_gt (tc->snd_nxt, tc->snd_una_max))
-	tc->snd_una_max = tc->snd_nxt;
-
-      goto process_ack;
+      *error = TCP_ERROR_ACK_FUTURE;
+      TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 0,
+	  vnet_buffer (b)->tcp.ack_number);
+      clib_warning ("conn %u flags %u ack %u una_max %u", tc->c_c_index, tc->flags,
+                    vnet_buffer (b)->tcp.ack_number - tc->iss, tc->snd_una_max - tc->iss);
+      return -1;
     }
 
   /* If old ACK, probably it's an old dupack */
@@ -1614,7 +1588,6 @@ tcp_rcv_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   /*
    * Looks okay, process feedback
    */
-process_ack:
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
 
