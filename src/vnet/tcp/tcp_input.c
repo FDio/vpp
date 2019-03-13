@@ -2889,6 +2889,12 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * retransmission of the remote FIN. Acknowledge it, and restart
 	   * the 2 MSL timeout. */
 
+	  if (!is_fin0)
+	    {
+	      error0 = TCP_ERROR_CONNECTION_CLOSED;
+	      goto drop;
+	    }
+
 	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
 	    goto drop;
 
@@ -2967,6 +2973,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  scoreboard_clear (&tc0->sack_sb);
 		  tcp_fastrecovery_off (tc0);
 		  tcp_recovery_off (tc0);
+		  tcp_connection_timers_reset (tc0);
 		  tc0->snd_nxt = tc0->snd_una_max = tc0->snd_una;
 		}
 	      tcp_send_fin (tc0);
