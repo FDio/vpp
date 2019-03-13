@@ -22,7 +22,11 @@
 #include <vnet/vnet.h>
 #include <vnet/ipsec-gre/ipsec_gre.h>
 
+extern ipsec_gre_main_t ipsec_gre_main;
+
+#ifndef CLIB_MARCH_VARIANT
 ipsec_gre_main_t ipsec_gre_main;
+#endif /* CLIB_MARCH_VARIANT */
 
 /**
  * @brief IPv4 and GRE header union.
@@ -53,7 +57,7 @@ typedef struct
   u32 sa_id; /**< tunnel IPSec SA id */
 } ipsec_gre_tx_trace_t;
 
-u8 *
+static u8 *
 format_ipsec_gre_tx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -92,9 +96,9 @@ format_ipsec_gre_tx_trace (u8 * s, va_list * args)
  * <em>Next Index:</em>
  * - Dispatches the packet to the esp-encrypt node.
 */
-static uword
-ipsec_gre_interface_tx (vlib_main_t * vm,
-			vlib_node_runtime_t * node, vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (ipsec_gre_device_class) (vlib_main_t * vm,
+						  vlib_node_runtime_t * node,
+						  vlib_frame_t * frame)
 {
   ipsec_gre_main_t *igm = &ipsec_gre_main;
   u32 next_index;
@@ -348,17 +352,15 @@ VNET_DEVICE_CLASS (ipsec_gre_device_class) = {
   .format_device_name = format_ipsec_gre_tunnel_name,
   .format_device = format_ipsec_gre_device,
   .format_tx_trace = format_ipsec_gre_tx_trace,
-  .tx_function = ipsec_gre_interface_tx,
   .admin_up_down_function = ipsec_gre_interface_admin_up_down,
 };
 
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH (ipsec_gre_device_class,
-				   ipsec_gre_interface_tx)
 
-
+#ifndef CLIB_MARCH_VARIANT
 VNET_HW_INTERFACE_CLASS (ipsec_gre_hw_interface_class) = {
   .name = "IPSEC-GRE",
 };
+#endif /* CLIB_MARCH_VARIANT */
 /* *INDENT-ON* */
 
 static clib_error_t *

@@ -834,6 +834,7 @@ list(APPEND VNET_SOURCES
 
 list(APPEND VNET_MULTIARCH_SOURCES
   ipsec-gre/node.c
+  ipsec-gre/ipsec_gre.c
 )
 
 list(APPEND VNET_HEADERS
@@ -1114,6 +1115,7 @@ list(APPEND VNET_MULTIARCH_SOURCES
   devices/netmap/node.c
   devices/virtio/node.c
   devices/af_packet/node.c
+  devices/virtio/device.c
 )
 
 list(APPEND VNET_API_FILES
@@ -1234,6 +1236,11 @@ list(APPEND VNET_SOURCES
   devices/af_packet/node.c
   devices/af_packet/cli.c
   devices/af_packet/af_packet_api.c
+)
+
+list(APPEND VNET_MULTIARCH_SOURCES
+  devices/netmap/device.c
+  devices/af_packet/device.c
 )
 
 list(APPEND VNET_HEADERS

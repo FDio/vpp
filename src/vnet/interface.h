@@ -302,9 +302,6 @@ CLIB_MARCH_SFX (devclass##_tx_fn_multiarch_register) (void)		\
 }									\
 uword CLIB_CPU_OPTIMIZED CLIB_MARCH_SFX (devclass##_tx_fn)
 
-/* FIXME to be removed */
-#define VLIB_DEVICE_TX_FUNCTION_MULTIARCH(dev, fn)
-
 /**
  * Link Type: A description of the protocol of packets on the link.
  * On an ethernet link this maps directly into the ethertype. On a GRE tunnel

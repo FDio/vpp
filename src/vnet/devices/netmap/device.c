@@ -93,9 +93,9 @@ format_netmap_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
-static uword
-netmap_interface_tx (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+VNET_DEVICE_CLASS_TX_FN (netmap_device_class) (vlib_main_t * vm,
+					       vlib_node_runtime_t * node,
+					       vlib_frame_t * frame)
 {
   netmap_main_t *nm = &netmap_main;
   u32 *buffers = vlib_frame_vector_args (frame);
@@ -231,7 +231,6 @@ netmap_subif_add_del_function (vnet_main_t * vnm,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (netmap_device_class) = {
   .name = "netmap",
-  .tx_function = netmap_interface_tx,
   .format_device_name = format_netmap_device_name,
   .format_device = format_netmap_device,
   .format_tx_trace = format_netmap_tx_trace,
@@ -242,9 +241,6 @@ VNET_DEVICE_CLASS (netmap_device_class) = {
   .admin_up_down_function = netmap_interface_admin_up_down,
   .subif_add_del_function = netmap_subif_add_del_function,
 };
-
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH(netmap_device_class,
-				  netmap_interface_tx)
 /* *INDENT-ON* */
 
 /*
