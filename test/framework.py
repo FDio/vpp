@@ -410,6 +410,7 @@ class VppTestCase(unittest.TestCase):
         if hasattr(cls, 'parallel_handler'):
             cls.logger.addHandler(cls.parallel_handler)
             cls.logger.propagate = False
+
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
         cls.stats_sock = "%s/stats.sock" % cls.tempdir
@@ -419,6 +420,8 @@ class VppTestCase(unittest.TestCase):
                       datefmt="%H:%M:%S"))
         cls.file_handler.setLevel(DEBUG)
         cls.logger.addHandler(cls.file_handler)
+        cls.logger.debug("--- setUpClass() for %s called ---" %
+                         cls.__name__)
         cls.shm_prefix = os.path.basename(cls.tempdir)
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
@@ -560,6 +563,8 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """ Perform final cleanup after running all tests in this test-case """
+        cls.logger.debug("--- tearDownClass() for %s called ---" %
+                         cls.__name__)
         cls.reporter.send_keep_alive(cls, 'tearDownClass')
         cls.quit()
         cls.file_handler.close()
@@ -567,18 +572,26 @@ class VppTestCase(unittest.TestCase):
         if debug_framework:
             debug_internal.on_tear_down_class(cls)
 
+    def tearDown_show_commands(self):
+        """ Allow subclass specific teardown logging additions."""
+        self.logger.info("--- No test specific show commands provided. ---")
+
     def tearDown(self):
         """ Show various debug prints after each test """
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
         if not self.vpp_dead:
+            self.logger.info(
+                "--- Logging show commands common to all testcases. ---")
             self.logger.debug(self.vapi.cli("show trace max 1000"))
             self.logger.info(self.vapi.ppcli("show interface"))
             self.logger.info(self.vapi.ppcli("show hardware"))
             self.logger.info(self.statistics.set_errors_str())
             self.logger.info(self.vapi.ppcli("show run"))
             self.logger.info(self.vapi.ppcli("show log"))
+            self.logger.info("Logging testcase specific show commands.")
+            self.tearDown_show_commands()
             self.registry.remove_vpp_config(self.logger)
             # Save/Dump VPP api trace log
             api_trace = "vpp_api_trace.%s.log" % self._testMethodName
@@ -597,9 +610,6 @@ class VppTestCase(unittest.TestCase):
         """ Clear trace before running each test"""
         super(VppTestCase, self).setUp()
         self.reporter.send_keep_alive(self)
-        self.logger.debug("--- setUp() for %s.%s(%s) called ---" %
-                          (self.__class__.__name__, self._testMethodName,
-                           self._testMethodDoc))
         if self.vpp_dead:
             raise Exception("VPP is dead when setting up the test")
         self.sleep(.1, "during setUp")

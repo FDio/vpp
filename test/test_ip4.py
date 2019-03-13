@@ -74,9 +74,10 @@ class TestIPv4(VppTestCase):
     def tearDown(self):
         """Run standard test teardown and log ``show ip arp``."""
         super(TestIPv4, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show ip arp"))
-            # info(self.vapi.cli("show ip fib"))  # many entries
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show ip arp"))
+        # info(self.vapi.cli("show ip fib"))  # many entries
 
     def config_fib_entries(self, count):
         """For each interface add to the FIB table *count* routes to

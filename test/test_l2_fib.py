@@ -141,10 +141,12 @@ class TestL2fib(VppTestCase):
         """
         super(TestL2fib, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
             for bd_id in self.n_brs:
                 self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
                                                  % bd_id))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
 
     def create_hosts(self, n_hosts_per_if, subnet):
         """

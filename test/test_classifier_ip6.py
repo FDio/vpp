@@ -69,10 +69,6 @@ class TestClassifier(VppTestCase):
     def tearDown(self):
         """Run standard test teardown and acl related log."""
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show inacl type ip6"))
-            self.logger.info(self.vapi.ppcli("show outacl type ip6"))
-            self.logger.info(self.vapi.cli("show classify table verbose"))
-            self.logger.info(self.vapi.cli("show ip fib"))
             if self.acl_active_table == 'ip6_out':
                 self.output_acl_set_interface(
                     self.pg0, self.acl_tbl_idx.get(self.acl_active_table), 0)
@@ -86,6 +82,12 @@ class TestClassifier(VppTestCase):
                 intf.admin_down()
 
         super(TestClassifier, self).tearDown()
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show inacl type ip6"))
+        self.logger.info(self.vapi.ppcli("show outacl type ip6"))
+        self.logger.info(self.vapi.cli("show classify table verbose"))
+        self.logger.info(self.vapi.cli("show ip fib"))
 
     def create_stream(self, src_if, dst_if, packet_sizes,
                       proto_l=UDP(sport=1234, dport=5678)):

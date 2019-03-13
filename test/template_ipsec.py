@@ -170,8 +170,8 @@ class TemplateIpsec(VppTestCase):
         self.vpp_ah_protocol = (VppEnum.vl_api_ipsec_proto_t.
                                 IPSEC_API_PROTO_AH)
 
-        self.create_pg_interfaces(range(3))
-        self.interfaces = list(self.pg_interfaces)
+        self.interfaces = self.create_pg_interfaces(range(3))
+
         for i in self.interfaces:
             i.admin_up()
             i.config_ip4()
@@ -188,8 +188,8 @@ class TemplateIpsec(VppTestCase):
             i.unconfig_ip4()
             i.unconfig_ip6()
 
-        if not self.vpp_dead:
-            self.vapi.cli("show hardware")
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show hardware"))
 
     def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1,
                          payload_size=54):

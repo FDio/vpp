@@ -160,9 +160,10 @@ class TestIp4VrfMultiInst(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestIp4VrfMultiInst, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show ip fib"))
-            self.logger.info(self.vapi.ppcli("show ip arp"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show ip fib"))
+        self.logger.info(self.vapi.ppcli("show ip arp"))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """

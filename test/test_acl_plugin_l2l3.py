@@ -110,19 +110,20 @@ class TestACLpluginL2L3(VppTestCase):
         ``show ip arp``.
         """
         super(TestACLpluginL2L3, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show l2patch"))
-            self.logger.info(self.vapi.cli("show classify tables"))
-            self.logger.info(self.vapi.cli("show l2fib verbose"))
-            self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
-                                           self.bd_id))
-            self.logger.info(self.vapi.cli("show ip arp"))
-            self.logger.info(self.vapi.cli("show ip6 neighbors"))
-            cmd = "show acl-plugin sessions verbose 1"
-            self.logger.info(self.vapi.cli(cmd))
-            self.logger.info(self.vapi.cli("show acl-plugin acl"))
-            self.logger.info(self.vapi.cli("show acl-plugin interface"))
-            self.logger.info(self.vapi.cli("show acl-plugin tables"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show l2patch"))
+        self.logger.info(self.vapi.cli("show classify tables"))
+        self.logger.info(self.vapi.cli("show l2fib verbose"))
+        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
+                                       self.bd_id))
+        self.logger.info(self.vapi.cli("show ip arp"))
+        self.logger.info(self.vapi.cli("show ip6 neighbors"))
+        cmd = "show acl-plugin sessions verbose 1"
+        self.logger.info(self.vapi.cli(cmd))
+        self.logger.info(self.vapi.cli("show acl-plugin acl"))
+        self.logger.info(self.vapi.cli("show acl-plugin interface"))
+        self.logger.info(self.vapi.cli("show acl-plugin tables"))
 
     def create_stream(self, src_ip_if, dst_ip_if, reverse, packet_sizes,
                       is_ip6, expect_blocked, expect_established,

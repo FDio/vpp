@@ -79,10 +79,11 @@ class TestVtr(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestVtr, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2fib verbose"))
-            self.logger.info(self.vapi.ppcli("show bridge-domain %s detail" %
-                                             self.bd_id))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show l2fib verbose"))
+        self.logger.info(self.vapi.ppcli("show bridge-domain %s detail" %
+                                         self.bd_id))
 
     @classmethod
     def create_hosts_and_learn(cls, count):

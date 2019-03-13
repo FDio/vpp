@@ -69,8 +69,9 @@ class TemplateIpsecAh(TemplateIpsec):
 
     def tearDown(self):
         super(TemplateIpsecAh, self).tearDown()
-        if not self.vpp_dead:
-            self.vapi.cli("show hardware")
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show hardware"))
 
     def config_ah_tun(self, params):
         addr_type = params.addr_type

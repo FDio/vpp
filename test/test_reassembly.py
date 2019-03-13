@@ -232,6 +232,8 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
 
     def tearDown(self):
         super(TestIPv4Reassembly, self).tearDown()
+
+    def tearDown_show_commands(self):
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
@@ -564,6 +566,8 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
 
     def tearDown(self):
         super(TestIPv6Reassembly, self).tearDown()
+
+    def tearDown_show_commands(self):
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
@@ -856,6 +860,8 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
 
     def tearDown(self):
         super(TestIPv4ReassemblyLocalNode, self).tearDown()
+
+    def tearDown_show_commands(self):
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
@@ -984,10 +990,12 @@ class TestFIFReassembly(VppTestCase):
                                     expire_walk_interval_ms=10000, is_ip6=1)
 
     def tearDown(self):
+        super(TestFIFReassembly, self).tearDown()
+
+    def tearDown_show_commands(self):
         self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
-        super(TestFIFReassembly, self).tearDown()
 
     def verify_capture(self, capture, ip_class, dropped_packet_indexes=[]):
         """Verify captured packet stream.

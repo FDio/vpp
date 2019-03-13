@@ -214,8 +214,9 @@ class TemplateIpsecEsp(TemplateIpsec):
 
     def tearDown(self):
         super(TemplateIpsecEsp, self).tearDown()
-        if not self.vpp_dead:
-            self.vapi.cli("show hardware")
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show hardware"))
 
 
 class TestIpsecEsp1(TemplateIpsecEsp, IpsecTra46Tests, IpsecTun46Tests):
@@ -275,8 +276,9 @@ class TemplateIpsecEspUdp(TemplateIpsec):
 
     def tearDown(self):
         super(TemplateIpsecEspUdp, self).tearDown()
-        if not self.vpp_dead:
-            self.vapi.cli("show hardware")
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show hardware"))
 
 
 class TestIpsecEspUdp(TemplateIpsecEspUdp, IpsecTra4Tests, IpsecTun4Tests):

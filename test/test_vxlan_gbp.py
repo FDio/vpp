@@ -256,11 +256,12 @@ class TestVxlanGbp(VppTestCase):
 #  @param self The object pointer.
     def tearDown(self):
         super(TestVxlanGbp, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
-            self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
-            self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
-            self.logger.info(self.vapi.cli("show error"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
+        self.logger.info(self.vapi.cli("show bridge-domain 3 detail"))
+        self.logger.info(self.vapi.cli("show vxlan-gbp tunnel"))
+        self.logger.info(self.vapi.cli("show error"))
 
 
 if __name__ == '__main__':

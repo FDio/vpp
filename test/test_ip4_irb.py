@@ -95,12 +95,13 @@ class TestIpIrb(VppTestCase):
         ``show ip arp``.
         """
         super(TestIpIrb, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show l2patch"))
-            self.logger.info(self.vapi.cli("show l2fib verbose"))
-            self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
-                                           self.bd_id))
-            self.logger.info(self.vapi.cli("show ip arp"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show l2patch"))
+        self.logger.info(self.vapi.cli("show l2fib verbose"))
+        self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
+                                       self.bd_id))
+        self.logger.info(self.vapi.cli("show ip arp"))
 
     def create_stream(self, src_ip_if, dst_ip_if, packet_sizes):
         pkts = []

@@ -38,6 +38,14 @@ class IPSecNATTestCase(TemplateIpsec):
     icmp_id_in = 6305
     icmp_id_out = 6305
 
+    @classmethod
+    def setUpClass(cls):
+        super(IPSecNATTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(IPSecNATTestCase, cls).tearDownClass()
+
     def setUp(self):
         super(IPSecNATTestCase, self).setUp()
         self.tun_if = self.pg0
