@@ -680,7 +680,7 @@ tcp_flight_size (const tcp_connection_t * tc)
 {
   int flight_size;
 
-  flight_size = (int) (tc->snd_una_max - tc->snd_una) - tcp_bytes_out (tc)
+  flight_size = (int) (tc->snd_nxt - tc->snd_una) - tcp_bytes_out (tc)
     + tc->snd_rxt_bytes;
 
   if (flight_size < 0)
@@ -924,7 +924,7 @@ tcp_persist_timer_reset (tcp_connection_t * tc)
 always_inline void
 tcp_retransmit_timer_update (tcp_connection_t * tc)
 {
-  if (tc->snd_una == tc->snd_una_max)
+  if (tc->snd_una == tc->snd_nxt)
     {
       tcp_retransmit_timer_reset (tc);
       if (tc->snd_wnd < tc->snd_mss)
