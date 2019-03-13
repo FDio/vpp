@@ -1317,15 +1317,20 @@ tcp_do_fastretransmits (tcp_worker_ctx_t * wrk)
 
   for (i = 0; i < vec_len (ongoing_fast_rxt); i++)
     {
+      tc = tcp_connection_get (ongoing_fast_rxt[i], thread_index);
+      if (!tcp_in_fastrecovery (tc))
+	{
+	  tc->flags &= ~TCP_CONN_FRXT_PENDING;
+	  continue;
+	}
+
       if (n_segs >= VLIB_FRAME_SIZE)
 	{
 	  vec_add1 (wrk->postponed_fast_rxt, ongoing_fast_rxt[i]);
 	  continue;
 	}
 
-      tc = tcp_connection_get (ongoing_fast_rxt[i], thread_index);
       tc->flags &= ~TCP_CONN_FRXT_PENDING;
-
       if (!tcp_in_fastrecovery (tc))
 	continue;
 
@@ -2959,6 +2964,14 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      session_tx_fifo_dequeue_drop (&tc0->connection,
 					    transport_max_tx_dequeue
 					    (&tc0->connection));
+	      /* Make it look as if we've recovered if needed */
+	      if (tcp_in_cong_recovery (tc0))
+		{
+		  scoreboard_clear (&tc0->sack_sb);
+		  tcp_fastrecovery_off (tc0);
+		  tcp_recovery_off (tc0);
+		  tc0->snd_nxt = tc0->snd_una_max = tc0->snd_una;
+		}
 	      tcp_send_fin (tc0);
 	    }
 	  else
