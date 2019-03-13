@@ -1489,6 +1489,7 @@ session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   session_rule_add_del_args_t args = {
+    .transport_proto = proto,
     .table_args.lcl.fp_addr = lcl_ip,
     .table_args.lcl.fp_len = lcl_plen,
     .table_args.lcl.fp_proto = fib_proto,
