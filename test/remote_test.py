@@ -401,6 +401,10 @@ class RemoteVppTestCase(VppTestCase):
         super(RemoteVppTestCase, cls).setUpClass()
         os.environ = orig_env
 
+    @classmethod
+    def tearDownClass(cls):
+        super(RemoteVppTestCase, cls).tearDownClass()
+
     @unittest.skip("Empty test")
     def emptyTest(self):
         """ Do nothing """

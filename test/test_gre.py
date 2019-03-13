@@ -31,6 +31,10 @@ class TestGRE(VppTestCase):
     def setUpClass(cls):
         super(TestGRE, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGRE, cls).tearDownClass()
+
     def setUp(self):
         super(TestGRE, self).setUp()
 

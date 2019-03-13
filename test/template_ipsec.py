@@ -102,6 +102,14 @@ class TemplateIpsec(VppTestCase):
         """ empty method to be overloaded when necessary """
         pass
 
+    @classmethod
+    def setUpClass(cls):
+        super(TemplateIpsec, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TemplateIpsec, cls).tearDownClass()
+
     def setUp(self):
         super(TemplateIpsec, self).setUp()
 

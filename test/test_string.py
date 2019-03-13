@@ -13,6 +13,10 @@ class TestString(VppTestCase):
     def setUpClass(cls):
         super(TestString, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestString, cls).tearDownClass()
+
     def setUp(self):
         super(TestString, self).setUp()
 

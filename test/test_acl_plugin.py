@@ -144,6 +144,10 @@ class TestACLplugin(VppTestCase):
             super(TestACLplugin, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestACLplugin, cls).tearDownClass()
+
     def setUp(self):
         super(TestACLplugin, self).setUp()
         self.reset_packet_infos()

@@ -160,6 +160,10 @@ class TestIP6VrfMultiInst(VppTestCase):
             super(TestIP6VrfMultiInst, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIP6VrfMultiInst, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.

@@ -13,6 +13,10 @@ class TestBihash(VppTestCase):
     def setUpClass(cls):
         super(TestBihash, cls).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestBihash, cls).tearDownClass()
+
     def setUp(self):
         super(TestBihash, self).setUp()
 

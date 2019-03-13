@@ -592,6 +592,14 @@ class VppGbpAcl(VppObject):
 class TestGBP(VppTestCase):
     """ GBP Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestGBP, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGBP, cls).tearDownClass()
+
     def setUp(self):
         super(TestGBP, self).setUp()
 
@@ -1545,7 +1553,7 @@ class TestGBP(VppTestCase):
 
         self.assertTrue(find_route(self, ep.ip4.address, 32, table_id=1))
 
-        # a packet with an sclass from an unknwon EPG
+        # a packet with an sclass from an unknown EPG
         p = (Ether(src=self.pg2.remote_mac,
                    dst=self.pg2.local_mac) /
              IP(src=self.pg2.remote_hosts[0].ip4,
@@ -1569,14 +1577,14 @@ class TestGBP(VppTestCase):
                                                self.pg2.remote_hosts[0].ip4,
                                                99))
 
-        # epg is not learnt, becasue the EPG is unknwon
+        # epg is not learnt, becasue the EPG is unknown
         self.assertEqual(len(self.vapi.gbp_endpoint_dump()), 1)
 
         #
         # Learn new EPs from IP packets
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -1626,7 +1634,7 @@ class TestGBP(VppTestCase):
         # Learn new EPs from GARP packets received on the BD's mcast tunnel
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -1671,7 +1679,7 @@ class TestGBP(VppTestCase):
         # Learn new EPs from L2 packets
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -1715,7 +1723,7 @@ class TestGBP(VppTestCase):
         # repeat. the do not learn bit is set so the EPs are not learnt
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1738,7 +1746,7 @@ class TestGBP(VppTestCase):
         # repeat
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1790,7 +1798,7 @@ class TestGBP(VppTestCase):
         # so the packet is cleared for delivery
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1823,7 +1831,7 @@ class TestGBP(VppTestCase):
         # refresh the entries after the check for no replies above
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -1902,7 +1910,7 @@ class TestGBP(VppTestCase):
         # Check v6 Endpoints
         #
         for l in learnt:
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
                  IP(src=self.pg2.remote_hosts[1].ip4,
@@ -2038,7 +2046,7 @@ class TestGBP(VppTestCase):
         # Send to the static EP
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -2212,7 +2220,7 @@ class TestGBP(VppTestCase):
         # learn some remote IPv4 EPs
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -2279,7 +2287,7 @@ class TestGBP(VppTestCase):
         # learn some remote IPv6 EPs
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /
@@ -2389,7 +2397,7 @@ class TestGBP(VppTestCase):
         # learn some remote IPv4 EPs
         #
         for ii, l in enumerate(learnt):
-            # a packet with an sclass from a knwon EPG
+            # a packet with an sclass from a known EPG
             # arriving on an unknown TEP
             p = (Ether(src=self.pg2.remote_mac,
                        dst=self.pg2.local_mac) /

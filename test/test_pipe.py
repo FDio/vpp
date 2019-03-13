@@ -61,6 +61,14 @@ class VppPipe(VppInterface):
 class TestPipe(VppTestCase):
     """ Pipes """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestPipe, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestPipe, cls).tearDownClass()
+
     def setUp(self):
         super(TestPipe, self).setUp()
 

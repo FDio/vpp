@@ -33,6 +33,10 @@ class TestMTU(VppTestCase):
         cls.create_pg_interfaces(range(2))
         cls.interfaces = list(cls.pg_interfaces)
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMTU, cls).tearDownClass()
+
     def setUp(self):
         super(TestMTU, self).setUp()
         for i in self.interfaces:

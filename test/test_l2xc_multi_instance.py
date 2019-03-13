@@ -112,6 +112,10 @@ class TestL2xcMultiInst(VppTestCase):
             super(TestL2xcMultiInst, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2xcMultiInst, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.

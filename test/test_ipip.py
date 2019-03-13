@@ -26,6 +26,10 @@ class TestIPIP(VppTestCase):
         cls.create_pg_interfaces(range(2))
         cls.interfaces = list(cls.pg_interfaces)
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPIP, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPIP, self).setUp()
         for i in self.interfaces:
@@ -247,6 +251,10 @@ class TestIPIP6(VppTestCase):
         super(TestIPIP6, cls).setUpClass()
         cls.create_pg_interfaces(range(2))
         cls.interfaces = list(cls.pg_interfaces)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPIP6, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPIP6, self).setUp()

@@ -31,6 +31,10 @@ class TestBondInterface(VppTestCase):
         for i in cls.pg_interfaces:
             i.admin_up()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestBondInterface, cls).tearDownClass()
+
     def setUp(self):
         super(TestBondInterface, self).setUp()
 

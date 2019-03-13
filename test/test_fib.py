@@ -8,6 +8,14 @@ from framework import VppTestCase, VppTestRunner
 class TestFIB(VppTestCase):
     """ FIB Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestFIB, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestFIB, cls).tearDownClass()
+
     def test_fib(self):
         """ FIB Unit Tests """
         error = self.vapi.cli("test fib")

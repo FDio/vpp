@@ -22,6 +22,14 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 class TestIPv4(VppTestCase):
     """ IPv4 Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4, cls).tearDownClass()
+
     def setUp(self):
         """
         Perform test setup before test case.
@@ -228,6 +236,14 @@ class TestIPv4(VppTestCase):
 
 class TestICMPEcho(VppTestCase):
     """ ICMP Echo Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestICMPEcho, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestICMPEcho, cls).tearDownClass()
 
     def setUp(self):
         super(TestICMPEcho, self).setUp()
@@ -442,6 +458,10 @@ class TestIPv4FibCrud(VppTestCase):
             super(TestIPv4FibCrud, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4FibCrud, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPv4FibCrud, self).setUp()
         self.reset_packet_infos()
@@ -568,6 +588,14 @@ class TestIPv4FibCrud(VppTestCase):
 class TestIPNull(VppTestCase):
     """ IPv4 routes via NULL """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPNull, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPNull, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPNull, self).setUp()
 
@@ -674,6 +702,14 @@ class TestIPNull(VppTestCase):
 class TestIPDisabled(VppTestCase):
     """ IPv4 disabled """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPDisabled, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPDisabled, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPDisabled, self).setUp()
 
@@ -761,6 +797,14 @@ class TestIPDisabled(VppTestCase):
 
 class TestIPSubNets(VppTestCase):
     """ IPv4 Subnets """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPSubNets, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPSubNets, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPSubNets, self).setUp()
@@ -874,6 +918,14 @@ class TestIPSubNets(VppTestCase):
 
 class TestIPLoadBalance(VppTestCase):
     """ IPv4 Load-Balancing """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPLoadBalance, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPLoadBalance, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPLoadBalance, self).setUp()
@@ -1069,6 +1121,14 @@ class TestIPLoadBalance(VppTestCase):
 class TestIPVlan0(VppTestCase):
     """ IPv4 VLAN-0 """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPVlan0, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPVlan0, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPVlan0, self).setUp()
 
@@ -1109,6 +1169,14 @@ class TestIPVlan0(VppTestCase):
 
 class TestIPPunt(VppTestCase):
     """ IPv4 Punt Police/Redirect """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPPunt, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPPunt, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPPunt, self).setUp()
@@ -1236,6 +1304,14 @@ class TestIPPunt(VppTestCase):
 class TestIPDeag(VppTestCase):
     """ IPv4 Deaggregate Routes """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPDeag, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPDeag, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPDeag, self).setUp()
 
@@ -1344,6 +1420,14 @@ class TestIPDeag(VppTestCase):
 
 class TestIPInput(VppTestCase):
     """ IPv4 Input Exceptions """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPInput, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPInput, cls).tearDownClass()
 
     def setUp(self):
         super(TestIPInput, self).setUp()
@@ -1510,6 +1594,14 @@ class TestIPInput(VppTestCase):
 class TestIPDirectedBroadcast(VppTestCase):
     """ IPv4 Directed Broadcast """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPDirectedBroadcast, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPDirectedBroadcast, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPDirectedBroadcast, self).setUp()
 
@@ -1578,6 +1670,14 @@ class TestIPDirectedBroadcast(VppTestCase):
 class TestIPLPM(VppTestCase):
     """ IPv4 longest Prefix Match """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPLPM, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPLPM, cls).tearDownClass()
+
     def setUp(self):
         super(TestIPLPM, self).setUp()
 
@@ -1640,6 +1740,10 @@ class TestIPv4Frag(VppTestCase):
             i.admin_up()
             i.config_ip4()
             i.resolve_arp()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4Frag, cls).tearDownClass()
 
     def test_frag_large_packets(self):
         """ Fragmentation of large packets """

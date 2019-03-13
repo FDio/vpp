@@ -132,6 +132,10 @@ class TestClassifyAcl(VppTestCase):
             super(TestClassifyAcl, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestClassifyAcl, cls).tearDownClass()
+
     def setUp(self):
         super(TestClassifyAcl, self).setUp()
 

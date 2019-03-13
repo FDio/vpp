@@ -28,6 +28,10 @@ class TestSRv6(VppTestCase):
     def setUpClass(self):
         super(TestSRv6, self).setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestSRv6, cls).tearDownClass()
+
     def setUp(self):
         """ Perform test setup before each test case.
         """

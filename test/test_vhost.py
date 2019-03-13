@@ -11,6 +11,13 @@ class TesVhostInterface(VppTestCase):
     """Vhost User Test Case
 
     """
+    @classmethod
+    def setUpClass(cls):
+        super(TesVhostInterface, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TesVhostInterface, cls).tearDownClass()
 
     def tearDown(self):
         super(TesVhostInterface, self).tearDown()

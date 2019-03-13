@@ -63,6 +63,10 @@ class TestLB(VppTestCase):
             super(TestLB, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLB, cls).tearDownClass()
+
     def tearDown(self):
         super(TestLB, self).tearDown()
         if not self.vpp_dead:

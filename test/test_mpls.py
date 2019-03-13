@@ -52,6 +52,14 @@ def verify_mpls_stack(tst, rx, mpls_labels):
 class TestMPLS(VppTestCase):
     """ MPLS Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestMPLS, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMPLS, cls).tearDownClass()
+
     def setUp(self):
         super(TestMPLS, self).setUp()
 
@@ -1383,6 +1391,14 @@ class TestMPLS(VppTestCase):
 class TestMPLSDisabled(VppTestCase):
     """ MPLS disabled """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestMPLSDisabled, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMPLSDisabled, cls).tearDownClass()
+
     def setUp(self):
         super(TestMPLSDisabled, self).setUp()
 
@@ -1461,6 +1477,14 @@ class TestMPLSDisabled(VppTestCase):
 
 class TestMPLSPIC(VppTestCase):
     """ MPLS PIC edge convergence """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMPLSPIC, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMPLSPIC, cls).tearDownClass()
 
     def setUp(self):
         super(TestMPLSPIC, self).setUp()
@@ -1829,6 +1853,14 @@ class TestMPLSPIC(VppTestCase):
 
 class TestMPLSL2(VppTestCase):
     """ MPLS-L2 """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestMPLSL2, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestMPLSL2, cls).tearDownClass()
 
     def setUp(self):
         super(TestMPLSL2, self).setUp()

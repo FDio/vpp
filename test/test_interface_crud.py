@@ -36,6 +36,10 @@ class TestLoopbackInterfaceCRUD(VppTestCase):
             cls.tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestLoopbackInterfaceCRUD, cls).tearDownClass()
+
     @staticmethod
     def create_icmp_stream(src_if, dst_ifs):
         """

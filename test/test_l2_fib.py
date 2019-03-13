@@ -131,6 +131,10 @@ class TestL2fib(VppTestCase):
             super(TestL2fib, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2fib, cls).tearDownClass()
+
     def setUp(self):
         super(TestL2fib, self).setUp()
         self.reset_packet_infos()

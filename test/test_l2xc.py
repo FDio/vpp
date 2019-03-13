@@ -76,6 +76,10 @@ class TestL2xc(VppTestCase):
             super(TestL2xc, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestL2xc, cls).tearDownClass()
+
     def setUp(self):
         super(TestL2xc, self).setUp()
         self.reset_packet_infos()

@@ -89,6 +89,10 @@ class TestIpIrb(VppTestCase):
         cls.pg0.remote_hosts = cls.loop0.remote_hosts[:half]
         cls.pg1.remote_hosts = cls.loop0.remote_hosts[half:]
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIpIrb, cls).tearDownClass()
+
     def tearDown(self):
         """Run standard test teardown and log ``show l2patch``,
         ``show l2fib verbose``,``show bridge-domain <bd_id> detail``,

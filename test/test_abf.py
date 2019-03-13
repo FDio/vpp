@@ -141,6 +141,14 @@ class VppAbfAttach(VppObject):
 class TestAbf(VppTestCase):
     """ ABF Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestAbf, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestAbf, cls).tearDownClass()
+
     def setUp(self):
         super(TestAbf, self).setUp()
 

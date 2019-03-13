@@ -31,6 +31,14 @@ DHCP6_SERVER_PORT = 546
 class TestDHCP(VppTestCase):
     """ DHCP Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestDHCP, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestDHCP, cls).tearDownClass()
+
     def setUp(self):
         super(TestDHCP, self).setUp()
 

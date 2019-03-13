@@ -68,6 +68,10 @@ class TestVtr(VppTestCase):
             super(TestVtr, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestVtr, cls).tearDownClass()
+
     def setUp(self):
         """
         Clear trace and packet infos before running each test.

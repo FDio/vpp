@@ -8,6 +8,14 @@ from vpp_papi import VppEnum
 class IpsecApiTestCase(VppTestCase):
     """ IPSec API tests """
 
+    @classmethod
+    def setUpClass(cls):
+        super(IpsecApiTestCase, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(IpsecApiTestCase, cls).tearDownClass()
+
     def setUp(self):
         super(IpsecApiTestCase, self).setUp()
         self.create_pg_interfaces([0])
