@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "42e36d0d_0c486796",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-13T18:37:14Z",
+      "side": 1,
+      "message": "Can we instead do this via an api call?  \nhw_interface_set_flags ?",
+      "range": {
+        "startLine": 368,
+        "startChar": 0,
+        "endLine": 374,
+        "endChar": 75
+      },
+      "revId": "05327298d1ecf45f71e68d38a4236bc6828abfe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
