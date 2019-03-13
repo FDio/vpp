@@ -899,9 +899,13 @@ class TestIPLoadBalance(VppTestCase):
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
+        rxs = []
         for oo in outputs:
             rx = oo._get_capture(1)
             self.assertNotEqual(0, len(rx))
+            for r in rx:
+                rxs.append(r)
+        return rxs
 
     def send_and_expect_one_itf(self, input, pkts, itf):
         input.add_stream(pkts)
@@ -1038,6 +1042,53 @@ class TestIPLoadBalance(VppTestCase):
                                              self.pg3, self.pg4])
 
         #
+        # bring down pg1 expect LB to adjust to use only those that are pu
+        #
+        self.pg1.link_down()
+
+        rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                                 [self.pg2, self.pg3,
+                                                  self.pg4])
+        self.assertEqual(len(src_pkts), len(rx))
+
+        #
+        # bring down pg2 expect LB to adjust to use only those that are pu
+        #
+        self.pg2.link_down()
+
+        rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                                 [self.pg3, self.pg4])
+        self.assertEqual(len(src_pkts), len(rx))
+
+        #
+        # bring the links back up - expect LB over all again
+        #
+        self.pg1.link_up()
+        self.pg2.link_up()
+
+        rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                                 [self.pg1, self.pg2,
+                                                  self.pg3, self.pg4])
+        self.assertEqual(len(src_pkts), len(rx))
+
+        #
+        # The same link-up/down but this time admin state
+        #
+        self.pg1.admin_down()
+        self.pg2.admin_down()
+        rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                                 [self.pg3, self.pg4])
+        self.assertEqual(len(src_pkts), len(rx))
+        self.pg1.admin_up()
+        self.pg2.admin_up()
+        self.pg1.resolve_arp()
+        self.pg2.resolve_arp()
+        rx = self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                                 [self.pg1, self.pg2,
+                                                  self.pg3, self.pg4])
+        self.assertEqual(len(src_pkts), len(rx))
+
+        #
         # Recursive prefixes
         #  - testing that 2 stages of load-balancing, no choices
         #
@@ -1060,10 +1111,40 @@ class TestIPLoadBalance(VppTestCase):
         route_1_1_1_2.add_vpp_config()
 
         #
-        # inject the packet on pg0 - expect load-balancing across all 4 paths
+        # inject the packet on pg0 - rx only on via routes output interface
         #
         self.vapi.cli("clear trace")
         self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
+
+        #
+        # Add a LB route in the presence of a down link - expect no
+        # packets over the down link
+        #
+        self.pg3.link_down()
+
+        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+                                    [VppRoutePath(self.pg3.remote_ip4,
+                                                  self.pg3.sw_if_index),
+                                     VppRoutePath(self.pg4.remote_ip4,
+                                                  self.pg4.sw_if_index)])
+        route_10_0_0_3.add_vpp_config()
+
+        port_pkts = []
+        for ii in range(257):
+            port_pkts.append(Ether(src=self.pg0.remote_mac,
+                                   dst=self.pg0.local_mac) /
+                             IP(dst="10.0.0.3", src="20.0.0.2") /
+                             UDP(sport=1234, dport=1234 + ii) /
+                             Raw('\xa5' * 100))
+
+        self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg4)
+
+        # bring the link back up
+        self.pg3.link_up()
+
+        rx = self.send_and_expect_load_balancing(self.pg0, port_pkts,
+                                                 [self.pg3, self.pg4])
+        self.assertEqual(len(src_pkts), len(rx))
 
 
 class TestIPVlan0(VppTestCase):
