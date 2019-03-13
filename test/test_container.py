@@ -45,9 +45,10 @@ class ContainerIntegrationTestCase(VppTestCase):
         """Run standard test teardown and log various show commands
         """
         super(ContainerIntegrationTestCase, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show ip arp"))
-            self.logger.info(self.vapi.cli("show ip6 neighbors"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.cli("show ip arp"))
+        self.logger.info(self.vapi.cli("show ip6 neighbors"))
 
     def run_basic_conn_test(self, af, acl_side):
         """ Basic connectivity test """

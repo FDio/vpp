@@ -61,8 +61,9 @@ class TestSpan(VppTestCase):
 
     def tearDown(self):
         super(TestSpan, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show interface span"))
+
+    def tearDown_show_commands(self):
+        self.logger.info(self.vapi.ppcli("show interface span"))
 
     def xconnect(self, a, b, is_add=1):
         self.vapi.sw_interface_set_l2_xconnect(a, b, enable=is_add)
