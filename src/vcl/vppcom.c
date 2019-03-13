@@ -1810,9 +1810,9 @@ vcl_select_handle_mq_event (vcl_worker_t * wrk, session_event_t * e,
     case SESSION_IO_EVT_RX:
       sid = e->session_index;
       session = vcl_session_get (wrk, sid);
-      vcl_fifo_rx_evt_valid_or_break (session);
       if (!session)
 	break;
+      vcl_fifo_rx_evt_valid_or_break (session);
       if (sid < n_bits && read_map)
 	{
 	  clib_bitmap_set_no_check ((uword *) read_map, sid, 1);
