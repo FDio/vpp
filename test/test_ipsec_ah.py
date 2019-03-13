@@ -35,6 +35,14 @@ class TemplateIpsecAh(TemplateIpsec):
      ---             ---           ---
     """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TemplateIpsecAh, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TemplateIpsecAh, cls).tearDownClass()
+
     def setUp(self):
         super(TemplateIpsecAh, self).setUp()
 

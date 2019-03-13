@@ -25,6 +25,10 @@ class TestPPPoE(VppTestCase):
         cls.dst_ip = "100.1.1.100"
         cls.dst_ipn = socket.inet_pton(socket.AF_INET, cls.dst_ip)
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestPPPoE, cls).tearDownClass()
+
     def setUp(self):
         super(TestPPPoE, self).setUp()
 

@@ -26,6 +26,10 @@ class Test6RD(VppTestCase):
         cls.create_pg_interfaces(range(4))
         cls.interfaces = list(cls.pg_interfaces)
 
+    @classmethod
+    def tearDownClass(cls):
+        super(Test6RD, cls).tearDownClass()
+
     def setUp(self):
         super(Test6RD, self).setUp()
         t4 = VppIpTable(self, 10)

@@ -49,6 +49,14 @@ def verify_mpls_stack(tst, rx, mpls_labels):
 class TestSRMPLS(VppTestCase):
     """ SR-MPLS Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestSRMPLS, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestSRMPLS, cls).tearDownClass()
+
     def setUp(self):
         super(TestSRMPLS, self).setUp()
 
