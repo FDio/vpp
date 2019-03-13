@@ -150,14 +150,15 @@ class ACLPluginConnTestCase(VppTestCase):
         """Run standard test teardown and log various show commands
         """
         super(ACLPluginConnTestCase, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show ip arp"))
-            self.logger.info(self.vapi.cli("show ip6 neighbors"))
-            self.logger.info(self.vapi.cli("show acl-plugin sessions"))
-            self.logger.info(self.vapi.cli("show acl-plugin acl"))
-            self.logger.info(self.vapi.cli("show acl-plugin interface"))
-            self.logger.info(self.vapi.cli("show acl-plugin tables"))
-            self.logger.info(self.vapi.cli("show event-logger all"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show ip arp"))
+        self.logger.info(self.vapi.cli("show ip6 neighbors"))
+        self.logger.info(self.vapi.cli("show acl-plugin sessions"))
+        self.logger.info(self.vapi.cli("show acl-plugin acl"))
+        self.logger.info(self.vapi.cli("show acl-plugin interface"))
+        self.logger.info(self.vapi.cli("show acl-plugin tables"))
+        self.logger.info(self.vapi.cli("show event-logger all"))
 
     def run_basic_conn_test(self, af, acl_side):
         """ Basic conn timeout test """

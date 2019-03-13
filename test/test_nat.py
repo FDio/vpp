@@ -4161,20 +4161,21 @@ class TestNAT44(MethodHolder):
 
     def tearDown(self):
         super(TestNAT44, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat44 addresses"))
-            self.logger.info(self.vapi.cli("show nat44 interfaces"))
-            self.logger.info(self.vapi.cli("show nat44 static mappings"))
-            self.logger.info(self.vapi.cli("show nat44 interface address"))
-            self.logger.info(self.vapi.cli("show nat44 sessions detail"))
-            self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
-            self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
-            self.logger.info(self.vapi.cli("show nat timeouts"))
-            self.logger.info(
-                self.vapi.cli("show nat addr-port-assignment-alg"))
-            self.logger.info(self.vapi.cli("show nat ha"))
-            self.clear_nat44()
-            self.vapi.cli("clear logging")
+        self.clear_nat44()
+        self.vapi.cli("clear logging")
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show nat44 addresses"))
+        self.logger.info(self.vapi.cli("show nat44 interfaces"))
+        self.logger.info(self.vapi.cli("show nat44 static mappings"))
+        self.logger.info(self.vapi.cli("show nat44 interface address"))
+        self.logger.info(self.vapi.cli("show nat44 sessions detail"))
+        self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
+        self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
+        self.logger.info(self.vapi.cli("show nat timeouts"))
+        self.logger.info(
+            self.vapi.cli("show nat addr-port-assignment-alg"))
+        self.logger.info(self.vapi.cli("show nat ha"))
 
 
 class TestNAT44EndpointDependent(MethodHolder):
@@ -6419,15 +6420,17 @@ class TestNAT44EndpointDependent(MethodHolder):
     def tearDown(self):
         super(TestNAT44EndpointDependent, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat44 addresses"))
-            self.logger.info(self.vapi.cli("show nat44 interfaces"))
-            self.logger.info(self.vapi.cli("show nat44 static mappings"))
-            self.logger.info(self.vapi.cli("show nat44 interface address"))
-            self.logger.info(self.vapi.cli("show nat44 sessions detail"))
-            self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
-            self.logger.info(self.vapi.cli("show nat timeouts"))
             self.clear_nat44()
             self.vapi.cli("clear logging")
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show nat44 addresses"))
+        self.logger.info(self.vapi.cli("show nat44 interfaces"))
+        self.logger.info(self.vapi.cli("show nat44 static mappings"))
+        self.logger.info(self.vapi.cli("show nat44 interface address"))
+        self.logger.info(self.vapi.cli("show nat44 sessions detail"))
+        self.logger.info(self.vapi.cli("show nat44 hash tables detail"))
+        self.logger.info(self.vapi.cli("show nat timeouts"))
 
 
 class TestNAT44Out2InDPO(MethodHolder):
@@ -7142,13 +7145,15 @@ class TestDeterministicNAT(MethodHolder):
     def tearDown(self):
         super(TestDeterministicNAT, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat44 interfaces"))
-            self.logger.info(self.vapi.cli("show nat timeouts"))
-            self.logger.info(
-                self.vapi.cli("show nat44 deterministic mappings"))
-            self.logger.info(
-                self.vapi.cli("show nat44 deterministic sessions"))
             self.clear_nat_det()
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show nat44 interfaces"))
+        self.logger.info(self.vapi.cli("show nat timeouts"))
+        self.logger.info(
+            self.vapi.cli("show nat44 deterministic mappings"))
+        self.logger.info(
+            self.vapi.cli("show nat44 deterministic sessions"))
 
 
 class TestNAT64(MethodHolder):
@@ -8517,13 +8522,15 @@ class TestNAT64(MethodHolder):
     def tearDown(self):
         super(TestNAT64, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat64 pool"))
-            self.logger.info(self.vapi.cli("show nat64 interfaces"))
-            self.logger.info(self.vapi.cli("show nat64 prefix"))
-            self.logger.info(self.vapi.cli("show nat64 bib all"))
-            self.logger.info(self.vapi.cli("show nat64 session table all"))
-            self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
             self.clear_nat64()
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show nat64 pool"))
+        self.logger.info(self.vapi.cli("show nat64 interfaces"))
+        self.logger.info(self.vapi.cli("show nat64 prefix"))
+        self.logger.info(self.vapi.cli("show nat64 bib all"))
+        self.logger.info(self.vapi.cli("show nat64 session table all"))
+        self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
 
 
 class TestDSlite(MethodHolder):
@@ -8718,11 +8725,12 @@ class TestDSlite(MethodHolder):
 
     def tearDown(self):
         super(TestDSlite, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show dslite pool"))
-            self.logger.info(
-                self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
-            self.logger.info(self.vapi.cli("show dslite sessions"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show dslite pool"))
+        self.logger.info(
+            self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
+        self.logger.info(self.vapi.cli("show dslite sessions"))
 
 
 class TestDSliteCE(MethodHolder):
@@ -8828,11 +8836,12 @@ class TestDSliteCE(MethodHolder):
 
     def tearDown(self):
         super(TestDSliteCE, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(
-                self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
-            self.logger.info(
-                self.vapi.cli("show dslite b4-tunnel-endpoint-address"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(
+            self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
+        self.logger.info(
+            self.vapi.cli("show dslite b4-tunnel-endpoint-address"))
 
 
 class TestNAT66(MethodHolder):
@@ -8977,11 +8986,11 @@ class TestNAT66(MethodHolder):
 
     def tearDown(self):
         super(TestNAT66, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat66 interfaces"))
-            self.logger.info(self.vapi.cli("show nat66 static mappings"))
-            self.clear_nat66()
+        self.clear_nat66()
 
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show nat66 interfaces"))
+        self.logger.info(self.vapi.cli("show nat66 static mappings"))
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

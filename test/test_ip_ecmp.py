@@ -72,9 +72,10 @@ class TestECMP(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestECMP, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show ip arp"))
-            self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show ip arp"))
+        self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
 
     def get_ip_address(self, ip_addr_start, ip_prefix_len):
         """

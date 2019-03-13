@@ -176,9 +176,10 @@ class TestIP6VrfMultiInst(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestIP6VrfMultiInst, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show ip6 fib"))
-            self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show ip6 fib"))
+        self.logger.info(self.vapi.ppcli("show ip6 neighbors"))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
         """
