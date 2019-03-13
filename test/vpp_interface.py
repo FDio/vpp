@@ -365,6 +365,14 @@ class VppInterface(object):
         self.test.vapi.sw_interface_set_flags(self.sw_if_index,
                                               admin_up_down=0)
 
+    def link_up(self):
+        """Put interface link-state-UP."""
+        self.test.vapi.cli("test interface link-state %s up" % self.name)
+
+    def link_down(self):
+        """Put interface link-state-down."""
+        self.test.vapi.cli("test interface link-state %s down" % self.name)
+
     def ip6_enable(self):
         """IPv6 Enable interface"""
         self.test.vapi.sw_interface_ip6_enable_disable(self.sw_if_index,
