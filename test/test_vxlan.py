@@ -111,7 +111,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
                                               mcast_sw_if_index=1,
                                               is_add=is_add, vni=vni)
             if r.sw_if_index == 0xffffffff:
-                raise "bad sw_if_index"
+                raise ValueError("bad sw_if_index: ~0")
 
     @classmethod
     def add_shared_mcast_dst_load(cls):
