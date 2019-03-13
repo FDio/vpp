@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "880a359a_a860ef30",
+        "filename": "src/vlib/drop.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-13T18:54:40Z",
+      "side": 1,
+      "message": "2019\n\nThe 2015 version neved had any quad loops.",
+      "range": {
+        "startLine": 4,
+        "startChar": 17,
+        "endLine": 4,
+        "endChar": 21
+      },
+      "revId": "22e1f1d136790f1ee974ace7e299492582921b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a5b2a289_c0dc5654",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-13T18:54:40Z",
+      "side": 1,
+      "message": "This does not seem to be compatible with line 4.",
+      "range": {
+        "startLine": 22,
+        "startChar": 40,
+        "endLine": 22,
+        "endChar": 59
+      },
+      "revId": "22e1f1d136790f1ee974ace7e299492582921b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
