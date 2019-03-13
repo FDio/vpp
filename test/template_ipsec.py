@@ -188,6 +188,7 @@ class TemplateIpsec(VppTestCase):
                                 IPSEC_API_PROTO_AH)
 
         self.config_interfaces()
+
         self.ipsec_select_backend()
 
     def unconfig_interfaces(self):
@@ -201,8 +202,8 @@ class TemplateIpsec(VppTestCase):
 
         self.unconfig_interfaces()
 
-        if not self.vpp_dead:
-            self.vapi.cli("show hardware")
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show hardware"))
 
     def gen_encrypt_pkts(self, sa, sw_intf, src, dst, count=1,
                          payload_size=54):

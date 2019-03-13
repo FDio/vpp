@@ -128,8 +128,9 @@ class TestL2xcMultiInst(VppTestCase):
         Show various debug prints after each test.
         """
         super(TestL2xcMultiInst, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show l2patch"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show l2patch"))
 
     @classmethod
     def create_hosts(cls, count):

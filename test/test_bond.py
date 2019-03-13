@@ -40,8 +40,9 @@ class TestBondInterface(VppTestCase):
 
     def tearDown(self):
         super(TestBondInterface, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show interface"))
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.ppcli("show interface"))
 
     def test_bond_traffic(self):
         """ Bond traffic test """
