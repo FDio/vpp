@@ -758,9 +758,10 @@ class VppTestCase(unittest.TestCase):
         Convert packet payload to _PacketInfo object
 
         :param payload: packet payload
-        :type:  <class 'scapy.packet.Raw'>
-        :param: payload_field: packet fieldname of payload "load" for
+        :type payload:  <class 'scapy.packet.Raw'>
+        :param payload_field: packet fieldname of payload "load" for
                 <class 'scapy.packet.Raw'>
+        :type payload_field: str
         :returns: _PacketInfo object containing de-serialized data from payload
 
         """
