@@ -2892,6 +2892,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_rcv_ack (wrk, tc0, b0, tcp0, &error0))
 	    goto drop;
 
+	  if (!is_fin0)
+	    goto drop;
+
 	  tcp_program_ack (wrk, tc0);
 	  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	  goto drop;
@@ -2967,6 +2970,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  scoreboard_clear (&tc0->sack_sb);
 		  tcp_fastrecovery_off (tc0);
 		  tcp_recovery_off (tc0);
+		  tcp_connection_timers_reset (tc0);
 		  tc0->snd_nxt = tc0->snd_una_max = tc0->snd_una;
 		}
 	      tcp_send_fin (tc0);
