@@ -42,8 +42,9 @@ class TestPing(VppTestCase):
 
     def tearDown(self):
         super(TestPing, self).tearDown()
-        if not self.vpp_dead:
-            self.vapi.cli("show hardware")
+
+    def show_commands_at_teardown(self):
+        self.logger.info(self.vapi.cli("show hardware"))
 
     def test_ping_basic(self):
         """ basic ping test """
