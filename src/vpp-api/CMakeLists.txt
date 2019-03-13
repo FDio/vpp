@@ -30,4 +30,3 @@ add_vpp_headers(vpp-api
 )
 
 add_subdirectory(vapi)
-add_subdirectory(python)
