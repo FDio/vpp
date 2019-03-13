@@ -283,6 +283,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
       dev_type = "Intel X710/XL710 Family VF";
       break;
 
+    case VNET_DPDK_PMD_ICE:
+      dev_type = "Intel E810 Family";
+      break;
+
     case VNET_DPDK_PMD_FM10K:
       dev_type = "Intel FM10000 Family Ethernet Switch";
       break;
