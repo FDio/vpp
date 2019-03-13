@@ -239,7 +239,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    */
   vec_reset_length (tc->rcv_opts.sacks);
   tc->snd_una += sb->snd_una_adv;
-  tc->snd_una_max = 1900;
+  tc->snd_nxt = tc->snd_una_max = 1900;
   for (i = 0; i < 5; i++)
     {
       block.start = i * 100 + 1200;
@@ -416,7 +416,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * snd_una = 1000 and snd_una_max = 1600
    */
   tc->snd_una = 1000;
-  tc->snd_una_max = 1600;
+  tc->snd_nxt = tc->snd_una_max = 1600;
   vec_reset_length (tc->rcv_opts.sacks);
   block.start = 1200;
   block.end = 1500;

@@ -1164,7 +1164,7 @@ tcp_session_flush_data (transport_connection_t * tconn)
   if (tc->flags & TCP_CONN_PSH_PENDING)
     return;
   tc->flags |= TCP_CONN_PSH_PENDING;
-  tc->psh_seq = tc->snd_una_max + transport_max_tx_dequeue (tconn) - 1;
+  tc->psh_seq = tc->snd_una + transport_max_tx_dequeue (tconn) - 1;
 }
 
 /* *INDENT-OFF* */
@@ -1296,7 +1296,7 @@ tcp_timer_waitclose_handler (u32 conn_index)
        * and switch to LAST_ACK. */
       tcp_cong_recovery_off (tc);
       /* Make sure we don't try to send unsent data */
-      tc->snd_una_max = tc->snd_nxt = tc->snd_una;
+      tc->snd_nxt = tc->snd_una;
       tcp_send_fin (tc);
       tcp_connection_set_state (tc, TCP_STATE_LAST_ACK);
 
