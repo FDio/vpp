@@ -278,6 +278,10 @@ class TestGtpu(BridgeDomain, VppTestCase):
             super(TestGtpu, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestGtpu, cls).tearDownClass()
+
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.
     #  @param self The object pointer.

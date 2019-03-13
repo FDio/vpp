@@ -178,6 +178,14 @@ class TemplateIpsecEsp(TemplateIpsec):
      ---             ---           ---
     """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TemplateIpsecEsp, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TemplateIpsecEsp, cls).tearDownClass()
+
     def setUp(self):
         super(TemplateIpsecEsp, self).setUp()
         self.encryption_type = ESP
@@ -239,6 +247,15 @@ class TemplateIpsecEspUdp(TemplateIpsec):
     """
     UDP encapped ESP
     """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TemplateIpsecEspUdp, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TemplateIpsecEspUdp, cls).tearDownClass()
+
     def setUp(self):
         super(TemplateIpsecEspUdp, self).setUp()
         self.encryption_type = ESP

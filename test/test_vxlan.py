@@ -217,6 +217,10 @@ class TestVxlan(BridgeDomain, VppTestCase):
             super(TestVxlan, cls).tearDownClass()
             raise
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestVxlan, cls).tearDownClass()
+
     def test_encap_big_packet(self):
         """ Encapsulation test send big frame from pg1
         Verify receipt of encapsulated frames on pg0

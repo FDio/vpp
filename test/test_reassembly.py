@@ -219,6 +219,10 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         cls.create_stream(cls.packet_sizes)
         cls.create_fragments()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4Reassembly, cls).tearDownClass()
+
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4Reassembly, self).setUp()
@@ -549,6 +553,10 @@ class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
         cls.create_stream(cls.packet_sizes)
         cls.create_fragments()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv6Reassembly, cls).tearDownClass()
+
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv6Reassembly, self).setUp()
@@ -845,6 +853,10 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
         cls.create_stream()
         cls.create_fragments()
 
+    @classmethod
+    def tearDownClass(cls):
+        super(TestIPv4ReassemblyLocalNode, cls).tearDownClass()
+
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """
         super(TestIPv4ReassemblyLocalNode, self).setUp()
@@ -963,6 +975,10 @@ class TestFIFReassembly(VppTestCase):
 
         cls.packet_sizes = [64, 512, 1518, 9018]
         cls.padding = " abcdefghijklmn"
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestFIFReassembly, cls).tearDownClass()
 
     def setUp(self):
         """ Test setup - force timeout on existing reassemblies """

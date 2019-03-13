@@ -20,6 +20,14 @@ from scapy.contrib.mpls import MPLS
 class TestQOS(VppTestCase):
     """ QOS Test Case """
 
+    @classmethod
+    def setUpClass(cls):
+        super(TestQOS, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestQOS, cls).tearDownClass()
+
     def setUp(self):
         super(TestQOS, self).setUp()
 
