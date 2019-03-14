@@ -203,7 +203,13 @@ define sw_interface_details
   u32 i_sid;
 };
 
-/* works */
+/** \brief Request all or filtered subset of sw_interface_details
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name_filter_valid - 1 if requesting a filtered subset of records else 0
+    @param name_filter - interface name substring filter. Eg. loop1 returns [loop1, loop10]
+*/
+
 define sw_interface_dump
 {
   u32 client_index;
