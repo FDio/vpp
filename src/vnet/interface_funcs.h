@@ -310,6 +310,21 @@ vnet_hw_interface_is_link_up (vnet_main_t * vnm, u32 hw_if_index)
 	  VNET_HW_INTERFACE_FLAG_LINK_UP) != 0;
 }
 
+always_inline uword
+vnet_sw_interface_is_link_up (vnet_main_t * vnm, u32 sw_if_index)
+{
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
+
+  return (vnet_hw_interface_is_link_up (vnm, sw->hw_if_index));
+}
+
+always_inline uword
+vnet_sw_interface_is_up (vnet_main_t * vnm, u32 sw_if_index)
+{
+  return (vnet_sw_interface_is_admin_up (vnm, sw_if_index) &&
+	  vnet_sw_interface_is_link_up (vnm, sw_if_index));
+}
+
 always_inline vlib_frame_t *
 vnet_get_frame_to_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
