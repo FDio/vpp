@@ -293,7 +293,6 @@ class TestACLpluginL2L3(VppTestCase):
             last_info[i.sw_if_index] = None
 
         dst_ip_sw_if_index = dst_ip_if.sw_if_index
-        return
 
         for packet in capture:
             l3 = IP if packet.haslayer(IP) else IPv6
@@ -318,7 +317,9 @@ class TestACLpluginL2L3(VppTestCase):
                     data = scapy.compat.raw(ICMPv6Unknown(
                         scapy.compat.raw(packet[l3].payload)).msgbody)
             udp_or_icmp = packet[l3].payload
-            payload_info = self.payload_to_info(data)
+            data_obj = Raw(data)
+            # FIXME: make framework believe we are on object
+            payload_info = self.payload_to_info(data_obj)
             packet_index = payload_info.index
 
             self.assertEqual(payload_info.dst, dst_ip_sw_if_index)
@@ -345,8 +346,6 @@ class TestACLpluginL2L3(VppTestCase):
                 if l4 == UDP:
                     self.assertEqual(udp_or_icmp.sport, saved_packet[l4].sport)
                     self.assertEqual(udp_or_icmp.dport, saved_packet[l4].dport)
-            else:
-                print("Saved packet is none")
             # self.assertEqual(ip.dst, host.ip4)
 
             # UDP:
