@@ -24,16 +24,29 @@ singular_db<gbp_endpoint::key_t, gbp_endpoint> gbp_endpoint::m_db;
 
 gbp_endpoint::event_handler gbp_endpoint::m_evh;
 
+const gbp_endpoint::flags_t gbp_endpoint::flags_t::NONE(0, "none");
+const gbp_endpoint::flags_t gbp_endpoint::flags_t::BOUNCE(1, "bounce");
+const gbp_endpoint::flags_t gbp_endpoint::flags_t::LEARNT(2, "learnt");
+const gbp_endpoint::flags_t gbp_endpoint::flags_t::REMOTE(4, "remote");
+const gbp_endpoint::flags_t gbp_endpoint::flags_t::EXTERNAL(8, "external");
+
+gbp_endpoint::flags_t::flags_t(int v, const std::string& s)
+  : enum_base<gbp_endpoint::flags_t>(v, s)
+{
+}
+
 gbp_endpoint::gbp_endpoint(
   const interface& itf,
   const std::vector<boost::asio::ip::address>& ip_addrs,
   const mac_address_t& mac,
-  const gbp_endpoint_group& epg)
+  const gbp_endpoint_group& epg,
+  const flags_t& flags)
   : m_hdl(handle_t::INVALID)
   , m_itf(itf.singular())
   , m_ips(ip_addrs)
   , m_mac(mac)
   , m_epg(epg.singular())
+  , m_flags(flags)
 {
 }
 
@@ -43,6 +56,7 @@ gbp_endpoint::gbp_endpoint(const gbp_endpoint& gbpe)
   , m_ips(gbpe.m_ips)
   , m_mac(gbpe.m_mac)
   , m_epg(gbpe.m_epg)
+  , m_flags(gbpe.m_flags)
 {
 }
 
@@ -61,7 +75,8 @@ gbp_endpoint::key() const
 bool
 gbp_endpoint::operator==(const gbp_endpoint& gbpe) const
 {
-  return ((key() == gbpe.key()) && (m_epg == gbpe.m_epg));
+  return ((key() == gbpe.key()) && (m_epg == gbpe.m_epg) &&
+          (m_flags == gbpe.m_flags));
 }
 
 void
@@ -77,8 +92,8 @@ void
 gbp_endpoint::replay()
 {
   if (m_hdl) {
-    HW::enqueue(new gbp_endpoint_cmds::create_cmd(m_hdl, m_itf->handle(), m_ips,
-                                                  m_mac, m_epg->sclass()));
+    HW::enqueue(new gbp_endpoint_cmds::create_cmd(
+      m_hdl, m_itf->handle(), m_ips, m_mac, m_epg->sclass(), m_flags));
   }
 }
 
@@ -100,8 +115,8 @@ void
 gbp_endpoint::update(const gbp_endpoint& r)
 {
   if (rc_t::OK != m_hdl.rc()) {
-    HW::enqueue(new gbp_endpoint_cmds::create_cmd(m_hdl, m_itf->handle(), m_ips,
-                                                  m_mac, m_epg->sclass()));
+    HW::enqueue(new gbp_endpoint_cmds::create_cmd(
+      m_hdl, m_itf->handle(), m_ips, m_mac, m_epg->sclass(), m_flags));
   }
 }
 

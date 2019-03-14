@@ -37,7 +37,8 @@ public:
              const handle_t& itf,
              const std::vector<boost::asio::ip::address>& ip_addrs,
              const mac_address_t& mac,
-             sclass_t sclass);
+             sclass_t sclass,
+             const gbp_endpoint::flags_t& flags);
 
   /**
    * Issue the command to VPP/HW
@@ -61,6 +62,7 @@ private:
   const std::vector<boost::asio::ip::address> m_ip_addrs;
   const mac_address_t m_mac;
   const sclass_t m_sclass;
+  const gbp_endpoint::flags_t m_flags;
 };
 
 /**

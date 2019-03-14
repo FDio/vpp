@@ -21,16 +21,35 @@ DEFINE_VAPI_MSG_IDS_GBP_API_JSON;
 namespace VOM {
 namespace gbp_endpoint_cmds {
 
+static vapi_enum_gbp_endpoint_flags
+to_api(const gbp_endpoint::flags_t& in)
+{
+  vapi_enum_gbp_endpoint_flags out = GBP_API_ENDPOINT_FLAG_NONE;
+
+  if (in & gbp_endpoint::flags_t::REMOTE)
+    out = (vapi_enum_gbp_endpoint_flags)(out | GBP_API_ENDPOINT_FLAG_REMOTE);
+  if (in & gbp_endpoint::flags_t::BOUNCE)
+    out = (vapi_enum_gbp_endpoint_flags)(out | GBP_API_ENDPOINT_FLAG_BOUNCE);
+  if (in & gbp_endpoint::flags_t::LEARNT)
+    out = (vapi_enum_gbp_endpoint_flags)(out | GBP_API_ENDPOINT_FLAG_LEARNT);
+  if (in & gbp_endpoint::flags_t::EXTERNAL)
+    out = (vapi_enum_gbp_endpoint_flags)(out | GBP_API_ENDPOINT_FLAG_EXTERNAL);
+
+  return (out);
+}
+
 create_cmd::create_cmd(HW::item<handle_t>& item,
                        const handle_t& itf,
                        const std::vector<boost::asio::ip::address>& ip_addrs,
                        const mac_address_t& mac,
-                       sclass_t sclass)
+                       sclass_t sclass,
+                       const gbp_endpoint::flags_t& flags)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_ip_addrs(ip_addrs)
   , m_mac(mac)
   , m_sclass(sclass)
+  , m_flags(flags)
 {
 }
 
@@ -38,7 +57,8 @@ bool
 create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_ip_addrs == other.m_ip_addrs) &&
-          (m_mac == other.m_mac) && (m_sclass == other.m_sclass));
+          (m_mac == other.m_mac) && (m_sclass == other.m_sclass) &&
+          (m_flags == other.m_flags));
 }
 
 rc_t
@@ -52,9 +72,10 @@ create_cmd::issue(connection& con)
   payload.endpoint.sw_if_index = m_itf.value();
   payload.endpoint.sclass = m_sclass;
   payload.endpoint.n_ips = m_ip_addrs.size();
+  payload.endpoint.flags = to_api(m_flags);
 
   for (n = 0; n < payload.endpoint.n_ips; n++) {
-    to_api(m_ip_addrs[n], payload.endpoint.ips[n]);
+    VOM::to_api(m_ip_addrs[n], payload.endpoint.ips[n]);
   }
   to_api(m_mac, payload.endpoint.mac);
 
@@ -92,8 +113,8 @@ create_cmd::to_string() const
   for (auto ip : m_ip_addrs)
     s << ip.to_string();
 
-  s << "] mac:" << m_mac;
-  s << " slcass:" << m_sclass;
+  s << "] mac:" << m_mac << " slcass:" << m_sclass
+    << " flags:" << m_flags.to_string();
 
   return (s.str());
 }
