@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2bc09cfd_cff5aed7",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-14T21:20:57Z",
+      "side": 1,
+      "message": "Would you mind using the new string type?\nAnd ensure length checks in the action handler.",
+      "revId": "a9eee3e94cb085aeded9bd00891945dcd5924bf8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8dd21bd6_c3251245",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2019-03-14T21:20:57Z",
+      "side": 1,
+      "message": "As above",
+      "revId": "a9eee3e94cb085aeded9bd00891945dcd5924bf8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
