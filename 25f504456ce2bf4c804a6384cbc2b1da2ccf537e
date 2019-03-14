@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "054be5cc_78cfe1fd",
+        "filename": "src/vpp-api/python/CMakeLists.txt",
+        "patchSetId": 4
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-14T15:55:19Z",
+      "side": 1,
+      "message": "bdist_wheel?",
+      "range": {
+        "startLine": 26,
+        "startChar": 3,
+        "endLine": 26,
+        "endChar": 12
+      },
+      "revId": "25f504456ce2bf4c804a6384cbc2b1da2ccf537e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
