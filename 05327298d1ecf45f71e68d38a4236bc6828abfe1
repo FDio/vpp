@@ -22,6 +22,30 @@
       "revId": "05327298d1ecf45f71e68d38a4236bc6828abfe1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "13d0f2af_e17e34fe",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 374,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-14T09:10:32Z",
+      "side": 1,
+      "message": "this is setting the link-state of the link, i.e. whether there is a carrier signal or not, a cable plugged in, LOS, LOF, etc. This is not something we should be able to set via the API.\nI added it as a \u0027test\u0027 command so we can simulate it here.",
+      "parentUuid": "42e36d0d_0c486796",
+      "range": {
+        "startLine": 368,
+        "startChar": 0,
+        "endLine": 374,
+        "endChar": 75
+      },
+      "revId": "05327298d1ecf45f71e68d38a4236bc6828abfe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
