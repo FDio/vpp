@@ -72,7 +72,7 @@ class VppCFLOW(VppObject):
                             (self._intf, self._datapath))
 
     def object_id(self):
-        return "ipfix-collector-%s" % (self._src, self.dst)
+        return "ipfix-collector-%s-%s" % (self._src, self.dst)
 
     def query_vpp_config(self):
         return self._configured
