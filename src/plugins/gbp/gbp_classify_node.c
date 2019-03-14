@@ -26,6 +26,7 @@
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/vxlan-gbp/vxlan_gbp_packet.h>
+#include <vnet/ethernet/arp_packet.h>
 
 /**
  * per-packet trace data
@@ -278,17 +279,41 @@ typedef enum gbp_lpm_classify_next_t_
   GPB_LPM_CLASSIFY_DROP,
 } gbp_lpm_classify_next_t;
 
-always_inline dpo_proto_t
-ethertype_to_dpo_proto (const ethernet_header_t * eh0)
+always_inline void
+gbp_classify_get_src_ip4_address (const ethernet_header_t * eh0,
+				  const ip4_address_t ** ip4)
+{
+  const ip4_header_t *iph4;
+
+  iph4 = (ip4_header_t *) (eh0 + 1);
+  *ip4 = &iph4->src_address;
+}
+
+always_inline void
+gbp_classify_get_src_ip6_address (const ethernet_header_t * eh0,
+				  const ip6_address_t ** ip6)
+{
+  const ip6_header_t *iph6;
+
+  iph6 = (ip6_header_t *) (eh0 + 1);
+  *ip6 = &iph6->src_address;
+}
+
+always_inline void
+gbp_classify_get_src_ip_address (const ethernet_header_t * eh0,
+				 const ip4_address_t ** ip4,
+				 const ip6_address_t ** ip6)
 {
   u16 etype = clib_net_to_host_u16 (eh0->type);
 
   switch (etype)
     {
     case ETHERNET_TYPE_IP4:
-      return (DPO_PROTO_IP4);
+      gbp_classify_get_src_ip4_address (eh0, ip4);
+      break;
     case ETHERNET_TYPE_IP6:
-      return (DPO_PROTO_IP6);
+      gbp_classify_get_src_ip6_address (eh0, ip6);
+      break;
     case ETHERNET_TYPE_VLAN:
       {
 	ethernet_vlan_header_t *vh0;
@@ -298,14 +323,27 @@ ethertype_to_dpo_proto (const ethernet_header_t * eh0)
 	switch (clib_net_to_host_u16 (vh0->type))
 	  {
 	  case ETHERNET_TYPE_IP4:
-	    return (DPO_PROTO_IP4);
+	    {
+	      gbp_classify_get_src_ip4_address (eh0, ip4);
+	      break;
 	  case ETHERNET_TYPE_IP6:
-	    return (DPO_PROTO_IP6);
+	      gbp_classify_get_src_ip6_address (eh0, ip6);
+	      break;
+	    }
 	  }
       }
-    }
+    case ETHERNET_TYPE_ARP:
+      {
+	const ethernet_arp_header_t *ea0;
 
-  return (DPO_PROTO_NONE);
+	ea0 = (ethernet_arp_header_t *) (eh0 + 1);
+
+	*ip4 = &ea0->ip4_over_ethernet[0].ip4;
+	break;
+      }
+    default:
+      break;
+    }
 }
 
 /**
@@ -315,6 +353,7 @@ typedef struct gbp_lpm_classify_trace_t_
 {
   sclass_t sclass;
   index_t lbi;
+  ip46_address_t src;
 } gbp_lpm_classify_trace_t;
 
 /* packet trace format function */
@@ -325,7 +364,8 @@ format_gbp_lpm_classify_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   gbp_lpm_classify_trace_t *t = va_arg (*args, gbp_lpm_classify_trace_t *);
 
-  s = format (s, "sclass:%d lb:%d", t->sclass, t->lbi);
+  s = format (s, "sclass:%d lb:%d src:%U",
+	      t->sclass, t->lbi, format_ip46_address, &t->src, IP46_TYPE_ANY);
 
   return s;
 }
@@ -359,12 +399,12 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	  gbp_lpm_classify_next_t next0;
 	  const ethernet_header_t *eh0;
 	  const gbp_policy_dpo_t *gpd0;
+	  const ip4_address_t *ip4_0;
+	  const ip6_address_t *ip6_0;
 	  const gbp_endpoint_t *ge0;
 	  const gbp_recirc_t *gr0;
 	  const dpo_id_t *dpo0;
 	  load_balance_t *lb0;
-	  ip4_header_t *ip4_0;
-	  ip6_header_t *ip6_0;
 	  vlib_buffer_t *b0;
 	  sclass_t sclass0;
 
@@ -386,30 +426,15 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 	  vnet_buffer2 (b0)->gbp.flags = VXLAN_GBP_GPFLAGS_NONE;
 
 	  if (DPO_PROTO_IP4 == dproto)
-	    ip4_0 = vlib_buffer_get_current (b0);
+	    ip4_0 =
+	      &((ip4_header_t *) vlib_buffer_get_current (b0))->src_address;
 	  else if (DPO_PROTO_IP6 == dproto)
-	    ip6_0 = vlib_buffer_get_current (b0);
+	    ip6_0 =
+	      &((ip6_header_t *) vlib_buffer_get_current (b0))->src_address;
 	  else if (DPO_PROTO_ETHERNET == dproto)
 	    {
 	      eh0 = vlib_buffer_get_current (b0);
-
-	      dproto = ethertype_to_dpo_proto (eh0);
-
-	      switch (dproto)
-		{
-		case DPO_PROTO_IP4:
-		  ip4_0 = (vlib_buffer_get_current (b0) +
-			   vnet_buffer (b0)->l2.l2_len);
-		  break;
-		case DPO_PROTO_IP6:
-		  ip6_0 = (vlib_buffer_get_current (b0) +
-			   vnet_buffer (b0)->l2.l2_len);
-		  break;
-		default:
-		  /* not IP so no LPM classify possible */
-		  sclass0 = SCLASS_INVALID;
-		  goto trace;
-		}
+	      gbp_classify_get_src_ip_address (eh0, &ip4_0, &ip6_0);
 	    }
 
 	  if (is_recirc)
@@ -447,15 +472,13 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 		  goto trace;
 		}
 
-	      if (DPO_PROTO_IP4 == dproto)
+	      if (ip4_0)
 		{
-		  ge0 =
-		    gbp_endpoint_find_ip4 (&ip4_0->src_address, fib_index0);
+		  ge0 = gbp_endpoint_find_ip4 (ip4_0, fib_index0);
 		}
-	      else if (DPO_PROTO_IP6 == dproto)
+	      else if (ip6_0)
 		{
-		  ge0 =
-		    gbp_endpoint_find_ip6 (&ip6_0->src_address, fib_index0);
+		  ge0 = gbp_endpoint_find_ip6 (ip6_0, fib_index0);
 		}
 
 	      next0 = vnet_l2_feature_next
@@ -473,15 +496,14 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 		}
 	    }
 
-	  if (DPO_PROTO_IP4 == dproto)
+	  if (ip4_0)
 	    {
-	      lbi0 = ip4_fib_forwarding_lookup (fib_index0,
-						&ip4_0->src_address);
+	      lbi0 = ip4_fib_forwarding_lookup (fib_index0, ip4_0);
 	    }
-	  else if (DPO_PROTO_IP6 == dproto)
+	  else if (ip6_0)
 	    {
-	      lbi0 = ip6_fib_table_fwding_lookup (&ip6_main, fib_index0,
-						  &ip6_0->src_address);
+	      lbi0 =
+		ip6_fib_table_fwding_lookup (&ip6_main, fib_index0, ip6_0);
 	    }
 	  else
 	    {
@@ -514,6 +536,10 @@ gbp_lpm_classify_inline (vlib_main_t * vm,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sclass = sclass0;
 	      t->lbi = lbi0;
+	      if (ip4_0)
+		t->src.ip4 = *ip4_0;
+	      if (ip6_0)
+		t->src.ip6 = *ip6_0;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

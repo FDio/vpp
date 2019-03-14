@@ -3240,6 +3240,16 @@ class TestGBP(VppTestCase):
         rep.add_vpp_config()
 
         #
+        # ARP packet from External EPs are accpeted and replied to
+        #
+        p_arp = (Ether(src=eep1.mac, dst="ff:ff:ff:ff:ff:ff") /
+                 Dot1Q(vlan=100) /
+                 ARP(op="who-has",
+                     psrc=eep1.ip4.address, pdst="10.0.0.128",
+                     hwsrc=eep1.mac, hwdst="ff:ff:ff:ff:ff:ff"))
+        rxs = self.send_and_expect(self.pg0, p_arp * 1, self.pg0)
+
+        #
         # packets destined to unknown addresses in the BVI's subnet
         # are ARP'd for
         #
