@@ -127,6 +127,9 @@ bier_test_mk_intf (u32 ninterfaces)
                                             &tm->hw_if_indicies[i],
                                             /* flag change */ 0);
 
+        error = vnet_hw_interface_set_flags(vnet_get_main(),
+                                            tm->hw_if_indicies[i],
+                                            VNET_HW_INTERFACE_FLAG_LINK_UP);
         BIER_TEST((NULL == error), "ADD interface %d", i);
 
         tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
