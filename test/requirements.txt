@@ -1,6 +1,7 @@
 aenum>= 2.1.2; python_version < '3.6'   # BSD
 cffi                                    # MIT
 cryptography!=2.0                       # BSD/Apache-2.0
+deprecation>=2.0.6                      # Apache-2.0
 faulthandler; python_version < '3.3' #  # BSD License (2 clause)
 flake8                                  # MIT
 ipaddress; python_version < '3.3'       # PSF
