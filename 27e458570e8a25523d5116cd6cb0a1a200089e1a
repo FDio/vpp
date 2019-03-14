@@ -22,6 +22,30 @@
       "revId": "27e458570e8a25523d5116cd6cb0a1a200089e1a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ef11e515_4b71efc9",
+        "filename": "build/external/packages/dpdk.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1364
+      },
+      "writtenOn": "2019-03-14T14:21:27Z",
+      "side": 1,
+      "message": "Agree, it has to be only for Arm platforms.",
+      "parentUuid": "e1bd91a9_4abcfcf0",
+      "range": {
+        "startLine": 15,
+        "startChar": 32,
+        "endLine": 15,
+        "endChar": 35
+      },
+      "revId": "27e458570e8a25523d5116cd6cb0a1a200089e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
