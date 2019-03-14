@@ -191,6 +191,8 @@ typedef struct
 	    u32 next_index;	/* index of next node - ignored if "feature" node */
 	    u16 estimated_mtu;	/* estimated MTU calculated during reassembly */
 	    u16 owner_thread_index;
+	    u16 ip_proto;	/* shallow virtual reassembly - protocol in ip header */
+	    u16 l4_dst_port;	/* shallow virtual reassembly - tcp/udp dst port */
 	  };
 	  /* internal variables used during reassembly */
 	  struct
