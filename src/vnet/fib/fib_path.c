@@ -686,8 +686,8 @@ fib_path_attached_next_hop_set (fib_path_t *path)
 				     FIB_NODE_TYPE_PATH,
 				     fib_path_get_index(path));
 
-    if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
-				      path->attached_next_hop.fp_interface) ||
+    if (!vnet_sw_interface_is_up(vnet_get_main(),
+                                 path->attached_next_hop.fp_interface) ||
         !adj_is_up(path->fp_dpo.dpoi_index))
     {
 	path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
@@ -1083,7 +1083,7 @@ FIXME comment
             uword if_is_up;
             adj_index_t ai;
 
-            if_is_up = vnet_sw_interface_is_admin_up(
+            if_is_up = vnet_sw_interface_is_up(
                            vnet_get_main(),
                            path->attached_next_hop.fp_interface);
 
@@ -1886,8 +1886,8 @@ fib_path_resolve (fib_node_index_t path_index)
         /*
          * path->attached.fp_interface
          */
-        if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
-                                           path->attached.fp_interface))
+        if (!vnet_sw_interface_is_up(vnet_get_main(),
+                                     path->attached.fp_interface))
         {
             path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
         }
