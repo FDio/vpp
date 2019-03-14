@@ -1000,6 +1000,19 @@ class VppTestCase(unittest.TestCase):
         if pkt.haslayer(ICMPv6EchoReply):
             self.assert_checksum_valid(pkt, 'ICMPv6EchoReply', 'cksum')
 
+    def get_packet_counter(self, counter):
+        if counter.startswith("/"):
+            counter_value = self.statistics.get_counter(counter)
+        else:
+            counters = self.vapi.cli("sh errors").split('\n')
+            counter_value = -1
+            for i in range(1, len(counters) - 1):
+                results = counters[i].split()
+                if results[1] == counter:
+                    counter_value = int(results[0])
+                    break
+        return counter_value
+
     def assert_packet_counter_equal(self, counter, expected_value):
         if counter.startswith("/"):
             counter_value = self.statistics.get_counter(counter)
