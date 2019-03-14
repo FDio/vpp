@@ -110,9 +110,9 @@ autoreply define want_interface_events
   u32 pid;
 };
 
-/** \brief Interface details structure (fix this) 
+/** \brief Interface details structure (fix this)
     @param sw_if_index - index of the interface
-    @param sup_sw_if_index - index of parent interface if any, else same as sw_if_index  
+    @param sup_sw_if_index - index of parent interface if any, else same as sw_if_index
     @param l2_address_length - length of the interface's l2 address
     @param pid - the interface's l2 address
     @param interface_name - name of the interface
@@ -194,7 +194,7 @@ define sw_interface_details
   u32 vtr_tag1;			// first pushed tag
   u32 vtr_tag2;			// second pushed tag
   u8 tag[64];
-  
+
   /* pbb tag rewrite info */
   u16 outer_tag;
   u8  b_dmac[6];
@@ -203,7 +203,12 @@ define sw_interface_details
   u32 i_sid;
 };
 
-/* works */
+/** \brief Request to get interface details (multiple messages can be expected)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param name_filter_valid - 1 = dump specific interface. 0 means all.
+    @param name_filter - name of interface to dump.
+*/
 define sw_interface_dump
 {
   u32 client_index;
@@ -215,7 +220,7 @@ define sw_interface_dump
 /** \brief Set or delete one or all ip addresses on a specified interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - index of the interface to add/del addresses 
+    @param sw_if_index - index of the interface to add/del addresses
     @param is_add - add address if non-zero, else delete
     @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param del_all - if non-zero delete all addresses on the interface
@@ -309,7 +314,7 @@ autoreply define sw_interface_clear_stats
     @param add_del - 1 = add, 0 = delete
     @param tag - an ascii tag
 */
-autoreply define sw_interface_tag_add_del 
+autoreply define sw_interface_tag_add_del
 {
     u32 client_index;
     u32 context;
