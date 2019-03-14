@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7a8935a8_58407290",
+        "filename": "test/remote_test.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2019-03-14T14:47:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "651f530e_933c9c29",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 37
+      },
+      "revId": "58f06ba9d650e02e53ee3d05d3fee11c31b1180a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a00260f3_527687c8",
         "filename": "test/vpp_interface.py",
         "patchSetId": 7
@@ -71,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "a24ad9bc_aaa2a6c9",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2019-03-14T14:47:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1f7e4a99_bc7a8d98",
+      "range": {
+        "startLine": 243,
+        "startChar": 34,
+        "endLine": 243,
+        "endChar": 37
+      },
+      "revId": "58f06ba9d650e02e53ee3d05d3fee11c31b1180a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c6c8f3ae_9357e9d6",
         "filename": "test/vpp_memif.py",
         "patchSetId": 7
@@ -82,6 +130,30 @@
       "writtenOn": "2019-03-14T13:46:36Z",
       "side": 1,
       "message": "Are you having issues with this code?  It was changed to fix my python3 builds.",
+      "range": {
+        "startLine": 55,
+        "startChar": 12,
+        "endLine": 56,
+        "endChar": 57
+      },
+      "revId": "58f06ba9d650e02e53ee3d05d3fee11c31b1180a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dadef6cd_6f53ebb4",
+        "filename": "test/vpp_memif.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 865
+      },
+      "writtenOn": "2019-03-14T14:47:03Z",
+      "side": 1,
+      "message": "No, I changed it by mistake... it\u0027s back now.",
+      "parentUuid": "c6c8f3ae_9357e9d6",
       "range": {
         "startLine": 55,
         "startChar": 12,
