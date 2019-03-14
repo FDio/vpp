@@ -124,7 +124,7 @@ igmp_membership_query_v3_length (const igmp_membership_query_v3_t * q)
 }
 
 always_inline int
-igmp_membership_query_v3_is_geeral (const igmp_membership_query_v3_t * q)
+igmp_membership_query_v3_is_general (const igmp_membership_query_v3_t * q)
 {
   return (0 == q->group_address.as_u32);
 }

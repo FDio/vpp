@@ -203,7 +203,7 @@ igmp_handle_query (const igmp_query_args_t * args)
      Group-Specific Queries, and Group-and-Source-Specific Queries), each
      of which may require its own delayed response.
    */
-  if (igmp_membership_query_v3_is_geeral (args->query))
+  if (igmp_membership_query_v3_is_general (args->query))
     {
       IGMP_DBG ("...general-query-rx: %U", format_vnet_sw_if_index_name,
 		vnet_get_main (), args->sw_if_index);

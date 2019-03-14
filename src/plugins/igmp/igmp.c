@@ -142,12 +142,12 @@ igmp_listen (vlib_main_t * vm,
   /*
    * RFC 3376 Section 2
    " For a given combination of socket, interface, and multicast address,
-   only a single filter mode and source list can be in effect at any one
-   time.  However, either the filter mode or the source list, or both,
-   may be changed by subsequent IPMulticastListen requests that specify
-   the same socket, interface, and multicast address.  Each subsequent
-   request completely replaces any earlier request for the given socket,
-   interface and multicast address."
+   * only a single filter mode and source list can be in effect at any one
+   * time.  However, either the filter mode or the source list, or both,
+   * may be changed by subsequent IPMulticastListen requests that specify
+   * the same socket, interface, and multicast address.  Each subsequent
+   * request completely replaces any earlier request for the given socket,
+   * interface and multicast address."
    */
   int rv = 0;
   IGMP_DBG ("listen: (%U, %U) %U %U",
