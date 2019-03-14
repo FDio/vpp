@@ -21,8 +21,6 @@ Does not support
 
 This driver does yet support the following features.
 
--  NUMA support
--  RSS/multiple queues
 -  VLAN filter
 
 Prerequisites
@@ -31,8 +29,8 @@ Prerequisites
 -  This code is tested with vfio-pci driver installed with Ubuntu 18.04
    which has kernel version 4.15.0-33-generic.
 
--  This code is tested with ESXi vSwitch version 6.0, release build
-   3620759.
+-  This code is tested with ESXi vSwitch version 6.5/6.7 for LRO/TSO support,
+   VMware Workstation 15 Pro (no LRO/TSO), and VMware Fusion 11 Pro (no LRO/TSO).
 
 -  Driver requires MSI-X interrupt support, which is not supported by
    uio_pci_generic driver, so vfio-pci needs to be used. On systems
@@ -72,34 +70,11 @@ Load VFIO driver
 
     $ sudo modprobe vfio-pci
 
-For systems without IOMMU only, enable unsafe NOIOMMU mode
+Make sure the interface is down
 
 .. code-block:: console
 
-    $ echo Y | sudo tee /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
-
-To bind interface to vfio-pci first install the :ref:`configutil`. This will download
-the dpdk_devbind.py script. It is located in */usr/vpp/vpp-config/scripts* with Centos
-and */usr/local/vpp/vpp-config/scripts* with Ubuntu. 
-
-Bind the driver with the following commands:
-
-.. code-block:: console
-
-    $ sudo /usr/local/vpp/vpp-config/scripts/dpdk-devbind.py -s
-
-    Network devices using DPDK-compatible driver
-    ============================================
-    <none>
-    
-    Network devices using kernel driver
-    ===================================
-    0000:03:00.0 'VMXNET3 Ethernet Controller' if=ens160 drv=vmxnet3 unused=vfio-pci,uio_pci_generic 
-    0000:0b:00.0 'VMXNET3 Ethernet Controller' drv=vfio-pci unused=vmxnet3,uio_pci_generic
-    0000:13:00.0 'VMXNET3 Ethernet Controller' drv=vfio-pci unused=vmxnet3,uio_pci_generic
-    .....
-
-    $ sudo /usr/local/vpp/vpp-config/scripts/dpdk-devbind.py --bind vfio-pci 0b:00.0
+    $ sudo ifconfig <if-name> down
 
 
 Interface Creation
@@ -131,7 +106,7 @@ For example:
 
 .. code-block:: console
 
-    $ sudo vppctl show vmxnet
+    $ sudo vppctl show vmxnet3
     Interface: vmxnet3-0/b/0/0 (ifindex 1)
       Version: 1
       PCI Address: 0000:0b:00.0
