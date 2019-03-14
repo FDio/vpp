@@ -331,6 +331,7 @@ gbp_classify_get_src_ip_address (const ethernet_header_t * eh0,
 	      break;
 	    }
 	  }
+        break;
       }
     case ETHERNET_TYPE_ARP:
       {
