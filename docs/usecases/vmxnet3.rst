@@ -21,8 +21,6 @@ Does not support
 
 This driver does yet support the following features.
 
--  NUMA support
--  RSS/multiple queues
 -  VLAN filter
 
 Prerequisites
@@ -31,8 +29,8 @@ Prerequisites
 -  This code is tested with vfio-pci driver installed with Ubuntu 18.04
    which has kernel version 4.15.0-33-generic.
 
--  This code is tested with ESXi vSwitch version 6.0, release build
-   3620759.
+-  This code is tested with ESXi vSwitch version 6.5/6.7 for LRO/TSO support,
+   VMware Workstation 15 Pro (no LRO/TSO), and VMware Fusion 11 Pro (no LRO/TSO).
 
 -  Driver requires MSI-X interrupt support, which is not supported by
    uio_pci_generic driver, so vfio-pci needs to be used. On systems
@@ -45,7 +43,7 @@ VMware Fusion for Mac
 VMware fusion does not have a menu option to change the default driver (e1000)
 to the **vmxnet3** driver. VPP supports the **vmxnet3** driver.
 
-These instructions describe how to change the e100 driver for VMware fusion.
+These instructions describe how to change the e1000 driver for VMware fusion.
 
 * From the VMware Fusion menu bar select **Window** then **Virtual Machine Library**.
 * From the Virtual Machine menu right click on the Virtual Machine you are using and select **Show in Finder**
@@ -56,9 +54,25 @@ These instructions describe how to change the e100 driver for VMware fusion.
 If you are concerned more with configuration not performance the vmxnet3 driver can be set to
 **interrupt** mode in VPP. This will save a great deal on battery usage. Do this with the following
 
+VMware Workstatiom PRO 15 for Linux
+-----------------------------------
+
+VMware Workstation does not have a menu option to change the default driver (e1000)
+to the **vmxnet3** driver. VPP supports the **vmxnet3** driver.
+
+These instructions describe how to change the e1000 driver for VMware Workstation PRO 15 Linux. You may need to be a superuser for performing these steps.
+
+* Shut down the VM you are about to change.
+* From the vmware folder where vmware creates and stores the VM's, change the directory to the specific VM which you want to modify, and use your favorite text editor to open the corresponding VM's .vmx file. By default, it is $HOME/vmware/<vm-name>/<vm-name>.vmx
+* Locate the line for the interface which you want to modify. For example, if it is ethernet1, then change the line **ethernet1.virtualDev = "e1000"** to **ethernet1.virtualDev = "vmxnet3"**
+* Save the file and power on the VM.
+
+If you are concerned more with configuration not performance the vmxnet3 driver can be set to
+**interrupt** mode in VPP. This will save a great deal on battery usage. Do this with the following
+
 .. code-block:: console
 
-    # vppctl set interface rx-mode <interface> interrupt
+    $ sudo vppctl set interface rx-mode <interface> interrupt
 
 
 System setup
@@ -71,6 +85,15 @@ Load VFIO driver
 .. code-block:: console
 
     $ sudo modprobe vfio-pci
+
+Make sure the interface is down
+
+.. code-block:: console
+
+    $ sudo ifconfig <if-name> down
+
+The next 2 steps are optional and may be accomplished by specifying the optional "bind" keyword
+when creating the vmxnet3 interface.
 
 For systems without IOMMU only, enable unsafe NOIOMMU mode
 
@@ -105,12 +128,13 @@ Bind the driver with the following commands:
 Interface Creation
 ~~~~~~~~~~~~~~~~~~
 
-Now create the interface dynamically with following:
+Now create the interface dynamically with following. The bind option must be specified if pci is
+not already bound manually by above steps.
 
 .. code-block:: console
 
-    $ sudo vppctl create interface vmxnet3 0000:0b:00.0
-    $ sudo set int state vmxnet3-0/b/0/0 up
+    $ sudo vppctl create interface vmxnet3 0000:0b:00.0 bind
+    $ sudo vppctl set interface state vmxnet3-0/b/0/0 up
 
 Interface Deletion
 ~~~~~~~~~~~~~~~~~~
@@ -119,7 +143,7 @@ If the interface needs to be deleted:
 
 .. code-block:: console
 
-    $ sudo delete interface vmxnet3 <if-name>
+    $ sudo vppctl delete interface vmxnet3 <if-name>
 
 Show vmxnet3
 ~~~~~~~~~~~~
@@ -131,7 +155,7 @@ For example:
 
 .. code-block:: console
 
-    $ sudo vppctl show vmxnet
+    $ sudo vppctl show vmxnet3
     Interface: vmxnet3-0/b/0/0 (ifindex 1)
       Version: 1
       PCI Address: 0000:0b:00.0
