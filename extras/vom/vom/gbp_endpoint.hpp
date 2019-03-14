@@ -31,6 +31,24 @@ class gbp_endpoint : public object_base
 {
 public:
   /**
+   * Endpoint flags
+   */
+  struct flags_t : enum_base<flags_t>
+  {
+    const static flags_t NONE;
+    const static flags_t BOUNCE;
+    const static flags_t REMOTE;
+    const static flags_t LEARNT;
+    const static flags_t EXTERNAL;
+
+  private:
+    /**
+     * Private constructor taking the value and the string name
+     */
+    flags_t(int v, const std::string& s);
+  };
+
+  /**
    * The key for a GBP endpoint; interface and IP
    */
   typedef std::pair<interface::key_t, mac_address_t> key_t;
@@ -41,7 +59,8 @@ public:
   gbp_endpoint(const interface& itf,
                const std::vector<boost::asio::ip::address>& ip_addr,
                const mac_address_t& mac,
-               const gbp_endpoint_group& epg);
+               const gbp_endpoint_group& epg,
+               const flags_t& flags = flags_t::NONE);
 
   /**
    * Copy Construct
@@ -173,6 +192,11 @@ private:
    * The EPG the endpoint is in
    */
   std::shared_ptr<gbp_endpoint_group> m_epg;
+
+  /**
+   * Endpoint flags
+   */
+  flags_t m_flags;
 
   /**
    * A map of all bridge_domains
