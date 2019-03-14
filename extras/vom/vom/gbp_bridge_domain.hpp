@@ -34,16 +34,17 @@ public:
    */
   typedef bridge_domain::key_t key_t;
 
-  struct flags_t : enum_base<flags_t>
+  struct mode_t : enum_base<mode_t>
   {
-    const static flags_t NONE;
-    const static flags_t DO_NOT_LEARN;
+    const static mode_t LEARN_NONE;
+    const static mode_t LEARN_L2_ONLY;
+    const static mode_t LEARN_L2_AND_L3;
 
-    static const flags_t& from_vpp(int i);
+    static const mode_t& from_vpp(int i);
 
   private:
-    flags_t(int v, const std::string& s);
-    flags_t();
+    mode_t(int v, const std::string& s);
+    mode_t();
   };
 
   /**
@@ -51,22 +52,22 @@ public:
    */
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
-                    const flags_t& flags = flags_t::NONE);
+                    const mode_t& mode = mode_t::LEARN_L2_AND_L3);
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
                     const interface& uu_fwd,
                     const interface& bm_flood,
-                    const flags_t& flags = flags_t::NONE);
+                    const mode_t& mode = mode_t::LEARN_L2_AND_L3);
   gbp_bridge_domain(const bridge_domain& bd,
                     const std::shared_ptr<interface> bvi,
                     const std::shared_ptr<interface> uu_fwd,
                     const std::shared_ptr<interface> bm_flood,
-                    const flags_t& flags = flags_t::NONE);
+                    const mode_t& mode = mode_t::LEARN_L2_AND_L3);
   gbp_bridge_domain(const bridge_domain& bd,
                     const interface& bvi,
                     const std::shared_ptr<interface> uu_fwd,
                     const std::shared_ptr<interface> bm_flood,
-                    const flags_t& flags = flags_t::NONE);
+                    const mode_t& mode = mode_t::LEARN_L2_AND_L3);
 
   /**
    * Copy Construct
@@ -125,7 +126,9 @@ private:
   /**
    * Class definition for listeners to OM events
    */
-  class event_handler : public OM::listener, public inspect::command_handler
+  class event_handler
+    : public OM::listener
+    , public inspect::command_handler
   {
   public:
     event_handler();
@@ -192,7 +195,7 @@ private:
   std::shared_ptr<interface> m_bvi;
   std::shared_ptr<interface> m_uu_fwd;
   std::shared_ptr<interface> m_bm_flood;
-  const flags_t& m_flags;
+  const mode_t& m_mode;
 
   /**
    * A map of all bridge_domains

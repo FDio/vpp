@@ -114,20 +114,22 @@ gbp_bridge_domain_db_remove (gbp_bridge_domain_t * gb)
 }
 
 u8 *
-format_gbp_bridge_domain_flags (u8 * s, va_list * args)
+format_gbp_bridge_domain_mode (u8 * s, va_list * args)
 {
-  gbp_bridge_domain_flags_t gf = va_arg (*args, gbp_bridge_domain_flags_t);
+  gbp_learn_mode_t gm = va_arg (*args, gbp_learn_mode_t);
 
-  if (gf)
+  switch (gm)
     {
-      if (gf & GBP_BD_FLAG_DO_NOT_LEARN)
-	s = format (s, "do-not-learn");
+    case GBP_LEARN_MODE_NONE:
+      return format (s, "learn-none");
+    case GBP_LEARN_MODE_L2_ONLY:
+      return format (s, "learn-l2-only");
+    case GBP_LEARN_MODE_L2_AND_L3:
+      return format (s, "learn-l2-and-l3");
+    case GBP_LEARN_MODE_L3_ONLY:
+      return format (s, "learn-l3-only");
     }
-  else
-    {
-      s = format (s, "none");
-    }
-  return (s);
+  return format (s, "??");
 }
 
 static u8 *
@@ -137,13 +139,13 @@ format_gbp_bridge_domain_ptr (u8 * s, va_list * args)
   vnet_main_t *vnm = vnet_get_main ();
 
   if (NULL != gb)
-    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U flags:%U locks:%d",
+    s = format (s, "[%d] bd:[%d,%d], bvi:%U uu-flood:%U mode:%U locks:%d",
 		gb - gbp_bridge_domain_pool,
 		gb->gb_bd_id,
 		gb->gb_bd_index,
 		format_vnet_sw_if_index_name, vnm, gb->gb_bvi_sw_if_index,
 		format_vnet_sw_if_index_name, vnm, gb->gb_uu_fwd_sw_if_index,
-		format_gbp_bridge_domain_flags, gb->gb_flags, gb->gb_locks);
+		format_gbp_bridge_domain_mode, gb->gb_mode, gb->gb_locks);
   else
     s = format (s, "NULL");
 
@@ -164,7 +166,7 @@ format_gbp_bridge_domain (u8 * s, va_list * args)
 
 int
 gbp_bridge_domain_add_and_lock (u32 bd_id,
-				gbp_bridge_domain_flags_t flags,
+				gbp_learn_mode_t mode,
 				u32 bvi_sw_if_index,
 				u32 uu_fwd_sw_if_index,
 				u32 bm_flood_sw_if_index)
@@ -197,7 +199,7 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
       gb->gb_bvi_sw_if_index = bvi_sw_if_index;
       gb->gb_bm_flood_sw_if_index = bm_flood_sw_if_index;
       gb->gb_locks = 1;
-      gb->gb_flags = flags;
+      gb->gb_mode = mode;
 
       /*
        * Set the BVI and uu-flood interfaces into the BD
@@ -216,7 +218,8 @@ gbp_bridge_domain_add_and_lock (u32 bd_id,
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L2_BRIDGE, gb->gb_bm_flood_sw_if_index,
 			   bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
-	  gbp_learn_enable (gb->gb_bm_flood_sw_if_index, GBP_LEARN_MODE_L2);
+	  gbp_learn_enable_disable (gb->gb_bm_flood_sw_if_index, gb->gb_mode,
+				    1);
 	}
 
       /*
@@ -272,7 +275,8 @@ gbp_bridge_domain_unlock (index_t index)
 	  set_int_l2_mode (vlib_get_main (), vnet_get_main (),
 			   MODE_L3, gb->gb_bm_flood_sw_if_index,
 			   gb->gb_bd_index, L2_BD_PORT_TYPE_NORMAL, 0, 0);
-	  gbp_learn_enable (gb->gb_bm_flood_sw_if_index, GBP_LEARN_MODE_L2);
+	  gbp_learn_enable_disable (gb->gb_bm_flood_sw_if_index, gb->gb_mode,
+				    0);
 	}
 
       gbp_bridge_domain_db_remove (gb);
@@ -319,14 +323,14 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  gbp_bridge_domain_flags_t flags;
+  gbp_learn_mode_t mode;
   u32 bm_flood_sw_if_index = ~0;
   u32 uu_fwd_sw_if_index = ~0;
   u32 bvi_sw_if_index = ~0;
   u32 bd_id = ~0;
   u8 add = 1;
 
-  flags = GBP_BD_FLAG_NONE;
+  mode = GBP_LEARN_MODE_L2_AND_L3;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -343,7 +347,7 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
 	add = 1;
       else if (unformat (input, "del"))
 	add = 0;
-      else if (unformat (input, "flags &d", &flags))
+      else if (unformat (input, "mode &d", &mode))
 	add = 0;
       else if (unformat (input, "bd %d", &bd_id))
 	;
@@ -359,7 +363,7 @@ gbp_bridge_domain_cli (vlib_main_t * vm,
       if (~0 == bvi_sw_if_index)
 	return clib_error_return (0, "interface must be specified");
 
-      gbp_bridge_domain_add_and_lock (bd_id, flags,
+      gbp_bridge_domain_add_and_lock (bd_id, mode,
 				      bvi_sw_if_index,
 				      uu_fwd_sw_if_index,
 				      bm_flood_sw_if_index);

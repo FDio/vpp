@@ -25,9 +25,11 @@
 
 typedef enum gbp_learn_mode_t_
 {
-  GBP_LEARN_MODE_L2,
-  GBP_LEARN_MODE_L3,
-} gbb_learn_mode_t;
+  GBP_LEARN_MODE_NONE,
+  GBP_LEARN_MODE_L2_ONLY,
+  GBP_LEARN_MODE_L2_AND_L3,
+  GBP_LEARN_MODE_L3_ONLY,
+} gbp_learn_mode_t;
 
 /**
  * Grouping of global data for the GBP source EPG classification feature
@@ -35,9 +37,10 @@ typedef enum gbp_learn_mode_t_
 typedef struct gbp_learn_main_t_
 {
   /**
-   * Next nodes for L2 output features
+   * Next nodes for L2 input features
    */
-  u32 gl_l2_input_feat_next[32];
+  u32 gl_l2_and_l3_input_feat_next[32];
+  u32 gl_l2_only_input_feat_next[32];
 
   /**
    * logger - VLIB log class
@@ -53,8 +56,8 @@ typedef struct gbp_learn_main_t_
 
 extern gbp_learn_main_t gbp_learn_main;
 
-extern void gbp_learn_enable (u32 sw_if_index, gbb_learn_mode_t mode);
-extern void gbp_learn_disable (u32 sw_if_index, gbb_learn_mode_t mode);
+extern void gbp_learn_enable_disable (u32 sw_if_index, gbp_learn_mode_t mode,
+				      int enable_disable);
 
 #endif
 

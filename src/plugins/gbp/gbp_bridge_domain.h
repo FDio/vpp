@@ -17,17 +17,9 @@
 #define __GBP_BRIDGE_DOMAIN_H__
 
 #include <plugins/gbp/gbp_types.h>
+#include <plugins/gbp/gbp_learn.h>
 
 #include <vnet/fib/fib_types.h>
-
-/**
- * Bridge Domain Flags
- */
-typedef enum gbp_bridge_domain_flags_t_
-{
-  GBP_BD_FLAG_NONE = 0,
-  GBP_BD_FLAG_DO_NOT_LEARN = (1 << 0),
-} gbp_bridge_domain_flags_t;
 
 /**
  * A bridge Domain Representation.
@@ -45,7 +37,7 @@ typedef struct gbp_bridge_domain_t_
   /**
    * Flags conttrolling behaviour
    */
-  gbp_bridge_domain_flags_t gb_flags;
+  gbp_learn_mode_t gb_mode;
 
   /**
    * The BD's BVI interface (obligatory)
@@ -76,7 +68,7 @@ typedef struct gbp_bridge_domain_t_
 } gbp_bridge_domain_t;
 
 extern int gbp_bridge_domain_add_and_lock (u32 bd_id,
-					   gbp_bridge_domain_flags_t flags,
+					   gbp_learn_mode_t mode,
 					   u32 bvi_sw_if_index,
 					   u32 uu_fwd_sw_if_index,
 					   u32 bm_flood_sw_if_index);
@@ -91,7 +83,7 @@ typedef int (*gbp_bridge_domain_cb_t) (gbp_bridge_domain_t * gb, void *ctx);
 extern void gbp_bridge_domain_walk (gbp_bridge_domain_cb_t bgpe, void *ctx);
 
 extern u8 *format_gbp_bridge_domain (u8 * s, va_list * args);
-extern u8 *format_gbp_bridge_domain_flags (u8 * s, va_list * args);
+extern u8 *format_gbp_bridge_domain_mode (u8 * s, va_list * args);
 
 /**
  * DB of bridge_domains

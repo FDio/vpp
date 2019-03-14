@@ -315,16 +315,26 @@ static void
   REPLY_MACRO (VL_API_GBP_ENDPOINT_GROUP_DEL_REPLY + GBP_MSG_BASE);
 }
 
-static gbp_bridge_domain_flags_t
-gbp_bridge_domain_flags_from_api (vl_api_gbp_bridge_domain_flags_t a)
+static gbp_learn_mode_t
+gbp_learn_mode_from_api (vl_api_gbp_learn_mode_t a)
 {
-  gbp_bridge_domain_flags_t g;
+  gbp_learn_mode_t g;
 
-  g = GBP_BD_FLAG_NONE;
+  g = GBP_LEARN_MODE_L2_AND_L3;
   a = clib_net_to_host_u32 (a);
 
-  if (a & GBP_BD_API_FLAG_DO_NOT_LEARN)
-    g |= GBP_BD_FLAG_DO_NOT_LEARN;
+  switch (a)
+    {
+    case GBP_API_LEARN_MODE_NONE:
+      g = GBP_LEARN_MODE_NONE;
+      break;
+    case GBP_API_LEARN_MODE_L2_ONLY:
+      g = GBP_LEARN_MODE_L2_ONLY;
+      break;
+    case GBP_API_LEARN_MODE_L2_AND_L3:
+      g = GBP_LEARN_MODE_L2_AND_L3;
+      break;
+    }
 
   return (g);
 }
@@ -336,8 +346,8 @@ vl_api_gbp_bridge_domain_add_t_handler (vl_api_gbp_bridge_domain_add_t * mp)
   int rv = 0;
 
   rv = gbp_bridge_domain_add_and_lock (ntohl (mp->bd.bd_id),
-				       gbp_bridge_domain_flags_from_api
-				       (mp->bd.flags),
+				       gbp_learn_mode_from_api
+				       (mp->bd.mode),
 				       ntohl (mp->bd.bvi_sw_if_index),
 				       ntohl (mp->bd.uu_fwd_sw_if_index),
 				       ntohl (mp->bd.bm_flood_sw_if_index));

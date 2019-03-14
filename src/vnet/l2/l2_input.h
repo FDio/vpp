@@ -110,7 +110,8 @@ l2input_bd_config (u32 bd_index)
  _(RW,            "l2-rw")                      \
  _(LEARN,         "l2-learn")                   \
  _(L2_EMULATION,  "l2-emulation")               \
- _(GBP_LEARN,     "gbp-learn-l2")               \
+ _(GBP_LEARN_L2_ONLY,     "gbp-learn-l2-only")               \
+ _(GBP_LEARN_L2_AND_L3,     "gbp-learn-l2-and-l3")               \
  _(GBP_NULL_CLASSIFY, "gbp-null-classify")      \
  _(GBP_SRC_CLASSIFY,  "gbp-src-classify")       \
  _(GBP_LPM_CLASSIFY,  "l2-gbp-lpm-classify")    \

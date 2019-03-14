@@ -158,7 +158,7 @@ typedef struct gbp_learn_l2_trace_t_
   u32 throttled;
   u32 sclass;
   u32 d_bit;
-  gbp_bridge_domain_flags_t gb_flags;
+  gbp_learn_mode_t gb_mode;
 } gbp_learn_l2_trace_t;
 
 always_inline void
@@ -179,9 +179,56 @@ gbp_learn_get_outer (const ethernet_header_t * eh0,
   *outer_dst = ip0->dst_address;
 }
 
-VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
-				  vlib_node_runtime_t * node,
-				  vlib_frame_t * frame)
+always_inline void
+gbp_learn_l2_l3_dp (const u32 sw_if_index, const u16 bd_index,
+		    const sclass_t sclass, const ethernet_header_t * eh,
+		    const ip4_address_t outer_src,
+		    const ip4_address_t outer_dst, const int l2_only)
+{
+  if (!l2_only)
+    {
+      switch (clib_net_to_host_u16 (eh->type))
+	{
+	case ETHERNET_TYPE_IP4:
+	  {
+	    const ip4_header_t *ip;
+	    ip = (ip4_header_t *) (eh + 1);
+	    gbp_learn_l2_ip4_dp (eh->src_address,
+				 &ip->src_address,
+				 bd_index,
+				 sw_if_index, sclass, &outer_src, &outer_dst);
+	    return;
+	  }
+	case ETHERNET_TYPE_IP6:
+	  {
+	    const ip6_header_t *ip;
+	    ip = (ip6_header_t *) (eh + 1);
+	    gbp_learn_l2_ip6_dp (eh->src_address,
+				 &ip->src_address,
+				 bd_index,
+				 sw_if_index, sclass, &outer_src, &outer_dst);
+	    return;
+	  }
+	case ETHERNET_TYPE_ARP:
+	  {
+	    const ethernet_arp_header_t *arp;
+	    arp = (ethernet_arp_header_t *) (eh + 1);
+	    gbp_learn_l2_ip4_dp (eh->src_address,
+				 &arp->ip4_over_ethernet[0].ip4,
+				 bd_index,
+				 sw_if_index, sclass, &outer_src, &outer_dst);
+	    return;
+	  }
+	}
+    }
+
+  gbp_learn_l2_dp (eh->src_address,
+		   bd_index, sw_if_index, sclass, &outer_src, &outer_dst);
+}
+
+always_inline uword
+gbp_learn_l2 (vlib_main_t * vm,
+	      vlib_node_runtime_t * node, vlib_frame_t * frame, int l2_only)
 {
   u32 n_left_from, *from, *to_next, next_index, thread_index, seed;
   gbp_learn_main_t *glm;
@@ -227,16 +274,27 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 	  eh0 = vlib_buffer_get_current (b0);
 	  sclass0 = vnet_buffer2 (b0)->gbp.sclass;
 
-	  next0 = vnet_l2_feature_next (b0, glm->gl_l2_input_feat_next,
-					L2INPUT_FEAT_GBP_LEARN);
+	  if (l2_only)
+	    {
+	      next0 =
+		vnet_l2_feature_next (b0, glm->gl_l2_only_input_feat_next,
+				      L2INPUT_FEAT_GBP_LEARN_L2_ONLY);
+	    }
+	  else
+	    {
+	      next0 =
+		vnet_l2_feature_next (b0, glm->gl_l2_and_l3_input_feat_next,
+				      L2INPUT_FEAT_GBP_LEARN_L2_AND_L3);
+	    }
 
 	  ge0 = gbp_endpoint_find_mac (eh0->src_address,
 				       vnet_buffer (b0)->l2.bd_index);
 	  gb0 =
 	    gbp_bridge_domain_get_by_bd_index (vnet_buffer (b0)->l2.bd_index);
+	  ASSERT ((l2_only && GBP_LEARN_MODE_L2_ONLY == gb0->gb_mode)
+		  || (!l2_only && GBP_LEARN_MODE_L2_AND_L3 == gb0->gb_mode));
 
-	  if ((vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_D) ||
-	      (gb0->gb_flags & GBP_BD_FLAG_DO_NOT_LEARN))
+	  if ((vnet_buffer2 (b0)->gbp.flags & VXLAN_GBP_GPFLAGS_D))
 	    {
 	      t0 = 1;
 	      goto trace;
@@ -263,56 +321,9 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 		      goto trace;
 		    }
 
-		  switch (clib_net_to_host_u16 (eh0->type))
-		    {
-		    case ETHERNET_TYPE_IP4:
-		      {
-			const ip4_header_t *ip0;
-
-			ip0 = (ip4_header_t *) (eh0 + 1);
-
-			gbp_learn_l2_ip4_dp (eh0->src_address,
-					     &ip0->src_address,
-					     vnet_buffer (b0)->l2.bd_index,
-					     sw_if_index0, sclass0,
-					     &outer_src, &outer_dst);
-
-			break;
-		      }
-		    case ETHERNET_TYPE_IP6:
-		      {
-			const ip6_header_t *ip0;
-
-			ip0 = (ip6_header_t *) (eh0 + 1);
-
-			gbp_learn_l2_ip6_dp (eh0->src_address,
-					     &ip0->src_address,
-					     vnet_buffer (b0)->l2.bd_index,
-					     sw_if_index0, sclass0,
-					     &outer_src, &outer_dst);
-
-			break;
-		      }
-		    case ETHERNET_TYPE_ARP:
-		      {
-			const ethernet_arp_header_t *arp0;
-
-			arp0 = (ethernet_arp_header_t *) (eh0 + 1);
-
-			gbp_learn_l2_ip4_dp (eh0->src_address,
-					     &arp0->ip4_over_ethernet[0].ip4,
-					     vnet_buffer (b0)->l2.bd_index,
-					     sw_if_index0, sclass0,
-					     &outer_src, &outer_dst);
-			break;
-		      }
-		    default:
-		      gbp_learn_l2_dp (eh0->src_address,
-				       vnet_buffer (b0)->l2.bd_index,
-				       sw_if_index0, sclass0,
-				       &outer_src, &outer_dst);
-		      break;
-		    }
+		  gbp_learn_l2_l3_dp (sw_if_index0,
+				      vnet_buffer (b0)->l2.bd_index, sclass0,
+				      eh0, outer_src, outer_dst, l2_only);
 		}
 	    }
 	  else
@@ -334,7 +345,7 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
 	      t->throttled = t0;
 	      t->sw_if_index = sw_if_index0;
 	      t->sclass = sclass0;
-	      t->gb_flags = gb0->gb_flags;
+	      t->gb_mode = gb0->gb_mode;
 	      t->d_bit = ! !(vnet_buffer2 (b0)->gbp.flags &
 			     VXLAN_GBP_GPFLAGS_D);
 	    }
@@ -351,6 +362,20 @@ VLIB_NODE_FN (gbp_learn_l2_node) (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+VLIB_NODE_FN (gbp_learn_l2_and_l3_node) (vlib_main_t * vm,
+					 vlib_node_runtime_t * node,
+					 vlib_frame_t * frame)
+{
+  return gbp_learn_l2 (vm, node, frame, 0 /* l2_only */ );
+}
+
+VLIB_NODE_FN (gbp_learn_l2_only_node) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
+{
+  return gbp_learn_l2 (vm, node, frame, 1 /* l2_only */ );
+}
+
 /* packet trace format function */
 static u8 *
 format_gbp_learn_l2_trace (u8 * s, va_list * args)
@@ -360,17 +385,17 @@ format_gbp_learn_l2_trace (u8 * s, va_list * args)
   gbp_learn_l2_trace_t *t = va_arg (*args, gbp_learn_l2_trace_t *);
 
   s = format (s, "new:%d throttled:%d d-bit:%d mac:%U itf:%d sclass:%d"
-	      " gb-flags:%U",
+	      " gb-mode:%U",
 	      t->new, t->throttled, t->d_bit,
 	      format_mac_address_t, &t->mac, t->sw_if_index, t->sclass,
-	      format_gbp_bridge_domain_flags, t->gb_flags);
+	      format_gbp_bridge_domain_mode, t->gb_mode);
 
   return s;
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
-  .name = "gbp-learn-l2",
+VLIB_REGISTER_NODE (gbp_learn_l2_and_l3_node) = {
+  .name = "gbp-learn-l2-and-l3",
   .vector_size = sizeof (u32),
   .format_trace = format_gbp_learn_l2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -384,6 +409,23 @@ VLIB_REGISTER_NODE (gbp_learn_l2_node) = {
     [GBP_LEARN_NEXT_DROP] = "error-drop",
   },
 };
+
+VLIB_REGISTER_NODE (gbp_learn_l2_only_node) = {
+  .name = "gbp-learn-l2-only",
+  .vector_size = sizeof (u32),
+  .format_trace = format_gbp_learn_l2_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(gbp_learn_error_strings),
+  .error_strings = gbp_learn_error_strings,
+
+  .n_next_nodes = GBP_LEARN_N_NEXT,
+
+  .next_nodes = {
+    [GBP_LEARN_NEXT_DROP] = "error-drop",
+  },
+};
+
 /* *INDENT-ON* */
 
 typedef struct gbp_learn_l3_t_

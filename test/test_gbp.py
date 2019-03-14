@@ -30,24 +30,21 @@ from vpp_vxlan_gbp_tunnel import find_vxlan_gbp_tunnel, INDEX_INVALID, \
 
 def find_gbp_endpoint(test, sw_if_index=None, ip=None, mac=None):
     if ip:
-        vip = VppIpAddress(ip)
+        ip = VppIpAddress(ip)
     if mac:
-        vmac = MACAddress(mac)
+        mac = MACAddress(mac).packed
 
     eps = test.vapi.gbp_endpoint_dump()
 
-    for ep in eps:
-        if sw_if_index:
-            if ep.endpoint.sw_if_index != sw_if_index:
-                continue
-        if ip:
-            for eip in ep.endpoint.ips:
-                if vip == eip:
-                    return True
-        if mac:
-            if vmac.packed == ep.endpoint.mac:
-                return True
-    return False
+    return filter(
+        lambda ep: (
+            (not sw_if_index) or (
+                ep.endpoint.sw_if_index == sw_if_index)) and (
+                (not ip) or (
+                    ip in ep.endpoint.ips)) and (
+                        (not mac) or (
+                            mac == ep.endpoint.mac)),
+        eps)
 
 
 def find_gbp_vxlan(test, vni):
@@ -229,6 +226,7 @@ class VppGbpSubnet(VppObject):
     """
     GBP Subnet
     """
+
     def __init__(self, test, rd, address, address_len,
                  type, sw_if_index=None, epg=None):
         self._test = test
@@ -333,18 +331,22 @@ class VppGbpBridgeDomain(VppObject):
     """
 
     def __init__(self, test, bd, bvi, uu_fwd=None,
-                 bm_flood=None, learn=True):
+                 bm_flood=None, learn="l2-and-l3"):
         self._test = test
         self.bvi = bvi
         self.uu_fwd = uu_fwd
         self.bm_flood = bm_flood
         self.bd = bd
 
-        e = VppEnum.vl_api_gbp_bridge_domain_flags_t
-        if (learn):
-            self.learn = e.GBP_BD_API_FLAG_NONE
+        e = VppEnum.vl_api_gbp_learn_mode_t
+        if "l2-and-l3" == learn:
+            self.learn = e.GBP_API_LEARN_MODE_L2_AND_L3
+        elif "l2-only" == learn:
+            self.learn = e.GBP_API_LEARN_MODE_L2_ONLY
+        elif "none" == learn:
+            self.learn = e.GBP_API_LEARN_MODE_NONE
         else:
-            self.learn = e.GBP_BD_API_FLAG_DO_NOT_LEARN
+            raise ValueError("Unknown learning mode")
 
     def add_vpp_config(self):
         self._test.vapi.gbp_bridge_domain_add(
@@ -1992,7 +1994,7 @@ class TestGBP(VppTestCase):
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
         gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, bd_uu_fwd,
-                                  learn=False)
+                                  learn="none")
         gbd1.add_vpp_config()
 
         self.logger.info(self.vapi.cli("sh bridge 1 detail"))
@@ -2640,11 +2642,13 @@ class TestGBP(VppTestCase):
 
         bd3 = VppBridgeDomain(self, 3)
         bd3.add_vpp_config()
-        gbd3 = VppGbpBridgeDomain(self, bd3, self.loop2, bd_uu1, learn=False)
+        gbd3 = VppGbpBridgeDomain(self, bd3, self.loop2, bd_uu1,
+                                  learn="none")
         gbd3.add_vpp_config()
         bd4 = VppBridgeDomain(self, 4)
         bd4.add_vpp_config()
-        gbd4 = VppGbpBridgeDomain(self, bd4, self.loop3, bd_uu2, learn=False)
+        gbd4 = VppGbpBridgeDomain(self, bd4, self.loop3, bd_uu2,
+                                  learn="none")
         gbd4.add_vpp_config()
 
         #
@@ -3161,7 +3165,8 @@ class TestGBP(VppTestCase):
         #
         bd1 = VppBridgeDomain(self, 1)
         bd1.add_vpp_config()
-        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, None, tun_bm)
+        gbd1 = VppGbpBridgeDomain(self, bd1, self.loop0, None, tun_bm,
+                                  learn="l2-only")
         gbd1.add_vpp_config()
 
         #

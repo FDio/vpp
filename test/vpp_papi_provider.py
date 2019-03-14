@@ -2593,7 +2593,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_endpoint_group_del,
                         {'sclass': sclass})
 
-    def gbp_bridge_domain_add(self, bd_id, flags,
+    def gbp_bridge_domain_add(self, bd_id, mode,
                               bvi_sw_if_index,
                               uu_fwd_sw_if_index,
                               bm_flood_sw_if_index):
@@ -2601,7 +2601,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.gbp_bridge_domain_add,
                         {'bd':
                             {
-                                'flags': flags,
+                                'mode': mode,
                                 'bvi_sw_if_index': bvi_sw_if_index,
                                 'uu_fwd_sw_if_index': uu_fwd_sw_if_index,
                                 'bm_flood_sw_if_index': bm_flood_sw_if_index,

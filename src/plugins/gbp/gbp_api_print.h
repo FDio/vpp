@@ -32,7 +32,7 @@ vl_api_gbp_bridge_domain_add_t_print (vl_api_gbp_bridge_domain_add_t * a,
 
   s = format (s, "SCRIPT: gbp_bridge_domain_add ");
   s = format (s, "bd_id %d ", ntohl (a->bd.bd_id));
-  s = format (s, "flags %d ", ntohl (a->bd.flags));
+  s = format (s, "mode %d ", ntohl (a->bd.mode));
   s = format (s, "uu-fwd %d ", ntohl (a->bd.uu_fwd_sw_if_index));
   s = format (s, "bvi %d ", ntohl (a->bd.bvi_sw_if_index));
   s = format (s, "bm-flood %d", ntohl (a->bd.bm_flood_sw_if_index));
