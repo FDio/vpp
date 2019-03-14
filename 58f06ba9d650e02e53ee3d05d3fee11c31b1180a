@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "651f530e_933c9c29",
+        "filename": "test/remote_test.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-14T13:46:36Z",
+      "side": 1,
+      "message": "This is not correct.  See imports in vpp_serializer.py.",
+      "range": {
+        "startLine": 12,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 37
+      },
+      "revId": "58f06ba9d650e02e53ee3d05d3fee11c31b1180a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a00260f3_527687c8",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-14T13:46:36Z",
+      "side": 1,
+      "message": "Should we start using @deprecated decorators?",
+      "range": {
+        "startLine": 111,
+        "startChar": 7,
+        "endLine": 111,
+        "endChar": 25
+      },
+      "revId": "58f06ba9d650e02e53ee3d05d3fee11c31b1180a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1f7e4a99_bc7a8d98",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-14T13:46:36Z",
+      "side": 1,
+      "message": "This may need to be bytes under python3.",
+      "range": {
+        "startLine": 243,
+        "startChar": 34,
+        "endLine": 243,
+        "endChar": 37
+      },
+      "revId": "58f06ba9d650e02e53ee3d05d3fee11c31b1180a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c6c8f3ae_9357e9d6",
+        "filename": "test/vpp_memif.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-14T13:46:36Z",
+      "side": 1,
+      "message": "Are you having issues with this code?  It was changed to fix my python3 builds.",
+      "range": {
+        "startLine": 55,
+        "startChar": 12,
+        "endLine": 56,
+        "endChar": 57
+      },
+      "revId": "58f06ba9d650e02e53ee3d05d3fee11c31b1180a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
