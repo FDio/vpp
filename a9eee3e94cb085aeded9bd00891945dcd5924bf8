@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "c7fb94c9_29d0aa7b",
+        "filename": "src/plugins/map/map.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2019-03-14T21:46:04Z",
+      "side": 1,
+      "message": "Ah, right.  I didn\u0027t realize we had a string-type yet.\nCan do.\n\nSo, to save space, a vector of string pointers?\n\nOr, we could convert to, say, a u32 id rather than a name.\nWould that be preferred?",
+      "parentUuid": "2bc09cfd_cff5aed7",
+      "revId": "a9eee3e94cb085aeded9bd00891945dcd5924bf8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8dd21bd6_c3251245",
         "filename": "src/plugins/map/map.api",
         "patchSetId": 1
