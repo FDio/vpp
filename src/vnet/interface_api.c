@@ -311,7 +311,6 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
       filter = format (0, "%s%c", mp->name_filter, 0);
     }
 
-  char *strcasestr (char *, char *);	/* lnx hdr file botch */
   /* *INDENT-OFF* */
   pool_foreach (swif, im->sw_interfaces,
   ({
@@ -321,7 +320,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
     name = format (name, "%U%c", format_vnet_sw_interface_name, am->vnet_main,
                    swif, 0);
 
-    if (filter && !strcasestr((char *) name, (char *) filter))
+    if (filter && (strcasecmp((char *) name, (char *) filter) != 0))
 	continue;
 
     send_sw_interface_details (am, rp, swif, name, mp->context);
