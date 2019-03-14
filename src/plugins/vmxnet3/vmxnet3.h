@@ -605,6 +605,7 @@ typedef struct
   u16 rxq_num;
   u16 txq_size;
   u16 txq_num;
+  u8 bind;
   /* return */
   i32 rv;
   u32 sw_if_index;

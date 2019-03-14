@@ -44,6 +44,8 @@ vmxnet3_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "elog"))
 	args.enable_elog = 1;
+      else if (unformat (line_input, "bind"))
+	args.bind = 1;
       else if (unformat (line_input, "rx-queue-size %u", &args.rxq_size))
 	;
       else if (unformat (line_input, "tx-queue-size %u", &args.txq_size))
@@ -69,7 +71,7 @@ VLIB_CLI_COMMAND (vmxnet3_create_command, static) = {
   .path = "create interface vmxnet3",
   .short_help = "create interface vmxnet3 <pci-address>"
                 "[rx-queue-size <size>] [tx-queue-size <size>]"
-                "[num-tx-queues <number>] [num-rx-queues <number>]",
+                "[num-tx-queues <number>] [num-rx-queues <number>] [bind]",
   .function = vmxnet3_create_command_fn,
 };
 /* *INDENT-ON* */
