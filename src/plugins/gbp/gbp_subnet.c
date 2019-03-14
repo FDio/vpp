@@ -199,12 +199,29 @@ gbp_subnet_l3_out_add (gbp_subnet_t * gs, u32 sw_if_index, sclass_t sclass)
   return (0);
 }
 
+static void
+gbp_subnet_del_i (index_t gsi)
+{
+  gbp_subnet_t *gs;
+
+  gs = pool_elt_at_index (gbp_subnet_pool, gsi);
+
+  if (GBP_SUBNET_L3_OUT == gs->gs_type)
+    fib_table_entry_delete_index (gs->gs_fei, FIB_SOURCE_SPECIAL);
+  else
+    fib_table_entry_delete_index (gs->gs_fei, FIB_SOURCE_PLUGIN_HI);
+
+  gbp_subnet_db_del (gs);
+  gbp_route_domain_unlock (gs->gs_rd);
+
+  pool_put (gbp_subnet_pool, gs);
+}
+
 int
 gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx)
 {
   gbp_route_domain_t *grd;
   index_t gsi, grdi;
-  gbp_subnet_t *gs;
   u32 fib_index;
 
   grdi = gbp_route_domain_find (rd_id);
@@ -220,17 +237,7 @@ gbp_subnet_del (u32 rd_id, const fib_prefix_t * pfx)
   if (INDEX_INVALID == gsi)
     return (VNET_API_ERROR_NO_SUCH_ENTRY);
 
-  gs = pool_elt_at_index (gbp_subnet_pool, gsi);
-
-  if (GBP_SUBNET_L3_OUT == gs->gs_type)
-    fib_table_entry_delete (fib_index, pfx, FIB_SOURCE_SPECIAL);
-  else
-    fib_table_entry_delete (fib_index, pfx, FIB_SOURCE_PLUGIN_HI);
-
-  gbp_subnet_db_del (gs);
-  gbp_route_domain_unlock (gs->gs_rd);
-
-  pool_put (gbp_subnet_pool, gs);
+  gbp_subnet_del_i (gsi);
 
   return (0);
 }
@@ -256,8 +263,11 @@ gbp_subnet_add (u32 rd_id,
 
   gsi = gbp_subnet_db_find (fib_index, pfx);
 
+  /*
+   * this is an update if the subnet already exists, so remove the old
+   */
   if (INDEX_INVALID != gsi)
-    return (VNET_API_ERROR_ENTRY_ALREADY_EXISTS);
+    gbp_subnet_del_i (gsi);
 
   rv = -2;
 
