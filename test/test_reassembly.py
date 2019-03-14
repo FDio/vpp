@@ -18,6 +18,7 @@ from util import ppp, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip import DpoProto
 from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_papi import VppEnum
 
 # 35 is enough to have >257 400-byte fragments
 test_packet_count = 35
@@ -236,7 +237,7 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
 
     def tearDown(self):
         super(TestIPv4Reassembly, self).tearDown()
-        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
@@ -303,7 +304,7 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         """ long fragment chain """
 
         error_cnt_str = \
-            "/err/ip4-reassembly-feature/fragment chain too long (drop)"
+            "/err/ip4-full-reassembly-feature/fragment chain too long (drop)"
 
         error_cnt = self.get_packet_counter(error_cnt_str)
 
@@ -353,11 +354,12 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
         self.pg_start()
 
         self.dst_if.get_capture(1)
-        self.assert_packet_counter_equal("ip4-reassembly-feature", 1)
+        self.logger.debug(self.vapi.ppcli("show error"))
+        self.assert_packet_counter_equal("ip4-full-reassembly-feature", 1)
         # TODO remove above, uncomment below once clearing of counters
         # is supported
         # self.assert_packet_counter_equal(
-        #     "/err/ip4-reassembly-feature/malformed packets", 1)
+        #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
 
     def test_44924(self):
         """ compress tiny fragments """
@@ -420,11 +422,11 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
 
         self.dst_if.get_capture(1)
 
-        self.assert_packet_counter_equal("ip4-reassembly-feature", 1)
+        self.assert_packet_counter_equal("ip4-full-reassembly-feature", 1)
         # TODO remove above, uncomment below once clearing of counters
         # is supported
         # self.assert_packet_counter_equal(
-        #     "/err/ip4-reassembly-feature/malformed packets", 1)
+        #     "/err/ip4-full-reassembly-feature/malformed packets", 1)
 
     @parameterized.expand([(IP, None)])
     def test_duplicates(self, family, stream):
@@ -560,6 +562,122 @@ class TestIPv4Reassembly(TestIPReassemblyMixin, VppTestCase):
             if len(frags_400) > 1)
         super(TestIPv4Reassembly, self).test_disabled(
             family, stream, dropped_packet_indexes)
+
+
+class TestIPv4DVReassembly(VppTestCase):
+    """ IPv4 Deep Virtual Reassembly """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4DVReassembly, cls).setUpClass()
+
+        cls.create_pg_interfaces([0, 1])
+        cls.src_if = cls.pg0
+        cls.dst_if = cls.pg1
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        # packet sizes
+        cls.packet_sizes = [1518, 9018]
+        cls.padding = " abcdefghijklmn"
+        cls.create_stream(cls.packet_sizes)
+        cls.create_fragments()
+
+    def setUp(self):
+        """ Test setup - force timeout on existing reassemblies """
+        super(TestIPv4DVReassembly, self).setUp()
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.src_if.sw_if_index, enable_ip4=True,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL)
+        self.vapi.ip_reassembly_set(
+            timeout_ms=0, max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL,
+            expire_walk_interval_ms=10)
+        self.sleep(.25)
+        self.vapi.ip_reassembly_set(
+            timeout_ms=1000000, max_reassemblies=1000,
+            max_reassembly_length=1000,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_DEEP_VIRTUAL,
+            expire_walk_interval_ms=10000)
+
+    def tearDown(self):
+        super(TestIPv4DVReassembly, self).tearDown()
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+
+    @classmethod
+    def create_stream(cls, packet_sizes, packet_count=test_packet_count):
+        """Create input packet stream
+
+        :param list packet_sizes: Required packet sizes.
+        """
+        for i in range(0, packet_count):
+            info = cls.create_packet_info(cls.src_if, cls.src_if)
+            payload = cls.info_to_payload(info)
+            p = (Ether(dst=cls.src_if.local_mac, src=cls.src_if.remote_mac) /
+                 IP(id=info.index, src=cls.src_if.remote_ip4,
+                    dst=cls.dst_if.remote_ip4) /
+                 UDP(sport=1234, dport=5678) /
+                 Raw(payload))
+            size = packet_sizes[(i // 2) % len(packet_sizes)]
+            cls.extend_packet(p, size, cls.padding)
+            info.data = p
+
+    @classmethod
+    def create_fragments(cls):
+        infos = cls._packet_infos
+        cls.pkt_infos = []
+        for index, info in six.iteritems(infos):
+            p = info.data
+            # cls.logger.debug(ppp("Packet:",
+            #                      p.__class__(scapy.compat.raw(p))))
+            fragments_400 = fragment_rfc791(p, 400)
+            fragments_300 = fragment_rfc791(p, 300)
+            fragments_200 = [
+                x for f in fragments_400 for x in fragment_rfc791(f, 200)]
+            cls.pkt_infos.append(
+                (index, fragments_400, fragments_300, fragments_200))
+        cls.fragments_400 = [
+            x for (_, frags, _, _) in cls.pkt_infos for x in frags]
+        cls.fragments_300 = [
+            x for (_, _, frags, _) in cls.pkt_infos for x in frags]
+        cls.fragments_200 = [
+            x for (_, _, _, frags) in cls.pkt_infos for x in frags]
+        cls.logger.debug("Fragmented %s packets into %s 400-byte fragments, "
+                         "%s 300-byte fragments and %s 200-byte fragments" %
+                         (len(infos), len(cls.fragments_400),
+                             len(cls.fragments_300), len(cls.fragments_200)))
+
+    def test_basic(self):
+        """ basic reassembly """
+        p = (Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac) /
+             IP(id=1, src=self.src_if.remote_ip4,
+                dst=self.dst_if.remote_ip4) /
+             UDP(sport=1234, dport=5678) /
+             Raw("X" * 2000))
+        fragments = fragment_rfc791(p, 500)
+        # send incomplete stream with duplicates
+        incomplete_stream = fragments[:-1] + fragments[:-1]
+        self.pg_enable_capture()
+        self.src_if.add_stream(incomplete_stream)
+        self.pg_start()
+        self.dst_if.assert_nothing_captured()
+        self.logger.debug(self.vapi.ppcli("show ip4-dv-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show buffers"))
+        self.logger.debug(self.vapi.ppcli("show trace"))
+        # send last fragment to complete the reassembly
+        self.src_if.add_stream(fragments[-1])
+        self.pg_start()
+        c = self.dst_if.get_capture(2*len(fragments)-1)
+        for sent, recvd in zip(fragments[:-1]+fragments, c):
+            self.assertEqual(sent[IP].src, recvd[IP].src)
+            self.assertEqual(sent[IP].dst, recvd[IP].dst)
+            self.assertEqual(sent[Raw].payload, recvd[Raw].payload)
 
 
 class TestIPv6Reassembly(TestIPReassemblyMixin, VppTestCase):
@@ -924,7 +1042,7 @@ class TestIPv4ReassemblyLocalNode(VppTestCase):
 
     def tearDown(self):
         super(TestIPv4ReassemblyLocalNode, self).tearDown()
-        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
 
     @classmethod
@@ -1056,7 +1174,7 @@ class TestFIFReassembly(VppTestCase):
                                     expire_walk_interval_ms=10000, is_ip6=1)
 
     def tearDown(self):
-        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip4-full-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
         self.logger.debug(self.vapi.ppcli("show buffers"))
         super(TestFIFReassembly, self).tearDown()
