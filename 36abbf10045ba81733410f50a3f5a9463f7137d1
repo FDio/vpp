@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ac57070_906ba32d",
+        "filename": "test/vpp_l2.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-14T17:00:49Z",
+      "side": 1,
+      "message": "Do you actually need this? If so, can you update this to bytes()?  bytes is str() under py2.",
+      "range": {
+        "startLine": 239,
+        "startChar": 33,
+        "endLine": 239,
+        "endChar": 38
+      },
+      "revId": "36abbf10045ba81733410f50a3f5a9463f7137d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
