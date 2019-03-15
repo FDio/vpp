@@ -441,8 +441,7 @@ static inline int BV (clib_bihash_add_del_inline)
       tmp_b.refcnt = 1;
       CLIB_MEMORY_BARRIER ();
 
-      b->as_u64 = tmp_b.as_u64;
-      BV (clib_bihash_unlock_bucket) (b);
+      b->as_u64 = tmp_b.as_u64;	/* unlocks the bucket */
       return (0);
     }
 
