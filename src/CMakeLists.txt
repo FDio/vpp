@@ -142,3 +142,8 @@ pr("Target processor" "${CMAKE_SYSTEM_PROCESSOR}")
 pr("Prefix path" "${CMAKE_PREFIX_PATH}")
 pr("Install prefix" "${CMAKE_INSTALL_PREFIX}")
 
+add_vpp_executable(reass_test
+ SOURCES vnet/reass/reass_test.c
+ LINK_LIBRARIES vppapiclient vppinfra
+ DEPENDS api_headers
+)
