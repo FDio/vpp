@@ -934,11 +934,14 @@ static void vl_api_sw_interface_details_t_handler
       sub->sw_if_index = ntohl (mp->sw_if_index);
       sub->sub_id = ntohl (mp->sub_id);
 
-      sub->raw_flags = ntohl (mp->sub_if_flags & SUB_IF_API_FLAG_MASK_VNET);
-
+      sub->sub_dot1ad = mp->sub_dot1ad;
       sub->sub_number_of_tags = mp->sub_number_of_tags;
       sub->sub_outer_vlan_id = ntohs (mp->sub_outer_vlan_id);
       sub->sub_inner_vlan_id = ntohs (mp->sub_inner_vlan_id);
+      sub->sub_exact_match = mp->sub_exact_match;
+      sub->sub_default = mp->sub_default;
+      sub->sub_outer_vlan_id_any = mp->sub_outer_vlan_id_any;
+      sub->sub_inner_vlan_id_any = mp->sub_inner_vlan_id_any;
 
       /* vlan tag rewrite */
       sub->vtr_op = ntohl (mp->vtr_op);
@@ -965,28 +968,37 @@ static void vl_api_sw_interface_details_t_handler_json
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   vat_json_object_add_uint (node, "sup_sw_if_index",
 			    ntohl (mp->sup_sw_if_index));
+  vat_json_object_add_uint (node, "l2_address_length",
+			    ntohl (mp->l2_address_length));
   vat_json_object_add_bytes (node, "l2_address", mp->l2_address,
 			     sizeof (mp->l2_address));
   vat_json_object_add_string_copy (node, "interface_name",
-				   mp->interface_name.buf);
-  vat_json_object_add_uint (node, "flags", mp->flags);
+				   mp->interface_name);
+  vat_json_object_add_uint (node, "admin_up_down", mp->admin_up_down);
+  vat_json_object_add_uint (node, "link_up_down", mp->link_up_down);
   vat_json_object_add_uint (node, "link_duplex", mp->link_duplex);
   vat_json_object_add_uint (node, "link_speed", mp->link_speed);
   vat_json_object_add_uint (node, "mtu", ntohs (mp->link_mtu));
   vat_json_object_add_uint (node, "sub_id", ntohl (mp->sub_id));
+  vat_json_object_add_uint (node, "sub_dot1ad", mp->sub_dot1ad);
   vat_json_object_add_uint (node, "sub_number_of_tags",
 			    mp->sub_number_of_tags);
   vat_json_object_add_uint (node, "sub_outer_vlan_id",
 			    ntohs (mp->sub_outer_vlan_id));
   vat_json_object_add_uint (node, "sub_inner_vlan_id",
 			    ntohs (mp->sub_inner_vlan_id));
-  vat_json_object_add_uint (node, "sub_if_flags", ntohl (mp->sub_if_flags));
+  vat_json_object_add_uint (node, "sub_exact_match", mp->sub_exact_match);
+  vat_json_object_add_uint (node, "sub_default", mp->sub_default);
+  vat_json_object_add_uint (node, "sub_outer_vlan_id_any",
+			    mp->sub_outer_vlan_id_any);
+  vat_json_object_add_uint (node, "sub_inner_vlan_id_any",
+			    mp->sub_inner_vlan_id_any);
   vat_json_object_add_uint (node, "vtr_op", ntohl (mp->vtr_op));
   vat_json_object_add_uint (node, "vtr_push_dot1q",
 			    ntohl (mp->vtr_push_dot1q));
   vat_json_object_add_uint (node, "vtr_tag1", ntohl (mp->vtr_tag1));
   vat_json_object_add_uint (node, "vtr_tag2", ntohl (mp->vtr_tag2));
-  if (ntohl (mp->sub_if_flags) & SUB_IF_API_FLAG_DOT1AH)
+  if (mp->sub_dot1ah)
     {
       vat_json_object_add_string_copy (node, "pbb_vtr_dmac",
 				       format (0, "%U",
@@ -1009,10 +1021,8 @@ static void vl_api_sw_interface_event_t_handler
   if (vam->interface_event_display)
     errmsg ("interface flags: sw_if_index %d %s %s",
 	    ntohl (mp->sw_if_index),
-	    ((ntohl (mp->flags)) & IF_STATUS_API_FLAG_ADMIN_UP) ?
-	    "admin-up" : "admin-down",
-	    ((ntohl (mp->flags)) & IF_STATUS_API_FLAG_LINK_UP) ?
-	    "link-up" : "link-down");
+	    mp->admin_up_down ? "admin-up" : "admin-down",
+	    mp->link_up_down ? "link-up" : "link-down");
 }
 #endif
 
@@ -5992,7 +6002,7 @@ api_sw_interface_set_flags (vat_main_t * vam)
   /* Construct the API message */
   M (SW_INTERFACE_SET_FLAGS, mp);
   mp->sw_if_index = ntohl (sw_if_index);
-  mp->flags = ntohl ((admin_up) ? IF_STATUS_API_FLAG_ADMIN_UP : 0);
+  mp->admin_up_down = admin_up;
 
   /* send it... */
   S (mp);
@@ -6284,15 +6294,14 @@ api_sw_interface_add_del_address (vat_main_t * vam)
   mp->del_all = del_all;
   if (v6_address_set)
     {
-      mp->prefix.address.af = ADDRESS_IP6;
-      clib_memcpy (mp->prefix.address.un.ip6, &v6address, sizeof (v6address));
+      mp->is_ipv6 = 1;
+      clib_memcpy (mp->address, &v6address, sizeof (v6address));
     }
   else
     {
-      mp->prefix.address.af = ADDRESS_IP4;
-      clib_memcpy (mp->prefix.address.un.ip4, &v4address, sizeof (v4address));
+      clib_memcpy (mp->address, &v4address, sizeof (v4address));
     }
-  mp->prefix.address_length = address_length;
+  mp->address_length = address_length;
 
   /* send it... */
   S (mp);
@@ -9427,16 +9436,6 @@ _(default_sub)                                  \
 _(outer_vlan_id_any)                            \
 _(inner_vlan_id_any)
 
-#define foreach_create_subif_flag		\
-_(0, "no_tags")					\
-_(1, "one_tag")					\
-_(2, "two_tags")				\
-_(3, "dot1ad")					\
-_(4, "exact_match")				\
-_(5, "default_sub")				\
-_(6, "outer_vlan_id_any")			\
-_(7, "inner_vlan_id_any")
-
 static int
 api_create_subif (vat_main_t * vam)
 {
@@ -9499,8 +9498,8 @@ api_create_subif (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->sub_id = ntohl (sub_id);
 
-#define _(a,b) mp->sub_if_flags |= (1 << a);
-  foreach_create_subif_flag;
+#define _(a) mp->a = a;
+  foreach_create_subif_bit;
 #undef _
 
   mp->outer_vlan_id = ntohs (outer_vlan_id);
@@ -20828,7 +20827,7 @@ api_sw_interface_tag_add_del (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = enable;
   if (enable)
-    vl_api_to_api_string (strlen ((char *) tag), tag, &mp->tag);
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
   vec_free (tag);
 
   S (mp);

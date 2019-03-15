@@ -17,7 +17,6 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
     VppMplsTable, VppIpTable
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
-from vpp_ip import VppIpPrefix
 
 
 class TestIPv4(VppTestCase):
@@ -811,8 +810,8 @@ class TestIPSubNets(VppTestCase):
         ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
 
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 16).encode())
+            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
+            address_length=16)
 
         pn = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
@@ -830,9 +829,8 @@ class TestIPSubNets(VppTestCase):
 
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 16).encode(), is_add=0)
-
+            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
+            address_length=16, is_add=0)
         self.pg1.add_stream(pn)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -849,8 +847,8 @@ class TestIPSubNets(VppTestCase):
         ip_addr_n = socket.inet_pton(socket.AF_INET, "10.10.10.10")
 
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 31).encode())
+            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
+            address_length=31)
 
         pn = (Ether(src=self.pg1.remote_mac,
                     dst=self.pg1.local_mac) /
@@ -866,9 +864,8 @@ class TestIPSubNets(VppTestCase):
 
         # remove the sub-net and we are forwarding via the cover again
         self.vapi.sw_interface_add_del_address(
-            sw_if_index=self.pg0.sw_if_index,
-            prefix=VppIpPrefix("10.10.10.10", 31).encode(), is_add=0)
-
+            sw_if_index=self.pg0.sw_if_index, address=ip_addr_n,
+            address_length=31, is_add=0)
         self.pg1.add_stream(pn)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
