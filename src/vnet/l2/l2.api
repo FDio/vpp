@@ -320,6 +320,7 @@ manual_print manual_endian define bridge_domain_details
 /** \brief Flags that can be changed on a bridge domain */
 enum bd_flags
 {
+  BRIDGE_API_FLAG_NONE = 0x0,
   BRIDGE_API_FLAG_LEARN = 0x1,
   BRIDGE_API_FLAG_FWD = 0x2,
   BRIDGE_API_FLAG_FLOOD = 0x4,
