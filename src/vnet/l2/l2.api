@@ -552,6 +552,44 @@ autoreply define sw_interface_set_vpath
   u8 enable;
 };
 
+/** \brief Create BVI interface instance request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mac_address - mac addr to assign to the interface if none-zero
+    @param user_instance - requested instance, ~0 => dynamically allocate
+*/
+define bvi_create
+{
+  u32 client_index;
+  u32 context;
+  vl_api_mac_address_t mac;
+  u32 user_instance;
+};
+
+/** \brief Create BVI interface instance response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+    @param retval - return code for the request
+*/
+define bvi_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete BVI interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+*/
+autoreply define bvi_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
