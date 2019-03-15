@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this
  * You may obtain a copy of the License at:
@@ -61,7 +61,7 @@ vcl_wait_for_app_state_change (app_state_t app_state)
       if (vcm->app_state == STATE_APP_FAILED)
 	return VPPCOM_ECONNABORTED;
     }
-  VDBG (0, "VCL<%d>: timeout waiting for state %s (%d)", getpid (),
+  VDBG (0, "timeout waiting for state %s (%d)",
 	vppcom_app_state_str (app_state), app_state);
   vcl_evt (VCL_EVT_SESSION_TIMEOUT, vcm, app_state);
 
@@ -111,7 +111,7 @@ vcl_mq_epoll_add_evfd (vcl_worker_t * wrk, svm_msg_q_t * mq)
   e.data.u32 = mqc_index;
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_ADD, mq_fd, &e) < 0)
     {
-      clib_warning ("failed to add mq eventfd to mq epoll fd");
+      VDBG (0, "failed to add mq eventfd to mq epoll fd");
       return -1;
     }
 
@@ -129,7 +129,7 @@ vcl_mq_epoll_del_evfd (vcl_worker_t * wrk, u32 mqc_index)
   mqc = vcl_mq_evt_conn_get (wrk, mqc_index);
   if (epoll_ctl (wrk->mqs_epfd, EPOLL_CTL_DEL, mqc->mq_fd, 0) < 0)
     {
-      clib_warning ("failed to del mq eventfd to mq epoll fd");
+      VDBG (0, "failed to del mq eventfd to mq epoll fd");
       return -1;
     }
   return 0;
@@ -238,13 +238,13 @@ vcl_worker_register_with_vpp (void)
   vcl_send_app_worker_add_del (1 /* is_add */ );
   if (vcl_wait_for_app_state_change (STATE_APP_READY))
     {
-      clib_warning ("failed to add worker to vpp");
+      VDBG (0, "failed to add worker to vpp");
       return -1;
     }
   if (pthread_key_create (&vcl_worker_stop_key, vcl_worker_cleanup_cb))
-    clib_warning ("failed to add pthread cleanup function");
+    VDBG (0, "failed to add pthread cleanup function");
   if (pthread_setspecific (vcl_worker_stop_key, &wrk->thread_id))
-    clib_warning ("failed to setup key value");
+    VDBG (0, "failed to setup key value");
 
   clib_spinlock_unlock (&vcm->workers_lock);
 
