@@ -161,10 +161,8 @@ class MethodHolder(VppTestCase):
         del self.ACLS[:]
 
     def tearDown(self):
-        """
-        Show various debug prints after each test.
-        """
         super(MethodHolder, self).tearDown()
+        self.delete_acls()
 
     def show_commands_at_teardown(self):
         self.logger.info(self.vapi.ppcli("show interface address"))
@@ -179,7 +177,6 @@ class MethodHolder(VppTestCase):
         # print(self.vapi.ppcli("show hardware"))
         # print(self.vapi.ppcli("sh acl-plugin macip interface"))
         # print(self.vapi.ppcli("sh acl-plugin macip acl"))
-        self.delete_acls()
 
     def macip_acl_dump_debug(self):
         acls = self.vapi.macip_acl_dump()
