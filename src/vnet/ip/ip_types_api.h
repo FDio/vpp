@@ -23,7 +23,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_types.h>
 #include <vnet/mfib/mfib_types.h>
-#include <vlibapi/api_types.h>
 
 /**
  * Forward declarations so we need not #include the API definitions here

@@ -3,8 +3,6 @@ import socket
 import six
 
 from vpp_object import VppObject
-from vpp_ip import VppIpPrefix
-from vpp_papi import VppEnum
 
 
 class MEMIF_ROLE:
@@ -89,8 +87,8 @@ class VppMemif(VppObject):
         self.buffer_size = buffer_size
         self.hw_addr = hw_addr
         self.sw_if_index = None
-        self.ip_prefix = VppIpPrefix("192.168.%d.%d" %
-                                     (self.if_id + 1, self.role + 1), 24)
+        self.ip4_addr = "192.168.%d.%d" % (self.if_id + 1, self.role + 1)
+        self.ip4_addr_len = 24
 
     def add_vpp_config(self):
         rv = self._test.vapi.memif_create(self.role, self.mode, self.rx_queues,
@@ -103,13 +101,11 @@ class VppMemif(VppObject):
 
     def admin_up(self):
         if self.sw_if_index:
-            return self._test.vapi.sw_interface_set_flags(
-                sw_if_index=self.sw_if_index, flags=1)
+            return self._test.vapi.sw_interface_set_flags(self.sw_if_index, 1)
 
     def admin_down(self):
         if self.sw_if_index:
-            return self._test.vapi.sw_interface_set_flags(
-                sw_if_index=self.sw_if_index, flags=0)
+            return self._test.vapi.sw_interface_set_flags(self.sw_if_index, 0)
 
     def wait_for_link_up(self, timeout, step=1):
         if not self.sw_if_index:
@@ -125,7 +121,9 @@ class VppMemif(VppObject):
 
     def config_ip4(self):
         return self._test.vapi.sw_interface_add_del_address(
-            sw_if_index=self.sw_if_index, prefix=self.ip_prefix.encode())
+            sw_if_index=self.sw_if_index, address=socket.inet_pton(
+                socket.AF_INET, self.ip4_addr),
+            address_length=self.ip4_addr_len)
 
     def remove_vpp_config(self):
         self._test.vapi.memif_delete(self.sw_if_index)
