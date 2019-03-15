@@ -20,24 +20,24 @@ class TestL2Flood(VppTestCase):
 
         # 12 l2 interface and one l3
         self.create_pg_interfaces(range(13))
-        self.create_loopback_interfaces(1)
+        self.create_bvi_interfaces(1)
 
         for i in self.pg_interfaces:
             i.admin_up()
-        for i in self.lo_interfaces:
+        for i in self.bvi_interfaces:
             i.admin_up()
 
         self.pg12.config_ip4()
         self.pg12.resolve_arp()
-        self.loop0.config_ip4()
+        self.bvi0.config_ip4()
 
     def tearDown(self):
         self.pg12.unconfig_ip4()
-        self.loop0.unconfig_ip4()
+        self.bvi0.unconfig_ip4()
 
         for i in self.pg_interfaces:
             i.admin_down()
-        for i in self.lo_interfaces:
+        for i in self.bvi_interfaces:
             i.admin_down()
         super(TestL2Flood, self).tearDown()
 
@@ -61,7 +61,7 @@ class TestL2Flood(VppTestCase):
         for i in self.pg_interfaces[8:12]:
             self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
                                                  bd_id=1, shg=2)
-        for i in self.lo_interfaces:
+        for i in self.bvi_interfaces:
             self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
                                                  bd_id=1, shg=2,
                                                  port_type=L2_PORT_TYPE.BVI)
@@ -142,7 +142,7 @@ class TestL2Flood(VppTestCase):
         for i in self.pg_interfaces[:12]:
             self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
                                                  bd_id=1, enable=0)
-        for i in self.lo_interfaces:
+        for i in self.bvi_interfaces:
             self.vapi.sw_interface_set_l2_bridge(rx_sw_if_index=i.sw_if_index,
                                                  bd_id=1, shg=2,
                                                  port_type=L2_PORT_TYPE.BVI,
