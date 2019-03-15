@@ -314,7 +314,7 @@ ethernet_interface_t *ethernet_get_interface (ethernet_main_t * em,
 clib_error_t *ethernet_register_interface (vnet_main_t * vnm,
 					   u32 dev_class_index,
 					   u32 dev_instance,
-					   u8 * address,
+					   const u8 * address,
 					   u32 * hw_if_index_return,
 					   ethernet_flag_change_function_t
 					   flag_change);

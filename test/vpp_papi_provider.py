@@ -2869,3 +2869,12 @@ class VppPapiProvider(object):
                             'sw_if_index': sw_if_index,
                             'is_enable': is_enable,
                         })
+
+    def bvi_create(self, instance, mac):
+        return self.api(self.papi.bvi_create,
+                        {'user_instance': instance,
+                         'mac': mac})
+
+    def bvi_delete(self, sw_if_index):
+        return self.api(self.papi.bvi_delete,
+                        {'sw_if_index': sw_if_index})
