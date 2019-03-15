@@ -26,7 +26,7 @@ of files: rule/function definitions, and target lists.
 - Build target lists come from CMakeLists.txt files found in subdirectories, which are named in the SUBDIRS list in .../src/CMakeLists.txt
 
 ::
-   
+
     ##############################################################################
     # subdirs - order matters
     ##############################################################################
@@ -46,7 +46,7 @@ of files: rule/function definitions, and target lists.
     endforeach()
 
 - The vpp cmake configuration hierarchy discovers the list of plugins to be built by searching for subdirectories in .../src/plugins which contain CMakeLists.txt files
-  
+
 
 ::
 
@@ -61,13 +61,13 @@ of files: rule/function definitions, and target lists.
       get_filename_component(dir ${f} DIRECTORY)
       add_subdirectory(${dir})
     endforeach()
-  
+
 How to write a plugin CMakeLists.txt file
 -----------------------------------------
 
 It's really quite simple. Follow the pattern:
 
-:: 
+::
 
     add_vpp_plugin(mactime
       SOURCES
@@ -83,7 +83,7 @@ It's really quite simple. Follow the pattern:
 
       API_TEST_SOURCES
       mactime_test.c
-    )   
+    )
 
 Adding a target elsewhere in the source tree
 --------------------------------------------
@@ -92,9 +92,11 @@ Within reason, adding a subdirectory to the SUBDIRS list in
 .../src/CMakeLists.txt is perfectly OK. The indicated directory will
 need a CMakeLists.txt file.
 
+.. _building-g2:
+
 Here's how we build the g2 event data visualization tool:
 
-:: 
+::
 
     option(VPP_BUILD_G2 "Build g2 tool." OFF)
     if(VPP_BUILD_G2)
@@ -134,7 +136,7 @@ how the top-level Makefile and .../build-root/Makefile set all of the
 cmake arguments. One strategy to enable an optional component is fairly
 obvious. Add -DVPP_BUILD_G2=ON to vpp_cmake_args.
 
-That would work, of course, but it's not a particularly elegant solution. 
+That would work, of course, but it's not a particularly elegant solution.
 
 Tinkering with build options: ccmake
 ------------------------------------
@@ -151,25 +153,25 @@ Here's approximately what you'll see:
 
 ::
 
-     CCACHE_FOUND                     /usr/bin/ccache                              
-     CMAKE_BUILD_TYPE                                                              
+     CCACHE_FOUND                     /usr/bin/ccache
+     CMAKE_BUILD_TYPE
      CMAKE_INSTALL_PREFIX             /scratch/vpp-gate/build-root/install-vpp-nati
      DPDK_INCLUDE_DIR                 /scratch/vpp-gate/build-root/install-vpp-nati
      DPDK_LIB                         /scratch/vpp-gate/build-root/install-vpp-nati
-     MBEDTLS_INCLUDE_DIR              /usr/include                                 
-     MBEDTLS_LIB1                     /usr/lib/x86_64-linux-gnu/libmbedtls.so      
-     MBEDTLS_LIB2                     /usr/lib/x86_64-linux-gnu/libmbedx509.so     
-     MBEDTLS_LIB3                     /usr/lib/x86_64-linux-gnu/libmbedcrypto.so   
-     MUSDK_INCLUDE_DIR                MUSDK_INCLUDE_DIR-NOTFOUND                   
-     MUSDK_LIB                        MUSDK_LIB-NOTFOUND                           
-     PRE_DATA_SIZE                    128                                          
-     VPP_API_TEST_BUILTIN             ON                                           
-     VPP_BUILD_G2                     OFF                                          
-     VPP_BUILD_PERFTOOL               OFF                                          
-     VPP_BUILD_VCL_TESTS              ON                                           
-     VPP_BUILD_VPPINFRA_TESTS         OFF                                          
+     MBEDTLS_INCLUDE_DIR              /usr/include
+     MBEDTLS_LIB1                     /usr/lib/x86_64-linux-gnu/libmbedtls.so
+     MBEDTLS_LIB2                     /usr/lib/x86_64-linux-gnu/libmbedx509.so
+     MBEDTLS_LIB3                     /usr/lib/x86_64-linux-gnu/libmbedcrypto.so
+     MUSDK_INCLUDE_DIR                MUSDK_INCLUDE_DIR-NOTFOUND
+     MUSDK_LIB                        MUSDK_LIB-NOTFOUND
+     PRE_DATA_SIZE                    128
+     VPP_API_TEST_BUILTIN             ON
+     VPP_BUILD_G2                     OFF
+     VPP_BUILD_PERFTOOL               OFF
+     VPP_BUILD_VCL_TESTS              ON
+     VPP_BUILD_VPPINFRA_TESTS         OFF
 
-    CCACHE_FOUND: Path to a program.                                                
+    CCACHE_FOUND: Path to a program.
     Press [enter] to edit option Press [d] to delete an entry   CMake Version 3.10.2
     Press [c] to configure
     Press [h] for help           Press [q] to quit without generating
