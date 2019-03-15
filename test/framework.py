@@ -28,6 +28,7 @@ from vpp_lo_interface import VppLoInterface
 from vpp_bvi_interface import VppBviInterface
 from vpp_papi_provider import VppPapiProvider
 from vpp_papi.vpp_stats import VPPStats
+from vpp_papi.vpp_transport_shmem import VppTransportShmemIOError
 from log import RED, GREEN, YELLOW, double_line_delim, single_line_delim, \
     get_logger, colorize
 from vpp_object import VppObjectRegistry
@@ -612,18 +613,18 @@ class VppTestCase(unittest.TestCase):
         self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
-        if not self.vpp_dead:
-            self.logger.info(
-                "--- Logging show commands common to all testcases. ---")
-            self.logger.debug(self.vapi.cli("show trace max 1000"))
-            self.logger.info(self.vapi.ppcli("show interface"))
-            self.logger.info(self.vapi.ppcli("show hardware"))
-            self.logger.info(self.statistics.set_errors_str())
-            self.logger.info(self.vapi.ppcli("show run"))
-            self.logger.info(self.vapi.ppcli("show log"))
-            self.logger.info("Logging testcase specific show commands.")
-            self.show_commands_at_teardown()
-            self.registry.remove_vpp_config(self.logger)
+
+
+        try:
+            if not self.vpp_dead:
+                self.logger.debug(self.vapi.cli("show trace max 1000"))
+                self.logger.info(self.vapi.ppcli("show interface"))
+                self.logger.info(self.vapi.ppcli("show hardware"))
+                self.logger.info(self.statistics.set_errors_str())
+                self.logger.info(self.vapi.ppcli("show run"))
+                self.logger.info(self.vapi.ppcli("show log"))
+                self.registry.remove_vpp_config(self.logger)
+
             # Save/Dump VPP api trace log
             api_trace = "vpp_api_trace.%s.log" % self._testMethodName
             tmp_api_trace = "/tmp/%s" % api_trace
@@ -634,6 +635,10 @@ class VppTestCase(unittest.TestCase):
             os.rename(tmp_api_trace, vpp_api_trace_log)
             self.logger.info(self.vapi.ppcli("api trace custom-dump %s" %
                                              vpp_api_trace_log))
+        except VppTransportShmemIOError:
+            self.logger.debug("VppTransportShmemIOError: Vpp dead. "
+                              "Cannot log show commands.")
+            self.vpp_dead = True
         else:
             self.registry.unregister_all(self.logger)
 
