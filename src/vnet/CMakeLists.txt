@@ -161,6 +161,7 @@ list(APPEND VNET_SOURCES
   l2/l2_api.c
   l2/l2_bd.c
   l2/l2_bvi.c
+  l2/l2_bvi_node.c
   l2/l2_input_classify.c
   l2/l2_output_classify.c
   l2/l2_efp_filter.c
@@ -181,6 +182,7 @@ list(APPEND VNET_SOURCES
 )
 
 list(APPEND VNET_MULTIARCH_SOURCES
+  l2/l2_bvi_node.c
   l2/l2_fwd.c
   l2/l2_learn.c
   l2/l2_output.c
