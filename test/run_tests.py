@@ -441,6 +441,7 @@ def run_forked(testcase_suites):
                                                    manager)
                     wrapped_testcase_suites.add(new_testcase)
                     unread_testcases.add(new_testcase)
+            time.sleep(0.1)
     except Exception:
         for wrapped_testcase_suite in wrapped_testcase_suites:
             wrapped_testcase_suite.child.terminate()
