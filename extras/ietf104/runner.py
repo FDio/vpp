@@ -48,6 +48,14 @@ class Container(object):
     def pg_output_file(self):
         return join(self.temp, "pgo.pcap")
 
+    @property
+    def pg_input_file_in(self):
+        return join("/mnt", "pgi.pcap")
+
+    @property
+    def pg_output_file_in(self):
+        return join("/mnt", "pgo.pcap")
+
     def disconnect_all(self):
         status = False
         for net in self._ref.client.networks.list():
@@ -61,14 +69,15 @@ class Container(object):
     @classmethod
     def new(cls, client, image, name):
 
-        if not isdir(self.temp):
-            mkdir(self.temp)
+        temp = join(cls.tmp, name)
+        if not isdir(temp):
+            mkdir(temp)
 
         ref = client.containers.run(detach=True,
                 remove=True, auto_remove=True,
                 image=image, name=name,
                 privileged=True,
-                volumes={ self.temp: {
+                volumes={ temp: {
                     'bind': '/mnt',
                     'mode': 'rw'
                     }})
@@ -112,8 +121,10 @@ class Container(object):
         self.vppctl_exec("set int state host-{} up".format(name))
 
 
-    def pg_create_interface(self):
+    def pg_create_interface(self, mac, ip):
         self.vppctl_exec("create packet-generator interface pg0")
+        self.vppctl_exec("set int mac address pg0 {}".format(mac))
+        self.vppctl_exec("set int ip addr pg0 {}".format(ip))
 
     def pg_enable(self):
         # start packet generator
@@ -121,16 +132,16 @@ class Container(object):
 
     def pg_create_stream(self, stream):
 
-        if not type(stream) == list:
-            stream = list(stream)
+        #if not type(stream) == list:
+        #    stream = list(stream)
 
         wrpcap(self.pg_input_file, stream) 
         self.vppctl_exec("packet-generator new name pg-stream node ethernet-input pcap {}".format(
-            self.pg_input_file))
+            self.pg_input_file_in))
 
     def pg_capture_packets(self):
         self.vppctl_exec("packet-generator capture pg0 pcap {}".format(
-            self.pg_output_file))
+            self.pg_output_file_in))
         # sleep ? or read until you get the desired number of packets ?
         return rdpcap(self.pg_output_file)
 
@@ -315,8 +326,8 @@ class Program(object):
         c1, c2, c3, c4 = instances
 
         # setup packet generator interfaces
-        c1.pg_create_interface()
-        c4.pg_create_interface()
+        c1.pg_create_interface(ip="C::1/120", mac="aa:bb:cc:dd:ee:01")
+        c4.pg_create_interface(ip="B::1/120", mac="aa:bb:cc:dd:ee:04")
 
         # setup network between instances
         n1.connect(c1)
@@ -352,27 +363,24 @@ class Program(object):
         # c3 > c4 static route for address B::1/128
         c3.set_ipv6_route("eth2", "A3::2", "B::1/128")
 
-        
-
-        # TODO: remove (only used for testing purposes)
-        c4.vppctl_exec("create loopback interface")
-        c4.vppctl_exec("set int ip addr loop0 B::1/120")
-
     def test_ping(self):
         # pg interface on c1 172.20.0.1
         # pg interface on c4 B::1/120
 
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
-        c4 = self.containers.get(get_name(self.instance_names[-1]))
+        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
 
-        p1 = (Ether(dst="", src="") /
-              IPv6(src="", dst=""))
+        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
+             IPv6(src="C::1", dst="B::1")/ICMPv6EchoRequest())
 
-        c1.pg_create_stream(p1)
+        p.show2()
+
+        c1.pg_create_stream(p)
         c4.pg_enable()
         c1.pg_enable()
 
-        pkts = c4.pg_capture_packets()
+        for p in c4.pg_capture_packets():
+            p.show2()
 
     def status_containers(self):
 
@@ -443,6 +451,12 @@ def get_args():
 
     p2.add_argument("--command")
 
+    p3 = subparsers.add_parser("test",
+            help="Test related commands.")
+
+    p3.add_argument("op", choices=[
+        "ping"])
+
     return vars(parser.parse_args())
 
 
@@ -472,6 +486,8 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
             program.vppctl(index, command)
         elif op == 'bash':
             program.bash(index, command)
+        elif op == 'ping':
+            program.test_ping()
 
     except Exception:
         program.logger.exception("")
