@@ -15,10 +15,7 @@ from vpp_papi import VPP, mac_pton
 
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
-
-# from vnet/vnet/mpls/mpls_types.h
-MPLS_IETF_MAX_LABEL = 0xfffff
-MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
+from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
 
 
 class L2_VTR_OP:
