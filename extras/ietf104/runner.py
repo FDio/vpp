@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from os.path import dirname, realpath, split, join
-from os import remove, system
+from os.path import dirname, realpath, split, join, \
+        isdir
+from os import remove, system, mkdir
 from logging import getLogger, basicConfig, DEBUG, \
         INFO, ERROR
 from argparse import ArgumentParser
@@ -12,6 +13,7 @@ import sys
 from jinja2 import Environment, FileSystemLoader
 from docker.errors import NotFound, APIError
 from docker import from_env
+from scapy.all import *
 
 
 verbose_levels = {
@@ -22,6 +24,7 @@ verbose_levels = {
 
 class Container(object):
 
+    tmp = "/tmp"
     cmd = "vppctl -s 0:5002"
     cmd_bash = "/bin/bash"
 
@@ -32,6 +35,18 @@ class Container(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def temp(self):
+        return join(self.tmp, self.name)
+
+    @property
+    def pg_input_file(self):
+        return join(self.temp, "pgi.pcap")
+
+    @property
+    def pg_output_file(self):
+        return join(self.temp, "pgo.pcap")
 
     def disconnect_all(self):
         status = False
@@ -45,10 +60,19 @@ class Container(object):
 
     @classmethod
     def new(cls, client, image, name):
+
+        if not isdir(self.temp):
+            mkdir(self.temp)
+
         ref = client.containers.run(detach=True,
                 remove=True, auto_remove=True,
                 image=image, name=name,
-                privileged=True)
+                privileged=True,
+                volumes={ self.temp: {
+                    'bind': '/mnt',
+                    'mode': 'rw'
+                    }})
+
         # TODO: bug if container exits, we don't know about it
         #       we should test if it is still running
         # hack disconnect all default networks
@@ -87,9 +111,28 @@ class Container(object):
         self.vppctl_exec("set int ip addr host-{} {}".format(name, ip))
         self.vppctl_exec("set int state host-{} up".format(name))
 
-    # TODO:
-    def setup_pg_interface(self):
-        pass
+
+    def pg_create_interface(self):
+        self.vppctl_exec("create packet-generator interface pg0")
+
+    def pg_enable(self):
+        # start packet generator
+        self.vppctl_exec("packet-generator enable")
+
+    def pg_create_stream(self, stream):
+
+        if not type(stream) == list:
+            stream = list(stream)
+
+        wrpcap(self.pg_input_file, stream) 
+        self.vppctl_exec("packet-generator new name pg-stream node ethernet-input pcap {}".format(
+            self.pg_input_file))
+
+    def pg_capture_packets(self):
+        self.vppctl_exec("packet-generator capture pg0 pcap {}".format(
+            self.pg_output_file))
+        # sleep ? or read until you get the desired number of packets ?
+        return rdpcap(self.pg_output_file)
 
     def set_ipv6_route(self, out_if_name, next_hop_ip, subnet):
         self.vppctl_exec("ip route add {} via host-{} {}".format(
@@ -271,6 +314,10 @@ class Program(object):
 
         c1, c2, c3, c4 = instances
 
+        # setup packet generator interfaces
+        c1.pg_create_interface()
+        c4.pg_create_interface()
+
         # setup network between instances
         n1.connect(c1)
         n1.connect(c2)
@@ -305,14 +352,27 @@ class Program(object):
         # c3 > c4 static route for address B::1/128
         c3.set_ipv6_route("eth2", "A3::2", "B::1/128")
 
-        # TODO:
-
-        # pg interface on c1 172.20.0.1
-        # pg interface on c4 B::1/120
+        
 
         # TODO: remove (only used for testing purposes)
         c4.vppctl_exec("create loopback interface")
         c4.vppctl_exec("set int ip addr loop0 B::1/120")
+
+    def test_ping(self):
+        # pg interface on c1 172.20.0.1
+        # pg interface on c4 B::1/120
+
+        c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c4 = self.containers.get(get_name(self.instance_names[-1]))
+
+        p1 = (Ether(dst="", src="") /
+              IPv6(src="", dst=""))
+
+        c1.pg_create_stream(p1)
+        c4.pg_enable()
+        c1.pg_enable()
+
+        pkts = c4.pg_capture_packets()
 
     def status_containers(self):
 
