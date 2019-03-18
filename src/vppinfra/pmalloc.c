@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <linux/mempolicy.h>
 #include <linux/memfd.h>
+#include <sched.h>
 
 #include <vppinfra/format.h>
 #include <vppinfra/linux/syscall.h>
@@ -53,7 +54,7 @@ pmalloc_validate_numa_node (u32 * numa_node)
   if (*numa_node == CLIB_PMALLOC_NUMA_LOCAL)
     {
       u32 cpu;
-      if (getcpu (&cpu, numa_node, 0) != 0)
+      if (getcpu (&cpu, numa_node) != 0)
 	return 1;
     }
   return 0;

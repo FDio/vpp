@@ -84,7 +84,7 @@ set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "vpp")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-include(cmake/memfd.cmake)
+include(cmake/syscall.cmake)
 include(cmake/api.cmake)
 include(cmake/library.cmake)
 include(cmake/exec.cmake)

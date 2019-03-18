@@ -24,3 +24,13 @@ if (HAVE_MEMFD_CREATE)
     add_definitions(-DHAVE_MEMFD_CREATE)
 endif()
 
+check_c_source_compiles("
+  #define _GNU_SOURCE
+  #include <sched.h>
+  int main() { return getcpu (0, 0); }
+" HAVE_GETCPU)
+
+if (HAVE_GETCPU)
+    add_definitions(-DHAVE_GETCPU)
+endif()
+
