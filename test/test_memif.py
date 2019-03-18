@@ -208,14 +208,14 @@ class TestMemif(VppTestCase):
         pkts = []
         for i in range(num):
             pkt = (Ether(dst=pg.local_mac, src=pg.remote_mac) /
-                   IP(src=pg.remote_ip4, dst=memif.ip4_addr) /
+                   IP(src=pg.remote_ip4, dst=memif.ip_prefix.address) /
                    ICMP(id=memif.if_id, type='echo-request', seq=i))
             pkts.append(pkt)
         return pkts
 
     def _verify_icmp(self, pg, memif, rx, seq):
         ip = rx[IP]
-        self.assertEqual(ip.src, memif.ip4_addr)
+        self.assertEqual(ip.src, memif.ip_prefix.address)
         self.assertEqual(ip.dst, pg.remote_ip4)
         self.assertEqual(ip.proto, 1)
         icmp = rx[ICMP]
@@ -249,10 +249,11 @@ class TestMemif(VppTestCase):
         # add routing to remote vpp
         dst_addr = socket.inet_pton(socket.AF_INET, self.pg0._local_ip4_subnet)
         dst_addr_len = 24
-        next_hop_addr = socket.inet_pton(socket.AF_INET, memif.ip4_addr)
-        self.remote_test.vapi.ip_add_del_route(dst_address=dst_addr,
-                                               dst_address_length=dst_addr_len,
-                                               next_hop_address=next_hop_addr)
+        next_hop_addr = socket.inet_pton(socket.AF_INET,
+                                         memif.ip_prefix.address)
+        self.remote_test.vapi.ip_add_del_route(
+            dst_address=dst_addr, dst_address_length=dst_addr_len,
+            next_hop_address=next_hop_addr)
 
         # create ICMP echo-request from local pg to remote memif
         packet_num = 10

@@ -298,7 +298,7 @@ class JsonParser(object):
             x: simple_type_class(x) for x in [
                 'i8', 'i16', 'i32', 'i64',
                 'u8', 'u16', 'u32', 'u64',
-                'f64'
+                'f64', 'bool'
             ]
         }
 
