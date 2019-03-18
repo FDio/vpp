@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 from os.path import dirname, realpath, split, join, \
-        isdir
+        isdir, exists
 from os import remove, system, mkdir
 from logging import getLogger, basicConfig, DEBUG, \
         INFO, ERROR
 from argparse import ArgumentParser
 from subprocess import Popen, run
 from atexit import register
+from shutil import rmtree
+from time import sleep
 import sys
 
 from jinja2 import Environment, FileSystemLoader
@@ -20,6 +22,10 @@ verbose_levels = {
     'error': ERROR,
     'debug': DEBUG,
     'info': INFO}
+
+
+class ContainerStartupError(Exception):
+    pass
 
 
 class Container(object):
@@ -70,8 +76,9 @@ class Container(object):
     def new(cls, client, image, name):
 
         temp = join(cls.tmp, name)
-        if not isdir(temp):
-            mkdir(temp)
+        if isdir(temp):
+            rmtree(temp)
+        mkdir(temp)
 
         ref = client.containers.run(detach=True,
                 remove=True, auto_remove=True,
@@ -82,10 +89,10 @@ class Container(object):
                     'mode': 'rw'
                     }})
 
-        # TODO: bug if container exits, we don't know about it
-        #       we should test if it is still running
-        # hack disconnect all default networks
-        obj = cls(ref, name)
+        obj = cls.get(client, name)
+        if not obj:
+            raise ContainerStartupError()
+
         obj.disconnect_all()
         return obj
 
@@ -112,19 +119,19 @@ class Container(object):
         assert(ec == 0)
         return resp
 
-    def bash_exec(self, cmd):
-        pass
-
     def setup_host_interface(self, name, ip):
         self.vppctl_exec("create host-interface name {}".format(name))
         self.vppctl_exec("set int ip addr host-{} {}".format(name, ip))
         self.vppctl_exec("set int state host-{} up".format(name))
 
+    def pg_create_interface(self, local_ip, remote_ip, local_mac, remote_mac):
+        # remote_ip can't have subnet mask
 
-    def pg_create_interface(self, mac, ip):
         self.vppctl_exec("create packet-generator interface pg0")
-        self.vppctl_exec("set int mac address pg0 {}".format(mac))
-        self.vppctl_exec("set int ip addr pg0 {}".format(ip))
+        self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
+        self.vppctl_exec("set int ip addr pg0 {}".format(local_ip))
+        self.vppctl_exec("set ip6 neighbor pg0 {} {}".format(remote_ip,
+            remote_mac))
         self.vppctl_exec("set int state pg0 up")
 
     def pg_enable(self):
@@ -136,10 +143,13 @@ class Container(object):
         self.vppctl_exec("packet-generator new name pg-stream node ethernet-input pcap {}".format(
             self.pg_input_file_in))
 
-    def pg_capture_packets(self):
+    def pg_start_capture(self):
+        if exists(self.pg_output_file):
+            remove(self.pg_output_file)
         self.vppctl_exec("packet-generator capture pg0 pcap {}".format(
             self.pg_output_file_in))
-        # sleep ? or read until you get the desired number of packets ?
+
+    def pg_read_packets(self):
         return rdpcap(self.pg_output_file)
 
     def set_ipv6_route(self, out_if_name, next_hop_ip, subnet):
@@ -197,13 +207,9 @@ class Containers(object):
         else:
             print(container.vppctl_exec(command).decode())
 
-    def bash(self, name, command=None):
+    def bash(self, name):
         container = self.get(name)
-        if not command:
-            container.bash()
-        else:
-            print(container.bash_exec(command).decode())
-
+        container.bash()
 
 
 class Network(object):
@@ -328,8 +334,11 @@ class Program(object):
         c1, c2, c3, c4 = instances
 
         # setup packet generator interfaces
-        c1.pg_create_interface(ip="C::2/120", mac="aa:bb:cc:dd:ee:01")
-        c4.pg_create_interface(ip="B::2/120", mac="aa:bb:cc:dd:ee:04")
+        c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
+            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+
+        c4.pg_create_interface(local_ip="B::1/120", remote_ip="B::2",
+            local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
 
         # setup network between instances
         n1.connect(c1)
@@ -354,6 +363,7 @@ class Program(object):
         c4.setup_host_interface("eth1", "A3::2/120")
 
         # c1 > c2 default route
+
         c1.set_ipv6_default_route("eth1", "A1::2")
         # c2 > c3 default route
         c2.set_ipv6_default_route("eth2", "A2::2")
@@ -366,32 +376,35 @@ class Program(object):
         c3.set_ipv6_route("eth2", "A3::2", "B::1/128")
         c3.set_ipv6_route("eth2", "A3::2", "B::2/128")
 
-        c1.enable_trace(10)
-        c2.enable_trace(10)
-        c3.enable_trace(10)
-        c4.enable_trace(10)
-
-        self.status_containers()
-
     def test_ping(self):
         # TESTS:
         # trace add af-packet-input 10
         # pg interface on c1 172.20.0.1
         # pg interface on c4 B::1/120
 
+        self.start_containers()
+
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
         c4 = self.containers.get(self.get_name(self.instance_names[-1]))
 
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
-             IPv6(src="C::1", dst="B::1")/ICMPv6EchoRequest())
+             IPv6(src="C::2", dst="B::2")/ICMPv6EchoRequest())
 
+        print("Sending packet on {}:".format(c1.name))
         p.show2()
 
+        c1.enable_trace(10)
+        c4.enable_trace(10)
+
+        c4.pg_start_capture()
+
         c1.pg_create_stream(p)
-        c4.pg_enable()
         c1.pg_enable()
 
-        for p in c4.pg_capture_packets():
+        # timeout (sleep) if needed
+
+        print("Receiving packet on {}:".format(c4.name))
+        for p in c4.pg_read_packets():
             p.show2()
 
     def status_containers(self):
@@ -411,7 +424,7 @@ class Program(object):
                 "running" if self.networks.get(name) else "missing"))
 
     def build_image(self):
-        # TODO: build process should be optimized (speed and size)
+        # TODO: optimize build process for speed and image size
         self.containers.build(self.path, self.vpp_path)
 
     def vppctl(self, index, command=None):
@@ -457,7 +470,8 @@ def get_args():
     p2.add_argument("index", type=int,
             help="Container instance index. (./runner.py infra status)")
 
-    p2.add_argument("--command")
+    p2.add_argument("--command",
+            help="Only vppctl supports this optional argument.")
 
     p3 = subparsers.add_parser("test",
             help="Test related commands.")
@@ -465,7 +479,12 @@ def get_args():
     p3.add_argument("op", choices=[
         "ping"])
 
-    return vars(parser.parse_args())
+    args = parser.parse_args()
+    if not hasattr(args, "op") or not args.op:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+    return vars(args)
 
 
 def main(op=None, image=None, prefix=None, verbose=None, index=None, command=None):
@@ -474,10 +493,6 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
         basicConfig(level=verbose_levels[verbose])
 
     program = Program(image, prefix)
-
-    # TODO: return help msg
-    if op is None:
-        return 1
 
     try:
         if op == 'build':
@@ -491,7 +506,7 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
         elif op == 'vppctl':
             program.vppctl(index, command)
         elif op == 'bash':
-            program.bash(index, command)
+            program.bash(index)
         elif op == 'ping':
             program.test_ping()
 
