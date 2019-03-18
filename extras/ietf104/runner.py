@@ -125,16 +125,13 @@ class Container(object):
         self.vppctl_exec("create packet-generator interface pg0")
         self.vppctl_exec("set int mac address pg0 {}".format(mac))
         self.vppctl_exec("set int ip addr pg0 {}".format(ip))
+        self.vppctl_exec("set int state pg0 up")
 
     def pg_enable(self):
         # start packet generator
         self.vppctl_exec("packet-generator enable")
 
     def pg_create_stream(self, stream):
-
-        #if not type(stream) == list:
-        #    stream = list(stream)
-
         wrpcap(self.pg_input_file, stream) 
         self.vppctl_exec("packet-generator new name pg-stream node ethernet-input pcap {}".format(
             self.pg_input_file_in))
@@ -152,6 +149,9 @@ class Container(object):
     def set_ipv6_default_route(self, out_if_name, next_hop_ip):
         self.vppctl_exec("ip route add ::/0 via host-{} {}".format(
             out_if_name, next_hop_ip))
+
+    def enable_trace(self, count):
+        self.vppctl_exec("trace add af-packet-input {}".format(count))
 
 
 class Containers(object):
@@ -311,6 +311,8 @@ class Program(object):
 
     def start_containers(self):
 
+        self.stop_containers()
+
         networks = list()
 
         for name in self.network_names:
@@ -326,8 +328,8 @@ class Program(object):
         c1, c2, c3, c4 = instances
 
         # setup packet generator interfaces
-        c1.pg_create_interface(ip="C::1/120", mac="aa:bb:cc:dd:ee:01")
-        c4.pg_create_interface(ip="B::1/120", mac="aa:bb:cc:dd:ee:04")
+        c1.pg_create_interface(ip="C::2/120", mac="aa:bb:cc:dd:ee:01")
+        c4.pg_create_interface(ip="B::2/120", mac="aa:bb:cc:dd:ee:04")
 
         # setup network between instances
         n1.connect(c1)
@@ -362,8 +364,18 @@ class Program(object):
 
         # c3 > c4 static route for address B::1/128
         c3.set_ipv6_route("eth2", "A3::2", "B::1/128")
+        c3.set_ipv6_route("eth2", "A3::2", "B::2/128")
+
+        c1.enable_trace(10)
+        c2.enable_trace(10)
+        c3.enable_trace(10)
+        c4.enable_trace(10)
+
+        self.status_containers()
 
     def test_ping(self):
+        # TESTS:
+        # trace add af-packet-input 10
         # pg interface on c1 172.20.0.1
         # pg interface on c4 B::1/120
 
@@ -397,10 +409,6 @@ class Program(object):
             name = self.get_name(name)
             print("\t[{}] {} - {}".format(i, name,
                 "running" if self.networks.get(name) else "missing"))
-
-    def restart_containers(self):
-        self.stop_containers()
-        self.start_containers()
 
     def build_image(self):
         # TODO: build process should be optimized (speed and size)
@@ -480,8 +488,6 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
             program.start_containers()
         elif op == 'status':
             program.status_containers()
-        elif op == 'restart':
-            program.restart_containers()
         elif op == 'vppctl':
             program.vppctl(index, command)
         elif op == 'bash':
