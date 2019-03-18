@@ -91,7 +91,7 @@ define acl_plugin_get_conn_table_max_entries_reply
 };
 
 /** \brief Access List Rule entry
-    @param is_permit - deny (0), permit (1), or permit+reflect(2) action on this rule.
+    @param rule_action - deny (0), permit (1), or permit+reflect(2) action on this rule.
     @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
     @param src_ip_addr - Source prefix value
     @param src_ip_prefix_len - Source prefix length
@@ -108,7 +108,7 @@ define acl_plugin_get_conn_table_max_entries_reply
 
 typeonly manual_print define acl_rule
 {
-  u8 is_permit;
+  u8 rule_action;
   u8 is_ipv6;
   u8 src_ip_addr[16];
   u8 src_ip_prefix_len;
@@ -142,7 +142,7 @@ typeonly manual_print define acl_rule
 };
 
 /** \brief MACIP Access List Rule entry
-    @param is_permit - deny (0), permit (1) action on this rule.
+    @param rule_action - deny (0), permit (1) action on this rule.
     @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
     @param src_mac - match masked source MAC address against this value
     @param src_mac_mask - AND source MAC address with this value before matching
@@ -152,7 +152,7 @@ typeonly manual_print define acl_rule
 
 typeonly manual_print define macip_acl_rule
 {
-  u8 is_permit;
+  u8 rule_action;
   u8 is_ipv6;
 /*
  * The source mac of the packet ANDed with src_mac_mask.

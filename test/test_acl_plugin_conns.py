@@ -16,7 +16,7 @@ from random import randint
 from util import L4_Conn
 
 
-def to_acl_rule(self, is_permit, wildcard_sport=False):
+def to_acl_rule(self, rule_action, wildcard_sport=False):
     p = self
     rule_family = AF_INET6 if p.haslayer(IPv6) else AF_INET
     rule_prefix_len = 128 if p.haslayer(IPv6) else 32
@@ -36,7 +36,7 @@ def to_acl_rule(self, is_permit, wildcard_sport=False):
         rule_l4_sport_last = rule_l4_sport
 
     new_rule = {
-          'is_permit': is_permit,
+          'rule_action': rule_action,
           'is_ipv6': p.haslayer(IPv6),
           'src_ip_addr': inet_pton(rule_family,
                                    p[rule_l3_layer].src),
@@ -104,12 +104,12 @@ class Conn(L4_Conn):
             self.testcase.vapi.acl_interface_set_acl_list(
                    self.ifs[1-acl_side].sw_if_index, 0, [])
 
-    def wildcard_rule(self, is_permit):
+    def wildcard_rule(self, rule_action):
         any_addr = ["0.0.0.0", "::"]
         rule_family = self.address_family
         is_ip6 = 1 if rule_family == AF_INET6 else 0
         new_rule = {
-              'is_permit': is_permit,
+              'rule_action': rule_action,
               'is_ipv6': is_ip6,
               'src_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
               'src_ip_prefix_len': 0,
