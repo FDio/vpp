@@ -1285,7 +1285,8 @@ tcp_program_fastretransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 {
   if (!(tc->flags & TCP_CONN_FRXT_PENDING))
     {
-      vec_add1 (wrk->pending_fast_rxt, tc->c_c_index);
+//      vec_add1 (wrk->pending_fast_rxt, tc->c_c_index);
+      session_add_self_custom_tx_evt (&tc->connection);
       tc->flags |= TCP_CONN_FRXT_PENDING;
     }
 }

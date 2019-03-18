@@ -633,6 +633,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   transport_proto_t tp;
   vlib_buffer_t *pb;
   u16 n_bufs, rv;
+  u32 max_burst;
 
   if (PREDICT_FALSE ((rv = session_tx_not_ready (ctx->s, peek_data))))
     {
@@ -643,10 +644,19 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   next_index = smm->session_type_to_next[ctx->s->session_type];
   next0 = next1 = next_index;
+  max_burst = VLIB_FRAME_SIZE - *n_tx_packets;
 
   tp = session_get_transport_proto (ctx->s);
   ctx->transport_vft = transport_protocol_get_vft (tp);
   ctx->tc = session_tx_get_transport (ctx, peek_data);
+
+  if (ctx->s->flags & SESSION_F_CUSTOM_TX)
+    {
+      int n_pkts;
+      n_pkts = ctx->transport_vft->custom_tx (ctx->tc, max_burst);
+      max_burst -= n_pkts;
+    }
+
   ctx->snd_mss = ctx->transport_vft->send_mss (ctx->tc);
 
   if (PREDICT_FALSE (e->event_type == SESSION_IO_EVT_TX_FLUSH))
@@ -669,8 +679,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   svm_fifo_unset_event (ctx->s->tx_fifo);
 
   /* Check how much we can pull. */
-  session_tx_set_dequeue_params (vm, ctx, VLIB_FRAME_SIZE - *n_tx_packets,
-				 peek_data);
+  session_tx_set_dequeue_params (vm, ctx, max_burst, peek_data);
 
   if (PREDICT_FALSE (!ctx->max_len_to_snd))
     return SESSION_TX_NO_DATA;
@@ -823,7 +832,7 @@ session_tx_fifo_dequeue_internal (vlib_main_t * vm,
   if (PREDICT_FALSE (s->session_state >= SESSION_STATE_TRANSPORT_CLOSED))
     return 0;
   svm_fifo_unset_event (s->tx_fifo);
-  return transport_custom_tx (session_get_transport_proto (s), s);
+  return transport_custom_tx (session_get_transport_proto (s), s, 1);
 }
 
 always_inline session_t *

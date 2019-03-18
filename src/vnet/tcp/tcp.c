@@ -1152,7 +1152,7 @@ tcp_update_time (f64 now, u8 thread_index)
 
   tcp_set_time_now (wrk);
   tw_timer_expire_timers_16t_2w_512sl (&wrk->timer_wheel, now);
-  tcp_do_fastretransmits (wrk);
+//  tcp_do_fastretransmits (wrk);
   tcp_send_acks (wrk);
   tcp_flush_frames_to_output (wrk);
 }
@@ -1184,6 +1184,7 @@ const static transport_proto_vft_t tcp_proto = {
   .update_time = tcp_update_time,
   .tx_fifo_offset = tcp_session_tx_fifo_offset,
   .flush_data = tcp_session_flush_data,
+  .custom_tx = tcp_session_custom_tx,
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
   .format_half_open = format_tcp_half_open_session,

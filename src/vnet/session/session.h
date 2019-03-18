@@ -336,6 +336,7 @@ int session_send_io_evt_to_thread_custom (void *data, u32 thread_index,
 					  session_evt_type_t evt_type);
 void session_send_rpc_evt_to_thread (u32 thread_index, void *fp,
 				     void *rpc_args);
+void session_add_self_custom_tx_evt (transport_connection_t *tc);
 transport_connection_t *session_get_transport (session_t * s);
 
 

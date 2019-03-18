@@ -118,6 +118,27 @@ session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
     }
 }
 
+void
+session_add_self_custom_tx_evt (transport_connection_t *tc)
+{
+  session_worker_t *wrk;
+  session_t *s;
+
+  s = session_get (tc->s_index, tc->thread_index);
+  if (!(s->flags & SESSION_F_CUSTOM_TX))
+    {
+      s->flags |= SESSION_F_CUSTOM_TX;
+      if (svm_fifo_set_event (s->tx_fifo))
+	{
+	  session_event_t *evt;
+	  wrk = session_main_get_worker (tc->thread_index);
+	  vec_add2 (wrk->postponed_event_vector, evt, 1);
+	  evt->session_index = tc->s_index;
+	  evt->event_type = SESSION_IO_EVT_TX;
+	}
+    }
+}
+
 static void
 session_program_transport_close (session_t * s)
 {

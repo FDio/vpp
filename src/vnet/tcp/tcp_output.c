@@ -1992,6 +1992,42 @@ tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   else
     return tcp_fast_retransmit_no_sack (wrk, tc, burst_size);
 }
+
+int
+tcp_session_custom_tx (void *conn, u32 max_burst_size)
+{
+  u32 n_segs = 0, burst_size, sent_bytes, burst_bytes;
+  tcp_connection_t *tc = (tcp_connection_t *) conn;
+  tcp_worker_ctx_t * wrk;
+
+  tc->flags &= ~TCP_CONN_FRXT_PENDING;
+
+  if (!tcp_in_fastrecovery (tc))
+    return 0;
+
+//  if (n_segs >= VLIB_FRAME_SIZE)
+//    {
+//      vec_add1(wrk->postponed_fast_rxt, ongoing_fast_rxt[i]);
+//      continue;
+//    }
+
+  wrk = tcp_get_worker (tc->c_thread_index);
+  burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
+                                                     wrk->vm->clib_time
+                                                     .last_cpu_time);
+  burst_size = clib_min (max_burst_size, burst_bytes / tc->snd_mss);
+  if (!burst_size)
+    {
+      tcp_program_fastretransmit (wrk, tc);
+      return 0;
+    }
+
+  n_segs = tcp_fast_retransmit (wrk, tc, burst_size);
+  sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
+  transport_connection_tx_pacer_update_bytes (&tc->connection,
+                                              sent_bytes);
+  return n_segs;
+}
 #endif /* CLIB_MARCH_VARIANT */
 
 static void

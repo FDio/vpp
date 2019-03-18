@@ -822,6 +822,7 @@ tcp_set_time_now (tcp_worker_ctx_t * wrk)
 
 u32 tcp_session_push_header (transport_connection_t * tconn,
 			     vlib_buffer_t * b);
+int tcp_session_custom_tx (void *conn, u32 max_burst_size);
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
