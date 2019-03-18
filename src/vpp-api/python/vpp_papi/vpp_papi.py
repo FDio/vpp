@@ -121,7 +121,7 @@ class VPPValueError(ValueError):
     pass
 
 
-class VPP(object):
+class VPPApiClient(object):
     """VPP interface.
 
     This class provides the APIs to VPP.  The APIs are loaded
@@ -133,6 +133,7 @@ class VPP(object):
     provides a means to register a callback function to receive
     these messages in a background thread.
     """
+    apidir = None
     VPPApiError = VPPApiError
     VPPRuntimeError = VPPRuntimeError
     VPPValueError = VPPValueError
@@ -211,6 +212,9 @@ class VPP(object):
         loglevel, if supplied, is the log level this logger is set
         to report at (from the loglevels in the logging module).
         """
+        if apifiles is None and self.__class__.apidir is None:
+            raise ValueError("Either apifiles or apidir must be specified.")
+
         if logger is None:
             logger = logging.getLogger(__name__)
             if loglevel is not None:
@@ -288,10 +292,7 @@ class VPP(object):
         :returns: A single directory name, or None if no such directory
             could be found.
         """
-        dirs = []
-
-        if 'VPP_API_DIR' in os.environ:
-            dirs.append(os.environ['VPP_API_DIR'])
+        dirs = [cls.apidir]
 
         # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
         # in which case, plot a course to likely places in the src tree
@@ -353,7 +354,7 @@ class VPP(object):
         # finally, try the location system packages typically install into
         dirs.append(os.path.sep.join(('', 'usr', 'share', 'vpp', 'api')))
 
-        # check the directories for existance; first one wins
+        # check the directories for existence; first one wins
         for dir in dirs:
             if os.path.isdir(dir):
                 return dir
@@ -713,5 +714,7 @@ class VPP(object):
             if self.event_callback:
                 self.event_callback(msgname, r)
 
+# Provide the old name for backward compatibility.
+VPP = VPPApiClient
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
