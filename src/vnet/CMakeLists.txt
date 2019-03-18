@@ -531,6 +531,20 @@ list(APPEND VNET_SOURCES
 list(APPEND VNET_API_FILES bfd/bfd.api)
 
 ##############################################################################
+# Crypto
+##############################################################################
+
+list(APPEND VNET_SOURCES
+  crypto/cli.c
+  crypto/crypto.c
+  crypto/format.c
+)
+
+list(APPEND VNET_HEADERS
+  crypto/crypto.h
+)
+
+##############################################################################
 # Layer 3 protocol: IPSec
 ##############################################################################
 list(APPEND VNET_SOURCES

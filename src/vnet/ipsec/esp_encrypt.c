@@ -20,6 +20,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/udp/udp.h>
 
+#include <vnet/crypto/crypto.h>
+
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
@@ -88,33 +90,26 @@ always_inline void
 esp_encrypt_cbc (vlib_main_t * vm, ipsec_crypto_alg_t alg,
 		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
 {
-  ipsec_proto_main_t *em = &ipsec_proto_main;
-  u32 thread_index = vm->thread_index;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_CIPHER_CTX *ctx = em->per_thread_data[thread_index].encrypt_ctx;
-#else
-  EVP_CIPHER_CTX *ctx = &(em->per_thread_data[thread_index].encrypt_ctx);
-#endif
-  const EVP_CIPHER *cipher = NULL;
-  int out_len;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_main_crypto_alg_t *a;
+  vnet_crypto_op_t _op, *op = &_op;
 
   ASSERT (alg < IPSEC_CRYPTO_N_ALG);
 
-  if (PREDICT_FALSE
-      (em->ipsec_proto_main_crypto_algs[alg].type == IPSEC_CRYPTO_ALG_NONE))
+  a = &im->crypto_algs[alg];
+
+  if (PREDICT_FALSE (a->enc_op_type == VNET_CRYPTO_OP_NONE))
     return;
 
-  if (PREDICT_FALSE
-      (alg != em->per_thread_data[thread_index].last_encrypt_alg))
-    {
-      cipher = em->ipsec_proto_main_crypto_algs[alg].type;
-      em->per_thread_data[thread_index].last_encrypt_alg = alg;
-    }
+  op->op = a->enc_op_type;
+  op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
+  op->iv = iv;
+  op->src = in;
+  op->dst = out;
+  op->len = in_len;
+  op->key = key;
 
-  EVP_EncryptInit_ex (ctx, cipher, NULL, key, iv);
-
-  EVP_EncryptUpdate (ctx, out, &out_len, in, in_len);
-  EVP_EncryptFinal_ex (ctx, out + out_len, &out_len);
+  vnet_crypto_process_ops (vm, op, 1);
 }
 
 always_inline uword
@@ -125,7 +120,6 @@ esp_encrypt_inline (vlib_main_t * vm,
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left_from = from_frame->n_vectors;
   ipsec_main_t *im = &ipsec_main;
-  ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 new_bufs[VLIB_FRAME_SIZE];
   vlib_buffer_t *i_bufs[VLIB_FRAME_SIZE], **ib = i_bufs;
   vlib_buffer_t *o_bufs[VLIB_FRAME_SIZE], **ob = o_bufs;
@@ -288,10 +282,8 @@ esp_encrypt_inline (vlib_main_t * vm,
       if (PREDICT_TRUE (sa0->crypto_alg != IPSEC_CRYPTO_ALG_NONE))
 	{
 
-	  const int BLOCK_SIZE =
-	    em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].block_size;
-	  const int IV_SIZE =
-	    em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size;
+	  const int BLOCK_SIZE = im->crypto_algs[sa0->crypto_alg].block_size;
+	  const int IV_SIZE = im->crypto_algs[sa0->crypto_alg].iv_size;
 	  int blocks = 1 + (ib[0]->current_length + 1) / BLOCK_SIZE;
 
 	  /* pad packet in input buffer */
@@ -314,13 +306,12 @@ esp_encrypt_inline (vlib_main_t * vm,
 	  vnet_buffer (ob[0])->sw_if_index[VLIB_RX] =
 	    vnet_buffer (ib[0])->sw_if_index[VLIB_RX];
 
-	  u8 iv[em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size];
-	  RAND_bytes (iv, sizeof (iv));
+	  u8 *iv = vlib_buffer_get_current (ob[0]) + ip_udp_hdr_size +
+	    sizeof (esp_header_t);
 
 	  clib_memcpy_fast ((u8 *) vlib_buffer_get_current (ob[0]) +
 			    ip_udp_hdr_size + sizeof (esp_header_t), iv,
-			    em->ipsec_proto_main_crypto_algs[sa0->
-							     crypto_alg].iv_size);
+			    im->crypto_algs[sa0->crypto_alg].iv_size);
 
 	  esp_encrypt_cbc (vm, sa0->crypto_alg,
 			   (u8 *) vlib_buffer_get_current (ib[0]),
@@ -331,7 +322,7 @@ esp_encrypt_inline (vlib_main_t * vm,
 	}
 
       ob[0]->current_length +=
-	hmac_calc (sa0->integ_alg, sa0->integ_key.data,
+	hmac_calc (vm, sa0->integ_alg, sa0->integ_key.data,
 		   sa0->integ_key.len, (u8 *) o_esp0,
 		   ob[0]->current_length - ip_udp_hdr_size,
 		   vlib_buffer_get_current (ob[0]) + ob[0]->current_length,
