@@ -10,7 +10,7 @@ import time
 from collections import deque
 
 from six import moves, iteritems
-from vpp_papi import VPP, mac_pton
+from vpp_papi import VPPApiClient, mac_pton
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
 
@@ -233,14 +233,12 @@ class VppPapiProvider(object):
         self._expect_api_retval = self._zero
         self._expect_stack = []
 
-        install_dir = os.getenv('VPP_INSTALL_PATH')
+        # install_dir is a class attribute. We need to set it before
+        # calling the constructor.
+        VPPApiClient.apidir = os.getenv('VPP_INSTALL_PATH')
 
-        # Vapi requires 'VPP_API_DIR', not set when run from Makefile.
-        if 'VPP_API_DIR' not in os.environ:
-            os.environ['VPP_API_DIR'] = os.getenv('VPP_INSTALL_PATH')
-
-        self.vpp = VPP(logger=test_class.logger,
-                       read_timeout=read_timeout)
+        self.vpp = VPPApiClient(logger=test_class.logger,
+                                read_timeout=read_timeout)
         self._events = deque()
 
     def __enter__(self):
