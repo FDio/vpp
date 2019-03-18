@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "be699b27_70dbf5b0",
+        "filename": "src/plugins/acl/manual_fns.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-03-18T14:21:09Z",
+      "side": 1,
+      "message": "macip doesn\u0027t have the permit+reflect, but rather has the special-case of 3 that means \"create also egress rules\". Speaking of which indeed this place will need cleanup anyway for that.",
+      "parentUuid": "a1c60247_abcb648c",
+      "range": {
+        "startLine": 161,
+        "startChar": 13,
+        "endLine": 161,
+        "endChar": 50
+      },
+      "revId": "e9dd859c7fda6fe0d6c0ed7ab9fefa6dfc3dc684",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1fabcd89_c0538b8c",
         "filename": "test/test_acl_plugin_l2l3.py",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2019-03-18T13:11:45Z",
       "side": 1,
       "message": "does this need to be updated for permit+reflect?",
+      "range": {
+        "startLine": 146,
+        "startChar": 12,
+        "endLine": 146,
+        "endChar": 31
+      },
+      "revId": "e9dd859c7fda6fe0d6c0ed7ab9fefa6dfc3dc684",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6707f130_25051ce5",
+        "filename": "test/test_acl_plugin_l2l3.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-03-18T14:21:09Z",
+      "side": 1,
+      "message": "nah, there is a separate permit+reflect rule created at the bottom...",
+      "parentUuid": "1fabcd89_c0538b8c",
       "range": {
         "startLine": 146,
         "startChar": 12,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "78f8e832_a333bfac",
+        "filename": "test/test_acl_plugin_macip.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 335,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-03-18T14:21:09Z",
+      "side": 1,
+      "message": "I think the idea here was to add variety into the rules, with modulus allowing to repeat things periodically",
+      "parentUuid": "ef33e144_fca555df",
+      "range": {
+        "startLine": 333,
+        "startChar": 0,
+        "endLine": 335,
+        "endChar": 70
+      },
+      "revId": "e9dd859c7fda6fe0d6c0ed7ab9fefa6dfc3dc684",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e7e98d77_8ebb70e6",
         "filename": "test/test_acl_plugin_macip.py",
         "patchSetId": 1
@@ -82,6 +154,30 @@
       "writtenOn": "2019-03-18T13:11:45Z",
       "side": 1,
       "message": "This might read better if we created an enum and did rule_action \u003d\u003d RULE_ACTION.PERMIT, no?",
+      "range": {
+        "startLine": 336,
+        "startChar": 19,
+        "endLine": 336,
+        "endChar": 30
+      },
+      "revId": "e9dd859c7fda6fe0d6c0ed7ab9fefa6dfc3dc684",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "24a21a6a_7bd06601",
+        "filename": "test/test_acl_plugin_macip.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2019-03-18T14:21:09Z",
+      "side": 1,
+      "message": "yeah, the current state is just a mechanical rename, i am trying to add the enum in the API, but seeing some odd behavior, so wanted to go step by step.",
+      "parentUuid": "e7e98d77_8ebb70e6",
       "range": {
         "startLine": 336,
         "startChar": 19,
