@@ -16,6 +16,24 @@
       "revId": "5d3be01cc157e0c7d8b66a9ec47d9b0409663f34",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "80c2d528_b1270a9b",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-18T14:34:00Z",
+      "side": 1,
+      "message": "The other traceback that I am aware of was just Attribute error from vapi not being set.  This does not change that.  \n\nThis comes from when vpp goes into a deadloop and stops responding.  I came across it writing a unit test for: https://gerrit.fd.io/r/#/c/18310/\n\nIf you can give me an example, I\u0027m glad to make sure I catch it.",
+      "parentUuid": "8d5a1583_9ebcf6cf",
+      "revId": "5d3be01cc157e0c7d8b66a9ec47d9b0409663f34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
