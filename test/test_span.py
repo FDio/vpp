@@ -235,7 +235,7 @@ class TestSpan(VppTestCase):
 
         self.sub_if.admin_up()
         self.vapi.sw_interface_set_flags(self.vxlan.sw_if_index,
-                                         admin_up_down=1)
+                                         flags=1)
 
         self.bridge(self.vxlan.sw_if_index, is_add=1)
         # Create bi-directional cross-connects between pg0 subif and pg1
