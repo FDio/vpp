@@ -418,7 +418,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
     {
       r = vec_elt_at_index (acl_new_rules, i);
       clib_memset (r, 0, sizeof (*r));
-      r->is_permit = rules[i].is_permit;
+      r->is_permit = rules[i].rule_action;
       r->is_ipv6 = rules[i].is_ipv6;
       if (r->is_ipv6)
 	{
@@ -1656,7 +1656,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   for (i = 0; i < count; i++)
     {
       r = &acl_new_rules[i];
-      r->is_permit = rules[i].is_permit;
+      r->is_permit =rules[i].rule_action;
       r->is_ipv6 = rules[i].is_ipv6;
       memcpy (&r->src_mac, rules[i].src_mac, 6);
       memcpy (&r->src_mac_mask, rules[i].src_mac_mask, 6);
@@ -1973,7 +1973,7 @@ static void
 static void
 copy_acl_rule_to_api_rule (vl_api_acl_rule_t * api_rule, acl_rule_t * r)
 {
-  api_rule->is_permit = r->is_permit;
+  api_rule->rule_action = r->is_permit;
   api_rule->is_ipv6 = r->is_ipv6;
   if (r->is_ipv6)
     {
@@ -2259,7 +2259,7 @@ send_macip_acl_details (acl_main_t * am, vl_api_registration_t * reg,
       for (i = 0; i < acl->count; i++)
 	{
 	  r = &acl->rules[i];
-	  rules[i].is_permit = r->is_permit;
+	  rules[i].rule_action = r->is_permit;
 	  rules[i].is_ipv6 = r->is_ipv6;
 	  memcpy (rules[i].src_mac, &r->src_mac, sizeof (r->src_mac));
 	  memcpy (rules[i].src_mac_mask, &r->src_mac_mask,

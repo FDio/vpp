@@ -194,7 +194,7 @@ vl_api_acl_rule_t_pretty_format (u8 *out, vl_api_acl_rule_t * a)
   inet_ntop(af, a->dst_ip_addr, (void *)dst, sizeof(dst));
 
   out = format(out, "%s action %d src %s/%d dst %s/%d proto %d sport %d-%d dport %d-%d tcpflags %d mask %d",
-                     a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit,
+                     a->is_ipv6 ? "ipv6" : "ipv4", a->rule_action,
                      src, a->src_ip_prefix_len,
                      dst, a->dst_ip_prefix_len,
                      a->proto,
@@ -232,7 +232,7 @@ vl_api_macip_acl_rule_t_pretty_format (u8 *out, vl_api_macip_acl_rule_t * a)
   inet_ntop(af, a->src_ip_addr, (void *)src, sizeof(src));
 
   out = format(out, "%s action %d ip %s/%d mac %U mask %U",
-                     a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit,
+                     a->is_ipv6 ? "ipv6" : "ipv4", a->rule_action,
                      src, a->src_ip_prefix_len,
                      my_format_mac_address, a->src_mac,
                      my_format_mac_address, a->src_mac_mask);
@@ -358,7 +358,7 @@ static int api_macip_acl_interface_get (vat_main_t * vam)
   do {                                 \
     if (vec_len(v) < idx+1) {  \
       vec_validate(v, idx); \
-      v[idx].is_permit = 0x1; \
+      v[idx].rule_action = 0x1; \
       v[idx].srcport_or_icmptype_last = 0xffff; \
       v[idx].dstport_or_icmpcode_last = 0xffff; \
     } \
@@ -407,17 +407,17 @@ static int api_acl_add_replace (vat_main_t * vam)
         else if (unformat (i, "permit+reflect"))
           {
             vec_validate_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 2;
+            rules[rule_idx].rule_action = 2;
           }
         else if (unformat (i, "permit"))
           {
             vec_validate_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 1;
+            rules[rule_idx].rule_action = 1;
           }
         else if (unformat (i, "deny"))
           {
             vec_validate_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 0;
+            rules[rule_idx].rule_action = 0;
           }
         else if (unformat (i, "count %d", &n_rules_override))
           {
@@ -426,7 +426,7 @@ static int api_acl_add_replace (vat_main_t * vam)
         else if (unformat (i, "action %d", &action))
           {
             vec_validate_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = action;
+            rules[rule_idx].rule_action = action;
           }
         else if (unformat (i, "src %U/%d",
          unformat_ip4_address, &src_v4address, &src_prefix_length))
@@ -602,7 +602,7 @@ api_acl_add_replace_from_file (vat_main_t * vam)
     vl_api_acl_rule_t *rules = 0;
     int rule_idx = -1;
     int n_rules = 0;
-    int is_permit = 0;
+    int rule_action = 0;
     int append_default_permit = 0;
     u32 tcpflags = 0, tcpmask = 0;
     ip4_address_t src_v4address, dst_v4address;
@@ -623,11 +623,11 @@ api_acl_add_replace_from_file (vat_main_t * vam)
 	  }
         else if (unformat (input, "permit+reflect"))
 	  {
-	    is_permit = 2;
+	    rule_action = 2;
 	  }
         else if (unformat (input, "permit"))
 	  {
-	    is_permit = 1;
+	    rule_action = 1;
 	  }
         else if (unformat (input, "append-default-permit"))
 	  {
@@ -667,7 +667,7 @@ api_acl_add_replace_from_file (vat_main_t * vam)
 	    vec_validate_acl_rules(rules, rule_idx);
 
 	    rules[rule_idx].is_ipv6 = 0;
-	    rules[rule_idx].is_permit = is_permit;
+	    rules[rule_idx].rule_action = rule_action;
 	    memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
 	    rules[rule_idx].src_ip_prefix_len = src_prefix_length;
 	    memcpy (rules[rule_idx].dst_ip_addr, &dst_v4address, 4);
@@ -687,7 +687,7 @@ api_acl_add_replace_from_file (vat_main_t * vam)
 	vec_validate_acl_rules(rules, rule_idx);
 
 	rules[rule_idx].is_ipv6 = 0;
-	rules[rule_idx].is_permit = is_permit == 2 ? 2 : 1;
+	rules[rule_idx].rule_action = rule_action == 2 ? 2 : 1;
 
 	src_v4address.data[0]=0;
 	src_v4address.data[1]=0;
@@ -1164,7 +1164,7 @@ static int api_acl_interface_etype_whitelist_dump (vat_main_t * vam)
   do {                                 \
     if (vec_len(v) < idx+1) {  \
       vec_validate(v, idx); \
-      v[idx].is_permit = 0x1; \
+      v[idx].rule_action = 0x1; \
     } \
   } while (0)
 
@@ -1204,12 +1204,12 @@ static int api_macip_acl_add (vat_main_t * vam)
         else if (unformat (i, "permit"))
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 1;
+            rules[rule_idx].rule_action = 1;
           }
         else if (unformat (i, "deny"))
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 0;
+            rules[rule_idx].rule_action = 0;
           }
         else if (unformat (i, "count %d", &n_rules_override))
           {
@@ -1218,7 +1218,7 @@ static int api_macip_acl_add (vat_main_t * vam)
         else if (unformat (i, "action %d", &action))
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = action;
+            rules[rule_idx].rule_action = action;
           }
         else if (unformat (i, "ip %U/%d",
          unformat_ip4_address, &src_v4address, &src_prefix_length) ||
@@ -1351,12 +1351,12 @@ static int api_macip_acl_add_replace (vat_main_t * vam)
         else if (unformat (i, "permit"))
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 1;
+            rules[rule_idx].rule_action = 1;
           }
         else if (unformat (i, "deny"))
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = 0;
+            rules[rule_idx].rule_action = 0;
           }
         else if (unformat (i, "count %d", &n_rules_override))
           {
@@ -1365,7 +1365,7 @@ static int api_macip_acl_add_replace (vat_main_t * vam)
         else if (unformat (i, "action %d", &action))
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_permit = action;
+            rules[rule_idx].rule_action = action;
           }
         else if (unformat (i, "ip %U/%d",
          unformat_ip4_address, &src_v4address, &src_prefix_length) ||
