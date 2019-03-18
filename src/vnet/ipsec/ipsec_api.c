@@ -476,10 +476,10 @@ send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
 		     &mp->entry.remote_address_start);
   ip_address_encode (&p->raddr.stop, IP46_TYPE_ANY,
 		     &mp->entry.remote_address_stop);
-  mp->entry.local_port_start = htons (p->lport.start);
-  mp->entry.local_port_stop = htons (p->lport.stop);
-  mp->entry.remote_port_start = htons (p->rport.start);
-  mp->entry.remote_port_stop = htons (p->rport.stop);
+  mp->entry.local_port_start = p->lport.start;
+  mp->entry.local_port_stop = p->lport.stop;
+  mp->entry.remote_port_start = p->rport.start;
+  mp->entry.remote_port_stop = p->rport.stop;
   mp->entry.protocol = p->protocol;
   mp->entry.policy = ipsec_spd_action_encode (p->policy);
   mp->entry.sa_id = htonl (p->sa_id);

@@ -157,28 +157,18 @@ format_ipsec_policy (u8 * s, va_list * args)
     {
       s = format (s, " sa %u", p->sa_id);
     }
-  if (p->is_ipv6)
-    {
-      s = format (s, "\n     local addr range %U - %U port range %u - %u",
-		  format_ip6_address, &p->laddr.start.ip6,
-		  format_ip6_address, &p->laddr.stop.ip6,
-		  p->lport.start, p->lport.stop);
-      s = format (s, "\n     remote addr range %U - %U port range %u - %u",
-		  format_ip6_address, &p->raddr.start.ip6,
-		  format_ip6_address, &p->raddr.stop.ip6,
-		  p->rport.start, p->rport.stop);
-    }
-  else
-    {
-      s = format (s, "\n     local addr range %U - %U port range %u - %u",
-		  format_ip4_address, &p->laddr.start.ip4,
-		  format_ip4_address, &p->laddr.stop.ip4,
-		  p->lport.start, p->lport.stop);
-      s = format (s, "\n     remote addr range %U - %U port range %u - %u",
-		  format_ip4_address, &p->raddr.start.ip4,
-		  format_ip4_address, &p->raddr.stop.ip4,
-		  p->rport.start, p->rport.stop);
-    }
+
+  s = format (s, "\n     local addr range %U - %U port range %u - %u",
+	      format_ip46_address, &p->laddr.start, IP46_TYPE_ANY,
+	      format_ip46_address, &p->laddr.stop, IP46_TYPE_ANY,
+	      clib_net_to_host_u16 (p->lport.start),
+	      clib_net_to_host_u16 (p->lport.stop));
+  s = format (s, "\n     remote addr range %U - %U port range %u - %u",
+	      format_ip46_address, &p->raddr.start, IP46_TYPE_ANY,
+	      format_ip46_address, &p->raddr.stop, IP46_TYPE_ANY,
+	      clib_net_to_host_u16 (p->rport.start),
+	      clib_net_to_host_u16 (p->rport.stop));
+
   vlib_get_combined_counter (&ipsec_spd_policy_counters, pi, &counts);
   s = format (s, "\n     packets %u bytes %u", counts.packets, counts.bytes);
 

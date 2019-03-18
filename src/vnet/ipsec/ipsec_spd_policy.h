@@ -39,6 +39,7 @@ typedef struct
 
 typedef struct
 {
+  /* Ports stored in network byte order */
   u16 start, stop;
 } port_range_t;
 
