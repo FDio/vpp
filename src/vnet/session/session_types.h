@@ -128,6 +128,12 @@ typedef enum
   SESSION_STATE_N_STATES,
 } session_state_t;
 
+typedef enum session_flags_
+{
+  SESSION_F_RX_EVT,
+  SESSION_F_PROXY
+} session_flags_t;
+
 typedef struct session_
 {
   /** Pointers to rx/tx buffers. Once allocated, these do not move */
@@ -149,8 +155,8 @@ typedef struct session_
   /** Index of the thread that allocated the session */
   u8 thread_index;
 
-  /** Tracks last enqueue epoch to avoid generating multiple enqueue events */
-  u64 enqueue_epoch;
+  /** Session flags. See @ref session_flags_t */
+  u32 flags;
 
   /** Index of the transport connection associated to the session */
   u32 connection_index;

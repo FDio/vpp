@@ -453,7 +453,7 @@ app_worker_first_listener (app_worker_t * app_wrk, u8 fib_proto,
    hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
      listener = listen_session_get_from_handle (handle);
      if (listener->session_type == sst
-	 && listener->enqueue_epoch != SESSION_PROXY_LISTENER_INDEX)
+	 && (listener->flags & SESSION_F_PROXY))
        return listener;
    }));
   /* *INDENT-ON* */
@@ -477,7 +477,7 @@ app_worker_proxy_listener (app_worker_t * app_wrk, u8 fib_proto,
    hash_foreach (handle, sm_index, app_wrk->listeners_table, ({
      listener = listen_session_get_from_handle (handle);
      if (listener->session_type == sst
-	 && listener->enqueue_epoch == SESSION_PROXY_LISTENER_INDEX)
+	 && (listener->flags & SESSION_F_PROXY))
        return listener;
    }));
   /* *INDENT-ON* */

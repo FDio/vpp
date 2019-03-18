@@ -80,9 +80,6 @@ typedef struct session_worker_
   /** vlib_time_now last time around the track */
   f64 last_vlib_time;
 
-  /** Per-proto enqueue epoch counters */
-  u64 current_enqueue_epoch[TRANSPORT_N_PROTO];
-
   /** Per-proto vector of sessions to enqueue */
   u32 *session_to_enqueue[TRANSPORT_N_PROTO];
 

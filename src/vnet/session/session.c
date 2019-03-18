@@ -207,7 +207,7 @@ session_alloc_for_connection (transport_connection_t * tc)
 
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
-  s->enqueue_epoch = (u64) ~ 0;
+//  s->enqueue_epoch = (u64) ~ 0;
   s->session_state = SESSION_STATE_CLOSED;
 
   /* Attach transport to session and vice versa */
@@ -382,9 +382,9 @@ session_enqueue_stream_connection (transport_connection_t * tc,
       session_worker_t *wrk;
 
       wrk = session_main_get_worker (s->thread_index);
-      if (s->enqueue_epoch != wrk->current_enqueue_epoch[tc->proto])
+      if (!(s->flags & SESSION_F_RX_EVT))
 	{
-	  s->enqueue_epoch = wrk->current_enqueue_epoch[tc->proto];
+	  s->flags |= SESSION_F_RX_EVT;
 	  vec_add1 (wrk->session_to_enqueue[tc->proto], s->session_index);
 	}
     }
@@ -420,9 +420,9 @@ session_enqueue_dgram_connection (session_t * s,
       session_worker_t *wrk;
 
       wrk = session_main_get_worker (s->thread_index);
-      if (s->enqueue_epoch != wrk->current_enqueue_epoch[proto])
+      if (!(s->flags & SESSION_F_RX_EVT))
 	{
-	  s->enqueue_epoch = wrk->current_enqueue_epoch[proto];
+	  s->flags |= SESSION_F_RX_EVT;
 	  vec_add1 (wrk->session_to_enqueue[proto], s->session_index);
 	}
     }
@@ -495,6 +495,7 @@ session_enqueue_notify_inline (session_t * s)
   }));
   /* *INDENT-ON* */
 
+  s->flags &= ~SESSION_F_RX_EVT;
   if (PREDICT_FALSE (app_worker_lock_and_send_event (app_wrk, s,
 						     SESSION_IO_EVT_RX)))
     return -1;
@@ -570,7 +571,7 @@ session_main_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 
   vec_reset_length (indices);
   wrk->session_to_enqueue[transport_proto] = indices;
-  wrk->current_enqueue_epoch[transport_proto]++;
+//  wrk->current_enqueue_epoch[transport_proto]++;
 
   return errors;
 }
@@ -1294,7 +1295,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads, preallocated_sessions_per_worker;
   session_worker_t *wrk;
-  int i, j;
+  int i;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -1303,12 +1304,6 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Allocate cache line aligned worker contexts */
   vec_validate_aligned (smm->wrk, num_threads - 1, CLIB_CACHE_LINE_BYTES);
-
-  for (i = 0; i < TRANSPORT_N_PROTO; i++)
-    {
-      for (j = 0; j < num_threads; j++)
-	smm->wrk[j].current_enqueue_epoch[i] = 1;
-    }
 
   for (i = 0; i < num_threads; i++)
     {

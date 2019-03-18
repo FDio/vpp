@@ -1207,7 +1207,8 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
 	  app_worker_start_listen (app_wrk, al);
 	  s = listen_session_get (al->session_index);
-	  s->enqueue_epoch = SESSION_PROXY_LISTENER_INDEX;
+//	  s->enqueue_epoch = SESSION_PROXY_LISTENER_INDEX;
+	  s->flags |= SESSION_F_PROXY;
 	}
     }
   else
