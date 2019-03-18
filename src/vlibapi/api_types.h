@@ -20,6 +20,8 @@
 #ifndef included_api_types_h
 #define included_api_types_h
 
+#include <stdbool.h>
+
 #include <vppinfra/types.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -39,7 +41,7 @@ vl_api_to_api_string (u32 len, const char *buf, vl_api_string_t * str)
   return len + sizeof (u32);
 }
 
-/* Return a pointer to the API string (not nul terminated */
+/* Return a pointer to the API string (not nul terminated) */
 static inline u8 *
 vl_api_from_api_string (vl_api_string_t * astr)
 {
