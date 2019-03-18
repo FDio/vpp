@@ -112,7 +112,7 @@ static void *vl_api_sw_interface_set_flags_t_print
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
-  if (mp->admin_up_down)
+  if (ntohl (mp->flags) & IF_STATUS_API_FLAG_ADMIN_UP)
     s = format (s, "admin-up ");
   else
     s = format (s, "admin-down ");
@@ -160,12 +160,12 @@ static void *vl_api_sw_interface_event_t_print
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
-  if (mp->admin_up_down)
+  if (ntohl (mp->flags) & IF_STATUS_API_FLAG_ADMIN_UP)
     s = format (s, "admin-up ");
   else
     s = format (s, "admin-down ");
 
-  if (mp->link_up_down)
+  if (ntohl (mp->flags) & IF_STATUS_API_FLAG_LINK_UP)
     s = format (s, "link-up");
   else
     s = format (s, "link-down");
@@ -180,17 +180,18 @@ static void *vl_api_sw_interface_add_del_address_t_print
   (vl_api_sw_interface_add_del_address_t * mp, void *handle)
 {
   u8 *s;
+  ip46_address_t address;
 
   s = format (0, "SCRIPT: sw_interface_add_del_address ");
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
-  if (mp->is_ipv6)
+  if (ip_address_decode (&mp->prefix.address, &address) == IP46_TYPE_IP6)
     s = format (s, "%U/%d ", format_ip6_address,
-		(ip6_address_t *) mp->address, mp->address_length);
+		(ip6_address_t *) & address.ip6, mp->prefix.len);
   else
     s = format (s, "%U/%d ", format_ip4_address,
-		(ip4_address_t *) mp->address, mp->address_length);
+		(ip4_address_t *) & address.ip4, mp->prefix.len);
 
   if (mp->is_add == 0)
     s = format (s, "del ");
@@ -970,15 +971,15 @@ static void *vl_api_create_vlan_subif_t_print
   FINISH;
 }
 
-#define foreach_create_subif_bit                \
-_(no_tags)                                      \
-_(one_tag)                                      \
-_(two_tags)                                     \
-_(dot1ad)                                       \
-_(exact_match)                                  \
-_(default_sub)                                  \
-_(outer_vlan_id_any)                            \
-_(inner_vlan_id_any)
+#define foreach_create_subif_flag		\
+_(0, "no_tags")					\
+_(1, "one_tag")					\
+_(2, "two_tags")				\
+_(3, "dot1ad")					\
+_(4, "exact_match")				\
+_(5, "default_sub")				\
+_(6, "outer_vlan_id_any")			\
+_(7, "inner_vlan_id_any")
 
 static void *vl_api_create_subif_t_print
   (vl_api_create_subif_t * mp, void *handle)
@@ -997,8 +998,8 @@ static void *vl_api_create_subif_t_print
   if (mp->inner_vlan_id)
     s = format (s, "inner_vlan_id %d ", ntohs (mp->inner_vlan_id));
 
-#define _(a) if (mp->a) s = format (s, "%s ", #a);
-  foreach_create_subif_bit;
+#define _(a,b) if (mp->sub_if_flags & (1 << a)) s = format (s, "%s ", b);
+  foreach_create_subif_flag;
 #undef _
 
   FINISH;

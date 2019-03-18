@@ -202,15 +202,13 @@ class VppIpInterfaceAddress(VppObject):
 
     def add_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
-            sw_if_index=self.intf.sw_if_index, address=self.prefix.bytes,
-            address_length=self.prefix.length, is_ipv6=self.prefix.is_ip6,
+            sw_if_index=self.intf.sw_if_index, prefix=self.prefix.encode(),
             is_add=1)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.sw_interface_add_del_address(
-            sw_if_index=self.intf.sw_if_index, address=self.prefix.bytes,
-            address_length=self.prefix.length, is_ipv6=self.prefix.is_ip6,
+            sw_if_index=self.intf.sw_if_index, prefix=self.prefix.encode(),
             is_add=0)
 
     def query_vpp_config(self):
