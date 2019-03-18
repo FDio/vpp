@@ -30,12 +30,12 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
   /**
    * Determine the interface type from the name and VLAN attributes
    */
-  std::string name = reinterpret_cast<const char*>(vd.interface_name);
+  std::string name = reinterpret_cast<const char*>(vd.interface_name.buf);
   interface::type_t type = interface::type_t::from_string(name);
-  interface::admin_state_t state =
-    interface::admin_state_t::from_int(vd.admin_up_down);
+  interface::admin_state_t state = interface::admin_state_t::from_int(
+    vd.flags & vapi_enum_if_status_flags::IF_STATUS_API_FLAG_ADMIN_UP);
   handle_t hdl(vd.sw_if_index);
-  l2_address_t l2_address(vd.l2_address, vd.l2_address_length);
+  l2_address_t l2_address(vd.l2_address, 6);
   std::string tag = "";
 
   if (interface::type_t::UNKNOWN == type) {
@@ -64,8 +64,8 @@ interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
    * if the tag is set, then we wrote that to specify a name to make
    * the interface type more specific
    */
-  if (vd.tag[0] != 0) {
-    tag = std::string(reinterpret_cast<const char*>(vd.tag));
+  if (vd.tag.buf[0] != 0) {
+    tag = std::string(reinterpret_cast<const char*>(vd.tag.buf));
   }
 
   if (!tag.empty() && interface::type_t::LOOPBACK == type) {
