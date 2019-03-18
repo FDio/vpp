@@ -1193,17 +1193,17 @@ tcp_program_ack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 {
   if (!(tc->flags & TCP_CONN_SNDACK))
     {
-      vec_add1 (wrk->pending_acks, tc->c_c_index);
+      session_add_self_custom_tx_evt (&tc->connection, 1);
       tc->flags |= TCP_CONN_SNDACK;
     }
 }
 
 void
-tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
+tcp_program_dupack (tcp_connection_t * tc)
 {
   if (!(tc->flags & TCP_CONN_SNDACK))
     {
-      vec_add1 (wrk->pending_acks, tc->c_c_index);
+      session_add_self_custom_tx_evt (&tc->connection, 1);
       tc->flags |= TCP_CONN_SNDACK;
     }
   if (tc->pending_dupacks < 255)
@@ -1211,51 +1211,23 @@ tcp_program_dupack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc)
 }
 
 void
-tcp_send_acks (tcp_worker_ctx_t * wrk)
+tcp_program_fastretransmit (tcp_connection_t * tc)
 {
-  u32 thread_index, *pending_acks;
-  tcp_connection_t *tc;
-  int i, j, n_acks;
-
-  if (!vec_len (wrk->pending_acks))
-    return;
-
-  thread_index = wrk->vm->thread_index;
-  pending_acks = wrk->pending_acks;
-  for (i = 0; i < vec_len (pending_acks); i++)
+  if (!(tc->flags & TCP_CONN_FRXT_PENDING))
     {
-      tc = tcp_connection_get (pending_acks[i], thread_index);
-      tc->flags &= ~TCP_CONN_SNDACK;
-      if (!tc->pending_dupacks)
-	{
-	  tcp_send_ack (tc);
-	  continue;
-	}
-
-      /* If we're supposed to send dupacks but have no ooo data
-       * send only one ack */
-      if (!vec_len (tc->snd_sacks))
-	{
-	  tcp_send_ack (tc);
-	  continue;
-	}
-
-      /* Start with first sack block */
-      tc->snd_sack_pos = 0;
-
-      /* Generate enough dupacks to cover all sack blocks. Do not generate
-       * more sacks than the number of packets received. But do generate at
-       * least 3, i.e., the number needed to signal congestion, if needed. */
-      n_acks = vec_len (tc->snd_sacks) / TCP_OPTS_MAX_SACK_BLOCKS;
-      n_acks = clib_min (n_acks, tc->pending_dupacks);
-      n_acks = clib_max (n_acks, clib_min (tc->pending_dupacks, 3));
-      for (j = 0; j < n_acks; j++)
-	tcp_send_ack (tc);
-
-      tc->pending_dupacks = 0;
-      tc->snd_sack_pos = 0;
+      session_add_self_custom_tx_evt (&tc->connection, 0);
+      tc->flags |= TCP_CONN_FRXT_PENDING;
     }
-  _vec_len (wrk->pending_acks) = 0;
+}
+
+void
+tcp_postpone_fastretransmit (tcp_connection_t * tc)
+{
+  if (!(tc->flags & TCP_CONN_FRXT_PENDING))
+    {
+      session_add_self_custom_tx_evt (&tc->connection, 0);
+      tc->flags |= TCP_CONN_FRXT_PENDING;
+    }
 }
 
 /**
@@ -1815,7 +1787,7 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
   snd_space = tcp_available_cc_snd_space (tc);
   if (snd_space < tc->snd_mss)
     {
-      tcp_program_fastretransmit (wrk, tc);
+      tcp_postpone_fastretransmit (tc);
       return 0;
     }
 
@@ -1839,7 +1811,7 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 				     snd_space / tc->snd_mss);
 	      n_segs_now = tcp_fast_retransmit_unsent (wrk, tc, burst_size);
 	      if (max_deq > n_segs_now * tc->snd_mss)
-		tcp_program_fastretransmit (wrk, tc);
+		tcp_postpone_fastretransmit (tc);
 	      n_segs += n_segs_now;
 	      goto done;
 	    }
@@ -1891,7 +1863,7 @@ tcp_fast_retransmit_sack (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     }
 
   if (hole)
-    tcp_program_fastretransmit (wrk, tc);
+    tcp_postpone_fastretransmit (tc);
 
 done:
   return n_segs;
@@ -1952,7 +1924,7 @@ send_unsent:
       burst_size = clib_min (burst_size - n_segs, snd_space / tc->snd_mss);
       n_segs_now = tcp_fast_retransmit_unsent (wrk, tc, burst_size);
       if (max_deq > n_segs_now * tc->snd_mss)
-	tcp_program_fastretransmit (wrk, tc);
+	tcp_postpone_fastretransmit (tc);
       n_segs += n_segs_now;
     }
 
@@ -1972,6 +1944,109 @@ tcp_fast_retransmit (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
     return tcp_fast_retransmit_sack (wrk, tc, burst_size);
   else
     return tcp_fast_retransmit_no_sack (wrk, tc, burst_size);
+}
+
+static int
+tcp_do_acks (tcp_connection_t *tc, u32 max_burst_size)
+{
+  u32 n_acks, j;
+
+  if (!tc->pending_dupacks)
+    {
+      tcp_send_ack (tc);
+      return 1;
+    }
+
+  /* If we're supposed to send dupacks but have no ooo data
+   * send only one ack */
+  if (!vec_len (tc->snd_sacks))
+    {
+      tcp_send_ack (tc);
+      return 1;
+    }
+
+  /* Start with first sack block */
+  tc->snd_sack_pos = 0;
+
+  /* Generate enough dupacks to cover all sack blocks. Do not generate
+   * more sacks than the number of packets received. But do generate at
+   * least 3, i.e., the number needed to signal congestion, if needed. */
+  n_acks = vec_len (tc->snd_sacks) / TCP_OPTS_MAX_SACK_BLOCKS;
+  n_acks = clib_min (n_acks, tc->pending_dupacks);
+  n_acks = clib_max (n_acks, clib_min (tc->pending_dupacks, 3));
+  for (j = 0; j < clib_min (n_acks, max_burst_size); j++)
+    tcp_send_ack (tc);
+
+  if (n_acks < max_burst_size)
+    {
+      tc->pending_dupacks = 0;
+      tc->snd_sack_pos = 0;
+      return n_acks;
+    }
+  else
+    {
+      clib_warning ("here");
+      tc->pending_dupacks = n_acks - max_burst_size;
+//      tc->snd_sack_pos = (n_acks - max_burst_size) * TCP_OPTS_MAX_SACK_BLOCKS;
+//      tc->pending_dupacks = tc->snd_sack_pos - 1;
+      tcp_program_dupack (tc);
+      return max_burst_size;
+    }
+}
+
+static int
+tcp_do_fastretrasmit (tcp_connection_t *tc, u32 max_burst_size)
+{
+  u32 n_segs = 0, burst_size, sent_bytes, burst_bytes;
+  tcp_worker_ctx_t * wrk;
+
+  wrk = tcp_get_worker (tc->c_thread_index);
+  burst_bytes = transport_connection_tx_pacer_burst (&tc->connection,
+                                                     wrk->vm->clib_time
+                                                     .last_cpu_time);
+  burst_size = clib_min (max_burst_size, burst_bytes / tc->snd_mss);
+  if (!burst_size)
+    {
+      tcp_postpone_fastretransmit (tc);
+      return 0;
+    }
+
+  n_segs = tcp_fast_retransmit (wrk, tc, burst_size);
+  sent_bytes = clib_min (n_segs * tc->snd_mss, burst_bytes);
+  transport_connection_tx_pacer_update_bytes (&tc->connection,
+                                              sent_bytes);
+  return n_segs;
+}
+
+int
+tcp_session_custom_tx (void *conn, u32 max_burst_size)
+{
+  tcp_connection_t *tc = (tcp_connection_t *) conn;
+  u32 n_segs = 0;
+
+  if (tcp_in_fastrecovery (tc) && (tc->flags & TCP_CONN_FRXT_PENDING))
+    {
+      tc->flags &= ~TCP_CONN_FRXT_PENDING;
+      n_segs = tcp_do_fastretrasmit (tc, max_burst_size);
+      max_burst_size -= n_segs;
+    }
+  else
+    tc->flags &= ~TCP_CONN_FRXT_PENDING;
+
+  if (!(tc->flags & TCP_CONN_SNDACK))
+    return n_segs;
+
+  tc->flags &= ~TCP_CONN_SNDACK;
+  if (!max_burst_size)
+    {
+      clib_warning ("this");
+      tcp_program_ack (0, tc);
+      return max_burst_size;
+    }
+
+  n_segs += tcp_do_acks (tc, max_burst_size);
+
+  return n_segs;
 }
 #endif /* CLIB_MARCH_VARIANT */
 

@@ -45,7 +45,7 @@ typedef struct _transport_proto_vft
   u32 (*tx_fifo_offset) (transport_connection_t * tc);
   void (*update_time) (f64 time_now, u8 thread_index);
   void (*flush_data) (transport_connection_t *tconn);
-  int (*custom_tx) (void *session);
+  int (*custom_tx) (void *session, u32 max_burst_size);
 
   /*
    * Connection retrieval
@@ -106,9 +106,9 @@ transport_get_half_open (transport_proto_t tp, u32 conn_index)
 }
 
 static inline int
-transport_custom_tx (transport_proto_t tp, void *s)
+transport_custom_tx (transport_proto_t tp, void *s, u32 max_burst_size)
 {
-  return tp_vfts[tp].custom_tx (s);
+  return tp_vfts[tp].custom_tx (s, max_burst_size);
 }
 
 void transport_register_protocol (transport_proto_t transport_proto,

@@ -647,7 +647,7 @@ tls_listener_get (u32 listener_index)
 }
 
 int
-tls_custom_tx_callback (void *session)
+tls_custom_tx_callback (void *session, u32 max_burst_size)
 {
   session_t *app_session = (session_t *) session;
   tls_ctx_t *ctx;
