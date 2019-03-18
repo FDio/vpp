@@ -27,6 +27,7 @@ from io import BytesIO
 from vpp_papi import VppEnum
 from vpp_ip_route import VppIpRoute, VppRoutePath, FibPathType
 from vpp_neighbor import VppNeighbor
+from vpp_ip import VppIpAddress, VppIpPrefix
 from scapy.all import bind_layers, Packet, ByteEnumField, ShortField, \
     IPField, IntField, LongField, XByteField, FlagsField, FieldLenField, \
     PacketListField
@@ -1504,16 +1505,16 @@ class TestNAT44(MethodHolder):
             cls.vapi.ip_table_add_del(is_add=1, table_id=10)
             cls.vapi.ip_table_add_del(is_add=1, table_id=20)
 
-            cls.pg4._local_ip4 = "172.16.255.1"
-            cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg4._local_ip4 = VppIpPrefix("172.16.255.1",
+                                             cls.pg4.local_ip4_prefix.len)
             cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
             cls.pg4.set_table_ip4(10)
-            cls.pg5._local_ip4 = "172.17.255.3"
-            cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg5._local_ip4 = VppIpPrefix("172.17.255.3",
+                                             cls.pg5.local_ip4_prefix.len)
             cls.pg5._remote_hosts[0]._ip4 = "172.17.255.4"
             cls.pg5.set_table_ip4(10)
-            cls.pg6._local_ip4 = "172.16.255.1"
-            cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg6._local_ip4 = VppIpPrefix("172.16.255.1",
+                                             cls.pg6.local_ip4_prefix.len)
             cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
             cls.pg6.set_table_ip4(20)
             for i in cls.overlapping_interfaces:
@@ -1526,10 +1527,10 @@ class TestNAT44(MethodHolder):
 
             cls.pg9.generate_remote_hosts(2)
             cls.pg9.config_ip4()
-            ip_addr_n = socket.inet_pton(socket.AF_INET, "10.0.0.1")
             cls.vapi.sw_interface_add_del_address(
-                sw_if_index=cls.pg9.sw_if_index, address=ip_addr_n,
-                address_length=24)
+                sw_if_index=cls.pg9.sw_if_index,
+                prefix=VppIpPrefix("10.0.0.1", 24).encode())
+
             cls.pg9.admin_up()
             cls.pg9.resolve_arp()
             cls.pg9._remote_hosts[1]._ip4 = cls.pg9._remote_hosts[0]._ip4
@@ -4428,10 +4429,10 @@ class TestNAT44EndpointDependent(MethodHolder):
 
             cls.pg4.generate_remote_hosts(2)
             cls.pg4.config_ip4()
-            ip_addr_n = socket.inet_pton(socket.AF_INET, "10.0.0.1")
             cls.vapi.sw_interface_add_del_address(
-                sw_if_index=cls.pg4.sw_if_index, address=ip_addr_n,
-                address_length=24)
+                sw_if_index=cls.pg4.sw_if_index,
+                prefix=VppIpPrefix("10.0.0.1", 24).encode())
+
             cls.pg4.admin_up()
             cls.pg4.resolve_arp()
             cls.pg4._remote_hosts[1]._ip4 = cls.pg4._remote_hosts[0]._ip4
@@ -4440,9 +4441,8 @@ class TestNAT44EndpointDependent(MethodHolder):
             zero_ip4n = socket.inet_pton(socket.AF_INET, "0.0.0.0")
             cls.vapi.ip_table_add_del(is_add=1, table_id=1)
 
-            cls.pg5._local_ip4 = "10.1.1.1"
-            cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET,
-                                                   cls.pg5.local_ip4)
+            cls.pg5._local_ip4 = VppIpPrefix("10.1.1.1",
+                                             cls.pg5.local_ip4_prefix.len)
             cls.pg5._remote_hosts[0]._ip4 = "10.1.1.2"
             cls.pg5._remote_hosts[0]._ip4n = socket.inet_pton(
                 socket.AF_INET, cls.pg5.remote_ip4)
@@ -4456,9 +4456,8 @@ class TestNAT44EndpointDependent(MethodHolder):
                             register=False)
             r1.add_vpp_config()
 
-            cls.pg6._local_ip4 = "10.1.2.1"
-            cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET,
-                                                   cls.pg6.local_ip4)
+            cls.pg6._local_ip4 = VppIpPrefix("10.1.2.1",
+                                             cls.pg6.local_ip4_prefix.len)
             cls.pg6._remote_hosts[0]._ip4 = "10.1.2.2"
             cls.pg6._remote_hosts[0]._ip4n = socket.inet_pton(
                 socket.AF_INET, cls.pg6.remote_ip4)

@@ -20,6 +20,8 @@
 #ifndef included_api_types_h
 #define included_api_types_h
 
+#include <stdbool.h>
+
 #include <vppinfra/types.h>
 #include <arpa/inet.h>
 #include <string.h>

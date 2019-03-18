@@ -44,7 +44,9 @@ bind_cmd::issue(connection& con)
   payload.is_add = 1;
   payload.del_all = 0;
 
-  m_pfx.to_vpp(&payload.is_ipv6, payload.address, &payload.address_length);
+  m_pfx.to_vpp((uint8_t*)&payload.prefix.address.af,
+               (uint8_t*)&payload.prefix.address,
+               (uint8_t*)&payload.prefix.len);
 
   VAPI_CALL(req.execute());
 
@@ -86,7 +88,9 @@ unbind_cmd::issue(connection& con)
   payload.is_add = 0;
   payload.del_all = 0;
 
-  m_pfx.to_vpp(&payload.is_ipv6, payload.address, &payload.address_length);
+  m_pfx.to_vpp((uint8_t*)&payload.prefix.address.af,
+               (uint8_t*)&payload.prefix.address,
+               (uint8_t*)&payload.prefix.len);
 
   VAPI_CALL(req.execute());
 

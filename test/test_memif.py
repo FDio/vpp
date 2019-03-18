@@ -209,14 +209,14 @@ class TestMemif(VppTestCase):
         pkts = []
         for i in range(num):
             pkt = (Ether(dst=pg.local_mac, src=pg.remote_mac) /
-                   IP(src=pg.remote_ip4, dst=memif.ip4_addr) /
+                   IP(src=pg.remote_ip4, dst=memif.ip_prefix.address) /
                    ICMP(id=memif.if_id, type='echo-request', seq=i))
             pkts.append(pkt)
         return pkts
 
     def _verify_icmp(self, pg, memif, rx, seq):
         ip = rx[IP]
-        self.assertEqual(ip.src, memif.ip4_addr)
+        self.assertEqual(ip.src, memif.ip_prefix.address)
         self.assertEqual(ip.dst, pg.remote_ip4)
         self.assertEqual(ip.proto, 1)
         icmp = rx[ICMP]
@@ -250,7 +250,7 @@ class TestMemif(VppTestCase):
 
         # add routing to remote vpp
         route = VppIpRoute(self.remote_test, self.pg0._local_ip4_subnet, 24,
-                           [VppRoutePath(memif.ip4_addr, 0xffffffff)],
+                           [VppRoutePath(memif.ip_prefix.address, 0xffffffff)],
                            register=False)
 
         route.add_vpp_config()
