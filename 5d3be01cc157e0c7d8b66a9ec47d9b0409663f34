@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8d5a1583_9ebcf6cf",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-18T14:10:31Z",
+      "side": 1,
+      "message": "there was some useful information in the old displayed traceback. notably where in the test-case we were when VPP crashed. can we still access/display this?",
+      "revId": "5d3be01cc157e0c7d8b66a9ec47d9b0409663f34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
