@@ -34,6 +34,24 @@
       "revId": "5d3be01cc157e0c7d8b66a9ec47d9b0409663f34",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "38d7dbee_31158f84",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2019-03-18T15:00:00Z",
+      "side": 1,
+      "message": "i meant the traceback in the review comment. it has information about what the test-case was doing when the read error occurred.",
+      "parentUuid": "80c2d528_b1270a9b",
+      "revId": "5d3be01cc157e0c7d8b66a9ec47d9b0409663f34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
