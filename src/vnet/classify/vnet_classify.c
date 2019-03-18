@@ -144,6 +144,8 @@ vnet_classify_new_table (vnet_classify_main_t * cm,
   t->mheap = mheap_alloc (0 /* use VM */ , memory_size);
 #else
   t->mheap = create_mspace (memory_size, 1 /* locked */ );
+  /* classifier requires the memory to be contiguous, so can not expand. */
+  mspace_disable_expand (t->mheap);
 #endif
 
   vec_validate_aligned (t->buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
