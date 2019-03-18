@@ -21,8 +21,6 @@
 #include <svm/message_queue.h>
 #include <svm/ssvm.h>
 
-#define SESSION_PROXY_LISTENER_INDEX ((u8)~0 - 1)
-
 #define foreach_session_input_error                                    	\
 _(NO_SESSION, "No session drops")                                       \
 _(NO_LISTENER, "No listener for dst port drops")                        \
@@ -79,9 +77,6 @@ typedef struct session_worker_
 
   /** vlib_time_now last time around the track */
   f64 last_vlib_time;
-
-  /** Per-proto enqueue epoch counters */
-  u64 current_enqueue_epoch[TRANSPORT_N_PROTO];
 
   /** Per-proto vector of sessions to enqueue */
   u32 *session_to_enqueue[TRANSPORT_N_PROTO];
