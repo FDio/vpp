@@ -183,9 +183,9 @@ class MethodHolder(VppTestCase):
                 print("ACL #"+str(acl.acl_index))
                 for r in acl.r:
                     rule = "ACTION"
-                    if r.is_permit == 1:
+                    if r.rule_action == 1:
                         rule = "PERMIT"
-                    elif r.is_permit == 0:
+                    elif r.rule_action == 0:
                         rule = "DENY  "
                     print("    IP6" if r.is_ipv6 else "    IP4",
                           rule,
@@ -256,7 +256,7 @@ class MethodHolder(VppTestCase):
                 for j in range(0, len(ip)):
                     ip_pack += pack('<B', int(ip[j]))
 
-                rule = ({'is_permit': self.PERMIT,
+                rule = ({'rule_action': self.PERMIT,
                          'is_ipv6': is_ip6,
                          'src_ip_addr': ip_pack,
                          'src_ip_prefix_len': ip_len,
@@ -330,16 +330,16 @@ class MethodHolder(VppTestCase):
 
             dst_port = 1234 + p
             src_port = 4321 + p
-            is_permit = self.PERMIT if p % 3 == 0 else self.DENY
-            denyMAC = True if not is_permit and p % 3 == 1 else False
-            denyIP = True if not is_permit and p % 3 == 2 else False
-            if not is_permit and ip_type == self.WILD_IP:
+            rule_action = self.PERMIT if p % 3 == 0 else self.DENY
+            denyMAC = True if not rule_action and p % 3 == 1 else False
+            denyIP = True if not rule_action and p % 3 == 2 else False
+            if not rule_action and ip_type == self.WILD_IP:
                 denyMAC = True
-            if not is_permit and mac_type == self.WILD_MAC:
+            if not rule_action and mac_type == self.WILD_MAC:
                 denyIP = True
 
             if traffic == self.BRIDGED:
-                if is_permit:
+                if rule_action:
                     src_mac = remote_dst_host._mac
                     dst_mac = 'de:ad:00:00:00:00'
                     src_ip4 = remote_dst_host.ip4
@@ -364,7 +364,7 @@ class MethodHolder(VppTestCase):
                     src_ip6 = remote_dst_host.ip6
                     dst_ip6 = src_if.remote_ip6
             else:
-                if is_permit:
+                if rule_action:
                     src_mac = remote_dst_host._mac
                     dst_mac = src_if.local_mac
                     src_ip4 = src_if.remote_ip4
@@ -390,7 +390,7 @@ class MethodHolder(VppTestCase):
                     src_ip6 = remote_dst_host.ip6
                     dst_ip6 = src_if.remote_ip6
 
-            if is_permit:
+            if rule_action:
                 info = self.create_packet_info(src_if, dst_if)
                 payload = self.info_to_payload(info)
             else:
@@ -513,7 +513,7 @@ class MethodHolder(VppTestCase):
             ip_rule = inet_pton(AF_INET6 if is_ip6 else AF_INET, ip)
 
             # create suitable ACL rule
-            if is_permit:
+            if rule_action:
                 rule_l4_sport = packet[UDP].sport
                 rule_l4_dport = packet[UDP].dport
                 rule_family = AF_INET6 if packet.haslayer(IPv6) else AF_INET
@@ -525,7 +525,7 @@ class MethodHolder(VppTestCase):
                     rule_l4_proto = packet[IP].proto
 
                 acl_rule = {
-                    'is_permit': is_permit,
+                    'rule_action': rule_action,
                     'is_ipv6': is_ip6,
                     'src_ip_addr': inet_pton(rule_family,
                                              packet[rule_l3_layer].src),
@@ -543,9 +543,9 @@ class MethodHolder(VppTestCase):
             if mac_type == self.WILD_MAC and ip_type == self.WILD_IP and p > 0:
                 continue
 
-            if is_permit:
+            if rule_action:
                 macip_rule = ({
-                    'is_permit': is_permit,
+                    'rule_action': rule_action,
                     'is_ipv6': is_ip6,
                     'src_ip_addr': ip_rule,
                     'src_ip_prefix_len': prefix_len,
@@ -556,7 +556,7 @@ class MethodHolder(VppTestCase):
 
         # deny all other packets
         if not (mac_type == self.WILD_MAC and ip_type == self.WILD_IP):
-            macip_rule = ({'is_permit': 0,
+            macip_rule = ({'rule_action': 0,
                            'is_ipv6': is_ip6,
                            'src_ip_addr': "",
                            'src_ip_prefix_len': 0,
@@ -564,7 +564,7 @@ class MethodHolder(VppTestCase):
                            'src_mac_mask': ""})
             macip_rules.append(macip_rule)
 
-        acl_rule = {'is_permit': 0,
+        acl_rule = {'rule_action': 0,
                     'is_ipv6': is_ip6}
         acl_rules.append(acl_rule)
         return {'stream': packets,

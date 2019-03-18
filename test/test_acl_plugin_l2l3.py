@@ -143,10 +143,10 @@ class TestACLpluginL2L3(VppTestCase):
                                    not is_udp_packet)
             is_reflected_icmp = is_reflectable_icmp and expect_established
             can_reflect_this_packet = is_udp_packet or is_reflectable_icmp
-            is_permit = i % 2
+            rule_action = i % 2
             remote_dst_index = i % len(dst_ip_if.remote_hosts)
             remote_dst_host = dst_ip_if.remote_hosts[remote_dst_index]
-            if is_permit == 1:
+            if rule_action == 1:
                 info = self.create_packet_info(src_ip_if, dst_ip_if)
                 payload = self.info_to_payload(info)
             else:
@@ -254,7 +254,7 @@ class TestACLpluginL2L3(VppTestCase):
                 rule_l4_proto = p[IP].proto
 
             new_rule = {
-                        'is_permit': is_permit,
+                        'rule_action': rule_action,
                         'is_ipv6': p.haslayer(IPv6),
                         'src_ip_addr': inet_pton(rule_family,
                                                  p[rule_l3_layer].src),
@@ -270,14 +270,14 @@ class TestACLpluginL2L3(VppTestCase):
                        }
             rules.append(new_rule)
             new_rule_permit = new_rule.copy()
-            new_rule_permit['is_permit'] = 1
+            new_rule_permit['rule_action'] = 1
             permit_rules.append(new_rule_permit)
 
             new_rule_permit_and_reflect = new_rule.copy()
             if can_reflect_this_packet:
-                new_rule_permit_and_reflect['is_permit'] = 2
+                new_rule_permit_and_reflect['rule_action'] = 2
             else:
-                new_rule_permit_and_reflect['is_permit'] = is_permit
+                new_rule_permit_and_reflect['rule_action'] = rule_action
 
             permit_and_reflect_rules.append(new_rule_permit_and_reflect)
             self.logger.info("create_stream pkt#%d: %s" % (i, payload))

@@ -227,7 +227,7 @@ class TestACLplugin(VppTestCase):
             dport_from = ports
             dport_to = ports
 
-        rule = ({'is_permit': permit_deny, 'is_ipv6': ip, 'proto': proto,
+        rule = ({'rule_action': permit_deny, 'is_ipv6': ip, 'proto': proto,
                  'srcport_or_icmptype_first': sport_from,
                  'srcport_or_icmptype_last': sport_to,
                  'src_ip_prefix_len': s_prefix,
@@ -538,7 +538,7 @@ class TestACLplugin(VppTestCase):
 
         self.logger.info("ACLP_TEST_START_0001")
         # Add an ACL
-        r = [{'is_permit': 1, 'is_ipv6': 0, 'proto': 17,
+        r = [{'rule_action': 1, 'is_ipv6': 0, 'proto': 17,
               'srcport_or_icmptype_first': 1234,
               'srcport_or_icmptype_last': 1235,
               'src_ip_prefix_len': 0,
@@ -568,7 +568,7 @@ class TestACLplugin(VppTestCase):
                                  r[i_rule][rule_key])
 
         # Add a deny-1234 ACL
-        r_deny = [{'is_permit': 0, 'is_ipv6': 0, 'proto': 17,
+        r_deny = [{'rule_action': 0, 'is_ipv6': 0, 'proto': 17,
                    'srcport_or_icmptype_first': 1234,
                    'srcport_or_icmptype_last': 1235,
                    'src_ip_prefix_len': 0,
@@ -577,7 +577,7 @@ class TestACLplugin(VppTestCase):
                    'dstport_or_icmpcode_last': 1234,
                    'dst_ip_addr': b'\x00\x00\x00\x00',
                    'dst_ip_prefix_len': 0},
-                  {'is_permit': 1, 'is_ipv6': 0, 'proto': 17,
+                  {'rule_action': 1, 'is_ipv6': 0, 'proto': 17,
                    'srcport_or_icmptype_first': 0,
                    'srcport_or_icmptype_last': 0,
                    'src_ip_prefix_len': 0,
@@ -920,7 +920,7 @@ class TestACLplugin(VppTestCase):
         for drules in result:
             for dr in drules.r:
                 self.assertEqual(dr.is_ipv6, r[i][0])
-                self.assertEqual(dr.is_permit, r[i][1])
+                self.assertEqual(dr.rule_action, r[i][1])
                 self.assertEqual(dr.proto, r[i][3])
 
                 if r[i][2] > 0:

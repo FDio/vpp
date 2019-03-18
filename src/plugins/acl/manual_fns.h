@@ -126,7 +126,7 @@ vl_api_acl_rule_t_print (vl_api_acl_rule_t * a, void *handle)
   u8 *s;
 
   s = format (0, "  %s ", a->is_ipv6 ? "ipv6" : "ipv4");
-  s = format_acl_action (s, a->is_permit);
+  s = format_acl_action (s, a->rule_action);
   s = format (s, " \\\n");
 
   if (a->is_ipv6)
@@ -158,7 +158,7 @@ vl_api_macip_acl_rule_t_print (vl_api_macip_acl_rule_t * a, void *handle)
   u8 *s;
 
   s = format (0, "  %s %s \\\n", a->is_ipv6 ? "ipv6" : "ipv4",
-              a->is_permit ? "permit" : "deny");
+              a->rule_action ? "permit" : "deny");
 
   s = format (s, "    src mac %U mask %U \\\n",
 	      format_ethernet_address, a->src_mac,
