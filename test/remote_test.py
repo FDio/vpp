@@ -3,14 +3,13 @@
 import inspect
 import os
 import unittest
+from framework import VppTestCase
 from multiprocessing import Process, Pipe
 from pickle import dumps
-
 import six
 from six import moves
-
-from framework import VppTestCase
-from aenum import Enum
+import sys
+from aenum import IntEnum, IntFlag
 
 
 class SerializableClassCopy(object):
@@ -270,7 +269,7 @@ class RemoteClass(Process):
             if type(obj) is tuple:
                 rv = tuple(rv)
             return rv
-        elif (isinstance(obj, Enum)):
+        elif (isinstance(obj, IntEnum) or isinstance(obj, IntFlag)):
             return obj.value
         else:
             return self._make_obj_serializable(obj)

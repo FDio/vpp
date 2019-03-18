@@ -318,7 +318,7 @@ state_change_cmd::issue(connection& con)
 
   auto& payload = req.get_request().get_payload();
   payload.sw_if_index = m_hdl.data().value();
-  payload.admin_up_down = m_hw_item.data().value();
+  payload.flags = (vapi_enum_if_status_flags)m_hw_item.data().value();
 
   VAPI_CALL(req.execute());
 
@@ -516,8 +516,8 @@ events_cmd::notify()
     std::shared_ptr<interface> sp = interface::find(handle);
 
     if (sp) {
-      interface::oper_state_t oper_state =
-        interface::oper_state_t::from_int(payload.link_up_down);
+      interface::oper_state_t oper_state = interface::oper_state_t::from_int(
+        payload.flags & vapi_enum_if_status_flags::IF_STATUS_API_FLAG_LINK_UP);
 
       VOM_LOG(log_level_t::DEBUG) << "Interface Event: " << sp->to_string()
                                   << " state: " << oper_state.to_string();
@@ -635,8 +635,8 @@ set_tag::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.is_add = 1;
   payload.sw_if_index = m_hw_item.data().value();
-  memset(payload.tag, 0, sizeof(payload.tag));
-  memcpy(payload.tag, m_name.c_str(), m_name.length());
+  memset(payload.tag.buf, 0, payload.tag.length);
+  memcpy(payload.tag.buf, m_name.c_str(), m_name.length());
 
   VAPI_CALL(req.execute());
 
