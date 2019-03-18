@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "22d090f3_cf24a35a",
+        "filename": "src/plugins/vmxnet3/README.md",
+        "patchSetId": 5
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-18T15:15:30Z",
+      "side": 1,
+      "message": "What is the line lenth above which the line should be wrapped?",
+      "range": {
+        "startLine": 10,
+        "startChar": 87,
+        "endLine": 10,
+        "endChar": 98
+      },
+      "revId": "ee8ba6877efb916b88255821f94ef33437724f75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
