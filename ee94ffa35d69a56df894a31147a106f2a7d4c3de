@@ -94,6 +94,30 @@
       "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "07ee50e1_77314dde",
+        "filename": "docs/usecases/vmxnet3.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-19T17:45:48Z",
+      "side": 1,
+      "message": "\u003e the below editor\n\nI was able to replicate (probably) your error. When you hit enter to wrap the line, you also need to add two spaces to align the text.\n\nBy the way, I usually use retext [1] if I want to look at the resulting formatting quickly.\n\n[1] https://packages.ubuntu.com/search?keywords\u003dretext",
+      "parentUuid": "c1ff4097_5ef9108c",
+      "range": {
+        "startLine": 66,
+        "startChar": 88,
+        "endLine": 66,
+        "endChar": 90
+      },
+      "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
