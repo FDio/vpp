@@ -382,7 +382,6 @@ static void
 stop_signal (int signum)
 {
   echo_main_t *um = &echo_main;
-
   um->time_to_stop = 1;
 }
 
@@ -390,7 +389,6 @@ static void
 stats_signal (int signum)
 {
   echo_main_t *um = &echo_main;
-
   um->time_to_print_stats = 1;
 }
 
@@ -401,7 +399,6 @@ setup_signal_handlers (void)
   signal (SIGINT, stop_signal);
   signal (SIGQUIT, stop_signal);
   signal (SIGTERM, stop_signal);
-
   return 0;
 }
 
@@ -580,6 +577,7 @@ client_thread_fn (void *arg)
 	break;
     }
 
+  clib_warning ("GOT OUT");
   DBG ("session %d done", session_index);
   em->tx_total += s->bytes_sent;
   em->rx_total += s->bytes_received;
@@ -876,7 +874,7 @@ clients_run (echo_main_t * em)
   start_time = clib_time_now (&em->clib_time);
   while (em->n_clients_connected < em->n_clients
 	 && (clib_time_now (&em->clib_time) - start_time < timeout)
-	 && em->state != STATE_FAILED)
+	 && em->state != STATE_FAILED && em->time_to_stop != 1)
 
     {
       int rc = svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_TIMEDWAIT, 1);
@@ -915,13 +913,13 @@ clients_run (echo_main_t * em)
   while (em->n_active_clients)
     if (!svm_msg_q_is_empty (em->our_event_queue))
       {
-	if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_WAIT, 0))
+	if (svm_msg_q_sub (em->our_event_queue, &msg, SVM_Q_TIMEDWAIT, 0))
 	  {
 	    clib_warning ("svm msg q returned");
 	    continue;
 	  }
 	e = svm_msg_q_msg_data (em->our_event_queue, &msg);
-	if (e->event_type != SESSION_IO_EVT_RX)
+	if (e->event_type != FIFO_EVENT_APP_RX)
 	  handle_mq_event (e);
 	svm_msg_q_free_msg (em->our_event_queue, &msg);
       }
@@ -1128,16 +1126,16 @@ server_handle_mq (echo_main_t * em)
       if (rc == ETIMEDOUT)
         continue;
       e = svm_msg_q_msg_data (em->our_event_queue, &msg);
+      clib_warning ("Event %d", e->event_type);
       switch (e->event_type)
 	{
-	case SESSION_IO_EVT_RX:
+	case FIFO_EVENT_APP_RX:
 	  server_handle_rx (em, e);
 	  break;
 	default:
 	  handle_mq_event (e);
 	  break;
 	}
-
       svm_msg_q_free_msg (em->our_event_queue, &msg);
     }
 }
@@ -1180,18 +1178,6 @@ server_send_unbind (echo_main_t * em)
   ump->client_index = em->my_client_index;
   memcpy (ump->uri, em->uri, vec_len (em->uri));
   vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & ump);
-}
-
-int
-server_unbind (echo_main_t * em)
-{
-  server_send_unbind (em);
-  if (wait_for_state_change (em, STATE_START))
-    {
-      clib_warning ("timeout waiting for STATE_START");
-      return -1;
-    }
-  return 0;
 }
 
 void
@@ -1270,7 +1256,7 @@ static void
     clib_warning ("failed to add tls key");
 }
 
-#define foreach_tcp_echo_msg                            		\
+#define foreach_quic_echo_msg                            		\
 _(BIND_URI_REPLY, bind_uri_reply)                       		\
 _(UNBIND_URI_REPLY, unbind_uri_reply)                   		\
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)   		\
@@ -1281,7 +1267,7 @@ _(APPLICATION_TLS_CERT_ADD_REPLY, application_tls_cert_add_reply)	\
 _(APPLICATION_TLS_KEY_ADD_REPLY, application_tls_key_add_reply)		\
 
 void
-tcp_echo_api_hookup (echo_main_t * em)
+quic_echo_api_hookup (echo_main_t * em)
 {
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
@@ -1290,7 +1276,7 @@ tcp_echo_api_hookup (echo_main_t * em)
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 1);
-  foreach_tcp_echo_msg;
+  foreach_quic_echo_msg;
 #undef _
 }
 
@@ -1303,8 +1289,8 @@ main (int argc, char **argv)
   unformat_input_t _argv, *a = &_argv;
   u8 *chroot_prefix;
   u8 *uri = 0;
-  u8 *bind_uri = (u8 *) "tcp://0.0.0.0/1234";
-  u8 *connect_uri = (u8 *) "tcp://6.0.1.1/1234";
+  u8 *bind_uri = (u8 *) "quic://0.0.0.0/1234";
+  u8 *connect_uri = (u8 *) "quic://6.0.1.1/1234";
   u64 bytes_to_send = 64 << 10, mbytes;
   char *app_name;
   u32 tmp;
@@ -1391,9 +1377,9 @@ main (int argc, char **argv)
   vec_validate (em->thread_args, em->n_clients - 1);
 
   setup_signal_handlers ();
-  tcp_echo_api_hookup (em);
+  quic_echo_api_hookup (em);
 
-  app_name = i_am_server ? "tcp_echo_server" : "tcp_echo_client";
+  app_name = i_am_server ? "quic_echo_server" : "quic_echo_client";
   if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
