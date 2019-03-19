@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dc7e1d16_7bc33fd2",
+        "filename": "src/plugins/dpdk/main.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2019-03-19T14:17:11Z",
+      "side": 1,
+      "message": "Question... would it also work to instruct folks that if they are using MLX drivers they need to:\n\nmodprobe ib_uverbs\n\n?\n\nLoading a KLM requires a level of privilege we may not have at the time vpp is run (particularly in K8s cases).",
+      "revId": "6ee43384b0f59be7e63e4f7c3a5a859156aeb225",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
