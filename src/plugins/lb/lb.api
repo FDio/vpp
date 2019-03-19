@@ -1,4 +1,5 @@
 option version = "1.0.0";
+import "vnet/ip/ip_types.api";
 
 /** \brief Configure Load-Balancer global parameters
     @param client_index - opaque cookie to identify the sender
@@ -14,7 +15,7 @@ autoreply define lb_conf
 {
   u32 client_index;
   u32 context;
-  u32 ip4_src_address;
+  vl_api_ip4_address_t ip4_src_address;
   u8 ip6_src_address[16];
   u32 sticky_buckets_per_core;
   u32 flow_timeout;
@@ -26,7 +27,7 @@ autoreply define lb_conf
     @param ip_prefix - IP address (IPv4 in lower order 32 bits).
     @param prefix_length - IP prefix length (96 + 'IPv4 prefix length' for IPv4).
     @param protocol - tcp or udp.
-    @param port - destination port.
+    @param port - destination port. (0) means 'all-port VIP'
     @param encap - Encap is ip4 GRE(0) or ip6 GRE(1) or L3DSR(2) or NAT4(3) or NAT6(4).
     @param dscp - DSCP bit corresponding to VIP(applicable in L3DSR mode only).
     @param type - service type(applicable in NAT4/NAT6 mode only).
