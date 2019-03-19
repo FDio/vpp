@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "91c66126_4eb870d2",
+        "filename": "docs/usecases/vmxnet3.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-19T16:17:36Z",
+      "side": 1,
+      "message": "Wrap lines to reasonable length.",
+      "range": {
+        "startLine": 66,
+        "startChar": 88,
+        "endLine": 66,
+        "endChar": 90
+      },
+      "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
