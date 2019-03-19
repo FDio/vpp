@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "07d16b07_cf6a4c03",
+        "filename": "src/plugins/perfmon/perfmon.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2019-03-19T11:25:14Z",
+      "side": 1,
+      "message": "Maybe get rid of this now?",
+      "revId": "2bd49d6ddeda69a4db4d8bf1d580d0c9c578f8ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
