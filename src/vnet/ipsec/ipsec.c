@@ -243,8 +243,6 @@ ipsec_init (vlib_main_t * vm)
 
   ipsec_rand_seed ();
 
-  clib_memset (im, 0, sizeof (im[0]));
-
   im->vnet_main = vnet_get_main ();
   im->vlib_main = vm;
 
