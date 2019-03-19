@@ -16,6 +16,7 @@
 #include <lb/lb.h>
 
 #include <vppinfra/byte_order.h>
+#include <vppinfra/string.h>
 #include <vlibapi/api.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -78,6 +79,18 @@ vl_api_lb_conf_t_handler
   lb_main_t *lbm = &lb_main;
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
+  if (*mp->ip4_src_address == ~0) {
+    clib_memcpy(&mp->ip4_src_address, &lbm->ip4_src_address, sizeof(lbm->ip4_src_address));
+  }
+  if (*mp->ip6_src_address == ~0) {
+    clib_memcpy(&mp->ip6_src_address, &lbm->ip6_src_address, sizeof(lbm->ip6_src_address));
+  }
+  if (mp->sticky_buckets_per_core == ~0) {
+    mp->sticky_buckets_per_core = lbm->per_cpu_sticky_buckets;
+  }
+  if (mp->flow_timeout == ~0) {
+    mp->flow_timeout = lbm->flow_timeout;
+  }
 
   rv = lb_conf((ip4_address_t *)&mp->ip4_src_address,
                (ip6_address_t *)mp->ip6_src_address,
