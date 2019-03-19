@@ -16,6 +16,7 @@ from jinja2 import Environment, FileSystemLoader
 from docker.errors import NotFound, APIError
 from docker import from_env
 from scapy.all import *
+from scapy.contrib.gtp_v2 import *
 
 
 verbose_levels = {
@@ -127,6 +128,7 @@ class Container(object):
     def pg_create_interface(self, local_ip, remote_ip, local_mac, remote_mac):
         # remote_ip can't have subnet mask
 
+        time.sleep(2)
         self.vppctl_exec("create packet-generator interface pg0")
         self.vppctl_exec("set int mac address pg0 {}".format(local_mac))
         self.vppctl_exec("set int ip addr pg0 {}".format(local_ip))
@@ -334,8 +336,8 @@ class Program(object):
         c1, c2, c3, c4 = instances
 
         # setup packet generator interfaces
-        c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
-            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+        #c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
+            #local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
 
         c4.pg_create_interface(local_ip="B::1/120", remote_ip="B::2",
             local_mac="aa:bb:cc:dd:ee:11", remote_mac="aa:bb:cc:dd:ee:22")
@@ -387,8 +389,99 @@ class Program(object):
         c1 = self.containers.get(self.get_name(self.instance_names[0]))
         c4 = self.containers.get(self.get_name(self.instance_names[-1]))
 
+        c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
+            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+
         p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
              IPv6(src="C::2", dst="B::2")/ICMPv6EchoRequest())
+
+        print("Sending packet on {}:".format(c1.name))
+        p.show2()
+
+        c1.enable_trace(10)
+        c4.enable_trace(10)
+
+        c4.pg_start_capture()
+
+        c1.pg_create_stream(p)
+        c1.pg_enable()
+
+        # timeout (sleep) if needed
+
+        print("Receiving packet on {}:".format(c4.name))
+        for p in c4.pg_read_packets():
+            p.show2()
+
+    def test_srv6(self):
+        # TESTS:
+        # trace add af-packet-input 10
+        # pg interface on c1 C::1/120
+        # pg interface on c4 B::1/120
+
+        self.start_containers()
+
+        c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c2 = self.containers.get(self.get_name(self.instance_names[1]))
+        c3 = self.containers.get(self.get_name(self.instance_names[2]))
+        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
+
+        c1.pg_create_interface(local_ip="C::1/120", remote_ip="C::2",
+            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+
+        c1.vppctl_exec("set sr encaps source addr D1::")
+        c1.vppctl_exec("sr policy add bsid D1::999:1 next D2:: next D3:: next D4::")
+        c1.vppctl_exec("sr steer l3 B::/120 via bsid D1::999:1")
+
+        c2.vppctl_exec("sr localsid address D2:: behavior end")
+
+        c3.vppctl_exec("sr localsid address D3:: behavior end")
+
+        c4.vppctl_exec("sr localsid address D4:: behavior end.dx6 pg0 B::2")
+
+        c2.set_ipv6_route("eth2", "A2::2", "D3::/128")
+        c2.set_ipv6_route("eth1", "A1::1", "C::/120")
+        c3.set_ipv6_route("eth2", "A3::2", "D4::/128")
+        c3.set_ipv6_route("eth1", "A2::1", "C::/120")
+
+        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
+             IPv6(src="C::2", dst="B::2")/ICMPv6EchoRequest())
+
+        print("Sending packet on {}:".format(c1.name))
+        p.show2()
+
+        c1.enable_trace(10)
+        c2.enable_trace(10)
+        c3.enable_trace(10)
+        c4.enable_trace(10)
+
+        c4.pg_start_capture()
+
+        c1.pg_create_stream(p)
+        c1.pg_enable()
+
+        # timeout (sleep) if needed
+
+        print("Receiving packet on {}:".format(c4.name))
+        for p in c4.pg_read_packets():
+            p.show2()
+
+
+    def test_tmap(self):
+        # TESTS:
+        # trace add af-packet-input 10
+        # pg interface on c1 172.20.0.1
+        # pg interface on c4 B::1/120
+
+        self.start_containers()
+
+        c1 = self.containers.get(self.get_name(self.instance_names[0]))
+        c4 = self.containers.get(self.get_name(self.instance_names[-1]))
+
+        c1.pg_create_interface(local_ip="172.20.0.1", remote_ip="172.20.0.2",
+            local_mac="aa:bb:cc:dd:ee:01", remote_mac="aa:bb:cc:dd:ee:02")
+
+        p = (Ether(src="aa:bb:cc:dd:ee:02", dst="aa:bb:cc:dd:ee:01")/
+             IP(src="172.20.0.2", dst="172.20.0.1")/UDP(sport=2152, dport=2152)/GTPHeader(teid=200)/IP(src="172.99.0.1", dst="172.99.0.2")/ICMP())
 
         print("Sending packet on {}:".format(c1.name))
         p.show2()
@@ -477,7 +570,7 @@ def get_args():
             help="Test related commands.")
 
     p3.add_argument("op", choices=[
-        "ping"])
+        "ping", "srv6", "tmap"])
 
     args = parser.parse_args()
     if not hasattr(args, "op") or not args.op:
@@ -509,6 +602,10 @@ def main(op=None, image=None, prefix=None, verbose=None, index=None, command=Non
             program.bash(index)
         elif op == 'ping':
             program.test_ping()
+        elif op == 'srv6':
+            program.test_srv6()
+        elif op == 'tmap':
+            program.test_tmap()
 
     except Exception:
         program.logger.exception("")
