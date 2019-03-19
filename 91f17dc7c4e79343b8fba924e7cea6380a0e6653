@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "01d6cbf8_2fa9c525",
+        "filename": "src/plugins/crypto_openssl/CMakeLists.txt",
+        "patchSetId": 5
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-19T17:34:09Z",
+      "side": 1,
+      "message": "2019\n\nFor every new or edited file.",
+      "range": {
+        "startLine": 1,
+        "startChar": 16,
+        "endLine": 1,
+        "endChar": 20
+      },
+      "revId": "91f17dc7c4e79343b8fba924e7cea6380a0e6653",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
