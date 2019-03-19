@@ -141,7 +141,6 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
 
   p.id = ntohl (mp->entry.spd_id);
   p.priority = ntohl (mp->entry.priority);
-  p.is_outbound = mp->entry.is_outbound;
 
   itype = ip_address_decode (&mp->entry.remote_address_start, &p.raddr.start);
   ip_address_decode (&mp->entry.remote_address_stop, &p.raddr.stop);
@@ -169,6 +168,11 @@ static void vl_api_ipsec_spd_entry_add_del_t_handler
       goto out;
     }
   p.sa_id = ntohl (mp->entry.sa_id);
+  rv =
+    ipsec_policy_mk_type (mp->entry.is_outbound, p.is_ipv6, p.policy,
+			  &p.type);
+  if (rv)
+    goto out;
 
   rv = ipsec_add_del_policy (vm, &p, mp->is_add, &stat_index);
   if (rv)
@@ -466,7 +470,8 @@ send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
 
   mp->entry.spd_id = htonl (p->id);
   mp->entry.priority = htonl (p->priority);
-  mp->entry.is_outbound = p->is_outbound;
+  mp->entry.is_outbound = ((p->type == IPSEC_SPD_POLICY_IP6_OUTBOUND) ||
+			   (p->type == IPSEC_SPD_POLICY_IP4_OUTBOUND));
 
   ip_address_encode (&p->laddr.start, IP46_TYPE_ANY,
 		     &mp->entry.local_address_start);
@@ -492,7 +497,7 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
 {
   vl_api_registration_t *reg;
   ipsec_main_t *im = &ipsec_main;
-  ipsec_spd_policy_t ptype;
+  ipsec_spd_policy_type_t ptype;
   ipsec_policy_t *policy;
   ipsec_spd_t *spd;
   uword *p;

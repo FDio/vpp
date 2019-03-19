@@ -41,6 +41,24 @@ format_ipsec_policy_action (u8 * s, va_list * args)
   return s;
 }
 
+u8 *
+format_ipsec_policy_type (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  char *t = 0;
+
+  switch (i)
+    {
+#define _(f,str) case IPSEC_SPD_POLICY_##f: t = str; break;
+      foreach_ipsec_spd_policy_type
+#undef _
+    default:
+      s = format (s, "unknown");
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
 uword
 unformat_ipsec_policy_action (unformat_input_t * input, va_list * args)
 {
@@ -143,8 +161,10 @@ format_ipsec_policy (u8 * s, va_list * args)
 
   p = pool_elt_at_index (im->policies, pi);
 
-  s = format (s, "  [%d] priority %d action %U protocol ",
-	      pi, p->priority, format_ipsec_policy_action, p->policy);
+  s = format (s, "  [%d] priority %d action %U type %U protocol ",
+	      pi, p->priority,
+	      format_ipsec_policy_action, p->policy,
+	      format_ipsec_policy_type, p->type);
   if (p->protocol)
     {
       s = format (s, "%U", format_ip_protocol, p->protocol);

@@ -31,10 +31,12 @@ typedef enum ipsec_spd_policy_t_
   foreach_ipsec_spd_policy_type
 #undef _
     IPSEC_SPD_POLICY_N_TYPES,
-} ipsec_spd_policy_t;
+} ipsec_spd_policy_type_t;
 
 #define FOR_EACH_IPSEC_SPD_POLICY_TYPE(_t)      \
   for (_t = 0; _t < IPSEC_SPD_POLICY_N_TYPES; _t++)
+
+extern u8 *format_ipsec_policy_type (u8 * s, va_list * args);
 
 /**
  * @brief A Secruity Policy Database
