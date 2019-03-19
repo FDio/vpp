@@ -80,6 +80,12 @@ typedef struct
 
 typedef struct
 {
+  vnet_crypto_op_t *crypto_ops;
+  vnet_crypto_op_t *integ_ops;
+} ipsec_per_thread_data_t;
+
+typedef struct
+{
   /* pool of tunnel instances */
   ipsec_spd_t *spds;
   /* Pool of security associations */
@@ -142,6 +148,9 @@ typedef struct
 
   /* crypto integ data */
   ipsec_main_integ_alg_t *integ_algs;
+
+  /* per-thread data */
+  ipsec_per_thread_data_t *ptd;
 } ipsec_main_t;
 
 extern ipsec_main_t ipsec_main;
