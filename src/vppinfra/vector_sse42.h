@@ -691,6 +691,18 @@ u32x4_scatter_one (u32x4 r, int index, void *p)
   *(u32 *) p = r[index];
 }
 
+static_always_inline u8x16
+u8x16_is_greater (u8x16 v1, u8x16 v2)
+{
+  return (u8x16) _mm_cmpgt_epi8 ((__m128i) v1, (__m128i) v2);
+}
+
+static_always_inline u8x16
+u8x16_blend (u8x16 v1, u8x16 v2, u8x16 mask)
+{
+  return (u8x16) _mm_blendv_epi8 ((__m128i) v1, (__m128i) v2, (__m128i) mask);
+}
+
 
 #endif /* included_vector_sse2_h */
 
