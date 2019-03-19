@@ -30,11 +30,21 @@ I := $(INSTALL_DIR)
 include packages.mk
 include packages/nasm.mk
 include packages/ipsec-mb.mk
+include packages/quicly.mk
 include packages/dpdk.mk
 
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
+
+$(B)/.build.ok: build-dpdk quicly-install
+	@touch $@
+
+.PHONY: build
+build: $(B)/.build.ok
+
+.PHONY: install
+install: $(B)/.build.ok
 
 ##############################################################################
 # .deb packaging
@@ -56,7 +66,7 @@ deb/debian/changelog: Makefile
 
 $(DEV_DEB): deb/debian/changelog
 	@cd deb && dpkg-buildpackage -b -uc -us
-	git clean -fdx deb
+	@git clean -ffdx deb
 
 build-deb: $(DEV_DEB)
 
@@ -105,7 +115,7 @@ $(DEV_RPM): Makefile rpm/vpp-ext-deps.spec
 	  --define "_release $(PKG_SUFFIX)" \
 	  $(CURDIR)/rpm/vpp-ext-deps.spec
 	mv rpm/RPMS/$(RPM_ARCH)/*.rpm .
-	@git clean -fdx rpm
+	@git clean -ffdx rpm
 
 build-rpm: $(DEV_RPM)
 
