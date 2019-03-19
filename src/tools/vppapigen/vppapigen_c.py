@@ -127,10 +127,16 @@ def typedefs(objs, aliases, filename):
         tname = o.__class__.__name__
         output += duplicate_wrapper_head(o.name)
         if tname == 'Enum':
-            output += "typedef enum {\n"
+            if o.enumtype == 'u32':
+                output += "typedef enum {\n"
+            else:
+                output += "typedef enum __attribute__((__packed__)) {\n"
+
             for b in o.block:
                 output += "    %s = %s,\n" % (b[0], b[1])
             output += '} vl_api_%s_t;\n' % o.name
+            if o.enumtype != 'u32':
+                output += 'STATIC_ASSERT(sizeof(vl_api_%s_t) == sizeof(%s), "size of API enum %s is wrong");\n' % (o.name, o.enumtype, o.name)
         else:
             if tname == 'Union':
                 output += "typedef VL_API_PACKED(union _vl_api_%s {\n" % o.name
