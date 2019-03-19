@@ -85,6 +85,7 @@ typedef struct
   u8 *iv;
   u8 *src;
   u8 *dst;
+  uword user_data;
 } vnet_crypto_op_t;
 
 typedef struct
