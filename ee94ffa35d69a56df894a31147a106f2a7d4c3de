@@ -70,6 +70,30 @@
       "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c1ff4097_5ef9108c",
+        "filename": "docs/usecases/vmxnet3.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-03-19T17:37:15Z",
+      "side": 1,
+      "message": "I copy and paste the entire content of the file to the below editor to view the actual formatted text.\n\nhttp://rst.ninjs.org/#",
+      "parentUuid": "f529172a_51871b68",
+      "range": {
+        "startLine": 66,
+        "startChar": 88,
+        "endLine": 66,
+        "endChar": 90
+      },
+      "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
