@@ -333,6 +333,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 	    }
 	}
 
+      fformat (stderr, "\nDecrypted: %U\n", format_hexdump,
+	       vlib_buffer_get_current (ob[0]), ob[0]->current_length);
+
       /* next */
       n_left_from -= 1;
       ib += 1;
