@@ -224,8 +224,6 @@ ipsec_init (vlib_main_t * vm)
   ipsec_main_t *im = &ipsec_main;
   ipsec_main_crypto_alg_t *a;
 
-  clib_memset (im, 0, sizeof (im[0]));
-
   im->vnet_main = vnet_get_main ();
   im->vlib_main = vm;
 
