@@ -28,6 +28,7 @@
   _(AES_256_CBC, "aes-256-cbc")
 
 #define foreach_hmac_alg \
+  _(MD5, "md5") \
   _(SHA1, "sha-1") \
   _(SHA224, "sha-224")  \
   _(SHA256, "sha-256")  \
