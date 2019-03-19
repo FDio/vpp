@@ -9,10 +9,8 @@ import os
 import time
 from collections import deque
 
-import deprecation
 from six import moves, iteritems
 from vpp_papi import VPP, mac_pton
-
 from hook import Hook
 from vpp_l2 import L2_PORT_TYPE
 from vpp_ip_route import MPLS_IETF_MAX_LABEL, MPLS_LABEL_INVALID
@@ -389,9 +387,6 @@ class VppPapiProvider(object):
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
-    @deprecation.deprecated(
-        deprecated_in="19.04", removed_in="19.07",
-        details="Use the Corresponding API function instead.")
     def cli(self, cli):
         """ Execute a CLI, calling the before/after hooks appropriately.
 
