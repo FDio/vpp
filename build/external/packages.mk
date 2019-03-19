@@ -72,9 +72,39 @@ $(B)/.$1.extract.ok: $(B)/.$1.download.ok
 $1-extract: $(B)/.$1.extract.ok
 
 ##############################################################################
+# Git clone & checkout
+##############################################################################
+
+$(B)/.$1.clone.ok:
+	$$(call h1,"Cloning $1 $($1_repository)")
+	@mkdir -p $$($1_src_dir)
+	@git clone --recursive $$($1_repository) $$($1_src_dir)
+ifneq ($$($1_version),)
+	$$(call h1,"Checking out $1 $($1_version)")
+	cd $$($1_src_dir) && git -c advice.detachedHead=false checkout $$($1_version)
+	cd $$($1_src_dir) && git submodule update --init
+endif
+	@touch $$@
+
+.PHONY: $1-clone
+$1-clone: $(B)/.$1.clone.ok
+
+##############################################################################
+# Fetch source : clone or extract
+##############################################################################
+
+ifeq ($$($1_repository),)
+$(B)/.$1.fetchsrc.ok: $(B)/.$1.extract.ok
+	@touch $$@
+else
+$(B)/.$1.fetchsrc.ok: $(B)/.$1.clone.ok
+	@touch $$@
+endif
+
+##############################################################################
 # Patch
 ##############################################################################
-$(B)/.$1.patch.ok: $(B)/.$1.extract.ok
+$(B)/.$1.patch.ok: $(B)/.$1.fetchsrc.ok
 	$$(call h1,"patching $1 $($1_version)")
 ifneq ($$(wildcard $$($1_patch_dir)/*.patch),)
 	@for f in $$($1_patch_dir)/*.patch ; do \
