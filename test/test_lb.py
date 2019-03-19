@@ -57,8 +57,8 @@ class TestLB(VppTestCase):
             cls.vapi.ip_add_del_route(dst_address=dst6, dst_address_length=16,
                                       next_hop_address=cls.pg1.remote_ip6n,
                                       is_ipv6=1)
-            cls.vapi.cli("lb conf ip4-src-address 39.40.41.42")
-            cls.vapi.cli("lb conf ip6-src-address 2004::1")
+            cls.vapi.lb_conf(ip4_src_address="39.40.41.42",
+                             ip6_src_address="2004::1")
         except Exception:
             super(TestLB, cls).tearDownClass()
             raise
@@ -186,8 +186,8 @@ class TestLB(VppTestCase):
                 self.logger.error(ppp("Unexpected or invalid packet:", p))
                 raise
 
-        # This is just to 1roughly check that the balancing algorithm
-        # is not completly biased.
+        # This is just to roughly check that the balancing algorithm
+        # is not completely biased.
         for asid in self.ass:
             if load[asid] < len(self.packets) / (len(self.ass) * 2):
                 self.logger.error(

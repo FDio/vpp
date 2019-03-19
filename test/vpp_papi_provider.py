@@ -111,6 +111,8 @@ defaultmapping = {
     'ipsec_tunnel_if_add_del': {'is_add': 1, 'anti_replay': 1, },
     'l2_emulation': {'enable': 1, },
     'l2fib_add_del': {'is_add': 1, },
+    'lb_conf': {'sticky_buckets_per_core': 4294967295,
+                'flow_timeout': 4294967295},
     'lisp_add_del_adjacency': {'is_add': 1, },
     'lisp_add_del_local_eid': {'is_add': 1, },
     'lisp_add_del_locator': {'priority': 1, 'weight': 1, 'is_add': 1, },
