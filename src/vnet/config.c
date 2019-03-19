@@ -242,7 +242,7 @@ vnet_config_add_feature (vlib_main_t * vm,
 			 void *feature_config, u32 n_feature_config_bytes)
 {
   vnet_config_t *old, *new;
-  vnet_config_feature_t *new_features, *f;
+  vnet_config_feature_t *new_features, *f, *check = 0;
   u32 n_feature_config_u32s;
   u32 node_index = vec_elt (cm->node_index_by_feature_index, feature_index);
 
@@ -262,16 +262,38 @@ vnet_config_add_feature (vlib_main_t * vm,
       if (new_features)
 	new_features = duplicate_feature_vector (new_features);
     }
+  /*check the to_enable feature whether had already been enabled or not */
+  if (old)
+    {
+      n_feature_config_u32s =
+	round_pow2 (n_feature_config_bytes,
+		    sizeof (check->feature_config[0])) /
+	sizeof (check->feature_config[0]);
 
-  vec_add2 (new_features, f, 1);
-  f->feature_index = feature_index;
-  f->node_index = node_index;
+      vec_foreach (check, old->features)
+      {
+	if (check->feature_index == feature_index
+	    && vec_len (check->feature_config) == n_feature_config_u32s
+	    && (n_feature_config_u32s == 0
+		|| !memcmp (check->feature_config, feature_config,
+			    n_feature_config_bytes)))
+	  break;
+      }
+    }
 
-  n_feature_config_u32s =
-    round_pow2 (n_feature_config_bytes,
-		sizeof (f->feature_config[0])) /
-    sizeof (f->feature_config[0]);
-  vec_add (f->feature_config, feature_config, n_feature_config_u32s);
+  /*feature has not been enabled in the arc */
+  if (!old || check >= vec_end (old->features))
+    {
+      vec_add2 (new_features, f, 1);
+      f->feature_index = feature_index;
+      f->node_index = node_index;
+
+      n_feature_config_u32s =
+	round_pow2 (n_feature_config_bytes,
+		    sizeof (f->feature_config[0])) /
+	sizeof (f->feature_config[0]);
+      vec_add (f->feature_config, feature_config, n_feature_config_u32s);
+    }
 
   /* Sort (prioritize) features. */
   if (vec_len (new_features) > 1)
