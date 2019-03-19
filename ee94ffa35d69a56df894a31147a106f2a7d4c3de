@@ -22,6 +22,30 @@
       "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4be9d5ae_3c823e41",
+        "filename": "docs/usecases/vmxnet3.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2019-03-19T17:19:49Z",
+      "side": 1,
+      "message": "I did try to break it up to 100 chars per line before and I was getting an error when I use the reStructuredText editor to view it, saying there was a blank line in between bullet points. Looking at existing bullet points in other files, they were also entered as a continuous long line. So I think there is nothing wrong to do it this way and reStructuredText editor can format and display the long line perfectly.",
+      "parentUuid": "91c66126_4eb870d2",
+      "range": {
+        "startLine": 66,
+        "startChar": 88,
+        "endLine": 66,
+        "endChar": 90
+      },
+      "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
