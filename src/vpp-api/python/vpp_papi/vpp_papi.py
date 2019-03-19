@@ -95,6 +95,7 @@ class FuncWrapper(object):
     def __init__(self, func):
         self._func = func
         self.__name__ = func.__name__
+        self.__doc__ = func.__doc__
 
     def __call__(self, **kwargs):
         return self._func(**kwargs)
