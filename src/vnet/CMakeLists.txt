@@ -1588,6 +1588,12 @@ if(VPP_BUILD_SESSION_ECHO_APPS)
     DEPENDS api_headers
     NO_INSTALL
     )
+  add_vpp_executable(quic_echo
+    SOURCES ../tests/vnet/session/quic_echo.c
+    LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
+    DEPENDS api_headers
+    NO_INSTALL
+    )
   add_vpp_executable(udp_echo
     SOURCES ../tests/vnet/session/udp_echo.c
     LINK_LIBRARIES vlibmemoryclient svm vppinfra pthread m rt
