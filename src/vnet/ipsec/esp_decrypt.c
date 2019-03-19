@@ -217,8 +217,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  (sa0->crypto_alg >= IPSEC_CRYPTO_ALG_DES_CBC &&
 	   sa0->crypto_alg <= IPSEC_CRYPTO_ALG_3DES_CBC))
 	{
-	  const int BLOCK_SIZE = im->crypto_algs[sa0->crypto_alg].block_size;
-	  const int IV_SIZE = im->crypto_algs[sa0->crypto_alg].iv_size;
+	  const int BLOCK_SIZE = sa0->block_size;
+	  const int IV_SIZE = sa0->block_size;
 	  esp_footer_t *f0;
 	  u8 ip_hdr_size = 0;
 

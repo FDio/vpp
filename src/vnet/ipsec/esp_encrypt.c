@@ -86,6 +86,27 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   return s;
 }
 
+/* pad packet in input buffer */
+static_always_inline u8 *
+esp_add_footer (vlib_buffer_t *b, u8 block_size)
+{
+  esp_footer_t *f;
+  u16 current_length = b->current_length;
+  int blocks = 1 + (current_length + 1) / block_size;
+  u8 pad_bytes = block_size * blocks - 2 - current_length;
+  u8 i;
+  u8 *padding = vlib_buffer_get_current (b) + current_length;
+  b->current_length = current_length = block_size * blocks;
+
+  for (i = 0; i < pad_bytes; ++i)
+    padding[i] = i + 1;
+
+  f = vlib_buffer_get_current (b) + current_length - 2;
+  f->pad_length = pad_bytes;
+
+  return &f->next_header;
+}
+
 always_inline void
 esp_encrypt_cbc (vlib_main_t * vm, ipsec_crypto_alg_t alg,
 		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
@@ -117,6 +138,138 @@ esp_encrypt_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * from_frame,
 		    int is_ip6)
 {
+#if 1
+  ipsec_main_t *im = &ipsec_main;
+  u32 *from = vlib_frame_vector_args (from_frame);
+  u32 n_left = from_frame->n_vectors;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+  u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
+
+  vlib_get_buffers (vm, from, b, n_left);
+
+  while (n_left > 0)
+    {
+      u32 sa_index0 = vnet_buffer (b[0])->ipsec.sad_index;
+      ipsec_sa_t *sa0 = pool_elt_at_index (im->sad, sa_index0);
+      dpo_id_t *dpo;
+      esp_header_t *esp;
+      u8 *data, *next_hdr_ptr;
+      u32 hdr_len;
+
+      next[0] = ESP_ENCRYPT_NEXT_DROP;
+
+      /* space for IV */
+      hdr_len = sa0->iv_size;
+
+      if (sa0->is_tunnel)
+	{
+          data = vlib_buffer_get_current (b[0]);
+	  next_hdr_ptr = esp_add_footer(b[0], sa0->block_size);
+
+	  /* ESP header */
+	  hdr_len += sizeof (*esp);
+	  esp = (esp_header_t *) (data - hdr_len);
+
+	  /* optional UDP header */
+	  if (sa0->udp_encap)
+	    {
+	      int len = sizeof (udp_header_t);
+	      hdr_len += len;
+	      clib_memcpy_fast (data - hdr_len, &sa0->udp_hdr, len);
+	    }
+
+	  /* IP header */
+	  if (sa0->is_tunnel_ip6)
+	    {
+	      ip6_header_t * ip6;
+	      int len = sizeof (ip6_header_t);
+	      hdr_len += len;
+	      ip6 = (ip6_header_t *) (data - hdr_len);
+	      clib_memcpy_fast (ip6, &sa0->ip6_hdr, len);
+	      *next_hdr_ptr = IP_PROTOCOL_IPV6;
+	      ip6->payload_length = b[0]->current_length + hdr_len - len;
+	    }
+	  else
+	    {
+	      ip4_header_t * ip4;
+	      int len = sizeof (ip4_header_t);
+	      hdr_len += len;
+	      ip4 = (ip4_header_t *) (data - hdr_len);
+	      clib_memcpy_fast (ip4, &sa0->ip4_hdr, len);
+	      *next_hdr_ptr = IP_PROTOCOL_IP_IN_IP;
+	      ip4->length = b[0]->current_length + hdr_len;
+	    }
+
+	  dpo = &sa0->dpo[IPSEC_PROTOCOL_ESP];
+	  next[0] = dpo->dpoi_next_node;
+	  vnet_buffer (b[0])->ip.adj_index[VLIB_TX] = dpo->dpoi_index;
+	}
+      else /* transport mode */
+	{
+	  udp_header_t *udp;
+	  u8 exp_hdr_sz = is_ip6 ? sizeof (ip6_header_t) :
+	    sizeof (ip4_header_t);
+	  u8 ip_hdr_sz = exp_hdr_sz;  //FIXME
+	  u8 *old_hdr_pos = vlib_buffer_get_current (b[0]);
+	  vlib_buffer_advance (b[0], ip_hdr_sz);
+	  data = vlib_buffer_get_current (b[0]);
+	  next_hdr_ptr = esp_add_footer(b[0], sa0->block_size);
+
+	  /* ESP header */
+	  hdr_len += sizeof (*esp);
+	  esp = (esp_header_t *) (data - hdr_len);
+
+	  /* optional UDP header */
+	  if (sa0->udp_encap)
+	    {
+	      hdr_len += sizeof (udp_header_t);
+	      udp = (udp_header_t *) (data - hdr_len);
+	    }
+
+	  /* IP header */
+	  if (ip_hdr_sz == exp_hdr_sz)
+	    clib_memcpy_fast (data - hdr_len, old_hdr_pos, exp_hdr_sz);
+	  else
+	    clib_memcpy_fast (data - hdr_len, old_hdr_pos, ip_hdr_sz);
+
+	  if (is_ip6)
+	    {
+	      ip6_header_t *ip6 = (ip6_header_t *) (data - hdr_len);
+	      *next_hdr_ptr = ip6->protocol;
+	      ip6->protocol = IP_PROTOCOL_IPSEC_ESP;
+	    }
+	  else
+	    {
+	      ip4_header_t *ip4 = (ip4_header_t *) (data - hdr_len);
+	      *next_hdr_ptr = ip4->protocol;
+	      ip4->protocol = IP_PROTOCOL_IPSEC_ESP;
+	    }
+
+	  /* copy UDP header */
+	  if (sa0->udp_encap)
+	    clib_memcpy_fast (udp, &sa0->udp_hdr, sizeof (udp_header_t));
+	}
+
+      esp->spi = clib_net_to_host_u32 (sa0->spi);
+
+      fformat (stderr, "\n%U\n", format_hexdump, vlib_buffer_get_current (b[0]),
+	       b[0]->current_length);
+
+      vlib_buffer_advance (b[0], 0 - hdr_len);
+
+      fformat (stderr, "\n%U\n", format_hexdump, vlib_buffer_get_current (b[0]),
+	       b[0]->current_length);
+
+      /* next */
+      n_left -= 1;
+      next += 1;
+      b += 1;
+    }
+
+  vlib_buffer_enqueue_to_next (vm, node, from, nexts, from_frame->n_vectors);
+  return n_left;
+
+#else
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left_from = from_frame->n_vectors;
   ipsec_main_t *im = &ipsec_main;
@@ -389,6 +542,7 @@ esp_encrypt_inline (vlib_main_t * vm,
 done:
   vlib_buffer_free (vm, from, from_frame->n_vectors);
   return n_alloc;
+#endif
 }
 
 VLIB_NODE_FN (esp4_encrypt_node) (vlib_main_t * vm,

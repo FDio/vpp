@@ -106,6 +106,8 @@ typedef struct
 
   ipsec_crypto_alg_t crypto_alg;
   ipsec_key_t crypto_key;
+  u8 iv_size;
+  u8 block_size;
 
   ipsec_integ_alg_t integ_alg;
   ipsec_key_t integ_key;
@@ -118,6 +120,9 @@ typedef struct
   u8 udp_encap;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
+  ip4_header_t ip4_hdr;
+  ip6_header_t ip6_hdr;
+  udp_header_t udp_hdr;
 
   fib_node_index_t fib_entry_index;
   u32 sibling;
@@ -156,6 +161,8 @@ extern int ipsec_sa_add (u32 id,
 			 u32 * sa_index);
 extern u32 ipsec_sa_del (u32 id);
 extern void ipsec_sa_stack (ipsec_sa_t * sa);
+extern void ipsec_sa_set_crypto_alg (ipsec_sa_t * sa,
+				     ipsec_crypto_alg_t crypto_alg);
 
 extern u8 ipsec_is_sa_used (u32 sa_index);
 extern int ipsec_set_sa_key (u32 id,
