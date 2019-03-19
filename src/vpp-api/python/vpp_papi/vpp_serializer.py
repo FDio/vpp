@@ -279,11 +279,13 @@ class VLAList_legacy():
 class VPPEnumType(object):
     def __init__(self, name, msgdef):
         self.size = types['u32'].size
+        self.enumtype = 'u32'
         e_hash = {}
         for f in msgdef:
             if type(f) is dict and 'enumtype' in f:
                 if f['enumtype'] != 'u32':
-                    raise NotImplementedError
+                    self.size = types[f['enumtype']].size
+                    self.enumtype = f['enumtype']
                 continue
             ename, evalue = f
             e_hash[ename] = evalue
@@ -297,10 +299,10 @@ class VPPEnumType(object):
         return True
 
     def pack(self, data, kwargs=None):
-        return types['u32'].pack(data)
+        return types[self.enumtype].pack(data)
 
     def unpack(self, data, offset=0, result=None, ntc=False):
-        x, size = types['u32'].unpack(data, offset)
+        x, size = types[self.enumtype].unpack(data, offset)
         return self.enum(x), size
 
 
