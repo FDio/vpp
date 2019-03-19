@@ -76,14 +76,14 @@ class TestCDP(VppTestCase):
         super(TestCDP, cls).tearDownClass()
 
     def test_enable_cdp(self):
-        self.logger.info(self.vapi.cli("cdp enable"))
+        self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
         ret = self.vapi.cli("show cdp")
         self.logger.info(ret)
         not_enabled = self.nen_ptr.search(ret)
         self.assertFalse(not_enabled, "CDP isn't enabled")
 
     def test_send_cdp_packet(self):
-        self.logger.info(self.vapi.cli("cdp enable"))
+        self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
         self.send_packet(self.create_packet())
 
         neighbors = list(self.show_cdp())
@@ -103,7 +103,7 @@ class TestCDP(VppTestCase):
         self.send_bad_packet(8, ".")
 
     def send_bad_packet(self, l, v):
-        self.logger.info(self.vapi.cli("cdp enable"))
+        self.logger.info(self.vapi.cdp_enable_disable(enable_disable=1))
         self.send_packet(self.create_bad_packet(l, v))
 
         errors = list(self.show_errors())
