@@ -16,6 +16,7 @@
 #include <lb/lb.h>
 
 #include <vppinfra/byte_order.h>
+#include <vppinfra/string.h>
 #include <vlibapi/api.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -79,8 +80,15 @@ vl_api_lb_conf_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
 
+  if (mp->sticky_buckets_per_core == ~0) {
+    mp->sticky_buckets_per_core = lbm->per_cpu_sticky_buckets;
+  }
+  if (mp->flow_timeout == ~0) {
+    mp->flow_timeout = lbm->flow_timeout;
+  }
+
   rv = lb_conf((ip4_address_t *)&mp->ip4_src_address,
-               (ip6_address_t *)mp->ip6_src_address,
+               (ip6_address_t *)&mp->ip6_src_address,
                mp->sticky_buckets_per_core,
                mp->flow_timeout);
 
@@ -93,7 +101,7 @@ static void *vl_api_lb_conf_t_print
   u8 * s;
   s = format (0, "SCRIPT: lb_conf ");
   s = format (s, "%U ", format_ip4_address, (ip4_address_t *)&mp->ip4_src_address);
-  s = format (s, "%U ", format_ip6_address, (ip6_address_t *)mp->ip6_src_address);
+  s = format (s, "%U ", format_ip6_address, (ip6_address_t *)&mp->ip6_src_address);
   s = format (s, "%u ", mp->sticky_buckets_per_core);
   s = format (s, "%u ", mp->flow_timeout);
   FINISH;

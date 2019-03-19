@@ -161,7 +161,7 @@ static int api_lb_conf (vat_main_t * vam)
 
   M(LB_CONF, mp);
   clib_memcpy (&(mp->ip4_src_address), &ip4_src_address, sizeof (ip4_src_address));
-  clib_memcpy (mp->ip6_src_address, &ip6_src_address, sizeof (ip6_src_address));
+  clib_memcpy (&(mp->ip6_src_address), &ip6_src_address, sizeof (ip6_src_address));
   mp->sticky_buckets_per_core = htonl (sticky_buckets_per_core);
   mp->flow_timeout = htonl (flow_timeout);
 
