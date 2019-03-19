@@ -247,6 +247,19 @@ u32x8_scatter_one (u32x8 r, int index, void *p)
   *(u32 *) p = r[index];
 }
 
+static_always_inline u8x32
+u8x32_is_greater (u8x32 v1, u8x32 v2)
+{
+  return (u8x32) _mm256_cmpgt_epi8 ((__m256i) v1, (__m256i) v2);
+}
+
+static_always_inline u8x32
+u8x32_blend (u8x32 v1, u8x32 v2, u8x32 mask)
+{
+  return (u8x32) _mm256_blendv_epi8 ((__m256i) v1, (__m256i) v2,
+				     (__m256i) mask);
+}
+
 #endif /* included_vector_avx2_h */
 
 /*
