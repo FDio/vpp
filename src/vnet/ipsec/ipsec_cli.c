@@ -226,12 +226,14 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
   int rv, is_add = 0;
   u32 tmp, tmp2, stat_index;
   clib_error_t *error = NULL;
+  u32 is_outbound;
 
   clib_memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
   p.laddr.stop.ip4.as_u32 = p.raddr.stop.ip4.as_u32 = (u32) ~ 0;
   p.laddr.stop.ip6.as_u64[0] = p.laddr.stop.ip6.as_u64[1] = (u64) ~ 0;
   p.raddr.stop.ip6.as_u64[0] = p.raddr.stop.ip6.as_u64[1] = (u64) ~ 0;
+  is_outbound = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -245,9 +247,9 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "spd %u", &p.id))
 	;
       else if (unformat (line_input, "inbound"))
-	p.is_outbound = 0;
+	is_outbound = 0;
       else if (unformat (line_input, "outbound"))
-	p.is_outbound = 1;
+	is_outbound = 1;
       else if (unformat (line_input, "priority %d", &p.priority))
 	;
       else if (unformat (line_input, "protocol %u", &tmp))
@@ -325,6 +327,19 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	  goto done;
 	}
     }
+
+  rv = ipsec_policy_mk_type (is_outbound, p.is_ipv6, p.policy, &p.type);
+
+  if (rv)
+    {
+      error = clib_error_return (0, "unsupported policy type for:",
+				 " outboud:%s %s action:%U",
+				 (is_outbound ? "yes" : "no"),
+				 (p.is_ipv6 ? "IPv4" : "IPv6"),
+				 format_ipsec_policy_action, p.policy);
+      goto done;
+    }
+
   rv = ipsec_add_del_policy (vm, &p, is_add, &stat_index);
 
   if (!rv)
