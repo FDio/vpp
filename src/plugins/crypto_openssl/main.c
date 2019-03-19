@@ -102,6 +102,7 @@ static_always_inline u32
 openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 		  const EVP_MD * md)
 {
+  u8 buffer[64];
   openssl_per_thread_data_t *ptd = vec_elt_at_index (per_thread_data,
 						     vm->thread_index);
   HMAC_CTX *ctx = ptd->hmac_ctx;
@@ -113,7 +114,13 @@ openssl_ops_hmac (vlib_main_t * vm, vnet_crypto_op_t * ops[], u32 n_ops,
 
       HMAC_Init_ex (ctx, op->key, op->key_len, md, NULL);
       HMAC_Update (ctx, op->src, op->len);
-      HMAC_Final (ctx, op->dst, &out_len);
+      if (op->hmac_trunc_len)
+	{
+	  HMAC_Final (ctx, buffer, &out_len);
+	  clib_memcpy_fast (op->dst, buffer, op->hmac_trunc_len);
+	}
+      else
+	HMAC_Final (ctx, op->dst, &out_len);
       op->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
     }
   return n_ops;
