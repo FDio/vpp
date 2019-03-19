@@ -46,6 +46,30 @@
       "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f529172a_51871b68",
+        "filename": "docs/usecases/vmxnet3.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 1263
+      },
+      "writtenOn": "2019-03-19T17:29:54Z",
+      "side": 1,
+      "message": "Strange. Which editor are you using?\n\nLooking at my own .rst contributions, I see that I habitually insert blank lines between bullet points, and CSIT toolchain does not complain.\n\nHere [0] is a document with varied bullet point handling. Does your editor accept it?\n\nThe point of wrapping lines is not usability by specialized editors, but usability with dumb editors (including Gerrit).\n\n[0] https://raw.githubusercontent.com/FDio/csit/master/docs/report/introduction/methodology_mlrsearch_tests.rst",
+      "parentUuid": "4be9d5ae_3c823e41",
+      "range": {
+        "startLine": 66,
+        "startChar": 88,
+        "endLine": 66,
+        "endChar": 90
+      },
+      "revId": "ee94ffa35d69a56df894a31147a106f2a7d4c3de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
