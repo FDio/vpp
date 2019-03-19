@@ -109,7 +109,7 @@ typedef struct application_
   app_listener_t *listeners;
 
   /*
-   * TLS Specific
+   * TLS & QUIC Specific
    */
 
   /** Certificate to be used for listen sessions */
@@ -120,6 +120,8 @@ typedef struct application_
 
   /** Preferred tls engine */
   u8 tls_engine;
+
+  u64 *quicly_ctx;
 
 } application_t;
 

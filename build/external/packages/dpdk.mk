@@ -285,11 +285,3 @@ build-dpdk: $(DPDK_BUILD_DEPS)
 	@if [ ! -e $(B)/.config.ok ] ; then echo 'Please run "make config" first' && false ; fi
 	@make $(DPDK_MAKE_ARGS) install
 
-$(B)/.build.ok: build-dpdk
-	@touch $@
-
-.PHONY: build
-build: $(B)/.build.ok
-
-.PHONY: install
-install: $(B)/.build.ok

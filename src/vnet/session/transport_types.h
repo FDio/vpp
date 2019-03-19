@@ -130,6 +130,7 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_NONE,
   TRANSPORT_PROTO_TLS,
   TRANSPORT_PROTO_UDPC,
+  TRANSPORT_PROTO_QUIC,
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
