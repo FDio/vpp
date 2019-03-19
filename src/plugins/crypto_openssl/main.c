@@ -44,6 +44,7 @@ static openssl_per_thread_data_t *per_thread_data = 0;
   _(AES_256_CBC, EVP_aes_256_cbc)
 
 #define foreach_openssl_hmac_op \
+  _(MD5, EVP_md5) \
   _(SHA1, EVP_sha1) \
   _(SHA224, EVP_sha224) \
   _(SHA256, EVP_sha256) \
