@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "362a5557_b659aa94",
+        "filename": "src/plugins/unittest/crypto/rfc2202_hmac_md5.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-19T18:07:36Z",
+      "side": 1,
+      "message": "avoid duplicate",
+      "range": {
+        "startLine": 178,
+        "startChar": 10,
+        "endLine": 178,
+        "endChar": 21
+      },
+      "revId": "fd7f28f172bebfbcb254644e842e6a4ce06ef199",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "233f8396_f9b209f5",
+        "filename": "src/plugins/unittest/crypto/rfc2202_hmac_md5.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2019-03-19T18:07:36Z",
+      "side": 1,
+      "message": "md5_tc6_key",
+      "range": {
+        "startLine": 203,
+        "startChar": 20,
+        "endLine": 203,
+        "endChar": 31
+      },
+      "revId": "fd7f28f172bebfbcb254644e842e6a4ce06ef199",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
