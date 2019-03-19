@@ -124,6 +124,9 @@ typedef struct
   u8 udp_encap;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
+  ip4_header_t ip4_hdr;
+  ip6_header_t ip6_hdr;
+  udp_header_t udp_hdr;
 
   fib_node_index_t fib_entry_index;
   u32 sibling;

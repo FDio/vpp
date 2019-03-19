@@ -238,9 +238,8 @@ vlib_buffer_get_current_va (vlib_buffer_t * b)
     @param l - (word) signed increment
 */
 always_inline void
-vlib_buffer_advance (vlib_buffer_t * b, word l)
+vlib_buffer_advance (vlib_buffer_t * b, signed long long l)
 {
-  ASSERT (b->current_length >= l);
   b->current_data += l;
   b->current_length -= l;
 

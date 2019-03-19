@@ -14,6 +14,8 @@
  */
 
 #include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/esp.h>
+#include <vnet/udp/udp.h>
 #include <vnet/fib/fib_table.h>
 
 /**
@@ -199,6 +201,44 @@ ipsec_sa_add (u32 id,
       sa->sibling = fib_entry_child_add (sa->fib_entry_index,
 					 FIB_NODE_TYPE_IPSEC_SA, sa_index);
       ipsec_sa_stack (sa);
+
+      /* generate header templates */
+      if (sa->is_tunnel_ip6)
+	{
+	  sa->ip6_hdr.ip_version_traffic_class_and_flow_label = 0x60;
+	  sa->ip6_hdr.hop_limit = 254;
+	  sa->ip6_hdr.src_address.as_u64[0] =
+	    sa->tunnel_src_addr.ip6.as_u64[0];
+	  sa->ip6_hdr.src_address.as_u64[1] =
+	    sa->tunnel_src_addr.ip6.as_u64[1];
+	  sa->ip6_hdr.dst_address.as_u64[0] =
+	    sa->tunnel_dst_addr.ip6.as_u64[0];
+	  sa->ip6_hdr.dst_address.as_u64[1] =
+	    sa->tunnel_dst_addr.ip6.as_u64[1];
+	  if (sa->udp_encap)
+	    sa->ip6_hdr.protocol = IP_PROTOCOL_UDP;
+	  else
+	    sa->ip6_hdr.protocol = IP_PROTOCOL_IPSEC_ESP;
+	}
+      else
+	{
+	  sa->ip4_hdr.ip_version_and_header_length = 0x45;
+	  sa->ip4_hdr.ttl = 254;
+	  sa->ip4_hdr.src_address.as_u32 = sa->tunnel_src_addr.ip4.as_u32;
+	  sa->ip4_hdr.dst_address.as_u32 = sa->tunnel_dst_addr.ip4.as_u32;
+
+	  if (sa->udp_encap)
+	    sa->ip4_hdr.protocol = IP_PROTOCOL_UDP;
+	  else
+	    sa->ip4_hdr.protocol = IP_PROTOCOL_IPSEC_ESP;
+	  sa->ip4_hdr.checksum = ip4_header_checksum (&sa->ip4_hdr);
+	}
+
+      if (sa->udp_encap)
+	{
+	  sa->udp_hdr.src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+	  sa->udp_hdr.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipsec);
+	}
     }
   hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
 
