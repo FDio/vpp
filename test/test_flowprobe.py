@@ -40,9 +40,11 @@ class VppCFLOW(VppObject):
 
     def add_vpp_config(self):
         self.enable_exporter()
-        self._test.vapi.ppcli("flowprobe params record %s active %s "
-                              "passive %s" % (self._collect, self._active,
-                                              self._passive))
+        self._test.vapi.flowprobe_params(
+            record_l2=1 if 'l2' in self._collect.lower() else 0,
+            record_l3=1 if 'l3' in self._collect.lower() else 0,
+            record_l4=1 if 'l4' in self._collect.lower() else 0,
+            active_timer=self._active, passive_timer=self._passive)
         self.enable_flowprobe_feature()
         self._test.vapi.cli("ipfix flush")
         self._configured = True
