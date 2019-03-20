@@ -118,8 +118,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   if (mp->retval)
     {
-      clib_warning ("VCL<%d>: attach failed: %U", getpid (),
-		    format_api_error, ntohl (mp->retval));
+      VDBG (0, "attach failed: %U", format_api_error, ntohl (mp->retval));
+      vcm->app_state = STATE_APP_FAILED;
       return;
     }
 
@@ -128,7 +128,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   segment_handle = clib_net_to_host_u64 (mp->segment_handle);
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)
     {
-      clib_warning ("invalid segment handle");
+      VDBG (0, "invalid segment handle");
       return;
     }
 
