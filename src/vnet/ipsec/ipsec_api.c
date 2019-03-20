@@ -635,9 +635,10 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   tun.local_integ_key_len = mp->local_integ_key_len;
   tun.remote_integ_key_len = mp->remote_integ_key_len;
   tun.udp_encap = mp->udp_encap;
+  tun.is_ip6 = mp->is_ip6;
   tun.tx_table_id = ntohl (mp->tx_table_id);
-  memcpy (&tun.local_ip.ip4, mp->local_ip, 4);
-  memcpy (&tun.remote_ip.ip4, mp->remote_ip, 4);
+  tun.local_ip = to_ip46 (mp->is_ip6, mp->local_ip);
+  tun.remote_ip = to_ip46 (mp->is_ip6, mp->remote_ip);
   memcpy (&tun.local_crypto_key, &mp->local_crypto_key,
 	  mp->local_crypto_key_len);
   memcpy (&tun.remote_crypto_key, &mp->remote_crypto_key,

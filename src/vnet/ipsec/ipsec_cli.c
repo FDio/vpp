@@ -721,11 +721,10 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  if (ipv6_set)
-    return clib_error_return (0, "currently only IPv4 supported");
-
   if (ipv4_set && ipv6_set)
     return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
+
+  a.is_ip6 = ipv6_set;
 
   clib_memcpy (a.local_crypto_key, lck.data, lck.len);
   a.local_crypto_key_len = lck.len;

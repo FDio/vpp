@@ -2481,7 +2481,7 @@ class VppPapiProvider(object):
     def ipsec_tunnel_if_add_del(self, local_ip, remote_ip, local_spi,
                                 remote_spi, crypto_alg, local_crypto_key,
                                 remote_crypto_key, integ_alg, local_integ_key,
-                                remote_integ_key, is_add=1, esn=0,
+                                remote_integ_key, is_add=1, is_ip6 = 0, esn=0,
                                 anti_replay=1, renumber=0, show_instance=0):
         return self.api(
             self.papi.ipsec_tunnel_if_add_del,
@@ -2495,9 +2495,9 @@ class VppPapiProvider(object):
              'local_integ_key_len': len(local_integ_key),
              'local_integ_key': local_integ_key,
              'remote_integ_key_len': len(remote_integ_key),
-             'remote_integ_key': remote_integ_key, 'is_add': is_add,
-             'esn': esn, 'anti_replay': anti_replay, 'renumber': renumber,
-             'show_instance': show_instance
+             'remote_integ_key': remote_integ_key, 'is_add': is_add, 
+			 'is_ip6': is_ip6, 'esn': esn, 'anti_replay': anti_replay,
+			 'renumber': renumber, 'show_instance': show_instance
              })
 
     def ipsec_select_backend(self, protocol, index):

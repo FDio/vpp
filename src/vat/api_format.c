@@ -15096,6 +15096,7 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
   M (IPSEC_TUNNEL_IF_ADD_DEL, mp);
 
   mp->is_add = is_add;
+  mp->is_ip6 = 0;
   mp->esn = esn;
   mp->anti_replay = anti_replay;
 
