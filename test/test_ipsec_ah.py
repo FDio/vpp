@@ -4,7 +4,8 @@ import unittest
 from scapy.layers.ipsec import AH
 
 from framework import VppTestRunner
-from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests
+from template_ipsec import TemplateIpsec, IpsecTra46Tests, IpsecTun46Tests, \
+    config_tun_params, config_tra_params
 from template_ipsec import IpsecTcpTests
 from vpp_ipsec import VppIpsecSA, VppIpsecSpd, VppIpsecSpdEntry,\
         VppIpsecSpdItfBinding
@@ -53,7 +54,7 @@ class TemplateIpsecAh(TemplateIpsec):
 
         for _, p in self.params.items():
             self.config_ah_tra(p)
-            self.configure_sa_tra(p)
+            config_tra_params(p, self.encryption_type)
             self.logger.info(self.vapi.ppcli("show ipsec"))
         for _, p in self.params.items():
             self.config_ah_tun(p)
