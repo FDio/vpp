@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "c5e6e223_a8f85a72",
+        "filename": "src/plugins/lb/lb.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-20T12:40:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d5aaa418_0daddb4a",
+      "range": {
+        "startLine": 18,
+        "startChar": 2,
+        "endLine": 19,
+        "endChar": 25
+      },
+      "revId": "73866fb75563b9727aab7598a9c3dbcc4ed99f3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e31ad7f1_6ffa1809",
         "filename": "test/test_lb.py",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2019-03-20T07:47:30Z",
       "side": 1,
       "message": "If these are vl_api_ip4/6_address_t, you can just pass in the text representation of the address here. They are converted to ipaddress objects.",
+      "range": {
+        "startLine": 59,
+        "startChar": 8,
+        "endLine": 64,
+        "endChar": 48
+      },
+      "revId": "73866fb75563b9727aab7598a9c3dbcc4ed99f3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "15609d86_4c7fd600",
+        "filename": "test/test_lb.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 1496
+      },
+      "writtenOn": "2019-03-20T12:40:31Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e31ad7f1_6ffa1809",
       "range": {
         "startLine": 59,
         "startChar": 8,
